@@ -94,15 +94,25 @@ function Icons:ApplyManualLayout(frame, icons, settings)
         local x = 0
         local y = 0
 
-        if orientation == 0 then
-            x = centeringOffset + (col * (w + padding))
-            y = -row * (h + padding)
+        if settings.verticalGrowth == "UP" then
+            if orientation == 0 then
+                x = centeringOffset + (col * (w + padding))
+                y = row * (h + padding)
+            else
+                x = col * (w + padding)
+                y = centeringOffset + (row * (h + padding))
+            end
+            icon:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x, y)
         else
-            x = col * (w + padding)
-            y = -(centeringOffset + (row * (h + padding)))
+            if orientation == 0 then
+                x = centeringOffset + (col * (w + padding))
+                y = -row * (h + padding)
+            else
+                x = col * (w + padding)
+                y = -(centeringOffset + (row * (h + padding)))
+            end
+            icon:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
         end
-
-        icon:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
     end
 
     -- Resize Container

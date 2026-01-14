@@ -585,7 +585,11 @@ function Plugin:SetupViewerHooks(viewer, anchor)
         end
 
         v:ClearAllPoints()
-        v:SetPoint("CENTER", parent, "CENTER", 0, 0)
+
+        local direction = self:GetGrowthDirection(anchor)
+        local point = (direction == "UP") and "BOTTOM" or "TOP"
+        v:SetPoint(point, parent, point, 0, 0)
+        
         v:SetAlpha(1)
         v:Show()
     end
@@ -625,7 +629,9 @@ function Plugin:SetupViewerHooks(viewer, anchor)
 
             viewer._orbitRestoringPos = true
             viewer:ClearAllPoints()
-            viewer:SetPoint("CENTER", anchor, "CENTER", 0, 0)
+            local direction = self:GetGrowthDirection(anchor)
+            local point = (direction == "UP") and "BOTTOM" or "TOP"
+            viewer:SetPoint(point, anchor, point, 0, 0)
             viewer._orbitRestoringPos = false
         end
 
@@ -676,7 +682,11 @@ function Plugin:EnforceViewerParentage(viewer, anchor)
         viewer:SetParent(anchor)
     end
     viewer:ClearAllPoints()
-    viewer:SetPoint("CENTER", anchor, "CENTER", 0, 0)
+
+    local direction = self:GetGrowthDirection(anchor)
+    local point = (direction == "UP") and "BOTTOM" or "TOP"
+    viewer:SetPoint(point, anchor, point, 0, 0)
+
     viewer:SetAlpha(1)
     viewer:Show()
 
@@ -773,6 +783,7 @@ function Plugin:ProcessChildren(anchor)
             showTimer = self:GetSetting(systemIndex, "ShowTimer"),
             backdropColor = self:GetSetting(systemIndex, "BackdropColour"),
             showTooltip = false,
+            verticalGrowth = self:GetGrowthDirection(anchor),
         }
 
         -- Store settings for the Skin system to use
@@ -817,6 +828,29 @@ function Plugin:ProcessChildren(anchor)
             anchor.orbitColumnWidth = blizzFrame.orbitColumnWidth
         end
     end
+end
+
+function Plugin:GetGrowthDirection(anchorFrame)
+    if not anchorFrame then
+        return "UP"
+    end
+
+    local Engine = Orbit.Engine
+    local anchorInfo = Engine.FrameAnchor and Engine.FrameAnchor.anchors[anchorFrame]
+
+    if not anchorInfo then
+        -- Unanchored: Default to UP
+        return "UP"
+    end
+
+    local edge = anchorInfo.edge
+    -- If anchored to the BOTTOM of parent, we are below it, so grow DOWN
+    if edge == "BOTTOM" then
+        return "DOWN"
+    end
+
+    -- Default/TOP: Grow UP
+    return "UP"
 end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
