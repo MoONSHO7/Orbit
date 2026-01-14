@@ -1,11 +1,9 @@
 name: Release AddOn
 
 on:
-  push:
-    branches:
-      - "main"
-    tags:
-      - "**"
+  tags:
+    - "v*"
+    - "release-*"
 
 env:
   # CurseForge API Key from GitHub Secrets
@@ -20,7 +18,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # required for changelog generation
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Build and Package
         uses: BigWigsMods/packager@v2
