@@ -210,7 +210,7 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("slider", function(container, def, getValue, callback)
-        return self:CreateSlider(container, def.label, def.min, def.max, def.step, def.formatter, getValue(), callback)
+        return self:CreateSlider(container, def.label, def.min, def.max, def.step, def.formatter, getValue(), callback, def)
     end)
 
     self:RegisterWidgetType("dropdown", function(container, def, getValue, callback)

@@ -94,6 +94,7 @@ local function GetGlobalSchema()
             min = 1,
             max = 5,
             step = 1,
+            updateOnRelease = true, -- Prevent heavy updates during drag
         },
         -- Conditional Slider for Action Bars will be inserted here
     }
@@ -108,6 +109,7 @@ local function GetGlobalSchema()
             min = 2,
             max = 8,
             step = 1,
+            updateOnRelease = true, -- Prevent heavy updates during drag
         })
     end
 
