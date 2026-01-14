@@ -135,6 +135,75 @@ local function GetGlobalSchema()
 end
 
 -------------------------------------------------
+-- EDIT MODE TAB
+-------------------------------------------------
+local EditModePlugin = {
+    name = "OrbitEditMode",
+    settings = {},
+
+    GetSetting = function(self, systemIndex, key)
+        if not Orbit.db or not Orbit.db.GlobalSettings then
+            return nil
+        end
+        return Orbit.db.GlobalSettings[key]
+    end,
+
+    SetSetting = function(self, systemIndex, key, value)
+        if not Orbit.db then
+            return
+        end
+        if not Orbit.db.GlobalSettings then
+            Orbit.db.GlobalSettings = {}
+        end
+        Orbit.db.GlobalSettings[key] = value
+
+        -- Force refresh of visuals if in Edit Mode
+        if Orbit.Engine.FrameSelection then
+             Orbit.Engine.FrameSelection:RefreshVisuals()
+        end
+    end,
+
+    ApplySettings = function(self, systemFrame)
+         -- Handled by SetSetting immediate refresh
+    end,
+}
+
+local function GetEditModeSchema()
+    return {
+        hideNativeSettings = true,
+        hideResetButton = false,
+        headerHeight = Constants.Panel.HeaderHeight,
+        controls = {
+            {
+                type = "checkbox",
+                key = "ShowBlizzardFrames",
+                label = "Show Blizzard Frames",
+                default = true,
+                tooltip = "Show selection overlays for native Blizzard frames in Edit Mode.",
+            },
+            {
+                type = "color",
+                key = "EditModeColor",
+                label = "Orbit Frame Color",
+                default = { r = 0.7, g = 0.6, b = 1.0, a = 1.0 },
+                tooltip = "Color of the selection overlay for Orbit-owned frames.",
+            },
+        },
+        onReset = function()
+            local d = Orbit.db.GlobalSettings
+            if d then
+                d.ShowBlizzardFrames = true
+                d.EditModeColor = { r = 0.7, g = 0.6, b = 1.0, a = 1.0 }
+            end
+             if Orbit.Engine.FrameSelection then
+                 Orbit.Engine.FrameSelection:RefreshVisuals()
+            end
+            Orbit:Print("Edit Mode settings reset to defaults.")
+        end,
+    }
+end
+
+-------------------------------------------------
 -- PLUGINS TAB
 -------------------------------------------------
 
@@ -508,6 +577,7 @@ end
 
 local TABS = {
     { name = "Global", plugin = GlobalPlugin, schema = GetGlobalSchema },
+    { name = "Edit Mode", plugin = EditModePlugin, schema = GetEditModeSchema },
     { name = "Plugins", plugin = PluginsPlugin, schema = GetPluginsSchema },
     { name = "Profiles", plugin = ProfilesPlugin, schema = GetProfilesSchema },
 }

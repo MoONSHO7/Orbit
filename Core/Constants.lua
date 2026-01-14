@@ -57,6 +57,7 @@ C.Widget = {
 C.Frame = {
     LockInset = 1, -- Border inset pixels for locked frames
     LockColor = { r = 0.5, g = 0.5, b = 0.5 }, -- Grey
+    EditModeColor = { r = 0.7, g = 0.6, b = 1.0 }, -- Light Purple
 }
 
 C.Selection = {

@@ -346,6 +346,10 @@ function Selection:OnEditModeEnter()
             Selection:UpdateVisuals(frame, selection)
             frame:SetMovable(true)
         end
+        
+        -- Force refresh to apply native visibility settings immediately
+        Selection:RefreshVisuals()
+
         Engine.SelectionNativeHook:Hook(Selection)
     end)
 end
@@ -463,6 +467,35 @@ function Selection:ForceUpdate(frame)
     end
 end
 
+function Selection:RefreshVisuals()
+    -- 1. Update Orbit Selections
+    for frame, selection in pairs(self.selections) do
+        if selection:IsShown() then
+            self:UpdateVisuals(frame, selection)
+        end
+    end
+
+    -- 2. Update Native Blizzard Frames
+    if EditModeManagerFrame and EditModeManagerFrame.registeredSystemFrames then
+        local showNative = true
+        if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowBlizzardFrames == false then
+            showNative = false
+        end
+
+        for _, frame in ipairs(EditModeManagerFrame.registeredSystemFrames) do
+            if frame.Selection then
+                if showNative then
+                    frame.Selection:SetAlpha(1)
+                    frame.Selection:EnableMouse(true)
+                else
+                    frame.Selection:SetAlpha(0)
+                    frame.Selection:EnableMouse(false)
+                end
+            end
+        end
+    end
+end
+
 -- [ UPDATE VISUALS ]--------------------------------------------------------------------------------
 
 function Selection:UpdateVisuals(frame, selection)
@@ -575,13 +608,51 @@ function Selection:UpdateVisuals(frame, selection)
         local isAnchored = Engine.FrameAnchor:GetAnchorParent(selection.parent) ~= nil
 
         if isAnchored then
-            TintSelection(selection, 1, 1, 1, false)
+            if selection.isOrbitSelection then
+                local c = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.EditModeColor or Engine.Constants.Frame.EditModeColor
+                TintSelection(selection, c.r, c.g, c.b, true)
+            else
+                local showNative = true
+                if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowBlizzardFrames == false then
+                    showNative = false
+                end
+                
+                -- Always hide native selection to prevent z-fighting/persistence
+                if frame.Selection then frame.Selection:Hide() end
+
+                if showNative then
+                     TintSelection(selection, 1, 1, 1, false)
+                     selection:Show()
+                else
+                     selection:Hide() -- Hide entirely if native frames disabled
+                     return
+                end
+            end
             local anchor = Engine.FrameAnchor.anchors[selection.parent]
             if anchor and anchor.edge then
                 Selection:ShowAnchorLine(selection, GetOppositeEdge(anchor.edge))
             end
         else
-            TintSelection(selection, 1, 1, 1, false)
+            if selection.isOrbitSelection then
+                local c = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.EditModeColor or Engine.Constants.Frame.EditModeColor
+                TintSelection(selection, c.r, c.g, c.b, true)
+            else
+                local showNative = true
+                if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowBlizzardFrames == false then
+                    showNative = false
+                end
+
+                 -- Always hide native selection to prevent z-fighting/persistence
+                 if frame.Selection then frame.Selection:Hide() end
+
+                 if showNative then
+                     TintSelection(selection, 1, 1, 1, false)
+                     selection:Show() -- Ensure Orbit's proxy is shown
+                else
+                     selection:Hide()
+                     return
+                end
+            end
             Selection:ShowAnchorLine(selection, nil)
         end
     else
