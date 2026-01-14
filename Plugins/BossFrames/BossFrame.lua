@@ -776,7 +776,7 @@ function Plugin:OnLoad()
             or event == "UNIT_TARGETABLE_CHANGED"
         then
             for i, frame in ipairs(self.frames) do
-                if frame.UpdateAll then -- Check if UpdateAll exists (it should)
+                if frame.UpdateAll and not frame.preview then -- Check if UpdateAll exists and not in preview
                     frame:UpdateAll()
                     UpdatePowerBar(frame)
                     UpdateDebuffs(frame, self)

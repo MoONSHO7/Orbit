@@ -307,8 +307,44 @@ end
 function Orbit.BossFramePreviewMixin:HidePreview()
     -- PREVIEW IS BLOCKED IN COMBAT (Protected function calls)
     if InCombatLockdown() then
+        -- Register event to hide when combat ends
+        if not self.previewCleanupFrame then
+            self.previewCleanupFrame = CreateFrame("Frame")
+            self.previewCleanupFrame:SetScript("OnEvent", function(f, event)
+                if event == "PLAYER_REGEN_ENABLED" then
+                    f:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                    self:HidePreview()
+                end
+            end)
+        end
+        self.previewCleanupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+
+        -- Try to cleanup non-secure visuals immediately to reduce clutter
+        -- (Only if it's safe - i.e. not touching protected frames)
+        if self.frames then
+            for i, frame in ipairs(self.frames) do
+                -- Visually hide the main frame immediately so it doesn't linger
+                frame:SetAlpha(0)
+
+                if frame.previewDebuffs then
+                    for _, icon in ipairs(frame.previewDebuffs) do
+                        icon:Hide()
+                    end
+                end
+                if frame.CastBar then
+                    frame.CastBar:Hide()
+                end
+            end
+        end
+        
         return
+    else
+        -- Clean up event if we reached here safely (e.g. called manually or after regression)
+        if self.previewCleanupFrame then
+            self.previewCleanupFrame:UnregisterEvent("PLAYER_REGEN_ENABLED")
+        end
     end
+
     if not self.frames then
         return
     end
@@ -320,6 +356,9 @@ function Orbit.BossFramePreviewMixin:HidePreview()
 
     for i, frame in ipairs(self.frames) do
         frame.preview = nil
+        
+        -- Restore visual visibility (in case it was hidden during combat deferral)
+        frame:SetAlpha(1) 
 
         -- Restore UnitWatch for normal gameplay (handles combat visibility)
         RegisterUnitWatch(frame)
