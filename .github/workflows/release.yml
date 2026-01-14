@@ -1,9 +1,11 @@
 name: Release AddOn
 
 on:
+  push:
+    branches:
+      - "main"
   tags:
-    - "v*"
-    - "release-*"
+    - "**"
 
 env:
   # CurseForge API Key from GitHub Secrets
