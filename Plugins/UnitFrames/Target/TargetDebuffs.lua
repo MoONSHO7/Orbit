@@ -132,6 +132,18 @@ function Plugin:OnLoad()
 
     self:ApplySettings()
 
+    -- Live resize: recalculate icons when frame size changes
+    Frame:HookScript("OnSizeChanged", function()
+        local isEditMode = EditModeManagerFrame
+            and EditModeManagerFrame.IsEditModeActive
+            and EditModeManagerFrame:IsEditModeActive()
+        if isEditMode then
+            self:ShowPreviewAuras()
+        else
+            self:UpdateDebuffs()
+        end
+    end)
+
     -- Events for visibility & updates
     Frame:RegisterUnitEvent("UNIT_AURA", "target")
     Frame:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -426,4 +438,36 @@ function Plugin:ApplySettings()
 
     OrbitEngine.Frame:RestorePosition(Frame, self, SYSTEM_INDEX)
     self:UpdateVisibility()
+end
+
+-- [ UPDATE LAYOUT ]-----------------------------------------------------------------------------------
+-- Called by Anchor:SyncChildren when parent frame dimensions change
+function Plugin:UpdateLayout()
+    if not Frame then return end
+
+    -- Recalculate icon layout based on current width
+    local iconsPerRow = self:GetSetting(SYSTEM_INDEX, "IconsPerRow") or 5
+    local maxRows = self:GetSetting(SYSTEM_INDEX, "MaxRows") or 2
+    local spacing = self:GetSetting(SYSTEM_INDEX, "Spacing") or 2
+    local maxWidth = Frame:GetWidth()
+
+    local totalSpacing = (iconsPerRow - 1) * spacing
+    local iconSize = math.floor((maxWidth - totalSpacing) / iconsPerRow)
+    if iconSize < 1 then iconSize = 1 end
+    Frame.iconSize = iconSize
+
+    local height = (maxRows * iconSize) + ((maxRows - 1) * spacing)
+    if height < 1 then height = 1 end
+    Frame:SetHeight(height)
+
+    -- Refresh display
+    local isEditMode = EditModeManagerFrame
+        and EditModeManagerFrame.IsEditModeActive
+        and EditModeManagerFrame:IsEditModeActive()
+
+    if isEditMode then
+        self:ShowPreviewAuras()
+    else
+        self:UpdateDebuffs()
+    end
 end

@@ -254,7 +254,6 @@ function Plugin:ApplySettings()
     end
 
     -- Texture
-    -- Texture
     Orbit.Skin:SkinStatusBar(PowerBar, textureName)
 
     -- Border

@@ -130,6 +130,18 @@ function Plugin:OnLoad()
 
     self:ApplySettings()
 
+    -- Live resize: recalculate icons when frame size changes
+    Frame:HookScript("OnSizeChanged", function()
+        local isEditMode = EditModeManagerFrame
+            and EditModeManagerFrame.IsEditModeActive
+            and EditModeManagerFrame:IsEditModeActive()
+        if isEditMode then
+            self:ShowPreviewAuras()
+        else
+            self:UpdateDebuffs()
+        end
+    end)
+
     -- Events
     Frame:RegisterUnitEvent("UNIT_AURA", "focus")
     Frame:RegisterEvent("PLAYER_FOCUS_CHANGED")

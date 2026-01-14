@@ -91,8 +91,8 @@ local function GetGlobalSchema()
             key = "BorderSize",
             label = "Border Size",
             default = 2,
-            min = 1,
-            max = 5,
+            min = -1,
+            max = 4,
             step = 1,
             updateOnRelease = true, -- Prevent heavy updates during drag
         },
