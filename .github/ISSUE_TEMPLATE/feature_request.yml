@@ -1,0 +1,36 @@
+name: Feature Request
+description: Suggest an idea for this project.
+title: "[Feature]: "
+labels: ["type: feature", "status: triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest a new feature!
+
+  - type: textarea
+    id: pitch
+    attributes:
+      label: The Pitch
+      description: What is your idea? What problem are you trying to solve?
+      placeholder: I would like a way to... because...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How do you envision this working?
+      placeholder: Add a new checkbox in options that does X when clicked...
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered other ways to solve this?
+      placeholder: I tried using WeakAuras but...
+    validations:
+      required: false

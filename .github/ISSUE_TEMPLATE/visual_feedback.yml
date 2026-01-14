@@ -1,0 +1,39 @@
+name: Visual Feedback
+description: Report a visual glitch or suggest an aesthetic improvement.
+title: "[Visual]: "
+labels: ["type: visual", "status: triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for UI issues (misaligned pixels, wrong colors, broken animations) or to request visual polish.
+
+  - type: dropdown
+    id: feedback_type
+    attributes:
+      label: Feedback Type
+      options:
+        - Visual Bug (Something looks wrong)
+        - Improvement Request (Make something look better)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the issue or your suggestion in detail.
+      placeholder: The border on the player frame is 1px off, or I think this font should be bolder...
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots / Videos
+      description: |
+        Please verify the issue visually! 
+        Drag and drop your images or videos here.
+      placeholder: ![image](url)
+    validations:
+      required: false

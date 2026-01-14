@@ -1,16 +1,11 @@
 name: Release AddOn
 
 on:
-  push:
-    branches:
-      - "main"
-    tags:
-      - "**"
+  tags:
+    - "**"
 
 env:
-  # CurseForge API Key from GitHub Secrets
   CF_API_KEY: ${{ secrets.CURSE_API_KEY }}
-  # GitHub Token is automatically provided
   GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:

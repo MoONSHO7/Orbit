@@ -1,0 +1,71 @@
+name: Lua Error
+description: Report a Lua crash or error message.
+title: "[Lua Error]: "
+labels: ["type: bug", "type: lua-error", "status: triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an error! Please fill out the details below to help us squash it.
+
+  - type: dropdown
+    id: class
+    attributes:
+      label: Class
+      description: Which class were you playing?
+      options:
+        - Death Knight
+        - Demon Hunter
+        - Druid
+        - Evoker
+        - Hunter
+        - Mage
+        - Monk
+        - Paladin
+        - Priest
+        - Rogue
+        - Shaman
+        - Warlock
+        - Warrior
+    validations:
+      required: true
+
+  - type: input
+    id: spec
+    attributes:
+      label: Specialization
+      placeholder: e.g. Fury, Holy, Vengeance
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What were you doing when the error occurred?
+      placeholder: I was entering a dungeon, casting 'Fireball', opening the options, etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Error Log
+      description: Please paste the full error message here.
+      render: lua
+      placeholder: |
+        Message: ...
+        Time: ...
+        Count: 1
+        Stack: ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Orbit Version
+      description: Which version or commit are you using?
+      placeholder: v1.0.0 or 305e651
+    validations:
+      required: false
