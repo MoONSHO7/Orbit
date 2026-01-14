@@ -1,0 +1,131 @@
+## Interface: 120001, 120000
+## Title: Orbit
+## Notes: Edit Mode Extensions
+## Author: MoONSHO7 / M7
+## Version: @project-version@
+## SavedVariables: OrbitDB, OrbitProfiles, OrbitCharDB
+## IconTexture: Interface\AddOns\Orbit\Core\assets\Orbit.png
+
+## X-License: All Rights Reserved
+## X-Category: Interface Enhancements
+## X-Curse-Project-ID: 1428137
+
+# ==============================================================
+# LIBRARIES
+# ==============================================================
+Core\Libs\LibStub\LibStub.lua
+Core\Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Core\Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
+Core\Libs\LibSerialize\LibSerialize.lua
+Core\Libs\LibDeflate\LibDeflate.lua
+Core\Libs\LibCustomGlow-1.0\LibCustomGlow-1.0.xml
+
+# ==============================================================
+# CORE
+# ==============================================================
+
+# Constants (must load first)
+Core\Constants.lua
+
+# Media
+Core\Media.lua
+
+# Engine - Base
+Core\Engine\Engine.lua
+Core\Engine\Registry.lua
+Core\Engine\Pixel.lua
+Core\Engine\Layout.lua
+
+# Engine - Widgets
+Core\Engine\WidgetLogic.lua
+Core\Engine\Widgets\Checkbox.lua
+Core\Engine\Widgets\Slider.lua
+Core\Engine\Widgets\Dropdown.lua
+Core\Engine\Widgets\EditBox.lua
+Core\Engine\Widgets\Button.lua
+Core\Engine\Widgets\ColorPicker.lua
+Core\Engine\Widgets\TexturePicker.lua
+Core\Engine\Widgets\FontPicker.lua
+Core\Engine\Config.lua
+
+# Engine - Frame System (order matters: dependencies first)
+Core\Engine\NativeFrame.lua
+Core\Engine\EditMode.lua
+Core\Engine\Frame\Guard.lua
+Core\Engine\Frame\Lock.lua
+Core\Engine\Frame\Anchor.lua
+Core\Engine\Frame\Snap.lua
+Core\Engine\Frame\Selection\Tooltip.lua
+Core\Engine\Frame\Selection\Nudge.lua
+Core\Engine\Frame\Selection\Drag.lua
+Core\Engine\Frame\Selection\NativeHook.lua
+Core\Engine\Frame\Selection.lua
+Core\Engine\Frame\Persistence.lua
+Core\Engine\Frame\Factory.lua
+Core\Engine\Frame\Frame.lua
+Core\Engine\UnitButton.lua
+
+# Services (EventBus and Async remain separate for modularity)
+Core\Services\EventBus.lua
+Core\Services\Async.lua
+
+# Mixins
+Core\Mixins\PluginMixin.lua
+Core\Mixins\CastBarMixin.lua
+Core\Mixins\UnitFrameMixin.lua
+Core\Mixins\NativeBarMixin.lua
+Core\Mixins\AuraMixin.lua
+Core\Mixins\VisualsExtendedMixin.lua
+Core\Mixins\ResourceBarMixin.lua
+
+# Managers
+Core\Managers\CombatManager.lua
+Core\Managers\PositionManager.lua
+Core\Managers\ProfileManager.lua
+
+# Init (includes ErrorHandler and Visibility)
+Core\Init.lua
+
+# API (Public Facade)
+Core\API.lua
+
+# UI
+Core\UI\Animation.lua
+Core\UI\OrbitSettingsDialog.lua
+Core\UI\OrbitOptionsPanel.lua
+Core\UI\OrbitOptionsButton.lua
+
+# Skins
+Core\Skins\Skin.lua
+Core\Skins\Icons.lua
+Core\Skins\CastBar.lua
+Core\Skins\ClassBar.lua
+
+# PLUGINS
+Plugins\ActionBars\ActionBars.lua
+Plugins\UnitFrames\Player\PlayerResources.lua
+Plugins\UnitFrames\Player\PlayerPower.lua
+Plugins\UnitFrames\Player\PlayerCastBar.lua
+Plugins\UnitFrames\Target\TargetCastBar.lua
+Plugins\UnitFrames\Target\TargetPower.lua
+Plugins\UnitFrames\Focus\FocusCastBar.lua
+Plugins\UnitFrames\Focus\FocusPower.lua
+Plugins\CooldownManager\CooldownManager.lua
+Plugins\MenuItems\MicroMenu.lua
+Plugins\MenuItems\QueueStatus.lua
+Plugins\UnitFrames\Player\PlayerFrame.lua
+Plugins\UnitFrames\Player\PlayerPetFrame.lua
+Plugins\UnitFrames\Target\TargetFrame.lua
+Plugins\UnitFrames\Target\TargetBuffs.lua
+Plugins\UnitFrames\Target\TargetDebuffs.lua
+Plugins\UnitFrames\Target\TargetOfTargetFrame.lua
+Plugins\UnitFrames\Focus\FocusFrame.lua
+Plugins\UnitFrames\Focus\FocusBuffs.lua
+Plugins\UnitFrames\Focus\FocusDebuffs.lua
+Plugins\UnitFrames\Focus\TargetOfFocusFrame.lua
+Plugins\BossFrames\BossFramePreview.lua
+Plugins\BossFrames\BossFrame.lua
+Plugins\MenuItems\BagBar.lua
+Plugins\Misc\TalkingHead.lua
+Plugins\MenuItems\Performance.lua
+Plugins\MenuItems\CombatTimer.lua
