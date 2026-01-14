@@ -1,11 +1,3 @@
-externals:
-  Core/Libs/LibStub: https://repos.wowace.com/wow/libstub/trunk
-  Core/Libs/CallbackHandler-1.0: https://repos.wowace.com/wow/callbackhandler/trunk/CallbackHandler-1.0
-  Core/Libs/LibSharedMedia-3.0: https://repos.wowace.com/wow/libsharedmedia-3-0/trunk
-  Core/Libs/LibSerialize: https://github.com/rossnichols/LibSerialize.git
-  Core/Libs/LibDeflate: https://github.com/safeteeWow/LibDeflate.git
-  Core/Libs/LibCustomGlow-1.0: https://github.com/Stanzilla/LibCustomGlow.git
-
 ignore:
   - .agent
   - .env
