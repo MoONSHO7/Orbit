@@ -24,7 +24,9 @@ Mixin.INHERITED_KEYS = {
     CastBarColor = true,
     NonInterruptibleColor = true,
     CastBarText = true,
+    CastBarText = true,
     CastBarTimer = true,
+    SparkColor = true,
 }
 
 -- [ SETTINGS INHERITANCE ]--------------------------------------------------------------------------
@@ -241,6 +243,7 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     local color = self:GetSetting(systemIndex, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
     local fontName = self:GetSetting(systemIndex, "Font")
     local backdropColor = self:GetSetting(systemIndex, "BackdropColour")
+    local sparkColor = self:GetSetting(systemIndex, "SparkColor")
 
     Orbit:SafeAction(function()
         -- Height
@@ -282,6 +285,7 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
             font = fontName,
             textColor = { r = 1, g = 1, b = 1, a = 1 },
             backdropColor = backdropColor,
+            sparkColor = sparkColor,
         })
     end
 

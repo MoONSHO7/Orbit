@@ -115,6 +115,13 @@ function CastBar:Apply(bar, settings)
     if bar.SparkGlow then
         local height = bar:GetHeight()
         bar.SparkGlow:SetSize(height * 2.5, height)
+        
+        if settings.sparkColor then
+            local c = settings.sparkColor
+            bar.SparkGlow:SetVertexColor(c.r, c.g, c.b, c.a or 1)
+        else
+             bar.SparkGlow:SetVertexColor(1, 1, 1, 1)
+        end
     end
 
     -- Skin Background

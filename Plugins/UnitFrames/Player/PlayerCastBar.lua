@@ -12,6 +12,7 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
         CastBarTimer = true,
         CastBarHeight = Orbit.Constants.PlayerCastBar.DefaultHeight,
         CastBarScale = 100,
+        SparkColor = { r = 1, g = 1, b = 1, a = 1 },
     },
 }, Orbit.Constants.PluginGroups.CooldownManager)
 
@@ -141,6 +142,15 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
         systemIndex,
         systemFrame,
         { key = "NonInterruptibleColor", label = "Protected", default = { r = 0.7, g = 0.7, b = 0.7 } }
+    )
+
+    -- Spark Color
+    WL:AddColorSettings(
+        self,
+        schema,
+        systemIndex,
+        systemFrame,
+        { key = "SparkColor", label = "Spark / Glow", default = { r = 1, g = 1, b = 1, a = 1 } }
     )
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
@@ -640,6 +650,7 @@ function Plugin:ApplySettings(systemFrame)
             font = fontName,
             textColor = { r = 1, g = 1, b = 1, a = 1 },
             backdropColor = backdropColor,
+            sparkColor = self:GetSetting(systemIndex, "SparkColor"),
         })
 
         if bar.Latency then

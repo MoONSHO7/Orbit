@@ -289,22 +289,16 @@ C.Colors = {
         MAGE = { r = 0.4, g = 0.6, b = 1.0 },
         DEATHKNIGHT = { r = 0.8, g = 0.1, b = 0.2 },
         EVOKER = { r = 0.6, g = 0.8, b = 1.0 },
-        -- Charged combo points (Rogue with certain talents)
         ChargedComboPoint = { r = 0.169, g = 0.733, b = 0.992 },
-        -- Death Knight rune colors by spec
         RuneBlood = { r = 1.0, g = 0.2, b = 0.3 },
         RuneFrost = { r = 0.0, g = 0.6, b = 1.0 },
         RuneUnholy = { r = 0.1, g = 1.0, b = 0.1 },
-        -- Stagger colors (Brewmaster Monk)
         StaggerLow = { r = 0.52, g = 1.0, b = 0.52 },
         StaggerMedium = { r = 1.0, g = 0.98, b = 0.72 },
         StaggerHeavy = { r = 1.0, g = 0.42, b = 0.42 },
-        -- DH Soul Fragments
         SoulFragments = { r = 0.278, g = 0.125, b = 0.796 },
         SoulFragmentsVoidMeta = { r = 0.037, g = 0.220, b = 0.566 },
-        -- Ebon Might (Aug Evoker)
         EbonMight = { r = 0.2, g = 0.8, b = 0.4 },
-        -- Maelstrom Weapon (Enhancement Shaman)
         MaelstromWeapon = { r = 0.0, g = 0.5, b = 1.0 },
     },
 
