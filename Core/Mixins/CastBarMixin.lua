@@ -21,12 +21,13 @@ Mixin.sharedDefaults = {
 }
 
 -- Keys that Target/Focus cast bars inherit from Player Cast Bar
+-- Keys that Target/Focus cast bars inherit from Player Cast Bar
 Mixin.INHERITED_KEYS = {
     CastBarColor = true,
     NonInterruptibleColor = true,
+    InterruptedColor = true, -- Added missing key for interrupted consistency
     CastBarText = true,
     CastBarIcon = true,
-    CastBarText = true,
     CastBarTimer = true,
     SparkColor = true,
 }
@@ -51,12 +52,32 @@ function Mixin:GetAnchorAxis(frame)
     return OrbitEngine.Frame:GetAnchorAxis(frame)
 end
 
+-- Apply color to cast bar based on interrupt state
+function Mixin:ApplyCastColor(bar, state)
+    if not bar or not bar.orbitBar then return end
+    
+    local color
+    if state == "INTERRUPTED" then
+        color = self:GetSetting(1, "InterruptedColor") or { r = 1, g = 0, b = 0 }
+    elseif state == "NON_INTERRUPTIBLE" then
+        color = self:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
+    else -- INTERRUPTIBLE / NORMAL
+        color = self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
+    end
+
+    if color then
+         bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
+    end
+end
+
 -- [ FRAME CREATION ]--------------------------------------------------------------------------------
 
 function Mixin:CreateCastBarFrame(name, config)
     config = config or {}
 
-    local bar = CreateFrame("StatusBar", name, UIParent)
+    -- Use nil for frame name to prevent the frame from becoming protected
+    -- Named frames can become protected when manipulated from tainted hook contexts
+    local bar = CreateFrame("StatusBar", nil, UIParent)
     bar:SetSize(
         config.width or Orbit.Constants.PlayerCastBar.DefaultWidth or 200,
         config.height or Orbit.Constants.PlayerCastBar.DefaultHeight or 18
@@ -121,7 +142,7 @@ end
 
 -- [ EDIT MODE & EVENTS ]---------------------------------------------------------------------------
 
-function Mixin:RegisterEditModeCallbacks(bar, debounceKey)
+function Mixin:RegisterEditModeCallbacks(bar)
     if not EventRegistry then
         return
     end
@@ -223,11 +244,6 @@ function Mixin:AddTextSettings(schema, systemIndex)
         label = "Show Timer",
         default = true,
     })
-
-    -- Text Size (Conditional)
-    -- Now adaptive
-    -- local showText = self:GetSetting(systemIndex, "CastBarText")
-    -- local showTimer = self:GetSetting(systemIndex, "CastBarTimer")
 end
 
 -- [ APPLY SETTINGS (SHARED) ]----------------------------------------------------------------------
@@ -292,7 +308,6 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
             showIcon = showIcon,
             showTimer = showTimer,
             font = fontName,
-            font = fontName,
             textColor = { r = 1, g = 1, b = 1, a = 1 },
             backdropColor = backdropColor,
             sparkColor = sparkColor,
@@ -310,11 +325,6 @@ end
 function Mixin:ShowPreview()
     local bar = self.CastBar
     if not bar then
-        return
-    end
-
-    -- Prevent protected function calls in combat (OrbitTargetCastBar is secure/protected)
-    if InCombatLockdown() then
         return
     end
 
@@ -348,43 +358,6 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
 
     local bar = self.CastBar
     bar.orbitUnit = unit -- Store unit for UpdateInterruptState
-
-    -- Register unit events DIRECTLY on the Orbit cast bar for interruptibility changes
-    bar:RegisterUnitEvent("UNIT_SPELLCAST_START", unit)
-    bar:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_START", unit)
-    bar:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTIBLE", unit)
-    bar:RegisterUnitEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE", unit)
-    bar:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTED", unit)
-    bar:RegisterUnitEvent("UNIT_SPELLCAST_FAILED", unit)
-
-    bar:HookScript("OnEvent", function(frame, event, eventUnit)
-        if eventUnit ~= unit then
-            return
-        end
-        if not bar:IsShown() then
-            return
-        end
-
-        if event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
-            -- Update interrupt state on cast start
-            self:UpdateInterruptState(nativeSpellbar, bar, unit)
-        elseif event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
-            local color = self:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
-            if bar.orbitBar then
-                bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
-            end
-        elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" then
-            local color = self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
-            if bar.orbitBar then
-                bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
-            end
-        elseif event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
-            local color = self:GetSetting(1, "InterruptedColor") or { r = 1, g = 0, b = 0 }
-            if bar.orbitBar then
-                bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
-            end
-        end
-    end)
 
     -- 1. Hook OnShow
     nativeSpellbar:HookScript("OnShow", function(nativeBar)
@@ -421,38 +394,13 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
         -- Sync Interrupt State
         self:UpdateInterruptState(nativeBar, bar, unit)
 
-        -- Guard against protected function calls in combat
-        if InCombatLockdown() then
-            bar:SetAlpha(1) -- Ensure visible if previously hidden via alpha
-        else
-            bar:Show()
-        end
+        bar:Show()
     end)
 
     -- 2. Hook OnHide
     nativeSpellbar:HookScript("OnHide", function()
         if bar and not bar.preview then
-            -- Guard against protected function calls in combat
-            if InCombatLockdown() then
-                -- Visually hide using alpha (non-protected)
-                bar:SetAlpha(0)
-                -- Schedule actual Hide() for after combat
-                if not bar.pendingHide then
-                    bar.pendingHide = true
-                    local hideFrame = CreateFrame("Frame")
-                    hideFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-                    hideFrame:SetScript("OnEvent", function(f)
-                        f:UnregisterEvent("PLAYER_REGEN_ENABLED")
-                        bar.pendingHide = nil
-                        if bar and not bar.casting and not bar.channeling then
-                            bar:Hide()
-                            bar:SetAlpha(1)
-                        end
-                    end)
-                end
-            else
-                bar:Hide()
-            end
+            bar:Hide()
         end
     end)
 
@@ -466,24 +414,15 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
         end
 
         if event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
-            local color = self:GetSetting(1, "InterruptedColor") or { r = 1, g = 0, b = 0 }
-            if bar.orbitBar then
-                bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
-            end
+            self:ApplyCastColor(bar, "INTERRUPTED")
         elseif event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
-            local color = self:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
-            if bar.orbitBar then
-                bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
-            end
+            self:ApplyCastColor(bar, "NON_INTERRUPTIBLE")
         elseif
             event == "UNIT_SPELLCAST_INTERRUPTIBLE"
             or event == "UNIT_SPELLCAST_START"
             or event == "UNIT_SPELLCAST_CHANNEL_START"
         then
-            local color = self:GetSetting(1, "CastBarColor")
-            if bar.orbitBar then
-                bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
-            end
+            self:ApplyCastColor(bar, "INTERRUPTIBLE")
         end
     end)
 
@@ -521,7 +460,7 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
                     bar.Timer:SetText(string.format("%.1f", timeLeft))
                 end
 
-                -- Spark positioning - use orbitBar (targetBar) for dimensions
+                -- Spark positioning - orbitBar is already positioned after icon, so use its width directly
                 if bar.Spark and targetBar:GetWidth() > 0 then
                     local sparkPos = (progress / max) * targetBar:GetWidth()
                     bar.Spark:ClearAllPoints()

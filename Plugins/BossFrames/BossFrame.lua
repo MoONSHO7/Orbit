@@ -410,6 +410,8 @@ local function SetupCastBarHooks(castBar, unit)
             statusBarTexture:ClearAllPoints()
             statusBarTexture:SetPoint("TOPLEFT", castBar, "TOPLEFT", iconOffset, 0)
             statusBarTexture:SetPoint("BOTTOMLEFT", castBar, "BOTTOMLEFT", iconOffset, 0)
+            statusBarTexture:SetPoint("TOPRIGHT", castBar, "TOPRIGHT", 0, 0)
+            statusBarTexture:SetPoint("BOTTOMRIGHT", castBar, "BOTTOMRIGHT", 0, 0)
         end
 
         -- Adjust background to start after icon

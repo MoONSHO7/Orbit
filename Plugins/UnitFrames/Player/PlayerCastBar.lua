@@ -53,8 +53,10 @@ local function SnapToPixel(value, scale)
 end
 
 -- Helper: Calculate spark position for a value on a bar
+-- The orbitBar is already repositioned to exclude the icon area, so we just use its width directly
 local function CalculateSparkPos(bar, value, maxValue)
-    local width = bar:GetWidth()
+    local orbitBar = bar.orbitBar or bar
+    local width = orbitBar:GetWidth()
     local pos = (maxValue > 0) and ((value / maxValue) * width) or 0
     return SnapToPixel(pos, bar:GetEffectiveScale())
 end
@@ -558,7 +560,7 @@ function Plugin:OnUpdate(elapsed)
             targetBar:SetValue(value)
             local sparkPos = CalculateSparkPos(bar, value, bar.maxValue)
             if bar.Spark then
-                bar.Spark:SetPoint("CENTER", bar, "LEFT", sparkPos, 0)
+                bar.Spark:SetPoint("CENTER", targetBar, "LEFT", sparkPos, 0)
             end
             if bar.Timer and bar.Timer:IsShown() then
                 bar.Timer:SetText(string.format("%.1f", bar.maxValue - value))
@@ -573,7 +575,7 @@ function Plugin:OnUpdate(elapsed)
             targetBar:SetValue(value)
             local sparkPos = CalculateSparkPos(bar, value, bar.maxValue)
             if bar.Spark then
-                bar.Spark:SetPoint("CENTER", bar, "LEFT", sparkPos, 0)
+                bar.Spark:SetPoint("CENTER", targetBar, "LEFT", sparkPos, 0)
             end
             if bar.Timer and bar.Timer:IsShown() then
                 bar.Timer:SetText(string.format("%.1f", value))
@@ -589,7 +591,7 @@ function Plugin:OnUpdate(elapsed)
         targetBar:SetValue(value)
         local sparkPos = CalculateSparkPos(bar, value, bar.maxValue)
         if bar.Spark then
-            bar.Spark:SetPoint("CENTER", bar, "LEFT", sparkPos, 0)
+            bar.Spark:SetPoint("CENTER", targetBar, "LEFT", sparkPos, 0)
         end
 
         -- Determine current stage and update color

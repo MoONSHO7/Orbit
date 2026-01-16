@@ -169,6 +169,8 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                     statusBarTexture:ClearAllPoints()
                     statusBarTexture:SetPoint("TOPLEFT", frame.CastBar, "TOPLEFT", iconOffset, 0)
                     statusBarTexture:SetPoint("BOTTOMLEFT", frame.CastBar, "BOTTOMLEFT", iconOffset, 0)
+                    statusBarTexture:SetPoint("TOPRIGHT", frame.CastBar, "TOPRIGHT", 0, 0)
+                    statusBarTexture:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
                 end
 
                 -- Adjust background to start after icon
