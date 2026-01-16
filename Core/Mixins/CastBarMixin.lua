@@ -421,13 +421,38 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
         -- Sync Interrupt State
         self:UpdateInterruptState(nativeBar, bar, unit)
 
-        bar:Show()
+        -- Guard against protected function calls in combat
+        if InCombatLockdown() then
+            bar:SetAlpha(1) -- Ensure visible if previously hidden via alpha
+        else
+            bar:Show()
+        end
     end)
 
     -- 2. Hook OnHide
     nativeSpellbar:HookScript("OnHide", function()
         if bar and not bar.preview then
-            bar:Hide()
+            -- Guard against protected function calls in combat
+            if InCombatLockdown() then
+                -- Visually hide using alpha (non-protected)
+                bar:SetAlpha(0)
+                -- Schedule actual Hide() for after combat
+                if not bar.pendingHide then
+                    bar.pendingHide = true
+                    local hideFrame = CreateFrame("Frame")
+                    hideFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+                    hideFrame:SetScript("OnEvent", function(f)
+                        f:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                        bar.pendingHide = nil
+                        if bar and not bar.casting and not bar.channeling then
+                            bar:Hide()
+                            bar:SetAlpha(1)
+                        end
+                    end)
+                end
+            else
+                bar:Hide()
+            end
         end
     end)
 
