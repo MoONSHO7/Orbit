@@ -413,7 +413,18 @@ function UnitButtonMixin:UpdateName()
 
     local frameWidth = self:GetWidth()
     if type(frameWidth) == "number" and frameWidth > 0 then
-        maxChars = math.floor((frameWidth - 30) / 8)
+        -- Estimate HealthText reserved width based on font size (avoids secret value issues)
+        -- "100%" is ~4-5 chars, estimate ~0.6x font height per character
+        local fontName, fontHeight = self.HealthText and self.HealthText:GetFont()
+        fontHeight = fontHeight or 12
+        local estimatedHealthTextWidth = fontHeight * 3  -- Approximate width for "100%"
+        
+        -- Available width = frame - healthText space - padding
+        local availableWidth = frameWidth - estimatedHealthTextWidth - 20
+        
+        -- Estimate characters: assume ~0.5x font height per character average
+        local charWidth = fontHeight * 0.5
+        maxChars = math.floor(availableWidth / charWidth)
         maxChars = math.max(6, math.min(maxChars, 30)) -- Clamp between 6-30
     end
 
@@ -452,14 +463,22 @@ function UnitButtonMixin:UpdateTextLayout()
     self.Name:ClearAllPoints()
     self.HealthText:ClearAllPoints()
 
+    -- Calculate Name's right offset based on font size (avoids secret value issues from GetStringWidth)
+    -- "100%" is ~4-5 chars, estimate ~0.6x font height per character, plus padding
+    local padding = 5
+    local estimatedHealthTextWidth = fontHeight * 3  -- Approximate width for "100%"
+    local nameRightOffset = estimatedHealthTextWidth + padding + 5  -- Extra gap
+
     -- If frame is smaller than text (with a small buffer), justify to bottom
     -- so text grows upwards and remains readable/uncropped at the top.
     if height < (fontHeight + 2) then
-        self.Name:SetPoint("BOTTOMLEFT", self.TextFrame, "BOTTOMLEFT", 5, 0)
-        self.HealthText:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -5, 0)
+        self.Name:SetPoint("BOTTOMLEFT", self.TextFrame, "BOTTOMLEFT", padding, 0)
+        self.Name:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -nameRightOffset, 0)
+        self.HealthText:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -padding, 0)
     else
-        self.Name:SetPoint("LEFT", self.TextFrame, "LEFT", 5, 0)
-        self.HealthText:SetPoint("RIGHT", self.TextFrame, "RIGHT", -5, 0)
+        self.Name:SetPoint("LEFT", self.TextFrame, "LEFT", padding, 0)
+        self.Name:SetPoint("RIGHT", self.TextFrame, "RIGHT", -nameRightOffset, 0)
+        self.HealthText:SetPoint("RIGHT", self.TextFrame, "RIGHT", -padding, 0)
     end
 end
 
@@ -643,7 +662,7 @@ function UnitButton:Create(parent, unit, name)
 
     f.Name = f.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     f.Name:SetPoint("LEFT", 5, 0)
-    f.Name:SetPoint("RIGHT", f.TextFrame, "RIGHT", -50, 0)
+    -- Note: RIGHT point is set dynamically by UpdateTextLayout based on HealthText width
     f.Name:SetJustifyH("LEFT")
     f.Name:SetShadowOffset(1, -1)
     f.Name:SetShadowColor(0, 0, 0, 1)

@@ -152,9 +152,10 @@ function Plugin:ApplySettings()
         local s = Orbit.db.GlobalSettings.TextScale
         if s == "Small" then
             textMultiplier = 0.85
-        end
-        if s == "Large" then
+        elseif s == "Large" then
             textMultiplier = 1.15
+        elseif s == "ExtraLarge" then
+            textMultiplier = 1.30
         end
     end
 

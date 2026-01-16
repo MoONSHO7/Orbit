@@ -83,6 +83,7 @@ local function GetGlobalSchema()
                 { label = "Small", value = "Small" },
                 { label = "Medium", value = "Medium" },
                 { label = "Large", value = "Large" },
+                { label = "Extra Large", value = "ExtraLarge" },
             },
             default = "Medium",
         },

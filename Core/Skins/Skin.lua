@@ -226,9 +226,10 @@ function Skin:GetAdaptiveTextSize(height, minSize, maxSize, ratio)
         local s = Orbit.db.GlobalSettings.TextScale
         if s == "Small" then
             globalScale = 0.85
-        end
-        if s == "Large" then
+        elseif s == "Large" then
             globalScale = 1.15
+        elseif s == "ExtraLarge" then
+            globalScale = 1.30
         end
     end
 
