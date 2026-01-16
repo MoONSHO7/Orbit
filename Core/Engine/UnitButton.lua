@@ -375,8 +375,13 @@ end
 
 function UnitButtonMixin:SetHealAbsorbColor(r, g, b, a)
     if self.HealAbsorbBar then
-        local c = Orbit.Constants.Colors.Background
-        self.HealAbsorbBar:SetStatusBarColor(c.r, c.g, c.b, c.a)
+        -- Use passed parameters, fallback to Background color if nil
+        if r and g and b then
+            self.HealAbsorbBar:SetStatusBarColor(r, g, b, a or 1)
+        else
+            local c = Orbit.Constants.Colors.Background
+            self.HealAbsorbBar:SetStatusBarColor(c.r, c.g, c.b, c.a)
+        end
     end
 end
 
@@ -498,7 +503,7 @@ function UnitButtonMixin:SetBorder(size)
         return
     end
 
-    local pixelSize = self.borderPixelSize or 1
+    local pixelSize = self.borderPixelSize
     
     -- Resize DamageBar (behind Health)
     if self.HealthDamageBar then
@@ -535,9 +540,10 @@ function UnitButton:Create(parent, unit, name)
     f.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
 
     -- Damage Bar (Red) - Behind the Health bar, shows "damage taken" chunk
+    -- NOTE: Initial insets are 0. Consuming plugins MUST call frame:SetBorder(size) to apply proper insets.
     f.HealthDamageBar = CreateFrame("StatusBar", nil, f)
-    f.HealthDamageBar:SetPoint("TOPLEFT", 1, -1)
-    f.HealthDamageBar:SetPoint("BOTTOMRIGHT", -1, 1)
+    f.HealthDamageBar:SetPoint("TOPLEFT", 0, 0)
+    f.HealthDamageBar:SetPoint("BOTTOMRIGHT", 0, 0)
     f.HealthDamageBar:SetMinMaxValues(0, 1)
     f.HealthDamageBar:SetValue(1)
     f.HealthDamageBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
@@ -548,9 +554,10 @@ function UnitButton:Create(parent, unit, name)
     f.damageBarTarget = 0
     f.damageBarAnimating = false
 
+    -- NOTE: Initial insets are 0. Consuming plugins MUST call frame:SetBorder(size) to apply proper insets.
     f.Health = CreateFrame("StatusBar", nil, f)
-    f.Health:SetPoint("TOPLEFT", 1, -1)
-    f.Health:SetPoint("BOTTOMRIGHT", -1, 1)
+    f.Health:SetPoint("TOPLEFT", 0, 0)
+    f.Health:SetPoint("BOTTOMRIGHT", 0, 0)
     f.Health:SetMinMaxValues(0, 1)
     f.Health:SetValue(1)
     f.Health:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")

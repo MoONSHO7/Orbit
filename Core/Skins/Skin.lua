@@ -50,7 +50,7 @@ function Skin:CreateBackdrop(frame, name)
     return backdrop
 end
 
-function Skin:SkinBorder(frame, backdrop, size, color)
+function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
     if not frame or not backdrop then
         return
     end
@@ -111,27 +111,53 @@ function Skin:SkinBorder(frame, backdrop, size, color)
     local b = backdrop.Borders
 
     -- Non-overlapping Layout
-    -- Left/Right: Full Height (Priority)
-    b.Left:ClearAllPoints()
-    b.Left:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, 0)
-    b.Left:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, 0)
-    b.Left:SetWidth(pixelSize)
+    -- horizontal = true: Top/Bottom full width (for horizontal arrangements like icon → bar)
+    -- horizontal = false/nil: Left/Right full height (for vertical stacking like health → power)
+    if horizontal then
+        -- Top/Bottom: Full Width (Priority for horizontal merging)
+        b.Top:ClearAllPoints()
+        b.Top:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, 0)
+        b.Top:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", 0, 0)
+        b.Top:SetHeight(pixelSize)
 
-    b.Right:ClearAllPoints()
-    b.Right:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", 0, 0)
-    b.Right:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, 0)
-    b.Right:SetWidth(pixelSize)
+        b.Bottom:ClearAllPoints()
+        b.Bottom:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, 0)
+        b.Bottom:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, 0)
+        b.Bottom:SetHeight(pixelSize)
 
-    -- Top/Bottom: Inset by Left/Right width
-    b.Top:ClearAllPoints()
-    b.Top:SetPoint("TOPLEFT", backdrop, "TOPLEFT", pixelSize, 0)
-    b.Top:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", -pixelSize, 0)
-    b.Top:SetHeight(pixelSize)
+        -- Left/Right: Inset by Top/Bottom height
+        b.Left:ClearAllPoints()
+        b.Left:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, -pixelSize)
+        b.Left:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, pixelSize)
+        b.Left:SetWidth(pixelSize)
 
-    b.Bottom:ClearAllPoints()
-    b.Bottom:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", pixelSize, 0)
-    b.Bottom:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", -pixelSize, 0)
-    b.Bottom:SetHeight(pixelSize)
+        b.Right:ClearAllPoints()
+        b.Right:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", 0, -pixelSize)
+        b.Right:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, pixelSize)
+        b.Right:SetWidth(pixelSize)
+    else
+        -- Left/Right: Full Height (Priority for vertical stacking)
+        b.Left:ClearAllPoints()
+        b.Left:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, 0)
+        b.Left:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, 0)
+        b.Left:SetWidth(pixelSize)
+
+        b.Right:ClearAllPoints()
+        b.Right:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", 0, 0)
+        b.Right:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, 0)
+        b.Right:SetWidth(pixelSize)
+
+        -- Top/Bottom: Inset by Left/Right width
+        b.Top:ClearAllPoints()
+        b.Top:SetPoint("TOPLEFT", backdrop, "TOPLEFT", pixelSize, 0)
+        b.Top:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", -pixelSize, 0)
+        b.Top:SetHeight(pixelSize)
+
+        b.Bottom:ClearAllPoints()
+        b.Bottom:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", pixelSize, 0)
+        b.Bottom:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", -pixelSize, 0)
+        b.Bottom:SetHeight(pixelSize)
+    end
     return false
 end
 

@@ -89,7 +89,7 @@ function CastBar:Create(parent)
     bar.IconBorder = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     bar.IconBorder:SetAllPoints(bar.Icon)
     bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + 2) -- Ensure above bar border
-    Skin:SkinBorder(parent, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 })
+    Skin:SkinBorder(parent, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 }, true)
 
     -- Empower Stage Markers (pool of dividers)
     bar.stageMarkers = {}
@@ -167,10 +167,10 @@ function CastBar:Apply(bar, settings)
     -- Skin StatusBar (Texture & Color)
     Skin:SkinStatusBar(bar, settings.texture, settings.color)
 
-    -- Skin Border
+    -- Skin Border (use horizontal layout since icon is to the left)
     if settings.borderSize and settings.borderSize > 0 then
         bar.Border:Show()
-        Skin:SkinBorder(bar, bar.Border, settings.borderSize, { r = 0, g = 0, b = 0, a = 1 })
+        Skin:SkinBorder(bar, bar.Border, settings.borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
     else
         bar.Border:Hide()
     end
@@ -238,10 +238,11 @@ function CastBar:Apply(bar, settings)
             if bar.IconBorder then
                 bar.IconBorder:Show()
                 if settings.borderSize and settings.borderSize > 0 then
-                    Skin:SkinBorder(parent, bar.IconBorder, settings.borderSize, { r = 0, g = 0, b = 0, a = 1 })
-                    -- Hide icon's right border edge to merge with status bar's left border
-                    if bar.IconBorder.Borders and bar.IconBorder.Borders.Right then
-                        bar.IconBorder.Borders.Right:Hide()
+                    -- Use horizontal layout for icon border (Top/Bottom full-width for horizontal merging)
+                    Skin:SkinBorder(parent, bar.IconBorder, settings.borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
+                    -- Hide cast bar's left border edge to merge with icon's right border
+                    if bar.Border.Borders and bar.Border.Borders.Left then
+                        bar.Border.Borders.Left:Hide()
                     end
                 else
                     bar.IconBorder:Hide()

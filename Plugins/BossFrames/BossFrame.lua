@@ -307,9 +307,9 @@ local function CreateBossCastBar(parent, bossIndex, plugin)
         bar.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
     end
 
-    -- Pixel-perfect SetBorder helper
+    -- Pixel-perfect SetBorder helper (horizontal layout for icon merging)
     bar.SetBorder = function(self, size)
-        Orbit.Skin:SkinBorder(self, self, size)
+        Orbit.Skin:SkinBorder(self, self, size, nil, true)
     end
 
     -- Apply default border
@@ -327,7 +327,7 @@ local function CreateBossCastBar(parent, bossIndex, plugin)
     bar.IconBorder = CreateFrame("Frame", nil, bar, "BackdropTemplate")
     bar.IconBorder:SetAllPoints(bar.Icon)
     bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + 2)
-    Orbit.Skin:SkinBorder(bar, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 })
+    Orbit.Skin:SkinBorder(bar, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 }, true)
     bar.IconBorder:Hide()
 
     -- Text (will be repositioned based on icon visibility)
@@ -396,10 +396,18 @@ local function SetupCastBarHooks(castBar, unit)
                 if castBar.IconBorder then
                     castBar.IconBorder:Show()
                 end
+                -- Hide cast bar's left border edge to merge with icon's right border
+                if castBar.Borders and castBar.Borders.Left then
+                    castBar.Borders.Left:Hide()
+                end
             else
                 castBar.Icon:Hide()
                 if castBar.IconBorder then
                     castBar.IconBorder:Hide()
+                end
+                -- Show cast bar's left border edge when icon is hidden
+                if castBar.Borders and castBar.Borders.Left then
+                    castBar.Borders.Left:Show()
                 end
             end
         end
