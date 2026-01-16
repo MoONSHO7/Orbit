@@ -13,6 +13,7 @@ local Mixin = Orbit.CastBarMixin
 Mixin.sharedDefaults = {
     CastBarColor = { r = 1, g = 0.7, b = 0 },
     CastBarText = true,
+    CastBarIcon = true,
     CastBarTimer = true,
     CastBarHeight = 18,
     CastBarWidth = 200,
@@ -24,6 +25,7 @@ Mixin.INHERITED_KEYS = {
     CastBarColor = true,
     NonInterruptibleColor = true,
     CastBarText = true,
+    CastBarIcon = true,
     CastBarText = true,
     CastBarTimer = true,
     SparkColor = true,
@@ -238,6 +240,7 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     local borderSize = self:GetSetting(systemIndex, "BorderSize")
     local texture = self:GetSetting(systemIndex, "Texture")
     local showText = self:GetSetting(systemIndex, "CastBarText")
+    local showIcon = self:GetSetting(systemIndex, "CastBarIcon")
     local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 10, 18, 0.40)
     local showTimer = self:GetSetting(systemIndex, "CastBarTimer")
     local color = self:GetSetting(systemIndex, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
@@ -280,6 +283,7 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
             borderSize = borderSize,
             textSize = textSize,
             showText = showText,
+            showIcon = showIcon,
             showTimer = showTimer,
             font = fontName,
             font = fontName,
@@ -318,6 +322,9 @@ function Mixin:ShowPreview()
 
     if bar.Text then
         bar.Text:SetText(self.previewText or "Preview Cast")
+    end
+    if bar.Icon then
+        bar.Icon:SetTexture(136243) -- Hearthstone icon
     end
     if bar.Timer then
         bar.Timer:SetText("1.5")

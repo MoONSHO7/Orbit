@@ -78,6 +78,21 @@ function CastBar:Create(parent)
     alpha:SetSmoothing("OUT")
     bar.InterruptAnim = animGroup
 
+    -- Icon (Inside bar, left aligned)
+    bar.Icon = bar:CreateTexture(nil, "ARTWORK", nil, 1) -- Sublevel 1 to sit above bar texture if needed, but usually bar texture is Border/Artwork. StatusBar texture is drawn at 'ARTWORK' usually.
+    -- Wait, StatusBar texture is usually drawn at layer set by SetDrawLayer or default (ARTWORK).
+    -- We want Icon ON TOP of StatusBar texture. OVERLAY?
+    bar.Icon:SetDrawLayer("OVERLAY", 1)
+    bar.Icon:SetSize(20, 20)
+    bar.Icon:SetPoint("LEFT", bar, "LEFT", 0, 0)
+    bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
+    
+    -- Icon Border
+    bar.IconBorder = CreateFrame("Frame", nil, bar, "BackdropTemplate")
+    bar.IconBorder:SetAllPoints(bar.Icon)
+    bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + 2) -- Ensure above bar border
+    Skin:SkinBorder(bar, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 })
+
     -- Empower Stage Markers (pool of dividers)
     bar.stageMarkers = {}
     for i = 1, 4 do -- Max 4 stages typically
@@ -92,6 +107,7 @@ function CastBar:Create(parent)
     parent.Latency = bar.Latency
     parent.InterruptOverlay = bar.InterruptOverlay
     parent.InterruptAnim = bar.InterruptAnim
+    parent.Icon = bar.Icon
     return bar
 end
 
@@ -100,8 +116,23 @@ function CastBar:Apply(bar, settings)
         return
     end
 
+    -- Calculate icon offset for bar fill
+    local iconOffset = 0
+    if settings.showIcon and bar.Icon then
+        local height = bar:GetHeight()
+        iconOffset = height -- Icon is square, width = height
+    end
+
     -- Skin StatusBar (Texture & Color)
     Skin:SkinStatusBar(bar, settings.texture, settings.color)
+
+    -- Adjust StatusBar texture to start after icon
+    local statusBarTexture = bar:GetStatusBarTexture()
+    if statusBarTexture then
+        statusBarTexture:ClearAllPoints()
+        statusBarTexture:SetPoint("TOPLEFT", bar, "TOPLEFT", iconOffset, 0)
+        statusBarTexture:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", iconOffset, 0)
+    end
 
     -- Skin Border
     if settings.borderSize and settings.borderSize > 0 then
@@ -124,16 +155,25 @@ function CastBar:Apply(bar, settings)
         end
     end
 
-    -- Skin Background
+    -- Skin Background (also offset to not cover icon)
     if bar.bg then
         local backdropColor = settings.backdropColor or Constants.Colors.Background
         bar.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.5)
+        bar.bg:ClearAllPoints()
+        bar.bg:SetPoint("TOPLEFT", bar, "TOPLEFT", iconOffset, 0)
+        bar.bg:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
     end
 
     -- Skin Text
     if bar.Text then
         if settings.showText then
             bar.Text:Show()
+            bar.Text:ClearAllPoints()
+            if settings.showIcon and bar.Icon then
+                bar.Text:SetPoint("LEFT", bar.Icon, "RIGHT", 5, 0)
+            else
+                bar.Text:SetPoint("LEFT", bar, "LEFT", 5, 0)
+            end
             Skin:SkinText(bar.Text, settings)
         else
             bar.Text:Hide()
@@ -147,6 +187,29 @@ function CastBar:Apply(bar, settings)
             Skin:SkinText(bar.Timer, settings)
         else
             bar.Timer:Hide()
+        end
+    end
+
+    -- Skin Icon
+    if bar.Icon then
+        if settings.showIcon then
+            bar.Icon:Show()
+            local height = bar:GetHeight()
+            bar.Icon:SetSize(height, height)
+            
+            if bar.IconBorder then
+                bar.IconBorder:Show()
+                if settings.borderSize and settings.borderSize > 0 then
+                    Skin:SkinBorder(bar, bar.IconBorder, settings.borderSize, { r = 0, g = 0, b = 0, a = 1 })
+                else
+                    bar.IconBorder:Hide()
+                end
+            end
+        else
+            bar.Icon:Hide()
+            if bar.IconBorder then
+                bar.IconBorder:Hide()
+            end
         end
     end
 end

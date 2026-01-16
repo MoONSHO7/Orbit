@@ -21,6 +21,7 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
         MaxDebuffs = 4,
         CastBarHeight = 15,
         CastBarWidth = 140,
+        CastBarIcon = true,
         ReactionColour = true, -- Enable reaction color by default
     },
 }, Orbit.Constants.PluginGroups.BossFrames)
@@ -314,9 +315,22 @@ local function CreateBossCastBar(parent, bossIndex, plugin)
     -- Apply default border
     bar:SetBorder(1)
 
-    -- No icon for boss cast bars (per requirements)
+    -- Icon (Inside bar, left aligned)
+    bar.Icon = bar:CreateTexture(nil, "OVERLAY", nil, 1)
+    bar.Icon:SetDrawLayer("OVERLAY", 1)
+    bar.Icon:SetSize(14, 14) -- Will be resized in ApplySettings
+    bar.Icon:SetPoint("LEFT", bar, "LEFT", 0, 0)
+    bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
+    bar.Icon:Hide() -- Hidden by default, shown based on setting
 
-    -- Text
+    -- Icon Border
+    bar.IconBorder = CreateFrame("Frame", nil, bar, "BackdropTemplate")
+    bar.IconBorder:SetAllPoints(bar.Icon)
+    bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + 2)
+    Orbit.Skin:SkinBorder(bar, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 })
+    bar.IconBorder:Hide()
+
+    -- Text (will be repositioned based on icon visibility)
     bar.Text = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     bar.Text:SetPoint("LEFT", 4, 0)
     bar.Text:SetJustifyH("LEFT")
@@ -359,6 +373,11 @@ local function SetupCastBarHooks(castBar, unit)
             return
         end
 
+        -- Get CastBarIcon setting (from Boss Frames, not Player Cast Bar)
+        local showIcon = plugin:GetSetting(1, "CastBarIcon")
+        local castBarHeight = castBar:GetHeight()
+        local iconOffset = 0
+
         -- Sync Icon
         local iconTexture
         if nativeBar.Icon then
@@ -369,14 +388,48 @@ local function SetupCastBarHooks(castBar, unit)
         end
 
         if castBar.Icon then
-            castBar.Icon:SetTexture(iconTexture or 136243)
+            if showIcon then
+                castBar.Icon:SetTexture(iconTexture or 136243)
+                castBar.Icon:SetSize(castBarHeight, castBarHeight)
+                castBar.Icon:Show()
+                iconOffset = castBarHeight
+                if castBar.IconBorder then
+                    castBar.IconBorder:Show()
+                end
+            else
+                castBar.Icon:Hide()
+                if castBar.IconBorder then
+                    castBar.IconBorder:Hide()
+                end
+            end
         end
 
-        -- Sync Text
+        -- Adjust StatusBar texture to start after icon
+        local statusBarTexture = castBar:GetStatusBarTexture()
+        if statusBarTexture then
+            statusBarTexture:ClearAllPoints()
+            statusBarTexture:SetPoint("TOPLEFT", castBar, "TOPLEFT", iconOffset, 0)
+            statusBarTexture:SetPoint("BOTTOMLEFT", castBar, "BOTTOMLEFT", iconOffset, 0)
+        end
+
+        -- Adjust background to start after icon
+        if castBar.bg then
+            castBar.bg:ClearAllPoints()
+            castBar.bg:SetPoint("TOPLEFT", castBar, "TOPLEFT", iconOffset, 0)
+            castBar.bg:SetPoint("BOTTOMRIGHT", castBar, "BOTTOMRIGHT", 0, 0)
+        end
+
+        -- Sync Text (repositioned based on icon)
         local showText = plugin:GetCastBarSetting("CastBarText")
         if castBar.Text then
+            castBar.Text:ClearAllPoints()
             if showText then
                 castBar.Text:Show()
+                if showIcon and castBar.Icon then
+                    castBar.Text:SetPoint("LEFT", castBar.Icon, "RIGHT", 4, 0)
+                else
+                    castBar.Text:SetPoint("LEFT", castBar, "LEFT", 4, 0)
+                end
                 if nativeBar.Text then
                     castBar.Text:SetText(nativeBar.Text:GetText() or "Casting...")
                 end
@@ -638,6 +691,12 @@ function Plugin:AddSettings(dialog, systemFrame)
                 max = 35,
                 step = 1,
                 default = 14,
+            },
+            {
+                type = "checkbox",
+                key = "CastBarIcon",
+                label = "Show Cast Bar Icon",
+                default = true,
             },
             {
                 type = "dropdown",

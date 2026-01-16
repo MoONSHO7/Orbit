@@ -133,6 +133,8 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
             if frame.CastBar then
                 local castBarHeight = self:GetSetting(1, "CastBarHeight") or 14
                 local castBarPosition = self:GetSetting(1, "CastBarPosition") or "Below"
+                local showIcon = self:GetSetting(1, "CastBarIcon")
+                local iconOffset = 0
 
                 frame.CastBar:SetSize(width, castBarHeight)
                 frame.CastBar:SetStatusBarTexture(texturePath)
@@ -143,7 +145,47 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                 -- Ensure correct positioning (Using shared method)
                 self:PositionCastBar(frame.CastBar, frame, castBarPosition)
 
+                -- Handle Icon visibility and positioning
+                if frame.CastBar.Icon then
+                    if showIcon then
+                        frame.CastBar.Icon:SetTexture(136243) -- Hearthstone icon for preview
+                        frame.CastBar.Icon:SetSize(castBarHeight, castBarHeight)
+                        frame.CastBar.Icon:Show()
+                        iconOffset = castBarHeight
+                        if frame.CastBar.IconBorder then
+                            frame.CastBar.IconBorder:Show()
+                        end
+                    else
+                        frame.CastBar.Icon:Hide()
+                        if frame.CastBar.IconBorder then
+                            frame.CastBar.IconBorder:Hide()
+                        end
+                    end
+                end
+
+                -- Adjust StatusBar texture to start after icon
+                local statusBarTexture = frame.CastBar:GetStatusBarTexture()
+                if statusBarTexture then
+                    statusBarTexture:ClearAllPoints()
+                    statusBarTexture:SetPoint("TOPLEFT", frame.CastBar, "TOPLEFT", iconOffset, 0)
+                    statusBarTexture:SetPoint("BOTTOMLEFT", frame.CastBar, "BOTTOMLEFT", iconOffset, 0)
+                end
+
+                -- Adjust background to start after icon
+                if frame.CastBar.bg then
+                    frame.CastBar.bg:ClearAllPoints()
+                    frame.CastBar.bg:SetPoint("TOPLEFT", frame.CastBar, "TOPLEFT", iconOffset, 0)
+                    frame.CastBar.bg:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
+                end
+
+                -- Position text based on icon
                 if frame.CastBar.Text then
+                    frame.CastBar.Text:ClearAllPoints()
+                    if showIcon and frame.CastBar.Icon then
+                        frame.CastBar.Text:SetPoint("LEFT", frame.CastBar.Icon, "RIGHT", 4, 0)
+                    else
+                        frame.CastBar.Text:SetPoint("LEFT", frame.CastBar, "LEFT", 4, 0)
+                    end
                     frame.CastBar.Text:SetText("Boss Ability (Preview)")
                 end
                 if frame.CastBar.Timer then

@@ -9,6 +9,7 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
         CastBarColor = { r = 1, g = 0.7, b = 0 },
         NonInterruptibleColor = { r = 0.7, g = 0.7, b = 0.7 },
         CastBarText = true,
+        CastBarIcon = true,
         CastBarTimer = true,
         CastBarHeight = Orbit.Constants.PlayerCastBar.DefaultHeight,
         CastBarScale = 100,
@@ -114,6 +115,14 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
         type = "checkbox",
         key = "CastBarText",
         label = "Show Spell Name",
+        default = true,
+    })
+
+    -- 4. Show Icon
+    table.insert(schema.controls, {
+        type = "checkbox",
+        key = "CastBarIcon",
+        label = "Show Icon",
         default = true,
     })
 
@@ -314,6 +323,9 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             if bar.Text then
                 bar.Text:SetText(name)
             end
+            if bar.Icon then
+                bar.Icon:SetTexture(texture)
+            end
 
             -- Latency
             if bar.Latency then
@@ -349,6 +361,9 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             self:ApplyColor() -- Ensure color is reset from potential interrupt state
             if bar.Text then
                 bar.Text:SetText(name)
+            end
+            if bar.Icon then
+                bar.Icon:SetTexture(texture)
             end
 
             -- Latency for channels (left side for "safe to clip")
@@ -480,6 +495,9 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
 
             if bar.Text then
                 bar.Text:SetText(name)
+            end
+            if bar.Icon then
+                bar.Icon:SetTexture(texture)
             end
 
             -- Setup stage markers
@@ -614,7 +632,9 @@ function Plugin:ApplySettings(systemFrame)
     local height = self:GetSetting(systemIndex, "CastBarHeight")
     local borderSize = self:GetSetting(systemIndex, "BorderSize")
     local texture = self:GetSetting(systemIndex, "Texture")
+    local texture = self:GetSetting(systemIndex, "Texture")
     local showText = self:GetSetting(systemIndex, "CastBarText")
+    local showIcon = self:GetSetting(systemIndex, "CastBarIcon")
     local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 10, 18, 0.40)
     local showTimer = self:GetSetting(systemIndex, "CastBarTimer")
 
@@ -645,6 +665,7 @@ function Plugin:ApplySettings(systemFrame)
             borderSize = borderSize,
             textSize = textSize,
             showText = showText,
+            showIcon = showIcon,
             showTimer = showTimer,
             font = fontName,
             font = fontName,
@@ -707,6 +728,9 @@ function Plugin:ShowPreview()
     targetBar:SetValue(1.5)
     if bar.Text then
         bar.Text:SetText("Preview Cast")
+    end
+    if bar.Icon then
+        bar.Icon:SetTexture(136243) -- Hearthstone icon
     end
     if bar.Timer then
         bar.Timer:SetText("1.5")
