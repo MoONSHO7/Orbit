@@ -13,6 +13,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         Height = 40,
         ClassColour = true,
         HealthTextEnabled = true,
+        HealthTextMode = "percent_short",
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
@@ -39,7 +40,25 @@ function Plugin:AddSettings(dialog, systemFrame)
         )
     end
 
-    table.insert(controls, { type = "checkbox", key = "HealthTextEnabled", label = "Show Health Text", default = true })
+    table.insert(controls, {
+        type = "dropdown",
+        key = "HealthTextMode",
+        label = "Health Text",
+        options = {
+            { text = "Hide", value = "hide" },
+            { text = "Percentage / Short", value = "percent_short" },
+            { text = "Percentage / Raw", value = "percent_raw" },
+            { text = "Short / Percentage", value = "short_percent" },
+            { text = "Short / Raw", value = "short_raw" },
+            { text = "Raw / Short", value = "raw_short" },
+            { text = "Raw / Percentage", value = "raw_percent" },
+        },
+        default = "percent_short",
+        onChange = function(val)
+            self:SetSetting(PLAYER_FRAME_INDEX, "HealthTextMode", val)
+            self:ApplySettings()
+        end,
+    })
 
     table.insert(controls, {
         type = "checkbox",
@@ -167,6 +186,12 @@ function Plugin:ApplySettings(frame)
     -- 2. Apply Player Specific Logic
     local classColour = true -- Enforced
     frame:SetClassColour(classColour)
+
+    -- 3. Apply Health Text Mode
+    local healthTextMode = self:GetSetting(systemIndex, "HealthTextMode") or "percent_short"
+    if frame.SetHealthTextMode then
+        frame:SetHealthTextMode(healthTextMode)
+    end
 end
 
 function Plugin:UpdateVisuals(frame)

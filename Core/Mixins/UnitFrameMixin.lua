@@ -151,10 +151,11 @@ function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
     -- Determine settings source
     local borderSize = self:GetInheritedSetting(systemIndex, "BorderSize", options.inheritFromPlayer)
     local textureName = self:GetInheritedSetting(systemIndex, "Texture", options.inheritFromPlayer)
-    local healthTextEnabled = self:GetInheritedSetting(systemIndex, "HealthTextEnabled", options.inheritFromPlayer)
+    local healthTextMode = self:GetInheritedSetting(systemIndex, "HealthTextMode", options.inheritFromPlayer)
 
-    if healthTextEnabled == nil then
-        healthTextEnabled = true
+    -- Default to percent_short if not set
+    if not healthTextMode then
+        healthTextMode = "percent_short"
     end
 
     -- Apply texture
@@ -171,9 +172,9 @@ function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
     -- Apply text styling
     self:ApplyTextStyling(frame)
 
-    -- Apply health text visibility
-    if frame.SetHealthTextEnabled then
-        frame:SetHealthTextEnabled(healthTextEnabled)
+    -- Apply health text mode (replaces simple enabled boolean)
+    if frame.SetHealthTextMode then
+        frame:SetHealthTextMode(healthTextMode)
     end
 
     -- Apply absorbs (if available)

@@ -128,6 +128,18 @@ end
 -- Health Text
 -------------------------------------------------
 
+-- Health Text Display Modes
+local HEALTH_TEXT_MODES = {
+    HIDE = "hide",
+    PERCENT_SHORT = "percent_short",
+    PERCENT_RAW = "percent_raw",
+    SHORT_PERCENT = "short_percent",
+    SHORT_RAW = "short_raw",
+    RAW_SHORT = "raw_short",
+    RAW_PERCENT = "raw_percent",
+}
+UnitButton.HEALTH_TEXT_MODES = HEALTH_TEXT_MODES
+
 local function SafeHealthPercent(unit)
     if type(UnitHealthPercent) == "function" then
         local ok, pct
@@ -175,7 +187,7 @@ local function FormatHealthPercent(unit)
     return string.format("%.0f%%", percent)
 end
 
-local function FormatCurrentHealth(unit)
+local function FormatShortHealth(unit)
     local health = UnitHealth(unit)
 
     if AbbreviateLargeNumbers and health then
@@ -187,8 +199,58 @@ local function FormatCurrentHealth(unit)
     return nil
 end
 
+local function FormatRawHealth(unit)
+    local health = UnitHealth(unit)
+    if health and type(health) == "number" then
+        -- Format with thousands separator
+        if BreakUpLargeNumbers then
+            local ok, result = pcall(BreakUpLargeNumbers, health)
+            if ok and result then
+                return result
+            end
+        end
+        return tostring(health)
+    end
+    return nil
+end
+
+local function GetHealthTextForFormat(unit, format)
+    if format == "percent" then
+        return FormatHealthPercent(unit) or "??%"
+    elseif format == "short" then
+        return FormatShortHealth(unit) or "???"
+    elseif format == "raw" then
+        return FormatRawHealth(unit) or "???"
+    end
+    return "???"
+end
+
+function UnitButtonMixin:GetHealthTextFormats()
+    local mode = self.healthTextMode or HEALTH_TEXT_MODES.PERCENT_SHORT
+
+    local formatMap = {
+        [HEALTH_TEXT_MODES.PERCENT_SHORT] = { "percent", "short" },
+        [HEALTH_TEXT_MODES.PERCENT_RAW] = { "percent", "raw" },
+        [HEALTH_TEXT_MODES.SHORT_PERCENT] = { "short", "percent" },
+        [HEALTH_TEXT_MODES.SHORT_RAW] = { "short", "raw" },
+        [HEALTH_TEXT_MODES.RAW_SHORT] = { "raw", "short" },
+        [HEALTH_TEXT_MODES.RAW_PERCENT] = { "raw", "percent" },
+    }
+
+    local formats = formatMap[mode] or { "percent", "short" }
+    return formats[1], formats[2]
+end
+
 function UnitButtonMixin:UpdateHealthText()
     if not self.HealthText then
+        return
+    end
+
+    local mode = self.healthTextMode or HEALTH_TEXT_MODES.PERCENT_SHORT
+
+    -- Handle Hide mode
+    if mode == HEALTH_TEXT_MODES.HIDE then
+        self.HealthText:Hide()
         return
     end
 
@@ -203,11 +265,14 @@ function UnitButtonMixin:UpdateHealthText()
         return
     end
 
+    -- Parse mode to get main/mouseover formats
+    local mainFormat, mouseoverFormat = self:GetHealthTextFormats()
+
     local text
     if self.isMouseOver then
-        text = FormatCurrentHealth(self.unit) or "???"
+        text = GetHealthTextForFormat(self.unit, mouseoverFormat)
     else
-        text = FormatHealthPercent(self.unit) or "??%"
+        text = GetHealthTextForFormat(self.unit, mainFormat)
     end
 
     self.HealthText:SetText(text)
@@ -221,6 +286,15 @@ end
 
 function UnitButtonMixin:SetHealthTextEnabled(enabled)
     self.healthTextEnabled = enabled
+    self:UpdateHealthText()
+end
+
+function UnitButtonMixin:SetHealthTextMode(mode)
+    self.healthTextMode = mode
+    -- If mode is not hide, ensure healthTextEnabled is true
+    if mode ~= HEALTH_TEXT_MODES.HIDE then
+        self.healthTextEnabled = true
+    end
     self:UpdateHealthText()
 end
 
