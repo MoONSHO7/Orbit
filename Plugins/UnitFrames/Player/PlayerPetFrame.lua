@@ -127,11 +127,14 @@ function Plugin:ApplySettings(frame)
         frame.Name:SetShadowOffset(1, -1)
     end
 
-    -- Disable Health Text explicitly
+    -- Disable Health Text (too small for this frame)
+    frame.healthTextEnabled = false
     if frame.HealthText then
         frame.HealthText:Hide()
-        frame.SetHealthTextEnabled = function() end -- Stub it out
     end
+
+    -- Stub UpdateTextLayout to prevent it from overriding centered name
+    frame.UpdateTextLayout = function() end
 
     -- Hide Power Bar if it exists (UnitButton might create it)
     if frame.Power then

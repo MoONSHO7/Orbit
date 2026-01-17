@@ -60,11 +60,12 @@ function Plugin:OnLoad()
     self.frame.systemIndex = TOF_FRAME_INDEX
 
     -- Enable Anchoring: both horizontal and vertical
+    -- Disable Property Sync: keep own scale and dimensions
     self.frame.anchorOptions = {
         horizontal = true,
         vertical = true,
-        syncScale = true,
-        syncDimensions = true,
+        syncScale = false,
+        syncDimensions = false,
         mergeBorders = true,
     }
 
@@ -83,7 +84,9 @@ function Plugin:OnLoad()
         end
         -- Handle pet battle/vehicle visibility
         if event == "PET_BATTLE_OPENING_START" or event == "UNIT_ENTERED_VEHICLE" then
-            f:Hide()
+            Orbit:SafeAction(function()
+                f:Hide()
+            end)
             return
         end
         if event == "PET_BATTLE_CLOSE" or event == "UNIT_EXITED_VEHICLE" then
@@ -198,11 +201,14 @@ function Plugin:ApplySettings(frame)
         frame.Name:SetShadowOffset(1, -1)
     end
 
-    -- Disable Health Text (too small)
+    -- Disable Health Text (too small for this frame)
+    frame.healthTextEnabled = false
     if frame.HealthText then
         frame.HealthText:Hide()
-        frame.SetHealthTextEnabled = function() end
     end
+
+    -- Stub UpdateTextLayout to prevent it from overriding centered name
+    frame.UpdateTextLayout = function() end
 
     -- Hide Power Bar
     if frame.Power then

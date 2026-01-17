@@ -123,6 +123,7 @@ Plugins\UnitFrames\Focus\FocusFrame.lua
 Plugins\UnitFrames\Focus\FocusBuffs.lua
 Plugins\UnitFrames\Focus\FocusDebuffs.lua
 Plugins\UnitFrames\Focus\TargetOfFocusFrame.lua
+Plugins\BossFrames\BossFrameHelpers.lua
 Plugins\BossFrames\BossFramePreview.lua
 Plugins\BossFrames\BossFrame.lua
 Plugins\MenuItems\BagBar.lua

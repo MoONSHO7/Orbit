@@ -60,11 +60,12 @@ function Plugin:OnLoad()
     self.frame.systemIndex = TOT_FRAME_INDEX
 
     -- Enable Anchoring: both horizontal and vertical
+    -- Disable Property Sync: keep own scale and dimensions
     self.frame.anchorOptions = {
         horizontal = true,
         vertical = true,
-        syncScale = true,
-        syncDimensions = true,
+        syncScale = false,
+        syncDimensions = false,
         mergeBorders = true,
     }
 
@@ -200,11 +201,13 @@ function Plugin:ApplySettings(frame)
         frame.Name:SetShadowOffset(1, -1)
     end
 
-    -- Disable Health Text (too small)
+    frame.healthTextEnabled = false
     if frame.HealthText then
         frame.HealthText:Hide()
-        frame.SetHealthTextEnabled = function() end
     end
+
+    -- Stub UpdateTextLayout to prevent it from overriding centered name
+    frame.UpdateTextLayout = function() end
 
     -- Hide Power Bar
     if frame.Power then
