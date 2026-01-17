@@ -14,6 +14,7 @@ if not Enum.EditModeUnitFrameSystemIndices.Focus then
 end
 
 local Plugin = Orbit:RegisterPlugin("Focus Frame", SYSTEM_ID, {
+    canvasMode = true,  -- Enable Canvas Mode for component editing
     defaults = {
         ReactionColour = true,
         ShowLevel = "Right",

@@ -18,6 +18,37 @@ function Nudge:Enable(Selection)
         Selection.keyboardHandler = CreateFrame("Frame", "OrbitNudgeKeyHandler", UIParent)
         Selection.keyboardHandler:EnableKeyboard(true)
         Selection.keyboardHandler:SetPropagateKeyboardInput(true)
+        
+        -- Repeat nudge state
+        local repeatTimer = nil
+        local repeatDelay = 0.4  -- Initial delay before repeat starts
+        local repeatRate = 0.05  -- Rate of repeat (20 nudges/sec)
+        
+        local function StopRepeat()
+            if repeatTimer then
+                repeatTimer:Cancel()
+                repeatTimer = nil
+            end
+        end
+        
+        local function StartRepeat(direction)
+            StopRepeat()
+            repeatTimer = C_Timer.NewTimer(repeatDelay, function()
+                if Selection.selectedFrame then
+                    repeatTimer = C_Timer.NewTicker(repeatRate, function()
+                        if Selection.selectedFrame then
+                            if Selection.isNativeFrame then
+                                Nudge:NudgeNativeFrame(Selection.selectedFrame, direction, Selection)
+                            else
+                                Nudge:NudgeFrame(Selection.selectedFrame, direction, Selection)
+                            end
+                        else
+                            StopRepeat()
+                        end
+                    end)
+                end
+            end)
+        end
 
         Selection.keyboardHandler:SetScript("OnKeyDown", function(_, key)
             if InCombatLockdown() then
@@ -36,8 +67,15 @@ function Nudge:Enable(Selection)
                 else
                     Nudge:NudgeFrame(Selection.selectedFrame, key, Selection)
                 end
+                StartRepeat(key)
             else
                 Selection.keyboardHandler:SetPropagateKeyboardInput(true)
+            end
+        end)
+        
+        Selection.keyboardHandler:SetScript("OnKeyUp", function(_, key)
+            if key == "UP" or key == "DOWN" or key == "LEFT" or key == "RIGHT" then
+                StopRepeat()
             end
         end)
     end
@@ -61,8 +99,8 @@ function Nudge:NudgeFrame(frame, direction, Selection)
         return
     end
 
-    -- Block nudging locked frames
-    if Engine.FrameLock and Engine.FrameLock:IsLocked(frame) then
+    -- Block nudging frames in Component Edit mode
+    if Engine.ComponentEdit and Engine.ComponentEdit:IsActive(frame) then
         return
     end
 
@@ -117,8 +155,8 @@ function Nudge:NudgeNativeFrame(frame, direction, Selection)
         return
     end
 
-    -- Block nudging locked frames
-    if Engine.FrameLock and Engine.FrameLock:IsLocked(frame) then
+    -- Block nudging frames in Component Edit mode
+    if Engine.ComponentEdit and Engine.ComponentEdit:IsActive(frame) then
         return
     end
 

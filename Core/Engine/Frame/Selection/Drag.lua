@@ -24,9 +24,7 @@ local function OnDragUpdate(selectionOverlay, elapsed)
         parent,
         true,
         targets, -- showGuides=true (prevents applying snap, red lines are disabled)
-        function(f)
-            return Engine.FrameLock:IsLocked(f)
-        end
+        nil -- No locked-frame filter needed
     )
 
     if anchorTarget and anchorEdge and anchorTarget ~= selectionOverlay.lastAnchorTarget then
@@ -60,7 +58,7 @@ function Drag:OnDragStart(selectionOverlay)
     end
     local parent = selectionOverlay.parent
 
-    if Engine.FrameLock:IsLocked(parent) then
+    if Engine.ComponentEdit:IsActive(parent) then
         return
     end
 
@@ -93,7 +91,7 @@ function Drag:OnDragStop(selectionOverlay)
     local parent = selectionOverlay.parent
     parent:StopMovingOrSizing()
 
-    if Engine.FrameLock:IsLocked(parent) then
+    if Engine.ComponentEdit:IsActive(parent) then
         parent.orbitIsDragging = nil
         return
     end
@@ -108,12 +106,14 @@ function Drag:OnDragStop(selectionOverlay)
         parent,
         false,
         targets,
-        function(f)
-            return Engine.FrameLock:IsLocked(f)
-        end
+        nil -- No locked-frame filter needed
     )
 
-    if anchorTarget and anchorEdge then
+    -- Check if anchoring is enabled
+    local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings 
+        or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
+
+    if anchorTarget and anchorEdge and anchoringEnabled then
         local padding = nil
         local name = parent:GetName()
         local partnerName = Selection:GetSymmetricPartner(name)
@@ -211,7 +211,7 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
     local parent = selectionOverlay.parent
     local Selection = Engine.FrameSelection
 
-    if Engine.FrameLock:IsLocked(parent) then
+    if Engine.ComponentEdit:IsActive(parent) then
         return
     end
     if not Engine.FrameAnchor then

@@ -19,15 +19,28 @@ local function Get(plugin, index, key, default)
 end
 
 -- Standard onChange that calls ApplySettings and updates selection
+-- Skip ApplySettings if frame is in canvas mode to prevent exiting
+local function IsInCanvasMode(frame)
+    -- Use centralized API if available, fallback to direct check
+    if Engine.CanvasMode and Engine.CanvasMode.IsFrameInCanvasMode then
+        return Engine.CanvasMode:IsFrameInCanvasMode(frame)
+    end
+    return frame and frame.orbitCanvasOriginal ~= nil
+end
+
 local function CreateDefaultOnChange(plugin, systemIndex, key, systemFrame)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
-        if plugin.ApplySettings then
-            plugin:ApplySettings(systemFrame)
+        
+        -- Skip ApplySettings if frame is in canvas mode (would reset position)
+        local frame = systemFrame or plugin.Frame
+        if not IsInCanvasMode(frame) then
+            if plugin.ApplySettings then
+                plugin:ApplySettings(systemFrame)
+            end
         end
 
         -- Sync to anchored children if applicable
-        local frame = systemFrame or plugin.Frame
         if frame and Engine.Frame and Engine.Frame.SyncChildren then
             Engine.Frame:SyncChildren(frame)
         end
@@ -48,9 +61,15 @@ end
 local function CreateAnchorOnChange(plugin, systemIndex, key, systemFrame, dialog)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
-        if plugin.ApplySettings then
-            plugin:ApplySettings(systemFrame)
+        
+        -- Skip ApplySettings if frame is in canvas mode
+        local frame = systemFrame or plugin.Frame
+        if not IsInCanvasMode(frame) then
+            if plugin.ApplySettings then
+                plugin:ApplySettings(systemFrame)
+            end
         end
+        
         if Engine.Frame then
             Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame)
         end
@@ -257,9 +276,15 @@ end
 local function CreateTextOnChange(plugin, systemIndex, key, systemFrame, dialog, currentAnchor, isToggle)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
-        if plugin.ApplySettings then
-            plugin:ApplySettings(systemFrame)
+        
+        -- Skip ApplySettings if frame is in canvas mode
+        local frame = systemFrame or plugin.Frame
+        if not IsInCanvasMode(frame) then
+            if plugin.ApplySettings then
+                plugin:ApplySettings(systemFrame)
+            end
         end
+        
         if Engine.Frame then
             Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame)
         end

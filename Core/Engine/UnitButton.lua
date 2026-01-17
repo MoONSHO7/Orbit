@@ -461,12 +461,27 @@ function UnitButtonMixin:UpdateTextLayout()
         return
     end
 
+    -- Check if components have custom drag positions - if so, skip default layout
+    -- This allows ComponentDrag positions to persist
+    local savedPositions = nil
+    if self.orbitPlugin and self.orbitPlugin.GetSetting then
+        local systemIndex = self.systemIndex or 1
+        savedPositions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
+    end
+    
+    -- If Name has a saved percentage position, don't override it
+    local hasCustomName = savedPositions and savedPositions.Name and savedPositions.Name.xPercent ~= nil
+    -- If HealthText has a saved percentage position, don't override it
+    local hasCustomHealth = savedPositions and savedPositions.HealthText and savedPositions.HealthText.xPercent ~= nil
+    
+    -- If both have custom positions, nothing to do
+    if hasCustomName and hasCustomHealth then
+        return
+    end
+
     local height = self:GetHeight()
     local fontName, fontHeight, fontFlags = self.Name:GetFont()
     fontHeight = fontHeight or 12
-
-    self.Name:ClearAllPoints()
-    self.HealthText:ClearAllPoints()
 
     -- Calculate Name's right offset based on font size (avoids secret value issues from GetStringWidth)
     -- "100%" is ~4-5 chars, estimate ~0.6x font height per character, plus padding
@@ -474,16 +489,63 @@ function UnitButtonMixin:UpdateTextLayout()
     local estimatedHealthTextWidth = fontHeight * 3  -- Approximate width for "100%"
     local nameRightOffset = estimatedHealthTextWidth + padding + 5  -- Extra gap
 
-    -- If frame is smaller than text (with a small buffer), justify to bottom
-    -- so text grows upwards and remains readable/uncropped at the top.
-    if height < (fontHeight + 2) then
-        self.Name:SetPoint("BOTTOMLEFT", self.TextFrame, "BOTTOMLEFT", padding, 0)
-        self.Name:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -nameRightOffset, 0)
-        self.HealthText:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -padding, 0)
-    else
-        self.Name:SetPoint("LEFT", self.TextFrame, "LEFT", padding, 0)
-        self.Name:SetPoint("RIGHT", self.TextFrame, "RIGHT", -nameRightOffset, 0)
-        self.HealthText:SetPoint("RIGHT", self.TextFrame, "RIGHT", -padding, 0)
+    -- Only reposition Name if it doesn't have a custom position
+    if not hasCustomName then
+        self.Name:ClearAllPoints()
+        -- If frame is smaller than text (with a small buffer), justify to bottom
+        if height < (fontHeight + 2) then
+            self.Name:SetPoint("BOTTOMLEFT", self.TextFrame, "BOTTOMLEFT", padding, 0)
+            self.Name:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -nameRightOffset, 0)
+        else
+            self.Name:SetPoint("LEFT", self.TextFrame, "LEFT", padding, 0)
+            self.Name:SetPoint("RIGHT", self.TextFrame, "RIGHT", -nameRightOffset, 0)
+        end
+    end
+
+    -- Only reposition HealthText if it doesn't have a custom position
+    if not hasCustomHealth then
+        self.HealthText:ClearAllPoints()
+        if height < (fontHeight + 2) then
+            self.HealthText:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -padding, 0)
+        else
+            self.HealthText:SetPoint("RIGHT", self.TextFrame, "RIGHT", -padding, 0)
+        end
+    end
+end
+
+-- Apply component positions from saved percentages
+-- Called on resize to recalculate pixel positions
+function UnitButtonMixin:ApplyComponentPositions()
+    if not self.orbitPlugin or not self.orbitPlugin.GetSetting then
+        return
+    end
+    
+    local systemIndex = self.systemIndex or 1
+    local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
+    if not positions then
+        return
+    end
+    
+    -- Get current frame dimensions
+    local width, height = self:GetWidth(), self:GetHeight()
+    if width <= 0 or height <= 0 then
+        return
+    end
+    
+    -- Apply Name position if saved
+    if positions.Name and positions.Name.xPercent and self.Name then
+        local pixelX = positions.Name.xPercent * width
+        local pixelY = positions.Name.yPercent * height
+        self.Name:ClearAllPoints()
+        self.Name:SetPoint("CENTER", self.TextFrame, "CENTER", pixelX, pixelY)
+    end
+    
+    -- Apply HealthText position if saved
+    if positions.HealthText and positions.HealthText.xPercent and self.HealthText then
+        local pixelX = positions.HealthText.xPercent * width
+        local pixelY = positions.HealthText.yPercent * height
+        self.HealthText:ClearAllPoints()
+        self.HealthText:SetPoint("CENTER", self.TextFrame, "CENTER", pixelX, pixelY)
     end
 end
 
@@ -684,6 +746,34 @@ function UnitButton:Create(parent, unit, name)
     f.HealthText:SetShadowColor(0, 0, 0, 1)
     f.HealthText:SetText("100%")
 
+    -- Register components for drag behavior (Component Edit mode)
+    -- Positions are saved as PERCENTAGES for parent resize compatibility
+    if Engine.ComponentDrag then
+        Engine.ComponentDrag:Attach(f.Name, f, {
+            key = "Name",
+            onPositionChange = function(component, alignment, xPercent, yPercent)
+                -- Save PERCENTAGES to plugin settings
+                if f.orbitPlugin and f.orbitPlugin.SetSetting then
+                    local systemIndex = f.systemIndex or 1
+                    local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}
+                    positions.Name = { xPercent = xPercent, yPercent = yPercent }
+                    f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
+                end
+            end
+        })
+        Engine.ComponentDrag:Attach(f.HealthText, f, {
+            key = "HealthText",
+            onPositionChange = function(component, alignment, xPercent, yPercent)
+                if f.orbitPlugin and f.orbitPlugin.SetSetting then
+                    local systemIndex = f.systemIndex or 1
+                    local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}
+                    positions.HealthText = { xPercent = xPercent, yPercent = yPercent }
+                    f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
+                end
+            end
+        })
+    end
+
     Mixin(f, UnitButtonMixin)
     f:SetScript("OnEvent", f.OnEvent)
     f:OnLoad()
@@ -701,6 +791,8 @@ function UnitButton:Create(parent, unit, name)
 
     f:HookScript("OnSizeChanged", function(self)
         self:UpdateTextLayout()
+        -- Recalculate component positions from percentages on resize
+        self:ApplyComponentPositions()
     end)
 
     -- OnUpdate for damage bar animation (simple time-delayed snap)

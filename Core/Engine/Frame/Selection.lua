@@ -226,7 +226,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
 
     selection:SetScript("OnMouseUp", function(self, button)
         if button == "RightButton" then
-            Engine.FrameLock:ToggleLock(self.parent, function(f)
+            Engine.ComponentEdit:Toggle(self.parent, function(f)
                 Selection:UpdateVisuals(f)
             end)
         end
@@ -517,23 +517,22 @@ function Selection:UpdateVisuals(frame, selection)
         selection:SetScale(1)
     end
 
-    local isLocked = Engine.FrameLock:IsLocked(selection.parent)
+    local isComponentEdit = Engine.ComponentEdit:IsActive(selection.parent)
 
-    if isLocked then
-        -- Locked: Grey Overlay
+    if isComponentEdit then
+        -- Component Edit Mode: Green Overlay
         selection:ShowHighlighted()
 
-        if not selection.LockOverlay then
-            selection.LockOverlay = selection:CreateTexture(nil, "OVERLAY")
-            selection.LockOverlay:SetAllPoints()
+        if not selection.ComponentEditOverlay then
+            selection.ComponentEditOverlay = selection:CreateTexture(nil, "OVERLAY")
+            selection.ComponentEditOverlay:SetAllPoints()
         end
-        local lc = Engine.Constants.Frame.LockColor
-        selection.LockOverlay:SetColorTexture(lc.r, lc.g, lc.b, 0.4)
-        selection.LockOverlay:Show()
+        selection.ComponentEditOverlay:SetColorTexture(0.3, 0.8, 0.3, 0.3)
+        selection.ComponentEditOverlay:Show()
 
         ForEachRegion(selection, function(region)
-            if region:IsObjectType("Texture") and region ~= selection.LockOverlay and not region.isAnchorLine then
-                region:SetAlpha(0)
+            if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay and not region.isAnchorLine then
+                region:SetAlpha(0.3)
             end
         end)
 
@@ -545,22 +544,14 @@ function Selection:UpdateVisuals(frame, selection)
             selection.orbitInset = true
         end
 
-        local isAnchored = Engine.FrameAnchor:GetAnchorParent(selection.parent) ~= nil
-        if isAnchored then
-            local anchor = Engine.FrameAnchor.anchors[selection.parent]
-            if anchor and anchor.edge then
-                Selection:ShowAnchorLine(selection, GetOppositeEdge(anchor.edge))
-            end
-        else
-            Selection:ShowAnchorLine(selection, nil)
-        end
+        Selection:ShowAnchorLine(selection, nil)
     elseif selection.isSelected then
         -- Selected: Yellow
-        if selection.LockOverlay then
-            selection.LockOverlay:Hide()
+        if selection.ComponentEditOverlay then
+            selection.ComponentEditOverlay:Hide()
         end
         ForEachRegion(selection, function(region)
-            if region:IsObjectType("Texture") and region ~= selection.LockOverlay then
+            if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
                 region:SetAlpha(1)
             end
         end)
@@ -588,11 +579,11 @@ function Selection:UpdateVisuals(frame, selection)
         end
     elseif EditModeManagerFrame and EditModeManagerFrame:IsShown() then
         -- Edit Mode Active (not selected)
-        if selection.LockOverlay then
-            selection.LockOverlay:Hide()
+        if selection.ComponentEditOverlay then
+            selection.ComponentEditOverlay:Hide()
         end
         ForEachRegion(selection, function(region)
-            if region:IsObjectType("Texture") and region ~= selection.LockOverlay then
+            if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
                 region:SetAlpha(1)
             end
         end)

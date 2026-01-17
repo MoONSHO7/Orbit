@@ -9,6 +9,7 @@ local TARGET_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditMod
 local PLAYER_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Player) or 1
 
 local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
+    canvasMode = true,  -- Enable Canvas Mode for component editing
     defaults = {
         ReactionColour = true,
         ShowAuras = true,

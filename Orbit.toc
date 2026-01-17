@@ -52,7 +52,8 @@ Core\Engine\Config.lua
 Core\Engine\NativeFrame.lua
 Core\Engine\EditMode.lua
 Core\Engine\Frame\Guard.lua
-Core\Engine\Frame\Lock.lua
+Core\Engine\Frame\ComponentEdit.lua
+Core\Engine\Frame\ComponentDrag.lua
 Core\Engine\Frame\Anchor.lua
 Core\Engine\Frame\Snap.lua
 Core\Engine\Frame\Selection\Tooltip.lua
@@ -123,6 +124,7 @@ Plugins\UnitFrames\Focus\FocusFrame.lua
 Plugins\UnitFrames\Focus\FocusBuffs.lua
 Plugins\UnitFrames\Focus\FocusDebuffs.lua
 Plugins\UnitFrames\Focus\TargetOfFocusFrame.lua
+Plugins\BossFrames\BossFrameHelpers.lua
 Plugins\BossFrames\BossFramePreview.lua
 Plugins\BossFrames\BossFrame.lua
 Plugins\MenuItems\BagBar.lua
