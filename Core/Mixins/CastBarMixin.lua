@@ -128,12 +128,19 @@ function Mixin:InitializeSkin(bar)
     bar.Text = skinned.Text
     bar.Timer = skinned.Timer
     bar.Icon = skinned.Icon
-    bar.Spark = skinned.Spark
     bar.Border = skinned.Border
     bar.Latency = skinned.Latency
     bar.InterruptOverlay = skinned.InterruptOverlay
     bar.InterruptAnim = skinned.InterruptAnim
-    bar.SparkGlow = skinned.SparkGlow
+
+    -- Hide Spark/SparkGlow for mixin-based cast bars (Target/Focus)
+    -- These hook protected native spell bars, and spark positioning causes taint
+    if skinned.Spark then
+        skinned.Spark:Hide()
+    end
+    if skinned.SparkGlow then
+        skinned.SparkGlow:Hide()
+    end
 
     return skinned
 end
@@ -446,7 +453,7 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
             targetBar:SetMinMaxValues(min, max)
             targetBar:SetValue(progress)
 
-            -- Guarded update for Timer and Spark
+            -- Guarded update for Timer
             local function SafeUpdateVisuals()
                 if max <= 0 then
                     return
@@ -458,12 +465,7 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
                     bar.Timer:SetText(string.format("%.1f", timeLeft))
                 end
 
-                -- Spark positioning - orbitBar is already positioned after icon, so use its width directly
-                if bar.Spark and targetBar:GetWidth() > 0 then
-                    local sparkPos = (progress / max) * targetBar:GetWidth()
-                    bar.Spark:ClearAllPoints()
-                    bar.Spark:SetPoint("CENTER", targetBar, "LEFT", sparkPos, 0)
-                end
+                -- Note: Spark disabled for Target/Focus cast bars (protected frame taint)
             end
 
             local success = pcall(SafeUpdateVisuals)
