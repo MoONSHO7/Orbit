@@ -364,9 +364,9 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
     local bar = self.CastBar
     bar.orbitUnit = unit -- Store unit for UpdateInterruptState
 
-    -- 1. Hook OnShow
-    nativeSpellbar:HookScript("OnShow", function(nativeBar)
-        if not bar then
+    -- Helper: Sync cast data from native bar to orbit bar
+    local function SyncCastData(nativeBar)
+        if not bar or not nativeBar then
             return
         end
 
@@ -398,7 +398,15 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
 
         -- Sync Interrupt State
         self:UpdateInterruptState(nativeBar, bar, unit)
+    end
 
+    -- 1. Hook OnShow
+    nativeSpellbar:HookScript("OnShow", function(nativeBar)
+        if not bar then
+            return
+        end
+
+        SyncCastData(nativeBar)
         bar:Show()
     end)
 
@@ -409,7 +417,27 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
         end
     end)
 
-    -- 3. Hook OnEvent (Interrupts/State)
+    -- 3. Handle target/focus changes - refresh cast data when unit changes
+    local changeEvent = (unit == "target") and "PLAYER_TARGET_CHANGED" or "PLAYER_FOCUS_CHANGED"
+    local eventFrame = CreateFrame("Frame")
+    eventFrame:RegisterEvent(changeEvent)
+    eventFrame:SetScript("OnEvent", function()
+        if not bar then
+            return
+        end
+
+        -- If native bar is visible, sync the new unit's cast data
+        if nativeSpellbar:IsShown() then
+            SyncCastData(nativeSpellbar)
+        else
+            -- New target isn't casting, hide our bar
+            if not bar.preview then
+                bar:Hide()
+            end
+        end
+    end)
+
+    -- 4. Hook OnEvent (Interrupts/State)
     nativeSpellbar:HookScript("OnEvent", function(nativeBar, event, eventUnit)
         if eventUnit ~= unit then
             return
@@ -422,16 +450,15 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
             self:ApplyCastColor(bar, "INTERRUPTED")
         elseif event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
             self:ApplyCastColor(bar, "NON_INTERRUPTIBLE")
-        elseif
-            event == "UNIT_SPELLCAST_INTERRUPTIBLE"
-            or event == "UNIT_SPELLCAST_START"
-            or event == "UNIT_SPELLCAST_CHANNEL_START"
-        then
+        elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" then
             self:ApplyCastColor(bar, "INTERRUPTIBLE")
+        elseif event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
+            -- Check actual interrupt state on cast start (don't assume interruptible)
+            self:UpdateInterruptState(nativeBar, bar, unit)
         end
     end)
 
-    -- 4. Hook OnUpdate (Sync Progress)
+    -- 5. Hook OnUpdate (Sync Progress)
     local lastUpdate = 0
     local updateThrottle = 1 / 60
     nativeSpellbar:HookScript("OnUpdate", function(nativeBar, elapsed)
