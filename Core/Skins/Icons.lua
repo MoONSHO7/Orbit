@@ -372,9 +372,16 @@ function Icons:CalculateGeometry(frame, settings)
     if not frame then
         return Constants.Skin.DefaultIconSize, Constants.Skin.DefaultIconSize
     end
-    local w, h = frame:GetSize()
-    if w <= 0 then
-        w = Constants.Skin.DefaultIconSize
+
+    -- Use baseIconSize if provided (ensures consistent sizing across all viewers)
+    local w
+    if settings and settings.baseIconSize then
+        w = settings.baseIconSize
+    else
+        w = frame:GetWidth()
+        if w <= 0 then
+            w = Constants.Skin.DefaultIconSize
+        end
     end
 
     local newWidth, newHeight = w, w
