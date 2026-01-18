@@ -8,9 +8,8 @@ local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
--------------------------------------------------
--- CONSTANTS
--------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------
+
 local DIALOG_WIDTH = 450
 local DIALOG_MIN_HEIGHT = 200
 local DEFAULT_PREVIEW_SCALE = 1.5  -- Default preview scale
@@ -22,9 +21,8 @@ local PREVIEW_PADDING = 30
 local FOOTER_HEIGHT = 55
 local TITLE_HEIGHT = 40
 
--------------------------------------------------
--- CREATE DIALOG FRAME
--------------------------------------------------
+-- [ CREATE DIALOG FRAME ]------------------------------------------------------------------------
+
 local Dialog = CreateFrame("Frame", "OrbitCanvasModeDialog", UIParent, "BackdropTemplate")
 Dialog:SetSize(DIALOG_WIDTH, DIALOG_MIN_HEIGHT)
 Dialog:SetPoint("CENTER", UIParent, "CENTER", 0, 50)
@@ -64,25 +62,22 @@ Dialog:SetScript("OnEvent", function(self, event)
     end
 end)
 
--------------------------------------------------
--- TITLE
--------------------------------------------------
+-- [ TITLE ]--------------------------------------------------------------------------------------
+
 Dialog.Title = Dialog:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
 Dialog.Title:SetPoint("TOP", Dialog, "TOP", 0, -15)
 Dialog.Title:SetText("Canvas Mode")
 
--------------------------------------------------
--- CLOSE BUTTON
--------------------------------------------------
+-- [ CLOSE BUTTON ]------------------------------------------------------------------------------
+
 Dialog.CloseButton = CreateFrame("Button", nil, Dialog, "UIPanelCloseButton")
 Dialog.CloseButton:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", -2, -2)
 Dialog.CloseButton:SetScript("OnClick", function()
     Dialog:Cancel()
 end)
 
--------------------------------------------------
--- PREVIEW CONTAINER
--------------------------------------------------
+-- [ PREVIEW CONTAINER ]-------------------------------------------------------------------------
+
 Dialog.PreviewContainer = CreateFrame("Frame", nil, Dialog)
 Dialog.PreviewContainer:SetPoint("TOPLEFT", Dialog, "TOPLEFT", PREVIEW_PADDING, -TITLE_HEIGHT)
 Dialog.PreviewContainer:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -PREVIEW_PADDING, FOOTER_HEIGHT)
@@ -106,11 +101,8 @@ Dialog.PreviewContainer:SetScript("OnMouseWheel", function(self, delta)
     end
 end)
 
--- No background texture - the preview frame will provide its own visuals
+-- [ FOOTER (Using pattern: divider + stretch-to-fill buttons) ]----------------------
 
--------------------------------------------------
--- FOOTER (Using proper Orbit pattern: divider + stretch-to-fill buttons)
--------------------------------------------------
 local Layout = OrbitEngine.Layout
 local Constants = Orbit.Constants
 local FC = Constants.Footer
@@ -146,7 +138,6 @@ function Dialog:LayoutFooterButtons()
     local buttons = { self.CancelButton, self.ResetButton, self.ApplyButton }
     local numButtons = #buttons
     
-    
     -- Account for Dialog insets (12px on each side) AND internal footer padding (10px on each side)
     -- Total deduction: 24px (insets) + 20px (padding) = 44px
     local DIALOG_INSET = 12
@@ -173,9 +164,8 @@ end
 -- Initial layout (will be called again in Open with proper dialog width)
 Dialog.Footer:SetHeight(FC.TopPadding + FC.ButtonHeight + FC.BottomPadding)
 
--------------------------------------------------
--- ESC KEY SUPPORT
--------------------------------------------------
+-- [ ESC KEY SUPPORT ]----------------------------------------------------------------------------
+
 table.insert(UISpecialFrames, "OrbitCanvasModeDialog")
 
 Dialog:SetPropagateKeyboardInput(true)
@@ -226,9 +216,8 @@ Dialog:SetScript("OnKeyUp", function(self, key)
     end
 end)
 
--------------------------------------------------
--- STATE
--------------------------------------------------
+-- [ STATE ]--------------------------------------------------------------------------------------
+
 Dialog.targetFrame = nil
 Dialog.targetPlugin = nil
 Dialog.targetSystemIndex = nil
@@ -248,9 +237,8 @@ local function ApplyTextAlignment(container, visual, justifyH)
     visual:SetJustifyH(justifyH)
 end
 
--------------------------------------------------
--- NUDGE COMPONENT
--------------------------------------------------
+-- [ NUDGE COMPONENT ]--------------------------------------------------------------------------
+
 function Dialog:NudgeComponent(container, direction)
     if not container or not self.previewFrame then return end
     
@@ -351,69 +339,9 @@ function Dialog:NudgeComponent(container, direction)
     end
 end
 
--------------------------------------------------
--- CREATE PREVIEW FRAME
--------------------------------------------------
-local function CreatePreviewFrame(sourceFrame)
-    local plugin = Dialog.targetPlugin
-    local systemIndex = Dialog.targetSystemIndex
-    
-    -- 1. Create Container (Background)
-    local preview = CreateFrame("Frame", nil, Dialog.PreviewContainer, "BackdropTemplate")
-    
-    -- Size based on source frame (Scaled)
-    local width = sourceFrame:GetWidth() * PREVIEW_SCALE
-    local height = sourceFrame:GetHeight() * PREVIEW_SCALE
-    preview:SetSize(width, height)
-    preview:SetPoint("CENTER", Dialog.PreviewContainer, "CENTER", 0, 0)
-    
-    -- 2. Get Settings from Plugin (or defaults)
-    local textureName = plugin and plugin:GetSetting(systemIndex, "Texture") or "Melli"
-    local borderSize = plugin and plugin:GetSetting(systemIndex, "BorderSize") or 1
-    
-    -- 3. Set Backdrop (Orbit Style)
-    local bgColor = Orbit.Constants.Colors.Background
-    preview:SetBackdrop({
-        bgFile = "Interface\\BUTTONS\\WHITE8X8",
-        edgeFile = "Interface\\BUTTONS\\WHITE8X8",
-        edgeSize = borderSize * PREVIEW_SCALE, -- Scale border too
-        insets = { left = 0, right = 0, top = 0, bottom = 0 },
-    })
-    preview:SetBackdropColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
-    preview:SetBackdropBorderColor(0, 0, 0, 1)
-    
-    -- 4. Create Health Bar (Texture)
-    local bar = CreateFrame("StatusBar", nil, preview)
-    bar:SetAllPoints()
-    -- Apply border insets to bar so it sits inside the border
-    local inset = borderSize * PREVIEW_SCALE
-    bar:SetPoint("TOPLEFT", preview, "TOPLEFT", inset, -inset)
-    bar:SetPoint("BOTTOMRIGHT", preview, "BOTTOMRIGHT", -inset, inset)
-    
-    local texturePath = LSM:Fetch("statusbar", textureName)
-    bar:SetStatusBarTexture(texturePath)
-    
-    -- Use Class Color for the bar
-    local classColor = RAID_CLASS_COLORS[select(2, UnitClass("player"))]
-    if classColor then
-        bar:SetStatusBarColor(classColor.r, classColor.g, classColor.b, 1)
-    else
-        bar:SetStatusBarColor(0.2, 0.8, 0.2, 1)
-    end
-    
-    -- Store reference for later
-    preview.Health = bar
-    
-    preview.sourceWidth = sourceFrame:GetWidth()
-    preview.sourceHeight = sourceFrame:GetHeight()
-    
-    return preview
-end
 
+-- [ CREATE DRAGGABLE COMPONENT ]-----------------------------------------------------------------
 
--------------------------------------------------
--- CREATE DRAGGABLE COMPONENT
--------------------------------------------------
 local function CreateDraggableComponent(preview, key, sourceComponent, startX, startY, data)
     -- Create a container for the component
     local container = CreateFrame("Frame", nil, preview)
@@ -768,9 +696,8 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     return container
 end
 
--------------------------------------------------
--- SAVE ORIGINAL POSITIONS (for Cancel restore)
--------------------------------------------------
+-- [ SAVE ORIGINAL POSITIONS (for Cancel restore) ]----------------------------------------------
+
 function Dialog:SaveOriginalPositions()
     self.originalPositions = {}
     if not self.targetPlugin or not self.targetPlugin.GetSetting then
@@ -792,9 +719,8 @@ function Dialog:SaveOriginalPositions()
     end
 end
 
--------------------------------------------------
--- OPEN DIALOG
--------------------------------------------------
+-- [ OPEN DIALOG ]--------------------------------------------------------------------------------
+
 function Dialog:Open(frame, plugin, systemIndex)
     if InCombatLockdown() then return false end
     if not frame then return false end
@@ -811,8 +737,18 @@ function Dialog:Open(frame, plugin, systemIndex)
     -- Clean up previous preview
     self:CleanupPreview()
     
-    -- Create preview frame
-    self.previewFrame = CreatePreviewFrame(frame)
+    -- Create preview frame using Preview module
+    local textureName = plugin and plugin:GetSetting(systemIndex, "Texture") or "Melli"
+    local borderSize = plugin and plugin:GetSetting(systemIndex, "BorderSize") or 1
+    
+    self.previewFrame = OrbitEngine.Preview.Frame:Create(frame, {
+        scale = PREVIEW_SCALE,
+        parent = self.PreviewContainer,
+        borderSize = borderSize,
+        textureName = textureName,
+        useClassColor = true,
+    })
+    self.previewFrame:SetPoint("CENTER", self.PreviewContainer, "CENTER", 0, 0)
     
     -- Create draggable components based on registered components
     local savedPositions = plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
@@ -933,9 +869,8 @@ function Dialog:Open(frame, plugin, systemIndex)
     return true
 end
 
--------------------------------------------------
--- CLEANUP PREVIEW
--------------------------------------------------
+-- [ CLEANUP PREVIEW ]--------------------------------------------------------------------------
+
 function Dialog:CleanupPreview()
     -- Hide and release preview components
     for key, comp in pairs(self.previewComponents) do
@@ -952,9 +887,8 @@ function Dialog:CleanupPreview()
     end
 end
 
--------------------------------------------------
--- CLOSE DIALOG
--------------------------------------------------
+-- [ CLOSE DIALOG ]-----------------------------------------------------------------------------
+
 function Dialog:CloseDialog()
     self:CleanupPreview()
     
@@ -977,9 +911,8 @@ function Dialog:CloseDialog()
     end
 end
 
--------------------------------------------------
--- APPLY
--------------------------------------------------
+-- [ APPLY ]--------------------------------------------------------------------------------------
+
 function Dialog:Apply()
     if not self.targetPlugin then
         self:CloseDialog()
@@ -1003,8 +936,6 @@ function Dialog:Apply()
         local offsetX = comp.offsetX
         local offsetY = comp.offsetY
         local justifyH = comp.justifyH
-        
-
         
         -- If anchor data not set (component wasn't moved), calculate from posX/posY
         if not anchorX then
@@ -1039,18 +970,16 @@ function Dialog:Apply()
     end
 end
 
--------------------------------------------------
--- CANCEL
--------------------------------------------------
+-- [ CANCEL ]-------------------------------------------------------------------------------------
+
 function Dialog:Cancel()
     -- Just close the dialog - saved data was never modified
     -- Preview changes are discarded, original positions remain intact
     self:CloseDialog()
 end
 
--------------------------------------------------
--- RESET POSITIONS
--------------------------------------------------
+-- [ RESET POSITIONS ]--------------------------------------------------------------------------
+
 function Dialog:ResetPositions()
     if not self.targetPlugin or not self.previewFrame then return end
     
@@ -1112,9 +1041,8 @@ function Dialog:ResetPositions()
     end
 end
 
--------------------------------------------------
--- EDIT MODE LIFECYCLE
--------------------------------------------------
+-- [ EDIT MODE LIFECYCLE ]------------------------------------------------------------------------
+
 if EditModeManagerFrame then
     EditModeManagerFrame:HookScript("OnHide", function()
         if Dialog:IsShown() then
@@ -1123,8 +1051,7 @@ if EditModeManagerFrame then
     end)
 end
 
--------------------------------------------------
--- EXPORT
--------------------------------------------------
+-- [ EXPORT ]-------------------------------------------------------------------------------------
+
 Orbit.CanvasModeDialog = Dialog
 OrbitEngine.CanvasModeDialog = Dialog

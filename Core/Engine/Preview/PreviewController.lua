@@ -11,15 +11,12 @@ local Preview = Engine.Preview
 local PreviewController = {}
 Preview.Controller = PreviewController
 
--------------------------------------------------
--- STATE
--------------------------------------------------
+
+-- [ STATE ]--------------------------------------------------------------------------------------
 
 local activeSession = nil
 
--------------------------------------------------
--- SESSION API
--------------------------------------------------
+-- [ SESSION API ]--------------------------------------------------------------------------------
 
 -- Start a new preview session
 -- @param frame: The source frame being edited
@@ -102,9 +99,7 @@ function PreviewController:IsActive()
     return activeSession ~= nil
 end
 
--------------------------------------------------
--- POSITION MANAGEMENT
--------------------------------------------------
+-- [ POSITION MANAGEMENT ]------------------------------------------------------------------------
 
 -- Update a component's position in the session
 -- @param session: The session

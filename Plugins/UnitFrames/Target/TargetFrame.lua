@@ -184,14 +184,23 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("UNIT_LEVEL")
     self.frame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
 
-    if not self.frame.LevelText then
-        self.frame.LevelText = self.frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        self.frame.LevelText:SetPoint("TOPLEFT", self.frame.Health, "TOPRIGHT", 4, 0)
+    -- Create a HIGH strata container for overlays (Level, EliteIcon) so they render above all frame content
+    if not self.frame.OverlayFrame then
+        self.frame.OverlayFrame = CreateFrame("Frame", nil, self.frame)
+        self.frame.OverlayFrame:SetAllPoints()
+        self.frame.OverlayFrame:SetFrameStrata("HIGH")
     end
 
-    -- Create RareEliteIcon early so it can be registered with ComponentDrag
+    -- Create LevelText (on overlay frame so it stays above health bars)
+    if not self.frame.LevelText then
+        self.frame.LevelText = self.frame.OverlayFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        self.frame.LevelText:SetDrawLayer("OVERLAY", 7)
+        self.frame.LevelText:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", 4, 0)
+    end
+
+    -- Create RareEliteIcon (on overlay frame) for proper z-ordering
     if not self.frame.RareEliteIcon then
-        self.frame.RareEliteIcon = self.frame:CreateTexture(nil, "OVERLAY")
+        self.frame.RareEliteIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
         self.frame.RareEliteIcon:SetSize(16, 16)
         self.frame.RareEliteIcon:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", 2, 0)
         self.frame.RareEliteIcon:Hide()

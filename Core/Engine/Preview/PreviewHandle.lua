@@ -11,9 +11,8 @@ local Preview = Engine.Preview
 local PreviewHandle = {}
 Preview.Handle = PreviewHandle
 
--------------------------------------------------
--- CONFIGURATION
--------------------------------------------------
+
+-- [ CONFIGURATION ]----------------------------------------------------------------------------
 
 local MIN_HANDLE_WIDTH = 50
 local MIN_HANDLE_HEIGHT = 20
@@ -24,9 +23,7 @@ local COLOR_IDLE = { r = 0.3, g = 0.8, b = 0.3, a = 0 }       -- Invisible
 local COLOR_HOVER = { r = 0.3, g = 0.8, b = 0.3, a = 0.3 }    -- Light green
 local COLOR_DRAG = { r = 0.5, g = 0.9, b = 0.3, a = 0.4 }     -- Brighter green
 
--------------------------------------------------
--- HANDLE POOL
--------------------------------------------------
+-- [ HANDLE POOL ]----------------------------------------------------------------------------
 
 local handlePool = {}
 
@@ -49,9 +46,7 @@ local function ReleaseHandle(handle)
     end
 end
 
--------------------------------------------------
--- CREATE HANDLE
--------------------------------------------------
+-- [ CREATE HANDLE ]----------------------------------------------------------------------------
 
 local function CreateHandleFrame()
     local handle = CreateFrame("Frame", nil, UIParent)
@@ -117,9 +112,7 @@ local function CreateHandleFrame()
     return handle
 end
 
--------------------------------------------------
--- PUBLIC API
--------------------------------------------------
+-- [ PUBLIC API ]----------------------------------------------------------------------------
 
 -- Create or acquire a drag handle for a component
 -- @param container: The component container

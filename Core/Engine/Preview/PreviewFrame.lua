@@ -4,6 +4,7 @@
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local LSM = LibStub("LibSharedMedia-3.0")
 
 Engine.Preview = Engine.Preview or {}
 local Preview = Engine.Preview
@@ -11,21 +12,24 @@ local Preview = Engine.Preview
 local PreviewFrame = {}
 Preview.Frame = PreviewFrame
 
--------------------------------------------------
--- CONFIGURATION
--------------------------------------------------
+-- [ CONFIGURATION ]-----------------------------------------------------------------------------
 
 local DEFAULT_SCALE = 1.0
 local DEFAULT_BORDER_SIZE = 2
-local PREVIEW_BAR_COLOR = { r = 0.2, g = 0.6, b = 0.2 }  -- Green health bar
+local DEFAULT_BAR_COLOR = { r = 0.2, g = 0.6, b = 0.2 }
 
--------------------------------------------------
--- CREATE PREVIEW
--------------------------------------------------
+-- [ CREATE PREVIEW ]----------------------------------------------------------------------------
 
 -- Create a scaled preview frame that replicates the source frame's appearance
 -- @param sourceFrame: The frame to replicate
--- @param options: { scale, parent, showBorder, barColor }
+-- @param options: {
+--     scale: preview scale factor (default 1.0)
+--     parent: parent frame (default UIParent)
+--     borderSize: border size in pixels (default 2)
+--     textureName: LibSharedMedia texture name for health bar
+--     useClassColor: if true, use player class color for bar
+--     barColor: fallback bar color {r, g, b}
+-- }
 -- @return preview frame with metadata
 function PreviewFrame:Create(sourceFrame, options)
     if not sourceFrame then return nil end
@@ -33,8 +37,7 @@ function PreviewFrame:Create(sourceFrame, options)
     options = options or {}
     local scale = options.scale or DEFAULT_SCALE
     local parent = options.parent or UIParent
-    local showBorder = options.showBorder ~= false
-    local barColor = options.barColor or PREVIEW_BAR_COLOR
+    local borderSize = options.borderSize or DEFAULT_BORDER_SIZE
     
     -- Get source dimensions
     local sourceWidth = sourceFrame:GetWidth()
@@ -51,42 +54,53 @@ function PreviewFrame:Create(sourceFrame, options)
     preview.previewScale = scale
     preview.components = {}  -- { key = container }
     
-    -- Apply backdrop matching source style
-    local backdropColor = { r = 0.1, g = 0.1, b = 0.1, a = 0.95 }
-    local borderColor = { r = 0.3, g = 0.3, b = 0.3 }
+    -- Apply backdrop (Orbit style - dark background with solid border)
+    local bgColor = Orbit.Constants and Orbit.Constants.Colors and Orbit.Constants.Colors.Background
+        or { r = 0.1, g = 0.1, b = 0.1, a = 0.95 }
     
-    if showBorder then
-        preview:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8X8",
-            edgeFile = "Interface\\Buttons\\WHITE8X8",
-            edgeSize = DEFAULT_BORDER_SIZE * scale,
-        })
-        preview:SetBackdropColor(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a)
-        preview:SetBackdropBorderColor(borderColor.r, borderColor.g, borderColor.b, 1)
-    else
-        preview:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8X8",
-        })
-        preview:SetBackdropColor(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a)
-    end
+    preview:SetBackdrop({
+        bgFile = "Interface\\BUTTONS\\WHITE8x8",
+        edgeFile = "Interface\\BUTTONS\\WHITE8x8",
+        edgeSize = borderSize * scale,
+        insets = { left = 0, right = 0, top = 0, bottom = 0 },
+    })
+    preview:SetBackdropColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a or 0.95)
+    preview:SetBackdropBorderColor(0, 0, 0, 1)
     
     -- Create health bar visual
     local bar = CreateFrame("StatusBar", nil, preview)
-    local inset = DEFAULT_BORDER_SIZE * scale
-    bar:SetPoint("TOPLEFT", inset, -inset)
-    bar:SetPoint("BOTTOMRIGHT", -inset, inset)
-    bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
-    bar:SetStatusBarColor(barColor.r, barColor.g, barColor.b, 0.8)
+    local inset = borderSize * scale
+    bar:SetPoint("TOPLEFT", preview, "TOPLEFT", inset, -inset)
+    bar:SetPoint("BOTTOMRIGHT", preview, "BOTTOMRIGHT", -inset, inset)
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(1)
-    preview.bar = bar
+    
+    -- Apply texture
+    local texturePath = "Interface\\Buttons\\WHITE8x8"
+    if options.textureName and LSM then
+        texturePath = LSM:Fetch("statusbar", options.textureName) or texturePath
+    end
+    bar:SetStatusBarTexture(texturePath)
+    
+    -- Apply color
+    local barColor = options.barColor or DEFAULT_BAR_COLOR
+    if options.useClassColor then
+        local classColor = RAID_CLASS_COLORS[select(2, UnitClass("player"))]
+        if classColor then
+            bar:SetStatusBarColor(classColor.r, classColor.g, classColor.b, 1)
+        else
+            bar:SetStatusBarColor(barColor.r, barColor.g, barColor.b, 1)
+        end
+    else
+        bar:SetStatusBarColor(barColor.r, barColor.g, barColor.b, 0.8)
+    end
+    
+    preview.Health = bar
     
     return preview
 end
 
--------------------------------------------------
--- DESTROY PREVIEW
--------------------------------------------------
+-- [ DESTROY PREVIEW ]---------------------------------------------------------------------------
 
 function PreviewFrame:Destroy(preview)
     if not preview then return end
@@ -108,9 +122,7 @@ function PreviewFrame:Destroy(preview)
     preview.sourceFrame = nil
 end
 
--------------------------------------------------
--- ADD COMPONENT
--------------------------------------------------
+-- [ ADD COMPONENT ]-----------------------------------------------------------------------------
 
 -- Add a component container to the preview
 -- @param preview: The preview frame
@@ -126,13 +138,16 @@ function PreviewFrame:AddComponent(preview, key, options)
     -- Create container
     local container = CreateFrame("Frame", nil, preview)
     container:SetFrameLevel(preview:GetFrameLevel() + 10)
+    container:EnableMouse(true)
+    container:SetMovable(true)
+    container:RegisterForDrag("LeftButton")
     
     -- Store metadata
     container.key = key
     container.isFontString = options.isFontString or false
     container.preview = preview
     
-    -- Position data (will be set by controller)
+    -- Position data (will be set by caller)
     container.anchorX = options.anchorX or "CENTER"
     container.anchorY = options.anchorY or "CENTER"
     container.offsetX = options.offsetX or 0
@@ -141,28 +156,15 @@ function PreviewFrame:AddComponent(preview, key, options)
     container.posY = options.posY or 0
     container.justifyH = options.justifyH or "CENTER"
     
-    -- Size container
-    local width = (options.width or 50) * scale
+    -- Default size (caller typically overrides)
+    local width = (options.width or 60) * scale
     local height = (options.height or 20) * scale
     container:SetSize(width, height)
     
-    -- Create visual element
-    if options.isFontString then
-        local visual = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        visual:SetText(options.text or key)
-        visual:SetTextScale(scale)
-        container.visual = visual
-    else
-        -- Texture-based component
-        local visual = container:CreateTexture(nil, "OVERLAY")
-        visual:SetAllPoints()
-        if options.texture then
-            visual:SetTexture(options.texture)
-        else
-            visual:SetColorTexture(0.8, 0.8, 0.8, 0.9)
-        end
-        container.visual = visual
-    end
+    -- Border (subtle, visible on hover/drag)
+    container.border = container:CreateTexture(nil, "BACKGROUND")
+    container.border:SetAllPoints()
+    container.border:SetColorTexture(0.3, 0.8, 0.3, 0)  -- Invisible by default
     
     -- Register with preview
     preview.components[key] = container
@@ -170,22 +172,21 @@ function PreviewFrame:AddComponent(preview, key, options)
     return container
 end
 
--------------------------------------------------
--- POSITION COMPONENT
--------------------------------------------------
+-- [ POSITION COMPONENT ]------------------------------------------------------------------------
 
 -- Update component position based on anchor data
 -- @param container: Component container
-function PreviewFrame:PositionComponent(container)
+-- @param scale: Preview scale (optional, uses container.preview.previewScale if not provided)
+function PreviewFrame:PositionComponent(container, scale)
     if not container or not container.preview then return end
     
     local preview = container.preview
-    local scale = preview.previewScale
+    scale = scale or preview.previewScale
     local anchorX = container.anchorX
     local anchorY = container.anchorY
     local justifyH = container.justifyH
     
-    -- Build anchor point
+    -- Build anchor point using shared utility
     local anchorPoint
     if anchorY == "CENTER" and anchorX == "CENTER" then
         anchorPoint = "CENTER"
@@ -220,12 +221,5 @@ function PreviewFrame:PositionComponent(container)
         container:SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
     else
         container:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
-    end
-    
-    -- Update text alignment if FontString
-    if container.isFontString and container.visual then
-        container.visual:ClearAllPoints()
-        container.visual:SetPoint(justifyH, container, justifyH, 0, 0)
-        container.visual:SetJustifyH(justifyH)
     end
 end
