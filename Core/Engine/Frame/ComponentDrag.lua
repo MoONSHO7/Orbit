@@ -418,45 +418,7 @@ function ComponentDrag:DeselectComponent()
     end
     
     -- Stop any repeat nudging
-    if nudgeFrame.repeatTimer then
-        nudgeFrame.repeatTimer:Cancel()
-        nudgeFrame.repeatTimer = nil
-    end
-end
-
--- Nudge repeat state
-local nudgeRepeatDelay = 0.4  -- Initial delay before repeat starts
-local nudgeRepeatRate = 0.05  -- Rate of repeat (20 nudges/sec)
-
-local function StartNudgeRepeat(dx, dy)
-    if nudgeFrame.repeatTimer then
-        nudgeFrame.repeatTimer:Cancel()
-    end
-    
-    -- Initial delay, then repeat
-    nudgeFrame.repeatTimer = C_Timer.NewTimer(nudgeRepeatDelay, function()
-        if selectedComponent then
-            -- Start repeating
-            nudgeFrame.repeatTimer = C_Timer.NewTicker(nudgeRepeatRate, function()
-                if selectedComponent then
-                    local delta = IsShiftKeyDown() and 10 or 1
-                    ComponentDrag:NudgeComponent(selectedComponent, dx * delta, dy * delta)
-                else
-                    if nudgeFrame.repeatTimer then
-                        nudgeFrame.repeatTimer:Cancel()
-                        nudgeFrame.repeatTimer = nil
-                    end
-                end
-            end)
-        end
-    end)
-end
-
-local function StopNudgeRepeat()
-    if nudgeFrame.repeatTimer then
-        nudgeFrame.repeatTimer:Cancel()
-        nudgeFrame.repeatTimer = nil
-    end
+    Engine.NudgeRepeat:Stop()
 end
 
 nudgeFrame:SetScript("OnKeyDown", function(self, key)
@@ -469,22 +431,16 @@ nudgeFrame:SetScript("OnKeyDown", function(self, key)
         return
     end
 
-    local delta = IsShiftKeyDown() and 10 or 1
     local dx, dy = 0, 0
-    local baseX, baseY = 0, 0  -- Base direction for repeat
 
     if key == "UP" then
-        dy = delta
-        baseY = 1
+        dy = 1
     elseif key == "DOWN" then
-        dy = -delta
-        baseY = -1
+        dy = -1
     elseif key == "LEFT" then
-        dx = -delta
-        baseX = -1
+        dx = -1
     elseif key == "RIGHT" then
-        dx = delta
-        baseX = 1
+        dx = 1
     elseif key == "ESCAPE" then
         ComponentDrag:DeselectComponent()
         return
@@ -496,13 +452,22 @@ nudgeFrame:SetScript("OnKeyDown", function(self, key)
     self:SetPropagateKeyboardInput(false)
     ComponentDrag:NudgeComponent(selectedComponent, dx, dy)
     
-    -- Start repeat nudging for held key
-    StartNudgeRepeat(baseX, baseY)
+    -- Start repeat nudging using shared module
+    Engine.NudgeRepeat:Start(
+        function()
+            if selectedComponent then
+                ComponentDrag:NudgeComponent(selectedComponent, dx, dy)
+            end
+        end,
+        function()
+            return selectedComponent ~= nil
+        end
+    )
 end)
 
 nudgeFrame:SetScript("OnKeyUp", function(self, key)
     if key == "UP" or key == "DOWN" or key == "LEFT" or key == "RIGHT" then
-        StopNudgeRepeat()
+        Engine.NudgeRepeat:Stop()
     end
 end)
 

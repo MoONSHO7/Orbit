@@ -7,7 +7,9 @@ local Engine = Orbit.Engine
 local Nudge = {}
 Engine.SelectionNudge = Nudge
 
--- [ KEYBOARD HANDLER ]------------------------------------------------------------------------------
+-------------------------------------------------
+-- KEYBOARD HANDLER
+-------------------------------------------------
 
 function Nudge:Enable(Selection)
     if InCombatLockdown() then
@@ -18,37 +20,6 @@ function Nudge:Enable(Selection)
         Selection.keyboardHandler = CreateFrame("Frame", "OrbitNudgeKeyHandler", UIParent)
         Selection.keyboardHandler:EnableKeyboard(true)
         Selection.keyboardHandler:SetPropagateKeyboardInput(true)
-        
-        -- Repeat nudge state
-        local repeatTimer = nil
-        local repeatDelay = 0.4  -- Initial delay before repeat starts
-        local repeatRate = 0.05  -- Rate of repeat (20 nudges/sec)
-        
-        local function StopRepeat()
-            if repeatTimer then
-                repeatTimer:Cancel()
-                repeatTimer = nil
-            end
-        end
-        
-        local function StartRepeat(direction)
-            StopRepeat()
-            repeatTimer = C_Timer.NewTimer(repeatDelay, function()
-                if Selection.selectedFrame then
-                    repeatTimer = C_Timer.NewTicker(repeatRate, function()
-                        if Selection.selectedFrame then
-                            if Selection.isNativeFrame then
-                                Nudge:NudgeNativeFrame(Selection.selectedFrame, direction, Selection)
-                            else
-                                Nudge:NudgeFrame(Selection.selectedFrame, direction, Selection)
-                            end
-                        else
-                            StopRepeat()
-                        end
-                    end)
-                end
-            end)
-        end
 
         Selection.keyboardHandler:SetScript("OnKeyDown", function(_, key)
             if InCombatLockdown() then
@@ -62,12 +33,28 @@ function Nudge:Enable(Selection)
 
             if key == "UP" or key == "DOWN" or key == "LEFT" or key == "RIGHT" then
                 Selection.keyboardHandler:SetPropagateKeyboardInput(false)
+                
+                -- Execute nudge
                 if Selection.isNativeFrame then
                     Nudge:NudgeNativeFrame(Selection.selectedFrame, key, Selection)
                 else
                     Nudge:NudgeFrame(Selection.selectedFrame, key, Selection)
                 end
-                StartRepeat(key)
+                
+                -- Start repeat using shared module
+                local direction = key
+                Engine.NudgeRepeat:Start(
+                    function()
+                        if Selection.isNativeFrame then
+                            Nudge:NudgeNativeFrame(Selection.selectedFrame, direction, Selection)
+                        else
+                            Nudge:NudgeFrame(Selection.selectedFrame, direction, Selection)
+                        end
+                    end,
+                    function()
+                        return Selection.selectedFrame ~= nil
+                    end
+                )
             else
                 Selection.keyboardHandler:SetPropagateKeyboardInput(true)
             end
@@ -75,7 +62,7 @@ function Nudge:Enable(Selection)
         
         Selection.keyboardHandler:SetScript("OnKeyUp", function(_, key)
             if key == "UP" or key == "DOWN" or key == "LEFT" or key == "RIGHT" then
-                StopRepeat()
+                Engine.NudgeRepeat:Stop()
             end
         end)
     end
@@ -90,9 +77,12 @@ function Nudge:Disable(Selection)
     if Selection.keyboardHandler then
         Selection.keyboardHandler:Hide()
     end
+    Engine.NudgeRepeat:Stop()
 end
 
--- [ ORBIT FRAME NUDGE ]-----------------------------------------------------------------------------
+-------------------------------------------------
+-- ORBIT FRAME NUDGE
+-------------------------------------------------
 
 function Nudge:NudgeFrame(frame, direction, Selection)
     if not frame then
@@ -143,7 +133,9 @@ function Nudge:NudgeFrame(frame, direction, Selection)
     Engine.SelectionTooltip:ShowPosition(frame, Selection)
 end
 
--- [ NATIVE FRAME NUDGE ]----------------------------------------------------------------------------
+-------------------------------------------------
+-- NATIVE FRAME NUDGE
+-------------------------------------------------
 
 function Nudge:NudgeNativeFrame(frame, direction, Selection)
     if not frame then

@@ -195,16 +195,34 @@ Dialog:SetScript("OnKeyDown", function(self, key)
         if self.hoveredComponent then
             self:SetPropagateKeyboardInput(false)
             self:NudgeComponent(self.hoveredComponent, key)
-            C_Timer.After(0.05, function()
-                if not InCombatLockdown() then
-                    self:SetPropagateKeyboardInput(true)
+            
+            -- Start repeat nudging
+            local direction = key
+            local component = self.hoveredComponent
+            OrbitEngine.NudgeRepeat:Start(
+                function()
+                    if self.hoveredComponent == component then
+                        self:NudgeComponent(component, direction)
+                    end
+                end,
+                function()
+                    return self.hoveredComponent == component
                 end
-            end)
+            )
         else
             self:SetPropagateKeyboardInput(true)
         end
     else
         self:SetPropagateKeyboardInput(true)
+    end
+end)
+
+Dialog:SetScript("OnKeyUp", function(self, key)
+    if key == "UP" or key == "DOWN" or key == "LEFT" or key == "RIGHT" then
+        OrbitEngine.NudgeRepeat:Stop()
+        if not InCombatLockdown() then
+            self:SetPropagateKeyboardInput(true)
+        end
     end
 end)
 
@@ -948,14 +966,14 @@ function Dialog:CloseDialog()
     
     self:Hide()
     
-    -- Refresh selection visuals
-    if OrbitEngine.FrameSelection then
-        OrbitEngine.FrameSelection:RefreshVisuals()
-    end
-    
-    -- Clear canvas mode state
+    -- Clear canvas mode state FIRST (before refreshing visuals)
     if OrbitEngine.ComponentEdit then
         OrbitEngine.ComponentEdit.currentFrame = nil
+    end
+    
+    -- Refresh selection visuals (now shows normal Edit Mode appearance)
+    if OrbitEngine.FrameSelection then
+        OrbitEngine.FrameSelection:RefreshVisuals()
     end
 end
 

@@ -517,12 +517,28 @@ function Selection:UpdateVisuals(frame, selection)
         selection:SetScale(1)
     end
 
-    -- Canvas Mode is now handled by CanvasModeDialog - no special visuals needed here
-    -- Just check if frame is in canvas mode (dialog is open) and skip standard visuals
+    -- Canvas Mode: Show green selection to indicate editable state
     local isComponentEdit = Engine.ComponentEdit:IsActive(selection.parent)
     if isComponentEdit then
-        -- Hide selection while in Canvas Mode (frame is in dialog)
-        selection:Hide()
+        -- Show selection with green tint for Canvas Mode
+        selection:Show()
+        selection:SetFrameStrata("HIGH")
+        
+        -- Green tint for canvas mode
+        ForEachRegion(selection, function(region)
+            if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
+                region:SetDesaturated(false)
+                region:SetVertexColor(0.3, 0.9, 0.3, 1)
+                region:SetAlpha(1)
+            end
+        end)
+        
+        -- Hide label in canvas mode
+        if selection.Label then
+            selection.Label:Hide()
+        end
+        
+        Selection:ShowAnchorLine(selection, nil)
         return
     end
 
@@ -546,6 +562,8 @@ function Selection:UpdateVisuals(frame, selection)
         
         ForEachRegion(selection, function(region)
             if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
+                region:SetDesaturated(false)
+                region:SetVertexColor(1, 1, 1, 1)  -- Reset to normal
                 region:SetAlpha(1)
             end
         end)
