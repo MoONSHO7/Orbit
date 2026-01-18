@@ -92,6 +92,11 @@ Core\Init.lua
 # API (Public Facade)
 Core\API.lua
 
+# Preview System
+Core\Engine\Preview\PreviewFrame.lua
+Core\Engine\Preview\PreviewHandle.lua
+Core\Engine\Preview\PreviewController.lua
+
 # UI
 Core\UI\Animation.lua
 Core\UI\OrbitSettingsDialog.lua
