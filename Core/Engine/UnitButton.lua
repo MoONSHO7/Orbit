@@ -280,6 +280,11 @@ function UnitButtonMixin:UpdateHealthText()
 end
 
 function UnitButtonMixin:SetMouseOver(isOver)
+    -- Skip mouseover updates during Edit Mode to allow component dragging
+    if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
+        return
+    end
+    
     self.isMouseOver = isOver
     self:UpdateHealthText()
 end
@@ -535,91 +540,136 @@ function UnitButtonMixin:UpdateTextLayout()
         return
     end
 
-    -- Check if components have custom drag positions - if so, skip default layout
-    -- This allows ComponentDrag positions to persist
-    local savedPositions = nil
+    -- Canvas Mode is the single source of truth for component positions
+    -- If ComponentPositions exists (from defaults or user customization), skip this entirely
+    -- ApplyComponentPositions() will handle positioning instead
     if self.orbitPlugin and self.orbitPlugin.GetSetting then
         local systemIndex = self.systemIndex or 1
-        savedPositions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
-    end
-    
-    -- If Name has a saved percentage position, don't override it
-    local hasCustomName = savedPositions and savedPositions.Name and savedPositions.Name.xPercent ~= nil
-    -- If HealthText has a saved percentage position, don't override it
-    local hasCustomHealth = savedPositions and savedPositions.HealthText and savedPositions.HealthText.xPercent ~= nil
-    
-    -- If both have custom positions, nothing to do
-    if hasCustomName and hasCustomHealth then
-        return
+        local savedPositions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
+        if savedPositions and (savedPositions.Name or savedPositions.HealthText) then
+            return  -- Skip - positions will be applied by ApplyComponentPositions
+        end
     end
 
+    -- Fallback for frames without ComponentPositions (legacy or non-Canvas Mode frames)
     local height = self:GetHeight()
     local fontName, fontHeight, fontFlags = self.Name:GetFont()
     fontHeight = fontHeight or 12
 
-    -- Calculate Name's right offset based on font size (avoids secret value issues from GetStringWidth)
-    -- "100%" is ~4-5 chars, estimate ~0.6x font height per character, plus padding
     local padding = 5
-    local estimatedHealthTextWidth = fontHeight * 3  -- Approximate width for "100%"
-    local nameRightOffset = estimatedHealthTextWidth + padding + 5  -- Extra gap
+    local estimatedHealthTextWidth = fontHeight * 3
+    local nameRightOffset = estimatedHealthTextWidth + padding + 5
 
-    -- Only reposition Name if it doesn't have a custom position
-    if not hasCustomName then
-        self.Name:ClearAllPoints()
-        -- If frame is smaller than text (with a small buffer), justify to bottom
-        if height < (fontHeight + 2) then
-            self.Name:SetPoint("BOTTOMLEFT", self.TextFrame, "BOTTOMLEFT", padding, 0)
-            self.Name:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -nameRightOffset, 0)
-        else
-            self.Name:SetPoint("LEFT", self.TextFrame, "LEFT", padding, 0)
-            self.Name:SetPoint("RIGHT", self.TextFrame, "RIGHT", -nameRightOffset, 0)
-        end
+    self.Name:ClearAllPoints()
+    if height < (fontHeight + 2) then
+        self.Name:SetPoint("BOTTOMLEFT", self.TextFrame, "BOTTOMLEFT", padding, 0)
+        self.Name:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -nameRightOffset, 0)
+    else
+        self.Name:SetPoint("LEFT", self.TextFrame, "LEFT", padding, 0)
+        self.Name:SetPoint("RIGHT", self.TextFrame, "RIGHT", -nameRightOffset, 0)
     end
 
-    -- Only reposition HealthText if it doesn't have a custom position
-    if not hasCustomHealth then
-        self.HealthText:ClearAllPoints()
-        if height < (fontHeight + 2) then
-            self.HealthText:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -padding, 0)
-        else
-            self.HealthText:SetPoint("RIGHT", self.TextFrame, "RIGHT", -padding, 0)
-        end
+    self.HealthText:ClearAllPoints()
+    if height < (fontHeight + 2) then
+        self.HealthText:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -padding, 0)
+    else
+        self.HealthText:SetPoint("RIGHT", self.TextFrame, "RIGHT", -padding, 0)
     end
 end
 
 -- Apply component positions from saved percentages
 -- Called on resize to recalculate pixel positions
 function UnitButtonMixin:ApplyComponentPositions()
+    print("[ApplyComponentPositions] Called")
     if not self.orbitPlugin or not self.orbitPlugin.GetSetting then
+        print("[ApplyComponentPositions] No orbitPlugin")
         return
     end
     
     local systemIndex = self.systemIndex or 1
     local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
-    if not positions then
+    
+    -- Also get defaults for fallback
+    local defaults = self.orbitPlugin.defaults and self.orbitPlugin.defaults.ComponentPositions
+    
+    -- Merge positions with defaults - use defaults for any missing component
+    if defaults then
+        positions = positions or {}
+        for key, defaultPos in pairs(defaults) do
+            if not positions[key] or not positions[key].anchorX then
+                positions[key] = defaultPos
+            end
+        end
+    end
+    
+    if not positions or not next(positions) then
+        print("[ApplyComponentPositions] No positions saved")
         return
     end
+    
+    print("[ApplyComponentPositions] Found positions, Name.anchorX=" .. tostring(positions.Name and positions.Name.anchorX))
     
     -- Get current frame dimensions
     local width, height = self:GetWidth(), self:GetHeight()
     if width <= 0 or height <= 0 then
+        print("[ApplyComponentPositions] Invalid dimensions")
         return
     end
     
+    -- Helper to apply edge-relative position (single format: anchorX/Y, offsetX/Y)
+    local function ApplyEdgePosition(element, parent, pos, parentWidth, parentHeight)
+        if not pos.anchorX then
+            return false  -- No valid position data
+        end
+        
+        local anchorX = pos.anchorX
+        local anchorY = pos.anchorY or "CENTER"
+        local offsetX = pos.offsetX or 0
+        local offsetY = pos.offsetY or 0
+        
+        -- Build anchor point string (e.g., "TOPLEFT", "LEFT", "CENTER")
+        local anchorPoint
+        if anchorY == "CENTER" and anchorX == "CENTER" then
+            anchorPoint = "CENTER"
+        elseif anchorY == "CENTER" then
+            anchorPoint = anchorX
+        elseif anchorX == "CENTER" then
+            anchorPoint = anchorY
+        else
+            anchorPoint = anchorY .. anchorX  -- e.g., "TOPLEFT", "BOTTOMRIGHT"
+        end
+        
+        -- Calculate final offset with correct sign for anchor direction
+        local finalX = offsetX
+        local finalY = offsetY
+        if anchorX == "RIGHT" then finalX = -offsetX end
+        if anchorY == "TOP" then finalY = -offsetY end
+        
+        element:ClearAllPoints()
+        
+        -- For FontStrings with LEFT/RIGHT justification, anchor by that point
+        if pos.justifyH and element.SetJustifyH then
+            element:SetJustifyH(pos.justifyH)
+            
+            if pos.justifyH == "CENTER" then
+                element:SetPoint("CENTER", parent, anchorPoint, finalX, finalY)
+            else
+                element:SetPoint(pos.justifyH, parent, anchorPoint, finalX, finalY)
+            end
+        else
+            element:SetPoint("CENTER", parent, anchorPoint, finalX, finalY)
+        end
+        return true
+    end
+    
     -- Apply Name position if saved
-    if positions.Name and positions.Name.xPercent and self.Name then
-        local pixelX = positions.Name.xPercent * width
-        local pixelY = positions.Name.yPercent * height
-        self.Name:ClearAllPoints()
-        self.Name:SetPoint("CENTER", self.TextFrame, "CENTER", pixelX, pixelY)
+    if positions.Name and self.Name then
+        ApplyEdgePosition(self.Name, self.TextFrame, positions.Name, width, height)
     end
     
     -- Apply HealthText position if saved
-    if positions.HealthText and positions.HealthText.xPercent and self.HealthText then
-        local pixelX = positions.HealthText.xPercent * width
-        local pixelY = positions.HealthText.yPercent * height
-        self.HealthText:ClearAllPoints()
-        self.HealthText:SetPoint("CENTER", self.TextFrame, "CENTER", pixelX, pixelY)
+    if positions.HealthText and self.HealthText then
+        ApplyEdgePosition(self.HealthText, self.TextFrame, positions.HealthText, width, height)
     end
 end
 
@@ -821,27 +871,29 @@ function UnitButton:Create(parent, unit, name)
     f.HealthText:SetText("100%")
 
     -- Register components for drag behavior (Component Edit mode)
-    -- Positions are saved as PERCENTAGES for parent resize compatibility
+    -- Positions are saved as edge-relative (anchorX/Y, offsetX/Y) for resize compatibility
     if Engine.ComponentDrag then
         Engine.ComponentDrag:Attach(f.Name, f, {
             key = "Name",
-            onPositionChange = function(component, alignment, xPercent, yPercent)
-                -- Save PERCENTAGES to plugin settings
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
+                print("[Name onPositionChange] anchorX=" .. tostring(anchorX))
+                -- Save edge-relative position to plugin settings
                 if f.orbitPlugin and f.orbitPlugin.SetSetting then
                     local systemIndex = f.systemIndex or 1
                     local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}
-                    positions.Name = { xPercent = xPercent, yPercent = yPercent }
+                    positions.Name = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                     f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
                 end
             end
         })
         Engine.ComponentDrag:Attach(f.HealthText, f, {
             key = "HealthText",
-            onPositionChange = function(component, alignment, xPercent, yPercent)
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
+                print("[HealthText onPositionChange] anchorX=" .. tostring(anchorX))
                 if f.orbitPlugin and f.orbitPlugin.SetSetting then
                     local systemIndex = f.systemIndex or 1
                     local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}
-                    positions.HealthText = { xPercent = xPercent, yPercent = yPercent }
+                    positions.HealthText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                     f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
                 end
             end

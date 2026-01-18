@@ -20,24 +20,14 @@ function Mixin:UpdateLevelDisplay(frame, systemIndex)
     end
 
     local showLevel = self:GetSetting(systemIndex, "ShowLevel")
-    -- Handle legacy boolean or new string
-    if showLevel == false or showLevel == "Hide" then
+    -- Handle legacy string or new boolean
+    if not showLevel or showLevel == "Hide" or showLevel == false then
         frame.LevelText:Hide()
         return
     end
 
-    -- Positioning
-    frame.LevelText:ClearAllPoints()
-    if showLevel == "Left" then
-        -- Anchor TopRight of text to TopLeft of Frame (outside left)
-        frame.LevelText:SetPoint("TOPRIGHT", frame, "TOPLEFT", -4, 0)
-        frame.LevelText:SetJustifyH("RIGHT")
-    else
-        -- Default / "Right" / true
-        -- Anchor TopLeft of text to TopRight of Health (standard)
-        frame.LevelText:SetPoint("TOPLEFT", frame.Health, "TOPRIGHT", 4, 0)
-        frame.LevelText:SetJustifyH("LEFT")
-    end
+    -- Visibility only - positioning handled by ApplyComponentPositions via Canvas Mode
+    -- No more SetPoint calls here
 
     local level = UnitLevel(frame.unit)
 

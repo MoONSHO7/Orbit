@@ -118,9 +118,9 @@ function Tooltip:ShowPosition(frame, Selection, noFade)
 end
 
 -- [ SHOW COMPONENT POSITION TOOLTIP ]---------------------------------------------------------------
--- Shows tooltip during component drag/nudge with center-relative x,y coords
+-- Shows tooltip during component drag/nudge with anchor + justifyH + center + edge coords
 
-function Tooltip:ShowComponentPosition(component, key, alignment, x, y, parentWidth, parentHeight)
+function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, posY, offsetX, offsetY, justifyH)
     if not component then
         return
     end
@@ -150,12 +150,33 @@ function Tooltip:ShowComponentPosition(component, key, alignment, x, y, parentWi
         self.positionTooltip = tooltip
     end
 
-    -- x, y are already center-relative from ComponentDrag
-    local displayX = math.floor((x or 0) + 0.5)
-    local displayY = math.floor((y or 0) + 0.5)
+    -- Build anchor string
+    local anchorStr
+    if anchorX == "CENTER" and anchorY == "CENTER" then
+        anchorStr = "CENTER"
+    elseif anchorY == "CENTER" then
+        anchorStr = anchorX
+    elseif anchorX == "CENTER" then
+        anchorStr = anchorY
+    else
+        anchorStr = anchorX .. " " .. anchorY
+    end
+    
+    -- Format display values
+    local displayPosX = math.floor((posX or 0) + 0.5)
+    local displayPosY = math.floor((posY or 0) + 0.5)
+    local displayOffX = math.floor((offsetX or 0) + 0.5)
+    local displayOffY = math.floor((offsetY or 0) + 0.5)
+    local justifyStr = justifyH or "CENTER"
 
-    -- Simple format: just x, y
-    self.positionTooltip.text:SetText(string.format("%d, %d", displayX, displayY))
+    -- Four-line format: Anchor, JustifyH, Center coords, Edge coords
+    self.positionTooltip.text:SetText(string.format(
+        "%s\nJustify: %s\nCenter: %d, %d\nEdge: %d, %d",
+        anchorStr,
+        justifyStr,
+        displayPosX, displayPosY,
+        displayOffX, displayOffY
+    ))
 
     -- Resize tooltip to fit text
     local textWidth = self.positionTooltip.text:GetStringWidth()

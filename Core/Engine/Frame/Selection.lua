@@ -517,39 +517,33 @@ function Selection:UpdateVisuals(frame, selection)
         selection:SetScale(1)
     end
 
+    -- Canvas Mode is now handled by CanvasModeDialog - no special visuals needed here
+    -- Just check if frame is in canvas mode (dialog is open) and skip standard visuals
     local isComponentEdit = Engine.ComponentEdit:IsActive(selection.parent)
-
     if isComponentEdit then
-        -- Component Edit Mode: Green Overlay
-        selection:ShowHighlighted()
+        -- Hide selection while in Canvas Mode (frame is in dialog)
+        selection:Hide()
+        return
+    end
 
-        if not selection.ComponentEditOverlay then
-            selection.ComponentEditOverlay = selection:CreateTexture(nil, "OVERLAY")
-            selection.ComponentEditOverlay:SetAllPoints()
-        end
-        selection.ComponentEditOverlay:SetColorTexture(0.3, 0.8, 0.3, 0.3)
-        selection.ComponentEditOverlay:Show()
-
-        ForEachRegion(selection, function(region)
-            if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay and not region.isAnchorLine then
-                region:SetAlpha(0.3)
-            end
-        end)
-
-        local inset = Engine.Constants.Frame.LockInset
-        if not selection.orbitInset then
-            selection:ClearAllPoints()
-            selection:SetPoint("TOPLEFT", selection.parent, "TOPLEFT", inset, -inset)
-            selection:SetPoint("BOTTOMRIGHT", selection.parent, "BOTTOMRIGHT", -inset, inset)
-            selection.orbitInset = true
-        end
-
-        Selection:ShowAnchorLine(selection, nil)
-    elseif selection.isSelected then
+    if selection.isSelected then
         -- Selected: Yellow
         if selection.ComponentEditOverlay then
             selection.ComponentEditOverlay:Hide()
         end
+        if selection.CanvasBorderFrame then
+            selection.CanvasBorderFrame:Hide()
+        end
+        
+        -- Restore strata and mouse interaction
+        selection:SetFrameStrata("HIGH")
+        selection:EnableMouse(true)
+        
+        -- Show the label again
+        if selection.Label then
+            selection.Label:Show()
+        end
+        
         ForEachRegion(selection, function(region)
             if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
                 region:SetAlpha(1)
@@ -562,10 +556,11 @@ function Selection:UpdateVisuals(frame, selection)
             selection.Highlight:SetAlpha(1)
         end
 
-        if selection.orbitInset then
+        if selection.orbitInset or selection.orbitCanvasInset then
             selection:ClearAllPoints()
             selection:SetAllPoints(selection.parent)
             selection.orbitInset = nil
+            selection.orbitCanvasInset = nil
         end
 
         local isAnchored = Engine.FrameAnchor:GetAnchorParent(selection.parent) ~= nil
@@ -582,6 +577,19 @@ function Selection:UpdateVisuals(frame, selection)
         if selection.ComponentEditOverlay then
             selection.ComponentEditOverlay:Hide()
         end
+        if selection.CanvasBorderFrame then
+            selection.CanvasBorderFrame:Hide()
+        end
+        
+        -- Restore strata and mouse interaction
+        selection:SetFrameStrata("HIGH")
+        selection:EnableMouse(true)
+        
+        -- Show the label again
+        if selection.Label then
+            selection.Label:Show()
+        end
+        
         ForEachRegion(selection, function(region)
             if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
                 region:SetAlpha(1)
@@ -590,10 +598,11 @@ function Selection:UpdateVisuals(frame, selection)
 
         selection:ShowHighlighted()
 
-        if selection.orbitInset then
+        if selection.orbitInset or selection.orbitCanvasInset then
             selection:ClearAllPoints()
             selection:SetAllPoints(selection.parent)
             selection.orbitInset = nil
+            selection.orbitCanvasInset = nil
         end
 
         local isAnchored = Engine.FrameAnchor:GetAnchorParent(selection.parent) ~= nil

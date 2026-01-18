@@ -25,34 +25,56 @@ local PADDING = 25              -- Drag boundary padding
 -- [ HELPERS ]---------------------------------------------------------------------------------------
 
 -- Safe size accessor that handles secret values (WoW 12.0+)
+-- For FontStrings, uses GetStringWidth/GetStringHeight which return actual text bounds
 local function SafeGetSize(region)
     if not region then
-        return 20, 16 -- Default minimum size
+        return 40, 16 -- Default minimum size
     end
     
-    local width, height = 20, 16 -- Defaults
+    local width, height = 40, 16 -- Defaults
+    
+    -- For FontStrings, prefer GetStringWidth/GetStringHeight for actual text bounds
+    local isFontString = region.GetStringWidth ~= nil
     
     -- Try to get width
     local ok, w = pcall(function()
-        local val = region:GetWidth()
+        local val
+        if isFontString then
+            -- FontStrings: Try GetStringWidth first (actual text width)
+            val = region:GetStringWidth()
+            if (not val or val <= 0) and region.GetWidth then
+                val = region:GetWidth()
+            end
+        else
+            val = region:GetWidth()
+        end
         if issecretvalue and issecretvalue(val) then
             return nil
         end
         return val
     end)
-    if ok and w and type(w) == "number" then
+    if ok and w and type(w) == "number" and w > 0 then
         width = w
     end
     
     -- Try to get height
-    ok, h = pcall(function()
-        local val = region:GetHeight()
+    local ok2, h = pcall(function()
+        local val
+        if isFontString then
+            -- FontStrings: Try GetStringHeight (actual text height)
+            val = region:GetStringHeight()
+            if (not val or val <= 0) and region.GetHeight then
+                val = region:GetHeight()
+            end
+        else
+            val = region:GetHeight()
+        end
         if issecretvalue and issecretvalue(val) then
             return nil
         end
         return val
     end)
-    if ok and h and type(h) == "number" then
+    if ok2 and h and type(h) == "number" and h > 0 then
         height = h
     end
     
@@ -84,11 +106,46 @@ local function ClampPosition(x, y, parentWidth, parentHeight)
     return clampedX, clampedY
 end
 
+-- Calculate anchor type, edge offsets, and justifyH based on center-relative position
+local function CalculateAnchor(posX, posY, halfW, halfH)
+    local anchorX, offsetX, justifyH
+    local anchorY, offsetY
+    local isOutsideRight = posX > halfW
+    local isOutsideLeft = posX < -halfW
+    
+    if posX > 0 then
+        anchorX = "RIGHT"
+        offsetX = halfW - posX
+        justifyH = isOutsideRight and "LEFT" or "RIGHT"
+    elseif posX < 0 then
+        anchorX = "LEFT"
+        offsetX = halfW + posX
+        justifyH = isOutsideLeft and "RIGHT" or "LEFT"
+    else
+        anchorX = "CENTER"
+        offsetX = 0
+        justifyH = "CENTER"
+    end
+    
+    if posY > 0 then
+        anchorY = "TOP"
+        offsetY = halfH - posY
+    elseif posY < 0 then
+        anchorY = "BOTTOM"
+        offsetY = halfH + posY
+    else
+        anchorY = "CENTER"
+        offsetY = 0
+    end
+    
+    return anchorX, anchorY, offsetX, offsetY, justifyH
+end
+
 -- [ DRAG HANDLE CREATION ]--------------------------------------------------------------------------
 
--- Minimum clickable area for handles
-local MIN_HANDLE_WIDTH = 40
-local MIN_HANDLE_HEIGHT = 16
+-- Minimum clickable area for handles (generous size for easy clicking)
+local MIN_HANDLE_WIDTH = 50
+local MIN_HANDLE_HEIGHT = 20
 
 local function CreateDragHandle(component, parent, data)
     -- Use plain frame with manual textures (BackdropTemplate has secret value issues)
@@ -189,13 +246,16 @@ local function CreateDragHandle(component, parent, data)
             self:SetHandleColor(0.3, 1, 0.3, 0.35, 0.8)
             
             -- Store initial offset from cursor
+            -- Use component's effective scale for proper coordinate conversion
             local cursorX, cursorY = GetCursorPosition()
-            local scale = SafeGetNumber(parent:GetEffectiveScale(), 1)
-            cursorX, cursorY = cursorX / scale, cursorY / scale
-
+            local compScale = SafeGetNumber(component:GetEffectiveScale(), 1)
+            cursorX, cursorY = cursorX / compScale, cursorY / compScale
+            
+            -- Get component center in screen coordinates, then convert to same space as cursor
             local compWidth, compHeight = SafeGetSize(component)
             local compLeft = SafeGetNumber(component:GetLeft(), 0)
             local compBottom = SafeGetNumber(component:GetBottom(), 0)
+            -- Component position is already in screen coordinates, convert to scaled space
             local compCenterX = compLeft + compWidth / 2
             local compCenterY = compBottom + compHeight / 2
 
@@ -247,8 +307,9 @@ end
 
 function ComponentDrag:OnDragUpdate(component, parent, data, handle)
     local cursorX, cursorY = GetCursorPosition()
-    local scale = SafeGetNumber(parent:GetEffectiveScale(), 1)
-    cursorX, cursorY = cursorX / scale, cursorY / scale
+    -- Use component's effective scale for consistent coordinate space with OnMouseDown
+    local compScale = SafeGetNumber(component:GetEffectiveScale(), 1)
+    cursorX, cursorY = cursorX / compScale, cursorY / compScale
 
     -- Apply drag offset
     local targetX = cursorX + SafeGetNumber(handle.dragOffsetX, 0)
@@ -270,6 +331,11 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
     local halfW, halfH = parentWidth / 2, parentHeight / 2
     centerRelX = math.max(-halfW - PADDING, math.min(centerRelX, halfW + PADDING))
     centerRelY = math.max(-halfH - PADDING, math.min(centerRelY, halfH + PADDING))
+    
+    -- Snap to 5px grid for cleaner positioning
+    local SNAP_SIZE = 5
+    centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE
+    centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE
 
     -- Store in data as BOTH pixels (for visual) and percentages (for persistence)
     data.currentX = centerRelX
@@ -300,17 +366,37 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
     handle:ClearAllPoints()
     handle:SetPoint("CENTER", component, "CENTER", 0, 0)
 
-    -- Show tooltip (pass center-relative coords directly)
+    -- Show tooltip with anchor + justify + center + edge coords
     if Engine.SelectionTooltip and Engine.SelectionTooltip.ShowComponentPosition then
-        Engine.SelectionTooltip:ShowComponentPosition(component, data.key, nil, centerRelX, centerRelY, parentWidth, parentHeight)
+        local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(centerRelX, centerRelY, halfW, halfH)
+        Engine.SelectionTooltip:ShowComponentPosition(
+            component, data.key,
+            anchorX, anchorY,
+            centerRelX, centerRelY,
+            edgeOffX, edgeOffY,
+            justifyH
+        )
     end
 end
 
 function ComponentDrag:OnDragStop(component, parent, data)
-    -- Fire callback with PERCENTAGE position data
+    -- Fire callback with edge-relative position data (anchorX format)
     if data.options and data.options.onPositionChange then
-        -- Pass percentages instead of pixels for persistence
-        data.options.onPositionChange(component, nil, data.xPercent, data.yPercent)
+        -- Calculate anchor from current position
+        local componentParent = component:GetParent() or parent
+        local parentWidth, parentHeight = SafeGetSize(componentParent)
+        local halfW = parentWidth / 2
+        local halfH = parentHeight / 2
+        
+        -- Get center-relative position from stored data
+        local centerX = data.currentX or 0
+        local centerY = data.currentY or 0
+        
+        -- Calculate edge-relative anchor data
+        local anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchor(centerX, centerY, halfW, halfH)
+        
+        -- Pass edge-relative format to callback
+        data.options.onPositionChange(component, anchorX, anchorY, offsetX, offsetY, justifyH)
     end
 
     -- Mark frame dirty for persistence
@@ -512,9 +598,16 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
         Engine.PositionManager:MarkDirty(data.parent)
     end
 
-    -- Show tooltip (center-relative coords in pixels for display)
+    -- Show tooltip with anchor + justify + center + edge coords
     if Engine.SelectionTooltip and Engine.SelectionTooltip.ShowComponentPosition then
-        Engine.SelectionTooltip:ShowComponentPosition(component, data.key, nil, newX, newY, parentWidth, parentHeight)
+        local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(newX, newY, halfW, halfH)
+        Engine.SelectionTooltip:ShowComponentPosition(
+            component, data.key,
+            anchorX, anchorY,
+            newX, newY,
+            edgeOffX, edgeOffY,
+            justifyH
+        )
     end
 end
 
@@ -586,9 +679,18 @@ function ComponentDrag:SetEnabled(component, enabled)
     local componentVisible = component.IsShown and component:IsShown() or true  -- Default true for non-widgets
     local shouldShow = enabled and componentVisible and EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
     
-    -- Update size/position before showing to ensure correct placement
-    if shouldShow and data.handle.UpdateSize then
-        data.handle:UpdateSize()
+    if shouldShow then
+        -- Update size/position before showing to ensure correct placement
+        if data.handle.UpdateSize then
+            data.handle:UpdateSize()
+        end
+        
+        -- Deferred update to catch layout finalization (component may not have final position yet)
+        C_Timer.After(0.05, function()
+            if data.handle and data.handle.UpdateSize then
+                data.handle:UpdateSize()
+            end
+        end)
     end
     
     data.handle:SetShown(shouldShow)
@@ -632,19 +734,50 @@ function ComponentDrag:RestoreFramePositions(parent, positions)
         local data = registeredComponents[component]
         if data and positions[data.key] then
             local pos = positions[data.key]
-            local x = pos.x or 0
-            local y = pos.y or 0
-            
-            -- Store in data
-            data.currentX = x
-            data.currentY = y
-
-            -- Use component's actual parent for correct positioning
             local componentParent = component:GetParent() or parent
             
-            -- Apply position visually (center-relative to actual parent)
-            component:ClearAllPoints()
-            component:SetPoint("CENTER", componentParent, "CENTER", x, y)
+            -- Single format: Edge-relative (anchorX/Y, offsetX/Y)
+            if pos.anchorX then
+                local anchorX = pos.anchorX
+                local anchorY = pos.anchorY or "CENTER"
+                local offsetX = pos.offsetX or 0
+                local offsetY = pos.offsetY or 0
+                
+                -- Build anchor point string
+                local anchorPoint
+                if anchorY == "CENTER" and anchorX == "CENTER" then
+                    anchorPoint = "CENTER"
+                elseif anchorY == "CENTER" then
+                    anchorPoint = anchorX
+                elseif anchorX == "CENTER" then
+                    anchorPoint = anchorY
+                else
+                    anchorPoint = anchorY .. anchorX
+                end
+                
+                -- Calculate final offset with correct sign
+                local finalX = offsetX
+                local finalY = offsetY
+                if anchorX == "RIGHT" then finalX = -offsetX end
+                if anchorY == "TOP" then finalY = -offsetY end
+                
+                -- Apply position
+                component:ClearAllPoints()
+                
+                if pos.justifyH and component.SetJustifyH then
+                    component:SetJustifyH(pos.justifyH)
+                    component:SetPoint(pos.justifyH, componentParent, anchorPoint, finalX, finalY)
+                else
+                    component:SetPoint("CENTER", componentParent, anchorPoint, finalX, finalY)
+                end
+                
+                -- Store for reference
+                data.anchorX = anchorX
+                data.anchorY = anchorY
+                data.offsetX = offsetX
+                data.offsetY = offsetY
+                data.justifyH = pos.justifyH
+            end
             
             -- Update handle position
             if data.handle then
@@ -653,6 +786,33 @@ function ComponentDrag:RestoreFramePositions(parent, positions)
             end
         end
     end
+end
+
+-- Get all registered components for a frame
+function ComponentDrag:GetComponentsForFrame(frame)
+    if not frame then return {} end
+    
+    local components = frameComponents[frame] or {}
+    local result = {}
+    
+    for _, comp in ipairs(components) do
+        local data = registeredComponents[comp]
+        if data then
+            result[data.key] = {
+                text = data.key,
+                -- Edge-relative format (single source of truth)
+                anchorX = data.anchorX,
+                anchorY = data.anchorY,
+                offsetX = data.offsetX,
+                offsetY = data.offsetY,
+                justifyH = data.justifyH,
+                component = comp,
+                originalText = comp.GetText and comp:GetText() or nil
+            }
+        end
+    end
+    
+    return result
 end
 
 -- [ EDIT MODE HOOKS ]-------------------------------------------------------------------------------

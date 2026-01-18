@@ -66,7 +66,7 @@ Core\Engine\Frame\Factory.lua
 Core\Engine\Frame\Frame.lua
 Core\Engine\UnitButton.lua
 
-# Services (EventBus and Async remain separate for modularity)
+# Services
 Core\Services\EventBus.lua
 Core\Services\Async.lua
 
@@ -93,6 +93,7 @@ Core\API.lua
 # UI
 Core\UI\Animation.lua
 Core\UI\OrbitSettingsDialog.lua
+Core\UI\CanvasModeDialog.lua
 Core\UI\OrbitOptionsPanel.lua
 Core\UI\OrbitOptionsButton.lua
 

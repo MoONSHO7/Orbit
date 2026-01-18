@@ -14,9 +14,16 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         Height = 40,
         ClassColour = true,
         HealthTextEnabled = true,
-        ShowLevel = "Hide",
+        ShowLevel = false,
         ShowCombatIcon = false,
         HealthTextMode = "percent_short",
+        -- Default component positions (Canvas Mode is single source of truth)
+        ComponentPositions = {
+            Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
+            HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
+            LevelText = { anchorX = "RIGHT", offsetX = -4, anchorY = "TOP", offsetY = 0, justifyH = "LEFT" },
+            CombatIcon = { anchorX = "LEFT", offsetX = -2, anchorY = "TOP", offsetY = 0, justifyH = "CENTER" },
+        },
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
@@ -33,13 +40,13 @@ function Plugin:AddSettings(dialog, systemFrame)
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
 
     local controls = {
-        { type = "slider", key = "Width", label = "Width", min = 120, max = 300, step = 5, default = 160 },
+        { type = "slider", key = "Width", label = "Width", min = 120, max = 300, step = 10, default = 160 },
     }
 
     if not isAnchored then
         table.insert(
             controls,
-            { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 5, default = 40 }
+            { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 10, default = 40 }
         )
     end
 
@@ -64,15 +71,10 @@ function Plugin:AddSettings(dialog, systemFrame)
     })
 
     table.insert(controls, {
-        type = "dropdown",
+        type = "checkbox",
         key = "ShowLevel",
         label = "Show Level",
-        options = {
-            { text = "Right", value = "Right" },
-            { text = "Left", value = "Left" },
-            { text = "Hide", value = "Hide" },
-        },
-        default = "Hide",
+        default = false,
         onChange = function(val)
             self:SetSetting(PLAYER_FRAME_INDEX, "ShowLevel", val)
             self:UpdateVisualsExtended(self.frame, PLAYER_FRAME_INDEX)
@@ -202,17 +204,17 @@ function Plugin:OnLoad()
     if OrbitEngine.ComponentDrag then
         OrbitEngine.ComponentDrag:Attach(self.frame.LevelText, self.frame, {
             key = "LevelText",
-            onPositionChange = function(component, alignment, x, y)
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
                 local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
-                positions.LevelText = { alignment = alignment, x = x, y = y }
+                positions.LevelText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
             end
         })
         OrbitEngine.ComponentDrag:Attach(self.frame.CombatIcon, self.frame, {
             key = "CombatIcon",
-            onPositionChange = function(component, alignment, x, y)
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
                 local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
-                positions.CombatIcon = { alignment = alignment, x = x, y = y }
+                positions.CombatIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
             end
         })
@@ -277,6 +279,7 @@ function Plugin:ApplySettings(frame)
     local systemIndex = PLAYER_FRAME_INDEX
 
     -- 1. Apply Base Settings via Mixin (Handling Size, Visuals, RestorePosition)
+    -- Note: UpdateTextLayout runs here but only applies defaults if no custom positions
     self:ApplyUnitFrameSettings(frame, systemIndex)
 
     -- 2. Apply Player Specific Logic
@@ -287,16 +290,27 @@ function Plugin:ApplySettings(frame)
     self:UpdateVisualsExtended(frame, systemIndex)
     self:UpdateCombatIcon(frame, systemIndex)
 
-    -- 4. Restore saved component positions
-    local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
-    if savedPositions and OrbitEngine.ComponentDrag then
-        OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
-    end
-
-    -- 3. Apply Health Text Mode
+    -- 4. Apply Health Text Mode
     local healthTextMode = self:GetSetting(systemIndex, "HealthTextMode") or "percent_short"
     if frame.SetHealthTextMode then
         frame:SetHealthTextMode(healthTextMode)
+    end
+
+    -- 5. Restore saved component positions LAST (overrides any defaults set above)
+    -- Skip if in Canvas Mode to avoid resetting during editing
+    local isInCanvasMode = OrbitEngine.ComponentEdit and OrbitEngine.ComponentEdit:IsActive(frame)
+    if not isInCanvasMode then
+        local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
+        if savedPositions then
+            -- Apply via ComponentDrag (for LevelText, CombatIcon)
+            if OrbitEngine.ComponentDrag then
+                OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
+            end
+            -- Apply via UnitButton mixin (for Name/HealthText with justifyH)
+            if frame.ApplyComponentPositions then
+                frame:ApplyComponentPositions()
+            end
+        end
     end
 end
 

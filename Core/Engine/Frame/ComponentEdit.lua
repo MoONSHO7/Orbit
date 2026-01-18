@@ -14,7 +14,10 @@ local CanvasMode = Engine.CanvasMode
 CanvasMode.currentFrame = nil
 
 -- Visual constants
-local OVERLAY_COLOR = { r = 0.3, g = 0.8, b = 0.3, a = 0.3 } -- Green tint for canvas mode
+local CANVAS_BORDER_COLOR = { r = 0.3, g = 0.8, b = 0.3, a = 1.0 } -- Green border for canvas mode
+local CANVAS_BORDER_SIZE = 3  -- Thicker border for visibility
+local CANVAS_BACKGROUND_COLOR = { r = 0, g = 0, b = 0, a = 0.4 } -- Dark background at 40% opacity
+local CANVAS_PADDING = 25  -- Must match ComponentDrag PADDING
 local INSET = 4
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
@@ -105,7 +108,6 @@ function CanvasMode:Enter(frame, updateVisualsCallback)
     -- Check if frame's plugin allows canvas mode
     local allowCanvasMode = false
     if frame.orbitPlugin then
-        -- Check if plugin has canvasMode enabled in defaults or runtime
         allowCanvasMode = frame.orbitPlugin.canvasMode == true
     end
     
@@ -122,82 +124,15 @@ function CanvasMode:Enter(frame, updateVisualsCallback)
 
     self.currentFrame = frame
     
-    -- [ CANVAS MODE ] - Move frame to center and scale up for easier editing
-    -- Store original position and scale
-    if frame.GetPoint and frame.GetScale then
-        local point, relativeTo, relativePoint, x, y = frame:GetPoint(1)
-        if point then
-            -- Generate unique session ID for this canvas entry
-            local sessionId = GetTime()
-            
-            frame.orbitCanvasOriginal = {
-                point = point,
-                relativeTo = relativeTo,
-                relativePoint = relativePoint,
-                x = x,
-                y = y,
-                scale = frame:GetScale(),
-                width = frame:GetWidth(),
-                height = frame:GetHeight(),
-                children = {},  -- Store child positions for isolation
-                sessionId = sessionId,  -- Track session to prevent stale callbacks
-            }
-            
-            -- [ CHILD ISOLATION ] - Store children's CURRENT absolute screen positions
-            -- We capture these before moving the parent
-            if Engine.FrameAnchor then
-                local children = Engine.FrameAnchor:GetAnchoredChildren(frame)
-                for _, child in ipairs(children) do
-                    if child and child.GetLeft then
-                        -- Store child's absolute screen position
-                        local childLeft = child:GetLeft()
-                        local childBottom = child:GetBottom()
-                        local childScale = child:GetScale()
-                        
-                        if childLeft and childBottom then
-                            table.insert(frame.orbitCanvasOriginal.children, {
-                                child = child,
-                                left = childLeft,
-                                bottom = childBottom,
-                                scale = childScale,
-                            })
-                        end
-                    end
-                end
-            end
-            
-            -- Move parent to canvas position (center + 100px up, 2x scale)
-            frame:ClearAllPoints()
-            frame:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
-            frame:SetScale((frame.orbitCanvasOriginal.scale or 1) * 2)
-            
-            -- [ CHILD ISOLATION ] - Defer child repositioning to next frame
-            -- This ensures the parent's move is fully processed first
-            -- Use session ID to prevent stale callbacks from affecting new sessions
-            C_Timer.After(0, function()
-                -- Verify canvas mode is still active with same session
-                if not frame.orbitCanvasOriginal then return end
-                if frame.orbitCanvasOriginal.sessionId ~= sessionId then return end
-                
-                for _, childData in ipairs(frame.orbitCanvasOriginal.children) do
-                    local child = childData.child
-                    if child and child.ClearAllPoints then
-                        -- Anchor child to UIParent at its original absolute position
-                        child:ClearAllPoints()
-                        child:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", childData.left, childData.bottom)
-                        child:SetScale(childData.scale)  -- Restore original scale
-                    end
-                end
-            end)
-        end
+    -- Open the Canvas Mode Dialog
+    local dialog = Engine.CanvasModeDialog or Orbit.CanvasModeDialog
+    if dialog then
+        local plugin = frame.orbitPlugin
+        local systemIndex = frame.systemIndex or (plugin and plugin.system) or 1
+        dialog:Open(frame, plugin, systemIndex)
     end
 
-    -- Enable component drag handles for this frame
-    if Engine.ComponentDrag then
-        Engine.ComponentDrag:SetEnabledForFrame(frame, true)
-    end
-
-    -- Callback to update visuals
+    -- Callback to update visuals (hide Edit Mode selection)
     if updateVisualsCallback then
         updateVisualsCallback(frame)
     end
@@ -215,35 +150,16 @@ function CanvasMode:Exit(frame, updateVisualsCallback)
 
     self.currentFrame = nil
     
-    -- [ CANVAS MODE ] - Restore original position and scale
-    if frame.orbitCanvasOriginal and not InCombatLockdown() then
-        local orig = frame.orbitCanvasOriginal
-        
-        -- Restore scale first
-        frame:SetScale(orig.scale or 1)
-        
-        -- Restore position
-        frame:ClearAllPoints()
-        if orig.relativeTo and orig.relativeTo.GetName then
-            frame:SetPoint(orig.point, orig.relativeTo, orig.relativePoint, orig.x, orig.y)
-        else
-            -- Fallback if relativeTo is invalid
-            frame:SetPoint(orig.point, UIParent, orig.relativePoint or orig.point, orig.x, orig.y)
-        end
-        
-        -- Sync children positions now that parent is restored
-        -- This will recalculate all children's positions based on their anchors
-        if Engine.FrameAnchor then
-            Engine.FrameAnchor:SyncChildren(frame)
-        end
-        
-        -- Cleanup canvas data
-        frame.orbitCanvasOriginal = nil
+    -- Close the Canvas Mode Dialog (it handles frame restoration internally)
+    local dialog = Engine.CanvasModeDialog or Orbit.CanvasModeDialog
+    if dialog and dialog:IsShown() then
+        -- Use Cancel to restore positions if exiting externally
+        dialog:Cancel()
     end
 
-    -- Disable component drag handles
-    if Engine.ComponentDrag then
-        Engine.ComponentDrag:SetEnabledForFrame(frame, false)
+    -- Restore selection visuals to standard Edit Mode appearance
+    if Engine.FrameSelection then
+        Engine.FrameSelection:UpdateVisuals(frame)
     end
 
     -- Callback to update visuals
@@ -257,10 +173,9 @@ function CanvasMode:IsActive(frame)
 end
 
 -- Public API: Check if ANY frame is in canvas mode, or a specific frame
--- External modules should use this instead of checking orbitCanvasOriginal directly
 function CanvasMode:IsFrameInCanvasMode(frame)
     if frame then
-        return frame.orbitCanvasOriginal ~= nil
+        return self.currentFrame == frame
     end
     return self.currentFrame ~= nil
 end
@@ -289,6 +204,52 @@ end
 
 -- [ VISUAL UPDATES ]--------------------------------------------------------------------------------
 
+-- Create border-only overlay (no fill) that covers the full editable area
+local function CreateCanvasBorder(parent)
+    local border = {}
+    local c = CANVAS_BORDER_COLOR
+    local size = CANVAS_BORDER_SIZE
+    
+    -- Top border
+    border.top = parent:CreateTexture(nil, "OVERLAY")
+    border.top:SetColorTexture(c.r, c.g, c.b, c.a)
+    border.top:SetHeight(size)
+    border.top:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+    border.top:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
+    
+    -- Bottom border
+    border.bottom = parent:CreateTexture(nil, "OVERLAY")
+    border.bottom:SetColorTexture(c.r, c.g, c.b, c.a)
+    border.bottom:SetHeight(size)
+    border.bottom:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
+    border.bottom:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+    
+    -- Left border
+    border.left = parent:CreateTexture(nil, "OVERLAY")
+    border.left:SetColorTexture(c.r, c.g, c.b, c.a)
+    border.left:SetWidth(size)
+    border.left:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+    border.left:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
+    
+    -- Right border
+    border.right = parent:CreateTexture(nil, "OVERLAY")
+    border.right:SetColorTexture(c.r, c.g, c.b, c.a)
+    border.right:SetWidth(size)
+    border.right:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
+    border.right:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+    
+    return border
+end
+
+local function SetCanvasBorderShown(border, shown)
+    if not border then return end
+    local method = shown and "Show" or "Hide"
+    if border.top then border.top[method](border.top) end
+    if border.bottom then border.bottom[method](border.bottom) end
+    if border.left then border.left[method](border.left) end
+    if border.right then border.right[method](border.right) end
+end
+
 -- Update visual overlay for Orbit frames in Canvas Mode
 function CanvasMode:UpdateOrbitFrameVisual(frame)
     if not frame then
@@ -301,34 +262,83 @@ function CanvasMode:UpdateOrbitFrameVisual(frame)
     end
 
     if self:IsActive(frame) then
-        -- Active: Show green overlay for canvas mode
-        if not selection.CanvasModeOverlay then
-            selection.CanvasModeOverlay = selection:CreateTexture(nil, "OVERLAY")
-            selection.CanvasModeOverlay:SetAllPoints()
+        -- Create canvas background frame (dark overlay at BACKGROUND strata)
+        if not CanvasMode.backgroundFrame then
+            CanvasMode.backgroundFrame = CreateFrame("Frame", "OrbitCanvasBackgroundFrame", UIParent)
+            CanvasMode.backgroundFrame:SetFrameStrata("BACKGROUND")
+            CanvasMode.backgroundFrame:SetFrameLevel(0)
+            
+            -- Create dark background texture
+            CanvasMode.backgroundTexture = CanvasMode.backgroundFrame:CreateTexture(nil, "BACKGROUND")
+            CanvasMode.backgroundTexture:SetAllPoints()
+            local bg = CANVAS_BACKGROUND_COLOR
+            CanvasMode.backgroundTexture:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
         end
-        selection.CanvasModeOverlay:SetColorTexture(
-            OVERLAY_COLOR.r, OVERLAY_COLOR.g, OVERLAY_COLOR.b, OVERLAY_COLOR.a
-        )
-        selection.CanvasModeOverlay:Show()
-
-        -- Inset the selection frame
-        if not selection.orbitCanvasModeInset then
-            selection:ClearAllPoints()
-            selection:SetPoint("TOPLEFT", INSET, -INSET)
-            selection:SetPoint("BOTTOMRIGHT", -INSET, INSET)
-            selection.orbitCanvasModeInset = true
+        
+        -- Create canvas border frame - parent to UIParent to avoid scale inheritance
+        if not CanvasMode.borderFrame then
+            CanvasMode.borderFrame = CreateFrame("Frame", "OrbitCanvasBorderFrame", UIParent)
+            CanvasMode.borderFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+            CanvasMode.borderFrame:SetFrameLevel(150)
+            CanvasMode.border = CreateCanvasBorder(CanvasMode.borderFrame)
         end
+        
+        -- Position frames using screen coordinates (accounts for frame scale)
+        local function UpdateCanvasPosition()
+            if not frame or not frame:IsShown() then return end
+            
+            local scale = frame:GetEffectiveScale()
+            local uiScale = UIParent:GetEffectiveScale()
+            local scaleRatio = scale / uiScale
+            
+            -- Get frame's screen position
+            local left = frame:GetLeft()
+            local right = frame:GetRight()
+            local top = frame:GetTop()
+            local bottom = frame:GetBottom()
+            
+            if not left or not right or not top or not bottom then return end
+            
+            -- Convert to UIParent space and add padding
+            local padding = CANVAS_PADDING * scaleRatio
+            local uiLeft = (left * scale / uiScale) - padding
+            local uiBottom = (bottom * scale / uiScale) - padding
+            local uiRight = (right * scale / uiScale) + padding
+            local uiTop = (top * scale / uiScale) + padding
+            local width = uiRight - uiLeft
+            local height = uiTop - uiBottom
+            
+            -- Update border frame
+            CanvasMode.borderFrame:ClearAllPoints()
+            CanvasMode.borderFrame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", uiLeft, uiBottom)
+            CanvasMode.borderFrame:SetSize(width, height)
+            
+            -- Update background frame (same position and size)
+            CanvasMode.backgroundFrame:ClearAllPoints()
+            CanvasMode.backgroundFrame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", uiLeft, uiBottom)
+            CanvasMode.backgroundFrame:SetSize(width, height)
+        end
+        
+        -- Update position immediately and on each frame (in case of movement)
+        UpdateCanvasPosition()
+        CanvasMode.borderFrame:SetScript("OnUpdate", UpdateCanvasPosition)
+        
+        -- Show canvas elements
+        CanvasMode.backgroundFrame:Show()
+        CanvasMode.borderFrame:Show()
+        SetCanvasBorderShown(CanvasMode.border, true)
+        
+        -- Note: Selection visual is handled by Selection:UpdateVisuals() which
+        -- makes textures transparent but keeps frame interactive for right-click exit
     else
-        -- Not active: Hide overlay
-        if selection.CanvasModeOverlay then
-            selection.CanvasModeOverlay:Hide()
+        -- Not active: Hide canvas elements
+        if CanvasMode.backgroundFrame then
+            CanvasMode.backgroundFrame:Hide()
         end
-
-        -- Restore selection frame
-        if selection.orbitCanvasModeInset then
-            selection:ClearAllPoints()
-            selection:SetAllPoints()
-            selection.orbitCanvasModeInset = nil
+        if CanvasMode.borderFrame then
+            CanvasMode.borderFrame:Hide()
+            CanvasMode.borderFrame:SetScript("OnUpdate", nil)
+            SetCanvasBorderShown(CanvasMode.border, false)
         end
     end
 end

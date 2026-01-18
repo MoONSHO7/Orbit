@@ -165,6 +165,17 @@ function Drag:OnMouseDown(selectionOverlay)
     end
 
     local Selection = Engine.FrameSelection
+    local clickedFrame = selectionOverlay.parent
+    
+    -- Exit Canvas Mode on any other frame when clicking a different frame
+    if Engine.ComponentEdit and Engine.ComponentEdit.currentFrame then
+        local currentCanvasFrame = Engine.ComponentEdit.currentFrame
+        if currentCanvasFrame ~= clickedFrame then
+            Engine.ComponentEdit:Exit(currentCanvasFrame, function(f)
+                Selection:UpdateVisuals(f)
+            end)
+        end
+    end
 
     -- Clear native selection
     if not InCombatLockdown() then

@@ -1,0 +1,1142 @@
+-- [ CANVAS MODE DIALOG ]------------------------------------------------------------
+-- Dedicated dialog for editing frame component positions using a PREVIEW REPLICA
+-- Real frame stays in place - we create a fake preview and drag components on that
+--------------------------------------------------------------------------------
+
+local _, addonTable = ...
+local Orbit = addonTable
+local OrbitEngine = Orbit.Engine
+local LSM = LibStub("LibSharedMedia-3.0")
+
+-------------------------------------------------
+-- CONSTANTS
+-------------------------------------------------
+local DIALOG_WIDTH = 450
+local DIALOG_MIN_HEIGHT = 200
+local PREVIEW_SCALE = 1.0  -- DEBUG: Set to 1 for 1:1 preview (was 2.0)
+local PREVIEW_PADDING = 30
+local FOOTER_HEIGHT = 55
+local TITLE_HEIGHT = 40
+
+-------------------------------------------------
+-- CREATE DIALOG FRAME
+-------------------------------------------------
+local Dialog = CreateFrame("Frame", "OrbitCanvasModeDialog", UIParent, "BackdropTemplate")
+Dialog:SetSize(DIALOG_WIDTH, DIALOG_MIN_HEIGHT)
+Dialog:SetPoint("CENTER", UIParent, "CENTER", 0, 50)
+Dialog:SetFrameStrata("FULLSCREEN_DIALOG")
+Dialog:SetFrameLevel(100)
+Dialog:SetMovable(true)
+Dialog:SetClampedToScreen(true)
+Dialog:EnableMouse(true)
+Dialog:RegisterForDrag("LeftButton")
+Dialog:Hide()
+
+-- Backdrop
+Dialog:SetBackdrop({
+    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+    tile = true,
+    tileSize = 32,
+    edgeSize = 32,
+    insets = { left = 11, right = 12, top = 12, bottom = 11 },
+})
+Dialog:SetBackdropColor(0.05, 0.05, 0.05, 0.98)
+
+-- Drag handlers
+Dialog:SetScript("OnDragStart", function(self)
+    self:StartMoving()
+end)
+
+Dialog:SetScript("OnDragStop", function(self)
+    self:StopMovingOrSizing()
+end)
+
+-- Close on combat
+Dialog:RegisterEvent("PLAYER_REGEN_DISABLED")
+Dialog:SetScript("OnEvent", function(self, event)
+    if event == "PLAYER_REGEN_DISABLED" and self:IsShown() then
+        self:Cancel()
+    end
+end)
+
+-------------------------------------------------
+-- TITLE
+-------------------------------------------------
+Dialog.Title = Dialog:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
+Dialog.Title:SetPoint("TOP", Dialog, "TOP", 0, -15)
+Dialog.Title:SetText("Canvas Mode")
+
+-------------------------------------------------
+-- CLOSE BUTTON
+-------------------------------------------------
+Dialog.CloseButton = CreateFrame("Button", nil, Dialog, "UIPanelCloseButton")
+Dialog.CloseButton:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", -2, -2)
+Dialog.CloseButton:SetScript("OnClick", function()
+    Dialog:Cancel()
+end)
+
+-------------------------------------------------
+-- PREVIEW CONTAINER
+-------------------------------------------------
+Dialog.PreviewContainer = CreateFrame("Frame", nil, Dialog)
+Dialog.PreviewContainer:SetPoint("TOPLEFT", Dialog, "TOPLEFT", PREVIEW_PADDING, -TITLE_HEIGHT)
+Dialog.PreviewContainer:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -PREVIEW_PADDING, FOOTER_HEIGHT)
+
+-- No background texture - the preview frame will provide its own visuals
+
+-------------------------------------------------
+-- FOOTER (Using proper Orbit pattern: divider + stretch-to-fill buttons)
+-------------------------------------------------
+local Layout = OrbitEngine.Layout
+local Constants = Orbit.Constants
+local FC = Constants.Footer
+local PC = Constants.Panel
+
+-- Dialog backdrop insets (from the SetBackdrop above: insets = { left = 11, right = 12, top = 12, bottom = 11 })
+local DIALOG_INSET = 12
+
+-- Footer container (attached to bottom of dialog with insets for border)
+Dialog.Footer = CreateFrame("Frame", nil, Dialog)
+Dialog.Footer:SetPoint("BOTTOMLEFT", Dialog, "BOTTOMLEFT", DIALOG_INSET, DIALOG_INSET)
+Dialog.Footer:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -DIALOG_INSET, DIALOG_INSET)
+
+-- Divider line at top of footer
+Dialog.FooterDivider = Dialog.Footer:CreateTexture(nil, "ARTWORK")
+Dialog.FooterDivider:SetSize(PC.DividerWidth, PC.DividerHeight)
+Dialog.FooterDivider:SetTexture("Interface\\FriendsFrame\\UI-FriendsFrame-OnlineDivider")
+Dialog.FooterDivider:SetPoint("TOP", Dialog.Footer, "TOP", 0, FC.DividerOffset)
+
+-- Create the buttons
+Dialog.CancelButton = Layout:CreateButton(Dialog.Footer, "Cancel", function()
+    Dialog:Cancel()
+end)
+Dialog.ResetButton = Layout:CreateButton(Dialog.Footer, "Reset", function()
+    Dialog:ResetPositions()
+end)
+Dialog.ApplyButton = Layout:CreateButton(Dialog.Footer, "Apply", function()
+    Dialog:Apply()
+end)
+
+-- Layout function to position buttons (called on Open to handle dynamic dialog width)
+function Dialog:LayoutFooterButtons()
+    local buttons = { self.CancelButton, self.ResetButton, self.ApplyButton }
+    local numButtons = #buttons
+    
+    
+    -- Account for Dialog insets (12px on each side) AND internal footer padding (10px on each side)
+    -- Total deduction: 24px (insets) + 20px (padding) = 44px
+    local DIALOG_INSET = 12
+    local availableWidth = (self:GetWidth() - (DIALOG_INSET * 2)) - (FC.SidePadding * 2)
+    local totalSpacing = FC.ButtonSpacing * (numButtons - 1)
+    local btnWidth = (availableWidth - totalSpacing) / numButtons
+    
+    local currentX = FC.SidePadding
+    local topY = -FC.TopPadding
+    
+    for _, btn in ipairs(buttons) do
+        btn:ClearAllPoints()
+        btn:SetPoint("TOPLEFT", self.Footer, "TOPLEFT", currentX, topY)
+        btn:SetWidth(btnWidth)
+        btn:SetHeight(FC.ButtonHeight)
+        currentX = currentX + btnWidth + FC.ButtonSpacing
+    end
+    
+    -- Set footer height
+    local footerHeight = FC.TopPadding + FC.ButtonHeight + FC.BottomPadding
+    self.Footer:SetHeight(footerHeight)
+end
+
+-- Initial layout (will be called again in Open with proper dialog width)
+Dialog.Footer:SetHeight(FC.TopPadding + FC.ButtonHeight + FC.BottomPadding)
+
+-------------------------------------------------
+-- ESC KEY SUPPORT
+-------------------------------------------------
+table.insert(UISpecialFrames, "OrbitCanvasModeDialog")
+
+Dialog:SetPropagateKeyboardInput(true)
+Dialog:SetScript("OnKeyDown", function(self, key)
+    if InCombatLockdown() then return end
+    
+    if key == "ESCAPE" then
+        self:SetPropagateKeyboardInput(false)
+        self:Cancel()
+        C_Timer.After(0.05, function()
+            if not InCombatLockdown() then
+                self:SetPropagateKeyboardInput(true)
+            end
+        end)
+    elseif key == "UP" or key == "DOWN" or key == "LEFT" or key == "RIGHT" then
+        -- Nudge hovered component
+        if self.hoveredComponent then
+            self:SetPropagateKeyboardInput(false)
+            self:NudgeComponent(self.hoveredComponent, key)
+            C_Timer.After(0.05, function()
+                if not InCombatLockdown() then
+                    self:SetPropagateKeyboardInput(true)
+                end
+            end)
+        else
+            self:SetPropagateKeyboardInput(true)
+        end
+    else
+        self:SetPropagateKeyboardInput(true)
+    end
+end)
+
+-------------------------------------------------
+-- STATE
+-------------------------------------------------
+Dialog.targetFrame = nil
+Dialog.targetPlugin = nil
+Dialog.targetSystemIndex = nil
+Dialog.originalPositions = {}
+Dialog.previewFrame = nil
+Dialog.previewComponents = {}  -- { key = container }
+Dialog.hoveredComponent = nil  -- Currently hovered component for nudge
+
+-- Helper: Calculate anchor type, edge offsets, and justifyH based on center-relative position
+-- Returns: anchorX, anchorY, offsetX, offsetY, justifyH
+local function CalculateAnchor(posX, posY, halfW, halfH)
+    local anchorX, offsetX, justifyH
+    local anchorY, offsetY
+    local isOutsideRight = posX > halfW
+    local isOutsideLeft = posX < -halfW
+    
+    -- X axis: anchor to nearest horizontal edge
+    if posX > 0 then
+        anchorX = "RIGHT"
+        offsetX = halfW - posX  -- distance from right edge (negative if outside)
+        -- Inside: text grows LEFT (toward center), Outside: text grows RIGHT (away)
+        justifyH = isOutsideRight and "LEFT" or "RIGHT"
+    elseif posX < 0 then
+        anchorX = "LEFT"
+        offsetX = halfW + posX  -- distance from left edge (negative if outside)
+        -- Inside: text grows RIGHT (toward center), Outside: text grows LEFT (away)
+        justifyH = isOutsideLeft and "RIGHT" or "LEFT"
+    else
+        anchorX = "CENTER"
+        offsetX = 0
+        justifyH = "CENTER"
+    end
+    
+    -- Y axis: anchor to nearest vertical edge
+    if posY > 0 then
+        anchorY = "TOP"
+        offsetY = halfH - posY  -- distance from top edge
+    elseif posY < 0 then
+        anchorY = "BOTTOM"
+        offsetY = halfH + posY  -- distance from bottom edge
+    else
+        anchorY = "CENTER"
+        offsetY = 0
+    end
+    
+    return anchorX, anchorY, offsetX, offsetY, justifyH
+end
+
+-- Build anchor point string from anchorX and anchorY
+local function BuildAnchorPoint(anchorX, anchorY)
+    if anchorY == "CENTER" and anchorX == "CENTER" then
+        return "CENTER"
+    elseif anchorY == "CENTER" then
+        return anchorX
+    elseif anchorX == "CENTER" then
+        return anchorY
+    else
+        return anchorY .. anchorX  -- e.g., "TOPLEFT", "BOTTOMRIGHT"
+    end
+end
+
+-- Apply alignment to a FontString visual within its container
+local function ApplyTextAlignment(container, visual, justifyH)
+    visual:ClearAllPoints()
+    visual:SetPoint(justifyH, container, justifyH, 0, 0)
+    visual:SetJustifyH(justifyH)
+end
+
+-------------------------------------------------
+-- NUDGE COMPONENT
+-------------------------------------------------
+function Dialog:NudgeComponent(container, direction)
+    print("[NudgeComponent] CALLED! direction=" .. direction)
+    if not container or not self.previewFrame then return end
+    
+    local preview = self.previewFrame
+    local nudgeAmount = 1 -- 1px nudge for precision
+    
+    -- Get current position as center-relative offset
+    local posX = container.posX or 0
+    local posY = container.posY or 0
+    
+    -- Apply direction
+    if direction == "UP" then
+        posY = posY + nudgeAmount
+    elseif direction == "DOWN" then
+        posY = posY - nudgeAmount
+    elseif direction == "LEFT" then
+        posX = posX - nudgeAmount
+    elseif direction == "RIGHT" then
+        posX = posX + nudgeAmount
+    end
+    
+    -- Store center-relative position
+    container.posX = posX
+    container.posY = posY
+    
+    -- Calculate anchor data for display and saving
+    local halfW = preview.sourceWidth / 2
+    local halfH = preview.sourceHeight / 2
+    local anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchor(posX, posY, halfW, halfH)
+    
+    -- Store anchor data on container for Apply
+    container.anchorX = anchorX
+    container.anchorY = anchorY
+    container.offsetX = offsetX
+    container.offsetY = offsetY
+    container.justifyH = justifyH
+    
+    -- Build anchor point for preview (matches real frame logic)
+    local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
+    
+    -- Calculate final offset with sign adjustment for anchor direction
+    local finalX = offsetX * PREVIEW_SCALE
+    local finalY = offsetY * PREVIEW_SCALE
+    if anchorX == "RIGHT" then finalX = -finalX end
+    if anchorY == "TOP" then finalY = -finalY end
+    
+    -- Position container to match real frame anchoring
+    container:ClearAllPoints()
+    if container.isFontString and justifyH ~= "CENTER" then
+        -- FontStrings with LEFT/RIGHT justification: anchor by that edge
+        container:SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
+    else
+        -- CENTER justified or non-FontStrings: anchor by CENTER
+        container:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
+    end
+    
+    -- Update text alignment in preview
+    if container.visual and container.isFontString then
+        ApplyTextAlignment(container, container.visual, justifyH)
+    end
+    
+    -- Show enhanced tooltip with anchor + justify + center + edge coords
+    if OrbitEngine.SelectionTooltip then
+        OrbitEngine.SelectionTooltip:ShowComponentPosition(
+            container, container.key,
+            anchorX, anchorY,
+            posX, posY,
+            offsetX, offsetY,
+            justifyH
+        )
+    end
+end
+
+-------------------------------------------------
+-- CREATE PREVIEW FRAME
+-------------------------------------------------
+local function CreatePreviewFrame(sourceFrame)
+    local plugin = Dialog.targetPlugin
+    local systemIndex = Dialog.targetSystemIndex
+    
+    -- 1. Create Container (Background)
+    local preview = CreateFrame("Frame", nil, Dialog.PreviewContainer, "BackdropTemplate")
+    
+    -- Size based on source frame (Scaled)
+    local width = sourceFrame:GetWidth() * PREVIEW_SCALE
+    local height = sourceFrame:GetHeight() * PREVIEW_SCALE
+    preview:SetSize(width, height)
+    preview:SetPoint("CENTER", Dialog.PreviewContainer, "CENTER", 0, 0)
+    
+    -- 2. Get Settings from Plugin (or defaults)
+    local textureName = plugin and plugin:GetSetting(systemIndex, "Texture") or "Melli"
+    local borderSize = plugin and plugin:GetSetting(systemIndex, "BorderSize") or 1
+    
+    -- 3. Set Backdrop (Orbit Style)
+    local bgColor = Orbit.Constants.Colors.Background
+    preview:SetBackdrop({
+        bgFile = "Interface\\BUTTONS\\WHITE8X8",
+        edgeFile = "Interface\\BUTTONS\\WHITE8X8",
+        edgeSize = borderSize * PREVIEW_SCALE, -- Scale border too
+        insets = { left = 0, right = 0, top = 0, bottom = 0 },
+    })
+    preview:SetBackdropColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
+    preview:SetBackdropBorderColor(0, 0, 0, 1)
+    
+    -- 4. Create Health Bar (Texture)
+    local bar = CreateFrame("StatusBar", nil, preview)
+    bar:SetAllPoints()
+    -- Apply border insets to bar so it sits inside the border
+    local inset = borderSize * PREVIEW_SCALE
+    bar:SetPoint("TOPLEFT", preview, "TOPLEFT", inset, -inset)
+    bar:SetPoint("BOTTOMRIGHT", preview, "BOTTOMRIGHT", -inset, inset)
+    
+    local texturePath = LSM:Fetch("statusbar", textureName)
+    bar:SetStatusBarTexture(texturePath)
+    
+    -- Use Class Color for the bar
+    local classColor = RAID_CLASS_COLORS[select(2, UnitClass("player"))]
+    if classColor then
+        bar:SetStatusBarColor(classColor.r, classColor.g, classColor.b, 1)
+    else
+        bar:SetStatusBarColor(0.2, 0.8, 0.2, 1)
+    end
+    
+    -- Store reference for later
+    preview.Health = bar
+    
+    preview.sourceWidth = sourceFrame:GetWidth()
+    preview.sourceHeight = sourceFrame:GetHeight()
+    
+    return preview
+end
+
+
+-------------------------------------------------
+-- CREATE DRAGGABLE COMPONENT
+-------------------------------------------------
+local function CreateDraggableComponent(preview, key, sourceComponent, startX, startY, data)
+    -- Create a container for the component
+    local container = CreateFrame("Frame", nil, preview)
+    container:SetSize(100, 20)
+    container:EnableMouse(true)
+    container:SetMovable(true)
+    container:RegisterForDrag("LeftButton")
+    
+    local visual -- The cloned visual element (FontString or Texture)
+    local isFontString = sourceComponent and sourceComponent.GetText ~= nil
+    local isTexture = sourceComponent and sourceComponent.GetTexture ~= nil and not isFontString
+    
+    if isFontString then
+        -- Clone FontString
+        visual = container:CreateFontString(nil, "OVERLAY")
+        
+        -- MUST set font BEFORE text (WoW requirement)
+        local fontPath, fontSize, fontFlags = sourceComponent:GetFont()
+        if fontPath and fontSize then
+            -- Scale the font for preview
+            visual:SetFont(fontPath, fontSize * PREVIEW_SCALE, fontFlags or "")
+        else
+            -- Fallback to Orbit's global font
+            local globalFontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
+            local fallbackPath = LSM:Fetch("font", globalFontName) or Orbit.Constants.Settings.Font.FallbackPath
+            local fallbackSize = (Orbit.Constants.UI.UnitFrameTextSize or 12) * PREVIEW_SCALE
+            visual:SetFont(fallbackPath, fallbackSize, "OUTLINE")
+        end
+        
+        -- Now copy text (handle secrets)
+        local text = "Text"
+        local ok, t = pcall(function() return sourceComponent:GetText() end)
+        if ok and t and type(t) == "string" then
+            text = t
+        end
+        visual:SetText(text)
+        
+        -- Copy text color
+        local r, g, b, a = sourceComponent:GetTextColor()
+        if r then visual:SetTextColor(r, g, b, a or 1) end
+        
+        -- Copy shadow
+        local sr, sg, sb, sa = sourceComponent:GetShadowColor()
+        if sr then visual:SetShadowColor(sr, sg, sb, sa or 1) end
+        local sx, sy = sourceComponent:GetShadowOffset()
+        if sx then visual:SetShadowOffset(sx * PREVIEW_SCALE, sy * PREVIEW_SCALE) end
+        
+        -- Auto-size container to fit text
+        local textWidth, textHeight = 60, 16
+        local ok, w = pcall(function() return visual:GetStringWidth() end)
+        if ok and w and type(w) == "number" and (not issecretvalue or not issecretvalue(w)) then
+            textWidth = w + 10
+        end
+        local ok2, h = pcall(function() return visual:GetStringHeight() end)
+        if ok2 and h and type(h) == "number" and (not issecretvalue or not issecretvalue(h)) then
+            textHeight = h + 6
+        end
+        container:SetSize(math.max(50, textWidth), math.max(18, textHeight))
+        
+        -- Center visual in container (matches how real components are anchored)
+        visual:SetPoint("CENTER", container, "CENTER", 0, 0)
+        container.isFontString = true
+        
+    elseif isTexture then
+        -- Clone Texture
+        visual = container:CreateTexture(nil, "OVERLAY")
+        visual:SetAllPoints(container)
+        
+        -- Check for Atlas first (used by modern Blizzard icons like CombatIcon)
+        local atlasName = sourceComponent.GetAtlas and sourceComponent:GetAtlas()
+        if atlasName then
+            visual:SetAtlas(atlasName)
+        else
+            -- Fall back to regular texture path
+            local texturePath = sourceComponent:GetTexture()
+            if texturePath then
+                visual:SetTexture(texturePath)
+            end
+            
+            -- Copy texture coords if set (only for non-atlas)
+            local ok, l, r, t, b = pcall(function() return sourceComponent:GetTexCoord() end)
+            if ok and l then
+                visual:SetTexCoord(l, r, t, b)
+            end
+        end
+        
+        -- Copy vertex color
+        local vr, vg, vb, va = sourceComponent:GetVertexColor()
+        if vr then visual:SetVertexColor(vr, vg, vb, va or 1) end
+        
+        -- Size based on source, scaled
+        local srcWidth, srcHeight = 20, 20
+        local ok, w = pcall(function() return sourceComponent:GetWidth() end)
+        if ok and w and type(w) == "number" and w > 0 then srcWidth = w end
+        local ok2, h = pcall(function() return sourceComponent:GetHeight() end)
+        if ok2 and h and type(h) == "number" and h > 0 then srcHeight = h end
+        
+        container:SetSize(srcWidth * PREVIEW_SCALE, srcHeight * PREVIEW_SCALE)
+    else
+        -- Fallback: Create a simple label with key name
+        visual = container:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        visual:SetPoint("CENTER", container, "CENTER", 0, 0)
+        visual:SetText(key or "?")
+        container:SetSize(60, 20)
+    end
+    
+    container.visual = visual
+    
+    -- Border (subtle, visible on hover/drag)
+    container.border = container:CreateTexture(nil, "BACKGROUND")
+    container.border:SetAllPoints()
+    container.border:SetColorTexture(0.3, 0.8, 0.3, 0)  -- Invisible by default
+    
+    -- Store center-relative position
+    container.posX = startX
+    container.posY = startY
+    container.key = key
+    container.isFontString = isFontString
+    
+    -- Use saved anchor data if available, otherwise calculate from center position
+    local halfW = preview.sourceWidth / 2
+    local halfH = preview.sourceHeight / 2
+    local anchorX, anchorY, offsetX, offsetY, justifyH
+    
+    if data and data.anchorX then
+        -- Use saved anchor data (preserves exact edge-relative position)
+        anchorX = data.anchorX
+        anchorY = data.anchorY
+        offsetX = data.offsetX
+        offsetY = data.offsetY
+        justifyH = data.justifyH
+        print("[CreateDraggable] " .. key .. " USING SAVED: anchorX=" .. tostring(anchorX) .. " offsetX=" .. tostring(offsetX))
+    else
+        -- Calculate anchor data from center position (new/unmoved component)
+        anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchor(startX, startY, halfW, halfH)
+        print("[CreateDraggable] " .. key .. " CALCULATED: anchorX=" .. tostring(anchorX) .. " offsetX=" .. tostring(offsetX))
+    end
+    
+    -- Store anchor data on container
+    container.anchorX = anchorX
+    container.anchorY = anchorY
+    container.offsetX = offsetX
+    container.offsetY = offsetY
+    container.justifyH = justifyH
+    print("[CreateDraggable] STORED on container: " .. key .. " offsetX=" .. tostring(container.offsetX))
+    
+    -- Build anchor point for positioning (matches real frame logic)
+    local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
+    
+    -- Calculate final offset with sign adjustment for anchor direction
+    local finalX = offsetX * PREVIEW_SCALE
+    local finalY = offsetY * PREVIEW_SCALE
+    if anchorX == "RIGHT" then finalX = -finalX end
+    if anchorY == "TOP" then finalY = -finalY end
+    
+    -- Position container to match real frame anchoring
+    container:ClearAllPoints()
+    if isFontString and justifyH ~= "CENTER" then
+        -- FontStrings with LEFT/RIGHT justification: anchor by that edge
+        container:SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
+    else
+        -- CENTER justified or non-FontStrings: anchor by CENTER
+        container:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
+    end
+    
+    -- Apply text alignment to visual
+    if isFontString and visual then
+        ApplyTextAlignment(container, visual, justifyH)
+    end
+    
+    -- Drag handlers
+    container:SetScript("OnDragStart", function(self)
+        if InCombatLockdown() then return end
+        self:StartMoving()
+        self.isDragging = true
+        self.border:SetColorTexture(0.3, 0.8, 0.3, 0.3)
+    end)
+    
+    container:SetScript("OnUpdate", function(self)
+        if self.isDragging then
+            -- Clamp to preview bounds with 50px padding to allow positioning slightly outside
+            local CLAMP_PADDING = 50
+            local left = self:GetLeft()
+            local right = self:GetRight()
+            local top = self:GetTop()
+            local bottom = self:GetBottom()
+            local pLeft = preview:GetLeft() - CLAMP_PADDING
+            local pRight = preview:GetRight() + CLAMP_PADDING
+            local pTop = preview:GetTop() + CLAMP_PADDING
+            local pBottom = preview:GetBottom() - CLAMP_PADDING
+            
+            if left and pLeft then
+                local clampX, clampY = 0, 0
+                
+                -- Horizontal clamping
+                if left < pLeft then
+                    clampX = pLeft - left
+                elseif right > pRight then
+                    clampX = pRight - right
+                end
+                
+                -- Vertical clamping
+                if bottom < pBottom then
+                    clampY = pBottom - bottom
+                elseif top > pTop then
+                    clampY = pTop - top
+                end
+                
+                -- Apply clamp if needed
+                if clampX ~= 0 or clampY ~= 0 then
+                    self:AdjustPointsOffset(clampX, clampY)
+                end
+            end
+            
+            -- Calculate position for tooltip
+            local centerX, centerY = self:GetCenter()
+            local parentX, parentY = preview:GetCenter()
+            
+            if centerX and parentX then
+                -- Calculate offset relative to center, unscaled (Logical Pixels)
+                local x = (centerX - parentX) / PREVIEW_SCALE
+                local y = (centerY - parentY) / PREVIEW_SCALE
+                
+                -- Calculate anchor data for tooltip
+                local halfW = preview.sourceWidth / 2
+                local halfH = preview.sourceHeight / 2
+                local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(x, y, halfW, halfH)
+                
+                if OrbitEngine.SelectionTooltip then
+                    OrbitEngine.SelectionTooltip:ShowComponentPosition(
+                        self, key,
+                        anchorX, anchorY,
+                        x, y,
+                        edgeOffX, edgeOffY,
+                        justifyH
+                    )
+                end
+            end
+        end
+    end)
+    
+    container:SetScript("OnDragStop", function(self)
+        print("[OnDragStop] " .. key .. " FIRED!")
+        self:StopMovingOrSizing()
+        self.isDragging = false
+        self.border:SetColorTexture(0.3, 0.8, 0.3, 0)
+        
+        local halfW = preview.sourceWidth / 2
+        local halfH = preview.sourceHeight / 2
+        
+        -- Get container's CENTER position to determine which side of frame it's on
+        local previewCenterX = preview:GetLeft() + preview:GetWidth() / 2
+        local previewCenterY = preview:GetBottom() + preview:GetHeight() / 2
+        local selfCenterX = self:GetLeft() + self:GetWidth() / 2
+        local selfCenterY = self:GetBottom() + self:GetHeight() / 2
+        
+        -- Center-relative position (in logical/unscaled pixels)
+        local centerRelX = (selfCenterX - previewCenterX) / PREVIEW_SCALE
+        local centerRelY = (selfCenterY - previewCenterY) / PREVIEW_SCALE
+        
+        -- Determine anchor side based on center position
+        local anchorX, anchorY, offsetX, offsetY, justifyH
+        
+        -- X axis anchor
+        if centerRelX > 0 then
+            anchorX = "RIGHT"
+        elseif centerRelX < 0 then
+            anchorX = "LEFT"
+        else
+            anchorX = "CENTER"
+        end
+        
+        -- Y axis anchor  
+        if centerRelY > 0 then
+            anchorY = "TOP"
+        elseif centerRelY < 0 then
+            anchorY = "BOTTOM"
+        else
+            anchorY = "CENTER"
+        end
+        
+        -- For FontStrings, calculate offsetX from the EDGE that matches the anchor side
+        -- This is the key fix - don't use CalculateAnchor's center-to-edge math
+        if self.isFontString then
+            if anchorX == "LEFT" then
+                -- Distance from preview LEFT edge to container LEFT edge
+                offsetX = (self:GetLeft() - preview:GetLeft()) / PREVIEW_SCALE
+                justifyH = "LEFT"
+            elseif anchorX == "RIGHT" then
+                -- Distance from container RIGHT edge to preview RIGHT edge
+                offsetX = (preview:GetRight() - self:GetRight()) / PREVIEW_SCALE
+                justifyH = "RIGHT"
+            else
+                offsetX = 0
+                justifyH = "CENTER"
+            end
+        else
+            -- Non-FontStrings: use CalculateAnchor's center-based calculation
+            local _, _, calcOffX, _, calcJustify = CalculateAnchor(centerRelX, centerRelY, halfW, halfH)
+            offsetX = calcOffX
+            justifyH = calcJustify
+        end
+        
+        -- Y offset is always from center
+        if anchorY == "TOP" then
+            offsetY = halfH - centerRelY
+        elseif anchorY == "BOTTOM" then
+            offsetY = halfH + centerRelY
+        else
+            offsetY = 0
+        end
+        
+        -- Snap to 5px grid
+        local SNAP = 5
+        offsetX = math.floor(offsetX / SNAP + 0.5) * SNAP
+        offsetY = math.floor(offsetY / SNAP + 0.5) * SNAP
+        
+        -- Store center-relative position for nudging
+        self.posX = centerRelX
+        self.posY = centerRelY
+        
+        -- Store anchor data on container for Apply
+        self.anchorX = anchorX
+        self.anchorY = anchorY
+        self.offsetX = offsetX
+        self.offsetY = offsetY
+        self.justifyH = justifyH
+        
+        print("[OnDragStop] Calculated: anchorX=" .. tostring(anchorX) .. " offsetX=" .. tostring(offsetX) .. " justifyH=" .. tostring(justifyH))
+        
+        -- Build anchor point for preview (matches real frame logic)
+        local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
+        
+        -- Calculate final offset with sign adjustment for anchor direction
+        local finalX = offsetX * PREVIEW_SCALE
+        local finalY = offsetY * PREVIEW_SCALE
+        if anchorX == "RIGHT" then finalX = -finalX end
+        if anchorY == "TOP" then finalY = -finalY end
+        
+        -- Position container to match real frame anchoring
+        self:ClearAllPoints()
+        if self.isFontString and justifyH ~= "CENTER" then
+            -- FontStrings with LEFT/RIGHT justification: anchor by that edge
+            self:SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
+        else
+            -- CENTER justified or non-FontStrings: anchor by CENTER
+            self:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
+        end
+        
+        -- Update text alignment in preview
+        if self.visual and self.isFontString then
+            ApplyTextAlignment(self, self.visual, justifyH)
+        end
+        
+        -- Show enhanced tooltip with anchor + justify + center + edge coords
+        if OrbitEngine.SelectionTooltip then
+            OrbitEngine.SelectionTooltip:ShowComponentPosition(
+                self, key,
+                anchorX, anchorY,
+                posX, posY,
+                offsetX, offsetY,
+                justifyH
+            )
+        end
+    end)
+    
+    -- Hover effects + nudge tracking
+    container:SetScript("OnEnter", function(self)
+        self.border:SetColorTexture(0.3, 0.8, 0.3, 0.2)
+        Dialog.hoveredComponent = self
+    end)
+    
+    container:SetScript("OnLeave", function(self)
+        self.border:SetColorTexture(0.3, 0.8, 0.3, 0)
+        if Dialog.hoveredComponent == self then
+            Dialog.hoveredComponent = nil
+        end
+    end)
+    
+    return container
+end
+
+-------------------------------------------------
+-- SAVE ORIGINAL POSITIONS (for Cancel restore)
+-------------------------------------------------
+function Dialog:SaveOriginalPositions()
+    self.originalPositions = {}
+    if not self.targetPlugin or not self.targetPlugin.GetSetting then
+        return
+    end
+    
+    local positions = self.targetPlugin:GetSetting(self.targetSystemIndex, "ComponentPositions")
+    if positions then
+        -- Deep copy to avoid reference issues
+        for key, pos in pairs(positions) do
+            self.originalPositions[key] = {
+                anchorX = pos.anchorX,
+                anchorY = pos.anchorY,
+                offsetX = pos.offsetX,
+                offsetY = pos.offsetY,
+                justifyH = pos.justifyH,
+            }
+        end
+    end
+end
+
+-------------------------------------------------
+-- OPEN DIALOG
+-------------------------------------------------
+function Dialog:Open(frame, plugin, systemIndex)
+    if InCombatLockdown() then return false end
+    if not frame then return false end
+    
+    -- Store references
+    self.targetFrame = frame
+    self.targetPlugin = plugin
+    self.targetSystemIndex = systemIndex
+    
+    -- Update title
+    local title = frame.editModeName or frame:GetName() or "Frame"
+    self.Title:SetText("Canvas Mode: " .. title)
+    
+    -- Clean up previous preview
+    self:CleanupPreview()
+    
+    -- Create preview frame
+    self.previewFrame = CreatePreviewFrame(frame)
+    
+    -- Create draggable components based on registered components
+    local savedPositions = plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+    
+    -- Merge with defaults for any missing components
+    local defaults = plugin and plugin.defaults and plugin.defaults.ComponentPositions
+    if defaults then
+        for key, defaultPos in pairs(defaults) do
+            if not savedPositions[key] or not savedPositions[key].anchorX then
+                savedPositions[key] = defaultPos
+            end
+        end
+    end
+    
+    -- Get draggable components dynamically
+    local dragComponents = OrbitEngine.ComponentDrag:GetComponentsForFrame(frame)
+    local components = {}
+    local frameW = frame:GetWidth()
+    local frameH = frame:GetHeight()
+    
+    local DEFAULTS = {
+        Name = "Name",
+        HealthText = "100%",
+        CombatIcon = "Combat",
+        Level = "70",
+    }
+    
+    for key, data in pairs(dragComponents) do
+        -- Get saved position from settings, or fall back to cached data from ComponentDrag
+        local pos = savedPositions[key]
+        
+        -- If no saved position, check if ComponentDrag has cached positions
+        if not pos and data.anchorX then
+            -- Use cached position from ComponentDrag
+            pos = { anchorX = data.anchorX, anchorY = data.anchorY, offsetX = data.offsetX, offsetY = data.offsetY, justifyH = data.justifyH }
+        end
+        
+        local centerX, centerY = 0, 0
+        local anchorX, anchorY = "CENTER", "CENTER"
+        local offsetX, offsetY = 0, 0
+        
+        if pos and pos.anchorX then
+            -- Edge-relative format (anchorX/Y, offsetX/Y) - single source of truth
+            anchorX = pos.anchorX
+            anchorY = pos.anchorY or "CENTER"
+            offsetX = pos.offsetX or 0
+            offsetY = pos.offsetY or 0
+            
+            -- Convert to center-relative for preview positioning
+            local halfW = frameW / 2
+            local halfH = frameH / 2
+            
+            if anchorX == "LEFT" then
+                centerX = offsetX - halfW
+            elseif anchorX == "RIGHT" then
+                centerX = halfW - offsetX
+            end
+            
+            if anchorY == "BOTTOM" then
+                centerY = offsetY - halfH
+            elseif anchorY == "TOP" then
+                centerY = halfH - offsetY
+            end
+        elseif not pos then
+            -- No saved position - calculate from defaults if component has a position
+            -- This path should rarely be hit since we have defaults in plugin registration
+            centerX = 0
+            centerY = 0
+        end
+        
+        -- Get justifyH from saved position or calculate based on center position
+        local justifyH = pos and pos.justifyH
+        if not justifyH then
+            -- Calculate justifyH from center position
+            local halfW = frameW / 2
+            local isOutsideRight = centerX > halfW
+            local isOutsideLeft = centerX < -halfW
+            
+            if centerX == 0 then
+                justifyH = "CENTER"
+            elseif centerX > 0 then
+                justifyH = isOutsideRight and "LEFT" or "RIGHT"
+            else
+                justifyH = isOutsideLeft and "RIGHT" or "LEFT"
+            end
+        end
+        
+        components[key] = { 
+            component = data.component,
+            x = centerX, 
+            y = centerY,
+            anchorX = anchorX,
+            anchorY = anchorY,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            justifyH = justifyH,
+        }
+    end
+    
+    -- Create draggable clones for each component
+    wipe(self.previewComponents)
+    for key, data in pairs(components) do
+        local comp = CreateDraggableComponent(self.previewFrame, key, data.component, data.x, data.y, data)
+        self.previewComponents[key] = comp
+    end
+    
+    -- Size dialog based on preview
+    local previewWidth = self.previewFrame:GetWidth()
+    local previewHeight = self.previewFrame:GetHeight()
+    local dialogWidth = math.max(DIALOG_WIDTH, previewWidth + (PREVIEW_PADDING * 2) + 40)
+    local dialogHeight = previewHeight + TITLE_HEIGHT + FOOTER_HEIGHT + 40
+    self:SetSize(dialogWidth, math.max(DIALOG_MIN_HEIGHT, dialogHeight))
+    
+    -- Layout footer buttons to stretch across dialog width
+    self:LayoutFooterButtons()
+    
+    self:Show()
+    return true
+end
+
+-------------------------------------------------
+-- CLEANUP PREVIEW
+-------------------------------------------------
+function Dialog:CleanupPreview()
+    -- Hide and release preview components
+    for key, comp in pairs(self.previewComponents) do
+        comp:Hide()
+        comp:SetParent(nil)
+    end
+    wipe(self.previewComponents)
+    
+    -- Hide and release preview frame
+    if self.previewFrame then
+        self.previewFrame:Hide()
+        self.previewFrame:SetParent(nil)
+        self.previewFrame = nil
+    end
+end
+
+-------------------------------------------------
+-- CLOSE DIALOG
+-------------------------------------------------
+function Dialog:CloseDialog()
+    self:CleanupPreview()
+    
+    -- Clear state
+    self.targetFrame = nil
+    self.targetPlugin = nil
+    self.targetSystemIndex = nil
+    wipe(self.originalPositions)
+    
+    self:Hide()
+    
+    -- Refresh selection visuals
+    if OrbitEngine.FrameSelection then
+        OrbitEngine.FrameSelection:RefreshVisuals()
+    end
+    
+    -- Clear canvas mode state
+    if OrbitEngine.ComponentEdit then
+        OrbitEngine.ComponentEdit.currentFrame = nil
+    end
+end
+
+-------------------------------------------------
+-- APPLY
+-------------------------------------------------
+function Dialog:Apply()
+    if not self.targetPlugin then
+        self:CloseDialog()
+        return
+    end
+    
+    if not self.previewFrame then
+        self:CloseDialog()
+        return
+    end
+    
+    -- Collect positions from containers (already calculated during drag/nudge)
+    local positions = {}
+    local halfWidth = self.previewFrame.sourceWidth / 2
+    local halfHeight = self.previewFrame.sourceHeight / 2
+    
+    for key, comp in pairs(self.previewComponents) do
+        -- Use anchor data stored on container, or calculate if missing
+        local anchorX = comp.anchorX
+        local anchorY = comp.anchorY
+        local offsetX = comp.offsetX
+        local offsetY = comp.offsetY
+        local justifyH = comp.justifyH
+        
+        print("[Apply] " .. key .. " anchorX=" .. tostring(anchorX) .. " offsetX=" .. tostring(offsetX) .. " justifyH=" .. tostring(justifyH))
+        
+        -- If anchor data not set (component wasn't moved), calculate from posX/posY
+        if not anchorX then
+            local posX = comp.posX or 0
+            local posY = comp.posY or 0
+            print("[Apply]   Fallback: calculating from posX=" .. posX .. " posY=" .. posY)
+            anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchor(posX, posY, halfWidth, halfHeight)
+            print("[Apply]   Calculated: anchorX=" .. tostring(anchorX) .. " offsetX=" .. tostring(offsetX))
+        end
+        
+        -- Save EDGE-RELATIVE format (matches what UnitButton expects)
+        positions[key] = {
+            anchorX = anchorX,
+            anchorY = anchorY,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            justifyH = justifyH,
+        }
+    end
+    
+    -- Save references before closing
+    local plugin = self.targetPlugin
+    local systemIndex = self.targetSystemIndex
+    
+    -- Save positions to plugin settings
+    plugin:SetSetting(systemIndex, "ComponentPositions", positions)
+    
+    -- Close dialog FIRST (clears canvas mode state)
+    self:CloseDialog()
+    
+    -- NOW apply settings - isInCanvasMode will be false so positions will be restored
+    if plugin.ApplySettings then
+        plugin:ApplySettings()
+    end
+end
+
+-------------------------------------------------
+-- CANCEL
+-------------------------------------------------
+function Dialog:Cancel()
+    -- Just close the dialog - saved data was never modified
+    -- Preview changes are discarded, original positions remain intact
+    self:CloseDialog()
+end
+
+-------------------------------------------------
+-- RESET POSITIONS
+-------------------------------------------------
+function Dialog:ResetPositions()
+    if not self.targetPlugin or not self.previewFrame then return end
+    
+    local plugin = self.targetPlugin
+    local defaults = plugin.defaults and plugin.defaults.ComponentPositions
+    if not defaults then return end
+    
+    local preview = self.previewFrame
+    local halfW = preview.sourceWidth / 2
+    local halfH = preview.sourceHeight / 2
+    
+    -- Reset each preview container to its default position
+    for key, container in pairs(self.previewComponents) do
+        local defaultPos = defaults[key]
+        if defaultPos and defaultPos.anchorX then
+            -- Update container's stored position data
+            container.anchorX = defaultPos.anchorX
+            container.anchorY = defaultPos.anchorY or "CENTER"
+            container.offsetX = defaultPos.offsetX or 0
+            container.offsetY = defaultPos.offsetY or 0
+            container.justifyH = defaultPos.justifyH or "CENTER"
+            
+            -- Calculate center-relative position for posX/posY (used by nudge)
+            if container.anchorX == "LEFT" then
+                container.posX = container.offsetX - halfW
+            elseif container.anchorX == "RIGHT" then
+                container.posX = halfW - container.offsetX
+            else
+                container.posX = 0
+            end
+            
+            if container.anchorY == "TOP" then
+                container.posY = halfH - container.offsetY
+            elseif container.anchorY == "BOTTOM" then
+                container.posY = container.offsetY - halfH
+            else
+                container.posY = 0
+            end
+            
+            -- Reposition the visual container in the preview
+            local anchorPoint = BuildAnchorPoint(container.anchorX, container.anchorY)
+            local finalX = container.offsetX * PREVIEW_SCALE
+            local finalY = container.offsetY * PREVIEW_SCALE
+            if container.anchorX == "RIGHT" then finalX = -finalX end
+            if container.anchorY == "TOP" then finalY = -finalY end
+            
+            container:ClearAllPoints()
+            if container.isFontString and container.justifyH ~= "CENTER" then
+                container:SetPoint(container.justifyH, preview, anchorPoint, finalX, finalY)
+            else
+                container:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
+            end
+            
+            -- Update text alignment
+            if container.visual and container.isFontString then
+                ApplyTextAlignment(container, container.visual, container.justifyH)
+            end
+        end
+    end
+end
+
+-------------------------------------------------
+-- EDIT MODE LIFECYCLE
+-------------------------------------------------
+if EditModeManagerFrame then
+    EditModeManagerFrame:HookScript("OnHide", function()
+        if Dialog:IsShown() then
+            Dialog:Cancel()
+        end
+    end)
+end
+
+-------------------------------------------------
+-- EXPORT
+-------------------------------------------------
+Orbit.CanvasModeDialog = Dialog
+OrbitEngine.CanvasModeDialog = Dialog
