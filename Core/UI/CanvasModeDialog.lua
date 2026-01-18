@@ -219,59 +219,9 @@ Dialog.previewFrame = nil
 Dialog.previewComponents = {}  -- { key = container }
 Dialog.hoveredComponent = nil  -- Currently hovered component for nudge
 
--- Helper: Calculate anchor type, edge offsets, and justifyH based on center-relative position
--- Returns: anchorX, anchorY, offsetX, offsetY, justifyH
-local function CalculateAnchor(posX, posY, halfW, halfH)
-    local anchorX, offsetX, justifyH
-    local anchorY, offsetY
-    local isOutsideRight = posX > halfW
-    local isOutsideLeft = posX < -halfW
-    local CENTER_THRESHOLD = 10  -- Within 10px of center = CENTER anchor
-    
-    -- X axis: anchor to nearest horizontal edge (with center threshold)
-    if posX > CENTER_THRESHOLD then
-        anchorX = "RIGHT"
-        offsetX = halfW - posX  -- distance from right edge (negative if outside)
-        -- Inside: text grows LEFT (toward center), Outside: text grows RIGHT (away)
-        justifyH = isOutsideRight and "LEFT" or "RIGHT"
-    elseif posX < -CENTER_THRESHOLD then
-        anchorX = "LEFT"
-        offsetX = halfW + posX  -- distance from left edge (negative if outside)
-        -- Inside: text grows RIGHT (toward center), Outside: text grows LEFT (away)
-        justifyH = isOutsideLeft and "RIGHT" or "LEFT"
-    else
-        anchorX = "CENTER"
-        offsetX = 0
-        justifyH = "CENTER"
-    end
-    
-    -- Y axis: anchor to nearest vertical edge (with center threshold)
-    if posY > CENTER_THRESHOLD then
-        anchorY = "TOP"
-        offsetY = halfH - posY  -- distance from top edge
-    elseif posY < -CENTER_THRESHOLD then
-        anchorY = "BOTTOM"
-        offsetY = halfH + posY  -- distance from bottom edge
-    else
-        anchorY = "CENTER"
-        offsetY = 0
-    end
-    
-    return anchorX, anchorY, offsetX, offsetY, justifyH
-end
-
--- Build anchor point string from anchorX and anchorY
-local function BuildAnchorPoint(anchorX, anchorY)
-    if anchorY == "CENTER" and anchorX == "CENTER" then
-        return "CENTER"
-    elseif anchorY == "CENTER" then
-        return anchorX
-    elseif anchorX == "CENTER" then
-        return anchorY
-    else
-        return anchorY .. anchorX  -- e.g., "TOPLEFT", "BOTTOMRIGHT"
-    end
-end
+-- Use shared position utilities
+local CalculateAnchor = OrbitEngine.PositionUtils.CalculateAnchor
+local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
 
 -- Apply alignment to a FontString visual within its container
 local function ApplyTextAlignment(container, visual, justifyH)

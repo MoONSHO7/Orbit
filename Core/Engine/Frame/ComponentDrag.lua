@@ -106,40 +106,8 @@ local function ClampPosition(x, y, parentWidth, parentHeight)
     return clampedX, clampedY
 end
 
--- Calculate anchor type, edge offsets, and justifyH based on center-relative position
-local function CalculateAnchor(posX, posY, halfW, halfH)
-    local anchorX, offsetX, justifyH
-    local anchorY, offsetY
-    local isOutsideRight = posX > halfW
-    local isOutsideLeft = posX < -halfW
-    
-    if posX > 0 then
-        anchorX = "RIGHT"
-        offsetX = halfW - posX
-        justifyH = isOutsideRight and "LEFT" or "RIGHT"
-    elseif posX < 0 then
-        anchorX = "LEFT"
-        offsetX = halfW + posX
-        justifyH = isOutsideLeft and "RIGHT" or "LEFT"
-    else
-        anchorX = "CENTER"
-        offsetX = 0
-        justifyH = "CENTER"
-    end
-    
-    if posY > 0 then
-        anchorY = "TOP"
-        offsetY = halfH - posY
-    elseif posY < 0 then
-        anchorY = "BOTTOM"
-        offsetY = halfH + posY
-    else
-        anchorY = "CENTER"
-        offsetY = 0
-    end
-    
-    return anchorX, anchorY, offsetX, offsetY, justifyH
-end
+-- Use shared position utilities
+local CalculateAnchor = Engine.PositionUtils.CalculateAnchor
 
 -- [ DRAG HANDLE CREATION ]--------------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
 -- [ ORBIT SELECTION - POSITION TOOLTIP ]-----------------------------------------------------------
--- Handles the position tooltip shown during keyboard nudging
+-- Handles the position tooltip shown during keyboard nudging and component editing
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -11,36 +11,109 @@ Engine.SelectionTooltip = Tooltip
 Tooltip.positionTooltip = nil
 Tooltip.positionFadeTimer = nil
 
--- [ SHOW POSITION TOOLTIP ]-------------------------------------------------------------------------
+-------------------------------------------------
+-- HELPERS
+-------------------------------------------------
+
+-- Ensure tooltip frame exists (lazy initialization)
+local function EnsureTooltip(self)
+    if self.positionTooltip then
+        return self.positionTooltip
+    end
+    
+    local tooltip = CreateFrame("Frame", "OrbitPositionTooltip", UIParent, "BackdropTemplate")
+    tooltip:SetFrameStrata("TOOLTIP")
+    tooltip:SetSize(C.Selection.PositionTooltip.Width, C.Selection.PositionTooltip.Height)
+    tooltip:SetBackdrop({
+        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true,
+        tileSize = 16,
+        edgeSize = 12,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+    tooltip:SetBackdropColor(0, 0, 0, 0.9)
+    tooltip:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+
+    tooltip.text = tooltip:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    tooltip.text:SetPoint("CENTER")
+    tooltip.text:SetTextColor(1, 1, 1, 1)
+
+    tooltip:Hide()
+    self.positionTooltip = tooltip
+    return tooltip
+end
+
+-- Position tooltip at cursor with screen edge awareness
+-- @param anchor: "BOTTOMRIGHT" (default), "LEFT", or "RIGHT"
+local function PositionAtCursor(tooltip, anchor)
+    local cursorX, cursorY = GetCursorPosition()
+    local uiScale = UIParent:GetEffectiveScale()
+    cursorX = cursorX / uiScale
+    cursorY = cursorY / uiScale
+
+    local tooltipWidth = tooltip:GetWidth()
+    local tooltipHeight = tooltip:GetHeight()
+    local screenWidth = GetScreenWidth()
+    local screenHeight = GetScreenHeight()
+
+    tooltip:ClearAllPoints()
+    
+    if anchor == "LEFT" then
+        tooltip:SetPoint("RIGHT", UIParent, "BOTTOMLEFT", cursorX - 20, cursorY)
+    elseif anchor == "RIGHT" then
+        tooltip:SetPoint("LEFT", UIParent, "BOTTOMLEFT", cursorX + 20, cursorY)
+    else
+        -- Default: BOTTOMRIGHT of cursor
+        local offsetX = 15
+        local offsetY = -15
+        
+        -- Adjust if would go off screen
+        if cursorX + offsetX + tooltipWidth > screenWidth then
+            offsetX = -tooltipWidth - 5
+        end
+        if cursorY + offsetY - tooltipHeight < 0 then
+            offsetY = 15
+        end
+        
+        tooltip:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", cursorX + offsetX, cursorY + offsetY)
+    end
+end
+
+-- Show tooltip and manage fade timer
+local function ShowAndFade(self, noFade)
+    self.positionTooltip:SetAlpha(1)
+    self.positionTooltip:Show()
+
+    -- Cancel existing fade timer
+    if self.positionFadeTimer then
+        self.positionFadeTimer:Cancel()
+        self.positionFadeTimer = nil
+    end
+
+    if noFade then
+        return
+    end
+
+    -- Start fade out after delay
+    self.positionFadeTimer = C_Timer.NewTimer(C.Selection.TooltipFadeDuration, function()
+        if self.positionTooltip then
+            UIFrameFadeOut(self.positionTooltip, C.Timing.FadeDuration, 1, 0)
+        end
+        self.positionFadeTimer = nil
+    end)
+end
+
+-------------------------------------------------
+-- SHOW FRAME POSITION TOOLTIP
+-------------------------------------------------
 
 function Tooltip:ShowPosition(frame, Selection, noFade)
     if not frame then
         return
     end
 
-    -- Create tooltip frame if needed
-    if not self.positionTooltip then
-        local tooltip = CreateFrame("Frame", "OrbitNudgePositionTooltip", UIParent, "BackdropTemplate")
-        tooltip:SetFrameStrata("TOOLTIP")
-        tooltip:SetSize(C.Selection.PositionTooltip.Width, C.Selection.PositionTooltip.Height)
-        tooltip:SetBackdrop({
-            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            tile = true,
-            tileSize = 16,
-            edgeSize = 12,
-            insets = { left = 2, right = 2, top = 2, bottom = 2 },
-        })
-        tooltip:SetBackdropColor(0, 0, 0, 0.9)
-        tooltip:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-        tooltip.text = tooltip:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        tooltip.text:SetPoint("CENTER")
-        tooltip.text:SetTextColor(1, 1, 1, 1)
-
-        tooltip:Hide()
-        self.positionTooltip = tooltip
-    end
+    local tooltip = EnsureTooltip(self)
 
     -- Calculate centers in screen pixels to handle scale differences
     local uiScale = UIParent:GetEffectiveScale()
@@ -57,8 +130,6 @@ function Tooltip:ShowPosition(frame, Selection, noFade)
     local frameCenterX = (frameLeft + (frameWidth / 2)) * frameScale
     local frameCenterY = (frameBottom + (frameHeight / 2)) * frameScale
 
-    -- Calculate difference in screen pixels (scale-independent)
-    -- This shows the actual pixel offset from screen center
     local relX = math.floor(frameCenterX - screenCenterX + 0.5)
     local relY = math.floor(frameCenterY - screenCenterY + 0.5)
 
@@ -67,88 +138,32 @@ function Tooltip:ShowPosition(frame, Selection, noFade)
     if parent then
         local anchor = Engine.FrameAnchor.anchors[frame]
         local padding = anchor and anchor.padding or 0
-        self.positionTooltip.text:SetText("Distance: " .. padding)
+        tooltip.text:SetText("Distance: " .. padding)
     else
-        self.positionTooltip.text:SetText(string.format("%d, %d", relX, relY))
+        tooltip.text:SetText(string.format("%d, %d", relX, relY))
     end
 
-    -- Resize tooltip to fit text
-    local textWidth = self.positionTooltip.text:GetStringWidth()
-    self.positionTooltip:SetWidth(textWidth + 16)
-
-    -- Position near cursor (edge-aware)
-    local cursorX, cursorY = GetCursorPosition()
-    local uiScale = UIParent:GetEffectiveScale()
-    cursorX = cursorX / uiScale
-    cursorY = cursorY / uiScale
-
+    -- Resize and position
+    tooltip:SetWidth(tooltip.text:GetStringWidth() + 16)
+    
     local screenWidth = GetScreenWidth()
-    local tooltipWidth = self.positionTooltip:GetWidth()
+    local cursorX = GetCursorPosition() / uiScale
+    local anchor = (cursorX + tooltip:GetWidth() + 30 > screenWidth) and "LEFT" or "RIGHT"
+    PositionAtCursor(tooltip, anchor)
 
-    self.positionTooltip:ClearAllPoints()
-    -- If cursor is in right portion of screen, position tooltip to LEFT of cursor
-    if cursorX + tooltipWidth + 30 > screenWidth then
-        self.positionTooltip:SetPoint("RIGHT", UIParent, "BOTTOMLEFT", cursorX - 20, cursorY)
-    else
-        self.positionTooltip:SetPoint("LEFT", UIParent, "BOTTOMLEFT", cursorX + 20, cursorY)
-    end
-
-    -- Show and reset alpha
-    self.positionTooltip:SetAlpha(1)
-    self.positionTooltip:Show()
-
-    -- Cancel existing fade timer
-    if self.positionFadeTimer then
-        self.positionFadeTimer:Cancel()
-        self.positionFadeTimer = nil
-    end
-
-    -- If noFade is requested, we are done (tooltip stays shown until updated or faded later)
-    if noFade then
-        return
-    end
-
-    -- Start fade out
-    self.positionFadeTimer = C_Timer.NewTimer(C.Selection.TooltipFadeDuration, function()
-        if self.positionTooltip then
-            UIFrameFadeOut(self.positionTooltip, C.Timing.FadeDuration, 1, 0)
-        end
-        self.positionFadeTimer = nil
-    end)
+    ShowAndFade(self, noFade)
 end
 
--- [ SHOW COMPONENT POSITION TOOLTIP ]---------------------------------------------------------------
--- Shows tooltip during component drag/nudge with anchor + justifyH + center + edge coords
+-------------------------------------------------
+-- SHOW COMPONENT POSITION TOOLTIP
+-------------------------------------------------
 
 function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, posY, offsetX, offsetY, justifyH)
     if not component then
         return
     end
 
-    -- Reuse the same tooltip frame
-    if not self.positionTooltip then
-        -- Create if not exists (same code as ShowPosition)
-        local tooltip = CreateFrame("Frame", "OrbitNudgePositionTooltip", UIParent, "BackdropTemplate")
-        tooltip:SetFrameStrata("TOOLTIP")
-        tooltip:SetSize(C.Selection.PositionTooltip.Width, C.Selection.PositionTooltip.Height)
-        tooltip:SetBackdrop({
-            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            tile = true,
-            tileSize = 16,
-            edgeSize = 12,
-            insets = { left = 2, right = 2, top = 2, bottom = 2 },
-        })
-        tooltip:SetBackdropColor(0, 0, 0, 0.9)
-        tooltip:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-        tooltip.text = tooltip:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        tooltip.text:SetPoint("CENTER")
-        tooltip.text:SetTextColor(1, 1, 1, 1)
-
-        tooltip:Hide()
-        self.positionTooltip = tooltip
-    end
+    local tooltip = EnsureTooltip(self)
 
     -- Build anchor string
     local anchorStr
@@ -171,67 +186,21 @@ function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, p
     
     -- Build tooltip text based on anchor type
     local tooltipText
-    local isCenteredX = (anchorX == "CENTER")
-    local isCenteredY = (anchorY == "CENTER")
-    
-    if isCenteredX and isCenteredY then
-        -- Fully centered - show center position only
+    if anchorX == "CENTER" and anchorY == "CENTER" then
         tooltipText = string.format("%s\nJustify: %s\nPosition: %d, %d",
             anchorStr, justifyStr, displayPosX, displayPosY)
     else
-        -- Edge-anchored - show edge offsets
         tooltipText = string.format("%s\nJustify: %s\nOffset: %d, %d",
             anchorStr, justifyStr, displayOffX, displayOffY)
     end
     
-    self.positionTooltip.text:SetText(tooltipText)
+    tooltip.text:SetText(tooltipText)
 
     -- Resize tooltip to fit text
-    local textWidth = self.positionTooltip.text:GetStringWidth()
-    local textHeight = self.positionTooltip.text:GetStringHeight()
-    self.positionTooltip:SetSize(textWidth + 16, textHeight + 12)
+    local textWidth = tooltip.text:GetStringWidth()
+    local textHeight = tooltip.text:GetStringHeight()
+    tooltip:SetSize(textWidth + 16, textHeight + 12)
 
-    -- Position at bottom-right of cursor
-    local cursorX, cursorY = GetCursorPosition()
-    local uiScale = UIParent:GetEffectiveScale()
-    cursorX = cursorX / uiScale
-    cursorY = cursorY / uiScale
-
-    local tooltipWidth = self.positionTooltip:GetWidth()
-    local tooltipHeight = self.positionTooltip:GetHeight()
-    local screenWidth = GetScreenWidth()
-    local screenHeight = GetScreenHeight()
-
-    -- Default: bottom-right of cursor (tooltip's TOPLEFT at cursor position + offset)
-    local offsetX = 15
-    local offsetY = -15
-    
-    -- Adjust if would go off screen
-    if cursorX + offsetX + tooltipWidth > screenWidth then
-        offsetX = -tooltipWidth - 5  -- Flip to left of cursor
-    end
-    if cursorY + offsetY - tooltipHeight < 0 then
-        offsetY = 15  -- Flip to above cursor
-    end
-
-    self.positionTooltip:ClearAllPoints()
-    self.positionTooltip:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", cursorX + offsetX, cursorY + offsetY)
-
-    -- Show and reset alpha
-    self.positionTooltip:SetAlpha(1)
-    self.positionTooltip:Show()
-
-    -- Cancel existing fade timer
-    if self.positionFadeTimer then
-        self.positionFadeTimer:Cancel()
-        self.positionFadeTimer = nil
-    end
-
-    -- Start fade out after delay
-    self.positionFadeTimer = C_Timer.NewTimer(C.Selection.TooltipFadeDuration, function()
-        if self.positionTooltip then
-            UIFrameFadeOut(self.positionTooltip, C.Timing.FadeDuration, 1, 0)
-        end
-        self.positionFadeTimer = nil
-    end)
+    PositionAtCursor(tooltip, "BOTTOMRIGHT")
+    ShowAndFade(self)
 end

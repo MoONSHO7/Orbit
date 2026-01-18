@@ -52,6 +52,7 @@ Core\Engine\Config.lua
 Core\Engine\NativeFrame.lua
 Core\Engine\EditMode.lua
 Core\Engine\Frame\Guard.lua
+Core\Engine\Frame\PositionUtils.lua
 Core\Engine\Frame\ComponentEdit.lua
 Core\Engine\Frame\ComponentDrag.lua
 Core\Engine\Frame\Anchor.lua
