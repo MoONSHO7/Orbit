@@ -399,6 +399,5 @@ function CanvasMode:Initialize()
     end)
 end
 
--- Aliases for backwards compatibility
+-- Alias for backwards compatibility
 Engine.ComponentEdit = Engine.CanvasMode
-Engine.FrameLock = Engine.CanvasMode

@@ -12,6 +12,10 @@ Engine.PositionUtils = PositionUtils
 -- ANCHOR CALCULATION
 -------------------------------------------------
 
+-- Threshold for snapping to CENTER anchor (in pixels)
+-- When position is within this range of the center line, anchor to CENTER
+local CENTER_THRESHOLD = 5
+
 -- Calculate anchor type, edge offsets, and justifyH based on center-relative position
 -- @param posX: X position relative to parent center (positive = right)
 -- @param posY: Y position relative to parent center (positive = up)
@@ -24,33 +28,33 @@ function PositionUtils.CalculateAnchor(posX, posY, halfW, halfH)
     local isOutsideRight = posX > halfW
     local isOutsideLeft = posX < -halfW
     
-    -- X axis: anchor to nearest horizontal edge
-    if posX > 0 then
+    -- X axis: snap to CENTER if within threshold, otherwise anchor to nearest edge
+    if math.abs(posX) <= CENTER_THRESHOLD then
+        anchorX = "CENTER"
+        offsetX = 0
+        justifyH = "CENTER"
+    elseif posX > 0 then
         anchorX = "RIGHT"
         offsetX = halfW - posX  -- distance from right edge (negative if outside)
         -- Inside: text grows LEFT (toward center), Outside: text grows RIGHT (away)
         justifyH = isOutsideRight and "LEFT" or "RIGHT"
-    elseif posX < 0 then
+    else
         anchorX = "LEFT"
         offsetX = halfW + posX  -- distance from left edge (negative if outside)
         -- Inside: text grows RIGHT (toward center), Outside: text grows LEFT (away)
         justifyH = isOutsideLeft and "RIGHT" or "LEFT"
-    else
-        anchorX = "CENTER"
-        offsetX = 0
-        justifyH = "CENTER"
     end
     
-    -- Y axis: anchor to nearest vertical edge
-    if posY > 0 then
-        anchorY = "TOP"
-        offsetY = halfH - posY  -- distance from top edge
-    elseif posY < 0 then
-        anchorY = "BOTTOM"
-        offsetY = halfH + posY  -- distance from bottom edge
-    else
+    -- Y axis: snap to CENTER if within threshold, otherwise anchor to nearest edge
+    if math.abs(posY) <= CENTER_THRESHOLD then
         anchorY = "CENTER"
         offsetY = 0
+    elseif posY > 0 then
+        anchorY = "TOP"
+        offsetY = halfH - posY  -- distance from top edge
+    else
+        anchorY = "BOTTOM"
+        offsetY = halfH + posY  -- distance from bottom edge
     end
     
     return anchorX, anchorY, offsetX, offsetY, justifyH

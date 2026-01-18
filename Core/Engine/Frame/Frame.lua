@@ -192,10 +192,6 @@ Frame.EnterComponentEdit = Frame.EnterCanvasMode
 Frame.ExitComponentEdit = Frame.ExitCanvasMode
 Frame.IsComponentEditActive = Frame.IsCanvasModeActive
 Frame.ToggleComponentEdit = Frame.ToggleCanvasMode
-Frame.LockFrame = Frame.EnterCanvasMode
-Frame.UnlockFrame = Frame.ExitCanvasMode
-Frame.IsLocked = Frame.IsCanvasModeActive
-Frame.ToggleLock = Frame.ToggleCanvasMode
 
 -- [ PERSISTENCE API ]-------------------------------------------------------------------------------
 
@@ -219,11 +215,11 @@ end
 
 -- [ NATIVE FRAME INTEGRATION ]----------------------------------------------------------------------
 
--- Native frame visuals handled by ComponentEdit if needed
+-- Native frame visuals handled by CanvasMode if needed
 function Frame:UpdateNativeFrameVisual(systemFrame)
     EnsureModules()
-    if Lock.UpdateNativeFrameVisual then
-        Lock:UpdateNativeFrameVisual(systemFrame)
+    if CanvasMode and CanvasMode.UpdateNativeFrameVisual then
+        CanvasMode:UpdateNativeFrameVisual(systemFrame)
     end
 end
 

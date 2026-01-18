@@ -363,6 +363,23 @@ function Plugin:ApplySettings(frame)
     -- Level Text / Classification (Handled by VisualsExtendedMixin)
     self:UpdateVisualsExtended(frame, systemIndex)
 
+    -- Restore saved component positions LAST (overrides any defaults set above)
+    -- Skip if in Canvas Mode to avoid resetting during editing
+    local isInCanvasMode = OrbitEngine.ComponentEdit and OrbitEngine.ComponentEdit:IsActive(frame)
+    if not isInCanvasMode then
+        local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
+        if savedPositions then
+            -- Apply via ComponentDrag (for LevelText, RareEliteIcon)
+            if OrbitEngine.ComponentDrag then
+                OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
+            end
+            -- Apply via UnitButton mixin (for Name/HealthText with justifyH)
+            if frame.ApplyComponentPositions then
+                frame:ApplyComponentPositions()
+            end
+        end
+    end
+
     -- Refresh Visuals
     frame:UpdateAll()
 end

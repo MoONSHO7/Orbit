@@ -1,6 +1,6 @@
 -- [ ORBIT COMPONENT HANDLE ]------------------------------------------------------------------------
--- Creates and manages drag handles for component editing.
--- Handles are invisible overlays that enable drag interaction.
+-- Creates and manages drag handles for component editing on real frames.
+-- Uses HandleCore for shared infrastructure.
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -8,36 +8,10 @@ local Engine = Orbit.Engine
 Engine.ComponentHandle = {}
 local Handle = Engine.ComponentHandle
 
--- Import helpers
+-- Import shared infrastructure
+local HandleCore = Engine.HandleCore
 local Helpers = Engine.ComponentHelpers
-local SafeGetSize = Helpers.SafeGetSize
 local SafeGetNumber = Helpers.SafeGetNumber
-
-
--- [ CONFIGURATION ]-----------------------------------------------------------------------------
-
-local MIN_HANDLE_WIDTH = 50
-local MIN_HANDLE_HEIGHT = 20
-
--- [ HANDLE POOL ]-------------------------------------------------------------------------------
-
-local handlePool = {}
-
-local function AcquireHandle()
-    return table.remove(handlePool)
-end
-
-local function ReleaseHandle(handle)
-    if handle then
-        handle:Hide()
-        handle:SetScript("OnUpdate", nil)
-        handle:SetScript("OnEnter", nil)
-        handle:SetScript("OnLeave", nil)
-        handle:SetScript("OnMouseDown", nil)
-        handle:SetScript("OnMouseUp", nil)
-        table.insert(handlePool, handle)
-    end
-end
 
 -- [ CREATE HANDLE ]-----------------------------------------------------------------------------
 
@@ -46,54 +20,10 @@ function Handle:Create(component, parent, callbacks)
     
     callbacks = callbacks or {}
     
-    -- Try pool first
-    local handle = AcquireHandle()
-    
+    -- Try pool first, then create new
+    local handle = HandleCore:AcquireFromPool()
     if not handle then
-        -- Create new handle frame
-        handle = CreateFrame("Frame", nil, UIParent)
-        handle:SetFrameStrata("FULLSCREEN_DIALOG")
-        handle:SetFrameLevel(200)
-        
-        -- Background texture
-        handle.bg = handle:CreateTexture(nil, "BACKGROUND")
-        handle.bg:SetAllPoints()
-        handle.bg:SetColorTexture(0.3, 0.8, 0.3, 0)
-        
-        -- Border textures
-        local borderSize = 1
-        handle.borderTop = handle:CreateTexture(nil, "BORDER")
-        handle.borderTop:SetColorTexture(0.3, 0.8, 0.3, 0)
-        handle.borderTop:SetPoint("TOPLEFT", 0, 0)
-        handle.borderTop:SetPoint("TOPRIGHT", 0, 0)
-        handle.borderTop:SetHeight(borderSize)
-        
-        handle.borderBottom = handle:CreateTexture(nil, "BORDER")
-        handle.borderBottom:SetColorTexture(0.3, 0.8, 0.3, 0)
-        handle.borderBottom:SetPoint("BOTTOMLEFT", 0, 0)
-        handle.borderBottom:SetPoint("BOTTOMRIGHT", 0, 0)
-        handle.borderBottom:SetHeight(borderSize)
-        
-        handle.borderLeft = handle:CreateTexture(nil, "BORDER")
-        handle.borderLeft:SetColorTexture(0.3, 0.8, 0.3, 0)
-        handle.borderLeft:SetPoint("TOPLEFT", 0, 0)
-        handle.borderLeft:SetPoint("BOTTOMLEFT", 0, 0)
-        handle.borderLeft:SetWidth(borderSize)
-        
-        handle.borderRight = handle:CreateTexture(nil, "BORDER")
-        handle.borderRight:SetColorTexture(0.3, 0.8, 0.3, 0)
-        handle.borderRight:SetPoint("TOPRIGHT", 0, 0)
-        handle.borderRight:SetPoint("BOTTOMRIGHT", 0, 0)
-        handle.borderRight:SetWidth(borderSize)
-        
-        -- Color helper
-        function handle:SetHandleColor(r, g, b, bgAlpha, borderAlpha)
-            self.bg:SetColorTexture(r, g, b, bgAlpha)
-            self.borderTop:SetColorTexture(r, g, b, borderAlpha)
-            self.borderBottom:SetColorTexture(r, g, b, borderAlpha)
-            self.borderLeft:SetColorTexture(r, g, b, borderAlpha)
-            self.borderRight:SetColorTexture(r, g, b, borderAlpha)
-        end
+        handle = HandleCore:CreateFrame()
     end
     
     -- Store references
@@ -104,12 +34,7 @@ function Handle:Create(component, parent, callbacks)
     
     -- Size update function
     local function UpdateHandleSize()
-        local width, height = SafeGetSize(component)
-        local handleW = math.max(width, MIN_HANDLE_WIDTH)
-        local handleH = math.max(height, MIN_HANDLE_HEIGHT)
-        handle:SetSize(handleW, handleH)
-        handle:ClearAllPoints()
-        handle:SetPoint("CENTER", component, "CENTER", 0, 0)
+        HandleCore:PositionOverComponent(handle, component)
     end
     
     handle.UpdateSize = UpdateHandleSize
@@ -122,21 +47,24 @@ function Handle:Create(component, parent, callbacks)
     
     -- Hover scripts
     handle:SetScript("OnEnter", function(self)
+        local colors = HandleCore.Colors
         if callbacks.isSelected and callbacks.isSelected(component) then
-            self:SetHandleColor(0.5, 0.9, 0.3, 0.1, 0.6)
+            self:ApplyColorPreset(colors.SELECTED)
+            self:SetHandleColor(colors.SELECTED.r, colors.SELECTED.g, colors.SELECTED.b, 0.1, 0.6)
         else
-            self:SetHandleColor(0.3, 0.8, 0.3, 0.05, 0.4)
+            self:ApplyColorPreset(colors.HOVER)
         end
         SetCursor("Interface\\CURSOR\\UI-Cursor-Move")
         if callbacks.onEnter then callbacks.onEnter(component) end
     end)
     
     handle:SetScript("OnLeave", function(self)
+        local colors = HandleCore.Colors
         if not self.isDragging then
             if callbacks.isSelected and callbacks.isSelected(component) then
-                self:SetHandleColor(0.5, 0.9, 0.3, 0.1, 0.5)
+                self:ApplyColorPreset(colors.SELECTED)
             else
-                self:SetHandleColor(0.3, 0.8, 0.3, 0, 0)
+                self:ApplyColorPreset(colors.IDLE)
             end
         end
         ResetCursor()
@@ -149,14 +77,14 @@ function Handle:Create(component, parent, callbacks)
             if callbacks.onSelect then callbacks.onSelect(component) end
             
             self.isDragging = true
-            self:SetHandleColor(0.3, 1, 0.3, 0.35, 0.8)
+            self:ApplyColorPreset(HandleCore.Colors.DRAG)
             
             -- Store drag offset
             local cursorX, cursorY = GetCursorPosition()
             local compScale = SafeGetNumber(component:GetEffectiveScale(), 1)
             cursorX, cursorY = cursorX / compScale, cursorY / compScale
             
-            local compWidth, compHeight = SafeGetSize(component)
+            local compWidth, compHeight = HandleCore:SafeGetSize(component)
             local compLeft = SafeGetNumber(component:GetLeft(), 0)
             local compBottom = SafeGetNumber(component:GetBottom(), 0)
             local compCenterX = compLeft + compWidth / 2
@@ -169,7 +97,7 @@ function Handle:Create(component, parent, callbacks)
             self:SetScript("OnUpdate", function(self)
                 if not IsMouseButtonDown("LeftButton") then
                     self.isDragging = false
-                    self:SetHandleColor(0.5, 0.9, 0.3, 0.1, 0.5)
+                    self:ApplyColorPreset(HandleCore.Colors.SELECTED)
                     self:SetScript("OnUpdate", nil)
                     if callbacks.onDragStop then callbacks.onDragStop(component, self) end
                     return
@@ -183,7 +111,7 @@ function Handle:Create(component, parent, callbacks)
     handle:SetScript("OnMouseUp", function(self, button)
         if button == "LeftButton" and self.isDragging then
             self.isDragging = false
-            self:SetHandleColor(0.5, 0.9, 0.3, 0.1, 0.5)
+            self:ApplyColorPreset(HandleCore.Colors.SELECTED)
             self:SetScript("OnUpdate", nil)
             if callbacks.onDragStop then callbacks.onDragStop(component, self) end
         end
@@ -203,14 +131,11 @@ end
 -- [ RELEASE HANDLE ]----------------------------------------------------------------------------
 
 function Handle:Release(handle)
-    ReleaseHandle(handle)
+    HandleCore:ReturnToPool(handle)
 end
 
 -- [ CLEAR POOL ]------------------------------------------------------------------------------
 
 function Handle:ClearPool()
-    for _, h in ipairs(handlePool) do
-        h:SetParent(nil)
-    end
-    wipe(handlePool)
+    HandleCore:ClearPool()
 end
