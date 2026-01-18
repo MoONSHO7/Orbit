@@ -13,7 +13,11 @@ local LSM = LibStub("LibSharedMedia-3.0")
 -------------------------------------------------
 local DIALOG_WIDTH = 450
 local DIALOG_MIN_HEIGHT = 200
-local PREVIEW_SCALE = 1.0  -- DEBUG: Set to 1 for 1:1 preview (was 2.0)
+local DEFAULT_PREVIEW_SCALE = 1.0  -- Default preview scale
+local MIN_PREVIEW_SCALE = 0.5
+local MAX_PREVIEW_SCALE = 1.5
+local SCALE_STEP = 0.1
+local PREVIEW_SCALE = DEFAULT_PREVIEW_SCALE  -- Current preview scale (updated by scroll)
 local PREVIEW_PADDING = 30
 local FOOTER_HEIGHT = 55
 local TITLE_HEIGHT = 40
@@ -82,6 +86,25 @@ end)
 Dialog.PreviewContainer = CreateFrame("Frame", nil, Dialog)
 Dialog.PreviewContainer:SetPoint("TOPLEFT", Dialog, "TOPLEFT", PREVIEW_PADDING, -TITLE_HEIGHT)
 Dialog.PreviewContainer:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -PREVIEW_PADDING, FOOTER_HEIGHT)
+Dialog.PreviewContainer:EnableMouseWheel(true)
+
+-- Mouse wheel to zoom preview
+Dialog.PreviewContainer:SetScript("OnMouseWheel", function(self, delta)
+    local newScale = PREVIEW_SCALE + (delta * SCALE_STEP)
+    newScale = math.max(MIN_PREVIEW_SCALE, math.min(MAX_PREVIEW_SCALE, newScale))
+    
+    -- Round to 1 decimal place to avoid floating point issues
+    newScale = math.floor(newScale * 10 + 0.5) / 10
+    
+    if newScale ~= PREVIEW_SCALE then
+        PREVIEW_SCALE = newScale
+        
+        -- Rebuild preview at new scale
+        if Dialog.targetFrame and Dialog:IsShown() then
+            Dialog:Open(Dialog.targetFrame, Dialog.targetPlugin, Dialog.targetSystemIndex)
+        end
+    end
+end)
 
 -- No background texture - the preview frame will provide its own visuals
 
