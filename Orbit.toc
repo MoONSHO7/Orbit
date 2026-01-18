@@ -52,10 +52,11 @@ Core\Engine\Config.lua
 Core\Engine\NativeFrame.lua
 Core\Engine\EditMode.lua
 Core\Engine\Frame\Guard.lua
-Core\Engine\Frame\PositionUtils.lua
+Core\Engine\Frame\Position\PositionUtils.lua
+Core\Engine\Frame\Position\Anchor.lua
+Core\Engine\Frame\Position\Persistence.lua
 Core\Engine\Frame\ComponentEdit.lua
 Core\Engine\Frame\ComponentDrag.lua
-Core\Engine\Frame\Anchor.lua
 Core\Engine\Frame\Snap.lua
 Core\Engine\Frame\NudgeRepeat.lua
 Core\Engine\Frame\Selection\Tooltip.lua
@@ -63,7 +64,6 @@ Core\Engine\Frame\Selection\Nudge.lua
 Core\Engine\Frame\Selection\Drag.lua
 Core\Engine\Frame\Selection\NativeHook.lua
 Core\Engine\Frame\Selection.lua
-Core\Engine\Frame\Persistence.lua
 Core\Engine\Frame\Factory.lua
 Core\Engine\Frame\Frame.lua
 Core\Engine\UnitButton.lua
