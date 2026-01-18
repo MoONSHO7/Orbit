@@ -7,7 +7,9 @@ local Engine = Orbit.Engine
 local Nudge = {}
 Engine.SelectionNudge = Nudge
 
--- [ KEYBOARD HANDLER ]------------------------------------------------------------------------------
+-------------------------------------------------
+-- KEYBOARD HANDLER
+-------------------------------------------------
 
 function Nudge:Enable(Selection)
     if InCombatLockdown() then
@@ -31,13 +33,36 @@ function Nudge:Enable(Selection)
 
             if key == "UP" or key == "DOWN" or key == "LEFT" or key == "RIGHT" then
                 Selection.keyboardHandler:SetPropagateKeyboardInput(false)
+                
+                -- Execute nudge
                 if Selection.isNativeFrame then
                     Nudge:NudgeNativeFrame(Selection.selectedFrame, key, Selection)
                 else
                     Nudge:NudgeFrame(Selection.selectedFrame, key, Selection)
                 end
+                
+                -- Start repeat using shared module
+                local direction = key
+                Engine.NudgeRepeat:Start(
+                    function()
+                        if Selection.isNativeFrame then
+                            Nudge:NudgeNativeFrame(Selection.selectedFrame, direction, Selection)
+                        else
+                            Nudge:NudgeFrame(Selection.selectedFrame, direction, Selection)
+                        end
+                    end,
+                    function()
+                        return Selection.selectedFrame ~= nil
+                    end
+                )
             else
                 Selection.keyboardHandler:SetPropagateKeyboardInput(true)
+            end
+        end)
+        
+        Selection.keyboardHandler:SetScript("OnKeyUp", function(_, key)
+            if key == "UP" or key == "DOWN" or key == "LEFT" or key == "RIGHT" then
+                Engine.NudgeRepeat:Stop()
             end
         end)
     end
@@ -52,17 +77,20 @@ function Nudge:Disable(Selection)
     if Selection.keyboardHandler then
         Selection.keyboardHandler:Hide()
     end
+    Engine.NudgeRepeat:Stop()
 end
 
--- [ ORBIT FRAME NUDGE ]-----------------------------------------------------------------------------
+-------------------------------------------------
+-- ORBIT FRAME NUDGE
+-------------------------------------------------
 
 function Nudge:NudgeFrame(frame, direction, Selection)
     if not frame then
         return
     end
 
-    -- Block nudging locked frames
-    if Engine.FrameLock and Engine.FrameLock:IsLocked(frame) then
+    -- Block nudging frames in Component Edit mode
+    if Engine.ComponentEdit and Engine.ComponentEdit:IsActive(frame) then
         return
     end
 
@@ -105,7 +133,9 @@ function Nudge:NudgeFrame(frame, direction, Selection)
     Engine.SelectionTooltip:ShowPosition(frame, Selection)
 end
 
--- [ NATIVE FRAME NUDGE ]----------------------------------------------------------------------------
+-------------------------------------------------
+-- NATIVE FRAME NUDGE
+-------------------------------------------------
 
 function Nudge:NudgeNativeFrame(frame, direction, Selection)
     if not frame then
@@ -117,8 +147,8 @@ function Nudge:NudgeNativeFrame(frame, direction, Selection)
         return
     end
 
-    -- Block nudging locked frames
-    if Engine.FrameLock and Engine.FrameLock:IsLocked(frame) then
+    -- Block nudging frames in Component Edit mode
+    if Engine.ComponentEdit and Engine.ComponentEdit:IsActive(frame) then
         return
     end
 

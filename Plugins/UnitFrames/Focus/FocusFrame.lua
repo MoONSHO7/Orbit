@@ -14,13 +14,20 @@ if not Enum.EditModeUnitFrameSystemIndices.Focus then
 end
 
 local Plugin = Orbit:RegisterPlugin("Focus Frame", SYSTEM_ID, {
+    canvasMode = true,  -- Enable Canvas Mode for component editing
     defaults = {
         ReactionColour = true,
-        ShowLevel = "Right",
-        ShowElite = "Right",
-        -- No Aura defaults
+        ShowLevel = true,
+        ShowElite = true,
         Width = 160,
         Height = 40,
+        -- Default component positions (Canvas Mode is single source of truth)
+        ComponentPositions = {
+            Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
+            HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
+            LevelText = { anchorX = "RIGHT", offsetX = -4, anchorY = "TOP", offsetY = 0, justifyH = "LEFT" },
+            RareEliteIcon = { anchorX = "RIGHT", offsetX = -2, anchorY = "BOTTOM", offsetY = 0, justifyH = "CENTER" },
+        },
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
@@ -37,30 +44,20 @@ function Plugin:AddSettings(dialog, systemFrame)
         hideNativeSettings = true,
         controls = {
             {
-                type = "dropdown",
+                type = "checkbox",
                 key = "ShowLevel",
                 label = "Show Level",
-                options = {
-                    { text = "Right", value = "Right" },
-                    { text = "Left", value = "Left" },
-                    { text = "Hide", value = "Hide" },
-                },
-                default = "Right",
+                default = true,
                 onChange = function(val)
                     self:SetSetting(FOCUS_FRAME_INDEX, "ShowLevel", val)
                     self:UpdateVisualsExtended(self.frame, FOCUS_FRAME_INDEX)
                 end,
             },
             {
-                type = "dropdown",
+                type = "checkbox",
                 key = "ShowElite",
-                label = "Show Elite",
-                options = {
-                    { text = "Right", value = "Right" },
-                    { text = "Left", value = "Left" },
-                    { text = "Hide", value = "Hide" },
-                },
-                default = "Right",
+                label = "Show Elite Icon",
+                default = true,
                 onChange = function(val)
                     self:SetSetting(FOCUS_FRAME_INDEX, "ShowElite", val)
                     self:UpdateVisualsExtended(self.frame, FOCUS_FRAME_INDEX)
@@ -206,9 +203,47 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("UNIT_LEVEL")
     self.frame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
 
+    -- Create a HIGH strata container for overlays (Level, EliteIcon) so they render above all frame content
+    if not self.frame.OverlayFrame then
+        self.frame.OverlayFrame = CreateFrame("Frame", nil, self.frame)
+        self.frame.OverlayFrame:SetAllPoints()
+        self.frame.OverlayFrame:SetFrameStrata("HIGH")
+    end
+
+    -- Create LevelText (on overlay frame so it stays above health bars)
     if not self.frame.LevelText then
-        self.frame.LevelText = self.frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        self.frame.LevelText:SetPoint("TOPLEFT", self.frame.Health, "TOPRIGHT", 4, 0)
+        self.frame.LevelText = self.frame.OverlayFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        self.frame.LevelText:SetDrawLayer("OVERLAY", 7)
+        self.frame.LevelText:SetPoint("TOPLEFT", self.frame, "TOPRIGHT", 4, 0)
+    end
+
+    -- Create RareEliteIcon (on overlay frame) for proper z-ordering
+    if not self.frame.RareEliteIcon then
+        self.frame.RareEliteIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
+        self.frame.RareEliteIcon:SetSize(16, 16)
+        self.frame.RareEliteIcon:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", 2, 0)
+        self.frame.RareEliteIcon:Hide()
+    end
+
+    -- Register LevelText and RareEliteIcon for component drag with persistence callbacks
+    local pluginRef = self
+    if OrbitEngine.ComponentDrag then
+        OrbitEngine.ComponentDrag:Attach(self.frame.LevelText, self.frame, {
+            key = "LevelText",
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
+                local positions = pluginRef:GetSetting(FOCUS_FRAME_INDEX, "ComponentPositions") or {}
+                positions.LevelText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                pluginRef:SetSetting(FOCUS_FRAME_INDEX, "ComponentPositions", positions)
+            end
+        })
+        OrbitEngine.ComponentDrag:Attach(self.frame.RareEliteIcon, self.frame, {
+            key = "RareEliteIcon",
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
+                local positions = pluginRef:GetSetting(FOCUS_FRAME_INDEX, "ComponentPositions") or {}
+                positions.RareEliteIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                pluginRef:SetSetting(FOCUS_FRAME_INDEX, "ComponentPositions", positions)
+            end
+        })
     end
 
     -- Removed custom UpdateHealth override to align with Player/Target frame text behavior
@@ -327,6 +362,23 @@ function Plugin:ApplySettings(frame)
 
     -- Level Text / Classification (Handled by VisualsExtendedMixin)
     self:UpdateVisualsExtended(frame, systemIndex)
+
+    -- Restore saved component positions LAST (overrides any defaults set above)
+    -- Skip if in Canvas Mode to avoid resetting during editing
+    local isInCanvasMode = OrbitEngine.ComponentEdit and OrbitEngine.ComponentEdit:IsActive(frame)
+    if not isInCanvasMode then
+        local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
+        if savedPositions then
+            -- Apply via ComponentDrag (for LevelText, RareEliteIcon)
+            if OrbitEngine.ComponentDrag then
+                OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
+            end
+            -- Apply via UnitButton mixin (for Name/HealthText with justifyH)
+            if frame.ApplyComponentPositions then
+                frame:ApplyComponentPositions()
+            end
+        end
+    end
 
     -- Refresh Visuals
     frame:UpdateAll()

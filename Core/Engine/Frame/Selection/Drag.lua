@@ -16,17 +16,21 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     local parent = selectionOverlay.parent
     local Selection = Engine.FrameSelection
 
-    -- Optimization: Throttle check?
-    -- For smoothness, every frame is better, logic is cheap enough.
+    -- Skip anchor visuals if anchoring is disabled
+    local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings 
+        or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
+    if not anchoringEnabled then
+        -- Just show position tooltip without anchor detection
+        Engine.SelectionTooltip:ShowPosition(parent, Selection, true)
+        return
+    end
 
     local targets = Selection:GetSnapTargets(parent)
     local closestX, closestY, anchorTarget, anchorEdge = Engine.FrameSnap:DetectSnap(
         parent,
         true,
         targets, -- showGuides=true (prevents applying snap, red lines are disabled)
-        function(f)
-            return Engine.FrameLock:IsLocked(f)
-        end
+        nil -- No locked-frame filter needed
     )
 
     if anchorTarget and anchorEdge and anchorTarget ~= selectionOverlay.lastAnchorTarget then
@@ -60,7 +64,7 @@ function Drag:OnDragStart(selectionOverlay)
     end
     local parent = selectionOverlay.parent
 
-    if Engine.FrameLock:IsLocked(parent) then
+    if Engine.ComponentEdit:IsActive(parent) then
         return
     end
 
@@ -93,7 +97,7 @@ function Drag:OnDragStop(selectionOverlay)
     local parent = selectionOverlay.parent
     parent:StopMovingOrSizing()
 
-    if Engine.FrameLock:IsLocked(parent) then
+    if Engine.ComponentEdit:IsActive(parent) then
         parent.orbitIsDragging = nil
         return
     end
@@ -108,12 +112,14 @@ function Drag:OnDragStop(selectionOverlay)
         parent,
         false,
         targets,
-        function(f)
-            return Engine.FrameLock:IsLocked(f)
-        end
+        nil -- No locked-frame filter needed
     )
 
-    if anchorTarget and anchorEdge then
+    -- Check if anchoring is enabled
+    local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings 
+        or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
+
+    if anchorTarget and anchorEdge and anchoringEnabled then
         local padding = nil
         local name = parent:GetName()
         local partnerName = Selection:GetSymmetricPartner(name)
@@ -165,6 +171,17 @@ function Drag:OnMouseDown(selectionOverlay)
     end
 
     local Selection = Engine.FrameSelection
+    local clickedFrame = selectionOverlay.parent
+    
+    -- Exit Canvas Mode on any other frame when clicking a different frame
+    if Engine.ComponentEdit and Engine.ComponentEdit.currentFrame then
+        local currentCanvasFrame = Engine.ComponentEdit.currentFrame
+        if currentCanvasFrame ~= clickedFrame then
+            Engine.ComponentEdit:Exit(currentCanvasFrame, function(f)
+                Selection:UpdateVisuals(f)
+            end)
+        end
+    end
 
     -- Clear native selection
     if not InCombatLockdown() then
@@ -211,7 +228,7 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
     local parent = selectionOverlay.parent
     local Selection = Engine.FrameSelection
 
-    if Engine.FrameLock:IsLocked(parent) then
+    if Engine.ComponentEdit:IsActive(parent) then
         return
     end
     if not Engine.FrameAnchor then

@@ -4,7 +4,7 @@
 --   - FrameAnchor: Anchor relationships
 --   - FrameSnap: Snap detection
 --   - FrameSelection: Selection overlays and drag handling
---   - FrameLock: Frame locking
+--   - ComponentEdit: Component edit mode
 --   - FramePersistence: Position/anchor saving
 --   - FrameFactory: Frame creation helpers
 
@@ -17,13 +17,13 @@ local Frame = Engine.Frame
 
 -- [ MODULE REFERENCES ]-----------------------------------------------------------------------------
 -- These are set after all modules load
-local Anchor, Snap, Selection, Lock, Persistence, Guard
+local Anchor, Snap, Selection, CanvasMode, Persistence, Guard
 
 local function EnsureModules()
     Anchor = Anchor or Engine.FrameAnchor
     Snap = Snap or Engine.FrameSnap
     Selection = Selection or Engine.FrameSelection
-    Lock = Lock or Engine.FrameLock
+    CanvasMode = CanvasMode or Engine.CanvasMode
     Persistence = Persistence or Engine.FramePersistence
     Guard = Guard or Engine.FrameGuard
 end
@@ -107,9 +107,7 @@ end
 function Frame:Snap(frame, showGuides)
     EnsureModules()
     local targets = Selection:GetSnapTargets(frame)
-    return Snap:DetectSnap(frame, showGuides, targets, function(f)
-        return Lock:IsLocked(f)
-    end)
+    return Snap:DetectSnap(frame, showGuides, targets, nil)
 end
 
 -- [ SELECTION API ]---------------------------------------------------------------------------------
@@ -159,44 +157,41 @@ function Frame:GetSelectedFrame()
     return Selection:GetSelectedFrame()
 end
 
--- [ LOCK API ]--------------------------------------------------------------------------------------
+-- [ CANVAS MODE API ]-------------------------------------------------------------------------------
 
---- Locks a frame in place
+--- Enters canvas mode for a frame
 ---@param frame frame
-function Frame:LockFrame(frame)
+function Frame:EnterCanvasMode(frame)
     EnsureModules()
-    Lock:LockFrame(frame, function(f)
+    CanvasMode:Enter(frame, function(f)
         Selection:UpdateVisuals(f)
     end)
 end
 
-function Frame:UnlockFrame(frame)
+function Frame:ExitCanvasMode(frame)
     EnsureModules()
-    Lock:UnlockFrame(frame, function(f)
+    CanvasMode:Exit(frame, function(f)
         Selection:UpdateVisuals(f)
     end)
 end
 
-function Frame:IsLocked(frame)
+function Frame:IsCanvasModeActive(frame)
     EnsureModules()
-    return Lock:IsLocked(frame)
+    return CanvasMode:IsActive(frame)
 end
 
-function Frame:ToggleLock(frame)
+function Frame:ToggleCanvasMode(frame)
     EnsureModules()
-    Lock:ToggleLock(frame, function(f)
+    CanvasMode:Toggle(frame, function(f)
         Selection:UpdateVisuals(f)
     end)
 end
 
-function Frame:RestoreLocks()
-    EnsureModules()
-    Lock:RestoreLocks(Selection.selections, function(f)
-        Selection:UpdateVisuals(f)
-    end, function(f)
-        Lock:UpdateNativeFrameVisual(f)
-    end)
-end
+-- Legacy aliases for compatibility
+Frame.EnterComponentEdit = Frame.EnterCanvasMode
+Frame.ExitComponentEdit = Frame.ExitCanvasMode
+Frame.IsComponentEditActive = Frame.IsCanvasModeActive
+Frame.ToggleComponentEdit = Frame.ToggleCanvasMode
 
 -- [ PERSISTENCE API ]-------------------------------------------------------------------------------
 
@@ -220,15 +215,12 @@ end
 
 -- [ NATIVE FRAME INTEGRATION ]----------------------------------------------------------------------
 
--- Delegate native frame methods to FrameLock
-function Frame:HookNativeFrames()
-    EnsureModules()
-    Lock:HookNativeFrames()
-end
-
+-- Native frame visuals handled by CanvasMode if needed
 function Frame:UpdateNativeFrameVisual(systemFrame)
     EnsureModules()
-    Lock:UpdateNativeFrameVisual(systemFrame)
+    if CanvasMode and CanvasMode.UpdateNativeFrameVisual then
+        CanvasMode:UpdateNativeFrameVisual(systemFrame)
+    end
 end
 
 -- [ INITIALIZATION ]--------------------------------------------------------------------------------
@@ -254,37 +246,23 @@ if EditModeManagerFrame then
         end
     end)
 
-    -- Initialize FrameLock
-    if Engine.FrameLock then
-        Engine.FrameLock:Initialize()
+    -- Initialize CanvasMode
+    if Engine.CanvasMode then
+        Engine.CanvasMode:Initialize()
     end
-
-    -- Restore locks when Edit Mode opens
-    EditModeManagerFrame:HookScript("OnShow", function()
-        if Engine.FrameLock and Engine.FrameSelection then
-            Engine.FrameLock:RestoreLocks(Engine.FrameSelection.selections, function(f)
-                Engine.FrameSelection:UpdateVisuals(f)
-            end, function(f)
-                Engine.FrameLock:UpdateNativeFrameVisual(f)
-            end)
-        end
-    end)
 end
 
 -- [ PROPERTY ALIASES ]------------------------------------------------------------------------------
 
--- Expose anchor/lock tables through Frame module
+-- Expose anchor/canvas tables through Frame module
 setmetatable(Frame, {
     __index = function(t, k)
         if k == "anchors" then
             EnsureModules()
             return Anchor and Anchor.anchors or {}
-        elseif k == "locks" then
+        elseif k == "currentCanvasModeFrame" then
             EnsureModules()
-            return Lock and Lock.locks or {}
-        elseif k == "nativePositions" then
-            EnsureModules()
-            return Lock and Lock.nativePositions or {}
+            return CanvasMode and CanvasMode.currentFrame or nil
         elseif k == "dragCallbacks" then
             EnsureModules()
             return Selection and Selection.dragCallbacks or {}

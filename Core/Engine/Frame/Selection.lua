@@ -226,7 +226,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
 
     selection:SetScript("OnMouseUp", function(self, button)
         if button == "RightButton" then
-            Engine.FrameLock:ToggleLock(self.parent, function(f)
+            Engine.ComponentEdit:Toggle(self.parent, function(f)
                 Selection:UpdateVisuals(f)
             end)
         end
@@ -469,8 +469,20 @@ end
 
 function Selection:RefreshVisuals()
     -- 1. Update Orbit Selections
+    local showOrbit = true
+    if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowOrbitFrames == false then
+        showOrbit = false
+    end
+
     for frame, selection in pairs(self.selections) do
-        if selection:IsShown() then
+        if selection.isOrbitSelection then
+            if showOrbit then
+                self:UpdateVisuals(frame, selection)
+            else
+                selection:SetAlpha(0)
+                selection:EnableMouse(false)
+            end
+        else
             self:UpdateVisuals(frame, selection)
         end
     end
@@ -517,50 +529,53 @@ function Selection:UpdateVisuals(frame, selection)
         selection:SetScale(1)
     end
 
-    local isLocked = Engine.FrameLock:IsLocked(selection.parent)
-
-    if isLocked then
-        -- Locked: Grey Overlay
-        selection:ShowHighlighted()
-
-        if not selection.LockOverlay then
-            selection.LockOverlay = selection:CreateTexture(nil, "OVERLAY")
-            selection.LockOverlay:SetAllPoints()
-        end
-        local lc = Engine.Constants.Frame.LockColor
-        selection.LockOverlay:SetColorTexture(lc.r, lc.g, lc.b, 0.4)
-        selection.LockOverlay:Show()
-
+    -- Canvas Mode: Show green selection to indicate editable state
+    local isComponentEdit = Engine.ComponentEdit:IsActive(selection.parent)
+    if isComponentEdit then
+        -- Show selection with green tint for Canvas Mode
+        selection:Show()
+        selection:SetFrameStrata("HIGH")
+        
+        -- Green tint for canvas mode
         ForEachRegion(selection, function(region)
-            if region:IsObjectType("Texture") and region ~= selection.LockOverlay and not region.isAnchorLine then
-                region:SetAlpha(0)
+            if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
+                region:SetDesaturated(false)
+                region:SetVertexColor(0.3, 0.9, 0.3, 1)
+                region:SetAlpha(1)
             end
         end)
-
-        local inset = Engine.Constants.Frame.LockInset
-        if not selection.orbitInset then
-            selection:ClearAllPoints()
-            selection:SetPoint("TOPLEFT", selection.parent, "TOPLEFT", inset, -inset)
-            selection:SetPoint("BOTTOMRIGHT", selection.parent, "BOTTOMRIGHT", -inset, inset)
-            selection.orbitInset = true
+        
+        -- Hide label in canvas mode
+        if selection.Label then
+            selection.Label:Hide()
         end
+        
+        Selection:ShowAnchorLine(selection, nil)
+        return
+    end
 
-        local isAnchored = Engine.FrameAnchor:GetAnchorParent(selection.parent) ~= nil
-        if isAnchored then
-            local anchor = Engine.FrameAnchor.anchors[selection.parent]
-            if anchor and anchor.edge then
-                Selection:ShowAnchorLine(selection, GetOppositeEdge(anchor.edge))
-            end
-        else
-            Selection:ShowAnchorLine(selection, nil)
-        end
-    elseif selection.isSelected then
+    if selection.isSelected then
         -- Selected: Yellow
-        if selection.LockOverlay then
-            selection.LockOverlay:Hide()
+        if selection.ComponentEditOverlay then
+            selection.ComponentEditOverlay:Hide()
         end
+        if selection.CanvasBorderFrame then
+            selection.CanvasBorderFrame:Hide()
+        end
+        
+        -- Restore strata and mouse interaction
+        selection:SetFrameStrata("HIGH")
+        selection:EnableMouse(true)
+        
+        -- Show the label again
+        if selection.Label then
+            selection.Label:Show()
+        end
+        
         ForEachRegion(selection, function(region)
-            if region:IsObjectType("Texture") and region ~= selection.LockOverlay then
+            if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
+                region:SetDesaturated(false)
+                region:SetVertexColor(1, 1, 1, 1)  -- Reset to normal
                 region:SetAlpha(1)
             end
         end)
@@ -571,10 +586,11 @@ function Selection:UpdateVisuals(frame, selection)
             selection.Highlight:SetAlpha(1)
         end
 
-        if selection.orbitInset then
+        if selection.orbitInset or selection.orbitCanvasInset then
             selection:ClearAllPoints()
             selection:SetAllPoints(selection.parent)
             selection.orbitInset = nil
+            selection.orbitCanvasInset = nil
         end
 
         local isAnchored = Engine.FrameAnchor:GetAnchorParent(selection.parent) ~= nil
@@ -588,29 +604,56 @@ function Selection:UpdateVisuals(frame, selection)
         end
     elseif EditModeManagerFrame and EditModeManagerFrame:IsShown() then
         -- Edit Mode Active (not selected)
-        if selection.LockOverlay then
-            selection.LockOverlay:Hide()
+        if selection.ComponentEditOverlay then
+            selection.ComponentEditOverlay:Hide()
         end
+        if selection.CanvasBorderFrame then
+            selection.CanvasBorderFrame:Hide()
+        end
+        
+        -- Restore strata and mouse interaction
+        selection:SetFrameStrata("HIGH")
+        selection:EnableMouse(true)
+        
+        -- Show the label again
+        if selection.Label then
+            selection.Label:Show()
+        end
+        
         ForEachRegion(selection, function(region)
-            if region:IsObjectType("Texture") and region ~= selection.LockOverlay then
+            if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
                 region:SetAlpha(1)
             end
         end)
 
         selection:ShowHighlighted()
 
-        if selection.orbitInset then
+        if selection.orbitInset or selection.orbitCanvasInset then
             selection:ClearAllPoints()
             selection:SetAllPoints(selection.parent)
             selection.orbitInset = nil
+            selection.orbitCanvasInset = nil
         end
 
         local isAnchored = Engine.FrameAnchor:GetAnchorParent(selection.parent) ~= nil
 
         if isAnchored then
             if selection.isOrbitSelection then
-                local c = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.EditModeColor or Engine.Constants.Frame.EditModeColor
-                TintSelection(selection, c.r, c.g, c.b, true)
+                local showOrbit = true
+                if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowOrbitFrames == false then
+                    showOrbit = false
+                end
+
+                if showOrbit then
+                    local c = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.EditModeColor or Engine.Constants.Frame.EditModeColor
+                    TintSelection(selection, c.r, c.g, c.b, true)
+                    selection:SetAlpha(1)
+                    selection:EnableMouse(true)
+                else
+                    selection:SetAlpha(0)
+                    selection:EnableMouse(false)
+                    return
+                end
             else
                 local showNative = true
                 if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowBlizzardFrames == false then
@@ -634,8 +677,21 @@ function Selection:UpdateVisuals(frame, selection)
             end
         else
             if selection.isOrbitSelection then
-                local c = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.EditModeColor or Engine.Constants.Frame.EditModeColor
-                TintSelection(selection, c.r, c.g, c.b, true)
+                local showOrbit = true
+                if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowOrbitFrames == false then
+                    showOrbit = false
+                end
+
+                if showOrbit then
+                    local c = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.EditModeColor or Engine.Constants.Frame.EditModeColor
+                    TintSelection(selection, c.r, c.g, c.b, true)
+                    selection:SetAlpha(1)
+                    selection:EnableMouse(true)
+                else
+                    selection:SetAlpha(0)
+                    selection:EnableMouse(false)
+                    return
+                end
             else
                 local showNative = true
                 if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowBlizzardFrames == false then
