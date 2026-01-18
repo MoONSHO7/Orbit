@@ -203,14 +203,15 @@ local function CalculateAnchor(posX, posY, halfW, halfH)
     local anchorY, offsetY
     local isOutsideRight = posX > halfW
     local isOutsideLeft = posX < -halfW
+    local CENTER_THRESHOLD = 10  -- Within 10px of center = CENTER anchor
     
-    -- X axis: anchor to nearest horizontal edge
-    if posX > 0 then
+    -- X axis: anchor to nearest horizontal edge (with center threshold)
+    if posX > CENTER_THRESHOLD then
         anchorX = "RIGHT"
         offsetX = halfW - posX  -- distance from right edge (negative if outside)
         -- Inside: text grows LEFT (toward center), Outside: text grows RIGHT (away)
         justifyH = isOutsideRight and "LEFT" or "RIGHT"
-    elseif posX < 0 then
+    elseif posX < -CENTER_THRESHOLD then
         anchorX = "LEFT"
         offsetX = halfW + posX  -- distance from left edge (negative if outside)
         -- Inside: text grows RIGHT (toward center), Outside: text grows LEFT (away)
@@ -221,11 +222,11 @@ local function CalculateAnchor(posX, posY, halfW, halfH)
         justifyH = "CENTER"
     end
     
-    -- Y axis: anchor to nearest vertical edge
-    if posY > 0 then
+    -- Y axis: anchor to nearest vertical edge (with center threshold)
+    if posY > CENTER_THRESHOLD then
         anchorY = "TOP"
         offsetY = halfH - posY  -- distance from top edge
-    elseif posY < 0 then
+    elseif posY < -CENTER_THRESHOLD then
         anchorY = "BOTTOM"
         offsetY = halfH + posY  -- distance from bottom edge
     else
@@ -260,73 +261,79 @@ end
 -- NUDGE COMPONENT
 -------------------------------------------------
 function Dialog:NudgeComponent(container, direction)
-    print("[NudgeComponent] CALLED! direction=" .. direction)
     if not container or not self.previewFrame then return end
     
     local preview = self.previewFrame
-    local nudgeAmount = 1 -- 1px nudge for precision
+    local NUDGE = 1 -- 1px nudge for fine-tuning
     
-    -- Get current position as center-relative offset
-    local posX = container.posX or 0
-    local posY = container.posY or 0
+    -- Get current anchor and offset (preserve these, don't recalculate)
+    local anchorX = container.anchorX or "CENTER"
+    local anchorY = container.anchorY or "CENTER"
+    local offsetX = container.offsetX or 0
+    local offsetY = container.offsetY or 0
+    local justifyH = container.justifyH or "CENTER"
     
-    -- Apply direction
-    if direction == "UP" then
-        posY = posY + nudgeAmount
-    elseif direction == "DOWN" then
-        posY = posY - nudgeAmount
-    elseif direction == "LEFT" then
-        posX = posX - nudgeAmount
+    -- Adjust offset based on direction
+    -- For LEFT/RIGHT anchor, offsetX is distance from that edge (positive = inside)
+    -- For TOP/BOTTOM anchor, offsetY is distance from that edge (positive = inside)
+    if direction == "LEFT" then
+        if anchorX == "LEFT" then
+            offsetX = offsetX - NUDGE  -- Move toward left edge
+        elseif anchorX == "RIGHT" then
+            offsetX = offsetX + NUDGE  -- Move away from right edge
+        else
+            container.posX = (container.posX or 0) - NUDGE
+        end
     elseif direction == "RIGHT" then
-        posX = posX + nudgeAmount
+        if anchorX == "LEFT" then
+            offsetX = offsetX + NUDGE  -- Move away from left edge
+        elseif anchorX == "RIGHT" then
+            offsetX = offsetX - NUDGE  -- Move toward right edge
+        else
+            container.posX = (container.posX or 0) + NUDGE
+        end
+    elseif direction == "UP" then
+        if anchorY == "TOP" then
+            offsetY = offsetY - NUDGE  -- Move toward top edge
+        elseif anchorY == "BOTTOM" then
+            offsetY = offsetY + NUDGE  -- Move away from bottom edge
+        else
+            container.posY = (container.posY or 0) + NUDGE
+        end
+    elseif direction == "DOWN" then
+        if anchorY == "TOP" then
+            offsetY = offsetY + NUDGE  -- Move away from top edge
+        elseif anchorY == "BOTTOM" then
+            offsetY = offsetY - NUDGE  -- Move toward bottom edge
+        else
+            container.posY = (container.posY or 0) - NUDGE
+        end
     end
     
-    -- Store center-relative position
-    container.posX = posX
-    container.posY = posY
-    
-    -- Calculate anchor data for display and saving
-    local halfW = preview.sourceWidth / 2
-    local halfH = preview.sourceHeight / 2
-    local anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchor(posX, posY, halfW, halfH)
-    
-    -- Store anchor data on container for Apply
-    container.anchorX = anchorX
-    container.anchorY = anchorY
+    -- Store updated offset (anchor stays the same)
     container.offsetX = offsetX
     container.offsetY = offsetY
-    container.justifyH = justifyH
     
-    -- Build anchor point for preview (matches real frame logic)
+    -- Reposition the container
     local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
-    
-    -- Calculate final offset with sign adjustment for anchor direction
     local finalX = offsetX * PREVIEW_SCALE
     local finalY = offsetY * PREVIEW_SCALE
     if anchorX == "RIGHT" then finalX = -finalX end
     if anchorY == "TOP" then finalY = -finalY end
     
-    -- Position container to match real frame anchoring
     container:ClearAllPoints()
     if container.isFontString and justifyH ~= "CENTER" then
-        -- FontStrings with LEFT/RIGHT justification: anchor by that edge
         container:SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
     else
-        -- CENTER justified or non-FontStrings: anchor by CENTER
         container:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
     end
     
-    -- Update text alignment in preview
-    if container.visual and container.isFontString then
-        ApplyTextAlignment(container, container.visual, justifyH)
-    end
-    
-    -- Show enhanced tooltip with anchor + justify + center + edge coords
+    -- Show tooltip with updated values
     if OrbitEngine.SelectionTooltip then
         OrbitEngine.SelectionTooltip:ShowComponentPosition(
             container, container.key,
             anchorX, anchorY,
-            posX, posY,
+            container.posX or 0, container.posY or 0,
             offsetX, offsetY,
             justifyH
         )
@@ -566,200 +573,142 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         ApplyTextAlignment(container, visual, justifyH)
     end
     
-    -- Drag handlers
+    -- Drag handlers with manual mouse tracking for live anchor updating
     container:SetScript("OnDragStart", function(self)
         if InCombatLockdown() then return end
-        self:StartMoving()
+        -- Store initial mouse position and frame center for offset tracking
+        local mx, my = GetCursorPosition()
+        local scale = UIParent:GetEffectiveScale()
+        self.dragStartMouseX = mx / scale
+        self.dragStartMouseY = my / scale
+        self.dragStartCenterX, self.dragStartCenterY = self:GetCenter()
         self.isDragging = true
         self.border:SetColorTexture(0.3, 0.8, 0.3, 0.3)
     end)
     
     container:SetScript("OnUpdate", function(self)
         if self.isDragging then
-            -- Clamp to preview bounds with 50px padding to allow positioning slightly outside
-            local CLAMP_PADDING = 50
-            local left = self:GetLeft()
-            local right = self:GetRight()
-            local top = self:GetTop()
-            local bottom = self:GetBottom()
-            local pLeft = preview:GetLeft() - CLAMP_PADDING
-            local pRight = preview:GetRight() + CLAMP_PADDING
-            local pTop = preview:GetTop() + CLAMP_PADDING
-            local pBottom = preview:GetBottom() - CLAMP_PADDING
+            local halfW = preview.sourceWidth / 2
+            local halfH = preview.sourceHeight / 2
             
-            if left and pLeft then
-                local clampX, clampY = 0, 0
-                
-                -- Horizontal clamping
-                if left < pLeft then
-                    clampX = pLeft - left
-                elseif right > pRight then
-                    clampX = pRight - right
-                end
-                
-                -- Vertical clamping
-                if bottom < pBottom then
-                    clampY = pBottom - bottom
-                elseif top > pTop then
-                    clampY = pTop - top
-                end
-                
-                -- Apply clamp if needed
-                if clampX ~= 0 or clampY ~= 0 then
-                    self:AdjustPointsOffset(clampX, clampY)
+            -- Get current mouse position
+            local mx, my = GetCursorPosition()
+            local scale = UIParent:GetEffectiveScale()
+            mx = mx / scale
+            my = my / scale
+            
+            -- Calculate new center based on mouse delta
+            local deltaX = mx - self.dragStartMouseX
+            local deltaY = my - self.dragStartMouseY
+            local newCenterX = self.dragStartCenterX + deltaX
+            local newCenterY = self.dragStartCenterY + deltaY
+            
+            -- Clamp to preview bounds with padding (X=100px, Y=50px)
+            local CLAMP_PADDING_X = 100
+            local CLAMP_PADDING_Y = 50
+            local containerW = self:GetWidth()
+            local containerH = self:GetHeight()
+            local pLeft = preview:GetLeft() - CLAMP_PADDING_X + containerW / 2
+            local pRight = preview:GetRight() + CLAMP_PADDING_X - containerW / 2
+            local pBottom = preview:GetBottom() - CLAMP_PADDING_Y + containerH / 2
+            local pTop = preview:GetTop() + CLAMP_PADDING_Y - containerH / 2
+            
+            newCenterX = math.max(pLeft, math.min(pRight, newCenterX))
+            newCenterY = math.max(pBottom, math.min(pTop, newCenterY))
+            
+            -- Calculate center-relative position (in logical/unscaled pixels)
+            local previewCenterX = preview:GetLeft() + preview:GetWidth() / 2
+            local previewCenterY = preview:GetBottom() + preview:GetHeight() / 2
+            local centerRelX = (newCenterX - previewCenterX) / PREVIEW_SCALE
+            local centerRelY = (newCenterY - previewCenterY) / PREVIEW_SCALE
+            
+            -- Calculate anchor data using CalculateAnchor (includes CENTER_THRESHOLD)
+            local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(centerRelX, centerRelY, halfW, halfH)
+            
+            -- For FontStrings, recalculate edge offset from actual edge position
+            if self.isFontString then
+                if anchorX == "LEFT" then
+                    -- Distance from preview LEFT to container LEFT
+                    local containerLeft = newCenterX - containerW / 2
+                    edgeOffX = (containerLeft - preview:GetLeft()) / PREVIEW_SCALE
+                    justifyH = "LEFT"
+                elseif anchorX == "RIGHT" then
+                    -- Distance from container RIGHT to preview RIGHT
+                    local containerRight = newCenterX + containerW / 2
+                    edgeOffX = (preview:GetRight() - containerRight) / PREVIEW_SCALE
+                    justifyH = "RIGHT"
+                else
+                    edgeOffX = 0
+                    justifyH = "CENTER"
                 end
             end
             
-            -- Calculate position for tooltip
-            local centerX, centerY = self:GetCenter()
-            local parentX, parentY = preview:GetCenter()
+            -- Build anchor point and position the container with proper anchoring
+            local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
+            local finalX = edgeOffX * PREVIEW_SCALE
+            local finalY = edgeOffY * PREVIEW_SCALE
+            if anchorX == "RIGHT" then finalX = -finalX end
+            if anchorY == "TOP" then finalY = -finalY end
             
-            if centerX and parentX then
-                -- Calculate offset relative to center, unscaled (Logical Pixels)
-                local x = (centerX - parentX) / PREVIEW_SCALE
-                local y = (centerY - parentY) / PREVIEW_SCALE
-                
-                -- Calculate anchor data for tooltip
-                local halfW = preview.sourceWidth / 2
-                local halfH = preview.sourceHeight / 2
-                local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(x, y, halfW, halfH)
-                
-                if OrbitEngine.SelectionTooltip then
-                    OrbitEngine.SelectionTooltip:ShowComponentPosition(
-                        self, key,
-                        anchorX, anchorY,
-                        x, y,
-                        edgeOffX, edgeOffY,
-                        justifyH
-                    )
-                end
+            self:ClearAllPoints()
+            if self.isFontString and justifyH ~= "CENTER" then
+                self:SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
+            else
+                self:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
+            end
+            
+            -- Update text alignment
+            if self.visual and self.isFontString then
+                ApplyTextAlignment(self, self.visual, justifyH)
+            end
+            
+            -- Store current values for OnDragStop
+            self.anchorX = anchorX
+            self.anchorY = anchorY
+            self.offsetX = edgeOffX
+            self.offsetY = edgeOffY
+            self.justifyH = justifyH
+            self.posX = centerRelX
+            self.posY = centerRelY
+            
+            -- Show tooltip with live anchor info
+            if OrbitEngine.SelectionTooltip then
+                OrbitEngine.SelectionTooltip:ShowComponentPosition(
+                    self, key,
+                    anchorX, anchorY,
+                    centerRelX, centerRelY,
+                    edgeOffX, edgeOffY,
+                    justifyH
+                )
             end
         end
     end)
     
     container:SetScript("OnDragStop", function(self)
         print("[OnDragStop] " .. key .. " FIRED!")
-        self:StopMovingOrSizing()
         self.isDragging = false
         self.border:SetColorTexture(0.3, 0.8, 0.3, 0)
         
-        local halfW = preview.sourceWidth / 2
-        local halfH = preview.sourceHeight / 2
-        
-        -- Get container's CENTER position to determine which side of frame it's on
-        local previewCenterX = preview:GetLeft() + preview:GetWidth() / 2
-        local previewCenterY = preview:GetBottom() + preview:GetHeight() / 2
-        local selfCenterX = self:GetLeft() + self:GetWidth() / 2
-        local selfCenterY = self:GetBottom() + self:GetHeight() / 2
-        
-        -- Center-relative position (in logical/unscaled pixels)
-        local centerRelX = (selfCenterX - previewCenterX) / PREVIEW_SCALE
-        local centerRelY = (selfCenterY - previewCenterY) / PREVIEW_SCALE
-        
-        -- Determine anchor side based on center position
-        local anchorX, anchorY, offsetX, offsetY, justifyH
-        
-        -- X axis anchor
-        if centerRelX > 0 then
-            anchorX = "RIGHT"
-        elseif centerRelX < 0 then
-            anchorX = "LEFT"
-        else
-            anchorX = "CENTER"
-        end
-        
-        -- Y axis anchor  
-        if centerRelY > 0 then
-            anchorY = "TOP"
-        elseif centerRelY < 0 then
-            anchorY = "BOTTOM"
-        else
-            anchorY = "CENTER"
-        end
-        
-        -- For FontStrings, calculate offsetX from the EDGE that matches the anchor side
-        -- This is the key fix - don't use CalculateAnchor's center-to-edge math
-        if self.isFontString then
-            if anchorX == "LEFT" then
-                -- Distance from preview LEFT edge to container LEFT edge
-                offsetX = (self:GetLeft() - preview:GetLeft()) / PREVIEW_SCALE
-                justifyH = "LEFT"
-            elseif anchorX == "RIGHT" then
-                -- Distance from container RIGHT edge to preview RIGHT edge
-                offsetX = (preview:GetRight() - self:GetRight()) / PREVIEW_SCALE
-                justifyH = "RIGHT"
-            else
-                offsetX = 0
-                justifyH = "CENTER"
-            end
-        else
-            -- Non-FontStrings: use CalculateAnchor's center-based calculation
-            local _, _, calcOffX, _, calcJustify = CalculateAnchor(centerRelX, centerRelY, halfW, halfH)
-            offsetX = calcOffX
-            justifyH = calcJustify
-        end
-        
-        -- Y offset is always from center
-        if anchorY == "TOP" then
-            offsetY = halfH - centerRelY
-        elseif anchorY == "BOTTOM" then
-            offsetY = halfH + centerRelY
-        else
-            offsetY = 0
-        end
-        
-        -- Snap to 5px grid
+        -- Snap offsets to 5px grid (values were already set during OnUpdate)
         local SNAP = 5
-        offsetX = math.floor(offsetX / SNAP + 0.5) * SNAP
-        offsetY = math.floor(offsetY / SNAP + 0.5) * SNAP
+        self.offsetX = math.floor((self.offsetX or 0) / SNAP + 0.5) * SNAP
+        self.offsetY = math.floor((self.offsetY or 0) / SNAP + 0.5) * SNAP
         
-        -- Store center-relative position for nudging
-        self.posX = centerRelX
-        self.posY = centerRelY
+        -- Re-apply final position with snapped values
+        local anchorPoint = BuildAnchorPoint(self.anchorX or "CENTER", self.anchorY or "CENTER")
+        local finalX = self.offsetX * PREVIEW_SCALE
+        local finalY = self.offsetY * PREVIEW_SCALE
+        if self.anchorX == "RIGHT" then finalX = -finalX end
+        if self.anchorY == "TOP" then finalY = -finalY end
         
-        -- Store anchor data on container for Apply
-        self.anchorX = anchorX
-        self.anchorY = anchorY
-        self.offsetX = offsetX
-        self.offsetY = offsetY
-        self.justifyH = justifyH
-        
-        print("[OnDragStop] Calculated: anchorX=" .. tostring(anchorX) .. " offsetX=" .. tostring(offsetX) .. " justifyH=" .. tostring(justifyH))
-        
-        -- Build anchor point for preview (matches real frame logic)
-        local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
-        
-        -- Calculate final offset with sign adjustment for anchor direction
-        local finalX = offsetX * PREVIEW_SCALE
-        local finalY = offsetY * PREVIEW_SCALE
-        if anchorX == "RIGHT" then finalX = -finalX end
-        if anchorY == "TOP" then finalY = -finalY end
-        
-        -- Position container to match real frame anchoring
         self:ClearAllPoints()
-        if self.isFontString and justifyH ~= "CENTER" then
-            -- FontStrings with LEFT/RIGHT justification: anchor by that edge
-            self:SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
+        if self.isFontString and self.justifyH and self.justifyH ~= "CENTER" then
+            self:SetPoint(self.justifyH, preview, anchorPoint, finalX, finalY)
         else
-            -- CENTER justified or non-FontStrings: anchor by CENTER
             self:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
         end
         
-        -- Update text alignment in preview
-        if self.visual and self.isFontString then
-            ApplyTextAlignment(self, self.visual, justifyH)
-        end
-        
-        -- Show enhanced tooltip with anchor + justify + center + edge coords
-        if OrbitEngine.SelectionTooltip then
-            OrbitEngine.SelectionTooltip:ShowComponentPosition(
-                self, key,
-                anchorX, anchorY,
-                posX, posY,
-                offsetX, offsetY,
-                justifyH
-            )
-        end
+        print("[OnDragStop] Final: anchorX=" .. tostring(self.anchorX) .. " offsetX=" .. tostring(self.offsetX) .. " justifyH=" .. tostring(self.justifyH))
     end)
     
     -- Hover effects + nudge tracking
@@ -929,12 +878,12 @@ function Dialog:Open(frame, plugin, systemIndex)
         self.previewComponents[key] = comp
     end
     
-    -- Size dialog based on preview
-    local previewWidth = self.previewFrame:GetWidth()
-    local previewHeight = self.previewFrame:GetHeight()
-    local dialogWidth = math.max(DIALOG_WIDTH, previewWidth + (PREVIEW_PADDING * 2) + 40)
-    local dialogHeight = previewHeight + TITLE_HEIGHT + FOOTER_HEIGHT + 40
-    self:SetSize(dialogWidth, math.max(DIALOG_MIN_HEIGHT, dialogHeight))
+    -- Size dialog based on source frame (height + 200px, width + 400px)
+    local frameWidth = frame:GetWidth()
+    local frameHeight = frame:GetHeight()
+    local dialogWidth = math.max(DIALOG_WIDTH, (frameWidth * PREVIEW_SCALE) + 400)
+    local dialogHeight = math.max(DIALOG_MIN_HEIGHT, (frameHeight * PREVIEW_SCALE) + 200)
+    self:SetSize(dialogWidth, dialogHeight)
     
     -- Layout footer buttons to stretch across dialog width
     self:LayoutFooterButtons()
