@@ -57,6 +57,27 @@ function Layout:RecycleControls(controls)
                 control.Slider:UnregisterCallback("OnValueChanged", control)
             end
             control.OnOrbitChange = nil
+
+            -- MEMORY LEAK FIX: Clean up slider scripts to prevent stale callbacks
+            if control.Slider then
+                -- Clear innerSlider OnMouseUp
+                local innerSlider = control.Slider.Slider
+                if innerSlider then
+                    innerSlider:SetScript("OnMouseUp", nil)
+                end
+
+                -- NOTE: Stepper buttons (Back/Forward) use flag-guarded HookScript
+                -- They are hooked once permanently, so we don't clear their scripts.
+                -- The hook checks frame.OnOrbitChange which we nil above, so stale
+                -- callbacks become no-ops.
+            end
+
+            -- Cancel any pending stepper timer
+            if control._stepperTimer then
+                control._stepperTimer:Cancel()
+                control._stepperTimer = nil
+            end
+
             table.insert(self.sliderPool, control)
         elseif control.OrbitType == "Dropdown" then
             table.insert(self.dropdownPool, control)

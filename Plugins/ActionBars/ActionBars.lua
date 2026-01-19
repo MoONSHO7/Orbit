@@ -168,6 +168,36 @@ function Plugin:AddSettings(dialog, systemFrame)
         controls = {},
     }
 
+    -- Master Control: # Action Bars (only on Bar 1)
+    -- This structural setting controls visibility of bars 2-8
+    -- Stored per-profile in Action Bar 1 settings
+    if systemIndex == 1 then
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "NumActionBars", -- Per-profile setting stored in Action Bar 1 config
+            label = "|cFFFFD100# Action Bars|r", -- Gold text to indicate structural setting
+            default = 4,
+            min = 2,
+            max = 8,
+            step = 1,
+            updateOnRelease = true, -- Prevent heavy updates during drag
+            -- PERFORMANCE: Change detection + targeted refresh (only Action Bars)
+            onChange = function(val)
+                -- Change Detection: Skip if value unchanged
+                local current = Plugin:GetSetting(1, "NumActionBars") or 4
+                if current == val then
+                    return
+                end
+
+                -- Store the value in per-profile plugin settings
+                Plugin:SetSetting(1, "NumActionBars", val)
+
+                -- Targeted refresh: Only Action Bars plugin
+                Plugin:ApplyAll()
+            end,
+        })
+    end
+
     -- 1. Scale
     WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
         key = "Scale",
@@ -788,10 +818,10 @@ function Plugin:ApplySettings(frame)
         return
     end
 
-    -- Check Enabled setting (Global Slider for bars 1-8)
+    -- Check Enabled setting (Per-profile slider on Bar 1 controls bars 1-8)
     local enabled = true
     if index <= 8 then
-        local numBars = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.NumActionBars or 8
+        local numBars = self:GetSetting(1, "NumActionBars") or 4
         if index > numBars then
             enabled = false
         end

@@ -221,7 +221,7 @@ function Orbit:OnLoad()
         BorderSize = 2,
         TextScale = "Medium",
         BackdropColour = { r = 0.145, g = 0.145, b = 0.145, a = 0.7 },
-        NumActionBars = 4,
+        -- Note: NumActionBars is now per-profile, stored in Action Bar 1 settings
     }
     for k, v in pairs(globalDefaults) do
         if self.db.GlobalSettings[k] == nil then
