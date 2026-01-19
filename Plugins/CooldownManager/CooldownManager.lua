@@ -240,6 +240,11 @@ function Plugin:CreateAnchor(name, systemIndex, label)
         end
     end
 
+    -- Callback for when anchor state changes - refresh layout to update growth direction
+    frame.OnAnchorChanged = function(self, parent, edge, padding)
+        Plugin:ProcessChildren(self)
+    end
+
     self:ApplySettings(frame)
     return frame
 end
@@ -872,25 +877,26 @@ end
 
 function Plugin:GetGrowthDirection(anchorFrame)
     if not anchorFrame then
-        return "UP"
+        return "DOWN"
     end
 
     local Engine = Orbit.Engine
     local anchorInfo = Engine.FrameAnchor and Engine.FrameAnchor.anchors[anchorFrame]
 
     if not anchorInfo then
-        -- Unanchored: Default to UP
-        return "UP"
-    end
-
-    local edge = anchorInfo.edge
-    -- If anchored to the BOTTOM of parent, we are below it, so grow DOWN
-    if edge == "BOTTOM" then
+        -- Unanchored: Default to DOWN (icons grow downward from the anchor point)
         return "DOWN"
     end
 
-    -- Default/TOP: Grow UP
-    return "UP"
+    local edge = anchorInfo.edge
+    
+    -- If anchored to the TOP of parent, we are above it, so grow UP (away from parent)
+    if edge == "TOP" then
+        return "UP"
+    end
+
+    -- All other edges (BOTTOM, LEFT, RIGHT) or unknown: Grow DOWN
+    return "DOWN"
 end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
