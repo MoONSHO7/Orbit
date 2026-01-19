@@ -203,11 +203,11 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("UNIT_LEVEL")
     self.frame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
 
-    -- Create a HIGH strata container for overlays (Level, EliteIcon) so they render above all frame content
+    -- Create overlay container for Level/EliteIcon (use frame level, not strata, to avoid appearing above UI dialogs)
     if not self.frame.OverlayFrame then
         self.frame.OverlayFrame = CreateFrame("Frame", nil, self.frame)
         self.frame.OverlayFrame:SetAllPoints()
-        self.frame.OverlayFrame:SetFrameStrata("HIGH")
+        self.frame.OverlayFrame:SetFrameLevel(self.frame:GetFrameLevel() + 20)
     end
 
     -- Create LevelText (on overlay frame so it stays above health bars)

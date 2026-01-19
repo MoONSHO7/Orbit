@@ -101,7 +101,7 @@ local function GetGlobalSchema()
 
     table.insert(controls, {
         type = "description",
-        text = "|cFFFFD100Right Click:|r Lock an Edit Mode frame. (Can't be moved or anchored to)\n\n|cFFFFD100Anchor:|r Drag a frame to the edge of another frame to anchor it.\n\n|cFFFFD100Mouse Wheel:|r Scroll up and down on an anchored frame to adjust spacing between itself and its parent.",
+        text = "|cFFFFD100Right Click:|r Open Canvas Mode\n\n|cFFFFD100Anchor:|r Drag a frame to the edge of another frame to anchor it.\n\n|cFFFFD100Mouse Wheel:|r Scroll up and down on an anchored frame to adjust spacing between itself and its parent.",
     })
 
     return {

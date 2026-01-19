@@ -274,9 +274,9 @@ function FrameFactory:AddText(frame, opts)
     local y = opts.y or 0
 
     if opts.useOverlay then
+        -- Create overlay for text (use frame level only, not strata, to avoid appearing above UI dialogs)
         local overlay = CreateFrame("Frame", nil, frame)
         overlay:SetAllPoints()
-        overlay:SetFrameStrata("HIGH")
         overlay:SetFrameLevel(frame:GetFrameLevel() + 20)
         frame.Overlay = overlay
 

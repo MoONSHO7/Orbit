@@ -79,12 +79,11 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
     end
     icon.cooldown = icon.Cooldown
 
-    -- Overlay (High strata for stack count)
+    -- Overlay for stack count (use frame level, not strata, to avoid appearing above UI dialogs)
     if not icon.Overlay then
         icon.Overlay = CreateFrame("Frame", nil, icon)
         icon.Overlay:SetAllPoints()
-        icon.Overlay:SetFrameStrata("DIALOG")
-        icon.Overlay:SetFrameLevel(icon:GetFrameLevel() + 50)
+        icon.Overlay:SetFrameLevel(icon:GetFrameLevel() + 10)
     end
 
     -- Stack count - use global font settings
