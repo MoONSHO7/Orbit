@@ -221,7 +221,7 @@ function Orbit:OnLoad()
         BorderSize = 2,
         TextScale = "Medium",
         BackdropColour = { r = 0.145, g = 0.145, b = 0.145, a = 0.7 },
-        NumActionBars = 4,
+        -- Note: NumActionBars is now per-profile, stored in Action Bar 1 settings
     }
     for k, v in pairs(globalDefaults) do
         if self.db.GlobalSettings[k] == nil then
@@ -274,6 +274,11 @@ function Orbit:SetPluginEnabled(name, enabled)
         self.runtime.DisabledPlugins = {}
     end
     self.runtime.DisabledPlugins[name] = not enabled
+
+    -- Notify subscribers so subordinate plugins can react
+    if self.EventBus then
+        self.EventBus:Fire("ORBIT_PLUGIN_STATE_CHANGED", name, enabled)
+    end
 end
 
 -- [ EVENT HANDLERS ]--------------------------------------------------------------------------------

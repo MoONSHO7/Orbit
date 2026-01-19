@@ -247,6 +247,15 @@ function Config:RenderControl(container, systemFrame, plugin, systemIndex, def)
     local default = def.default
 
     local function GetVal()
+        -- Support custom getValue for controls that read from non-standard sources
+        if def.getValue then
+            local val = def.getValue()
+            if val == nil then
+                return default
+            end
+            return val
+        end
+
         local val = plugin:GetSetting(systemIndex, key)
         if val == nil then
             return default

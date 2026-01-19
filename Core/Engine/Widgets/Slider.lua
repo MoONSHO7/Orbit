@@ -38,10 +38,23 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
     frame.OnOrbitChange = callback
 
     if frame.Slider then
+        -- CRITICAL FIX: Unregister existing callback before registering to prevent accumulation
+        if frame._callbackRegistered then
+            frame.Slider:UnregisterCallback("OnValueChanged", frame)
+        end
+
+        -- Use initialization guard to prevent onChange firing during Slider:Init()
+        frame._isInitializing = true
+
         -- Register value change listener
         frame.Slider:RegisterCallback("OnValueChanged", function(_, value)
             if frame.Value and frame.valueFormatter then
                 frame.Value:SetText(frame.valueFormatter(value))
+            end
+
+            -- CRITICAL: Skip callback during initialization (Init fires OnValueChanged)
+            if frame._isInitializing then
+                return
             end
 
             -- If updateOnRelease is enabled, skip callback here
@@ -53,11 +66,15 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
                 frame.OnOrbitChange(value)
             end
         end, frame)
+        frame._callbackRegistered = true
 
-        -- Initialize slider
+        -- Initialize slider (this fires OnValueChanged, but guard prevents onChange)
         local steps = (max - min) / step
         local startValue = initialValue or min
         frame.Slider:Init(startValue, min, max, steps, {})
+
+        -- Clear initialization guard AFTER Init completes
+        frame._isInitializing = false
 
         -- Handle Release for deferred updates
         local innerSlider = frame.Slider.Slider
@@ -82,26 +99,38 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
         end
 
         -- Handle stepper buttons (Back/Forward)
-        if options and options.updateOnRelease then
-            local back = frame.Back or (frame.Slider and frame.Slider.Back)
-            local forward = frame.Forward or (frame.Slider and frame.Slider.Forward)
+        -- FIX: Use HookScript with a flag guard to prevent hook accumulation on pooled sliders
+        -- We can't use SetScript because it overwrites Blizzard's native increment/decrement handler
+        local back = frame.Back or (frame.Slider and frame.Slider.Back)
+        local forward = frame.Forward or (frame.Slider and frame.Slider.Forward)
 
-            if back then
-                back:HookScript("OnClick", function()
-                    local val = innerSlider and innerSlider:GetValue() or 0
-                    if frame.OnOrbitChange then
-                        frame.OnOrbitChange(val)
+        if options and options.updateOnRelease then
+            -- Create debounced stepper callback to prevent rapid-click spam
+            local function createStepperCallback()
+                return function()
+                    -- Cancel any pending stepper timer
+                    if frame._stepperTimer then
+                        frame._stepperTimer:Cancel()
                     end
-                end)
+                    -- Debounce: Wait 100ms before applying (coalesces rapid clicks)
+                    frame._stepperTimer = C_Timer.NewTimer(0.1, function()
+                        frame._stepperTimer = nil
+                        local val = innerSlider and innerSlider:GetValue() or 0
+                        if frame.OnOrbitChange then
+                            frame.OnOrbitChange(val)
+                        end
+                    end)
+                end
             end
 
-            if forward then
-                forward:HookScript("OnClick", function()
-                    local val = innerSlider and innerSlider:GetValue() or 0
-                    if frame.OnOrbitChange then
-                        frame.OnOrbitChange(val)
-                    end
-                end)
+            -- Hook only once per button (use flag to prevent accumulation on pool reuse)
+            if back and not back._orbitHooked then
+                back:HookScript("OnClick", createStepperCallback())
+                back._orbitHooked = true
+            end
+            if forward and not forward._orbitHooked then
+                forward:HookScript("OnClick", createStepperCallback())
+                forward._orbitHooked = true
             end
         end
 

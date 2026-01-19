@@ -122,6 +122,15 @@ function Plugin:OnLoad()
     -- Register standard events (Handle PEW, EditMode -> ApplySettings)
     self:RegisterStandardEvents()
 
+    -- Listen for master plugin state changes (PlayerFrame enabled/disabled via Addon Manager)
+    if Orbit.EventBus then
+        Orbit.EventBus:On("ORBIT_PLUGIN_STATE_CHANGED", function(pluginName, enabled)
+            if pluginName == "Player Frame" then
+                self:UpdateVisibility()
+            end
+        end)
+    end
+
     -- Create frame ONLY when plugin is enabled (OnLoad is only called for enabled plugins)
     Frame = OrbitEngine.FrameFactory:CreateButtonContainer("PlayerResources", self, {
         width = Orbit.Constants.PlayerResources.DefaultWidth,
@@ -274,7 +283,16 @@ function Plugin:ApplySettings()
 
     local systemIndex = SYSTEM_INDEX
 
-    -- Visibility
+    -- 1. Master Status (Highest priority - affects Edit Mode)
+    -- If disabled via PlayerFrame toggle, hide completely including Edit Mode
+    if not self:IsEnabled() then
+        Frame:Hide()
+        Frame.orbitDisabled = true
+        return
+    end
+    Frame.orbitDisabled = false
+
+    -- 2. Local Preference (Bypassed in Edit Mode for preview)
     local hidden = self:GetSetting(systemIndex, "Hidden")
     local isEditMode = EditModeManagerFrame
         and EditModeManagerFrame.IsEditModeActive
@@ -468,6 +486,12 @@ end
 
 -- [ VISIBILITY ]-------------------------------------------------------------------------------------
 function Plugin:IsEnabled()
+    -- Standalone Mode: If PlayerFrame plugin is disabled via Addon Manager, ResourceFrame remains independent
+    -- Note: Use display name "Player Frame", not system ID "Orbit_PlayerFrame"
+    if Orbit.IsPluginEnabled and not Orbit:IsPluginEnabled("Player Frame") then
+        return true
+    end
+
     -- Read EnablePlayerResource setting from PlayerFrame plugin
     local playerPlugin = Orbit:GetPlugin("Orbit_PlayerFrame")
     local pfIndex = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Player) or 1
@@ -480,7 +504,7 @@ function Plugin:IsEnabled()
         return enabled == true
     end
 
-    -- Fallback to DB check if plugin not ready? Match PlayerPower logic which relies on Plugin availability
+    -- Fallback: plugin not ready or doesn't exist, default to enabled
     return true
 end
 

@@ -97,22 +97,7 @@ local function GetGlobalSchema()
             step = 1,
             updateOnRelease = true, -- Prevent heavy updates during drag
         },
-        -- Conditional Slider for Action Bars will be inserted here
     }
-
-    -- Conditional Slider for Action Bars
-    if Orbit:IsPluginEnabled("Action Bars") then
-        table.insert(controls, {
-            type = "slider",
-            key = "NumActionBars",
-            label = "# Action Bars",
-            default = 8,
-            min = 2,
-            max = 8,
-            step = 1,
-            updateOnRelease = true, -- Prevent heavy updates during drag
-        })
-    end
 
     table.insert(controls, {
         type = "description",
