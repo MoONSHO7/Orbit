@@ -6,11 +6,11 @@ local LSM = LibStub("LibSharedMedia-3.0")
 Orbit.BossFramePreviewMixin = {}
 
 -- Reference to shared helpers (loaded from BossFrameHelpers.lua)
--- Note: BossFrameHelpers.lua must be loaded before this file in the TOC
 local Helpers = nil -- Will be set when first needed
 
--- Constants (Replicated from BossFrame.lua to avoid tight coupling)
+-- Constants
 local MAX_BOSS_FRAMES = 5
+local PREVIEW_FRAME_COUNT = 2 -- Number of frames to show in preview
 local POWER_BAR_HEIGHT_RATIO = 0.2
 local DEBOUNCE_DELAY = Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.DefaultDebounce or 0.1
 
@@ -25,12 +25,12 @@ local PREVIEW_DEFAULTS = {
     CastProgress = 1.5,
     DebuffSpacing = 2,
     ElementGap = 4,
-    ContainerGap = 4,           -- Gap between frame edge and debuff container
-    FakeCooldownElapsed = 10,   -- Seconds already elapsed on fake cooldown
-    FakeCooldownDuration = 60,  -- Total fake cooldown duration
+    ContainerGap = 4,
+    FakeCooldownElapsed = 10,
+    FakeCooldownDuration = 60,
 }
 
--- Sample debuff icons for preview (reused, no allocation per call)
+-- Sample debuff icons for preview
 local SAMPLE_DEBUFF_ICONS = {
     136096, -- Moonfire
     136118, -- Corruption
@@ -39,184 +39,279 @@ local SAMPLE_DEBUFF_ICONS = {
     132212, -- Faerie Fire
 }
 
--- [ PREVIEW LOGIC ]---------------------------------------------------------------------------------
+-- ================================================================================================
+-- PREVIEW LIFECYCLE
+-- Uses the REAL frames for preview to ensure perfect visual match
+-- Container driver is handled by Edit Mode callbacks in BossFrame.lua
+-- ================================================================================================
 
 function Orbit.BossFramePreviewMixin:ShowPreview()
-    -- PREVIEW IS BLOCKED IN COMBAT (Protected function calls)
+    if not self.frames then
+        return
+    end
+    
+    -- Mark that we're in preview mode
+    self.isPreviewActive = true
+    
+    -- Protected operations require being out of combat
     if InCombatLockdown() then
+        -- Queue protected setup for after combat
+        if not self.showPreviewCleanupFrame then
+            self.showPreviewCleanupFrame = CreateFrame("Frame")
+            self.showPreviewCleanupFrame:SetScript("OnEvent", function(f, event)
+                if event == "PLAYER_REGEN_ENABLED" then
+                    f:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                    if self.isPreviewActive then
+                        self:ShowPreviewProtected()
+                    end
+                end
+            end)
+        end
+        self.showPreviewCleanupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+        
+        -- For now, just apply visual-only changes (no protected calls)
+        self:SchedulePreviewUpdate()
         return
     end
-    if not self.frames or not self.container then
+    
+    -- Do the protected setup immediately
+    self:ShowPreviewProtected()
+end
+
+-- Separated protected operations that require being out of combat
+function Orbit.BossFramePreviewMixin:ShowPreviewProtected()
+    if not self.frames then
         return
     end
-
-    -- Disable Visibility Driver for preview so we can manually Show frames
-    -- NOTE: Must use UnregisterStateDriver with "visibility" to match OnLoad's RegisterStateDriver
-    UnregisterStateDriver(self.container, "visibility")
-    self.container:Show()
-
-    -- Disable UnitWatch for preview so we can manually Show frames
+    
+    -- Temporarily disable UnitWatch on real frames so we can manually show them
     for i = 1, MAX_BOSS_FRAMES do
         if self.frames[i] then
             UnregisterUnitWatch(self.frames[i])
         end
     end
-
-    -- Set up BOTH preview frames first (set flags before size calculations)
-    for i = 1, 2 do
+    
+    -- Show and set up preview for first N frames
+    for i = 1, PREVIEW_FRAME_COUNT do
         if self.frames[i] then
-            self.frames[i].preview = true
+            self.frames[i].isPreview = true
             self.frames[i]:Show()
         end
     end
-
-    -- Position frames within container
+    
+    -- Hide remaining frames
+    for i = PREVIEW_FRAME_COUNT + 1, MAX_BOSS_FRAMES do
+        if self.frames[i] then
+            self.frames[i]:Hide()
+        end
+    end
+    
+    -- Position frames
     self:PositionFrames()
-
-    -- Update container size for preview
+    
+    -- Update container size
     self:UpdateContainerSize()
-
-    -- Apply preview visuals AFTER a short delay to ensure they aren't overwritten
-    -- by ApplySettings or UpdateAll that may run from Edit Mode callbacks
+    
+    -- Apply preview visuals after a short delay to avoid race with ApplySettings
     C_Timer.After(DEBOUNCE_DELAY, function()
-        if self.frames then  -- Guard against stale reference
+        if self.isPreviewActive and self.frames then
             self:ApplyPreviewVisuals()
         end
     end)
 end
 
-function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
+function Orbit.BossFramePreviewMixin:HidePreview()
     if not self.frames then
         return
     end
+    
+    -- Mark preview as inactive
+    self.isPreviewActive = false
+    
+    -- Clear preview state on all frames
+    for i, frame in ipairs(self.frames) do
+        frame.isPreview = nil
+        
+        -- Hide preview-only elements
+        if frame.previewDebuffs then
+            for _, icon in ipairs(frame.previewDebuffs) do
+                icon:Hide()
+            end
+        end
+        
+        -- Hide cast bar (real cast events will control it)
+        if frame.CastBar then
+            frame.CastBar:Hide()
+        end
+    end
+    
+    -- Re-enable UnitWatch for real frames (only out of combat)
+    if not InCombatLockdown() then
+        for i = 1, MAX_BOSS_FRAMES do
+            if self.frames[i] then
+                RegisterUnitWatch(self.frames[i])
+            end
+        end
+    else
+        -- Queue for after combat
+        if not self.hidePreviewCleanupFrame then
+            self.hidePreviewCleanupFrame = CreateFrame("Frame")
+            self.hidePreviewCleanupFrame:SetScript("OnEvent", function(f, event)
+                if event == "PLAYER_REGEN_ENABLED" then
+                    f:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                    for i = 1, MAX_BOSS_FRAMES do
+                        if self.frames[i] then
+                            RegisterUnitWatch(self.frames[i])
+                        end
+                    end
+                end
+            end)
+        end
+        self.hidePreviewCleanupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    end
+    
+    -- Update container size
+    if not InCombatLockdown() then
+        self:UpdateContainerSize()
+    end
+end
 
-    -- Get settings
-    local width = self:GetSetting(1, "Width") or PREVIEW_DEFAULTS.Width
-    local height = self:GetSetting(1, "Height") or PREVIEW_DEFAULTS.Height
-    local textureName = self:GetSetting(1, "Texture")
-    local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
+-- ================================================================================================
+-- PREVIEW VISUALS
+-- Apply fake data to real frames for WYSIWYG preview
+-- ================================================================================================
 
-    -- Build debuff icon list from sample icons (no table allocation per call)
+function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
+    if not self.frames or not self.isPreviewActive then
+        return
+    end
+
     local maxDebuffs = self:GetSetting(1, "MaxDebuffs") or 4
-
-    for i = 1, 2 do
-        if self.frames[i] and self.frames[i].preview then
-            local frame = self.frames[i]
-
-            -- Set frame size
-            frame:SetSize(width, height)
-
-            -- Apply texture and set up health bar
+    
+    for i = 1, PREVIEW_FRAME_COUNT do
+        local frame = self.frames[i]
+        if frame and frame.isPreview then
+            -- Apply fake health values
             if frame.Health then
-                frame.Health:ClearAllPoints()
-                frame.Health:SetPoint("TOPLEFT", 1, -1)
-                frame.Health:SetPoint("BOTTOMRIGHT", -1, height * POWER_BAR_HEIGHT_RATIO + 1)
-                frame.Health:SetStatusBarTexture(texturePath)
                 frame.Health:SetMinMaxValues(0, 100)
                 frame.Health:SetValue(PREVIEW_DEFAULTS.HealthPercent)
-                frame.Health:SetStatusBarColor(1, 0.1, 0.1) -- Red for hostile boss
-                frame.Health:Show()
+                frame.Health:SetStatusBarColor(1, 0.1, 0.1) -- Red for hostile
             end
-
-            -- Apply texture and set up power bar
+            
+            -- Apply fake power values
             if frame.Power then
-                frame.Power:ClearAllPoints()
-                frame.Power:SetPoint("BOTTOMLEFT", 1, 1)
-                frame.Power:SetPoint("BOTTOMRIGHT", -1, 1)
-                frame.Power:SetHeight(height * POWER_BAR_HEIGHT_RATIO)
-                frame.Power:SetStatusBarTexture(texturePath)
                 frame.Power:SetMinMaxValues(0, 100)
                 frame.Power:SetValue(PREVIEW_DEFAULTS.PowerPercent)
-                frame.Power:SetStatusBarColor(0, 0.5, 1) -- Blue for mana
-                frame.Power:Show()
+                frame.Power:SetStatusBarColor(0, 0.5, 1) -- Mana blue
             end
-
-            -- Preview name - ensure visible and OVERRIDE any unit data
+            
+            -- Set fake name
             if frame.Name then
                 frame.Name:SetText("Boss " .. i)
-                frame.Name:SetTextColor(1, 1, 1, 1)
-                frame.Name:Show()
             end
-
-            -- Preview health text - OVERRIDE UpdateHealthText
+            
+            -- Set fake health text
             if frame.HealthText then
                 frame.HealthText:SetText(PREVIEW_DEFAULTS.HealthPercent .. "%")
-                frame.HealthText:SetTextColor(1, 1, 1, 1)
-                frame.HealthText:Show()
             end
-
-            -- Show cast bar preview (so user can see spacing effect)
-            if frame.CastBar then
-                local castBarHeight = self:GetSetting(1, "CastBarHeight") or PREVIEW_DEFAULTS.CastBarHeight
-                local castBarPosition = self:GetSetting(1, "CastBarPosition") or "Below"
-                local showIcon = self:GetSetting(1, "CastBarIcon")
-                local iconOffset = 0
-
-                frame.CastBar:SetSize(width, castBarHeight)
-                frame.CastBar:SetStatusBarTexture(texturePath)
-                frame.CastBar:SetMinMaxValues(0, PREVIEW_DEFAULTS.CastDuration)
-                frame.CastBar:SetValue(PREVIEW_DEFAULTS.CastProgress)
-                frame.CastBar.unit = "preview" -- prevent event hooks from erroring
-
-                -- Ensure correct positioning (Using shared method)
-                self:PositionCastBar(frame.CastBar, frame, castBarPosition)
-
-                -- Handle Icon visibility and positioning
-                if frame.CastBar.Icon then
-                    if showIcon then
-                        frame.CastBar.Icon:SetTexture(136243) -- Hearthstone icon for preview
-                        frame.CastBar.Icon:SetSize(castBarHeight, castBarHeight)
-                        frame.CastBar.Icon:Show()
-                        iconOffset = castBarHeight
-                        if frame.CastBar.IconBorder then
-                            frame.CastBar.IconBorder:Show()
-                        end
-                    else
-                        frame.CastBar.Icon:Hide()
-                        if frame.CastBar.IconBorder then
-                            frame.CastBar.IconBorder:Hide()
-                        end
-                    end
-                end
-
-                -- Adjust StatusBar texture to start after icon
-                local statusBarTexture = frame.CastBar:GetStatusBarTexture()
-                if statusBarTexture then
-                    statusBarTexture:ClearAllPoints()
-                    statusBarTexture:SetPoint("TOPLEFT", frame.CastBar, "TOPLEFT", iconOffset, 0)
-                    statusBarTexture:SetPoint("BOTTOMLEFT", frame.CastBar, "BOTTOMLEFT", iconOffset, 0)
-                    statusBarTexture:SetPoint("TOPRIGHT", frame.CastBar, "TOPRIGHT", 0, 0)
-                    statusBarTexture:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
-                end
-
-                -- Adjust background to start after icon
-                if frame.CastBar.bg then
-                    frame.CastBar.bg:ClearAllPoints()
-                    frame.CastBar.bg:SetPoint("TOPLEFT", frame.CastBar, "TOPLEFT", iconOffset, 0)
-                    frame.CastBar.bg:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
-                end
-
-                -- Position text based on icon
-                if frame.CastBar.Text then
-                    frame.CastBar.Text:ClearAllPoints()
-                    if showIcon and frame.CastBar.Icon then
-                        frame.CastBar.Text:SetPoint("LEFT", frame.CastBar.Icon, "RIGHT", 4, 0)
-                    else
-                        frame.CastBar.Text:SetPoint("LEFT", frame.CastBar, "LEFT", 4, 0)
-                    end
-                    frame.CastBar.Text:SetText("Boss Ability (Preview)")
-                end
-                if frame.CastBar.Timer then
-                    frame.CastBar.Timer:SetText(tostring(PREVIEW_DEFAULTS.CastProgress))
-                end
-                frame.CastBar:Show()
-            end
-
-            -- Show fake debuff icons preview (pass maxDebuffs, function uses SAMPLE_DEBUFF_ICONS)
+            
+            -- Show cast bar preview
+            self:ApplyPreviewCastBar(frame)
+            
+            -- Show debuff preview
             self:ShowPreviewDebuffs(frame, maxDebuffs)
         end
     end
 end
+
+function Orbit.BossFramePreviewMixin:ApplyPreviewCastBar(frame)
+    if not frame.CastBar then
+        return
+    end
+    
+    local width = self:GetSetting(1, "Width") or PREVIEW_DEFAULTS.Width
+    local castBarHeight = self:GetSetting(1, "CastBarHeight") or PREVIEW_DEFAULTS.CastBarHeight
+    local castBarPosition = self:GetSetting(1, "CastBarPosition") or "Below"
+    local showIcon = self:GetSetting(1, "CastBarIcon")
+    local textureName = self:GetSetting(1, "Texture") or self:GetPlayerSetting("Texture")
+    local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
+    
+    local iconOffset = 0
+    
+    frame.CastBar:SetSize(width, castBarHeight)
+    frame.CastBar:SetStatusBarTexture(texturePath)
+    frame.CastBar:SetMinMaxValues(0, PREVIEW_DEFAULTS.CastDuration)
+    frame.CastBar:SetValue(PREVIEW_DEFAULTS.CastProgress)
+    frame.CastBar:SetStatusBarColor(1, 0.7, 0)
+    
+    -- Position cast bar
+    self:PositionCastBar(frame.CastBar, frame, castBarPosition)
+    
+    -- Icon handling
+    if frame.CastBar.Icon then
+        if showIcon then
+            frame.CastBar.Icon:SetTexture(136243) -- Hearthstone
+            frame.CastBar.Icon:SetSize(castBarHeight, castBarHeight)
+            frame.CastBar.Icon:ClearAllPoints()
+            frame.CastBar.Icon:SetPoint("LEFT", frame.CastBar, "LEFT", 0, 0)
+            frame.CastBar.Icon:Show()
+            iconOffset = castBarHeight
+            
+            if frame.CastBar.IconBorder then
+                frame.CastBar.IconBorder:Show()
+            end
+            
+            -- Hide left border for merged look
+            if frame.CastBar.Borders and frame.CastBar.Borders.Left then
+                frame.CastBar.Borders.Left:Hide()
+            end
+        else
+            frame.CastBar.Icon:Hide()
+            if frame.CastBar.IconBorder then
+                frame.CastBar.IconBorder:Hide()
+            end
+            if frame.CastBar.Borders and frame.CastBar.Borders.Left then
+                frame.CastBar.Borders.Left:Show()
+            end
+        end
+    end
+    
+    -- Adjust status bar texture position for icon
+    local statusBarTexture = frame.CastBar:GetStatusBarTexture()
+    if statusBarTexture then
+        statusBarTexture:ClearAllPoints()
+        statusBarTexture:SetPoint("TOPLEFT", frame.CastBar, "TOPLEFT", iconOffset, 0)
+        statusBarTexture:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
+    end
+    
+    -- Background adjustment
+    if frame.CastBar.bg then
+        frame.CastBar.bg:ClearAllPoints()
+        frame.CastBar.bg:SetPoint("TOPLEFT", frame.CastBar, "TOPLEFT", iconOffset, 0)
+        frame.CastBar.bg:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
+    end
+    
+    -- Text position
+    if frame.CastBar.Text then
+        frame.CastBar.Text:ClearAllPoints()
+        if showIcon and frame.CastBar.Icon then
+            frame.CastBar.Text:SetPoint("LEFT", frame.CastBar.Icon, "RIGHT", 4, 0)
+        else
+            frame.CastBar.Text:SetPoint("LEFT", frame.CastBar, "LEFT", 4, 0)
+        end
+        frame.CastBar.Text:SetText("Boss Ability (Preview)")
+    end
+    
+    if frame.CastBar.Timer then
+        frame.CastBar.Timer:SetText(string.format("%.1f", PREVIEW_DEFAULTS.CastProgress))
+    end
+    
+    frame.CastBar:Show()
+end
+
+-- ================================================================================================
+-- PREVIEW DEBUFFS
+-- ================================================================================================
 
 function Orbit.BossFramePreviewMixin:ShowPreviewDebuffs(frame, numDebuffsToShow)
     local position = self:GetSetting(1, "DebuffPosition")
@@ -239,58 +334,49 @@ function Orbit.BossFramePreviewMixin:ShowPreviewDebuffs(frame, numDebuffsToShow)
         return
     end
 
-    -- Lazy-load helpers reference
+    -- Lazy-load helpers
     if not Helpers then
         Helpers = Orbit.BossFrameHelpers
     end
 
-    -- Calculate Size & Layout using shared helper
+    -- Calculate layout
     local iconSize, xOffsetStep = Helpers:CalculateDebuffLayout(
         isHorizontal, frameWidth, frameHeight, maxDebuffs, spacing
     )
 
-    -- Create preview icons if needed
-    if not frame.previewDebuffs then
-        frame.previewDebuffs = {}
-    end
-
-    -- Hide existing preview icons
-    for _, icon in ipairs(frame.previewDebuffs) do
-        icon:Hide()
-    end
-
-    -- Ensure debuff container is properly set up
+    -- Ensure debuff container exists
     if not frame.debuffContainer then
         frame.debuffContainer = CreateFrame("Frame", nil, frame)
-    else
-        -- Parent to frame (simpler for preview)
-        frame.debuffContainer:SetParent(frame)
     end
-
-    -- Reset visibility
+    frame.debuffContainer:SetParent(frame)
     frame.debuffContainer:SetFrameStrata("MEDIUM")
     frame.debuffContainer:SetFrameLevel(frame:GetFrameLevel() + 5)
     frame.debuffContainer:Show()
 
-    -- Get cast bar settings for collision avoidance
+    -- Initialize pool if needed
+    if not frame.previewDebuffs then
+        frame.previewDebuffs = {}
+    end
+
+    -- Position container
     local castBarPos = self:GetSetting(1, "CastBarPosition")
     local castBarHeight = self:GetSetting(1, "CastBarHeight") or PREVIEW_DEFAULTS.CastBarHeight
 
-    -- Position container using shared helper
     Helpers:PositionDebuffContainer(
         frame.debuffContainer, frame, position,
         numDebuffs, iconSize, spacing, castBarPos, castBarHeight
     )
 
-    -- Settings for Skin
+    -- Skin settings
     local globalBorder = self:GetPlayerSetting("BorderSize") or 1
     local skinSettings = {
         zoom = 0,
-        borderStyle = 1, -- Pixel Perfect
+        borderStyle = 1,
         borderSize = globalBorder,
         showTimer = true,
     }
 
+    -- Create/show debuff icons
     local currentX = 0
     for i = 1, numDebuffs do
         local icon = frame.previewDebuffs[i]
@@ -310,122 +396,44 @@ function Orbit.BossFramePreviewMixin:ShowPreviewDebuffs(frame, numDebuffsToShow)
 
         icon:SetSize(iconSize, iconSize)
 
-        -- Position icon using shared helper
+        -- Position
         currentX = Helpers:PositionDebuffIcon(
             icon, frame.debuffContainer, isHorizontal, position,
             currentX, iconSize, xOffsetStep, spacing
         )
 
-        -- Set fake texture (cycle through sample icons)
+        -- Texture
         local iconIndex = ((i - 1) % #SAMPLE_DEBUFF_ICONS) + 1
         icon.Icon:SetTexture(SAMPLE_DEBUFF_ICONS[iconIndex])
 
-        -- Apply Skin
+        -- Apply skin
         if Orbit.Skin and Orbit.Skin.Icons then
             Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
         end
 
-        -- Fake Cooldown (simulate debuff that started FakeCooldownElapsed seconds ago)
+        -- Fake cooldown
         icon.Cooldown:SetCooldown(GetTime() - PREVIEW_DEFAULTS.FakeCooldownElapsed, PREVIEW_DEFAULTS.FakeCooldownDuration)
         icon.Cooldown:Show()
 
         icon:Show()
     end
 
-    -- Trigger layout update if not in combat (safe for preview)
-    if not InCombatLockdown() then
-        self:PositionFrames()
+    -- Hide excess icons
+    for i = numDebuffs + 1, #frame.previewDebuffs do
+        frame.previewDebuffs[i]:Hide()
     end
 end
 
-function Orbit.BossFramePreviewMixin:HidePreview()
-    -- PREVIEW STATE CLEANUP (always safe - non-protected operations)
-    -- Clear preview flag and update to real data first
-    if self.frames then
-        for i, frame in ipairs(self.frames) do
-            frame.preview = nil
-            
-            -- Clean up preview-only visuals (these are not protected)
-            if frame.previewDebuffs then
-                for _, icon in ipairs(frame.previewDebuffs) do
-                    icon:Hide()
-                end
-                wipe(frame.previewDebuffs)
-            end
-            
-            -- Hide cast bar preview (will be controlled by actual casts)
-            if frame.CastBar then
-                frame.CastBar:Hide()
-            end
-            
-            -- Update to real boss data if it exists
-            if frame.UpdateAll then
-                frame:UpdateAll()
-            end
-        end
-    end
-
-    -- PROTECTED OPERATIONS (require out of combat)
-    if InCombatLockdown() then
-        -- Register event to complete cleanup when combat ends
-        if not self.previewCleanupFrame then
-            self.previewCleanupFrame = CreateFrame("Frame")
-            self.previewCleanupFrame:SetScript("OnEvent", function(f, event)
-                if event == "PLAYER_REGEN_ENABLED" then
-                    f:UnregisterEvent("PLAYER_REGEN_ENABLED")
-                    self:RestoreVisibilityDrivers()
-                end
-            end)
-        end
-        self.previewCleanupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-        
-        -- Frames stay visible with real data during combat
-        -- The state driver will be restored after combat ends
-        return
-    end
-    
-    -- Clean up event registration if we made it here out of combat
-    if self.previewCleanupFrame then
-        self.previewCleanupFrame:UnregisterEvent("PLAYER_REGEN_ENABLED")
-    end
-    
-    -- Restore visibility drivers immediately since we're out of combat
-    self:RestoreVisibilityDrivers()
-end
-
--- Helper function to restore protected visibility drivers (call only out of combat)
-function Orbit.BossFramePreviewMixin:RestoreVisibilityDrivers()
-    if InCombatLockdown() then
-        return -- Safety check
-    end
-    
-    if not self.frames or not self.container then
-        return
-    end
-
-    -- Restore Visibility Driver for normal gameplay
-    local visibilityDriver = "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
-    RegisterStateDriver(self.container, "visibility", visibilityDriver)
-    self.container:Show() -- Explicit Show Bridge
-
-    for i, frame in ipairs(self.frames) do
-        -- Ensure alpha is visible
-        frame:SetAlpha(1)
-
-        -- Restore UnitWatch for normal gameplay (handles combat visibility)
-        RegisterUnitWatch(frame)
-    end
-
-    -- Update container size
-    self:UpdateContainerSize()
-end
+-- ================================================================================================
+-- UTILITY
+-- ================================================================================================
 
 function Orbit.BossFramePreviewMixin:SchedulePreviewUpdate()
     if not self._previewVisualsScheduled then
         self._previewVisualsScheduled = true
         C_Timer.After(DEBOUNCE_DELAY, function()
             self._previewVisualsScheduled = false
-            if self.frames then  -- Guard against stale reference
+            if self.isPreviewActive and self.frames then
                 self:ApplyPreviewVisuals()
             end
         end)

@@ -737,11 +737,15 @@ function Plugin:OnLoad()
     -- This handles Showing/Hiding the container (and thus all boss frames) securely in combat
     -- NOTE: Must use RegisterStateDriver with "visibility" (not RegisterAttributeDriver with "state-visibility")
     -- per the "Visibility Driver Failure" pattern documented in the KI
+    -- The driver now includes Edit Mode check so selection highlight works
     local visibilityDriver = "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
     RegisterStateDriver(self.container, "visibility", visibilityDriver)
     
     -- Explicit Show Bridge: Ensure container is active to receive first state evaluation
     self.container:Show()
+    
+    -- Give container a minimum size so it's clickable in Edit Mode even with no bosses
+    self.container:SetSize(self:GetSetting(1, "Width") or 150, 100)
 
     -- Position frames (stacked vertically)
     self:PositionFrames()
@@ -764,7 +768,7 @@ function Plugin:OnLoad()
             or event == "UNIT_TARGETABLE_CHANGED"
         then
             for i, frame in ipairs(self.frames) do
-                if frame.UpdateAll and not frame.preview then -- Check if UpdateAll exists and not in preview
+                if frame.UpdateAll then
                     frame:UpdateAll()
                     UpdatePowerBar(frame)
                     UpdateDebuffs(frame, self)
@@ -785,15 +789,55 @@ function Plugin:OnLoad()
         self.editModeCallbacksRegistered = true
         
         EventRegistry:RegisterCallback("EditMode.Enter", function()
+            -- Temporarily unregister driver and show container for Edit Mode
+            if not InCombatLockdown() then
+                UnregisterStateDriver(self.container, "visibility")
+                self.container:Show()
+                self:UpdateContainerSize()
+            else
+                -- Queue for after combat
+                if not self.editModeEnterCleanupFrame then
+                    self.editModeEnterCleanupFrame = CreateFrame("Frame")
+                    self.editModeEnterCleanupFrame:SetScript("OnEvent", function(f, event)
+                        if event == "PLAYER_REGEN_ENABLED" then
+                            f:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                            if self.isPreviewActive then
+                                UnregisterStateDriver(self.container, "visibility")
+                                self.container:Show()
+                                self:UpdateContainerSize()
+                            end
+                        end
+                    end)
+                end
+                self.editModeEnterCleanupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+            end
+            
             self:ShowPreview()
             self:ApplySettings()
         end, self)
 
         EventRegistry:RegisterCallback("EditMode.Exit", function()
             self:HidePreview()
-            -- Sync size on exit if safe
+            
+            -- Re-register visibility driver for normal gameplay
             if not InCombatLockdown() then
+                local visibilityDriver = "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
+                RegisterStateDriver(self.container, "visibility", visibilityDriver)
                 self:UpdateContainerSize()
+            else
+                -- Queue for after combat
+                if not self.editModeExitCleanupFrame then
+                    self.editModeExitCleanupFrame = CreateFrame("Frame")
+                    self.editModeExitCleanupFrame:SetScript("OnEvent", function(f, event)
+                        if event == "PLAYER_REGEN_ENABLED" then
+                            f:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                            local visibilityDriver = "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
+                            RegisterStateDriver(self.container, "visibility", visibilityDriver)
+                            self:UpdateContainerSize()
+                        end
+                    end)
+                end
+                self.editModeExitCleanupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
             end
         end, self)
     end
@@ -898,20 +942,33 @@ function Plugin:UpdateContainerSize()
     local scale = (self:GetSetting(1, "Scale") or 100) / 100
     local baseSpacing = 20
 
+    -- Check if we're in preview mode (Edit Mode uses real frames with isPreview flag)
+    local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local isPreviewActive = self.isPreviewActive
+
     -- Count visible frames
     local visibleCount = 0
     local lastVisibleIndex = 0
-    for i, frame in ipairs(self.frames) do
-        if frame:IsShown() or frame.preview then
-            visibleCount = visibleCount + 1
-            lastVisibleIndex = i
+    
+    if isPreviewActive or isEditMode then
+        -- In preview/Edit Mode, always show 2 frames
+        visibleCount = 2
+        lastVisibleIndex = 2
+    else
+        -- Normal mode: count real frames that are shown
+        for i, frame in ipairs(self.frames) do
+            if frame:IsShown() then
+                visibleCount = visibleCount + 1
+                lastVisibleIndex = i
+            end
         end
     end
 
+    -- Default to 2 frames for sizing if nothing visible
     if visibleCount == 0 then
         visibleCount = 2
         lastVisibleIndex = 2
-    end -- Preview default
+    end
 
     -- Sum heights
     local totalHeight = 0
@@ -1032,12 +1089,10 @@ function Plugin:ApplySettings()
             end
         end
 
-        -- Skip visual updates for preview frames (ApplyPreviewVisuals handles those)
-        if not frame.preview then
-            frame:UpdateAll()
-            UpdatePowerBar(frame)
-            UpdateDebuffs(frame, self)
-        end
+        -- Always update visuals for real frames (preview uses separate frames)
+        frame:UpdateAll()
+        UpdatePowerBar(frame)
+        UpdateDebuffs(frame, self)
     end
 
     -- Reposition frames within container
@@ -1046,15 +1101,8 @@ function Plugin:ApplySettings()
     -- Restore position for container (the selectable frame)
     OrbitEngine.Frame:RestorePosition(self.container, self, 1)
 
-    -- Re-apply preview visuals if any frame is in preview mode (debounced)
-    local anyPreview = false
-    for i, frame in ipairs(self.frames) do
-        if frame.preview then
-            anyPreview = true
-            break
-        end
-    end
-    if anyPreview then
+    -- Re-apply preview visuals if in preview mode
+    if self.isPreviewActive then
         self:SchedulePreviewUpdate()
     end
 end
