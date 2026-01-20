@@ -363,12 +363,30 @@ function Plugin:OnLoad()
 
     -- Register for cursor changes to show/hide empty slots when dragging spells
     Orbit.EventBus:On("CURSOR_CHANGED", function()
-        -- Debounce to avoid rapid re-layouts
-        -- CRITICAL: Only proceed if cursor is actually holding something (filtering out hand->sword changes)
-        if not GetCursorInfo() then
+        -- Check if cursor is holding something droppable
+        local cursorType = GetCursorInfo()
+        local isDraggingDroppable = cursorType == "spell"
+            or cursorType == "petaction"
+            or cursorType == "flyout"
+            or cursorType == "item"
+            or cursorType == "macro"
+            or cursorType == "mount"
+
+        -- Track drag state to know when to re-hide buttons after drop
+        local wasDragging = self.isDraggingDroppable
+
+        if isDraggingDroppable then
+            -- Started or continuing a drag - show empty slots
+            self.isDraggingDroppable = true
+        elseif wasDragging then
+            -- Was dragging but now cursor is empty (dropped) - re-hide empty slots
+            self.isDraggingDroppable = false
+        else
+            -- Not dragging and wasn't dragging - ignore (filters out hand->sword changes)
             return
         end
 
+        -- Debounce to avoid rapid re-layouts
         if self.cursorTimer then
             self.cursorTimer:Cancel()
         end
