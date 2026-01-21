@@ -656,6 +656,19 @@ function Icons:ApplyActionButtonCustom(button, settings)
     ResetRegion(button.HighlightTexture)
     ResetRegion(button.CheckedTexture)
 
+    -- Disable button.Border (green border for equipped items - anchored to TOPLEFT with 46x45 size)
+    -- Must hook Show() because Blizzard's Update() function re-shows it repeatedly
+    if button.Border then
+        ResetRegion(button.Border)
+        if not button.orbitBorderHooked then
+            hooksecurefunc(button.Border, "Show", function(self)
+                self:Hide()
+                self:SetAlpha(0)
+            end)
+            button.orbitBorderHooked = true
+        end
+    end
+
     -- Fix: Re-anchor CheckedTexture (Selected/Active State) to match icon scale
     local checkedTexture = button.CheckedTexture
     if not checkedTexture and button.GetCheckedTexture then
