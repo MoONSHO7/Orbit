@@ -681,6 +681,66 @@ function UnitButtonMixin:ApplyComponentPositions()
     if positions.CombatIcon and self.CombatIcon then
         ApplyEdgePosition(self.CombatIcon, self, positions.CombatIcon, width, height)
     end
+    
+    -- Helper to apply style overrides from Canvas Mode component settings
+    local function ApplyStyleOverrides(element, overrides)
+        if not element or not overrides then return end
+        
+        -- Font override (for FontStrings)
+        if overrides.Font and element.SetFont then
+            local fontPath = LSM:Fetch("font", overrides.Font)
+            if fontPath then
+                local _, size, flags = element:GetFont()
+                element:SetFont(fontPath, overrides.FontSize or size or 12, flags)
+            end
+        elseif overrides.FontSize and element.SetFont then
+            -- FontSize only (use existing font)
+            local font, size, flags = element:GetFont()
+            element:SetFont(font, overrides.FontSize, flags)
+        end
+        
+        -- Shadow override
+        if overrides.ShowShadow ~= nil and element.SetShadowOffset then
+            if overrides.ShowShadow then
+                element:SetShadowOffset(1, -1)
+                element:SetShadowColor(0, 0, 0, 0.8)
+            else
+                element:SetShadowOffset(0, 0)
+            end
+        end
+        
+        -- Scale override (for icons/textures)
+        if overrides.Scale then
+            if element.GetObjectType and element:GetObjectType() == "Texture" then
+                -- Use SetSize for textures (default base size 18)
+                local baseSize = 18
+                element:SetSize(baseSize * overrides.Scale, baseSize * overrides.Scale)
+            elseif element.SetScale then
+                element:SetScale(overrides.Scale)
+            end
+        end
+    end
+    
+    -- Apply style overrides for each component
+    if positions.Name and positions.Name.overrides and self.Name then
+        ApplyStyleOverrides(self.Name, positions.Name.overrides)
+    end
+    
+    if positions.HealthText and positions.HealthText.overrides and self.HealthText then
+        ApplyStyleOverrides(self.HealthText, positions.HealthText.overrides)
+    end
+    
+    if positions.LevelText and positions.LevelText.overrides and self.LevelText then
+        ApplyStyleOverrides(self.LevelText, positions.LevelText.overrides)
+    end
+    
+    if positions.CombatIcon and positions.CombatIcon.overrides and self.CombatIcon then
+        ApplyStyleOverrides(self.CombatIcon, positions.CombatIcon.overrides)
+    end
+    
+    if positions.RareEliteIcon and positions.RareEliteIcon.overrides and self.RareEliteIcon then
+        ApplyStyleOverrides(self.RareEliteIcon, positions.RareEliteIcon.overrides)
+    end
 end
 
 function UnitButtonMixin:SetBorder(size)

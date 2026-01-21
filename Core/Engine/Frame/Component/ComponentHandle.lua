@@ -54,7 +54,7 @@ function Handle:Create(component, parent, callbacks)
         else
             self:ApplyColorPreset(colors.HOVER)
         end
-        SetCursor("Interface\\CURSOR\\UI-Cursor-Move")
+        -- TODO if we find a better looking cursor for the viewport we add it here
         if callbacks.onEnter then callbacks.onEnter(component) end
     end)
     

@@ -104,6 +104,7 @@ Core\Engine\Preview\PreviewController.lua
 Core\UI\Animation.lua
 Core\UI\OrbitSettingsDialog.lua
 Core\UI\CanvasModeDialog.lua
+Core\UI\CanvasModeComponentSettings.lua
 Core\UI\OrbitOptionsPanel.lua
 Core\UI\OrbitOptionsButton.lua
 
@@ -138,6 +139,9 @@ Plugins\UnitFrames\Focus\TargetOfFocusFrame.lua
 Plugins\BossFrames\BossFrameHelpers.lua
 Plugins\BossFrames\BossFramePreview.lua
 Plugins\BossFrames\BossFrame.lua
+Plugins\PartyFrames\PartyFrameHelpers.lua
+Plugins\PartyFrames\PartyFramePreview.lua
+Plugins\PartyFrames\PartyFrame.lua
 Plugins\MenuItems\BagBar.lua
 Plugins\Misc\TalkingHead.lua
 Plugins\MenuItems\Performance.lua

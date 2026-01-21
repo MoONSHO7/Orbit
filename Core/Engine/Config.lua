@@ -155,7 +155,14 @@ function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
         -- Render Settings
         local controls = schema.controls or schema
         for _, def in ipairs(controls) do
-            self:RenderControl(targetContent, systemFrame, plugin, systemIndex, def)
+            -- Check visibleIf condition (skip if function returns false)
+            local shouldRender = true
+            if def.visibleIf and type(def.visibleIf) == "function" then
+                shouldRender = def.visibleIf()
+            end
+            if shouldRender then
+                self:RenderControl(targetContent, systemFrame, plugin, systemIndex, def)
+            end
         end
 
         -- Render Footer

@@ -210,10 +210,10 @@ function Plugin:UpdateVisibility()
     if enabled then
         Frame:Show()
         self:UpdateAll()
-        Frame.orbitDisabled = false
+        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
     else
         Frame:Hide()
-        Frame.orbitDisabled = true
+        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
     end
 end
 
@@ -294,7 +294,7 @@ function Plugin:ApplySettings()
         OrbitEngine.Frame:ForceUpdateSelection(Frame)
     end
 
-    self:UpdateAll()
+    self:UpdateVisibility()
 end
 
 -- [ POWER UPDATE ]----------------------------------------------------------------------------------

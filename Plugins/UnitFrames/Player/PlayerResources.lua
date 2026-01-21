@@ -287,10 +287,10 @@ function Plugin:ApplySettings()
     -- If disabled via PlayerFrame toggle, hide completely including Edit Mode
     if not self:IsEnabled() then
         Frame:Hide()
-        Frame.orbitDisabled = true
+        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
         return
     end
-    Frame.orbitDisabled = false
+    OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
 
     -- 2. Local Preference (Bypassed in Edit Mode for preview)
     local hidden = self:GetSetting(systemIndex, "Hidden")
@@ -520,11 +520,11 @@ function Plugin:UpdateVisibility()
 
     if not enabled then
         Frame:Hide()
-        Frame.orbitDisabled = true
+        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
         return
     end
 
-    Frame.orbitDisabled = false
+    OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
     -- If enabled, we delegate to UpdatePowerType to decide if we valid resources to show
     self:UpdatePowerType()
 end

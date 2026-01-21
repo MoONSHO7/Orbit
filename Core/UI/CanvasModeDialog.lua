@@ -10,20 +10,28 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------
 
-local DIALOG_WIDTH = 450
+-- Fixed dialog dimensions (decoupled from frame size)
+local DIALOG_WIDTH = 480  -- 20% less than 600
+local DIALOG_HEIGHT = 250  -- Half of 500
 local DIALOG_MIN_HEIGHT = 200
-local DEFAULT_PREVIEW_SCALE = 1.5  -- Default preview scale
-local MIN_PREVIEW_SCALE = 1
-local MAX_PREVIEW_SCALE = 2
-local SCALE_STEP = 0.1
-local PREVIEW_SCALE = DEFAULT_PREVIEW_SCALE  -- Current preview scale (updated by scroll)
-local PREVIEW_PADDING = 30
+
+-- Viewport constants
+local VIEWPORT_PADDING = 20  -- Padding inside viewport
 local FOOTER_HEIGHT = 55
 local TITLE_HEIGHT = 40
 
+-- Zoom constants (applied via SetScale on TransformLayer, not preview rebuild)
+local DEFAULT_ZOOM = 2.0
+local MIN_ZOOM = 0.5
+local MAX_ZOOM = 4.0
+local ZOOM_STEP = 0.25
+
+-- Pan clamping (how much of preview must remain visible)
+local PAN_CLAMP_PADDING = 50
+
 -- [ CREATE DIALOG FRAME ]------------------------------------------------------------------------
 
-local Dialog = CreateFrame("Frame", "OrbitCanvasModeDialog", UIParent, "BackdropTemplate")
+local Dialog = CreateFrame("Frame", "OrbitCanvasModeDialog", UIParent)
 Dialog:SetSize(DIALOG_WIDTH, DIALOG_MIN_HEIGHT)
 Dialog:SetPoint("CENTER", UIParent, "CENTER", 0, 50)
 Dialog:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -34,16 +42,11 @@ Dialog:EnableMouse(true)
 Dialog:RegisterForDrag("LeftButton")
 Dialog:Hide()
 
--- Backdrop
-Dialog:SetBackdrop({
-    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
-    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile = true,
-    tileSize = 32,
-    edgeSize = 32,
-    insets = { left = 11, right = 12, top = 12, bottom = 11 },
-})
-Dialog:SetBackdropColor(0.05, 0.05, 0.05, 0.98)
+-- Backdrop: Use Blizzard's high-quality DialogBorderTranslucentTemplate
+-- This provides the professional metallic nine-slice border matching Blizzard's EditMode dialogs
+Dialog.Border = CreateFrame("Frame", nil, Dialog, "DialogBorderTranslucentTemplate")
+Dialog.Border:SetAllPoints(Dialog)
+Dialog.Border:SetFrameLevel(Dialog:GetFrameLevel())
 
 -- Drag handlers
 Dialog:SetScript("OnDragStart", function(self)
@@ -77,29 +80,117 @@ Dialog.CloseButton:SetScript("OnClick", function()
 end)
 
 -- [ PREVIEW CONTAINER ]-------------------------------------------------------------------------
+-- Architecture: PreviewContainer > Viewport (clips) > TransformLayer (zoom/pan) > PreviewFrame
 
 Dialog.PreviewContainer = CreateFrame("Frame", nil, Dialog)
-Dialog.PreviewContainer:SetPoint("TOPLEFT", Dialog, "TOPLEFT", PREVIEW_PADDING, -TITLE_HEIGHT)
-Dialog.PreviewContainer:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -PREVIEW_PADDING, FOOTER_HEIGHT)
-Dialog.PreviewContainer:EnableMouseWheel(true)
+Dialog.PreviewContainer:SetPoint("TOPLEFT", Dialog, "TOPLEFT", VIEWPORT_PADDING, -TITLE_HEIGHT)
+Dialog.PreviewContainer:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -VIEWPORT_PADDING, FOOTER_HEIGHT)
 
--- Mouse wheel to zoom preview
-Dialog.PreviewContainer:SetScript("OnMouseWheel", function(self, delta)
-    local newScale = PREVIEW_SCALE + (delta * SCALE_STEP)
-    newScale = math.max(MIN_PREVIEW_SCALE, math.min(MAX_PREVIEW_SCALE, newScale))
+-- Viewport: Clips children to create the viewable area
+Dialog.Viewport = CreateFrame("Frame", nil, Dialog.PreviewContainer)
+Dialog.Viewport:SetAllPoints()
+Dialog.Viewport:SetClipsChildren(true)
+Dialog.Viewport:EnableMouse(true)
+Dialog.Viewport:EnableMouseWheel(true)
+Dialog.Viewport:RegisterForDrag("MiddleButton", "LeftButton")
+
+-- TransformLayer: Receives zoom (SetScale) and pan (position offset)
+Dialog.TransformLayer = CreateFrame("Frame", nil, Dialog.Viewport)
+Dialog.TransformLayer:SetSize(1, 1)  -- Size managed dynamically
+Dialog.TransformLayer:SetPoint("CENTER", Dialog.Viewport, "CENTER", 0, 0)
+
+-- Zoom/Pan state
+Dialog.zoomLevel = DEFAULT_ZOOM
+Dialog.panOffsetX = 0
+Dialog.panOffsetY = 0
+
+-- Helper: Calculate pan clamping bounds
+local function GetPanBounds(transformLayer, viewport, zoomLevel)
+    local baseWidth = transformLayer.baseWidth or 200
+    local baseHeight = transformLayer.baseHeight or 60
+    local scaledW = baseWidth * zoomLevel
+    local scaledH = baseHeight * zoomLevel
+    local viewW = viewport:GetWidth()
+    local viewH = viewport:GetHeight()
     
-    -- Round to 1 decimal place to avoid floating point issues
-    newScale = math.floor(newScale * 10 + 0.5) / 10
+    -- Allow panning up to the point where preview edge reaches viewport center
+    local maxX = math.max(0, (scaledW / 2) - (viewW / 2) + PAN_CLAMP_PADDING)
+    local maxY = math.max(0, (scaledH / 2) - (viewH / 2) + PAN_CLAMP_PADDING)
     
-    if newScale ~= PREVIEW_SCALE then
-        PREVIEW_SCALE = newScale
+    return maxX, maxY
+end
+
+-- Helper: Apply pan with clamping
+local function ApplyPanOffset(dialog, offsetX, offsetY)
+    local maxX, maxY = GetPanBounds(dialog.TransformLayer, dialog.Viewport, dialog.zoomLevel)
+    
+    dialog.panOffsetX = math.max(-maxX, math.min(maxX, offsetX))
+    dialog.panOffsetY = math.max(-maxY, math.min(maxY, offsetY))
+    
+    dialog.TransformLayer:ClearAllPoints()
+    dialog.TransformLayer:SetPoint("CENTER", dialog.Viewport, "CENTER", dialog.panOffsetX, dialog.panOffsetY)
+end
+
+-- Helper: Apply zoom level
+local function ApplyZoom(dialog, newZoom)
+    newZoom = math.max(MIN_ZOOM, math.min(MAX_ZOOM, newZoom))
+    -- Round to 2 decimal places
+    newZoom = math.floor(newZoom * 100 + 0.5) / 100
+    
+    dialog.zoomLevel = newZoom
+    dialog.TransformLayer:SetScale(newZoom)
+    
+    -- Re-clamp pan after zoom change (visible area may have changed)
+    ApplyPanOffset(dialog, dialog.panOffsetX, dialog.panOffsetY)
+    
+    -- Update zoom indicator if present
+    if dialog.ZoomIndicator then
+        dialog.ZoomIndicator:SetText(string.format("%.0f%%", newZoom * 100))
+    end
+end
+
+-- Mouse wheel to zoom
+Dialog.Viewport:SetScript("OnMouseWheel", function(self, delta)
+    local newZoom = Dialog.zoomLevel + (delta * ZOOM_STEP)
+    ApplyZoom(Dialog, newZoom)
+end)
+
+-- Pan: Drag to move the preview within viewport
+Dialog.Viewport:SetScript("OnDragStart", function(self)
+    self.isPanning = true
+    local mx, my = GetCursorPosition()
+    local scale = UIParent:GetEffectiveScale()
+    self.panStartMouseX = mx / scale
+    self.panStartMouseY = my / scale
+    self.panStartOffsetX = Dialog.panOffsetX
+    self.panStartOffsetY = Dialog.panOffsetY
+    -- No custom cursor needed - default cursor is already high-resolution
+end)
+
+Dialog.Viewport:SetScript("OnDragStop", function(self)
+    self.isPanning = false
+    ResetCursor()
+end)
+
+Dialog.Viewport:SetScript("OnUpdate", function(self)
+    if self.isPanning then
+        local mx, my = GetCursorPosition()
+        local scale = UIParent:GetEffectiveScale()
+        mx = mx / scale
+        my = my / scale
         
-        -- Rebuild preview at new scale
-        if Dialog.targetFrame and Dialog:IsShown() then
-            Dialog:Open(Dialog.targetFrame, Dialog.targetPlugin, Dialog.targetSystemIndex)
-        end
+        local deltaX = mx - self.panStartMouseX
+        local deltaY = my - self.panStartMouseY
+        
+        ApplyPanOffset(Dialog, self.panStartOffsetX + deltaX, self.panStartOffsetY + deltaY)
     end
 end)
+
+-- Zoom indicator (bottom-right of viewport)
+Dialog.ZoomIndicator = Dialog.PreviewContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+Dialog.ZoomIndicator:SetPoint("BOTTOMRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -5, 5)
+Dialog.ZoomIndicator:SetText(string.format("%.0f%%", DEFAULT_ZOOM * 100))
+Dialog.ZoomIndicator:SetTextColor(0.7, 0.7, 0.7, 0.8)
 
 -- [ FOOTER (Using pattern: divider + stretch-to-fill buttons) ]----------------------
 
@@ -306,17 +397,18 @@ function Dialog:NudgeComponent(container, direction)
     local posY = container.posY or 0
     
     local finalX, finalY
+    -- Note: No scale multiplication - TransformLayer handles zoom via SetScale
     if anchorX == "CENTER" then
-        finalX = posX * PREVIEW_SCALE
+        finalX = posX
     else
-        finalX = offsetX * PREVIEW_SCALE
+        finalX = offsetX
         if anchorX == "RIGHT" then finalX = -finalX end
     end
     
     if anchorY == "CENTER" then
-        finalY = posY * PREVIEW_SCALE
+        finalY = posY
     else
-        finalY = offsetY * PREVIEW_SCALE
+        finalY = offsetY
         if anchorY == "TOP" then finalY = -finalY end
     end
     
@@ -353,6 +445,8 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     local visual -- The cloned visual element (FontString or Texture)
     local isFontString = sourceComponent and sourceComponent.GetText ~= nil
     local isTexture = sourceComponent and sourceComponent.GetTexture ~= nil and not isFontString
+    -- Check for Frame with Icon child (used by BigDefensive, aura frames, etc.)
+    local isIconFrame = sourceComponent and sourceComponent.Icon and sourceComponent.Icon.GetTexture
     
     if isFontString then
         -- Clone FontString
@@ -361,13 +455,13 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         -- MUST set font BEFORE text (WoW requirement)
         local fontPath, fontSize, fontFlags = sourceComponent:GetFont()
         if fontPath and fontSize then
-            -- Scale the font for preview
-            visual:SetFont(fontPath, fontSize * PREVIEW_SCALE, fontFlags or "")
+            -- Font at 1x scale - TransformLayer handles zoom
+            visual:SetFont(fontPath, fontSize, fontFlags or "")
         else
-            -- Fallback to Orbit's global font
+            -- Fallback to Orbit's global font (1x scale)
             local globalFontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
             local fallbackPath = LSM:Fetch("font", globalFontName) or Orbit.Constants.Settings.Font.FallbackPath
-            local fallbackSize = (Orbit.Constants.UI.UnitFrameTextSize or 12) * PREVIEW_SCALE
+            local fallbackSize = Orbit.Constants.UI.UnitFrameTextSize or 12
             visual:SetFont(fallbackPath, fallbackSize, "OUTLINE")
         end
         
@@ -387,7 +481,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         local sr, sg, sb, sa = sourceComponent:GetShadowColor()
         if sr then visual:SetShadowColor(sr, sg, sb, sa or 1) end
         local sx, sy = sourceComponent:GetShadowOffset()
-        if sx then visual:SetShadowOffset(sx * PREVIEW_SCALE, sy * PREVIEW_SCALE) end
+        if sx then visual:SetShadowOffset(sx, sy) end  -- 1x scale - TransformLayer handles zoom
         
         -- Auto-size container to fit text
         local textWidth, textHeight = 60, 16
@@ -439,7 +533,32 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         local ok2, h = pcall(function() return sourceComponent:GetHeight() end)
         if ok2 and h and type(h) == "number" and h > 0 then srcHeight = h end
         
-        container:SetSize(srcWidth * PREVIEW_SCALE, srcHeight * PREVIEW_SCALE)
+        container:SetSize(srcWidth, srcHeight)  -- TransformLayer handles zoom
+    elseif isIconFrame then
+        -- Clone Frame with Icon child (BigDefensive, aura frames, etc.)
+        visual = container:CreateTexture(nil, "OVERLAY")
+        visual:SetAllPoints(container)
+        
+        local iconTexture = sourceComponent.Icon
+        local texturePath = iconTexture:GetTexture()
+        if texturePath then
+            visual:SetTexture(texturePath)
+        end
+        
+        -- Copy texture coords
+        local ok, l, r, t, b = pcall(function() return iconTexture:GetTexCoord() end)
+        if ok and l then
+            visual:SetTexCoord(l, r, t, b)
+        end
+        
+        -- Size based on parent frame, scaled
+        local srcWidth, srcHeight = 24, 24
+        local ok, w = pcall(function() return sourceComponent:GetWidth() end)
+        if ok and w and type(w) == "number" and w > 0 then srcWidth = w end
+        local ok2, h = pcall(function() return sourceComponent:GetHeight() end)
+        if ok2 and h and type(h) == "number" and h > 0 then srcHeight = h end
+        
+        container:SetSize(srcWidth, srcHeight)  -- TransformLayer handles zoom
     else
         -- Fallback: Create a simple label with key name
         visual = container:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -460,6 +579,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     container.posY = startY
     container.key = key
     container.isFontString = isFontString
+    container.existingOverrides = data and data.overrides  -- Preserve saved style overrides
     
     -- Use saved anchor data if available, otherwise calculate from center position
     local halfW = preview.sourceWidth / 2
@@ -488,19 +608,30 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     -- Build anchor point for positioning (matches real frame logic)
     local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
     
-    -- Calculate final offset with sign adjustment for anchor direction
-    local finalX = offsetX * PREVIEW_SCALE
-    local finalY = offsetY * PREVIEW_SCALE
-    if anchorX == "RIGHT" then finalX = -finalX end
-    if anchorY == "TOP" then finalY = -finalY end
+    -- Calculate finalX/finalY the same way as NudgeComponent for consistency
+    local posX = startX  -- center-relative position
+    local posY = startY
     
-    -- Position container to match real frame anchoring
+    local finalX, finalY
+    if anchorX == "CENTER" then
+        finalX = posX
+    else
+        finalX = offsetX
+        if anchorX == "RIGHT" then finalX = -finalX end
+    end
+    
+    if anchorY == "CENTER" then
+        finalY = posY
+    else
+        finalY = offsetY
+        if anchorY == "TOP" then finalY = -finalY end
+    end
+    
+    -- Position using the same logic as NudgeComponent
     container:ClearAllPoints()
     if isFontString and justifyH ~= "CENTER" then
-        -- FontStrings with LEFT/RIGHT justification: anchor by that edge
         container:SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
     else
-        -- CENTER justified or non-FontStrings: anchor by CENTER
         container:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
     end
     
@@ -509,15 +640,61 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         ApplyTextAlignment(container, visual, justifyH)
     end
     
+    -- Click-vs-Drag detection: Track if this was a click or a drag
+    -- Click = opens settings dialog, Drag = repositions component
+    container:SetScript("OnMouseDown", function(self, button)
+        if button == "LeftButton" then
+            self.mouseDownTime = GetTime()
+            self.wasDragged = false
+            local mx, my = GetCursorPosition()
+            local scale = UIParent:GetEffectiveScale()
+            self.mouseDownX = mx / scale
+            self.mouseDownY = my / scale
+        end
+    end)
+    
+    container:SetScript("OnMouseUp", function(self, button)
+        if button == "LeftButton" then
+            local clickDuration = GetTime() - (self.mouseDownTime or 0)
+            
+            -- If no drag occurred and click was quick, treat as click to open settings
+            if not self.wasDragged and clickDuration < 0.3 then
+                -- Open component settings dialog
+                if OrbitEngine.CanvasComponentSettings then
+                    OrbitEngine.CanvasComponentSettings:Open(self.key, self, plugin, systemIndex)
+                end
+            end
+            
+            self.mouseDownTime = nil
+            self.mouseDownX = nil
+            self.mouseDownY = nil
+        end
+    end)
+    
     -- Drag handlers with manual mouse tracking for live anchor updating
     container:SetScript("OnDragStart", function(self)
         if InCombatLockdown() then return end
-        -- Store initial mouse position and frame center for offset tracking
+        
+        -- Mark as dragged (prevents click from opening settings)
+        self.wasDragged = true
+        
+        -- Get mouse position in screen coordinates
         local mx, my = GetCursorPosition()
-        local scale = UIParent:GetEffectiveScale()
-        self.dragStartMouseX = mx / scale
-        self.dragStartMouseY = my / scale
-        self.dragStartCenterX, self.dragStartCenterY = self:GetCenter()
+        local uiScale = UIParent:GetEffectiveScale()
+        mx = mx / uiScale
+        my = my / uiScale
+        
+        -- Get component center in screen coordinates
+        local compCenterX, compCenterY = self:GetCenter()
+        
+        -- Store click offset (where on the component they clicked, relative to its center)
+        -- This prevents the component from snapping to cursor on drag start
+        self.clickOffsetX = mx - compCenterX
+        self.clickOffsetY = my - compCenterY
+        
+        -- Store initial local position for reference
+        self.dragStartLocalX = self.posX or 0
+        self.dragStartLocalY = self.posY or 0
         self.isDragging = true
         self.border:SetColorTexture(0.3, 0.8, 0.3, 0.3)
     end)
@@ -527,36 +704,34 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             local halfW = preview.sourceWidth / 2
             local halfH = preview.sourceHeight / 2
             
-            -- Get current mouse position
+            -- Get current mouse position in screen coordinates
             local mx, my = GetCursorPosition()
-            local scale = UIParent:GetEffectiveScale()
-            mx = mx / scale
-            my = my / scale
+            local uiScale = UIParent:GetEffectiveScale()
+            mx = mx / uiScale
+            my = my / uiScale
             
-            -- Calculate new center based on mouse delta
-            local deltaX = mx - self.dragStartMouseX
-            local deltaY = my - self.dragStartMouseY
-            local newCenterX = self.dragStartCenterX + deltaX
-            local newCenterY = self.dragStartCenterY + deltaY
+            -- Get preview center in screen coordinates
+            local previewCenterX, previewCenterY = preview:GetCenter()
             
-            -- Clamp to preview bounds with padding (X=100px, Y=50px)
+            -- Calculate component center position in screen pixels
+            -- Subtract click offset so component doesn't snap to cursor
+            local compScreenX = mx - (self.clickOffsetX or 0)
+            local compScreenY = my - (self.clickOffsetY or 0)
+            
+            -- Calculate offset from preview center in screen pixels
+            local screenOffsetX = compScreenX - previewCenterX
+            local screenOffsetY = compScreenY - previewCenterY
+            
+            -- Convert to local (unscaled) coordinates by dividing by zoom
+            local zoomLevel = Dialog.zoomLevel or 1
+            local centerRelX = screenOffsetX / zoomLevel
+            local centerRelY = screenOffsetY / zoomLevel
+            
+            -- Clamp to reasonable bounds (frame extents + padding)
             local CLAMP_PADDING_X = 100
             local CLAMP_PADDING_Y = 50
-            local containerW = self:GetWidth()
-            local containerH = self:GetHeight()
-            local pLeft = preview:GetLeft() - CLAMP_PADDING_X + containerW / 2
-            local pRight = preview:GetRight() + CLAMP_PADDING_X - containerW / 2
-            local pBottom = preview:GetBottom() - CLAMP_PADDING_Y + containerH / 2
-            local pTop = preview:GetTop() + CLAMP_PADDING_Y - containerH / 2
-            
-            newCenterX = math.max(pLeft, math.min(pRight, newCenterX))
-            newCenterY = math.max(pBottom, math.min(pTop, newCenterY))
-            
-            -- Calculate center-relative position (in logical/unscaled pixels)
-            local previewCenterX = preview:GetLeft() + preview:GetWidth() / 2
-            local previewCenterY = preview:GetBottom() + preview:GetHeight() / 2
-            local centerRelX = (newCenterX - previewCenterX) / PREVIEW_SCALE
-            local centerRelY = (newCenterY - previewCenterY) / PREVIEW_SCALE
+            centerRelX = math.max(-halfW - CLAMP_PADDING_X, math.min(halfW + CLAMP_PADDING_X, centerRelX))
+            centerRelY = math.max(-halfH - CLAMP_PADDING_Y, math.min(halfH + CLAMP_PADDING_Y, centerRelY))
             
             -- Calculate anchor data using CalculateAnchor (includes CENTER_THRESHOLD)
             local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(centerRelX, centerRelY, halfW, halfH)
@@ -564,30 +739,28 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             -- For FontStrings, calculate edge offset based on JUSTIFY edge (not anchor edge)
             -- This prevents jarring jumps when justify flips
             if self.isFontString then
+                -- Note: GetWidth() returns the logical size (SetSize value), unaffected by TransformLayer scale
+                local containerW = self:GetWidth()
                 local isOutsideLeft = centerRelX < -halfW
                 local isOutsideRight = centerRelX > halfW
                 
                 if anchorX == "LEFT" then
                     justifyH = isOutsideLeft and "RIGHT" or "LEFT"
                     if justifyH == "LEFT" then
-                        -- Text anchored by LEFT edge: distance from frame LEFT to container LEFT
-                        local containerLeft = newCenterX - containerW / 2
-                        edgeOffX = (containerLeft - preview:GetLeft()) / PREVIEW_SCALE
+                        -- Text LEFT edge distance from frame LEFT
+                        edgeOffX = centerRelX + halfW - containerW / 2
                     else
-                        -- Text anchored by RIGHT edge (outside): distance from frame LEFT to container RIGHT
-                        local containerRight = newCenterX + containerW / 2
-                        edgeOffX = (containerRight - preview:GetLeft()) / PREVIEW_SCALE
+                        -- Text RIGHT edge distance from frame LEFT (outside)
+                        edgeOffX = centerRelX + halfW + containerW / 2
                     end
                 elseif anchorX == "RIGHT" then
                     justifyH = isOutsideRight and "LEFT" or "RIGHT"
                     if justifyH == "RIGHT" then
-                        -- Text anchored by RIGHT edge: distance from container RIGHT to frame RIGHT
-                        local containerRight = newCenterX + containerW / 2
-                        edgeOffX = (preview:GetRight() - containerRight) / PREVIEW_SCALE
+                        -- Text RIGHT edge distance from frame RIGHT
+                        edgeOffX = halfW - centerRelX - containerW / 2
                     else
-                        -- Text anchored by LEFT edge (outside): distance from container LEFT to frame RIGHT
-                        local containerLeft = newCenterX - containerW / 2
-                        edgeOffX = (preview:GetRight() - containerLeft) / PREVIEW_SCALE
+                        -- Text LEFT edge distance from frame RIGHT (outside)
+                        edgeOffX = halfW - centerRelX + containerW / 2
                     end
                 else
                     edgeOffX = 0
@@ -623,8 +796,9 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             end
             
             -- Always position by CENTER during drag for smooth movement
+            -- Note: SetPoint uses local (unscaled) coordinates - TransformLayer handles zoom
             self:ClearAllPoints()
-            self:SetPoint("CENTER", preview, "CENTER", centerRelX * PREVIEW_SCALE, centerRelY * PREVIEW_SCALE)
+            self:SetPoint("CENTER", preview, "CENTER", centerRelX, centerRelY)
             
             -- Update text alignment in preview
             if self.visual and self.isFontString then
@@ -654,30 +828,25 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     end)
     
     container:SetScript("OnDragStop", function(self)
-
         self.isDragging = false
+        self.dragStartLocalX = nil  -- Clear for next drag
+        self.dragStartLocalY = nil
         self.border:SetColorTexture(0.3, 0.8, 0.3, 0)
         
-        -- Snap offsets to 5px grid (values were already set during OnUpdate)
+        -- Snap center position to 5px grid for visual positioning
         local SNAP = 5
+        local snappedX = math.floor((self.posX or 0) / SNAP + 0.5) * SNAP
+        local snappedY = math.floor((self.posY or 0) / SNAP + 0.5) * SNAP
+        self.posX = snappedX
+        self.posY = snappedY
+        
+        -- Also snap the edge offsets (these were set correctly during OnUpdate)
         self.offsetX = math.floor((self.offsetX or 0) / SNAP + 0.5) * SNAP
         self.offsetY = math.floor((self.offsetY or 0) / SNAP + 0.5) * SNAP
         
-        -- Re-apply final position with snapped values
-        local anchorPoint = BuildAnchorPoint(self.anchorX or "CENTER", self.anchorY or "CENTER")
-        local finalX = self.offsetX * PREVIEW_SCALE
-        local finalY = self.offsetY * PREVIEW_SCALE
-        if self.anchorX == "RIGHT" then finalX = -finalX end
-        if self.anchorY == "TOP" then finalY = -finalY end
-        
+        -- Position by CENTER (consistent with OnUpdate)
         self:ClearAllPoints()
-        if self.isFontString and self.justifyH and self.justifyH ~= "CENTER" then
-            self:SetPoint(self.justifyH, preview, anchorPoint, finalX, finalY)
-        else
-            self:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
-        end
-        
-
+        self:SetPoint("CENTER", preview, "CENTER", snappedX, snappedY)
     end)
     
     -- Hover effects + nudge tracking
@@ -725,30 +894,55 @@ function Dialog:Open(frame, plugin, systemIndex)
     if InCombatLockdown() then return false end
     if not frame then return false end
     
-    -- Store references
+    -- Close Component Settings dialog if open (handles switching frames or reopening)
+    if Orbit.CanvasComponentSettings and Orbit.CanvasComponentSettings:IsShown() then
+        Orbit.CanvasComponentSettings:Hide()
+    end
+    
+    -- Check if frame has a redirect for Canvas Mode (for container frames)
+    local canvasFrame = frame.orbitCanvasFrame or frame
+    
+    -- Store references (keep original frame for component lookup)
     self.targetFrame = frame
     self.targetPlugin = plugin
     self.targetSystemIndex = systemIndex
     
-    -- Update title
-    local title = frame.editModeName or frame:GetName() or "Frame"
+    -- Update title (use custom canvas title if available)
+    local title = frame.orbitCanvasTitle or canvasFrame.editModeName or canvasFrame:GetName() or "Frame"
     self.Title:SetText("Canvas Mode: " .. title)
     
     -- Clean up previous preview
     self:CleanupPreview()
     
-    -- Create preview frame using Preview module
+    -- Reset zoom/pan state BEFORE creating preview (ensures consistent state)
+    self.zoomLevel = DEFAULT_ZOOM
+    self.panOffsetX = 0
+    self.panOffsetY = 0
+    self.TransformLayer:SetScale(DEFAULT_ZOOM)
+    self.TransformLayer:ClearAllPoints()
+    self.TransformLayer:SetPoint("CENTER", self.Viewport, "CENTER", 0, 0)
+    if self.ZoomIndicator then
+        self.ZoomIndicator:SetText(string.format("%.0f%%", DEFAULT_ZOOM * 100))
+    end
+    
+    -- Create preview frame using Preview module (use redirected frame)
+    -- Note: Preview scale is now 1 - actual zoom is handled by TransformLayer:SetScale()
     local textureName = plugin and plugin:GetSetting(systemIndex, "Texture") or "Melli"
     local borderSize = plugin and plugin:GetSetting(systemIndex, "BorderSize") or 1
     
-    self.previewFrame = OrbitEngine.Preview.Frame:Create(frame, {
-        scale = PREVIEW_SCALE,
-        parent = self.PreviewContainer,
+    self.previewFrame = OrbitEngine.Preview.Frame:Create(canvasFrame, {
+        scale = 1,  -- Base scale - zoom handled by TransformLayer
+        parent = self.TransformLayer,  -- Parent to TransformLayer for zoom/pan
         borderSize = borderSize,
         textureName = textureName,
         useClassColor = true,
     })
-    self.previewFrame:SetPoint("CENTER", self.PreviewContainer, "CENTER", 0, 0)
+    self.previewFrame:SetPoint("CENTER", self.TransformLayer, "CENTER", 0, 0)
+    
+    -- Store base dimensions on TransformLayer for pan clamping calculations
+    self.TransformLayer.baseWidth = canvasFrame:GetWidth()
+    self.TransformLayer.baseHeight = canvasFrame:GetHeight()
+    self.TransformLayer:SetSize(self.TransformLayer.baseWidth, self.TransformLayer.baseHeight)
     
     -- Create draggable components based on registered components
     local savedPositions = plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
@@ -766,8 +960,13 @@ function Dialog:Open(frame, plugin, systemIndex)
     -- Get draggable components dynamically
     local dragComponents = OrbitEngine.ComponentDrag:GetComponentsForFrame(frame)
     local components = {}
-    local frameW = frame:GetWidth()
-    local frameH = frame:GetHeight()
+    -- IMPORTANT: Use canvasFrame dimensions to match preview frame size
+    local frameW = canvasFrame:GetWidth()
+    local frameH = canvasFrame:GetHeight()
+    
+    -- DEBUG: Print dimensions to trace positioning issue
+    print("[CanvasMode] frameW:", frameW, "frameH:", frameH)
+    print("[CanvasMode] preview.sourceWidth:", self.previewFrame.sourceWidth, "preview.sourceHeight:", self.previewFrame.sourceHeight)
     
     local DEFAULTS = {
         Name = "Name",
@@ -845,6 +1044,7 @@ function Dialog:Open(frame, plugin, systemIndex)
             offsetX = offsetX,
             offsetY = offsetY,
             justifyH = justifyH,
+            overrides = pos and pos.overrides,  -- Preserve existing style overrides
         }
     end
     
@@ -855,12 +1055,8 @@ function Dialog:Open(frame, plugin, systemIndex)
         self.previewComponents[key] = comp
     end
     
-    -- Size dialog based on source frame (height + 200px, width + 400px)
-    local frameWidth = frame:GetWidth()
-    local frameHeight = frame:GetHeight()
-    local dialogWidth = math.max(DIALOG_WIDTH, (frameWidth * PREVIEW_SCALE) + 400)
-    local dialogHeight = math.max(DIALOG_MIN_HEIGHT, (frameHeight * PREVIEW_SCALE) + 200)
-    self:SetSize(dialogWidth, dialogHeight)
+    -- Fixed dialog size (decoupled from frame dimensions)
+    self:SetSize(DIALOG_WIDTH, DIALOG_HEIGHT)
     
     -- Layout footer buttons to stretch across dialog width
     self:LayoutFooterButtons()
@@ -890,6 +1086,11 @@ end
 -- [ CLOSE DIALOG ]-----------------------------------------------------------------------------
 
 function Dialog:CloseDialog()
+    -- Close Component Settings popout if open
+    if Orbit.CanvasComponentSettings and Orbit.CanvasComponentSettings:IsShown() then
+        Orbit.CanvasComponentSettings:Hide()
+    end
+    
     self:CleanupPreview()
     
     -- Clear state
@@ -952,6 +1153,14 @@ function Dialog:Apply()
             offsetY = offsetY,
             justifyH = justifyH,
         }
+        
+        -- Include style overrides if set via Component Settings dialog
+        if comp.pendingOverrides then
+            positions[key].overrides = comp.pendingOverrides
+        elseif comp.existingOverrides then
+            -- Preserve existing overrides if component wasn't edited
+            positions[key].overrides = comp.existingOverrides
+        end
     end
     
     -- Save references before closing
@@ -1002,6 +1211,10 @@ function Dialog:ResetPositions()
             container.offsetY = defaultPos.offsetY or 0
             container.justifyH = defaultPos.justifyH or "CENTER"
             
+            -- Clear any pending or existing style overrides so they reset to global defaults
+            container.pendingOverrides = nil
+            container.existingOverrides = nil
+            
             -- Calculate center-relative position for posX/posY (used by nudge)
             if container.anchorX == "LEFT" then
                 container.posX = container.offsetX - halfW
@@ -1019,13 +1232,26 @@ function Dialog:ResetPositions()
                 container.posY = 0
             end
             
-            -- Reposition the visual container in the preview
+            -- Build anchor point for positioning (matches real frame logic)
             local anchorPoint = BuildAnchorPoint(container.anchorX, container.anchorY)
-            local finalX = container.offsetX * PREVIEW_SCALE
-            local finalY = container.offsetY * PREVIEW_SCALE
-            if container.anchorX == "RIGHT" then finalX = -finalX end
-            if container.anchorY == "TOP" then finalY = -finalY end
             
+            -- Calculate finalX/finalY using edge-relative logic (same as NudgeComponent)
+            local finalX, finalY
+            if container.anchorX == "CENTER" then
+                finalX = container.posX
+            else
+                finalX = container.offsetX
+                if container.anchorX == "RIGHT" then finalX = -finalX end
+            end
+            
+            if container.anchorY == "CENTER" then
+                finalY = container.posY
+            else
+                finalY = container.offsetY
+                if container.anchorY == "TOP" then finalY = -finalY end
+            end
+            
+            -- Reposition using the same logic as NudgeComponent
             container:ClearAllPoints()
             if container.isFontString and container.justifyH ~= "CENTER" then
                 container:SetPoint(container.justifyH, preview, anchorPoint, finalX, finalY)
@@ -1036,6 +1262,31 @@ function Dialog:ResetPositions()
             -- Update text alignment
             if container.visual and container.isFontString then
                 ApplyTextAlignment(container, container.visual, container.justifyH)
+                
+                -- Reset font to global defaults from plugin or Constants
+                local globalFont = Orbit.Constants.Settings and Orbit.Constants.Settings.Font
+                local defaultFontName = globalFont and globalFont.Default or "PT Sans Narrow"
+                local defaultFontSize = globalFont and globalFont.DefaultSize or 12
+                
+                local fontPath = LSM:Fetch("font", defaultFontName)
+                if fontPath and container.visual.SetFont then
+                    local _, _, flags = container.visual:GetFont()
+                    container.visual:SetFont(fontPath, defaultFontSize, flags or "")
+                end
+                
+                -- Reset shadow to default (off)
+                if container.visual.SetShadowOffset then
+                    container.visual:SetShadowOffset(0, 0)
+                end
+            elseif container.visual and container.visual.GetObjectType and container.visual:GetObjectType() == "Texture" then
+                -- Reset texture to original size (scale = 1)
+                local origW = container.originalVisualWidth or container:GetWidth() or 18
+                local origH = container.originalVisualHeight or container:GetHeight() or 18
+                container.visual:ClearAllPoints()
+                container.visual:SetAllPoints(container)  -- Reset to fill container
+                -- Clear cached original size so next scale starts fresh
+                container.originalVisualWidth = nil
+                container.originalVisualHeight = nil
             end
         end
     end

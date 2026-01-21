@@ -880,12 +880,12 @@ function Plugin:ApplySettings(frame)
         actualFrame:Hide()
 
         -- 4. Mark as disabled to skip in cursor updates
-        actualFrame.orbitDisabled = true
+        OrbitEngine.FrameAnchor:SetFrameDisabled(actualFrame, true)
         return
     end
 
     -- Clear disabled flag
-    actualFrame.orbitDisabled = false
+    OrbitEngine.FrameAnchor:SetFrameDisabled(actualFrame, false)
 
     -- Re-register visibility driver if it was disabled
     -- Respect standard behavior for all bars, BUT preserve special drivers for index 1

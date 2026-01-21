@@ -218,13 +218,13 @@ function Plugin:UpdateVisibility()
     if enabled then
         Frame:SetAttribute("unit", "target")
         RegisterUnitWatch(Frame) -- Handles secure visibility
-        Frame.orbitDisabled = false
+        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
     else
         UnregisterUnitWatch(Frame)
         Orbit:SafeAction(function()
             Frame:Hide()
         end)
-        Frame.orbitDisabled = true
+        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
     end
 end
 

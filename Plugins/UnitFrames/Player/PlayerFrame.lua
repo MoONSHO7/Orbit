@@ -169,7 +169,7 @@ function Plugin:OnLoad()
 
     self.frame.anchorOptions = {
         horizontal = true, -- Can anchor side-by-side (LEFT/RIGHT)
-        vertical = false, -- Cannot stack above/below (TOP/BOTTOM)
+        vertical = true, -- Can stack above/below (TOP/BOTTOM)
         syncScale = true,
         syncDimensions = true,
         useRowDimension = true,

@@ -337,6 +337,17 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
     return false
 end
 
+-- Centralized helper for setting frame disabled state
+-- Automatically breaks anchor when disabled (frees up edge for other frames)
+-- @param frame The frame to enable/disable
+-- @param disabled true to disable, false to enable
+function Anchor:SetFrameDisabled(frame, disabled)
+    frame.orbitDisabled = disabled
+    if disabled and self.anchors[frame] then
+        self:BreakAnchor(frame, true)
+    end
+end
+
 function Anchor:GetAnchorParent(child)
     local anchor = self.anchors[child]
     return anchor and anchor.parent or nil

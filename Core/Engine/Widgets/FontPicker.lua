@@ -97,6 +97,7 @@ function Layout:CreateFontPicker(parent, label, initialFont, callback)
         if not frame.DropdownFrame then
             local dropdown = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
             dropdown:SetFrameStrata("FULLSCREEN_DIALOG")
+            dropdown:SetFrameLevel(1000)  -- Very high to appear above other dialogs
             dropdown:SetBackdrop({
                 bgFile = "Interface\\Buttons\\WHITE8x8",
                 edgeFile = "Interface\\Buttons\\WHITE8x8",

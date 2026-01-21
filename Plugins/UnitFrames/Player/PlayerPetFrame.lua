@@ -84,16 +84,56 @@ function Plugin:OnLoad()
         syncDimensions = false,
     }
 
+    -- Register Edit Mode callbacks for visibility updates
+    if EditModeManagerFrame then
+        EditModeManagerFrame:HookScript("OnShow", function()
+            self:UpdateVisibility()
+        end)
+        EditModeManagerFrame:HookScript("OnHide", function()
+            self:UpdateVisibility()
+        end)
+    end
+
     -- Attach to Orbit Frame system
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, PET_FRAME_INDEX)
 
     -- Apply settings
     self:ApplySettings(self.frame)
 
+    -- Initial visibility check
+    self:UpdateVisibility()
+
     -- Default Position
     if not self.frame:GetPoint() then
         self.frame:SetPoint("CENTER", UIParent, "CENTER", -250, -100)
     end
+end
+
+-- [ VISIBILITY ]------------------------------------------------------------------------------------
+function Plugin:UpdateVisibility()
+    if not self.frame then
+        return
+    end
+
+    local isEditMode = EditModeManagerFrame
+        and EditModeManagerFrame.IsEditModeActive
+        and EditModeManagerFrame:IsEditModeActive()
+
+    local hasPet = UnitExists("pet")
+
+    if isEditMode then
+        -- Disable automatic unit-based hiding in Edit Mode
+        UnregisterUnitWatch(self.frame)
+        
+        -- Always show in Edit Mode for positioning, even without a pet
+        self.frame:Show()
+        self.frame:SetAlpha(hasPet and 1 or 0.5) -- Dimmed if no pet
+        return
+    end
+
+    -- Re-enable automatic unit-based visibility outside Edit Mode
+    RegisterUnitWatch(self.frame)
+    self.frame:SetAlpha(1)
 end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
@@ -152,6 +192,9 @@ function Plugin:ApplySettings(frame)
 
     -- Restore position (Again, to be safe post-update)
     OrbitEngine.Frame:RestorePosition(frame, self, systemIndex)
+    
+    -- Ensure visibility is correctly set (Edit Mode awareness)
+    self:UpdateVisibility()
 end
 
 function Plugin:UpdateVisuals(frame)

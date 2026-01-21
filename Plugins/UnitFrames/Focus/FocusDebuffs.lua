@@ -313,12 +313,12 @@ function Plugin:UpdateVisibility()
         if not InCombatLockdown() then
             UnregisterUnitWatch(Frame)
             Frame:Hide()
-            Frame.orbitDisabled = true
+            OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
         end
     end
 
     if enabled then
-        Frame.orbitDisabled = false
+        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
     end
 end
 

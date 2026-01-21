@@ -8,18 +8,16 @@ local C = Orbit.Constants
 local Drag = {}
 Engine.SelectionDrag = Drag
 
--- [ DRAG START ]-------------------------------------------------------------------------------------
-
 -- [ DRAG UPDATE (VISUALS) ]-------------------------------------------------------------------------
 
 local function OnDragUpdate(selectionOverlay, elapsed)
     local parent = selectionOverlay.parent
     local Selection = Engine.FrameSelection
 
-    -- Skip anchor visuals if anchoring is disabled
+    -- Skip anchor visuals if anchoring is disabled globally or per-frame
     local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings 
         or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
-    if not anchoringEnabled then
+    if not anchoringEnabled or parent.orbitNoSnap then
         -- Just show position tooltip without anchor detection
         Engine.SelectionTooltip:ShowPosition(parent, Selection, true)
         return
@@ -115,9 +113,14 @@ function Drag:OnDragStop(selectionOverlay)
         nil -- No locked-frame filter needed
     )
 
-    -- Check if anchoring is enabled
+    -- Check if anchoring is enabled globally and per-frame
     local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings 
         or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
+    
+    -- Skip anchoring if frame has orbitNoSnap flag
+    if parent.orbitNoSnap then
+        anchoringEnabled = false
+    end
 
     if anchorTarget and anchorEdge and anchoringEnabled then
         local padding = nil
