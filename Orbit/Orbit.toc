@@ -1,0 +1,116 @@
+## Interface: 120001, 120000
+## Title: Orbit
+## Notes: Edit Mode Extensions - Core
+## Author: MoONSHO7 / M7
+## Version: @project-version@
+## SavedVariables: OrbitDB, OrbitProfiles, OrbitCharDB
+## IconTexture: Interface\AddOns\Orbit\Core\assets\Orbit.png
+## Category: Orbit UI
+
+## X-License: All Rights Reserved
+## X-Category: Interface Enhancements
+## X-Curse-Project-ID: 1428137
+
+# ==============================================================
+# LIBRARIES
+# ==============================================================
+Core\Libs\LibStub\LibStub.lua
+Core\Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Core\Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
+Core\Libs\LibSerialize\LibSerialize.lua
+Core\Libs\LibDeflate\LibDeflate.lua
+Core\Libs\LibCustomGlow-1.0\LibCustomGlow-1.0.xml
+
+# ==============================================================
+# CORE
+# ==============================================================
+
+# Constants (must load first)
+Core\Constants.lua
+
+# Media
+Core\Media.lua
+
+# Engine - Base
+Core\Engine\Engine.lua
+Core\Engine\Registry.lua
+Core\Engine\Pixel.lua
+Core\Engine\Layout.lua
+
+# Engine - Widgets
+Core\Engine\WidgetLogic.lua
+Core\Engine\Widgets\Checkbox.lua
+Core\Engine\Widgets\Slider.lua
+Core\Engine\Widgets\Dropdown.lua
+Core\Engine\Widgets\EditBox.lua
+Core\Engine\Widgets\Button.lua
+Core\Engine\Widgets\ColorPicker.lua
+Core\Engine\Widgets\TexturePicker.lua
+Core\Engine\Widgets\FontPicker.lua
+Core\Engine\Config.lua
+
+# Engine - Frame System (order matters: dependencies first)
+Core\Engine\NativeFrame.lua
+Core\Engine\EditMode.lua
+Core\Engine\Frame\Guard.lua
+Core\Engine\Frame\Position\PositionUtils.lua
+Core\Engine\Frame\Position\Anchor.lua
+Core\Engine\Frame\Position\Persistence.lua
+Core\Engine\Frame\Component\ComponentHelpers.lua
+Core\Engine\Handle\HandleCore.lua
+Core\Engine\Frame\Component\ComponentHandle.lua
+Core\Engine\Frame\Component\ComponentEdit.lua
+Core\Engine\Frame\Component\ComponentDrag.lua
+Core\Engine\Frame\Snap.lua
+Core\Engine\Frame\NudgeRepeat.lua
+Core\Engine\Frame\Selection\Tooltip.lua
+Core\Engine\Frame\Selection\Nudge.lua
+Core\Engine\Frame\Selection\Drag.lua
+Core\Engine\Frame\Selection\NativeHook.lua
+Core\Engine\Frame\Selection.lua
+Core\Engine\Frame\Factory.lua
+Core\Engine\Frame\Frame.lua
+Core\Engine\UnitButton.lua
+
+# Services
+Core\Services\EventBus.lua
+Core\Services\Async.lua
+
+# Mixins
+Core\Mixins\PluginMixin.lua
+Core\Mixins\CastBarMixin.lua
+Core\Mixins\UnitFrameMixin.lua
+Core\Mixins\NativeBarMixin.lua
+Core\Mixins\AuraMixin.lua
+Core\Mixins\VisualsExtendedMixin.lua
+Core\Mixins\ResourceBarMixin.lua
+
+# Managers
+Core\Managers\CombatManager.lua
+Core\Managers\PositionManager.lua
+Core\Managers\ProfileManager.lua
+
+# Init (includes ErrorHandler and Visibility)
+Core\Init.lua
+
+# API (Public Facade)
+Core\API.lua
+
+# Preview System
+Core\Engine\Preview\PreviewFrame.lua
+Core\Engine\Preview\PreviewHandle.lua
+Core\Engine\Preview\PreviewController.lua
+
+# UI
+Core\UI\Animation.lua
+Core\UI\OrbitSettingsDialog.lua
+Core\UI\CanvasModeDialog.lua
+Core\UI\CanvasModeComponentSettings.lua
+Core\UI\OrbitOptionsPanel.lua
+Core\UI\OrbitOptionsButton.lua
+
+# Skins
+Core\Skins\Skin.lua
+Core\Skins\Icons.lua
+Core\Skins\CastBar.lua
+Core\Skins\ClassBar.lua

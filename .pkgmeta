@@ -8,3 +8,6 @@ ignore:
   - .pkgmeta
   - .vscode
   - README.md
+  - Plugins
+  - Docs
+

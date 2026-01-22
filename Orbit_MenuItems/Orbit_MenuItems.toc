@@ -1,0 +1,19 @@
+## Interface: 120001, 120000
+## Title: Menu Items
+## Notes: MicroMenu, QueueStatus, Bagbar, FPS/Latency, CombatTimer
+## Author: MoONSHO7 / M7
+## Version: @project-version@
+## Dependencies: Orbit
+## DefaultState: enabled
+## Group: Orbit
+## Category: Orbit UI
+## IconTexture: Interface\AddOns\Orbit\Core\assets\Orbit.png
+
+## X-License: All Rights Reserved
+## X-Part-Of: Orbit
+
+MicroMenu.lua
+QueueStatus.lua
+BagBar.lua
+Performance.lua
+CombatTimer.lua

@@ -1,0 +1,17 @@
+## Interface: 120001, 120000
+## Title: Frames: Boss
+## Notes: Boss unit frames
+## Author: MoONSHO7 / M7
+## Version: @project-version@
+## Dependencies: Orbit
+## DefaultState: enabled
+## Group: Orbit
+## Category: Orbit UI
+## IconTexture: Interface\AddOns\Orbit\Core\assets\Orbit.png
+
+## X-License: All Rights Reserved
+## X-Part-Of: Orbit
+
+BossFrameHelpers.lua
+BossFramePreview.lua
+BossFrame.lua
