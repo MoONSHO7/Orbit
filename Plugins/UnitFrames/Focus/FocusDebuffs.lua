@@ -82,9 +82,8 @@ function Plugin:AddSettings(dialog, systemFrame)
     })
 
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
-    local syncDimensions = Frame.anchorOptions and Frame.anchorOptions.syncDimensions
 
-    if not (isAnchored and syncDimensions) then
+    if not isAnchored then
         table.insert(schema.controls, {
             type = "slider",
             key = "Scale",
