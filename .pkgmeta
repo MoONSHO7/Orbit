@@ -1,3 +1,5 @@
+package-as: Orbit
+
 move-folders:
   Orbit: Orbit
   Orbit_ActionBars: Orbit_ActionBars
