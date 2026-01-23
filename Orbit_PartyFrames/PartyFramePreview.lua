@@ -9,15 +9,30 @@ Orbit.PartyFramePreviewMixin = {}
 local Helpers = nil -- Will be set when first needed
 
 -- Constants
-local MAX_PREVIEW_FRAMES = 4
+local MAX_PREVIEW_FRAMES = 5  -- 4 party + 1 potential player
 local DEBOUNCE_DELAY = Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.DefaultDebounce or 0.1
+
+-- Combat-safe wrappers (matches PartyFrame.lua)
+local function SafeRegisterUnitWatch(frame)
+    if not frame then return end
+    Orbit:SafeAction(function()
+        RegisterUnitWatch(frame)
+    end)
+end
+
+local function SafeUnregisterUnitWatch(frame)
+    if not frame then return end
+    Orbit:SafeAction(function()
+        UnregisterUnitWatch(frame)
+    end)
+end
 
 -- Preview defaults - varied values for realistic appearance
 local PREVIEW_DEFAULTS = {
-    HealthPercents = { 95, 72, 45, 28 },
-    PowerPercents = { 85, 60, 40, 15 },
-    Names = { "Healbot", "Tankenstein", "Stabby", "Pyromancer" },
-    Classes = { "PRIEST", "WARRIOR", "ROGUE", "MAGE" },
+    HealthPercents = { 95, 72, 45, 28, 100 },  -- 5th is player
+    PowerPercents = { 85, 60, 40, 15, 80 },
+    Names = { "Healbot", "Tankenstein", "Stabby", "Pyromancer", "You" },
+    Classes = { "PRIEST", "WARRIOR", "ROGUE", "MAGE", "PALADIN" },
 }
 
 -- [ PREVIEW LOGIC ]---------------------------------------------------------------------------------
@@ -53,13 +68,15 @@ function Orbit.PartyFramePreviewMixin:ShowPreview()
         end
     end
 
-    -- In Canvas Mode show only 1 frame; in Edit Mode show all 4
-    local framesToShow = isCanvasMode and 1 or MAX_PREVIEW_FRAMES
+    -- In Canvas Mode show only 1 frame; in Edit Mode show based on settings
+    local includePlayer = self:GetSetting(1, "IncludePlayer")
+    local baseFrames = isCanvasMode and 1 or 4
+    local framesToShow = includePlayer and (baseFrames + 1) or baseFrames
 
     -- Disable UnitWatch and show frames for preview
     for i = 1, MAX_PREVIEW_FRAMES do
         if self.frames[i] then
-            UnregisterUnitWatch(self.frames[i])
+            SafeUnregisterUnitWatch(self.frames[i])
             self.frames[i].preview = true
             if i <= framesToShow then
                 self.frames[i]:Show()
@@ -345,13 +362,18 @@ function Orbit.PartyFramePreviewMixin:HidePreview()
         frame:SetAlpha(1)
 
         -- Restore UnitWatch for normal gameplay
-        RegisterUnitWatch(frame)
+        SafeRegisterUnitWatch(frame)
 
         -- Force refresh with real unit data (replaces preview values)
         if frame.UpdateAll then
             frame:UpdateAll()
         end
         
+    end
+    
+    -- Reassign units based on current IncludePlayer and SortByRole settings
+    if self.UpdateFrameUnits then
+        self:UpdateFrameUnits()
     end
 
     -- Apply full settings to reset visuals

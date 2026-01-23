@@ -151,7 +151,14 @@ local function addFrameAndTex(r,color,name,key,N,xOffset,yOffset,texture,texCoor
                 f.textures[i]:SetBlendMode("ADD")
             end
         end
-        f.textures[i]:SetVertexColor(color[1],color[2],color[3],color[4])
+        -- Handle both array format {r,g,b,a} and Color objects (for WoW 12.0 secret values)
+        if type(color) == "table" and color.GetRGBA then
+            -- Color object from C_UnitAuras.GetAuraDispelTypeColor
+            f.textures[i]:SetVertexColor(color:GetRGBA())
+        else
+            -- Traditional array format
+            f.textures[i]:SetVertexColor(color[1],color[2],color[3],color[4])
+        end
         f.textures[i]:Show()
     end
     while #f.textures>N do

@@ -68,6 +68,11 @@ function UnitButtonMixin:UpdateHealth()
     if not self.Health then
         return
     end
+    
+    -- Guard against nil unit (frames can exist before being assigned a unit)
+    if not self.unit or not UnitExists(self.unit) then
+        return
+    end
 
     local health = UnitHealth(self.unit)
     local maxHealth = UnitHealthMax(self.unit)
@@ -258,6 +263,13 @@ function UnitButtonMixin:UpdateHealthText()
         self.HealthText:Hide()
         return
     end
+    
+    -- Guard against nil unit
+    if not self.unit then
+        self.HealthText:SetText("")
+        self.HealthText:Hide()
+        return
+    end
 
     if UnitIsDeadOrGhost(self.unit) then
         self.HealthText:SetText("Dead")
@@ -343,6 +355,11 @@ local function SafeSetHealAbsorbPoints(bar, healthBar, width)
 end
 
 function UnitButtonMixin:UpdateHealPrediction()
+    -- Guard against nil unit
+    if not self.unit or not UnitExists(self.unit) then
+        return
+    end
+    
     local maxHealth = UnitHealthMax(self.unit)
     -- We assume maxHealth is never secret, as it's a cap, not current state.
     -- Even if it is, StatusBar:SetMinMaxValues accepts it.
@@ -472,6 +489,13 @@ function UnitButtonMixin:UpdateName()
     if not self.Name then
         return
     end
+    
+    -- Guard against nil unit
+    if not self.unit then
+        self.Name:SetText("")
+        return
+    end
+    
     local name = UnitName(self.unit)
 
     -- Handle nil/invalid names

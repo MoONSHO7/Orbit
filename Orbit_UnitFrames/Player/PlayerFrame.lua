@@ -36,6 +36,10 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         HealthTextMode = "percent_short",
         EnablePlayerPower = true,
         EnablePlayerResource = true,
+        -- Aggro Indicator Settings
+        AggroIndicatorEnabled = true,
+        AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
+        AggroThickness = 2,
         -- Default component positions (Canvas Mode is single source of truth)
         ComponentPositions = {
             Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
@@ -50,8 +54,8 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
--- Apply Mixins
-Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin)
+-- Apply Mixins (including aggro indicator support)
+Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.PartyFrameAggroMixin)
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
@@ -363,6 +367,9 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("GROUP_ROSTER_UPDATE")
     self.frame:RegisterEvent("PARTY_LEADER_CHANGED")
     self.frame:RegisterEvent("RAID_TARGET_UPDATE")
+    
+    -- Register threat events for aggro indicator
+    self.frame:RegisterUnitEvent("UNIT_THREAT_SITUATION_UPDATE", "player")
 
     -- Hook into existing OnEvent
     local originalOnEvent = self.frame:GetScript("OnEvent")
@@ -389,6 +396,12 @@ function Plugin:OnLoad()
             return
         elseif event == "RAID_TARGET_UPDATE" then
             self:UpdateMarkerIcon(f, PLAYER_FRAME_INDEX)
+            return
+        elseif event == "UNIT_THREAT_SITUATION_UPDATE" then
+            -- Update aggro indicator
+            if self.UpdateAggroIndicator then
+                self:UpdateAggroIndicator(f, self)
+            end
             return
         end
         if originalOnEvent then

@@ -14,4 +14,8 @@
 
 PartyFrameHelpers.lua
 PartyFramePreview.lua
+DispelIndicator.lua
+AggroIndicator.lua
+FrameFactory.lua
+StatusIndicators.lua
 PartyFrame.lua

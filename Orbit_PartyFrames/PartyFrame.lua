@@ -7,8 +7,16 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local Helpers = nil -- Will be set when first needed
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local MAX_PARTY_FRAMES = 4
+local MAX_PARTY_FRAMES = 5  -- 4 party + 1 potential player
 local POWER_BAR_HEIGHT_RATIO = 0.2
+
+-- Role priority for sorting (Tank > Healer > DPS > None)
+local ROLE_PRIORITY = {
+    TANK = 1,
+    HEALER = 2,
+    DAMAGER = 3,
+    NONE = 4,
+}
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PartyFrames"
@@ -34,11 +42,30 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
             MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = -2 },
         },
         ShowMarkerIcon = true,
+        IncludePlayer = false,  -- Show player in party frames
+        SortByRole = true,      -- Tank > Healer > DPS ordering
+        -- Dispel Indicator Settings
+        DispelIndicatorEnabled = true,
+        DispelFilterMode = "PLAYER",  -- PLAYER or ALL
+        DispelThickness = 2,
+        DispelFrequency = 0.25,
+        DispelNumLines = 8,
+        DispelColorMagic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
+        DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
+        DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
+        DispelColorPoison = { r = 0.0, g = 0.6, b = 0.0, a = 1 },
+        DispelDebug = false,  -- Debug mode (not shown in UI, toggle via /run)
+        -- Aggro Indicator Settings
+        AggroIndicatorEnabled = true,
+        AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
+        AggroThickness = 2,
+        AggroFrequency = 0.25,
+        AggroNumLines = 8,
     },
 }, Orbit.Constants.PluginGroups.PartyFrames)
 
--- Apply Mixins (including AuraMixin for debuff display)
-Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.PartyFramePreviewMixin, Orbit.AuraMixin)
+-- Apply Mixins (Status, Dispel, Aggro, Factory)
+Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.PartyFramePreviewMixin, Orbit.AuraMixin, Orbit.PartyFrameDispelMixin, Orbit.PartyFrameAggroMixin, Orbit.PartyFrameStatusMixin, Orbit.PartyFrameFactoryMixin)
 
 -- Enable Canvas Mode (right-click component editing)
 Plugin.canvasMode = true
@@ -54,9 +81,75 @@ end
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
 
+-- Combat-safe wrappers for UnitWatch using Orbit.CombatManager
+-- Prevents taint by queueing operations during combat
+local function SafeRegisterUnitWatch(frame)
+    if not frame then return end
+    
+    Orbit:SafeAction(function()
+        RegisterUnitWatch(frame)
+    end)
+end
+
+local function SafeUnregisterUnitWatch(frame)
+    if not frame then return end
+    
+    Orbit:SafeAction(function()
+        UnregisterUnitWatch(frame)
+    end)
+end
+
 -- Use centralized power colors from Constants
 local function GetPowerColor(powerType)
     return Orbit.Constants.Colors.PowerType[powerType] or { r = 0.5, g = 0.5, b = 0.5 }
+end
+
+-- [ ROLE SORTING ]---------------------------------------------------------------------------------
+
+local function GetRolePriority(unit)
+    if not UnitExists(unit) then return 99 end
+    local role = UnitGroupRolesAssigned(unit)
+    return ROLE_PRIORITY[role] or 4
+end
+
+-- Returns a sorted list of units based on role
+-- If includePlayer is true, includes "player" in the list
+local function GetSortedPartyUnits(includePlayer, sortByRole)
+    local units = {}
+    
+    -- Add player if requested
+    if includePlayer then
+        table.insert(units, "player")
+    end
+    
+    -- Add party members
+    for i = 1, 4 do
+        local unit = "party" .. i
+        if UnitExists(unit) then
+            table.insert(units, unit)
+        end
+    end
+    
+    -- Sort by role if enabled
+    if sortByRole and #units > 1 then
+        table.sort(units, function(a, b)
+            local priorityA = GetRolePriority(a)
+            local priorityB = GetRolePriority(b)
+            if priorityA == priorityB then
+                -- Secondary sort: alphabetical by name for consistency
+                local nameA = UnitName(a) or ""
+                local nameB = UnitName(b) or ""
+                -- Handle secret values
+                if issecretvalue and (issecretvalue(nameA) or issecretvalue(nameB)) then
+                    return false  -- Maintain original order if names are secret
+                end
+                return nameA < nameB
+            end
+            return priorityA < priorityB
+        end)
+    end
+    
+    return units
 end
 
 -- [ POWER BAR CREATION & UPDATE ]-------------------------------------------------------------------
@@ -223,298 +316,46 @@ end
 -- [ BIG DEFENSIVE DISPLAY ]-------------------------------------------------------------------------
 
 -- [ STATUS INDICATOR UPDATES ]---------------------------------------------------------------------
-
--- Role Icon (Tank/Healer/DPS)
-local ROLE_ATLASES = {
-    TANK = "UI-LFG-RoleIcon-Tank-Micro-GroupFinder",
-    HEALER = "UI-LFG-RoleIcon-Healer-Micro-GroupFinder",
-    DAMAGER = "UI-LFG-RoleIcon-DPS-Micro-GroupFinder",
-}
+-- These are thin wrappers that delegate to the StatusMixin methods on Plugin
 
 local function UpdateRoleIcon(frame, plugin)
-    if not frame.RoleIcon then return end
-    
-    local showRole = plugin:GetSetting(1, "ShowRoleIcon")
-    if showRole == false then
-        frame.RoleIcon:Hide()
-        return
-    end
-    
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.RoleIcon:Hide()
-        return
-    end
-    
-    -- Check for vehicle first
-    if UnitInVehicle(unit) and UnitHasVehicleUI(unit) then
-        frame.RoleIcon:SetAtlas("RaidFrame-Icon-Vehicle")
-        frame.RoleIcon:Show()
-        return
-    end
-    
-    local role = UnitGroupRolesAssigned(unit)
-    
-    local roleAtlas = ROLE_ATLASES[role]
-    if roleAtlas then
-        frame.RoleIcon:SetAtlas(roleAtlas)
-        frame.RoleIcon:Show()
-    else
-        frame.RoleIcon:Hide()
-    end
+    if plugin.UpdateRoleIcon then plugin:UpdateRoleIcon(frame, plugin) end
 end
 
--- Leader Icon
 local function UpdateLeaderIcon(frame, plugin)
-    if not frame.LeaderIcon then return end
-    
-    local showLeader = plugin:GetSetting(1, "ShowLeaderIcon")
-    if showLeader == false then
-        frame.LeaderIcon:Hide()
-        return
-    end
-    
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.LeaderIcon:Hide()
-        return
-    end
-    
-    if UnitIsGroupLeader(unit) then
-        frame.LeaderIcon:SetAtlas("UI-HUD-UnitFrame-Player-Group-LeaderIcon")
-        frame.LeaderIcon:Show()
-    elseif UnitIsGroupAssistant(unit) then
-        frame.LeaderIcon:SetAtlas("UI-HUD-UnitFrame-Player-Group-AssistantIcon")
-        frame.LeaderIcon:Show()
-    else
-        frame.LeaderIcon:Hide()
-    end
+    if plugin.UpdateLeaderIcon then plugin:UpdateLeaderIcon(frame, plugin) end
 end
 
--- Selection Highlight (White border when targeted)
 local function UpdateSelectionHighlight(frame, plugin)
-    if not frame.SelectionHighlight then return end
-    
-    local showSelection = plugin:GetSetting(1, "ShowSelectionHighlight")
-    if showSelection == false then
-        frame.SelectionHighlight:Hide()
-        return
-    end
-    
-    local unit = frame.unit
-    if UnitIsUnit(unit, "target") then
-        frame.SelectionHighlight:Show()
-    else
-        frame.SelectionHighlight:Hide()
-    end
+    if plugin.UpdateSelectionHighlight then plugin:UpdateSelectionHighlight(frame, plugin) end
 end
-
--- Aggro Highlight (Threat glow)
-local THREAT_COLORS = {
-    [0] = nil,  -- No threat - hide
-    [1] = { r = 1.0, g = 1.0, b = 0.0, a = 0.5 },  -- Yellow - about to gain/lose
-    [2] = { r = 1.0, g = 0.6, b = 0.0, a = 0.6 },  -- Orange - higher threat
-    [3] = { r = 1.0, g = 0.4, b = 0.0, a = 0.7 },  -- Orange-Red - has aggro
-}
 
 local function UpdateAggroHighlight(frame, plugin)
-    if not frame.AggroHighlight then return end
-    
-    local showAggro = plugin:GetSetting(1, "ShowAggroHighlight")
-    if showAggro == false then
-        frame.AggroHighlight:Hide()
-        return
-    end
-    
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.AggroHighlight:Hide()
-        return
-    end
-    
-    local threatStatus = UnitThreatSituation(unit)
-    local threatColor = threatStatus and THREAT_COLORS[threatStatus]
-    
-    if threatColor then
-        frame.AggroHighlight:SetVertexColor(threatColor.r, threatColor.g, threatColor.b, threatColor.a)
-        frame.AggroHighlight:Show()
-    else
-        frame.AggroHighlight:Hide()
-    end
+    if plugin.UpdateAggroHighlight then plugin:UpdateAggroHighlight(frame, plugin) end
 end
 
--- Phase Icon (Out of phase/warmode indicator)
 local function UpdatePhaseIcon(frame, plugin)
-    if not frame.PhaseIcon then return end
-    
-    local showPhase = plugin:GetSetting(1, "ShowPhaseIcon")
-    if showPhase == false then
-        frame.PhaseIcon:Hide()
-        return
-    end
-    
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.PhaseIcon:Hide()
-        return
-    end
-    
-    local phaseReason = UnitPhaseReason(unit)
-    if phaseReason then
-        frame.PhaseIcon:SetAtlas("RaidFrame-Icon-Phasing")
-        frame.PhaseIcon:Show()
-        frame.PhaseIcon.tooltip = PartyUtil and PartyUtil.GetPhasedReasonString and PartyUtil.GetPhasedReasonString(phaseReason, unit) or "Out of Phase"
-    else
-        frame.PhaseIcon:Hide()
-    end
+    if plugin.UpdatePhaseIcon then plugin:UpdatePhaseIcon(frame, plugin) end
 end
 
--- Ready Check Icon
 local function UpdateReadyCheck(frame, plugin)
-    if not frame.ReadyCheckIcon then return end
-    
-    local showReadyCheck = plugin:GetSetting(1, "ShowReadyCheck")
-    if showReadyCheck == false then
-        frame.ReadyCheckIcon:Hide()
-        return
-    end
-    
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.ReadyCheckIcon:Hide()
-        return
-    end
-    
-    local readyStatus = GetReadyCheckStatus(unit)
-    if readyStatus == "ready" then
-        frame.ReadyCheckIcon:SetAtlas("UI-HUD-Minimap-Tracking-Checkmark")
-        frame.ReadyCheckIcon:Show()
-    elseif readyStatus == "notready" then
-        frame.ReadyCheckIcon:SetAtlas("UI-HUD-Minimap-Tracking-DenyMark")
-        frame.ReadyCheckIcon:Show()
-    elseif readyStatus == "waiting" then
-        frame.ReadyCheckIcon:SetAtlas("UI-HUD-Minimap-Tracking-Question")
-        frame.ReadyCheckIcon:Show()
-    else
-        frame.ReadyCheckIcon:Hide()
-    end
+    if plugin.UpdateReadyCheck then plugin:UpdateReadyCheck(frame, plugin) end
 end
 
--- Incoming Resurrection Icon
 local function UpdateIncomingRes(frame, plugin)
-    if not frame.ResIcon then return end
-    
-    local showRes = plugin:GetSetting(1, "ShowIncomingRes")
-    if showRes == false then
-        frame.ResIcon:Hide()
-        return
-    end
-    
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.ResIcon:Hide()
-        return
-    end
-    
-    if UnitHasIncomingResurrection(unit) then
-        frame.ResIcon:SetAtlas("RaidFrame-Icon-Rez")
-        frame.ResIcon:Show()
-    else
-        frame.ResIcon:Hide()
-    end
+    if plugin.UpdateIncomingRes then plugin:UpdateIncomingRes(frame, plugin) end
 end
 
--- Incoming Summon Icon
 local function UpdateIncomingSummon(frame, plugin)
-    if not frame.SummonIcon then return end
-    
-    local showSummon = plugin:GetSetting(1, "ShowIncomingSummon")
-    if showSummon == false then
-        frame.SummonIcon:Hide()
-        return
-    end
-    
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.SummonIcon:Hide()
-        return
-    end
-    
-    if C_IncomingSummon and C_IncomingSummon.HasIncomingSummon(unit) then
-        local status = C_IncomingSummon.IncomingSummonStatus(unit)
-        if status == Enum.SummonStatus.Pending then
-            frame.SummonIcon:SetAtlas("RaidFrame-Icon-SummonPending")
-            frame.SummonIcon:Show()
-        elseif status == Enum.SummonStatus.Accepted then
-            frame.SummonIcon:SetAtlas("RaidFrame-Icon-SummonAccepted")
-            frame.SummonIcon:Show()
-        elseif status == Enum.SummonStatus.Declined then
-            frame.SummonIcon:SetAtlas("RaidFrame-Icon-SummonDeclined")
-            frame.SummonIcon:Show()
-        else
-            frame.SummonIcon:Hide()
-        end
-    else
-        frame.SummonIcon:Hide()
-    end
+    if plugin.UpdateIncomingSummon then plugin:UpdateIncomingSummon(frame, plugin) end
 end
-
--- Marker Icon (Raid Target)
-local RAID_TARGET_TEXTURE_COLUMNS = 4
-local RAID_TARGET_TEXTURE_ROWS = 4
 
 local function UpdateMarkerIcon(frame, plugin)
-    if not frame.MarkerIcon then return end
-
-    local showMarker = plugin:GetSetting(1, "ShowMarkerIcon")
-    if showMarker == false then
-        frame.MarkerIcon:Hide()
-        return
-    end
-
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.MarkerIcon:Hide()
-        return
-    end
-
-    local index = GetRaidTargetIndex(unit)
-    
-    -- Helper to set sprite sheet cell and property
-    local function SetMarkerIndex(i)
-        if frame.MarkerIcon.SetSpriteSheetCell then
-             frame.MarkerIcon:SetSpriteSheetCell(i, RAID_TARGET_TEXTURE_ROWS, RAID_TARGET_TEXTURE_COLUMNS)
-             frame.MarkerIcon.orbitSpriteIndex = i -- Required for Canvas Mode
-        else
-            -- Fallback if mixin missing (shouldn't happen on textures created via proper methods, but good safety)
-            local col = (i - 1) % RAID_TARGET_TEXTURE_COLUMNS
-            local row = math.floor((i - 1) / RAID_TARGET_TEXTURE_COLUMNS)
-            local w = 1 / RAID_TARGET_TEXTURE_COLUMNS
-            local h = 1 / RAID_TARGET_TEXTURE_ROWS
-            frame.MarkerIcon:SetTexCoord(col * w, (col + 1) * w, row * h, (row + 1) * h)
-            frame.MarkerIcon.orbitSpriteIndex = i
-        end
-    end
-
-    if index then
-        SetMarkerIndex(index)
-        frame.MarkerIcon:Show()
-    else
-        frame.MarkerIcon:Hide()
-    end
+    if plugin.UpdateMarkerIcon then plugin:UpdateMarkerIcon(frame, plugin) end
 end
 
--- Update all status indicators
 local function UpdateAllStatusIndicators(frame, plugin)
-    UpdateRoleIcon(frame, plugin)
-    UpdateLeaderIcon(frame, plugin)
-    UpdateSelectionHighlight(frame, plugin)
-    UpdateAggroHighlight(frame, plugin)
-    UpdatePhaseIcon(frame, plugin)
-    UpdateReadyCheck(frame, plugin)
-    UpdateIncomingRes(frame, plugin)
-    UpdateIncomingSummon(frame, plugin)
-    UpdateMarkerIcon(frame, plugin)
+    if plugin.UpdateAllStatusIndicators then plugin:UpdateAllStatusIndicators(frame, plugin) end
 end
 
 -- [ PARTY FRAME CREATION ]--------------------------------------------------------------------------
@@ -548,143 +389,17 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
     frame.debuffContainer = CreateFrame("Frame", nil, frame)
     frame.debuffContainer:SetFrameLevel(frame:GetFrameLevel() + 10)
 
+    -- Create Status Indicators (delegated to factory mixin)
+    plugin:CreateStatusIcons(frame)
 
-    -- Create Status Indicators
-    local iconSize = 16
-    
-    -- Create Overlay container for status indicators to ensure they render above Health/Power bars
-    frame.StatusOverlay = CreateFrame("Frame", nil, frame)
-    frame.StatusOverlay:SetAllPoints()
-    frame.StatusOverlay:SetFrameLevel(frame:GetFrameLevel() + 20)
-
-    -- Role Icon (Tank/Healer/DPS) - Top Left
-    frame.RoleIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
-    frame.RoleIcon:SetSize(iconSize, iconSize)
-    frame.RoleIcon:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
-    frame.RoleIcon:Hide()
-    
-    -- Leader Icon - Next to Role Icon
-    frame.LeaderIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
-    frame.LeaderIcon:SetSize(iconSize, iconSize)
-    frame.LeaderIcon:SetPoint("LEFT", frame.RoleIcon, "RIGHT", 2, 0)
-    frame.LeaderIcon:Hide()
-    
-    -- Selection Highlight (White border when targeted)
-    frame.SelectionHighlight = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
-    frame.SelectionHighlight:SetAllPoints()
-    frame.SelectionHighlight:SetColorTexture(1, 1, 1, 0)  -- Transparent base
-    frame.SelectionHighlight:SetDrawLayer("OVERLAY", 7)
-    frame.SelectionHighlight:Hide()
-    
-    -- Create actual highlight borders for selection
-    local borderThickness = 2
-    frame.SelectionBorders = {}
-    for _, edge in pairs({"TOP", "BOTTOM", "LEFT", "RIGHT"}) do
-        local border = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
-        border:SetColorTexture(1, 1, 1, 0.8)  -- White border
-        border:SetDrawLayer("OVERLAY", 6)
-        if edge == "TOP" then
-            border:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-            border:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-            border:SetHeight(borderThickness)
-        elseif edge == "BOTTOM" then
-            border:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
-            border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-            border:SetHeight(borderThickness)
-        elseif edge == "LEFT" then
-            border:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-            border:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
-            border:SetWidth(borderThickness)
-        elseif edge == "RIGHT" then
-            border:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-            border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-            border:SetWidth(borderThickness)
-        end
-        border:Hide()
-        frame.SelectionBorders[edge] = border
-    end
-    -- Override SelectionHighlight show/hide to control borders
-    frame.SelectionHighlight.Show = function(self)
-        for _, border in pairs(frame.SelectionBorders) do
-            border:Show()
-        end
-    end
-    frame.SelectionHighlight.Hide = function(self)
-        for _, border in pairs(frame.SelectionBorders) do
-            border:Hide()
-        end
-    end
-    
-    -- Aggro Highlight (Threat glow) - Full frame overlay
-    frame.AggroHighlight = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
-    frame.AggroHighlight:SetAllPoints()
-    frame.AggroHighlight:SetAtlas("UI-HUD-ActionBar-IconFrame-Highlight")
-    frame.AggroHighlight:SetBlendMode("ADD")
-    frame.AggroHighlight:SetDrawLayer("OVERLAY", 5)
-    frame.AggroHighlight:Hide()
-    
-    -- Phase Icon (Out of phase indicator) - Center
-    frame.PhaseIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
-    frame.PhaseIcon:SetSize(iconSize * 1.5, iconSize * 1.5)
-    frame.PhaseIcon:SetPoint("CENTER", frame, "CENTER", 0, 0)
-    frame.PhaseIcon:SetDrawLayer("OVERLAY", 7)
-    frame.PhaseIcon:Hide()
-    
-    -- Ready Check Icon - Center (high priority)
-    frame.ReadyCheckIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
-    frame.ReadyCheckIcon:SetSize(iconSize * 1.5, iconSize * 1.5)
-    frame.ReadyCheckIcon:SetPoint("CENTER", frame, "CENTER", 0, 0)
-    frame.ReadyCheckIcon:SetDrawLayer("OVERLAY", 7)
-    frame.ReadyCheckIcon:Hide()
-    
-    -- Incoming Resurrection Icon - Center
-    frame.ResIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
-    frame.ResIcon:SetSize(iconSize * 1.5, iconSize * 1.5)
-    frame.ResIcon:SetPoint("CENTER", frame, "CENTER", 0, 0)
-    frame.ResIcon:SetDrawLayer("OVERLAY", 7)
-    frame.ResIcon:Hide()
-    
-    -- Incoming Summon Icon - Center
-    frame.SummonIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
-    frame.SummonIcon:SetSize(iconSize * 1.5, iconSize * 1.5)
-    frame.SummonIcon:SetPoint("CENTER", frame, "CENTER", 0, 0)
-    frame.SummonIcon:SetDrawLayer("OVERLAY", 7)
-    frame.SummonIcon:SetDrawLayer("OVERLAY", 7)
-    frame.SummonIcon:Hide()
-
-    -- Marker Icon - Top Center (default)
-    frame.MarkerIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
-    frame.MarkerIcon:SetSize(iconSize, iconSize)
-    frame.MarkerIcon:SetPoint("TOP", frame, "TOP", 0, -2)
-    frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
-    frame.MarkerIcon:Hide()
-
-    -- Register power events
-    frame:RegisterUnitEvent("UNIT_POWER_UPDATE", unit)
-    frame:RegisterUnitEvent("UNIT_MAXPOWER", unit)
-    frame:RegisterUnitEvent("UNIT_DISPLAYPOWER", unit)
-    frame:RegisterUnitEvent("UNIT_POWER_FREQUENT", unit)
-
-    -- Register aura events for debuff display
-    frame:RegisterUnitEvent("UNIT_AURA", unit)
-    
-    -- Register status indicator events
-    frame:RegisterUnitEvent("UNIT_THREAT_SITUATION_UPDATE", unit)
-    frame:RegisterUnitEvent("UNIT_PHASE", unit)
-    frame:RegisterUnitEvent("UNIT_FLAGS", unit)
-    frame:RegisterEvent("READY_CHECK")
-    frame:RegisterEvent("READY_CHECK_CONFIRM")
-    frame:RegisterEvent("READY_CHECK_FINISHED")
-    frame:RegisterUnitEvent("INCOMING_RESURRECT_CHANGED", unit)
-    frame:RegisterEvent("INCOMING_SUMMON_CHANGED")
-    frame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
-    frame:RegisterEvent("GROUP_ROSTER_UPDATE")
-    frame:RegisterEvent("GROUP_ROSTER_UPDATE")
-    frame:RegisterEvent("PLAYER_TARGET_CHANGED")
-    frame:RegisterEvent("RAID_TARGET_UPDATE")
+    -- Register frame events (delegated to factory mixin)
+    plugin:RegisterFrameEvents(frame, unit)
 
     -- Update Loop
     frame:SetScript("OnShow", function(self)
+        -- Guard against nil unit (frames start hidden, unit assigned later)
+        if not self.unit then return end
+        
         self:UpdateAll()
         UpdatePowerBar(self, plugin)
         UpdateFrameLayout(self, plugin:GetPlayerSetting("BorderSize"), plugin)
@@ -703,8 +418,13 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
         end
 
         if event == "UNIT_AURA" then
-            if eventUnit == unit then
+            -- Use f.unit (current assigned unit) not closure 'unit' which may be stale
+            if eventUnit == f.unit then
                 UpdateDebuffs(f, plugin)
+                -- Update dispel indicator
+                if plugin.UpdateDispelIndicator then
+                    plugin:UpdateDispelIndicator(f, plugin)
+                end
             end
             return
         end
@@ -717,8 +437,11 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
         
         -- Threat updates
         if event == "UNIT_THREAT_SITUATION_UPDATE" then
-            if eventUnit == unit then
-                UpdateAggroHighlight(f, plugin)
+            if eventUnit == f.unit then
+                -- Update aggro indicator
+                if plugin.UpdateAggroIndicator then
+                    plugin:UpdateAggroIndicator(f, plugin)
+                end
             end
             return
         end
@@ -767,24 +490,8 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
         end
     end)
 
-    -- Enable class coloring (for player party members)
-    frame:SetClassColour(true)
-
-    -- Enable reaction coloring (for NPC party members like followers)
-    if frame.SetReactionColour then
-        frame:SetReactionColour(true)
-    end
-
-    -- Enable health text display
-    frame.healthTextEnabled = true
-
-    -- Enable advanced health bar features
-    if frame.SetAbsorbsEnabled then
-        frame:SetAbsorbsEnabled(true)
-    end
-    if frame.SetHealAbsorbsEnabled then
-        frame:SetHealAbsorbsEnabled(true)
-    end
+    -- Configure frame features (delegated to factory mixin)
+    plugin:ConfigureFrame(frame)
 
     return frame
 end
@@ -833,6 +540,18 @@ end
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 
+-- Helper to reduce repetitive onChange handlers
+local function makeOnChange(plugin, key, preApply)
+    return function(val)
+        plugin:SetSetting(1, key, val)
+        if preApply then preApply(val) end
+        plugin:ApplySettings()
+        if plugin.frames and plugin.frames[1] and plugin.frames[1].preview then
+            plugin:SchedulePreviewUpdate()
+        end
+    end
+end
+
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = 1
     local WL = OrbitEngine.WidgetLogic
@@ -840,54 +559,20 @@ function Plugin:AddSettings(dialog, systemFrame)
     local schema = {
         hideNativeSettings = true,
         controls = {
-            {
-                type = "dropdown",
-                key = "Orientation",
-                label = "Orientation",
-                options = {
-                    { text = "Vertical", value = 0 },
-                    { text = "Horizontal", value = 1 },
-                },
-                default = 0,
-                onChange = function(val)
-                    self:SetSetting(1, "Orientation", val)
-                    self:ApplySettings()
-                    if self.frames and self.frames[1] and self.frames[1].preview then
-                        self:SchedulePreviewUpdate()
-                    end
-                end,
+            { type = "dropdown", key = "Orientation", label = "Orientation", default = 0,
+                options = { { text = "Vertical", value = 0 }, { text = "Horizontal", value = 1 } },
+                onChange = makeOnChange(self, "Orientation"),
             },
             { type = "slider", key = "Width", label = "Width", min = 100, max = 250, step = 5, default = 160,
-                onChange = function(val)
-                    self:SetSetting(1, "Width", val)
-                    self:ApplySettings()
-                    if self.frames and self.frames[1] and self.frames[1].preview then
-                        self:SchedulePreviewUpdate()
-                    end
-                end,
+                onChange = makeOnChange(self, "Width"),
             },
             { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 5, default = 40,
-                onChange = function(val)
-                    self:SetSetting(1, "Height", val)
-                    self:ApplySettings()
-                    if self.frames and self.frames[1] and self.frames[1].preview then
-                        self:SchedulePreviewUpdate()
-                    end
-                end,
+                onChange = makeOnChange(self, "Height"),
             },
             { type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 10, step = 1, default = 0,
-                onChange = function(val)
-                    self:SetSetting(1, "Spacing", val)
-                    self:ApplySettings()
-                    if self.frames and self.frames[1] and self.frames[1].preview then
-                        self:SchedulePreviewUpdate()
-                    end
-                end,
+                onChange = makeOnChange(self, "Spacing"),
             },
-            {
-                type = "dropdown",
-                key = "HealthTextMode",
-                label = "Health Text",
+            { type = "dropdown", key = "HealthTextMode", label = "Health Text", default = "percent_short",
                 options = {
                     { text = "Hide", value = "hide" },
                     { text = "Percentage / Short", value = "percent_short" },
@@ -895,19 +580,9 @@ function Plugin:AddSettings(dialog, systemFrame)
                     { text = "Percentage / Raw", value = "percent_raw" },
                     { text = "Raw / Percentage", value = "raw_percent" },
                 },
-                default = "percent_short",
-                onChange = function(val)
-                    self:SetSetting(1, "HealthTextMode", val)
-                    self:ApplySettings()
-                    if self.frames and self.frames[1] and self.frames[1].preview then
-                        self:SchedulePreviewUpdate()
-                    end
-                end,
+                onChange = makeOnChange(self, "HealthTextMode"),
             },
-            {
-                type = "dropdown",
-                key = "DebuffPosition",
-                label = "Debuff Position",
+            { type = "dropdown", key = "DebuffPosition", label = "Debuff Position", default = "Above",
                 options = {
                     { text = "Disabled", value = "Disabled" },
                     { text = "Above", value = "Above" },
@@ -915,52 +590,75 @@ function Plugin:AddSettings(dialog, systemFrame)
                     { text = "Left", value = "Left" },
                     { text = "Right", value = "Right" },
                 },
-                default = "Above",
-                onChange = function(val)
-                    self:SetSetting(1, "DebuffPosition", val)
-                    self:ApplySettings()
-                    if self.frames and self.frames[1] and self.frames[1].preview then
-                        self:SchedulePreviewUpdate()
-                    end
-                end,
+                onChange = makeOnChange(self, "DebuffPosition"),
             },
             { type = "slider", key = "MaxDebuffs", label = "Max Debuffs", min = 1, max = 6, step = 1, default = 3,
                 visibleIf = function() return self:GetSetting(1, "DebuffPosition") ~= "Disabled" end,
-                onChange = function(val)
-                    self:SetSetting(1, "MaxDebuffs", val)
-                    self:ApplySettings()
-                    if self.frames and self.frames[1] and self.frames[1].preview then
-                        self:SchedulePreviewUpdate()
-                    end
-                end,
+                onChange = makeOnChange(self, "MaxDebuffs"),
             },
             { type = "slider", key = "DebuffSize", label = "Debuff Size", min = 12, max = 32, step = 2, default = 20,
                 visibleIf = function() return self:GetSetting(1, "DebuffPosition") ~= "Disabled" end,
-                onChange = function(val)
-                    self:SetSetting(1, "DebuffSize", val)
-                    self:ApplySettings()
+                onChange = makeOnChange(self, "DebuffSize"),
+            },
+            { type = "checkbox", key = "IncludePlayer", label = "Include Player", default = false,
+                onChange = makeOnChange(self, "IncludePlayer", function(val)
+                    -- In preview mode, ShowPreview recalculates framesToShow with new setting
+                    -- UpdateFrameUnits early-returns during preview, so call ShowPreview instead
                     if self.frames and self.frames[1] and self.frames[1].preview then
-                        self:SchedulePreviewUpdate()
+                        self:ShowPreview()
+                    else
+                        self:UpdateFrameUnits()
                     end
-                end,
+                end),
+            },
+            { type = "checkbox", key = "SortByRole", label = "Sort by Role", default = true,
+                onChange = makeOnChange(self, "SortByRole", function()
+                    if self.frames and self.frames[1] and self.frames[1].preview then
+                        self:ShowPreview()
+                    else
+                        self:UpdateFrameUnits()
+                    end
+                end),
             },
             { type = "checkbox", key = "ShowMarkerIcon", label = "Show Marker Icon", default = true,
-                onChange = function(val)
-                    self:SetSetting(1, "ShowMarkerIcon", val)
-                    self:ApplySettings()
-                    if self.frames and self.frames[1] and self.frames[1].preview then
-                        self:SchedulePreviewUpdate()
-                    end
-                end,
+                onChange = makeOnChange(self, "ShowMarkerIcon"),
             },
             { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true,
-                onChange = function(val)
-                    self:SetSetting(1, "ShowPowerBar", val)
-                    self:ApplySettings()
-                    if self.frames and self.frames[1] and self.frames[1].preview then
-                        self:SchedulePreviewUpdate()
+                onChange = makeOnChange(self, "ShowPowerBar"),
+            },
+            -- Dispel Indicators
+            { type = "header", label = "Dispel Indicators" },
+            { type = "checkbox", key = "DispelIndicatorEnabled", label = "Enable Dispel Indicators", default = true,
+                onChange = makeOnChange(self, "DispelIndicatorEnabled", function()
+                    if self.UpdateAllDispelIndicators then
+                        self:UpdateAllDispelIndicators(self)
                     end
-                end,
+                end),
+            },
+            { type = "dropdown", key = "DispelFilterMode", label = "Filter Mode", default = "PLAYER",
+                options = {
+                    { value = "PLAYER", label = "Dispellable by Me" },
+                    { value = "ALL", label = "All Dispellable" },
+                },
+                onChange = makeOnChange(self, "DispelFilterMode", function()
+                    if self.UpdateAllDispelIndicators then
+                        self:UpdateAllDispelIndicators(self)
+                    end
+                end),
+            },
+            { type = "slider", key = "DispelThickness", label = "Border Thickness", default = 2, min = 1, max = 5, step = 1,
+                onChange = makeOnChange(self, "DispelThickness", function()
+                    if self.UpdateAllDispelIndicators then
+                        self:UpdateAllDispelIndicators(self)
+                    end
+                end),
+            },
+            { type = "slider", key = "DispelFrequency", label = "Animation Speed", default = 0.25, min = 0.1, max = 1.0, step = 0.05,
+                onChange = makeOnChange(self, "DispelFrequency", function()
+                    if self.UpdateAllDispelIndicators then
+                        self:UpdateAllDispelIndicators(self)
+                    end
+                end),
             },
         },
     }
@@ -991,8 +689,9 @@ function Plugin:OnLoad()
         -- Set orbitPlugin reference for Canvas Mode support
         self.frames[i].orbitPlugin = self
 
-        -- Register unit watch for visibility
-        RegisterUnitWatch(self.frames[i])
+        -- NOTE: Don't register unit watch here - UpdateFrameUnits handles visibility
+        -- based on IncludePlayer and SortByRole settings
+        self.frames[i]:Hide()  -- Start hidden, UpdateFrameUnits will show valid frames
     end
 
 
@@ -1002,116 +701,44 @@ function Plugin:OnLoad()
     local pluginRef = self
     local firstFrame = self.frames[1]
     if OrbitEngine.ComponentDrag and firstFrame then
-        -- Register Name for drag
-        if firstFrame.Name then
-            OrbitEngine.ComponentDrag:Attach(firstFrame.Name, self.container, {
-                key = "Name",
-                onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH)
-                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                    positions.Name = { anchorX = anchorX, anchorY = anchorY, 
-                                       offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
-                    pluginRef:SetSetting(1, "ComponentPositions", positions)
-                end
-            })
+        -- Components that support justifyH (text elements)
+        local textComponents = {"Name", "HealthText"}
+        -- Components that don't support justifyH (icons)
+        local iconComponents = {"RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon"}
+        
+        -- Register text components with justifyH support
+        for _, key in ipairs(textComponents) do
+            local element = firstFrame[key]
+            if element then
+                OrbitEngine.ComponentDrag:Attach(element, self.container, {
+                    key = key,
+                    onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH)
+                        local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
+                        positions[key] = { anchorX = anchorX, anchorY = anchorY, 
+                                          offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                        pluginRef:SetSetting(1, "ComponentPositions", positions)
+                    end
+                })
+            end
         end
-        -- Register HealthText for drag
-        if firstFrame.HealthText then
-            OrbitEngine.ComponentDrag:Attach(firstFrame.HealthText, self.container, {
-                key = "HealthText",
-                onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH)
-                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                    positions.HealthText = { anchorX = anchorX, anchorY = anchorY, 
-                                             offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
-                    pluginRef:SetSetting(1, "ComponentPositions", positions)
-                end
-            })
-        end
-        -- Register RoleIcon for drag
-        if firstFrame.RoleIcon then
-            OrbitEngine.ComponentDrag:Attach(firstFrame.RoleIcon, self.container, {
-                key = "RoleIcon",
-                onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY)
-                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                    positions.RoleIcon = { anchorX = anchorX, anchorY = anchorY, 
-                                           offsetX = offsetX, offsetY = offsetY }
-                    pluginRef:SetSetting(1, "ComponentPositions", positions)
-                end
-            })
-        end
-        -- Register LeaderIcon for drag
-        if firstFrame.LeaderIcon then
-            OrbitEngine.ComponentDrag:Attach(firstFrame.LeaderIcon, self.container, {
-                key = "LeaderIcon",
-                onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY)
-                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                    positions.LeaderIcon = { anchorX = anchorX, anchorY = anchorY, 
-                                             offsetX = offsetX, offsetY = offsetY }
-                    pluginRef:SetSetting(1, "ComponentPositions", positions)
-                end
-            })
-        end
-        -- Register PhaseIcon for drag
-        if firstFrame.PhaseIcon then
-            OrbitEngine.ComponentDrag:Attach(firstFrame.PhaseIcon, self.container, {
-                key = "PhaseIcon",
-                onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY)
-                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                    positions.PhaseIcon = { anchorX = anchorX, anchorY = anchorY, 
-                                            offsetX = offsetX, offsetY = offsetY }
-                    pluginRef:SetSetting(1, "ComponentPositions", positions)
-                end
-            })
-        end
-        -- Register ReadyCheckIcon for drag
-        if firstFrame.ReadyCheckIcon then
-            OrbitEngine.ComponentDrag:Attach(firstFrame.ReadyCheckIcon, self.container, {
-                key = "ReadyCheckIcon",
-                onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY)
-                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                    positions.ReadyCheckIcon = { anchorX = anchorX, anchorY = anchorY, 
-                                                 offsetX = offsetX, offsetY = offsetY }
-                    pluginRef:SetSetting(1, "ComponentPositions", positions)
-                end
-            })
-        end
-        -- Register ResIcon for drag
-        if firstFrame.ResIcon then
-            OrbitEngine.ComponentDrag:Attach(firstFrame.ResIcon, self.container, {
-                key = "ResIcon",
-                onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY)
-                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                    positions.ResIcon = { anchorX = anchorX, anchorY = anchorY, 
+        
+        -- Register icon components without justifyH
+        for _, key in ipairs(iconComponents) do
+            local element = firstFrame[key]
+            if element then
+                OrbitEngine.ComponentDrag:Attach(element, self.container, {
+                    key = key,
+                    onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY)
+                        local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
+                        positions[key] = { anchorX = anchorX, anchorY = anchorY, 
                                           offsetX = offsetX, offsetY = offsetY }
-                    pluginRef:SetSetting(1, "ComponentPositions", positions)
-                end
-            })
-        end
-        -- Register SummonIcon for drag
-        if firstFrame.SummonIcon then
-            OrbitEngine.ComponentDrag:Attach(firstFrame.SummonIcon, self.container, {
-                key = "SummonIcon",
-                onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY)
-                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                    positions.SummonIcon = { anchorX = anchorX, anchorY = anchorY, 
-                                             offsetX = offsetX, offsetY = offsetY }
-                    pluginRef:SetSetting(1, "ComponentPositions", positions)
-                end
-            })
-        end
-
-        -- Register MarkerIcon for drag
-        if firstFrame.MarkerIcon then
-            OrbitEngine.ComponentDrag:Attach(firstFrame.MarkerIcon, self.container, {
-                key = "MarkerIcon",
-                onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY)
-                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                    positions.MarkerIcon = { anchorX = anchorX, anchorY = anchorY, 
-                                             offsetX = offsetX, offsetY = offsetY }
-                    pluginRef:SetSetting(1, "ComponentPositions", positions)
-                end
-            })
+                        pluginRef:SetSetting(1, "ComponentPositions", positions)
+                    end
+                })
+            end
         end
     end
+
 
     -- Container is the selectable frame for Edit Mode
     self.frame = self.container
@@ -1127,9 +754,20 @@ function Plugin:OnLoad()
         self.container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -200)
     end
 
-    -- Register secure visibility driver (show when in party but NOT in raid, hide when solo)
-    local visibilityDriver = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
-    RegisterStateDriver(self.container, "visibility", visibilityDriver)
+    -- Helper to update visibility driver based on IncludePlayer setting
+    local function UpdateVisibilityDriver(plugin)
+        if InCombatLockdown() then return end
+        
+        -- Always require party to exist - IncludePlayer just adds player to the frames
+        -- Both settings use the same visibility: show only when in party (not raid)
+        local visibilityDriver = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
+        
+        RegisterStateDriver(plugin.container, "visibility", visibilityDriver)
+    end
+    self.UpdateVisibilityDriver = function() UpdateVisibilityDriver(self) end
+    
+    -- Register secure visibility driver
+    UpdateVisibilityDriver(self)
 
     -- Explicit Show Bridge: Ensure container is active to receive first state evaluation
     self.container:Show()
@@ -1142,14 +780,23 @@ function Plugin:OnLoad()
 
     -- Apply initial settings
     self:ApplySettings()
+    
+    -- Initial unit assignment (sorting and player inclusion)
+    self:UpdateFrameUnits()
 
     -- Register for group events
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+    eventFrame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
     eventFrame:SetScript("OnEvent", function(_, event)
-        if event == "GROUP_ROSTER_UPDATE" then
+        if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
+            -- Re-sort and reassign units when group or roles change
+            if not InCombatLockdown() then
+                self:UpdateFrameUnits()
+            end
+            
             for i, frame in ipairs(self.frames) do
                 if frame.UpdateAll then
                     frame:UpdateAll()
@@ -1316,6 +963,76 @@ function Plugin:UpdateContainerSize()
     self.container:SetSize(containerWidth, containerHeight)
 end
 
+-- [ DYNAMIC UNIT ASSIGNMENT ]----------------------------------------------------------------------
+
+function Plugin:UpdateFrameUnits()
+    if InCombatLockdown() then return end
+    
+    -- Don't modify frames during preview mode - let ShowPreview handle display
+    if self.frames and self.frames[1] and self.frames[1].preview then
+        return
+    end
+    
+    local includePlayer = self:GetSetting(1, "IncludePlayer")
+    local sortByRole = self:GetSetting(1, "SortByRole")
+    local sortedUnits = GetSortedPartyUnits(includePlayer, sortByRole)
+    
+    -- Assign units to frames
+    for i = 1, MAX_PARTY_FRAMES do
+        local frame = self.frames[i]
+        if frame then
+            local unit = sortedUnits[i]
+            if unit then
+                -- Update secure unit attribute (only if changed)
+                local currentUnit = frame:GetAttribute("unit")
+                if currentUnit ~= unit then
+                    frame:SetAttribute("unit", unit)
+                    frame.unit = unit
+                    
+                    -- Re-register unit-specific events
+                    frame:UnregisterEvent("UNIT_POWER_UPDATE")
+                    frame:UnregisterEvent("UNIT_MAXPOWER")
+                    frame:UnregisterEvent("UNIT_DISPLAYPOWER")
+                    frame:UnregisterEvent("UNIT_POWER_FREQUENT")
+                    frame:UnregisterEvent("UNIT_AURA")
+                    frame:UnregisterEvent("UNIT_THREAT_SITUATION_UPDATE")
+                    frame:UnregisterEvent("UNIT_PHASE")
+                    frame:UnregisterEvent("UNIT_FLAGS")
+                    frame:UnregisterEvent("INCOMING_RESURRECT_CHANGED")
+                    
+                    frame:RegisterUnitEvent("UNIT_POWER_UPDATE", unit)
+                    frame:RegisterUnitEvent("UNIT_MAXPOWER", unit)
+                    frame:RegisterUnitEvent("UNIT_DISPLAYPOWER", unit)
+                    frame:RegisterUnitEvent("UNIT_POWER_FREQUENT", unit)
+                    frame:RegisterUnitEvent("UNIT_AURA", unit)
+                    frame:RegisterUnitEvent("UNIT_THREAT_SITUATION_UPDATE", unit)
+                    frame:RegisterUnitEvent("UNIT_PHASE", unit)
+                    frame:RegisterUnitEvent("UNIT_FLAGS", unit)
+                    frame:RegisterUnitEvent("INCOMING_RESURRECT_CHANGED", unit)
+                end
+                
+                -- Update unit watch for visibility
+                SafeUnregisterUnitWatch(frame)
+                SafeRegisterUnitWatch(frame)
+                
+                frame:Show()
+                if frame.UpdateAll then
+                    frame:UpdateAll()
+                end
+            else
+                -- No unit for this slot - hide frame and clear unit
+                SafeUnregisterUnitWatch(frame)
+                frame:SetAttribute("unit", nil)
+                frame.unit = nil
+                frame:Hide()
+            end
+        end
+    end
+    
+    self:PositionFrames()
+    self:UpdateContainerSize()
+end
+
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 
 function Plugin:UpdateLayout(frame)
@@ -1356,8 +1073,8 @@ function Plugin:ApplySettings()
     end
 
     for _, frame in ipairs(allFrames) do
-        -- Only apply settings to non-preview frames
-        if not frame.preview then
+        -- Only apply settings to non-preview frames WITH valid units
+        if not frame.preview and frame.unit then
             -- Apply size
             Orbit:SafeAction(function()
                 frame:SetSize(width, height)
