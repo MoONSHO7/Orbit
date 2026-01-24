@@ -65,7 +65,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
 }, Orbit.Constants.PluginGroups.PartyFrames)
 
 -- Apply Mixins (Status, Dispel, Aggro, Factory)
-Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.PartyFramePreviewMixin, Orbit.AuraMixin, Orbit.PartyFrameDispelMixin, Orbit.PartyFrameAggroMixin, Orbit.PartyFrameStatusMixin, Orbit.PartyFrameFactoryMixin)
+Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.PartyFramePreviewMixin, Orbit.AuraMixin, Orbit.PartyFrameDispelMixin, Orbit.AggroIndicatorMixin, Orbit.PartyFrameStatusMixin, Orbit.PartyFrameFactoryMixin)
 
 -- Enable Canvas Mode (right-click component editing)
 Plugin.canvasMode = true

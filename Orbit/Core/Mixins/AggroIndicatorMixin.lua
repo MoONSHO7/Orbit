@@ -1,10 +1,10 @@
----@type Orbit
-local Orbit = Orbit
+-- [ AGGRO INDICATOR MIXIN ]-------------------------------------------------------------------------
+-- Shows solid border when unit has threat/aggro
+-- Used by PlayerFrame, PartyFrames, and other unit frames
 
--- Aggro Indicator System for Party Frames
--- Shows solid red border when unit has threat/aggro (same style as selection border)
+local _, Orbit = ...
 
-Orbit.PartyFrameAggroMixin = {}
+Orbit.AggroIndicatorMixin = {}
 
 -- Create aggro border overlay
 local function CreateAggroBorder(frame)
@@ -65,7 +65,7 @@ local function ApplyBorderLayout(border, thickness)
 end
 
 -- Update aggro indicator for a single frame
-function Orbit.PartyFrameAggroMixin:UpdateAggroIndicator(frame, plugin)
+function Orbit.AggroIndicatorMixin:UpdateAggroIndicator(frame, plugin)
     if not frame or not frame.unit then
         return
     end
@@ -126,8 +126,8 @@ function Orbit.PartyFrameAggroMixin:UpdateAggroIndicator(frame, plugin)
     end
 end
 
--- Update all party frames
-function Orbit.PartyFrameAggroMixin:UpdateAllAggroIndicators(plugin)
+-- Update all frames (for plugins with multiple frames like PartyFrames)
+function Orbit.AggroIndicatorMixin:UpdateAllAggroIndicators(plugin)
     if not plugin or not plugin.frames then
         return
     end
@@ -138,3 +138,6 @@ function Orbit.PartyFrameAggroMixin:UpdateAllAggroIndicators(plugin)
         end
     end
 end
+
+-- Backward compatibility alias
+Orbit.PartyFrameAggroMixin = Orbit.AggroIndicatorMixin

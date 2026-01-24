@@ -85,6 +85,7 @@ Core\Mixins\NativeBarMixin.lua
 Core\Mixins\AuraMixin.lua
 Core\Mixins\VisualsExtendedMixin.lua
 Core\Mixins\ResourceBarMixin.lua
+Core\Mixins\AggroIndicatorMixin.lua
 
 # Managers
 Core\Managers\CombatManager.lua
