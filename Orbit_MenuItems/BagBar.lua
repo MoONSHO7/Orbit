@@ -117,11 +117,37 @@ function Plugin:OnLoad()
     self:RegisterStandardEvents()
     self:RegisterVisibilityEvents()
 
-    -- Delay initial capture to ensure BagsBar exists
-    C_Timer.After(0.1, function()
-        self:ReparentAll()
-        self:ApplySettings()
-    end)
+    -- Event-driven initialization with retry
+    self:TryCapture()
+end
+
+-- [ INITIALIZATION ]--------------------------------------------------------------------------------
+function Plugin:TryCapture()
+    -- Attempt to capture BagsBar
+    if BagsBar then
+        if InCombatLockdown() then
+            -- Queue for after combat
+            Orbit.CombatManager:QueueUpdate(function()
+                self:ReparentAll()
+                self:ApplySettings()
+            end)
+        else
+            self:ReparentAll()
+            self:ApplySettings()
+        end
+        return true
+    end
+
+    -- BagsBar doesn't exist yet, retry on next world entry
+    if not self._captureRetryRegistered then
+        self._captureRetryRegistered = true
+        Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+            if not self._captured then
+                self:TryCapture()
+            end
+        end, self)
+    end
+    return false
 end
 
 -- [ LOGIC ]-----------------------------------------------------------------------------------------
@@ -130,6 +156,9 @@ function Plugin:ReparentAll()
         return
     end
     if InCombatLockdown() then
+        Orbit.CombatManager:QueueUpdate(function()
+            self:ReparentAll()
+        end)
         return
     end
 
@@ -141,6 +170,57 @@ function Plugin:ReparentAll()
     BagsBar:ClearAllPoints()
     BagsBar:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
     BagsBar:Show()
+
+    -- Mark as captured
+    self._captured = true
+
+    -- Suppress Blizzard's native Edit Mode selection (prevents double-highlight)
+    if BagsBar.Selection then
+        BagsBar.Selection:SetAlpha(0)
+        BagsBar.Selection:EnableMouse(false)
+    end
+
+    -- Protect BagsBar from being stolen by other addons/Blizzard
+    OrbitEngine.FrameGuard:Protect(BagsBar, self.frame)
+    OrbitEngine.FrameGuard:UpdateProtection(BagsBar, self.frame, function()
+        self:ApplySettings()
+    end, { enforceShow = true })
+
+    -- Hook SetPoint to prevent position jumping during Edit Mode transitions
+    if not BagsBar._orbitSetPointHooked then
+        hooksecurefunc(BagsBar, "SetPoint", function(f, ...)
+            if f._orbitRestoringPoint then
+                return
+            end
+            -- If Blizzard tries to reposition, immediately restore our position
+            if f:GetParent() == self.frame then
+                local point = ...
+                if point ~= "CENTER" then
+                    f._orbitRestoringPoint = true
+                    f:ClearAllPoints()
+                    f:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
+                    f._orbitRestoringPoint = nil
+                end
+            end
+        end)
+        BagsBar._orbitSetPointHooked = true
+    end
+
+    -- Hook Layout to re-sync container size after Blizzard layout changes
+    if not BagsBar._orbitLayoutHooked and BagsBar.Layout then
+        hooksecurefunc(BagsBar, "Layout", function(f)
+            -- Re-sync container size after layout
+            C_Timer.After(0, function()
+                if self.frame and f:IsShown() then
+                    local w, h = f:GetSize()
+                    if w and h and w > 0 and h > 0 then
+                        self.frame:SetSize(w, h)
+                    end
+                end
+            end)
+        end)
+        BagsBar._orbitLayoutHooked = true
+    end
 end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
@@ -150,18 +230,13 @@ function Plugin:ApplySettings()
         return
     end
     if InCombatLockdown() then
+        Orbit.CombatManager:QueueUpdate(function()
+            self:ApplySettings()
+        end)
         return
     end
 
-    -- Visibility Guard (Pet Battle / Vehicle)
-    if C_PetBattles and C_PetBattles.IsInBattle() then
-        frame:Hide()
-        return
-    end
-    if UnitHasVehicleUI and UnitHasVehicleUI("player") then
-        frame:Hide()
-        return
-    end
+    -- Visibility handled by RegisterVisibilityEvents() -> UpdateVisibility()
 
     -- Get settings
     local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100

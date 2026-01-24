@@ -72,14 +72,12 @@ function Plugin:OnLoad()
 
     -- Hook TalkingHead addon loading
     local function HookTalkingHead()
-        -- Reparent immediately
         self:ReparentAll()
         self:ApplySettings()
 
-        -- Hook play events to ensure reparenting persists
+        -- Hook play events to ensure settings persist (ReparentAll is called inside ApplySettings)
         if TalkingHeadFrame_PlayCurrent then
             hooksecurefunc("TalkingHeadFrame_PlayCurrent", function()
-                self:ReparentAll()
                 self:ApplySettings()
             end)
         end
@@ -88,9 +86,10 @@ function Plugin:OnLoad()
     if C_AddOns.IsAddOnLoaded("Blizzard_TalkingHeadUI") then
         HookTalkingHead()
     else
-        local loader = CreateFrame("Frame")
-        loader:RegisterEvent("ADDON_LOADED")
-        loader:SetScript("OnEvent", function(f, event, addonName)
+        -- Store loader on self to prevent orphan frames on reload
+        self._addonLoader = CreateFrame("Frame")
+        self._addonLoader:RegisterEvent("ADDON_LOADED")
+        self._addonLoader:SetScript("OnEvent", function(f, event, addonName)
             if addonName == "Blizzard_TalkingHeadUI" then
                 HookTalkingHead()
                 f:UnregisterEvent("ADDON_LOADED")
@@ -105,6 +104,9 @@ function Plugin:ReparentAll()
         return
     end
     if InCombatLockdown() then
+        Orbit.CombatManager:QueueUpdate(function()
+            self:ReparentAll()
+        end)
         return
     end
 
@@ -115,6 +117,41 @@ function Plugin:ReparentAll()
 
     TalkingHeadFrame:ClearAllPoints()
     TalkingHeadFrame:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
+
+    -- Mark as captured
+    self._captured = true
+
+    -- Suppress Blizzard's native Edit Mode selection (prevents double-highlight)
+    if TalkingHeadFrame.Selection then
+        TalkingHeadFrame.Selection:SetAlpha(0)
+        TalkingHeadFrame.Selection:EnableMouse(false)
+    end
+
+    -- Protect TalkingHeadFrame from being stolen by other addons/Blizzard
+    OrbitEngine.FrameGuard:Protect(TalkingHeadFrame, self.frame)
+    OrbitEngine.FrameGuard:UpdateProtection(TalkingHeadFrame, self.frame, function()
+        self:ApplySettings()
+    end, { enforceShow = false }) -- Don't enforce show for TalkingHead (it may be disabled)
+
+    -- Hook SetPoint to prevent position jumping during Edit Mode transitions
+    if not TalkingHeadFrame._orbitSetPointHooked then
+        hooksecurefunc(TalkingHeadFrame, "SetPoint", function(f, ...)
+            if f._orbitRestoringPoint then
+                return
+            end
+            -- If Blizzard tries to reposition, immediately restore our position
+            if f:GetParent() == self.frame then
+                local point = ...
+                if point ~= "CENTER" then
+                    f._orbitRestoringPoint = true
+                    f:ClearAllPoints()
+                    f:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
+                    f._orbitRestoringPoint = nil
+                end
+            end
+        end)
+        TalkingHeadFrame._orbitSetPointHooked = true
+    end
 end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
@@ -124,18 +161,13 @@ function Plugin:ApplySettings()
         return
     end
     if InCombatLockdown() then
+        Orbit.CombatManager:QueueUpdate(function()
+            self:ApplySettings()
+        end)
         return
     end
 
-    -- Visibility Guard (Pet Battle / Vehicle)
-    if C_PetBattles and C_PetBattles.IsInBattle() then
-        frame:Hide()
-        return
-    end
-    if UnitHasVehicleUI and UnitHasVehicleUI("player") then
-        frame:Hide()
-        return
-    end
+    -- Visibility handled by RegisterVisibilityEvents() -> UpdateVisibility()
 
     local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
 
@@ -151,7 +183,7 @@ function Plugin:ApplySettings()
     frame:SetScale(scale / 100)
     frame:SetAlpha(opacity / 100)
 
-    -- Handle disable logic
+    -- Handle disable logic (don't disable during Edit Mode to allow configuration)
     if disable and not isEditMode then
         frame:Hide()
         if TalkingHeadFrame then
@@ -160,7 +192,10 @@ function Plugin:ApplySettings()
     else
         frame:Show()
         if TalkingHeadFrame then
-            OrbitEngine.NativeFrame:Enable(TalkingHeadFrame)
+            -- Only re-enable if it was disabled
+            if OrbitEngine.NativeFrame:IsDisabled(TalkingHeadFrame) then
+                OrbitEngine.NativeFrame:Enable(TalkingHeadFrame)
+            end
 
             -- Resize container to match TalkingHead content
             local w, h = TalkingHeadFrame:GetSize()
@@ -177,3 +212,4 @@ function Plugin:ApplySettings()
     -- Apply MouseOver
     self:ApplyMouseOver(frame, SYSTEM_ID)
 end
+
