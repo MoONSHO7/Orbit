@@ -358,6 +358,40 @@ local function UpdateAllStatusIndicators(frame, plugin)
     if plugin.UpdateAllStatusIndicators then plugin:UpdateAllStatusIndicators(frame, plugin) end
 end
 
+-- [ RANGE CHECKING ]--------------------------------------------------------------------------------
+-- Fade frames when party members are out of range
+-- Uses C_CurveUtil.EvaluateColorValueFromBoolean to handle secret boolean values (12.0.0+)
+local OUT_OF_RANGE_ALPHA = 0.2
+
+local function UpdateInRange(frame)
+    if not frame or not frame.unit then
+        return
+    end
+    
+    -- Skip range check for player (always in range of self)
+    if frame.isPlayerFrame then
+        frame:SetAlpha(1)
+        return
+    end
+    
+    -- Skip if in preview mode
+    if frame.preview then
+        frame:SetAlpha(1)
+        return
+    end
+    
+    -- UnitInRange returns secret boolean values in 12.0.0+
+    -- C_CurveUtil.EvaluateColorValueFromBoolean accepts secret booleans and returns numeric alpha
+    -- inRange: true if in range, false if out of range, nil if can't check
+    local inRange = UnitInRange(frame.unit)
+    
+    -- EvaluateColorValueFromBoolean treats nil/false the same (returns valueIfFalse)
+    -- For party members, nil means unit doesn't exist, so fading is appropriate
+    local alpha = C_CurveUtil.EvaluateColorValueFromBoolean(inRange, 1, OUT_OF_RANGE_ALPHA)
+    
+    frame:SetAlpha(alpha)
+end
+
 -- [ PARTY FRAME CREATION ]--------------------------------------------------------------------------
 
 local function CreatePartyFrame(partyIndex, plugin, unitOverride)
@@ -405,6 +439,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
         UpdateFrameLayout(self, plugin:GetPlayerSetting("BorderSize"), plugin)
         UpdateDebuffs(self, plugin)
         UpdateAllStatusIndicators(self, plugin)
+        UpdateInRange(self)
     end)
 
     -- Extended OnEvent handler
@@ -482,6 +517,14 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
 
         if event == "RAID_TARGET_UPDATE" then
             UpdateMarkerIcon(f, plugin)
+            return
+        end
+
+        -- Range updates (fade out-of-range party members)
+        if event == "UNIT_IN_RANGE_UPDATE" then
+            if eventUnit == f.unit then
+                UpdateInRange(f)
+            end
             return
         end
 
@@ -999,6 +1042,7 @@ function Plugin:UpdateFrameUnits()
                     frame:UnregisterEvent("UNIT_PHASE")
                     frame:UnregisterEvent("UNIT_FLAGS")
                     frame:UnregisterEvent("INCOMING_RESURRECT_CHANGED")
+                    frame:UnregisterEvent("UNIT_IN_RANGE_UPDATE")
                     
                     frame:RegisterUnitEvent("UNIT_POWER_UPDATE", unit)
                     frame:RegisterUnitEvent("UNIT_MAXPOWER", unit)
@@ -1009,6 +1053,7 @@ function Plugin:UpdateFrameUnits()
                     frame:RegisterUnitEvent("UNIT_PHASE", unit)
                     frame:RegisterUnitEvent("UNIT_FLAGS", unit)
                     frame:RegisterUnitEvent("INCOMING_RESURRECT_CHANGED", unit)
+                    frame:RegisterUnitEvent("UNIT_IN_RANGE_UPDATE", unit)
                 end
                 
                 -- Update unit watch for visibility

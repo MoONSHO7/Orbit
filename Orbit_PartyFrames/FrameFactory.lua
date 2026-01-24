@@ -149,7 +149,7 @@ function Orbit.PartyFrameFactoryMixin:RegisterFrameEvents(frame, unit)
     local unitEvents = {
         "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT",
         "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS",
-        "INCOMING_RESURRECT_CHANGED"
+        "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE"
     }
     for _, event in ipairs(unitEvents) do
         frame:RegisterUnitEvent(event, unit)
