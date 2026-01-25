@@ -862,6 +862,8 @@ Orbit.Profile.defaults = {
 }
 
 -- [ INITIALIZATION ]--------------------------------------------------------------------------------
+local NO_SPEC_PROFILE = "No-Spec"
+
 function Orbit.Profile:Initialize()
     if not Orbit.db then
         Orbit.db = {}
@@ -870,7 +872,7 @@ function Orbit.Profile:Initialize()
         Orbit.db.profiles = {}
     end
 
-    -- Ensure Default profile exists
+    -- Ensure Default profile exists (used as template for new profiles)
     if not Orbit.db.profiles["Default"] then
         Orbit.db.profiles["Default"] = CopyTable(self.defaults, {})
     end
@@ -880,16 +882,36 @@ function Orbit.Profile:Initialize()
         Orbit.db.activeProfile = "Default"
     end
 
+    -- DEFENSIVE: Ensure runtime.Layouts is never nil (protects against edge cases)
+    Orbit.runtime = Orbit.runtime or {}
+    if not Orbit.runtime.Layouts then
+        local activeProfile = Orbit.db.profiles[Orbit.db.activeProfile]
+        if activeProfile then
+            if not activeProfile.Layouts then
+                activeProfile.Layouts = {}
+            end
+            Orbit.runtime.Layouts = activeProfile.Layouts
+        else
+            -- Fallback: Create empty Layouts if profile somehow doesn't exist
+            Orbit.runtime.Layouts = {}
+        end
+    end
+
     -- CRITICAL: Synchronously determine and set the correct spec profile
     -- This MUST happen before InitializePlugins() runs, so positions are
     -- applied from the correct profile on first load.
     local specName = self:GetCurrentSpecName()
 
-    if specName then
+    if specName and specName ~= "" then
         self:EnsureSpecProfile(specName)
         self:SetActiveProfile(specName)
     else
-        self:SetActiveProfile(Orbit.db.activeProfile)
+        -- No specialization (level 1-9 characters) - use dedicated No-Spec profile
+        if not Orbit.db.profiles[NO_SPEC_PROFILE] then
+            Orbit.db.profiles[NO_SPEC_PROFILE] = CopyTable(self.defaults, {})
+            Orbit:Print("Created '" .. NO_SPEC_PROFILE .. "' profile for characters without a specialization.")
+        end
+        self:SetActiveProfile(NO_SPEC_PROFILE)
     end
 
     -- Register for FUTURE spec changes only (not initial load)
