@@ -228,11 +228,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
             -- Preview Status Indicators
             -- Role Icon (show varied roles for preview)
             local previewRoles = { "HEALER", "TANK", "DAMAGER", "DAMAGER" }
-            local roleAtlases = {
-                TANK = "UI-LFG-RoleIcon-Tank-Micro-GroupFinder",
-                HEALER = "UI-LFG-RoleIcon-Healer-Micro-GroupFinder",
-                DAMAGER = "UI-LFG-RoleIcon-DPS-Micro-GroupFinder",
-            }
+            local roleAtlases = Orbit.RoleAtlases
             if self:GetSetting(1, "ShowRoleIcon") ~= false and frame.RoleIcon then
                 local roleAtlas = roleAtlases[previewRoles[i]]
                 if roleAtlas then
@@ -246,7 +242,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
             -- Leader Icon (show on first frame only)
             if self:GetSetting(1, "ShowLeaderIcon") ~= false and frame.LeaderIcon then
                 if i == 1 then
-                    frame.LeaderIcon:SetAtlas("UI-HUD-UnitFrame-Player-Group-LeaderIcon")
+                    frame.LeaderIcon:SetAtlas(Orbit.IconPreviewAtlases.LeaderIcon)
                     frame.LeaderIcon:Show()
                 else
                     frame.LeaderIcon:Hide()
@@ -286,7 +282,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 
                 -- Phase Icon - show with mock atlas (offset left)
                 if frame.PhaseIcon then
-                    frame.PhaseIcon:SetAtlas(previewAtlases.PhaseIcon or "RaidFrame-Icon-Phasing")
+                    frame.PhaseIcon:SetAtlas(previewAtlases.PhaseIcon)
                     frame.PhaseIcon:SetSize(iconSize, iconSize)
                     -- Only set default position if no saved position exists
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
@@ -298,7 +294,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 end
                 -- Ready Check Icon - show with mock atlas (offset left-center)
                 if frame.ReadyCheckIcon then
-                    frame.ReadyCheckIcon:SetAtlas(previewAtlases.ReadyCheckIcon or "UI-LFG-ReadyMark-Raid")
+                    frame.ReadyCheckIcon:SetAtlas(previewAtlases.ReadyCheckIcon)
                     frame.ReadyCheckIcon:SetSize(iconSize, iconSize)
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
                     if not savedPositions or not savedPositions.ReadyCheckIcon then
@@ -309,7 +305,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 end
                 -- Incoming Res Icon - show with mock atlas (offset right-center)
                 if frame.ResIcon then
-                    frame.ResIcon:SetAtlas(previewAtlases.ResIcon or "RaidFrame-Icon-Rez")
+                    frame.ResIcon:SetAtlas(previewAtlases.ResIcon)
                     frame.ResIcon:SetSize(iconSize, iconSize)
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
                     if not savedPositions or not savedPositions.ResIcon then
@@ -320,7 +316,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 end
                 -- Incoming Summon Icon - show with mock atlas (offset right)
                 if frame.SummonIcon then
-                    frame.SummonIcon:SetAtlas(previewAtlases.SummonIcon or "RaidFrame-Icon-SummonPending")
+                    frame.SummonIcon:SetAtlas(previewAtlases.SummonIcon)
                     frame.SummonIcon:SetSize(iconSize, iconSize)
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
                     if not savedPositions or not savedPositions.SummonIcon then

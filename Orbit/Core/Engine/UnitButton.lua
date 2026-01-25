@@ -755,34 +755,33 @@ function UnitButtonMixin:ApplyComponentPositions()
         -- Scale override (for icons/textures)
         if overrides.Scale then
             if element.GetObjectType and element:GetObjectType() == "Texture" then
-                -- Use SetSize for textures (default base size 18)
-                local baseSize = 18
-                element:SetSize(baseSize * overrides.Scale, baseSize * overrides.Scale)
+                -- Store original size on first scale application
+                if not element.orbitOriginalWidth then
+                    element.orbitOriginalWidth = element:GetWidth()
+                    element.orbitOriginalHeight = element:GetHeight()
+                    -- Fallback to reasonable defaults if size is 0 or invalid
+                    if element.orbitOriginalWidth <= 0 then element.orbitOriginalWidth = 18 end
+                    if element.orbitOriginalHeight <= 0 then element.orbitOriginalHeight = 18 end
+                end
+                local baseW = element.orbitOriginalWidth
+                local baseH = element.orbitOriginalHeight
+                element:SetSize(baseW * overrides.Scale, baseH * overrides.Scale)
             elseif element.SetScale then
                 element:SetScale(overrides.Scale)
             end
         end
     end
     
-    -- Apply style overrides for each component
-    if positions.Name and positions.Name.overrides and self.Name then
-        ApplyStyleOverrides(self.Name, positions.Name.overrides)
-    end
-    
-    if positions.HealthText and positions.HealthText.overrides and self.HealthText then
-        ApplyStyleOverrides(self.HealthText, positions.HealthText.overrides)
-    end
-    
-    if positions.LevelText and positions.LevelText.overrides and self.LevelText then
-        ApplyStyleOverrides(self.LevelText, positions.LevelText.overrides)
-    end
-    
-    if positions.CombatIcon and positions.CombatIcon.overrides and self.CombatIcon then
-        ApplyStyleOverrides(self.CombatIcon, positions.CombatIcon.overrides)
-    end
-    
-    if positions.RareEliteIcon and positions.RareEliteIcon.overrides and self.RareEliteIcon then
-        ApplyStyleOverrides(self.RareEliteIcon, positions.RareEliteIcon.overrides)
+    -- Apply style overrides for ALL components with overrides in saved positions
+    -- This dynamically handles any component (RoleIcon, LeaderIcon, MarkerIcon, etc.)
+    for key, pos in pairs(positions) do
+        if pos.overrides then
+            -- Try to find the element on self (e.g., self.RoleIcon, self.Name)
+            local element = self[key]
+            if element then
+                ApplyStyleOverrides(element, pos.overrides)
+            end
+        end
     end
 end
 

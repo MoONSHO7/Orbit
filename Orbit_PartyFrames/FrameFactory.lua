@@ -57,12 +57,16 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
     -- Role Icon (Tank/Healer/DPS) - Top Left
     frame.RoleIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
     frame.RoleIcon:SetSize(iconSize, iconSize)
+    frame.RoleIcon.orbitOriginalWidth = iconSize
+    frame.RoleIcon.orbitOriginalHeight = iconSize
     frame.RoleIcon:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
     frame.RoleIcon:Hide()
     
     -- Leader Icon - Next to Role Icon
     frame.LeaderIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
     frame.LeaderIcon:SetSize(iconSize, iconSize)
+    frame.LeaderIcon.orbitOriginalWidth = iconSize
+    frame.LeaderIcon.orbitOriginalHeight = iconSize
     frame.LeaderIcon:SetPoint("LEFT", frame.RoleIcon, "RIGHT", 2, 0)
     frame.LeaderIcon:Hide()
     
@@ -122,10 +126,13 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
     frame.AggroHighlight:Hide()
     
     -- Center Icons (Phase, ReadyCheck, Res, Summon) - all share same size/position/layer
+    local centerIconSize = iconSize * 1.5
     local centerIcons = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }
     for _, iconKey in ipairs(centerIcons) do
         local icon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
-        icon:SetSize(iconSize * 1.5, iconSize * 1.5)
+        icon:SetSize(centerIconSize, centerIconSize)
+        icon.orbitOriginalWidth = centerIconSize
+        icon.orbitOriginalHeight = centerIconSize
         icon:SetPoint("CENTER", frame, "CENTER", 0, 0)
         icon:SetDrawLayer("OVERLAY", 7)
         icon:Hide()
@@ -135,6 +142,8 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
     -- Marker Icon - Top Center (default)
     frame.MarkerIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
     frame.MarkerIcon:SetSize(iconSize, iconSize)
+    frame.MarkerIcon.orbitOriginalWidth = iconSize
+    frame.MarkerIcon.orbitOriginalHeight = iconSize
     frame.MarkerIcon:SetPoint("TOP", frame, "TOP", 0, -2)
     frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
     frame.MarkerIcon:Hide()

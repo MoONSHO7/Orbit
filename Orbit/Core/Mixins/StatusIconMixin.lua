@@ -14,9 +14,9 @@ local Mixin = Orbit.StatusIconMixin
 -- ============================================================
 
 local ROLE_ATLASES = {
-    TANK = "UI-LFG-RoleIcon-Tank-Micro-GroupFinder",
-    HEALER = "UI-LFG-RoleIcon-Healer-Micro-GroupFinder",
-    DAMAGER = "UI-LFG-RoleIcon-DPS-Micro-GroupFinder",
+    TANK = "UI-LFG-RoleIcon-Tank",
+    HEALER = "UI-LFG-RoleIcon-Healer",
+    DAMAGER = "UI-LFG-RoleIcon-DPS",
 }
 
 local THREAT_COLORS = {
@@ -32,7 +32,7 @@ local RAID_TARGET_TEXTURE_ROWS = 4
 -- Shared icon preview atlases for Canvas Mode dock
 -- These are the placeholder visuals shown when icons are hidden/disabled
 Mixin.ICON_PREVIEW_ATLASES = {
-    RoleIcon = "UI-LFG-RoleIcon-DPS-Micro-GroupFinder",
+    RoleIcon = "UI-LFG-RoleIcon-DPS",
     LeaderIcon = "UI-HUD-UnitFrame-Player-Group-LeaderIcon",
     MarkerIcon = "Interface\\TargetingFrame\\UI-RaidTargetingIcons",
     CombatIcon = "UI-HUD-UnitFrame-Player-CombatIcon",
@@ -49,6 +49,7 @@ Mixin.MARKER_ICON_TEXCOORD = { 0.75, 1, 0.25, 0.5 }  -- Skull marker
 -- Expose for external use
 Orbit.IconPreviewAtlases = Mixin.ICON_PREVIEW_ATLASES
 Orbit.MarkerIconTexCoord = Mixin.MARKER_ICON_TEXCOORD
+Orbit.RoleAtlases = ROLE_ATLASES
 
 -- ============================================================
 -- HELPER: Check if component is disabled

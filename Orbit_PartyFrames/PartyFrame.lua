@@ -1168,35 +1168,35 @@ function Plugin:PrepareIconsForCanvasMode()
     local frame = self.frames[1]
     if not frame then return end
 
-    local previewAtlases = Orbit.IconPreviewAtlases or {}
+    local previewAtlases = Orbit.IconPreviewAtlases
     
     -- Set placeholder atlases on icons so Canvas Mode can clone them
     if frame.PhaseIcon then
-        frame.PhaseIcon:SetAtlas(previewAtlases.PhaseIcon or "RaidFrame-Icon-Phasing")
+        frame.PhaseIcon:SetAtlas(previewAtlases.PhaseIcon)
         frame.PhaseIcon:SetSize(24, 24)
     end
     if frame.ReadyCheckIcon then
-        frame.ReadyCheckIcon:SetAtlas(previewAtlases.ReadyCheckIcon or "UI-LFG-ReadyMark-Raid")
+        frame.ReadyCheckIcon:SetAtlas(previewAtlases.ReadyCheckIcon)
         frame.ReadyCheckIcon:SetSize(24, 24)
     end
     if frame.ResIcon then
-        frame.ResIcon:SetAtlas(previewAtlases.ResIcon or "RaidFrame-Icon-Rez")
+        frame.ResIcon:SetAtlas(previewAtlases.ResIcon)
         frame.ResIcon:SetSize(24, 24)
     end
     if frame.SummonIcon then
-        frame.SummonIcon:SetAtlas(previewAtlases.SummonIcon or "RaidFrame-Icon-SummonPending")
+        frame.SummonIcon:SetAtlas(previewAtlases.SummonIcon)
         frame.SummonIcon:SetSize(24, 24)
     end
     -- RoleIcon and LeaderIcon already have atlases set in preview, but ensure they're sized
     if frame.RoleIcon then
         if not frame.RoleIcon:GetAtlas() then
-            frame.RoleIcon:SetAtlas(previewAtlases.RoleIcon or "UI-LFG-RoleIcon-DPS-Micro-GroupFinder")
+            frame.RoleIcon:SetAtlas(previewAtlases.RoleIcon)
         end
         frame.RoleIcon:SetSize(16, 16)
     end
     if frame.LeaderIcon then
         if not frame.LeaderIcon:GetAtlas() then
-            frame.LeaderIcon:SetAtlas(previewAtlases.LeaderIcon or "UI-HUD-UnitFrame-Player-Group-LeaderIcon")
+            frame.LeaderIcon:SetAtlas(previewAtlases.LeaderIcon)
         end
         frame.LeaderIcon:SetSize(16, 16)
     end

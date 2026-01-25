@@ -55,15 +55,6 @@ local PREVIEW_TEXT_VALUES = {
     Text = "100",
 }
 
-local PREVIEW_ATLASES = {
-    RoleIcon = "RaidFrame-Icon-Tank",
-    LeaderIcon = "UI-HUD-UnitFrame-Player-Group-LeaderIcon",
-    CombatIcon = "ClassTrial-BattleStartIcon",
-}
-
-local PREVIEW_TEXTURES = {
-    MarkerIcon = "Interface\\TargetingFrame\\UI-RaidTargetingIcons",
-}
 
 -- [ CREATE DRAGGABLE COMPONENT ]---------------------------------------------------------
 
@@ -136,7 +127,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         local texturePath = sourceComponent:GetTexture()
         
         if atlasName then
-            visual:SetAtlas(atlasName)
+            visual:SetAtlas(atlasName, false)  -- false = don't use atlas native size
         elseif texturePath then
             visual:SetTexture(texturePath)
             
@@ -150,15 +141,15 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
                 end
             end
         else
-            local fallbackAtlas = PREVIEW_ATLASES[key]
-            local fallbackTexture = PREVIEW_TEXTURES[key]
+            local previewAtlases = Orbit.IconPreviewAtlases or {}
+            local fallbackAtlas = previewAtlases[key]
             
             if fallbackAtlas then
-                visual:SetAtlas(fallbackAtlas)
-            elseif fallbackTexture then
-                visual:SetTexture(fallbackTexture)
                 if key == "MarkerIcon" then
+                    visual:SetTexture(fallbackAtlas)
                     ApplySpriteSheetCell(visual, 8, 4, 4)
+                else
+                    visual:SetAtlas(fallbackAtlas, false)
                 end
             else
                 visual:SetColorTexture(0.5, 0.5, 0.5, 0.5)
@@ -169,10 +160,18 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         if vr then visual:SetVertexColor(vr, vg, vb, va or 1) end
         
         local srcWidth, srcHeight = 20, 20
-        local ok, w = pcall(function() return sourceComponent:GetWidth() end)
-        if ok and w and type(w) == "number" and w > 0 then srcWidth = w end
-        local ok2, h = pcall(function() return sourceComponent:GetHeight() end)
-        if ok2 and h and type(h) == "number" and h > 0 then srcHeight = h end
+        if sourceComponent.orbitOriginalWidth and sourceComponent.orbitOriginalWidth > 0 then
+            srcWidth = sourceComponent.orbitOriginalWidth
+        else
+            local ok, w = pcall(function() return sourceComponent:GetWidth() end)
+            if ok and w and type(w) == "number" and w > 0 then srcWidth = w end
+        end
+        if sourceComponent.orbitOriginalHeight and sourceComponent.orbitOriginalHeight > 0 then
+            srcHeight = sourceComponent.orbitOriginalHeight
+        else
+            local ok2, h = pcall(function() return sourceComponent:GetHeight() end)
+            if ok2 and h and type(h) == "number" and h > 0 then srcHeight = h end
+        end
         
         container:SetSize(srcWidth, srcHeight)
         

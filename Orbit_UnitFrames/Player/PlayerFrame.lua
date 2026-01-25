@@ -7,14 +7,6 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SYSTEM_ID = "Orbit_PlayerFrame"
 local PLAYER_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Player) or 1
 
--- [ ROLE ICON CONSTANTS ]--------------------------------------------------------------------------
--- Using tiny role icons matching native PlayerFrame (roleicon-tiny-*)
--- Alternative larger versions: UI-LFG-RoleIcon-*-Micro-GroupFinder
-local ROLE_ATLASES = {
-    TANK = "UI-LFG-RoleIcon-Tank-Micro-GroupFinder",
-    HEALER = "UI-LFG-RoleIcon-Healer-Micro-GroupFinder",
-    DAMAGER = "UI-LFG-RoleIcon-DPS-Micro-GroupFinder",
-}
 
 -- Raid Target Icon constants
 local RAID_TARGET_TEXTURE_COLUMNS = 4
@@ -214,9 +206,13 @@ function Plugin:OnLoad()
 
     -- Create CombatIcon (on overlay frame) using modern Blizzard atlas
     local previewAtlases = Orbit.IconPreviewAtlases or {}
+    local combatIconSize = 18
     if not self.frame.CombatIcon then
         self.frame.CombatIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-        self.frame.CombatIcon:SetAtlas(previewAtlases.CombatIcon or "UI-HUD-UnitFrame-Player-CombatIcon", true)
+        self.frame.CombatIcon:SetSize(combatIconSize, combatIconSize)
+        self.frame.CombatIcon.orbitOriginalWidth = combatIconSize
+        self.frame.CombatIcon.orbitOriginalHeight = combatIconSize
+        self.frame.CombatIcon:SetAtlas(previewAtlases.CombatIcon or "UI-HUD-UnitFrame-Player-CombatIcon", false)
         self.frame.CombatIcon:SetPoint("TOPRIGHT", self.frame, "TOPLEFT", -2, 0)
         self.frame.CombatIcon:Hide()
     end
@@ -226,8 +222,10 @@ function Plugin:OnLoad()
     if not self.frame.RoleIcon then
         self.frame.RoleIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
         self.frame.RoleIcon:SetSize(iconSize, iconSize)
+        self.frame.RoleIcon.orbitOriginalWidth = iconSize
+        self.frame.RoleIcon.orbitOriginalHeight = iconSize
         self.frame.RoleIcon:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 2, -2)
-        self.frame.RoleIcon:SetAtlas(previewAtlases.RoleIcon or "UI-LFG-RoleIcon-DPS-Micro-GroupFinder")
+        self.frame.RoleIcon:SetAtlas(previewAtlases.RoleIcon)
         self.frame.RoleIcon:Hide()
     end
 
@@ -235,8 +233,10 @@ function Plugin:OnLoad()
     if not self.frame.LeaderIcon then
         self.frame.LeaderIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
         self.frame.LeaderIcon:SetSize(iconSize, iconSize)
+        self.frame.LeaderIcon.orbitOriginalWidth = iconSize
+        self.frame.LeaderIcon.orbitOriginalHeight = iconSize
         self.frame.LeaderIcon:SetPoint("LEFT", self.frame.RoleIcon, "RIGHT", 2, 0)
-        self.frame.LeaderIcon:SetAtlas(previewAtlases.LeaderIcon or "UI-HUD-UnitFrame-Player-Group-LeaderIcon")
+        self.frame.LeaderIcon:SetAtlas(previewAtlases.LeaderIcon)
         self.frame.LeaderIcon:Hide()
     end
 
@@ -244,6 +244,8 @@ function Plugin:OnLoad()
     if not self.frame.MarkerIcon then
         self.frame.MarkerIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
         self.frame.MarkerIcon:SetSize(iconSize, iconSize)
+        self.frame.MarkerIcon.orbitOriginalWidth = iconSize
+        self.frame.MarkerIcon.orbitOriginalHeight = iconSize
         self.frame.MarkerIcon:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -2, -2)
         self.frame.MarkerIcon:SetTexture(previewAtlases.MarkerIcon or "Interface\\TargetingFrame\\UI-RaidTargetingIcons")
         local tc = Orbit.MarkerIconTexCoord or { 0.75, 1, 0.25, 0.5 }
@@ -263,6 +265,8 @@ function Plugin:OnLoad()
     if not self.frame.ReadyCheckIcon then
         self.frame.ReadyCheckIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
         self.frame.ReadyCheckIcon:SetSize(iconSize, iconSize)
+        self.frame.ReadyCheckIcon.orbitOriginalWidth = iconSize
+        self.frame.ReadyCheckIcon.orbitOriginalHeight = iconSize
         self.frame.ReadyCheckIcon:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
         self.frame.ReadyCheckIcon:SetAtlas(previewAtlases.ReadyCheckIcon or "UI-LFG-ReadyMark-Raid")
         self.frame.ReadyCheckIcon:Hide()
