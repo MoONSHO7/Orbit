@@ -341,6 +341,27 @@ local function GetProfilesSchema()
             },
             {
                 type = "button",
+                text = "Copy From Above",
+                width = 180,
+                onClick = function()
+                    local selected = Orbit.Profile._selectedToDelete
+                    if not selected or selected == "" then
+                        Orbit:Print("Please select a profile first.")
+                        return
+                    end
+                    local currentActive = Orbit.Profile:GetActiveProfileName()
+                    if selected == currentActive then
+                        Orbit:Print("Cannot copy from the active profile.")
+                        return
+                    end
+                    local popup = StaticPopup_Show("ORBIT_CONFIRM_COPY_PROFILE", currentActive, selected)
+                    if popup then
+                        popup.data = { source = selected, target = currentActive }
+                    end
+                end,
+            },
+            {
+                type = "button",
                 text = "Delete Selected Profile",
                 width = 180,
                 onClick = function()
@@ -361,10 +382,10 @@ local function GetProfilesSchema()
                     Orbit.Profile:DeleteProfile(selected)
                     Orbit:Print(selected .. " Profile Deleted.")
                     Orbit.Profile._selectedToDelete = nil
-                    -- Force re-render the Profiles tab
-                    if Orbit.OptionsPanel and Orbit.OptionsPanel.Toggle then
-                        Orbit.OptionsPanel.currentTab = nil
-                        Orbit.OptionsPanel:Toggle("Profiles")
+                    -- Re-open Profiles tab to show updated list
+                    if Orbit.OptionsPanel then
+                        Orbit.OptionsPanel.lastTab = nil
+                        Orbit.OptionsPanel:Open("Profiles")
                     end
                 end,
             },
@@ -640,10 +661,12 @@ function Panel:Toggle(tab)
 end
 
 function Panel:Refresh()
-    if self.currentTab then
-        local tab = self.currentTab
+    -- Handle both currentTab (from Toggle) and lastTab (from Open)
+    local tabToRefresh = self.currentTab or self.lastTab
+    if tabToRefresh then
         self.currentTab = nil
-        self:Toggle(tab)
+        self.lastTab = nil
+        self:Open(tabToRefresh)
     end
 end
 
@@ -673,6 +696,24 @@ StaticPopupDialogs["ORBIT_CONFIRM_HARD_RESET"] = {
     button2 = "Cancel",
     OnAccept = function(self)
         Orbit.API:HardReset()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+StaticPopupDialogs["ORBIT_CONFIRM_COPY_PROFILE"] = {
+    text = "|cFFFF0000WARNING:|r This will overwrite your '%s' settings with '%s' settings.\n\nThis cannot be undone.",
+    button1 = "Apply",
+    button2 = "Decline",
+    OnAccept = function(self)
+        local success, err = Orbit.Profile:CopyProfileData(self.data.source)
+        if success then
+            ReloadUI()
+        else
+            Orbit:Print("Copy failed: " .. (err or "Unknown error"))
+        end
     end,
     timeout = 0,
     whileDead = true,

@@ -137,10 +137,10 @@ function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
 
     -- Only Render if not already rendered (for Tabs) or if Reset forced
     -- We assume if targetContent.OrbitRendered is true, we don't need to rebuild controls
-    -- Unless the schema forces a refresh? For now, implementing strict caching.
+    -- Exception: Profiles tab is never cached because its content is dynamic
 
     local needsRender = true
-    if tabKey and targetContent.OrbitRendered then
+    if tabKey and tabKey ~= "Profiles" and targetContent.OrbitRendered then
         needsRender = false
         targetContent:Show()
     end

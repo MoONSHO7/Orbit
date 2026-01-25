@@ -859,8 +859,6 @@ Orbit.Profile.defaults = {
             },
         },
     },
-    DisabledPlugins = {},
-    Locks = {},
 }
 
 -- [ INITIALIZATION ]--------------------------------------------------------------------------------
@@ -970,19 +968,11 @@ function Orbit.Profile:SetActiveProfile(name)
     if not profile.Layouts then
         profile.Layouts = {}
     end
-    if not profile.DisabledPlugins then
-        profile.DisabledPlugins = {}
-    end
-    if not profile.Locks then
-        profile.Locks = {}
-    end
 
     -- If already active, just ensure runtime references exist and return
     if Orbit.db.activeProfile == name then
         Orbit.runtime = Orbit.runtime or {}
         Orbit.runtime.Layouts = profile.Layouts
-        Orbit.runtime.DisabledPlugins = profile.DisabledPlugins
-        Orbit.runtime.Locks = profile.Locks
         return true
     end
 
@@ -1001,8 +991,6 @@ function Orbit.Profile:SetActiveProfile(name)
     Orbit.db.activeProfile = name
     Orbit.runtime = Orbit.runtime or {}
     Orbit.runtime.Layouts = profile.Layouts
-    Orbit.runtime.DisabledPlugins = profile.DisabledPlugins
-    Orbit.runtime.Locks = profile.Locks
 
     -- Notify User
     Orbit:Print(name .. " Profile Loaded.")
@@ -1062,7 +1050,13 @@ function Orbit.Profile:SetActiveProfile(name)
     return true
 end
 
--- [ SPEC BINDING ]----------------------------------------------------------------------------------
+-- Known duplicate spec names across classes that need disambiguation
+local DUPLICATE_SPEC_NAMES = {
+    ["Protection"] = true,  -- Warrior, Paladin
+    ["Restoration"] = true, -- Druid, Shaman
+    ["Holy"] = true,        -- Paladin, Priest
+}
+
 function Orbit.Profile:GetCurrentSpecName()
     local specIndex = GetSpecialization()
     if not specIndex then
@@ -1070,6 +1064,20 @@ function Orbit.Profile:GetCurrentSpecName()
     end
 
     local _, specName = GetSpecializationInfo(specIndex)
+    if not specName then
+        return nil
+    end
+
+    -- Disambiguate duplicate spec names with class name
+    if DUPLICATE_SPEC_NAMES[specName] then
+        local _, className = UnitClass("player")
+        if className then
+            -- Proper case: "Protection (Warrior)"
+            local properClassName = className:sub(1, 1):upper() .. className:sub(2):lower()
+            return specName .. " (" .. properClassName .. ")"
+        end
+    end
+
     return specName
 end
 
@@ -1086,6 +1094,31 @@ function Orbit.Profile:EnsureSpecProfile(specName)
     -- We pass nil as the second argument so CreateProfile defaults to copying the active profile
     self:CreateProfile(specName, nil)
     Orbit:Print("Created profile '" .. specName .. "' (Copied from previous active profile)")
+
+    return true
+end
+
+function Orbit.Profile:CopyProfileData(sourceProfileName)
+    local activeProfileName = self:GetActiveProfileName()
+
+    -- Validation
+    if not sourceProfileName or sourceProfileName == "" then
+        return false, "No source profile specified"
+    end
+    if not Orbit.db.profiles[sourceProfileName] then
+        return false, "Source profile does not exist"
+    end
+    if sourceProfileName == activeProfileName then
+        return false, "Cannot copy from the active profile"
+    end
+
+    -- Deep copy source data to active profile
+    local sourceProfile = Orbit.db.profiles[sourceProfileName]
+    local activeProfile = Orbit.db.profiles[activeProfileName]
+
+    activeProfile.Layouts = CopyTable(sourceProfile.Layouts or {}, {})
+
+    Orbit:Print("Copied settings from '" .. sourceProfileName .. "' to '" .. activeProfileName .. "'")
 
     return true
 end

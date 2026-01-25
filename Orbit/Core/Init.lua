@@ -260,25 +260,8 @@ function Orbit:Print(...)
 end
 
 function Orbit:IsPluginEnabled(name)
-    if not self.runtime or not self.runtime.DisabledPlugins then
-        return true
-    end
-    return not self.runtime.DisabledPlugins[name]
-end
-
-function Orbit:SetPluginEnabled(name, enabled)
-    if not self.runtime then
-        return
-    end
-    if not self.runtime.DisabledPlugins then
-        self.runtime.DisabledPlugins = {}
-    end
-    self.runtime.DisabledPlugins[name] = not enabled
-
-    -- Notify subscribers so subordinate plugins can react
-    if self.EventBus then
-        self.EventBus:Fire("ORBIT_PLUGIN_STATE_CHANGED", name, enabled)
-    end
+    -- DisabledPlugins infrastructure removed - plugins now managed via Blizzard Addon List
+    return true
 end
 
 -- [ EVENT HANDLERS ]--------------------------------------------------------------------------------
