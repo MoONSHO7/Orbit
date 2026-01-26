@@ -326,9 +326,9 @@ end
 function Plugin:PositionCastBar(castBar, parent, position)
     castBar:ClearAllPoints()
     if position == "Above" then
-        castBar:SetPoint("BOTTOM", parent, "TOP", 0, 4)
+        castBar:SetPoint("BOTTOM", parent, "TOP", 0, 2)
     else -- Below
-        castBar:SetPoint("TOP", parent, "BOTTOM", 0, -4)
+        castBar:SetPoint("TOP", parent, "BOTTOM", 0, -2)
     end
 end
 
@@ -888,7 +888,7 @@ function Plugin:CalculateFrameSpacing(index)
 
     local castBarPos = self:GetSetting(1, "CastBarPosition") or "Below"
     local castBarHeight = self:GetSetting(1, "CastBarHeight") or 14
-    local castBarGap = 4
+    local castBarGap = 2
 
     local debuffPos = self:GetSetting(1, "DebuffPosition") or "Right"
     local maxDebuffs = self:GetSetting(1, "MaxDebuffs") or 4
@@ -907,7 +907,7 @@ function Plugin:CalculateFrameSpacing(index)
 
     local topPadding = 0
     local bottomPadding = 0
-    local elementGap = 4
+    local elementGap = 2
 
     -- Cast Bar Spacing
     if castBarPos == "Above" then
@@ -931,7 +931,7 @@ function Plugin:PositionFrames()
         return
     end
 
-    local baseSpacing = 20 -- Base visual gap between "Occupied Areas" of units
+    local baseSpacing = 2 -- Base visual gap between "Occupied Areas" of units
     local frameHeight = self:GetSetting(1, "Height") or 40
 
     -- Calculate total height for container update
@@ -974,7 +974,7 @@ function Plugin:UpdateContainerSize()
 
     local width = self:GetSetting(1, "Width") or 150
     local scale = (self:GetSetting(1, "Scale") or 100) / 100
-    local baseSpacing = 20
+    local baseSpacing = 2
 
     -- Check if we're in preview mode (Edit Mode uses real frames with isPreview flag)
     local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
@@ -985,9 +985,9 @@ function Plugin:UpdateContainerSize()
     local lastVisibleIndex = 0
     
     if isPreviewActive or isEditMode then
-        -- In preview/Edit Mode, always show 2 frames
-        visibleCount = 2
-        lastVisibleIndex = 2
+        -- In preview/Edit Mode, always show all frames
+        visibleCount = MAX_BOSS_FRAMES
+        lastVisibleIndex = MAX_BOSS_FRAMES
     else
         -- Normal mode: count real frames that are shown
         for i, frame in ipairs(self.frames) do
@@ -998,10 +998,10 @@ function Plugin:UpdateContainerSize()
         end
     end
 
-    -- Default to 2 frames for sizing if nothing visible
+    -- Default to MAX frames for sizing if nothing visible
     if visibleCount == 0 then
-        visibleCount = 2
-        lastVisibleIndex = 2
+        visibleCount = MAX_BOSS_FRAMES
+        lastVisibleIndex = MAX_BOSS_FRAMES
     end
 
     -- Sum heights

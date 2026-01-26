@@ -50,6 +50,8 @@ function Orbit.BossFramePreviewMixin:ShowPreview()
         return
     end
 
+    self.isPreviewActive = true
+
     -- Disable Visibility Driver for preview so we can manually Show frames
     UnregisterAttributeDriver(self.container, "state-visibility")
     self.container:Show()
@@ -62,7 +64,7 @@ function Orbit.BossFramePreviewMixin:ShowPreview()
     end
 
     -- Set up BOTH preview frames first (set flags before size calculations)
-    for i = 1, 2 do
+    for i = 1, MAX_BOSS_FRAMES do
         if self.frames[i] then
             self.frames[i].preview = true
             self.frames[i]:Show()
@@ -98,7 +100,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
     -- Build debuff icon list from sample icons (no table allocation per call)
     local maxDebuffs = self:GetSetting(1, "MaxDebuffs") or 4
 
-    for i = 1, 2 do
+    for i = 1, MAX_BOSS_FRAMES do
         if self.frames[i] and self.frames[i].preview then
             local frame = self.frames[i]
 
@@ -381,6 +383,8 @@ function Orbit.BossFramePreviewMixin:HidePreview()
     if not self.frames then
         return
     end
+
+    self.isPreviewActive = false
 
     -- Restore Visibility Driver for normal gameplay
     local visibilityDriver =

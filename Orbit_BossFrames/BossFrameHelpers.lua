@@ -11,8 +11,8 @@ local Helpers = Orbit.BossFrameHelpers
 -- Shared constants for boss frame layout (exported for use by other modules)
 Helpers.LAYOUT = {
     Spacing = 2,            -- Space between debuff icons
-    ElementGap = 4,         -- Gap between frame and attached elements (cast bar, debuffs)
-    ContainerGap = 4,       -- Gap between frame edge and debuff container (left/right positions)
+    ElementGap = 2,         -- Gap between frame and attached elements (cast bar, debuffs)
+    ContainerGap = 2,       -- Gap between frame edge and debuff container (left/right positions)
 }
 
 -- [ DEBUFF LAYOUT ]---------------------------------------------------------------------------------
