@@ -12,23 +12,27 @@ local C = CanvasMode.Constants
 local Layout = OrbitEngine.Layout
 local Constants = Orbit.Constants
 
--- [ DISABLED COMPONENTS DOCK ]--------------------------------------------------------------------
+-- Calculate positions: Footer height = TopPadding(12) + ButtonHeight(20) + BottomPadding(12) = 44
+-- Footer starts at DIALOG_INSET(12) from bottom, so footer top is at 12 + 44 = 56
+-- Dock is 2px above footer top
+local DOCK_BOTTOM_OFFSET = C.DIALOG_INSET + Constants.Footer.TopPadding + Constants.Footer.ButtonHeight + Constants.Footer.BottomPadding + 2
 
 Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog)
-Dialog.DisabledDock:SetPoint("BOTTOMLEFT", Dialog, "BOTTOMLEFT", C.DIALOG_INSET, C.FOOTER_HEIGHT + C.DIALOG_INSET)
-Dialog.DisabledDock:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -C.DIALOG_INSET, C.FOOTER_HEIGHT + C.DIALOG_INSET)
+Dialog.DisabledDock:SetPoint("BOTTOMLEFT", Dialog, "BOTTOMLEFT", C.DIALOG_INSET, DOCK_BOTTOM_OFFSET)
+Dialog.DisabledDock:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -C.DIALOG_INSET, DOCK_BOTTOM_OFFSET)
 Dialog.DisabledDock:SetHeight(C.DOCK_HEIGHT)
-
--- Dock background (subtle, semi-transparent)
-Dialog.DisabledDock.bg = Dialog.DisabledDock:CreateTexture(nil, "BACKGROUND")
-Dialog.DisabledDock.bg:SetAllPoints()
-Dialog.DisabledDock.bg:SetColorTexture(0, 0, 0, 0.3)
 
 -- Dock label
 Dialog.DisabledDock.Label = Dialog.DisabledDock:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 Dialog.DisabledDock.Label:SetPoint("TOPLEFT", Dialog.DisabledDock, "TOPLEFT", C.DOCK_PADDING, -4)
 Dialog.DisabledDock.Label:SetText("Disabled Components")
 Dialog.DisabledDock.Label:SetTextColor(0.6, 0.6, 0.6, 1)
+
+-- Zoom indicator (right-aligned in header row)
+Dialog.DisabledDock.ZoomIndicator = Dialog.DisabledDock:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+Dialog.DisabledDock.ZoomIndicator:SetPoint("TOPRIGHT", Dialog.DisabledDock, "TOPRIGHT", -C.DOCK_PADDING, -4)
+Dialog.DisabledDock.ZoomIndicator:SetText(string.format("%.0f%%", C.DEFAULT_ZOOM * 100))
+Dialog.DisabledDock.ZoomIndicator:SetTextColor(0.6, 0.6, 0.6, 1)
 
 -- Dock hint text (shown when empty)
 Dialog.DisabledDock.EmptyHint = Dialog.DisabledDock:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")

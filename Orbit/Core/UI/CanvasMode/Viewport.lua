@@ -12,9 +12,25 @@ local C = CanvasMode.Constants
 -- [ PREVIEW CONTAINER ]-------------------------------------------------------------------------
 -- Architecture: PreviewContainer > Viewport (clips) > TransformLayer (zoom/pan) > PreviewFrame
 
+-- Calculate viewport bottom offset: Footer(44) + DIALOG_INSET(12) + 2px + Dock(60) + 10px
+local FC = Orbit.Constants.Footer
+local VIEWPORT_BOTTOM_OFFSET = C.DIALOG_INSET + FC.TopPadding + FC.ButtonHeight + FC.BottomPadding + 2 + C.DOCK_HEIGHT + 10
+
 Dialog.PreviewContainer = CreateFrame("Frame", nil, Dialog)
 Dialog.PreviewContainer:SetPoint("TOPLEFT", Dialog, "TOPLEFT", C.VIEWPORT_PADDING, -C.TITLE_HEIGHT)
-Dialog.PreviewContainer:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -C.VIEWPORT_PADDING, C.FOOTER_HEIGHT + C.DOCK_HEIGHT + 10)
+Dialog.PreviewContainer:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -C.VIEWPORT_PADDING, VIEWPORT_BOTTOM_OFFSET)
+
+-- Transmog-style background
+Dialog.PreviewContainer.Background = Dialog.PreviewContainer:CreateTexture(nil, "BACKGROUND")
+Dialog.PreviewContainer.Background:SetAtlas("transmog-tabs-frame-bg")
+Dialog.PreviewContainer.Background:SetPoint("TOPLEFT", 4, -4)
+Dialog.PreviewContainer.Background:SetPoint("BOTTOMRIGHT", -4, 4)
+
+-- Transmog-style golden border
+Dialog.PreviewContainer.Border = Dialog.PreviewContainer:CreateTexture(nil, "OVERLAY")
+Dialog.PreviewContainer.Border:SetAtlas("transmog-tabs-frame")
+Dialog.PreviewContainer.Border:SetPoint("TOPLEFT", -11, 12)
+Dialog.PreviewContainer.Border:SetPoint("BOTTOMRIGHT", 11, -12)
 
 -- Viewport: Clips children to create the viewable area
 Dialog.Viewport = CreateFrame("Frame", nil, Dialog.PreviewContainer)
@@ -70,9 +86,9 @@ local function ApplyZoom(dialog, newZoom)
     -- Re-clamp pan after zoom change (visible area may have changed)
     ApplyPanOffset(dialog, dialog.panOffsetX, dialog.panOffsetY)
     
-    -- Update zoom indicator if present
-    if dialog.ZoomIndicator then
-        dialog.ZoomIndicator:SetText(string.format("%.0f%%", newZoom * 100))
+    -- Update zoom indicator in dock
+    if dialog.DisabledDock and dialog.DisabledDock.ZoomIndicator then
+        dialog.DisabledDock.ZoomIndicator:SetText(string.format("%.0f%%", newZoom * 100))
     end
 end
 
@@ -117,10 +133,3 @@ Dialog.Viewport:SetScript("OnUpdate", function(self)
         ApplyPanOffset(Dialog, self.panStartOffsetX + deltaX, self.panStartOffsetY + deltaY)
     end
 end)
-
--- [ ZOOM INDICATOR ]------------------------------------------------------------------------
-
-Dialog.ZoomIndicator = Dialog.PreviewContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-Dialog.ZoomIndicator:SetPoint("BOTTOMRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -5, 5)
-Dialog.ZoomIndicator:SetText(string.format("%.0f%%", C.DEFAULT_ZOOM * 100))
-Dialog.ZoomIndicator:SetTextColor(0.7, 0.7, 0.7, 0.8)

@@ -16,8 +16,8 @@ local CanvasMode = OrbitEngine.CanvasMode
 
 CanvasMode.Constants = {
     -- Dialog dimensions
-    DIALOG_WIDTH = 480,
-    DIALOG_HEIGHT = 250,
+    DIALOG_WIDTH = 600,
+    DIALOG_HEIGHT = 350,
     DIALOG_MIN_HEIGHT = 200,
     DIALOG_INSET = 12,
     

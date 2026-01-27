@@ -31,8 +31,17 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
         PandemicGlowColor = Constants.PandemicGlow.DefaultColor,
         ProcGlowType = Constants.PandemicGlow.DefaultType,
         ProcGlowColor = Constants.PandemicGlow.DefaultColor,
+        -- Text Customization
+        ShowKeybinds = false,
+        TimerSizeOffset = 0,
+        ChargesSizeOffset = 0,
+        StacksSizeOffset = 0,
+        KeybindSizeOffset = 0,
     },
 }, Orbit.Constants.PluginGroups.CooldownManager)
+
+-- Enable Canvas Mode for CDM anchors
+Plugin.canvasMode = true
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
@@ -190,6 +199,61 @@ function Plugin:AddSettings(dialog, systemFrame)
         default = Constants.PandemicGlow.DefaultColor,
     }, nil)
 
+    -- Text Customization Header
+    table.insert(schema.controls, { type = "header", text = "Text Settings" })
+
+    -- Show Keybinds
+    table.insert(schema.controls, {
+        type = "checkbox",
+        key = "ShowKeybinds",
+        label = "Show Keybinds",
+        default = false,
+    })
+
+    -- Timer Size Offset
+    table.insert(schema.controls, {
+        type = "slider",
+        key = "TimerSizeOffset",
+        label = "Timer Size",
+        min = -4,
+        max = 4,
+        step = 1,
+        default = 0,
+    })
+
+    -- Charges Size Offset
+    table.insert(schema.controls, {
+        type = "slider",
+        key = "ChargesSizeOffset",
+        label = "Charges Size",
+        min = -4,
+        max = 4,
+        step = 1,
+        default = 0,
+    })
+
+    -- Stacks Size Offset (for BuffIcon)
+    table.insert(schema.controls, {
+        type = "slider",
+        key = "StacksSizeOffset",
+        label = "Stacks Size",
+        min = -4,
+        max = 4,
+        step = 1,
+        default = 0,
+    })
+
+    -- Keybind Size Offset
+    table.insert(schema.controls, {
+        type = "slider",
+        key = "KeybindSizeOffset",
+        label = "Keybind Size",
+        min = -4,
+        max = 4,
+        step = 1,
+        default = 0,
+    })
+
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
 
@@ -205,6 +269,11 @@ function Plugin:OnLoad()
         [UTILITY_INDEX] = { viewer = UtilityCooldownViewer, anchor = self.utilityAnchor },
         [BUFFICON_INDEX] = { viewer = BuffIconCooldownViewer, anchor = self.buffIconAnchor },
     }
+
+    -- Setup Canvas Mode previews for each anchor
+    self:SetupCanvasPreview(self.essentialAnchor, ESSENTIAL_INDEX)
+    self:SetupCanvasPreview(self.utilityAnchor, UTILITY_INDEX)
+    self:SetupCanvasPreview(self.buffIconAnchor, BUFFICON_INDEX)
 
     -- Hook Blizzard viewers for layout sync
     self:HookBlizzardViewers()
@@ -247,6 +316,78 @@ function Plugin:CreateAnchor(name, systemIndex, label)
 
     self:ApplySettings(frame)
     return frame
+end
+
+-- [ CANVAS MODE PREVIEW ]-----------------------------------------------------------------------
+-- Creates a single-icon preview for Canvas Mode that matches exact icon dimensions
+function Plugin:SetupCanvasPreview(anchor, systemIndex)
+    local plugin = self
+    
+    anchor.CreateCanvasPreview = function(self, options)
+        local entry = VIEWER_MAP[systemIndex]
+        if not entry or not entry.viewer then return nil end
+        
+        -- Get icon dimensions from settings
+        local aspectRatio = plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
+        local iconSize = plugin:GetSetting(systemIndex, "IconSize") or 100
+        local baseSize = Constants.Skin.DefaultIconSize or 40
+        local scale = iconSize / 100
+        
+        -- Calculate dimensions from aspect ratio
+        local w, h = baseSize, baseSize
+        if aspectRatio == "16:9" then
+            h = baseSize * (9/16)
+        elseif aspectRatio == "4:3" then
+            h = baseSize * (3/4)
+        elseif aspectRatio == "21:9" then
+            h = baseSize * (9/21)
+        end
+        w, h = w * scale, h * scale
+        
+        -- Create preview matching single icon size
+        local parent = options.parent or UIParent
+        local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+        preview:SetSize(w, h)
+        
+        -- Required metadata for Canvas Mode
+        preview.sourceFrame = self
+        preview.sourceWidth = w
+        preview.sourceHeight = h
+        preview.previewScale = 1
+        preview.components = {}
+        
+        -- Get first visible icon texture from the viewer
+        local iconTexture = "Interface\\Icons\\INV_Misc_QuestionMark"
+        local children = { entry.viewer:GetChildren() }
+        for _, child in ipairs(children) do
+            if child:IsShown() and child.Icon then
+                local tex = child.Icon:GetTexture()
+                if tex then
+                    iconTexture = tex
+                    break
+                end
+            end
+        end
+        
+        -- Create icon display
+        local icon = preview:CreateTexture(nil, "ARTWORK")
+        icon:SetAllPoints()
+        icon:SetTexture(iconTexture)
+        
+        -- Apply border matching Orbit style
+        local borderSize = Orbit.db and Orbit.db.GlobalSettings 
+            and Orbit.db.GlobalSettings.BorderSize or 2
+        preview:SetBackdrop({
+            bgFile = "Interface\\BUTTONS\\WHITE8x8",
+            edgeFile = "Interface\\BUTTONS\\WHITE8x8",
+            edgeSize = borderSize,
+            insets = { left = 0, right = 0, top = 0, bottom = 0 },
+        })
+        preview:SetBackdropColor(0, 0, 0, 0)
+        preview:SetBackdropBorderColor(0, 0, 0, 1)
+        
+        return preview
+    end
 end
 
 function Plugin:HookBlizzardViewers()
@@ -860,6 +1001,9 @@ function Plugin:ProcessChildren(anchor)
                 end)
                 icon.orbitGCDHooked = true
             end
+
+            -- Apply text customization (font, size, keybinds)
+            self:ApplyTextSettings(icon, systemIndex)
         end
 
         -- Apply manual layout to the Blizzard container
@@ -880,7 +1024,138 @@ function Plugin:ProcessChildren(anchor)
     end
 end
 
+-- [ TEXT CUSTOMIZATION ]----------------------------------------------------------------------------
+-- Text scale sizes matching OrbitOptionsPanel
+local TEXT_SCALE_SIZES = {
+    Small = 10,
+    Medium = 12,
+    Large = 14,
+    ExtraLarge = 16,
+}
+
+function Plugin:GetBaseFontSize()
+    local scale = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.TextScale or "Medium"
+    return TEXT_SCALE_SIZES[scale] or 12
+end
+
+function Plugin:GetGlobalFont()
+    local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font or "PT Sans Narrow"
+    local LSM = LibStub("LibSharedMedia-3.0", true)
+    if LSM then
+        return LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
+    end
+    return STANDARD_TEXT_FONT
+end
+
+function Plugin:GetSpellKeybind(spellID)
+    if not spellID then return nil end
+    local slots = C_ActionBar.FindSpellActionButtons(spellID)
+    if not slots or #slots == 0 then return nil end
+    
+    local slot = slots[1]
+    local page = math.floor((slot - 1) / 12) + 1
+    local buttonIndex = ((slot - 1) % 12) + 1
+    
+    -- Determine binding name based on bar/page
+    local bindingName
+    if page == 1 then
+        bindingName = "ACTIONBUTTON" .. buttonIndex
+    elseif page == 2 then
+        bindingName = "MULTIACTIONBAR1BUTTON" .. buttonIndex
+    elseif page == 3 then
+        bindingName = "MULTIACTIONBAR2BUTTON" .. buttonIndex
+    elseif page == 4 then
+        bindingName = "MULTIACTIONBAR3BUTTON" .. buttonIndex
+    elseif page == 5 then
+        bindingName = "MULTIACTIONBAR4BUTTON" .. buttonIndex
+    else
+        -- Fallback for additional bars
+        bindingName = "ACTIONBUTTON" .. buttonIndex
+    end
+    
+    local key = GetBindingKey(bindingName)
+    if key then
+        return GetBindingText(key, true) -- 'true' = abbreviated format
+    end
+    return nil
+end
+
+function Plugin:CreateKeybindText(icon)
+    local keybind = icon:CreateFontString(nil, "OVERLAY")
+    keybind:SetPoint("TOPRIGHT", icon, "TOPRIGHT", -2, -2)
+    keybind:Hide()
+    icon.OrbitKeybind = keybind
+    return keybind
+end
+
+function Plugin:ApplyTextSettings(icon, systemIndex)
+    local fontPath = self:GetGlobalFont()
+    local baseSize = self:GetBaseFontSize()
+    
+    -- Timer (Cooldown countdown text)
+    -- The countdown text is a FontString child of the Cooldown frame
+    local timerOffset = self:GetSetting(systemIndex, "TimerSizeOffset") or 0
+    local timerSize = math.max(6, baseSize + timerOffset + 2)
+    local cooldown = icon.Cooldown or (icon.GetCooldownFrame and icon:GetCooldownFrame())
+    if cooldown then
+        -- Method 1: Try to find the Text region directly
+        if cooldown.Text and cooldown.Text.SetFont then
+            cooldown.Text:SetFont(fontPath, timerSize, "OUTLINE")
+        else
+            -- Method 2: Iterate through regions to find FontStrings
+            local regions = { cooldown:GetRegions() }
+            for _, region in ipairs(regions) do
+                if region:GetObjectType() == "FontString" then
+                    region:SetFont(fontPath, timerSize, "OUTLINE")
+                end
+            end
+        end
+    end
+    
+    -- Charges (ChargeCount.Current FontString)
+    local chargesOffset = self:GetSetting(systemIndex, "ChargesSizeOffset") or 0
+    local chargesSize = math.max(6, baseSize + chargesOffset)
+    if icon.ChargeCount and icon.ChargeCount.Current then
+        icon.ChargeCount.Current:SetFont(fontPath, chargesSize, "OUTLINE")
+    end
+    
+    -- Stacks (BuffIcon viewer uses Applications.Applications)
+    local stacksOffset = self:GetSetting(systemIndex, "StacksSizeOffset") or 0
+    local stacksSize = math.max(6, baseSize + stacksOffset)
+    if icon.Applications then
+        local stackText = icon.Applications.Applications or icon.Applications
+        if stackText and stackText.SetFont then
+            stackText:SetFont(fontPath, stacksSize, "OUTLINE")
+        end
+    end
+    
+    -- Keybind display
+    local showKeybinds = self:GetSetting(systemIndex, "ShowKeybinds")
+    local keybindOffset = self:GetSetting(systemIndex, "KeybindSizeOffset") or 0
+    local keybindSize = math.max(6, baseSize + keybindOffset - 2)
+    
+    if showKeybinds then
+        local keybind = icon.OrbitKeybind or self:CreateKeybindText(icon)
+        keybind:SetFont(fontPath, keybindSize, "OUTLINE")
+        
+        -- Get spell ID from the icon
+        local spellID = icon.GetSpellID and icon:GetSpellID()
+        local keyText = self:GetSpellKeybind(spellID)
+        
+        if keyText then
+            keybind:SetText(keyText)
+            keybind:Show()
+        else
+            keybind:Hide()
+        end
+    elseif icon.OrbitKeybind then
+        icon.OrbitKeybind:Hide()
+    end
+end
+
+
 function Plugin:GetGrowthDirection(anchorFrame)
+
     if not anchorFrame then
         return "DOWN"
     end
