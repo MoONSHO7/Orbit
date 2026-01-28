@@ -496,6 +496,17 @@ function Dialog:Apply()
             local posX = comp.posX or 0
             local posY = comp.posY or 0
             anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchor(posX, posY, halfWidth, halfHeight)
+            
+            -- Apply width compensation for FontStrings (matches drag display logic)
+            -- When inside: justify matches anchor side → subtract containerHalfW
+            -- When outside: justify flipped → add containerHalfW
+            if comp.isFontString and anchorX ~= "CENTER" then
+                local containerHalfW = comp:GetWidth() / 2
+                local isOutside = (anchorX == "LEFT" and posX < -halfWidth) or 
+                                  (anchorX == "RIGHT" and posX > halfWidth)
+                local widthCompensation = isOutside and containerHalfW or -containerHalfW
+                offsetX = offsetX + widthCompensation
+            end
         end
         
         positions[key] = {
