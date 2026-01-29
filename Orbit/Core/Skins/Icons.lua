@@ -492,7 +492,7 @@ function Icons:ApplyCustom(icon, settings)
             icon.IconMask:Hide()
         end
 
-        if icon.spellOutOfRange then
+        if icon.spellOutOfRange and icon.RefreshIconColor then
             icon:RefreshIconColor()
         end
 
@@ -524,7 +524,6 @@ function Icons:ApplyCustom(icon, settings)
             -- Hook swipe setters directly to immediately catch Blizzard's resets
             -- This prevents the flash that occurs when waiting for SetCooldown hooks
             if not r.cooldown.orbitHooked then
-                local cooldownRef = r.cooldown
 
                 -- Hook SetSwipeTexture: if Blizzard sets wrong texture, immediately correct it
                 hooksecurefunc(r.cooldown, "SetSwipeTexture", function(self, texture)
@@ -644,8 +643,7 @@ function Icons:ApplyCustom(icon, settings)
     end
 
     if icon.Cooldown and icon.Cooldown.SetHideCountdownNumbers then
-        local hide = not (settings.showTimer ~= false)
-        icon.Cooldown:SetHideCountdownNumbers(hide)
+        icon.Cooldown:SetHideCountdownNumbers(not (settings.showTimer ~= false))
     end
 
     if icon.DebuffBorder then
@@ -860,5 +858,19 @@ function Icons:ApplyActionButtonCustom(button, settings)
         if button.FlyoutBorderShadow then
             button.FlyoutBorderShadow:SetParent(button.orbitOverlayFrame)
         end
+    end
+
+    -- [ RANGE INDICATION ]
+    if button.action and not button.orbitRangeHooked then
+        hooksecurefunc(button, "OnEvent", function(self, event, ...)
+            if event == "ACTION_RANGE_CHECK_UPDATE" then
+                local _, inRange, checksRange = ...
+                local icon = self.icon or self.Icon
+                if icon and checksRange then
+                    icon:SetDesaturation(C_CurveUtil.EvaluateColorValueFromBoolean(inRange, 0, 1))
+                end
+            end
+        end)
+        button.orbitRangeHooked = true
     end
 end

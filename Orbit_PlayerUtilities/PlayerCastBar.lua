@@ -1,7 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
-local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
@@ -20,7 +19,6 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
 -------------------------------------------------
 -- CONSTANTS
 -------------------------------------------------
-local FADE_DURATION = Orbit.Constants.Timing.FadeDuration
 local INTERRUPT_FLASH_DURATION = Orbit.Constants.Timing.FlashDuration
 
 -- Blizzard's default empower stage colors (approximate)
@@ -46,10 +44,7 @@ end
 
 -- Helper: Snap value to pixel grid
 local function SnapToPixel(value, scale)
-    if OrbitEngine.Pixel then
-        return OrbitEngine.Pixel:Snap(value, scale)
-    end
-    return value
+    return OrbitEngine.Pixel:Snap(value, scale)
 end
 
 -- Helper: Calculate spark position for a value on a bar
@@ -59,6 +54,46 @@ local function CalculateSparkPos(bar, value, maxValue)
     local width = orbitBar:GetWidth()
     local pos = (maxValue > 0) and ((value / maxValue) * width) or 0
     return SnapToPixel(pos, bar:GetEffectiveScale())
+end
+
+-- Combat-safe Show/Hide: Use alpha during combat to avoid taint when cast bar is anchored
+local function SafeShow(bar)
+    bar.orbitHiddenByAlpha = false
+    if InCombatLockdown() then
+        bar:SetAlpha(1)
+        if bar.orbitBar then bar.orbitBar:SetAlpha(1) end
+    else
+        bar:Show()
+        bar:SetAlpha(1)
+        if bar.orbitBar then bar.orbitBar:SetAlpha(1) end
+    end
+end
+
+local function SafeHide(bar)
+    if InCombatLockdown() then
+        bar:SetAlpha(0)
+        if bar.orbitBar then bar.orbitBar:SetAlpha(0) end
+        bar.orbitHiddenByAlpha = true
+    else
+        bar:Hide()
+        bar.orbitHiddenByAlpha = false
+    end
+end
+
+local function SetupCombatCleanup(bar)
+    bar:RegisterEvent("PLAYER_REGEN_ENABLED")
+    bar:RegisterEvent("PLAYER_REGEN_DISABLED")
+    bar:HookScript("OnEvent", function(self, event)
+        if event == "PLAYER_REGEN_DISABLED" and not self:IsShown() then
+            self:Show()
+            self:SetAlpha(0)
+            if self.orbitBar then self.orbitBar:SetAlpha(0) end
+            self.orbitHiddenByAlpha = true
+        elseif event == "PLAYER_REGEN_ENABLED" and self.orbitHiddenByAlpha then
+            self:Hide()
+            self.orbitHiddenByAlpha = false
+        end
+    end)
 end
 
 -------------------------------------------------
@@ -259,6 +294,9 @@ function Plugin:OnLoad()
         self:OnCastEvent(event, unit, castGUID, spellID)
     end)
 
+    -- Setup combat-end cleanup for alpha-hidden bars
+    SetupCombatCleanup(CastBar)
+
     -- OnUpdate for progress
     CastBar:SetScript("OnUpdate", function(frame, elapsed)
         self:OnUpdate(elapsed)
@@ -269,7 +307,7 @@ function Plugin:OnLoad()
         EventRegistry:RegisterCallback("EditMode.Exit", function()
             CastBar.preview = false
             if not CastBar.casting and not CastBar.channeling then
-                CastBar:Hide()
+                SafeHide(CastBar)
             end
             self:ApplySettings()
         end, self)
@@ -286,7 +324,7 @@ function Plugin:OnLoad()
             -- Hide bar until needed (not in Edit Mode)
             if not (EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()) then
                 if not CastBar.casting and not CastBar.channeling then
-                    CastBar:Hide()
+                    SafeHide(CastBar)
                 end
             end
         end, 0.5)
@@ -344,7 +382,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
                 bar.Latency:Show()
             end
 
-            bar:Show()
+            SafeShow(bar)
         end
     elseif event == "UNIT_SPELLCAST_CHANNEL_START" then
         local name, text, texture, startTime, endTime, isTradeSkill, notInterruptible = UnitChannelInfo("player")
@@ -383,7 +421,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
                 bar.Latency:Show()
             end
 
-            bar:Show()
+            SafeShow(bar)
         end
     elseif event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_CHANNEL_STOP" then
         bar.casting = false
@@ -391,7 +429,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
         if bar.Latency then
             bar.Latency:Hide()
         end
-        bar:Hide()
+        SafeHide(bar)
     elseif event == "UNIT_SPELLCAST_FAILED" then
         if bar.castID == castGUID then
             bar.casting = false
@@ -406,7 +444,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             C_Timer.After(INTERRUPT_FLASH_DURATION, function()
                 -- Only hide if no new cast has started
                 if bar.castTimestamp == failTimestamp and not bar.casting and not bar.channeling then
-                    bar:Hide()
+                    SafeHide(bar)
                 end
             end)
         end
@@ -434,7 +472,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
         C_Timer.After(INTERRUPT_FLASH_DURATION, function()
             -- Only hide/restore if no new cast has started
             if bar.castTimestamp == interruptTimestamp and not bar.casting and not bar.channeling then
-                bar:Hide()
+                SafeHide(bar)
                 self:ApplyColor() -- Restore color
             end
         end)
@@ -510,7 +548,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
                 bar.Latency:Hide()
             end
 
-            bar:Show()
+            SafeShow(bar)
         end
     elseif event == "UNIT_SPELLCAST_EMPOWER_UPDATE" then
         local name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellID, _, numStages =
@@ -532,7 +570,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
         if bar.Latency then
             bar.Latency:Hide()
         end
-        bar:Hide()
+        SafeHide(bar)
         self:ApplyColor() -- Restore normal color
     end
 end
@@ -542,7 +580,7 @@ function Plugin:OnUpdate(elapsed)
     if not bar then
         return
     end
-    if not bar:IsShown() then
+    if not bar:IsShown() or bar.orbitHiddenByAlpha then
         return
     end -- Early exit for hidden bar
     if bar.preview then
@@ -555,7 +593,8 @@ function Plugin:OnUpdate(elapsed)
         local value = GetTime() - bar.startTime
         if value >= bar.maxValue then
             bar.casting = false
-            bar:Hide()
+            SafeHide(bar)
+            return
         else
             targetBar:SetValue(value)
             local sparkPos = CalculateSparkPos(bar, value, bar.maxValue)
@@ -570,7 +609,8 @@ function Plugin:OnUpdate(elapsed)
         local value = bar.endTime - GetTime()
         if value <= 0 then
             bar.channeling = false
-            bar:Hide()
+            SafeHide(bar)
+            return
         else
             targetBar:SetValue(value)
             local sparkPos = CalculateSparkPos(bar, value, bar.maxValue)
@@ -624,6 +664,11 @@ function Plugin:ApplySettings(systemFrame)
         return
     end
 
+    -- Skip dimension/position changes during combat to avoid protected function errors
+    if InCombatLockdown() then
+        return
+    end
+
     local systemIndex = bar.systemIndex or 1
 
     -- Check if anchored via Orbit auto-anchor system
@@ -633,7 +678,6 @@ function Plugin:ApplySettings(systemFrame)
     local scale = self:GetSetting(systemIndex, "CastBarScale")
     local height = self:GetSetting(systemIndex, "CastBarHeight")
     local borderSize = self:GetSetting(systemIndex, "BorderSize")
-    local texture = self:GetSetting(systemIndex, "Texture")
     local texture = self:GetSetting(systemIndex, "Texture")
     local showText = self:GetSetting(systemIndex, "CastBarText")
     local showIcon = self:GetSetting(systemIndex, "CastBarIcon")
@@ -669,7 +713,6 @@ function Plugin:ApplySettings(systemFrame)
             showText = showText,
             showIcon = showIcon,
             showTimer = showTimer,
-            font = fontName,
             font = fontName,
             textColor = { r = 1, g = 1, b = 1, a = 1 },
             backdropColor = backdropColor,
