@@ -123,8 +123,8 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
     frame.UpdateColor = function(r, g, b, a, isPreview)
         frame.r, frame.g, frame.b, frame.a = r, g, b, a
         frame.Swatch.Color:SetVertexColor(r, g, b, a)
-        -- Only trigger callback on final selection (not during drag preview)
-        if callback and not isPreview then
+        -- Always trigger callback for live preview (consistent with slider behavior)
+        if callback then
             callback({ r = r, g = g, b = b, a = a })
         end
     end
