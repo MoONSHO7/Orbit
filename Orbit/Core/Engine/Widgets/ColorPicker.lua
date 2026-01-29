@@ -2,6 +2,10 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local Layout = Engine.Layout
 
+-- Track the currently active color picker frame (singleton pattern for Blizzard's ColorPickerFrame)
+local activeColorPickerFrame = nil
+local colorPickerHookInstalled = false
+
 --[[
     ColorPicker Widget
     3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
@@ -40,26 +44,32 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
         frame.Swatch:SetScript("OnClick", function()
             if ColorPickerFrame.SetupColorPickerAndShow then
                 -- Modern API (10.2.5+)
-                local wasCancelled = false
+                -- Track which frame is currently using the color picker
+                activeColorPickerFrame = frame
+                frame.wasCancelled = false
+                
                 local info = {
                     swatchFunc = function()
                         local r, g, b = ColorPickerFrame:GetColorRGB()
                         local a = ColorPickerFrame:GetColorAlpha()
-                        if frame.UpdateColor then
-                            frame.UpdateColor(r, g, b, a, true) -- Preview only
+                        -- Use activeColorPickerFrame to ensure we're updating the right widget
+                        if activeColorPickerFrame and activeColorPickerFrame.UpdateColor then
+                            activeColorPickerFrame.UpdateColor(r, g, b, a, true)
                         end
                     end,
                     opacityFunc = function()
                         local r, g, b = ColorPickerFrame:GetColorRGB()
                         local a = ColorPickerFrame:GetColorAlpha()
-                        if frame.UpdateColor then
-                            frame.UpdateColor(r, g, b, a, true) -- Preview only
+                        if activeColorPickerFrame and activeColorPickerFrame.UpdateColor then
+                            activeColorPickerFrame.UpdateColor(r, g, b, a, true)
                         end
                     end,
                     cancelFunc = function(restore)
-                        wasCancelled = true
-                        if frame.UpdateColor then
-                            frame.UpdateColor(restore.r, restore.g, restore.b, restore.a, false) -- Restore = final
+                        if activeColorPickerFrame then
+                            activeColorPickerFrame.wasCancelled = true
+                            if activeColorPickerFrame.UpdateColor then
+                                activeColorPickerFrame.UpdateColor(restore.r, restore.g, restore.b, restore.a, false)
+                            end
                         end
                     end,
                     hasOpacity = true,
@@ -69,36 +79,51 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
                     opacity = frame.a,
                 }
                 
-                -- Hook OnHide to trigger final callback when picker closes (if not cancelled)
-                if not frame.colorPickerHooked then
+                -- Install global OnHide hook once (references activeColorPickerFrame dynamically)
+                if not colorPickerHookInstalled then
                     ColorPickerFrame:HookScript("OnHide", function()
-                        if not wasCancelled and frame.UpdateColor then
-                            -- Commit the current preview values as final
-                            frame.UpdateColor(frame.r, frame.g, frame.b, frame.a, false)
+                        if activeColorPickerFrame then
+                            if not activeColorPickerFrame.wasCancelled and activeColorPickerFrame.UpdateColor then
+                                activeColorPickerFrame.UpdateColor(
+                                    activeColorPickerFrame.r,
+                                    activeColorPickerFrame.g,
+                                    activeColorPickerFrame.b,
+                                    activeColorPickerFrame.a,
+                                    false
+                                )
+                            end
+                            activeColorPickerFrame.wasCancelled = false
+                            activeColorPickerFrame = nil
                         end
-                        wasCancelled = false -- Reset for next use
                     end)
-                    frame.colorPickerHooked = true
+                    colorPickerHookInstalled = true
                 end
                 
                 ColorPickerFrame:SetupColorPickerAndShow(info)
                 ColorPickerFrame:SetFrameStrata("FULLSCREEN_DIALOG")
             else
                 -- Pre-10.2.5 API
+                activeColorPickerFrame = frame
                 ColorPickerFrame:SetColorRGB(frame.r, frame.g, frame.b)
                 ColorPickerFrame.hasOpacity = true
                 ColorPickerFrame.opacity = frame.a
                 ColorPickerFrame.func = function()
                     local r, g, b = ColorPickerFrame:GetColorRGB()
                     local a = OpacityFrame:GetValue()
-                    if frame.UpdateColor then
-                        frame.UpdateColor(r, g, b, a, true) -- Preview only
+                    if activeColorPickerFrame and activeColorPickerFrame.UpdateColor then
+                        activeColorPickerFrame.UpdateColor(r, g, b, a, true)
                     end
                 end
                 ColorPickerFrame.opacityFunc = ColorPickerFrame.func
                 ColorPickerFrame.cancelFunc = function()
-                    if frame.UpdateColor then
-                        frame.UpdateColor(frame.oldR, frame.oldG, frame.oldB, frame.oldA, false)
+                    if activeColorPickerFrame and activeColorPickerFrame.UpdateColor then
+                        activeColorPickerFrame.UpdateColor(
+                            activeColorPickerFrame.oldR,
+                            activeColorPickerFrame.oldG,
+                            activeColorPickerFrame.oldB,
+                            activeColorPickerFrame.oldA,
+                            false
+                        )
                     end
                 end
                 ColorPickerFrame:Show()
@@ -123,8 +148,8 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
     frame.UpdateColor = function(r, g, b, a, isPreview)
         frame.r, frame.g, frame.b, frame.a = r, g, b, a
         frame.Swatch.Color:SetVertexColor(r, g, b, a)
-        -- Only trigger callback on final selection (not during drag preview)
-        if callback and not isPreview then
+        -- Always trigger callback for live preview (consistent with slider behavior)
+        if callback then
             callback({ r = r, g = g, b = b, a = a })
         end
     end
@@ -148,3 +173,4 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
     frame:SetSize(260, 32)
     return frame
 end
+

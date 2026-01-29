@@ -29,7 +29,7 @@ local TYPE_SCHEMAS = {
             { type = "font", key = "Font", label = "Font" },
             { type = "slider", key = "FontSize", label = "Size", min = 8, max = 24, step = 1 },
             { type = "checkbox", key = "UseClassColour", label = "Class Colour" },
-            { type = "color", key = "CustomColor", label = "Custom Color" },
+            { type = "color", key = "CustomColor", label = "Custom Color", hideIf = "UseClassColour" },
         },
     },
     -- Texture/Icon elements (CombatIcon, RareEliteIcon, etc.)
@@ -110,6 +110,11 @@ end)
 
 -- Click outside to close (via OnUpdate check)
 Dialog:SetScript("OnUpdate", function(self)
+    -- Don't close while ColorPickerFrame is open (user may be dragging colors)
+    if ColorPickerFrame and ColorPickerFrame:IsShown() then
+        return
+    end
+    
     if not self:IsMouseOver() and IsMouseButtonDown("LeftButton") then
         -- Check if clicking on the parent Canvas Mode dialog
         local canvasDialog = Orbit.CanvasModeDialog
@@ -420,8 +425,9 @@ function Dialog:OnValueChanged(key, value)
     self.currentOverrides = self.currentOverrides or {}
     self.currentOverrides[key] = value
     
-    -- Handle hideIf conditional visibility
+    -- Handle hideIf conditional visibility and recalculate height
     if self.widgetsByKey then
+        local needsHeightRecalc = false
         for widgetKey, widget in pairs(self.widgetsByKey) do
             if widget.hideIf and widget.hideIf == key then
                 if value then
@@ -429,7 +435,23 @@ function Dialog:OnValueChanged(key, value)
                 else
                     widget:Show()
                 end
+                needsHeightRecalc = true
             end
+        end
+        
+        -- Recalculate dialog height if visibility changed
+        if needsHeightRecalc then
+            local yOffset = 0
+            for _, widget in ipairs(self.widgets) do
+                if widget:IsShown() then
+                    widget:ClearAllPoints()
+                    widget:SetPoint("TOPLEFT", self.Content, "TOPLEFT", 0, -yOffset)
+                    widget:SetPoint("TOPRIGHT", self.Content, "TOPRIGHT", 0, -yOffset)
+                    yOffset = yOffset + widget:GetHeight() + WIDGET_SPACING
+                end
+            end
+            local contentHeight = yOffset + PADDING * 2 + 24
+            self:SetHeight(math.max(DIALOG_MIN_HEIGHT, contentHeight + 20))
         end
     end
     

@@ -652,6 +652,27 @@ function Dialog:ResetPositions()
     
     self:ClearDock()
     
+    -- Reset disabledComponentKeys to defaults
+    local defaultDisabled = plugin.defaults and plugin.defaults.DisabledComponents or {}
+    self.disabledComponentKeys = {}
+    for _, key in ipairs(defaultDisabled) do
+        table.insert(self.disabledComponentKeys, key)
+    end
+    
+    -- Move default-disabled components back to dock
+    for _, key in ipairs(defaultDisabled) do
+        local comp = self.previewComponents[key]
+        if comp then
+            comp:Hide()
+            local sourceComponent = comp.sourceComponent or comp.visual or comp
+            self:AddToDock(key, sourceComponent)
+            if self.dockComponents[key] then
+                self.dockComponents[key].storedDraggableComp = comp
+            end
+            self.previewComponents[key] = nil
+        end
+    end
+    
     -- Reset each preview container
     for key, container in pairs(self.previewComponents) do
         local defaultPos = defaults[key]
@@ -716,6 +737,11 @@ function Dialog:ResetPositions()
                 if fontPath and container.visual.SetFont then
                     local _, _, flags = container.visual:GetFont()
                     container.visual:SetFont(fontPath, defaultFontSize, flags or "")
+                end
+                
+                -- Reset text color to white
+                if container.visual.SetTextColor then
+                    container.visual:SetTextColor(1, 1, 1, 1)
                 end
                 
                 if container.visual.SetShadowOffset then

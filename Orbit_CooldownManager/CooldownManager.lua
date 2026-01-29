@@ -21,6 +21,15 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
         Orientation = 0,
         IconLimit = Constants.Cooldown.DefaultLimit,
         ShowGCDSwipe = true,
+        -- Component visibility (Keybind disabled by default)
+        DisabledComponents = { "Keybind" },
+        -- Default component positions for Reset functionality
+        ComponentPositions = {
+            Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, justifyH = "CENTER" },
+            Stacks = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 2, offsetY = 2, justifyH = "LEFT" },
+            Charges = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 2, offsetY = 2, justifyH = "RIGHT" },
+            Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2, justifyH = "RIGHT" },
+        },
         -- Glow Settings (use PandemicGlow constants for consistency)
         PandemicGlowType = Constants.PandemicGlow.DefaultType,
         PandemicGlowColor = Constants.PandemicGlow.DefaultColor,
