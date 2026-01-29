@@ -3,16 +3,12 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 
--- LibCustomGlow for pandemic/proc glow effects
 local LibCustomGlow = LibStub("LibCustomGlow-1.0", true)
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
--- Use the Cooldown system indices from Constants
 local ESSENTIAL_INDEX = Constants.Cooldown.SystemIndex.Essential
 local UTILITY_INDEX = Constants.Cooldown.SystemIndex.Utility
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
-
--- Lookup table for viewer mapping (populated after OnLoad)
 local VIEWER_MAP = {}
 
 local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", {
@@ -33,7 +29,6 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
     },
 }, Orbit.Constants.PluginGroups.CooldownManager)
 
--- Enable Canvas Mode for CDM anchors
 Plugin.canvasMode = true
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
@@ -41,10 +36,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or 1
     local WL = OrbitEngine.WidgetLogic
 
-    -- Get the actual frame for this systemIndex
     local frame = self:GetFrameBySystemIndex(systemIndex)
-
-    -- Anchor Detection
     local isAnchored = frame and OrbitEngine.Frame:GetAnchorParent(frame) ~= nil
 
     local schema = {
@@ -54,11 +46,9 @@ function Plugin:AddSettings(dialog, systemFrame)
             {
                 text = "Cooldown Settings",
                 callback = function()
-                    -- Exit Edit Mode first
                     if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
                         HideUIPanel(EditModeManagerFrame)
                     end
-                    -- Open Blizzard Cooldown Settings
                     if CooldownViewerSettings then
                         CooldownViewerSettings:Show()
                     end
@@ -264,7 +254,6 @@ function Plugin:IsComponentDisabled(componentKey, systemIndex)
 end
 
 -- [ CANVAS MODE PREVIEW ]-----------------------------------------------------------------------
--- Creates a single-icon preview for Canvas Mode that matches exact icon dimensions
 function Plugin:SetupCanvasPreview(anchor, systemIndex)
     local plugin = self
     local LSM = LibStub("LibSharedMedia-3.0")
@@ -273,8 +262,7 @@ function Plugin:SetupCanvasPreview(anchor, systemIndex)
         local entry = VIEWER_MAP[systemIndex]
         if not entry or not entry.viewer then return nil end
         
-        -- Get icon dimensions from ACTUAL icons in the viewer
-        -- This ensures Canvas Mode preview matches real icons exactly
+        -- Get icon dimensions from actual icons in the viewer
         local w, h = nil, nil
         local children = { entry.viewer:GetChildren() }
         for _, child in ipairs(children) do
@@ -304,21 +292,16 @@ function Plugin:SetupCanvasPreview(anchor, systemIndex)
         local parent = options.parent or UIParent
         local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
         preview:SetSize(w, h)
-        
-        -- DEBUG: Log Canvas Mode preview dimensions
-        print(string.format("[CDM Canvas] Preview frame size: %.1f x %.1f (from actual icon)", w, h))
-        
+
         -- Required metadata for Canvas Mode
         preview.sourceFrame = self
         -- Use content dimensions (excluding border) for positioning
-        -- Text anchors to icon content area, not the full frame with border
         local borderSize = Orbit.db and Orbit.db.GlobalSettings 
             and Orbit.db.GlobalSettings.BorderSize or 2
         local contentW = w - (borderSize * 2)  -- Inset by border on each side
         local contentH = h - (borderSize * 2)
         preview.sourceWidth = contentW
         preview.sourceHeight = contentH
-        preview.borderOffset = borderSize  -- Store for later use
         preview.previewScale = 1
         preview.components = {}
         
@@ -389,8 +372,6 @@ function Plugin:SetupCanvasPreview(anchor, systemIndex)
             }
             
             -- Calculate start position (center-relative)
-            -- Use saved posX/posY directly if available (more accurate than anchor/offset conversion)
-            -- Use content dimensions (excluding border) for accurate positioning
             local halfW, halfH = contentW / 2, contentH / 2
             local startX, startY = saved.posX or 0, saved.posY or 0
             
@@ -435,8 +416,7 @@ function Plugin:HookBlizzardViewers()
         self:SetupViewerHooks(entry.viewer, entry.anchor)
     end
 
-    -- Re-apply parentage when Edit Mode layout changes (e.g. exit)
-    -- Guard against duplicate registration
+    -- Re-apply parentage when Edit Mode exits
     if EventRegistry and not self.editModeExitRegistered then
         self.editModeExitRegistered = true
         EventRegistry:RegisterCallback("EditMode.Exit", function()
@@ -590,8 +570,6 @@ function Plugin:FixGlowTransparency(glowFrame, alpha)
     if glowFrame.ProcStartAnim then
         for _, anim in pairs({ glowFrame.ProcStartAnim:GetAnimations() }) do
             if anim:GetObjectType() == "Alpha" then
-                -- Order 0 is Fade In / Hold
-                -- Order 2 is Fade Out
                 local order = anim:GetOrder()
                 if order == 0 then
                     anim:SetFromAlpha(alpha)
@@ -604,9 +582,6 @@ function Plugin:FixGlowTransparency(glowFrame, alpha)
     end
 end
 -- [ TICKER-BASED PANDEMIC GLOW ]--------------------------------------------------------------------
--- Check pandemic state via PandemicIcon:IsShown() - reliable detection for WoW 11.0+ secret values.
--- Called from MonitorViewers ticker (every 0.25s) for efficiency.
-
 function Plugin:CheckPandemicFrames(viewer, systemIndex)
     if not viewer then
         return
@@ -784,9 +759,7 @@ function Plugin:SetupViewerHooks(viewer, anchor)
         hooksecurefunc(viewer, "RefreshLayout", LayoutHandler)
     end
 
-    -- [ ANTI-FLICKER ]
-    -- Protect against PRD stealing/hiding using centralized Engine Guard
-    -- Pass a restore callback (3rd arg) to re-anchor if the parent was stolen
+    -- [ ANTI-FLICKER ] Protect against PRD stealing/hiding
     local function RestoreViewer(v, parent)
         if not v or not parent then
             return
@@ -827,9 +800,7 @@ function Plugin:SetupViewerHooks(viewer, anchor)
         end)
         viewer.orbitAlphaHooked = true
     end
-
-    -- 2. Position Guard (SetPoint / ClearAllPoints)
-    -- If Blizzard tries to move it away from our anchor
+    -- Position Guard
     if not viewer.orbitPosHooked then
         local function ReAnchor()
             if viewer._orbitRestoringPos then
@@ -939,17 +910,14 @@ function Plugin:ProcessChildren(anchor)
 
     local systemIndex = anchor.systemIndex
 
-    -- Collect visible children directly from the Blizzard container
-    -- Collect visible children directly from the Blizzard container
+    -- Collect visible children
     local activeChildren = {}
     local children = { blizzFrame:GetChildren() }
     local plugin = self
 
     for _, child in ipairs(children) do
         if child.layoutIndex then
-            -- [ INSTANT UPDATE ]
-            -- Hook OnShow to force immediate skinning/layout when Blizzard shows a frame.
-            -- This prevents the "jarring" resize/jump by catching it before the next render frame.
+            -- Hook OnShow for immediate skinning/layout
             if not child.orbitOnShowHooked then
                 child:HookScript("OnShow", function(c)
                     local parent = c:GetParent()
@@ -963,8 +931,7 @@ function Plugin:ProcessChildren(anchor)
                         end
                     end
 
-                    -- 2. Force Layout Update
-                    -- Check against recursion if needed, but ProcessChildren is generally safe
+                    -- Force Layout Update
                     if anchor and plugin.ProcessChildren then
                         plugin:ProcessChildren(anchor)
                     end
@@ -1013,20 +980,9 @@ function Plugin:ProcessChildren(anchor)
 
         for _, icon in ipairs(activeChildren) do
             Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
-            
-            -- DEBUG: Log real icon sizes for Utility Cooldowns
-            if systemIndex == 2 and not icon._debugLogged then
-                icon._debugLogged = true
-                local iw, ih = icon:GetSize()
-                local iconScale = icon:GetScale()
-                local effectiveW, effectiveH = iw * iconScale, ih * iconScale
-                print(string.format("[CDM Real Icon] Utility icon size: %.1f x %.1f, scale: %.2f, effective: %.1f x %.1f", 
-                    iw, ih, iconScale, effectiveW, effectiveH))
-            end
+
 
             -- [ GCD SWIPE REMOVAL ]
-            -- Hook the refresh function to dynamically hide/show the swipe based on setting
-            -- Blizzard's internal logic forces the swipe for GCDs, so we must correct it after the fact.
             if not icon.orbitGCDHooked and icon.RefreshSpellCooldownInfo then
                 -- Store reference for dynamic lookup
                 icon.orbitSystemIndex = systemIndex
@@ -1066,8 +1022,6 @@ function Plugin:ProcessChildren(anchor)
                 anchor:SetSize(w, h)
             end
 
-            -- Copy row/column dimensions for anchored children
-            -- This allows syncDimensions to use row height instead of container height
             anchor.orbitRowHeight = blizzFrame.orbitRowHeight
             anchor.orbitColumnWidth = blizzFrame.orbitColumnWidth
         end
@@ -1099,8 +1053,7 @@ end
 
 -- NOTE: Keybind system is defined in KeybindSystem.lua (Plugin:GetSpellKeybind)
 
--- Get or create a high-level text overlay frame for the icon
--- This ensures text is always above glow effects, swipe, and borders
+-- Get or create a high-level text overlay frame
 function Plugin:GetTextOverlay(icon)
     if icon.OrbitTextOverlay then
         return icon.OrbitTextOverlay
@@ -1205,8 +1158,6 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                 end
                 
                 -- Apply position if overridden
-                -- Use icon as anchor (not cooldown) to match Canvas Mode coordinates
-                -- Prefer anchor-based positioning (has edge/justification data)
                 if timerPos.anchorX then
                     -- Anchor-based positioning with JustifyH decoupled pattern
                     local anchorPoint = timerPos.anchorY .. timerPos.anchorX
@@ -1218,8 +1169,6 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                         anchorPoint = timerPos.anchorY
                     end
                     
-                    -- Text's anchor point: use justifyH only (matches Canvas Mode pattern)
-                    -- Canvas Mode does: SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
                     local textPoint
                     if timerPos.justifyH and timerPos.justifyH ~= "CENTER" then
                         textPoint = timerPos.justifyH  -- "LEFT" or "RIGHT"

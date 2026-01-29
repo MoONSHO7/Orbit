@@ -106,17 +106,21 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         local sx, sy = sourceComponent:GetShadowOffset()
         if sx then visual:SetShadowOffset(sx, sy) end
         
-        -- Auto-size container (zero padding for precise hitbox)
-        local textWidth, textHeight = 60, 16
+        -- Auto-size container based on text dimensions
+        local text = visual:GetText() or ""
+        local fontSize = select(2, visual:GetFont()) or 12
+        -- Fallback width based on character count (rough estimate)
+        local textWidth = math.max(fontSize * #text * 0.7, 12)
+        local textHeight = fontSize + 4
         local ok, w = pcall(function() return visual:GetStringWidth() end)
-        if ok and w and type(w) == "number" and (not issecretvalue or not issecretvalue(w)) then
+        if ok and w and type(w) == "number" and w > 0 and (not issecretvalue or not issecretvalue(w)) then
             textWidth = w
         end
         local ok2, h = pcall(function() return visual:GetStringHeight() end)
-        if ok2 and h and type(h) == "number" and (not issecretvalue or not issecretvalue(h)) then
+        if ok2 and h and type(h) == "number" and h > 0 and (not issecretvalue or not issecretvalue(h)) then
             textHeight = h
         end
-        container:SetSize(math.max(20, textWidth), math.max(14, textHeight))
+        container:SetSize(math.max(12, textWidth), math.max(12, textHeight))
         
         visual:SetPoint("CENTER", container, "CENTER", 0, 0)
         container.isFontString = true
@@ -308,19 +312,23 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         
         self.wasDragged = true
         
-        -- 1. Get Mouse Screen Position (normalized to UIParent scale)
+        -- Get Mouse Screen Position (normalized to UIParent scale)
         local mX, mY = GetCursorPosition()
         local scale = UIParent:GetEffectiveScale()
         mX, mY = mX / scale, mY / scale
         
-        -- 2. Get the Item's current VISUAL center (ignore anchors!)
-        local itemCenterX, itemCenterY = self:GetCenter()
+        -- Get preview's center in screen coords
+        local parentCenterX, parentCenterY = preview:GetCenter()
         
-        -- 3. Calculate the "Grip Offset"
-        -- This is the distance between where you clicked and the item's actual center.
-        -- If you grabbed near the edge, this keeps the item "stuck" to that grip point.
-        self.dragGripX = itemCenterX - mX
-        self.dragGripY = itemCenterY - mY
+        -- Calculate where the component's CENTER should be in screen coords
+        -- using our stored center-relative posX/posY
+        local zoomLevel = Dialog.zoomLevel or 1
+        local itemScreenX = parentCenterX + (self.posX or 0) * zoomLevel
+        local itemScreenY = parentCenterY + (self.posY or 0) * zoomLevel
+        
+        -- Calculate grip offset (distance from click to item center)
+        self.dragGripX = itemScreenX - mX
+        self.dragGripY = itemScreenY - mY
         
         self.isDragging = true
         self.border:SetColorTexture(0.3, 0.8, 0.3, 0.3)

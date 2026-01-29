@@ -52,6 +52,9 @@ local function FormatKeybind(keybind)
     token = token:gsub("SHIFT%-", "")
     token = token:gsub("CTRL%-", "")
     token = token:gsub("ALT%-", "")
+    token = token:gsub("S%-", "")  -- Short form
+    token = token:gsub("C%-", "")  -- Short form
+    token = token:gsub("A%-", "")  -- Short form
     token = token:gsub("%s+", "")
     
     local t = token
