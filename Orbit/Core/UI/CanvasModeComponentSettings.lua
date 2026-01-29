@@ -28,7 +28,8 @@ local TYPE_SCHEMAS = {
         controls = {
             { type = "font", key = "Font", label = "Font" },
             { type = "slider", key = "FontSize", label = "Size", min = 8, max = 24, step = 1 },
-            { type = "checkbox", key = "ShowShadow", label = "Shadow" },
+            { type = "checkbox", key = "UseClassColour", label = "Class Colour" },
+            { type = "color", key = "CustomColor", label = "Custom Color" },
         },
     },
     -- Texture/Icon elements (CombatIcon, RareEliteIcon, etc.)
@@ -126,6 +127,7 @@ Dialog:SetScript("OnHide", function(self)
     self.plugin = nil
     self.systemIndex = nil
     self.currentOverrides = nil
+    self.widgetsByKey = nil
     
     -- Hide all widgets
     for _, widget in ipairs(self.widgets) do
@@ -207,6 +209,37 @@ local function CreateFontPickerWidget(parent, control, currentValue, callback)
     return frame
 end
 
+local function CreateColorPickerWidget(parent, control, currentValue, callback)
+    if Layout and Layout.CreateColorPicker then
+        -- Ensure initialColor is a proper table
+        local initialColor = currentValue
+        if type(currentValue) ~= "table" then
+            initialColor = { r = 1, g = 1, b = 1, a = 1 }
+        end
+        
+        local widget = Layout:CreateColorPicker(
+            parent,
+            control.label,
+            initialColor,
+            function(color)
+                if callback then callback(control.key, color) end
+            end
+        )
+        if widget then
+            widget:SetHeight(32)
+        end
+        return widget
+    end
+    
+    -- Fallback: simple label if ColorPicker not available
+    local frame = CreateFrame("Frame", nil, parent)
+    frame:SetHeight(WIDGET_HEIGHT)
+    frame.Label = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    frame.Label:SetPoint("LEFT", frame, "LEFT", 0, 0)
+    frame.Label:SetText(control.label .. ": (unavailable)")
+    return frame
+end
+
 -- [ OPEN DIALOG ]-----------------------------------------------------------------------------------
 
 function Dialog:Open(componentKey, container, plugin, systemIndex)
@@ -276,9 +309,11 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
         if key == "FontSize" and visual.GetFont then
             local _, size = visual:GetFont()
             return size and math.floor(size + 0.5)
-        elseif key == "ShowShadow" and visual.GetShadowOffset then
-            local x, y = visual:GetShadowOffset()
-            return (x and x > 0) or (x and x < 0)  -- true if any offset
+        elseif key == "UseClassColour" then
+            return false  -- Default to not using class colour
+        elseif key == "CustomColor" and visual.GetTextColor then
+            local r, g, b, a = visual:GetTextColor()
+            return { r = r, g = g, b = b, a = a or 1 }
         elseif key == "Scale" then
             return 1.0  -- Default scale
         end
@@ -315,16 +350,41 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
             widget = CreateCheckboxWidget(self.Content, control, currentValue, callback)
         elseif control.type == "font" then
             widget = CreateFontPickerWidget(self.Content, control, currentValue, callback)
+        elseif control.type == "color" then
+            widget = CreateColorPickerWidget(self.Content, control, currentValue, callback)
         end
         
         if widget then
             widget:ClearAllPoints()
             widget:SetPoint("TOPLEFT", self.Content, "TOPLEFT", 0, -yOffset)
             widget:SetPoint("TOPRIGHT", self.Content, "TOPRIGHT", 0, -yOffset)
-            widget:Show()
+            
+            -- Track widget by key for hideIf logic
+            widget.controlKey = control.key
+            widget.hideIf = control.hideIf
+            widget.yOffsetPosition = yOffset
+            
+            -- Check hideIf condition
+            if control.hideIf then
+                local hideIfValue = self.currentOverrides[control.hideIf]
+                if hideIfValue then
+                    widget:Hide()
+                else
+                    widget:Show()
+                    yOffset = yOffset + widget:GetHeight() + WIDGET_SPACING
+                end
+            else
+                widget:Show()
+                yOffset = yOffset + widget:GetHeight() + WIDGET_SPACING
+            end
             
             self.widgets[widgetIndex] = widget
-            yOffset = yOffset + widget:GetHeight() + WIDGET_SPACING
+            
+            -- Track by key for later updating
+            if not self.widgetsByKey then
+                self.widgetsByKey = {}
+            end
+            self.widgetsByKey[control.key] = widget
         end
     end
     
@@ -343,6 +403,11 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
         self:SetPoint("CENTER", UIParent, "CENTER", -200, 0)
     end
     
+    -- Apply existing overrides to preview (e.g., show class color if already enabled)
+    if self.currentOverrides and next(self.currentOverrides) then
+        self:ApplyAll(container, self.currentOverrides)
+    end
+    
     self:Show()
 end
 
@@ -354,6 +419,19 @@ function Dialog:OnValueChanged(key, value)
     -- Update current overrides
     self.currentOverrides = self.currentOverrides or {}
     self.currentOverrides[key] = value
+    
+    -- Handle hideIf conditional visibility
+    if self.widgetsByKey then
+        for widgetKey, widget in pairs(self.widgetsByKey) do
+            if widget.hideIf and widget.hideIf == key then
+                if value then
+                    widget:Hide()
+                else
+                    widget:Show()
+                end
+            end
+        end
+    end
     
     -- Store on container for Apply to pick up
     if self.container then
@@ -373,19 +451,37 @@ function Dialog:ApplyStyle(container, key, value)
     -- Apply style based on key
     if key == "FontSize" and visual.SetFont then
         local font, _, flags = visual:GetFont()
+        flags = (flags and flags ~= "") and flags or "OUTLINE"
         visual:SetFont(font, value, flags)
     elseif key == "Font" and visual.SetFont then
         local fontPath = LSM:Fetch("font", value)
         if fontPath then
             local _, size, flags = visual:GetFont()
+            flags = (flags and flags ~= "") and flags or "OUTLINE"
             visual:SetFont(fontPath, size or 12, flags)
         end
-    elseif key == "ShowShadow" and visual.SetShadowOffset then
+    elseif key == "UseClassColour" and visual.SetTextColor then
         if value then
-            visual:SetShadowOffset(1, -1)
-            visual:SetShadowColor(0, 0, 0, 0.8)
+            -- Apply class colour
+            local _, playerClass = UnitClass("player")
+            local classColor = RAID_CLASS_COLORS[playerClass]
+            if classColor then
+                visual:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
+            end
         else
-            visual:SetShadowOffset(0, 0)
+            -- Revert to custom color or white
+            local customColor = self.currentOverrides and self.currentOverrides.CustomColor
+            if customColor and type(customColor) == "table" then
+                visual:SetTextColor(customColor.r or 1, customColor.g or 1, customColor.b or 1, customColor.a or 1)
+            else
+                visual:SetTextColor(1, 1, 1, 1)  -- Default white
+            end
+        end
+    elseif key == "CustomColor" and visual.SetTextColor then
+        -- Only apply if UseClassColour is not enabled
+        local useClass = self.currentOverrides and self.currentOverrides.UseClassColour
+        if not useClass and type(value) == "table" then
+            visual:SetTextColor(value.r or 1, value.g or 1, value.b or 1, value.a or 1)
         end
     elseif key == "Scale" then
         -- For textures, use SetSize (textures don't have SetScale)
@@ -412,9 +508,16 @@ end
 function Dialog:ApplyAll(container, overrides)
     if not container or not overrides then return end
     
+    -- Set context so ApplyStyle can access related values (e.g., CustomColor when UseClassColour is false)
+    local previousOverrides = self.currentOverrides
+    self.currentOverrides = overrides
+    
     for key, value in pairs(overrides) do
         self:ApplyStyle(container, key, value)
     end
+    
+    -- Restore previous context (in case this is called during dialog interaction)
+    self.currentOverrides = previousOverrides
 end
 
 -- [ EXPORT ]----------------------------------------------------------------------------------------

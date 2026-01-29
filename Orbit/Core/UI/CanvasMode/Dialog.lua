@@ -378,6 +378,12 @@ function Dialog:Open(frame, plugin, systemIndex)
     local hasDisabledFeature = plugin and plugin.IsComponentDisabled
     local disabledComponents = hasDisabledFeature and plugin:GetSetting(systemIndex, "DisabledComponents") or {}
     
+    -- Initialize disabledComponentKeys from saved data
+    self.disabledComponentKeys = {}
+    for _, key in ipairs(disabledComponents) do
+        table.insert(self.disabledComponentKeys, key)
+    end
+    
     local function isDisabled(key)
         if not hasDisabledFeature then return false end
         for _, k in ipairs(disabledComponents) do
@@ -387,12 +393,33 @@ function Dialog:Open(frame, plugin, systemIndex)
     end
     
     wipe(self.previewComponents)
-    for key, data in pairs(components) do
-        if isDisabled(key) then
-            self:AddToDock(key, data.component)
-        else
-            local comp = CreateDraggableComponent(self.previewFrame, key, data.component, data.x, data.y, data)
-            self.previewComponents[key] = comp
+    
+    -- Check if preview already has components from CreateCanvasPreview hook
+    if self.previewFrame.components and next(self.previewFrame.components) then
+        for key, comp in pairs(self.previewFrame.components) do
+            -- Check if this component should be disabled
+            if isDisabled(key) then
+                -- Hide the component and add to dock instead
+                comp:Hide()
+                local sourceComponent = comp.sourceComponent or comp
+                self:AddToDock(key, sourceComponent)
+                -- Store reference to original draggable comp so we can restore it
+                if self.dockComponents[key] then
+                    self.dockComponents[key].storedDraggableComp = comp
+                end
+            else
+                self.previewComponents[key] = comp
+            end
+        end
+    else
+        -- Fallback: create from ComponentDrag-registered components
+        for key, data in pairs(components) do
+            if isDisabled(key) then
+                self:AddToDock(key, data.component)
+            else
+                local comp = CreateDraggableComponent(self.previewFrame, key, data.component, data.x, data.y, data)
+                self.previewComponents[key] = comp
+            end
         end
     end
     
@@ -469,6 +496,17 @@ function Dialog:Apply()
             local posX = comp.posX or 0
             local posY = comp.posY or 0
             anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchor(posX, posY, halfWidth, halfHeight)
+            
+            -- Apply width compensation for FontStrings (matches drag display logic)
+            -- When inside: justify matches anchor side → subtract containerHalfW
+            -- When outside: justify flipped → add containerHalfW
+            if comp.isFontString and anchorX ~= "CENTER" then
+                local containerHalfW = comp:GetWidth() / 2
+                local isOutside = (anchorX == "LEFT" and posX < -halfWidth) or 
+                                  (anchorX == "RIGHT" and posX > halfWidth)
+                local widthCompensation = isOutside and containerHalfW or -containerHalfW
+                offsetX = offsetX + widthCompensation
+            end
         end
         
         positions[key] = {
@@ -477,6 +515,8 @@ function Dialog:Apply()
             offsetX = offsetX,
             offsetY = offsetY,
             justifyH = justifyH,
+            posX = comp.posX or 0,  -- Also save center-relative for easier restoration
+            posY = comp.posY or 0,
         }
         
         if comp.pendingOverrides then
@@ -527,27 +567,72 @@ function Dialog:ResetPositions()
     
     -- Restore disabled components from dock
     local dragComponents = OrbitEngine.ComponentDrag:GetComponentsForFrame(self.targetFrame)
-    if dragComponents then
-        for key, _ in pairs(self.dockComponents) do
+    for key, dockIcon in pairs(self.dockComponents) do
+        local defaultPos = defaults[key]
+        local centerX, centerY = 0, 0
+        
+        if defaultPos and defaultPos.anchorX then
+            if defaultPos.anchorX == "LEFT" then
+                centerX = (defaultPos.offsetX or 0) - halfW
+            elseif defaultPos.anchorX == "RIGHT" then
+                centerX = halfW - (defaultPos.offsetX or 0)
+            end
+            
+            if defaultPos.anchorY == "BOTTOM" then
+                centerY = (defaultPos.offsetY or 0) - halfH
+            elseif defaultPos.anchorY == "TOP" then
+                centerY = halfH - (defaultPos.offsetY or 0)
+            end
+        end
+        
+        -- Check for CDM path: use storedDraggableComp if available
+        if dockIcon.storedDraggableComp then
+            local storedComp = dockIcon.storedDraggableComp
+            storedComp:Show()
+            
+            -- Reset position to default
+            storedComp.anchorX = defaultPos and defaultPos.anchorX or "CENTER"
+            storedComp.anchorY = defaultPos and defaultPos.anchorY or "CENTER"
+            storedComp.offsetX = defaultPos and defaultPos.offsetX or 0
+            storedComp.offsetY = defaultPos and defaultPos.offsetY or 0
+            storedComp.justifyH = defaultPos and defaultPos.justifyH or "CENTER"
+            storedComp.posX = centerX
+            storedComp.posY = centerY
+            storedComp.pendingOverrides = nil
+            storedComp.existingOverrides = nil
+            
+            -- Reposition
+            local anchorPoint = BuildAnchorPoint(storedComp.anchorX, storedComp.anchorY)
+            local finalX, finalY
+            if storedComp.anchorX == "CENTER" then
+                finalX = centerX
+            else
+                finalX = storedComp.offsetX
+                if storedComp.anchorX == "RIGHT" then finalX = -finalX end
+            end
+            if storedComp.anchorY == "CENTER" then
+                finalY = centerY
+            else
+                finalY = storedComp.offsetY
+                if storedComp.anchorY == "TOP" then finalY = -finalY end
+            end
+            
+            storedComp:ClearAllPoints()
+            if storedComp.isFontString and storedComp.justifyH ~= "CENTER" then
+                storedComp:SetPoint(storedComp.justifyH, preview, anchorPoint, finalX, finalY)
+            else
+                storedComp:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
+            end
+            
+            if storedComp.visual and storedComp.isFontString then
+                ApplyTextAlignment(storedComp, storedComp.visual, storedComp.justifyH)
+            end
+            
+            self.previewComponents[key] = storedComp
+        elseif dragComponents then
+            -- Fallback: use ComponentDrag path
             local data = dragComponents[key]
             if data and data.component then
-                local defaultPos = defaults[key]
-                local centerX, centerY = 0, 0
-                
-                if defaultPos and defaultPos.anchorX then
-                    if defaultPos.anchorX == "LEFT" then
-                        centerX = (defaultPos.offsetX or 0) - halfW
-                    elseif defaultPos.anchorX == "RIGHT" then
-                        centerX = halfW - (defaultPos.offsetX or 0)
-                    end
-                    
-                    if defaultPos.anchorY == "BOTTOM" then
-                        centerY = (defaultPos.offsetY or 0) - halfH
-                    elseif defaultPos.anchorY == "TOP" then
-                        centerY = halfH - (defaultPos.offsetY or 0)
-                    end
-                end
-                
                 local compData = {
                     component = data.component,
                     x = centerX,

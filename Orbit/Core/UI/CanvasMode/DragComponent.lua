@@ -53,6 +53,7 @@ local PREVIEW_TEXT_VALUES = {
     GroupPositionText = "G1",
     PowerText = "100%",
     Text = "100",
+    Keybind = "Q",
 }
 
 
@@ -76,8 +77,10 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         visual = container:CreateFontString(nil, "OVERLAY")
         
         local fontPath, fontSize, fontFlags = sourceComponent:GetFont()
+        -- Default to OUTLINE if flags is nil or empty (most WoW text uses outline)
+        local flags = (fontFlags and fontFlags ~= "") and fontFlags or "OUTLINE"
         if fontPath and fontSize then
-            visual:SetFont(fontPath, fontSize, fontFlags or "")
+            visual:SetFont(fontPath, fontSize, flags)
         else
             local globalFontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
             local fallbackPath = LSM:Fetch("font", globalFontName) or Orbit.Constants.Settings.Font.FallbackPath
@@ -103,17 +106,21 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         local sx, sy = sourceComponent:GetShadowOffset()
         if sx then visual:SetShadowOffset(sx, sy) end
         
-        -- Auto-size container
-        local textWidth, textHeight = 60, 16
+        -- Auto-size container based on text dimensions
+        local text = visual:GetText() or ""
+        local fontSize = select(2, visual:GetFont()) or 12
+        -- Fallback width based on character count (rough estimate)
+        local textWidth = math.max(fontSize * #text * 0.7, 12)
+        local textHeight = fontSize + 4
         local ok, w = pcall(function() return visual:GetStringWidth() end)
-        if ok and w and type(w) == "number" and (not issecretvalue or not issecretvalue(w)) then
-            textWidth = w + 10
+        if ok and w and type(w) == "number" and w > 0 and (not issecretvalue or not issecretvalue(w)) then
+            textWidth = w
         end
         local ok2, h = pcall(function() return visual:GetStringHeight() end)
-        if ok2 and h and type(h) == "number" and (not issecretvalue or not issecretvalue(h)) then
-            textHeight = h + 6
+        if ok2 and h and type(h) == "number" and h > 0 and (not issecretvalue or not issecretvalue(h)) then
+            textHeight = h
         end
-        container:SetSize(math.max(20, textWidth), math.max(18, textHeight))
+        container:SetSize(math.max(12, textWidth), math.max(12, textHeight))
         
         visual:SetPoint("CENTER", container, "CENTER", 0, 0)
         container.isFontString = true
@@ -290,7 +297,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             
             if not self.wasDragged and clickDuration < 0.3 then
                 if OrbitEngine.CanvasComponentSettings then
-                    OrbitEngine.CanvasComponentSettings:Open(self.key, self, plugin, systemIndex)
+                    OrbitEngine.CanvasComponentSettings:Open(self.key, self, Dialog.targetPlugin, Dialog.targetSystemIndex)
                 end
             end
             
@@ -305,17 +312,24 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         
         self.wasDragged = true
         
-        local mx, my = GetCursorPosition()
-        local uiScale = UIParent:GetEffectiveScale()
-        mx = mx / uiScale
-        my = my / uiScale
+        -- Get Mouse Screen Position (normalized to UIParent scale)
+        local mX, mY = GetCursorPosition()
+        local scale = UIParent:GetEffectiveScale()
+        mX, mY = mX / scale, mY / scale
         
-        local compCenterX, compCenterY = self:GetCenter()
-        self.clickOffsetX = mx - compCenterX
-        self.clickOffsetY = my - compCenterY
+        -- Get preview's center in screen coords
+        local parentCenterX, parentCenterY = preview:GetCenter()
         
-        self.dragStartLocalX = self.posX or 0
-        self.dragStartLocalY = self.posY or 0
+        -- Calculate where the component's CENTER should be in screen coords
+        -- using our stored center-relative posX/posY
+        local zoomLevel = Dialog.zoomLevel or 1
+        local itemScreenX = parentCenterX + (self.posX or 0) * zoomLevel
+        local itemScreenY = parentCenterY + (self.posY or 0) * zoomLevel
+        
+        -- Calculate grip offset (distance from click to item center)
+        self.dragGripX = itemScreenX - mX
+        self.dragGripY = itemScreenY - mY
+        
         self.isDragging = true
         self.border:SetColorTexture(0.3, 0.8, 0.3, 0.3)
     end)
@@ -325,52 +339,62 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             local halfW = preview.sourceWidth / 2
             local halfH = preview.sourceHeight / 2
             
-            local mx, my = GetCursorPosition()
-            local uiScale = UIParent:GetEffectiveScale()
-            mx = mx / uiScale
-            my = my / uiScale
+            -- 1. Get current Mouse Screen Position
+            local mX, mY = GetCursorPosition()
+            local scale = UIParent:GetEffectiveScale()
+            mX, mY = mX / scale, mY / scale
             
-            local previewCenterX, previewCenterY = preview:GetCenter()
-            local compScreenX = mx - (self.clickOffsetX or 0)
-            local compScreenY = my - (self.clickOffsetY or 0)
+            -- 2. Calculate where the Center SHOULD be (Mouse + Grip)
+            local targetWorldX = mX + (self.dragGripX or 0)
+            local targetWorldY = mY + (self.dragGripY or 0)
             
-            local screenOffsetX = compScreenX - previewCenterX
-            local screenOffsetY = compScreenY - previewCenterY
+            -- 3. Normalize to Parent Frame (Convert to local coords, 0,0 at center)
+            local parentCenterX, parentCenterY = preview:GetCenter()
+            local screenOffsetX = targetWorldX - parentCenterX
+            local screenOffsetY = targetWorldY - parentCenterY
             
+            -- 4. Account for zoom level (screen pixels -> local pixels)
             local zoomLevel = Dialog.zoomLevel or 1
-            local centerRelX = screenOffsetX / zoomLevel
-            local centerRelY = screenOffsetY / zoomLevel
+            local relativeX = screenOffsetX / zoomLevel
+            local relativeY = screenOffsetY / zoomLevel
             
+            -- 5. Clamp to bounds
             local CLAMP_PADDING_X = 100
             local CLAMP_PADDING_Y = 50
-            centerRelX = math.max(-halfW - CLAMP_PADDING_X, math.min(halfW + CLAMP_PADDING_X, centerRelX))
-            centerRelY = math.max(-halfH - CLAMP_PADDING_Y, math.min(halfH + CLAMP_PADDING_Y, centerRelY))
+            relativeX = math.max(-halfW - CLAMP_PADDING_X, math.min(halfW + CLAMP_PADDING_X, relativeX))
+            relativeY = math.max(-halfH - CLAMP_PADDING_Y, math.min(halfH + CLAMP_PADDING_Y, relativeY))
+            
+            -- Alias for consistency with rest of code
+            local centerRelX, centerRelY = relativeX, relativeY
             
             local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(centerRelX, centerRelY, halfW, halfH)
             
-            -- FontString justify calculation
+            -- FontString justify calculation with width-compensated edge offsets
             if self.isFontString then
-                local containerW = self:GetWidth()
                 local isOutsideLeft = centerRelX < -halfW
                 local isOutsideRight = centerRelX > halfW
+                local containerHalfW = self:GetWidth() / 2
                 
                 if anchorX == "LEFT" then
                     justifyH = isOutsideLeft and "RIGHT" or "LEFT"
-                    if justifyH == "LEFT" then
-                        edgeOffX = centerRelX + halfW - containerW / 2
-                    else
-                        edgeOffX = centerRelX + halfW + containerW / 2
-                    end
+                    -- When inside: justify=LEFT, SetPoint uses text's LEFT edge → subtract
+                    -- When outside: justify=RIGHT, SetPoint uses text's RIGHT edge → add
+                    local widthCompensation = isOutsideLeft and containerHalfW or -containerHalfW
+                    edgeOffX = centerRelX + halfW + widthCompensation
                 elseif anchorX == "RIGHT" then
                     justifyH = isOutsideRight and "LEFT" or "RIGHT"
-                    if justifyH == "RIGHT" then
-                        edgeOffX = halfW - centerRelX - containerW / 2
-                    else
-                        edgeOffX = halfW - centerRelX + containerW / 2
-                    end
+                    -- When inside: justify=RIGHT, SetPoint uses text's RIGHT edge → subtract
+                    -- When outside: justify=LEFT, SetPoint uses text's LEFT edge → add
+                    local widthCompensation = isOutsideRight and containerHalfW or -containerHalfW
+                    edgeOffX = halfW - centerRelX + widthCompensation
                 else
                     edgeOffX = 0
                     justifyH = "CENTER"
+                end
+                
+                -- Live text alignment during drag (what you see = what you get)
+                if self.visual then
+                    ApplyTextAlignment(self, self.visual, justifyH)
                 end
             end
             
