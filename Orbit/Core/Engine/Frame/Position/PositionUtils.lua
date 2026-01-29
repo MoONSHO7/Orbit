@@ -14,7 +14,7 @@ Engine.PositionUtils = PositionUtils
 
 -- Threshold for snapping to CENTER anchor (in pixels)
 -- When position is within this range of the center line, anchor to CENTER
-local CENTER_THRESHOLD = 10
+local CENTER_THRESHOLD = 5
 
 -- Calculate anchor type, edge offsets, and justifyH based on center-relative position
 -- @param posX: X position relative to parent center (positive = right)

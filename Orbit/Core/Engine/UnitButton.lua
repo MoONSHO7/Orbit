@@ -759,13 +759,19 @@ function UnitButtonMixin:ApplyComponentPositions()
             element:SetFont(font, overrides.FontSize, flags)
         end
         
-        -- Shadow override
-        if overrides.ShowShadow ~= nil and element.SetShadowOffset then
-            if overrides.ShowShadow then
-                element:SetShadowOffset(1, -1)
-                element:SetShadowColor(0, 0, 0, 0.8)
-            else
-                element:SetShadowOffset(0, 0)
+        -- Color override (Class Colour > Custom Color > default)
+        if element.SetTextColor then
+            if overrides.UseClassColour then
+                -- Apply player class colour
+                local _, playerClass = UnitClass("player")
+                local classColor = RAID_CLASS_COLORS[playerClass]
+                if classColor then
+                    element:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
+                end
+            elseif overrides.CustomColor and type(overrides.CustomColor) == "table" then
+                -- Apply custom color
+                local c = overrides.CustomColor
+                element:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
             end
         end
         

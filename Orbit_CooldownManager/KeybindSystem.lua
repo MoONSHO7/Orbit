@@ -161,6 +161,10 @@ end
 local function GetSpellKeybind(self, spellID)
     if not spellID then return nil end
     
+    if issecretvalue and issecretvalue(spellID) then
+        return nil
+    end
+    
     EnsureCacheFresh()
     
     -- Check cache first

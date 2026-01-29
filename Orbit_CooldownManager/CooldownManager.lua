@@ -273,35 +273,52 @@ function Plugin:SetupCanvasPreview(anchor, systemIndex)
         local entry = VIEWER_MAP[systemIndex]
         if not entry or not entry.viewer then return nil end
         
-        -- Get icon dimensions from settings
-        -- NOTE: We use the UNSCALED base dimensions because:
-        -- - Real icons are sized at baseSize with aspect ratio (e.g., 40x40)
-        -- - The anchor frame's SetScale(iconSize/100) handles visual scaling
-        -- - Text positions are relative to the icon's unscaled dimensions
-        -- - If we used scaled preview, positions would be off by the scale factor
-        local aspectRatio = plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
-        local baseSize = Constants.Skin.DefaultIconSize or 40
-        
-        -- Calculate dimensions from aspect ratio (unscaled)
-        local w, h = baseSize, baseSize
-        if aspectRatio == "16:9" then
-            h = baseSize * (9/16)
-        elseif aspectRatio == "4:3" then
-            h = baseSize * (3/4)
-        elseif aspectRatio == "21:9" then
-            h = baseSize * (9/21)
+        -- Get icon dimensions from ACTUAL icons in the viewer
+        -- This ensures Canvas Mode preview matches real icons exactly
+        local w, h = nil, nil
+        local children = { entry.viewer:GetChildren() }
+        for _, child in ipairs(children) do
+            if child:IsShown() and child.Icon then
+                w, h = child:GetSize()
+                break
+            end
         end
-        -- NOTE: Intentionally NOT scaling by iconSize/100 - see comment above
+        
+        -- Fallback to settings-based calculation if no visible icons
+        if not w or not h then
+            local aspectRatio = plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
+            local iconSize = plugin:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
+            local baseSize = Constants.Skin.DefaultIconSize or 40
+            local scaledSize = baseSize * (iconSize / 100)
+            w, h = scaledSize, scaledSize
+            if aspectRatio == "16:9" then
+                h = scaledSize * (9/16)
+            elseif aspectRatio == "4:3" then
+                h = scaledSize * (3/4)
+            elseif aspectRatio == "21:9" then
+                h = scaledSize * (9/21)
+            end
+        end
         
         -- Create preview matching single icon size
         local parent = options.parent or UIParent
         local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
         preview:SetSize(w, h)
         
+        -- DEBUG: Log Canvas Mode preview dimensions
+        print(string.format("[CDM Canvas] Preview frame size: %.1f x %.1f (from actual icon)", w, h))
+        
         -- Required metadata for Canvas Mode
         preview.sourceFrame = self
-        preview.sourceWidth = w
-        preview.sourceHeight = h
+        -- Use content dimensions (excluding border) for positioning
+        -- Text anchors to icon content area, not the full frame with border
+        local borderSize = Orbit.db and Orbit.db.GlobalSettings 
+            and Orbit.db.GlobalSettings.BorderSize or 2
+        local contentW = w - (borderSize * 2)  -- Inset by border on each side
+        local contentH = h - (borderSize * 2)
+        preview.sourceWidth = contentW
+        preview.sourceHeight = contentH
+        preview.borderOffset = borderSize  -- Store for later use
         preview.previewScale = 1
         preview.components = {}
         
@@ -324,8 +341,6 @@ function Plugin:SetupCanvasPreview(anchor, systemIndex)
         icon:SetTexture(iconTexture)
         
         -- Apply border matching Orbit style
-        local borderSize = Orbit.db and Orbit.db.GlobalSettings 
-            and Orbit.db.GlobalSettings.BorderSize or 2
         preview:SetBackdrop({
             bgFile = "Interface\\BUTTONS\\WHITE8x8",
             edgeFile = "Interface\\BUTTONS\\WHITE8x8",
@@ -375,7 +390,8 @@ function Plugin:SetupCanvasPreview(anchor, systemIndex)
             
             -- Calculate start position (center-relative)
             -- Use saved posX/posY directly if available (more accurate than anchor/offset conversion)
-            local halfW, halfH = w / 2, h / 2
+            -- Use content dimensions (excluding border) for accurate positioning
+            local halfW, halfH = contentW / 2, contentH / 2
             local startX, startY = saved.posX or 0, saved.posY or 0
             
             -- If no posX/posY saved, convert from anchor/offset
@@ -997,6 +1013,16 @@ function Plugin:ProcessChildren(anchor)
 
         for _, icon in ipairs(activeChildren) do
             Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
+            
+            -- DEBUG: Log real icon sizes for Utility Cooldowns
+            if systemIndex == 2 and not icon._debugLogged then
+                icon._debugLogged = true
+                local iw, ih = icon:GetSize()
+                local iconScale = icon:GetScale()
+                local effectiveW, effectiveH = iw * iconScale, ih * iconScale
+                print(string.format("[CDM Real Icon] Utility icon size: %.1f x %.1f, scale: %.2f, effective: %.1f x %.1f", 
+                    iw, ih, iconScale, effectiveW, effectiveH))
+            end
 
             -- [ GCD SWIPE REMOVAL ]
             -- Hook the refresh function to dynamically hide/show the swipe based on setting
@@ -1124,6 +1150,24 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
         return font, size, flags, pos, overrides
     end
     
+    -- Helper to apply color overrides to a text element
+    local function ApplyTextColor(textElement, overrides)
+        if not textElement or not textElement.SetTextColor then return end
+        if not overrides then return end
+        
+        -- Class colour takes priority over custom color
+        if overrides.UseClassColour then
+            local _, playerClass = UnitClass("player")
+            local classColor = RAID_CLASS_COLORS[playerClass]
+            if classColor then
+                textElement:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
+            end
+        elseif overrides.CustomColor and type(overrides.CustomColor) == "table" then
+            local c = overrides.CustomColor
+            textElement:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
+        end
+    end
+    
     -- Timer (Cooldown countdown text)
     local cooldown = icon.Cooldown or (icon.GetCooldownFrame and icon:GetCooldownFrame())
     if cooldown then
@@ -1133,7 +1177,7 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                 cooldown:SetHideCountdownNumbers(true)
             end
         else
-            local timerFont, timerSize, timerFlags, timerPos = GetComponentStyle("Timer", 2)
+            local timerFont, timerSize, timerFlags, timerPos, timerOverrides = GetComponentStyle("Timer", 2)
             local timerText = nil
             if cooldown.Text and cooldown.Text.SetFont then
                 timerText = cooldown.Text
@@ -1152,6 +1196,9 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                 timerText:SetFont(timerFont, timerSize, timerFlags)
                 timerText:SetDrawLayer("OVERLAY", 7)  -- Highest sublevel
                 
+                -- Apply color override (class colour > custom color)
+                ApplyTextColor(timerText, timerOverrides)
+                
                 -- Apply JustifyH if saved (from Canvas Mode drag)
                 if timerPos.justifyH and timerText.SetJustifyH then
                     timerText:SetJustifyH(timerPos.justifyH)
@@ -1159,11 +1206,8 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                 
                 -- Apply position if overridden
                 -- Use icon as anchor (not cooldown) to match Canvas Mode coordinates
-                -- Prefer posX/posY (center-relative) if available
-                if timerPos.posX ~= nil and timerPos.posY ~= nil then
-                    timerText:ClearAllPoints()
-                    timerText:SetPoint("CENTER", icon, "CENTER", timerPos.posX, timerPos.posY)
-                elseif timerPos.anchorX then
+                -- Prefer anchor-based positioning (has edge/justification data)
+                if timerPos.anchorX then
                     -- Anchor-based positioning with JustifyH decoupled pattern
                     local anchorPoint = timerPos.anchorY .. timerPos.anchorX
                     if timerPos.anchorY == "CENTER" and timerPos.anchorX == "CENTER" then
@@ -1174,19 +1218,23 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                         anchorPoint = timerPos.anchorY
                     end
                     
-                    -- Use JustifyH as the text's anchor point (decoupled pattern)
-                    local textPoint = timerPos.justifyH or anchorPoint
-                    if timerPos.anchorY ~= "CENTER" then
-                        textPoint = timerPos.anchorY .. (timerPos.justifyH or timerPos.anchorX)
-                        if timerPos.justifyH == "CENTER" then
-                            textPoint = timerPos.anchorY
-                        end
+                    -- Text's anchor point: use justifyH only (matches Canvas Mode pattern)
+                    -- Canvas Mode does: SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
+                    local textPoint
+                    if timerPos.justifyH and timerPos.justifyH ~= "CENTER" then
+                        textPoint = timerPos.justifyH  -- "LEFT" or "RIGHT"
+                    else
+                        textPoint = "CENTER"
                     end
                     
                     timerText:ClearAllPoints()
                     local offsetX = timerPos.anchorX == "LEFT" and timerPos.offsetX or -timerPos.offsetX
                     local offsetY = timerPos.anchorY == "BOTTOM" and timerPos.offsetY or -timerPos.offsetY
                     timerText:SetPoint(textPoint, icon, anchorPoint, offsetX, offsetY)
+                elseif timerPos.posX ~= nil and timerPos.posY ~= nil then
+                    -- Center-relative fallback (no anchor data)
+                    timerText:ClearAllPoints()
+                    timerText:SetPoint("CENTER", icon, "CENTER", timerPos.posX, timerPos.posY)
                 end
             end
         end
@@ -1224,10 +1272,13 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
             icon.ChargeCount.orbitForceHide = nil
             icon.ChargeCount:SetAlpha(1)
             icon.ChargeCount.Current:SetAlpha(1)
-            local chargesFont, chargesSize, chargesFlags, chargesPos = GetComponentStyle("Charges", 0)
+            local chargesFont, chargesSize, chargesFlags, chargesPos, chargesOverrides = GetComponentStyle("Charges", 0)
             -- Don't call Show() - let Blizzard manage visibility based on actual charges
             icon.ChargeCount.Current:SetFont(chargesFont, chargesSize, chargesFlags)
             icon.ChargeCount.Current:SetDrawLayer("OVERLAY", 7)  -- Highest sublevel
+            
+            -- Apply color override (class colour > custom color)
+            ApplyTextColor(icon.ChargeCount.Current, chargesOverrides)
             
             -- Apply JustifyH if saved (from Canvas Mode drag)
             if chargesPos.justifyH and icon.ChargeCount.Current.SetJustifyH then
@@ -1239,11 +1290,8 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                 icon.ChargeCount:SetFrameLevel(icon:GetFrameLevel() + 20)
             end
             
-            -- Apply position if overridden (prefer center-relative)
-            if chargesPos.posX ~= nil and chargesPos.posY ~= nil then
-                icon.ChargeCount.Current:ClearAllPoints()
-                icon.ChargeCount.Current:SetPoint("CENTER", icon, "CENTER", chargesPos.posX, chargesPos.posY)
-            elseif chargesPos.anchorX then
+            -- Apply position if overridden (prefer anchor-based for edge/justification)
+            if chargesPos.anchorX then
                 local anchorPoint = chargesPos.anchorY .. chargesPos.anchorX
                 if chargesPos.anchorY == "CENTER" and chargesPos.anchorX == "CENTER" then
                     anchorPoint = "CENTER"
@@ -1253,19 +1301,22 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                     anchorPoint = chargesPos.anchorY
                 end
                 
-                -- Use JustifyH as the text's anchor point (decoupled pattern)
-                local textPoint = chargesPos.justifyH or anchorPoint
-                if chargesPos.anchorY ~= "CENTER" then
-                    textPoint = chargesPos.anchorY .. (chargesPos.justifyH or chargesPos.anchorX)
-                    if chargesPos.justifyH == "CENTER" then
-                        textPoint = chargesPos.anchorY
-                    end
+                -- Text's anchor point: use justifyH only (matches Canvas Mode pattern)
+                local textPoint
+                if chargesPos.justifyH and chargesPos.justifyH ~= "CENTER" then
+                    textPoint = chargesPos.justifyH
+                else
+                    textPoint = "CENTER"
                 end
                 
                 icon.ChargeCount.Current:ClearAllPoints()
                 local offsetX = chargesPos.anchorX == "LEFT" and chargesPos.offsetX or -chargesPos.offsetX
                 local offsetY = chargesPos.anchorY == "BOTTOM" and chargesPos.offsetY or -chargesPos.offsetY
                 icon.ChargeCount.Current:SetPoint(textPoint, icon, anchorPoint, offsetX, offsetY)
+            elseif chargesPos.posX ~= nil and chargesPos.posY ~= nil then
+                -- Center-relative fallback (no anchor data)
+                icon.ChargeCount.Current:ClearAllPoints()
+                icon.ChargeCount.Current:SetPoint("CENTER", icon, "CENTER", chargesPos.posX, chargesPos.posY)
             end
         end
     end
@@ -1287,7 +1338,7 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
             end
         else
             icon.Applications.orbitForceHide = nil
-            local stacksFont, stacksSize, stacksFlags, stacksPos = GetComponentStyle("Stacks", 0)
+            local stacksFont, stacksSize, stacksFlags, stacksPos, stacksOverrides = GetComponentStyle("Stacks", 0)
             -- Don't call Show() - let Blizzard manage visibility based on actual stacks
             local stackText = icon.Applications.Applications or icon.Applications
             if stackText and stackText.SetFont then
@@ -1295,6 +1346,9 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                 if stackText.SetDrawLayer then
                     stackText:SetDrawLayer("OVERLAY", 7)  -- Highest sublevel
                 end
+                
+                -- Apply color override (class colour > custom color)
+                ApplyTextColor(stackText, stacksOverrides)
                 
                 -- Apply JustifyH if saved (from Canvas Mode drag)
                 if stacksPos.justifyH and stackText.SetJustifyH then
@@ -1306,11 +1360,8 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                     icon.Applications:SetFrameLevel(icon:GetFrameLevel() + 20)
                 end
                 
-                -- Apply position if overridden (prefer center-relative)
-                if stacksPos.posX ~= nil and stacksPos.posY ~= nil then
-                    stackText:ClearAllPoints()
-                    stackText:SetPoint("CENTER", icon, "CENTER", stacksPos.posX, stacksPos.posY)
-                elseif stacksPos.anchorX then
+                -- Apply position if overridden (prefer anchor-based for edge/justification)
+                if stacksPos.anchorX then
                     local anchorPoint = stacksPos.anchorY .. stacksPos.anchorX
                     if stacksPos.anchorY == "CENTER" and stacksPos.anchorX == "CENTER" then
                         anchorPoint = "CENTER"
@@ -1320,19 +1371,22 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                         anchorPoint = stacksPos.anchorY
                     end
                     
-                    -- Use JustifyH as the text's anchor point (decoupled pattern)
-                    local textPoint = stacksPos.justifyH or anchorPoint
-                    if stacksPos.anchorY ~= "CENTER" then
-                        textPoint = stacksPos.anchorY .. (stacksPos.justifyH or stacksPos.anchorX)
-                        if stacksPos.justifyH == "CENTER" then
-                            textPoint = stacksPos.anchorY
-                        end
+                    -- Text's anchor point: use justifyH only (matches Canvas Mode pattern)
+                    local textPoint
+                    if stacksPos.justifyH and stacksPos.justifyH ~= "CENTER" then
+                        textPoint = stacksPos.justifyH
+                    else
+                        textPoint = "CENTER"
                     end
                     
                     stackText:ClearAllPoints()
                     local offsetX = stacksPos.anchorX == "LEFT" and stacksPos.offsetX or -stacksPos.offsetX
                     local offsetY = stacksPos.anchorY == "BOTTOM" and stacksPos.offsetY or -stacksPos.offsetY
                     stackText:SetPoint(textPoint, icon, anchorPoint, offsetX, offsetY)
+                elseif stacksPos.posX ~= nil and stacksPos.posY ~= nil then
+                    -- Center-relative fallback (no anchor data)
+                    stackText:ClearAllPoints()
+                    stackText:SetPoint("CENTER", icon, "CENTER", stacksPos.posX, stacksPos.posY)
                 end
             end
         end
@@ -1340,22 +1394,22 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
     
     -- Keybind display (show unless disabled via Canvas Mode)
     local showKeybinds = not self:IsComponentDisabled("Keybind", systemIndex)
-    local keybindFont, keybindSize, keybindFlags, keybindPos = GetComponentStyle("Keybind", -2)
+    local keybindFont, keybindSize, keybindFlags, keybindPos, keybindOverrides = GetComponentStyle("Keybind", -2)
     
     if showKeybinds then
         local keybind = icon.OrbitKeybind or self:CreateKeybindText(icon)
         keybind:SetFont(keybindFont, keybindSize, keybindFlags)
+        
+        -- Apply color override (class colour > custom color)
+        ApplyTextColor(keybind, keybindOverrides)
         
         -- Apply JustifyH if saved (from Canvas Mode drag)
         if keybindPos.justifyH and keybind.SetJustifyH then
             keybind:SetJustifyH(keybindPos.justifyH)
         end
         
-        -- Apply position if overridden (prefer center-relative)
-        if keybindPos.posX ~= nil and keybindPos.posY ~= nil then
-            keybind:ClearAllPoints()
-            keybind:SetPoint("CENTER", icon, "CENTER", keybindPos.posX, keybindPos.posY)
-        elseif keybindPos.anchorX then
+        -- Apply position if overridden (prefer anchor-based for edge/justification)
+        if keybindPos.anchorX then
             local anchorPoint = keybindPos.anchorY .. keybindPos.anchorX
             if keybindPos.anchorY == "CENTER" and keybindPos.anchorX == "CENTER" then
                 anchorPoint = "CENTER"
@@ -1365,19 +1419,22 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                 anchorPoint = keybindPos.anchorY
             end
             
-            -- Use JustifyH as the text's anchor point (decoupled pattern)
-            local textPoint = keybindPos.justifyH or anchorPoint
-            if keybindPos.anchorY ~= "CENTER" then
-                textPoint = keybindPos.anchorY .. (keybindPos.justifyH or keybindPos.anchorX)
-                if keybindPos.justifyH == "CENTER" then
-                    textPoint = keybindPos.anchorY
-                end
+            -- Text's anchor point: use justifyH only (matches Canvas Mode pattern)
+            local textPoint
+            if keybindPos.justifyH and keybindPos.justifyH ~= "CENTER" then
+                textPoint = keybindPos.justifyH
+            else
+                textPoint = "CENTER"
             end
             
             keybind:ClearAllPoints()
             local offsetX = keybindPos.anchorX == "LEFT" and keybindPos.offsetX or -keybindPos.offsetX
             local offsetY = keybindPos.anchorY == "BOTTOM" and keybindPos.offsetY or -keybindPos.offsetY
             keybind:SetPoint(textPoint, icon, anchorPoint, offsetX, offsetY)
+        elseif keybindPos.posX ~= nil and keybindPos.posY ~= nil then
+            -- Center-relative fallback (no anchor data)
+            keybind:ClearAllPoints()
+            keybind:SetPoint("CENTER", icon, "CENTER", keybindPos.posX, keybindPos.posY)
         end
         
         -- Get spell ID from the icon
