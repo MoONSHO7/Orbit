@@ -82,6 +82,7 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
                 end
                 
                 ColorPickerFrame:SetupColorPickerAndShow(info)
+                ColorPickerFrame:SetFrameStrata("FULLSCREEN_DIALOG")
             else
                 -- Pre-10.2.5 API
                 ColorPickerFrame:SetColorRGB(frame.r, frame.g, frame.b)
@@ -101,6 +102,7 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
                     end
                 end
                 ColorPickerFrame:Show()
+                ColorPickerFrame:SetFrameStrata("FULLSCREEN_DIALOG")
             end
         end)
     end
