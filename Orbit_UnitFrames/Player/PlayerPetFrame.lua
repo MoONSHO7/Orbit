@@ -9,7 +9,7 @@ local SYSTEM_INDEX = 1 -- Arbitrary index for simple plugin? Or specific enum?
 -- Pet Frame isn't in standard Enums typically, let's treat it as generic or use custom index.
 -- UnitButton:Create uses systemIndex for storage. Let's use 5 (Pet) or similar if available.
 -- EditModeUnitFrameSystemIndices.Pet = 3 usually.
-local PET_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Pet) or 3
+local PET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Pet
 
 local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
     canvasMode = true,  -- Enable Canvas Mode for component editing
@@ -185,7 +185,7 @@ function Plugin:ApplySettings(frame)
 
     -- 2. Pet Specific Visuals override
     -- Font
-    local globalFontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
+    local globalFontName = Orbit.db.GlobalSettings.Font
     local fontPath = LSM:Fetch("font", globalFontName) or "Fonts\\FRIZQT__.TTF"
 
     if frame.Name then

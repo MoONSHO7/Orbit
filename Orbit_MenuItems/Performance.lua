@@ -182,19 +182,17 @@ function Plugin:ApplySettings()
 
     -- Global Text Scale
     local textMultiplier = 1
-    if Orbit.db and Orbit.db.GlobalSettings then
-        local s = Orbit.db.GlobalSettings.TextScale
-        if s == "Small" then
-            textMultiplier = 0.85
-        elseif s == "Large" then
-            textMultiplier = 1.15
-        elseif s == "ExtraLarge" then
-            textMultiplier = 1.30
-        end
+    local s = Orbit.db.GlobalSettings.TextScale
+    if s == "Small" then
+        textMultiplier = 0.85
+    elseif s == "Large" then
+        textMultiplier = 1.15
+    elseif s == "ExtraLarge" then
+        textMultiplier = 1.30
     end
 
     -- Apply Global Font (Always, to enforce OUTLINE)
-    local globalFont = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
+    local globalFont = Orbit.db.GlobalSettings.Font
     Orbit.Skin:SkinText(frame.Text, {
         font = globalFont, -- SkinText handles nil fallback to default font
         textSize = 14 * textMultiplier,

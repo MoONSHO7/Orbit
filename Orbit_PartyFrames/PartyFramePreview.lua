@@ -10,7 +10,7 @@ local Helpers = nil -- Will be set when first needed
 
 -- Constants
 local MAX_PREVIEW_FRAMES = 5  -- 4 party + 1 potential player
-local DEBOUNCE_DELAY = Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.DefaultDebounce or 0.1
+local DEBOUNCE_DELAY = Orbit.Constants.Timing.DefaultDebounce
 
 -- Combat-safe wrappers (matches PartyFrame.lua)
 local function SafeRegisterUnitWatch(frame)
@@ -511,32 +511,10 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posi
 end
 
 function Orbit.PartyFramePreviewMixin:HidePreview()
-    -- Preview cleanup is blocked in combat
+    -- Combat check: Edit Mode auto-exits on combat start, so this should never be called during combat.
+    -- If it somehow is, bail out safely.
     if InCombatLockdown() then
-        -- Register event to hide when combat ends
-        if not self.previewCleanupFrame then
-            self.previewCleanupFrame = CreateFrame("Frame")
-            self.previewCleanupFrame:SetScript("OnEvent", function(f, event)
-                if event == "PLAYER_REGEN_ENABLED" then
-                    f:UnregisterEvent("PLAYER_REGEN_ENABLED")
-                    self:HidePreview()
-                end
-            end)
-        end
-        self.previewCleanupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-
-        -- Visually hide frames immediately
-        if self.frames then
-            for i, frame in ipairs(self.frames) do
-                frame:SetAlpha(0)
-            end
-        end
         return
-    else
-        -- Clean up event if we reached here safely
-        if self.previewCleanupFrame then
-            self.previewCleanupFrame:UnregisterEvent("PLAYER_REGEN_ENABLED")
-        end
     end
 
     if not self.frames then

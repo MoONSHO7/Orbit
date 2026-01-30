@@ -78,7 +78,6 @@ function EventBus:OffContext(context)
 end
 
 --- Fire an event to all listeners (internal use, also callable for custom events)
--- Optimized to avoid table allocation for varargs (critical for high-frequency events)
 -- @param event (string): The event name
 -- @param ...: Arguments to pass to listeners
 function EventBus:Fire(event, ...)
@@ -87,35 +86,23 @@ function EventBus:Fire(event, ...)
         return
     end
 
-    -- Capture vararg count once (no table allocation)
-    local n = select("#", ...)
-    
-    for i = 1, #listeners do
+    -- Snapshot the listener count to avoid issues if listeners are added/removed during iteration
+    -- Iterate backwards to safely handle removals during iteration
+    for i = #listeners, 1, -1 do
         local listener = listeners[i]
-        local success, err
-        
-        -- Avoid creating closure by calling directly based on arg count
-        -- Most events have 0-3 args, so we optimize for common cases
-        if listener.context then
-            if n == 0 then
-                success, err = pcall(listener.callback, listener.context)
-            else
-                -- All n >= 1 cases use the same vararg passthrough
+        if listener then
+            local success, err
+            
+            -- Direct vararg passthrough - no table allocation needed
+            if listener.context then
                 success, err = pcall(listener.callback, listener.context, ...)
-            end
-        else
-            if n == 0 then
-                success, err = pcall(listener.callback)
-            elseif n <= 3 then
-                success, err = pcall(listener.callback, ...)
             else
-                local args = { ... }
-                success, err = pcall(function() listener.callback(unpack(args)) end)
+                success, err = pcall(listener.callback, ...)
             end
-        end
 
-        if not success then
-            Orbit:Print("|cFFFF0000EventBus Error|r in", event, ":", tostring(err))
+            if not success then
+                Orbit:Print("|cFFFF0000EventBus Error|r in", event, ":", tostring(err))
+            end
         end
     end
 end

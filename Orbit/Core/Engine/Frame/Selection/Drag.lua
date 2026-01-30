@@ -267,7 +267,7 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
     end
 
     local currentPadding = anchor.padding or 0
-    local minPadding = -((Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize) or 4)
+    local minPadding = -(Orbit.db.GlobalSettings.BorderSize)
 
     if anchor.syncOptions and anchor.syncOptions.mergeBorders then
         minPadding = 0

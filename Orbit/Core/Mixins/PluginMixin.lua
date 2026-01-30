@@ -44,9 +44,9 @@ function Orbit.PluginMixin:RegisterStandardEvents()
                 end, debounceDelay)
             end,
             Exit = function()
-                Orbit.Async:Debounce(debounceKey, function()
-                    self:ApplySettings()
-                end, debounceDelay)
+                -- No debounce on Exit: must run immediately before combat lockdown engages
+                -- (Combat auto-exit triggers Exit, and debounce would delay past lockdown)
+                self:ApplySettings()
             end,
         }, self)
     end
@@ -81,9 +81,7 @@ function Orbit.PluginMixin:GetSetting(systemIndex, key)
 
     -- Global Inheritance (Enforced for specific keys)
     if key == "Texture" or key == "Font" or key == "BorderSize" or key == "BackdropColour" then
-        if Orbit.db and Orbit.db.GlobalSettings then
-            return Orbit.db.GlobalSettings[key]
-        end
+        return Orbit.db.GlobalSettings[key]
     end
 
     -- Get value from saved settings

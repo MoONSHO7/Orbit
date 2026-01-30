@@ -5,8 +5,8 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_TargetFrame"
-local TARGET_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Target) or 2
-local PLAYER_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Player) or 1
+local TARGET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Target
+local PLAYER_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Player
 
 local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
     canvasMode = true,  -- Enable Canvas Mode for component editing

@@ -54,7 +54,7 @@ function Mixin:StyleLevelText(frame, fontName)
     end
 
     local LSM = LibStub("LibSharedMedia-3.0")
-    local globalFontName = fontName or (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font)
+    local globalFontName = fontName or Orbit.db.GlobalSettings.Font
     local fontPath = LSM:Fetch("font", globalFontName) or "Fonts\\FRIZQT__.TTF"
 
     frame.LevelText:SetFont(fontPath, 10, "OUTLINE")

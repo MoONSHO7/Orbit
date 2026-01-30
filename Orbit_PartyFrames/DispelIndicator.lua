@@ -211,7 +211,7 @@ function Orbit.PartyFrameDispelMixin:UpdateDispelIndicator(frame, plugin)
         
         -- Get color for this aura using the curve (handles secret dispelType)
         local color = nil
-        if curve and C_UnitAuras and C_UnitAuras.GetAuraDispelTypeColor then
+        if curve and C_UnitAuras.GetAuraDispelTypeColor then
             color = C_UnitAuras.GetAuraDispelTypeColor(unit, lastAuraInstanceID, curve)
         end
         

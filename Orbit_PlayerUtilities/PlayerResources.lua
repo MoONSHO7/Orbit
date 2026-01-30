@@ -576,7 +576,7 @@ function Plugin:IsEnabled()
 
     -- Read EnablePlayerResource setting from PlayerFrame plugin
     local playerPlugin = Orbit:GetPlugin("Orbit_PlayerFrame")
-    local pfIndex = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Player) or 1
+    local pfIndex = Enum.EditModeUnitFrameSystemIndices.Player
 
     if playerPlugin and playerPlugin.GetSetting then
         local enabled = playerPlugin:GetSetting(pfIndex, "EnablePlayerResource")

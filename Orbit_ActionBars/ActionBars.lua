@@ -690,7 +690,7 @@ function Plugin:LayoutButtons(index)
         aspectRatio = "1:1",
         zoom = 8, -- 8% zoom in to fill to border
         borderStyle = 1,
-        borderSize = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize or 2,
+        borderSize = Orbit.db.GlobalSettings.BorderSize,
         swipeColor = { r = 0, g = 0, b = 0, a = 0.8 },
         showTimer = true,
         hideName = false, -- Can expose this setting if needed
@@ -732,11 +732,8 @@ function Plugin:LayoutButtons(index)
             if button.HasAction then
                 hasAction = button:HasAction()
             -- Method 2: C_ActionBar.HasAction for standard action buttons
-            elseif button.action and C_ActionBar and C_ActionBar.HasAction then
+            elseif button.action and C_ActionBar.HasAction then
                 hasAction = C_ActionBar.HasAction(button.action)
-            -- Method 3: Legacy fallback
-            elseif button.action and HasAction then
-                hasAction = HasAction(button.action)
             end
 
             local shouldShow = true

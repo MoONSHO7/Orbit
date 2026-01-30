@@ -6,31 +6,16 @@ local Engine = Orbit.Engine
 Engine.EditMode = Engine.EditMode or {}
 local EditMode = Engine.EditMode
 
--- [ GUARD AND DEFER LOGIC ]------------------------------------------------------------------------
-
-local function GuardAndDefer(callback)
-    if InCombatLockdown() then
-        local f = CreateFrame("Frame")
-        f:RegisterEvent("PLAYER_REGEN_ENABLED")
-        f:SetScript("OnEvent", function(s)
-            s:UnregisterAllEvents()
-            callback()
-        end)
-    else
-        callback()
-    end
-end
-
 -- [ API ]-------------------------------------------------------------------------------------------
+-- Note: GuardAndDefer was removed. Since we auto-exit Edit Mode on combat start,
+-- these callbacks will never fire during combat lockdown.
 
 function EditMode:RegisterEnterCallback(callback, owner)
     if not EventRegistry then
         return
     end
 
-    EventRegistry:RegisterCallback("EditMode.Enter", function()
-        GuardAndDefer(callback)
-    end, owner)
+    EventRegistry:RegisterCallback("EditMode.Enter", callback, owner)
 end
 
 function EditMode:RegisterExitCallback(callback, owner)
@@ -38,9 +23,7 @@ function EditMode:RegisterExitCallback(callback, owner)
         return
     end
 
-    EventRegistry:RegisterCallback("EditMode.Exit", function()
-        GuardAndDefer(callback)
-    end, owner)
+    EventRegistry:RegisterCallback("EditMode.Exit", callback, owner)
 end
 
 function EditMode:RegisterCallbacks(callbacks, owner)
@@ -55,6 +38,20 @@ function EditMode:RegisterCallbacks(callbacks, owner)
     if callbacks.Exit then
         self:RegisterExitCallback(callbacks.Exit, owner)
     end
+end
+
+-- [ COMBAT SAFETY: AUTO-EXIT EDIT MODE ]-----------------------------------------------------------
+-- If combat starts while Edit Mode is active, immediately exit to restore functional UI.
+-- This prevents the "freeze" where previews persist and real frames are hidden.
+
+if EditModeManagerFrame then
+    local combatExitFrame = CreateFrame("Frame")
+    combatExitFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+    combatExitFrame:SetScript("OnEvent", function()
+        if EditModeManagerFrame:IsShown() then
+            HideUIPanel(EditModeManagerFrame)
+        end
+    end)
 end
 
 -- [ PERSISTENCE HOOKS ]-----------------------------------------------------------------------------

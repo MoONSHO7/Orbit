@@ -23,7 +23,7 @@ local Frame
 -- [ HELPERS ]----------------------------------------------------------------------------------------
 function Plugin:IsEnabled()
     local targetPlugin = Orbit:GetPlugin("Orbit_TargetFrame")
-    local TARGET_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Target) or 2
+    local TARGET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Target
     if targetPlugin and targetPlugin.GetSetting then
         local enabled = targetPlugin:GetSetting(TARGET_FRAME_INDEX, "EnableBuffs")
         if enabled ~= nil then
@@ -243,7 +243,7 @@ function Plugin:UpdateBuffs()
     local skinSettings = {
         zoom = 0,
         borderStyle = 1, -- Pixel Perfect
-        borderSize = (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize) or 1,
+        borderSize = Orbit.db.GlobalSettings.BorderSize,
         showTimer = false,
     }
 

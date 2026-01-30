@@ -872,6 +872,17 @@ function Orbit.Profile:Initialize()
         Orbit.db.profiles = {}
     end
 
+    -- Ensure GlobalSettings has defaults (eliminates need for fallbacks throughout codebase)
+    if not Orbit.db.GlobalSettings then
+        Orbit.db.GlobalSettings = {}
+    end
+    local gs = Orbit.db.GlobalSettings
+    if gs.Texture == nil then gs.Texture = "Melli" end
+    if gs.Font == nil then gs.Font = "PT Sans Narrow" end
+    if gs.BorderSize == nil then gs.BorderSize = 2 end
+    if gs.TextScale == nil then gs.TextScale = "Medium" end
+    if gs.BackdropColour == nil then gs.BackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } end
+
     -- Ensure Default profile exists (used as template for new profiles)
     if not Orbit.db.profiles["Default"] then
         Orbit.db.profiles["Default"] = CopyTable(self.defaults, {})

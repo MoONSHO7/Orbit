@@ -5,8 +5,8 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_FocusFrame"
-local FOCUS_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Focus) or 3 -- Default to 3 if not found, assume Focus
-local PLAYER_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Player) or 1
+local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus
+local PLAYER_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Player
 
 -- Verify index if needed, but Enum.EditModeUnitFrameSystemIndices.Focus usually exists in modern WoW
 if not Enum.EditModeUnitFrameSystemIndices.Focus then

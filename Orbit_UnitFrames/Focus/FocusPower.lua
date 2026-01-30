@@ -184,7 +184,7 @@ end
 function Plugin:IsEnabled()
     -- Read EnableFocusPower setting from FocusFrame plugin
     local focusPlugin = Orbit:GetPlugin("Orbit_FocusFrame")
-    local FOCUS_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Focus) or 3
+    local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus
     if focusPlugin and focusPlugin.GetSetting then
         local enabled = focusPlugin:GetSetting(FOCUS_FRAME_INDEX, "EnableFocusPower")
         return enabled == true

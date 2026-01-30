@@ -22,6 +22,21 @@ Selection.keyboardHandler = nil
 Selection.editModeHooked = false
 Selection.combatDeferredCallback = nil
 
+-- [ VISIBILITY HELPERS ]--------------------------------------------------------------------------
+-- DRY: Centralized visibility checks for Orbit and Blizzard frames
+
+local function ShouldShowOrbitFrames()
+    return Orbit.db.GlobalSettings.ShowOrbitFrames ~= false
+end
+
+local function ShouldShowBlizzardFrames()
+    return Orbit.db.GlobalSettings.ShowBlizzardFrames ~= false
+end
+
+local function GetOrbitEditModeColor()
+    return Orbit.db.GlobalSettings.EditModeColor or Engine.Constants.Frame.EditModeColor
+end
+
 -- [ SYMMETRIC PAIR REGISTRATION ]------------------------------------------------------------------
 
 function Selection:RegisterSymmetricPair(frameNameA, frameNameB)
@@ -471,10 +486,7 @@ end
 
 function Selection:RefreshVisuals()
     -- 1. Update Orbit Selections
-    local showOrbit = true
-    if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowOrbitFrames == false then
-        showOrbit = false
-    end
+    local showOrbit = ShouldShowOrbitFrames()
 
     for frame, selection in pairs(self.selections) do
         if selection.isOrbitSelection then
@@ -491,10 +503,7 @@ function Selection:RefreshVisuals()
 
     -- 2. Update Native Blizzard Frames
     if EditModeManagerFrame and EditModeManagerFrame.registeredSystemFrames then
-        local showNative = true
-        if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowBlizzardFrames == false then
-            showNative = false
-        end
+        local showNative = ShouldShowBlizzardFrames()
 
         for _, frame in ipairs(EditModeManagerFrame.registeredSystemFrames) do
             if frame.Selection then
@@ -641,13 +650,8 @@ function Selection:UpdateVisuals(frame, selection)
 
         if isAnchored then
             if selection.isOrbitSelection then
-                local showOrbit = true
-                if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowOrbitFrames == false then
-                    showOrbit = false
-                end
-
-                if showOrbit then
-                    local c = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.EditModeColor or Engine.Constants.Frame.EditModeColor
+                if ShouldShowOrbitFrames() then
+                    local c = GetOrbitEditModeColor()
                     TintSelection(selection, c.r, c.g, c.b, true)
                     selection:SetAlpha(1)
                     selection:EnableMouse(true)
@@ -657,15 +661,10 @@ function Selection:UpdateVisuals(frame, selection)
                     return
                 end
             else
-                local showNative = true
-                if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowBlizzardFrames == false then
-                    showNative = false
-                end
-                
                 -- Always hide native selection to prevent z-fighting/persistence
                 if frame.Selection then frame.Selection:Hide() end
 
-                if showNative then
+                if ShouldShowBlizzardFrames() then
                      TintSelection(selection, 1, 1, 1, false)
                      selection:Show()
                 else
@@ -679,13 +678,8 @@ function Selection:UpdateVisuals(frame, selection)
             end
         else
             if selection.isOrbitSelection then
-                local showOrbit = true
-                if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowOrbitFrames == false then
-                    showOrbit = false
-                end
-
-                if showOrbit then
-                    local c = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.EditModeColor or Engine.Constants.Frame.EditModeColor
+                if ShouldShowOrbitFrames() then
+                    local c = GetOrbitEditModeColor()
                     TintSelection(selection, c.r, c.g, c.b, true)
                     selection:SetAlpha(1)
                     selection:EnableMouse(true)
@@ -695,15 +689,10 @@ function Selection:UpdateVisuals(frame, selection)
                     return
                 end
             else
-                local showNative = true
-                if Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ShowBlizzardFrames == false then
-                    showNative = false
-                end
-
                  -- Always hide native selection to prevent z-fighting/persistence
                  if frame.Selection then frame.Selection:Hide() end
 
-                 if showNative then
+                 if ShouldShowBlizzardFrames() then
                      TintSelection(selection, 1, 1, 1, false)
                      selection:Show() -- Ensure Orbit's proxy is shown
                 else

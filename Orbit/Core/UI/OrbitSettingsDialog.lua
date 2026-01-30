@@ -35,13 +35,20 @@ Dialog.Border:SetAllPoints(Dialog)
 -- Ensure proper layering
 Dialog.Border:SetFrameLevel(Dialog:GetFrameLevel())
 
--- Drag handlers
 Dialog:SetScript("OnDragStart", function(self)
     self:StartMoving()
 end)
 
 Dialog:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
+end)
+
+-- Close on combat to prevent Lua errors from protected operations
+Dialog:RegisterEvent("PLAYER_REGEN_DISABLED")
+Dialog:SetScript("OnEvent", function(self, event)
+    if event == "PLAYER_REGEN_DISABLED" and self:IsShown() then
+        self:Hide()
+    end
 end)
 
 -------------------------------------------------
@@ -96,6 +103,11 @@ Dialog.attachedSystemIndex = nil
 -- Matches Blizzard API pattern for easy migration
 -- context = { system = pluginName, systemIndex = index, systemFrame = frame }
 function Dialog:UpdateDialog(context)
+    -- Prevent updates during combat
+    if InCombatLockdown() then
+        return
+    end
+
     if not context then
         return
     end
