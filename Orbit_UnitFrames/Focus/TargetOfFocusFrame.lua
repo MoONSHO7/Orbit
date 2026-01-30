@@ -6,7 +6,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_TargetOfFocusFrame"
 local TOF_FRAME_INDEX = 101 -- Custom index for Orbit-only frames
-local FOCUS_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Focus) or 3
+local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus
 
 local Plugin = Orbit:RegisterPlugin("Target of Focus", SYSTEM_ID, {
     canvasMode = true,  -- Enable Canvas Mode for component editing
@@ -221,7 +221,7 @@ function Plugin:ApplySettings(frame)
     self:ApplyBaseVisuals(frame, systemIndex)
 
     -- ToF Specific Visuals
-    local globalFontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
+    local globalFontName = Orbit.db.GlobalSettings.Font
     local fontPath = LSM:Fetch("font", globalFontName) or "Fonts\\FRIZQT__.TTF"
 
     if frame.Name then

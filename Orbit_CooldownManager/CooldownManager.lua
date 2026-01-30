@@ -305,8 +305,7 @@ function Plugin:SetupCanvasPreview(anchor, systemIndex)
         -- Required metadata for Canvas Mode
         preview.sourceFrame = self
         -- Use content dimensions (excluding border) for positioning
-        local borderSize = Orbit.db and Orbit.db.GlobalSettings 
-            and Orbit.db.GlobalSettings.BorderSize or 2
+        local borderSize = Orbit.db.GlobalSettings.BorderSize
         local contentW = w - (borderSize * 2)  -- Inset by border on each side
         local contentH = h - (borderSize * 2)
         preview.sourceWidth = contentW
@@ -348,7 +347,7 @@ function Plugin:SetupCanvasPreview(anchor, systemIndex)
         local savedPositions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
         
         -- Get global font settings
-        local globalFontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
+        local globalFontName = Orbit.db.GlobalSettings.Font
         local fontPath = LSM:Fetch("font", globalFontName) or "Fonts\\FRIZQT__.TTF"
         
         -- Text component definitions with defaults
@@ -967,7 +966,7 @@ function Plugin:ProcessChildren(anchor)
             aspectRatio = self:GetSetting(systemIndex, "aspectRatio"),
             zoom = 0,
             borderStyle = 1,
-            borderSize = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize or 2,
+            borderSize = Orbit.db.GlobalSettings.BorderSize,
             swipeColor = self:GetSetting(systemIndex, "SwipeColor"),
             orientation = self:GetSetting(systemIndex, "Orientation"),
             limit = self:GetSetting(systemIndex, "IconLimit"),
@@ -1047,12 +1046,12 @@ local TEXT_SCALE_SIZES = {
 }
 
 function Plugin:GetBaseFontSize()
-    local scale = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.TextScale or "Medium"
+    local scale = Orbit.db.GlobalSettings.TextScale
     return TEXT_SCALE_SIZES[scale] or 12
 end
 
 function Plugin:GetGlobalFont()
-    local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font or "PT Sans Narrow"
+    local fontName = Orbit.db.GlobalSettings.Font
     local LSM = LibStub("LibSharedMedia-3.0", true)
     if LSM then
         return LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT

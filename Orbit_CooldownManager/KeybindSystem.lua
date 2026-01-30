@@ -125,7 +125,7 @@ local function LookupKeybind(spellID)
     end
     
     -- Method 2: C_ActionBar.FindSpellActionButtons
-    if C_ActionBar and C_ActionBar.FindSpellActionButtons then
+    if C_ActionBar.FindSpellActionButtons then
         local slots = C_ActionBar.FindSpellActionButtons(spellID)
         if slots and slots[1] then
             local slot = slots[1]
@@ -180,7 +180,7 @@ local function GetSpellKeybind(self, spellID)
     local key = LookupKeybind(spellID)
     
     -- Try base spell if not found (for talent-modified spells)
-    if not key and C_Spell and C_Spell.GetBaseSpell then
+    if not key and C_Spell.GetBaseSpell then
         local base = C_Spell.GetBaseSpell(spellID)
         if base and base ~= spellID then
             key = LookupKeybind(base)
@@ -188,7 +188,7 @@ local function GetSpellKeybind(self, spellID)
     end
     
     -- Try override spell
-    if not key and C_Spell and C_Spell.GetOverrideSpell then
+    if not key and C_Spell.GetOverrideSpell then
         local override = C_Spell.GetOverrideSpell(spellID)
         if override and override ~= spellID then
             key = LookupKeybind(override)

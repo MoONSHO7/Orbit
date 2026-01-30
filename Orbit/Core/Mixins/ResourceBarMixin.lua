@@ -283,11 +283,11 @@ function Mixin:GetStaggerState()
     local maxHealth = UnitHealthMax("player") or 1
 
     local level = "LOW"
-    local staggerIndex = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID(124273) -- Heavy
+    local staggerIndex = C_UnitAuras.GetPlayerAuraBySpellID(124273) -- Heavy
     if staggerIndex then
         level = "HEAVY"
     else
-        staggerIndex = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID(124274) -- Moderate
+        staggerIndex = C_UnitAuras.GetPlayerAuraBySpellID(124274) -- Moderate
         if staggerIndex then
             level = "MEDIUM"
         end

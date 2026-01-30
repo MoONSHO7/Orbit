@@ -80,52 +80,13 @@ end
 -- [ POWER BAR LAYOUT ]------------------------------------------------------------------------------
 
 --- Update frame layout to account for power bar visibility
+-- Uses UnitFrameMixin:UpdateFrameLayout for consistent logic across all unit frames
 -- @param frame Frame - the party frame
 -- @param borderSize number - current border size
 -- @param showPowerBar boolean - whether power bar is shown (default true)
 function Helpers:UpdateFrameLayout(frame, borderSize, showPowerBar)
-    local height = frame:GetHeight()
-    if height < 1 then
-        return
-    end
-
-    -- Default to showing power bar if not specified
-    if showPowerBar == nil then
-        showPowerBar = true
-    end
-
-    local powerHeight = showPowerBar and (height * self.LAYOUT.PowerBarRatio) or 0
-    -- Use the actual pixel-scaled border size if available, otherwise the passed borderSize
-    local inset = frame.borderPixelSize or borderSize or 0
-
-    if frame.Power then
-        if showPowerBar then
-            frame.Power:ClearAllPoints()
-            frame.Power:SetPoint("BOTTOMLEFT", inset, inset)
-            frame.Power:SetPoint("BOTTOMRIGHT", -inset, inset)
-            frame.Power:SetHeight(powerHeight)
-            frame.Power:SetFrameLevel(frame:GetFrameLevel() + 3)
-            frame.Power:Show()
-        else
-            frame.Power:Hide()
-        end
-    end
-
-    if frame.Health then
-        frame.Health:ClearAllPoints()
-        frame.Health:SetPoint("TOPLEFT", inset, -inset)
-        if showPowerBar then
-            frame.Health:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, powerHeight + inset)
-        else
-            -- Health bar fills entire frame when power bar hidden
-            frame.Health:SetPoint("BOTTOMRIGHT", -inset, inset)
-        end
-        frame.Health:SetFrameLevel(frame:GetFrameLevel() + 2)
-
-        if frame.HealthDamageBar then
-            frame.HealthDamageBar:ClearAllPoints()
-            frame.HealthDamageBar:SetAllPoints(frame.Health)
-            frame.HealthDamageBar:SetFrameLevel(frame:GetFrameLevel() + 1)
-        end
-    end
+    Orbit.UnitFrameMixin:UpdateFrameLayout(frame, borderSize, {
+        showPowerBar = showPowerBar,
+        powerBarRatio = self.LAYOUT.PowerBarRatio,
+    })
 end

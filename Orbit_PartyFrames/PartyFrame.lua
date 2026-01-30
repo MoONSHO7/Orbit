@@ -143,7 +143,7 @@ end
 
 -- Use centralized power colors from Constants
 local function GetPowerColor(powerType)
-    return Orbit.Constants.Colors.PowerType[powerType] or { r = 0.5, g = 0.5, b = 0.5 }
+    return Orbit.Constants.Colors:GetPowerColor(powerType)
 end
 
 -- [ ROLE SORTING ]---------------------------------------------------------------------------------
@@ -434,7 +434,7 @@ local function UpdateDebuffs(frame, plugin)
     end
 
     -- Skin settings
-    local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
+    local globalBorder = Orbit.db.GlobalSettings.BorderSize
     local skinSettings = {
         zoom = 0,
         borderStyle = 1,
@@ -514,7 +514,7 @@ local function UpdateBuffs(frame, plugin)
     end
 
     -- Skin settings
-    local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
+    local globalBorder = Orbit.db.GlobalSettings.BorderSize
     local skinSettings = {
         zoom = 0,
         borderStyle = 1,
@@ -636,7 +636,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
     frame:SetFrameStrata("MEDIUM")
     frame:SetFrameLevel(50 + partyIndex)
 
-    UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize or 1, plugin)
+    UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize, plugin)
 
     -- Create power bar
     frame.Power = CreatePowerBar(frame, unit, plugin)
@@ -662,7 +662,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
         
         self:UpdateAll()
         UpdatePowerBar(self, plugin)
-        UpdateFrameLayout(self, Orbit.db.GlobalSettings.BorderSize or 1, plugin)
+        UpdateFrameLayout(self, Orbit.db.GlobalSettings.BorderSize, plugin)
         UpdateDebuffs(self, plugin)
         UpdateBuffs(self, plugin)
         UpdateAllStatusIndicators(self, plugin)

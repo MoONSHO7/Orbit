@@ -12,12 +12,7 @@ local Constants = Orbit.Constants
 -- -------------------------------------------------------------------------- --
 
 function Skin:GetPixelScale()
-    if Engine and Engine.Pixel then
-        return Engine.Pixel:GetScale()
-    end
-    -- Fallback during load order transition
-    local pixelScale = 768.0 / (select(2, GetPhysicalScreenSize()) or 768.0)
-    return pixelScale
+    return Engine.Pixel:GetScale()
 end
 
 -- -------------------------------------------------------------------------- --
@@ -248,15 +243,13 @@ function Skin:GetAdaptiveTextSize(height, minSize, maxSize, ratio)
 
     -- Global Multiplier
     local globalScale = 1.0
-    if Orbit.db and Orbit.db.GlobalSettings then
-        local s = Orbit.db.GlobalSettings.TextScale
-        if s == "Small" then
-            globalScale = 0.85
-        elseif s == "Large" then
-            globalScale = 1.15
-        elseif s == "ExtraLarge" then
-            globalScale = 1.30
-        end
+    local s = Orbit.db.GlobalSettings.TextScale
+    if s == "Small" then
+        globalScale = 0.85
+    elseif s == "Large" then
+        globalScale = 1.15
+    elseif s == "ExtraLarge" then
+        globalScale = 1.30
     end
 
     targetSize = targetSize * globalScale
@@ -283,7 +276,7 @@ function Skin:ApplyUnitFrameText(fontString, alignment, fontPath, textSize)
 
     -- Get font from global settings or fallback
     if not fontPath then
-        local globalFontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
+        local globalFontName = Orbit.db.GlobalSettings.Font
         fontPath = LSM:Fetch("font", globalFontName) or Constants.Settings.Font.FallbackPath
     end
 

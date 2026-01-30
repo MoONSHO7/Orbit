@@ -21,7 +21,7 @@ end
 Icons.iconSettings = setmetatable({}, { __mode = "k" })
 Icons.regionCache = setmetatable({}, { __mode = "k" })
 Icons.borderCache = setmetatable({}, { __mode = "k" })
-Icons.monitorTickers = {}
+Icons.monitorTickers = setmetatable({}, { __mode = "k" })
 
 local Pixel = Orbit.Engine and Orbit.Engine.Pixel
 
@@ -796,8 +796,7 @@ function Icons:ApplyActionButtonCustom(button, settings)
 
     -- Apply fonts (HotKey, Name)
     if button.HotKey then
-        local fontName = (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font)
-            or Constants.Settings.Font.Default
+        local fontName = Orbit.db.GlobalSettings.Font
         local fontPath = (Orbit.Fonts and Orbit.Fonts[fontName]) or Constants.Settings.Font.FallbackPath
         local fontSize = math.max(8, w * 0.28)
         button.HotKey:SetFont(fontPath, fontSize, "OUTLINE")
@@ -807,8 +806,7 @@ function Icons:ApplyActionButtonCustom(button, settings)
     end
 
     if button.Name then
-        local fontName = (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font)
-            or Constants.Settings.Font.Default
+        local fontName = Orbit.db.GlobalSettings.Font
         local fontPath = (Orbit.Fonts and Orbit.Fonts[fontName]) or Constants.Settings.Font.FallbackPath
         local fontSize = math.max(7, w * 0.22)
         button.Name:SetFont(fontPath, fontSize, "OUTLINE")

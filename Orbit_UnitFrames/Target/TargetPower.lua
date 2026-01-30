@@ -184,7 +184,7 @@ end
 function Plugin:IsEnabled()
     -- Read EnableTargetPower setting from TargetFrame plugin
     local targetPlugin = Orbit:GetPlugin("Orbit_TargetFrame")
-    local TARGET_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Target) or 2
+    local TARGET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Target
     if targetPlugin and targetPlugin.GetSetting then
         local enabled = targetPlugin:GetSetting(TARGET_FRAME_INDEX, "EnableTargetPower")
         return enabled == true

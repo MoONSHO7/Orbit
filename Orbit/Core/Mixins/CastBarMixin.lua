@@ -375,7 +375,7 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
         if nativeBar.Icon then
             iconTexture = nativeBar.Icon:GetTexture()
         end
-        if not iconTexture and C_Spell and C_Spell.GetSpellTexture and nativeBar.spellID then
+        if not iconTexture and C_Spell.GetSpellTexture and nativeBar.spellID then
             iconTexture = C_Spell.GetSpellTexture(nativeBar.spellID)
         end
 

@@ -701,7 +701,7 @@ function Plugin:ApplySettings(systemFrame)
 
     -- Pass everything to Skin
     if Orbit.Skin.CastBar and bar.orbitBar then
-        local color = self:GetSetting(systemIndex, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
+        local color = self:GetSetting(systemIndex, "CastBarColor")
         local fontName = self:GetSetting(systemIndex, "Font")
         local backdropColor = self:GetSetting(systemIndex, "BackdropColour")
 
@@ -749,9 +749,9 @@ function Plugin:ApplyColor()
 
     -- Use NonInterruptibleColor (Protected) for non-interruptible casts
     if bar.notInterruptible then
-        color = self:GetSetting(systemIndex, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
+        color = self:GetSetting(systemIndex, "NonInterruptibleColor")
     else
-        color = self:GetSetting(systemIndex, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
+        color = self:GetSetting(systemIndex, "CastBarColor")
     end
 
     if bar.orbitBar then

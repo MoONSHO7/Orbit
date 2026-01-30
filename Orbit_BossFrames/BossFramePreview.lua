@@ -12,7 +12,7 @@ local Helpers = nil -- Will be set when first needed
 -- Constants (Replicated from BossFrame.lua to avoid tight coupling)
 local MAX_BOSS_FRAMES = 5
 local POWER_BAR_HEIGHT_RATIO = 0.2
-local DEBOUNCE_DELAY = Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.DefaultDebounce or 0.1
+local DEBOUNCE_DELAY = Orbit.Constants.Timing.DefaultDebounce
 
 -- Preview defaults
 local PREVIEW_DEFAULTS = {
@@ -284,7 +284,7 @@ function Orbit.BossFramePreviewMixin:ShowPreviewDebuffs(frame, numDebuffsToShow)
     )
 
     -- Settings for Skin
-    local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
+    local globalBorder = Orbit.db.GlobalSettings.BorderSize
     local skinSettings = {
         zoom = 0,
         borderStyle = 1, -- Pixel Perfect

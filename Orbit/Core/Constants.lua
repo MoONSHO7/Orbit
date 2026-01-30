@@ -314,6 +314,11 @@ function C.Colors:GetResourceColor(classFileName)
     return self.PlayerResources[classFileName]
 end
 
+-- Helper function for power type colors (Mana, Rage, Energy, etc.)
+function C.Colors:GetPowerColor(powerType)
+    return self.PowerType[powerType] or { r = 0.5, g = 0.5, b = 0.5 }
+end
+
 -- [ BACKWARDS COMPATIBILITY ALIAS ]---------------------------------------------------------------
 -- Orbit.Colors points to C.Colors for existing code
 Orbit.Colors = C.Colors

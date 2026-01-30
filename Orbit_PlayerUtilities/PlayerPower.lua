@@ -198,7 +198,7 @@ function Plugin:IsEnabled()
 
     -- If Orbit_UnitFrames is loaded, also respect its EnablePlayerPower setting
     local playerPlugin = Orbit:GetPlugin("Orbit_PlayerFrame")
-    local PLAYER_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Player) or 1
+    local PLAYER_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Player
     if playerPlugin and playerPlugin.GetSetting then
         local enabled = playerPlugin:GetSetting(PLAYER_FRAME_INDEX, "EnablePlayerPower")
         -- Default to true if not set

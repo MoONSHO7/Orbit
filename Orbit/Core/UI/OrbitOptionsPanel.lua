@@ -534,6 +534,11 @@ function Panel:UpdateTabs(dialog, activeTabName)
 end
 
 function Panel:Open(tabName)
+    -- Prevent opening during combat
+    if InCombatLockdown() then
+        return
+    end
+
     local dialog = Orbit.SettingsDialog
     if not dialog then
         Orbit:Print("Orbit Settings dialog not available")

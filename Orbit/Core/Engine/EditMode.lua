@@ -57,6 +57,20 @@ function EditMode:RegisterCallbacks(callbacks, owner)
     end
 end
 
+-- [ COMBAT SAFETY: AUTO-EXIT EDIT MODE ]-----------------------------------------------------------
+-- If combat starts while Edit Mode is active, immediately exit to restore functional UI.
+-- This prevents the "freeze" where previews persist and real frames are hidden.
+
+if EditModeManagerFrame then
+    local combatExitFrame = CreateFrame("Frame")
+    combatExitFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+    combatExitFrame:SetScript("OnEvent", function()
+        if EditModeManagerFrame:IsShown() then
+            HideUIPanel(EditModeManagerFrame)
+        end
+    end)
+end
+
 -- [ PERSISTENCE HOOKS ]-----------------------------------------------------------------------------
 
 if EditModeManagerFrame then

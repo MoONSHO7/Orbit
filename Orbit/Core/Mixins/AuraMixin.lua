@@ -46,7 +46,7 @@ function Mixin:FetchAuras(unit, filter, maxCount)
     local auras = {}
     maxCount = maxCount or DEFAULT_AURA_COUNT
 
-    if C_UnitAuras and C_UnitAuras.GetUnitAuras then
+    if C_UnitAuras.GetUnitAuras then
         local ok, result = pcall(C_UnitAuras.GetUnitAuras, unit, filter, nil, nil)
         if ok and type(result) == "table" then
             for i, aura in ipairs(result) do
@@ -110,7 +110,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
 
     -- Apply global font settings
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
-    local fontName = (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font) or "Friz Quadrata TT"
+    local fontName = Orbit.db.GlobalSettings.Font
     local fontPath = (LSM and LSM:Fetch("font", fontName)) or "Fonts\\FRIZQT__.TTF"
     local fontSize = math.max(8, size * 0.4) -- Scale font with icon size, min 8
     icon.count:SetFont(fontPath, fontSize, "OUTLINE")
@@ -180,10 +180,10 @@ function Mixin:ApplyAuraCount(icon, aura, unit)
         return
     end
 
-    -- Method 1: Use GetAuraApplicationDisplayCount (12.0+ API)
+    -- Use GetAuraApplicationDisplayCount (12.0+ API)
     -- Usage: GetAuraApplicationDisplayCount(unit, auraInstanceID, min, max)
     -- This handles logic (like min count 2) inside the API, returning a value only if it should show.
-    if C_UnitAuras and C_UnitAuras.GetAuraApplicationDisplayCount and aura.auraInstanceID and unit then
+    if C_UnitAuras.GetAuraApplicationDisplayCount and aura.auraInstanceID and unit then
         -- Pass 2 as min count (don't show 1), 1000 as max
         local ok, displayCount = pcall(C_UnitAuras.GetAuraApplicationDisplayCount, unit, aura.auraInstanceID, 2, 1000)
 
@@ -196,18 +196,7 @@ function Mixin:ApplyAuraCount(icon, aura, unit)
         end
     end
 
-    -- Method 2: Fallback to aura.applications for non-secret values
-    -- Only use this if we can safely compare the value (not secret)
-    local count = aura.applications or aura.count
-    if count and (not canaccessvalue or canaccessvalue(count)) then
-        if type(count) == "number" and count > 1 then
-            icon.count:SetText(count)
-            icon.count:Show()
-            return
-        end
-    end
-
-    -- No valid count or secret fallback - hide the count
+    -- No valid count - hide the count
     icon.count:SetText("")
     icon.count:Hide()
 end
@@ -441,33 +430,12 @@ function Mixin:SetupAuraTooltip(icon, aura, unit, filter)
         local anchor = GetSmartTooltipAnchor(self)
         GameTooltip:SetOwner(self, anchor)
 
-        local success = false
-
-        -- Method 1: Use auraInstanceID-based APIs (secret-value safe, preferred)
+        -- Use auraInstanceID-based APIs (secret-value safe, 12.0+)
         if aura.auraInstanceID then
             if isHarmful then
-                success =
-                    pcall(GameTooltip.SetUnitDebuffByAuraInstanceID, GameTooltip, unit, aura.auraInstanceID, filter)
+                pcall(GameTooltip.SetUnitDebuffByAuraInstanceID, GameTooltip, unit, aura.auraInstanceID, filter)
             else
-                success = pcall(GameTooltip.SetUnitBuffByAuraInstanceID, GameTooltip, unit, aura.auraInstanceID, filter)
-            end
-        end
-
-        -- Method 2: Fallback to index-based SetUnitAura (only if out of combat)
-        if not success and aura.index and not InCombatLockdown() then
-            success = pcall(GameTooltip.SetUnitAura, GameTooltip, unit, aura.index, filter)
-        end
-
-        -- Method 3: Last resort - use spellId but ONLY if we can verify it's not secret
-        if not success and aura.spellId then
-            -- Check if spellId is a secret value before using
-            if not issecretvalue or not issecretvalue(aura.spellId) then
-                pcall(GameTooltip.SetSpellByID, GameTooltip, aura.spellId)
-                GameTooltip:AddLine(" ")
-                GameTooltip:AddLine("|cff777777(Limited info during combat)|r")
-            else
-                -- spellId is secret, show nothing or generic text
-                GameTooltip:AddLine("|cff777777Aura info unavailable during combat|r")
+                pcall(GameTooltip.SetUnitBuffByAuraInstanceID, GameTooltip, unit, aura.auraInstanceID, filter)
             end
         end
 

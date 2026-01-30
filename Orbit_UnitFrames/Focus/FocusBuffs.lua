@@ -22,7 +22,7 @@ local Frame
 -- [ HELPERS ]----------------------------------------------------------------------------------------
 function Plugin:IsEnabled()
     local focusPlugin = Orbit:GetPlugin("Orbit_FocusFrame")
-    local FOCUS_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Focus) or 3
+    local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus
 
     if focusPlugin and focusPlugin.GetSetting then
         local enabled = focusPlugin:GetSetting(FOCUS_FRAME_INDEX, "EnableBuffs")
@@ -233,7 +233,7 @@ function Plugin:UpdateBuffs()
     local skinSettings = {
         zoom = 0,
         borderStyle = 1,
-        borderSize = (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize) or 1,
+        borderSize = Orbit.db.GlobalSettings.BorderSize,
         showTimer = false,
     }
 

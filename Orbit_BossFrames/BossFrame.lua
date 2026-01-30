@@ -40,7 +40,7 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
 }, Orbit.Constants.PluginGroups.BossFrames)
 
 -- Mixin Preview Logic
-Mixin(Plugin, Orbit.BossFramePreviewMixin, Orbit.AuraMixin)
+Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.BossFramePreviewMixin, Orbit.AuraMixin)
 
 -- Check if a component is disabled (Canvas Mode drag-to-disable)
 function Plugin:IsComponentDisabled(componentKey)
@@ -58,45 +58,15 @@ end
 
 -- Use centralized power colors from Constants
 local function GetPowerColor(powerType)
-    return Orbit.Constants.Colors.PowerType[powerType] or { r = 0.5, g = 0.5, b = 0.5 }
+    return Orbit.Constants.Colors:GetPowerColor(powerType)
 end
 
 -- [ POWER BAR CREATION & UPDATE ]-------------------------------------------------------------------
 
+-- Use UnitFrameMixin:UpdateFrameLayout for consistent layout logic
+-- Wrapper for backwards compatibility with existing call sites
 local function UpdateFrameLayout(frame, borderSize)
-    local height = frame:GetHeight()
-    if height < 1 then
-        return
-    end -- Guard against uninitialized height
-
-    local powerHeight = height * (POWER_BAR_HEIGHT_RATIO or 0.2)
-    -- Use the actual pixel-scaled border size if available, otherwise the passed borderSize
-    local inset = frame.borderPixelSize or borderSize or 0
-
-    if frame.Power then
-        frame.Power:ClearAllPoints()
-        -- Inset by border size to ensure main border is visible around it
-        frame.Power:SetPoint("BOTTOMLEFT", inset, inset)
-        frame.Power:SetPoint("BOTTOMRIGHT", -inset, inset)
-        frame.Power:SetHeight(powerHeight)
-        -- Ensure Power is above Health
-        frame.Power:SetFrameLevel(frame:GetFrameLevel() + 3)
-    end
-
-    if frame.Health then
-        frame.Health:ClearAllPoints()
-        frame.Health:SetPoint("TOPLEFT", inset, -inset)
-        -- Ensure Health is below Power
-        frame.Health:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, powerHeight + inset)
-        frame.Health:SetFrameLevel(frame:GetFrameLevel() + 2)
-
-        -- Sync HealthDamageBar to Health position so red damage chunk appears correctly behind Health
-        if frame.HealthDamageBar then
-            frame.HealthDamageBar:ClearAllPoints()
-            frame.HealthDamageBar:SetAllPoints(frame.Health)
-            frame.HealthDamageBar:SetFrameLevel(frame:GetFrameLevel() + 1)
-        end
-    end
+    Plugin:UpdateFrameLayout(frame, borderSize, { powerBarRatio = POWER_BAR_HEIGHT_RATIO })
 end
 
 local function CreatePowerBar(parent, unit, plugin)
@@ -213,7 +183,7 @@ local function UpdateDebuffs(frame, plugin)
     )
 
     -- Prepare Skin Settings
-    local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
+    local globalBorder = Orbit.db.GlobalSettings.BorderSize
     local Constants = Orbit.Constants
     local skinSettings = {
         zoom = 0, -- Inherit/Default
@@ -355,7 +325,7 @@ local function SetupCastBarHooks(castBar, unit)
         if nativeBar.Icon then
             iconTexture = nativeBar.Icon:GetTexture()
         end
-        if not iconTexture and C_Spell and C_Spell.GetSpellTexture and nativeBar.spellID then
+        if not iconTexture and C_Spell.GetSpellTexture and nativeBar.spellID then
             iconTexture = C_Spell.GetSpellTexture(nativeBar.spellID)
         end
 
@@ -435,10 +405,10 @@ local function SetupCastBarHooks(castBar, unit)
 
         -- Color based on interruptible
         if nativeBar.notInterruptible then
-            local color = plugin:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
+            local color = plugin:GetSetting(1, "NonInterruptibleColor")
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         else
-            local color = plugin:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
+            local color = plugin:GetSetting(1, "CastBarColor")
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         end
 
@@ -504,14 +474,14 @@ local function SetupCastBarHooks(castBar, unit)
             -- For now defaulting to red, or checking if InterruptedColor exists
             castBar:SetStatusBarColor(1, 0, 0)
         elseif event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
-            local color = plugin:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
+            local color = plugin:GetSetting(1, "NonInterruptibleColor")
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         elseif
             event == "UNIT_SPELLCAST_INTERRUPTIBLE"
             or event == "UNIT_SPELLCAST_START"
             or event == "UNIT_SPELLCAST_CHANNEL_START"
         then
-            local color = plugin:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
+            local color = plugin:GetSetting(1, "CastBarColor")
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         end
     end)
@@ -538,7 +508,7 @@ local function CreateBossFrame(bossIndex, plugin)
     frame:SetFrameStrata("MEDIUM")
     frame:SetFrameLevel(50 + bossIndex)
 
-    UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize or 1)
+    UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize)
 
     -- Create power bar
     frame.Power = CreatePowerBar(frame, unit, plugin)
@@ -553,7 +523,7 @@ local function CreateBossFrame(bossIndex, plugin)
     frame:SetScript("OnShow", function(self)
         self:UpdateAll()
         UpdatePowerBar(self)
-        UpdateFrameLayout(self, Orbit.db.GlobalSettings.BorderSize or 1) -- Ensure layout is correct on show
+        UpdateFrameLayout(self, Orbit.db.GlobalSettings.BorderSize) -- Ensure layout is correct on show
         UpdateDebuffs(self, plugin)
     end)
 

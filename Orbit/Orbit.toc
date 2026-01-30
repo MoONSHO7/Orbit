@@ -71,6 +71,12 @@ Core\Engine\Frame\Orientation.lua
 Core\Engine\Frame\Selection.lua
 Core\Engine\Frame\Factory.lua
 Core\Engine\Frame\Frame.lua
+# Engine - UnitButton (modular)
+Core\Engine\UnitButton\UnitButtonCore.lua
+Core\Engine\UnitButton\UnitButtonHealth.lua
+Core\Engine\UnitButton\UnitButtonText.lua
+Core\Engine\UnitButton\UnitButtonPrediction.lua
+Core\Engine\UnitButton\UnitButtonCanvas.lua
 Core\Engine\UnitButton.lua
 
 # Services

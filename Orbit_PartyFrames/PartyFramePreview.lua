@@ -10,7 +10,7 @@ local Helpers = nil -- Will be set when first needed
 
 -- Constants
 local MAX_PREVIEW_FRAMES = 5  -- 4 party + 1 potential player
-local DEBOUNCE_DELAY = Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.DefaultDebounce or 0.1
+local DEBOUNCE_DELAY = Orbit.Constants.Timing.DefaultDebounce
 
 -- Combat-safe wrappers (matches PartyFrame.lua)
 local function SafeRegisterUnitWatch(frame)

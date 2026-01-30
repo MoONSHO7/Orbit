@@ -21,7 +21,7 @@ end
 -- Inherit a setting from PlayerFrame (for Target/Focus/Pet consistency)
 function Mixin:GetPlayerSetting(key)
     local playerPlugin = self:GetPlayerFramePlugin()
-    local playerIndex = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Player) or 1
+    local playerIndex = Enum.EditModeUnitFrameSystemIndices.Player
     if playerPlugin and playerPlugin.GetSetting then
         return playerPlugin:GetSetting(playerIndex, key)
     end
@@ -149,7 +149,7 @@ function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
     options = options or {}
 
     -- Determine settings source
-    local borderSize = Orbit.db.GlobalSettings.BorderSize or 1
+    local borderSize = Orbit.db.GlobalSettings.BorderSize
     local textureName = self:GetInheritedSetting(systemIndex, "Texture", options.inheritFromPlayer)
     local healthTextMode = self:GetInheritedSetting(systemIndex, "HealthTextMode", options.inheritFromPlayer)
 
@@ -181,6 +181,67 @@ function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
     if frame.SetAbsorbsEnabled then
         frame:SetAbsorbsEnabled(true)
         frame:SetHealAbsorbsEnabled(true)
+    end
+end
+
+-- [ FRAME LAYOUT (Health + Power Bars) ]------------------------------------------------------------
+-- Shared layout logic for unit frames with Health and Power bars
+-- Used by PartyFrames, BossFrames, and potentially other unit frame types
+
+local DEFAULT_POWER_BAR_RATIO = 0.2  -- 20% of frame height
+
+--- Update the layout of Health and Power bars within a unit frame
+-- @param frame Frame - the unit frame with Health and optionally Power bars
+-- @param borderSize number - border inset size
+-- @param options table (optional) - { showPowerBar = bool, powerBarRatio = number }
+function Mixin:UpdateFrameLayout(frame, borderSize, options)
+    if not frame then return end
+    
+    local height = frame:GetHeight()
+    if height < 1 then return end
+    
+    options = options or {}
+    local showPowerBar = options.showPowerBar
+    if showPowerBar == nil then showPowerBar = true end
+    
+    local powerBarRatio = options.powerBarRatio or DEFAULT_POWER_BAR_RATIO
+    local powerHeight = showPowerBar and (height * powerBarRatio) or 0
+    
+    -- Use the actual pixel-scaled border size if available
+    local inset = frame.borderPixelSize or borderSize or 0
+    
+    -- Position Power bar
+    if frame.Power then
+        if showPowerBar then
+            frame.Power:ClearAllPoints()
+            frame.Power:SetPoint("BOTTOMLEFT", inset, inset)
+            frame.Power:SetPoint("BOTTOMRIGHT", -inset, inset)
+            frame.Power:SetHeight(powerHeight)
+            frame.Power:SetFrameLevel(frame:GetFrameLevel() + 3)
+            frame.Power:Show()
+        else
+            frame.Power:Hide()
+        end
+    end
+    
+    -- Position Health bar
+    if frame.Health then
+        frame.Health:ClearAllPoints()
+        frame.Health:SetPoint("TOPLEFT", inset, -inset)
+        if showPowerBar then
+            frame.Health:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, powerHeight + inset)
+        else
+            -- Health bar fills entire frame when power bar hidden
+            frame.Health:SetPoint("BOTTOMRIGHT", -inset, inset)
+        end
+        frame.Health:SetFrameLevel(frame:GetFrameLevel() + 2)
+        
+        -- Sync HealthDamageBar (red damage chunk) to Health position
+        if frame.HealthDamageBar then
+            frame.HealthDamageBar:ClearAllPoints()
+            frame.HealthDamageBar:SetAllPoints(frame.Health)
+            frame.HealthDamageBar:SetFrameLevel(frame:GetFrameLevel() + 1)
+        end
     end
 end
 

@@ -82,7 +82,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         if fontPath and fontSize then
             visual:SetFont(fontPath, fontSize, flags)
         else
-            local globalFontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
+            local globalFontName = Orbit.db.GlobalSettings.Font
             local fallbackPath = LSM:Fetch("font", globalFontName) or Orbit.Constants.Settings.Font.FallbackPath
             local fallbackSize = Orbit.Constants.UI.UnitFrameTextSize or 12
             visual:SetFont(fallbackPath, fallbackSize, "OUTLINE")

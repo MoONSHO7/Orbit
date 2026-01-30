@@ -5,7 +5,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerFrame"
-local PLAYER_FRAME_INDEX = (Enum.EditModeUnitFrameSystemIndices and Enum.EditModeUnitFrameSystemIndices.Player) or 1
+local PLAYER_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Player
 
 
 -- Raid Target Icon constants
