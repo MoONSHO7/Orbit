@@ -793,27 +793,11 @@ function Plugin:OnLoad()
         self.editModeCallbacksRegistered = true
         
         EventRegistry:RegisterCallback("EditMode.Enter", function()
-            -- Temporarily unregister driver and show container for Edit Mode
+            -- Edit Mode auto-exits on combat start, so no deferral needed here
             if not InCombatLockdown() then
                 UnregisterStateDriver(self.container, "visibility")
                 self.container:Show()
                 self:UpdateContainerSize()
-            else
-                -- Queue for after combat
-                if not self.editModeEnterCleanupFrame then
-                    self.editModeEnterCleanupFrame = CreateFrame("Frame")
-                    self.editModeEnterCleanupFrame:SetScript("OnEvent", function(f, event)
-                        if event == "PLAYER_REGEN_ENABLED" then
-                            f:UnregisterEvent("PLAYER_REGEN_ENABLED")
-                            if self.isPreviewActive then
-                                UnregisterStateDriver(self.container, "visibility")
-                                self.container:Show()
-                                self:UpdateContainerSize()
-                            end
-                        end
-                    end)
-                end
-                self.editModeEnterCleanupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
             end
             
             self:ShowPreview()
@@ -828,20 +812,6 @@ function Plugin:OnLoad()
                 local visibilityDriver = "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
                 RegisterStateDriver(self.container, "visibility", visibilityDriver)
                 self:UpdateContainerSize()
-            else
-                -- Queue for after combat
-                if not self.editModeExitCleanupFrame then
-                    self.editModeExitCleanupFrame = CreateFrame("Frame")
-                    self.editModeExitCleanupFrame:SetScript("OnEvent", function(f, event)
-                        if event == "PLAYER_REGEN_ENABLED" then
-                            f:UnregisterEvent("PLAYER_REGEN_ENABLED")
-                            local visibilityDriver = "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
-                            RegisterStateDriver(self.container, "visibility", visibilityDriver)
-                            self:UpdateContainerSize()
-                        end
-                    end)
-                end
-                self.editModeExitCleanupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
             end
         end, self)
     end

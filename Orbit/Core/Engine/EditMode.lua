@@ -6,31 +6,16 @@ local Engine = Orbit.Engine
 Engine.EditMode = Engine.EditMode or {}
 local EditMode = Engine.EditMode
 
--- [ GUARD AND DEFER LOGIC ]------------------------------------------------------------------------
-
-local function GuardAndDefer(callback)
-    if InCombatLockdown() then
-        local f = CreateFrame("Frame")
-        f:RegisterEvent("PLAYER_REGEN_ENABLED")
-        f:SetScript("OnEvent", function(s)
-            s:UnregisterAllEvents()
-            callback()
-        end)
-    else
-        callback()
-    end
-end
-
 -- [ API ]-------------------------------------------------------------------------------------------
+-- Note: GuardAndDefer was removed. Since we auto-exit Edit Mode on combat start,
+-- these callbacks will never fire during combat lockdown.
 
 function EditMode:RegisterEnterCallback(callback, owner)
     if not EventRegistry then
         return
     end
 
-    EventRegistry:RegisterCallback("EditMode.Enter", function()
-        GuardAndDefer(callback)
-    end, owner)
+    EventRegistry:RegisterCallback("EditMode.Enter", callback, owner)
 end
 
 function EditMode:RegisterExitCallback(callback, owner)
@@ -38,9 +23,7 @@ function EditMode:RegisterExitCallback(callback, owner)
         return
     end
 
-    EventRegistry:RegisterCallback("EditMode.Exit", function()
-        GuardAndDefer(callback)
-    end, owner)
+    EventRegistry:RegisterCallback("EditMode.Exit", callback, owner)
 end
 
 function EditMode:RegisterCallbacks(callbacks, owner)
