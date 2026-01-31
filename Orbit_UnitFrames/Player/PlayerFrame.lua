@@ -44,6 +44,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
             LeaderIcon = { anchorX = "LEFT", offsetX = 20, anchorY = "TOP", offsetY = -2 },
             MarkerIcon = { anchorX = "RIGHT", offsetX = -2, anchorY = "TOP", offsetY = -2 },
             GroupPositionText = { anchorX = "LEFT", offsetX = 2, anchorY = "BOTTOM", offsetY = 2, justifyH = "LEFT" },
+            RestingIcon = { anchorX = "LEFT", offsetX = -30, anchorY = "CENTER", offsetY = 0 },
         },
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
@@ -272,6 +273,56 @@ function Plugin:OnLoad()
         self.frame.ReadyCheckIcon:Hide()
     end
 
+    -- Create RestingIcon (animated FlipBook)
+    if not self.frame.RestingIcon then
+        local restingIconSize = 30
+        self.frame.RestingIcon = CreateFrame("Frame", nil, self.frame.OverlayFrame)
+        self.frame.RestingIcon:SetSize(restingIconSize, restingIconSize)
+        self.frame.RestingIcon.orbitOriginalWidth = restingIconSize
+        self.frame.RestingIcon.orbitOriginalHeight = restingIconSize
+        self.frame.RestingIcon:SetPoint("RIGHT", self.frame, "LEFT", -2, 0)
+
+        self.frame.RestingIcon.Texture = self.frame.RestingIcon:CreateTexture(nil, "ARTWORK")
+        self.frame.RestingIcon.Texture:SetAllPoints()
+        self.frame.RestingIcon.Texture:SetAtlas("UI-HUD-UnitFrame-Player-Rest-Flipbook")
+        -- Icon alias for Canvas Mode detection
+        self.frame.RestingIcon.Icon = self.frame.RestingIcon.Texture
+        -- Preview TexCoords for Canvas Mode (frame 20 of 7x6 grid - shows full zZZ)
+        self.frame.RestingIcon.Icon.orbitPreviewTexCoord = { 2/6, 3/6, 3/7, 4/7 }
+
+        -- FlipBook animation parameters (matches Blizzard's native implementation)
+        local FLIPBOOK_ROWS = 7
+        local FLIPBOOK_COLS = 6
+        local FLIPBOOK_FRAMES = 42
+        local FLIPBOOK_DURATION = 1.5
+        local frameTime = FLIPBOOK_DURATION / FLIPBOOK_FRAMES
+        local frameWidth = 1 / FLIPBOOK_COLS
+        local frameHeight = 1 / FLIPBOOK_ROWS
+
+        self.frame.RestingIcon.currentFrame = 0
+        self.frame.RestingIcon.elapsed = 0
+
+        local function SetFlipBookFrame(frameIndex)
+            local col = frameIndex % FLIPBOOK_COLS
+            local row = math.floor(frameIndex / FLIPBOOK_COLS)
+            self.frame.RestingIcon.Texture:SetTexCoord(
+                col * frameWidth, (col + 1) * frameWidth,
+                row * frameHeight, (row + 1) * frameHeight
+            )
+        end
+        SetFlipBookFrame(0)
+
+        self.frame.RestingIcon:SetScript("OnUpdate", function(restFrame, elapsed)
+            restFrame.elapsed = restFrame.elapsed + elapsed
+            if restFrame.elapsed >= frameTime then
+                restFrame.elapsed = restFrame.elapsed - frameTime
+                restFrame.currentFrame = (restFrame.currentFrame + 1) % FLIPBOOK_FRAMES
+                SetFlipBookFrame(restFrame.currentFrame)
+            end
+        end)
+        self.frame.RestingIcon:Hide()
+    end
+
     -- Register LevelText and CombatIcon for component drag with persistence callbacks
     local pluginRef = self
     if OrbitEngine.ComponentDrag then
@@ -331,6 +382,14 @@ function Plugin:OnLoad()
                 pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
             end
         })
+        OrbitEngine.ComponentDrag:Attach(self.frame.RestingIcon, self.frame, {
+            key = "RestingIcon",
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY)
+                local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
+                positions.RestingIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY }
+                pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
+            end
+        })
     end
 
     -- Register combat events for CombatIcon
@@ -338,9 +397,10 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("PLAYER_REGEN_ENABLED")
     self.frame:RegisterEvent("PLAYER_LEVEL_UP")
 
-    -- Register events for Role/Leader/Marker/GroupPosition
+    -- Register events for Role/Leader/Marker/GroupPosition/Resting
     self.frame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
     self.frame:RegisterEvent("GROUP_ROSTER_UPDATE")
+    self.frame:RegisterEvent("PLAYER_UPDATE_RESTING")
     self.frame:RegisterEvent("PARTY_LEADER_CHANGED")
     self.frame:RegisterEvent("RAID_TARGET_UPDATE")
     
@@ -386,6 +446,9 @@ function Plugin:OnLoad()
             return
         elseif event == "READY_CHECK" or event == "READY_CHECK_CONFIRM" or event == "READY_CHECK_FINISHED" then
             self:UpdateReadyCheck(f, self)
+            return
+        elseif event == "PLAYER_UPDATE_RESTING" then
+            self:UpdateRestingIcon(f)
             return
         end
         if originalOnEvent then
@@ -444,6 +507,7 @@ function Plugin:ApplySettings(frame)
     self:UpdateMarkerIcon(frame, self)
     self:UpdateGroupPosition(frame, self)
     self:UpdateReadyCheck(frame, self)
+    self:UpdateRestingIcon(frame)
 
     -- 4. Apply Health Text Mode
     local healthTextMode = self:GetSetting(systemIndex, "HealthTextMode") or "percent_short"
@@ -484,4 +548,25 @@ end
 
 -- Icon update functions (UpdateCombatIcon, UpdateRoleIcon, UpdateLeaderIcon, UpdateMarkerIcon, UpdateGroupPosition)
 -- are now provided by StatusIconMixin (mixed in above)
+
+-- UpdateRestingIcon: Shows animated resting icon when player is in a rested area
+function Plugin:UpdateRestingIcon(frame)
+    frame = frame or self.frame
+    if not frame or not frame.RestingIcon then
+        return
+    end
+
+    -- Check if component is disabled via Canvas Mode
+    if self:IsComponentDisabled("RestingIcon") then
+        frame.RestingIcon:Hide()
+        return
+    end
+
+    -- Show when resting (in city/inn)
+    if IsResting() then
+        frame.RestingIcon:Show()
+    else
+        frame.RestingIcon:Hide()
+    end
+end
 

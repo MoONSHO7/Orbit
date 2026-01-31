@@ -188,14 +188,28 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         visual:SetAllPoints(container)
         
         local iconTexture = sourceComponent.Icon
+        local atlasName = iconTexture.GetAtlas and iconTexture:GetAtlas()
         local texturePath = iconTexture:GetTexture()
-        if texturePath then
-            visual:SetTexture(texturePath)
-        end
         
-        local ok, l, r, t, b = pcall(function() return iconTexture:GetTexCoord() end)
-        if ok and l then
-            visual:SetTexCoord(l, r, t, b)
+        if atlasName then
+            -- Handle atlas-based icons (e.g., RestingIcon FlipBook)
+            visual:SetAtlas(atlasName, false)
+            -- Use preview TexCoords if defined (for sprite sheets), otherwise copy current
+            if iconTexture.orbitPreviewTexCoord then
+                local tc = iconTexture.orbitPreviewTexCoord
+                visual:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
+            else
+                local ok, l, r, t, b = pcall(function() return iconTexture:GetTexCoord() end)
+                if ok and l then
+                    visual:SetTexCoord(l, r, t, b)
+                end
+            end
+        elseif texturePath then
+            visual:SetTexture(texturePath)
+            local ok, l, r, t, b = pcall(function() return iconTexture:GetTexCoord() end)
+            if ok and l then
+                visual:SetTexCoord(l, r, t, b)
+            end
         end
         
         local srcWidth, srcHeight = 24, 24
