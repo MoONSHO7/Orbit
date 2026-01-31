@@ -114,6 +114,95 @@ end
 
 -- [ BACKDROP COLOR APPLICATION ]---------------------------------------------------------------------
 
+-- [ PREVIEW COLOR HELPERS ]--------------------------------------------------------------------------
+-- Shared helpers for preview mode color application (reduces duplication in preview mixins)
+
+--- Get the appropriate health bar color for a preview frame
+-- @param isPlayer boolean - whether the unit is a player (uses class color if true)
+-- @param className string - class name for player units (e.g., "WARRIOR", "PRIEST")
+-- @param reaction number - reaction level for NPC units (nil/1 = hostile, 4+ = friendly)
+-- @return r, g, b - color components
+function Mixin:GetPreviewHealthColor(isPlayer, className, reaction)
+    local globalSettings = Orbit.db.GlobalSettings or {}
+    local useClassColors = globalSettings.UseClassColors ~= false  -- Default true
+    
+    if useClassColors then
+        if isPlayer and className then
+            local classColor = C_ClassColor.GetClassColor(className)
+            if classColor then
+                return classColor.r, classColor.g, classColor.b
+            end
+        else
+            -- NPC/Boss - use reaction color (hostile = red)
+            if reaction and reaction >= 4 then
+                return 0.2, 0.8, 0.2  -- Friendly green
+            else
+                return 1, 0.1, 0.1  -- Hostile red
+            end
+        end
+    end
+    
+    -- Fall back to global bar color
+    local barColor = globalSettings.BarColor or { r = 0.2, g = 0.8, b = 0.2 }
+    return barColor.r, barColor.g, barColor.b
+end
+
+--- Get the appropriate text color for a preview frame
+-- @param isPlayer boolean
+-- @param className string
+-- @param reaction number
+-- @return r, g, b, a - color components
+function Mixin:GetPreviewTextColor(isPlayer, className, reaction)
+    local globalSettings = Orbit.db.GlobalSettings or {}
+    local useClassColorFont = globalSettings.UseClassColorFont ~= false  -- Default true
+    
+    if useClassColorFont then
+        if isPlayer and className then
+            local classColor = C_ClassColor.GetClassColor(className)
+            if classColor then
+                return classColor.r, classColor.g, classColor.b, 1
+            end
+        else
+            -- NPC/Boss - use reaction color
+            if reaction and reaction >= 4 then
+                return 0.2, 0.8, 0.2, 1  -- Friendly green
+            else
+                return 1, 0.1, 0.1, 1  -- Hostile red
+            end
+        end
+        -- Fallback to white
+        return 1, 1, 1, 1
+    end
+    
+    local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
+    return fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1
+end
+
+--- Apply backdrop color to a preview frame
+-- @param frame Frame - the frame with a .bg texture
+function Mixin:ApplyPreviewBackdrop(frame)
+    if not frame or not frame.bg then
+        return
+    end
+    
+    local globalSettings = Orbit.db.GlobalSettings or {}
+    local classColorBackdrop = globalSettings.ClassColorBackground or false
+    local backdropColor = globalSettings.BackdropColour or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
+    
+    if classColorBackdrop then
+        local _, playerClass = UnitClass("player")
+        if playerClass then
+            local classColor = C_ClassColor.GetClassColor(playerClass)
+            if classColor then
+                frame.bg:SetColorTexture(classColor.r, classColor.g, classColor.b, 1)
+                return
+            end
+        end
+    end
+    
+    frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.5)
+end
+
 function Mixin:UpdateBackdropColor(frame, systemIndex, inheritFromPlayer)
     if not frame then
         return

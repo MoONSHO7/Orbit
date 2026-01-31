@@ -99,11 +99,12 @@ end
 function Plugin:StartLoop()
     if self.timer then
         self.timer:Cancel()
+        self.timer = nil
     end
 
     -- Default to 1s update to avoid spam
-    -- We could make this configurable if requested
     self.timer = C_Timer.NewTicker(1, function()
+        if not self.timer then return end  -- Guard against cancelled timer firing
         self:UpdateStats()
     end)
 

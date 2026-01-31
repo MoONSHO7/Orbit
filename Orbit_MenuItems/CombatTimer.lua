@@ -101,10 +101,12 @@ end
 function Plugin:StartLoop()
     if self.timer then
         self.timer:Cancel()
+        self.timer = nil
     end
 
     -- Update every 0.1s for responsiveness
     self.timer = C_Timer.NewTicker(0.1, function()
+        if not self.timer then return end  -- Guard against cancelled timer firing
         self:UpdateTimer()
     end)
 

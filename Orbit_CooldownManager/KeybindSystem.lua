@@ -150,6 +150,9 @@ local function InvalidateCache()
     lastCacheUpdate = 0
 end
 
+-- Throttle cache timestamp updates to avoid excessive time comparisons
+-- Note: Actual cache invalidation is event-driven (UPDATE_BINDINGS, etc.)
+-- This function only updates the "last checked" timestamp for freshness checks
 local function EnsureCacheFresh()
     local now = GetTime()
     if now - lastCacheUpdate < CACHE_INTERVAL then
@@ -214,10 +217,22 @@ end
 
 --[ Initial Setup ]------------------------------------------------------------
 -- Attach methods to Plugin after a delay to ensure it's registered
+-- Uses retry logic to handle race conditions during addon loading
 
-C_Timer.After(0.1, function()
+local MAX_ATTACH_ATTEMPTS = 5
+local ATTACH_RETRY_DELAY = 0.2
+local attachAttempts = 0
+
+local function AttachToPlugin()
+    attachAttempts = attachAttempts + 1
     local plugin = GetPlugin()
+    
     if not plugin then
+        if attachAttempts < MAX_ATTACH_ATTEMPTS then
+            C_Timer.After(ATTACH_RETRY_DELAY, AttachToPlugin)
+        else
+            Orbit:Print("|cFFFF0000[KeybindSystem]|r Failed to attach - CooldownManager plugin not found after", MAX_ATTACH_ATTEMPTS, "attempts")
+        end
         return
     end
     
@@ -226,10 +241,12 @@ C_Timer.After(0.1, function()
     plugin.InvalidateKeybindCache = InvalidateCache
     
     -- Schedule layout refresh after action bars are ready
-    C_Timer.After(0.9, function()
+    C_Timer.After(0.5, function()
         InvalidateCache()
         if plugin.ApplyAll then
             plugin:ApplyAll()
         end
     end)
-end)
+end
+
+C_Timer.After(0.1, AttachToPlugin)

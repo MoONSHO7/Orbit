@@ -184,12 +184,8 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
     local borderSize = (self.GetPlayerSetting and self:GetPlayerSetting("BorderSize")) or 1
     
-    -- Get Colors tab global settings
+    -- Get Colors tab global settings (for reference only - helpers read them)
     local globalSettings = Orbit.db.GlobalSettings or {}
-    local useClassColors = globalSettings.UseClassColors ~= false -- Default true
-    local globalBarColor = globalSettings.BarColor or { r = 0.2, g = 0.8, b = 0.2, a = 1 }
-    local classColorBackdrop = globalSettings.ClassColorBackground or false
-    local backdropColor = globalSettings.BackdropColour or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
 
     for i = 1, MAX_PREVIEW_FRAMES do
         if self.frames[i] and self.frames[i].preview then
@@ -201,20 +197,9 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
             -- Update layout for power bar positioning
             Helpers:UpdateFrameLayout(frame, borderSize)
             
-            -- Apply backdrop color (respects ClassColorBackground setting)
-            if frame.bg then
-                if classColorBackdrop then
-                    -- Use player's class color for backdrop
-                    local _, playerClass = UnitClass("player")
-                    if playerClass then
-                        local classColor = C_ClassColor.GetClassColor(playerClass)
-                        if classColor then
-                            frame.bg:SetColorTexture(classColor.r, classColor.g, classColor.b, 1)
-                        end
-                    end
-                else
-                    frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.5)
-                end
+            -- Apply backdrop color using shared helper
+            if self.ApplyPreviewBackdrop then
+                self:ApplyPreviewBackdrop(frame)
             end
 
             -- Apply texture and set up health bar
@@ -225,16 +210,16 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 frame.Health:SetMinMaxValues(0, 100)
                 frame.Health:SetValue(PREVIEW_DEFAULTS.HealthPercents[i])
 
-                -- Apply color based on UseClassColors setting
-                if useClassColors then
-                    -- Class color from preview defaults
+                -- Apply color using shared helper (party members are players)
+                if self.GetPreviewHealthColor then
+                    local r, g, b = self:GetPreviewHealthColor(true, PREVIEW_DEFAULTS.Classes[i], nil)
+                    frame.Health:SetStatusBarColor(r, g, b)
+                else
+                    -- Fallback to class color
                     local classColor = C_ClassColor.GetClassColor(PREVIEW_DEFAULTS.Classes[i])
                     if classColor then
                         frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b)
                     end
-                else
-                    -- Use global Health Color
-                    frame.Health:SetStatusBarColor(globalBarColor.r, globalBarColor.g, globalBarColor.b)
                 end
                 frame.Health:Show()
             end
@@ -286,20 +271,12 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 else
                     frame.Name:SetText(PREVIEW_DEFAULTS.Names[i])
                     
-                    -- Apply font color based on UseClassColorFont setting
-                    local useClassColorFont = globalSettings.UseClassColorFont ~= false  -- Default true
-                    if useClassColorFont then
-                        -- Use class color from preview defaults
-                        local classColor = C_ClassColor.GetClassColor(PREVIEW_DEFAULTS.Classes[i])
-                        if classColor then
-                            frame.Name:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
-                        else
-                            frame.Name:SetTextColor(1, 1, 1, 1)
-                        end
+                    -- Apply font color using shared helper (party members are players)
+                    if self.GetPreviewTextColor then
+                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_DEFAULTS.Classes[i], nil)
+                        frame.Name:SetTextColor(r, g, b, a)
                     else
-                        -- Use global font color
-                        local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
-                        frame.Name:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
+                        frame.Name:SetTextColor(1, 1, 1, 1)
                     end
                     frame.Name:Show()
                 end
@@ -312,18 +289,11 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 else
                     frame.HealthText:SetText(PREVIEW_DEFAULTS.HealthPercents[i] .. "%")
                     -- Health text uses same font color logic as name
-                    local useClassColorFont = globalSettings.UseClassColorFont ~= false
-                    if useClassColorFont then
-                        -- Use class color from preview defaults
-                        local classColor = C_ClassColor.GetClassColor(PREVIEW_DEFAULTS.Classes[i])
-                        if classColor then
-                            frame.HealthText:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
-                        else
-                            frame.HealthText:SetTextColor(1, 1, 1, 1)
-                        end
+                    if self.GetPreviewTextColor then
+                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_DEFAULTS.Classes[i], nil)
+                        frame.HealthText:SetTextColor(r, g, b, a)
                     else
-                        local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
-                        frame.HealthText:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
+                        frame.HealthText:SetTextColor(1, 1, 1, 1)
                     end
                     frame.HealthText:Show()
                 end

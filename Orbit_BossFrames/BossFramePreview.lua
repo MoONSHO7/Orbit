@@ -97,12 +97,8 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
     local textureName = self:GetSetting(1, "Texture")
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
     
-    -- Get Colors tab global settings
+    -- Get Colors tab global settings (for reference only - helpers read them)
     local globalSettings = Orbit.db.GlobalSettings or {}
-    local useClassColors = globalSettings.UseClassColors ~= false -- Default true
-    local globalBarColor = globalSettings.BarColor or { r = 0.2, g = 0.8, b = 0.2, a = 1 }
-    local classColorBackdrop = globalSettings.ClassColorBackground or false
-    local backdropColor = globalSettings.BackdropColour or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
 
     -- Build debuff icon list from sample icons (no table allocation per call)
     local maxDebuffs = self:GetSetting(1, "MaxDebuffs") or 4
@@ -114,20 +110,9 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
             -- Set frame size
             frame:SetSize(width, height)
             
-            -- Apply backdrop color (respects ClassColorBackground setting)
-            if frame.bg then
-                if classColorBackdrop then
-                    -- Use player's class color for backdrop
-                    local _, playerClass = UnitClass("player")
-                    if playerClass then
-                        local classColor = C_ClassColor.GetClassColor(playerClass)
-                        if classColor then
-                            frame.bg:SetColorTexture(classColor.r, classColor.g, classColor.b, 1)
-                        end
-                    end
-                else
-                    frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.5)
-                end
+            -- Apply backdrop color using shared helper
+            if self.ApplyPreviewBackdrop then
+                self:ApplyPreviewBackdrop(frame)
             end
 
             -- Apply texture and set up health bar
@@ -142,13 +127,12 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                 frame.Health:SetMinMaxValues(0, 100)
                 frame.Health:SetValue(PREVIEW_DEFAULTS.HealthPercent)
                 
-                -- Apply color based on UseClassColors setting
-                if useClassColors then
-                    -- Bosses are hostile - use reaction color (red)
-                    frame.Health:SetStatusBarColor(1, 0.1, 0.1)
+                -- Apply color using shared helper (bosses are hostile NPCs)
+                if self.GetPreviewHealthColor then
+                    local r, g, b = self:GetPreviewHealthColor(false, nil, 1)  -- reaction 1 = hostile
+                    frame.Health:SetStatusBarColor(r, g, b)
                 else
-                    -- Use global Health Color
-                    frame.Health:SetStatusBarColor(globalBarColor.r, globalBarColor.g, globalBarColor.b)
+                    frame.Health:SetStatusBarColor(1, 0.1, 0.1)
                 end
                 frame.Health:Show()
             end
@@ -173,15 +157,12 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
             if frame.Name then
                 frame.Name:SetText("Boss " .. i)
                 
-                -- Apply font color based on UseClassColorFont setting
-                local useClassColorFont = globalSettings.UseClassColorFont ~= false  -- Default true
-                if useClassColorFont then
-                    -- Bosses are hostile NPCs - use red reaction color
-                    frame.Name:SetTextColor(1, 0.1, 0.1, 1)  -- Hostile red
+                -- Apply font color using shared helper (bosses are hostile)
+                if self.GetPreviewTextColor then
+                    local r, g, b, a = self:GetPreviewTextColor(false, nil, 1)  -- reaction 1 = hostile
+                    frame.Name:SetTextColor(r, g, b, a)
                 else
-                    -- Use global font color
-                    local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
-                    frame.Name:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
+                    frame.Name:SetTextColor(1, 0.1, 0.1, 1)
                 end
                 frame.Name:Show()
             end
@@ -190,13 +171,11 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
             if frame.HealthText then
                 frame.HealthText:SetText(PREVIEW_DEFAULTS.HealthPercent .. "%")
                 -- Health text uses same font color logic as name
-                local useClassColorFont = globalSettings.UseClassColorFont ~= false
-                if useClassColorFont then
-                    -- Bosses are hostile NPCs - use red reaction color
-                    frame.HealthText:SetTextColor(1, 0.1, 0.1, 1)  -- Hostile red
+                if self.GetPreviewTextColor then
+                    local r, g, b, a = self:GetPreviewTextColor(false, nil, 1)
+                    frame.HealthText:SetTextColor(r, g, b, a)
                 else
-                    local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
-                    frame.HealthText:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
+                    frame.HealthText:SetTextColor(1, 0.1, 0.1, 1)
                 end
                 frame.HealthText:Show()
             end

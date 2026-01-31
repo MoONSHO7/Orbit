@@ -338,6 +338,10 @@ function Mixin:ApplyPandemicGlow(icon, aura, unit, skinSettings)
             elapsed = 0
 
             local parentIcon = self:GetParent()
+            -- Defensive check: if icon is hidden or recycled, skip update
+            if not parentIcon:IsVisible() then
+                return
+            end
             if not parentIcon.orbitAura or not parentIcon.orbitUnit then
                 return
             end

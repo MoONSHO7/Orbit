@@ -86,8 +86,10 @@ function EventBus:Fire(event, ...)
         return
     end
 
-    -- Snapshot the listener count to avoid issues if listeners are added/removed during iteration
-    -- Iterate backwards to safely handle removals during iteration
+    -- Iterate backwards to safely handle removals during iteration:
+    -- - If a listener removes itself, subsequent iterations still hit valid indices
+    -- - If a listener adds NEW listeners, they will NOT be called in this firing
+    --   (the new listener is appended to the end, and we're iterating backwards)
     for i = #listeners, 1, -1 do
         local listener = listeners[i]
         if listener then
