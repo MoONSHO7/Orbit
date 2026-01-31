@@ -28,8 +28,8 @@ local TYPE_SCHEMAS = {
         controls = {
             { type = "font", key = "Font", label = "Font" },
             { type = "slider", key = "FontSize", label = "Size", min = 8, max = 24, step = 1 },
-            { type = "checkbox", key = "UseClassColour", label = "Class Colour" },
-            { type = "color", key = "CustomColor", label = "Custom Color", hideIf = "UseClassColour" },
+            { type = "checkbox", key = "CustomColor", label = "Custom Color" },
+            { type = "color", key = "CustomColorValue", label = "Color", showIf = "CustomColor" },
         },
     },
     -- Texture/Icon elements (CombatIcon, RareEliteIcon, etc.)
@@ -314,9 +314,9 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
         if key == "FontSize" and visual.GetFont then
             local _, size = visual:GetFont()
             return size and math.floor(size + 0.5)
-        elseif key == "UseClassColour" then
-            return false  -- Default to not using class colour
-        elseif key == "CustomColor" and visual.GetTextColor then
+        elseif key == "CustomColor" then
+            return false  -- Default to not using custom color (use global)
+        elseif key == "CustomColorValue" and visual.GetTextColor then
             local r, g, b, a = visual:GetTextColor()
             return { r = r, g = g, b = b, a = a or 1 }
         elseif key == "Scale" then
@@ -364,23 +364,27 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
             widget:SetPoint("TOPLEFT", self.Content, "TOPLEFT", 0, -yOffset)
             widget:SetPoint("TOPRIGHT", self.Content, "TOPRIGHT", 0, -yOffset)
             
-            -- Track widget by key for hideIf logic
+            -- Track widget by key for conditional visibility
             widget.controlKey = control.key
             widget.hideIf = control.hideIf
+            widget.showIf = control.showIf
             widget.yOffsetPosition = yOffset
             
-            -- Check hideIf condition
+            -- Check conditional visibility (hideIf or showIf)
+            local shouldShow = true
             if control.hideIf then
                 local hideIfValue = self.currentOverrides[control.hideIf]
-                if hideIfValue then
-                    widget:Hide()
-                else
-                    widget:Show()
-                    yOffset = yOffset + widget:GetHeight() + WIDGET_SPACING
-                end
-            else
+                shouldShow = not hideIfValue
+            elseif control.showIf then
+                local showIfValue = self.currentOverrides[control.showIf]
+                shouldShow = showIfValue == true
+            end
+            
+            if shouldShow then
                 widget:Show()
                 yOffset = yOffset + widget:GetHeight() + WIDGET_SPACING
+            else
+                widget:Hide()
             end
             
             self.widgets[widgetIndex] = widget
@@ -425,7 +429,7 @@ function Dialog:OnValueChanged(key, value)
     self.currentOverrides = self.currentOverrides or {}
     self.currentOverrides[key] = value
     
-    -- Handle hideIf conditional visibility and recalculate height
+    -- Handle conditional visibility (hideIf or showIf) and recalculate height
     if self.widgetsByKey then
         local needsHeightRecalc = false
         for widgetKey, widget in pairs(self.widgetsByKey) do
@@ -434,6 +438,13 @@ function Dialog:OnValueChanged(key, value)
                     widget:Hide()
                 else
                     widget:Show()
+                end
+                needsHeightRecalc = true
+            elseif widget.showIf and widget.showIf == key then
+                if value then
+                    widget:Show()
+                else
+                    widget:Hide()
                 end
                 needsHeightRecalc = true
             end
@@ -482,27 +493,40 @@ function Dialog:ApplyStyle(container, key, value)
             flags = (flags and flags ~= "") and flags or "OUTLINE"
             visual:SetFont(fontPath, size or 12, flags)
         end
-    elseif key == "UseClassColour" and visual.SetTextColor then
+    elseif key == "CustomColor" and visual.SetTextColor then
+        -- CustomColor checkbox toggled
         if value then
-            -- Apply class colour
-            local _, playerClass = UnitClass("player")
-            local classColor = RAID_CLASS_COLORS[playerClass]
-            if classColor then
-                visual:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
-            end
-        else
-            -- Revert to custom color or white
-            local customColor = self.currentOverrides and self.currentOverrides.CustomColor
-            if customColor and type(customColor) == "table" then
-                visual:SetTextColor(customColor.r or 1, customColor.g or 1, customColor.b or 1, customColor.a or 1)
+            -- Apply custom color value if set
+            local customColorValue = self.currentOverrides and self.currentOverrides.CustomColorValue
+            if customColorValue and type(customColorValue) == "table" then
+                visual:SetTextColor(customColorValue.r or 1, customColorValue.g or 1, customColorValue.b or 1, customColorValue.a or 1)
             else
                 visual:SetTextColor(1, 1, 1, 1)  -- Default white
             end
+        else
+            -- Revert to global font color setting
+            local globalSettings = Orbit.db and Orbit.db.GlobalSettings or {}
+            local useClassColorFont = globalSettings.UseClassColorFont ~= false  -- Default true
+            
+            if useClassColorFont then
+                -- Use class color
+                local _, playerClass = UnitClass("player")
+                local classColor = RAID_CLASS_COLORS[playerClass]
+                if classColor then
+                    visual:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
+                else
+                    visual:SetTextColor(1, 1, 1, 1)
+                end
+            else
+                -- Use global font color
+                local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
+                visual:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
+            end
         end
-    elseif key == "CustomColor" and visual.SetTextColor then
-        -- Only apply if UseClassColour is not enabled
-        local useClass = self.currentOverrides and self.currentOverrides.UseClassColour
-        if not useClass and type(value) == "table" then
+    elseif key == "CustomColorValue" and visual.SetTextColor then
+        -- Only apply if CustomColor checkbox is enabled
+        local useCustom = self.currentOverrides and self.currentOverrides.CustomColor
+        if useCustom and type(value) == "table" then
             visual:SetTextColor(value.r or 1, value.g or 1, value.b or 1, value.a or 1)
         end
     elseif key == "Scale" then
@@ -530,7 +554,7 @@ end
 function Dialog:ApplyAll(container, overrides)
     if not container or not overrides then return end
     
-    -- Set context so ApplyStyle can access related values (e.g., CustomColor when UseClassColour is false)
+    -- Set context so ApplyStyle can access related values (e.g., CustomColorValue when CustomColor is enabled)
     local previousOverrides = self.currentOverrides
     self.currentOverrides = overrides
     

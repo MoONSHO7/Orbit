@@ -240,19 +240,11 @@ function Plugin:OnLoad()
         Frame.StatusBarContainer = CreateFrame("Frame", nil, Frame, "BackdropTemplate")
         Frame.StatusBarContainer:SetAllPoints()
         Frame.StatusBarContainer:Hide()
+        -- Clear any backdrop from BackdropTemplate
+        Frame.StatusBarContainer:SetBackdrop(nil)
 
-        -- Background
-        local bg = Frame.StatusBarContainer:CreateTexture(nil, "BACKGROUND")
-        bg:SetAllPoints()
-
-        local color = self:GetSetting(SYSTEM_INDEX, "BackdropColour")
-        if color then
-            bg:SetColorTexture(color.r, color.g, color.b, color.a or 0.9)
-        else
-            local c = Orbit.Colors.Background
-            bg:SetColorTexture(c.r, c.g, c.b, c.a or 0.9)
-        end
-        Frame.StatusBarContainer.bg = bg
+        -- NOTE: Background is created by ClassBar:SkinStatusBar (container.orbitBg)
+        -- Do NOT create a second bg texture here or they will overlap and double the darkness!
 
         -- StatusBar itself
         Frame.StatusBar = CreateFrame("StatusBar", nil, Frame.StatusBarContainer)
@@ -262,7 +254,7 @@ function Plugin:OnLoad()
         Frame.StatusBar:SetValue(0)
         Frame.StatusBar:SetStatusBarTexture(LSM:Fetch("statusbar", "Melli"))
 
-        -- Apply default border using ClassBar skin
+        -- Apply default border using ClassBar skin (creates orbitBg for background)
         Orbit.Skin.ClassBar:SkinStatusBar(Frame.StatusBarContainer, Frame.StatusBar, { 
             borderSize = 1, 
             texture = "Melli" 
@@ -511,6 +503,14 @@ function Plugin:ApplyButtonVisuals()
     if max < 1 then
         max = 1
     end
+    -- Get global backdrop color for buttons with robust fallback
+    local bgColor = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColour
+    if not bgColor then
+        bgColor = Orbit.Constants and Orbit.Constants.Colors and Orbit.Constants.Colors.Background
+    end
+    if not bgColor then
+        bgColor = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
+    end
 
     for i, btn in ipairs(Frame.buttons) do
         if btn:IsShown() then
@@ -518,6 +518,7 @@ function Plugin:ApplyButtonVisuals()
                 Orbit.Skin.ClassBar:SkinButton(btn, {
                     borderSize = borderSize,
                     texture = texture,
+                    backColor = bgColor,
                 })
             end
 
@@ -755,6 +756,8 @@ function Plugin:UpdateMaxPower()
     if not Frame.StatusBar then
         Frame.StatusBarContainer = CreateFrame("Frame", nil, Frame, "BackdropTemplate")
         Frame.StatusBarContainer:SetAllPoints()
+        -- Clear any backdrop from BackdropTemplate to prevent dark background behind buttons
+        Frame.StatusBarContainer:SetBackdrop(nil)
 
         Frame.StatusBar = CreateFrame("StatusBar", nil, Frame.StatusBarContainer)
         Frame.StatusBar:SetAllPoints()

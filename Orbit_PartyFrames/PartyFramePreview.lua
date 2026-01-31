@@ -1,6 +1,7 @@
 ---@type Orbit
 local Orbit = Orbit
 local LSM = LibStub("LibSharedMedia-3.0")
+local LCG = LibStub("LibCustomGlow-1.0")
 
 -- Define Mixin
 Orbit.PartyFramePreviewMixin = {}
@@ -55,6 +56,37 @@ local SAMPLE_BUFF_ICONS = {
     135944, -- Renew
     135987, -- Earth Shield
 }
+
+-- Helper to apply icon position from saved ComponentPositions
+local function ApplyIconPosition(icon, parentFrame, pos)
+    if not pos or not pos.anchorX then return end
+    
+    local anchorX = pos.anchorX
+    local anchorY = pos.anchorY or "CENTER"
+    local offsetX = pos.offsetX or 0
+    local offsetY = pos.offsetY or 0
+    
+    -- Build anchor point string (e.g., "TOPLEFT", "LEFT", "CENTER")
+    local anchorPoint
+    if anchorY == "CENTER" and anchorX == "CENTER" then
+        anchorPoint = "CENTER"
+    elseif anchorY == "CENTER" then
+        anchorPoint = anchorX
+    elseif anchorX == "CENTER" then
+        anchorPoint = anchorY
+    else
+        anchorPoint = anchorY .. anchorX
+    end
+    
+    -- Calculate final offset with correct sign for anchor direction
+    local finalX = offsetX
+    local finalY = offsetY
+    if anchorX == "RIGHT" then finalX = -offsetX end
+    if anchorY == "TOP" then finalY = -offsetY end
+    
+    icon:ClearAllPoints()
+    icon:SetPoint("CENTER", parentFrame, anchorPoint, finalX, finalY)
+end
 
 -- [ PREVIEW LOGIC ]---------------------------------------------------------------------------------
 
@@ -151,6 +183,13 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
     local textureName = self:GetSetting(1, "Texture")
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
     local borderSize = (self.GetPlayerSetting and self:GetPlayerSetting("BorderSize")) or 1
+    
+    -- Get Colors tab global settings
+    local globalSettings = Orbit.db.GlobalSettings or {}
+    local useClassColors = globalSettings.UseClassColors ~= false -- Default true
+    local globalBarColor = globalSettings.BarColor or { r = 0.2, g = 0.8, b = 0.2, a = 1 }
+    local classColorBackdrop = globalSettings.ClassColorBackground or false
+    local backdropColor = globalSettings.BackdropColour or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
 
     for i = 1, MAX_PREVIEW_FRAMES do
         if self.frames[i] and self.frames[i].preview then
@@ -161,17 +200,41 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
 
             -- Update layout for power bar positioning
             Helpers:UpdateFrameLayout(frame, borderSize)
+            
+            -- Apply backdrop color (respects ClassColorBackground setting)
+            if frame.bg then
+                if classColorBackdrop then
+                    -- Use player's class color for backdrop
+                    local _, playerClass = UnitClass("player")
+                    if playerClass then
+                        local classColor = C_ClassColor.GetClassColor(playerClass)
+                        if classColor then
+                            frame.bg:SetColorTexture(classColor.r, classColor.g, classColor.b, 1)
+                        end
+                    end
+                else
+                    frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.5)
+                end
+            end
 
             -- Apply texture and set up health bar
             if frame.Health then
-                frame.Health:SetStatusBarTexture(texturePath)
+                -- Use SkinStatusBar with isUnitFrame=true (respects OverlayAllFrames)
+                Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true)
+                
                 frame.Health:SetMinMaxValues(0, 100)
                 frame.Health:SetValue(PREVIEW_DEFAULTS.HealthPercents[i])
 
-                -- Apply class color
-                local classColor = C_ClassColor.GetClassColor(PREVIEW_DEFAULTS.Classes[i])
-                if classColor then
-                    frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b)
+                -- Apply color based on UseClassColors setting
+                if useClassColors then
+                    -- Class color from preview defaults
+                    local classColor = C_ClassColor.GetClassColor(PREVIEW_DEFAULTS.Classes[i])
+                    if classColor then
+                        frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b)
+                    end
+                else
+                    -- Use global Health Color
+                    frame.Health:SetStatusBarColor(globalBarColor.r, globalBarColor.g, globalBarColor.b)
                 end
                 frame.Health:Show()
             end
@@ -182,7 +245,8 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
 
             if frame.Power then
                 if showPower then
-                    frame.Power:SetStatusBarTexture(texturePath)
+                    -- Use SkinStatusBar with isUnitFrame=true
+                    Orbit.Skin:SkinStatusBar(frame.Power, textureName, nil, true)
                     frame.Power:SetMinMaxValues(0, 100)
                     frame.Power:SetValue(PREVIEW_DEFAULTS.PowerPercents[i])
                     frame.Power:SetStatusBarColor(0, 0.5, 1) -- Mana blue
@@ -207,33 +271,133 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
             end
 
             -- Preview name - ensure visible and override any unit data
+            -- Check if Name is disabled
+            local disabledComponents = self:GetSetting(1, "DisabledComponents") or {}
+            local isNameDisabled = false
+            local isHealthTextDisabled = false
+            for _, key in ipairs(disabledComponents) do
+                if key == "Name" then isNameDisabled = true end
+                if key == "HealthText" then isHealthTextDisabled = true end
+            end
+            
             if frame.Name then
-                frame.Name:SetText(PREVIEW_DEFAULTS.Names[i])
-                frame.Name:SetTextColor(1, 1, 1, 1)
-                frame.Name:Show()
+                if isNameDisabled then
+                    frame.Name:Hide()
+                else
+                    frame.Name:SetText(PREVIEW_DEFAULTS.Names[i])
+                    
+                    -- Apply font color based on UseClassColorFont setting
+                    local useClassColorFont = globalSettings.UseClassColorFont ~= false  -- Default true
+                    if useClassColorFont then
+                        -- Use class color from preview defaults
+                        local classColor = C_ClassColor.GetClassColor(PREVIEW_DEFAULTS.Classes[i])
+                        if classColor then
+                            frame.Name:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
+                        else
+                            frame.Name:SetTextColor(1, 1, 1, 1)
+                        end
+                    else
+                        -- Use global font color
+                        local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
+                        frame.Name:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
+                    end
+                    frame.Name:Show()
+                end
             end
 
             -- Preview health text - override UpdateHealthText
             if frame.HealthText then
-                frame.HealthText:SetText(PREVIEW_DEFAULTS.HealthPercents[i] .. "%")
-                frame.HealthText:SetTextColor(1, 1, 1, 1)
-                frame.HealthText:Show()
+                if isHealthTextDisabled then
+                    frame.HealthText:Hide()
+                else
+                    frame.HealthText:SetText(PREVIEW_DEFAULTS.HealthPercents[i] .. "%")
+                    -- Health text uses same font color logic as name
+                    local useClassColorFont = globalSettings.UseClassColorFont ~= false
+                    if useClassColorFont then
+                        -- Use class color from preview defaults
+                        local classColor = C_ClassColor.GetClassColor(PREVIEW_DEFAULTS.Classes[i])
+                        if classColor then
+                            frame.HealthText:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
+                        else
+                            frame.HealthText:SetTextColor(1, 1, 1, 1)
+                        end
+                    else
+                        local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
+                        frame.HealthText:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
+                    end
+                    frame.HealthText:Show()
+                end
             end
 
             -- Apply global text styling (font, size, shadow)
             if self.ApplyTextStyling then
                 self:ApplyTextStyling(frame)
             end
+            
+            -- Apply Canvas Mode component overrides (font, size, custom color)
+            local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+            
+            -- Apply Name overrides
+            if frame.Name and componentPositions.Name and componentPositions.Name.overrides then
+                local overrides = componentPositions.Name.overrides
+                if overrides.Font and LSM then
+                    local fontPath = LSM:Fetch("font", overrides.Font)
+                    if fontPath then
+                        local _, size, flags = frame.Name:GetFont()
+                        frame.Name:SetFont(fontPath, overrides.FontSize or size or 12, flags or "OUTLINE")
+                    end
+                end
+                if overrides.FontSize then
+                    local fontPath, _, flags = frame.Name:GetFont()
+                    frame.Name:SetFont(fontPath, overrides.FontSize, flags or "OUTLINE")
+                end
+                -- Custom color override takes precedence
+                if overrides.CustomColor and overrides.CustomColorValue then
+                    local c = overrides.CustomColorValue
+                    frame.Name:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
+                end
+            end
+            
+            -- Apply HealthText overrides
+            if frame.HealthText and componentPositions.HealthText and componentPositions.HealthText.overrides then
+                local overrides = componentPositions.HealthText.overrides
+                if overrides.Font and LSM then
+                    local fontPath = LSM:Fetch("font", overrides.Font)
+                    if fontPath then
+                        local _, size, flags = frame.HealthText:GetFont()
+                        frame.HealthText:SetFont(fontPath, overrides.FontSize or size or 12, flags or "OUTLINE")
+                    end
+                end
+                if overrides.FontSize then
+                    local fontPath, _, flags = frame.HealthText:GetFont()
+                    frame.HealthText:SetFont(fontPath, overrides.FontSize, flags or "OUTLINE")
+                end
+                if overrides.CustomColor and overrides.CustomColorValue then
+                    local c = overrides.CustomColorValue
+                    frame.HealthText:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
+                end
+            end
+            
+            -- Apply saved component positions from Canvas Mode (for Name, HealthText, icons)
+            if frame.ApplyComponentPositions then
+                frame:ApplyComponentPositions()
+            end
 
             -- Preview Status Indicators
             -- Role Icon (show varied roles for preview)
             local previewRoles = { "HEALER", "TANK", "DAMAGER", "DAMAGER" }
             local roleAtlases = Orbit.RoleAtlases
+            local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+            
             if self:GetSetting(1, "ShowRoleIcon") ~= false and frame.RoleIcon then
                 local roleAtlas = roleAtlases[previewRoles[i]]
                 if roleAtlas then
                     frame.RoleIcon:SetAtlas(roleAtlas)
                     frame.RoleIcon:Show()
+                    -- Apply saved position if exists
+                    if componentPositions.RoleIcon then
+                        ApplyIconPosition(frame.RoleIcon, frame, componentPositions.RoleIcon)
+                    end
                 end
             elseif frame.RoleIcon then
                 frame.RoleIcon:Hide()
@@ -244,6 +408,10 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 if i == 1 then
                     frame.LeaderIcon:SetAtlas(Orbit.IconPreviewAtlases.LeaderIcon)
                     frame.LeaderIcon:Show()
+                    -- Apply saved position if exists
+                    if componentPositions.LeaderIcon then
+                        ApplyIconPosition(frame.LeaderIcon, frame, componentPositions.LeaderIcon)
+                    end
                 else
                     frame.LeaderIcon:Hide()
                 end
@@ -343,6 +511,34 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
             
             -- Show preview auras (debuffs and buffs)
             self:ShowPreviewAuras(frame, i)
+            
+            -- Show pixel glow on frame 2 (to demonstrate dispel indicator)
+            local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
+            if dispelEnabled and i == 2 then
+                -- Get dispel settings
+                local thickness = self:GetSetting(1, "DispelThickness") or 2
+                local frequency = self:GetSetting(1, "DispelFrequency") or 0.25
+                local numLines = self:GetSetting(1, "DispelNumLines") or 8
+                
+                -- Sample magic color (blue)
+                local color = { 0.0, 0.4, 1.0, 1 }
+                
+                LCG.PixelGlow_Start(
+                    frame,
+                    color,
+                    numLines,
+                    frequency,
+                    nil,         -- length (auto)
+                    thickness,
+                    0,           -- xOffset
+                    0,           -- yOffset
+                    true,        -- border
+                    "preview",   -- key
+                    30           -- frameLevel
+                )
+            else
+                LCG.PixelGlow_Stop(frame, "preview")
+            end
         end
     end
 end
@@ -549,6 +745,9 @@ function Orbit.PartyFramePreviewMixin:HidePreview()
             end
             wipe(frame.previewBuffs)
         end
+        
+        -- Stop pixel glow from preview
+        LCG.PixelGlow_Stop(frame, "preview")
 
         -- Force refresh with real unit data (replaces preview values)
         if frame.UpdateAll then

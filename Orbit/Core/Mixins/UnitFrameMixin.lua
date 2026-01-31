@@ -80,8 +80,8 @@ function Mixin:ApplyTexture(frame, textureName)
         return
     end
 
-    local texturePath = LSM:Fetch("statusbar", textureName)
-    frame.Health:SetStatusBarTexture(texturePath)
+    -- Use SkinStatusBar with isUnitFrame=true to properly handle overlay visibility
+    Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true)
 
     -- Ensure background exists
     self:CreateBackground(frame)
@@ -125,7 +125,21 @@ function Mixin:UpdateBackdropColor(frame, systemIndex, inheritFromPlayer)
         return
     end
 
-    -- Get color from settings (inherits global due to PluginMixin update)
+    -- Check global ClassColorBackground setting first
+    -- When enabled, use player's class color with full opacity for unit frame backdrops
+    local useClassColorBg = Orbit.db.GlobalSettings.ClassColorBackground
+    if useClassColorBg then
+        local _, class = UnitClass("player")
+        if class then
+            local classColor = C_ClassColor.GetClassColor(class)
+            if classColor then
+                bg:SetColorTexture(classColor.r, classColor.g, classColor.b, 1) -- 100% opacity
+                return
+            end
+        end
+    end
+
+    -- Fall back to BackdropColour setting
     local color = self:GetInheritedSetting(systemIndex, "BackdropColour", inheritFromPlayer)
 
     if color then

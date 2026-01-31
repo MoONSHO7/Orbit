@@ -53,18 +53,23 @@ function CoreMixin:CreateCanvasPreview(options)
     local texturePath = LSM:Fetch("statusbar", textureName)
     bar:SetStatusBarTexture(texturePath)
     
-    -- Apply color from options or default
-    local barColor = options.barColor or { r = 0.2, g = 0.8, b = 0.2 }
-    if options.useClassColor then
+    -- Apply color based on global UseClassColors setting (same logic as live frames)
+    local globalSettings = Orbit.db.GlobalSettings or {}
+    local useClassColors = globalSettings.UseClassColors ~= false -- Default true
+    local globalBarColor = globalSettings.BarColor or { r = 0.2, g = 0.8, b = 0.2 }
+    
+    if useClassColors then
+        -- Use class color for player
         local _, playerClass = UnitClass("player")
         local classColor = C_ClassColor.GetClassColor(playerClass)
         if classColor then
             bar:SetStatusBarColor(classColor.r, classColor.g, classColor.b, 1)
         else
-            bar:SetStatusBarColor(barColor.r, barColor.g, barColor.b, 1)
+            bar:SetStatusBarColor(globalBarColor.r, globalBarColor.g, globalBarColor.b, 1)
         end
     else
-        bar:SetStatusBarColor(barColor.r, barColor.g, barColor.b, 0.8)
+        -- Use global Health Color
+        bar:SetStatusBarColor(globalBarColor.r, globalBarColor.g, globalBarColor.b, 1)
     end
     
     preview.Health = bar

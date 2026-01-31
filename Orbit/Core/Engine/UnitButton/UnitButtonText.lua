@@ -156,6 +156,9 @@ function TextMixin:UpdateHealthText()
 
     self.HealthText:SetText(text)
     self.HealthText:Show()
+    
+    -- Apply text color based on global settings
+    self:ApplyHealthTextColor()
 end
 
 function TextMixin:SetMouseOver(isOver)
@@ -248,6 +251,129 @@ function TextMixin:UpdateName()
         self.Name:SetText(string.sub(name, 1, maxChars))
     else
         self.Name:SetText(name)
+    end
+    
+    -- Apply text color based on global settings and component overrides
+    self:ApplyNameColor()
+end
+
+-- Apply color to Name text based on global settings and component overrides
+function TextMixin:ApplyNameColor()
+    if not self.Name then return end
+    
+    -- Check for component-level custom color override (from Canvas Mode)
+    local customColorOverride = nil
+    if self.orbitPlugin then
+        local systemIndex = self.systemIndex or 1
+        local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
+        if positions and positions.Name and positions.Name.overrides then
+            local overrides = positions.Name.overrides
+            if overrides.CustomColor and overrides.CustomColorValue then
+                customColorOverride = overrides.CustomColorValue
+            end
+        end
+    end
+    
+    if customColorOverride and type(customColorOverride) == "table" then
+        -- Use component-level override
+        self.Name:SetTextColor(customColorOverride.r or 1, customColorOverride.g or 1, customColorOverride.b or 1, customColorOverride.a or 1)
+        return
+    end
+    
+    -- Use global font color settings
+    local globalSettings = Orbit.db and Orbit.db.GlobalSettings or {}
+    local useClassColorFont = globalSettings.UseClassColorFont ~= false  -- Default true
+    
+    if useClassColorFont then
+        -- Use class color for players, reaction color for NPCs
+        if self.unit and UnitIsPlayer(self.unit) then
+            local _, class = UnitClass(self.unit)
+            if class then
+                local classColor = RAID_CLASS_COLORS[class]
+                if classColor then
+                    self.Name:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
+                    return
+                end
+            end
+        else
+            -- NPC: use reaction color
+            if self.unit and UnitExists(self.unit) then
+                local reaction = UnitReaction(self.unit, "player")
+                if reaction then
+                    local reactionColor = FACTION_BAR_COLORS[reaction]
+                    if reactionColor then
+                        self.Name:SetTextColor(reactionColor.r, reactionColor.g, reactionColor.b, 1)
+                        return
+                    end
+                end
+            end
+        end
+        -- Fallback to white if no class/reaction color found
+        self.Name:SetTextColor(1, 1, 1, 1)
+    else
+        -- Use global font color
+        local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
+        self.Name:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
+    end
+end
+
+-- Apply color to HealthText based on global settings and component overrides
+function TextMixin:ApplyHealthTextColor()
+    if not self.HealthText then return end
+    
+    -- Check for component-level custom color override (from Canvas Mode)
+    local customColorOverride = nil
+    if self.orbitPlugin then
+        local systemIndex = self.systemIndex or 1
+        local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
+        if positions and positions.HealthText and positions.HealthText.overrides then
+            local overrides = positions.HealthText.overrides
+            if overrides.CustomColor and overrides.CustomColorValue then
+                customColorOverride = overrides.CustomColorValue
+            end
+        end
+    end
+    
+    if customColorOverride and type(customColorOverride) == "table" then
+        -- Use component-level override
+        self.HealthText:SetTextColor(customColorOverride.r or 1, customColorOverride.g or 1, customColorOverride.b or 1, customColorOverride.a or 1)
+        return
+    end
+    
+    -- Use global font color settings
+    local globalSettings = Orbit.db and Orbit.db.GlobalSettings or {}
+    local useClassColorFont = globalSettings.UseClassColorFont ~= false  -- Default true
+    
+    if useClassColorFont then
+        -- Use class color for players, reaction color for NPCs (same as name)
+        if self.unit and UnitIsPlayer(self.unit) then
+            local _, class = UnitClass(self.unit)
+            if class then
+                local classColor = RAID_CLASS_COLORS[class]
+                if classColor then
+                    self.HealthText:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
+                    return
+                end
+            end
+        else
+            -- NPC: use reaction color
+            if self.unit and UnitExists(self.unit) then
+                local reaction = UnitReaction(self.unit, "player")
+                if reaction then
+                    local reactionColor = FACTION_BAR_COLORS[reaction]
+                    if reactionColor then
+                        self.HealthText:SetTextColor(reactionColor.r, reactionColor.g, reactionColor.b, 1)
+                        return
+                    end
+                end
+            end
+        end
+        -- Fallback to white if no class/reaction color found
+        self.HealthText:SetTextColor(1, 1, 1, 1)
+    else
+        -- Use global font color
+        local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
+        self.HealthText:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
     end
 end
 

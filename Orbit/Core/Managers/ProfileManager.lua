@@ -882,6 +882,11 @@ function Orbit.Profile:Initialize()
     if gs.BorderSize == nil then gs.BorderSize = 2 end
     if gs.TextScale == nil then gs.TextScale = "Medium" end
     if gs.BackdropColour == nil then gs.BackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } end
+    if gs.BarColor == nil then gs.BarColor = { r = 0.2, g = 0.8, b = 0.2, a = 1 } end
+    if gs.ClassColorBackground == nil then gs.ClassColorBackground = false end
+    if gs.UseClassColors == nil then gs.UseClassColors = true end
+    if gs.OverlayAllFrames == nil then gs.OverlayAllFrames = false end
+    if gs.OverlayTexture == nil then gs.OverlayTexture = "Orbit Gradient" end
 
     -- Ensure Default profile exists (used as template for new profiles)
     if not Orbit.db.profiles["Default"] then

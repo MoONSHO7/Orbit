@@ -50,7 +50,7 @@ Button:SetScript("OnEnter", function(self)
     GameTooltip:AddLine("Orbit Options", 1, 1, 1)
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("|cFF00FF00Left-click|r: Toggle plugins on/off", 0.8, 0.8, 0.8)
-    GameTooltip:AddLine("|cFFFFFF00Right-click|r: Manage profiles", 0.8, 0.8, 0.8)
+    GameTooltip:AddLine("|cFFFFFF00Right-click|r: Colors & textures", 0.8, 0.8, 0.8)
     GameTooltip:Show()
 end)
 
@@ -70,7 +70,7 @@ Button:SetScript("OnClick", function(self, button)
     if button == "LeftButton" then
         Orbit.OptionsPanel:Open("Global")
     elseif button == "RightButton" then
-        Orbit.OptionsPanel:Open("Profiles")
+        Orbit.OptionsPanel:Open("Colors")
     end
 end)
 

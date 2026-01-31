@@ -53,20 +53,38 @@ end
 function HealthMixin:ApplyHealthColor()
     if not self.Health then return end
     
-    -- Class color takes priority
-    if self.classColour then
-        local _, class = UnitClass(self.unit)
-        if class and UnitIsPlayer(self.unit) then
-            local color = C_ClassColor.GetClassColor(class)
-            if color then
-                self.Health:SetStatusBarColor(color.r, color.g, color.b)
-                return
+    -- Global UseClassColors setting controls both class colors AND reaction colors
+    local globalUseClassColors = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UseClassColors
+    local globalBarColor = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BarColor
+    
+    -- Determine effective setting (global takes precedence, fallback to per-frame)
+    local useAdvancedColors = false
+    if globalUseClassColors == false then
+        useAdvancedColors = false
+    elseif globalUseClassColors == true then
+        useAdvancedColors = true
+    else
+        -- Global not set (nil) - fall back to per-frame classColour flag
+        useAdvancedColors = self.classColour or false
+    end
+    
+    -- When Class Color Health is enabled:
+    -- - Players get class colors
+    -- - NPCs get reaction colors
+    if useAdvancedColors then
+        -- Class color for players
+        if UnitIsPlayer(self.unit) then
+            local _, class = UnitClass(self.unit)
+            if class then
+                local color = C_ClassColor.GetClassColor(class)
+                if color then
+                    self.Health:SetStatusBarColor(color.r, color.g, color.b)
+                    return
+                end
             end
         end
-    end
-
-    -- Reaction color for NPCs
-    if self.reactionColour then
+        
+        -- Reaction color for non-players (NPCs, bosses, pets)
         local reaction = UnitReaction(self.unit, "player")
         if reaction then
             local color = FACTION_BAR_COLORS[reaction]
@@ -75,10 +93,19 @@ function HealthMixin:ApplyHealthColor()
                 return
             end
         end
+        
+        -- Fallback for units with no reaction (friendly pets, etc.) - use green
+        self.Health:SetStatusBarColor(0, 1, 0)
+        return
     end
 
-    -- Default green
-    self.Health:SetStatusBarColor(0, 1, 0)
+    -- When Class Color Health is disabled:
+    -- ALL frames use the Health Color setting
+    if globalBarColor then
+        self.Health:SetStatusBarColor(globalBarColor.r, globalBarColor.g, globalBarColor.b)
+    else
+        self.Health:SetStatusBarColor(0, 1, 0) -- Default green
+    end
 end
 
 function HealthMixin:SetReactionColour(enabled)

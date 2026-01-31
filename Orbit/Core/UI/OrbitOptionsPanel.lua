@@ -13,6 +13,19 @@ local Constants = Orbit.Constants
 Orbit.OptionsPanel = {}
 local Panel = Orbit.OptionsPanel
 
+-- Helper to refresh all plugin previews when global settings change
+local function RefreshAllPreviews()
+    if OrbitEngine.systems then
+        for _, plugin in ipairs(OrbitEngine.systems) do
+            -- Refresh preview visuals if plugin has the mixin
+            if plugin.ApplyPreviewVisuals then
+                plugin:ApplyPreviewVisuals()
+            end
+        end
+    end
+end
+
+
 -------------------------------------------------
 -- GLOBAL TAB
 -------------------------------------------------
@@ -56,20 +69,6 @@ local GlobalPlugin = {
 local function GetGlobalSchema()
     local controls = {
         {
-            type = "texture",
-            key = "Texture",
-            label = "Texture",
-            default = "Melli",
-            previewColor = { r = 0.8, g = 0.8, b = 0.8 },
-        },
-        {
-            type = "color",
-            key = "BackdropColour",
-            label = "Backdrop Colour",
-            default = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }, -- Matches Orbit.Constants.Colors.Background
-        },
-
-        {
             type = "font",
             key = "Font",
             label = "Font",
@@ -95,7 +94,7 @@ local function GetGlobalSchema()
             min = 0,
             max = 5,
             step = 1,
-            updateOnRelease = true, -- Prevent heavy updates during drag
+            updateOnRelease = true,
         },
     }
 
@@ -106,18 +105,256 @@ local function GetGlobalSchema()
 
     return {
         hideNativeSettings = true,
-        hideResetButton = false, -- We want a reset button
+        hideResetButton = false,
         headerHeight = Constants.Panel.HeaderHeight,
         controls = controls,
         onReset = function()
-            -- Restore Defaults
             local d = Orbit.db.GlobalSettings
             if d then
-                d.Texture = "Melli"
                 d.Font = "PT Sans Narrow"
+                d.TextScale = "Medium"
                 d.BorderSize = 2
             end
             Orbit:Print("Global settings reset to defaults.")
+        end,
+    }
+end
+
+-------------------------------------------------
+-- COLORS TAB
+-------------------------------------------------
+local ColorsPlugin = {
+    name = "OrbitColors",
+    settings = {},
+
+    GetSetting = function(self, systemIndex, key)
+        if not Orbit.db or not Orbit.db.GlobalSettings then
+            return nil
+        end
+        return Orbit.db.GlobalSettings[key]
+    end,
+
+    SetSetting = function(self, systemIndex, key, value)
+        if not Orbit.db then
+            return
+        end
+        if not Orbit.db.GlobalSettings then
+            Orbit.db.GlobalSettings = {}
+        end
+        Orbit.db.GlobalSettings[key] = value
+    end,
+
+    ApplySettings = function(self, systemFrame)
+        -- Broadcast to all registered plugins
+        if OrbitEngine.systems then
+            for _, plugin in ipairs(OrbitEngine.systems) do
+                if plugin.ApplyAll then
+                    plugin:ApplyAll()
+                elseif plugin.ApplySettings then
+                    plugin:ApplySettings()
+                end
+            end
+        end
+    end,
+}
+
+local function GetColorsSchema()
+    -- Check current UseClassColors state for conditional visibility
+    local useClassColors = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UseClassColors
+    
+    local controls = {
+        {
+            type = "texture",
+            key = "Texture",
+            label = "Texture",
+            default = "Melli",
+            previewColor = { r = 0.8, g = 0.8, b = 0.8 },
+        },
+        {
+            type = "texture",
+            key = "OverlayTexture",
+            label = "Overlay Texture",
+            default = "Orbit Gradient",
+            previewColor = { r = 0.5, g = 0.5, b = 0.5 },
+        },
+        {
+            type = "checkbox",
+            key = "OverlayAllFrames",
+            label = "Overlay All Frames",
+            default = false,
+            tooltip = "Apply overlay texture to unit frames as well. If unchecked, overlay only affects non-unit frames.",
+        },
+        {
+            type = "checkbox",
+            key = "UseClassColors",
+            label = "Class Color Health",
+            default = true,
+            tooltip = "Color health bars by class instead of a fixed color.",
+            onChange = function(val)
+                -- Refresh the panel to update conditional visibility
+                ColorsPlugin:SetSetting(nil, "UseClassColors", val)
+                ColorsPlugin:ApplySettings()
+                RefreshAllPreviews()
+                if Orbit.OptionsPanel then
+                    Orbit.OptionsPanel:Refresh()
+                end
+            end,
+        },
+    }
+    
+    -- Health Color picker - only show when UseClassColors is false
+    if not useClassColors then
+        table.insert(controls, {
+            type = "color",
+            key = "BarColor",
+            label = "Health Color",
+            default = { r = 0.2, g = 0.8, b = 0.2, a = 1 },
+            onChange = function(val)
+                ColorsPlugin:SetSetting(nil, "BarColor", val)
+                ColorsPlugin:ApplySettings()
+                RefreshAllPreviews()
+            end,
+        })
+    end
+    
+    -- Class Color Backdrop - only affects unit frames (player, party, boss, target)
+    table.insert(controls, {
+        type = "checkbox",
+        key = "ClassColorBackground",
+        label = "Class Color Backdrop",
+        default = false,
+        tooltip = "Use class color for unit frame backdrops (player, party, boss, target frames only).",
+        onChange = function(val)
+            ColorsPlugin:SetSetting(nil, "ClassColorBackground", val)
+            ColorsPlugin:ApplySettings()
+            RefreshAllPreviews()
+        end,
+    })
+    
+    -- Backdrop Color - affects all frames unless Class Color Backdrop is enabled
+    table.insert(controls, {
+        type = "color",
+        key = "BackdropColour",
+        label = "Backdrop Color",
+        default = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
+        onChange = function(val)
+            ColorsPlugin:SetSetting(nil, "BackdropColour", val)
+            ColorsPlugin:ApplySettings()
+            RefreshAllPreviews()
+            -- Refresh PlayerResources button backdrops too
+            local playerResources = OrbitEngine.systems and OrbitEngine.systems["Player Resources"]
+            if playerResources and playerResources.ApplyButtonVisuals then
+                playerResources:ApplyButtonVisuals()
+            end
+        end,
+    })
+    
+    -- Class Color Font - controls all font colors globally
+    local useClassColorFont = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UseClassColorFont
+    if useClassColorFont == nil then useClassColorFont = true end -- Default true
+    
+    table.insert(controls, {
+        type = "checkbox",
+        key = "UseClassColorFont",
+        label = "Class Color Font",
+        default = true,
+        tooltip = "Color text by class (players) or reaction (NPCs). When disabled, use the Font Color setting.",
+        onChange = function(val)
+            ColorsPlugin:SetSetting(nil, "UseClassColorFont", val)
+            ColorsPlugin:ApplySettings()
+            
+            -- Refresh name and health text colors on all unit frames immediately
+            if OrbitEngine.systems then
+                for _, plugin in ipairs(OrbitEngine.systems) do
+                    -- Refresh single frame plugins (Player, Target, Focus, etc.)
+                    if plugin.frame then
+                        if plugin.frame.ApplyNameColor then
+                            plugin.frame:ApplyNameColor()
+                        end
+                        if plugin.frame.ApplyHealthTextColor then
+                            plugin.frame:ApplyHealthTextColor()
+                        end
+                    end
+                    -- Refresh multi-frame plugins (Party, Boss)
+                    if plugin.frames then
+                        for _, frame in ipairs(plugin.frames) do
+                            if frame.ApplyNameColor then
+                                frame:ApplyNameColor()
+                            end
+                            if frame.ApplyHealthTextColor then
+                                frame:ApplyHealthTextColor()
+                            end
+                        end
+                    end
+                end
+            end
+            
+            if Orbit.OptionsPanel then
+                Orbit.OptionsPanel:Refresh()
+            end
+            RefreshAllPreviews()
+        end,
+    })
+    
+    -- Font Color picker - only show when UseClassColorFont is false
+    if not useClassColorFont then
+        table.insert(controls, {
+            type = "color",
+            key = "FontColor",
+            label = "Font Color",
+            default = { r = 1, g = 1, b = 1, a = 1 },
+            onChange = function(val)
+                ColorsPlugin:SetSetting(nil, "FontColor", val)
+                -- Refresh name and health text colors on all unit frames immediately
+                if OrbitEngine.systems then
+                    for _, plugin in ipairs(OrbitEngine.systems) do
+                        if plugin.frame then
+                            if plugin.frame.ApplyNameColor then
+                                plugin.frame:ApplyNameColor()
+                            end
+                            if plugin.frame.ApplyHealthTextColor then
+                                plugin.frame:ApplyHealthTextColor()
+                            end
+                        end
+                        if plugin.frames then
+                            for _, frame in ipairs(plugin.frames) do
+                                if frame.ApplyNameColor then
+                                    frame:ApplyNameColor()
+                                end
+                                if frame.ApplyHealthTextColor then
+                                    frame:ApplyHealthTextColor()
+                                end
+                            end
+                        end
+                    end
+                end
+                RefreshAllPreviews()
+            end,
+        })
+    end
+
+    return {
+        hideNativeSettings = true,
+        hideResetButton = false,
+        headerHeight = Constants.Panel.HeaderHeight,
+        controls = controls,
+        onReset = function()
+            local d = Orbit.db.GlobalSettings
+            if d then
+                d.Texture = "Melli"
+                d.OverlayAllFrames = false
+                d.OverlayTexture = "Orbit Gradient"
+                d.UseClassColors = true
+                d.BarColor = { r = 0.2, g = 0.8, b = 0.2, a = 1 }
+                d.ClassColorBackground = false
+                d.BackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
+                d.UseClassColorFont = true
+                d.FontColor = { r = 1, g = 1, b = 1, a = 1 }
+            end
+            Orbit:Print("Colors settings reset to defaults.")
+            if Orbit.OptionsPanel then
+                Orbit.OptionsPanel:Refresh()
+            end
         end,
     }
 end
@@ -455,6 +692,7 @@ end
 
 local TABS = {
     { name = "Global", plugin = GlobalPlugin, schema = GetGlobalSchema },
+    { name = "Colors", plugin = ColorsPlugin, schema = GetColorsSchema },
     { name = "Edit Mode", plugin = EditModePlugin, schema = GetEditModeSchema },
     { name = "Profiles", plugin = ProfilesPlugin, schema = GetProfilesSchema },
 }

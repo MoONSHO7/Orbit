@@ -255,7 +255,7 @@ function Plugin:ApplySettings()
     end
 
     -- Texture
-    Orbit.Skin:SkinStatusBar(PowerBar, textureName)
+    Orbit.Skin:SkinStatusBar(PowerBar, textureName, nil, true)
 
     -- Border
     Frame:SetBorder(borderSize)

@@ -7,6 +7,10 @@ local Engine = Orbit.Engine -- Added Engine reference
 local LSM = LibStub("LibSharedMedia-3.0")
 local Constants = Orbit.Constants
 
+-- Register Orbit's overlay texture with LibSharedMedia
+local ORBIT_OVERLAY_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
+LSM:Register("statusbar", "Orbit Gradient", ORBIT_OVERLAY_PATH)
+
 -- -------------------------------------------------------------------------- --
 -- Utilities
 -- -------------------------------------------------------------------------- --
@@ -160,7 +164,7 @@ end
 -- StatusBar Skinning
 -- -------------------------------------------------------------------------- --
 
-function Skin:SkinStatusBar(bar, textureName, color)
+function Skin:SkinStatusBar(bar, textureName, color, isUnitFrame)
     if not bar then
         return
     end
@@ -172,7 +176,22 @@ function Skin:SkinStatusBar(bar, textureName, color)
         bar:SetStatusBarColor(color.r, color.g, color.b, color.a or 1)
     end
 
-    local overlayPath = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
+    -- Overlay logic: check OverlayAllFrames setting
+    local overlayAllFrames = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.OverlayAllFrames
+    
+    -- If this is a unit frame, only add overlay if OverlayAllFrames is enabled
+    if isUnitFrame and not overlayAllFrames then
+        -- Hide overlay if it exists
+        if bar.Overlay then
+            bar.Overlay:Hide()
+        end
+        return
+    end
+    
+    -- Get overlay texture from settings
+    local overlayTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.OverlayTexture or "Orbit Gradient"
+    local overlayPath = LSM:Fetch("statusbar", overlayTextureName) or ORBIT_OVERLAY_PATH
+    
     self:AddOverlay(bar, overlayPath, "BLEND", 0.5)
 end
 
@@ -199,6 +218,7 @@ function Skin:AddOverlay(bar, texturePath, blendMode, alpha)
     bar.Overlay:SetTexture(texturePath)
     bar.Overlay:SetBlendMode(blendMode or "BLEND")
     bar.Overlay:SetAlpha(alpha or 1)
+    bar.Overlay:Show()
 end
 
 -- -------------------------------------------------------------------------- --

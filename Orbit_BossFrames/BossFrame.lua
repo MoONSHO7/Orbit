@@ -1027,10 +1027,10 @@ function Plugin:ApplySettings()
         UpdateFrameLayout(frame, borderSize)
 
         if frame.Health and textureName then
-            Orbit.Skin:SkinStatusBar(frame.Health, textureName)
+            Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true)
         end
         if frame.Power and textureName then
-            Orbit.Skin:SkinStatusBar(frame.Power, textureName)
+            Orbit.Skin:SkinStatusBar(frame.Power, textureName, nil, true)
             if frame.Power.bg then
                 frame.Power.bg:SetColorTexture(0, 0, 0, 0.5)
             end
@@ -1050,7 +1050,7 @@ function Plugin:ApplySettings()
             end
 
             if textureName then
-                Orbit.Skin:SkinStatusBar(frame.CastBar, textureName)
+                Orbit.Skin:SkinStatusBar(frame.CastBar, textureName, nil, true)
             end
 
             local cbTextSize = Orbit.Skin:GetAdaptiveTextSize(castBarHeight, 10, 18, 0.40)

@@ -80,7 +80,7 @@ function UnitButton:Create(parent, unit, name)
     f.HealthDamageBar:SetMinMaxValues(0, 1)
     f.HealthDamageBar:SetValue(1)
     f.HealthDamageBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
-    f.HealthDamageBar:SetStatusBarColor(0.8, 0.1, 0.1, 0.4) -- Dark Red, Reduced Opacity
+    f.HealthDamageBar:SetStatusBarColor(0.8, 0.1, 0.1, 0.6) -- Dark Red, 60% Opacity
     f.HealthDamageBar:SetFrameLevel(f:GetFrameLevel() + 1) -- Behind Health
 
     -- Animation state for smooth interpolation
@@ -135,7 +135,7 @@ function UnitButton:Create(parent, unit, name)
     f.TotalAbsorbBar:SetStatusBarColor(0.5, 0.8, 1.0, 0.35)
     f.TotalAbsorbBar:SetMinMaxValues(0, 1)
     f.TotalAbsorbBar:SetValue(0)
-    f.TotalAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel()) -- Same level
+    f.TotalAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel()) -- Same level as Health
     f.TotalAbsorbBar:Hide()
 
     -- Shield Overlay Pattern
