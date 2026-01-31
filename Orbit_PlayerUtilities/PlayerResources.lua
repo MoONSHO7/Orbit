@@ -37,6 +37,8 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         Hidden = false,
         Width = DEFAULTS.Width,
         Height = DEFAULTS.Height,
+        UseCustomColor = false,
+        BarColor = { r = 1, g = 1, b = 1, a = 1 },
     },
 }, Orbit.Constants.PluginGroups.CooldownManager)
 
@@ -89,6 +91,32 @@ function Plugin:AddSettings(dialog, systemFrame)
         { min = 5, max = 20, default = DEFAULTS.Height },
         nil
     )
+
+    -- Custom Color Toggle
+    table.insert(schema.controls, {
+        type = "checkbox",
+        key = "UseCustomColor",
+        label = "Use Custom Color",
+        default = false,
+        onChange = function(val)
+            self:SetSetting(systemIndex, "UseCustomColor", val)
+            self:ApplyButtonVisuals()
+            self:UpdatePower()
+        end,
+    })
+
+    -- Bar Color Picker
+    table.insert(schema.controls, {
+        type = "color",
+        key = "BarColor",
+        label = "Bar Color",
+        default = { r = 1, g = 1, b = 1, a = 1 },
+        onChange = function(color)
+            self:SetSetting(systemIndex, "BarColor", color)
+            self:ApplyButtonVisuals()
+            self:UpdatePower()
+        end,
+    })
 
     -- Note: Show Text is now controlled via Canvas Mode (drag Text to disabled dock)
 
@@ -542,6 +570,14 @@ end
 
 -- [ RESOURCE COLOR HELPER ]-------------------------------------------------------------------------
 function Plugin:GetResourceColor(index, isCharged)
+    -- Check for custom color override first
+    local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
+    local customColor = self:GetSetting(SYSTEM_INDEX, "BarColor")
+    
+    if useCustomColor and customColor then
+        return customColor
+    end
+
     local _, class = UnitClass("player")
     local colors = Orbit.Colors.PlayerResources
 

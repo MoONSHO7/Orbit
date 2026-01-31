@@ -32,6 +32,8 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
         Hidden = false,
         Width = 200,
         Height = 15,
+        UseCustomColor = false,
+        BarColor = { r = 1, g = 1, b = 1, a = 1 },
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
@@ -80,6 +82,30 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     -- Height
     WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 50, default = 15 }, nil)
+
+    -- Custom Color Toggle
+    table.insert(schema.controls, {
+        type = "checkbox",
+        key = "UseCustomColor",
+        label = "Use Custom Color",
+        default = false,
+        onChange = function(val)
+            self:SetSetting(systemIndex, "UseCustomColor", val)
+            self:UpdateAll()
+        end,
+    })
+
+    -- Bar Color Picker
+    table.insert(schema.controls, {
+        type = "color",
+        key = "BarColor",
+        label = "Bar Color",
+        default = { r = 1, g = 1, b = 1, a = 1 },
+        onChange = function(color)
+            self:SetSetting(systemIndex, "BarColor", color)
+            self:UpdateAll()
+        end,
+    })
 
     -- Note: Show Text is now controlled via Canvas Mode (drag Text to disabled dock)
 
@@ -329,12 +355,19 @@ function Plugin:UpdateAll()
     PowerBar:SetValue(cur, SMOOTH_ANIM)
 
     -- Color
-    -- Use Orbit's centralized colors instead of Blizzard's global PowerBarColor
-    local info = Orbit.Constants.Colors.PowerType[powerType]
-    if info then
-        PowerBar:SetStatusBarColor(info.r, info.g, info.b)
+    local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
+    local customColor = self:GetSetting(SYSTEM_INDEX, "BarColor")
+    
+    if useCustomColor and customColor then
+        PowerBar:SetStatusBarColor(customColor.r, customColor.g, customColor.b)
     else
-        PowerBar:SetStatusBarColor(0.5, 0.5, 0.5)
+        -- Use Orbit's centralized colors instead of Blizzard's global PowerBarColor
+        local info = Orbit.Constants.Colors.PowerType[powerType]
+        if info then
+            PowerBar:SetStatusBarColor(info.r, info.g, info.b)
+        else
+            PowerBar:SetStatusBarColor(0.5, 0.5, 0.5)
+        end
     end
 
     -- Text
