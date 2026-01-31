@@ -159,10 +159,14 @@ local ColorsPlugin = {
 }
 
 local function GetColorsSchema()
-    -- Check current UseClassColors state for conditional visibility
+    -- Check current checkbox states for conditional visibility
     local useClassColors = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UseClassColors
+    local classColorBackground = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ClassColorBackground
+    local useClassColorFont = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UseClassColorFont
+    if useClassColorFont == nil then useClassColorFont = true end -- Default true
     
     local controls = {
+        -- 1. Texture
         {
             type = "texture",
             key = "Texture",
@@ -170,6 +174,7 @@ local function GetColorsSchema()
             default = "Melli",
             previewColor = { r = 0.8, g = 0.8, b = 0.8 },
         },
+        -- 2. Overlay Texture
         {
             type = "texture",
             key = "OverlayTexture",
@@ -177,134 +182,64 @@ local function GetColorsSchema()
             default = "Orbit Gradient",
             previewColor = { r = 0.5, g = 0.5, b = 0.5 },
         },
+        -- 3. Unit Frame Overlay (renamed from Overlay All Frames)
         {
             type = "checkbox",
             key = "OverlayAllFrames",
-            label = "Overlay All Frames",
+            label = "Unit Frame Overlay",
             default = false,
             tooltip = "Apply overlay texture to unit frames as well. If unchecked, overlay only affects non-unit frames.",
+            onChange = function(val)
+                ColorsPlugin:SetSetting(nil, "OverlayAllFrames", val)
+                ColorsPlugin:ApplySettings()
+                RefreshAllPreviews()
+            end,
         },
+        -- 4. Class Health Color
         {
             type = "checkbox",
             key = "UseClassColors",
-            label = "Class Color Health",
+            label = "Class Health Color",
             default = true,
             tooltip = "Color health bars by class instead of a fixed color.",
             onChange = function(val)
-                -- Refresh the panel to update conditional visibility
                 ColorsPlugin:SetSetting(nil, "UseClassColors", val)
                 ColorsPlugin:ApplySettings()
                 RefreshAllPreviews()
+                -- Re-render panel to update conditional color pickers
                 if Orbit.OptionsPanel then
                     Orbit.OptionsPanel:Refresh()
                 end
             end,
         },
-    }
-    
-    -- Health Color picker - only show when UseClassColors is false
-    if not useClassColors then
-        table.insert(controls, {
-            type = "color",
-            key = "BarColor",
-            label = "Health Color",
-            default = { r = 0.2, g = 0.8, b = 0.2, a = 1 },
+        -- 5. Class Background Color
+        {
+            type = "checkbox",
+            key = "ClassColorBackground",
+            label = "Class Background Color",
+            default = false,
+            tooltip = "Use class color for unit frame backdrops (player, party, boss, target frames only).",
             onChange = function(val)
-                ColorsPlugin:SetSetting(nil, "BarColor", val)
+                ColorsPlugin:SetSetting(nil, "ClassColorBackground", val)
                 ColorsPlugin:ApplySettings()
                 RefreshAllPreviews()
-            end,
-        })
-    end
-    
-    -- Class Color Backdrop - only affects unit frames (player, party, boss, target)
-    table.insert(controls, {
-        type = "checkbox",
-        key = "ClassColorBackground",
-        label = "Class Color Backdrop",
-        default = false,
-        tooltip = "Use class color for unit frame backdrops (player, party, boss, target frames only).",
-        onChange = function(val)
-            ColorsPlugin:SetSetting(nil, "ClassColorBackground", val)
-            ColorsPlugin:ApplySettings()
-            RefreshAllPreviews()
-        end,
-    })
-    
-    -- Backdrop Color - affects all frames unless Class Color Backdrop is enabled
-    table.insert(controls, {
-        type = "color",
-        key = "BackdropColour",
-        label = "Backdrop Color",
-        default = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
-        onChange = function(val)
-            ColorsPlugin:SetSetting(nil, "BackdropColour", val)
-            ColorsPlugin:ApplySettings()
-            RefreshAllPreviews()
-            -- Refresh PlayerResources button backdrops too
-            local playerResources = OrbitEngine.systems and OrbitEngine.systems["Player Resources"]
-            if playerResources and playerResources.ApplyButtonVisuals then
-                playerResources:ApplyButtonVisuals()
-            end
-        end,
-    })
-    
-    -- Class Color Font - controls all font colors globally
-    local useClassColorFont = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UseClassColorFont
-    if useClassColorFont == nil then useClassColorFont = true end -- Default true
-    
-    table.insert(controls, {
-        type = "checkbox",
-        key = "UseClassColorFont",
-        label = "Class Color Font",
-        default = true,
-        tooltip = "Color text by class (players) or reaction (NPCs). When disabled, use the Font Color setting.",
-        onChange = function(val)
-            ColorsPlugin:SetSetting(nil, "UseClassColorFont", val)
-            ColorsPlugin:ApplySettings()
-            
-            -- Refresh name and health text colors on all unit frames immediately
-            if OrbitEngine.systems then
-                for _, plugin in ipairs(OrbitEngine.systems) do
-                    -- Refresh single frame plugins (Player, Target, Focus, etc.)
-                    if plugin.frame then
-                        if plugin.frame.ApplyNameColor then
-                            plugin.frame:ApplyNameColor()
-                        end
-                        if plugin.frame.ApplyHealthTextColor then
-                            plugin.frame:ApplyHealthTextColor()
-                        end
-                    end
-                    -- Refresh multi-frame plugins (Party, Boss)
-                    if plugin.frames then
-                        for _, frame in ipairs(plugin.frames) do
-                            if frame.ApplyNameColor then
-                                frame:ApplyNameColor()
-                            end
-                            if frame.ApplyHealthTextColor then
-                                frame:ApplyHealthTextColor()
-                            end
-                        end
-                    end
+                -- Re-render panel to update conditional color pickers
+                if Orbit.OptionsPanel then
+                    Orbit.OptionsPanel:Refresh()
                 end
-            end
-            
-            if Orbit.OptionsPanel then
-                Orbit.OptionsPanel:Refresh()
-            end
-            RefreshAllPreviews()
-        end,
-    })
-    
-    -- Font Color picker - only show when UseClassColorFont is false
-    if not useClassColorFont then
-        table.insert(controls, {
-            type = "color",
-            key = "FontColor",
-            label = "Font Color",
-            default = { r = 1, g = 1, b = 1, a = 1 },
+            end,
+        },
+        -- 6. Class Font Color
+        {
+            type = "checkbox",
+            key = "UseClassColorFont",
+            label = "Class Font Color",
+            default = true,
+            tooltip = "Color text by class (players) or reaction (NPCs). When disabled, use the Font Color setting.",
             onChange = function(val)
-                ColorsPlugin:SetSetting(nil, "FontColor", val)
+                ColorsPlugin:SetSetting(nil, "UseClassColorFont", val)
+                ColorsPlugin:ApplySettings()
+                
                 -- Refresh name and health text colors on all unit frames immediately
                 if OrbitEngine.systems then
                     for _, plugin in ipairs(OrbitEngine.systems) do
@@ -328,10 +263,112 @@ local function GetColorsSchema()
                         end
                     end
                 end
+                
                 RefreshAllPreviews()
+                -- Re-render panel to update conditional color pickers
+                if Orbit.OptionsPanel then
+                    Orbit.OptionsPanel:Refresh()
+                end
+            end,
+        },
+    }
+    
+    -- 7. Font Color picker - only show when Class Font Color is FALSE
+    if not useClassColorFont then
+        table.insert(controls, {
+            type = "color",
+            key = "FontColor",
+            label = "Font Color",
+            default = { r = 1, g = 1, b = 1, a = 1 },
+            onChange = function(val)
+                ColorsPlugin:SetSetting(nil, "FontColor", val)
+                -- Debounce the heavy frame updates
+                Orbit.Async:Debounce("ColorsPanel_FontColor", function()
+                    if OrbitEngine.systems then
+                        for _, plugin in ipairs(OrbitEngine.systems) do
+                            if plugin.frame then
+                                if plugin.frame.ApplyNameColor then
+                                    plugin.frame:ApplyNameColor()
+                                end
+                                if plugin.frame.ApplyHealthTextColor then
+                                    plugin.frame:ApplyHealthTextColor()
+                                end
+                            end
+                            if plugin.frames then
+                                for _, frame in ipairs(plugin.frames) do
+                                    if frame.ApplyNameColor then
+                                        frame:ApplyNameColor()
+                                    end
+                                    if frame.ApplyHealthTextColor then
+                                        frame:ApplyHealthTextColor()
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    RefreshAllPreviews()
+                end, 0.15)
             end,
         })
     end
+    
+    -- 8. Unit Frame Health - only show when Class Health Color is FALSE
+    if not useClassColors then
+        table.insert(controls, {
+            type = "color",
+            key = "BarColor",
+            label = "Unit Frame Health",
+            default = { r = 0.2, g = 0.8, b = 0.2, a = 1 },
+            onChange = function(val)
+                ColorsPlugin:SetSetting(nil, "BarColor", val)
+                -- Debounce the heavy frame updates
+                Orbit.Async:Debounce("ColorsPanel_BarColor", function()
+                    ColorsPlugin:ApplySettings()
+                    RefreshAllPreviews()
+                end, 0.15)
+            end,
+        })
+    end
+    
+    -- 9. Unit Frame Background - only show when Class Background Color is FALSE
+    if not classColorBackground then
+        table.insert(controls, {
+            type = "color",
+            key = "UnitFrameBackdropColour",
+            label = "Unit Frame Background",
+            default = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
+            onChange = function(val)
+                ColorsPlugin:SetSetting(nil, "UnitFrameBackdropColour", val)
+                -- Debounce the heavy frame updates
+                Orbit.Async:Debounce("ColorsPanel_UnitFrameBg", function()
+                    ColorsPlugin:ApplySettings()
+                    RefreshAllPreviews()
+                end, 0.15)
+            end,
+        })
+    end
+    
+    -- 10. Backdrop Color - always show (for castbars, action bars, resource bars, etc.)
+    table.insert(controls, {
+        type = "color",
+        key = "BackdropColour",
+        label = "Backdrop Color",
+        default = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
+        tooltip = "Background color for castbars, action bars, resource bars, and other non-unit frame elements.",
+        onChange = function(val)
+            ColorsPlugin:SetSetting(nil, "BackdropColour", val)
+            -- Debounce the heavy frame updates
+            Orbit.Async:Debounce("ColorsPanel_BackdropColour", function()
+                ColorsPlugin:ApplySettings()
+                RefreshAllPreviews()
+                -- Refresh PlayerResources button backdrops too
+                local playerResources = OrbitEngine.systems and OrbitEngine.systems["Player Resources"]
+                if playerResources and playerResources.ApplyButtonVisuals then
+                    playerResources:ApplyButtonVisuals()
+                end
+            end, 0.15)
+        end,
+    })
 
     return {
         hideNativeSettings = true,
@@ -347,6 +384,7 @@ local function GetColorsSchema()
                 d.UseClassColors = true
                 d.BarColor = { r = 0.2, g = 0.8, b = 0.2, a = 1 }
                 d.ClassColorBackground = false
+                d.UnitFrameBackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
                 d.BackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
                 d.UseClassColorFont = true
                 d.FontColor = { r = 1, g = 1, b = 1, a = 1 }
