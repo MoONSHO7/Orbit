@@ -104,12 +104,20 @@ local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOpti
             if child.SetBorderHidden then
                 child:SetBorderHidden("Top", true)
             end
+            -- Inset child's top background to prevent overlap
+            if child.SetBackgroundInset then
+                child:SetBackgroundInset("Top", overlap)
+            end
         elseif edge == "TOP" then
             if parent.SetBorderHidden then
                 parent:SetBorderHidden("Top", true)
             end
             if child.SetBorderHidden then
                 child:SetBorderHidden("Bottom", true)
+            end
+            -- Inset child's bottom background to prevent overlap
+            if child.SetBackgroundInset then
+                child:SetBackgroundInset("Bottom", overlap)
             end
         elseif edge == "LEFT" then
             if parent.SetBorderHidden then
@@ -118,6 +126,10 @@ local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOpti
             if child.SetBorderHidden then
                 child:SetBorderHidden("Right", true)
             end
+            -- Inset child's right background to prevent overlap
+            if child.SetBackgroundInset then
+                child:SetBackgroundInset("Right", overlap)
+            end
         elseif edge == "RIGHT" then
             if parent.SetBorderHidden then
                 parent:SetBorderHidden("Right", true)
@@ -125,9 +137,13 @@ local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOpti
             if child.SetBorderHidden then
                 child:SetBorderHidden("Left", true)
             end
+            -- Inset child's left background to prevent overlap
+            if child.SetBackgroundInset then
+                child:SetBackgroundInset("Left", overlap)
+            end
         end
     else
-        -- Not merged
+        -- Not merged - restore borders and reset background insets
         if syncOptions and syncOptions.mergeBorders then
             if edge == "BOTTOM" then
                 if parent.SetBorderHidden then
@@ -136,12 +152,18 @@ local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOpti
                 if child.SetBorderHidden then
                     child:SetBorderHidden("Top", false)
                 end
+                if child.SetBackgroundInset then
+                    child:SetBackgroundInset("Top", 0)
+                end
             elseif edge == "TOP" then
                 if parent.SetBorderHidden then
                     parent:SetBorderHidden("Top", false)
                 end
                 if child.SetBorderHidden then
                     child:SetBorderHidden("Bottom", false)
+                end
+                if child.SetBackgroundInset then
+                    child:SetBackgroundInset("Bottom", 0)
                 end
             elseif edge == "LEFT" then
                 if parent.SetBorderHidden then
@@ -150,12 +172,18 @@ local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOpti
                 if child.SetBorderHidden then
                     child:SetBorderHidden("Right", false)
                 end
+                if child.SetBackgroundInset then
+                    child:SetBackgroundInset("Right", 0)
+                end
             elseif edge == "RIGHT" then
                 if parent.SetBorderHidden then
                     parent:SetBorderHidden("Right", false)
                 end
                 if child.SetBorderHidden then
                     child:SetBorderHidden("Left", false)
+                end
+                if child.SetBackgroundInset then
+                    child:SetBackgroundInset("Left", 0)
                 end
             end
         end
@@ -304,7 +332,7 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
     if self.anchors[child] then
         local oldAnchor = self.anchors[child]
 
-        -- Restore borders if they were merged
+        -- Restore borders and background insets if they were merged
         if oldAnchor.syncOptions and oldAnchor.syncOptions.mergeBorders then
             local p = oldAnchor.parent
             local c = child
@@ -317,12 +345,18 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
                 if c.SetBorderHidden then
                     c:SetBorderHidden("Top", false)
                 end
+                if c.SetBackgroundInset then
+                    c:SetBackgroundInset("Top", 0)
+                end
             elseif e == "TOP" then
                 if p and p.SetBorderHidden then
                     p:SetBorderHidden("Top", false)
                 end
                 if c.SetBorderHidden then
                     c:SetBorderHidden("Bottom", false)
+                end
+                if c.SetBackgroundInset then
+                    c:SetBackgroundInset("Bottom", 0)
                 end
             elseif e == "LEFT" then
                 if p and p.SetBorderHidden then
@@ -331,12 +365,18 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
                 if c.SetBorderHidden then
                     c:SetBorderHidden("Right", false)
                 end
+                if c.SetBackgroundInset then
+                    c:SetBackgroundInset("Right", 0)
+                end
             elseif e == "RIGHT" then
                 if p and p.SetBorderHidden then
                     p:SetBorderHidden("Right", false)
                 end
                 if c.SetBorderHidden then
                     c:SetBorderHidden("Left", false)
+                end
+                if c.SetBackgroundInset then
+                    c:SetBackgroundInset("Left", 0)
                 end
             end
         end

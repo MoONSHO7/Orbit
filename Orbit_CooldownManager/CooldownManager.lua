@@ -1123,8 +1123,9 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
             if classColor then
                 textElement:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
             end
-        elseif overrides.CustomColor and type(overrides.CustomColor) == "table" then
-            local c = overrides.CustomColor
+        elseif overrides.CustomColor and overrides.CustomColorValue and type(overrides.CustomColorValue) == "table" then
+            -- CustomColor is boolean toggle, CustomColorValue is the actual color table
+            local c = overrides.CustomColorValue
             textElement:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
         end
     end

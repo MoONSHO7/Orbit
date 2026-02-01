@@ -101,6 +101,26 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
         end
     end
 
+    -- Attach SetBackgroundInset to the owner frame if missing
+    -- This allows the Anchor engine to inset the background on merged edges
+    -- to prevent overlapping semi-transparent backgrounds from creating a darker seam
+    if not frame.SetBackgroundInset then
+        -- Track current insets per edge
+        frame.bgInsets = frame.bgInsets or { Top = 0, Bottom = 0, Left = 0, Right = 0 }
+
+        frame.SetBackgroundInset = function(self, edge, insetPixels)
+            if not self.bg then return end
+
+            -- Store current inset for this edge
+            self.bgInsets[edge] = insetPixels or 0
+
+            -- Recalculate background anchoring with all current insets
+            self.bg:ClearAllPoints()
+            self.bg:SetPoint("TOPLEFT", self, "TOPLEFT", self.bgInsets.Left, -self.bgInsets.Top)
+            self.bg:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -self.bgInsets.Right, self.bgInsets.Bottom)
+        end
+    end
+
     local c = color or { r = 0, g = 0, b = 0, a = 1 }
     for _, t in pairs(backdrop.Borders) do
         t:SetColorTexture(c.r, c.g, c.b, c.a)

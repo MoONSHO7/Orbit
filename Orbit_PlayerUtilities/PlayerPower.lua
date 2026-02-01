@@ -311,11 +311,45 @@ function Plugin:ApplySettings()
         Frame.Text:Hide()
     else
         Frame.Text:Show()
+        
+        -- Get Canvas Mode overrides
+        local positions = self:GetSetting(systemIndex, "ComponentPositions") or {}
+        local textPos = positions.Text or {}
+        local overrides = textPos.overrides or {}
+        
+        -- Apply font override
         local fontPath = LSM:Fetch("font", fontName)
-        Frame.Text:SetFont(fontPath, textSize, "OUTLINE")
+        if overrides.Font and LSM then
+            fontPath = LSM:Fetch("font", overrides.Font) or fontPath
+        end
+        
+        -- Apply size override
+        local finalSize = overrides.FontSize or textSize
+        
+        -- Apply font flags override
+        local flags = "OUTLINE"
+        if overrides.ShowShadow then
+            flags = ""
+        end
+        
+        Frame.Text:SetFont(fontPath, finalSize, flags)
+        
+        -- Apply shadow if needed
+        if overrides.ShowShadow then
+            Frame.Text:SetShadowOffset(1, -1)
+            Frame.Text:SetShadowColor(0, 0, 0, 1)
+        else
+            Frame.Text:SetShadowOffset(0, 0)
+        end
+        
+        -- Apply color override
+        if overrides.CustomColor and overrides.CustomColorValue and type(overrides.CustomColorValue) == "table" then
+            local c = overrides.CustomColorValue
+            Frame.Text:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
+        end
 
         Frame.Text:ClearAllPoints()
-        if height > (textSize + 2) then
+        if height > (finalSize + 2) then
             Frame.Text:SetPoint("CENTER", Frame.Overlay, "CENTER", 0, 0)
         else
             Frame.Text:SetPoint("BOTTOM", Frame.Overlay, "BOTTOM", 0, -2)

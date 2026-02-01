@@ -203,7 +203,10 @@ function Plugin:UpdateVisibility()
         and EditModeManagerFrame:IsEditModeActive()
 
     if isEditMode then
-        UnregisterUnitWatch(Frame)
+        -- UnregisterUnitWatch is protected - defer if in combat
+        if not InCombatLockdown() then
+            UnregisterUnitWatch(Frame)
+        end
 
         -- Use SafeAction just in case we are in combat while toggling Edit Mode (rare but possible)
         Orbit:SafeAction(function()
@@ -219,11 +222,17 @@ function Plugin:UpdateVisibility()
 
     -- Normal Play
     if enabled then
-        Frame:SetAttribute("unit", "target")
-        RegisterUnitWatch(Frame) -- Handles secure visibility
+        -- RegisterUnitWatch and SetAttribute are protected - defer if in combat
+        if not InCombatLockdown() then
+            Frame:SetAttribute("unit", "target")
+            RegisterUnitWatch(Frame) -- Handles secure visibility
+        end
         OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
     else
-        UnregisterUnitWatch(Frame)
+        -- UnregisterUnitWatch is protected - defer if in combat
+        if not InCombatLockdown() then
+            UnregisterUnitWatch(Frame)
+        end
         Orbit:SafeAction(function()
             Frame:Hide()
         end)

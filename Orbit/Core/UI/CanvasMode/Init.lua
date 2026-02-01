@@ -35,7 +35,7 @@ CanvasMode.Constants = {
     -- Zoom
     DEFAULT_ZOOM = 2.0,
     MIN_ZOOM = 0.5,
-    MAX_ZOOM = 4.0,
+    MAX_ZOOM = 5.0,
     ZOOM_STEP = 0.25,
     
     -- Pan clamping

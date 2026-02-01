@@ -278,6 +278,19 @@ function Dialog:Open(frame, plugin, systemIndex)
         self.ZoomIndicator:SetText(string.format("%.0f%%", C.DEFAULT_ZOOM * 100))
     end
     
+    -- Sync toggle: Show only for Action Bars plugin (or other plugins with GlobalComponentPositions)
+    if self.SyncToggle then
+        local supportsSync = plugin and plugin.system == "Orbit_ActionBars"
+        if supportsSync then
+            local isSynced = plugin:GetSetting(systemIndex, "UseGlobalTextStyle")
+            self.SyncToggle.isSynced = (isSynced ~= false)  -- default true
+            self.SyncToggle:UpdateVisual()
+            self.SyncToggle:Show()
+        else
+            self.SyncToggle:Hide()
+        end
+    end
+    
     -- Create preview frame
     local textureName = plugin and plugin:GetSetting(systemIndex, "Texture") or "Melli"
     local borderSize = plugin and plugin:GetSetting(systemIndex, "BorderSize") or 1
@@ -297,8 +310,14 @@ function Dialog:Open(frame, plugin, systemIndex)
     self.TransformLayer.baseHeight = canvasFrame:GetHeight()
     self.TransformLayer:SetSize(self.TransformLayer.baseWidth, self.TransformLayer.baseHeight)
     
-    -- Get saved positions
-    local savedPositions = plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+    -- Get saved positions (use global if synced for Action Bars)
+    local savedPositions
+    local isSynced = plugin and plugin.system == "Orbit_ActionBars" and plugin:GetSetting(systemIndex, "UseGlobalTextStyle") ~= false
+    if isSynced then
+        savedPositions = plugin:GetSetting(1, "GlobalComponentPositions") or {}
+    else
+        savedPositions = plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+    end
     
     local defaults = plugin and plugin.defaults and plugin.defaults.ComponentPositions
     if defaults then
@@ -529,20 +548,47 @@ function Dialog:Apply()
     local plugin = self.targetPlugin
     local systemIndex = self.targetSystemIndex
     
-    plugin:SetSetting(systemIndex, "ComponentPositions", positions)
+    -- Check if synced (Action Bars specific)
+    local isSynced = self.SyncToggle and self.SyncToggle:IsShown() and self.SyncToggle.isSynced
     
-    if plugin.IsComponentDisabled then
-        local disabledCopy = {}
-        for _, key in ipairs(self.disabledComponentKeys) do
-            table.insert(disabledCopy, key)
+    if isSynced and plugin.system == "Orbit_ActionBars" then
+        -- Save to global positions (stored at systemIndex 1 for consistency)
+        plugin:SetSetting(1, "GlobalComponentPositions", positions)
+        
+        -- Also save disabled components to global
+        if plugin.IsComponentDisabled then
+            local disabledCopy = {}
+            for _, key in ipairs(self.disabledComponentKeys) do
+                table.insert(disabledCopy, key)
+            end
+            plugin:SetSetting(1, "GlobalDisabledComponents", disabledCopy)
         end
-        plugin:SetSetting(systemIndex, "DisabledComponents", disabledCopy)
+        
+        -- Propagate to all synced action bars
+        -- Note: ApplySettings will use GlobalComponentPositions for all bars with UseGlobalTextStyle=true
+    else
+        -- Local save only
+        plugin:SetSetting(systemIndex, "ComponentPositions", positions)
+        
+        if plugin.IsComponentDisabled then
+            local disabledCopy = {}
+            for _, key in ipairs(self.disabledComponentKeys) do
+                table.insert(disabledCopy, key)
+            end
+            plugin:SetSetting(systemIndex, "DisabledComponents", disabledCopy)
+        end
     end
     
     self:CloseDialog()
     
+    -- Apply settings (will refresh all bars, using global positions for synced ones)
     if plugin.ApplySettings then
         plugin:ApplySettings()
+    end
+    
+    -- For Action Bars, refresh all bars to pick up global changes
+    if isSynced and plugin.ApplyAll then
+        plugin:ApplyAll()
     end
 end
 

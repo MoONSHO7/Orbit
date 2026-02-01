@@ -137,3 +137,65 @@ Dialog.Viewport:SetScript("OnUpdate", function(self)
         ApplyPanOffset(Dialog, self.panStartOffsetX + deltaX, self.panStartOffsetY + deltaY)
     end
 end)
+
+-- [ SYNC TOGGLE ]--------------------------------------------------------------------------
+-- Checkbox for syncing component positions across all action bars
+
+Dialog.SyncToggle = CreateFrame("CheckButton", nil, Dialog.BorderOverlay, "UICheckButtonTemplate")
+Dialog.SyncToggle:SetSize(26, 26)
+Dialog.SyncToggle:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "TOPRIGHT", -8, -4)
+Dialog.SyncToggle:SetFrameLevel(Dialog.BorderOverlay:GetFrameLevel() + 1)
+Dialog.SyncToggle:Hide()  -- Hidden by default, shown only for plugins that support sync
+
+-- Label to the left of checkbox
+Dialog.SyncToggle.label = Dialog.SyncToggle:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+Dialog.SyncToggle.label:SetPoint("RIGHT", Dialog.SyncToggle, "LEFT", -2, 0)
+Dialog.SyncToggle.label:SetText("Sync")
+Dialog.SyncToggle.label:SetTextColor(0.9, 0.9, 0.9, 1)
+
+-- State tracking
+Dialog.SyncToggle.isSynced = true
+
+function Dialog.SyncToggle:UpdateVisual()
+    self:SetChecked(self.isSynced)
+end
+
+Dialog.SyncToggle:SetScript("OnClick", function(self)
+    local wasLocal = not self.isSynced
+    self.isSynced = self:GetChecked()
+    
+    -- Save to plugin setting
+    local plugin = Dialog.targetPlugin
+    local systemIndex = Dialog.targetSystemIndex
+    if plugin and plugin.SetSetting then
+        plugin:SetSetting(systemIndex, "UseGlobalTextStyle", self.isSynced)
+    end
+    
+    -- When switching from Local to Synced, reload canvas with global positions
+    if wasLocal and self.isSynced then
+        local frame = Dialog.targetFrame
+        if frame and plugin then
+            -- Re-open to reload with global positions
+            Dialog:Open(frame, plugin, systemIndex)
+        end
+    end
+end)
+
+Dialog.SyncToggle:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    if self.isSynced then
+        GameTooltip:SetText("Synced with all Action Bars")
+        GameTooltip:AddLine("Changes apply to all synced bars", 0.7, 0.7, 0.7, true)
+    else
+        GameTooltip:SetText("Local style only")
+        GameTooltip:AddLine("Changes apply only to this bar", 0.7, 0.7, 0.7, true)
+    end
+    GameTooltip:Show()
+end)
+
+Dialog.SyncToggle:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+end)
+
+Dialog.SyncToggle:UpdateVisual()
+
