@@ -359,14 +359,20 @@ function Plugin:SetupCanvasPreview(anchor, systemIndex)
         icon:SetTexture(iconTexture)
         
         -- Apply border matching Orbit style
-        preview:SetBackdrop({
+        -- Only include edgeFile when borderSize > 0 to avoid rendering glitches
+        local backdrop = {
             bgFile = "Interface\\BUTTONS\\WHITE8x8",
-            edgeFile = "Interface\\BUTTONS\\WHITE8x8",
-            edgeSize = borderSize,
             insets = { left = 0, right = 0, top = 0, bottom = 0 },
-        })
+        }
+        if borderSize > 0 then
+            backdrop.edgeFile = "Interface\\BUTTONS\\WHITE8x8"
+            backdrop.edgeSize = borderSize
+        end
+        preview:SetBackdrop(backdrop)
         preview:SetBackdropColor(0, 0, 0, 0)
-        preview:SetBackdropBorderColor(0, 0, 0, 1)
+        if borderSize > 0 then
+            preview:SetBackdropBorderColor(0, 0, 0, 1)
+        end
         
         -- [ TEXT COMPONENTS ]------------------------------------------------------------
         -- Add draggable text labels for Timer, Charges, Stacks, Keybind

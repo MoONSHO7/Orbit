@@ -63,14 +63,21 @@ function PreviewFrame:CreateBasePreview(sourceFrame, scale, parent, borderSize)
     local bgColor = Orbit.Constants and Orbit.Constants.Colors and Orbit.Constants.Colors.Background
         or { r = 0.1, g = 0.1, b = 0.1, a = 0.95 }
     
-    preview:SetBackdrop({
+    -- Only include edgeFile when borderSize > 0 to avoid rendering glitches
+    local scaledBorder = borderSize * scale
+    local backdrop = {
         bgFile = "Interface\\BUTTONS\\WHITE8x8",
-        edgeFile = "Interface\\BUTTONS\\WHITE8x8",
-        edgeSize = borderSize * scale,
         insets = { left = 0, right = 0, top = 0, bottom = 0 },
-    })
+    }
+    if scaledBorder > 0 then
+        backdrop.edgeFile = "Interface\\BUTTONS\\WHITE8x8"
+        backdrop.edgeSize = scaledBorder
+    end
+    preview:SetBackdrop(backdrop)
     preview:SetBackdropColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a or 0.95)
-    preview:SetBackdropBorderColor(0, 0, 0, 1)
+    if scaledBorder > 0 then
+        preview:SetBackdropBorderColor(0, 0, 0, 1)
+    end
     
     return preview
 end
