@@ -221,11 +221,17 @@ function Plugin:OnLoad()
                 -- Simplified border simulation if needed, or just rely on the texture
                 -- Since CreateBasePreview adds a container border, usually buttons just need fill
                 -- But if we want individual button borders:
-                btn:SetBackdrop({
-                    edgeFile = "Interface\\Buttons\\WHITE8x8",
-                    edgeSize = borderSize * scale,
-                })
-                btn:SetBackdropBorderColor(0, 0, 0, 1)
+                -- Only apply border when borderSize > 0 to avoid rendering glitches
+                local scaledBorder = borderSize * scale
+                if scaledBorder > 0 then
+                    btn:SetBackdrop({
+                        edgeFile = "Interface\\Buttons\\WHITE8x8",
+                        edgeSize = scaledBorder,
+                    })
+                    btn:SetBackdropBorderColor(0, 0, 0, 1)
+                else
+                    btn:SetBackdrop(nil)
+                end
                 
                 -- Inset the bar to show border
                 local inset = borderSize * scale
