@@ -1,26 +1,18 @@
--- [ RESOURCE BAR MIXIN - Shared logic for discrete class resources ]------------------------------
--- Provides:
--- - Resource type determination per class/spec/form
--- - Rune cooldown tracking
--- - Essence recharge tracking
--- - Charged combo point detection
-
+-- ResourceBarMixin: Shared logic for discrete class resources
 local _, Orbit = ...
 ---@class OrbitResourceBarMixin
 Orbit.ResourceBarMixin = {}
 local Mixin = Orbit.ResourceBarMixin
 
--- [ DRUID FORM CONSTANTS ]------------------------------------------------------------------------
+-- Druid form IDs
 local DRUID_FORMS = {
-    CAT = DRUID_CAT_FORM or 1,
-    BEAR = DRUID_BEAR_FORM or 5,
-    MOONKIN_1 = DRUID_MOONKIN_FORM_1 or 31,
-    MOONKIN_2 = DRUID_MOONKIN_FORM_2 or 35,
+    CAT = DRUID_CAT_FORM,
+    BEAR = DRUID_BEAR_FORM,
+    MOONKIN_1 = DRUID_MOONKIN_FORM_1,
+    MOONKIN_2 = DRUID_MOONKIN_FORM_2,
 }
 
--- [ RESOURCE TYPE MAPPING ]-----------------------------------------------------------------------
-
--- Maps class/spec to their secondary (discrete) resource type
+-- [ CLASS/SPEC RESOURCE MAPPING ]------------------------------------------------------------------
 local CLASS_RESOURCES = {
     ROGUE = Enum.PowerType.ComboPoints,
     PALADIN = Enum.PowerType.HolyPower,
@@ -82,8 +74,7 @@ function Mixin:GetResourceForPlayer()
     return resource, powerName
 end
 
--- [ RUNE COOLDOWN STATE ]-----------------------------------------------------------------------
-
+-- [ RUNE COOLDOWN STATE ]--------------------------------------------------------------------------
 --- Get rune state for Death Knights
 ---@param runeIndex number Rune index (1-6)
 ---@return boolean ready Is the rune ready?
@@ -141,8 +132,7 @@ function Mixin:GetSortedRuneOrder()
     return result
 end
 
--- [ ESSENCE RECHARGE STATE ]----------------------------------------------------------------------
-
+-- [ ESSENCE RECHARGE STATE ]-----------------------------------------------------------------------
 -- Cached essence tracking
 local essenceState = {
     nextTick = nil,
@@ -196,29 +186,16 @@ function Mixin:GetEssenceState(essenceIndex, currentEssence, maxEssence)
     end
 end
 
--- [ CHARGED COMBO POINTS ]------------------------------------------------------------------------
-
---- Get charged combo point indices
----@return table chargedLookup Table where chargedLookup[index] = true for charged points
+-- [ CHARGED COMBO POINTS ]-------------------------------------------------------------------------
 function Mixin:GetChargedPoints()
-    local charged = GetUnitChargedPowerPoints("player") or {}
     local lookup = {}
-    for _, idx in ipairs(charged) do
+    for _, idx in ipairs(GetUnitChargedPowerPoints("player") or {}) do
         lookup[idx] = true
     end
     return lookup
 end
 
--- [ SMOOTH STATUSBAR INTERPOLATION (12.0+) ]----------------------------------------------------
-
---- Get interpolation mode for smooth StatusBar progress
----@return number interpolation Enum.StatusBarInterpolation.ExponentialEaseOut
-function Mixin:GetSmoothInterpolation()
-    return Enum.StatusBarInterpolation.ExponentialEaseOut
-end
-
--- [ CONTINUOUS RESOURCE DETECTION ]---------------------------------------------------------------
-
+-- [ CONTINUOUS RESOURCE DETECTION ]----------------------------------------------------------------
 --- Check if player should show a continuous bar resource instead of discrete
 ---@return string|nil resourceType "STAGGER", "SOUL_FRAGMENTS", "EBON_MIGHT", "MAELSTROM", or nil
 function Mixin:GetContinuousResourceForPlayer()
@@ -247,14 +224,18 @@ function Mixin:GetContinuousResourceForPlayer()
         return "MANA"
     end
 
-    -- Shaman (Elemental, Enhancement) - Mana
-    -- Only if primary power is NOT Mana (Enhancement uses Mana as primary, so this prevents double bar)
-    -- Orbit PlayerPower shows primary. If primary is Mana, checking UnitPowerType catches it.
-    if class == "SHAMAN" and (specID == 262 or specID == 263) then
+    -- Shaman (Elemental) - Mana
+    -- Only if primary power is NOT Mana
+    if class == "SHAMAN" and specID == 262 then
         local primary = UnitPowerType("player")
         if primary ~= Enum.PowerType.Mana then
             return "MANA"
         end
+    end
+
+    -- Enhancement Shaman - Maelstrom Weapon stacks (aura-based)
+    if class == "SHAMAN" and specID == 263 then
+        return "MAELSTROM_WEAPON"
     end
 
     -- Druid (Balance) - Mana
@@ -272,74 +253,42 @@ function Mixin:GetContinuousResourceForPlayer()
     return nil
 end
 
--- [ STAGGER STATE (Brewmaster Monk) ]-----------------------------------------------------------
-
---- Get stagger state for Brewmaster Monk
----@return number stagger Current stagger amount (pass to StatusBar:SetValue)
----@return number maxHealth Max health (pass to StatusBar:SetMinMaxValues)
----@return string level "LOW", "MEDIUM", or "HEAVY" (based on C_UnitAuras stagger debuff index)
+-- [ STAGGER STATE ]--------------------------------------------------------------------------------
 function Mixin:GetStaggerState()
     local stagger = UnitStagger("player") or 0
     local maxHealth = UnitHealthMax("player") or 1
-
-    local level = "LOW"
-    local staggerIndex = C_UnitAuras.GetPlayerAuraBySpellID(124273) -- Heavy
-    if staggerIndex then
-        level = "HEAVY"
-    else
-        staggerIndex = C_UnitAuras.GetPlayerAuraBySpellID(124274) -- Moderate
-        if staggerIndex then
-            level = "MEDIUM"
-        end
-    end
-
+    local level = C_UnitAuras.GetPlayerAuraBySpellID(124273) and "HEAVY" 
+        or C_UnitAuras.GetPlayerAuraBySpellID(124274) and "MEDIUM" 
+        or "LOW"
     return stagger, maxHealth, level
 end
 
--- [ SOUL FRAGMENTS STATE (Demon Hunter) ]-------------------------------------------------------
-
---- Get soul fragments state from native DH bar
----@return number|nil current Current soul fragments (nil if unavailable)
----@return number|nil max Maximum soul fragments
----@return boolean isVoidMeta True if in Void Metamorphosis
+-- [ SOUL FRAGMENTS STATE ]-------------------------------------------------------------------------
 function Mixin:GetSoulFragmentsState()
-    -- Requires native PlayerFrame to be visible
-    if not PlayerFrame or not PlayerFrame:IsShown() then
+    if not PlayerFrame or not PlayerFrame:IsShown() or not DemonHunterSoulFragmentsBar or not DemonHunterSoulFragmentsBar:IsShown() then
         return nil, nil, false
     end
-
-    if not DemonHunterSoulFragmentsBar or not DemonHunterSoulFragmentsBar:IsShown() then
-        return nil, nil, false
-    end
-
     local current = DemonHunterSoulFragmentsBar:GetValue()
     local _, max = DemonHunterSoulFragmentsBar:GetMinMaxValues()
-
-    -- Check for Void Metamorphosis (different color)
-    local isVoidMeta = DemonHunterSoulFragmentsBar.CollapsingStarBackground
-        and DemonHunterSoulFragmentsBar.CollapsingStarBackground:IsShown()
-
+    local isVoidMeta = DemonHunterSoulFragmentsBar.CollapsingStarBackground and DemonHunterSoulFragmentsBar.CollapsingStarBackground:IsShown()
     return current, max, isVoidMeta
 end
 
--- [ EBON MIGHT STATE (Augmentation Evoker) ]----------------------------------------------------
-
---- Get Ebon Might state from native Evoker bar
---- Note: Requires native PlayerFrame to be visible (off-screen is fine)
----@return number|nil current Current Ebon Might value (nil if unavailable)
----@return number|nil max Maximum Ebon Might value
+-- [ EBON MIGHT STATE ]-----------------------------------------------------------------------------
 function Mixin:GetEbonMightState()
-    -- Requires native PlayerFrame to exist and be "shown" (can be off-screen)
-    if not PlayerFrame or not PlayerFrame:IsShown() then
+    if not PlayerFrame or not PlayerFrame:IsShown() or not EvokerEbonMightBar or not EvokerEbonMightBar:IsShown() then
         return nil, nil
     end
-
-    if not EvokerEbonMightBar or not EvokerEbonMightBar:IsShown() then
-        return nil, nil
-    end
-
     local current = EvokerEbonMightBar:GetValue()
     local _, max = EvokerEbonMightBar:GetMinMaxValues()
-
     return current, max
+end
+
+-- [ MAELSTROM WEAPON STATE ]-----------------------------------------------------------------------
+local MAELSTROM_WEAPON_ID = 344179
+
+function Mixin:GetMaelstromWeaponState()
+    local aura = C_UnitAuras.GetPlayerAuraBySpellID(MAELSTROM_WEAPON_ID)
+    if not aura then return 0, 10, false, nil end
+    return aura.applications or 0, 10, true, aura.auraInstanceID
 end
