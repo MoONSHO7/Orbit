@@ -486,12 +486,30 @@ function Dialog:ApplyStyle(container, key, value)
         local font, _, flags = visual:GetFont()
         flags = (flags and flags ~= "") and flags or "OUTLINE"
         visual:SetFont(font, value, flags)
+        
+        -- Resize container to match new text dimensions
+        C_Timer.After(0.01, function()
+            if container and visual and visual.GetStringWidth then
+                local textWidth = visual:GetStringWidth() or (value * 3)
+                local textHeight = visual:GetStringHeight() or value
+                container:SetSize(textWidth + 2, textHeight + 2)
+            end
+        end)
     elseif key == "Font" and visual.SetFont then
         local fontPath = LSM:Fetch("font", value)
         if fontPath then
             local _, size, flags = visual:GetFont()
             flags = (flags and flags ~= "") and flags or "OUTLINE"
             visual:SetFont(fontPath, size or 12, flags)
+            
+            -- Resize container to match new text dimensions
+            C_Timer.After(0.01, function()
+                if container and visual and visual.GetStringWidth then
+                    local textWidth = visual:GetStringWidth() or ((size or 12) * 3)
+                    local textHeight = visual:GetStringHeight() or (size or 12)
+                    container:SetSize(textWidth + 2, textHeight + 2)
+                end
+            end)
         end
     elseif key == "CustomColor" and visual.SetTextColor then
         -- CustomColor checkbox toggled

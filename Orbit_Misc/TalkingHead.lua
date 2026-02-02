@@ -173,15 +173,13 @@ function Plugin:ApplySettings()
 
     -- Get settings
     local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100
-    local opacity = self:GetSetting(SYSTEM_ID, "Opacity") or 100
     local disable = self:GetSetting(SYSTEM_ID, "DisableTalkingHead")
 
     -- Ensure reparented
     self:ReparentAll()
 
-    -- Apply Scale and Opacity
+    -- Apply Scale
     frame:SetScale(scale / 100)
-    frame:SetAlpha(opacity / 100)
 
     -- Handle disable logic (don't disable during Edit Mode to allow configuration)
     if disable and not isEditMode then

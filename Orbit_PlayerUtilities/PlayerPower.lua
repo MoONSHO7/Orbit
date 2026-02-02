@@ -34,6 +34,7 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
         Height = 15,
         UseCustomColor = false,
         BarColor = { r = 1, g = 1, b = 1, a = 1 },
+        OutOfCombatFade = false,
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
@@ -83,6 +84,21 @@ function Plugin:AddSettings(dialog, systemFrame)
     -- Height
     WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 50, default = 15 }, nil)
 
+    -- Out of Combat Fade
+    table.insert(schema.controls, {
+        type = "checkbox",
+        key = "OutOfCombatFade",
+        label = "Out of Combat Fade",
+        default = false,
+        tooltip = "Hide frame when out of combat with no target",
+        onChange = function(val)
+            self:SetSetting(systemIndex, "OutOfCombatFade", val)
+            if Orbit.OOCFadeMixin then
+                Orbit.OOCFadeMixin:RefreshAll()
+            end
+        end,
+    })
+
     -- Custom Color Toggle
     table.insert(schema.controls, {
         type = "checkbox",
@@ -92,20 +108,26 @@ function Plugin:AddSettings(dialog, systemFrame)
         onChange = function(val)
             self:SetSetting(systemIndex, "UseCustomColor", val)
             self:UpdateAll()
+            -- Refresh settings panel to show/hide Bar Color picker
+            OrbitEngine.Layout:Reset(dialog)
+            self:AddSettings(dialog, systemFrame)
         end,
     })
 
-    -- Bar Color Picker
-    table.insert(schema.controls, {
-        type = "color",
-        key = "BarColor",
-        label = "Bar Color",
-        default = { r = 1, g = 1, b = 1, a = 1 },
-        onChange = function(color)
-            self:SetSetting(systemIndex, "BarColor", color)
-            self:UpdateAll()
-        end,
-    })
+    -- Bar Color Picker (only show if UseCustomColor is enabled)
+    local useCustomColor = self:GetSetting(systemIndex, "UseCustomColor")
+    if useCustomColor then
+        table.insert(schema.controls, {
+            type = "color",
+            key = "BarColor",
+            label = "Bar Color",
+            default = { r = 1, g = 1, b = 1, a = 1 },
+            onChange = function(color)
+                self:SetSetting(systemIndex, "BarColor", color)
+                self:UpdateAll()
+            end,
+        })
+    end
 
     -- Note: Show Text is now controlled via Canvas Mode (drag Text to disabled dock)
 
@@ -368,6 +390,11 @@ function Plugin:ApplySettings()
 
     if OrbitEngine.Frame.ForceUpdateSelection then
         OrbitEngine.Frame:ForceUpdateSelection(Frame)
+    end
+
+    -- Apply Out of Combat Fade
+    if Orbit.OOCFadeMixin then
+        Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, systemIndex, "OutOfCombatFade")
     end
 
     self:UpdateVisibility()

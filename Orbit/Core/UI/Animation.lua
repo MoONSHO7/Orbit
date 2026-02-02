@@ -117,9 +117,7 @@ function Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, editModeActiv
     if isOver then
         SafeFade(frame, maxAlpha, 0.1)
     else
-        -- Snap to min if we are not hovering
-        if minAlpha == 0 and frame:GetAlpha() > 0 then
-            frame:SetAlpha(0)
-        end
+        -- Always apply minAlpha when not hovering (Opacity slider enforcement)
+        frame:SetAlpha(minAlpha)
     end
 end

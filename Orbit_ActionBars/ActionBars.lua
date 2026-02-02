@@ -154,6 +154,7 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
             Stacks = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 2, offsetY = 2, justifyH = "LEFT" },
         },
         GlobalDisabledComponents = {},
+        OutOfCombatFade = false,
     },
 }, Orbit.Constants.PluginGroups.ActionBars)
 
@@ -347,6 +348,21 @@ function Plugin:AddSettings(dialog, systemFrame)
             default = false,
         })
     end
+
+    -- Out of Combat Fade
+    table.insert(schema.controls, {
+        type = "checkbox",
+        key = "OutOfCombatFade",
+        label = "Out of Combat Fade",
+        default = false,
+        tooltip = "Hide frame when out of combat with no target",
+        onChange = function(val)
+            self:SetSetting(systemIndex, "OutOfCombatFade", val)
+            if Orbit.OOCFadeMixin then
+                Orbit.OOCFadeMixin:RefreshAll()
+            end
+        end,
+    })
 
     -- Add Quick Keybind Mode button to footer
     schema.extraButtons = {
@@ -981,6 +997,11 @@ function Plugin:CreateContainer(config)
 
     frame:Show()
 
+    -- Apply Out of Combat Fade
+    if Orbit.OOCFadeMixin then
+        Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, config.index, "OutOfCombatFade")
+    end
+
     return frame
 end
 
@@ -1353,16 +1374,10 @@ function Plugin:ApplySettings(frame)
         self:ReparentButtons(index)
     end
 
-    -- Get settings
-    local alpha = self:GetSetting(index, "Opacity") or 100
-
     -- Apply Scale (Standard Mixin)
     self:ApplyScale(actualFrame, index, "Scale")
 
-    -- Apply opacity
-    actualFrame:SetAlpha(alpha / 100)
-
-    -- Apply mouse-over fade
+    -- Apply mouse-over fade (also handles opacity via ApplyHoverFade)
     self:ApplyMouseOver(actualFrame, index)
 
     -- Layout buttons (Sets size)

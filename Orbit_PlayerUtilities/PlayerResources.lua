@@ -39,6 +39,7 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         Height = DEFAULTS.Height,
         UseCustomColor = false,
         BarColor = { r = 1, g = 1, b = 1, a = 1 },
+        OutOfCombatFade = false,
     },
 }, Orbit.Constants.PluginGroups.CooldownManager)
 
@@ -92,6 +93,21 @@ function Plugin:AddSettings(dialog, systemFrame)
         nil
     )
 
+    -- Out of Combat Fade
+    table.insert(schema.controls, {
+        type = "checkbox",
+        key = "OutOfCombatFade",
+        label = "Out of Combat Fade",
+        default = false,
+        tooltip = "Hide frame when out of combat with no target",
+        onChange = function(val)
+            self:SetSetting(systemIndex, "OutOfCombatFade", val)
+            if Orbit.OOCFadeMixin then
+                Orbit.OOCFadeMixin:RefreshAll()
+            end
+        end,
+    })
+
     -- Custom Color Toggle
     table.insert(schema.controls, {
         type = "checkbox",
@@ -102,21 +118,27 @@ function Plugin:AddSettings(dialog, systemFrame)
             self:SetSetting(systemIndex, "UseCustomColor", val)
             self:ApplyButtonVisuals()
             self:UpdatePower()
+            -- Refresh settings panel to show/hide Bar Color picker
+            OrbitEngine.Layout:Reset(dialog)
+            self:AddSettings(dialog, systemFrame)
         end,
     })
 
-    -- Bar Color Picker
-    table.insert(schema.controls, {
-        type = "color",
-        key = "BarColor",
-        label = "Bar Color",
-        default = { r = 1, g = 1, b = 1, a = 1 },
-        onChange = function(color)
-            self:SetSetting(systemIndex, "BarColor", color)
-            self:ApplyButtonVisuals()
-            self:UpdatePower()
-        end,
-    })
+    -- Bar Color Picker (only show if UseCustomColor is enabled)
+    local useCustomColor = self:GetSetting(systemIndex, "UseCustomColor")
+    if useCustomColor then
+        table.insert(schema.controls, {
+            type = "color",
+            key = "BarColor",
+            label = "Bar Color",
+            default = { r = 1, g = 1, b = 1, a = 1 },
+            onChange = function(color)
+                self:SetSetting(systemIndex, "BarColor", color)
+                self:ApplyButtonVisuals()
+                self:UpdatePower()
+            end,
+        })
+    end
 
     -- Note: Show Text is now controlled via Canvas Mode (drag Text to disabled dock)
 
@@ -491,6 +513,11 @@ function Plugin:ApplySettings()
 
     -- 4. Update Power (Refresh Logic & Spacer Positions)
     self:UpdatePower()
+
+    -- 5. Apply Out of Combat Fade
+    if Orbit.OOCFadeMixin then
+        Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, systemIndex, "OutOfCombatFade")
+    end
 end
 
 -- [ BUTTON VISUAL APPLICATION ]---------------------------------------------------------------------

@@ -15,7 +15,6 @@ local Plugin = Orbit:RegisterPlugin("Menu Bar", SYSTEM_ID, {
         Rows = 1,
         Scale = 100,
         Opacity = 100,
-        MouseOver = false,
     },
 }, Orbit.Constants.PluginGroups.MenuItems)
 
@@ -294,7 +293,6 @@ function Plugin:ApplySettings()
     local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100
     local padding = self:GetSetting(SYSTEM_ID, "Padding") or -5
     local rows = self:GetSetting(SYSTEM_ID, "Rows") or 1
-    local opacity = self:GetSetting(SYSTEM_ID, "Opacity") or 100
 
     self:ReparentAll()
 
@@ -325,7 +323,6 @@ function Plugin:ApplySettings()
 
     frame:Show()
     frame:SetScale(scale / 100)
-    frame:SetAlpha(opacity / 100)
 
     local w = 28 -- Approximate width of micro button (art is larger, but stride uses smaller)
     local h = 36

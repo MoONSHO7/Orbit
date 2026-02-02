@@ -89,6 +89,7 @@ Core\Mixins\PluginMixin.lua
 Core\Mixins\CastBarMixin.lua
 Core\Mixins\UnitFrameMixin.lua
 Core\Mixins\NativeBarMixin.lua
+Core\Mixins\OOCFadeMixin.lua
 Core\Mixins\AuraMixin.lua
 Core\Mixins\VisualsExtendedMixin.lua
 Core\Mixins\ResourceBarMixin.lua

@@ -175,11 +175,8 @@ function Plugin:ApplySettings()
     end
 
     local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100
-    -- Apply Opacity
-    local opacity = self:GetSetting(SYSTEM_ID, "Opacity") or 100
 
     frame:SetScale(scale / 100)
-    frame:SetAlpha(opacity / 100)
 
     -- Global Text Scale
     local textMultiplier = 1

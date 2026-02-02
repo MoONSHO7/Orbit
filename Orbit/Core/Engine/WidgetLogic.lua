@@ -541,50 +541,13 @@ local function CreateOpacityOnChange(plugin, systemIndex, key, systemFrame)
         end
 
         if realFrame and realFrame.SetAlpha and not InCombatLockdown() then
-            local mouseOver = plugin:GetSetting(systemIndex, "MouseOver")
             local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
-
             local minAlpha = val / 100
-            if mouseOver then
-                minAlpha = 0
-            end
 
             if Orbit and Orbit.Animation then
                 Orbit.Animation:ApplyHoverFade(realFrame, minAlpha, 1, isEditMode)
             else
                 realFrame:SetAlpha(minAlpha)
-            end
-        end
-
-        if plugin.ApplySettings then
-            plugin:ApplySettings(systemFrame)
-        end
-        if Engine.Frame and realFrame then
-            Engine.Frame:ForceUpdateSelection(realFrame)
-        end
-    end
-end
-
-local function CreateMouseOverOnChange(plugin, systemIndex, key, systemFrame)
-    return function(val)
-        plugin:SetSetting(systemIndex, key, val)
-
-        local realFrame = systemFrame
-        if systemFrame and not systemFrame.SetAlpha then
-            realFrame = plugin.frames and plugin.frames[systemIndex] or plugin.Frame
-        end
-
-        if realFrame and realFrame.SetAlpha and not InCombatLockdown() then
-            local opacity = plugin:GetSetting(systemIndex, "Opacity") or 100
-            local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
-
-            local minAlpha = opacity / 100
-            if val then
-                minAlpha = 0
-            end
-
-            if Orbit and Orbit.Animation then
-                Orbit.Animation:ApplyHoverFade(realFrame, minAlpha, 1, isEditMode)
             end
         end
 
@@ -635,19 +598,6 @@ function WL:AddOpacitySettings(plugin, schema, systemIndex, systemFrame, params)
         end,
         default = params.default or defaults.Default,
         onChange = params.onChange or CreateOpacityOnChange(plugin, systemIndex, key, systemFrame),
-    })
-end
-
-function WL:AddMouseOverSettings(plugin, schema, systemIndex, systemFrame, params)
-    params = params or {}
-    local key = params.key or "MouseOver"
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = key,
-        label = params.label or "Mouse Over",
-        tooltip = params.tooltip,
-        default = params.default or false,
-        onChange = params.onChange or CreateMouseOverOnChange(plugin, systemIndex, key, systemFrame),
     })
 end
 

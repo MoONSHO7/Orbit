@@ -26,6 +26,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         ShowMarkerIcon = false,
         ShowGroupPosition = false,
         HealthTextMode = "percent_short",
+        OutOfCombatFade = false,
         EnablePlayerPower = true,
         EnablePlayerResource = true,
         -- Aggro Indicator Settings
@@ -132,6 +133,20 @@ function Plugin:AddSettings(dialog, systemFrame)
             local prPlugin = Orbit:GetPlugin("Orbit_PlayerResources")
             if prPlugin and prPlugin.UpdateVisibility then
                 prPlugin:UpdateVisibility()
+            end
+        end,
+    })
+
+    table.insert(controls, {
+        type = "checkbox",
+        key = "OutOfCombatFade",
+        label = "Out of Combat Fade",
+        default = false,
+        tooltip = "Hide frame when out of combat with no target",
+        onChange = function(val)
+            self:SetSetting(PLAYER_FRAME_INDEX, "OutOfCombatFade", val)
+            if Orbit.OOCFadeMixin then
+                Orbit.OOCFadeMixin:RefreshAll()
             end
         end,
     })
@@ -530,6 +545,11 @@ function Plugin:ApplySettings(frame)
                 frame:ApplyComponentPositions()
             end
         end
+    end
+
+    -- 6. Apply Out of Combat Fade (with hover detection enabled)
+    if Orbit.OOCFadeMixin then
+        Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", true)
     end
 end
 
