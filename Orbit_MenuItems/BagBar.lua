@@ -9,7 +9,6 @@ local Plugin = Orbit:RegisterPlugin("Bag Bar", SYSTEM_ID, {
     defaults = {
         Scale = 100,
         Opacity = 100,
-        MouseOver = false,
         Orientation = Enum.BagsOrientation.Horizontal,
         Direction = Enum.BagsDirection.Left,
     },
@@ -240,16 +239,14 @@ function Plugin:ApplySettings()
 
     -- Get settings
     local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100
-    local opacity = self:GetSetting(SYSTEM_ID, "Opacity") or 100
     local orientation = self:GetSetting(SYSTEM_ID, "Orientation")
     local direction = self:GetSetting(SYSTEM_ID, "Direction")
 
     -- Ensure reparented
     self:ReparentAll()
 
-    -- Apply Scale and Opacity to container
+    -- Apply Scale to container
     frame:SetScale(scale / 100)
-    frame:SetAlpha(opacity / 100)
     frame:Show()
 
     -- Apply orientation and direction to BagsBar

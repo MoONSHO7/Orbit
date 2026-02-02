@@ -106,21 +106,24 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         local sx, sy = sourceComponent:GetShadowOffset()
         if sx then visual:SetShadowOffset(sx, sy) end
         
-        -- Auto-size container based on text dimensions
+        -- Auto-size container to tightly fit text (minimal footprint)
         local text = visual:GetText() or ""
         local fontSize = select(2, visual:GetFont()) or 12
-        -- Fallback width based on character count (rough estimate)
-        local textWidth = math.max(fontSize * #text * 0.7, 12)
-        local textHeight = fontSize + 4
+        -- Maximum reasonable width: 0.8 * fontSize * charCount (accounts for wide chars)
+        local maxReasonableWidth = fontSize * #text * 0.8
+        -- Tight fallback: ~0.55 per character for most fonts
+        local textWidth = fontSize * #text * 0.55
+        local textHeight = fontSize
         local ok, w = pcall(function() return visual:GetStringWidth() end)
-        if ok and w and type(w) == "number" and w > 0 and (not issecretvalue or not issecretvalue(w)) then
+        if ok and w and type(w) == "number" and w > 0 and w <= maxReasonableWidth * 2 and (not issecretvalue or not issecretvalue(w)) then
             textWidth = w
         end
         local ok2, h = pcall(function() return visual:GetStringHeight() end)
-        if ok2 and h and type(h) == "number" and h > 0 and (not issecretvalue or not issecretvalue(h)) then
+        if ok2 and h and type(h) == "number" and h > 0 and h <= fontSize * 2 and (not issecretvalue or not issecretvalue(h)) then
             textHeight = h
         end
-        container:SetSize(math.max(12, textWidth), math.max(12, textHeight))
+        -- Add minimal buffer (2px total each dimension) for hit detection
+        container:SetSize(textWidth + 2, textHeight + 2)
         
         visual:SetPoint("CENTER", container, "CENTER", 0, 0)
         container.isFontString = true

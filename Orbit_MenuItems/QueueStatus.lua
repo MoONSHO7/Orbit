@@ -9,7 +9,6 @@ local Plugin = Orbit:RegisterPlugin("Queue Status", SYSTEM_ID, {
     defaults = {
         Scale = 100,
         Opacity = 100,
-        MouseOver = false,
     },
 }, Orbit.Constants.PluginGroups.MenuItems)
 
@@ -156,11 +155,9 @@ function Plugin:ApplySettings()
 
     -- Get Settings
     local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100
-    local opacity = self:GetSetting(SYSTEM_ID, "Opacity") or 100
 
     -- Apply Visuals
     frame:SetScale(scale / 100)
-    frame:SetAlpha(opacity / 100)
 
     -- Determine Visibility
     -- Native behavior: QueueStatusButton shows/hides itself based on LFG status.

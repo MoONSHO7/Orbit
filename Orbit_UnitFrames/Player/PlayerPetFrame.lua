@@ -16,6 +16,7 @@ local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
     defaults = {
         Width = 100,
         Height = 20,
+        OutOfCombatFade = false,
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
@@ -34,6 +35,19 @@ function Plugin:AddSettings(dialog, systemFrame)
         controls = {
             { type = "slider", key = "Width", label = "Width", min = 80, max = 300, step = 5, default = 100 },
             { type = "slider", key = "Height", label = "Height", min = 10, max = 60, step = 5, default = 20 },
+            {
+                type = "checkbox",
+                key = "OutOfCombatFade",
+                label = "Out of Combat Fade",
+                default = false,
+                tooltip = "Hide frame when out of combat with no target",
+                onChange = function(val)
+                    Plugin:SetSetting(systemIndex, "OutOfCombatFade", val)
+                    if Orbit.OOCFadeMixin then
+                        Orbit.OOCFadeMixin:RefreshAll()
+                    end
+                end,
+            },
         },
     }
 
@@ -164,7 +178,13 @@ function Plugin:UpdateVisibility()
     if not InCombatLockdown() then
         RegisterUnitWatch(self.frame)
     end
-    self.frame:SetAlpha(1)
+    
+    -- Respect OOC fade setting instead of forcing alpha=1
+    if Orbit.OOCFadeMixin then
+        Orbit.OOCFadeMixin:RefreshAll()
+    else
+        self.frame:SetAlpha(1)
+    end
 end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
@@ -234,6 +254,11 @@ function Plugin:ApplySettings(frame)
     local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
     if savedPositions and OrbitEngine.ComponentDrag then
         OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
+    end
+
+    -- Apply Out of Combat Fade
+    if Orbit.OOCFadeMixin then
+        Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade")
     end
     
     -- Ensure visibility is correctly set (Edit Mode awareness)

@@ -35,6 +35,7 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
         PandemicGlowColor = Constants.PandemicGlow.DefaultColor,
         ProcGlowType = Constants.PandemicGlow.DefaultType,
         ProcGlowColor = Constants.PandemicGlow.DefaultColor,
+        OutOfCombatFade = false,
     },
 }, Orbit.Constants.PluginGroups.CooldownManager)
 
@@ -183,7 +184,20 @@ function Plugin:AddSettings(dialog, systemFrame)
         default = Constants.PandemicGlow.DefaultColor,
     }, nil)
 
-
+    -- Out of Combat Fade
+    table.insert(schema.controls, {
+        type = "checkbox",
+        key = "OutOfCombatFade",
+        label = "Out of Combat Fade",
+        default = false,
+        tooltip = "Hide frame when out of combat with no target",
+        onChange = function(val)
+            self:SetSetting(systemIndex, "OutOfCombatFade", val)
+            if Orbit.OOCFadeMixin then
+                Orbit.OOCFadeMixin:RefreshAll()
+            end
+        end,
+    })
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
@@ -211,6 +225,18 @@ function Plugin:OnLoad()
 
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", self.OnPlayerEnteringWorld, self)
     self:RegisterVisibilityEvents()
+
+    -- Apply OOC Fade to Blizzard viewer frames (SetAlpha hook prevents external overrides)
+    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+        if Orbit.OOCFadeMixin then
+            for systemIndex, data in pairs(VIEWER_MAP) do
+                if data.viewer then
+                    Orbit.OOCFadeMixin:ApplyOOCFade(data.viewer, self, systemIndex, "OutOfCombatFade")
+                end
+            end
+            Orbit.OOCFadeMixin:RefreshAll()
+        end
+    end, self)
 end
 
 function Plugin:CreateAnchor(name, systemIndex, label)
@@ -246,6 +272,7 @@ function Plugin:CreateAnchor(name, systemIndex, label)
     end
 
     self:ApplySettings(frame)
+
     return frame
 end
 
