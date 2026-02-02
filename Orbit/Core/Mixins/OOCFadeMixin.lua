@@ -39,6 +39,16 @@ end
 local function SetFrameMouseEnabled(frame, enabled, includeChildren)
     if not frame then return end
     
+    -- EnableMouse is protected - queue for after combat if needed
+    if InCombatLockdown() then
+        if Orbit.CombatManager then
+            Orbit.CombatManager:QueueUpdate(function()
+                SetFrameMouseEnabled(frame, enabled, includeChildren)
+            end)
+        end
+        return
+    end
+    
     if frame.EnableMouse then
         frame:EnableMouse(enabled)
     end
@@ -72,19 +82,11 @@ local function UpdateFrameVisibility(frame, fadeEnabled, data)
     local shouldShow = ShouldShowFrame(frame)
     
     if shouldShow then
-        if Orbit.Animation and Orbit.Animation.FadeIn then
-            Orbit.Animation:FadeIn(frame, 0.3)
-        else
-            frame:SetAlpha(1)
-        end
+        frame:SetAlpha(1)
         -- Re-enable mouse when visible
         SetFrameMouseEnabled(frame, true, includeChildren)
     else
-        if Orbit.Animation and Orbit.Animation.FadeOut then
-            Orbit.Animation:FadeOut(frame, 0.5, 0)  -- Fade to 0 alpha
-        else
-            frame:SetAlpha(0)
-        end
+        frame:SetAlpha(0)
         -- Disable mouse when hidden (unless hover is enabled for reveal)
         if includeChildren then
             SetFrameMouseEnabled(frame, false, true)
@@ -111,8 +113,14 @@ EventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 EventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
 
 EventFrame:SetScript("OnEvent", function(self, event)
-    -- Small delay to allow combat state to settle
-    C_Timer.After(0.05, UpdateAllFrames)
+    if event == "PLAYER_REGEN_DISABLED" then
+        -- Combat enter: Update IMMEDIATELY so frames are visible and mouse-enabled
+        -- BEFORE combat lockdown starts (can't call EnableMouse after lockdown)
+        UpdateAllFrames()
+    else
+        -- Combat exit / target change: Small delay to allow state to settle
+        C_Timer.After(0.05, UpdateAllFrames)
+    end
 end)
 
 -- Hook Edit Mode show/hide to refresh visibility
