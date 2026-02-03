@@ -27,17 +27,11 @@ local function IsMicroButton(frame)
     if not frame then
         return false
     end
-    -- Check for know types or properties
     if frame.layoutIndex then
         return true
     end
-
     local name = frame:GetName()
-    if name and name:find("MicroButton") then
-        return true
-    end
-
-    return false
+    return name and name:find("MicroButton") or false
 end
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
@@ -164,13 +158,8 @@ function Plugin:OnLoad()
     -- Initial Capture
     self:ReparentAll()
 
-    -- Listen for Main Menu updates (Store button enable/disable etc changes visibility)
-    -- UpdateMicroButtons() is the global trigger.
-    -- Listen for Main Menu updates (Store button enable/disable etc changes visibility)
-    -- UpdateMicroButtons() is the global trigger.
+    -- Listen for Main Menu updates
     hooksecurefunc("UpdateMicroButtons", function()
-        -- Debounce and check if a layout update is actually needed
-        -- This prevents flickering when clicking buttons (which triggers an update but no layout change)
         if self.updateTimer then
             self.updateTimer:Cancel()
         end
@@ -178,14 +167,7 @@ function Plugin:OnLoad()
             if InCombatLockdown() then
                 return
             end
-
-            -- Only re-apply if the number of visible buttons changed
-            -- or if we suspect a new button appeared that we missed.
-            -- Count current managed visible buttons vs actual visible buttons?
-            -- Simplest efficient check:
             local currentCount = self:CountButtons()
-            -- If we stored the last count, we could compare.
-
             if currentCount ~= self.lastButtonCount then
                 self:ApplySettings()
                 self.lastButtonCount = currentCount
@@ -196,19 +178,9 @@ end
 
 -- [ LOGIC ]-----------------------------------------------------------------------------------------
 function Plugin:CaptureButton(button)
-    if not button then
+    if not button or InCombatLockdown() or button == QueueStatusButton then
         return
     end
-    if InCombatLockdown() then
-        return
-    end
-
-    -- Filter out QueueStatusButton (handled by QueueStatus plugin)
-    if button == QueueStatusButton then
-        return
-    end
-
-    -- Reparent
     if button:GetParent() ~= self.frame then
         button:SetParent(self.frame)
         button:Show()
@@ -220,7 +192,6 @@ function Plugin:ReparentAll()
         return
     end
 
-    -- 1. Check MicroMenu children
     local children = { MicroMenu:GetChildren() }
     for _, child in ipairs(children) do
         if IsMicroButton(child) then
@@ -228,7 +199,6 @@ function Plugin:ReparentAll()
         end
     end
 
-    -- 2. Check Standard Global Names (just in case)
     local standardButtons = {
         "CharacterMicroButton",
         "ProfessionMicroButton",
@@ -249,10 +219,6 @@ function Plugin:ReparentAll()
             self:CaptureButton(btn)
         end
     end
-
-    -- Hide Native Container to avoid ghosting (Wait, if we steal children, it's empty?)
-    -- MicroMenuContainer has logic.
-    -- Better to strip children and leave it empty so it collapses.
 end
 
 function Plugin:CountButtons()
@@ -260,8 +226,7 @@ function Plugin:CountButtons()
         return 12
     end
     local count = 0
-    local children = { self.frame:GetChildren() }
-    for _, child in ipairs(children) do
+    for _, child in ipairs({ self.frame:GetChildren() }) do
         if child:IsShown() and IsMicroButton(child) and child ~= QueueStatusButton then
             count = count + 1
         end
@@ -272,49 +237,27 @@ end
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 function Plugin:ApplySettings()
     local frame = self.frame
-    if not frame then
+    if not frame or InCombatLockdown() then
         return
     end
-    if InCombatLockdown() then
-        return
-    end
-
-    -- Visibility Guard
-    if C_PetBattles and C_PetBattles.IsInBattle() then
-        frame:Hide()
-        return
-    end
-    if UnitHasVehicleUI and UnitHasVehicleUI("player") then
+    if (C_PetBattles and C_PetBattles.IsInBattle()) or (UnitHasVehicleUI and UnitHasVehicleUI("player")) then
         frame:Hide()
         return
     end
 
-    -- Get settings
-    local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100
-    local padding = self:GetSetting(SYSTEM_ID, "Padding") or -5
-    local rows = self:GetSetting(SYSTEM_ID, "Rows") or 1
-
+    local scale, padding, rows =
+        self:GetSetting(SYSTEM_ID, "Scale") or 100, self:GetSetting(SYSTEM_ID, "Padding") or -5, self:GetSetting(SYSTEM_ID, "Rows") or 1
     self:ReparentAll()
-
-    -- Sort buttons by layoutIndex
     local buttons = {}
-    local children = { frame:GetChildren() }
-    for _, child in ipairs(children) do
-        -- Only include visible buttons? layoutIndex implies order.
-        -- UpdateMicroButtons() shows/hides them based on level.
-        -- We should only include SHOWN buttons in the grid.
+    for _, child in ipairs({ frame:GetChildren() }) do
         if child:IsShown() and IsMicroButton(child) and child ~= QueueStatusButton then
             table.insert(buttons, child)
         end
     end
-
     table.sort(buttons, function(a, b)
-        local ia = a.layoutIndex or 99
-        local ib = b.layoutIndex or 99
-        return ia < ib
+        return (a.layoutIndex or 99) < (b.layoutIndex or 99)
     end)
 
-    -- Layout
     local numButtons = #buttons
     if numButtons == 0 then
         frame:Hide()
@@ -324,56 +267,24 @@ function Plugin:ApplySettings()
     frame:Show()
     frame:SetScale(scale / 100)
 
-    local w = 28 -- Approximate width of micro button (art is larger, but stride uses smaller)
-    local h = 36
-    -- Actual sizes vary?
-    -- CharacterMicroButton: GetWidth() ?
-    -- Usually they are uniform.
+    local w, h = 28, 36
     if buttons[1] then
-        w = buttons[1]:GetWidth()
-        h = buttons[1]:GetHeight()
+        w, h = buttons[1]:GetWidth(), buttons[1]:GetHeight()
     end
-
-    -- Grid Calculation
     local cols = math.ceil(numButtons / rows)
-
     for i, button in ipairs(buttons) do
         button:ClearAllPoints()
-
-        -- Compute Row/Col
-        -- Index 1..N
-        -- Row-major?
-        -- If 1 Row: 1 2 3 ...
-        -- If 2 Row:
-        -- 1 2 3 4 5 6
-        -- 7 8 9 ...
-
-        -- Row = ceil(i / cols)
-        -- Col = (i-1) % cols + 1
-
-        local row = math.ceil(i / cols)
-        local col = (i - 1) % cols + 1
-
-        local x = (col - 1) * (w + padding)
-        local y = (row - 1) * (h + padding) * -1 -- Downward
-
-        button:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
+        local row, col = math.ceil(i / cols), (i - 1) % cols + 1
+        button:SetPoint("TOPLEFT", frame, "TOPLEFT", (col - 1) * (w + padding), (row - 1) * (h + padding) * -1)
     end
 
-    -- Set Container Size
-    local finalW = (cols * w) + ((cols - 1) * padding)
-    local finalH = (rows * h) + ((rows - 1) * padding)
+    local finalW, finalH = (cols * w) + ((cols - 1) * padding), (rows * h) + ((rows - 1) * padding)
     frame:SetSize(math.max(finalW, 1), math.max(finalH, 1))
-
-    -- Apply MouseOver
     self:ApplyMouseOver(frame, SYSTEM_ID)
 
-    -- Handle Standard Native Hiding
-    local nativeFrames = { MicroMenu, MicroMenuContainer }
-    for _, f in ipairs(nativeFrames) do
+    for _, f in ipairs({ MicroMenu, MicroMenuContainer }) do
         if f then
             OrbitEngine.NativeFrame:SecureHide(f)
-            -- Failsafe: Move offscreen if allowed (SecureHide might do this, but being explicit helps)
             if not InCombatLockdown() then
                 f:ClearAllPoints()
                 f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -9000, 9000)

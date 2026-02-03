@@ -59,7 +59,7 @@ function ErrorHandler:LogError(source, method, err)
 
     if not Orbit.db.ErrorLog then
         Orbit.db.ErrorLog = {}
-        Orbit.db.ErrorLogIndex = 0  -- Circular buffer pointer
+        Orbit.db.ErrorLogIndex = 0 -- Circular buffer pointer
     end
 
     -- Circular buffer: O(1) insertion by overwriting oldest entry

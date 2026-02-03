@@ -20,7 +20,7 @@ local function EnsureTooltip(self)
     if self.positionTooltip then
         return self.positionTooltip
     end
-    
+
     local tooltip = CreateFrame("Frame", "OrbitPositionTooltip", UIParent, "BackdropTemplate")
     tooltip:SetFrameStrata("TOOLTIP")
     tooltip:SetSize(C.Selection.PositionTooltip.Width, C.Selection.PositionTooltip.Height)
@@ -58,7 +58,7 @@ local function PositionAtCursor(tooltip, anchor)
     local screenHeight = GetScreenHeight()
 
     tooltip:ClearAllPoints()
-    
+
     if anchor == "LEFT" then
         tooltip:SetPoint("RIGHT", UIParent, "BOTTOMLEFT", cursorX - 20, cursorY)
     elseif anchor == "RIGHT" then
@@ -67,7 +67,7 @@ local function PositionAtCursor(tooltip, anchor)
         -- Default: BOTTOMRIGHT of cursor
         local offsetX = 15
         local offsetY = -15
-        
+
         -- Adjust if would go off screen
         if cursorX + offsetX + tooltipWidth > screenWidth then
             offsetX = -tooltipWidth - 5
@@ -75,7 +75,7 @@ local function PositionAtCursor(tooltip, anchor)
         if cursorY + offsetY - tooltipHeight < 0 then
             offsetY = 15
         end
-        
+
         tooltip:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", cursorX + offsetX, cursorY + offsetY)
     end
 end
@@ -145,7 +145,7 @@ function Tooltip:ShowPosition(frame, Selection, noFade)
 
     -- Resize and position
     tooltip:SetWidth(tooltip.text:GetStringWidth() + 16)
-    
+
     local screenWidth = GetScreenWidth()
     local cursorX = GetCursorPosition() / uiScale
     local anchor = (cursorX + tooltip:GetWidth() + 30 > screenWidth) and "LEFT" or "RIGHT"
@@ -176,24 +176,22 @@ function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, p
     else
         anchorStr = anchorX .. " " .. anchorY
     end
-    
+
     -- Format display values
     local displayOffX = math.floor((offsetX or 0) + 0.5)
     local displayOffY = math.floor((offsetY or 0) + 0.5)
     local displayPosX = math.floor((posX or 0) + 0.5)
     local displayPosY = math.floor((posY or 0) + 0.5)
     local justifyStr = justifyH or "CENTER"
-    
+
     -- Build tooltip text based on anchor type
     local tooltipText
     if anchorX == "CENTER" and anchorY == "CENTER" then
-        tooltipText = string.format("%s\nJustify: %s\nPosition: %d, %d",
-            anchorStr, justifyStr, displayPosX, displayPosY)
+        tooltipText = string.format("%s\nJustify: %s\nPosition: %d, %d", anchorStr, justifyStr, displayPosX, displayPosY)
     else
-        tooltipText = string.format("%s\nJustify: %s\nOffset: %d, %d",
-            anchorStr, justifyStr, displayOffX, displayOffY)
+        tooltipText = string.format("%s\nJustify: %s\nOffset: %d, %d", anchorStr, justifyStr, displayOffX, displayOffY)
     end
-    
+
     tooltip.text:SetText(tooltipText)
 
     -- Resize tooltip to fit text

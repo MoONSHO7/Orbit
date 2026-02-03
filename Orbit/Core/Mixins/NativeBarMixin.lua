@@ -1,6 +1,5 @@
 -- [ ORBIT NATIVE BAR MIXIN ]------------------------------------------------------------------------
--- Shared functionality for native Blizzard bar customization (MicroMenu, BagBar, TalkingHead)
--- Consolidates scale, orientation, and mouse-over fade logic
+-- Shared functionality for native Blizzard bar customization (scale, orientation, hover fade)
 
 local _, addonTable = ...
 local Orbit = addonTable
@@ -15,18 +14,8 @@ function Mixin:ApplyScale(frame, systemIndex, sizeKey)
     if not frame then
         return
     end
-
-    sizeKey = sizeKey or "Size"
-    local size = self:GetSetting(systemIndex, sizeKey) or 100
-    local scaleFactor = size / 100
-
-    if scaleFactor <= 0 then
-        scaleFactor = 0.1
-    end
-
+    local scaleFactor = math.max(0.1, (self:GetSetting(systemIndex, sizeKey or "Size") or 100) / 100)
     OrbitEngine.NativeFrame:Modify(frame, { scale = scaleFactor })
-
-    -- Also call native SetNormalScale if available
     if frame.SetNormalScale then
         frame:SetNormalScale(scaleFactor)
     end
@@ -38,17 +27,8 @@ function Mixin:ApplyMouseOver(frame, systemIndex)
     if not frame then
         return
     end
-
-    local opacity = self:GetSetting(systemIndex, "Opacity") or 100
-    local baseAlpha = opacity / 100
-    local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
-
-    -- "Mouse Over" behavior is now implicit:
-    -- Rest at 'Opacity' setting, Fade to 100% on hover
-    local minAlpha = baseAlpha
-    local maxAlpha = 1
-
-    Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, isEditMode)
+    local baseAlpha = (self:GetSetting(systemIndex, "Opacity") or 100) / 100
+    Orbit.Animation:ApplyHoverFade(frame, baseAlpha, 1, EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive())
 end
 
 -- [ ORIENTATION ]-----------------------------------------------------------------------------------
@@ -57,19 +37,13 @@ function Mixin:ApplyOrientation(frame, orientation, horizontalValue)
     if not frame then
         return
     end
-
-    horizontalValue = horizontalValue or 0 -- Default: 0 = Horizontal
-    frame.isHorizontal = (orientation == horizontalValue)
+    frame.isHorizontal = (orientation == (horizontalValue or 0))
 end
 
 -- [ LAYOUT TRIGGER ]--------------------------------------------------------------------------------
 
 function Mixin:TriggerLayout(frame)
-    if not frame then
-        return
-    end
-
-    if frame.Layout then
+    if frame and frame.Layout then
         frame:Layout()
     end
 end
@@ -81,23 +55,11 @@ function Mixin:ApplyNativeBarSettings(frame, systemIndex, options)
         return
     end
     options = options or {}
-
-    -- Apply scale
-    local sizeKey = options.sizeKey or "Size"
-    self:ApplyScale(frame, systemIndex, sizeKey)
-
-    -- Apply additional scale keys (e.g., EyeSize for MicroMenu)
-    if options.additionalScaleKey and options.targetMethod then
-        local additionalSize = self:GetSetting(systemIndex, options.additionalScaleKey) or 100
-        if frame[options.targetMethod] then
-            frame[options.targetMethod](frame, additionalSize / 100)
-        end
+    self:ApplyScale(frame, systemIndex, options.sizeKey or "Size")
+    if options.additionalScaleKey and options.targetMethod and frame[options.targetMethod] then
+        frame[options.targetMethod](frame, (self:GetSetting(systemIndex, options.additionalScaleKey) or 100) / 100)
     end
-
-    -- Apply mouse-over
     self:ApplyMouseOver(frame, systemIndex)
-
-    -- Trigger layout
     self:TriggerLayout(frame)
 end
 
@@ -107,13 +69,10 @@ function Mixin:EnableSmartAlignment(frame, textElement, paddingH)
     if not frame or not textElement then
         return
     end
-    paddingH = paddingH or 2 -- Default tight padding
-
+    paddingH = paddingH or 2
     frame.OnAnchorChanged = function(_, parent, edge, padding)
         self:UpdateAlignment(frame, textElement, edge, paddingH)
     end
-
-    -- Initial update
     self:UpdateAlignment(frame, textElement, nil, paddingH)
 end
 
@@ -121,10 +80,7 @@ function Mixin:UpdateAlignment(frame, textElement, edge, paddingH)
     if not frame or not textElement then
         return
     end
-
     textElement:ClearAllPoints()
-
-    -- Logic: Anchor RIGHT -> Align LEFT (and vice versa)
     if edge == "LEFT" then
         textElement:SetPoint("RIGHT", -paddingH, 0)
         textElement:SetJustifyH("RIGHT")

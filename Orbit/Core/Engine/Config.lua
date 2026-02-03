@@ -12,9 +12,7 @@ function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
 
     -- Calculate derived values from constants
     local footerHeight = Constants.Footer.TopPadding + Constants.Footer.ButtonHeight + Constants.Footer.BottomPadding
-    local contentWidthWithScroll = Constants.Panel.Width
-        - Constants.Panel.ScrollbarWidth
-        - (Constants.Panel.ContentPadding * 2)
+    local contentWidthWithScroll = Constants.Panel.Width - Constants.Panel.ScrollbarWidth - (Constants.Panel.ContentPadding * 2)
     local contentWidthNoScroll = Constants.Panel.Width - (Constants.Panel.ContentPadding * 2)
 
     -- Dynamic Header Height (Default to padding for standard plugins, or custom for Tabs)
@@ -185,13 +183,7 @@ function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
     local height = targetContent.OrbitContentHeight or targetContent:GetHeight()
 
     -- Update ScrollFrame bottom anchor based on new footer height
-    panel.ScrollFrame:SetPoint(
-        "BOTTOMRIGHT",
-        panel,
-        "BOTTOMRIGHT",
-        -Constants.Panel.ScrollbarWidth,
-        renderedFooterHeight
-    )
+    panel.ScrollFrame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -Constants.Panel.ScrollbarWidth, renderedFooterHeight)
 
     -- Resize Dialog to fit our content + Footer
     -- Wireframe: Max height of 800px.
@@ -213,23 +205,11 @@ function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
 
         if scrollbarVisible then
             panel.ScrollFrame.ScrollBar:Show()
-            panel.ScrollFrame:SetPoint(
-                "BOTTOMRIGHT",
-                panel,
-                "BOTTOMRIGHT",
-                -Constants.Panel.ScrollbarWidth,
-                renderedFooterHeight
-            )
+            panel.ScrollFrame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -Constants.Panel.ScrollbarWidth, renderedFooterHeight)
             targetContent:SetWidth(contentWidthWithScroll)
         else
             panel.ScrollFrame.ScrollBar:Hide()
-            panel.ScrollFrame:SetPoint(
-                "BOTTOMRIGHT",
-                panel,
-                "BOTTOMRIGHT",
-                -Constants.Panel.ContentPadding,
-                renderedFooterHeight
-            )
+            panel.ScrollFrame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -Constants.Panel.ContentPadding, renderedFooterHeight)
             targetContent:SetWidth(contentWidthNoScroll)
         end
 

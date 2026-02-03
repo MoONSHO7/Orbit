@@ -16,7 +16,7 @@ local function UpdateScreenScale()
     else
         SCREEN_SCALE = 768.0 / physicalHeight
     end
-    
+
     if Orbit.EventBus then
         Orbit.EventBus:Fire("ORBIT_DISPLAY_SIZE_CHANGED", SCREEN_SCALE)
     end

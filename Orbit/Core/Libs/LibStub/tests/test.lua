@@ -8,8 +8,7 @@ assert(lib) -- should return the library table
 assert(not oldMinor) -- should not return the old minor, since it didn't exist
 
 -- the following is to create data and then be able to check if the same data exists after the fact
-function lib:MyMethod()
-end
+function lib:MyMethod() end
 local MyMethod = lib.MyMethod
 lib.MyTable = {}
 local MyTable = lib.MyTable

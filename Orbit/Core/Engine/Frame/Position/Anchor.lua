@@ -67,14 +67,7 @@ local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOpti
 
     -- Merge Borders Logic
     local overlap = 0
-    if
-        syncOptions
-        and syncOptions.mergeBorders
-        and parentOptions.mergeBorders
-        and syncOptions.syncScale
-        and syncOptions.syncDimensions
-        and padding == 0
-    then
+    if syncOptions and syncOptions.mergeBorders and parentOptions.mergeBorders and syncOptions.syncScale and syncOptions.syncDimensions and padding == 0 then
         -- Calculate Overlap needed to make contents touch
         -- We want to remove the space of BOTH borders (since both are hidden)
         -- Overlap = ParentBorder + ChildBorder
@@ -476,9 +469,7 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited)
         end
     end
 
-    local isEditMode = EditModeManagerFrame
-        and EditModeManagerFrame.IsEditModeActive
-        and EditModeManagerFrame:IsEditModeActive()
+    local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
 
     -- Fast Path: During Edit Mode, just reposition children without full ApplySettings cascade
     -- This prevents exponential performance cost when dragging linked chains

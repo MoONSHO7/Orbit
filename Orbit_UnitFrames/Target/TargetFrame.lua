@@ -9,7 +9,7 @@ local TARGET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Target
 local PLAYER_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Player
 
 local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
-    canvasMode = true,  -- Enable Canvas Mode for component editing
+    canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
         ReactionColour = true,
         ShowAuras = true,
@@ -114,8 +114,6 @@ end
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     Mixin(self, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin)
-    
-    -- Check if a component is disabled (Canvas Mode drag-to-disable)
     function Plugin:IsComponentDisabled(componentKey)
         local disabled = self:GetSetting(TARGET_FRAME_INDEX, "DisabledComponents") or {}
         for _, key in ipairs(disabled) do
@@ -125,11 +123,8 @@ function Plugin:OnLoad()
         end
         return false
     end
-
     local hiddenParent = CreateFrame("Frame", "OrbitHiddenTargetParent", UIParent)
     hiddenParent:Hide()
-
-    -- Hide native TargetFrame by moving it offscreen
     local frame = TargetFrame
     if frame then
         OrbitEngine.NativeFrame:Protect(frame)
@@ -138,7 +133,6 @@ function Plugin:OnLoad()
         frame:SetUserPlaced(true)
         frame:SetClampRectInsets(0, 0, 0, 0)
         frame:SetClampedToScreen(false)
-        -- Hook SetPoint to prevent Edit Mode/Layout resets
         if not frame.orbitSetPointHooked then
             hooksecurefunc(frame, "SetPoint", function(self)
                 if InCombatLockdown() then
@@ -153,11 +147,9 @@ function Plugin:OnLoad()
             end)
             frame.orbitSetPointHooked = true
         end
-
         frame:SetAlpha(0)
         frame:SetScale(0.001)
         frame:EnableMouse(false)
-
         if frame.SetTitle then
             frame:SetTitle("")
         end
@@ -209,7 +201,7 @@ function Plugin:OnLoad()
                 local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
                 positions.LevelText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
         OrbitEngine.ComponentDrag:Attach(self.frame.RareEliteIcon, self.frame, {
             key = "RareEliteIcon",
@@ -217,7 +209,7 @@ function Plugin:OnLoad()
                 local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
                 positions.RareEliteIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
     end
 
@@ -249,14 +241,7 @@ function Plugin:OnLoad()
         self.frame:SetPoint("CENTER", UIParent, "CENTER", 200, -140)
     end
 
-    self.frame.anchorOptions = {
-        horizontal = true, -- Can anchor side-by-side (LEFT/RIGHT)
-        vertical = false, -- Cannot stack above/below (TOP/BOTTOM)
-        syncScale = true,
-        syncDimensions = true,
-        useRowDimension = true,
-        mergeBorders = true,
-    }
+    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, useRowDimension = true, mergeBorders = true }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, TARGET_FRAME_INDEX)
 
     self:RegisterStandardEvents() -- Handle PEW and Edit Mode
@@ -307,21 +292,13 @@ function Plugin:OnLoad()
 end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
-
 function Plugin:UpdateLayout(frame)
-    if not frame then
+    if not frame or InCombatLockdown() then
         return
     end
-    if InCombatLockdown() then
-        return
-    end
-
     local systemIndex = TARGET_FRAME_INDEX
-
     local width = self:GetSetting(systemIndex, "Width") or self:GetPlayerSetting("Width") or 200
     local height = self:GetSetting(systemIndex, "Height") or self:GetPlayerSetting("Height") or 40
-
-    -- Physical Updates only
     if not OrbitEngine.Frame:GetAnchorParent(frame) then
         frame:SetSize(width, height)
     end
@@ -332,13 +309,7 @@ function Plugin:ApplySettings(frame)
     if not frame then
         return
     end
-
     local systemIndex = TARGET_FRAME_INDEX
-
-    -- Use Mixin for base settings
-    -- Use Mixin for base settings
-    -- inheritFromPlayer handles: Border, Texture, HealthTextEnabled
-    -- Explicitly pass width/height to force inheritance (ignoring local overrides)
     local width = self:GetSetting(systemIndex, "Width")
     local height = self:GetSetting(systemIndex, "Height")
 

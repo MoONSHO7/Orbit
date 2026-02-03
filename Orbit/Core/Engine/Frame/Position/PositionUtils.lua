@@ -27,7 +27,7 @@ function PositionUtils.CalculateAnchor(posX, posY, halfW, halfH)
     local anchorY, offsetY
     local isOutsideRight = posX > halfW
     local isOutsideLeft = posX < -halfW
-    
+
     -- X axis: snap to CENTER if within threshold, otherwise anchor to nearest edge
     if math.abs(posX) <= CENTER_THRESHOLD then
         anchorX = "CENTER"
@@ -35,28 +35,28 @@ function PositionUtils.CalculateAnchor(posX, posY, halfW, halfH)
         justifyH = "CENTER"
     elseif posX > 0 then
         anchorX = "RIGHT"
-        offsetX = halfW - posX  -- distance from right edge (negative if outside)
+        offsetX = halfW - posX -- distance from right edge (negative if outside)
         -- Inside: text grows LEFT (toward center), Outside: text grows RIGHT (away)
         justifyH = isOutsideRight and "LEFT" or "RIGHT"
     else
         anchorX = "LEFT"
-        offsetX = halfW + posX  -- distance from left edge (negative if outside)
+        offsetX = halfW + posX -- distance from left edge (negative if outside)
         -- Inside: text grows RIGHT (toward center), Outside: text grows LEFT (away)
         justifyH = isOutsideLeft and "RIGHT" or "LEFT"
     end
-    
+
     -- Y axis: snap to CENTER if within threshold, otherwise anchor to nearest edge
     if math.abs(posY) <= CENTER_THRESHOLD then
         anchorY = "CENTER"
         offsetY = 0
     elseif posY > 0 then
         anchorY = "TOP"
-        offsetY = halfH - posY  -- distance from top edge
+        offsetY = halfH - posY -- distance from top edge
     else
         anchorY = "BOTTOM"
-        offsetY = halfH + posY  -- distance from bottom edge
+        offsetY = halfH + posY -- distance from bottom edge
     end
-    
+
     return anchorX, anchorY, offsetX, offsetY, justifyH
 end
 
@@ -76,6 +76,6 @@ function PositionUtils.BuildAnchorPoint(anchorX, anchorY)
     elseif anchorX == "CENTER" then
         return anchorY
     else
-        return anchorY .. anchorX  -- e.g., "TOPLEFT", "BOTTOMRIGHT"
+        return anchorY .. anchorX -- e.g., "TOPLEFT", "BOTTOMRIGHT"
     end
 end

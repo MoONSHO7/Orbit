@@ -9,7 +9,6 @@ local OrbitEngine = Orbit.Engine
 Orbit.CastBarMixin = {}
 local Mixin = Orbit.CastBarMixin
 
--- Default settings shared by all cast bars
 Mixin.sharedDefaults = {
     CastBarColor = { r = 1, g = 0.7, b = 0 },
     CastBarText = true,
@@ -21,20 +20,17 @@ Mixin.sharedDefaults = {
 }
 
 -- Keys that Target/Focus cast bars inherit from Player Cast Bar
--- Keys that Target/Focus cast bars inherit from Player Cast Bar
 Mixin.INHERITED_KEYS = {
     CastBarColor = true,
     NonInterruptibleColor = true,
-    InterruptedColor = true, -- Added missing key for interrupted consistency
+    InterruptedColor = true,
     CastBarText = true,
     CastBarIcon = true,
     CastBarTimer = true,
     SparkColor = true,
 }
 
--- [ SETTINGS INHERITANCE ]--------------------------------------------------------------------------
 -- Override GetSetting to inherit specific keys from Player Cast Bar
--- This is mixed into Target/Focus cast bars to avoid code duplication
 function Mixin:GetInheritedSetting(systemIndex, key)
     if self.INHERITED_KEYS[key] then
         local playerPlugin = Orbit:GetPlugin("Orbit_PlayerCastBar")
@@ -47,26 +43,19 @@ end
 
 -- [ SHARED UTILITIES ]------------------------------------------------------------------------------
 
--- Determine anchor axis for conditional settings display
 function Mixin:GetAnchorAxis(frame)
     return OrbitEngine.Frame:GetAnchorAxis(frame)
 end
 
--- Apply color to cast bar based on interrupt state
 function Mixin:ApplyCastColor(bar, state)
-    if not bar or not bar.orbitBar then return end
-    
-    local color
-    if state == "INTERRUPTED" then
-        color = self:GetSetting(1, "InterruptedColor") or { r = 1, g = 0, b = 0 }
-    elseif state == "NON_INTERRUPTIBLE" then
-        color = self:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
-    else -- INTERRUPTIBLE / NORMAL
-        color = self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
+    if not bar or not bar.orbitBar then
+        return
     end
-
+    local color = state == "INTERRUPTED" and (self:GetSetting(1, "InterruptedColor") or { r = 1, g = 0, b = 0 })
+        or state == "NON_INTERRUPTIBLE" and (self:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 })
+        or (self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 })
     if color then
-         bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
+        bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
     end
 end
 
@@ -76,10 +65,7 @@ function Mixin:CreateCastBarFrame(name, config)
     config = config or {}
 
     local bar = CreateFrame("StatusBar", name, UIParent)
-    bar:SetSize(
-        config.width or Orbit.Constants.PlayerCastBar.DefaultWidth or 200,
-        config.height or Orbit.Constants.PlayerCastBar.DefaultHeight or 18
-    )
+    bar:SetSize(config.width or Orbit.Constants.PlayerCastBar.DefaultWidth or 200, config.height or Orbit.Constants.PlayerCastBar.DefaultHeight or 18)
     bar:SetPoint("CENTER", 0, config.yOffset or Orbit.Constants.PlayerCastBar.DefaultY or -150)
     bar:SetFrameStrata("MEDIUM")
     bar:SetFrameLevel(100)
@@ -107,8 +93,7 @@ function Mixin:CreateCastBarFrame(name, config)
     bar.preview = false
 
     -- Frame options
-    bar.anchorOptions = config.anchorOptions
-        or { horizontal = false, vertical = true, syncScale = true, syncDimensions = true }
+    bar.anchorOptions = config.anchorOptions or { horizontal = false, vertical = true, syncScale = true, syncDimensions = true }
 
     -- Attach to Frame system
     OrbitEngine.Frame:AttachSettingsListener(bar, self, 1)
@@ -122,42 +107,25 @@ function Mixin:InitializeSkin(bar)
     if not Orbit.Skin.CastBar then
         return
     end
-
     local skinned = Orbit.Skin.CastBar:Create(bar)
-    bar.orbitBar = skinned
-    bar.Text = skinned.Text
-    bar.Timer = skinned.Timer
-    bar.Icon = skinned.Icon
-    bar.Border = skinned.Border
-    bar.Latency = skinned.Latency
-    bar.InterruptOverlay = skinned.InterruptOverlay
-    bar.InterruptAnim = skinned.InterruptAnim
-
-    -- Hide Spark/SparkGlow for mixin-based cast bars (Target/Focus)
-    -- These hook protected native spell bars, and spark positioning causes taint
+    bar.orbitBar, bar.Text, bar.Timer, bar.Icon = skinned, skinned.Text, skinned.Timer, skinned.Icon
+    bar.Border, bar.Latency, bar.InterruptOverlay, bar.InterruptAnim = skinned.Border, skinned.Latency, skinned.InterruptOverlay, skinned.InterruptAnim
     if skinned.Spark then
         skinned.Spark:Hide()
     end
     if skinned.SparkGlow then
         skinned.SparkGlow:Hide()
     end
-
     return skinned
 end
 
 -- [ EDIT MODE & EVENTS ]---------------------------------------------------------------------------
 
 function Mixin:RegisterEditModeCallbacks(bar)
-    if not EventRegistry then
-        return
-    end
-
-    -- Guard: Prevent duplicate registration if called multiple times
-    if bar.orbitEditModeCallbacksRegistered then
+    if not EventRegistry or bar.orbitEditModeCallbacksRegistered then
         return
     end
     bar.orbitEditModeCallbacksRegistered = true
-
     EventRegistry:RegisterCallback("EditMode.Exit", function()
         bar.preview = false
         if not bar.casting and not bar.channeling then
@@ -165,7 +133,6 @@ function Mixin:RegisterEditModeCallbacks(bar)
         end
         self:ApplySettings()
     end, self)
-
     EventRegistry:RegisterCallback("EditMode.Enter", function()
         self:ShowPreview()
         self:ApplySettings()
@@ -176,10 +143,8 @@ function Mixin:RegisterWorldEvent(bar, debounceKey)
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
         Orbit.Async:Debounce(debounceKey .. "_Init", function()
             self:ApplySettings()
-            if not (EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()) then
-                if not bar.casting and not bar.channeling then
-                    bar:Hide()
-                end
+            if not (EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()) and not bar.casting and not bar.channeling then
+                bar:Hide()
             end
         end, 0.5)
     end, self)
@@ -234,21 +199,8 @@ function Mixin:BuildBaseSchema(bar, systemIndex, options)
 end
 
 function Mixin:AddTextSettings(schema, systemIndex)
-    -- Show Spell Name
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "CastBarText",
-        label = "Show Spell Name",
-        default = true,
-    })
-
-    -- Show Timer
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "CastBarTimer",
-        label = "Show Timer",
-        default = true,
-    })
+    table.insert(schema.controls, { type = "checkbox", key = "CastBarText", label = "Show Spell Name", default = true })
+    table.insert(schema.controls, { type = "checkbox", key = "CastBarTimer", label = "Show Timer", default = true })
 end
 
 -- [ APPLY SETTINGS (SHARED) ]----------------------------------------------------------------------
@@ -302,7 +254,6 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
         end
     end)
 
-    -- Apply skin
     if Orbit.Skin.CastBar and bar.orbitBar then
         Orbit.Skin.CastBar:Apply(bar.orbitBar, {
             texture = texture,
@@ -318,8 +269,6 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
             sparkColor = sparkColor,
         })
     end
-
-    -- Show preview in Edit Mode
     if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
         self:ShowPreview()
     end
@@ -332,25 +281,19 @@ function Mixin:ShowPreview()
     if not bar then
         return
     end
-
-    bar.preview = true
-    bar.casting = false
-    bar.channeling = false
-
+    bar.preview, bar.casting, bar.channeling = true, false, false
     local targetBar = bar.orbitBar or bar
     targetBar:SetMinMaxValues(0, 3)
     targetBar:SetValue(1.5)
-
     if bar.Text then
         bar.Text:SetText(self.previewText or "Preview Cast")
     end
     if bar.Icon then
-        bar.Icon:SetTexture(136243) -- Hearthstone icon
+        bar.Icon:SetTexture(136243)
     end
     if bar.Timer then
         bar.Timer:SetText("1.5")
     end
-
     bar:Show()
 end
 
@@ -360,64 +303,43 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
     if not nativeSpellbar then
         return
     end
-
     local bar = self.CastBar
-    bar.orbitUnit = unit -- Store unit for UpdateInterruptState
+    bar.orbitUnit = unit
 
-    -- Helper: Sync cast data from native bar to orbit bar
     local function SyncCastData(nativeBar)
         if not bar or not nativeBar then
             return
         end
-
-        -- Sync Icon
-        local iconTexture
-        if nativeBar.Icon then
-            iconTexture = nativeBar.Icon:GetTexture()
-        end
-        if not iconTexture and C_Spell.GetSpellTexture and nativeBar.spellID then
-            iconTexture = C_Spell.GetSpellTexture(nativeBar.spellID)
-        end
-
+        local iconTexture = nativeBar.Icon and nativeBar.Icon:GetTexture()
+            or (C_Spell.GetSpellTexture and nativeBar.spellID and C_Spell.GetSpellTexture(nativeBar.spellID))
         if bar.Icon then
             bar.Icon:SetTexture(iconTexture or 136243)
         end
-
-        -- Sync Text
         if nativeBar.Text and bar.Text then
             bar.Text:SetText(nativeBar.Text:GetText() or "Casting...")
         end
-
-        -- Sync Values
         local min, max = nativeBar:GetMinMaxValues()
         if min and max then
             local targetBar = bar.orbitBar or bar
             targetBar:SetMinMaxValues(min, max)
             targetBar:SetValue(nativeBar:GetValue() or 0)
         end
-
-        -- Sync Interrupt State
         self:UpdateInterruptState(nativeBar, bar, unit)
     end
 
-    -- 1. Hook OnShow
     nativeSpellbar:HookScript("OnShow", function(nativeBar)
         if not bar then
             return
         end
-
         SyncCastData(nativeBar)
         bar:Show()
     end)
-
-    -- 2. Hook OnHide
     nativeSpellbar:HookScript("OnHide", function()
         if bar and not bar.preview then
             bar:Hide()
         end
     end)
 
-    -- 3. Handle target/focus changes - refresh cast data when unit changes
     local changeEvent = (unit == "target") and "PLAYER_TARGET_CHANGED" or "PLAYER_FOCUS_CHANGED"
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent(changeEvent)
@@ -425,27 +347,17 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
         if not bar then
             return
         end
-
-        -- If native bar is visible, sync the new unit's cast data
         if nativeSpellbar:IsShown() then
             SyncCastData(nativeSpellbar)
-        else
-            -- New target isn't casting, hide our bar
-            if not bar.preview then
-                bar:Hide()
-            end
+        elseif not bar.preview then
+            bar:Hide()
         end
     end)
 
-    -- 4. Hook OnEvent (Interrupts/State)
     nativeSpellbar:HookScript("OnEvent", function(nativeBar, event, eventUnit)
-        if eventUnit ~= unit then
+        if eventUnit ~= unit or not bar or not bar:IsShown() then
             return
         end
-        if not bar or not bar:IsShown() then
-            return
-        end
-
         if event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
             self:ApplyCastColor(bar, "INTERRUPTED")
         elseif event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
@@ -453,86 +365,54 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
         elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" then
             self:ApplyCastColor(bar, "INTERRUPTIBLE")
         elseif event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
-            -- Check actual interrupt state on cast start (don't assume interruptible)
             self:UpdateInterruptState(nativeBar, bar, unit)
         end
     end)
 
-    -- 5. Hook OnUpdate (Sync Progress)
-    local lastUpdate = 0
-    local updateThrottle = 1 / 60
+    local lastUpdate, updateThrottle = 0, 1 / 60
     nativeSpellbar:HookScript("OnUpdate", function(nativeBar, elapsed)
         if not bar or not bar:IsShown() then
             return
         end
-
         lastUpdate = lastUpdate + elapsed
         if lastUpdate < updateThrottle then
             return
         end
         lastUpdate = 0
-
         local progress = nativeBar:GetValue()
         local min, max = nativeBar:GetMinMaxValues()
-
         local targetBar = bar.orbitBar or bar
         if progress and max then
             targetBar:SetMinMaxValues(min, max)
             targetBar:SetValue(progress)
-
-            -- Guarded update for Timer
-            local function SafeUpdateVisuals()
+            local ok = pcall(function()
                 if max <= 0 then
                     return
                 end
-
-                -- Timer
                 if bar.Timer and bar.Timer:IsShown() then
-                    local timeLeft = nativeBar.channeling and progress or (max - progress)
-                    bar.Timer:SetText(string.format("%.1f", timeLeft))
+                    bar.Timer:SetText(string.format("%.1f", nativeBar.channeling and progress or (max - progress)))
                 end
-
-                -- Note: Spark disabled for Target/Focus cast bars (protected frame taint)
-            end
-
-            local success = pcall(SafeUpdateVisuals)
-            if not success then
-                if bar.Timer and bar.Timer:IsShown() then
-                    bar.Timer:SetFormattedText("%.1f", progress)
-                end
+            end)
+            if not ok and bar.Timer and bar.Timer:IsShown() then
+                bar.Timer:SetFormattedText("%.1f", progress)
             end
         end
     end)
 end
 
+-- Check interrupt state via native BorderShield visibility (avoids secret value taint)
 function Mixin:UpdateInterruptState(nativeBar, bar, unit)
-    -- In WoW 12.0, notInterruptible from UnitCastingInfo/UnitChannelInfo is a secret value
-    -- that cannot be used in boolean tests from addon code during combat.
-    --
-    -- SOLUTION: Check if the native spellbar's BorderShield is visible.
-    -- Blizzard shows this shield for non-interruptible casts, and IsShown()
-    -- returns a regular boolean, not a secret value.
-
     local notInterruptible = false
-
-    -- Check the native spellbar's BorderShield visibility
     if nativeBar and nativeBar.BorderShield then
-        -- BorderShield:IsShown() returns a regular boolean, safe to use
-        local success, result = pcall(function()
+        local ok, result = pcall(function()
             return nativeBar.BorderShield:IsShown()
         end)
-        if success then
+        if ok then
             notInterruptible = result
         end
     end
-
-    local color
-    if notInterruptible then
-        color = self:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
-    else
-        color = self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
-    end
-
+    local color = notInterruptible and (self:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 })
+        or (self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 })
     if bar.orbitBar and color then
         bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
     end

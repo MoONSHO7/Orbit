@@ -26,7 +26,7 @@ local SYSTEM_ID = "Orbit_FocusPower"
 local SYSTEM_INDEX = 1 -- Independent plugin
 
 local Plugin = Orbit:RegisterPlugin("Focus Power", SYSTEM_ID, {
-    canvasMode = true,  -- Enable Canvas Mode for component editing
+    canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
         Hidden = false,
         Width = 200,
@@ -45,19 +45,12 @@ function Plugin:AddSettings(dialog, systemFrame)
     if not Frame then
         return
     end
-
     local systemIndex = SYSTEM_INDEX
     local WL = OrbitEngine.WidgetLogic
-
     if dialog.Title then
         dialog.Title:SetText("Focus Power")
     end
-
-    local schema = {
-        hideNativeSettings = true,
-        controls = {},
-    }
-
+    local schema = { hideNativeSettings = true, controls = {} }
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
 
     -- Width (only when not anchored)
@@ -89,10 +82,10 @@ function Plugin:OnLoad()
     function Frame:CreateCanvasPreview(options)
         local scale = options.scale or 1
         local borderSize = options.borderSize or 1
-        
+
         -- Base container
         local preview = OrbitEngine.Preview.Frame:CreateBasePreview(self, scale, options.parent, borderSize)
-        
+
         -- Create Power Bar visual
         local bar = CreateFrame("StatusBar", nil, preview)
         local inset = borderSize * scale
@@ -100,7 +93,7 @@ function Plugin:OnLoad()
         bar:SetPoint("BOTTOMRIGHT", preview, "BOTTOMRIGHT", -inset, inset)
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(1)
-        
+
         -- Appearance
         local textureName = Plugin:GetSetting(SYSTEM_INDEX, "Texture")
         local texturePath = "Interface\\Buttons\\WHITE8x8"
@@ -108,7 +101,7 @@ function Plugin:OnLoad()
             texturePath = LSM:Fetch("statusbar", textureName) or texturePath
         end
         bar:SetStatusBarTexture(texturePath)
-        
+
         -- Color
         -- Default to Mana blue for focus preview since we don't have a unit
         local info = Orbit.Constants.Colors.PowerType[0] -- Mana
@@ -117,20 +110,17 @@ function Plugin:OnLoad()
         else
             bar:SetStatusBarColor(0, 0.5, 1)
         end
-        
+
         preview.PowerBar = bar
         return preview
     end
 
     -- Text overlay
-    OrbitEngine.FrameFactory:AddText(
-        Frame,
-        { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = -2, useOverlay = true }
-    )
+    OrbitEngine.FrameFactory:AddText(Frame, { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = -2, useOverlay = true })
 
     -- Alias
     Frame.PowerBar = PowerBar
-    self.frame = Frame  -- Expose for PluginMixin compatibility
+    self.frame = Frame -- Expose for PluginMixin compatibility
 
     self:ApplySettings()
 
@@ -173,7 +163,7 @@ function Plugin:OnLoad()
                 local positions = self:GetSetting(SYSTEM_INDEX, "ComponentPositions") or {}
                 positions.Text = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 self:SetSetting(SYSTEM_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
     end
 
@@ -196,11 +186,8 @@ function Plugin:UpdateVisibility()
     if not Frame then
         return
     end
-
     local enabled = self:IsEnabled()
-    local isEditMode = EditModeManagerFrame
-        and EditModeManagerFrame.IsEditModeActive
-        and EditModeManagerFrame:IsEditModeActive()
+    local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
 
     if isEditMode then
         UnregisterUnitWatch(Frame)
@@ -236,7 +223,6 @@ function Plugin:ApplySettings()
     if not Frame then
         return
     end
-
     local systemIndex = SYSTEM_INDEX
 
     -- Settings
@@ -313,13 +299,9 @@ end
 
 -- [ POWER UPDATE ]----------------------------------------------------------------------------------
 function Plugin:UpdateAll()
-    if not Frame or not PowerBar then
+    if not Frame or not PowerBar or not Frame:IsShown() then
         return
     end
-    if not Frame:IsShown() then
-        return
-    end
-
     if not UnitExists("focus") then
         return
     end

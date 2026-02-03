@@ -59,35 +59,19 @@ function Plugin:AddSettings(dialog, systemFrame)
     })
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    -- Create Container
     self.frame = CreateFrame("Frame", "OrbitPerformanceFrame", UIParent)
     self.frame:SetSize(100, 20)
-    self.frame:SetClampedToScreen(true) -- Prevent dragging off-screen
+    self.frame:SetClampedToScreen(true)
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Performance Info"
-
-    -- Text Display
     self.frame.Text = self.frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     self.frame.Text:SetPoint("CENTER", self.frame, "CENTER")
 
-    -- Orbit Anchoring: Disable property sync to prevent dimension/scale inheritance
-    self.frame.anchorOptions = {
-        horizontal = true,
-        vertical = true,
-        syncScale = false,
-        syncDimensions = false,
-    }
-
-    -- Default Position (Bottom Right near other tools)
+    self.frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
     self.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -300, 40)
-
-    -- Register
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)
     OrbitEngine.Frame:RestorePosition(self.frame, self, SYSTEM_ID)
-
-    -- Anchor Logic
     self:EnableSmartAlignment(self.frame, self.frame.Text, 2)
 
     self:RegisterStandardEvents()
@@ -101,109 +85,49 @@ function Plugin:StartLoop()
         self.timer:Cancel()
         self.timer = nil
     end
-
-    -- Default to 1s update to avoid spam
     self.timer = C_Timer.NewTicker(1, function()
-        if not self.timer then return end  -- Guard against cancelled timer firing
+        if not self.timer then
+            return
+        end
         self:UpdateStats()
     end)
-
-    -- Immediate update
     self:UpdateStats()
 end
 
 -- [ LOGIC ]-----------------------------------------------------------------------------------------
 function Plugin:UpdateStats()
     local colorize = self:GetSetting(SYSTEM_ID, "Colorize")
-
-    -- FPS
     local fps = GetFramerate()
-    local fpsStr = math.floor(fps)
-    local fpsColor = COLORS.WHITE
-
+    local fpsStr, fpsColor = math.floor(fps), COLORS.WHITE
     if colorize then
-        if fps < 30 then
-            fpsColor = COLORS.RED
-        elseif fps <= 60 then
-            fpsColor = COLORS.ORANGE
-        else
-            fpsColor = COLORS.WHITE
-        end
+        fpsColor = fps < 30 and COLORS.RED or fps <= 60 and COLORS.ORANGE or COLORS.WHITE
     end
-
-    -- Latency (Home)
-    local _, _, latencyHome, _ = GetNetStats()
-    local ms = latencyHome
-    local msStr = ms
-    local msColor = COLORS.WHITE
-
+    local _, _, latencyHome = GetNetStats()
+    local ms, msColor = latencyHome, COLORS.WHITE
     if colorize then
-        if ms <= 60 then
-            msColor = COLORS.GREEN
-        elseif ms < 200 then
-            msColor = COLORS.ORANGE
-        else
-            msColor = COLORS.RED
-        end
+        msColor = ms <= 60 and COLORS.GREEN or ms < 200 and COLORS.ORANGE or COLORS.RED
     end
-
     if not self.frame:IsVisible() then
         return
     end
 
-    local text
-    if colorize then
-        -- Format: {COLOR}{fps}|r{WHITE}fps|r | {COLOR}{ms}|r{WHITE}ms|r
-        text =
-            string.format("%s%d|r%sfps|r | %s%d|r%sms|r", fpsColor, fpsStr, COLORS.WHITE, msColor, msStr, COLORS.WHITE)
-    else
-        text = string.format("%dfps | %dms", fpsStr, msStr)
-    end
-
+    local text = colorize and string.format("%s%d|r%sfps|r | %s%d|r%sms|r", fpsColor, fpsStr, COLORS.WHITE, msColor, ms, COLORS.WHITE)
+        or string.format("%dfps | %dms", fpsStr, ms)
     self.frame.Text:SetText(text)
-
-    -- Auto-resize frame to fit text (for easier dragging hit rect)
-    local width = self.frame.Text:GetStringWidth()
-    self.frame:SetSize(width + 10, 20)
+    self.frame:SetSize(self.frame.Text:GetStringWidth() + 10, 20)
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 function Plugin:ApplySettings()
     local frame = self.frame
     if not frame then
         return
     end
-
-    local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100
-
-    frame:SetScale(scale / 100)
-
-    -- Global Text Scale
-    local textMultiplier = 1
+    frame:SetScale((self:GetSetting(SYSTEM_ID, "Scale") or 100) / 100)
     local s = Orbit.db.GlobalSettings.TextScale
-    if s == "Small" then
-        textMultiplier = 0.85
-    elseif s == "Large" then
-        textMultiplier = 1.15
-    elseif s == "ExtraLarge" then
-        textMultiplier = 1.30
-    end
-
-    -- Apply Global Font (Always, to enforce OUTLINE)
-    local globalFont = Orbit.db.GlobalSettings.Font
-    Orbit.Skin:SkinText(frame.Text, {
-        font = globalFont, -- SkinText handles nil fallback to default font
-        textSize = 14 * textMultiplier,
-        -- textColor handled by dynamic coloring
-    })
-
-    -- Force update to reflect coloring change immediately
+    local textMultiplier = s == "Small" and 0.85 or s == "Large" and 1.15 or s == "ExtraLarge" and 1.30 or 1
+    Orbit.Skin:SkinText(frame.Text, { font = Orbit.db.GlobalSettings.Font, textSize = 14 * textMultiplier })
     self:UpdateStats()
-
     frame:Show()
-
     self:ApplyMouseOver(frame, SYSTEM_ID)
-
-    -- Restore position (to ensure correct placement after settings applied)
     OrbitEngine.Frame:RestorePosition(frame, self, SYSTEM_ID)
 end

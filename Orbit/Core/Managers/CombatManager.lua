@@ -1,18 +1,12 @@
 local _, addonTable = ...
 local Orbit = addonTable
 
--- Combat State Manager
--- Tracks combat state and provides safe update queuing
 ---@class OrbitCombatManager
 Orbit.CombatManager = {}
 local CM = Orbit.CombatManager
 
-CM.inCombat = false
-CM.updateQueue = {}
-
--- Prevent unbounded queue growth during extended combat (e.g., long raid encounters)
--- 100 is conservative - typical gameplay queues far fewer updates
-local MAX_QUEUE_SIZE = 100
+CM.inCombat, CM.updateQueue = false, {}
+local MAX_QUEUE_SIZE = 100 -- Prevent unbounded queue growth
 
 local eventFrame = CreateFrame("Frame")
 
@@ -42,17 +36,10 @@ function CM:QueueUpdate(callback, context)
         end
         return
     end
-
-    -- Prevent unbounded growth - drop new updates when full
-    -- This is safe: queued UI updates become stale anyway
     if #self.updateQueue >= MAX_QUEUE_SIZE then
         return
     end
-
-    table.insert(self.updateQueue, {
-        callback = callback,
-        context = context,
-    })
+    table.insert(self.updateQueue, { callback = callback, context = context })
 end
 
 function CM:OnCombatStart()
@@ -64,21 +51,18 @@ end
 function CM:OnCombatEnd()
     local queue = self.updateQueue
     self.updateQueue = {}
-
     for _, update in ipairs(queue) do
-        local success, err = pcall(function()
+        local ok, err = pcall(function()
             if update.context then
                 update.callback(update.context)
             else
                 update.callback()
             end
         end)
-
-        if not success then
+        if not ok then
             print("Orbit: Error processing queued update:", err)
         end
     end
-
     if EventRegistry then
         EventRegistry:TriggerEvent("Orbit.CombatEnd")
     end

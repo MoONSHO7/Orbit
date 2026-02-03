@@ -5,14 +5,10 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerPetFrame"
-local SYSTEM_INDEX = 1 -- Arbitrary index for simple plugin? Or specific enum?
--- Pet Frame isn't in standard Enums typically, let's treat it as generic or use custom index.
--- UnitButton:Create uses systemIndex for storage. Let's use 5 (Pet) or similar if available.
--- EditModeUnitFrameSystemIndices.Pet = 3 usually.
 local PET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Pet
 
 local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
-    canvasMode = true,  -- Enable Canvas Mode for component editing
+    canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
         Width = 100,
         Height = 20,
@@ -57,8 +53,6 @@ end
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     self:RegisterStandardEvents()
-
-    -- Hide native PetFrame
     if PetFrame then
         OrbitEngine.NativeFrame:Protect(PetFrame)
         PetFrame:SetClampedToScreen(false)
@@ -67,7 +61,6 @@ function Plugin:OnLoad()
         PetFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
         PetFrame:SetAlpha(0)
         PetFrame:EnableMouse(false)
-        -- Hook SetPoint to prevent Edit Mode/Layout resets
         if not PetFrame.orbitSetPointHooked then
             hooksecurefunc(PetFrame, "SetPoint", function(self)
                 if InCombatLockdown() then
@@ -85,19 +78,10 @@ function Plugin:OnLoad()
     end
 
     self.container = self:CreateVisibilityContainer(UIParent)
-    -- Create Custom Orbit Pet Frame
     self.frame = OrbitEngine.UnitButton:Create(self.container, "pet", "OrbitPlayerPetFrame")
     self.frame.editModeName = "Pet Frame"
     self.frame.systemIndex = PET_FRAME_INDEX
-
-    -- Enable Anchoring: vertical only (can stack above/below)
-    -- Disable Property Sync: syncScale=false, syncDimensions=false
-    self.frame.anchorOptions = {
-        horizontal = false, -- Cannot anchor side-by-side (LEFT/RIGHT)
-        vertical = true, -- Can stack above/below (TOP/BOTTOM)
-        syncScale = false,
-        syncDimensions = false,
-    }
+    self.frame.anchorOptions = { horizontal = false, vertical = true, syncScale = false, syncDimensions = false }
 
     -- Register Edit Mode callbacks for visibility updates
     if EditModeManagerFrame then
@@ -121,7 +105,7 @@ function Plugin:OnLoad()
                     local positions = self:GetSetting(PET_FRAME_INDEX, "ComponentPositions") or {}
                     positions.Name = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                     self:SetSetting(PET_FRAME_INDEX, "ComponentPositions", positions)
-                end
+                end,
             })
         end
         if self.frame.HealthText then
@@ -131,7 +115,7 @@ function Plugin:OnLoad()
                     local positions = self:GetSetting(PET_FRAME_INDEX, "ComponentPositions") or {}
                     positions.HealthText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                     self:SetSetting(PET_FRAME_INDEX, "ComponentPositions", positions)
-                end
+                end,
             })
         end
     end
@@ -153,33 +137,23 @@ function Plugin:UpdateVisibility()
     if not self.frame then
         return
     end
-
-    local isEditMode = EditModeManagerFrame
-        and EditModeManagerFrame.IsEditModeActive
-        and EditModeManagerFrame:IsEditModeActive()
-
+    local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
     local hasPet = UnitExists("pet")
 
     if isEditMode then
-        -- Disable automatic unit-based hiding in Edit Mode
         if not InCombatLockdown() then
             UnregisterUnitWatch(self.frame)
         end
-        
-        -- Always show in Edit Mode for positioning, even without a pet
         Orbit:SafeAction(function()
             self.frame:Show()
         end)
-        self.frame:SetAlpha(hasPet and 1 or 0.5) -- Dimmed if no pet
+        self.frame:SetAlpha(hasPet and 1 or 0.5)
         return
     end
 
-    -- Re-enable automatic unit-based visibility outside Edit Mode
     if not InCombatLockdown() then
         RegisterUnitWatch(self.frame)
     end
-    
-    -- Respect OOC fade setting instead of forcing alpha=1
     if Orbit.OOCFadeMixin then
         Orbit.OOCFadeMixin:RefreshAll()
     else
@@ -190,17 +164,10 @@ end
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 function Plugin:ApplySettings(frame)
     frame = self.frame
-    if not frame then
+    if not frame or InCombatLockdown() then
         return
     end
-    if InCombatLockdown() then
-        return
-    end
-
     local systemIndex = PET_FRAME_INDEX
-
-    -- Get settings
-    -- 1. Apply Base Settings via Mixin
     self:ApplyUnitFrameSettings(frame, systemIndex)
 
     -- 2. Pet Specific Visuals override
@@ -260,7 +227,7 @@ function Plugin:ApplySettings(frame)
     if Orbit.OOCFadeMixin then
         Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade")
     end
-    
+
     -- Ensure visibility is correctly set (Edit Mode awareness)
     self:UpdateVisibility()
 end

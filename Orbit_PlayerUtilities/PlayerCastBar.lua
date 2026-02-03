@@ -34,7 +34,6 @@ local function DisableBlizzardCastBar()
     if not PlayerCastingBarFrame then
         return
     end
-
     Orbit.Engine.NativeFrame:Disable(PlayerCastingBarFrame, { unregisterEvents = true })
 end
 
@@ -61,18 +60,24 @@ local function SafeShow(bar)
     bar.orbitHiddenByAlpha = false
     if InCombatLockdown() then
         bar:SetAlpha(1)
-        if bar.orbitBar then bar.orbitBar:SetAlpha(1) end
+        if bar.orbitBar then
+            bar.orbitBar:SetAlpha(1)
+        end
     else
         bar:Show()
         bar:SetAlpha(1)
-        if bar.orbitBar then bar.orbitBar:SetAlpha(1) end
+        if bar.orbitBar then
+            bar.orbitBar:SetAlpha(1)
+        end
     end
 end
 
 local function SafeHide(bar)
     if InCombatLockdown() then
         bar:SetAlpha(0)
-        if bar.orbitBar then bar.orbitBar:SetAlpha(0) end
+        if bar.orbitBar then
+            bar.orbitBar:SetAlpha(0)
+        end
         bar.orbitHiddenByAlpha = true
     else
         bar:Hide()
@@ -87,7 +92,9 @@ local function SetupCombatCleanup(bar)
         if event == "PLAYER_REGEN_DISABLED" and not self:IsShown() then
             self:Show()
             self:SetAlpha(0)
-            if self.orbitBar then self.orbitBar:SetAlpha(0) end
+            if self.orbitBar then
+                self.orbitBar:SetAlpha(0)
+            end
             self.orbitHiddenByAlpha = true
         elseif event == "PLAYER_REGEN_ENABLED" and self.orbitHiddenByAlpha then
             self:Hide()
@@ -118,20 +125,13 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
 
     -- 1. Height (Hide if X-anchored - Horizontal stack locks height)
     if not (isAnchored and anchorAxis == "x") then
-        WL:AddSizeSettings(
-            self,
-            schema,
-            systemIndex,
-            systemFrame,
-            nil,
-            {
-                key = "CastBarHeight",
-                label = "Height",
-                min = 15,
-                max = 35,
-                default = Orbit.Constants.PlayerCastBar.DefaultHeight,
-            }
-        )
+        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, {
+            key = "CastBarHeight",
+            label = "Height",
+            min = 15,
+            max = 35,
+            default = Orbit.Constants.PlayerCastBar.DefaultHeight,
+        })
     end
 
     -- 2. Width (Hide if Y-anchored - Vertical stack locks width)
@@ -182,22 +182,10 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
     )
 
     -- Protected Color
-    WL:AddColorSettings(
-        self,
-        schema,
-        systemIndex,
-        systemFrame,
-        { key = "NonInterruptibleColor", label = "Protected", default = { r = 0.7, g = 0.7, b = 0.7 } }
-    )
+    WL:AddColorSettings(self, schema, systemIndex, systemFrame, { key = "NonInterruptibleColor", label = "Protected", default = { r = 0.7, g = 0.7, b = 0.7 } })
 
     -- Spark Color
-    WL:AddColorSettings(
-        self,
-        schema,
-        systemIndex,
-        systemFrame,
-        { key = "SparkColor", label = "Spark / Glow", default = { r = 1, g = 1, b = 1, a = 1 } }
-    )
+    WL:AddColorSettings(self, schema, systemIndex, systemFrame, { key = "SparkColor", label = "Spark / Glow", default = { r = 1, g = 1, b = 1, a = 1 } })
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
@@ -337,15 +325,13 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
     if unit ~= "player" then
         return
     end
-
     local bar = self.CastBar
     if not bar then
         return
     end
 
     if event == "UNIT_SPELLCAST_START" then
-        local name, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible =
-            UnitCastingInfo("player")
+        local name, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible = UnitCastingInfo("player")
         if name then
             bar.casting = true
             bar.channeling = false
@@ -501,8 +487,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
 
     -- EMPOWER EVENTS
     elseif event == "UNIT_SPELLCAST_EMPOWER_START" then
-        local name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellID, _, numStages =
-            UnitChannelInfo("player")
+        local name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellID, _, numStages = UnitChannelInfo("player")
         if name and numStages then
             bar.casting = false
             bar.channeling = false
@@ -551,8 +536,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             SafeShow(bar)
         end
     elseif event == "UNIT_SPELLCAST_EMPOWER_UPDATE" then
-        local name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellID, _, numStages =
-            UnitChannelInfo("player")
+        local name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellID, _, numStages = UnitChannelInfo("player")
         if name then
             bar.startTime = startTime / 1000
             bar.endTime = endTime / 1000
@@ -577,15 +561,9 @@ end
 
 function Plugin:OnUpdate(elapsed)
     local bar = self.CastBar
-    if not bar then
+    if not bar or not bar:IsShown() or bar.orbitHiddenByAlpha or bar.preview then
         return
     end
-    if not bar:IsShown() or bar.orbitHiddenByAlpha then
-        return
-    end -- Early exit for hidden bar
-    if bar.preview then
-        return
-    end -- Don't animate preview
 
     local targetBar = bar.orbitBar or bar
 
@@ -660,21 +638,12 @@ end
 
 function Plugin:ApplySettings(systemFrame)
     local bar = self.CastBar
-    if not bar then
-        return
-    end
-
-    -- Skip dimension/position changes during combat to avoid protected function errors
-    if InCombatLockdown() then
+    if not bar or InCombatLockdown() then
         return
     end
 
     local systemIndex = bar.systemIndex or 1
-
-    -- Check if anchored via Orbit auto-anchor system
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(bar) ~= nil
-
-    -- Get settings (defaults handled by PluginMixin)
     local scale = self:GetSetting(systemIndex, "CastBarScale")
     local height = self:GetSetting(systemIndex, "CastBarHeight")
     local borderSize = self:GetSetting(systemIndex, "BorderSize")
@@ -686,7 +655,6 @@ function Plugin:ApplySettings(systemFrame)
 
     self.cachedHeight = height
 
-    -- Height
     if not (isAnchored and GetAnchorAxis(bar) == "x") then
         bar:SetHeight(height)
     end
@@ -694,7 +662,6 @@ function Plugin:ApplySettings(systemFrame)
         bar.Spark:SetHeight(height + 4)
     end
 
-    -- Width
     if not (isAnchored and GetAnchorAxis(bar) == "y") then
         bar:SetWidth(self:GetSetting(systemIndex, "CastBarWidth") or Orbit.Constants.PlayerCastBar.DefaultWidth)
     end
@@ -724,7 +691,6 @@ function Plugin:ApplySettings(systemFrame)
         end
     end
 
-    -- Scale (only when NOT anchored)
     if not isAnchored then
         bar:SetScale(scale / 100)
     end
@@ -745,15 +711,7 @@ function Plugin:ApplyColor()
     end
 
     local systemIndex = bar.systemIndex or 1
-    local color
-
-    -- Use NonInterruptibleColor (Protected) for non-interruptible casts
-    if bar.notInterruptible then
-        color = self:GetSetting(systemIndex, "NonInterruptibleColor")
-    else
-        color = self:GetSetting(systemIndex, "CastBarColor")
-    end
-
+    local color = bar.notInterruptible and self:GetSetting(systemIndex, "NonInterruptibleColor") or self:GetSetting(systemIndex, "CastBarColor")
     if bar.orbitBar then
         bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
     end
@@ -783,17 +741,13 @@ function Plugin:ShowPreview()
     bar:Show()
 end
 
--- [ EMPOWER HELPERS ]---------------------------------------------------------------------------------
 function Plugin:SetupEmpowerMarkers(bar, numStages)
     local orbitBar = bar.orbitBar
     if not orbitBar or not orbitBar.stageMarkers then
         return
     end
 
-    local width = bar:GetWidth()
-    local height = bar:GetHeight()
-
-    -- Hide all markers first
+    local width, height = bar:GetWidth(), bar:GetHeight()
     for i = 1, #orbitBar.stageMarkers do
         orbitBar.stageMarkers[i]:Hide()
     end
@@ -817,7 +771,6 @@ function Plugin:HideEmpowerMarkers(bar)
     if not orbitBar or not orbitBar.stageMarkers then
         return
     end
-
     for i = 1, #orbitBar.stageMarkers do
         orbitBar.stageMarkers[i]:Hide()
     end

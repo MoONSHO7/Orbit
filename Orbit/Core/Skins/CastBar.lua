@@ -84,7 +84,7 @@ function CastBar:Create(parent)
     bar.Icon:SetSize(20, 20)
     bar.Icon:SetPoint("LEFT", parent, "LEFT", 0, 0)
     bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
-    
+
     -- Icon Border (also on parent)
     bar.IconBorder = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     bar.IconBorder:SetAllPoints(bar.Icon)
@@ -117,9 +117,9 @@ function CastBar:Create(parent)
             bar:SetAllPoints(self)
             return
         end
-        
+
         local height = self:GetHeight()
-        
+
         -- Snap icon size to pixel grid for crisp rendering
         local scale = self:GetEffectiveScale()
         local snappedHeight = height
@@ -127,15 +127,15 @@ function CastBar:Create(parent)
             snappedHeight = Orbit.Engine.Pixel:Snap(height, scale)
         end
         local iconOffset = snappedHeight
-        
+
         -- Update icon size (square, pixel-snapped)
         bar.Icon:SetSize(snappedHeight, snappedHeight)
-        
+
         -- Update orbitBar position to start after icon
         bar:ClearAllPoints()
         bar:SetPoint("TOPLEFT", self, "TOPLEFT", iconOffset, 0)
         bar:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
-        
+
         -- Store iconOffset for spark calculations
         bar.iconOffset = iconOffset
     end)
@@ -179,12 +179,12 @@ function CastBar:Apply(bar, settings)
     if bar.SparkGlow then
         local height = parent:GetHeight()
         bar.SparkGlow:SetSize(height * 2.5, height)
-        
+
         if settings.sparkColor then
             local c = settings.sparkColor
             bar.SparkGlow:SetVertexColor(c.r, c.g, c.b, c.a or 1)
         else
-             bar.SparkGlow:SetVertexColor(1, 1, 1, 1)
+            bar.SparkGlow:SetVertexColor(1, 1, 1, 1)
         end
     end
 
@@ -234,7 +234,7 @@ function CastBar:Apply(bar, settings)
                 snappedHeight = Orbit.Engine.Pixel:Snap(height, scale)
             end
             bar.Icon:SetSize(snappedHeight, snappedHeight)
-            
+
             if bar.IconBorder then
                 bar.IconBorder:Show()
                 if settings.borderSize and settings.borderSize > 0 then

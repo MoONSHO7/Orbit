@@ -39,8 +39,10 @@ function HandleCore:AcquireFromPool()
 end
 
 function HandleCore:ReturnToPool(handle)
-    if not handle then return end
-    
+    if not handle then
+        return
+    end
+
     -- Clear scripts
     handle:SetScript("OnEnter", nil)
     handle:SetScript("OnLeave", nil)
@@ -49,7 +51,7 @@ function HandleCore:ReturnToPool(handle)
     handle:SetScript("OnDragStart", nil)
     handle:SetScript("OnDragStop", nil)
     handle:SetScript("OnUpdate", nil)
-    
+
     -- Reset state
     handle:Hide()
     handle:ClearAllPoints()
@@ -57,7 +59,7 @@ function HandleCore:ReturnToPool(handle)
     handle.container = nil
     handle.callbacks = nil
     handle.isDragging = false
-    
+
     table.insert(handlePool, handle)
 end
 
@@ -78,44 +80,44 @@ function HandleCore:CreateFrame(options)
     local strata = options.strata or "FULLSCREEN_DIALOG"
     local level = options.level or 200
     local borderSize = options.borderSize or DEFAULT_BORDER_SIZE
-    
+
     local handle = CreateFrame("Frame", nil, UIParent)
     handle:SetFrameStrata(strata)
     handle:SetFrameLevel(level)
-    
+
     -- Background texture
     handle.bg = handle:CreateTexture(nil, "BACKGROUND")
     handle.bg:SetAllPoints()
     handle.bg:SetColorTexture(COLOR_IDLE.r, COLOR_IDLE.g, COLOR_IDLE.b, COLOR_IDLE.bgA)
-    
+
     -- Border textures
     handle.borderTop = handle:CreateTexture(nil, "BORDER")
     handle.borderTop:SetColorTexture(COLOR_IDLE.r, COLOR_IDLE.g, COLOR_IDLE.b, COLOR_IDLE.borderA)
     handle.borderTop:SetPoint("TOPLEFT", 0, 0)
     handle.borderTop:SetPoint("TOPRIGHT", 0, 0)
     handle.borderTop:SetHeight(borderSize)
-    
+
     handle.borderBottom = handle:CreateTexture(nil, "BORDER")
     handle.borderBottom:SetColorTexture(COLOR_IDLE.r, COLOR_IDLE.g, COLOR_IDLE.b, COLOR_IDLE.borderA)
     handle.borderBottom:SetPoint("BOTTOMLEFT", 0, 0)
     handle.borderBottom:SetPoint("BOTTOMRIGHT", 0, 0)
     handle.borderBottom:SetHeight(borderSize)
-    
+
     handle.borderLeft = handle:CreateTexture(nil, "BORDER")
     handle.borderLeft:SetColorTexture(COLOR_IDLE.r, COLOR_IDLE.g, COLOR_IDLE.b, COLOR_IDLE.borderA)
     handle.borderLeft:SetPoint("TOPLEFT", 0, 0)
     handle.borderLeft:SetPoint("BOTTOMLEFT", 0, 0)
     handle.borderLeft:SetWidth(borderSize)
-    
+
     handle.borderRight = handle:CreateTexture(nil, "BORDER")
     handle.borderRight:SetColorTexture(COLOR_IDLE.r, COLOR_IDLE.g, COLOR_IDLE.b, COLOR_IDLE.borderA)
     handle.borderRight:SetPoint("TOPRIGHT", 0, 0)
     handle.borderRight:SetPoint("BOTTOMRIGHT", 0, 0)
     handle.borderRight:SetWidth(borderSize)
-    
+
     -- Store reference to border size for UpdateSize
     handle.borderSize = borderSize
-    
+
     -- Color helper method
     function handle:SetHandleColor(r, g, b, bgAlpha, borderAlpha)
         self.bg:SetColorTexture(r, g, b, bgAlpha)
@@ -124,12 +126,12 @@ function HandleCore:CreateFrame(options)
         self.borderLeft:SetColorTexture(r, g, b, borderAlpha)
         self.borderRight:SetColorTexture(r, g, b, borderAlpha)
     end
-    
+
     -- Apply color preset
     function handle:ApplyColorPreset(preset)
         self:SetHandleColor(preset.r, preset.g, preset.b, preset.bgA, preset.borderA)
     end
-    
+
     return handle
 end
 
@@ -137,11 +139,15 @@ end
 
 -- Safely get size, handling secret values
 function HandleCore:SafeGetSize(frame)
-    if not frame then return MIN_HANDLE_WIDTH, MIN_HANDLE_HEIGHT end
-    
+    if not frame then
+        return MIN_HANDLE_WIDTH, MIN_HANDLE_HEIGHT
+    end
+
     local width, height = MIN_HANDLE_WIDTH, MIN_HANDLE_HEIGHT
-    
-    local ok, w = pcall(function() return frame:GetWidth() end)
+
+    local ok, w = pcall(function()
+        return frame:GetWidth()
+    end)
     if ok and w and type(w) == "number" then
         -- Check for secret value BEFORE comparing
         if not (issecretvalue and issecretvalue(w)) then
@@ -150,8 +156,10 @@ function HandleCore:SafeGetSize(frame)
             end
         end
     end
-    
-    local ok2, h = pcall(function() return frame:GetHeight() end)
+
+    local ok2, h = pcall(function()
+        return frame:GetHeight()
+    end)
     if ok2 and h and type(h) == "number" then
         -- Check for secret value BEFORE comparing
         if not (issecretvalue and issecretvalue(h)) then
@@ -160,18 +168,20 @@ function HandleCore:SafeGetSize(frame)
             end
         end
     end
-    
+
     return width, height
 end
 
 -- Position handle over component with minimum size enforcement
 function HandleCore:PositionOverComponent(handle, component)
-    if not handle or not component then return end
-    
+    if not handle or not component then
+        return
+    end
+
     local width, height = self:SafeGetSize(component)
     width = math.max(width, MIN_HANDLE_WIDTH)
     height = math.max(height, MIN_HANDLE_HEIGHT)
-    
+
     handle:SetSize(width, height)
     handle:ClearAllPoints()
     handle:SetPoint("CENTER", component, "CENTER", 0, 0)

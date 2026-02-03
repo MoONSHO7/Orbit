@@ -16,7 +16,7 @@ function HealthMixin:UpdateHealth()
     if not self.Health then
         return
     end
-    
+
     -- Guard against nil unit (frames can exist before being assigned a unit)
     if not self.unit or not UnitExists(self.unit) then
         return
@@ -51,12 +51,14 @@ function HealthMixin:UpdateHealth()
 end
 
 function HealthMixin:ApplyHealthColor()
-    if not self.Health then return end
-    
+    if not self.Health then
+        return
+    end
+
     -- Global UseClassColors setting controls both class colors AND reaction colors
     local globalUseClassColors = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UseClassColors
     local globalBarColor = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BarColor
-    
+
     -- Determine effective setting (global takes precedence, fallback to per-frame)
     local useAdvancedColors = false
     if globalUseClassColors == false then
@@ -67,7 +69,7 @@ function HealthMixin:ApplyHealthColor()
         -- Global not set (nil) - fall back to per-frame classColour flag
         useAdvancedColors = self.classColour or false
     end
-    
+
     -- When Class Color Health is enabled:
     -- - Players get class colors
     -- - NPCs get reaction colors
@@ -83,7 +85,7 @@ function HealthMixin:ApplyHealthColor()
                 end
             end
         end
-        
+
         -- Reaction color for non-players (NPCs, bosses, pets)
         local reaction = UnitReaction(self.unit, "player")
         if reaction then
@@ -93,7 +95,7 @@ function HealthMixin:ApplyHealthColor()
                 return
             end
         end
-        
+
         -- Fallback for units with no reaction (friendly pets, etc.) - use green
         self.Health:SetStatusBarColor(0, 1, 0)
         return

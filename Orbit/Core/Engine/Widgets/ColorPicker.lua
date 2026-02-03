@@ -47,7 +47,7 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
                 -- Track which frame is currently using the color picker
                 activeColorPickerFrame = frame
                 frame.wasCancelled = false
-                
+
                 local info = {
                     swatchFunc = function()
                         local r, g, b = ColorPickerFrame:GetColorRGB()
@@ -78,7 +78,7 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
                     b = frame.b,
                     opacity = frame.a,
                 }
-                
+
                 -- Install global OnHide hook once (references activeColorPickerFrame dynamically)
                 if not colorPickerHookInstalled then
                     ColorPickerFrame:HookScript("OnHide", function()
@@ -98,7 +98,7 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
                     end)
                     colorPickerHookInstalled = true
                 end
-                
+
                 ColorPickerFrame:SetupColorPickerAndShow(info)
                 ColorPickerFrame:SetFrameStrata("FULLSCREEN_DIALOG")
             else
@@ -173,4 +173,3 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
     frame:SetSize(260, 32)
     return frame
 end
-

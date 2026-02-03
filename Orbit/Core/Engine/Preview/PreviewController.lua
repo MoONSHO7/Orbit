@@ -11,7 +11,6 @@ local Preview = Engine.Preview
 local PreviewController = {}
 Preview.Controller = PreviewController
 
-
 -- [ STATE ]--------------------------------------------------------------------------------------
 
 local activeSession = nil
@@ -28,17 +27,17 @@ function PreviewController:StartSession(frame, plugin, callbacks)
     if activeSession then
         self:EndSession(activeSession, false)
     end
-    
+
     local session = {
         frame = frame,
         plugin = plugin,
         callbacks = callbacks or {},
-        originalPositions = {},  -- Backup of original positions
-        currentPositions = {},   -- Current working positions
-        preview = nil,           -- Set by dialog after creating preview
+        originalPositions = {}, -- Backup of original positions
+        currentPositions = {}, -- Current working positions
+        preview = nil, -- Set by dialog after creating preview
         startTime = GetTime(),
     }
-    
+
     -- Backup original positions
     if plugin and plugin.savedVariables then
         local sv = plugin.savedVariables
@@ -62,7 +61,7 @@ function PreviewController:StartSession(frame, plugin, callbacks)
             end
         end
     end
-    
+
     activeSession = session
     return session
 end
@@ -71,19 +70,21 @@ end
 -- @param session: The session to end
 -- @param apply: If true, apply changes; if false, discard
 function PreviewController:EndSession(session, apply)
-    if not session then return end
-    
+    if not session then
+        return
+    end
+
     if apply and session.callbacks.onApply then
         session.callbacks.onApply(session.currentPositions)
     elseif not apply and session.callbacks.onCancel then
         session.callbacks.onCancel()
     end
-    
+
     -- Clear session
     wipe(session.originalPositions)
     wipe(session.currentPositions)
     session.preview = nil
-    
+
     if activeSession == session then
         activeSession = nil
     end
@@ -106,8 +107,10 @@ end
 -- @param key: Component key
 -- @param position: { anchorX, anchorY, offsetX, offsetY, posX, posY, justifyH }
 function PreviewController:UpdatePosition(session, key, position)
-    if not session or not key then return end
-    
+    if not session or not key then
+        return
+    end
+
     session.currentPositions[key] = {
         anchorX = position.anchorX,
         anchorY = position.anchorY,
@@ -117,7 +120,7 @@ function PreviewController:UpdatePosition(session, key, position)
         posY = position.posY,
         justifyH = position.justifyH,
     }
-    
+
     -- Notify callback
     if session.callbacks.onPositionChange then
         session.callbacks.onPositionChange(key, session.currentPositions[key])
@@ -126,20 +129,26 @@ end
 
 -- Get current positions for a session
 function PreviewController:GetPositions(session)
-    if not session then return {} end
+    if not session then
+        return {}
+    end
     return session.currentPositions
 end
 
 -- Get original positions for a session (for reset)
 function PreviewController:GetOriginalPositions(session)
-    if not session then return {} end
+    if not session then
+        return {}
+    end
     return session.originalPositions
 end
 
 -- Reset positions to original values
 function PreviewController:ResetPositions(session)
-    if not session then return end
-    
+    if not session then
+        return
+    end
+
     for key, pos in pairs(session.originalPositions) do
         session.currentPositions[key] = {
             anchorX = pos.anchorX,
@@ -149,7 +158,7 @@ function PreviewController:ResetPositions(session)
             justifyH = pos.justifyH,
         }
     end
-    
+
     -- Notify callback
     if session.callbacks.onReset then
         session.callbacks.onReset()

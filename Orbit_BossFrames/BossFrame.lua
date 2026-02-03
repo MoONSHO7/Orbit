@@ -3,15 +3,13 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- Reference to shared helpers (loaded from BossFrameHelpers.lua)
--- Note: BossFrameHelpers.lua must be loaded before this file in the TOC
-local Helpers = nil -- Will be set when first needed
+local Helpers = nil -- Loaded from BossFrameHelpers.lua
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]
 local MAX_BOSS_FRAMES = 5
-local POWER_BAR_HEIGHT_RATIO = 0.2 -- 20% of frame height
+local POWER_BAR_HEIGHT_RATIO = 0.2
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]
 local SYSTEM_ID = "Orbit_BossFrames"
 
 local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
@@ -53,18 +51,13 @@ function Plugin:IsComponentDisabled(componentKey)
     return false
 end
 
-
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
--- Use centralized power colors from Constants
+-- [ HELPERS ]
 local function GetPowerColor(powerType)
     return Orbit.Constants.Colors:GetPowerColor(powerType)
 end
 
--- [ POWER BAR CREATION & UPDATE ]-------------------------------------------------------------------
+-- [ POWER BAR CREATION & UPDATE ]
 
--- Use UnitFrameMixin:UpdateFrameLayout for consistent layout logic
--- Wrapper for backwards compatibility with existing call sites
 local function UpdateFrameLayout(frame, borderSize)
     Plugin:UpdateFrameLayout(frame, borderSize, { powerBarRatio = POWER_BAR_HEIGHT_RATIO })
 end
@@ -104,36 +97,25 @@ local function UpdatePowerBar(frame)
         return
     end
 
-    -- Get power values - pass directly to SetValue (no arithmetic)
-    local power = UnitPower(unit)
-    local maxPower = UnitPowerMax(unit)
-    local powerType = UnitPowerType(unit)
-
+    local power, maxPower, powerType = UnitPower(unit), UnitPowerMax(unit), UnitPowerType(unit)
     frame.Power:SetMinMaxValues(0, maxPower)
-    frame.Power:SetValue(power) -- Safe: SetValue accepts secret values
-
-    -- Update color based on power type (powerType is safe to read)
+    frame.Power:SetValue(power)
     local color = GetPowerColor(powerType)
     frame.Power:SetStatusBarColor(color.r, color.g, color.b)
 end
 
--- [ DEBUFF DISPLAY ]--------------------------------------------------------------------------------
-
+-- [ DEBUFF DISPLAY ]
 local function UpdateDebuffs(frame, plugin)
     if not frame.debuffContainer then
         return
     end
-
     local position = plugin:GetSetting(1, "DebuffPosition")
     if position == "Disabled" then
         frame.debuffContainer:Hide()
-        -- Reset size for spacing calculations
         frame.debuffContainer:SetSize(0, 0)
-        -- Reset anchor for spacing
         frame.debuffContainer:ClearAllPoints()
         return
     end
-
     local unit = frame.unit
     if not UnitExists(unit) then
         frame.debuffContainer:Hide()
@@ -146,48 +128,31 @@ local function UpdateDebuffs(frame, plugin)
     local frameWidth = frame:GetWidth()
     local maxDebuffs = plugin:GetSetting(1, "MaxDebuffs") or 4
 
-    -- Lazy-load helpers reference
     if not Helpers then
         Helpers = Orbit.BossFrameHelpers
     end
     local spacing = Helpers.LAYOUT.Spacing
+    local iconSize, xOffsetStep = Helpers:CalculateDebuffLayout(isHorizontal, frameWidth, frameHeight, maxDebuffs, spacing)
 
-    -- Calculate Size & Layout using shared helper
-    local iconSize, xOffsetStep = Helpers:CalculateDebuffLayout(
-        isHorizontal, frameWidth, frameHeight, maxDebuffs, spacing
-    )
-
-    -- Initialize pool if needed
     if not frame.debuffPool then
-        -- Use generic Button instead of CompactAuraTemplate to ensure full control over cooldown frame settings
         frame.debuffPool = CreateFramePool("Button", frame.debuffContainer, "BackdropTemplate")
     end
     frame.debuffPool:ReleaseAll()
-
-    -- Collect player-applied debuffs
     local debuffs = plugin:FetchAuras(unit, "HARMFUL|PLAYER", maxDebuffs)
-
     if #debuffs == 0 then
         frame.debuffContainer:Hide()
         frame.debuffContainer:SetSize(0, 0)
         return
     end
 
-    -- Position container using shared helper
     local castBarPos = plugin:GetSetting(1, "CastBarPosition")
     local castBarHeight = plugin:GetSetting(1, "CastBarHeight") or 14
+    Helpers:PositionDebuffContainer(frame.debuffContainer, frame, position, #debuffs, iconSize, spacing, castBarPos, castBarHeight)
 
-    Helpers:PositionDebuffContainer(
-        frame.debuffContainer, frame, position,
-        #debuffs, iconSize, spacing, castBarPos, castBarHeight
-    )
-
-    -- Prepare Skin Settings
-    local globalBorder = Orbit.db.GlobalSettings.BorderSize
-    local Constants = Orbit.Constants
+    local globalBorder, Constants = Orbit.db.GlobalSettings.BorderSize, Orbit.Constants
     local skinSettings = {
-        zoom = 0, -- Inherit/Default
-        borderStyle = 1, -- Pixel Perfect
+        zoom = 0,
+        borderStyle = 1,
         borderSize = globalBorder,
         showTimer = true,
         enablePandemic = true,
@@ -201,32 +166,17 @@ local function UpdateDebuffs(frame, plugin)
         local icon = frame.debuffPool:Acquire()
         icon:SetSize(iconSize, iconSize)
 
-        -- Position icon using shared helper
-        currentX = Helpers:PositionDebuffIcon(
-            icon, frame.debuffContainer, isHorizontal, position,
-            currentX, iconSize, xOffsetStep, spacing
-        )
-
-        -- Use Mixin for setup (Icon, Cooldown, Count, Skin)
+        currentX = Helpers:PositionDebuffIcon(icon, frame.debuffContainer, isHorizontal, position, currentX, iconSize, xOffsetStep, spacing)
         plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
-
-        -- Use Mixin for Tooltip (Edge-aware)
-        -- Explicitly pass "HARMFUL|PLAYER" as filter since we used GetDebuffDataByIndex with "PLAYER"
         plugin:SetupAuraTooltip(icon, aura, unit, "HARMFUL|PLAYER")
     end
-
     frame.debuffContainer:Show()
-
-    -- Notify parent to update layout spacing if container visibility/size changed
-    -- (Only if not in combat, PositionFrames is protected-ish)
     if not InCombatLockdown() then
-        -- We can't call PositionFrames directly recursively efficiently, but we can trigger it.
-        -- Optimization: Trigger only if size materially affects layout (TODO)
         plugin:PositionFrames()
     end
 end
 
--- [ CAST BAR ]--------------------------------------------------------------------------------------
+-- [ CAST BAR ]
 
 local function CreateBossCastBar(parent, bossIndex, plugin)
     local bar = CreateFrame("StatusBar", "OrbitBoss" .. bossIndex .. "CastBar", parent)
@@ -309,7 +259,6 @@ local function SetupCastBarHooks(castBar, unit)
     end
     local plugin = castBar.plugin
 
-    -- Hook OnShow
     nativeSpellbar:HookScript("OnShow", function(nativeBar)
         if not castBar then
             return
@@ -415,21 +364,17 @@ local function SetupCastBarHooks(castBar, unit)
         castBar:Show()
     end)
 
-    -- Hook OnHide
     nativeSpellbar:HookScript("OnHide", function()
         if castBar then
             castBar:Hide()
         end
     end)
 
-    -- Hook OnUpdate
-    local lastUpdate = 0
-    local updateThrottle = 1 / 60
+    local lastUpdate, updateThrottle = 0, 1 / 60
     nativeSpellbar:HookScript("OnUpdate", function(nativeBar, elapsed)
         if not castBar or not castBar:IsShown() then
             return
         end
-
         lastUpdate = lastUpdate + elapsed
         if lastUpdate < updateThrottle then
             return
@@ -443,29 +388,20 @@ local function SetupCastBarHooks(castBar, unit)
             castBar:SetMinMaxValues(min, max)
             castBar:SetValue(progress)
 
-            -- Safe update for Timer and Spark
-            local function SafeUpdateVisuals()
+            pcall(function()
                 if max <= 0 then
                     return
                 end
-
-                -- Timer
                 if castBar.Timer and castBar.Timer:IsShown() then
                     local timeLeft = nativeBar.channeling and progress or (max - progress)
                     castBar.Timer:SetText(string.format("%.1f", timeLeft))
                 end
-            end
-
-            pcall(SafeUpdateVisuals)
+            end)
         end
     end)
 
-    -- Hook OnEvent for interrupt state
     nativeSpellbar:HookScript("OnEvent", function(nativeBar, event, eventUnit)
-        if eventUnit ~= unit then
-            return
-        end
-        if not castBar or not castBar:IsShown() then
+        if eventUnit ~= unit or not castBar or not castBar:IsShown() then
             return
         end
 
@@ -476,19 +412,14 @@ local function SetupCastBarHooks(castBar, unit)
         elseif event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
             local color = plugin:GetSetting(1, "NonInterruptibleColor")
             castBar:SetStatusBarColor(color.r, color.g, color.b)
-        elseif
-            event == "UNIT_SPELLCAST_INTERRUPTIBLE"
-            or event == "UNIT_SPELLCAST_START"
-            or event == "UNIT_SPELLCAST_CHANNEL_START"
-        then
+        elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" or event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
             local color = plugin:GetSetting(1, "CastBarColor")
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         end
     end)
 end
 
--- [ BOSS FRAME CREATION ]-------------------------------------------------------------------------
-
+-- [ BOSS FRAME CREATION ]
 local function CreateBossFrame(bossIndex, plugin)
     local unit = "boss" .. bossIndex
     local frameName = "OrbitBossFrame" .. bossIndex
@@ -574,8 +505,7 @@ local function CreateBossFrame(bossIndex, plugin)
     return frame
 end
 
--- [ NATIVE FRAME HIDING ]-------------------------------------------------------------------------
-
+-- [ NATIVE FRAME HIDING ]
 local function HideNativeBossFrames()
     -- Hide container
     if BossTargetFrameContainer then
@@ -614,7 +544,7 @@ local function HideNativeBossFrames()
     end
 end
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]
 
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = 1
@@ -693,32 +623,23 @@ function Plugin:AddSettings(dialog, systemFrame)
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]
 
 function Plugin:OnLoad()
-    -- Hide native boss frames
     HideNativeBossFrames()
 
-    -- Create container frame for all boss frames (for Edit Mode selection highlight)
-    -- Must be SecureHandlerStateTemplate to handle visibility safely in combat
     self.container = CreateFrame("Frame", "OrbitBossContainer", UIParent, "SecureHandlerStateTemplate")
-    self.container.editModeName = "Boss Frames"
-    self.container.systemIndex = 1
+    self.container.editModeName, self.container.systemIndex = "Boss Frames", 1
     self.container:SetFrameStrata("MEDIUM")
     self.container:SetFrameLevel(49)
-    self.container:SetClampedToScreen(true) -- Prevent dragging off-screen
+    self.container:SetClampedToScreen(true)
 
-    -- Create boss frames (parented to container)
     self.frames = {}
     for i = 1, MAX_BOSS_FRAMES do
         self.frames[i] = CreateBossFrame(i, self)
         self.frames[i]:SetParent(self.container)
-        
-        -- Register unit watch for visibility (shows frame when boss unit exists)
         RegisterUnitWatch(self.frames[i])
-
-        -- Setup cast bar hooks (combat-safe deferred - native spellbars may not exist yet)
-        local bossIndex = i -- Capture for closure
+        local bossIndex = i
         Orbit:SafeAction(function()
             if self.frames[bossIndex] and self.frames[bossIndex].CastBar then
                 SetupCastBarHooks(self.frames[bossIndex].CastBar, "boss" .. bossIndex)
@@ -726,35 +647,21 @@ function Plugin:OnLoad()
         end)
     end
 
-    -- Container is the selectable frame for Edit Mode
-    -- This ensures highlight covers all boss frames together
     self.frame = self.container
     self.frame.anchorOptions = { horizontal = false, vertical = false, noAnchor = true }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, 1)
 
-    -- Set default container position (right side of screen)
     if not self.container:GetPoint() then
         self.container:SetPoint("RIGHT", UIParent, "RIGHT", -100, 100)
     end
 
-    -- Register secure visibility driver for the container
-    -- This handles Showing/Hiding the container (and thus all boss frames) securely in combat
-    -- NOTE: Must use RegisterStateDriver with "visibility" (not RegisterAttributeDriver with "state-visibility")
-    -- per the "Visibility Driver Failure" pattern documented in the KI
-    -- The driver now includes Edit Mode check so selection highlight works
-    local visibilityDriver = "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
+    local visibilityDriver =
+        "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
     RegisterStateDriver(self.container, "visibility", visibilityDriver)
-    
-    -- Explicit Show Bridge: Ensure container is active to receive first state evaluation
     self.container:Show()
-    
-    -- Give container a minimum size so it's clickable in Edit Mode even with no bosses
     self.container:SetSize(self:GetSetting(1, "Width") or 150, 100)
-
-    -- Position frames (stacked vertically)
     self:PositionFrames()
-
-    -- Apply initial settings
+    self:PositionFrames()
     self:ApplySettings()
 
     local eventFrame = CreateFrame("Frame")
@@ -791,7 +698,7 @@ function Plugin:OnLoad()
     -- Edit Mode callbacks (guard against duplicate registration)
     if EventRegistry and not self.editModeCallbacksRegistered then
         self.editModeCallbacksRegistered = true
-        
+
         EventRegistry:RegisterCallback("EditMode.Enter", function()
             -- Edit Mode auto-exits on combat start, so no deferral needed here
             if not InCombatLockdown() then
@@ -799,17 +706,18 @@ function Plugin:OnLoad()
                 self.container:Show()
                 self:UpdateContainerSize()
             end
-            
+
             self:ShowPreview()
             self:ApplySettings()
         end, self)
 
         EventRegistry:RegisterCallback("EditMode.Exit", function()
             self:HidePreview()
-            
+
             -- Re-register visibility driver for normal gameplay
             if not InCombatLockdown() then
-                local visibilityDriver = "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
+                local visibilityDriver =
+                    "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
                 RegisterStateDriver(self.container, "visibility", visibilityDriver)
                 self:UpdateContainerSize()
             end
@@ -823,9 +731,6 @@ function Plugin:OnLoad()
 end
 
 function Plugin:CalculateFrameSpacing(index)
-    -- Calculate height required by "Extras" (CastBar, Debuffs) to ensure no overlap
-    -- Returns: topPadding, bottomPadding
-
     local castBarPos = self:GetSetting(1, "CastBarPosition") or "Below"
     local castBarHeight = self:GetSetting(1, "CastBarHeight") or 14
     local castBarGap = 2
@@ -870,37 +775,20 @@ function Plugin:PositionFrames()
     if not self.frames or not self.container then
         return
     end
-
-    local baseSpacing = 2 -- Base visual gap between "Occupied Areas" of units
+    local baseSpacing = 2
     local frameHeight = self:GetSetting(1, "Height") or 40
-
-    -- Calculate total height for container update
     local totalHeight = 0
 
     for i, frame in ipairs(self.frames) do
         frame:ClearAllPoints()
-
-        -- Get padding requirements for this specifc frame configuration
-        -- (Currently uniform, but function supports per-frame if we ever go fully modular)
         local topPadding, bottomPadding = self:CalculateFrameSpacing(i)
-
-        -- Store for container sizing
         frame.layoutHeight = frameHeight + topPadding + bottomPadding
 
         if i == 1 then
-            -- First frame: Anchor to container top, offset by its top padding
             frame:SetPoint("TOP", self.container, "TOP", 0, -topPadding)
         else
-            -- Subsequent frames: Anchor to previous frame's BOTTOM
-            -- Gap = Previous Bottom Padding + Base Spacing + Current Top Padding
-            -- BUT: frame points are relative to the *Frame Body*, not the extras.
-            -- So we anchor Frame[i] TOP to Frame[i-1] BOTTOM.
-            -- Offset Y = -(PrevBottomPadding + BaseSpacing + CurrentTopPadding)
-
             local prevTop, prevBottom = self:CalculateFrameSpacing(i - 1)
-            local offset = -(prevBottom + baseSpacing + topPadding)
-
-            frame:SetPoint("TOP", self.frames[i - 1], "BOTTOM", 0, offset)
+            frame:SetPoint("TOP", self.frames[i - 1], "BOTTOM", 0, -(prevBottom + baseSpacing + topPadding))
         end
     end
 
@@ -911,65 +799,35 @@ function Plugin:UpdateContainerSize()
     if not self.container or not self.frames then
         return
     end
-
     local width = self:GetSetting(1, "Width") or 150
     local scale = (self:GetSetting(1, "Scale") or 100) / 100
     local baseSpacing = 2
-
-    -- Check if we're in preview mode (Edit Mode uses real frames with isPreview flag)
     local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
     local isPreviewActive = self.isPreviewActive
-
-    -- Count visible frames
-    local visibleCount = 0
-    local lastVisibleIndex = 0
-    
+    local visibleCount, lastVisibleIndex = 0, 0
     if isPreviewActive or isEditMode then
-        -- In preview/Edit Mode, always show all frames
-        visibleCount = MAX_BOSS_FRAMES
-        lastVisibleIndex = MAX_BOSS_FRAMES
+        visibleCount, lastVisibleIndex = MAX_BOSS_FRAMES, MAX_BOSS_FRAMES
     else
-        -- Normal mode: count real frames that are shown
         for i, frame in ipairs(self.frames) do
             if frame:IsShown() then
-                visibleCount = visibleCount + 1
-                lastVisibleIndex = i
+                visibleCount, lastVisibleIndex = visibleCount + 1, i
             end
         end
     end
-
-    -- Default to MAX frames for sizing if nothing visible
     if visibleCount == 0 then
-        visibleCount = MAX_BOSS_FRAMES
-        lastVisibleIndex = MAX_BOSS_FRAMES
+        visibleCount, lastVisibleIndex = MAX_BOSS_FRAMES, MAX_BOSS_FRAMES
     end
-
-    -- Sum heights
-    local totalHeight = 0
-    -- Note: This is an estimation for the container frame (Edit Mode highlight box)
-    -- It should encompass the visual bounds of all visible frames + their spacing
-
     local topPaddingFirst, _ = self:CalculateFrameSpacing(1)
-
-    -- Start with Top Padding of first frame (since frame is anchored -TopPadding down)
-    totalHeight = topPaddingFirst
+    local totalHeight = topPaddingFirst
 
     for i = 1, lastVisibleIndex do
-        -- Add Frame Body
-        local fHeight = self.frames[i]:GetHeight()
-        totalHeight = totalHeight + fHeight
-
-        -- Add Frame Padding
+        totalHeight = totalHeight + self.frames[i]:GetHeight()
         local t, b = self:CalculateFrameSpacing(i)
-        -- We already added Top Padding for first frame. The calculated loop for others handles the gap.
-
-        -- Gap between frames
         if i < lastVisibleIndex then
             local _, prevB = self:CalculateFrameSpacing(i)
             local nextT, _ = self:CalculateFrameSpacing(i + 1)
             totalHeight = totalHeight + prevB + baseSpacing + nextT
         else
-            -- Last frame: just add its bottom padding
             totalHeight = totalHeight + b
         end
     end
@@ -978,13 +836,9 @@ function Plugin:UpdateContainerSize()
     self.container:SetScale(scale)
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
-
+-- [ SETTINGS APPLICATION ]
 function Plugin:ApplySettings()
-    if not self.frames then
-        return
-    end
-    if InCombatLockdown() then
+    if not self.frames or InCombatLockdown() then
         return
     end
 

@@ -89,7 +89,7 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
             else
                 innerSlider:SetScript("OnMouseUp", nil)
             end
-            
+
             -- Hide native value display (re-apply safely)
             for _, region in pairs({ innerSlider:GetRegions() }) do
                 if region:GetObjectType() == "FontString" then

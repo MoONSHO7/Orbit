@@ -25,7 +25,7 @@ local attachAttempts = 0
 local function AttachToPlugin()
     attachAttempts = attachAttempts + 1
     local plugin = GetPlugin()
-    
+
     -- Wait for Engine KeybindSystem
     local KeybindSystem = Orbit.Engine and Orbit.Engine.KeybindSystem
     if not KeybindSystem then
@@ -34,7 +34,7 @@ local function AttachToPlugin()
         end
         return
     end
-    
+
     if not plugin then
         if attachAttempts < MAX_ATTACH_ATTEMPTS then
             C_Timer.After(ATTACH_RETRY_DELAY, AttachToPlugin)
@@ -43,16 +43,16 @@ local function AttachToPlugin()
         end
         return
     end
-    
+
     -- Attach wrapper methods that delegate to Engine
     plugin.GetSpellKeybind = function(self, spellID)
         return KeybindSystem:GetForSpell(spellID)
     end
-    
+
     plugin.InvalidateKeybindCache = function(self)
         KeybindSystem:InvalidateCache()
     end
-    
+
     -- Schedule layout refresh after action bars are ready
     C_Timer.After(0.5, function()
         KeybindSystem:InvalidateCache()

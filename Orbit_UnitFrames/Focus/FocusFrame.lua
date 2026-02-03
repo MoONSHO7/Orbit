@@ -5,16 +5,11 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_FocusFrame"
-local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus
+local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus or 3
 local PLAYER_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Player
 
--- Verify index if needed, but Enum.EditModeUnitFrameSystemIndices.Focus usually exists in modern WoW
-if not Enum.EditModeUnitFrameSystemIndices.Focus then
-    FOCUS_FRAME_INDEX = 3 -- Fallback
-end
-
 local Plugin = Orbit:RegisterPlugin("Focus Frame", SYSTEM_ID, {
-    canvasMode = true,  -- Enable Canvas Mode for component editing
+    canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
         ReactionColour = true,
         ShowLevel = true,
@@ -121,16 +116,10 @@ function Plugin:AddSettings(dialog, systemFrame)
         WL:AddSizeSettings(self, schema, systemIndex, systemFrame, widthParams, heightParams)
     else
         if widthParams then
-            table.insert(
-                schema.controls,
-                { type = "slider", key = "Width", label = "Width", min = 100, max = 400, step = 1, default = 160 }
-            )
+            table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 100, max = 400, step = 1, default = 160 })
         end
         if heightParams then
-            table.insert(
-                schema.controls,
-                { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 40 }
-            )
+            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 40 })
         end
     end
 
@@ -140,8 +129,6 @@ end
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     Mixin(self, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin)
-    
-    -- Check if a component is disabled (Canvas Mode drag-to-disable)
     function Plugin:IsComponentDisabled(componentKey)
         local disabled = self:GetSetting(FOCUS_FRAME_INDEX, "DisabledComponents") or {}
         for _, key in ipairs(disabled) do
@@ -151,11 +138,8 @@ function Plugin:OnLoad()
         end
         return false
     end
-
     local hiddenParent = CreateFrame("Frame", "OrbitHiddenFocusParent", UIParent)
     hiddenParent:Hide()
-
-    -- Hide native FocusFrame by moving it offscreen
     local frame = FocusFrame
     if frame then
         OrbitEngine.NativeFrame:Protect(frame)
@@ -164,7 +148,6 @@ function Plugin:OnLoad()
         frame:SetUserPlaced(true)
         frame:SetClampRectInsets(0, 0, 0, 0)
         frame:SetClampedToScreen(false)
-        -- Hook SetPoint to prevent Edit Mode/Layout resets
         if not frame.orbitSetPointHooked then
             hooksecurefunc(frame, "SetPoint", function(self)
                 if InCombatLockdown() then
@@ -179,7 +162,6 @@ function Plugin:OnLoad()
             end)
             frame.orbitSetPointHooked = true
         end
-
         frame:SetAlpha(0)
         frame:SetScale(0.001)
         frame:EnableMouse(false)
@@ -228,7 +210,7 @@ function Plugin:OnLoad()
                 local positions = pluginRef:GetSetting(FOCUS_FRAME_INDEX, "ComponentPositions") or {}
                 positions.LevelText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 pluginRef:SetSetting(FOCUS_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
         OrbitEngine.ComponentDrag:Attach(self.frame.RareEliteIcon, self.frame, {
             key = "RareEliteIcon",
@@ -236,7 +218,7 @@ function Plugin:OnLoad()
                 local positions = pluginRef:GetSetting(FOCUS_FRAME_INDEX, "ComponentPositions") or {}
                 positions.RareEliteIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 pluginRef:SetSetting(FOCUS_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
     end
 
@@ -272,13 +254,7 @@ function Plugin:OnLoad()
     end
 
     -- Can only anchor side-by-side (horizontal), not above/below (vertical)
-    self.frame.anchorOptions = {
-        horizontal = true,
-        vertical = false,
-        syncScale = true,
-        syncDimensions = true,
-        mergeBorders = true,
-    }
+    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, mergeBorders = true }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, FOCUS_FRAME_INDEX)
 
     -- Register standard events
@@ -336,7 +312,6 @@ function Plugin:ApplySettings(frame)
     if not frame then
         return
     end
-
     local systemIndex = FOCUS_FRAME_INDEX
 
     -- Use Mixin for base settings (Size, Texture, Border, Text Style, Absorbs)

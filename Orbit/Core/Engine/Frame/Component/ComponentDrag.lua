@@ -25,8 +25,8 @@ local HandleModule = Engine.ComponentHandle
 -- [ STATE ]-----------------------------------------------------------------------------------------
 
 local registeredComponents = {} -- { [component] = { parent, key, options, handle } }
-local frameComponents = {}      -- { [parentFrame] = { component1, component2, ... } }
-local selectedComponent = nil   -- Currently selected component for nudge
+local frameComponents = {} -- { [parentFrame] = { component1, component2, ... } }
+local selectedComponent = nil -- Currently selected component for nudge
 
 -- [ DRAG MECHANICS ]--------------------------------------------------------------------------------
 
@@ -51,14 +51,14 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
     local halfW, halfH = parentWidth / 2, parentHeight / 2
     centerRelX = math.max(-halfW - PADDING, math.min(centerRelX, halfW + PADDING))
     centerRelY = math.max(-halfH - PADDING, math.min(centerRelY, halfH + PADDING))
-    
+
     local SNAP_SIZE = 5
     centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE
     centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE
 
     data.currentX = centerRelX
     data.currentY = centerRelY
-    
+
     local origWidth, origHeight = parentWidth, parentHeight
     if parent.orbitCanvasOriginal then
         origWidth = parent.orbitCanvasOriginal.width or parentWidth
@@ -79,13 +79,7 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
 
     if Engine.SelectionTooltip and Engine.SelectionTooltip.ShowComponentPosition then
         local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(centerRelX, centerRelY, halfW, halfH)
-        Engine.SelectionTooltip:ShowComponentPosition(
-            component, data.key,
-            anchorX, anchorY,
-            centerRelX, centerRelY,
-            edgeOffX, edgeOffY,
-            justifyH
-        )
+        Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH)
     end
 end
 
@@ -94,10 +88,10 @@ function ComponentDrag:OnDragStop(component, parent, data)
         local componentParent = component:GetParent() or parent
         local parentWidth, parentHeight = SafeGetSize(componentParent)
         local halfW, halfH = parentWidth / 2, parentHeight / 2
-        
+
         local centerX = data.currentX or 0
         local centerY = data.currentY or 0
-        
+
         local anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchor(centerX, centerY, halfW, halfH)
         data.options.onPositionChange(component, anchorX, anchorY, offsetX, offsetY, justifyH)
     end
@@ -125,7 +119,9 @@ function ComponentDrag:SelectComponent(component)
 
     local data = registeredComponents[component]
     if data and data.handle then
-        if data.handle.UpdateSize then data.handle:UpdateSize() end
+        if data.handle.UpdateSize then
+            data.handle:UpdateSize()
+        end
         data.handle:SetHandleColor(0.5, 0.9, 0.3, 0.1, 0.5)
     end
 end
@@ -139,20 +135,24 @@ function ComponentDrag:DeselectComponent()
     end
 
     selectedComponent = nil
-    
+
     if not InCombatLockdown() then
         nudgeFrame:EnableKeyboard(false)
         nudgeFrame:SetPropagateKeyboardInput(true)
     end
-    
+
     Engine.NudgeRepeat:Stop()
 end
 
 nudgeFrame:SetScript("OnKeyDown", function(self, key)
-    if not selectedComponent then return end
+    if not selectedComponent then
+        return
+    end
 
     local data = registeredComponents[selectedComponent]
-    if not data then return end
+    if not data then
+        return
+    end
 
     local dx, dy = 0, 0
 
@@ -174,17 +174,14 @@ nudgeFrame:SetScript("OnKeyDown", function(self, key)
 
     self:SetPropagateKeyboardInput(false)
     ComponentDrag:NudgeComponent(selectedComponent, dx, dy)
-    
-    Engine.NudgeRepeat:Start(
-        function()
-            if selectedComponent then
-                ComponentDrag:NudgeComponent(selectedComponent, dx, dy)
-            end
-        end,
-        function()
-            return selectedComponent ~= nil
+
+    Engine.NudgeRepeat:Start(function()
+        if selectedComponent then
+            ComponentDrag:NudgeComponent(selectedComponent, dx, dy)
         end
-    )
+    end, function()
+        return selectedComponent ~= nil
+    end)
 end)
 
 nudgeFrame:SetScript("OnKeyUp", function(self, key)
@@ -195,7 +192,9 @@ end)
 
 function ComponentDrag:NudgeComponent(component, dx, dy)
     local data = registeredComponents[component]
-    if not data then return end
+    if not data then
+        return
+    end
 
     local componentParent = component:GetParent() or data.parent
     local parent = data.parent
@@ -213,7 +212,7 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
 
     data.currentX = newX
     data.currentY = newY
-    
+
     if parent and parent.orbitCanvasOriginal then
         local origWidth = parent.orbitCanvasOriginal.width or parentWidth
         local origHeight = parent.orbitCanvasOriginal.height or parentHeight
@@ -243,20 +242,16 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
 
     if Engine.SelectionTooltip and Engine.SelectionTooltip.ShowComponentPosition then
         local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(newX, newY, halfW, halfH)
-        Engine.SelectionTooltip:ShowComponentPosition(
-            component, data.key,
-            anchorX, anchorY,
-            newX, newY,
-            edgeOffX, edgeOffY,
-            justifyH
-        )
+        Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, newX, newY, edgeOffX, edgeOffY, justifyH)
     end
 end
 
 -- [ PUBLIC API ]------------------------------------------------------------------------------------
 
 function ComponentDrag:Attach(component, parent, options)
-    if not component or not parent then return end
+    if not component or not parent then
+        return
+    end
 
     options = options or {}
 
@@ -296,7 +291,9 @@ end
 
 function ComponentDrag:Detach(component)
     local data = registeredComponents[component]
-    if not data then return end
+    if not data then
+        return
+    end
 
     if data.handle then
         HandleModule:Release(data.handle)
@@ -316,20 +313,24 @@ end
 
 function ComponentDrag:SetEnabled(component, enabled)
     local data = registeredComponents[component]
-    if not data or not data.handle then return end
+    if not data or not data.handle then
+        return
+    end
 
     local componentVisible = component.IsShown and component:IsShown() or true
     local shouldShow = enabled and componentVisible and EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
-    
+
     if shouldShow then
-        if data.handle.UpdateSize then data.handle:UpdateSize() end
+        if data.handle.UpdateSize then
+            data.handle:UpdateSize()
+        end
         C_Timer.After(0.05, function()
             if data.handle and data.handle.UpdateSize then
                 data.handle:UpdateSize()
             end
         end)
     end
-    
+
     data.handle:SetShown(shouldShow)
 
     if not enabled and selectedComponent == component then
@@ -339,7 +340,9 @@ end
 
 function ComponentDrag:SetEnabledForFrame(parent, enabled)
     local components = frameComponents[parent]
-    if not components then return end
+    if not components then
+        return
+    end
 
     local editModeActive = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
     local shouldEnable = enabled and editModeActive
@@ -362,33 +365,37 @@ end
 -- Uses the key stored during Attach and checks the parent frame's plugin
 function ComponentDrag:IsDisabled(component)
     local data = registeredComponents[component]
-    if not data then return false end
-    
+    if not data then
+        return false
+    end
+
     local parent = data.parent
     local plugin = parent and parent.orbitPlugin
     if plugin and plugin.IsComponentDisabled then
         return plugin:IsComponentDisabled(data.key)
     end
-    
+
     return false
 end
 
 function ComponentDrag:RestoreFramePositions(parent, positions)
     local components = frameComponents[parent]
-    if not components or not positions then return end
+    if not components or not positions then
+        return
+    end
 
     for _, component in ipairs(components) do
         local data = registeredComponents[component]
         if data and positions[data.key] then
             local pos = positions[data.key]
             local componentParent = component:GetParent() or parent
-            
+
             if pos.anchorX then
                 local anchorX = pos.anchorX
                 local anchorY = pos.anchorY or "CENTER"
                 local offsetX = pos.offsetX or 0
                 local offsetY = pos.offsetY or 0
-                
+
                 local anchorPoint
                 if anchorY == "CENTER" and anchorX == "CENTER" then
                     anchorPoint = "CENTER"
@@ -399,28 +406,32 @@ function ComponentDrag:RestoreFramePositions(parent, positions)
                 else
                     anchorPoint = anchorY .. anchorX
                 end
-                
+
                 local finalX = offsetX
                 local finalY = offsetY
-                if anchorX == "RIGHT" then finalX = -offsetX end
-                if anchorY == "TOP" then finalY = -offsetY end
-                
+                if anchorX == "RIGHT" then
+                    finalX = -offsetX
+                end
+                if anchorY == "TOP" then
+                    finalY = -offsetY
+                end
+
                 component:ClearAllPoints()
-                
+
                 if pos.justifyH and component.SetJustifyH then
                     component:SetJustifyH(pos.justifyH)
                     component:SetPoint(pos.justifyH, componentParent, anchorPoint, finalX, finalY)
                 else
                     component:SetPoint("CENTER", componentParent, anchorPoint, finalX, finalY)
                 end
-                
+
                 data.anchorX = anchorX
                 data.anchorY = anchorY
                 data.offsetX = offsetX
                 data.offsetY = offsetY
                 data.justifyH = pos.justifyH
             end
-            
+
             if data.handle then
                 data.handle:ClearAllPoints()
                 data.handle:SetPoint("CENTER", component, "CENTER", 0, 0)
@@ -430,11 +441,13 @@ function ComponentDrag:RestoreFramePositions(parent, positions)
 end
 
 function ComponentDrag:GetComponentsForFrame(frame)
-    if not frame then return {} end
-    
+    if not frame then
+        return {}
+    end
+
     local components = frameComponents[frame] or {}
     local result = {}
-    
+
     for _, comp in ipairs(components) do
         local data = registeredComponents[comp]
         if data then
@@ -446,11 +459,11 @@ function ComponentDrag:GetComponentsForFrame(frame)
                 offsetY = data.offsetY,
                 justifyH = data.justifyH,
                 component = comp,
-                originalText = comp.GetText and comp:GetText() or nil
+                originalText = comp.GetText and comp:GetText() or nil,
             }
         end
     end
-    
+
     return result
 end
 

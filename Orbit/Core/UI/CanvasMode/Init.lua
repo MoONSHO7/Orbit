@@ -20,24 +20,24 @@ CanvasMode.Constants = {
     DIALOG_HEIGHT = 350,
     DIALOG_MIN_HEIGHT = 200,
     DIALOG_INSET = 12,
-    
+
     -- Viewport
     VIEWPORT_PADDING = 20,
     FOOTER_HEIGHT = 55,
     TITLE_HEIGHT = 40,
-    
+
     -- Dock
     DOCK_HEIGHT = 60,
     DOCK_ICON_SIZE = 28,
     DOCK_ICON_SPACING = 6,
     DOCK_PADDING = 8,
-    
+
     -- Zoom
     DEFAULT_ZOOM = 2.0,
     MIN_ZOOM = 0.5,
     MAX_ZOOM = 5.0,
     ZOOM_STEP = 0.25,
-    
+
     -- Pan clamping
     PAN_CLAMP_PADDING = 50,
 }

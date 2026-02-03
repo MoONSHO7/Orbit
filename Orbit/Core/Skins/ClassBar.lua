@@ -40,7 +40,7 @@ function ClassBar:SkinButton(btn, settings)
     -- Setup Textures
     local texture = LSM:Fetch("statusbar", settings.texture or "Blizzard")
     btn.orbitBar:SetTexture(texture)
-    
+
     -- Background Color - use provided backColor or fallback to constant
     local bg = Orbit.Constants.Colors.Background
     if settings.backColor then
@@ -59,7 +59,7 @@ function ClassBar:SkinButton(btn, settings)
             end
         end
     end
-    
+
     -- Clear any backdrop on the button itself (blocks alpha transparency)
     if btn.SetBackdrop then
         btn:SetBackdrop(nil)

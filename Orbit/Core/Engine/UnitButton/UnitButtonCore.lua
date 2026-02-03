@@ -36,28 +36,30 @@ function CoreMixin:CreateCanvasPreview(options)
     local scale = options.scale or 1
     local borderSize = options.borderSize or 2
     local parent = options.parent or UIParent
-    
+
     -- Use Preview.Frame:CreateBasePreview for the container
     local preview = Engine.Preview.Frame:CreateBasePreview(self, scale, parent, borderSize)
-    if not preview then return nil end
-    
+    if not preview then
+        return nil
+    end
+
     -- Create a single health bar preview to represent the unit button
     local bar = CreateFrame("StatusBar", nil, preview)
     bar:SetPoint("TOPLEFT", borderSize * scale, -borderSize * scale)
     bar:SetPoint("BOTTOMRIGHT", -borderSize * scale, borderSize * scale)
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0.75) -- Show as 75% health for preview
-    
+
     -- Apply texture from options or global settings
     local textureName = options.textureName or Orbit.db.GlobalSettings.Texture
     local texturePath = LSM:Fetch("statusbar", textureName)
     bar:SetStatusBarTexture(texturePath)
-    
+
     -- Apply color based on global UseClassColors setting (same logic as live frames)
     local globalSettings = Orbit.db.GlobalSettings or {}
     local useClassColors = globalSettings.UseClassColors ~= false -- Default true
     local globalBarColor = globalSettings.BarColor or { r = 0.2, g = 0.8, b = 0.2 }
-    
+
     if useClassColors then
         -- Use class color for player
         local _, playerClass = UnitClass("player")
@@ -71,9 +73,9 @@ function CoreMixin:CreateCanvasPreview(options)
         -- Use global Health Color
         bar:SetStatusBarColor(globalBarColor.r, globalBarColor.g, globalBarColor.b, 1)
     end
-    
+
     preview.Health = bar
-    
+
     return preview
 end
 

@@ -50,8 +50,7 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
             -- Skip
         else
             local tScale = target:GetEffectiveScale()
-            local tLeft, tRight, tTop, tBottom =
-                target:GetLeft(), target:GetRight(), target:GetTop(), target:GetBottom()
+            local tLeft, tRight, tTop, tBottom = target:GetLeft(), target:GetRight(), target:GetTop(), target:GetBottom()
 
             if tLeft and tScale then
                 tLeft, tRight, tTop, tBottom = tLeft * tScale, tRight * tScale, tTop * tScale, tBottom * tScale
@@ -79,10 +78,7 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
                         table.insert(snapPointsX, { diff = tLeft - right, pos = tLeft, edge = "LEFT", target = target })
                     end
                     if not Engine.FrameAnchor:IsEdgeOccupied(target, "RIGHT", frame) then
-                        table.insert(
-                            snapPointsX,
-                            { diff = tRight - left, pos = tRight, edge = "RIGHT", target = target }
-                        )
+                        table.insert(snapPointsX, { diff = tRight - left, pos = tRight, edge = "RIGHT", target = target })
                     end
                 end
 
@@ -119,10 +115,7 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
                 if horizontalOverlap then
                     -- Only add anchor points if edge is not occupied
                     if not Engine.FrameAnchor:IsEdgeOccupied(target, "BOTTOM", frame) then
-                        table.insert(
-                            snapPointsY,
-                            { diff = tBottom - top, pos = tBottom, edge = "BOTTOM", target = target }
-                        )
+                        table.insert(snapPointsY, { diff = tBottom - top, pos = tBottom, edge = "BOTTOM", target = target })
                     end
                     if not Engine.FrameAnchor:IsEdgeOccupied(target, "TOP", frame) then
                         table.insert(snapPointsY, { diff = tTop - bottom, pos = tTop, edge = "TOP", target = target })
@@ -210,15 +203,15 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
         local l, b = frame:GetLeft(), frame:GetBottom()
         if closestX then
             local val = (closestX / fScale)
-            if Engine.Pixel then 
-                 val = Engine.Pixel:Snap(val, frame:GetEffectiveScale()) 
+            if Engine.Pixel then
+                val = Engine.Pixel:Snap(val, frame:GetEffectiveScale())
             end
             l = l + val
         end
         if closestY then
             local val = (closestY / fScale)
-            if Engine.Pixel then 
-                 val = Engine.Pixel:Snap(val, frame:GetEffectiveScale()) 
+            if Engine.Pixel then
+                val = Engine.Pixel:Snap(val, frame:GetEffectiveScale())
             end
             b = b + val
         end

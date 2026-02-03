@@ -15,8 +15,7 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     local Selection = Engine.FrameSelection
 
     -- Skip anchor visuals if anchoring is disabled globally or per-frame
-    local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings 
-        or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
+    local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
     if not anchoringEnabled or parent.orbitNoSnap then
         -- Just show position tooltip without anchor detection
         Engine.SelectionTooltip:ShowPosition(parent, Selection, true)
@@ -123,9 +122,8 @@ function Drag:OnDragStop(selectionOverlay)
     )
 
     -- Check if anchoring is enabled globally and per-frame
-    local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings 
-        or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
-    
+    local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
+
     -- Skip anchoring if frame has orbitNoSnap flag
     if parent.orbitNoSnap then
         anchoringEnabled = false
@@ -193,7 +191,7 @@ function Drag:OnMouseDown(selectionOverlay)
 
     local Selection = Engine.FrameSelection
     local clickedFrame = selectionOverlay.parent
-    
+
     -- Exit Canvas Mode on any other frame when clicking a different frame
     if Engine.ComponentEdit and Engine.ComponentEdit.currentFrame then
         local currentCanvasFrame = Engine.ComponentEdit.currentFrame
@@ -267,7 +265,7 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
     end
 
     local currentPadding = anchor.padding or 0
-    local minPadding = -(Orbit.db.GlobalSettings.BorderSize)
+    local minPadding = -Orbit.db.GlobalSettings.BorderSize
 
     if anchor.syncOptions and anchor.syncOptions.mergeBorders then
         minPadding = 0
@@ -276,14 +274,7 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
     local newPadding = Clamp(currentPadding + change, minPadding, 500)
 
     if newPadding ~= currentPadding then
-        Engine.FrameAnchor:CreateAnchor(
-            parent,
-            anchor.parent,
-            anchor.edge,
-            newPadding,
-            anchor.syncOptions,
-            anchor.align
-        )
+        Engine.FrameAnchor:CreateAnchor(parent, anchor.parent, anchor.edge, newPadding, anchor.syncOptions, anchor.align)
         if Selection.dragCallbacks[parent] then
             Selection.dragCallbacks[parent](parent, "ANCHORED", anchor.parent, anchor.edge)
         end
@@ -298,14 +289,7 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
             local partner = _G[partnerName]
             if partner and Engine.FrameAnchor.anchors[partner] then
                 local pAnchor = Engine.FrameAnchor.anchors[partner]
-                Engine.FrameAnchor:CreateAnchor(
-                    partner,
-                    pAnchor.parent,
-                    pAnchor.edge,
-                    newPadding,
-                    pAnchor.syncOptions,
-                    pAnchor.align
-                )
+                Engine.FrameAnchor:CreateAnchor(partner, pAnchor.parent, pAnchor.edge, newPadding, pAnchor.syncOptions, pAnchor.align)
                 Selection:UpdateVisuals(partner)
                 if Selection.dragCallbacks[partner] then
                     Selection.dragCallbacks[partner](partner, "ANCHORED", pAnchor.parent, pAnchor.edge)

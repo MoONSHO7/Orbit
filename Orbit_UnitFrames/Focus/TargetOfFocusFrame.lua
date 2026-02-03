@@ -9,7 +9,7 @@ local TOF_FRAME_INDEX = 101 -- Custom index for Orbit-only frames
 local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus
 
 local Plugin = Orbit:RegisterPlugin("Target of Focus", SYSTEM_ID, {
-    canvasMode = true,  -- Enable Canvas Mode for component editing
+    canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
         Width = 100,
         Height = 20,
@@ -81,7 +81,7 @@ function Plugin:OnLoad()
                 local positions = self:GetSetting(TOF_FRAME_INDEX, "ComponentPositions") or {}
                 positions.Name = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 self:SetSetting(TOF_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
     end
 
@@ -93,7 +93,7 @@ function Plugin:OnLoad()
                 local positions = self:GetSetting(TOF_FRAME_INDEX, "ComponentPositions") or {}
                 positions.HealthText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 self:SetSetting(TOF_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
     end
 
@@ -173,13 +173,9 @@ end
 
 function Plugin:ApplySettings(frame)
     frame = self.frame
-    if not frame then
+    if not frame or InCombatLockdown() then
         return
     end
-    if InCombatLockdown() then
-        return
-    end
-
     local systemIndex = TOF_FRAME_INDEX
 
     -- Check if enabled via FocusFrame setting
@@ -277,11 +273,7 @@ function Plugin:ApplySettings(frame)
 end
 
 function Plugin:UpdateVisuals(frame)
-    if
-        frame
-        and frame.UpdateAll
-        and (self:IsEnabled() or (EditModeManagerFrame and EditModeManagerFrame:IsShown()))
-    then
+    if frame and frame.UpdateAll and (self:IsEnabled() or (EditModeManagerFrame and EditModeManagerFrame:IsShown())) then
         frame:UpdateAll()
     end
 end

@@ -32,15 +32,7 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
         if anchor and anchor.target then
             local targetFrame = _G[anchor.target]
             if targetFrame then
-                Engine.FrameAnchor:CreateAnchor(
-                    frame,
-                    targetFrame,
-                    anchor.edge,
-                    anchor.padding or 0,
-                    nil,
-                    anchor.align,
-                    true
-                )
+                Engine.FrameAnchor:CreateAnchor(frame, targetFrame, anchor.edge, anchor.padding or 0, nil, anchor.align, true)
                 return true
             end
         end
@@ -64,15 +56,7 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
     if anchor and anchor.target then
         local targetFrame = _G[anchor.target]
         if targetFrame then
-            Engine.FrameAnchor:CreateAnchor(
-                frame,
-                targetFrame,
-                anchor.edge,
-                anchor.padding or 0,
-                nil,
-                anchor.align,
-                true
-            )
+            Engine.FrameAnchor:CreateAnchor(frame, targetFrame, anchor.edge, anchor.padding or 0, nil, anchor.align, true)
             return true
         end
     end
@@ -102,13 +86,7 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
         end
 
         frame:ClearAllPoints()
-        frame:SetPoint(
-            frame.defaultPosition.point,
-            frame.defaultPosition.relativeTo,
-            frame.defaultPosition.relativePoint,
-            x,
-            y
-        )
+        frame:SetPoint(frame.defaultPosition.point, frame.defaultPosition.relativeTo, frame.defaultPosition.relativePoint, x, y)
         return true
     end
 
@@ -188,11 +166,7 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
                     align = Engine.FrameAnchor.anchors[f].align
                 end
 
-                plugin:SetSetting(
-                    systemIndex,
-                    "Anchor",
-                    { target = targetName, edge = y, padding = padding, align = align }
-                )
+                plugin:SetSetting(systemIndex, "Anchor", { target = targetName, edge = y, padding = padding, align = align })
                 plugin:SetSetting(systemIndex, "Position", nil)
             else
                 plugin:SetSetting(systemIndex, "Position", { point = point, x = x, y = y })

@@ -122,10 +122,8 @@ end
 
 -- [ INITIALIZATION ]--------------------------------------------------------------------------------
 function Plugin:TryCapture()
-    -- Attempt to capture BagsBar
     if BagsBar then
         if InCombatLockdown() then
-            -- Queue for after combat
             Orbit.CombatManager:QueueUpdate(function()
                 self:ReparentAll()
                 self:ApplySettings()
@@ -137,7 +135,6 @@ function Plugin:TryCapture()
         return true
     end
 
-    -- BagsBar doesn't exist yet, retry on next world entry
     if not self._captureRetryRegistered then
         self._captureRetryRegistered = true
         Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
@@ -160,38 +157,27 @@ function Plugin:ReparentAll()
         end)
         return
     end
-
-    -- Reparent BagsBar into our container
     if BagsBar:GetParent() ~= self.frame then
         BagsBar:SetParent(self.frame)
     end
-
     BagsBar:ClearAllPoints()
     BagsBar:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
     BagsBar:Show()
-
-    -- Mark as captured
     self._captured = true
-
-    -- Suppress Blizzard's native Edit Mode selection (prevents double-highlight)
     if BagsBar.Selection then
         BagsBar.Selection:SetAlpha(0)
         BagsBar.Selection:EnableMouse(false)
     end
-
-    -- Protect BagsBar from being stolen by other addons/Blizzard
     OrbitEngine.FrameGuard:Protect(BagsBar, self.frame)
     OrbitEngine.FrameGuard:UpdateProtection(BagsBar, self.frame, function()
         self:ApplySettings()
     end, { enforceShow = true })
 
-    -- Hook SetPoint to prevent position jumping during Edit Mode transitions
     if not BagsBar._orbitSetPointHooked then
         hooksecurefunc(BagsBar, "SetPoint", function(f, ...)
             if f._orbitRestoringPoint then
                 return
             end
-            -- If Blizzard tries to reposition, immediately restore our position
             if f:GetParent() == self.frame then
                 local point = ...
                 if point ~= "CENTER" then
@@ -205,10 +191,8 @@ function Plugin:ReparentAll()
         BagsBar._orbitSetPointHooked = true
     end
 
-    -- Hook Layout to re-sync container size after Blizzard layout changes
     if not BagsBar._orbitLayoutHooked and BagsBar.Layout then
         hooksecurefunc(BagsBar, "Layout", function(f)
-            -- Re-sync container size after layout
             C_Timer.After(0, function()
                 if self.frame and f:IsShown() then
                     local w, h = f:GetSize()
@@ -234,39 +218,21 @@ function Plugin:ApplySettings()
         end)
         return
     end
-
-    -- Visibility handled by RegisterVisibilityEvents() -> UpdateVisibility()
-
-    -- Get settings
-    local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100
-    local orientation = self:GetSetting(SYSTEM_ID, "Orientation")
-    local direction = self:GetSetting(SYSTEM_ID, "Direction")
-
-    -- Ensure reparented
+    local scale, orientation, direction =
+        self:GetSetting(SYSTEM_ID, "Scale") or 100, self:GetSetting(SYSTEM_ID, "Orientation"), self:GetSetting(SYSTEM_ID, "Direction")
     self:ReparentAll()
-
-    -- Apply Scale to container
     frame:SetScale(scale / 100)
     frame:Show()
 
-    -- Apply orientation and direction to BagsBar
     if BagsBar then
-        -- Apply orientation using Mixin helper
         self:ApplyOrientation(BagsBar, orientation, Enum.BagsOrientation.Horizontal)
-
-        -- Direction (BagBar-specific)
         BagsBar.direction = direction
-
-        -- Trigger layout using Mixin helper
         self:TriggerLayout(BagsBar)
-
-        -- Resize container to match BagsBar content
         local w, h = BagsBar:GetSize()
         if w and h and w > 0 and h > 0 then
             frame:SetSize(w, h)
         end
     end
 
-    -- Apply MouseOver
     self:ApplyMouseOver(frame, SYSTEM_ID)
 end
