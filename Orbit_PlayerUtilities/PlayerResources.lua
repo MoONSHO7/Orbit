@@ -46,7 +46,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
 
-local WL = OrbitEngine.WidgetLogic
+    local WL = OrbitEngine.WidgetLogic
 
     if dialog.Title then
         dialog.Title:SetText("Player Resources")
@@ -60,27 +60,11 @@ local WL = OrbitEngine.WidgetLogic
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
     -- Width (only when not anchored)
     if not isAnchored then
-        WL:AddSizeSettings(
-            self,
-            schema,
-            systemIndex,
-            systemFrame,
-            { default = DEFAULTS.Width },
-            nil,
-            nil
-        )
+        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = DEFAULTS.Width }, nil, nil)
     end
 
     -- Height
-    WL:AddSizeSettings(
-        self,
-        schema,
-        systemIndex,
-        systemFrame,
-        nil,
-        { min = 5, max = 20, default = DEFAULTS.Height },
-        nil
-    )
+    WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 20, default = DEFAULTS.Height }, nil)
 
     -- Out of Combat Fade
     table.insert(schema.controls, {
@@ -156,55 +140,55 @@ function Plugin:OnLoad()
         systemIndex = SYSTEM_INDEX,
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }, -- Vertical stacking only
     })
-    self.frame = Frame  -- Expose for PluginMixin compatibility
+    self.frame = Frame -- Expose for PluginMixin compatibility
 
     -- [ CANVAS PREVIEW ] -------------------------------------------------------------------------------
     function Frame:CreateCanvasPreview(options)
         local scale = options.scale or 1
         local borderSize = options.borderSize or 1
-        
+
         -- Base container
         local preview = OrbitEngine.Preview.Frame:CreateBasePreview(self, scale, options.parent, borderSize)
-        
+
         -- Generate representative buttons (e.g. 5 combo points)
         local buttonCount = 5
         local textureName = Plugin:GetSetting(SYSTEM_INDEX, "Texture")
         local spacing = borderSize * scale
         local totalSpacing = (buttonCount - 1) * spacing
-        
+
         -- Calculate dimensions inside the border
         local totalWidth = preview:GetWidth()
         local height = preview:GetHeight()
         local btnWidth = (totalWidth - totalSpacing) / buttonCount
-        
+
         -- Texture path
         local texturePath = "Interface\\Buttons\\WHITE8x8"
         if textureName and LSM then
             texturePath = LSM:Fetch("statusbar", textureName) or texturePath
         end
-        
+
         -- Get Class Color
         local _, class = UnitClass("player")
-        local color = Orbit.Colors.PlayerResources[class] or { r=1, g=0.8, b=0 }
-        
+        local color = Orbit.Colors.PlayerResources[class] or { r = 1, g = 0.8, b = 0 }
+
         -- Create dummy buttons
         for i = 1, buttonCount do
             local btn = CreateFrame("Frame", nil, preview, "BackdropTemplate")
             btn:SetSize(btnWidth, height)
-            
+
             -- Position
             if i == 1 then
                 btn:SetPoint("LEFT", preview, "LEFT", 0, 0)
             else
-                btn:SetPoint("LEFT", preview.buttons[i-1], "RIGHT", spacing, 0)
+                btn:SetPoint("LEFT", preview.buttons[i - 1], "RIGHT", spacing, 0)
             end
-            
+
             -- Skin it
             local bar = btn:CreateTexture(nil, "ARTWORK")
             bar:SetAllPoints()
             bar:SetTexture(texturePath)
             bar:SetVertexColor(color.r, color.g, color.b)
-            
+
             -- Border
             if Orbit.Skin and Orbit.Skin.ClassBar then
                 local scaledBorder = borderSize * scale
@@ -217,18 +201,20 @@ function Plugin:OnLoad()
                 else
                     btn:SetBackdrop(nil)
                 end
-                
+
                 -- Inset the bar to show border
                 local inset = borderSize * scale
                 bar:ClearAllPoints()
                 bar:SetPoint("TOPLEFT", inset, -inset)
                 bar:SetPoint("BOTTOMRIGHT", -inset, inset)
             end
-            
-            if not preview.buttons then preview.buttons = {} end
+
+            if not preview.buttons then
+                preview.buttons = {}
+            end
             preview.buttons[i] = btn
         end
-        
+
         return preview
     end
 
@@ -238,10 +224,7 @@ function Plugin:OnLoad()
         Frame.Overlay:SetFrameLevel(Frame:GetFrameLevel() + 20)
     end
 
-    OrbitEngine.FrameFactory:AddText(
-        Frame,
-        { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = -2, useOverlay = true }
-    )
+    OrbitEngine.FrameFactory:AddText(Frame, { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = -2, useOverlay = true })
     if Frame.Text then
         Frame.Text:SetParent(Frame.Overlay)
     end
@@ -262,11 +245,11 @@ function Plugin:OnLoad()
         Frame.StatusBar:SetStatusBarTexture(LSM:Fetch("statusbar", "Melli"))
 
         -- Apply default border using ClassBar skin (creates orbitBg for background)
-        Orbit.Skin.ClassBar:SkinStatusBar(Frame.StatusBarContainer, Frame.StatusBar, { 
-            borderSize = 1, 
-            texture = "Melli" 
+        Orbit.Skin.ClassBar:SkinStatusBar(Frame.StatusBarContainer, Frame.StatusBar, {
+            borderSize = 1,
+            texture = "Melli",
         })
-        
+
         -- Apply Pixel Perfect
         if OrbitEngine.Pixel then
             OrbitEngine.Pixel:Enforce(Frame)
@@ -312,11 +295,7 @@ function Plugin:OnLoad()
                 self:UpdateMaxPower()
                 self:UpdatePower()
             end, 0.5)
-        elseif
-            event == "UNIT_DISPLAYPOWER"
-            or event == "UPDATE_SHAPESHIFT_FORM"
-            or event == "PLAYER_SPECIALIZATION_CHANGED"
-        then
+        elseif event == "UNIT_DISPLAYPOWER" or event == "UPDATE_SHAPESHIFT_FORM" or event == "PLAYER_SPECIALIZATION_CHANGED" then
             self:UpdatePowerType()
             self:UpdateMaxPower()
             self:UpdatePower()
@@ -333,9 +312,7 @@ function Plugin:OnLoad()
             end
         elseif event == "UNIT_MAXHEALTH" or event == "UNIT_AURA" then
             -- Aura-based continuous resources need to update on UNIT_AURA
-            if self.continuousResource == "STAGGER"
-                or self.continuousResource == "MAELSTROM_WEAPON"
-            then
+            if self.continuousResource == "STAGGER" or self.continuousResource == "MAELSTROM_WEAPON" then
                 self:UpdatePower()
             end
         elseif event == "PET_BATTLE_OPENING_START" or event == "PET_BATTLE_CLOSE" then
@@ -366,7 +343,7 @@ function Plugin:OnLoad()
                 local positions = self:GetSetting(SYSTEM_INDEX, "ComponentPositions") or {}
                 positions.Text = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 self:SetSetting(SYSTEM_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
     end
 
@@ -376,7 +353,9 @@ end
 
 -- [ SETTINGS APPLICATION ]-------------------------------------------------------------------------
 function Plugin:ApplySettings()
-    if not Frame then return end
+    if not Frame then
+        return
+    end
 
     if not self:IsEnabled() then
         Frame:Hide()
@@ -458,11 +437,11 @@ function Plugin:ApplySettings()
         if not bgColor and Orbit.db.GlobalSettings then
             bgColor = Orbit.db.GlobalSettings.BackdropColour
         end
-        
+
         Orbit.Skin.ClassBar:SkinStatusBar(Frame.StatusBarContainer, Frame.StatusBar, {
             borderSize = borderSize,
             texture = texture,
-            backColor = bgColor
+            backColor = bgColor,
         })
     end
 
@@ -489,7 +468,9 @@ end
 
 -- [ BUTTON VISUAL APPLICATION ]--------------------------------------------------------------------
 function Plugin:ApplyButtonVisuals()
-    if not Frame or not Frame.buttons then return end
+    if not Frame or not Frame.buttons then
+        return
+    end
 
     local borderSize = (Frame.settings and Frame.settings.borderSize) or 1
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
@@ -557,7 +538,7 @@ function Plugin:GetResourceColor(index, isCharged)
     -- Check for custom color override first
     local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
     local customColor = self:GetSetting(SYSTEM_INDEX, "BarColor")
-    
+
     if useCustomColor and customColor then
         return customColor
     end
@@ -587,7 +568,9 @@ function Plugin:GetResourceColor(index, isCharged)
 end
 
 function Plugin:IsEnabled()
-    if Orbit.IsPluginEnabled and not Orbit:IsPluginEnabled("Player Frame") then return true end
+    if Orbit.IsPluginEnabled and not Orbit:IsPluginEnabled("Player Frame") then
+        return true
+    end
     local playerPlugin = Orbit:GetPlugin("Orbit_PlayerFrame")
     if playerPlugin and playerPlugin.GetSetting then
         local enabled = playerPlugin:GetSetting(Enum.EditModeUnitFrameSystemIndices.Player, "EnablePlayerResource")
@@ -597,7 +580,9 @@ function Plugin:IsEnabled()
 end
 
 function Plugin:UpdateVisibility()
-    if not Frame then return end
+    if not Frame then
+        return
+    end
     if not self:IsEnabled() then
         Frame:Hide()
         OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
@@ -608,7 +593,9 @@ function Plugin:UpdateVisibility()
 end
 
 function Plugin:UpdatePowerType()
-    if not Frame then return end
+    if not Frame then
+        return
+    end
     if not self:IsEnabled() or (C_PetBattles and C_PetBattles.IsInBattle()) then
         Frame:Hide()
         return
@@ -645,7 +632,6 @@ function Plugin:UpdatePowerType()
     end
 end
 
--- [ CONTINUOUS/DISCRETE MODE SWITCHING ]-----------------------------------------------------------
 function Plugin:SetContinuousMode(isContinuous)
     if not Frame then
         return
@@ -659,10 +645,10 @@ function Plugin:SetContinuousMode(isContinuous)
             -- Apply texture and border using ClassBar skin
             local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
             local borderSize = (Frame.settings and Frame.settings.borderSize) or 1
-            
+
             Orbit.Skin.ClassBar:SkinStatusBar(Frame.StatusBarContainer, Frame.StatusBar, {
                 borderSize = borderSize,
-                texture = texture
+                texture = texture,
             })
         end
 
@@ -686,7 +672,9 @@ function Plugin:SetContinuousMode(isContinuous)
 end
 
 function Plugin:UpdateMaxPower()
-    if not Frame or not self.powerType then return end
+    if not Frame or not self.powerType then
+        return
+    end
     local max = self.powerType == Enum.PowerType.Runes and 6 or UnitPowerMax("player", self.powerType)
     Frame.maxPower = max
 
@@ -720,9 +708,15 @@ function Plugin:UpdateMaxPower()
 
             btn.SetActive = function(self, active)
                 self.isActive = active
-                if self.orbitBar then self.orbitBar:SetShown(active) end
-                if self.Overlay then self.Overlay:SetShown(active) end
-                if active and self.progressBar then self.progressBar:Hide() end
+                if self.orbitBar then
+                    self.orbitBar:SetShown(active)
+                end
+                if self.Overlay then
+                    self.Overlay:SetShown(active)
+                end
+                if active and self.progressBar then
+                    self.progressBar:Hide()
+                end
             end
 
             btn.SetFraction = function(self, fraction)
@@ -738,8 +732,16 @@ function Plugin:UpdateMaxPower()
         end
     end
 
-    for i = max + 1, #Frame.buttons do if Frame.buttons[i] then Frame.buttons[i]:Hide() end end
-    for i = 1, max do if Frame.buttons[i] then Frame.buttons[i]:Show() end end
+    for i = max + 1, #Frame.buttons do
+        if Frame.buttons[i] then
+            Frame.buttons[i]:Hide()
+        end
+    end
+    for i = 1, max do
+        if Frame.buttons[i] then
+            Frame.buttons[i]:Show()
+        end
+    end
 
     self:ApplySettings()
 end
@@ -748,7 +750,6 @@ function Plugin:UpdateLayout(frame)
     if not Frame then
         return
     end
-
     local buttons = Frame.buttons
     local max = Frame.maxPower or 5
     if max == 0 then
@@ -767,7 +768,7 @@ function Plugin:UpdateLayout(frame)
 
     local height = settings.height or 15
     local spacing = settings.spacing or 2
-    
+
     -- Pixel snapping helpers
     local scale = Frame:GetEffectiveScale() or 1
     local function SnapToPixel(value)
@@ -776,7 +777,7 @@ function Plugin:UpdateLayout(frame)
         end
         return math.floor(value * scale + 0.5) / scale
     end
-    
+
     -- Snap values
     local snappedTotalWidth = SnapToPixel(totalWidth)
     local snappedHeight = SnapToPixel(height)
@@ -785,7 +786,7 @@ function Plugin:UpdateLayout(frame)
     -- Physical Updates
     Frame:SetHeight(snappedHeight)
     local usableWidth = snappedTotalWidth - ((max - 1) * snappedSpacing)
-    
+
     for i = 1, max do
         local btn = buttons[i]
         if btn then
@@ -797,13 +798,13 @@ function Plugin:UpdateLayout(frame)
             else
                 rightPos = SnapToPixel(i * (btnUsableWidth + snappedSpacing) - snappedSpacing)
             end
-            
+
             local btnWidth = rightPos - leftPos
-            
+
             btn:SetSize(btnWidth, snappedHeight)
             btn:ClearAllPoints()
             btn:SetPoint("LEFT", Frame, "LEFT", leftPos, 0)
-            
+
             -- Apply Pixel:Enforce
             if OrbitEngine.Pixel then
                 OrbitEngine.Pixel:Enforce(btn)
@@ -822,7 +823,6 @@ function Plugin:UpdatePower()
 
     -- CONTINUOUS RESOURCES
     if self.continuousResource then
-
         -- STAGGER (Brewmaster Monk)
         if self.continuousResource == "STAGGER" then
             local stagger, maxHealth, level = ResourceMixin:GetStaggerState()
@@ -832,7 +832,6 @@ function Plugin:UpdatePower()
                 Frame.StatusBar:SetValue(stagger, SMOOTH_ANIM)
 
                 -- Dynamic color based on stagger level (determined via aura check, not arithmetic)
-                local color = colors["Stagger" .. level:sub(1, 1) .. level:sub(2):lower()] or colors.StaggerLow
                 Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
             end
 
@@ -857,7 +856,6 @@ function Plugin:UpdatePower()
                     Frame.Text:SetText(current)
                 end
             elseif Frame.StatusBar then
-                -- Native bar not available, hide
                 Frame.StatusBar:SetValue(0)
             end
             return
@@ -878,7 +876,6 @@ function Plugin:UpdatePower()
                     Frame.Text:SetFormattedText("%.0f", current)
                 end
             elseif Frame.StatusBar then
-                -- Native bar not available, hide
                 Frame.StatusBar:SetValue(0)
             end
             return
@@ -939,14 +936,11 @@ function Plugin:UpdatePower()
         return
     end
 
-    -- DISCRETE RESOURCES
     if not self.powerType then
         return
     end
 
-    -- RUNES
     if self.powerType == Enum.PowerType.Runes then
-        -- Cleanup Single Bar elements
         if Frame.StatusBarContainer then
             Frame.StatusBarContainer:Hide()
         end
@@ -988,9 +982,7 @@ function Plugin:UpdatePower()
         return
     end
 
-    -- [ ESSENCE ]---------------------------------------------------------------------------------------
     if self.powerType == Enum.PowerType.Essence then
-        -- Cleanup Single Bar elements
         if Frame.StatusBarContainer then
             Frame.StatusBarContainer:Hide()
         end
@@ -1055,7 +1047,6 @@ function Plugin:UpdatePower()
         return
     end
 
-    -- SINGLE BAR DISCRETE RESOURCES (Combo Points, Shards, Holy, etc)
     if Frame.buttons then
         for _, btn in ipairs(Frame.buttons) do
             btn:Hide()
@@ -1133,7 +1124,7 @@ function Plugin:UpdatePower()
                     local xPos = SnapToPixel(centerPos - (snappedSpacerWidth / 2))
 
                     sp:SetPoint("LEFT", Frame, "LEFT", xPos, 0)
-                    
+
                     -- Apply Pixel:Enforce if available
                     if OrbitEngine.Pixel then
                         OrbitEngine.Pixel:Enforce(sp)

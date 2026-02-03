@@ -480,14 +480,14 @@ end
 function Plugin:SetupCanvasPreview(container, systemIndex)
     local plugin = self
     local LSM = LibStub("LibSharedMedia-3.0")
-    
+
     container.CreateCanvasPreview = function(self, options)
         -- Create preview matching single button size
         local w, h = BUTTON_SIZE, BUTTON_SIZE
         local parent = options.parent or UIParent
         local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
         preview:SetSize(w, h)
-        
+
         -- Required metadata for Canvas Mode
         preview.sourceFrame = self
         local borderSize = Orbit.db.GlobalSettings.BorderSize
@@ -497,7 +497,7 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
         preview.sourceHeight = contentH
         preview.previewScale = 1
         preview.components = {}
-        
+
         -- Get first visible icon texture from the container's children
         local iconTexture = "Interface\\Icons\\INV_Misc_QuestionMark"
         local buttons = plugin.buttons[systemIndex]
@@ -512,12 +512,12 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
                 end
             end
         end
-        
+
         -- Create icon display
         local icon = preview:CreateTexture(nil, "ARTWORK")
         icon:SetAllPoints()
         icon:SetTexture(iconTexture)
-        
+
         -- Apply border matching Orbit style
         -- Only include edgeFile when borderSize > 0 to avoid rendering glitches
         local backdrop = {
@@ -533,10 +533,10 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
         if borderSize > 0 then
             preview:SetBackdropBorderColor(0, 0, 0, 1)
         end
-        
+
         -- [ TEXT COMPONENTS ]------------------------------------------------------------
         -- Add draggable text labels for Keybind
-        
+
         -- Get saved positions (use global if synced)
         local useGlobal = plugin:GetSetting(systemIndex, "UseGlobalTextStyle")
         local savedPositions
@@ -545,11 +545,11 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
         else
             savedPositions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
         end
-        
+
         -- Get global font settings
         local globalFontName = Orbit.db.GlobalSettings.Font
         local fontPath = LSM:Fetch("font", globalFontName) or "Fonts\\FRIZQT__.TTF"
-        
+
         -- Text component definitions with defaults
         local textComponents = {
             { key = "Keybind", preview = "Q", anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2 },
@@ -557,17 +557,17 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
             { key = "Timer", preview = "5", anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0 },
             { key = "Stacks", preview = "3", anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 2, offsetY = 2 },
         }
-        
+
         local CreateDraggableComponent = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.CreateDraggableComponent
-        
+
         for _, def in ipairs(textComponents) do
             -- Create temporary FontString as source for cloning
-            local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)  -- Highest sublevel
+            local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7) -- Highest sublevel
             fs:SetFont(fontPath, 12, "OUTLINE")
             fs:SetText(def.preview)
             fs:SetTextColor(1, 1, 1, 1)
             fs:SetPoint("CENTER", preview, "CENTER", 0, 0)
-            
+
             -- Get saved position or use defaults
             local saved = savedPositions[def.key] or {}
             local data = {
@@ -578,11 +578,11 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
                 justifyH = saved.justifyH or "CENTER",
                 overrides = saved.overrides,
             }
-            
+
             -- Calculate start position (center-relative)
             local halfW, halfH = contentW / 2, contentH / 2
             local startX, startY = saved.posX or 0, saved.posY or 0
-            
+
             -- If no posX/posY saved, convert from anchor/offset
             if not saved.posX then
                 if data.anchorX == "LEFT" then
@@ -598,7 +598,7 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
                     startY = halfH - data.offsetY
                 end
             end
-            
+
             -- Create draggable component if available
             if CreateDraggableComponent then
                 local comp = CreateDraggableComponent(preview, def.key, fs, startX, startY, data)
@@ -606,7 +606,7 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
                     -- Ensure text is above the border
                     comp:SetFrameLevel(preview:GetFrameLevel() + 10)
                     preview.components[def.key] = comp
-                    fs:Hide()  -- Hide original, comp has its own visual
+                    fs:Hide() -- Hide original, comp has its own visual
                 end
             else
                 -- Fallback: just position the FontString directly
@@ -614,7 +614,7 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
                 fs:SetPoint("CENTER", preview, "CENTER", startX, startY)
             end
         end
-        
+
         return preview
     end
 end
@@ -622,60 +622,67 @@ end
 -- [ TEXT COMPONENT SETTINGS ]-------------------------------------------------------------------
 -- Apply Canvas Mode text component positions and styling to action buttons
 function Plugin:ApplyTextSettings(button, systemIndex)
-    if not button then return end
-    
+    if not button then
+        return
+    end
+
     local KeybindSystem = OrbitEngine.KeybindSystem
     local LSM = LibStub("LibSharedMedia-3.0", true)
-    
+
     -- Get global font settings
     local globalFontName = Orbit.db.GlobalSettings.Font
     local baseFontPath = (Orbit.Fonts and Orbit.Fonts[globalFontName]) or Orbit.Constants.Settings.Font.FallbackPath
     if LSM then
         baseFontPath = LSM:Fetch("font", globalFontName) or baseFontPath
     end
-    
-    
+
     -- Get Canvas Mode component positions (use global if synced)
     local useGlobal = self:GetSetting(systemIndex, "UseGlobalTextStyle")
     local positions
-    if useGlobal ~= false then  -- default to true if nil
+    if useGlobal ~= false then -- default to true if nil
         positions = self:GetSetting(1, "GlobalComponentPositions") or {}
     else
         positions = self:GetSetting(systemIndex, "ComponentPositions") or {}
     end
-    
+
     -- Button size for font scaling
     local w = button:GetWidth()
-    if w < 20 then w = BUTTON_SIZE end
-    
+    if w < 20 then
+        w = BUTTON_SIZE
+    end
+
     -- Helper to get style with Canvas Mode overrides
     local function GetComponentStyle(key, defaultSize)
         local pos = positions[key] or {}
         local overrides = pos.overrides or {}
-        
+
         -- Font override
         local font = baseFontPath
         if overrides.Font and LSM then
             font = LSM:Fetch("font", overrides.Font) or baseFontPath
         end
-        
+
         -- Size override
         local size = overrides.FontSize or defaultSize
-        
+
         -- Flags override (shadow vs outline)
         local flags = "OUTLINE"
         if overrides.ShowShadow then
             flags = ""
         end
-        
+
         return font, size, flags, pos, overrides
     end
-    
+
     -- Helper to apply color overrides
     local function ApplyTextColor(textElement, overrides)
-        if not textElement or not textElement.SetTextColor then return end
-        if not overrides then return end
-        
+        if not textElement or not textElement.SetTextColor then
+            return
+        end
+        if not overrides then
+            return
+        end
+
         if overrides.UseClassColour then
             local _, playerClass = UnitClass("player")
             local classColor = RAID_CLASS_COLORS[playerClass]
@@ -688,26 +695,28 @@ function Plugin:ApplyTextSettings(button, systemIndex)
             textElement:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
         end
     end
-    
+
     -- Helper to position a text element based on Canvas Mode settings
     local function ApplyComponentPosition(textElement, key, defaultAnchorX, defaultAnchorY, defaultOffsetX, defaultOffsetY)
-        if not textElement then return end
-        
+        if not textElement then
+            return
+        end
+
         -- Check if disabled via Canvas Mode
         if self:IsComponentDisabled(key, systemIndex) then
             textElement:Hide()
             return
         end
-        
+
         textElement:Show()
-        
+
         local pos = positions[key] or {}
         local anchorX = pos.anchorX or defaultAnchorX
         local anchorY = pos.anchorY or defaultAnchorY
         local offsetX = pos.offsetX or defaultOffsetX
         local offsetY = pos.offsetY or defaultOffsetY
         local justifyH = pos.justifyH or "CENTER"
-        
+
         -- Convert anchor pair to WoW anchor point (where on the button to anchor)
         local anchorPoint
         if anchorY == "CENTER" and anchorX == "CENTER" then
@@ -717,9 +726,9 @@ function Plugin:ApplyTextSettings(button, systemIndex)
         elseif anchorX == "CENTER" then
             anchorPoint = anchorY
         else
-            anchorPoint = anchorY .. anchorX  -- e.g., "TOPRIGHT"
+            anchorPoint = anchorY .. anchorX -- e.g., "TOPRIGHT"
         end
-        
+
         -- JustifyH-decoupled pattern: text element anchors by its alignment
         -- This ensures proper text flow while anchoring to corners
         local textPoint
@@ -730,29 +739,29 @@ function Plugin:ApplyTextSettings(button, systemIndex)
         else
             textPoint = "CENTER"
         end
-        
+
         -- Calculate offset direction based on anchor position
         local finalOffsetX = anchorX == "LEFT" and offsetX or -offsetX
         local finalOffsetY = anchorY == "BOTTOM" and offsetY or -offsetY
-        
+
         textElement:ClearAllPoints()
         textElement:SetPoint(textPoint, button, anchorPoint, finalOffsetX, finalOffsetY)
-        
+
         if textElement.SetJustifyH then
             textElement:SetJustifyH(justifyH)
         end
     end
-    
+
     -- KEYBIND (HotKey)
     if button.HotKey then
         local defaultSize = math.max(8, w * 0.28)
         local font, size, flags, pos, overrides = GetComponentStyle("Keybind", defaultSize)
-        
+
         button.HotKey:SetFont(font, size, flags)
         button.HotKey:SetTextColor(1, 1, 1, 1)
-        button.HotKey:SetDrawLayer("OVERLAY", 7)  -- Consistent strata
+        button.HotKey:SetDrawLayer("OVERLAY", 7) -- Consistent strata
         ApplyTextColor(button.HotKey, overrides)
-        
+
         -- Apply shadow if enabled
         if overrides.ShowShadow then
             button.HotKey:SetShadowOffset(1, -1)
@@ -760,7 +769,7 @@ function Plugin:ApplyTextSettings(button, systemIndex)
         else
             button.HotKey:SetShadowOffset(0, 0)
         end
-        
+
         -- Apply shortened keybind text using shared system
         if KeybindSystem then
             local shortKey = KeybindSystem:GetForButton(button)
@@ -774,19 +783,19 @@ function Plugin:ApplyTextSettings(button, systemIndex)
             -- No KeybindSystem available, clear text
             button.HotKey:SetText("")
         end
-        
+
         ApplyComponentPosition(button.HotKey, "Keybind", "RIGHT", "TOP", 2, 2)
     end
-    
+
     -- MACRO TEXT (Name)
     if button.Name then
         local defaultSize = math.max(7, w * 0.22)
         local font, size, flags, pos, overrides = GetComponentStyle("MacroText", defaultSize)
-        
+
         button.Name:SetFont(font, size, flags)
         button.Name:SetTextColor(1, 1, 1, 0.9)
-        button.Name:SetDrawLayer("OVERLAY", 7)  -- Consistent strata
-        
+        button.Name:SetDrawLayer("OVERLAY", 7) -- Consistent strata
+
         -- Ensure text appears above border/glows by reparenting to a high-level overlay frame
         if not button.orbitTextOverlay then
             button.orbitTextOverlay = CreateFrame("Frame", nil, button)
@@ -794,19 +803,19 @@ function Plugin:ApplyTextSettings(button, systemIndex)
             button.orbitTextOverlay:SetFrameLevel(button:GetFrameLevel() + 10)
         end
         button.Name:SetParent(button.orbitTextOverlay)
-        
+
         ApplyTextColor(button.Name, overrides)
-        
+
         if overrides.ShowShadow then
             button.Name:SetShadowOffset(1, -1)
             button.Name:SetShadowColor(0, 0, 0, 1)
         else
             button.Name:SetShadowOffset(0, 0)
         end
-        
+
         ApplyComponentPosition(button.Name, "MacroText", "CENTER", "BOTTOM", 0, 2)
     end
-    
+
     -- TIMER (Cooldown countdown)
     local cooldown = button.cooldown or button.Cooldown
     if cooldown then
@@ -818,7 +827,7 @@ function Plugin:ApplyTextSettings(button, systemIndex)
             if cooldown.SetHideCountdownNumbers then
                 cooldown:SetHideCountdownNumbers(false)
             end
-            
+
             local timerText = cooldown.Text
             if not timerText then
                 local regions = { cooldown:GetRegions() }
@@ -829,46 +838,46 @@ function Plugin:ApplyTextSettings(button, systemIndex)
                     end
                 end
             end
-            
+
             if timerText and timerText.SetFont then
                 local defaultSize = math.max(10, w * 0.35)
                 local font, size, flags, pos, overrides = GetComponentStyle("Timer", defaultSize)
-                
+
                 timerText:SetFont(font, size, flags)
-                timerText:SetDrawLayer("OVERLAY", 7)  -- Consistent strata
+                timerText:SetDrawLayer("OVERLAY", 7) -- Consistent strata
                 ApplyTextColor(timerText, overrides)
-                
+
                 if overrides.ShowShadow then
                     timerText:SetShadowOffset(1, -1)
                     timerText:SetShadowColor(0, 0, 0, 1)
                 else
                     timerText:SetShadowOffset(0, 0)
                 end
-                
+
                 if pos.anchorX then
                     ApplyComponentPosition(timerText, "Timer", "CENTER", "CENTER", 0, 0)
                 end
             end
         end
     end
-    
+
     -- STACKS (Count)
     if button.Count then
         local defaultSize = math.max(8, w * 0.28)
         local font, size, flags, pos, overrides = GetComponentStyle("Stacks", defaultSize)
-        
+
         button.Count:SetFont(font, size, flags)
         button.Count:SetTextColor(1, 1, 1, 1)
-        button.Count:SetDrawLayer("OVERLAY", 7)  -- Consistent strata
+        button.Count:SetDrawLayer("OVERLAY", 7) -- Consistent strata
         ApplyTextColor(button.Count, overrides)
-        
+
         if overrides.ShowShadow then
             button.Count:SetShadowOffset(1, -1)
             button.Count:SetShadowColor(0, 0, 0, 1)
         else
             button.Count:SetShadowOffset(0, 0)
         end
-        
+
         ApplyComponentPosition(button.Count, "Stacks", "LEFT", "BOTTOM", 2, 2)
     end
 end
@@ -1118,15 +1127,11 @@ function Plugin:LayoutButtons(index)
     if InCombatLockdown() then
         return
     end
-
     local container = self.containers[index]
     local buttons = self.buttons[index]
-
-    -- Skip disabled containers
     if container and container.orbitDisabled then
         return
     end
-
     if not container or not buttons or #buttons == 0 then
         return
     end
@@ -1246,7 +1251,7 @@ function Plugin:LayoutButtons(index)
 
                 -- Apply Orbit skin (handles texcoord, border, swipe, fonts, highlights)
                 Orbit.Skin.Icons:ApplyActionButtonCustom(button, skinSettings)
-                
+
                 -- Apply Canvas Mode text component positions (Keybind, MacroText, Timer, Stacks)
                 self:ApplyTextSettings(button, index)
 
@@ -1256,8 +1261,8 @@ function Plugin:LayoutButtons(index)
                 local x, y = OrbitEngine.Layout:ComputeGridPosition(i, limitPerLine, orientation, w, h, padding)
                 -- Force pixel snap for button position within container
                 if OrbitEngine.Pixel then
-                     x = OrbitEngine.Pixel:Snap(x, button:GetEffectiveScale())
-                     y = OrbitEngine.Pixel:Snap(y, button:GetEffectiveScale())
+                    x = OrbitEngine.Pixel:Snap(x, button:GetEffectiveScale())
+                    y = OrbitEngine.Pixel:Snap(y, button:GetEffectiveScale())
                 end
                 button:SetPoint("TOPLEFT", container, "TOPLEFT", x, y)
             end
@@ -1296,7 +1301,6 @@ function Plugin:ApplySettings(frame)
         self:ApplyAll()
         return
     end
-
     if InCombatLockdown() then
         return
     end

@@ -7,13 +7,12 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SYSTEM_ID = "Orbit_PlayerFrame"
 local PLAYER_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Player
 
-
 -- Raid Target Icon constants
 local RAID_TARGET_TEXTURE_COLUMNS = 4
 local RAID_TARGET_TEXTURE_ROWS = 4
 
 local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
-    canvasMode = true,  -- Enable Canvas Mode for component editing
+    canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
         Width = 160,
         Height = 40,
@@ -78,10 +77,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     }
 
     if not isAnchored then
-        table.insert(
-            controls,
-            { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 10, default = 40 }
-        )
+        table.insert(controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 10, default = 40 })
     end
 
     table.insert(controls, {
@@ -161,20 +157,15 @@ end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    self:RegisterStandardEvents() -- Auto-register PEW, EditMode -> ApplySettings
-
-    -- Move native PlayerFrame off-screen but keep it "shown"
-    -- This allows class resource bars (EvokerEbonMightBar, DemonHunterSoulFragmentsBar) to function
+    self:RegisterStandardEvents()
     if PlayerFrame then
-        OrbitEngine.NativeFrame:Protect(PlayerFrame) -- Use Engine helper to protect frame state
+        OrbitEngine.NativeFrame:Protect(PlayerFrame)
         PlayerFrame:SetClampedToScreen(false)
         PlayerFrame:SetClampRectInsets(0, 0, 0, 0)
         PlayerFrame:ClearAllPoints()
         PlayerFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
         PlayerFrame:SetAlpha(0)
-        -- Prevent user interaction
         PlayerFrame:EnableMouse(false)
-        -- Hook SetPoint to prevent Edit Mode/Layout resets
         if not PlayerFrame.orbitSetPointHooked then
             hooksecurefunc(PlayerFrame, "SetPoint", function(self)
                 if InCombatLockdown() then
@@ -303,7 +294,7 @@ function Plugin:OnLoad()
         -- Icon alias for Canvas Mode detection
         self.frame.RestingIcon.Icon = self.frame.RestingIcon.Texture
         -- Preview TexCoords for Canvas Mode (frame 20 of 7x6 grid - shows full zZZ)
-        self.frame.RestingIcon.Icon.orbitPreviewTexCoord = { 2/6, 3/6, 3/7, 4/7 }
+        self.frame.RestingIcon.Icon.orbitPreviewTexCoord = { 2 / 6, 3 / 6, 3 / 7, 4 / 7 }
 
         -- FlipBook animation parameters (matches Blizzard's native implementation)
         local FLIPBOOK_ROWS = 7
@@ -320,10 +311,7 @@ function Plugin:OnLoad()
         local function SetFlipBookFrame(frameIndex)
             local col = frameIndex % FLIPBOOK_COLS
             local row = math.floor(frameIndex / FLIPBOOK_COLS)
-            self.frame.RestingIcon.Texture:SetTexCoord(
-                col * frameWidth, (col + 1) * frameWidth,
-                row * frameHeight, (row + 1) * frameHeight
-            )
+            self.frame.RestingIcon.Texture:SetTexCoord(col * frameWidth, (col + 1) * frameWidth, row * frameHeight, (row + 1) * frameHeight)
         end
         SetFlipBookFrame(0)
 
@@ -347,7 +335,7 @@ function Plugin:OnLoad()
                 local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
                 positions.LevelText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
         OrbitEngine.ComponentDrag:Attach(self.frame.CombatIcon, self.frame, {
             key = "CombatIcon",
@@ -355,7 +343,7 @@ function Plugin:OnLoad()
                 local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
                 positions.CombatIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
         OrbitEngine.ComponentDrag:Attach(self.frame.RoleIcon, self.frame, {
             key = "RoleIcon",
@@ -363,7 +351,7 @@ function Plugin:OnLoad()
                 local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
                 positions.RoleIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY }
                 pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
         OrbitEngine.ComponentDrag:Attach(self.frame.LeaderIcon, self.frame, {
             key = "LeaderIcon",
@@ -371,7 +359,7 @@ function Plugin:OnLoad()
                 local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
                 positions.LeaderIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY }
                 pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
         OrbitEngine.ComponentDrag:Attach(self.frame.MarkerIcon, self.frame, {
             key = "MarkerIcon",
@@ -379,7 +367,7 @@ function Plugin:OnLoad()
                 local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
                 positions.MarkerIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY }
                 pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
         OrbitEngine.ComponentDrag:Attach(self.frame.GroupPositionText, self.frame, {
             key = "GroupPositionText",
@@ -387,7 +375,7 @@ function Plugin:OnLoad()
                 local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
                 positions.GroupPositionText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
         OrbitEngine.ComponentDrag:Attach(self.frame.ReadyCheckIcon, self.frame, {
             key = "ReadyCheckIcon",
@@ -395,7 +383,7 @@ function Plugin:OnLoad()
                 local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
                 positions.ReadyCheckIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY }
                 pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
         OrbitEngine.ComponentDrag:Attach(self.frame.RestingIcon, self.frame, {
             key = "RestingIcon",
@@ -403,7 +391,7 @@ function Plugin:OnLoad()
                 local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
                 positions.RestingIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY }
                 pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
     end
 
@@ -418,12 +406,12 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("PLAYER_UPDATE_RESTING")
     self.frame:RegisterEvent("PARTY_LEADER_CHANGED")
     self.frame:RegisterEvent("RAID_TARGET_UPDATE")
-    
+
     -- Register ready check events
     self.frame:RegisterEvent("READY_CHECK")
     self.frame:RegisterEvent("READY_CHECK_CONFIRM")
     self.frame:RegisterEvent("READY_CHECK_FINISHED")
-    
+
     -- Register threat events for aggro indicator
     self.frame:RegisterUnitEvent("UNIT_THREAT_SITUATION_UPDATE", "player")
 
@@ -480,16 +468,11 @@ end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 function Plugin:UpdateLayout(frame)
-    if not frame then
+    if not frame or InCombatLockdown() then
         return
     end
-    if InCombatLockdown() then
-        return
-    end
-
     local systemIndex = PLAYER_FRAME_INDEX
-    local width = self:GetSetting(systemIndex, "Width")
-    local height = self:GetSetting(systemIndex, "Height")
+    local width, height = self:GetSetting(systemIndex, "Width"), self:GetSetting(systemIndex, "Height")
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(frame) ~= nil
     if not isAnchored then
         frame:SetSize(width, height)
@@ -503,7 +486,6 @@ function Plugin:ApplySettings(frame)
     if not frame then
         return
     end
-
     local systemIndex = PLAYER_FRAME_INDEX
 
     -- 1. Apply Base Settings via Mixin (Handling Size, Visuals, RestorePosition)
@@ -569,24 +551,18 @@ end
 -- Icon update functions (UpdateCombatIcon, UpdateRoleIcon, UpdateLeaderIcon, UpdateMarkerIcon, UpdateGroupPosition)
 -- are now provided by StatusIconMixin (mixed in above)
 
--- UpdateRestingIcon: Shows animated resting icon when player is in a rested area
 function Plugin:UpdateRestingIcon(frame)
     frame = frame or self.frame
     if not frame or not frame.RestingIcon then
         return
     end
-
-    -- Check if component is disabled via Canvas Mode
     if self:IsComponentDisabled("RestingIcon") then
         frame.RestingIcon:Hide()
         return
     end
-
-    -- Show when resting (in city/inn)
     if IsResting() then
         frame.RestingIcon:Show()
     else
         frame.RestingIcon:Hide()
     end
 end
-

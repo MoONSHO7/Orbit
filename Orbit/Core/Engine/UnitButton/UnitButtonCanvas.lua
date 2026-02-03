@@ -38,7 +38,7 @@ function CanvasMixin:UpdateTextLayout()
         local systemIndex = self.systemIndex or 1
         local savedPositions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
         if savedPositions and (savedPositions.Name or savedPositions.HealthText) then
-            return  -- Skip - positions will be applied by ApplyComponentPositions
+            return -- Skip - positions will be applied by ApplyComponentPositions
         end
     end
 
@@ -76,13 +76,13 @@ function CanvasMixin:ApplyComponentPositions()
     if not self.orbitPlugin or not self.orbitPlugin.GetSetting then
         return
     end
-    
+
     local systemIndex = self.systemIndex or 1
     local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
-    
+
     -- Also get defaults for fallback
     local defaults = self.orbitPlugin.defaults and self.orbitPlugin.defaults.ComponentPositions
-    
+
     -- Merge positions with defaults - use defaults for any missing component
     if defaults then
         positions = positions or {}
@@ -92,27 +92,27 @@ function CanvasMixin:ApplyComponentPositions()
             end
         end
     end
-    
+
     if not positions or not next(positions) then
         return
     end
-    
+
     local width, height = self:GetWidth(), self:GetHeight()
     if width <= 0 or height <= 0 then
         return
     end
-    
+
     -- Helper to apply edge-relative position (single format: anchorX/Y, offsetX/Y)
     local function ApplyEdgePosition(element, parent, pos, parentWidth, parentHeight)
         if not pos.anchorX then
-            return false  -- No valid position data
+            return false -- No valid position data
         end
-        
+
         local anchorX = pos.anchorX
         local anchorY = pos.anchorY or "CENTER"
         local offsetX = pos.offsetX or 0
         local offsetY = pos.offsetY or 0
-        
+
         -- Build anchor point string (e.g., "TOPLEFT", "LEFT", "CENTER")
         local anchorPoint
         if anchorY == "CENTER" and anchorX == "CENTER" then
@@ -122,21 +122,25 @@ function CanvasMixin:ApplyComponentPositions()
         elseif anchorX == "CENTER" then
             anchorPoint = anchorY
         else
-            anchorPoint = anchorY .. anchorX  -- e.g., "TOPLEFT", "BOTTOMRIGHT"
+            anchorPoint = anchorY .. anchorX -- e.g., "TOPLEFT", "BOTTOMRIGHT"
         end
-        
+
         -- Calculate final offset with correct sign for anchor direction
         local finalX = offsetX
         local finalY = offsetY
-        if anchorX == "RIGHT" then finalX = -offsetX end
-        if anchorY == "TOP" then finalY = -offsetY end
-        
+        if anchorX == "RIGHT" then
+            finalX = -offsetX
+        end
+        if anchorY == "TOP" then
+            finalY = -offsetY
+        end
+
         element:ClearAllPoints()
-        
+
         -- For FontStrings with LEFT/RIGHT justification, anchor by that point
         if pos.justifyH and element.SetJustifyH then
             element:SetJustifyH(pos.justifyH)
-            
+
             if pos.justifyH == "CENTER" then
                 element:SetPoint("CENTER", parent, anchorPoint, finalX, finalY)
             else
@@ -147,32 +151,32 @@ function CanvasMixin:ApplyComponentPositions()
         end
         return true
     end
-    
+
     -- Apply Name position if saved
     if positions.Name and self.Name then
         ApplyEdgePosition(self.Name, self.TextFrame, positions.Name, width, height)
     end
-    
+
     -- Apply HealthText position if saved
     if positions.HealthText and self.HealthText then
         ApplyEdgePosition(self.HealthText, self.TextFrame, positions.HealthText, width, height)
     end
-    
+
     -- Apply LevelText position if saved (TargetFrame, FocusFrame)
     if positions.LevelText and self.LevelText then
         ApplyEdgePosition(self.LevelText, self, positions.LevelText, width, height)
     end
-    
+
     -- Apply RareEliteIcon position if saved (TargetFrame, FocusFrame)
     if positions.RareEliteIcon and self.RareEliteIcon then
         ApplyEdgePosition(self.RareEliteIcon, self, positions.RareEliteIcon, width, height)
     end
-    
+
     -- Apply CombatIcon position if saved (PlayerFrame)
     if positions.CombatIcon and self.CombatIcon then
         ApplyEdgePosition(self.CombatIcon, self, positions.CombatIcon, width, height)
     end
-    
+
     -- Apply style overrides for ALL components with overrides in saved positions
     self:ApplyStyleOverrides(positions)
 end
@@ -181,11 +185,15 @@ end
 -- Apply Canvas Mode style overrides (font, color, scale)
 
 function CanvasMixin:ApplyStyleOverrides(positions)
-    if not positions then return end
-    
+    if not positions then
+        return
+    end
+
     local function ApplyOverridesToElement(element, overrides)
-        if not element or not overrides then return end
-        
+        if not element or not overrides then
+            return
+        end
+
         -- Font override (for FontStrings)
         if overrides.Font and element.SetFont then
             local fontPath = LSM:Fetch("font", overrides.Font)
@@ -198,7 +206,7 @@ function CanvasMixin:ApplyStyleOverrides(positions)
             local font, size, flags = element:GetFont()
             element:SetFont(font, overrides.FontSize, flags)
         end
-        
+
         -- Color override (Class Colour > Custom Color > default)
         if element.SetTextColor then
             if overrides.UseClassColour then
@@ -214,7 +222,7 @@ function CanvasMixin:ApplyStyleOverrides(positions)
                 element:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
             end
         end
-        
+
         -- Scale override (for icons/textures)
         if overrides.Scale then
             if element.GetObjectType and element:GetObjectType() == "Texture" then
@@ -223,8 +231,12 @@ function CanvasMixin:ApplyStyleOverrides(positions)
                     element.orbitOriginalWidth = element:GetWidth()
                     element.orbitOriginalHeight = element:GetHeight()
                     -- Fallback to reasonable defaults if size is 0 or invalid
-                    if element.orbitOriginalWidth <= 0 then element.orbitOriginalWidth = 18 end
-                    if element.orbitOriginalHeight <= 0 then element.orbitOriginalHeight = 18 end
+                    if element.orbitOriginalWidth <= 0 then
+                        element.orbitOriginalWidth = 18
+                    end
+                    if element.orbitOriginalHeight <= 0 then
+                        element.orbitOriginalHeight = 18
+                    end
                 end
                 local baseW = element.orbitOriginalWidth
                 local baseH = element.orbitOriginalHeight
@@ -234,7 +246,7 @@ function CanvasMixin:ApplyStyleOverrides(positions)
             end
         end
     end
-    
+
     -- This dynamically handles any component (RoleIcon, LeaderIcon, MarkerIcon, etc.)
     for key, pos in pairs(positions) do
         if pos.overrides then
@@ -266,7 +278,7 @@ function CanvasMixin:SetBorder(size)
     end
 
     local pixelSize = self.borderPixelSize
-    
+
     -- Resize DamageBar (behind Health)
     if self.HealthDamageBar then
         self.HealthDamageBar:ClearAllPoints()

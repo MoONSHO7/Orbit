@@ -33,33 +33,30 @@ function Nudge:Enable(Selection)
 
             if key == "UP" or key == "DOWN" or key == "LEFT" or key == "RIGHT" then
                 Selection.keyboardHandler:SetPropagateKeyboardInput(false)
-                
+
                 -- Execute nudge
                 if Selection.isNativeFrame then
                     Nudge:NudgeNativeFrame(Selection.selectedFrame, key, Selection)
                 else
                     Nudge:NudgeFrame(Selection.selectedFrame, key, Selection)
                 end
-                
+
                 -- Start repeat using shared module
                 local direction = key
-                Engine.NudgeRepeat:Start(
-                    function()
-                        if Selection.isNativeFrame then
-                            Nudge:NudgeNativeFrame(Selection.selectedFrame, direction, Selection)
-                        else
-                            Nudge:NudgeFrame(Selection.selectedFrame, direction, Selection)
-                        end
-                    end,
-                    function()
-                        return Selection.selectedFrame ~= nil
+                Engine.NudgeRepeat:Start(function()
+                    if Selection.isNativeFrame then
+                        Nudge:NudgeNativeFrame(Selection.selectedFrame, direction, Selection)
+                    else
+                        Nudge:NudgeFrame(Selection.selectedFrame, direction, Selection)
                     end
-                )
+                end, function()
+                    return Selection.selectedFrame ~= nil
+                end)
             else
                 Selection.keyboardHandler:SetPropagateKeyboardInput(true)
             end
         end)
-        
+
         Selection.keyboardHandler:SetScript("OnKeyUp", function(_, key)
             if key == "UP" or key == "DOWN" or key == "LEFT" or key == "RIGHT" then
                 Engine.NudgeRepeat:Stop()

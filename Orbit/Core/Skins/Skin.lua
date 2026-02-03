@@ -109,7 +109,9 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
         frame.bgInsets = frame.bgInsets or { Top = 0, Bottom = 0, Left = 0, Right = 0 }
 
         frame.SetBackgroundInset = function(self, edge, insetPixels)
-            if not self.bg then return end
+            if not self.bg then
+                return
+            end
 
             -- Store current inset for this edge
             self.bgInsets[edge] = insetPixels or 0
@@ -198,7 +200,7 @@ function Skin:SkinStatusBar(bar, textureName, color, isUnitFrame)
 
     -- Overlay logic: check OverlayAllFrames setting
     local overlayAllFrames = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.OverlayAllFrames
-    
+
     -- If this is a unit frame, only add overlay if OverlayAllFrames is enabled
     if isUnitFrame and not overlayAllFrames then
         -- Hide overlay if it exists
@@ -207,11 +209,11 @@ function Skin:SkinStatusBar(bar, textureName, color, isUnitFrame)
         end
         return
     end
-    
+
     -- Get overlay texture from settings
     local overlayTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.OverlayTexture or "Orbit Gradient"
     local overlayPath = LSM:Fetch("statusbar", overlayTextureName) or ORBIT_OVERLAY_PATH
-    
+
     self:AddOverlay(bar, overlayPath, "BLEND", 0.5)
 end
 

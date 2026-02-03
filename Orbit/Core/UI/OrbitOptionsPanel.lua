@@ -25,7 +25,6 @@ local function RefreshAllPreviews()
     end
 end
 
-
 -------------------------------------------------
 -- GLOBAL TAB
 -------------------------------------------------
@@ -163,8 +162,10 @@ local function GetColorsSchema()
     local useClassColors = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UseClassColors
     local classColorBackground = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ClassColorBackground
     local useClassColorFont = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UseClassColorFont
-    if useClassColorFont == nil then useClassColorFont = true end -- Default true
-    
+    if useClassColorFont == nil then
+        useClassColorFont = true
+    end -- Default true
+
     local controls = {
         -- 1. Texture
         {
@@ -239,7 +240,7 @@ local function GetColorsSchema()
             onChange = function(val)
                 ColorsPlugin:SetSetting(nil, "UseClassColorFont", val)
                 ColorsPlugin:ApplySettings()
-                
+
                 -- Refresh name and health text colors on all unit frames immediately
                 if OrbitEngine.systems then
                     for _, plugin in ipairs(OrbitEngine.systems) do
@@ -263,7 +264,7 @@ local function GetColorsSchema()
                         end
                     end
                 end
-                
+
                 RefreshAllPreviews()
                 -- Re-render panel to update conditional color pickers
                 if Orbit.OptionsPanel then
@@ -272,7 +273,7 @@ local function GetColorsSchema()
             end,
         },
     }
-    
+
     -- 7. Font Color picker - only show when Class Font Color is FALSE
     if not useClassColorFont then
         table.insert(controls, {
@@ -311,7 +312,7 @@ local function GetColorsSchema()
             end,
         })
     end
-    
+
     -- 8. Unit Frame Health - only show when Class Health Color is FALSE
     if not useClassColors then
         table.insert(controls, {
@@ -329,7 +330,7 @@ local function GetColorsSchema()
             end,
         })
     end
-    
+
     -- 9. Unit Frame Background - only show when Class Background Color is FALSE
     if not classColorBackground then
         table.insert(controls, {
@@ -347,7 +348,7 @@ local function GetColorsSchema()
             end,
         })
     end
-    
+
     -- 10. Backdrop Color - always show (for castbars, action bars, resource bars, etc.)
     table.insert(controls, {
         type = "color",
@@ -422,12 +423,12 @@ local EditModePlugin = {
 
         -- Force refresh of visuals if in Edit Mode
         if Orbit.Engine.FrameSelection then
-             Orbit.Engine.FrameSelection:RefreshVisuals()
+            Orbit.Engine.FrameSelection:RefreshVisuals()
         end
     end,
 
     ApplySettings = function(self, systemFrame)
-         -- Handled by SetSetting immediate refresh
+        -- Handled by SetSetting immediate refresh
     end,
 }
 
@@ -474,8 +475,8 @@ local function GetEditModeSchema()
                 d.AnchoringEnabled = true
                 d.EditModeColor = { r = 0.7, g = 0.6, b = 1.0, a = 1.0 }
             end
-             if Orbit.Engine.FrameSelection then
-                 Orbit.Engine.FrameSelection:RefreshVisuals()
+            if Orbit.Engine.FrameSelection then
+                Orbit.Engine.FrameSelection:RefreshVisuals()
             end
             Orbit:Print("Edit Mode settings reset to defaults.")
         end,
@@ -837,11 +838,7 @@ function Panel:Open(tabName)
     end -- Fallback
 
     -- Optimization: If already open and same tab, do nothing
-    if
-        dialog:IsShown()
-        and self.lastTab == tabDef.name
-        and (dialog.Title and dialog.Title:GetText() == "Orbit Options")
-    then
+    if dialog:IsShown() and self.lastTab == tabDef.name and (dialog.Title and dialog.Title:GetText() == "Orbit Options") then
         return
     end
 

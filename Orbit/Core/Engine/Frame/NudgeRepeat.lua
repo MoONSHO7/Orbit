@@ -11,8 +11,8 @@ Engine.NudgeRepeat = NudgeRepeat
 -- CONFIGURATION
 -------------------------------------------------
 
-local REPEAT_DELAY = 0.4   -- Initial delay before repeat starts
-local REPEAT_RATE = 0.05   -- Rate of repeat (20 nudges/sec)
+local REPEAT_DELAY = 0.4 -- Initial delay before repeat starts
+local REPEAT_RATE = 0.05 -- Rate of repeat (20 nudges/sec)
 
 -------------------------------------------------
 -- STATE
@@ -30,9 +30,9 @@ local currentCallback = nil
 -- @param checkActive: function() returns true if nudging should continue
 function NudgeRepeat:Start(callback, checkActive)
     self:Stop()
-    
+
     currentCallback = callback
-    
+
     repeatTimer = C_Timer.NewTimer(REPEAT_DELAY, function()
         if checkActive and checkActive() then
             repeatTimer = C_Timer.NewTicker(REPEAT_RATE, function()

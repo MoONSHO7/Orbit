@@ -41,46 +41,26 @@ function Plugin:AddSettings(dialog, systemFrame)
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    -- Create Container
     self.frame = CreateFrame("Frame", "OrbitCombatTimerFrame", UIParent)
     self.frame:SetSize(100, 20)
-    self.frame:SetClampedToScreen(true) -- Prevent dragging off-screen
+    self.frame:SetClampedToScreen(true)
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Combat Timer"
-
-    -- Text Display
     self.frame.Text = self.frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     self.frame.Text:SetPoint("CENTER", self.frame, "CENTER")
     self.frame.Text:SetText("0:00")
-
-    -- Orbit Anchoring
-    self.frame.anchorOptions = {
-        horizontal = true,
-        vertical = true,
-        syncScale = false,
-        syncDimensions = false,
-    }
-
-    -- Default Position
+    self.frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
     self.frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
-
-    -- Register
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)
     OrbitEngine.Frame:RestorePosition(self.frame, self, SYSTEM_ID)
 
-    -- Anchor Logic
     self:EnableSmartAlignment(self.frame, self.frame.Text, 2)
-
-    self:RegisterStandardEvents() -- Handles ApplySettings on load/editmode
-
-    -- Combat Events
+    self:RegisterStandardEvents()
     if Orbit.EventBus then
         Orbit.EventBus:On("PLAYER_REGEN_DISABLED", self.PLAYER_REGEN_DISABLED, self)
         Orbit.EventBus:On("PLAYER_REGEN_ENABLED", self.PLAYER_REGEN_ENABLED, self)
     end
-
     self:ApplySettings()
 end
 
@@ -95,7 +75,7 @@ function Plugin:PLAYER_REGEN_ENABLED()
     if self.timer then
         self.timer:Cancel()
     end
-    self:UpdateTimer() -- One final update to set exact duration
+    self:UpdateTimer()
 end
 
 function Plugin:StartLoop()
@@ -103,13 +83,12 @@ function Plugin:StartLoop()
         self.timer:Cancel()
         self.timer = nil
     end
-
-    -- Update every 0.1s for responsiveness
     self.timer = C_Timer.NewTicker(0.1, function()
-        if not self.timer then return end  -- Guard against cancelled timer firing
+        if not self.timer then
+            return
+        end
         self:UpdateTimer()
     end)
-
     self:UpdateTimer()
 end
 
@@ -119,20 +98,9 @@ function Plugin:UpdateTimer()
         self.frame.Text:SetText("0:00")
         return
     end
-
-    local now = GetTime()
-    local duration = now - self.startTime
-
-    local minutes = math.floor(duration / 60)
-    local seconds = math.floor(duration % 60)
-
-    local text = string.format("%d:%02d", minutes, seconds)
-
-    self.frame.Text:SetText(text)
-
-    -- Compact Sizing: Text Width + 8px (4px padding each side)
-    local width = self.frame.Text:GetStringWidth()
-    self.frame:SetSize(width + 8, 20)
+    local duration = GetTime() - self.startTime
+    self.frame.Text:SetText(string.format("%d:%02d", math.floor(duration / 60), math.floor(duration % 60)))
+    self.frame:SetSize(self.frame.Text:GetStringWidth() + 8, 20)
 end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
@@ -141,31 +109,11 @@ function Plugin:ApplySettings()
     if not frame then
         return
     end
-
-    local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100
-
-    frame:SetScale(scale / 100)
-
-    -- Global Text Scale
-    local textMultiplier = 1
+    frame:SetScale((self:GetSetting(SYSTEM_ID, "Scale") or 100) / 100)
     local s = Orbit.db.GlobalSettings.TextScale
-    if s == "Small" then
-        textMultiplier = 0.85
-    elseif s == "Large" then
-        textMultiplier = 1.15
-    elseif s == "ExtraLarge" then
-        textMultiplier = 1.30
-    end
-
-    -- Apply Global Font
-    local globalFont = Orbit.db.GlobalSettings.Font
-    Orbit.Skin:SkinText(frame.Text, {
-        font = globalFont,
-        textSize = 14 * textMultiplier,
-    })
-
+    local textMultiplier = s == "Small" and 0.85 or s == "Large" and 1.15 or s == "ExtraLarge" and 1.30 or 1
+    Orbit.Skin:SkinText(frame.Text, { font = Orbit.db.GlobalSettings.Font, textSize = 14 * textMultiplier })
     frame:Show()
-
     self:ApplyMouseOver(frame, SYSTEM_ID)
     self:UpdateTimer()
     OrbitEngine.Frame:RestorePosition(frame, self, SYSTEM_ID)

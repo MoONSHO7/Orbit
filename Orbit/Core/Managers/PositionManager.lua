@@ -1,45 +1,24 @@
 -- [ ORBIT POSITION MANAGER ]------------------------------------------------------------------------
--- Manages frame positions during Edit Mode to prevent excessive
--- SavedVariables writes and allow for "Cancel" operations.
+-- Manages frame positions during Edit Mode (ephemeral state, Cancel support)
 
 local _, Orbit = ...
-local Engine = Orbit.Engine
-
-Engine.PositionManager = Engine.PositionManager or {}
-local PositionManager = Engine.PositionManager
-
--- Ephemeral session-only state
-local ActivePositions = {} -- { [frameName] = { point, relativeTo, relativePoint, x, y } }
-local ActiveAnchors = {} -- { [frameName] = { target, edge, padding, align } }
-local PendingFrames = {} -- Dirty flag set
-
--- [ PUBLIC API ]------------------------------------------------------------------------------------
+Orbit.Engine.PositionManager = Orbit.Engine.PositionManager or {}
+local PositionManager = Orbit.Engine.PositionManager
+local ActivePositions, ActiveAnchors, PendingFrames = {}, {}, {}
 
 function PositionManager:SetPosition(frame, point, x, y)
     if not frame then
         return
     end
-
     local name = frame:GetName()
     if not name then
         return
     end
-
-    -- Store normalized position (recycle table if exists)
     if ActivePositions[name] then
-        local t = ActivePositions[name]
-        t.point = point
-        t.x = x
-        t.y = y
+        ActivePositions[name].point, ActivePositions[name].x, ActivePositions[name].y = point, x, y
     else
-        ActivePositions[name] = {
-            point = point,
-            x = x,
-            y = y,
-        }
+        ActivePositions[name] = { point = point, x = x, y = y }
     end
-
-    -- Clear any conflicting anchor
     ActiveAnchors[name] = nil
 end
 
@@ -47,31 +26,17 @@ function PositionManager:SetAnchor(frame, target, edge, padding, align)
     if not frame then
         return
     end
-
     local name = frame:GetName()
     if not name then
         return
     end
-
     local targetName = type(target) == "table" and target:GetName() or target
-
-    -- Store anchor (recycle table if exists)
     if ActiveAnchors[name] then
-        local t = ActiveAnchors[name]
-        t.target = targetName
-        t.edge = edge
-        t.padding = padding
-        t.align = align
+        ActiveAnchors[name].target, ActiveAnchors[name].edge = targetName, edge
+        ActiveAnchors[name].padding, ActiveAnchors[name].align = padding, align
     else
-        ActiveAnchors[name] = {
-            target = targetName,
-            edge = edge,
-            padding = padding,
-            align = align,
-        }
+        ActiveAnchors[name] = { target = targetName, edge = edge, padding = padding, align = align }
     end
-
-    -- Clear any conflicting position
     ActivePositions[name] = nil
 end
 
@@ -80,22 +45,15 @@ function PositionManager:MarkDirty(frame)
         return
     end
     local name = frame:GetName()
-    if not name then
-        return
+    if name then
+        PendingFrames[name] = frame
     end
-
-    -- Use frame NAME as key to allow garbage collection of frame objects
-    -- Store the frame reference as value for FlushToStorage to use
-    PendingFrames[name] = frame
 end
 
 function PositionManager:FlushToStorage()
-    -- Copy dirty frames to persistent storage
     for name, frame in pairs(PendingFrames) do
-        -- Validate frame is still valid (not destroyed/recreated)
         if frame and frame.orbitPlugin and frame.orbitPlugin.SetSetting then
             local systemIndex = frame.systemIndex or 1
-
             if ActiveAnchors[name] then
                 frame.orbitPlugin:SetSetting(systemIndex, "Anchor", ActiveAnchors[name])
                 frame.orbitPlugin:SetSetting(systemIndex, "Position", nil)
@@ -105,41 +63,25 @@ function PositionManager:FlushToStorage()
             end
         end
     end
-
-    -- Clear dirty flags
     table.wipe(PendingFrames)
 end
 
 function PositionManager:DiscardChanges()
-    -- Clear ephemeral state without saving
     table.wipe(ActivePositions)
     table.wipe(ActiveAnchors)
     table.wipe(PendingFrames)
 end
 
 function PositionManager:GetPosition(frame)
-    -- Helper to read from ephemeral state if it exists
     if not frame then
         return nil
     end
-    local name = frame:GetName()
-
-    if ActivePositions[name] then
-        return ActivePositions[name]
-    end
-
-    return nil
+    return ActivePositions[frame:GetName()] or nil
 end
 
 function PositionManager:GetAnchor(frame)
     if not frame then
         return nil
     end
-    local name = frame:GetName()
-
-    if ActiveAnchors[name] then
-        return ActiveAnchors[name]
-    end
-
-    return nil
+    return ActiveAnchors[frame:GetName()] or nil
 end

@@ -48,7 +48,7 @@ function PredictionMixin:UpdateHealPrediction()
     if not self.unit or not UnitExists(self.unit) then
         return
     end
-    
+
     local maxHealth = UnitHealthMax(self.unit)
     -- We assume maxHealth is never secret, as it's a cap, not current state.
     -- Even if it is, StatusBar:SetMinMaxValues accepts it.

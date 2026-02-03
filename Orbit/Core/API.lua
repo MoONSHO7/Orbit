@@ -144,10 +144,7 @@ function API:DumpDebugInfo()
     table.insert(parts, "[ ERROR LOG ]")
     if Orbit.db and Orbit.db.ErrorLog and #Orbit.db.ErrorLog > 0 then
         for i, entry in ipairs(Orbit.db.ErrorLog) do
-            table.insert(
-                parts,
-                string.format("#%d [%s] %s: %s", i, entry.time or "?", entry.source or "?", entry.error or "?")
-            )
+            table.insert(parts, string.format("#%d [%s] %s: %s", i, entry.time or "?", entry.source or "?", entry.error or "?"))
         end
     else
         table.insert(parts, "No errors logged.")

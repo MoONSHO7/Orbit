@@ -8,17 +8,11 @@ local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
 local function SafeUnitPowerPercent(unit, resource)
-    if type(UnitPowerPercent) ~= "function" then
-        return nil
-    end
-    if not CurveConstants or not CurveConstants.ScaleTo100 then
+    if type(UnitPowerPercent) ~= "function" or not CurveConstants or not CurveConstants.ScaleTo100 then
         return nil
     end
     local ok, pct = pcall(UnitPowerPercent, unit, resource, false, CurveConstants.ScaleTo100)
-    if ok and pct ~= nil then
-        return pct
-    end
-    return nil
+    return (ok and pct) or nil
 end
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
@@ -128,33 +122,29 @@ function Plugin:AddSettings(dialog, systemFrame)
             end,
         })
     end
-
-    -- Note: Show Text is now controlled via Canvas Mode (drag Text to disabled dock)
-
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    -- Create frames ONLY when plugin is enabled (OnLoad is only called for enabled plugins)
     Frame, PowerBar = OrbitEngine.FrameFactory:CreateWithBar("PlayerPower", self, {
         width = 200,
         height = 15,
         y = -160,
         systemIndex = SYSTEM_INDEX,
         template = "BackdropTemplate",
-        anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }, -- Vertical stacking only, merge borders
+        anchorOptions = { horizontal = false, vertical = true, mergeBorders = true },
     })
-    self.frame = Frame  -- Expose for PluginMixin compatibility
+    self.frame = Frame
 
     -- [ CANVAS PREVIEW ] -------------------------------------------------------------------------------
     function Frame:CreateCanvasPreview(options)
         local scale = options.scale or 1
         local borderSize = options.borderSize or 1
-        
+
         -- Base container
         local preview = OrbitEngine.Preview.Frame:CreateBasePreview(self, scale, options.parent, borderSize)
-        
+
         -- Create Power Bar visual
         local bar = CreateFrame("StatusBar", nil, preview)
         local inset = borderSize * scale
@@ -162,7 +152,7 @@ function Plugin:OnLoad()
         bar:SetPoint("BOTTOMRIGHT", preview, "BOTTOMRIGHT", -inset, inset)
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(1)
-        
+
         -- Appearance
         local textureName = Plugin:GetSetting(SYSTEM_INDEX, "Texture")
         local texturePath = "Interface\\Buttons\\WHITE8x8"
@@ -170,7 +160,7 @@ function Plugin:OnLoad()
             texturePath = LSM:Fetch("statusbar", textureName) or texturePath
         end
         bar:SetStatusBarTexture(texturePath)
-        
+
         -- Color (use player class color or power color default)
         local powerType = UnitPowerType("player")
         local info = Orbit.Constants.Colors.PowerType[powerType]
@@ -179,16 +169,13 @@ function Plugin:OnLoad()
         else
             bar:SetStatusBarColor(0.5, 0.5, 0.5)
         end
-        
+
         preview.PowerBar = bar
         return preview
     end
 
     -- Text overlay
-    OrbitEngine.FrameFactory:AddText(
-        Frame,
-        { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = -2, useOverlay = true }
-    )
+    OrbitEngine.FrameFactory:AddText(Frame, { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = -2, useOverlay = true })
 
     -- Alias
     Frame.PowerBar = PowerBar
@@ -230,7 +217,7 @@ function Plugin:OnLoad()
                 local positions = self:GetSetting(SYSTEM_INDEX, "ComponentPositions") or {}
                 positions.Text = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                 self:SetSetting(SYSTEM_INDEX, "ComponentPositions", positions)
-            end
+            end,
         })
     end
 
@@ -239,7 +226,6 @@ end
 
 -- [ VISIBILITY ]-------------------------------------------------------------------------------------
 function Plugin:IsEnabled()
-    -- First check our own Enabled setting
     local localEnabled = self:GetSetting(SYSTEM_INDEX, "Enabled")
     if localEnabled == false then
         return false
@@ -250,7 +236,6 @@ function Plugin:IsEnabled()
     local PLAYER_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Player
     if playerPlugin and playerPlugin.GetSetting then
         local enabled = playerPlugin:GetSetting(PLAYER_FRAME_INDEX, "EnablePlayerPower")
-        -- Default to true if not set
         if enabled ~= nil then
             return enabled == true
         end
@@ -264,18 +249,11 @@ function Plugin:UpdateVisibility()
     end
 
     local enabled = self:IsEnabled()
-    local isEditMode = EditModeManagerFrame
-        and EditModeManagerFrame.IsEditModeActive
-        and EditModeManagerFrame:IsEditModeActive()
+    local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
 
     if isEditMode then
-        -- Always show in Edit Mode for positioning, but dim if disabled
         Frame:Show()
-        if enabled then
-            Frame:SetAlpha(1)
-        else
-            Frame:SetAlpha(0.5) -- Dimmed to indicate disabled
-        end
+        Frame:SetAlpha(enabled and 1 or 0.5)
         return
     end
 
@@ -296,18 +274,14 @@ function Plugin:ApplySettings()
     end
 
     local systemIndex = SYSTEM_INDEX
-
-    -- Get settings (defaults handled by PluginMixin)
     local width = self:GetSetting(systemIndex, "Width")
     local height = self:GetSetting(systemIndex, "Height")
     local borderSize = self:GetSetting(systemIndex, "BorderSize")
     local textureName = self:GetSetting(systemIndex, "Texture")
     local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
     local fontName = self:GetSetting(systemIndex, "Font")
-
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
 
-    -- Size
     Frame:SetHeight(height)
     if not isAnchored then
         Frame:SetWidth(width)
@@ -333,29 +307,29 @@ function Plugin:ApplySettings()
         Frame.Text:Hide()
     else
         Frame.Text:Show()
-        
+
         -- Get Canvas Mode overrides
         local positions = self:GetSetting(systemIndex, "ComponentPositions") or {}
         local textPos = positions.Text or {}
         local overrides = textPos.overrides or {}
-        
+
         -- Apply font override
         local fontPath = LSM:Fetch("font", fontName)
         if overrides.Font and LSM then
             fontPath = LSM:Fetch("font", overrides.Font) or fontPath
         end
-        
+
         -- Apply size override
         local finalSize = overrides.FontSize or textSize
-        
+
         -- Apply font flags override
         local flags = "OUTLINE"
         if overrides.ShowShadow then
             flags = ""
         end
-        
+
         Frame.Text:SetFont(fontPath, finalSize, flags)
-        
+
         -- Apply shadow if needed
         if overrides.ShowShadow then
             Frame.Text:SetShadowOffset(1, -1)
@@ -363,7 +337,7 @@ function Plugin:ApplySettings()
         else
             Frame.Text:SetShadowOffset(0, 0)
         end
-        
+
         -- Apply color override
         if overrides.CustomColor and overrides.CustomColorValue and type(overrides.CustomColorValue) == "table" then
             local c = overrides.CustomColorValue
@@ -400,12 +374,8 @@ function Plugin:ApplySettings()
     self:UpdateVisibility()
 end
 
--- [ POWER UPDATE ]----------------------------------------------------------------------------------
 function Plugin:UpdateAll()
-    if not Frame or not PowerBar then
-        return
-    end
-    if not Frame:IsShown() then
+    if not Frame or not PowerBar or not Frame:IsShown() then
         return
     end
 
@@ -413,13 +383,13 @@ function Plugin:UpdateAll()
     local _, class = UnitClass("player")
     local spec = GetSpecialization()
     local specID = spec and GetSpecializationInfo(spec)
-    
+
     if class == "EVOKER" and specID == 1473 then
         local current, max = Orbit.ResourceBarMixin:GetEbonMightState()
         if current and max and max > 0 then
             PowerBar:SetMinMaxValues(0, max)
             PowerBar:SetValue(current, SMOOTH_ANIM)
-            
+
             -- Use Ebon Might color
             local color = Orbit.Colors.PlayerResources and Orbit.Colors.PlayerResources.EbonMight
             if color then
@@ -427,7 +397,7 @@ function Plugin:UpdateAll()
             else
                 PowerBar:SetStatusBarColor(0.4, 0.6, 0.3) -- Fallback green
             end
-            
+
             if Frame.Text:IsShown() then
                 Frame.Text:SetFormattedText("%.0f", current)
             end
@@ -446,7 +416,7 @@ function Plugin:UpdateAll()
     -- Color
     local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
     local customColor = self:GetSetting(SYSTEM_INDEX, "BarColor")
-    
+
     if useCustomColor and customColor then
         PowerBar:SetStatusBarColor(customColor.r, customColor.g, customColor.b)
     else

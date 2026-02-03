@@ -9,7 +9,7 @@
 --
 -- Sub-modules (in Core/Engine/UnitButton/):
 -- - UnitButtonCore.lua    - Lifecycle: OnLoad, OnEvent, UpdateAll
--- - UnitButtonHealth.lua  - Health bar updates and coloring  
+-- - UnitButtonHealth.lua  - Health bar updates and coloring
 -- - UnitButtonText.lua    - HealthText and Name text formatting
 -- - UnitButtonPrediction.lua - Heal prediction and absorbs
 -- - UnitButtonCanvas.lua  - Canvas Mode component positions
@@ -175,11 +175,7 @@ function UnitButton:Create(parent, unit, name)
     f.HealAbsorbPattern:SetSize(3200, 3200) -- Massive square
     f.HealAbsorbPattern:SetPoint("TOPLEFT", f.HealAbsorbMask, "TOPLEFT", 0, 0)
 
-    f.HealAbsorbPattern:SetTexture(
-        "Interface\\AddOns\\Orbit\\Core\\Assets\\Statusbar\\necrotic.tga",
-        "REPEAT",
-        "REPEAT"
-    )
+    f.HealAbsorbPattern:SetTexture("Interface\\AddOns\\Orbit\\Core\\Assets\\Statusbar\\necrotic.tga", "REPEAT", "REPEAT")
     f.HealAbsorbPattern:SetHorizTile(true)
     f.HealAbsorbPattern:SetVertTile(true)
     f.HealAbsorbPattern:SetTexCoord(0, 100, 0, 100)
@@ -223,7 +219,6 @@ function UnitButton:Create(parent, unit, name)
         Engine.ComponentDrag:Attach(f.Name, f, {
             key = "Name",
             onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
-
                 -- Save edge-relative position to plugin settings
                 if f.orbitPlugin and f.orbitPlugin.SetSetting then
                     local systemIndex = f.systemIndex or 1
@@ -231,19 +226,18 @@ function UnitButton:Create(parent, unit, name)
                     positions.Name = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                     f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
                 end
-            end
+            end,
         })
         Engine.ComponentDrag:Attach(f.HealthText, f, {
             key = "HealthText",
             onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
-
                 if f.orbitPlugin and f.orbitPlugin.SetSetting then
                     local systemIndex = f.systemIndex or 1
                     local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}
                     positions.HealthText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
                     f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
                 end
-            end
+            end,
         })
     end
 
@@ -273,7 +267,7 @@ function UnitButton:Create(parent, unit, name)
     -- NOTE: This script is only SET when animation starts (in UpdateHealth)
     --       and CLEARED when animation completes (saves CPU when not animating)
     local DAMAGE_BAR_DELAY = 0.3 -- Show red chunk for this long before snapping
-    
+
     local function DamageBarOnUpdate(self, elapsed)
         if not self.HealthDamageBar then
             self:SetScript("OnUpdate", nil)
@@ -291,11 +285,11 @@ function UnitButton:Create(parent, unit, name)
         -- After delay, sync DamageBar to Health bar's current value
         local healthValue = self.Health:GetValue()
         self.HealthDamageBar:SetValue(healthValue, SMOOTH_ANIM)
-        
+
         -- Animation complete - remove OnUpdate handler to save CPU
         self:SetScript("OnUpdate", nil)
     end
-    
+
     -- Store the function on the frame for use in UpdateHealth
     f.DamageBarOnUpdate = DamageBarOnUpdate
 

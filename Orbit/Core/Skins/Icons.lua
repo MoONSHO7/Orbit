@@ -83,8 +83,7 @@ function Icons:ApplyManualLayout(frame, icons, settings)
     end
 
     -- Calculate max dimensions for centering
-    local maxMajorSize = (math.min(totalIcons, limit) * (orientation == 0 and w or h))
-        + ((math.min(totalIcons, limit) - 1) * padding)
+    local maxMajorSize = (math.min(totalIcons, limit) * (orientation == 0 and w or h)) + ((math.min(totalIcons, limit) - 1) * padding)
 
     local scale = frame:GetEffectiveScale()
 
@@ -369,10 +368,7 @@ function Icons:FindRegions(icon)
 
     local children = { icon:GetChildren() }
     for _, child in ipairs(children) do
-        if
-            not regions.flash
-            and (child == icon.CooldownFlash or (child:GetName() and string.find(child:GetName(), "CooldownFlash")))
-        then
+        if not regions.flash and (child == icon.CooldownFlash or (child:GetName() and string.find(child:GetName(), "CooldownFlash"))) then
             regions.flash = child
         end
         if not regions.proc and (child == icon.SpellActivationAlert) then
@@ -430,7 +426,7 @@ function Icons:ApplyCustom(icon, settings)
     if icon.SetScale then
         icon:SetScale(1)
     end
-    
+
     local r = self:FindRegions(icon)
     local tex = r.icon
 
@@ -438,9 +434,9 @@ function Icons:ApplyCustom(icon, settings)
         local newWidth, newHeight, rw, rh = self:CalculateGeometry(icon, settings)
 
         if Pixel then
-             local scale = icon:GetEffectiveScale()
-             newWidth = Pixel:Snap(newWidth, scale)
-             newHeight = Pixel:Snap(newHeight, scale)
+            local scale = icon:GetEffectiveScale()
+            newWidth = Pixel:Snap(newWidth, scale)
+            newHeight = Pixel:Snap(newHeight, scale)
         end
 
         -- Use generic OrbSkin for base icon skinning
@@ -524,7 +520,6 @@ function Icons:ApplyCustom(icon, settings)
             -- Hook swipe setters directly to immediately catch Blizzard's resets
             -- This prevents the flash that occurs when waiting for SetCooldown hooks
             if not r.cooldown.orbitHooked then
-
                 -- Hook SetSwipeTexture: if Blizzard sets wrong texture, immediately correct it
                 hooksecurefunc(r.cooldown, "SetSwipeTexture", function(self, texture)
                     if self.orbitUpdating then
@@ -576,10 +571,7 @@ function Icons:ApplyCustom(icon, settings)
             if r.flash.Flipbook then
                 r.flash.Flipbook:ClearAllPoints()
                 r.flash.Flipbook:SetPoint("CENTER")
-                r.flash.Flipbook:SetSize(
-                    newWidth * Constants.IconScale.FlashScale,
-                    newHeight * Constants.IconScale.FlashScale
-                )
+                r.flash.Flipbook:SetSize(newWidth * Constants.IconScale.FlashScale, newHeight * Constants.IconScale.FlashScale)
             end
         end
 
@@ -595,10 +587,7 @@ function Icons:ApplyCustom(icon, settings)
         if r.pandemic then
             r.pandemic:ClearAllPoints()
             r.pandemic:SetPoint("CENTER")
-            r.pandemic:SetSize(
-                newWidth + Constants.IconScale.PandemicPadding,
-                newHeight + Constants.IconScale.PandemicPadding
-            )
+            r.pandemic:SetSize(newWidth + Constants.IconScale.PandemicPadding, newHeight + Constants.IconScale.PandemicPadding)
             -- Raise above border (which uses MEDIUM strata)
             r.pandemic:SetFrameStrata("HIGH")
             r.pandemic:SetFrameLevel(50)
@@ -614,10 +603,7 @@ function Icons:ApplyCustom(icon, settings)
                 r.border:SetAlpha(1)
                 r.border:ClearAllPoints()
                 r.border:SetPoint("CENTER")
-                r.border:SetSize(
-                    newWidth + Constants.IconScale.BorderPaddingH,
-                    newHeight + Constants.IconScale.BorderPaddingV
-                )
+                r.border:SetSize(newWidth + Constants.IconScale.BorderPaddingH, newHeight + Constants.IconScale.BorderPaddingV)
             end
         end
 

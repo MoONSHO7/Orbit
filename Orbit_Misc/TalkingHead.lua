@@ -109,8 +109,6 @@ function Plugin:ReparentAll()
         end)
         return
     end
-
-    -- Reparent TalkingHeadFrame into our container
     if TalkingHeadFrame:GetParent() ~= self.frame then
         TalkingHeadFrame:SetParent(self.frame)
     end
@@ -154,7 +152,6 @@ function Plugin:ReparentAll()
     end
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 function Plugin:ApplySettings()
     local frame = self.frame
     if not frame then
@@ -167,18 +164,10 @@ function Plugin:ApplySettings()
         return
     end
 
-    -- Visibility handled by RegisterVisibilityEvents() -> UpdateVisibility()
-
     local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
-
-    -- Get settings
     local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100
     local disable = self:GetSetting(SYSTEM_ID, "DisableTalkingHead")
-
-    -- Ensure reparented
     self:ReparentAll()
-
-    -- Apply Scale
     frame:SetScale(scale / 100)
 
     -- Handle disable logic (don't disable during Edit Mode to allow configuration)
@@ -190,7 +179,6 @@ function Plugin:ApplySettings()
     else
         frame:Show()
         if TalkingHeadFrame then
-            -- Only re-enable if it was disabled
             if OrbitEngine.NativeFrame:IsDisabled(TalkingHeadFrame) then
                 OrbitEngine.NativeFrame:Enable(TalkingHeadFrame)
             end
@@ -210,4 +198,3 @@ function Plugin:ApplySettings()
     -- Apply MouseOver
     self:ApplyMouseOver(frame, SYSTEM_ID)
 end
-

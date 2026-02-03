@@ -363,7 +363,7 @@ function Selection:OnEditModeEnter()
                 frame:SetMovable(true)
             end
         end
-        
+
         -- Force refresh to apply native visibility settings immediately
         Selection:RefreshVisuals()
 
@@ -546,7 +546,7 @@ function Selection:UpdateVisuals(frame, selection)
         -- Show selection with green tint for Canvas Mode
         selection:Show()
         selection:SetFrameStrata("HIGH")
-        
+
         -- Green tint for canvas mode
         ForEachRegion(selection, function(region)
             if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
@@ -555,12 +555,12 @@ function Selection:UpdateVisuals(frame, selection)
                 region:SetAlpha(1)
             end
         end)
-        
+
         -- Hide label in canvas mode
         if selection.Label then
             selection.Label:Hide()
         end
-        
+
         Selection:ShowAnchorLine(selection, nil)
         return
     end
@@ -573,20 +573,20 @@ function Selection:UpdateVisuals(frame, selection)
         if selection.CanvasBorderFrame then
             selection.CanvasBorderFrame:Hide()
         end
-        
+
         -- Restore strata and mouse interaction
         selection:SetFrameStrata("HIGH")
         selection:EnableMouse(true)
-        
+
         -- Show the label again
         if selection.Label then
             selection.Label:Show()
         end
-        
+
         ForEachRegion(selection, function(region)
             if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
                 region:SetDesaturated(false)
-                region:SetVertexColor(1, 1, 1, 1)  -- Reset to normal
+                region:SetVertexColor(1, 1, 1, 1) -- Reset to normal
                 region:SetAlpha(1)
             end
         end)
@@ -621,16 +621,16 @@ function Selection:UpdateVisuals(frame, selection)
         if selection.CanvasBorderFrame then
             selection.CanvasBorderFrame:Hide()
         end
-        
+
         -- Restore strata and mouse interaction
         selection:SetFrameStrata("HIGH")
         selection:EnableMouse(true)
-        
+
         -- Show the label again
         if selection.Label then
             selection.Label:Show()
         end
-        
+
         ForEachRegion(selection, function(region)
             if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
                 region:SetAlpha(1)
@@ -662,14 +662,16 @@ function Selection:UpdateVisuals(frame, selection)
                 end
             else
                 -- Always hide native selection to prevent z-fighting/persistence
-                if frame.Selection then frame.Selection:Hide() end
+                if frame.Selection then
+                    frame.Selection:Hide()
+                end
 
                 if ShouldShowBlizzardFrames() then
-                     TintSelection(selection, 1, 1, 1, false)
-                     selection:Show()
+                    TintSelection(selection, 1, 1, 1, false)
+                    selection:Show()
                 else
-                     selection:Hide() -- Hide entirely if native frames disabled
-                     return
+                    selection:Hide() -- Hide entirely if native frames disabled
+                    return
                 end
             end
             local anchor = Engine.FrameAnchor.anchors[selection.parent]
@@ -689,15 +691,17 @@ function Selection:UpdateVisuals(frame, selection)
                     return
                 end
             else
-                 -- Always hide native selection to prevent z-fighting/persistence
-                 if frame.Selection then frame.Selection:Hide() end
+                -- Always hide native selection to prevent z-fighting/persistence
+                if frame.Selection then
+                    frame.Selection:Hide()
+                end
 
-                 if ShouldShowBlizzardFrames() then
-                     TintSelection(selection, 1, 1, 1, false)
-                     selection:Show() -- Ensure Orbit's proxy is shown
+                if ShouldShowBlizzardFrames() then
+                    TintSelection(selection, 1, 1, 1, false)
+                    selection:Show() -- Ensure Orbit's proxy is shown
                 else
-                     selection:Hide()
-                     return
+                    selection:Hide()
+                    return
                 end
             end
             Selection:ShowAnchorLine(selection, nil)

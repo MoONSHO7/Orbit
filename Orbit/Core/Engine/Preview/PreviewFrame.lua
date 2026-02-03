@@ -39,30 +39,31 @@ local DEFAULT_BAR_COLOR = { r = 0.2, g = 0.6, b = 0.2 }
 -- @param parent: Parent frame
 -- @param borderSize: Border thickness (default 2)
 function PreviewFrame:CreateBasePreview(sourceFrame, scale, parent, borderSize)
-    if not sourceFrame then return nil end
-    
+    if not sourceFrame then
+        return nil
+    end
+
     scale = scale or DEFAULT_SCALE
     parent = parent or UIParent
     borderSize = borderSize or DEFAULT_BORDER_SIZE
-    
+
     local sourceWidth = sourceFrame:GetWidth()
     local sourceHeight = sourceFrame:GetHeight()
-    
+
     -- Create container frame
     local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     preview:SetSize(sourceWidth * scale, sourceHeight * scale)
-    
+
     -- Store metadata
     preview.sourceFrame = sourceFrame
     preview.sourceWidth = sourceWidth
     preview.sourceHeight = sourceHeight
     preview.previewScale = scale
     preview.components = {}
-    
+
     -- Apply standard Orbit backdrop
-    local bgColor = Orbit.Constants and Orbit.Constants.Colors and Orbit.Constants.Colors.Background
-        or { r = 0.1, g = 0.1, b = 0.1, a = 0.95 }
-    
+    local bgColor = Orbit.Constants and Orbit.Constants.Colors and Orbit.Constants.Colors.Background or { r = 0.1, g = 0.1, b = 0.1, a = 0.95 }
+
     -- Only include edgeFile when borderSize > 0 to avoid rendering glitches
     local scaledBorder = borderSize * scale
     local backdrop = {
@@ -78,7 +79,7 @@ function PreviewFrame:CreateBasePreview(sourceFrame, scale, parent, borderSize)
     if scaledBorder > 0 then
         preview:SetBackdropBorderColor(0, 0, 0, 1)
     end
-    
+
     return preview
 end
 
@@ -89,13 +90,15 @@ end
 -- @param options: { ... }
 -- @return preview frame with metadata
 function PreviewFrame:Create(sourceFrame, options)
-    if not sourceFrame then return nil end
-    
+    if not sourceFrame then
+        return nil
+    end
+
     options = options or {}
     local scale = options.scale or DEFAULT_SCALE
     local parent = options.parent or UIParent
     local borderSize = options.borderSize or DEFAULT_BORDER_SIZE
-    
+
     -- [ HOOK: CUSTOM PREVIEW ] -------------------------------------------------------------------
     if sourceFrame.CreateCanvasPreview then
         local preview = sourceFrame:CreateCanvasPreview(options)
@@ -108,14 +111,14 @@ function PreviewFrame:Create(sourceFrame, options)
                 preview.previewScale = scale
                 preview.components = preview.components or {}
             end
-            
+
             if preview:GetParent() ~= parent then
                 preview:SetParent(parent)
             end
             return preview
         end
     end
-    
+
     -- [ FALLBACK: GENERIC CONTAINER ] -----------------------------------------------------------
     return self:CreateBasePreview(sourceFrame, scale, parent, borderSize)
 end
@@ -123,8 +126,10 @@ end
 -- [ DESTROY PREVIEW ]---------------------------------------------------------------------------
 
 function PreviewFrame:Destroy(preview)
-    if not preview then return end
-    
+    if not preview then
+        return
+    end
+
     -- Clear components
     for key, container in pairs(preview.components) do
         if container.handle then
@@ -135,7 +140,7 @@ function PreviewFrame:Destroy(preview)
         container:SetParent(nil)
     end
     wipe(preview.components)
-    
+
     -- Hide and release
     preview:Hide()
     preview:SetParent(nil)
@@ -150,23 +155,25 @@ end
 -- @param options: { position, visual, isFontString }
 -- @return container frame
 function PreviewFrame:AddComponent(preview, key, options)
-    if not preview or not key then return nil end
-    
+    if not preview or not key then
+        return nil
+    end
+
     options = options or {}
     local scale = preview.previewScale
-    
+
     -- Create container
     local container = CreateFrame("Frame", nil, preview)
-    container:SetFrameLevel(preview:GetFrameLevel() + 10)
+    container:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.Glow)
     container:EnableMouse(true)
     container:SetMovable(true)
     container:RegisterForDrag("LeftButton")
-    
+
     -- Store metadata
     container.key = key
     container.isFontString = options.isFontString or false
     container.preview = preview
-    
+
     -- Position data (will be set by caller)
     container.anchorX = options.anchorX or "CENTER"
     container.anchorY = options.anchorY or "CENTER"
@@ -175,20 +182,20 @@ function PreviewFrame:AddComponent(preview, key, options)
     container.posX = options.posX or 0
     container.posY = options.posY or 0
     container.justifyH = options.justifyH or "CENTER"
-    
+
     -- Default size (caller typically overrides)
     local width = (options.width or 60) * scale
     local height = (options.height or 20) * scale
     container:SetSize(width, height)
-    
+
     -- Border (subtle, visible on hover/drag)
     container.border = container:CreateTexture(nil, "BACKGROUND")
     container.border:SetAllPoints()
-    container.border:SetColorTexture(0.3, 0.8, 0.3, 0)  -- Invisible by default
-    
+    container.border:SetColorTexture(0.3, 0.8, 0.3, 0) -- Invisible by default
+
     -- Register with preview
     preview.components[key] = container
-    
+
     return container
 end
 
@@ -198,14 +205,16 @@ end
 -- @param container: Component container
 -- @param scale: Preview scale (optional, uses container.preview.previewScale if not provided)
 function PreviewFrame:PositionComponent(container, scale)
-    if not container or not container.preview then return end
-    
+    if not container or not container.preview then
+        return
+    end
+
     local preview = container.preview
     scale = scale or preview.previewScale
     local anchorX = container.anchorX
     local anchorY = container.anchorY
     local justifyH = container.justifyH
-    
+
     -- Build anchor point using shared utility
     local anchorPoint
     if anchorY == "CENTER" and anchorX == "CENTER" then
@@ -217,24 +226,28 @@ function PreviewFrame:PositionComponent(container, scale)
     else
         anchorPoint = anchorY .. anchorX
     end
-    
+
     -- Calculate final position
     local finalX, finalY
-    
+
     if anchorX == "CENTER" then
         finalX = container.posX * scale
     else
         finalX = container.offsetX * scale
-        if anchorX == "RIGHT" then finalX = -finalX end
+        if anchorX == "RIGHT" then
+            finalX = -finalX
+        end
     end
-    
+
     if anchorY == "CENTER" then
         finalY = container.posY * scale
     else
         finalY = container.offsetY * scale
-        if anchorY == "TOP" then finalY = -finalY end
+        if anchorY == "TOP" then
+            finalY = -finalY
+        end
     end
-    
+
     -- Apply position
     container:ClearAllPoints()
     if container.isFontString and justifyH ~= "CENTER" then

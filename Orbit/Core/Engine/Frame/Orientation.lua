@@ -16,9 +16,9 @@ local Orientation = Engine.FrameOrientation
 
 -- [ STATE ]-----------------------------------------------------------------------------------------
 
-Orientation.callbacks = {}      -- frame -> callback function
+Orientation.callbacks = {} -- frame -> callback function
 Orientation.lastOrientation = {} -- frame -> last detected orientation
-Orientation.trackedFrames = {}  -- frames currently being tracked during drag
+Orientation.trackedFrames = {} -- frames currently being tracked during drag
 
 -- [ ORIENTATION DETECTION ]------------------------------------------------------------------------
 
@@ -29,34 +29,34 @@ function Orientation:DetectOrientation(frame)
     if not frame or not frame.GetLeft then
         return "LEFT"
     end
-    
+
     local left, bottom = frame:GetLeft(), frame:GetBottom()
     local width, height = frame:GetWidth(), frame:GetHeight()
-    
+
     if not left or not bottom or not width or not height then
         return "LEFT"
     end
-    
+
     local screenWidth, screenHeight = GetScreenWidth(), GetScreenHeight()
     local frameCenterX = left + (width / 2)
     local frameCenterY = bottom + (height / 2)
-    
+
     -- Calculate distances to each edge
     local distToLeft = frameCenterX
     local distToRight = screenWidth - frameCenterX
     local distToTop = screenHeight - frameCenterY
     local distToBottom = frameCenterY
-    
+
     -- Find the minimum distance
     local minDist = math.min(distToLeft, distToRight, distToTop, distToBottom)
-    
+
     -- Return orientation based on nearest edge
     if minDist == distToLeft then
-        return "LEFT"   -- Vertical, arc curves right (toward center)
+        return "LEFT" -- Vertical, arc curves right (toward center)
     elseif minDist == distToRight then
-        return "RIGHT"  -- Vertical, arc curves left (toward center)
+        return "RIGHT" -- Vertical, arc curves left (toward center)
     elseif minDist == distToTop then
-        return "TOP"    -- Horizontal, arc curves down (toward center)
+        return "TOP" -- Horizontal, arc curves down (toward center)
     else
         return "BOTTOM" -- Horizontal, arc curves up (toward center)
     end
@@ -86,14 +86,14 @@ end
 
 local function OnDragUpdate(self, elapsed)
     local Orientation = Engine.FrameOrientation
-    
+
     for frame in pairs(Orientation.trackedFrames) do
         local newOrientation = Orientation:DetectOrientation(frame)
         local lastOrientation = Orientation.lastOrientation[frame]
-        
+
         if newOrientation ~= lastOrientation then
             Orientation.lastOrientation[frame] = newOrientation
-            
+
             local callback = Orientation.callbacks[frame]
             if callback then
                 callback(newOrientation)
@@ -116,11 +116,13 @@ end
 --- Start tracking orientation changes during drag
 ---@param frame Frame The frame being dragged
 function Orientation:StartTracking(frame)
-    if not frame then return end
-    
+    if not frame then
+        return
+    end
+
     self.trackedFrames[frame] = true
     self.lastOrientation[frame] = self:DetectOrientation(frame)
-    
+
     local uf = EnsureUpdateFrame()
     uf:SetScript("OnUpdate", OnDragUpdate)
     uf:Show()
@@ -129,17 +131,19 @@ end
 --- Stop tracking orientation changes
 ---@param frame Frame The frame that stopped dragging
 function Orientation:StopTracking(frame)
-    if not frame then return end
-    
+    if not frame then
+        return
+    end
+
     self.trackedFrames[frame] = nil
-    
+
     -- Check if any frames are still being tracked
     local hasTracked = false
     for _ in pairs(self.trackedFrames) do
         hasTracked = true
         break
     end
-    
+
     if not hasTracked and updateFrame then
         updateFrame:SetScript("OnUpdate", nil)
         updateFrame:Hide()

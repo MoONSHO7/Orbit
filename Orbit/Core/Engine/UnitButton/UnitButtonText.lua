@@ -109,7 +109,7 @@ function TextMixin:UpdateHealthText()
     if not self.HealthText then
         return
     end
-    
+
     -- Check if component is disabled via plugin (Canvas Mode drag-to-disable)
     if self.orbitPlugin and self.orbitPlugin.IsComponentDisabled then
         if self.orbitPlugin:IsComponentDisabled("HealthText") then
@@ -130,7 +130,7 @@ function TextMixin:UpdateHealthText()
         self.HealthText:Hide()
         return
     end
-    
+
     -- Guard against nil unit
     if not self.unit then
         self.HealthText:SetText("")
@@ -156,7 +156,7 @@ function TextMixin:UpdateHealthText()
 
     self.HealthText:SetText(text)
     self.HealthText:Show()
-    
+
     -- Apply text color based on global settings
     self:ApplyHealthTextColor()
 end
@@ -166,7 +166,7 @@ function TextMixin:SetMouseOver(isOver)
     if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
         return
     end
-    
+
     self.isMouseOver = isOver
     self:UpdateHealthText()
 end
@@ -189,7 +189,7 @@ function TextMixin:UpdateName()
     if not self.Name then
         return
     end
-    
+
     -- Check if component is disabled via plugin (Canvas Mode drag-to-disable)
     if self.orbitPlugin and self.orbitPlugin.IsComponentDisabled then
         if self.orbitPlugin:IsComponentDisabled("Name") then
@@ -197,16 +197,16 @@ function TextMixin:UpdateName()
             return
         end
     end
-    
+
     -- Show name (may have been hidden by disabled state)
     self.Name:Show()
-    
+
     -- Guard against nil unit
     if not self.unit then
         self.Name:SetText("")
         return
     end
-    
+
     local name = UnitName(self.unit)
 
     -- Handle nil/invalid names
@@ -236,11 +236,11 @@ function TextMixin:UpdateName()
         -- "100%" is ~4-5 chars, estimate ~0.6x font height per character
         local fontName, fontHeight = self.HealthText and self.HealthText:GetFont()
         fontHeight = fontHeight or 12
-        local estimatedHealthTextWidth = fontHeight * 3  -- Approximate width for "100%"
-        
+        local estimatedHealthTextWidth = fontHeight * 3 -- Approximate width for "100%"
+
         -- Available width = frame - healthText space - padding
         local availableWidth = frameWidth - estimatedHealthTextWidth - 20
-        
+
         -- Estimate characters: assume ~0.5x font height per character average
         local charWidth = fontHeight * 0.5
         maxChars = math.floor(availableWidth / charWidth)
@@ -252,15 +252,17 @@ function TextMixin:UpdateName()
     else
         self.Name:SetText(name)
     end
-    
+
     -- Apply text color based on global settings and component overrides
     self:ApplyNameColor()
 end
 
 -- Apply color to Name text based on global settings and component overrides
 function TextMixin:ApplyNameColor()
-    if not self.Name then return end
-    
+    if not self.Name then
+        return
+    end
+
     -- Check for component-level custom color override (from Canvas Mode)
     local customColorOverride = nil
     if self.orbitPlugin then
@@ -273,17 +275,17 @@ function TextMixin:ApplyNameColor()
             end
         end
     end
-    
+
     if customColorOverride and type(customColorOverride) == "table" then
         -- Use component-level override
         self.Name:SetTextColor(customColorOverride.r or 1, customColorOverride.g or 1, customColorOverride.b or 1, customColorOverride.a or 1)
         return
     end
-    
+
     -- Use global font color settings
     local globalSettings = Orbit.db and Orbit.db.GlobalSettings or {}
-    local useClassColorFont = globalSettings.UseClassColorFont ~= false  -- Default true
-    
+    local useClassColorFont = globalSettings.UseClassColorFont ~= false -- Default true
+
     if useClassColorFont then
         -- Use class color for players, reaction color for NPCs
         if self.unit and UnitIsPlayer(self.unit) then
@@ -319,8 +321,10 @@ end
 
 -- Apply color to HealthText based on global settings and component overrides
 function TextMixin:ApplyHealthTextColor()
-    if not self.HealthText then return end
-    
+    if not self.HealthText then
+        return
+    end
+
     -- Check for component-level custom color override (from Canvas Mode)
     local customColorOverride = nil
     if self.orbitPlugin then
@@ -333,17 +337,17 @@ function TextMixin:ApplyHealthTextColor()
             end
         end
     end
-    
+
     if customColorOverride and type(customColorOverride) == "table" then
         -- Use component-level override
         self.HealthText:SetTextColor(customColorOverride.r or 1, customColorOverride.g or 1, customColorOverride.b or 1, customColorOverride.a or 1)
         return
     end
-    
+
     -- Use global font color settings
     local globalSettings = Orbit.db and Orbit.db.GlobalSettings or {}
-    local useClassColorFont = globalSettings.UseClassColorFont ~= false  -- Default true
-    
+    local useClassColorFont = globalSettings.UseClassColorFont ~= false -- Default true
+
     if useClassColorFont then
         -- Use class color for players, reaction color for NPCs (same as name)
         if self.unit and UnitIsPlayer(self.unit) then

@@ -38,14 +38,9 @@ function Plugin:AddSettings(dialog, systemFrame)
     if not Frame then
         return
     end
-
     local systemIndex = SYSTEM_INDEX
     local WL = OrbitEngine.WidgetLogic
-
-    local schema = {
-        hideNativeSettings = true,
-        controls = {},
-    }
+    local schema = { hideNativeSettings = true, controls = {} }
 
     table.insert(schema.controls, {
         type = "slider",
@@ -134,9 +129,7 @@ function Plugin:OnLoad()
 
     -- Live resize: recalculate icons when frame size changes
     Frame:HookScript("OnSizeChanged", function()
-        local isEditMode = EditModeManagerFrame
-            and EditModeManagerFrame.IsEditModeActive
-            and EditModeManagerFrame:IsEditModeActive()
+        local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
         if isEditMode then
             self:ShowPreviewAuras()
         else
@@ -150,11 +143,7 @@ function Plugin:OnLoad()
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
     Frame:SetScript("OnEvent", function(f, event, unit)
-        if
-            EditModeManagerFrame
-            and EditModeManagerFrame.IsEditModeActive
-            and EditModeManagerFrame:IsEditModeActive()
-        then
+        if EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive() then
             if event == "UNIT_AURA" then
                 return
             end
@@ -188,7 +177,6 @@ function Plugin:UpdateBuffs()
     if not Frame or not Frame:IsShown() then
         return
     end
-
     local enabled = self:IsEnabled()
     if not enabled then
         return
@@ -264,11 +252,8 @@ function Plugin:UpdateVisibility()
     if not Frame then
         return
     end
-
     local enabled = self:IsEnabled()
-    local isEditMode = EditModeManagerFrame
-        and EditModeManagerFrame.IsEditModeActive
-        and EditModeManagerFrame:IsEditModeActive()
+    local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
 
     if isEditMode then
         if not InCombatLockdown() then
@@ -384,19 +369,13 @@ end
 
 -- [ APPLY SETTINGS ]---------------------------------------------------------------------------------
 function Plugin:ApplySettings()
-    if not Frame then
+    if not Frame or InCombatLockdown() then
         return
     end
-    if InCombatLockdown() then
-        return
-    end
-
     local width = self:GetSetting(SYSTEM_INDEX, "Width")
     local scale = self:GetSetting(SYSTEM_INDEX, "Scale") or 100
     Frame:SetScale(scale / 100)
-
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
-
     if not isAnchored then
         Frame:SetWidth(width)
     else

@@ -21,30 +21,32 @@ local HandleCore = Engine.HandleCore
 -- @param callbacks: { onDragStart, onDragUpdate, onDragStop, onHover, onLeave }
 -- @return handle frame
 function PreviewHandle:Create(container, callbacks)
-    if not container then return nil end
-    
+    if not container then
+        return nil
+    end
+
     -- Try pool first, then create new
     local handle = HandleCore:AcquireFromPool()
     if not handle then
         handle = HandleCore:CreateFrame()
     end
-    
+
     handle.container = container
     handle.callbacks = callbacks or {}
     handle.isDragging = false
-    
+
     -- Enable mouse
     handle:EnableMouse(true)
     handle:RegisterForDrag("LeftButton")
-    
+
     -- Size and position
     HandleCore:PositionOverComponent(handle, container)
-    
+
     -- Update size helper
     function handle:UpdateSize()
         HandleCore:PositionOverComponent(self, self.container)
     end
-    
+
     -- Mouse scripts
     handle:SetScript("OnEnter", function(self)
         if not self.isDragging then
@@ -54,7 +56,7 @@ function PreviewHandle:Create(container, callbacks)
             self.callbacks.onHover(self.container)
         end
     end)
-    
+
     handle:SetScript("OnLeave", function(self)
         if not self.isDragging then
             self:ApplyColorPreset(HandleCore.Colors.IDLE)
@@ -63,7 +65,7 @@ function PreviewHandle:Create(container, callbacks)
             self.callbacks.onLeave(self.container)
         end
     end)
-    
+
     handle:SetScript("OnDragStart", function(self)
         self.isDragging = true
         self:ApplyColorPreset(HandleCore.Colors.DRAG)
@@ -71,7 +73,7 @@ function PreviewHandle:Create(container, callbacks)
             self.callbacks.onDragStart(self.container)
         end
     end)
-    
+
     handle:SetScript("OnDragStop", function(self)
         self.isDragging = false
         self:ApplyColorPreset(HandleCore.Colors.IDLE)
@@ -79,10 +81,10 @@ function PreviewHandle:Create(container, callbacks)
             self.callbacks.onDragStop(self.container)
         end
     end)
-    
+
     -- Store reference on container
     container.handle = handle
-    
+
     return handle
 end
 

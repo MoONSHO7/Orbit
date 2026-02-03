@@ -5,27 +5,19 @@ local Orbit = addonTable
 Orbit.Async = {}
 local Async = Orbit.Async
 
--- Storage for active timers
-local timers = {}
-local lastRun = {}
+local timers, lastRun = {}, {}
+local CLEANUP_INTERVAL, STALE_THRESHOLD, MIN_ENTRIES_FOR_CLEANUP = 60, 60, 10
 
--- Cleanup configuration
-local CLEANUP_INTERVAL = 60    -- Run cleanup every 60 seconds
-local STALE_THRESHOLD = 60     -- Remove entries older than 60 seconds
-local MIN_ENTRIES_FOR_CLEANUP = 10  -- Only cleanup if table has this many entries
-
--- Periodic cleanup to prevent unbounded lastRun growth
 local function CleanupStaleEntries()
     local count = 0
     for _ in pairs(lastRun) do
         count = count + 1
-        if count >= MIN_ENTRIES_FOR_CLEANUP then break end
+        if count >= MIN_ENTRIES_FOR_CLEANUP then
+            break
+        end
     end
-    
-    -- Only run full cleanup if we have enough entries
     if count >= MIN_ENTRIES_FOR_CLEANUP then
-        local now = GetTime()
-        local threshold = now - STALE_THRESHOLD
+        local threshold = GetTime() - STALE_THRESHOLD
         for key, timestamp in pairs(lastRun) do
             if timestamp < threshold then
                 lastRun[key] = nil
@@ -34,7 +26,6 @@ local function CleanupStaleEntries()
     end
 end
 
--- Start cleanup ticker (runs once table is first used)
 local cleanupTicker
 local function EnsureCleanupRunning()
     if not cleanupTicker then
@@ -42,20 +33,11 @@ local function EnsureCleanupRunning()
     end
 end
 
---- Debounce: Delays execution until 'delay' seconds have passed since the last call.
--- Useful for events that fire rapidly (like bag updates) where you only want the final result.
--- @param key (string): Unique identifier for this task
--- @param func (function): The function to execute
--- @param delay (number): Seconds to wait (default 0.1)
 function Async:Debounce(key, func, delay)
     delay = delay or 0.1
-
-    -- Cancel existing timer for this key
     if timers[key] then
         timers[key]:Cancel()
     end
-
-    -- Create new timer
     timers[key] = C_Timer.NewTimer(delay, function()
         timers[key] = nil
         if func then
@@ -64,18 +46,10 @@ function Async:Debounce(key, func, delay)
     end)
 end
 
---- Throttle: Ensures execution happens at most once every 'interval' seconds.
--- Immediate execution on first call, subsequent calls dropped until cooldown resets.
--- @param key (string): Unique identifier
--- @param func (function): The function to execute
--- @param interval (number): Check interval
 function Async:Throttle(key, func, interval)
     interval = interval or 0.1
-    local now = GetTime()
-
-    -- Ensure cleanup is running (lazy start)
     EnsureCleanupRunning()
-
+    local now = GetTime()
     if not lastRun[key] or (now - lastRun[key] > interval) then
         lastRun[key] = now
         if func then
@@ -84,8 +58,6 @@ function Async:Throttle(key, func, interval)
     end
 end
 
---- Clear a debounce timer (cancel pending execution)
--- @param key (string): Unique identifier to clear
 function Async:ClearDebounce(key)
     if timers[key] then
         timers[key]:Cancel()
@@ -93,26 +65,19 @@ function Async:ClearDebounce(key)
     end
 end
 
---- Clear a throttle entry (allows immediate re-execution)
--- @param key (string): Unique identifier to clear
 function Async:ClearThrottle(key)
     lastRun[key] = nil
 end
 
---- Clear all async state (for cleanup on reload)
 function Async:ClearAll()
-    for key, timer in pairs(timers) do
+    for _, timer in pairs(timers) do
         if timer then
             timer:Cancel()
         end
     end
-    timers = {}
-    lastRun = {}
-    
-    -- Stop cleanup ticker if running
+    timers, lastRun = {}, {}
     if cleanupTicker then
         cleanupTicker:Cancel()
         cleanupTicker = nil
     end
 end
-

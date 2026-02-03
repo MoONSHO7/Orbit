@@ -31,7 +31,7 @@ end
 local function CreateDefaultOnChange(plugin, systemIndex, key, systemFrame)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
-        
+
         -- Skip ApplySettings if frame is in canvas mode (would reset position)
         local frame = systemFrame or plugin.Frame
         if not IsInCanvasMode(frame) then
@@ -61,7 +61,7 @@ end
 local function CreateAnchorOnChange(plugin, systemIndex, key, systemFrame, dialog)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
-        
+
         -- Skip ApplySettings if frame is in canvas mode
         local frame = systemFrame or plugin.Frame
         if not IsInCanvasMode(frame) then
@@ -69,7 +69,7 @@ local function CreateAnchorOnChange(plugin, systemIndex, key, systemFrame, dialo
                 plugin:ApplySettings(systemFrame)
             end
         end
-        
+
         if Engine.Frame then
             Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame)
         end
@@ -276,7 +276,7 @@ end
 local function CreateTextOnChange(plugin, systemIndex, key, systemFrame, dialog, currentAnchor, isToggle)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
-        
+
         -- Skip ApplySettings if frame is in canvas mode
         local frame = systemFrame or plugin.Frame
         if not IsInCanvasMode(frame) then
@@ -284,7 +284,7 @@ local function CreateTextOnChange(plugin, systemIndex, key, systemFrame, dialog,
                 plugin:ApplySettings(systemFrame)
             end
         end
-        
+
         if Engine.Frame then
             Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame)
         end
@@ -295,16 +295,7 @@ local function CreateTextOnChange(plugin, systemIndex, key, systemFrame, dialog,
     end
 end
 
-function WL:AddTextSettings(
-    plugin,
-    schema,
-    systemIndex,
-    dialog,
-    systemFrame,
-    currentAnchor,
-    showKeyOverride,
-    sizeKeyOverride
-)
+function WL:AddTextSettings(plugin, schema, systemIndex, dialog, systemFrame, currentAnchor, showKeyOverride, sizeKeyOverride)
     local showKey = showKeyOverride or "ShowText"
     local sizeKey = sizeKeyOverride or "TextSize"
 
@@ -512,11 +503,10 @@ end
 function WL:AddOrientationSettings(plugin, schema, systemIndex, dialog, systemFrame, params)
     params = params or {}
     local key = params.key or "Orientation"
-    local options = params.options
-        or {
-            { text = "Horizontal", value = 0 },
-            { text = "Vertical", value = 1 },
-        }
+    local options = params.options or {
+        { text = "Horizontal", value = 0 },
+        { text = "Vertical", value = 1 },
+    }
 
     table.insert(schema.controls, {
         type = "dropdown",
@@ -524,8 +514,7 @@ function WL:AddOrientationSettings(plugin, schema, systemIndex, dialog, systemFr
         label = params.label or "Orientation",
         options = options,
         default = params.default or 0,
-        onChange = params.onChange
-            or CreateOrientationOnChange(plugin, systemIndex, key, systemFrame, dialog, params.refreshOnChange),
+        onChange = params.onChange or CreateOrientationOnChange(plugin, systemIndex, key, systemFrame, dialog, params.refreshOnChange),
     })
 end
 

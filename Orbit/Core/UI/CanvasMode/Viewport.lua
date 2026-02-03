@@ -46,7 +46,7 @@ Dialog.Viewport:RegisterForDrag("MiddleButton", "LeftButton")
 
 -- TransformLayer: Receives zoom (SetScale) and pan (position offset)
 Dialog.TransformLayer = CreateFrame("Frame", nil, Dialog.Viewport)
-Dialog.TransformLayer:SetSize(1, 1)  -- Size managed dynamically
+Dialog.TransformLayer:SetSize(1, 1) -- Size managed dynamically
 Dialog.TransformLayer:SetPoint("CENTER", Dialog.Viewport, "CENTER", 0, 0)
 
 -- [ ZOOM/PAN HELPERS ]-----------------------------------------------------------------------
@@ -59,21 +59,21 @@ local function GetPanBounds(transformLayer, viewport, zoomLevel)
     local scaledH = baseHeight * zoomLevel
     local viewW = viewport:GetWidth()
     local viewH = viewport:GetHeight()
-    
+
     -- Allow panning up to the point where preview edge reaches viewport center
     local maxX = math.max(0, (scaledW / 2) - (viewW / 2) + C.PAN_CLAMP_PADDING)
     local maxY = math.max(0, (scaledH / 2) - (viewH / 2) + C.PAN_CLAMP_PADDING)
-    
+
     return maxX, maxY
 end
 
 -- Apply pan with clamping
 local function ApplyPanOffset(dialog, offsetX, offsetY)
     local maxX, maxY = GetPanBounds(dialog.TransformLayer, dialog.Viewport, dialog.zoomLevel)
-    
+
     dialog.panOffsetX = math.max(-maxX, math.min(maxX, offsetX))
     dialog.panOffsetY = math.max(-maxY, math.min(maxY, offsetY))
-    
+
     dialog.TransformLayer:ClearAllPoints()
     dialog.TransformLayer:SetPoint("CENTER", dialog.Viewport, "CENTER", dialog.panOffsetX, dialog.panOffsetY)
 end
@@ -83,13 +83,13 @@ local function ApplyZoom(dialog, newZoom)
     newZoom = math.max(C.MIN_ZOOM, math.min(C.MAX_ZOOM, newZoom))
     -- Round to 2 decimal places
     newZoom = math.floor(newZoom * 100 + 0.5) / 100
-    
+
     dialog.zoomLevel = newZoom
     dialog.TransformLayer:SetScale(newZoom)
-    
+
     -- Re-clamp pan after zoom change (visible area may have changed)
     ApplyPanOffset(dialog, dialog.panOffsetX, dialog.panOffsetY)
-    
+
     -- Update zoom indicator in dock
     if dialog.DisabledDock and dialog.DisabledDock.ZoomIndicator then
         dialog.DisabledDock.ZoomIndicator:SetText(string.format("%.0f%%", newZoom * 100))
@@ -130,10 +130,10 @@ Dialog.Viewport:SetScript("OnUpdate", function(self)
         local scale = UIParent:GetEffectiveScale()
         mx = mx / scale
         my = my / scale
-        
+
         local deltaX = mx - self.panStartMouseX
         local deltaY = my - self.panStartMouseY
-        
+
         ApplyPanOffset(Dialog, self.panStartOffsetX + deltaX, self.panStartOffsetY + deltaY)
     end
 end)
@@ -145,7 +145,7 @@ Dialog.SyncToggle = CreateFrame("CheckButton", nil, Dialog.BorderOverlay, "UIChe
 Dialog.SyncToggle:SetSize(26, 26)
 Dialog.SyncToggle:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "TOPRIGHT", -8, -4)
 Dialog.SyncToggle:SetFrameLevel(Dialog.BorderOverlay:GetFrameLevel() + 1)
-Dialog.SyncToggle:Hide()  -- Hidden by default, shown only for plugins that support sync
+Dialog.SyncToggle:Hide() -- Hidden by default, shown only for plugins that support sync
 
 -- Label to the left of checkbox
 Dialog.SyncToggle.label = Dialog.SyncToggle:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -163,14 +163,14 @@ end
 Dialog.SyncToggle:SetScript("OnClick", function(self)
     local wasLocal = not self.isSynced
     self.isSynced = self:GetChecked()
-    
+
     -- Save to plugin setting
     local plugin = Dialog.targetPlugin
     local systemIndex = Dialog.targetSystemIndex
     if plugin and plugin.SetSetting then
         plugin:SetSetting(systemIndex, "UseGlobalTextStyle", self.isSynced)
     end
-    
+
     -- When switching from Local to Synced, reload canvas with global positions
     if wasLocal and self.isSynced then
         local frame = Dialog.targetFrame
@@ -198,4 +198,3 @@ Dialog.SyncToggle:SetScript("OnLeave", function()
 end)
 
 Dialog.SyncToggle:UpdateVisual()
-

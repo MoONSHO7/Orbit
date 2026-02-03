@@ -11,11 +11,11 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
-local DIALOG_WIDTH = 300  -- Compact width
+local DIALOG_WIDTH = 300 -- Compact width
 local DIALOG_MIN_HEIGHT = 120
 local WIDGET_HEIGHT = 28
 local WIDGET_SPACING = 4
-local PADDING = 20  -- More padding on left/right
+local PADDING = 20 -- More padding on left/right
 
 -- [ COMPONENT TYPE SCHEMAS ]-------------------------------------------------------------------------
 
@@ -52,16 +52,18 @@ local COMPONENT_TITLES = {
 
 -- Detect component family from visual element
 local function GetComponentFamily(container)
-    if not container or not container.visual then return nil end
+    if not container or not container.visual then
+        return nil
+    end
     local visual = container.visual
     local objType = visual.GetObjectType and visual:GetObjectType()
-    
+
     if objType == "FontString" then
         return "FontString"
     elseif objType == "Texture" then
         return "Texture"
     end
-    
+
     return nil
 end
 
@@ -70,7 +72,7 @@ end
 local Dialog = CreateFrame("Frame", "OrbitCanvasComponentSettings", UIParent)
 Dialog:SetSize(DIALOG_WIDTH, DIALOG_MIN_HEIGHT)
 Dialog:SetFrameStrata("FULLSCREEN_DIALOG")
-Dialog:SetFrameLevel(500)  -- Above Canvas Mode dialog
+Dialog:SetFrameLevel(500) -- Above Canvas Mode dialog
 Dialog:SetClampedToScreen(true)
 Dialog:EnableMouse(true)
 Dialog:Hide()
@@ -114,7 +116,7 @@ Dialog:SetScript("OnUpdate", function(self)
     if ColorPickerFrame and ColorPickerFrame:IsShown() then
         return
     end
-    
+
     if not self:IsMouseOver() and IsMouseButtonDown("LeftButton") then
         -- Check if clicking on the parent Canvas Mode dialog
         local canvasDialog = Orbit.CanvasModeDialog
@@ -133,7 +135,7 @@ Dialog:SetScript("OnHide", function(self)
     self.systemIndex = nil
     self.currentOverrides = nil
     self.widgetsByKey = nil
-    
+
     -- Hide all widgets
     for _, widget in ipairs(self.widgets) do
         widget:Hide()
@@ -146,24 +148,26 @@ local function CreateSliderWidget(parent, control, currentValue, callback)
     if not Layout or not Layout.CreateSlider then
         return nil
     end
-    
+
     local widget = Layout:CreateSlider(
         parent,
         control.label,
         control.min,
         control.max,
         control.step or 1,
-        nil,  -- formatter (use default)
+        nil, -- formatter (use default)
         currentValue or control.min,
         function(value)
-            if callback then callback(control.key, value) end
+            if callback then
+                callback(control.key, value)
+            end
         end
     )
-    
+
     if widget then
         widget:SetHeight(32)
     end
-    
+
     return widget
 end
 
@@ -171,40 +175,39 @@ local function CreateCheckboxWidget(parent, control, currentValue, callback)
     if not Layout or not Layout.CreateCheckbox then
         return nil
     end
-    
+
     local widget = Layout:CreateCheckbox(
         parent,
         control.label,
-        nil,  -- tooltip
+        nil, -- tooltip
         currentValue or false,
         function(checked)
-            if callback then callback(control.key, checked) end
+            if callback then
+                callback(control.key, checked)
+            end
         end
     )
-    
+
     if widget then
         widget:SetHeight(30)
     end
-    
+
     return widget
 end
 
 local function CreateFontPickerWidget(parent, control, currentValue, callback)
     if Layout and Layout.CreateFontPicker then
-        local widget = Layout:CreateFontPicker(
-            parent,
-            control.label,
-            currentValue,
-            function(fontName)
-                if callback then callback(control.key, fontName) end
+        local widget = Layout:CreateFontPicker(parent, control.label, currentValue, function(fontName)
+            if callback then
+                callback(control.key, fontName)
             end
-        )
+        end)
         if widget then
             widget:SetHeight(32)
         end
         return widget
     end
-    
+
     -- Fallback: simple label if FontPicker not available
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetHeight(WIDGET_HEIGHT)
@@ -221,21 +224,18 @@ local function CreateColorPickerWidget(parent, control, currentValue, callback)
         if type(currentValue) ~= "table" then
             initialColor = { r = 1, g = 1, b = 1, a = 1 }
         end
-        
-        local widget = Layout:CreateColorPicker(
-            parent,
-            control.label,
-            initialColor,
-            function(color)
-                if callback then callback(control.key, color) end
+
+        local widget = Layout:CreateColorPicker(parent, control.label, initialColor, function(color)
+            if callback then
+                callback(control.key, color)
             end
-        )
+        end)
         if widget then
             widget:SetHeight(32)
         end
         return widget
     end
-    
+
     -- Fallback: simple label if ColorPicker not available
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetHeight(WIDGET_HEIGHT)
@@ -248,24 +248,26 @@ end
 -- [ OPEN DIALOG ]-----------------------------------------------------------------------------------
 
 function Dialog:Open(componentKey, container, plugin, systemIndex)
-    if InCombatLockdown() then return end
-    
+    if InCombatLockdown() then
+        return
+    end
+
     -- Store references
     self.componentKey = componentKey
     self.container = container
     self.plugin = plugin
     self.systemIndex = systemIndex or 1
-    
+
     -- Auto-detect component family from visual element
     local family = GetComponentFamily(container)
     local schema = family and TYPE_SCHEMAS[family]
-    
+
     if not schema then
         -- Unknown component type, show generic message
         local title = COMPONENT_TITLES[componentKey] or componentKey
         self.Title:SetText(title .. " (no settings)")
         self:SetHeight(80)
-        
+
         -- Position to the LEFT of the Canvas Mode dialog
         self:ClearAllPoints()
         local canvasDialog = Orbit.CanvasModeDialog
@@ -274,15 +276,15 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
         else
             self:SetPoint("CENTER", UIParent, "CENTER", -200, 0)
         end
-        
+
         self:Show()
         return
     end
-    
+
     -- Set title from component name lookup or use key
     local title = COMPONENT_TITLES[componentKey] or componentKey
     self.Title:SetText(title)
-    
+
     -- Get current overrides: first check container's in-memory state, then fall back to saved
     if container.pendingOverrides then
         -- Overrides set during this session (not yet saved)
@@ -296,31 +298,33 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
         local posData = savedPositions[componentKey] or {}
         self.currentOverrides = posData.overrides or {}
     end
-    
+
     -- Hide all existing widgets
     for _, widget in ipairs(self.widgets) do
         widget:Hide()
     end
-    
+
     -- Create widgets for each control
     local yOffset = 0
     local widgetIndex = 0
-    
+
     -- Helper to get current value from visual if no override exists
     local function GetValueFromVisual(container, key)
-        if not container or not container.visual then return nil end
+        if not container or not container.visual then
+            return nil
+        end
         local visual = container.visual
-        
+
         if key == "FontSize" and visual.GetFont then
             local _, size = visual:GetFont()
             return size and math.floor(size + 0.5)
         elseif key == "CustomColor" then
-            return false  -- Default to not using custom color (use global)
+            return false -- Default to not using custom color (use global)
         elseif key == "CustomColorValue" and visual.GetTextColor then
             local r, g, b, a = visual:GetTextColor()
             return { r = r, g = g, b = b, a = a or 1 }
         elseif key == "Scale" then
-            return 1.0  -- Default scale
+            return 1.0 -- Default scale
         end
         return nil
     end
@@ -328,9 +332,9 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
     for _, control in ipairs(schema.controls) do
         widgetIndex = widgetIndex + 1
         local widget = nil
-        
+
         local currentValue = self.currentOverrides[control.key]
-        
+
         -- Get default value from plugin defaults if no override
         if currentValue == nil and plugin and plugin.defaults then
             local compDefaults = plugin.defaults.ComponentSettings and plugin.defaults.ComponentSettings[componentKey]
@@ -338,16 +342,16 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
                 currentValue = compDefaults[control.key]
             end
         end
-        
+
         -- Fallback to reading from visual or sane defaults
         if currentValue == nil then
             currentValue = GetValueFromVisual(container, control.key)
         end
-        
+
         local callback = function(key, value)
             self:OnValueChanged(key, value)
         end
-        
+
         -- Use Orbit Layout widgets for consistent styling
         if control.type == "slider" then
             widget = CreateSliderWidget(self.Content, control, currentValue or control.min, callback)
@@ -358,18 +362,18 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
         elseif control.type == "color" then
             widget = CreateColorPickerWidget(self.Content, control, currentValue, callback)
         end
-        
+
         if widget then
             widget:ClearAllPoints()
             widget:SetPoint("TOPLEFT", self.Content, "TOPLEFT", 0, -yOffset)
             widget:SetPoint("TOPRIGHT", self.Content, "TOPRIGHT", 0, -yOffset)
-            
+
             -- Track widget by key for conditional visibility
             widget.controlKey = control.key
             widget.hideIf = control.hideIf
             widget.showIf = control.showIf
             widget.yOffsetPosition = yOffset
-            
+
             -- Check conditional visibility (hideIf or showIf)
             local shouldShow = true
             if control.hideIf then
@@ -379,16 +383,16 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
                 local showIfValue = self.currentOverrides[control.showIf]
                 shouldShow = showIfValue == true
             end
-            
+
             if shouldShow then
                 widget:Show()
                 yOffset = yOffset + widget:GetHeight() + WIDGET_SPACING
             else
                 widget:Hide()
             end
-            
+
             self.widgets[widgetIndex] = widget
-            
+
             -- Track by key for later updating
             if not self.widgetsByKey then
                 self.widgetsByKey = {}
@@ -396,11 +400,11 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
             self.widgetsByKey[control.key] = widget
         end
     end
-    
+
     -- Size dialog to fit content
-    local contentHeight = yOffset + PADDING * 2 + 24  -- padding + title
+    local contentHeight = yOffset + PADDING * 2 + 24 -- padding + title
     self:SetHeight(math.max(DIALOG_MIN_HEIGHT, contentHeight + 20))
-    
+
     -- Position to the LEFT of the Canvas Mode dialog
     self:ClearAllPoints()
     local canvasDialog = Orbit.CanvasModeDialog
@@ -411,24 +415,26 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
     else
         self:SetPoint("CENTER", UIParent, "CENTER", -200, 0)
     end
-    
+
     -- Apply existing overrides to preview (e.g., show class color if already enabled)
     if self.currentOverrides and next(self.currentOverrides) then
         self:ApplyAll(container, self.currentOverrides)
     end
-    
+
     self:Show()
 end
 
 -- [ VALUE CHANGE HANDLER ]--------------------------------------------------------------------------
 
 function Dialog:OnValueChanged(key, value)
-    if not self.componentKey then return end
-    
+    if not self.componentKey then
+        return
+    end
+
     -- Update current overrides
     self.currentOverrides = self.currentOverrides or {}
     self.currentOverrides[key] = value
-    
+
     -- Handle conditional visibility (hideIf or showIf) and recalculate height
     if self.widgetsByKey then
         local needsHeightRecalc = false
@@ -449,7 +455,7 @@ function Dialog:OnValueChanged(key, value)
                 needsHeightRecalc = true
             end
         end
-        
+
         -- Recalculate dialog height if visibility changed
         if needsHeightRecalc then
             local yOffset = 0
@@ -465,11 +471,11 @@ function Dialog:OnValueChanged(key, value)
             self:SetHeight(math.max(DIALOG_MIN_HEIGHT, contentHeight + 20))
         end
     end
-    
+
     -- Store on container for Apply to pick up
     if self.container then
         self.container.pendingOverrides = self.currentOverrides
-        
+
         -- Apply preview immediately
         self:ApplyStyle(self.container, key, value)
     end
@@ -477,16 +483,18 @@ end
 
 -- Apply a single style setting to a component container
 function Dialog:ApplyStyle(container, key, value)
-    if not container or not container.visual then return end
-    
+    if not container or not container.visual then
+        return
+    end
+
     local visual = container.visual
-    
+
     -- Apply style based on key
     if key == "FontSize" and visual.SetFont then
         local font, _, flags = visual:GetFont()
         flags = (flags and flags ~= "") and flags or "OUTLINE"
         visual:SetFont(font, value, flags)
-        
+
         -- Resize container to match new text dimensions
         C_Timer.After(0.01, function()
             if container and visual and visual.GetStringWidth then
@@ -501,7 +509,7 @@ function Dialog:ApplyStyle(container, key, value)
             local _, size, flags = visual:GetFont()
             flags = (flags and flags ~= "") and flags or "OUTLINE"
             visual:SetFont(fontPath, size or 12, flags)
-            
+
             -- Resize container to match new text dimensions
             C_Timer.After(0.01, function()
                 if container and visual and visual.GetStringWidth then
@@ -519,13 +527,13 @@ function Dialog:ApplyStyle(container, key, value)
             if customColorValue and type(customColorValue) == "table" then
                 visual:SetTextColor(customColorValue.r or 1, customColorValue.g or 1, customColorValue.b or 1, customColorValue.a or 1)
             else
-                visual:SetTextColor(1, 1, 1, 1)  -- Default white
+                visual:SetTextColor(1, 1, 1, 1) -- Default white
             end
         else
             -- Revert to global font color setting
             local globalSettings = Orbit.db and Orbit.db.GlobalSettings or {}
-            local useClassColorFont = globalSettings.UseClassColorFont ~= false  -- Default true
-            
+            local useClassColorFont = globalSettings.UseClassColorFont ~= false -- Default true
+
             if useClassColorFont then
                 -- Use class color
                 local _, playerClass = UnitClass("player")
@@ -557,7 +565,7 @@ function Dialog:ApplyStyle(container, key, value)
             end
             local origW = container.originalVisualWidth or 18
             local origH = container.originalVisualHeight or 18
-            
+
             -- Must clear all-points anchoring first (textures are set with SetAllPoints)
             visual:ClearAllPoints()
             visual:SetPoint("CENTER", container, "CENTER", 0, 0)
@@ -570,16 +578,18 @@ end
 
 -- Apply a table of overrides to a component container
 function Dialog:ApplyAll(container, overrides)
-    if not container or not overrides then return end
-    
+    if not container or not overrides then
+        return
+    end
+
     -- Set context so ApplyStyle can access related values (e.g., CustomColorValue when CustomColor is enabled)
     local previousOverrides = self.currentOverrides
     self.currentOverrides = overrides
-    
+
     for key, value in pairs(overrides) do
         self:ApplyStyle(container, key, value)
     end
-    
+
     -- Restore previous context (in case this is called during dialog interaction)
     self.currentOverrides = previousOverrides
 end

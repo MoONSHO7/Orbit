@@ -10,7 +10,7 @@ local Helpers = Engine.ComponentHelpers
 
 -- [ CONFIGURATION ]-----------------------------------------------------------------------------
 
-Helpers.PADDING = 25  -- Drag boundary padding
+Helpers.PADDING = 25 -- Drag boundary padding
 
 -- [ SAFE SIZE ACCESSOR ]------------------------------------------------------------------------
 
@@ -19,12 +19,12 @@ function Helpers.SafeGetSize(region)
     if not region then
         return 40, 16 -- Default minimum size
     end
-    
+
     local width, height = 40, 16 -- Defaults
-    
+
     -- For FontStrings, prefer GetStringWidth/GetStringHeight for actual text bounds
     local isFontString = region.GetStringWidth ~= nil
-    
+
     -- Try to get width
     local ok, w = pcall(function()
         local val
@@ -44,7 +44,7 @@ function Helpers.SafeGetSize(region)
     if ok and w and type(w) == "number" and w > 0 then
         width = w
     end
-    
+
     -- Try to get height
     local ok2, h = pcall(function()
         local val
@@ -64,7 +64,7 @@ function Helpers.SafeGetSize(region)
     if ok2 and h and type(h) == "number" and h > 0 then
         height = h
     end
-    
+
     return width, height
 end
 
@@ -90,7 +90,7 @@ function Helpers.ClampPosition(x, y, parentWidth, parentHeight)
     y = Helpers.SafeGetNumber(y, 0)
     parentWidth = Helpers.SafeGetNumber(parentWidth, 100)
     parentHeight = Helpers.SafeGetNumber(parentHeight, 40)
-    
+
     local PADDING = Helpers.PADDING
     local clampedX = math.max(-PADDING, math.min(x, parentWidth + PADDING))
     local clampedY = math.max(-PADDING, math.min(y, parentHeight + PADDING))
