@@ -68,13 +68,26 @@ C.Selection = {
     OverlayLevelOffset = 100, -- Frame level offset for selection overlay
 }
 
-C.Levels = {
-    ProcOverlay = 50, -- High frame level for proc glows/overlays
-    BackdropOffset = 5, -- Offset for custom backdrops relative to parent
+-- [ FRAME LAYER HIERARCHY ]-------------------------------------------------------------------------
+-- Draw Layer Sublevels: background → border → icons → highlights → glows → text
+C.Layers = {
+    BackdropDeep = -8,  -- Deep backgrounds (bar fills, status textures)
+    Border = 1,         -- Frame borders
+    Icon = 3,           -- Icons, status textures
+    Highlight = 5,      -- Border highlights, selection markers
+    Glow = 6,           -- Proc/pandemic glow effects
+    Text = 7,           -- Text, component icons (role, leader)
 }
 
-C.Layers = {
-    BackdropDeep = -8, -- Sub-layer for deep background elements
+-- Frame Level Offsets (relative to parent)
+C.Levels = {
+    Cooldown = 2,       -- Cooldown swipe frame
+    Border = 3,         -- Border container frame
+    Highlight = 5,      -- Highlight frame
+    Glow = 10,          -- Glow effect container
+    Text = 20,          -- Text overlay frame
+    ProcOverlay = 50,   -- High level procs (SpellActivationAlert)
+    Tooltip = 100,      -- Tooltip/flyout layer
 }
 
 C.UnitFrame = {

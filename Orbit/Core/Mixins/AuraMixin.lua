@@ -69,7 +69,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
     end
     icon.icon = icon.Icon
     icon.Icon:SetTexture(aura.icon)
-    icon.Icon:SetDrawLayer("ARTWORK")
+    icon.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
     if not icon.Cooldown then
         icon.Cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
         icon.Cooldown:SetHideCountdownNumbers(false)

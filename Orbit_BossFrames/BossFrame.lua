@@ -208,8 +208,8 @@ local function CreateBossCastBar(parent, bossIndex, plugin)
     bar:SetBorder(1)
 
     -- Icon (Inside bar, left aligned)
-    bar.Icon = bar:CreateTexture(nil, "OVERLAY", nil, 1)
-    bar.Icon:SetDrawLayer("OVERLAY", 1)
+    bar.Icon = bar:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
+    bar.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
     bar.Icon:SetSize(14, 14) -- Will be resized in ApplySettings
     bar.Icon:SetPoint("LEFT", bar, "LEFT", 0, 0)
     bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
@@ -218,7 +218,7 @@ local function CreateBossCastBar(parent, bossIndex, plugin)
     -- Icon Border
     bar.IconBorder = CreateFrame("Frame", nil, bar, "BackdropTemplate")
     bar.IconBorder:SetAllPoints(bar.Icon)
-    bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + 2)
+    bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + Orbit.Constants.Levels.Border)
     Orbit.Skin:SkinBorder(bar, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 }, true)
     bar.IconBorder:Hide()
 

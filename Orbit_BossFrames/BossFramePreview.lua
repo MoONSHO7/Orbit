@@ -226,7 +226,7 @@ function Orbit.BossFramePreviewMixin:ShowPreviewDebuffs(frame, numDebuffsToShow)
         frame.debuffContainer:SetParent(frame)
     end
     frame.debuffContainer:SetFrameStrata("MEDIUM")
-    frame.debuffContainer:SetFrameLevel(frame:GetFrameLevel() + 5)
+    frame.debuffContainer:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
     frame.debuffContainer:Show()
 
     local castBarPos = self:GetSetting(1, "CastBarPosition")

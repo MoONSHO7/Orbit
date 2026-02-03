@@ -107,29 +107,15 @@ function Orbit.PartyFrameDispelMixin:UpdateDispelIndicator(frame, plugin)
         return
     end
 
-    -- Find first dispellable debuff using Blizzard's cache
-    -- Also check for bleeds/enrages which aren't in the cache
-    local foundDispellable = false
-    local dispelType = nil
-    local lastAuraInstanceID = nil
-
-    for i, aura in ipairs(auras) do
-        local shouldShow, auraDispelType = false, nil
-        pcall(function()
-            auraDispelType = aura.dispelType
-        end)
-        if auraDispelType == 11 or auraDispelType == 9 then
-            shouldShow, dispelType = true, auraDispelType
-        elseif IsDispellable(unit, aura.auraInstanceID) then
-            shouldShow, dispelType = true, auraDispelType
-        end
-        if shouldShow then
-            foundDispellable, lastAuraInstanceID = true, aura.auraInstanceID
+    local bestAuraInstanceID = nil
+    for _, aura in ipairs(auras) do
+        if IsDispellable(unit, aura.auraInstanceID) then
+            bestAuraInstanceID = aura.auraInstanceID
             break
         end
     end
 
-    if foundDispellable and lastAuraInstanceID then
+    if bestAuraInstanceID then
         local curve = nil
         if C_CurveUtil and C_CurveUtil.CreateColorCurve then
             curve = C_CurveUtil.CreateColorCurve()
@@ -141,12 +127,14 @@ function Orbit.PartyFrameDispelMixin:UpdateDispelIndicator(frame, plugin)
                 end
             end
         end
-        local color = curve and C_UnitAuras.GetAuraDispelTypeColor and C_UnitAuras.GetAuraDispelTypeColor(unit, lastAuraInstanceID, curve)
+        local color = curve and C_UnitAuras.GetAuraDispelTypeColor and C_UnitAuras.GetAuraDispelTypeColor(unit, bestAuraInstanceID, curve)
         if color then
             local thickness = plugin:GetSetting(1, "DispelThickness") or 2
             local frequency = plugin:GetSetting(1, "DispelFrequency") or 0.25
             local numLines = plugin:GetSetting(1, "DispelNumLines") or 8
-            LCG.PixelGlow_Start(frame, color, numLines, frequency, nil, thickness, 0, 0, true, nil, 30)
+            LCG.PixelGlow_Start(frame, color, numLines, frequency, nil, thickness, 0, 0, true, nil, Orbit.Constants.Levels.Glow)
+        else
+            LCG.PixelGlow_Stop(frame)
         end
     else
         LCG.PixelGlow_Stop(frame)

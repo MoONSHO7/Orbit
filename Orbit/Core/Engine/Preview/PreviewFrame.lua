@@ -164,7 +164,7 @@ function PreviewFrame:AddComponent(preview, key, options)
 
     -- Create container
     local container = CreateFrame("Frame", nil, preview)
-    container:SetFrameLevel(preview:GetFrameLevel() + 10)
+    container:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.Glow)
     container:EnableMouse(true)
     container:SetMovable(true)
     container:RegisterForDrag("LeftButton")

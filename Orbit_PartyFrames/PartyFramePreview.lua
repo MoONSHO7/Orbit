@@ -526,7 +526,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     0, -- yOffset
                     true, -- border
                     "preview", -- key
-                    30 -- frameLevel
+                    Orbit.Constants.Levels.Glow -- frameLevel (below text)
                 )
             else
                 LCG.PixelGlow_Stop(frame, "preview")
@@ -588,7 +588,7 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posi
     local container = frame[containerKey]
     container:SetParent(frame)
     container:SetFrameStrata("MEDIUM")
-    container:SetFrameLevel(frame:GetFrameLevel() + 5)
+    container:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
     container:Show()
 
     -- Calculate layout

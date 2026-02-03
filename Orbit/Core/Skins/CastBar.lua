@@ -79,8 +79,8 @@ function CastBar:Create(parent)
     bar.InterruptAnim = animGroup
 
     -- Icon (Created on PARENT, positioned at parent's left edge - stays fixed while orbitBar moves)
-    bar.Icon = parent:CreateTexture(nil, "OVERLAY", nil, 1)
-    bar.Icon:SetDrawLayer("OVERLAY", 1)
+    bar.Icon = parent:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
+    bar.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
     bar.Icon:SetSize(20, 20)
     bar.Icon:SetPoint("LEFT", parent, "LEFT", 0, 0)
     bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)

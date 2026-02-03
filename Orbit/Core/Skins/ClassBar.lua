@@ -26,7 +26,7 @@ function ClassBar:SkinButton(btn, settings)
 
         -- Backdrop Frame for Border (just for line borders, NO background)
         btn.orbitBackdrop = Skin:CreateBackdrop(btn, nil)
-        btn.orbitBackdrop:SetFrameLevel(btn:GetFrameLevel() + 5) -- High level for border
+        btn.orbitBackdrop:SetFrameLevel(btn:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
         -- Clear any backdrop that might come from BackdropTemplate
         if btn.orbitBackdrop.SetBackdrop then
             btn.orbitBackdrop:SetBackdrop(nil)
@@ -72,7 +72,7 @@ function ClassBar:SkinButton(btn, settings)
     if btn.Cooldown then
         btn.Cooldown:SetAlpha(1)
         if btn.Cooldown.SetFrameLevel then
-            btn.Cooldown:SetFrameLevel(btn:GetFrameLevel() + 2)
+            btn.Cooldown:SetFrameLevel(btn:GetFrameLevel() + Orbit.Constants.Levels.Cooldown)
         end
     end
 end
@@ -95,7 +95,7 @@ function ClassBar:SkinStatusBar(container, bar, settings)
         -- Backdrop Frame for Border (just for line borders, NO background)
         if not container.orbitBackdrop then
             container.orbitBackdrop = Skin:CreateBackdrop(container, nil)
-            container.orbitBackdrop:SetFrameLevel(container:GetFrameLevel() + 5)
+            container.orbitBackdrop:SetFrameLevel(container:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
             -- Clear any backdrop that might come from BackdropTemplate
             if container.orbitBackdrop.SetBackdrop then
                 container.orbitBackdrop:SetBackdrop(nil)
