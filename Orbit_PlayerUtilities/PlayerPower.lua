@@ -29,6 +29,7 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
         UseCustomColor = false,
         BarColor = { r = 1, g = 1, b = 1, a = 1 },
         OutOfCombatFade = false,
+        ShowOnMouseover = true,
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
@@ -90,8 +91,24 @@ function Plugin:AddSettings(dialog, systemFrame)
             if Orbit.OOCFadeMixin then
                 Orbit.OOCFadeMixin:RefreshAll()
             end
+            OrbitEngine.Layout:Reset(dialog)
+            self:AddSettings(dialog, systemFrame)
         end,
     })
+
+    if self:GetSetting(systemIndex, "OutOfCombatFade") then
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "ShowOnMouseover",
+            label = "Show on Mouseover",
+            default = true,
+            tooltip = "Reveal frame when mousing over it",
+            onChange = function(val)
+                self:SetSetting(systemIndex, "ShowOnMouseover", val)
+                self:ApplySettings()
+            end,
+        })
+    end
 
     -- Custom Color Toggle
     table.insert(schema.controls, {
@@ -366,9 +383,10 @@ function Plugin:ApplySettings()
         OrbitEngine.Frame:ForceUpdateSelection(Frame)
     end
 
-    -- Apply Out of Combat Fade
+    -- Apply Out of Combat Fade (with hover detection based on setting)
     if Orbit.OOCFadeMixin then
-        Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, systemIndex, "OutOfCombatFade")
+        local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
+        Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, systemIndex, "OutOfCombatFade", enableHover)
     end
 
     self:UpdateVisibility()

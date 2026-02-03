@@ -121,22 +121,39 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover)
     settingKey = settingKey or "OutOfCombatFade"
     ManagedFrames[frame] = { plugin = plugin, systemIndex = systemIndex, settingKey = settingKey, enableHover = enableHover or false }
 
-    if enableHover and not frame.orbitOOCHoverHooked then
-        frame:HookScript("OnEnter", function(self)
-            self.orbitMouseOver = true
-            local data = ManagedFrames[self]
-            if data and data.plugin:GetSetting(data.systemIndex, data.settingKey) then
-                self:SetAlpha(1)
+    -- Create or update hover ticker for mouseover reveal
+    if not frame.orbitOOCHoverTicker then
+        local hoverTicker = CreateFrame("Frame", nil, frame)
+        hoverTicker:SetScript("OnUpdate", function(self, elapsed)
+            self.timer = (self.timer or 0) + elapsed
+            if self.timer < 0.1 then return end
+            self.timer = 0
+            local parent = self:GetParent()
+            if not parent:IsShown() then return end
+            local isOver = MouseIsOver(parent)
+            if isOver and not parent.orbitMouseOver then
+                parent.orbitMouseOver = true
+                local data = ManagedFrames[parent]
+                if data and data.plugin:GetSetting(data.systemIndex, data.settingKey) then
+                    parent:SetAlpha(1)
+                end
+            elseif not isOver and parent.orbitMouseOver then
+                parent.orbitMouseOver = nil
+                local data = ManagedFrames[parent]
+                if data then
+                    UpdateFrameVisibility(parent, data.plugin:GetSetting(data.systemIndex, data.settingKey), data)
+                end
             end
         end)
-        frame:HookScript("OnLeave", function(self)
-            self.orbitMouseOver = nil
-            local data = ManagedFrames[self]
-            if data then
-                UpdateFrameVisibility(self, data.plugin:GetSetting(data.systemIndex, data.settingKey), data)
-            end
-        end)
-        frame.orbitOOCHoverHooked = true
+        frame.orbitOOCHoverTicker = hoverTicker
+    end
+
+    -- Show/hide ticker based on enableHover setting
+    if enableHover then
+        frame.orbitOOCHoverTicker:Show()
+    else
+        frame.orbitOOCHoverTicker:Hide()
+        frame.orbitMouseOver = nil
     end
 
     -- Hook SetAlpha to prevent external override when OOC fade should hide
