@@ -13,6 +13,7 @@ local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
         Width = 100,
         Height = 20,
         OutOfCombatFade = false,
+        ShowOnMouseover = true,
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
@@ -31,21 +32,38 @@ function Plugin:AddSettings(dialog, systemFrame)
         controls = {
             { type = "slider", key = "Width", label = "Width", min = 80, max = 300, step = 5, default = 100 },
             { type = "slider", key = "Height", label = "Height", min = 10, max = 60, step = 5, default = 20 },
-            {
-                type = "checkbox",
-                key = "OutOfCombatFade",
-                label = "Out of Combat Fade",
-                default = false,
-                tooltip = "Hide frame when out of combat with no target",
-                onChange = function(val)
-                    Plugin:SetSetting(systemIndex, "OutOfCombatFade", val)
-                    if Orbit.OOCFadeMixin then
-                        Orbit.OOCFadeMixin:RefreshAll()
-                    end
-                end,
-            },
         },
     }
+
+    table.insert(schema.controls, {
+        type = "checkbox",
+        key = "OutOfCombatFade",
+        label = "Out of Combat Fade",
+        default = false,
+        tooltip = "Hide frame when out of combat with no target",
+        onChange = function(val)
+            Plugin:SetSetting(systemIndex, "OutOfCombatFade", val)
+            if Orbit.OOCFadeMixin then
+                Orbit.OOCFadeMixin:RefreshAll()
+            end
+            OrbitEngine.Layout:Reset(dialog)
+            self:AddSettings(dialog, systemFrame)
+        end,
+    })
+
+    if self:GetSetting(PET_FRAME_INDEX, "OutOfCombatFade") then
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "ShowOnMouseover",
+            label = "Show on Mouseover",
+            default = true,
+            tooltip = "Reveal frame when mousing over it",
+            onChange = function(val)
+                self:SetSetting(PET_FRAME_INDEX, "ShowOnMouseover", val)
+                self:ApplySettings()
+            end,
+        })
+    end
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
@@ -223,9 +241,10 @@ function Plugin:ApplySettings(frame)
         OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
     end
 
-    -- Apply Out of Combat Fade
+    -- Apply Out of Combat Fade (with hover detection based on setting)
     if Orbit.OOCFadeMixin then
-        Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade")
+        local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
+        Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover)
     end
 
     -- Ensure visibility is correctly set (Edit Mode awareness)

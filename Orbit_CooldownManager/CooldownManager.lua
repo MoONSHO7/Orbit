@@ -36,6 +36,7 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
         ProcGlowType = Constants.PandemicGlow.DefaultType,
         ProcGlowColor = Constants.PandemicGlow.DefaultColor,
         OutOfCombatFade = false,
+        ShowOnMouseover = true,
     },
 }, Orbit.Constants.PluginGroups.CooldownManager)
 
@@ -110,8 +111,6 @@ function Plugin:AddSettings(dialog, systemFrame)
         default = Constants.Cooldown.DefaultPadding,
     })
 
-    -- 5. Opacity
-    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
 
     -- 6. Columns
     table.insert(schema.controls, {
@@ -196,8 +195,28 @@ function Plugin:AddSettings(dialog, systemFrame)
             if Orbit.OOCFadeMixin then
                 Orbit.OOCFadeMixin:RefreshAll()
             end
+            OrbitEngine.Layout:Reset(dialog)
+            self:AddSettings(dialog, systemFrame)
         end,
     })
+
+    if self:GetSetting(systemIndex, "OutOfCombatFade") then
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "ShowOnMouseover",
+            label = "Show on Mouseover",
+            default = true,
+            tooltip = "Reveal frame when mousing over it",
+            onChange = function(val)
+                self:SetSetting(systemIndex, "ShowOnMouseover", val)
+                local data = VIEWER_MAP[systemIndex]
+                if data and data.viewer and Orbit.OOCFadeMixin then
+                    Orbit.OOCFadeMixin:ApplyOOCFade(data.viewer, self, systemIndex, "OutOfCombatFade", val)
+                    Orbit.OOCFadeMixin:RefreshAll()
+                end
+            end,
+        })
+    end
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
@@ -231,7 +250,8 @@ function Plugin:OnLoad()
         if Orbit.OOCFadeMixin then
             for systemIndex, data in pairs(VIEWER_MAP) do
                 if data.viewer then
-                    Orbit.OOCFadeMixin:ApplyOOCFade(data.viewer, self, systemIndex, "OutOfCombatFade")
+                    local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
+                    Orbit.OOCFadeMixin:ApplyOOCFade(data.viewer, self, systemIndex, "OutOfCombatFade", enableHover)
                 end
             end
             Orbit.OOCFadeMixin:RefreshAll()

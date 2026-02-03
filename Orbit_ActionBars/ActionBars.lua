@@ -156,6 +156,7 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
         },
         GlobalDisabledComponents = {},
         OutOfCombatFade = false,
+        ShowOnMouseover = true,
     },
 }, Orbit.Constants.PluginGroups.ActionBars)
 
@@ -334,8 +335,22 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
     end
 
-    -- 5. Opacity
-    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
+    -- 5. Opacity (hidden when OOC Fade is enabled - it takes precedence)
+    if not self:GetSetting(systemIndex, "OutOfCombatFade") then
+        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
+    else
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "ShowOnMouseover",
+            label = "Show on Mouseover",
+            default = true,
+            tooltip = "Reveal frame when mousing over it",
+            onChange = function(val)
+                self:SetSetting(systemIndex, "ShowOnMouseover", val)
+                self:ApplySettings(container)
+            end,
+        })
+    end
 
     -- 6. Hide Empty Buttons
     -- Always forced on for Stance, Possess, and Extra bars
@@ -362,6 +377,8 @@ function Plugin:AddSettings(dialog, systemFrame)
             if Orbit.OOCFadeMixin then
                 Orbit.OOCFadeMixin:RefreshAll()
             end
+            OrbitEngine.Layout:Reset(dialog)
+            self:AddSettings(dialog, systemFrame)
         end,
     })
 
@@ -1019,7 +1036,8 @@ function Plugin:CreateContainer(config)
 
     -- Apply Out of Combat Fade (skip for Pet Bar - it has pet-based visibility, not combat-based)
     if Orbit.OOCFadeMixin and config.index ~= PET_BAR_INDEX then
-        Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, config.index, "OutOfCombatFade")
+        local enableHover = self:GetSetting(config.index, "ShowOnMouseover") ~= false
+        Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, config.index, "OutOfCombatFade", enableHover)
     end
 
     return frame
@@ -1391,6 +1409,12 @@ function Plugin:ApplySettings(frame)
 
     -- Apply Scale (Standard Mixin)
     self:ApplyScale(actualFrame, index, "Scale")
+
+    -- Re-apply OOC Fade with current ShowOnMouseover setting (allows dynamic toggle)
+    if Orbit.OOCFadeMixin and index ~= PET_BAR_INDEX then
+        local enableHover = self:GetSetting(index, "ShowOnMouseover") ~= false
+        Orbit.OOCFadeMixin:ApplyOOCFade(actualFrame, self, index, "OutOfCombatFade", enableHover)
+    end
 
     -- Apply mouse-over fade (also handles opacity via ApplyHoverFade)
     self:ApplyMouseOver(actualFrame, index)
