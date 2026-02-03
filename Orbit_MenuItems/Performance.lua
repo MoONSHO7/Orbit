@@ -114,7 +114,8 @@ function Plugin:UpdateStats()
     local text = colorize and string.format("%s%d|r%sfps|r | %s%d|r%sms|r", fpsColor, fpsStr, COLORS.WHITE, msColor, ms, COLORS.WHITE)
         or string.format("%dfps | %dms", fpsStr, ms)
     self.frame.Text:SetText(text)
-    self.frame:SetSize(self.frame.Text:GetStringWidth() + 10, 20)
+    local width = self.frame.Text:GetStringWidth() + 10
+    if InCombatLockdown() then Orbit.CombatManager:QueueUpdate(function() self.frame:SetSize(width, 20) end) else self.frame:SetSize(width, 20) end
 end
 
 function Plugin:ApplySettings()
