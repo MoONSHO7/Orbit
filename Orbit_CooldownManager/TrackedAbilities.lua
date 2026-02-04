@@ -60,8 +60,9 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
 
     frame.icons = {}
     frame.placeholders = {}
+    frame.recyclePool = {}
+    frame.activeIcons = {}
     self:CreateTrackedIcons(frame, systemIndex)
-    self:ApplySettings(frame)
     return frame
 end
 
