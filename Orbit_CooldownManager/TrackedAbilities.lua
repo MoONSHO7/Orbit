@@ -72,6 +72,7 @@ function Plugin:SetupTrackedKeyboardHook()
     hookFrame:EnableKeyboard(false)
     hookFrame:SetPropagateKeyboardInput(true)
     hookFrame:SetScript("OnKeyDown", function(self, key)
+        if InCombatLockdown() then return end
         local hoveredFrame = plugin:GetHoveredTrackedFrame()
         if not hoveredFrame then self:SetPropagateKeyboardInput(true) return end
 
@@ -344,7 +345,7 @@ function Plugin:ApplyTrackedIconSkin(icon, systemIndex)
         borderStyle = 1,
         borderSize = Orbit.db.GlobalSettings.BorderSize,
         swipeColor = { r = 0, g = 0, b = 0, a = 0.8 },
-        showTimer = false,
+        showTimer = true,
     }
     if Orbit.Skin and Orbit.Skin.Icons then
         Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)

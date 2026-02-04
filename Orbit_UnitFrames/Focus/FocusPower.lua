@@ -186,6 +186,10 @@ function Plugin:UpdateVisibility()
     if not Frame then
         return
     end
+    if InCombatLockdown() then
+        Orbit.CombatManager:QueueUpdate(function() self:UpdateVisibility() end)
+        return
+    end
     local enabled = self:IsEnabled()
     local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
 
@@ -221,6 +225,10 @@ end
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 function Plugin:ApplySettings()
     if not Frame then
+        return
+    end
+    if InCombatLockdown() then
+        Orbit.CombatManager:QueueUpdate(function() self:ApplySettings() end)
         return
     end
     local systemIndex = SYSTEM_INDEX
