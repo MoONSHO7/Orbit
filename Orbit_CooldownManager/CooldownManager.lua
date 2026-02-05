@@ -2,6 +2,7 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
+local CooldownUtils = OrbitEngine.CooldownUtils
 
 local LibCustomGlow = LibStub("LibCustomGlow-1.0", true)
 
@@ -924,25 +925,9 @@ function Plugin:ProcessChildren(anchor)
 
     -- Apply Skin and Layout via Orbit.Skin.Icons
     if Orbit.Skin.Icons and #activeChildren > 0 then
-        -- Build settings for the Skin module
-        local skinSettings = {
-            style = 1,
-            aspectRatio = self:GetSetting(systemIndex, "aspectRatio"),
-            zoom = 0,
-            borderStyle = 1,
-            borderSize = Orbit.db.GlobalSettings.BorderSize,
-            swipeColor = self:GetSetting(systemIndex, "SwipeColor"),
-            orientation = self:GetSetting(systemIndex, "Orientation"),
-            limit = self:GetSetting(systemIndex, "IconLimit"),
-            padding = self:GetSetting(systemIndex, "IconPadding"),
-            size = self:GetSetting(systemIndex, "IconSize"),
-            showTimer = self:GetSetting(systemIndex, "ShowTimer"),
-            showGCDSwipe = self:GetSetting(systemIndex, "ShowGCDSwipe"),
-            baseIconSize = Constants.Skin.DefaultIconSize, -- 40x40 consistent base for all viewers
-            backdropColor = self:GetSetting(systemIndex, "BackdropColour"),
-            showTooltip = false,
+        local skinSettings = CooldownUtils:BuildSkinSettings(self, systemIndex, {
             verticalGrowth = self:GetGrowthDirection(anchor),
-        }
+        })
 
         -- Store settings for the Skin system to use
         if not Orbit.Skin.Icons.frameSettings then

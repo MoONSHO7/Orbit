@@ -12,6 +12,7 @@
 ## X-License: All Rights Reserved
 ## X-Part-Of: Orbit
 
+CooldownUtils.lua
 CooldownManager.lua
 TrackedAbilities.lua
 KeybindSystem.lua

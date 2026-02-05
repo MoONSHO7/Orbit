@@ -2,6 +2,7 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
+local CooldownUtils = OrbitEngine.CooldownUtils
 
 -- [ TRACKED ABILITIES CONSTANTS ]-------------------------------------------------------------------
 local TRACKED_INDEX = Constants.Cooldown.SystemIndex.Tracked
@@ -250,13 +251,11 @@ function Plugin:CreateTrackedIcons(anchor, systemIndex)
     anchor.edgeButtons = {}
     anchor.gridItems = {}
 
-    local iconSize = self:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
-    local baseSize = Constants.Skin.DefaultIconSize or 40
-    local scaledSize = baseSize * (iconSize / 100)
+    local iconWidth, iconHeight = CooldownUtils:CalculateIconDimensions(self, systemIndex)
 
     for i = 1, 2 do
         local placeholder = CreateFrame("Frame", nil, anchor, "BackdropTemplate")
-        placeholder:SetSize(scaledSize, scaledSize)
+        placeholder:SetSize(iconWidth, iconHeight)
         placeholder.Texture = placeholder:CreateTexture(nil, "ARTWORK")
         placeholder.Texture:SetAllPoints()
         placeholder.Texture:SetTexture(TRACKED_PLACEHOLDER_ICON)
@@ -339,61 +338,14 @@ function Plugin:CreateTrackedIcon(anchor, systemIndex, x, y)
 end
 
 function Plugin:ApplyTrackedIconSkin(icon, systemIndex)
-    local skinSettings = {
-        style = 1,
-        aspectRatio = "1:1",
-        zoom = 8,
-        borderStyle = 1,
-        borderSize = Orbit.db.GlobalSettings.BorderSize,
-        swipeColor = { r = 0, g = 0, b = 0, a = 0.8 },
-        showTimer = true,
-    }
-    if Orbit.Skin and Orbit.Skin.Icons then
-        Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
-    end
+    local skinSettings = CooldownUtils:BuildSkinSettings(self, systemIndex, { zoom = 8 })
+    if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(icon, skinSettings) end
     self:ApplyTrackedTextSettings(icon, systemIndex)
 end
 
 function Plugin:ApplyTrackedTextSettings(icon, systemIndex)
-    local positions = self:GetSetting(systemIndex, "ComponentPositions") or {}
-    local LSM = LibStub("LibSharedMedia-3.0", true)
-    local fontPath = self:GetGlobalFont()
-    local baseSize = self:GetBaseFontSize()
-    local ApplyTextPosition = Orbit.Engine.PositionUtils and Orbit.Engine.PositionUtils.ApplyTextPosition
-
-    local function ApplyComponentStyle(textElement, key, defaultAnchor, defaultOffsetX, defaultOffsetY)
-        if not textElement then return end
-        local pos = positions[key] or {}
-        local overrides = pos.overrides or {}
-
-        -- Font settings
-        local font = fontPath
-        if overrides.Font and LSM then font = LSM:Fetch("font", overrides.Font) or fontPath end
-        local fontSize = overrides.FontSize or baseSize
-        local flags = overrides.ShowShadow and "" or "OUTLINE"
-        textElement:SetFont(font, fontSize, flags)
-        if overrides.ShowShadow then textElement:SetShadowOffset(1, -1) else textElement:SetShadowOffset(0, 0) end
-
-        -- Color settings
-        if overrides.UseClassColour then
-            local _, playerClass = UnitClass("player")
-            local classColor = RAID_CLASS_COLORS[playerClass]
-            if classColor then textElement:SetTextColor(classColor.r, classColor.g, classColor.b, 1) end
-        elseif overrides.CustomColor and overrides.CustomColorValue then
-            local c = overrides.CustomColorValue
-            textElement:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
-        else
-            textElement:SetTextColor(1, 1, 1, 1)
-        end
-
-        -- Position (use shared utility)
-        if ApplyTextPosition then
-            ApplyTextPosition(textElement, icon, pos, defaultAnchor, defaultOffsetX, defaultOffsetY)
-        end
-    end
-
-    ApplyComponentStyle(icon.TimerText, "Timer", "CENTER", 0, 0)
-    ApplyComponentStyle(icon.CountText, "Stacks", "BOTTOMRIGHT", -2, 2)
+    CooldownUtils:ApplySimpleTextStyle(self, systemIndex, icon.TimerText, "Timer", "CENTER", 0, 0)
+    CooldownUtils:ApplySimpleTextStyle(self, systemIndex, icon.CountText, "Stacks", "BOTTOMRIGHT", -2, 2)
 end
 
 -- [ DATA MANAGEMENT ]--------------------------------------------------------------------------------
@@ -520,15 +472,8 @@ end
 function Plugin:LayoutTrackedIcons(anchor, systemIndex)
     if not anchor then return end
 
-    local iconSize = self:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
-    local baseSize = Constants.Skin.DefaultIconSize or 40
-    local scaledSize = baseSize * (iconSize / 100)
-    local aspectRatio = self:GetSetting(systemIndex, "aspectRatio") or "1:1"
+    local iconWidth, iconHeight = CooldownUtils:CalculateIconDimensions(self, systemIndex)
     local padding = self:GetSetting(systemIndex, "IconPadding") or Constants.Cooldown.DefaultPadding
-    local iconWidth, iconHeight = scaledSize, scaledSize
-    if aspectRatio == "16:9" then iconHeight = scaledSize * (9 / 16)
-    elseif aspectRatio == "4:3" then iconHeight = scaledSize * (3 / 4)
-    elseif aspectRatio == "21:9" then iconHeight = scaledSize * (9 / 21) end
 
     local gridItems = anchor.gridItems or {}
     local isDragging = GetCursorInfo() ~= nil
@@ -837,14 +782,7 @@ function Plugin:SetupTrackedCanvasPreview(anchor, systemIndex)
     local LSM = LibStub("LibSharedMedia-3.0")
 
     anchor.CreateCanvasPreview = function(self, options)
-        local aspectRatio = plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
-        local iconSize = plugin:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
-        local baseSize = Constants.Skin.DefaultIconSize or 40
-        local scaledSize = baseSize * (iconSize / 100)
-        local w, h = scaledSize, scaledSize
-        if aspectRatio == "16:9" then h = scaledSize * (9 / 16)
-        elseif aspectRatio == "4:3" then h = scaledSize * (3 / 4)
-        elseif aspectRatio == "21:9" then h = scaledSize * (9 / 21) end
+        local w, h = CooldownUtils:CalculateIconDimensions(plugin, systemIndex)
 
         local parent = options.parent or UIParent
         local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
