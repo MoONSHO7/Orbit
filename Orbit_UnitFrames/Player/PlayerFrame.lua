@@ -25,6 +25,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         ShowMarkerIcon = false,
         ShowGroupPosition = false,
         HealthTextMode = "percent_short",
+        Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
         EnablePlayerPower = true,
@@ -133,6 +134,11 @@ function Plugin:AddSettings(dialog, systemFrame)
             end
         end,
     })
+
+    -- Opacity (resting alpha when visible)
+    local WL = OrbitEngine.WidgetLogic
+    local opacitySchema = { controls = controls }
+    WL:AddOpacitySettings(self, opacitySchema, PLAYER_FRAME_INDEX, systemFrame, { step = 5 })
 
     table.insert(controls, {
         type = "checkbox",

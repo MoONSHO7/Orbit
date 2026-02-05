@@ -7,11 +7,12 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SYSTEM_ID = "Orbit_PlayerPetFrame"
 local PET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Pet
 
-local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
+local Plugin = Orbit:RegisterPlugin(\"Pet Frame\", SYSTEM_ID, {
     canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
         Width = 100,
         Height = 20,
+        Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
     },
@@ -34,6 +35,10 @@ function Plugin:AddSettings(dialog, systemFrame)
             { type = "slider", key = "Height", label = "Height", min = 10, max = 60, step = 5, default = 20 },
         },
     }
+
+    -- Opacity (resting alpha when visible)
+    local WL = OrbitEngine.WidgetLogic
+    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
 
     table.insert(schema.controls, {
         type = "checkbox",

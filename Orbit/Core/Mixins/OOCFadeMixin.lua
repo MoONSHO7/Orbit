@@ -58,8 +58,18 @@ local function UpdateFrameVisibility(frame, fadeEnabled, data)
         return
     end
     if ShouldShowFrame(frame) then
-        frame:SetAlpha(1)
         SetFrameMouseEnabled(frame, true, includeChildren)
+        -- Apply Opacity setting instead of forcing alpha=1 (new precedence: OOC → Opacity → MouseOver)
+        if data and data.plugin then
+            local opacity = data.plugin:GetSetting(data.systemIndex, "Opacity") or 100
+            local minAlpha = opacity / 100
+            local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+            if Orbit.Animation then
+                Orbit.Animation:ApplyHoverFade(frame, minAlpha, 1, isEditMode)
+            else
+                frame:SetAlpha(minAlpha)
+            end
+        end
     else
         frame:SetAlpha(0)
         if includeChildren then

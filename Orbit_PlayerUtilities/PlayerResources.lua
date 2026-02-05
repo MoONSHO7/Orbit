@@ -33,6 +33,7 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         Height = DEFAULTS.Height,
         UseCustomColor = false,
         BarColor = { r = 1, g = 1, b = 1, a = 1 },
+        Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
     },
@@ -66,6 +67,9 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     -- Height
     WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 20, default = DEFAULTS.Height }, nil)
+
+    -- Opacity (resting alpha when visible)
+    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
 
     -- Out of Combat Fade
     table.insert(schema.controls, {

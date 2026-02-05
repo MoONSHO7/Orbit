@@ -312,22 +312,8 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
     end
 
-    -- 5. Opacity (hidden when OOC Fade is enabled - it takes precedence)
-    if not self:GetSetting(systemIndex, "OutOfCombatFade") then
-        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
-    else
-        table.insert(schema.controls, {
-            type = "checkbox",
-            key = "ShowOnMouseover",
-            label = "Show on Mouseover",
-            default = true,
-            tooltip = "Reveal frame when mousing over it",
-            onChange = function(val)
-                self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                self:ApplySettings(container)
-            end,
-        })
-    end
+    -- 5. Opacity (resting alpha when visible, works with or without OOC Fade)
+    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
 
     -- 6. Hide Empty Buttons
     -- Always forced on for Stance, Possess, and Extra bars
@@ -358,6 +344,21 @@ function Plugin:AddSettings(dialog, systemFrame)
             self:AddSettings(dialog, systemFrame)
         end,
     })
+
+    -- Show on Mouseover (only when OOC Fade is enabled - controls OOC reveal)
+    if self:GetSetting(systemIndex, "OutOfCombatFade") then
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "ShowOnMouseover",
+            label = "Show on Mouseover",
+            default = true,
+            tooltip = "Reveal hidden frame when mousing over it",
+            onChange = function(val)
+                self:SetSetting(systemIndex, "ShowOnMouseover", val)
+                self:ApplySettings(container)
+            end,
+        })
+    end
 
     -- Add Quick Keybind Mode button to footer
     schema.extraButtons = {

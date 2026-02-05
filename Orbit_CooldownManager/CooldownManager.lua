@@ -168,6 +168,9 @@ function Plugin:AddSettings(dialog, systemFrame)
         }, nil)
     end
 
+    -- Opacity (resting alpha when visible)
+    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
+
     table.insert(schema.controls, {
         type = "checkbox",
         key = "OutOfCombatFade",
