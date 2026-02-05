@@ -233,7 +233,7 @@ function Plugin:OnLoad()
     self:HookBlizzardViewers()
     self:StartTrackedUpdateTicker()
     self:RegisterCursorWatcher()
-    self:SetupTrackedKeyboardHook()
+    self:SetupEditModeHooks()
 
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", self.OnPlayerEnteringWorld, self)
     self:RegisterVisibilityEvents()

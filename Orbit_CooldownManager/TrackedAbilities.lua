@@ -12,6 +12,10 @@ local MAX_GRID_SIZE = 10
 local TRACKED_PLACEHOLDER_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local TRACKED_ADD_ICON = "Interface\\PaperDollInfoFrame\\Character-Plus"
 local TRACKED_REMOVE_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
+local CONTROL_BTN_SIZE = 10
+local CONTROL_BTN_SPACING = 1
+local COLOR_GREEN = { r = 0.2, g = 0.9, b = 0.2 }
+local COLOR_RED = { r = 0.9, g = 0.2, b = 0.2 }
 
 -- Desaturation curve: 0% remaining (ready) = colored, >0% remaining (on CD) = grayscale
 local DESAT_CURVE = C_CurveUtil.CreateCurve()
@@ -36,10 +40,6 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame:SetClampedToScreen(true)
     frame.systemIndex = systemIndex
     frame.editModeName = label
-    frame.editModeTooltipLines = {
-        "|cFFFFD100+|r to create new frame",
-        " |cFFFFD100-|r to destroy child frame",
-    }
     frame.isTrackedBar = true
     frame:EnableMouse(true)
     frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
@@ -70,52 +70,102 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.recyclePool = {}
     frame.activeIcons = {}
     self:CreateTrackedIcons(frame, systemIndex)
+    self:CreateFrameControlButtons(frame)
     return frame
 end
 
-function Plugin:SetupTrackedKeyboardHook()
-    if self.keyboardHookFrame then return end
+-- [ FRAME CONTROL BUTTONS ]-------------------------------------------------------------------------
+function Plugin:CreateFrameControlButtons(anchor)
     local plugin = self
-    local hookFrame = CreateFrame("Frame", nil, UIParent)
-    hookFrame:EnableKeyboard(false)
-    hookFrame:SetPropagateKeyboardInput(true)
-    hookFrame:SetScript("OnKeyDown", function(self, key)
+    local controlContainer = CreateFrame("Frame", nil, anchor)
+    controlContainer:SetSize(CONTROL_BTN_SIZE, (CONTROL_BTN_SIZE * 2) + CONTROL_BTN_SPACING)
+    controlContainer:SetPoint("LEFT", anchor, "TOPRIGHT", 2, -((CONTROL_BTN_SIZE * 2 + CONTROL_BTN_SPACING) / 2))
+    anchor.controlContainer = controlContainer
+
+    local plusBtn = CreateFrame("Button", nil, controlContainer)
+    plusBtn:SetSize(CONTROL_BTN_SIZE, CONTROL_BTN_SIZE)
+    plusBtn:SetPoint("TOP", controlContainer, "TOP", 0, 0)
+    plusBtn.Icon = plusBtn:CreateTexture(nil, "ARTWORK")
+    plusBtn.Icon:SetAllPoints()
+    plusBtn.Icon:SetTexture(TRACKED_ADD_ICON)
+    plusBtn.Icon:SetVertexColor(COLOR_GREEN.r, COLOR_GREEN.g, COLOR_GREEN.b)
+    plusBtn:SetScript("OnClick", function() if not InCombatLockdown() then plugin:SpawnChildFrame() end end)
+    plusBtn:SetScript("OnEnter", function(self) self.Icon:SetAlpha(1) end)
+    plusBtn:SetScript("OnLeave", function(self) self.Icon:SetAlpha(0.8) end)
+    plusBtn.Icon:SetAlpha(0.8)
+    anchor.plusBtn = plusBtn
+
+    local minusBtn = CreateFrame("Button", nil, controlContainer)
+    minusBtn:SetSize(CONTROL_BTN_SIZE, CONTROL_BTN_SIZE)
+    minusBtn:SetPoint("TOP", plusBtn, "BOTTOM", 0, -CONTROL_BTN_SPACING)
+    minusBtn.Icon = minusBtn:CreateTexture(nil, "ARTWORK")
+    minusBtn.Icon:SetAllPoints()
+    minusBtn.Icon:SetTexture(TRACKED_REMOVE_ICON)
+    minusBtn.Icon:SetVertexColor(COLOR_RED.r, COLOR_RED.g, COLOR_RED.b)
+    minusBtn:SetScript("OnClick", function()
         if InCombatLockdown() then return end
-        local hoveredFrame = plugin:GetHoveredTrackedFrame()
-        if not hoveredFrame then self:SetPropagateKeyboardInput(true) return end
-
-        if key == "=" or key == "NUMPADPLUS" then
-            self:SetPropagateKeyboardInput(false)
-            plugin:SpawnChildFrame()
-        elseif key == "-" or key == "NUMPADMINUS" then
-            self:SetPropagateKeyboardInput(false)
-            if hoveredFrame.isChildFrame then plugin:DespawnChildFrame(hoveredFrame) end
-        else
-            self:SetPropagateKeyboardInput(true)
-        end
+        if anchor.isChildFrame then plugin:DespawnChildFrame(anchor) end
     end)
-    self.keyboardHookFrame = hookFrame
+    minusBtn:SetScript("OnEnter", function(self) self.Icon:SetAlpha(1) end)
+    minusBtn:SetScript("OnLeave", function(self) self.Icon:SetAlpha(0.8) end)
+    minusBtn.Icon:SetAlpha(0.8)
+    anchor.minusBtn = minusBtn
 
-    -- Only enable keyboard during Edit Mode
-    if EditModeManagerFrame then
-        EditModeManagerFrame:HookScript("OnShow", function()
-            if not InCombatLockdown() then hookFrame:EnableKeyboard(true) end
-        end)
-        EditModeManagerFrame:HookScript("OnHide", function()
-            if not InCombatLockdown() then hookFrame:EnableKeyboard(false) end
-        end)
+    self:UpdateControlButtonVisibility(anchor)
+    self:UpdateAllControlButtonColors()
+end
+
+function Plugin:UpdateControlButtonVisibility(anchor)
+    if not anchor or not anchor.controlContainer then return end
+    local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
+    if isEditMode then
+        anchor.controlContainer:Show()
+        anchor.minusBtn:SetShown(anchor.isChildFrame == true)
+    else
+        anchor.controlContainer:Hide()
     end
 end
 
-function Plugin:GetHoveredTrackedFrame()
+function Plugin:UpdateAllControlButtonColors()
+    local count = 0
+    for _ in pairs(self.activeChildren) do count = count + 1 end
+    local atMax = count >= MAX_CHILD_FRAMES
+
     local viewerMap = GetViewerMap()
     local entry = viewerMap[TRACKED_INDEX]
-    if entry and entry.anchor and entry.anchor:IsMouseOver() then return entry.anchor end
-    for _, childData in pairs(self.activeChildren) do
-        if childData.frame and childData.frame:IsMouseOver() then return childData.frame end
+    if entry and entry.anchor and entry.anchor.plusBtn then
+        local c = atMax and COLOR_RED or COLOR_GREEN
+        entry.anchor.plusBtn.Icon:SetVertexColor(c.r, c.g, c.b)
+        entry.anchor.plusBtn:SetEnabled(not atMax)
     end
-    return nil
+    for _, childData in pairs(self.activeChildren) do
+        if childData.frame and childData.frame.plusBtn then
+            local c = atMax and COLOR_RED or COLOR_GREEN
+            childData.frame.plusBtn.Icon:SetVertexColor(c.r, c.g, c.b)
+            childData.frame.plusBtn:SetEnabled(not atMax)
+        end
+    end
 end
+
+function Plugin:RefreshAllControlButtonVisibility()
+    local viewerMap = GetViewerMap()
+    local entry = viewerMap[TRACKED_INDEX]
+    if entry and entry.anchor then self:UpdateControlButtonVisibility(entry.anchor) end
+    for _, childData in pairs(self.activeChildren) do
+        if childData.frame then self:UpdateControlButtonVisibility(childData.frame) end
+    end
+end
+
+function Plugin:SetupEditModeHooks()
+    if self.editModeHooksSetup then return end
+    self.editModeHooksSetup = true
+    local plugin = self
+    if EditModeManagerFrame then
+        EditModeManagerFrame:HookScript("OnShow", function() plugin:RefreshAllControlButtonVisibility() end)
+        EditModeManagerFrame:HookScript("OnHide", function() plugin:RefreshAllControlButtonVisibility() end)
+    end
+end
+
 
 function Plugin:SpawnChildFrame()
     local count = 0
@@ -139,7 +189,6 @@ function Plugin:SpawnChildFrame()
         frame.systemIndex = systemIndex
         frame.editModeName = label
         OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
-        -- Clear and reinitialize icons with correct systemIndex
         for _, icon in pairs(frame.activeIcons or {}) do icon:Hide() end
         frame.activeIcons = {}
         frame.recyclePool = {}
@@ -155,12 +204,14 @@ function Plugin:SpawnChildFrame()
 
     self.activeChildren[key] = { frame = frame, systemIndex = systemIndex, slot = slot }
     GetViewerMap()[systemIndex] = { anchor = frame }
+    self:SetSetting(systemIndex, "Enabled", true)
 
     self:LoadTrackedItems(frame, systemIndex)
     self:ApplySettings(frame)
     self:SetupTrackedCanvasPreview(frame, systemIndex)
+    self:UpdateControlButtonVisibility(frame)
+    self:UpdateAllControlButtonColors()
 
-    -- Refresh Edit Mode visuals so new frame is immediately draggable
     if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
         OrbitEngine.FrameSelection:OnEditModeEnter()
     end
@@ -176,20 +227,22 @@ function Plugin:DespawnChildFrame(frame)
     for _, icon in pairs(frame.activeIcons or {}) do icon:Hide() end
     for _, btn in pairs(frame.edgeButtons or {}) do btn:Hide() end
 
-    -- Clear settings so frame doesn't reappear on reload
     self:SetSetting(frame.systemIndex, "TrackedItems", nil)
     self:SetSetting(frame.systemIndex, "Position", nil)
+    self:SetSetting(frame.systemIndex, "Enabled", nil)
 
     GetViewerMap()[frame.systemIndex] = nil
     self.activeChildren[key] = nil
     table.insert(self.childFramePool, frame)
+    self:UpdateAllControlButtonColors()
 end
 
 function Plugin:RestoreChildFrames()
     for slot = 1, MAX_CHILD_FRAMES do
         local systemIndex = TRACKED_CHILD_START + slot - 1
+        local enabled = self:GetSetting(systemIndex, "Enabled")
         local tracked = self:GetSetting(systemIndex, "TrackedItems")
-        if tracked and next(tracked) then
+        if enabled or (tracked and next(tracked)) then
             local key = "child:" .. slot
             local label = "Tracked Cooldowns " .. (slot + 1)
             local frame = self:CreateTrackedAnchor("OrbitTrackedChild_" .. slot, systemIndex, label)
@@ -197,8 +250,10 @@ function Plugin:RestoreChildFrames()
             frame.childSlot = slot
             self.activeChildren[key] = { frame = frame, systemIndex = systemIndex, slot = slot }
             GetViewerMap()[systemIndex] = { anchor = frame }
+            self:SetSetting(systemIndex, "Enabled", true)
             self:LoadTrackedItems(frame, systemIndex)
             self:SetupTrackedCanvasPreview(frame, systemIndex)
+            self:ApplySettings(frame)
         end
     end
 end
@@ -546,6 +601,9 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
             local btn = anchor.edgeButtons[1]
             if not btn then
                 btn = CreateFrame("Frame", nil, anchor)
+                btn.Backdrop = btn:CreateTexture(nil, "BACKGROUND")
+                btn.Backdrop:SetAllPoints()
+                btn.Backdrop:SetColorTexture(0, 0, 0, 0.2)
                 btn.Glow = btn:CreateTexture(nil, "OVERLAY")
                 btn.Glow:SetAtlas("cyphersetupgrade-leftitem-slotinnerglow")
                 btn.Glow:SetBlendMode("ADD")
@@ -564,7 +622,8 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
                 anchor.edgeButtons[1] = btn
             end
             btn:SetSize(iconWidth, iconHeight)
-            btn.Plus:SetSize(iconWidth * 0.4, iconHeight * 0.4)
+            local plusSize = math.min(iconWidth, iconHeight) * 0.4
+            btn.Plus:SetSize(plusSize, plusSize)
             btn:ClearAllPoints()
             btn:SetPoint("TOPLEFT", anchor, "TOPLEFT", 0, 0)
             btn:SetScript("OnMouseDown", function() self:OnEdgeAddButtonClick(anchor, 0, 0) end)
@@ -706,6 +765,9 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
             local btn = anchor.edgeButtons[i]
             if not btn then
                 btn = CreateFrame("Frame", nil, anchor)
+                btn.Backdrop = btn:CreateTexture(nil, "BACKGROUND")
+                btn.Backdrop:SetAllPoints()
+                btn.Backdrop:SetColorTexture(0, 0, 0, 0.2)
                 btn.Glow = btn:CreateTexture(nil, "OVERLAY")
                 btn.Glow:SetAtlas("cyphersetupgrade-leftitem-slotinnerglow")
                 btn.Glow:SetBlendMode("ADD")
@@ -729,7 +791,8 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
             btn:SetScript("OnMouseDown", function() self:OnEdgeAddButtonClick(anchor, pos.x, pos.y) end)
 
             btn:SetSize(iconWidth, iconHeight)
-            btn.Plus:SetSize(iconWidth * 0.4, iconHeight * 0.4)
+            local plusSize = math.min(iconWidth, iconHeight) * 0.4
+            btn.Plus:SetSize(plusSize, plusSize)
 
             local posX = (pos.x - extendedMinX) * (iconWidth + padding)
             local posY = -(pos.y - extendedMinY) * (iconHeight + padding)
