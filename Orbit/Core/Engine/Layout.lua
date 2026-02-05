@@ -12,6 +12,7 @@ Layout.sliderPool = Layout.sliderPool or {}
 Layout.dropdownPool = Layout.dropdownPool or {}
 Layout.buttonPool = Layout.buttonPool or {}
 Layout.colorPool = Layout.colorPool or {}
+Layout.colorCurvePool = Layout.colorCurvePool or {}
 Layout.fontPool = Layout.fontPool or {}
 Layout.texturePool = Layout.texturePool or {}
 Layout.containerControls = Layout.containerControls or {} -- Container -> List of controls
@@ -85,6 +86,8 @@ function Layout:RecycleControls(controls)
             table.insert(self.buttonPool, control)
         elseif control.OrbitType == "Color" then
             table.insert(self.colorPool, control)
+        elseif control.OrbitType == "ColorCurve" then
+            table.insert(self.colorCurvePool, control)
         elseif control.Label and control.Swatch then
             table.insert(self.colorPool, control)
         elseif control.OrbitType == "Font" then
@@ -244,6 +247,10 @@ function Layout:InitializeWidgetTypes()
 
     self:RegisterWidgetType("color", function(container, def, getValue, callback)
         return self:CreateColorPicker(container, def.label, getValue(), callback)
+    end)
+
+    self:RegisterWidgetType("colorcurve", function(container, def, getValue, callback)
+        return self:CreateColorCurvePicker(container, def.label, getValue(), callback)
     end)
 
     self:RegisterWidgetType("button", function(container, def, getValue, callback)

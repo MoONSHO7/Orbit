@@ -6,6 +6,7 @@ local OrbitEngine = Orbit.Engine
 local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
     defaults = {
         CastBarColor = { r = 1, g = 0.7, b = 0 },
+        CastBarColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
         NonInterruptibleColor = { r = 0.7, g = 0.7, b = 0.7 },
         CastBarText = true,
         CastBarIcon = true,
@@ -54,6 +55,41 @@ local function CalculateSparkPos(bar, value, maxValue)
     local pos = (maxValue > 0) and ((value / maxValue) * width) or 0
     return SnapToPixel(pos, bar:GetEffectiveScale())
 end
+
+-- Helper: Sample color from curve at position (0-1)
+local function SampleColorCurve(curveData, position)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    
+    local pins = curveData.pins
+    if #pins == 1 then return pins[1].color end
+    
+    -- Sort by position
+    table.sort(pins, function(a, b) return a.position < b.position end)
+    
+    -- Clamp position
+    position = math.max(0, math.min(1, position))
+    
+    -- Find surrounding pins
+    local left, right = pins[1], pins[#pins]
+    for i = 1, #pins - 1 do
+        if pins[i].position <= position and pins[i + 1].position >= position then
+            left, right = pins[i], pins[i + 1]
+            break
+        end
+    end
+    
+    -- Interpolate
+    local range = right.position - left.position
+    local t = (range > 0) and ((position - left.position) / range) or 0
+    
+    return {
+        r = left.color.r + (right.color.r - left.color.r) * t,
+        g = left.color.g + (right.color.g - left.color.g) * t,
+        b = left.color.b + (right.color.b - left.color.b) * t,
+        a = (left.color.a or 1) + ((right.color.a or 1) - (left.color.a or 1)) * t,
+    }
+end
+
 
 -- Combat-safe Show/Hide: Use alpha during combat to avoid taint when cast bar is anchored
 local function SafeShow(bar)
@@ -171,15 +207,12 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
         default = true,
     })
 
-    -- Normal Color
-    WL:AddColorSettings(
-        self,
-        schema,
-        systemIndex,
-        systemFrame,
-        { key = "CastBarColor", label = "Normal", default = { r = 1, g = 0.7, b = 0 } },
-        self.CastBar.orbitBar or self.CastBar
-    )
+    -- Normal Color (Gradient)
+    WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+        key = "CastBarColorCurve",
+        label = "Normal",
+        default = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
+    })
 
     -- Protected Color
     WL:AddColorSettings(self, schema, systemIndex, systemFrame, { key = "NonInterruptibleColor", label = "Protected", default = { r = 0.7, g = 0.7, b = 0.7 } })
@@ -582,6 +615,14 @@ function Plugin:OnUpdate(elapsed)
             if bar.Timer and bar.Timer:IsShown() then
                 bar.Timer:SetText(string.format("%.1f", bar.maxValue - value))
             end
+            -- Apply color from curve based on progress
+            if bar.colorCurve and not bar.notInterruptible then
+                local progress = value / bar.maxValue
+                local color = SampleColorCurve(bar.colorCurve, progress)
+                if color then
+                    targetBar:SetStatusBarColor(color.r, color.g, color.b)
+                end
+            end
         end
     elseif bar.channeling then
         local value = bar.endTime - GetTime()
@@ -597,6 +638,14 @@ function Plugin:OnUpdate(elapsed)
             end
             if bar.Timer and bar.Timer:IsShown() then
                 bar.Timer:SetText(string.format("%.1f", value))
+            end
+            -- Apply color from curve (channels drain, so invert progress)
+            if bar.colorCurve and not bar.notInterruptible then
+                local progress = 1 - (value / bar.maxValue)
+                local color = SampleColorCurve(bar.colorCurve, progress)
+                if color then
+                    targetBar:SetStatusBarColor(color.r, color.g, color.b)
+                end
             end
         end
     elseif bar.empowering then
@@ -706,14 +755,33 @@ end
 
 function Plugin:ApplyColor()
     local bar = self.CastBar
-    if not bar then
-        return
-    end
+    if not bar then return end
 
     local systemIndex = bar.systemIndex or 1
-    local color = bar.notInterruptible and self:GetSetting(systemIndex, "NonInterruptibleColor") or self:GetSetting(systemIndex, "CastBarColor")
-    if bar.orbitBar then
-        bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
+    
+    if bar.notInterruptible then
+        local color = self:GetSetting(systemIndex, "NonInterruptibleColor")
+        bar.colorCurve = nil
+        if bar.orbitBar and color then
+            bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
+        end
+    else
+        local curveData = self:GetSetting(systemIndex, "CastBarColorCurve")
+        if curveData and curveData.pins and #curveData.pins > 0 then
+            bar.colorCurve = curveData
+            -- Set initial color from first pin
+            local firstPin = curveData.pins[1]
+            if bar.orbitBar and firstPin and firstPin.color then
+                bar.orbitBar:SetStatusBarColor(firstPin.color.r, firstPin.color.g, firstPin.color.b)
+            end
+        else
+            -- Fallback to old CastBarColor if no curve
+            bar.colorCurve = nil
+            local color = self:GetSetting(systemIndex, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
+            if bar.orbitBar then
+                bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
+            end
+        end
     end
 end
 

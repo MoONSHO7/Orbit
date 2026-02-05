@@ -500,6 +500,29 @@ function WL:AddColorSettings(plugin, schema, systemIndex, systemFrame, colorPara
     })
 end
 
+local function CreateColorCurveOnChange(plugin, systemIndex, key, systemFrame)
+    return function(curveData)
+        plugin:SetSetting(systemIndex, key, curveData)
+        if plugin.ApplySettings then plugin:ApplySettings(systemFrame) end
+        if Engine.Frame then Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame) end
+    end
+end
+
+function WL:AddColorCurveSettings(plugin, schema, systemIndex, systemFrame, params)
+    params = params or {}
+    local key = params.key or "ColorCurve"
+    local label = params.label or "Colour Gradient"
+    local default = params.default
+
+    table.insert(schema.controls, {
+        type = "colorcurve",
+        key = key,
+        label = label,
+        default = default,
+        onChange = CreateColorCurveOnChange(plugin, systemIndex, key, systemFrame),
+    })
+end
+
 function WL:AddOrientationSettings(plugin, schema, systemIndex, dialog, systemFrame, params)
     params = params or {}
     local key = params.key or "Orientation"
