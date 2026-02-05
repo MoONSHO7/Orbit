@@ -7,7 +7,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SYSTEM_ID = "Orbit_PlayerPetFrame"
 local PET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Pet
 
-local Plugin = Orbit:RegisterPlugin(\"Pet Frame\", SYSTEM_ID, {
+local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
     canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
         Width = 100,
