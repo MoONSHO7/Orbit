@@ -13,6 +13,12 @@ local TRACKED_PLACEHOLDER_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local TRACKED_ADD_ICON = "Interface\\PaperDollInfoFrame\\Character-Plus"
 local TRACKED_REMOVE_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
 
+-- Desaturation curve: 0% remaining (ready) = colored, >0% remaining (on CD) = grayscale
+local DESAT_CURVE = C_CurveUtil.CreateCurve()
+DESAT_CURVE:AddPoint(0.0, 0)
+DESAT_CURVE:AddPoint(0.001, 1)
+DESAT_CURVE:AddPoint(1.0, 1)
+
 -- [ PLUGIN REFERENCE ]------------------------------------------------------------------------------
 local Plugin = Orbit:GetPlugin("Orbit_CooldownViewer")
 if not Plugin then error("TrackedAbilities.lua: Plugin 'Orbit_CooldownViewer' not found - ensure CooldownManager.lua loads first") end
@@ -311,11 +317,6 @@ function Plugin:CreateTrackedIcon(anchor, systemIndex, x, y)
     icon.CountText:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
     icon.CountText:Hide()
 
-    icon.TimerText = textOverlay:CreateFontString(nil, "OVERLAY", nil, 7)
-    icon.TimerText:SetPoint("CENTER", icon, "CENTER", 0, 0)
-    icon.TimerText:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE")
-    icon.TimerText:Hide()
-
     icon.DropHighlight = icon:CreateTexture(nil, "BORDER")
     icon.DropHighlight:SetAllPoints()
     icon.DropHighlight:SetColorTexture(0, 0, 0, 0)
@@ -344,9 +345,29 @@ function Plugin:ApplyTrackedIconSkin(icon, systemIndex)
 end
 
 function Plugin:ApplyTrackedTextSettings(icon, systemIndex)
-    CooldownUtils:ApplySimpleTextStyle(self, systemIndex, icon.TimerText, "Timer", "CENTER", 0, 0)
     CooldownUtils:ApplySimpleTextStyle(self, systemIndex, icon.CountText, "Stacks", "BOTTOMRIGHT", -2, 2)
+
+    local cooldown = icon.Cooldown
+    if cooldown then
+        local timerText = cooldown.Text
+        if not timerText then
+            local regions = { cooldown:GetRegions() }
+            for _, region in ipairs(regions) do
+                if region:GetObjectType() == "FontString" then timerText = region break end
+            end
+        end
+        if timerText then
+            local font, size, flags, pos, overrides = CooldownUtils:GetComponentStyle(self, systemIndex, "Timer", 2)
+            timerText:SetFont(font, size, flags)
+            timerText:SetDrawLayer("OVERLAY", 7)
+            CooldownUtils:ApplyTextShadow(timerText, overrides.ShowShadow)
+            CooldownUtils:ApplyTextColor(timerText, overrides)
+            local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
+            if ApplyTextPosition then ApplyTextPosition(timerText, icon, pos) end
+        end
+    end
 end
+
 
 -- [ DATA MANAGEMENT ]--------------------------------------------------------------------------------
 function Plugin:ClearTrackedIcon(icon)
@@ -415,13 +436,27 @@ function Plugin:UpdateTrackedIcon(icon)
         return
     end
 
-    local texture = nil
+    local systemIndex = icon.systemIndex or TRACKED_INDEX
+    local showGCDSwipe = self:GetSetting(systemIndex, "ShowGCDSwipe") ~= false
+
+    local texture, durObj = nil, nil
     if icon.trackedType == "spell" then
         texture = C_Spell.GetSpellTexture(icon.trackedId)
         if texture then
             icon.Icon:SetTexture(texture)
-            local durObj = C_Spell.GetSpellCooldownDuration(icon.trackedId)
-            if durObj then icon.Cooldown:SetCooldownFromDurationObject(durObj, true) end
+            if not showGCDSwipe and (C_Spell.GetSpellCooldown(icon.trackedId) or {}).isOnGCD then
+                icon.Cooldown:Clear()
+                icon.Icon:SetDesaturation(0)
+            else
+                durObj = C_Spell.GetSpellCooldownDuration(icon.trackedId)
+                if durObj then
+                    icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
+                    icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(DESAT_CURVE))
+                else
+                    icon.Cooldown:Clear()
+                    icon.Icon:SetDesaturation(0)
+                end
+            end
             local displayCount = C_Spell.GetSpellDisplayCount(icon.trackedId)
             if displayCount then
                 icon.CountText:SetText(displayCount)
@@ -437,8 +472,10 @@ function Plugin:UpdateTrackedIcon(icon)
             local start, duration = C_Container.GetItemCooldown(icon.trackedId)
             if start and duration and duration > 0 then
                 icon.Cooldown:SetCooldown(start, duration)
+                icon.Icon:SetDesaturation(1)
             else
                 icon.Cooldown:Clear()
+                icon.Icon:SetDesaturation(0)
             end
             local count = C_Item.GetItemCount(icon.trackedId, false, true)
             if count and count > 1 then
@@ -452,11 +489,9 @@ function Plugin:UpdateTrackedIcon(icon)
 
     if not texture then
         icon.Icon:SetTexture(TRACKED_PLACEHOLDER_ICON)
-        icon.Icon:SetDesaturated(true)
+        icon.Icon:SetDesaturation(1)
         icon.Cooldown:Clear()
         icon.CountText:Hide()
-    else
-        icon.Icon:SetDesaturated(false)
     end
     icon:Show()
 end
