@@ -293,6 +293,12 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
         GameTooltip:SetOwner(self, anchor)
         GameTooltip:AddLine(self:GetLabelText(), 1, 0.82, 0)
         GameTooltip:AddLine(EDIT_MODE_CLICK_TO_EDIT, 1, 1, 1)
+
+        -- Show Canvas Mode hint if plugin supports it
+        if self.parent and self.parent.orbitPlugin and self.parent.orbitPlugin.canvasMode then
+            GameTooltip:AddLine("Right-click: Open Canvas Mode", 0.6, 0.9, 0.6)
+        end
+
         if self.parent and self.parent.editModeTooltipLines then
             for _, line in ipairs(self.parent.editModeTooltipLines) do
                 GameTooltip:AddLine(line, 0.8, 0.8, 0.8)
