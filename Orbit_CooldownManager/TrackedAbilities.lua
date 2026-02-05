@@ -358,20 +358,22 @@ function Plugin:ApplyTrackedTextSettings(icon, systemIndex)
     local LSM = LibStub("LibSharedMedia-3.0", true)
     local fontPath = self:GetGlobalFont()
     local baseSize = self:GetBaseFontSize()
+    local ApplyTextPosition = Orbit.Engine.PositionUtils and Orbit.Engine.PositionUtils.ApplyTextPosition
 
-    local function ApplyComponentPosition(textElement, key, defaultAnchor, defaultOffsetX, defaultOffsetY)
+    local function ApplyComponentStyle(textElement, key, defaultAnchor, defaultOffsetX, defaultOffsetY)
         if not textElement then return end
         local pos = positions[key] or {}
         local overrides = pos.overrides or {}
 
+        -- Font settings
         local font = fontPath
         if overrides.Font and LSM then font = LSM:Fetch("font", overrides.Font) or fontPath end
         local fontSize = overrides.FontSize or baseSize
         local flags = overrides.ShowShadow and "" or "OUTLINE"
-
         textElement:SetFont(font, fontSize, flags)
         if overrides.ShowShadow then textElement:SetShadowOffset(1, -1) else textElement:SetShadowOffset(0, 0) end
 
+        -- Color settings
         if overrides.UseClassColour then
             local _, playerClass = UnitClass("player")
             local classColor = RAID_CLASS_COLORS[playerClass]
@@ -383,16 +385,14 @@ function Plugin:ApplyTrackedTextSettings(icon, systemIndex)
             textElement:SetTextColor(1, 1, 1, 1)
         end
 
-        textElement:ClearAllPoints()
-        if pos.posX or pos.posY then
-            textElement:SetPoint("CENTER", icon, "CENTER", pos.posX or 0, pos.posY or 0)
-        else
-            textElement:SetPoint(defaultAnchor, icon, defaultAnchor, defaultOffsetX, defaultOffsetY)
+        -- Position (use shared utility)
+        if ApplyTextPosition then
+            ApplyTextPosition(textElement, icon, pos, defaultAnchor, defaultOffsetX, defaultOffsetY)
         end
     end
 
-    ApplyComponentPosition(icon.TimerText, "Timer", "CENTER", 0, 0)
-    ApplyComponentPosition(icon.CountText, "Stacks", "BOTTOMRIGHT", -2, 2)
+    ApplyComponentStyle(icon.TimerText, "Timer", "CENTER", 0, 0)
+    ApplyComponentStyle(icon.CountText, "Stacks", "BOTTOMRIGHT", -2, 2)
 end
 
 -- [ DATA MANAGEMENT ]--------------------------------------------------------------------------------
@@ -904,12 +904,13 @@ function Plugin:SetupTrackedCanvasPreview(anchor, systemIndex)
             fs:SetPoint("CENTER", preview, "CENTER", 0, 0)
 
             local saved = savedPositions[def.key] or {}
+            local defaultJustifyH = def.anchorX == "LEFT" and "LEFT" or def.anchorX == "RIGHT" and "RIGHT" or "CENTER"
             local data = {
                 anchorX = saved.anchorX or def.anchorX,
                 anchorY = saved.anchorY or def.anchorY,
                 offsetX = saved.offsetX or def.offsetX,
                 offsetY = saved.offsetY or def.offsetY,
-                justifyH = saved.justifyH or "CENTER",
+                justifyH = saved.justifyH or defaultJustifyH,
                 overrides = saved.overrides,
             }
 

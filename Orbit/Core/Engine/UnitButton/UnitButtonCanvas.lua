@@ -44,8 +44,10 @@ function CanvasMixin:UpdateTextLayout()
 
     -- Fallback for frames without ComponentPositions (legacy or non-Canvas Mode frames)
     local height = self:GetHeight()
+    if issecretvalue and issecretvalue(height) then height = 40 end
     local fontName, fontHeight, fontFlags = self.Name:GetFont()
     fontHeight = fontHeight or 12
+    if issecretvalue and issecretvalue(fontHeight) then fontHeight = 12 end
 
     local padding = 5
     local estimatedHealthTextWidth = fontHeight * 3
@@ -98,83 +100,37 @@ function CanvasMixin:ApplyComponentPositions()
     end
 
     local width, height = self:GetWidth(), self:GetHeight()
+    if issecretvalue and (issecretvalue(width) or issecretvalue(height)) then return end
     if width <= 0 or height <= 0 then
         return
     end
 
-    -- Helper to apply edge-relative position (single format: anchorX/Y, offsetX/Y)
-    local function ApplyEdgePosition(element, parent, pos, parentWidth, parentHeight)
-        if not pos.anchorX then
-            return false -- No valid position data
-        end
-
-        local anchorX = pos.anchorX
-        local anchorY = pos.anchorY or "CENTER"
-        local offsetX = pos.offsetX or 0
-        local offsetY = pos.offsetY or 0
-
-        -- Build anchor point string (e.g., "TOPLEFT", "LEFT", "CENTER")
-        local anchorPoint
-        if anchorY == "CENTER" and anchorX == "CENTER" then
-            anchorPoint = "CENTER"
-        elseif anchorY == "CENTER" then
-            anchorPoint = anchorX
-        elseif anchorX == "CENTER" then
-            anchorPoint = anchorY
-        else
-            anchorPoint = anchorY .. anchorX -- e.g., "TOPLEFT", "BOTTOMRIGHT"
-        end
-
-        -- Calculate final offset with correct sign for anchor direction
-        local finalX = offsetX
-        local finalY = offsetY
-        if anchorX == "RIGHT" then
-            finalX = -offsetX
-        end
-        if anchorY == "TOP" then
-            finalY = -offsetY
-        end
-
-        element:ClearAllPoints()
-
-        -- For FontStrings with LEFT/RIGHT justification, anchor by that point
-        if pos.justifyH and element.SetJustifyH then
-            element:SetJustifyH(pos.justifyH)
-
-            if pos.justifyH == "CENTER" then
-                element:SetPoint("CENTER", parent, anchorPoint, finalX, finalY)
-            else
-                element:SetPoint(pos.justifyH, parent, anchorPoint, finalX, finalY)
-            end
-        else
-            element:SetPoint("CENTER", parent, anchorPoint, finalX, finalY)
-        end
-        return true
-    end
+    local ApplyTextPosition = Engine.PositionUtils and Engine.PositionUtils.ApplyTextPosition
+    if not ApplyTextPosition then return end
 
     -- Apply Name position if saved
     if positions.Name and self.Name then
-        ApplyEdgePosition(self.Name, self.TextFrame, positions.Name, width, height)
+        ApplyTextPosition(self.Name, self.TextFrame, positions.Name)
     end
 
     -- Apply HealthText position if saved
     if positions.HealthText and self.HealthText then
-        ApplyEdgePosition(self.HealthText, self.TextFrame, positions.HealthText, width, height)
+        ApplyTextPosition(self.HealthText, self.TextFrame, positions.HealthText)
     end
 
     -- Apply LevelText position if saved (TargetFrame, FocusFrame)
     if positions.LevelText and self.LevelText then
-        ApplyEdgePosition(self.LevelText, self, positions.LevelText, width, height)
+        ApplyTextPosition(self.LevelText, self, positions.LevelText)
     end
 
     -- Apply RareEliteIcon position if saved (TargetFrame, FocusFrame)
     if positions.RareEliteIcon and self.RareEliteIcon then
-        ApplyEdgePosition(self.RareEliteIcon, self, positions.RareEliteIcon, width, height)
+        ApplyTextPosition(self.RareEliteIcon, self, positions.RareEliteIcon)
     end
 
     -- Apply CombatIcon position if saved (PlayerFrame)
     if positions.CombatIcon and self.CombatIcon then
-        ApplyEdgePosition(self.CombatIcon, self, positions.CombatIcon, width, height)
+        ApplyTextPosition(self.CombatIcon, self, positions.CombatIcon)
     end
 
     -- Apply style overrides for ALL components with overrides in saved positions

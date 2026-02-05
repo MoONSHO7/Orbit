@@ -62,6 +62,7 @@ Core\Engine\Handle\HandleCore.lua
 Core\Engine\Frame\Component\ComponentHandle.lua
 Core\Engine\Frame\Component\ComponentEdit.lua
 Core\Engine\Frame\Component\ComponentDrag.lua
+Core\Engine\Frame\Component\SmartGuides.lua
 Core\Engine\Frame\Snap.lua
 Core\Engine\Frame\NudgeRepeat.lua
 Core\Engine\Frame\Selection\Tooltip.lua

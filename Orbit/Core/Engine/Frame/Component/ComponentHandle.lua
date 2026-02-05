@@ -13,6 +13,11 @@ local HandleCore = Engine.HandleCore
 local Helpers = Engine.ComponentHelpers
 local SafeGetNumber = Helpers.SafeGetNumber
 
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
+
+local HEADER_HEIGHT = 14
+local HEADER_MIN_WIDTH = 60
+
 -- [ CREATE HANDLE ]-----------------------------------------------------------------------------
 
 function Handle:Create(component, parent, callbacks)
@@ -42,12 +47,29 @@ function Handle:Create(component, parent, callbacks)
     handle.UpdateSize = UpdateHandleSize
     UpdateHandleSize()
 
+    -- Create header (title bar) - hidden by default, shown on hover/select
+    if not handle.header then
+        handle.header = CreateFrame("Frame", nil, handle)
+        handle.header:SetHeight(HEADER_HEIGHT)
+        handle.header.bg = handle.header:CreateTexture(nil, "BACKGROUND")
+        handle.header.bg:SetAllPoints()
+        handle.header.bg:SetColorTexture(0.3, 0.8, 0.3, 0.8)
+        handle.header.text = handle.header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        handle.header.text:SetPoint("CENTER")
+        handle.header.text:SetTextColor(1, 1, 1, 1)
+    end
+    local compWidth = component:GetWidth()
+    if issecretvalue and issecretvalue(compWidth) then compWidth = HEADER_MIN_WIDTH end
+    handle.header:SetWidth(math.max(compWidth or 0, HEADER_MIN_WIDTH))
+    handle.header.text:SetText(callbacks.key or "Component")
+    handle.header:Hide()
+    Handle:PositionHeader(handle, component, parent)
+
     -- Enable mouse
     handle:EnableMouse(true)
     handle:SetMovable(true)
     handle:RegisterForDrag("LeftButton")
 
-    -- Hover scripts
     handle:SetScript("OnEnter", function(self)
         local colors = HandleCore.Colors
         if callbacks.isSelected and callbacks.isSelected(component) then
@@ -56,10 +78,8 @@ function Handle:Create(component, parent, callbacks)
         else
             self:ApplyColorPreset(colors.HOVER)
         end
-        -- TODO if we find a better looking cursor for the viewport we add it here
-        if callbacks.onEnter then
-            callbacks.onEnter(component)
-        end
+        if self.header then self.header:Show() end
+        if callbacks.onEnter then callbacks.onEnter(component) end
     end)
 
     handle:SetScript("OnLeave", function(self)
@@ -69,12 +89,11 @@ function Handle:Create(component, parent, callbacks)
                 self:ApplyColorPreset(colors.SELECTED)
             else
                 self:ApplyColorPreset(colors.IDLE)
+                if self.header then self.header:Hide() end
             end
         end
         ResetCursor()
-        if callbacks.onLeave then
-            callbacks.onLeave(component)
-        end
+        if callbacks.onLeave then callbacks.onLeave(component) end
     end)
 
     -- Mouse down - select and start drag
@@ -140,6 +159,33 @@ function Handle:Create(component, parent, callbacks)
 
     handle:Hide()
     return handle
+end
+
+-- [ POSITION HEADER ]---------------------------------------------------------------------------
+
+local EDGE_BUFFER = 20
+function Handle:PositionHeader(handle, component, parent)
+    if not handle.header then return end
+    local compTop = component:GetTop()
+    local parentTop = parent:GetTop()
+    if issecretvalue and (issecretvalue(compTop) or issecretvalue(parentTop)) then
+        handle.header:ClearAllPoints()
+        handle.header:SetPoint("BOTTOMLEFT", handle, "TOPLEFT", 0, 0)
+        handle.header:SetPoint("BOTTOMRIGHT", handle, "TOPRIGHT", 0, 0)
+        return
+    end
+    compTop = compTop or 0
+    parentTop = parentTop or 0
+    local atTopEdge = (parentTop - compTop) < EDGE_BUFFER
+
+    handle.header:ClearAllPoints()
+    if atTopEdge then
+        handle.header:SetPoint("TOPLEFT", handle, "BOTTOMLEFT", 0, 0)
+        handle.header:SetPoint("TOPRIGHT", handle, "BOTTOMRIGHT", 0, 0)
+    else
+        handle.header:SetPoint("BOTTOMLEFT", handle, "TOPLEFT", 0, 0)
+        handle.header:SetPoint("BOTTOMRIGHT", handle, "TOPRIGHT", 0, 0)
+    end
 end
 
 -- [ RELEASE HANDLE ]----------------------------------------------------------------------------

@@ -76,6 +76,99 @@ function PositionUtils.BuildAnchorPoint(anchorX, anchorY)
     elseif anchorX == "CENTER" then
         return anchorY
     else
-        return anchorY .. anchorX -- e.g., "TOPLEFT", "BOTTOMRIGHT"
+        return anchorY .. anchorX
     end
+end
+
+-- [ FONT STRING ANCHOR COMPENSATION ]---------------------------------------------------------------
+
+-- Calculate anchor with FontString width compensation for accurate text alignment
+-- When text is positioned near edges, the SetPoint uses text edges (not center),
+-- requiring offset adjustment based on text width and inside/outside positioning.
+-- @param posX: X position relative to parent center
+-- @param posY: Y position relative to parent center
+-- @param halfW: Half width of parent frame
+-- @param halfH: Half height of parent frame
+-- @param isFontString: Whether the component is a FontString
+-- @param compWidth: Width of the component (required for FontString compensation)
+-- @return anchorX, anchorY, offsetX, offsetY, justifyH
+function PositionUtils.CalculateAnchorWithFontCompensation(posX, posY, halfW, halfH, isFontString, compWidth)
+    local anchorX, anchorY, offsetX, offsetY, justifyH = PositionUtils.CalculateAnchor(posX, posY, halfW, halfH)
+
+    if not isFontString or anchorX == "CENTER" then
+        return anchorX, anchorY, offsetX, offsetY, justifyH
+    end
+
+    local compHalfW = (compWidth or 0) / 2
+    local isOutsideLeft = posX < -halfW
+    local isOutsideRight = posX > halfW
+
+    if anchorX == "LEFT" then
+        justifyH = isOutsideLeft and "RIGHT" or "LEFT"
+        local widthComp = isOutsideLeft and compHalfW or -compHalfW
+        offsetX = posX + halfW + widthComp
+    elseif anchorX == "RIGHT" then
+        justifyH = isOutsideRight and "LEFT" or "RIGHT"
+        local widthComp = isOutsideRight and compHalfW or -compHalfW
+        offsetX = halfW - posX + widthComp
+    end
+
+    return anchorX, anchorY, offsetX, offsetY, justifyH
+end
+
+-- [ APPLY TEXT POSITION ]--------------------------------------------------------------------------
+
+-- Apply saved position data to a text element (FontString or Frame)
+-- Handles anchor-based positioning with justifyH support for text alignment
+-- @param element: The FontString or Frame to position
+-- @param parent: The parent frame to anchor to
+-- @param pos: Position data table { anchorX, anchorY, offsetX, offsetY, justifyH, posX, posY }
+-- @param defaultAnchor: (optional) Default anchor point string if no pos data
+-- @param defaultOffsetX: (optional) Default X offset if no pos data
+-- @param defaultOffsetY: (optional) Default Y offset if no pos data
+-- @return true if position was applied, false otherwise
+function PositionUtils.ApplyTextPosition(element, parent, pos, defaultAnchor, defaultOffsetX, defaultOffsetY)
+    if not element or not parent then return false end
+
+    pos = pos or {}
+
+    -- Apply justifyH if element supports it
+    if pos.justifyH and element.SetJustifyH then
+        element:SetJustifyH(pos.justifyH)
+    end
+
+    element:ClearAllPoints()
+
+    -- Anchor-based positioning (preferred)
+    if pos.anchorX then
+        local anchorPoint = PositionUtils.BuildAnchorPoint(pos.anchorX, pos.anchorY or "CENTER")
+
+        -- Calculate offset signs (positive = inward)
+        local offsetX = pos.offsetX or 0
+        local offsetY = pos.offsetY or 0
+        if pos.anchorX == "RIGHT" then offsetX = -offsetX end
+        if pos.anchorY == "TOP" then offsetY = -offsetY end
+
+        -- Text anchor: use justifyH for horizontal alignment
+        if pos.justifyH and pos.justifyH ~= "CENTER" and element.SetJustifyH then
+            element:SetPoint(pos.justifyH, parent, anchorPoint, offsetX, offsetY)
+        else
+            element:SetPoint("CENTER", parent, anchorPoint, offsetX, offsetY)
+        end
+        return true
+    end
+
+    -- Center-relative fallback (posX/posY)
+    if pos.posX ~= nil and pos.posY ~= nil then
+        element:SetPoint("CENTER", parent, "CENTER", pos.posX, pos.posY)
+        return true
+    end
+
+    -- Default positioning
+    if defaultAnchor then
+        element:SetPoint(defaultAnchor, parent, defaultAnchor, defaultOffsetX or 0, defaultOffsetY or 0)
+        return true
+    end
+
+    return false
 end

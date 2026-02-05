@@ -87,6 +87,7 @@ C.Levels = {
     Glow = 10,          -- Glow effect container
     Text = 20,          -- Text overlay frame
     ProcOverlay = 50,   -- High level procs (SpellActivationAlert)
+    SmartGuides = 90,   -- Canvas Mode snap guides
     Tooltip = 100,      -- Tooltip/flyout layer
 }
 

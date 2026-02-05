@@ -35,7 +35,8 @@ local TYPE_SCHEMAS = {
     -- Texture/Icon elements (CombatIcon, RareEliteIcon, etc.)
     Texture = {
         controls = {
-            { type = "slider", key = "Scale", label = "Scale", min = 0.5, max = 2.0, step = 0.1 },
+            { type = "slider", key = "Scale", label = "Scale", min = 0.5, max = 2.0, step = 0.1,
+                formatter = function(v) return math.floor(v * 100 + 0.5) .. "%" end },
         },
     },
 }
@@ -155,7 +156,7 @@ local function CreateSliderWidget(parent, control, currentValue, callback)
         control.min,
         control.max,
         control.step or 1,
-        nil, -- formatter (use default)
+        control.formatter,
         currentValue or control.min,
         function(value)
             if callback then

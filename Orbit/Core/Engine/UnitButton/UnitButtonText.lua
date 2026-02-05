@@ -231,6 +231,7 @@ function TextMixin:UpdateName()
     local maxChars = 15
 
     local frameWidth = self:GetWidth()
+    if issecretvalue and issecretvalue(frameWidth) then frameWidth = 0 end
     if type(frameWidth) == "number" and frameWidth > 0 then
         -- Estimate HealthText reserved width based on font size (avoids secret value issues)
         -- "100%" is ~4-5 chars, estimate ~0.6x font height per character

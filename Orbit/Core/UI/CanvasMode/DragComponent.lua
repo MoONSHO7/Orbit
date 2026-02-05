@@ -12,7 +12,16 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- Use shared position utilities
 local CalculateAnchor = OrbitEngine.PositionUtils.CalculateAnchor
+local CalculateAnchorWithFontCompensation = OrbitEngine.PositionUtils.CalculateAnchorWithFontCompensation
 local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
+
+-- SmartGuides for visual snap feedback
+local SmartGuides = OrbitEngine.SmartGuides
+
+-- [ CONSTANTS ]--------------------------------------------------------------------------
+
+local SNAP_SIZE = 5
+local EDGE_THRESHOLD = 3
 
 -- [ TEXT ALIGNMENT ]---------------------------------------------------------------------
 
@@ -135,8 +144,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         if ok2 and h and type(h) == "number" and h > 0 and h <= fontSize * 2 and (not issecretvalue or not issecretvalue(h)) then
             textHeight = h
         end
-        -- Add minimal buffer (2px total each dimension) for hit detection
-        container:SetSize(textWidth + 2, textHeight + 2)
+        container:SetSize(textWidth, textHeight)
 
         visual:SetPoint("CENTER", container, "CENTER", 0, 0)
         container.isFontString = true
@@ -335,10 +343,13 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
 
     -- [ CLICK/DRAG HANDLERS ]------------------------------------------------------------
 
+    local DRAG_THRESHOLD = 3 -- Custom threshold (WoW default is ~15px)
+
     container:SetScript("OnMouseDown", function(self, button)
         if button == "LeftButton" then
             self.mouseDownTime = GetTime()
             self.wasDragged = false
+            self.pendingDrag = true
             local mx, my = GetCursorPosition()
             local scale = UIParent:GetEffectiveScale()
             self.mouseDownX = mx / scale
@@ -348,11 +359,26 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
 
     container:SetScript("OnMouseUp", function(self, button)
         if button == "LeftButton" then
-            local clickDuration = GetTime() - (self.mouseDownTime or 0)
+            self.pendingDrag = false
 
-            if not self.wasDragged and clickDuration < 0.3 then
-                if OrbitEngine.CanvasComponentSettings then
-                    OrbitEngine.CanvasComponentSettings:Open(self.key, self, Dialog.targetPlugin, Dialog.targetSystemIndex)
+            -- If we were dragging, stop the drag
+            if self.isDragging then
+                self.isDragging = false
+                self.border:SetColorTexture(0.3, 0.8, 0.3, 0)
+
+                -- Hide SmartGuides
+                if SmartGuides and preview.guides then
+                    SmartGuides:Hide(preview.guides)
+                end
+
+                Dialog.DisabledDock.DropHighlight:Hide()
+            elseif not self.wasDragged and self.mouseDownTime then
+                -- Click behavior (not a drag)
+                local clickDuration = GetTime() - self.mouseDownTime
+                if clickDuration < 0.3 then
+                    if OrbitEngine.CanvasComponentSettings then
+                        OrbitEngine.CanvasComponentSettings:Open(self.key, self, Dialog.targetPlugin, Dialog.targetSystemIndex)
+                    end
                 end
             end
 
@@ -362,41 +388,54 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         end
     end)
 
-    container:SetScript("OnDragStart", function(self)
-        if InCombatLockdown() then
-            return
-        end
+    -- Helper to start dragging (shared logic)
+    local function StartDrag(self)
+        if InCombatLockdown() then return end
 
         self.wasDragged = true
+        self.pendingDrag = false
 
-        -- Get Mouse Screen Position (normalized to UIParent scale)
         local mX, mY = GetCursorPosition()
         local scale = UIParent:GetEffectiveScale()
         mX, mY = mX / scale, mY / scale
 
-        -- Get preview's center in screen coords
         local parentCenterX, parentCenterY = preview:GetCenter()
-
-        -- Calculate where the component's CENTER should be in screen coords
-        -- using our stored center-relative posX/posY
         local zoomLevel = Dialog.zoomLevel or 1
         local itemScreenX = parentCenterX + (self.posX or 0) * zoomLevel
         local itemScreenY = parentCenterY + (self.posY or 0) * zoomLevel
 
-        -- Calculate grip offset (distance from click to item center)
         self.dragGripX = itemScreenX - mX
         self.dragGripY = itemScreenY - mY
-
         self.isDragging = true
         self.border:SetColorTexture(0.3, 0.8, 0.3, 0.3)
+    end
+
+    -- Keep OnDragStart as fallback (for accessibility/edge cases)
+    container:SetScript("OnDragStart", function(self)
+        if not self.isDragging and not self.wasDragged then
+            StartDrag(self)
+        end
     end)
 
     container:SetScript("OnUpdate", function(self)
+        -- Check for pending drag with custom threshold (faster than WoW's ~15px default)
+        if self.pendingDrag and self.mouseDownX and self.mouseDownY then
+            local mX, mY = GetCursorPosition()
+            local scale = UIParent:GetEffectiveScale()
+            mX, mY = mX / scale, mY / scale
+
+            local dx = math.abs(mX - self.mouseDownX)
+            local dy = math.abs(mY - self.mouseDownY)
+
+            if dx > DRAG_THRESHOLD or dy > DRAG_THRESHOLD then
+                StartDrag(self)
+            end
+        end
+
         if self.isDragging then
             local halfW = preview.sourceWidth / 2
             local halfH = preview.sourceHeight / 2
 
-            -- 1. Get current Mouse Screen Position
             local mX, mY = GetCursorPosition()
             local scale = UIParent:GetEffectiveScale()
             mX, mY = mX / scale, mY / scale
@@ -424,35 +463,77 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             -- Alias for consistency with rest of code
             local centerRelX, centerRelY = relativeX, relativeY
 
-            local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(centerRelX, centerRelY, halfW, halfH)
+            -- [ TIERED SNAP LOGIC ]------------------------------------------------------
+            local snapX, snapY = nil, nil
+            local compWidth = self:GetWidth() or 40
+            local compHeight = self:GetHeight() or 16
+            local compHalfW = compWidth / 2
+            local compHalfH = compHeight / 2
 
-            -- FontString justify calculation with width-compensated edge offsets
-            if self.isFontString then
-                local isOutsideLeft = centerRelX < -halfW
-                local isOutsideRight = centerRelX > halfW
-                local containerHalfW = self:GetWidth() / 2
+            if IsShiftKeyDown() then
+                -- Precision mode: no snapping
+            else
+                -- Edge Magnet X (snap when near edge, show guide when beyond)
+                local rightEdgePos = halfW - compHalfW
+                local leftEdgePos = -halfW + compHalfW
+                local distRight = math.abs(centerRelX - rightEdgePos)
+                local distLeft = math.abs(centerRelX - leftEdgePos)
+                local beyondRight = centerRelX > rightEdgePos
+                local beyondLeft = centerRelX < leftEdgePos
 
-                if anchorX == "LEFT" then
-                    justifyH = isOutsideLeft and "RIGHT" or "LEFT"
-                    -- When inside: justify=LEFT, SetPoint uses text's LEFT edge → subtract
-                    -- When outside: justify=RIGHT, SetPoint uses text's RIGHT edge → add
-                    local widthCompensation = isOutsideLeft and containerHalfW or -containerHalfW
-                    edgeOffX = centerRelX + halfW + widthCompensation
-                elseif anchorX == "RIGHT" then
-                    justifyH = isOutsideRight and "LEFT" or "RIGHT"
-                    -- When inside: justify=RIGHT, SetPoint uses text's RIGHT edge → subtract
-                    -- When outside: justify=LEFT, SetPoint uses text's LEFT edge → add
-                    local widthCompensation = isOutsideRight and containerHalfW or -containerHalfW
-                    edgeOffX = halfW - centerRelX + widthCompensation
-                else
-                    edgeOffX = 0
-                    justifyH = "CENTER"
+                if distRight <= EDGE_THRESHOLD and not beyondRight then
+                    centerRelX = rightEdgePos
+                    snapX = "RIGHT"
+                elseif distLeft <= EDGE_THRESHOLD and not beyondLeft then
+                    centerRelX = leftEdgePos
+                    snapX = "LEFT"
+                elseif math.abs(centerRelX) <= EDGE_THRESHOLD then
+                    centerRelX = 0
+                    snapX = "CENTER"
+                elseif beyondRight then
+                    snapX = "RIGHT" -- Show guide only, no snap
+                elseif beyondLeft then
+                    snapX = "LEFT" -- Show guide only, no snap
                 end
+                if not snapX then centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE end
 
-                -- Live text alignment during drag (what you see = what you get)
-                if self.visual then
-                    ApplyTextAlignment(self, self.visual, justifyH)
+                -- Edge Magnet Y (snap when near edge, show guide when beyond)
+                local topEdgePos = halfH - compHalfH
+                local bottomEdgePos = -halfH + compHalfH
+                local distTop = math.abs(centerRelY - topEdgePos)
+                local distBottom = math.abs(centerRelY - bottomEdgePos)
+                local beyondTop = centerRelY > topEdgePos
+                local beyondBottom = centerRelY < bottomEdgePos
+
+                if distTop <= EDGE_THRESHOLD and not beyondTop then
+                    centerRelY = topEdgePos
+                    snapY = "TOP"
+                elseif distBottom <= EDGE_THRESHOLD and not beyondBottom then
+                    centerRelY = bottomEdgePos
+                    snapY = "BOTTOM"
+                elseif math.abs(centerRelY) <= EDGE_THRESHOLD then
+                    centerRelY = 0
+                    snapY = "CENTER"
+                elseif beyondTop then
+                    snapY = "TOP" -- Show guide only, no snap
+                elseif beyondBottom then
+                    snapY = "BOTTOM" -- Show guide only, no snap
                 end
+                if not snapY then centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE end
+            end
+
+            local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchorWithFontCompensation(
+                centerRelX, centerRelY, halfW, halfH, self.isFontString, self:GetWidth()
+            )
+
+            -- Update SmartGuides
+            if SmartGuides and preview.guides then
+                SmartGuides:Update(preview.guides, snapX, snapY, preview.sourceWidth, preview.sourceHeight)
+            end
+
+
+            if self.isFontString and self.visual then
+                ApplyTextAlignment(self, self.visual, justifyH)
             end
 
             -- Always position by CENTER during drag for smooth movement
@@ -489,6 +570,11 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         self.border:SetColorTexture(0.3, 0.8, 0.3, 0)
 
         Dialog.DisabledDock.DropHighlight:Hide()
+
+        -- Hide SmartGuides
+        if SmartGuides and preview.guides then
+            SmartGuides:Hide(preview.guides)
+        end
 
         -- Check if dropped over the disabled dock
         if Dialog.DisabledDock:IsMouseOver() then

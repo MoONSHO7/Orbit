@@ -12,6 +12,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- Use shared position utilities
 local CalculateAnchor = OrbitEngine.PositionUtils.CalculateAnchor
+local CalculateAnchorWithFontCompensation = OrbitEngine.PositionUtils.CalculateAnchorWithFontCompensation
 local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
 
 -- Use shared functions from other modules
@@ -318,10 +319,15 @@ function Dialog:Open(frame, plugin, systemIndex)
         borderSize = borderSize,
         textureName = textureName,
         useClassColor = true,
-        plugin = plugin, -- Pass plugin for custom hooks
-        systemIndex = systemIndex, -- Pass system index for custom hooks
+        plugin = plugin,
+        systemIndex = systemIndex,
     })
     self.previewFrame:SetPoint("CENTER", self.TransformLayer, "CENTER", 0, 0)
+
+    -- Create SmartGuides for visual snap feedback
+    if OrbitEngine.SmartGuides then
+        self.previewFrame.guides = OrbitEngine.SmartGuides:Create(self.previewFrame)
+    end
 
     self.TransformLayer.baseWidth = canvasFrame:GetWidth()
     self.TransformLayer.baseHeight = canvasFrame:GetHeight()
@@ -535,17 +541,9 @@ function Dialog:Apply()
         if not anchorX then
             local posX = comp.posX or 0
             local posY = comp.posY or 0
-            anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchor(posX, posY, halfWidth, halfHeight)
-
-            -- Apply width compensation for FontStrings (matches drag display logic)
-            -- When inside: justify matches anchor side → subtract containerHalfW
-            -- When outside: justify flipped → add containerHalfW
-            if comp.isFontString and anchorX ~= "CENTER" then
-                local containerHalfW = comp:GetWidth() / 2
-                local isOutside = (anchorX == "LEFT" and posX < -halfWidth) or (anchorX == "RIGHT" and posX > halfWidth)
-                local widthCompensation = isOutside and containerHalfW or -containerHalfW
-                offsetX = offsetX + widthCompensation
-            end
+            anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchorWithFontCompensation(
+                posX, posY, halfWidth, halfHeight, comp.isFontString, comp:GetWidth()
+            )
         end
 
         positions[key] = {

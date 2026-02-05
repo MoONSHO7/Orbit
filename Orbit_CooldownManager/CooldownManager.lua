@@ -408,12 +408,13 @@ function Plugin:SetupCanvasPreview(anchor, systemIndex)
 
             -- Get saved position or use defaults
             local saved = savedPositions[def.key] or {}
+            local defaultJustifyH = def.anchorX == "LEFT" and "LEFT" or def.anchorX == "RIGHT" and "RIGHT" or "CENTER"
             local data = {
                 anchorX = saved.anchorX or def.anchorX,
                 anchorY = saved.anchorY or def.anchorY,
                 offsetX = saved.offsetX or def.offsetX,
                 offsetY = saved.offsetY or def.offsetY,
-                justifyH = saved.justifyH or "CENTER",
+                justifyH = saved.justifyH or defaultJustifyH,
                 overrides = saved.overrides,
             }
 
@@ -1131,38 +1132,10 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                 -- Apply color override (class colour > custom color)
                 ApplyTextColor(timerText, timerOverrides)
 
-                -- Apply JustifyH if saved (from Canvas Mode drag)
-                if timerPos.justifyH and timerText.SetJustifyH then
-                    timerText:SetJustifyH(timerPos.justifyH)
-                end
-
-                -- Apply position if overridden
-                if timerPos.anchorX then
-                    -- Anchor-based positioning with JustifyH decoupled pattern
-                    local anchorPoint = timerPos.anchorY .. timerPos.anchorX
-                    if timerPos.anchorY == "CENTER" and timerPos.anchorX == "CENTER" then
-                        anchorPoint = "CENTER"
-                    elseif timerPos.anchorY == "CENTER" then
-                        anchorPoint = timerPos.anchorX
-                    elseif timerPos.anchorX == "CENTER" then
-                        anchorPoint = timerPos.anchorY
-                    end
-
-                    local textPoint
-                    if timerPos.justifyH and timerPos.justifyH ~= "CENTER" then
-                        textPoint = timerPos.justifyH -- "LEFT" or "RIGHT"
-                    else
-                        textPoint = "CENTER"
-                    end
-
-                    timerText:ClearAllPoints()
-                    local offsetX = timerPos.anchorX == "LEFT" and timerPos.offsetX or -timerPos.offsetX
-                    local offsetY = timerPos.anchorY == "BOTTOM" and timerPos.offsetY or -timerPos.offsetY
-                    timerText:SetPoint(textPoint, icon, anchorPoint, offsetX, offsetY)
-                elseif timerPos.posX ~= nil and timerPos.posY ~= nil then
-                    -- Center-relative fallback (no anchor data)
-                    timerText:ClearAllPoints()
-                    timerText:SetPoint("CENTER", icon, "CENTER", timerPos.posX, timerPos.posY)
+                -- Apply position (use shared utility)
+                local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
+                if ApplyTextPosition then
+                    ApplyTextPosition(timerText, icon, timerPos)
                 end
             end
         end
@@ -1208,43 +1181,15 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
             -- Apply color override (class colour > custom color)
             ApplyTextColor(icon.ChargeCount.Current, chargesOverrides)
 
-            -- Apply JustifyH if saved (from Canvas Mode drag)
-            if chargesPos.justifyH and icon.ChargeCount.Current.SetJustifyH then
-                icon.ChargeCount.Current:SetJustifyH(chargesPos.justifyH)
-            end
-
             -- Ensure ChargeCount frame is above glows
             if icon.ChargeCount.SetFrameLevel then
                 icon.ChargeCount:SetFrameLevel(icon:GetFrameLevel() + 20)
             end
 
-            -- Apply position if overridden (prefer anchor-based for edge/justification)
-            if chargesPos.anchorX then
-                local anchorPoint = chargesPos.anchorY .. chargesPos.anchorX
-                if chargesPos.anchorY == "CENTER" and chargesPos.anchorX == "CENTER" then
-                    anchorPoint = "CENTER"
-                elseif chargesPos.anchorY == "CENTER" then
-                    anchorPoint = chargesPos.anchorX
-                elseif chargesPos.anchorX == "CENTER" then
-                    anchorPoint = chargesPos.anchorY
-                end
-
-                -- Text's anchor point: use justifyH only (matches Canvas Mode pattern)
-                local textPoint
-                if chargesPos.justifyH and chargesPos.justifyH ~= "CENTER" then
-                    textPoint = chargesPos.justifyH
-                else
-                    textPoint = "CENTER"
-                end
-
-                icon.ChargeCount.Current:ClearAllPoints()
-                local offsetX = chargesPos.anchorX == "LEFT" and chargesPos.offsetX or -chargesPos.offsetX
-                local offsetY = chargesPos.anchorY == "BOTTOM" and chargesPos.offsetY or -chargesPos.offsetY
-                icon.ChargeCount.Current:SetPoint(textPoint, icon, anchorPoint, offsetX, offsetY)
-            elseif chargesPos.posX ~= nil and chargesPos.posY ~= nil then
-                -- Center-relative fallback (no anchor data)
-                icon.ChargeCount.Current:ClearAllPoints()
-                icon.ChargeCount.Current:SetPoint("CENTER", icon, "CENTER", chargesPos.posX, chargesPos.posY)
+            -- Apply position (use shared utility)
+            local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
+            if ApplyTextPosition then
+                ApplyTextPosition(icon.ChargeCount.Current, icon, chargesPos)
             end
         end
     end
@@ -1278,43 +1223,15 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
                 -- Apply color override (class colour > custom color)
                 ApplyTextColor(stackText, stacksOverrides)
 
-                -- Apply JustifyH if saved (from Canvas Mode drag)
-                if stacksPos.justifyH and stackText.SetJustifyH then
-                    stackText:SetJustifyH(stacksPos.justifyH)
-                end
-
                 -- Ensure Applications frame is above glows
                 if icon.Applications.SetFrameLevel then
                     icon.Applications:SetFrameLevel(icon:GetFrameLevel() + 20)
                 end
 
-                -- Apply position if overridden (prefer anchor-based for edge/justification)
-                if stacksPos.anchorX then
-                    local anchorPoint = stacksPos.anchorY .. stacksPos.anchorX
-                    if stacksPos.anchorY == "CENTER" and stacksPos.anchorX == "CENTER" then
-                        anchorPoint = "CENTER"
-                    elseif stacksPos.anchorY == "CENTER" then
-                        anchorPoint = stacksPos.anchorX
-                    elseif stacksPos.anchorX == "CENTER" then
-                        anchorPoint = stacksPos.anchorY
-                    end
-
-                    -- Text's anchor point: use justifyH only (matches Canvas Mode pattern)
-                    local textPoint
-                    if stacksPos.justifyH and stacksPos.justifyH ~= "CENTER" then
-                        textPoint = stacksPos.justifyH
-                    else
-                        textPoint = "CENTER"
-                    end
-
-                    stackText:ClearAllPoints()
-                    local offsetX = stacksPos.anchorX == "LEFT" and stacksPos.offsetX or -stacksPos.offsetX
-                    local offsetY = stacksPos.anchorY == "BOTTOM" and stacksPos.offsetY or -stacksPos.offsetY
-                    stackText:SetPoint(textPoint, icon, anchorPoint, offsetX, offsetY)
-                elseif stacksPos.posX ~= nil and stacksPos.posY ~= nil then
-                    -- Center-relative fallback (no anchor data)
-                    stackText:ClearAllPoints()
-                    stackText:SetPoint("CENTER", icon, "CENTER", stacksPos.posX, stacksPos.posY)
+                -- Apply position (use shared utility)
+                local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
+                if ApplyTextPosition then
+                    ApplyTextPosition(stackText, icon, stacksPos)
                 end
             end
         end
@@ -1331,38 +1248,10 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
         -- Apply color override (class colour > custom color)
         ApplyTextColor(keybind, keybindOverrides)
 
-        -- Apply JustifyH if saved (from Canvas Mode drag)
-        if keybindPos.justifyH and keybind.SetJustifyH then
-            keybind:SetJustifyH(keybindPos.justifyH)
-        end
-
-        -- Apply position if overridden (prefer anchor-based for edge/justification)
-        if keybindPos.anchorX then
-            local anchorPoint = keybindPos.anchorY .. keybindPos.anchorX
-            if keybindPos.anchorY == "CENTER" and keybindPos.anchorX == "CENTER" then
-                anchorPoint = "CENTER"
-            elseif keybindPos.anchorY == "CENTER" then
-                anchorPoint = keybindPos.anchorX
-            elseif keybindPos.anchorX == "CENTER" then
-                anchorPoint = keybindPos.anchorY
-            end
-
-            -- Text's anchor point: use justifyH only (matches Canvas Mode pattern)
-            local textPoint
-            if keybindPos.justifyH and keybindPos.justifyH ~= "CENTER" then
-                textPoint = keybindPos.justifyH
-            else
-                textPoint = "CENTER"
-            end
-
-            keybind:ClearAllPoints()
-            local offsetX = keybindPos.anchorX == "LEFT" and keybindPos.offsetX or -keybindPos.offsetX
-            local offsetY = keybindPos.anchorY == "BOTTOM" and keybindPos.offsetY or -keybindPos.offsetY
-            keybind:SetPoint(textPoint, icon, anchorPoint, offsetX, offsetY)
-        elseif keybindPos.posX ~= nil and keybindPos.posY ~= nil then
-            -- Center-relative fallback (no anchor data)
-            keybind:ClearAllPoints()
-            keybind:SetPoint("CENTER", icon, "CENTER", keybindPos.posX, keybindPos.posY)
+        -- Apply position (use shared utility)
+        local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
+        if ApplyTextPosition then
+            ApplyTextPosition(keybind, icon, keybindPos)
         end
 
         -- Get spell ID from the icon

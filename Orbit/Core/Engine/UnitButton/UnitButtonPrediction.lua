@@ -57,6 +57,7 @@ function PredictionMixin:UpdateHealPrediction()
 
     -- Common Width for all bars (match health bar width)
     local totalWidth = self.Health:GetWidth()
+    if issecretvalue and issecretvalue(totalWidth) then return end
 
     -----------------------------------------------------------------------
     -- 1. My Incoming Heals

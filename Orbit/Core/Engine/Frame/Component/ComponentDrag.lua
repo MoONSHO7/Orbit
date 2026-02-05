@@ -20,6 +20,7 @@ local SafeGetSize = Helpers.SafeGetSize
 local SafeGetNumber = Helpers.SafeGetNumber
 local PADDING = Helpers.PADDING
 local CalculateAnchor = Engine.PositionUtils.CalculateAnchor
+local CalculateAnchorWithFontCompensation = Engine.PositionUtils.CalculateAnchorWithFontCompensation
 local HandleModule = Engine.ComponentHandle
 
 -- [ STATE ]-----------------------------------------------------------------------------------------
@@ -27,6 +28,11 @@ local HandleModule = Engine.ComponentHandle
 local registeredComponents = {} -- { [component] = { parent, key, options, handle } }
 local frameComponents = {} -- { [parentFrame] = { component1, component2, ... } }
 local selectedComponent = nil -- Currently selected component for nudge
+
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
+
+local SNAP_SIZE = 5
+local EDGE_THRESHOLD = 3
 
 -- [ DRAG MECHANICS ]--------------------------------------------------------------------------------
 
@@ -52,9 +58,48 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
     centerRelX = math.max(-halfW - PADDING, math.min(centerRelX, halfW + PADDING))
     centerRelY = math.max(-halfH - PADDING, math.min(centerRelY, halfH + PADDING))
 
-    local SNAP_SIZE = 5
-    centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE
-    centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE
+    local snapX, snapY = nil, nil
+    local compWidth = SafeGetSize(component)
+    local compHalfW = compWidth / 2
+
+    if IsShiftKeyDown() then
+        -- Precision mode: no snapping
+    else
+        -- Edge Magnet X (0px flush)
+        local distRight = math.abs((centerRelX + compHalfW) - halfW)
+        local distLeft = math.abs((centerRelX - compHalfW) + halfW)
+        if distRight <= EDGE_THRESHOLD then
+            centerRelX = halfW - compHalfW
+            snapX = "RIGHT"
+        elseif distLeft <= EDGE_THRESHOLD then
+            centerRelX = -halfW + compHalfW
+            snapX = "LEFT"
+        elseif math.abs(centerRelX) <= EDGE_THRESHOLD then
+            centerRelX = 0
+            snapX = "CENTER"
+        end
+        if not snapX then centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE end
+
+        -- Edge Magnet Y
+        local distTop = math.abs((centerRelY + (component:GetHeight() or 0) / 2) - halfH)
+        local distBottom = math.abs((centerRelY - (component:GetHeight() or 0) / 2) + halfH)
+        local compHalfH = (component:GetHeight() or 0) / 2
+        if distTop <= EDGE_THRESHOLD then
+            centerRelY = halfH - compHalfH
+            snapY = "TOP"
+        elseif distBottom <= EDGE_THRESHOLD then
+            centerRelY = -halfH + compHalfH
+            snapY = "BOTTOM"
+        elseif math.abs(centerRelY) <= EDGE_THRESHOLD then
+            centerRelY = 0
+            snapY = "CENTER"
+        end
+        if not snapY then centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE end
+    end
+
+    if Engine.SmartGuides and data.guides then
+        Engine.SmartGuides:Update(data.guides, snapX, snapY, parentWidth, parentHeight)
+    end
 
     data.currentX = centerRelX
     data.currentY = centerRelY
@@ -92,12 +137,18 @@ function ComponentDrag:OnDragStop(component, parent, data)
         local centerX = data.currentX or 0
         local centerY = data.currentY or 0
 
-        local anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchor(centerX, centerY, halfW, halfH)
+        local anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchorWithFontCompensation(
+            centerX, centerY, halfW, halfH, data.isFontString, SafeGetSize(component)
+        )
         data.options.onPositionChange(component, anchorX, anchorY, offsetX, offsetY, justifyH)
     end
 
     if Engine.PositionManager then
         Engine.PositionManager:MarkDirty(parent)
+    end
+
+    if Engine.SmartGuides and data.guides then
+        Engine.SmartGuides:Hide(data.guides)
     end
 
     GameTooltip:Hide()
@@ -262,11 +313,14 @@ function ComponentDrag:Attach(component, parent, options)
         currentX = 0,
         currentY = 0,
         currentAlignment = "LEFT",
+        isFontString = component.GetText ~= nil,
+        guides = Engine.SmartGuides and Engine.SmartGuides:Create(parent) or nil,
         handle = nil,
     }
 
     -- Create handle using the Handle module with callbacks
     data.handle = HandleModule:Create(component, parent, {
+        key = options.key,
         isSelected = function(comp)
             return selectedComponent == comp
         end,
