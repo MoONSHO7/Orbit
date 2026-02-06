@@ -51,63 +51,55 @@ function HealthMixin:UpdateHealth()
 end
 
 function HealthMixin:ApplyHealthColor()
-    if not self.Health then
-        return
-    end
+    if not self.Health then return end
 
-    -- Global UseClassColors setting controls both class colors AND reaction colors
-    local globalUseClassColors = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UseClassColors
-    local globalBarColor = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BarColor
+    local globalBarCurve = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BarColorCurve
 
-    -- Determine effective setting (global takes precedence, fallback to per-frame)
-    local useAdvancedColors = false
-    if globalUseClassColors == false then
-        useAdvancedColors = false
-    elseif globalUseClassColors == true then
-        useAdvancedColors = true
-    else
-        -- Global not set (nil) - fall back to per-frame classColour flag
-        useAdvancedColors = self.classColour or false
-    end
-
-    -- When Class Color Health is enabled:
-    -- - Players get class colors
-    -- - NPCs get reaction colors
-    if useAdvancedColors then
-        -- Class color for players
-        if UnitIsPlayer(self.unit) then
-            local _, class = UnitClass(self.unit)
-            if class then
-                local color = C_ClassColor.GetClassColor(class)
-                if color then
-                    self.Health:SetStatusBarColor(color.r, color.g, color.b)
-                    return
+    if globalBarCurve and globalBarCurve.pins and #globalBarCurve.pins > 0 then
+        -- Check if curve has class color pins
+        local hasClassPin = Engine.WidgetLogic:CurveHasClassPin(globalBarCurve)
+        
+        if hasClassPin then
+            -- Build unit-specific native curve (resolves class pins for this unit)
+            local nativeCurve = Engine.WidgetLogic:ToNativeColorCurveForUnit(globalBarCurve, self.unit)
+            if nativeCurve and UnitHealthPercent and self.unit and UnitExists(self.unit) then
+                local tex = self.Health:GetStatusBarTexture()
+                if tex then
+                    local ok, color = pcall(UnitHealthPercent, self.unit, true, nativeCurve)
+                    if ok and color and color.GetRGBA then
+                        tex:SetVertexColor(color:GetRGBA())
+                        return
+                    end
                 end
             end
-        end
-
-        -- Reaction color for non-players (NPCs, bosses, pets)
-        local reaction = UnitReaction(self.unit, "player")
-        if reaction then
-            local color = FACTION_BAR_COLORS[reaction]
-            if color then
-                self.Health:SetStatusBarColor(color.r, color.g, color.b)
+            -- Fallback to first color if native curve fails
+            local staticColor = Engine.WidgetLogic:GetFirstColorFromCurveForUnit(globalBarCurve, self.unit)
+            if staticColor then
+                self.Health:SetStatusBarColor(staticColor.r, staticColor.g, staticColor.b)
+                return
+            end
+        else
+            -- No class pins - can use cached native curve for gradient
+            local nativeCurve = Engine.WidgetLogic:ToNativeColorCurve(globalBarCurve)
+            if nativeCurve and UnitHealthPercent and self.unit and UnitExists(self.unit) then
+                local tex = self.Health:GetStatusBarTexture()
+                if tex then
+                    local ok, color = pcall(UnitHealthPercent, self.unit, true, nativeCurve)
+                    if ok and color and color.GetRGBA then
+                        tex:SetVertexColor(color:GetRGBA())
+                        return
+                    end
+                end
+            end
+            local staticColor = Engine.WidgetLogic:GetFirstColorFromCurve(globalBarCurve)
+            if staticColor then
+                self.Health:SetStatusBarColor(staticColor.r, staticColor.g, staticColor.b)
                 return
             end
         end
-
-        -- Fallback for units with no reaction (friendly pets, etc.) - use green
-        self.Health:SetStatusBarColor(0, 1, 0)
-        return
     end
 
-    -- When Class Color Health is disabled:
-    -- ALL frames use the Health Color setting
-    if globalBarColor then
-        self.Health:SetStatusBarColor(globalBarColor.r, globalBarColor.g, globalBarColor.b)
-    else
-        self.Health:SetStatusBarColor(0, 1, 0) -- Default green
-    end
+    self.Health:SetStatusBarColor(0, 1, 0)
 end
 
 function HealthMixin:SetReactionColour(enabled)

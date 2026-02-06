@@ -33,6 +33,21 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         Height = DEFAULTS.Height,
         UseCustomColor = false,
         BarColor = { r = 1, g = 1, b = 1, a = 1 },
+        BarColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+        -- Stagger (Brewmaster Monk) - Green→Yellow→Red gradient
+        StaggerColorCurve = { pins = {
+            { position = 0, color = { r = 0.52, g = 1.0, b = 0.52, a = 1 } },
+            { position = 0.5, color = { r = 1.0, g = 0.98, b = 0.72, a = 1 } },
+            { position = 1, color = { r = 1.0, g = 0.42, b = 0.42, a = 1 } },
+        } },
+        -- Soul Fragments (Demon Hunter) - Purple (VoidMeta is darker blue)
+        SoulFragmentsColorCurve = { pins = { { position = 0, color = { r = 0.278, g = 0.125, b = 0.796, a = 1 } } } },
+        -- Ebon Might (Aug Evoker) - Green
+        EbonMightColorCurve = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.4, a = 1 } } } },
+        -- Mana (Shadow Priest, Ele Shaman, Balance Druid) - Blue
+        ManaColorCurve = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
+        -- Maelstrom Weapon (Enhancement Shaman) - Blue
+        MaelstromWeaponColorCurve = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
         Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
@@ -122,13 +137,92 @@ function Plugin:AddSettings(dialog, systemFrame)
     local useCustomColor = self:GetSetting(systemIndex, "UseCustomColor")
     if useCustomColor then
         table.insert(schema.controls, {
-            type = "color",
-            key = "BarColor",
+            type = "colorcurve",
+            key = "BarColorCurve",
             label = "Bar Color",
-            default = { r = 1, g = 1, b = 1, a = 1 },
-            onChange = function(color)
-                self:SetSetting(systemIndex, "BarColor", color)
+            default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+            onChange = function(curveData)
+                self:SetSetting(systemIndex, "BarColorCurve", curveData)
                 self:ApplyButtonVisuals()
+                self:UpdatePower()
+            end,
+        })
+    end
+
+    -- Stagger Color Curve (Brewmaster Monk)
+    if self.continuousResource == "STAGGER" then
+        table.insert(schema.controls, {
+            type = "colorcurve",
+            key = "StaggerColorCurve",
+            label = "Stagger Colour",
+            tooltip = "Color gradient from low (left) to heavy (right) stagger",
+            default = { pins = {
+                { position = 0, color = { r = 0.52, g = 1.0, b = 0.52, a = 1 } },
+                { position = 0.5, color = { r = 1.0, g = 0.98, b = 0.72, a = 1 } },
+                { position = 1, color = { r = 1.0, g = 0.42, b = 0.42, a = 1 } },
+            } },
+            onChange = function(curveData)
+                self:SetSetting(systemIndex, "StaggerColorCurve", curveData)
+                self:UpdatePower()
+            end,
+        })
+    end
+
+    -- Soul Fragments Color Curve (Demon Hunter)
+    if self.continuousResource == "SOUL_FRAGMENTS" then
+        table.insert(schema.controls, {
+            type = "colorcurve",
+            key = "SoulFragmentsColorCurve",
+            label = "Soul Fragments Colour",
+            tooltip = "Color gradient from empty (left) to full (right)",
+            default = { pins = { { position = 0, color = { r = 0.278, g = 0.125, b = 0.796, a = 1 } } } },
+            onChange = function(curveData)
+                self:SetSetting(systemIndex, "SoulFragmentsColorCurve", curveData)
+                self:UpdatePower()
+            end,
+        })
+    end
+
+    -- Ebon Might Color Curve (Augmentation Evoker)
+    if self.continuousResource == "EBON_MIGHT" then
+        table.insert(schema.controls, {
+            type = "colorcurve",
+            key = "EbonMightColorCurve",
+            label = "Ebon Might Colour",
+            tooltip = "Color gradient from empty (left) to full (right)",
+            default = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.4, a = 1 } } } },
+            onChange = function(curveData)
+                self:SetSetting(systemIndex, "EbonMightColorCurve", curveData)
+                self:UpdatePower()
+            end,
+        })
+    end
+
+    -- Mana Color Curve (Shadow Priest, Ele Shaman, Balance Druid)
+    if self.continuousResource == "MANA" then
+        table.insert(schema.controls, {
+            type = "colorcurve",
+            key = "ManaColorCurve",
+            label = "Mana Colour",
+            tooltip = "Color gradient from empty (left) to full (right)",
+            default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
+            onChange = function(curveData)
+                self:SetSetting(systemIndex, "ManaColorCurve", curveData)
+                self:UpdatePower()
+            end,
+        })
+    end
+
+    -- Maelstrom Weapon Color Curve (Enhancement Shaman)
+    if self.continuousResource == "MAELSTROM_WEAPON" then
+        table.insert(schema.controls, {
+            type = "colorcurve",
+            key = "MaelstromWeaponColorCurve",
+            label = "Maelstrom Colour",
+            tooltip = "Color gradient from empty (left) to full (right)",
+            default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
+            onChange = function(curveData)
+                self:SetSetting(systemIndex, "MaelstromWeaponColorCurve", curveData)
                 self:UpdatePower()
             end,
         })
@@ -455,8 +549,8 @@ function Plugin:ApplySettings()
     -- Apply Visuals to Single Bar Container
     if Frame.StatusBarContainer and Frame.StatusBarContainer:IsShown() then
         local bgColor = self:GetSetting(systemIndex, "BackdropColour")
-        if not bgColor and Orbit.db.GlobalSettings then
-            bgColor = Orbit.db.GlobalSettings.BackdropColour
+        if not bgColor and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColourCurve then
+            bgColor = OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve)
         end
 
         Orbit.Skin.ClassBar:SkinStatusBar(Frame.StatusBarContainer, Frame.StatusBar, {
@@ -498,12 +592,10 @@ function Plugin:ApplyButtonVisuals()
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
 
     local _, class = UnitClass("player")
-    local color = self:GetResourceColor()
-
     local max = math.max(1, Frame.maxPower or #Frame.buttons)
-    local bgColor = (Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColour)
-        or (Orbit.Constants and Orbit.Constants.Colors and Orbit.Constants.Colors.Background)
-        or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
+    local globalBgColor = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColourCurve
+        and OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve)
+    local bgColor = globalBgColor or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
 
     for i, btn in ipairs(Frame.buttons) do
         if btn:IsShown() then
@@ -515,6 +607,7 @@ function Plugin:ApplyButtonVisuals()
                 })
             end
 
+            local color = self:GetResourceColor(i, max)
             if color and btn.orbitBar then
                 btn.orbitBar:SetVertexColor(color.r, color.g, color.b)
 
@@ -549,44 +642,46 @@ function Plugin:ApplyButtonVisuals()
             end
 
             -- Apply visuals (Texture, Color, Overlay)
-            local barColor = { r = color.r * 0.5, g = color.g * 0.5, b = color.b * 0.5 }
-            Orbit.Skin:SkinStatusBar(btn.progressBar, texture, barColor)
+            if color then
+                local barColor = { r = color.r * 0.5, g = color.g * 0.5, b = color.b * 0.5 }
+                Orbit.Skin:SkinStatusBar(btn.progressBar, texture, barColor)
+            end
         end
     end
 end
 
 -- [ RESOURCE COLOR HELPER ]-------------------------------------------------------------------------
-function Plugin:GetResourceColor(index, isCharged)
-    -- Check for custom color override first
-    local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
-    local customColor = self:GetSetting(SYSTEM_INDEX, "BarColor")
-
-    if useCustomColor and customColor then
-        return customColor
-    end
-
+function Plugin:GetResourceColor(index, maxResources, isCharged)
     local _, class = UnitClass("player")
     local colors = Orbit.Colors.PlayerResources
+    local fallback = colors[class] or { r = 1, g = 1, b = 1 }
+    
+    local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
+    local curveData = self:GetSetting(SYSTEM_INDEX, "BarColorCurve")
 
-    -- Charged combo point
-    if isCharged then
-        return colors.ChargedComboPoint or colors[class]
+    if useCustomColor and curveData then
+        local curveColor
+        if index and maxResources and maxResources > 1 then
+            local position = (index - 1) / (maxResources - 1)
+            curveColor = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, position)
+        else
+            curveColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+        end
+        return curveColor or fallback
     end
 
-    -- Death Knight rune colors by spec
+    if isCharged then return colors.ChargedComboPoint or fallback end
+
     if class == "DEATHKNIGHT" then
         local spec = GetSpecialization()
         local specID = spec and GetSpecializationInfo(spec)
-        if specID == 250 then
-            return colors.RuneBlood or colors[class]
-        elseif specID == 251 then
-            return colors.RuneFrost or colors[class]
-        elseif specID == 252 then
-            return colors.RuneUnholy or colors[class]
+        if specID == 250 then return colors.RuneBlood or fallback
+        elseif specID == 251 then return colors.RuneFrost or fallback
+        elseif specID == 252 then return colors.RuneUnholy or fallback
         end
     end
 
-    return colors[class] or { r = 1, g = 1, b = 1 }
+    return fallback
 end
 
 function Plugin:IsEnabled()
@@ -841,7 +936,6 @@ function Plugin:UpdatePower()
     end
 
     local textEnabled = not OrbitEngine.ComponentDrag:IsDisabled(Frame.Text)
-    local colors = Orbit.Colors.PlayerResources
 
     -- CONTINUOUS RESOURCES
     if self.continuousResource then
@@ -853,8 +947,11 @@ function Plugin:UpdatePower()
                 Frame.StatusBar:SetMinMaxValues(0, maxHealth)
                 Frame.StatusBar:SetValue(stagger, SMOOTH_ANIM)
 
-                -- Dynamic color based on stagger level (determined via aura check, not arithmetic)
-                Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
+                -- Sample color from StaggerColorCurve based on stagger percentage
+                local staggerPercent = (maxHealth > 0) and (stagger / maxHealth) or 0
+                local curveData = self:GetSetting(SYSTEM_INDEX, "StaggerColorCurve")
+                local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, staggerPercent)
+                if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
             end
 
             if Frame.Text and textEnabled then
@@ -871,8 +968,10 @@ function Plugin:UpdatePower()
                 Frame.StatusBar:SetMinMaxValues(0, max)
                 Frame.StatusBar:SetValue(current, SMOOTH_ANIM)
 
-                local color = isVoidMeta and colors.SoulFragmentsVoidMeta or colors.SoulFragments
-                Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
+                local curveData = self:GetSetting(SYSTEM_INDEX, "SoulFragmentsColorCurve")
+                local progress = (max > 0) and (current / max) or 0
+                local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
+                if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
 
                 if Frame.Text and textEnabled then
                     Frame.Text:SetText(current)
@@ -891,8 +990,10 @@ function Plugin:UpdatePower()
                 Frame.StatusBar:SetMinMaxValues(0, max)
                 Frame.StatusBar:SetValue(current, SMOOTH_ANIM)
 
-                local color = colors.EbonMight
-                Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
+                local curveData = self:GetSetting(SYSTEM_INDEX, "EbonMightColorCurve")
+                local progress = (max > 0) and (current / max) or 0
+                local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
+                if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
 
                 if Frame.Text and textEnabled then
                     Frame.Text:SetFormattedText("%.0f", current)
@@ -912,13 +1013,10 @@ function Plugin:UpdatePower()
                 Frame.StatusBar:SetMinMaxValues(0, max)
                 Frame.StatusBar:SetValue(current, SMOOTH_ANIM)
 
-                -- Use standard Mana color
-                local color = { r = 0.0, g = 0.5, b = 1.0 } -- Default Orbit/WoW Blue
-                if Orbit.Colors.Power and Orbit.Colors.Power.Mana then
-                    color = Orbit.Colors.Power.Mana
-                end
-
-                Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
+                local curveData = self:GetSetting(SYSTEM_INDEX, "ManaColorCurve")
+                local progress = (max > 0) and (current / max) or 0
+                local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
+                if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
             end
 
             if Frame.Text and textEnabled then
@@ -933,15 +1031,17 @@ function Plugin:UpdatePower()
         end
 
         -- MAELSTROM WEAPON (Enhancement Shaman)
-        -- Uses secret-safe pattern: StatusBar:SetValue works as sink for secret applications
         if self.continuousResource == "MAELSTROM_WEAPON" then
             local applications, maxStacks, hasAura, auraInstanceID = ResourceMixin:GetMaelstromWeaponState()
 
             if Frame.StatusBar then
                 Frame.StatusBar:SetMinMaxValues(0, maxStacks)
                 Frame.StatusBar:SetValue(applications, SMOOTH_ANIM)
-                local color = colors.MaelstromWeapon or { r = 0.0, g = 0.5, b = 1.0 }
-                Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
+
+                local curveData = self:GetSetting(SYSTEM_INDEX, "MaelstromWeaponColorCurve")
+                local progress = (maxStacks > 0) and (applications / maxStacks) or 0
+                local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
+                if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
             end
 
             if Frame.Text and textEnabled then
@@ -974,11 +1074,12 @@ function Plugin:UpdatePower()
 
         local sortedRunes = ResourceMixin:GetSortedRuneOrder()
         local readyCount = 0
-        local color = self:GetResourceColor()
+        local maxRunes = #sortedRunes
 
         for pos, runeData in ipairs(sortedRunes) do
             local btn = Frame.buttons[pos]
             if btn then
+                local color = self:GetResourceColor(pos, maxRunes)
                 if runeData.ready then
                     readyCount = readyCount + 1
                     btn:SetActive(true)
@@ -1016,49 +1117,34 @@ function Plugin:UpdatePower()
 
         local current = UnitPower("player", self.powerType)
         local max = Frame.maxPower or 5
-        local color = self:GetResourceColor()
 
         for i = 1, max do
             local btn = Frame.buttons[i]
             if btn then
+                local color = self:GetResourceColor(i, max)
                 local state, remaining, fraction = ResourceMixin:GetEssenceState(i, current, max)
 
                 if state == "full" then
-                    -- Full: show orbitBar at full brightness, hide progress
                     if btn.orbitBar then
                         btn.orbitBar:Show()
                         btn.orbitBar:SetVertexColor(color.r, color.g, color.b)
                     end
-                    if btn.Overlay then
-                        btn.Overlay:Show()
-                    end
-                    if btn.progressBar then
-                        btn.progressBar:Hide()
-                    end
+                    if btn.Overlay then btn.Overlay:Show() end
+                    if btn.progressBar then btn.progressBar:Hide() end
                 elseif state == "partial" then
-                    -- Partial: show orbitBar at dimmed color underneath progress bar
                     if btn.orbitBar then
                         btn.orbitBar:Show()
                         btn.orbitBar:SetVertexColor(color.r * 0.5, color.g * 0.5, color.b * 0.5)
                     end
-                    if btn.Overlay then
-                        btn.Overlay:Hide()
-                    end
+                    if btn.Overlay then btn.Overlay:Hide() end
                     btn:SetFraction(fraction)
                     if btn.progressBar then
                         btn.progressBar:SetStatusBarColor(color.r * 0.7, color.g * 0.7, color.b * 0.7)
                     end
                 else
-                    -- Empty: hide orbitBar and progress
-                    if btn.orbitBar then
-                        btn.orbitBar:Hide()
-                    end
-                    if btn.Overlay then
-                        btn.Overlay:Hide()
-                    end
-                    if btn.progressBar then
-                        btn.progressBar:Hide()
-                    end
+                    if btn.orbitBar then btn.orbitBar:Hide() end
+                    if btn.Overlay then btn.Overlay:Hide() end
+                    if btn.progressBar then btn.progressBar:Hide() end
                 end
             end
         end
@@ -1081,23 +1167,27 @@ function Plugin:UpdatePower()
     local cur = UnitPower("player", self.powerType, true)
     local max = Frame.maxPower or 5
     local mod = UnitPowerDisplayMod(self.powerType)
-    if mod and mod > 0 then
-        cur = cur / mod
-    end
-    local color = self:GetResourceColor()
-    if self.powerType == Enum.PowerType.ComboPoints then
+    if mod and mod > 0 then cur = cur / mod end
+    
+    local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
+    local curveData = self:GetSetting(SYSTEM_INDEX, "BarColorCurve")
+    local color
+    
+    if useCustomColor and curveData then
+        local progress = (max > 0) and (cur / max) or 0
+        color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
+    elseif self.powerType == Enum.PowerType.ComboPoints then
         local chargedPoints = GetUnitChargedPowerPoints("player")
         if chargedPoints and #chargedPoints > 0 then
-            color = self:GetResourceColor(nil, true)
+            color = self:GetResourceColor(nil, nil, true)
         end
     end
+    color = color or self:GetResourceColor(nil, nil, false)
 
     if Frame.StatusBar then
-        Frame.StatusBar:SetMinMaxValues(0, Frame.maxPower or 5)
+        Frame.StatusBar:SetMinMaxValues(0, max)
         Frame.StatusBar:SetValue(cur, SMOOTH_ANIM)
-        if color then
-            Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
-        end
+        if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
     end
 
     -- Update Spacers (Pixel-Perfect)

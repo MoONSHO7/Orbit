@@ -40,21 +40,18 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
         -- Click to open LibOrbitColorPicker
         frame:SetScript("OnClick", function(self)
             local lib = LibStub and LibStub("LibOrbitColorPicker-1.0", true)
-            if not lib then
-                print("LibOrbitColorPicker not found")
-                return
-            end
+            if not lib then return end
 
             lib:Open({
-                initialCurve = self.curveData,
+                initialData = self.curveData,
                 hasOpacity = true,
-                callback = function(result)
+                forceSingleColor = self.singleColorMode,
+                callback = function(result, wasCancelled)
+                    if wasCancelled then return end
                     if result and result.pins then
                         self.curveData = result
                         self:UpdatePreview()
-                        if self.onChangeCallback then
-                            self.onChangeCallback(result)
-                        end
+                        if self.onChangeCallback then self.onChangeCallback(result) end
                     end
                 end,
             })
@@ -71,19 +68,30 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
     frame.UpdatePreview = function(self)
         local pins = self.curveData and self.curveData.pins
         if not pins or #pins == 0 then
-            self.GradientTexture:SetColorTexture(0.5, 0.5, 0.5, 1)
+            self.GradientTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
+            self.GradientTexture:SetGradient("HORIZONTAL", CreateColor(0.5, 0.5, 0.5, 1), CreateColor(0.5, 0.5, 0.5, 1))
             return
         end
-
-        if #pins == 1 then
-            local c = pins[1].color
-            self.GradientTexture:SetColorTexture(c.r, c.g, c.b, c.a or 1)
-            return
+        
+        -- Resolve class color pins dynamically
+        local function ResolvePin(pin)
+            if pin.type == "class" then
+                local _, classFile = UnitClass("player")
+                local classColor = RAID_CLASS_COLORS[classFile]
+                if classColor then return { r = classColor.r, g = classColor.g, b = classColor.b, a = 1 } end
+            end
+            return pin.color
         end
 
-        -- Multi-pin: Show first and last color as gradient
-        table.sort(pins, function(a, b) return a.position < b.position end)
-        local first, last = pins[1].color, pins[#pins].color
+        -- Sort pins by position (use copy to avoid mutating original)
+        local sortedPins = {}
+        for i, p in ipairs(pins) do sortedPins[i] = p end
+        table.sort(sortedPins, function(a, b) return a.position < b.position end)
+        
+        local first = ResolvePin(sortedPins[1])
+        local last = ResolvePin(sortedPins[#sortedPins])
+        
+        -- Always use SetTexture + SetGradient for consistent state reset
         self.GradientTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
         self.GradientTexture:SetGradient("HORIZONTAL", CreateColor(first.r, first.g, first.b, first.a or 1), CreateColor(last.r, last.g, last.b, last.a or 1))
     end

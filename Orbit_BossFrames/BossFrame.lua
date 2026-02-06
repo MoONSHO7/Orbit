@@ -17,21 +17,22 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
         Width = 140,
         Height = 40,
         Scale = 100,
-        DebuffPosition = "Above", -- "Disabled", "Left", "Right", "Above"
-        CastBarPosition = "Below", -- "Above", "Below"
+        DebuffPosition = "Above",
+        CastBarPosition = "Below",
         DebuffSize = 32,
         MaxDebuffs = 4,
         CastBarHeight = 15,
         CastBarWidth = 140,
         CastBarIcon = true,
-        ReactionColour = true, -- Enable reaction color by default
+        ReactionColour = true,
         PandemicGlowType = Orbit.Constants.PandemicGlow.DefaultType,
         PandemicGlowColor = Orbit.Constants.PandemicGlow.DefaultColor,
-        -- Disabled components (Canvas Mode drag-to-disable)
+        PandemicGlowColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
         DisabledComponents = {},
-        -- Cast Bar Defaults (Decoupled from Player Cast Bar)
         CastBarColor = { r = 1, g = 0.7, b = 0 },
+        CastBarColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
         NonInterruptibleColor = { r = 0.7, g = 0.7, b = 0.7 },
+        NonInterruptibleColorCurve = { pins = { { position = 0, color = { r = 0.7, g = 0.7, b = 0.7, a = 1 } } } },
         CastBarText = true,
         CastBarTimer = true,
     },
@@ -157,7 +158,7 @@ local function UpdateDebuffs(frame, plugin)
         showTimer = true,
         enablePandemic = true,
         pandemicGlowType = plugin:GetSetting(1, "PandemicGlowType") or Constants.PandemicGlow.DefaultType,
-        pandemicGlowColor = plugin:GetSetting(1, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
+        pandemicGlowColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "PandemicGlowColorCurve")) or plugin:GetSetting(1, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
     }
 
     -- Layout icons
@@ -354,10 +355,11 @@ local function SetupCastBarHooks(castBar, unit)
 
         -- Color based on interruptible
         if nativeBar.notInterruptible then
-            local color = plugin:GetSetting(1, "NonInterruptibleColor")
+            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "NonInterruptibleColorCurve")) or plugin:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         else
-            local color = plugin:GetSetting(1, "CastBarColor")
+            local curveData = plugin:GetSetting(1, "CastBarColorCurve")
+            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData) or plugin:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         end
 
@@ -410,10 +412,11 @@ local function SetupCastBarHooks(castBar, unit)
             -- For now defaulting to red, or checking if InterruptedColor exists
             castBar:SetStatusBarColor(1, 0, 0)
         elseif event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
-            local color = plugin:GetSetting(1, "NonInterruptibleColor")
+            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "NonInterruptibleColorCurve")) or plugin:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" or event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
-            local color = plugin:GetSetting(1, "CastBarColor")
+            local curveData = plugin:GetSetting(1, "CastBarColorCurve")
+            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData) or plugin:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         end
     end)
@@ -614,11 +617,12 @@ function Plugin:AddSettings(dialog, systemFrame)
     })
 
     -- Pandemic Glow Color
-    WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
-        key = "PandemicGlowColor",
+    WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+        key = "PandemicGlowColorCurve",
         label = "Pandemic Colour",
-        default = Orbit.Constants.PandemicGlow.DefaultColor,
-    }, nil)
+        default = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
+        singleColor = true,
+    })
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end

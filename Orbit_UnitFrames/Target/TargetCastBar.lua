@@ -5,7 +5,7 @@ local OrbitEngine = Orbit.Engine
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Target Cast Bar", "Orbit_TargetCastBar", {
     defaults = Mixin(Orbit.CastBarMixin.sharedDefaults, {
-        InterruptibleColor = { r = 1, g = 0.7, b = 0 },
+        CastBarColor = { r = 1, g = 0.7, b = 0, a = 1 },
         NonInterruptibleColor = { r = 0.7, g = 0.7, b = 0.7 },
         InterruptedColor = { r = 1, g = 0, b = 0 },
     }),
@@ -29,14 +29,25 @@ function Plugin:AddSettings(dialog, systemFrame)
     -- Build base schema (height/width with anchor detection)
     local schema = self:BuildBaseSchema(self.CastBar, systemIndex)
 
-    -- NOTE: Colors and Text/Timer keys are now inherited from Player Cast Bar
-    -- We removed them from here to avoid duplicate/conflicting settings.
+    -- Cast Bar Color (static - no dynamic curve due to secret values)
+    WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
+        key = "CastBarColor",
+        label = "Cast Bar Colour",
+        default = { r = 1, g = 0.7, b = 0, a = 1 },
+    })
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- Use mixin's GetInheritedSetting for settings inheritance from Player Cast Bar
+-- Override GetSetting to use own CastBarColor instead of inheriting from Player
 function Plugin:GetSetting(systemIndex, key)
+    if key == "CastBarColor" or key == "CastBarColorCurve" then
+        local color = Orbit.PluginMixin.GetSetting(self, systemIndex, "CastBarColor")
+        if key == "CastBarColorCurve" and color then
+            return { pins = { { position = 0, color = color } } }
+        end
+        return color
+    end
     return self:GetInheritedSetting(systemIndex, key)
 end
 

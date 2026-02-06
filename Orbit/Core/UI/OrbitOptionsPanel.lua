@@ -158,14 +158,6 @@ local ColorsPlugin = {
 }
 
 local function GetColorsSchema()
-    -- Check current checkbox states for conditional visibility
-    local useClassColors = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UseClassColors
-    local classColorBackground = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.ClassColorBackground
-    local useClassColorFont = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UseClassColorFont
-    if useClassColorFont == nil then
-        useClassColorFont = true
-    end -- Default true
-
     local controls = {
         -- 1. Texture
         {
@@ -183,7 +175,7 @@ local function GetColorsSchema()
             default = "Orbit Gradient",
             previewColor = { r = 0.5, g = 0.5, b = 0.5 },
         },
-        -- 3. Unit Frame Overlay (renamed from Overlay All Frames)
+        -- 3. Unit Frame Overlay
         {
             type = "checkbox",
             key = "OverlayAllFrames",
@@ -196,113 +188,25 @@ local function GetColorsSchema()
                 RefreshAllPreviews()
             end,
         },
-        -- 4. Class Health Color
+        -- 4. Font Color
         {
-            type = "checkbox",
-            key = "UseClassColors",
-            label = "Class Health Color",
-            default = true,
-            tooltip = "Color health bars by class instead of a fixed color.",
-            onChange = function(val)
-                ColorsPlugin:SetSetting(nil, "UseClassColors", val)
-                ColorsPlugin:ApplySettings()
-                RefreshAllPreviews()
-                -- Re-render panel to update conditional color pickers
-                if Orbit.OptionsPanel then
-                    Orbit.OptionsPanel:Refresh()
-                end
-            end,
-        },
-        -- 5. Class Background Color
-        {
-            type = "checkbox",
-            key = "ClassColorBackground",
-            label = "Class Background Color",
-            default = false,
-            tooltip = "Use class color for unit frame backdrops (player, party, boss, target frames only).",
-            onChange = function(val)
-                ColorsPlugin:SetSetting(nil, "ClassColorBackground", val)
-                ColorsPlugin:ApplySettings()
-                RefreshAllPreviews()
-                -- Re-render panel to update conditional color pickers
-                if Orbit.OptionsPanel then
-                    Orbit.OptionsPanel:Refresh()
-                end
-            end,
-        },
-        -- 6. Class Font Color
-        {
-            type = "checkbox",
-            key = "UseClassColorFont",
-            label = "Class Font Color",
-            default = true,
-            tooltip = "Color text by class (players) or reaction (NPCs). When disabled, use the Font Color setting.",
-            onChange = function(val)
-                ColorsPlugin:SetSetting(nil, "UseClassColorFont", val)
-                ColorsPlugin:ApplySettings()
-
-                -- Refresh name and health text colors on all unit frames immediately
-                if OrbitEngine.systems then
-                    for _, plugin in ipairs(OrbitEngine.systems) do
-                        if plugin.frame then
-                            if plugin.frame.ApplyNameColor then
-                                plugin.frame:ApplyNameColor()
-                            end
-                            if plugin.frame.ApplyHealthTextColor then
-                                plugin.frame:ApplyHealthTextColor()
-                            end
-                        end
-                        if plugin.frames then
-                            for _, frame in ipairs(plugin.frames) do
-                                if frame.ApplyNameColor then
-                                    frame:ApplyNameColor()
-                                end
-                                if frame.ApplyHealthTextColor then
-                                    frame:ApplyHealthTextColor()
-                                end
-                            end
-                        end
-                    end
-                end
-
-                RefreshAllPreviews()
-                -- Re-render panel to update conditional color pickers
-                if Orbit.OptionsPanel then
-                    Orbit.OptionsPanel:Refresh()
-                end
-            end,
-        },
-    }
-
-    -- 7. Font Color picker - only show when Class Font Color is FALSE
-    if not useClassColorFont then
-        table.insert(controls, {
-            type = "color",
-            key = "FontColor",
+            type = "colorcurve",
+            key = "FontColorCurve",
             label = "Font Color",
-            default = { r = 1, g = 1, b = 1, a = 1 },
+            default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
             onChange = function(val)
-                ColorsPlugin:SetSetting(nil, "FontColor", val)
-                -- Debounce the heavy frame updates
+                ColorsPlugin:SetSetting(nil, "FontColorCurve", val)
                 Orbit.Async:Debounce("ColorsPanel_FontColor", function()
                     if OrbitEngine.systems then
                         for _, plugin in ipairs(OrbitEngine.systems) do
                             if plugin.frame then
-                                if plugin.frame.ApplyNameColor then
-                                    plugin.frame:ApplyNameColor()
-                                end
-                                if plugin.frame.ApplyHealthTextColor then
-                                    plugin.frame:ApplyHealthTextColor()
-                                end
+                                if plugin.frame.ApplyNameColor then plugin.frame:ApplyNameColor() end
+                                if plugin.frame.ApplyHealthTextColor then plugin.frame:ApplyHealthTextColor() end
                             end
                             if plugin.frames then
                                 for _, frame in ipairs(plugin.frames) do
-                                    if frame.ApplyNameColor then
-                                        frame:ApplyNameColor()
-                                    end
-                                    if frame.ApplyHealthTextColor then
-                                        frame:ApplyHealthTextColor()
-                                    end
+                                    if frame.ApplyNameColor then frame:ApplyNameColor() end
+                                    if frame.ApplyHealthTextColor then frame:ApplyHealthTextColor() end
                                 end
                             end
                         end
@@ -310,66 +214,56 @@ local function GetColorsSchema()
                     RefreshAllPreviews()
                 end, 0.15)
             end,
-        })
-    end
-
-    -- 8. Unit Frame Health - only show when Class Health Color is FALSE
-    if not useClassColors then
-        table.insert(controls, {
-            type = "color",
-            key = "BarColor",
+        },
+        -- 5. Unit Frame Health
+        {
+            type = "colorcurve",
+            key = "BarColorCurve",
             label = "Unit Frame Health",
-            default = { r = 0.2, g = 0.8, b = 0.2, a = 1 },
+            default = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.2, a = 1 } } } },
+            tooltip = "Health bar color. Use the color picker to select class color or create custom gradients.",
             onChange = function(val)
-                ColorsPlugin:SetSetting(nil, "BarColor", val)
-                -- Debounce the heavy frame updates
+                ColorsPlugin:SetSetting(nil, "BarColorCurve", val)
                 Orbit.Async:Debounce("ColorsPanel_BarColor", function()
                     ColorsPlugin:ApplySettings()
                     RefreshAllPreviews()
                 end, 0.15)
             end,
-        })
-    end
-
-    -- 9. Unit Frame Background - only show when Class Background Color is FALSE
-    if not classColorBackground then
-        table.insert(controls, {
-            type = "color",
-            key = "UnitFrameBackdropColour",
+        },
+        -- 6. Unit Frame Background
+        {
+            type = "colorcurve",
+            key = "UnitFrameBackdropColourCurve",
             label = "Unit Frame Background",
-            default = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
+            default = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } },
             onChange = function(val)
-                ColorsPlugin:SetSetting(nil, "UnitFrameBackdropColour", val)
-                -- Debounce the heavy frame updates
+                ColorsPlugin:SetSetting(nil, "UnitFrameBackdropColourCurve", val)
                 Orbit.Async:Debounce("ColorsPanel_UnitFrameBg", function()
                     ColorsPlugin:ApplySettings()
                     RefreshAllPreviews()
                 end, 0.15)
             end,
-        })
-    end
-
-    -- 10. Backdrop Color - always show (for castbars, action bars, resource bars, etc.)
-    table.insert(controls, {
-        type = "color",
-        key = "BackdropColour",
-        label = "Backdrop Color",
-        default = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
-        tooltip = "Background color for castbars, action bars, resource bars, and other non-unit frame elements.",
-        onChange = function(val)
-            ColorsPlugin:SetSetting(nil, "BackdropColour", val)
-            -- Debounce the heavy frame updates
-            Orbit.Async:Debounce("ColorsPanel_BackdropColour", function()
-                ColorsPlugin:ApplySettings()
-                RefreshAllPreviews()
-                -- Refresh PlayerResources button backdrops too
-                local playerResources = OrbitEngine.systems and OrbitEngine.systems["Player Resources"]
-                if playerResources and playerResources.ApplyButtonVisuals then
-                    playerResources:ApplyButtonVisuals()
-                end
-            end, 0.15)
-        end,
-    })
+        },
+        -- 7. Backdrop Color (for non-unit frames)
+        {
+            type = "colorcurve",
+            key = "BackdropColourCurve",
+            label = "Backdrop Color",
+            default = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } },
+            tooltip = "Background color for castbars, action bars, resource bars, and other non-unit frame elements.",
+            onChange = function(val)
+                ColorsPlugin:SetSetting(nil, "BackdropColourCurve", val)
+                Orbit.Async:Debounce("ColorsPanel_BackdropColour", function()
+                    ColorsPlugin:ApplySettings()
+                    RefreshAllPreviews()
+                    local playerResources = OrbitEngine.systems and OrbitEngine.systems["Player Resources"]
+                    if playerResources and playerResources.ApplyButtonVisuals then
+                        playerResources:ApplyButtonVisuals()
+                    end
+                end, 0.15)
+            end,
+        },
+    }
 
     return {
         hideNativeSettings = true,
@@ -382,13 +276,10 @@ local function GetColorsSchema()
                 d.Texture = "Melli"
                 d.OverlayAllFrames = false
                 d.OverlayTexture = "Orbit Gradient"
-                d.UseClassColors = true
-                d.BarColor = { r = 0.2, g = 0.8, b = 0.2, a = 1 }
-                d.ClassColorBackground = false
-                d.UnitFrameBackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
-                d.BackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
-                d.UseClassColorFont = true
-                d.FontColor = { r = 1, g = 1, b = 1, a = 1 }
+                d.BarColorCurve = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.2, a = 1 } } } }
+                d.UnitFrameBackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
+                d.BackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
+                d.FontColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
             end
             Orbit:Print("Colors settings reset to defaults.")
             if Orbit.OptionsPanel then
@@ -460,10 +351,10 @@ local function GetEditModeSchema()
                 tooltip = "Allow frames to anchor to other frames. Disabling preserves existing anchors but prevents new ones.",
             },
             {
-                type = "color",
-                key = "EditModeColor",
+                type = "colorcurve",
+                key = "EditModeColorCurve",
                 label = "Orbit Frame Color",
-                default = { r = 0.7, g = 0.6, b = 1.0, a = 1.0 },
+                default = { pins = { { position = 0, color = { r = 0.7, g = 0.6, b = 1.0, a = 1.0 } } } },
                 tooltip = "Color of the selection overlay for Orbit-owned frames.",
             },
         },
@@ -474,6 +365,7 @@ local function GetEditModeSchema()
                 d.ShowOrbitFrames = true
                 d.AnchoringEnabled = true
                 d.EditModeColor = { r = 0.7, g = 0.6, b = 1.0, a = 1.0 }
+                d.EditModeColorCurve = { pins = { { position = 0, color = { r = 0.7, g = 0.6, b = 1.0, a = 1.0 } } } }
             end
             if Orbit.Engine.FrameSelection then
                 Orbit.Engine.FrameSelection:RefreshVisuals()

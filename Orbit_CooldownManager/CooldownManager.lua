@@ -19,6 +19,7 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
         IconSize = Constants.Cooldown.DefaultIconSize,
         IconPadding = Constants.Cooldown.DefaultPadding,
         SwipeColor = { r = 0, g = 0, b = 0, a = 0.8 },
+        SwipeColorCurve = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
         Opacity = 100,
         Orientation = 0,
         IconLimit = Constants.Cooldown.DefaultLimit,
@@ -112,11 +113,12 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
     end
 
-    WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
-        key = "SwipeColor",
+    WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+        key = "SwipeColorCurve",
         label = "Swipe Colour",
-        default = { r = 0, g = 0, b = 0, a = 0.8 },
-    }, nil)
+        default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
+        singleColor = true,
+    })
 
     table.insert(schema.controls, {
         type = "checkbox",
@@ -144,8 +146,8 @@ function Plugin:AddSettings(dialog, systemFrame)
         WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
             key = "PandemicGlowColor",
             label = "Pandemic Glow Colour",
-            default = Constants.PandemicGlow.DefaultColor,
-        }, nil)
+            default = { r = 1, g = 0.8, b = 0, a = 1 },
+        })
 
         table.insert(schema.controls, {
             type = "dropdown",
@@ -164,8 +166,8 @@ function Plugin:AddSettings(dialog, systemFrame)
         WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
             key = "ProcGlowColor",
             label = "Proc Glow Colour",
-            default = Constants.PandemicGlow.DefaultColor,
-        }, nil)
+            default = { r = 1, g = 0.8, b = 0, a = 1 },
+        })
     end
 
     -- Opacity (resting alpha when visible)
@@ -511,7 +513,7 @@ function Plugin:HookProcGlow()
 
         local GlowConfig = Constants.PandemicGlow
         local procColor = plugin:GetSetting(systemIndex, "ProcGlowColor") or GlowConfig.DefaultColor
-        local colorTable = { procColor.r, procColor.g, procColor.b, procColor.a }
+        local colorTable = { procColor.r, procColor.g, procColor.b, procColor.a or 1 }
         if button.SpellActivationAlert then
             button.SpellActivationAlert:SetAlpha(0)
         end
@@ -619,7 +621,7 @@ function Plugin:CheckPandemicFrames(viewer, systemIndex)
     local GlowConfig = Constants.PandemicGlow
 
     local pandemicColor = self:GetSetting(systemIndex, "PandemicGlowColor") or GlowConfig.DefaultColor
-    local colorTable = { pandemicColor.r, pandemicColor.g, pandemicColor.b, pandemicColor.a }
+    local colorTable = { pandemicColor.r, pandemicColor.g, pandemicColor.b, pandemicColor.a or 1 }
 
     local icons = viewer.GetItemFrames and viewer:GetItemFrames() or {}
 
@@ -1067,26 +1069,8 @@ function Plugin:ApplyTextSettings(icon, systemIndex)
     end
 
     -- Helper to apply color overrides to a text element
-    local function ApplyTextColor(textElement, overrides)
-        if not textElement or not textElement.SetTextColor then
-            return
-        end
-        if not overrides then
-            return
-        end
-
-        -- Class colour takes priority over custom color
-        if overrides.UseClassColour then
-            local _, playerClass = UnitClass("player")
-            local classColor = RAID_CLASS_COLORS[playerClass]
-            if classColor then
-                textElement:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
-            end
-        elseif overrides.CustomColor and overrides.CustomColorValue and type(overrides.CustomColorValue) == "table" then
-            -- CustomColor is boolean toggle, CustomColorValue is the actual color table
-            local c = overrides.CustomColorValue
-            textElement:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
-        end
+    local function ApplyTextColor(textElement, overrides, remainingPercent)
+        CooldownUtils:ApplyTextColor(textElement, overrides, remainingPercent)
     end
 
     -- Timer (Cooldown countdown text)

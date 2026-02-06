@@ -250,7 +250,9 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("colorcurve", function(container, def, getValue, callback)
-        return self:CreateColorCurvePicker(container, def.label, getValue(), callback)
+        local widget = self:CreateColorCurvePicker(container, def.label, getValue(), callback)
+        if widget then widget.singleColorMode = def.singleColor end
+        return widget
     end)
 
     self:RegisterWidgetType("button", function(container, def, getValue, callback)

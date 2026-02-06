@@ -15,7 +15,7 @@ function CooldownUtils:BuildSkinSettings(plugin, systemIndex, options)
         zoom = options.zoom or 0,
         borderStyle = options.borderStyle or 1,
         borderSize = Orbit.db.GlobalSettings.BorderSize,
-        swipeColor = plugin:GetSetting(systemIndex, "SwipeColor") or { r = 0, g = 0, b = 0, a = 0.8 },
+        swipeColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(systemIndex, "SwipeColorCurve")) or plugin:GetSetting(systemIndex, "SwipeColor") or { r = 0, g = 0, b = 0, a = 0.8 },
         orientation = plugin:GetSetting(systemIndex, "Orientation"),
         limit = plugin:GetSetting(systemIndex, "IconLimit"),
         padding = plugin:GetSetting(systemIndex, "IconPadding"),
@@ -47,19 +47,30 @@ function CooldownUtils:GetComponentStyle(plugin, systemIndex, key, defaultOffset
 end
 
 -- [ TEXT COLOR APPLIER ]------------------------------------------------------------------------------
-function CooldownUtils:ApplyTextColor(textElement, overrides)
-    if not textElement or not textElement.SetTextColor or not overrides then return end
+-- remainingPercent: optional 0-1 value for progress-aware curve sampling (1=full, 0=expired)
+function CooldownUtils:ApplyTextColor(textElement, overrides, remainingPercent)
+    if not textElement or not textElement.SetTextColor then return end
 
-    if overrides.UseClassColour then
+    local color = nil
+    if overrides and overrides.UseClassColour then
         local _, playerClass = UnitClass("player")
         local classColor = RAID_CLASS_COLORS[playerClass]
-        if classColor then textElement:SetTextColor(classColor.r, classColor.g, classColor.b, 1) end
-    elseif overrides.CustomColor and overrides.CustomColorValue and type(overrides.CustomColorValue) == "table" then
-        local c = overrides.CustomColorValue
-        textElement:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
-    else
-        textElement:SetTextColor(1, 1, 1, 1)
+        if classColor then color = { r = classColor.r, g = classColor.g, b = classColor.b, a = 1 } end
+    elseif overrides and overrides.CustomColor and overrides.CustomColorCurve then
+        if remainingPercent then
+            color = OrbitEngine.WidgetLogic:SampleColorCurve(overrides.CustomColorCurve, remainingPercent)
+        else
+            color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
+        end
+    elseif overrides and overrides.CustomColor and overrides.CustomColorValue then
+        color = overrides.CustomColorValue
     end
+
+    if not color then
+        local fontCurve = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
+        color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(fontCurve) or { r = 1, g = 1, b = 1, a = 1 }
+    end
+    textElement:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
 end
 
 -- [ TEXT SHADOW APPLIER ]-----------------------------------------------------------------------------

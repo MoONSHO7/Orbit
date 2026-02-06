@@ -15,6 +15,29 @@ local function SafeUnitPowerPercent(unit, resource)
     return (ok and pct) or nil
 end
 
+-- Create native Blizzard ColorCurve from our pin data (for secret-safe color sampling)
+local function CreateNativeColorCurve(curveData)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end
+    
+    local colorCurve = C_CurveUtil.CreateColorCurve()
+    
+    for _, pin in ipairs(curveData.pins) do
+        local c = pin.color
+        colorCurve:AddPoint(pin.position, CreateColor(c.r, c.g, c.b, c.a or 1))
+    end
+    return colorCurve
+end
+
+-- Get power color using native ColorCurve (returns non-secret color)
+local function GetPowerColorFromCurve(unit, powerType, curveData)
+    local nativeCurve = CreateNativeColorCurve(curveData)
+    if not nativeCurve then return nil end
+    
+    local ok, color = pcall(UnitPowerPercent, unit, powerType, false, nativeCurve)
+    return ok and color or nil
+end
+
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerPower"
 local SYSTEM_INDEX = 1
@@ -22,12 +45,13 @@ local SYSTEM_INDEX = 1
 local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
     canvasMode = true,
     defaults = {
-        Enabled = true, -- Self-contained toggle when Orbit_UnitFrames not loaded
+        Enabled = true,
         Hidden = false,
         Width = 200,
         Height = 15,
         UseCustomColor = false,
         BarColor = { r = 1, g = 1, b = 1, a = 1 },
+        BarColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
         Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
@@ -133,12 +157,12 @@ function Plugin:AddSettings(dialog, systemFrame)
     local useCustomColor = self:GetSetting(systemIndex, "UseCustomColor")
     if useCustomColor then
         table.insert(schema.controls, {
-            type = "color",
-            key = "BarColor",
+            type = "colorcurve",
+            key = "BarColorCurve",
             label = "Bar Color",
-            default = { r = 1, g = 1, b = 1, a = 1 },
-            onChange = function(color)
-                self:SetSetting(systemIndex, "BarColor", color)
+            default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+            onChange = function(curveData)
+                self:SetSetting(systemIndex, "BarColorCurve", curveData)
                 self:UpdateAll()
             end,
         })
@@ -435,14 +459,19 @@ function Plugin:UpdateAll()
     PowerBar:SetMinMaxValues(0, max)
     PowerBar:SetValue(cur, SMOOTH_ANIM)
 
-    -- Color
+    -- Color (use native ColorCurve with UnitPowerPercent for secret-safe gradient)
     local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
-    local customColor = self:GetSetting(SYSTEM_INDEX, "BarColor")
+    local curveData = self:GetSetting(SYSTEM_INDEX, "BarColorCurve")
 
-    if useCustomColor and customColor then
-        PowerBar:SetStatusBarColor(customColor.r, customColor.g, customColor.b)
+    if useCustomColor and curveData then
+        local color = GetPowerColorFromCurve("player", powerType, curveData)
+        if color then
+            PowerBar:GetStatusBarTexture():SetVertexColor(color:GetRGBA())
+        else
+            local fallback = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+            if fallback then PowerBar:SetStatusBarColor(fallback.r, fallback.g, fallback.b) end
+        end
     else
-        -- Use Orbit's centralized colors instead of Blizzard's global PowerBarColor
         local info = Orbit.Constants.Colors.PowerType[powerType]
         if info then
             PowerBar:SetStatusBarColor(info.r, info.g, info.b)

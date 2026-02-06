@@ -16,6 +16,7 @@ local Plugin = Orbit:RegisterPlugin("Target Debuffs", SYSTEM_ID, {
         Scale = 100,
         PandemicGlowType = Constants.PandemicGlow.DefaultType,
         PandemicGlowColor = Constants.PandemicGlow.DefaultColor,
+        PandemicGlowColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
@@ -111,11 +112,12 @@ function Plugin:AddSettings(dialog, systemFrame)
     })
 
     -- Pandemic Glow Color
-    WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
-        key = "PandemicGlowColor",
+    WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+        key = "PandemicGlowColorCurve",
         label = "Pandemic Colour",
-        default = Constants.PandemicGlow.DefaultColor,
-    }, nil)
+        default = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
+        singleColor = true,
+    })
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
@@ -262,7 +264,7 @@ function Plugin:UpdateDebuffs()
         showTimer = true,
         enablePandemic = true,
         pandemicGlowType = self:GetSetting(SYSTEM_INDEX, "PandemicGlowType") or Constants.PandemicGlow.DefaultType,
-        pandemicGlowColor = self:GetSetting(SYSTEM_INDEX, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
+        pandemicGlowColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(self:GetSetting(SYSTEM_INDEX, "PandemicGlowColorCurve")) or self:GetSetting(SYSTEM_INDEX, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
     }
 
     local activeIcons = {}

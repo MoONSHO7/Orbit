@@ -1,25 +1,34 @@
 -- [ LibOrbitColorPicker-1.0 ] ------------------------------------------------------------------------------------
 -- Extends Blizzard's ColorPickerFrame with drag-and-drop swatch and ColorCurve gradient bar.
--- Enables visual construction of multi-stop color gradients for WoW 12.0+ secret-safe rendering.
+-- Single-pin mode for simple RGB colors, multi-pin mode for ColorCurve gradients.
 
-local MAJOR, MINOR = "LibOrbitColorPicker-1.0", 1
+local MAJOR, MINOR = "LibOrbitColorPicker-1.0", 2
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
+
+local _, Orbit = ...
+local Pixel = Orbit and Orbit.Engine and Orbit.Engine.Pixel
 
 -- [ CONSTANTS ] ------------------------------------------------------------------------------------
 local GRADIENT_BAR_HEIGHT = 24
 local GRADIENT_BAR_GAP = 20
+local GRADIENT_BAR_EXTENSION = 106
+local GRADIENT_BAR_PADDING = 20
 local PIN_CIRCLE_SIZE = 12
 local PIN_STEM_WIDTH = 2
 local PIN_STEM_HEIGHT = 14
 local DRAG_CURSOR_SIZE = 24
+local HEX_BOX_WIDTH = 70
+local FOOTER_TOP_PADDING = 8
+local FOOTER_BOTTOM_PADDING = 4
+local FOOTER_BUTTON_HEIGHT = 20
+local FOOTER_DIVIDER_OFFSET = 6
+local FOOTER_HEIGHT = FOOTER_TOP_PADDING + FOOTER_BUTTON_HEIGHT + FOOTER_BOTTOM_PADDING
 
 -- [ MODULE STATE ] ------------------------------------------------------------------------------------
-lib.frame = lib.frame or nil
 lib.gradientBar = lib.gradientBar or nil
 lib.swatchProxy = lib.swatchProxy or nil
 lib.pins = lib.pins or {}
-lib.segmentPool = lib.segmentPool or {}
 lib.colorCurve = nil
 lib.dragTexture = nil
 lib.dragColor = nil
@@ -28,18 +37,38 @@ lib.callback = nil
 lib.wasCancelled = false
 lib.originalHeight = nil
 lib.isInitialized = false
+lib.classColorSwatch = nil
+lib.classColorEventFrame = nil
+lib.multiPinMode = false
 
 -- [ UTILITY ] ------------------------------------------------------------------------------------
 local function SortPinsByPosition(a, b) return a.position < b.position end
-
 local function ClampPosition(x) return math.max(0, math.min(1, x)) end
 
-local function CreateColorFromRGBA(r, g, b, a)
-    assert(r and g and b, "CreateColorFromRGBA: r, g, b are required")
-    return CreateColor(r, g, b, a or 1)
+local function GetCurrentClassColor()
+    local _, class = UnitClass("player")
+    local color = RAID_CLASS_COLORS[class]
+    if color then return { r = color.r, g = color.g, b = color.b, a = 1 } end
+    return { r = 1, g = 1, b = 1, a = 1 }
 end
 
--- [ GRADIENT BAR ] ------------------------------------------------------------------------------------
+local function NormalizeColor(c)
+    if not c then return { r = 1, g = 1, b = 1, a = 1 } end
+    if c.GetRGBA then
+        local r, g, b, a = c:GetRGBA()
+        return { r = r, g = g, b = b, a = a }
+    end
+    return { r = c.r or c[1] or 1, g = c.g or c[2] or 1, b = c.b or c[3] or 1, a = c.a or c[4] or 1 }
+end
+
+local function ResolveClassColorPin(pin)
+    if pin.type == "class" then return GetCurrentClassColor() end
+    return pin.color
+end
+
+local function ToColorMixin(c) return CreateColor(c.r, c.g, c.b, c.a or 1) end
+
+-- [ GRADIENT BAR MIXIN ] ------------------------------------------------------------------------------------
 local GradientBarMixin = {}
 
 function GradientBarMixin:OnLoad()
@@ -58,7 +87,6 @@ function GradientBarMixin:GetOrCreateSegment(index)
     if self.segments[index] then return self.segments[index] end
     local seg = self.SegmentContainer:CreateTexture(nil, "ARTWORK")
     seg:SetTexture("Interface\\Buttons\\WHITE8x8")
-    seg:SetVertexColor(1, 1, 1, 1)
     seg:SetHeight(self.SegmentContainer:GetHeight())
     self.segments[index] = seg
     return seg
@@ -72,83 +100,64 @@ end
 
 function GradientBarMixin:Refresh()
     local pins = self:GetSortedPins()
-    local barWidth = self.SegmentContainer:GetWidth()
+    local barWidth, barHeight = self.SegmentContainer:GetWidth(), self.SegmentContainer:GetHeight()
+    if barWidth <= 0 or barHeight <= 0 then return end
     
-    print("[LibOrbitColorPicker] Refresh: pinCount=" .. #pins .. ", barWidth=" .. barWidth)
-    
-    if barWidth <= 0 then 
-        print("[LibOrbitColorPicker] Early return - barWidth <= 0")
-        return 
-    end
-    
-    -- Hide solid texture by default
     self.SolidTexture:Hide()
+    
+    -- Update Apply button state based on pin count
+    lib:UpdateApplyButtonState()
     
     if #pins == 0 then
         self:HideUnusedSegments(1)
-        self.SolidTexture:SetColorTexture(0.2, 0.2, 0.2, 1)
-        self.SolidTexture:Show()
-        print("[LibOrbitColorPicker] Showing grey (no pins)")
+        self:RefreshPinHandles()
         return
     end
     
     if #pins == 1 then
         self:HideUnusedSegments(1)
-        local c = pins[1].color
-        assert(c and c.r and c.g and c.b, "Pin color is invalid")
+        local c = ResolveClassColorPin(pins[1])
         self.SolidTexture:SetColorTexture(c.r, c.g, c.b, c.a or 1)
         self.SolidTexture:Show()
-        print("[LibOrbitColorPicker] Showing solid color: r=" .. c.r .. " g=" .. c.g .. " b=" .. c.b)
         self:RefreshPinHandles()
         return
     end
     
-    -- Multi-pin gradient
     local segIndex = 0
     
-    -- Extend first segment to left edge if needed (solid color)
     if pins[1].position > 0 then
         segIndex = segIndex + 1
         local seg = self:GetOrCreateSegment(segIndex)
-        local c = pins[1].color
+        local c = ToColorMixin(ResolveClassColorPin(pins[1]))
         seg:ClearAllPoints()
         seg:SetPoint("LEFT", self.SegmentContainer, "LEFT", 0, 0)
-        seg:SetWidth(pins[1].position * barWidth)
-        seg:SetHeight(self.SegmentContainer:GetHeight())
-        seg:SetTexture("Interface\\Buttons\\WHITE8x8")
+        seg:SetSize(pins[1].position * barWidth, barHeight)
         seg:SetGradient("HORIZONTAL", c, c)
         seg:Show()
     end
     
-    -- Gradient segments between pins
     for i = 1, #pins - 1 do
         segIndex = segIndex + 1
         local seg = self:GetOrCreateSegment(segIndex)
         local left, right = pins[i], pins[i + 1]
-        local leftX = left.position * barWidth
-        local rightX = right.position * barWidth
-        local width = math.max(1, rightX - leftX)
-        
+        local leftX, rightX = left.position * barWidth, right.position * barWidth
+        local leftColor = ToColorMixin(ResolveClassColorPin(left))
+        local rightColor = ToColorMixin(ResolveClassColorPin(right))
         seg:ClearAllPoints()
         seg:SetPoint("LEFT", self.SegmentContainer, "LEFT", leftX, 0)
-        seg:SetWidth(width)
-        seg:SetHeight(self.SegmentContainer:GetHeight())
-        seg:SetTexture("Interface\\Buttons\\WHITE8x8")
-        seg:SetGradient("HORIZONTAL", left.color, right.color)
+        seg:SetSize(math.max(1, rightX - leftX), barHeight)
+        seg:SetGradient("HORIZONTAL", leftColor, rightColor)
         seg:Show()
     end
     
-    -- Extend last segment to right edge if needed (solid color)
     if pins[#pins].position < 1 then
         segIndex = segIndex + 1
         local seg = self:GetOrCreateSegment(segIndex)
-        local c = pins[#pins].color
+        local c = ToColorMixin(ResolveClassColorPin(pins[#pins]))
         local startX = pins[#pins].position * barWidth
         seg:ClearAllPoints()
         seg:SetPoint("LEFT", self.SegmentContainer, "LEFT", startX, 0)
-        seg:SetWidth(barWidth - startX)
-        seg:SetHeight(self.SegmentContainer:GetHeight())
-        seg:SetTexture("Interface\\Buttons\\WHITE8x8")
+        seg:SetSize(barWidth - startX, barHeight)
         seg:SetGradient("HORIZONTAL", c, c)
         seg:Show()
     end
@@ -162,23 +171,16 @@ function GradientBarMixin:RefreshPinHandles()
     local barWidth = self.SegmentContainer:GetWidth()
     if barWidth <= 0 then return end
     
-    -- Hide all existing handles first
     for _, handle in ipairs(self.pinHandles) do handle:Hide() end
     
     for i, pin in ipairs(pins) do
-        local handle = self.pinHandles[i]
-        if not handle then
-            handle = lib:CreatePinHandle(self)
-            self.pinHandles[i] = handle
-        end
-        
-        handle.pinIndex = i
-        handle.pinData = pin
+        local handle = self.pinHandles[i] or lib:CreatePinHandle(self)
+        self.pinHandles[i] = handle
+        handle.pinIndex, handle.pinData = i, pin
         handle:ClearAllPoints()
-        -- Position pin above the bar, centered on the position
-        local xOffset = (pin.position - 0.5) * barWidth
-        handle:SetPoint("BOTTOM", self.SegmentContainer, "TOP", xOffset, 0)
-        handle.Circle:SetColorTexture(pin.color.r, pin.color.g, pin.color.b, pin.color.a or 1)
+        handle:SetPoint("BOTTOM", self.SegmentContainer, "TOP", (pin.position - 0.5) * barWidth, 0)
+        local resolvedColor = ResolveClassColorPin(pin)
+        handle.Circle:SetColorTexture(resolvedColor.r, resolvedColor.g, resolvedColor.b, resolvedColor.a or 1)
         handle:SetFrameStrata("TOOLTIP")
         handle:SetFrameLevel(100)
         handle:Show()
@@ -186,8 +188,7 @@ function GradientBarMixin:RefreshPinHandles()
 end
 
 function GradientBarMixin:OnMouseUp(button)
-    if button == "RightButton" then return end
-    if not lib.isDragging then return end
+    if button == "RightButton" or not lib.isDragging then return end
     lib:EndDrag()
 end
 
@@ -205,94 +206,72 @@ end
 
 -- [ PIN HANDLE ] ------------------------------------------------------------------------------------
 function lib:CreatePinHandle(gradientBar)
-    local totalHeight = PIN_STEM_HEIGHT + PIN_CIRCLE_SIZE
     local handle = CreateFrame("Button", nil, gradientBar.PinsContainer)
-    handle:SetSize(PIN_CIRCLE_SIZE + 4, totalHeight)
+    handle:SetSize(PIN_CIRCLE_SIZE + 4, PIN_STEM_HEIGHT + PIN_CIRCLE_SIZE)
     handle:EnableMouse(true)
     handle:SetMovable(true)
     handle:RegisterForDrag("LeftButton")
     handle:RegisterForClicks("RightButtonUp")
     
-    -- White stem (line pointing down to the bar)
     handle.Stem = handle:CreateTexture(nil, "BACKGROUND")
     handle.Stem:SetSize(PIN_STEM_WIDTH, PIN_STEM_HEIGHT)
     handle.Stem:SetPoint("BOTTOM", handle, "BOTTOM", 0, 0)
     handle.Stem:SetColorTexture(1, 1, 1, 1)
     
-    -- Circle border (black outline)
     handle.CircleBorder = handle:CreateTexture(nil, "BORDER")
     handle.CircleBorder:SetSize(PIN_CIRCLE_SIZE + 2, PIN_CIRCLE_SIZE + 2)
     handle.CircleBorder:SetPoint("BOTTOM", handle.Stem, "TOP", 0, -1)
     handle.CircleBorder:SetColorTexture(0, 0, 0, 1)
     
-    -- Color circle on top
     handle.Circle = handle:CreateTexture(nil, "ARTWORK")
     handle.Circle:SetSize(PIN_CIRCLE_SIZE, PIN_CIRCLE_SIZE)
     handle.Circle:SetPoint("CENTER", handle.CircleBorder, "CENTER", 0, 0)
     handle.Circle:SetTexture("Interface\\Buttons\\WHITE8x8")
     
-    handle.isDragging = false
-    
     handle:SetScript("OnDragStart", function(self)
-        self.isDragging = true
+        if not lib.multiPinMode then return end
         self:StartMoving()
         self:SetFrameStrata("TOOLTIP")
         self:SetClampedToScreen(true)
     end)
     
     handle:SetScript("OnDragStop", function(self)
-        self.isDragging = false
         self:StopMovingOrSizing()
         self:SetFrameStrata("TOOLTIP")
-        
-        -- Calculate final position from handle's current location
         local handleX = self:GetCenter()
-        local barLeft = gradientBar.SegmentContainer:GetLeft()
-        local barWidth = gradientBar.SegmentContainer:GetWidth()
-        local newPos = ClampPosition((handleX - barLeft) / barWidth)
-        
-        if self.pinData then
-            self.pinData.position = newPos
-        end
-        
-        -- Full refresh to rebuild gradient and reposition all pins
+        local barLeft, barWidth = gradientBar.SegmentContainer:GetLeft(), gradientBar.SegmentContainer:GetWidth()
+        if self.pinData then self.pinData.position = ClampPosition((handleX - barLeft) / barWidth) end
         gradientBar:Refresh()
         lib:UpdateCurve()
     end)
     
     handle:SetScript("OnClick", function(self, button)
-        if button == "RightButton" and self.pinIndex then
-            lib:RemovePin(self.pinIndex)
+        if button == "RightButton" and self.pinData then
+            lib:RemovePin(self.pinData)
         end
     end)
     
     return handle
 end
 
--- [ SWATCH PROXY (DRAG SOURCE) ] ------------------------------------------------------------------------------------
+-- [ SWATCH PROXY ] ------------------------------------------------------------------------------------
 function lib:CreateSwatchProxy()
     if self.swatchProxy then return self.swatchProxy end
     
     local content = ColorPickerFrame.Content
     local swatch = content.ColorSwatchCurrent
     
-    -- Parent to Content frame, position over the swatch texture
     local proxy = CreateFrame("Frame", nil, content)
-    proxy:SetPoint("TOPLEFT", swatch, "TOPLEFT", 0, 0)
-    proxy:SetPoint("BOTTOMRIGHT", swatch, "BOTTOMRIGHT", 0, 0)
+    proxy:SetAllPoints(swatch)
     proxy:EnableMouse(true)
     proxy:RegisterForDrag("LeftButton")
     proxy:SetFrameLevel(content:GetFrameLevel() + 10)
     
-    proxy.startX = 0
-    proxy.startY = 0
-    
-    proxy:SetScript("OnDragStart", function(self)
+    proxy:SetScript("OnDragStart", function()
+        if not lib.multiPinMode and #lib.pins > 0 then return end
         local r, g, b = ColorPickerFrame.Content.ColorPicker:GetColorRGB()
         local a = ColorPickerFrame.Content.ColorPicker:GetColorAlpha()
-        print("[LibOrbitColorPicker] Drag start: r=" .. r .. " g=" .. g .. " b=" .. b .. " a=" .. a)
         lib:StartDrag(r, g, b, a)
-        self.startX, self.startY = GetCursorPosition()
     end)
     
     proxy:SetScript("OnDragStop", function() lib:EndDrag() end)
@@ -301,7 +280,73 @@ function lib:CreateSwatchProxy()
     return proxy
 end
 
--- [ DRAG CURSOR ] ------------------------------------------------------------------------------------
+-- [ CLASS COLOR SWATCH ] ------------------------------------------------------------------------------------
+function lib:GetPlayerClassColor()
+    local _, playerClass = UnitClass("player")
+    local classColor = playerClass and RAID_CLASS_COLORS[playerClass]
+    return classColor and { r = classColor.r, g = classColor.g, b = classColor.b, a = 1 } or { r = 1, g = 1, b = 1, a = 1 }
+end
+
+function lib:CreateClassColorSwatch()
+    if self.classColorSwatch then return self.classColorSwatch end
+    
+    local content = ColorPickerFrame.Content
+    local currentSwatch = content.ColorSwatchCurrent
+    local swatchWidth, swatchHeight = currentSwatch:GetSize()
+    
+    local frame = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    frame:SetSize(swatchWidth, swatchHeight)
+    frame:SetPoint("TOP", currentSwatch, "BOTTOM", 0, -8)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetFrameLevel(content:GetFrameLevel() + 10)
+    frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+    frame:SetBackdropBorderColor(0.2, 0.2, 0.2, 1)
+    
+    frame.Label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    frame.Label:SetPoint("TOP", frame, "BOTTOM", 0, -2)
+    frame.Label:SetText("Class")
+    frame.Label:SetTextColor(0.7, 0.7, 0.7, 1)
+    
+    frame:SetScript("OnDragStart", function()
+        if not lib.multiPinMode and #lib.pins > 0 then return end
+        local c = lib:GetPlayerClassColor()
+        lib:StartDrag(c.r, c.g, c.b, c.a, true)
+    end)
+    
+    frame:SetScript("OnDragStop", function() lib:EndDrag() end)
+    
+    frame:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Class Color", 1, 0.82, 0)
+        local canDrag = lib.multiPinMode or #lib.pins == 0
+        GameTooltip:AddLine(canDrag and "Drag to gradient bar to add as pin" or "Single color mode (remove pin to add new)", 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    
+    frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    
+    self.classColorSwatch = frame
+    self:UpdateClassColorSwatch()
+    return frame
+end
+
+function lib:UpdateClassColorSwatch()
+    if not self.classColorSwatch then return end
+    local c = self:GetPlayerClassColor()
+    self.classColorSwatch:SetBackdropColor(c.r, c.g, c.b, 1)
+end
+
+function lib:SetupClassColorEvents()
+    if self.classColorEventFrame then return end
+    local eventFrame = CreateFrame("Frame")
+    eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    eventFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+    eventFrame:SetScript("OnEvent", function() lib:UpdateClassColorSwatch() end)
+    self.classColorEventFrame = eventFrame
+end
+
+-- [ DRAG SYSTEM ] ------------------------------------------------------------------------------------
 function lib:CreateDragTexture()
     if self.dragTexture then return self.dragTexture end
     
@@ -318,19 +363,14 @@ function lib:CreateDragTexture()
     tex.Color:SetPoint("TOPLEFT", 2, -2)
     tex.Color:SetPoint("BOTTOMRIGHT", -2, 2)
     tex.Color:SetTexture("Interface\\Buttons\\WHITE8x8")
-    
     tex:Hide()
     
     tex:SetScript("OnUpdate", function(self)
-        if not lib.isDragging then
-            self:Hide()
-            return
-        end
+        if not lib.isDragging then self:Hide() return end
         local x, y = GetCursorPosition()
         local scale = self:GetEffectiveScale()
         self:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
         
-        -- Check if over gradient bar
         if lib.gradientBar and lib.gradientBar:IsMouseOver() then
             lib.gradientBar.DropHighlight:Show()
             lib:ShowGhostPin()
@@ -344,33 +384,30 @@ function lib:CreateDragTexture()
     return tex
 end
 
-function lib:StartDrag(r, g, b, a)
+function lib:StartDrag(r, g, b, a, isClassDrag)
+    if not self.multiPinMode and #self.pins > 0 then return end
     self.isDragging = true
-    self.dragColor = CreateColorFromRGBA(r, g, b, a)
-    
+    self.dragColor = { r = r, g = g, b = b, a = a or 1 }
+    self.dragType = isClassDrag and "class" or nil
     local tex = self:CreateDragTexture()
-    tex.Color:SetVertexColor(r, g, b, a)
+    tex.Color:SetVertexColor(r, g, b, a or 1)
     tex:Show()
 end
 
 function lib:EndDrag()
     if not self.isDragging then return end
     self.isDragging = false
-    
     if self.dragTexture then self.dragTexture:Hide() end
     self:HideGhostPin()
     if self.gradientBar then self.gradientBar.DropHighlight:Hide() end
     
-    -- Check drop target
     if self.gradientBar and self.gradientBar:IsMouseOver() and self.dragColor then
         local x = GetCursorPosition() / self.gradientBar:GetEffectiveScale()
-        local barLeft = self.gradientBar.SegmentContainer:GetLeft()
-        local barWidth = self.gradientBar.SegmentContainer:GetWidth()
-        local position = ClampPosition((x - barLeft) / barWidth)
-        self:AddPin(position, self.dragColor)
+        local barLeft, barWidth = self.gradientBar.SegmentContainer:GetLeft(), self.gradientBar.SegmentContainer:GetWidth()
+        self:AddPin(ClampPosition((x - barLeft) / barWidth), self.dragColor, self.dragType)
     end
-    
     self.dragColor = nil
+    self.dragType = nil
 end
 
 -- [ GHOST PIN ] ------------------------------------------------------------------------------------
@@ -378,39 +415,28 @@ function lib:ShowGhostPin()
     if not self.gradientBar or not self.dragColor then return end
     
     if not self.ghostPin then
-        local totalHeight = PIN_STEM_HEIGHT + PIN_CIRCLE_SIZE
         self.ghostPin = CreateFrame("Frame", nil, self.gradientBar.PinsContainer)
-        self.ghostPin:SetSize(PIN_CIRCLE_SIZE + 4, totalHeight)
-        
-        -- White stem
+        self.ghostPin:SetSize(PIN_CIRCLE_SIZE + 4, PIN_STEM_HEIGHT + PIN_CIRCLE_SIZE)
         self.ghostPin.Stem = self.ghostPin:CreateTexture(nil, "BACKGROUND")
         self.ghostPin.Stem:SetSize(PIN_STEM_WIDTH, PIN_STEM_HEIGHT)
         self.ghostPin.Stem:SetPoint("BOTTOM", self.ghostPin, "BOTTOM", 0, 0)
         self.ghostPin.Stem:SetColorTexture(1, 1, 1, 0.6)
-        
-        -- Circle border
         self.ghostPin.CircleBorder = self.ghostPin:CreateTexture(nil, "BORDER")
         self.ghostPin.CircleBorder:SetSize(PIN_CIRCLE_SIZE + 2, PIN_CIRCLE_SIZE + 2)
         self.ghostPin.CircleBorder:SetPoint("BOTTOM", self.ghostPin.Stem, "TOP", 0, -1)
         self.ghostPin.CircleBorder:SetColorTexture(0, 0, 0, 0.6)
-        
-        -- Color circle
         self.ghostPin.Circle = self.ghostPin:CreateTexture(nil, "ARTWORK")
         self.ghostPin.Circle:SetSize(PIN_CIRCLE_SIZE, PIN_CIRCLE_SIZE)
         self.ghostPin.Circle:SetPoint("CENTER", self.ghostPin.CircleBorder, "CENTER", 0, 0)
         self.ghostPin.Circle:SetTexture("Interface\\Buttons\\WHITE8x8")
-        
         self.ghostPin:SetAlpha(0.6)
     end
     
     local x = GetCursorPosition() / self.gradientBar:GetEffectiveScale()
-    local barLeft = self.gradientBar.SegmentContainer:GetLeft()
-    local barWidth = self.gradientBar.SegmentContainer:GetWidth()
+    local barLeft, barWidth = self.gradientBar.SegmentContainer:GetLeft(), self.gradientBar.SegmentContainer:GetWidth()
     local position = ClampPosition((x - barLeft) / barWidth)
-    
     self.ghostPin:ClearAllPoints()
-    local xOffset = (position - 0.5) * barWidth
-    self.ghostPin:SetPoint("BOTTOM", self.gradientBar.SegmentContainer, "TOP", xOffset, 0)
+    self.ghostPin:SetPoint("BOTTOM", self.gradientBar.SegmentContainer, "TOP", (position - 0.5) * barWidth, 0)
     self.ghostPin.Circle:SetVertexColor(self.dragColor.r, self.dragColor.g, self.dragColor.b, self.dragColor.a or 1)
     self.ghostPin:Show()
 end
@@ -419,17 +445,41 @@ function lib:HideGhostPin()
     if self.ghostPin then self.ghostPin:Hide() end
 end
 
+function lib:UpdateApplyButtonState()
+    if not self.applyButton then return end
+    local hasPins = self.pins and #self.pins > 0
+    self.applyButton:SetEnabled(hasPins)
+    if hasPins then
+        self.applyButton:SetText("Apply Color")
+    else
+        self.applyButton:SetText("No Color (Disabled)")
+    end
+end
+
 -- [ PIN MANAGEMENT ] ------------------------------------------------------------------------------------
-function lib:AddPin(position, color)
-    print("[LibOrbitColorPicker] AddPin: pos=" .. position .. " r=" .. color.r .. " g=" .. color.g .. " b=" .. color.b .. " a=" .. (color.a or "nil"))
-    table.insert(self.pins, { position = ClampPosition(position), color = color })
+function lib:AddPin(position, color, pinType)
+    local c = NormalizeColor(color)
+    local pin = { position = ClampPosition(position), color = c }
+    if pinType then pin.type = pinType end
+    table.insert(self.pins, pin)
     self:UpdateCurve()
     if self.gradientBar then self.gradientBar:Refresh() end
 end
 
-function lib:RemovePin(index)
-    if #self.pins <= 1 then return end -- Keep at least one pin
-    table.remove(self.pins, index)
+function lib:AddClassColorPin(position)
+    local c = GetCurrentClassColor()
+    table.insert(self.pins, { position = ClampPosition(position), color = c, type = "class" })
+    self:UpdateCurve()
+    if self.gradientBar then self.gradientBar:Refresh() end
+end
+
+function lib:RemovePin(pinToRemove)
+    for i, pin in ipairs(self.pins) do
+        if pin == pinToRemove then
+            table.remove(self.pins, i)
+            break
+        end
+    end
     self:UpdateCurve()
     if self.gradientBar then self.gradientBar:Refresh() end
 end
@@ -440,27 +490,13 @@ function lib:ClearPins()
     if self.gradientBar then self.gradientBar:Refresh() end
 end
 
-function lib:SetPins(pinsTable)
-    wipe(self.pins)
-    for _, p in ipairs(pinsTable) do
-        table.insert(self.pins, {
-            position = ClampPosition(p.position or p.x or 0),
-            color = p.color or CreateColorFromRGBA(p.r, p.g, p.b, p.a),
-        })
-    end
-    self:UpdateCurve()
-    if self.gradientBar then self.gradientBar:Refresh() end
-end
-
 -- [ COLORCURVE INTEGRATION ] ------------------------------------------------------------------------------------
 function lib:BuildColorCurve()
     local curve = C_CurveUtil.CreateColorCurve()
-    local sorted = {}
-    for _, pin in ipairs(self.pins) do table.insert(sorted, pin) end
-    table.sort(sorted, SortPinsByPosition)
-    
+    local sorted = self.gradientBar and self.gradientBar:GetSortedPins() or {}
     for _, pin in ipairs(sorted) do
-        curve:AddPoint(pin.position, pin.color)
+        local resolvedColor = ResolveClassColorPin(pin)
+        curve:AddPoint(pin.position, ToColorMixin(resolvedColor))
     end
     return curve
 end
@@ -468,13 +504,15 @@ end
 function lib:UpdateCurve()
     self.colorCurve = self:BuildColorCurve()
     if self.callback then
-        -- Return both native curve and serializable pins for persistence
         local serializedPins = {}
         for _, pin in ipairs(self.pins) do
-            table.insert(serializedPins, {
-                position = pin.position,
-                color = { r = pin.color.r, g = pin.color.g, b = pin.color.b, a = pin.color.a or 1 },
-            })
+            local resolvedColor = ResolveClassColorPin(pin)
+            local serialized = { 
+                position = pin.position, 
+                color = { r = resolvedColor.r, g = resolvedColor.g, b = resolvedColor.b, a = resolvedColor.a or 1 },
+            }
+            if pin.type then serialized.type = pin.type end
+            table.insert(serializedPins, serialized)
         end
         self.callback({ curve = self.colorCurve, pins = serializedPins }, false)
     end
@@ -486,104 +524,77 @@ function lib:LoadFromCurve(curveData)
     if not curveData then return end
     wipe(self.pins)
     
-    -- Handle serialized pins format { pins = { ... } }
     if curveData.pins then
         for _, pin in ipairs(curveData.pins) do
-            table.insert(self.pins, {
-                position = pin.position or 0,
-                color = CreateColorFromRGBA(pin.color.r, pin.color.g, pin.color.b, pin.color.a or 1),
-            })
+            local newPin = { position = pin.position or 0, color = NormalizeColor(pin.color) }
+            if pin.type then newPin.type = pin.type end
+            table.insert(self.pins, newPin)
         end
-    -- Handle native ColorCurve object
     elseif curveData.GetPoints then
-        local points = curveData:GetPoints()
-        for _, point in ipairs(points) do
-            table.insert(self.pins, { position = point.x, color = point.y })
+        for _, point in ipairs(curveData:GetPoints()) do
+            table.insert(self.pins, { position = point.x, color = NormalizeColor(point.y) })
         end
     end
     
-    self:UpdateCurve()
-    if self.gradientBar then self.gradientBar:Refresh() end
-end
-
--- [ SERIALIZATION ] ------------------------------------------------------------------------------------
-function lib:SerializePins()
-    local data = {}
-    for _, pin in ipairs(self.pins) do
-        table.insert(data, {
-            x = pin.position,
-            r = pin.color.r,
-            g = pin.color.g,
-            b = pin.color.b,
-            a = pin.color.a or 1,
-        })
-    end
-    return data
-end
-
-function lib:DeserializePins(data)
-    wipe(self.pins)
-    for _, p in ipairs(data) do
-        table.insert(self.pins, {
-            position = p.x,
-            color = CreateColorFromRGBA(p.r, p.g, p.b, p.a),
-        })
-    end
     self:UpdateCurve()
     if self.gradientBar then self.gradientBar:Refresh() end
 end
 
 -- [ GRADIENT BAR CREATION ] ------------------------------------------------------------------------------------
-local GRADIENT_BAR_EXTENSION = 100
-
 function lib:CreateGradientBar()
     if self.gradientBar then return self.gradientBar end
     
-    local bar = CreateFrame("Frame", "LibOrbitColorPickerGradientBar", ColorPickerFrame.Content, "BackdropTemplate")
+    local bar = CreateFrame("Frame", "LibOrbitColorPickerGradientBar", ColorPickerFrame.Content)
     Mixin(bar, GradientBarMixin)
-    
     bar:SetHeight(GRADIENT_BAR_HEIGHT)
     bar:SetFrameStrata("FULLSCREEN_DIALOG")
+    bar:SetFrameLevel(10)
+    bar:SetPoint("LEFT", ColorPickerFrame, "LEFT", GRADIENT_BAR_PADDING, 0)
+    bar:SetPoint("RIGHT", ColorPickerFrame, "RIGHT", -GRADIENT_BAR_PADDING, 0)
+    bar:SetPoint("BOTTOM", lib.orbitFooter, "TOP", 0, GRADIENT_BAR_GAP)
     
-    -- Position above the footer buttons with gap
-    bar:SetPoint("LEFT", ColorPickerFrame, "LEFT", 20, 0)
-    bar:SetPoint("RIGHT", ColorPickerFrame, "RIGHT", -20, 0)
-    bar:SetPoint("BOTTOM", ColorPickerFrame.Footer, "TOP", 0, GRADIENT_BAR_GAP)
+    local borderSize = Pixel and Pixel:Snap(1, bar:GetEffectiveScale()) or 1
     
-    bar:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    bar:SetBackdropColor(0.1, 0.1, 0.1, 1)
-    bar:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+    bar.BorderTop = bar:CreateTexture(nil, "OVERLAY")
+    bar.BorderTop:SetColorTexture(1, 1, 1, 1)
+    bar.BorderTop:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
+    bar.BorderTop:SetPoint("TOPRIGHT", bar, "TOPRIGHT", 0, 0)
+    bar.BorderTop:SetHeight(borderSize)
     
-    -- Checkerboard background for alpha visibility
-    bar.Checkerboard = bar:CreateTexture(nil, "BACKGROUND")
-    bar.Checkerboard:SetPoint("TOPLEFT", 1, -1)
-    bar.Checkerboard:SetPoint("BOTTOMRIGHT", -1, 1)
-    bar.Checkerboard:SetAtlas("colorpicker-checkerboard")
-    bar.Checkerboard:SetHorizTile(true)
-    bar.Checkerboard:SetVertTile(true)
+    bar.BorderBottom = bar:CreateTexture(nil, "OVERLAY")
+    bar.BorderBottom:SetColorTexture(1, 1, 1, 1)
+    bar.BorderBottom:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
+    bar.BorderBottom:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
+    bar.BorderBottom:SetHeight(borderSize)
     
-    -- Segment container (gradient textures go here)
+    bar.BorderLeft = bar:CreateTexture(nil, "OVERLAY")
+    bar.BorderLeft:SetColorTexture(1, 1, 1, 1)
+    bar.BorderLeft:SetPoint("TOPLEFT", bar.BorderTop, "BOTTOMLEFT", 0, 0)
+    bar.BorderLeft:SetPoint("BOTTOMLEFT", bar.BorderBottom, "TOPLEFT", 0, 0)
+    bar.BorderLeft:SetWidth(borderSize)
+    
+    bar.BorderRight = bar:CreateTexture(nil, "OVERLAY")
+    bar.BorderRight:SetColorTexture(1, 1, 1, 1)
+    bar.BorderRight:SetPoint("TOPRIGHT", bar.BorderTop, "BOTTOMRIGHT", 0, 0)
+    bar.BorderRight:SetPoint("BOTTOMRIGHT", bar.BorderBottom, "TOPRIGHT", 0, 0)
+    bar.BorderRight:SetWidth(borderSize)
+    
     bar.SegmentContainer = CreateFrame("Frame", nil, bar)
-    bar.SegmentContainer:SetPoint("TOPLEFT", 1, -1)
-    bar.SegmentContainer:SetPoint("BOTTOMRIGHT", -1, 1)
+    bar.SegmentContainer:SetPoint("TOPLEFT", borderSize, -borderSize)
+    bar.SegmentContainer:SetPoint("BOTTOMRIGHT", -borderSize, borderSize)
+    bar.SegmentContainer:SetScript("OnSizeChanged", function(self, width, height)
+        if width > 0 and height > 0 then bar:Refresh() end
+    end)
     
-    -- Solid texture for single-color display
     bar.SolidTexture = bar.SegmentContainer:CreateTexture(nil, "ARTWORK")
     bar.SolidTexture:SetAllPoints()
-    bar.SolidTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
     bar.SolidTexture:Hide()
     
-    -- Drop highlight
     bar.DropHighlight = bar:CreateTexture(nil, "OVERLAY")
     bar.DropHighlight:SetAllPoints()
     bar.DropHighlight:SetColorTexture(1, 1, 1, 0.2)
     bar.DropHighlight:Hide()
     
-    -- Pins container (positioned ABOVE the bar)
     local pinHeight = PIN_STEM_HEIGHT + PIN_CIRCLE_SIZE + 4
     bar.PinsContainer = CreateFrame("Frame", nil, bar)
     bar.PinsContainer:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", 0, 0)
@@ -592,6 +603,28 @@ function lib:CreateGradientBar()
     bar.PinsContainer:SetFrameStrata("TOOLTIP")
     bar.PinsContainer:SetFrameLevel(50)
     bar.PinsContainer:Show()
+    
+    -- Percentage notches (25%, 50%, 75%)
+    local NOTCH_HEIGHT, NOTCH_WIDTH, NOTCH_GAP = 6, 1, 2
+    bar.Notches = {}
+    for _, pct in ipairs({ 0.25, 0.5, 0.75 }) do
+        local notch = bar:CreateTexture(nil, "OVERLAY")
+        notch:SetColorTexture(1, 1, 1, 0.6)
+        notch:SetSize(NOTCH_WIDTH, NOTCH_HEIGHT)
+        notch.pct = pct
+        table.insert(bar.Notches, notch)
+    end
+    
+    local function UpdateNotchPositions()
+        local barWidth = bar.SegmentContainer:GetWidth()
+        if barWidth <= 0 then return end
+        for _, notch in ipairs(bar.Notches) do
+            notch:ClearAllPoints()
+            notch:SetPoint("TOP", bar.SegmentContainer, "BOTTOMLEFT", barWidth * notch.pct, -NOTCH_GAP)
+        end
+    end
+    bar.SegmentContainer:HookScript("OnSizeChanged", UpdateNotchPositions)
+    C_Timer.After(0.1, UpdateNotchPositions)
     
     bar:OnLoad()
     bar:EnableMouse(true)
@@ -607,70 +640,121 @@ end
 function lib:Initialize()
     if self.isInitialized then return end
     
-    -- Store original height and positions
     self.originalHeight = ColorPickerFrame:GetHeight()
-    self.originalFooterPoint = { ColorPickerFrame.Footer:GetPoint(1) }
-    if ColorPickerFrame.Content.HexBox then
-        self.originalHexBoxPoint = { ColorPickerFrame.Content.HexBox:GetPoint(1) }
+    
+    if ColorPickerFrame.Border then ColorPickerFrame.Border:Hide() end
+    
+    if not self.dialogBorder then
+        self.dialogBorder = CreateFrame("Frame", nil, ColorPickerFrame, "DialogBorderTranslucentTemplate")
+        self.dialogBorder:SetAllPoints(ColorPickerFrame)
+        self.dialogBorder:SetFrameStrata("BACKGROUND")
+        self.dialogBorder:SetFrameLevel(ColorPickerFrame:GetFrameLevel())
     end
     
-    -- Create gradient bar
+    ColorPickerFrame:SetMovable(true)
+    ColorPickerFrame:EnableMouse(true)
+    ColorPickerFrame:RegisterForDrag("LeftButton")
+    ColorPickerFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    ColorPickerFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    
+    if ColorPickerFrame.Header then ColorPickerFrame.Header:Hide() end
+    if ColorPickerFrame.Footer then ColorPickerFrame.Footer:Hide() end
+    if ColorPickerFrame.Content.ColorSwatchOriginal then
+        ColorPickerFrame.Content.ColorSwatchOriginal:Hide()
+        ColorPickerFrame.Content.ColorSwatchOriginal:SetAlpha(0)
+    end
+    
+    if not self.closeButton then
+        self.closeButton = CreateFrame("Button", nil, ColorPickerFrame, "UIPanelCloseButton")
+        self.closeButton:SetPoint("TOPRIGHT", ColorPickerFrame, "TOPRIGHT", -2, -2)
+        self.closeButton:SetScript("OnClick", function()
+            lib.wasCancelled = true
+            ColorPickerFrame:Hide()
+        end)
+    end
+    
+    if not self.modeTitle then
+        self.modeTitle = ColorPickerFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        self.modeTitle:SetPoint("TOP", ColorPickerFrame, "TOP", 0, -15)
+    end
+    
+    if not self.orbitFooter then
+        self.orbitFooter = CreateFrame("Frame", nil, ColorPickerFrame)
+        self.orbitFooter:SetPoint("BOTTOMLEFT", ColorPickerFrame, "BOTTOMLEFT", GRADIENT_BAR_PADDING, 12)
+        self.orbitFooter:SetPoint("BOTTOMRIGHT", ColorPickerFrame, "BOTTOMRIGHT", -GRADIENT_BAR_PADDING, 12)
+        self.orbitFooter:SetHeight(FOOTER_HEIGHT)
+        
+        self.orbitFooter.Divider = self.orbitFooter:CreateTexture(nil, "ARTWORK")
+        self.orbitFooter.Divider:SetTexture("Interface\\FriendsFrame\\UI-FriendsFrame-OnlineDivider")
+        self.orbitFooter.Divider:SetSize(280, 16)
+        self.orbitFooter.Divider:SetPoint("TOP", self.orbitFooter, "TOP", 0, FOOTER_DIVIDER_OFFSET)
+        
+        self.applyButton = CreateFrame("Button", nil, self.orbitFooter, "UIPanelButtonTemplate")
+        self.applyButton:SetText("Apply Color")
+        self.applyButton:SetHeight(FOOTER_BUTTON_HEIGHT)
+        self.applyButton:SetPoint("TOPLEFT", self.orbitFooter, "TOPLEFT", 0, -FOOTER_TOP_PADDING)
+        self.applyButton:SetPoint("TOPRIGHT", self.orbitFooter, "TOPRIGHT", 0, -FOOTER_TOP_PADDING)
+        self.applyButton:SetScript("OnClick", function()
+            lib.wasCancelled = false
+            ColorPickerFrame:Hide()
+        end)
+    end
+    
     self:CreateGradientBar()
-    
-    -- Create swatch proxy
     self:CreateSwatchProxy()
-    
-    -- Create drag texture
+    self:CreateClassColorSwatch()
+    self:SetupClassColorEvents()
     self:CreateDragTexture()
     
-    -- Hook ColorPickerFrame show/hide
     ColorPickerFrame:HookScript("OnShow", function()
-        -- Extend frame height
         ColorPickerFrame:SetHeight(lib.originalHeight + GRADIENT_BAR_EXTENSION)
+        if ColorPickerFrame.Footer then ColorPickerFrame.Footer:Hide() end
+        if ColorPickerFrame.Header then ColorPickerFrame.Header:Hide() end
         
-        -- Push footer down
-        ColorPickerFrame.Footer:ClearAllPoints()
-        ColorPickerFrame.Footer:SetPoint("BOTTOM", ColorPickerFrame, "BOTTOM", 0, 12)
-        
-        -- Keep HexBox aligned with the color picker (not pushed down)
         local hexBox = ColorPickerFrame.Content.HexBox
         if hexBox then
             hexBox:ClearAllPoints()
-            hexBox:SetPoint("BOTTOMRIGHT", ColorPickerFrame.Content.ColorPicker, "BOTTOMRIGHT", 73, -7)
+            hexBox:SetPoint("TOP", lib.classColorSwatch, "BOTTOM", 0, -20)
+            hexBox:SetWidth(HEX_BOX_WIDTH)
+        end
+        
+        if ColorPickerFrame.Content.ColorSwatchOriginal then ColorPickerFrame.Content.ColorSwatchOriginal:Hide() end
+        if lib.closeButton then lib.closeButton:Show() end
+        if lib.orbitFooter then lib.orbitFooter:Show() end
+        
+        lib:UpdateClassColorSwatch()
+        if lib.classColorSwatch then lib.classColorSwatch:Show() end
+        
+        if lib.modeTitle then
+            lib.modeTitle:SetText(lib.multiPinMode and "Multi-Color Mode" or "Single Color Mode")
+            lib.modeTitle:Show()
         end
         
         if lib.gradientBar then
             lib.gradientBar:Show()
-            lib.gradientBar:Refresh()
+            C_Timer.After(0.05, function()
+                if lib.gradientBar then lib.gradientBar:Refresh() end
+                lib:UpdateApplyButtonState()
+            end)
         end
     end)
     
     ColorPickerFrame:HookScript("OnHide", function()
-        -- Restore original height
         ColorPickerFrame:SetHeight(lib.originalHeight)
-        
-        -- Restore footer position
-        if lib.originalFooterPoint then
-            ColorPickerFrame.Footer:ClearAllPoints()
-            ColorPickerFrame.Footer:SetPoint(unpack(lib.originalFooterPoint))
-        end
-        
-        -- Restore HexBox position
-        if lib.originalHexBoxPoint and ColorPickerFrame.Content.HexBox then
-            ColorPickerFrame.Content.HexBox:ClearAllPoints()
-            ColorPickerFrame.Content.HexBox:SetPoint(unpack(lib.originalHexBoxPoint))
-        end
-        
         if lib.gradientBar then lib.gradientBar:Hide() end
+        if lib.classColorSwatch then lib.classColorSwatch:Hide() end
         lib:EndDrag()
         
         if lib.callback then
             local serializedPins = {}
             for _, pin in ipairs(lib.pins) do
-                table.insert(serializedPins, {
-                    position = pin.position,
-                    color = { r = pin.color.r, g = pin.color.g, b = pin.color.b, a = pin.color.a or 1 },
-                })
+                local resolvedColor = ResolveClassColorPin(pin)
+                local serialized = { 
+                    position = pin.position, 
+                    color = { r = resolvedColor.r, g = resolvedColor.g, b = resolvedColor.b, a = resolvedColor.a or 1 }
+                }
+                if pin.type then serialized.type = pin.type end
+                table.insert(serializedPins, serialized)
             end
             lib.callback({ curve = lib.colorCurve, pins = serializedPins }, lib.wasCancelled)
         end
@@ -681,63 +765,56 @@ function lib:Initialize()
 end
 
 -- [ PUBLIC API ] ------------------------------------------------------------------------------------
+-- Auto-detects data type: curve ({ pins = {...} } or native ColorCurve) vs simple color ({ r, g, b })
+local function IsCurveData(data)
+    if not data then return false end
+    if data.pins then return true end
+    if data.GetPoints then return true end
+    return false
+end
+
+-- Opens the color picker with auto-detected mode.
+-- options.initialData: auto-detected - { r, g, b, a } for single color, { pins = {...} } for curve
+-- options.callback: function(result, wasCancelled) - Called on close
+-- options.hasOpacity: boolean - Whether to show opacity slider (default true)
 function lib:Open(options)
     options = options or {}
-    
-    -- Initialize on first use
-    self:Initialize()
-    
-    -- Reset state
     self.wasCancelled = false
     self.callback = options.callback
     
-    -- Clear existing pin handles
-    if self.gradientBar then
-        for _, handle in ipairs(self.gradientBar.pinHandles) do
-            handle:Hide()
-        end
+    local data = options.initialData or options.initialCurve or options.initialColor
+    self.multiPinMode = not options.forceSingleColor
+    
+    wipe(self.pins)
+    if self.multiPinMode then
+        self:LoadFromCurve(data)
+    elseif data then
+        local c = NormalizeColor(data)
+        table.insert(self.pins, { position = 0.5, color = c })
     end
     
-    -- Load initial curve or color, or start fresh
-    if options.initialCurve then
-        self:LoadFromCurve(options.initialCurve)
-    elseif options.initialColor then
-        wipe(self.pins)
-        local c = options.initialColor
-        self:AddPin(0.5, CreateColorFromRGBA(c.r or c[1], c.g or c[2], c.b or c[3], c.a or c[4] or 1))
-    else
-        wipe(self.pins)
-        self.colorCurve = nil
-        -- Immediately refresh to clear the bar
-        if self.gradientBar then
-            self.gradientBar:Refresh()
-        end
-    end
+    self:Initialize()
     
-    -- Setup Blizzard picker
-    local info = {
-        swatchFunc = function()
-            -- Live preview optional synchronization
-        end,
-        opacityFunc = function() end,
-        cancelFunc = function()
-            lib.wasCancelled = true
-        end,
-        hasOpacity = options.hasOpacity ~= false,
-        r = options.initialColor and (options.initialColor.r or options.initialColor[1]) or 1,
-        g = options.initialColor and (options.initialColor.g or options.initialColor[2]) or 1,
-        b = options.initialColor and (options.initialColor.b or options.initialColor[3]) or 1,
-        opacity = options.initialColor and (options.initialColor.a or options.initialColor[4]) or 1,
-    }
-    
-    ColorPickerFrame:SetupColorPickerAndShow(info)
-    ColorPickerFrame:SetFrameStrata("FULLSCREEN_DIALOG")
-    
-    -- Refresh gradient bar
     if self.gradientBar then
+        for _, handle in ipairs(self.gradientBar.pinHandles) do handle:Hide() end
         self.gradientBar:Refresh()
     end
+    
+    local initialColor = (self.pins[1] and self.pins[1].color) or { r = 1, g = 1, b = 1, a = 1 }
+    
+    ColorPickerFrame:SetupColorPickerAndShow({
+        swatchFunc = function() end,
+        opacityFunc = function() end,
+        cancelFunc = function() lib.wasCancelled = true end,
+        hasOpacity = options.hasOpacity ~= false,
+        r = initialColor.r,
+        g = initialColor.g,
+        b = initialColor.b,
+        opacity = initialColor.a,
+    })
+    ColorPickerFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+    
+    if self.gradientBar then self.gradientBar:Refresh() end
 end
 
--- Accessor for checking if library is active
 function lib:IsOpen() return ColorPickerFrame:IsShown() end
