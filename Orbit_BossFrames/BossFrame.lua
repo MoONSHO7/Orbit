@@ -41,17 +41,6 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
 -- Mixin Preview Logic
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.BossFramePreviewMixin, Orbit.AuraMixin)
 
--- Check if a component is disabled (Canvas Mode drag-to-disable)
-function Plugin:IsComponentDisabled(componentKey)
-    local disabled = self:GetSetting(1, "DisabledComponents") or {}
-    for _, key in ipairs(disabled) do
-        if key == componentKey then
-            return true
-        end
-    end
-    return false
-end
-
 -- [ HELPERS ]
 local function GetPowerColor(powerType)
     return Orbit.Constants.Colors:GetPowerColor(powerType)
@@ -777,7 +766,7 @@ function Plugin:UpdateContainerSize()
     local width = self:GetSetting(1, "Width") or 150
     local scale = (self:GetSetting(1, "Scale") or 100) / 100
     local baseSpacing = 2
-    local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local isEditMode = Orbit:IsEditMode()
     local isPreviewActive = self.isPreviewActive
     local visibleCount, lastVisibleIndex = 0, 0
     if isPreviewActive or isEditMode then

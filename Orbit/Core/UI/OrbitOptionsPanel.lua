@@ -760,8 +760,6 @@ function Panel:Refresh()
     end
 end
 
--- SLASH COMMAND - Opens Edit Mode and Orbit Options
-
 -- SLASH COMMAND - Opens Edit Mode or executes CLI commands
 SLASH_ORBIT1 = "/orbit"
 SLASH_ORBIT2 = "/orb"

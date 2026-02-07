@@ -372,7 +372,7 @@ function ComponentDrag:SetEnabled(component, enabled)
     end
 
     local componentVisible = component.IsShown and component:IsShown() or true
-    local shouldShow = enabled and componentVisible and EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local shouldShow = enabled and componentVisible and Orbit:IsEditMode()
 
     if shouldShow then
         if data.handle.UpdateSize then
@@ -398,7 +398,7 @@ function ComponentDrag:SetEnabledForFrame(parent, enabled)
         return
     end
 
-    local editModeActive = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local editModeActive = Orbit:IsEditMode()
     local shouldEnable = enabled and editModeActive
 
     for _, component in ipairs(components) do

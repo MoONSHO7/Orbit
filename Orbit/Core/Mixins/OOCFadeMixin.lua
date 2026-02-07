@@ -14,7 +14,7 @@ local ManagedFrames = {}
 -- [ VISIBILITY LOGIC ]------------------------------------------------------------------------------
 
 local function ShouldShowFrame(frame)
-    if EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive() then
+    if Orbit:IsEditMode() then
         return true
     end
     if CooldownViewerSettings and CooldownViewerSettings:IsShown() then
@@ -63,7 +63,7 @@ local function UpdateFrameVisibility(frame, fadeEnabled, data)
         if data and data.plugin then
             local opacity = data.plugin:GetSetting(data.systemIndex, "Opacity") or 100
             local minAlpha = opacity / 100
-            local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+            local isEditMode = Orbit:IsEditMode()
             if Orbit.Animation then
                 Orbit.Animation:ApplyHoverFade(frame, minAlpha, 1, isEditMode)
             else
@@ -136,7 +136,7 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover)
         local hoverTicker = CreateFrame("Frame", nil, frame)
         hoverTicker:SetScript("OnUpdate", function(self, elapsed)
             self.timer = (self.timer or 0) + elapsed
-            if self.timer < 0.1 then return end
+            if self.timer < Orbit.Constants.Timing.HoverCheckInterval then return end
             self.timer = 0
             local parent = self:GetParent()
             if not parent:IsShown() then return end

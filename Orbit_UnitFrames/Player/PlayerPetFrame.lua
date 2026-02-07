@@ -77,27 +77,7 @@ end
 function Plugin:OnLoad()
     self:RegisterStandardEvents()
     if PetFrame then
-        OrbitEngine.NativeFrame:Protect(PetFrame)
-        PetFrame:SetClampedToScreen(false)
-        PetFrame:SetClampRectInsets(0, 0, 0, 0)
-        PetFrame:ClearAllPoints()
-        PetFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-        PetFrame:SetAlpha(0)
-        PetFrame:EnableMouse(false)
-        if not PetFrame.orbitSetPointHooked then
-            hooksecurefunc(PetFrame, "SetPoint", function(self)
-                if InCombatLockdown() then
-                    return
-                end
-                if not self.isMovingOffscreen then
-                    self.isMovingOffscreen = true
-                    self:ClearAllPoints()
-                    self:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-                    self.isMovingOffscreen = false
-                end
-            end)
-            PetFrame.orbitSetPointHooked = true
-        end
+        OrbitEngine.NativeFrame:Hide(PetFrame)
     end
 
     self.container = self:CreateVisibilityContainer(UIParent)
@@ -160,7 +140,7 @@ function Plugin:UpdateVisibility()
     if not self.frame then
         return
     end
-    local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
+    local isEditMode = Orbit:IsEditMode()
     local hasPet = UnitExists("pet")
 
     if isEditMode then

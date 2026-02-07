@@ -129,7 +129,7 @@ function Plugin:OnLoad()
 
     -- Live resize: recalculate icons when frame size changes
     Frame:HookScript("OnSizeChanged", function()
-        local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
+        local isEditMode = Orbit:IsEditMode()
         if isEditMode then
             self:ShowPreviewAuras()
         else
@@ -143,7 +143,7 @@ function Plugin:OnLoad()
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
     Frame:SetScript("OnEvent", function(f, event, unit)
-        if EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive() then
+        if Orbit:IsEditMode() then
             if event == "UNIT_AURA" then
                 return
             end
@@ -253,7 +253,7 @@ function Plugin:UpdateVisibility()
         return
     end
     local enabled = self:IsEnabled()
-    local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
+    local isEditMode = Orbit:IsEditMode()
 
     if isEditMode then
         if not InCombatLockdown() then

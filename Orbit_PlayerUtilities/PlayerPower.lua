@@ -264,7 +264,7 @@ function Plugin:UpdateVisibility()
     end
 
     local enabled = self:IsEnabled()
-    local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
+    local isEditMode = Orbit:IsEditMode()
 
     if isEditMode then
         Frame:Show()

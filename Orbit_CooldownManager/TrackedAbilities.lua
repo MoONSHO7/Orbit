@@ -36,6 +36,7 @@ Plugin.activeChildren = Plugin.activeChildren or {}
 function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     local plugin = self
     local frame = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
+    OrbitEngine.Pixel:Enforce(frame)
     frame:SetSize(40, 40)
     frame:SetClampedToScreen(true)
     frame.systemIndex = systemIndex
@@ -347,6 +348,7 @@ end
 function Plugin:CreateTrackedIcon(anchor, systemIndex, x, y)
     local plugin = self
     local icon = CreateFrame("Frame", nil, anchor, "BackdropTemplate")
+    OrbitEngine.Pixel:Enforce(icon)
     icon:SetSize(40, 40)
     icon.systemIndex = systemIndex
     icon.gridX = x
@@ -509,7 +511,7 @@ function Plugin:UpdateTrackedIcon(icon)
     local systemIndex = icon.systemIndex or TRACKED_INDEX
     local showGCDSwipe = self:GetSetting(systemIndex, "ShowGCDSwipe") ~= false
 
-    local texture, durObj, remainingPercent = nil, nil, 1
+    local texture, durObj = nil, nil
     local isUsable = false
 
     if icon.trackedType == "spell" then
@@ -522,23 +524,14 @@ function Plugin:UpdateTrackedIcon(icon)
             if not showGCDSwipe and (C_Spell.GetSpellCooldown(icon.trackedId) or {}).isOnGCD then
                 icon.Cooldown:Clear()
                 icon.Icon:SetDesaturation(0)
-                remainingPercent = 1
             else
                 durObj = C_Spell.GetSpellCooldownDuration(icon.trackedId)
                 if durObj then
                     icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
                     icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(DESAT_CURVE))
-                    local cdInfo = C_Spell.GetSpellCooldown(icon.trackedId)
-                    if cdInfo and cdInfo.duration and cdInfo.duration > 0 then
-                        local elapsed = GetTime() - cdInfo.startTime
-                        remainingPercent = 1 - math.max(0, math.min(1, elapsed / cdInfo.duration))
-                    else
-                        remainingPercent = 1
-                    end
                 else
                     icon.Cooldown:Clear()
                     icon.Icon:SetDesaturation(0)
-                    remainingPercent = 1
                 end
             end
             local displayCount = C_Spell.GetSpellDisplayCount(icon.trackedId)
@@ -560,12 +553,9 @@ function Plugin:UpdateTrackedIcon(icon)
             if start and duration and duration > 0 then
                 icon.Cooldown:SetCooldown(start, duration)
                 icon.Icon:SetDesaturation(1)
-                local elapsed = GetTime() - start
-                remainingPercent = 1 - math.max(0, math.min(1, elapsed / duration))
             else
                 icon.Cooldown:Clear()
                 icon.Icon:SetDesaturation(0)
-                remainingPercent = 1
             end
             local count = C_Item.GetItemCount(icon.trackedId, false, true)
             if count and count > 1 then
@@ -584,11 +574,11 @@ function Plugin:UpdateTrackedIcon(icon)
         icon.CountText:Hide()
     end
 
-    self:ApplyTimerTextColor(icon, remainingPercent)
+    self:ApplyTimerTextColor(icon, durObj)
     icon:Show()
 end
 
-function Plugin:ApplyTimerTextColor(icon, remainingPercent)
+function Plugin:ApplyTimerTextColor(icon, durObj)
     local cooldown = icon.Cooldown
     if not cooldown then return end
 
@@ -607,7 +597,16 @@ function Plugin:ApplyTimerTextColor(icon, remainingPercent)
     local timerPos = positions["Timer"] or {}
     local overrides = timerPos.overrides or {}
 
-    CooldownUtils:ApplyTextColor(timerText, overrides, remainingPercent)
+    if durObj and overrides.CustomColor and overrides.CustomColorCurve then
+        local wowColorCurve = OrbitEngine.WidgetLogic:ToNativeColorCurve(overrides.CustomColorCurve)
+        if wowColorCurve then
+            local secretColor = durObj:EvaluateRemainingPercent(wowColorCurve)
+            timerText:SetTextColor(secretColor:GetRGBA())
+            return
+        end
+    end
+
+    CooldownUtils:ApplyTextColor(timerText, overrides)
 end
 
 function Plugin:UpdateTrackedIconsDisplay(anchor)
@@ -628,7 +627,9 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
     if not anchor then return end
 
     local iconWidth, iconHeight = CooldownUtils:CalculateIconDimensions(self, systemIndex)
-    local padding = self:GetSetting(systemIndex, "IconPadding") or Constants.Cooldown.DefaultPadding
+    local rawPadding = self:GetSetting(systemIndex, "IconPadding") or Constants.Cooldown.DefaultPadding
+    local Pixel = OrbitEngine.Pixel
+    local padding = Pixel and Pixel:Snap(rawPadding) or rawPadding
 
     local rawGridItems = anchor.gridItems or {}
     local isDragging = GetCursorInfo() ~= nil
@@ -694,7 +695,7 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
                 anchor.edgeButtons[1] = btn
             end
             btn:SetSize(iconWidth, iconHeight)
-            local plusSize = math.min(iconWidth, iconHeight) * 0.4
+            local plusSize = Pixel and Pixel:Snap(math.min(iconWidth, iconHeight) * 0.4) or (math.min(iconWidth, iconHeight) * 0.4)
             btn.Plus:SetSize(plusSize, plusSize)
             btn:ClearAllPoints()
             btn:SetPoint("TOPLEFT", anchor, "TOPLEFT", 0, 0)
@@ -745,6 +746,7 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
 
         local posX = (x - minX) * (iconWidth + padding)
         local posY = -(y - minY) * (iconHeight + padding)
+        if Pixel then posX = Pixel:Snap(posX) posY = Pixel:Snap(posY) end
         icon:ClearAllPoints()
         icon:SetPoint("TOPLEFT", anchor, "TOPLEFT", posX, posY)
         icon:Show()
@@ -863,11 +865,12 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
             btn:SetScript("OnMouseDown", function() self:OnEdgeAddButtonClick(anchor, pos.x, pos.y) end)
 
             btn:SetSize(iconWidth, iconHeight)
-            local plusSize = math.min(iconWidth, iconHeight) * 0.4
+            local plusSize = Pixel and Pixel:Snap(math.min(iconWidth, iconHeight) * 0.4) or (math.min(iconWidth, iconHeight) * 0.4)
             btn.Plus:SetSize(plusSize, plusSize)
 
             local posX = (pos.x - extendedMinX) * (iconWidth + padding)
             local posY = -(pos.y - extendedMinY) * (iconHeight + padding)
+            if Pixel then posX = Pixel:Snap(posX) posY = Pixel:Snap(posY) end
             btn:ClearAllPoints()
             btn:SetPoint("TOPLEFT", anchor, "TOPLEFT", posX, posY)
             btn:Show()
@@ -884,6 +887,7 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         for key, icon in pairs(anchor.activeIcons) do
             local posX = (icon.gridX - extendedMinX) * (iconWidth + padding)
             local posY = -(icon.gridY - extendedMinY) * (iconHeight + padding)
+            if Pixel then posX = Pixel:Snap(posX) posY = Pixel:Snap(posY) end
             icon:ClearAllPoints()
             icon:SetPoint("TOPLEFT", anchor, "TOPLEFT", posX, posY)
         end

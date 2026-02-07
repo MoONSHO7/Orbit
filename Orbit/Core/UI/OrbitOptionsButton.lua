@@ -135,7 +135,6 @@ if EditModeManagerFrame then
     EditModeManagerFrame:HookScript("OnHide", function()
         Button:Hide()
         -- Also hide the options panel
-        -- Also hide the options panel
         if Orbit.OptionsPanel and Orbit.OptionsPanel.Hide then
             Orbit.OptionsPanel:Hide()
         end

@@ -174,7 +174,7 @@ end
 
 function TextMixin:SetMouseOver(isOver)
     -- Skip mouseover updates during Edit Mode to allow component dragging
-    if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
+    if Orbit:IsEditMode() then
         return
     end
 

@@ -6,10 +6,8 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local MAX_DROPDOWN_HEIGHT = 250
 local BUTTON_HEIGHT = 24
 
---[[
-    FontPicker Widget
-    3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
-]]
+-- FontPicker Widget
+-- 3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
 function Layout:CreateFontPicker(parent, label, initialFont, callback)
     -- Pool retrieval
     if not self.fontPool then

@@ -54,49 +54,36 @@ function HealthMixin:ApplyHealthColor()
     if not self.Health then return end
 
     local globalBarCurve = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BarColorCurve
+    if not globalBarCurve or not globalBarCurve.pins or #globalBarCurve.pins == 0 then
+        self.Health:SetStatusBarColor(0, 1, 0)
+        return
+    end
 
-    if globalBarCurve and globalBarCurve.pins and #globalBarCurve.pins > 0 then
-        -- Check if curve has class color pins
-        local hasClassPin = Engine.WidgetLogic:CurveHasClassPin(globalBarCurve)
-        
-        if hasClassPin then
-            -- Build unit-specific native curve (resolves class pins for this unit)
-            local nativeCurve = Engine.WidgetLogic:ToNativeColorCurveForUnit(globalBarCurve, self.unit)
-            if nativeCurve and UnitHealthPercent and self.unit and UnitExists(self.unit) then
-                local tex = self.Health:GetStatusBarTexture()
-                if tex then
-                    local ok, color = pcall(UnitHealthPercent, self.unit, true, nativeCurve)
-                    if ok and color and color.GetRGBA then
-                        tex:SetVertexColor(color:GetRGBA())
-                        return
-                    end
-                end
-            end
-            -- Fallback to first color if native curve fails
-            local staticColor = Engine.WidgetLogic:GetFirstColorFromCurveForUnit(globalBarCurve, self.unit)
-            if staticColor then
-                self.Health:SetStatusBarColor(staticColor.r, staticColor.g, staticColor.b)
-                return
-            end
-        else
-            -- No class pins - can use cached native curve for gradient
-            local nativeCurve = Engine.WidgetLogic:ToNativeColorCurve(globalBarCurve)
-            if nativeCurve and UnitHealthPercent and self.unit and UnitExists(self.unit) then
-                local tex = self.Health:GetStatusBarTexture()
-                if tex then
-                    local ok, color = pcall(UnitHealthPercent, self.unit, true, nativeCurve)
-                    if ok and color and color.GetRGBA then
-                        tex:SetVertexColor(color:GetRGBA())
-                        return
-                    end
-                end
-            end
-            local staticColor = Engine.WidgetLogic:GetFirstColorFromCurve(globalBarCurve)
-            if staticColor then
-                self.Health:SetStatusBarColor(staticColor.r, staticColor.g, staticColor.b)
+    -- Select resolver based on class pin presence (only difference between branches)
+    local hasClassPin = Engine.WidgetLogic:CurveHasClassPin(globalBarCurve)
+    local nativeCurve = hasClassPin
+        and Engine.WidgetLogic:ToNativeColorCurveForUnit(globalBarCurve, self.unit)
+        or  Engine.WidgetLogic:ToNativeColorCurve(globalBarCurve)
+
+    -- Try native curve-driven color (combat-safe via pcall for WoW 12.0+ secret values)
+    if nativeCurve and UnitHealthPercent and self.unit and UnitExists(self.unit) then
+        local tex = self.Health:GetStatusBarTexture()
+        if tex then
+            local ok, color = pcall(UnitHealthPercent, self.unit, true, nativeCurve)
+            if ok and color and color.GetRGBA then
+                tex:SetVertexColor(color:GetRGBA())
                 return
             end
         end
+    end
+
+    -- Fallback to first color if native curve fails
+    local staticColor = hasClassPin
+        and Engine.WidgetLogic:GetFirstColorFromCurveForUnit(globalBarCurve, self.unit)
+        or  Engine.WidgetLogic:GetFirstColorFromCurve(globalBarCurve)
+    if staticColor then
+        self.Health:SetStatusBarColor(staticColor.r, staticColor.g, staticColor.b)
+        return
     end
 
     self.Health:SetStatusBarColor(0, 1, 0)

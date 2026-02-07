@@ -57,17 +57,7 @@ function Layout:CreateEditBox(parent, label, value, callback, width, height, isM
 
         -- Hook Text Changed to resize editbox height
         editBox:SetScript("OnTextChanged", function(self)
-            local scrollingEditBox = self
-            local height = scrollingEditBox:GetHeight()
-            -- Auto-resize height to fit text?
-            -- Actually, for scrolling, we just want it to be at least the scrollframe height
-            -- CSS-like 'height: max-content' isn't direct.
-            -- But standard InputScrollFrameTemplate usually handles this if we use it.
-            -- For manual:
-            -- self:SetHeight(self:GetNumLines() * 14 + 10)
-            if callback then
-                callback(self:GetText())
-            end
+            if callback then callback(self:GetText()) end
         end)
 
         -- Fix Scroll Child sizing

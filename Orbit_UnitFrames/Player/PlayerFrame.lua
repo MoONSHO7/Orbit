@@ -1,6 +1,7 @@
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
+local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
@@ -53,17 +54,6 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
 
 -- Apply Mixins (including aggro indicator support and shared status icons)
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.AggroIndicatorMixin, Orbit.StatusIconMixin)
-
--- Check if a component is disabled (Canvas Mode drag-to-disable)
-function Plugin:IsComponentDisabled(componentKey)
-    local disabled = self:GetSetting(PLAYER_FRAME_INDEX, "DisabledComponents") or {}
-    for _, key in ipairs(disabled) do
-        if key == componentKey then
-            return true
-        end
-    end
-    return false
-end
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
@@ -150,27 +140,7 @@ end
 function Plugin:OnLoad()
     self:RegisterStandardEvents()
     if PlayerFrame then
-        OrbitEngine.NativeFrame:Protect(PlayerFrame)
-        PlayerFrame:SetClampedToScreen(false)
-        PlayerFrame:SetClampRectInsets(0, 0, 0, 0)
-        PlayerFrame:ClearAllPoints()
-        PlayerFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-        PlayerFrame:SetAlpha(0)
-        PlayerFrame:EnableMouse(false)
-        if not PlayerFrame.orbitSetPointHooked then
-            hooksecurefunc(PlayerFrame, "SetPoint", function(self)
-                if InCombatLockdown() then
-                    return
-                end
-                if not self.isMovingOffscreen then
-                    self.isMovingOffscreen = true
-                    self:ClearAllPoints()
-                    self:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-                    self.isMovingOffscreen = false
-                end
-            end)
-            PlayerFrame.orbitSetPointHooked = true
-        end
+        OrbitEngine.NativeFrame:Hide(PlayerFrame)
     end
 
     self.container = self:CreateVisibilityContainer(UIParent)
@@ -204,7 +174,7 @@ function Plugin:OnLoad()
 
     -- Create CombatIcon (on overlay frame) using modern Blizzard atlas
     local previewAtlases = Orbit.IconPreviewAtlases or {}
-    local combatIconSize = 18
+    local combatIconSize = Constants.UnitFrame.CombatIconSize
     if not self.frame.CombatIcon then
         self.frame.CombatIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
         self.frame.CombatIcon:SetSize(combatIconSize, combatIconSize)
@@ -216,7 +186,7 @@ function Plugin:OnLoad()
     end
 
     -- Create RoleIcon (Tank/Healer/DPS)
-    local iconSize = 16
+    local iconSize = Constants.UnitFrame.StatusIconSize
     if not self.frame.RoleIcon then
         self.frame.RoleIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
         self.frame.RoleIcon:SetSize(iconSize, iconSize)

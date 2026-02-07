@@ -164,7 +164,7 @@ function Plugin:ApplySettings()
         return
     end
 
-    local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local isEditMode = Orbit:IsEditMode()
     local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100
     local disable = self:GetSetting(SYSTEM_ID, "DisableTalkingHead")
     self:ReparentAll()

@@ -57,6 +57,16 @@ end
 --   Storage:       pins format { pins = [{ position, color, type? }] } (serializable to SavedVariables)
 --   Native APIs:   ToNativeColorCurve() for UnitHealthPercent, GetAuraDispelTypeColor, etc.
 --   Lua Sampling:  SampleColorCurve() for cast bars, power bars, resources (no native sampling API)
+-- Shared helper: returns sorted copy of pins, cached on curveData._sorted
+local function GetSortedPins(curveData)
+    if curveData._sorted then return curveData._sorted end
+    local sorted = {}
+    for _, p in ipairs(curveData.pins) do sorted[#sorted + 1] = p end
+    table.sort(sorted, function(a, b) return a.position < b.position end)
+    curveData._sorted = sorted
+    return sorted
+end
+
 -- Sample color from curve at position (0-1), returns { r, g, b, a } or nil
 function WL:SampleColorCurve(curveData, position)
     if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
@@ -64,10 +74,7 @@ function WL:SampleColorCurve(curveData, position)
     local pins = curveData.pins
     if #pins == 1 then return ResolveClassColorPin(pins[1]) end
     
-    -- Sort by position (don't mutate original)
-    local sorted = {}
-    for _, p in ipairs(pins) do table.insert(sorted, p) end
-    table.sort(sorted, function(a, b) return a.position < b.position end)
+    local sorted = GetSortedPins(curveData)
     position = math.max(0, math.min(1, position))
     
     -- Find surrounding pins
@@ -98,9 +105,7 @@ end
 -- Get first color from curve (for static display when no progress available)
 function WL:GetFirstColorFromCurve(curveData)
     if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
-    local sorted = {}
-    for _, p in ipairs(curveData.pins) do table.insert(sorted, p) end
-    table.sort(sorted, function(a, b) return a.position < b.position end)
+    local sorted = GetSortedPins(curveData)
     return ResolveClassColorPin(sorted[1])
 end
 
@@ -158,9 +163,7 @@ end
 -- Get first color from curve using unit-specific class color (for health bars etc)
 function WL:GetFirstColorFromCurveForUnit(curveData, unit)
     if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
-    local sorted = {}
-    for _, p in ipairs(curveData.pins) do table.insert(sorted, p) end
-    table.sort(sorted, function(a, b) return a.position < b.position end)
+    local sorted = GetSortedPins(curveData)
     return ResolveClassColorPinForUnit(sorted[1], unit)
 end
 
@@ -757,7 +760,7 @@ local function CreateOpacityOnChange(plugin, systemIndex, key, systemFrame)
         end
 
         if realFrame and realFrame.SetAlpha and not InCombatLockdown() then
-            local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+            local isEditMode = Orbit:IsEditMode()
             local minAlpha = val / 100
 
             if Orbit and Orbit.Animation then

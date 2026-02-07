@@ -5,6 +5,8 @@ local Icons = {}
 Skin.Icons = Icons
 
 local Constants = Orbit.Constants
+local DESAT_NONE = 0
+local DESAT_FULL = 1
 
 local STANDARD_ACTION_BUTTON_SIZE = 45
 
@@ -148,14 +150,7 @@ function Icons:ApplyManualLayout(frame, icons, settings)
     end
 
     -- Resize Container
-    local finalCols, finalRows = 0, 0
-    if orientation == 0 then
-        finalCols = minorCount
-        finalRows = majorCount
-    else
-        finalCols = minorCount
-        finalRows = majorCount
-    end
+    local finalCols, finalRows
 
     -- Correction for correct container sizing logic
     if orientation == 0 then
@@ -288,9 +283,6 @@ function Icons:SkinIcons(frame)
 
     for _, icon in ipairs(icons) do
         if icon then
-            if not self.iconSettings then
-                self.iconSettings = setmetatable({}, { __mode = "k" })
-            end
             self.iconSettings[icon] = s
             self:ApplyCustom(icon, s) -- Always use custom style
         end
@@ -851,7 +843,7 @@ function Icons:ApplyActionButtonCustom(button, settings)
                 local _, inRange, checksRange = ...
                 local icon = self.icon or self.Icon
                 if icon and checksRange then
-                    icon:SetDesaturation(C_CurveUtil.EvaluateColorValueFromBoolean(inRange, 0, 1))
+                    icon:SetDesaturation(C_CurveUtil.EvaluateColorValueFromBoolean(inRange, DESAT_NONE, DESAT_FULL))
                 end
             end
         end)

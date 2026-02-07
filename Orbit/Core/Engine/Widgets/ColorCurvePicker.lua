@@ -64,7 +64,8 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
     frame.curveData = initialCurveData
     frame.onChangeCallback = callback
 
-    -- Update preview based on curve data
+    -- Update preview based on curve data (only assign once, not on pooled reuse)
+    if not frame.UpdatePreview then
     frame.UpdatePreview = function(self)
         local pins = self.curveData and self.curveData.pins
         if not pins or #pins == 0 then
@@ -94,6 +95,7 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
         -- Always use SetTexture + SetGradient for consistent state reset
         self.GradientTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
         self.GradientTexture:SetGradient("HORIZONTAL", CreateColor(first.r, first.g, first.b, first.a or 1), CreateColor(last.r, last.g, last.b, last.a or 1))
+    end
     end
 
     frame:UpdatePreview()

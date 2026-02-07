@@ -165,7 +165,7 @@ function KeybindSystem:InvalidateCache()
     lastCacheUpdate = 0
 end
 
-local function EnsureCacheFresh()
+local function ThrottleCacheCheck()
     local now = GetTime()
     if now - lastCacheUpdate < CACHE_INTERVAL then
         return
@@ -182,7 +182,7 @@ function KeybindSystem:GetForSpell(spellID)
         return nil
     end
 
-    EnsureCacheFresh()
+    ThrottleCacheCheck()
 
     -- Check cache first
     local cached = spellToKeybind[spellID]

@@ -78,7 +78,7 @@ function Mixin:ApplyTextStyling(frame, textSize)
     end
     if not textSize or textSize <= 0 then
         local height = frame:GetHeight() or 40
-        textSize = Orbit.Skin:GetAdaptiveTextSize(height, 14, 24, 0.3)
+        textSize = Orbit.Skin:GetAdaptiveTextSize(height, Orbit.Constants.UnitFrame.AdaptiveTextMin, Orbit.Constants.UnitFrame.AdaptiveTextMax, 0.3)
     end
     Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)
     Orbit.Skin:ApplyUnitFrameText(frame.HealthText, "RIGHT", nil, textSize)

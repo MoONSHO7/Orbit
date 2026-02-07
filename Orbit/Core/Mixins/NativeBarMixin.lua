@@ -28,7 +28,7 @@ function Mixin:ApplyMouseOver(frame, systemIndex)
         return
     end
     local baseAlpha = (self:GetSetting(systemIndex, "Opacity") or 100) / 100
-    Orbit.Animation:ApplyHoverFade(frame, baseAlpha, 1, EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive())
+    Orbit.Animation:ApplyHoverFade(frame, baseAlpha, 1, Orbit:IsEditMode())
 end
 
 -- [ ORIENTATION ]-----------------------------------------------------------------------------------

@@ -77,7 +77,6 @@ function ErrorHandler:LogError(source, method, err)
 end
 
 -- [ VISIBILITY MANAGER ]----------------------------------------------------------------------------
-
 Orbit.Visibility = {}
 
 --- ApplyState (Centralized StateDriver)
@@ -97,7 +96,7 @@ function Orbit.Visibility:ApplyState(frame, visibilityMode)
     frame.isOrbitUpdating = true
 
     local driver
-    if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
+    if Orbit:IsEditMode() then
         driver = "show"
         frame:SetAlpha(1) -- Ensure alpha is up
     else
@@ -128,6 +127,12 @@ function Orbit.Visibility:ApplyState(frame, visibilityMode)
     end
 
     frame.isOrbitUpdating = false
+end
+
+-- [ EDIT MODE QUERY ]-------------------------------------------------------------------------------
+
+function Orbit:IsEditMode()
+    return EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() or false
 end
 
 -- [ COMBAT-SAFE HELPERS ]---------------------------------------------------------------------------

@@ -6,6 +6,17 @@ local Mixin = Orbit.ResourceBarMixin
 
 local DRUID_FORMS = { CAT = DRUID_CAT_FORM, BEAR = DRUID_BEAR_FORM, MOONKIN_1 = DRUID_MOONKIN_FORM_1, MOONKIN_2 = DRUID_MOONKIN_FORM_2 }
 
+-- [ SPELL IDS ]-------------------------------------------------------------------------------------
+local SOUL_CLEAVE_ID = 228477
+local SOUL_FRAGMENTS_AURA_ID = 1225789
+local COLLAPSING_STAR_AURA_ID = 1227702
+local SOUL_GLUTTON_TALENT_ID = 1247534
+local EBON_MIGHT_AURA_ID = 395296
+local EBON_MIGHT_MAX_DURATION = 20
+local VENGEANCE_SPEC_ID = 581
+local DEVOURER_SPEC_ID = 1480
+local AUGMENTATION_SPEC_ID = 1473
+
 local CLASS_RESOURCES = {
     ROGUE = Enum.PowerType.ComboPoints,
     PALADIN = Enum.PowerType.HolyPower,
@@ -87,7 +98,7 @@ local essenceState = { nextTick = nil, lastEssence = 0 }
 
 function Mixin:GetEssenceState(essenceIndex, currentEssence, maxEssence)
     local now = GetTime()
-    local tickDuration = 5 / (5 / (1 / (GetPowerRegenForPowerType(Enum.PowerType.Essence) or 0.2)))
+    local tickDuration = 1 / (GetPowerRegenForPowerType(Enum.PowerType.Essence) or 0.2)
     if currentEssence ~= essenceState.lastEssence then
         essenceState.nextTick = currentEssence < maxEssence and (now + tickDuration) or nil
     end
@@ -123,7 +134,7 @@ function Mixin:GetContinuousResourceForPlayer()
     if class == "MONK" and specID == 268 then
         return "STAGGER"
     end
-    if class == "DEMONHUNTER" and DemonHunterSoulFragmentsBar and DemonHunterSoulFragmentsBar:IsShown() then
+    if class == "DEMONHUNTER" and (specID == VENGEANCE_SPEC_ID or specID == DEVOURER_SPEC_ID) then
         return "SOUL_FRAGMENTS"
     end
     if class == "PRIEST" and specID == 258 then
@@ -151,19 +162,24 @@ function Mixin:GetStaggerState()
 end
 
 function Mixin:GetSoulFragmentsState()
-    if not PlayerFrame or not PlayerFrame:IsShown() or not DemonHunterSoulFragmentsBar or not DemonHunterSoulFragmentsBar:IsShown() then
-        return nil, nil, false
+    local spec = GetSpecialization()
+    local specID = spec and GetSpecializationInfo(spec)
+    if specID == VENGEANCE_SPEC_ID then
+        local current = C_Spell.GetSpellCastCount(SOUL_CLEAVE_ID) or 0
+        return current, 6, false
     end
-    local current = DemonHunterSoulFragmentsBar:GetValue()
-    local _, max = DemonHunterSoulFragmentsBar:GetMinMaxValues()
-    return current, max, DemonHunterSoulFragmentsBar.CollapsingStarBackground and DemonHunterSoulFragmentsBar.CollapsingStarBackground:IsShown()
+    local aura = C_UnitAuras.GetPlayerAuraBySpellID(SOUL_FRAGMENTS_AURA_ID) or C_UnitAuras.GetPlayerAuraBySpellID(COLLAPSING_STAR_AURA_ID)
+    local current = aura and aura.applications or 0
+    local max = C_SpellBook.IsSpellKnown(SOUL_GLUTTON_TALENT_ID) and 35 or 50
+    local isVoidMeta = aura and aura.spellId == COLLAPSING_STAR_AURA_ID
+    return current, max, isVoidMeta
 end
 
 function Mixin:GetEbonMightState()
-    if not PlayerFrame or not PlayerFrame:IsShown() or not EvokerEbonMightBar or not EvokerEbonMightBar:IsShown() then
-        return nil, nil
-    end
-    return EvokerEbonMightBar:GetValue(), select(2, EvokerEbonMightBar:GetMinMaxValues())
+    local aura = C_UnitAuras.GetPlayerAuraBySpellID(EBON_MIGHT_AURA_ID)
+    if not aura then return 0, EBON_MIGHT_MAX_DURATION end
+    local remaining = math.max(0, aura.expirationTime - GetTime())
+    return remaining, EBON_MIGHT_MAX_DURATION
 end
 
 local MAELSTROM_WEAPON_ID = 344179

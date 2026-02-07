@@ -52,7 +52,6 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
         GrowthDirection = "Down",
         -- Dispel Indicator Settings
         DispelIndicatorEnabled = true,
-        DispelFilterMode = "PLAYER", -- PLAYER or ALL
         DispelThickness = 2,
         DispelFrequency = 0.25,
         DispelNumLines = 8,
@@ -60,7 +59,6 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
         DispelColorPoison = { r = 0.0, g = 0.6, b = 0.0, a = 1 },
-        DispelDebug = false, -- Debug mode (not shown in UI, toggle via /run)
         -- Aggro Indicator Settings
         AggroIndicatorEnabled = true,
         AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
@@ -84,17 +82,6 @@ Mixin(
 
 -- Enable Canvas Mode (right-click component editing)
 Plugin.canvasMode = true
-
--- Check if a component is disabled (returns true if in DisabledComponents array)
-function Plugin:IsComponentDisabled(componentKey)
-    local disabled = self:GetSetting(1, "DisabledComponents") or {}
-    for _, key in ipairs(disabled) do
-        if key == componentKey then
-            return true
-        end
-    end
-    return false
-end
 
 -- Migrate from legacy ShowXXX boolean settings to DisabledComponents array
 local function MigrateDisabledComponents(plugin)
@@ -791,30 +778,51 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     if currentTab == "Layout" then
         table.insert(schema.controls, {
-            type = "dropdown", key = "Orientation", label = "Orientation", default = 0,
+            type = "dropdown",
+            key = "Orientation",
+            label = "Orientation",
+            default = 0,
             options = { { text = "Vertical", value = 0 }, { text = "Horizontal", value = 1 } },
             onChange = function(val)
                 self:SetSetting(1, "Orientation", val)
                 local defaultGrowth = val == 0 and "Down" or "Right"
                 self:SetSetting(1, "GrowthDirection", defaultGrowth)
                 self:ApplySettings()
-                if self.frames and self.frames[1] and self.frames[1].preview then self:SchedulePreviewUpdate() end
-                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+                if self.frames and self.frames[1] and self.frames[1].preview then
+                    self:SchedulePreviewUpdate()
+                end
+                if dialog.orbitTabCallback then
+                    dialog.orbitTabCallback()
+                end
             end,
         })
-        local growthOptions = orientation == 0
-            and { { text = "Down", value = "Down" }, { text = "Up", value = "Up" }, { text = "Center", value = "Center" } }
+        local growthOptions = orientation == 0 and { { text = "Down", value = "Down" }, { text = "Up", value = "Up" }, { text = "Center", value = "Center" } }
             or { { text = "Right", value = "Right" }, { text = "Left", value = "Left" }, { text = "Center", value = "Center" } }
         table.insert(schema.controls, {
-            type = "dropdown", key = "GrowthDirection", label = "Growth Direction",
-            default = orientation == 0 and "Down" or "Right", options = growthOptions,
+            type = "dropdown",
+            key = "GrowthDirection",
+            label = "Growth Direction",
+            default = orientation == 0 and "Down" or "Right",
+            options = growthOptions,
             onChange = makeOnChange(self, "GrowthDirection"),
         })
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 100, max = 300, step = 5, default = 160, onChange = makeOnChange(self, "Width") })
-        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 5, default = 40, onChange = makeOnChange(self, "Height") })
-        table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 25, step = 1, default = 0, onChange = makeOnChange(self, "Spacing") })
+        table.insert(
+            schema.controls,
+            { type = "slider", key = "Width", label = "Width", min = 100, max = 300, step = 5, default = 160, onChange = makeOnChange(self, "Width") }
+        )
+        table.insert(
+            schema.controls,
+            { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 5, default = 40, onChange = makeOnChange(self, "Height") }
+        )
+        table.insert(
+            schema.controls,
+            { type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 25, step = 1, default = 0, onChange = makeOnChange(self, "Spacing") }
+        )
         table.insert(schema.controls, {
-            type = "dropdown", key = "HealthTextMode", label = "Health Text", default = "percent_short",
+            type = "dropdown",
+            key = "HealthTextMode",
+            label = "Health Text",
+            default = "percent_short",
             options = {
                 { text = "Percentage", value = "percent" },
                 { text = "Short Health", value = "short" },
@@ -830,7 +838,10 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = makeOnChange(self, "HealthTextMode"),
         })
         table.insert(schema.controls, {
-            type = "checkbox", key = "IncludePlayer", label = "Include Player", default = false,
+            type = "checkbox",
+            key = "IncludePlayer",
+            label = "Include Player",
+            default = false,
             onChange = makeOnChange(self, "IncludePlayer", function(val)
                 if self.frames and self.frames[1] and self.frames[1].preview then
                     self:ShowPreview()
@@ -839,61 +850,111 @@ function Plugin:AddSettings(dialog, systemFrame)
                 end
             end),
         })
-        table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true, onChange = makeOnChange(self, "ShowPowerBar") })
+        table.insert(
+            schema.controls,
+            { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true, onChange = makeOnChange(self, "ShowPowerBar") }
+        )
     elseif currentTab == "Auras" then
         local debuffKey = orientation == 0 and "DebuffPositionVertical" or "DebuffPositionHorizontal"
         local debuffDefault = orientation == 0 and "Right" or "Above"
         table.insert(schema.controls, {
-            type = "dropdown", key = debuffKey, label = "Debuff Position", default = debuffDefault,
+            type = "dropdown",
+            key = debuffKey,
+            label = "Debuff Position",
+            default = debuffDefault,
             options = orientation == 0
-                and { { text = "Disabled", value = "Disabled" }, { text = "Left", value = "Left" }, { text = "Right", value = "Right" } }
+                    and { { text = "Disabled", value = "Disabled" }, { text = "Left", value = "Left" }, { text = "Right", value = "Right" } }
                 or { { text = "Disabled", value = "Disabled" }, { text = "Above", value = "Above" }, { text = "Below", value = "Below" } },
             onChange = function(val)
                 self:SetSetting(1, debuffKey, val)
                 self:ApplySettings()
-                if self.frames and self.frames[1] and self.frames[1].preview then self:SchedulePreviewUpdate() end
-                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+                if self.frames and self.frames[1] and self.frames[1].preview then
+                    self:SchedulePreviewUpdate()
+                end
+                if dialog.orbitTabCallback then
+                    dialog.orbitTabCallback()
+                end
             end,
         })
         local debuffPosition = self:GetSetting(1, debuffKey) or debuffDefault
         if debuffPosition ~= "Disabled" then
-            table.insert(schema.controls, { type = "slider", key = "MaxDebuffs", label = "Max Debuffs", min = 1, max = 6, step = 1, default = 3, onChange = makeOnChange(self, "MaxDebuffs") })
+            table.insert(schema.controls, {
+                type = "slider",
+                key = "MaxDebuffs",
+                label = "Max Debuffs",
+                min = 1,
+                max = 6,
+                step = 1,
+                default = 3,
+                onChange = makeOnChange(self, "MaxDebuffs"),
+            })
         end
         local buffKey = orientation == 0 and "BuffPositionVertical" or "BuffPositionHorizontal"
         local buffDefault = orientation == 0 and "Left" or "Below"
         table.insert(schema.controls, {
-            type = "dropdown", key = buffKey, label = "Buff Position (My Buffs)", default = buffDefault,
+            type = "dropdown",
+            key = buffKey,
+            label = "Buff Position (My Buffs)",
+            default = buffDefault,
             options = orientation == 0
-                and { { text = "Disabled", value = "Disabled" }, { text = "Left", value = "Left" }, { text = "Right", value = "Right" } }
+                    and { { text = "Disabled", value = "Disabled" }, { text = "Left", value = "Left" }, { text = "Right", value = "Right" } }
                 or { { text = "Disabled", value = "Disabled" }, { text = "Above", value = "Above" }, { text = "Below", value = "Below" } },
             onChange = function(val)
                 self:SetSetting(1, buffKey, val)
                 self:ApplySettings()
-                if self.frames and self.frames[1] and self.frames[1].preview then self:SchedulePreviewUpdate() end
-                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+                if self.frames and self.frames[1] and self.frames[1].preview then
+                    self:SchedulePreviewUpdate()
+                end
+                if dialog.orbitTabCallback then
+                    dialog.orbitTabCallback()
+                end
             end,
         })
         local buffPosition = self:GetSetting(1, buffKey) or buffDefault
         if buffPosition ~= "Disabled" then
-            table.insert(schema.controls, { type = "slider", key = "MaxBuffs", label = "Max Buffs", min = 1, max = 6, step = 1, default = 3, onChange = makeOnChange(self, "MaxBuffs") })
+            table.insert(
+                schema.controls,
+                { type = "slider", key = "MaxBuffs", label = "Max Buffs", min = 1, max = 6, step = 1, default = 3, onChange = makeOnChange(self, "MaxBuffs") }
+            )
         end
     elseif currentTab == "Indicators" then
         table.insert(schema.controls, {
-            type = "checkbox", key = "DispelIndicatorEnabled", label = "Enable Dispel Indicators", default = true,
+            type = "checkbox",
+            key = "DispelIndicatorEnabled",
+            label = "Enable Dispel Indicators",
+            default = true,
             onChange = makeOnChange(self, "DispelIndicatorEnabled", function()
-                if self.UpdateAllDispelIndicators then self:UpdateAllDispelIndicators(self) end
+                if self.UpdateAllDispelIndicators then
+                    self:UpdateAllDispelIndicators(self)
+                end
             end),
         })
         table.insert(schema.controls, {
-            type = "slider", key = "DispelThickness", label = "Dispel Border Thickness", default = 2, min = 1, max = 5, step = 1,
+            type = "slider",
+            key = "DispelThickness",
+            label = "Dispel Border Thickness",
+            default = 2,
+            min = 1,
+            max = 5,
+            step = 1,
             onChange = makeOnChange(self, "DispelThickness", function()
-                if self.UpdateAllDispelIndicators then self:UpdateAllDispelIndicators(self) end
+                if self.UpdateAllDispelIndicators then
+                    self:UpdateAllDispelIndicators(self)
+                end
             end),
         })
         table.insert(schema.controls, {
-            type = "slider", key = "DispelFrequency", label = "Dispel Animation Speed", default = 0.25, min = 0.1, max = 1.0, step = 0.05,
+            type = "slider",
+            key = "DispelFrequency",
+            label = "Dispel Animation Speed",
+            default = 0.25,
+            min = 0.1,
+            max = 1.0,
+            step = 0.05,
             onChange = makeOnChange(self, "DispelFrequency", function()
-                if self.UpdateAllDispelIndicators then self:UpdateAllDispelIndicators(self) end
+                if self.UpdateAllDispelIndicators then
+                    self:UpdateAllDispelIndicators(self)
+                end
             end),
         })
     end
@@ -1164,7 +1225,8 @@ function Plugin:PositionFrames()
 
     for i, frame in ipairs(self.frames) do
         frame:ClearAllPoints()
-        local xOffset, yOffset, frameAnchor, containerAnchor = Helpers:CalculateFramePosition(i, width, height, spacing, orientation, growthDirection, numFrames)
+        local xOffset, yOffset, frameAnchor, containerAnchor =
+            Helpers:CalculateFramePosition(i, width, height, spacing, orientation, growthDirection, numFrames)
         frame:SetPoint(frameAnchor, self.container, containerAnchor, xOffset, yOffset)
     end
 

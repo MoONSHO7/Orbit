@@ -65,7 +65,7 @@ function Mixin:UpdateRoleIcon(frame, plugin)
     local roleAtlas = ROLE_ATLASES[role]
 
     -- In Edit Mode, show a preview role icon if no role assigned
-    local inEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local inEditMode = Orbit:IsEditMode()
 
     if roleAtlas then
         frame.RoleIcon:SetAtlas(roleAtlas)
@@ -96,7 +96,7 @@ function Mixin:UpdateLeaderIcon(frame, plugin)
         return
     end
 
-    local inEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local inEditMode = Orbit:IsEditMode()
 
     if UnitIsGroupLeader(unit) then
         frame.LeaderIcon:SetAtlas("UI-HUD-UnitFrame-Player-Group-LeaderIcon")
@@ -147,7 +147,7 @@ function Mixin:UpdateMarkerIcon(frame, plugin)
         end
     end
 
-    local inEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local inEditMode = Orbit:IsEditMode()
     local inCanvasMode = Orbit.Engine.ComponentEdit and Orbit.Engine.ComponentEdit:IsActive(frame)
 
     if index then
@@ -175,7 +175,7 @@ function Mixin:UpdateCombatIcon(frame, plugin)
 
     local unit = frame.unit
     local inCombat = UnitExists(unit) and UnitAffectingCombat(unit)
-    local inEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local inEditMode = Orbit:IsEditMode()
 
     if inCombat or inEditMode then
         frame.CombatIcon:Show()
@@ -252,7 +252,7 @@ function Mixin:UpdateGroupPosition(frame, plugin)
 
     local unit = frame.unit
     local isInRaid = IsInRaid()
-    local inEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local inEditMode = Orbit:IsEditMode()
 
     if isInRaid and unit then
         local raidIndex = UnitInRaid(unit)
@@ -328,7 +328,7 @@ function Mixin:UpdatePhaseIcon(frame, plugin)
         return
     end
 
-    local inEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local inEditMode = Orbit:IsEditMode()
     local inCanvasMode = Orbit.Engine.ComponentEdit and Orbit.Engine.ComponentEdit:IsActive(frame)
 
     local phaseReason = UnitPhaseReason(unit)
@@ -362,7 +362,7 @@ function Mixin:UpdateReadyCheck(frame, plugin)
         return
     end
 
-    local inEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local inEditMode = Orbit:IsEditMode()
     local inCanvasMode = Orbit.Engine.ComponentEdit and Orbit.Engine.ComponentEdit:IsActive(frame)
 
     local readyStatus = GetReadyCheckStatus(unit)
@@ -401,7 +401,7 @@ function Mixin:UpdateIncomingRes(frame, plugin)
         return
     end
 
-    local inEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local inEditMode = Orbit:IsEditMode()
     local inCanvasMode = Orbit.Engine.ComponentEdit and Orbit.Engine.ComponentEdit:IsActive(frame)
 
     if UnitHasIncomingResurrection(unit) then
@@ -433,7 +433,7 @@ function Mixin:UpdateIncomingSummon(frame, plugin)
         return
     end
 
-    local inEditMode = EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()
+    local inEditMode = Orbit:IsEditMode()
     local inCanvasMode = Orbit.Engine.ComponentEdit and Orbit.Engine.ComponentEdit:IsActive(frame)
 
     if C_IncomingSummon and C_IncomingSummon.HasIncomingSummon(unit) then

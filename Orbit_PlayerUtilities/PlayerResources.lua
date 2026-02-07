@@ -11,15 +11,59 @@ local DEFAULTS = {
     Y = -200,
 }
 local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
+local UPDATE_INTERVAL = 0.05
+local MAX_SPACER_COUNT = 10
+local _, PLAYER_CLASS = UnitClass("player")
 
 -- [ HELPERS ]--------------------------------------------------------------------------------------
+local CanUseUnitPowerPercent = (type(UnitPowerPercent) == "function" and CurveConstants and CurveConstants.ScaleTo100)
 local function SafeUnitPowerPercent(unit, resource)
-    if type(UnitPowerPercent) ~= "function" or not CurveConstants or not CurveConstants.ScaleTo100 then
-        return nil
-    end
-    local ok, pct = pcall(UnitPowerPercent, unit, resource, false, CurveConstants.ScaleTo100)
-    return (ok and pct) or nil
+    if not CanUseUnitPowerPercent then return nil end
+    return UnitPowerPercent(unit, resource, false, CurveConstants.ScaleTo100)
 end
+
+local function SnapToPixel(value, scale)
+    if OrbitEngine.Pixel then return OrbitEngine.Pixel:Snap(value, scale) end
+    return math.floor(value * scale + 0.5) / scale
+end
+
+-- [ CONTINUOUS RESOURCE CONFIG ]--------------------------------------------------------------------
+local CONTINUOUS_RESOURCE_CONFIG = {
+    STAGGER = {
+        curveKey = "StaggerColorCurve",
+        getState = function() return ResourceMixin:GetStaggerState() end,
+        updateText = function(text, current) text:SetFormattedText("%.0f", current) end,
+    },
+    SOUL_FRAGMENTS = {
+        curveKey = "SoulFragmentsColorCurve",
+        getState = function() return ResourceMixin:GetSoulFragmentsState() end,
+        updateText = function(text, current) text:SetText(current) end,
+    },
+    EBON_MIGHT = {
+        curveKey = "EbonMightColorCurve",
+        getState = function() return ResourceMixin:GetEbonMightState() end,
+        updateText = function(text, current) text:SetFormattedText("%.1f", current) end,
+    },
+    MANA = {
+        curveKey = "ManaColorCurve",
+        getState = function() return UnitPower("player", Enum.PowerType.Mana), UnitPowerMax("player", Enum.PowerType.Mana) end,
+        updateText = function(text, current)
+            local percent = SafeUnitPowerPercent("player", Enum.PowerType.Mana)
+            if percent then text:SetFormattedText("%.0f", percent) else text:SetText(current) end
+        end,
+    },
+    MAELSTROM_WEAPON = {
+        curveKey = "MaelstromWeaponColorCurve",
+        getState = function() return ResourceMixin:GetMaelstromWeaponState() end,
+        updateText = function(text, _, _, hasAura, auraInstanceID)
+            if hasAura and auraInstanceID and C_UnitAuras.GetAuraApplicationDisplayCount then
+                text:SetText(C_UnitAuras.GetAuraApplicationDisplayCount("player", auraInstanceID))
+            elseif not hasAura then
+                text:SetText("")
+            end
+        end,
+    },
+}
 
 -- [ PLUGIN REGISTRATION ]--------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerResources"
@@ -77,26 +121,26 @@ function Plugin:AddSettings(dialog, systemFrame)
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
         if not isAnchored then
-            WL:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = DEFAULTS.Width }, nil, nil)
+            WL:AddSizeSettings(self, schema, SYSTEM_INDEX, systemFrame, { default = DEFAULTS.Width }, nil, nil)
         end
-        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 20, default = DEFAULTS.Height }, nil)
+        WL:AddSizeSettings(self, schema, SYSTEM_INDEX, systemFrame, nil, { min = 5, max = 20, default = DEFAULTS.Height }, nil)
     elseif currentTab == "Visibility" then
-        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
+        WL:AddOpacitySettings(self, schema, SYSTEM_INDEX, systemFrame, { step = 5 })
         table.insert(schema.controls, {
             type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
             tooltip = "Hide frame when out of combat with no target",
             onChange = function(val)
-                self:SetSetting(systemIndex, "OutOfCombatFade", val)
+                self:SetSetting(SYSTEM_INDEX, "OutOfCombatFade", val)
                 if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
                 if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
-        if self:GetSetting(systemIndex, "OutOfCombatFade") then
+        if self:GetSetting(SYSTEM_INDEX, "OutOfCombatFade") then
             table.insert(schema.controls, {
                 type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
                 tooltip = "Reveal frame when mousing over it",
                 onChange = function(val)
-                    self:SetSetting(systemIndex, "ShowOnMouseover", val)
+                    self:SetSetting(SYSTEM_INDEX, "ShowOnMouseover", val)
                     self:ApplySettings()
                 end,
             })
@@ -105,81 +149,55 @@ function Plugin:AddSettings(dialog, systemFrame)
         table.insert(schema.controls, {
             type = "checkbox", key = "UseCustomColor", label = "Use Custom Color", default = false,
             onChange = function(val)
-                self:SetSetting(systemIndex, "UseCustomColor", val)
+                self:SetSetting(SYSTEM_INDEX, "UseCustomColor", val)
                 self:ApplyButtonVisuals()
                 self:UpdatePower()
                 if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
-        if self:GetSetting(systemIndex, "UseCustomColor") then
+        if self:GetSetting(SYSTEM_INDEX, "UseCustomColor") then
             table.insert(schema.controls, {
                 type = "colorcurve", key = "BarColorCurve", label = "Bar Color",
                 default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
                 onChange = function(curveData)
-                    self:SetSetting(systemIndex, "BarColorCurve", curveData)
+                    self:SetSetting(SYSTEM_INDEX, "BarColorCurve", curveData)
                     self:ApplyButtonVisuals()
                     self:UpdatePower()
                 end,
             })
         end
-        if self.continuousResource == "STAGGER" then
-            table.insert(schema.controls, {
-                type = "colorcurve", key = "StaggerColorCurve", label = "Stagger Colour",
-                tooltip = "Color gradient from low (left) to heavy (right) stagger",
-                default = { pins = {
-                    { position = 0, color = { r = 0.52, g = 1.0, b = 0.52, a = 1 } },
-                    { position = 0.5, color = { r = 1.0, g = 0.98, b = 0.72, a = 1 } },
-                    { position = 1, color = { r = 1.0, g = 0.42, b = 0.42, a = 1 } },
-                } },
-                onChange = function(curveData)
-                    self:SetSetting(systemIndex, "StaggerColorCurve", curveData)
-                    self:UpdatePower()
-                end,
-            })
-        end
-        if self.continuousResource == "SOUL_FRAGMENTS" then
-            table.insert(schema.controls, {
-                type = "colorcurve", key = "SoulFragmentsColorCurve", label = "Soul Fragments Colour",
-                tooltip = "Color gradient from empty (left) to full (right)",
-                default = { pins = { { position = 0, color = { r = 0.278, g = 0.125, b = 0.796, a = 1 } } } },
-                onChange = function(curveData)
-                    self:SetSetting(systemIndex, "SoulFragmentsColorCurve", curveData)
-                    self:UpdatePower()
-                end,
-            })
-        end
-        if self.continuousResource == "EBON_MIGHT" then
-            table.insert(schema.controls, {
-                type = "colorcurve", key = "EbonMightColorCurve", label = "Ebon Might Colour",
-                tooltip = "Color gradient from empty (left) to full (right)",
-                default = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.4, a = 1 } } } },
-                onChange = function(curveData)
-                    self:SetSetting(systemIndex, "EbonMightColorCurve", curveData)
-                    self:UpdatePower()
-                end,
-            })
-        end
-        if self.continuousResource == "MANA" then
-            table.insert(schema.controls, {
-                type = "colorcurve", key = "ManaColorCurve", label = "Mana Colour",
-                tooltip = "Color gradient from empty (left) to full (right)",
-                default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
-                onChange = function(curveData)
-                    self:SetSetting(systemIndex, "ManaColorCurve", curveData)
-                    self:UpdatePower()
-                end,
-            })
-        end
-        if self.continuousResource == "MAELSTROM_WEAPON" then
-            table.insert(schema.controls, {
-                type = "colorcurve", key = "MaelstromWeaponColorCurve", label = "Maelstrom Colour",
-                tooltip = "Color gradient from empty (left) to full (right)",
-                default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
-                onChange = function(curveData)
-                    self:SetSetting(systemIndex, "MaelstromWeaponColorCurve", curveData)
-                    self:UpdatePower()
-                end,
-            })
+        local curveControls = {
+            { resource = "STAGGER", key = "StaggerColorCurve", label = "Stagger Colour",
+              tooltip = "Color gradient from low (left) to heavy (right) stagger",
+              default = { pins = {
+                  { position = 0, color = { r = 0.52, g = 1.0, b = 0.52, a = 1 } },
+                  { position = 0.5, color = { r = 1.0, g = 0.98, b = 0.72, a = 1 } },
+                  { position = 1, color = { r = 1.0, g = 0.42, b = 0.42, a = 1 } },
+              } } },
+            { resource = "SOUL_FRAGMENTS", key = "SoulFragmentsColorCurve", label = "Soul Fragments Colour",
+              tooltip = "Color gradient from empty (left) to full (right)",
+              default = { pins = { { position = 0, color = { r = 0.278, g = 0.125, b = 0.796, a = 1 } } } } },
+            { resource = "EBON_MIGHT", key = "EbonMightColorCurve", label = "Ebon Might Colour",
+              tooltip = "Color gradient from empty (left) to full (right)",
+              default = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.4, a = 1 } } } } },
+            { resource = "MANA", key = "ManaColorCurve", label = "Mana Colour",
+              tooltip = "Color gradient from empty (left) to full (right)",
+              default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } } },
+            { resource = "MAELSTROM_WEAPON", key = "MaelstromWeaponColorCurve", label = "Maelstrom Colour",
+              tooltip = "Color gradient from empty (left) to full (right)",
+              default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } } },
+        }
+        for _, ctrl in ipairs(curveControls) do
+            if self.continuousResource == ctrl.resource then
+                table.insert(schema.controls, {
+                    type = "colorcurve", key = ctrl.key, label = ctrl.label,
+                    tooltip = ctrl.tooltip, default = ctrl.default,
+                    onChange = function(curveData)
+                        self:SetSetting(SYSTEM_INDEX, ctrl.key, curveData)
+                        self:UpdatePower()
+                    end,
+                })
+            end
         end
     end
 
@@ -390,18 +408,14 @@ function Plugin:OnLoad()
         end
     end)
 
-    -- OnUpdate for smooth rune/essence timer updates
-    Frame:SetScript("OnUpdate", function(_, elapsed)
+    -- OnUpdate handler (enabled/disabled by UpdatePowerType based on resource needs)
+    Frame.onUpdateHandler = function(_, elapsed)
         Frame.elapsed = (Frame.elapsed or 0) + elapsed
-        if Frame.elapsed >= 0.05 then
+        if Frame.elapsed >= UPDATE_INTERVAL then
             Frame.elapsed = 0
-            if self.powerType == Enum.PowerType.Runes or self.powerType == Enum.PowerType.Essence then
-                self:UpdatePower()
-            elseif self.continuousResource then
-                self:UpdatePower()
-            end
+            self:UpdatePower()
         end
-    end)
+    end
 
     -- Canvas Mode: Register draggable components
     if OrbitEngine.ComponentDrag and Frame.Text then
@@ -434,23 +448,23 @@ function Plugin:ApplySettings()
     OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
 
     local hidden = self:GetSetting(SYSTEM_INDEX, "Hidden")
-    local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
+    local isEditMode = Orbit:IsEditMode()
     if hidden and not isEditMode then
         Frame:Hide()
         return
     end
 
     -- Get settings (defaults handled by PluginMixin)
-    local width = self:GetSetting(systemIndex, "Width")
-    local height = self:GetSetting(systemIndex, "Height")
-    local borderSize = self:GetSetting(systemIndex, "BorderSize")
+    local width = self:GetSetting(SYSTEM_INDEX, "Width")
+    local height = self:GetSetting(SYSTEM_INDEX, "Height")
+    local borderSize = self:GetSetting(SYSTEM_INDEX, "BorderSize")
     if not borderSize and Orbit.db.GlobalSettings then
         borderSize = Orbit.db.GlobalSettings.BorderSize
     end
     borderSize = borderSize or 1
     local spacing = borderSize
-    local texture = self:GetSetting(systemIndex, "Texture")
-    local fontName = self:GetSetting(systemIndex, "Font")
+    local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
+    local fontName = self:GetSetting(SYSTEM_INDEX, "Font")
 
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
     -- Font & Text
@@ -501,7 +515,7 @@ function Plugin:ApplySettings()
 
     -- Apply Visuals to Single Bar Container
     if Frame.StatusBarContainer and Frame.StatusBarContainer:IsShown() then
-        local bgColor = self:GetSetting(systemIndex, "BackdropColour")
+        local bgColor = self:GetSetting(SYSTEM_INDEX, "BackdropColour")
         if not bgColor and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColourCurve then
             bgColor = OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve)
         end
@@ -514,10 +528,10 @@ function Plugin:ApplySettings()
     end
 
     -- 2. Restore Position (must happen AFTER layout for anchored frames)
-    OrbitEngine.Frame:RestorePosition(Frame, self, systemIndex)
+    OrbitEngine.Frame:RestorePosition(Frame, self, SYSTEM_INDEX)
 
     -- Restore component positions (Canvas Mode)
-    local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
+    local savedPositions = self:GetSetting(SYSTEM_INDEX, "ComponentPositions")
     if savedPositions and OrbitEngine.ComponentDrag then
         OrbitEngine.ComponentDrag:RestoreFramePositions(Frame, savedPositions)
     end
@@ -530,8 +544,8 @@ function Plugin:ApplySettings()
 
     -- 5. Apply Out of Combat Fade (with hover detection based on setting)
     if Orbit.OOCFadeMixin then
-        local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
-        Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, systemIndex, "OutOfCombatFade", enableHover)
+        local enableHover = self:GetSetting(SYSTEM_INDEX, "ShowOnMouseover") ~= false
+        Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, SYSTEM_INDEX, "OutOfCombatFade", enableHover)
     end
 end
 
@@ -544,7 +558,6 @@ function Plugin:ApplyButtonVisuals()
     local borderSize = (Frame.settings and Frame.settings.borderSize) or 1
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
 
-    local _, class = UnitClass("player")
     local max = math.max(1, Frame.maxPower or #Frame.buttons)
     local globalBgColor = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColourCurve
         and OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve)
@@ -605,9 +618,8 @@ end
 
 -- [ RESOURCE COLOR HELPER ]-------------------------------------------------------------------------
 function Plugin:GetResourceColor(index, maxResources, isCharged)
-    local _, class = UnitClass("player")
     local colors = Orbit.Colors.PlayerResources
-    local fallback = colors[class] or { r = 1, g = 1, b = 1 }
+    local fallback = colors[PLAYER_CLASS] or { r = 1, g = 1, b = 1 }
     
     local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
     local curveData = self:GetSetting(SYSTEM_INDEX, "BarColorCurve")
@@ -625,7 +637,7 @@ function Plugin:GetResourceColor(index, maxResources, isCharged)
 
     if isCharged then return colors.ChargedComboPoint or fallback end
 
-    if class == "DEATHKNIGHT" then
+    if PLAYER_CLASS == "DEATHKNIGHT" then
         local spec = GetSpecialization()
         local specID = spec and GetSpecializationInfo(spec)
         if specID == 250 then return colors.RuneBlood or fallback
@@ -681,6 +693,7 @@ function Plugin:UpdatePowerType()
 
         -- Switch to continuous mode
         self:SetContinuousMode(true)
+        Frame:SetScript("OnUpdate", Frame.onUpdateHandler)
         Frame:Show()
         return
     end
@@ -696,8 +709,11 @@ function Plugin:UpdatePowerType()
 
     if self.powerType then
         Frame:Show()
+        local needsOnUpdate = (self.powerType == Enum.PowerType.Runes or self.powerType == Enum.PowerType.Essence)
+        Frame:SetScript("OnUpdate", needsOnUpdate and Frame.onUpdateHandler or nil)
         self:UpdateMaxPower()
     else
+        Frame:SetScript("OnUpdate", nil)
         Frame:Hide()
     end
 end
@@ -708,18 +724,9 @@ function Plugin:SetContinuousMode(isContinuous)
     end
 
     if isContinuous then
-        -- Show StatusBar container, hide discrete buttons
+        -- Show StatusBar container, hide discrete buttons (skinning handled by ApplySettings)
         if Frame.StatusBarContainer then
             Frame.StatusBarContainer:Show()
-
-            -- Apply texture and border using ClassBar skin
-            local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
-            local borderSize = (Frame.settings and Frame.settings.borderSize) or 1
-
-            Orbit.Skin.ClassBar:SkinStatusBar(Frame.StatusBarContainer, Frame.StatusBar, {
-                borderSize = borderSize,
-                texture = texture,
-            })
         end
 
         for _, btn in ipairs(Frame.buttons or {}) do
@@ -759,7 +766,7 @@ function Plugin:UpdateMaxPower()
     end
 
     Frame.Spacers = Frame.Spacers or {}
-    for i = 1, 10 do
+    for i = 1, MAX_SPACER_COUNT do
         if not Frame.Spacers[i] then
             Frame.Spacers[i] = Frame.StatusBar:CreateTexture(nil, "OVERLAY", nil, 7)
             Frame.Spacers[i]:SetColorTexture(0, 0, 0, 1)
@@ -839,19 +846,13 @@ function Plugin:UpdateLayout(frame)
     local height = settings.height or 15
     local spacing = settings.spacing or 2
 
-    -- Pixel snapping helpers
+    -- Pixel snapping
     local scale = Frame:GetEffectiveScale() or 1
-    local function SnapToPixel(value)
-        if OrbitEngine.Pixel then
-            return OrbitEngine.Pixel:Snap(value, scale)
-        end
-        return math.floor(value * scale + 0.5) / scale
-    end
 
     -- Snap values
-    local snappedTotalWidth = SnapToPixel(totalWidth)
-    local snappedHeight = SnapToPixel(height)
-    local snappedSpacing = SnapToPixel(spacing)
+    local snappedTotalWidth = SnapToPixel(totalWidth, scale)
+    local snappedHeight = SnapToPixel(height, scale)
+    local snappedSpacing = SnapToPixel(spacing, scale)
 
     -- Physical Updates
     Frame:SetHeight(snappedHeight)
@@ -861,12 +862,12 @@ function Plugin:UpdateLayout(frame)
         local btn = buttons[i]
         if btn then
             local btnUsableWidth = usableWidth / max
-            local leftPos = SnapToPixel((i - 1) * (btnUsableWidth + snappedSpacing))
+            local leftPos = SnapToPixel((i - 1) * (btnUsableWidth + snappedSpacing), scale)
             local rightPos
             if i == max then
                 rightPos = snappedTotalWidth
             else
-                rightPos = SnapToPixel(i * (btnUsableWidth + snappedSpacing) - snappedSpacing)
+                rightPos = SnapToPixel(i * (btnUsableWidth + snappedSpacing) - snappedSpacing, scale)
             end
 
             local btnWidth = rightPos - leftPos
@@ -883,6 +884,16 @@ function Plugin:UpdateLayout(frame)
     end
 end
 
+function Plugin:UpdateContinuousBar(curveKey, current, max)
+    if not Frame.StatusBar then return end
+    Frame.StatusBar:SetMinMaxValues(0, max)
+    Frame.StatusBar:SetValue(current, SMOOTH_ANIM)
+    local curveData = self:GetSetting(SYSTEM_INDEX, curveKey)
+    local progress = (max > 0) and (current / max) or 0
+    local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
+    if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
+end
+
 function Plugin:UpdatePower()
     if not Frame then
         return
@@ -892,121 +903,18 @@ function Plugin:UpdatePower()
 
     -- CONTINUOUS RESOURCES
     if self.continuousResource then
-        -- STAGGER (Brewmaster Monk)
-        if self.continuousResource == "STAGGER" then
-            local stagger, maxHealth, level = ResourceMixin:GetStaggerState()
-
-            if Frame.StatusBar then
-                Frame.StatusBar:SetMinMaxValues(0, maxHealth)
-                Frame.StatusBar:SetValue(stagger, SMOOTH_ANIM)
-
-                local staggerPercent = (maxHealth > 0) and (stagger / maxHealth) or 0
-                local curveData = self:GetSetting(SYSTEM_INDEX, "StaggerColorCurve")
-                local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, staggerPercent)
-                if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
-            end
-
-            if Frame.Text and textEnabled then
-                Frame.Text:SetText("")
-            end
-            return
-        end
-
-        -- SOUL FRAGMENTS (Demon Hunter)
-        if self.continuousResource == "SOUL_FRAGMENTS" then
-            local current, max, isVoidMeta = ResourceMixin:GetSoulFragmentsState()
-
-            if current and max and Frame.StatusBar then
-                Frame.StatusBar:SetMinMaxValues(0, max)
-                Frame.StatusBar:SetValue(current, SMOOTH_ANIM)
-
-                local curveData = self:GetSetting(SYSTEM_INDEX, "SoulFragmentsColorCurve")
-                local progress = (max > 0) and (current / max) or 0
-                local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
-                if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
-
+        local cfg = CONTINUOUS_RESOURCE_CONFIG[self.continuousResource]
+        if cfg then
+            local current, max, extra1, extra2 = cfg.getState()
+            if current and max then
+                self:UpdateContinuousBar(cfg.curveKey, current, max)
                 if Frame.Text and textEnabled then
-                    Frame.Text:SetText(current)
+                    cfg.updateText(Frame.Text, current, max, extra1, extra2)
                 end
             elseif Frame.StatusBar then
                 Frame.StatusBar:SetValue(0)
             end
-            return
         end
-
-        -- EBON MIGHT (Augmentation Evoker)
-        if self.continuousResource == "EBON_MIGHT" then
-            local current, max = ResourceMixin:GetEbonMightState()
-
-            if current and max and Frame.StatusBar then
-                Frame.StatusBar:SetMinMaxValues(0, max)
-                Frame.StatusBar:SetValue(current, SMOOTH_ANIM)
-
-                local curveData = self:GetSetting(SYSTEM_INDEX, "EbonMightColorCurve")
-                local progress = (max > 0) and (current / max) or 0
-                local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
-                if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
-
-                if Frame.Text and textEnabled then
-                    Frame.Text:SetFormattedText("%.0f", current)
-                end
-            elseif Frame.StatusBar then
-                Frame.StatusBar:SetValue(0)
-            end
-            return
-        end
-
-        -- MANA (Shadow Priest, Ele/Enh Shaman, Balance Druid)
-        if self.continuousResource == "MANA" then
-            local current = UnitPower("player", Enum.PowerType.Mana)
-            local max = UnitPowerMax("player", Enum.PowerType.Mana)
-
-            if Frame.StatusBar then
-                Frame.StatusBar:SetMinMaxValues(0, max)
-                Frame.StatusBar:SetValue(current, SMOOTH_ANIM)
-
-                local curveData = self:GetSetting(SYSTEM_INDEX, "ManaColorCurve")
-                local progress = (max > 0) and (current / max) or 0
-                local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
-                if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
-            end
-
-            if Frame.Text and textEnabled then
-                local percent = SafeUnitPowerPercent("player", Enum.PowerType.Mana)
-                if percent then
-                    Frame.Text:SetFormattedText("%.0f", percent)
-                else
-                    Frame.Text:SetText(current)
-                end
-            end
-            return
-        end
-
-        -- MAELSTROM WEAPON (Enhancement Shaman)
-        if self.continuousResource == "MAELSTROM_WEAPON" then
-            local applications, maxStacks, hasAura, auraInstanceID = ResourceMixin:GetMaelstromWeaponState()
-
-            if Frame.StatusBar then
-                Frame.StatusBar:SetMinMaxValues(0, maxStacks)
-                Frame.StatusBar:SetValue(applications, SMOOTH_ANIM)
-
-                local curveData = self:GetSetting(SYSTEM_INDEX, "MaelstromWeaponColorCurve")
-                local progress = (maxStacks > 0) and (applications / maxStacks) or 0
-                local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
-                if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
-            end
-
-            if Frame.Text and textEnabled then
-                if hasAura and auraInstanceID and C_UnitAuras.GetAuraApplicationDisplayCount then
-                    local displayCount = C_UnitAuras.GetAuraApplicationDisplayCount("player", auraInstanceID)
-                    Frame.Text:SetText(displayCount)
-                elseif not hasAura then
-                    Frame.Text:SetText("")
-                end
-            end
-            return
-        end
-
         return
     end
 
@@ -1143,11 +1051,7 @@ function Plugin:UpdatePower()
     end
 
     -- Update Spacers (Pixel-Perfect)
-    local spacerWidth = 2
-    if Frame.settings and Frame.settings.spacing then
-        spacerWidth = Frame.settings.spacing
-    end
-    local max = Frame.maxPower or 5
+    local spacerWidth = (Frame.settings and Frame.settings.spacing) or 2
     local totalWidth = Frame:GetWidth()
 
     -- If width is invalid, use setting default
@@ -1161,20 +1065,11 @@ function Plugin:UpdatePower()
         scale = 1
     end
 
-    -- Snap helper: rounds position to nearest physical pixel
-    local function SnapToPixel(value)
-        if OrbitEngine.Pixel then
-            return OrbitEngine.Pixel:Snap(value, scale)
-        end
-        return math.floor(value * scale + 0.5) / scale
-    end
-
-    -- Snap spacer width
-    local snappedSpacerWidth = SnapToPixel(spacerWidth)
-    local snappedTotalWidth = SnapToPixel(totalWidth)
+    local snappedSpacerWidth = SnapToPixel(spacerWidth, scale)
+    local snappedTotalWidth = SnapToPixel(totalWidth, scale)
 
     if Frame.Spacers then
-        for i = 1, 10 do
+        for i = 1, MAX_SPACER_COUNT do
             local sp = Frame.Spacers[i]
             if sp then
                 if i < max and snappedSpacerWidth > 0 then
@@ -1184,8 +1079,8 @@ function Plugin:UpdatePower()
                     sp:SetHeight(Frame:GetHeight())
 
                     local boundaryPercent = i / max
-                    local centerPos = SnapToPixel(snappedTotalWidth * boundaryPercent)
-                    local xPos = SnapToPixel(centerPos - (snappedSpacerWidth / 2))
+                    local centerPos = SnapToPixel(snappedTotalWidth * boundaryPercent, scale)
+                    local xPos = SnapToPixel(centerPos - (snappedSpacerWidth / 2), scale)
 
                     sp:SetPoint("LEFT", Frame, "LEFT", xPos, 0)
 

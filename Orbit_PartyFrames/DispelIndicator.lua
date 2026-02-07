@@ -17,7 +17,6 @@ local function CaptureDispellableFromBlizzardFrame(frame, triggerUpdate)
         BlizzardDispelCache[unit] = {}
     end
     wipe(BlizzardDispelCache[unit])
-    wipe(BlizzardDispelCache[unit])
 
     if frame.dispelDebuffFrames then
         for i, debuffFrame in ipairs(frame.dispelDebuffFrames) do
@@ -73,15 +72,6 @@ local DEFAULT_COLORS = {
 
 local DISPEL_TYPE_NAMES = { [1] = "Magic", [2] = "Curse", [3] = "Disease", [4] = "Poison", [9] = "Bleed", [11] = "Bleed" }
 
-local function GetDispelColor(plugin, dispelType)
-    local typeName = DISPEL_TYPE_NAMES[dispelType]
-    if not typeName then
-        return nil
-    end
-    local color = plugin:GetSetting(1, "DispelColor" .. typeName) or DEFAULT_COLORS[typeName]
-    return color and { color.r, color.g, color.b, color.a or 1 } or nil
-end
-
 -- [ UPDATE DISPEL INDICATOR ]----------------------------------------------------------------------
 function Orbit.PartyFrameDispelMixin:UpdateDispelIndicator(frame, plugin)
     if not frame or not frame.unit then
@@ -132,7 +122,7 @@ function Orbit.PartyFrameDispelMixin:UpdateDispelIndicator(frame, plugin)
             local thickness = plugin:GetSetting(1, "DispelThickness") or 2
             local frequency = plugin:GetSetting(1, "DispelFrequency") or 0.25
             local numLines = plugin:GetSetting(1, "DispelNumLines") or 8
-            LCG.PixelGlow_Start(frame, color, numLines, frequency, nil, thickness, 0, 0, true, nil, Orbit.Constants.Levels.Glow)
+            LCG.PixelGlow_Start(frame, color, numLines, frequency, nil, thickness, 0, 0, true, nil, 15)
         else
             LCG.PixelGlow_Stop(frame)
         end

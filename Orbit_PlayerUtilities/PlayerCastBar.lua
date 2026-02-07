@@ -284,7 +284,7 @@ function Plugin:OnLoad()
         Orbit.Async:Debounce("CastBar_Init", function()
             self:ApplySettings()
             -- Hide bar until needed (not in Edit Mode)
-            if not (EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive()) then
+            if not (Orbit:IsEditMode()) then
                 if not CastBar.casting and not CastBar.channeling then
                     SafeHide(CastBar)
                 end
@@ -689,7 +689,7 @@ function Plugin:ApplySettings(systemFrame)
     OrbitEngine.Frame:RestorePosition(bar, self, systemIndex)
 
     -- Show preview in Edit Mode
-    if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
+    if Orbit:IsEditMode() then
         self:ShowPreview()
     end
 end

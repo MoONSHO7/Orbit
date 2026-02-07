@@ -6,10 +6,8 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local MAX_DROPDOWN_HEIGHT = 250
 local BUTTON_HEIGHT = 22
 
---[[
-    TexturePicker Widget
-    3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
-]]
+-- TexturePicker Widget
+-- 3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
 function Layout:CreateTexturePicker(parent, label, initialTexture, callback, previewColor)
     -- Pool retrieval
     if not self.texturePool then

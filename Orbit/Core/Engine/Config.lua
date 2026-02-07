@@ -204,12 +204,12 @@ function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
 
     local titlePadding = Constants.Panel.TitlePadding
     local finalDialogHeight = clampedHeight + titlePadding
-    dialog:SetHeight(math.max(finalDialogHeight, 150))
+    dialog:SetHeight(math.max(finalDialogHeight, Constants.Panel.MinDialogHeight))
     dialog:SetWidth(Constants.Panel.DialogWidth)
 
     RunNextFrame(function()
         if dialog and dialog:IsShown() and dialog.OrbitPanel and dialog.OrbitPanel:IsShown() then
-            dialog:SetHeight(math.max(finalDialogHeight, 150))
+            dialog:SetHeight(math.max(finalDialogHeight, Constants.Panel.MinDialogHeight))
         end
     end)
 end

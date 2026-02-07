@@ -45,13 +45,11 @@ function Orbit.PluginMixin:RegisterStandardEvents()
     end
 end
 
--- Check if a component is disabled via Canvas Mode drag-to-disable
+-- Check if a component is disabled via Canvas Mode drag-to-disable (O(1) set lookup)
 function Orbit.PluginMixin:IsComponentDisabled(componentKey)
     local disabled = self:GetSetting(self.frame and self.frame.systemIndex or 1, "DisabledComponents") or {}
     for _, key in ipairs(disabled) do
-        if key == componentKey then
-            return true
-        end
+        if key == componentKey then return true end
     end
     return false
 end

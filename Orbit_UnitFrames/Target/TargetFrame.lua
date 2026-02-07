@@ -1,6 +1,7 @@
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
+local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
@@ -114,45 +115,8 @@ end
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     Mixin(self, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin)
-    function Plugin:IsComponentDisabled(componentKey)
-        local disabled = self:GetSetting(TARGET_FRAME_INDEX, "DisabledComponents") or {}
-        for _, key in ipairs(disabled) do
-            if key == componentKey then
-                return true
-            end
-        end
-        return false
-    end
-    local hiddenParent = CreateFrame("Frame", "OrbitHiddenTargetParent", UIParent)
-    hiddenParent:Hide()
-    local frame = TargetFrame
-    if frame then
-        OrbitEngine.NativeFrame:Protect(frame)
-        frame:ClearAllPoints()
-        frame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-        frame:SetUserPlaced(true)
-        frame:SetClampRectInsets(0, 0, 0, 0)
-        frame:SetClampedToScreen(false)
-        if not frame.orbitSetPointHooked then
-            hooksecurefunc(frame, "SetPoint", function(self)
-                if InCombatLockdown() then
-                    return
-                end
-                if not self.isMovingOffscreen then
-                    self.isMovingOffscreen = true
-                    self:ClearAllPoints()
-                    self:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-                    self.isMovingOffscreen = false
-                end
-            end)
-            frame.orbitSetPointHooked = true
-        end
-        frame:SetAlpha(0)
-        frame:SetScale(0.001)
-        frame:EnableMouse(false)
-        if frame.SetTitle then
-            frame:SetTitle("")
-        end
+    if TargetFrame then
+        OrbitEngine.NativeFrame:Hide(TargetFrame)
     end
 
     -- Note: TargetFrameToT is now managed by TargetOfTargetFrame.lua plugin
@@ -187,7 +151,7 @@ function Plugin:OnLoad()
     -- Create RareEliteIcon (on overlay frame) for proper z-ordering
     if not self.frame.RareEliteIcon then
         self.frame.RareEliteIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-        self.frame.RareEliteIcon:SetSize(16, 16)
+        self.frame.RareEliteIcon:SetSize(Constants.UnitFrame.StatusIconSize, Constants.UnitFrame.StatusIconSize)
         self.frame.RareEliteIcon:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMRIGHT", 2, 0)
         self.frame.RareEliteIcon:Hide()
     end

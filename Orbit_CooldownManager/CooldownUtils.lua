@@ -91,6 +91,12 @@ function CooldownUtils:CalculateIconDimensions(plugin, systemIndex)
     elseif aspectRatio == "4:3" then h = scaledSize * (3 / 4)
     elseif aspectRatio == "21:9" then h = scaledSize * (9 / 21) end
 
+    local Pixel = OrbitEngine.Pixel
+    if Pixel then
+        w = Pixel:Snap(w)
+        h = Pixel:Snap(h)
+        scaledSize = Pixel:Snap(scaledSize)
+    end
     return w, h, scaledSize
 end
 

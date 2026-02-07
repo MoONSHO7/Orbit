@@ -13,6 +13,7 @@ local C = Orbit.Constants
 C.Panel = {
     Width = 320,
     DialogWidth = 350,
+    MinDialogHeight = 150,
     MaxHeight = 800,
     ScrollbarWidth = 26,
     ContentPadding = 8,
@@ -94,6 +95,10 @@ C.Levels = {
 C.UnitFrame = {
     TextPadding = 5, -- SetPoint offset for Name/HealthText labels
     ShadowOffset = { x = 1, y = -1 }, -- Standard shadow for text
+    AdaptiveTextMin = 14, -- Min font size for adaptive text scaling
+    AdaptiveTextMax = 24, -- Max font size for adaptive text scaling
+    CombatIconSize = 18, -- Player combat indicator icon size
+    StatusIconSize = 16, -- Role/Leader/Marker/RareElite icon size
 }
 
 C.BossFrame = {
@@ -133,6 +138,7 @@ C.Timing = {
     RetryShort = 0.5, -- Short retry delay for initialization
     RetryLong = 2.0, -- Long retry delay for slow loads
     ResourceUpdateInterval = 0.05, -- Resource bar OnUpdate throttle
+    HoverCheckInterval = 0.1, -- OOC fade mouseover polling interval
 }
 
 -- [ ICON & TEXTURE CONSTANTS ]----------------------------------------------------------------------

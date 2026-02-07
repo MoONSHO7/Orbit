@@ -111,6 +111,7 @@ end
 -- [ ANCHOR CREATION ]-------------------------------------------------------------------------------
 function Plugin:CreateAnchor(name, systemIndex, label)
     local frame = CreateFrame("Frame", name, UIParent)
+    OrbitEngine.Pixel:Enforce(frame)
     frame:SetSize(40, 40)
     frame:SetClampedToScreen(true)
     frame.systemIndex = systemIndex

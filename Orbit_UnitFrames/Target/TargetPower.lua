@@ -191,7 +191,7 @@ function Plugin:UpdateVisibility()
         return
     end
     local enabled = self:IsEnabled()
-    local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
+    local isEditMode = Orbit:IsEditMode()
 
     if isEditMode then
         -- UnregisterUnitWatch is protected - defer if in combat

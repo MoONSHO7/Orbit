@@ -278,8 +278,11 @@ function NativeFrame:Protect(nativeFrame)
 
         -- Prevent visibility (Always Alpha 0)
         hooksecurefunc(nativeFrame, "SetAlpha", function(f, a)
+            if f.isSettingAlpha then return end
             if a and a ~= 0 then
+                f.isSettingAlpha = true
                 f:SetAlpha(0)
+                f.isSettingAlpha = false
             end
         end)
 

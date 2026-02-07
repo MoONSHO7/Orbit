@@ -302,7 +302,7 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
         if child.orbitPlugin.UpdateLayout then
             child.orbitPlugin:UpdateLayout(child)
         elseif not suppressApplySettings and child.orbitPlugin.ApplySettings then
-            local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
+            local isEditMode = Orbit:IsEditMode()
             if not isEditMode then
                 child.orbitPlugin:ApplySettings(child)
             end
@@ -469,7 +469,7 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited)
         end
     end
 
-    local isEditMode = EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive and EditModeManagerFrame:IsEditModeActive()
+    local isEditMode = Orbit:IsEditMode()
 
     -- Fast Path: During Edit Mode, just reposition children without full ApplySettings cascade
     -- This prevents exponential performance cost when dragging linked chains
