@@ -81,6 +81,20 @@ function CDM:AddSettings(dialog, systemFrame)
             WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
                 key = "ProcGlowColor", label = "Proc Glow Colour", default = { r = 1, g = 0.8, b = 0, a = 1 },
             })
+        else
+            local GlowType = Constants.PandemicGlow.Type
+            table.insert(schema.controls, {
+                type = "dropdown", key = "ActiveGlowType", label = "Active Glow",
+                options = {
+                    { text = "None", value = GlowType.None }, { text = "Pixel Glow", value = GlowType.Pixel },
+                    { text = "Proc Glow", value = GlowType.Proc }, { text = "Autocast Shine", value = GlowType.Autocast },
+                    { text = "Button Glow", value = GlowType.Button },
+                },
+                default = GlowType.None,
+            })
+            WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
+                key = "ActiveGlowColor", label = "Active Glow Colour", default = { r = 0.3, g = 0.8, b = 1, a = 1 },
+            })
         end
     elseif currentTab == "Visibility" then
         WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })

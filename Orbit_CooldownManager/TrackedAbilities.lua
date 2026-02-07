@@ -3,6 +3,10 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
+local LCG = LibStub("LibCustomGlow-1.0", true)
+local ACTIVE_GLOW_KEY = "orbitActive"
+local GlowType = Constants.PandemicGlow.Type
+local GlowConfig = Constants.PandemicGlow
 
 -- [ TRACKED ABILITIES CONSTANTS ]-------------------------------------------------------------------
 local TRACKED_INDEX = Constants.Cooldown.SystemIndex.Tracked
@@ -22,6 +26,89 @@ local DESAT_CURVE = C_CurveUtil.CreateCurve()
 DESAT_CURVE:AddPoint(0.0, 0)
 DESAT_CURVE:AddPoint(0.001, 1)
 DESAT_CURVE:AddPoint(1.0, 1)
+
+-- [ ACTIVE DURATION PARSING ]-----------------------------------------------------------------------
+local function StripEscapes(text)
+    text = text:gsub("|4([^:]+):([^;]+);", "%2")
+    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    return text
+end
+
+local function ParseActiveDuration(itemType, id)
+    local text = nil
+    if itemType == "spell" then
+        text = C_Spell.GetSpellDescription(id)
+    elseif itemType == "item" then
+        local tooltipData = C_TooltipInfo and C_TooltipInfo.GetItemByID(id)
+        if tooltipData and tooltipData.lines then
+            for _, line in ipairs(tooltipData.lines) do
+                text = (text or "") .. " " .. (line.leftText or "")
+            end
+        end
+    end
+    if not text then return nil end
+    text = StripEscapes(text)
+    local best = nil
+    for _, pattern in ipairs({"for (%d+) sec", "lasts (%d+) sec", "over (%d+) sec"}) do
+        for num in text:gmatch(pattern) do
+            local n = tonumber(num)
+            if not best or n > best then best = n end
+        end
+        if best then return best end
+    end
+    return best
+end
+
+local function ParseCooldownDuration(itemType, id)
+    local tooltipData = nil
+    if itemType == "spell" then
+        tooltipData = C_TooltipInfo and C_TooltipInfo.GetSpellByID(id)
+    elseif itemType == "item" then
+        tooltipData = C_TooltipInfo and C_TooltipInfo.GetItemByID(id)
+    end
+    if not tooltipData or not tooltipData.lines then return nil end
+    for _, line in ipairs(tooltipData.lines) do
+        local text = StripEscapes(line.rightText or line.leftText or "")
+        local min = text:match("(%d+) [Mm]in [Cc]ooldown")
+        if min then return tonumber(min) * 60 end
+        local sec = text:match("(%d+) [Ss]ec [Cc]ooldown")
+        if sec then return tonumber(sec) end
+    end
+    return nil
+end
+
+local function BuildDesatCurve(activeDuration, cooldownDuration)
+    local curve = C_CurveUtil.CreateCurve()
+    curve:AddPoint(0.0, 0)
+    if not activeDuration or not cooldownDuration or cooldownDuration <= 0 or activeDuration >= cooldownDuration then
+        curve:AddPoint(0.001, 1)
+        curve:AddPoint(1.0, 1)
+        return curve
+    end
+    local breakpoint = 1.0 - (activeDuration / cooldownDuration)
+    curve:AddPoint(0.001, 1)
+    curve:AddPoint(math.max(breakpoint, 0.002), 1)
+    curve:AddPoint(breakpoint + 0.001, 0)
+    curve:AddPoint(1.0, 0)
+    return curve
+end
+
+local function BuildCooldownAlphaCurve(activeDuration, cooldownDuration)
+    local curve = C_CurveUtil.CreateCurve()
+    if not activeDuration or not cooldownDuration or cooldownDuration <= 0 or activeDuration >= cooldownDuration then
+        curve:AddPoint(0.0, 0)
+        curve:AddPoint(0.001, 1)
+        curve:AddPoint(1.0, 1)
+        return curve
+    end
+    local breakpoint = 1.0 - (activeDuration / cooldownDuration)
+    curve:AddPoint(0.0, 0)
+    curve:AddPoint(0.001, 1)
+    curve:AddPoint(math.max(breakpoint, 0.002), 1)
+    curve:AddPoint(breakpoint + 0.001, 0)
+    curve:AddPoint(1.0, 0)
+    return curve
+end
 
 -- [ PLUGIN REFERENCE ]------------------------------------------------------------------------------
 local Plugin = Orbit:GetPlugin("Orbit_CooldownViewer")
@@ -364,6 +451,11 @@ function Plugin:CreateTrackedIcon(anchor, systemIndex, x, y)
     icon.Cooldown:SetDrawSwipe(true)
     icon.Cooldown:SetDrawBling(false)
 
+    icon.ActiveCooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
+    icon.ActiveCooldown:SetAllPoints()
+    icon.ActiveCooldown:SetDrawSwipe(true)
+    icon.ActiveCooldown:SetDrawBling(false)
+
     local textOverlay = CreateFrame("Frame", nil, icon)
     textOverlay:SetAllPoints()
     textOverlay:SetFrameLevel(icon:GetFrameLevel() + 20)
@@ -449,7 +541,9 @@ function Plugin:SaveTrackedItem(systemIndex, x, y, itemType, itemId)
     local tracked = self:GetSetting(systemIndex, "TrackedItems") or {}
     local key = GridKey(x, y)
     if itemType and itemId then
-        tracked[key] = { type = itemType, id = itemId, x = x, y = y }
+        local actDur = ParseActiveDuration(itemType, itemId)
+        local cdDur = ParseCooldownDuration(itemType, itemId)
+        tracked[key] = { type = itemType, id = itemId, x = x, y = y, activeDuration = actDur, cooldownDuration = cdDur }
     else
         tracked[key] = nil
     end
@@ -480,7 +574,7 @@ function Plugin:LoadTrackedItems(anchor, systemIndex)
     -- Deep copy to avoid shared reference between frames
     local copy = {}
     for k, v in pairs(tracked) do
-        copy[k] = { type = v.type, id = v.id, x = v.x, y = v.y }
+        copy[k] = { type = v.type, id = v.id, x = v.x, y = v.y, activeDuration = v.activeDuration, cooldownDuration = v.cooldownDuration }
     end
     anchor.gridItems = copy
     self:LayoutTrackedIcons(anchor, systemIndex)
@@ -502,6 +596,44 @@ local function IsItemUsable(itemId)
     return C_Item.GetItemCount(itemId, false, true) > 0
 end
 
+-- [ ACTIVE GLOW HELPERS ]--------------------------------------------------------------------------
+function Plugin:StartActiveGlow(icon)
+    if not LCG then return end
+    local systemIndex = icon.systemIndex or TRACKED_INDEX
+    local glowTypeId = self:GetSetting(systemIndex, "ActiveGlowType")
+    if glowTypeId == nil then glowTypeId = GlowType.None end
+    if glowTypeId == GlowType.None then return end
+    local color = self:GetSetting(systemIndex, "ActiveGlowColor") or { r = 0.3, g = 0.8, b = 1, a = 1 }
+    local ct = { color.r, color.g, color.b, color.a or 1 }
+    if glowTypeId == GlowType.Pixel then
+        local cfg = GlowConfig.Pixel
+        LCG.PixelGlow_Start(icon, ct, cfg.Lines, cfg.Frequency, cfg.Length, cfg.Thickness, cfg.XOffset, cfg.YOffset, cfg.Border, ACTIVE_GLOW_KEY)
+    elseif glowTypeId == GlowType.Proc then
+        local cfg = GlowConfig.Proc
+        LCG.ProcGlow_Start(icon, { color = ct, startAnim = cfg.StartAnim, duration = cfg.Duration, key = ACTIVE_GLOW_KEY })
+    elseif glowTypeId == GlowType.Autocast then
+        local cfg = GlowConfig.Autocast
+        LCG.AutoCastGlow_Start(icon, ct, cfg.Particles, cfg.Frequency, cfg.Scale, cfg.XOffset, cfg.YOffset, ACTIVE_GLOW_KEY)
+    elseif glowTypeId == GlowType.Button then
+        local cfg = GlowConfig.Button
+        LCG.ButtonGlow_Start(icon, ct, cfg.Frequency, cfg.FrameLevel)
+    end
+    icon._activeGlowing = true
+    icon._activeGlowType = glowTypeId
+end
+
+function Plugin:StopActiveGlow(icon)
+    if not LCG or not icon._activeGlowing then return end
+    local t = icon._activeGlowType
+    if t == GlowType.Pixel then LCG.PixelGlow_Stop(icon, ACTIVE_GLOW_KEY)
+    elseif t == GlowType.Proc then LCG.ProcGlow_Stop(icon, ACTIVE_GLOW_KEY)
+    elseif t == GlowType.Autocast then LCG.AutoCastGlow_Stop(icon, ACTIVE_GLOW_KEY)
+    elseif t == GlowType.Button then LCG.ButtonGlow_Stop(icon)
+    end
+    icon._activeGlowing = false
+    icon._activeGlowType = nil
+end
+
 function Plugin:UpdateTrackedIcon(icon)
     if not icon.trackedId then
         icon:Hide()
@@ -521,18 +653,42 @@ function Plugin:UpdateTrackedIcon(icon)
         texture = C_Spell.GetSpellTexture(icon.trackedId)
         if texture then
             icon.Icon:SetTexture(texture)
-            local onGCD = (C_Spell.GetSpellCooldown(icon.trackedId) or {}).isOnGCD
+            local cdInfo = C_Spell.GetSpellCooldown(icon.trackedId) or {}
+            local onGCD = cdInfo.isOnGCD
             if onGCD and not showGCDSwipe then
                 icon.Cooldown:Clear()
+                icon.ActiveCooldown:Clear()
                 icon.Icon:SetDesaturation(0)
             else
                 durObj = C_Spell.GetSpellCooldownDuration(icon.trackedId)
                 if durObj then
                     icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
-                    icon.Icon:SetDesaturation(onGCD and 0 or durObj:EvaluateRemainingPercent(DESAT_CURVE))
+                    icon.Icon:SetDesaturation(onGCD and 0 or durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE))
+                    if icon.cdAlphaCurve then
+                        icon.Cooldown:SetAlpha(durObj:EvaluateRemainingPercent(icon.cdAlphaCurve))
+                    end
+                    local onRealCD = issecretvalue(cdInfo.startTime) or cdInfo.startTime > 0
+                    if icon.activeDuration and onRealCD and not onGCD then
+                        icon.ActiveCooldown:SetCooldown(cdInfo.startTime, icon.activeDuration)
+                    else
+                        icon.ActiveCooldown:Clear()
+                    end
+                    if LCG and icon._activeGlowExpiry then
+                        if GetTime() < icon._activeGlowExpiry then
+                            if not icon._activeGlowing then
+                                Plugin:StartActiveGlow(icon)
+                            end
+                        else
+                            Plugin:StopActiveGlow(icon)
+                            icon._activeGlowExpiry = nil
+                        end
+                    end
                 else
                     icon.Cooldown:Clear()
+                    icon.Cooldown:SetAlpha(1)
+                    icon.ActiveCooldown:Clear()
                     icon.Icon:SetDesaturation(0)
+                    if icon._activeGlowing then Plugin:StopActiveGlow(icon) end
                 end
             end
             local displayCount = C_Spell.GetSpellDisplayCount(icon.trackedId)
@@ -553,10 +709,30 @@ function Plugin:UpdateTrackedIcon(icon)
             local start, duration = C_Container.GetItemCooldown(icon.trackedId)
             if start and duration and duration > 0 then
                 icon.Cooldown:SetCooldown(start, duration)
-                icon.Icon:SetDesaturation(1)
+                if icon.activeDuration and duration > icon.activeDuration then
+                    local inActivePhase = (GetTime() - start) < icon.activeDuration
+                    if inActivePhase then
+                        icon.Icon:SetDesaturation(0)
+                        icon.Cooldown:SetAlpha(0)
+                        icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
+                        if not icon._activeGlowing then Plugin:StartActiveGlow(icon) end
+                    else
+                        icon.Icon:SetDesaturation(1)
+                        icon.Cooldown:SetAlpha(1)
+                        icon.ActiveCooldown:Clear()
+                        if icon._activeGlowing then Plugin:StopActiveGlow(icon) end
+                    end
+                else
+                    icon.Icon:SetDesaturation(1)
+                    icon.Cooldown:SetAlpha(1)
+                    icon.ActiveCooldown:Clear()
+                end
             else
                 icon.Cooldown:Clear()
+                icon.Cooldown:SetAlpha(1)
+                icon.ActiveCooldown:Clear()
                 icon.Icon:SetDesaturation(0)
+                if icon._activeGlowing then Plugin:StopActiveGlow(icon) end
             end
             local count = C_Item.GetItemCount(icon.trackedId, false, true)
             if count and count > 1 then
@@ -729,6 +905,11 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         icon.gridX, icon.gridY = x, y
         icon.trackedType = data.type
         icon.trackedId = data.id
+        icon.activeDuration = data.activeDuration
+        icon.cooldownDuration = data.cooldownDuration
+        local hasActive = data.activeDuration and data.cooldownDuration
+        icon.desatCurve = hasActive and BuildDesatCurve(data.activeDuration, data.cooldownDuration) or nil
+        icon.cdAlphaCurve = hasActive and BuildCooldownAlphaCurve(data.activeDuration, data.cooldownDuration) or nil
 
         self:UpdateTrackedIcon(icon)
         self:ApplyTrackedIconSkin(icon, systemIndex)
@@ -741,6 +922,11 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
             icon.Cooldown:ClearAllPoints()
             icon.Cooldown:SetPoint("TOPLEFT", icon, "TOPLEFT", 0, 0)
             icon.Cooldown:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 0, 0)
+        end
+        if icon.ActiveCooldown then
+            icon.ActiveCooldown:ClearAllPoints()
+            icon.ActiveCooldown:SetPoint("TOPLEFT", icon, "TOPLEFT", 0, 0)
+            icon.ActiveCooldown:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 0, 0)
         end
         if icon.TextOverlay then icon.TextOverlay:SetAllPoints() end
         if icon.DropHighlight then icon.DropHighlight:SetAllPoints() end
@@ -914,6 +1100,73 @@ function Plugin:StartTrackedUpdateTicker()
                     if icon.trackedId then self:UpdateTrackedIcon(icon) end
                 end
             end
+        end
+    end)
+end
+
+-- [ TALENT REPARSE ]---------------------------------------------------------------------------------
+function Plugin:ReparseActiveDurations()
+    local viewerMap = GetViewerMap()
+    local function ReparseAnchor(anchor, systemIndex)
+        if not anchor then return end
+        local tracked = self:GetSetting(systemIndex, "TrackedItems") or {}
+        local changed = false
+        for key, data in pairs(tracked) do
+            if data.id then
+                local newActDur = ParseActiveDuration(data.type, data.id)
+                local newCdDur = ParseCooldownDuration(data.type, data.id)
+                if newActDur ~= data.activeDuration or newCdDur ~= data.cooldownDuration then
+                    data.activeDuration = newActDur
+                    data.cooldownDuration = newCdDur
+                    changed = true
+                end
+            end
+        end
+        if changed then self:SetSetting(systemIndex, "TrackedItems", tracked) end
+        for _, icon in pairs(anchor.activeIcons or {}) do
+            local hasActive = icon.activeDuration and icon.cooldownDuration
+            icon.desatCurve = hasActive and BuildDesatCurve(icon.activeDuration, icon.cooldownDuration) or nil
+            icon.cdAlphaCurve = hasActive and BuildCooldownAlphaCurve(icon.activeDuration, icon.cooldownDuration) or nil
+        end
+    end
+    local entry = viewerMap[TRACKED_INDEX]
+    if entry and entry.anchor then ReparseAnchor(entry.anchor, TRACKED_INDEX) end
+    for _, childData in pairs(self.activeChildren) do
+        if childData.frame then ReparseAnchor(childData.frame, childData.systemIndex) end
+    end
+end
+
+function Plugin:RegisterTalentWatcher()
+    if self.talentWatcherSetup then return end
+    self.talentWatcherSetup = true
+    local plugin = self
+    local frame = CreateFrame("Frame")
+    frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
+    frame:SetScript("OnEvent", function() plugin:ReparseActiveDurations() end)
+end
+
+-- [ SPELL CAST WATCHER ]-----------------------------------------------------------------------------
+function Plugin:RegisterSpellCastWatcher()
+    if self.spellCastWatcherSetup then return end
+    self.spellCastWatcherSetup = true
+    local plugin = self
+    local viewerMap = GetViewerMap()
+    local frame = CreateFrame("Frame")
+    frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    frame:SetScript("OnEvent", function(_, _, unit, _, spellId)
+        if unit ~= "player" then return end
+        local function CheckAnchor(anchor)
+            if not anchor or not anchor.activeIcons then return end
+            for _, icon in pairs(anchor.activeIcons) do
+                if icon.trackedType == "spell" and icon.trackedId == spellId and icon.activeDuration then
+                    icon._activeGlowExpiry = GetTime() + icon.activeDuration
+                end
+            end
+        end
+        local entry = viewerMap[TRACKED_INDEX]
+        if entry and entry.anchor then CheckAnchor(entry.anchor) end
+        for _, childData in pairs(plugin.activeChildren) do
+            if childData.frame then CheckAnchor(childData.frame) end
         end
     end)
 end

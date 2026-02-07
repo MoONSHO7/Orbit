@@ -88,6 +88,8 @@ function Plugin:OnLoad()
     self:StartTrackedUpdateTicker()
     self:RegisterCursorWatcher()
     self:SetupEditModeHooks()
+    self:RegisterTalentWatcher()
+    self:RegisterSpellCastWatcher()
 
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", self.OnPlayerEnteringWorld, self)
     self:RegisterVisibilityEvents()
