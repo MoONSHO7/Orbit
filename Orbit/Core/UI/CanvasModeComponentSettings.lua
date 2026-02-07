@@ -371,7 +371,7 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
                 end)
                 if widget then
                     widget:SetHeight(32)
-                    widget.singleColorMode = control.singleColor or (componentKey ~= "Timer")
+                    widget.singleColorMode = control.singleColor ~= false
                 end
             else
                 widget = CreateColorPickerWidget(self.Content, control, currentValue and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(currentValue), callback)
