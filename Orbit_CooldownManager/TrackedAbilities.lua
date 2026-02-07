@@ -521,14 +521,15 @@ function Plugin:UpdateTrackedIcon(icon)
         texture = C_Spell.GetSpellTexture(icon.trackedId)
         if texture then
             icon.Icon:SetTexture(texture)
-            if not showGCDSwipe and (C_Spell.GetSpellCooldown(icon.trackedId) or {}).isOnGCD then
+            local onGCD = (C_Spell.GetSpellCooldown(icon.trackedId) or {}).isOnGCD
+            if onGCD and not showGCDSwipe then
                 icon.Cooldown:Clear()
                 icon.Icon:SetDesaturation(0)
             else
                 durObj = C_Spell.GetSpellCooldownDuration(icon.trackedId)
                 if durObj then
                     icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
-                    icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(DESAT_CURVE))
+                    icon.Icon:SetDesaturation(onGCD and 0 or durObj:EvaluateRemainingPercent(DESAT_CURVE))
                 else
                     icon.Cooldown:Clear()
                     icon.Icon:SetDesaturation(0)
