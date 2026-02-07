@@ -465,7 +465,7 @@ function Plugin:ApplySettings()
         local textSize = (positions and positions.Text and positions.Text.overrides and positions.Text.overrides.FontSize)
             or Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
 
-        Frame.Text:SetFont(fontPath, textSize, "OUTLINE")
+        Frame.Text:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
 
         Frame.Text:ClearAllPoints()
         if height > textSize then

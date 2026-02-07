@@ -56,7 +56,7 @@ function CDM:ApplyTextSettings(icon, systemIndex)
         local overrides = pos.overrides or {}
         local font = (overrides.Font and LSM) and LSM:Fetch("font", overrides.Font) or fontPath
         local size = overrides.FontSize or math.max(6, baseSize + (defaultOffset or 0))
-        local flags = overrides.ShowShadow and "" or "OUTLINE"
+        local flags = overrides.ShowShadow and "" or Orbit.Skin:GetFontOutline()
         return font, size, flags, pos, overrides
     end
 
@@ -217,7 +217,7 @@ function CDM:SetupCanvasPreview(anchor, systemIndex)
 
         for _, def in ipairs(textComponents) do
             local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
-            fs:SetFont(fontPath, 12, "OUTLINE")
+            fs:SetFont(fontPath, 12, Orbit.Skin:GetFontOutline())
             fs:SetText(def.preview)
             fs:SetTextColor(1, 1, 1, 1)
             fs:SetPoint("CENTER", preview, "CENTER", 0, 0)

@@ -507,7 +507,7 @@ function Dialog:ApplyStyle(container, key, value)
     -- Apply style based on key
     if key == "FontSize" and visual.SetFont then
         local font, _, flags = visual:GetFont()
-        flags = (flags and flags ~= "") and flags or "OUTLINE"
+        flags = (flags and flags ~= "") and flags or Orbit.Skin:GetFontOutline()
         visual:SetFont(font, value, flags)
 
         -- Resize container to match new text dimensions
@@ -522,7 +522,7 @@ function Dialog:ApplyStyle(container, key, value)
         local fontPath = LSM:Fetch("font", value)
         if fontPath then
             local _, size, flags = visual:GetFont()
-            flags = (flags and flags ~= "") and flags or "OUTLINE"
+            flags = (flags and flags ~= "") and flags or Orbit.Skin:GetFontOutline()
             visual:SetFont(fontPath, size or 12, flags)
 
             -- Resize container to match new text dimensions

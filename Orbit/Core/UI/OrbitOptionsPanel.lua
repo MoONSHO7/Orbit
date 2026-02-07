@@ -62,6 +62,7 @@ local GlobalPlugin = {
                 end
             end
         end
+        RefreshAllPreviews()
     end,
 }
 
@@ -84,6 +85,18 @@ local function GetGlobalSchema()
                 { label = "Extra Large", value = "ExtraLarge" },
             },
             default = "Medium",
+        },
+        {
+            type = "dropdown",
+            key = "FontOutline",
+            label = "Outline",
+            options = {
+                { label = "None", value = "" },
+                { label = "Outline", value = "OUTLINE" },
+                { label = "Thick Outline", value = "THICKOUTLINE" },
+                { label = "Monochrome", value = "MONOCHROME" },
+            },
+            default = "OUTLINE",
         },
         {
             type = "slider",
@@ -112,6 +125,7 @@ local function GetGlobalSchema()
             if d then
                 d.Font = "PT Sans Narrow"
                 d.TextScale = "Medium"
+                d.FontOutline = "OUTLINE"
                 d.BorderSize = 2
             end
             Orbit:Print("Global settings reset to defaults.")

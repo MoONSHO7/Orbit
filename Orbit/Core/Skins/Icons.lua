@@ -785,7 +785,7 @@ function Icons:ApplyActionButtonCustom(button, settings)
         local fontName = Orbit.db.GlobalSettings.Font
         local fontPath = (Orbit.Fonts and Orbit.Fonts[fontName]) or Constants.Settings.Font.FallbackPath
         local fontSize = math.max(8, w * 0.28)
-        button.HotKey:SetFont(fontPath, fontSize, "OUTLINE")
+        button.HotKey:SetFont(fontPath, fontSize, Orbit.Skin:GetFontOutline())
         button.HotKey:SetTextColor(1, 1, 1, 1)
         button.HotKey:ClearAllPoints()
         button.HotKey:SetPoint("TOPRIGHT", button, "TOPRIGHT", -2, -2)
@@ -795,7 +795,7 @@ function Icons:ApplyActionButtonCustom(button, settings)
         local fontName = Orbit.db.GlobalSettings.Font
         local fontPath = (Orbit.Fonts and Orbit.Fonts[fontName]) or Constants.Settings.Font.FallbackPath
         local fontSize = math.max(7, w * 0.22)
-        button.Name:SetFont(fontPath, fontSize, "OUTLINE")
+        button.Name:SetFont(fontPath, fontSize, Orbit.Skin:GetFontOutline())
         if settings.hideName then
             button.Name:Hide()
         else

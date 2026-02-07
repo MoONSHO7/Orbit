@@ -452,7 +452,7 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
         for _, def in ipairs(textComponents) do
             -- Create temporary FontString as source for cloning
             local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7) -- Highest sublevel
-            fs:SetFont(fontPath, 12, "OUTLINE")
+            fs:SetFont(fontPath, 12, Orbit.Skin:GetFontOutline())
             fs:SetText(def.preview)
             fs:SetTextColor(1, 1, 1, 1)
             fs:SetPoint("CENTER", preview, "CENTER", 0, 0)
@@ -555,7 +555,7 @@ function Plugin:ApplyTextSettings(button, systemIndex)
         local size = overrides.FontSize or defaultSize
 
         -- Flags override (shadow vs outline)
-        local flags = "OUTLINE"
+        local flags = Orbit.Skin:GetFontOutline()
         if overrides.ShowShadow then
             flags = ""
         end

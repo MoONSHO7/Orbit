@@ -369,7 +369,7 @@ function Plugin:CreateTrackedIcon(anchor, systemIndex, x, y)
 
     icon.CountText = textOverlay:CreateFontString(nil, "OVERLAY", nil, 7)
     icon.CountText:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -2, 2)
-    icon.CountText:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
+    icon.CountText:SetFont(STANDARD_TEXT_FONT, 12, Orbit.Skin:GetFontOutline())
     icon.CountText:Hide()
 
     icon.DropHighlight = icon:CreateTexture(nil, "BORDER")
@@ -971,7 +971,7 @@ function Plugin:SetupTrackedCanvasPreview(anchor, systemIndex)
 
         for _, def in ipairs(textComponents) do
             local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
-            fs:SetFont(fontPath, 12, "OUTLINE")
+            fs:SetFont(fontPath, 12, Orbit.Skin:GetFontOutline())
             fs:SetText(def.preview)
             fs:SetTextColor(1, 1, 1, 1)
             fs:SetPoint("CENTER", preview, "CENTER", 0, 0)

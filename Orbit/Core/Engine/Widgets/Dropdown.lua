@@ -30,7 +30,7 @@ function Layout:CreateDropdown(parent, label, options, initialValue, callback)
             local text = tostring(val)
             for _, opt in ipairs(options) do
                 if opt.value == val then
-                    text = opt.text or tostring(val)
+                    text = opt.label or opt.text or tostring(val)
                     break
                 end
             end
@@ -47,7 +47,7 @@ function Layout:CreateDropdown(parent, label, options, initialValue, callback)
             rootDescription:SetTag("OrbitDropdown")
 
             for _, option in ipairs(options) do
-                local text = option.text or tostring(option.value)
+                local text = option.label or option.text or tostring(option.value)
                 local value = option.value
 
                 local radio = rootDescription:CreateRadio(text, function(data)

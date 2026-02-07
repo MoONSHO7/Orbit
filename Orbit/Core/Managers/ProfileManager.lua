@@ -889,6 +889,9 @@ function Orbit.Profile:Initialize()
     if gs.TextScale == nil then
         gs.TextScale = "Medium"
     end
+    if gs.FontOutline == nil then
+        gs.FontOutline = "OUTLINE"
+    end
     if gs.BackdropColour == nil then
         gs.BackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
     end

@@ -41,7 +41,7 @@ function CooldownUtils:GetComponentStyle(plugin, systemIndex, key, defaultOffset
     local font = fontPath
     if overrides.Font and LSM then font = LSM:Fetch("font", overrides.Font) or fontPath end
     local size = overrides.FontSize or math.max(6, baseSize + (defaultOffset or 0))
-    local flags = overrides.ShowShadow and "" or "OUTLINE"
+    local flags = overrides.ShowShadow and "" or Orbit.Skin:GetFontOutline()
 
     return font, size, flags, pos, overrides
 end

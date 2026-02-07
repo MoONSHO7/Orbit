@@ -338,7 +338,7 @@ function Plugin:ApplySettings()
         local finalSize = overrides.FontSize or textSize
 
         -- Apply font flags override
-        local flags = "OUTLINE"
+        local flags = Orbit.Skin:GetFontOutline()
         if overrides.ShowShadow then
             flags = ""
         end

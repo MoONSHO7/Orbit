@@ -343,12 +343,12 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     local fontPath = LSM:Fetch("font", overrides.Font)
                     if fontPath then
                         local _, size, flags = frame.Name:GetFont()
-                        frame.Name:SetFont(fontPath, overrides.FontSize or size or 12, flags or "OUTLINE")
+                        frame.Name:SetFont(fontPath, overrides.FontSize or size or 12, flags or Orbit.Skin:GetFontOutline())
                     end
                 end
                 if overrides.FontSize then
                     local fontPath, _, flags = frame.Name:GetFont()
-                    frame.Name:SetFont(fontPath, overrides.FontSize, flags or "OUTLINE")
+                    frame.Name:SetFont(fontPath, overrides.FontSize, flags or Orbit.Skin:GetFontOutline())
                 end
                 -- Custom color override takes precedence
                 if overrides.CustomColor and overrides.CustomColorValue then
@@ -364,12 +364,12 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     local fontPath = LSM:Fetch("font", overrides.Font)
                     if fontPath then
                         local _, size, flags = frame.HealthText:GetFont()
-                        frame.HealthText:SetFont(fontPath, overrides.FontSize or size or 12, flags or "OUTLINE")
+                        frame.HealthText:SetFont(fontPath, overrides.FontSize or size or 12, flags or Orbit.Skin:GetFontOutline())
                     end
                 end
                 if overrides.FontSize then
                     local fontPath, _, flags = frame.HealthText:GetFont()
-                    frame.HealthText:SetFont(fontPath, overrides.FontSize, flags or "OUTLINE")
+                    frame.HealthText:SetFont(fontPath, overrides.FontSize, flags or Orbit.Skin:GetFontOutline())
                 end
                 if overrides.CustomColor and overrides.CustomColorValue then
                     local c = overrides.CustomColorValue

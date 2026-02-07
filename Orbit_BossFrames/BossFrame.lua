@@ -885,10 +885,10 @@ function Plugin:ApplySettings()
             local cbTextSize = Orbit.Skin:GetAdaptiveTextSize(castBarHeight, 10, 18, 0.40)
             local fontPath = LSM:Fetch("font", fontName)
             if frame.CastBar.Text then
-                frame.CastBar.Text:SetFont(fontPath, cbTextSize, "OUTLINE")
+                frame.CastBar.Text:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline())
             end
             if frame.CastBar.Timer then
-                frame.CastBar.Timer:SetFont(fontPath, cbTextSize, "OUTLINE")
+                frame.CastBar.Timer:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline())
             end
         end
 
