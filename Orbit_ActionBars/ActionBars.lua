@@ -177,205 +177,109 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     local container = self.containers[systemIndex]
 
-    local schema = {
-        hideNativeSettings = true,
-        controls = {},
-    }
+    local schema = { hideNativeSettings = true, controls = {} }
 
-    if systemIndex == 1 then
-        table.insert(schema.controls, {
-            type = "slider",
-            key = "NumActionBars",
-            label = "|cFFFFD100# Action Bars|r",
-            default = 4,
-            min = 2,
-            max = 8,
-            step = 1,
-            updateOnRelease = true,
-            onChange = function(val)
-                local current = Plugin:GetSetting(1, "NumActionBars") or 4
-                if current == val then
-                    return
-                end
+    WL:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Visibility" }, "Layout")
 
-                Plugin:SetSetting(1, "NumActionBars", val)
-                Plugin:ApplyAll()
-            end,
-        })
-    end
-
-    -- 1. Scale
-    WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
-        key = "Scale",
-        label = "Scale",
-        default = 100,
-        min = 50,
-        max = 150,
-    })
-
-    -- 2. Padding
-    table.insert(schema.controls, {
-        type = "slider",
-        key = "IconPadding",
-        label = "Padding",
-        min = -1,
-        max = 10,
-        step = 1,
-        default = 2,
-    })
-
-    local config = BAR_CONFIG[systemIndex]
-
-    -- 3. # Icons (Limits total buttons shown)
-    local isSpecialBar = config.isSpecial or SPECIAL_BAR_INDICES[systemIndex]
-
-    if config and config.count > 1 and not isSpecialBar then
-        table.insert(schema.controls, {
-            type = "slider",
-            key = "NumIcons",
-            label = "# Icons",
-            min = 1,
-            max = config.count,
-            step = 1,
-            default = config.count,
-            onChange = function(val)
-                self:SetSetting(systemIndex, "NumIcons", val)
-
-                -- Ensure current Rows setting is still valid, else reset to 1
-                local currentRows = self:GetSetting(systemIndex, "Rows") or 1
-                if val % currentRows ~= 0 then
-                    self:SetSetting(systemIndex, "Rows", 1)
-                end
-
-                -- Debounced Refresh to prevent settings duplication during slide
-                if self.refreshTimer then
-                    self.refreshTimer:Cancel()
-                end
-                self.refreshTimer = C_Timer.NewTimer(0.2, function()
-                    OrbitEngine.Layout:Reset(dialog)
-                    self:AddSettings(dialog, systemFrame)
-                end)
-
-                if self.ApplySettings then
-                    self:ApplySettings(container)
-                end
-            end,
-        })
-    end
-
-    -- 4. Rows (Smart Slider based on valid factors)
-    local numIcons = self:GetSetting(systemIndex, "NumIcons") or (config and config.count or 12)
-
-    -- Calculate valid factors
-    local factors = {}
-    for i = 1, numIcons do
-        if numIcons % i == 0 then
-            table.insert(factors, i)
+    if currentTab == "Layout" then
+        if systemIndex == 1 then
+            table.insert(schema.controls, {
+                type = "slider", key = "NumActionBars", label = "|cFFFFD100# Action Bars|r",
+                default = 4, min = 2, max = 8, step = 1, updateOnRelease = true,
+                onChange = function(val)
+                    local current = Plugin:GetSetting(1, "NumActionBars") or 4
+                    if current == val then return end
+                    Plugin:SetSetting(1, "NumActionBars", val)
+                    Plugin:ApplyAll()
+                end,
+            })
         end
-    end
+        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
+            key = "Scale", label = "Scale", default = 100, min = 50, max = 150,
+        })
+        table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Padding", min = -1, max = 10, step = 1, default = 2 })
 
-    -- Find current value index
-    local currentRows = self:GetSetting(systemIndex, "Rows") or 1
-    local currentIndex = 1
-    for i, v in ipairs(factors) do
-        if v == currentRows then
-            currentIndex = i
-            break
+        local config = BAR_CONFIG[systemIndex]
+        local isSpecialBar = config.isSpecial or SPECIAL_BAR_INDICES[systemIndex]
+        if config and config.count > 1 and not isSpecialBar then
+            table.insert(schema.controls, {
+                type = "slider", key = "NumIcons", label = "# Icons",
+                min = 1, max = config.count, step = 1, default = config.count,
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "NumIcons", val)
+                    local currentRows = self:GetSetting(systemIndex, "Rows") or 1
+                    if val % currentRows ~= 0 then self:SetSetting(systemIndex, "Rows", 1) end
+                    if self.refreshTimer then self.refreshTimer:Cancel() end
+                    self.refreshTimer = C_Timer.NewTimer(0.2, function()
+                        if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+                    end)
+                    if self.ApplySettings then self:ApplySettings(container) end
+                end,
+            })
         end
-    end
-
-    if #factors > 1 then
-        table.insert(schema.controls, {
-            type = "slider",
-            key = "Rows_Slider",
-            label = "Layout", -- Dummy key, we handle set manually
-            min = 1,
-            max = #factors,
-            step = 1,
-            default = currentIndex,
-            formatter = function(v)
-                local rows = factors[v]
-                if not rows then
-                    return ""
-                end
-                return rows .. " Row" .. (rows > 1 and "s" or "")
-            end,
-            onChange = function(val)
-                local rows = factors[val]
-                if rows then
-                    self:SetSetting(systemIndex, "Rows", rows)
-                    if self.ApplySettings then
-                        self:ApplySettings(container)
+        local numIcons = self:GetSetting(systemIndex, "NumIcons") or (config and config.count or 12)
+        local factors = {}
+        for i = 1, numIcons do
+            if numIcons % i == 0 then table.insert(factors, i) end
+        end
+        local currentRows = self:GetSetting(systemIndex, "Rows") or 1
+        local currentIndex = 1
+        for i, v in ipairs(factors) do
+            if v == currentRows then currentIndex = i; break end
+        end
+        if #factors > 1 then
+            table.insert(schema.controls, {
+                type = "slider", key = "Rows_Slider", label = "Layout",
+                min = 1, max = #factors, step = 1, default = currentIndex,
+                formatter = function(v)
+                    local rows = factors[v]
+                    if not rows then return "" end
+                    return rows .. " Row" .. (rows > 1 and "s" or "")
+                end,
+                onChange = function(val)
+                    local rows = factors[val]
+                    if rows then
+                        self:SetSetting(systemIndex, "Rows", rows)
+                        if self.ApplySettings then self:ApplySettings(container) end
                     end
-                end
-            end,
-        })
-    end
-
-    -- 5. Opacity (resting alpha when visible, works with or without OOC Fade)
-    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
-
-    -- 6. Hide Empty Buttons
-    -- Always forced on for Stance, Possess, and Extra bars
-    local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
-
-    if not isForcedHideEmpty then
+                end,
+            })
+        end
+        local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
+        if not isForcedHideEmpty then
+            table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = "Hide Empty Buttons", default = false })
+        end
+    elseif currentTab == "Visibility" then
+        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
         table.insert(schema.controls, {
-            type = "checkbox",
-            key = "HideEmptyButtons",
-            label = "Hide Empty Buttons",
-            default = false,
-        })
-    end
-
-    -- Out of Combat Fade
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "OutOfCombatFade",
-        label = "Out of Combat Fade",
-        default = false,
-        tooltip = "Hide frame when out of combat with no target",
-        onChange = function(val)
-            self:SetSetting(systemIndex, "OutOfCombatFade", val)
-            if Orbit.OOCFadeMixin then
-                Orbit.OOCFadeMixin:RefreshAll()
-            end
-            OrbitEngine.Layout:Reset(dialog)
-            self:AddSettings(dialog, systemFrame)
-        end,
-    })
-
-    -- Show on Mouseover (only when OOC Fade is enabled - controls OOC reveal)
-    if self:GetSetting(systemIndex, "OutOfCombatFade") then
-        table.insert(schema.controls, {
-            type = "checkbox",
-            key = "ShowOnMouseover",
-            label = "Show on Mouseover",
-            default = true,
-            tooltip = "Reveal hidden frame when mousing over it",
+            type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
+            tooltip = "Hide frame when out of combat with no target",
             onChange = function(val)
-                self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                self:ApplySettings(container)
+                self:SetSetting(systemIndex, "OutOfCombatFade", val)
+                if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
+        if self:GetSetting(systemIndex, "OutOfCombatFade") then
+            table.insert(schema.controls, {
+                type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
+                tooltip = "Reveal hidden frame when mousing over it",
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "ShowOnMouseover", val)
+                    self:ApplySettings(container)
+                end,
+            })
+        end
     end
 
-    -- Add Quick Keybind Mode button to footer
-    schema.extraButtons = {
-        {
-            text = "Quick Keybind",
-            callback = function()
-                -- Exit Edit Mode first (mirrors Blizzard's SettingsPanel behavior)
-                if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
-                    HideUIPanel(EditModeManagerFrame)
-                end
-
-                if QuickKeybindFrame then
-                    QuickKeybindFrame:Show()
-                end
-            end,
-        },
-    }
+    schema.extraButtons = { {
+        text = "Quick Keybind",
+        callback = function()
+            if EditModeManagerFrame and EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
+            if QuickKeybindFrame then QuickKeybindFrame:Show() end
+        end,
+    } }
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end

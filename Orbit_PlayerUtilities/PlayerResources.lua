@@ -69,166 +69,119 @@ function Plugin:AddSettings(dialog, systemFrame)
         dialog.Title:SetText("Player Resources")
     end
 
-    local schema = {
-        hideNativeSettings = true,
-        controls = {},
-    }
+    local schema = { hideNativeSettings = true, controls = {} }
 
-    local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
-    -- Width (only when not anchored)
-    if not isAnchored then
-        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = DEFAULTS.Width }, nil, nil)
-    end
+    WL:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Visibility", "Colour" }, "Layout")
 
-    -- Height
-    WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 20, default = DEFAULTS.Height }, nil)
-
-    -- Opacity (resting alpha when visible)
-    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
-
-    -- Out of Combat Fade
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "OutOfCombatFade",
-        label = "Out of Combat Fade",
-        default = false,
-        tooltip = "Hide frame when out of combat with no target",
-        onChange = function(val)
-            self:SetSetting(systemIndex, "OutOfCombatFade", val)
-            if Orbit.OOCFadeMixin then
-                Orbit.OOCFadeMixin:RefreshAll()
-            end
-            OrbitEngine.Layout:Reset(dialog)
-            self:AddSettings(dialog, systemFrame)
-        end,
-    })
-
-    if self:GetSetting(systemIndex, "OutOfCombatFade") then
+    if currentTab == "Layout" then
+        local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
+        if not isAnchored then
+            WL:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = DEFAULTS.Width }, nil, nil)
+        end
+        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 20, default = DEFAULTS.Height }, nil)
+    elseif currentTab == "Visibility" then
+        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
         table.insert(schema.controls, {
-            type = "checkbox",
-            key = "ShowOnMouseover",
-            label = "Show on Mouseover",
-            default = true,
-            tooltip = "Reveal frame when mousing over it",
+            type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
+            tooltip = "Hide frame when out of combat with no target",
             onChange = function(val)
-                self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                self:ApplySettings()
+                self:SetSetting(systemIndex, "OutOfCombatFade", val)
+                if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
-    end
-
-    -- Custom Color Toggle
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "UseCustomColor",
-        label = "Use Custom Color",
-        default = false,
-        onChange = function(val)
-            self:SetSetting(systemIndex, "UseCustomColor", val)
-            self:ApplyButtonVisuals()
-            self:UpdatePower()
-            -- Refresh settings panel to show/hide Bar Color picker
-            OrbitEngine.Layout:Reset(dialog)
-            self:AddSettings(dialog, systemFrame)
-        end,
-    })
-
-    -- Bar Color Picker (only show if UseCustomColor is enabled)
-    local useCustomColor = self:GetSetting(systemIndex, "UseCustomColor")
-    if useCustomColor then
+        if self:GetSetting(systemIndex, "OutOfCombatFade") then
+            table.insert(schema.controls, {
+                type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
+                tooltip = "Reveal frame when mousing over it",
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "ShowOnMouseover", val)
+                    self:ApplySettings()
+                end,
+            })
+        end
+    elseif currentTab == "Colour" then
         table.insert(schema.controls, {
-            type = "colorcurve",
-            key = "BarColorCurve",
-            label = "Bar Color",
-            default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
-            onChange = function(curveData)
-                self:SetSetting(systemIndex, "BarColorCurve", curveData)
+            type = "checkbox", key = "UseCustomColor", label = "Use Custom Color", default = false,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "UseCustomColor", val)
                 self:ApplyButtonVisuals()
                 self:UpdatePower()
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
+        if self:GetSetting(systemIndex, "UseCustomColor") then
+            table.insert(schema.controls, {
+                type = "colorcurve", key = "BarColorCurve", label = "Bar Color",
+                default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+                onChange = function(curveData)
+                    self:SetSetting(systemIndex, "BarColorCurve", curveData)
+                    self:ApplyButtonVisuals()
+                    self:UpdatePower()
+                end,
+            })
+        end
+        if self.continuousResource == "STAGGER" then
+            table.insert(schema.controls, {
+                type = "colorcurve", key = "StaggerColorCurve", label = "Stagger Colour",
+                tooltip = "Color gradient from low (left) to heavy (right) stagger",
+                default = { pins = {
+                    { position = 0, color = { r = 0.52, g = 1.0, b = 0.52, a = 1 } },
+                    { position = 0.5, color = { r = 1.0, g = 0.98, b = 0.72, a = 1 } },
+                    { position = 1, color = { r = 1.0, g = 0.42, b = 0.42, a = 1 } },
+                } },
+                onChange = function(curveData)
+                    self:SetSetting(systemIndex, "StaggerColorCurve", curveData)
+                    self:UpdatePower()
+                end,
+            })
+        end
+        if self.continuousResource == "SOUL_FRAGMENTS" then
+            table.insert(schema.controls, {
+                type = "colorcurve", key = "SoulFragmentsColorCurve", label = "Soul Fragments Colour",
+                tooltip = "Color gradient from empty (left) to full (right)",
+                default = { pins = { { position = 0, color = { r = 0.278, g = 0.125, b = 0.796, a = 1 } } } },
+                onChange = function(curveData)
+                    self:SetSetting(systemIndex, "SoulFragmentsColorCurve", curveData)
+                    self:UpdatePower()
+                end,
+            })
+        end
+        if self.continuousResource == "EBON_MIGHT" then
+            table.insert(schema.controls, {
+                type = "colorcurve", key = "EbonMightColorCurve", label = "Ebon Might Colour",
+                tooltip = "Color gradient from empty (left) to full (right)",
+                default = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.4, a = 1 } } } },
+                onChange = function(curveData)
+                    self:SetSetting(systemIndex, "EbonMightColorCurve", curveData)
+                    self:UpdatePower()
+                end,
+            })
+        end
+        if self.continuousResource == "MANA" then
+            table.insert(schema.controls, {
+                type = "colorcurve", key = "ManaColorCurve", label = "Mana Colour",
+                tooltip = "Color gradient from empty (left) to full (right)",
+                default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
+                onChange = function(curveData)
+                    self:SetSetting(systemIndex, "ManaColorCurve", curveData)
+                    self:UpdatePower()
+                end,
+            })
+        end
+        if self.continuousResource == "MAELSTROM_WEAPON" then
+            table.insert(schema.controls, {
+                type = "colorcurve", key = "MaelstromWeaponColorCurve", label = "Maelstrom Colour",
+                tooltip = "Color gradient from empty (left) to full (right)",
+                default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
+                onChange = function(curveData)
+                    self:SetSetting(systemIndex, "MaelstromWeaponColorCurve", curveData)
+                    self:UpdatePower()
+                end,
+            })
+        end
     end
-
-    -- Stagger Color Curve (Brewmaster Monk)
-    if self.continuousResource == "STAGGER" then
-        table.insert(schema.controls, {
-            type = "colorcurve",
-            key = "StaggerColorCurve",
-            label = "Stagger Colour",
-            tooltip = "Color gradient from low (left) to heavy (right) stagger",
-            default = { pins = {
-                { position = 0, color = { r = 0.52, g = 1.0, b = 0.52, a = 1 } },
-                { position = 0.5, color = { r = 1.0, g = 0.98, b = 0.72, a = 1 } },
-                { position = 1, color = { r = 1.0, g = 0.42, b = 0.42, a = 1 } },
-            } },
-            onChange = function(curveData)
-                self:SetSetting(systemIndex, "StaggerColorCurve", curveData)
-                self:UpdatePower()
-            end,
-        })
-    end
-
-    -- Soul Fragments Color Curve (Demon Hunter)
-    if self.continuousResource == "SOUL_FRAGMENTS" then
-        table.insert(schema.controls, {
-            type = "colorcurve",
-            key = "SoulFragmentsColorCurve",
-            label = "Soul Fragments Colour",
-            tooltip = "Color gradient from empty (left) to full (right)",
-            default = { pins = { { position = 0, color = { r = 0.278, g = 0.125, b = 0.796, a = 1 } } } },
-            onChange = function(curveData)
-                self:SetSetting(systemIndex, "SoulFragmentsColorCurve", curveData)
-                self:UpdatePower()
-            end,
-        })
-    end
-
-    -- Ebon Might Color Curve (Augmentation Evoker)
-    if self.continuousResource == "EBON_MIGHT" then
-        table.insert(schema.controls, {
-            type = "colorcurve",
-            key = "EbonMightColorCurve",
-            label = "Ebon Might Colour",
-            tooltip = "Color gradient from empty (left) to full (right)",
-            default = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.4, a = 1 } } } },
-            onChange = function(curveData)
-                self:SetSetting(systemIndex, "EbonMightColorCurve", curveData)
-                self:UpdatePower()
-            end,
-        })
-    end
-
-    -- Mana Color Curve (Shadow Priest, Ele Shaman, Balance Druid)
-    if self.continuousResource == "MANA" then
-        table.insert(schema.controls, {
-            type = "colorcurve",
-            key = "ManaColorCurve",
-            label = "Mana Colour",
-            tooltip = "Color gradient from empty (left) to full (right)",
-            default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
-            onChange = function(curveData)
-                self:SetSetting(systemIndex, "ManaColorCurve", curveData)
-                self:UpdatePower()
-            end,
-        })
-    end
-
-    -- Maelstrom Weapon Color Curve (Enhancement Shaman)
-    if self.continuousResource == "MAELSTROM_WEAPON" then
-        table.insert(schema.controls, {
-            type = "colorcurve",
-            key = "MaelstromWeaponColorCurve",
-            label = "Maelstrom Colour",
-            tooltip = "Color gradient from empty (left) to full (right)",
-            default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
-            onChange = function(curveData)
-                self:SetSetting(systemIndex, "MaelstromWeaponColorCurve", curveData)
-                self:UpdatePower()
-            end,
-        })
-    end
-
-    -- Note: Show Text is now controlled via Canvas Mode (drag Text to disabled dock)
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end

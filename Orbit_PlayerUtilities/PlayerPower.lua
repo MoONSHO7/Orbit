@@ -74,99 +74,69 @@ function Plugin:AddSettings(dialog, systemFrame)
         dialog.Title:SetText("Player Power")
     end
 
-    local schema = {
-        hideNativeSettings = true,
-        controls = {},
-    }
+    local schema = { hideNativeSettings = true, controls = {} }
 
-    -- Enable toggle (shown if Orbit_UnitFrames not loaded)
-    local playerPlugin = Orbit:GetPlugin("Orbit_PlayerFrame")
-    if not playerPlugin then
+    WL:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Visibility", "Colour" }, "Layout")
+
+    if currentTab == "Layout" then
+        local playerPlugin = Orbit:GetPlugin("Orbit_PlayerFrame")
+        if not playerPlugin then
+            table.insert(schema.controls, {
+                type = "checkbox", key = "Enabled", label = "Enable", default = true,
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "Enabled", val)
+                    self:UpdateVisibility()
+                end,
+            })
+        end
+        local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
+        if not isAnchored then
+            WL:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
+        end
+        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 50, default = 15 }, nil)
+    elseif currentTab == "Visibility" then
+        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
         table.insert(schema.controls, {
-            type = "checkbox",
-            key = "Enabled",
-            label = "Enable",
-            default = true,
+            type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
+            tooltip = "Hide frame when out of combat with no target",
             onChange = function(val)
-                self:SetSetting(systemIndex, "Enabled", val)
-                self:UpdateVisibility()
+                self:SetSetting(systemIndex, "OutOfCombatFade", val)
+                if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
-    end
-
-    local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
-
-    -- Width (only when not anchored)
-    if not isAnchored then
-        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
-    end
-
-    -- Height
-    WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 50, default = 15 }, nil)
-
-    -- Opacity (resting alpha when visible)
-    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
-
-    -- Out of Combat Fade
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "OutOfCombatFade",
-        label = "Out of Combat Fade",
-        default = false,
-        tooltip = "Hide frame when out of combat with no target",
-        onChange = function(val)
-            self:SetSetting(systemIndex, "OutOfCombatFade", val)
-            if Orbit.OOCFadeMixin then
-                Orbit.OOCFadeMixin:RefreshAll()
-            end
-            OrbitEngine.Layout:Reset(dialog)
-            self:AddSettings(dialog, systemFrame)
-        end,
-    })
-
-    if self:GetSetting(systemIndex, "OutOfCombatFade") then
+        if self:GetSetting(systemIndex, "OutOfCombatFade") then
+            table.insert(schema.controls, {
+                type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
+                tooltip = "Reveal frame when mousing over it",
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "ShowOnMouseover", val)
+                    self:ApplySettings()
+                end,
+            })
+        end
+    elseif currentTab == "Colour" then
         table.insert(schema.controls, {
-            type = "checkbox",
-            key = "ShowOnMouseover",
-            label = "Show on Mouseover",
-            default = true,
-            tooltip = "Reveal frame when mousing over it",
+            type = "checkbox", key = "UseCustomColor", label = "Use Custom Color", default = false,
             onChange = function(val)
-                self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                self:ApplySettings()
-            end,
-        })
-    end
-
-    -- Custom Color Toggle
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "UseCustomColor",
-        label = "Use Custom Color",
-        default = false,
-        onChange = function(val)
-            self:SetSetting(systemIndex, "UseCustomColor", val)
-            self:UpdateAll()
-            -- Refresh settings panel to show/hide Bar Color picker
-            OrbitEngine.Layout:Reset(dialog)
-            self:AddSettings(dialog, systemFrame)
-        end,
-    })
-
-    -- Bar Color Picker (only show if UseCustomColor is enabled)
-    local useCustomColor = self:GetSetting(systemIndex, "UseCustomColor")
-    if useCustomColor then
-        table.insert(schema.controls, {
-            type = "colorcurve",
-            key = "BarColorCurve",
-            label = "Bar Color",
-            default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
-            onChange = function(curveData)
-                self:SetSetting(systemIndex, "BarColorCurve", curveData)
+                self:SetSetting(systemIndex, "UseCustomColor", val)
                 self:UpdateAll()
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
+        if self:GetSetting(systemIndex, "UseCustomColor") then
+            table.insert(schema.controls, {
+                type = "colorcurve", key = "BarColorCurve", label = "Bar Color",
+                default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+                onChange = function(curveData)
+                    self:SetSetting(systemIndex, "BarColorCurve", curveData)
+                    self:UpdateAll()
+                end,
+            })
+        end
     end
+
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
 

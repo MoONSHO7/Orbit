@@ -105,7 +105,7 @@ local function GetGlobalSchema()
     return {
         hideNativeSettings = true,
         hideResetButton = false,
-        headerHeight = Constants.Panel.HeaderHeight,
+
         controls = controls,
         onReset = function()
             local d = Orbit.db.GlobalSettings
@@ -268,7 +268,7 @@ local function GetColorsSchema()
     return {
         hideNativeSettings = true,
         hideResetButton = false,
-        headerHeight = Constants.Panel.HeaderHeight,
+
         controls = controls,
         onReset = function()
             local d = Orbit.db.GlobalSettings
@@ -327,7 +327,7 @@ local function GetEditModeSchema()
     return {
         hideNativeSettings = true,
         hideResetButton = false,
-        headerHeight = Constants.Panel.HeaderHeight,
+
         controls = {
             {
                 type = "checkbox",
@@ -471,7 +471,7 @@ local function GetProfilesSchema()
     return {
         hideNativeSettings = true,
         hideResetButton = true,
-        headerHeight = Constants.Panel.HeaderHeight,
+
         controls = {
             {
                 type = "header",
@@ -628,151 +628,57 @@ local TABS = {
     { name = "Profiles", plugin = ProfilesPlugin, schema = GetProfilesSchema },
 }
 
-function Panel:CreateTabs(dialog)
-    if dialog.OrbitTabs then
-        return
-    end
 
-    dialog.OrbitTabs = {}
-    local parent = dialog -- Anchor to the dialog itself
-
-    -- Ensure MinimalTabTemplate is available or fallback
-    local template = "MinimalTabTemplate"
-
-    local lastTab = nil
-    for i, tabDef in ipairs(TABS) do
-        local tab = CreateFrame("Button", nil, parent, template)
-        tab:SetSize(0, 30) -- Width dynamic
-
-        -- Text
-        tab.Text:SetText(tabDef.name)
-        tab:SetWidth(tab.Text:GetStringWidth() + 30)
-
-        -- Anchor
-        if lastTab then
-            tab:SetPoint("LEFT", lastTab, "RIGHT", 5, 0)
-        else
-            -- Top Left of the dialog content area
-            tab:SetPoint("TOPLEFT", parent, "TOPLEFT", 20, -35)
-        end
-
-        -- Click
-        tab:SetScript("OnClick", function()
-            Panel:Open(tabDef.name)
-        end)
-
-        tab.definition = tabDef
-        table.insert(dialog.OrbitTabs, tab)
-        lastTab = tab
-    end
-
-    -- Header Divider (Visual Separator below tabs)
-    if not dialog.OrbitHeaderDivider then
-        local div = dialog:CreateTexture(nil, "ARTWORK")
-        div:SetColorTexture(0.2, 0.2, 0.2, 1) -- Subtle grey
-        div:SetHeight(1)
-        -- Anchor to span the full width below tabs
-        div:SetPoint("TOPLEFT", dialog, "TOPLEFT", 10, -65) -- Adjusted Y offset
-        div:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -10, -55)
-        dialog.OrbitHeaderDivider = div
-    end
-end
-
-function Panel:UpdateTabs(dialog, activeTabName)
-    if not dialog.OrbitTabs then
-        return
-    end
-
-    for _, tab in ipairs(dialog.OrbitTabs) do
-        local isSelected = (tab.definition.name == activeTabName)
-        -- MinimalTabTemplate doesn't have built-in selection state visual other than disabled potentially
-        -- But SettingsPanel tabs do have 'SetSelected'. Let's check.
-        if tab.SetSelected then
-            tab:SetSelected(isSelected)
-        else
-            -- Manual fallback: Dim if not selected
-            if isSelected then
-                tab.Text:SetTextColor(1, 1, 1)
-                tab:Disable() -- Standard Blizz way to show active tab
-            else
-                tab.Text:SetTextColor(1, 0.82, 0)
-                tab:Enable()
-            end
-        end
-    end
-end
 
 function Panel:Open(tabName)
-    -- Prevent opening during combat
-    if InCombatLockdown() then
-        return
-    end
+    if InCombatLockdown() then return end
 
     local dialog = Orbit.SettingsDialog
-    if not dialog then
-        Orbit:Print("Orbit Settings dialog not available")
-        return
-    end
+    if not dialog then return end
 
-    -- Use last used or default
-    tabName = tabName or self.lastTab or "Global"
+    tabName = tabName or self.lastTab or TABS[1].name
 
-    -- Find Tab Definition
+    -- Find tab definition (fallback to first)
     local tabDef = nil
     for _, t in ipairs(TABS) do
-        if t.name == tabName then
-            tabDef = t
-            break
-        end
+        if t.name == tabName then tabDef = t; break end
     end
-    if not tabDef then
-        tabDef = TABS[1]
-    end -- Fallback
+    tabDef = tabDef or TABS[1]
 
-    -- Optimization: If already open and same tab, do nothing
-    if dialog:IsShown() and self.lastTab == tabDef.name and (dialog.Title and dialog.Title:GetText() == "Orbit Options") then
+    -- Skip if already showing this exact tab
+    if dialog:IsShown() and self.lastTab == tabDef.name and dialog.Title and dialog.Title:GetText() == "Orbit Options" then
         return
     end
 
-    -- MUTUAL EXCLUSION: Close native dialog
     if EditModeSystemSettingsDialog and EditModeSystemSettingsDialog:IsShown() then
         EditModeSystemSettingsDialog:Hide()
     end
 
     self.lastTab = tabDef.name
-
-    -- 1. Show Dialog
+    dialog.orbitCurrentTab = tabDef.name
+    dialog.attachedPlugin = nil
     dialog:Show()
 
-    -- 2. Create Tabs UI if missing
-    self:CreateTabs(dialog)
-    self:UpdateTabs(dialog, tabDef.name)
+    if dialog.Title then dialog.Title:SetText("Orbit Options") end
 
-    -- 3. Set Title
-    if dialog.Title then
-        dialog.Title:SetText("Orbit Options")
-    end
+    -- Build schema with tabs prepended (unified with plugin tab pattern)
+    local tabNames = {}
+    for _, t in ipairs(TABS) do tabNames[#tabNames + 1] = t.name end
 
-    -- 4. Mock System Frame
+    local schema = tabDef.schema()
+    table.insert(schema.controls, 1, {
+        type = "tabs",
+        tabs = tabNames,
+        activeTab = tabDef.name,
+        onTabSelected = function(newTab) Panel:Open(newTab) end,
+    })
+
     local mockFrame = CreateFrame("Frame")
     mockFrame.systemIndex = 1
     mockFrame.system = "Orbit_" .. tabDef.name
 
-    -- 5. Render with Tab Key
-    Config:Render(dialog, mockFrame, tabDef.plugin, tabDef.schema(), tabDef.name)
-
-    -- 6. Position (Below Orbit Button)
+    Config:Render(dialog, mockFrame, tabDef.plugin, schema, tabDef.name)
     dialog:PositionNearButton()
-
-    -- 7. Show Tabs and Divider (they might be hidden if dialog was closed)
-    if dialog.OrbitTabs then
-        for _, t in ipairs(dialog.OrbitTabs) do
-            t:Show()
-        end
-    end
-    if dialog.OrbitHeaderDivider then
-        dialog.OrbitHeaderDivider:Show()
-    end
 end
 
 function Panel:Hide()

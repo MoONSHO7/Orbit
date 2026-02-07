@@ -950,3 +950,26 @@ function WL:AddCooldownDisplaySettings(plugin, schema, systemIndex, systemFrame,
         })
     end
 end
+
+-- [ SETTINGS TABS ]---------------------------------------------------------------------------------
+
+function WL:SetTabRefreshCallback(dialog, plugin, systemFrame)
+    dialog.orbitTabCallback = function()
+        Engine.Layout:Reset(dialog)
+        plugin:AddSettings(dialog, systemFrame)
+    end
+end
+
+function WL:AddSettingsTabs(schema, dialog, tabsList, defaultTab)
+    dialog.orbitCurrentTab = dialog.orbitCurrentTab or defaultTab
+    table.insert(schema.controls, {
+        type = "tabs",
+        tabs = tabsList,
+        activeTab = dialog.orbitCurrentTab,
+        onTabSelected = function(tabName)
+            dialog.orbitCurrentTab = tabName
+            if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+        end,
+    })
+    return dialog.orbitCurrentTab
+end

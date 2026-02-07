@@ -804,214 +804,101 @@ function Plugin:AddSettings(dialog, systemFrame)
     local WL = OrbitEngine.WidgetLogic
     local orientation = self:GetSetting(1, "Orientation") or 0
 
-    local schema = {
-        hideNativeSettings = true,
-        controls = {
-            {
-                type = "dropdown",
-                key = "Orientation",
-                label = "Orientation",
-                default = 0,
-                options = { { text = "Vertical", value = 0 }, { text = "Horizontal", value = 1 } },
-                onChange = function(val)
-                    self:SetSetting(1, "Orientation", val)
-                    self:ApplySettings()
-                    -- Re-render to update buff/debuff position options
-                    OrbitEngine.Layout:Reset(dialog)
-                    self:AddSettings(dialog, systemFrame)
-                end,
-            },
-            {
-                type = "slider",
-                key = "Width",
-                label = "Width",
-                min = 100,
-                max = 250,
-                step = 5,
-                default = 160,
-                onChange = makeOnChange(self, "Width"),
-            },
-            {
-                type = "slider",
-                key = "Height",
-                label = "Height",
-                min = 20,
-                max = 60,
-                step = 5,
-                default = 40,
-                onChange = makeOnChange(self, "Height"),
-            },
-            {
-                type = "slider",
-                key = "Spacing",
-                label = "Spacing",
-                min = 0,
-                max = 10,
-                step = 1,
-                default = 0,
-                onChange = makeOnChange(self, "Spacing"),
-            },
-            {
-                type = "dropdown",
-                key = "HealthTextMode",
-                label = "Health Text",
-                default = "percent_short",
-                options = {
-                    { text = "Hide", value = "hide" },
-                    { text = "Percentage / Short", value = "percent_short" },
-                    { text = "Short / Percentage", value = "short_percent" },
-                    { text = "Percentage / Raw", value = "percent_raw" },
-                    { text = "Raw / Percentage", value = "raw_percent" },
-                },
-                onChange = makeOnChange(self, "HealthTextMode"),
-            },
-        },
-    }
+    local schema = { hideNativeSettings = true, controls = {} }
 
-    -- Debuff Position dropdown (uses orientation-specific key)
-    local debuffKey = orientation == 0 and "DebuffPositionVertical" or "DebuffPositionHorizontal"
-    local debuffDefault = orientation == 0 and "Right" or "Above"
-    table.insert(schema.controls, {
-        type = "dropdown",
-        key = debuffKey,
-        label = "Debuff Position",
-        default = debuffDefault,
-        options = orientation == 0
-                and { -- Vertical: Left/Right only
-                    { text = "Disabled", value = "Disabled" },
-                    { text = "Left", value = "Left" },
-                    { text = "Right", value = "Right" },
-                }
-            or { -- Horizontal: Above/Below only
-                { text = "Disabled", value = "Disabled" },
-                { text = "Above", value = "Above" },
-                { text = "Below", value = "Below" },
+    WL:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Auras", "Indicators" }, "Layout")
+
+    if currentTab == "Layout" then
+        table.insert(schema.controls, {
+            type = "dropdown", key = "Orientation", label = "Orientation", default = 0,
+            options = { { text = "Vertical", value = 0 }, { text = "Horizontal", value = 1 } },
+            onChange = function(val)
+                self:SetSetting(1, "Orientation", val)
+                self:ApplySettings()
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+            end,
+        })
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 100, max = 250, step = 5, default = 160, onChange = makeOnChange(self, "Width") })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 5, default = 40, onChange = makeOnChange(self, "Height") })
+        table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 10, step = 1, default = 0, onChange = makeOnChange(self, "Spacing") })
+        table.insert(schema.controls, {
+            type = "dropdown", key = "HealthTextMode", label = "Health Text", default = "percent_short",
+            options = {
+                { text = "Hide", value = "hide" },
+                { text = "Percentage / Short", value = "percent_short" },
+                { text = "Short / Percentage", value = "short_percent" },
+                { text = "Percentage / Raw", value = "percent_raw" },
+                { text = "Raw / Percentage", value = "raw_percent" },
             },
-        onChange = function(val)
-            self:SetSetting(1, debuffKey, val)
-            self:ApplySettings()
-            -- Re-render to show/hide dependent controls
-            OrbitEngine.Layout:Reset(dialog)
-            self:AddSettings(dialog, systemFrame)
-        end,
-    })
-
-    -- Debuff sub-settings (only when not Disabled)
-    local debuffPosition = self:GetSetting(1, debuffKey) or debuffDefault
-    if debuffPosition ~= "Disabled" then
-        table.insert(
-            schema.controls,
-            { type = "slider", key = "MaxDebuffs", label = "Max Debuffs", min = 1, max = 6, step = 1, default = 3, onChange = makeOnChange(self, "MaxDebuffs") }
-        )
-    end
-
-    -- Buff Position dropdown (uses orientation-specific key)
-    local buffKey = orientation == 0 and "BuffPositionVertical" or "BuffPositionHorizontal"
-    local buffDefault = orientation == 0 and "Left" or "Below"
-    table.insert(schema.controls, {
-        type = "dropdown",
-        key = buffKey,
-        label = "Buff Position (My Buffs)",
-        default = buffDefault,
-        options = orientation == 0
-                and { -- Vertical: Left/Right only
-                    { text = "Disabled", value = "Disabled" },
-                    { text = "Left", value = "Left" },
-                    { text = "Right", value = "Right" },
-                }
-            or { -- Horizontal: Above/Below only
-                { text = "Disabled", value = "Disabled" },
-                { text = "Above", value = "Above" },
-                { text = "Below", value = "Below" },
-            },
-        onChange = function(val)
-            self:SetSetting(1, buffKey, val)
-            self:ApplySettings()
-            -- Re-render to show/hide dependent controls
-            OrbitEngine.Layout:Reset(dialog)
-            self:AddSettings(dialog, systemFrame)
-        end,
-    })
-
-    -- Buff sub-settings (only when not Disabled)
-    local buffPosition = self:GetSetting(1, buffKey) or buffDefault
-    if buffPosition ~= "Disabled" then
-        table.insert(
-            schema.controls,
-            { type = "slider", key = "MaxBuffs", label = "Max Buffs", min = 1, max = 6, step = 1, default = 3, onChange = makeOnChange(self, "MaxBuffs") }
-        )
-    end
-
-    -- Remaining controls
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "IncludePlayer",
-        label = "Include Player",
-        default = false,
-        onChange = makeOnChange(self, "IncludePlayer", function(val)
-            -- In preview mode, ShowPreview recalculates framesToShow with new setting
-            -- UpdateFrameUnits early-returns during preview, so call ShowPreview instead
-            if self.frames and self.frames[1] and self.frames[1].preview then
-                self:ShowPreview()
-            else
-                self:UpdateFrameUnits()
-            end
-        end),
-    })
-
-    table.insert(
-        schema.controls,
-        { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true, onChange = makeOnChange(self, "ShowPowerBar") }
-    )
-
-    table.insert(
-        schema.controls,
-        {
-            type = "checkbox",
-            key = "DispelIndicatorEnabled",
-            label = "Enable Dispel Indicators",
-            default = true,
+            onChange = makeOnChange(self, "HealthTextMode"),
+        })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "IncludePlayer", label = "Include Player", default = false,
+            onChange = makeOnChange(self, "IncludePlayer", function(val)
+                if self.frames and self.frames[1] and self.frames[1].preview then
+                    self:ShowPreview()
+                else
+                    self:UpdateFrameUnits()
+                end
+            end),
+        })
+        table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true, onChange = makeOnChange(self, "ShowPowerBar") })
+    elseif currentTab == "Auras" then
+        local debuffKey = orientation == 0 and "DebuffPositionVertical" or "DebuffPositionHorizontal"
+        local debuffDefault = orientation == 0 and "Right" or "Above"
+        table.insert(schema.controls, {
+            type = "dropdown", key = debuffKey, label = "Debuff Position", default = debuffDefault,
+            options = orientation == 0
+                and { { text = "Disabled", value = "Disabled" }, { text = "Left", value = "Left" }, { text = "Right", value = "Right" } }
+                or { { text = "Disabled", value = "Disabled" }, { text = "Above", value = "Above" }, { text = "Below", value = "Below" } },
+            onChange = function(val)
+                self:SetSetting(1, debuffKey, val)
+                self:ApplySettings()
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+            end,
+        })
+        local debuffPosition = self:GetSetting(1, debuffKey) or debuffDefault
+        if debuffPosition ~= "Disabled" then
+            table.insert(schema.controls, { type = "slider", key = "MaxDebuffs", label = "Max Debuffs", min = 1, max = 6, step = 1, default = 3, onChange = makeOnChange(self, "MaxDebuffs") })
+        end
+        local buffKey = orientation == 0 and "BuffPositionVertical" or "BuffPositionHorizontal"
+        local buffDefault = orientation == 0 and "Left" or "Below"
+        table.insert(schema.controls, {
+            type = "dropdown", key = buffKey, label = "Buff Position (My Buffs)", default = buffDefault,
+            options = orientation == 0
+                and { { text = "Disabled", value = "Disabled" }, { text = "Left", value = "Left" }, { text = "Right", value = "Right" } }
+                or { { text = "Disabled", value = "Disabled" }, { text = "Above", value = "Above" }, { text = "Below", value = "Below" } },
+            onChange = function(val)
+                self:SetSetting(1, buffKey, val)
+                self:ApplySettings()
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+            end,
+        })
+        local buffPosition = self:GetSetting(1, buffKey) or buffDefault
+        if buffPosition ~= "Disabled" then
+            table.insert(schema.controls, { type = "slider", key = "MaxBuffs", label = "Max Buffs", min = 1, max = 6, step = 1, default = 3, onChange = makeOnChange(self, "MaxBuffs") })
+        end
+    elseif currentTab == "Indicators" then
+        table.insert(schema.controls, {
+            type = "checkbox", key = "DispelIndicatorEnabled", label = "Enable Dispel Indicators", default = true,
             onChange = makeOnChange(self, "DispelIndicatorEnabled", function()
-                if self.UpdateAllDispelIndicators then
-                    self:UpdateAllDispelIndicators(self)
-                end
+                if self.UpdateAllDispelIndicators then self:UpdateAllDispelIndicators(self) end
             end),
-        }
-    )
-    table.insert(
-        schema.controls,
-        {
-            type = "slider",
-            key = "DispelThickness",
-            label = "Dispel Border Thickness",
-            default = 2,
-            min = 1,
-            max = 5,
-            step = 1,
+        })
+        table.insert(schema.controls, {
+            type = "slider", key = "DispelThickness", label = "Dispel Border Thickness", default = 2, min = 1, max = 5, step = 1,
             onChange = makeOnChange(self, "DispelThickness", function()
-                if self.UpdateAllDispelIndicators then
-                    self:UpdateAllDispelIndicators(self)
-                end
+                if self.UpdateAllDispelIndicators then self:UpdateAllDispelIndicators(self) end
             end),
-        }
-    )
-    table.insert(
-        schema.controls,
-        {
-            type = "slider",
-            key = "DispelFrequency",
-            label = "Dispel Animation Speed",
-            default = 0.25,
-            min = 0.1,
-            max = 1.0,
-            step = 0.05,
+        })
+        table.insert(schema.controls, {
+            type = "slider", key = "DispelFrequency", label = "Dispel Animation Speed", default = 0.25, min = 0.1, max = 1.0, step = 0.05,
             onChange = makeOnChange(self, "DispelFrequency", function()
-                if self.UpdateAllDispelIndicators then
-                    self:UpdateAllDispelIndicators(self)
-                end
+                if self.UpdateAllDispelIndicators then self:UpdateAllDispelIndicators(self) end
             end),
-        }
-    )
+        })
+    end
 
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end

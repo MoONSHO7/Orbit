@@ -553,76 +553,47 @@ function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = 1
     local WL = OrbitEngine.WidgetLogic
 
-    local schema = {
-        hideNativeSettings = true,
-        controls = {
-            { type = "slider", key = "Width", label = "Width", min = 120, max = 300, step = 5, default = 150 },
-            { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 5, default = 40 },
-            {
-                type = "dropdown",
-                key = "CastBarPosition",
-                label = "Cast Bar",
-                options = {
-                    { label = "Above", value = "Above" },
-                    { label = "Below", value = "Below" },
-                },
-                default = "Below",
-            },
-            {
-                type = "slider",
-                key = "CastBarHeight",
-                label = "Cast Bar Height",
-                min = 15,
-                max = 35,
-                step = 1,
-                default = 14,
-            },
-            {
-                type = "checkbox",
-                key = "CastBarIcon",
-                label = "Show Cast Bar Icon",
-                default = true,
-            },
-            {
-                type = "dropdown",
-                key = "DebuffPosition",
-                label = "Debuffs",
-                options = {
-                    { label = "Disabled", value = "Disabled" },
-                    { label = "Left", value = "Left" },
-                    { label = "Right", value = "Right" },
-                    { label = "Above", value = "Above" },
-                    { label = "Below", value = "Below" },
-                },
-                default = "Right",
-            },
-            { type = "slider", key = "MaxDebuffs", label = "Max Debuffs", min = 2, max = 8, step = 1, default = 4 },
-        },
-    }
+    local schema = { hideNativeSettings = true, controls = {} }
 
-    -- Pandemic Glow Type
-    local GlowType = Orbit.Constants.PandemicGlow.Type
-    table.insert(schema.controls, {
-        type = "dropdown",
-        key = "PandemicGlowType",
-        label = "Pandemic Glow",
-        options = {
-            { text = "None", value = GlowType.None },
-            { text = "Pixel Glow", value = GlowType.Pixel },
-            { text = "Proc Glow", value = GlowType.Proc },
-            { text = "Autocast Shine", value = GlowType.Autocast },
-            { text = "Button Glow", value = GlowType.Button },
-        },
-        default = Orbit.Constants.PandemicGlow.DefaultType,
-    })
+    WL:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Auras" }, "Layout")
 
-    -- Pandemic Glow Color
-    WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-        key = "PandemicGlowColorCurve",
-        label = "Pandemic Colour",
-        default = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
-        singleColor = true,
-    })
+    if currentTab == "Layout" then
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 120, max = 300, step = 5, default = 150 })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 5, default = 40 })
+        table.insert(schema.controls, {
+            type = "dropdown", key = "CastBarPosition", label = "Cast Bar",
+            options = { { label = "Above", value = "Above" }, { label = "Below", value = "Below" } },
+            default = "Below",
+        })
+        table.insert(schema.controls, { type = "slider", key = "CastBarHeight", label = "Cast Bar Height", min = 15, max = 35, step = 1, default = 14 })
+        table.insert(schema.controls, { type = "checkbox", key = "CastBarIcon", label = "Show Cast Bar Icon", default = true })
+    elseif currentTab == "Auras" then
+        table.insert(schema.controls, {
+            type = "dropdown", key = "DebuffPosition", label = "Debuffs",
+            options = {
+                { label = "Disabled", value = "Disabled" }, { label = "Left", value = "Left" },
+                { label = "Right", value = "Right" }, { label = "Above", value = "Above" }, { label = "Below", value = "Below" },
+            },
+            default = "Right",
+        })
+        table.insert(schema.controls, { type = "slider", key = "MaxDebuffs", label = "Max Debuffs", min = 2, max = 8, step = 1, default = 4 })
+        local GlowType = Orbit.Constants.PandemicGlow.Type
+        table.insert(schema.controls, {
+            type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
+            options = {
+                { text = "None", value = GlowType.None }, { text = "Pixel Glow", value = GlowType.Pixel },
+                { text = "Proc Glow", value = GlowType.Proc }, { text = "Autocast Shine", value = GlowType.Autocast },
+                { text = "Button Glow", value = GlowType.Button },
+            },
+            default = Orbit.Constants.PandemicGlow.DefaultType,
+        })
+        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "PandemicGlowColorCurve", label = "Pandemic Colour",
+            default = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
+            singleColor = true,
+        })
+    end
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end

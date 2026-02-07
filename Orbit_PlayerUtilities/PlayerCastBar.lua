@@ -121,86 +121,45 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
 
     local systemIndex = systemFrame.systemIndex or 1
     local WL = OrbitEngine.WidgetLogic
+    local schema = { hideNativeSettings = true, controls = {} }
 
-    -- Anchor Detection
-    local isAnchored = OrbitEngine.Frame:GetAnchorParent(CastBar) ~= nil
-    local anchorAxis = isAnchored and GetAnchorAxis(CastBar) or nil
+    WL:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Colour" }, "Layout")
 
-    local schema = {
-        hideNativeSettings = true,
-        controls = {},
-    }
-
-    -- 1. Height (Hide if X-anchored - Horizontal stack locks height)
-    if not (isAnchored and anchorAxis == "x") then
-        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, {
-            key = "CastBarHeight",
-            label = "Height",
-            min = 15,
-            max = 35,
-            default = Orbit.Constants.PlayerCastBar.DefaultHeight,
+    if currentTab == "Layout" then
+        local isAnchored = OrbitEngine.Frame:GetAnchorParent(CastBar) ~= nil
+        local anchorAxis = isAnchored and GetAnchorAxis(CastBar) or nil
+        if not (isAnchored and anchorAxis == "x") then
+            WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, {
+                key = "CastBarHeight", label = "Height",
+                min = 15, max = 35, default = Orbit.Constants.PlayerCastBar.DefaultHeight,
+            })
+        end
+        if not (isAnchored and anchorAxis == "y") then
+            table.insert(schema.controls, {
+                type = "slider", key = "CastBarWidth", label = "Width",
+                min = 120, max = 350, step = 10, default = Orbit.Constants.PlayerCastBar.DefaultWidth,
+            })
+        end
+        table.insert(schema.controls, { type = "checkbox", key = "CastBarText", label = "Show Spell Name", default = true })
+        table.insert(schema.controls, { type = "checkbox", key = "CastBarIcon", label = "Show Icon", default = true })
+        table.insert(schema.controls, { type = "checkbox", key = "CastBarTimer", label = "Show Timer", default = true })
+    elseif currentTab == "Colour" then
+        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "CastBarColorCurve", label = "Normal",
+            default = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
+        })
+        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "NonInterruptibleColorCurve", label = "Protected",
+            default = { pins = { { position = 0, color = { r = 0.7, g = 0.7, b = 0.7, a = 1 } } } },
+            singleColor = true,
+        })
+        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "SparkColorCurve", label = "Spark / Glow",
+            default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+            singleColor = true,
         })
     end
-
-    -- 2. Width (Hide if Y-anchored - Vertical stack locks width)
-    if not (isAnchored and anchorAxis == "y") then
-        table.insert(schema.controls, {
-            type = "slider",
-            key = "CastBarWidth",
-            label = "Width",
-            min = 120,
-            max = 350,
-            step = 10,
-            default = Orbit.Constants.PlayerCastBar.DefaultWidth,
-        })
-    end
-
-    -- 3. Show Spell Name
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "CastBarText",
-        label = "Show Spell Name",
-        default = true,
-    })
-
-    -- 4. Show Icon
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "CastBarIcon",
-        label = "Show Icon",
-        default = true,
-    })
-
-    -- 4. Show Timer
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "CastBarTimer",
-        label = "Show Timer",
-        default = true,
-    })
-
-    -- Normal Color (Gradient)
-    WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-        key = "CastBarColorCurve",
-        label = "Normal",
-        default = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
-    })
-
-    -- Protected Color
-    WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-        key = "NonInterruptibleColorCurve",
-        label = "Protected",
-        default = { pins = { { position = 0, color = { r = 0.7, g = 0.7, b = 0.7, a = 1 } } } },
-        singleColor = true,
-    })
-
-    -- Spark Color
-    WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-        key = "SparkColorCurve",
-        label = "Spark / Glow",
-        default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
-        singleColor = true,
-    })
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end

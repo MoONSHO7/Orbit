@@ -63,23 +63,8 @@ function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
         dialog.OrbitPanel = panel
     end
 
-    -- SAFETY: Ensure the specific Header Divider from OrbitOptionsPanel is hidden
-    -- unless we are explicitly in the Orbit Options menu.
-    if dialog.OrbitHeaderDivider then
-        local isOrbitMenu = false
-        if dialog.Title and dialog.Title:GetText() == "Orbit Options" then
-            isOrbitMenu = true
-        end
 
-        -- Also check tab state in OrbitOptionsPanel as backup
-        if Orbit.OptionsPanel and Orbit.OptionsPanel.currentTab then
-            isOrbitMenu = true
-        end
 
-        if not isOrbitMenu then
-            dialog.OrbitHeaderDivider:Hide()
-        end
-    end
 
     local panel = dialog.OrbitPanel
     panel:Show()
