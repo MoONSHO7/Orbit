@@ -13,12 +13,16 @@ local UnitButton = Engine.UnitButton
 -- Export modes for use by plugins
 local HEALTH_TEXT_MODES = {
     HIDE = "hide",
+    PERCENT = "percent",
+    SHORT = "short",
+    RAW = "raw",
     PERCENT_SHORT = "percent_short",
     PERCENT_RAW = "percent_raw",
     SHORT_PERCENT = "short_percent",
     SHORT_RAW = "short_raw",
     RAW_SHORT = "raw_short",
     RAW_PERCENT = "raw_percent",
+    SHORT_AND_PERCENT = "short_and_percent",
 }
 UnitButton.HEALTH_TEXT_MODES = HEALTH_TEXT_MODES
 
@@ -93,6 +97,9 @@ function TextMixin:GetHealthTextFormats()
     local mode = self.healthTextMode or HEALTH_TEXT_MODES.PERCENT_SHORT
 
     local formatMap = {
+        [HEALTH_TEXT_MODES.PERCENT] = { "percent", "percent" },
+        [HEALTH_TEXT_MODES.SHORT] = { "short", "short" },
+        [HEALTH_TEXT_MODES.RAW] = { "raw", "raw" },
         [HEALTH_TEXT_MODES.PERCENT_SHORT] = { "percent", "short" },
         [HEALTH_TEXT_MODES.PERCENT_RAW] = { "percent", "raw" },
         [HEALTH_TEXT_MODES.SHORT_PERCENT] = { "short", "percent" },
@@ -141,6 +148,16 @@ function TextMixin:UpdateHealthText()
     if UnitIsDeadOrGhost(self.unit) then
         self.HealthText:SetText("Dead")
         self.HealthText:Show()
+        return
+    end
+
+    -- Combined mode: show both values simultaneously
+    if mode == HEALTH_TEXT_MODES.SHORT_AND_PERCENT then
+        local short = GetHealthTextForFormat(self.unit, "short")
+        local pct = GetHealthTextForFormat(self.unit, "percent")
+        self.HealthText:SetText(short .. " - " .. pct)
+        self.HealthText:Show()
+        self:ApplyHealthTextColor()
         return
     end
 
@@ -285,39 +302,8 @@ function TextMixin:ApplyNameColor()
 
     -- Use global font color settings
     local globalSettings = Orbit.db and Orbit.db.GlobalSettings or {}
-    local useClassColorFont = globalSettings.UseClassColorFont ~= false -- Default true
-
-    if useClassColorFont then
-        -- Use class color for players, reaction color for NPCs
-        if self.unit and UnitIsPlayer(self.unit) then
-            local _, class = UnitClass(self.unit)
-            if class then
-                local classColor = RAID_CLASS_COLORS[class]
-                if classColor then
-                    self.Name:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
-                    return
-                end
-            end
-        else
-            -- NPC: use reaction color
-            if self.unit and UnitExists(self.unit) then
-                local reaction = UnitReaction(self.unit, "player")
-                if reaction then
-                    local reactionColor = FACTION_BAR_COLORS[reaction]
-                    if reactionColor then
-                        self.Name:SetTextColor(reactionColor.r, reactionColor.g, reactionColor.b, 1)
-                        return
-                    end
-                end
-            end
-        end
-        -- Fallback to white if no class/reaction color found
-        self.Name:SetTextColor(1, 1, 1, 1)
-    else
-        -- Use global font color
-        local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
-        self.Name:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
-    end
+    local fontColor = (Engine.WidgetLogic and Engine.WidgetLogic:GetFirstColorFromCurve(globalSettings.FontColorCurve)) or { r = 1, g = 1, b = 1, a = 1 }
+    self.Name:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
 end
 
 -- Apply color to HealthText based on global settings and component overrides
@@ -347,39 +333,8 @@ function TextMixin:ApplyHealthTextColor()
 
     -- Use global font color settings
     local globalSettings = Orbit.db and Orbit.db.GlobalSettings or {}
-    local useClassColorFont = globalSettings.UseClassColorFont ~= false -- Default true
-
-    if useClassColorFont then
-        -- Use class color for players, reaction color for NPCs (same as name)
-        if self.unit and UnitIsPlayer(self.unit) then
-            local _, class = UnitClass(self.unit)
-            if class then
-                local classColor = RAID_CLASS_COLORS[class]
-                if classColor then
-                    self.HealthText:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
-                    return
-                end
-            end
-        else
-            -- NPC: use reaction color
-            if self.unit and UnitExists(self.unit) then
-                local reaction = UnitReaction(self.unit, "player")
-                if reaction then
-                    local reactionColor = FACTION_BAR_COLORS[reaction]
-                    if reactionColor then
-                        self.HealthText:SetTextColor(reactionColor.r, reactionColor.g, reactionColor.b, 1)
-                        return
-                    end
-                end
-            end
-        end
-        -- Fallback to white if no class/reaction color found
-        self.HealthText:SetTextColor(1, 1, 1, 1)
-    else
-        -- Use global font color
-        local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
-        self.HealthText:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
-    end
+    local fontColor = (Engine.WidgetLogic and Engine.WidgetLogic:GetFirstColorFromCurve(globalSettings.FontColorCurve)) or { r = 1, g = 1, b = 1, a = 1 }
+    self.HealthText:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
 end
 
 -- Export for composition

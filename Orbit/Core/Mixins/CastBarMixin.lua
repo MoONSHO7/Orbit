@@ -11,6 +11,7 @@ local Mixin = Orbit.CastBarMixin
 
 Mixin.sharedDefaults = {
     CastBarColor = { r = 1, g = 0.7, b = 0 },
+    CastBarColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
     CastBarText = true,
     CastBarIcon = true,
     CastBarTimer = true,
@@ -22,6 +23,7 @@ Mixin.sharedDefaults = {
 -- Keys that Target/Focus cast bars inherit from Player Cast Bar
 Mixin.INHERITED_KEYS = {
     CastBarColor = true,
+    CastBarColorCurve = true,
     NonInterruptibleColor = true,
     InterruptedColor = true,
     CastBarText = true,
@@ -48,15 +50,17 @@ function Mixin:GetAnchorAxis(frame)
 end
 
 function Mixin:ApplyCastColor(bar, state)
-    if not bar or not bar.orbitBar then
-        return
+    if not bar or not bar.orbitBar then return end
+    local color
+    if state == "INTERRUPTED" then
+        color = self:GetSetting(1, "InterruptedColor") or { r = 1, g = 0, b = 0 }
+    elseif state == "NON_INTERRUPTIBLE" then
+        color = self:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
+    else
+        local curveData = self:GetSetting(1, "CastBarColorCurve")
+        color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData) or self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
     end
-    local color = state == "INTERRUPTED" and (self:GetSetting(1, "InterruptedColor") or { r = 1, g = 0, b = 0 })
-        or state == "NON_INTERRUPTIBLE" and (self:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 })
-        or (self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 })
-    if color then
-        bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
-    end
+    if color then bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b) end
 end
 
 -- [ FRAME CREATION ]--------------------------------------------------------------------------------
@@ -371,13 +375,9 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
 
     local lastUpdate, updateThrottle = 0, 1 / 60
     nativeSpellbar:HookScript("OnUpdate", function(nativeBar, elapsed)
-        if not bar or not bar:IsShown() then
-            return
-        end
+        if not bar or not bar:IsShown() then return end
         lastUpdate = lastUpdate + elapsed
-        if lastUpdate < updateThrottle then
-            return
-        end
+        if lastUpdate < updateThrottle then return end
         lastUpdate = 0
         local progress = nativeBar:GetValue()
         local min, max = nativeBar:GetMinMaxValues()
@@ -385,17 +385,23 @@ function Mixin:SetupSpellbarHooks(nativeSpellbar, unit)
         if progress and max then
             targetBar:SetMinMaxValues(min, max)
             targetBar:SetValue(progress)
-            local ok = pcall(function()
-                if max <= 0 then
-                    return
+            
+            -- Apply color from ColorCurve (if interruptible)
+            -- Note: Target/Focus use secret values, so we use static first color (dynamic sampling fails)
+            if not bar.notInterruptible then
+                local curveData = self:GetSetting(1, "CastBarColorCurve")
+                if curveData then
+                    local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+                    if color then targetBar:SetStatusBarColor(color.r, color.g, color.b) end
                 end
+            end
+            
+            pcall(function()
+                if max <= 0 then return end
                 if bar.Timer and bar.Timer:IsShown() then
                     bar.Timer:SetText(string.format("%.1f", nativeBar.channeling and progress or (max - progress)))
                 end
             end)
-            if not ok and bar.Timer and bar.Timer:IsShown() then
-                bar.Timer:SetFormattedText("%.1f", progress)
-            end
         end
     end)
 end
@@ -411,9 +417,12 @@ function Mixin:UpdateInterruptState(nativeBar, bar, unit)
             notInterruptible = result
         end
     end
-    local color = notInterruptible and (self:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 })
-        or (self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 })
-    if bar.orbitBar and color then
-        bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
+    local color
+    if notInterruptible then
+        color = self:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
+    else
+        local curveData = self:GetSetting(1, "CastBarColorCurve")
+        color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData) or self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
     end
+    if bar.orbitBar and color then bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b) end
 end

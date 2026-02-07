@@ -29,7 +29,7 @@ local TYPE_SCHEMAS = {
             { type = "font", key = "Font", label = "Font" },
             { type = "slider", key = "FontSize", label = "Size", min = 8, max = 24, step = 1 },
             { type = "checkbox", key = "CustomColor", label = "Custom Color" },
-            { type = "color", key = "CustomColorValue", label = "Color", showIf = "CustomColor" },
+            { type = "colorcurve", key = "CustomColorCurve", label = "Color", showIf = "CustomColor" },
         },
     },
     -- Texture/Icon elements (CombatIcon, RareEliteIcon, etc.)
@@ -362,6 +362,20 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
             widget = CreateFontPickerWidget(self.Content, control, currentValue, callback)
         elseif control.type == "color" then
             widget = CreateColorPickerWidget(self.Content, control, currentValue, callback)
+        elseif control.type == "colorcurve" then
+            if Layout and Layout.CreateColorCurvePicker then
+                widget = Layout:CreateColorCurvePicker(self.Content, control.label, currentValue, function(curveData)
+                    if callback then
+                        callback(control.key, curveData)
+                    end
+                end)
+                if widget then
+                    widget:SetHeight(32)
+                    widget.singleColorMode = control.singleColor ~= false
+                end
+            else
+                widget = CreateColorPickerWidget(self.Content, control, currentValue and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(currentValue), callback)
+            end
         end
 
         if widget then
@@ -493,7 +507,7 @@ function Dialog:ApplyStyle(container, key, value)
     -- Apply style based on key
     if key == "FontSize" and visual.SetFont then
         local font, _, flags = visual:GetFont()
-        flags = (flags and flags ~= "") and flags or "OUTLINE"
+        flags = (flags and flags ~= "") and flags or Orbit.Skin:GetFontOutline()
         visual:SetFont(font, value, flags)
 
         -- Resize container to match new text dimensions
@@ -508,7 +522,7 @@ function Dialog:ApplyStyle(container, key, value)
         local fontPath = LSM:Fetch("font", value)
         if fontPath then
             local _, size, flags = visual:GetFont()
-            flags = (flags and flags ~= "") and flags or "OUTLINE"
+            flags = (flags and flags ~= "") and flags or Orbit.Skin:GetFontOutline()
             visual:SetFont(fontPath, size or 12, flags)
 
             -- Resize container to match new text dimensions
@@ -523,38 +537,25 @@ function Dialog:ApplyStyle(container, key, value)
     elseif key == "CustomColor" and visual.SetTextColor then
         -- CustomColor checkbox toggled
         if value then
-            -- Apply custom color value if set
-            local customColorValue = self.currentOverrides and self.currentOverrides.CustomColorValue
-            if customColorValue and type(customColorValue) == "table" then
-                visual:SetTextColor(customColorValue.r or 1, customColorValue.g or 1, customColorValue.b or 1, customColorValue.a or 1)
+            -- Apply custom color value from curve
+            local customColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(self.currentOverrides and self.currentOverrides.CustomColorCurve)
+            if customColor then
+                visual:SetTextColor(customColor.r or 1, customColor.g or 1, customColor.b or 1, customColor.a or 1)
             else
-                visual:SetTextColor(1, 1, 1, 1) -- Default white
+                visual:SetTextColor(1, 1, 1, 1)
             end
         else
             -- Revert to global font color setting
             local globalSettings = Orbit.db and Orbit.db.GlobalSettings or {}
-            local useClassColorFont = globalSettings.UseClassColorFont ~= false -- Default true
-
-            if useClassColorFont then
-                -- Use class color
-                local _, playerClass = UnitClass("player")
-                local classColor = RAID_CLASS_COLORS[playerClass]
-                if classColor then
-                    visual:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
-                else
-                    visual:SetTextColor(1, 1, 1, 1)
-                end
-            else
-                -- Use global font color
-                local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
-                visual:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
-            end
+            local fontColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(globalSettings.FontColorCurve) or { r = 1, g = 1, b = 1, a = 1 }
+            visual:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
         end
-    elseif key == "CustomColorValue" and visual.SetTextColor then
-        -- Only apply if CustomColor checkbox is enabled
+    elseif key == "CustomColorCurve" and visual.SetTextColor then
+        -- Color curve changed - only apply if CustomColor is enabled
         local useCustom = self.currentOverrides and self.currentOverrides.CustomColor
-        if useCustom and type(value) == "table" then
-            visual:SetTextColor(value.r or 1, value.g or 1, value.b or 1, value.a or 1)
+        local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(value)
+        if useCustom and color then
+            visual:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
         end
     elseif key == "Scale" then
         -- For textures, use SetSize (textures don't have SetScale)

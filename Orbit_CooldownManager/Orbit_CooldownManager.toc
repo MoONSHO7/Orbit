@@ -14,5 +14,10 @@
 
 CooldownUtils.lua
 CooldownManager.lua
+CooldownSettings.lua
+CooldownGlows.lua
+CooldownViewerHooks.lua
+CooldownLayout.lua
+CooldownText.lua
 TrackedAbilities.lua
 KeybindSystem.lua

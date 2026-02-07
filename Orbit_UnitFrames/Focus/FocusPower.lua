@@ -282,7 +282,7 @@ function Plugin:ApplySettings()
         end
 
         local fontPath = LSM:Fetch("font", fontName)
-        Frame.Text:SetFont(fontPath, textSize, "OUTLINE")
+        Frame.Text:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
 
         Frame.Text:ClearAllPoints()
         Frame.Text:SetPoint("CENTER", Frame.Overlay, "CENTER", 0, 0)

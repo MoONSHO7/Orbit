@@ -72,108 +72,73 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
 
-    local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
-
-    local controls = {
-        { type = "slider", key = "Width", label = "Width", min = 120, max = 300, step = 10, default = 160 },
-    }
-
-    if not isAnchored then
-        table.insert(controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 10, default = 40 })
-    end
-
-    table.insert(controls, {
-        type = "dropdown",
-        key = "HealthTextMode",
-        label = "Health Text",
-        options = {
-            { text = "Hide", value = "hide" },
-            { text = "Percentage / Short", value = "percent_short" },
-            { text = "Percentage / Raw", value = "percent_raw" },
-            { text = "Short / Percentage", value = "short_percent" },
-            { text = "Short / Raw", value = "short_raw" },
-            { text = "Raw / Short", value = "raw_short" },
-            { text = "Raw / Percentage", value = "raw_percent" },
-        },
-        default = "percent_short",
-        onChange = function(val)
-            self:SetSetting(PLAYER_FRAME_INDEX, "HealthTextMode", val)
-            self:ApplySettings()
-        end,
-    })
-
-    -- Note: Component visibility (Level, CombatIcon, RoleIcon, LeaderIcon, MarkerIcon, GroupPosition)
-    -- is now controlled via Canvas Mode drag-to-disable
-
-    table.insert(controls, {
-        type = "checkbox",
-        key = "EnablePlayerPower",
-        label = "Enable Player Power",
-        default = true,
-        onChange = function(val)
-            self:SetSetting(PLAYER_FRAME_INDEX, "EnablePlayerPower", val)
-            -- Immediately trigger the PlayerPower plugin to update visibility
-            local ppPlugin = Orbit:GetPlugin("Orbit_PlayerPower")
-            if ppPlugin and ppPlugin.UpdateVisibility then
-                ppPlugin:UpdateVisibility()
-            end
-        end,
-    })
-
-    table.insert(controls, {
-        type = "checkbox",
-        key = "EnablePlayerResource",
-        label = "Enable Player Resource",
-        default = true,
-        onChange = function(val)
-            self:SetSetting(PLAYER_FRAME_INDEX, "EnablePlayerResource", val)
-            -- Immediately trigger the PlayerResources plugin to update visibility
-            local prPlugin = Orbit:GetPlugin("Orbit_PlayerResources")
-            if prPlugin and prPlugin.UpdateVisibility then
-                prPlugin:UpdateVisibility()
-            end
-        end,
-    })
-
-    -- Opacity (resting alpha when visible)
     local WL = OrbitEngine.WidgetLogic
-    local opacitySchema = { controls = controls }
-    WL:AddOpacitySettings(self, opacitySchema, PLAYER_FRAME_INDEX, systemFrame, { step = 5 })
+    local schema = { hideNativeSettings = true, controls = {} }
 
-    table.insert(controls, {
-        type = "checkbox",
-        key = "OutOfCombatFade",
-        label = "Out of Combat Fade",
-        default = false,
-        tooltip = "Hide frame when out of combat with no target",
-        onChange = function(val)
-            self:SetSetting(PLAYER_FRAME_INDEX, "OutOfCombatFade", val)
-            if Orbit.OOCFadeMixin then
-                Orbit.OOCFadeMixin:RefreshAll()
-            end
-            OrbitEngine.Layout:Reset(dialog)
-            self:AddSettings(dialog, systemFrame)
-        end,
-    })
+    WL:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Visibility" }, "Layout")
 
-    if self:GetSetting(PLAYER_FRAME_INDEX, "OutOfCombatFade") then
-        table.insert(controls, {
-            type = "checkbox",
-            key = "ShowOnMouseover",
-            label = "Show on Mouseover",
-            default = true,
-            tooltip = "Reveal frame when mousing over it",
+    if currentTab == "Layout" then
+        local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 120, max = 300, step = 10, default = 160 })
+        if not isAnchored then
+            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 10, default = 40 })
+        end
+        table.insert(schema.controls, {
+            type = "dropdown", key = "HealthTextMode", label = "Health Text",
+            options = {
+                { text = "Hide", value = "hide" },
+                { text = "Percentage / Short", value = "percent_short" },
+                { text = "Percentage / Raw", value = "percent_raw" },
+                { text = "Short / Percentage", value = "short_percent" },
+                { text = "Short / Raw", value = "short_raw" },
+                { text = "Raw / Short", value = "raw_short" },
+                { text = "Raw / Percentage", value = "raw_percent" },
+            },
+            default = "percent_short",
             onChange = function(val)
-                self:SetSetting(PLAYER_FRAME_INDEX, "ShowOnMouseover", val)
+                self:SetSetting(PLAYER_FRAME_INDEX, "HealthTextMode", val)
                 self:ApplySettings()
             end,
         })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "EnablePlayerPower", label = "Enable Player Power", default = true,
+            onChange = function(val)
+                self:SetSetting(PLAYER_FRAME_INDEX, "EnablePlayerPower", val)
+                local ppPlugin = Orbit:GetPlugin("Orbit_PlayerPower")
+                if ppPlugin and ppPlugin.UpdateVisibility then ppPlugin:UpdateVisibility() end
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "EnablePlayerResource", label = "Enable Player Resource", default = true,
+            onChange = function(val)
+                self:SetSetting(PLAYER_FRAME_INDEX, "EnablePlayerResource", val)
+                local prPlugin = Orbit:GetPlugin("Orbit_PlayerResources")
+                if prPlugin and prPlugin.UpdateVisibility then prPlugin:UpdateVisibility() end
+            end,
+        })
+    elseif currentTab == "Visibility" then
+        WL:AddOpacitySettings(self, schema, PLAYER_FRAME_INDEX, systemFrame, { step = 5 })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
+            tooltip = "Hide frame when out of combat with no target",
+            onChange = function(val)
+                self:SetSetting(PLAYER_FRAME_INDEX, "OutOfCombatFade", val)
+                if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+            end,
+        })
+        if self:GetSetting(PLAYER_FRAME_INDEX, "OutOfCombatFade") then
+            table.insert(schema.controls, {
+                type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
+                tooltip = "Reveal frame when mousing over it",
+                onChange = function(val)
+                    self:SetSetting(PLAYER_FRAME_INDEX, "ShowOnMouseover", val)
+                    self:ApplySettings()
+                end,
+            })
+        end
     end
-
-    local schema = {
-        hideNativeSettings = true,
-        controls = controls,
-    }
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end

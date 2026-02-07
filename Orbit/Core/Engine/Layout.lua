@@ -12,6 +12,7 @@ Layout.sliderPool = Layout.sliderPool or {}
 Layout.dropdownPool = Layout.dropdownPool or {}
 Layout.buttonPool = Layout.buttonPool or {}
 Layout.colorPool = Layout.colorPool or {}
+Layout.colorCurvePool = Layout.colorCurvePool or {}
 Layout.fontPool = Layout.fontPool or {}
 Layout.texturePool = Layout.texturePool or {}
 Layout.containerControls = Layout.containerControls or {} -- Container -> List of controls
@@ -85,6 +86,8 @@ function Layout:RecycleControls(controls)
             table.insert(self.buttonPool, control)
         elseif control.OrbitType == "Color" then
             table.insert(self.colorPool, control)
+        elseif control.OrbitType == "ColorCurve" then
+            table.insert(self.colorCurvePool, control)
         elseif control.Label and control.Swatch then
             table.insert(self.colorPool, control)
         elseif control.OrbitType == "Font" then
@@ -246,6 +249,12 @@ function Layout:InitializeWidgetTypes()
         return self:CreateColorPicker(container, def.label, getValue(), callback)
     end)
 
+    self:RegisterWidgetType("colorcurve", function(container, def, getValue, callback)
+        local widget = self:CreateColorCurvePicker(container, def.label, getValue(), callback)
+        if widget then widget.singleColorMode = def.singleColor end
+        return widget
+    end)
+
     self:RegisterWidgetType("button", function(container, def, getValue, callback)
         return self:CreateButton(container, def.text, callback, def.width)
     end)
@@ -292,6 +301,88 @@ function Layout:InitializeWidgetTypes()
         local textHeight = frame.text:GetStringHeight()
         frame:SetHeight(math.max(20, textHeight + 4))
         frame.OrbitType = "Label"
+        return frame
+    end)
+
+    -- [ TABS WIDGET ]-----------------------------------------------------------------------------------
+    local TAB_HEIGHT = 24
+    local TAB_SPACING = 4
+    local TAB_TEXT_PADDING = 30
+    local TAB_ACTIVE_COLOR = { r = 1, g = 0.82, b = 0 }
+    local TAB_INACTIVE_COLOR = { r = 1, g = 1, b = 1 }
+    local TAB_DIVIDER_COLOR = { r = 0.3, g = 0.3, b = 0.3 }
+    local TAB_DIVIDER_HEIGHT = 1
+    local TAB_BOTTOM_PADDING = 4
+    local TAB_HIGHLIGHT_ATLAS = "transmog-tab-hl"
+
+    local function ApplyTabState(btn, isActive)
+        if isActive then
+            btn.Text:SetTextColor(TAB_ACTIVE_COLOR.r, TAB_ACTIVE_COLOR.g, TAB_ACTIVE_COLOR.b)
+            btn:Disable()
+            btn.highlight:Show()
+        else
+            btn.Text:SetTextColor(TAB_INACTIVE_COLOR.r, TAB_INACTIVE_COLOR.g, TAB_INACTIVE_COLOR.b)
+            btn:Enable()
+            btn.highlight:Hide()
+        end
+    end
+
+    function Layout:CreateTabBar(parent, dividerParent, tabNames, activeTab, onTabSelected)
+        local buttons = {}
+        local lastBtn = nil
+        for _, tabName in ipairs(tabNames) do
+            local btn = CreateFrame("Button", nil, parent, "MinimalTabTemplate")
+            btn:SetHeight(TAB_HEIGHT)
+            btn.Text:SetText(tabName)
+            btn:SetWidth(btn.Text:GetStringWidth() + TAB_TEXT_PADDING)
+
+            if lastBtn then
+                btn:SetPoint("LEFT", lastBtn, "RIGHT", TAB_SPACING, 0)
+            else
+                btn:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+            end
+
+            local hlFrame = CreateFrame("Frame", nil, btn)
+            hlFrame:SetPoint("BOTTOMLEFT", btn, "BOTTOMLEFT", 2, -1)
+            hlFrame:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, -1)
+            hlFrame:SetHeight(TAB_DIVIDER_HEIGHT)
+            hlFrame:SetFrameLevel(btn:GetFrameLevel() + 10)
+            local hlTex = hlFrame:CreateTexture(nil, "ARTWORK")
+            hlTex:SetAtlas(TAB_HIGHLIGHT_ATLAS)
+            hlTex:SetAllPoints(hlFrame)
+            btn.highlight = hlFrame
+
+            ApplyTabState(btn, tabName == activeTab)
+
+            btn:SetScript("OnClick", function()
+                if onTabSelected then onTabSelected(tabName) end
+            end)
+
+            buttons[#buttons + 1] = btn
+            lastBtn = btn
+        end
+
+        local divider = parent:CreateTexture(nil, "OVERLAY")
+        divider:SetColorTexture(TAB_DIVIDER_COLOR.r, TAB_DIVIDER_COLOR.g, TAB_DIVIDER_COLOR.b, 1)
+        divider:SetHeight(TAB_DIVIDER_HEIGHT)
+        divider:SetPoint("TOP", parent, "TOP", 0, -TAB_HEIGHT)
+        divider:SetPoint("LEFT", dividerParent, "LEFT", 0, 0)
+        divider:SetPoint("RIGHT", dividerParent, "RIGHT", 0, 0)
+
+        return buttons, divider
+    end
+
+    function Layout:UpdateTabBar(buttons, activeTab)
+        for _, btn in ipairs(buttons) do
+            ApplyTabState(btn, btn.Text:GetText() == activeTab)
+        end
+    end
+
+    self:RegisterWidgetType("tabs", function(container, def)
+        local frame = CreateFrame("Frame", nil, container)
+        frame:SetHeight(TAB_HEIGHT + TAB_DIVIDER_HEIGHT + TAB_BOTTOM_PADDING)
+        frame.OrbitType = "Tabs"
+        Layout:CreateTabBar(frame, container, def.tabs, def.activeTab, def.onTabSelected)
         return frame
     end)
 

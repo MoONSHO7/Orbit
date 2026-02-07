@@ -16,6 +16,7 @@ local Plugin = Orbit:RegisterPlugin("Focus Debuffs", SYSTEM_ID, {
         Scale = 100,
         PandemicGlowType = Constants.PandemicGlow.DefaultType,
         PandemicGlowColor = Constants.PandemicGlow.DefaultColor,
+        PandemicGlowColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
@@ -46,76 +47,52 @@ function Plugin:AddSettings(dialog, systemFrame)
     local WL = OrbitEngine.WidgetLogic
     local schema = { hideNativeSettings = true, controls = {} }
 
-    table.insert(schema.controls, {
-        type = "slider",
-        key = "IconsPerRow",
-        label = "Icons Per Row",
-        min = 4,
-        max = 10,
-        step = 1,
-        default = 5,
-        onChange = function(val)
-            self:SetSetting(systemIndex, "IconsPerRow", val)
-            self:ApplySettings()
-        end,
-    })
+    WL:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Glows" }, "Layout")
 
-    table.insert(schema.controls, {
-        type = "slider",
-        key = "MaxRows",
-        label = "Max Rows",
-        min = 1,
-        max = 6,
-        step = 1,
-        default = 2,
-    })
-
-    table.insert(schema.controls, {
-        type = "slider",
-        key = "Spacing",
-        label = "Spacing",
-        min = 0,
-        max = 10,
-        step = 1,
-        default = 2,
-    })
-
-    local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
-
-    if not isAnchored then
+    if currentTab == "Layout" then
         table.insert(schema.controls, {
-            type = "slider",
-            key = "Scale",
-            label = "Scale",
-            min = 50,
-            max = 200,
-            step = 1,
-            default = 100,
+            type = "slider", key = "IconsPerRow", label = "Icons Per Row",
+            min = 4, max = 10, step = 1, default = 5,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "IconsPerRow", val)
+                self:ApplySettings()
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "slider", key = "MaxRows", label = "Max Rows",
+            min = 1, max = 6, step = 1, default = 2,
+        })
+        table.insert(schema.controls, {
+            type = "slider", key = "Spacing", label = "Spacing",
+            min = 0, max = 10, step = 1, default = 2,
+        })
+        local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
+        if not isAnchored then
+            table.insert(schema.controls, {
+                type = "slider", key = "Scale", label = "Scale",
+                min = 50, max = 200, step = 1, default = 100,
+            })
+        end
+    elseif currentTab == "Glows" then
+        local GlowType = Constants.PandemicGlow.Type
+        table.insert(schema.controls, {
+            type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
+            options = {
+                { text = "None", value = GlowType.None },
+                { text = "Pixel Glow", value = GlowType.Pixel },
+                { text = "Proc Glow", value = GlowType.Proc },
+                { text = "Autocast Shine", value = GlowType.Autocast },
+                { text = "Button Glow", value = GlowType.Button },
+            },
+            default = Constants.PandemicGlow.DefaultType,
+        })
+        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "PandemicGlowColorCurve", label = "Pandemic Colour",
+            default = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
+            singleColor = true,
         })
     end
-
-    -- Pandemic Glow Type
-    local GlowType = Constants.PandemicGlow.Type
-    table.insert(schema.controls, {
-        type = "dropdown",
-        key = "PandemicGlowType",
-        label = "Pandemic Glow",
-        options = {
-            { text = "None", value = GlowType.None },
-            { text = "Pixel Glow", value = GlowType.Pixel },
-            { text = "Proc Glow", value = GlowType.Proc },
-            { text = "Autocast Shine", value = GlowType.Autocast },
-            { text = "Button Glow", value = GlowType.Button },
-        },
-        default = Constants.PandemicGlow.DefaultType,
-    })
-
-    -- Pandemic Glow Color
-    WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
-        key = "PandemicGlowColor",
-        label = "Pandemic Colour",
-        default = Constants.PandemicGlow.DefaultColor,
-    }, nil)
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
@@ -254,7 +231,7 @@ function Plugin:UpdateDebuffs()
         showTimer = true,
         enablePandemic = true,
         pandemicGlowType = self:GetSetting(SYSTEM_INDEX, "PandemicGlowType") or Constants.PandemicGlow.DefaultType,
-        pandemicGlowColor = self:GetSetting(SYSTEM_INDEX, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
+        pandemicGlowColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(self:GetSetting(SYSTEM_INDEX, "PandemicGlowColorCurve")) or self:GetSetting(SYSTEM_INDEX, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
     }
 
     local activeIcons = {}

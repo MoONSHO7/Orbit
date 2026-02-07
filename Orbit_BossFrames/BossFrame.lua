@@ -17,21 +17,22 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
         Width = 140,
         Height = 40,
         Scale = 100,
-        DebuffPosition = "Above", -- "Disabled", "Left", "Right", "Above"
-        CastBarPosition = "Below", -- "Above", "Below"
+        DebuffPosition = "Above",
+        CastBarPosition = "Below",
         DebuffSize = 32,
         MaxDebuffs = 4,
         CastBarHeight = 15,
         CastBarWidth = 140,
         CastBarIcon = true,
-        ReactionColour = true, -- Enable reaction color by default
+        ReactionColour = true,
         PandemicGlowType = Orbit.Constants.PandemicGlow.DefaultType,
         PandemicGlowColor = Orbit.Constants.PandemicGlow.DefaultColor,
-        -- Disabled components (Canvas Mode drag-to-disable)
+        PandemicGlowColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
         DisabledComponents = {},
-        -- Cast Bar Defaults (Decoupled from Player Cast Bar)
         CastBarColor = { r = 1, g = 0.7, b = 0 },
+        CastBarColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
         NonInterruptibleColor = { r = 0.7, g = 0.7, b = 0.7 },
+        NonInterruptibleColorCurve = { pins = { { position = 0, color = { r = 0.7, g = 0.7, b = 0.7, a = 1 } } } },
         CastBarText = true,
         CastBarTimer = true,
     },
@@ -157,7 +158,7 @@ local function UpdateDebuffs(frame, plugin)
         showTimer = true,
         enablePandemic = true,
         pandemicGlowType = plugin:GetSetting(1, "PandemicGlowType") or Constants.PandemicGlow.DefaultType,
-        pandemicGlowColor = plugin:GetSetting(1, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
+        pandemicGlowColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "PandemicGlowColorCurve")) or plugin:GetSetting(1, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
     }
 
     -- Layout icons
@@ -354,10 +355,11 @@ local function SetupCastBarHooks(castBar, unit)
 
         -- Color based on interruptible
         if nativeBar.notInterruptible then
-            local color = plugin:GetSetting(1, "NonInterruptibleColor")
+            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "NonInterruptibleColorCurve")) or plugin:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         else
-            local color = plugin:GetSetting(1, "CastBarColor")
+            local curveData = plugin:GetSetting(1, "CastBarColorCurve")
+            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData) or plugin:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         end
 
@@ -410,10 +412,11 @@ local function SetupCastBarHooks(castBar, unit)
             -- For now defaulting to red, or checking if InterruptedColor exists
             castBar:SetStatusBarColor(1, 0, 0)
         elseif event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
-            local color = plugin:GetSetting(1, "NonInterruptibleColor")
+            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "NonInterruptibleColorCurve")) or plugin:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" or event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
-            local color = plugin:GetSetting(1, "CastBarColor")
+            local curveData = plugin:GetSetting(1, "CastBarColorCurve")
+            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData) or plugin:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         end
     end)
@@ -550,75 +553,47 @@ function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = 1
     local WL = OrbitEngine.WidgetLogic
 
-    local schema = {
-        hideNativeSettings = true,
-        controls = {
-            { type = "slider", key = "Width", label = "Width", min = 120, max = 300, step = 5, default = 150 },
-            { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 5, default = 40 },
-            {
-                type = "dropdown",
-                key = "CastBarPosition",
-                label = "Cast Bar",
-                options = {
-                    { label = "Above", value = "Above" },
-                    { label = "Below", value = "Below" },
-                },
-                default = "Below",
-            },
-            {
-                type = "slider",
-                key = "CastBarHeight",
-                label = "Cast Bar Height",
-                min = 15,
-                max = 35,
-                step = 1,
-                default = 14,
-            },
-            {
-                type = "checkbox",
-                key = "CastBarIcon",
-                label = "Show Cast Bar Icon",
-                default = true,
-            },
-            {
-                type = "dropdown",
-                key = "DebuffPosition",
-                label = "Debuffs",
-                options = {
-                    { label = "Disabled", value = "Disabled" },
-                    { label = "Left", value = "Left" },
-                    { label = "Right", value = "Right" },
-                    { label = "Above", value = "Above" },
-                    { label = "Below", value = "Below" },
-                },
-                default = "Right",
-            },
-            { type = "slider", key = "MaxDebuffs", label = "Max Debuffs", min = 2, max = 8, step = 1, default = 4 },
-        },
-    }
+    local schema = { hideNativeSettings = true, controls = {} }
 
-    -- Pandemic Glow Type
-    local GlowType = Orbit.Constants.PandemicGlow.Type
-    table.insert(schema.controls, {
-        type = "dropdown",
-        key = "PandemicGlowType",
-        label = "Pandemic Glow",
-        options = {
-            { text = "None", value = GlowType.None },
-            { text = "Pixel Glow", value = GlowType.Pixel },
-            { text = "Proc Glow", value = GlowType.Proc },
-            { text = "Autocast Shine", value = GlowType.Autocast },
-            { text = "Button Glow", value = GlowType.Button },
-        },
-        default = Orbit.Constants.PandemicGlow.DefaultType,
-    })
+    WL:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Auras" }, "Layout")
 
-    -- Pandemic Glow Color
-    WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
-        key = "PandemicGlowColor",
-        label = "Pandemic Colour",
-        default = Orbit.Constants.PandemicGlow.DefaultColor,
-    }, nil)
+    if currentTab == "Layout" then
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 120, max = 300, step = 5, default = 150 })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 5, default = 40 })
+        table.insert(schema.controls, {
+            type = "dropdown", key = "CastBarPosition", label = "Cast Bar",
+            options = { { label = "Above", value = "Above" }, { label = "Below", value = "Below" } },
+            default = "Below",
+        })
+        table.insert(schema.controls, { type = "slider", key = "CastBarHeight", label = "Cast Bar Height", min = 15, max = 35, step = 1, default = 14 })
+        table.insert(schema.controls, { type = "checkbox", key = "CastBarIcon", label = "Show Cast Bar Icon", default = true })
+    elseif currentTab == "Auras" then
+        table.insert(schema.controls, {
+            type = "dropdown", key = "DebuffPosition", label = "Debuffs",
+            options = {
+                { label = "Disabled", value = "Disabled" }, { label = "Left", value = "Left" },
+                { label = "Right", value = "Right" }, { label = "Above", value = "Above" }, { label = "Below", value = "Below" },
+            },
+            default = "Right",
+        })
+        table.insert(schema.controls, { type = "slider", key = "MaxDebuffs", label = "Max Debuffs", min = 2, max = 8, step = 1, default = 4 })
+        local GlowType = Orbit.Constants.PandemicGlow.Type
+        table.insert(schema.controls, {
+            type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
+            options = {
+                { text = "None", value = GlowType.None }, { text = "Pixel Glow", value = GlowType.Pixel },
+                { text = "Proc Glow", value = GlowType.Proc }, { text = "Autocast Shine", value = GlowType.Autocast },
+                { text = "Button Glow", value = GlowType.Button },
+            },
+            default = Orbit.Constants.PandemicGlow.DefaultType,
+        })
+        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "PandemicGlowColorCurve", label = "Pandemic Colour",
+            default = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
+            singleColor = true,
+        })
+    end
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
@@ -910,10 +885,10 @@ function Plugin:ApplySettings()
             local cbTextSize = Orbit.Skin:GetAdaptiveTextSize(castBarHeight, 10, 18, 0.40)
             local fontPath = LSM:Fetch("font", fontName)
             if frame.CastBar.Text then
-                frame.CastBar.Text:SetFont(fontPath, cbTextSize, "OUTLINE")
+                frame.CastBar.Text:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline())
             end
             if frame.CastBar.Timer then
-                frame.CastBar.Timer:SetFont(fontPath, cbTextSize, "OUTLINE")
+                frame.CastBar.Timer:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline())
             end
         end
 

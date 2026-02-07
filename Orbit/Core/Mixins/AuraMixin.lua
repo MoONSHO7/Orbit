@@ -91,7 +91,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
     end
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
     local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or "Fonts\\FRIZQT__.TTF"
-    icon.count:SetFont(fontPath, math.max(8, size * 0.4), "OUTLINE")
+    icon.count:SetFont(fontPath, math.max(8, size * 0.4), Orbit.Skin:GetFontOutline())
     icon.count:SetShadowColor(0, 0, 0, 1)
     icon.count:SetShadowOffset(1, -1)
     icon.count:ClearAllPoints()

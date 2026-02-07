@@ -220,6 +220,7 @@ function Orbit:OnLoad()
 
         BorderSize = 2,
         TextScale = "Medium",
+        FontOutline = "OUTLINE",
         BackdropColour = { r = 0.145, g = 0.145, b = 0.145, a = 0.7 },
         -- Note: NumActionBars is now per-profile, stored in Action Bar 1 settings
     }

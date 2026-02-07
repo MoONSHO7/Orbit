@@ -42,7 +42,7 @@ function Mixin:StyleLevelText(frame, fontName)
     end
     local LSM = LibStub("LibSharedMedia-3.0")
     local fontPath = LSM:Fetch("font", fontName or Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
-    frame.LevelText:SetFont(fontPath, 10, "OUTLINE")
+    frame.LevelText:SetFont(fontPath, 10, Orbit.Skin:GetFontOutline())
 end
 
 function Mixin:UpdateClassificationVisuals(frame, systemIndex)

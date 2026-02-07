@@ -369,7 +369,7 @@ function Plugin:CreateTrackedIcon(anchor, systemIndex, x, y)
 
     icon.CountText = textOverlay:CreateFontString(nil, "OVERLAY", nil, 7)
     icon.CountText:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -2, 2)
-    icon.CountText:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
+    icon.CountText:SetFont(STANDARD_TEXT_FONT, 12, Orbit.Skin:GetFontOutline())
     icon.CountText:Hide()
 
     icon.DropHighlight = icon:CreateTexture(nil, "BORDER")
@@ -509,7 +509,7 @@ function Plugin:UpdateTrackedIcon(icon)
     local systemIndex = icon.systemIndex or TRACKED_INDEX
     local showGCDSwipe = self:GetSetting(systemIndex, "ShowGCDSwipe") ~= false
 
-    local texture, durObj = nil, nil
+    local texture, durObj, remainingPercent = nil, nil, 1
     local isUsable = false
 
     if icon.trackedType == "spell" then
@@ -522,14 +522,23 @@ function Plugin:UpdateTrackedIcon(icon)
             if not showGCDSwipe and (C_Spell.GetSpellCooldown(icon.trackedId) or {}).isOnGCD then
                 icon.Cooldown:Clear()
                 icon.Icon:SetDesaturation(0)
+                remainingPercent = 1
             else
                 durObj = C_Spell.GetSpellCooldownDuration(icon.trackedId)
                 if durObj then
                     icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
                     icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(DESAT_CURVE))
+                    local cdInfo = C_Spell.GetSpellCooldown(icon.trackedId)
+                    if cdInfo and cdInfo.duration and cdInfo.duration > 0 then
+                        local elapsed = GetTime() - cdInfo.startTime
+                        remainingPercent = 1 - math.max(0, math.min(1, elapsed / cdInfo.duration))
+                    else
+                        remainingPercent = 1
+                    end
                 else
                     icon.Cooldown:Clear()
                     icon.Icon:SetDesaturation(0)
+                    remainingPercent = 1
                 end
             end
             local displayCount = C_Spell.GetSpellDisplayCount(icon.trackedId)
@@ -551,9 +560,12 @@ function Plugin:UpdateTrackedIcon(icon)
             if start and duration and duration > 0 then
                 icon.Cooldown:SetCooldown(start, duration)
                 icon.Icon:SetDesaturation(1)
+                local elapsed = GetTime() - start
+                remainingPercent = 1 - math.max(0, math.min(1, elapsed / duration))
             else
                 icon.Cooldown:Clear()
                 icon.Icon:SetDesaturation(0)
+                remainingPercent = 1
             end
             local count = C_Item.GetItemCount(icon.trackedId, false, true)
             if count and count > 1 then
@@ -565,8 +577,37 @@ function Plugin:UpdateTrackedIcon(icon)
         end
     end
 
-    if not texture then icon:Hide() return end
+    if not texture then
+        icon.Icon:SetTexture(TRACKED_PLACEHOLDER_ICON)
+        icon.Icon:SetDesaturation(1)
+        icon.Cooldown:Clear()
+        icon.CountText:Hide()
+    end
+
+    self:ApplyTimerTextColor(icon, remainingPercent)
     icon:Show()
+end
+
+function Plugin:ApplyTimerTextColor(icon, remainingPercent)
+    local cooldown = icon.Cooldown
+    if not cooldown then return end
+
+    local timerText = cooldown.Text
+    if not timerText then
+        local regions = { cooldown:GetRegions() }
+        for _, region in ipairs(regions) do
+            if region:GetObjectType() == "FontString" then timerText = region break end
+        end
+        cooldown.Text = timerText
+    end
+    if not timerText then return end
+
+    local systemIndex = icon.systemIndex or TRACKED_INDEX
+    local positions = self:GetSetting(systemIndex, "ComponentPositions") or {}
+    local timerPos = positions["Timer"] or {}
+    local overrides = timerPos.overrides or {}
+
+    CooldownUtils:ApplyTextColor(timerText, overrides, remainingPercent)
 end
 
 function Plugin:UpdateTrackedIconsDisplay(anchor)
@@ -966,7 +1007,7 @@ function Plugin:SetupTrackedCanvasPreview(anchor, systemIndex)
 
         for _, def in ipairs(textComponents) do
             local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
-            fs:SetFont(fontPath, 12, "OUTLINE")
+            fs:SetFont(fontPath, 12, Orbit.Skin:GetFontOutline())
             fs:SetText(def.preview)
             fs:SetTextColor(1, 1, 1, 1)
             fs:SetPoint("CENTER", preview, "CENTER", 0, 0)

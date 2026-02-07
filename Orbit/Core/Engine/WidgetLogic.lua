@@ -9,15 +9,217 @@ local WL = Engine.WidgetLogic
 
 -- [ SHARED HELPERS ]--------------------------------------------------------------------------------
 
--- Helper to safely get settings
 local function Get(plugin, index, key, default)
     local val = plugin:GetSetting(index, key)
-    if val == nil then
-        return default
-    end
+    if val == nil then return default end
     return val
 end
 
+-- [ CLASS COLOR RESOLUTION ]------------------------------------------------------------------------
+local function GetCurrentClassColor()
+    local _, class = UnitClass("player")
+    local color = RAID_CLASS_COLORS[class]
+    if color then return { r = color.r, g = color.g, b = color.b, a = 1 } end
+    return { r = 1, g = 1, b = 1, a = 1 }
+end
+
+local function ResolveClassColorPin(pin)
+    if pin.type == "class" then return GetCurrentClassColor() end
+    return pin.color
+end
+
+-- [ REACTION COLOR UTILITIES ]----------------------------------------------------------------------
+local REACTION_HOSTILE_MAX = 2
+local REACTION_NEUTRAL_MAX = 4
+
+local REACTION_COLORS = {
+    HOSTILE = { r = 1, g = 0.1, b = 0.1, a = 1 },
+    NEUTRAL = { r = 1, g = 0.8, b = 0, a = 1 },
+    FRIENDLY = { r = 0.1, g = 1, b = 0.1, a = 1 },
+}
+
+function WL:GetReactionColor(reaction)
+    if reaction <= REACTION_HOSTILE_MAX then return REACTION_COLORS.HOSTILE end
+    if reaction <= REACTION_NEUTRAL_MAX then return REACTION_COLORS.NEUTRAL end
+    return REACTION_COLORS.FRIENDLY
+end
+
+function WL:CurveHasClassPin(curveData)
+    if not curveData or not curveData.pins then return false end
+    for _, pin in ipairs(curveData.pins) do
+        if pin.type == "class" then return true end
+    end
+    return false
+end
+
+-- [ COLOR CURVE UTILITIES ]-------------------------------------------------------------------------
+-- Hybrid Architecture:
+--   Storage:       pins format { pins = [{ position, color, type? }] } (serializable to SavedVariables)
+--   Native APIs:   ToNativeColorCurve() for UnitHealthPercent, GetAuraDispelTypeColor, etc.
+--   Lua Sampling:  SampleColorCurve() for cast bars, power bars, resources (no native sampling API)
+-- Sample color from curve at position (0-1), returns { r, g, b, a } or nil
+function WL:SampleColorCurve(curveData, position)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    
+    local pins = curveData.pins
+    if #pins == 1 then return ResolveClassColorPin(pins[1]) end
+    
+    -- Sort by position (don't mutate original)
+    local sorted = {}
+    for _, p in ipairs(pins) do table.insert(sorted, p) end
+    table.sort(sorted, function(a, b) return a.position < b.position end)
+    position = math.max(0, math.min(1, position))
+    
+    -- Find surrounding pins
+    local left, right = sorted[1], sorted[#sorted]
+    for i = 1, #sorted - 1 do
+        if sorted[i].position <= position and sorted[i + 1].position >= position then
+            left, right = sorted[i], sorted[i + 1]
+            break
+        end
+    end
+    
+    -- Resolve class color for both pins
+    local leftColor = ResolveClassColorPin(left)
+    local rightColor = ResolveClassColorPin(right)
+    
+    -- Linear interpolation
+    local range = right.position - left.position
+    local t = (range > 0) and ((position - left.position) / range) or 0
+    
+    return {
+        r = leftColor.r + (rightColor.r - leftColor.r) * t,
+        g = leftColor.g + (rightColor.g - leftColor.g) * t,
+        b = leftColor.b + (rightColor.b - leftColor.b) * t,
+        a = (leftColor.a or 1) + ((rightColor.a or 1) - (leftColor.a or 1)) * t,
+    }
+end
+
+-- Get first color from curve (for static display when no progress available)
+function WL:GetFirstColorFromCurve(curveData)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    local sorted = {}
+    for _, p in ipairs(curveData.pins) do table.insert(sorted, p) end
+    table.sort(sorted, function(a, b) return a.position < b.position end)
+    return ResolveClassColorPin(sorted[1])
+end
+
+-- Preview class colors for Edit Mode (when units don't exist)
+local PREVIEW_PARTY_CLASSES = { "WARRIOR", "PRIEST", "MAGE", "HUNTER", "ROGUE" }
+
+-- Get class color for a specific unit, falls back to reaction color for NPCs
+local function GetClassColorForUnit(unit)
+    -- Handle Edit Mode preview for non-existent units
+    if not unit or not UnitExists(unit) then
+        -- Boss frames: Show hostile reaction color (red)
+        if unit and (unit:match("^boss") or unit:match("^arena")) then
+            return { r = 1, g = 0.1, b = 0.1, a = 1 }
+        end
+        -- Party frames: Show varied class colors for preview
+        if unit and unit:match("^party") then
+            local index = tonumber(unit:match("party(%d)")) or 1
+            local classFile = PREVIEW_PARTY_CLASSES[(index - 1) % #PREVIEW_PARTY_CLASSES + 1]
+            local classColor = RAID_CLASS_COLORS[classFile]
+            if classColor then return { r = classColor.r, g = classColor.g, b = classColor.b, a = 1 } end
+        end
+        -- Player frame fallback: Use player's actual class
+        if unit == "player" then
+            local _, classFile = UnitClass("player")
+            local classColor = classFile and RAID_CLASS_COLORS[classFile]
+            if classColor then return { r = classColor.r, g = classColor.g, b = classColor.b, a = 1 } end
+        end
+        return { r = 1, g = 1, b = 1, a = 1 }
+    end
+    
+    -- Only players get class color - NPCs always get reaction color
+    if UnitIsPlayer(unit) then
+        local _, classFile = UnitClass(unit)
+        local classColor = classFile and RAID_CLASS_COLORS[classFile]
+        if classColor then return { r = classColor.r, g = classColor.g, b = classColor.b, a = 1 } end
+        return { r = 1, g = 1, b = 1, a = 1 }
+    end
+    
+    -- NPCs: Use reaction color
+    local reaction = UnitReaction(unit, "player")
+    if reaction then return WL:GetReactionColor(reaction) end
+    
+    -- UnitReaction returned nil - use UnitIsFriend as fallback
+    if UnitIsFriend("player", unit) then return REACTION_COLORS.FRIENDLY end
+    if UnitCanAttack("player", unit) then return REACTION_COLORS.HOSTILE end
+    return REACTION_COLORS.NEUTRAL
+end
+
+-- Resolve class color pin for a specific unit
+local function ResolveClassColorPinForUnit(pin, unit)
+    if pin.type == "class" then return GetClassColorForUnit(unit) end
+    return pin.color
+end
+
+-- Get first color from curve using unit-specific class color (for health bars etc)
+function WL:GetFirstColorFromCurveForUnit(curveData, unit)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    local sorted = {}
+    for _, p in ipairs(curveData.pins) do table.insert(sorted, p) end
+    table.sort(sorted, function(a, b) return a.position < b.position end)
+    return ResolveClassColorPinForUnit(sorted[1], unit)
+end
+
+-- Build native color curve with unit-specific class color resolution (for gradients with class pins)
+function WL:ToNativeColorCurveForUnit(curveData, unit)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end
+    
+    local curve = C_CurveUtil.CreateColorCurve()
+    for _, pin in ipairs(curveData.pins) do
+        local color = ResolveClassColorPinForUnit(pin, unit)
+        curve:AddPoint(pin.position, CreateColor(color.r, color.g, color.b, color.a or 1))
+    end
+    return curve
+end
+
+-- [ NATIVE COLORCURVE CONVERSION ]------------------------------------------------------------------
+local nativeCurveCache = setmetatable({}, { __mode = "v" })
+
+-- Convert pins format to native C_CurveUtil.CreateColorCurve()
+function WL:ToNativeColorCurve(curveData)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end
+    
+    -- Note: Native curves with class color pins should NOT be cached since class can change
+    local hasClassPin = WL:CurveHasClassPin(curveData)
+    
+    if not hasClassPin and nativeCurveCache[curveData] then
+        return nativeCurveCache[curveData]
+    end
+    
+    local curve = C_CurveUtil.CreateColorCurve()
+    for _, pin in ipairs(curveData.pins) do
+        local color = ResolveClassColorPin(pin)
+        curve:AddPoint(pin.position, CreateColor(color.r, color.g, color.b, color.a or 1))
+    end
+    
+    if not hasClassPin then nativeCurveCache[curveData] = curve end
+    return curve
+end
+
+-- Convert native ColorCurve back to pins format (for color picker display)
+function WL:FromNativeColorCurve(nativeCurve)
+    if not nativeCurve or not nativeCurve.GetPoints then return nil end
+    local pins = {}
+    for _, point in ipairs(nativeCurve:GetPoints()) do
+        local color = point.y
+        table.insert(pins, {
+            position = point.x,
+            color = { r = color.r, g = color.g, b = color.b, a = color.a or 1 }
+        })
+    end
+    return { pins = pins }
+end
+
+-- Invalidate cache when curve data changes (call after setting changes)
+function WL:InvalidateNativeCurveCache(curveData)
+    if curveData then nativeCurveCache[curveData] = nil end
+end
 -- Standard onChange that calls ApplySettings and updates selection
 -- Skip ApplySettings if frame is in canvas mode to prevent exiting
 local function IsInCanvasMode(frame)
@@ -500,6 +702,31 @@ function WL:AddColorSettings(plugin, schema, systemIndex, systemFrame, colorPara
     })
 end
 
+local function CreateColorCurveOnChange(plugin, systemIndex, key, systemFrame)
+    return function(curveData)
+        plugin:SetSetting(systemIndex, key, curveData)
+        if plugin.ApplySettings then plugin:ApplySettings(systemFrame) end
+        if Engine.Frame then Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame) end
+    end
+end
+
+function WL:AddColorCurveSettings(plugin, schema, systemIndex, systemFrame, params)
+    params = params or {}
+    local key = params.key or "ColorCurve"
+    local label = params.label or "Colour Gradient"
+    local default = params.default
+
+    table.insert(schema.controls, {
+        type = "colorcurve",
+        key = key,
+        label = label,
+        default = default,
+        singleColor = params.singleColor,
+        tooltip = params.tooltip,
+        onChange = CreateColorCurveOnChange(plugin, systemIndex, key, systemFrame),
+    })
+end
+
 function WL:AddOrientationSettings(plugin, schema, systemIndex, dialog, systemFrame, params)
     params = params or {}
     local key = params.key or "Orientation"
@@ -722,4 +949,27 @@ function WL:AddCooldownDisplaySettings(plugin, schema, systemIndex, systemFrame,
             onChange = params.tooltipOnChange or CreateDefaultOnChange(plugin, systemIndex, tooltipKey, systemFrame),
         })
     end
+end
+
+-- [ SETTINGS TABS ]---------------------------------------------------------------------------------
+
+function WL:SetTabRefreshCallback(dialog, plugin, systemFrame)
+    dialog.orbitTabCallback = function()
+        Engine.Layout:Reset(dialog)
+        plugin:AddSettings(dialog, systemFrame)
+    end
+end
+
+function WL:AddSettingsTabs(schema, dialog, tabsList, defaultTab)
+    dialog.orbitCurrentTab = dialog.orbitCurrentTab or defaultTab
+    table.insert(schema.controls, {
+        type = "tabs",
+        tabs = tabsList,
+        activeTab = dialog.orbitCurrentTab,
+        onTabSelected = function(tabName)
+            dialog.orbitCurrentTab = tabName
+            if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+        end,
+    })
+    return dialog.orbitCurrentTab
 end

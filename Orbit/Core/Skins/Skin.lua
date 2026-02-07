@@ -247,6 +247,10 @@ end
 -- Font Skinning
 -- -------------------------------------------------------------------------- --
 
+function Skin:GetFontOutline()
+    return Orbit.db.GlobalSettings.FontOutline or "OUTLINE"
+end
+
 function Skin:SkinText(fontString, settings)
     if not fontString then
         return
@@ -259,7 +263,7 @@ function Skin:SkinText(fontString, settings)
         font = LSM:Fetch("font", settings.font) or font
     end
 
-    fontString:SetFont(font, size, "OUTLINE")
+    fontString:SetFont(font, size, self:GetFontOutline())
 
     if settings.textColor then
         local c = settings.textColor
@@ -326,7 +330,7 @@ function Skin:ApplyUnitFrameText(fontString, alignment, fontPath, textSize)
     local padding = Constants.UnitFrame.TextPadding
     local shadow = Constants.UnitFrame.ShadowOffset
 
-    fontString:SetFont(fontPath, textSize, "OUTLINE")
+    fontString:SetFont(fontPath, textSize, self:GetFontOutline())
     fontString:ClearAllPoints()
 
     if alignment == "LEFT" then

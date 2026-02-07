@@ -15,6 +15,29 @@ local function SafeUnitPowerPercent(unit, resource)
     return (ok and pct) or nil
 end
 
+-- Create native Blizzard ColorCurve from our pin data (for secret-safe color sampling)
+local function CreateNativeColorCurve(curveData)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end
+    
+    local colorCurve = C_CurveUtil.CreateColorCurve()
+    
+    for _, pin in ipairs(curveData.pins) do
+        local c = pin.color
+        colorCurve:AddPoint(pin.position, CreateColor(c.r, c.g, c.b, c.a or 1))
+    end
+    return colorCurve
+end
+
+-- Get power color using native ColorCurve (returns non-secret color)
+local function GetPowerColorFromCurve(unit, powerType, curveData)
+    local nativeCurve = CreateNativeColorCurve(curveData)
+    if not nativeCurve then return nil end
+    
+    local ok, color = pcall(UnitPowerPercent, unit, powerType, false, nativeCurve)
+    return ok and color or nil
+end
+
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerPower"
 local SYSTEM_INDEX = 1
@@ -22,12 +45,13 @@ local SYSTEM_INDEX = 1
 local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
     canvasMode = true,
     defaults = {
-        Enabled = true, -- Self-contained toggle when Orbit_UnitFrames not loaded
+        Enabled = true,
         Hidden = false,
         Width = 200,
         Height = 15,
         UseCustomColor = false,
         BarColor = { r = 1, g = 1, b = 1, a = 1 },
+        BarColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
         Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
@@ -50,99 +74,69 @@ function Plugin:AddSettings(dialog, systemFrame)
         dialog.Title:SetText("Player Power")
     end
 
-    local schema = {
-        hideNativeSettings = true,
-        controls = {},
-    }
+    local schema = { hideNativeSettings = true, controls = {} }
 
-    -- Enable toggle (shown if Orbit_UnitFrames not loaded)
-    local playerPlugin = Orbit:GetPlugin("Orbit_PlayerFrame")
-    if not playerPlugin then
+    WL:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Visibility", "Colour" }, "Layout")
+
+    if currentTab == "Layout" then
+        local playerPlugin = Orbit:GetPlugin("Orbit_PlayerFrame")
+        if not playerPlugin then
+            table.insert(schema.controls, {
+                type = "checkbox", key = "Enabled", label = "Enable", default = true,
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "Enabled", val)
+                    self:UpdateVisibility()
+                end,
+            })
+        end
+        local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
+        if not isAnchored then
+            WL:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
+        end
+        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 50, default = 15 }, nil)
+    elseif currentTab == "Visibility" then
+        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
         table.insert(schema.controls, {
-            type = "checkbox",
-            key = "Enabled",
-            label = "Enable",
-            default = true,
+            type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
+            tooltip = "Hide frame when out of combat with no target",
             onChange = function(val)
-                self:SetSetting(systemIndex, "Enabled", val)
-                self:UpdateVisibility()
+                self:SetSetting(systemIndex, "OutOfCombatFade", val)
+                if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
-    end
-
-    local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
-
-    -- Width (only when not anchored)
-    if not isAnchored then
-        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
-    end
-
-    -- Height
-    WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 50, default = 15 }, nil)
-
-    -- Opacity (resting alpha when visible)
-    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
-
-    -- Out of Combat Fade
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "OutOfCombatFade",
-        label = "Out of Combat Fade",
-        default = false,
-        tooltip = "Hide frame when out of combat with no target",
-        onChange = function(val)
-            self:SetSetting(systemIndex, "OutOfCombatFade", val)
-            if Orbit.OOCFadeMixin then
-                Orbit.OOCFadeMixin:RefreshAll()
-            end
-            OrbitEngine.Layout:Reset(dialog)
-            self:AddSettings(dialog, systemFrame)
-        end,
-    })
-
-    if self:GetSetting(systemIndex, "OutOfCombatFade") then
+        if self:GetSetting(systemIndex, "OutOfCombatFade") then
+            table.insert(schema.controls, {
+                type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
+                tooltip = "Reveal frame when mousing over it",
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "ShowOnMouseover", val)
+                    self:ApplySettings()
+                end,
+            })
+        end
+    elseif currentTab == "Colour" then
         table.insert(schema.controls, {
-            type = "checkbox",
-            key = "ShowOnMouseover",
-            label = "Show on Mouseover",
-            default = true,
-            tooltip = "Reveal frame when mousing over it",
+            type = "checkbox", key = "UseCustomColor", label = "Use Custom Color", default = false,
             onChange = function(val)
-                self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                self:ApplySettings()
-            end,
-        })
-    end
-
-    -- Custom Color Toggle
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "UseCustomColor",
-        label = "Use Custom Color",
-        default = false,
-        onChange = function(val)
-            self:SetSetting(systemIndex, "UseCustomColor", val)
-            self:UpdateAll()
-            -- Refresh settings panel to show/hide Bar Color picker
-            OrbitEngine.Layout:Reset(dialog)
-            self:AddSettings(dialog, systemFrame)
-        end,
-    })
-
-    -- Bar Color Picker (only show if UseCustomColor is enabled)
-    local useCustomColor = self:GetSetting(systemIndex, "UseCustomColor")
-    if useCustomColor then
-        table.insert(schema.controls, {
-            type = "color",
-            key = "BarColor",
-            label = "Bar Color",
-            default = { r = 1, g = 1, b = 1, a = 1 },
-            onChange = function(color)
-                self:SetSetting(systemIndex, "BarColor", color)
+                self:SetSetting(systemIndex, "UseCustomColor", val)
                 self:UpdateAll()
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
+        if self:GetSetting(systemIndex, "UseCustomColor") then
+            table.insert(schema.controls, {
+                type = "colorcurve", key = "BarColorCurve", label = "Bar Color",
+                default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+                onChange = function(curveData)
+                    self:SetSetting(systemIndex, "BarColorCurve", curveData)
+                    self:UpdateAll()
+                end,
+            })
+        end
     end
+
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
 
@@ -344,7 +338,7 @@ function Plugin:ApplySettings()
         local finalSize = overrides.FontSize or textSize
 
         -- Apply font flags override
-        local flags = "OUTLINE"
+        local flags = Orbit.Skin:GetFontOutline()
         if overrides.ShowShadow then
             flags = ""
         end
@@ -435,14 +429,19 @@ function Plugin:UpdateAll()
     PowerBar:SetMinMaxValues(0, max)
     PowerBar:SetValue(cur, SMOOTH_ANIM)
 
-    -- Color
+    -- Color (use native ColorCurve with UnitPowerPercent for secret-safe gradient)
     local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
-    local customColor = self:GetSetting(SYSTEM_INDEX, "BarColor")
+    local curveData = self:GetSetting(SYSTEM_INDEX, "BarColorCurve")
 
-    if useCustomColor and customColor then
-        PowerBar:SetStatusBarColor(customColor.r, customColor.g, customColor.b)
+    if useCustomColor and curveData then
+        local color = GetPowerColorFromCurve("player", powerType, curveData)
+        if color then
+            PowerBar:GetStatusBarTexture():SetVertexColor(color:GetRGBA())
+        else
+            local fallback = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+            if fallback then PowerBar:SetStatusBarColor(fallback.r, fallback.g, fallback.b) end
+        end
     else
-        -- Use Orbit's centralized colors instead of Blizzard's global PowerBarColor
         local info = Orbit.Constants.Colors.PowerType[powerType]
         if info then
             PowerBar:SetStatusBarColor(info.r, info.g, info.b)

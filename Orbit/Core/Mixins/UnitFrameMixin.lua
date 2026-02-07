@@ -93,102 +93,51 @@ end
 
 function Mixin:GetPreviewHealthColor(isPlayer, className, reaction)
     local globalSettings = Orbit.db.GlobalSettings or {}
-    local useClassColors = globalSettings.UseClassColors ~= false -- Default true
-
-    if useClassColors then
-        if isPlayer and className then
-            local classColor = C_ClassColor.GetClassColor(className)
-            if classColor then
-                return classColor.r, classColor.g, classColor.b
+    local barCurve = globalSettings.BarColorCurve
+    
+    -- Check if curve has class pins
+    if barCurve and barCurve.pins and #barCurve.pins > 0 then
+        local hasClassPin = OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:CurveHasClassPin(barCurve)
+        
+        if hasClassPin then
+            -- Resolve class pin based on preview context
+            local resolvedColor
+            if isPlayer and className then
+                local classColor = RAID_CLASS_COLORS[className]
+                if classColor then resolvedColor = { r = classColor.r, g = classColor.g, b = classColor.b } end
+            elseif reaction and OrbitEngine.WidgetLogic then
+                resolvedColor = OrbitEngine.WidgetLogic:GetReactionColor(reaction)
             end
-        else
-            -- NPC/Boss - use reaction color (hostile = red)
-            if reaction and reaction >= 4 then
-                return 0.2, 0.8, 0.2 -- Friendly green
-            else
-                return 1, 0.1, 0.1 -- Hostile red
-            end
+            if resolvedColor then return resolvedColor.r, resolvedColor.g, resolvedColor.b end
         end
     end
-
-    -- Fall back to global bar color
-    local barColor = globalSettings.BarColor or { r = 0.2, g = 0.8, b = 0.2 }
+    
+    -- No class pins or fallback - use first color from curve
+    local barColor = (OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(barCurve)) or { r = 0.2, g = 0.8, b = 0.2 }
     return barColor.r, barColor.g, barColor.b
 end
 
 function Mixin:GetPreviewTextColor(isPlayer, className, reaction)
     local globalSettings = Orbit.db.GlobalSettings or {}
-    local useClassColorFont = globalSettings.UseClassColorFont ~= false -- Default true
-
-    if useClassColorFont then
-        if isPlayer and className then
-            local classColor = C_ClassColor.GetClassColor(className)
-            if classColor then
-                return classColor.r, classColor.g, classColor.b, 1
-            end
-        else
-            -- NPC/Boss - use reaction color
-            if reaction and reaction >= 4 then
-                return 0.2, 0.8, 0.2, 1 -- Friendly green
-            else
-                return 1, 0.1, 0.1, 1 -- Hostile red
-            end
-        end
-        -- Fallback to white
-        return 1, 1, 1, 1
-    end
-
-    local fontColor = globalSettings.FontColor or { r = 1, g = 1, b = 1, a = 1 }
+    local fontColor = (OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(globalSettings.FontColorCurve)) or { r = 1, g = 1, b = 1, a = 1 }
     return fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1
 end
 
 function Mixin:ApplyPreviewBackdrop(frame)
-    if not frame or not frame.bg then
-        return
-    end
+    if not frame or not frame.bg then return end
 
     local globalSettings = Orbit.db.GlobalSettings or {}
-    local classColorBackdrop = globalSettings.ClassColorBackground or false
-    local backdropColor = globalSettings.BackdropColour or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
-
-    if classColorBackdrop then
-        local _, playerClass = UnitClass("player")
-        if playerClass then
-            local classColor = C_ClassColor.GetClassColor(playerClass)
-            if classColor then
-                frame.bg:SetColorTexture(classColor.r, classColor.g, classColor.b, 1)
-                return
-            end
-        end
-    end
-
+    local backdropColor = (OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(globalSettings.UnitFrameBackdropColourCurve)) or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
     frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.5)
 end
 
 function Mixin:UpdateBackdropColor(frame, systemIndex, inheritFromPlayer)
-    if not frame then
-        return
-    end
+    if not frame then return end
     local bg = self:CreateBackground(frame)
-    if not bg then
-        return
-    end
+    if not bg then return end
 
-    -- Check global ClassColorBackground setting first
-    -- When enabled, use player's class color with full opacity for unit frame backdrops
-    local useClassColorBg = Orbit.db.GlobalSettings.ClassColorBackground
-    if useClassColorBg then
-        local _, class = UnitClass("player")
-        if class then
-            local classColor = C_ClassColor.GetClassColor(class)
-            if classColor then
-                bg:SetColorTexture(classColor.r, classColor.g, classColor.b, 1) -- 100% opacity
-                return
-            end
-        end
-    end
-
-    local color = self:GetInheritedSetting(systemIndex, "BackdropColour", inheritFromPlayer)
+    local globalSettings = Orbit.db.GlobalSettings or {}
+    local color = (OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(globalSettings.UnitFrameBackdropColourCurve))
     if color and type(color) == "table" then
         bg:SetColorTexture(color.r or 0, color.g or 0, color.b or 0, color.a or 0.5)
     else

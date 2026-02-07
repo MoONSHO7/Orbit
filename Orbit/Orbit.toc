@@ -20,6 +20,7 @@ Core\Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
 Core\Libs\LibSerialize\LibSerialize.lua
 Core\Libs\LibDeflate\LibDeflate.lua
 Core\Libs\LibCustomGlow-1.0\LibCustomGlow-1.0.xml
+Core\Libs\LibOrbitColorPicker-1.0\LibOrbitColorPicker-1.0.lua
 
 # ==============================================================
 # CORE
@@ -46,6 +47,7 @@ Core\Engine\Widgets\Dropdown.lua
 Core\Engine\Widgets\EditBox.lua
 Core\Engine\Widgets\Button.lua
 Core\Engine\Widgets\ColorPicker.lua
+Core\Engine\Widgets\ColorCurvePicker.lua
 Core\Engine\Widgets\TexturePicker.lua
 Core\Engine\Widgets\FontPicker.lua
 Core\Engine\Config.lua

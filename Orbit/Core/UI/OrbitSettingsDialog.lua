@@ -41,6 +41,10 @@ end)
 
 Dialog:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
+    local top = self:GetTop()
+    local left = self:GetLeft()
+    self:ClearAllPoints()
+    self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
 end)
 
 -- Close on combat to prevent Lua errors from protected operations
@@ -100,10 +104,7 @@ Dialog.attachedSystemIndex = nil
 -------------------------------------------------
 -- CORE API: UpdateDialog
 -------------------------------------------------
--- Matches Blizzard API pattern for easy migration
--- context = { system = pluginName, systemIndex = index, systemFrame = frame }
 function Dialog:UpdateDialog(context)
-    -- Prevent updates during combat
     if InCombatLockdown() then
         return
     end
@@ -129,21 +130,11 @@ function Dialog:UpdateDialog(context)
         return
     end
 
-    -- Store references
+    if plugin ~= self.attachedPlugin then self.orbitCurrentTab = nil end
+
     self.attachedToSystem = systemFrame
     self.attachedPlugin = plugin
     self.attachedSystemIndex = systemIndex
-
-    -- STATE CLEANUP: Hide Orbit Options specific elements (tabs/divider)
-    -- These will be re-shown by OrbitOptionsPanel:Open() if needed
-    if self.OrbitTabs then
-        for _, tab in ipairs(self.OrbitTabs) do
-            tab:Hide()
-        end
-    end
-    if self.OrbitHeaderDivider then
-        self.OrbitHeaderDivider:Hide()
-    end
 
     -- Update title
     local title = plugin.name
