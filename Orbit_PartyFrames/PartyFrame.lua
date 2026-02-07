@@ -7,7 +7,7 @@ local Helpers = nil
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local MAX_PARTY_FRAMES = 5 -- 4 party + 1 potential player
-local POWER_BAR_HEIGHT_RATIO = 0.2
+local POWER_BAR_HEIGHT_RATIO = Orbit.PartyFrameHelpers.LAYOUT.PowerBarRatio
 
 -- Role priority for sorting (Tank > Healer > DPS > None)
 local ROLE_PRIORITY = {
@@ -49,6 +49,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
         DisabledComponents = {},
         DisabledComponentsMigrated = false, -- Track migration from ShowXXX settings
         IncludePlayer = false, -- Show player in party frames
+        GrowthDirection = "Down",
         -- Dispel Indicator Settings
         DispelIndicatorEnabled = true,
         DispelFilterMode = "PLAYER", -- PLAYER or ALL
@@ -265,7 +266,7 @@ end
 -- [ AURA LAYOUT HELPERS ]---------------------------------------------------------------------------
 -- Smart layout: auto-sizing, multi-row support, grow-direction based on position
 
-local AURA_ROW_THRESHOLD = 30 -- Height threshold for multi-row layout
+local MAX_AURA_ICON_SIZE = 30
 local AURA_SPACING = 2
 
 -- Calculate smart aura layout based on frame dimensions and position
@@ -275,46 +276,24 @@ local function CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxIc
     local isHorizontal = (position == "Above" or position == "Below")
 
     if isHorizontal then
-        -- Above/Below: Start with single row, icon size fills width based on maxIcons
-        local singleRowIconSize = (frameWidth - (maxIcons - 1) * AURA_SPACING) / maxIcons
-        singleRowIconSize = math.max(12, singleRowIconSize)
-
-        -- Only go multi-row if icons would overflow OR frame is tall enough
-        local singleRowFitsWidth = (numIcons * singleRowIconSize) + ((numIcons - 1) * AURA_SPACING) <= frameWidth
-
-        if singleRowFitsWidth or frameHeight < AURA_ROW_THRESHOLD + 1 then
-            -- Single row
-            rows = 1
-            iconSize = singleRowIconSize
-            iconsPerRow = numIcons
-        else
-            -- Multi-row: calculate based on frame height
-            rows = math.ceil(frameHeight / AURA_ROW_THRESHOLD)
-            rows = math.min(rows, numIcons) -- Don't use more rows than icons
-            iconsPerRow = math.ceil(numIcons / rows)
-
-            local totalSpacing = (iconsPerRow - 1) * AURA_SPACING
-            iconSize = (frameWidth - totalSpacing) / maxIcons
-            iconSize = math.max(12, math.min(iconSize, frameHeight / rows))
-        end
-
-        containerWidth = (iconsPerRow * iconSize) + ((iconsPerRow - 1) * AURA_SPACING)
+        -- Above/Below: icon size capped at MAX_AURA_ICON_SIZE, overflow wraps into rows
+        iconSize = math.min(MAX_AURA_ICON_SIZE, (frameWidth - (maxIcons - 1) * AURA_SPACING) / maxIcons)
+        iconSize = math.max(12, iconSize)
+        iconsPerRow = math.max(1, math.floor((frameWidth + AURA_SPACING) / (iconSize + AURA_SPACING)))
+        rows = math.ceil(numIcons / iconsPerRow)
+        containerWidth = (math.min(numIcons, iconsPerRow) * iconSize) + ((math.min(numIcons, iconsPerRow) - 1) * AURA_SPACING)
         containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
     else
-        -- Left/Right: Calculate rows based on frame height
-        if frameHeight < AURA_ROW_THRESHOLD + 1 then
+        -- Left/Right: size icons relative to frame height
+        if frameHeight < MAX_AURA_ICON_SIZE then
             rows = 1
+            iconSize = frameHeight
         else
-            rows = math.ceil(frameHeight / AURA_ROW_THRESHOLD)
-            rows = math.min(rows, numIcons) -- Don't use more rows than icons
+            rows = math.min(2, numIcons)
+            iconSize = (frameHeight - AURA_SPACING) / 2
         end
-
-        -- Icon size based on frame height and rows
-        iconSize = frameHeight / rows
-        iconSize = math.max(12, iconSize) -- Min 12px
-
+        iconSize = math.max(12, iconSize)
         iconsPerRow = math.ceil(numIcons / rows)
-
         containerWidth = (iconsPerRow * iconSize) + ((iconsPerRow - 1) * AURA_SPACING)
         containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
     end
@@ -331,14 +310,15 @@ local function PositionAuraIcon(icon, container, position, col, row, iconSize, i
     icon:ClearAllPoints()
 
     if isHorizontal then
-        -- Above/Below: grow left-to-right, rows stack outward
         xOffset = col * (iconSize + AURA_SPACING)
+        yOffset = row * (iconSize + AURA_SPACING)
         if position == "Above" then
-            yOffset = -row * (iconSize + AURA_SPACING) -- Rows grow upward
+            -- Rows grow upward (away from frame): anchor from bottom
+            icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOffset, yOffset)
         else
-            yOffset = row * (iconSize + AURA_SPACING) -- Rows grow downward
+            -- Rows grow downward (away from frame): anchor from top
+            icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
         end
-        icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
     elseif position == "Left" then
         -- Left: grow right-to-left (away from center)
         xOffset = col * (iconSize + AURA_SPACING)
@@ -815,20 +795,36 @@ function Plugin:AddSettings(dialog, systemFrame)
             options = { { text = "Vertical", value = 0 }, { text = "Horizontal", value = 1 } },
             onChange = function(val)
                 self:SetSetting(1, "Orientation", val)
+                local defaultGrowth = val == 0 and "Down" or "Right"
+                self:SetSetting(1, "GrowthDirection", defaultGrowth)
                 self:ApplySettings()
+                if self.frames and self.frames[1] and self.frames[1].preview then self:SchedulePreviewUpdate() end
                 if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 100, max = 250, step = 5, default = 160, onChange = makeOnChange(self, "Width") })
-        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 5, default = 40, onChange = makeOnChange(self, "Height") })
-        table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 10, step = 1, default = 0, onChange = makeOnChange(self, "Spacing") })
+        local growthOptions = orientation == 0
+            and { { text = "Down", value = "Down" }, { text = "Up", value = "Up" }, { text = "Center", value = "Center" } }
+            or { { text = "Right", value = "Right" }, { text = "Left", value = "Left" }, { text = "Center", value = "Center" } }
+        table.insert(schema.controls, {
+            type = "dropdown", key = "GrowthDirection", label = "Growth Direction",
+            default = orientation == 0 and "Down" or "Right", options = growthOptions,
+            onChange = makeOnChange(self, "GrowthDirection"),
+        })
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 100, max = 300, step = 5, default = 160, onChange = makeOnChange(self, "Width") })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 5, default = 40, onChange = makeOnChange(self, "Height") })
+        table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 25, step = 1, default = 0, onChange = makeOnChange(self, "Spacing") })
         table.insert(schema.controls, {
             type = "dropdown", key = "HealthTextMode", label = "Health Text", default = "percent_short",
             options = {
-                { text = "Hide", value = "hide" },
+                { text = "Percentage", value = "percent" },
+                { text = "Short Health", value = "short" },
+                { text = "Raw Health", value = "raw" },
+                { text = "Short - Percentage", value = "short_and_percent" },
                 { text = "Percentage / Short", value = "percent_short" },
-                { text = "Short / Percentage", value = "short_percent" },
                 { text = "Percentage / Raw", value = "percent_raw" },
+                { text = "Short / Percentage", value = "short_percent" },
+                { text = "Short / Raw", value = "short_raw" },
+                { text = "Raw / Short", value = "raw_short" },
                 { text = "Raw / Percentage", value = "raw_percent" },
             },
             onChange = makeOnChange(self, "HealthTextMode"),
@@ -855,6 +851,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = function(val)
                 self:SetSetting(1, debuffKey, val)
                 self:ApplySettings()
+                if self.frames and self.frames[1] and self.frames[1].preview then self:SchedulePreviewUpdate() end
                 if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
@@ -872,6 +869,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = function(val)
                 self:SetSetting(1, buffKey, val)
                 self:ApplySettings()
+                if self.frames and self.frames[1] and self.frames[1].preview then self:SchedulePreviewUpdate() end
                 if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
@@ -1161,13 +1159,13 @@ function Plugin:PositionFrames()
     local orientation = self:GetSetting(1, "Orientation") or 0
     local width = self:GetSetting(1, "Width") or 160
     local height = self:GetSetting(1, "Height") or 40
+    local growthDirection = self:GetSetting(1, "GrowthDirection") or (orientation == 0 and "Down" or "Right")
+    local numFrames = #self.frames
 
-    -- Position party frames
     for i, frame in ipairs(self.frames) do
         frame:ClearAllPoints()
-
-        local xOffset, yOffset = Helpers:CalculateFramePosition(i, width, height, spacing, orientation)
-        frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", xOffset, yOffset)
+        local xOffset, yOffset, frameAnchor, containerAnchor = Helpers:CalculateFramePosition(i, width, height, spacing, orientation, growthDirection, numFrames)
+        frame:SetPoint(frameAnchor, self.container, containerAnchor, xOffset, yOffset)
     end
 
     self:UpdateContainerSize()

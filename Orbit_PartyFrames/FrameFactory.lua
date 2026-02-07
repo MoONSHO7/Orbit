@@ -5,7 +5,7 @@ local OrbitEngine = Orbit.Engine
 Orbit.PartyFrameFactoryMixin = {}
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local POWER_BAR_HEIGHT_RATIO = 0.15
+local POWER_BAR_HEIGHT_RATIO = Orbit.PartyFrameHelpers.LAYOUT.PowerBarRatio
 
 -- [ POWER BAR CREATION ]----------------------------------------------------------------------------
 

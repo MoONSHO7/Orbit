@@ -256,7 +256,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 local inset = borderSize or 1
                 frame.Health:ClearAllPoints()
                 if showPower then
-                    local powerHeight = height * 0.2
+                    local powerHeight = height * Helpers.LAYOUT.PowerBarRatio
                     frame.Health:SetPoint("TOPLEFT", inset, -inset)
                     frame.Health:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, powerHeight + inset)
                 else
@@ -301,8 +301,23 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 if isHealthTextDisabled then
                     frame.HealthText:Hide()
                 else
-                    frame.HealthText:SetText(PREVIEW_DEFAULTS.HealthPercents[i] .. "%")
-                    -- Health text uses same font color logic as name
+                    local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
+                    local pct = PREVIEW_DEFAULTS.HealthPercents[i]
+                    local shortVals = { "125K", "98.5K", "45.2K", "22.1K", "150K" }
+                    local rawVals = { "125,000", "98,500", "45,200", "22,100", "150,000" }
+                    local fmtMap = {
+                        percent = pct .. "%",
+                        short = shortVals[i],
+                        raw = rawVals[i],
+                        percent_short = pct .. "%",
+                        percent_raw = pct .. "%",
+                        short_percent = shortVals[i],
+                        short_raw = shortVals[i],
+                        raw_short = rawVals[i],
+                        raw_percent = rawVals[i],
+                        short_and_percent = shortVals[i] .. " - " .. pct .. "%",
+                    }
+                    frame.HealthText:SetText(fmtMap[healthTextMode] or (pct .. "%"))
                     if self.GetPreviewTextColor then
                         local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_DEFAULTS.Classes[i], nil)
                         frame.HealthText:SetTextColor(r, g, b, a)
@@ -600,21 +615,29 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posi
     -- Calculate icon size based on position
     local iconSize
     if isHorizontal then
-        iconSize = (frameWidth - (maxIcons - 1) * spacing) / maxIcons
+        iconSize = math.min(30, (frameWidth - (maxIcons - 1) * spacing) / maxIcons)
         iconSize = math.max(12, iconSize)
     else
-        iconSize = frameHeight
+        if frameHeight < 30 then
+            iconSize = frameHeight
+        else
+            iconSize = (frameHeight - spacing) / 2
+        end
         iconSize = math.max(12, iconSize)
     end
 
     -- Calculate container size
-    local containerWidth, containerHeight
+    local rows, iconsPerRow
     if isHorizontal then
-        containerWidth = (numIcons * iconSize) + ((numIcons - 1) * spacing)
-        containerHeight = iconSize
+        iconsPerRow = math.max(1, math.floor((frameWidth + spacing) / (iconSize + spacing)))
+        rows = math.ceil(numIcons / iconsPerRow)
+        containerWidth = (math.min(numIcons, iconsPerRow) * iconSize) + ((math.min(numIcons, iconsPerRow) - 1) * spacing)
+        containerHeight = (rows * iconSize) + ((rows - 1) * spacing)
     else
-        containerWidth = (numIcons * iconSize) + ((numIcons - 1) * spacing)
-        containerHeight = iconSize
+        rows = (frameHeight < 30 or numIcons <= 1) and 1 or 2
+        iconsPerRow = math.ceil(numIcons / rows)
+        containerWidth = (iconsPerRow * iconSize) + ((iconsPerRow - 1) * spacing)
+        containerHeight = (rows * iconSize) + ((rows - 1) * spacing)
     end
 
     container:SetSize(containerWidth, containerHeight)
@@ -670,15 +693,20 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posi
         icon:SetParent(container)
         icon:SetSize(iconSize, iconSize)
 
-        -- Position icon
+        -- Position icon in grid
         icon:ClearAllPoints()
-        local xOffset = (i - 1) * (iconSize + spacing)
-        if position == "Left" then
-            -- Grow right-to-left (away from center)
-            icon:SetPoint("TOPRIGHT", container, "TOPRIGHT", -xOffset, 0)
+        local col = (i - 1) % iconsPerRow
+        local row = math.floor((i - 1) / iconsPerRow)
+        local xOffset = col * (iconSize + spacing)
+        local yOffset = row * (iconSize + spacing)
+        if position == "Above" then
+            icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOffset, yOffset)
+        elseif position == "Below" then
+            icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
+        elseif position == "Left" then
+            icon:SetPoint("TOPRIGHT", container, "TOPRIGHT", -xOffset, -yOffset)
         else
-            -- Grow left-to-right
-            icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, 0)
+            icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
         end
 
         -- Set texture (cycle through sample icons)

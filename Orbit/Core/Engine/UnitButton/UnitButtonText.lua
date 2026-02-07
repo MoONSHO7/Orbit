@@ -13,12 +13,16 @@ local UnitButton = Engine.UnitButton
 -- Export modes for use by plugins
 local HEALTH_TEXT_MODES = {
     HIDE = "hide",
+    PERCENT = "percent",
+    SHORT = "short",
+    RAW = "raw",
     PERCENT_SHORT = "percent_short",
     PERCENT_RAW = "percent_raw",
     SHORT_PERCENT = "short_percent",
     SHORT_RAW = "short_raw",
     RAW_SHORT = "raw_short",
     RAW_PERCENT = "raw_percent",
+    SHORT_AND_PERCENT = "short_and_percent",
 }
 UnitButton.HEALTH_TEXT_MODES = HEALTH_TEXT_MODES
 
@@ -93,6 +97,9 @@ function TextMixin:GetHealthTextFormats()
     local mode = self.healthTextMode or HEALTH_TEXT_MODES.PERCENT_SHORT
 
     local formatMap = {
+        [HEALTH_TEXT_MODES.PERCENT] = { "percent", "percent" },
+        [HEALTH_TEXT_MODES.SHORT] = { "short", "short" },
+        [HEALTH_TEXT_MODES.RAW] = { "raw", "raw" },
         [HEALTH_TEXT_MODES.PERCENT_SHORT] = { "percent", "short" },
         [HEALTH_TEXT_MODES.PERCENT_RAW] = { "percent", "raw" },
         [HEALTH_TEXT_MODES.SHORT_PERCENT] = { "short", "percent" },
@@ -141,6 +148,16 @@ function TextMixin:UpdateHealthText()
     if UnitIsDeadOrGhost(self.unit) then
         self.HealthText:SetText("Dead")
         self.HealthText:Show()
+        return
+    end
+
+    -- Combined mode: show both values simultaneously
+    if mode == HEALTH_TEXT_MODES.SHORT_AND_PERCENT then
+        local short = GetHealthTextForFormat(self.unit, "short")
+        local pct = GetHealthTextForFormat(self.unit, "percent")
+        self.HealthText:SetText(short .. " - " .. pct)
+        self.HealthText:Show()
+        self:ApplyHealthTextColor()
         return
     end
 
