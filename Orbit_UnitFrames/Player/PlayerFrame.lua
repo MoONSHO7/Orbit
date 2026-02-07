@@ -88,6 +88,10 @@ function Plugin:AddSettings(dialog, systemFrame)
             type = "dropdown", key = "HealthTextMode", label = "Health Text",
             options = {
                 { text = "Hide", value = "hide" },
+                { text = "Percentage", value = "percent" },
+                { text = "Short Health", value = "short" },
+                { text = "Raw Health", value = "raw" },
+                { text = "Short - Percentage", value = "short_and_percent" },
                 { text = "Percentage / Short", value = "percent_short" },
                 { text = "Percentage / Raw", value = "percent_raw" },
                 { text = "Short / Percentage", value = "short_percent" },
