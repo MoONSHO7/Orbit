@@ -900,7 +900,6 @@ function Plugin:UpdatePower()
                 Frame.StatusBar:SetMinMaxValues(0, maxHealth)
                 Frame.StatusBar:SetValue(stagger, SMOOTH_ANIM)
 
-                -- Sample color from StaggerColorCurve based on stagger percentage
                 local staggerPercent = (maxHealth > 0) and (stagger / maxHealth) or 0
                 local curveData = self:GetSetting(SYSTEM_INDEX, "StaggerColorCurve")
                 local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, staggerPercent)

@@ -485,6 +485,21 @@ function Plugin:LoadTrackedItems(anchor, systemIndex)
 end
 
 -- [ ICON UPDATES ]-----------------------------------------------------------------------------------
+local function IsSpellUsable(spellId)
+    if not spellId then return false end
+    if IsSpellKnown(spellId) then return true end
+    if IsPlayerSpell(spellId) then return true end
+    local cooldown = C_Spell.GetSpellCooldown(spellId)
+    return cooldown and cooldown.startTime and cooldown.startTime > 0
+end
+
+local function IsItemUsable(itemId)
+    if not itemId then return false end
+    local usable, noMana = C_Item.IsUsableItem(itemId)
+    if usable or noMana then return true end
+    return C_Item.GetItemCount(itemId, false, true) > 0
+end
+
 function Plugin:UpdateTrackedIcon(icon)
     if not icon.trackedId then
         icon:Hide()
@@ -495,7 +510,12 @@ function Plugin:UpdateTrackedIcon(icon)
     local showGCDSwipe = self:GetSetting(systemIndex, "ShowGCDSwipe") ~= false
 
     local texture, durObj, remainingPercent = nil, nil, 1
+    local isUsable = false
+
     if icon.trackedType == "spell" then
+        isUsable = IsSpellUsable(icon.trackedId)
+        if not isUsable then icon:Hide() return end
+
         texture = C_Spell.GetSpellTexture(icon.trackedId)
         if texture then
             icon.Icon:SetTexture(texture)
@@ -530,6 +550,9 @@ function Plugin:UpdateTrackedIcon(icon)
             end
         end
     elseif icon.trackedType == "item" then
+        isUsable = IsItemUsable(icon.trackedId)
+        if not isUsable then icon:Hide() return end
+
         texture = C_Item.GetItemIconByID(icon.trackedId)
         if texture then
             icon.Icon:SetTexture(texture)
@@ -594,6 +617,12 @@ function Plugin:UpdateTrackedIconsDisplay(anchor)
     end
 end
 
+local function IsGridItemUsable(data)
+    if data.type == "spell" then return IsSpellUsable(data.id) end
+    if data.type == "item" then return IsItemUsable(data.id) end
+    return false
+end
+
 -- [ LAYOUT ]-----------------------------------------------------------------------------------------
 function Plugin:LayoutTrackedIcons(anchor, systemIndex)
     if not anchor then return end
@@ -601,15 +630,21 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
     local iconWidth, iconHeight = CooldownUtils:CalculateIconDimensions(self, systemIndex)
     local padding = self:GetSetting(systemIndex, "IconPadding") or Constants.Cooldown.DefaultPadding
 
-    local gridItems = anchor.gridItems or {}
+    local rawGridItems = anchor.gridItems or {}
     local isDragging = GetCursorInfo() ~= nil
     local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
+
+    -- Filter to only usable items (prevents cross-character ability bleed)
+    local gridItems = {}
+    for key, data in pairs(rawGridItems) do
+        if IsGridItemUsable(data) then gridItems[key] = data end
+    end
 
     -- Hide all existing icons and edge buttons
     for _, icon in pairs(anchor.activeIcons or {}) do icon:Hide() end
     for _, btn in pairs(anchor.edgeButtons or {}) do btn:Hide() end
 
-    -- Calculate grid bounds from actual items
+    -- Calculate grid bounds from usable items only
     local minX, maxX, minY, maxY
     local hasItems = false
     for key, data in pairs(gridItems) do
@@ -625,6 +660,7 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         end
     end
     if not hasItems then minX, maxX, minY, maxY = 0, 0, 0, 0 end
+
 
     -- Handle empty grid
     if not hasItems then
