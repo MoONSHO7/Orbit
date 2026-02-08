@@ -98,7 +98,9 @@ local essenceState = { nextTick = nil, lastEssence = 0 }
 
 function Mixin:GetEssenceState(essenceIndex, currentEssence, maxEssence)
     local now = GetTime()
-    local tickDuration = 1 / (GetPowerRegenForPowerType(Enum.PowerType.Essence) or 0.2)
+    local regen = GetPowerRegenForPowerType(Enum.PowerType.Essence)
+    if not regen or regen <= 0 then return "empty", 0, 0 end
+    local tickDuration = 1 / regen
     if currentEssence ~= essenceState.lastEssence then
         essenceState.nextTick = currentEssence < maxEssence and (now + tickDuration) or nil
     end
@@ -177,7 +179,9 @@ end
 
 function Mixin:GetEbonMightState()
     local aura = C_UnitAuras.GetPlayerAuraBySpellID(EBON_MIGHT_AURA_ID)
-    if not aura then return 0, EBON_MIGHT_MAX_DURATION end
+    if not aura then
+        return 0, EBON_MIGHT_MAX_DURATION
+    end
     local remaining = math.max(0, aura.expirationTime - GetTime())
     return remaining, EBON_MIGHT_MAX_DURATION
 end

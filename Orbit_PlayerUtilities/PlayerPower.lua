@@ -5,6 +5,8 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- Compatibility for 12.0 / Native Smoothing
 local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
+local UPDATE_INTERVAL = 0.05
+local AUGMENTATION_SPEC_ID = 1473
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
 local function SafeUnitPowerPercent(unit, resource)
@@ -201,12 +203,14 @@ function Plugin:OnLoad()
     Frame:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
     Frame:RegisterUnitEvent("UNIT_MAXPOWER", "player")
     Frame:RegisterUnitEvent("UNIT_DISPLAYPOWER", "player")
+    Frame:RegisterUnitEvent("UNIT_AURA", "player")
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
     Frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 
     Frame:SetScript("OnEvent", function(f, event)
-        if event == "PLAYER_ENTERING_WORLD" then
+        if event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_SPECIALIZATION_CHANGED" then
             self:UpdateVisibility()
+            self:RefreshOnUpdate()
         else
             self:UpdateAll()
         end
@@ -237,6 +241,21 @@ function Plugin:OnLoad()
     end
 
     self:UpdateVisibility()
+    self:RefreshOnUpdate()
+end
+
+function Plugin:RefreshOnUpdate()
+    local _, class = UnitClass("player")
+    local spec = GetSpecialization()
+    local specID = spec and GetSpecializationInfo(spec)
+    local needsTicker = (class == "EVOKER" and specID == AUGMENTATION_SPEC_ID)
+    Frame:SetScript("OnUpdate", needsTicker and function(_, elapsed)
+        Frame.elapsed = (Frame.elapsed or 0) + elapsed
+        if Frame.elapsed >= UPDATE_INTERVAL then
+            Frame.elapsed = 0
+            self:UpdateAll()
+        end
+    end or nil)
 end
 
 -- [ VISIBILITY ]-------------------------------------------------------------------------------------
@@ -400,7 +419,7 @@ function Plugin:UpdateAll()
     local spec = GetSpecialization()
     local specID = spec and GetSpecializationInfo(spec)
 
-    if class == "EVOKER" and specID == 1473 then
+    if class == "EVOKER" and specID == AUGMENTATION_SPEC_ID then
         local current, max = Orbit.ResourceBarMixin:GetEbonMightState()
         if current and max and max > 0 then
             PowerBar:SetMinMaxValues(0, max)

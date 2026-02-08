@@ -18,12 +18,16 @@ local _, PLAYER_CLASS = UnitClass("player")
 -- [ HELPERS ]--------------------------------------------------------------------------------------
 local CanUseUnitPowerPercent = (type(UnitPowerPercent) == "function" and CurveConstants and CurveConstants.ScaleTo100)
 local function SafeUnitPowerPercent(unit, resource)
-    if not CanUseUnitPowerPercent then return nil end
+    if not CanUseUnitPowerPercent then
+        return nil
+    end
     return UnitPowerPercent(unit, resource, false, CurveConstants.ScaleTo100)
 end
 
 local function SnapToPixel(value, scale)
-    if OrbitEngine.Pixel then return OrbitEngine.Pixel:Snap(value, scale) end
+    if OrbitEngine.Pixel then
+        return OrbitEngine.Pixel:Snap(value, scale)
+    end
     return math.floor(value * scale + 0.5) / scale
 end
 
@@ -31,30 +35,50 @@ end
 local CONTINUOUS_RESOURCE_CONFIG = {
     STAGGER = {
         curveKey = "StaggerColorCurve",
-        getState = function() return ResourceMixin:GetStaggerState() end,
-        updateText = function(text, current) text:SetFormattedText("%.0f", current) end,
+        getState = function()
+            return ResourceMixin:GetStaggerState()
+        end,
+        updateText = function(text, current)
+            text:SetFormattedText("%.0f", current)
+        end,
     },
     SOUL_FRAGMENTS = {
         curveKey = "SoulFragmentsColorCurve",
-        getState = function() return ResourceMixin:GetSoulFragmentsState() end,
-        updateText = function(text, current) text:SetText(current) end,
+        getState = function()
+            return ResourceMixin:GetSoulFragmentsState()
+        end,
+        updateText = function(text, current)
+            text:SetText(current)
+        end,
     },
     EBON_MIGHT = {
         curveKey = "EbonMightColorCurve",
-        getState = function() return ResourceMixin:GetEbonMightState() end,
-        updateText = function(text, current) text:SetFormattedText("%.1f", current) end,
+        getState = function()
+            return ResourceMixin:GetEbonMightState()
+        end,
+        updateText = function(text, current)
+            text:SetFormattedText("%.1f", current)
+        end,
     },
     MANA = {
         curveKey = "ManaColorCurve",
-        getState = function() return UnitPower("player", Enum.PowerType.Mana), UnitPowerMax("player", Enum.PowerType.Mana) end,
+        getState = function()
+            return UnitPower("player", Enum.PowerType.Mana), UnitPowerMax("player", Enum.PowerType.Mana)
+        end,
         updateText = function(text, current)
             local percent = SafeUnitPowerPercent("player", Enum.PowerType.Mana)
-            if percent then text:SetFormattedText("%.0f", percent) else text:SetText(current) end
+            if percent then
+                text:SetFormattedText("%.0f", percent)
+            else
+                text:SetText(current)
+            end
         end,
     },
     MAELSTROM_WEAPON = {
         curveKey = "MaelstromWeaponColorCurve",
-        getState = function() return ResourceMixin:GetMaelstromWeaponState() end,
+        getState = function()
+            return ResourceMixin:GetMaelstromWeaponState()
+        end,
         updateText = function(text, _, _, hasAura, auraInstanceID)
             if hasAura and auraInstanceID and C_UnitAuras.GetAuraApplicationDisplayCount then
                 text:SetText(C_UnitAuras.GetAuraApplicationDisplayCount("player", auraInstanceID))
@@ -79,11 +103,13 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         BarColor = { r = 1, g = 1, b = 1, a = 1 },
         BarColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
         -- Stagger (Brewmaster Monk) - Green→Yellow→Red gradient
-        StaggerColorCurve = { pins = {
-            { position = 0, color = { r = 0.52, g = 1.0, b = 0.52, a = 1 } },
-            { position = 0.5, color = { r = 1.0, g = 0.98, b = 0.72, a = 1 } },
-            { position = 1, color = { r = 1.0, g = 0.42, b = 0.42, a = 1 } },
-        } },
+        StaggerColorCurve = {
+            pins = {
+                { position = 0, color = { r = 0.52, g = 1.0, b = 0.52, a = 1 } },
+                { position = 0.5, color = { r = 1.0, g = 0.98, b = 0.72, a = 1 } },
+                { position = 1, color = { r = 1.0, g = 0.42, b = 0.42, a = 1 } },
+            },
+        },
         -- Soul Fragments (Demon Hunter) - Purple (VoidMeta is darker blue)
         SoulFragmentsColorCurve = { pins = { { position = 0, color = { r = 0.278, g = 0.125, b = 0.796, a = 1 } } } },
         -- Ebon Might (Aug Evoker) - Green
@@ -127,17 +153,27 @@ function Plugin:AddSettings(dialog, systemFrame)
     elseif currentTab == "Visibility" then
         WL:AddOpacitySettings(self, schema, SYSTEM_INDEX, systemFrame, { step = 5 })
         table.insert(schema.controls, {
-            type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
+            type = "checkbox",
+            key = "OutOfCombatFade",
+            label = "Out of Combat Fade",
+            default = false,
             tooltip = "Hide frame when out of combat with no target",
             onChange = function(val)
                 self:SetSetting(SYSTEM_INDEX, "OutOfCombatFade", val)
-                if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
-                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+                if Orbit.OOCFadeMixin then
+                    Orbit.OOCFadeMixin:RefreshAll()
+                end
+                if dialog.orbitTabCallback then
+                    dialog.orbitTabCallback()
+                end
             end,
         })
         if self:GetSetting(SYSTEM_INDEX, "OutOfCombatFade") then
             table.insert(schema.controls, {
-                type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
+                type = "checkbox",
+                key = "ShowOnMouseover",
+                label = "Show on Mouseover",
+                default = true,
                 tooltip = "Reveal frame when mousing over it",
                 onChange = function(val)
                     self:SetSetting(SYSTEM_INDEX, "ShowOnMouseover", val)
@@ -147,17 +183,24 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
     elseif currentTab == "Colour" then
         table.insert(schema.controls, {
-            type = "checkbox", key = "UseCustomColor", label = "Use Custom Color", default = false,
+            type = "checkbox",
+            key = "UseCustomColor",
+            label = "Use Custom Color",
+            default = false,
             onChange = function(val)
                 self:SetSetting(SYSTEM_INDEX, "UseCustomColor", val)
                 self:ApplyButtonVisuals()
                 self:UpdatePower()
-                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+                if dialog.orbitTabCallback then
+                    dialog.orbitTabCallback()
+                end
             end,
         })
         if self:GetSetting(SYSTEM_INDEX, "UseCustomColor") then
             table.insert(schema.controls, {
-                type = "colorcurve", key = "BarColorCurve", label = "Bar Color",
+                type = "colorcurve",
+                key = "BarColorCurve",
+                label = "Bar Color",
                 default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
                 onChange = function(curveData)
                     self:SetSetting(SYSTEM_INDEX, "BarColorCurve", curveData)
@@ -167,31 +210,56 @@ function Plugin:AddSettings(dialog, systemFrame)
             })
         end
         local curveControls = {
-            { resource = "STAGGER", key = "StaggerColorCurve", label = "Stagger Colour",
-              tooltip = "Color gradient from low (left) to heavy (right) stagger",
-              default = { pins = {
-                  { position = 0, color = { r = 0.52, g = 1.0, b = 0.52, a = 1 } },
-                  { position = 0.5, color = { r = 1.0, g = 0.98, b = 0.72, a = 1 } },
-                  { position = 1, color = { r = 1.0, g = 0.42, b = 0.42, a = 1 } },
-              } } },
-            { resource = "SOUL_FRAGMENTS", key = "SoulFragmentsColorCurve", label = "Soul Fragments Colour",
-              tooltip = "Color gradient from empty (left) to full (right)",
-              default = { pins = { { position = 0, color = { r = 0.278, g = 0.125, b = 0.796, a = 1 } } } } },
-            { resource = "EBON_MIGHT", key = "EbonMightColorCurve", label = "Ebon Might Colour",
-              tooltip = "Color gradient from empty (left) to full (right)",
-              default = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.4, a = 1 } } } } },
-            { resource = "MANA", key = "ManaColorCurve", label = "Mana Colour",
-              tooltip = "Color gradient from empty (left) to full (right)",
-              default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } } },
-            { resource = "MAELSTROM_WEAPON", key = "MaelstromWeaponColorCurve", label = "Maelstrom Colour",
-              tooltip = "Color gradient from empty (left) to full (right)",
-              default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } } },
+            {
+                resource = "STAGGER",
+                key = "StaggerColorCurve",
+                label = "Stagger Colour",
+                tooltip = "Color gradient from low (left) to heavy (right) stagger",
+                default = {
+                    pins = {
+                        { position = 0, color = { r = 0.52, g = 1.0, b = 0.52, a = 1 } },
+                        { position = 0.5, color = { r = 1.0, g = 0.98, b = 0.72, a = 1 } },
+                        { position = 1, color = { r = 1.0, g = 0.42, b = 0.42, a = 1 } },
+                    },
+                },
+            },
+            {
+                resource = "SOUL_FRAGMENTS",
+                key = "SoulFragmentsColorCurve",
+                label = "Soul Fragments Colour",
+                tooltip = "Color gradient from empty (left) to full (right)",
+                default = { pins = { { position = 0, color = { r = 0.278, g = 0.125, b = 0.796, a = 1 } } } },
+            },
+            {
+                resource = "EBON_MIGHT",
+                key = "EbonMightColorCurve",
+                label = "Ebon Might Colour",
+                tooltip = "Color gradient from empty (left) to full (right)",
+                default = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.4, a = 1 } } } },
+            },
+            {
+                resource = "MANA",
+                key = "ManaColorCurve",
+                label = "Mana Colour",
+                tooltip = "Color gradient from empty (left) to full (right)",
+                default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
+            },
+            {
+                resource = "MAELSTROM_WEAPON",
+                key = "MaelstromWeaponColorCurve",
+                label = "Maelstrom Colour",
+                tooltip = "Color gradient from empty (left) to full (right)",
+                default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
+            },
         }
         for _, ctrl in ipairs(curveControls) do
             if self.continuousResource == ctrl.resource then
                 table.insert(schema.controls, {
-                    type = "colorcurve", key = ctrl.key, label = ctrl.label,
-                    tooltip = ctrl.tooltip, default = ctrl.default,
+                    type = "colorcurve",
+                    key = ctrl.key,
+                    label = ctrl.label,
+                    tooltip = ctrl.tooltip,
+                    default = ctrl.default,
                     onChange = function(curveData)
                         self:SetSetting(SYSTEM_INDEX, ctrl.key, curveData)
                         self:UpdatePower()
@@ -559,8 +627,10 @@ function Plugin:ApplyButtonVisuals()
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
 
     local max = math.max(1, Frame.maxPower or #Frame.buttons)
-    local globalBgColor = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColourCurve
-        and OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve)
+    local globalBgColor = Orbit.db.GlobalSettings
+        and Orbit.db.GlobalSettings.BackdropColourCurve
+        and OrbitEngine.WidgetLogic
+        and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve)
     local bgColor = globalBgColor or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
 
     for i, btn in ipairs(Frame.buttons) do
@@ -620,7 +690,7 @@ end
 function Plugin:GetResourceColor(index, maxResources, isCharged)
     local colors = Orbit.Colors.PlayerResources
     local fallback = colors[PLAYER_CLASS] or { r = 1, g = 1, b = 1 }
-    
+
     local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
     local curveData = self:GetSetting(SYSTEM_INDEX, "BarColorCurve")
 
@@ -635,14 +705,19 @@ function Plugin:GetResourceColor(index, maxResources, isCharged)
         return curveColor or fallback
     end
 
-    if isCharged then return colors.ChargedComboPoint or fallback end
+    if isCharged then
+        return colors.ChargedComboPoint or fallback
+    end
 
     if PLAYER_CLASS == "DEATHKNIGHT" then
         local spec = GetSpecialization()
         local specID = spec and GetSpecializationInfo(spec)
-        if specID == 250 then return colors.RuneBlood or fallback
-        elseif specID == 251 then return colors.RuneFrost or fallback
-        elseif specID == 252 then return colors.RuneUnholy or fallback
+        if specID == 250 then
+            return colors.RuneBlood or fallback
+        elseif specID == 251 then
+            return colors.RuneFrost or fallback
+        elseif specID == 252 then
+            return colors.RuneUnholy or fallback
         end
     end
 
@@ -889,9 +964,26 @@ function Plugin:UpdateContinuousBar(curveKey, current, max)
     Frame.StatusBar:SetMinMaxValues(0, max)
     Frame.StatusBar:SetValue(current, SMOOTH_ANIM)
     local curveData = self:GetSetting(SYSTEM_INDEX, curveKey)
-    local progress = (max > 0) and (current / max) or 0
+    if not curveData then return end
+
+    -- MANA: use UnitPowerPercent + native ColorCurve (fully secret-safe)
+    if self.continuousResource == "MANA" then
+        local nativeCurve = OrbitEngine.WidgetLogic:ToNativeColorCurve(curveData)
+        if nativeCurve and CanUseUnitPowerPercent then
+            local color = UnitPowerPercent("player", Enum.PowerType.Mana, false, nativeCurve)
+            if color then
+                Frame.StatusBar:GetStatusBarTexture():SetVertexColor(color:GetRGBA())
+                return
+            end
+        end
+    end
+
+
+    
     local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
-    if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
+    if color then
+        Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
+    end
 end
 
 function Plugin:UpdatePower()
@@ -989,22 +1081,34 @@ function Plugin:UpdatePower()
                         btn.orbitBar:Show()
                         btn.orbitBar:SetVertexColor(color.r, color.g, color.b)
                     end
-                    if btn.Overlay then btn.Overlay:Show() end
-                    if btn.progressBar then btn.progressBar:Hide() end
+                    if btn.Overlay then
+                        btn.Overlay:Show()
+                    end
+                    if btn.progressBar then
+                        btn.progressBar:Hide()
+                    end
                 elseif state == "partial" then
                     if btn.orbitBar then
                         btn.orbitBar:Show()
                         btn.orbitBar:SetVertexColor(color.r * 0.5, color.g * 0.5, color.b * 0.5)
                     end
-                    if btn.Overlay then btn.Overlay:Hide() end
+                    if btn.Overlay then
+                        btn.Overlay:Hide()
+                    end
                     btn:SetFraction(fraction)
                     if btn.progressBar then
                         btn.progressBar:SetStatusBarColor(color.r * 0.7, color.g * 0.7, color.b * 0.7)
                     end
                 else
-                    if btn.orbitBar then btn.orbitBar:Hide() end
-                    if btn.Overlay then btn.Overlay:Hide() end
-                    if btn.progressBar then btn.progressBar:Hide() end
+                    if btn.orbitBar then
+                        btn.orbitBar:Hide()
+                    end
+                    if btn.Overlay then
+                        btn.Overlay:Hide()
+                    end
+                    if btn.progressBar then
+                        btn.progressBar:Hide()
+                    end
                 end
             end
         end
@@ -1027,12 +1131,14 @@ function Plugin:UpdatePower()
     local cur = UnitPower("player", self.powerType, true)
     local max = Frame.maxPower or 5
     local mod = UnitPowerDisplayMod(self.powerType)
-    if mod and mod > 0 then cur = cur / mod end
-    
+    if mod and mod > 0 then
+        cur = cur / mod
+    end
+
     local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
     local curveData = self:GetSetting(SYSTEM_INDEX, "BarColorCurve")
     local color
-    
+
     if useCustomColor and curveData then
         local progress = (max > 0) and (cur / max) or 0
         color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
@@ -1047,7 +1153,9 @@ function Plugin:UpdatePower()
     if Frame.StatusBar then
         Frame.StatusBar:SetMinMaxValues(0, max)
         Frame.StatusBar:SetValue(cur, SMOOTH_ANIM)
-        if color then Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
+        if color then
+            Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
+        end
     end
 
     -- Update Spacers (Pixel-Perfect)
