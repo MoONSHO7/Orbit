@@ -1124,6 +1124,12 @@ function Plugin:ReparseActiveDurations()
         end
         if changed then self:SetSetting(systemIndex, "TrackedItems", tracked) end
         for _, icon in pairs(anchor.activeIcons or {}) do
+            local key = icon.gridX .. "," .. icon.gridY
+            local data = tracked[key]
+            if data then
+                icon.activeDuration = data.activeDuration
+                icon.cooldownDuration = data.cooldownDuration
+            end
             local hasActive = icon.activeDuration and icon.cooldownDuration
             icon.desatCurve = hasActive and BuildDesatCurve(icon.activeDuration, icon.cooldownDuration) or nil
             icon.cdAlphaCurve = hasActive and BuildCooldownAlphaCurve(icon.activeDuration, icon.cooldownDuration) or nil
@@ -1142,6 +1148,7 @@ function Plugin:RegisterTalentWatcher()
     local plugin = self
     local frame = CreateFrame("Frame")
     frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
+    frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
     frame:SetScript("OnEvent", function() plugin:ReparseActiveDurations() end)
 end
 
