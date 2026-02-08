@@ -3,6 +3,9 @@
 
 local _, addonTable = ...
 local Orbit = addonTable
+local pcall, type, ipairs = pcall, type, ipairs
+local math_max = math.max
+local tinsert = table.insert
 
 ---@class OrbitAuraMixin
 Orbit.AuraMixin = {}
@@ -48,7 +51,7 @@ function Mixin:FetchAuras(unit, filter, maxCount)
                     break
                 end
                 aura.index = i
-                table.insert(auras, aura)
+                tinsert(auras, aura)
             end
             return auras
         end
@@ -91,7 +94,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
     end
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
     local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or "Fonts\\FRIZQT__.TTF"
-    icon.count:SetFont(fontPath, math.max(8, size * 0.4), Orbit.Skin:GetFontOutline())
+    icon.count:SetFont(fontPath, math_max(8, size * 0.4), Orbit.Skin:GetFontOutline())
     icon.count:SetShadowColor(0, 0, 0, 1)
     icon.count:SetShadowOffset(1, -1)
     icon.count:ClearAllPoints()

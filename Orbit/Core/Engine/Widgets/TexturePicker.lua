@@ -2,6 +2,7 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local Layout = Engine.Layout
 local LSM = LibStub("LibSharedMedia-3.0")
+local tinsert, tsort = table.insert, table.sort
 
 local MAX_DROPDOWN_HEIGHT = 250
 local BUTTON_HEIGHT = 22
@@ -10,9 +11,7 @@ local BUTTON_HEIGHT = 22
 -- 3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
 function Layout:CreateTexturePicker(parent, label, initialTexture, callback, previewColor)
     -- Pool retrieval
-    if not self.texturePool then
-        self.texturePool = {}
-    end
+    if not self.texturePool then self.texturePool = {} end
     local frame = table.remove(self.texturePool)
 
     -- Frame creation
@@ -53,9 +52,13 @@ function Layout:CreateTexturePicker(parent, label, initialTexture, callback, pre
         frame.Control.Arrow:SetAtlas("NPE_ArrowDown")
 
         frame.Control:SetScript("OnClick", function()
-            if frame.ShowDropdown then
-                frame:ShowDropdown()
-            end
+            if frame.ShowDropdown then frame:ShowDropdown() end
+        end)
+        frame.Control:SetScript("OnEnter", function(self)
+            self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+        end)
+        frame.Control:SetScript("OnLeave", function(self)
+            self:SetBackdropBorderColor(0, 0, 0, 1)
         end)
     end
 
@@ -79,161 +82,53 @@ function Layout:CreateTexturePicker(parent, label, initialTexture, callback, pre
         end
 
         local text = frame.selectedTexture
-        if #text > 22 then
-            text = string.sub(text, 1, 20) .. ".."
-        end
+        if #text > 22 then text = string.sub(text, 1, 20) .. ".." end
         frame.Control.Text:SetText(text)
     end
 
     local function GetTextureList()
         local list = {}
         for name in pairs(LSM:HashTable("statusbar")) do
-            table.insert(list, name)
+            tinsert(list, name)
         end
-        table.sort(list)
+        tsort(list)
         return list
     end
 
     frame.ShowDropdown = function()
         if not frame.DropdownFrame then
-            local dropdown = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-            dropdown:SetFrameStrata("FULLSCREEN_DIALOG")
-            dropdown:SetBackdrop({
-                bgFile = "Interface\\Buttons\\WHITE8x8",
-                edgeFile = "Interface\\Buttons\\WHITE8x8",
-                edgeSize = 1,
-            })
-            dropdown:SetBackdropColor(0.08, 0.08, 0.08, 0.98)
-            dropdown:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-            dropdown:SetClipsChildren(true)
-
-            dropdown.Content = CreateFrame("Frame", nil, dropdown)
-            dropdown.Content:SetPoint("TOPLEFT", 4, -4)
-            dropdown.Content:SetSize(192, 1)
-            dropdown.scrollOffset = 0
-            dropdown.buttons = {}
-
-            dropdown:EnableMouseWheel(true)
-            dropdown:SetScript("OnMouseWheel", function(self, delta)
-                local maxOffset = math.max(0, self.contentHeight - (self:GetHeight() - 8))
-                self.scrollOffset = math.max(0, math.min(maxOffset, self.scrollOffset - delta * BUTTON_HEIGHT))
-                self.Content:SetPoint("TOPLEFT", 4, -4 + self.scrollOffset)
-            end)
-
-            frame.DropdownFrame = dropdown
-        end
-
-        local dropdown = frame.DropdownFrame
-        local textures = GetTextureList()
-
-        local contentHeight = #textures * BUTTON_HEIGHT
-        local dropdownHeight = math.min(contentHeight + 8, MAX_DROPDOWN_HEIGHT)
-
-        dropdown:SetSize(200, dropdownHeight)
-        dropdown.Content:SetHeight(contentHeight)
-        dropdown.contentHeight = contentHeight
-        dropdown.scrollOffset = 0
-        dropdown.Content:SetPoint("TOPLEFT", 4, -4)
-        dropdown:ClearAllPoints()
-        dropdown:SetPoint("TOPLEFT", frame.Control, "BOTTOMLEFT", 0, -2)
-
-        for i, textureName in ipairs(textures) do
-            local btn = dropdown.buttons[i]
-            if not btn then
-                btn = CreateFrame("Button", nil, dropdown.Content, "BackdropTemplate")
-                btn:SetSize(192, BUTTON_HEIGHT)
-
-                btn.Texture = btn:CreateTexture(nil, "BACKGROUND")
-                btn.Texture:SetAllPoints()
-
-                btn.Name = btn:CreateFontString(nil, "OVERLAY", Orbit.Constants.UI.LabelFont)
-                btn.Name:SetPoint("CENTER")
-                btn.Name:SetShadowOffset(1, -1)
-                btn.Name:SetShadowColor(0, 0, 0, 1)
-
-                btn.Highlight = btn:CreateTexture(nil, "ARTWORK")
-                btn.Highlight:SetAllPoints()
-                btn.Highlight:SetColorTexture(0.4, 0.6, 1, 0.3)
-                btn.Highlight:Hide()
-
-                btn:SetScript("OnEnter", function(self)
-                    self.Highlight:Show()
-                end)
-                btn:SetScript("OnLeave", function(self)
-                    self.Highlight:Hide()
-                end)
-
-                dropdown.buttons[i] = btn
-            end
-
-            btn:SetPoint("TOPLEFT", dropdown.Content, "TOPLEFT", 0, -(i - 1) * BUTTON_HEIGHT)
-            btn.Name:SetText(textureName)
-
-            local path = LSM:Fetch("statusbar", textureName)
-            if path then
-                btn.Texture:SetTexture(path)
-                btn.Texture:SetVertexColor(0.6, 0.6, 0.6, 1)
-            else
-                btn.Texture:SetColorTexture(0.3, 0.3, 0.3, 1)
-            end
-
-            btn:SetScript("OnClick", function()
-                frame.selectedTexture = textureName
-                UpdatePreview()
-                dropdown:Hide()
-                if callback then
-                    callback(textureName)
-                end
-            end)
-
-            btn:Show()
-        end
-
-        for i = #textures + 1, #dropdown.buttons do
-            dropdown.buttons[i]:Hide()
-        end
-
-        dropdown:Show()
-
-        dropdown:SetPropagateKeyboardInput(true)
-        dropdown:SetScript("OnKeyDown", function(self, key)
-            if key == "ESCAPE" then
-                self:SetPropagateKeyboardInput(false)
-                self:Hide()
-            else
-                self:SetPropagateKeyboardInput(true)
-            end
-        end)
-
-        dropdown:SetScript("OnShow", function(self)
-            self.closeTimer = 0
-            self:SetScript("OnUpdate", function(d, elapsed)
-                if not frame:IsVisible() then
-                    d:Hide()
-                    return
-                end
-                if not MouseIsOver(d) and not MouseIsOver(frame.Control) then
-                    d.closeTimer = (d.closeTimer or 0) + elapsed
-                    if d.closeTimer > 0.2 or IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton") then
-                        d:Hide()
+            frame.DropdownFrame = Engine.SharedMediaDropdown:Create(
+                frame, BUTTON_HEIGHT, MAX_DROPDOWN_HEIGHT,
+                function(contentFrame, index)
+                    local btn = CreateFrame("Button", nil, contentFrame, "BackdropTemplate")
+                    btn:SetSize(Engine.SharedMediaDropdown.CONTENT_WIDTH, BUTTON_HEIGHT)
+                    btn.Texture = btn:CreateTexture(nil, "BACKGROUND")
+                    btn.Texture:SetAllPoints()
+                    btn.Name = btn:CreateFontString(nil, "OVERLAY", Orbit.Constants.UI.LabelFont)
+                    btn.Name:SetPoint("CENTER")
+                    btn.Name:SetShadowOffset(1, -1)
+                    btn.Name:SetShadowColor(0, 0, 0, 1)
+                    return btn
+                end,
+                function(btn, textureName)
+                    btn.Name:SetText(textureName)
+                    local path = LSM:Fetch("statusbar", textureName)
+                    if path then
+                        btn.Texture:SetTexture(path)
+                        btn.Texture:SetVertexColor(0.6, 0.6, 0.6, 1)
+                    else
+                        btn.Texture:SetColorTexture(0.3, 0.3, 0.3, 1)
                     end
-                else
-                    d.closeTimer = 0
+                end,
+                function(textureName)
+                    frame.selectedTexture = textureName
+                    UpdatePreview()
+                    if callback then callback(textureName) end
                 end
-            end)
-        end)
-        dropdown:SetScript("OnHide", function(self)
-            self:SetScript("OnUpdate", nil)
-            self:SetScript("OnKeyDown", nil)
-        end)
-    end
-
-    -- Ensure dropdown is hidden if parent is hidden/recycled
-    frame:SetScript("OnHide", function()
-        if frame.DropdownFrame then
-            frame.DropdownFrame:Hide()
+            )
         end
-    end)
+        frame.DropdownFrame:Populate(GetTextureList(), frame.selectedTexture)
+    end
 
     UpdatePreview()
 
@@ -253,6 +148,6 @@ function Layout:CreateTexturePicker(parent, label, initialTexture, callback, pre
 
     -- Value column reserved
 
-    frame:SetSize(260, 32)
+    frame:SetSize(C.Widget.Width, C.Widget.Height)
     return frame
 end

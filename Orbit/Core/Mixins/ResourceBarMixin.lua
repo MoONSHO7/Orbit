@@ -1,5 +1,7 @@
 -- ResourceBarMixin: Shared logic for discrete class resources
 local _, Orbit = ...
+local math_max, math_min = math.max, math.min
+local tinsert, tsort = table.insert, table.sort
 ---@class OrbitResourceBarMixin
 Orbit.ResourceBarMixin = {}
 local Mixin = Orbit.ResourceBarMixin
@@ -70,7 +72,7 @@ function Mixin:GetRuneState(runeIndex)
     end
     if start and duration and duration > 0 then
         local elapsed = GetTime() - start
-        return false, math.max(0, duration - elapsed), math.min(1, elapsed / duration)
+        return false, math_max(0, duration - elapsed), math_min(1, elapsed / duration)
     end
     return false, 0, 0
 end
@@ -79,17 +81,17 @@ function Mixin:GetSortedRuneOrder()
     local readyList, cdList = {}, {}
     for i = 1, 6 do
         local ready, remaining, fraction = self:GetRuneState(i)
-        table.insert(ready and readyList or cdList, { index = i, ready = ready, remaining = remaining, fraction = fraction })
+        tinsert(ready and readyList or cdList, { index = i, ready = ready, remaining = remaining, fraction = fraction })
     end
-    table.sort(cdList, function(a, b)
+    tsort(cdList, function(a, b)
         return a.remaining < b.remaining
     end)
     local result = {}
     for _, v in ipairs(readyList) do
-        table.insert(result, v)
+        tinsert(result, v)
     end
     for _, v in ipairs(cdList) do
-        table.insert(result, v)
+        tinsert(result, v)
     end
     return result
 end
@@ -114,7 +116,7 @@ function Mixin:GetEssenceState(essenceIndex, currentEssence, maxEssence)
     if essenceIndex <= currentEssence then
         return "full", 0, 1
     elseif essenceIndex == currentEssence + 1 and essenceState.nextTick then
-        local remaining = math.max(0, essenceState.nextTick - now)
+        local remaining = math_max(0, essenceState.nextTick - now)
         return "partial", remaining, 1 - (remaining / tickDuration)
     else
         return "empty", 0, 0
@@ -182,7 +184,7 @@ function Mixin:GetEbonMightState()
     if not aura then
         return 0, EBON_MIGHT_MAX_DURATION
     end
-    local remaining = math.max(0, aura.expirationTime - GetTime())
+    local remaining = math_max(0, aura.expirationTime - GetTime())
     return remaining, EBON_MIGHT_MAX_DURATION
 end
 

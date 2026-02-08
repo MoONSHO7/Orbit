@@ -3,6 +3,8 @@
 
 local _, addonTable = ...
 local Orbit = addonTable
+local type, ipairs = type, ipairs
+local math_floor = math.floor
 
 Orbit.StatusIconMixin = {}
 local Mixin = Orbit.StatusIconMixin
@@ -36,23 +38,20 @@ local function IsDisabled(plugin, componentKey)
     return plugin.IsComponentDisabled and plugin:IsComponentDisabled(componentKey) or false
 end
 
+-- Shared guard: null check + disabled check + unit-exists check. Returns unit on success, or nil.
+local function GuardedUpdate(frame, plugin, iconKey)
+    if not frame or not frame[iconKey] then return nil end
+    if IsDisabled(plugin, iconKey) then frame[iconKey]:Hide() return nil end
+    local unit = frame.unit
+    if not UnitExists(unit) then frame[iconKey]:Hide() return nil end
+    return unit
+end
+
 -- ROLE ICON (Tank/Healer/DPS)
 
 function Mixin:UpdateRoleIcon(frame, plugin)
-    if not frame or not frame.RoleIcon then
-        return
-    end
-
-    if IsDisabled(plugin, "RoleIcon") then
-        frame.RoleIcon:Hide()
-        return
-    end
-
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.RoleIcon:Hide()
-        return
-    end
+    local unit = GuardedUpdate(frame, plugin, "RoleIcon")
+    if not unit then return end
 
     -- Check for vehicle first
     if UnitInVehicle(unit) and UnitHasVehicleUI(unit) then
@@ -63,8 +62,6 @@ function Mixin:UpdateRoleIcon(frame, plugin)
 
     local role = UnitGroupRolesAssigned(unit)
     local roleAtlas = ROLE_ATLASES[role]
-
-    -- In Edit Mode, show a preview role icon if no role assigned
     local inEditMode = Orbit:IsEditMode()
 
     if roleAtlas then
@@ -81,20 +78,8 @@ end
 -- LEADER ICON
 
 function Mixin:UpdateLeaderIcon(frame, plugin)
-    if not frame or not frame.LeaderIcon then
-        return
-    end
-
-    if IsDisabled(plugin, "LeaderIcon") then
-        frame.LeaderIcon:Hide()
-        return
-    end
-
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.LeaderIcon:Hide()
-        return
-    end
+    local unit = GuardedUpdate(frame, plugin, "LeaderIcon")
+    if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
 
@@ -115,20 +100,8 @@ end
 -- MARKER ICON (Raid Target)
 
 function Mixin:UpdateMarkerIcon(frame, plugin)
-    if not frame or not frame.MarkerIcon then
-        return
-    end
-
-    if IsDisabled(plugin, "MarkerIcon") then
-        frame.MarkerIcon:Hide()
-        return
-    end
-
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.MarkerIcon:Hide()
-        return
-    end
+    local unit = GuardedUpdate(frame, plugin, "MarkerIcon")
+    if not unit then return end
 
     local index = GetRaidTargetIndex(unit)
 
@@ -139,7 +112,7 @@ function Mixin:UpdateMarkerIcon(frame, plugin)
             frame.MarkerIcon.orbitSpriteIndex = i
         else
             local col = (i - 1) % RAID_TARGET_TEXTURE_COLUMNS
-            local row = math.floor((i - 1) / RAID_TARGET_TEXTURE_COLUMNS)
+            local row = math_floor((i - 1) / RAID_TARGET_TEXTURE_COLUMNS)
             local w = 1 / RAID_TARGET_TEXTURE_COLUMNS
             local h = 1 / RAID_TARGET_TEXTURE_ROWS
             frame.MarkerIcon:SetTexCoord(col * w, (col + 1) * w, row * h, (row + 1) * h)
@@ -187,20 +160,8 @@ end
 -- SELECTION HIGHLIGHT
 
 function Mixin:UpdateSelectionHighlight(frame, plugin)
-    if not frame or not frame.SelectionHighlight then
-        return
-    end
-
-    if IsDisabled(plugin, "SelectionHighlight") then
-        frame.SelectionHighlight:Hide()
-        return
-    end
-
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.SelectionHighlight:Hide()
-        return
-    end
+    local unit = GuardedUpdate(frame, plugin, "SelectionHighlight")
+    if not unit then return end
 
     if UnitIsUnit(unit, "target") then
         frame.SelectionHighlight:Show()
@@ -212,20 +173,8 @@ end
 -- AGGRO HIGHLIGHT (Threat glow)
 
 function Mixin:UpdateAggroHighlight(frame, plugin)
-    if not frame or not frame.AggroHighlight then
-        return
-    end
-
-    if IsDisabled(plugin, "AggroHighlight") then
-        frame.AggroHighlight:Hide()
-        return
-    end
-
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.AggroHighlight:Hide()
-        return
-    end
+    local unit = GuardedUpdate(frame, plugin, "AggroHighlight")
+    if not unit then return end
 
     local threatStatus = UnitThreatSituation(unit)
     local threatColor = threatStatus and THREAT_COLORS[threatStatus]
@@ -313,20 +262,8 @@ end
 
 -- Phase Icon (Out of phase/warmode indicator)
 function Mixin:UpdatePhaseIcon(frame, plugin)
-    if not frame or not frame.PhaseIcon then
-        return
-    end
-
-    if IsDisabled(plugin, "PhaseIcon") then
-        frame.PhaseIcon:Hide()
-        return
-    end
-
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.PhaseIcon:Hide()
-        return
-    end
+    local unit = GuardedUpdate(frame, plugin, "PhaseIcon")
+    if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
     local inCanvasMode = Orbit.Engine.ComponentEdit and Orbit.Engine.ComponentEdit:IsActive(frame)
@@ -337,7 +274,6 @@ function Mixin:UpdatePhaseIcon(frame, plugin)
         frame.PhaseIcon:Show()
         frame.PhaseIcon.tooltip = PartyUtil and PartyUtil.GetPhasedReasonString and PartyUtil.GetPhasedReasonString(phaseReason, unit) or "Out of Phase"
     elseif inEditMode or inCanvasMode then
-        -- Show preview in Edit/Canvas mode
         frame.PhaseIcon:SetAtlas("RaidFrame-Icon-Phasing")
         frame.PhaseIcon:Show()
     else
@@ -347,20 +283,8 @@ end
 
 -- Ready Check Icon
 function Mixin:UpdateReadyCheck(frame, plugin)
-    if not frame or not frame.ReadyCheckIcon then
-        return
-    end
-
-    if IsDisabled(plugin, "ReadyCheckIcon") then
-        frame.ReadyCheckIcon:Hide()
-        return
-    end
-
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.ReadyCheckIcon:Hide()
-        return
-    end
+    local unit = GuardedUpdate(frame, plugin, "ReadyCheckIcon")
+    if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
     local inCanvasMode = Orbit.Engine.ComponentEdit and Orbit.Engine.ComponentEdit:IsActive(frame)
@@ -376,7 +300,6 @@ function Mixin:UpdateReadyCheck(frame, plugin)
         frame.ReadyCheckIcon:SetAtlas("UI-LFG-PendingMark-Raid")
         frame.ReadyCheckIcon:Show()
     elseif inEditMode or inCanvasMode then
-        -- Show preview in Edit/Canvas mode (use checkmark for recognizability)
         frame.ReadyCheckIcon:SetAtlas("UI-LFG-ReadyMark-Raid")
         frame.ReadyCheckIcon:Show()
     else
@@ -386,20 +309,8 @@ end
 
 -- Incoming Resurrection Icon
 function Mixin:UpdateIncomingRes(frame, plugin)
-    if not frame or not frame.ResIcon then
-        return
-    end
-
-    if IsDisabled(plugin, "ResIcon") then
-        frame.ResIcon:Hide()
-        return
-    end
-
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.ResIcon:Hide()
-        return
-    end
+    local unit = GuardedUpdate(frame, plugin, "ResIcon")
+    if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
     local inCanvasMode = Orbit.Engine.ComponentEdit and Orbit.Engine.ComponentEdit:IsActive(frame)
@@ -408,7 +319,6 @@ function Mixin:UpdateIncomingRes(frame, plugin)
         frame.ResIcon:SetAtlas("RaidFrame-Icon-Rez")
         frame.ResIcon:Show()
     elseif inEditMode or inCanvasMode then
-        -- Show preview in Edit/Canvas mode
         frame.ResIcon:SetAtlas("RaidFrame-Icon-Rez")
         frame.ResIcon:Show()
     else
@@ -418,20 +328,8 @@ end
 
 -- Incoming Summon Icon
 function Mixin:UpdateIncomingSummon(frame, plugin)
-    if not frame or not frame.SummonIcon then
-        return
-    end
-
-    if IsDisabled(plugin, "SummonIcon") then
-        frame.SummonIcon:Hide()
-        return
-    end
-
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.SummonIcon:Hide()
-        return
-    end
+    local unit = GuardedUpdate(frame, plugin, "SummonIcon")
+    if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
     local inCanvasMode = Orbit.Engine.ComponentEdit and Orbit.Engine.ComponentEdit:IsActive(frame)
@@ -451,7 +349,6 @@ function Mixin:UpdateIncomingSummon(frame, plugin)
             frame.SummonIcon:Hide()
         end
     elseif inEditMode or inCanvasMode then
-        -- Show preview in Edit/Canvas mode
         frame.SummonIcon:SetAtlas("RaidFrame-Icon-SummonPending")
         frame.SummonIcon:Show()
     else

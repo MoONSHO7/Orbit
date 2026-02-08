@@ -6,22 +6,19 @@ local Skin = Orbit.Skin
 local Engine = Orbit.Engine -- Added Engine reference
 local LSM = LibStub("LibSharedMedia-3.0")
 local Constants = Orbit.Constants
+local math_max, math_min = math.max, math.min
 
 -- Register Orbit's overlay texture with LibSharedMedia
 local ORBIT_OVERLAY_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
 LSM:Register("statusbar", "Orbit Gradient", ORBIT_OVERLAY_PATH)
 
--- -------------------------------------------------------------------------- --
--- Utilities
--- -------------------------------------------------------------------------- --
+-- [ UTILITIES ]-------------------------------------------------------------------------------------
 
 function Skin:GetPixelScale()
     return Engine.Pixel:GetScale()
 end
 
--- -------------------------------------------------------------------------- --
--- Icon Skinning
--- -------------------------------------------------------------------------- --
+-- [ ICON SKINNING ]---------------------------------------------------------------------------------
 
 function Skin:SkinIcon(icon, settings)
     if not icon then
@@ -39,9 +36,7 @@ function Skin:SkinIcon(icon, settings)
     icon:SetTexCoord(left, right, top, bottom)
 end
 
--- -------------------------------------------------------------------------- --
--- Border Skinning
--- -------------------------------------------------------------------------- --
+-- [ BORDER SKINNING ]-------------------------------------------------------------------------------
 
 function Skin:CreateBackdrop(frame, name)
     local backdrop = CreateFrame("Frame", name, frame, "BackdropTemplate")
@@ -182,9 +177,7 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
     return false
 end
 
--- -------------------------------------------------------------------------- --
--- StatusBar Skinning
--- -------------------------------------------------------------------------- --
+-- [ STATUSBAR SKINNING ]----------------------------------------------------------------------------
 
 function Skin:SkinStatusBar(bar, textureName, color, isUnitFrame)
     if not bar then
@@ -243,9 +236,7 @@ function Skin:AddOverlay(bar, texturePath, blendMode, alpha)
     bar.Overlay:Show()
 end
 
--- -------------------------------------------------------------------------- --
--- Font Skinning
--- -------------------------------------------------------------------------- --
+-- [ FONT SKINNING ]---------------------------------------------------------------------------------
 
 function Skin:GetFontOutline()
     return Orbit.db.GlobalSettings.FontOutline or "OUTLINE"
@@ -271,9 +262,7 @@ function Skin:SkinText(fontString, settings)
     end
 end
 
--- -------------------------------------------------------------------------- --
--- UnitFrame Text Styling (DRY helper for common unit frame text setup)
--- -------------------------------------------------------------------------- --
+-- [ UNITFRAME TEXT STYLING ]------------------------------------------------------------------------
 
 function Skin:GetAdaptiveTextSize(height, minSize, maxSize, ratio)
     minSize = minSize or Constants.UI.UnitFrameTextSize
@@ -308,9 +297,9 @@ function Skin:GetAdaptiveTextSize(height, minSize, maxSize, ratio)
         maxSize = maxSize * globalScale
     end
 
-    local size = math.max(minSize, targetSize)
+    local size = math_max(minSize, targetSize)
     if maxSize then
-        size = math.min(size, maxSize)
+        size = math_min(size, maxSize)
     end
     return size
 end
