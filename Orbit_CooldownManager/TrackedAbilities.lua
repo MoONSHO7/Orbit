@@ -144,8 +144,7 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.DropHighlight:Hide()
 
     if not frame:GetPoint() then
-        local yOffset = (systemIndex == TRACKED_INDEX) and -250 or -150
-        frame:SetPoint("CENTER", UIParent, "CENTER", 0, yOffset)
+        frame:SetPoint("CENTER", UIParent, "CENTER", -30, 0)
     end
 
     frame:SetScript("OnReceiveDrag", function() plugin:OnTrackedAnchorReceiveDrag(frame) end)
@@ -317,6 +316,7 @@ function Plugin:DespawnChildFrame(frame)
 
     self:SetSetting(frame.systemIndex, self:GetSpecKey("TrackedItems"), nil)
     self:SetSetting(frame.systemIndex, "Position", nil)
+    self:SetSetting(frame.systemIndex, "Anchor", nil)
     self:SetSetting(frame.systemIndex, "Enabled", nil)
 
     GetViewerMap()[frame.systemIndex] = nil
@@ -342,6 +342,24 @@ function Plugin:RestoreChildFrames()
             self:LoadTrackedItems(frame, systemIndex)
             self:SetupTrackedCanvasPreview(frame, systemIndex)
             self:ApplySettings(frame)
+            self:ClearStaleTrackedSpatial(frame, systemIndex)
+        end
+    end
+end
+
+-- Clear stale anchor/position data from a tracked frame with no items for the current spec.
+-- Handles both directions: outbound (this frame anchored to X) and inbound (X anchored to this frame).
+function Plugin:ClearStaleTrackedSpatial(frame, sysIndex)
+    if not frame or (frame.gridItems and next(frame.gridItems)) then return end
+    self:SetSetting(sysIndex, "Anchor", nil)
+    self:SetSetting(sysIndex, "Position", nil)
+    if OrbitEngine.FrameAnchor then
+        OrbitEngine.FrameAnchor:BreakAnchor(frame, true)
+        for _, child in ipairs(OrbitEngine.FrameAnchor:GetAnchoredChildren(frame)) do
+            OrbitEngine.FrameAnchor:BreakAnchor(child, true)
+            if child.orbitPlugin and child.systemIndex then
+                child.orbitPlugin:SetSetting(child.systemIndex, "Anchor", nil)
+            end
         end
     end
 end
@@ -1182,10 +1200,16 @@ function Plugin:ReloadTrackedForSpec()
     -- Reload tracked abilities for main anchor
     local viewerMap = GetViewerMap()
     local entry = viewerMap[TRACKED_INDEX]
-    if entry and entry.anchor then self:LoadTrackedItems(entry.anchor, TRACKED_INDEX) end
+    if entry and entry.anchor then
+        self:LoadTrackedItems(entry.anchor, TRACKED_INDEX)
+        self:ClearStaleTrackedSpatial(entry.anchor, TRACKED_INDEX)
+    end
     -- Reload child anchors
     for _, childData in pairs(self.activeChildren) do
-        if childData.frame then self:LoadTrackedItems(childData.frame, childData.frame.systemIndex) end
+        if childData.frame then
+            self:LoadTrackedItems(childData.frame, childData.frame.systemIndex)
+            self:ClearStaleTrackedSpatial(childData.frame, childData.frame.systemIndex)
+        end
     end
     -- Reload charge bars
     self:ReloadChargeBarsForSpec()

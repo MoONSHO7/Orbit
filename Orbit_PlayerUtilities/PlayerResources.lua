@@ -21,8 +21,7 @@ local function SafeUnitPowerPercent(unit, resource)
     if not CanUseUnitPowerPercent then
         return nil
     end
-    local ok, pct = pcall(UnitPowerPercent, unit, resource, false, CurveConstants.ScaleTo100)
-    return (ok and pct) or nil
+    return UnitPowerPercent(unit, resource, false, CurveConstants.ScaleTo100)
 end
 
 local function SnapToPixel(value, scale)
@@ -77,15 +76,18 @@ local CONTINUOUS_RESOURCE_CONFIG = {
     },
     MAELSTROM_WEAPON = {
         curveKey = "MaelstromWeaponColorCurve",
+        dividers = true,
         getState = function()
             return ResourceMixin:GetMaelstromWeaponState()
         end,
         updateText = function(text, _, _, hasAura, auraInstanceID)
-            if hasAura and auraInstanceID and C_UnitAuras.GetAuraApplicationDisplayCount then
-                text:SetText(C_UnitAuras.GetAuraApplicationDisplayCount("player", auraInstanceID))
-            elseif not hasAura then
-                text:SetText("")
+            if not hasAura then
+                text:SetText("0")
+                return
             end
+            local count = auraInstanceID and C_UnitAuras.GetAuraApplicationDisplayCount
+                and tonumber(C_UnitAuras.GetAuraApplicationDisplayCount("player", auraInstanceID))
+            text:SetText((count and count > 0) and count or 1)
         end,
     },
 }
@@ -980,15 +982,11 @@ function Plugin:UpdateLayout(frame)
 end
 
 function Plugin:UpdateContinuousBar(curveKey, current, max)
-    if not Frame.StatusBar then
-        return
-    end
+    if not Frame.StatusBar then return end
     Frame.StatusBar:SetMinMaxValues(0, max)
     Frame.StatusBar:SetValue(current, SMOOTH_ANIM)
     local curveData = self:GetSetting(SYSTEM_INDEX, curveKey)
-    if not curveData then
-        return
-    end
+    if not curveData then return end
 
     -- MANA: use UnitPowerPercent + native ColorCurve (fully secret-safe)
     if self.continuousResource == "MANA" then
@@ -1012,6 +1010,50 @@ function Plugin:UpdateContinuousBar(curveKey, current, max)
     end
 end
 
+function Plugin:UpdateContinuousSpacers(cfg, max)
+    if not Frame or not Frame.StatusBar then return end
+    if not cfg.dividers or max <= 1 then
+        if Frame.Spacers then for _, s in ipairs(Frame.Spacers) do s:Hide() end end
+        return
+    end
+
+    -- Lazy-create spacers (UpdateMaxPower is never called for continuous resources)
+    Frame.Spacers = Frame.Spacers or {}
+    for i = 1, MAX_SPACER_COUNT do
+        if not Frame.Spacers[i] then
+            Frame.Spacers[i] = Frame.StatusBar:CreateTexture(nil, "OVERLAY", nil, 7)
+            Frame.Spacers[i]:SetColorTexture(0, 0, 0, 1)
+        end
+    end
+
+    local spacerWidth = (Frame.settings and Frame.settings.spacing) or 2
+    local totalWidth = Frame:GetWidth()
+    if totalWidth < 10 and Frame.settings then totalWidth = Frame.settings.width or 200 end
+
+    local scale = Frame:GetEffectiveScale()
+    if not scale or scale < 0.01 then scale = 1 end
+
+    local snappedSpacerWidth = SnapToPixel(spacerWidth, scale)
+    local snappedTotalWidth = SnapToPixel(totalWidth, scale)
+
+    for i = 1, MAX_SPACER_COUNT do
+        local sp = Frame.Spacers[i]
+        if sp then
+            if i < max and snappedSpacerWidth > 0 then
+                sp:Show()
+                sp:ClearAllPoints()
+                sp:SetWidth(snappedSpacerWidth)
+                sp:SetHeight(Frame:GetHeight())
+                local centerPos = SnapToPixel(snappedTotalWidth * (i / max), scale)
+                sp:SetPoint("LEFT", Frame, "LEFT", SnapToPixel(centerPos - (snappedSpacerWidth / 2), scale), 0)
+                if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(sp) end
+            else
+                sp:Hide()
+            end
+        end
+    end
+end
+
 function Plugin:UpdatePower()
     if not Frame then
         return
@@ -1026,6 +1068,7 @@ function Plugin:UpdatePower()
             local current, max, extra1, extra2 = cfg.getState()
             if current and max then
                 self:UpdateContinuousBar(cfg.curveKey, current, max)
+                self:UpdateContinuousSpacers(cfg, max)
                 if Frame.Text and textEnabled then
                     cfg.updateText(Frame.Text, current, max, extra1, extra2)
                 end

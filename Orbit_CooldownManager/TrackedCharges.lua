@@ -7,7 +7,7 @@ local Constants = Orbit.Constants
 local CHARGE_BAR_INDEX = Constants.Cooldown.SystemIndex.ChargeBar
 local CHARGE_CHILD_START = Constants.Cooldown.SystemIndex.ChargeBar_ChildStart
 local MAX_CHARGE_CHILDREN = Constants.Cooldown.MaxChargeBarChildren
-local UPDATE_INTERVAL = 0.05
+local UPDATE_INTERVAL = 0.016
 local DEFAULT_WIDTH = 120
 local DEFAULT_HEIGHT = 12
 local DEFAULT_Y_OFFSET = -280
@@ -103,8 +103,8 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }
 
     -- Default position for restoration waterfall fallback
-    frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = 0, y = DEFAULT_Y_OFFSET }
-    frame:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_Y_OFFSET)
+    frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = 30, y = 0 }
+    frame:SetPoint("CENTER", UIParent, "CENTER", 30, 0)
 
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
     frame.buttons = {}
