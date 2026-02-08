@@ -78,7 +78,11 @@ function WL:SampleColorCurve(curveData, position)
     position = math.max(0, math.min(1, position))
     
     -- Find surrounding pins
-    local left, right = sorted[1], sorted[#sorted]
+    local first, last = sorted[1], sorted[#sorted]
+    if position <= first.position then return ResolveClassColorPin(first) end
+    if position >= last.position then return ResolveClassColorPin(last) end
+
+    local left, right = first, last
     for i = 1, #sorted - 1 do
         if sorted[i].position <= position and sorted[i + 1].position >= position then
             left, right = sorted[i], sorted[i + 1]
@@ -90,9 +94,9 @@ function WL:SampleColorCurve(curveData, position)
     local leftColor = ResolveClassColorPin(left)
     local rightColor = ResolveClassColorPin(right)
     
-    -- Linear interpolation
+    -- Linear interpolation (clamped)
     local range = right.position - left.position
-    local t = (range > 0) and ((position - left.position) / range) or 0
+    local t = (range > 0) and math.max(0, math.min(1, (position - left.position) / range)) or 0
     
     return {
         r = leftColor.r + (rightColor.r - leftColor.r) * t,

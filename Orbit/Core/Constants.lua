@@ -193,7 +193,10 @@ C.Cooldown = {
         BuffIcon = 3,
         Tracked = 4,
         Tracked_ChildStart = 5,
+        ChargeBar = 20,
+        ChargeBar_ChildStart = 21,
     },
+    MaxChargeBarChildren = 4,
 }
 
 -- Pandemic Glow configuration (LibCustomGlow)

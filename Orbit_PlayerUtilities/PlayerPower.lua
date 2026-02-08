@@ -7,37 +7,46 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
 local UPDATE_INTERVAL = 0.05
 local AUGMENTATION_SPEC_ID = 1473
+local _, PLAYER_CLASS = UnitClass("player")
+
+-- [ POWER TYPE CURVE CONFIG ]----------------------------------------------------------------------
+local POWER_CURVE_CONFIG = {
+    { key = "ManaColorCurve",        label = "Mana Colour",         powerType = Enum.PowerType.Mana },
+    { key = "RageColorCurve",        label = "Rage Colour",         powerType = Enum.PowerType.Rage },
+    { key = "FocusColorCurve",       label = "Focus Colour",        powerType = Enum.PowerType.Focus },
+    { key = "EnergyColorCurve",      label = "Energy Colour",       powerType = Enum.PowerType.Energy },
+    { key = "RunicPowerColorCurve",  label = "Runic Power Colour",  powerType = Enum.PowerType.RunicPower },
+    { key = "LunarPowerColorCurve",  label = "Astral Power Colour", powerType = Enum.PowerType.LunarPower },
+    { key = "FuryColorCurve",        label = "Fury Colour",         powerType = Enum.PowerType.Fury },
+}
+
+local CLASS_POWER_TYPES = {
+    WARRIOR     = { Enum.PowerType.Rage },
+    PALADIN     = { Enum.PowerType.Mana },
+    HUNTER      = { Enum.PowerType.Focus },
+    ROGUE       = { Enum.PowerType.Energy },
+    PRIEST      = { Enum.PowerType.Mana },
+    DEATHKNIGHT = { Enum.PowerType.RunicPower },
+    SHAMAN      = { Enum.PowerType.Mana },
+    MAGE        = { Enum.PowerType.Mana },
+    WARLOCK     = { Enum.PowerType.Mana },
+    MONK        = { Enum.PowerType.Energy, Enum.PowerType.Mana },
+    DRUID       = { Enum.PowerType.Energy, Enum.PowerType.Rage, Enum.PowerType.LunarPower, Enum.PowerType.Mana },
+    DEMONHUNTER = { Enum.PowerType.Fury },
+    EVOKER      = { Enum.PowerType.Mana },
+}
+
+local POWER_TYPE_TO_CURVE_KEY = {}
+for _, cfg in ipairs(POWER_CURVE_CONFIG) do
+    POWER_TYPE_TO_CURVE_KEY[cfg.powerType] = cfg.key
+end
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
+local CanUseUnitPowerPercent = (type(UnitPowerPercent) == "function" and CurveConstants and CurveConstants.ScaleTo100)
 local function SafeUnitPowerPercent(unit, resource)
-    if type(UnitPowerPercent) ~= "function" or not CurveConstants or not CurveConstants.ScaleTo100 then
-        return nil
-    end
+    if not CanUseUnitPowerPercent then return nil end
     local ok, pct = pcall(UnitPowerPercent, unit, resource, false, CurveConstants.ScaleTo100)
     return (ok and pct) or nil
-end
-
--- Create native Blizzard ColorCurve from our pin data (for secret-safe color sampling)
-local function CreateNativeColorCurve(curveData)
-    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
-    if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end
-    
-    local colorCurve = C_CurveUtil.CreateColorCurve()
-    
-    for _, pin in ipairs(curveData.pins) do
-        local c = pin.color
-        colorCurve:AddPoint(pin.position, CreateColor(c.r, c.g, c.b, c.a or 1))
-    end
-    return colorCurve
-end
-
--- Get power color using native ColorCurve (returns non-secret color)
-local function GetPowerColorFromCurve(unit, powerType, curveData)
-    local nativeCurve = CreateNativeColorCurve(curveData)
-    if not nativeCurve then return nil end
-    
-    local ok, color = pcall(UnitPowerPercent, unit, powerType, false, nativeCurve)
-    return ok and color or nil
 end
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
@@ -51,9 +60,14 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
         Hidden = false,
         Width = 200,
         Height = 15,
-        UseCustomColor = false,
-        BarColor = { r = 1, g = 1, b = 1, a = 1 },
-        BarColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+        ManaColorCurve       = { pins = { { position = 0, color = { r = 0, g = 0, b = 1, a = 1 } } } },
+        RageColorCurve       = { pins = { { position = 0, color = { r = 1, g = 0, b = 0, a = 1 } } } },
+        FocusColorCurve      = { pins = { { position = 0, color = { r = 1, g = 0.5, b = 0.25, a = 1 } } } },
+        EnergyColorCurve     = { pins = { { position = 0, color = { r = 1, g = 1, b = 0, a = 1 } } } },
+        RunicPowerColorCurve = { pins = { { position = 0, color = { r = 0, g = 0.82, b = 1, a = 1 } } } },
+        LunarPowerColorCurve = { pins = { { position = 0, color = { r = 0.95, g = 0.9, b = 0.6, a = 1 } } } },
+        FuryColorCurve       = { pins = { { position = 0, color = { r = 1, g = 0.6, b = 0.2, a = 1 } } } },
+        EbonMightColorCurve  = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.4, a = 1 } } } },
         Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
@@ -119,20 +133,25 @@ function Plugin:AddSettings(dialog, systemFrame)
             })
         end
     elseif currentTab == "Colour" then
-        table.insert(schema.controls, {
-            type = "checkbox", key = "UseCustomColor", label = "Use Custom Color", default = false,
-            onChange = function(val)
-                self:SetSetting(systemIndex, "UseCustomColor", val)
-                self:UpdateAll()
-                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
-            end,
-        })
-        if self:GetSetting(systemIndex, "UseCustomColor") then
+        local classPowerTypes = CLASS_POWER_TYPES[PLAYER_CLASS] or {}
+        local classPowerLookup = {}
+        for _, pt in ipairs(classPowerTypes) do classPowerLookup[pt] = true end
+        for _, cfg in ipairs(POWER_CURVE_CONFIG) do
+            if classPowerLookup[cfg.powerType] then
+                table.insert(schema.controls, {
+                    type = "colorcurve", key = cfg.key, label = cfg.label,
+                    onChange = function(curveData)
+                        self:SetSetting(systemIndex, cfg.key, curveData)
+                        self:UpdateAll()
+                    end,
+                })
+            end
+        end
+        if PLAYER_CLASS == "EVOKER" then
             table.insert(schema.controls, {
-                type = "colorcurve", key = "BarColorCurve", label = "Bar Color",
-                default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+                type = "colorcurve", key = "EbonMightColorCurve", label = "Ebon Might Colour",
                 onChange = function(curveData)
-                    self:SetSetting(systemIndex, "BarColorCurve", curveData)
+                    self:SetSetting(systemIndex, "EbonMightColorCurve", curveData)
                     self:UpdateAll()
                 end,
             })
@@ -178,13 +197,13 @@ function Plugin:OnLoad()
         end
         bar:SetStatusBarTexture(texturePath)
 
-        -- Color (use player class color or power color default)
+        -- Color (use per-power-type curve for preview)
         local powerType = UnitPowerType("player")
-        local info = Orbit.Constants.Colors.PowerType[powerType]
-        if info then
-            bar:SetStatusBarColor(info.r, info.g, info.b)
-        else
-            bar:SetStatusBarColor(0.5, 0.5, 0.5)
+        local curveKey = POWER_TYPE_TO_CURVE_KEY[powerType]
+        local curveData = curveKey and Plugin:GetSetting(SYSTEM_INDEX, curveKey)
+        local color = curveData and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+        if color then
+            bar:SetStatusBarColor(color.r, color.g, color.b)
         end
 
         preview.PowerBar = bar
@@ -425,12 +444,10 @@ function Plugin:UpdateAll()
             PowerBar:SetMinMaxValues(0, max)
             PowerBar:SetValue(current, SMOOTH_ANIM)
 
-            -- Use Ebon Might color
-            local color = Orbit.Colors.PlayerResources and Orbit.Colors.PlayerResources.EbonMight
+            local curveData = self:GetSetting(SYSTEM_INDEX, "EbonMightColorCurve")
+            local color = curveData and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
             if color then
                 PowerBar:SetStatusBarColor(color.r, color.g, color.b)
-            else
-                PowerBar:SetStatusBarColor(0.4, 0.6, 0.3) -- Fallback green
             end
 
             if Frame.Text:IsShown() then
@@ -438,7 +455,6 @@ function Plugin:UpdateAll()
             end
             return
         end
-        -- If Ebon Might not active, fall through to show Mana
     end
 
     local powerType, powerToken = UnitPowerType("player")
@@ -448,24 +464,21 @@ function Plugin:UpdateAll()
     PowerBar:SetMinMaxValues(0, max)
     PowerBar:SetValue(cur, SMOOTH_ANIM)
 
-    -- Color (use native ColorCurve with UnitPowerPercent for secret-safe gradient)
-    local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
-    local curveData = self:GetSetting(SYSTEM_INDEX, "BarColorCurve")
+    -- Color: reset vertex tint then apply per-power-type curve
+    PowerBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
+    local curveKey = POWER_TYPE_TO_CURVE_KEY[powerType]
+    local curveData = curveKey and self:GetSetting(SYSTEM_INDEX, curveKey)
 
-    if useCustomColor and curveData then
-        local color = GetPowerColorFromCurve("player", powerType, curveData)
-        if color then
-            PowerBar:GetStatusBarTexture():SetVertexColor(color:GetRGBA())
+    if curveData then
+        local nativeCurve = OrbitEngine.WidgetLogic:ToNativeColorCurve(curveData)
+        if nativeCurve and CanUseUnitPowerPercent then
+            local ok, color = pcall(UnitPowerPercent, "player", powerType, false, nativeCurve)
+            if ok and color then
+                PowerBar:GetStatusBarTexture():SetVertexColor(color:GetRGBA())
+            end
         else
-            local fallback = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
-            if fallback then PowerBar:SetStatusBarColor(fallback.r, fallback.g, fallback.b) end
-        end
-    else
-        local info = Orbit.Constants.Colors.PowerType[powerType]
-        if info then
-            PowerBar:SetStatusBarColor(info.r, info.g, info.b)
-        else
-            PowerBar:SetStatusBarColor(0.5, 0.5, 0.5)
+            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+            if color then PowerBar:SetStatusBarColor(color.r, color.g, color.b) end
         end
     end
 

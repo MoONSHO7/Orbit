@@ -14,7 +14,13 @@ Helpers.LAYOUT = {
     ElementGap = 4,
 }
 
-Helpers.GROWTH_DIRECTION = { Down = "Down", Up = "Up", Left = "Left", Right = "Right", Center = "Center" }
+Helpers.GROWTH_DIRECTION = { Down = "Down", Up = "Up", Left = "Left", Right = "Right" }
+
+local CONTAINER_ANCHOR = { Down = "TOPLEFT", Up = "BOTTOMLEFT", Right = "TOPLEFT", Left = "TOPRIGHT" }
+
+function Helpers:GetContainerAnchor(growthDirection)
+    return CONTAINER_ANCHOR[growthDirection] or "TOPLEFT"
+end
 
 -- [ CONTAINER SIZING ]------------------------------------------------------------------------------
 function Helpers:CalculateContainerSize(numFrames, frameWidth, frameHeight, spacing, orientation, auraSpacing)
@@ -33,13 +39,11 @@ function Helpers:CalculateContainerSize(numFrames, frameWidth, frameHeight, spac
 end
 
 -- [ FRAME POSITIONING ]-----------------------------------------------------------------------------
-function Helpers:CalculateFramePosition(index, frameWidth, frameHeight, spacing, orientation, growthDirection, numFrames, auraSpacing)
+function Helpers:CalculateFramePosition(index, frameWidth, frameHeight, spacing, orientation, growthDirection)
     spacing = spacing or self.LAYOUT.Spacing
     orientation = orientation or 0
     growthDirection = growthDirection or (orientation == 0 and "Down" or "Right")
-    auraSpacing = auraSpacing or 0
-    local effectiveSpacing = spacing + auraSpacing
-    local step = orientation == 0 and (frameHeight + effectiveSpacing) or (frameWidth + effectiveSpacing)
+    local step = orientation == 0 and (frameHeight + spacing) or (frameWidth + spacing)
     local offset = (index - 1) * step
 
     if growthDirection == "Down" then
@@ -48,17 +52,8 @@ function Helpers:CalculateFramePosition(index, frameWidth, frameHeight, spacing,
         return 0, offset, "BOTTOMLEFT", "BOTTOMLEFT"
     elseif growthDirection == "Right" then
         return offset, 0, "TOPLEFT", "TOPLEFT"
-    elseif growthDirection == "Left" then
+    else -- Left
         return -offset, 0, "TOPRIGHT", "TOPRIGHT"
-    else -- Center
-        local totalSize = ((numFrames or 1) - 1) * step
-        if orientation == 0 then
-            local startY = totalSize / 2
-            return 0, startY - offset, "LEFT", "LEFT"
-        else
-            local startX = -totalSize / 2
-            return startX + offset, 0, "TOP", "TOP"
-        end
     end
 end
 

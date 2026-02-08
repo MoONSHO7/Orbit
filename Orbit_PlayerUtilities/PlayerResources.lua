@@ -21,7 +21,8 @@ local function SafeUnitPowerPercent(unit, resource)
     if not CanUseUnitPowerPercent then
         return nil
     end
-    return UnitPowerPercent(unit, resource, false, CurveConstants.ScaleTo100)
+    local ok, pct = pcall(UnitPowerPercent, unit, resource, false, CurveConstants.ScaleTo100)
+    return (ok and pct) or nil
 end
 
 local function SnapToPixel(value, scale)
@@ -99,9 +100,8 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         Hidden = false,
         Width = DEFAULTS.Width,
         Height = DEFAULTS.Height,
-        UseCustomColor = false,
-        BarColor = { r = 1, g = 1, b = 1, a = 1 },
-        BarColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+        BarColorCurve = { pins = { { position = 0, color = Orbit.Constants.Colors.PlayerResources[PLAYER_CLASS] or { r = 1, g = 1, b = 1, a = 1 } } } },
+        ChargedComboPointColor = Orbit.Constants.Colors.PlayerResources.ChargedComboPoint or { r = 0.169, g = 0.733, b = 0.992 },
         -- Stagger (Brewmaster Monk) - Green→Yellow→Red gradient
         StaggerColorCurve = {
             pins = {
@@ -182,26 +182,22 @@ function Plugin:AddSettings(dialog, systemFrame)
             })
         end
     elseif currentTab == "Colour" then
-        table.insert(schema.controls, {
-            type = "checkbox",
-            key = "UseCustomColor",
-            label = "Use Custom Color",
-            default = false,
-            onChange = function(val)
-                self:SetSetting(SYSTEM_INDEX, "UseCustomColor", val)
-                self:ApplyButtonVisuals()
-                self:UpdatePower()
-                if dialog.orbitTabCallback then
-                    dialog.orbitTabCallback()
-                end
-            end,
-        })
-        if self:GetSetting(SYSTEM_INDEX, "UseCustomColor") then
+        local discreteLabels = {
+            ROGUE = "Combo Points Colour",
+            DRUID = "Combo Points Colour",
+            PALADIN = "Holy Power Colour",
+            WARLOCK = "Soul Shards Colour",
+            DEATHKNIGHT = "Rune Colour",
+            EVOKER = "Essence Colour",
+            MAGE = "Arcane Charges Colour",
+            MONK = "Chi Colour",
+        }
+        local discreteLabel = discreteLabels[PLAYER_CLASS]
+        if discreteLabel then
             table.insert(schema.controls, {
                 type = "colorcurve",
                 key = "BarColorCurve",
-                label = "Bar Color",
-                default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+                label = discreteLabel,
                 onChange = function(curveData)
                     self:SetSetting(SYSTEM_INDEX, "BarColorCurve", curveData)
                     self:ApplyButtonVisuals()
@@ -209,9 +205,22 @@ function Plugin:AddSettings(dialog, systemFrame)
                 end,
             })
         end
+        if PLAYER_CLASS == "ROGUE" or PLAYER_CLASS == "DRUID" then
+            table.insert(schema.controls, {
+                type = "color",
+                key = "ChargedComboPointColor",
+                label = "Charged Combo Point",
+                default = Orbit.Constants.Colors.PlayerResources.ChargedComboPoint or { r = 0.169, g = 0.733, b = 0.992 },
+                onChange = function(val)
+                    self:SetSetting(SYSTEM_INDEX, "ChargedComboPointColor", val)
+                    self:ApplyButtonVisuals()
+                    self:UpdatePower()
+                end,
+            })
+        end
         local curveControls = {
             {
-                resource = "STAGGER",
+                classes = { MONK = true },
                 key = "StaggerColorCurve",
                 label = "Stagger Colour",
                 tooltip = "Color gradient from low (left) to heavy (right) stagger",
@@ -224,28 +233,28 @@ function Plugin:AddSettings(dialog, systemFrame)
                 },
             },
             {
-                resource = "SOUL_FRAGMENTS",
+                classes = { DEMONHUNTER = true },
                 key = "SoulFragmentsColorCurve",
                 label = "Soul Fragments Colour",
                 tooltip = "Color gradient from empty (left) to full (right)",
                 default = { pins = { { position = 0, color = { r = 0.278, g = 0.125, b = 0.796, a = 1 } } } },
             },
             {
-                resource = "EBON_MIGHT",
+                classes = { EVOKER = true },
                 key = "EbonMightColorCurve",
                 label = "Ebon Might Colour",
                 tooltip = "Color gradient from empty (left) to full (right)",
                 default = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.4, a = 1 } } } },
             },
             {
-                resource = "MANA",
+                classes = { DRUID = true, PRIEST = true, SHAMAN = true },
                 key = "ManaColorCurve",
                 label = "Mana Colour",
                 tooltip = "Color gradient from empty (left) to full (right)",
                 default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
             },
             {
-                resource = "MAELSTROM_WEAPON",
+                classes = { SHAMAN = true },
                 key = "MaelstromWeaponColorCurve",
                 label = "Maelstrom Colour",
                 tooltip = "Color gradient from empty (left) to full (right)",
@@ -253,7 +262,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             },
         }
         for _, ctrl in ipairs(curveControls) do
-            if self.continuousResource == ctrl.resource then
+            if ctrl.classes[PLAYER_CLASS] then
                 table.insert(schema.controls, {
                     type = "colorcurve",
                     key = ctrl.key,
@@ -688,13 +697,9 @@ end
 
 -- [ RESOURCE COLOR HELPER ]-------------------------------------------------------------------------
 function Plugin:GetResourceColor(index, maxResources, isCharged)
-    local colors = Orbit.Colors.PlayerResources
-    local fallback = colors[PLAYER_CLASS] or { r = 1, g = 1, b = 1 }
-
-    local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
     local curveData = self:GetSetting(SYSTEM_INDEX, "BarColorCurve")
 
-    if useCustomColor and curveData then
+    if curveData and #curveData.pins > 1 then
         local curveColor
         if index and maxResources and maxResources > 1 then
             local position = (index - 1) / (maxResources - 1)
@@ -702,26 +707,32 @@ function Plugin:GetResourceColor(index, maxResources, isCharged)
         else
             curveColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
         end
-        return curveColor or fallback
-    end
-
-    if isCharged then
-        return colors.ChargedComboPoint or fallback
-    end
-
-    if PLAYER_CLASS == "DEATHKNIGHT" then
-        local spec = GetSpecialization()
-        local specID = spec and GetSpecializationInfo(spec)
-        if specID == 250 then
-            return colors.RuneBlood or fallback
-        elseif specID == 251 then
-            return colors.RuneFrost or fallback
-        elseif specID == 252 then
-            return colors.RuneUnholy or fallback
+        if curveColor then
+            return curveColor
         end
     end
 
-    return fallback
+    if isCharged then
+        return self:GetSetting(SYSTEM_INDEX, "ChargedComboPointColor") or Orbit.Colors.PlayerResources.ChargedComboPoint or { r = 1, g = 1, b = 1 }
+    end
+
+    if PLAYER_CLASS == "DEATHKNIGHT" then
+        local colors = Orbit.Colors.PlayerResources
+        local spec = GetSpecialization()
+        local specID = spec and GetSpecializationInfo(spec)
+        if specID == 250 then
+            return colors.RuneBlood or { r = 1, g = 1, b = 1 }
+        end
+        if specID == 251 then
+            return colors.RuneFrost or { r = 1, g = 1, b = 1 }
+        end
+        if specID == 252 then
+            return colors.RuneUnholy or { r = 1, g = 1, b = 1 }
+        end
+    end
+
+    local firstColor = curveData and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+    return firstColor or Orbit.Colors.PlayerResources[PLAYER_CLASS] or { r = 1, g = 1, b = 1 }
 end
 
 function Plugin:IsEnabled()
@@ -790,6 +801,15 @@ function Plugin:UpdatePowerType()
     else
         Frame:SetScript("OnUpdate", nil)
         Frame:Hide()
+        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
+        self:SetSetting(SYSTEM_INDEX, "Anchor", nil)
+        self:SetSetting(SYSTEM_INDEX, "Position", nil)
+        for _, child in ipairs(OrbitEngine.FrameAnchor:GetAnchoredChildren(Frame)) do
+            OrbitEngine.FrameAnchor:BreakAnchor(child, true)
+            if child.orbitPlugin and child.systemIndex then
+                child.orbitPlugin:SetSetting(child.systemIndex, "Anchor", nil)
+            end
+        end
     end
 end
 
@@ -960,11 +980,15 @@ function Plugin:UpdateLayout(frame)
 end
 
 function Plugin:UpdateContinuousBar(curveKey, current, max)
-    if not Frame.StatusBar then return end
+    if not Frame.StatusBar then
+        return
+    end
     Frame.StatusBar:SetMinMaxValues(0, max)
     Frame.StatusBar:SetValue(current, SMOOTH_ANIM)
     local curveData = self:GetSetting(SYSTEM_INDEX, curveKey)
-    if not curveData then return end
+    if not curveData then
+        return
+    end
 
     -- MANA: use UnitPowerPercent + native ColorCurve (fully secret-safe)
     if self.continuousResource == "MANA" then
@@ -978,8 +1002,10 @@ function Plugin:UpdateContinuousBar(curveKey, current, max)
         end
     end
 
-
-    
+    if issecretvalue and (issecretvalue(current) or issecretvalue(max)) then
+        return
+    end
+    local progress = (max > 0) and (current / max) or 0
     local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
     if color then
         Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
@@ -1135,18 +1161,12 @@ function Plugin:UpdatePower()
         cur = cur / mod
     end
 
-    local useCustomColor = self:GetSetting(SYSTEM_INDEX, "UseCustomColor")
     local curveData = self:GetSetting(SYSTEM_INDEX, "BarColorCurve")
     local color
 
-    if useCustomColor and curveData then
+    if curveData and #curveData.pins > 1 then
         local progress = (max > 0) and (cur / max) or 0
         color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
-    elseif self.powerType == Enum.PowerType.ComboPoints then
-        local chargedPoints = GetUnitChargedPowerPoints("player")
-        if chargedPoints and #chargedPoints > 0 then
-            color = self:GetResourceColor(nil, nil, true)
-        end
     end
     color = color or self:GetResourceColor(nil, nil, false)
 
@@ -1192,7 +1212,6 @@ function Plugin:UpdatePower()
 
                     sp:SetPoint("LEFT", Frame, "LEFT", xPos, 0)
 
-                    -- Apply Pixel:Enforce if available
                     if OrbitEngine.Pixel then
                         OrbitEngine.Pixel:Enforce(sp)
                     end
@@ -1203,8 +1222,59 @@ function Plugin:UpdatePower()
         end
     end
 
+    -- Charged combo point overlays (secret-safe: StatusBars handle fill in C++)
+    Frame.ChargedOverlays = Frame.ChargedOverlays or {}
+    if self.powerType == Enum.PowerType.ComboPoints then
+        local chargedPoints = GetUnitChargedPowerPoints("player")
+        local chargedLookup = {}
+        if chargedPoints then
+            for _, idx in ipairs(chargedPoints) do
+                chargedLookup[idx] = true
+            end
+        end
+        local chargedColor = self:GetSetting(SYSTEM_INDEX, "ChargedComboPointColor")
+            or Orbit.Colors.PlayerResources.ChargedComboPoint
+            or { r = 0.169, g = 0.733, b = 0.992 }
+        local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
+        local texturePath = texture and LSM:Fetch("statusbar", texture) or "Interface\\TargetingFrame\\UI-StatusBar"
+
+        for i = 1, max do
+            local overlay = Frame.ChargedOverlays[i]
+            if not overlay then
+                overlay = CreateFrame("StatusBar", nil, Frame.StatusBarContainer)
+                overlay:SetFrameLevel(Frame.StatusBar:GetFrameLevel() + 1)
+                Frame.ChargedOverlays[i] = overlay
+            end
+            if chargedLookup[i] then
+                local segLeft = SnapToPixel(snappedTotalWidth * ((i - 1) / max), scale)
+                local segRight = SnapToPixel(snappedTotalWidth * (i / max), scale)
+                local halfSpacer = SnapToPixel(snappedSpacerWidth / 2, scale)
+                local left = (i > 1) and (segLeft + halfSpacer) or 0
+                local right = (i < max) and (segRight - halfSpacer) or snappedTotalWidth
+
+                overlay:ClearAllPoints()
+                overlay:SetPoint("TOPLEFT", Frame.StatusBarContainer, "TOPLEFT", left, 0)
+                overlay:SetPoint("BOTTOMRIGHT", Frame.StatusBarContainer, "TOPLEFT", right, -Frame:GetHeight())
+                overlay:SetStatusBarTexture(texturePath)
+                overlay:SetStatusBarColor(chargedColor.r, chargedColor.g, chargedColor.b)
+                overlay:SetMinMaxValues(i - 1, i)
+                overlay:SetValue(cur)
+                overlay:Show()
+            else
+                overlay:Hide()
+            end
+        end
+        for i = max + 1, #Frame.ChargedOverlays do
+            Frame.ChargedOverlays[i]:Hide()
+        end
+    else
+        for _, overlay in ipairs(Frame.ChargedOverlays) do
+            overlay:Hide()
+        end
+    end
+
     if Frame.Text and Frame.Text:IsShown() then
-        Frame.Text:SetText(math.floor(cur))
+        Frame.Text:SetText(cur)
     end
     return
 end

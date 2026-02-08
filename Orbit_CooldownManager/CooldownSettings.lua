@@ -19,6 +19,65 @@ function CDM:AddSettings(dialog, systemFrame)
 
     local schema = { hideNativeSettings = true, controls = {}, extraButtons = {} }
 
+    -- Charge Bars get their own dedicated dialog
+    if frame and frame.isChargeBar then
+        WL:SetTabRefreshCallback(dialog, self, systemFrame)
+        local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Colour", "Visibility" }, "Layout")
+
+        if currentTab == "Layout" then
+            if not isAnchored then
+                table.insert(schema.controls, {
+                    type = "slider", key = "Width", label = "Width", min = 100, max = 400, step = 1, default = 120,
+                    onChange = function(val) self:SetSetting(systemIndex, "Width", val); self:LayoutChargeBars() end,
+                })
+            end
+            table.insert(schema.controls, {
+                type = "slider", key = "Height", label = "Height", min = 6, max = 40, step = 1, default = 12,
+                onChange = function(val) self:SetSetting(systemIndex, "Height", val); self:LayoutChargeBars() end,
+            })
+            table.insert(schema.controls, {
+                type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 10, step = 1, default = 0,
+                onChange = function(val) self:SetSetting(systemIndex, "Spacing", val); self:LayoutChargeBars() end,
+            })
+        elseif currentTab == "Colour" then
+            WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+                key = "BarColorCurve", label = "Bar Colour",
+                onChange = function(curveData)
+                    self:SetSetting(systemIndex, "BarColorCurve", curveData)
+                    self:LayoutChargeBars()
+                end,
+            })
+        elseif currentTab == "Visibility" then
+            WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
+            table.insert(schema.controls, {
+                type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
+                tooltip = "Hide frame when out of combat with no target",
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "OutOfCombatFade", val)
+                    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
+                    if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+                end,
+            })
+            if self:GetSetting(systemIndex, "OutOfCombatFade") then
+                table.insert(schema.controls, {
+                    type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
+                    tooltip = "Reveal frame when mousing over it",
+                    onChange = function(val)
+                        self:SetSetting(systemIndex, "ShowOnMouseover", val)
+                        local data = VIEWER_MAP[systemIndex]
+                        if data and data.anchor and Orbit.OOCFadeMixin then
+                            Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", val)
+                            Orbit.OOCFadeMixin:RefreshAll()
+                        end
+                    end,
+                })
+            end
+        end
+
+        Orbit.Config:Render(dialog, systemFrame, self, schema)
+        return
+    end
+
     if not isTracked then
         table.insert(schema.extraButtons, {
             text = "Cooldown Settings",

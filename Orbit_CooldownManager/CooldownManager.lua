@@ -42,6 +42,13 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
 Plugin.canvasMode = true
 Plugin.viewerMap = VIEWER_MAP
 
+-- Generates a spec-specific settings key, e.g. "TrackedItems_267"
+function Plugin:GetSpecKey(baseKey)
+    local specIndex = GetSpecialization()
+    local specID = specIndex and GetSpecializationInfo(specIndex)
+    return baseKey .. "_" .. (specID or 0)
+end
+
 -- [ STUBS - Overwritten by sub-modules ]------------------------------------------------------------
 function Plugin:AddSettings() end
 function Plugin:IsComponentDisabled() return false end
@@ -90,6 +97,7 @@ function Plugin:OnLoad()
     self:SetupEditModeHooks()
     self:RegisterTalentWatcher()
     self:RegisterSpellCastWatcher()
+    self:RestoreChargeBars()
 
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", self.OnPlayerEnteringWorld, self)
     self:RegisterVisibilityEvents()
@@ -101,8 +109,16 @@ function Plugin:OnLoad()
                 if data.viewer then
                     Orbit.OOCFadeMixin:ApplyOOCFade(data.viewer, self, systemIndex, "OutOfCombatFade", enableHover)
                 end
-                if data.isTracked and data.anchor then
+                if (data.isTracked or data.isChargeBar) and data.anchor then
                     Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", enableHover)
+                end
+            end
+            -- Also apply to charge bar children
+            for _, childData in pairs(self.activeChargeChildren or {}) do
+                if childData.frame then
+                    local csi = childData.frame.systemIndex
+                    local hover = self:GetSetting(csi, "ShowOnMouseover") ~= false
+                    Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover)
                 end
             end
             Orbit.OOCFadeMixin:RefreshAll()
@@ -148,6 +164,10 @@ function Plugin:ApplyAll()
     if self.utilityAnchor then self:ApplySettings(self.utilityAnchor) end
     if self.buffIconAnchor then self:ApplySettings(self.buffIconAnchor) end
     if self.trackedAnchor then self:ApplyTrackedSettings(self.trackedAnchor) end
+    if self.chargeBarAnchor then self:ApplyChargeBarSettings(self.chargeBarAnchor) end
+    for _, childData in pairs(self.activeChargeChildren or {}) do
+        if childData.frame then self:ApplyChargeBarSettings(childData.frame) end
+    end
 end
 
 function Plugin:ApplySettings(frame)
@@ -161,6 +181,7 @@ function Plugin:ApplySettings(frame)
     if not frame or not frame.SetScale then return end
 
     if frame.isTrackedBar then self:ApplyTrackedSettings(frame); return end
+    if frame.isChargeBar then self:ApplyChargeBarSettings(frame); return end
 
     local size = self:GetSetting(systemIndex, "IconSize") or 100
     local alpha = self:GetSetting(systemIndex, "Opacity") or 100

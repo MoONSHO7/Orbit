@@ -796,8 +796,8 @@ function Plugin:AddSettings(dialog, systemFrame)
                 end
             end,
         })
-        local growthOptions = orientation == 0 and { { text = "Down", value = "Down" }, { text = "Up", value = "Up" }, { text = "Center", value = "Center" } }
-            or { { text = "Right", value = "Right" }, { text = "Left", value = "Left" }, { text = "Center", value = "Center" } }
+        local growthOptions = orientation == 0 and { { text = "Down", value = "Down" }, { text = "Up", value = "Up" } }
+            or { { text = "Right", value = "Right" }, { text = "Left", value = "Left" } }
         table.insert(schema.controls, {
             type = "dropdown",
             key = "GrowthDirection",
@@ -1043,9 +1043,14 @@ function Plugin:OnLoad()
     self.container.orbitCanvasFrame = self.frames[1]
     self.container.orbitCanvasTitle = "Party Frame"
 
-    -- Set default container position
+    -- Set default container position (anchor matches growth direction)
     if not self.container:GetPoint() then
-        self.container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -200)
+        if not Helpers then
+            Helpers = Orbit.PartyFrameHelpers
+        end
+        local growDir = self:GetSetting(1, "GrowthDirection") or "Down"
+        local anchor = Helpers:GetContainerAnchor(growDir)
+        self.container:SetPoint(anchor, UIParent, "TOPLEFT", 20, -200)
     end
 
     -- Helper to update visibility driver based on IncludePlayer setting
@@ -1221,13 +1226,56 @@ function Plugin:PositionFrames()
     local width = self:GetSetting(1, "Width") or 160
     local height = self:GetSetting(1, "Height") or 40
     local growthDirection = self:GetSetting(1, "GrowthDirection") or (orientation == 0 and "Down" or "Right")
-    local numFrames = #self.frames
 
-    for i, frame in ipairs(self.frames) do
+    -- Re-anchor container to match growth direction (prevents frame shift on party size change)
+    local desiredAnchor = Helpers:GetContainerAnchor(growthDirection)
+    local currentAnchor = select(1, self.container:GetPoint(1))
+    if currentAnchor and currentAnchor ~= desiredAnchor then
+        local scale = self.container:GetEffectiveScale()
+        local parentScale = UIParent:GetEffectiveScale()
+        local left, bottom = self.container:GetLeft(), self.container:GetBottom()
+        local top, right = self.container:GetTop(), self.container:GetRight()
+        if left and bottom and top and right then
+            local ratio = parentScale / scale
+            local parentLeft = UIParent:GetLeft() or 0
+            local parentBottom = UIParent:GetBottom() or 0
+            local parentTop = UIParent:GetTop() or (GetScreenHeight() * parentScale)
+            local parentRight = UIParent:GetRight() or (GetScreenWidth() * parentScale)
+            local x, y
+            if desiredAnchor == "TOPLEFT" then
+                x = (left - parentLeft) * ratio
+                y = (top - parentTop) * ratio
+            elseif desiredAnchor == "BOTTOMLEFT" then
+                x = (left - parentLeft) * ratio
+                y = (bottom - parentBottom) * ratio
+            elseif desiredAnchor == "TOPRIGHT" then
+                x = (right - parentRight) * ratio
+                y = (top - parentTop) * ratio
+            else
+                x = (left - parentLeft) * ratio
+                y = (top - parentTop) * ratio
+            end
+            self.container:ClearAllPoints()
+            self.container:SetPoint(desiredAnchor, UIParent, desiredAnchor, x, y)
+            -- Persist new anchor through position system
+            local PM = OrbitEngine.PositionManager
+            if PM then
+                PM:SetPosition(self.container, desiredAnchor, x, y)
+                PM:MarkDirty(self.container)
+            end
+            self:SetSetting(1, "Position", { point = desiredAnchor, x = x, y = y })
+        end
+    end
+
+    local visibleIndex = 0
+    for _, frame in ipairs(self.frames) do
         frame:ClearAllPoints()
-        local xOffset, yOffset, frameAnchor, containerAnchor =
-            Helpers:CalculateFramePosition(i, width, height, spacing, orientation, growthDirection, numFrames)
-        frame:SetPoint(frameAnchor, self.container, containerAnchor, xOffset, yOffset)
+        if frame:IsShown() or frame.preview then
+            visibleIndex = visibleIndex + 1
+            local xOffset, yOffset, frameAnchor, containerAnchor =
+                Helpers:CalculateFramePosition(visibleIndex, width, height, spacing, orientation, growthDirection)
+            frame:SetPoint(frameAnchor, self.container, containerAnchor, xOffset, yOffset)
+        end
     end
 
     self:UpdateContainerSize()

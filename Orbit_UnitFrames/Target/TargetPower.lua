@@ -7,18 +7,13 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
+local CanUseUnitPowerPercent = (type(UnitPowerPercent) == "function" and CurveConstants and CurveConstants.ScaleTo100)
 local function SafeUnitPowerPercent(unit, resource)
-    if type(UnitPowerPercent) ~= "function" then
-        return nil
-    end
-    if not CurveConstants or not CurveConstants.ScaleTo100 then
+    if not CanUseUnitPowerPercent then
         return nil
     end
     local ok, pct = pcall(UnitPowerPercent, unit, resource, false, CurveConstants.ScaleTo100)
-    if ok and pct ~= nil then
-        return pct
-    end
-    return nil
+    return (ok and pct) or nil
 end
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
@@ -187,7 +182,9 @@ function Plugin:UpdateVisibility()
         return
     end
     if InCombatLockdown() then
-        Orbit.CombatManager:QueueUpdate(function() self:UpdateVisibility() end)
+        Orbit.CombatManager:QueueUpdate(function()
+            self:UpdateVisibility()
+        end)
         return
     end
     local enabled = self:IsEnabled()
@@ -237,7 +234,9 @@ function Plugin:ApplySettings()
         return
     end
     if InCombatLockdown() then
-        Orbit.CombatManager:QueueUpdate(function() self:ApplySettings() end)
+        Orbit.CombatManager:QueueUpdate(function()
+            self:ApplySettings()
+        end)
         return
     end
     local systemIndex = SYSTEM_INDEX
