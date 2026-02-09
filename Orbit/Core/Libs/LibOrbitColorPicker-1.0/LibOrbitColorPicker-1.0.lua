@@ -1,13 +1,8 @@
 -- [ LibOrbitColorPicker-1.0 ] ------------------------------------------------------------------------------------
--- Extends Blizzard's ColorPickerFrame with drag-and-drop swatch and ColorCurve gradient bar.
--- Single-pin mode for simple RGB colors, multi-pin mode for ColorCurve gradients.
 
 local MAJOR, MINOR = "LibOrbitColorPicker-1.0", 2
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
-
-local _, Orbit = ...
-local Pixel = Orbit and Orbit.Engine and Orbit.Engine.Pixel
 
 -- [ CONSTANTS ] ------------------------------------------------------------------------------------
 local GRADIENT_BAR_HEIGHT = 24
@@ -105,7 +100,6 @@ function GradientBarMixin:Refresh()
     
     self.SolidTexture:Hide()
     
-    -- Update Apply button state based on pin count
     lib:UpdateApplyButtonState()
     
     if #pins == 0 then
@@ -544,7 +538,7 @@ end
 function lib:CreateGradientBar()
     if self.gradientBar then return self.gradientBar end
     
-    local bar = CreateFrame("Frame", "LibOrbitColorPickerGradientBar", ColorPickerFrame.Content)
+    local bar = CreateFrame("Frame", nil, ColorPickerFrame.Content)
     Mixin(bar, GradientBarMixin)
     bar:SetHeight(GRADIENT_BAR_HEIGHT)
     bar:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -553,7 +547,7 @@ function lib:CreateGradientBar()
     bar:SetPoint("RIGHT", ColorPickerFrame, "RIGHT", -GRADIENT_BAR_PADDING, 0)
     bar:SetPoint("BOTTOM", lib.orbitFooter, "TOP", 0, GRADIENT_BAR_GAP)
     
-    local borderSize = Pixel and Pixel:Snap(1, bar:GetEffectiveScale()) or 1
+    local borderSize = 1
     
     bar.BorderTop = bar:CreateTexture(nil, "OVERLAY")
     bar.BorderTop:SetColorTexture(1, 1, 1, 1)
@@ -765,18 +759,6 @@ function lib:Initialize()
 end
 
 -- [ PUBLIC API ] ------------------------------------------------------------------------------------
--- Auto-detects data type: curve ({ pins = {...} } or native ColorCurve) vs simple color ({ r, g, b })
-local function IsCurveData(data)
-    if not data then return false end
-    if data.pins then return true end
-    if data.GetPoints then return true end
-    return false
-end
-
--- Opens the color picker with auto-detected mode.
--- options.initialData: auto-detected - { r, g, b, a } for single color, { pins = {...} } for curve
--- options.callback: function(result, wasCancelled) - Called on close
--- options.hasOpacity: boolean - Whether to show opacity slider (default true)
 function lib:Open(options)
     options = options or {}
     self.wasCancelled = false
@@ -789,8 +771,10 @@ function lib:Open(options)
     if self.multiPinMode then
         self:LoadFromCurve(data)
     elseif data then
-        local c = NormalizeColor(data)
-        table.insert(self.pins, { position = 0.5, color = c })
+        local colorSource = (data.pins and data.pins[1]) and data.pins[1].color or data
+        local pinData = { position = 0.5, color = NormalizeColor(colorSource) }
+        if data.pins and data.pins[1] and data.pins[1].type then pinData.type = data.pins[1].type end
+        table.insert(self.pins, pinData)
     end
     
     self:Initialize()

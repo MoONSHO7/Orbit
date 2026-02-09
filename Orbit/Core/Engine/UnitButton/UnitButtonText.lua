@@ -282,7 +282,9 @@ function TextMixin:ApplyNameColor()
         local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
         if positions and positions.Name and positions.Name.overrides then
             local overrides = positions.Name.overrides
-            if overrides.CustomColor and overrides.CustomColorValue then
+            if overrides.CustomColor and overrides.CustomColorCurve then
+                customColorOverride = Engine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
+            elseif overrides.CustomColor and overrides.CustomColorValue then
                 customColorOverride = overrides.CustomColorValue
             end
         end
@@ -313,7 +315,9 @@ function TextMixin:ApplyHealthTextColor()
         local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
         if positions and positions.HealthText and positions.HealthText.overrides then
             local overrides = positions.HealthText.overrides
-            if overrides.CustomColor and overrides.CustomColorValue then
+            if overrides.CustomColor and overrides.CustomColorCurve then
+                customColorOverride = Engine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
+            elseif overrides.CustomColor and overrides.CustomColorValue then
                 customColorOverride = overrides.CustomColorValue
             end
         end

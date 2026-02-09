@@ -351,7 +351,10 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     frame.Name:SetFont(fontPath, overrides.FontSize, flags or Orbit.Skin:GetFontOutline())
                 end
                 -- Custom color override takes precedence
-                if overrides.CustomColor and overrides.CustomColorValue then
+                if overrides.CustomColor and overrides.CustomColorCurve then
+                    local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
+                    if color then frame.Name:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1) end
+                elseif overrides.CustomColor and overrides.CustomColorValue then
                     local c = overrides.CustomColorValue
                     frame.Name:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
                 end
@@ -371,7 +374,10 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     local fontPath, _, flags = frame.HealthText:GetFont()
                     frame.HealthText:SetFont(fontPath, overrides.FontSize, flags or Orbit.Skin:GetFontOutline())
                 end
-                if overrides.CustomColor and overrides.CustomColorValue then
+                if overrides.CustomColor and overrides.CustomColorCurve then
+                    local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
+                    if color then frame.HealthText:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1) end
+                elseif overrides.CustomColor and overrides.CustomColorValue then
                     local c = overrides.CustomColorValue
                     frame.HealthText:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
                 end

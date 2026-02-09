@@ -11,11 +11,15 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
-local DIALOG_WIDTH = 300 -- Compact width
+local DIALOG_WIDTH = 220
 local DIALOG_MIN_HEIGHT = 120
 local WIDGET_HEIGHT = 28
 local WIDGET_SPACING = 4
-local PADDING = 20 -- More padding on left/right
+local PADDING = 17
+local BORDER_OVERLAP = 15
+local COMPACT_LABEL_WIDTH = 50
+local COMPACT_VALUE_WIDTH = 28
+local COMPACT_LABEL_GAP = 3
 
 -- [ COMPONENT TYPE SCHEMAS ]-------------------------------------------------------------------------
 
@@ -84,7 +88,7 @@ Dialog.Border:SetAllPoints(Dialog)
 Dialog.Border:SetFrameLevel(Dialog:GetFrameLevel())
 
 -- Title
-Dialog.Title = Dialog:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+Dialog.Title = Dialog:CreateFontString(nil, "ARTWORK", "GameFontNormal")
 Dialog.Title:SetPoint("TOP", Dialog, "TOP", 0, -PADDING)
 
 -- Content container for widgets
@@ -309,23 +313,29 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
     local yOffset = 0
     local widgetIndex = 0
 
-    -- Helper to get current value from visual if no override exists
     local function GetValueFromVisual(container, key)
         if not container or not container.visual then
             return nil
         end
         local visual = container.visual
 
-        if key == "FontSize" and visual.GetFont then
+        if key == "Font" and visual.GetFont then
+            local fontPath = visual:GetFont()
+            if fontPath then
+                for name, path in pairs(LSM:HashTable("font")) do
+                    if path == fontPath then return name end
+                end
+            end
+        elseif key == "FontSize" and visual.GetFont then
             local _, size = visual:GetFont()
             return size and math.floor(size + 0.5)
         elseif key == "CustomColor" then
-            return false -- Default to not using custom color (use global)
+            return false
         elseif key == "CustomColorValue" and visual.GetTextColor then
             local r, g, b, a = visual:GetTextColor()
             return { r = r, g = g, b = b, a = a or 1 }
         elseif key == "Scale" then
-            return 1.0 -- Default scale
+            return 1.0
         end
         return nil
     end
@@ -353,7 +363,6 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
             self:OnValueChanged(key, value)
         end
 
-        -- Use Orbit Layout widgets for consistent styling
         if control.type == "slider" then
             widget = CreateSliderWidget(self.Content, control, currentValue or control.min, callback)
         elseif control.type == "checkbox" then
@@ -375,6 +384,27 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
                 end
             else
                 widget = CreateColorPickerWidget(self.Content, control, currentValue and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(currentValue), callback)
+            end
+        end
+
+        -- Re-layout widget columns for compact panel
+        if widget then
+            if widget.Label and control.type ~= "checkbox" then
+                widget.Label:SetWidth(COMPACT_LABEL_WIDTH)
+            end
+            local controlChild = widget.Slider or widget.Control or widget.GradientBar
+            if controlChild then
+                controlChild:ClearAllPoints()
+                controlChild:SetPoint("LEFT", widget.Label, "RIGHT", COMPACT_LABEL_GAP, 0)
+                controlChild:SetPoint("RIGHT", widget, "RIGHT", -COMPACT_VALUE_WIDTH, 0)
+            end
+            if widget.Value then
+                widget.Value:SetWidth(COMPACT_VALUE_WIDTH)
+            end
+            if control.type == "checkbox" and widget.Label then
+                widget.Label:ClearAllPoints()
+                widget.Label:SetPoint("LEFT", widget, "LEFT", COMPACT_LABEL_WIDTH + COMPACT_LABEL_GAP, 0)
+                widget.Label:SetPoint("RIGHT", widget, "RIGHT", 0, 0)
             end
         end
 
@@ -424,7 +454,7 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
     self:ClearAllPoints()
     local canvasDialog = Orbit.CanvasModeDialog
     if canvasDialog and canvasDialog:IsShown() then
-        self:SetPoint("TOPRIGHT", canvasDialog, "TOPLEFT", -10, 0)
+        self:SetPoint("TOPRIGHT", canvasDialog, "TOPLEFT", BORDER_OVERLAP, 0)
     elseif container then
         self:SetPoint("TOPRIGHT", container, "TOPLEFT", -10, 0)
     else
