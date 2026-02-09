@@ -131,10 +131,16 @@ function Plugin:OnLoad()
 
     self:ApplySettings()
 
+    -- Populate debuffs the instant RegisterUnitWatch shows the frame
+    Frame:HookScript("OnShow", function()
+        if not Orbit:IsEditMode() then
+            self:UpdateDebuffs()
+        end
+    end)
+
     -- Live resize: recalculate icons when frame size changes
     Frame:HookScript("OnSizeChanged", function()
-        local isEditMode = Orbit:IsEditMode()
-        if isEditMode then
+        if Orbit:IsEditMode() then
             self:ShowPreviewAuras()
         else
             self:UpdateDebuffs()
@@ -155,6 +161,7 @@ function Plugin:OnLoad()
 
         if event == "PLAYER_FOCUS_CHANGED" or event == "PLAYER_ENTERING_WORLD" then
             self:UpdateVisibility()
+            self:UpdateDebuffs()
         elseif event == "UNIT_AURA" then
             if unit == f.unit then
                 self:UpdateDebuffs()
@@ -178,7 +185,7 @@ end
 
 -- [ UPDATE DEBUFFS ]---------------------------------------------------------------------------------------
 function Plugin:UpdateDebuffs()
-    if not Frame or not Frame:IsShown() then
+    if not Frame then
         return
     end
     local enabled = self:IsEnabled()

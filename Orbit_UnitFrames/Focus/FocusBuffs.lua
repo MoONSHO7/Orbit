@@ -127,10 +127,16 @@ function Plugin:OnLoad()
 
     self:ApplySettings()
 
+    -- Populate buffs the instant RegisterUnitWatch shows the frame
+    Frame:HookScript("OnShow", function()
+        if not Orbit:IsEditMode() then
+            self:UpdateBuffs()
+        end
+    end)
+
     -- Live resize: recalculate icons when frame size changes
     Frame:HookScript("OnSizeChanged", function()
-        local isEditMode = Orbit:IsEditMode()
-        if isEditMode then
+        if Orbit:IsEditMode() then
             self:ShowPreviewAuras()
         else
             self:UpdateBuffs()
@@ -151,6 +157,7 @@ function Plugin:OnLoad()
 
         if event == "PLAYER_FOCUS_CHANGED" or event == "PLAYER_ENTERING_WORLD" then
             self:UpdateVisibility()
+            self:UpdateBuffs()
         elseif event == "UNIT_AURA" then
             if unit == f.unit then
                 self:UpdateBuffs()
@@ -174,7 +181,7 @@ end
 
 -- [ UPDATE BUFFS ]---------------------------------------------------------------------------------------
 function Plugin:UpdateBuffs()
-    if not Frame or not Frame:IsShown() then
+    if not Frame then
         return
     end
     local enabled = self:IsEnabled()
