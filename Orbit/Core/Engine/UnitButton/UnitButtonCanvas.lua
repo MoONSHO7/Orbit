@@ -163,17 +163,16 @@ function CanvasMixin:ApplyStyleOverrides(positions)
             element:SetFont(font, overrides.FontSize, flags)
         end
 
-        -- Color override (Class Colour > Custom Color > default)
+        -- Color override (Class Colour > CustomColor+Curve > legacy table)
         if element.SetTextColor then
             if overrides.UseClassColour then
-                -- Apply player class colour
                 local _, playerClass = UnitClass("player")
                 local classColor = RAID_CLASS_COLORS[playerClass]
-                if classColor then
-                    element:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
-                end
+                if classColor then element:SetTextColor(classColor.r, classColor.g, classColor.b, 1) end
+            elseif overrides.CustomColor and overrides.CustomColorCurve then
+                local color = Engine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
+                if color then element:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1) end
             elseif overrides.CustomColor and type(overrides.CustomColor) == "table" then
-                -- Apply custom color
                 local c = overrides.CustomColor
                 element:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
             end

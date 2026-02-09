@@ -15,6 +15,10 @@ Preview.Controller = PreviewController
 
 local activeSession = nil
 
+local function CopyPosition(pos)
+    return { anchorX = pos.anchorX, anchorY = pos.anchorY, offsetX = pos.offsetX, offsetY = pos.offsetY, justifyH = pos.justifyH }
+end
+
 -- [ SESSION API ]--------------------------------------------------------------------------------
 
 -- Start a new preview session
@@ -44,20 +48,8 @@ function PreviewController:StartSession(frame, plugin, callbacks)
         local systemIndex = frame.systemIndex or plugin.system or 1
         if sv.Systems and sv.Systems[systemIndex] and sv.Systems[systemIndex].ComponentPositions then
             for key, pos in pairs(sv.Systems[systemIndex].ComponentPositions) do
-                session.originalPositions[key] = {
-                    anchorX = pos.anchorX,
-                    anchorY = pos.anchorY,
-                    offsetX = pos.offsetX,
-                    offsetY = pos.offsetY,
-                    justifyH = pos.justifyH,
-                }
-                session.currentPositions[key] = {
-                    anchorX = pos.anchorX,
-                    anchorY = pos.anchorY,
-                    offsetX = pos.offsetX,
-                    offsetY = pos.offsetY,
-                    justifyH = pos.justifyH,
-                }
+                session.originalPositions[key] = CopyPosition(pos)
+                session.currentPositions[key] = CopyPosition(pos)
             end
         end
     end
@@ -150,13 +142,7 @@ function PreviewController:ResetPositions(session)
     end
 
     for key, pos in pairs(session.originalPositions) do
-        session.currentPositions[key] = {
-            anchorX = pos.anchorX,
-            anchorY = pos.anchorY,
-            offsetX = pos.offsetX,
-            offsetY = pos.offsetY,
-            justifyH = pos.justifyH,
-        }
+        session.currentPositions[key] = CopyPosition(pos)
     end
 
     -- Notify callback

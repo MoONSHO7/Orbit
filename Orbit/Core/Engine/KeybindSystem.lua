@@ -10,7 +10,7 @@ local OrbitEngine = Orbit.Engine
 local KeybindSystem = {}
 OrbitEngine.KeybindSystem = KeybindSystem
 
---[ KEYBIND FORMATTING ]-----------------------------------------------------------
+-- [ KEYBIND FORMATTING ]------------------------------------------------------------
 -- Convert verbose keybind text to compact display (SHIFT-1 → S1)
 
 function KeybindSystem:Format(keybind)
@@ -82,7 +82,7 @@ function KeybindSystem:Format(keybind)
     return #out > 4 and out:sub(1, 4) or out
 end
 
---[ BUTTON KEYBIND LOOKUP ]--------------------------------------------------------
+-- [ BUTTON KEYBIND LOOKUP ]---------------------------------------------------------
 
 function KeybindSystem:GetForButton(button)
     if not button or not GetBindingKey then
@@ -117,7 +117,7 @@ function KeybindSystem:GetForButton(button)
     return nil
 end
 
---[ SPELL KEYBIND LOOKUP ]---------------------------------------------------------
+-- [ SPELL KEYBIND LOOKUP ]----------------------------------------------------------
 -- Cached spell→keybind lookup for Cooldown Manager
 
 local spellToKeybind = {}
@@ -215,25 +215,15 @@ function KeybindSystem:GetForSpell(spellID)
     return key
 end
 
---[ EVENT REGISTRATION ]-----------------------------------------------------------
+-- [ EVENT REGISTRATION ]------------------------------------------------------------
+
+local CACHE_INVALIDATION_EVENTS = {
+    "UPDATE_BINDINGS", "ACTIONBAR_SLOT_CHANGED", "ACTIONBAR_PAGE_CHANGED",
+    "PLAYER_TALENT_UPDATE", "PLAYER_SPECIALIZATION_CHANGED", "SPELLS_CHANGED",
+}
 
 if Orbit.EventBus then
-    Orbit.EventBus:On("UPDATE_BINDINGS", function()
-        KeybindSystem:InvalidateCache()
-    end)
-    Orbit.EventBus:On("ACTIONBAR_SLOT_CHANGED", function()
-        KeybindSystem:InvalidateCache()
-    end)
-    Orbit.EventBus:On("ACTIONBAR_PAGE_CHANGED", function()
-        KeybindSystem:InvalidateCache()
-    end)
-    Orbit.EventBus:On("PLAYER_TALENT_UPDATE", function()
-        KeybindSystem:InvalidateCache()
-    end)
-    Orbit.EventBus:On("PLAYER_SPECIALIZATION_CHANGED", function()
-        KeybindSystem:InvalidateCache()
-    end)
-    Orbit.EventBus:On("SPELLS_CHANGED", function()
-        KeybindSystem:InvalidateCache()
-    end)
+    for _, event in ipairs(CACHE_INVALIDATION_EVENTS) do
+        Orbit.EventBus:On(event, function() KeybindSystem:InvalidateCache() end)
+    end
 end

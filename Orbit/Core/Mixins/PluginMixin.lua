@@ -45,7 +45,7 @@ function Orbit.PluginMixin:RegisterStandardEvents()
     end
 end
 
--- Check if a component is disabled via Canvas Mode drag-to-disable (O(1) set lookup)
+-- Check if a component is disabled via Canvas Mode drag-to-disable (linear scan, small N)
 function Orbit.PluginMixin:IsComponentDisabled(componentKey)
     local disabled = self:GetSetting(self.frame and self.frame.systemIndex or 1, "DisabledComponents") or {}
     for _, key in ipairs(disabled) do
@@ -98,26 +98,19 @@ function Orbit.PluginMixin:SetSetting(systemIndex, key, value)
 end
 
 -- For plugins with insecure frames that need Pet Battle / Vehicle visibility
+local VISIBILITY_EVENTS = { "PET_BATTLE_OPENING_START", "PET_BATTLE_CLOSE" }
+local VISIBILITY_UNIT_EVENTS = { "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE" }
+
 function Orbit.PluginMixin:RegisterVisibilityEvents()
-    if not Orbit.EventBus then
-        return
+    if not Orbit.EventBus then return end
+    for _, event in ipairs(VISIBILITY_EVENTS) do
+        Orbit.EventBus:On(event, function() self:UpdateVisibility() end, self)
     end
-    Orbit.EventBus:On("PET_BATTLE_OPENING_START", function()
-        self:UpdateVisibility()
-    end, self)
-    Orbit.EventBus:On("PET_BATTLE_CLOSE", function()
-        self:UpdateVisibility()
-    end, self)
-    Orbit.EventBus:On("UNIT_ENTERED_VEHICLE", function(unit)
-        if unit == "player" then
-            self:UpdateVisibility()
-        end
-    end, self)
-    Orbit.EventBus:On("UNIT_EXITED_VEHICLE", function(unit)
-        if unit == "player" then
-            self:UpdateVisibility()
-        end
-    end, self)
+    for _, event in ipairs(VISIBILITY_UNIT_EVENTS) do
+        Orbit.EventBus:On(event, function(unit)
+            if unit == "player" then self:UpdateVisibility() end
+        end, self)
+    end
     self:UpdateVisibility()
 end
 

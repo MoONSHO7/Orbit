@@ -238,9 +238,7 @@ function Config:RenderControl(container, systemFrame, plugin, systemIndex, def)
     -- Helper builder for callback
     local function MakeCallback()
         if def.onChange then
-            return function(val)
-                def.onChange(val)
-            end
+            return def.onChange
         else
             return function(val)
                 plugin:SetSetting(systemIndex, key, val)

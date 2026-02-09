@@ -112,7 +112,7 @@ local function GetGlobalSchema()
 
     table.insert(controls, {
         type = "description",
-        text = "|cFFFFD100Right Click:|r Open Canvas Mode\n\n|cFFFFD100Anchor:|r Drag a frame to the edge of another frame to anchor it.\n\n|cFFFFD100Mouse Wheel:|r Scroll up and down on an anchored frame to adjust spacing between itself and its parent.",
+        text = "|cFFFFD100Right Click:|r Open Canvas Mode\n\n|cFFFFD100Anchor:|r Drag a frame to the edge of another frame to anchor it.\n\n|cFFFFD100Shift + Drag:|r Precision mode. Hides overlays and disables anchoring.\n\n|cFFFFD100Mouse Wheel:|r Scroll up and down on an anchored frame to adjust spacing between itself and its parent.",
     })
 
     return {
@@ -362,7 +362,7 @@ local function GetEditModeSchema()
                 key = "AnchoringEnabled",
                 label = "Enable Frame Anchoring",
                 default = true,
-                tooltip = "Allow frames to anchor to other frames. Disabling preserves existing anchors but prevents new ones.",
+                tooltip = "Allow frames to anchor to other frames. Disabling preserves existing anchors but prevents new ones.\n\nHold Shift while dragging to temporarily bypass anchoring.",
             },
             {
                 type = "colorcurve",

@@ -272,18 +272,13 @@ end
 
 -- [ EVENT HANDLERS ]--------------------------------------------------------------------------------
 
-local frame = CreateFrame("Frame")
-frame:RegisterEvent("PLAYER_LOGIN")
-frame:SetScript("OnEvent", function(self, event, arg1)
+local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("PLAYER_LOGOUT")
+eventFrame:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_LOGIN" then
         Orbit:OnLoad()
-    end
-end)
-
-local logoutFrame = CreateFrame("Frame")
-logoutFrame:RegisterEvent("PLAYER_LOGOUT")
-logoutFrame:SetScript("OnEvent", function(self, event)
-    if event == "PLAYER_LOGOUT" then
+    elseif event == "PLAYER_LOGOUT" then
         if Orbit.Engine and Orbit.Engine.PositionManager then
             Orbit.Engine.PositionManager:FlushToStorage()
         end

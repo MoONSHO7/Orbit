@@ -3,6 +3,10 @@
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local ipairs, type, tonumber = ipairs, type, tonumber
+local math_max, math_min, math_abs = math.max, math.min, math.abs
+local tinsert, tsort = table.insert, table.sort
+local InCombatLockdown = InCombatLockdown
 ---@class OrbitWidgetLogic
 Engine.WidgetLogic = {}
 local WL = Engine.WidgetLogic
@@ -62,7 +66,7 @@ local function GetSortedPins(curveData)
     if curveData._sorted then return curveData._sorted end
     local sorted = {}
     for _, p in ipairs(curveData.pins) do sorted[#sorted + 1] = p end
-    table.sort(sorted, function(a, b) return a.position < b.position end)
+    tsort(sorted, function(a, b) return a.position < b.position end)
     curveData._sorted = sorted
     return sorted
 end
@@ -75,7 +79,7 @@ function WL:SampleColorCurve(curveData, position)
     if #pins == 1 then return ResolveClassColorPin(pins[1]) end
     
     local sorted = GetSortedPins(curveData)
-    position = math.max(0, math.min(1, position))
+    position = math_max(0, math_min(1, position))
     
     -- Find surrounding pins
     local first, last = sorted[1], sorted[#sorted]
@@ -96,7 +100,7 @@ function WL:SampleColorCurve(curveData, position)
     
     -- Linear interpolation (clamped)
     local range = right.position - left.position
-    local t = (range > 0) and math.max(0, math.min(1, (position - left.position) / range)) or 0
+    local t = (range > 0) and math_max(0, math_min(1, (position - left.position) / range)) or 0
     
     return {
         r = leftColor.r + (rightColor.r - leftColor.r) * t,
@@ -215,7 +219,7 @@ function WL:FromNativeColorCurve(nativeCurve)
     local pins = {}
     for _, point in ipairs(nativeCurve:GetPoints()) do
         local color = point.y
-        table.insert(pins, {
+        tinsert(pins, {
             position = point.x,
             color = { r = color.r, g = color.g, b = color.b, a = color.a or 1 }
         })
@@ -225,7 +229,10 @@ end
 
 -- Invalidate cache when curve data changes (call after setting changes)
 function WL:InvalidateNativeCurveCache(curveData)
-    if curveData then nativeCurveCache[curveData] = nil end
+    if curveData then
+        nativeCurveCache[curveData] = nil
+        curveData._sorted = nil
+    end
 end
 -- Standard onChange that calls ApplySettings and updates selection
 -- Skip ApplySettings if frame is in canvas mode to prevent exiting
@@ -235,6 +242,13 @@ local function IsInCanvasMode(frame)
         return Engine.CanvasMode:IsFrameInCanvasMode(frame)
     end
     return frame and frame.orbitCanvasOriginal ~= nil
+end
+
+-- Shared tail: apply settings + update selection overlay
+local function ApplyAndSync(plugin, systemFrame, frame)
+    if plugin.ApplySettings then plugin:ApplySettings(systemFrame) end
+    local target = frame or systemFrame or plugin.Frame
+    if Engine.Frame and target then Engine.Frame:ForceUpdateSelection(target) end
 end
 
 local function CreateDefaultOnChange(plugin, systemIndex, key, systemFrame)
@@ -290,7 +304,7 @@ local function CreateAnchorOnChange(plugin, systemIndex, key, systemFrame, dialo
 end
 
 function WL:AddAnchorSettings(plugin, schema, systemIndex, dialog, systemFrame, currentAnchor, anchorTargets)
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "dropdown",
         key = "AnchorMode",
         label = "Anchor",
@@ -304,7 +318,7 @@ function WL:AddAnchorSettings(plugin, schema, systemIndex, dialog, systemFrame, 
     })
 
     if currentAnchor and currentAnchor > 0 and anchorTargets then
-        table.insert(schema.controls, {
+        tinsert(schema.controls, {
             type = "dropdown",
             key = "AnchorTarget",
             label = "Anchor To",
@@ -314,7 +328,7 @@ function WL:AddAnchorSettings(plugin, schema, systemIndex, dialog, systemFrame, 
         })
 
         local defaults = Engine.Constants.Settings.Padding
-        table.insert(schema.controls, {
+        tinsert(schema.controls, {
             type = "slider",
             key = "AnchorPadding",
             label = "Padding",
@@ -434,7 +448,7 @@ function WL:AddSizeSettings(plugin, schema, systemIndex, systemFrame, widthParam
     local widthDefaults = Engine.Constants.Settings.Width
     if widthParams then
         local key = widthParams.key or "Width"
-        table.insert(schema.controls, {
+        tinsert(schema.controls, {
             type = "slider",
             key = key,
             label = widthParams.label or "Width",
@@ -449,7 +463,7 @@ function WL:AddSizeSettings(plugin, schema, systemIndex, systemFrame, widthParam
     local heightDefaults = Engine.Constants.Settings.Height
     if heightParams then
         local key = heightParams.key or "Height"
-        table.insert(schema.controls, {
+        tinsert(schema.controls, {
             type = "slider",
             key = key,
             label = heightParams.label or "Height",
@@ -464,7 +478,7 @@ function WL:AddSizeSettings(plugin, schema, systemIndex, systemFrame, widthParam
     local scaleDefaults = Engine.Constants.Settings.Scale
     if scaleParams then
         local key = scaleParams.key or "Scale"
-        table.insert(schema.controls, {
+        tinsert(schema.controls, {
             type = "slider",
             key = key,
             label = scaleParams.label or "Scale",
@@ -508,7 +522,7 @@ function WL:AddTextSettings(plugin, schema, systemIndex, dialog, systemFrame, cu
     local showKey = showKeyOverride or "ShowText"
     local sizeKey = sizeKeyOverride or "TextSize"
 
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "checkbox",
         key = showKey,
         label = "Show Text",
@@ -519,7 +533,7 @@ function WL:AddTextSettings(plugin, schema, systemIndex, dialog, systemFrame, cu
     local show = Get(plugin, systemIndex, showKey, true)
     if show ~= false then
         local defaults = Engine.Constants.Settings.TextSize
-        table.insert(schema.controls, {
+        tinsert(schema.controls, {
             type = "slider",
             key = sizeKey,
             label = "Text Size",
@@ -537,12 +551,7 @@ end
 local function CreateBorderOnChange(plugin, systemIndex, key, systemFrame)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
-        if plugin.ApplySettings then
-            plugin:ApplySettings(systemFrame)
-        end
-        if Engine.Frame then
-            Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame)
-        end
+        ApplyAndSync(plugin, systemFrame)
     end
 end
 
@@ -553,12 +562,7 @@ local function CreateSpacingOnChange(plugin, systemIndex, key, systemFrame)
         if frame then
             frame.orbitSpacing = val
         end
-        if plugin.ApplySettings then
-            plugin:ApplySettings(systemFrame)
-        end
-        if Engine.Frame then
-            Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame)
-        end
+        ApplyAndSync(plugin, systemFrame)
     end
 end
 
@@ -576,12 +580,7 @@ local function CreateTextureOnChange(plugin, systemIndex, key, systemFrame, text
                 end
             end
         end
-        if plugin.ApplySettings then
-            plugin:ApplySettings(systemFrame)
-        end
-        if Engine.Frame then
-            Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame)
-        end
+        ApplyAndSync(plugin, systemFrame)
     end
 end
 
@@ -595,9 +594,7 @@ local function CreateColorOnChange(plugin, systemIndex, key, systemFrame, colorT
                 colorTarget:SetVertexColor(val.r, val.g, val.b)
             end
         end
-        if plugin.ApplySettings then
-            plugin:ApplySettings(systemFrame)
-        end
+        ApplyAndSync(plugin, systemFrame)
     end
 end
 
@@ -614,24 +611,14 @@ local function CreateFontOnChange(plugin, systemIndex, key, systemFrame, fontTar
                 end
             end
         end
-        if plugin.ApplySettings then
-            plugin:ApplySettings(systemFrame)
-        end
-        if Engine.Frame then
-            Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame)
-        end
+        ApplyAndSync(plugin, systemFrame)
     end
 end
 
 local function CreateOrientationOnChange(plugin, systemIndex, key, systemFrame, dialog, refreshOnChange)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
-        if plugin.ApplySettings then
-            plugin:ApplySettings(systemFrame)
-        end
-        if Engine.Frame then
-            Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame)
-        end
+        ApplyAndSync(plugin, systemFrame)
         if refreshOnChange and dialog and plugin.AddSettings then
             Engine.Layout:Reset(dialog)
             plugin:AddSettings(dialog, systemFrame)
@@ -643,7 +630,7 @@ function WL:AddBorderSpacingSettings(plugin, schema, systemIndex, systemFrame, b
     local borderDefaults = Engine.Constants.Settings.BorderSize
     if borderParams then
         local key = borderParams.key or "BorderSize"
-        table.insert(schema.controls, {
+        tinsert(schema.controls, {
             type = "slider",
             key = key,
             label = borderParams.label or "Border Size",
@@ -658,7 +645,7 @@ function WL:AddBorderSpacingSettings(plugin, schema, systemIndex, systemFrame, b
     local spacingDefaults = Engine.Constants.Settings.Spacing
     if spacingParams then
         local key = spacingParams.key or "Spacing"
-        table.insert(schema.controls, {
+        tinsert(schema.controls, {
             type = "slider",
             key = key,
             label = spacingParams.label or "Spacing",
@@ -673,7 +660,7 @@ end
 
 function WL:AddTextureSettings(plugin, schema, systemIndex, systemFrame, keyOverride, previewColor, textureTarget)
     local key = keyOverride or "Texture"
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "texture",
         key = key,
         label = "Texture",
@@ -685,7 +672,7 @@ end
 
 function WL:AddFontSettings(plugin, schema, systemIndex, systemFrame, keyOverride, fontTarget)
     local key = keyOverride or "Font"
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "font",
         key = key,
         label = "Font",
@@ -700,7 +687,7 @@ function WL:AddColorSettings(plugin, schema, systemIndex, systemFrame, colorPara
     local label = colorParams.label or "Colour"
     local default = colorParams.default or { r = 1, g = 1, b = 1 }
 
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "color",
         key = key,
         label = label,
@@ -712,8 +699,7 @@ end
 local function CreateColorCurveOnChange(plugin, systemIndex, key, systemFrame)
     return function(curveData)
         plugin:SetSetting(systemIndex, key, curveData)
-        if plugin.ApplySettings then plugin:ApplySettings(systemFrame) end
-        if Engine.Frame then Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame) end
+        ApplyAndSync(plugin, systemFrame)
     end
 end
 
@@ -723,7 +709,7 @@ function WL:AddColorCurveSettings(plugin, schema, systemIndex, systemFrame, para
     local label = params.label or "Colour Gradient"
     local default = params.default
 
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "colorcurve",
         key = key,
         label = label,
@@ -742,7 +728,7 @@ function WL:AddOrientationSettings(plugin, schema, systemIndex, dialog, systemFr
         { text = "Vertical", value = 1 },
     }
 
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "dropdown",
         key = key,
         label = params.label or "Orientation",
@@ -774,12 +760,7 @@ local function CreateOpacityOnChange(plugin, systemIndex, key, systemFrame)
             end
         end
 
-        if plugin.ApplySettings then
-            plugin:ApplySettings(systemFrame)
-        end
-        if Engine.Frame and realFrame then
-            Engine.Frame:ForceUpdateSelection(realFrame)
-        end
+        ApplyAndSync(plugin, systemFrame, realFrame)
     end
 end
 
@@ -796,12 +777,7 @@ local function CreateVisibilityOnChange(plugin, systemIndex, key, systemFrame)
             Orbit.Visibility:ApplyState(realFrame, val)
         end
 
-        if plugin.ApplySettings then
-            plugin:ApplySettings(systemFrame)
-        end
-        if Engine.Frame and realFrame then
-            Engine.Frame:ForceUpdateSelection(realFrame)
-        end
+        ApplyAndSync(plugin, systemFrame, realFrame)
     end
 end
 
@@ -809,7 +785,7 @@ function WL:AddOpacitySettings(plugin, schema, systemIndex, systemFrame, params)
     params = params or {}
     local defaults = Engine.Constants.Settings.Opacity
     local key = params.key or "Opacity"
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "slider",
         key = key,
         label = "Opacity",
@@ -834,7 +810,7 @@ function WL:AddVisibilitySettings(plugin, schema, systemIndex, systemFrame, para
             { text = "Out of Combat", value = 2 },
             { text = "Hidden", value = 3 },
         }
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "dropdown",
         key = key,
         label = params.label or "Visibility",
@@ -859,7 +835,7 @@ function WL:AddAspectRatioSettings(plugin, schema, systemIndex, systemFrame, par
             { text = "Portrait (3:4)", value = "3:4" },
         }
 
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "dropdown",
         key = key,
         label = params.label or "Icon Aspect Ratio",
@@ -872,7 +848,7 @@ end
 function WL:AddIconSizeSettings(plugin, schema, systemIndex, systemFrame, params)
     params = params or {}
     local key = params.key or "IconSize"
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "slider",
         key = key,
         label = params.label or "Icon Size",
@@ -887,7 +863,7 @@ end
 function WL:AddIconZoomSettings(plugin, schema, systemIndex, systemFrame, params)
     params = params or {}
     local key = params.key or "Zoom"
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "slider",
         key = key,
         label = params.label or "Icon Zoom",
@@ -905,7 +881,7 @@ end
 function WL:AddIconPaddingSettings(plugin, schema, systemIndex, systemFrame, params)
     params = params or {}
     local key = params.key or "IconPadding"
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "slider",
         key = key,
         label = params.label or "Icon Padding",
@@ -920,7 +896,7 @@ end
 function WL:AddColumnsSettings(plugin, schema, systemIndex, systemFrame, params)
     params = params or {}
     local key = params.key or "IconLimit"
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "slider",
         key = key,
         label = params.label or "# Columns",
@@ -937,7 +913,7 @@ function WL:AddCooldownDisplaySettings(plugin, schema, systemIndex, systemFrame,
 
     if params.showTimer ~= false then
         local timerKey = params.timerKey or "ShowTimer"
-        table.insert(schema.controls, {
+        tinsert(schema.controls, {
             type = "checkbox",
             key = timerKey,
             label = params.timerLabel or "Show Timer",
@@ -948,7 +924,7 @@ function WL:AddCooldownDisplaySettings(plugin, schema, systemIndex, systemFrame,
 
     if params.showTooltips ~= false then
         local tooltipKey = params.tooltipKey or "ShowTooltips"
-        table.insert(schema.controls, {
+        tinsert(schema.controls, {
             type = "checkbox",
             key = tooltipKey,
             label = params.tooltipLabel or "Show Tooltips",
@@ -969,7 +945,7 @@ end
 
 function WL:AddSettingsTabs(schema, dialog, tabsList, defaultTab)
     dialog.orbitCurrentTab = dialog.orbitCurrentTab or defaultTab
-    table.insert(schema.controls, {
+    tinsert(schema.controls, {
         type = "tabs",
         tabs = tabsList,
         activeTab = dialog.orbitCurrentTab,

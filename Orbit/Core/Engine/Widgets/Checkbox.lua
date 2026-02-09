@@ -2,10 +2,7 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local Layout = Engine.Layout
 
---[[
-    Checkbox Widget
-    3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill (empty)] [Value: Fixed, Right (checkbox)]
-]]
+-- [ CHECKBOX WIDGET ]-------------------------------------------------------------------------------
 function Layout:CreateCheckbox(parent, label, tooltip, initialValue, callback)
     -- Pool retrieval
     if not self.checkboxPool then

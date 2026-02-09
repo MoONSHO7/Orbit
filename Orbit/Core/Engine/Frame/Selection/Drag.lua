@@ -8,16 +8,42 @@ local C = Orbit.Constants
 local Drag = {}
 Engine.SelectionDrag = Drag
 
+-- [ PRECISION MODE (SHIFT-DRAG OVERLAY SUPPRESSION) ]----------------------------------------------
+
+local function SetNonSelectedOverlaysVisible(selectionOverlay, visible)
+    local Selection = Engine.FrameSelection
+    for frame, sel in pairs(Selection.selections) do
+        if sel ~= selectionOverlay then
+            if visible then
+                sel:SetAlpha(1)
+                sel:EnableMouse(true)
+            else
+                sel:SetAlpha(0)
+                sel:EnableMouse(false)
+            end
+        end
+    end
+    selectionOverlay.precisionMode = not visible
+end
+
 -- [ DRAG UPDATE (VISUALS) ]-------------------------------------------------------------------------
 
 local function OnDragUpdate(selectionOverlay, elapsed)
     local parent = selectionOverlay.parent
     local Selection = Engine.FrameSelection
 
-    -- Skip anchor visuals if anchoring is disabled globally or per-frame
+    -- Track shift state mid-drag to toggle precision mode
+    local shiftHeld = IsShiftKeyDown()
+    if shiftHeld and not selectionOverlay.precisionMode then
+        SetNonSelectedOverlaysVisible(selectionOverlay, false)
+    elseif not shiftHeld and selectionOverlay.precisionMode then
+        SetNonSelectedOverlaysVisible(selectionOverlay, true)
+        Selection:RefreshVisuals()
+    end
+
+    -- Skip anchor visuals if anchoring is disabled globally, per-frame, or shift is held
     local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
-    if not anchoringEnabled or parent.orbitNoSnap then
-        -- Just show position tooltip without anchor detection
+    if not anchoringEnabled or parent.orbitNoSnap or shiftHeld then
         Engine.SelectionTooltip:ShowPosition(parent, Selection, true)
         return
     end
@@ -80,6 +106,13 @@ function Drag:OnDragStart(selectionOverlay)
 
         -- Start Visual Update Loop
         selectionOverlay.lastAnchorTarget = nil
+        selectionOverlay.precisionMode = false
+
+        -- Shift held at drag start: enter precision mode immediately
+        if IsShiftKeyDown() then
+            SetNonSelectedOverlaysVisible(selectionOverlay, false)
+        end
+
         selectionOverlay:SetScript("OnUpdate", OnDragUpdate)
     end
 end
@@ -96,6 +129,12 @@ function Drag:OnDragStop(selectionOverlay)
     end
     selectionOverlay:SetScript("OnUpdate", nil)
 
+    -- Restore overlays if precision mode was active
+    if selectionOverlay.precisionMode then
+        SetNonSelectedOverlaysVisible(selectionOverlay, true)
+        Engine.FrameSelection:RefreshVisuals()
+    end
+
     if InCombatLockdown() then
         return
     end
@@ -111,52 +150,58 @@ function Drag:OnDragStop(selectionOverlay)
     -- Break existing anchor
     Engine.FrameAnchor:BreakAnchor(parent, true)
 
-    -- Detect snap
     local Selection = Engine.FrameSelection
-    local targets = Selection:GetSnapTargets(parent)
-    local closestX, closestY, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(
-        parent,
-        false,
-        targets,
-        nil -- No locked-frame filter needed
-    )
+    local precisionMode = IsShiftKeyDown() or parent.orbitNoSnap
 
-    -- Check if anchoring is enabled globally and per-frame
-    local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
-
-    -- Skip anchoring if frame has orbitNoSnap flag
-    if parent.orbitNoSnap then
-        anchoringEnabled = false
-    end
-
-    -- Only allow anchoring to Orbit frames (in Selection.selections registry)
-    -- Blizzard Edit Mode frames can be used for snapping but not for persistent anchors
-    local isOrbitFrame = Selection.selections[anchorTarget] ~= nil
-
-    if anchorTarget and anchorEdge and anchoringEnabled and isOrbitFrame then
-        local padding = nil
-        local name = parent:GetName()
-        local partnerName = Selection:GetSymmetricPartner(name)
-        if partnerName then
-            local partner = _G[partnerName]
-            if partner and Engine.FrameAnchor.anchors[partner] then
-                -- If partner is anchored, inherit their padding
-                padding = Engine.FrameAnchor.anchors[partner].padding or 0
-            end
-        end
-
-        Engine.FrameAnchor:CreateAnchor(parent, anchorTarget, anchorEdge, padding, nil, anchorAlign)
+    if precisionMode then
+        -- Precision mode: save raw position, skip all snapping
+        local point, _, _, x, y = parent:GetPoint(1)
+        parent:ClearAllPoints()
+        parent:SetPoint(point or "CENTER", x or 0, y or 0)
 
         if Selection.dragCallbacks[parent] then
-            Selection.dragCallbacks[parent](parent, "ANCHORED", anchorTarget, anchorEdge)
+            Selection.dragCallbacks[parent](parent, point or "CENTER", x or 0, y or 0)
         end
     else
-        local point, x, y = Engine.FrameSnap:NormalizePosition(parent)
-        parent:ClearAllPoints()
-        parent:SetPoint(point, x, y)
+        -- Detect snap
+        local targets = Selection:GetSnapTargets(parent)
+        local closestX, closestY, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(
+            parent,
+            false,
+            targets,
+            nil -- No locked-frame filter needed
+        )
 
-        if Selection.dragCallbacks[parent] then
-            Selection.dragCallbacks[parent](parent, point, x, y)
+        -- Check if anchoring is enabled globally
+        local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
+
+        -- Only allow anchoring to Orbit frames (in Selection.selections registry)
+        local isOrbitFrame = Selection.selections[anchorTarget] ~= nil
+
+        if anchorTarget and anchorEdge and anchoringEnabled and isOrbitFrame then
+            local padding = nil
+            local name = parent:GetName()
+            local partnerName = Selection:GetSymmetricPartner(name)
+            if partnerName then
+                local partner = _G[partnerName]
+                if partner and Engine.FrameAnchor.anchors[partner] then
+                    padding = Engine.FrameAnchor.anchors[partner].padding or 0
+                end
+            end
+
+            Engine.FrameAnchor:CreateAnchor(parent, anchorTarget, anchorEdge, padding, nil, anchorAlign)
+
+            if Selection.dragCallbacks[parent] then
+                Selection.dragCallbacks[parent](parent, "ANCHORED", anchorTarget, anchorEdge)
+            end
+        else
+            local point, x, y = Engine.FrameSnap:NormalizePosition(parent)
+            parent:ClearAllPoints()
+            parent:SetPoint(point, x, y)
+
+            if Selection.dragCallbacks[parent] then
+                Selection.dragCallbacks[parent](parent, point, x, y)
+            end
         end
     end
 

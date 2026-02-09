@@ -1,11 +1,9 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local Layout = Engine.Layout
+local math_floor = math.floor
 
---[[
-    Slider Widget
-    3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right]
-]]
+-- [ SLIDER WIDGET ]---------------------------------------------------------------------------------
 function Layout:CreateSlider(parent, label, min, max, step, formatter, initialValue, callback, options)
     -- Pool retrieval
     if not self.sliderPool then
@@ -33,7 +31,7 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
 
     -- Configure control logic
     frame.valueFormatter = formatter or function(value)
-        return math.floor(value * 10 or 0) / 10
+        return math_floor(value * 10 or 0) / 10
     end
     frame.OnOrbitChange = callback
 

@@ -578,8 +578,10 @@ function Plugin:ApplyTextSettings(button, systemIndex)
             if classColor then
                 textElement:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
             end
+        elseif overrides.CustomColor and overrides.CustomColorCurve then
+            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
+            if color then textElement:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1) end
         elseif overrides.CustomColor and overrides.CustomColorValue and type(overrides.CustomColorValue) == "table" then
-            -- CustomColor is boolean toggle, CustomColorValue is the actual color table
             local c = overrides.CustomColorValue
             textElement:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
         end

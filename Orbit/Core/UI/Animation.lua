@@ -1,5 +1,7 @@
 local _, addonTable = ...
 local Orbit = addonTable
+local math_abs = math.abs
+local InCombatLockdown = InCombatLockdown
 
 Orbit.Animation = {}
 
@@ -24,7 +26,7 @@ local function SafeFade(frame, targetAlpha, duration)
 
     -- Outside combat, use smooth fade
     local currentAlpha = frame:GetAlpha()
-    if math.abs(currentAlpha - targetAlpha) < 0.01 then
+    if math_abs(currentAlpha - targetAlpha) < 0.01 then
         frame:SetAlpha(targetAlpha)
         return
     end
@@ -61,7 +63,7 @@ function Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, editModeActiv
     end
 
     -- Optimization: If min == max, disable fader and set static
-    if math.abs(minAlpha - maxAlpha) < 0.01 then
+    if math_abs(minAlpha - maxAlpha) < 0.01 then
         if fader then
             fader:Hide()
         end

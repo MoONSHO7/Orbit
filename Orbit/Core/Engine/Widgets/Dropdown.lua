@@ -2,10 +2,9 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local Layout = Engine.Layout
 
---[[
-    Dropdown Widget
-    3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
-]]
+local MAX_TEXT_LENGTH = 22
+
+-- [ DROPDOWN WIDGET ]-------------------------------------------------------------------------------
 function Layout:CreateDropdown(parent, label, options, initialValue, callback)
     -- Pool retrieval
     if not self.dropdownPool then
@@ -35,8 +34,8 @@ function Layout:CreateDropdown(parent, label, options, initialValue, callback)
                 end
             end
 
-            if #text > 22 then
-                text = string.sub(text, 1, 20) .. ".."
+            if #text > MAX_TEXT_LENGTH then
+                text = string.sub(text, 1, MAX_TEXT_LENGTH - 2) .. ".."
             end
             return text
         end

@@ -4,6 +4,7 @@
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
+local math_max = math.max
 
 Orbit.NativeBarMixin = {}
 local Mixin = Orbit.NativeBarMixin
@@ -14,7 +15,7 @@ function Mixin:ApplyScale(frame, systemIndex, sizeKey)
     if not frame then
         return
     end
-    local scaleFactor = math.max(0.1, (self:GetSetting(systemIndex, sizeKey or "Size") or 100) / 100)
+    local scaleFactor = math_max(0.1, (self:GetSetting(systemIndex, sizeKey or "Size") or 100) / 100)
     OrbitEngine.NativeFrame:Modify(frame, { scale = scaleFactor })
     if frame.SetNormalScale then
         frame:SetNormalScale(scaleFactor)

@@ -4,6 +4,8 @@
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
+local pairs, ipairs = pairs, ipairs
+local InCombatLockdown = InCombatLockdown
 
 Orbit.OOCFadeMixin = {}
 local Mixin = Orbit.OOCFadeMixin
