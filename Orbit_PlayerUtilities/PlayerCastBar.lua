@@ -14,6 +14,7 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
         CastBarTimer = true,
         CastBarHeight = Orbit.Constants.PlayerCastBar.DefaultHeight,
         CastBarScale = 100,
+        ShowLatency = true,
         SparkColor = { r = 1, g = 1, b = 1, a = 1 },
         SparkColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
     },
@@ -144,6 +145,7 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
         table.insert(schema.controls, { type = "checkbox", key = "CastBarText", label = "Show Spell Name", default = true })
         table.insert(schema.controls, { type = "checkbox", key = "CastBarIcon", label = "Show Icon", default = true })
         table.insert(schema.controls, { type = "checkbox", key = "CastBarTimer", label = "Show Timer", default = true })
+        table.insert(schema.controls, { type = "checkbox", key = "ShowLatency", label = "Show Latency", default = true })
     elseif currentTab == "Colour" then
         WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "CastBarColorCurve", label = "Normal",
@@ -331,8 +333,9 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             if bar.Latency then
                 bar.Latency:Hide()
             end
+            local showLatency = self:GetSetting(bar.systemIndex or 1, "ShowLatency")
             local _, _, _, latency = GetNetStats()
-            if bar.Latency and latency and bar.maxValue > 0 then
+            if showLatency and bar.Latency and latency and bar.maxValue > 0 then
                 local width = math.min(latency / 1000 / bar.maxValue, 1) * bar:GetWidth()
                 width = SnapToPixel(width, bar:GetEffectiveScale())
                 bar.Latency:ClearAllPoints()
@@ -370,8 +373,9 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             if bar.Latency then
                 bar.Latency:Hide()
             end
+            local showLatency = self:GetSetting(bar.systemIndex or 1, "ShowLatency")
             local _, _, _, latency = GetNetStats()
-            if bar.Latency and latency and bar.maxValue > 0 then
+            if showLatency and bar.Latency and latency and bar.maxValue > 0 then
                 local width = math.min(latency / 1000 / bar.maxValue, 1) * bar:GetWidth()
                 width = SnapToPixel(width, bar:GetEffectiveScale())
                 bar.Latency:ClearAllPoints()
