@@ -1,0 +1,8 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="UnitButtonCore.lua"/>
+    <Script file="UnitButtonHealth.lua"/>
+    <Script file="UnitButtonText.lua"/>
+    <Script file="UnitButtonPrediction.lua"/>
+    <Script file="UnitButtonCanvas.lua"/>
+    <Script file="..\UnitButton.lua"/>
+</Ui>

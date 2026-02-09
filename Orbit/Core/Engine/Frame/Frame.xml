@@ -1,0 +1,22 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="Guard.lua"/>
+    <Script file="Position\PositionUtils.lua"/>
+    <Script file="Position\Anchor.lua"/>
+    <Script file="Position\Persistence.lua"/>
+    <Script file="Component\ComponentHelpers.lua"/>
+    <Script file="..\Handle\HandleCore.lua"/>
+    <Script file="Component\ComponentHandle.lua"/>
+    <Script file="Component\ComponentEdit.lua"/>
+    <Script file="Component\ComponentDrag.lua"/>
+    <Script file="Component\SmartGuides.lua"/>
+    <Script file="Snap.lua"/>
+    <Script file="NudgeRepeat.lua"/>
+    <Script file="Selection\Tooltip.lua"/>
+    <Script file="Selection\Nudge.lua"/>
+    <Script file="Selection\Drag.lua"/>
+    <Script file="Selection\NativeHook.lua"/>
+    <Script file="Orientation.lua"/>
+    <Script file="Selection.lua"/>
+    <Script file="Factory.lua"/>
+    <Script file="Frame.lua"/>
+</Ui>

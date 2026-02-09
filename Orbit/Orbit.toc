@@ -26,10 +26,8 @@ Core\Libs\LibOrbitColorPicker-1.0\LibOrbitColorPicker-1.0.lua
 # CORE
 # ==============================================================
 
-# Constants (must load first)
+# Constants & Media
 Core\Constants.lua
-
-# Media
 Core\Media.lua
 
 # Engine - Base
@@ -39,98 +37,42 @@ Core\Engine\Pixel.lua
 Core\Engine\Layout.lua
 Core\Engine\KeybindSystem.lua
 
-# Engine - Widgets
+# Engine - Widgets & Config
 Core\Engine\WidgetLogic.lua
-Core\Engine\Widgets\Checkbox.lua
-Core\Engine\Widgets\Slider.lua
-Core\Engine\Widgets\Dropdown.lua
-Core\Engine\Widgets\EditBox.lua
-Core\Engine\Widgets\Button.lua
-Core\Engine\Widgets\ColorPicker.lua
-Core\Engine\Widgets\ColorCurvePicker.lua
-Core\Engine\Widgets\SharedMediaDropdown.lua
-Core\Engine\Widgets\TexturePicker.lua
-Core\Engine\Widgets\FontPicker.lua
+Core\Engine\Widgets\Widgets.xml
 Core\Engine\Config.lua
 
-# Engine - Frame System (order matters: dependencies first)
+# Engine - Frame System
 Core\Engine\NativeFrame.lua
 Core\Engine\EditMode.lua
-Core\Engine\Frame\Guard.lua
-Core\Engine\Frame\Position\PositionUtils.lua
-Core\Engine\Frame\Position\Anchor.lua
-Core\Engine\Frame\Position\Persistence.lua
-Core\Engine\Frame\Component\ComponentHelpers.lua
-Core\Engine\Handle\HandleCore.lua
-Core\Engine\Frame\Component\ComponentHandle.lua
-Core\Engine\Frame\Component\ComponentEdit.lua
-Core\Engine\Frame\Component\ComponentDrag.lua
-Core\Engine\Frame\Component\SmartGuides.lua
-Core\Engine\Frame\Snap.lua
-Core\Engine\Frame\NudgeRepeat.lua
-Core\Engine\Frame\Selection\Tooltip.lua
-Core\Engine\Frame\Selection\Nudge.lua
-Core\Engine\Frame\Selection\Drag.lua
-Core\Engine\Frame\Selection\NativeHook.lua
-Core\Engine\Frame\Orientation.lua
-Core\Engine\Frame\Selection.lua
-Core\Engine\Frame\Factory.lua
-Core\Engine\Frame\Frame.lua
-# Engine - UnitButton (modular)
-Core\Engine\UnitButton\UnitButtonCore.lua
-Core\Engine\UnitButton\UnitButtonHealth.lua
-Core\Engine\UnitButton\UnitButtonText.lua
-Core\Engine\UnitButton\UnitButtonPrediction.lua
-Core\Engine\UnitButton\UnitButtonCanvas.lua
-Core\Engine\UnitButton.lua
+Core\Engine\Frame\Frame.xml
+
+# Engine - UnitButton
+Core\Engine\UnitButton\UnitButton.xml
 
 # Services
-Core\Services\EventBus.lua
-Core\Services\Async.lua
+Core\Services\Services.xml
 
 # Mixins
-Core\Mixins\PluginMixin.lua
-Core\Mixins\CastBarMixin.lua
-Core\Mixins\UnitFrameMixin.lua
-Core\Mixins\NativeBarMixin.lua
-Core\Mixins\OOCFadeMixin.lua
-Core\Mixins\AuraMixin.lua
-Core\Mixins\VisualsExtendedMixin.lua
-Core\Mixins\ResourceBarMixin.lua
-Core\Mixins\AggroIndicatorMixin.lua
-Core\Mixins\StatusIconMixin.lua
+Core\Mixins\Mixins.xml
 
 # Managers
-Core\Managers\CombatManager.lua
-Core\Managers\PositionManager.lua
-Core\Managers\ProfileManager.lua
+Core\Managers\Managers.xml
 
-# Init
+# Init & API
 Core\Init.lua
-
-# API
 Core\API.lua
 
 # Preview System
-Core\Engine\Preview\PreviewFrame.lua
-Core\Engine\Preview\PreviewHandle.lua
-Core\Engine\Preview\PreviewController.lua
+Core\Engine\Preview\Preview.xml
 
 # UI
 Core\UI\Animation.lua
 Core\UI\OrbitSettingsDialog.lua
-# Canvas Mode
-Core\UI\CanvasMode\Init.lua
-Core\UI\CanvasMode\Viewport.lua
-Core\UI\CanvasMode\Dock.lua
-Core\UI\CanvasMode\DragComponent.lua
-Core\UI\CanvasMode\Dialog.lua
+Core\UI\CanvasMode\CanvasMode.xml
 Core\UI\CanvasModeComponentSettings.lua
 Core\UI\OrbitOptionsPanel.lua
 Core\UI\OrbitOptionsButton.lua
 
 # Skins
-Core\Skins\Skin.lua
-Core\Skins\Icons.lua
-Core\Skins\CastBar.lua
-Core\Skins\ClassBar.lua
+Core\Skins\Skins.xml

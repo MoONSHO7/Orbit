@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="CombatManager.lua"/>
+    <Script file="PositionManager.lua"/>
+    <Script file="DefaultProfile.lua"/>
+    <Script file="ProfileManager.lua"/>
+</Ui>

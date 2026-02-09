@@ -1,0 +1,12 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="PluginMixin.lua"/>
+    <Script file="CastBarMixin.lua"/>
+    <Script file="UnitFrameMixin.lua"/>
+    <Script file="NativeBarMixin.lua"/>
+    <Script file="OOCFadeMixin.lua"/>
+    <Script file="AuraMixin.lua"/>
+    <Script file="VisualsExtendedMixin.lua"/>
+    <Script file="ResourceBarMixin.lua"/>
+    <Script file="AggroIndicatorMixin.lua"/>
+    <Script file="StatusIconMixin.lua"/>
+</Ui>

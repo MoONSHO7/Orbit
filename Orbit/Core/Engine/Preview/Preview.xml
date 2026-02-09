@@ -1,0 +1,5 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="PreviewFrame.lua"/>
+    <Script file="PreviewHandle.lua"/>
+    <Script file="PreviewController.lua"/>
+</Ui>
