@@ -920,6 +920,42 @@ function Plugin:UpdateMaxPower()
     self:ApplySettings()
 end
 
+-- [ SPACER REPOSITIONING ]-------------------------------------------------------------------------
+function Plugin:RepositionSpacers(max)
+    if not Frame or not Frame.Spacers then return end
+    if not max or max <= 1 then
+        for _, s in ipairs(Frame.Spacers) do s:Hide() end
+        return
+    end
+
+    local spacerWidth = (Frame.settings and Frame.settings.spacing) or 2
+    local totalWidth = Frame:GetWidth()
+    if totalWidth < 10 and Frame.settings then totalWidth = Frame.settings.width or 200 end
+
+    local scale = Frame:GetEffectiveScale()
+    if not scale or scale < 0.01 then scale = 1 end
+
+    local snappedSpacerWidth = SnapToPixel(spacerWidth, scale)
+    local snappedTotalWidth = SnapToPixel(totalWidth, scale)
+
+    for i = 1, MAX_SPACER_COUNT do
+        local sp = Frame.Spacers[i]
+        if sp then
+            if i < max and snappedSpacerWidth > 0 then
+                sp:Show()
+                sp:ClearAllPoints()
+                sp:SetWidth(snappedSpacerWidth)
+                sp:SetHeight(Frame:GetHeight())
+                local centerPos = SnapToPixel(snappedTotalWidth * (i / max), scale)
+                sp:SetPoint("LEFT", Frame, "LEFT", SnapToPixel(centerPos - (snappedSpacerWidth / 2), scale), 0)
+                if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(sp) end
+            else
+                sp:Hide()
+            end
+        end
+    end
+end
+
 function Plugin:UpdateLayout(frame)
     if not Frame then
         return
@@ -979,6 +1015,8 @@ function Plugin:UpdateLayout(frame)
             end
         end
     end
+
+    self:RepositionSpacers(max)
 end
 
 function Plugin:UpdateContinuousBar(curveKey, current, max)
@@ -1026,32 +1064,7 @@ function Plugin:UpdateContinuousSpacers(cfg, max)
         end
     end
 
-    local spacerWidth = (Frame.settings and Frame.settings.spacing) or 2
-    local totalWidth = Frame:GetWidth()
-    if totalWidth < 10 and Frame.settings then totalWidth = Frame.settings.width or 200 end
-
-    local scale = Frame:GetEffectiveScale()
-    if not scale or scale < 0.01 then scale = 1 end
-
-    local snappedSpacerWidth = SnapToPixel(spacerWidth, scale)
-    local snappedTotalWidth = SnapToPixel(totalWidth, scale)
-
-    for i = 1, MAX_SPACER_COUNT do
-        local sp = Frame.Spacers[i]
-        if sp then
-            if i < max and snappedSpacerWidth > 0 then
-                sp:Show()
-                sp:ClearAllPoints()
-                sp:SetWidth(snappedSpacerWidth)
-                sp:SetHeight(Frame:GetHeight())
-                local centerPos = SnapToPixel(snappedTotalWidth * (i / max), scale)
-                sp:SetPoint("LEFT", Frame, "LEFT", SnapToPixel(centerPos - (snappedSpacerWidth / 2), scale), 0)
-                if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(sp) end
-            else
-                sp:Hide()
-            end
-        end
-    end
+    self:RepositionSpacers(max)
 end
 
 function Plugin:UpdatePower()
@@ -1221,49 +1234,7 @@ function Plugin:UpdatePower()
         end
     end
 
-    -- Update Spacers (Pixel-Perfect)
-    local spacerWidth = (Frame.settings and Frame.settings.spacing) or 2
-    local totalWidth = Frame:GetWidth()
-
-    -- If width is invalid, use setting default
-    if totalWidth < 10 and Frame.settings and Frame.settings.width then
-        totalWidth = Frame.settings.width
-    end
-
-    -- Calculate pixel scale for snapping to physical pixels
-    local scale = Frame:GetEffectiveScale()
-    if not scale or scale < 0.01 then
-        scale = 1
-    end
-
-    local snappedSpacerWidth = SnapToPixel(spacerWidth, scale)
-    local snappedTotalWidth = SnapToPixel(totalWidth, scale)
-
-    if Frame.Spacers then
-        for i = 1, MAX_SPACER_COUNT do
-            local sp = Frame.Spacers[i]
-            if sp then
-                if i < max and snappedSpacerWidth > 0 then
-                    sp:Show()
-                    sp:ClearAllPoints()
-                    sp:SetWidth(snappedSpacerWidth)
-                    sp:SetHeight(Frame:GetHeight())
-
-                    local boundaryPercent = i / max
-                    local centerPos = SnapToPixel(snappedTotalWidth * boundaryPercent, scale)
-                    local xPos = SnapToPixel(centerPos - (snappedSpacerWidth / 2), scale)
-
-                    sp:SetPoint("LEFT", Frame, "LEFT", xPos, 0)
-
-                    if OrbitEngine.Pixel then
-                        OrbitEngine.Pixel:Enforce(sp)
-                    end
-                else
-                    sp:Hide()
-                end
-            end
-        end
-    end
+    self:RepositionSpacers(max)
 
     -- Charged combo point overlays (secret-safe: StatusBars handle fill in C++)
     Frame.ChargedOverlays = Frame.ChargedOverlays or {}
