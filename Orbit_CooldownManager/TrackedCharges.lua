@@ -833,7 +833,7 @@ end
 
 -- [ SEED VISIBILITY ]------------------------------------------------------------------------------
 function Plugin:UpdateSeedVisibility(frame)
-    if not frame or not frame.SeedButton then
+    if InCombatLockdown() or not frame or not frame.SeedButton then
         return
     end
 

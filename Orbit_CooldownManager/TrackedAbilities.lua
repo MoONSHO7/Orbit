@@ -1515,6 +1515,9 @@ function Plugin:RegisterCursorWatcher()
     frame:SetScript("OnUpdate", function()
         local cursorType = GetCursorInfo()
         local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
+        if InCombatLockdown() then
+            return
+        end
         if cursorType == lastCursor and isEditMode == lastEditMode then
             return
         end
