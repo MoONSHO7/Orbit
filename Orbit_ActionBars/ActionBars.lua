@@ -125,7 +125,7 @@ local BAR_CONFIG = {
 local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     defaults = {
         Orientation = 0, -- 0 = Horizontal, 1 = Vertical
-        Scale = 100,
+        Scale = 90,
         IconPadding = 2,
         Rows = 1,
         Opacity = 100,
@@ -136,17 +136,17 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
         DisabledComponents = {},
         -- Default component positions for Reset functionality
         ComponentPositions = {
-            Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2, justifyH = "RIGHT" },
-            MacroText = { anchorX = "CENTER", anchorY = "BOTTOM", offsetX = 0, offsetY = 2, justifyH = "CENTER" },
+            Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 1, offsetY = 7, justifyH = "RIGHT" },
+            MacroText = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 1, offsetY = 6, justifyH = "LEFT", overrides = { FontSize = 10 } },
             Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, justifyH = "CENTER" },
-            Stacks = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 2, offsetY = 2, justifyH = "LEFT" },
+            Stacks = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 5, justifyH = "RIGHT" },
         },
         -- Global component positions (shared across all synced bars)
         GlobalComponentPositions = {
-            Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2, justifyH = "RIGHT" },
-            MacroText = { anchorX = "CENTER", anchorY = "BOTTOM", offsetX = 0, offsetY = 2, justifyH = "CENTER" },
+            Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 1, offsetY = 7, justifyH = "RIGHT" },
+            MacroText = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 1, offsetY = 6, justifyH = "LEFT", overrides = { FontSize = 10 } },
             Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, justifyH = "CENTER" },
-            Stacks = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 2, offsetY = 2, justifyH = "LEFT" },
+            Stacks = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 5, justifyH = "RIGHT" },
         },
         GlobalDisabledComponents = {},
         OutOfCombatFade = false,
@@ -667,50 +667,13 @@ function Plugin:ApplyTextSettings(button, systemIndex)
         w = BUTTON_SIZE
     end
 
-    -- Helper to get style with Canvas Mode overrides
-    local function GetComponentStyle(key, defaultSize)
+    -- Shared override utilities
+    local OverrideUtils = OrbitEngine.OverrideUtils
+
+    -- Helper to get overrides for a component key
+    local function GetComponentOverrides(key)
         local pos = positions[key] or {}
-        local overrides = pos.overrides or {}
-
-        -- Font override
-        local font = baseFontPath
-        if overrides.Font and LSM then
-            font = LSM:Fetch("font", overrides.Font) or baseFontPath
-        end
-
-        -- Size override
-        local size = overrides.FontSize or defaultSize
-
-        -- Flags
-        local flags = Orbit.Skin:GetFontOutline()
-
-        return font, size, flags, pos, overrides
-    end
-
-    -- Helper to apply color overrides
-    local function ApplyTextColor(textElement, overrides)
-        if not textElement or not textElement.SetTextColor then
-            return
-        end
-        if not overrides then
-            return
-        end
-
-        if overrides.UseClassColour then
-            local _, playerClass = UnitClass("player")
-            local classColor = RAID_CLASS_COLORS[playerClass]
-            if classColor then
-                textElement:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
-            end
-        elseif overrides.CustomColorCurve then
-            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
-            if color then
-                textElement:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
-            end
-        elseif overrides.CustomColorValue and type(overrides.CustomColorValue) == "table" then
-            local c = overrides.CustomColorValue
-            textElement:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
-        end
+        return pos.overrides or {}, pos
     end
 
     -- Helper to position a text element based on Canvas Mode settings
@@ -770,12 +733,10 @@ function Plugin:ApplyTextSettings(button, systemIndex)
     -- KEYBIND (HotKey)
     if button.HotKey then
         local defaultSize = math.max(8, w * 0.28)
-        local font, size, flags, pos, overrides = GetComponentStyle("Keybind", defaultSize)
+        local overrides = GetComponentOverrides("Keybind")
 
-        button.HotKey:SetFont(font, size, flags)
-        button.HotKey:SetTextColor(1, 1, 1, 1)
+        OverrideUtils.ApplyOverrides(button.HotKey, overrides, { fontSize = defaultSize, fontPath = baseFontPath })
         button.HotKey:SetDrawLayer("OVERLAY", 7) -- Consistent strata
-        ApplyTextColor(button.HotKey, overrides)
 
         -- Apply shortened keybind text using shared system
         if KeybindSystem then
@@ -797,10 +758,9 @@ function Plugin:ApplyTextSettings(button, systemIndex)
     -- MACRO TEXT (Name)
     if button.Name then
         local defaultSize = math.max(7, w * 0.22)
-        local font, size, flags, pos, overrides = GetComponentStyle("MacroText", defaultSize)
+        local overrides = GetComponentOverrides("MacroText")
 
-        button.Name:SetFont(font, size, flags)
-        button.Name:SetTextColor(1, 1, 1, 0.9)
+        OverrideUtils.ApplyOverrides(button.Name, overrides, { fontSize = defaultSize, fontPath = baseFontPath })
         button.Name:SetDrawLayer("OVERLAY", 7) -- Consistent strata
 
         -- Ensure text appears above border/glows by reparenting to a high-level overlay frame
@@ -810,8 +770,6 @@ function Plugin:ApplyTextSettings(button, systemIndex)
             button.orbitTextOverlay:SetFrameLevel(button:GetFrameLevel() + 10)
         end
         button.Name:SetParent(button.orbitTextOverlay)
-
-        ApplyTextColor(button.Name, overrides)
 
         ApplyComponentPosition(button.Name, "MacroText", "CENTER", "BOTTOM", 0, 2)
     end
@@ -841,11 +799,10 @@ function Plugin:ApplyTextSettings(button, systemIndex)
 
             if timerText and timerText.SetFont then
                 local defaultSize = math.max(10, w * 0.35)
-                local font, size, flags, pos, overrides = GetComponentStyle("Timer", defaultSize)
+                local overrides, pos = GetComponentOverrides("Timer")
 
-                timerText:SetFont(font, size, flags)
+                OverrideUtils.ApplyOverrides(timerText, overrides, { fontSize = defaultSize, fontPath = baseFontPath })
                 timerText:SetDrawLayer("OVERLAY", 7) -- Consistent strata
-                ApplyTextColor(timerText, overrides)
 
                 if pos.anchorX then
                     ApplyComponentPosition(timerText, "Timer", "CENTER", "CENTER", 0, 0)
@@ -857,12 +814,10 @@ function Plugin:ApplyTextSettings(button, systemIndex)
     -- STACKS (Count)
     if button.Count then
         local defaultSize = math.max(8, w * 0.28)
-        local font, size, flags, pos, overrides = GetComponentStyle("Stacks", defaultSize)
+        local overrides = GetComponentOverrides("Stacks")
 
-        button.Count:SetFont(font, size, flags)
-        button.Count:SetTextColor(1, 1, 1, 1)
+        OverrideUtils.ApplyOverrides(button.Count, overrides, { fontSize = defaultSize, fontPath = baseFontPath })
         button.Count:SetDrawLayer("OVERLAY", 7) -- Consistent strata
-        ApplyTextColor(button.Count, overrides)
 
         ApplyComponentPosition(button.Count, "Stacks", "LEFT", "BOTTOM", 2, 2)
     end

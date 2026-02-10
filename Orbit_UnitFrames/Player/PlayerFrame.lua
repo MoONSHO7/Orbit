@@ -19,8 +19,8 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         Height = 40,
         ClassColour = true,
         HealthTextEnabled = true,
-        ShowLevel = false,
-        ShowCombatIcon = false,
+        ShowLevel = true,
+        ShowCombatIcon = true,
         ShowRoleIcon = false,
         ShowLeaderIcon = false,
         ShowMarkerIcon = false,
@@ -41,13 +41,14 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         ComponentPositions = {
             Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
             HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
-            LevelText = { anchorX = "RIGHT", offsetX = -4, anchorY = "TOP", offsetY = 0, justifyH = "LEFT" },
-            CombatIcon = { anchorX = "LEFT", offsetX = -2, anchorY = "TOP", offsetY = 0, justifyH = "CENTER" },
-            RoleIcon = { anchorX = "LEFT", offsetX = 2, anchorY = "TOP", offsetY = -2 },
-            LeaderIcon = { anchorX = "LEFT", offsetX = 20, anchorY = "TOP", offsetY = -2 },
-            MarkerIcon = { anchorX = "RIGHT", offsetX = -2, anchorY = "TOP", offsetY = -2 },
-            GroupPositionText = { anchorX = "LEFT", offsetX = 2, anchorY = "BOTTOM", offsetY = 2, justifyH = "LEFT" },
-            RestingIcon = { anchorX = "LEFT", offsetX = -30, anchorY = "CENTER", offsetY = 0 },
+            LevelText = { anchorX = "RIGHT", offsetX = 1, anchorY = "TOP", offsetY = 6, justifyH = "LEFT" },
+            CombatIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+            RoleIcon = { anchorX = "RIGHT", offsetX = 10, anchorY = "TOP", offsetY = 3 },
+            LeaderIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 0 },
+            MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 0 },
+            GroupPositionText = { anchorX = "RIGHT", offsetX = 0, anchorY = "BOTTOM", offsetY = 6, justifyH = "LEFT" },
+            RestingIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 5, overrides = { Scale = 0.5 } },
+            ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
         },
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
@@ -75,7 +76,9 @@ function Plugin:AddSettings(dialog, systemFrame)
             table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 10, default = 40 })
         end
         table.insert(schema.controls, {
-            type = "dropdown", key = "HealthTextMode", label = "Health Text",
+            type = "dropdown",
+            key = "HealthTextMode",
+            label = "Health Text",
             options = {
                 { text = "Percentage", value = "percent" },
                 { text = "Short Health", value = "short" },
@@ -95,35 +98,55 @@ function Plugin:AddSettings(dialog, systemFrame)
             end,
         })
         table.insert(schema.controls, {
-            type = "checkbox", key = "EnablePlayerPower", label = "Enable Player Power", default = true,
+            type = "checkbox",
+            key = "EnablePlayerPower",
+            label = "Enable Player Power",
+            default = true,
             onChange = function(val)
                 self:SetSetting(PLAYER_FRAME_INDEX, "EnablePlayerPower", val)
                 local ppPlugin = Orbit:GetPlugin("Orbit_PlayerPower")
-                if ppPlugin and ppPlugin.UpdateVisibility then ppPlugin:UpdateVisibility() end
+                if ppPlugin and ppPlugin.UpdateVisibility then
+                    ppPlugin:UpdateVisibility()
+                end
             end,
         })
         table.insert(schema.controls, {
-            type = "checkbox", key = "EnablePlayerResource", label = "Enable Player Resource", default = true,
+            type = "checkbox",
+            key = "EnablePlayerResource",
+            label = "Enable Player Resource",
+            default = true,
             onChange = function(val)
                 self:SetSetting(PLAYER_FRAME_INDEX, "EnablePlayerResource", val)
                 local prPlugin = Orbit:GetPlugin("Orbit_PlayerResources")
-                if prPlugin and prPlugin.UpdateVisibility then prPlugin:UpdateVisibility() end
+                if prPlugin and prPlugin.UpdateVisibility then
+                    prPlugin:UpdateVisibility()
+                end
             end,
         })
     elseif currentTab == "Visibility" then
         WL:AddOpacitySettings(self, schema, PLAYER_FRAME_INDEX, systemFrame, { step = 5 })
         table.insert(schema.controls, {
-            type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
+            type = "checkbox",
+            key = "OutOfCombatFade",
+            label = "Out of Combat Fade",
+            default = false,
             tooltip = "Hide frame when out of combat with no target",
             onChange = function(val)
                 self:SetSetting(PLAYER_FRAME_INDEX, "OutOfCombatFade", val)
-                if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
-                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+                if Orbit.OOCFadeMixin then
+                    Orbit.OOCFadeMixin:RefreshAll()
+                end
+                if dialog.orbitTabCallback then
+                    dialog.orbitTabCallback()
+                end
             end,
         })
         if self:GetSetting(PLAYER_FRAME_INDEX, "OutOfCombatFade") then
             table.insert(schema.controls, {
-                type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
+                type = "checkbox",
+                key = "ShowOnMouseover",
+                label = "Show on Mouseover",
+                default = true,
                 tooltip = "Reveal frame when mousing over it",
                 onChange = function(val)
                     self:SetSetting(PLAYER_FRAME_INDEX, "ShowOnMouseover", val)

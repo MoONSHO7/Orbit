@@ -209,6 +209,9 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
         plugin:OnChargeFrameDrop(frame)
     end)
     frame:SetScript("OnMouseDown", function(_, button)
+        if InCombatLockdown() then
+            return
+        end
         if button == "RightButton" and IsShiftKeyDown() then
             plugin:ClearChargeFrame(frame)
         elseif GetCursorInfo() then
@@ -400,6 +403,7 @@ function Plugin:DespawnChargeChild(frame)
     local key = "charge:" .. frame.childSlot
     local systemIndex = frame.systemIndex
 
+    OrbitEngine.FrameAnchor:DestroyAnchor(frame)
     frame:Hide()
     frame:ClearAllPoints()
     frame.chargeSpellId = nil
@@ -572,12 +576,7 @@ function Plugin:SkinChargeButtons(frame, maxCharges, totalWidth, height, borderS
     local fontName = self:GetSetting(sysIndex, "Font")
     local fontPath = LSM and LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
     local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
-    if overrides.Font and LSM then
-        fontPath = LSM:Fetch("font", overrides.Font) or fontPath
-    end
-    local finalSize = overrides.FontSize or textSize
-    local flags = Orbit.Skin:GetFontOutline()
-    frame.CountText:SetFont(fontPath, finalSize, flags)
+    OrbitEngine.OverrideUtils.ApplyOverrides(frame.CountText, overrides, { fontSize = textSize, fontPath = fontPath })
     if ApplyTextPosition then
         ApplyTextPosition(frame.CountText, frame, pos)
     end

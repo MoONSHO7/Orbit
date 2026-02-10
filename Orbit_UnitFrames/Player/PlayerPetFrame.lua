@@ -10,11 +10,15 @@ local PET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Pet
 local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
     canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
-        Width = 100,
+        Width = 90,
         Height = 20,
         Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
+        DisabledComponents = { "HealthText" },
+        ComponentPositions = {
+            Name = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+        },
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 

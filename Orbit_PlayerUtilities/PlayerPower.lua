@@ -73,6 +73,9 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
         Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
+        ComponentPositions = {
+            Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+        },
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
@@ -389,27 +392,13 @@ function Plugin:ApplySettings()
         local textPos = positions.Text or {}
         local overrides = textPos.overrides or {}
 
-        -- Apply font override
+        -- Apply font, size, and color overrides
         local fontPath = LSM:Fetch("font", fontName)
-        if overrides.Font and LSM then
-            fontPath = LSM:Fetch("font", overrides.Font) or fontPath
-        end
+        OrbitEngine.OverrideUtils.ApplyOverrides(Frame.Text, overrides, { fontSize = textSize, fontPath = fontPath })
 
-        -- Apply size override
-        local finalSize = overrides.FontSize or textSize
-
-        Frame.Text:SetFont(fontPath, finalSize, Orbit.Skin:GetFontOutline())
-
-        -- Apply color override
-        if overrides.CustomColorCurve then
-            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
-            if color then
-                Frame.Text:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
-            end
-        elseif overrides.CustomColorValue and type(overrides.CustomColorValue) == "table" then
-            local c = overrides.CustomColorValue
-            Frame.Text:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
-        end
+        -- Read back final size for position calculation
+        local _, finalSize = Frame.Text:GetFont()
+        finalSize = finalSize or textSize
 
         Frame.Text:ClearAllPoints()
         if height > (finalSize + 2) then

@@ -153,74 +153,14 @@ function CanvasMixin:ApplyStyleOverrides(positions)
         return
     end
 
-    local function ApplyOverridesToElement(element, overrides)
-        if not element or not overrides then
-            return
-        end
+    local ApplyOverrides = Engine.OverrideUtils and Engine.OverrideUtils.ApplyOverrides
 
-        -- Font override (for FontStrings)
-        if overrides.Font and element.SetFont then
-            local fontPath = LSM:Fetch("font", overrides.Font)
-            if fontPath then
-                local _, size, flags = element:GetFont()
-                element:SetFont(fontPath, overrides.FontSize or size or 12, flags)
-            end
-        elseif overrides.FontSize and element.SetFont then
-            -- FontSize only (use existing font)
-            local font, size, flags = element:GetFont()
-            element:SetFont(font, overrides.FontSize, flags)
-        end
-
-        -- Color override (Class Colour > CustomColor+Curve > legacy table)
-        if element.SetTextColor then
-            if overrides.UseClassColour then
-                local _, playerClass = UnitClass("player")
-                local classColor = RAID_CLASS_COLORS[playerClass]
-                if classColor then
-                    element:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
-                end
-            elseif overrides.CustomColorCurve then
-                local color = Engine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
-                if color then
-                    element:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
-                end
-            elseif overrides.CustomColorValue and type(overrides.CustomColorValue) == "table" then
-                local c = overrides.CustomColorValue
-                element:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
-            end
-        end
-
-        -- Scale override (for icons/textures)
-        if overrides.Scale then
-            if element.GetObjectType and element:GetObjectType() == "Texture" then
-                -- Store original size on first scale application
-                if not element.orbitOriginalWidth then
-                    element.orbitOriginalWidth = element:GetWidth()
-                    element.orbitOriginalHeight = element:GetHeight()
-                    -- Fallback to reasonable defaults if size is 0 or invalid
-                    if element.orbitOriginalWidth <= 0 then
-                        element.orbitOriginalWidth = 18
-                    end
-                    if element.orbitOriginalHeight <= 0 then
-                        element.orbitOriginalHeight = 18
-                    end
-                end
-                local baseW = element.orbitOriginalWidth
-                local baseH = element.orbitOriginalHeight
-                element:SetSize(baseW * overrides.Scale, baseH * overrides.Scale)
-            elseif element.SetScale then
-                element:SetScale(overrides.Scale)
-            end
-        end
-    end
-
-    -- This dynamically handles any component (RoleIcon, LeaderIcon, MarkerIcon, etc.)
+    -- Dynamically handles any component (RoleIcon, LeaderIcon, Name, HealthText, etc.)
     for key, pos in pairs(positions) do
-        if pos.overrides then
-            -- Try to find the element on self (e.g., self.RoleIcon, self.Name)
+        if pos.overrides and ApplyOverrides then
             local element = self[key]
             if element then
-                ApplyOverridesToElement(element, pos.overrides)
+                ApplyOverrides(element, pos.overrides)
             end
         end
     end

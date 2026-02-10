@@ -276,31 +276,16 @@ function TextMixin:ApplyNameColor()
         return
     end
 
-    -- Check for component-level custom color override (from Canvas Mode)
-    local customColorOverride = nil
+    local overrides = nil
     if self.orbitPlugin then
         local systemIndex = self.systemIndex or 1
         local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
-        if positions and positions.Name and positions.Name.overrides then
-            local overrides = positions.Name.overrides
-            if overrides.CustomColorCurve then
-                customColorOverride = Engine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
-            elseif overrides.CustomColorValue then
-                customColorOverride = overrides.CustomColorValue
-            end
+        if positions and positions.Name then
+            overrides = positions.Name.overrides
         end
     end
 
-    if customColorOverride and type(customColorOverride) == "table" then
-        -- Use component-level override
-        self.Name:SetTextColor(customColorOverride.r or 1, customColorOverride.g or 1, customColorOverride.b or 1, customColorOverride.a or 1)
-        return
-    end
-
-    -- Use global font color settings
-    local globalSettings = Orbit.db and Orbit.db.GlobalSettings or {}
-    local fontColor = (Engine.WidgetLogic and Engine.WidgetLogic:GetFirstColorFromCurve(globalSettings.FontColorCurve)) or { r = 1, g = 1, b = 1, a = 1 }
-    self.Name:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
+    Engine.OverrideUtils.ApplyTextColor(self.Name, overrides)
 end
 
 -- Apply color to HealthText based on global settings and component overrides
@@ -309,31 +294,16 @@ function TextMixin:ApplyHealthTextColor()
         return
     end
 
-    -- Check for component-level custom color override (from Canvas Mode)
-    local customColorOverride = nil
+    local overrides = nil
     if self.orbitPlugin then
         local systemIndex = self.systemIndex or 1
         local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
-        if positions and positions.HealthText and positions.HealthText.overrides then
-            local overrides = positions.HealthText.overrides
-            if overrides.CustomColorCurve then
-                customColorOverride = Engine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
-            elseif overrides.CustomColorValue then
-                customColorOverride = overrides.CustomColorValue
-            end
+        if positions and positions.HealthText then
+            overrides = positions.HealthText.overrides
         end
     end
 
-    if customColorOverride and type(customColorOverride) == "table" then
-        -- Use component-level override
-        self.HealthText:SetTextColor(customColorOverride.r or 1, customColorOverride.g or 1, customColorOverride.b or 1, customColorOverride.a or 1)
-        return
-    end
-
-    -- Use global font color settings
-    local globalSettings = Orbit.db and Orbit.db.GlobalSettings or {}
-    local fontColor = (Engine.WidgetLogic and Engine.WidgetLogic:GetFirstColorFromCurve(globalSettings.FontColorCurve)) or { r = 1, g = 1, b = 1, a = 1 }
-    self.HealthText:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
+    Engine.OverrideUtils.ApplyTextColor(self.HealthText, overrides)
 end
 
 -- Export for composition

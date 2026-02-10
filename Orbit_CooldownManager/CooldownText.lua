@@ -54,14 +54,11 @@ function CDM:ApplyTextSettings(icon, systemIndex)
     local fontPath = self:GetGlobalFont()
     local baseSize = self:GetBaseFontSize()
     local positions = self:GetSetting(systemIndex, "ComponentPositions") or {}
+    local OverrideUtils = OrbitEngine.OverrideUtils
 
-    local function GetComponentStyle(key, defaultOffset)
+    local function GetComponentOverrides(key)
         local pos = positions[key] or {}
-        local overrides = pos.overrides or {}
-        local font = (overrides.Font and LSM) and LSM:Fetch("font", overrides.Font) or fontPath
-        local size = overrides.FontSize or math.max(6, baseSize + (defaultOffset or 0))
-        local flags = Orbit.Skin:GetFontOutline()
-        return font, size, flags, pos, overrides
+        return pos.overrides or {}, pos
     end
 
     local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
@@ -74,7 +71,7 @@ function CDM:ApplyTextSettings(icon, systemIndex)
                 cooldown:SetHideCountdownNumbers(true)
             end
         else
-            local timerFont, timerSize, timerFlags, timerPos, timerOverrides = GetComponentStyle("Timer", 2)
+            local timerOverrides, timerPos = GetComponentOverrides("Timer")
             local timerText = cooldown.Text
             if not timerText then
                 for _, region in ipairs({ cooldown:GetRegions() }) do
@@ -85,9 +82,9 @@ function CDM:ApplyTextSettings(icon, systemIndex)
                 end
             end
             if timerText then
-                timerText:SetFont(timerFont, timerSize, timerFlags)
+                local defaultSize = math.max(6, baseSize + 2)
+                OverrideUtils.ApplyOverrides(timerText, timerOverrides, { fontSize = defaultSize, fontPath = fontPath })
                 timerText:SetDrawLayer("OVERLAY", 7)
-                CooldownUtils:ApplyTextColor(timerText, timerOverrides)
                 if ApplyTextPosition then
                     ApplyTextPosition(timerText, icon, timerPos)
                 end
@@ -121,10 +118,10 @@ function CDM:ApplyTextSettings(icon, systemIndex)
             icon.ChargeCount.orbitForceHide = nil
             icon.ChargeCount:SetAlpha(1)
             icon.ChargeCount.Current:SetAlpha(1)
-            local chargesFont, chargesSize, chargesFlags, chargesPos, chargesOverrides = GetComponentStyle("Charges", 0)
-            icon.ChargeCount.Current:SetFont(chargesFont, chargesSize, chargesFlags)
+            local chargesOverrides, chargesPos = GetComponentOverrides("Charges")
+            local defaultSize = math.max(6, baseSize)
+            OverrideUtils.ApplyOverrides(icon.ChargeCount.Current, chargesOverrides, { fontSize = defaultSize, fontPath = fontPath })
             icon.ChargeCount.Current:SetDrawLayer("OVERLAY", 7)
-            CooldownUtils:ApplyTextColor(icon.ChargeCount.Current, chargesOverrides)
             if icon.ChargeCount.SetFrameLevel then
                 icon.ChargeCount:SetFrameLevel(icon:GetFrameLevel() + 20)
             end
@@ -149,14 +146,14 @@ function CDM:ApplyTextSettings(icon, systemIndex)
             end
         else
             icon.Applications.orbitForceHide = nil
-            local stacksFont, stacksSize, stacksFlags, stacksPos, stacksOverrides = GetComponentStyle("Stacks", 0)
+            local stacksOverrides, stacksPos = GetComponentOverrides("Stacks")
             local stackText = icon.Applications.Applications or icon.Applications
             if stackText and stackText.SetFont then
-                stackText:SetFont(stacksFont, stacksSize, stacksFlags)
+                local defaultSize = math.max(6, baseSize)
+                OverrideUtils.ApplyOverrides(stackText, stacksOverrides, { fontSize = defaultSize, fontPath = fontPath })
                 if stackText.SetDrawLayer then
                     stackText:SetDrawLayer("OVERLAY", 7)
                 end
-                CooldownUtils:ApplyTextColor(stackText, stacksOverrides)
                 if icon.Applications.SetFrameLevel then
                     icon.Applications:SetFrameLevel(icon:GetFrameLevel() + 20)
                 end
@@ -169,11 +166,11 @@ function CDM:ApplyTextSettings(icon, systemIndex)
 
     -- Keybind
     local showKeybinds = not self:IsComponentDisabled("Keybind", systemIndex)
-    local keybindFont, keybindSize, keybindFlags, keybindPos, keybindOverrides = GetComponentStyle("Keybind", -2)
+    local keybindOverrides, keybindPos = GetComponentOverrides("Keybind")
     if showKeybinds then
         local keybind = icon.OrbitKeybind or self:CreateKeybindText(icon)
-        keybind:SetFont(keybindFont, keybindSize, keybindFlags)
-        CooldownUtils:ApplyTextColor(keybind, keybindOverrides)
+        local defaultSize = math.max(6, baseSize - 2)
+        OverrideUtils.ApplyOverrides(keybind, keybindOverrides, { fontSize = defaultSize, fontPath = fontPath })
         if ApplyTextPosition then
             ApplyTextPosition(keybind, icon, keybindPos)
         end

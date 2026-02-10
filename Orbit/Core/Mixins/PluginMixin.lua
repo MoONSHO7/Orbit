@@ -49,7 +49,9 @@ end
 function Orbit.PluginMixin:IsComponentDisabled(componentKey)
     local disabled = self:GetSetting(self.frame and self.frame.systemIndex or 1, "DisabledComponents") or {}
     for _, key in ipairs(disabled) do
-        if key == componentKey then return true end
+        if key == componentKey then
+            return true
+        end
     end
     return false
 end
@@ -77,6 +79,9 @@ function Orbit.PluginMixin:GetSetting(systemIndex, key)
         val = db["Default"][self.system][systemIndex][key]
     end
 
+    if val == nil and self.indexDefaults and self.indexDefaults[systemIndex] and self.indexDefaults[systemIndex][key] ~= nil then
+        return self.indexDefaults[systemIndex][key]
+    end
     if val == nil and self.defaults and self.defaults[key] ~= nil then
         return self.defaults[key]
     end
@@ -102,13 +107,19 @@ local VISIBILITY_EVENTS = { "PET_BATTLE_OPENING_START", "PET_BATTLE_CLOSE" }
 local VISIBILITY_UNIT_EVENTS = { "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE" }
 
 function Orbit.PluginMixin:RegisterVisibilityEvents()
-    if not Orbit.EventBus then return end
+    if not Orbit.EventBus then
+        return
+    end
     for _, event in ipairs(VISIBILITY_EVENTS) do
-        Orbit.EventBus:On(event, function() self:UpdateVisibility() end, self)
+        Orbit.EventBus:On(event, function()
+            self:UpdateVisibility()
+        end, self)
     end
     for _, event in ipairs(VISIBILITY_UNIT_EVENTS) do
         Orbit.EventBus:On(event, function(unit)
-            if unit == "player" then self:UpdateVisibility() end
+            if unit == "player" then
+                self:UpdateVisibility()
+            end
         end, self)
     end
     self:UpdateVisibility()

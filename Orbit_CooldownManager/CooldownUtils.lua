@@ -31,54 +31,18 @@ function CooldownUtils:BuildSkinSettings(plugin, systemIndex, options)
     }
 end
 
--- [ TEXT STYLE BUILDER ]------------------------------------------------------------------------------
-function CooldownUtils:GetComponentStyle(plugin, systemIndex, key, defaultOffset)
-    local fontPath = plugin:GetGlobalFont()
-    local baseSize = plugin:GetBaseFontSize()
-    local LSM = LibStub("LibSharedMedia-3.0", true)
-    local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
-    local pos = positions[key] or {}
-    local overrides = pos.overrides or {}
-
-    local font = fontPath
-    if overrides.Font and LSM then
-        font = LSM:Fetch("font", overrides.Font) or fontPath
-    end
-    local size = overrides.FontSize or math.max(6, baseSize + (defaultOffset or 0))
-    local flags = Orbit.Skin:GetFontOutline()
-
-    return font, size, flags, pos, overrides
-end
-
 -- [ TEXT COLOR APPLIER ]------------------------------------------------------------------------------
+-- Delegates to OverrideUtils.ApplyTextColor (which handles overrides + global FontColorCurve fallback).
 -- remainingPercent: optional 0-1 value for progress-aware curve sampling (1=full, 0=expired)
 function CooldownUtils:ApplyTextColor(textElement, overrides, remainingPercent)
     if not textElement or not textElement.SetTextColor then
         return
     end
 
-    local color = nil
-    if overrides and overrides.UseClassColour then
-        local _, playerClass = UnitClass("player")
-        local classColor = RAID_CLASS_COLORS[playerClass]
-        if classColor then
-            color = { r = classColor.r, g = classColor.g, b = classColor.b, a = 1 }
-        end
-    elseif overrides and overrides.CustomColorCurve then
-        if remainingPercent then
-            color = OrbitEngine.WidgetLogic:SampleColorCurve(overrides.CustomColorCurve, remainingPercent)
-        else
-            color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
-        end
-    elseif overrides and overrides.CustomColorValue then
-        color = overrides.CustomColorValue
+    local OverrideUtils = OrbitEngine.OverrideUtils
+    if OverrideUtils then
+        OverrideUtils.ApplyTextColor(textElement, overrides, remainingPercent)
     end
-
-    if not color then
-        local fontCurve = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
-        color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(fontCurve) or { r = 1, g = 1, b = 1, a = 1 }
-    end
-    textElement:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
 end
 
 -- [ ICON DIMENSION CALCULATOR ]-----------------------------------------------------------------------
@@ -112,10 +76,17 @@ function CooldownUtils:ApplySimpleTextStyle(plugin, systemIndex, textElement, co
         return
     end
 
-    local font, size, flags, pos, overrides = self:GetComponentStyle(plugin, systemIndex, componentKey, 0)
-    textElement:SetFont(font, size, flags)
+    local fontPath = plugin:GetGlobalFont()
+    local baseSize = plugin:GetBaseFontSize()
+    local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+    local pos = positions[componentKey] or {}
+    local overrides = pos.overrides or {}
+    local defaultSize = math.max(6, baseSize)
 
-    self:ApplyTextColor(textElement, overrides)
+    local OverrideUtils = OrbitEngine.OverrideUtils
+    if OverrideUtils then
+        OverrideUtils.ApplyOverrides(textElement, overrides, { fontSize = defaultSize, fontPath = fontPath })
+    end
 
     local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
     if ApplyTextPosition then

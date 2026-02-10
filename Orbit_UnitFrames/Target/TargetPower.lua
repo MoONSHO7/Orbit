@@ -29,6 +29,9 @@ local Plugin = Orbit:RegisterPlugin("Target Power", SYSTEM_ID, {
         ShowPercent = false,
         TextSize = 12,
         TextAlignment = "CENTER",
+        ComponentPositions = {
+            Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+        },
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
@@ -279,31 +282,14 @@ function Plugin:ApplySettings()
     local textPos = positions.Text or {}
     local overrides = textPos.overrides or {}
 
-    -- Apply font override
-    if overrides.Font and LSM then
-        fontPath = LSM:Fetch("font", overrides.Font) or fontPath
-    end
-
     if OrbitEngine.ComponentDrag:IsDisabled(Frame.Text) then
         Frame.Text:Hide()
     else
         Frame.Text:Show()
 
-        -- Apply size override
-        local textSize = overrides.FontSize or Orbit.Skin:GetAdaptiveTextSize(height, 12, 18, 1)
-
-        Frame.Text:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
-
-        -- Apply color override
-        if overrides.CustomColorCurve then
-            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
-            if color then
-                Frame.Text:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
-            end
-        elseif overrides.CustomColorValue and type(overrides.CustomColorValue) == "table" then
-            local c = overrides.CustomColorValue
-            Frame.Text:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
-        end
+        -- Apply font, size, and color overrides
+        local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 12, 18, 1)
+        OrbitEngine.OverrideUtils.ApplyOverrides(Frame.Text, overrides, { fontSize = textSize, fontPath = fontPath })
 
         Frame.Text:ClearAllPoints()
         Frame.Text:SetPoint("CENTER", Frame.Overlay, "CENTER", 0, 0)

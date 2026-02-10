@@ -13,6 +13,10 @@ local Plugin = Orbit:RegisterPlugin("Target of Target", SYSTEM_ID, {
     defaults = {
         Width = 100,
         Height = 20,
+        DisabledComponents = { "HealthText" },
+        ComponentPositions = {
+            Name = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+        },
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 

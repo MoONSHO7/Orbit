@@ -28,7 +28,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
         ClassColour = true,
         ShowPowerBar = true,
         Orientation = 0, -- 0 = Vertical, 1 = Horizontal
-        Spacing = 0, -- 0 for merged borders
+        Spacing = 3,
         HealthTextMode = "percent_short",
         -- Debuff Settings (separate for each orientation)
         DebuffPositionVertical = "Right", -- Left/Right for vertical
@@ -43,12 +43,18 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
             Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
             HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
             MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = -2 },
+            RoleIcon = { anchorX = "RIGHT", offsetX = 10, anchorY = "TOP", offsetY = 3, justifyH = "RIGHT" },
+            LeaderIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 0, justifyH = "LEFT" },
+            SummonIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+            PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+            ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+            ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
         },
         -- Disabled components (Canvas Mode drag-to-disable)
         -- Components in this array are hidden; components NOT in array are visible
         DisabledComponents = {},
-        DisabledComponentsMigrated = false, -- Track migration from ShowXXX settings
-        IncludePlayer = false, -- Show player in party frames
+        DisabledComponentsMigrated = true,
+        IncludePlayer = true,
         GrowthDirection = "Down",
         -- Dispel Indicator Settings
         DispelIndicatorEnabled = true,
@@ -1517,6 +1523,11 @@ function Plugin:ApplySettings()
                 end
             end
         end
+    end
+
+    -- Refresh preview if active (e.g., after Canvas Mode Apply)
+    if self.frames[1] and self.frames[1].preview then
+        self:SchedulePreviewUpdate()
     end
 end
 

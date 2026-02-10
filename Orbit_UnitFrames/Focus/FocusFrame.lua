@@ -12,19 +12,21 @@ local PLAYER_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Player
 local Plugin = Orbit:RegisterPlugin("Focus Frame", SYSTEM_ID, {
     canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
-        ReactionColour = true,
+        ReactionColour = false,
         ShowLevel = true,
         ShowElite = true,
         Width = 160,
         Height = 40,
+        EnableFocusTarget = true,
+        EnableFocusPower = true,
         -- Disabled components (Canvas Mode drag-to-disable)
         DisabledComponents = {},
         -- Default component positions (Canvas Mode is single source of truth)
         ComponentPositions = {
             Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
             HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
-            LevelText = { anchorX = "RIGHT", offsetX = -4, anchorY = "TOP", offsetY = 0, justifyH = "LEFT" },
-            RareEliteIcon = { anchorX = "RIGHT", offsetX = -2, anchorY = "BOTTOM", offsetY = 0, justifyH = "CENTER" },
+            LevelText = { anchorX = "RIGHT", offsetX = -3, anchorY = "TOP", offsetY = 6, justifyH = "LEFT" },
+            RareEliteIcon = { anchorX = "RIGHT", offsetX = -8, anchorY = "BOTTOM", offsetY = 9, justifyH = "LEFT" },
         },
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)

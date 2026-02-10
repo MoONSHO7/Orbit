@@ -643,10 +643,19 @@ function Plugin:ApplyTrackedTextSettings(icon, systemIndex)
             end
         end
         if timerText then
-            local font, size, flags, pos, overrides = CooldownUtils:GetComponentStyle(self, systemIndex, "Timer", 2)
-            timerText:SetFont(font, size, flags)
+            local fontPath = self:GetGlobalFont()
+            local baseSize = self:GetBaseFontSize()
+            local positions = self:GetSetting(systemIndex, "ComponentPositions") or {}
+            local pos = positions["Timer"] or {}
+            local overrides = pos.overrides or {}
+            local defaultSize = math.max(6, baseSize + 2)
+
+            local OverrideUtils = OrbitEngine.OverrideUtils
+            if OverrideUtils then
+                OverrideUtils.ApplyOverrides(timerText, overrides, { fontSize = defaultSize, fontPath = fontPath })
+            end
             timerText:SetDrawLayer("OVERLAY", 7)
-            CooldownUtils:ApplyTextColor(timerText, overrides)
+
             local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
             if ApplyTextPosition then
                 ApplyTextPosition(timerText, icon, pos)

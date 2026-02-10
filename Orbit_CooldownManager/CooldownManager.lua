@@ -13,7 +13,7 @@ local VIEWER_MAP = {}
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", {
     defaults = {
-        aspectRatio = "1:1",
+        aspectRatio = "4:3",
         IconSize = Constants.Cooldown.DefaultIconSize,
         IconPadding = Constants.Cooldown.DefaultPadding,
         SwipeColor = { r = 0, g = 0, b = 0, a = 0.8 },
@@ -25,8 +25,8 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
         DisabledComponents = { "Keybind" },
         ComponentPositions = {
             Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, justifyH = "CENTER" },
-            Stacks = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 2, offsetY = 2, justifyH = "LEFT" },
-            Charges = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 2, offsetY = 2, justifyH = "RIGHT" },
+            Stacks = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 1, offsetY = 5, justifyH = "LEFT" },
+            Charges = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 5, justifyH = "RIGHT" },
             Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2, justifyH = "RIGHT" },
         },
         PandemicGlowType = Constants.PandemicGlow.DefaultType,
@@ -42,6 +42,13 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
 Plugin.canvasMode = true
 Plugin.viewerMap = VIEWER_MAP
 
+-- Per-system-index defaults (overrides shared defaults for specific viewers)
+Plugin.indexDefaults = {
+    [1] = { IconSize = 120, IconLimit = 12 }, -- Essential
+    [2] = { IconSize = 90, IconLimit = 8 }, -- Utility
+    [3] = { PandemicGlowType = 1 }, -- BuffIcon (Pixel Glow)
+}
+
 -- Generates a spec-specific settings key, e.g. "TrackedItems_267"
 function Plugin:GetSpecKey(baseKey)
     local specIndex = GetSpecialization()
@@ -51,7 +58,9 @@ end
 
 -- [ STUBS - Overwritten by sub-modules ]------------------------------------------------------------
 function Plugin:AddSettings() end
-function Plugin:IsComponentDisabled() return false end
+function Plugin:IsComponentDisabled()
+    return false
+end
 function Plugin:HookProcGlow() end
 function Plugin:CheckPandemicFrames() end
 function Plugin:FixGlowTransparency() end
@@ -64,9 +73,15 @@ function Plugin:CheckViewer() end
 function Plugin:OnPlayerEnteringWorld() end
 function Plugin:ProcessChildren() end
 function Plugin:HookGCDSwipe() end
-function Plugin:GetGrowthDirection() return "DOWN" end
-function Plugin:GetBaseFontSize() return 12 end
-function Plugin:GetGlobalFont() return STANDARD_TEXT_FONT end
+function Plugin:GetGrowthDirection()
+    return "DOWN"
+end
+function Plugin:GetBaseFontSize()
+    return 12
+end
+function Plugin:GetGlobalFont()
+    return STANDARD_TEXT_FONT
+end
 function Plugin:GetTextOverlay() end
 function Plugin:CreateKeybindText() end
 function Plugin:ApplyTextSettings() end
@@ -144,9 +159,12 @@ function Plugin:CreateAnchor(name, systemIndex, label)
     frame.Selection:Hide()
 
     if not frame:GetPoint() then
-        if systemIndex == ESSENTIAL_INDEX then frame:SetPoint("CENTER", UIParent, "CENTER", 0, -100)
-        elseif systemIndex == UTILITY_INDEX then frame:SetPoint("CENTER", UIParent, "CENTER", 0, -150)
-        elseif systemIndex == BUFFICON_INDEX then frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
+        if systemIndex == ESSENTIAL_INDEX then
+            frame:SetPoint("CENTER", UIParent, "CENTER", 0, -100)
+        elseif systemIndex == UTILITY_INDEX then
+            frame:SetPoint("CENTER", UIParent, "CENTER", 0, -150)
+        elseif systemIndex == BUFFICON_INDEX then
+            frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
         end
     end
 
@@ -160,28 +178,57 @@ end
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 function Plugin:ApplyAll()
     self:ReapplyParentage()
-    if self.essentialAnchor then self:ApplySettings(self.essentialAnchor) end
-    if self.utilityAnchor then self:ApplySettings(self.utilityAnchor) end
-    if self.buffIconAnchor then self:ApplySettings(self.buffIconAnchor) end
-    if self.trackedAnchor then self:ApplyTrackedSettings(self.trackedAnchor) end
-    if self.chargeBarAnchor then self:ApplyChargeBarSettings(self.chargeBarAnchor) end
+    if self.essentialAnchor then
+        self:ApplySettings(self.essentialAnchor)
+    end
+    if self.utilityAnchor then
+        self:ApplySettings(self.utilityAnchor)
+    end
+    if self.buffIconAnchor then
+        self:ApplySettings(self.buffIconAnchor)
+    end
+    if self.trackedAnchor then
+        self:ApplyTrackedSettings(self.trackedAnchor)
+    end
+    if self.chargeBarAnchor then
+        self:ApplyChargeBarSettings(self.chargeBarAnchor)
+    end
     for _, childData in pairs(self.activeChargeChildren or {}) do
-        if childData.frame then self:ApplyChargeBarSettings(childData.frame) end
+        if childData.frame then
+            self:ApplyChargeBarSettings(childData.frame)
+        end
     end
 end
 
 function Plugin:ApplySettings(frame)
-    if not frame then self:ApplyAll(); return end
-    if InCombatLockdown() then return end
-    if (C_PetBattles and C_PetBattles.IsInBattle()) or (UnitHasVehicleUI and UnitHasVehicleUI("player")) then return end
+    if not frame then
+        self:ApplyAll()
+        return
+    end
+    if InCombatLockdown() then
+        return
+    end
+    if (C_PetBattles and C_PetBattles.IsInBattle()) or (UnitHasVehicleUI and UnitHasVehicleUI("player")) then
+        return
+    end
 
     local systemIndex = frame.systemIndex
     local resolvedFrame = self:GetFrameBySystemIndex(systemIndex)
-    if resolvedFrame then frame = resolvedFrame end
-    if not frame or not frame.SetScale then return end
+    if resolvedFrame then
+        frame = resolvedFrame
+    end
+    if not frame or not frame.SetScale then
+        return
+    end
 
-    if frame.isTrackedBar then self:ApplyTrackedSettings(frame); return end
-    if frame.isChargeBar then self:ApplyChargeBarSettings(frame); return end
+    if frame.isTrackedBar then
+        self:ApplyTrackedSettings(frame)
+        return
+    end
+    if frame.isChargeBar then
+        self:ApplyChargeBarSettings(frame)
+        return
+    end
 
     local size = self:GetSetting(systemIndex, "IconSize") or 100
     local alpha = self:GetSetting(systemIndex, "Opacity") or 100
@@ -193,7 +240,9 @@ function Plugin:ApplySettings(frame)
 end
 
 function Plugin:UpdateVisuals(frame)
-    if frame then self:ApplySettings(frame) end
+    if frame then
+        self:ApplySettings(frame)
+    end
 end
 
 function Plugin:GetFrameBySystemIndex(systemIndex)
@@ -203,6 +252,12 @@ end
 
 -- [ CLEANUP ]---------------------------------------------------------------------------------------
 function Plugin:OnDisable()
-    if self.monitorTicker then self.monitorTicker:Cancel(); self.monitorTicker = nil end
-    if self.trackedTicker then self.trackedTicker:Cancel(); self.trackedTicker = nil end
+    if self.monitorTicker then
+        self.monitorTicker:Cancel()
+        self.monitorTicker = nil
+    end
+    if self.trackedTicker then
+        self.trackedTicker:Cancel()
+        self.trackedTicker = nil
+    end
 end

@@ -339,53 +339,12 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
 
             -- Apply Name overrides
             if frame.Name and componentPositions.Name and componentPositions.Name.overrides then
-                local overrides = componentPositions.Name.overrides
-                if overrides.Font and LSM then
-                    local fontPath = LSM:Fetch("font", overrides.Font)
-                    if fontPath then
-                        local _, size, flags = frame.Name:GetFont()
-                        frame.Name:SetFont(fontPath, overrides.FontSize or size or 12, flags or Orbit.Skin:GetFontOutline())
-                    end
-                end
-                if overrides.FontSize then
-                    local fontPath, _, flags = frame.Name:GetFont()
-                    frame.Name:SetFont(fontPath, overrides.FontSize, flags or Orbit.Skin:GetFontOutline())
-                end
-                -- Custom color override takes precedence
-                if overrides.CustomColorCurve then
-                    local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
-                    if color then
-                        frame.Name:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
-                    end
-                elseif overrides.CustomColorValue then
-                    local c = overrides.CustomColorValue
-                    frame.Name:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
-                end
+                OrbitEngine.OverrideUtils.ApplyOverrides(frame.Name, componentPositions.Name.overrides)
             end
 
             -- Apply HealthText overrides
             if frame.HealthText and componentPositions.HealthText and componentPositions.HealthText.overrides then
-                local overrides = componentPositions.HealthText.overrides
-                if overrides.Font and LSM then
-                    local fontPath = LSM:Fetch("font", overrides.Font)
-                    if fontPath then
-                        local _, size, flags = frame.HealthText:GetFont()
-                        frame.HealthText:SetFont(fontPath, overrides.FontSize or size or 12, flags or Orbit.Skin:GetFontOutline())
-                    end
-                end
-                if overrides.FontSize then
-                    local fontPath, _, flags = frame.HealthText:GetFont()
-                    frame.HealthText:SetFont(fontPath, overrides.FontSize, flags or Orbit.Skin:GetFontOutline())
-                end
-                if overrides.CustomColorCurve then
-                    local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
-                    if color then
-                        frame.HealthText:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
-                    end
-                elseif overrides.CustomColorValue then
-                    local c = overrides.CustomColorValue
-                    frame.HealthText:SetTextColor(c.r or 1, c.g or 1, c.b or 1, c.a or 1)
-                end
+                OrbitEngine.OverrideUtils.ApplyOverrides(frame.HealthText, componentPositions.HealthText.overrides)
             end
 
             -- Apply saved component positions from Canvas Mode (for Name, HealthText, icons)

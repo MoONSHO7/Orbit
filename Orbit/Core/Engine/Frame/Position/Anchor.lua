@@ -56,9 +56,8 @@ end
 
 -- Helper to apply position without triggering side effects
 local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOptions)
-    -- Prevent moving protected frames in combat to avoid taint/action blocked errors
     if InCombatLockdown() and child:IsProtected() then
-        return
+        return false
     end
 
     child:ClearAllPoints()
@@ -187,56 +186,73 @@ local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOpti
         padding = Orbit.Engine.Pixel:Snap(padding, child:GetEffectiveScale())
     end
 
-    if edge == "BOTTOM" then
-        if align == "LEFT" then
-            child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 0, -padding + overlap)
-        elseif align == "RIGHT" then
-            child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", 0, -padding + overlap)
-        else
-            child:SetPoint("TOP", parent, "BOTTOM", 0, -padding + overlap)
+    local ok, err = pcall(function()
+        if edge == "BOTTOM" then
+            if align == "LEFT" then
+                child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 0, -padding + overlap)
+            elseif align == "RIGHT" then
+                child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", 0, -padding + overlap)
+            else
+                child:SetPoint("TOP", parent, "BOTTOM", 0, -padding + overlap)
+            end
+        elseif edge == "TOP" then
+            if align == "LEFT" then
+                child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 0, padding - overlap)
+            elseif align == "RIGHT" then
+                child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", 0, padding - overlap)
+            else
+                child:SetPoint("BOTTOM", parent, "TOP", 0, padding - overlap)
+            end
+        elseif edge == "LEFT" then
+            if align == "TOP" then
+                child:SetPoint("TOPRIGHT", parent, "TOPLEFT", -padding + overlap, 0)
+            elseif align == "BOTTOM" then
+                child:SetPoint("BOTTOMRIGHT", parent, "BOTTOMLEFT", -padding + overlap, 0)
+            else
+                child:SetPoint("RIGHT", parent, "LEFT", -padding + overlap, 0)
+            end
+        elseif edge == "RIGHT" then
+            if align == "TOP" then
+                child:SetPoint("TOPLEFT", parent, "TOPRIGHT", padding - overlap, 0)
+            elseif align == "BOTTOM" then
+                child:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", padding - overlap, 0)
+            else
+                child:SetPoint("LEFT", parent, "RIGHT", padding - overlap, 0)
+            end
         end
-    elseif edge == "TOP" then
-        if align == "LEFT" then
-            child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 0, padding - overlap)
-        elseif align == "RIGHT" then
-            child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", 0, padding - overlap)
-        else
-            child:SetPoint("BOTTOM", parent, "TOP", 0, padding - overlap)
-        end
-    elseif edge == "LEFT" then
-        if align == "TOP" then
-            child:SetPoint("TOPRIGHT", parent, "TOPLEFT", -padding + overlap, 0)
-        elseif align == "BOTTOM" then
-            child:SetPoint("BOTTOMRIGHT", parent, "BOTTOMLEFT", -padding + overlap, 0)
-        else
-            child:SetPoint("RIGHT", parent, "LEFT", -padding + overlap, 0)
-        end
-    elseif edge == "RIGHT" then
-        if align == "TOP" then
-            child:SetPoint("TOPLEFT", parent, "TOPRIGHT", padding - overlap, 0)
-        elseif align == "BOTTOM" then
-            child:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", padding - overlap, 0)
-        else
-            child:SetPoint("LEFT", parent, "RIGHT", padding - overlap, 0)
-        end
+    end)
+
+    if not ok then
+        Orbit.ErrorHandler:Warn("Anchor", "SetPoint rejected: " .. tostring(err))
+        return false
     end
+    return true
 end
 
 -- Check if anchoring child to parent would create a circular dependency
--- Walks up the anchor chain from parent to see if it eventually reaches child
+-- Walks Orbit anchor chain + native GetPoint relatives to catch orphaned SetPoint refs
 local function WouldCreateCycle(anchors, child, parent)
     local visited = {}
     local current = parent
     while current do
         if current == child then
-            return true -- Found child in parent's ancestor chain = cycle
+            return true
         end
         if visited[current] then
-            break -- Already visited, prevent infinite loop from existing bad state
+            break
         end
         visited[current] = true
         local anchor = anchors[current]
-        current = anchor and anchor.parent or nil
+        local nextFrame = anchor and anchor.parent or nil
+        if not nextFrame and current.GetNumPoints then
+            for i = 1, current:GetNumPoints() do
+                local _, relativeTo = current:GetPoint(i)
+                if relativeTo == child then
+                    return true
+                end
+            end
+        end
+        current = nextFrame
     end
     return false
 end
@@ -296,7 +312,10 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
         end
     end
 
-    ApplyAnchorPosition(child, parent, edge, padding, align, opts)
+    if not ApplyAnchorPosition(child, parent, edge, padding, align, opts) then
+        self.anchors[child] = nil
+        return false
+    end
 
     if child.orbitPlugin then
         if child.orbitPlugin.UpdateLayout then
@@ -389,22 +408,45 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
     return false
 end
 
--- Centralized helper for setting frame disabled state
--- Automatically breaks anchor when disabled (frees up edge for other frames)
--- @param frame The frame to enable/disable
--- @param disabled true to disable, false to enable
-function Anchor:SetFrameDisabled(frame, disabled)
-    frame.orbitDisabled = disabled
-    if disabled then
-        if self.anchors[frame] then
-            self:BreakAnchor(frame, true)
+-- [ DESTROY ANCHOR ]--------------------------------------------------------------------------------
+-- Removes a frame from the anchor chain, re-anchoring its children to its parent.
+-- If the frame has no parent, children are restored to their default positions.
+function Anchor:DestroyAnchor(frame)
+    local parentAnchor = self.anchors[frame]
+    local children = self:GetAnchoredChildren(frame)
+
+    -- Break the destroyed frame's own anchor FIRST to free up the occupied edge
+    self:BreakAnchor(frame, true)
+
+    if parentAnchor and #children > 0 then
+        for _, child in ipairs(children) do
+            local childAnchor = self.anchors[child]
+            if childAnchor then
+                self:CreateAnchor(child, parentAnchor.parent, childAnchor.edge, childAnchor.padding, childAnchor.syncOptions, childAnchor.align, true)
+            end
         end
-        for _, child in ipairs(self:GetAnchoredChildren(frame)) do
+    else
+        for _, child in ipairs(children) do
             self:BreakAnchor(child, false)
+            child:ClearAllPoints()
+            local dp = child.defaultPosition
+            if dp then
+                child:SetPoint(dp.point or "CENTER", dp.relativeTo or UIParent, dp.relativePoint or "CENTER", dp.x or 0, dp.y or 0)
+            else
+                child:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+            end
             if child.orbitPlugin and child.systemIndex then
                 child.orbitPlugin:SetSetting(child.systemIndex, "Anchor", nil)
             end
         end
+    end
+end
+
+-- Centralized helper for setting frame disabled state
+function Anchor:SetFrameDisabled(frame, disabled)
+    frame.orbitDisabled = disabled
+    if disabled then
+        self:DestroyAnchor(frame)
         if frame.orbitPlugin and frame.systemIndex then
             frame.orbitPlugin:SetSetting(frame.systemIndex, "Anchor", nil)
         end

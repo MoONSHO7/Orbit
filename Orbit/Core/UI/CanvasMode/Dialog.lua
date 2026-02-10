@@ -541,9 +541,8 @@ function Dialog:Apply()
         if not anchorX then
             local posX = comp.posX or 0
             local posY = comp.posY or 0
-            anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchorWithFontCompensation(
-                posX, posY, halfWidth, halfHeight, comp.isFontString, comp:GetWidth()
-            )
+            anchorX, anchorY, offsetX, offsetY, justifyH =
+                CalculateAnchorWithFontCompensation(posX, posY, halfWidth, halfHeight, comp.isFontString, comp:GetWidth())
         end
 
         positions[key] = {
@@ -806,19 +805,18 @@ function Dialog:ResetPositions()
             if container.visual and container.isFontString then
                 ApplyTextAlignment(container, container.visual, container.justifyH)
 
-                local globalFont = Orbit.Constants.Settings and Orbit.Constants.Settings.Font
-                local defaultFontName = globalFont and globalFont.Default or "PT Sans Narrow"
-                local defaultFontSize = globalFont and globalFont.DefaultSize or 12
-
-                local fontPath = LSM:Fetch("font", defaultFontName)
+                -- Use current global font setting (not a hardcoded constant)
+                local globalFontName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
+                local fontPath = globalFontName and LSM:Fetch("font", globalFontName)
                 if fontPath and container.visual.SetFont then
-                    local _, _, flags = container.visual:GetFont()
-                    container.visual:SetFont(fontPath, defaultFontSize, flags or "")
+                    local _, currentSize = container.visual:GetFont()
+                    local flags = Orbit.Skin:GetFontOutline()
+                    container.visual:SetFont(fontPath, currentSize or 12, flags)
                 end
 
-                -- Reset text color to white
-                if container.visual.SetTextColor then
-                    container.visual:SetTextColor(1, 1, 1, 1)
+                -- Reset text color to current global FontColorCurve (not hardcoded white)
+                if container.visual.SetTextColor and OrbitEngine.OverrideUtils then
+                    OrbitEngine.OverrideUtils.ApplyTextColor(container.visual, nil)
                 end
 
                 if container.visual.SetShadowOffset then
