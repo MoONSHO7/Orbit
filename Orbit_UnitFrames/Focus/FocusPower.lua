@@ -58,7 +58,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     end
 
     -- Height
-    WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 50, default = 15 }, nil)
+    WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 4, max = 25, default = 15 }, nil)
 
     -- Note: Show Text is now controlled via Canvas Mode (drag Text to disabled dock)
 

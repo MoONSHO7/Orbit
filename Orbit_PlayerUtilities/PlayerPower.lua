@@ -119,7 +119,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         if not isAnchored then
             WL:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
         end
-        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 5, max = 50, default = 15 }, nil)
+        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 4, max = 25, default = 15 }, nil)
     elseif currentTab == "Visibility" then
         WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
         table.insert(schema.controls, {
