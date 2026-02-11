@@ -141,6 +141,16 @@ function CanvasMixin:ApplyComponentPositions()
         ApplyTextPosition(self.CombatIcon, self, positions.CombatIcon)
     end
 
+    -- Apply DefensiveIcon position if saved (PartyFrame)
+    if positions.DefensiveIcon and self.DefensiveIcon then
+        ApplyTextPosition(self.DefensiveIcon, self, positions.DefensiveIcon)
+    end
+
+    -- Apply ImportantIcon position if saved (PartyFrame)
+    if positions.ImportantIcon and self.ImportantIcon then
+        ApplyTextPosition(self.ImportantIcon, self, positions.ImportantIcon)
+    end
+
     -- Apply style overrides for ALL components with overrides in saved positions
     self:ApplyStyleOverrides(positions)
 end

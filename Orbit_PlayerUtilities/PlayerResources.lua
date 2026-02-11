@@ -872,6 +872,7 @@ function Plugin:UpdatePowerType()
         -- Switch to continuous mode
         self:SetContinuousMode(true)
         Frame:SetScript("OnUpdate", Frame.onUpdateHandler)
+        Frame.orbitDisabled = false
         Frame:Show()
         return
     end
@@ -887,21 +888,14 @@ function Plugin:UpdatePowerType()
 
     if self.powerType then
         Frame:Show()
+        Frame.orbitDisabled = false
         local needsOnUpdate = (self.powerType == Enum.PowerType.Runes or self.powerType == Enum.PowerType.Essence)
         Frame:SetScript("OnUpdate", needsOnUpdate and Frame.onUpdateHandler or nil)
         self:UpdateMaxPower()
     else
         Frame:SetScript("OnUpdate", nil)
         Frame:Hide()
-        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
-        self:SetSetting(SYSTEM_INDEX, "Anchor", nil)
-        self:SetSetting(SYSTEM_INDEX, "Position", nil)
-        for _, child in ipairs(OrbitEngine.FrameAnchor:GetAnchoredChildren(Frame)) do
-            OrbitEngine.FrameAnchor:BreakAnchor(child, true)
-            if child.orbitPlugin and child.systemIndex then
-                child.orbitPlugin:SetSetting(child.systemIndex, "Anchor", nil)
-            end
-        end
+        Frame.orbitDisabled = true
     end
 end
 

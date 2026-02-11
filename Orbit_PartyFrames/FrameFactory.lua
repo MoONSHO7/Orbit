@@ -123,6 +123,21 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
     frame.MarkerIcon:SetPoint("TOP", frame, "TOP", 0, -2)
     frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
     frame.MarkerIcon:Hide()
+
+    -- Defensive and Important single-aura icons (Button frames for skin/border support)
+    local auraIconSize = centerIconSize
+    for _, iconKey in ipairs({ "DefensiveIcon", "ImportantIcon" }) do
+        local btn = CreateFrame("Button", nil, frame.StatusOverlay, "BackdropTemplate")
+        btn:SetSize(auraIconSize, auraIconSize)
+        btn.orbitOriginalWidth, btn.orbitOriginalHeight = auraIconSize, auraIconSize
+        btn:SetPoint("CENTER", frame, "CENTER", 0, 0)
+        btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Cooldown)
+        btn.Icon = btn:CreateTexture(nil, "ARTWORK")
+        btn.Icon:SetAllPoints()
+        btn.icon = btn.Icon
+        btn:Hide()
+        frame[iconKey] = btn
+    end
 end
 
 -- [ EVENT REGISTRATION ]----------------------------------------------------------------------------

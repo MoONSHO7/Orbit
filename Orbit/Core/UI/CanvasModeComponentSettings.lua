@@ -26,6 +26,18 @@ local COMPACT_LABEL_GAP = 3
 -- Define settings based on component family/type, not individual names
 
 -- Family-based schemas (auto-detected from visual element type)
+local SCALE_CONTROL = {
+    type = "slider",
+    key = "Scale",
+    label = "Scale",
+    min = 0.5,
+    max = 2.0,
+    step = 0.1,
+    formatter = function(v)
+        return math.floor(v * 100 + 0.5) .. "%"
+    end,
+}
+
 local TYPE_SCHEMAS = {
     -- FontString elements (Name, HealthText, LevelText, etc.)
     FontString = {
@@ -36,21 +48,9 @@ local TYPE_SCHEMAS = {
         },
     },
     -- Texture/Icon elements (CombatIcon, RareEliteIcon, etc.)
-    Texture = {
-        controls = {
-            {
-                type = "slider",
-                key = "Scale",
-                label = "Scale",
-                min = 0.5,
-                max = 2.0,
-                step = 0.1,
-                formatter = function(v)
-                    return math.floor(v * 100 + 0.5) .. "%"
-                end,
-            },
-        },
-    },
+    Texture = { controls = { SCALE_CONTROL } },
+    -- Skinned Button icons (DefensiveIcon, ImportantIcon)
+    IconFrame = { controls = { SCALE_CONTROL } },
 }
 
 -- Display names for components (just for the title)
@@ -61,6 +61,8 @@ local COMPONENT_TITLES = {
     CombatIcon = "Combat Icon",
     RareEliteIcon = "Classification Icon",
     RestingIcon = "Resting Icon",
+    DefensiveIcon = "Defensive Icon",
+    ImportantIcon = "Important Icon",
 }
 
 -- Detect component family from visual element
@@ -68,15 +70,16 @@ local function GetComponentFamily(container)
     if not container or not container.visual then
         return nil
     end
+    if container.isIconFrame then
+        return "IconFrame"
+    end
     local visual = container.visual
     local objType = visual.GetObjectType and visual:GetObjectType()
-
     if objType == "FontString" then
         return "FontString"
     elseif objType == "Texture" then
         return "Texture"
     end
-
     return nil
 end
 
@@ -579,17 +582,28 @@ function Dialog:ApplyStyle(container, key, value)
             visual:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
         end
     elseif key == "Scale" then
-        -- For textures, use SetSize (textures don't have SetScale)
-        if visual.GetObjectType and visual:GetObjectType() == "Texture" then
-            -- Store original size on first scale change
+        if container.isIconFrame then
+            if not container.originalContainerWidth then
+                container.originalContainerWidth = container:GetWidth()
+                container.originalContainerHeight = container:GetHeight()
+            end
+            local baseW = container.originalContainerWidth or 24
+            local baseH = container.originalContainerHeight or 24
+            container:SetSize(baseW * value, baseH * value)
+            if visual.SetSize then
+                visual:SetSize(baseW * value, baseH * value)
+            end
+            if Orbit.Skin and Orbit.Skin.Icons then
+                local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
+                Orbit.Skin.Icons:ApplyCustom(visual, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
+            end
+        elseif visual.GetObjectType and visual:GetObjectType() == "Texture" then
             if not container.originalVisualWidth then
                 container.originalVisualWidth = visual:GetWidth()
                 container.originalVisualHeight = visual:GetHeight()
             end
             local origW = container.originalVisualWidth or 18
             local origH = container.originalVisualHeight or 18
-
-            -- Must clear all-points anchoring first (textures are set with SetAllPoints)
             visual:ClearAllPoints()
             visual:SetPoint("CENTER", container, "CENTER", 0, 0)
             visual:SetSize(origW * value, origH * value)

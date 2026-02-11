@@ -30,8 +30,64 @@ Mixin.ICON_PREVIEW_ATLASES = {
     PhaseIcon = "RaidFrame-Icon-Phasing",
     ResIcon = "RaidFrame-Icon-Rez",
     SummonIcon = "RaidFrame-Icon-SummonPending",
+    DefensiveIcon = "UI-LFG-RoleIcon-Tank",
+    ImportantIcon = "UI-LFG-PendingMark-Raid",
 }
 Mixin.MARKER_ICON_TEXCOORD = { 0.75, 1, 0.25, 0.5 }
+
+-- [ CLASS PREVIEW SPELL IDS ]-------------------------------------------------------------------
+
+local CLASS_DEFENSIVE_SPELLS = {
+    WARRIOR = 871,        -- Shield Wall
+    PALADIN = 642,        -- Divine Shield
+    HUNTER = 186265,      -- Aspect of the Turtle
+    ROGUE = 5277,         -- Evasion
+    PRIEST = 19236,       -- Desperate Prayer
+    DEATHKNIGHT = 48792,  -- Icebound Fortitude
+    SHAMAN = 108271,      -- Astral Shift
+    MAGE = 45438,         -- Ice Block
+    WARLOCK = 104773,     -- Unending Resolve
+    MONK = 115203,        -- Fortifying Brew
+    DRUID = 22812,        -- Barkskin
+    DEMONHUNTER = 198589, -- Blur
+    EVOKER = 363916,      -- Obsidian Scales
+}
+
+local IMPORTANT_PREVIEW_SPELLS = {
+    240559, -- Grievous Wound (M+ affix)
+    240443, -- Bursting (M+ affix)
+    209858, -- Necrotic Wound (M+ affix)
+    226512, -- Sanguine Ichor (M+ affix)
+    240447, -- Quaking (M+ affix)
+}
+
+local FALLBACK_DEFENSIVE_TEXTURE = 136041 -- Power Word: Shield
+local FALLBACK_IMPORTANT_TEXTURE = 132095 -- Skull & Crossbones (generic danger)
+
+function Mixin:GetClassPreviewTexture(spellTable, fallbackTexture)
+    local _, playerClass = UnitClass("player")
+    local spellID = playerClass and spellTable[playerClass]
+    if spellID and C_Spell and C_Spell.GetSpellTexture then
+        local tex = C_Spell.GetSpellTexture(spellID)
+        if tex then return tex end
+    end
+    return fallbackTexture
+end
+
+function Mixin:GetDefensiveTexture()
+    return self:GetClassPreviewTexture(CLASS_DEFENSIVE_SPELLS, FALLBACK_DEFENSIVE_TEXTURE)
+end
+
+function Mixin:GetImportantTexture()
+    if C_Spell and C_Spell.GetSpellTexture then
+        for _, spellID in ipairs(IMPORTANT_PREVIEW_SPELLS) do
+            local tex = C_Spell.GetSpellTexture(spellID)
+            if tex then return tex end
+        end
+    end
+    return FALLBACK_IMPORTANT_TEXTURE
+end
+
 Orbit.IconPreviewAtlases, Orbit.MarkerIconTexCoord, Orbit.RoleAtlases = Mixin.ICON_PREVIEW_ATLASES, Mixin.MARKER_ICON_TEXCOORD, ROLE_ATLASES
 
 local function IsDisabled(plugin, componentKey)
