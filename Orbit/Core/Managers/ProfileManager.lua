@@ -124,6 +124,13 @@ function Orbit.Profile:Initialize()
         self:SetActiveProfile(NO_SPEC_PROFILE)
     end
 
+    -- Migration: Seed GlobalSettings into all profiles that don't have it
+    for _, profileData in pairs(Orbit.db.profiles) do
+        if not profileData.GlobalSettings then
+            profileData.GlobalSettings = CopyTable(Orbit.db.GlobalSettings, {})
+        end
+    end
+
     -- Register for FUTURE spec changes only (not initial load)
     self:InitializeSpecSwitching()
 end
@@ -150,12 +157,13 @@ function Orbit.Profile:CreateProfile(name, copyFrom)
 
     local sourceName = copyFrom or self:GetActiveProfileName()
 
-    -- CRITICAL: If copying from active profile, flush pending positions first
+    -- CRITICAL: If copying from active profile, flush pending data first
     -- so the new profile inherits the most recent changes
     if sourceName == self:GetActiveProfileName() then
         if Orbit.Engine and Orbit.Engine.PositionManager then
             Orbit.Engine.PositionManager:FlushToStorage()
         end
+        self:FlushGlobalSettings()
     end
 
     local sourceData
@@ -205,6 +213,9 @@ function Orbit.Profile:SetActiveProfile(name)
     if Orbit.db.activeProfile == name then
         Orbit.runtime = Orbit.runtime or {}
         Orbit.runtime.Layouts = profile.Layouts
+        if profile.GlobalSettings then
+            Orbit.db.GlobalSettings = CopyTable(profile.GlobalSettings, {})
+        end
         return true
     end
 
@@ -218,11 +229,21 @@ function Orbit.Profile:SetActiveProfile(name)
         Orbit.Engine.PositionManager:DiscardChanges()
     end
 
+    -- Save GlobalSettings to OLD profile before switching
+    local oldProfile = Orbit.db.profiles[Orbit.db.activeProfile]
+    if oldProfile then
+        oldProfile.GlobalSettings = CopyTable(Orbit.db.GlobalSettings, {})
+    end
+
     -- NOW switch the runtime references to the new profile
-    -- Using Orbit.runtime (not Orbit.db) so WoW doesn't serialize these references
     Orbit.db.activeProfile = name
     Orbit.runtime = Orbit.runtime or {}
     Orbit.runtime.Layouts = profile.Layouts
+
+    -- Restore GlobalSettings from NEW profile
+    if profile.GlobalSettings then
+        Orbit.db.GlobalSettings = CopyTable(profile.GlobalSettings, {})
+    end
 
     -- Notify User
     Orbit:Print(name .. " Profile Loaded.")
@@ -356,6 +377,8 @@ function Orbit.Profile:CopyProfileData(sourceProfileName)
     local activeProfile = Orbit.db.profiles[activeProfileName]
 
     activeProfile.Layouts = CopyTable(sourceProfile.Layouts or {}, {})
+    activeProfile.GlobalSettings = CopyTable(sourceProfile.GlobalSettings or Orbit.db.GlobalSettings, {})
+    Orbit.db.GlobalSettings = CopyTable(activeProfile.GlobalSettings, {})
 
     Orbit:Print("Copied settings from '" .. sourceProfileName .. "' to '" .. activeProfileName .. "'")
 
@@ -394,11 +417,21 @@ function Orbit.Profile:InitializeSpecSwitching()
     end)
 end
 
+function Orbit.Profile:FlushGlobalSettings()
+    local active = Orbit.db.profiles[Orbit.db.activeProfile]
+    if active then
+        active.GlobalSettings = CopyTable(Orbit.db.GlobalSettings, {})
+    end
+end
+
 -- [ IMPORT / EXPORT ]-------------------------------------------------------------------------------
 local LibSerialize = LibStub("LibSerialize")
 local LibDeflate = LibStub("LibDeflate")
 
 function Orbit.Profile:ExportProfile()
+    -- Flush live GlobalSettings into active profile before export
+    self:FlushGlobalSettings()
+
     local exportData = {
         meta = {
             addon = "Orbit",
