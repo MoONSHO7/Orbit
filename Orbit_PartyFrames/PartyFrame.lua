@@ -1,3 +1,24 @@
+-- [ AURA FILTER REFERENCE ]-------------------------------------------------------------------------
+--
+-- Buffs:          HELPFUL|PLAYER|RAID_IN_COMBAT
+--                 Show only player-cast helpful auras relevant to raid encounters.
+--                 PLAYER limits to our own casts, RAID_IN_COMBAT shows combat-relevant buffs only.
+--
+-- Debuffs:        HARMFUL
+--                 Show only harmful auras (boss mechanics, dispellable effects).
+--
+-- DefensiveIcon:  HELPFUL|BIG_DEFENSIVE
+--                 Show a single major defensive cooldown active on the unit (e.g. Shield Wall, Ice Block).
+--                 BIG_DEFENSIVE is a Blizzard flag for significant personal/external defensives.
+--
+-- ImportantIcon:  HARMFUL|IMPORTANT
+--                 Show a single high-priority harmful effect on the unit (boss mechanics, soaks).
+--                 IMPORTANT is a Blizzard flag for critical debuffs that require attention.
+--
+-- CrowdControlIcon: HARMFUL|CROWD_CONTROL
+--                   Show a single crowd control effect on the unit (stuns, roots, polymorphs).
+--                   CROWD_CONTROL is a Blizzard flag for loss-of-control debuffs.
+--
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
@@ -8,6 +29,9 @@ local Helpers = nil
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local MAX_PARTY_FRAMES = 5 -- 4 party + 1 potential player
 local POWER_BAR_HEIGHT_RATIO = Orbit.PartyFrameHelpers.LAYOUT.PowerBarRatio
+local DEFENSIVE_ICON_SIZE = 24
+local IMPORTANT_ICON_SIZE = 24
+local CROWD_CONTROL_ICON_SIZE = 24
 
 -- Role priority for sorting (Tank > Healer > DPS > None)
 local ROLE_PRIORITY = {
@@ -30,15 +54,12 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
         Orientation = 0, -- 0 = Vertical, 1 = Horizontal
         Spacing = 3,
         HealthTextMode = "percent_short",
-        -- Debuff Settings (separate for each orientation)
         DebuffPositionVertical = "Right", -- Left/Right for vertical
         DebuffPositionHorizontal = "Above", -- Above/Below for horizontal
         MaxDebuffs = 3,
-        -- Buff Settings (separate for each orientation)
         BuffPositionVertical = "Left", -- Left/Right for vertical
         BuffPositionHorizontal = "Below", -- Above/Below for horizontal
         MaxBuffs = 3,
-        -- Component Positions (Canvas Mode is single source of truth)
         ComponentPositions = {
             Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
             HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
@@ -49,10 +70,11 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
             PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
             ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
             ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+            DefensiveIcon = { anchorX = "LEFT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
+            ImportantIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
+            CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
         },
-        -- Disabled components (Canvas Mode drag-to-disable)
-        -- Components in this array are hidden; components NOT in array are visible
-        DisabledComponents = {},
+        DisabledComponents = { "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" },
         DisabledComponentsMigrated = true,
         IncludePlayer = true,
         GrowthDirection = "Down",
@@ -68,7 +90,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
         -- Aggro Indicator Settings
         AggroIndicatorEnabled = true,
         AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
-        AggroThickness = 2,
+        AggroThickness = 1,
         AggroFrequency = 0.25,
         AggroNumLines = 8,
     },
@@ -358,7 +380,7 @@ local function UpdateDebuffs(frame, plugin)
     end
     frame.debuffPool:ReleaseAll()
 
-    -- Fetch ALL harmful auras (secret-safe, no dispelName filtering)
+    -- Fetch raid-relevant harmful auras
     local debuffs = plugin:FetchAuras(unit, "HARMFUL", maxDebuffs)
 
     if #debuffs == 0 then
@@ -437,8 +459,8 @@ local function UpdateBuffs(frame, plugin)
     end
     frame.buffPool:ReleaseAll()
 
-    -- Fetch player-relevant cancelable buffs
-    local buffs = plugin:FetchAuras(unit, "HELPFUL|PLAYER|CANCELABLE", maxBuffs)
+    -- Fetch player-relevant combat buffs
+    local buffs = plugin:FetchAuras(unit, "HELPFUL|PLAYER|RAID_IN_COMBAT", maxBuffs)
 
     if #buffs == 0 then
         frame.buffContainer:Hide()
@@ -470,7 +492,7 @@ local function UpdateBuffs(frame, plugin)
         zoom = 0,
         borderStyle = 1,
         borderSize = globalBorder,
-        showTimer = false, -- No countdown timers on party buffs
+        showTimer = false,
     }
 
     -- Layout icons with smart positioning
@@ -484,6 +506,57 @@ local function UpdateBuffs(frame, plugin)
     end
 
     frame.buffContainer:Show()
+end
+
+-- [ SINGLE AURA ICON HELPER ]----------------------------------------------------------------------
+
+local function UpdateSingleAuraIcon(frame, plugin, iconKey, filter, iconSize)
+    local icon = frame[iconKey]
+    if not icon then
+        return
+    end
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled(iconKey) then
+        icon:Hide()
+        return
+    end
+
+    local unit = frame.unit
+    if not UnitExists(unit) then
+        icon:Hide()
+        return
+    end
+
+    local auras = plugin:FetchAuras(unit, filter, 1)
+    if #auras == 0 then
+        icon:Hide()
+        return
+    end
+
+    local aura = auras[1]
+    local globalBorder = Orbit.db.GlobalSettings.BorderSize
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false }
+    plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
+    local tooltipFilter = filter:find("HARMFUL") and "HARMFUL" or "HELPFUL"
+    plugin:SetupAuraTooltip(icon, aura, unit, tooltipFilter)
+    icon:Show()
+end
+
+-- [ DEFENSIVE ICON DISPLAY ]------------------------------------------------------------------------
+
+local function UpdateDefensiveIcon(frame, plugin)
+    UpdateSingleAuraIcon(frame, plugin, "DefensiveIcon", "HELPFUL|BIG_DEFENSIVE", DEFENSIVE_ICON_SIZE)
+end
+
+-- [ IMPORTANT ICON DISPLAY ]------------------------------------------------------------------------
+
+local function UpdateImportantIcon(frame, plugin)
+    UpdateSingleAuraIcon(frame, plugin, "ImportantIcon", "HARMFUL|IMPORTANT", IMPORTANT_ICON_SIZE)
+end
+
+-- [ CROWD CONTROL ICON DISPLAY ]--------------------------------------------------------------------
+
+local function UpdateCrowdControlIcon(frame, plugin)
+    UpdateSingleAuraIcon(frame, plugin, "CrowdControlIcon", "HARMFUL|CROWD_CONTROL", CROWD_CONTROL_ICON_SIZE)
 end
 
 -- [ STATUS INDICATOR UPDATES ]---------------------------------------------------------------------
@@ -615,6 +688,9 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
         UpdateFrameLayout(self, Orbit.db.GlobalSettings.BorderSize, plugin)
         UpdateDebuffs(self, plugin)
         UpdateBuffs(self, plugin)
+        UpdateDefensiveIcon(self, plugin)
+        UpdateImportantIcon(self, plugin)
+        UpdateCrowdControlIcon(self, plugin)
         UpdateAllStatusIndicators(self, plugin)
         UpdateInRange(self)
     end)
@@ -623,7 +699,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
     local originalOnEvent = frame:GetScript("OnEvent")
     frame:SetScript("OnEvent", function(f, event, eventUnit, ...)
         if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
-            if eventUnit == unit then
+            if eventUnit == f.unit then
                 UpdatePowerBar(f, plugin)
             end
             return
@@ -634,6 +710,9 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
             if eventUnit == f.unit then
                 UpdateDebuffs(f, plugin)
                 UpdateBuffs(f, plugin)
+                UpdateDefensiveIcon(f, plugin)
+                UpdateImportantIcon(f, plugin)
+                UpdateCrowdControlIcon(f, plugin)
                 -- Update dispel indicator
                 if plugin.UpdateDispelIndicator then
                     plugin:UpdateDispelIndicator(f, plugin)
@@ -661,7 +740,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
 
         -- Phase updates
         if event == "UNIT_PHASE" or event == "UNIT_FLAGS" then
-            if eventUnit == unit then
+            if eventUnit == f.unit then
                 UpdatePhaseIcon(f, plugin)
             end
             return
@@ -675,7 +754,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
 
         -- Resurrection updates
         if event == "INCOMING_RESURRECT_CHANGED" then
-            if eventUnit == unit then
+            if eventUnit == f.unit then
                 UpdateIncomingRes(f, plugin)
             end
             return
@@ -1001,7 +1080,7 @@ function Plugin:OnLoad()
         -- Components that support justifyH (text elements)
         local textComponents = { "Name", "HealthText" }
         -- Components that don't support justifyH (icons)
-        local iconComponents = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon" }
+        local iconComponents = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" }
 
         -- Register text components with justifyH support
         for _, key in ipairs(textComponents) do
@@ -1208,6 +1287,24 @@ function Plugin:PrepareIconsForCanvasMode()
         local h = 1 / 4
         frame.MarkerIcon:SetTexCoord(col * w, (col + 1) * w, row * h, (row + 1) * h)
         frame.MarkerIcon:Show()
+    end
+
+    -- DefensiveIcon/ImportantIcon: set .Icon texture for Canvas Mode cloning
+    local StatusMixin = Orbit.StatusIconMixin
+    if frame.DefensiveIcon then
+        frame.DefensiveIcon.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
+        frame.DefensiveIcon:SetSize(DEFENSIVE_ICON_SIZE, DEFENSIVE_ICON_SIZE)
+        frame.DefensiveIcon:Show()
+    end
+    if frame.ImportantIcon then
+        frame.ImportantIcon.Icon:SetTexture(StatusMixin:GetImportantTexture())
+        frame.ImportantIcon:SetSize(IMPORTANT_ICON_SIZE, IMPORTANT_ICON_SIZE)
+        frame.ImportantIcon:Show()
+    end
+    if frame.CrowdControlIcon then
+        frame.CrowdControlIcon.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
+        frame.CrowdControlIcon:SetSize(CROWD_CONTROL_ICON_SIZE, CROWD_CONTROL_ICON_SIZE)
+        frame.CrowdControlIcon:Show()
     end
 end
 
@@ -1456,6 +1553,11 @@ function Plugin:ApplySettings()
             -- Update buff display
             UpdateBuffs(frame, self)
 
+            -- Update defensive/important aura icons
+            UpdateDefensiveIcon(frame, self)
+            UpdateImportantIcon(frame, self)
+            UpdateCrowdControlIcon(frame, self)
+
             -- Update all status indicators
             UpdateAllStatusIndicators(frame, self)
 
@@ -1488,7 +1590,7 @@ function Plugin:ApplySettings()
             end
 
             -- Apply positions for other status icons
-            local icons = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon" }
+            local icons = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" }
             for _, iconKey in ipairs(icons) do
                 if frame[iconKey] and savedPositions[iconKey] then
                     local pos = savedPositions[iconKey]

@@ -137,6 +137,14 @@ function Plugin:OnLoad()
                     Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", enableHover)
                 end
             end
+            -- Also apply to tracked ability children
+            for _, childData in pairs(self.activeChildren or {}) do
+                if childData.frame then
+                    local csi = childData.frame.systemIndex
+                    local hover = self:GetSetting(csi, "ShowOnMouseover") ~= false
+                    Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover)
+                end
+            end
             -- Also apply to charge bar children
             for _, childData in pairs(self.activeChargeChildren or {}) do
                 if childData.frame then
@@ -158,7 +166,7 @@ function Plugin:CreateAnchor(name, systemIndex, label)
     frame:SetClampedToScreen(true)
     frame.systemIndex = systemIndex
     frame.editModeName = label
-    frame:EnableMouse(true)
+    frame:EnableMouse(false)
     frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 
@@ -198,6 +206,11 @@ function Plugin:ApplyAll()
     end
     if self.trackedAnchor then
         self:ApplyTrackedSettings(self.trackedAnchor)
+    end
+    for _, childData in pairs(self.activeChildren or {}) do
+        if childData.frame then
+            self:ApplyTrackedSettings(childData.frame)
+        end
     end
     if self.chargeBarAnchor then
         self:ApplyChargeBarSettings(self.chargeBarAnchor)
@@ -246,6 +259,7 @@ function Plugin:ApplySettings(frame)
     frame:Show()
     OrbitEngine.Frame:RestorePosition(frame, self, systemIndex)
     self:ProcessChildren(frame)
+    OrbitEngine.Frame:DisableMouseRecursive(frame)
 end
 
 function Plugin:UpdateVisuals(frame)

@@ -94,7 +94,9 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
     end
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
     local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or "Fonts\\FRIZQT__.TTF"
-    icon.count:SetFont(fontPath, math_max(8, size * 0.4), Orbit.Skin:GetFontOutline())
+    local fontOutline = Orbit.Skin:GetFontOutline()
+    local countSize = Orbit.Skin:GetAdaptiveTextSize(size, 8, nil, 0.4)
+    icon.count:SetFont(fontPath, countSize, fontOutline)
     icon.count:SetShadowColor(0, 0, 0, 1)
     icon.count:SetShadowOffset(1, -1)
     icon.count:ClearAllPoints()
@@ -102,6 +104,25 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
     icon.count:SetJustifyH("RIGHT")
     self:ApplyAuraCooldown(icon, aura, unit)
     self:ApplyAuraCount(icon, aura, unit)
+
+    -- Apply global font to cooldown countdown timer text
+    if icon.Cooldown then
+        local timerText = icon.Cooldown.Text
+        if not timerText then
+            for _, region in pairs({ icon.Cooldown:GetRegions() }) do
+                if region:IsObjectType("FontString") then
+                    timerText = region
+                    break
+                end
+            end
+            icon.Cooldown.Text = timerText
+        end
+        if timerText and timerText.SetFont then
+            local timerSize = Orbit.Skin:GetAdaptiveTextSize(size, 8, nil, 0.45)
+            timerText:SetFont(fontPath, timerSize, fontOutline)
+        end
+    end
+
     if skinSettings and Orbit.Skin and Orbit.Skin.Icons then
         Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
     end

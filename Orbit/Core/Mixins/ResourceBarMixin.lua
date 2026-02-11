@@ -6,7 +6,7 @@ local tinsert, tsort = table.insert, table.sort
 Orbit.ResourceBarMixin = {}
 local Mixin = Orbit.ResourceBarMixin
 
-local DRUID_FORMS = { CAT = DRUID_CAT_FORM, BEAR = DRUID_BEAR_FORM, MOONKIN_1 = DRUID_MOONKIN_FORM_1, MOONKIN_2 = DRUID_MOONKIN_FORM_2 }
+local SHAPESHIFT = { CAT = DRUID_CAT_FORM, BEAR = DRUID_BEAR_FORM, MOONKIN_1 = DRUID_MOONKIN_FORM_1, MOONKIN_2 = DRUID_MOONKIN_FORM_2 }
 
 -- [ SPELL IDS ]-------------------------------------------------------------------------------------
 local SOUL_CLEAVE_ID = 228477
@@ -32,7 +32,7 @@ local CLASS_RESOURCES = {
     MONK = {
         [269] = Enum.PowerType.Chi, -- Windwalker
     },
-    DRUID = "FORM_DEPENDENT",
+    DRUID = "SHAPESHIFT",
 }
 
 function Mixin:GetResourceForPlayer()
@@ -41,8 +41,8 @@ function Mixin:GetResourceForPlayer()
     if not resource then
         return nil, nil
     end
-    if resource == "FORM_DEPENDENT" then
-        if GetShapeshiftFormID() == DRUID_FORMS.CAT then
+    if resource == "SHAPESHIFT" then
+        if GetShapeshiftFormID() == SHAPESHIFT.CAT then
             return Enum.PowerType.ComboPoints, "COMBO_POINTS"
         end
         return nil, nil
@@ -152,7 +152,7 @@ function Mixin:GetContinuousResourceForPlayer()
     end
     if class == "DRUID" and specID == 102 then
         local formID, primary = GetShapeshiftFormID(), UnitPowerType("player")
-        if formID ~= DRUID_FORMS.CAT and formID ~= DRUID_FORMS.BEAR and primary ~= Enum.PowerType.Mana then
+        if formID ~= SHAPESHIFT.CAT and formID ~= SHAPESHIFT.BEAR and primary ~= Enum.PowerType.Mana then
             return "MANA"
         end
     end

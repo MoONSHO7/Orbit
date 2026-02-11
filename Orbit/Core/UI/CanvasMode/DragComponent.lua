@@ -78,7 +78,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     container:RegisterForDrag("LeftButton")
 
     local visual
-    local isFontString = sourceComponent and sourceComponent.GetText ~= nil
+    local isFontString = sourceComponent and sourceComponent.GetFont ~= nil
     local isTexture = sourceComponent and sourceComponent.GetTexture ~= nil and not isFontString
     local isIconFrame = sourceComponent and sourceComponent.Icon and sourceComponent.Icon.GetTexture
 
@@ -216,51 +216,70 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
 
         container:SetSize(srcWidth, srcHeight)
     elseif isIconFrame then
-        -- Clone Frame with Icon child
-        visual = container:CreateTexture(nil, "OVERLAY")
-        visual:SetAllPoints(container)
-
         local iconTexture = sourceComponent.Icon
-        local atlasName = iconTexture.GetAtlas and iconTexture:GetAtlas()
-        local texturePath = iconTexture:GetTexture()
+        local hasFlipbook = iconTexture and iconTexture.orbitPreviewTexCoord
 
-        if atlasName then
-            -- Handle atlas-based icons (e.g., RestingIcon FlipBook)
-            visual:SetAtlas(atlasName, false)
-            -- Use preview TexCoords if defined (for sprite sheets), otherwise copy current
-            if iconTexture.orbitPreviewTexCoord then
-                local tc = iconTexture.orbitPreviewTexCoord
-                visual:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
+        if hasFlipbook then
+            -- Flipbook atlas (e.g. RestingIcon): plain texture clone with single-frame texcoord
+            visual = container:CreateTexture(nil, "OVERLAY")
+            visual:SetAllPoints(container)
+            local atlasName = iconTexture.GetAtlas and iconTexture:GetAtlas()
+            if atlasName then
+                visual:SetAtlas(atlasName, false)
+            elseif iconTexture:GetTexture() then
+                visual:SetTexture(iconTexture:GetTexture())
+            end
+            local tc = iconTexture.orbitPreviewTexCoord
+            visual:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
+        else
+            -- Standard icon: skinned Button with ApplyCustom (proven working for party frame icons)
+            local btn = CreateFrame("Button", nil, container, "BackdropTemplate")
+            btn:SetAllPoints(container)
+            btn:EnableMouse(false)
+            btn.Icon = btn:CreateTexture(nil, "ARTWORK")
+            btn.Icon:SetAllPoints()
+            btn.icon = btn.Icon
+
+            local texturePath = iconTexture and iconTexture:GetTexture()
+            local StatusMixin = Orbit.StatusIconMixin
+            if texturePath then
+                btn.Icon:SetTexture(texturePath)
+            elseif StatusMixin and key == "DefensiveIcon" then
+                btn.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
+            elseif StatusMixin and key == "ImportantIcon" then
+                btn.Icon:SetTexture(StatusMixin:GetImportantTexture())
+            elseif StatusMixin and key == "CrowdControlIcon" then
+                btn.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
             else
-                local ok, l, r, t, b = pcall(function()
-                    return iconTexture:GetTexCoord()
-                end)
-                if ok and l then
-                    visual:SetTexCoord(l, r, t, b)
+                local previewAtlases = Orbit.IconPreviewAtlases or {}
+                if previewAtlases[key] then
+                    btn.Icon:SetAtlas(previewAtlases[key], false)
+                else
+                    btn.Icon:SetColorTexture(0.5, 0.5, 0.5, 0.5)
                 end
             end
-        elseif texturePath then
-            visual:SetTexture(texturePath)
-            local ok, l, r, t, b = pcall(function()
-                return iconTexture:GetTexCoord()
-            end)
-            if ok and l then
-                visual:SetTexCoord(l, r, t, b)
+
+            local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
+            if Orbit.Skin and Orbit.Skin.Icons then
+                Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
             end
+
+            visual = btn
+            container.isIconFrame = true
         end
 
         local srcWidth, srcHeight = 24, 24
-        local ok, w = pcall(function()
-            return sourceComponent:GetWidth()
-        end)
-        if ok and w and type(w) == "number" and w > 0 then
-            srcWidth = w
+        if sourceComponent.orbitOriginalWidth and sourceComponent.orbitOriginalWidth > 0 then
+            srcWidth = sourceComponent.orbitOriginalWidth
+        else
+            local ok, w = pcall(function() return sourceComponent:GetWidth() end)
+            if ok and w and type(w) == "number" and w > 0 then srcWidth = w end
         end
-        local ok2, h = pcall(function()
-            return sourceComponent:GetHeight()
-        end)
-        if ok2 and h and type(h) == "number" and h > 0 then
-            srcHeight = h
+        if sourceComponent.orbitOriginalHeight and sourceComponent.orbitOriginalHeight > 0 then
+            srcHeight = sourceComponent.orbitOriginalHeight
+        else
+            local ok2, h = pcall(function() return sourceComponent:GetHeight() end)
+            if ok2 and h and type(h) == "number" and h > 0 then srcHeight = h end
         end
 
         container:SetSize(srcWidth, srcHeight)

@@ -50,7 +50,8 @@ local function FindIconBySpellID(spellID)
         local viewer = entry.viewer
         if viewer then
             for _, child in ipairs({ viewer:GetChildren() }) do
-                if child:IsShown() and child.orbitCachedSpellID == spellID then return child end
+                local cached = child.orbitCachedSpellID
+                if child:IsShown() and cached and not issecretvalue(cached) and cached == spellID then return child end
             end
         end
     end
@@ -112,7 +113,10 @@ function CDM:ProcessChildren(anchor)
             self:HookGCDSwipe(icon, systemIndex)
             self:ApplyTextSettings(icon, systemIndex)
             icon.orbitCDMSystemIndex = systemIndex
-            if not InCombatLockdown() and icon.GetSpellID then icon.orbitCachedSpellID = icon:GetSpellID() end
+            if not InCombatLockdown() and icon.GetSpellID then
+                local sid = icon:GetSpellID()
+                if sid and not issecretvalue(sid) then icon.orbitCachedSpellID = sid end
+            end
             EnsureFlashOverlay(icon)
         end
 

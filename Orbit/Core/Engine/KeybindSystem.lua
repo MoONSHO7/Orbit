@@ -117,60 +117,64 @@ function KeybindSystem:GetForButton(button)
     return nil
 end
 
--- [ SPELL KEYBIND LOOKUP ]----------------------------------------------------------
--- Cached spell→keybind lookup for Cooldown Manager
+-- [ KEYBIND MAP ]---------------------------------------------------------------
+-- Unified map built once per cache cycle from a single scan of all action bar
+-- buttons.  Both GetForSpell and GetForItem are O(1) table lookups after the
+-- initial build.
 
-local spellToKeybind = {}
-local lastCacheUpdate = 0
-local CACHE_INTERVAL = 0.5
+local spellKeybindMap -- lazily built, nil = needs rebuild
+local itemKeybindMap -- lazily built, nil = needs rebuild
 
-local function LookupKeybind(spellID)
-    if not spellID then
-        return nil
+local ACTION_BAR_PREFIXES = {
+    "ActionButton",
+    "MultiBarBottomLeftButton",
+    "MultiBarBottomRightButton",
+    "MultiBarRightButton",
+    "MultiBarLeftButton",
+    "MultiBar5Button",
+    "MultiBar6Button",
+    "MultiBar7Button",
+    "MultiBar8Button",
+}
+
+local function BuildKeybindMaps()
+    local spells, items = {}, {}
+    if not GetActionInfo then
+        return spells, items
     end
-
-    -- Method 1: ActionButtonUtil (fastest, handles most cases)
-    if ActionButtonUtil and ActionButtonUtil.GetActionButtonBySpellID then
-        local button = ActionButtonUtil.GetActionButtonBySpellID(spellID, false, false)
-        if button then
-            local text = KeybindSystem:GetForButton(button)
-            if text then
-                return text
-            end
-        end
-    end
-
-    -- Method 2: C_ActionBar.FindSpellActionButtons
-    if C_ActionBar.FindSpellActionButtons then
-        local slots = C_ActionBar.FindSpellActionButtons(spellID)
-        if slots and slots[1] then
-            local slot = slots[1]
-            local buttons = NUM_ACTIONBAR_BUTTONS or 12
-            local index = ((slot - 1) % buttons) + 1
-            local key = GetBindingKey("ACTIONBUTTON" .. index)
-            if key then
-                local text = GetBindingText(key, 1)
-                if text and text ~= "" then
-                    return KeybindSystem:Format(text)
+    for _, prefix in ipairs(ACTION_BAR_PREFIXES) do
+        for i = 1, 12 do
+            local button = _G[prefix .. i]
+            if button then
+                local actionSlot = button.action or (button.GetAction and button:GetAction())
+                if actionSlot then
+                    local actionType, id = GetActionInfo(actionSlot)
+                    if id then
+                        local text = KeybindSystem:GetForButton(button)
+                        if text then
+                            if actionType == "spell" and not spells[id] then
+                                spells[id] = text
+                            elseif actionType == "item" and not items[id] then
+                                items[id] = text
+                            end
+                        end
+                    end
                 end
             end
         end
     end
+    return spells, items
+end
 
-    return nil
+local function EnsureMaps()
+    if not spellKeybindMap then
+        spellKeybindMap, itemKeybindMap = BuildKeybindMaps()
+    end
 end
 
 function KeybindSystem:InvalidateCache()
-    wipe(spellToKeybind)
-    lastCacheUpdate = 0
-end
-
-local function ThrottleCacheCheck()
-    local now = GetTime()
-    if now - lastCacheUpdate < CACHE_INTERVAL then
-        return
-    end
-    lastCacheUpdate = now
+    spellKeybindMap = nil
+    itemKeybindMap = nil
 end
 
 function KeybindSystem:GetForSpell(spellID)
@@ -182,48 +186,80 @@ function KeybindSystem:GetForSpell(spellID)
         return nil
     end
 
-    ThrottleCacheCheck()
+    EnsureMaps()
 
-    -- Check cache first
-    local cached = spellToKeybind[spellID]
-    if cached ~= nil then
-        return cached ~= false and cached or nil
+    -- Direct match
+    local key = spellKeybindMap[spellID]
+    if key then
+        return key
     end
 
-    -- Lookup and cache
-    local key = LookupKeybind(spellID)
-
-    -- Try base spell if not found (for talent-modified spells)
-    if not key and C_Spell.GetBaseSpell then
+    -- Try base spell (talent-modified spells)
+    if C_Spell.GetBaseSpell then
         local base = C_Spell.GetBaseSpell(spellID)
         if base and base ~= spellID then
-            key = LookupKeybind(base)
+            key = spellKeybindMap[base]
+            if key then
+                return key
+            end
         end
     end
 
     -- Try override spell
-    if not key and C_Spell.GetOverrideSpell then
+    if C_Spell.GetOverrideSpell then
         local override = C_Spell.GetOverrideSpell(spellID)
         if override and override ~= spellID then
-            key = LookupKeybind(override)
+            key = spellKeybindMap[override]
+            if key then
+                return key
+            end
         end
     end
 
-    -- Cache result (use false for "no binding" to distinguish from uncached)
-    spellToKeybind[spellID] = key or false
+    -- Fallback: ActionButtonUtil handles macros and other edge cases
+    if ActionButtonUtil and ActionButtonUtil.GetActionButtonBySpellID then
+        local button = ActionButtonUtil.GetActionButtonBySpellID(spellID, false, false)
+        if button then
+            key = KeybindSystem:GetForButton(button)
+            if key then
+                spellKeybindMap[spellID] = key -- cache for next call
+                return key
+            end
+        end
+    end
 
-    return key
+    return nil
+end
+
+function KeybindSystem:GetForItem(itemID)
+    if not itemID then
+        return nil
+    end
+
+    if issecretvalue and issecretvalue(itemID) then
+        return nil
+    end
+
+    EnsureMaps()
+
+    return itemKeybindMap[itemID] or nil
 end
 
 -- [ EVENT REGISTRATION ]------------------------------------------------------------
 
 local CACHE_INVALIDATION_EVENTS = {
-    "UPDATE_BINDINGS", "ACTIONBAR_SLOT_CHANGED", "ACTIONBAR_PAGE_CHANGED",
-    "PLAYER_TALENT_UPDATE", "PLAYER_SPECIALIZATION_CHANGED", "SPELLS_CHANGED",
+    "UPDATE_BINDINGS",
+    "ACTIONBAR_SLOT_CHANGED",
+    "ACTIONBAR_PAGE_CHANGED",
+    "PLAYER_TALENT_UPDATE",
+    "PLAYER_SPECIALIZATION_CHANGED",
+    "SPELLS_CHANGED",
 }
 
 if Orbit.EventBus then
     for _, event in ipairs(CACHE_INVALIDATION_EVENTS) do
-        Orbit.EventBus:On(event, function() KeybindSystem:InvalidateCache() end)
+        Orbit.EventBus:On(event, function()
+            KeybindSystem:InvalidateCache()
+        end)
     end
 end

@@ -22,12 +22,19 @@ local function ShouldShowFrame(frame)
     if CooldownViewerSettings and CooldownViewerSettings:IsShown() then
         return true
     end
+    local cursorType = GetCursorInfo()
+    if cursorType == "spell" or cursorType == "item" then
+        return true
+    end
     return InCombatLockdown() or UnitAffectingCombat("player") or UnitExists("target") or (frame and frame.orbitMouseOver)
 end
 
 -- Enable/disable mouse on frame and optionally children (protected in combat)
 local function SetFrameMouseEnabled(frame, enabled, includeChildren)
     if not frame then
+        return
+    end
+    if frame.orbitClickThrough then
         return
     end
     if InCombatLockdown() then
