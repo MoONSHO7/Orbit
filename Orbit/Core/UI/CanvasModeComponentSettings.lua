@@ -49,7 +49,7 @@ local TYPE_SCHEMAS = {
     },
     -- Texture/Icon elements (CombatIcon, RareEliteIcon, etc.)
     Texture = { controls = { SCALE_CONTROL } },
-    -- Skinned Button icons (DefensiveIcon, ImportantIcon)
+    -- Skinned Button icons (DefensiveIcon, ImportantIcon, CrowdControlIcon)
     IconFrame = { controls = { SCALE_CONTROL } },
 }
 
@@ -63,6 +63,7 @@ local COMPONENT_TITLES = {
     RestingIcon = "Resting Icon",
     DefensiveIcon = "Defensive Icon",
     ImportantIcon = "Important Icon",
+    CrowdControlIcon = "Crowd Control Icon",
 }
 
 -- Detect component family from visual element

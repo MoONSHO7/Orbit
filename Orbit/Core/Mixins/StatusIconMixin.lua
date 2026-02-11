@@ -32,6 +32,7 @@ Mixin.ICON_PREVIEW_ATLASES = {
     SummonIcon = "RaidFrame-Icon-SummonPending",
     DefensiveIcon = "UI-LFG-RoleIcon-Tank",
     ImportantIcon = "UI-LFG-PendingMark-Raid",
+    CrowdControlIcon = "UI-LFG-PendingMark-Raid",
 }
 Mixin.MARKER_ICON_TEXCOORD = { 0.75, 1, 0.25, 0.5 }
 
@@ -61,8 +62,25 @@ local IMPORTANT_PREVIEW_SPELLS = {
     240447, -- Quaking (M+ affix)
 }
 
+local CLASS_CC_SPELLS = {
+    WARRIOR = 5246,       -- Intimidating Shout
+    PALADIN = 20066,      -- Repentance
+    HUNTER = 187650,      -- Freezing Trap
+    ROGUE = 6770,         -- Sap
+    PRIEST = 605,         -- Mind Control
+    DEATHKNIGHT = 108194, -- Asphyxiate
+    SHAMAN = 51514,       -- Hex
+    MAGE = 118,           -- Polymorph
+    WARLOCK = 5782,       -- Fear
+    MONK = 115078,        -- Paralysis
+    DRUID = 339,          -- Entangling Roots
+    DEMONHUNTER = 217832, -- Imprison
+    EVOKER = 360806,      -- Sleep Walk
+}
+
 local FALLBACK_DEFENSIVE_TEXTURE = 136041 -- Power Word: Shield
 local FALLBACK_IMPORTANT_TEXTURE = 132095 -- Skull & Crossbones (generic danger)
+local FALLBACK_CC_TEXTURE = 136071 -- Polymorph (generic CC)
 
 function Mixin:GetClassPreviewTexture(spellTable, fallbackTexture)
     local _, playerClass = UnitClass("player")
@@ -86,6 +104,10 @@ function Mixin:GetImportantTexture()
         end
     end
     return FALLBACK_IMPORTANT_TEXTURE
+end
+
+function Mixin:GetCrowdControlTexture()
+    return self:GetClassPreviewTexture(CLASS_CC_SPELLS, FALLBACK_CC_TEXTURE)
 end
 
 Orbit.IconPreviewAtlases, Orbit.MarkerIconTexCoord, Orbit.RoleAtlases = Mixin.ICON_PREVIEW_ATLASES, Mixin.MARKER_ICON_TEXCOORD, ROLE_ATLASES

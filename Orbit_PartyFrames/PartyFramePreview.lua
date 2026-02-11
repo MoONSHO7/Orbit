@@ -492,6 +492,21 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     end
                     frame.ImportantIcon:Show()
                 end
+
+                -- CrowdControlIcon - skinned preview with class-specific texture
+                if frame.CrowdControlIcon then
+                    frame.CrowdControlIcon.Icon:SetTexture(Orbit.StatusIconMixin:GetCrowdControlTexture())
+                    frame.CrowdControlIcon:SetSize(iconSize, iconSize)
+                    local savedPositions = self:GetSetting(1, "ComponentPositions")
+                    if not savedPositions or not savedPositions.CrowdControlIcon then
+                        frame.CrowdControlIcon:ClearAllPoints()
+                        frame.CrowdControlIcon:SetPoint("CENTER", frame, "TOP", 0, -(iconSize * 0.5 + 2))
+                    end
+                    if Orbit.Skin and Orbit.Skin.Icons then
+                        Orbit.Skin.Icons:ApplyCustom(frame.CrowdControlIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
+                    end
+                    frame.CrowdControlIcon:Show()
+                end
             else
                 -- Hide in normal Edit Mode preview (they overlap)
                 if frame.PhaseIcon then
@@ -511,6 +526,9 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 end
                 if frame.ImportantIcon then
                     frame.ImportantIcon:Hide()
+                end
+                if frame.CrowdControlIcon then
+                    frame.CrowdControlIcon:Hide()
                 end
             end
 

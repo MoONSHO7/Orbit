@@ -123,6 +123,21 @@ function OverrideUtils.ApplyScaleOverride(element, overrides)
         local baseW = element.orbitOriginalWidth
         local baseH = element.orbitOriginalHeight
         element:SetSize(baseW * overrides.Scale, baseH * overrides.Scale)
+    elseif element.GetObjectType and element:GetObjectType() == "Button" and element.Icon then
+        -- Skinned icon frame: resize + re-skin (SetScale won't update backdrop)
+        if not element.orbitOriginalWidth then
+            element.orbitOriginalWidth = element:GetWidth()
+            element.orbitOriginalHeight = element:GetHeight()
+            if element.orbitOriginalWidth <= 0 then element.orbitOriginalWidth = 24 end
+            if element.orbitOriginalHeight <= 0 then element.orbitOriginalHeight = 24 end
+        end
+        local baseW = element.orbitOriginalWidth
+        local baseH = element.orbitOriginalHeight
+        element:SetSize(baseW * overrides.Scale, baseH * overrides.Scale)
+        if Orbit.Skin and Orbit.Skin.Icons then
+            local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
+            Orbit.Skin.Icons:ApplyCustom(element, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
+        end
     elseif element.SetScale then
         element:SetScale(overrides.Scale)
     end

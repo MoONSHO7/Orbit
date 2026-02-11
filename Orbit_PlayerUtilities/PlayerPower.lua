@@ -429,6 +429,7 @@ function Plugin:ApplySettings()
         local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
         Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, systemIndex, "OutOfCombatFade", enableHover)
     end
+    OrbitEngine.Frame:DisableMouseRecursive(Frame)
 
     self:UpdateVisibility()
 end

@@ -89,61 +89,74 @@ function Dialog:AddToDock(key, sourceComponent)
 
     -- Icon visual
     local isTexture = sourceComponent and sourceComponent.GetTexture
-    local isFontString = sourceComponent and sourceComponent.GetText
+    local isFontString = sourceComponent and sourceComponent.GetFont ~= nil
+    local isIconFrame = sourceComponent and sourceComponent.Icon and sourceComponent.Icon.GetTexture
 
     if isTexture and not isFontString then
         icon.visual = icon:CreateTexture(nil, "OVERLAY")
         icon.visual:SetPoint("CENTER")
         icon.visual:SetSize(C.DOCK_ICON_SIZE - 4, C.DOCK_ICON_SIZE - 4)
 
-        -- Copy atlas or texture
         local atlasName = sourceComponent.GetAtlas and sourceComponent:GetAtlas()
         if atlasName then
             icon.visual:SetAtlas(atlasName)
         else
             local texturePath = sourceComponent:GetTexture()
-            if texturePath then
-                icon.visual:SetTexture(texturePath)
-            end
+            if texturePath then icon.visual:SetTexture(texturePath) end
 
-            -- Copy TexCoord from source if available
             if sourceComponent.GetTexCoord then
                 local ULx, ULy, LLx, LLy, URx, URy, LRx, LRy = sourceComponent:GetTexCoord()
                 if ULx and ULy then
-                    if LRx then
-                        icon.visual:SetTexCoord(ULx, ULy, LLx, LLy, URx, URy, LRx, LRy)
-                    else
-                        icon.visual:SetTexCoord(ULx, ULy, LLx, LLy)
+                    if LRx then icon.visual:SetTexCoord(ULx, ULy, LLx, LLy, URx, URy, LRx, LRy)
+                    else icon.visual:SetTexCoord(ULx, ULy, LLx, LLy)
                     end
                 end
             end
 
-            -- Fallback for MarkerIcon using shared constant
             if key == "MarkerIcon" then
                 local tc = Orbit.MarkerIconTexCoord
-                if tc then
-                    icon.visual:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
-                end
+                if tc then icon.visual:SetTexCoord(tc[1], tc[2], tc[3], tc[4]) end
             end
 
-            -- Handle sprite sheet (legacy Orbit sprite system)
             if sourceComponent.orbitSpriteIndex then
                 local index = sourceComponent.orbitSpriteIndex
                 local rows = sourceComponent.orbitSpriteRows or 4
                 local cols = sourceComponent.orbitSpriteCols or 4
                 local col = (index - 1) % cols
                 local row = math.floor((index - 1) / cols)
-                local w = 1 / cols
-                local h = 1 / rows
+                local w, h = 1 / cols, 1 / rows
                 icon.visual:SetTexCoord(col * w, (col + 1) * w, row * h, (row + 1) * h)
             end
         end
 
-        -- Desaturate to show disabled state
+        icon.visual:SetDesaturated(true)
+        icon.visual:SetAlpha(0.7)
+    elseif isIconFrame then
+        -- Button with .Icon child (DefensiveIcon, ImportantIcon, CrowdControlIcon)
+        icon.visual = icon:CreateTexture(nil, "OVERLAY")
+        icon.visual:SetPoint("CENTER")
+        icon.visual:SetSize(C.DOCK_ICON_SIZE - 4, C.DOCK_ICON_SIZE - 4)
+
+        local iconTex = sourceComponent.Icon
+        local texturePath = iconTex and iconTex:GetTexture()
+        local StatusMixin = Orbit.StatusIconMixin
+        if texturePath then
+            icon.visual:SetTexture(texturePath)
+        elseif StatusMixin and key == "DefensiveIcon" then
+            icon.visual:SetTexture(StatusMixin:GetDefensiveTexture())
+        elseif StatusMixin and key == "ImportantIcon" then
+            icon.visual:SetTexture(StatusMixin:GetImportantTexture())
+        elseif StatusMixin and key == "CrowdControlIcon" then
+            icon.visual:SetTexture(StatusMixin:GetCrowdControlTexture())
+        else
+            local previewAtlases = Orbit.IconPreviewAtlases or {}
+            if previewAtlases[key] then icon.visual:SetAtlas(previewAtlases[key], false) end
+        end
+
         icon.visual:SetDesaturated(true)
         icon.visual:SetAlpha(0.7)
     else
-        -- Fallback: just show key name
+        -- Fallback: show key name
         icon.visual = icon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         icon.visual:SetPoint("CENTER")
         icon.visual:SetText(key:sub(1, 4))
@@ -277,6 +290,7 @@ function Dialog:RestoreFromDock(key)
         -- Use CreateDraggableComponent from DragComponent module
         if CanvasMode.CreateDraggableComponent then
             local comp = CanvasMode.CreateDraggableComponent(Dialog.previewFrame, key, data.component, centerX, centerY, compData)
+            if comp then comp:SetFrameLevel(Dialog.previewFrame:GetFrameLevel() + 10) end
             Dialog.previewComponents[key] = comp
         end
     end

@@ -133,7 +133,8 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.isChargeBar = true
     frame.orbitPlugin = self
     frame.orbitName = "Orbit_CooldownViewer"
-    frame:EnableMouse(true)
+    frame:EnableMouse(false)
+    frame.orbitClickThrough = true
     frame.anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }
 
     -- Default position for restoration waterfall fallback
@@ -742,12 +743,28 @@ function Plugin:ClearChargeFrame(frame)
     UpdateChargeBarLabel(frame)
 end
 
+-- [ CLICK-THROUGH TOGGLE ]-------------------------------------------------------------------------
+function Plugin:SetChargeClickEnabled(enabled)
+    if self.chargeBarAnchor then
+        self.chargeBarAnchor.orbitClickThrough = not enabled
+        self.chargeBarAnchor:EnableMouse(enabled)
+    end
+    for _, childData in pairs(self.activeChargeChildren or {}) do
+        if childData.frame then
+            childData.frame.orbitClickThrough = not enabled
+            childData.frame:EnableMouse(enabled)
+        end
+    end
+end
+
 -- [ SETTINGS APPLICATION ]-------------------------------------------------------------------------
 function Plugin:ApplyChargeBarSettings(frame)
     if not frame then
         return
     end
     local sysIndex = frame.systemIndex
+    local size = self:GetSetting(sysIndex, "IconSize") or 100
+    frame:SetScale(size / 100)
 
     self:LayoutChargeBar(frame)
     OrbitEngine.Frame:RestorePosition(frame, self, sysIndex)

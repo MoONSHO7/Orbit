@@ -6,12 +6,13 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- Ensure UnitButton namespace exists
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 
--- Compatibility for 12.0 / Native Smoothing
 local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
+local PREVIEW_HEALTH_VALUE = 0.75
+local _, PLAYER_CLASS = UnitClass("player")
 
 -- [ CORE MIXIN ]------------------------------------------------------------------------------------
 -- Base mixin with lifecycle and event handling
@@ -33,33 +34,55 @@ end
 
 function CoreMixin:CreateCanvasPreview(options)
     options = options or {}
-    local scale = options.scale or 1
-    local borderSize = options.borderSize or 2
     local parent = options.parent or UIParent
-
-    -- Use Preview.Frame:CreateBasePreview for the container
-    local preview = Engine.Preview.Frame:CreateBasePreview(self, scale, parent, borderSize)
-    if not preview then
-        return nil
-    end
-
-    -- Create a single health bar preview to represent the unit button
-    local bar = CreateFrame("StatusBar", nil, preview)
-    bar:SetPoint("TOPLEFT", borderSize * scale, -borderSize * scale)
-    bar:SetPoint("BOTTOMRIGHT", -borderSize * scale, borderSize * scale)
-    bar:SetMinMaxValues(0, 1)
-    bar:SetValue(0.75) -- Show as 75% health for preview
-
-    -- Apply texture from options or global settings
-    local textureName = options.textureName or Orbit.db.GlobalSettings.Texture
-    local texturePath = LSM:Fetch("statusbar", textureName)
-    bar:SetStatusBarTexture(texturePath)
-
-    -- Apply color from global BarColorCurve
     local globalSettings = Orbit.db.GlobalSettings or {}
-    local barColor = (Engine.WidgetLogic and Engine.WidgetLogic:GetFirstColorFromCurve(globalSettings.BarColorCurve)) or { r = 0.2, g = 0.8, b = 0.2 }
-    bar:SetStatusBarColor(barColor.r, barColor.g, barColor.b, 1)
+    local borderSize = globalSettings.BorderSize or 1
+    local textureName = options.textureName or globalSettings.Texture
+    local width = self:GetWidth()
+    local height = self:GetHeight()
 
+    -- [ CONTAINER ] ---------------------------------------------------------------------------------
+    local preview = CreateFrame("Frame", nil, parent)
+    preview:SetSize(width, height)
+    preview.sourceFrame = self
+    preview.sourceWidth = width
+    preview.sourceHeight = height
+    preview.previewScale = 1
+    preview.components = {}
+
+    -- [ BACKGROUND ] --------------------------------------------------------------------------------
+    preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Orbit.Constants.Layers and Orbit.Constants.Layers.BackdropDeep or -8)
+    preview.bg:SetAllPoints()
+    Orbit.Skin:ApplyGradientBackground(preview, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
+
+    -- [ BORDERS ] -----------------------------------------------------------------------------------
+    Orbit.Skin:SkinBorder(preview, preview, borderSize)
+
+    -- [ HEALTH BAR ] --------------------------------------------------------------------------------
+    local Pixel = Engine.Pixel
+    local scale = self:GetEffectiveScale() or 1
+    local inset = preview.borderPixelSize or Pixel:Snap(borderSize, scale)
+
+    local bar = CreateFrame("StatusBar", nil, preview)
+    bar:SetPoint("TOPLEFT", inset, -inset)
+    bar:SetPoint("BOTTOMRIGHT", -inset, inset)
+    bar:SetMinMaxValues(0, 1)
+    bar:SetValue(PREVIEW_HEALTH_VALUE)
+    bar:SetFrameLevel(preview:GetFrameLevel() + 2)
+    Orbit.Skin:SkinStatusBar(bar, textureName, nil, true)
+
+    -- Resolve health color from BarColorCurve (class-aware)
+    local barCurve = globalSettings.BarColorCurve
+    local barColor
+    if barCurve and barCurve.pins and #barCurve.pins > 0 then
+        local hasClassPin = Engine.WidgetLogic and Engine.WidgetLogic:CurveHasClassPin(barCurve)
+        if hasClassPin then
+            local classColor = RAID_CLASS_COLORS[PLAYER_CLASS]
+            if classColor then barColor = { r = classColor.r, g = classColor.g, b = classColor.b } end
+        end
+    end
+    barColor = barColor or (Engine.WidgetLogic and Engine.WidgetLogic:GetFirstColorFromCurve(barCurve)) or { r = 0.2, g = 0.8, b = 0.2 }
+    bar:SetStatusBarColor(barColor.r, barColor.g, barColor.b, 1)
     preview.Health = bar
 
     return preview

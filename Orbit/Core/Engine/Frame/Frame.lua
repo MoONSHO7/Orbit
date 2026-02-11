@@ -255,6 +255,18 @@ function Frame:UpdateNativeFrameVisual(systemFrame)
     end
 end
 
+-- [ CLICK-THROUGH ]---------------------------------------------------------------------------------
+function Frame:DisableMouseRecursive(frame)
+    if not frame then
+        return
+    end
+    frame:EnableMouse(false)
+    frame.orbitClickThrough = true
+    for _, child in ipairs({ frame:GetChildren() }) do
+        self:DisableMouseRecursive(child)
+    end
+end
+
 -- [ INITIALIZATION ]--------------------------------------------------------------------------------
 
 -- Hook Edit Mode to integrate modules

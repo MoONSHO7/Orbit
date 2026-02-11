@@ -216,43 +216,58 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
 
         container:SetSize(srcWidth, srcHeight)
     elseif isIconFrame then
-        -- Build a proper skinned Button (mirrors PartyFramePreview aura icon pattern)
-        local btn = CreateFrame("Button", nil, container, "BackdropTemplate")
-        btn:SetAllPoints(container)
-        btn:EnableMouse(false)
-        btn.Icon = btn:CreateTexture(nil, "ARTWORK")
-        btn.Icon:SetAllPoints()
-        btn.icon = btn.Icon
-
-        -- Resolve texture: source icon > class-specific > preview atlas fallback
         local iconTexture = sourceComponent.Icon
-        local texturePath = iconTexture:GetTexture()
-        local StatusMixin = Orbit.StatusIconMixin
-        if texturePath then
-            btn.Icon:SetTexture(texturePath)
-        elseif StatusMixin and key == "DefensiveIcon" then
-            btn.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
-        elseif StatusMixin and key == "ImportantIcon" then
-            btn.Icon:SetTexture(StatusMixin:GetImportantTexture())
-        else
-            local previewAtlases = Orbit.IconPreviewAtlases or {}
-            if previewAtlases[key] then
-                btn.Icon:SetAtlas(previewAtlases[key], false)
-            else
-                btn.Icon:SetColorTexture(0.5, 0.5, 0.5, 0.5)
+        local hasFlipbook = iconTexture and iconTexture.orbitPreviewTexCoord
+
+        if hasFlipbook then
+            -- Flipbook atlas (e.g. RestingIcon): plain texture clone with single-frame texcoord
+            visual = container:CreateTexture(nil, "OVERLAY")
+            visual:SetAllPoints(container)
+            local atlasName = iconTexture.GetAtlas and iconTexture:GetAtlas()
+            if atlasName then
+                visual:SetAtlas(atlasName, false)
+            elseif iconTexture:GetTexture() then
+                visual:SetTexture(iconTexture:GetTexture())
             end
+            local tc = iconTexture.orbitPreviewTexCoord
+            visual:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
+        else
+            -- Standard icon: skinned Button with ApplyCustom (proven working for party frame icons)
+            local btn = CreateFrame("Button", nil, container, "BackdropTemplate")
+            btn:SetAllPoints(container)
+            btn:EnableMouse(false)
+            btn.Icon = btn:CreateTexture(nil, "ARTWORK")
+            btn.Icon:SetAllPoints()
+            btn.icon = btn.Icon
+
+            local texturePath = iconTexture and iconTexture:GetTexture()
+            local StatusMixin = Orbit.StatusIconMixin
+            if texturePath then
+                btn.Icon:SetTexture(texturePath)
+            elseif StatusMixin and key == "DefensiveIcon" then
+                btn.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
+            elseif StatusMixin and key == "ImportantIcon" then
+                btn.Icon:SetTexture(StatusMixin:GetImportantTexture())
+            elseif StatusMixin and key == "CrowdControlIcon" then
+                btn.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
+            else
+                local previewAtlases = Orbit.IconPreviewAtlases or {}
+                if previewAtlases[key] then
+                    btn.Icon:SetAtlas(previewAtlases[key], false)
+                else
+                    btn.Icon:SetColorTexture(0.5, 0.5, 0.5, 0.5)
+                end
+            end
+
+            local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
+            if Orbit.Skin and Orbit.Skin.Icons then
+                Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
+            end
+
+            visual = btn
+            container.isIconFrame = true
         end
 
-        -- Apply skin with border
-        local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
-        if Orbit.Skin and Orbit.Skin.Icons then
-            Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
-        end
-
-        visual = btn
-        container.isIconFrame = true
-
-        -- Size from source
         local srcWidth, srcHeight = 24, 24
         if sourceComponent.orbitOriginalWidth and sourceComponent.orbitOriginalWidth > 0 then
             srcWidth = sourceComponent.orbitOriginalWidth

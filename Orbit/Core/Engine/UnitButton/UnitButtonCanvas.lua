@@ -6,6 +6,9 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
+local DAMAGE_BAR_VERTICAL_INSET = 1
+
 -- Ensure UnitButton namespace exists
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
@@ -151,6 +154,11 @@ function CanvasMixin:ApplyComponentPositions()
         ApplyTextPosition(self.ImportantIcon, self, positions.ImportantIcon)
     end
 
+    -- Apply CrowdControlIcon position if saved (PartyFrame)
+    if positions.CrowdControlIcon and self.CrowdControlIcon then
+        ApplyTextPosition(self.CrowdControlIcon, self, positions.CrowdControlIcon)
+    end
+
     -- Apply style overrides for ALL components with overrides in saved positions
     self:ApplyStyleOverrides(positions)
 end
@@ -189,24 +197,25 @@ function CanvasMixin:SetBorder(size)
         end
         if self.HealthDamageBar then
             self.HealthDamageBar:ClearAllPoints()
-            self.HealthDamageBar:SetAllPoints(self.Health)
+            self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, -DAMAGE_BAR_VERTICAL_INSET)
+            self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, DAMAGE_BAR_VERTICAL_INSET)
         end
         return
     end
 
     local pixelSize = self.borderPixelSize
 
-    -- Resize DamageBar (behind Health)
-    if self.HealthDamageBar then
-        self.HealthDamageBar:ClearAllPoints()
-        self.HealthDamageBar:SetPoint("TOPLEFT", pixelSize, -pixelSize)
-        self.HealthDamageBar:SetPoint("BOTTOMRIGHT", -pixelSize, pixelSize)
-    end
-
     if self.Health then
         self.Health:ClearAllPoints()
         self.Health:SetPoint("TOPLEFT", pixelSize, -pixelSize)
         self.Health:SetPoint("BOTTOMRIGHT", -pixelSize, pixelSize)
+    end
+
+    -- DamageBar always follows Health (power bar may shrink Health below full frame)
+    if self.HealthDamageBar then
+        self.HealthDamageBar:ClearAllPoints()
+        self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, -DAMAGE_BAR_VERTICAL_INSET)
+        self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, DAMAGE_BAR_VERTICAL_INSET)
     end
 end
 

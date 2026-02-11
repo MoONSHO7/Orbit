@@ -464,6 +464,7 @@ function Dialog:Open(frame, plugin, systemIndex)
                 self:AddToDock(key, data.component)
             else
                 local comp = CreateDraggableComponent(self.previewFrame, key, data.component, data.x, data.y, data)
+                if comp then comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + 10) end
                 self.previewComponents[key] = comp
             end
         end
@@ -717,6 +718,7 @@ function Dialog:ResetPositions()
                 }
 
                 local comp = CreateDraggableComponent(preview, key, data.component, centerX, centerY, compData)
+                if comp then comp:SetFrameLevel(preview:GetFrameLevel() + 10) end
                 self.previewComponents[key] = comp
             end
         end

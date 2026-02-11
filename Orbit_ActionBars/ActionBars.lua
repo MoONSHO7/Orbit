@@ -159,6 +159,7 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
         OutOfCombatFade = false,
         ShowOnMouseover = true,
         KeypressColor = { r = 1, g = 1, b = 1, a = 0.6 },
+        BackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
     },
 }, Orbit.Constants.PluginGroups.ActionBars)
 
@@ -315,6 +316,10 @@ function Plugin:AddSettings(dialog, systemFrame)
             table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = "Hide Empty Buttons", default = false })
         end
     elseif currentTab == "Colors" then
+        WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
+            key = "BackdropColour", label = "Backdrop",
+            default = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
+        })
         WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
             key = "KeypressColor", label = "Keypress Flash",
             default = { r = 1, g = 1, b = 1, a = 0.6 },

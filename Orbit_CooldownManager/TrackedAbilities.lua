@@ -159,7 +159,8 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.systemIndex = systemIndex
     frame.editModeName = label
     frame.isTrackedBar = true
-    frame:EnableMouse(true)
+    frame:EnableMouse(false)
+    frame.orbitClickThrough = true
     frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 
@@ -621,7 +622,8 @@ function Plugin:CreateTrackedIcon(anchor, systemIndex, x, y)
 
     self:ApplyTrackedIconSkin(icon, systemIndex)
 
-    icon:EnableMouse(true)
+    icon:EnableMouse(false)
+    icon.orbitClickThrough = true
     icon:RegisterForDrag("LeftButton")
     icon:SetScript("OnReceiveDrag", function(self)
         plugin:OnTrackedIconReceiveDrag(self)
@@ -766,6 +768,10 @@ local function IsItemUsable(itemId)
         return true
     end
     return C_Item.GetItemCount(itemId, false, true) > 0
+end
+
+local function HasItemTexture(itemId)
+    return itemId and C_Item.GetItemIconByID(itemId) ~= nil
 end
 
 -- [ ACTIVE GLOW HELPERS ]--------------------------------------------------------------------------
@@ -916,54 +922,62 @@ function Plugin:UpdateTrackedIcon(icon)
         end
     elseif icon.trackedType == "item" then
         isUsable = IsItemUsable(icon.trackedId)
-        if not isUsable then
-            icon:Hide()
-            return
-        end
 
         texture = C_Item.GetItemIconByID(icon.trackedId)
         if texture then
             icon.Icon:SetTexture(texture)
-            local start, duration = C_Container.GetItemCooldown(icon.trackedId)
-            if start and duration and duration > 0 then
-                icon.Cooldown:SetCooldown(start, duration)
-                if icon.activeDuration and duration > icon.activeDuration then
-                    local inActivePhase = (GetTime() - start) < icon.activeDuration
-                    if inActivePhase then
-                        icon.Icon:SetDesaturation(0)
-                        icon.Cooldown:SetAlpha(0)
-                        icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
-                        if not icon._activeGlowing then
-                            Plugin:StartActiveGlow(icon)
+            if not isUsable then
+                -- Depleted: desaturated icon, no cooldown, show "0"
+                icon.Cooldown:Clear()
+                icon.ActiveCooldown:Clear()
+                icon.Icon:SetDesaturation(1)
+                icon.CountText:SetText("0")
+                icon.CountText:Show()
+                if icon._activeGlowing then
+                    Plugin:StopActiveGlow(icon)
+                end
+            else
+                local start, duration = C_Container.GetItemCooldown(icon.trackedId)
+                if start and duration and duration > 0 then
+                    icon.Cooldown:SetCooldown(start, duration)
+                    if icon.activeDuration and duration > icon.activeDuration then
+                        local inActivePhase = (GetTime() - start) < icon.activeDuration
+                        if inActivePhase then
+                            icon.Icon:SetDesaturation(0)
+                            icon.Cooldown:SetAlpha(0)
+                            icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
+                            if not icon._activeGlowing then
+                                Plugin:StartActiveGlow(icon)
+                            end
+                        else
+                            icon.Icon:SetDesaturation(1)
+                            icon.Cooldown:SetAlpha(1)
+                            icon.ActiveCooldown:Clear()
+                            if icon._activeGlowing then
+                                Plugin:StopActiveGlow(icon)
+                            end
                         end
                     else
                         icon.Icon:SetDesaturation(1)
                         icon.Cooldown:SetAlpha(1)
                         icon.ActiveCooldown:Clear()
-                        if icon._activeGlowing then
-                            Plugin:StopActiveGlow(icon)
-                        end
                     end
                 else
-                    icon.Icon:SetDesaturation(1)
+                    icon.Cooldown:Clear()
                     icon.Cooldown:SetAlpha(1)
                     icon.ActiveCooldown:Clear()
+                    icon.Icon:SetDesaturation(0)
+                    if icon._activeGlowing then
+                        Plugin:StopActiveGlow(icon)
+                    end
                 end
-            else
-                icon.Cooldown:Clear()
-                icon.Cooldown:SetAlpha(1)
-                icon.ActiveCooldown:Clear()
-                icon.Icon:SetDesaturation(0)
-                if icon._activeGlowing then
-                    Plugin:StopActiveGlow(icon)
+                local count = C_Item.GetItemCount(icon.trackedId, false, true)
+                if count and count > 1 then
+                    icon.CountText:SetText(count)
+                    icon.CountText:Show()
+                else
+                    icon.CountText:Hide()
                 end
-            end
-            local count = C_Item.GetItemCount(icon.trackedId, false, true)
-            if count and count > 1 then
-                icon.CountText:SetText(count)
-                icon.CountText:Show()
-            else
-                icon.CountText:Hide()
             end
         end
     end
@@ -1033,7 +1047,7 @@ local function IsGridItemUsable(data)
         return IsSpellUsable(data.id)
     end
     if data.type == "item" then
-        return IsItemUsable(data.id)
+        return IsItemUsable(data.id) or HasItemTexture(data.id)
     end
     return false
 end
@@ -1535,23 +1549,54 @@ function Plugin:RegisterSpellCastWatcher()
 end
 
 -- [ CURSOR WATCHER ]---------------------------------------------------------------------------------
+function Plugin:SetTrackedClickEnabled(enabled)
+    local viewerMap = GetViewerMap()
+    local entry = viewerMap[TRACKED_INDEX]
+    if entry and entry.anchor then
+        entry.anchor.orbitClickThrough = not enabled
+        entry.anchor:EnableMouse(enabled)
+        for _, icon in pairs(entry.anchor.activeIcons or {}) do
+            icon.orbitClickThrough = not enabled
+            icon:EnableMouse(enabled)
+        end
+    end
+    for _, childData in pairs(self.activeChildren) do
+        if childData.frame then
+            childData.frame.orbitClickThrough = not enabled
+            childData.frame:EnableMouse(enabled)
+            for _, icon in pairs(childData.frame.activeIcons or {}) do
+                icon.orbitClickThrough = not enabled
+                icon:EnableMouse(enabled)
+            end
+        end
+    end
+end
+
 function Plugin:RegisterCursorWatcher()
     local lastCursor = nil
     local lastEditMode = nil
+    local lastShift = nil
     local viewerMap = GetViewerMap()
     local frame = CreateFrame("Frame")
     frame:SetScript("OnUpdate", function()
         local cursorType = GetCursorInfo()
         local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
+        local isShift = IsShiftKeyDown()
         if InCombatLockdown() then
             return
         end
-        if cursorType == lastCursor and isEditMode == lastEditMode then
+        if cursorType == lastCursor and isEditMode == lastEditMode and isShift == lastShift then
             return
         end
         lastCursor = cursorType
         lastEditMode = isEditMode
+        lastShift = isShift
+        if Orbit.OOCFadeMixin then
+            Orbit.OOCFadeMixin:RefreshAll()
+        end
         local isDroppable = IsDraggingCooldownAbility()
+        self:SetTrackedClickEnabled(isDroppable or isShift or isEditMode)
+        self:SetChargeClickEnabled(isDroppable or isShift or isEditMode)
         local entry = viewerMap[TRACKED_INDEX]
         if entry and entry.anchor then
             local anchor = entry.anchor
@@ -1699,10 +1744,16 @@ function Plugin:ApplyTrackedSettings(anchor)
     end
 
     local systemIndex = anchor.systemIndex
+    local size = self:GetSetting(systemIndex, "IconSize") or 100
+    anchor:SetScale(size / 100)
     local alpha = self:GetSetting(systemIndex, "Opacity") or 100
     OrbitEngine.NativeFrame:Modify(anchor, { alpha = alpha / 100 })
     anchor:Show()
     OrbitEngine.Frame:RestorePosition(anchor, self, systemIndex)
     self:LoadTrackedItems(anchor, systemIndex)
     self:LayoutTrackedIcons(anchor, systemIndex)
+    if Orbit.OOCFadeMixin then
+        local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
+        Orbit.OOCFadeMixin:ApplyOOCFade(anchor, self, systemIndex, "OutOfCombatFade", enableHover)
+    end
 end

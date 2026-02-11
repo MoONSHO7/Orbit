@@ -176,6 +176,7 @@ end
 
 -- [ FRAME LAYOUT ]
 local DEFAULT_POWER_BAR_RATIO = 0.2
+local DAMAGE_BAR_VERTICAL_INSET = 1
 
 function Mixin:UpdateFrameLayout(frame, borderSize, options)
     if not frame then
@@ -188,9 +189,11 @@ function Mixin:UpdateFrameLayout(frame, borderSize, options)
     options = options or {}
     local showPowerBar = (options.showPowerBar == nil) and true or options.showPowerBar
 
+    local Pixel = OrbitEngine.Pixel
+    local scale = frame:GetEffectiveScale()
     local powerBarRatio = options.powerBarRatio or DEFAULT_POWER_BAR_RATIO
-    local powerHeight = showPowerBar and (height * powerBarRatio) or 0
-    local inset = frame.borderPixelSize or borderSize or 0
+    local powerHeight = showPowerBar and Pixel:Snap(height * powerBarRatio, scale) or 0
+    local inset = Pixel:Snap(frame.borderPixelSize or borderSize or 0, scale)
 
     if frame.Power then
         if showPowerBar then
@@ -216,7 +219,8 @@ function Mixin:UpdateFrameLayout(frame, borderSize, options)
         frame.Health:SetFrameLevel(frame:GetFrameLevel() + 2)
         if frame.HealthDamageBar then
             frame.HealthDamageBar:ClearAllPoints()
-            frame.HealthDamageBar:SetAllPoints(frame.Health)
+            frame.HealthDamageBar:SetPoint("TOPLEFT", frame.Health, "TOPLEFT", 0, -DAMAGE_BAR_VERTICAL_INSET)
+            frame.HealthDamageBar:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT", 0, DAMAGE_BAR_VERTICAL_INSET)
             frame.HealthDamageBar:SetFrameLevel(frame:GetFrameLevel() + 1)
         end
     end

@@ -80,38 +80,87 @@ function Plugin:OnLoad()
 
     -- [ CANVAS PREVIEW ] -------------------------------------------------------------------------------
     function Frame:CreateCanvasPreview(options)
-        local scale = options.scale or 1
-        local borderSize = options.borderSize or 1
+        options = options or {}
+        local parent = options.parent or UIParent
+        local globalSettings = Orbit.db.GlobalSettings or {}
+        local borderSize = globalSettings.BorderSize or 1
+        local textureName = Plugin:GetSetting(SYSTEM_INDEX, "Texture") or globalSettings.Texture
+        local width = self:GetWidth()
+        local height = self:GetHeight()
 
-        -- Base container
-        local preview = OrbitEngine.Preview.Frame:CreateBasePreview(self, scale, options.parent, borderSize)
+        -- Container
+        local preview = CreateFrame("Frame", nil, parent)
+        preview:SetSize(width, height)
+        preview.sourceFrame = self
+        preview.sourceWidth = width
+        preview.sourceHeight = height
+        preview.previewScale = 1
+        preview.components = {}
 
-        -- Create Power Bar visual
+        -- Background (gradient-aware)
+        preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Orbit.Constants.Layers and Orbit.Constants.Layers.BackdropDeep or -8)
+        preview.bg:SetAllPoints()
+        Orbit.Skin:ApplyGradientBackground(preview, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
+
+        -- Borders (discrete edge textures)
+        Orbit.Skin:SkinBorder(preview, preview, borderSize)
+
+        -- Power Bar
+        local inset = preview.borderPixelSize or OrbitEngine.Pixel:Snap(borderSize, self:GetEffectiveScale() or 1)
         local bar = CreateFrame("StatusBar", nil, preview)
-        local inset = borderSize * scale
-        bar:SetPoint("TOPLEFT", preview, "TOPLEFT", inset, -inset)
-        bar:SetPoint("BOTTOMRIGHT", preview, "BOTTOMRIGHT", -inset, inset)
+        bar:SetPoint("TOPLEFT", inset, -inset)
+        bar:SetPoint("BOTTOMRIGHT", -inset, inset)
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(1)
+        bar:SetFrameLevel(preview:GetFrameLevel() + 2)
+        Orbit.Skin:SkinStatusBar(bar, textureName, nil, true)
 
-        -- Appearance
-        local textureName = Plugin:GetSetting(SYSTEM_INDEX, "Texture")
-        local texturePath = "Interface\\Buttons\\WHITE8x8"
-        if textureName and LSM then
-            texturePath = LSM:Fetch("statusbar", textureName) or texturePath
-        end
-        bar:SetStatusBarTexture(texturePath)
-
-        -- Color
-        -- Default to Mana blue for target preview since we don't have a unit
-        local info = Orbit.Constants.Colors.PowerType[0] -- Mana
-        if info then
-            bar:SetStatusBarColor(info.r, info.g, info.b)
-        else
-            bar:SetStatusBarColor(0, 0.5, 1)
-        end
-
+        -- Color (Mana blue default)
+        local info = Orbit.Constants.Colors.PowerType[0]
+        bar:SetStatusBarColor(info and info.r or 0, info and info.g or 0.5, info and info.b or 1)
         preview.PowerBar = bar
+
+        -- Text component with draggable handle
+        local savedPositions = Plugin:GetSetting(SYSTEM_INDEX, "ComponentPositions") or {}
+        local textSaved = savedPositions.Text or {}
+        local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 12, 18, 1)
+        local fontPath = LSM:Fetch("font", Plugin:GetSetting(SYSTEM_INDEX, "Font") or globalSettings.Font) or STANDARD_TEXT_FONT
+
+        local textFrame = CreateFrame("Frame", nil, preview)
+        textFrame:SetAllPoints(bar)
+        textFrame:SetFrameLevel(bar:GetFrameLevel() + 5)
+
+        local fs = textFrame:CreateFontString(nil, "OVERLAY", nil, 7)
+        fs:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
+        fs:SetPoint("CENTER", textFrame, "CENTER", 0, 0)
+        fs:SetJustifyH("CENTER")
+        fs:SetText("100%")
+
+        -- Apply overrides
+        if textSaved.overrides and OrbitEngine.OverrideUtils then
+            OrbitEngine.OverrideUtils.ApplyOverrides(fs, textSaved.overrides, { fontSize = textSize, fontPath = fontPath })
+        end
+
+        -- Font color from curve
+        local fontColor = (OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(globalSettings.FontColorCurve)) or { r = 1, g = 1, b = 1, a = 1 }
+        fs:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
+
+        -- Draggable component
+        local CreateDraggableComponent = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.CreateDraggableComponent
+        if CreateDraggableComponent then
+            local compData = {
+                anchorX = textSaved.anchorX or "CENTER", anchorY = textSaved.anchorY or "CENTER",
+                offsetX = textSaved.offsetX or 0, offsetY = textSaved.offsetY or 0,
+                justifyH = textSaved.justifyH or "CENTER", overrides = textSaved.overrides,
+            }
+            local comp = CreateDraggableComponent(preview, "Text", fs, textSaved.posX or 0, textSaved.posY or 0, compData)
+            if comp then
+                comp:SetFrameLevel(textFrame:GetFrameLevel() + 1)
+                preview.components["Text"] = comp
+                fs:Hide()
+            end
+        end
+
         return preview
     end
 
