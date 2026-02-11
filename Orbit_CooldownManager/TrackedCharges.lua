@@ -131,6 +131,7 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.systemIndex = systemIndex
     frame.editModeName = label
     frame.isChargeBar = true
+    frame.editModeTooltipLines = { "Drag and drop spells that have multiple charges here." }
     frame.orbitPlugin = self
     frame.orbitName = "Orbit_CooldownViewer"
     frame:EnableMouse(false)

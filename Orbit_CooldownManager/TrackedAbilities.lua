@@ -159,6 +159,7 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.systemIndex = systemIndex
     frame.editModeName = label
     frame.isTrackedBar = true
+    frame.editModeTooltipLines = { "Drag and drop items and spells that have cooldowns here." }
     frame:EnableMouse(false)
     frame.orbitClickThrough = true
     frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
