@@ -22,7 +22,7 @@ function CDM:AddSettings(dialog, systemFrame)
     -- Charge Bars get their own dedicated dialog
     if frame and frame.isChargeBar then
         WL:SetTabRefreshCallback(dialog, self, systemFrame)
-        local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Colour", "Visibility" }, "Layout")
+        local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Colors", "Visibility" }, "Layout")
 
         if currentTab == "Layout" then
             if not isAnchored then
@@ -39,9 +39,9 @@ function CDM:AddSettings(dialog, systemFrame)
                 type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 10, step = 1, default = 0,
                 onChange = function(val) self:SetSetting(systemIndex, "Spacing", val); self:LayoutChargeBars() end,
             })
-        elseif currentTab == "Colour" then
+        elseif currentTab == "Colors" then
             WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-                key = "BarColorCurve", label = "Bar Colour",
+                key = "BarColorCurve", label = "Bar Color",
                 onChange = function(curveData)
                     self:SetSetting(systemIndex, "BarColorCurve", curveData)
                     self:LayoutChargeBars()
@@ -89,7 +89,7 @@ function CDM:AddSettings(dialog, systemFrame)
     end
 
     WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Glow", "Visibility" }, "Layout")
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Glow", "Colors", "Visibility" }, "Layout")
 
     if currentTab == "Layout" then
         table.insert(schema.controls, {
@@ -108,11 +108,6 @@ function CDM:AddSettings(dialog, systemFrame)
             table.insert(schema.controls, { type = "slider", key = "IconLimit", label = "# Columns", min = 1, max = 20, step = 1, default = Constants.Cooldown.DefaultLimit })
         end
     elseif currentTab == "Glow" then
-        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-            key = "SwipeColorCurve", label = "Swipe Colour",
-            default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
-            singleColor = true,
-        })
         table.insert(schema.controls, { type = "checkbox", key = "ShowGCDSwipe", label = "Show GCD Swipe", default = true })
         if not isTracked then
             local GlowType = Constants.PandemicGlow.Type
@@ -125,9 +120,6 @@ function CDM:AddSettings(dialog, systemFrame)
                 },
                 default = Constants.PandemicGlow.DefaultType,
             })
-            WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
-                key = "PandemicGlowColor", label = "Pandemic Glow Colour", default = { r = 1, g = 0.8, b = 0, a = 1 },
-            })
         else
             local GlowType = Constants.PandemicGlow.Type
             table.insert(schema.controls, {
@@ -139,8 +131,26 @@ function CDM:AddSettings(dialog, systemFrame)
                 },
                 default = GlowType.None,
             })
+        end
+    elseif currentTab == "Colors" then
+        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "SwipeColorCurve", label = "Swipe Color",
+            default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
+            singleColor = true,
+        })
+        if not isTracked then
             WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
-                key = "ActiveGlowColor", label = "Active Glow Colour", default = { r = 0.3, g = 0.8, b = 1, a = 1 },
+                key = "PandemicGlowColor", label = "Pandemic Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },
+            })
+        else
+            WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
+                key = "ActiveGlowColor", label = "Active Glow Color", default = { r = 0.3, g = 0.8, b = 1, a = 1 },
+            })
+        end
+        if systemIndex ~= Constants.Cooldown.SystemIndex.BuffIcon then
+            WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
+                key = "KeypressColor", label = "Keypress Flash",
+                default = { r = 1, g = 1, b = 1, a = 0 },
             })
         end
     elseif currentTab == "Visibility" then

@@ -9,6 +9,66 @@ if not CDM then return end
 
 local VIEWER_MAP = CDM.viewerMap
 
+-- [ FLASH OVERLAY HELPERS ]-------------------------------------------------------------------------
+local FLASH_DURATION = 0.15
+
+local function EnsureFlashOverlay(icon)
+    if icon.orbitCDMFlash then return end
+    local flashFrame = CreateFrame("Frame", nil, icon)
+    flashFrame:SetAllPoints(icon)
+    flashFrame:SetFrameLevel(icon:GetFrameLevel() + 3)
+    flashFrame:Hide()
+
+    local tex = flashFrame:CreateTexture(nil, "OVERLAY", nil, 7)
+    tex:SetAllPoints(flashFrame)
+    tex:SetColorTexture(1, 1, 1, 0.4)
+
+    local fadeGroup = flashFrame:CreateAnimationGroup()
+    fadeGroup:SetToFinalAlpha(true)
+    local fadeOut = fadeGroup:CreateAnimation("Alpha")
+    fadeOut:SetFromAlpha(1)
+    fadeOut:SetToAlpha(0)
+    fadeOut:SetDuration(FLASH_DURATION)
+    fadeOut:SetSmoothing("OUT")
+    fadeGroup:SetScript("OnFinished", function() flashFrame:Hide() end)
+
+    icon.orbitCDMFlash = flashFrame
+    icon.orbitCDMFlashTex = tex
+    icon.orbitCDMFlashFade = fadeGroup
+end
+
+local function FlashIcon(icon, color)
+    if not icon.orbitCDMFlash then return end
+    icon.orbitCDMFlashTex:SetColorTexture(color.r, color.g, color.b, color.a or 0.4)
+    icon.orbitCDMFlash:SetAlpha(1)
+    icon.orbitCDMFlash:Show()
+    icon.orbitCDMFlashFade:Play()
+end
+
+local function FindIconBySpellID(spellID)
+    for _, entry in pairs(VIEWER_MAP) do
+        local viewer = entry.viewer
+        if viewer then
+            for _, child in ipairs({ viewer:GetChildren() }) do
+                if child:IsShown() and child.orbitCachedSpellID == spellID then return child end
+            end
+        end
+    end
+    return nil
+end
+
+-- Keypress flash via ActionButtonDown (fires on every keypress, even during cooldown/GCD)
+hooksecurefunc("ActionButtonDown", function(id)
+    local button = GetActionButtonForID(id)
+    if not button or not button.action then return end
+    local actionType, spellID = GetActionInfo(button.action)
+    if actionType ~= "spell" or not spellID then return end
+    local icon = FindIconBySpellID(spellID)
+    if not icon or not icon.orbitCDMSystemIndex then return end
+    local c = CDM:GetSetting(icon.orbitCDMSystemIndex, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0 }
+    FlashIcon(icon, c)
+end)
+
 -- [ PROCESS CHILDREN ]------------------------------------------------------------------------------
 function CDM:ProcessChildren(anchor)
     if not anchor then return end
@@ -51,6 +111,9 @@ function CDM:ProcessChildren(anchor)
             Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
             self:HookGCDSwipe(icon, systemIndex)
             self:ApplyTextSettings(icon, systemIndex)
+            icon.orbitCDMSystemIndex = systemIndex
+            if not InCombatLockdown() and icon.GetSpellID then icon.orbitCachedSpellID = icon:GetSpellID() end
+            EnsureFlashOverlay(icon)
         end
 
         Orbit.Skin.Icons:ApplyManualLayout(blizzFrame, activeChildren, skinSettings)

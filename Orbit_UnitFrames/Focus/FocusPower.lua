@@ -5,6 +5,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- Compatibility for 12.0 / Native Smoothing
 local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
+local FRAME_LEVEL_BOOST = 10
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
 local CanUseUnitPowerPercent = (type(UnitPowerPercent) == "function" and CurveConstants and CurveConstants.ScaleTo100)
@@ -75,6 +76,7 @@ function Plugin:OnLoad()
         template = "BackdropTemplate",
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }, -- Vertical stacking only, merge borders
     })
+    Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
 
     -- [ CANVAS PREVIEW ] -------------------------------------------------------------------------------
     function Frame:CreateCanvasPreview(options)

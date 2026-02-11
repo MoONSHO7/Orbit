@@ -279,6 +279,13 @@ function Orbit.Profile:SetActiveProfile(name)
     end
 
     isActivatingProfile = false
+
+    -- Notify subsystems that the profile has fully switched
+    -- (runtime references are updated, all plugins have been refreshed)
+    if Orbit.EventBus then
+        Orbit.EventBus:Fire("ORBIT_PROFILE_CHANGED", name)
+    end
+
     return true
 end
 

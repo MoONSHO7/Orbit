@@ -7,6 +7,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SYSTEM_ID = "Orbit_TargetOfTargetFrame"
 local TOT_FRAME_INDEX = 100 -- Custom index for Orbit-only frames
 local TARGET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Target
+local FRAME_LEVEL_DEMOTE = 5
 
 local Plugin = Orbit:RegisterPlugin("Target of Target", SYSTEM_ID, {
     canvasMode = true, -- Enable Canvas Mode for component editing
@@ -61,6 +62,7 @@ function Plugin:OnLoad()
 
     -- Create frame directly on UIParent
     self.frame = OrbitEngine.UnitButton:Create(UIParent, "targettarget", "OrbitTargetOfTargetFrame")
+    self.frame:SetFrameLevel(math.max(1, self.frame:GetFrameLevel() - FRAME_LEVEL_DEMOTE))
     self.frame.editModeName = "Target of Target"
     self.frame.systemIndex = TOT_FRAME_INDEX
 

@@ -36,6 +36,7 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
         OutOfCombatFade = false,
         ShowOnMouseover = true,
         TrackedItems = {},
+        KeypressColor = { r = 1, g = 1, b = 1, a = 0 },
     },
 }, Orbit.Constants.PluginGroups.CooldownManager)
 
@@ -116,6 +117,14 @@ function Plugin:OnLoad()
 
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", self.OnPlayerEnteringWorld, self)
     self:RegisterVisibilityEvents()
+
+    -- Reload tracked abilities and charge bars after a profile switch completes.
+    -- This replaces the old PLAYER_SPECIALIZATION_CHANGED handler which raced
+    -- against the ProfileManager's debounced profile switch.
+    Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function()
+        self:ReloadTrackedForSpec()
+        self:ReparseActiveDurations()
+    end, self)
 
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
         if Orbit.OOCFadeMixin then

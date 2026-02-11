@@ -7,6 +7,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
 local UPDATE_INTERVAL = 0.05
 local AUGMENTATION_SPEC_ID = 1473
+local FRAME_LEVEL_BOOST = 10
 local _, PLAYER_CLASS = UnitClass("player")
 
 -- [ POWER TYPE CURVE CONFIG ]----------------------------------------------------------------------
@@ -195,6 +196,7 @@ function Plugin:OnLoad()
         template = "BackdropTemplate",
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = true },
     })
+    Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
     self.frame = Frame
 
     -- [ CANVAS PREVIEW ] -------------------------------------------------------------------------------

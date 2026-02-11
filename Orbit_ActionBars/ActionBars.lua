@@ -158,6 +158,7 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
         GlobalDisabledComponents = {},
         OutOfCombatFade = false,
         ShowOnMouseover = true,
+        KeypressColor = { r = 1, g = 1, b = 1, a = 0.6 },
     },
 }, Orbit.Constants.PluginGroups.ActionBars)
 
@@ -204,7 +205,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     end
 
     WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Visibility" }, "Layout")
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Colors", "Visibility" }, "Layout")
 
     if currentTab == "Layout" then
         if systemIndex == 1 then
@@ -313,6 +314,11 @@ function Plugin:AddSettings(dialog, systemFrame)
         if not isForcedHideEmpty then
             table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = "Hide Empty Buttons", default = false })
         end
+    elseif currentTab == "Colors" then
+        WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
+            key = "KeypressColor", label = "Keypress Flash",
+            default = { r = 1, g = 1, b = 1, a = 0.6 },
+        })
     elseif currentTab == "Visibility" then
         WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
         table.insert(schema.controls, {
@@ -446,6 +452,7 @@ function Plugin:CreateVehicleExitButton()
     container:EnableMouse(true)
     container:SetClampedToScreen(true)
     container.anchorOptions = { x = true, y = true, syncScale = false, syncDimensions = false }
+    if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(container) end
 
     -- Selection highlight for Edit Mode
     container.Selection = container:CreateTexture(nil, "OVERLAY")
@@ -1087,8 +1094,9 @@ function Plugin:LayoutButtons(index)
         borderSize = Orbit.db.GlobalSettings.BorderSize,
         swipeColor = { r = 0, g = 0, b = 0, a = 0.8 },
         showTimer = true,
-        hideName = false, -- Can expose this setting if needed
+        hideName = false,
         backdropColor = self:GetSetting(index, "BackdropColour"),
+        keypressColor = self:GetSetting(index, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 },
     }
 
     -- Apply layout to each button

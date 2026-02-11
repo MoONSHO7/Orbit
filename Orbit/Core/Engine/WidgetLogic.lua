@@ -684,7 +684,7 @@ end
 function WL:AddColorSettings(plugin, schema, systemIndex, systemFrame, colorParams, colorTarget)
     colorParams = colorParams or {}
     local key = colorParams.key or "Color"
-    local label = colorParams.label or "Colour"
+    local label = colorParams.label or "Color"
     local default = colorParams.default or { r = 1, g = 1, b = 1 }
 
     tinsert(schema.controls, {
@@ -706,7 +706,7 @@ end
 function WL:AddColorCurveSettings(plugin, schema, systemIndex, systemFrame, params)
     params = params or {}
     local key = params.key or "ColorCurve"
-    local label = params.label or "Colour Gradient"
+    local label = params.label or "Color Gradient"
     local default = params.default
 
     tinsert(schema.controls, {

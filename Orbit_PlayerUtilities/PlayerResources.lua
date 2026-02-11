@@ -13,6 +13,8 @@ local DEFAULTS = {
 local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
 local UPDATE_INTERVAL = 0.05
 local MAX_SPACER_COUNT = 10
+local FRAME_LEVEL_BOOST = 10
+local DIVIDER_SIZE_DEFAULT = 1
 local _, PLAYER_CLASS = UnitClass("player")
 
 -- [ HELPERS ]--------------------------------------------------------------------------------------
@@ -103,6 +105,7 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         Hidden = false,
         Width = DEFAULTS.Width,
         Height = DEFAULTS.Height,
+        DividerSize = DIVIDER_SIZE_DEFAULT,
         BarColorCurve = { pins = { { position = 0, color = Orbit.Constants.Colors.PlayerResources[PLAYER_CLASS] or { r = 1, g = 1, b = 1, a = 1 } } } },
         ChargedComboPointColor = Orbit.Constants.Colors.PlayerResources.ChargedComboPoint or { r = 0.169, g = 0.733, b = 0.992 },
         -- Stagger (Brewmaster Monk) - Green→Yellow→Red gradient
@@ -156,6 +159,20 @@ function Plugin:AddSettings(dialog, systemFrame)
             WL:AddSizeSettings(self, schema, SYSTEM_INDEX, systemFrame, { default = DEFAULTS.Width }, nil, nil)
         end
         WL:AddSizeSettings(self, schema, SYSTEM_INDEX, systemFrame, nil, { min = 5, max = 20, default = DEFAULTS.Height }, nil)
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "DividerSize",
+            label = "Divider Size",
+            min = 0,
+            max = 4,
+            step = 1,
+            default = DIVIDER_SIZE_DEFAULT,
+            tooltip = "Width of dividers between resource segments",
+            onChange = function(val)
+                self:SetSetting(SYSTEM_INDEX, "DividerSize", val)
+                self:ApplySettings()
+            end,
+        })
     elseif currentTab == "Visibility" then
         WL:AddOpacitySettings(self, schema, SYSTEM_INDEX, systemFrame, { step = 5 })
         table.insert(schema.controls, {
@@ -309,6 +326,7 @@ function Plugin:OnLoad()
         systemIndex = SYSTEM_INDEX,
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }, -- Vertical stacking only
     })
+    Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
     self.frame = Frame -- Expose for PluginMixin compatibility
 
     -- [ CANVAS PREVIEW ] -------------------------------------------------------------------------------
@@ -320,7 +338,7 @@ function Plugin:OnLoad()
         end
         borderSize = borderSize or 1
         local texture = Plugin:GetSetting(SYSTEM_INDEX, "Texture")
-        local spacing = borderSize
+        local spacing = Plugin:GetSetting(SYSTEM_INDEX, "DividerSize") or DIVIDER_SIZE_DEFAULT
         local scale = self:GetEffectiveScale() or 1
         local width = self:GetWidth()
         local height = self:GetHeight()
@@ -362,14 +380,16 @@ function Plugin:OnLoad()
 
                 if cfg.dividers then
                     local divMax = 10
-                    local snappedSpacing = SnapToPixel(spacing, scale)
+                    local physicalWidth = math.max(1, math.floor(spacing * scale + 0.5))
+                    local snappedSpacing = physicalWidth / scale
                     for i = 1, divMax - 1 do
                         local sp = bar:CreateTexture(nil, "OVERLAY", nil, 7)
                         sp:SetColorTexture(0, 0, 0, 1)
                         sp:SetWidth(snappedSpacing)
                         sp:SetHeight(height)
-                        local centerPos = SnapToPixel(width * (i / divMax), scale)
-                        sp:SetPoint("LEFT", container, "LEFT", SnapToPixel(centerPos - (snappedSpacing / 2), scale), 0)
+                        local leftPos = math.floor(width * (i / divMax) * scale) / scale
+                        sp:SetPoint("LEFT", container, "LEFT", leftPos, 0)
+                        if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(sp) end
                     end
                 end
             end
@@ -604,7 +624,7 @@ function Plugin:ApplySettings()
         borderSize = Orbit.db.GlobalSettings.BorderSize
     end
     borderSize = borderSize or 1
-    local spacing = borderSize
+    local spacing = self:GetSetting(SYSTEM_INDEX, "DividerSize") or DIVIDER_SIZE_DEFAULT
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
     local fontName = self:GetSetting(SYSTEM_INDEX, "Font")
 
@@ -1013,7 +1033,8 @@ function Plugin:RepositionSpacers(max)
         scale = 1
     end
 
-    local snappedSpacerWidth = SnapToPixel(spacerWidth, scale)
+    local physicalSpacerWidth = math.max(1, math.floor(spacerWidth * scale + 0.5))
+    local snappedSpacerWidth = physicalSpacerWidth / scale
     local snappedTotalWidth = SnapToPixel(totalWidth, scale)
 
     for i = 1, MAX_SPACER_COUNT do
@@ -1024,8 +1045,8 @@ function Plugin:RepositionSpacers(max)
                 sp:ClearAllPoints()
                 sp:SetWidth(snappedSpacerWidth)
                 sp:SetHeight(Frame:GetHeight())
-                local centerPos = SnapToPixel(snappedTotalWidth * (i / max), scale)
-                sp:SetPoint("LEFT", Frame, "LEFT", SnapToPixel(centerPos - (snappedSpacerWidth / 2), scale), 0)
+                local leftPos = math.floor(snappedTotalWidth * (i / max) * scale) / scale
+                sp:SetPoint("LEFT", Frame, "LEFT", leftPos, 0)
                 if OrbitEngine.Pixel then
                     OrbitEngine.Pixel:Enforce(sp)
                 end
@@ -1341,6 +1362,11 @@ function Plugin:UpdatePower()
             or { r = 0.169, g = 0.733, b = 0.992 }
         local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
         local texturePath = texture and LSM:Fetch("statusbar", texture) or "Interface\\TargetingFrame\\UI-StatusBar"
+        local overlayScale = Frame:GetEffectiveScale() or 1
+        local overlayTotalWidth = SnapToPixel(Frame:GetWidth(), overlayScale)
+        local spacerWidth = (Frame.settings and Frame.settings.spacing) or 2
+        local physicalSpacer = math.max(1, math.floor(spacerWidth * overlayScale + 0.5))
+        local overlaySpacerWidth = physicalSpacer / overlayScale
 
         for i = 1, max do
             local overlay = Frame.ChargedOverlays[i]
@@ -1350,11 +1376,10 @@ function Plugin:UpdatePower()
                 Frame.ChargedOverlays[i] = overlay
             end
             if chargedLookup[i] then
-                local segLeft = SnapToPixel(snappedTotalWidth * ((i - 1) / max), scale)
-                local segRight = SnapToPixel(snappedTotalWidth * (i / max), scale)
-                local halfSpacer = SnapToPixel(snappedSpacerWidth / 2, scale)
-                local left = (i > 1) and (segLeft + halfSpacer) or 0
-                local right = (i < max) and (segRight - halfSpacer) or snappedTotalWidth
+                local segLeft = math.floor(overlayTotalWidth * ((i - 1) / max) * overlayScale) / overlayScale
+                local segRight = math.floor(overlayTotalWidth * (i / max) * overlayScale) / overlayScale
+                local left = (i > 1) and (segLeft + overlaySpacerWidth) or 0
+                local right = (i < max) and segRight or overlayTotalWidth
 
                 overlay:ClearAllPoints()
                 overlay:SetPoint("TOPLEFT", Frame.StatusBarContainer, "TOPLEFT", left, 0)

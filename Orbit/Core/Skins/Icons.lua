@@ -640,7 +640,8 @@ function Icons:ApplyActionButtonCustom(button, settings)
     end
 
     local w, h = button:GetSize()
-    local borderInset = (settings.borderSize or 1) * 2
+    local borderEdge = settings.borderSize or 1
+    local borderInset = borderEdge * 2
 
     -- Reset Blizzard textures using helper
     ResetRegion(button.NormalTexture)
@@ -713,24 +714,21 @@ function Icons:ApplyActionButtonCustom(button, settings)
     -- Resize SpellHighlightTexture (spellbook hover highlight — extend over border)
     if button.SpellHighlightTexture then
         button.SpellHighlightTexture:ClearAllPoints()
-        button.SpellHighlightTexture:SetPoint("TOPLEFT", button, "TOPLEFT", -borderInset, borderInset)
-        button.SpellHighlightTexture:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", borderInset, -borderInset)
+        button.SpellHighlightTexture:SetAllPoints(button)
         button.SpellHighlightTexture:SetColorTexture(1, 1, 1, 0.6)
     end
 
     -- Resize NewActionTexture (new action glow — extend over border)
     if button.NewActionTexture then
         button.NewActionTexture:ClearAllPoints()
-        button.NewActionTexture:SetPoint("TOPLEFT", button, "TOPLEFT", -borderInset, borderInset)
-        button.NewActionTexture:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", borderInset, -borderInset)
+        button.NewActionTexture:SetAllPoints(button)
         button.NewActionTexture:SetColorTexture(1, 1, 1, 1)
     end
 
     -- Resize Flash texture (auto-attack flash — extend over border)
     if button.Flash then
         button.Flash:ClearAllPoints()
-        button.Flash:SetPoint("TOPLEFT", button, "TOPLEFT", -borderInset, borderInset)
-        button.Flash:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", borderInset, -borderInset)
+        button.Flash:SetAllPoints(button)
         button.Flash:SetColorTexture(1, 1, 0.4, 1)
     end
 
@@ -785,15 +783,15 @@ function Icons:ApplyActionButtonCustom(button, settings)
             if not frame or frame.orbitScaled then return end
             frame:ClearAllPoints()
             frame:SetPoint("CENTER", self, "CENTER", 0, 0)
-            frame:SetScale(scaleRatio)
+            frame:SetScale((w + borderInset) / STANDARD_ACTION_BUTTON_SIZE)
             frame.orbitScaled = true
         end)
         button.orbitAssistedHooked = true
     end
 
     -- Hook One Button Assist highlight (marching ants — lazily created by global AssistedCombatManager)
-    button.orbitButtonWidth = w + borderInset
-    button.orbitButtonHeight = h + borderInset
+    button.orbitButtonWidth = w + borderInset + 2
+    button.orbitButtonHeight = h + borderInset + 2
     if AssistedCombatManager and not Icons.orbitHighlightHooked then
         hooksecurefunc(AssistedCombatManager, "SetAssistedHighlightFrameShown", function(_, actionButton)
             local frame = actionButton.AssistedCombatHighlightFrame
@@ -852,6 +850,45 @@ function Icons:ApplyActionButtonCustom(button, settings)
         button:HookScript("OnLeave", function(self)
             if self.orbitHighlight then
                 self.orbitHighlight:Hide()
+            end
+        end)
+    end
+
+    -- [ KEYPRESS FLASH ]--------------------------------------------------------------------------------
+    local kpColor = settings.keypressColor or { r = 1, g = 1, b = 1, a = 0.6 }
+    button.orbitKpColor = kpColor
+
+    if not button.orbitKeypressFlash then
+        local flashFrame = CreateFrame("Frame", nil, button)
+        flashFrame:SetAllPoints(button)
+        flashFrame:SetFrameLevel(button:GetFrameLevel() + 3)
+        flashFrame:Hide()
+
+        local flash = flashFrame:CreateTexture(nil, "OVERLAY", nil, 7)
+        flash:SetAllPoints(flashFrame)
+        flash:SetColorTexture(kpColor.r, kpColor.g, kpColor.b, kpColor.a)
+        button.orbitKeypressFlash = flashFrame
+        button.orbitKeypressTexture = flash
+
+        local fadeGroup = flashFrame:CreateAnimationGroup()
+        fadeGroup:SetToFinalAlpha(true)
+        local fadeOut = fadeGroup:CreateAnimation("Alpha")
+        fadeOut:SetFromAlpha(1)
+        fadeOut:SetToAlpha(0)
+        fadeOut:SetDuration(0.15)
+        fadeOut:SetSmoothing("OUT")
+        fadeGroup:SetScript("OnFinished", function() flashFrame:Hide() end)
+        button.orbitKeypressFade = fadeGroup
+
+        hooksecurefunc(button, "SetButtonState", function(self, state)
+            if state == "PUSHED" then
+                local c = self.orbitKpColor
+                flash:SetColorTexture(c.r, c.g, c.b, c.a)
+                flashFrame:SetAlpha(1)
+                flashFrame:Show()
+                fadeGroup:Stop()
+            elseif state == "NORMAL" then
+                fadeGroup:Play()
             end
         end)
     end

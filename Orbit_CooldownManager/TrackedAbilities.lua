@@ -78,18 +78,24 @@ local function ParseCooldownDuration(itemType, id)
         local compoundMin, compoundSec = text:match("(%d+%.?%d*) [Mm]in (%d+%.?%d*) [Ss]ec [Cc]ooldown")
         if compoundMin and compoundSec then
             local val = (tonumber(compoundMin) * 60) + tonumber(compoundSec)
-            if not best or val > best then best = val end
+            if not best or val > best then
+                best = val
+            end
         else
             for _, keyword in ipairs({ "[Cc]ooldown", "[Rr]echarge" }) do
                 local min = text:match("(%d+%.?%d*) [Mm]in " .. keyword)
                 if min then
                     local val = tonumber(min) * 60
-                    if not best or val > best then best = val end
+                    if not best or val > best then
+                        best = val
+                    end
                 end
                 local sec = text:match("(%d+%.?%d*) [Ss]ec " .. keyword)
                 if sec then
                     local val = tonumber(sec)
-                    if not best or val > best then best = val end
+                    if not best or val > best then
+                        best = val
+                    end
                 end
             end
         end
@@ -444,7 +450,9 @@ end
 local function HasCooldown(itemType, id)
     if itemType == "spell" then
         local cd = GetSpellBaseCooldown(id)
-        if cd and cd > 0 then return true end
+        if cd and cd > 0 then
+            return true
+        end
         local ci = C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(id)
         return ci and ci.maxCharges and ci.maxCharges > 1
     elseif itemType == "item" then
@@ -840,7 +848,9 @@ function Plugin:UpdateTrackedIcon(icon)
                 if not issecretvalue(chargeInfo.currentCharges) then
                     icon._trackedCharges = chargeInfo.currentCharges
                     icon._knownRechargeDuration = chargeInfo.cooldownDuration
-                    icon._rechargeEndsAt = (chargeInfo.cooldownStartTime > 0 and chargeInfo.cooldownDuration > 0) and (chargeInfo.cooldownStartTime + chargeInfo.cooldownDuration) or nil
+                    icon._rechargeEndsAt = (chargeInfo.cooldownStartTime > 0 and chargeInfo.cooldownDuration > 0)
+                            and (chargeInfo.cooldownStartTime + chargeInfo.cooldownDuration)
+                        or nil
                 end
                 CooldownUtils:TrackChargeCompletion(icon)
                 local chargeDurObj = C_Spell.GetSpellChargeDuration and C_Spell.GetSpellChargeDuration(icon.trackedId)
@@ -1459,11 +1469,7 @@ function Plugin:RegisterTalentWatcher()
     local plugin = self
     local frame = CreateFrame("Frame")
     frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
-    frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
     frame:SetScript("OnEvent", function(_, event)
-        if event == "PLAYER_SPECIALIZATION_CHANGED" then
-            plugin:ReloadTrackedForSpec()
-        end
         plugin:ReparseActiveDurations()
     end)
 end
