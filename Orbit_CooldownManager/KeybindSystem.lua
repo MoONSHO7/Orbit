@@ -49,6 +49,10 @@ local function AttachToPlugin()
         return KeybindSystem:GetForSpell(spellID)
     end
 
+    plugin.GetItemKeybind = function(self, itemID)
+        return KeybindSystem:GetForItem(itemID)
+    end
+
     plugin.InvalidateKeybindCache = function(self)
         KeybindSystem:InvalidateCache()
     end

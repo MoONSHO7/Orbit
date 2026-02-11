@@ -650,6 +650,13 @@ end
 function Plugin:ApplyTrackedTextSettings(icon, systemIndex)
     CooldownUtils:ApplySimpleTextStyle(self, systemIndex, icon.CountText, "Stacks", "BOTTOMRIGHT", -2, 2)
 
+    local fontPath = self:GetGlobalFont()
+    local baseSize = self:GetBaseFontSize()
+    local positions = self:GetSetting(systemIndex, "ComponentPositions") or {}
+    local OverrideUtils = OrbitEngine.OverrideUtils
+    local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
+
+    -- Timer
     local cooldown = icon.Cooldown
     if cooldown then
         local timerText = cooldown.Text
@@ -663,24 +670,60 @@ function Plugin:ApplyTrackedTextSettings(icon, systemIndex)
             end
         end
         if timerText then
-            local fontPath = self:GetGlobalFont()
-            local baseSize = self:GetBaseFontSize()
-            local positions = self:GetSetting(systemIndex, "ComponentPositions") or {}
             local pos = positions["Timer"] or {}
             local overrides = pos.overrides or {}
             local defaultSize = math.max(6, baseSize + 2)
 
-            local OverrideUtils = OrbitEngine.OverrideUtils
             if OverrideUtils then
                 OverrideUtils.ApplyOverrides(timerText, overrides, { fontSize = defaultSize, fontPath = fontPath })
             end
             timerText:SetDrawLayer("OVERLAY", 7)
 
-            local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
             if ApplyTextPosition then
                 ApplyTextPosition(timerText, icon, pos)
             end
         end
+    end
+
+    -- Keybind
+    local showKeybinds = not self:IsComponentDisabled("Keybind", systemIndex)
+    if showKeybinds then
+        local keybind = icon.OrbitKeybind
+        if not keybind then
+            local overlay = icon.TextOverlay
+            if overlay then
+                keybind = overlay:CreateFontString(nil, "OVERLAY", nil, 7)
+                keybind:SetPoint("TOPRIGHT", icon, "TOPRIGHT", -2, -2)
+                keybind:Hide()
+                icon.OrbitKeybind = keybind
+            end
+        end
+        if keybind then
+            local keybindPos = positions["Keybind"] or {}
+            local keybindOverrides = keybindPos.overrides or {}
+            local defaultSize = math.max(6, baseSize - 2)
+            if OverrideUtils then
+                OverrideUtils.ApplyOverrides(keybind, keybindOverrides, { fontSize = defaultSize, fontPath = fontPath })
+            end
+            if ApplyTextPosition then
+                ApplyTextPosition(keybind, icon, keybindPos)
+            end
+
+            local keyText
+            if icon.trackedType == "spell" and icon.trackedId then
+                keyText = self.GetSpellKeybind and self:GetSpellKeybind(icon.trackedId)
+            elseif icon.trackedType == "item" and icon.trackedId then
+                keyText = self.GetItemKeybind and self:GetItemKeybind(icon.trackedId)
+            end
+            if keyText then
+                keybind:SetText(keyText)
+                keybind:Show()
+            else
+                keybind:Hide()
+            end
+        end
+    elseif icon.OrbitKeybind then
+        icon.OrbitKeybind:Hide()
     end
 end
 
