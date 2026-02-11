@@ -45,9 +45,6 @@ function Orbit.Profile:Initialize()
         Orbit.db.GlobalSettings = {}
     end
     local gs = Orbit.db.GlobalSettings
-    if gs.Texture == nil then
-        gs.Texture = "Melli"
-    end
     if gs.Font == nil then
         gs.Font = "PT Sans Narrow"
     end

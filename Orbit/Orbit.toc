@@ -3,7 +3,7 @@
 ## Notes: Edit Mode Extensions - Core
 ## Author: MoONSHO7 / M7
 ## Version: @project-version@
-## SavedVariables: OrbitDB, OrbitProfiles, OrbitCharDB
+## SavedVariables: OrbitDB
 ## IconTexture: Interface\AddOns\Orbit\Core\assets\Orbit.png
 ## Category: Orbit UI
 
