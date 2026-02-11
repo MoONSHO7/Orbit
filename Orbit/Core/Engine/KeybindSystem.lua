@@ -142,26 +142,33 @@ local function BuildKeybindMaps()
     if not GetActionInfo then
         return spells, items
     end
+    -- Skip bar 1 if overridden (Skyriding, vehicles, pet battles) — handles /reload while mounted
+    local skipMainBar = (HasOverrideActionBar and HasOverrideActionBar())
+        or (HasVehicleActionBar and HasVehicleActionBar())
+        or (UnitInVehicle and UnitInVehicle("player"))
+        or (C_PetBattles and C_PetBattles.IsInBattle and C_PetBattles.IsInBattle())
     for _, prefix in ipairs(ACTION_BAR_PREFIXES) do
-        for i = 1, 12 do
-            local button = _G[prefix .. i]
-            if button then
-                local actionSlot = button.action or (button.GetAction and button:GetAction())
-                if actionSlot then
-                    local actionType, id = GetActionInfo(actionSlot)
-                    if id then
-                        local text = KeybindSystem:GetForButton(button)
-                        if text then
-                            if actionType == "spell" and not spells[id] then
-                                spells[id] = text
-                            elseif actionType == "item" and not items[id] then
-                                items[id] = text
+        if not (skipMainBar and prefix == "ActionButton") then
+            for i = 1, 12 do
+                local button = _G[prefix .. i]
+                if button then
+                    local actionSlot = button.action or (button.GetAction and button:GetAction())
+                    if actionSlot then
+                        local actionType, id = GetActionInfo(actionSlot)
+                        if id then
+                            local text = KeybindSystem:GetForButton(button)
+                            if text then
+                                if actionType == "spell" and not spells[id] then
+                                    spells[id] = text
+                                elseif actionType == "item" and not items[id] then
+                                    items[id] = text
+                                end
                             end
                         end
                     end
                 end
             end
-        end
+        end -- skipMainBar
     end
     return spells, items
 end
@@ -224,6 +231,26 @@ function KeybindSystem:GetForSpell(spellID)
             if key then
                 spellKeybindMap[spellID] = key -- cache for next call
                 return key
+            end
+        end
+    end
+
+    -- Fallback: C_ActionBar.FindSpellActionButtons resolves slots at the data layer,
+    -- works even when bar 1 is visually overridden (Skyriding, vehicles)
+    if C_ActionBar and C_ActionBar.FindSpellActionButtons then
+        local slots = C_ActionBar.FindSpellActionButtons(spellID)
+        if slots and slots[1] then
+            local slot = slots[1]
+            local buttons = NUM_ACTIONBAR_BUTTONS or 12
+            local index = ((slot - 1) % buttons) + 1
+            local bindKey = GetBindingKey("ACTIONBUTTON" .. index)
+            if bindKey then
+                local text = GetBindingText(bindKey, 1)
+                if text and text ~= "" then
+                    key = KeybindSystem:Format(text)
+                    spellKeybindMap[spellID] = key
+                    return key
+                end
             end
         end
     end

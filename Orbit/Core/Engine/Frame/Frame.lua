@@ -263,7 +263,9 @@ function Frame:DisableMouseRecursive(frame)
     frame:EnableMouse(false)
     frame.orbitClickThrough = true
     for _, child in ipairs({ frame:GetChildren() }) do
-        self:DisableMouseRecursive(child)
+        if not child.isOrbitSelection then
+            self:DisableMouseRecursive(child)
+        end
     end
 end
 

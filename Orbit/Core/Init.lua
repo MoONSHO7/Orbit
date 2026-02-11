@@ -282,5 +282,8 @@ eventFrame:SetScript("OnEvent", function(self, event)
         if Orbit.Engine and Orbit.Engine.PositionManager then
             Orbit.Engine.PositionManager:FlushToStorage()
         end
+        if Orbit.Profile then
+            Orbit.Profile:FlushGlobalSettings()
+        end
     end
 end)

@@ -43,7 +43,7 @@ local TYPE_SCHEMAS = {
     FontString = {
         controls = {
             { type = "font", key = "Font", label = "Font" },
-            { type = "slider", key = "FontSize", label = "Size", min = 8, max = 24, step = 1 },
+            { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
             { type = "colorcurve", key = "CustomColorCurve", label = "Color" },
         },
     },
