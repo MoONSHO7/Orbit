@@ -11,7 +11,6 @@ local MAX_CHARGE_CHILDREN = Constants.Cooldown.MaxChargeBarChildren
 local UPDATE_INTERVAL = 0.016
 local DEFAULT_WIDTH = 120
 local DEFAULT_HEIGHT = 12
-local DEFAULT_Y_OFFSET = -280
 local EMPTY_SEED_SIZE = 40
 local DROP_HIGHLIGHT_COLOR = { r = 0.3, g = 0.8, b = 0.3, a = 0.3 }
 local COLOR_GREEN = { r = 0.2, g = 0.9, b = 0.2 }
@@ -40,14 +39,11 @@ Plugin.chargeChildPool = Plugin.chargeChildPool or {}
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
 local function SnapToPixel(value, scale)
-    if OrbitEngine.Pixel then
-        return OrbitEngine.Pixel:Snap(value, scale)
-    end
-    return math.floor(value * scale + 0.5) / scale
+    return OrbitEngine.Pixel:Snap(value, scale)
 end
 
 local function IsChargeSpell(spellId)
-    if not spellId or not C_Spell.GetSpellCharges then
+    if not spellId then
         return false, nil
     end
     local ci = C_Spell.GetSpellCharges(spellId)
@@ -127,7 +123,6 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame:SetSize(EMPTY_SEED_SIZE, EMPTY_SEED_SIZE)
     frame:SetClampedToScreen(true)
 
-    -- Orbit metadata (matches FrameFactory pattern)
     frame.systemIndex = systemIndex
     frame.editModeName = label
     frame.isChargeBar = true
@@ -138,14 +133,12 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.orbitClickThrough = true
     frame.anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }
 
-    -- Default position for restoration waterfall fallback
     frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = 30, y = 0 }
     frame:SetPoint("CENTER", UIParent, "CENTER", 30, 0)
 
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
     frame.buttons = {}
 
-    -- Border hiding support for mergeBorders (propagate to child button backdrops)
     frame.SetBorderHidden = function(self, edge, hidden)
         for _, btn in ipairs(self.buttons) do
             if btn.orbitBackdrop and btn.orbitBackdrop.Borders then
@@ -176,7 +169,6 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.DropHighlight:SetColorTexture(DROP_HIGHLIGHT_COLOR.r, DROP_HIGHLIGHT_COLOR.g, DROP_HIGHLIGHT_COLOR.b, DROP_HIGHLIGHT_COLOR.a)
     frame.DropHighlight:Hide()
 
-    -- Seed button (baby blue glow + plus icon for empty state)
     local seed = CreateFrame("Frame", nil, frame)
     seed:SetAllPoints()
     seed.Backdrop = seed:CreateTexture(nil, "BACKGROUND")
@@ -204,7 +196,6 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     seed:Hide()
     frame.SeedButton = seed
 
-    -- Overlay frame for count text (renders above button borders)
     frame.TextOverlay = CreateFrame("Frame", nil, frame)
     frame.TextOverlay:SetAllPoints()
     frame.TextOverlay:SetFrameLevel(frame:GetFrameLevel() + 20)
@@ -419,7 +410,6 @@ function Plugin:DespawnChargeChild(frame)
         btn:Hide()
     end
 
-    -- Clear persisted spatial data to prevent stale anchors/positions on restore
     self:SetSetting(systemIndex, "Position", nil)
     self:SetSetting(systemIndex, "Anchor", nil)
     self:SetSetting(systemIndex, "Enabled", nil)
@@ -444,9 +434,7 @@ function Plugin:BuildChargeButtons(frame, maxCharges)
     for i = 1, maxCharges do
         if not frame.buttons[i] then
             local btn = CreateFrame("Frame", nil, frame)
-            if OrbitEngine.Pixel then
-                OrbitEngine.Pixel:Enforce(btn)
-            end
+            OrbitEngine.Pixel:Enforce(btn)
             btn.RechargeBar = CreateFrame("StatusBar", nil, btn)
             btn.RechargeBar:SetAllPoints()
             btn.RechargeBar:SetMinMaxValues(0, 1)
@@ -492,22 +480,18 @@ function Plugin:LayoutChargeBar(frame)
         local borderSize = self:GetSetting(sysIndex, "BorderSize") or 1
         local spacing = self:GetSetting(sysIndex, "Spacing") or DEFAULT_SPACING
         local texture = self:GetSetting(sysIndex, "Texture")
-        local scale = frame:GetEffectiveScale() or 1
+        local scale = frame:GetEffectiveScale()
         local maxCharges = frame.cachedMaxCharges or 2
         local bgColor = GetBgColor()
 
         self:SkinChargeButtons(frame, maxCharges, width, height, borderSize, spacing, texture, sysIndex, bgColor, scale)
-        if frame.SeedButton then
-            frame.SeedButton:Hide()
-        end
+        frame.SeedButton:Hide()
     else
         frame:SetSize(EMPTY_SEED_SIZE, EMPTY_SEED_SIZE)
     end
 
     frame._layoutInProgress = false
-    if OrbitEngine.Frame.ForceUpdateSelection then
-        OrbitEngine.Frame:ForceUpdateSelection(frame)
-    end
+    OrbitEngine.Frame:ForceUpdateSelection(frame)
     frame:Show()
 end
 
@@ -525,7 +509,7 @@ function Plugin:SkinChargeButtons(frame, maxCharges, totalWidth, height, borderS
     local totalSpacing = (maxCharges - 1) * snappedGap
     local usableWidth = totalWidth - totalSpacing
     local btnWidth = SnapToPixel(usableWidth / maxCharges, scale)
-    local globalSettings = Orbit.db.GlobalSettings or {}
+    local globalSettings = Orbit.db.GlobalSettings
 
     for i = 1, maxCharges do
         local btn = frame.buttons[i]
@@ -541,39 +525,32 @@ function Plugin:SkinChargeButtons(frame, maxCharges, totalWidth, height, borderS
         btn:SetPoint("LEFT", frame, "LEFT", leftPos, 0)
 
         if not btn.bg then
-            btn.bg = btn:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers and Constants.Layers.BackdropDeep or -8)
+            btn.bg = btn:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
             btn.bg:SetAllPoints()
         end
         Orbit.Skin:ApplyGradientBackground(btn, globalSettings.BackdropColourCurve, bgColor)
 
         local barColor = GetBarColor(self, sysIndex, i, maxCharges)
-        if Orbit.Skin then
-            Orbit.Skin:SkinStatusBar(btn.Bar, texture, barColor)
-            if btn.Bar.Overlay then
-                btn.Bar.Overlay:Hide()
-            end
-            local rechargeColor = { r = barColor.r * RECHARGE_DIM, g = barColor.g * RECHARGE_DIM, b = barColor.b * RECHARGE_DIM }
-            Orbit.Skin:SkinStatusBar(btn.RechargeBar, texture, rechargeColor)
-            if btn.RechargeBar.Overlay then
-                btn.RechargeBar.Overlay:Hide()
-            end
+        Orbit.Skin:SkinStatusBar(btn.Bar, texture, barColor)
+        if btn.Bar.Overlay then
+            btn.Bar.Overlay:Hide()
+        end
+        local rechargeColor = { r = barColor.r * RECHARGE_DIM, g = barColor.g * RECHARGE_DIM, b = barColor.b * RECHARGE_DIM }
+        Orbit.Skin:SkinStatusBar(btn.RechargeBar, texture, rechargeColor)
+        if btn.RechargeBar.Overlay then
+            btn.RechargeBar.Overlay:Hide()
         end
 
         if not btn.orbitBackdrop then
             btn.orbitBackdrop = Orbit.Skin:CreateBackdrop(btn, nil)
-            btn.orbitBackdrop:SetFrameLevel(btn:GetFrameLevel() + (Constants.Levels and Constants.Levels.Highlight or 5))
-            if btn.orbitBackdrop.SetBackdrop then
-                btn.orbitBackdrop:SetBackdrop(nil)
-            end
+            btn.orbitBackdrop:SetFrameLevel(btn:GetFrameLevel() + Constants.Levels.Highlight)
+            btn.orbitBackdrop:SetBackdrop(nil)
         end
         Orbit.Skin:SkinBorder(btn, btn.orbitBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
 
-        if OrbitEngine.Pixel then
-            OrbitEngine.Pixel:Enforce(btn)
-        end
+        OrbitEngine.Pixel:Enforce(btn)
     end
 
-    -- Apply ChargeCount position and font overrides
     local sysIndex = frame.systemIndex
     local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
     local positions = self:GetSetting(sysIndex, "ComponentPositions") or {}
@@ -603,9 +580,9 @@ function Plugin:SetupChargeBarCanvasPreview(frame, sysIndex)
         local bgColor = GetBgColor()
         local maxCharges = self.cachedMaxCharges or 3
         local previewCharges = maxCharges - 1
-        local scale = self:GetEffectiveScale() or 1
+        local scale = self:GetEffectiveScale()
 
-        local parent = options.parent or UIParent
+        local parent = options.parent
         local preview = CreateFrame("Frame", nil, parent)
         preview:SetSize(width, height)
         preview.sourceFrame = self
@@ -629,26 +606,21 @@ function Plugin:SetupChargeBarCanvasPreview(frame, sysIndex)
             seg:SetMinMaxValues(0, 1)
             seg:SetValue(1)
 
-            seg.bg = seg:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers and Constants.Layers.BackdropDeep or -8)
+            seg.bg = seg:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
             seg.bg:SetAllPoints()
-            local gs = Orbit.db.GlobalSettings or {}
-            Orbit.Skin:ApplyGradientBackground(seg, gs.BackdropColourCurve, bgColor)
+            Orbit.Skin:ApplyGradientBackground(seg, Orbit.db.GlobalSettings.BackdropColourCurve, bgColor)
 
             local barColor = GetBarColor(plugin, sysIndex, i, maxCharges)
             local segColor = (i <= previewCharges) and barColor
                 or { r = barColor.r * RECHARGE_DIM, g = barColor.g * RECHARGE_DIM, b = barColor.b * RECHARGE_DIM }
-            if Orbit.Skin then
-                Orbit.Skin:SkinStatusBar(seg, texture, segColor)
-                if seg.Overlay then
-                    seg.Overlay:Hide()
-                end
+            Orbit.Skin:SkinStatusBar(seg, texture, segColor)
+            if seg.Overlay then
+                seg.Overlay:Hide()
             end
 
             local segBackdrop = Orbit.Skin:CreateBackdrop(seg, nil)
-            segBackdrop:SetFrameLevel(seg:GetFrameLevel() + (Constants.Levels and Constants.Levels.Highlight or 5))
-            if segBackdrop.SetBackdrop then
-                segBackdrop:SetBackdrop(nil)
-            end
+            segBackdrop:SetFrameLevel(seg:GetFrameLevel() + Constants.Levels.Highlight)
+            segBackdrop:SetBackdrop(nil)
             Orbit.Skin:SkinBorder(seg, segBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
         end
 
@@ -711,7 +683,6 @@ function Plugin:AssignChargeSpell(frame, spellId, maxCharges)
     frame.chargeSpellId = spellId
     frame.cachedMaxCharges = maxCharges
 
-    -- Cache recharge state from non-secret chargeInfo (assignment happens out of combat)
     local ci = C_Spell.GetSpellCharges(spellId)
     frame._trackedCharges = ci and ci.currentCharges or maxCharges
     frame._knownRechargeDuration = ci and ci.cooldownDuration or nil
@@ -770,11 +741,9 @@ function Plugin:ApplyChargeBarSettings(frame)
     self:LayoutChargeBar(frame)
     OrbitEngine.Frame:RestorePosition(frame, self, sysIndex)
 
-    -- Opacity
     local alpha = (self:GetSetting(sysIndex, "Opacity") or 100) / 100
     frame:SetAlpha(alpha)
 
-    -- Out of Combat Fade
     if Orbit.OOCFadeMixin then
         local enableHover = self:GetSetting(sysIndex, "ShowOnMouseover") ~= false
         Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, sysIndex, "OutOfCombatFade", enableHover)
@@ -797,7 +766,6 @@ function Plugin:UpdateChargeFrame(frame)
     frame.CountText:SetText(chargeInfo.currentCharges)
     frame.CountText:Show()
 
-    -- Sync tracked charges from API when non-secret (out of combat)
     if not issecretvalue(chargeInfo.currentCharges) then
         frame._trackedCharges = chargeInfo.currentCharges
         frame._knownRechargeDuration = chargeInfo.cooldownDuration
@@ -805,10 +773,9 @@ function Plugin:UpdateChargeFrame(frame)
     end
     CooldownUtils:TrackChargeCompletion(frame)
 
-    -- Recharge fill: native DurationObject, single segment only
     local progress = 0
     local rechargeIdx = (frame._trackedCharges or frame.cachedMaxCharges) + 1
-    local chargeDurObj = C_Spell.GetSpellChargeDuration and C_Spell.GetSpellChargeDuration(frame.chargeSpellId)
+    local chargeDurObj = C_Spell.GetSpellChargeDuration(frame.chargeSpellId)
     if chargeDurObj then
         progress = chargeDurObj:EvaluateRemainingPercent(RECHARGE_PROGRESS_CURVE)
     else
@@ -848,18 +815,11 @@ function Plugin:UpdateSeedVisibility(frame)
     end
 
     local hasSpell = frame.chargeSpellId ~= nil
-
-    local isDraggingCharge = false
-    local spellId = ResolveSpellFromCursor()
-    if spellId then
-        isDraggingCharge = IsChargeSpell(spellId)
-    end
-
+    local cursorSpell = ResolveSpellFromCursor()
+    local isDraggingCharge = cursorSpell and IsChargeSpell(cursorSpell) or false
     local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
 
-    if frame.DropHighlight then
-        frame.DropHighlight:SetShown(hasSpell and isDraggingCharge)
-    end
+    frame.DropHighlight:SetShown(hasSpell and isDraggingCharge)
 
     if hasSpell then
         frame.SeedButton:Hide()
@@ -867,11 +827,7 @@ function Plugin:UpdateSeedVisibility(frame)
     end
 
     if isEditMode or isDraggingCharge then
-        local w, h = frame:GetWidth(), frame:GetHeight()
-        local plusSize = math.min(w, h) * SEED_PLUS_RATIO
-        if OrbitEngine.Pixel then
-            plusSize = OrbitEngine.Pixel:Snap(plusSize)
-        end
+        local plusSize = OrbitEngine.Pixel:Snap(math.min(frame:GetWidth(), frame:GetHeight()) * SEED_PLUS_RATIO)
         frame.SeedButton.Plus:SetSize(plusSize, plusSize)
         frame.SeedButton:Show()
         if isDraggingCharge then
@@ -896,8 +852,7 @@ end
 
 -- [ CURSOR WATCHER ]-------------------------------------------------------------------------------
 function Plugin:RegisterChargeCursorWatcher()
-    local lastCursor = nil
-    local lastEditMode = nil
+    local lastCursor, lastEditMode
 
     local watcher = CreateFrame("Frame")
     watcher:SetScript("OnUpdate", function()
@@ -915,7 +870,6 @@ end
 
 -- [ SPEC CHANGE ]----------------------------------------------------------------------------------
 function Plugin:ReloadChargeBarsForSpec()
-    -- Clear parent
     local anchor = self.chargeBarAnchor
     if anchor then
         anchor.chargeSpellId = nil
@@ -925,7 +879,6 @@ function Plugin:ReloadChargeBarsForSpec()
         end
     end
 
-    -- Clear children
     for key, childData in pairs(self.activeChargeChildren) do
         if childData.frame then
             childData.frame:Hide()
@@ -940,11 +893,9 @@ function Plugin:ReloadChargeBarsForSpec()
     end
     self.activeChargeChildren = {}
 
-    -- Restore parent spell
     self:RestoreChargeSpell(anchor, CHARGE_BAR_INDEX)
     self:ClearStaleChargeBarSpatial(anchor, CHARGE_BAR_INDEX)
 
-    -- Restore children
     local savedChildren = self:GetSetting(CHARGE_BAR_INDEX, self:GetSpecKey("ChargeChildren")) or {}
     for slot, sysIndex in pairs(savedChildren) do
         local frame = self:SpawnChargeChild()
@@ -979,8 +930,29 @@ function Plugin:RestoreChargeSpell(frame, sysIndex)
     UpdateChargeBarLabel(frame)
 end
 
--- Clear stale anchor/position data from a charge bar with no spell assigned.
--- Handles both directions: outbound (this bar anchored to X) and inbound (X anchored to this bar).
+function Plugin:RefreshChargeMaxCharges()
+    local function Refresh(frame)
+        if not frame or not frame.chargeSpellId then
+            return
+        end
+        local ci = C_Spell.GetSpellCharges(frame.chargeSpellId)
+        if not ci or not ci.maxCharges or ci.maxCharges < 2 then
+            return
+        end
+        if ci.maxCharges == frame.cachedMaxCharges then
+            return
+        end
+        frame.cachedMaxCharges = ci.maxCharges
+        self:SetSetting(frame.systemIndex, self:GetSpecKey("ChargeSpell"), { id = frame.chargeSpellId, maxCharges = ci.maxCharges })
+        self:BuildChargeButtons(frame, ci.maxCharges)
+        self:LayoutChargeBar(frame)
+    end
+    Refresh(self.chargeBarAnchor)
+    for _, childData in pairs(self.activeChargeChildren) do
+        Refresh(childData.frame)
+    end
+end
+
 function Plugin:ClearStaleChargeBarSpatial(frame, sysIndex)
     if not frame or frame.chargeSpellId then
         return
@@ -1011,7 +983,6 @@ function Plugin:RestoreChargeBars()
     self:RestoreChargeSpell(anchor, CHARGE_BAR_INDEX)
     self:ClearStaleChargeBarSpatial(anchor, CHARGE_BAR_INDEX)
 
-    -- Restore saved children
     local savedChildren = self:GetSetting(CHARGE_BAR_INDEX, self:GetSpecKey("ChargeChildren")) or {}
     for slot, sysIndex in pairs(savedChildren) do
         local frame = self:SpawnChargeChild()
