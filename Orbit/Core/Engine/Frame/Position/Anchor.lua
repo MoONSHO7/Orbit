@@ -7,11 +7,21 @@ Engine.FrameAnchor = Engine.FrameAnchor or {}
 local Anchor = Engine.FrameAnchor
 
 Anchor.anchors = Anchor.anchors or {}
+Anchor.childrenOf = Anchor.childrenOf or setmetatable({}, { __mode = "k" })
 
 local hookedParents = setmetatable({}, { __mode = "k" })
 
 local ANCHOR_THRESHOLD = 5
 local DEFAULT_PADDING = 2
+local MIN_SYNC_HEIGHT = 5
+local MIN_SYNC_WIDTH = 10
+
+local EDGE_BORDER_MAP = {
+    BOTTOM = { parent = "Bottom", child = "Top",    inset = "Top" },
+    TOP    = { parent = "Top",    child = "Bottom", inset = "Bottom" },
+    LEFT   = { parent = "Left",   child = "Right",  inset = "Right" },
+    RIGHT  = { parent = "Right",  child = "Left",   inset = "Left" },
+}
 
 local DEFAULT_OPTIONS = {
     horizontal = true, -- Allow LEFT/RIGHT edge anchoring (horizontal expansion)
@@ -23,22 +33,17 @@ local DEFAULT_OPTIONS = {
     useRowDimension = false, -- Use parent's orbitRowHeight/orbitColumnWidth
 }
 
+local optionsCache = setmetatable({}, { __mode = "k" })
+
 local function GetFrameOptions(frame)
-    if frame:IsForbidden() then
-        return DEFAULT_OPTIONS
-    end
-
+    if frame:IsForbidden() then return DEFAULT_OPTIONS end
+    if optionsCache[frame] then return optionsCache[frame] end
     local opts = {}
-    for k, v in pairs(DEFAULT_OPTIONS) do
-        opts[k] = v
-    end
-
+    for k, v in pairs(DEFAULT_OPTIONS) do opts[k] = v end
     if frame.anchorOptions then
-        for k, v in pairs(frame.anchorOptions) do
-            opts[k] = v
-        end
+        for k, v in pairs(frame.anchorOptions) do opts[k] = v end
     end
-
+    optionsCache[frame] = opts
     return opts
 end
 
@@ -54,7 +59,14 @@ local function HookParentSizeChange(parent, anchorModule)
     hookedParents[parent] = true
 end
 
--- Helper to apply position without triggering side effects
+local function SetMergeBorderState(parent, child, edge, hidden, overlap)
+    local map = EDGE_BORDER_MAP[edge]
+    if not map then return end
+    if parent and parent.SetBorderHidden then parent:SetBorderHidden(map.parent, hidden) end
+    if child.SetBorderHidden then child:SetBorderHidden(map.child, hidden) end
+    if child.SetBackgroundInset then child:SetBackgroundInset(map.inset, hidden and overlap or 0) end
+end
+
 local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOptions)
     if InCombatLockdown() and child:IsProtected() then
         return false
@@ -64,121 +76,23 @@ local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOpti
 
     local parentOptions = GetFrameOptions(parent)
 
-    -- Merge Borders Logic
+    -- The Gelatinous Cube absorbs both borders, leaving nothing between
     local overlap = 0
     if syncOptions and syncOptions.mergeBorders and parentOptions.mergeBorders and syncOptions.syncScale and syncOptions.syncDimensions and padding == 0 then
-        -- Calculate Overlap needed to make contents touch
-        -- We want to remove the space of BOTH borders (since both are hidden)
-        -- Overlap = ParentBorder + ChildBorder
         local pSize = (parent.borderPixelSize or 1)
         local cSize = (child.borderPixelSize or 1)
-
-        -- If we can't find exact size, we might guess based on Pixel scale, but exact is better.
-        -- If missing, we'll try to calculate or default to "1 pixel" in screen coords?
         if not parent.borderPixelSize then
             local pixelScale = (Orbit.Engine.Pixel and Orbit.Engine.Pixel:GetScale()) or 1
-            local scale = parent:GetEffectiveScale() or 1
-            pSize = (1 * pixelScale) / scale
+            pSize = (1 * pixelScale) / (parent:GetEffectiveScale() or 1)
         end
         if not child.borderPixelSize then
             local pixelScale = (Orbit.Engine.Pixel and Orbit.Engine.Pixel:GetScale()) or 1
-            local scale = child:GetEffectiveScale() or 1
-            cSize = (1 * pixelScale) / scale
+            cSize = (1 * pixelScale) / (child:GetEffectiveScale() or 1)
         end
-
         overlap = pSize + cSize
-
-        -- We are merged. Determine which borders to hide.
-        if edge == "BOTTOM" then
-            if parent.SetBorderHidden then
-                parent:SetBorderHidden("Bottom", true)
-            end
-            if child.SetBorderHidden then
-                child:SetBorderHidden("Top", true)
-            end
-            -- Inset child's top background to prevent overlap
-            if child.SetBackgroundInset then
-                child:SetBackgroundInset("Top", overlap)
-            end
-        elseif edge == "TOP" then
-            if parent.SetBorderHidden then
-                parent:SetBorderHidden("Top", true)
-            end
-            if child.SetBorderHidden then
-                child:SetBorderHidden("Bottom", true)
-            end
-            -- Inset child's bottom background to prevent overlap
-            if child.SetBackgroundInset then
-                child:SetBackgroundInset("Bottom", overlap)
-            end
-        elseif edge == "LEFT" then
-            if parent.SetBorderHidden then
-                parent:SetBorderHidden("Left", true)
-            end
-            if child.SetBorderHidden then
-                child:SetBorderHidden("Right", true)
-            end
-            -- Inset child's right background to prevent overlap
-            if child.SetBackgroundInset then
-                child:SetBackgroundInset("Right", overlap)
-            end
-        elseif edge == "RIGHT" then
-            if parent.SetBorderHidden then
-                parent:SetBorderHidden("Right", true)
-            end
-            if child.SetBorderHidden then
-                child:SetBorderHidden("Left", true)
-            end
-            -- Inset child's left background to prevent overlap
-            if child.SetBackgroundInset then
-                child:SetBackgroundInset("Left", overlap)
-            end
-        end
-    else
-        -- Not merged - restore borders and reset background insets
-        if syncOptions and syncOptions.mergeBorders then
-            if edge == "BOTTOM" then
-                if parent.SetBorderHidden then
-                    parent:SetBorderHidden("Bottom", false)
-                end
-                if child.SetBorderHidden then
-                    child:SetBorderHidden("Top", false)
-                end
-                if child.SetBackgroundInset then
-                    child:SetBackgroundInset("Top", 0)
-                end
-            elseif edge == "TOP" then
-                if parent.SetBorderHidden then
-                    parent:SetBorderHidden("Top", false)
-                end
-                if child.SetBorderHidden then
-                    child:SetBorderHidden("Bottom", false)
-                end
-                if child.SetBackgroundInset then
-                    child:SetBackgroundInset("Bottom", 0)
-                end
-            elseif edge == "LEFT" then
-                if parent.SetBorderHidden then
-                    parent:SetBorderHidden("Left", false)
-                end
-                if child.SetBorderHidden then
-                    child:SetBorderHidden("Right", false)
-                end
-                if child.SetBackgroundInset then
-                    child:SetBackgroundInset("Right", 0)
-                end
-            elseif edge == "RIGHT" then
-                if parent.SetBorderHidden then
-                    parent:SetBorderHidden("Right", false)
-                end
-                if child.SetBorderHidden then
-                    child:SetBorderHidden("Left", false)
-                end
-                if child.SetBackgroundInset then
-                    child:SetBackgroundInset("Left", 0)
-                end
-            end
-        end
+        SetMergeBorderState(parent, child, edge, true, overlap)
+    elseif syncOptions and syncOptions.mergeBorders then
+        SetMergeBorderState(parent, child, edge, false, 0)
     end
 
     -- Snap padding to physical pixels
@@ -267,13 +181,11 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
         return false
     end
 
-    -- Prevent anchoring to an edge that's already occupied by another child
-    -- TODO: Maybe adjust this in the future for non-width synced frames?
-    if self:IsEdgeOccupied(parent, edge, child) then
+    local opts = syncOptions or GetFrameOptions(child)
+
+    if self:IsEdgeOccupied(parent, edge, child, opts.syncDimensions, align) then
         return false
     end
-
-    local opts = syncOptions or GetFrameOptions(child)
 
     self:BreakAnchor(child, true)
     self.anchors[child] = {
@@ -281,8 +193,10 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
         edge = edge,
         padding = padding,
         syncOptions = opts,
-        align = align, -- Store alignment
+        align = align,
     }
+    if not self.childrenOf[parent] then self.childrenOf[parent] = {} end
+    self.childrenOf[parent][child] = true
 
     HookParentSizeChange(parent, self)
 
@@ -301,13 +215,13 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
                 if opts.useRowDimension and parent.orbitRowHeight then
                     height = parent.orbitRowHeight
                 end
-                child:SetHeight(math.max(height, 5))
+                child:SetHeight(math.max(height, MIN_SYNC_HEIGHT))
             else
                 local width = parentWidth
                 if opts.useRowDimension and parent.orbitColumnWidth then
                     width = parent.orbitColumnWidth
                 end
-                child:SetWidth(math.max(width, 10))
+                child:SetWidth(math.max(width, MIN_SYNC_WIDTH))
             end
         end
     end
@@ -344,56 +258,14 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
     if self.anchors[child] then
         local oldAnchor = self.anchors[child]
 
-        -- Restore borders and background insets if they were merged
         if oldAnchor.syncOptions and oldAnchor.syncOptions.mergeBorders then
-            local p = oldAnchor.parent
-            local c = child
-            local e = oldAnchor.edge
-
-            if e == "BOTTOM" then
-                if p and p.SetBorderHidden then
-                    p:SetBorderHidden("Bottom", false)
-                end
-                if c.SetBorderHidden then
-                    c:SetBorderHidden("Top", false)
-                end
-                if c.SetBackgroundInset then
-                    c:SetBackgroundInset("Top", 0)
-                end
-            elseif e == "TOP" then
-                if p and p.SetBorderHidden then
-                    p:SetBorderHidden("Top", false)
-                end
-                if c.SetBorderHidden then
-                    c:SetBorderHidden("Bottom", false)
-                end
-                if c.SetBackgroundInset then
-                    c:SetBackgroundInset("Bottom", 0)
-                end
-            elseif e == "LEFT" then
-                if p and p.SetBorderHidden then
-                    p:SetBorderHidden("Left", false)
-                end
-                if c.SetBorderHidden then
-                    c:SetBorderHidden("Right", false)
-                end
-                if c.SetBackgroundInset then
-                    c:SetBackgroundInset("Right", 0)
-                end
-            elseif e == "RIGHT" then
-                if p and p.SetBorderHidden then
-                    p:SetBorderHidden("Right", false)
-                end
-                if c.SetBorderHidden then
-                    c:SetBorderHidden("Left", false)
-                end
-                if c.SetBackgroundInset then
-                    c:SetBackgroundInset("Left", 0)
-                end
-            end
+            SetMergeBorderState(oldAnchor.parent, child, oldAnchor.edge, false, 0)
         end
 
         self.anchors[child] = nil
+        if oldAnchor.parent and self.childrenOf[oldAnchor.parent] then
+            self.childrenOf[oldAnchor.parent][child] = nil
+        end
 
         if not suppressApplySettings and child.orbitPlugin and child.orbitPlugin.ApplySettings then
             child.orbitPlugin:ApplySettings(child)
@@ -470,8 +342,8 @@ end
 
 function Anchor:GetAnchoredChildren(parent)
     local children = {}
-    for child, anchor in pairs(self.anchors) do
-        if anchor.parent == parent then
+    if self.childrenOf[parent] then
+        for child in pairs(self.childrenOf[parent]) do
             table.insert(children, child)
         end
     end
@@ -483,124 +355,91 @@ end
 -- @param edge The edge to check ("TOP", "BOTTOM", "LEFT", "RIGHT")
 -- @param excludeChild Optional child to exclude from check (for re-anchoring same child)
 -- @return true if edge is occupied, false otherwise
-function Anchor:IsEdgeOccupied(parent, edge, excludeChild)
-    for child, anchor in pairs(self.anchors) do
-        if anchor.parent == parent and anchor.edge == edge then
-            if excludeChild and child == excludeChild then
-                -- Don't count the child we're re-anchoring
-            elseif child.orbitDisabled then
-                -- Don't count disabled children (they effectively release their slot)
-            else
-                return true
-            end
+local EDGE_ALIGN_SLOTS = {
+    TOP    = { "LEFT", "CENTER", "RIGHT" },
+    BOTTOM = { "LEFT", "CENTER", "RIGHT" },
+    LEFT   = { "TOP", "CENTER", "BOTTOM" },
+    RIGHT  = { "TOP", "CENTER", "BOTTOM" },
+}
+
+function Anchor:IsEdgeOccupied(parent, edge, excludeChild, incomingSyncDims, incomingAlign)
+    if not self.childrenOf[parent] then return false end
+
+    local occupiedAligns = {}
+    for child in pairs(self.childrenOf[parent]) do
+        local anchor = self.anchors[child]
+        if anchor and anchor.edge == edge and not child.orbitDisabled and child ~= excludeChild then
+            local childSyncDims = anchor.syncOptions and anchor.syncOptions.syncDimensions
+            if childSyncDims ~= false or not anchor.align then return true end
+            occupiedAligns[anchor.align] = true
         end
     end
-    return false
+
+    if not next(occupiedAligns) then return false end
+    if incomingSyncDims ~= false then return true end
+    if incomingAlign then return occupiedAligns[incomingAlign] == true end
+
+    local slots = EDGE_ALIGN_SLOTS[edge]
+    if not slots then return true end
+    for _, slot in ipairs(slots) do
+        if not occupiedAligns[slot] then return false end
+    end
+    return true
+end
+
+
+local function SyncChild(child, parent, anchor, parentScale, parentWidth, parentHeight)
+    local opts = anchor.syncOptions or GetFrameOptions(child)
+    if opts.syncScale then child:SetScale(parentScale) end
+    if opts.syncDimensions then
+        if anchor.edge == "LEFT" or anchor.edge == "RIGHT" then
+            local h = (opts.useRowDimension and parent.orbitRowHeight) or parentHeight
+            child:SetHeight(math.max(h, MIN_SYNC_HEIGHT))
+        else
+            local w = (opts.useRowDimension and parent.orbitColumnWidth) or parentWidth
+            child:SetWidth(math.max(w, MIN_SYNC_WIDTH))
+        end
+    end
+    ApplyAnchorPosition(child, parent, anchor.edge, anchor.padding, anchor.align, opts)
+    return opts
 end
 
 function Anchor:SyncChildren(parent, suppressApplySettings, visited)
-    if not parent or not parent.GetScale or not parent.GetWidth then
-        return
-    end
+    if not parent or not parent.GetScale or not parent.GetWidth then return end
 
-    -- Prevent infinite recursion with visited set
     visited = visited or {}
-    if visited[parent] then
-        return
-    end
+    if visited[parent] then return end
     visited[parent] = true
 
     local parentScale = parent:GetScale()
     local parentWidth = parent:GetWidth()
     local parentHeight = parent:GetHeight()
 
-    -- Snapshot children to avoid modifying table during iteration
     local childrenToSync = {}
-    for child, anchor in pairs(self.anchors) do
-        if anchor.parent == parent then
-            table.insert(childrenToSync, { child = child, anchor = anchor })
+    if self.childrenOf[parent] then
+        for child in pairs(self.childrenOf[parent]) do
+            local anchor = self.anchors[child]
+            if anchor then
+                table.insert(childrenToSync, { child = child, anchor = anchor })
+            end
         end
     end
 
     local isEditMode = Orbit:IsEditMode()
 
-    -- Fast Path: During Edit Mode, just reposition children without full ApplySettings cascade
-    -- This prevents exponential performance cost when dragging linked chains
-    if isEditMode and not InCombatLockdown() then
-        for _, entry in ipairs(childrenToSync) do
-            local child = entry.child
-            local anchor = entry.anchor
-            if not child:IsForbidden() then
-                local opts = anchor.syncOptions or GetFrameOptions(child)
-
-                if opts.syncScale then
-                    child:SetScale(parentScale)
-                end
-
-                if opts.syncDimensions then
-                    if anchor.edge == "LEFT" or anchor.edge == "RIGHT" then
-                        local height = parentHeight
-                        if opts.useRowDimension and parent.orbitRowHeight then
-                            height = parent.orbitRowHeight
-                        end
-                        child:SetHeight(math.max(height, 5))
-                    else
-                        local width = parentWidth
-                        if opts.useRowDimension and parent.orbitColumnWidth then
-                            width = parent.orbitColumnWidth
-                        end
-                        child:SetWidth(math.max(width, 10))
-                    end
-                end
-
-                -- Use helper instead of CreateAnchor to avoid recursion
-                ApplyAnchorPosition(child, parent, anchor.edge, anchor.padding, anchor.align, opts)
-
-                -- Call UpdateLayout for live icon recalculation in edit mode
-                if child.orbitPlugin and child.orbitPlugin.UpdateLayout then
-                    child.orbitPlugin:UpdateLayout(child)
-                end
-
-                -- Recursively update grandchildren using fast path (without full sync)
-                self:SyncChildren(child, suppressApplySettings, visited)
-            end
-        end
-        return
-    end
-
     for _, entry in ipairs(childrenToSync) do
         local child = entry.child
         local anchor = entry.anchor
-        if not child:IsForbidden() and (not InCombatLockdown() or not child:IsProtected()) then
-            local opts = anchor.syncOptions or GetFrameOptions(child)
+        local canSync = (isEditMode and not InCombatLockdown() and not child:IsForbidden())
+            or (not child:IsForbidden() and (not InCombatLockdown() or not child:IsProtected()))
 
-            if opts.syncScale then
-                child:SetScale(parentScale)
-            end
-
-            if opts.syncDimensions then
-                if anchor.edge == "LEFT" or anchor.edge == "RIGHT" then
-                    local height = parentHeight
-                    if opts.useRowDimension and parent.orbitRowHeight then
-                        height = parent.orbitRowHeight
-                    end
-                    child:SetHeight(math.max(height, 5))
-                else
-                    local width = parentWidth
-                    if opts.useRowDimension and parent.orbitColumnWidth then
-                        width = parent.orbitColumnWidth
-                    end
-                    child:SetWidth(math.max(width, 10))
-                end
-            end
-
-            -- Apply position update (was missing in normal path)
-            ApplyAnchorPosition(child, parent, anchor.edge, anchor.padding, anchor.align, opts)
+        if canSync then
+            SyncChild(child, parent, anchor, parentScale, parentWidth, parentHeight)
 
             if child.orbitPlugin then
                 if child.orbitPlugin.UpdateLayout then
                     child.orbitPlugin:UpdateLayout(child)
-                elseif not suppressApplySettings and child.orbitPlugin.ApplySettings then
+                elseif not isEditMode and not suppressApplySettings and child.orbitPlugin.ApplySettings then
                     child.orbitPlugin:ApplySettings(child)
                 end
             end

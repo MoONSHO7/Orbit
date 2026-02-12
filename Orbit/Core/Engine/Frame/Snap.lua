@@ -7,8 +7,9 @@ local Engine = Orbit.Engine
 Engine.FrameSnap = Engine.FrameSnap or {}
 local Snap = Engine.FrameSnap
 
-local SNAP_THRESHOLD = 5 -- Threshold for alignment snapping
-local ANCHOR_THRESHOLD = 5 -- Threshold for anchor edge detection (1-20 pixels as per spec)
+local SNAP_THRESHOLD = 5
+local ANCHOR_THRESHOLD = 10
+local CENTER_ALIGN_BONUS = 2
 
 -- Main snap detection function
 -- @param frame The frame being dragged
@@ -43,6 +44,7 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
     local opts = Engine.FrameAnchor.GetFrameOptions(frame)
     local canAnchorHorizontal = (opts.horizontal ~= false)
     local canAnchorVertical = (opts.vertical ~= false)
+    local frameSyncDims = (opts.syncDimensions ~= false)
 
     for _, target in ipairs(targets) do
         -- Skip locked frames
@@ -73,31 +75,24 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
                 }
                 -- LEFT/RIGHT anchor points only if frames are at same Y level (verticalOverlap)
                 if verticalOverlap then
-                    -- Only add anchor points if edge is not occupied
-                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "LEFT", frame) then
+                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "LEFT", frame, frameSyncDims) then
                         table.insert(snapPointsX, { diff = tLeft - right, pos = tLeft, edge = "LEFT", target = target })
                     end
-                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "RIGHT", frame) then
+                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "RIGHT", frame, frameSyncDims) then
                         table.insert(snapPointsX, { diff = tRight - left, pos = tRight, edge = "RIGHT", target = target })
                     end
                 end
 
                 for _, sp in ipairs(snapPointsX) do
                     local absDiff = math.abs(sp.diff)
+                    local biasedDiff = (sp.align == "CENTER") and math.max(absDiff - CENTER_ALIGN_BONUS, 0) or absDiff
 
-                    -- Alignment snapping (uses SNAP_THRESHOLD)
-                    if absDiff < minDiffX then
-                        minDiffX = absDiff
+                    if biasedDiff < minDiffX then
+                        minDiffX = biasedDiff
                         closestX = sp.diff
-
-                        if sp.align then
-                            closestAlignX = sp.align
-                        else
-                            closestAlignX = nil
-                        end
+                        closestAlignX = sp.align or nil
                     end
 
-                    -- Anchor detection (uses ANCHOR_THRESHOLD - separate from alignment)
                     if sp.edge and absDiff < minDiffX_Anchor then
                         anchorCandidateX_Target = sp.target
                         anchorCandidateX_Edge = sp.edge
@@ -111,33 +106,25 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
                     { diff = tBottom - bottom, pos = tBottom, align = "BOTTOM" },
                     { diff = tCenterY - centerY, pos = tCenterY, align = "CENTER" },
                 }
-                -- TOP/BOTTOM anchor points only if frames are at same X level (horizontalOverlap)
                 if horizontalOverlap then
-                    -- Only add anchor points if edge is not occupied
-                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "BOTTOM", frame) then
+                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "BOTTOM", frame, frameSyncDims) then
                         table.insert(snapPointsY, { diff = tBottom - top, pos = tBottom, edge = "BOTTOM", target = target })
                     end
-                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "TOP", frame) then
+                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "TOP", frame, frameSyncDims) then
                         table.insert(snapPointsY, { diff = tTop - bottom, pos = tTop, edge = "TOP", target = target })
                     end
                 end
 
                 for _, sp in ipairs(snapPointsY) do
                     local absDiff = math.abs(sp.diff)
+                    local biasedDiff = (sp.align == "CENTER") and math.max(absDiff - CENTER_ALIGN_BONUS, 0) or absDiff
 
-                    -- Alignment snapping (uses SNAP_THRESHOLD)
-                    if absDiff < minDiffY then
-                        minDiffY = absDiff
+                    if biasedDiff < minDiffY then
+                        minDiffY = biasedDiff
                         closestY = sp.diff
-
-                        if sp.align then
-                            closestAlignY = sp.align
-                        else
-                            closestAlignY = nil
-                        end
+                        closestAlignY = sp.align or nil
                     end
 
-                    -- Anchor detection (uses ANCHOR_THRESHOLD - separate from alignment)
                     if sp.edge and absDiff < minDiffY_Anchor then
                         anchorCandidateY_Target = sp.target
                         anchorCandidateY_Edge = sp.edge

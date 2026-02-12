@@ -86,9 +86,16 @@ local function ForEachRegion(selection, callback)
 end
 
 local OPPOSITE_EDGES = { TOP = "BOTTOM", BOTTOM = "TOP", LEFT = "RIGHT", RIGHT = "LEFT" }
-local function GetOppositeEdge(edge)
-    return OPPOSITE_EDGES[edge]
-end
+local function GetOppositeEdge(edge) return OPPOSITE_EDGES[edge] end
+
+local ANCHOR_ALIGN_COLORS = {
+    LEFT   = { 0.65, 0.35, 0.95 },
+    RIGHT  = { 0.65, 0.35, 0.95 },
+    TOP    = { 0.65, 0.35, 0.95 },
+    BOTTOM = { 0.65, 0.35, 0.95 },
+    CENTER = { 0.2, 0.9, 0.85 },
+}
+local DEFAULT_ANCHOR_COLOR = { 0, 1, 0 }
 
 local function DeferUntilOutOfCombat(callback)
     if not InCombatLockdown() then
@@ -193,32 +200,32 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
 
     selection.AnchorLineTop = selection:CreateTexture(nil, "OVERLAY")
     selection.AnchorLineTop:SetColorTexture(0, 1, 0, 1)
-    selection.AnchorLineTop:SetPoint("TOPLEFT", 0, 1)
-    selection.AnchorLineTop:SetPoint("TOPRIGHT", 0, 1)
+    selection.AnchorLineTop:SetPoint("TOPLEFT", 0, lineThickness)
+    selection.AnchorLineTop:SetPoint("TOPRIGHT", 0, lineThickness)
     selection.AnchorLineTop:SetHeight(lineThickness)
     selection.AnchorLineTop.isAnchorLine = true
     selection.AnchorLineTop:Hide()
 
     selection.AnchorLineBottom = selection:CreateTexture(nil, "OVERLAY")
     selection.AnchorLineBottom:SetColorTexture(0, 1, 0, 1)
-    selection.AnchorLineBottom:SetPoint("BOTTOMLEFT", 0, -1)
-    selection.AnchorLineBottom:SetPoint("BOTTOMRIGHT", 0, -1)
+    selection.AnchorLineBottom:SetPoint("BOTTOMLEFT", 0, -lineThickness)
+    selection.AnchorLineBottom:SetPoint("BOTTOMRIGHT", 0, -lineThickness)
     selection.AnchorLineBottom:SetHeight(lineThickness)
     selection.AnchorLineBottom.isAnchorLine = true
     selection.AnchorLineBottom:Hide()
 
     selection.AnchorLineLeft = selection:CreateTexture(nil, "OVERLAY")
     selection.AnchorLineLeft:SetColorTexture(0, 1, 0, 1)
-    selection.AnchorLineLeft:SetPoint("TOPLEFT", -1, 0)
-    selection.AnchorLineLeft:SetPoint("BOTTOMLEFT", -1, 0)
+    selection.AnchorLineLeft:SetPoint("TOPLEFT", -lineThickness, 0)
+    selection.AnchorLineLeft:SetPoint("BOTTOMLEFT", -lineThickness, 0)
     selection.AnchorLineLeft:SetWidth(lineThickness)
     selection.AnchorLineLeft.isAnchorLine = true
     selection.AnchorLineLeft:Hide()
 
     selection.AnchorLineRight = selection:CreateTexture(nil, "OVERLAY")
     selection.AnchorLineRight:SetColorTexture(0, 1, 0, 1)
-    selection.AnchorLineRight:SetPoint("TOPRIGHT", 1, 0)
-    selection.AnchorLineRight:SetPoint("BOTTOMRIGHT", 1, 0)
+    selection.AnchorLineRight:SetPoint("TOPRIGHT", lineThickness, 0)
+    selection.AnchorLineRight:SetPoint("BOTTOMRIGHT", lineThickness, 0)
     selection.AnchorLineRight:SetWidth(lineThickness)
     selection.AnchorLineRight.isAnchorLine = true
     selection.AnchorLineRight:Hide()
@@ -446,35 +453,23 @@ end
 
 -- [ ANCHOR LINE VISIBILITY ]----------------------------------------------------------------------
 
-function Selection:ShowAnchorLine(selection, side)
-    if not selection then
-        return
-    end
+local ANCHOR_LINE_KEY = { TOP = "AnchorLineTop", BOTTOM = "AnchorLineBottom", LEFT = "AnchorLineLeft", RIGHT = "AnchorLineRight" }
 
-    if selection.AnchorLineTop then
-        selection.AnchorLineTop:Hide()
-    end
-    if selection.AnchorLineBottom then
-        selection.AnchorLineBottom:Hide()
-    end
-    if selection.AnchorLineLeft then
-        selection.AnchorLineLeft:Hide()
-    end
-    if selection.AnchorLineRight then
-        selection.AnchorLineRight:Hide()
-    end
+function Selection:ShowAnchorLine(selection, side, align)
+    if not selection then return end
 
-    if side == "TOP" and selection.AnchorLineTop then
-        selection.AnchorLineTop:Show()
-    end
-    if side == "BOTTOM" and selection.AnchorLineBottom then
-        selection.AnchorLineBottom:Show()
-    end
-    if side == "LEFT" and selection.AnchorLineLeft then
-        selection.AnchorLineLeft:Show()
-    end
-    if side == "RIGHT" and selection.AnchorLineRight then
-        selection.AnchorLineRight:Show()
+    if selection.AnchorLineTop then selection.AnchorLineTop:Hide() end
+    if selection.AnchorLineBottom then selection.AnchorLineBottom:Hide() end
+    if selection.AnchorLineLeft then selection.AnchorLineLeft:Hide() end
+    if selection.AnchorLineRight then selection.AnchorLineRight:Hide() end
+
+    if not side then return end
+
+    local line = selection[ANCHOR_LINE_KEY[side]]
+    if line then
+        local c = (align and ANCHOR_ALIGN_COLORS[align]) or DEFAULT_ANCHOR_COLOR
+        line:SetColorTexture(c[1], c[2], c[3], 1)
+        line:Show()
     end
 end
 
@@ -620,7 +615,7 @@ function Selection:UpdateVisuals(frame, selection)
         if isAnchored then
             local anchor = Engine.FrameAnchor.anchors[selection.parent]
             if anchor and anchor.edge then
-                Selection:ShowAnchorLine(selection, GetOppositeEdge(anchor.edge))
+                Selection:ShowAnchorLine(selection, GetOppositeEdge(anchor.edge), anchor.align)
             end
         else
             Selection:ShowAnchorLine(selection, nil)
@@ -688,7 +683,7 @@ function Selection:UpdateVisuals(frame, selection)
             end
             local anchor = Engine.FrameAnchor.anchors[selection.parent]
             if anchor and anchor.edge then
-                Selection:ShowAnchorLine(selection, GetOppositeEdge(anchor.edge))
+                Selection:ShowAnchorLine(selection, GetOppositeEdge(anchor.edge), anchor.align)
             end
         else
             if selection.isOrbitSelection then

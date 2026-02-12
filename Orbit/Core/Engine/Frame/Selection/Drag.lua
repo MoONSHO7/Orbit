@@ -8,6 +8,9 @@ local C = Orbit.Constants
 local Drag = {}
 Engine.SelectionDrag = Drag
 
+local OPPOSITE_EDGES = { TOP = "BOTTOM", BOTTOM = "TOP", LEFT = "RIGHT", RIGHT = "LEFT" }
+local function GetOppositeEdge(edge) return OPPOSITE_EDGES[edge] end
+
 -- [ PRECISION MODE (SHIFT-DRAG OVERLAY SUPPRESSION) ]----------------------------------------------
 
 local function SetNonSelectedOverlaysVisible(selectionOverlay, visible)
@@ -49,34 +52,36 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     end
 
     local targets = Selection:GetSnapTargets(parent)
-    local closestX, closestY, anchorTarget, anchorEdge = Engine.FrameSnap:DetectSnap(
+    local closestX, closestY, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(
         parent,
         true,
-        targets, -- showGuides=true (prevents applying snap, red lines are disabled)
-        nil -- No locked-frame filter needed
+        targets,
+        nil
     )
 
     -- Only show anchor lines for Orbit frames (not Blizzard Edit Mode frames)
     -- Blizzard frames can be snapped to but not anchored to, so don't show anchor line
     local isOrbitFrame = Selection.selections[anchorTarget] ~= nil
 
-    if anchorTarget and anchorEdge and isOrbitFrame and anchorTarget ~= selectionOverlay.lastAnchorTarget then
-        -- Clear previous
+    if anchorTarget and anchorEdge and isOrbitFrame and (anchorTarget ~= selectionOverlay.lastAnchorTarget or anchorAlign ~= selectionOverlay.lastAnchorAlign) then
         if selectionOverlay.lastAnchorTarget then
             local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
             Selection:ShowAnchorLine(oldSel, nil)
         end
+        Selection:ShowAnchorLine(selectionOverlay, nil)
 
-        -- Show new
         local targetSel = Selection.selections[anchorTarget]
-        Selection:ShowAnchorLine(targetSel, anchorEdge)
+        Selection:ShowAnchorLine(targetSel, anchorEdge, anchorAlign)
+        Selection:ShowAnchorLine(selectionOverlay, GetOppositeEdge(anchorEdge), anchorAlign)
 
         selectionOverlay.lastAnchorTarget = anchorTarget
+        selectionOverlay.lastAnchorAlign = anchorAlign
     elseif not anchorTarget and selectionOverlay.lastAnchorTarget then
-        -- Lost target, clear line
         local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
         Selection:ShowAnchorLine(oldSel, nil)
+        Selection:ShowAnchorLine(selectionOverlay, nil)
         selectionOverlay.lastAnchorTarget = nil
+        selectionOverlay.lastAnchorAlign = nil
     end
 
     -- Show dynamic position tooltip
@@ -106,6 +111,7 @@ function Drag:OnDragStart(selectionOverlay)
 
         -- Start Visual Update Loop
         selectionOverlay.lastAnchorTarget = nil
+        selectionOverlay.lastAnchorAlign = nil
         selectionOverlay.precisionMode = false
 
         -- Shift held at drag start: enter precision mode immediately
@@ -126,7 +132,9 @@ function Drag:OnDragStop(selectionOverlay)
         local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
         Selection:ShowAnchorLine(oldSel, nil)
         selectionOverlay.lastAnchorTarget = nil
+        selectionOverlay.lastAnchorAlign = nil
     end
+    Engine.FrameSelection:ShowAnchorLine(selectionOverlay, nil)
     selectionOverlay:SetScript("OnUpdate", nil)
 
     -- Restore overlays if precision mode was active

@@ -156,22 +156,7 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
             end
             Engine.PositionManager:MarkDirty(f)
         else
-            -- Fallback if PM missing (shouldn't happen)
-            if point == "ANCHORED" then
-                local targetName = x and x:GetName() or nil
-                local padding = 0
-                local align = nil
-                if Engine.FrameAnchor and Engine.FrameAnchor.anchors[f] then
-                    padding = Engine.FrameAnchor.anchors[f].padding or 0
-                    align = Engine.FrameAnchor.anchors[f].align
-                end
-
-                plugin:SetSetting(systemIndex, "Anchor", { target = targetName, edge = y, padding = padding, align = align })
-                plugin:SetSetting(systemIndex, "Position", nil)
-            else
-                plugin:SetSetting(systemIndex, "Position", { point = point, x = x, y = y })
-                plugin:SetSetting(systemIndex, "Anchor", false)
-            end
+            error("Orbit: PositionManager is nil — cannot save frame position")
         end
 
         -- Refresh settings (e.g. show/hide width/height sliders based on anchor)
