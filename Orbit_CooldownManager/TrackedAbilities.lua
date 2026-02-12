@@ -1529,6 +1529,7 @@ function Plugin:RegisterTalentWatcher()
     local frame = CreateFrame("Frame")
     frame:RegisterEvent("SPELLS_CHANGED")
     frame:SetScript("OnEvent", function()
+        if InCombatLockdown() then return end
         plugin:ReparseActiveDurations()
         plugin:RefreshChargeMaxCharges()
         plugin:RefreshAllTrackedLayouts()
