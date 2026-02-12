@@ -28,6 +28,7 @@ function CooldownUtils:BuildSkinSettings(plugin, systemIndex, options)
         backdropColor = plugin:GetSetting(systemIndex, "BackdropColour"),
         showTooltip = options.showTooltip or false,
         verticalGrowth = options.verticalGrowth,
+        horizontalGrowth = options.horizontalGrowth,
     }
 end
 

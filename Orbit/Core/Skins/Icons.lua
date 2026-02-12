@@ -89,11 +89,13 @@ function Icons:ApplyManualLayout(frame, icons, settings)
 
     local scale = frame:GetEffectiveScale()
 
+    local hGrowth = settings.horizontalGrowth
+
     for i, icon in ipairs(icons) do
         icon:ClearAllPoints()
 
-        local groupIdx = math.floor((i - 1) / limit) -- 0..N (Row or Col index)
-        local itemIdx = (i - 1) % limit -- 0..Limit-1 (Item within row/col)
+        local groupIdx = math.floor((i - 1) / limit)
+        local itemIdx = (i - 1) % limit
 
         local col, row
         if orientation == 0 then
@@ -102,7 +104,6 @@ function Icons:ApplyManualLayout(frame, icons, settings)
             col, row = groupIdx, itemIdx
         end
 
-        -- Centering Logic
         local itemsInGroup = limit
         local itemsPrior = groupIdx * limit
         local itemsRemaining = totalIcons - itemsPrior
@@ -113,38 +114,38 @@ function Icons:ApplyManualLayout(frame, icons, settings)
         local currentGroupSize = (itemsInGroup * (orientation == 0 and w or h)) + ((itemsInGroup - 1) * padding)
         local centeringOffset = (maxMajorSize - currentGroupSize) / 2
 
-        local x = 0
-        local y = 0
+        local rowOffset
+        if hGrowth == "LEFT" then
+            rowOffset = maxMajorSize - currentGroupSize
+        elseif hGrowth == "CENTER" or not hGrowth then
+            rowOffset = centeringOffset
+        else
+            rowOffset = 0
+        end
+
+        local x, y = 0, 0
 
         if settings.verticalGrowth == "UP" then
             if orientation == 0 then
-                x = centeringOffset + (col * (w + padding))
+                x = rowOffset + (col * (w + padding))
                 y = row * (h + padding)
             else
                 x = col * (w + padding)
                 y = centeringOffset + (row * (h + padding))
             end
 
-            if Pixel then
-                x = Pixel:Snap(x, scale)
-                y = Pixel:Snap(y, scale)
-            end
-
+            if Pixel then x = Pixel:Snap(x, scale); y = Pixel:Snap(y, scale) end
             icon:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x, y)
         else
             if orientation == 0 then
-                x = centeringOffset + (col * (w + padding))
+                x = rowOffset + (col * (w + padding))
                 y = -row * (h + padding)
             else
                 x = col * (w + padding)
                 y = -(centeringOffset + (row * (h + padding)))
             end
 
-            if Pixel then
-                x = Pixel:Snap(x, scale)
-                y = Pixel:Snap(y, scale)
-            end
-
+            if Pixel then x = Pixel:Snap(x, scale); y = Pixel:Snap(y, scale) end
             icon:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
         end
     end

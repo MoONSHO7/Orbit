@@ -9,6 +9,16 @@ local CDM = Orbit:GetPlugin("Orbit_CooldownViewer")
 if not CDM then return end
 
 local VIEWER_MAP = CDM.viewerMap
+local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
+
+local function GetViewerAnchorPoint(plugin, anchor)
+    local vPoint = (plugin:GetGrowthDirection(anchor) == "UP") and "BOTTOM" or "TOP"
+    if anchor.systemIndex ~= BUFFICON_INDEX then return vPoint end
+    local hGrowth = plugin:GetHorizontalGrowth(anchor)
+    if hGrowth == "LEFT" then return vPoint .. "RIGHT" end
+    if hGrowth == "RIGHT" then return vPoint .. "LEFT" end
+    return vPoint
+end
 
 -- [ BLIZZARD VIEWER HOOKING ]-----------------------------------------------------------------------
 function CDM:HookBlizzardViewers()
@@ -43,7 +53,7 @@ function CDM:SetupViewerHooks(viewer, anchor)
     local function RestoreViewer(v, parent)
         if not v or not parent or not anchor:IsShown() then return end
         v:ClearAllPoints()
-        local point = (self:GetGrowthDirection(anchor) == "UP") and "BOTTOM" or "TOP"
+        local point = GetViewerAnchorPoint(self, anchor)
         v:SetPoint(point, parent, point, 0, 0)
         v:SetAlpha(1)
         v:Show()
@@ -63,7 +73,7 @@ function CDM:SetupViewerHooks(viewer, anchor)
             if viewer._orbitRestoringPos or (anchor and not anchor:IsShown()) then return end
             viewer._orbitRestoringPos = true
             viewer:ClearAllPoints()
-            local point = (self:GetGrowthDirection(anchor) == "UP") and "BOTTOM" or "TOP"
+            local point = GetViewerAnchorPoint(self, anchor)
             viewer:SetPoint(point, anchor, point, 0, 0)
             viewer._orbitRestoringPos = false
         end
@@ -95,7 +105,7 @@ function CDM:EnforceViewerParentage(viewer, anchor)
     if viewer:GetParent() ~= anchor then viewer:SetParent(anchor) end
     viewer:SetScale(1)
     viewer:ClearAllPoints()
-    local point = (self:GetGrowthDirection(anchor) == "UP") and "BOTTOM" or "TOP"
+    local point = GetViewerAnchorPoint(self, anchor)
     viewer:SetPoint(point, anchor, point, 0, 0)
     viewer:SetAlpha(1)
     viewer:Show()

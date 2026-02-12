@@ -8,31 +8,32 @@ local CDM = Orbit:GetPlugin("Orbit_CooldownViewer")
 if not CDM then return end
 
 local VIEWER_MAP = CDM.viewerMap
-
--- [ FLASH OVERLAY HELPERS ]-------------------------------------------------------------------------
+local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
+local INACTIVE_ALPHA_DEFAULT = 60
 local FLASH_DURATION = 0.15
 
+-- [ FLASH OVERLAY ]----------------------------------------------------------------------------------
 local function EnsureFlashOverlay(icon)
     if icon.orbitCDMFlash then return end
-    local flashFrame = CreateFrame("Frame", nil, icon)
-    flashFrame:SetAllPoints(icon)
-    flashFrame:SetFrameLevel(icon:GetFrameLevel() + 3)
-    flashFrame:Hide()
+    local flash = CreateFrame("Frame", nil, icon)
+    flash:SetAllPoints(icon)
+    flash:SetFrameLevel(icon:GetFrameLevel() + 3)
+    flash:Hide()
 
-    local tex = flashFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-    tex:SetAllPoints(flashFrame)
+    local tex = flash:CreateTexture(nil, "OVERLAY", nil, 7)
+    tex:SetAllPoints(flash)
     tex:SetColorTexture(1, 1, 1, 0.4)
 
-    local fadeGroup = flashFrame:CreateAnimationGroup()
+    local fadeGroup = flash:CreateAnimationGroup()
     fadeGroup:SetToFinalAlpha(true)
     local fadeOut = fadeGroup:CreateAnimation("Alpha")
     fadeOut:SetFromAlpha(1)
     fadeOut:SetToAlpha(0)
     fadeOut:SetDuration(FLASH_DURATION)
     fadeOut:SetSmoothing("OUT")
-    fadeGroup:SetScript("OnFinished", function() flashFrame:Hide() end)
+    fadeGroup:SetScript("OnFinished", function() flash:Hide() end)
 
-    icon.orbitCDMFlash = flashFrame
+    icon.orbitCDMFlash = flash
     icon.orbitCDMFlashTex = tex
     icon.orbitCDMFlashFade = fadeGroup
 end
@@ -47,18 +48,15 @@ end
 
 local function FindIconBySpellID(spellID)
     for _, entry in pairs(VIEWER_MAP) do
-        local viewer = entry.viewer
-        if viewer then
-            for _, child in ipairs({ viewer:GetChildren() }) do
+        if entry.viewer then
+            for _, child in ipairs({ entry.viewer:GetChildren() }) do
                 local cached = child.orbitCachedSpellID
                 if child:IsShown() and cached and not issecretvalue(cached) and cached == spellID then return child end
             end
         end
     end
-    return nil
 end
 
--- Keypress flash via ActionButtonDown (fires on every keypress, even during cooldown/GCD)
 hooksecurefunc("ActionButtonDown", function(id)
     local button = GetActionButtonForID(id)
     if not button or not button.action then return end
@@ -66,25 +64,44 @@ hooksecurefunc("ActionButtonDown", function(id)
     if actionType ~= "spell" or not spellID then return end
     local icon = FindIconBySpellID(spellID)
     if not icon or not icon.orbitCDMSystemIndex then return end
-    local c = CDM:GetSetting(icon.orbitCDMSystemIndex, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0 }
-    FlashIcon(icon, c)
+    FlashIcon(icon, CDM:GetSetting(icon.orbitCDMSystemIndex, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0 })
 end)
 
--- [ PROCESS CHILDREN ]------------------------------------------------------------------------------
+-- [ INACTIVE STATE HELPER ]--------------------------------------------------------------------------
+local function ApplyInactiveState(icon, plugin, systemIndex)
+    if not icon.Icon then return end
+    local active = icon:IsActive()
+    local inactive = not issecretvalue(active) and not active
+    icon.Icon:SetDesaturated(inactive)
+    icon.Icon:SetAlpha(inactive and (plugin:GetSetting(systemIndex, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100 or 1)
+end
+
+local function ClearInactiveState(icon)
+    if not icon.Icon then return end
+    icon.Icon:SetDesaturated(false)
+    icon.Icon:SetAlpha(1)
+end
+
+-- [ ANCHOR LOOKUP ]----------------------------------------------------------------------------------
+local function GetAnchorInfo(anchorFrame)
+    return anchorFrame and OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors[anchorFrame]
+end
+
+-- [ PROCESS CHILDREN ]-------------------------------------------------------------------------------
 function CDM:ProcessChildren(anchor)
     if not anchor then return end
-
     local entry = VIEWER_MAP[anchor.systemIndex]
     local blizzFrame = entry and entry.viewer
     if not blizzFrame then return end
 
     local systemIndex = anchor.systemIndex
     local activeChildren = {}
-    local plugin = self
+    local alwaysShow = (systemIndex == BUFFICON_INDEX) and self:GetSetting(systemIndex, "AlwaysShow")
 
     for _, child in ipairs({ blizzFrame:GetChildren() }) do
         if child.layoutIndex then
             if not child.orbitOnShowHooked then
+                local plugin = self
                 child:HookScript("OnShow", function(c)
                     local parent = c:GetParent()
                     local anc = parent and parent:GetParent()
@@ -96,14 +113,25 @@ function CDM:ProcessChildren(anchor)
                 end)
                 child.orbitOnShowHooked = true
             end
-            if child:IsShown() then table.insert(activeChildren, child) end
+
+            if alwaysShow then
+                self:HookAlwaysShow(child)
+                if child:GetCooldownID() then
+                    child:Show()
+                    table.insert(activeChildren, child)
+                end
+            elseif child:IsShown() then
+                table.insert(activeChildren, child)
+            end
         end
     end
 
     table.sort(activeChildren, function(a, b) return (a.layoutIndex or 0) < (b.layoutIndex or 0) end)
 
     if Orbit.Skin.Icons and #activeChildren > 0 then
-        local skinSettings = CooldownUtils:BuildSkinSettings(self, systemIndex, { verticalGrowth = self:GetGrowthDirection(anchor) })
+        local hGrowth = (systemIndex == BUFFICON_INDEX) and self:GetHorizontalGrowth(anchor) or nil
+        local vGrowth = self:GetGrowthDirection(anchor)
+        local skinSettings = CooldownUtils:BuildSkinSettings(self, systemIndex, { verticalGrowth = vGrowth, horizontalGrowth = hGrowth })
 
         if not Orbit.Skin.Icons.frameSettings then Orbit.Skin.Icons.frameSettings = setmetatable({}, { __mode = "k" }) end
         Orbit.Skin.Icons.frameSettings[blizzFrame] = skinSettings
@@ -118,6 +146,7 @@ function CDM:ProcessChildren(anchor)
                 if sid and not issecretvalue(sid) then icon.orbitCachedSpellID = sid end
             end
             EnsureFlashOverlay(icon)
+            if alwaysShow then ApplyInactiveState(icon, self, systemIndex) end
         end
 
         Orbit.Skin.Icons:ApplyManualLayout(blizzFrame, activeChildren, skinSettings)
@@ -138,13 +167,9 @@ function CDM:HookGCDSwipe(icon, systemIndex)
     icon.orbitPlugin = self
 
     hooksecurefunc(icon, "RefreshSpellCooldownInfo", function(self)
-        local plugin = self.orbitPlugin
-        local sysIdx = self.orbitSystemIndex
+        local plugin, sysIdx = self.orbitPlugin, self.orbitSystemIndex
         if not plugin or not sysIdx then return end
-
-        local showGCD = plugin:GetSetting(sysIdx, "ShowGCDSwipe")
-        if showGCD then return end
-
+        if plugin:GetSetting(sysIdx, "ShowGCDSwipe") then return end
         if self.isOnGCD and not self.wasSetFromAura then
             local cooldown = self:GetCooldownFrame()
             if cooldown then cooldown:SetDrawSwipe(false) end
@@ -153,10 +178,34 @@ function CDM:HookGCDSwipe(icon, systemIndex)
     icon.orbitGCDHooked = true
 end
 
+-- [ ALWAYS SHOW (BUFF ICONS) ]----------------------------------------------------------------------
+function CDM:HookAlwaysShow(icon)
+    if icon.orbitAlwaysShowHooked then return end
+    local plugin = self
+    local function onStateChange(self)
+        if not plugin:GetSetting(BUFFICON_INDEX, "AlwaysShow") then
+            ClearInactiveState(self)
+            return
+        end
+        if not self:GetCooldownID() then return end
+        self:Show()
+        ApplyInactiveState(self, plugin, BUFFICON_INDEX)
+    end
+    hooksecurefunc(icon, "UpdateShownState", onStateChange)
+    hooksecurefunc(icon, "RefreshData", onStateChange)
+    icon.orbitAlwaysShowHooked = true
+end
+
 -- [ GROWTH DIRECTION ]------------------------------------------------------------------------------
 function CDM:GetGrowthDirection(anchorFrame)
-    if not anchorFrame then return "DOWN" end
-    local anchorInfo = OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors[anchorFrame]
-    if not anchorInfo then return "DOWN" end
-    return anchorInfo.edge == "TOP" and "UP" or "DOWN"
+    local info = GetAnchorInfo(anchorFrame)
+    return info and info.edge == "TOP" and "UP" or "DOWN"
+end
+
+function CDM:GetHorizontalGrowth(anchorFrame)
+    local info = GetAnchorInfo(anchorFrame)
+    if not info then return "CENTER" end
+    if info.edge == "LEFT" or info.align == "LEFT" then return "RIGHT" end
+    if info.edge == "RIGHT" or info.align == "RIGHT" then return "LEFT" end
+    return "CENTER"
 end

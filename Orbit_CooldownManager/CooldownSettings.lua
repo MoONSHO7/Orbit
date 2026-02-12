@@ -184,6 +184,23 @@ function CDM:AddSettings(dialog, systemFrame)
                 end,
             })
         end
+        if systemIndex == Constants.Cooldown.SystemIndex.BuffIcon then
+            table.insert(schema.controls, {
+                type = "checkbox", key = "AlwaysShow", label = "Always Show", default = false,
+                tooltip = "Keep inactive buff icons visible but desaturated",
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "AlwaysShow", val)
+                    self:ApplyAll()
+                    if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+                end,
+            })
+            if self:GetSetting(systemIndex, "AlwaysShow") then
+                table.insert(schema.controls, {
+                    type = "slider", key = "InactiveAlpha", label = "Inactive Alpha", min = 20, max = 100, step = 5, default = 60,
+                    onChange = function(val) self:SetSetting(systemIndex, "InactiveAlpha", val); self:ApplyAll() end,
+                })
+            end
+        end
     end
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
