@@ -193,7 +193,108 @@ function CDM:HookAlwaysShow(icon)
     end
     hooksecurefunc(icon, "UpdateShownState", onStateChange)
     hooksecurefunc(icon, "RefreshData", onStateChange)
+    hooksecurefunc(icon, "RefreshSpellTexture", onStateChange)
     icon.orbitAlwaysShowHooked = true
+end
+
+do
+    local targetFrame = CreateFrame("Frame")
+    targetFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+    targetFrame:SetScript("OnEvent", function()
+        if not CDM:GetSetting(BUFFICON_INDEX, "AlwaysShow") then return end
+        local entry = VIEWER_MAP[BUFFICON_INDEX]
+        if not entry or not entry.viewer then return end
+        C_Timer.After(0.1, function()
+            for _, child in ipairs({ entry.viewer:GetChildren() }) do
+                if child.layoutIndex and child.Icon and child:GetCooldownID() then
+                    ApplyInactiveState(child, CDM, BUFFICON_INDEX)
+                end
+            end
+        end)
+    end)
+end
+
+-- [ TIMER COLOR CURVE ]-----------------------------------------------------------------------------
+local WL = OrbitEngine.WidgetLogic
+local curveCache = {}
+
+local function GetNativeTimerCurveForSystem(systemIndex)
+    local positions = CDM:GetSetting(systemIndex, "ComponentPositions")
+    local timerOverrides = positions and positions["Timer"] and positions["Timer"].overrides
+    local curveData = timerOverrides and timerOverrides["CustomColorCurve"]
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    local cached = curveCache[systemIndex]
+    if cached and cached.data == curveData then return cached.curve end
+    local curve = WL:ToNativeColorCurve(curveData)
+    curveCache[systemIndex] = { data = curveData, curve = curve }
+    return curve
+end
+
+local function FindFontString(cd)
+    if not cd then return nil end
+    for _, region in ipairs({ cd:GetRegions() }) do
+        if region:GetObjectType() == "FontString" then return region end
+    end
+    return nil
+end
+
+local function GetTimerFontStrings(icon)
+    if not icon.orbitTimerFS then
+        icon.orbitTimerFS = FindFontString(icon.Cooldown or (icon.GetCooldownFrame and icon:GetCooldownFrame()))
+    end
+    if not icon.orbitActiveFS then
+        icon.orbitActiveFS = FindFontString(icon.ActiveCooldown)
+    end
+    return icon.orbitTimerFS, icon.orbitActiveFS
+end
+
+local function GetDurationObject(icon, systemIndex)
+    if systemIndex == BUFFICON_INDEX then
+        local unit = icon.GetAuraDataUnit and icon:GetAuraDataUnit()
+        local auraID = icon.auraInstanceID
+        if not unit or not auraID then return nil end
+        return C_UnitAuras.GetAuraDuration(unit, auraID)
+    end
+    local spellID = icon.cooldownID or (icon.trackedType == "spell" and icon.trackedId)
+    if spellID then return C_Spell.GetSpellCooldownDuration(spellID) end
+    return nil
+end
+
+local function ApplyTimerColor(icon, curve, systemIndex)
+    local timerFS, activeFS = GetTimerFontStrings(icon)
+    if not timerFS and not activeFS then return end
+    local durObj = GetDurationObject(icon, systemIndex)
+    if not durObj then return end
+    local color = durObj:EvaluateRemainingPercent(curve)
+    if not color then return end
+    local r, g, b, a = color:GetRGBA()
+    if timerFS then timerFS:SetTextColor(r, g, b, a) end
+    if activeFS then activeFS:SetTextColor(r, g, b, a) end
+end
+
+do
+    local driverFrame = CreateFrame("Frame")
+    driverFrame:SetScript("OnUpdate", function()
+        for systemIndex, entry in pairs(VIEWER_MAP) do
+            local curve = GetNativeTimerCurveForSystem(systemIndex)
+            if curve then
+                if entry.viewer then
+                    for _, child in ipairs({ entry.viewer:GetChildren() }) do
+                        if child.layoutIndex and child:IsShown() and child:GetCooldownID() then
+                            ApplyTimerColor(child, curve, systemIndex)
+                        end
+                    end
+                end
+                if entry.anchor and entry.anchor.activeIcons then
+                    for _, icon in pairs(entry.anchor.activeIcons) do
+                        if icon:IsShown() then
+                            ApplyTimerColor(icon, curve, systemIndex)
+                        end
+                    end
+                end
+            end
+        end
+    end)
 end
 
 -- [ GROWTH DIRECTION ]------------------------------------------------------------------------------

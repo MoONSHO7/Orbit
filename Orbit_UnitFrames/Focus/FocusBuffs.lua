@@ -85,7 +85,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             label = "Scale",
             min = 50,
             max = 200,
-            step = 1,
+            step = 5,
             default = 100,
         })
     end
@@ -127,14 +127,12 @@ function Plugin:OnLoad()
 
     self:ApplySettings()
 
-    -- Populate buffs the instant RegisterUnitWatch shows the frame
     Frame:HookScript("OnShow", function()
         if not Orbit:IsEditMode() then
             self:UpdateBuffs()
         end
     end)
 
-    -- Live resize: recalculate icons when frame size changes
     Frame:HookScript("OnSizeChanged", function()
         if Orbit:IsEditMode() then
             self:ShowPreviewAuras()
@@ -143,7 +141,7 @@ function Plugin:OnLoad()
         end
     end)
 
-    -- Events
+
     Frame:RegisterUnitEvent("UNIT_AURA", "focus")
     Frame:RegisterEvent("PLAYER_FOCUS_CHANGED")
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -210,7 +208,6 @@ function Plugin:UpdateBuffs()
         return
     end
 
-    -- Layout
     local anchor = "TOPLEFT"
     local growthY = "DOWN"
 

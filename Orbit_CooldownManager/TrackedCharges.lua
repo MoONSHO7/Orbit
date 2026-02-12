@@ -735,9 +735,6 @@ function Plugin:ApplyChargeBarSettings(frame)
         return
     end
     local sysIndex = frame.systemIndex
-    local size = self:GetSetting(sysIndex, "IconSize") or 100
-    frame:SetScale(size / 100)
-
     self:LayoutChargeBar(frame)
     OrbitEngine.Frame:RestorePosition(frame, self, sysIndex)
 

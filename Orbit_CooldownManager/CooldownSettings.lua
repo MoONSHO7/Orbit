@@ -100,8 +100,15 @@ function CDM:AddSettings(dialog, systemFrame)
             },
             default = "1:1",
         })
-        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
-            key = "IconSize", label = "Scale", default = Constants.Cooldown.DefaultIconSize,
+        table.insert(schema.controls, {
+            type = "slider", key = "IconSize", label = "Scale",
+            min = 50, max = 200, step = 5,
+            formatter = function(v) return v .. "%" end,
+            default = Constants.Cooldown.DefaultIconSize,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "IconSize", val)
+                self:ApplySettings(systemFrame)
+            end,
         })
         table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = -1, max = 10, step = 1, default = Constants.Cooldown.DefaultPadding })
         if not isTracked then

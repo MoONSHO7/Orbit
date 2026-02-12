@@ -662,33 +662,24 @@ function Plugin:ApplyTrackedTextSettings(icon, systemIndex)
     local OverrideUtils = OrbitEngine.OverrideUtils
     local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
 
-    local cooldown = icon.Cooldown
-    if cooldown then
-        local timerText = cooldown.Text
-        if not timerText then
-            local regions = { cooldown:GetRegions() }
-            for _, region in ipairs(regions) do
-                if region:GetObjectType() == "FontString" then
-                    timerText = region
-                    break
-                end
+    local function StyleCooldownText(cd, posKey)
+        if not cd then return end
+        local fs = cd.Text
+        if not fs then
+            for _, region in ipairs({ cd:GetRegions() }) do
+                if region:GetObjectType() == "FontString" then fs = region; break end
             end
         end
-        if timerText then
-            local pos = positions["Timer"] or {}
-            local overrides = pos.overrides or {}
-            local defaultSize = math.max(6, baseSize + 2)
-
-            if OverrideUtils then
-                OverrideUtils.ApplyOverrides(timerText, overrides, { fontSize = defaultSize, fontPath = fontPath })
-            end
-            timerText:SetDrawLayer("OVERLAY", 7)
-
-            if ApplyTextPosition then
-                ApplyTextPosition(timerText, icon, pos)
-            end
-        end
+        if not fs then return end
+        local pos = positions[posKey] or positions["Timer"] or {}
+        local overrides = pos.overrides or {}
+        if OverrideUtils then OverrideUtils.ApplyOverrides(fs, overrides, { fontSize = math.max(6, baseSize + 2), fontPath = fontPath }) end
+        fs:SetDrawLayer("OVERLAY", 7)
+        if ApplyTextPosition then ApplyTextPosition(fs, icon, pos) end
     end
+
+    StyleCooldownText(icon.Cooldown, "Timer")
+    StyleCooldownText(icon.ActiveCooldown, "Active")
 
     local showKeybinds = not self:IsComponentDisabled("Keybind", systemIndex)
     if showKeybinds then
@@ -1808,8 +1799,6 @@ function Plugin:ApplyTrackedSettings(anchor)
     end
 
     local systemIndex = anchor.systemIndex
-    local size = self:GetSetting(systemIndex, "IconSize") or 100
-    anchor:SetScale(size / 100)
     local alpha = self:GetSetting(systemIndex, "Opacity") or 100
     OrbitEngine.NativeFrame:Modify(anchor, { alpha = alpha / 100 })
     anchor:Show()

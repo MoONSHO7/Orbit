@@ -67,10 +67,13 @@ local PREVIEW_TEXT_VALUES = {
     Keybind = "Q",
 }
 
+local PREVIEW_TEXT_COLORS = {
+    LevelText = { 1.0, 0.82, 0.0 },
+}
+
 -- [ CREATE DRAGGABLE COMPONENT ]---------------------------------------------------------
 
 local function CreateDraggableComponent(preview, key, sourceComponent, startX, startY, data)
-    -- Create a container for the component
     local container = CreateFrame("Frame", nil, preview)
     container:SetSize(100, 20)
     container:EnableMouse(true)
@@ -83,11 +86,9 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     local isIconFrame = sourceComponent and sourceComponent.Icon and sourceComponent.Icon.GetTexture
 
     if isFontString then
-        -- Clone FontString
         visual = container:CreateFontString(nil, "OVERLAY")
 
         local fontPath, fontSize, fontFlags = sourceComponent:GetFont()
-        -- Default to OUTLINE if flags is nil or empty (most WoW text uses outline)
         local flags = (fontFlags and fontFlags ~= "") and fontFlags or Orbit.Skin:GetFontOutline()
         if fontPath and fontSize then
             visual:SetFont(fontPath, fontSize, flags)
@@ -98,7 +99,6 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             visual:SetFont(fallbackPath, fallbackSize, Orbit.Skin:GetFontOutline())
         end
 
-        -- Copy text with preview fallback
         local text = PREVIEW_TEXT_VALUES[key] or "Text"
         local ok, t = pcall(function()
             return sourceComponent:GetText()
@@ -108,13 +108,14 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         end
         visual:SetText(text)
 
-        -- Copy text color
         local r, g, b, a = sourceComponent:GetTextColor()
-        if r then
+        local fallback = PREVIEW_TEXT_COLORS[key]
+        if fallback and r and r > 0.95 and g > 0.95 and b > 0.95 then
+            visual:SetTextColor(fallback[1], fallback[2], fallback[3], 1)
+        elseif r then
             visual:SetTextColor(r, g, b, a or 1)
         end
 
-        -- Copy shadow
         local sr, sg, sb, sa = sourceComponent:GetShadowColor()
         if sr then
             visual:SetShadowColor(sr, sg, sb, sa or 1)

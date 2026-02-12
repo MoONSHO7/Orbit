@@ -71,7 +71,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         if not isAnchored then
             table.insert(schema.controls, {
                 type = "slider", key = "Scale", label = "Scale",
-                min = 50, max = 200, step = 1, default = 100,
+                min = 50, max = 200, step = 5, default = 100,
             })
         end
     elseif currentTab == "Glows" then
@@ -131,14 +131,12 @@ function Plugin:OnLoad()
 
     self:ApplySettings()
 
-    -- Populate debuffs the instant RegisterUnitWatch shows the frame
     Frame:HookScript("OnShow", function()
         if not Orbit:IsEditMode() then
             self:UpdateDebuffs()
         end
     end)
 
-    -- Live resize: recalculate icons when frame size changes
     Frame:HookScript("OnSizeChanged", function()
         if Orbit:IsEditMode() then
             self:ShowPreviewAuras()
@@ -147,7 +145,7 @@ function Plugin:OnLoad()
         end
     end)
 
-    -- Events
+
     Frame:RegisterUnitEvent("UNIT_AURA", "focus")
     Frame:RegisterEvent("PLAYER_FOCUS_CHANGED")
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -203,10 +201,8 @@ function Plugin:UpdateDebuffs()
 
     local maxBuffs = iconsPerRow * maxRows
 
-    -- Use FetchAuras with HARMFUL|PLAYER filter (secret-safe)
     local debuffs = self:FetchAuras("focus", "HARMFUL|PLAYER", maxBuffs)
 
-    -- Create pool if needed
     if not Frame.auraPool then
         self:CreateAuraPool(Frame, "BackdropTemplate")
     end
@@ -216,7 +212,6 @@ function Plugin:UpdateDebuffs()
         return
     end
 
-    -- Layout
     local anchor = "TOPLEFT"
     local growthY = "DOWN"
 

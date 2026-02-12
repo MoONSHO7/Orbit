@@ -47,7 +47,7 @@ Plugin.viewerMap = VIEWER_MAP
 Plugin.indexDefaults = {
     [1] = { IconSize = 120, IconLimit = 12 }, -- Essential
     [2] = { IconSize = 90, IconLimit = 8 }, -- Utility
-    [3] = { PandemicGlowType = 1 }, -- BuffIcon (Pixel Glow)
+    [3] = { PandemicGlowType = 1 }, -- BuffIcon
 }
 
 -- Generates a spec-specific settings key, e.g. "TrackedItems_267"
@@ -252,9 +252,7 @@ function Plugin:ApplySettings(frame)
         return
     end
 
-    local size = self:GetSetting(systemIndex, "IconSize") or 100
     local alpha = self:GetSetting(systemIndex, "Opacity") or 100
-    frame:SetScale(size / 100)
     OrbitEngine.NativeFrame:Modify(frame, { alpha = alpha / 100 })
     frame:Show()
     OrbitEngine.Frame:RestorePosition(frame, self, systemIndex)

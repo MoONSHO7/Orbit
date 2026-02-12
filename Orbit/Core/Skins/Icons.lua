@@ -41,11 +41,10 @@ function Icons:ApplyManualLayout(frame, icons, settings)
         return
     end
 
-    -- Use baseIconSize from settings (authoritative) instead of reading potentially stale icon sizes
     local baseSize = settings.baseIconSize or Constants.Skin.DefaultIconSize
-    local w, h = baseSize, baseSize
+    local sizeMultiplier = (settings.size or 100) / 100
+    local w, h = baseSize * sizeMultiplier, baseSize * sizeMultiplier
 
-    -- Apply aspect ratio to match ApplyCustom's geometry calculation
     local aspectRatio = settings.aspectRatio or "1:1"
     if aspectRatio ~= "1:1" then
         local sw, sh = strsplit(":", aspectRatio)
@@ -379,10 +378,10 @@ function Icons:CalculateGeometry(frame, settings)
         return Constants.Skin.DefaultIconSize, Constants.Skin.DefaultIconSize
     end
 
-    -- Use baseIconSize if provided (ensures consistent sizing across all viewers)
     local w
     if settings and settings.baseIconSize then
-        w = settings.baseIconSize
+        local sizeMultiplier = (settings.size or 100) / 100
+        w = settings.baseIconSize * sizeMultiplier
     else
         w = frame:GetWidth()
         if w <= 0 then

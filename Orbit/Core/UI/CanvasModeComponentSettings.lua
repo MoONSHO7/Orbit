@@ -39,21 +39,26 @@ local SCALE_CONTROL = {
 }
 
 local TYPE_SCHEMAS = {
-    -- FontString elements (Name, HealthText, LevelText, etc.)
     FontString = {
         controls = {
             { type = "font", key = "Font", label = "Font" },
             { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
-            { type = "colorcurve", key = "CustomColorCurve", label = "Color" },
+            { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = false },
         },
     },
-    -- Texture/Icon elements (CombatIcon, RareEliteIcon, etc.)
     Texture = { controls = { SCALE_CONTROL } },
-    -- Skinned Button icons (DefensiveIcon, ImportantIcon, CrowdControlIcon)
     IconFrame = { controls = { SCALE_CONTROL } },
 }
 
--- Display names for components (just for the title)
+local KEY_SCHEMAS = {
+    LevelText = {
+        controls = {
+            { type = "font", key = "Font", label = "Font" },
+            { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
+        },
+    },
+}
+
 local COMPONENT_TITLES = {
     Name = "Name Text",
     HealthText = "Health Text",
@@ -277,7 +282,7 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
 
     -- Auto-detect component family from visual element
     local family = GetComponentFamily(container)
-    local schema = family and TYPE_SCHEMAS[family]
+    local schema = KEY_SCHEMAS[componentKey] or (family and TYPE_SCHEMAS[family])
 
     if not schema then
         -- Unknown component type, show generic message

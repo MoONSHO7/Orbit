@@ -15,7 +15,6 @@ local Plugin = Orbit:RegisterPlugin("Target Buffs", SYSTEM_ID, {
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
--- We still include AuraMixin for preview mode
 Mixin(Plugin, Orbit.AuraMixin)
 
 local Frame
@@ -85,7 +84,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             label = "Scale",
             min = 50,
             max = 200,
-            step = 1,
+            step = 5,
             default = 100,
         })
     end
@@ -95,7 +94,6 @@ end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    -- Container for reparented Blizzard buff frames
     Frame = CreateFrame("Frame", "OrbitTargetBuffsFrame", UIParent)
     Frame:SetSize(200, 40)
     if OrbitEngine.Pixel then
@@ -129,14 +127,12 @@ function Plugin:OnLoad()
 
     self:ApplySettings()
 
-    -- Populate buffs the instant RegisterUnitWatch shows the frame
     Frame:HookScript("OnShow", function()
         if not Orbit:IsEditMode() then
             self:UpdateBuffs()
         end
     end)
 
-    -- Live resize: recalculate icons when frame size changes
     Frame:HookScript("OnSizeChanged", function()
         if Orbit:IsEditMode() then
             self:ShowPreviewAuras()
@@ -145,7 +141,7 @@ function Plugin:OnLoad()
         end
     end)
 
-    -- Events for visibility & updates
+
     Frame:RegisterUnitEvent("UNIT_AURA", "target")
     Frame:RegisterEvent("PLAYER_TARGET_CHANGED")
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -167,7 +163,6 @@ function Plugin:OnLoad()
         end
     end)
 
-    -- Edit Mode Callbacks
     if OrbitEngine.EditMode then
         OrbitEngine.EditMode:RegisterCallbacks({
             Enter = function()
@@ -198,19 +193,17 @@ function Plugin:UpdateBuffs()
     local spacing = self:GetSetting(SYSTEM_INDEX, "Spacing") or 2
     local maxWidth = Frame:GetWidth()
 
-    -- Calculate icon size (Pixel Perfect)
-    -- Floor to avoid blurry sub-pixels.
     local totalSpacing = (iconsPerRow - 1) * spacing
     local iconSize = math.floor((maxWidth - totalSpacing) / iconsPerRow)
     if iconSize < 1 then
         iconSize = 1
     end
 
-    -- Fetch Auras
+
     local maxBuffs = iconsPerRow * maxRows
     local buffs = self:FetchAuras("target", "HELPFUL", maxBuffs)
 
-    -- Create pool if needed
+
     if not Frame.auraPool then
         self:CreateAuraPool(Frame, "BackdropTemplate")
     end
@@ -220,7 +213,6 @@ function Plugin:UpdateBuffs()
         return
     end
 
-    -- Determine anchor-aware growth direction
     local anchor = "TOPLEFT"
     local growthY = "DOWN"
 
@@ -247,7 +239,6 @@ function Plugin:UpdateBuffs()
         local icon = Frame.auraPool:Acquire()
         self:SetupAuraIcon(icon, aura, iconSize, "target", skinSettings)
 
-        -- Buffs typically use HELPFUL filter for tooltips
         self:SetupAuraTooltip(icon, aura, "target", "HELPFUL")
 
         table.insert(activeIcons, icon)
@@ -300,7 +291,7 @@ function Plugin:UpdateVisibility()
 
     Frame.unit = "target"
 
-    -- Clean up preview pool when not in edit mode
+
     if Frame.previewPool then
         Frame.previewPool:ReleaseAll()
     end
@@ -328,7 +319,6 @@ end
 
 -- [ PREVIEW ]---------------------------------------------------------------------------------------
 function Plugin:ShowPreviewAuras()
-    -- For edit mode, show placeholder icons using our own pool
     local iconsPerRow = self:GetSetting(SYSTEM_INDEX, "IconsPerRow") or 5
     local maxRows = self:GetSetting(SYSTEM_INDEX, "MaxRows") or 2
     local maxBuffs = iconsPerRow * maxRows
@@ -365,7 +355,6 @@ function Plugin:ShowPreviewAuras()
         table.insert(previews, icon)
     end
 
-    -- Determine anchor-aware growth direction (same as ReparentBlizzardBuffs)
     local anchor = "TOPLEFT"
     local growthY = "DOWN"
 
@@ -411,7 +400,6 @@ function Plugin:ApplySettings()
         end
     end
 
-    -- Calculate layout
     local iconsPerRow = self:GetSetting(SYSTEM_INDEX, "IconsPerRow") or 5
     local maxRows = self:GetSetting(SYSTEM_INDEX, "MaxRows") or 2
     local spacing = self:GetSetting(SYSTEM_INDEX, "Spacing") or 2
@@ -421,7 +409,6 @@ function Plugin:ApplySettings()
     local iconSize = math.floor((maxWidth - totalSpacing) / iconsPerRow)
     Frame.iconSize = iconSize
 
-    -- Set height based on maxRows (Fixed height)
     local height = (maxRows * iconSize) + ((maxRows - 1) * spacing)
     if height < 1 then
         height = 1

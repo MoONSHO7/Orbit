@@ -20,7 +20,6 @@ local Plugin = Orbit:RegisterPlugin("Target Debuffs", SYSTEM_ID, {
     },
 }, Orbit.Constants.PluginGroups.UnitFrames)
 
--- We still include AuraMixin for preview mode
 Mixin(Plugin, Orbit.AuraMixin)
 
 local Frame
@@ -71,7 +70,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         if not isAnchored then
             table.insert(schema.controls, {
                 type = "slider", key = "Scale", label = "Scale",
-                min = 50, max = 200, step = 1, default = 100,
+                min = 50, max = 200, step = 5, default = 100,
             })
         end
     elseif currentTab == "Glows" then
@@ -99,7 +98,6 @@ end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    -- Container for reparented Blizzard debuff frames
     Frame = CreateFrame("Frame", "OrbitTargetDebuffsFrame", UIParent)
     Frame:SetSize(200, 20)
     if OrbitEngine.Pixel then
@@ -133,14 +131,12 @@ function Plugin:OnLoad()
 
     self:ApplySettings()
 
-    -- Populate debuffs the instant RegisterUnitWatch shows the frame
     Frame:HookScript("OnShow", function()
         if not Orbit:IsEditMode() then
             self:UpdateDebuffs()
         end
     end)
 
-    -- Live resize: recalculate icons when frame size changes
     Frame:HookScript("OnSizeChanged", function()
         if Orbit:IsEditMode() then
             self:ShowPreviewAuras()
@@ -149,7 +145,7 @@ function Plugin:OnLoad()
         end
     end)
 
-    -- Events for visibility & updates
+
     Frame:RegisterUnitEvent("UNIT_AURA", "target")
     Frame:RegisterEvent("PLAYER_TARGET_CHANGED")
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -171,7 +167,6 @@ function Plugin:OnLoad()
         end
     end)
 
-    -- Edit Mode Callbacks
     if OrbitEngine.EditMode then
         OrbitEngine.EditMode:RegisterCallbacks({
             Enter = function()
@@ -202,18 +197,15 @@ function Plugin:UpdateDebuffs()
     local spacing = self:GetSetting(SYSTEM_INDEX, "Spacing") or 2
     local maxWidth = Frame:GetWidth()
 
-    -- Calculate icon size (Pixel Perfect)
     local totalSpacing = (iconsPerRow - 1) * spacing
     local iconSize = math.floor((maxWidth - totalSpacing) / iconsPerRow)
     if iconSize < 1 then
         iconSize = 1
     end
 
-    -- Fetch Auras (Player Harmful)
     local maxDebuffs = iconsPerRow * maxRows
     local debuffs = self:FetchAuras("target", "HARMFUL|PLAYER", maxDebuffs)
 
-    -- Create pool if needed
     if not Frame.auraPool then
         self:CreateAuraPool(Frame, "BackdropTemplate")
     end
@@ -223,7 +215,6 @@ function Plugin:UpdateDebuffs()
         return
     end
 
-    -- Determine anchor-aware growth direction
     local anchor = "TOPLEFT"
     local growthY = "DOWN"
 
@@ -238,7 +229,6 @@ function Plugin:UpdateDebuffs()
         end
     end
 
-    -- Skin Settings
     local skinSettings = {
         zoom = 0,
         borderStyle = 1, -- Pixel Perfect
@@ -254,7 +244,6 @@ function Plugin:UpdateDebuffs()
         local icon = Frame.auraPool:Acquire()
         self:SetupAuraIcon(icon, aura, iconSize, "target", skinSettings)
 
-        -- Tooltip: explicitly pass filter
         self:SetupAuraTooltip(icon, aura, "target", "HARMFUL|PLAYER")
 
         table.insert(activeIcons, icon)
@@ -307,7 +296,6 @@ function Plugin:UpdateVisibility()
 
     Frame.unit = "target"
 
-    -- Clean up preview pool when not in edit mode
     if Frame.previewPool then
         Frame.previewPool:ReleaseAll()
     end
@@ -335,7 +323,6 @@ end
 
 -- [ PREVIEW ]---------------------------------------------------------------------------------------
 function Plugin:ShowPreviewAuras()
-    -- For edit mode, show placeholder icons using our own pool
     local iconsPerRow = self:GetSetting(SYSTEM_INDEX, "IconsPerRow") or 5
     local maxRows = self:GetSetting(SYSTEM_INDEX, "MaxRows") or 2
     local maxBuffs = iconsPerRow * maxRows
@@ -372,7 +359,6 @@ function Plugin:ShowPreviewAuras()
         table.insert(previews, icon)
     end
 
-    -- Determine anchor-aware growth direction (same as ReparentBlizzardDebuffs)
     local anchor = "TOPLEFT"
     local growthY = "DOWN"
 
@@ -418,7 +404,6 @@ function Plugin:ApplySettings()
         end
     end
 
-    -- Calculate layout
     local iconsPerRow = self:GetSetting(SYSTEM_INDEX, "IconsPerRow") or 5
     local maxRows = self:GetSetting(SYSTEM_INDEX, "MaxRows") or 2
     local spacing = self:GetSetting(SYSTEM_INDEX, "Spacing") or 2
@@ -428,7 +413,6 @@ function Plugin:ApplySettings()
     local iconSize = math.floor((maxWidth - totalSpacing) / iconsPerRow)
     Frame.iconSize = iconSize
 
-    -- Set height based on maxRows
     local height = (maxRows * iconSize) + ((maxRows - 1) * spacing)
     if height < 1 then
         height = 1

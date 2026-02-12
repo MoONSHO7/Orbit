@@ -298,26 +298,17 @@ function Plugin:ApplySettings(frame)
     else
         frame.reactionColour = reactionColour
     end
-
-    -- Level/Visuals Extra (Mixin)
-    self:UpdateVisualsExtended(frame, systemIndex)
-
-    -- Restore saved component positions LAST (overrides any defaults set above)
-    -- Skip if in Canvas Mode to avoid resetting during editing
+    -- Restore positions before visuals (SetFont in overrides clobbers text color)
     local isInCanvasMode = OrbitEngine.ComponentEdit and OrbitEngine.ComponentEdit:IsActive(frame)
     if not isInCanvasMode then
         local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
         if savedPositions then
-            -- Apply via ComponentDrag (for LevelText, RareEliteIcon)
-            if OrbitEngine.ComponentDrag then
-                OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
-            end
-            -- Apply via UnitButton mixin (for Name/HealthText with justifyH)
-            if frame.ApplyComponentPositions then
-                frame:ApplyComponentPositions()
-            end
+            if OrbitEngine.ComponentDrag then OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions) end
+            if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
         end
     end
+
+    self:UpdateVisualsExtended(frame, systemIndex)
 
     frame:UpdateAll()
 end

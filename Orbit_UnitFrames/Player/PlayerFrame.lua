@@ -480,7 +480,16 @@ function Plugin:ApplySettings(frame)
     local classColour = true -- Enforced
     frame:SetClassColour(classColour)
 
-    -- 3. Apply Extended Visuals (Level, Combat Icon, Status Icons)
+    -- Restore positions before visuals (SetFont in overrides clobbers text color)
+    local isInCanvasMode = OrbitEngine.ComponentEdit and OrbitEngine.ComponentEdit:IsActive(frame)
+    if not isInCanvasMode then
+        local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
+        if savedPositions then
+            if OrbitEngine.ComponentDrag then OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions) end
+            if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
+        end
+    end
+
     self:UpdateVisualsExtended(frame, systemIndex)
     self:UpdateCombatIcon(frame, self)
     self:UpdateRoleIcon(frame, self)
@@ -490,30 +499,9 @@ function Plugin:ApplySettings(frame)
     self:UpdateReadyCheck(frame, self)
     self:UpdateRestingIcon(frame)
 
-    -- 4. Apply Health Text Mode
     local healthTextMode = self:GetSetting(systemIndex, "HealthTextMode") or "percent_short"
-    if frame.SetHealthTextMode then
-        frame:SetHealthTextMode(healthTextMode)
-    end
+    if frame.SetHealthTextMode then frame:SetHealthTextMode(healthTextMode) end
 
-    -- 5. Restore saved component positions LAST (overrides any defaults set above)
-    -- Skip if in Canvas Mode to avoid resetting during editing
-    local isInCanvasMode = OrbitEngine.ComponentEdit and OrbitEngine.ComponentEdit:IsActive(frame)
-    if not isInCanvasMode then
-        local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
-        if savedPositions then
-            -- Apply via ComponentDrag (for LevelText, CombatIcon)
-            if OrbitEngine.ComponentDrag then
-                OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
-            end
-            -- Apply via UnitButton mixin (for Name/HealthText with justifyH)
-            if frame.ApplyComponentPositions then
-                frame:ApplyComponentPositions()
-            end
-        end
-    end
-
-    -- 6. Apply Out of Combat Fade (with hover detection based on setting)
     if Orbit.OOCFadeMixin then
         local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
         Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover)
@@ -524,7 +512,6 @@ function Plugin:UpdateVisuals(frame)
     if frame and frame.UpdateAll then
         frame:UpdateAll()
         self:UpdateVisualsExtended(frame, PLAYER_FRAME_INDEX)
-        -- Use shared StatusIconMixin methods
         self:UpdateCombatIcon(frame, self)
         self:UpdateRoleIcon(frame, self)
         self:UpdateLeaderIcon(frame, self)

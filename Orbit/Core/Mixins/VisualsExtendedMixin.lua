@@ -1,5 +1,4 @@
--- [ ORBIT VISUALS EXTENDED MIXIN ]-----------------------------------------------------------------
--- Shared functionality for extended unit visuals (used by TargetFrame/FocusFrame)
+-- [ VISUALS EXTENDED MIXIN ]------------------------------------------------------------------------
 
 local _, addonTable = ...
 local Orbit = addonTable
@@ -7,48 +6,38 @@ local Orbit = addonTable
 Orbit.VisualsExtendedMixin = {}
 local Mixin = Orbit.VisualsExtendedMixin
 
+function Mixin:GetComponentOverrides(systemIndex, key)
+    if not self.GetSetting then return nil end
+    local positions = self:GetSetting(systemIndex, "ComponentPositions")
+    return positions and positions[key] and positions[key].overrides
+end
+
 function Mixin:UpdateLevelDisplay(frame, systemIndex)
-    if not frame or not frame.LevelText then
-        return
-    end
-    if not UnitExists(frame.unit) then
-        frame.LevelText:Hide()
-        return
-    end
-    if self.IsComponentDisabled and self:IsComponentDisabled("LevelText") then
-        frame.LevelText:Hide()
-        return
-    end
+    if not frame or not frame.LevelText then return end
+    if not UnitExists(frame.unit) then frame.LevelText:Hide() return end
+    if self.IsComponentDisabled and self:IsComponentDisabled("LevelText") then frame.LevelText:Hide() return end
     local level = UnitLevel(frame.unit)
-    if level == -1 then
-        frame.LevelText:SetText("??")
-        frame.LevelText:SetTextColor(1, 0, 0)
-        frame.LevelText:Show()
-    elseif level and level > 0 then
+    if level and level > 0 then
         local color = GetCreatureDifficultyColor(level)
         frame.LevelText:SetText(level)
         frame.LevelText:SetTextColor(color.r, color.g, color.b)
-        frame.LevelText:Show()
     else
         frame.LevelText:SetText("??")
         frame.LevelText:SetTextColor(1, 0, 0)
-        frame.LevelText:Show()
     end
+    frame.LevelText:Show()
 end
 
-function Mixin:StyleLevelText(frame, fontName)
-    if not frame or not frame.LevelText then
-        return
-    end
-    local LSM = LibStub("LibSharedMedia-3.0")
-    local fontPath = LSM:Fetch("font", fontName or Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
+function Mixin:StyleLevelText(frame, systemIndex)
+    if not frame or not frame.LevelText then return end
+    local fontPath = LibStub("LibSharedMedia-3.0"):Fetch("font", Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
     frame.LevelText:SetFont(fontPath, 10, Orbit.Skin:GetFontOutline())
+    local overrides = self:GetComponentOverrides(systemIndex, "LevelText")
+    if overrides then Orbit.Engine.OverrideUtils.ApplyFontOverrides(frame.LevelText, overrides, 10, fontPath) end
 end
 
 function Mixin:UpdateClassificationVisuals(frame, systemIndex)
-    if not frame then
-        return
-    end
+    if not frame then return end
     if self.IsComponentDisabled and self:IsComponentDisabled("RareEliteIcon") then
         if frame.RareEliteIcon then
             frame.RareEliteIcon:Hide()
@@ -91,10 +80,8 @@ function Mixin:UpdateClassificationVisuals(frame, systemIndex)
 end
 
 function Mixin:UpdateVisualsExtended(frame, systemIndex)
-    if not frame then
-        return
-    end
+    if not frame then return end
+    self:StyleLevelText(frame, systemIndex)
     self:UpdateLevelDisplay(frame, systemIndex)
-    self:StyleLevelText(frame)
     self:UpdateClassificationVisuals(frame, systemIndex)
 end

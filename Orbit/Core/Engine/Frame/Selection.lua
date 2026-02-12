@@ -184,12 +184,6 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     end
 
     local selection = CreateFrame("Frame", nil, frame, "EditModeSystemSelectionTemplate")
-
-    local parentScale = frame:GetScale()
-    if parentScale ~= 1 then
-        selection:SetScale(1 / parentScale)
-    end
-
     selection:SetAllPoints()
     selection:SetFrameStrata("HIGH")
     selection:SetFrameLevel(frame:GetFrameLevel() + 100)
@@ -478,14 +472,7 @@ end
 function Selection:ForceUpdate(frame)
     local selection = self.selections[frame]
     if selection and selection:IsShown() then
-        local parentScale = frame:GetScale()
-
         selection:ClearAllPoints()
-
-        if parentScale ~= 1 and selection:GetParent() == frame then
-            selection:SetScale(1 / parentScale)
-        end
-
         selection:SetAllPoints(frame)
         self:UpdateVisuals(frame, selection)
     end
@@ -539,13 +526,7 @@ function Selection:UpdateVisuals(frame, selection)
         return
     end
 
-    -- Compensate for parent scale
-    local parentScale = selection.parent:GetScale()
-    if parentScale and parentScale > 0.01 then
-        selection:SetScale(1 / parentScale)
-    else
-        selection:SetScale(1)
-    end
+
 
     -- Canvas Mode: Show green selection to indicate editable state
     local isComponentEdit = Engine.ComponentEdit:IsActive(selection.parent)
