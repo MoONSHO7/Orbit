@@ -1526,13 +1526,16 @@ function Plugin:RegisterTalentWatcher()
     end
     self.talentWatcherSetup = true
     local plugin = self
+    local TALENT_REPARSE_DELAY = 0.5
     local frame = CreateFrame("Frame")
-    frame:RegisterEvent("SPELLS_CHANGED")
+    frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
     frame:SetScript("OnEvent", function()
-        if InCombatLockdown() then return end
-        plugin:ReparseActiveDurations()
-        plugin:RefreshChargeMaxCharges()
-        plugin:RefreshAllTrackedLayouts()
+        C_Timer.After(TALENT_REPARSE_DELAY, function()
+            if InCombatLockdown() then return end
+            plugin:ReparseActiveDurations()
+            plugin:RefreshChargeMaxCharges()
+            plugin:RefreshAllTrackedLayouts()
+        end)
     end)
 end
 
