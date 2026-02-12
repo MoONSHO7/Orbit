@@ -519,7 +519,7 @@ function Mixin:SetupCastBarOnUpdate(bar)
         if getter then
             local ok, remaining = pcall(getter, self.durationObj)
             if ok and remaining then
-                self.Timer:SetText(remaining)
+                self.Timer:SetFormattedText("%.1f", remaining)
             end
         end
     end)

@@ -5,11 +5,11 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 local Helpers = nil -- Loaded from BossFrameHelpers.lua
 
--- [ CONSTANTS ]
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local MAX_BOSS_FRAMES = 5
 local POWER_BAR_HEIGHT_RATIO = 0.2
 
--- [ PLUGIN REGISTRATION ]
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_BossFrames"
 
 local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
@@ -38,16 +38,9 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
     },
 }, Orbit.Constants.PluginGroups.BossFrames)
 
--- Mixin Preview Logic
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.BossFramePreviewMixin, Orbit.AuraMixin)
 
--- [ HELPERS ]
-local function GetPowerColor(powerType)
-    return Orbit.Constants.Colors:GetPowerColor(powerType)
-end
-
--- [ POWER BAR CREATION & UPDATE ]
-
+-- [ POWER BAR ]--------------------------------------------------------------------------------------
 local function UpdateFrameLayout(frame, borderSize)
     Plugin:UpdateFrameLayout(frame, borderSize, { powerBarRatio = POWER_BAR_HEIGHT_RATIO })
 end
@@ -58,12 +51,10 @@ local function CreatePowerBar(parent, unit, plugin)
     power:SetPoint("BOTTOMRIGHT", -1, 1)
     power:SetHeight(parent:GetHeight() * POWER_BAR_HEIGHT_RATIO)
     power:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
-
     power:SetMinMaxValues(0, 1)
     power:SetValue(0)
     power.unit = unit
 
-    -- Background (gradient-aware)
     power.bg = power:CreateTexture(nil, "BACKGROUND")
     power.bg:SetAllPoints()
     local globalSettings = Orbit.db.GlobalSettings or {}
@@ -84,11 +75,11 @@ local function UpdatePowerBar(frame)
     local power, maxPower, powerType = UnitPower(unit), UnitPowerMax(unit), UnitPowerType(unit)
     frame.Power:SetMinMaxValues(0, maxPower)
     frame.Power:SetValue(power)
-    local color = GetPowerColor(powerType)
+    local color = Orbit.Constants.Colors:GetPowerColor(powerType)
     frame.Power:SetStatusBarColor(color.r, color.g, color.b)
 end
 
--- [ DEBUFF DISPLAY ]
+-- [ DEBUFF DISPLAY ]---------------------------------------------------------------------------------
 local function UpdateDebuffs(frame, plugin)
     if not frame.debuffContainer then
         return
@@ -146,7 +137,6 @@ local function UpdateDebuffs(frame, plugin)
             or Constants.PandemicGlow.DefaultColor,
     }
 
-    -- Layout icons
     local currentX = 0
     for i, aura in ipairs(debuffs) do
         local icon = frame.debuffPool:Acquire()
@@ -162,7 +152,16 @@ local function UpdateDebuffs(frame, plugin)
     end
 end
 
--- [ CAST BAR ]
+-- [ CAST BAR ]--------------------------------------------------------------------------------------
+local function ResolveCastBarColor(plugin)
+    return OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "CastBarColorCurve"))
+        or plugin:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
+end
+
+local function ResolveNonInterruptibleColor(plugin)
+    return OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "NonInterruptibleColorCurve"))
+        or plugin:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
+end
 
 local function CreateBossCastBar(parent, bossIndex, plugin)
     local bar = CreateFrame("StatusBar", "OrbitBoss" .. bossIndex .. "CastBar", parent)
@@ -173,43 +172,36 @@ local function CreateBossCastBar(parent, bossIndex, plugin)
     bar:SetValue(0)
     bar:Hide()
 
-    -- Background (gradient-aware)
     bar.bg = bar:CreateTexture(nil, "BACKGROUND")
     bar.bg:SetAllPoints()
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(bar, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
 
-    -- Pixel-perfect SetBorder helper (horizontal layout for icon merging)
     bar.SetBorder = function(self, size)
         Orbit.Skin:SkinBorder(self, self, size, nil, true)
     end
 
-    -- Apply default border
     bar:SetBorder(1)
 
-    -- Icon (Inside bar, left aligned)
     bar.Icon = bar:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
     bar.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
-    bar.Icon:SetSize(14, 14) -- Will be resized in ApplySettings
+    bar.Icon:SetSize(14, 14)
     bar.Icon:SetPoint("LEFT", bar, "LEFT", 0, 0)
     bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
-    bar.Icon:Hide() -- Hidden by default, shown based on setting
+    bar.Icon:Hide()
 
-    -- Icon Border
     bar.IconBorder = CreateFrame("Frame", nil, bar, "BackdropTemplate")
     bar.IconBorder:SetAllPoints(bar.Icon)
     bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + Orbit.Constants.Levels.Border)
     Orbit.Skin:SkinBorder(bar, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 }, true)
     bar.IconBorder:Hide()
 
-    -- Text (will be repositioned based on icon visibility)
     bar.Text = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     bar.Text:SetPoint("LEFT", 4, 0)
     bar.Text:SetJustifyH("LEFT")
     bar.Text:SetShadowColor(0, 0, 0, 1)
     bar.Text:SetShadowOffset(1, -1)
 
-    -- Timer
     bar.Timer = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     bar.Timer:SetPoint("RIGHT", -4, 0)
     bar.Timer:SetJustifyH("RIGHT")
@@ -244,12 +236,10 @@ local function SetupCastBarHooks(castBar, unit)
             return
         end
 
-        -- Get CastBarIcon setting (from Boss Frames, not Player Cast Bar)
         local showIcon = plugin:GetSetting(1, "CastBarIcon")
         local castBarHeight = castBar:GetHeight()
         local iconOffset = 0
 
-        -- Sync Icon
         local iconTexture
         if nativeBar.Icon then
             iconTexture = nativeBar.Icon:GetTexture()
@@ -267,7 +257,7 @@ local function SetupCastBarHooks(castBar, unit)
                 if castBar.IconBorder then
                     castBar.IconBorder:Show()
                 end
-                -- Hide cast bar's left border edge to merge with icon's right border
+
                 if castBar.Borders and castBar.Borders.Left then
                     castBar.Borders.Left:Hide()
                 end
@@ -276,14 +266,13 @@ local function SetupCastBarHooks(castBar, unit)
                 if castBar.IconBorder then
                     castBar.IconBorder:Hide()
                 end
-                -- Show cast bar's left border edge when icon is hidden
+
                 if castBar.Borders and castBar.Borders.Left then
                     castBar.Borders.Left:Show()
                 end
             end
         end
 
-        -- Adjust StatusBar texture to start after icon
         local statusBarTexture = castBar:GetStatusBarTexture()
         if statusBarTexture then
             statusBarTexture:ClearAllPoints()
@@ -293,14 +282,12 @@ local function SetupCastBarHooks(castBar, unit)
             statusBarTexture:SetPoint("BOTTOMRIGHT", castBar, "BOTTOMRIGHT", 0, 0)
         end
 
-        -- Adjust background to start after icon
         if castBar.bg then
             castBar.bg:ClearAllPoints()
             castBar.bg:SetPoint("TOPLEFT", castBar, "TOPLEFT", iconOffset, 0)
             castBar.bg:SetPoint("BOTTOMRIGHT", castBar, "BOTTOMRIGHT", 0, 0)
         end
 
-        -- Sync Text (repositioned based on icon)
         local showText = plugin:GetSetting(1, "CastBarText")
         if castBar.Text then
             castBar.Text:ClearAllPoints()
@@ -319,30 +306,19 @@ local function SetupCastBarHooks(castBar, unit)
             end
         end
 
-        -- Sync Timer Visibility
         local showTimer = plugin:GetSetting(1, "CastBarTimer")
         if castBar.Timer then
             castBar.Timer:SetShown(showTimer)
         end
 
-        -- Sync Values
         local min, max = nativeBar:GetMinMaxValues()
         if min and max then
             castBar:SetMinMaxValues(min, max)
             castBar:SetValue(nativeBar:GetValue() or 0)
         end
 
-        -- Color based on interruptible
-        if nativeBar.notInterruptible then
-            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "NonInterruptibleColorCurve"))
-                or plugin:GetSetting(1, "NonInterruptibleColor")
-                or { r = 0.7, g = 0.7, b = 0.7 }
-            castBar:SetStatusBarColor(color.r, color.g, color.b)
-        else
-            local curveData = plugin:GetSetting(1, "CastBarColorCurve")
-            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData) or plugin:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
-            castBar:SetStatusBarColor(color.r, color.g, color.b)
-        end
+        local color = nativeBar.notInterruptible and ResolveNonInterruptibleColor(plugin) or ResolveCastBarColor(plugin)
+        castBar:SetStatusBarColor(color.r, color.g, color.b)
 
         castBar:Show()
     end)
@@ -353,33 +329,30 @@ local function SetupCastBarHooks(castBar, unit)
         end
     end)
 
-    local lastUpdate, updateThrottle = 0, 1 / 60
+    local timerThrottle, timerInterval = 0, 1 / 30
     nativeSpellbar:HookScript("OnUpdate", function(nativeBar, elapsed)
-        if not castBar or not castBar:IsShown() then
-            return
-        end
-        lastUpdate = lastUpdate + elapsed
-        if lastUpdate < updateThrottle then
-            return
-        end
-        lastUpdate = 0
+        if not castBar or not castBar:IsShown() then return end
 
         local progress = nativeBar:GetValue()
         local min, max = nativeBar:GetMinMaxValues()
+        if not progress or not max then return end
+        castBar:SetMinMaxValues(min, max)
+        castBar:SetValue(progress)
 
-        if progress and max then
-            castBar:SetMinMaxValues(min, max)
-            castBar:SetValue(progress)
+        timerThrottle = timerThrottle + elapsed
+        if timerThrottle < timerInterval then return end
+        timerThrottle = 0
+        if not castBar.Timer or not castBar.Timer:IsShown() then return end
 
-            pcall(function()
-                if max <= 0 then
-                    return
-                end
-                if castBar.Timer and castBar.Timer:IsShown() then
-                    local timeLeft = nativeBar.channeling and progress or (max - progress)
-                    castBar.Timer:SetText(string.format("%.1f", timeLeft))
-                end
-            end)
+        local getDurationFn = nativeBar.channeling and UnitChannelDuration or UnitCastingDuration
+        if not getDurationFn then return end
+        local ok, dur = pcall(getDurationFn, unit)
+        if not ok or not dur then return end
+        local getter = dur.GetRemainingDuration or dur.GetRemaining
+        if not getter then return end
+        local okR, remaining = pcall(getter, dur)
+        if okR and remaining then
+            castBar.Timer:SetFormattedText("%.1f", remaining)
         end
     end)
 
@@ -388,73 +361,60 @@ local function SetupCastBarHooks(castBar, unit)
             return
         end
 
+        local color
         if event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
-            -- Note: InterruptedColor might not be exposed in PlayerCastBar public settings unless we add it
-            -- For now defaulting to red, or checking if InterruptedColor exists
             castBar:SetStatusBarColor(1, 0, 0)
         elseif event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
-            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "NonInterruptibleColorCurve"))
-                or plugin:GetSetting(1, "NonInterruptibleColor")
-                or { r = 0.7, g = 0.7, b = 0.7 }
+            color = ResolveNonInterruptibleColor(plugin)
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" or event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
-            local curveData = plugin:GetSetting(1, "CastBarColorCurve")
-            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData) or plugin:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
+            color = ResolveCastBarColor(plugin)
             castBar:SetStatusBarColor(color.r, color.g, color.b)
         end
     end)
 end
 
--- [ BOSS FRAME CREATION ]
+-- [ BOSS FRAME CREATION ]----------------------------------------------------------------------------
 local function CreateBossFrame(bossIndex, plugin)
     local unit = "boss" .. bossIndex
     local frameName = "OrbitBossFrame" .. bossIndex
 
-    -- Create base unit button
     local frame = OrbitEngine.UnitButton:Create(UIParent, unit, frameName)
     frame.editModeName = "Boss Frame " .. bossIndex
     frame.systemIndex = 1
     frame.bossIndex = bossIndex
 
-    -- IMPORTANT: Set initial size BEFORE creating child components
     local width = plugin:GetSetting(1, "Width") or 150
     local height = plugin:GetSetting(1, "Height") or 40
     frame:SetSize(width, height)
 
-    -- Set frame strata/level for visibility
     frame:SetFrameStrata("MEDIUM")
     frame:SetFrameLevel(50 + bossIndex)
 
     UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize)
 
-    -- Create power bar
     frame.Power = CreatePowerBar(frame, unit, plugin)
 
-    -- Register power events
     frame:RegisterUnitEvent("UNIT_POWER_UPDATE", unit)
     frame:RegisterUnitEvent("UNIT_MAXPOWER", unit)
     frame:RegisterUnitEvent("UNIT_DISPLAYPOWER", unit)
     frame:RegisterUnitEvent("UNIT_POWER_FREQUENT", unit)
 
-    -- Update Loop
     frame:SetScript("OnShow", function(self)
         self:UpdateAll()
         UpdatePowerBar(self)
-        UpdateFrameLayout(self, Orbit.db.GlobalSettings.BorderSize) -- Ensure layout is correct on show
+        UpdateFrameLayout(self, Orbit.db.GlobalSettings.BorderSize)
         UpdateDebuffs(self, plugin)
     end)
 
-    -- Create debuff container (start shown for preview)
     frame.debuffContainer = CreateFrame("Frame", nil, frame)
     frame.debuffContainer:SetSize(100, 20)
 
     frame:RegisterUnitEvent("UNIT_AURA", unit)
 
-    -- Create cast bar
     frame.CastBar = CreateBossCastBar(frame, bossIndex, plugin)
     plugin:PositionCastBar(frame.CastBar, frame, "Below")
 
-    -- Extended OnEvent handler
     local originalOnEvent = frame:GetScript("OnEvent")
     frame:SetScript("OnEvent", function(f, event, eventUnit, ...)
         if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
@@ -474,13 +434,7 @@ local function CreateBossFrame(bossIndex, plugin)
         end
     end)
 
-    -- UnitWatch handles visibility state securely (works in combat)
-    -- We only unregister it temporarily for Preview mode
-
-    -- Enable health text display
     frame.healthTextEnabled = true
-
-    -- Enable advanced health bar features (Absorbs, Heal Absorbs, Predictions)
     if frame.SetAbsorbsEnabled then
         frame:SetAbsorbsEnabled(true)
     end
@@ -491,9 +445,9 @@ local function CreateBossFrame(bossIndex, plugin)
     return frame
 end
 
--- [ NATIVE FRAME HIDING ]
+-- [ NATIVE FRAME HIDING ]----------------------------------------------------------------------------
 local function HideNativeBossFrames()
-    -- Hide container
+
     if BossTargetFrameContainer then
         BossTargetFrameContainer:ClearAllPoints()
         BossTargetFrameContainer:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
@@ -502,7 +456,6 @@ local function HideNativeBossFrames()
         BossTargetFrameContainer:EnableMouse(false)
     end
 
-    -- Hide individual frames
     for i = 1, MAX_BOSS_FRAMES do
         local bossFrame = _G["Boss" .. i .. "TargetFrame"]
         if bossFrame then
@@ -530,7 +483,7 @@ local function HideNativeBossFrames()
     end
 end
 
--- [ SETTINGS UI ]
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = 1
@@ -593,7 +546,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 
 function Plugin:OnLoad()
     HideNativeBossFrames()
@@ -631,7 +584,6 @@ function Plugin:OnLoad()
     self.container:Show()
     self.container:SetSize(self:GetSetting(1, "Width") or 150, 100)
     self:PositionFrames()
-    self:PositionFrames()
     self:ApplySettings()
 
     local eventFrame = CreateFrame("Frame")
@@ -641,7 +593,7 @@ function Plugin:OnLoad()
     eventFrame:RegisterEvent("UNIT_TARGETABLE_CHANGED")
 
     eventFrame:SetScript("OnEvent", function(_, event)
-        -- Update on Engage (Start), Regen Disabled (Combat Start), Regen Enabled (Combat End/Death), Targetable Change (Phasing)
+
         if
             event == "INSTANCE_ENCOUNTER_ENGAGE_UNIT"
             or event == "PLAYER_REGEN_DISABLED"
@@ -657,7 +609,6 @@ function Plugin:OnLoad()
             end
         end
 
-        -- Update container size if out of combat (resizing in combat is protected if it moves anchors)
         if not InCombatLockdown() then
             self:UpdateContainerSize()
         end
@@ -665,12 +616,11 @@ function Plugin:OnLoad()
 
     self:RegisterStandardEvents()
 
-    -- Edit Mode callbacks (guard against duplicate registration)
     if EventRegistry and not self.editModeCallbacksRegistered then
         self.editModeCallbacksRegistered = true
 
         EventRegistry:RegisterCallback("EditMode.Enter", function()
-            -- Edit Mode auto-exits on combat start, so no deferral needed here
+
             if not InCombatLockdown() then
                 UnregisterStateDriver(self.container, "visibility")
                 self.container:Show()
@@ -684,7 +634,6 @@ function Plugin:OnLoad()
         EventRegistry:RegisterCallback("EditMode.Exit", function()
             self:HidePreview()
 
-            -- Re-register visibility driver for normal gameplay
             if not InCombatLockdown() then
                 local visibilityDriver =
                     "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
@@ -694,7 +643,6 @@ function Plugin:OnLoad()
         end, self)
     end
 
-    -- Initial update
     if not InCombatLockdown() then
         self:UpdateContainerSize()
     end
@@ -711,7 +659,6 @@ function Plugin:CalculateFrameSpacing(index)
     local spacing = 2
     local iconSize = 0
 
-    -- Calculate icon size for horizontal layout
     if debuffPos == "Above" or debuffPos == "Below" then
         local totalSpacing = (maxDebuffs - 1) * spacing
         iconSize = (frameWidth - totalSpacing) / maxDebuffs
@@ -724,14 +671,12 @@ function Plugin:CalculateFrameSpacing(index)
     local bottomPadding = 0
     local elementGap = 2
 
-    -- Cast Bar Spacing
     if castBarPos == "Above" then
         topPadding = topPadding + castBarHeight + castBarGap
     elseif castBarPos == "Below" then
         bottomPadding = bottomPadding + castBarHeight + castBarGap
     end
 
-    -- Debuff Spacing
     if debuffPos == "Above" then
         topPadding = topPadding + iconSize + elementGap
     elseif debuffPos == "Below" then
@@ -747,7 +692,6 @@ function Plugin:PositionFrames()
     end
     local baseSpacing = 2
     local frameHeight = self:GetSetting(1, "Height") or 40
-    local totalHeight = 0
 
     for i, frame in ipairs(self.frames) do
         frame:ClearAllPoints()
@@ -792,7 +736,7 @@ function Plugin:UpdateContainerSize()
 
     for i = 1, lastVisibleIndex do
         totalHeight = totalHeight + self.frames[i]:GetHeight()
-        local t, b = self:CalculateFrameSpacing(i)
+        local _, b = self:CalculateFrameSpacing(i)
         if i < lastVisibleIndex then
             local _, prevB = self:CalculateFrameSpacing(i)
             local nextT, _ = self:CalculateFrameSpacing(i + 1)
@@ -806,7 +750,7 @@ function Plugin:UpdateContainerSize()
     self.container:SetScale(scale)
 end
 
--- [ SETTINGS APPLICATION ]
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:ApplySettings()
     if not self.frames or InCombatLockdown() then
         return
@@ -818,7 +762,6 @@ function Plugin:ApplySettings()
     local castBarPosition = self:GetSetting(1, "CastBarPosition") or "Below"
     local castBarHeight = self:GetSetting(1, "CastBarHeight") or 14
 
-    -- Global Fallbacks
     local borderSize = self:GetSetting(1, "BorderSize") or self:GetPlayerSetting("BorderSize") or 1
     local textureName = self:GetSetting(1, "Texture") or self:GetPlayerSetting("Texture")
     local fontName = self:GetSetting(1, "Font") or self:GetPlayerSetting("Font")
@@ -829,25 +772,21 @@ function Plugin:ApplySettings()
     local texturePath = LSM:Fetch("statusbar", textureName)
 
     for i, frame in ipairs(self.frames) do
-        -- Store border size for OnShow
+
         frame.borderSize = borderSize
 
-        -- Size
         frame:SetSize(width, height)
         frame:SetScale(scale / 100)
 
-        -- Default Colors
         if frame.SetReactionColour then
             frame:SetReactionColour(reactionColour)
         end
         if frame.SetClassColour then
-            frame:SetClassColour(not reactionColour) -- Prioritize reaction color
+            frame:SetClassColour(not reactionColour)
         end
 
-        -- Border (must come BEFORE Layout Update because SetBorder resets anchors)
         frame:SetBorder(borderSize)
 
-        -- Adjust layout (Correct order: SetBorder -> UpdateFrameLayout)
         UpdateFrameLayout(frame, borderSize)
 
         if frame.Health and textureName then
@@ -860,7 +799,6 @@ function Plugin:ApplySettings()
             end
         end
 
-        -- Fonts
         Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)
         Orbit.Skin:ApplyUnitFrameText(frame.HealthText, "RIGHT", nil, textSize)
 
@@ -868,7 +806,6 @@ function Plugin:ApplySettings()
             frame.CastBar:SetSize(width, castBarHeight)
             self:PositionCastBar(frame.CastBar, frame, castBarPosition)
 
-            -- Apply pixel-perfect border
             if frame.CastBar.SetBorder then
                 frame.CastBar:SetBorder(borderSize)
             end
@@ -887,19 +824,15 @@ function Plugin:ApplySettings()
             end
         end
 
-        -- Always update visuals for real frames (preview uses separate frames)
         frame:UpdateAll()
         UpdatePowerBar(frame)
         UpdateDebuffs(frame, self)
     end
 
-    -- Reposition frames within container
     self:PositionFrames()
 
-    -- Restore position for container (the selectable frame)
     OrbitEngine.Frame:RestorePosition(self.container, self, 1)
 
-    -- Re-apply preview visuals if in preview mode
     if self.isPreviewActive then
         self:SchedulePreviewUpdate()
     end

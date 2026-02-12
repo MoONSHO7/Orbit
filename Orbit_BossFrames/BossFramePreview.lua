@@ -50,7 +50,6 @@ function Orbit.BossFramePreviewMixin:ShowPreview()
     end
     self:PositionFrames()
     self:UpdateContainerSize()
-    self:UpdateContainerSize()
 
     C_Timer.After(DEBOUNCE_DELAY, function()
         if self.frames then
