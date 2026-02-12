@@ -21,11 +21,22 @@ local CONTROL_BTN_SPACING = 1
 local COLOR_GREEN = { r = 0.2, g = 0.9, b = 0.2 }
 local COLOR_RED = { r = 0.9, g = 0.2, b = 0.2 }
 
--- Desaturation curve: 0% remaining (ready) = colored, >0% remaining (on CD) = grayscale
 local DESAT_CURVE = C_CurveUtil.CreateCurve()
 DESAT_CURVE:AddPoint(0.0, 0)
 DESAT_CURVE:AddPoint(0.001, 1)
 DESAT_CURVE:AddPoint(1.0, 1)
+
+-- Spells where the first tooltip duration isn't the correct active phase
+local ACTIVE_DURATION_OVERRIDES = {
+    [1122]  = 30,  -- Summon Infernal: first match is 2s stun, pet lasts 30s
+    [633]   = 0,   -- Lay on Hands: instant, Forbearance is not active phase
+    [48743] = 0,   -- Death Pact: instant heal, absorb debuff is not active phase
+}
+
+-- [ SPELL OVERRIDE HELPERS ]------------------------------------------------------------------------
+local function GetActiveSpellID(spellID)
+    return FindSpellOverrideByID(spellID)
+end
 
 -- [ ACTIVE DURATION PARSING ]-----------------------------------------------------------------------
 local function StripEscapes(text)
@@ -35,7 +46,8 @@ local function StripEscapes(text)
 end
 
 local function ParseActiveDuration(itemType, id)
-    local text = nil
+    if itemType == "spell" and ACTIVE_DURATION_OVERRIDES[id] then return ACTIVE_DURATION_OVERRIDES[id] end
+    local text
     if itemType == "spell" then
         text = C_Spell.GetSpellDescription(id)
     elseif itemType == "item" then
@@ -46,20 +58,13 @@ local function ParseActiveDuration(itemType, id)
             end
         end
     end
-    if not text then
-        return nil
-    end
+    if not text then return nil end
     text = StripEscapes(text)
-    local best = nil
     for _, pattern in ipairs({ "for (%d+%.?%d*) sec", "lasts (%d+%.?%d*) sec", "over (%d+%.?%d*) sec" }) do
-        for num in text:gmatch(pattern) do
-            local n = tonumber(num)
-            if n and (not best or n > best) then
-                best = n
-            end
-        end
+        local num = text:match(pattern)
+        if num then return tonumber(num) end
     end
-    return best
+    return nil
 end
 
 local function ParseCooldownDuration(itemType, id)
@@ -429,8 +434,6 @@ function Plugin:RestoreChildFrames()
     end
 end
 
--- Clear stale anchor/position data from a tracked frame with no items for the current spec.
--- Handles both directions: outbound (this frame anchored to X) and inbound (X anchored to this frame).
 function Plugin:ClearStaleTrackedSpatial(frame, sysIndex)
     if not frame or (frame.gridItems and next(frame.gridItems)) then
         return
@@ -451,16 +454,16 @@ end
 -- [ COOLDOWN VALIDATION ]---------------------------------------------------------------------------
 local function HasCooldown(itemType, id)
     if itemType == "spell" then
-        local cd = GetSpellBaseCooldown(id)
+        local activeId = GetActiveSpellID(id)
+        local cd = GetSpellBaseCooldown(activeId)
         if cd and cd > 0 then
             return true
         end
-        local ci = C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(id)
+        local ci = C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
         if ci and ci.maxCharges and ci.maxCharges > 1 then
             return true
         end
-        -- Fallback: check tooltip for cooldown text (catches talent-granted cooldowns)
-        return ParseCooldownDuration("spell", id) ~= nil
+        return ParseCooldownDuration("spell", activeId) ~= nil
     elseif itemType == "item" then
         return ParseCooldownDuration("item", id) ~= nil
     end
@@ -474,7 +477,7 @@ local function IsDraggingCooldownAbility()
     end
     if cursorType == "spell" then
         local actualId = spellID or id
-        if subType and subType ~= "" then
+        if not spellID and subType and subType ~= "" then
             local bookInfo = C_SpellBook.GetSpellBookItemInfo(id, Enum.SpellBookSpellBank[subType] or Enum.SpellBookSpellBank.Player)
             if bookInfo and bookInfo.spellID then
                 actualId = bookInfo.spellID
@@ -497,7 +500,7 @@ function Plugin:OnEdgeAddButtonClick(anchor, x, y)
     local actualId = id
     if cursorType == "spell" then
         actualId = spellID or id
-        if subType and subType ~= "" then
+        if not spellID and subType and subType ~= "" then
             local bookInfo = C_SpellBook.GetSpellBookItemInfo(id, Enum.SpellBookSpellBank[subType] or Enum.SpellBookSpellBank.Player)
             if bookInfo and bookInfo.spellID then
                 actualId = bookInfo.spellID
@@ -527,14 +530,12 @@ function Plugin:OnTrackedIconReceiveDrag(icon)
     local actualId = id
     if cursorType == "spell" then
         actualId = spellID or id
-        if subType and subType ~= "" then
+        if not spellID and subType and subType ~= "" then
             local bookInfo = C_SpellBook.GetSpellBookItemInfo(id, Enum.SpellBookSpellBank[subType] or Enum.SpellBookSpellBank.Player)
             if bookInfo and bookInfo.spellID then
                 actualId = bookInfo.spellID
             end
         end
-    elseif cursorType == "item" then
-        actualId = id
     end
 
     if not HasCooldown(cursorType, actualId) then
@@ -661,7 +662,6 @@ function Plugin:ApplyTrackedTextSettings(icon, systemIndex)
     local OverrideUtils = OrbitEngine.OverrideUtils
     local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
 
-    -- Timer
     local cooldown = icon.Cooldown
     if cooldown then
         local timerText = cooldown.Text
@@ -690,7 +690,6 @@ function Plugin:ApplyTrackedTextSettings(icon, systemIndex)
         end
     end
 
-    -- Keybind
     local showKeybinds = not self:IsComponentDisabled("Keybind", systemIndex)
     if showKeybinds then
         local keybind = icon.OrbitKeybind
@@ -757,8 +756,9 @@ function Plugin:SaveTrackedItem(systemIndex, x, y, itemType, itemId)
     local tracked = self:GetSetting(systemIndex, self:GetSpecKey("TrackedItems")) or {}
     local key = GridKey(x, y)
     if itemType and itemId then
-        local actDur = ParseActiveDuration(itemType, itemId)
-        local cdDur = ParseCooldownDuration(itemType, itemId)
+        local parseId = (itemType == "spell") and GetActiveSpellID(itemId) or itemId
+        local actDur = ParseActiveDuration(itemType, parseId)
+        local cdDur = ParseCooldownDuration(itemType, parseId)
         tracked[key] = { type = itemType, id = itemId, x = x, y = y, activeDuration = actDur, cooldownDuration = cdDur }
     else
         tracked[key] = nil
@@ -769,7 +769,6 @@ end
 function Plugin:LoadTrackedItems(anchor, systemIndex)
     local tracked = self:GetSetting(systemIndex, self:GetSpecKey("TrackedItems")) or {}
 
-    -- Migration: convert old slot-based data to coordinate-based
     local needsMigration = false
     for key, data in pairs(tracked) do
         if type(key) == "number" then
@@ -790,7 +789,6 @@ function Plugin:LoadTrackedItems(anchor, systemIndex)
         self:SetSetting(systemIndex, self:GetSpecKey("TrackedItems"), tracked)
     end
 
-    -- Deep copy to avoid shared reference between frames
     local copy = {}
     for k, v in pairs(tracked) do
         copy[k] = { type = v.type, id = v.id, x = v.x, y = v.y, activeDuration = v.activeDuration, cooldownDuration = v.cooldownDuration }
@@ -804,7 +802,9 @@ local function IsSpellUsable(spellId)
     if not spellId then
         return false
     end
-    return IsSpellKnown(spellId) or IsPlayerSpell(spellId)
+    if IsSpellKnown(spellId) or IsPlayerSpell(spellId) then return true end
+    local activeId = GetActiveSpellID(spellId)
+    return activeId ~= spellId and (IsSpellKnown(activeId) or IsPlayerSpell(activeId))
 end
 
 local function IsItemUsable(itemId)
@@ -880,8 +880,17 @@ function Plugin:UpdateTrackedIcon(icon)
 
     local systemIndex = icon.systemIndex or TRACKED_INDEX
     local showGCDSwipe = self:GetSetting(systemIndex, "ShowGCDSwipe") ~= false
+    local showActiveDuration = self:GetSetting(systemIndex, "ShowActiveDuration") ~= false
+    if not showActiveDuration then
+        icon.activeDuration = nil
+        icon.desatCurve = nil
+        icon.cdAlphaCurve = nil
+        if icon._activeGlowing then Plugin:StopActiveGlow(icon) end
+        icon._activeGlowExpiry = nil
+        icon.ActiveCooldown:Clear()
+    end
 
-    local texture, durObj = nil, nil
+    local texture, durObj
     local isUsable = false
 
     if icon.trackedType == "spell" then
@@ -891,12 +900,13 @@ function Plugin:UpdateTrackedIcon(icon)
             return
         end
 
-        texture = C_Spell.GetSpellTexture(icon.trackedId)
+        local activeId = GetActiveSpellID(icon.trackedId)
+        texture = C_Spell.GetSpellTexture(activeId)
         if texture then
             icon.Icon:SetTexture(texture)
-            local cdInfo = C_Spell.GetSpellCooldown(icon.trackedId) or {}
+            local cdInfo = C_Spell.GetSpellCooldown(activeId) or {}
             local onGCD = cdInfo.isOnGCD
-            local chargeInfo = icon.isChargeSpell and C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(icon.trackedId)
+            local chargeInfo = icon.isChargeSpell and C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
 
             if chargeInfo then
                 if not issecretvalue(chargeInfo.currentCharges) then
@@ -907,7 +917,7 @@ function Plugin:UpdateTrackedIcon(icon)
                         or nil
                 end
                 CooldownUtils:TrackChargeCompletion(icon)
-                local chargeDurObj = C_Spell.GetSpellChargeDuration and C_Spell.GetSpellChargeDuration(icon.trackedId)
+                local chargeDurObj = C_Spell.GetSpellChargeDuration and C_Spell.GetSpellChargeDuration(activeId)
                 if chargeDurObj then
                     icon.Cooldown:SetCooldownFromDurationObject(chargeDurObj, true)
                 else
@@ -918,16 +928,22 @@ function Plugin:UpdateTrackedIcon(icon)
                 local allConsumed = icon._trackedCharges and icon._trackedCharges == 0
                 icon.Icon:SetDesaturation(allConsumed and 1 or 0)
                 icon.Cooldown:SetAlpha(1)
-                icon.ActiveCooldown:Clear()
-                if icon._activeGlowing then
-                    Plugin:StopActiveGlow(icon)
+                if icon.activeDuration and icon._activeGlowExpiry and GetTime() < icon._activeGlowExpiry then
+                    icon.Cooldown:Clear()
+                    local castTime = icon._activeGlowExpiry - icon.activeDuration
+                    icon.ActiveCooldown:SetCooldown(castTime, icon.activeDuration)
+                    if not icon._activeGlowing then Plugin:StartActiveGlow(icon) end
+                else
+                    icon.ActiveCooldown:Clear()
+                    if icon._activeGlowing then Plugin:StopActiveGlow(icon) end
+                    icon._activeGlowExpiry = nil
                 end
             elseif onGCD and not showGCDSwipe then
                 icon.Cooldown:Clear()
                 icon.ActiveCooldown:Clear()
                 icon.Icon:SetDesaturation(0)
             else
-                durObj = C_Spell.GetSpellCooldownDuration(icon.trackedId)
+                durObj = C_Spell.GetSpellCooldownDuration(activeId)
                 if durObj then
                     icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
                     icon.Icon:SetDesaturation(onGCD and 0 or durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE))
@@ -960,7 +976,7 @@ function Plugin:UpdateTrackedIcon(icon)
                     end
                 end
             end
-            local displayCount = chargeInfo and chargeInfo.currentCharges or C_Spell.GetSpellDisplayCount(icon.trackedId)
+            local displayCount = chargeInfo and chargeInfo.currentCharges or C_Spell.GetSpellDisplayCount(activeId)
             if displayCount then
                 icon.CountText:SetText(displayCount)
                 icon.CountText:Show()
@@ -975,7 +991,7 @@ function Plugin:UpdateTrackedIcon(icon)
         if texture then
             icon.Icon:SetTexture(texture)
             if not isUsable then
-                -- Depleted: desaturated icon, no cooldown, show "0"
+
                 icon.Cooldown:Clear()
                 icon.ActiveCooldown:Clear()
                 icon.Icon:SetDesaturation(1)
@@ -1115,7 +1131,6 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
     local isDragging = IsDraggingCooldownAbility()
     local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
 
-    -- Filter to only usable items (prevents cross-character ability bleed)
     local gridItems = {}
     for key, data in pairs(rawGridItems) do
         if IsGridItemUsable(data) then
@@ -1123,7 +1138,6 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         end
     end
 
-    -- Hide all existing icons and edge buttons
     for _, icon in pairs(anchor.activeIcons or {}) do
         icon:Hide()
     end
@@ -1131,7 +1145,6 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         btn:Hide()
     end
 
-    -- Calculate grid bounds from usable items only
     local minX, maxX, minY, maxY
     local hasItems = false
     for key, data in pairs(gridItems) do
@@ -1150,14 +1163,12 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         minX, maxX, minY, maxY = 0, 0, 0, 0
     end
 
-    -- Handle empty grid
     if not hasItems then
-        -- Hide placeholders when showing seed button
+
         for _, placeholder in ipairs(anchor.placeholders or {}) do
             placeholder:Hide()
         end
 
-        -- Show seed button in edit mode OR when dragging
         if isEditMode or isDragging then
             anchor.edgeButtons = anchor.edgeButtons or {}
             local btn = anchor.edgeButtons[1]
@@ -1208,12 +1219,10 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         return
     end
 
-    -- Hide placeholders
     for _, placeholder in ipairs(anchor.placeholders or {}) do
         placeholder:Hide()
     end
 
-    -- Initialize pools if needed
     if not anchor.recyclePool then
         anchor.recyclePool = {}
     end
@@ -1221,10 +1230,8 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         anchor.activeIcons = {}
     end
 
-    -- Release all icons to pool for redistribution
     self:ReleaseTrackedIcons(anchor)
 
-    -- Acquire icons for current grid items
     for key, data in pairs(gridItems) do
         local x, y = ParseGridKey(key)
         local icon = self:AcquireTrackedIcon(anchor, systemIndex)
@@ -1285,29 +1292,23 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
 
     self:UpdateTrackedIconsDisplay(anchor)
 
-    -- Calculate anchor size
     local gridW = (maxX - minX + 1)
     local gridH = (maxY - minY + 1)
     local totalW = gridW * iconWidth + (gridW - 1) * padding
     local totalH = gridH * iconHeight + (gridH - 1) * padding
 
-    -- Create edge buttons when dragging using WFC adjacency detection
     anchor.edgeButtons = anchor.edgeButtons or {}
     if isDragging then
         local edgePositions = {}
         local checked = {}
 
-        -- Determine blocked edges based on anchor relationships
         local blockedDirections = {}
         local FrameAnchor = OrbitEngine.FrameAnchor
         if FrameAnchor then
-            -- Check if this anchor is a child anchored to something
+
             local anchorData = FrameAnchor.anchors and FrameAnchor.anchors[anchor]
             if anchorData and anchorData.edge then
-                -- If anchored via BOTTOM → our TOP touches parent → block upward (y-1)
-                -- If anchored via TOP → our BOTTOM touches parent → block downward (y+1)
-                -- If anchored via LEFT → our RIGHT touches parent → block leftward (x-1)
-                -- If anchored via RIGHT → our LEFT touches parent → block rightward (x+1)
+
                 if anchorData.edge == "BOTTOM" then
                     blockedDirections.top = true
                 elseif anchorData.edge == "TOP" then
@@ -1319,7 +1320,6 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
                 end
             end
 
-            -- Check if something is anchored TO us (we are the parent)
             for child, childAnchor in pairs(FrameAnchor.anchors or {}) do
                 if childAnchor.parent == anchor then
                     if childAnchor.edge == "TOP" then
@@ -1335,12 +1335,11 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
             end
         end
 
-        -- For each existing icon, check all 4 adjacent cells
         for key, _ in pairs(gridItems) do
             local x, y = ParseGridKey(key)
             if x then
                 local neighbors = {}
-                -- Only block direction if this icon is ON the blocked edge
+
                 local blockLeft = blockedDirections.left and x == minX
                 local blockRight = blockedDirections.right and x == maxX
                 local blockTop = blockedDirections.top and y == minY
@@ -1371,7 +1370,6 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
             end
         end
 
-        -- Calculate extended bounds including edge buttons
         local extendedMinX, extendedMaxX = minX, maxX
         local extendedMinY, extendedMaxY = minY, maxY
         for _, pos in ipairs(edgePositions) do
@@ -1428,13 +1426,11 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
             btn.PulseAnim:Play()
         end
 
-        -- Update anchor size to include edge button area
         local extendedW = (extendedMaxX - extendedMinX + 1)
         local extendedH = (extendedMaxY - extendedMinY + 1)
         totalW = extendedW * iconWidth + (extendedW - 1) * padding
         totalH = extendedH * iconHeight + (extendedH - 1) * padding
 
-        -- Reposition icons to account for edge buttons
         for key, icon in pairs(anchor.activeIcons) do
             local posX = (icon.gridX - extendedMinX) * (iconWidth + padding)
             local posY = -(icon.gridY - extendedMinY) * (iconHeight + padding)
@@ -1488,8 +1484,9 @@ function Plugin:ReparseActiveDurations()
         local changed = false
         for key, data in pairs(tracked) do
             if data.id then
-                local newActDur = ParseActiveDuration(data.type, data.id)
-                local newCdDur = ParseCooldownDuration(data.type, data.id)
+                local parseId = (data.type == "spell") and GetActiveSpellID(data.id) or data.id
+                local newActDur = ParseActiveDuration(data.type, parseId)
+                local newCdDur = ParseCooldownDuration(data.type, parseId)
                 if newActDur ~= data.activeDuration or newCdDur ~= data.cooldownDuration then
                     data.activeDuration = newActDur
                     data.cooldownDuration = newCdDur
@@ -1530,28 +1527,43 @@ function Plugin:RegisterTalentWatcher()
     self.talentWatcherSetup = true
     local plugin = self
     local frame = CreateFrame("Frame")
-    frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
-    frame:SetScript("OnEvent", function(_, event)
+    frame:RegisterEvent("SPELLS_CHANGED")
+    frame:SetScript("OnEvent", function()
         plugin:ReparseActiveDurations()
+        plugin:RefreshChargeMaxCharges()
+        plugin:RefreshAllTrackedLayouts()
     end)
 end
 
+function Plugin:RefreshAllTrackedLayouts()
+    local viewerMap = GetViewerMap()
+    local entry = viewerMap[TRACKED_INDEX]
+    if entry and entry.anchor then
+        self:LoadTrackedItems(entry.anchor, TRACKED_INDEX)
+    end
+    for _, childData in pairs(self.activeChildren) do
+        if childData.frame then
+            self:LoadTrackedItems(childData.frame, childData.systemIndex)
+        end
+    end
+end
+
 function Plugin:ReloadTrackedForSpec()
-    -- Reload tracked abilities for main anchor
+
     local viewerMap = GetViewerMap()
     local entry = viewerMap[TRACKED_INDEX]
     if entry and entry.anchor then
         self:LoadTrackedItems(entry.anchor, TRACKED_INDEX)
         self:ClearStaleTrackedSpatial(entry.anchor, TRACKED_INDEX)
     end
-    -- Reload child anchors
+
     for _, childData in pairs(self.activeChildren) do
         if childData.frame then
             self:LoadTrackedItems(childData.frame, childData.frame.systemIndex)
             self:ClearStaleTrackedSpatial(childData.frame, childData.frame.systemIndex)
         end
     end
-    -- Reload charge bars
+
     self:ReloadChargeBarsForSpec()
 end
 

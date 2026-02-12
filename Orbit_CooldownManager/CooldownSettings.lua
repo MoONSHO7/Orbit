@@ -107,6 +107,9 @@ function CDM:AddSettings(dialog, systemFrame)
         if not isTracked then
             table.insert(schema.controls, { type = "slider", key = "IconLimit", label = "# Columns", min = 1, max = 20, step = 1, default = Constants.Cooldown.DefaultLimit })
         end
+        if isTracked then
+            table.insert(schema.controls, { type = "checkbox", key = "ShowActiveDuration", label = "Active Duration", default = true })
+        end
     elseif currentTab == "Glow" then
         table.insert(schema.controls, { type = "checkbox", key = "ShowGCDSwipe", label = "Show GCD Swipe", default = true })
         if not isTracked then
