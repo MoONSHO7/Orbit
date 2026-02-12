@@ -31,7 +31,6 @@ local DROPPABLE_CURSOR_TYPES = {
 }
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
--- Each action bar gets its own Orbit container (not using Blizzard Edit Mode)
 local BAR_CONFIG = {
     -- Standard Action Bars
     {
@@ -131,24 +130,21 @@ local BAR_CONFIG = {
 
 local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     defaults = {
-        Orientation = 0, -- 0 = Horizontal, 1 = Vertical
+        Orientation = 0,
         Scale = 90,
         IconPadding = 2,
         Rows = 1,
         Opacity = 100,
         HideEmptyButtons = false,
-        -- Per-bar sync toggle (true = use global style, false = use local)
         UseGlobalTextStyle = true,
-        -- Canvas Mode component visibility (Keybind enabled by default)
         DisabledComponents = {},
-        -- Default component positions for Reset functionality
         ComponentPositions = {
             Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 1, offsetY = 7, justifyH = "RIGHT" },
             MacroText = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 1, offsetY = 6, justifyH = "LEFT", overrides = { FontSize = 10 } },
             Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, justifyH = "CENTER" },
             Stacks = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 5, justifyH = "RIGHT" },
         },
-        -- Global component positions (shared across all synced bars)
+
         GlobalComponentPositions = {
             Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 1, offsetY = 7, justifyH = "RIGHT" },
             MacroText = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 1, offsetY = 6, justifyH = "LEFT", overrides = { FontSize = 10 } },
@@ -165,7 +161,6 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
 
 Plugin.canvasMode = true
 
--- Apply NativeBarMixin for mouse-over fade
 Mixin(Plugin, Orbit.NativeBarMixin)
 
 Plugin.containers = {}
@@ -192,7 +187,6 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     local schema = { hideNativeSettings = true, controls = {} }
 
-    -- Vehicle Exit: simple scale-only config
     if systemIndex == VEHICLE_EXIT_INDEX then
         WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
             key = "Scale",
@@ -376,52 +370,43 @@ end
 
 -- [ LIFECYCLE ]----------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    -- Create containers immediately
     self:InitializeContainers()
     self:CreateVehicleExitButton()
 
-    -- Setup Canvas Mode previews for each container
     for index, container in pairs(self.containers) do
         self:SetupCanvasPreview(container, index)
     end
 
-    -- Register standard events (Handle PEW, EditMode -> ApplySettings)
+    -- Need to set blizzard bars to 12 or our bars dissapear into the netherealm
+    self:PatchEditModeNumIcons()
+
     self:RegisterStandardEvents()
 
     Orbit.EventBus:On("PLAYER_REGEN_ENABLED", self.OnCombatEnd, self)
 
-    -- Catch delayed button creation/native bar updates
     Orbit.EventBus:On("UPDATE_MULTI_CAST_ACTIONBAR", function()
         C_Timer.After(0.1, function()
             self:ApplyAll()
         end)
     end, self)
 
-    -- Force refresh range indicators when target changes (fixes desaturation persisting after target change)
-    Orbit.EventBus:On("PLAYER_TARGET_CHANGED", function()
-        -- Force all action buttons to update on any target change
-        for index, buttons in pairs(self.buttons) do
-            for _, button in ipairs(buttons) do
-                if button and button.icon and button.action then
-                    -- Check if action is in range
-                    local inRange = IsActionInRange(button.action)
-                    -- nil = no range requirement, true = in range, false = out of range
-                    if inRange == false then
-                        button.icon:SetDesaturated(true)
-                    else
-                        button.icon:SetDesaturated(false)
-                    end
-                end
-            end
-        end
-    end, self)
+    hooksecurefunc("ActionButton_UpdateRangeIndicator", function(btn, checksRange, inRange)
+        if not btn or not btn.icon then return end
+        local outOfRange = checksRange and not inRange
+        btn.orbitOutOfRange = outOfRange
+        btn.icon:SetDesaturated(outOfRange)
+    end)
 
-    -- Register for cursor changes to show/hide empty slots when dragging spells
+    hooksecurefunc(ActionBarActionButtonMixin, "Update", function(btn)
+        if btn.orbitOutOfRange and btn.icon then
+            btn.icon:SetDesaturated(true)
+        end
+    end)
+
     Orbit.EventBus:On("CURSOR_CHANGED", function()
         local cursorType = GetCursorInfo()
         local isDraggingDroppable = DROPPABLE_CURSOR_TYPES[cursorType]
 
-        -- Track drag state to know when to re-hide buttons after drop
         local wasDragging = self.isDraggingDroppable
 
         if isDraggingDroppable then
@@ -443,13 +428,44 @@ function Plugin:OnLoad()
     end, self)
 end
 
+-- [ EDIT MODE NUM ICONS PATCH ]------------------------------------------------------------------
+StaticPopupDialogs["ORBIT_ACTIONBARS_RELOAD"] = {
+    text = "Orbit has updated your Edit Mode action bar settings.\nA reload is required for changes to take effect.",
+    button1 = "Reload UI",
+    OnAccept = ReloadUI,
+    timeout = 0, whileDead = true, hideOnEscape = false,
+}
+
+function Plugin:PatchEditModeNumIcons()
+    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+        local layoutInfo = not InCombatLockdown() and EditModeManagerFrame and EditModeManagerFrame.layoutInfo
+        if not layoutInfo then return end
+        local dirty = false
+        for _, layout in ipairs(layoutInfo.layouts) do
+            if not layout.systems then break end
+            for _, sys in ipairs(layout.systems) do
+                if sys.system == Enum.EditModeSystem.ActionBar then
+                    for _, s in ipairs(sys.settings) do
+                        if s.setting == Enum.EditModeActionBarSetting.NumIcons and s.value < 12 then
+                            s.value = 12
+                            dirty = true
+                        end
+                    end
+                end
+            end
+        end
+        if not dirty then return end
+        C_EditMode.SaveLayouts(layoutInfo)
+        StaticPopup_Show("ORBIT_ACTIONBARS_RELOAD")
+    end, self)
+end
+
 -- [ VEHICLE EXIT BUTTON ]------------------------------------------------------------------------
 function Plugin:CreateVehicleExitButton()
     if InCombatLockdown() then
         return
     end
 
-    -- Container controls Edit Mode size and position
     local container = CreateFrame("Frame", "OrbitVehicleExit", UIParent, "SecureHandlerStateTemplate")
     container:SetSize(BUTTON_SIZE, BUTTON_SIZE)
     container.systemIndex = VEHICLE_EXIT_INDEX
@@ -459,7 +475,6 @@ function Plugin:CreateVehicleExitButton()
     container.anchorOptions = { x = true, y = true, syncScale = false, syncDimensions = false }
     if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(container) end
 
-    -- Selection highlight for Edit Mode
     container.Selection = container:CreateTexture(nil, "OVERLAY")
     container.Selection:SetColorTexture(1, 1, 1, 0.1)
     container.Selection:SetAllPoints()
@@ -467,23 +482,19 @@ function Plugin:CreateVehicleExitButton()
 
     OrbitEngine.Frame:AttachSettingsListener(container, self, VEHICLE_EXIT_INDEX)
 
-    -- Secure action button fills the container
     local btn = CreateFrame("Button", "OrbitVehicleExitButton", container, "SecureActionButtonTemplate")
     btn:SetAllPoints(container)
     btn:SetAttribute("type", "macro")
     btn:SetAttribute("macrotext", "/leavevehicle")
 
-    -- Icon
     local icon = btn:CreateTexture(nil, "ARTWORK")
     icon:SetAllPoints()
     icon:SetTexture(VEHICLE_EXIT_ICON)
 
-    -- Highlight
     local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
     highlight:SetAllPoints()
     highlight:SetColorTexture(1, 1, 1, 0.15)
 
-    -- Default position (right side of Action Bar 1)
     local bar1 = self.containers[1]
     if bar1 then
         container:SetPoint("LEFT", bar1, "RIGHT", 4, 0)
@@ -491,7 +502,6 @@ function Plugin:CreateVehicleExitButton()
         container:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 40)
     end
 
-    -- Secure visibility driver (combat-safe show/hide)
     RegisterStateDriver(container, "visibility", VEHICLE_EXIT_VISIBILITY)
 
     self.containers[VEHICLE_EXIT_INDEX] = container
@@ -515,13 +525,12 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
     local LSM = LibStub("LibSharedMedia-3.0")
 
     container.CreateCanvasPreview = function(self, options)
-        -- Create preview matching single button size
+
         local w, h = BUTTON_SIZE, BUTTON_SIZE
         local parent = options.parent or UIParent
         local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
         preview:SetSize(w, h)
 
-        -- Required metadata for Canvas Mode
         preview.sourceFrame = self
         local borderSize = Orbit.db.GlobalSettings.BorderSize
         local contentW = w - (borderSize * 2)
@@ -531,7 +540,6 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
         preview.previewScale = 1
         preview.components = {}
 
-        -- Get first visible icon texture from the container's children
         local iconTexture = "Interface\\Icons\\INV_Misc_QuestionMark"
         local buttons = plugin.buttons[systemIndex]
         if buttons then
@@ -546,12 +554,10 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
             end
         end
 
-        -- Create icon display
         local icon = preview:CreateTexture(nil, "ARTWORK")
         icon:SetAllPoints()
         icon:SetTexture(iconTexture)
 
-        -- Apply border matching Orbit style
         local backdrop = {
             bgFile = "Interface\\BUTTONS\\WHITE8x8",
             insets = { left = 0, right = 0, top = 0, bottom = 0 },
@@ -575,11 +581,9 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
             savedPositions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
         end
 
-        -- Get global font settings
         local globalFontName = Orbit.db.GlobalSettings.Font
         local fontPath = LSM:Fetch("font", globalFontName) or "Fonts\\FRIZQT__.TTF"
 
-        -- Text component definitions with defaults
         local textComponents = {
             { key = "Keybind", preview = "Q", anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2 },
             { key = "MacroText", preview = "Macro", anchorX = "CENTER", anchorY = "BOTTOM", offsetX = 0, offsetY = 2 },
@@ -590,14 +594,13 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
         local CreateDraggableComponent = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.CreateDraggableComponent
 
         for _, def in ipairs(textComponents) do
-            -- Create temporary FontString as source for cloning
+
             local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7) -- Highest sublevel
             fs:SetFont(fontPath, 12, Orbit.Skin:GetFontOutline())
             fs:SetText(def.preview)
             fs:SetTextColor(1, 1, 1, 1)
             fs:SetPoint("CENTER", preview, "CENTER", 0, 0)
 
-            -- Get saved position or use defaults
             local saved = savedPositions[def.key] or {}
             local data = {
                 anchorX = saved.anchorX or def.anchorX,
@@ -608,11 +611,9 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
                 overrides = saved.overrides,
             }
 
-            -- Calculate start position (center-relative)
             local halfW, halfH = contentW / 2, contentH / 2
             local startX, startY = saved.posX or 0, saved.posY or 0
 
-            -- If no posX/posY saved, convert from anchor/offset
             if not saved.posX then
                 if data.anchorX == "LEFT" then
                     startX = -halfW + data.offsetX
@@ -628,7 +629,6 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
                 end
             end
 
-            -- Create draggable component
             if CreateDraggableComponent then
                 local comp = CreateDraggableComponent(preview, def.key, fs, startX, startY, data)
                 if comp then
@@ -644,7 +644,7 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
 end
 
 -- [ TEXT COMPONENT SETTINGS ]--------------------------------------------------------------------
--- Apply Canvas Mode text component positions and styling to action buttons
+
 function Plugin:ApplyTextSettings(button, systemIndex)
     if not button then
         return
@@ -653,14 +653,12 @@ function Plugin:ApplyTextSettings(button, systemIndex)
     local KeybindSystem = OrbitEngine.KeybindSystem
     local LSM = LibStub("LibSharedMedia-3.0", true)
 
-    -- Get global font settings
     local globalFontName = Orbit.db.GlobalSettings.Font
     local baseFontPath = (Orbit.Fonts and Orbit.Fonts[globalFontName]) or Orbit.Constants.Settings.Font.FallbackPath
     if LSM then
         baseFontPath = LSM:Fetch("font", globalFontName) or baseFontPath
     end
 
-    -- Get Canvas Mode component positions (use global if synced)
     local useGlobal = self:GetSetting(systemIndex, "UseGlobalTextStyle")
     local positions
     if useGlobal ~= false then -- default to true if nil
@@ -669,28 +667,23 @@ function Plugin:ApplyTextSettings(button, systemIndex)
         positions = self:GetSetting(systemIndex, "ComponentPositions") or {}
     end
 
-    -- Button size for font scaling
     local w = button:GetWidth()
     if w < 20 then
         w = BUTTON_SIZE
     end
 
-    -- Shared override utilities
     local OverrideUtils = OrbitEngine.OverrideUtils
 
-    -- Helper to get overrides for a component key
     local function GetComponentOverrides(key)
         local pos = positions[key] or {}
         return pos.overrides or {}, pos
     end
 
-    -- Helper to position a text element based on Canvas Mode settings
     local function ApplyComponentPosition(textElement, key, defaultAnchorX, defaultAnchorY, defaultOffsetX, defaultOffsetY)
         if not textElement then
             return
         end
 
-        -- Check if disabled via Canvas Mode
         if self:IsComponentDisabled(key, systemIndex) then
             textElement:Hide()
             return
@@ -705,7 +698,6 @@ function Plugin:ApplyTextSettings(button, systemIndex)
         local offsetY = pos.offsetY or defaultOffsetY
         local justifyH = pos.justifyH or "CENTER"
 
-        -- Convert anchor pair to WoW anchor point (where on the button to anchor)
         local anchorPoint
         if anchorY == "CENTER" and anchorX == "CENTER" then
             anchorPoint = "CENTER"
@@ -726,7 +718,6 @@ function Plugin:ApplyTextSettings(button, systemIndex)
             textPoint = "CENTER"
         end
 
-        -- Calculate offset direction based on anchor position
         local finalOffsetX = anchorX == "LEFT" and offsetX or -offsetX
         local finalOffsetY = anchorY == "BOTTOM" and offsetY or -offsetY
 
@@ -738,7 +729,6 @@ function Plugin:ApplyTextSettings(button, systemIndex)
         end
     end
 
-    -- KEYBIND (HotKey)
     if button.HotKey then
         local defaultSize = math.max(8, w * 0.28)
         local overrides = GetComponentOverrides("Keybind")
@@ -746,24 +736,22 @@ function Plugin:ApplyTextSettings(button, systemIndex)
         OverrideUtils.ApplyOverrides(button.HotKey, overrides, { fontSize = defaultSize, fontPath = baseFontPath })
         button.HotKey:SetDrawLayer("OVERLAY", 7) -- Consistent strata
 
-        -- Apply shortened keybind text using shared system
         if KeybindSystem then
             local shortKey = KeybindSystem:GetForButton(button)
             if shortKey and shortKey ~= "" then
                 button.HotKey:SetText(shortKey)
             else
-                -- Clear text if no keybind to prevent rendering artifacts
+
                 button.HotKey:SetText("")
             end
         else
-            -- No KeybindSystem available, clear text
+
             button.HotKey:SetText("")
         end
 
         ApplyComponentPosition(button.HotKey, "Keybind", "RIGHT", "TOP", 2, 2)
     end
 
-    -- MACRO TEXT (Name)
     if button.Name then
         local defaultSize = math.max(7, w * 0.22)
         local overrides = GetComponentOverrides("MacroText")
@@ -771,7 +759,6 @@ function Plugin:ApplyTextSettings(button, systemIndex)
         OverrideUtils.ApplyOverrides(button.Name, overrides, { fontSize = defaultSize, fontPath = baseFontPath })
         button.Name:SetDrawLayer("OVERLAY", 7) -- Consistent strata
 
-        -- Ensure text appears above border/glows by reparenting to a high-level overlay frame
         if not button.orbitTextOverlay then
             button.orbitTextOverlay = CreateFrame("Frame", nil, button)
             button.orbitTextOverlay:SetAllPoints(button)
@@ -782,7 +769,6 @@ function Plugin:ApplyTextSettings(button, systemIndex)
         ApplyComponentPosition(button.Name, "MacroText", "CENTER", "BOTTOM", 0, 2)
     end
 
-    -- TIMER (Cooldown countdown)
     local cooldown = button.cooldown or button.Cooldown
     if cooldown then
         if self:IsComponentDisabled("Timer", systemIndex) then
@@ -819,7 +805,6 @@ function Plugin:ApplyTextSettings(button, systemIndex)
         end
     end
 
-    -- STACKS (Count)
     if button.Count then
         local defaultSize = math.max(8, w * 0.28)
         local overrides = GetComponentOverrides("Stacks")
@@ -832,7 +817,6 @@ function Plugin:ApplyTextSettings(button, systemIndex)
 end
 
 function Plugin:OnCombatEnd()
-    -- Re-apply settings after combat
     C_Timer.After(0.5, function()
         self:ApplyAll()
     end)
@@ -848,7 +832,7 @@ function Plugin:InitializeContainers()
 end
 
 function Plugin:CreateContainer(config)
-    -- Use SecureHandlerStateTemplate for visibility drivers
+
     local frame = CreateFrame("Frame", config.orbitName, UIParent, "SecureHandlerStateTemplate")
     frame:SetSize(INITIAL_FRAME_SIZE, INITIAL_FRAME_SIZE)
     frame.systemIndex = config.index
@@ -857,9 +841,8 @@ function Plugin:CreateContainer(config)
     frame.isSpecial = config.isSpecial
 
     frame:EnableMouse(true)
-    frame:SetClampedToScreen(true) -- Prevent dragging off-screen
+    frame:SetClampedToScreen(true)
 
-    -- Orbit anchoring options
     frame.anchorOptions = {
         x = true,
         y = true,
@@ -867,27 +850,22 @@ function Plugin:CreateContainer(config)
         syncDimensions = false,
     }
 
-    -- Visibility Driver
     if config.index == PET_BAR_INDEX then
         RegisterStateDriver(frame, "visibility", "[petbattle][vehicleui] hide; [nopet] hide; show")
     else
         RegisterStateDriver(frame, "visibility", VISIBILITY_DRIVER)
     end
 
-    -- Attach to Orbit's frame system
     OrbitEngine.Frame:AttachSettingsListener(frame, self, config.index)
 
-    -- Selection highlight for Orbit Edit Mode
     frame.Selection = frame:CreateTexture(nil, "OVERLAY")
     frame.Selection:SetColorTexture(1, 1, 1, 0.1)
     frame.Selection:SetAllPoints()
     frame.Selection:Hide()
 
-    -- Default position
     local yOffset = -150 - ((config.index - 1) * 50)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, yOffset)
 
-    -- Store Blizzard bar reference
     self.blizzBars[config.index] = _G[config.blizzName]
 
     -- [ SPELL FLYOUT SUPPORT ]
@@ -911,7 +889,7 @@ function Plugin:CreateContainer(config)
     end
 
     -- [ ACTION BAR 1 PAGING ]
-    -- Only the main bar (Index 1) needs paging logic
+
     if config.index == 1 then
         local pagingDriver = table.concat({
             "[vehicleui] 12",
@@ -978,7 +956,6 @@ function Plugin:ReparentButtons(index)
     local container = self.containers[index]
     local config = BAR_CONFIG[index]
 
-    -- Try to find Blizzard bar if we haven't yet (Lazy Load fix)
     if not self.blizzBars[index] and config then
         self.blizzBars[index] = _G[config.blizzName]
     end
@@ -988,33 +965,11 @@ function Plugin:ReparentButtons(index)
         return
     end
 
-    -- Get action buttons
     local buttons = {}
-
-    -- Strategy 1: Explicit pattern (PetActionButton1, etc.)
-    if config and config.buttonPrefix and config.count then
-        for i = 1, config.count do
-            local btnName = config.buttonPrefix .. i
-            local btn = _G[btnName]
-            if btn then
-                table.insert(buttons, btn)
-            end
-        end
-    end
-
-    -- Strategy 2: Blizzard bar property (Standard bars)
-    if #buttons == 0 and blizzBar and blizzBar.actionButtons then
-        buttons = blizzBar.actionButtons
-    end
-
-    -- Strategy 3: Children scan (Fallback)
-    if #buttons == 0 and blizzBar then
-        local children = { blizzBar:GetChildren() }
-        for _, child in ipairs(children) do
-            if child.action or child.icon then
-                table.insert(buttons, child)
-            end
-        end
+    if not config then return end
+    for i = 1, config.count do
+        local btn = _G[config.buttonPrefix .. i]
+        if btn then table.insert(buttons, btn) end
     end
 
     if blizzBar then
@@ -1034,15 +989,11 @@ function Plugin:ReparentButtons(index)
         return
     end
 
-    -- Store button references
     self.buttons[index] = buttons
-
-    -- Reparent each button to our container
     for _, button in ipairs(buttons) do
         button:SetParent(container)
         button:Show()
 
-        -- Special handling for Extra Action Button art
         if config and config.buttonPrefix == "ExtraActionButton" and button.style then
             button.style:SetAlpha(0) -- Hide art
         end
@@ -1063,38 +1014,33 @@ function Plugin:LayoutButtons(index)
         return
     end
 
-    -- Get settings
     local padding = self:GetSetting(index, "IconPadding") or 2
     local rows = self:GetSetting(index, "Rows") or 1
     local orientation = self:GetSetting(index, "Orientation") or 0
     local hideEmpty = self:GetSetting(index, "HideEmptyButtons")
 
-    -- Force Hide Empty for special bars
     if SPECIAL_BAR_INDICES[index] then
         hideEmpty = true
     end
 
-    -- CURSOR OVERRIDE: Show grid when dragging droppable content
     local cursorType = GetCursorInfo()
     local cursorOverridesHide = DROPPABLE_CURSOR_TYPES[cursorType]
 
     local isSpecialBar = SPECIAL_BAR_INDICES[index]
     if cursorOverridesHide and not isSpecialBar then
-        hideEmpty = false -- Force show all slots when dragging (except special bars)
+        hideEmpty = false
     end
 
     local config = BAR_CONFIG[index]
     local numIcons = self:GetSetting(index, "NumIcons") or (config and config.count or 12)
 
-    -- Calculate button size
     local w = BUTTON_SIZE
     local h = w
 
-    -- Skin settings
     local skinSettings = {
         style = 1,
         aspectRatio = "1:1",
-        zoom = 8, -- 8% zoom in to fill to border
+        zoom = 8,
         borderStyle = 1,
         borderSize = Orbit.db.GlobalSettings.BorderSize,
         swipeColor = { r = 0, g = 0, b = 0, a = 0.8 },
@@ -1104,7 +1050,6 @@ function Plugin:LayoutButtons(index)
         keypressColor = self:GetSetting(index, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 },
     }
 
-    -- Apply layout to each button
     local totalEffective = math.min(#buttons, numIcons)
     local limitPerLine
     if orientation == 0 then
@@ -1116,7 +1061,6 @@ function Plugin:LayoutButtons(index)
         limitPerLine = rows
     end
 
-    -- Lazy grid computation: cache positions by layout parameters
     local cacheKey = string.format("%d_%d_%d_%d_%d", numIcons, limitPerLine, orientation, w, padding)
     local cache = self.gridCache[index]
     if not cache or cache.key ~= cacheKey then
@@ -1136,9 +1080,8 @@ function Plugin:LayoutButtons(index)
     local cachedPositions = cache.positions
 
     for i, button in ipairs(buttons) do
-        -- Strict Icon Limit
+
         if i > numIcons then
-            -- Reparent to hidden frame to completely prevent Blizzard from showing
             if not InCombatLockdown() then
                 local hiddenFrame = EnsureHiddenFrame()
                 button:SetParent(hiddenFrame)
@@ -1146,15 +1089,7 @@ function Plugin:LayoutButtons(index)
             end
             button.orbitHidden = true
         else
-            local hasAction = false
-
-            -- Method 1: Button's own HasAction method (most reliable for all button types)
-            if button.HasAction then
-                hasAction = button:HasAction()
-            -- Method 2: C_ActionBar.HasAction for standard action buttons
-            elseif button.action and C_ActionBar.HasAction then
-                hasAction = C_ActionBar.HasAction(button.action)
-            end
+            local hasAction = button.HasAction and button:HasAction() or false
 
             local shouldShow = true
             if hideEmpty and not hasAction then
@@ -1162,7 +1097,6 @@ function Plugin:LayoutButtons(index)
             end
 
             if not shouldShow then
-                -- Reparent to hidden frame to prevent Blizzard from re-showing
                 if not InCombatLockdown() then
                     local hiddenFrame = EnsureHiddenFrame()
                     button:SetParent(hiddenFrame)
@@ -1173,23 +1107,19 @@ function Plugin:LayoutButtons(index)
                     button.orbitBackdrop:Hide()
                 end
             else
-                -- Only NOW reparent to container (after confirming it should show)
+
                 if button.orbitHidden and not InCombatLockdown() then
                     button:SetParent(container)
                 end
                 button.orbitHidden = false
                 button:Show()
 
-                -- Resize button
                 button:SetSize(w, h)
 
-                -- Apply Orbit skin (handles texcoord, border, swipe, fonts, highlights)
                 Orbit.Skin.Icons:ApplyActionButtonCustom(button, skinSettings)
 
-                -- Apply Canvas Mode text component positions (Keybind, MacroText, Timer, Stacks)
                 self:ApplyTextSettings(button, index)
 
-                -- Position button from cached grid positions
                 button:ClearAllPoints()
                 local pos = cachedPositions[i]
                 button:SetPoint("TOPLEFT", container, "TOPLEFT", pos.x, pos.y)
@@ -1197,7 +1127,6 @@ function Plugin:LayoutButtons(index)
         end
     end
 
-    -- Stance bar: size to visible icons only (minimum MIN_STANCE_ICONS)
     local sizeCount = totalEffective
     if index == STANCE_BAR_INDEX then
         local visibleCount = 0
@@ -1219,7 +1148,6 @@ function Plugin:LayoutButtons(index)
 
     container:SetSize(finalW, finalH)
 
-    -- Store dimensions for anchoring
     container.orbitRowHeight = h
     container.orbitColumnWidth = w
 end
@@ -1227,40 +1155,18 @@ end
 -- [ SETTINGS APPLICATION ]-----------------------------------------------------------------------
 function Plugin:ApplyAll()
     for index, container in pairs(self.containers) do
-        -- Skip disabled containers logic inside ApplySettings
+
         self:ApplySettings(container)
     end
 end
 
 function Plugin:ApplySettings(frame)
-    if not frame then
-        self:ApplyAll()
-        return
-    end
-    if InCombatLockdown() then
-        return
-    end
+    if not frame then self:ApplyAll() return end
+    if InCombatLockdown() then return end
+    local actualFrame = frame.systemFrame or frame
+    local index = frame.systemIndex or actualFrame.systemIndex
+    if not index or not actualFrame then return end
 
-    -- Handle settings context object vs actual frame
-    local actualFrame = frame
-    local index = frame.systemIndex
-
-    -- If frame is a settings context object, get the actual container
-    if frame.systemFrame then
-        actualFrame = frame.systemFrame
-        index = frame.systemIndex
-    end
-
-    -- Fall back to getting container by index
-    if not actualFrame or not actualFrame.SetAlpha then
-        actualFrame = self.containers[index]
-    end
-
-    if not index or not actualFrame then
-        return
-    end
-
-    -- Vehicle exit button: toggle visibility for Edit Mode, restore position only
     if index == VEHICLE_EXIT_INDEX then
         if Orbit:IsEditMode() then
             UnregisterStateDriver(actualFrame, "visibility")
@@ -1273,7 +1179,6 @@ function Plugin:ApplySettings(frame)
         return
     end
 
-    -- Check Enabled setting (Per-profile slider on Bar 1 controls bars 1-8)
     local enabled = true
     if index <= 8 then
         local numBars = self:GetSetting(1, "NumActionBars") or 4
@@ -1295,12 +1200,9 @@ function Plugin:ApplySettings(frame)
     end
 
     if enabled == false then
-        -- FULL CLEANUP for disabled bars
-
-        -- 1. Unregister state driver to prevent visibility override
+        -- cleanup disabled bars
         UnregisterStateDriver(actualFrame, "visibility")
 
-        -- 2. Move buttons to hidden frame
         local buttons = self.buttons[index]
         if buttons and #buttons > 0 then
             local hiddenFrame = EnsureHiddenFrame()
@@ -1310,47 +1212,33 @@ function Plugin:ApplySettings(frame)
                 button.orbitHidden = true
             end
         end
-
-        -- 3. Hide the container
         actualFrame:Hide()
-
-        -- 4. Mark as disabled to skip in cursor updates
         OrbitEngine.FrameAnchor:SetFrameDisabled(actualFrame, true)
         return
     end
 
-    -- Clear disabled flag
     OrbitEngine.FrameAnchor:SetFrameDisabled(actualFrame, false)
 
-    -- Re-register visibility driver if it was disabled
     if index ~= 1 then
         RegisterStateDriver(actualFrame, "visibility", VISIBILITY_DRIVER)
     end
 
-    -- Ensure buttons are reparented
     if not self.buttons[index] or #self.buttons[index] == 0 then
         self:ReparentButtons(index)
     end
 
-    -- Apply Scale (Standard Mixin)
     self:ApplyScale(actualFrame, index, "Scale")
 
-    -- Re-apply OOC Fade with current ShowOnMouseover setting (allows dynamic toggle)
     if Orbit.OOCFadeMixin and index ~= PET_BAR_INDEX then
         local enableHover = self:GetSetting(index, "ShowOnMouseover") ~= false
         Orbit.OOCFadeMixin:ApplyOOCFade(actualFrame, self, index, "OutOfCombatFade", enableHover)
     end
 
-    -- Apply mouse-over fade (also handles opacity via ApplyHoverFade)
     self:ApplyMouseOver(actualFrame, index)
-
-    -- Layout buttons (Sets size)
     self:LayoutButtons(index)
 
-    -- Restore position (Requires size)
     OrbitEngine.Frame:RestorePosition(actualFrame, self, index)
 
-    -- Force update flyout direction after position restore
     if self.buttons[index] then
         local direction = "UP"
         if actualFrame.GetSpellFlyoutDirection then
@@ -1358,12 +1246,11 @@ function Plugin:ApplySettings(frame)
         end
 
         for _, button in ipairs(self.buttons[index]) do
-            -- 1. Set Attribute: This makes UpdateFlyout() respect our direction on future events
+
             if not InCombatLockdown() then
                 button:SetAttribute("flyoutDirection", direction)
             end
 
-            -- 2. Immediate Visual Update: For instant feedback (mixins might not check attribute immediately)
             if button.SetPopupDirection then
                 button:SetPopupDirection(direction)
             end
@@ -1376,9 +1263,6 @@ function Plugin:ApplySettings(frame)
     actualFrame:Show()
 end
 
-function Plugin:GetContainerBySystemIndex(systemIndex)
-    return self.containers[systemIndex]
-end
 
 function Plugin:GetFrameBySystemIndex(systemIndex)
     return self.containers[systemIndex]
