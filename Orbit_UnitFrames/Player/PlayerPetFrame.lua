@@ -82,7 +82,7 @@ end
 function Plugin:OnLoad()
     self:RegisterStandardEvents()
     if PetFrame then
-        OrbitEngine.NativeFrame:Hide(PetFrame)
+        self:HideNativeUnitFrame(PetFrame, "OrbitHiddenPetParent")
     end
 
     self.container = self:CreateVisibilityContainer(UIParent)
@@ -162,6 +162,12 @@ function Plugin:UpdateVisibility()
 
     if not InCombatLockdown() then
         RegisterUnitWatch(self.frame)
+    else
+        Orbit.CombatManager:RegisterCombatCallback(nil, function()
+            if self.frame and not Orbit:IsEditMode() then
+                RegisterUnitWatch(self.frame)
+            end
+        end)
     end
     if Orbit.OOCFadeMixin then
         Orbit.OOCFadeMixin:RefreshAll()
