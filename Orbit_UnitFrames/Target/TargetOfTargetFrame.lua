@@ -271,10 +271,13 @@ function Plugin:ApplySettings(frame)
         frame:UpdateAll()
     end
 
-    -- Restore Component Positions (Canvas Mode)
-    local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
-    if savedPositions and OrbitEngine.ComponentDrag then
-        OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
+    local isInCanvasMode = OrbitEngine.ComponentEdit and OrbitEngine.ComponentEdit:IsActive(frame)
+    if not isInCanvasMode then
+        local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
+        if savedPositions then
+            if OrbitEngine.ComponentDrag then OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions) end
+            if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
+        end
     end
 end
 
