@@ -127,6 +127,7 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
+        SmoothAnimation = true,
         ComponentPositions = {
             Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
         },
@@ -204,6 +205,16 @@ function Plugin:AddSettings(dialog, systemFrame)
                 end,
             })
         end
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "SmoothAnimation",
+            label = "Smooth Animation",
+            default = true,
+            tooltip = "Smoothly animate bar value changes",
+            onChange = function(val)
+                self:SetSetting(SYSTEM_INDEX, "SmoothAnimation", val)
+            end,
+        })
     elseif currentTab == "Colour" then
         local discreteLabels = {
             ROGUE = "Combo Points Colour",
@@ -1120,7 +1131,8 @@ function Plugin:UpdateContinuousBar(curveKey, current, max)
         return
     end
     Frame.StatusBar:SetMinMaxValues(0, max)
-    Frame.StatusBar:SetValue(current, SMOOTH_ANIM)
+    local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
+    Frame.StatusBar:SetValue(current, smoothing)
     local curveData = self:GetSetting(SYSTEM_INDEX, curveKey)
     if not curveData then
         return
@@ -1334,7 +1346,8 @@ function Plugin:UpdatePower()
 
     if Frame.StatusBar then
         Frame.StatusBar:SetMinMaxValues(0, max)
-        Frame.StatusBar:SetValue(cur, SMOOTH_ANIM)
+        local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
+        Frame.StatusBar:SetValue(cur, smoothing)
         if color then
             Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
         end
