@@ -323,3 +323,111 @@ function CDM:GetHorizontalGrowth(anchorFrame)
     if info.edge == "RIGHT" or info.align == "RIGHT" then return "LEFT" end
     return "CENTER"
 end
+
+-- [ ASSISTED COMBAT HIGHLIGHT ]---------------------------------------------------------------------
+do
+    local FLIPBOOK_SCALE = 1.4
+    local HIGHLIGHT_PADDING = 6
+    local highlightedIcons = {}
+
+    local function GetIconSpellID(icon)
+        if icon.orbitCachedSpellID then return icon.orbitCachedSpellID end
+        if icon.trackedType == "spell" then return icon.trackedId end
+        if icon.GetSpellID then
+            local sid = icon:GetSpellID()
+            if sid and not issecretvalue(sid) then return sid end
+        end
+        return nil
+    end
+
+    local function SetHighlightShown(icon, shown)
+        local frame = icon.AssistedCombatHighlightFrame
+        if shown then
+            if not frame then
+                frame = CreateFrame("Frame", nil, icon, "ActionBarButtonAssistedCombatHighlightTemplate")
+                icon.AssistedCombatHighlightFrame = frame
+                frame:SetPoint("CENTER")
+                frame.Flipbook.Anim:Play()
+                frame.Flipbook.Anim:Stop()
+            end
+            local w, h = icon:GetSize()
+            local pw, ph = w + HIGHLIGHT_PADDING, h + HIGHLIGHT_PADDING
+            frame:SetSize(pw, ph)
+            frame.Flipbook:SetSize(pw * FLIPBOOK_SCALE, ph * FLIPBOOK_SCALE)
+            frame:SetFrameLevel(icon:GetFrameLevel() + 10)
+            frame:Show()
+            if UnitAffectingCombat("player") then frame.Flipbook.Anim:Play() else frame.Flipbook.Anim:Stop() end
+        elseif frame then
+            frame:Hide()
+        end
+    end
+
+    local function ClearAll()
+        for icon in pairs(highlightedIcons) do
+            SetHighlightShown(icon, false)
+        end
+        wipe(highlightedIcons)
+    end
+
+    local function IsEnabledForSystem(systemIndex)
+        return CDM:GetSetting(systemIndex, "AssistedHighlight") ~= false
+    end
+
+    local function UpdateHighlights()
+        if not AssistedCombatManager or not AssistedCombatManager:IsAssistedHighlightActive() then ClearAll(); return end
+        local nextSpell = AssistedCombatManager.lastNextCastSpellID
+        ClearAll()
+        if not nextSpell then return end
+
+        for systemIndex, entry in pairs(VIEWER_MAP) do
+            if IsEnabledForSystem(systemIndex) then
+                if entry.viewer then
+                    for _, child in ipairs({ entry.viewer:GetChildren() }) do
+                        if child:IsShown() and GetIconSpellID(child) == nextSpell then
+                            SetHighlightShown(child, true)
+                            highlightedIcons[child] = true
+                        end
+                    end
+                end
+                if entry.anchor and entry.anchor.activeIcons then
+                    for _, icon in pairs(entry.anchor.activeIcons) do
+                        if icon:IsShown() and GetIconSpellID(icon) == nextSpell then
+                            SetHighlightShown(icon, true)
+                            highlightedIcons[icon] = true
+                        end
+                    end
+                end
+            end
+        end
+
+        for _, childData in pairs(CDM.activeChildren or {}) do
+            if childData.frame and childData.frame.activeIcons then
+                local csi = childData.frame.systemIndex
+                if not csi or IsEnabledForSystem(csi) then
+                    for _, icon in pairs(childData.frame.activeIcons) do
+                        if icon:IsShown() and GetIconSpellID(icon) == nextSpell then
+                            SetHighlightShown(icon, true)
+                            highlightedIcons[icon] = true
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    local function SyncFromCVar()
+        local enabled = AssistedCombatManager and AssistedCombatManager:IsAssistedHighlightActive() or false
+        for systemIndex in pairs(VIEWER_MAP) do
+            CDM:SetSetting(systemIndex, "AssistedHighlight", enabled)
+        end
+        UpdateHighlights()
+    end
+
+    CDM.UpdateAssistedHighlights = UpdateHighlights
+
+    EventRegistry:RegisterCallback("AssistedCombatManager.OnAssistedHighlightSpellChange", UpdateHighlights, CDM)
+    EventRegistry:RegisterCallback("AssistedCombatManager.OnSetUseAssistedHighlight", SyncFromCVar, CDM)
+    EventRegistry:RegisterFrameEventAndCallback("PLAYER_REGEN_ENABLED", UpdateHighlights, "OrbitCDM_AssistedRegen")
+    EventRegistry:RegisterFrameEventAndCallback("PLAYER_REGEN_DISABLED", UpdateHighlights, "OrbitCDM_AssistedRegen")
+end
+

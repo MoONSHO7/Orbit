@@ -125,6 +125,14 @@ function CDM:AddSettings(dialog, systemFrame)
         end
     elseif currentTab == "Glow" then
         table.insert(schema.controls, { type = "checkbox", key = "ShowGCDSwipe", label = "Show GCD Swipe", default = true })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "AssistedHighlight", label = "Assisted Highlight", default = false,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "AssistedHighlight", val)
+                SetCVar("assistedCombatHighlight", val and "1" or "0")
+                if self.UpdateAssistedHighlights then self:UpdateAssistedHighlights() end
+            end,
+        })
         local GlowType = Constants.PandemicGlow.Type
         local GLOW_OPTIONS = {
             { text = "None", value = GlowType.None }, { text = "Pixel Glow", value = GlowType.Pixel },
