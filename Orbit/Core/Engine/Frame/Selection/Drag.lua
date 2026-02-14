@@ -31,11 +31,38 @@ end
 
 -- [ DRAG UPDATE (VISUALS) ]-------------------------------------------------------------------------
 
+local VERTICAL_EDGES = { TOP = true, BOTTOM = true }
+
+local function ClearChainLines(selectionOverlay)
+    local Selection = Engine.FrameSelection
+    if selectionOverlay.chainLineFrames then
+        for _, f in ipairs(selectionOverlay.chainLineFrames) do
+            local sel = Selection.selections[f]
+            if sel then Selection:ShowAnchorLine(sel, nil) end
+        end
+        selectionOverlay.chainLineFrames = nil
+    end
+end
+
+local function RestorePreviewSize(selectionOverlay, isDragging)
+    if selectionOverlay.previewOrigWidth then
+        local parent = selectionOverlay.parent
+        local currentW = parent:GetWidth()
+        local origW = selectionOverlay.previewOrigWidth
+        selectionOverlay.previewOrigWidth = nil
+        if isDragging then parent:StopMovingOrSizing() end
+        local l, b = parent:GetLeft(), parent:GetBottom()
+        parent:SetWidth(origW)
+        parent:ClearAllPoints()
+        parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l + (currentW - origW) / 2, b)
+        if isDragging then parent:StartMoving() end
+    end
+end
+
 local function OnDragUpdate(selectionOverlay, elapsed)
     local parent = selectionOverlay.parent
     local Selection = Engine.FrameSelection
 
-    -- Track shift state mid-drag to toggle precision mode
     local shiftHeld = IsShiftKeyDown()
     if shiftHeld and not selectionOverlay.precisionMode then
         SetNonSelectedOverlaysVisible(selectionOverlay, false)
@@ -44,7 +71,6 @@ local function OnDragUpdate(selectionOverlay, elapsed)
         Selection:RefreshVisuals()
     end
 
-    -- Skip anchor visuals if anchoring is disabled globally, per-frame, or shift is held
     local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
     if not anchoringEnabled or parent.orbitNoSnap or shiftHeld then
         Engine.SelectionTooltip:ShowPosition(parent, Selection, true)
@@ -53,15 +79,12 @@ local function OnDragUpdate(selectionOverlay, elapsed)
 
     local targets = Selection:GetSnapTargets(parent)
     local closestX, closestY, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(
-        parent,
-        true,
-        targets,
-        nil
+        parent, true, targets, nil
     )
 
-    -- Only show anchor lines for Orbit frames (not Blizzard Edit Mode frames)
-    -- Blizzard frames can be snapped to but not anchored to, so don't show anchor line
     local isOrbitFrame = Selection.selections[anchorTarget] ~= nil
+    local isVerticalEdge = anchorEdge and VERTICAL_EDGES[anchorEdge]
+    local Anchor = Engine.FrameAnchor
 
     if anchorTarget and anchorEdge and isOrbitFrame and (anchorTarget ~= selectionOverlay.lastAnchorTarget or anchorAlign ~= selectionOverlay.lastAnchorAlign) then
         if selectionOverlay.lastAnchorTarget then
@@ -69,10 +92,37 @@ local function OnDragUpdate(selectionOverlay, elapsed)
             Selection:ShowAnchorLine(oldSel, nil)
         end
         Selection:ShowAnchorLine(selectionOverlay, nil)
+        ClearChainLines(selectionOverlay)
+        RestorePreviewSize(selectionOverlay, true)
 
-        local targetSel = Selection.selections[anchorTarget]
-        Selection:ShowAnchorLine(targetSel, anchorEdge, anchorAlign)
-        Selection:ShowAnchorLine(selectionOverlay, GetOppositeEdge(anchorEdge), anchorAlign)
+        local chainFrames = isVerticalEdge and Anchor:GetHorizontalChainFrames(anchorTarget)
+        if chainFrames and #chainFrames > 1 then
+            selectionOverlay.chainLineFrames = chainFrames
+            for _, f in ipairs(chainFrames) do
+                local sel = Selection.selections[f]
+                if sel then Selection:ShowAnchorLine(sel, anchorEdge, "CENTER") end
+            end
+            Selection:ShowAnchorLine(selectionOverlay, GetOppositeEdge(anchorEdge), "CENTER")
+
+            local opts = Anchor.GetFrameOptions(parent)
+            if opts.syncDimensions ~= false then
+                local chainWidth = Anchor:GetHorizontalChainExtent(anchorTarget)
+                if chainWidth then
+                    local origW = selectionOverlay.previewOrigWidth or parent:GetWidth()
+                    selectionOverlay.previewOrigWidth = origW
+                    parent:StopMovingOrSizing()
+                    local l, b = parent:GetLeft(), parent:GetBottom()
+                    parent:SetWidth(chainWidth)
+                    parent:ClearAllPoints()
+                    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - (chainWidth - origW) / 2, b)
+                    parent:StartMoving()
+                end
+            end
+        else
+            local targetSel = Selection.selections[anchorTarget]
+            Selection:ShowAnchorLine(targetSel, anchorEdge, anchorAlign)
+            Selection:ShowAnchorLine(selectionOverlay, GetOppositeEdge(anchorEdge), anchorAlign)
+        end
 
         selectionOverlay.lastAnchorTarget = anchorTarget
         selectionOverlay.lastAnchorAlign = anchorAlign
@@ -80,11 +130,12 @@ local function OnDragUpdate(selectionOverlay, elapsed)
         local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
         Selection:ShowAnchorLine(oldSel, nil)
         Selection:ShowAnchorLine(selectionOverlay, nil)
+        ClearChainLines(selectionOverlay)
+        RestorePreviewSize(selectionOverlay, true)
         selectionOverlay.lastAnchorTarget = nil
         selectionOverlay.lastAnchorAlign = nil
     end
 
-    -- Show dynamic position tooltip
     Engine.SelectionTooltip:ShowPosition(parent, Selection, true)
 end
 
@@ -104,12 +155,27 @@ function Drag:OnDragStart(selectionOverlay)
         parent:StartMoving()
         parent.orbitIsDragging = true
 
-        -- Start orientation tracking if enabled
+        local anchor = Engine.FrameAnchor.anchors[parent]
+        if anchor and anchor.syncOptions and anchor.syncOptions.syncDimensions then
+            local syncedW = parent:GetWidth()
+            Engine.FrameAnchor:BreakAnchor(parent, true)
+            if parent.orbitPlugin and parent.orbitPlugin.ApplySettings then
+                parent.orbitPlugin:ApplySettings(parent)
+            end
+            local naturalW = parent:GetWidth()
+            if naturalW ~= syncedW then
+                parent:StopMovingOrSizing()
+                local l, b = parent:GetLeft(), parent:GetBottom()
+                parent:ClearAllPoints()
+                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l + (syncedW - naturalW) / 2, b)
+                parent:StartMoving()
+            end
+        end
+
         if parent.orbitAutoOrient and Engine.FrameOrientation then
             Engine.FrameOrientation:StartTracking(parent)
         end
 
-        -- Start Visual Update Loop
         selectionOverlay.lastAnchorTarget = nil
         selectionOverlay.lastAnchorAlign = nil
         selectionOverlay.precisionMode = false
@@ -126,7 +192,6 @@ end
 -- [ DRAG STOP ]-------------------------------------------------------------------------------------
 
 function Drag:OnDragStop(selectionOverlay)
-    -- Clean up visuals immediately
     if selectionOverlay.lastAnchorTarget then
         local Selection = Engine.FrameSelection
         local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
@@ -134,6 +199,8 @@ function Drag:OnDragStop(selectionOverlay)
         selectionOverlay.lastAnchorTarget = nil
         selectionOverlay.lastAnchorAlign = nil
     end
+    ClearChainLines(selectionOverlay)
+    RestorePreviewSize(selectionOverlay)
     Engine.FrameSelection:ShowAnchorLine(selectionOverlay, nil)
     selectionOverlay:SetScript("OnUpdate", nil)
 
@@ -206,6 +273,10 @@ function Drag:OnDragStop(selectionOverlay)
             local point, x, y = Engine.FrameSnap:NormalizePosition(parent)
             parent:ClearAllPoints()
             parent:SetPoint(point, x, y)
+
+            if parent.orbitPlugin and parent.orbitPlugin.ApplySettings then
+                parent.orbitPlugin:ApplySettings(parent)
+            end
 
             if Selection.dragCallbacks[parent] then
                 Selection.dragCallbacks[parent](parent, point, x, y)

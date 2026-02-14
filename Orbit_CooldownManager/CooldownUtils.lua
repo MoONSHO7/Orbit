@@ -5,13 +5,35 @@ local Constants = Orbit.Constants
 
 -- [ COOLDOWN UTILS ]----------------------------------------------------------------------------------
 local CooldownUtils = {}
+local HORIZONTAL_EDGES = { LEFT = true, RIGHT = true }
+
+-- [ INHERITED PARENT RESOLVER ]----------------------------------------------------------------------
+function CooldownUtils:GetInheritedParentIndex(anchorFrame, viewerMap)
+    local anchors = OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors
+    if not anchors then return nil end
+    local current, rootIndex = anchorFrame, nil
+    while true do
+        local info = anchors[current]
+        if not info or not HORIZONTAL_EDGES[info.edge] then break end
+        local parent = info.parent
+        if not (parent and parent.systemIndex and viewerMap[parent.systemIndex]) then break end
+        rootIndex = parent.systemIndex
+        current = parent
+    end
+    return rootIndex
+end
+
+function CooldownUtils:IsInheritingLayout(plugin, anchorFrame, viewerMap)
+    return self:GetInheritedParentIndex(anchorFrame, viewerMap) ~= nil
+end
 
 -- [ SKIN SETTINGS BUILDER ]---------------------------------------------------------------------------
 function CooldownUtils:BuildSkinSettings(plugin, systemIndex, options)
     options = options or {}
+    local inherited = options.inheritOverrides
     return {
         style = options.style or 1,
-        aspectRatio = plugin:GetSetting(systemIndex, "aspectRatio") or "1:1",
+        aspectRatio = (inherited and inherited.aspectRatio) or plugin:GetSetting(systemIndex, "aspectRatio") or "1:1",
         zoom = options.zoom or 0,
         borderStyle = options.borderStyle or 1,
         borderSize = Orbit.db.GlobalSettings.BorderSize,
@@ -20,8 +42,8 @@ function CooldownUtils:BuildSkinSettings(plugin, systemIndex, options)
             or { r = 0, g = 0, b = 0, a = 0.8 },
         orientation = plugin:GetSetting(systemIndex, "Orientation"),
         limit = plugin:GetSetting(systemIndex, "IconLimit"),
-        padding = plugin:GetSetting(systemIndex, "IconPadding"),
-        size = plugin:GetSetting(systemIndex, "IconSize"),
+        padding = (inherited and inherited.padding) or plugin:GetSetting(systemIndex, "IconPadding"),
+        size = (inherited and inherited.size) or plugin:GetSetting(systemIndex, "IconSize"),
         showTimer = plugin:GetSetting(systemIndex, "ShowTimer"),
         showGCDSwipe = plugin:GetSetting(systemIndex, "ShowGCDSwipe"),
         baseIconSize = Constants.Skin.DefaultIconSize,
@@ -47,11 +69,11 @@ function CooldownUtils:ApplyTextColor(textElement, overrides, remainingPercent)
 end
 
 -- [ ICON DIMENSION CALCULATOR ]-----------------------------------------------------------------------
-function CooldownUtils:CalculateIconDimensions(plugin, systemIndex)
-    local iconSize = plugin:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
+function CooldownUtils:CalculateIconDimensions(plugin, systemIndex, overrides)
+    local iconSize = (overrides and overrides.size) or plugin:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
     local baseSize = Constants.Skin.DefaultIconSize or 40
     local scaledSize = baseSize * (iconSize / 100)
-    local aspectRatio = plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
+    local aspectRatio = (overrides and overrides.aspectRatio) or plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
     local w, h = scaledSize, scaledSize
 
     if aspectRatio == "16:9" then

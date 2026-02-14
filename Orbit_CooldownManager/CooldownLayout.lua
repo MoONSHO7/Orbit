@@ -12,6 +12,11 @@ local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local INACTIVE_ALPHA_DEFAULT = 60
 local FLASH_DURATION = 0.15
 
+local DESAT_CURVE = C_CurveUtil.CreateCurve()
+DESAT_CURVE:AddPoint(0.0, 1.0)
+DESAT_CURVE:AddPoint(0.001, 0.0)
+DESAT_CURVE:AddPoint(1.0, 0.0)
+
 -- [ FLASH OVERLAY ]----------------------------------------------------------------------------------
 local function EnsureFlashOverlay(icon)
     if icon.orbitCDMFlash then return end
@@ -67,19 +72,13 @@ hooksecurefunc("ActionButtonDown", function(id)
     FlashIcon(icon, CDM:GetSetting(icon.orbitCDMSystemIndex, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0 })
 end)
 
--- [ INACTIVE STATE HELPER ]--------------------------------------------------------------------------
-local function ApplyInactiveState(icon, plugin, systemIndex)
-    if not icon.Icon then return end
-    local active = icon:IsActive()
-    local inactive = not issecretvalue(active) and not active
-    icon.Icon:SetDesaturated(inactive)
-    icon.Icon:SetAlpha(inactive and (plugin:GetSetting(systemIndex, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100 or 1)
-end
-
-local function ClearInactiveState(icon)
-    if not icon.Icon then return end
-    icon.Icon:SetDesaturated(false)
-    icon.Icon:SetAlpha(1)
+-- [ BUFF ICON AURA DURATION ]-----------------------------------------------------------------------
+local function GetBuffIconAuraDuration(icon)
+    local unit = icon.GetAuraDataUnit and icon:GetAuraDataUnit()
+    if not unit then return nil end
+    local auraID = icon.auraInstanceID
+    if auraID == nil or issecretvalue(auraID) then return nil end
+    return C_UnitAuras.GetAuraDuration(unit, auraID)
 end
 
 -- [ ANCHOR LOOKUP ]----------------------------------------------------------------------------------
@@ -131,7 +130,13 @@ function CDM:ProcessChildren(anchor)
     if Orbit.Skin.Icons and #activeChildren > 0 then
         local hGrowth = (systemIndex == BUFFICON_INDEX) and self:GetHorizontalGrowth(anchor) or nil
         local vGrowth = self:GetGrowthDirection(anchor)
-        local skinSettings = CooldownUtils:BuildSkinSettings(self, systemIndex, { verticalGrowth = vGrowth, horizontalGrowth = hGrowth })
+        local parentIndex = CooldownUtils:GetInheritedParentIndex(anchor, VIEWER_MAP)
+        local overrides = parentIndex and {
+            aspectRatio = self:GetSetting(parentIndex, "aspectRatio"),
+            size = self:GetSetting(parentIndex, "IconSize"),
+            padding = self:GetSetting(parentIndex, "IconPadding"),
+        } or nil
+        local skinSettings = CooldownUtils:BuildSkinSettings(self, systemIndex, { verticalGrowth = vGrowth, horizontalGrowth = hGrowth, inheritOverrides = overrides })
 
         if not Orbit.Skin.Icons.frameSettings then Orbit.Skin.Icons.frameSettings = setmetatable({}, { __mode = "k" }) end
         Orbit.Skin.Icons.frameSettings[blizzFrame] = skinSettings
@@ -146,7 +151,6 @@ function CDM:ProcessChildren(anchor)
                 if sid and not issecretvalue(sid) then icon.orbitCachedSpellID = sid end
             end
             EnsureFlashOverlay(icon)
-            if alwaysShow then ApplyInactiveState(icon, self, systemIndex) end
         end
 
         Orbit.Skin.Icons:ApplyManualLayout(blizzFrame, activeChildren, skinSettings)
@@ -184,34 +188,19 @@ function CDM:HookAlwaysShow(icon)
     local plugin = self
     local function onStateChange(self)
         if not plugin:GetSetting(BUFFICON_INDEX, "AlwaysShow") then
-            ClearInactiveState(self)
+            if self.Icon then
+                self.Icon:SetDesaturation(0)
+                self.Icon:SetAlpha(1)
+            end
             return
         end
         if not self:GetCooldownID() then return end
         self:Show()
-        ApplyInactiveState(self, plugin, BUFFICON_INDEX)
     end
     hooksecurefunc(icon, "UpdateShownState", onStateChange)
     hooksecurefunc(icon, "RefreshData", onStateChange)
     hooksecurefunc(icon, "RefreshSpellTexture", onStateChange)
     icon.orbitAlwaysShowHooked = true
-end
-
-do
-    local targetFrame = CreateFrame("Frame")
-    targetFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
-    targetFrame:SetScript("OnEvent", function()
-        if not CDM:GetSetting(BUFFICON_INDEX, "AlwaysShow") then return end
-        local entry = VIEWER_MAP[BUFFICON_INDEX]
-        if not entry or not entry.viewer then return end
-        C_Timer.After(0.1, function()
-            for _, child in ipairs({ entry.viewer:GetChildren() }) do
-                if child.layoutIndex and child.Icon and child:GetCooldownID() then
-                    ApplyInactiveState(child, CDM, BUFFICON_INDEX)
-                end
-            end
-        end)
-    end)
 end
 
 -- [ TIMER COLOR CURVE ]-----------------------------------------------------------------------------
@@ -249,12 +238,7 @@ local function GetTimerFontStrings(icon)
 end
 
 local function GetDurationObject(icon, systemIndex)
-    if systemIndex == BUFFICON_INDEX then
-        local unit = icon.GetAuraDataUnit and icon:GetAuraDataUnit()
-        local auraID = icon.auraInstanceID
-        if not unit or not auraID then return nil end
-        return C_UnitAuras.GetAuraDuration(unit, auraID)
-    end
+    if systemIndex == BUFFICON_INDEX then return GetBuffIconAuraDuration(icon) end
     local spellID = icon.cooldownID or (icon.trackedType == "spell" and icon.trackedId)
     if spellID then return C_Spell.GetSpellCooldownDuration(spellID) end
     return nil
@@ -270,6 +254,19 @@ local function ApplyTimerColor(icon, curve, systemIndex)
     local r, g, b, a = color:GetRGBA()
     if timerFS then timerFS:SetTextColor(r, g, b, a) end
     if activeFS then activeFS:SetTextColor(r, g, b, a) end
+end
+
+-- [ BUFF ICON DESATURATION ]------------------------------------------------------------------------
+local function ApplyBuffIconDesaturation(icon, inactiveAlpha)
+    if not icon.Icon then return end
+    local durObj = GetBuffIconAuraDuration(icon)
+    if durObj then
+        icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(DESAT_CURVE))
+        icon.Icon:SetAlpha(1)
+    else
+        icon.Icon:SetDesaturation(1)
+        icon.Icon:SetAlpha(inactiveAlpha)
+    end
 end
 
 do
@@ -290,6 +287,15 @@ do
                         if icon:IsShown() then
                             ApplyTimerColor(icon, curve, systemIndex)
                         end
+                    end
+                end
+            end
+
+            if systemIndex == BUFFICON_INDEX and CDM:GetSetting(BUFFICON_INDEX, "AlwaysShow") and entry.viewer then
+                local inactiveAlpha = (CDM:GetSetting(BUFFICON_INDEX, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100
+                for _, child in ipairs({ entry.viewer:GetChildren() }) do
+                    if child.layoutIndex and child:IsShown() and child:GetCooldownID() then
+                        ApplyBuffIconDesaturation(child, inactiveAlpha)
                     end
                 end
             end
