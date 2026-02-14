@@ -34,7 +34,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         -- Aggro Indicator Settings
         AggroIndicatorEnabled = true,
         AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
-        AggroThickness = 2,
+        AggroThickness = 1,
         -- Disabled components (Canvas Mode drag-to-disable)
         DisabledComponents = {},
         -- Default component positions (Canvas Mode is single source of truth)
