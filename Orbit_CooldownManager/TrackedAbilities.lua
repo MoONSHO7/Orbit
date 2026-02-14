@@ -28,9 +28,9 @@ DESAT_CURVE:AddPoint(1.0, 1)
 
 -- Spells where the first tooltip duration isn't the correct active phase
 local ACTIVE_DURATION_OVERRIDES = {
-    [1122]  = 30,  -- Summon Infernal: first match is 2s stun, pet lasts 30s
-    [633]   = 0,   -- Lay on Hands: instant, Forbearance is not active phase
-    [48743] = 0,   -- Death Pact: instant heal, absorb debuff is not active phase
+    [1122] = 30, -- Summon Infernal: first match is 2s stun, pet lasts 30s
+    [633] = 0, -- Lay on Hands: instant, Forbearance is not active phase
+    [48743] = 0, -- Death Pact: instant heal, absorb debuff is not active phase
 }
 
 -- [ SPELL OVERRIDE HELPERS ]------------------------------------------------------------------------
@@ -46,7 +46,9 @@ local function StripEscapes(text)
 end
 
 local function ParseActiveDuration(itemType, id)
-    if itemType == "spell" and ACTIVE_DURATION_OVERRIDES[id] then return ACTIVE_DURATION_OVERRIDES[id] end
+    if itemType == "spell" and ACTIVE_DURATION_OVERRIDES[id] then
+        return ACTIVE_DURATION_OVERRIDES[id]
+    end
     local text
     if itemType == "spell" then
         text = C_Spell.GetSpellDescription(id)
@@ -58,11 +60,15 @@ local function ParseActiveDuration(itemType, id)
             end
         end
     end
-    if not text then return nil end
+    if not text then
+        return nil
+    end
     text = StripEscapes(text)
     for _, pattern in ipairs({ "for (%d+%.?%d*) sec", "lasts (%d+%.?%d*) sec", "over (%d+%.?%d*) sec" }) do
         local num = text:match(pattern)
-        if num then return tonumber(num) end
+        if num then
+            return tonumber(num)
+        end
     end
     return nil
 end
@@ -668,19 +674,30 @@ function Plugin:ApplyTrackedTextSettings(icon, systemIndex)
     local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
 
     local function StyleCooldownText(cd, posKey)
-        if not cd then return end
+        if not cd then
+            return
+        end
         local fs = cd.Text
         if not fs then
             for _, region in ipairs({ cd:GetRegions() }) do
-                if region:GetObjectType() == "FontString" then fs = region; break end
+                if region:GetObjectType() == "FontString" then
+                    fs = region
+                    break
+                end
             end
         end
-        if not fs then return end
+        if not fs then
+            return
+        end
         local pos = positions[posKey] or positions["Timer"] or {}
         local overrides = pos.overrides or {}
-        if OverrideUtils then OverrideUtils.ApplyOverrides(fs, overrides, { fontSize = math.max(6, baseSize + 2), fontPath = fontPath }) end
+        if OverrideUtils then
+            OverrideUtils.ApplyOverrides(fs, overrides, { fontSize = math.max(6, baseSize + 2), fontPath = fontPath })
+        end
         fs:SetDrawLayer("OVERLAY", 7)
-        if ApplyTextPosition then ApplyTextPosition(fs, icon, pos) end
+        if ApplyTextPosition then
+            ApplyTextPosition(fs, icon, pos)
+        end
     end
 
     StyleCooldownText(icon.Cooldown, "Timer")
@@ -798,7 +815,9 @@ local function IsSpellUsable(spellId)
     if not spellId then
         return false
     end
-    if IsSpellKnown(spellId) or IsPlayerSpell(spellId) then return true end
+    if IsSpellKnown(spellId) or IsPlayerSpell(spellId) then
+        return true
+    end
     local activeId = GetActiveSpellID(spellId)
     return activeId ~= spellId and (IsSpellKnown(activeId) or IsPlayerSpell(activeId))
 end
@@ -838,7 +857,7 @@ function Plugin:StartActiveGlow(icon)
         LCG.PixelGlow_Start(icon, ct, cfg.Lines, cfg.Frequency, cfg.Length, cfg.Thickness, cfg.XOffset, cfg.YOffset, cfg.Border, ACTIVE_GLOW_KEY)
     elseif glowTypeId == GlowType.Proc then
         local cfg = GlowConfig.Proc
-        LCG.ProcGlow_Start(icon, { color = ct, startAnim = cfg.StartAnim, duration = cfg.Duration, key = ACTIVE_GLOW_KEY })
+        LCG.ProcGlow_Start(icon, { color = ct, startAnim = false, duration = cfg.Duration, key = ACTIVE_GLOW_KEY })
     elseif glowTypeId == GlowType.Autocast then
         local cfg = GlowConfig.Autocast
         LCG.AutoCastGlow_Start(icon, ct, cfg.Particles, cfg.Frequency, cfg.Scale, cfg.XOffset, cfg.YOffset, ACTIVE_GLOW_KEY)
@@ -881,7 +900,9 @@ function Plugin:UpdateTrackedIcon(icon)
         icon.activeDuration = nil
         icon.desatCurve = nil
         icon.cdAlphaCurve = nil
-        if icon._activeGlowing then Plugin:StopActiveGlow(icon) end
+        if icon._activeGlowing then
+            Plugin:StopActiveGlow(icon)
+        end
         icon._activeGlowExpiry = nil
         icon.ActiveCooldown:Clear()
     end
@@ -928,10 +949,14 @@ function Plugin:UpdateTrackedIcon(icon)
                     icon.Cooldown:Clear()
                     local castTime = icon._activeGlowExpiry - icon.activeDuration
                     icon.ActiveCooldown:SetCooldown(castTime, icon.activeDuration)
-                    if not icon._activeGlowing then Plugin:StartActiveGlow(icon) end
+                    if not icon._activeGlowing then
+                        Plugin:StartActiveGlow(icon)
+                    end
                 else
                     icon.ActiveCooldown:Clear()
-                    if icon._activeGlowing then Plugin:StopActiveGlow(icon) end
+                    if icon._activeGlowing then
+                        Plugin:StopActiveGlow(icon)
+                    end
                     icon._activeGlowExpiry = nil
                 end
             elseif onGCD and not showGCDSwipe then
@@ -987,7 +1012,6 @@ function Plugin:UpdateTrackedIcon(icon)
         if texture then
             icon.Icon:SetTexture(texture)
             if not isUsable then
-
                 icon.Cooldown:Clear()
                 icon.ActiveCooldown:Clear()
                 icon.Icon:SetDesaturation(1)
@@ -1119,11 +1143,13 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
     end
 
     local parentIndex = CooldownUtils:GetInheritedParentIndex(anchor, GetViewerMap())
-    local overrides = parentIndex and {
-        aspectRatio = self:GetSetting(parentIndex, "aspectRatio"),
-        size = self:GetSetting(parentIndex, "IconSize"),
-        padding = self:GetSetting(parentIndex, "IconPadding"),
-    } or nil
+    local overrides = parentIndex
+            and {
+                aspectRatio = self:GetSetting(parentIndex, "aspectRatio"),
+                size = self:GetSetting(parentIndex, "IconSize"),
+                padding = self:GetSetting(parentIndex, "IconPadding"),
+            }
+        or nil
     local iconWidth, iconHeight = CooldownUtils:CalculateIconDimensions(self, systemIndex, overrides)
     local rawPadding = (overrides and overrides.padding) or self:GetSetting(systemIndex, "IconPadding") or Constants.Cooldown.DefaultPadding
     local Pixel = OrbitEngine.Pixel
@@ -1166,7 +1192,6 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
     end
 
     if not hasItems then
-
         for _, placeholder in ipairs(anchor.placeholders or {}) do
             placeholder:Hide()
         end
@@ -1307,10 +1332,8 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         local blockedDirections = {}
         local FrameAnchor = OrbitEngine.FrameAnchor
         if FrameAnchor then
-
             local anchorData = FrameAnchor.anchors and FrameAnchor.anchors[anchor]
             if anchorData and anchorData.edge then
-
                 if anchorData.edge == "BOTTOM" then
                     blockedDirections.top = true
                 elseif anchorData.edge == "TOP" then
@@ -1533,7 +1556,9 @@ function Plugin:RegisterTalentWatcher()
     frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
     frame:SetScript("OnEvent", function()
         C_Timer.After(TALENT_REPARSE_DELAY, function()
-            if InCombatLockdown() then return end
+            if InCombatLockdown() then
+                return
+            end
             plugin:ReparseActiveDurations()
             plugin:RefreshChargeMaxCharges()
             plugin:RefreshAllTrackedLayouts()
@@ -1555,7 +1580,6 @@ function Plugin:RefreshAllTrackedLayouts()
 end
 
 function Plugin:ReloadTrackedForSpec()
-
     local viewerMap = GetViewerMap()
     local entry = viewerMap[TRACKED_INDEX]
     if entry and entry.anchor then

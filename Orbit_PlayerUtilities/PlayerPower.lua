@@ -84,6 +84,42 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
 -- Frame references (created in OnLoad)
 local Frame, PowerBar
 
+-- Combat-safe Show/Hide: use alpha during combat to avoid taint when anchored to a protected parent
+local function SafeShow(frame)
+    frame.orbitHiddenByAlpha = false
+    if InCombatLockdown() and frame:IsProtected() then
+        frame:SetAlpha(1)
+    else
+        frame:Show()
+        frame:SetAlpha(1)
+    end
+end
+
+local function SafeHide(frame)
+    if InCombatLockdown() and frame:IsProtected() then
+        frame:SetAlpha(0)
+        frame.orbitHiddenByAlpha = true
+    else
+        frame:Hide()
+        frame.orbitHiddenByAlpha = false
+    end
+end
+
+local function SetupCombatCleanup(frame)
+    frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    frame:RegisterEvent("PLAYER_REGEN_DISABLED")
+    frame:HookScript("OnEvent", function(self, event)
+        if event == "PLAYER_REGEN_DISABLED" and not self:IsShown() then
+            self:Show()
+            self:SetAlpha(0)
+            self.orbitHiddenByAlpha = true
+        elseif event == "PLAYER_REGEN_ENABLED" and self.orbitHiddenByAlpha then
+            self:Hide()
+            self.orbitHiddenByAlpha = false
+        end
+    end)
+end
+
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     if not Frame then
@@ -296,6 +332,8 @@ function Plugin:OnLoad()
         })
     end
 
+    SetupCombatCleanup(Frame)
+
     self:UpdateVisibility()
     self:RefreshOnUpdate()
 end
@@ -344,22 +382,21 @@ function Plugin:UpdateVisibility()
     if isEditMode then
         if enabled then
             OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
-            Frame:Show()
-            Frame:SetAlpha(1)
+            SafeShow(Frame)
         else
             OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
-            Frame:Show()
+            SafeShow(Frame)
             Frame:SetAlpha(0.5)
         end
         return
     end
 
     if enabled then
-        Frame:Show()
+        SafeShow(Frame)
         self:UpdateAll()
         OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
     else
-        Frame:Hide()
+        SafeHide(Frame)
         OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
     end
 end
