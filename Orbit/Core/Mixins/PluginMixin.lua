@@ -67,7 +67,16 @@ function Orbit.PluginMixin:GetSetting(systemIndex, key)
 
     -- Global Inheritance
     if key == "Texture" or key == "Font" or key == "BorderSize" or key == "BackdropColour" then
-        return Orbit.db.GlobalSettings[key]
+        local val = Orbit.db.GlobalSettings[key]
+        if key == "BackdropColour" and not Orbit._backdropMigrated then
+            Orbit._backdropMigrated = true
+            if val and val.pins then
+                local pin = val.pins[1]
+                val = pin and pin.color or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
+                Orbit.db.GlobalSettings[key] = val
+            end
+        end
+        return val
     end
 
     local val = nil

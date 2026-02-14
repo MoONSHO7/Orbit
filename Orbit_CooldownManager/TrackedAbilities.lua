@@ -167,7 +167,8 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.editModeTooltipLines = { "Drag and drop items and spells that have cooldowns here." }
     frame:EnableMouse(false)
     frame.orbitClickThrough = true
-    frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
+    frame.anchorOptions = { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true }
+    frame.orbitChainSync = true
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 
     frame.Selection = frame:CreateTexture(nil, "OVERLAY")
@@ -199,6 +200,10 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.activeIcons = {}
     self:CreateTrackedIcons(frame, systemIndex)
     self:CreateFrameControlButtons(frame)
+
+    frame.OnAnchorChanged = function(self)
+        plugin:LayoutTrackedIcons(self, self.systemIndex)
+    end
     return frame
 end
 
@@ -645,8 +650,8 @@ function Plugin:CreateTrackedIcon(anchor, systemIndex, x, y)
     return icon
 end
 
-function Plugin:ApplyTrackedIconSkin(icon, systemIndex)
-    local skinSettings = CooldownUtils:BuildSkinSettings(self, systemIndex, { zoom = 8 })
+function Plugin:ApplyTrackedIconSkin(icon, systemIndex, inheritOverrides)
+    local skinSettings = CooldownUtils:BuildSkinSettings(self, systemIndex, { zoom = 8, inheritOverrides = inheritOverrides })
     if Orbit.Skin and Orbit.Skin.Icons then
         Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
     end
@@ -1113,8 +1118,14 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         return
     end
 
-    local iconWidth, iconHeight = CooldownUtils:CalculateIconDimensions(self, systemIndex)
-    local rawPadding = self:GetSetting(systemIndex, "IconPadding") or Constants.Cooldown.DefaultPadding
+    local parentIndex = CooldownUtils:GetInheritedParentIndex(anchor, GetViewerMap())
+    local overrides = parentIndex and {
+        aspectRatio = self:GetSetting(parentIndex, "aspectRatio"),
+        size = self:GetSetting(parentIndex, "IconSize"),
+        padding = self:GetSetting(parentIndex, "IconPadding"),
+    } or nil
+    local iconWidth, iconHeight = CooldownUtils:CalculateIconDimensions(self, systemIndex, overrides)
+    local rawPadding = (overrides and overrides.padding) or self:GetSetting(systemIndex, "IconPadding") or Constants.Cooldown.DefaultPadding
     local Pixel = OrbitEngine.Pixel
     local padding = Pixel and Pixel:Snap(rawPadding) or rawPadding
 
@@ -1246,7 +1257,7 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         end
 
         self:UpdateTrackedIcon(icon)
-        self:ApplyTrackedIconSkin(icon, systemIndex)
+        self:ApplyTrackedIconSkin(icon, systemIndex, overrides)
 
         icon:SetSize(iconWidth, iconHeight)
         icon.Icon:ClearAllPoints()

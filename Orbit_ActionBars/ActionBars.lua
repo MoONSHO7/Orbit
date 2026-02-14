@@ -200,7 +200,8 @@ function Plugin:AddSettings(dialog, systemFrame)
     end
 
     WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Colors", "Visibility" }, "Layout")
+    local tabs = (systemIndex == 1) and { "Layout", "Colors", "Visibility" } or { "Layout", "Visibility" }
+    local currentTab = WL:AddSettingsTabs(schema, dialog, tabs, "Layout")
 
     if currentTab == "Layout" then
         if systemIndex == 1 then
@@ -310,13 +311,38 @@ function Plugin:AddSettings(dialog, systemFrame)
             table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = "Hide Empty Buttons", default = false })
         end
     elseif currentTab == "Colors" then
-        WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
-            key = "BackdropColour", label = "Backdrop",
-            default = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
+        local DEFAULT_BACKDROP = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
+        local DEFAULT_KEYPRESS = { r = 1, g = 1, b = 1, a = 0.6 }
+        local function ColorToCurve(c)
+            return c and { pins = { { position = 0, color = c } } } or nil
+        end
+        local function CurveToColor(curve)
+            local pin = curve and curve.pins and curve.pins[1]
+            return pin and pin.color or nil
+        end
+        table.insert(schema.controls, {
+            type = "colorcurve",
+            key = "BackdropColour",
+            label = "Backdrop",
+            singleColor = true,
+            default = { pins = { { position = 0, color = DEFAULT_BACKDROP } } },
+            getValue = function() return ColorToCurve(self:GetSetting(1, "BackdropColour")) end,
+            onChange = function(val)
+                Orbit.db.GlobalSettings.BackdropColour = CurveToColor(val) or DEFAULT_BACKDROP
+                self:ApplyAll()
+            end,
         })
-        WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
-            key = "KeypressColor", label = "Keypress Flash",
-            default = { r = 1, g = 1, b = 1, a = 0.6 },
+        table.insert(schema.controls, {
+            type = "colorcurve",
+            key = "KeypressColor",
+            label = "Keypress Flash",
+            singleColor = true,
+            default = { pins = { { position = 0, color = DEFAULT_KEYPRESS } } },
+            getValue = function() return ColorToCurve(self:GetSetting(1, "KeypressColor")) end,
+            onChange = function(val)
+                self:SetSetting(1, "KeypressColor", CurveToColor(val) or DEFAULT_KEYPRESS)
+                self:ApplyAll()
+            end,
         })
     elseif currentTab == "Visibility" then
         WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
@@ -1046,8 +1072,8 @@ function Plugin:LayoutButtons(index)
         swipeColor = { r = 0, g = 0, b = 0, a = 0.8 },
         showTimer = true,
         hideName = false,
-        backdropColor = self:GetSetting(index, "BackdropColour"),
-        keypressColor = self:GetSetting(index, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 },
+        backdropColor = self:GetSetting(1, "BackdropColour"),
+        keypressColor = self:GetSetting(1, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 },
     }
 
     local totalEffective = math.min(#buttons, numIcons)

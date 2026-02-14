@@ -7,6 +7,7 @@ local CDM = Orbit:GetPlugin("Orbit_CooldownViewer")
 if not CDM then return end
 
 local VIEWER_MAP = CDM.viewerMap
+local CooldownUtils = OrbitEngine.CooldownUtils
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function CDM:AddSettings(dialog, systemFrame)
@@ -16,6 +17,7 @@ function CDM:AddSettings(dialog, systemFrame)
     local frame = self:GetFrameBySystemIndex(systemIndex)
     local isAnchored = frame and OrbitEngine.Frame:GetAnchorParent(frame) ~= nil
     local isTracked = frame and frame.isTrackedBar
+    local isInheriting = frame and CooldownUtils:IsInheritingLayout(self, frame, VIEWER_MAP)
 
     local schema = { hideNativeSettings = true, controls = {}, extraButtons = {} }
 
@@ -27,7 +29,7 @@ function CDM:AddSettings(dialog, systemFrame)
         if currentTab == "Layout" then
             if not isAnchored then
                 table.insert(schema.controls, {
-                    type = "slider", key = "Width", label = "Width", min = 100, max = 400, step = 1, default = 120,
+                    type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 120,
                     onChange = function(val) self:SetSetting(systemIndex, "Width", val); self:LayoutChargeBars() end,
                 })
             end
@@ -92,25 +94,29 @@ function CDM:AddSettings(dialog, systemFrame)
     local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Glow", "Colors", "Visibility" }, "Layout")
 
     if currentTab == "Layout" then
-        table.insert(schema.controls, {
-            type = "dropdown", key = "aspectRatio", label = "Icon Aspect Ratio",
-            options = {
-                { text = "Square (1:1)", value = "1:1" }, { text = "Landscape (16:9)", value = "16:9" },
-                { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
-            },
-            default = "1:1",
-        })
-        table.insert(schema.controls, {
-            type = "slider", key = "IconSize", label = "Scale",
-            min = 50, max = 200, step = 5,
-            formatter = function(v) return v .. "%" end,
-            default = Constants.Cooldown.DefaultIconSize,
-            onChange = function(val)
-                self:SetSetting(systemIndex, "IconSize", val)
-                self:ApplySettings(systemFrame)
-            end,
-        })
-        table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = -1, max = 10, step = 1, default = Constants.Cooldown.DefaultPadding })
+        if isInheriting then
+            table.insert(schema.controls, { type = "label", text = "Layout settings inherited from anchor parent." })
+        else
+            table.insert(schema.controls, {
+                type = "dropdown", key = "aspectRatio", label = "Icon Aspect Ratio",
+                options = {
+                    { text = "Square (1:1)", value = "1:1" }, { text = "Landscape (16:9)", value = "16:9" },
+                    { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
+                },
+                default = "1:1",
+            })
+            table.insert(schema.controls, {
+                type = "slider", key = "IconSize", label = "Scale",
+                min = 50, max = 200, step = 5,
+                formatter = function(v) return v .. "%" end,
+                default = Constants.Cooldown.DefaultIconSize,
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "IconSize", val)
+                    self:ApplySettings(systemFrame)
+                end,
+            })
+            table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = -1, max = 10, step = 1, default = Constants.Cooldown.DefaultPadding })
+        end
         if not isTracked then
             table.insert(schema.controls, { type = "slider", key = "IconLimit", label = "# Columns", min = 1, max = 20, step = 1, default = Constants.Cooldown.DefaultLimit })
         end
@@ -119,27 +125,25 @@ function CDM:AddSettings(dialog, systemFrame)
         end
     elseif currentTab == "Glow" then
         table.insert(schema.controls, { type = "checkbox", key = "ShowGCDSwipe", label = "Show GCD Swipe", default = true })
+        local GlowType = Constants.PandemicGlow.Type
+        local GLOW_OPTIONS = {
+            { text = "None", value = GlowType.None }, { text = "Pixel Glow", value = GlowType.Pixel },
+            { text = "Proc Glow", value = GlowType.Proc }, { text = "Autocast Shine", value = GlowType.Autocast },
+            { text = "Button Glow", value = GlowType.Button },
+        }
         if not isTracked then
-            local GlowType = Constants.PandemicGlow.Type
             table.insert(schema.controls, {
                 type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
-                options = {
-                    { text = "None", value = GlowType.None }, { text = "Pixel Glow", value = GlowType.Pixel },
-                    { text = "Proc Glow", value = GlowType.Proc }, { text = "Autocast Shine", value = GlowType.Autocast },
-                    { text = "Button Glow", value = GlowType.Button },
-                },
-                default = Constants.PandemicGlow.DefaultType,
+                options = GLOW_OPTIONS, default = Constants.PandemicGlow.DefaultType,
+            })
+            table.insert(schema.controls, {
+                type = "dropdown", key = "ProcGlowType", label = "Proc Glow",
+                options = GLOW_OPTIONS, default = Constants.PandemicGlow.DefaultType,
             })
         else
-            local GlowType = Constants.PandemicGlow.Type
             table.insert(schema.controls, {
                 type = "dropdown", key = "ActiveGlowType", label = "Active Glow",
-                options = {
-                    { text = "None", value = GlowType.None }, { text = "Pixel Glow", value = GlowType.Pixel },
-                    { text = "Proc Glow", value = GlowType.Proc }, { text = "Autocast Shine", value = GlowType.Autocast },
-                    { text = "Button Glow", value = GlowType.Button },
-                },
-                default = GlowType.None,
+                options = GLOW_OPTIONS, default = GlowType.None,
             })
         end
     elseif currentTab == "Colors" then
@@ -151,6 +155,9 @@ function CDM:AddSettings(dialog, systemFrame)
         if not isTracked then
             WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
                 key = "PandemicGlowColor", label = "Pandemic Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },
+            })
+            WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
+                key = "ProcGlowColor", label = "Proc Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },
             })
         else
             WL:AddColorSettings(self, schema, systemIndex, systemFrame, {

@@ -99,6 +99,13 @@ function Plugin:OnLoad()
     VIEWER_MAP[UTILITY_INDEX] = { viewer = UtilityCooldownViewer, anchor = self.utilityAnchor }
     VIEWER_MAP[BUFFICON_INDEX] = { viewer = BuffIconCooldownViewer, anchor = self.buffIconAnchor }
     VIEWER_MAP[TRACKED_INDEX] = { viewer = nil, anchor = self.trackedAnchor, isTracked = true }
+
+    -- Exclude Blizzard viewer frames from snap targets; Orbit anchor frames handle positioning
+    for _, entry in pairs(VIEWER_MAP) do
+        if entry.viewer then
+            entry.viewer.orbitSnapExclude = true
+        end
+    end
     self.viewerMap = VIEWER_MAP
 
     self:SetupCanvasPreview(self.essentialAnchor, ESSENTIAL_INDEX)
@@ -167,7 +174,8 @@ function Plugin:CreateAnchor(name, systemIndex, label)
     frame.systemIndex = systemIndex
     frame.editModeName = label
     frame:EnableMouse(false)
-    frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
+    frame.anchorOptions = { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true }
+    frame.orbitChainSync = true
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 
     frame.Selection = frame:CreateTexture(nil, "OVERLAY")
@@ -258,6 +266,19 @@ function Plugin:ApplySettings(frame)
     OrbitEngine.Frame:RestorePosition(frame, self, systemIndex)
     self:ProcessChildren(frame)
     OrbitEngine.Frame:DisableMouseRecursive(frame)
+end
+
+function Plugin:UpdateLayout(frame)
+    if not frame or not frame.systemIndex then
+        return
+    end
+    if frame.isTrackedBar then
+        self:LayoutTrackedIcons(frame, frame.systemIndex)
+    elseif frame.isChargeBar then
+        return
+    else
+        self:ProcessChildren(frame)
+    end
 end
 
 function Plugin:UpdateVisuals(frame)

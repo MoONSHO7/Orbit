@@ -45,7 +45,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     local schema = {
         hideNativeSettings = true,
         controls = {
-            { type = "slider", key = "Width", label = "Width", min = 60, max = 200, step = 5, default = 100 },
+            { type = "slider", key = "Width", label = "Width", min = 50, max = 200, step = 5, default = 100 },
             { type = "slider", key = "Height", label = "Height", min = 10, max = 40, step = 5, default = 20 },
         },
     }
@@ -271,10 +271,13 @@ function Plugin:ApplySettings(frame)
         frame:UpdateAll()
     end
 
-    -- Restore Component Positions (Canvas Mode)
-    local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
-    if savedPositions and OrbitEngine.ComponentDrag then
-        OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
+    local isInCanvasMode = OrbitEngine.ComponentEdit and OrbitEngine.ComponentEdit:IsActive(frame)
+    if not isInCanvasMode then
+        local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
+        if savedPositions then
+            if OrbitEngine.ComponentDrag then OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions) end
+            if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
+        end
     end
 end
 

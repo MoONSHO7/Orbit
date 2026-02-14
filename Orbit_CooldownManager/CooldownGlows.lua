@@ -13,7 +13,45 @@ local UTILITY_INDEX = Constants.Cooldown.SystemIndex.Utility
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 
 -- [ PROC GLOW HOOKS ]-------------------------------------------------------------------------------
-local PROC_GLOW_COLOR = { 1, 0.8, 0, 1 }
+local PROC_GLOW_KEY = "orbitProc"
+
+local function FindSystemIndexForButton(button)
+    if button.orbitCDMSystemIndex then return button.orbitCDMSystemIndex end
+    for systemIndex, data in pairs(CDM.viewerMap) do
+        if data.viewer and data.viewer.GetItemFrames then
+            for _, icon in ipairs(data.viewer:GetItemFrames()) do
+                if icon == button then return systemIndex end
+            end
+        end
+    end
+    return ESSENTIAL_INDEX
+end
+
+local function StartProcGlow(button, glowType, colorTable)
+    local GlowType = Constants.PandemicGlow.Type
+    local GlowConfig = Constants.PandemicGlow
+    if glowType == GlowType.Pixel then
+        local cfg = GlowConfig.Pixel
+        LibCustomGlow.PixelGlow_Start(button, colorTable, cfg.Lines, cfg.Frequency, cfg.Length, cfg.Thickness, cfg.XOffset, cfg.YOffset, cfg.Border, PROC_GLOW_KEY)
+    elseif glowType == GlowType.Proc then
+        local cfg = GlowConfig.Proc
+        LibCustomGlow.ProcGlow_Start(button, { color = colorTable, startAnim = cfg.StartAnim, duration = cfg.Duration, key = PROC_GLOW_KEY })
+    elseif glowType == GlowType.Autocast then
+        local cfg = GlowConfig.Autocast
+        LibCustomGlow.AutoCastGlow_Start(button, colorTable, cfg.Particles, cfg.Frequency, cfg.Scale, cfg.XOffset, cfg.YOffset, PROC_GLOW_KEY)
+    elseif glowType == GlowType.Button then
+        LibCustomGlow.ButtonGlow_Start(button, colorTable)
+    end
+end
+
+local function StopProcGlow(button, activeType)
+    local GlowType = Constants.PandemicGlow.Type
+    if activeType == GlowType.Pixel then LibCustomGlow.PixelGlow_Stop(button, PROC_GLOW_KEY)
+    elseif activeType == GlowType.Proc then LibCustomGlow.ProcGlow_Stop(button, PROC_GLOW_KEY)
+    elseif activeType == GlowType.Autocast then LibCustomGlow.AutoCastGlow_Stop(button, PROC_GLOW_KEY)
+    elseif activeType == GlowType.Button then LibCustomGlow.ButtonGlow_Stop(button)
+    end
+end
 
 function CDM:HookProcGlow()
     if self.procGlowHooked or not ActionButtonSpellAlertManager then return end
@@ -21,13 +59,18 @@ function CDM:HookProcGlow()
     hooksecurefunc(ActionButtonSpellAlertManager, "ShowAlert", function(_, button)
         if button.SpellActivationAlert then button.SpellActivationAlert:SetAlpha(0) end
         if button.orbitProcGlowActive then return end
-        LibCustomGlow.ButtonGlow_Start(button, PROC_GLOW_COLOR)
-        button.orbitProcGlowActive = true
+        local si = FindSystemIndexForButton(button)
+        local GlowType = Constants.PandemicGlow.Type
+        local glowType = self:GetSetting(si, "ProcGlowType") or GlowType.Button
+        if glowType == GlowType.None then return end
+        local color = self:GetSetting(si, "ProcGlowColor") or Constants.PandemicGlow.DefaultColor
+        StartProcGlow(button, glowType, { color.r, color.g, color.b, color.a or 1 })
+        button.orbitProcGlowActive = glowType
     end)
 
     hooksecurefunc(ActionButtonSpellAlertManager, "HideAlert", function(_, button)
         if not button.orbitProcGlowActive then return end
-        LibCustomGlow.ButtonGlow_Stop(button)
+        StopProcGlow(button, button.orbitProcGlowActive)
         button.orbitProcGlowActive = nil
     end)
 

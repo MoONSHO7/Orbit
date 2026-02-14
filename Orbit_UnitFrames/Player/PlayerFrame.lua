@@ -34,7 +34,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         -- Aggro Indicator Settings
         AggroIndicatorEnabled = true,
         AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
-        AggroThickness = 2,
+        AggroThickness = 1,
         -- Disabled components (Canvas Mode drag-to-disable)
         DisabledComponents = {},
         -- Default component positions (Canvas Mode is single source of truth)
@@ -71,7 +71,7 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 120, max = 300, step = 10, default = 160 })
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 10, default = 160 })
         if not isAnchored then
             table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 10, default = 40 })
         end

@@ -36,7 +36,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     local schema = {
         hideNativeSettings = true,
         controls = {
-            { type = "slider", key = "Width", label = "Width", min = 80, max = 300, step = 5, default = 100 },
+            { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 5, default = 100 },
             { type = "slider", key = "Height", label = "Height", min = 10, max = 60, step = 5, default = 20 },
         },
     }
@@ -185,22 +185,20 @@ function Plugin:ApplySettings(frame)
     local systemIndex = PET_FRAME_INDEX
     self:ApplyUnitFrameSettings(frame, systemIndex)
 
-    -- 2. Pet Specific Visuals override
-    -- Font
     local globalFontName = Orbit.db.GlobalSettings.Font
     local fontPath = LSM:Fetch("font", globalFontName) or "Fonts\\FRIZQT__.TTF"
+    local frameHeight = frame:GetHeight()
 
     if frame.Name then
-        local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 12, 24, 0.25)
+        local textSize = Orbit.Skin:GetAdaptiveTextSize(frameHeight, 12, 24, 0.25)
         frame.Name:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
         frame.Name:ClearAllPoints()
-        frame.Name:SetPoint("CENTER", 0, 0) -- Centered name since no values
+        frame.Name:SetPoint("CENTER", 0, 0)
         frame.Name:SetJustifyH("CENTER")
         frame.Name:SetShadowColor(0, 0, 0, 1)
         frame.Name:SetShadowOffset(1, -1)
     end
 
-    -- HealthText: Check Canvas Mode disabled state (Canvas Mode is source of truth)
     local healthTextDisabled = self:IsComponentDisabled("HealthText")
     if frame.HealthText then
         if healthTextDisabled then
@@ -208,37 +206,32 @@ function Plugin:ApplySettings(frame)
             frame.healthTextEnabled = false
         else
             frame.healthTextEnabled = true
-            -- HealthText will be shown/updated by frame:UpdateAll()
         end
     end
 
-    -- Stub UpdateTextLayout to prevent it from overriding centered name
     frame.UpdateTextLayout = function() end
 
-    -- Hide Power Bar if it exists (UnitButton might create it)
     if frame.Power then
         frame.Power:Hide()
     end
 
-    -- Enable Reaction Color for consistency with Target Frame
-    -- (Matches FACTION_BAR_COLORS instead of pure 0,1,0 fallback)
     if frame.SetReactionColour then
         frame:SetReactionColour(true)
     end
 
-    -- Update frame
     frame:UpdateAll()
 
-    -- Restore position (Again, to be safe post-update)
     OrbitEngine.Frame:RestorePosition(frame, self, systemIndex)
 
-    -- Restore Component Positions (Canvas Mode)
-    local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
-    if savedPositions and OrbitEngine.ComponentDrag then
-        OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
+    local isInCanvasMode = OrbitEngine.ComponentEdit and OrbitEngine.ComponentEdit:IsActive(frame)
+    if not isInCanvasMode then
+        local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
+        if savedPositions then
+            if OrbitEngine.ComponentDrag then OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions) end
+            if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
+        end
     end
 
-    -- Apply Out of Combat Fade (with hover detection based on setting)
     if Orbit.OOCFadeMixin then
         local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
         Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover)

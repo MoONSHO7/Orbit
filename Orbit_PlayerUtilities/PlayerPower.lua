@@ -74,6 +74,7 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
         Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
+        SmoothAnimation = true,
         ComponentPositions = {
             Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
         },
@@ -151,6 +152,16 @@ function Plugin:AddSettings(dialog, systemFrame)
                 end,
             })
         end
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "SmoothAnimation",
+            label = "Smooth Animation",
+            default = true,
+            tooltip = "Smoothly animate bar value changes",
+            onChange = function(val)
+                self:SetSetting(systemIndex, "SmoothAnimation", val)
+            end,
+        })
     elseif currentTab == "Colour" then
         local classPowerTypes = CLASS_POWER_TYPES[PLAYER_CLASS] or {}
         local classPowerLookup = {}
@@ -448,7 +459,8 @@ function Plugin:UpdateAll()
         local current, max = Orbit.ResourceBarMixin:GetEbonMightState()
         if current and max and max > 0 then
             PowerBar:SetMinMaxValues(0, max)
-            PowerBar:SetValue(current, SMOOTH_ANIM)
+            local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
+            PowerBar:SetValue(current, smoothing)
 
             local curveData = self:GetSetting(SYSTEM_INDEX, "EbonMightColorCurve")
             local color = curveData and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
@@ -468,7 +480,8 @@ function Plugin:UpdateAll()
     local max = UnitPowerMax("player", powerType)
 
     PowerBar:SetMinMaxValues(0, max)
-    PowerBar:SetValue(cur, SMOOTH_ANIM)
+    local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
+    PowerBar:SetValue(cur, smoothing)
 
     -- Color: reset vertex tint then apply per-power-type curve
     PowerBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
