@@ -11,6 +11,7 @@ local VIEWER_MAP = CDM.viewerMap
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local INACTIVE_ALPHA_DEFAULT = 60
 local FLASH_DURATION = 0.15
+local DESAT_INTERVAL = 0.1
 
 local DESAT_CURVE = C_CurveUtil.CreateCurve()
 DESAT_CURVE:AddPoint(0.0, 1.0)
@@ -111,6 +112,14 @@ function CDM:ProcessChildren(anchor)
                     if anc and plugin.ProcessChildren then plugin:ProcessChildren(anc) end
                 end)
                 child.orbitOnShowHooked = true
+            end
+
+            if not child.orbitRefreshHooked and child.RefreshData then
+                local a = anchor
+                hooksecurefunc(child, "RefreshData", function()
+                    Orbit.Async:Debounce("CDM_Refresh_" .. systemIndex, function() CDM:ProcessChildren(a) end, Constants.Timing.KeyboardRestoreDelay)
+                end)
+                child.orbitRefreshHooked = true
             end
 
             if alwaysShow then
@@ -271,32 +280,30 @@ end
 
 do
     local driverFrame = CreateFrame("Frame")
-    driverFrame:SetScript("OnUpdate", function()
+    local desatAccum = 0
+    driverFrame:SetScript("OnUpdate", function(_, elapsed)
+        desatAccum = desatAccum + elapsed
+        local checkDesat = desatAccum >= DESAT_INTERVAL
+        if checkDesat then desatAccum = 0 end
+
         for systemIndex, entry in pairs(VIEWER_MAP) do
             local curve = GetNativeTimerCurveForSystem(systemIndex)
-            if curve then
-                if entry.viewer then
-                    for _, child in ipairs({ entry.viewer:GetChildren() }) do
-                        if child.layoutIndex and child:IsShown() and child:GetCooldownID() then
-                            ApplyTimerColor(child, curve, systemIndex)
-                        end
-                    end
-                end
-                if entry.anchor and entry.anchor.activeIcons then
-                    for _, icon in pairs(entry.anchor.activeIcons) do
-                        if icon:IsShown() then
-                            ApplyTimerColor(icon, curve, systemIndex)
-                        end
+            local needsDesat = checkDesat and systemIndex == BUFFICON_INDEX
+                and CDM:GetSetting(BUFFICON_INDEX, "AlwaysShow")
+
+            if entry.viewer and (curve or needsDesat) then
+                local inactiveAlpha = needsDesat and (CDM:GetSetting(BUFFICON_INDEX, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100 or nil
+                for _, child in ipairs({ entry.viewer:GetChildren() }) do
+                    if child.layoutIndex and child:IsShown() and child:GetCooldownID() then
+                        if curve then ApplyTimerColor(child, curve, systemIndex) end
+                        if inactiveAlpha then ApplyBuffIconDesaturation(child, inactiveAlpha) end
                     end
                 end
             end
 
-            if systemIndex == BUFFICON_INDEX and CDM:GetSetting(BUFFICON_INDEX, "AlwaysShow") and entry.viewer then
-                local inactiveAlpha = (CDM:GetSetting(BUFFICON_INDEX, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100
-                for _, child in ipairs({ entry.viewer:GetChildren() }) do
-                    if child.layoutIndex and child:IsShown() and child:GetCooldownID() then
-                        ApplyBuffIconDesaturation(child, inactiveAlpha)
-                    end
+            if curve and entry.anchor and entry.anchor.activeIcons then
+                for _, icon in pairs(entry.anchor.activeIcons) do
+                    if icon:IsShown() then ApplyTimerColor(icon, curve, systemIndex) end
                 end
             end
         end

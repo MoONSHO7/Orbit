@@ -16,6 +16,7 @@ local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local PROC_GLOW_KEY = "orbitProc"
 
 local function FindSystemIndexForButton(button)
+    if button.orbitCDMSystemIndex then return button.orbitCDMSystemIndex end
     for systemIndex, data in pairs(CDM.viewerMap) do
         if data.viewer and data.viewer.GetItemFrames then
             for _, icon in ipairs(data.viewer:GetItemFrames()) do

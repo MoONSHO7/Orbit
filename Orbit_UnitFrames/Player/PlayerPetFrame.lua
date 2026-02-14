@@ -36,7 +36,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     local schema = {
         hideNativeSettings = true,
         controls = {
-            { type = "slider", key = "Width", label = "Width", min = 80, max = 300, step = 5, default = 100 },
+            { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 5, default = 100 },
             { type = "slider", key = "Height", label = "Height", min = 10, max = 60, step = 5, default = 20 },
         },
     }

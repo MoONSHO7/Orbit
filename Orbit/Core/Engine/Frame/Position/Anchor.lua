@@ -96,17 +96,15 @@ local function SetMergeBorderState(parent, child, edge, hidden, overlap)
     end
 end
 
--- Returns chainLeftOffset (relative to parent's left) and chainWidth for chain-aware positioning.
--- Returns nil if parent is not part of a horizontal chain.
 local function GetChainExtentForAlign(parent)
     if not parent.orbitChainSync then
         return nil
     end
-    local chainWidth, offsetX = Anchor:GetHorizontalChainExtent(parent)
+    local chainWidth, leftOffset = Anchor:GetHorizontalChainExtent(parent)
     if not chainWidth then
         return nil
     end
-    return offsetX, chainWidth
+    return leftOffset, chainWidth
 end
 
 local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOptions, chainOffsetX)
@@ -272,6 +270,7 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
 
     HookParentSizeChange(parent, self)
 
+    local chainOffsetX = nil
     if not InCombatLockdown() then
         local parentScale = parent:GetScale()
         local parentWidth = parent:GetWidth()
@@ -280,8 +279,6 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
         if opts.syncScale then
             child:SetScale(parentScale)
         end
-
-        local chainOffsetX = nil
         if opts.syncDimensions then
             if edge == "LEFT" or edge == "RIGHT" then
                 local height = (opts.useRowDimension and parent.orbitRowHeight) or parentHeight
@@ -429,21 +426,22 @@ function Anchor:GetAnchoredChildren(parent)
     return children
 end
 
+local function GetChainRoot(anchors, frame)
+    local root = frame
+    while true do
+        local a = anchors[root]
+        if not a or (a.edge ~= "LEFT" and a.edge ~= "RIGHT") then break end
+        if not a.parent.orbitChainSync then break end
+        root = a.parent
+    end
+    return root
+end
+
 function Anchor:GetHorizontalChainFrames(frame)
     if not frame.orbitChainSync then
         return nil
     end
-    local root = frame
-    while true do
-        local a = self.anchors[root]
-        if not a or (a.edge ~= "LEFT" and a.edge ~= "RIGHT") then
-            break
-        end
-        if not a.parent.orbitChainSync then
-            break
-        end
-        root = a.parent
-    end
+    local root = GetChainRoot(self.anchors, frame)
     local frames = { root }
     local function walk(parent)
         local children = self.childrenOf[parent]
@@ -467,17 +465,7 @@ function Anchor:GetHorizontalChainExtent(frame)
     if not frame.orbitChainSync then
         return nil, nil
     end
-    local root = frame
-    while true do
-        local a = self.anchors[root]
-        if not a or (a.edge ~= "LEFT" and a.edge ~= "RIGHT") then
-            break
-        end
-        if not a.parent.orbitChainSync then
-            break
-        end
-        root = a.parent
-    end
+    local root = GetChainRoot(self.anchors, frame)
     local minX, maxX = 0, root:GetWidth()
     local function walk(parent, parentLeft)
         local children = self.childrenOf[parent]
@@ -523,8 +511,6 @@ function Anchor:GetHorizontalChainExtent(frame)
 end
 
 -- [ HORIZONTAL CHAIN SCREEN BOUNDS ]----------------------------------------------------------------
--- Returns the screen-space left, right, top, bottom of the full horizontal chain,
--- plus the chain root frame. Used by Snap to present unified TOP/BOTTOM edges.
 function Anchor:GetHorizontalChainScreenBounds(frame)
     local chainFrames = self:GetHorizontalChainFrames(frame)
     if not chainFrames or #chainFrames <= 1 then

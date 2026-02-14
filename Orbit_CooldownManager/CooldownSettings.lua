@@ -29,7 +29,7 @@ function CDM:AddSettings(dialog, systemFrame)
         if currentTab == "Layout" then
             if not isAnchored then
                 table.insert(schema.controls, {
-                    type = "slider", key = "Width", label = "Width", min = 100, max = 400, step = 1, default = 120,
+                    type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 120,
                     onChange = function(val) self:SetSetting(systemIndex, "Width", val); self:LayoutChargeBars() end,
                 })
             end

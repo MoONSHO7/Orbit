@@ -12,10 +12,10 @@ Tooltip.positionTooltip = nil
 Tooltip.positionFadeTimer = nil
 
 local ANCHOR_ALIGN_HEX = {
-    LEFT   = "FF8C26",
-    TOP    = "FF8C26",
+    LEFT = "FF8C26",
+    TOP = "FF8C26",
     CENTER = "33E6D9",
-    RIGHT  = "A659F2",
+    RIGHT = "A659F2",
     BOTTOM = "A659F2",
 }
 

@@ -887,7 +887,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
         table.insert(
             schema.controls,
-            { type = "slider", key = "Width", label = "Width", min = 100, max = 300, step = 5, default = 160, onChange = makeOnChange(self, "Width") }
+            { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 5, default = 160, onChange = makeOnChange(self, "Width") }
         )
         table.insert(
             schema.controls,

@@ -12,12 +12,6 @@ local ANCHOR_THRESHOLD = 10
 local ALIGN_THIRD = 1 / 3
 local CHAIN_ALIGN_EDGE = 2 / 5
 
--- Main snap detection function
--- @param frame The frame being dragged
--- @param showGuides If true, show guide lines (during drag). If false, apply snap (on drop)
--- @param targets Array of potential snap targets
--- @param isLockedFn Function to check if a frame is locked
--- @return closestX, closestY, anchorTarget, anchorEdge
 function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
     local threshold = SNAP_THRESHOLD
     local anchorThreshold = ANCHOR_THRESHOLD
@@ -178,7 +172,6 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
             local ratio = (tTop - centerY) / (tTop - tBottom)
             anchorAlign = (ratio < ALIGN_THIRD) and "TOP" or (ratio > (1 - ALIGN_THIRD)) and "BOTTOM" or "CENTER"
         else
-            -- Use chain bounds for alignment when target is part of a horizontal chain
             local cL, cR = Engine.FrameAnchor:GetHorizontalChainScreenBounds(anchorTarget)
             local alignLeft = cL or (anchorTarget:GetLeft() * tScale)
             local alignRight = cR or (anchorTarget:GetRight() * tScale)
