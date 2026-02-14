@@ -66,6 +66,7 @@ function Icons:ApplyManualLayout(frame, icons, settings)
         local scale = frame:GetEffectiveScale()
         w = Pixel:Snap(w, scale)
         h = Pixel:Snap(h, scale)
+        padding = Pixel:Snap(padding, scale)
     end
 
     -- "Major" is the primary flow direction (Rows for Horiz, Cols for Vert)

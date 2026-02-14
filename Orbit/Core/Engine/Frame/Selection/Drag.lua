@@ -9,7 +9,9 @@ local Drag = {}
 Engine.SelectionDrag = Drag
 
 local OPPOSITE_EDGES = { TOP = "BOTTOM", BOTTOM = "TOP", LEFT = "RIGHT", RIGHT = "LEFT" }
-local function GetOppositeEdge(edge) return OPPOSITE_EDGES[edge] end
+local function GetOppositeEdge(edge)
+    return OPPOSITE_EDGES[edge]
+end
 
 -- [ PRECISION MODE (SHIFT-DRAG OVERLAY SUPPRESSION) ]----------------------------------------------
 
@@ -38,7 +40,9 @@ local function ClearChainLines(selectionOverlay)
     if selectionOverlay.chainLineFrames then
         for _, f in ipairs(selectionOverlay.chainLineFrames) do
             local sel = Selection.selections[f]
-            if sel then Selection:ShowAnchorLine(sel, nil) end
+            if sel then
+                Selection:ShowAnchorLine(sel, nil)
+            end
         end
         selectionOverlay.chainLineFrames = nil
     end
@@ -50,12 +54,16 @@ local function RestorePreviewSize(selectionOverlay, isDragging)
         local currentW = parent:GetWidth()
         local origW = selectionOverlay.previewOrigWidth
         selectionOverlay.previewOrigWidth = nil
-        if isDragging then parent:StopMovingOrSizing() end
+        if isDragging then
+            parent:StopMovingOrSizing()
+        end
         local l, b = parent:GetLeft(), parent:GetBottom()
         parent:SetWidth(origW)
         parent:ClearAllPoints()
         parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l + (currentW - origW) / 2, b)
-        if isDragging then parent:StartMoving() end
+        if isDragging then
+            parent:StartMoving()
+        end
     end
 end
 
@@ -78,15 +86,21 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     end
 
     local targets = Selection:GetSnapTargets(parent)
-    local closestX, closestY, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(
-        parent, true, targets, nil
-    )
+    local closestX, closestY, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(parent, true, targets, nil)
 
     local isOrbitFrame = Selection.selections[anchorTarget] ~= nil
     local isVerticalEdge = anchorEdge and VERTICAL_EDGES[anchorEdge]
     local Anchor = Engine.FrameAnchor
+    local opts = Anchor.GetFrameOptions(parent)
+    local willSyncWidth = isVerticalEdge and opts.syncDimensions ~= false
+    local lineAlign = willSyncWidth and "CENTER" or anchorAlign
 
-    if anchorTarget and anchorEdge and isOrbitFrame and (anchorTarget ~= selectionOverlay.lastAnchorTarget or anchorAlign ~= selectionOverlay.lastAnchorAlign) then
+    if
+        anchorTarget
+        and anchorEdge
+        and isOrbitFrame
+        and (anchorTarget ~= selectionOverlay.lastAnchorTarget or lineAlign ~= selectionOverlay.lastAnchorAlign)
+    then
         if selectionOverlay.lastAnchorTarget then
             local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
             Selection:ShowAnchorLine(oldSel, nil)
@@ -96,36 +110,39 @@ local function OnDragUpdate(selectionOverlay, elapsed)
         RestorePreviewSize(selectionOverlay, true)
 
         local chainFrames = isVerticalEdge and Anchor:GetHorizontalChainFrames(anchorTarget)
-        if chainFrames and #chainFrames > 1 then
+        local isChain = chainFrames and #chainFrames > 1
+
+        if isChain then
             selectionOverlay.chainLineFrames = chainFrames
             for _, f in ipairs(chainFrames) do
                 local sel = Selection.selections[f]
-                if sel then Selection:ShowAnchorLine(sel, anchorEdge, "CENTER") end
-            end
-            Selection:ShowAnchorLine(selectionOverlay, GetOppositeEdge(anchorEdge), "CENTER")
-
-            local opts = Anchor.GetFrameOptions(parent)
-            if opts.syncDimensions ~= false then
-                local chainWidth = Anchor:GetHorizontalChainExtent(anchorTarget)
-                if chainWidth then
-                    local origW = selectionOverlay.previewOrigWidth or parent:GetWidth()
-                    selectionOverlay.previewOrigWidth = origW
-                    parent:StopMovingOrSizing()
-                    local l, b = parent:GetLeft(), parent:GetBottom()
-                    parent:SetWidth(chainWidth)
-                    parent:ClearAllPoints()
-                    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - (chainWidth - origW) / 2, b)
-                    parent:StartMoving()
+                if sel then
+                    Selection:ShowAnchorLine(sel, anchorEdge, lineAlign)
                 end
             end
+            Selection:ShowAnchorLine(selectionOverlay, GetOppositeEdge(anchorEdge), lineAlign)
         else
             local targetSel = Selection.selections[anchorTarget]
-            Selection:ShowAnchorLine(targetSel, anchorEdge, anchorAlign)
-            Selection:ShowAnchorLine(selectionOverlay, GetOppositeEdge(anchorEdge), anchorAlign)
+            Selection:ShowAnchorLine(targetSel, anchorEdge, lineAlign)
+            Selection:ShowAnchorLine(selectionOverlay, GetOppositeEdge(anchorEdge), lineAlign)
+        end
+
+        if willSyncWidth then
+            local previewW = isChain and Anchor:GetHorizontalChainExtent(anchorTarget) or anchorTarget:GetWidth()
+            if previewW then
+                local origW = selectionOverlay.previewOrigWidth or parent:GetWidth()
+                selectionOverlay.previewOrigWidth = origW
+                parent:StopMovingOrSizing()
+                local l, b = parent:GetLeft(), parent:GetBottom()
+                parent:SetWidth(previewW)
+                parent:ClearAllPoints()
+                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - (previewW - origW) / 2, b)
+                parent:StartMoving()
+            end
         end
 
         selectionOverlay.lastAnchorTarget = anchorTarget
-        selectionOverlay.lastAnchorAlign = anchorAlign
+        selectionOverlay.lastAnchorAlign = lineAlign
     elseif not anchorTarget and selectionOverlay.lastAnchorTarget then
         local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
         Selection:ShowAnchorLine(oldSel, nil)
@@ -136,7 +153,8 @@ local function OnDragUpdate(selectionOverlay, elapsed)
         selectionOverlay.lastAnchorAlign = nil
     end
 
-    Engine.SelectionTooltip:ShowPosition(parent, Selection, true)
+    local anchorLabel = selectionOverlay.lastAnchorAlign and Engine.SelectionTooltip:BuildAnchorLabel(selectionOverlay.lastAnchorAlign) or nil
+    Engine.SelectionTooltip:ShowPosition(parent, Selection, true, anchorLabel)
 end
 
 -- [ DRAG START (FUNCTION) ]------------------------------------------------------------------------
@@ -156,18 +174,19 @@ function Drag:OnDragStart(selectionOverlay)
         parent.orbitIsDragging = true
 
         local anchor = Engine.FrameAnchor.anchors[parent]
-        if anchor and anchor.syncOptions and anchor.syncOptions.syncDimensions then
-            local syncedW = parent:GetWidth()
+        if anchor then
+            local syncedW, syncedH, syncedS = parent:GetWidth(), parent:GetHeight(), parent:GetScale()
             Engine.FrameAnchor:BreakAnchor(parent, true)
             if parent.orbitPlugin and parent.orbitPlugin.ApplySettings then
                 parent.orbitPlugin:ApplySettings(parent)
             end
-            local naturalW = parent:GetWidth()
-            if naturalW ~= syncedW then
+            local naturalW, naturalH = parent:GetWidth(), parent:GetHeight()
+            local dw, dh = syncedW - naturalW, syncedH - naturalH
+            if dw ~= 0 or dh ~= 0 or parent:GetScale() ~= syncedS then
                 parent:StopMovingOrSizing()
                 local l, b = parent:GetLeft(), parent:GetBottom()
                 parent:ClearAllPoints()
-                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l + (syncedW - naturalW) / 2, b)
+                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l + dw / 2, b + dh / 2)
                 parent:StartMoving()
             end
         end

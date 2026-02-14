@@ -10,13 +10,20 @@ local HORIZONTAL_EDGES = { LEFT = true, RIGHT = true }
 -- [ INHERITED PARENT RESOLVER ]----------------------------------------------------------------------
 function CooldownUtils:GetInheritedParentIndex(anchorFrame, viewerMap)
     local anchors = OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors
-    if not anchors then return nil end
+    if not anchors then
+        return nil
+    end
     local current, rootIndex = anchorFrame, nil
     while true do
         local info = anchors[current]
-        if not info or not HORIZONTAL_EDGES[info.edge] then break end
+        if not info or not HORIZONTAL_EDGES[info.edge] then
+            break
+        end
         local parent = info.parent
-        if not (parent and parent.systemIndex and viewerMap[parent.systemIndex]) then break end
+        local entry = parent and parent.systemIndex and viewerMap[parent.systemIndex]
+        if not (entry and entry.anchor == parent) then
+            break
+        end
         rootIndex = parent.systemIndex
         current = parent
     end
@@ -119,7 +126,9 @@ end
 
 -- [ CHARGE COMPLETION TRACKING ]----------------------------------------------------------------------
 function CooldownUtils:OnChargeCast(obj)
-    if not obj._trackedCharges or obj._trackedCharges <= 0 then return end
+    if not obj._trackedCharges or obj._trackedCharges <= 0 then
+        return
+    end
     obj._trackedCharges = obj._trackedCharges - 1
     if not obj._rechargeEndsAt and obj._knownRechargeDuration then
         obj._rechargeEndsAt = GetTime() + obj._knownRechargeDuration
@@ -127,7 +136,9 @@ function CooldownUtils:OnChargeCast(obj)
 end
 
 function CooldownUtils:TrackChargeCompletion(obj)
-    if not obj._rechargeEndsAt or not obj._trackedCharges or not obj._maxCharges then return end
+    if not obj._rechargeEndsAt or not obj._trackedCharges or not obj._maxCharges then
+        return
+    end
     if obj._trackedCharges >= obj._maxCharges then
         obj._rechargeEndsAt = nil
         return

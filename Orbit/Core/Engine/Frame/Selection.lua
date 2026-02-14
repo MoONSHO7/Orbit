@@ -86,12 +86,14 @@ local function ForEachRegion(selection, callback)
 end
 
 local OPPOSITE_EDGES = { TOP = "BOTTOM", BOTTOM = "TOP", LEFT = "RIGHT", RIGHT = "LEFT" }
-local function GetOppositeEdge(edge) return OPPOSITE_EDGES[edge] end
+local function GetOppositeEdge(edge)
+    return OPPOSITE_EDGES[edge]
+end
 
 local ANCHOR_ALIGN_COLORS = {
-    LEFT   = { 0.65, 0.35, 0.95 },
-    RIGHT  = { 0.65, 0.35, 0.95 },
-    TOP    = { 0.65, 0.35, 0.95 },
+    LEFT = { 1.0, 0.55, 0.15 },
+    RIGHT = { 0.65, 0.35, 0.95 },
+    TOP = { 1.0, 0.55, 0.15 },
     BOTTOM = { 0.65, 0.35, 0.95 },
     CENTER = { 0.2, 0.9, 0.85 },
 }
@@ -167,7 +169,7 @@ function Selection:GetSnapTargets(excludeFrame)
 
     if EditModeManagerFrame and EditModeManagerFrame.registeredSystemFrames then
         for _, systemFrame in ipairs(EditModeManagerFrame.registeredSystemFrames) do
-            if systemFrame ~= excludeFrame and systemFrame:IsVisible() and not systemFrame:IsForbidden() then
+            if systemFrame ~= excludeFrame and systemFrame:IsVisible() and not systemFrame:IsForbidden() and not systemFrame.orbitSnapExclude then
                 if not IsDependent(systemFrame, excludeFrame) then
                     table.insert(targets, systemFrame)
                 end
@@ -450,14 +452,26 @@ end
 local ANCHOR_LINE_KEY = { TOP = "AnchorLineTop", BOTTOM = "AnchorLineBottom", LEFT = "AnchorLineLeft", RIGHT = "AnchorLineRight" }
 
 function Selection:ShowAnchorLine(selection, side, align)
-    if not selection then return end
+    if not selection then
+        return
+    end
 
-    if selection.AnchorLineTop then selection.AnchorLineTop:Hide() end
-    if selection.AnchorLineBottom then selection.AnchorLineBottom:Hide() end
-    if selection.AnchorLineLeft then selection.AnchorLineLeft:Hide() end
-    if selection.AnchorLineRight then selection.AnchorLineRight:Hide() end
+    if selection.AnchorLineTop then
+        selection.AnchorLineTop:Hide()
+    end
+    if selection.AnchorLineBottom then
+        selection.AnchorLineBottom:Hide()
+    end
+    if selection.AnchorLineLeft then
+        selection.AnchorLineLeft:Hide()
+    end
+    if selection.AnchorLineRight then
+        selection.AnchorLineRight:Hide()
+    end
 
-    if not side then return end
+    if not side then
+        return
+    end
 
     local line = selection[ANCHOR_LINE_KEY[side]]
     if line then
@@ -525,8 +539,6 @@ function Selection:UpdateVisuals(frame, selection)
     if not selection then
         return
     end
-
-
 
     -- Canvas Mode: Show green selection to indicate editable state
     local isComponentEdit = Engine.ComponentEdit:IsActive(selection.parent)

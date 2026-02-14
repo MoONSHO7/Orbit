@@ -11,6 +11,19 @@ Engine.SelectionTooltip = Tooltip
 Tooltip.positionTooltip = nil
 Tooltip.positionFadeTimer = nil
 
+local ANCHOR_ALIGN_HEX = {
+    LEFT   = "FF8C26",
+    TOP    = "FF8C26",
+    CENTER = "33E6D9",
+    RIGHT  = "A659F2",
+    BOTTOM = "A659F2",
+}
+
+function Tooltip:BuildAnchorLabel(align)
+    local hex = ANCHOR_ALIGN_HEX[align] or "FFFFFF"
+    return "|cFF" .. hex .. "Anchor: " .. align .. "|r"
+end
+
 -------------------------------------------------
 -- HELPERS
 -------------------------------------------------
@@ -108,14 +121,13 @@ end
 -- SHOW FRAME POSITION TOOLTIP
 -------------------------------------------------
 
-function Tooltip:ShowPosition(frame, Selection, noFade)
+function Tooltip:ShowPosition(frame, Selection, noFade, anchorLabel)
     if not frame then
         return
     end
 
     local tooltip = EnsureTooltip(self)
 
-    -- Calculate centers in screen pixels to handle scale differences
     local uiScale = UIParent:GetEffectiveScale()
     local uiWidth, uiHeight = UIParent:GetWidth(), UIParent:GetHeight()
     local screenCenterX = (uiWidth * uiScale) / 2
@@ -133,18 +145,25 @@ function Tooltip:ShowPosition(frame, Selection, noFade)
     local relX = math.floor(frameCenterX - screenCenterX + 0.5)
     local relY = math.floor(frameCenterY - screenCenterY + 0.5)
 
-    -- Update tooltip text
     local parent = Engine.FrameAnchor:GetAnchorParent(frame)
+    local displayText
     if parent then
         local anchor = Engine.FrameAnchor.anchors[frame]
         local padding = anchor and anchor.padding or 0
-        tooltip.text:SetText("Distance: " .. padding)
+        displayText = "Distance: " .. padding
     else
-        tooltip.text:SetText(string.format("%d, %d", relX, relY))
+        displayText = string.format("%d, %d", relX, relY)
     end
 
-    -- Resize and position
-    tooltip:SetWidth(tooltip.text:GetStringWidth() + 16)
+    if anchorLabel then
+        displayText = displayText .. "\n" .. anchorLabel
+    end
+
+    tooltip.text:SetText(displayText)
+
+    local textWidth = tooltip.text:GetStringWidth()
+    local textHeight = tooltip.text:GetStringHeight()
+    tooltip:SetSize(textWidth + 16, textHeight + 12)
 
     local screenWidth = GetScreenWidth()
     local cursorX = GetCursorPosition() / uiScale

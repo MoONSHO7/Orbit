@@ -168,6 +168,7 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame:EnableMouse(false)
     frame.orbitClickThrough = true
     frame.anchorOptions = { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true }
+    frame.orbitChainSync = true
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 
     frame.Selection = frame:CreateTexture(nil, "OVERLAY")

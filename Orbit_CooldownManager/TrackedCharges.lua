@@ -132,6 +132,7 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame:EnableMouse(false)
     frame.orbitClickThrough = true
     frame.anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }
+    frame.orbitChainSync = true
 
     frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = 30, y = 0 }
     frame:SetPoint("CENTER", UIParent, "CENTER", 30, 0)
