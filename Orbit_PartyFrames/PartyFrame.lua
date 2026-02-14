@@ -1483,7 +1483,7 @@ function Plugin:UpdateLayout(frame)
 
     for _, partyFrame in ipairs(self.frames) do
         partyFrame:SetSize(width, height)
-        UpdateFrameLayout(partyFrame, self:GetPlayerSetting("BorderSize"), self)
+        UpdateFrameLayout(partyFrame, self:GetSetting(1, "BorderSize"), self)
     end
 
     self:PositionFrames()
@@ -1497,8 +1497,8 @@ function Plugin:ApplySettings()
     local width = self:GetSetting(1, "Width") or 160
     local height = self:GetSetting(1, "Height") or 40
     local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
-    local borderSize = self:GetPlayerSetting("BorderSize") or 1
-    local textureName = self:GetPlayerSetting("Texture")
+    local borderSize = self:GetSetting(1, "BorderSize") or 1
+    local textureName = self:GetSetting(1, "Texture")
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
 
     -- Build list of all frames

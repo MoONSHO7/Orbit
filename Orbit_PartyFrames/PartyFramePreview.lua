@@ -190,7 +190,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
     local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
     local textureName = self:GetSetting(1, "Texture")
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
-    local borderSize = (self.GetPlayerSetting and self:GetPlayerSetting("BorderSize")) or 1
+    local borderSize = self:GetSetting(1, "BorderSize") or 1
 
     -- Get Colors tab global settings (for reference only - helpers read them)
     local globalSettings = Orbit.db.GlobalSettings or {}
@@ -689,7 +689,7 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posi
     end
 
     -- Skin settings
-    local globalBorder = (self.GetPlayerSetting and self:GetPlayerSetting("BorderSize")) or 1
+    local globalBorder = self:GetSetting(1, "BorderSize") or 1
     local skinSettings = {
         zoom = 0,
         borderStyle = 1,
