@@ -27,9 +27,8 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
         Scale = 100,
         MemberSpacing = 1,
         GroupSpacing = 4,
-        Orientation = 0,
+        GroupsPerRow = 6,
         GrowthDirection = "Down",
-        GroupGrowthDirection = "Right",
         SortMode = "Group",
         ShowPowerBar = true,
         HealthTextMode = "percent_short",
@@ -579,7 +578,6 @@ end
 
 function Plugin:AddSettings(dialog, systemFrame)
     local WL = OrbitEngine.WidgetLogic
-    local orientation = self:GetSetting(1, "Orientation") or 0
     local schema = { hideNativeSettings = true, controls = {} }
 
     WL:SetTabRefreshCallback(dialog, self, systemFrame)
@@ -588,49 +586,22 @@ function Plugin:AddSettings(dialog, systemFrame)
     if currentTab == "Layout" then
         table.insert(schema.controls, {
             type = "dropdown",
-            key = "Orientation",
-            label = "Orientation",
-            default = 0,
-            options = { { text = "Vertical", value = 0 }, { text = "Horizontal", value = 1 } },
-            onChange = function(val)
-                self:SetSetting(1, "Orientation", val)
-                self:SetSetting(1, "GrowthDirection", val == 0 and "Down" or "Right")
-                self:SetSetting(1, "GroupGrowthDirection", val == 0 and "Right" or "Down")
-                self:ApplySettings()
-                if self.frames and self.frames[1] and self.frames[1].preview then
-                    self:SchedulePreviewUpdate()
-                end
-                if dialog.orbitTabCallback then
-                    dialog.orbitTabCallback()
-                end
-            end,
+            key = "GrowthDirection",
+            label = "Growth Direction",
+            default = "Down",
+            options = { { text = "Down", value = "Down" }, { text = "Up", value = "Up" } },
+            onChange = makeOnChange(self, "GrowthDirection"),
         })
-        local memberGrowthOptions = orientation == 0 and { { text = "Down", value = "Down" }, { text = "Up", value = "Up" } }
-            or { { text = "Right", value = "Right" }, { text = "Left", value = "Left" } }
-        table.insert(
-            schema.controls,
-            {
-                type = "dropdown",
-                key = "GrowthDirection",
-                label = "Member Growth",
-                default = orientation == 0 and "Down" or "Right",
-                options = memberGrowthOptions,
-                onChange = makeOnChange(self, "GrowthDirection"),
-            }
-        )
-        local groupGrowthOptions = orientation == 0 and { { text = "Right", value = "Right" }, { text = "Left", value = "Left" } }
-            or { { text = "Down", value = "Down" }, { text = "Up", value = "Up" } }
-        table.insert(
-            schema.controls,
-            {
-                type = "dropdown",
-                key = "GroupGrowthDirection",
-                label = "Group Growth",
-                default = orientation == 0 and "Right" or "Down",
-                options = groupGrowthOptions,
-                onChange = makeOnChange(self, "GroupGrowthDirection"),
-            }
-        )
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "GroupsPerRow",
+            label = "Groups Per Row",
+            min = 1,
+            max = 6,
+            step = 1,
+            default = 6,
+            onChange = makeOnChange(self, "GroupsPerRow"),
+        })
         table.insert(schema.controls, {
             type = "dropdown",
             key = "SortMode",
@@ -1005,9 +976,8 @@ function Plugin:PositionFrames()
     local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
     local memberSpacing = self:GetSetting(1, "MemberSpacing") or Helpers.LAYOUT.MemberSpacing
     local groupSpacing = self:GetSetting(1, "GroupSpacing") or Helpers.LAYOUT.GroupSpacing
-    local orientation = self:GetSetting(1, "Orientation") or 0
-    local memberGrowth = self:GetSetting(1, "GrowthDirection") or (orientation == 0 and "Down" or "Right")
-    local groupGrowth = self:GetSetting(1, "GroupGrowthDirection") or (orientation == 0 and "Right" or "Down")
+    local groupsPerRow = self:GetSetting(1, "GroupsPerRow") or 6
+    local memberGrowth = self:GetSetting(1, "GrowthDirection") or "Down"
 
     local activeGroups = Helpers:GetActiveGroups()
     local sortMode = self:GetSetting(1, "SortMode") or "Group"
@@ -1030,7 +1000,7 @@ function Plugin:PositionFrames()
     local groupIndex = 0
     for _, groupNum in ipairs(groupOrder) do
         groupIndex = groupIndex + 1
-        local gx, gy = Helpers:CalculateGroupPosition(groupIndex, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing, orientation, groupGrowth)
+        local gx, gy = Helpers:CalculateGroupPosition(groupIndex, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing, groupsPerRow)
 
         local memberIndex = 0
         for i = 1, MAX_RAID_FRAMES do
@@ -1049,7 +1019,7 @@ function Plugin:PositionFrames()
 
                 if belongsToGroup then
                     memberIndex = memberIndex + 1
-                    local mx, my = Helpers:CalculateMemberPosition(memberIndex, width, height, memberSpacing, orientation, memberGrowth)
+                    local mx, my = Helpers:CalculateMemberPosition(memberIndex, width, height, memberSpacing, memberGrowth)
                     frame:ClearAllPoints()
                     frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", gx + mx, gy + my)
                 end
@@ -1076,7 +1046,7 @@ function Plugin:UpdateContainerSize()
     local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
     local memberSpacing = self:GetSetting(1, "MemberSpacing") or Helpers.LAYOUT.MemberSpacing
     local groupSpacing = self:GetSetting(1, "GroupSpacing") or Helpers.LAYOUT.GroupSpacing
-    local orientation = self:GetSetting(1, "Orientation") or 0
+    local groupsPerRow = self:GetSetting(1, "GroupsPerRow") or 6
 
     local isPreview = self.frames[1] and self.frames[1].preview
     local numGroups = 0
@@ -1090,7 +1060,7 @@ function Plugin:UpdateContainerSize()
         numGroups = math.max(1, numGroups)
     end
 
-    local containerW, containerH = Helpers:CalculateContainerSize(numGroups, FRAMES_PER_GROUP, width, height, memberSpacing, groupSpacing, orientation)
+    local containerW, containerH = Helpers:CalculateContainerSize(numGroups, FRAMES_PER_GROUP, width, height, memberSpacing, groupSpacing, groupsPerRow)
     self.container:SetSize(containerW, containerH)
 end
 

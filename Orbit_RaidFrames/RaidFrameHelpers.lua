@@ -51,48 +51,39 @@ end
 
 -- [ CONTAINER SIZING ]------------------------------------------------------------------------------
 
-function Helpers:CalculateContainerSize(numGroups, numPerGroup, frameWidth, frameHeight, memberSpacing, groupSpacing, orientation)
+function Helpers:CalculateContainerSize(numGroups, numPerGroup, frameWidth, frameHeight, memberSpacing, groupSpacing, groupsPerRow)
     memberSpacing = memberSpacing or self.LAYOUT.MemberSpacing
     groupSpacing = groupSpacing or self.LAYOUT.GroupSpacing
     numGroups = math.max(1, numGroups)
     numPerGroup = math.max(1, numPerGroup)
+    groupsPerRow = math.max(1, math.min(groupsPerRow or numGroups, numGroups))
+    local numCols = groupsPerRow
+    local numRows = math.ceil(numGroups / groupsPerRow)
     local memberExtent = (numPerGroup * frameHeight) + ((numPerGroup - 1) * memberSpacing)
-    local groupExtent = (numGroups * frameWidth) + ((numGroups - 1) * groupSpacing)
-    if orientation == 0 then
-        return groupExtent, memberExtent
-    else
-        return memberExtent, groupExtent
-    end
+    local containerW = (numCols * frameWidth) + ((numCols - 1) * groupSpacing)
+    local containerH = (numRows * memberExtent) + ((numRows - 1) * groupSpacing)
+    return containerW, containerH
 end
 
 -- [ FRAME POSITIONING ]-----------------------------------------------------------------------------
 
-function Helpers:CalculateGroupPosition(groupIndex, frameWidth, frameHeight, numPerGroup, memberSpacing, groupSpacing, orientation, growthDirection)
+function Helpers:CalculateGroupPosition(groupIndex, frameWidth, frameHeight, numPerGroup, memberSpacing, groupSpacing, groupsPerRow)
     memberSpacing = memberSpacing or self.LAYOUT.MemberSpacing
     groupSpacing = groupSpacing or self.LAYOUT.GroupSpacing
+    groupsPerRow = groupsPerRow or 6
+    local col = (groupIndex - 1) % groupsPerRow
+    local row = math.floor((groupIndex - 1) / groupsPerRow)
     local memberExtent = (numPerGroup * frameHeight) + ((numPerGroup - 1) * memberSpacing)
-    local step = orientation == 0 and (frameWidth + groupSpacing) or (memberExtent + groupSpacing)
-    local offset = (groupIndex - 1) * step
-    if orientation == 0 then
-        if growthDirection == "Left" then return -offset, 0, "TOPRIGHT", "TOPRIGHT" end
-        return offset, 0, "TOPLEFT", "TOPLEFT"
-    else
-        if growthDirection == "Up" then return 0, offset, "BOTTOMLEFT", "BOTTOMLEFT" end
-        return 0, -offset, "TOPLEFT", "TOPLEFT"
-    end
+    local gx = col * (frameWidth + groupSpacing)
+    local gy = -(row * (memberExtent + groupSpacing))
+    return gx, gy
 end
 
-function Helpers:CalculateMemberPosition(memberIndex, frameWidth, frameHeight, memberSpacing, orientation, memberGrowth)
+function Helpers:CalculateMemberPosition(memberIndex, frameWidth, frameHeight, memberSpacing, memberGrowth)
     memberSpacing = memberSpacing or self.LAYOUT.MemberSpacing
-    local step = orientation == 0 and (frameHeight + memberSpacing) or (frameWidth + memberSpacing)
-    local offset = (memberIndex - 1) * step
-    if orientation == 0 then
-        if memberGrowth == "Up" then return 0, offset, "BOTTOMLEFT", "BOTTOMLEFT" end
-        return 0, -offset, "TOPLEFT", "TOPLEFT"
-    else
-        if memberGrowth == "Left" then return -offset, 0, "TOPRIGHT", "TOPRIGHT" end
-        return offset, 0, "TOPLEFT", "TOPLEFT"
-    end
+    local offset = (memberIndex - 1) * (frameHeight + memberSpacing)
+    if memberGrowth == "Up" then return 0, offset end
+    return 0, -offset
 end
 
 -- [ POWER BAR LAYOUT ]------------------------------------------------------------------------------
