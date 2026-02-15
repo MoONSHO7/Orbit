@@ -48,8 +48,8 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
             DefensiveIcon = { anchorX = "LEFT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
             ImportantIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
             CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
-            Buffs = { overrides = { MaxIcons = 0, IconScale = 1.0, MaxRows = 1 } },
-            Debuffs = { overrides = { MaxIcons = 3, IconScale = 1.0, MaxRows = 1 } },
+            Buffs = { overrides = { MaxIcons = 0, IconSize = 25, MaxRows = 1 } },
+            Debuffs = { overrides = { MaxIcons = 3, IconSize = 25, MaxRows = 1 } },
         },
         DisabledComponents = { "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" },
         DisabledComponentsMigrated = true,
@@ -69,35 +69,44 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
 
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.RaidFramePreviewMixin, Orbit.AuraMixin, Orbit.AggroIndicatorMixin, Orbit.StatusIconMixin, Orbit.RaidFrameFactoryMixin)
 
-if Orbit.PartyFrameDispelMixin then Mixin(Plugin, Orbit.PartyFrameDispelMixin) end
+if Orbit.PartyFrameDispelMixin then
+    Mixin(Plugin, Orbit.PartyFrameDispelMixin)
+end
 
 Plugin.canvasMode = true
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
 
 local function SafeRegisterUnitWatch(frame)
-    if not frame then return end
+    if not frame then
+        return
+    end
     Orbit:SafeAction(function() RegisterUnitWatch(frame) end)
 end
 
 local function SafeUnregisterUnitWatch(frame)
-    if not frame then return end
+    if not frame then
+        return
+    end
     Orbit:SafeAction(function() UnregisterUnitWatch(frame) end)
 end
 
 -- [ AURA POST-FILTER ]------------------------------------------------------------------------------
 
-local function IsAuraIncluded(unit, auraInstanceID, filter)
-    return not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, auraInstanceID, filter)
-end
+local function IsAuraIncluded(unit, auraInstanceID, filter) return not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, auraInstanceID, filter) end
 
 -- [ POWER BAR UPDATE ]------------------------------------------------------------------------------
 
 local function UpdatePowerBar(frame, plugin)
-    if not frame.Power or not frame.unit or not UnitExists(frame.unit) then return end
+    if not frame.Power or not frame.unit or not UnitExists(frame.unit) then
+        return
+    end
     local showPower = plugin:GetSetting(1, "ShowPowerBar")
     local isHealer = UnitGroupRolesAssigned(frame.unit) == "HEALER"
-    if showPower == false and not isHealer then frame.Power:Hide() return end
+    if showPower == false and not isHealer then
+        frame.Power:Hide()
+        return
+    end
     frame.Power:Show()
     local power, maxPower, powerType = UnitPower(frame.unit), UnitPowerMax(frame.unit), UnitPowerType(frame.unit)
     frame.Power:SetMinMaxValues(0, maxPower)
@@ -107,25 +116,41 @@ local function UpdatePowerBar(frame, plugin)
 end
 
 local function UpdateFrameLayout(frame, borderSize, plugin)
-    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
+    if not Helpers then
+        Helpers = Orbit.RaidFrameHelpers
+    end
     local showPowerBar = plugin and plugin:GetSetting(1, "ShowPowerBar")
-    if showPowerBar == nil then showPowerBar = true end
-    if not showPowerBar and frame.unit and UnitGroupRolesAssigned(frame.unit) == "HEALER" then showPowerBar = true end
+    if showPowerBar == nil then
+        showPowerBar = true
+    end
+    if not showPowerBar and frame.unit and UnitGroupRolesAssigned(frame.unit) == "HEALER" then
+        showPowerBar = true
+    end
     Helpers:UpdateFrameLayout(frame, borderSize, showPowerBar)
 end
 
 -- [ DEBUFF DISPLAY ]--------------------------------------------------------------------------------
 
 local function UpdateDebuffs(frame, plugin)
-    if not frame.debuffContainer then return end
+    if not frame.debuffContainer then
+        return
+    end
     local unit = frame.unit
-    if not unit or not UnitExists(unit) then frame.debuffContainer:Hide() return end
+    if not unit or not UnitExists(unit) then
+        frame.debuffContainer:Hide()
+        return
+    end
 
     local maxDebuffs = plugin:GetSetting(1, "MaxDebuffs") or 3
     local debuffSize = plugin:GetSetting(1, "DebuffSize") or 16
-    if maxDebuffs <= 0 then frame.debuffContainer:Hide() return end
+    if maxDebuffs <= 0 then
+        frame.debuffContainer:Hide()
+        return
+    end
 
-    if not frame.debuffPool then frame.debuffPool = CreateFramePool("Button", frame.debuffContainer, "BackdropTemplate") end
+    if not frame.debuffPool then
+        frame.debuffPool = CreateFramePool("Button", frame.debuffContainer, "BackdropTemplate")
+    end
     frame.debuffPool:ReleaseAll()
 
     local allDebuffs = plugin:FetchAuras(unit, "HARMFUL", 40)
@@ -135,11 +160,16 @@ local function UpdateDebuffs(frame, plugin)
         local dominated = excludeCC and aura.auraInstanceID and IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
         if not dominated then
             debuffs[#debuffs + 1] = aura
-            if #debuffs >= maxDebuffs then break end
+            if #debuffs >= maxDebuffs then
+                break
+            end
         end
     end
 
-    if #debuffs == 0 then frame.debuffContainer:Hide() return end
+    if #debuffs == 0 then
+        frame.debuffContainer:Hide()
+        return
+    end
 
     local cols = math.min(#debuffs, 3)
     local rows = math.ceil(#debuffs / cols)
@@ -157,7 +187,10 @@ local function UpdateDebuffs(frame, plugin)
         icon:ClearAllPoints()
         icon:SetPoint("TOPLEFT", frame.debuffContainer, "TOPLEFT", col * (debuffSize + AURA_SPACING), -(row * (debuffSize + AURA_SPACING)))
         col = col + 1
-        if col >= cols then col = 0; row = row + 1 end
+        if col >= cols then
+            col = 0
+            row = row + 1
+        end
     end
     frame.debuffContainer:Show()
 end
@@ -165,15 +198,25 @@ end
 -- [ BUFF DISPLAY ]----------------------------------------------------------------------------------
 
 local function UpdateBuffs(frame, plugin)
-    if not frame.buffContainer then return end
+    if not frame.buffContainer then
+        return
+    end
     local unit = frame.unit
-    if not unit or not UnitExists(unit) then frame.buffContainer:Hide() return end
+    if not unit or not UnitExists(unit) then
+        frame.buffContainer:Hide()
+        return
+    end
 
     local maxBuffs = plugin:GetSetting(1, "MaxBuffs") or 0
     local buffSize = plugin:GetSetting(1, "BuffSize") or 14
-    if maxBuffs <= 0 then frame.buffContainer:Hide() return end
+    if maxBuffs <= 0 then
+        frame.buffContainer:Hide()
+        return
+    end
 
-    if not frame.buffPool then frame.buffPool = CreateFramePool("Button", frame.buffContainer, "BackdropTemplate") end
+    if not frame.buffPool then
+        frame.buffPool = CreateFramePool("Button", frame.buffContainer, "BackdropTemplate")
+    end
     frame.buffPool:ReleaseAll()
 
     local allBuffs = plugin:FetchAuras(unit, "HELPFUL|PLAYER", 40)
@@ -188,12 +231,17 @@ local function UpdateBuffs(frame, plugin)
             local isExtDef = excludeDefensives and IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|EXTERNAL_DEFENSIVE")
             if passesRaid and not isBigDef and not isExtDef then
                 buffs[#buffs + 1] = aura
-                if #buffs >= maxBuffs then break end
+                if #buffs >= maxBuffs then
+                    break
+                end
             end
         end
     end
 
-    if #buffs == 0 then frame.buffContainer:Hide() return end
+    if #buffs == 0 then
+        frame.buffContainer:Hide()
+        return
+    end
 
     local cols = math.min(#buffs, 3)
     local rows = math.ceil(#buffs / cols)
@@ -211,7 +259,10 @@ local function UpdateBuffs(frame, plugin)
         icon:ClearAllPoints()
         icon:SetPoint("TOPLEFT", frame.buffContainer, "TOPLEFT", col * (buffSize + AURA_SPACING), -(row * (buffSize + AURA_SPACING)))
         col = col + 1
-        if col >= cols then col = 0; row = row + 1 end
+        if col >= cols then
+            col = 0
+            row = row + 1
+        end
     end
     frame.buffContainer:Show()
 end
@@ -220,12 +271,23 @@ end
 
 local function UpdateSingleAuraIcon(frame, plugin, iconKey, filter, iconSize)
     local icon = frame[iconKey]
-    if not icon then return end
-    if plugin.IsComponentDisabled and plugin:IsComponentDisabled(iconKey) then icon:Hide() return end
+    if not icon then
+        return
+    end
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled(iconKey) then
+        icon:Hide()
+        return
+    end
     local unit = frame.unit
-    if not unit or not UnitExists(unit) then icon:Hide() return end
+    if not unit or not UnitExists(unit) then
+        icon:Hide()
+        return
+    end
     local auras = plugin:FetchAuras(unit, filter, 1)
-    if #auras == 0 then icon:Hide() return end
+    if #auras == 0 then
+        icon:Hide()
+        return
+    end
     local globalBorder = Orbit.db.GlobalSettings.BorderSize
     local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false }
     plugin:SetupAuraIcon(icon, auras[1], iconSize, unit, skinSettings)
@@ -236,47 +298,97 @@ end
 
 local function UpdateDefensiveIcon(frame, plugin)
     local icon = frame.DefensiveIcon
-    if not icon then return end
-    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("DefensiveIcon") then icon:Hide() return end
+    if not icon then
+        return
+    end
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("DefensiveIcon") then
+        icon:Hide()
+        return
+    end
     local unit = frame.unit
-    if not unit or not UnitExists(unit) then icon:Hide() return end
+    if not unit or not UnitExists(unit) then
+        icon:Hide()
+        return
+    end
     local auras = plugin:FetchAuras(unit, "HELPFUL|BIG_DEFENSIVE", 1)
-    if #auras == 0 then auras = plugin:FetchAuras(unit, "HELPFUL|EXTERNAL_DEFENSIVE", 1) end
-    if #auras == 0 then icon:Hide() return end
+    if #auras == 0 then
+        auras = plugin:FetchAuras(unit, "HELPFUL|EXTERNAL_DEFENSIVE", 1)
+    end
+    if #auras == 0 then
+        icon:Hide()
+        return
+    end
     local globalBorder = Orbit.db.GlobalSettings.BorderSize
     plugin:SetupAuraIcon(icon, auras[1], DEFENSIVE_ICON_SIZE, unit, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
     plugin:SetupAuraTooltip(icon, auras[1], unit, "HELPFUL")
     icon:Show()
 end
 
-local function UpdateImportantIcon(frame, plugin)
-    UpdateSingleAuraIcon(frame, plugin, "ImportantIcon", "HARMFUL|IMPORTANT", IMPORTANT_ICON_SIZE)
-end
+local function UpdateImportantIcon(frame, plugin) UpdateSingleAuraIcon(frame, plugin, "ImportantIcon", "HARMFUL|IMPORTANT", IMPORTANT_ICON_SIZE) end
 
-local function UpdateCrowdControlIcon(frame, plugin)
-    UpdateSingleAuraIcon(frame, plugin, "CrowdControlIcon", "HARMFUL|CROWD_CONTROL", CROWD_CONTROL_ICON_SIZE)
-end
+local function UpdateCrowdControlIcon(frame, plugin) UpdateSingleAuraIcon(frame, plugin, "CrowdControlIcon", "HARMFUL|CROWD_CONTROL", CROWD_CONTROL_ICON_SIZE) end
 
 -- [ STATUS INDICATOR WRAPPERS ]---------------------------------------------------------------------
 
-local function UpdateRoleIcon(frame, plugin) if plugin.UpdateRoleIcon then plugin:UpdateRoleIcon(frame, plugin) end end
-local function UpdateLeaderIcon(frame, plugin) if plugin.UpdateLeaderIcon then plugin:UpdateLeaderIcon(frame, plugin) end end
-local function UpdateSelectionHighlight(frame, plugin) if plugin.UpdateSelectionHighlight then plugin:UpdateSelectionHighlight(frame, plugin) end end
-local function UpdateAggroHighlight(frame, plugin) if plugin.UpdateAggroHighlight then plugin:UpdateAggroHighlight(frame, plugin) end end
-local function UpdatePhaseIcon(frame, plugin) if plugin.UpdatePhaseIcon then plugin:UpdatePhaseIcon(frame, plugin) end end
-local function UpdateReadyCheck(frame, plugin) if plugin.UpdateReadyCheck then plugin:UpdateReadyCheck(frame, plugin) end end
-local function UpdateIncomingRes(frame, plugin) if plugin.UpdateIncomingRes then plugin:UpdateIncomingRes(frame, plugin) end end
-local function UpdateIncomingSummon(frame, plugin) if plugin.UpdateIncomingSummon then plugin:UpdateIncomingSummon(frame, plugin) end end
-local function UpdateMarkerIcon(frame, plugin) if plugin.UpdateMarkerIcon then plugin:UpdateMarkerIcon(frame, plugin) end end
+local function UpdateRoleIcon(frame, plugin)
+    if plugin.UpdateRoleIcon then
+        plugin:UpdateRoleIcon(frame, plugin)
+    end
+end
+local function UpdateLeaderIcon(frame, plugin)
+    if plugin.UpdateLeaderIcon then
+        plugin:UpdateLeaderIcon(frame, plugin)
+    end
+end
+local function UpdateSelectionHighlight(frame, plugin)
+    if plugin.UpdateSelectionHighlight then
+        plugin:UpdateSelectionHighlight(frame, plugin)
+    end
+end
+local function UpdateAggroHighlight(frame, plugin)
+    if plugin.UpdateAggroHighlight then
+        plugin:UpdateAggroHighlight(frame, plugin)
+    end
+end
+local function UpdatePhaseIcon(frame, plugin)
+    if plugin.UpdatePhaseIcon then
+        plugin:UpdatePhaseIcon(frame, plugin)
+    end
+end
+local function UpdateReadyCheck(frame, plugin)
+    if plugin.UpdateReadyCheck then
+        plugin:UpdateReadyCheck(frame, plugin)
+    end
+end
+local function UpdateIncomingRes(frame, plugin)
+    if plugin.UpdateIncomingRes then
+        plugin:UpdateIncomingRes(frame, plugin)
+    end
+end
+local function UpdateIncomingSummon(frame, plugin)
+    if plugin.UpdateIncomingSummon then
+        plugin:UpdateIncomingSummon(frame, plugin)
+    end
+end
+local function UpdateMarkerIcon(frame, plugin)
+    if plugin.UpdateMarkerIcon then
+        plugin:UpdateMarkerIcon(frame, plugin)
+    end
+end
 
 local function UpdateAllStatusIndicators(frame, plugin)
-    if plugin.UpdateAllPartyStatusIcons then plugin:UpdateAllPartyStatusIcons(frame, plugin) end
+    if plugin.UpdateAllPartyStatusIcons then
+        plugin:UpdateAllPartyStatusIcons(frame, plugin)
+    end
 end
 
 -- [ RANGE CHECKING ]--------------------------------------------------------------------------------
 
 local function UpdateInRange(frame)
-    if not frame or not frame.unit or frame.preview then frame:SetAlpha(1) return end
+    if not frame or not frame.unit or frame.preview then
+        frame:SetAlpha(1)
+        return
+    end
     local inRange = UnitInRange(frame.unit)
     frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(inRange, 1, OUT_OF_RANGE_ALPHA))
 end
@@ -310,7 +422,9 @@ local function CreateRaidFrame(index, plugin)
     plugin:RegisterFrameEvents(frame, unit)
 
     frame:SetScript("OnShow", function(self)
-        if not self.unit then return end
+        if not self.unit then
+            return
+        end
         self:UpdateAll()
         UpdatePowerBar(self, plugin)
         UpdateFrameLayout(self, Orbit.db.GlobalSettings.BorderSize, plugin)
@@ -326,7 +440,9 @@ local function CreateRaidFrame(index, plugin)
     local originalOnEvent = frame:GetScript("OnEvent")
     frame:SetScript("OnEvent", function(f, event, eventUnit, ...)
         if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
-            if eventUnit == f.unit then UpdatePowerBar(f, plugin) end
+            if eventUnit == f.unit then
+                UpdatePowerBar(f, plugin)
+            end
             return
         end
         if event == "UNIT_AURA" then
@@ -336,37 +452,64 @@ local function CreateRaidFrame(index, plugin)
                 UpdateDefensiveIcon(f, plugin)
                 UpdateImportantIcon(f, plugin)
                 UpdateCrowdControlIcon(f, plugin)
-                if plugin.UpdateDispelIndicator then plugin:UpdateDispelIndicator(f, plugin) end
+                if plugin.UpdateDispelIndicator then
+                    plugin:UpdateDispelIndicator(f, plugin)
+                end
             end
             return
         end
-        if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then UpdateBuffs(f, plugin) return end
-        if event == "PLAYER_TARGET_CHANGED" then UpdateSelectionHighlight(f, plugin) return end
+        if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+            UpdateBuffs(f, plugin)
+            return
+        end
+        if event == "PLAYER_TARGET_CHANGED" then
+            UpdateSelectionHighlight(f, plugin)
+            return
+        end
         if event == "UNIT_THREAT_SITUATION_UPDATE" then
-            if eventUnit == f.unit and plugin.UpdateAggroIndicator then plugin:UpdateAggroIndicator(f, plugin) end
+            if eventUnit == f.unit and plugin.UpdateAggroIndicator then
+                plugin:UpdateAggroIndicator(f, plugin)
+            end
             return
         end
         if event == "UNIT_PHASE" or event == "UNIT_FLAGS" then
-            if eventUnit == f.unit then UpdatePhaseIcon(f, plugin) end
+            if eventUnit == f.unit then
+                UpdatePhaseIcon(f, plugin)
+            end
             return
         end
-        if event == "READY_CHECK" or event == "READY_CHECK_CONFIRM" or event == "READY_CHECK_FINISHED" then UpdateReadyCheck(f, plugin) return end
+        if event == "READY_CHECK" or event == "READY_CHECK_CONFIRM" or event == "READY_CHECK_FINISHED" then
+            UpdateReadyCheck(f, plugin)
+            return
+        end
         if event == "INCOMING_RESURRECT_CHANGED" then
-            if eventUnit == f.unit then UpdateIncomingRes(f, plugin) end
+            if eventUnit == f.unit then
+                UpdateIncomingRes(f, plugin)
+            end
             return
         end
-        if event == "INCOMING_SUMMON_CHANGED" then UpdateIncomingSummon(f, plugin) return end
+        if event == "INCOMING_SUMMON_CHANGED" then
+            UpdateIncomingSummon(f, plugin)
+            return
+        end
         if event == "PLAYER_ROLES_ASSIGNED" or event == "GROUP_ROSTER_UPDATE" then
             UpdateRoleIcon(f, plugin)
             UpdateLeaderIcon(f, plugin)
             return
         end
-        if event == "RAID_TARGET_UPDATE" then UpdateMarkerIcon(f, plugin) return end
-        if event == "UNIT_IN_RANGE_UPDATE" then
-            if eventUnit == f.unit then UpdateInRange(f) end
+        if event == "RAID_TARGET_UPDATE" then
+            UpdateMarkerIcon(f, plugin)
             return
         end
-        if originalOnEvent then originalOnEvent(f, event, eventUnit, ...) end
+        if event == "UNIT_IN_RANGE_UPDATE" then
+            if eventUnit == f.unit then
+                UpdateInRange(f)
+            end
+            return
+        end
+        if originalOnEvent then
+            originalOnEvent(f, event, eventUnit, ...)
+        end
     end)
 
     plugin:ConfigureFrame(frame)
@@ -377,8 +520,12 @@ end
 -- [ HIDE NATIVE RAID FRAMES ]----------------------------------------------------------------------
 
 local function HideNativeRaidFrames()
-    if CompactRaidFrameContainer then OrbitEngine.NativeFrame:Hide(CompactRaidFrameContainer) end
-    if CompactRaidFrameManager then OrbitEngine.NativeFrame:Hide(CompactRaidFrameManager) end
+    if CompactRaidFrameContainer then
+        OrbitEngine.NativeFrame:Hide(CompactRaidFrameContainer)
+    end
+    if CompactRaidFrameManager then
+        OrbitEngine.NativeFrame:Hide(CompactRaidFrameManager)
+    end
 end
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
@@ -386,9 +533,13 @@ end
 local function makeOnChange(plugin, key, preApply)
     return function(val)
         plugin:SetSetting(1, key, val)
-        if preApply then preApply(val) end
+        if preApply then
+            preApply(val)
+        end
         plugin:ApplySettings()
-        if plugin.frames and plugin.frames[1] and plugin.frames[1].preview then plugin:SchedulePreviewUpdate() end
+        if plugin.frames and plugin.frames[1] and plugin.frames[1].preview then
+            plugin:SchedulePreviewUpdate()
+        end
     end
 end
 
@@ -402,64 +553,184 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     if currentTab == "Layout" then
         table.insert(schema.controls, {
-            type = "dropdown", key = "Orientation", label = "Orientation", default = 0,
+            type = "dropdown",
+            key = "Orientation",
+            label = "Orientation",
+            default = 0,
             options = { { text = "Vertical", value = 0 }, { text = "Horizontal", value = 1 } },
             onChange = function(val)
                 self:SetSetting(1, "Orientation", val)
                 self:SetSetting(1, "GrowthDirection", val == 0 and "Down" or "Right")
                 self:SetSetting(1, "GroupGrowthDirection", val == 0 and "Right" or "Down")
                 self:ApplySettings()
-                if self.frames and self.frames[1] and self.frames[1].preview then self:SchedulePreviewUpdate() end
-                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+                if self.frames and self.frames[1] and self.frames[1].preview then
+                    self:SchedulePreviewUpdate()
+                end
+                if dialog.orbitTabCallback then
+                    dialog.orbitTabCallback()
+                end
             end,
         })
-        local memberGrowthOptions = orientation == 0 and { { text = "Down", value = "Down" }, { text = "Up", value = "Up" } } or { { text = "Right", value = "Right" }, { text = "Left", value = "Left" } }
-        table.insert(schema.controls, { type = "dropdown", key = "GrowthDirection", label = "Member Growth", default = orientation == 0 and "Down" or "Right", options = memberGrowthOptions, onChange = makeOnChange(self, "GrowthDirection") })
-        local groupGrowthOptions = orientation == 0 and { { text = "Right", value = "Right" }, { text = "Left", value = "Left" } } or { { text = "Down", value = "Down" }, { text = "Up", value = "Up" } }
-        table.insert(schema.controls, { type = "dropdown", key = "GroupGrowthDirection", label = "Group Growth", default = orientation == 0 and "Right" or "Down", options = groupGrowthOptions, onChange = makeOnChange(self, "GroupGrowthDirection") })
+        local memberGrowthOptions = orientation == 0 and { { text = "Down", value = "Down" }, { text = "Up", value = "Up" } }
+            or { { text = "Right", value = "Right" }, { text = "Left", value = "Left" } }
+        table.insert(
+            schema.controls,
+            {
+                type = "dropdown",
+                key = "GrowthDirection",
+                label = "Member Growth",
+                default = orientation == 0 and "Down" or "Right",
+                options = memberGrowthOptions,
+                onChange = makeOnChange(self, "GrowthDirection"),
+            }
+        )
+        local groupGrowthOptions = orientation == 0 and { { text = "Right", value = "Right" }, { text = "Left", value = "Left" } }
+            or { { text = "Down", value = "Down" }, { text = "Up", value = "Up" } }
+        table.insert(
+            schema.controls,
+            {
+                type = "dropdown",
+                key = "GroupGrowthDirection",
+                label = "Group Growth",
+                default = orientation == 0 and "Right" or "Down",
+                options = groupGrowthOptions,
+                onChange = makeOnChange(self, "GroupGrowthDirection"),
+            }
+        )
         table.insert(schema.controls, {
-            type = "dropdown", key = "SortMode", label = "Sort Mode", default = "Group",
+            type = "dropdown",
+            key = "SortMode",
+            label = "Sort Mode",
+            default = "Group",
             options = { { text = "Group", value = "Group" }, { text = "Role", value = "Role" }, { text = "Alphabetical", value = "Alphabetical" } },
-            onChange = function(val) self:SetSetting(1, "SortMode", val); if not InCombatLockdown() then self:UpdateFrameUnits() end end,
+            onChange = function(val)
+                self:SetSetting(1, "SortMode", val)
+                if not InCombatLockdown() then
+                    self:UpdateFrameUnits()
+                end
+            end,
         })
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 40, max = 200, step = 5, default = 90, onChange = makeOnChange(self, "Width") })
-        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 16, max = 80, step = 2, default = 36, onChange = makeOnChange(self, "Height") })
-        table.insert(schema.controls, { type = "slider", key = "MemberSpacing", label = "Member Spacing", min = 0, max = 10, step = 1, default = 1, onChange = makeOnChange(self, "MemberSpacing") })
-        table.insert(schema.controls, { type = "slider", key = "GroupSpacing", label = "Group Spacing", min = 0, max = 30, step = 1, default = 4, onChange = makeOnChange(self, "GroupSpacing") })
+        table.insert(
+            schema.controls,
+            { type = "slider", key = "Width", label = "Width", min = 40, max = 200, step = 5, default = 90, onChange = makeOnChange(self, "Width") }
+        )
+        table.insert(
+            schema.controls,
+            { type = "slider", key = "Height", label = "Height", min = 16, max = 80, step = 2, default = 36, onChange = makeOnChange(self, "Height") }
+        )
+        table.insert(
+            schema.controls,
+            {
+                type = "slider",
+                key = "MemberSpacing",
+                label = "Member Spacing",
+                min = 0,
+                max = 10,
+                step = 1,
+                default = 1,
+                onChange = makeOnChange(self, "MemberSpacing"),
+            }
+        )
+        table.insert(
+            schema.controls,
+            {
+                type = "slider",
+                key = "GroupSpacing",
+                label = "Group Spacing",
+                min = 0,
+                max = 30,
+                step = 1,
+                default = 4,
+                onChange = makeOnChange(self, "GroupSpacing"),
+            }
+        )
         table.insert(schema.controls, {
-            type = "dropdown", key = "HealthTextMode", label = "Health Text", default = "percent_short",
+            type = "dropdown",
+            key = "HealthTextMode",
+            label = "Health Text",
+            default = "percent_short",
             options = {
-                { text = "Percentage", value = "percent" }, { text = "Short Health", value = "short" },
-                { text = "Raw Health", value = "raw" }, { text = "Short - Percentage", value = "short_and_percent" },
-                { text = "Percentage / Short", value = "percent_short" }, { text = "Percentage / Raw", value = "percent_raw" },
-                { text = "Short / Percentage", value = "short_percent" }, { text = "Short / Raw", value = "short_raw" },
-                { text = "Raw / Short", value = "raw_short" }, { text = "Raw / Percentage", value = "raw_percent" },
+                { text = "Percentage", value = "percent" },
+                { text = "Short Health", value = "short" },
+                { text = "Raw Health", value = "raw" },
+                { text = "Short - Percentage", value = "short_and_percent" },
+                { text = "Percentage / Short", value = "percent_short" },
+                { text = "Percentage / Raw", value = "percent_raw" },
+                { text = "Short / Percentage", value = "short_percent" },
+                { text = "Short / Raw", value = "short_raw" },
+                { text = "Raw / Short", value = "raw_short" },
+                { text = "Raw / Percentage", value = "raw_percent" },
             },
             onChange = makeOnChange(self, "HealthTextMode"),
         })
-        table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true, onChange = makeOnChange(self, "ShowPowerBar") })
+        table.insert(
+            schema.controls,
+            { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true, onChange = makeOnChange(self, "ShowPowerBar") }
+        )
     elseif currentTab == "Auras" then
-        table.insert(schema.controls, { type = "slider", key = "MaxDebuffs", label = "Max Debuffs", min = 0, max = 8, step = 1, default = 3, onChange = makeOnChange(self, "MaxDebuffs") })
-        table.insert(schema.controls, { type = "slider", key = "DebuffSize", label = "Debuff Size", min = 8, max = 32, step = 1, default = 16, onChange = makeOnChange(self, "DebuffSize") })
-        table.insert(schema.controls, { type = "slider", key = "MaxBuffs", label = "Max Buffs", min = 0, max = 8, step = 1, default = 0, onChange = makeOnChange(self, "MaxBuffs") })
-        table.insert(schema.controls, { type = "slider", key = "BuffSize", label = "Buff Size", min = 8, max = 32, step = 1, default = 14, onChange = makeOnChange(self, "BuffSize") })
+        table.insert(
+            schema.controls,
+            { type = "slider", key = "MaxDebuffs", label = "Max Debuffs", min = 0, max = 8, step = 1, default = 3, onChange = makeOnChange(self, "MaxDebuffs") }
+        )
+        table.insert(
+            schema.controls,
+            {
+                type = "slider",
+                key = "DebuffSize",
+                label = "Debuff Size",
+                min = 8,
+                max = 32,
+                step = 1,
+                default = 16,
+                onChange = makeOnChange(self, "DebuffSize"),
+            }
+        )
+        table.insert(
+            schema.controls,
+            { type = "slider", key = "MaxBuffs", label = "Max Buffs", min = 0, max = 8, step = 1, default = 0, onChange = makeOnChange(self, "MaxBuffs") }
+        )
+        table.insert(
+            schema.controls,
+            { type = "slider", key = "BuffSize", label = "Buff Size", min = 8, max = 32, step = 1, default = 14, onChange = makeOnChange(self, "BuffSize") }
+        )
     elseif currentTab == "Indicators" then
         table.insert(schema.controls, {
-            type = "checkbox", key = "DispelIndicatorEnabled", label = "Enable Dispel Indicators", default = true,
+            type = "checkbox",
+            key = "DispelIndicatorEnabled",
+            label = "Enable Dispel Indicators",
+            default = true,
             onChange = makeOnChange(self, "DispelIndicatorEnabled", function()
-                if self.UpdateAllDispelIndicators then self:UpdateAllDispelIndicators(self) end
+                if self.UpdateAllDispelIndicators then
+                    self:UpdateAllDispelIndicators(self)
+                end
             end),
         })
         table.insert(schema.controls, {
-            type = "slider", key = "DispelThickness", label = "Dispel Border Thickness", default = 2, min = 1, max = 5, step = 1,
+            type = "slider",
+            key = "DispelThickness",
+            label = "Dispel Border Thickness",
+            default = 2,
+            min = 1,
+            max = 5,
+            step = 1,
             onChange = makeOnChange(self, "DispelThickness", function()
-                if self.UpdateAllDispelIndicators then self:UpdateAllDispelIndicators(self) end
+                if self.UpdateAllDispelIndicators then
+                    self:UpdateAllDispelIndicators(self)
+                end
             end),
         })
         table.insert(schema.controls, {
-            type = "slider", key = "DispelFrequency", label = "Dispel Animation Speed", default = 0.25, min = 0.1, max = 1.0, step = 0.05,
+            type = "slider",
+            key = "DispelFrequency",
+            label = "Dispel Animation Speed",
+            default = 0.25,
+            min = 0.1,
+            max = 1.0,
+            step = 0.05,
             onChange = makeOnChange(self, "DispelFrequency", function()
-                if self.UpdateAllDispelIndicators then self:UpdateAllDispelIndicators(self) end
+                if self.UpdateAllDispelIndicators then
+                    self:UpdateAllDispelIndicators(self)
+                end
             end),
         })
     end
@@ -470,7 +741,9 @@ end
 -- [ ON LOAD ]---------------------------------------------------------------------------------------
 
 function Plugin:OnLoad()
-    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
+    if not Helpers then
+        Helpers = Orbit.RaidFrameHelpers
+    end
 
     self.container = CreateFrame("Frame", "OrbitRaidFrameContainer", UIParent, "SecureHandlerStateTemplate")
     self.container.editModeName = "Raid Frames"
@@ -494,7 +767,18 @@ function Plugin:OnLoad()
     local firstFrame = self.frames[1]
     if firstFrame and OrbitEngine.ComponentDrag then
         local textComponents = { "Name", "HealthText" }
-        local iconComponents = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" }
+        local iconComponents = {
+            "RoleIcon",
+            "LeaderIcon",
+            "PhaseIcon",
+            "ReadyCheckIcon",
+            "ResIcon",
+            "SummonIcon",
+            "MarkerIcon",
+            "DefensiveIcon",
+            "ImportantIcon",
+            "CrowdControlIcon",
+        }
 
         for _, key in ipairs(textComponents) do
             local element = firstFrame[key]
@@ -548,7 +832,9 @@ function Plugin:OnLoad()
 
     -- Visibility driver: show only in raid
     local function UpdateVisibilityDriver()
-        if InCombatLockdown() then return end
+        if InCombatLockdown() then
+            return
+        end
         RegisterStateDriver(self.container, "visibility", "[petbattle] hide; [@raid1,exists] show; hide")
     end
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver() end
@@ -569,7 +855,9 @@ function Plugin:OnLoad()
 
     eventFrame:SetScript("OnEvent", function(_, event)
         if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
-            if not InCombatLockdown() then self:UpdateFrameUnits() end
+            if not InCombatLockdown() then
+                self:UpdateFrameUnits()
+            end
             for _, frame in ipairs(self.frames) do
                 if frame.unit and frame.UpdateAll then
                     frame:UpdateAll()
@@ -609,7 +897,9 @@ function Plugin:OnLoad()
         self.canvasModeHooked = true
         local originalOpen = dialog.Open
         dialog.Open = function(dlg, frame, plugin, systemIndex)
-            if frame == self.container or frame == self.frames[1] then self:PrepareIconsForCanvasMode() end
+            if frame == self.container or frame == self.frames[1] then
+                self:PrepareIconsForCanvasMode()
+            end
             return originalOpen(dlg, frame, plugin, systemIndex)
         end
     end
@@ -619,18 +909,27 @@ end
 
 function Plugin:PrepareIconsForCanvasMode()
     local frame = self.frames[1]
-    if not frame then return end
+    if not frame then
+        return
+    end
     local previewAtlases = Orbit.IconPreviewAtlases
 
     for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }) do
-        if frame[key] then frame[key]:SetAtlas(previewAtlases[key]); frame[key]:SetSize(18, 18) end
+        if frame[key] then
+            frame[key]:SetAtlas(previewAtlases[key])
+            frame[key]:SetSize(18, 18)
+        end
     end
     if frame.RoleIcon then
-        if not frame.RoleIcon:GetAtlas() then frame.RoleIcon:SetAtlas(previewAtlases.RoleIcon) end
+        if not frame.RoleIcon:GetAtlas() then
+            frame.RoleIcon:SetAtlas(previewAtlases.RoleIcon)
+        end
         frame.RoleIcon:SetSize(12, 12)
     end
     if frame.LeaderIcon then
-        if not frame.LeaderIcon:GetAtlas() then frame.LeaderIcon:SetAtlas(previewAtlases.LeaderIcon) end
+        if not frame.LeaderIcon:GetAtlas() then
+            frame.LeaderIcon:SetAtlas(previewAtlases.LeaderIcon)
+        end
         frame.LeaderIcon:SetSize(12, 12)
     end
     if frame.MarkerIcon then
@@ -647,16 +946,32 @@ function Plugin:PrepareIconsForCanvasMode()
     end
 
     local StatusMixin = Orbit.StatusIconMixin
-    if frame.DefensiveIcon then frame.DefensiveIcon.Icon:SetTexture(StatusMixin:GetDefensiveTexture()); frame.DefensiveIcon:SetSize(DEFENSIVE_ICON_SIZE, DEFENSIVE_ICON_SIZE); frame.DefensiveIcon:Show() end
-    if frame.ImportantIcon then frame.ImportantIcon.Icon:SetTexture(StatusMixin:GetImportantTexture()); frame.ImportantIcon:SetSize(IMPORTANT_ICON_SIZE, IMPORTANT_ICON_SIZE); frame.ImportantIcon:Show() end
-    if frame.CrowdControlIcon then frame.CrowdControlIcon.Icon:SetTexture(StatusMixin:GetCrowdControlTexture()); frame.CrowdControlIcon:SetSize(CROWD_CONTROL_ICON_SIZE, CROWD_CONTROL_ICON_SIZE); frame.CrowdControlIcon:Show() end
+    if frame.DefensiveIcon then
+        frame.DefensiveIcon.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
+        frame.DefensiveIcon:SetSize(DEFENSIVE_ICON_SIZE, DEFENSIVE_ICON_SIZE)
+        frame.DefensiveIcon:Show()
+    end
+    if frame.ImportantIcon then
+        frame.ImportantIcon.Icon:SetTexture(StatusMixin:GetImportantTexture())
+        frame.ImportantIcon:SetSize(IMPORTANT_ICON_SIZE, IMPORTANT_ICON_SIZE)
+        frame.ImportantIcon:Show()
+    end
+    if frame.CrowdControlIcon then
+        frame.CrowdControlIcon.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
+        frame.CrowdControlIcon:SetSize(CROWD_CONTROL_ICON_SIZE, CROWD_CONTROL_ICON_SIZE)
+        frame.CrowdControlIcon:Show()
+    end
 end
 
 -- [ FRAME POSITIONING ]-----------------------------------------------------------------------------
 
 function Plugin:PositionFrames()
-    if InCombatLockdown() then return end
-    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
+    if InCombatLockdown() then
+        return
+    end
+    if not Helpers then
+        Helpers = Orbit.RaidFrameHelpers
+    end
 
     local width = self:GetSetting(1, "Width") or Helpers.LAYOUT.DefaultWidth
     local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
@@ -673,10 +988,14 @@ function Plugin:PositionFrames()
     local previewGroups = 4
     local groupOrder = {}
     if isPreview then
-        for g = 1, previewGroups do groupOrder[g] = g end
+        for g = 1, previewGroups do
+            groupOrder[g] = g
+        end
     else
         for g = 1, MAX_RAID_GROUPS do
-            if activeGroups[g] then groupOrder[#groupOrder + 1] = g end
+            if activeGroups[g] then
+                groupOrder[#groupOrder + 1] = g
+            end
         end
     end
 
@@ -696,7 +1015,9 @@ function Plugin:PositionFrames()
                     local _, _, subgroup = GetRaidRosterInfo(i)
                     belongsToGroup = (subgroup == groupNum)
                 end
-                if sortMode ~= "Group" then belongsToGroup = true end
+                if sortMode ~= "Group" then
+                    belongsToGroup = true
+                end
 
                 if belongsToGroup then
                     memberIndex = memberIndex + 1
@@ -707,15 +1028,21 @@ function Plugin:PositionFrames()
             end
         end
 
-        if sortMode ~= "Group" then break end
+        if sortMode ~= "Group" then
+            break
+        end
     end
 
     self:UpdateContainerSize()
 end
 
 function Plugin:UpdateContainerSize()
-    if InCombatLockdown() then return end
-    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
+    if InCombatLockdown() then
+        return
+    end
+    if not Helpers then
+        Helpers = Orbit.RaidFrameHelpers
+    end
 
     local width = self:GetSetting(1, "Width") or Helpers.LAYOUT.DefaultWidth
     local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
@@ -729,7 +1056,9 @@ function Plugin:UpdateContainerSize()
         numGroups = 4
     else
         local activeGroups = Helpers:GetActiveGroups()
-        for _ in pairs(activeGroups) do numGroups = numGroups + 1 end
+        for _ in pairs(activeGroups) do
+            numGroups = numGroups + 1
+        end
         numGroups = math.max(1, numGroups)
     end
 
@@ -740,9 +1069,15 @@ end
 -- [ DYNAMIC UNIT ASSIGNMENT ]----------------------------------------------------------------------
 
 function Plugin:UpdateFrameUnits()
-    if InCombatLockdown() then return end
-    if self.frames and self.frames[1] and self.frames[1].preview then return end
-    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
+    if InCombatLockdown() then
+        return
+    end
+    if self.frames and self.frames[1] and self.frames[1].preview then
+        return
+    end
+    if not Helpers then
+        Helpers = Orbit.RaidFrameHelpers
+    end
 
     local sortMode = self:GetSetting(1, "SortMode") or "Group"
     local sortedUnits = Helpers:GetSortedRaidUnits(sortMode)
@@ -758,15 +1093,32 @@ function Plugin:UpdateFrameUnits()
                     frame:SetAttribute("unit", token)
                     frame.unit = token
 
-                    local unitEvents = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT", "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS", "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE" }
-                    for _, event in ipairs(unitEvents) do frame:UnregisterEvent(event) end
-                    for _, event in ipairs(unitEvents) do frame:RegisterUnitEvent(event, token) end
+                    local unitEvents = {
+                        "UNIT_POWER_UPDATE",
+                        "UNIT_MAXPOWER",
+                        "UNIT_DISPLAYPOWER",
+                        "UNIT_POWER_FREQUENT",
+                        "UNIT_AURA",
+                        "UNIT_THREAT_SITUATION_UPDATE",
+                        "UNIT_PHASE",
+                        "UNIT_FLAGS",
+                        "INCOMING_RESURRECT_CHANGED",
+                        "UNIT_IN_RANGE_UPDATE",
+                    }
+                    for _, event in ipairs(unitEvents) do
+                        frame:UnregisterEvent(event)
+                    end
+                    for _, event in ipairs(unitEvents) do
+                        frame:RegisterUnitEvent(event, token)
+                    end
                 end
 
                 SafeUnregisterUnitWatch(frame)
                 SafeRegisterUnitWatch(frame)
                 frame:Show()
-                if frame.UpdateAll then frame:UpdateAll() end
+                if frame.UpdateAll then
+                    frame:UpdateAll()
+                end
             else
                 SafeUnregisterUnitWatch(frame)
                 frame:SetAttribute("unit", nil)
@@ -783,7 +1135,9 @@ end
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 
 function Plugin:UpdateLayout(frame)
-    if not frame or InCombatLockdown() then return end
+    if not frame or InCombatLockdown() then
+        return
+    end
     local width = self:GetSetting(1, "Width") or 90
     local height = self:GetSetting(1, "Height") or 36
     for _, raidFrame in ipairs(self.frames) do
@@ -794,7 +1148,9 @@ function Plugin:UpdateLayout(frame)
 end
 
 function Plugin:ApplySettings()
-    if not self.frames then return end
+    if not self.frames then
+        return
+    end
 
     local width = self:GetSetting(1, "Width") or 90
     local height = self:GetSetting(1, "Height") or 36
@@ -806,12 +1162,22 @@ function Plugin:ApplySettings()
     for _, frame in ipairs(self.frames) do
         if not frame.preview and frame.unit then
             Orbit:SafeAction(function() frame:SetSize(width, height) end)
-            if frame.Health then frame.Health:SetStatusBarTexture(texturePath) end
-            if frame.Power then frame.Power:SetStatusBarTexture(texturePath) end
-            if frame.SetBorder then frame:SetBorder(borderSize) end
+            if frame.Health then
+                frame.Health:SetStatusBarTexture(texturePath)
+            end
+            if frame.Power then
+                frame.Power:SetStatusBarTexture(texturePath)
+            end
+            if frame.SetBorder then
+                frame:SetBorder(borderSize)
+            end
             UpdateFrameLayout(frame, borderSize, self)
-            if frame.SetHealthTextMode then frame:SetHealthTextMode(healthTextMode) end
-            if frame.SetClassColour then frame:SetClassColour(true) end
+            if frame.SetHealthTextMode then
+                frame:SetHealthTextMode(healthTextMode)
+            end
+            if frame.SetClassColour then
+                frame:SetClassColour(true)
+            end
             self:ApplyTextStyling(frame)
             UpdatePowerBar(frame, self)
             UpdateDebuffs(frame, self)
@@ -820,7 +1186,9 @@ function Plugin:ApplySettings()
             UpdateImportantIcon(frame, self)
             UpdateCrowdControlIcon(frame, self)
             UpdateAllStatusIndicators(frame, self)
-            if frame.UpdateAll then frame:UpdateAll() end
+            if frame.UpdateAll then
+                frame:UpdateAll()
+            end
         end
     end
 
@@ -829,24 +1197,48 @@ function Plugin:ApplySettings()
 
     local savedPositions = self:GetSetting(1, "ComponentPositions")
     if savedPositions then
-        if OrbitEngine.ComponentDrag then OrbitEngine.ComponentDrag:RestoreFramePositions(self.container, savedPositions) end
+        if OrbitEngine.ComponentDrag then
+            OrbitEngine.ComponentDrag:RestoreFramePositions(self.container, savedPositions)
+        end
         for _, frame in ipairs(self.frames) do
-            if frame.ApplyComponentPositions then frame:ApplyComponentPositions(savedPositions) end
-            local icons = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" }
+            if frame.ApplyComponentPositions then
+                frame:ApplyComponentPositions(savedPositions)
+            end
+            local icons = {
+                "RoleIcon",
+                "LeaderIcon",
+                "PhaseIcon",
+                "ReadyCheckIcon",
+                "ResIcon",
+                "SummonIcon",
+                "MarkerIcon",
+                "DefensiveIcon",
+                "ImportantIcon",
+                "CrowdControlIcon",
+            }
             for _, iconKey in ipairs(icons) do
                 if frame[iconKey] and savedPositions[iconKey] then
                     local pos = savedPositions[iconKey]
                     local anchorX = pos.anchorX or "CENTER"
                     local anchorY = pos.anchorY or "CENTER"
                     local anchorPoint
-                    if anchorY == "CENTER" and anchorX == "CENTER" then anchorPoint = "CENTER"
-                    elseif anchorY == "CENTER" then anchorPoint = anchorX
-                    elseif anchorX == "CENTER" then anchorPoint = anchorY
-                    else anchorPoint = anchorY .. anchorX end
+                    if anchorY == "CENTER" and anchorX == "CENTER" then
+                        anchorPoint = "CENTER"
+                    elseif anchorY == "CENTER" then
+                        anchorPoint = anchorX
+                    elseif anchorX == "CENTER" then
+                        anchorPoint = anchorY
+                    else
+                        anchorPoint = anchorY .. anchorX
+                    end
                     local finalX = pos.offsetX or 0
                     local finalY = pos.offsetY or 0
-                    if anchorX == "RIGHT" then finalX = -finalX end
-                    if anchorY == "TOP" then finalY = -finalY end
+                    if anchorX == "RIGHT" then
+                        finalX = -finalX
+                    end
+                    if anchorY == "TOP" then
+                        finalY = -finalY
+                    end
                     frame[iconKey]:ClearAllPoints()
                     frame[iconKey]:SetPoint("CENTER", frame, anchorPoint, finalX, finalY)
                 end
@@ -854,11 +1246,16 @@ function Plugin:ApplySettings()
         end
     end
 
-    if self.frames[1] and self.frames[1].preview then self:SchedulePreviewUpdate() end
+    if self.frames[1] and self.frames[1].preview then
+        self:SchedulePreviewUpdate()
+    end
 end
 
 function Plugin:UpdateVisuals()
     for _, frame in ipairs(self.frames) do
-        if frame.UpdateAll then frame:UpdateAll(); UpdatePowerBar(frame, self) end
+        if frame.UpdateAll then
+            frame:UpdateAll()
+            UpdatePowerBar(frame, self)
+        end
     end
 end

@@ -76,7 +76,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
                 offsetY = 0,
                 posX = -95,
                 posY = 0,
-                overrides = { MaxIcons = 3, IconScale = 1.0, MaxRows = 2 },
+                overrides = { MaxIcons = 3, IconSize = 25, MaxRows = 2 },
             },
             Debuffs = {
                 anchorX = "RIGHT",
@@ -85,7 +85,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
                 offsetY = 0,
                 posX = 95,
                 posY = 0,
-                overrides = { MaxIcons = 3, IconScale = 1.0, MaxRows = 2 },
+                overrides = { MaxIcons = 3, IconSize = 25, MaxRows = 2 },
             },
         },
         DisabledComponents = { "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" },
@@ -286,17 +286,16 @@ end
 local AURA_SPACING = 2
 
 -- Calculate smart aura layout based on frame dimensions and position
--- overrides: optional table { IconScale, MaxRows } from ComponentPositions
+-- overrides: optional table { IconSize, MaxRows } from ComponentPositions
 -- Returns: iconSize, rows, iconsPerRow, containerWidth, containerHeight
 local function CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxIcons, numIcons, overrides)
     local iconSize, rows, iconsPerRow, containerWidth, containerHeight
     local isHorizontal = (position == "Above" or position == "Below")
-    local scale = (overrides and overrides.IconScale) or 1.0
     local maxRows = (overrides and overrides.MaxRows) or 2
 
-    -- Base icon size from constant, then apply scale
-    iconSize = math.floor(AURA_BASE_ICON_SIZE * scale + 0.5)
-    iconSize = math.max(12, iconSize)
+    -- Icon size: direct pixel value from overrides, fallback to base constant
+    iconSize = (overrides and overrides.IconSize) or AURA_BASE_ICON_SIZE
+    iconSize = math.max(10, iconSize)
 
     if isHorizontal then
         iconsPerRow = math.max(1, math.floor((frameWidth + AURA_SPACING) / (iconSize + AURA_SPACING)))

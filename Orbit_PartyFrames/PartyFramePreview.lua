@@ -601,7 +601,7 @@ end
 
 -- Helper to show preview aura icons (debuffs or buffs)
 -- posData: table with anchorX/anchorY/offsetX/offsetY/posX/posY from ComponentPositions
--- overrides: optional table { IconScale, MaxRows, MaxIcons } from ComponentPositions
+-- overrides: optional table { IconSize, MaxRows, MaxIcons } from ComponentPositions
 function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posData, numIcons, maxIcons, sampleIcons, overrides)
     local containerKey = auraType .. "Container"
     local poolKey = "preview" .. auraType:gsub("^%l", string.upper) .. "s"
@@ -632,12 +632,11 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posD
     local position = Helpers:AnchorToPosition(posData.posX, posData.posY, frameWidth / 2, frameHeight / 2)
     local isHorizontal = (position == "Above" or position == "Below")
     local spacing = PREVIEW_DEFAULTS.AuraSpacing
-    local scale = (overrides and overrides.IconScale) or 1.0
     local maxRows = (overrides and overrides.MaxRows) or 2
 
-    -- Base icon size with scale
-    local iconSize = math.floor(AURA_BASE_ICON_SIZE * scale + 0.5)
-    iconSize = math.max(12, iconSize)
+    -- Icon size: direct pixel value from overrides, fallback to base constant
+    local iconSize = (overrides and overrides.IconSize) or AURA_BASE_ICON_SIZE
+    iconSize = math.max(10, iconSize)
 
     -- Calculate container size
     local rows, iconsPerRow

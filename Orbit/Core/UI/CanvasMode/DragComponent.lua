@@ -295,10 +295,9 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             local AURA_BASE_ICON_SIZE = Orbit.PartyFrameHelpers and Orbit.PartyFrameHelpers.LAYOUT.AuraBaseIconSize or 25
             local AURA_SPACING = 2
             local overrides = self.pendingOverrides or self.existingOverrides or {}
-            local scale = overrides.IconScale or 1.0
             local maxIcons = overrides.MaxIcons or 3
             local maxRows = overrides.MaxRows or 2
-            local iconSize = math.max(12, math.floor(AURA_BASE_ICON_SIZE * scale + 0.5))
+            local iconSize = math.max(10, overrides.IconSize or AURA_BASE_ICON_SIZE)
 
             -- Calculate grid layout
             local iconsPerRow = math.ceil(maxIcons / maxRows)

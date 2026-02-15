@@ -33,9 +33,7 @@ local SCALE_CONTROL = {
     min = 0.5,
     max = 2.0,
     step = 0.1,
-    formatter = function(v)
-        return math.floor(v * 100 + 0.5) .. "%"
-    end,
+    formatter = function(v) return math.floor(v * 100 + 0.5) .. "%" end,
 }
 
 local TYPE_SCHEMAS = {
@@ -62,14 +60,12 @@ local KEY_SCHEMAS = {
             { type = "slider", key = "MaxIcons", label = "Max Icons", min = 1, max = 10, step = 1 },
             {
                 type = "slider",
-                key = "IconScale",
-                label = "Icon Scale",
-                min = 0.5,
-                max = 2.0,
-                step = 0.1,
-                formatter = function(v)
-                    return math.floor(v * 100 + 0.5) .. "%"
-                end,
+                key = "IconSize",
+                label = "Icon Size",
+                min = 10,
+                max = 50,
+                step = 1,
+                formatter = function(v) return v .. "px" end,
             },
             { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
         },
@@ -79,14 +75,12 @@ local KEY_SCHEMAS = {
             { type = "slider", key = "MaxIcons", label = "Max Icons", min = 1, max = 10, step = 1 },
             {
                 type = "slider",
-                key = "IconScale",
-                label = "Icon Scale",
-                min = 0.5,
-                max = 2.0,
-                step = 0.1,
-                formatter = function(v)
-                    return math.floor(v * 100 + 0.5) .. "%"
-                end,
+                key = "IconSize",
+                label = "Icon Size",
+                min = 10,
+                max = 50,
+                step = 1,
+                formatter = function(v) return v .. "px" end,
             },
             { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
         },
@@ -412,9 +406,7 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
             currentValue = GetValueFromVisual(container, control.key)
         end
 
-        local callback = function(key, value)
-            self:OnValueChanged(key, value)
-        end
+        local callback = function(key, value) self:OnValueChanged(key, value) end
 
         if control.type == "slider" then
             widget = CreateSliderWidget(self.Content, control, currentValue or control.min, callback)
@@ -581,8 +573,8 @@ end
 
 -- Apply a single style setting to a component container
 function Dialog:ApplyStyle(container, key, value)
-    -- Handle aura container settings (MaxIcons, IconScale, MaxRows) - these containers have no visual
-    if key == "MaxIcons" or key == "IconScale" or key == "MaxRows" then
+    -- Handle aura container settings (MaxIcons, IconSize, MaxRows) - these containers have no visual
+    if key == "MaxIcons" or key == "IconSize" or key == "MaxRows" then
         -- Trigger preview refresh so aura icons re-render with new settings
         if self.plugin and self.plugin.SchedulePreviewUpdate then
             -- Temporarily write overrides to ComponentPositions so preview can read them

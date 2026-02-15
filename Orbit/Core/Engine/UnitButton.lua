@@ -183,12 +183,8 @@ function UnitButton:Create(parent, unit, name)
     f.HealAbsorbPattern:SetAlpha(0.15)
 
     -- Sync Visibility
-    hooksecurefunc(f.HealAbsorbBar, "Show", function()
-        f.HealAbsorbMask:Show()
-    end)
-    hooksecurefunc(f.HealAbsorbBar, "Hide", function()
-        f.HealAbsorbMask:Hide()
-    end)
+    hooksecurefunc(f.HealAbsorbBar, "Show", function() f.HealAbsorbMask:Show() end)
+    hooksecurefunc(f.HealAbsorbBar, "Hide", function() f.HealAbsorbMask:Hide() end)
 
     -- Divider removed by user request.
     -- Text Frame to ensure text sits ABOVE absorbs
@@ -247,9 +243,11 @@ function UnitButton:Create(parent, unit, name)
 
     f:SetScript("OnEnter", function(self)
         self:SetMouseOver(true)
-        GameTooltip_SetDefaultAnchor(GameTooltip, self)
-        GameTooltip:SetUnit(self.unit)
-        GameTooltip:Show()
+        if self.unit and UnitExists(self.unit) then
+            GameTooltip_SetDefaultAnchor(GameTooltip, self)
+            GameTooltip:SetUnit(self.unit)
+            GameTooltip:Show()
+        end
     end)
     f:SetScript("OnLeave", function(self)
         self:SetMouseOver(false)
@@ -296,9 +294,7 @@ function UnitButton:Create(parent, unit, name)
     RegisterUnitWatch(f)
 
     -- Force update when shown (Fixes 'fresh summon' empty bars)
-    f:SetScript("OnShow", function(self)
-        self:UpdateAll()
-    end)
+    f:SetScript("OnShow", function(self) self:UpdateAll() end)
 
     return f
 end
