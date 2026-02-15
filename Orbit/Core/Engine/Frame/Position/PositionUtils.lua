@@ -80,22 +80,31 @@ function PositionUtils.BuildAnchorPoint(anchorX, anchorY)
     end
 end
 
--- [ FONT STRING ANCHOR COMPENSATION ]---------------------------------------------------------------
+-- Build the self-anchor for SetPoint based on component type.
+-- Text: uses justifyH only (horizontal edge, vertically centered)
+-- Aura containers: uses justifyH + anchorY (both edges)
+-- Other: CENTER
+function PositionUtils.BuildComponentSelfAnchor(isFontString, isAuraContainer, anchorY, justifyH)
+    if not justifyH or justifyH == "CENTER" then
+        return "CENTER"
+    end
+    if isFontString then
+        return justifyH
+    end
+    if isAuraContainer then
+        return PositionUtils.BuildAnchorPoint(justifyH, anchorY)
+    end
+    return "CENTER"
+end
 
--- Calculate anchor with FontString width compensation for accurate text alignment
--- When text is positioned near edges, the SetPoint uses text edges (not center),
--- requiring offset adjustment based on text width and inside/outside positioning.
--- @param posX: X position relative to parent center
--- @param posY: Y position relative to parent center
--- @param halfW: Half width of parent frame
--- @param halfH: Half height of parent frame
--- @param isFontString: Whether the component is a FontString
--- @param compWidth: Width of the component (required for FontString compensation)
--- @return anchorX, anchorY, offsetX, offsetY, justifyH
-function PositionUtils.CalculateAnchorWithFontCompensation(posX, posY, halfW, halfH, isFontString, compWidth)
+-- Whether a component needs edge-relative offset compensation (width and optionally height)
+function PositionUtils.NeedsEdgeCompensation(isFontString, isAuraContainer) return isFontString or isAuraContainer end
+
+-- [ FONT STRING ANCHOR COMPENSATION ]---------------------------------------------------------------
+function PositionUtils.CalculateAnchorWithWidthCompensation(posX, posY, halfW, halfH, needsWidthComp, compWidth)
     local anchorX, anchorY, offsetX, offsetY, justifyH = PositionUtils.CalculateAnchor(posX, posY, halfW, halfH)
 
-    if not isFontString or anchorX == "CENTER" then
+    if not needsWidthComp or anchorX == "CENTER" then
         return anchorX, anchorY, offsetX, offsetY, justifyH
     end
 
@@ -128,7 +137,9 @@ end
 -- @param defaultOffsetY: (optional) Default Y offset if no pos data
 -- @return true if position was applied, false otherwise
 function PositionUtils.ApplyTextPosition(element, parent, pos, defaultAnchor, defaultOffsetX, defaultOffsetY)
-    if not element or not parent then return false end
+    if not element or not parent then
+        return false
+    end
 
     pos = pos or {}
 
@@ -146,8 +157,12 @@ function PositionUtils.ApplyTextPosition(element, parent, pos, defaultAnchor, de
         -- Calculate offset signs (positive = inward)
         local offsetX = pos.offsetX or 0
         local offsetY = pos.offsetY or 0
-        if pos.anchorX == "RIGHT" then offsetX = -offsetX end
-        if pos.anchorY == "TOP" then offsetY = -offsetY end
+        if pos.anchorX == "RIGHT" then
+            offsetX = -offsetX
+        end
+        if pos.anchorY == "TOP" then
+            offsetY = -offsetY
+        end
 
         -- Text anchor: use justifyH for horizontal alignment
         if pos.justifyH and pos.justifyH ~= "CENTER" and element.SetJustifyH then

@@ -1,15 +1,16 @@
 -- [ AURA FILTER REFERENCE ]-------------------------------------------------------------------------
 --
--- Buffs:          HELPFUL|PLAYER|RAID_IN_COMBAT
---                 Show only player-cast helpful auras relevant to raid encounters.
---                 PLAYER limits to our own casts, RAID_IN_COMBAT shows combat-relevant buffs only.
+-- Buffs:          Fetch HELPFUL|PLAYER, then post-filter with IsAuraFilteredOutByInstanceID:
+--                   In combat:     keep only HELPFUL|PLAYER|RAID_IN_COMBAT passing auras
+--                   Out of combat: keep only HELPFUL|PLAYER|RAID passing auras
+--                   If DefensiveIcon enabled: exclude BIG_DEFENSIVE and EXTERNAL_DEFENSIVE
 --
--- Debuffs:        HARMFUL
---                 Show only harmful auras (boss mechanics, dispellable effects).
+-- Debuffs:        Fetch HARMFUL, then post-filter:
+--                   If CrowdControlIcon enabled: exclude HARMFUL|CROWD_CONTROL
 --
--- DefensiveIcon:  HELPFUL|BIG_DEFENSIVE
+-- DefensiveIcon:  HELPFUL|BIG_DEFENSIVE or HELPFUL|EXTERNAL_DEFENSIVE
 --                 Show a single major defensive cooldown active on the unit (e.g. Shield Wall, Ice Block).
---                 BIG_DEFENSIVE is a Blizzard flag for significant personal/external defensives.
+--                 BIG_DEFENSIVE and EXTERNAL_DEFENSIVE are Blizzard flags for significant defensives.
 --
 -- ImportantIcon:  HARMFUL|IMPORTANT
 --                 Show a single high-priority harmful effect on the unit (boss mechanics, soaks).
@@ -32,6 +33,7 @@ local POWER_BAR_HEIGHT_RATIO = Orbit.PartyFrameHelpers.LAYOUT.PowerBarRatio
 local DEFENSIVE_ICON_SIZE = 24
 local IMPORTANT_ICON_SIZE = 24
 local CROWD_CONTROL_ICON_SIZE = 24
+local AURA_BASE_ICON_SIZE = Orbit.PartyFrameHelpers.LAYOUT.AuraBaseIconSize
 
 -- Role priority for sorting (Tank > Healer > DPS > None)
 local ROLE_PRIORITY = {
@@ -54,12 +56,6 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
         Orientation = 0, -- 0 = Vertical, 1 = Horizontal
         Spacing = 3,
         HealthTextMode = "percent_short",
-        DebuffPositionVertical = "Right", -- Left/Right for vertical
-        DebuffPositionHorizontal = "Above", -- Above/Below for horizontal
-        MaxDebuffs = 3,
-        BuffPositionVertical = "Left", -- Left/Right for vertical
-        BuffPositionHorizontal = "Below", -- Above/Below for horizontal
-        MaxBuffs = 3,
         ComponentPositions = {
             Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
             HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
@@ -73,6 +69,24 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
             DefensiveIcon = { anchorX = "LEFT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
             ImportantIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
             CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
+            Buffs = {
+                anchorX = "LEFT",
+                anchorY = "CENTER",
+                offsetX = 2,
+                offsetY = 0,
+                posX = -95,
+                posY = 0,
+                overrides = { MaxIcons = 3, IconScale = 1.0, MaxRows = 2 },
+            },
+            Debuffs = {
+                anchorX = "RIGHT",
+                anchorY = "CENTER",
+                offsetX = 2,
+                offsetY = 0,
+                posX = 95,
+                posY = 0,
+                overrides = { MaxIcons = 3, IconScale = 1.0, MaxRows = 2 },
+            },
         },
         DisabledComponents = { "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" },
         DisabledComponentsMigrated = true,
@@ -151,23 +165,17 @@ local function SafeRegisterUnitWatch(frame)
     if not frame then
         return
     end
-    Orbit:SafeAction(function()
-        RegisterUnitWatch(frame)
-    end)
+    Orbit:SafeAction(function() RegisterUnitWatch(frame) end)
 end
 
 local function SafeUnregisterUnitWatch(frame)
     if not frame then
         return
     end
-    Orbit:SafeAction(function()
-        UnregisterUnitWatch(frame)
-    end)
+    Orbit:SafeAction(function() UnregisterUnitWatch(frame) end)
 end
 
-local function GetPowerColor(powerType)
-    return Orbit.Constants.Colors:GetPowerColor(powerType)
-end
+local function GetPowerColor(powerType) return Orbit.Constants.Colors:GetPowerColor(powerType) end
 
 -- [ ROLE SORTING ]---------------------------------------------------------------------------------
 
@@ -216,8 +224,8 @@ end
 
 local function CreatePowerBar(parent, unit, plugin)
     local power = CreateFrame("StatusBar", nil, parent)
-    power:SetPoint("BOTTOMLEFT", 1, 1)
-    power:SetPoint("BOTTOMRIGHT", -1, 1)
+    power:SetPoint("BOTTOMLEFT", 0, 0)
+    power:SetPoint("BOTTOMRIGHT", 0, 0)
     power:SetHeight(parent:GetHeight() * POWER_BAR_HEIGHT_RATIO)
     power:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
 
@@ -275,35 +283,34 @@ end
 -- [ AURA LAYOUT HELPERS ]---------------------------------------------------------------------------
 -- Smart layout: auto-sizing, multi-row support, grow-direction based on position
 
-local MAX_AURA_ICON_SIZE = 30
 local AURA_SPACING = 2
 
 -- Calculate smart aura layout based on frame dimensions and position
+-- overrides: optional table { IconScale, MaxRows } from ComponentPositions
 -- Returns: iconSize, rows, iconsPerRow, containerWidth, containerHeight
-local function CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxIcons, numIcons)
+local function CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxIcons, numIcons, overrides)
     local iconSize, rows, iconsPerRow, containerWidth, containerHeight
     local isHorizontal = (position == "Above" or position == "Below")
+    local scale = (overrides and overrides.IconScale) or 1.0
+    local maxRows = (overrides and overrides.MaxRows) or 2
+
+    -- Base icon size from constant, then apply scale
+    iconSize = math.floor(AURA_BASE_ICON_SIZE * scale + 0.5)
+    iconSize = math.max(12, iconSize)
 
     if isHorizontal then
-        -- Above/Below: icon size capped at MAX_AURA_ICON_SIZE, overflow wraps into rows
-        iconSize = math.min(MAX_AURA_ICON_SIZE, (frameWidth - (maxIcons - 1) * AURA_SPACING) / maxIcons)
-        iconSize = math.max(12, iconSize)
         iconsPerRow = math.max(1, math.floor((frameWidth + AURA_SPACING) / (iconSize + AURA_SPACING)))
-        rows = math.ceil(numIcons / iconsPerRow)
-        containerWidth = (math.min(numIcons, iconsPerRow) * iconSize) + ((math.min(numIcons, iconsPerRow) - 1) * AURA_SPACING)
+        rows = math.min(maxRows, math.ceil(numIcons / iconsPerRow))
+        -- Clamp displayed icons to what fits in maxRows
+        local displayCount = math.min(numIcons, iconsPerRow * rows)
+        local displayCols = math.min(displayCount, iconsPerRow)
+        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * AURA_SPACING)
         containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
     else
-        -- Left/Right: size icons relative to frame height
-        if frameHeight < MAX_AURA_ICON_SIZE then
-            rows = 1
-            iconSize = frameHeight
-        else
-            rows = math.min(2, numIcons)
-            iconSize = (frameHeight - AURA_SPACING) / 2
-        end
-        iconSize = math.max(12, iconSize)
+        -- Left/Right: rows capped by maxRows
+        rows = math.min(maxRows, math.max(1, numIcons))
         iconsPerRow = math.ceil(numIcons / rows)
-        containerWidth = (iconsPerRow * iconSize) + ((iconsPerRow - 1) * AURA_SPACING)
+        containerWidth = math.max(iconSize, (iconsPerRow * iconSize) + ((iconsPerRow - 1) * AURA_SPACING))
         containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
     end
 
@@ -311,33 +318,40 @@ local function CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxIc
 end
 
 -- Position an aura icon within a container with multi-row support
+-- justifyH: LEFT (grow right), RIGHT (grow left), CENTER (grow from center)
+-- anchorY:  TOP (rows grow down), BOTTOM (rows grow up), CENTER (rows grow down)
 -- Returns: nextCol, nextRow (for the next icon)
-local function PositionAuraIcon(icon, container, position, col, row, iconSize, iconsPerRow)
-    local isHorizontal = (position == "Above" or position == "Below")
-    local xOffset, yOffset
+local function PositionAuraIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow)
+    local spacing = AURA_SPACING
+    local xOffset = col * (iconSize + spacing)
+    local yOffset = row * (iconSize + spacing)
 
     icon:ClearAllPoints()
 
-    if isHorizontal then
-        xOffset = col * (iconSize + AURA_SPACING)
-        yOffset = row * (iconSize + AURA_SPACING)
-        if position == "Above" then
-            -- Rows grow upward (away from frame): anchor from bottom
-            icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOffset, yOffset)
+    -- Vertical: TOP/CENTER → rows grow downward, BOTTOM → rows grow upward
+    local growDown = (anchorY ~= "BOTTOM")
+
+    if justifyH == "RIGHT" then
+        -- Anchor from right, grow left
+        if growDown then
+            icon:SetPoint("TOPRIGHT", container, "TOPRIGHT", -xOffset, -yOffset)
         else
-            -- Rows grow downward (away from frame): anchor from top
-            icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
+            icon:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -xOffset, yOffset)
         end
-    elseif position == "Left" then
-        -- Left: grow right-to-left (away from center)
-        xOffset = col * (iconSize + AURA_SPACING)
-        yOffset = row * (iconSize + AURA_SPACING)
-        icon:SetPoint("TOPRIGHT", container, "TOPRIGHT", -xOffset, -yOffset)
-    else -- Right
-        -- Right: grow left-to-right (away from center)
-        xOffset = col * (iconSize + AURA_SPACING)
-        yOffset = row * (iconSize + AURA_SPACING)
-        icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
+    elseif justifyH == "CENTER" then
+        -- Center-aligned: offset from left (container is already centered by SetPoint)
+        if growDown then
+            icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
+        else
+            icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOffset, yOffset)
+        end
+    else -- LEFT or default
+        -- Anchor from left, grow right
+        if growDown then
+            icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
+        else
+            icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOffset, yOffset)
+        end
     end
 
     -- Calculate next position
@@ -351,6 +365,13 @@ local function PositionAuraIcon(icon, container, position, col, row, iconSize, i
     return nextCol, nextRow
 end
 
+-- [ AURA POST-FILTER HELPER ]-----------------------------------------------------------------------
+-- Returns true if the aura passes the given filter (is NOT filtered out)
+local function IsAuraIncluded(unit, auraInstanceID, filter) return not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, auraInstanceID, filter) end
+
+-- Use shared helper from PartyFrameHelpers
+local Helpers = Orbit.PartyFrameHelpers
+
 -- [ DEBUFF DISPLAY ]--------------------------------------------------------------------------------
 
 local function UpdateDebuffs(frame, plugin)
@@ -358,13 +379,19 @@ local function UpdateDebuffs(frame, plugin)
         return
     end
 
-    local orientation = plugin:GetSetting(1, "Orientation") or 0
-    local positionKey = orientation == 0 and "DebuffPositionVertical" or "DebuffPositionHorizontal"
-    local position = plugin:GetSetting(1, positionKey) or (orientation == 0 and "Right" or "Above")
-    if position == "Disabled" then
+    -- Check if debuffs are disabled via canvas mode dock
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("Debuffs") then
         frame.debuffContainer:Hide()
         return
     end
+
+    -- Read position and overrides from ComponentPositions (set via Canvas Mode)
+    local componentPositions = plugin:GetSetting(1, "ComponentPositions") or {}
+    local debuffData = componentPositions.Debuffs or {}
+    local debuffOverrides = debuffData.overrides or {}
+    local frameWidth = frame:GetWidth()
+    local frameHeight = frame:GetHeight()
+    local maxDebuffs = debuffOverrides.MaxIcons or 3
 
     local unit = frame.unit
     if not UnitExists(unit) then
@@ -372,40 +399,64 @@ local function UpdateDebuffs(frame, plugin)
         return
     end
 
-    local maxDebuffs = plugin:GetSetting(1, "MaxDebuffs") or 3
-
     -- Initialize pool if needed
     if not frame.debuffPool then
         frame.debuffPool = CreateFramePool("Button", frame.debuffContainer, "BackdropTemplate")
     end
     frame.debuffPool:ReleaseAll()
 
-    -- Fetch raid-relevant harmful auras
-    local debuffs = plugin:FetchAuras(unit, "HARMFUL", maxDebuffs)
+    -- Fetch harmful auras with post-filtering
+    local allDebuffs = plugin:FetchAuras(unit, "HARMFUL", 40)
+
+    -- Post-filter: exclude crowd control if CrowdControlIcon is enabled (handled separately)
+    local excludeCC = not (plugin.IsComponentDisabled and plugin:IsComponentDisabled("CrowdControlIcon"))
+    local debuffs = {}
+    for _, aura in ipairs(allDebuffs) do
+        local dominated = excludeCC and aura.auraInstanceID and IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
+        if not dominated then
+            table.insert(debuffs, aura)
+            if #debuffs >= maxDebuffs then
+                break
+            end
+        end
+    end
 
     if #debuffs == 0 then
         frame.debuffContainer:Hide()
         return
     end
 
-    -- Calculate smart layout
-    local frameWidth = frame:GetWidth()
-    local frameHeight = frame:GetHeight()
-    local iconSize, rows, iconsPerRow, containerWidth, containerHeight = CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxDebuffs, #debuffs)
+    -- Calculate smart layout (position string needed for icon growth direction)
+    local position = Helpers:AnchorToPosition(debuffData.posX, debuffData.posY, frameWidth / 2, frameHeight / 2)
+    local iconSize, rows, iconsPerRow, containerWidth, containerHeight =
+        CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxDebuffs, #debuffs, debuffOverrides)
 
-    -- Position container based on position
+    -- Position container using saved anchor data (same system as all other components)
     frame.debuffContainer:ClearAllPoints()
     frame.debuffContainer:SetSize(containerWidth, containerHeight)
 
-    if position == "Above" then
-        frame.debuffContainer:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", 0, 2)
-    elseif position == "Below" then
-        frame.debuffContainer:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -2)
-    elseif position == "Left" then
-        frame.debuffContainer:SetPoint("TOPRIGHT", frame, "TOPLEFT", -2, 0)
-    elseif position == "Right" then
-        frame.debuffContainer:SetPoint("TOPLEFT", frame, "TOPRIGHT", 2, 0)
+    local anchorX = debuffData.anchorX or "RIGHT"
+    local anchorY = debuffData.anchorY or "CENTER"
+    local offsetX = debuffData.offsetX or 0
+    local offsetY = debuffData.offsetY or 0
+    local justifyH = debuffData.justifyH or "LEFT"
+
+    -- Frame-side anchor (where on the frame to attach)
+    local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
+
+    -- Container self-anchor: justifyH edge + anchorY (matches edge-relative offsets from drag system)
+    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
+
+    local finalX = offsetX
+    local finalY = offsetY
+    if anchorX == "RIGHT" then
+        finalX = -offsetX
     end
+    if anchorY == "TOP" then
+        finalY = -offsetY
+    end
+
+    frame.debuffContainer:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
 
     -- Skin settings
     local globalBorder = Orbit.db.GlobalSettings.BorderSize
@@ -423,7 +474,7 @@ local function UpdateDebuffs(frame, plugin)
         plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
         plugin:SetupAuraTooltip(icon, aura, unit, "HARMFUL")
 
-        col, row = PositionAuraIcon(icon, frame.debuffContainer, position, col, row, iconSize, iconsPerRow)
+        col, row = PositionAuraIcon(icon, frame.debuffContainer, justifyH, anchorY, col, row, iconSize, iconsPerRow)
     end
 
     frame.debuffContainer:Show()
@@ -437,13 +488,19 @@ local function UpdateBuffs(frame, plugin)
         return
     end
 
-    local orientation = plugin:GetSetting(1, "Orientation") or 0
-    local positionKey = orientation == 0 and "BuffPositionVertical" or "BuffPositionHorizontal"
-    local position = plugin:GetSetting(1, positionKey) or (orientation == 0 and "Left" or "Below")
-    if position == "Disabled" then
+    -- Check if buffs are disabled via canvas mode dock
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("Buffs") then
         frame.buffContainer:Hide()
         return
     end
+
+    -- Read position and overrides from ComponentPositions (set via Canvas Mode)
+    local componentPositions = plugin:GetSetting(1, "ComponentPositions") or {}
+    local buffData = componentPositions.Buffs or {}
+    local buffOverrides = buffData.overrides or {}
+    local frameWidth = frame:GetWidth()
+    local frameHeight = frame:GetHeight()
+    local maxBuffs = buffOverrides.MaxIcons or 3
 
     local unit = frame.unit
     if not UnitExists(unit) then
@@ -451,40 +508,70 @@ local function UpdateBuffs(frame, plugin)
         return
     end
 
-    local maxBuffs = plugin:GetSetting(1, "MaxBuffs") or 3
-
     -- Initialize pool if needed
     if not frame.buffPool then
         frame.buffPool = CreateFramePool("Button", frame.buffContainer, "BackdropTemplate")
     end
     frame.buffPool:ReleaseAll()
 
-    -- Fetch player-relevant combat buffs
-    local buffs = plugin:FetchAuras(unit, "HELPFUL|PLAYER|RAID_IN_COMBAT", maxBuffs)
+    -- Fetch player buffs with combat-aware post-filtering
+    local allBuffs = plugin:FetchAuras(unit, "HELPFUL|PLAYER", 40)
+
+    -- Post-filter: combat-aware raid relevance + conditionally exclude defensives
+    local inCombat = UnitAffectingCombat("player")
+    local raidFilter = inCombat and "HELPFUL|PLAYER|RAID_IN_COMBAT" or "HELPFUL|PLAYER|RAID"
+    local excludeDefensives = not (plugin.IsComponentDisabled and plugin:IsComponentDisabled("DefensiveIcon"))
+    local buffs = {}
+    for _, aura in ipairs(allBuffs) do
+        if aura.auraInstanceID then
+            local passesRaid = IsAuraIncluded(unit, aura.auraInstanceID, raidFilter)
+            local isBigDef = excludeDefensives and IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|BIG_DEFENSIVE")
+            local isExtDef = excludeDefensives and IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|EXTERNAL_DEFENSIVE")
+            if passesRaid and not isBigDef and not isExtDef then
+                table.insert(buffs, aura)
+                if #buffs >= maxBuffs then
+                    break
+                end
+            end
+        end
+    end
 
     if #buffs == 0 then
         frame.buffContainer:Hide()
         return
     end
 
-    -- Calculate smart layout
-    local frameWidth = frame:GetWidth()
-    local frameHeight = frame:GetHeight()
-    local iconSize, rows, iconsPerRow, containerWidth, containerHeight = CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxBuffs, #buffs)
+    -- Calculate smart layout (position string needed for icon growth direction)
+    local position = Helpers:AnchorToPosition(buffData.posX, buffData.posY, frameWidth / 2, frameHeight / 2)
+    local iconSize, rows, iconsPerRow, containerWidth, containerHeight =
+        CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxBuffs, #buffs, buffOverrides)
 
-    -- Position container based on position
+    -- Position container using saved anchor data (same system as all other components)
     frame.buffContainer:ClearAllPoints()
     frame.buffContainer:SetSize(containerWidth, containerHeight)
 
-    if position == "Above" then
-        frame.buffContainer:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", 0, 2)
-    elseif position == "Below" then
-        frame.buffContainer:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -2)
-    elseif position == "Left" then
-        frame.buffContainer:SetPoint("TOPRIGHT", frame, "TOPLEFT", -2, 0)
-    elseif position == "Right" then
-        frame.buffContainer:SetPoint("TOPLEFT", frame, "TOPRIGHT", 2, 0)
+    local anchorX = buffData.anchorX or "LEFT"
+    local anchorY = buffData.anchorY or "CENTER"
+    local offsetX = buffData.offsetX or 0
+    local offsetY = buffData.offsetY or 0
+    local justifyH = buffData.justifyH or "RIGHT"
+
+    -- Frame-side anchor
+    local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
+
+    -- Container self-anchor: justifyH edge + anchorY (matches edge-relative offsets from drag system)
+    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
+
+    local finalX = offsetX
+    local finalY = offsetY
+    if anchorX == "RIGHT" then
+        finalX = -offsetX
     end
+    if anchorY == "TOP" then
+        finalY = -offsetY
+    end
+
+    frame.buffContainer:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
 
     -- Skin settings
     local globalBorder = Orbit.db.GlobalSettings.BorderSize
@@ -502,7 +589,7 @@ local function UpdateBuffs(frame, plugin)
         plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
         plugin:SetupAuraTooltip(icon, aura, unit, "HELPFUL")
 
-        col, row = PositionAuraIcon(icon, frame.buffContainer, position, col, row, iconSize, iconsPerRow)
+        col, row = PositionAuraIcon(icon, frame.buffContainer, justifyH, anchorY, col, row, iconSize, iconsPerRow)
     end
 
     frame.buffContainer:Show()
@@ -544,20 +631,46 @@ end
 -- [ DEFENSIVE ICON DISPLAY ]------------------------------------------------------------------------
 
 local function UpdateDefensiveIcon(frame, plugin)
-    UpdateSingleAuraIcon(frame, plugin, "DefensiveIcon", "HELPFUL|BIG_DEFENSIVE", DEFENSIVE_ICON_SIZE)
+    -- Try BIG_DEFENSIVE first, fall back to EXTERNAL_DEFENSIVE
+    local icon = frame.DefensiveIcon
+    if not icon then
+        return
+    end
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("DefensiveIcon") then
+        icon:Hide()
+        return
+    end
+
+    local unit = frame.unit
+    if not UnitExists(unit) then
+        icon:Hide()
+        return
+    end
+
+    local auras = plugin:FetchAuras(unit, "HELPFUL|BIG_DEFENSIVE", 1)
+    if #auras == 0 then
+        auras = plugin:FetchAuras(unit, "HELPFUL|EXTERNAL_DEFENSIVE", 1)
+    end
+    if #auras == 0 then
+        icon:Hide()
+        return
+    end
+
+    local aura = auras[1]
+    local globalBorder = Orbit.db.GlobalSettings.BorderSize
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false }
+    plugin:SetupAuraIcon(icon, aura, DEFENSIVE_ICON_SIZE, unit, skinSettings)
+    plugin:SetupAuraTooltip(icon, aura, unit, "HELPFUL")
+    icon:Show()
 end
 
 -- [ IMPORTANT ICON DISPLAY ]------------------------------------------------------------------------
 
-local function UpdateImportantIcon(frame, plugin)
-    UpdateSingleAuraIcon(frame, plugin, "ImportantIcon", "HARMFUL|IMPORTANT", IMPORTANT_ICON_SIZE)
-end
+local function UpdateImportantIcon(frame, plugin) UpdateSingleAuraIcon(frame, plugin, "ImportantIcon", "HARMFUL|IMPORTANT", IMPORTANT_ICON_SIZE) end
 
 -- [ CROWD CONTROL ICON DISPLAY ]--------------------------------------------------------------------
 
-local function UpdateCrowdControlIcon(frame, plugin)
-    UpdateSingleAuraIcon(frame, plugin, "CrowdControlIcon", "HARMFUL|CROWD_CONTROL", CROWD_CONTROL_ICON_SIZE)
-end
+local function UpdateCrowdControlIcon(frame, plugin) UpdateSingleAuraIcon(frame, plugin, "CrowdControlIcon", "HARMFUL|CROWD_CONTROL", CROWD_CONTROL_ICON_SIZE) end
 
 -- [ STATUS INDICATOR UPDATES ]---------------------------------------------------------------------
 local function UpdateRoleIcon(frame, plugin)
@@ -718,6 +831,12 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
                     plugin:UpdateDispelIndicator(f, plugin)
                 end
             end
+            return
+        end
+
+        -- Combat state change: force refresh buffs for combat-aware filtering
+        if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+            UpdateBuffs(f, plugin)
             return
         end
 
@@ -933,69 +1052,6 @@ function Plugin:AddSettings(dialog, systemFrame)
             schema.controls,
             { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true, onChange = makeOnChange(self, "ShowPowerBar") }
         )
-    elseif currentTab == "Auras" then
-        local debuffKey = orientation == 0 and "DebuffPositionVertical" or "DebuffPositionHorizontal"
-        local debuffDefault = orientation == 0 and "Right" or "Above"
-        table.insert(schema.controls, {
-            type = "dropdown",
-            key = debuffKey,
-            label = "Debuff Position",
-            default = debuffDefault,
-            options = orientation == 0
-                    and { { text = "Disabled", value = "Disabled" }, { text = "Left", value = "Left" }, { text = "Right", value = "Right" } }
-                or { { text = "Disabled", value = "Disabled" }, { text = "Above", value = "Above" }, { text = "Below", value = "Below" } },
-            onChange = function(val)
-                self:SetSetting(1, debuffKey, val)
-                self:ApplySettings()
-                if self.frames and self.frames[1] and self.frames[1].preview then
-                    self:SchedulePreviewUpdate()
-                end
-                if dialog.orbitTabCallback then
-                    dialog.orbitTabCallback()
-                end
-            end,
-        })
-        local debuffPosition = self:GetSetting(1, debuffKey) or debuffDefault
-        if debuffPosition ~= "Disabled" then
-            table.insert(schema.controls, {
-                type = "slider",
-                key = "MaxDebuffs",
-                label = "Max Debuffs",
-                min = 1,
-                max = 6,
-                step = 1,
-                default = 3,
-                onChange = makeOnChange(self, "MaxDebuffs"),
-            })
-        end
-        local buffKey = orientation == 0 and "BuffPositionVertical" or "BuffPositionHorizontal"
-        local buffDefault = orientation == 0 and "Left" or "Below"
-        table.insert(schema.controls, {
-            type = "dropdown",
-            key = buffKey,
-            label = "Buff Position (My Buffs)",
-            default = buffDefault,
-            options = orientation == 0
-                    and { { text = "Disabled", value = "Disabled" }, { text = "Left", value = "Left" }, { text = "Right", value = "Right" } }
-                or { { text = "Disabled", value = "Disabled" }, { text = "Above", value = "Above" }, { text = "Below", value = "Below" } },
-            onChange = function(val)
-                self:SetSetting(1, buffKey, val)
-                self:ApplySettings()
-                if self.frames and self.frames[1] and self.frames[1].preview then
-                    self:SchedulePreviewUpdate()
-                end
-                if dialog.orbitTabCallback then
-                    dialog.orbitTabCallback()
-                end
-            end,
-        })
-        local buffPosition = self:GetSetting(1, buffKey) or buffDefault
-        if buffPosition ~= "Disabled" then
-            table.insert(
-                schema.controls,
-                { type = "slider", key = "MaxBuffs", label = "Max Buffs", min = 1, max = 6, step = 1, default = 3, onChange = makeOnChange(self, "MaxBuffs") }
-            )
-        end
     elseif currentTab == "Indicators" then
         table.insert(schema.controls, {
             type = "checkbox",
@@ -1080,7 +1136,18 @@ function Plugin:OnLoad()
         -- Components that support justifyH (text elements)
         local textComponents = { "Name", "HealthText" }
         -- Components that don't support justifyH (icons)
-        local iconComponents = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" }
+        local iconComponents = {
+            "RoleIcon",
+            "LeaderIcon",
+            "PhaseIcon",
+            "ReadyCheckIcon",
+            "ResIcon",
+            "SummonIcon",
+            "MarkerIcon",
+            "DefensiveIcon",
+            "ImportantIcon",
+            "CrowdControlIcon",
+        }
 
         -- Register text components with justifyH support
         for _, key in ipairs(textComponents) do
@@ -1110,6 +1177,33 @@ function Plugin:OnLoad()
                     end,
                 })
             end
+        end
+
+        -- Register aura containers (Buffs/Debuffs) as canvas mode components
+        local auraContainerComponents = { "Buffs", "Debuffs" }
+        for _, key in ipairs(auraContainerComponents) do
+            local containerKey = key == "Buffs" and "buffContainer" or "debuffContainer"
+            -- Ensure container exists on first frame for registration
+            if not firstFrame[containerKey] then
+                firstFrame[containerKey] = CreateFrame("Frame", nil, firstFrame)
+                firstFrame[containerKey]:SetSize(AURA_BASE_ICON_SIZE, AURA_BASE_ICON_SIZE)
+            end
+            OrbitEngine.ComponentDrag:Attach(firstFrame[containerKey], self.container, {
+                key = key,
+                isAuraContainer = true,
+                onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH)
+                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
+                    if not positions[key] then
+                        positions[key] = {}
+                    end
+                    positions[key].anchorX = anchorX
+                    positions[key].anchorY = anchorY
+                    positions[key].offsetX = offsetX
+                    positions[key].offsetY = offsetY
+                    positions[key].justifyH = justifyH
+                    pluginRef:SetSetting(1, "ComponentPositions", positions)
+                end,
+            })
         end
     end
 
@@ -1144,9 +1238,7 @@ function Plugin:OnLoad()
 
         RegisterStateDriver(plugin.container, "visibility", visibilityDriver)
     end
-    self.UpdateVisibilityDriver = function()
-        UpdateVisibilityDriver(self)
-    end
+    self.UpdateVisibilityDriver = function() UpdateVisibilityDriver(self) end
 
     -- Register secure visibility driver
     UpdateVisibilityDriver(self)
@@ -1511,9 +1603,7 @@ function Plugin:ApplySettings()
         -- Only apply settings to non-preview frames WITH valid units
         if not frame.preview and frame.unit then
             -- Apply size
-            Orbit:SafeAction(function()
-                frame:SetSize(width, height)
-            end)
+            Orbit:SafeAction(function() frame:SetSize(width, height) end)
 
             -- Apply texture
             if frame.Health then
@@ -1590,7 +1680,18 @@ function Plugin:ApplySettings()
             end
 
             -- Apply positions for other status icons
-            local icons = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" }
+            local icons = {
+                "RoleIcon",
+                "LeaderIcon",
+                "PhaseIcon",
+                "ReadyCheckIcon",
+                "ResIcon",
+                "SummonIcon",
+                "MarkerIcon",
+                "DefensiveIcon",
+                "ImportantIcon",
+                "CrowdControlIcon",
+            }
             for _, iconKey in ipairs(icons) do
                 if frame[iconKey] and savedPositions[iconKey] then
                     local pos = savedPositions[iconKey]

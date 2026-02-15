@@ -119,15 +119,13 @@ local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOpti
     -- The Gelatinous Cube absorbs both borders, leaving nothing between
     local overlap = 0
     if syncOptions and syncOptions.mergeBorders and parentOptions.mergeBorders and syncOptions.syncScale and syncOptions.syncDimensions and padding == 0 then
-        local pSize = (parent.borderPixelSize or 1)
-        local cSize = (child.borderPixelSize or 1)
-        if not parent.borderPixelSize then
-            local pixelScale = (Orbit.Engine.Pixel and Orbit.Engine.Pixel:GetScale()) or 1
-            pSize = (1 * pixelScale) / (parent:GetEffectiveScale() or 1)
+        local pSize = (parent.borderPixelSize or 0)
+        local cSize = (child.borderPixelSize or 0)
+        if pSize == 0 then
+            pSize = Orbit.Engine.Pixel:Multiple(1, parent:GetEffectiveScale() or 1)
         end
-        if not child.borderPixelSize then
-            local pixelScale = (Orbit.Engine.Pixel and Orbit.Engine.Pixel:GetScale()) or 1
-            cSize = (1 * pixelScale) / (child:GetEffectiveScale() or 1)
+        if cSize == 0 then
+            cSize = Orbit.Engine.Pixel:Multiple(1, child:GetEffectiveScale() or 1)
         end
         overlap = pSize + cSize
         SetMergeBorderState(parent, child, edge, true, overlap)

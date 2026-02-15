@@ -12,16 +12,14 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- Use shared position utilities
 local CalculateAnchor = OrbitEngine.PositionUtils.CalculateAnchor
-local CalculateAnchorWithFontCompensation = OrbitEngine.PositionUtils.CalculateAnchorWithFontCompensation
+local CalculateAnchorWithWidthCompensation = OrbitEngine.PositionUtils.CalculateAnchorWithWidthCompensation
 local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
+local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
+local NeedsEdgeCompensation = OrbitEngine.PositionUtils.NeedsEdgeCompensation
 
 -- Use shared functions from other modules
-local CreateDraggableComponent = function(...)
-    return CanvasMode.CreateDraggableComponent(...)
-end
-local ApplyTextAlignment = function(...)
-    return CanvasMode.ApplyTextAlignment(...)
-end
+local CreateDraggableComponent = function(...) return CanvasMode.CreateDraggableComponent(...) end
+local ApplyTextAlignment = function(...) return CanvasMode.ApplyTextAlignment(...) end
 
 -- [ FOOTER SETUP ]-----------------------------------------------------------------------
 
@@ -42,15 +40,9 @@ Dialog.FooterDivider:SetTexture("Interface\\FriendsFrame\\UI-FriendsFrame-Online
 Dialog.FooterDivider:SetPoint("TOP", Dialog.Footer, "TOP", 0, FC.DividerOffset)
 
 -- Create buttons
-Dialog.CancelButton = Layout:CreateButton(Dialog.Footer, "Cancel", function()
-    Dialog:Cancel()
-end)
-Dialog.ResetButton = Layout:CreateButton(Dialog.Footer, "Reset", function()
-    Dialog:ResetPositions()
-end)
-Dialog.ApplyButton = Layout:CreateButton(Dialog.Footer, "Apply", function()
-    Dialog:Apply()
-end)
+Dialog.CancelButton = Layout:CreateButton(Dialog.Footer, "Cancel", function() Dialog:Cancel() end)
+Dialog.ResetButton = Layout:CreateButton(Dialog.Footer, "Reset", function() Dialog:ResetPositions() end)
+Dialog.ApplyButton = Layout:CreateButton(Dialog.Footer, "Apply", function() Dialog:Apply() end)
 
 function Dialog:LayoutFooterButtons()
     local buttons = { self.CancelButton, self.ResetButton, self.ApplyButton }
@@ -106,9 +98,7 @@ Dialog:SetScript("OnKeyDown", function(self, key)
                 if self.hoveredComponent == component then
                     self:NudgeComponent(component, direction)
                 end
-            end, function()
-                return self.hoveredComponent == component
-            end)
+            end, function() return self.hoveredComponent == component end)
         else
             self:SetPropagateKeyboardInput(true)
         end
@@ -216,11 +206,8 @@ function Dialog:NudgeComponent(container, direction)
     end
 
     container:ClearAllPoints()
-    if container.isFontString and justifyH ~= "CENTER" then
-        container:SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
-    else
-        container:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
-    end
+    local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, anchorY, justifyH)
+    container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
     if OrbitEngine.SelectionTooltip then
         OrbitEngine.SelectionTooltip:ShowComponentPosition(
@@ -464,7 +451,9 @@ function Dialog:Open(frame, plugin, systemIndex)
                 self:AddToDock(key, data.component)
             else
                 local comp = CreateDraggableComponent(self.previewFrame, key, data.component, data.x, data.y, data)
-                if comp then comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + 10) end
+                if comp then
+                    comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + 10)
+                end
                 self.previewComponents[key] = comp
             end
         end
@@ -542,8 +531,13 @@ function Dialog:Apply()
         if not anchorX then
             local posX = comp.posX or 0
             local posY = comp.posY or 0
+            local needsWidthComp = NeedsEdgeCompensation(comp.isFontString, comp.isAuraContainer)
             anchorX, anchorY, offsetX, offsetY, justifyH =
-                CalculateAnchorWithFontCompensation(posX, posY, halfWidth, halfHeight, comp.isFontString, comp:GetWidth())
+                CalculateAnchorWithWidthCompensation(posX, posY, halfWidth, halfHeight, needsWidthComp, comp:GetWidth())
+            -- Aura containers need height compensation for vertical self-anchors
+            if comp.isAuraContainer and anchorY ~= "CENTER" then
+                offsetY = offsetY - (comp:GetHeight() or 0) / 2
+            end
         end
 
         positions[key] = {
@@ -613,9 +607,7 @@ end
 
 -- [ CANCEL ]-----------------------------------------------------------------------------
 
-function Dialog:Cancel()
-    self:CloseDialog()
-end
+function Dialog:Cancel() self:CloseDialog() end
 
 -- [ RESET POSITIONS ]--------------------------------------------------------------------
 
@@ -718,7 +710,9 @@ function Dialog:ResetPositions()
                 }
 
                 local comp = CreateDraggableComponent(preview, key, data.component, centerX, centerY, compData)
-                if comp then comp:SetFrameLevel(preview:GetFrameLevel() + 10) end
+                if comp then
+                    comp:SetFrameLevel(preview:GetFrameLevel() + 10)
+                end
                 self.previewComponents[key] = comp
             end
         end
