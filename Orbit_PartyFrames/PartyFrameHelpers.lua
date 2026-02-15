@@ -12,7 +12,7 @@ Helpers.LAYOUT = {
     DefaultWidth = 160,
     DefaultHeight = 40,
     ElementGap = 4,
-    AuraBaseIconSize = 25,
+    AuraBaseIconSize = 10,
 }
 
 Helpers.GROWTH_DIRECTION = { Down = "Down", Up = "Up", Left = "Left", Right = "Right" }

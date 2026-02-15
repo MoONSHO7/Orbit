@@ -13,6 +13,8 @@ local DEFENSIVE_ICON_SIZE = 18
 local IMPORTANT_ICON_SIZE = 18
 local CROWD_CONTROL_ICON_SIZE = 18
 local AURA_SPACING = 2
+local AURA_BASE_ICON_SIZE = 10
+local MIN_ICON_SIZE = 10
 local OUT_OF_RANGE_ALPHA = 0.2
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
@@ -31,10 +33,7 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
         SortMode = "Group",
         ShowPowerBar = true,
         HealthTextMode = "percent_short",
-        MaxDebuffs = 3,
-        DebuffSize = 16,
-        MaxBuffs = 0,
-        BuffSize = 14,
+
         ComponentPositions = {
             Name = { anchorX = "LEFT", offsetX = 3, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
             HealthText = { anchorX = "RIGHT", offsetX = 3, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
@@ -48,8 +47,24 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
             DefensiveIcon = { anchorX = "LEFT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
             ImportantIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
             CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
-            Buffs = { overrides = { MaxIcons = 0, IconSize = 25, MaxRows = 1 } },
-            Debuffs = { overrides = { MaxIcons = 3, IconSize = 25, MaxRows = 1 } },
+            Buffs = {
+                anchorX = "LEFT",
+                anchorY = "CENTER",
+                offsetX = 2,
+                offsetY = 0,
+                posX = -95,
+                posY = 0,
+                overrides = { MaxIcons = 3, IconSize = 10, MaxRows = 2 },
+            },
+            Debuffs = {
+                anchorX = "RIGHT",
+                anchorY = "CENTER",
+                offsetX = 2,
+                offsetY = 0,
+                posX = 95,
+                posY = 0,
+                overrides = { MaxIcons = 3, IconSize = 10, MaxRows = 2 },
+            },
         },
         DisabledComponents = { "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" },
         DisabledComponentsMigrated = true,
@@ -95,15 +110,57 @@ end
 
 local function IsAuraIncluded(unit, auraInstanceID, filter) return not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, auraInstanceID, filter) end
 
+-- [ SMART AURA LAYOUT ]-----------------------------------------------------------------------------
+
+local function CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxIcons, numIcons, overrides)
+    local isHorizontal = (position == "Above" or position == "Below")
+    local maxRows = (overrides and overrides.MaxRows) or 2
+    local iconSize = (overrides and overrides.IconSize) or AURA_BASE_ICON_SIZE
+    iconSize = math.max(MIN_ICON_SIZE, iconSize)
+    local rows, iconsPerRow, containerWidth, containerHeight
+    if isHorizontal then
+        iconsPerRow = math.max(1, math.floor((frameWidth + AURA_SPACING) / (iconSize + AURA_SPACING)))
+        rows = math.min(maxRows, math.ceil(numIcons / iconsPerRow))
+        local displayCount = math.min(numIcons, iconsPerRow * rows)
+        local displayCols = math.min(displayCount, iconsPerRow)
+        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * AURA_SPACING)
+        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
+    else
+        rows = math.min(maxRows, math.max(1, numIcons))
+        iconsPerRow = math.ceil(numIcons / rows)
+        containerWidth = math.max(iconSize, (iconsPerRow * iconSize) + ((iconsPerRow - 1) * AURA_SPACING))
+        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
+    end
+    return iconSize, rows, iconsPerRow, containerWidth, containerHeight
+end
+
+local function PositionAuraIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow)
+    local xOffset = col * (iconSize + AURA_SPACING)
+    local yOffset = row * (iconSize + AURA_SPACING)
+    icon:ClearAllPoints()
+    local growDown = (anchorY ~= "BOTTOM")
+    if justifyH == "RIGHT" then
+        if growDown then icon:SetPoint("TOPRIGHT", container, "TOPRIGHT", -xOffset, -yOffset)
+        else icon:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -xOffset, yOffset) end
+    else
+        if growDown then icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
+        else icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOffset, yOffset) end
+    end
+    local nextCol = col + 1
+    local nextRow = row
+    if nextCol >= iconsPerRow then nextCol = 0; nextRow = row + 1 end
+    return nextCol, nextRow
+end
+
 -- [ POWER BAR UPDATE ]------------------------------------------------------------------------------
 
 local function UpdatePowerBar(frame, plugin)
     if not frame.Power or not frame.unit or not UnitExists(frame.unit) then
         return
     end
-    local showPower = plugin:GetSetting(1, "ShowPowerBar")
+    local showHealerPower = plugin:GetSetting(1, "ShowPowerBar")
     local isHealer = UnitGroupRolesAssigned(frame.unit) == "HEALER"
-    if showPower == false and not isHealer then
+    if not isHealer or showHealerPower == false then
         frame.Power:Hide()
         return
     end
@@ -119,38 +176,30 @@ local function UpdateFrameLayout(frame, borderSize, plugin)
     if not Helpers then
         Helpers = Orbit.RaidFrameHelpers
     end
-    local showPowerBar = plugin and plugin:GetSetting(1, "ShowPowerBar")
-    if showPowerBar == nil then
-        showPowerBar = true
-    end
-    if not showPowerBar and frame.unit and UnitGroupRolesAssigned(frame.unit) == "HEALER" then
-        showPowerBar = true
-    end
-    Helpers:UpdateFrameLayout(frame, borderSize, showPowerBar)
+    local showHealerPower = plugin and plugin:GetSetting(1, "ShowPowerBar")
+    if showHealerPower == nil then showHealerPower = true end
+    local isHealer = frame.unit and UnitGroupRolesAssigned(frame.unit) == "HEALER"
+    Helpers:UpdateFrameLayout(frame, borderSize, showHealerPower and isHealer)
 end
 
 -- [ DEBUFF DISPLAY ]--------------------------------------------------------------------------------
 
 local function UpdateDebuffs(frame, plugin)
-    if not frame.debuffContainer then
-        return
-    end
+    if not frame.debuffContainer then return end
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("Debuffs") then frame.debuffContainer:Hide(); return end
+    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
+
+    local componentPositions = plugin:GetSetting(1, "ComponentPositions") or {}
+    local debuffData = componentPositions.Debuffs or {}
+    local debuffOverrides = debuffData.overrides or {}
+    local frameWidth = frame:GetWidth()
+    local frameHeight = frame:GetHeight()
+    local maxDebuffs = debuffOverrides.MaxIcons or 3
+
     local unit = frame.unit
-    if not unit or not UnitExists(unit) then
-        frame.debuffContainer:Hide()
-        return
-    end
+    if not unit or not UnitExists(unit) then frame.debuffContainer:Hide(); return end
 
-    local maxDebuffs = plugin:GetSetting(1, "MaxDebuffs") or 3
-    local debuffSize = plugin:GetSetting(1, "DebuffSize") or 16
-    if maxDebuffs <= 0 then
-        frame.debuffContainer:Hide()
-        return
-    end
-
-    if not frame.debuffPool then
-        frame.debuffPool = CreateFramePool("Button", frame.debuffContainer, "BackdropTemplate")
-    end
+    if not frame.debuffPool then frame.debuffPool = CreateFramePool("Button", frame.debuffContainer, "BackdropTemplate") end
     frame.debuffPool:ReleaseAll()
 
     local allDebuffs = plugin:FetchAuras(unit, "HARMFUL", 40)
@@ -160,37 +209,42 @@ local function UpdateDebuffs(frame, plugin)
         local dominated = excludeCC and aura.auraInstanceID and IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
         if not dominated then
             debuffs[#debuffs + 1] = aura
-            if #debuffs >= maxDebuffs then
-                break
-            end
+            if #debuffs >= maxDebuffs then break end
         end
     end
 
-    if #debuffs == 0 then
-        frame.debuffContainer:Hide()
-        return
-    end
+    if #debuffs == 0 then frame.debuffContainer:Hide(); return end
 
-    local cols = math.min(#debuffs, 3)
-    local rows = math.ceil(#debuffs / cols)
+    local position = Helpers:AnchorToPosition(debuffData.posX, debuffData.posY, frameWidth / 2, frameHeight / 2)
+    local iconSize, rows, iconsPerRow, containerWidth, containerHeight = CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxDebuffs, #debuffs, debuffOverrides)
+
     frame.debuffContainer:ClearAllPoints()
-    frame.debuffContainer:SetSize(cols * (debuffSize + AURA_SPACING), rows * (debuffSize + AURA_SPACING))
-    frame.debuffContainer:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", 0, 1)
+    frame.debuffContainer:SetSize(containerWidth, containerHeight)
+
+    local anchorX = debuffData.anchorX or "RIGHT"
+    local anchorY = debuffData.anchorY or "CENTER"
+    local offsetX = debuffData.offsetX or 0
+    local offsetY = debuffData.offsetY or 0
+    local justifyH = debuffData.justifyH or "LEFT"
+
+    local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
+    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
+
+    local finalX = offsetX
+    local finalY = offsetY
+    if anchorX == "RIGHT" then finalX = -offsetX end
+    if anchorY == "TOP" then finalY = -offsetY end
+    frame.debuffContainer:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
 
     local globalBorder = Orbit.db.GlobalSettings.BorderSize
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false }
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = true }
+
     local col, row = 0, 0
     for _, aura in ipairs(debuffs) do
         local icon = frame.debuffPool:Acquire()
-        plugin:SetupAuraIcon(icon, aura, debuffSize, unit, skinSettings)
+        plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
         plugin:SetupAuraTooltip(icon, aura, unit, "HARMFUL")
-        icon:ClearAllPoints()
-        icon:SetPoint("TOPLEFT", frame.debuffContainer, "TOPLEFT", col * (debuffSize + AURA_SPACING), -(row * (debuffSize + AURA_SPACING)))
-        col = col + 1
-        if col >= cols then
-            col = 0
-            row = row + 1
-        end
+        col, row = PositionAuraIcon(icon, frame.debuffContainer, justifyH, anchorY, col, row, iconSize, iconsPerRow)
     end
     frame.debuffContainer:Show()
 end
@@ -198,25 +252,21 @@ end
 -- [ BUFF DISPLAY ]----------------------------------------------------------------------------------
 
 local function UpdateBuffs(frame, plugin)
-    if not frame.buffContainer then
-        return
-    end
+    if not frame.buffContainer then return end
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("Buffs") then frame.buffContainer:Hide(); return end
+    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
+
+    local componentPositions = plugin:GetSetting(1, "ComponentPositions") or {}
+    local buffData = componentPositions.Buffs or {}
+    local buffOverrides = buffData.overrides or {}
+    local frameWidth = frame:GetWidth()
+    local frameHeight = frame:GetHeight()
+    local maxBuffs = buffOverrides.MaxIcons or 3
+
     local unit = frame.unit
-    if not unit or not UnitExists(unit) then
-        frame.buffContainer:Hide()
-        return
-    end
+    if not unit or not UnitExists(unit) then frame.buffContainer:Hide(); return end
 
-    local maxBuffs = plugin:GetSetting(1, "MaxBuffs") or 0
-    local buffSize = plugin:GetSetting(1, "BuffSize") or 14
-    if maxBuffs <= 0 then
-        frame.buffContainer:Hide()
-        return
-    end
-
-    if not frame.buffPool then
-        frame.buffPool = CreateFramePool("Button", frame.buffContainer, "BackdropTemplate")
-    end
+    if not frame.buffPool then frame.buffPool = CreateFramePool("Button", frame.buffContainer, "BackdropTemplate") end
     frame.buffPool:ReleaseAll()
 
     local allBuffs = plugin:FetchAuras(unit, "HELPFUL|PLAYER", 40)
@@ -231,38 +281,43 @@ local function UpdateBuffs(frame, plugin)
             local isExtDef = excludeDefensives and IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|EXTERNAL_DEFENSIVE")
             if passesRaid and not isBigDef and not isExtDef then
                 buffs[#buffs + 1] = aura
-                if #buffs >= maxBuffs then
-                    break
-                end
+                if #buffs >= maxBuffs then break end
             end
         end
     end
 
-    if #buffs == 0 then
-        frame.buffContainer:Hide()
-        return
-    end
+    if #buffs == 0 then frame.buffContainer:Hide(); return end
 
-    local cols = math.min(#buffs, 3)
-    local rows = math.ceil(#buffs / cols)
+    local position = Helpers:AnchorToPosition(buffData.posX, buffData.posY, frameWidth / 2, frameHeight / 2)
+    local iconSize, rows, iconsPerRow, containerWidth, containerHeight = CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxBuffs, #buffs, buffOverrides)
+
     frame.buffContainer:ClearAllPoints()
-    frame.buffContainer:SetSize(cols * (buffSize + AURA_SPACING), rows * (buffSize + AURA_SPACING))
-    frame.buffContainer:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -1)
+    frame.buffContainer:SetSize(containerWidth, containerHeight)
+
+    local anchorX = buffData.anchorX or "LEFT"
+    local anchorY = buffData.anchorY or "CENTER"
+    local offsetX = buffData.offsetX or 0
+    local offsetY = buffData.offsetY or 0
+    local justifyH = buffData.justifyH or "RIGHT"
+
+    local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
+    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
+
+    local finalX = offsetX
+    local finalY = offsetY
+    if anchorX == "RIGHT" then finalX = -offsetX end
+    if anchorY == "TOP" then finalY = -offsetY end
+    frame.buffContainer:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
 
     local globalBorder = Orbit.db.GlobalSettings.BorderSize
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false }
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = true }
+
     local col, row = 0, 0
     for _, aura in ipairs(buffs) do
         local icon = frame.buffPool:Acquire()
-        plugin:SetupAuraIcon(icon, aura, buffSize, unit, skinSettings)
+        plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
         plugin:SetupAuraTooltip(icon, aura, unit, "HELPFUL")
-        icon:ClearAllPoints()
-        icon:SetPoint("TOPLEFT", frame.buffContainer, "TOPLEFT", col * (buffSize + AURA_SPACING), -(row * (buffSize + AURA_SPACING)))
-        col = col + 1
-        if col >= cols then
-            col = 0
-            row = row + 1
-        end
+        col, row = PositionAuraIcon(icon, frame.buffContainer, justifyH, anchorY, col, row, iconSize, iconsPerRow)
     end
     frame.buffContainer:Show()
 end
@@ -297,31 +352,10 @@ local function UpdateSingleAuraIcon(frame, plugin, iconKey, filter, iconSize)
 end
 
 local function UpdateDefensiveIcon(frame, plugin)
-    local icon = frame.DefensiveIcon
-    if not icon then
-        return
+    UpdateSingleAuraIcon(frame, plugin, "DefensiveIcon", "HELPFUL|BIG_DEFENSIVE", DEFENSIVE_ICON_SIZE)
+    if frame.DefensiveIcon and not frame.DefensiveIcon:IsShown() then
+        UpdateSingleAuraIcon(frame, plugin, "DefensiveIcon", "HELPFUL|EXTERNAL_DEFENSIVE", DEFENSIVE_ICON_SIZE)
     end
-    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("DefensiveIcon") then
-        icon:Hide()
-        return
-    end
-    local unit = frame.unit
-    if not unit or not UnitExists(unit) then
-        icon:Hide()
-        return
-    end
-    local auras = plugin:FetchAuras(unit, "HELPFUL|BIG_DEFENSIVE", 1)
-    if #auras == 0 then
-        auras = plugin:FetchAuras(unit, "HELPFUL|EXTERNAL_DEFENSIVE", 1)
-    end
-    if #auras == 0 then
-        icon:Hide()
-        return
-    end
-    local globalBorder = Orbit.db.GlobalSettings.BorderSize
-    plugin:SetupAuraIcon(icon, auras[1], DEFENSIVE_ICON_SIZE, unit, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
-    plugin:SetupAuraTooltip(icon, auras[1], unit, "HELPFUL")
-    icon:Show()
 end
 
 local function UpdateImportantIcon(frame, plugin) UpdateSingleAuraIcon(frame, plugin, "ImportantIcon", "HARMFUL|IMPORTANT", IMPORTANT_ICON_SIZE) end
@@ -549,7 +583,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     local schema = { hideNativeSettings = true, controls = {} }
 
     WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Auras", "Indicators" }, "Layout")
+    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Indicators" }, "Layout")
 
     if currentTab == "Layout" then
         table.insert(schema.controls, {
@@ -665,33 +699,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
         table.insert(
             schema.controls,
-            { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true, onChange = makeOnChange(self, "ShowPowerBar") }
-        )
-    elseif currentTab == "Auras" then
-        table.insert(
-            schema.controls,
-            { type = "slider", key = "MaxDebuffs", label = "Max Debuffs", min = 0, max = 8, step = 1, default = 3, onChange = makeOnChange(self, "MaxDebuffs") }
-        )
-        table.insert(
-            schema.controls,
-            {
-                type = "slider",
-                key = "DebuffSize",
-                label = "Debuff Size",
-                min = 8,
-                max = 32,
-                step = 1,
-                default = 16,
-                onChange = makeOnChange(self, "DebuffSize"),
-            }
-        )
-        table.insert(
-            schema.controls,
-            { type = "slider", key = "MaxBuffs", label = "Max Buffs", min = 0, max = 8, step = 1, default = 0, onChange = makeOnChange(self, "MaxBuffs") }
-        )
-        table.insert(
-            schema.controls,
-            { type = "slider", key = "BuffSize", label = "Buff Size", min = 8, max = 32, step = 1, default = 14, onChange = makeOnChange(self, "BuffSize") }
+            { type = "checkbox", key = "ShowPowerBar", label = "Show Healer Power Bars", default = true, onChange = makeOnChange(self, "ShowPowerBar") }
         )
     elseif currentTab == "Indicators" then
         table.insert(schema.controls, {
@@ -813,9 +821,29 @@ function Plugin:OnLoad()
             local containerKey = key == "Buffs" and "buffContainer" or "debuffContainer"
             if not firstFrame[containerKey] then
                 firstFrame[containerKey] = CreateFrame("Frame", nil, firstFrame)
-                firstFrame[containerKey]:SetSize(DEFENSIVE_ICON_SIZE, DEFENSIVE_ICON_SIZE)
+                firstFrame[containerKey]:SetSize(AURA_BASE_ICON_SIZE, AURA_BASE_ICON_SIZE)
             end
-            OrbitEngine.ComponentDrag:Attach(firstFrame[containerKey], self.container, { key = key })
+            OrbitEngine.ComponentDrag:Attach(firstFrame[containerKey], self.container, {
+                key = key,
+                isAuraContainer = true,
+                onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
+                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
+                    if not positions[key] then positions[key] = {} end
+                    positions[key].anchorX = anchorX
+                    positions[key].anchorY = anchorY
+                    positions[key].offsetX = offsetX
+                    positions[key].offsetY = offsetY
+                    positions[key].justifyH = justifyH
+                    local compParent = comp:GetParent()
+                    if compParent then
+                        local cx, cy = comp:GetCenter()
+                        local px, py = compParent:GetCenter()
+                        if cx and px then positions[key].posX = cx - px end
+                        if cy and py then positions[key].posY = cy - py end
+                    end
+                    pluginRef:SetSetting(1, "ComponentPositions", positions)
+                end,
+            })
         end
     end
 

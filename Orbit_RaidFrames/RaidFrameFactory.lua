@@ -19,16 +19,13 @@ function Orbit.RaidFrameFactoryMixin:CreatePowerBar(parent, unit)
     power:SetHeight(parent:GetHeight() * POWER_BAR_HEIGHT_RATIO)
     power:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     power:SetFrameLevel(parent:GetFrameLevel() + Orbit.Constants.Levels.Cooldown)
+    power:SetMinMaxValues(0, 1)
+    power:SetValue(0)
+    power.unit = unit
     power.bg = power:CreateTexture(nil, "BACKGROUND")
     power.bg:SetAllPoints()
-    local powerType = UnitPowerType(unit)
-    local color = Orbit.Constants.Colors.PowerType and Orbit.Constants.Colors.PowerType[powerType]
-    if color then
-        power.bg:SetColorTexture(color.r, color.g, color.b, color.a or 0.5)
-    else
-        local bg = Orbit.Constants.Colors.Background
-        power.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
-    end
+    local globalSettings = Orbit.db.GlobalSettings or {}
+    Orbit.Skin:ApplyGradientBackground(power, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
     return power
 end
 

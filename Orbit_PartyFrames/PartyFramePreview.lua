@@ -12,6 +12,7 @@ local Helpers = nil -- Will be set when first needed
 -- Constants
 local MAX_PREVIEW_FRAMES = 5 -- 4 party + 1 potential player
 local DEBOUNCE_DELAY = Orbit.Constants.Timing.DefaultDebounce
+local TIMER_MIN_ICON_SIZE = 14
 
 -- Combat-safe wrappers (matches PartyFrame.lua)
 local function SafeRegisterUnitWatch(frame)
@@ -34,6 +35,7 @@ local PREVIEW_DEFAULTS = {
     PowerPercents = { 85, 60, 40, 15, 80 },
     Names = { "Healbot", "Tankenstein", "Stabby", "Pyromancer", "You" },
     Classes = { "PRIEST", "WARRIOR", "ROGUE", "MAGE", "PALADIN" },
+    Roles = { "HEALER", "TANK", "DAMAGER", "DAMAGER", "HEALER" },
     AuraSpacing = 2,
     FakeCooldownElapsed = 10, -- Seconds already elapsed on fake cooldown
     FakeCooldownDuration = 60, -- Total fake cooldown duration
@@ -195,11 +197,13 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
         if self.frames[i] and self.frames[i].preview then
             local frame = self.frames[i]
 
-            -- Set frame size
-            frame:SetSize(width, height)
+            -- Determine per-frame power bar visibility (healers always show)
+            local showPower = self:GetSetting(1, "ShowPowerBar")
+            if showPower == nil then showPower = true end
+            local showThisPower = showPower or (PREVIEW_DEFAULTS.Roles[i] == "HEALER")
 
-            -- Update layout for power bar positioning
-            Helpers:UpdateFrameLayout(frame, borderSize)
+            frame:SetSize(width, height)
+            Helpers:UpdateFrameLayout(frame, borderSize, showThisPower)
 
             -- Apply backdrop color using shared helper
             if self.ApplyPreviewBackdrop then
@@ -228,37 +232,17 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 frame.Health:Show()
             end
 
-            -- Apply texture and set up power bar (respect ShowPowerBar setting)
-            local showPower = self:GetSetting(1, "ShowPowerBar")
-            if showPower == nil then
-                showPower = true
-            end
-
+            -- Apply texture and set up power bar (healers always show power bar)
             if frame.Power then
-                if showPower then
-                    -- Use SkinStatusBar with isUnitFrame=true
+                if showThisPower then
                     Orbit.Skin:SkinStatusBar(frame.Power, textureName, nil, true)
                     frame.Power:SetMinMaxValues(0, 100)
                     frame.Power:SetValue(PREVIEW_DEFAULTS.PowerPercents[i])
-                    frame.Power:SetStatusBarColor(0, 0.5, 1) -- Mana blue
+                    frame.Power:SetStatusBarColor(0, 0.5, 1)
                     Orbit.Skin:ApplyGradientBackground(frame.Power, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
                     frame.Power:Show()
                 else
                     frame.Power:Hide()
-                end
-            end
-
-            -- Update health bar to fill space when power bar hidden
-            if frame.Health then
-                local inset = borderSize or 1
-                frame.Health:ClearAllPoints()
-                if showPower then
-                    local powerHeight = height * Helpers.LAYOUT.PowerBarRatio
-                    frame.Health:SetPoint("TOPLEFT", inset, -inset)
-                    frame.Health:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, powerHeight + inset)
-                else
-                    frame.Health:SetPoint("TOPLEFT", inset, -inset)
-                    frame.Health:SetPoint("BOTTOMRIGHT", -inset, inset)
                 end
             end
 
@@ -460,7 +444,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 end
 
                 -- DefensiveIcon - skinned preview with class-specific texture
-                if frame.DefensiveIcon then
+                if frame.DefensiveIcon and not (self.IsComponentDisabled and self:IsComponentDisabled("DefensiveIcon")) then
                     frame.DefensiveIcon.Icon:SetTexture(Orbit.StatusIconMixin:GetDefensiveTexture())
                     frame.DefensiveIcon:SetSize(iconSize, iconSize)
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
@@ -472,10 +456,12 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                         Orbit.Skin.Icons:ApplyCustom(frame.DefensiveIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
                     end
                     frame.DefensiveIcon:Show()
+                elseif frame.DefensiveIcon then
+                    frame.DefensiveIcon:Hide()
                 end
 
                 -- ImportantIcon - skinned preview with class-specific texture
-                if frame.ImportantIcon then
+                if frame.ImportantIcon and not (self.IsComponentDisabled and self:IsComponentDisabled("ImportantIcon")) then
                     frame.ImportantIcon.Icon:SetTexture(Orbit.StatusIconMixin:GetImportantTexture())
                     frame.ImportantIcon:SetSize(iconSize, iconSize)
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
@@ -487,10 +473,12 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                         Orbit.Skin.Icons:ApplyCustom(frame.ImportantIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
                     end
                     frame.ImportantIcon:Show()
+                elseif frame.ImportantIcon then
+                    frame.ImportantIcon:Hide()
                 end
 
                 -- CrowdControlIcon - skinned preview with class-specific texture
-                if frame.CrowdControlIcon then
+                if frame.CrowdControlIcon and not (self.IsComponentDisabled and self:IsComponentDisabled("CrowdControlIcon")) then
                     frame.CrowdControlIcon.Icon:SetTexture(Orbit.StatusIconMixin:GetCrowdControlTexture())
                     frame.CrowdControlIcon:SetSize(iconSize, iconSize)
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
@@ -502,6 +490,8 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                         Orbit.Skin.Icons:ApplyCustom(frame.CrowdControlIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
                     end
                     frame.CrowdControlIcon:Show()
+                elseif frame.CrowdControlIcon then
+                    frame.CrowdControlIcon:Hide()
                 end
             else
                 -- Hide in normal Edit Mode preview (they overlap)
@@ -586,11 +576,9 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuras(frame, frameIndex)
     local maxDebuffs = debuffOverrides.MaxIcons or 3
     local maxBuffs = buffOverrides.MaxIcons or 3
 
-    -- Vary the number of icons shown per frame for variety
-    local debuffCounts = { 2, 3, 1, 2, 0 }
-    local buffCounts = { 3, 1, 2, 1, 0 }
-    local numDebuffs = debuffDisabled and 0 or math.min(debuffCounts[frameIndex] or 2, maxDebuffs)
-    local numBuffs = buffDisabled and 0 or math.min(buffCounts[frameIndex] or 1, maxBuffs)
+    -- Always show maxIcons to match canvas mode and live frame behavior
+    local numDebuffs = debuffDisabled and 0 or maxDebuffs
+    local numBuffs = buffDisabled and 0 or maxBuffs
 
     -- Show debuffs
     self:ShowPreviewAuraIcons(frame, "debuff", debuffData, numDebuffs, maxDebuffs, SAMPLE_DEBUFF_ICONS, debuffOverrides)
@@ -754,6 +742,25 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posD
             Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
         end
 
+        -- Apply global font to countdown timer text (mirrors AuraMixin:SetupAuraIcon)
+        local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or "Fonts\\FRIZQT__.TTF"
+        local fontOutline = Orbit.Skin:GetFontOutline()
+        local timerText = icon.Cooldown.Text
+        if not timerText then
+            for _, region in pairs({ icon.Cooldown:GetRegions() }) do
+                if region:IsObjectType("FontString") then
+                    timerText = region
+                    break
+                end
+            end
+            icon.Cooldown.Text = timerText
+        end
+        if timerText and timerText.SetFont then
+            local timerSize = Orbit.Skin:GetAdaptiveTextSize(iconSize, 8, nil, 0.45)
+            timerText:SetFont(fontPath, timerSize, fontOutline)
+        end
+        icon.Cooldown:SetHideCountdownNumbers(iconSize < TIMER_MIN_ICON_SIZE)
+
         -- Fake cooldown
         icon.Cooldown:SetCooldown(GetTime() - PREVIEW_DEFAULTS.FakeCooldownElapsed, PREVIEW_DEFAULTS.FakeCooldownDuration)
         icon.Cooldown:Show()
@@ -776,14 +783,8 @@ function Orbit.PartyFramePreviewMixin:HidePreview()
 
     for i, frame in ipairs(self.frames) do
         frame.preview = nil
-
-        -- Restore visual visibility
         frame:SetAlpha(1)
-
-        -- Restore UnitWatch for normal gameplay
         SafeRegisterUnitWatch(frame)
-
-        -- Hide and clear preview debuffs
         if frame.previewDebuffs then
             for _, icon in ipairs(frame.previewDebuffs) do
                 icon:Hide()
@@ -799,26 +800,19 @@ function Orbit.PartyFramePreviewMixin:HidePreview()
             wipe(frame.previewBuffs)
         end
 
-        -- Stop pixel glow from preview
         LCG.PixelGlow_Stop(frame, "preview")
-
-        -- Force refresh with real unit data (replaces preview values)
         if frame.UpdateAll then
             frame:UpdateAll()
         end
     end
 
-    -- Reassign units based on current IncludePlayer setting (always sorted by role)
     if self.UpdateFrameUnits then
         self:UpdateFrameUnits()
     end
 
-    -- Apply full settings to reset visuals
     if self.ApplySettings then
         self:ApplySettings()
     end
-
-    -- Update container size
     self:UpdateContainerSize()
 end
 

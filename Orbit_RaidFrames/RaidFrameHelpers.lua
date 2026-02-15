@@ -18,9 +18,23 @@ Helpers.LAYOUT = {
     PowerBarRatio = 0.08,
     DefaultWidth = 90,
     DefaultHeight = 36,
+    AuraBaseIconSize = 10,
 }
 
 Helpers.GROWTH_DIRECTION = { Down = "Down", Up = "Up", Left = "Left", Right = "Right" }
+
+-- Derive aura display position from canvas mode position data
+function Helpers:AnchorToPosition(posX, posY, halfW, halfH)
+    if posX and posY and halfW and halfH then
+        local beyondX = math.max(0, math.abs(posX) - halfW)
+        local beyondY = math.max(0, math.abs(posY) - halfH)
+        if beyondY > beyondX then return posY > 0 and "Above" or "Below"
+        elseif beyondX > beyondY then return posX > 0 and "Right" or "Left" end
+        if math.abs(posX) / math.max(halfW, 1) > math.abs(posY) / math.max(halfH, 1) then return posX > 0 and "Right" or "Left"
+        else return posY > 0 and "Above" or "Below" end
+    end
+    return "Right"
+end
 
 local CONTAINER_ANCHOR = { Down = "TOPLEFT", Up = "BOTTOMLEFT", Right = "TOPLEFT", Left = "TOPRIGHT" }
 

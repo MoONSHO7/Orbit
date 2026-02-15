@@ -286,12 +286,15 @@ end
 local function ApplyBuffIconDesaturation(icon, inactiveAlpha)
     if not icon.Icon then return end
     local durObj = GetBuffIconAuraDuration(icon)
+    local borderFrame = Orbit.Skin.Icons.borderCache and Orbit.Skin.Icons.borderCache[icon]
     if durObj then
         icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(DESAT_CURVE))
         icon.Icon:SetAlpha(1)
+        if borderFrame then borderFrame:SetAlpha(1) end
     else
         icon.Icon:SetDesaturation(1)
         icon.Icon:SetAlpha(inactiveAlpha)
+        if borderFrame then borderFrame:SetAlpha(0) end
     end
 end
 

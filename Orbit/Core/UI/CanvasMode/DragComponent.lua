@@ -292,19 +292,38 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
 
         -- Reusable refresh: reads overrides from pendingOverrides > existingOverrides > fallback
         container.RefreshAuraIcons = function(self)
-            local AURA_BASE_ICON_SIZE = Orbit.PartyFrameHelpers and Orbit.PartyFrameHelpers.LAYOUT.AuraBaseIconSize or 25
+            local AURA_BASE_ICON_SIZE = Orbit.PartyFrameHelpers and Orbit.PartyFrameHelpers.LAYOUT.AuraBaseIconSize or 10
             local AURA_SPACING = 2
             local overrides = self.pendingOverrides or self.existingOverrides or {}
             local maxIcons = overrides.MaxIcons or 3
             local maxRows = overrides.MaxRows or 2
             local iconSize = math.max(10, overrides.IconSize or AURA_BASE_ICON_SIZE)
 
-            -- Calculate grid layout
-            local iconsPerRow = math.ceil(maxIcons / maxRows)
-            local rows = math.min(maxRows, math.ceil(maxIcons / iconsPerRow))
-            local displayCols = math.min(maxIcons, iconsPerRow)
-            local containerWidth = (displayCols * iconSize) + ((displayCols - 1) * AURA_SPACING)
-            local containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
+            -- Calculate grid layout matching runtime CalculateSmartAuraLayout
+            local preview = self:GetParent()
+            local parentWidth = preview and (preview.sourceWidth or preview:GetWidth()) or 200
+            local parentHeight = preview and (preview.sourceHeight or preview:GetHeight()) or 40
+            local Helpers = Orbit.PartyFrameHelpers
+            local position = Helpers and Helpers.AnchorToPosition and Helpers:AnchorToPosition(self.posX, self.posY, parentWidth / 2, parentHeight / 2)
+                or "Right"
+            local isHorizontal = (position == "Above" or position == "Below")
+
+            local rows, iconsPerRow, containerWidth, containerHeight
+            if isHorizontal then
+                iconsPerRow = math.max(1, math.floor((parentWidth + AURA_SPACING) / (iconSize + AURA_SPACING)))
+                iconsPerRow = math.min(iconsPerRow, maxIcons)
+                rows = math.min(maxRows, math.ceil(maxIcons / iconsPerRow))
+                local displayCount = math.min(maxIcons, iconsPerRow * rows)
+                local displayCols = math.min(displayCount, iconsPerRow)
+                containerWidth = (displayCols * iconSize) + ((displayCols - 1) * AURA_SPACING)
+                containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
+            else
+                -- Left/Right: rows capped by maxRows, icons distributed across rows
+                rows = math.min(maxRows, math.max(1, maxIcons))
+                iconsPerRow = math.ceil(maxIcons / rows)
+                containerWidth = math.max(iconSize, (iconsPerRow * iconSize) + ((iconsPerRow - 1) * AURA_SPACING))
+                containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
+            end
             self:SetSize(containerWidth, containerHeight)
 
             -- Hide all pooled icons
@@ -347,12 +366,32 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
                 btn:ClearAllPoints()
                 local xOffset = col * (iconSize + AURA_SPACING)
                 local yOffset = row * (iconSize + AURA_SPACING)
-                btn:SetPoint("TOPLEFT", self, "TOPLEFT", xOffset, -yOffset)
+
+                -- Growth direction based on justifyH + anchorY
+                local growDown = (self.anchorY ~= "BOTTOM")
+                if self.justifyH == "RIGHT" then
+                    if growDown then
+                        btn:SetPoint("TOPRIGHT", self, "TOPRIGHT", -xOffset, -yOffset)
+                    else
+                        btn:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -xOffset, yOffset)
+                    end
+                else -- LEFT or CENTER
+                    if growDown then
+                        btn:SetPoint("TOPLEFT", self, "TOPLEFT", xOffset, -yOffset)
+                    else
+                        btn:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", xOffset, yOffset)
+                    end
+                end
                 btn:Show()
             end
         end
 
-        -- Initial render
+        -- Set all layout properties before RefreshAuraIcons (growDown reads anchorY, icons read justifyH, AnchorToPosition reads posX/posY)
+        container.posX = (data and data.posX) or startX
+        container.posY = (data and data.posY) or startY
+        container.anchorX = data and data.anchorX
+        container.anchorY = data and data.anchorY
+        container.justifyH = data and data.justifyH
         container.existingOverrides = data and data.overrides
         container:RefreshAuraIcons()
         visual = container.auraIconPool[1]
@@ -372,8 +411,8 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     container.border:SetColorTexture(0.3, 0.8, 0.3, 0)
 
     -- Store position data
-    container.posX = startX
-    container.posY = startY
+    container.posX = container.posX or startX
+    container.posY = container.posY or startY
     container.key = key
     container.isFontString = isFontString
     container.existingOverrides = data and data.overrides
@@ -398,6 +437,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     container.offsetX = offsetX
     container.offsetY = offsetY
     container.justifyH = justifyH
+    container.anchorY = anchorY
 
     -- Position the container
     local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
@@ -639,6 +679,9 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             self:SetPoint("CENTER", preview, "CENTER", centerRelX, centerRelY)
 
             -- Store values for OnDragStop
+            local prevAnchorX = self.anchorX
+            local prevAnchorY = self.anchorY
+            local prevJustifyH = self.justifyH
             self.anchorX = anchorX
             self.anchorY = anchorY
             self.offsetX = edgeOffX
@@ -646,6 +689,11 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             self.justifyH = justifyH
             self.posX = centerRelX
             self.posY = centerRelY
+
+            -- Refresh icon layout when growth direction or position changes during drag
+            if self.isAuraContainer and self.RefreshAuraIcons and (prevAnchorX ~= anchorX or prevAnchorY ~= anchorY or prevJustifyH ~= justifyH) then
+                self:RefreshAuraIcons()
+            end
 
             -- Show/hide dock drop highlight
             if Dialog.DisabledDock:IsMouseOver() then

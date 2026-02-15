@@ -235,13 +235,23 @@ function Dialog:SaveOriginalPositions()
     local positions = self.targetPlugin:GetSetting(self.targetSystemIndex, "ComponentPositions")
     if positions then
         for key, pos in pairs(positions) do
-            self.originalPositions[key] = {
+            local saved = {
                 anchorX = pos.anchorX,
                 anchorY = pos.anchorY,
                 offsetX = pos.offsetX,
                 offsetY = pos.offsetY,
                 justifyH = pos.justifyH,
+                posX = pos.posX,
+                posY = pos.posY,
             }
+            -- Deep-copy overrides so they can be restored on Cancel
+            if pos.overrides then
+                saved.overrides = {}
+                for k, v in pairs(pos.overrides) do
+                    saved.overrides[k] = v
+                end
+            end
+            self.originalPositions[key] = saved
         end
     end
 end
@@ -399,6 +409,8 @@ function Dialog:Open(frame, plugin, systemIndex)
             offsetY = offsetY,
             justifyH = justifyH,
             overrides = pos and pos.overrides,
+            posX = pos and pos.posX,
+            posY = pos and pos.posY,
         }
     end
 
@@ -607,7 +619,19 @@ end
 
 -- [ CANCEL ]-----------------------------------------------------------------------------
 
-function Dialog:Cancel() self:CloseDialog() end
+function Dialog:Cancel()
+    -- Restore original overrides to saved data (undo temp writes from ApplyStyle)
+    if self.targetPlugin and self.targetPlugin.SetSetting and next(self.originalPositions) then
+        local positions = self.targetPlugin:GetSetting(self.targetSystemIndex, "ComponentPositions") or {}
+        for key, original in pairs(self.originalPositions) do
+            if positions[key] then
+                positions[key].overrides = original.overrides
+            end
+        end
+        self.targetPlugin:SetSetting(self.targetSystemIndex, "ComponentPositions", positions)
+    end
+    self:CloseDialog()
+end
 
 -- [ RESET POSITIONS ]--------------------------------------------------------------------
 
@@ -683,11 +707,8 @@ function Dialog:ResetPositions()
             end
 
             storedComp:ClearAllPoints()
-            if storedComp.isFontString and storedComp.justifyH ~= "CENTER" then
-                storedComp:SetPoint(storedComp.justifyH, preview, anchorPoint, finalX, finalY)
-            else
-                storedComp:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
-            end
+            local selfAnchor = BuildComponentSelfAnchor(storedComp.isFontString, storedComp.isAuraContainer, storedComp.anchorY, storedComp.justifyH)
+            storedComp:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
             if storedComp.visual and storedComp.isFontString then
                 ApplyTextAlignment(storedComp, storedComp.visual, storedComp.justifyH)
@@ -754,6 +775,7 @@ function Dialog:ResetPositions()
             container.pendingOverrides = nil
             container.existingOverrides = nil
 
+            -- Recalculate posX/posY first (needed by RefreshAuraIcons for position detection)
             if container.anchorX == "LEFT" then
                 container.posX = container.offsetX - halfW
             elseif container.anchorX == "RIGHT" then
@@ -768,6 +790,11 @@ function Dialog:ResetPositions()
                 container.posY = container.offsetY - halfH
             else
                 container.posY = 0
+            end
+
+            -- Refresh aura icon layout with default settings
+            if container.isAuraContainer and container.RefreshAuraIcons then
+                container:RefreshAuraIcons()
             end
 
             local anchorPoint = BuildAnchorPoint(container.anchorX, container.anchorY)
@@ -792,11 +819,8 @@ function Dialog:ResetPositions()
             end
 
             container:ClearAllPoints()
-            if container.isFontString and container.justifyH ~= "CENTER" then
-                container:SetPoint(container.justifyH, preview, anchorPoint, finalX, finalY)
-            else
-                container:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
-            end
+            local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, container.anchorY, container.justifyH)
+            container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
             if container.visual and container.isFontString then
                 ApplyTextAlignment(container, container.visual, container.justifyH)

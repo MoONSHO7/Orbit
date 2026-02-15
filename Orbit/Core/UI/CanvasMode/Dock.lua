@@ -294,6 +294,8 @@ function Dialog:RestoreFromDock(key)
             offsetY = offsetY,
             justifyH = pos and pos.justifyH or "CENTER",
             overrides = pos and pos.overrides,
+            posX = pos and pos.posX,
+            posY = pos and pos.posY,
         }
 
         -- Use CreateDraggableComponent from DragComponent module

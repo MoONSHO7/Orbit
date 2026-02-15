@@ -300,7 +300,14 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
     end
 
     if data.options and data.options.onPositionChange then
-        data.options.onPositionChange(component, nil, data.xPercent, data.yPercent)
+        local needsWidthComp = NeedsEdgeCompensation(data.isFontString, data.isAuraContainer)
+        local anchorX, anchorY, offsetX, offsetY, justifyH =
+            CalculateAnchorWithWidthCompensation(newX, newY, halfW, halfH, needsWidthComp, SafeGetSize(component))
+        if data.isAuraContainer and anchorY ~= "CENTER" then
+            local _, compHeight = SafeGetSize(component)
+            offsetY = offsetY - (compHeight or 0) / 2
+        end
+        data.options.onPositionChange(component, anchorX, anchorY, offsetX, offsetY, justifyH)
     end
 
     if Engine.PositionManager then
