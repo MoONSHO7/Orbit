@@ -19,6 +19,7 @@ local POWER_CURVE_CONFIG = {
     { key = "RunicPowerColorCurve", label = "Runic Power Colour", powerType = Enum.PowerType.RunicPower },
     { key = "LunarPowerColorCurve", label = "Astral Power Colour", powerType = Enum.PowerType.LunarPower },
     { key = "FuryColorCurve", label = "Fury Colour", powerType = Enum.PowerType.Fury },
+    { key = "InsanityColorCurve", label = "Insanity Colour", powerType = Enum.PowerType.Insanity },
 }
 
 local CLASS_POWER_TYPES = {
@@ -26,7 +27,7 @@ local CLASS_POWER_TYPES = {
     PALADIN = { Enum.PowerType.Mana },
     HUNTER = { Enum.PowerType.Focus },
     ROGUE = { Enum.PowerType.Energy },
-    PRIEST = { Enum.PowerType.Mana },
+    PRIEST = { Enum.PowerType.Mana, Enum.PowerType.Insanity },
     DEATHKNIGHT = { Enum.PowerType.RunicPower },
     SHAMAN = { Enum.PowerType.Mana },
     MAGE = { Enum.PowerType.Mana },
@@ -70,6 +71,7 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
         RunicPowerColorCurve = { pins = { { position = 0, color = { r = 0, g = 0.82, b = 1, a = 1 } } } },
         LunarPowerColorCurve = { pins = { { position = 0, color = { r = 0.95, g = 0.9, b = 0.6, a = 1 } } } },
         FuryColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.6, b = 0.2, a = 1 } } } },
+        InsanityColorCurve = { pins = { { position = 0, color = { r = 0.6, g = 0.2, b = 1.0, a = 1 } } } },
         EbonMightColorCurve = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.4, a = 1 } } } },
         Opacity = 100,
         OutOfCombatFade = false,

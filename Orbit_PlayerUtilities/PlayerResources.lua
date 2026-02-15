@@ -33,6 +33,10 @@ local function SnapToPixel(value, scale)
     return math.floor(value * scale + 0.5) / scale
 end
 
+local function PixelMultiple(count, scale)
+    return OrbitEngine.Pixel:Multiple(count, scale)
+end
+
 -- [ CONTINUOUS RESOURCE CONFIG ]--------------------------------------------------------------------
 local CONTINUOUS_RESOURCE_CONFIG = {
     STAGGER = {
@@ -389,10 +393,9 @@ function Plugin:OnLoad()
                     end
                 end
 
-                if cfg.dividers then
+                if cfg.dividers and spacing > 0 then
                     local divMax = 10
-                    local physicalWidth = math.max(1, math.floor(spacing * scale + 0.5))
-                    local snappedSpacing = physicalWidth / scale
+                    local snappedSpacing = PixelMultiple(spacing, scale)
                     for i = 1, divMax - 1 do
                         local sp = bar:CreateTexture(nil, "OVERLAY", nil, 7)
                         sp:SetColorTexture(0, 0, 0, 1)
@@ -400,7 +403,9 @@ function Plugin:OnLoad()
                         sp:SetHeight(height)
                         local leftPos = math.floor(width * (i / divMax) * scale) / scale
                         sp:SetPoint("LEFT", container, "LEFT", leftPos, 0)
-                        if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(sp) end
+                        if OrbitEngine.Pixel then
+                            OrbitEngine.Pixel:Enforce(sp)
+                        end
                     end
                 end
             end
@@ -408,7 +413,7 @@ function Plugin:OnLoad()
             local max = self.maxPower or 5
             local snappedWidth = SnapToPixel(width, scale)
             local snappedHeight = SnapToPixel(height, scale)
-            local snappedSpacing = SnapToPixel(spacing, scale)
+            local snappedSpacing = PixelMultiple(spacing, scale)
             local usableWidth = snappedWidth - ((max - 1) * snappedSpacing)
             local previewActive = math.max(1, max - 1)
 
@@ -1021,14 +1026,17 @@ function Plugin:RepositionSpacers(max)
     if not Frame or not Frame.Spacers then
         return
     end
-    if not max or max <= 1 then
+
+    local spacerWidth = (Frame.settings and Frame.settings.spacing) or 0
+    local hideAll = (not max or max <= 1 or spacerWidth <= 0)
+
+    if hideAll then
         for _, s in ipairs(Frame.Spacers) do
             s:Hide()
         end
         return
     end
 
-    local spacerWidth = (Frame.settings and Frame.settings.spacing) or 2
     local totalWidth = Frame:GetWidth()
     if totalWidth < 10 and Frame.settings then
         totalWidth = Frame.settings.width or 200
@@ -1039,14 +1047,13 @@ function Plugin:RepositionSpacers(max)
         scale = 1
     end
 
-    local physicalSpacerWidth = math.max(1, math.floor(spacerWidth * scale + 0.5))
-    local snappedSpacerWidth = physicalSpacerWidth / scale
+    local snappedSpacerWidth = PixelMultiple(spacerWidth, scale)
     local snappedTotalWidth = SnapToPixel(totalWidth, scale)
 
     for i = 1, MAX_SPACER_COUNT do
         local sp = Frame.Spacers[i]
         if sp then
-            if i < max and snappedSpacerWidth > 0 then
+            if i < max then
                 sp:Show()
                 sp:ClearAllPoints()
                 sp:SetWidth(snappedSpacerWidth)
@@ -1092,7 +1099,7 @@ function Plugin:UpdateLayout(frame)
     -- Snap values
     local snappedTotalWidth = SnapToPixel(totalWidth, scale)
     local snappedHeight = SnapToPixel(height, scale)
-    local snappedSpacing = SnapToPixel(spacing, scale)
+    local snappedSpacing = PixelMultiple(spacing, scale)
 
     -- Physical Updates
     Frame:SetHeight(snappedHeight)
@@ -1372,9 +1379,8 @@ function Plugin:UpdatePower()
         local texturePath = texture and LSM:Fetch("statusbar", texture) or "Interface\\TargetingFrame\\UI-StatusBar"
         local overlayScale = Frame:GetEffectiveScale() or 1
         local overlayTotalWidth = SnapToPixel(Frame:GetWidth(), overlayScale)
-        local spacerWidth = (Frame.settings and Frame.settings.spacing) or 2
-        local physicalSpacer = math.max(1, math.floor(spacerWidth * overlayScale + 0.5))
-        local overlaySpacerWidth = physicalSpacer / overlayScale
+        local spacerWidth = (Frame.settings and Frame.settings.spacing) or 0
+        local overlaySpacerWidth = PixelMultiple(spacerWidth, overlayScale)
 
         for i = 1, max do
             local overlay = Frame.ChargedOverlays[i]
@@ -1411,7 +1417,13 @@ function Plugin:UpdatePower()
     end
 
     if Frame.Text and Frame.Text:IsShown() then
-        Frame.Text:SetText(cur)
+        local spec = GetSpecialization()
+        local specID = spec and GetSpecializationInfo(spec)
+        if PLAYER_CLASS == "WARLOCK" and specID == 267 then
+            Frame.Text:SetFormattedText("%.1f", cur)
+        else
+            Frame.Text:SetText(math.floor(cur))
+        end
     end
     return
 end

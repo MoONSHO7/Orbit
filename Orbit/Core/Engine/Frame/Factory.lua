@@ -127,7 +127,7 @@ function FrameFactory:Create(name, plugin, opts)
         end
 
         -- Handle Bar Inset (use calculated pixelSize from Skin)
-        local pixelSize = self.borderPixelSize or 1
+        local pixelSize = self.borderPixelSize or Engine.Pixel:Multiple(1, self:GetEffectiveScale() or 1)
         local bar = self.orbitBar or self.Bar
         if bar then
             bar:ClearAllPoints()

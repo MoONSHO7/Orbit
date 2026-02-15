@@ -1160,11 +1160,14 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
     local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
 
     local gridItems = {}
+    local usableSnapshot = {}
     for key, data in pairs(rawGridItems) do
         if IsGridItemUsable(data) then
             gridItems[key] = data
+            usableSnapshot[key] = true
         end
     end
+    anchor._lastUsableSet = usableSnapshot
 
     for _, icon in pairs(anchor.activeIcons or {}) do
         icon:Hide()
@@ -1273,11 +1276,15 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         icon.cdAlphaCurve = hasActive and BuildCooldownAlphaCurve(data.activeDuration, data.cooldownDuration) or nil
         if data.type == "spell" and C_Spell.GetSpellCharges then
             local ci = C_Spell.GetSpellCharges(data.id)
-            icon.isChargeSpell = ci and ci.maxCharges and ci.maxCharges > 1 or false
-            if icon.isChargeSpell then
-                icon._maxCharges = ci.maxCharges
-                icon._trackedCharges = ci.currentCharges or ci.maxCharges
-                icon._knownRechargeDuration = ci.cooldownDuration
+            if ci and ci.maxCharges and not issecretvalue(ci.maxCharges) then
+                icon.isChargeSpell = ci.maxCharges > 1
+                if icon.isChargeSpell then
+                    icon._maxCharges = ci.maxCharges
+                    icon._trackedCharges = ci.currentCharges or ci.maxCharges
+                    icon._knownRechargeDuration = ci.cooldownDuration
+                end
+            else
+                icon.isChargeSpell = icon._maxCharges and icon._maxCharges > 1 or false
             end
         end
 
@@ -1471,6 +1478,25 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
     anchor:SetSize(math.max(totalW, iconWidth), math.max(totalH, iconHeight))
 end
 
+-- [ USABILITY CHANGE DETECTION ]---------------------------------------------------------------------
+local function HasUsabilityChanged(anchor)
+    local rawGridItems = anchor.gridItems
+    if not rawGridItems then
+        return false
+    end
+    local prev = anchor._lastUsableSet or {}
+    for key, data in pairs(rawGridItems) do
+        local nowUsable = IsGridItemUsable(data)
+        if nowUsable and not prev[key] then
+            return true
+        end
+        if not nowUsable and prev[key] then
+            return true
+        end
+    end
+    return false
+end
+
 -- [ TICKER ]-----------------------------------------------------------------------------------------
 function Plugin:StartTrackedUpdateTicker()
     if self.trackedTicker then
@@ -1479,18 +1505,28 @@ function Plugin:StartTrackedUpdateTicker()
     local viewerMap = GetViewerMap()
     self.trackedTicker = C_Timer.NewTicker(Constants.Timing.IconMonitorInterval, function()
         local entry = viewerMap[TRACKED_INDEX]
-        if entry and entry.anchor and entry.anchor.activeIcons then
-            for _, icon in pairs(entry.anchor.activeIcons) do
-                if icon.trackedId then
-                    self:UpdateTrackedIcon(icon)
+        if entry and entry.anchor then
+            if HasUsabilityChanged(entry.anchor) then
+                self:LayoutTrackedIcons(entry.anchor, TRACKED_INDEX)
+            end
+            if entry.anchor.activeIcons then
+                for _, icon in pairs(entry.anchor.activeIcons) do
+                    if icon.trackedId then
+                        self:UpdateTrackedIcon(icon)
+                    end
                 end
             end
         end
         for _, childData in pairs(self.activeChildren) do
-            if childData.frame and childData.frame.activeIcons then
-                for _, icon in pairs(childData.frame.activeIcons) do
-                    if icon.trackedId then
-                        self:UpdateTrackedIcon(icon)
+            if childData.frame then
+                if HasUsabilityChanged(childData.frame) then
+                    self:LayoutTrackedIcons(childData.frame, childData.systemIndex)
+                end
+                if childData.frame.activeIcons then
+                    for _, icon in pairs(childData.frame.activeIcons) do
+                        if icon.trackedId then
+                            self:UpdateTrackedIcon(icon)
+                        end
                     end
                 end
             end

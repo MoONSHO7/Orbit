@@ -47,8 +47,8 @@ end
 
 local function CreatePowerBar(parent, unit, plugin)
     local power = CreateFrame("StatusBar", nil, parent)
-    power:SetPoint("BOTTOMLEFT", 1, 1)
-    power:SetPoint("BOTTOMRIGHT", -1, 1)
+    power:SetPoint("BOTTOMLEFT", 0, 0)
+    power:SetPoint("BOTTOMRIGHT", 0, 0)
     power:SetHeight(parent:GetHeight() * POWER_BAR_HEIGHT_RATIO)
     power:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
     power:SetMinMaxValues(0, 1)
