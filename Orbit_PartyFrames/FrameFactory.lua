@@ -6,13 +6,13 @@ Orbit.PartyFrameFactoryMixin = {}
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local POWER_BAR_HEIGHT_RATIO = Orbit.PartyFrameHelpers.LAYOUT.PowerBarRatio
+local SELECTION_BORDER_THICKNESS = 2
 
 -- [ POWER BAR CREATION ]----------------------------------------------------------------------------
-
 function Orbit.PartyFrameFactoryMixin:CreatePowerBar(parent, unit, plugin)
     local power = CreateFrame("StatusBar", nil, parent)
-    power:SetPoint("BOTTOMLEFT", 1, 1)
-    power:SetPoint("BOTTOMRIGHT", -1, 1)
+    power:SetPoint("BOTTOMLEFT", 0, 0)
+    power:SetPoint("BOTTOMRIGHT", 0, 0)
     power:SetHeight(parent:GetHeight() * POWER_BAR_HEIGHT_RATIO)
     power:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     power:SetFrameLevel(parent:GetFrameLevel() + Orbit.Constants.Levels.Cooldown)
@@ -62,7 +62,7 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
     frame.SelectionHighlight:SetColorTexture(1, 1, 1, 0)
     frame.SelectionHighlight:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Highlight)
     frame.SelectionHighlight:Hide()
-    local borderThickness = 2
+    local borderThickness = OrbitEngine.Pixel:Multiple(SELECTION_BORDER_THICKNESS, frame:GetEffectiveScale() or 1)
     frame.SelectionBorders = {}
     for _, edge in pairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
         local border = frame.BorderOverlay:CreateTexture(nil, "ARTWORK")
@@ -167,6 +167,8 @@ function Orbit.PartyFrameFactoryMixin:RegisterFrameEvents(frame, unit)
         "GROUP_ROSTER_UPDATE",
         "PLAYER_TARGET_CHANGED",
         "RAID_TARGET_UPDATE",
+        "PLAYER_REGEN_DISABLED",
+        "PLAYER_REGEN_ENABLED",
     }
     for _, event in ipairs(globalEvents) do
         frame:RegisterEvent(event)

@@ -61,7 +61,7 @@ function CoreMixin:CreateCanvasPreview(options)
     -- [ HEALTH BAR ] --------------------------------------------------------------------------------
     local Pixel = Engine.Pixel
     local scale = self:GetEffectiveScale() or 1
-    local inset = preview.borderPixelSize or Pixel:Snap(borderSize, scale)
+    local inset = preview.borderPixelSize or Pixel:Multiple(borderSize, scale)
 
     local bar = CreateFrame("StatusBar", nil, preview)
     bar:SetPoint("TOPLEFT", inset, -inset)

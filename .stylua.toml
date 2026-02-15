@@ -8,7 +8,7 @@ call_parentheses = "Always"
 syntax = "Lua51"
 
 # Readability & Git Performance
-collapse_simple_statement = "Never"
+collapse_simple_statement = "FunctionOnly"
 
 [sort_requires]
 enabled = false

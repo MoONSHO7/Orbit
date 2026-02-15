@@ -56,6 +56,16 @@ function Pixel:Snap(value, scale)
     return math.floor(value / step + 0.5) * step
 end
 
+--- Convert a Physical Pixel count to Logical Units
+-- @param count number: Physical pixels (e.g. BorderSize=2 means 2 screen pixels)
+-- @param scale number: (Optional) Frame Effective Scale. Defaults to 1.
+-- @return number: Logical size that renders as exactly `count` physical pixels
+function Pixel:Multiple(count, scale)
+    local frameScale = scale or 1
+    if frameScale < 0.01 then frameScale = 1 end
+    return (count or 0) * SCREEN_SCALE / frameScale
+end
+
 -- [ ENFORCEMENT ]-----------------------------------------------------------------------------------
 
 --- Enforce pixel-perfect sizing on a frame

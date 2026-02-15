@@ -42,6 +42,10 @@ local function SnapToPixel(value, scale)
     return OrbitEngine.Pixel:Snap(value, scale)
 end
 
+local function PixelMultiple(count, scale)
+    return OrbitEngine.Pixel:Multiple(count, scale)
+end
+
 local function IsChargeSpell(spellId)
     if not spellId then
         return false, nil
@@ -506,7 +510,7 @@ function Plugin:LayoutChargeBars()
 end
 
 function Plugin:SkinChargeButtons(frame, maxCharges, totalWidth, height, borderSize, spacing, texture, sysIndex, bgColor, scale)
-    local snappedGap = SnapToPixel(spacing - 1, scale)
+    local snappedGap = PixelMultiple(spacing - 1, scale)
     local totalSpacing = (maxCharges - 1) * snappedGap
     local usableWidth = totalWidth - totalSpacing
     local btnWidth = SnapToPixel(usableWidth / maxCharges, scale)
@@ -592,7 +596,7 @@ function Plugin:SetupChargeBarCanvasPreview(frame, sysIndex)
         preview.previewScale = 1
         preview.components = {}
 
-        local snappedGap = SnapToPixel(spacing - 1, scale)
+        local snappedGap = PixelMultiple(spacing - 1, scale)
         local totalSpacing = (maxCharges - 1) * snappedGap
         local usableWidth = width - totalSpacing
         local btnWidth = SnapToPixel(usableWidth / maxCharges, scale)

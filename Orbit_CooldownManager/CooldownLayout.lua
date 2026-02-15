@@ -14,7 +14,7 @@ local FLASH_DURATION = 0.15
 local DESAT_INTERVAL = 0.1
 
 local DESAT_CURVE = C_CurveUtil.CreateCurve()
-DESAT_CURVE:AddPoint(0.0, 1.0)
+DESAT_CURVE:AddPoint(0.0, 0.0)
 DESAT_CURVE:AddPoint(0.001, 0.0)
 DESAT_CURVE:AddPoint(1.0, 0.0)
 
@@ -57,7 +57,9 @@ local function FindIconBySpellID(spellID)
         if entry.viewer then
             for _, child in ipairs({ entry.viewer:GetChildren() }) do
                 local cached = child.orbitCachedSpellID
-                if child:IsShown() and cached and not issecretvalue(cached) and cached == spellID then return child end
+                if child:IsShown() and cached and not issecretvalue(cached) and cached == spellID then
+                    return child
+                end
             end
         end
     end
@@ -83,9 +85,7 @@ local function GetBuffIconAuraDuration(icon)
 end
 
 -- [ ANCHOR LOOKUP ]----------------------------------------------------------------------------------
-local function GetAnchorInfo(anchorFrame)
-    return anchorFrame and OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors[anchorFrame]
-end
+local function GetAnchorInfo(anchorFrame) return anchorFrame and OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors[anchorFrame] end
 
 -- [ PROCESS CHILDREN ]-------------------------------------------------------------------------------
 function CDM:ProcessChildren(anchor)
@@ -107,9 +107,13 @@ function CDM:ProcessChildren(anchor)
                     local anc = parent and parent:GetParent()
                     if Orbit.Skin.Icons and Orbit.Skin.Icons.frameSettings then
                         local s = Orbit.Skin.Icons.frameSettings[parent]
-                        if s then Orbit.Skin.Icons:ApplyCustom(c, s) end
+                        if s then
+                            Orbit.Skin.Icons:ApplyCustom(c, s)
+                        end
                     end
-                    if anc and plugin.ProcessChildren then plugin:ProcessChildren(anc) end
+                    if anc and plugin.ProcessChildren then
+                        plugin:ProcessChildren(anc)
+                    end
                 end)
                 child.orbitOnShowHooked = true
             end
@@ -117,7 +121,9 @@ function CDM:ProcessChildren(anchor)
             if not child.orbitRefreshHooked and child.RefreshData then
                 local a = anchor
                 hooksecurefunc(child, "RefreshData", function()
-                    Orbit.Async:Debounce("CDM_Refresh_" .. systemIndex, function() CDM:ProcessChildren(a) end, Constants.Timing.KeyboardRestoreDelay)
+                    Orbit.Async:Debounce("CDM_Refresh_" .. systemIndex, function()
+                        CDM:ProcessChildren(a)
+                    end, Constants.Timing.KeyboardRestoreDelay)
                 end)
                 child.orbitRefreshHooked = true
             end
@@ -140,14 +146,19 @@ function CDM:ProcessChildren(anchor)
         local hGrowth = (systemIndex == BUFFICON_INDEX) and self:GetHorizontalGrowth(anchor) or nil
         local vGrowth = self:GetGrowthDirection(anchor)
         local parentIndex = CooldownUtils:GetInheritedParentIndex(anchor, VIEWER_MAP)
-        local overrides = parentIndex and {
-            aspectRatio = self:GetSetting(parentIndex, "aspectRatio"),
-            size = self:GetSetting(parentIndex, "IconSize"),
-            padding = self:GetSetting(parentIndex, "IconPadding"),
-        } or nil
-        local skinSettings = CooldownUtils:BuildSkinSettings(self, systemIndex, { verticalGrowth = vGrowth, horizontalGrowth = hGrowth, inheritOverrides = overrides })
+        local overrides = parentIndex
+                and {
+                    aspectRatio = self:GetSetting(parentIndex, "aspectRatio"),
+                    size = self:GetSetting(parentIndex, "IconSize"),
+                    padding = self:GetSetting(parentIndex, "IconPadding"),
+                }
+            or nil
+        local skinSettings =
+            CooldownUtils:BuildSkinSettings(self, systemIndex, { verticalGrowth = vGrowth, horizontalGrowth = hGrowth, inheritOverrides = overrides })
 
-        if not Orbit.Skin.Icons.frameSettings then Orbit.Skin.Icons.frameSettings = setmetatable({}, { __mode = "k" }) end
+        if not Orbit.Skin.Icons.frameSettings then
+            Orbit.Skin.Icons.frameSettings = setmetatable({}, { __mode = "k" })
+        end
         Orbit.Skin.Icons.frameSettings[blizzFrame] = skinSettings
 
         for _, icon in ipairs(activeChildren) do
@@ -157,7 +168,9 @@ function CDM:ProcessChildren(anchor)
             icon.orbitCDMSystemIndex = systemIndex
             if not InCombatLockdown() and icon.GetSpellID then
                 local sid = icon:GetSpellID()
-                if sid and not issecretvalue(sid) then icon.orbitCachedSpellID = sid end
+                if sid and not issecretvalue(sid) then
+                    icon.orbitCachedSpellID = sid
+                end
             end
             EnsureFlashOverlay(icon)
         end
@@ -166,7 +179,9 @@ function CDM:ProcessChildren(anchor)
 
         if not InCombatLockdown() then
             local w, h = blizzFrame:GetSize()
-            if w and h and w > 0 and h > 0 then anchor:SetSize(w, h) end
+            if w and h and w > 0 and h > 0 then
+                anchor:SetSize(w, h)
+            end
             anchor.orbitRowHeight = blizzFrame.orbitRowHeight
             anchor.orbitColumnWidth = blizzFrame.orbitColumnWidth
         end
@@ -203,7 +218,9 @@ function CDM:HookAlwaysShow(icon)
             end
             return
         end
-        if not self:GetCooldownID() then return end
+        if not self:GetCooldownID() then
+            return
+        end
         self:Show()
     end
     hooksecurefunc(icon, "UpdateShownState", onStateChange)
@@ -284,26 +301,33 @@ do
     driverFrame:SetScript("OnUpdate", function(_, elapsed)
         desatAccum = desatAccum + elapsed
         local checkDesat = desatAccum >= DESAT_INTERVAL
-        if checkDesat then desatAccum = 0 end
+        if checkDesat then
+            desatAccum = 0
+        end
 
         for systemIndex, entry in pairs(VIEWER_MAP) do
             local curve = GetNativeTimerCurveForSystem(systemIndex)
-            local needsDesat = checkDesat and systemIndex == BUFFICON_INDEX
-                and CDM:GetSetting(BUFFICON_INDEX, "AlwaysShow")
+            local needsDesat = checkDesat and systemIndex == BUFFICON_INDEX and CDM:GetSetting(BUFFICON_INDEX, "AlwaysShow")
 
             if entry.viewer and (curve or needsDesat) then
                 local inactiveAlpha = needsDesat and (CDM:GetSetting(BUFFICON_INDEX, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100 or nil
                 for _, child in ipairs({ entry.viewer:GetChildren() }) do
                     if child.layoutIndex and child:IsShown() and child:GetCooldownID() then
-                        if curve then ApplyTimerColor(child, curve, systemIndex) end
-                        if inactiveAlpha then ApplyBuffIconDesaturation(child, inactiveAlpha) end
+                        if curve then
+                            ApplyTimerColor(child, curve, systemIndex)
+                        end
+                        if inactiveAlpha then
+                            ApplyBuffIconDesaturation(child, inactiveAlpha)
+                        end
                     end
                 end
             end
 
             if curve and entry.anchor and entry.anchor.activeIcons then
                 for _, icon in pairs(entry.anchor.activeIcons) do
-                    if icon:IsShown() then ApplyTimerColor(icon, curve, systemIndex) end
+                    if icon:IsShown() then
+                        ApplyTimerColor(icon, curve, systemIndex)
+                    end
                 end
             end
         end
@@ -311,10 +335,7 @@ do
 end
 
 -- [ GROWTH DIRECTION ]------------------------------------------------------------------------------
-function CDM:GetGrowthDirection(anchorFrame)
-    local info = GetAnchorInfo(anchorFrame)
-    return info and info.edge == "TOP" and "UP" or "DOWN"
-end
+function CDM:GetGrowthDirection(anchorFrame) local info = GetAnchorInfo(anchorFrame); return info and info.edge == "TOP" and "UP" or "DOWN" end
 
 function CDM:GetHorizontalGrowth(anchorFrame)
     local info = GetAnchorInfo(anchorFrame)
@@ -335,7 +356,9 @@ do
         if icon.trackedType == "spell" then return icon.trackedId end
         if icon.GetSpellID then
             local sid = icon:GetSpellID()
-            if sid and not issecretvalue(sid) then return sid end
+            if sid and not issecretvalue(sid) then
+                return sid
+            end
         end
         return nil
     end
@@ -356,25 +379,28 @@ do
             frame.Flipbook:SetSize(pw * FLIPBOOK_SCALE, ph * FLIPBOOK_SCALE)
             frame:SetFrameLevel(icon:GetFrameLevel() + 10)
             frame:Show()
-            if UnitAffectingCombat("player") then frame.Flipbook.Anim:Play() else frame.Flipbook.Anim:Stop() end
+            if UnitAffectingCombat("player") then
+                frame.Flipbook.Anim:Play()
+            else
+                frame.Flipbook.Anim:Stop()
+            end
         elseif frame then
             frame:Hide()
         end
     end
 
     local function ClearAll()
-        for icon in pairs(highlightedIcons) do
-            SetHighlightShown(icon, false)
-        end
+        for icon in pairs(highlightedIcons) do SetHighlightShown(icon, false) end
         wipe(highlightedIcons)
     end
 
-    local function IsEnabledForSystem(systemIndex)
-        return CDM:GetSetting(systemIndex, "AssistedHighlight") ~= false
-    end
+    local function IsEnabledForSystem(systemIndex) return CDM:GetSetting(systemIndex, "AssistedHighlight") ~= false end
 
     local function UpdateHighlights()
-        if not AssistedCombatManager or not AssistedCombatManager:IsAssistedHighlightActive() then ClearAll(); return end
+        if not AssistedCombatManager or not AssistedCombatManager:IsAssistedHighlightActive() then
+            ClearAll()
+            return
+        end
         local nextSpell = AssistedCombatManager.lastNextCastSpellID
         ClearAll()
         if not nextSpell then return end
@@ -430,4 +456,3 @@ do
     EventRegistry:RegisterFrameEventAndCallback("PLAYER_REGEN_ENABLED", UpdateHighlights, "OrbitCDM_AssistedRegen")
     EventRegistry:RegisterFrameEventAndCallback("PLAYER_REGEN_DISABLED", UpdateHighlights, "OrbitCDM_AssistedRegen")
 end
-

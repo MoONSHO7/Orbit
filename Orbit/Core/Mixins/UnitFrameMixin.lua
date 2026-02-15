@@ -193,7 +193,7 @@ function Mixin:UpdateFrameLayout(frame, borderSize, options)
     local scale = frame:GetEffectiveScale()
     local powerBarRatio = options.powerBarRatio or DEFAULT_POWER_BAR_RATIO
     local powerHeight = showPowerBar and Pixel:Snap(height * powerBarRatio, scale) or 0
-    local inset = Pixel:Snap(frame.borderPixelSize or borderSize or 0, scale)
+    local inset = frame.borderPixelSize or Pixel:Multiple(borderSize or 0, scale)
 
     if frame.Power then
         if showPowerBar then
