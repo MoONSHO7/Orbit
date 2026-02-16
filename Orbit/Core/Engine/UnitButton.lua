@@ -260,11 +260,7 @@ function UnitButton:Create(parent, unit, name)
         self:ApplyComponentPositions()
     end)
 
-    -- OnUpdate for damage bar animation (simple time-delayed snap)
-    -- Shows the red chunk for DELAY seconds, then snaps to current health
-    -- NOTE: This script is only SET when animation starts (in UpdateHealth)
-    --       and CLEARED when animation completes (saves CPU when not animating)
-    local DAMAGE_BAR_DELAY = 0.3 -- Show red chunk for this long before snapping
+    local DAMAGE_BAR_DELAY = 0.2 -- Show red chunk for this long before snapping
 
     local function DamageBarOnUpdate(self, elapsed)
         if not self.HealthDamageBar then
@@ -276,11 +272,9 @@ function UnitButton:Create(parent, unit, name)
         local timeSinceChange = now - (self.lastHealthUpdate or 0)
 
         if timeSinceChange < DAMAGE_BAR_DELAY then
-            -- Still in delay period, red chunk is visible
             return
         end
 
-        -- After delay, sync DamageBar to Health bar's current value
         local healthValue = self.Health:GetValue()
         self.HealthDamageBar:SetValue(healthValue, SMOOTH_ANIM)
 

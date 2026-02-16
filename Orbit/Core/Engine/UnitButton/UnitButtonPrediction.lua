@@ -1,20 +1,15 @@
 -- [ UNIT BUTTON - PREDICTION MODULE ]---------------------------------------------------------------
--- Heal prediction, absorbs, and heal absorb (necrotic) overlays
--- Taint-Safe Strategy: Uses stacking StatusBars to avoid math on secret values
-
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
--- Ensure UnitButton namespace exists
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
+local DEFAULT_HEAL_VALUE = 0
 
 -- [ LOCAL HELPERS ]---------------------------------------------------------------------------------
-
--- Helper: Only re-anchor if the anchor target has changed
--- Reduces redundant ClearAllPoints/SetPoint calls during frequent updates
+-- The healer shouts "I'M TRACKING YOUR INCOMING HEALS" every combat round
 local function SafeSetHealBarPoints(bar, anchorTexture, width)
-    -- Check if anchor has changed (cached on the bar)
+    -- The ranger only updates camp if the trail marker has actually moved
     if bar.cachedAnchor ~= anchorTexture or bar.cachedWidth ~= width then
         bar:ClearAllPoints()
         bar:SetWidth(width)
@@ -25,7 +20,7 @@ local function SafeSetHealBarPoints(bar, anchorTexture, width)
     end
 end
 
--- Variant for heal absorb bar (right-anchored, reverse fill)
+-- The cleric checks if the necrotic debuff is eating backwards through the health bar
 local function SafeSetHealAbsorbPoints(bar, healthBar, width)
     local texture = healthBar:GetStatusBarTexture()
     if bar.cachedAnchor ~= texture or bar.cachedWidth ~= width then
@@ -39,82 +34,50 @@ local function SafeSetHealAbsorbPoints(bar, healthBar, width)
 end
 
 -- [ PREDICTION MIXIN ]------------------------------------------------------------------------------
--- Partial mixin for heal prediction functionality
 
 local PredictionMixin = {}
 
 function PredictionMixin:UpdateHealPrediction()
-    -- Guard against nil unit
-    if not self.unit or not UnitExists(self.unit) then
-        return
-    end
+    if not self.unit or not UnitExists(self.unit) then return end
 
     local maxHealth = UnitHealthMax(self.unit)
-    -- We assume maxHealth is never secret, as it's a cap, not current state.
-    -- Even if it is, StatusBar:SetMinMaxValues accepts it.
 
     local healthTexture = self.Health:GetStatusBarTexture()
-
-    -- Common Width for all bars (match health bar width)
     local totalWidth = self.Health:GetWidth()
     if issecretvalue and issecretvalue(totalWidth) then return end
 
-    -----------------------------------------------------------------------
-    -- 1. My Incoming Heals
-    -----------------------------------------------------------------------
+    -- [ MY INCOMING HEALS ]--------------------------------------------------------------------------
     if self.MyIncomingHealBar then
-        local myIncomingHeal = UnitGetIncomingHeals(self.unit, "player") or 0
-
+        local myIncomingHeal = UnitGetIncomingHeals(self.unit, "player") or DEFAULT_HEAL_VALUE
         self.MyIncomingHealBar:SetMinMaxValues(0, maxHealth)
         self.MyIncomingHealBar:SetValue(myIncomingHeal)
-
-        -- Always Show (width 0 if value is 0)
         self.MyIncomingHealBar:Show()
         SafeSetHealBarPoints(self.MyIncomingHealBar, healthTexture, totalWidth)
     end
 
-    -----------------------------------------------------------------------
-    -- 2. All Incoming Heals (Renamed logic from Other)
-    -----------------------------------------------------------------------
+    -- [ ALL INCOMING HEALS ]-------------------------------------------------------------------------
     if self.OtherIncomingHealBar then
-        local allIncomingHeal = UnitGetIncomingHeals(self.unit) or 0
-        -- Note: We use the "Other" bar to represent "All".
-        -- Visually: [My][Other] is achieved by:
-        -- Layer 1 (Bottom): [All IncomingHeals ...............]
-        -- Layer 2 (Top):    [My IncomingHeals ...]
-        -- Result: The part of "All" sticking out is "Others".
-
+        local allIncomingHeal = UnitGetIncomingHeals(self.unit) or DEFAULT_HEAL_VALUE
         self.OtherIncomingHealBar:SetMinMaxValues(0, maxHealth)
         self.OtherIncomingHealBar:SetValue(allIncomingHeal)
-
         self.OtherIncomingHealBar:Show()
         SafeSetHealBarPoints(self.OtherIncomingHealBar, healthTexture, totalWidth)
     end
 
-    -----------------------------------------------------------------------
-    -- 3. Total Absorbs (Shields)
-    -----------------------------------------------------------------------
-    local absorbAnchorTexture = healthTexture
-    if self.OtherIncomingHealBar then
-        absorbAnchorTexture = self.OtherIncomingHealBar:GetStatusBarTexture()
-    end
+    -- [ TOTAL ABSORBS ]------------------------------------------------------------------------------
+    local absorbAnchorTexture = self.OtherIncomingHealBar and self.OtherIncomingHealBar:GetStatusBarTexture() or healthTexture
 
     if self.TotalAbsorbBar then
         if not self.absorbsEnabled then
             self.TotalAbsorbBar:Hide()
-            if self.TotalAbsorbOverlay then
-                self.TotalAbsorbOverlay:Hide()
-            end
+            if self.TotalAbsorbOverlay then self.TotalAbsorbOverlay:Hide() end
         else
-            local totalAbsorb = UnitGetTotalAbsorbs(self.unit) or 0
-
+            local totalAbsorb = UnitGetTotalAbsorbs(self.unit) or DEFAULT_HEAL_VALUE
             self.TotalAbsorbBar:SetMinMaxValues(0, maxHealth)
             self.TotalAbsorbBar:SetValue(totalAbsorb)
-
             self.TotalAbsorbBar:Show()
             SafeSetHealBarPoints(self.TotalAbsorbBar, absorbAnchorTexture, totalWidth)
 
-            -- Update Overlay Visibility (overlay always matches bar texture)
             if self.TotalAbsorbOverlay then
                 self.TotalAbsorbOverlay:Show()
                 self.TotalAbsorbOverlay:SetAllPoints(self.TotalAbsorbBar:GetStatusBarTexture())
@@ -122,20 +85,14 @@ function PredictionMixin:UpdateHealPrediction()
         end
     end
 
-    -----------------------------------------------------------------------
-    -- 4. Heal Absorbs (Necrotic) - Independent Overlay
-    -- Stays attached to Health Bar as it eats *into* health
-    -----------------------------------------------------------------------
+    -- [ HEAL ABSORBS ]-------------------------------------------------------------------------------
     if self.HealAbsorbBar then
         if not self.healAbsorbsEnabled then
             self.HealAbsorbBar:Hide()
         else
-            local healAbsorbAmount = UnitGetTotalHealAbsorbs(self.unit) or 0
-
+            local healAbsorbAmount = UnitGetTotalHealAbsorbs(self.unit) or DEFAULT_HEAL_VALUE
             self.HealAbsorbBar:SetMinMaxValues(0, maxHealth)
             self.HealAbsorbBar:SetValue(healAbsorbAmount)
-
-            -- Always Show (clipped by Mask when width is 0)
             self.HealAbsorbBar:Show()
             SafeSetHealAbsorbPoints(self.HealAbsorbBar, self.Health, self.Health:GetWidth())
         end
@@ -157,16 +114,9 @@ function PredictionMixin:SetHealAbsorbsEnabled(enabled)
 end
 
 function PredictionMixin:SetHealAbsorbColor(r, g, b, a)
-    if self.HealAbsorbBar then
-        -- Use passed parameters, fallback to Background color if nil
-        if r and g and b then
-            self.HealAbsorbBar:SetStatusBarColor(r, g, b, a or 1)
-        else
-            local c = Orbit.Constants.Colors.Background
-            self.HealAbsorbBar:SetStatusBarColor(c.r, c.g, c.b, c.a)
-        end
-    end
+    if not self.HealAbsorbBar then return end
+    if not (r and g and b) then error("SetHealAbsorbColor requires r, g, b values") end
+    self.HealAbsorbBar:SetStatusBarColor(r, g, b, a or 1)
 end
 
--- Export for composition
 UnitButton.PredictionMixin = PredictionMixin

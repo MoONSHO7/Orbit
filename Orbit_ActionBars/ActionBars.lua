@@ -2,6 +2,7 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
+local MasqueBridge = Orbit.Skin and Orbit.Skin.Masque
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local BUTTON_SIZE = 36
@@ -1064,6 +1065,9 @@ function Plugin:LayoutButtons(index)
     local w = BUTTON_SIZE
     local h = w
 
+    local useMasque = MasqueBridge and MasqueBridge.enabled
+    local masqueGroup = useMasque and (config and config.label or "Action Bar " .. index)
+
     local skinSettings = {
         style = 1,
         aspectRatio = "1:1",
@@ -1143,7 +1147,11 @@ function Plugin:LayoutButtons(index)
 
                 button:SetSize(w, h)
 
-                Orbit.Skin.Icons:ApplyActionButtonCustom(button, skinSettings)
+                if useMasque then
+                    MasqueBridge:AddActionButton(masqueGroup, button)
+                else
+                    Orbit.Skin.Icons:ApplyActionButtonCustom(button, skinSettings)
+                end
 
                 self:ApplyTextSettings(button, index)
 

@@ -4,6 +4,7 @@
 ## Author: MoONSHO7 / M7
 ## Version: @project-version@
 ## Dependencies: Orbit
+## OptionalDeps: Masque
 ## DefaultState: enabled
 ## Group: Orbit
 ## Category: Orbit UI

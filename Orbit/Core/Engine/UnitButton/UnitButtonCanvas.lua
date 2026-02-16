@@ -1,20 +1,32 @@
 -- [ UNIT BUTTON - CANVAS MODULE ]-------------------------------------------------------------------
--- Canvas Mode integration: component positions, style overrides, layout, borders
--- This module extends UnitButtonMixin with Canvas Mode functionality
-
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local DAMAGE_BAR_VERTICAL_INSET = 1
+local FALLBACK_HEIGHT = 40
+local DEFAULT_FONT_HEIGHT = 12
+local TEXT_PADDING = 5
+local HEALTH_TEXT_WIDTH_MULTIPLIER = 3
+local TIGHT_FIT_MARGIN = 2
 
--- Ensure UnitButton namespace exists
+-- The rogue mapped out which components can be pickpocketed to new positions
+local COMPONENT_POSITION_MAP = {
+    { key = "Name",             parentKey = "TextFrame" },
+    { key = "HealthText",       parentKey = "TextFrame" },
+    { key = "LevelText",        parentKey = nil },
+    { key = "RareEliteIcon",    parentKey = nil },
+    { key = "CombatIcon",       parentKey = nil },
+    { key = "DefensiveIcon",    parentKey = nil },
+    { key = "ImportantIcon",    parentKey = nil },
+    { key = "CrowdControlIcon", parentKey = nil },
+}
+
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 
--- [ CANVAS MIXIN ]---------------------------------------------------------------------------------
--- Partial mixin for Canvas Mode and layout functionality
+-- [ CANVAS MIXIN ]----------------------------------------------------------------------------------
 
 local CanvasMixin = {}
 
@@ -35,151 +47,74 @@ function CanvasMixin:UpdateTextLayout()
     end
 
     -- Canvas Mode is the single source of truth for component positions
-    -- If ComponentPositions exists (from defaults or user customization), skip this entirely
-    -- ApplyComponentPositions() will handle positioning instead
     if self.orbitPlugin and self.orbitPlugin.GetSetting then
-        local systemIndex = self.systemIndex or 1
-        local savedPositions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
-        if savedPositions and (savedPositions.Name or savedPositions.HealthText) then
-            return -- Skip - positions will be applied by ApplyComponentPositions
-        end
+        local positions = self.orbitPlugin:GetSetting(self.systemIndex or 1, "ComponentPositions")
+        if positions and (positions.Name or positions.HealthText) then return end
     end
 
-    -- Fallback for frames without ComponentPositions (legacy or non-Canvas Mode frames)
+    -- The wizard casts Comprehend Layout on the cramped parchment
     local height = self:GetHeight()
-    if issecretvalue and issecretvalue(height) then
-        height = 40
-    end
-    local fontName, fontHeight, fontFlags = self.Name:GetFont()
-    fontHeight = fontHeight or 12
-    if issecretvalue and issecretvalue(fontHeight) then
-        fontHeight = 12
-    end
+    if issecretvalue and issecretvalue(height) then height = FALLBACK_HEIGHT end
+    local _, fontHeight = self.Name:GetFont()
+    fontHeight = fontHeight or DEFAULT_FONT_HEIGHT
+    if issecretvalue and issecretvalue(fontHeight) then fontHeight = DEFAULT_FONT_HEIGHT end
 
-    local padding = 5
-    local estimatedHealthTextWidth = fontHeight * 3
-    local nameRightOffset = estimatedHealthTextWidth + padding + 5
+    local nameRightOffset = (fontHeight * HEALTH_TEXT_WIDTH_MULTIPLIER) + TEXT_PADDING + TEXT_PADDING
+    local anchorV = height < (fontHeight + TIGHT_FIT_MARGIN) and "BOTTOM" or ""
 
     self.Name:ClearAllPoints()
-    if height < (fontHeight + 2) then
-        self.Name:SetPoint("BOTTOMLEFT", self.TextFrame, "BOTTOMLEFT", padding, 0)
-        self.Name:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -nameRightOffset, 0)
-    else
-        self.Name:SetPoint("LEFT", self.TextFrame, "LEFT", padding, 0)
-        self.Name:SetPoint("RIGHT", self.TextFrame, "RIGHT", -nameRightOffset, 0)
-    end
+    self.Name:SetPoint(anchorV .. "LEFT", self.TextFrame, anchorV .. "LEFT", TEXT_PADDING, 0)
+    self.Name:SetPoint(anchorV .. "RIGHT", self.TextFrame, anchorV .. "RIGHT", -nameRightOffset, 0)
 
     self.HealthText:ClearAllPoints()
-    if height < (fontHeight + 2) then
-        self.HealthText:SetPoint("BOTTOMRIGHT", self.TextFrame, "BOTTOMRIGHT", -padding, 0)
-    else
-        self.HealthText:SetPoint("RIGHT", self.TextFrame, "RIGHT", -padding, 0)
-    end
+    self.HealthText:SetPoint(anchorV .. "RIGHT", self.TextFrame, anchorV .. "RIGHT", -TEXT_PADDING, 0)
 end
 
 -- [ COMPONENT POSITIONS ]---------------------------------------------------------------------------
--- Apply component positions from saved percentages
--- Called on resize to recalculate pixel positions
 
 function CanvasMixin:ApplyComponentPositions()
-    if not self.orbitPlugin or not self.orbitPlugin.GetSetting then
-        return
-    end
+    if not self.orbitPlugin or not self.orbitPlugin.GetSetting then return end
 
     local systemIndex = self.systemIndex or 1
     local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
-
-    -- Also get defaults for fallback
     local defaults = self.orbitPlugin.defaults and self.orbitPlugin.defaults.ComponentPositions
 
-    -- Merge positions with defaults - use defaults for any missing component
     if defaults then
         positions = positions or {}
         for key, defaultPos in pairs(defaults) do
-            if not positions[key] or not positions[key].anchorX then
-                positions[key] = defaultPos
-            end
+            if not positions[key] or not positions[key].anchorX then positions[key] = defaultPos end
         end
     end
 
-    if not positions or not next(positions) then
-        return
-    end
+    if not positions or not next(positions) then return end
 
     local width, height = self:GetWidth(), self:GetHeight()
-    if issecretvalue and (issecretvalue(width) or issecretvalue(height)) then
-        return
-    end
-    if width <= 0 or height <= 0 then
-        return
-    end
+    if issecretvalue and (issecretvalue(width) or issecretvalue(height)) then return end
+    if width <= 0 or height <= 0 then return end
 
     local ApplyTextPosition = Engine.PositionUtils and Engine.PositionUtils.ApplyTextPosition
-    if not ApplyTextPosition then
-        return
+    if not ApplyTextPosition then return end
+
+    for _, entry in ipairs(COMPONENT_POSITION_MAP) do
+        local pos = positions[entry.key]
+        local element = self[entry.key]
+        if pos and element then
+            ApplyTextPosition(element, entry.parentKey and self[entry.parentKey] or self, pos)
+        end
     end
 
-    -- Apply Name position if saved
-    if positions.Name and self.Name then
-        ApplyTextPosition(self.Name, self.TextFrame, positions.Name)
-    end
-
-    -- Apply HealthText position if saved
-    if positions.HealthText and self.HealthText then
-        ApplyTextPosition(self.HealthText, self.TextFrame, positions.HealthText)
-    end
-
-    -- Apply LevelText position if saved (TargetFrame, FocusFrame)
-    if positions.LevelText and self.LevelText then
-        ApplyTextPosition(self.LevelText, self, positions.LevelText)
-    end
-
-    -- Apply RareEliteIcon position if saved (TargetFrame, FocusFrame)
-    if positions.RareEliteIcon and self.RareEliteIcon then
-        ApplyTextPosition(self.RareEliteIcon, self, positions.RareEliteIcon)
-    end
-
-    -- Apply CombatIcon position if saved (PlayerFrame)
-    if positions.CombatIcon and self.CombatIcon then
-        ApplyTextPosition(self.CombatIcon, self, positions.CombatIcon)
-    end
-
-    -- Apply DefensiveIcon position if saved (PartyFrame)
-    if positions.DefensiveIcon and self.DefensiveIcon then
-        ApplyTextPosition(self.DefensiveIcon, self, positions.DefensiveIcon)
-    end
-
-    -- Apply ImportantIcon position if saved (PartyFrame)
-    if positions.ImportantIcon and self.ImportantIcon then
-        ApplyTextPosition(self.ImportantIcon, self, positions.ImportantIcon)
-    end
-
-    -- Apply CrowdControlIcon position if saved (PartyFrame)
-    if positions.CrowdControlIcon and self.CrowdControlIcon then
-        ApplyTextPosition(self.CrowdControlIcon, self, positions.CrowdControlIcon)
-    end
-
-    -- Apply style overrides for ALL components with overrides in saved positions
     self:ApplyStyleOverrides(positions)
 end
 
 -- [ STYLE OVERRIDES ]-------------------------------------------------------------------------------
--- Apply Canvas Mode style overrides (font, color, scale)
 
 function CanvasMixin:ApplyStyleOverrides(positions)
-    if not positions then
-        return
-    end
-
+    if not positions then return end
     local ApplyOverrides = Engine.OverrideUtils and Engine.OverrideUtils.ApplyOverrides
 
-    -- Dynamically handles any component (RoleIcon, LeaderIcon, Name, HealthText, etc.)
     for key, pos in pairs(positions) do
-        if pos.overrides and ApplyOverrides then
-            local element = self[key]
-            if element then
-                ApplyOverrides(element, pos.overrides)
-            end
+        if pos.overrides and ApplyOverrides and self[key] then
+            ApplyOverrides(self[key], pos.overrides)
         end
     end
 end
@@ -187,7 +122,6 @@ end
 -- [ BORDER MANAGEMENT ]-----------------------------------------------------------------------------
 
 function CanvasMixin:SetBorder(size)
-    -- Delegate to Skin Engine
     if Orbit.Skin:SkinBorder(self, self, size) then
         self.borderPixelSize = 0
         if self.Health then
@@ -211,7 +145,7 @@ function CanvasMixin:SetBorder(size)
         self.Health:SetPoint("BOTTOMRIGHT", -pixelSize, pixelSize)
     end
 
-    -- DamageBar always follows Health (power bar may shrink Health below full frame)
+    -- DamageBar follows Health like a faithful henchman
     if self.HealthDamageBar then
         self.HealthDamageBar:ClearAllPoints()
         self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, -DAMAGE_BAR_VERTICAL_INSET)
@@ -219,5 +153,4 @@ function CanvasMixin:SetBorder(size)
     end
 end
 
--- Export for composition
 UnitButton.CanvasMixin = CanvasMixin

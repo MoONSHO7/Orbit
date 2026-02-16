@@ -1,7 +1,4 @@
 -- [ UNIT BUTTON - CORE MODULE ]---------------------------------------------------------------------
--- Core UnitButtonMixin: OnLoad, OnEvent, UpdateAll, CreateCanvasPreview
--- Composes functionality from Health, Text, Prediction, and Canvas sub-modules
-
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
@@ -12,10 +9,11 @@ local UnitButton = Engine.UnitButton
 
 local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
 local PREVIEW_HEALTH_VALUE = 0.75
+local HEALTH_BAR_LEVEL_OFFSET = 2
+local BACKDROP_DEEP_FALLBACK = -8
 local _, PLAYER_CLASS = UnitClass("player")
 
 -- [ CORE MIXIN ]------------------------------------------------------------------------------------
--- Base mixin with lifecycle and event handling
 
 local CoreMixin = {}
 
@@ -51,7 +49,7 @@ function CoreMixin:CreateCanvasPreview(options)
     preview.components = {}
 
     -- [ BACKGROUND ] --------------------------------------------------------------------------------
-    preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Orbit.Constants.Layers and Orbit.Constants.Layers.BackdropDeep or -8)
+    preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Orbit.Constants.Layers and Orbit.Constants.Layers.BackdropDeep or BACKDROP_DEEP_FALLBACK)
     preview.bg:SetAllPoints()
     Orbit.Skin:ApplyGradientBackground(preview, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
 
@@ -68,10 +66,10 @@ function CoreMixin:CreateCanvasPreview(options)
     bar:SetPoint("BOTTOMRIGHT", -inset, inset)
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(PREVIEW_HEALTH_VALUE)
-    bar:SetFrameLevel(preview:GetFrameLevel() + 2)
+    bar:SetFrameLevel(preview:GetFrameLevel() + HEALTH_BAR_LEVEL_OFFSET)
     Orbit.Skin:SkinStatusBar(bar, textureName, nil, true)
 
-    -- Resolve health color from BarColorCurve (class-aware)
+    -- The cleric inspects the health bar's aura for class-colored enchantments
     local barCurve = globalSettings.BarColorCurve
     local barColor
     if barCurve and barCurve.pins and #barCurve.pins > 0 then
@@ -117,8 +115,7 @@ function CoreMixin:UpdateAll()
     self:UpdateTextLayout()
 end
 
--- Stub - overridden by consuming plugins if needed
+-- The fighter shouts "I check EVERYTHING" at the start of every encounter
 function CoreMixin:UpdatePower() end
 
--- Export for composition
 UnitButton.CoreMixin = CoreMixin

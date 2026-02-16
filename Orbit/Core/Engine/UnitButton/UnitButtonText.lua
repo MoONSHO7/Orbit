@@ -1,16 +1,20 @@
 -- [ UNIT BUTTON - TEXT MODULE ]---------------------------------------------------------------------
--- Health text and name text formatting and display
--- This module extends UnitButtonMixin with text-related functionality
-
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
--- Ensure UnitButton namespace exists
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
+local DEFAULT_FONT_HEIGHT = 12
+local DEFAULT_MAX_CHARS = 15
+local MIN_NAME_CHARS = 6
+local MAX_NAME_CHARS = 30
+local HEALTH_TEXT_WIDTH_MULTIPLIER = 3
+local CHAR_WIDTH_RATIO = 0.5
+local NAME_PADDING = 20
+
 -- [ HEALTH TEXT MODES ]-----------------------------------------------------------------------------
--- Export modes for use by plugins
 local HEALTH_TEXT_MODES = {
     PERCENT = "percent",
     SHORT = "short",
@@ -26,6 +30,7 @@ local HEALTH_TEXT_MODES = {
 UnitButton.HEALTH_TEXT_MODES = HEALTH_TEXT_MODES
 
 -- [ LOCAL FORMATTERS ]------------------------------------------------------------------------------
+-- The party rolled Investigation and found the health formatter's lair
 
 local function SafeHealthPercent(unit)
     if type(UnitHealthPercent) ~= "function" then
@@ -64,7 +69,6 @@ end
 local function FormatRawHealth(unit)
     local health = UnitHealth(unit)
     if health and type(health) == "number" then
-        -- Format with thousands separator
         if BreakUpLargeNumbers then
             local ok, result = pcall(BreakUpLargeNumbers, health)
             if ok and result then
@@ -88,7 +92,6 @@ local function GetHealthTextForFormat(unit, format)
 end
 
 -- [ TEXT MIXIN ]------------------------------------------------------------------------------------
--- Partial mixin for text functionality (will be merged into UnitButtonMixin)
 
 local TextMixin = {}
 
@@ -112,16 +115,11 @@ function TextMixin:GetHealthTextFormats()
 end
 
 function TextMixin:UpdateHealthText()
-    if not self.HealthText then
-        return
-    end
+    if not self.HealthText then return end
 
-    -- Check if component is disabled via plugin (Canvas Mode drag-to-disable)
-    if self.orbitPlugin and self.orbitPlugin.IsComponentDisabled then
-        if self.orbitPlugin:IsComponentDisabled("HealthText") then
-            self.HealthText:Hide()
-            return
-        end
+    if self.orbitPlugin and self.orbitPlugin.IsComponentDisabled and self.orbitPlugin:IsComponentDisabled("HealthText") then
+        self.HealthText:Hide()
+        return
     end
 
     local mode = self.healthTextMode or HEALTH_TEXT_MODES.PERCENT_SHORT
@@ -131,7 +129,6 @@ function TextMixin:UpdateHealthText()
         return
     end
 
-    -- Guard against nil unit
     if not self.unit then
         self.HealthText:SetText("")
         self.HealthText:Hide()
@@ -144,38 +141,21 @@ function TextMixin:UpdateHealthText()
         return
     end
 
-    -- Combined mode: show both values simultaneously
     if mode == HEALTH_TEXT_MODES.SHORT_AND_PERCENT then
-        local short = GetHealthTextForFormat(self.unit, "short")
-        local pct = GetHealthTextForFormat(self.unit, "percent")
-        self.HealthText:SetText(short .. " - " .. pct)
+        self.HealthText:SetText(GetHealthTextForFormat(self.unit, "short") .. " - " .. GetHealthTextForFormat(self.unit, "percent"))
         self.HealthText:Show()
         self:ApplyHealthTextColor()
         return
     end
 
-    -- Parse mode to get main/mouseover formats
     local mainFormat, mouseoverFormat = self:GetHealthTextFormats()
-
-    local text
-    if self.isMouseOver then
-        text = GetHealthTextForFormat(self.unit, mouseoverFormat)
-    else
-        text = GetHealthTextForFormat(self.unit, mainFormat)
-    end
-
-    self.HealthText:SetText(text)
+    self.HealthText:SetText(GetHealthTextForFormat(self.unit, self.isMouseOver and mouseoverFormat or mainFormat))
     self.HealthText:Show()
-
-    -- Apply text color based on global settings
     self:ApplyHealthTextColor()
 end
 
 function TextMixin:SetMouseOver(isOver)
-    -- Skip mouseover updates during Edit Mode to allow component dragging
-    if Orbit:IsEditMode() then
-        return
-    end
+    if Orbit:IsEditMode() then return end
 
     self.isMouseOver = isOver
     self:UpdateHealthText()
@@ -188,122 +168,79 @@ end
 
 function TextMixin:SetHealthTextMode(mode)
     self.healthTextMode = mode
-    -- If mode is not hide, ensure healthTextEnabled is true
-    if mode ~= HEALTH_TEXT_MODES.HIDE then
-        self.healthTextEnabled = true
-    end
+    if mode ~= HEALTH_TEXT_MODES.HIDE then self.healthTextEnabled = true end
     self:UpdateHealthText()
 end
 
 function TextMixin:UpdateName()
-    if not self.Name then
+    if not self.Name then return end
+
+    if self.orbitPlugin and self.orbitPlugin.IsComponentDisabled and self.orbitPlugin:IsComponentDisabled("Name") then
+        self.Name:Hide()
         return
     end
 
-    -- Check if component is disabled via plugin (Canvas Mode drag-to-disable)
-    if self.orbitPlugin and self.orbitPlugin.IsComponentDisabled then
-        if self.orbitPlugin:IsComponentDisabled("Name") then
-            self.Name:Hide()
-            return
-        end
-    end
-
-    -- Show name (may have been hidden by disabled state)
     self.Name:Show()
 
-    -- Guard against nil unit
     if not self.unit then
         self.Name:SetText("")
         return
     end
 
     local name = UnitName(self.unit)
-
-    -- Handle nil/invalid names
     if name == nil then
         self.Name:SetText("")
         return
     end
 
-    -- WoW 12.0: UnitName returns secret values for non-player units during combat
-    -- Secret values can be passed to SetText but cannot have string operations performed on them
+    -- Nat 1 on Identify: the DM sealed the name scroll with arcane warding
     if issecretvalue and issecretvalue(name) then
-        self.Name:SetText(name) -- FontString:SetText accepts secret values
+        self.Name:SetText(name)
         return
     end
 
-    -- Non-secret string: safe to truncate
     if type(name) ~= "string" then
         self.Name:SetText("")
         return
     end
 
-    local maxChars = 15
+    -- The bard insists on calling everyone by their stage name
+    if NSAPI and NSAPI.GetName then
+        name = NSAPI:GetName(self.unit) or name
+    end
 
+    local maxChars = DEFAULT_MAX_CHARS
     local frameWidth = self:GetWidth()
-    if issecretvalue and issecretvalue(frameWidth) then
-        frameWidth = 0
-    end
+    if issecretvalue and issecretvalue(frameWidth) then frameWidth = 0 end
+
     if type(frameWidth) == "number" and frameWidth > 0 then
-        -- Estimate HealthText reserved width based on font size (avoids secret value issues)
-        -- "100%" is ~4-5 chars, estimate ~0.6x font height per character
-        local fontName, fontHeight = self.HealthText and self.HealthText:GetFont()
-        fontHeight = fontHeight or 12
-        local estimatedHealthTextWidth = fontHeight * 3 -- Approximate width for "100%"
-
-        -- Available width = frame - healthText space - padding
-        local availableWidth = frameWidth - estimatedHealthTextWidth - 20
-
-        -- Estimate characters: assume ~0.5x font height per character average
-        local charWidth = fontHeight * 0.5
-        maxChars = math.floor(availableWidth / charWidth)
-        maxChars = math.max(6, math.min(maxChars, 30)) -- Clamp between 6-30
+        local _, fontHeight = self.HealthText and self.HealthText:GetFont()
+        fontHeight = fontHeight or DEFAULT_FONT_HEIGHT
+        local availableWidth = frameWidth - (fontHeight * HEALTH_TEXT_WIDTH_MULTIPLIER) - NAME_PADDING
+        maxChars = math.max(MIN_NAME_CHARS, math.min(math.floor(availableWidth / (fontHeight * CHAR_WIDTH_RATIO)), MAX_NAME_CHARS))
     end
 
-    if #name > maxChars then
-        self.Name:SetText(string.sub(name, 1, maxChars))
-    else
-        self.Name:SetText(name)
-    end
-
-    -- Apply text color based on global settings and component overrides
+    self.Name:SetText(#name > maxChars and string.sub(name, 1, maxChars) or name)
     self:ApplyNameColor()
 end
 
--- Apply color to Name text based on global settings and component overrides
-function TextMixin:ApplyNameColor()
-    if not self.Name then
-        return
-    end
+-- [ TEXT COLOR ]-------------------------------------------------------------------------------------
+-- The wizard cast Chromatic Orb but forgot which color they picked
 
-    local overrides = nil
-    if self.orbitPlugin then
-        local systemIndex = self.systemIndex or 1
-        local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
-        if positions and positions.Name then
-            overrides = positions.Name.overrides
-        end
-    end
-
-    Engine.OverrideUtils.ApplyTextColor(self.Name, overrides)
+local function GetComponentOverrides(self, componentKey)
+    if not self.orbitPlugin then return nil end
+    local positions = self.orbitPlugin:GetSetting(self.systemIndex or 1, "ComponentPositions")
+    return positions and positions[componentKey] and positions[componentKey].overrides
 end
 
--- Apply color to HealthText based on global settings and component overrides
+function TextMixin:ApplyNameColor()
+    if not self.Name then return end
+    Engine.OverrideUtils.ApplyTextColor(self.Name, GetComponentOverrides(self, "Name"))
+end
+
 function TextMixin:ApplyHealthTextColor()
-    if not self.HealthText then
-        return
-    end
-
-    local overrides = nil
-    if self.orbitPlugin then
-        local systemIndex = self.systemIndex or 1
-        local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
-        if positions and positions.HealthText then
-            overrides = positions.HealthText.overrides
-        end
-    end
-
-    Engine.OverrideUtils.ApplyTextColor(self.HealthText, overrides)
+    if not self.HealthText then return end
+    Engine.OverrideUtils.ApplyTextColor(self.HealthText, GetComponentOverrides(self, "HealthText"))
 end
 
 -- Export for composition

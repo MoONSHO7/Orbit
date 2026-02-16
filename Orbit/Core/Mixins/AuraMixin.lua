@@ -432,8 +432,6 @@ function Mixin:LayoutAurasLinear(container, icons, config)
 end
 
 function Mixin:ApplyAuraSkin(icon, settings)
-    if not icon or not Orbit.Skin or not Orbit.Skin.Icons then
-        return
-    end
+    if not icon or not Orbit.Skin or not Orbit.Skin.Icons then return end
     Orbit.Skin.Icons:ApplyCustom(icon, settings or { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true })
 end
