@@ -23,6 +23,7 @@ Mixin.sharedDefaults = {
     CastBarTimer = true,
     CastBarHeight = 18,
     CastBarWidth = 200,
+    CastBarTextSize = 10,
     CastBarScale = 100,
 }
 

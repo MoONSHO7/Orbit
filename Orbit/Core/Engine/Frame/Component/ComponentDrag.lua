@@ -20,7 +20,9 @@ local SafeGetSize = Helpers.SafeGetSize
 local SafeGetNumber = Helpers.SafeGetNumber
 local PADDING = Helpers.PADDING
 local CalculateAnchor = Engine.PositionUtils.CalculateAnchor
-local CalculateAnchorWithFontCompensation = Engine.PositionUtils.CalculateAnchorWithFontCompensation
+local CalculateAnchorWithWidthCompensation = Engine.PositionUtils.CalculateAnchorWithWidthCompensation
+local BuildComponentSelfAnchor = Engine.PositionUtils.BuildComponentSelfAnchor
+local NeedsEdgeCompensation = Engine.PositionUtils.NeedsEdgeCompensation
 local HandleModule = Engine.ComponentHandle
 
 -- [ STATE ]-----------------------------------------------------------------------------------------
@@ -78,7 +80,9 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
             centerRelX = 0
             snapX = "CENTER"
         end
-        if not snapX then centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE end
+        if not snapX then
+            centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE
+        end
 
         -- Edge Magnet Y
         local distTop = math.abs((centerRelY + (component:GetHeight() or 0) / 2) - halfH)
@@ -94,7 +98,9 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
             centerRelY = 0
             snapY = "CENTER"
         end
-        if not snapY then centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE end
+        if not snapY then
+            centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE
+        end
     end
 
     if Engine.SmartGuides and data.guides then
@@ -123,7 +129,14 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
     handle:SetPoint("CENTER", component, "CENTER", 0, 0)
 
     if Engine.SelectionTooltip and Engine.SelectionTooltip.ShowComponentPosition then
-        local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(centerRelX, centerRelY, halfW, halfH)
+        local needsComp = NeedsEdgeCompensation(data.isFontString, data.isAuraContainer)
+        local compW, compH = SafeGetSize(component)
+        local anchorX, anchorY, edgeOffX, edgeOffY, justifyH =
+            CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsComp, compW, compH)
+        -- Aura containers also need height compensation (vertical self-anchor is BOTTOM/TOP, not CENTER)
+        if data.isAuraContainer and anchorY ~= "CENTER" then
+            edgeOffY = edgeOffY - (compH or 0) / 2
+        end
         Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH)
     end
 end
@@ -137,9 +150,14 @@ function ComponentDrag:OnDragStop(component, parent, data)
         local centerX = data.currentX or 0
         local centerY = data.currentY or 0
 
-        local anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchorWithFontCompensation(
-            centerX, centerY, halfW, halfH, data.isFontString, SafeGetSize(component)
-        )
+        local needsWidthComp = NeedsEdgeCompensation(data.isFontString, data.isAuraContainer)
+        local anchorX, anchorY, offsetX, offsetY, justifyH =
+            CalculateAnchorWithWidthCompensation(centerX, centerY, halfW, halfH, needsWidthComp, SafeGetSize(component))
+        -- Aura containers also need height compensation (vertical self-anchor is BOTTOM/TOP, not CENTER)
+        if data.isAuraContainer and anchorY ~= "CENTER" then
+            local _, compHeight = SafeGetSize(component)
+            offsetY = offsetY - (compHeight or 0) / 2
+        end
         data.options.onPositionChange(component, anchorX, anchorY, offsetX, offsetY, justifyH)
     end
 
@@ -230,9 +248,7 @@ nudgeFrame:SetScript("OnKeyDown", function(self, key)
         if selectedComponent then
             ComponentDrag:NudgeComponent(selectedComponent, dx, dy)
         end
-    end, function()
-        return selectedComponent ~= nil
-    end)
+    end, function() return selectedComponent ~= nil end)
 end)
 
 nudgeFrame:SetScript("OnKeyUp", function(self, key)
@@ -284,7 +300,14 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
     end
 
     if data.options and data.options.onPositionChange then
-        data.options.onPositionChange(component, nil, data.xPercent, data.yPercent)
+        local needsWidthComp = NeedsEdgeCompensation(data.isFontString, data.isAuraContainer)
+        local anchorX, anchorY, offsetX, offsetY, justifyH =
+            CalculateAnchorWithWidthCompensation(newX, newY, halfW, halfH, needsWidthComp, SafeGetSize(component))
+        if data.isAuraContainer and anchorY ~= "CENTER" then
+            local _, compHeight = SafeGetSize(component)
+            offsetY = offsetY - (compHeight or 0) / 2
+        end
+        data.options.onPositionChange(component, anchorX, anchorY, offsetX, offsetY, justifyH)
     end
 
     if Engine.PositionManager then
@@ -314,6 +337,7 @@ function ComponentDrag:Attach(component, parent, options)
         currentY = 0,
         currentAlignment = "LEFT",
         isFontString = component.GetText ~= nil,
+        isAuraContainer = options.isAuraContainer or false,
         guides = Engine.SmartGuides and Engine.SmartGuides:Create(parent) or nil,
         handle = nil,
     }
@@ -321,18 +345,10 @@ function ComponentDrag:Attach(component, parent, options)
     -- Create handle using the Handle module with callbacks
     data.handle = HandleModule:Create(component, parent, {
         key = options.key,
-        isSelected = function(comp)
-            return selectedComponent == comp
-        end,
-        onSelect = function(comp)
-            ComponentDrag:SelectComponent(comp)
-        end,
-        onDragUpdate = function(comp, handle)
-            ComponentDrag:OnDragUpdate(comp, parent, data, handle)
-        end,
-        onDragStop = function(comp, handle)
-            ComponentDrag:OnDragStop(comp, parent, data)
-        end,
+        isSelected = function(comp) return selectedComponent == comp end,
+        onSelect = function(comp) ComponentDrag:SelectComponent(comp) end,
+        onDragUpdate = function(comp, handle) ComponentDrag:OnDragUpdate(comp, parent, data, handle) end,
+        onDragStop = function(comp, handle) ComponentDrag:OnDragStop(comp, parent, data) end,
     })
 
     registeredComponents[component] = data
@@ -474,10 +490,10 @@ function ComponentDrag:RestoreFramePositions(parent, positions)
 
                 if pos.justifyH and component.SetJustifyH then
                     component:SetJustifyH(pos.justifyH)
-                    component:SetPoint(pos.justifyH, componentParent, anchorPoint, finalX, finalY)
-                else
-                    component:SetPoint("CENTER", componentParent, anchorPoint, finalX, finalY)
                 end
+
+                local selfAnchor = BuildComponentSelfAnchor(data.isFontString, data.isAuraContainer, anchorY, pos.justifyH)
+                component:SetPoint(selfAnchor, componentParent, anchorPoint, finalX, finalY)
 
                 data.anchorX = anchorX
                 data.anchorY = anchorY
@@ -533,7 +549,5 @@ function ComponentDrag:DisableAll()
 end
 
 if EditModeManagerFrame then
-    EditModeManagerFrame:HookScript("OnHide", function()
-        ComponentDrag:DisableAll()
-    end)
+    EditModeManagerFrame:HookScript("OnHide", function() ComponentDrag:DisableAll() end)
 end

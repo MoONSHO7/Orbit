@@ -12,8 +12,10 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- Use shared position utilities
 local CalculateAnchor = OrbitEngine.PositionUtils.CalculateAnchor
-local CalculateAnchorWithFontCompensation = OrbitEngine.PositionUtils.CalculateAnchorWithFontCompensation
+local CalculateAnchorWithWidthCompensation = OrbitEngine.PositionUtils.CalculateAnchorWithWidthCompensation
 local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
+local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
+local NeedsEdgeCompensation = OrbitEngine.PositionUtils.NeedsEdgeCompensation
 
 -- SmartGuides for visual snap feedback
 local SmartGuides = OrbitEngine.SmartGuides
@@ -100,9 +102,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         end
 
         local text = PREVIEW_TEXT_VALUES[key] or "Text"
-        local ok, t = pcall(function()
-            return sourceComponent:GetText()
-        end)
+        local ok, t = pcall(function() return sourceComponent:GetText() end)
         if ok and t and type(t) == "string" and (not issecretvalue or not issecretvalue(t)) and t ~= "" then
             text = t
         end
@@ -133,15 +133,11 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         -- Tight fallback: ~0.55 per character for most fonts
         local textWidth = fontSize * #text * 0.55
         local textHeight = fontSize
-        local ok, w = pcall(function()
-            return visual:GetStringWidth()
-        end)
+        local ok, w = pcall(function() return visual:GetStringWidth() end)
         if ok and w and type(w) == "number" and w > 0 and w <= maxReasonableWidth * 2 and (not issecretvalue or not issecretvalue(w)) then
             textWidth = w
         end
-        local ok2, h = pcall(function()
-            return visual:GetStringHeight()
-        end)
+        local ok2, h = pcall(function() return visual:GetStringHeight() end)
         if ok2 and h and type(h) == "number" and h > 0 and h <= fontSize * 2 and (not issecretvalue or not issecretvalue(h)) then
             textHeight = h
         end
@@ -165,9 +161,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             if sourceComponent.orbitSpriteIndex then
                 ApplySpriteSheetCell(visual, sourceComponent.orbitSpriteIndex, sourceComponent.orbitSpriteRows or 4, sourceComponent.orbitSpriteCols or 4)
             else
-                local ok, l, r, t, b = pcall(function()
-                    return sourceComponent:GetTexCoord()
-                end)
+                local ok, l, r, t, b = pcall(function() return sourceComponent:GetTexCoord() end)
                 if ok and l then
                     visual:SetTexCoord(l, r, t, b)
                 end
@@ -197,9 +191,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         if sourceComponent.orbitOriginalWidth and sourceComponent.orbitOriginalWidth > 0 then
             srcWidth = sourceComponent.orbitOriginalWidth
         else
-            local ok, w = pcall(function()
-                return sourceComponent:GetWidth()
-            end)
+            local ok, w = pcall(function() return sourceComponent:GetWidth() end)
             if ok and w and type(w) == "number" and w > 0 then
                 srcWidth = w
             end
@@ -207,9 +199,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         if sourceComponent.orbitOriginalHeight and sourceComponent.orbitOriginalHeight > 0 then
             srcHeight = sourceComponent.orbitOriginalHeight
         else
-            local ok2, h = pcall(function()
-                return sourceComponent:GetHeight()
-            end)
+            local ok2, h = pcall(function() return sourceComponent:GetHeight() end)
             if ok2 and h and type(h) == "number" and h > 0 then
                 srcHeight = h
             end
@@ -274,16 +264,137 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             srcWidth = sourceComponent.orbitOriginalWidth
         else
             local ok, w = pcall(function() return sourceComponent:GetWidth() end)
-            if ok and w and type(w) == "number" and w > 0 then srcWidth = w end
+            if ok and w and type(w) == "number" and w > 0 then
+                srcWidth = w
+            end
         end
         if sourceComponent.orbitOriginalHeight and sourceComponent.orbitOriginalHeight > 0 then
             srcHeight = sourceComponent.orbitOriginalHeight
         else
             local ok2, h = pcall(function() return sourceComponent:GetHeight() end)
-            if ok2 and h and type(h) == "number" and h > 0 then srcHeight = h end
+            if ok2 and h and type(h) == "number" and h > 0 then
+                srcHeight = h
+            end
         end
 
         container:SetSize(srcWidth, srcHeight)
+    elseif key == "Buffs" or key == "Debuffs" then
+        -- Aura container: render sample icons in a grid (refreshable)
+        local sampleIcons
+        if key == "Buffs" then
+            sampleIcons = { 135936, 136051, 135994 } -- Renew, PW:Shield, Rejuvenation
+        else
+            sampleIcons = { 132122, 136207, 135824 } -- Corruption, Shadow Word: Pain, Moonfire
+        end
+
+        container.auraIconPool = {}
+        container.isAuraContainer = true
+
+        -- Reusable refresh: reads overrides from pendingOverrides > existingOverrides > fallback
+        container.RefreshAuraIcons = function(self)
+            local AURA_BASE_ICON_SIZE = Orbit.PartyFrameHelpers and Orbit.PartyFrameHelpers.LAYOUT.AuraBaseIconSize or 10
+            local AURA_SPACING = 2
+            local overrides = self.pendingOverrides or self.existingOverrides or {}
+            local maxIcons = overrides.MaxIcons or 3
+            local maxRows = overrides.MaxRows or 2
+            local iconSize = math.max(10, overrides.IconSize or AURA_BASE_ICON_SIZE)
+
+            -- Calculate grid layout matching runtime CalculateSmartAuraLayout
+            local preview = self:GetParent()
+            local parentWidth = preview and (preview.sourceWidth or preview:GetWidth()) or 200
+            local parentHeight = preview and (preview.sourceHeight or preview:GetHeight()) or 40
+            local Helpers = Orbit.PartyFrameHelpers
+            local position = Helpers and Helpers.AnchorToPosition and Helpers:AnchorToPosition(self.posX, self.posY, parentWidth / 2, parentHeight / 2)
+                or "Right"
+            local isHorizontal = (position == "Above" or position == "Below")
+
+            local rows, iconsPerRow, containerWidth, containerHeight
+            if isHorizontal then
+                iconsPerRow = math.max(1, math.floor((parentWidth + AURA_SPACING) / (iconSize + AURA_SPACING)))
+                iconsPerRow = math.min(iconsPerRow, maxIcons)
+                rows = math.min(maxRows, math.ceil(maxIcons / iconsPerRow))
+                local displayCount = math.min(maxIcons, iconsPerRow * rows)
+                local displayCols = math.min(displayCount, iconsPerRow)
+                containerWidth = (displayCols * iconSize) + ((displayCols - 1) * AURA_SPACING)
+                containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
+            else
+                -- Left/Right: rows capped by maxRows, icons distributed across rows
+                rows = math.min(maxRows, math.max(1, maxIcons))
+                iconsPerRow = math.ceil(maxIcons / rows)
+                containerWidth = math.max(iconSize, (iconsPerRow * iconSize) + ((iconsPerRow - 1) * AURA_SPACING))
+                containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
+            end
+            self:SetSize(containerWidth, containerHeight)
+
+            -- Hide all pooled icons
+            for _, btn in ipairs(self.auraIconPool) do
+                btn:Hide()
+            end
+
+            local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
+            local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false }
+
+            -- Create or reuse sample icons
+            local iconIndex = 0
+            for i = 1, maxIcons do
+                local col = (i - 1) % iconsPerRow
+                local row = math.floor((i - 1) / iconsPerRow)
+                if row >= rows then
+                    break
+                end
+                iconIndex = iconIndex + 1
+
+                local btn = self.auraIconPool[iconIndex]
+                if not btn then
+                    btn = CreateFrame("Button", nil, self, "BackdropTemplate")
+                    btn:EnableMouse(false)
+                    btn.Icon = btn:CreateTexture(nil, "ARTWORK")
+                    btn.Icon:SetAllPoints()
+                    btn.icon = btn.Icon
+                    self.auraIconPool[iconIndex] = btn
+                end
+
+                btn:SetSize(iconSize, iconSize)
+
+                local texIndex = ((i - 1) % #sampleIcons) + 1
+                btn.Icon:SetTexture(sampleIcons[texIndex])
+
+                if Orbit.Skin and Orbit.Skin.Icons then
+                    Orbit.Skin.Icons:ApplyCustom(btn, skinSettings)
+                end
+
+                btn:ClearAllPoints()
+                local xOffset = col * (iconSize + AURA_SPACING)
+                local yOffset = row * (iconSize + AURA_SPACING)
+
+                -- Growth direction based on justifyH + anchorY
+                local growDown = (self.anchorY ~= "BOTTOM")
+                if self.justifyH == "RIGHT" then
+                    if growDown then
+                        btn:SetPoint("TOPRIGHT", self, "TOPRIGHT", -xOffset, -yOffset)
+                    else
+                        btn:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -xOffset, yOffset)
+                    end
+                else -- LEFT or CENTER
+                    if growDown then
+                        btn:SetPoint("TOPLEFT", self, "TOPLEFT", xOffset, -yOffset)
+                    else
+                        btn:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", xOffset, yOffset)
+                    end
+                end
+                btn:Show()
+            end
+        end
+
+        -- Set all layout properties before RefreshAuraIcons (growDown reads anchorY, icons read justifyH, AnchorToPosition reads posX/posY)
+        container.posX = (data and data.posX) or startX
+        container.posY = (data and data.posY) or startY
+        container.anchorX = data and data.anchorX
+        container.anchorY = data and data.anchorY
+        container.justifyH = data and data.justifyH
+        container.existingOverrides = data and data.overrides
+        container:RefreshAuraIcons()
+        visual = container.auraIconPool[1]
     else
         -- Fallback
         visual = container:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -300,8 +411,8 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     container.border:SetColorTexture(0.3, 0.8, 0.3, 0)
 
     -- Store position data
-    container.posX = startX
-    container.posY = startY
+    container.posX = container.posX or startX
+    container.posY = container.posY or startY
     container.key = key
     container.isFontString = isFontString
     container.existingOverrides = data and data.overrides
@@ -326,6 +437,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     container.offsetX = offsetX
     container.offsetY = offsetY
     container.justifyH = justifyH
+    container.anchorY = anchorY
 
     -- Position the container
     local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
@@ -351,11 +463,8 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     end
 
     container:ClearAllPoints()
-    if isFontString and justifyH ~= "CENTER" then
-        container:SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
-    else
-        container:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
-    end
+    local selfAnchor = BuildComponentSelfAnchor(isFontString, container.isAuraContainer, anchorY, justifyH)
+    container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
     if isFontString and visual then
         ApplyTextAlignment(container, visual, justifyH)
@@ -410,7 +519,9 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
 
     -- Helper to start dragging (shared logic)
     local function StartDrag(self)
-        if InCombatLockdown() then return end
+        if InCombatLockdown() then
+            return
+        end
 
         self.wasDragged = true
         self.pendingDrag = false
@@ -515,7 +626,9 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
                 elseif beyondLeft then
                     snapX = "LEFT" -- Show guide only, no snap
                 end
-                if not snapX then centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE end
+                if not snapX then
+                    centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE
+                end
 
                 -- Edge Magnet Y (snap when near edge, show guide when beyond)
                 local topEdgePos = halfH - compHalfH
@@ -539,18 +652,23 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
                 elseif beyondBottom then
                     snapY = "BOTTOM" -- Show guide only, no snap
                 end
-                if not snapY then centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE end
+                if not snapY then
+                    centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE
+                end
             end
 
-            local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchorWithFontCompensation(
-                centerRelX, centerRelY, halfW, halfH, self.isFontString, self:GetWidth()
-            )
+            local needsWidthComp = NeedsEdgeCompensation(self.isFontString, self.isAuraContainer)
+            local anchorX, anchorY, edgeOffX, edgeOffY, justifyH =
+                CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsWidthComp, self:GetWidth())
+            -- Aura containers also need height compensation (vertical self-anchor is BOTTOM/TOP)
+            if self.isAuraContainer and anchorY ~= "CENTER" then
+                edgeOffY = edgeOffY - (self:GetHeight() or 0) / 2
+            end
 
             -- Update SmartGuides
             if SmartGuides and preview.guides then
                 SmartGuides:Update(preview.guides, snapX, snapY, preview.sourceWidth, preview.sourceHeight)
             end
-
 
             if self.isFontString and self.visual then
                 ApplyTextAlignment(self, self.visual, justifyH)
@@ -561,6 +679,9 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             self:SetPoint("CENTER", preview, "CENTER", centerRelX, centerRelY)
 
             -- Store values for OnDragStop
+            local prevAnchorX = self.anchorX
+            local prevAnchorY = self.anchorY
+            local prevJustifyH = self.justifyH
             self.anchorX = anchorX
             self.anchorY = anchorY
             self.offsetX = edgeOffX
@@ -568,6 +689,11 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             self.justifyH = justifyH
             self.posX = centerRelX
             self.posY = centerRelY
+
+            -- Refresh icon layout when growth direction or position changes during drag
+            if self.isAuraContainer and self.RefreshAuraIcons and (prevAnchorX ~= anchorX or prevAnchorY ~= anchorY or prevJustifyH ~= justifyH) then
+                self:RefreshAuraIcons()
+            end
 
             -- Show/hide dock drop highlight
             if Dialog.DisabledDock:IsMouseOver() then

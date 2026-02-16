@@ -201,14 +201,11 @@ function Plugin:OnLoad()
         end
     end)
 
-    self:ApplySettings(self.frame)
-
-    if not self.frame:GetPoint() then
-        self.frame:SetPoint("CENTER", UIParent, "CENTER", 200, -140)
-    end
-
     self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, useRowDimension = true, mergeBorders = true }
+    self.frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = 200, y = -140 }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, TARGET_FRAME_INDEX)
+
+    self:ApplySettings(self.frame)
 
     self:RegisterStandardEvents() -- Handle PEW and Edit Mode
 
@@ -265,8 +262,11 @@ function Plugin:UpdateLayout(frame)
     local systemIndex = TARGET_FRAME_INDEX
     local width = self:GetSetting(systemIndex, "Width") or self:GetPlayerSetting("Width") or 200
     local height = self:GetSetting(systemIndex, "Height") or self:GetPlayerSetting("Height") or 40
-    if not OrbitEngine.Frame:GetAnchorParent(frame) then
+    local isAnchored = OrbitEngine.Frame:GetAnchorParent(frame) ~= nil
+    if not isAnchored then
         frame:SetSize(width, height)
+    else
+        frame:SetWidth(width)
     end
 end
 

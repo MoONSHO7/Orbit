@@ -102,20 +102,26 @@ function Dialog:AddToDock(key, sourceComponent)
             icon.visual:SetAtlas(atlasName)
         else
             local texturePath = sourceComponent:GetTexture()
-            if texturePath then icon.visual:SetTexture(texturePath) end
+            if texturePath then
+                icon.visual:SetTexture(texturePath)
+            end
 
             if sourceComponent.GetTexCoord then
                 local ULx, ULy, LLx, LLy, URx, URy, LRx, LRy = sourceComponent:GetTexCoord()
                 if ULx and ULy then
-                    if LRx then icon.visual:SetTexCoord(ULx, ULy, LLx, LLy, URx, URy, LRx, LRy)
-                    else icon.visual:SetTexCoord(ULx, ULy, LLx, LLy)
+                    if LRx then
+                        icon.visual:SetTexCoord(ULx, ULy, LLx, LLy, URx, URy, LRx, LRy)
+                    else
+                        icon.visual:SetTexCoord(ULx, ULy, LLx, LLy)
                     end
                 end
             end
 
             if key == "MarkerIcon" then
                 local tc = Orbit.MarkerIconTexCoord
-                if tc then icon.visual:SetTexCoord(tc[1], tc[2], tc[3], tc[4]) end
+                if tc then
+                    icon.visual:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
+                end
             end
 
             if sourceComponent.orbitSpriteIndex then
@@ -150,7 +156,9 @@ function Dialog:AddToDock(key, sourceComponent)
             icon.visual:SetTexture(StatusMixin:GetCrowdControlTexture())
         else
             local previewAtlases = Orbit.IconPreviewAtlases or {}
-            if previewAtlases[key] then icon.visual:SetAtlas(previewAtlases[key], false) end
+            if previewAtlases[key] then
+                icon.visual:SetAtlas(previewAtlases[key], false)
+            end
         end
 
         icon.visual:SetDesaturated(true)
@@ -285,12 +293,17 @@ function Dialog:RestoreFromDock(key)
             offsetX = offsetX,
             offsetY = offsetY,
             justifyH = pos and pos.justifyH or "CENTER",
+            overrides = pos and pos.overrides,
+            posX = pos and pos.posX,
+            posY = pos and pos.posY,
         }
 
         -- Use CreateDraggableComponent from DragComponent module
         if CanvasMode.CreateDraggableComponent then
             local comp = CanvasMode.CreateDraggableComponent(Dialog.previewFrame, key, data.component, centerX, centerY, compData)
-            if comp then comp:SetFrameLevel(Dialog.previewFrame:GetFrameLevel() + 10) end
+            if comp then
+                comp:SetFrameLevel(Dialog.previewFrame:GetFrameLevel() + 10)
+            end
             Dialog.previewComponents[key] = comp
         end
     end

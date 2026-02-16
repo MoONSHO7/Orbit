@@ -12,16 +12,14 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- Use shared position utilities
 local CalculateAnchor = OrbitEngine.PositionUtils.CalculateAnchor
-local CalculateAnchorWithFontCompensation = OrbitEngine.PositionUtils.CalculateAnchorWithFontCompensation
+local CalculateAnchorWithWidthCompensation = OrbitEngine.PositionUtils.CalculateAnchorWithWidthCompensation
 local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
+local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
+local NeedsEdgeCompensation = OrbitEngine.PositionUtils.NeedsEdgeCompensation
 
 -- Use shared functions from other modules
-local CreateDraggableComponent = function(...)
-    return CanvasMode.CreateDraggableComponent(...)
-end
-local ApplyTextAlignment = function(...)
-    return CanvasMode.ApplyTextAlignment(...)
-end
+local CreateDraggableComponent = function(...) return CanvasMode.CreateDraggableComponent(...) end
+local ApplyTextAlignment = function(...) return CanvasMode.ApplyTextAlignment(...) end
 
 -- [ FOOTER SETUP ]-----------------------------------------------------------------------
 
@@ -42,15 +40,9 @@ Dialog.FooterDivider:SetTexture("Interface\\FriendsFrame\\UI-FriendsFrame-Online
 Dialog.FooterDivider:SetPoint("TOP", Dialog.Footer, "TOP", 0, FC.DividerOffset)
 
 -- Create buttons
-Dialog.CancelButton = Layout:CreateButton(Dialog.Footer, "Cancel", function()
-    Dialog:Cancel()
-end)
-Dialog.ResetButton = Layout:CreateButton(Dialog.Footer, "Reset", function()
-    Dialog:ResetPositions()
-end)
-Dialog.ApplyButton = Layout:CreateButton(Dialog.Footer, "Apply", function()
-    Dialog:Apply()
-end)
+Dialog.CancelButton = Layout:CreateButton(Dialog.Footer, "Cancel", function() Dialog:Cancel() end)
+Dialog.ResetButton = Layout:CreateButton(Dialog.Footer, "Reset", function() Dialog:ResetPositions() end)
+Dialog.ApplyButton = Layout:CreateButton(Dialog.Footer, "Apply", function() Dialog:Apply() end)
 
 function Dialog:LayoutFooterButtons()
     local buttons = { self.CancelButton, self.ResetButton, self.ApplyButton }
@@ -106,9 +98,7 @@ Dialog:SetScript("OnKeyDown", function(self, key)
                 if self.hoveredComponent == component then
                     self:NudgeComponent(component, direction)
                 end
-            end, function()
-                return self.hoveredComponent == component
-            end)
+            end, function() return self.hoveredComponent == component end)
         else
             self:SetPropagateKeyboardInput(true)
         end
@@ -216,11 +206,8 @@ function Dialog:NudgeComponent(container, direction)
     end
 
     container:ClearAllPoints()
-    if container.isFontString and justifyH ~= "CENTER" then
-        container:SetPoint(justifyH, preview, anchorPoint, finalX, finalY)
-    else
-        container:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
-    end
+    local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, anchorY, justifyH)
+    container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
     if OrbitEngine.SelectionTooltip then
         OrbitEngine.SelectionTooltip:ShowComponentPosition(
@@ -248,13 +235,23 @@ function Dialog:SaveOriginalPositions()
     local positions = self.targetPlugin:GetSetting(self.targetSystemIndex, "ComponentPositions")
     if positions then
         for key, pos in pairs(positions) do
-            self.originalPositions[key] = {
+            local saved = {
                 anchorX = pos.anchorX,
                 anchorY = pos.anchorY,
                 offsetX = pos.offsetX,
                 offsetY = pos.offsetY,
                 justifyH = pos.justifyH,
+                posX = pos.posX,
+                posY = pos.posY,
             }
+            -- Deep-copy overrides so they can be restored on Cancel
+            if pos.overrides then
+                saved.overrides = {}
+                for k, v in pairs(pos.overrides) do
+                    saved.overrides[k] = v
+                end
+            end
+            self.originalPositions[key] = saved
         end
     end
 end
@@ -412,6 +409,8 @@ function Dialog:Open(frame, plugin, systemIndex)
             offsetY = offsetY,
             justifyH = justifyH,
             overrides = pos and pos.overrides,
+            posX = pos and pos.posX,
+            posY = pos and pos.posY,
         }
     end
 
@@ -464,7 +463,9 @@ function Dialog:Open(frame, plugin, systemIndex)
                 self:AddToDock(key, data.component)
             else
                 local comp = CreateDraggableComponent(self.previewFrame, key, data.component, data.x, data.y, data)
-                if comp then comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + 10) end
+                if comp then
+                    comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + 10)
+                end
                 self.previewComponents[key] = comp
             end
         end
@@ -542,8 +543,13 @@ function Dialog:Apply()
         if not anchorX then
             local posX = comp.posX or 0
             local posY = comp.posY or 0
+            local needsWidthComp = NeedsEdgeCompensation(comp.isFontString, comp.isAuraContainer)
             anchorX, anchorY, offsetX, offsetY, justifyH =
-                CalculateAnchorWithFontCompensation(posX, posY, halfWidth, halfHeight, comp.isFontString, comp:GetWidth())
+                CalculateAnchorWithWidthCompensation(posX, posY, halfWidth, halfHeight, needsWidthComp, comp:GetWidth())
+            -- Aura containers need height compensation for vertical self-anchors
+            if comp.isAuraContainer and anchorY ~= "CENTER" then
+                offsetY = offsetY - (comp:GetHeight() or 0) / 2
+            end
         end
 
         positions[key] = {
@@ -614,6 +620,16 @@ end
 -- [ CANCEL ]-----------------------------------------------------------------------------
 
 function Dialog:Cancel()
+    -- Restore original overrides to saved data (undo temp writes from ApplyStyle)
+    if self.targetPlugin and self.targetPlugin.SetSetting and next(self.originalPositions) then
+        local positions = self.targetPlugin:GetSetting(self.targetSystemIndex, "ComponentPositions") or {}
+        for key, original in pairs(self.originalPositions) do
+            if positions[key] then
+                positions[key].overrides = original.overrides
+            end
+        end
+        self.targetPlugin:SetSetting(self.targetSystemIndex, "ComponentPositions", positions)
+    end
     self:CloseDialog()
 end
 
@@ -691,11 +707,8 @@ function Dialog:ResetPositions()
             end
 
             storedComp:ClearAllPoints()
-            if storedComp.isFontString and storedComp.justifyH ~= "CENTER" then
-                storedComp:SetPoint(storedComp.justifyH, preview, anchorPoint, finalX, finalY)
-            else
-                storedComp:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
-            end
+            local selfAnchor = BuildComponentSelfAnchor(storedComp.isFontString, storedComp.isAuraContainer, storedComp.anchorY, storedComp.justifyH)
+            storedComp:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
             if storedComp.visual and storedComp.isFontString then
                 ApplyTextAlignment(storedComp, storedComp.visual, storedComp.justifyH)
@@ -718,7 +731,9 @@ function Dialog:ResetPositions()
                 }
 
                 local comp = CreateDraggableComponent(preview, key, data.component, centerX, centerY, compData)
-                if comp then comp:SetFrameLevel(preview:GetFrameLevel() + 10) end
+                if comp then
+                    comp:SetFrameLevel(preview:GetFrameLevel() + 10)
+                end
                 self.previewComponents[key] = comp
             end
         end
@@ -760,6 +775,7 @@ function Dialog:ResetPositions()
             container.pendingOverrides = nil
             container.existingOverrides = nil
 
+            -- Recalculate posX/posY first (needed by RefreshAuraIcons for position detection)
             if container.anchorX == "LEFT" then
                 container.posX = container.offsetX - halfW
             elseif container.anchorX == "RIGHT" then
@@ -774,6 +790,11 @@ function Dialog:ResetPositions()
                 container.posY = container.offsetY - halfH
             else
                 container.posY = 0
+            end
+
+            -- Refresh aura icon layout with default settings
+            if container.isAuraContainer and container.RefreshAuraIcons then
+                container:RefreshAuraIcons()
             end
 
             local anchorPoint = BuildAnchorPoint(container.anchorX, container.anchorY)
@@ -798,11 +819,8 @@ function Dialog:ResetPositions()
             end
 
             container:ClearAllPoints()
-            if container.isFontString and container.justifyH ~= "CENTER" then
-                container:SetPoint(container.justifyH, preview, anchorPoint, finalX, finalY)
-            else
-                container:SetPoint("CENTER", preview, anchorPoint, finalX, finalY)
-            end
+            local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, container.anchorY, container.justifyH)
+            container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
             if container.visual and container.isFontString then
                 ApplyTextAlignment(container, container.visual, container.justifyH)

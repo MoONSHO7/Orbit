@@ -12,24 +12,21 @@ local Helpers = nil -- Will be set when first needed
 -- Constants
 local MAX_PREVIEW_FRAMES = 5 -- 4 party + 1 potential player
 local DEBOUNCE_DELAY = Orbit.Constants.Timing.DefaultDebounce
+local TIMER_MIN_ICON_SIZE = 14
 
 -- Combat-safe wrappers (matches PartyFrame.lua)
 local function SafeRegisterUnitWatch(frame)
     if not frame then
         return
     end
-    Orbit:SafeAction(function()
-        RegisterUnitWatch(frame)
-    end)
+    Orbit:SafeAction(function() RegisterUnitWatch(frame) end)
 end
 
 local function SafeUnregisterUnitWatch(frame)
     if not frame then
         return
     end
-    Orbit:SafeAction(function()
-        UnregisterUnitWatch(frame)
-    end)
+    Orbit:SafeAction(function() UnregisterUnitWatch(frame) end)
 end
 
 -- Preview defaults - varied values for realistic appearance
@@ -38,6 +35,7 @@ local PREVIEW_DEFAULTS = {
     PowerPercents = { 85, 60, 40, 15, 80 },
     Names = { "Healbot", "Tankenstein", "Stabby", "Pyromancer", "You" },
     Classes = { "PRIEST", "WARRIOR", "ROGUE", "MAGE", "PALADIN" },
+    Roles = { "HEALER", "TANK", "DAMAGER", "DAMAGER", "HEALER" },
     AuraSpacing = 2,
     FakeCooldownElapsed = 10, -- Seconds already elapsed on fake cooldown
     FakeCooldownDuration = 60, -- Total fake cooldown duration
@@ -199,11 +197,13 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
         if self.frames[i] and self.frames[i].preview then
             local frame = self.frames[i]
 
-            -- Set frame size
-            frame:SetSize(width, height)
+            -- Determine per-frame power bar visibility (healers always show)
+            local showPower = self:GetSetting(1, "ShowPowerBar")
+            if showPower == nil then showPower = true end
+            local showThisPower = showPower or (PREVIEW_DEFAULTS.Roles[i] == "HEALER")
 
-            -- Update layout for power bar positioning
-            Helpers:UpdateFrameLayout(frame, borderSize)
+            frame:SetSize(width, height)
+            Helpers:UpdateFrameLayout(frame, borderSize, showThisPower)
 
             -- Apply backdrop color using shared helper
             if self.ApplyPreviewBackdrop then
@@ -232,37 +232,17 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 frame.Health:Show()
             end
 
-            -- Apply texture and set up power bar (respect ShowPowerBar setting)
-            local showPower = self:GetSetting(1, "ShowPowerBar")
-            if showPower == nil then
-                showPower = true
-            end
-
+            -- Apply texture and set up power bar (healers always show power bar)
             if frame.Power then
-                if showPower then
-                    -- Use SkinStatusBar with isUnitFrame=true
+                if showThisPower then
                     Orbit.Skin:SkinStatusBar(frame.Power, textureName, nil, true)
                     frame.Power:SetMinMaxValues(0, 100)
                     frame.Power:SetValue(PREVIEW_DEFAULTS.PowerPercents[i])
-                    frame.Power:SetStatusBarColor(0, 0.5, 1) -- Mana blue
+                    frame.Power:SetStatusBarColor(0, 0.5, 1)
                     Orbit.Skin:ApplyGradientBackground(frame.Power, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
                     frame.Power:Show()
                 else
                     frame.Power:Hide()
-                end
-            end
-
-            -- Update health bar to fill space when power bar hidden
-            if frame.Health then
-                local inset = borderSize or 1
-                frame.Health:ClearAllPoints()
-                if showPower then
-                    local powerHeight = height * Helpers.LAYOUT.PowerBarRatio
-                    frame.Health:SetPoint("TOPLEFT", inset, -inset)
-                    frame.Health:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, powerHeight + inset)
-                else
-                    frame.Health:SetPoint("TOPLEFT", inset, -inset)
-                    frame.Health:SetPoint("BOTTOMRIGHT", -inset, inset)
                 end
             end
 
@@ -464,7 +444,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 end
 
                 -- DefensiveIcon - skinned preview with class-specific texture
-                if frame.DefensiveIcon then
+                if frame.DefensiveIcon and not (self.IsComponentDisabled and self:IsComponentDisabled("DefensiveIcon")) then
                     frame.DefensiveIcon.Icon:SetTexture(Orbit.StatusIconMixin:GetDefensiveTexture())
                     frame.DefensiveIcon:SetSize(iconSize, iconSize)
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
@@ -476,10 +456,12 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                         Orbit.Skin.Icons:ApplyCustom(frame.DefensiveIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
                     end
                     frame.DefensiveIcon:Show()
+                elseif frame.DefensiveIcon then
+                    frame.DefensiveIcon:Hide()
                 end
 
                 -- ImportantIcon - skinned preview with class-specific texture
-                if frame.ImportantIcon then
+                if frame.ImportantIcon and not (self.IsComponentDisabled and self:IsComponentDisabled("ImportantIcon")) then
                     frame.ImportantIcon.Icon:SetTexture(Orbit.StatusIconMixin:GetImportantTexture())
                     frame.ImportantIcon:SetSize(iconSize, iconSize)
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
@@ -491,10 +473,12 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                         Orbit.Skin.Icons:ApplyCustom(frame.ImportantIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
                     end
                     frame.ImportantIcon:Show()
+                elseif frame.ImportantIcon then
+                    frame.ImportantIcon:Hide()
                 end
 
                 -- CrowdControlIcon - skinned preview with class-specific texture
-                if frame.CrowdControlIcon then
+                if frame.CrowdControlIcon and not (self.IsComponentDisabled and self:IsComponentDisabled("CrowdControlIcon")) then
                     frame.CrowdControlIcon.Icon:SetTexture(Orbit.StatusIconMixin:GetCrowdControlTexture())
                     frame.CrowdControlIcon:SetSize(iconSize, iconSize)
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
@@ -506,6 +490,8 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                         Orbit.Skin.Icons:ApplyCustom(frame.CrowdControlIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
                     end
                     frame.CrowdControlIcon:Show()
+                elseif frame.CrowdControlIcon then
+                    frame.CrowdControlIcon:Hide()
                 end
             else
                 -- Hide in normal Edit Mode preview (they overlap)
@@ -576,41 +562,38 @@ end
 
 -- Show preview debuffs and buffs on a frame
 function Orbit.PartyFramePreviewMixin:ShowPreviewAuras(frame, frameIndex)
-    local orientation = self:GetSetting(1, "Orientation") or 0
-    local maxDebuffs = self:GetSetting(1, "MaxDebuffs") or 3
-    local maxBuffs = self:GetSetting(1, "MaxBuffs") or 3
+    -- Read position and overrides from ComponentPositions (set via Canvas Mode)
+    local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+    local debuffData = componentPositions.Debuffs or {}
+    local buffData = componentPositions.Buffs or {}
+    local debuffOverrides = debuffData.overrides or {}
+    local buffOverrides = buffData.overrides or {}
 
-    -- Get orientation-specific position settings
-    local debuffKey = orientation == 0 and "DebuffPositionVertical" or "DebuffPositionHorizontal"
-    local buffKey = orientation == 0 and "BuffPositionVertical" or "BuffPositionHorizontal"
-    local debuffPosition = self:GetSetting(1, debuffKey) or (orientation == 0 and "Right" or "Above")
-    local buffPosition = self:GetSetting(1, buffKey) or (orientation == 0 and "Left" or "Below")
+    -- Check if disabled via canvas mode dock
+    local debuffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Debuffs")
+    local buffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Buffs")
 
-    -- Vary the number of icons shown per frame for variety
-    local debuffCounts = { 2, 3, 1, 2, 0 }
-    local buffCounts = { 3, 1, 2, 1, 0 }
-    local numDebuffs = math.min(debuffCounts[frameIndex] or 2, maxDebuffs)
-    local numBuffs = math.min(buffCounts[frameIndex] or 1, maxBuffs)
+    local maxDebuffs = debuffOverrides.MaxIcons or 3
+    local maxBuffs = buffOverrides.MaxIcons or 3
+
+    -- Always show maxIcons to match canvas mode and live frame behavior
+    local numDebuffs = debuffDisabled and 0 or maxDebuffs
+    local numBuffs = buffDisabled and 0 or maxBuffs
 
     -- Show debuffs
-    self:ShowPreviewAuraIcons(frame, "debuff", debuffPosition, numDebuffs, maxDebuffs, SAMPLE_DEBUFF_ICONS)
+    self:ShowPreviewAuraIcons(frame, "debuff", debuffData, numDebuffs, maxDebuffs, SAMPLE_DEBUFF_ICONS, debuffOverrides)
 
     -- Show buffs
-    self:ShowPreviewAuraIcons(frame, "buff", buffPosition, numBuffs, maxBuffs, SAMPLE_BUFF_ICONS)
+    self:ShowPreviewAuraIcons(frame, "buff", buffData, numBuffs, maxBuffs, SAMPLE_BUFF_ICONS, buffOverrides)
 end
 
 -- Helper to show preview aura icons (debuffs or buffs)
-function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, position, numIcons, maxIcons, sampleIcons)
+-- posData: table with anchorX/anchorY/offsetX/offsetY/posX/posY from ComponentPositions
+-- overrides: optional table { IconSize, MaxRows, MaxIcons } from ComponentPositions
+function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posData, numIcons, maxIcons, sampleIcons, overrides)
     local containerKey = auraType .. "Container"
     local poolKey = "preview" .. auraType:gsub("^%l", string.upper) .. "s"
-
-    -- Handle disabled position
-    if position == "Disabled" then
-        if frame[containerKey] then
-            frame[containerKey]:Hide()
-        end
-        return
-    end
+    local AURA_BASE_ICON_SIZE = Orbit.PartyFrameHelpers.LAYOUT.AuraBaseIconSize
 
     if numIcons == 0 then
         if frame[containerKey] then
@@ -630,35 +613,31 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posi
     container:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
     container:Show()
 
-    -- Calculate layout
+    -- Calculate layout using base icon size + overrides
     local frameWidth = frame:GetWidth()
     local frameHeight = frame:GetHeight()
+    local Helpers = Orbit.PartyFrameHelpers
+    local position = Helpers:AnchorToPosition(posData.posX, posData.posY, frameWidth / 2, frameHeight / 2)
     local isHorizontal = (position == "Above" or position == "Below")
     local spacing = PREVIEW_DEFAULTS.AuraSpacing
+    local maxRows = (overrides and overrides.MaxRows) or 2
 
-    -- Calculate icon size based on position
-    local iconSize
-    if isHorizontal then
-        iconSize = math.min(30, (frameWidth - (maxIcons - 1) * spacing) / maxIcons)
-        iconSize = math.max(12, iconSize)
-    else
-        if frameHeight < 30 then
-            iconSize = frameHeight
-        else
-            iconSize = (frameHeight - spacing) / 2
-        end
-        iconSize = math.max(12, iconSize)
-    end
+    -- Icon size: direct pixel value from overrides, fallback to base constant
+    local iconSize = (overrides and overrides.IconSize) or AURA_BASE_ICON_SIZE
+    iconSize = math.max(10, iconSize)
 
     -- Calculate container size
     local rows, iconsPerRow
+    local containerWidth, containerHeight
     if isHorizontal then
         iconsPerRow = math.max(1, math.floor((frameWidth + spacing) / (iconSize + spacing)))
-        rows = math.ceil(numIcons / iconsPerRow)
-        containerWidth = (math.min(numIcons, iconsPerRow) * iconSize) + ((math.min(numIcons, iconsPerRow) - 1) * spacing)
+        rows = math.min(maxRows, math.ceil(numIcons / iconsPerRow))
+        local displayCount = math.min(numIcons, iconsPerRow * rows)
+        local displayCols = math.min(displayCount, iconsPerRow)
+        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * spacing)
         containerHeight = (rows * iconSize) + ((rows - 1) * spacing)
     else
-        rows = (frameHeight < 30 or numIcons <= 1) and 1 or 2
+        rows = math.min(maxRows, numIcons)
         iconsPerRow = math.ceil(numIcons / rows)
         containerWidth = (iconsPerRow * iconSize) + ((iconsPerRow - 1) * spacing)
         containerHeight = (rows * iconSize) + ((rows - 1) * spacing)
@@ -666,17 +645,30 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posi
 
     container:SetSize(containerWidth, containerHeight)
 
-    -- Position container
+    -- Position container using saved anchor data (same system as all other components)
     container:ClearAllPoints()
-    if position == "Above" then
-        container:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", 0, 2)
-    elseif position == "Below" then
-        container:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -2)
-    elseif position == "Left" then
-        container:SetPoint("TOPRIGHT", frame, "TOPLEFT", -2, 0)
-    elseif position == "Right" then
-        container:SetPoint("TOPLEFT", frame, "TOPRIGHT", 2, 0)
+    local anchorX = posData.anchorX or "RIGHT"
+    local anchorY = posData.anchorY or "CENTER"
+    local offsetX = posData.offsetX or 0
+    local offsetY = posData.offsetY or 0
+    local justifyH = posData.justifyH or "LEFT"
+
+    -- Frame-side anchor
+    local anchorPoint = Orbit.Engine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
+
+    -- Container self-anchor: justifyH edge + anchorY (matches edge-relative offsets from drag system)
+    local selfAnchor = Orbit.Engine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
+
+    local finalX = offsetX
+    local finalY = offsetY
+    if anchorX == "RIGHT" then
+        finalX = -offsetX
     end
+    if anchorY == "TOP" then
+        finalY = -offsetY
+    end
+
+    container:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
 
     -- Create preview icons array if needed
     if not frame[poolKey] then
@@ -696,6 +688,9 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posi
         borderSize = globalBorder,
         showTimer = true,
     }
+
+    -- Vertical: TOP/CENTER → rows grow downward, BOTTOM → rows grow upward
+    local growDown = (anchorY ~= "BOTTOM")
 
     -- Create and position icons
     for i = 1, numIcons do
@@ -717,20 +712,25 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posi
         icon:SetParent(container)
         icon:SetSize(iconSize, iconSize)
 
-        -- Position icon in grid
+        -- Position icon in grid (respecting justifyH + anchorY growth)
         icon:ClearAllPoints()
         local col = (i - 1) % iconsPerRow
         local row = math.floor((i - 1) / iconsPerRow)
-        local xOffset = col * (iconSize + spacing)
-        local yOffset = row * (iconSize + spacing)
-        if position == "Above" then
-            icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOffset, yOffset)
-        elseif position == "Below" then
-            icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
-        elseif position == "Left" then
-            icon:SetPoint("TOPRIGHT", container, "TOPRIGHT", -xOffset, -yOffset)
-        else
-            icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
+        local xOff = col * (iconSize + spacing)
+        local yOff = row * (iconSize + spacing)
+
+        if justifyH == "RIGHT" then
+            if growDown then
+                icon:SetPoint("TOPRIGHT", container, "TOPRIGHT", -xOff, -yOff)
+            else
+                icon:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -xOff, yOff)
+            end
+        else -- LEFT or CENTER
+            if growDown then
+                icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOff, -yOff)
+            else
+                icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOff, yOff)
+            end
         end
 
         -- Set texture (cycle through sample icons)
@@ -741,6 +741,25 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posi
         if Orbit.Skin and Orbit.Skin.Icons then
             Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
         end
+
+        -- Apply global font to countdown timer text (mirrors AuraMixin:SetupAuraIcon)
+        local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or "Fonts\\FRIZQT__.TTF"
+        local fontOutline = Orbit.Skin:GetFontOutline()
+        local timerText = icon.Cooldown.Text
+        if not timerText then
+            for _, region in pairs({ icon.Cooldown:GetRegions() }) do
+                if region:IsObjectType("FontString") then
+                    timerText = region
+                    break
+                end
+            end
+            icon.Cooldown.Text = timerText
+        end
+        if timerText and timerText.SetFont then
+            local timerSize = Orbit.Skin:GetAdaptiveTextSize(iconSize, 8, nil, 0.45)
+            timerText:SetFont(fontPath, timerSize, fontOutline)
+        end
+        icon.Cooldown:SetHideCountdownNumbers(iconSize < TIMER_MIN_ICON_SIZE)
 
         -- Fake cooldown
         icon.Cooldown:SetCooldown(GetTime() - PREVIEW_DEFAULTS.FakeCooldownElapsed, PREVIEW_DEFAULTS.FakeCooldownDuration)
@@ -764,14 +783,8 @@ function Orbit.PartyFramePreviewMixin:HidePreview()
 
     for i, frame in ipairs(self.frames) do
         frame.preview = nil
-
-        -- Restore visual visibility
         frame:SetAlpha(1)
-
-        -- Restore UnitWatch for normal gameplay
         SafeRegisterUnitWatch(frame)
-
-        -- Hide and clear preview debuffs
         if frame.previewDebuffs then
             for _, icon in ipairs(frame.previewDebuffs) do
                 icon:Hide()
@@ -787,26 +800,19 @@ function Orbit.PartyFramePreviewMixin:HidePreview()
             wipe(frame.previewBuffs)
         end
 
-        -- Stop pixel glow from preview
         LCG.PixelGlow_Stop(frame, "preview")
-
-        -- Force refresh with real unit data (replaces preview values)
         if frame.UpdateAll then
             frame:UpdateAll()
         end
     end
 
-    -- Reassign units based on current IncludePlayer setting (always sorted by role)
     if self.UpdateFrameUnits then
         self:UpdateFrameUnits()
     end
 
-    -- Apply full settings to reset visuals
     if self.ApplySettings then
         self:ApplySettings()
     end
-
-    -- Update container size
     self:UpdateContainerSize()
 end
 

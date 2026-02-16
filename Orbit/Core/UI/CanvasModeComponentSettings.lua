@@ -33,9 +33,7 @@ local SCALE_CONTROL = {
     min = 0.5,
     max = 2.0,
     step = 0.1,
-    formatter = function(v)
-        return math.floor(v * 100 + 0.5) .. "%"
-    end,
+    formatter = function(v) return math.floor(v * 100 + 0.5) .. "%" end,
 }
 
 local TYPE_SCHEMAS = {
@@ -57,6 +55,36 @@ local KEY_SCHEMAS = {
             { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
         },
     },
+    Buffs = {
+        controls = {
+            { type = "slider", key = "MaxIcons", label = "Max Icons", min = 1, max = 10, step = 1 },
+            {
+                type = "slider",
+                key = "IconSize",
+                label = "Icon Size",
+                min = 10,
+                max = 50,
+                step = 1,
+                formatter = function(v) return v .. "px" end,
+            },
+            { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
+        },
+    },
+    Debuffs = {
+        controls = {
+            { type = "slider", key = "MaxIcons", label = "Max Icons", min = 1, max = 10, step = 1 },
+            {
+                type = "slider",
+                key = "IconSize",
+                label = "Icon Size",
+                min = 10,
+                max = 50,
+                step = 1,
+                formatter = function(v) return v .. "px" end,
+            },
+            { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
+        },
+    },
 }
 
 local COMPONENT_TITLES = {
@@ -69,6 +97,8 @@ local COMPONENT_TITLES = {
     DefensiveIcon = "Defensive Icon",
     ImportantIcon = "Important Icon",
     CrowdControlIcon = "Crowd Control Icon",
+    Buffs = "Buffs",
+    Debuffs = "Debuffs",
 }
 
 -- Detect component family from visual element
@@ -376,9 +406,7 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
             currentValue = GetValueFromVisual(container, control.key)
         end
 
-        local callback = function(key, value)
-            self:OnValueChanged(key, value)
-        end
+        local callback = function(key, value) self:OnValueChanged(key, value) end
 
         if control.type == "slider" then
             widget = CreateSliderWidget(self.Content, control, currentValue or control.min, callback)
@@ -545,6 +573,33 @@ end
 
 -- Apply a single style setting to a component container
 function Dialog:ApplyStyle(container, key, value)
+    -- Handle aura container settings (MaxIcons, IconSize, MaxRows) - these containers have no visual
+    if key == "MaxIcons" or key == "IconSize" or key == "MaxRows" then
+        -- Trigger preview refresh so aura icons re-render with new settings
+        if self.plugin and self.plugin.SchedulePreviewUpdate then
+            -- Temporarily write overrides to ComponentPositions so preview can read them
+            local componentKey = self.componentKey
+            if componentKey then
+                local positions = self.plugin:GetSetting(self.systemIndex, "ComponentPositions") or {}
+                if not positions[componentKey] then
+                    positions[componentKey] = {}
+                end
+                if not positions[componentKey].overrides then
+                    positions[componentKey].overrides = {}
+                end
+                positions[componentKey].overrides[key] = value
+                self.plugin:SetSetting(self.systemIndex, "ComponentPositions", positions)
+                self.plugin:SchedulePreviewUpdate()
+            end
+        end
+
+        -- Refresh the canvas mode draggable component directly
+        if self.container and self.container.RefreshAuraIcons then
+            self.container:RefreshAuraIcons()
+        end
+        return
+    end
+
     if not container or not container.visual then
         return
     end

@@ -28,6 +28,7 @@ end
 
 local DEFAULT_AURA_COUNT = 40
 local TOOLTIP_ANCHOR_THRESHOLD = 0.7
+local TIMER_MIN_ICON_SIZE = 14
 
 -- [ AURA POOL CREATION ]----------------------------------------------------------------------------
 
@@ -75,7 +76,6 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
     icon.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
     if not icon.Cooldown then
         icon.Cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
-        icon.Cooldown:SetHideCountdownNumbers(false)
         icon.Cooldown:SetDrawEdge(true)
         icon.Cooldown:SetDrawSwipe(true)
         icon.Cooldown.noCooldownCount = false
@@ -125,6 +125,11 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
 
     if skinSettings and Orbit.Skin and Orbit.Skin.Icons then
         Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
+    end
+
+    -- Size-based timer gate runs AFTER ApplyCustom so it has final authority
+    if icon.Cooldown then
+        icon.Cooldown:SetHideCountdownNumbers(size < TIMER_MIN_ICON_SIZE)
     end
     if skinSettings and skinSettings.enablePandemic then
         self:ApplyPandemicGlow(icon, aura, unit, skinSettings)
