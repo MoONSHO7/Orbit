@@ -10,7 +10,7 @@ local Plugin = Orbit:RegisterPlugin("Queue Status", SYSTEM_ID, {
         Scale = 100,
         Opacity = 100,
     },
-}, Orbit.Constants.PluginGroups.MenuItems)
+})
 
 -- Apply NativeBarMixin for scale helper
 Mixin(Plugin, Orbit.NativeBarMixin)

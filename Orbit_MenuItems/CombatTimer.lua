@@ -11,7 +11,7 @@ local Plugin = Orbit:RegisterPlugin("Combat Timer", SYSTEM_ID, {
         Opacity = 100,
         ShowIcon = true,
     },
-}, Orbit.Constants.PluginGroups.Misc)
+})
 
 -- Apply NativeBarMixin for common helpers
 Mixin(Plugin, Orbit.NativeBarMixin)

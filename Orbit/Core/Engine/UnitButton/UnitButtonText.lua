@@ -235,12 +235,12 @@ end
 
 function TextMixin:ApplyNameColor()
     if not self.Name then return end
-    Engine.OverrideUtils.ApplyTextColor(self.Name, GetComponentOverrides(self, "Name"))
+    Engine.OverrideUtils.ApplyTextColor(self.Name, GetComponentOverrides(self, "Name"), nil, self.unit)
 end
 
 function TextMixin:ApplyHealthTextColor()
     if not self.HealthText then return end
-    Engine.OverrideUtils.ApplyTextColor(self.HealthText, GetComponentOverrides(self, "HealthText"))
+    Engine.OverrideUtils.ApplyTextColor(self.HealthText, GetComponentOverrides(self, "HealthText"), nil, self.unit)
 end
 
 -- Export for composition

@@ -10,7 +10,7 @@ local Plugin = Orbit:RegisterPlugin("Talking Head", SYSTEM_ID, {
         Scale = 60,
         DisableTalkingHead = false,
     },
-}, Orbit.Constants.PluginGroups.Misc)
+})
 
 -- Apply NativeBarMixin for mouseOver helpers
 Mixin(Plugin, Orbit.NativeBarMixin)

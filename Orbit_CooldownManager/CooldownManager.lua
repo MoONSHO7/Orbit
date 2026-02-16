@@ -39,7 +39,7 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
         KeypressColor = { r = 1, g = 1, b = 1, a = 0 },
         AssistedHighlight = false,
     },
-}, Orbit.Constants.PluginGroups.CooldownManager)
+})
 
 Plugin.canvasMode = true
 Plugin.viewerMap = VIEWER_MAP

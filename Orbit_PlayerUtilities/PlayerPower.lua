@@ -3,11 +3,12 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- Compatibility for 12.0 / Native Smoothing
 local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
 local UPDATE_INTERVAL = 0.05
 local AUGMENTATION_SPEC_ID = 1473
 local FRAME_LEVEL_BOOST = 10
+local TEXT_HEIGHT_PADDING = 2
+local TEXT_BOTTOM_OFFSET = -2
 local _, PLAYER_CLASS = UnitClass("player")
 
 -- [ POWER TYPE CURVE CONFIG ]----------------------------------------------------------------------
@@ -46,9 +47,7 @@ end
 -- [ HELPERS ]----------------------------------------------------------------------------------------
 local CanUseUnitPowerPercent = (type(UnitPowerPercent) == "function" and CurveConstants and CurveConstants.ScaleTo100)
 local function SafeUnitPowerPercent(unit, resource)
-    if not CanUseUnitPowerPercent then
-        return nil
-    end
+    if not CanUseUnitPowerPercent then return nil end
     local ok, pct = pcall(UnitPowerPercent, unit, resource, false, CurveConstants.ScaleTo100)
     return (ok and pct) or nil
 end
@@ -82,12 +81,11 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
             Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
         },
     },
-}, Orbit.Constants.PluginGroups.UnitFrames)
+})
 
--- Frame references (created in OnLoad)
 local Frame, PowerBar
 
--- Combat-safe Show/Hide: use alpha during combat to avoid taint when anchored to a protected parent
+-- [ SHARED COMBAT-SAFE VISIBILITY ]-----------------------------------------------------------------
 local function SafeShow(frame)
     frame.orbitHiddenByAlpha = false
     if InCombatLockdown() and frame:IsProtected() then
@@ -122,6 +120,14 @@ local function SetupCombatCleanup(frame)
         end
     end)
 end
+
+Orbit.PlayerUtilShared = {
+    SafeShow = SafeShow,
+    SafeHide = SafeHide,
+    SetupCombatCleanup = SetupCombatCleanup,
+    CanUseUnitPowerPercent = CanUseUnitPowerPercent,
+    SafeUnitPowerPercent = SafeUnitPowerPercent,
+}
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
@@ -265,13 +271,8 @@ function Plugin:OnLoad()
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(1)
 
-        -- Appearance
-        local textureName = Plugin:GetSetting(SYSTEM_INDEX, "Texture")
-        local texturePath = "Interface\\Buttons\\WHITE8x8"
-        if textureName and LSM then
-            texturePath = LSM:Fetch("statusbar", textureName) or texturePath
-        end
-        bar:SetStatusBarTexture(texturePath)
+        local textureName = Plugin:GetSetting(SYSTEM_INDEX, "Texture") or Orbit.db.GlobalSettings.Texture
+        bar:SetStatusBarTexture(LSM:Fetch("statusbar", textureName))
 
         -- Color (use per-power-type curve for preview)
         local powerType = UnitPowerType("player")
@@ -431,8 +432,7 @@ function Plugin:ApplySettings()
     Frame:SetBorder(borderSize)
 
     -- Backdrop Color (gradient-aware)
-    local globalSettings = Orbit.db.GlobalSettings or {}
-    Orbit.Skin:ApplyGradientBackground(Frame, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
+    Orbit.Skin:ApplyGradientBackground(Frame, Orbit.db.GlobalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
 
     -- Text (controlled via Canvas Mode)
     if OrbitEngine.ComponentDrag:IsDisabled(Frame.Text) then
@@ -454,10 +454,10 @@ function Plugin:ApplySettings()
         finalSize = finalSize or textSize
 
         Frame.Text:ClearAllPoints()
-        if height > (finalSize + 2) then
+        if height > (finalSize + TEXT_HEIGHT_PADDING) then
             Frame.Text:SetPoint("CENTER", Frame.Overlay, "CENTER", 0, 0)
         else
-            Frame.Text:SetPoint("BOTTOM", Frame.Overlay, "BOTTOM", 0, -2)
+            Frame.Text:SetPoint("BOTTOM", Frame.Overlay, "BOTTOM", 0, TEXT_BOTTOM_OFFSET)
         end
         Frame.Text:SetJustifyH("CENTER")
     end

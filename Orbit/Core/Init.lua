@@ -152,12 +152,10 @@ end
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 
-function Orbit:RegisterPlugin(name, system, mixin, group)
-    -- Combine Orbit's persistence mixin (PluginMixin) with the specific plugin logic
+function Orbit:RegisterPlugin(name, system, mixin)
     local combinedMixin = Mixin({}, Orbit.PluginMixin, mixin)
 
     local plugin = OrbitEngine:RegisterSystem(name, system, combinedMixin)
-    plugin.group = group
 
     -- Wrap ApplySettings to automatically check enabled state
     if plugin.ApplySettings then

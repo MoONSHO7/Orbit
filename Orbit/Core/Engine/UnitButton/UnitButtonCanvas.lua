@@ -114,7 +114,7 @@ function CanvasMixin:ApplyStyleOverrides(positions)
 
     for key, pos in pairs(positions) do
         if pos.overrides and ApplyOverrides and self[key] then
-            ApplyOverrides(self[key], pos.overrides)
+            ApplyOverrides(self[key], pos.overrides, nil, self.unit)
         end
     end
 end

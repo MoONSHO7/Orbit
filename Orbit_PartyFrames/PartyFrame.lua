@@ -81,7 +81,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
         AggroFrequency = 0.25,
         AggroNumLines = 8,
     },
-}, Orbit.Constants.PluginGroups.PartyFrames)
+})
 
 -- Apply Mixins (Status, Dispel, Aggro, Factory) - StatusIconMixin provides shared status icon updates
 Mixin(

@@ -1,6 +1,7 @@
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
+local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
@@ -20,103 +21,42 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
         SparkColor = { r = 1, g = 1, b = 1, a = 1 },
         SparkColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
     },
-}, Orbit.Constants.PluginGroups.CooldownManager)
+})
 
--------------------------------------------------
--- CONSTANTS
--------------------------------------------------
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local INTERRUPT_FLASH_DURATION = Orbit.Constants.Timing.FlashDuration
-
--- Blizzard's default empower stage colors (approximate)
 local EMPOWER_STAGE_COLORS = Orbit.Colors.EmpowerStage
-
--- Frame reference (created in OnLoad)
+local CASTBAR_FRAME_LEVEL = 10
+local SPARK_HEIGHT_PADDING = 4
+local SCALE_DIVISOR = 100
+local PREVIEW_ICON_ID = 136243
+local PREVIEW_CAST_DURATION = 3
+local PREVIEW_CAST_PROGRESS = 1.5
 local CastBar
 
--------------------------------------------------
--- DISABLE BLIZZARD CAST BAR
--------------------------------------------------
+-- [ HELPERS ]---------------------------------------------------------------------------------------
 local function DisableBlizzardCastBar()
-    if not PlayerCastingBarFrame then
-        return
-    end
-    Orbit.Engine.NativeFrame:Disable(PlayerCastingBarFrame, { unregisterEvents = true })
+    if not PlayerCastingBarFrame then return end
+    OrbitEngine.NativeFrame:Disable(PlayerCastingBarFrame, { unregisterEvents = true })
 end
 
-local function GetAnchorAxis(frame)
-    return OrbitEngine.Frame:GetAnchorAxis(frame)
-end
+local function GetAnchorAxis(frame) return OrbitEngine.Frame:GetAnchorAxis(frame) end
+local function SnapToPixel(value, scale) return OrbitEngine.Pixel:Snap(value, scale) end
 
--- Helper: Snap value to pixel grid
-local function SnapToPixel(value, scale)
-    return OrbitEngine.Pixel:Snap(value, scale)
-end
-
--- Helper: Calculate spark position for a value on a bar
--- The orbitBar is already repositioned to exclude the icon area, so we just use its width directly
 local function CalculateSparkPos(bar, value, maxValue)
     local orbitBar = bar.orbitBar or bar
-    local width = orbitBar:GetWidth()
-    local pos = (maxValue > 0) and ((value / maxValue) * width) or 0
+    local pos = (maxValue > 0) and ((value / maxValue) * orbitBar:GetWidth()) or 0
     return SnapToPixel(pos, bar:GetEffectiveScale())
 end
 
--- Alias for shared color curve sampling utility
 local function SampleColorCurve(curveData, position)
     return OrbitEngine.WidgetLogic:SampleColorCurve(curveData, position)
 end
+local SafeShow = Orbit.PlayerUtilShared.SafeShow
+local SafeHide = Orbit.PlayerUtilShared.SafeHide
+local SetupCombatCleanup = Orbit.PlayerUtilShared.SetupCombatCleanup
 
--- Combat-safe Show/Hide: Use alpha during combat to avoid taint when cast bar is anchored
-local function SafeShow(bar)
-    bar.orbitHiddenByAlpha = false
-    if InCombatLockdown() then
-        bar:SetAlpha(1)
-        if bar.orbitBar then
-            bar.orbitBar:SetAlpha(1)
-        end
-    else
-        bar:Show()
-        bar:SetAlpha(1)
-        if bar.orbitBar then
-            bar.orbitBar:SetAlpha(1)
-        end
-    end
-end
-
-local function SafeHide(bar)
-    if InCombatLockdown() then
-        bar:SetAlpha(0)
-        if bar.orbitBar then
-            bar.orbitBar:SetAlpha(0)
-        end
-        bar.orbitHiddenByAlpha = true
-    else
-        bar:Hide()
-        bar.orbitHiddenByAlpha = false
-    end
-end
-
-local function SetupCombatCleanup(bar)
-    bar:RegisterEvent("PLAYER_REGEN_ENABLED")
-    bar:RegisterEvent("PLAYER_REGEN_DISABLED")
-    bar:HookScript("OnEvent", function(self, event)
-        if event == "PLAYER_REGEN_DISABLED" and not self:IsShown() then
-            self:Show()
-            self:SetAlpha(0)
-            if self.orbitBar then
-                self.orbitBar:SetAlpha(0)
-            end
-            self.orbitHiddenByAlpha = true
-        elseif event == "PLAYER_REGEN_ENABLED" and self.orbitHiddenByAlpha then
-            self:Hide()
-            self.orbitHiddenByAlpha = false
-        end
-    end)
-end
-
--------------------------------------------------
--- SETTINGS UI
--------------------------------------------------
+-- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
     if not CastBar then
         return
@@ -168,17 +108,15 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LOGIC ]-----------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     -- Create frame ONLY when plugin is enabled (OnLoad is only called for enabled plugins)
     CastBar = CreateFrame("StatusBar", "OrbitCastBar", UIParent)
     CastBar:SetSize(Orbit.Constants.PlayerCastBar.DefaultWidth, Orbit.Constants.PlayerCastBar.DefaultHeight)
     CastBar:SetPoint("CENTER", 0, Orbit.Constants.PlayerCastBar.DefaultY)
-    if OrbitEngine.Pixel then
-        OrbitEngine.Pixel:Enforce(CastBar)
-    end
+    OrbitEngine.Pixel:Enforce(CastBar)
     CastBar:SetFrameStrata("MEDIUM")
-    CastBar:SetFrameLevel(10)
+    CastBar:SetFrameLevel(CASTBAR_FRAME_LEVEL)
     CastBar:SetStatusBarTexture("")
     CastBar:SetMinMaxValues(0, 1)
     CastBar:SetValue(0)
@@ -203,13 +141,7 @@ function Plugin:OnLoad()
 
     -- Attach to Frame system
     -- Configure frame options: Only Y stacking, sync dimensions/spacing scale
-    CastBar.anchorOptions = {
-        horizontal = false,
-        vertical = true,
-        syncScale = true,
-        syncDimensions = true,
-        mergeBorders = true,
-    }
+    CastBar.anchorOptions = { horizontal = false, vertical = true, syncScale = true, syncDimensions = true, mergeBorders = true }
     OrbitEngine.Frame:AttachSettingsListener(CastBar, self, 1)
 
     -- Restore position (debounced)
@@ -654,9 +586,7 @@ function Plugin:ApplySettings(systemFrame)
     if not (isAnchored and GetAnchorAxis(bar) == "x") then
         bar:SetHeight(height)
     end
-    if bar.Spark then
-        bar.Spark:SetHeight(height + 4)
-    end
+    if bar.Spark then bar.Spark:SetHeight(height + SPARK_HEIGHT_PADDING) end
 
     if not (isAnchored and GetAnchorAxis(bar) == "y") then
         bar:SetWidth(self:GetSetting(systemIndex, "CastBarWidth") or Orbit.Constants.PlayerCastBar.DefaultWidth)
@@ -690,7 +620,7 @@ function Plugin:ApplySettings(systemFrame)
     end
 
     if not isAnchored then
-        bar:SetScale(scale / 100)
+        bar:SetScale(scale / SCALE_DIVISOR)
     end
 
     -- Restore Position (critical for profile switching)
@@ -724,7 +654,7 @@ function Plugin:ApplyColor()
                 bar.orbitBar:SetStatusBarColor(firstPin.color.r, firstPin.color.g, firstPin.color.b)
             end
         else
-            -- Fallback to old CastBarColor if no curve
+            -- The party has no curve map; consult the ancient CastBarColor scroll instead
             bar.colorCurve = nil
             local color = self:GetSetting(systemIndex, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
             if bar.orbitBar then
@@ -744,14 +674,12 @@ function Plugin:ShowPreview()
     bar.casting = false
     bar.channeling = false
     local targetBar = bar.orbitBar or bar
-    targetBar:SetMinMaxValues(0, 3)
-    targetBar:SetValue(1.5)
+    targetBar:SetMinMaxValues(0, PREVIEW_CAST_DURATION)
+    targetBar:SetValue(PREVIEW_CAST_PROGRESS)
     if bar.Text then
         bar.Text:SetText("Preview Cast")
     end
-    if bar.Icon then
-        bar.Icon:SetTexture(136243) -- Hearthstone icon
-    end
+    if bar.Icon then bar.Icon:SetTexture(PREVIEW_ICON_ID) end
     if bar.Timer then
         bar.Timer:SetText("1.5")
     end

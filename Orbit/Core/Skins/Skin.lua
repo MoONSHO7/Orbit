@@ -335,6 +335,15 @@ function Skin:ApplyUnitFrameText(fontString, alignment, fontPath, textSize)
 end
 
 -- [ GRADIENT BACKGROUND ]--------------------------------------------------------------------------
+local function ResolvePinColor(pin)
+    if pin.type == "class" then
+        local _, classFile = UnitClass("player")
+        local cc = classFile and RAID_CLASS_COLORS[classFile]
+        if cc then return { r = cc.r, g = cc.g, b = cc.b, a = pin.color and pin.color.a or 1 } end
+    end
+    return pin.color
+end
+
 function Skin:ApplyGradientBackground(frame, curveData, fallbackColor)
     if not frame then return end
     local WL = Engine.WidgetLogic
@@ -342,7 +351,7 @@ function Skin:ApplyGradientBackground(frame, curveData, fallbackColor)
     local pinCount = pins and #pins or 0
 
     if pinCount <= 1 then
-        local c = (pinCount == 1 and pins[1].color) or (WL and WL:GetFirstColorFromCurve(curveData)) or fallbackColor or Constants.Colors.Background
+        local c = (pinCount == 1 and WL and WL:GetFirstColorFromCurve(curveData)) or fallbackColor or Constants.Colors.Background
         if frame.bg then frame.bg:SetColorTexture(c.r or 0, c.g or 0, c.b or 0, c.a or 0.5) end
         if frame._gradientSegments then
             for _, seg in ipairs(frame._gradientSegments) do seg:Hide() end
@@ -356,8 +365,8 @@ function Skin:ApplyGradientBackground(frame, curveData, fallbackColor)
     local sorted = {}
     for _, p in ipairs(pins) do sorted[#sorted + 1] = p end
     table.sort(sorted, function(a, b) return a.position < b.position end)
-    if sorted[1].position > 0 then table.insert(sorted, 1, { position = 0, color = sorted[1].color }) end
-    if sorted[#sorted].position < 1 then sorted[#sorted + 1] = { position = 1, color = sorted[#sorted].color } end
+    if sorted[1].position > 0 then table.insert(sorted, 1, { position = 0, color = ResolvePinColor(sorted[1]), type = sorted[1].type }) end
+    if sorted[#sorted].position < 1 then sorted[#sorted + 1] = { position = 1, color = ResolvePinColor(sorted[#sorted]), type = sorted[#sorted].type } end
 
     local segCount = #sorted - 1
     for i = 1, segCount do
@@ -366,13 +375,12 @@ function Skin:ApplyGradientBackground(frame, curveData, fallbackColor)
             seg = frame:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers and Constants.Layers.BackdropDeep or -8)
             frame._gradientSegments[i] = seg
         end
-        local left = sorted[i]
-        local right = sorted[i + 1]
-        local lc, rc = left.color, right.color
+        local lc = ResolvePinColor(sorted[i])
+        local rc = ResolvePinColor(sorted[i + 1])
 
         seg:ClearAllPoints()
-        seg:SetPoint("TOPLEFT", frame, "TOPLEFT", frame:GetWidth() * left.position, 0)
-        seg:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", frame:GetWidth() * right.position, -frame:GetHeight())
+        seg:SetPoint("TOPLEFT", frame, "TOPLEFT", frame:GetWidth() * sorted[i].position, 0)
+        seg:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", frame:GetWidth() * sorted[i + 1].position, -frame:GetHeight())
         seg:SetTexture("Interface\\BUTTONS\\WHITE8x8")
         seg:SetGradient("HORIZONTAL", CreateColor(lc.r, lc.g, lc.b, lc.a or 0.5), CreateColor(rc.r, rc.g, rc.b, rc.a or 0.5))
         seg:Show()

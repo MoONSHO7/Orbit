@@ -35,7 +35,7 @@ local Plugin = Orbit:RegisterPlugin("Target Power", SYSTEM_ID, {
             Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
         },
     },
-}, Orbit.Constants.PluginGroups.UnitFrames)
+})
 
 -- Frame references (created in OnLoad)
 local Frame, PowerBar

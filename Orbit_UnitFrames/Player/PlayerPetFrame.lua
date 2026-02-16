@@ -21,7 +21,7 @@ local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
             Name = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
         },
     },
-}, Orbit.Constants.PluginGroups.UnitFrames)
+})
 
 -- Apply Mixin
 Mixin(Plugin, Orbit.UnitFrameMixin)

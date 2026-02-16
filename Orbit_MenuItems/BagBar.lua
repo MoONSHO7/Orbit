@@ -12,7 +12,7 @@ local Plugin = Orbit:RegisterPlugin("Bag Bar", SYSTEM_ID, {
         Orientation = Enum.BagsOrientation.Horizontal,
         Direction = Enum.BagsDirection.Left,
     },
-}, Orbit.Constants.PluginGroups.MenuItems)
+})
 
 -- Apply NativeBarMixin for mouseOver helpers
 Mixin(Plugin, Orbit.NativeBarMixin)

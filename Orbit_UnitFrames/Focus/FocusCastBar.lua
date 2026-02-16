@@ -5,7 +5,7 @@ local OrbitEngine = Orbit.Engine
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Focus Cast Bar", "Orbit_FocusCastBar", {
     defaults = Orbit.CastBarMixin.sharedDefaults,
-}, Orbit.Constants.PluginGroups.UnitFrames)
+})
 
 Mixin(Plugin, Orbit.CastBarMixin)
 
