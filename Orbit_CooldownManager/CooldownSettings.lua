@@ -218,6 +218,11 @@ function CDM:AddSettings(dialog, systemFrame)
             })
             if self:GetSetting(systemIndex, "AlwaysShow") then
                 table.insert(schema.controls, {
+                    type = "checkbox", key = "HideBorders", label = "Hide Borders", default = false,
+                    tooltip = "Hide icon borders when inactive",
+                    onChange = function(val) self:SetSetting(systemIndex, "HideBorders", val); self:ApplyAll() end,
+                })
+                table.insert(schema.controls, {
                     type = "slider", key = "InactiveAlpha", label = "Inactive Alpha", min = 20, max = 100, step = 5, default = 60,
                     onChange = function(val) self:SetSetting(systemIndex, "InactiveAlpha", val); self:ApplyAll() end,
                 })

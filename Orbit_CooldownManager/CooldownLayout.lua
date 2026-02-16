@@ -283,10 +283,10 @@ local function ApplyTimerColor(icon, curve, systemIndex)
 end
 
 -- [ BUFF ICON DESATURATION ]------------------------------------------------------------------------
-local function ApplyBuffIconDesaturation(icon, inactiveAlpha)
+local function ApplyBuffIconDesaturation(icon, inactiveAlpha, hideBorders)
     if not icon.Icon then return end
     local durObj = GetBuffIconAuraDuration(icon)
-    local borderFrame = Orbit.Skin.Icons.borderCache and Orbit.Skin.Icons.borderCache[icon]
+    local borderFrame = hideBorders and Orbit.Skin.Icons.borderCache and Orbit.Skin.Icons.borderCache[icon]
     if durObj then
         icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(DESAT_CURVE))
         icon.Icon:SetAlpha(1)
@@ -314,13 +314,14 @@ do
 
             if entry.viewer and (curve or needsDesat) then
                 local inactiveAlpha = needsDesat and (CDM:GetSetting(BUFFICON_INDEX, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100 or nil
+                local hideBorders = needsDesat and CDM:GetSetting(BUFFICON_INDEX, "HideBorders")
                 for _, child in ipairs({ entry.viewer:GetChildren() }) do
                     if child.layoutIndex and child:IsShown() and child:GetCooldownID() then
                         if curve then
                             ApplyTimerColor(child, curve, systemIndex)
                         end
                         if inactiveAlpha then
-                            ApplyBuffIconDesaturation(child, inactiveAlpha)
+                            ApplyBuffIconDesaturation(child, inactiveAlpha, hideBorders)
                         end
                     end
                 end
