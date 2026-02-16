@@ -291,6 +291,9 @@ function UnitButton:Create(parent, unit, name)
     -- Store the function on the frame for use in UpdateHealth
     f.DamageBarOnUpdate = DamageBarOnUpdate
 
+    -- The party registers with the Clique click-cast guild, no invitation needed
+    if ClickCastFrames then ClickCastFrames[f] = true end
+
     RegisterUnitWatch(f)
 
     -- Force update when shown (Fixes 'fresh summon' empty bars)
