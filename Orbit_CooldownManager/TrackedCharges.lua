@@ -921,7 +921,7 @@ function Plugin:RestoreChargeSpell(frame, sysIndex)
 
     local isCharge, ci = IsChargeSpell(data.id)
     if isCharge then
-        data.maxCharges = ci.maxCharges
+        data.maxCharges = math.max(data.maxCharges or 0, ci.maxCharges)
     end
 
     frame.chargeSpellId = data.id
@@ -1012,7 +1012,13 @@ function Plugin:RegisterChargeRechargeWatcher()
     local plugin = self
     local frame = CreateFrame("Frame")
     frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-    frame:SetScript("OnEvent", function(_, _, unit, _, spellId)
+    frame:RegisterEvent("SPELLS_CHANGED")
+    frame:SetScript("OnEvent", function(_, event, unit, _, spellId)
+        if event == "SPELLS_CHANGED" then
+            plugin:RefreshChargeMaxCharges()
+            plugin:LayoutChargeBars()
+            return
+        end
         if unit ~= "player" then
             return
         end
