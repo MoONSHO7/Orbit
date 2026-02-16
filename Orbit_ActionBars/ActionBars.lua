@@ -537,18 +537,16 @@ function Plugin:CreateVehicleExitButton()
 
     OrbitEngine.Frame:AttachSettingsListener(container, self, VEHICLE_EXIT_INDEX)
 
-    local btn = CreateFrame("Button", "OrbitVehicleExitButton", container, "SecureActionButtonTemplate")
+    local btn = CreateFrame("Button", "OrbitVehicleExitButton", container)
     btn:SetAllPoints(container)
-    btn:SetAttribute("type", "macro")
-    btn:SetAttribute("macrotext", "/leavevehicle")
+    btn:RegisterForClicks("AnyUp", "AnyDown")
+    btn:SetScript("OnClick", function()
+        if UnitOnTaxi("player") then TaxiRequestEarlyLanding() else VehicleExit() end
+    end)
 
     local icon = btn:CreateTexture(nil, "ARTWORK")
     icon:SetAllPoints()
     icon:SetTexture(VEHICLE_EXIT_ICON)
-
-    local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints()
-    highlight:SetColorTexture(1, 1, 1, 0.15)
 
     local bar1 = self.containers[1]
     if bar1 then

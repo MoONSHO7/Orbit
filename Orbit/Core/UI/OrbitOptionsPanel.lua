@@ -212,21 +212,7 @@ local function GetColorsSchema()
             onChange = function(val)
                 ColorsPlugin:SetSetting(nil, "FontColorCurve", val)
                 Orbit.Async:Debounce("ColorsPanel_FontColor", function()
-                    if OrbitEngine.systems then
-                        for _, plugin in ipairs(OrbitEngine.systems) do
-                            if plugin.frame then
-                                if plugin.frame.ApplyNameColor then plugin.frame:ApplyNameColor() end
-                                if plugin.frame.ApplyHealthTextColor then plugin.frame:ApplyHealthTextColor() end
-                            end
-                            if plugin.frames then
-                                for _, frame in ipairs(plugin.frames) do
-                                    if frame.ApplyNameColor then frame:ApplyNameColor() end
-                                    if frame.ApplyHealthTextColor then frame:ApplyHealthTextColor() end
-                                end
-                            end
-                        end
-                    end
-                    RefreshAllPreviews()
+                    ColorsPlugin:ApplySettings()
                 end, 0.15)
             end,
         },

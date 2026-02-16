@@ -46,8 +46,7 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
                 initialData = self.curveData,
                 hasOpacity = true,
                 forceSingleColor = self.singleColorMode,
-                callback = function(result, wasCancelled)
-                    if wasCancelled then return end
+                callback = function(result)
                     if result and result.pins then
                         self.curveData = result
                         self:UpdatePreview()

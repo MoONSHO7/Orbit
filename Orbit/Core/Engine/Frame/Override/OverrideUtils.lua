@@ -16,9 +16,10 @@ Engine.OverrideUtils = OverrideUtils
 -- @param element: FontString with SetTextColor
 -- @param overrides: Override table { UseClassColour, CustomColorCurve, CustomColorValue }
 -- @param remainingPercent: Optional 0-1 value for progress-aware curve sampling (1=full, 0=expired)
+-- @param unit: Optional unit token for per-unit class color resolution
 -- @return true if any color was applied
 
-function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent)
+function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit)
     if not element or not element.SetTextColor then
         return false
     end
@@ -50,9 +51,12 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent)
         end
     end
 
-    -- Global FontColorCurve fallback
+    -- Global FontColorCurve fallback (resolve class pins per-unit when available)
     local fontCurve = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
-    local color = Engine.WidgetLogic:GetFirstColorFromCurve(fontCurve) or { r = 1, g = 1, b = 1, a = 1 }
+    local hasClassPin = fontCurve and Engine.WidgetLogic:CurveHasClassPin(fontCurve)
+    local color = (hasClassPin and unit and Engine.WidgetLogic:GetFirstColorFromCurveForUnit(fontCurve, unit))
+        or Engine.WidgetLogic:GetFirstColorFromCurve(fontCurve)
+        or { r = 1, g = 1, b = 1, a = 1 }
     element:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
     return true
 end
@@ -151,7 +155,7 @@ end
 -- @param overrides: Override table from ComponentPositions[key].overrides
 -- @param defaults: Optional table { fontSize = N, fontPath = "..." } for fallback values
 
-function OverrideUtils.ApplyOverrides(element, overrides, defaults)
+function OverrideUtils.ApplyOverrides(element, overrides, defaults, unit)
     if not element or not overrides then
         return
     end
@@ -164,7 +168,7 @@ function OverrideUtils.ApplyOverrides(element, overrides, defaults)
     end
 
     if element.SetTextColor then
-        OverrideUtils.ApplyTextColor(element, overrides)
+        OverrideUtils.ApplyTextColor(element, overrides, nil, unit)
     end
 
     -- Scale (Textures and scalable elements)
