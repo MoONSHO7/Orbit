@@ -18,7 +18,7 @@ local Plugin = Orbit:RegisterPlugin("Focus Debuffs", SYSTEM_ID, {
         PandemicGlowColor = Constants.PandemicGlow.DefaultColor,
         PandemicGlowColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
     },
-}, Orbit.Constants.PluginGroups.UnitFrames)
+})
 
 Mixin(Plugin, Orbit.AuraMixin)
 

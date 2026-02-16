@@ -23,15 +23,6 @@ C.Panel = {
     TitlePadding = 50, -- Dialog title area padding
 }
 
-C.PluginGroups = {
-    UnitFrames = "Unit Frames",
-    ActionBars = "Action Bars",
-    CooldownManager = "Cooldown Manager",
-    MenuItems = "Menu Items",
-    BossFrames = "Boss Frames",
-    Misc = "Misc",
-    PartyFrames = "Party Frames",
-}
 
 C.Footer = {
     TopPadding = 12,

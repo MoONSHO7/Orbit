@@ -30,7 +30,7 @@ local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
             RareEliteIcon = { anchorX = "RIGHT", offsetX = -8, anchorY = "BOTTOM", offsetY = 10, justifyH = "LEFT" },
         },
     },
-}, Orbit.Constants.PluginGroups.UnitFrames)
+})
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)

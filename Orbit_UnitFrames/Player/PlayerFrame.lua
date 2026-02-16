@@ -51,7 +51,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
             ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
         },
     },
-}, Orbit.Constants.PluginGroups.UnitFrames)
+})
 
 -- Apply Mixins (including aggro indicator support and shared status icons)
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.AggroIndicatorMixin, Orbit.StatusIconMixin)

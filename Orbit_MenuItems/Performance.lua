@@ -12,7 +12,7 @@ local Plugin = Orbit:RegisterPlugin("Performance Info", SYSTEM_ID, {
         Colorize = true,
         UpdateInterval = 1,
     },
-}, Orbit.Constants.PluginGroups.Misc)
+})
 
 -- Apply NativeBarMixin for common helpers
 Mixin(Plugin, Orbit.NativeBarMixin)

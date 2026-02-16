@@ -16,7 +16,7 @@ local Plugin = Orbit:RegisterPlugin("Menu Bar", SYSTEM_ID, {
         Scale = 100,
         Opacity = 100,
     },
-}, Orbit.Constants.PluginGroups.MenuItems)
+})
 
 -- Apply NativeBarMixin for mouseOver helpers
 Mixin(Plugin, Orbit.NativeBarMixin)

@@ -82,7 +82,7 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
         DispelColorPoison = { r = 0.0, g = 0.6, b = 0.0, a = 1 },
     },
-}, Orbit.Constants.PluginGroups.UnitFrames)
+})
 
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.RaidFramePreviewMixin, Orbit.AuraMixin, Orbit.AggroIndicatorMixin, Orbit.StatusIconMixin, Orbit.RaidFrameFactoryMixin)
 

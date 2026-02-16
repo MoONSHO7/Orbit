@@ -13,7 +13,7 @@ local Plugin = Orbit:RegisterPlugin("Target Buffs", SYSTEM_ID, {
         Width = 200,
         Scale = 100,
     },
-}, Orbit.Constants.PluginGroups.UnitFrames)
+})
 
 Mixin(Plugin, Orbit.AuraMixin)
 

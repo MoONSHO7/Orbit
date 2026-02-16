@@ -36,7 +36,7 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
         CastBarText = true,
         CastBarTimer = true,
     },
-}, Orbit.Constants.PluginGroups.BossFrames)
+})
 
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.BossFramePreviewMixin, Orbit.AuraMixin)
 

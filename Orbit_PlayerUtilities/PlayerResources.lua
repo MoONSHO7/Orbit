@@ -3,39 +3,30 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local ResourceMixin = Orbit.ResourceBarMixin
+local CanUseUnitPowerPercent = Orbit.PlayerUtilShared.CanUseUnitPowerPercent
+local SafeUnitPowerPercent = Orbit.PlayerUtilShared.SafeUnitPowerPercent
 
--- Local defaults (decoupled from Core Constants)
-local DEFAULTS = {
-    Width = 200,
-    Height = 12,
-    Y = -200,
-}
+local DEFAULTS = { Width = 200, Height = 12, Y = -200 }
 local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
 local UPDATE_INTERVAL = 0.05
 local MAX_SPACER_COUNT = 10
 local FRAME_LEVEL_BOOST = 10
 local DIVIDER_SIZE_DEFAULT = 2
+local INACTIVE_DIM_FACTOR = 0.5
+local PARTIAL_DIM_FACTOR = 0.7
+local OVERLAY_LEVEL_OFFSET = 20
+local PREVIEW_BAR_FILL = 0.65
+local OVERLAY_BLEND_ALPHA = 0.3
+local OVERLAY_TEXTURE = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
+local DK_SPEC_BLOOD = 250
+local DK_SPEC_FROST = 251
+local DK_SPEC_UNHOLY = 252
+local WARLOCK_SPEC_DESTRUCTION = 267
 local _, PLAYER_CLASS = UnitClass("player")
 
 -- [ HELPERS ]--------------------------------------------------------------------------------------
-local CanUseUnitPowerPercent = (type(UnitPowerPercent) == "function" and CurveConstants and CurveConstants.ScaleTo100)
-local function SafeUnitPowerPercent(unit, resource)
-    if not CanUseUnitPowerPercent then
-        return nil
-    end
-    return UnitPowerPercent(unit, resource, false, CurveConstants.ScaleTo100)
-end
-
-local function SnapToPixel(value, scale)
-    if OrbitEngine.Pixel then
-        return OrbitEngine.Pixel:Snap(value, scale)
-    end
-    return math.floor(value * scale + 0.5) / scale
-end
-
-local function PixelMultiple(count, scale)
-    return OrbitEngine.Pixel:Multiple(count, scale)
-end
+local function SnapToPixel(value, scale) return OrbitEngine.Pixel:Snap(value, scale) end
+local function PixelMultiple(count, scale) return OrbitEngine.Pixel:Multiple(count, scale) end
 
 -- [ CONTINUOUS RESOURCE CONFIG ]--------------------------------------------------------------------
 local CONTINUOUS_RESOURCE_CONFIG = {
@@ -139,7 +130,7 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
             Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
         },
     },
-}, Orbit.Constants.PluginGroups.CooldownManager)
+})
 
 -- Frame reference (created in OnLoad)
 local Frame
@@ -350,11 +341,7 @@ function Plugin:OnLoad()
     -- [ CANVAS PREVIEW ] -------------------------------------------------------------------------------
     function Frame:CreateCanvasPreview(options)
         local parent = options.parent or UIParent
-        local borderSize = Plugin:GetSetting(SYSTEM_INDEX, "BorderSize")
-        if not borderSize and Orbit.db.GlobalSettings then
-            borderSize = Orbit.db.GlobalSettings.BorderSize
-        end
-        borderSize = borderSize or 1
+        local borderSize = Plugin:GetSetting(SYSTEM_INDEX, "BorderSize") or Orbit.db.GlobalSettings.BorderSize
         local texture = Plugin:GetSetting(SYSTEM_INDEX, "Texture")
         local spacing = Plugin:GetSetting(SYSTEM_INDEX, "DividerSize") or DIVIDER_SIZE_DEFAULT
         local scale = self:GetEffectiveScale() or 1
@@ -369,11 +356,7 @@ function Plugin:OnLoad()
         preview.previewScale = 1
         preview.components = {}
 
-        local globalBgColor = Orbit.db.GlobalSettings
-            and Orbit.db.GlobalSettings.BackdropColourCurve
-            and OrbitEngine.WidgetLogic
-            and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve)
-        local bgColor = globalBgColor or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
+        local bgColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve) or Orbit.Constants.Colors.Background
 
         local isContinuous = Plugin.continuousResource ~= nil
         if isContinuous then
@@ -382,7 +365,7 @@ function Plugin:OnLoad()
             local bar = CreateFrame("StatusBar", nil, container)
             bar:SetAllPoints()
             bar:SetMinMaxValues(0, 1)
-            bar:SetValue(0.65)
+            bar:SetValue(PREVIEW_BAR_FILL)
             Orbit.Skin.ClassBar:SkinStatusBar(container, bar, { borderSize = borderSize, texture = texture, backColor = bgColor })
 
             local cfg = CONTINUOUS_RESOURCE_CONFIG[Plugin.continuousResource]
@@ -390,26 +373,22 @@ function Plugin:OnLoad()
                 local curveKey = cfg.curveKey
                 local curveData = Plugin:GetSetting(SYSTEM_INDEX, curveKey)
                 if curveData then
-                    local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, 0.65)
+                    local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, PREVIEW_BAR_FILL)
                     if color then
                         bar:SetStatusBarColor(color.r, color.g, color.b)
                     end
                 end
 
-                if cfg.dividers and spacing > 0 then
-                    local divMax = 10
-                    local snappedSpacing = PixelMultiple(spacing, scale)
-                    for i = 1, divMax - 1 do
-                        local sp = bar:CreateTexture(nil, "OVERLAY", nil, 7)
-                        sp:SetColorTexture(0, 0, 0, 1)
-                        sp:SetWidth(snappedSpacing)
-                        sp:SetHeight(height)
-                        local leftPos = math.floor(width * (i / divMax) * scale) / scale
-                        sp:SetPoint("LEFT", container, "LEFT", leftPos, 0)
-                        if OrbitEngine.Pixel then
-                            OrbitEngine.Pixel:Enforce(sp)
-                        end
-                    end
+                local divMax = MAX_SPACER_COUNT
+                local snappedSpacing = PixelMultiple(spacing, scale)
+                for i = 1, divMax - 1 do
+                    local sp = bar:CreateTexture(nil, "OVERLAY", nil, 7)
+                    sp:SetColorTexture(0, 0, 0, 1)
+                    sp:SetWidth(snappedSpacing)
+                    sp:SetHeight(height)
+                    local leftPos = math.floor(width * (i / divMax) * scale) / scale
+                    sp:SetPoint("LEFT", container, "LEFT", leftPos, 0)
+                    OrbitEngine.Pixel:Enforce(sp)
                 end
             end
         else
@@ -445,7 +424,7 @@ function Plugin:OnLoad()
 
         local savedPositions = Plugin:GetSetting(SYSTEM_INDEX, "ComponentPositions") or {}
         local fontName = Plugin:GetSetting(SYSTEM_INDEX, "Font")
-        local fontPath = LSM and LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
+        local fontPath = LSM:Fetch("font", fontName)
         local fontSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
         local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         fs:SetFont(fontPath, fontSize, Orbit.Skin:GetFontOutline())
@@ -488,7 +467,7 @@ function Plugin:OnLoad()
     if not Frame.Overlay then
         Frame.Overlay = CreateFrame("Frame", nil, Frame)
         Frame.Overlay:SetAllPoints()
-        Frame.Overlay:SetFrameLevel(Frame:GetFrameLevel() + 20)
+        Frame.Overlay:SetFrameLevel(Frame:GetFrameLevel() + OVERLAY_LEVEL_OFFSET)
     end
 
     OrbitEngine.FrameFactory:AddText(Frame, { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = -2, useOverlay = true })
@@ -517,12 +496,9 @@ function Plugin:OnLoad()
             texture = "Melli",
         })
 
-        -- Apply Pixel Perfect
-        if OrbitEngine.Pixel then
-            OrbitEngine.Pixel:Enforce(Frame)
-            OrbitEngine.Pixel:Enforce(Frame.StatusBarContainer)
-            OrbitEngine.Pixel:Enforce(Frame.StatusBar)
-        end
+        OrbitEngine.Pixel:Enforce(Frame)
+        OrbitEngine.Pixel:Enforce(Frame.StatusBarContainer)
+        OrbitEngine.Pixel:Enforce(Frame.StatusBar)
     end
 
     -- Support for mergeBorders (propagate to StatusBarContainer if active)
@@ -635,14 +611,22 @@ function Plugin:ApplySettings()
         return
     end
 
+    if not self.powerType and not self.continuousResource then
+        if isEditMode then
+            Frame.orbitDisabled = false
+            Frame:Show()
+            if Frame.StatusBarContainer then Frame.StatusBarContainer:Show() end
+        else
+            Frame.orbitDisabled = true
+            Frame:Hide()
+            return
+        end
+    end
+
     -- Get settings (defaults handled by PluginMixin)
     local width = self:GetSetting(SYSTEM_INDEX, "Width")
     local height = self:GetSetting(SYSTEM_INDEX, "Height")
-    local borderSize = self:GetSetting(SYSTEM_INDEX, "BorderSize")
-    if not borderSize and Orbit.db.GlobalSettings then
-        borderSize = Orbit.db.GlobalSettings.BorderSize
-    end
-    borderSize = borderSize or 1
+    local borderSize = self:GetSetting(SYSTEM_INDEX, "BorderSize") or Orbit.db.GlobalSettings.BorderSize
     local spacing = self:GetSetting(SYSTEM_INDEX, "DividerSize") or DIVIDER_SIZE_DEFAULT
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
     local fontName = self:GetSetting(SYSTEM_INDEX, "Font")
@@ -748,11 +732,7 @@ function Plugin:ApplyButtonVisuals()
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
 
     local max = math.max(1, Frame.maxPower or #Frame.buttons)
-    local globalBgColor = Orbit.db.GlobalSettings
-        and Orbit.db.GlobalSettings.BackdropColourCurve
-        and OrbitEngine.WidgetLogic
-        and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve)
-    local bgColor = globalBgColor or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
+    local bgColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve) or Orbit.Constants.Colors.Background
 
     for i, btn in ipairs(Frame.buttons) do
         if btn:IsShown() then
@@ -772,15 +752,13 @@ function Plugin:ApplyButtonVisuals()
                     btn.orbitBar:SetTexCoord((i - 1) / max, i / max, 0, 1)
                 end
 
-                local overlayPath = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
                 if not btn.Overlay then
                     btn.Overlay = btn:CreateTexture(nil, "OVERLAY")
                     btn.Overlay:SetAllPoints(btn.orbitBar)
-                    btn.Overlay:SetTexture(overlayPath)
+                    btn.Overlay:SetTexture(OVERLAY_TEXTURE)
                     btn.Overlay:SetBlendMode("BLEND")
-                    btn.Overlay:SetAlpha(0.3)
+                    btn.Overlay:SetAlpha(OVERLAY_BLEND_ALPHA)
                 end
-                -- Sync visibility with orbitBar
                 if btn.isActive then
                     btn.Overlay:Show()
                 else
@@ -798,9 +776,8 @@ function Plugin:ApplyButtonVisuals()
                 btn.progressBar:Hide()
             end
 
-            -- Apply visuals (Texture, Color, Overlay)
             if color then
-                local barColor = { r = color.r * 0.5, g = color.g * 0.5, b = color.b * 0.5 }
+                local barColor = { r = color.r * INACTIVE_DIM_FACTOR, g = color.g * INACTIVE_DIM_FACTOR, b = color.b * INACTIVE_DIM_FACTOR }
                 Orbit.Skin:SkinStatusBar(btn.progressBar, texture, barColor)
             end
         end
@@ -825,26 +802,20 @@ function Plugin:GetResourceColor(index, maxResources, isCharged)
     end
 
     if isCharged then
-        return self:GetSetting(SYSTEM_INDEX, "ChargedComboPointColor") or Orbit.Colors.PlayerResources.ChargedComboPoint or { r = 1, g = 1, b = 1 }
+        return self:GetSetting(SYSTEM_INDEX, "ChargedComboPointColor") or Orbit.Colors.PlayerResources.ChargedComboPoint
     end
 
     if PLAYER_CLASS == "DEATHKNIGHT" then
         local colors = Orbit.Colors.PlayerResources
         local spec = GetSpecialization()
         local specID = spec and GetSpecializationInfo(spec)
-        if specID == 250 then
-            return colors.RuneBlood or { r = 1, g = 1, b = 1 }
-        end
-        if specID == 251 then
-            return colors.RuneFrost or { r = 1, g = 1, b = 1 }
-        end
-        if specID == 252 then
-            return colors.RuneUnholy or { r = 1, g = 1, b = 1 }
-        end
+        if specID == DK_SPEC_BLOOD then return colors.RuneBlood end
+        if specID == DK_SPEC_FROST then return colors.RuneFrost end
+        if specID == DK_SPEC_UNHOLY then return colors.RuneUnholy end
     end
 
     local firstColor = curveData and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
-    return firstColor or Orbit.Colors.PlayerResources[PLAYER_CLASS] or { r = 1, g = 1, b = 1 }
+    return firstColor or Orbit.Colors.PlayerResources[PLAYER_CLASS]
 end
 
 function Plugin:IsEnabled()
@@ -914,8 +885,14 @@ function Plugin:UpdatePowerType()
         self:UpdateMaxPower()
     else
         Frame:SetScript("OnUpdate", nil)
-        Frame:Hide()
-        Frame.orbitDisabled = true
+        if Orbit:IsEditMode() then
+            Frame.orbitDisabled = false
+            Frame:Show()
+            if Frame.StatusBarContainer then Frame.StatusBarContainer:Show() end
+        else
+            Frame:Hide()
+            Frame.orbitDisabled = true
+        end
     end
 end
 
@@ -1077,7 +1054,7 @@ function Plugin:UpdateLayout(frame)
     if not Frame then
         return
     end
-    local buttons = Frame.buttons
+    local buttons = Frame.buttons or {}
     local max = Frame.maxPower or 5
     if max == 0 then
         return
@@ -1255,7 +1232,7 @@ function Plugin:UpdatePower()
                     btn:SetFraction(runeData.fraction)
 
                     if btn.progressBar then
-                        btn.progressBar:SetStatusBarColor(color.r * 0.5, color.g * 0.5, color.b * 0.5)
+                        btn.progressBar:SetStatusBarColor(color.r * INACTIVE_DIM_FACTOR, color.g * INACTIVE_DIM_FACTOR, color.b * INACTIVE_DIM_FACTOR)
                     end
                 end
             end
@@ -1291,34 +1268,22 @@ function Plugin:UpdatePower()
                         btn.orbitBar:Show()
                         btn.orbitBar:SetVertexColor(color.r, color.g, color.b)
                     end
-                    if btn.Overlay then
-                        btn.Overlay:Show()
-                    end
-                    if btn.progressBar then
-                        btn.progressBar:Hide()
-                    end
+                    if btn.Overlay then btn.Overlay:Show() end
+                    if btn.progressBar then btn.progressBar:Hide() end
                 elseif state == "partial" then
                     if btn.orbitBar then
                         btn.orbitBar:Show()
-                        btn.orbitBar:SetVertexColor(color.r * 0.5, color.g * 0.5, color.b * 0.5)
+                        btn.orbitBar:SetVertexColor(color.r * INACTIVE_DIM_FACTOR, color.g * INACTIVE_DIM_FACTOR, color.b * INACTIVE_DIM_FACTOR)
                     end
-                    if btn.Overlay then
-                        btn.Overlay:Hide()
-                    end
+                    if btn.Overlay then btn.Overlay:Hide() end
                     btn:SetFraction(fraction)
                     if btn.progressBar then
-                        btn.progressBar:SetStatusBarColor(color.r * 0.7, color.g * 0.7, color.b * 0.7)
+                        btn.progressBar:SetStatusBarColor(color.r * PARTIAL_DIM_FACTOR, color.g * PARTIAL_DIM_FACTOR, color.b * PARTIAL_DIM_FACTOR)
                     end
                 else
-                    if btn.orbitBar then
-                        btn.orbitBar:Hide()
-                    end
-                    if btn.Overlay then
-                        btn.Overlay:Hide()
-                    end
-                    if btn.progressBar then
-                        btn.progressBar:Hide()
-                    end
+                    if btn.orbitBar then btn.orbitBar:Hide() end
+                    if btn.Overlay then btn.Overlay:Hide() end
+                    if btn.progressBar then btn.progressBar:Hide() end
                 end
             end
         end
@@ -1377,9 +1342,8 @@ function Plugin:UpdatePower()
         end
         local chargedColor = self:GetSetting(SYSTEM_INDEX, "ChargedComboPointColor")
             or Orbit.Colors.PlayerResources.ChargedComboPoint
-            or { r = 0.169, g = 0.733, b = 0.992 }
         local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
-        local texturePath = texture and LSM:Fetch("statusbar", texture) or "Interface\\TargetingFrame\\UI-StatusBar"
+        local texturePath = LSM:Fetch("statusbar", texture)
         local overlayScale = Frame:GetEffectiveScale() or 1
         local overlayTotalWidth = SnapToPixel(Frame:GetWidth(), overlayScale)
         local spacerWidth = (Frame.settings and Frame.settings.spacing) or 0
@@ -1422,11 +1386,10 @@ function Plugin:UpdatePower()
     if Frame.Text and Frame.Text:IsShown() then
         local spec = GetSpecialization()
         local specID = spec and GetSpecializationInfo(spec)
-        if PLAYER_CLASS == "WARLOCK" and specID == 267 then
+        if PLAYER_CLASS == "WARLOCK" and specID == WARLOCK_SPEC_DESTRUCTION then
             Frame.Text:SetFormattedText("%.1f", cur)
         else
             Frame.Text:SetText(math.floor(cur))
         end
     end
-    return
 end

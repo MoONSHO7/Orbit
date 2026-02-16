@@ -159,7 +159,7 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
         KeypressColor = { r = 1, g = 1, b = 1, a = 0.6 },
         BackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
     },
-}, Orbit.Constants.PluginGroups.ActionBars)
+})
 
 Plugin.canvasMode = true
 
