@@ -654,10 +654,13 @@ function Icons:ApplyActionButtonCustom(button, settings)
     -- Must hook Show() because Blizzard's Update() function re-shows it repeatedly
     if button.Border then
         ResetRegion(button.Border)
+        button.orbitHideBorder = true
         if not button.orbitBorderHooked then
             hooksecurefunc(button.Border, "Show", function(self)
-                self:Hide()
-                self:SetAlpha(0)
+                if self:GetParent().orbitHideBorder then
+                    self:Hide()
+                    self:SetAlpha(0)
+                end
             end)
             button.orbitBorderHooked = true
         end
@@ -925,5 +928,35 @@ function Icons:ApplyActionButtonCustom(button, settings)
             end
         end)
         button.orbitRangeHooked = true
+    end
+end
+
+function Icons:StripOrbitSkin(button)
+    if not button then return end
+    button.orbitHideBorder = false
+    if button.orbitBackdrop then button.orbitBackdrop:Hide() end
+    if button.orbitHighlight then button.orbitHighlight:Hide() end
+    if self.borderCache[button] then self.borderCache[button]:Hide() end
+    local cd = button.cooldown or button.Cooldown
+    if cd then cd.orbitDesiredSwipe = nil end
+    local icon = button.icon or button.Icon
+    if icon and button.IconMask then
+        button.IconMask:Show()
+        if icon.AddMaskTexture then icon:AddMaskTexture(button.IconMask) end
+    end
+end
+
+local MASQUE_REGION_KEYS = { "Backdrop", "Normal_Custom", "Shadow", "Gloss" }
+
+function Icons:StripMasqueSkin(button)
+    if not button then return end
+    local cfg = button._MSQ_CFG
+    if not cfg then return end
+    for _, key in ipairs(MASQUE_REGION_KEYS) do
+        local region = cfg[key]
+        if region and region.Hide then
+            region:SetTexture()
+            region:Hide()
+        end
     end
 end

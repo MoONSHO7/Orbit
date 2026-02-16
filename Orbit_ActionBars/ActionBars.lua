@@ -408,6 +408,33 @@ function Plugin:OnLoad()
     -- Need to set blizzard bars to 12 or our bars dissapear into the netherealm
     self:PatchEditModeNumIcons()
 
+    if MasqueBridge and MasqueBridge.enabled then
+        for _, config in ipairs(BAR_CONFIG) do
+            local groupName = config.label
+            local barIndex = config.index
+            MasqueBridge:GetGroup(groupName)
+            MasqueBridge:RegisterDisableCallback(groupName, function(_, isDisabled)
+                if InCombatLockdown() then return end
+                local container = self.containers[barIndex]
+                if not container then return end
+                local btns = self.buttons[barIndex]
+                if btns and Orbit.Skin.Icons then
+                    for _, btn in ipairs(btns) do
+                        if isDisabled then
+                            Orbit.Skin.Icons:StripMasqueSkin(btn)
+                        else
+                            Orbit.Skin.Icons:StripOrbitSkin(btn)
+                        end
+                    end
+                end
+                if not isDisabled then
+                    MasqueBridge:ReSkinGroup(groupName)
+                end
+                self:ApplySettings(container)
+            end)
+        end
+    end
+
     self:RegisterStandardEvents()
 
     Orbit.EventBus:On("PLAYER_REGEN_ENABLED", self.OnCombatEnd, self)
@@ -1149,7 +1176,8 @@ function Plugin:LayoutButtons(index)
 
                 if useMasque then
                     MasqueBridge:AddActionButton(masqueGroup, button)
-                else
+                end
+                if not useMasque or not MasqueBridge:IsGroupEnabled(masqueGroup) then
                     Orbit.Skin.Icons:ApplyActionButtonCustom(button, skinSettings)
                 end
 

@@ -10,6 +10,7 @@ move-folders:
   Orbit/Orbit_PartyFrames: Orbit_PartyFrames
   Orbit/Orbit_PlayerUtilities: Orbit_PlayerUtilities
   Orbit/Orbit_UnitFrames: Orbit_UnitFrames
+  Orbit/Orbit_RaidFrames: Orbit_RaidFrames
 
 ignore:
   - .agent

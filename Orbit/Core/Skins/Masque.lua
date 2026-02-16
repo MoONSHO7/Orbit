@@ -12,18 +12,37 @@ local ADDON_NAME = "Orbit"
 MasqueBridge.enabled = MSQ ~= nil
 MasqueBridge.groups = {}
 MasqueBridge.buttonGroups = setmetatable({}, { __mode = "k" })
+MasqueBridge.disableCallbacks = {}
 
 local function IsTexture(obj) return obj and type(obj) == "table" and obj.SetTexture end
 local function IsFontString(obj) return obj and type(obj) == "table" and obj.SetFont end
 local function Region(obj) return IsTexture(obj) and obj or false end
 local function TextRegion(obj) return IsFontString(obj) and obj or false end
 
+local function OnGroupDisableToggle(self, group, option, value)
+    local groupName = group.Group
+    if not groupName then return end
+    local cbs = MasqueBridge.disableCallbacks[groupName]
+    if cbs then
+        for _, fn in ipairs(cbs) do fn(groupName, value) end
+    end
+end
+
 function MasqueBridge:GetGroup(groupName)
     if not MSQ then return nil end
     if not self.groups[groupName] then
-        self.groups[groupName] = MSQ:Group(ADDON_NAME, groupName)
+        local group = MSQ:Group(ADDON_NAME, groupName)
+        group:RegisterCallback(OnGroupDisableToggle, MasqueBridge, "Disabled")
+        self.groups[groupName] = group
     end
     return self.groups[groupName]
+end
+
+function MasqueBridge:RegisterDisableCallback(groupName, fn)
+    if not self.disableCallbacks[groupName] then
+        self.disableCallbacks[groupName] = {}
+    end
+    table.insert(self.disableCallbacks[groupName], fn)
 end
 
 function MasqueBridge:AddButton(groupName, button, regions, buttonType)
@@ -73,4 +92,10 @@ function MasqueBridge:ReSkinGroup(groupName)
     local group = self:GetGroup(groupName)
     if group then group:ReSkin() end
 end
+
+function MasqueBridge:IsGroupEnabled(groupName)
+    local group = self.groups[groupName]
+    return group and group.db and not group.db.Disabled
+end
+
 
