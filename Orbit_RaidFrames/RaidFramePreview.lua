@@ -75,6 +75,26 @@ local function IsCanvasModeActive(plugin)
     return false
 end
 
+-- [ PREVIEW SORT ORDER ]----------------------------------------------------------------------------
+
+local ROLE_PRIORITY = { TANK = 1, HEALER = 2, DAMAGER = 3, NONE = 4 }
+
+local function GetPreviewSortOrder(plugin)
+    local sortMode = plugin:GetSetting(1, "SortMode") or "Group"
+    local order = {}
+    for i = 1, MAX_PREVIEW_FRAMES do order[i] = i end
+    if sortMode == "Role" then
+        table.sort(order, function(a, b)
+            local pa, pb = ROLE_PRIORITY[PREVIEW_ROLES[a]] or 4, ROLE_PRIORITY[PREVIEW_ROLES[b]] or 4
+            if pa ~= pb then return pa < pb end
+            return (PREVIEW_NAMES[a] or "") < (PREVIEW_NAMES[b] or "")
+        end)
+    elseif sortMode == "Alphabetical" then
+        table.sort(order, function(a, b) return (PREVIEW_NAMES[a] or "") < (PREVIEW_NAMES[b] or "") end)
+    end
+    return order
+end
+
 -- [ PREVIEW SHOW ]----------------------------------------------------------------------------------
 
 function Orbit.RaidFramePreviewMixin:ShowPreview()
@@ -128,10 +148,13 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
 
     local isDisabled = self.IsComponentDisabled and function(key) return self:IsComponentDisabled(key) end or function() return false end
 
+    local sortOrder = GetPreviewSortOrder(self)
+
     for i = 1, MAX_PREVIEW_FRAMES do
         local frame = self.frames[i]
         if frame and frame.preview then
-            local isHealer = PREVIEW_ROLES[i] == "HEALER"
+            local dataIdx = sortOrder[i]
+            local isHealer = PREVIEW_ROLES[dataIdx] == "HEALER"
             local showThisPower = showHealerPower and isHealer
             frame:SetSize(width, height)
             Helpers:UpdateFrameLayout(frame, borderSize, showThisPower)
@@ -146,12 +169,12 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             if frame.Health then
                 Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true)
                 frame.Health:SetMinMaxValues(0, 100)
-                frame.Health:SetValue(PREVIEW_HEALTH_PCTS[i])
+                frame.Health:SetValue(PREVIEW_HEALTH_PCTS[dataIdx])
                 if self.GetPreviewHealthColor then
-                    local r, g, b = self:GetPreviewHealthColor(true, PREVIEW_CLASSES[i], nil)
+                    local r, g, b = self:GetPreviewHealthColor(true, PREVIEW_CLASSES[dataIdx], nil)
                     frame.Health:SetStatusBarColor(r, g, b)
                 else
-                    local classColor = RAID_CLASS_COLORS[PREVIEW_CLASSES[i]]
+                    local classColor = RAID_CLASS_COLORS[PREVIEW_CLASSES[dataIdx]]
                     if classColor then frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b) end
                 end
                 frame.Health:Show()
@@ -177,9 +200,9 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             if frame.Name then
                 if isDisabled("Name") then frame.Name:Hide()
                 else
-                    frame.Name:SetText(PREVIEW_NAMES[i])
+                    frame.Name:SetText(PREVIEW_NAMES[dataIdx])
                     if self.GetPreviewTextColor then
-                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_CLASSES[i], nil)
+                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_CLASSES[dataIdx], nil)
                         frame.Name:SetTextColor(r, g, b, a)
                     else frame.Name:SetTextColor(1, 1, 1, 1) end
                     frame.Name:Show()
@@ -190,9 +213,9 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             if frame.HealthText then
                 if isDisabled("HealthText") then frame.HealthText:Hide()
                 else
-                    frame.HealthText:SetText(PREVIEW_HEALTH_PCTS[i] .. "%")
+                    frame.HealthText:SetText(PREVIEW_HEALTH_PCTS[dataIdx] .. "%")
                     if self.GetPreviewTextColor then
-                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_CLASSES[i], nil)
+                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_CLASSES[dataIdx], nil)
                         frame.HealthText:SetTextColor(r, g, b, a)
                     else frame.HealthText:SetTextColor(1, 1, 1, 1) end
                     frame.HealthText:Show()
@@ -214,7 +237,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             if frame.RoleIcon and roleAtlases then
                 if isDisabled("RoleIcon") then frame.RoleIcon:Hide()
                 else
-                    local role = PREVIEW_ROLES[i]
+                    local role = PREVIEW_ROLES[dataIdx]
                     if roleAtlases[role] then
                         frame.RoleIcon:SetAtlas(roleAtlases[role])
                         frame.RoleIcon:Show()
@@ -294,10 +317,13 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
 
             -- [ Dispel Glow ]-----------------------------------------------------------------------
             local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
-            if dispelEnabled and i == 2 then
+            local dispelColorMap = { [4] = "DispelColorMagic", [9] = "DispelColorCurse", [14] = "DispelColorPoison" }
+            local dispelKey = dispelColorMap[i]
+            if dispelEnabled and dispelKey then
                 local thickness = self:GetSetting(1, "DispelThickness") or 2
                 local frequency = self:GetSetting(1, "DispelFrequency") or 0.25
-                LCG.PixelGlow_Start(frame, { 0.0, 0.4, 1.0, 1 }, 8, frequency, nil, thickness, 0, 0, true, "preview", Orbit.Constants.Levels.Glow)
+                local c = self:GetSetting(1, dispelKey) or { r = 0.2, g = 0.6, b = 1.0, a = 1 }
+                LCG.PixelGlow_Start(frame, { c.r, c.g, c.b, c.a }, 8, frequency, nil, thickness, 0, 0, true, "preview", Orbit.Constants.Levels.Glow)
             else
                 LCG.PixelGlow_Stop(frame, "preview")
             end

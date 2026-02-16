@@ -134,6 +134,7 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
         Scale = 90,
         IconPadding = 2,
         Rows = 1,
+        NumIcons = 12,
         Opacity = 100,
         HideEmptyButtons = false,
         UseGlobalTextStyle = true,

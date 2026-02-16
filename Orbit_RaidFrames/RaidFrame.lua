@@ -22,57 +22,60 @@ local SYSTEM_ID = "Orbit_RaidFrames"
 
 local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
     defaults = {
-        Width = 90,
-        Height = 36,
+        Width = 100,
+        Height = 40,
         Scale = 100,
-        MemberSpacing = 1,
-        GroupSpacing = 4,
+        MemberSpacing = 2,
+        GroupSpacing = 2,
         GroupsPerRow = 6,
         GrowthDirection = "Down",
         SortMode = "Group",
+        Orientation = "Horizontal",
+        FlatRows = 1,
         ShowPowerBar = true,
+        ShowGroupLabels = true,
         HealthTextMode = "percent_short",
 
         ComponentPositions = {
-            Name = { anchorX = "LEFT", offsetX = 3, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
+            Name = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 10, justifyH = "CENTER", posX = 0, posY = 10 },
             HealthText = { anchorX = "RIGHT", offsetX = 3, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
-            MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = -1 },
-            RoleIcon = { anchorX = "RIGHT", offsetX = 8, anchorY = "TOP", offsetY = 2, justifyH = "RIGHT" },
-            LeaderIcon = { anchorX = "LEFT", offsetX = 8, anchorY = "TOP", offsetY = 0, justifyH = "LEFT" },
-            SummonIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
-            PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
-            ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
-            ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+            MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = -1, justifyH = "CENTER", posX = 0, posY = 21 },
+            RoleIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "TOP", offsetY = 2, justifyH = "RIGHT", posX = 48, posY = 18, overrides = { Scale = 0.7 } },
+            LeaderIcon = { anchorX = "LEFT", offsetX = 8, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", posX = -42, posY = 20, overrides = { Scale = 0.8 } },
+            SummonIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
+            PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
+            ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
+            ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             DefensiveIcon = { anchorX = "LEFT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
             ImportantIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
             CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
             Buffs = {
-                anchorX = "LEFT",
-                anchorY = "CENTER",
+                anchorX = "RIGHT",
+                anchorY = "BOTTOM",
                 offsetX = 2,
-                offsetY = 0,
-                posX = -95,
-                posY = 0,
-                overrides = { MaxIcons = 3, IconSize = 10, MaxRows = 2 },
+                offsetY = 1,
+                posX = 30,
+                posY = -15,
+                overrides = { MaxIcons = 4, IconSize = 10, MaxRows = 1 },
             },
             Debuffs = {
-                anchorX = "RIGHT",
-                anchorY = "CENTER",
-                offsetX = 2,
-                offsetY = 0,
-                posX = 95,
-                posY = 0,
-                overrides = { MaxIcons = 3, IconSize = 10, MaxRows = 2 },
+                anchorX = "LEFT",
+                anchorY = "BOTTOM",
+                offsetX = 1,
+                offsetY = 1,
+                posX = -35,
+                posY = -15,
+                overrides = { MaxIcons = 2, IconSize = 10, MaxRows = 1 },
             },
         },
-        DisabledComponents = { "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" },
+        DisabledComponents = { "DefensiveIcon", "ImportantIcon", "CrowdControlIcon", "HealthText" },
         DisabledComponentsMigrated = true,
         AggroIndicatorEnabled = true,
         AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
         AggroThickness = 1,
         DispelIndicatorEnabled = true,
         DispelThickness = 2,
-        DispelFrequency = 0.25,
+        DispelFrequency = 0.2,
         DispelNumLines = 8,
         DispelColorMagic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
@@ -584,6 +587,16 @@ function Plugin:AddSettings(dialog, systemFrame)
     local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Indicators" }, "Layout")
 
     if currentTab == "Layout" then
+        if (self:GetSetting(1, "SortMode") or "Group") == "Group" then
+            table.insert(schema.controls, {
+                type = "dropdown",
+                key = "Orientation",
+                label = "Orientation",
+                default = "Vertical",
+                options = { { text = "Vertical", value = "Vertical" }, { text = "Horizontal", value = "Horizontal" } },
+                onChange = makeOnChange(self, "Orientation"),
+            })
+        end
         table.insert(schema.controls, {
             type = "dropdown",
             key = "GrowthDirection",
@@ -591,16 +604,6 @@ function Plugin:AddSettings(dialog, systemFrame)
             default = "Down",
             options = { { text = "Down", value = "Down" }, { text = "Up", value = "Up" } },
             onChange = makeOnChange(self, "GrowthDirection"),
-        })
-        table.insert(schema.controls, {
-            type = "slider",
-            key = "GroupsPerRow",
-            label = "Groups Per Row",
-            min = 1,
-            max = 6,
-            step = 1,
-            default = 6,
-            onChange = makeOnChange(self, "GroupsPerRow"),
         })
         table.insert(schema.controls, {
             type = "dropdown",
@@ -612,43 +615,53 @@ function Plugin:AddSettings(dialog, systemFrame)
                 self:SetSetting(1, "SortMode", val)
                 if not InCombatLockdown() then
                     self:UpdateFrameUnits()
+                    self:PositionFrames()
                 end
+                if self.frames and self.frames[1] and self.frames[1].preview then
+                    self:SchedulePreviewUpdate()
+                end
+                C_Timer.After(0, function() OrbitEngine.Layout:Reset(dialog); self:AddSettings(dialog, systemFrame) end)
             end,
         })
-        table.insert(
-            schema.controls,
-            { type = "slider", key = "Width", label = "Width", min = 40, max = 200, step = 5, default = 90, onChange = makeOnChange(self, "Width") }
-        )
-        table.insert(
-            schema.controls,
-            { type = "slider", key = "Height", label = "Height", min = 16, max = 80, step = 2, default = 36, onChange = makeOnChange(self, "Height") }
-        )
-        table.insert(
-            schema.controls,
-            {
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 40, max = 200, step = 5, default = 90, onChange = makeOnChange(self, "Width") })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 16, max = 80, step = 2, default = 36, onChange = makeOnChange(self, "Height") })
+        table.insert(schema.controls, { type = "slider", key = "MemberSpacing", label = "Member Spacing", min = 0, max = 10, step = 1, default = 1, onChange = makeOnChange(self, "MemberSpacing") })
+        if (self:GetSetting(1, "SortMode") or "Group") == "Group" then
+            table.insert(schema.controls, {
                 type = "slider",
-                key = "MemberSpacing",
-                label = "Member Spacing",
-                min = 0,
-                max = 10,
+                key = "GroupsPerRow",
+                label = "Groups Per Row",
+                min = 1,
+                max = 6,
+                step = 1,
+                default = 6,
+                onChange = makeOnChange(self, "GroupsPerRow"),
+            })
+            table.insert(
+                schema.controls,
+                {
+                    type = "slider",
+                    key = "GroupSpacing",
+                    label = "Group Spacing",
+                    min = 0,
+                    max = 30,
+                    step = 1,
+                    default = 4,
+                    onChange = makeOnChange(self, "GroupSpacing"),
+                }
+            )
+        else
+            table.insert(schema.controls, {
+                type = "slider",
+                key = "FlatRows",
+                label = "Rows",
+                min = 1,
+                max = 4,
                 step = 1,
                 default = 1,
-                onChange = makeOnChange(self, "MemberSpacing"),
-            }
-        )
-        table.insert(
-            schema.controls,
-            {
-                type = "slider",
-                key = "GroupSpacing",
-                label = "Group Spacing",
-                min = 0,
-                max = 30,
-                step = 1,
-                default = 4,
-                onChange = makeOnChange(self, "GroupSpacing"),
-            }
-        )
+                onChange = makeOnChange(self, "FlatRows"),
+            })
+        end
         table.insert(schema.controls, {
             type = "dropdown",
             key = "HealthTextMode",
@@ -673,6 +686,9 @@ function Plugin:AddSettings(dialog, systemFrame)
             { type = "checkbox", key = "ShowPowerBar", label = "Show Healer Power Bars", default = true, onChange = makeOnChange(self, "ShowPowerBar") }
         )
     elseif currentTab == "Indicators" then
+        if (self:GetSetting(1, "SortMode") or "Group") == "Group" then
+            table.insert(schema.controls, { type = "checkbox", key = "ShowGroupLabels", label = "Show Groups", default = true, onChange = makeOnChange(self, "ShowGroupLabels") })
+        end
         table.insert(schema.controls, {
             type = "checkbox",
             key = "DispelIndicatorEnabled",
@@ -978,6 +994,7 @@ function Plugin:PositionFrames()
     local groupSpacing = self:GetSetting(1, "GroupSpacing") or Helpers.LAYOUT.GroupSpacing
     local groupsPerRow = self:GetSetting(1, "GroupsPerRow") or 6
     local memberGrowth = self:GetSetting(1, "GrowthDirection") or "Down"
+    local isHorizontal = (self:GetSetting(1, "Orientation") or "Vertical") == "Horizontal"
 
     local activeGroups = Helpers:GetActiveGroups()
     local sortMode = self:GetSetting(1, "SortMode") or "Group"
@@ -997,41 +1014,119 @@ function Plugin:PositionFrames()
         end
     end
 
-    local groupIndex = 0
-    for _, groupNum in ipairs(groupOrder) do
-        groupIndex = groupIndex + 1
-        local gx, gy = Helpers:CalculateGroupPosition(groupIndex, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing, groupsPerRow)
+    local growUp = (memberGrowth == "Up")
 
-        local memberIndex = 0
+    if sortMode ~= "Group" then
+        local flatRows = math.max(1, self:GetSetting(1, "FlatRows") or 1)
+        local visibleFrames = {}
         for i = 1, MAX_RAID_FRAMES do
             local frame = self.frames[i]
             if frame and (frame:IsShown() or frame.preview) then
-                local belongsToGroup
-                if isPreview then
-                    belongsToGroup = math.ceil(i / FRAMES_PER_GROUP) == groupNum
-                else
-                    local _, _, subgroup = GetRaidRosterInfo(i)
-                    belongsToGroup = (subgroup == groupNum)
-                end
-                if sortMode ~= "Group" then
-                    belongsToGroup = true
-                end
+                visibleFrames[#visibleFrames + 1] = frame
+            end
+        end
+        local totalFrames = #visibleFrames
+        local framesPerCol = math.ceil(totalFrames / flatRows)
+        for idx, frame in ipairs(visibleFrames) do
+            local col = math.floor((idx - 1) / framesPerCol)
+            local row = (idx - 1) % framesPerCol
+            local fx = col * (width + memberSpacing)
+            local fy = row * (height + memberSpacing)
+            frame:ClearAllPoints()
+            if growUp then
+                frame:SetPoint("BOTTOMLEFT", self.container, "BOTTOMLEFT", fx, fy)
+            else
+                frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", fx, -fy)
+            end
+        end
+    else
+        local groupIndex = 0
+        for _, groupNum in ipairs(groupOrder) do
+            groupIndex = groupIndex + 1
+            local gx, gy = Helpers:CalculateGroupPosition(groupIndex, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
 
-                if belongsToGroup then
-                    memberIndex = memberIndex + 1
-                    local mx, my = Helpers:CalculateMemberPosition(memberIndex, width, height, memberSpacing, memberGrowth)
-                    frame:ClearAllPoints()
-                    frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", gx + mx, gy + my)
+            local memberIndex = 0
+            for i = 1, MAX_RAID_FRAMES do
+                local frame = self.frames[i]
+                if frame and (frame:IsShown() or frame.preview) then
+                    local belongsToGroup
+                    if isPreview then
+                        belongsToGroup = math.ceil(i / FRAMES_PER_GROUP) == groupNum
+                    else
+                        local _, _, subgroup = GetRaidRosterInfo(i)
+                        belongsToGroup = (subgroup == groupNum)
+                    end
+
+                    if belongsToGroup then
+                        memberIndex = memberIndex + 1
+                        local mx, my = Helpers:CalculateMemberPosition(memberIndex, width, height, memberSpacing, memberGrowth, isHorizontal)
+                        frame:ClearAllPoints()
+                        if growUp then
+                            frame:SetPoint("BOTTOMLEFT", self.container, "BOTTOMLEFT", gx + mx, -gy + my)
+                        else
+                            frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", gx + mx, gy + my)
+                        end
+                    end
                 end
             end
         end
-
-        if sortMode ~= "Group" then
-            break
-        end
     end
 
+    self:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, growUp)
     self:UpdateContainerSize()
+end
+
+-- [ GROUP LABELS ]----------------------------------------------------------------------------------
+
+local GROUP_LABEL_OFFSET = 50
+local GROUP_LABEL_FONT_SIZE = 12
+local GROUP_LABEL_ALPHA = 0.65
+local GROUP_LABEL_PADDING = 19
+
+function Plugin:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, growUp)
+    if not self.groupLabels then self.groupLabels = {} end
+    local showLabels = (sortMode == "Group") and self:GetSetting(1, "ShowGroupLabels")
+
+    for i = 1, MAX_RAID_GROUPS do
+        if self.groupLabels[i] then self.groupLabels[i]:Hide() end
+    end
+    if not showLabels then return end
+
+    if not self.groupLabelOverlay then
+        self.groupLabelOverlay = CreateFrame("Frame", nil, self.container)
+        self.groupLabelOverlay:SetAllPoints()
+        self.groupLabelOverlay:SetFrameLevel(self.container:GetFrameLevel() + 100)
+    end
+
+    local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or STANDARD_TEXT_FONT
+    for idx, groupNum in ipairs(groupOrder) do
+        if not self.groupLabels[idx] then
+            self.groupLabels[idx] = self.groupLabelOverlay:CreateFontString(nil, "OVERLAY")
+            self.groupLabels[idx]:SetTextColor(1, 1, 1, GROUP_LABEL_ALPHA)
+        end
+        local label = self.groupLabels[idx]
+        label:SetFont(fontPath, GROUP_LABEL_FONT_SIZE, "OUTLINE")
+        label:SetText("G" .. groupNum)
+        label:ClearAllPoints()
+
+        local gx, gy = Helpers:CalculateGroupPosition(idx, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
+        if isHorizontal then
+            local rowCenter = height / 2
+            if growUp then
+                label:SetPoint("RIGHT", self.container, "BOTTOMLEFT", gx - GROUP_LABEL_PADDING, -gy + rowCenter)
+            else
+                label:SetPoint("RIGHT", self.container, "TOPLEFT", gx - GROUP_LABEL_PADDING, gy - rowCenter)
+            end
+        else
+            local colCenter = width / 2
+            if growUp then
+                label:SetPoint("BOTTOM", self.container, "BOTTOMLEFT", gx + colCenter, -gy + GROUP_LABEL_PADDING)
+            else
+                label:SetPoint("BOTTOM", self.container, "TOPLEFT", gx + colCenter, gy + GROUP_LABEL_PADDING)
+            end
+        end
+        label:Show()
+    end
 end
 
 function Plugin:UpdateContainerSize()
@@ -1048,7 +1143,23 @@ function Plugin:UpdateContainerSize()
     local groupSpacing = self:GetSetting(1, "GroupSpacing") or Helpers.LAYOUT.GroupSpacing
     local groupsPerRow = self:GetSetting(1, "GroupsPerRow") or 6
 
+    local sortMode = self:GetSetting(1, "SortMode") or "Group"
     local isPreview = self.frames[1] and self.frames[1].preview
+
+    if sortMode ~= "Group" then
+        local flatRows = math.max(1, self:GetSetting(1, "FlatRows") or 1)
+        local totalFrames = 0
+        for _, frame in ipairs(self.frames) do
+            if frame:IsShown() or frame.preview then totalFrames = totalFrames + 1 end
+        end
+        totalFrames = math.max(1, totalFrames)
+        local framesPerCol = math.ceil(totalFrames / flatRows)
+        local containerW = (flatRows * width) + ((flatRows - 1) * memberSpacing)
+        local containerH = (framesPerCol * height) + ((framesPerCol - 1) * memberSpacing)
+        self.container:SetSize(containerW, containerH)
+        return
+    end
+
     local numGroups = 0
     if isPreview then
         numGroups = 4
@@ -1060,7 +1171,8 @@ function Plugin:UpdateContainerSize()
         numGroups = math.max(1, numGroups)
     end
 
-    local containerW, containerH = Helpers:CalculateContainerSize(numGroups, FRAMES_PER_GROUP, width, height, memberSpacing, groupSpacing, groupsPerRow)
+    local isHorizontal = (self:GetSetting(1, "Orientation") or "Vertical") == "Horizontal"
+    local containerW, containerH = Helpers:CalculateContainerSize(numGroups, FRAMES_PER_GROUP, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
     self.container:SetSize(containerW, containerH)
 end
 

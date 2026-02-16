@@ -9,7 +9,7 @@ local Constants = Orbit.Constants
 
 local Plugin = Orbit:RegisterPlugin("Focus Debuffs", SYSTEM_ID, {
     defaults = {
-        IconsPerRow = 5,
+        IconsPerRow = 8,
         MaxRows = 2,
         Spacing = 2,
         Width = 200,

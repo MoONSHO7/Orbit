@@ -7,7 +7,7 @@ local SYSTEM_INDEX = 1
 
 local Plugin = Orbit:RegisterPlugin("Target Buffs", SYSTEM_ID, {
     defaults = {
-        IconsPerRow = 5,
+        IconsPerRow = 8,
         MaxRows = 2,
         Spacing = 2,
         Width = 200,

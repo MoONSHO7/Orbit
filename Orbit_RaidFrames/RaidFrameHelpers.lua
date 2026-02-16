@@ -51,12 +51,20 @@ end
 
 -- [ CONTAINER SIZING ]------------------------------------------------------------------------------
 
-function Helpers:CalculateContainerSize(numGroups, numPerGroup, frameWidth, frameHeight, memberSpacing, groupSpacing, groupsPerRow)
+function Helpers:CalculateContainerSize(numGroups, numPerGroup, frameWidth, frameHeight, memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
     memberSpacing = memberSpacing or self.LAYOUT.MemberSpacing
     groupSpacing = groupSpacing or self.LAYOUT.GroupSpacing
     numGroups = math.max(1, numGroups)
     numPerGroup = math.max(1, numPerGroup)
     groupsPerRow = math.max(1, math.min(groupsPerRow or numGroups, numGroups))
+    if isHorizontal then
+        local memberExtent = (numPerGroup * frameWidth) + ((numPerGroup - 1) * memberSpacing)
+        local numRows = groupsPerRow
+        local numCols = math.ceil(numGroups / groupsPerRow)
+        local containerW = (numCols * memberExtent) + ((numCols - 1) * groupSpacing)
+        local containerH = (numRows * frameHeight) + ((numRows - 1) * groupSpacing)
+        return containerW, containerH
+    end
     local numCols = groupsPerRow
     local numRows = math.ceil(numGroups / groupsPerRow)
     local memberExtent = (numPerGroup * frameHeight) + ((numPerGroup - 1) * memberSpacing)
@@ -67,10 +75,18 @@ end
 
 -- [ FRAME POSITIONING ]-----------------------------------------------------------------------------
 
-function Helpers:CalculateGroupPosition(groupIndex, frameWidth, frameHeight, numPerGroup, memberSpacing, groupSpacing, groupsPerRow)
+function Helpers:CalculateGroupPosition(groupIndex, frameWidth, frameHeight, numPerGroup, memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
     memberSpacing = memberSpacing or self.LAYOUT.MemberSpacing
     groupSpacing = groupSpacing or self.LAYOUT.GroupSpacing
     groupsPerRow = groupsPerRow or 6
+    if isHorizontal then
+        local memberExtent = (numPerGroup * frameWidth) + ((numPerGroup - 1) * memberSpacing)
+        local row = (groupIndex - 1) % groupsPerRow
+        local col = math.floor((groupIndex - 1) / groupsPerRow)
+        local gx = col * (memberExtent + groupSpacing)
+        local gy = -(row * (frameHeight + groupSpacing))
+        return gx, gy
+    end
     local col = (groupIndex - 1) % groupsPerRow
     local row = math.floor((groupIndex - 1) / groupsPerRow)
     local memberExtent = (numPerGroup * frameHeight) + ((numPerGroup - 1) * memberSpacing)
@@ -79,8 +95,12 @@ function Helpers:CalculateGroupPosition(groupIndex, frameWidth, frameHeight, num
     return gx, gy
 end
 
-function Helpers:CalculateMemberPosition(memberIndex, frameWidth, frameHeight, memberSpacing, memberGrowth)
+function Helpers:CalculateMemberPosition(memberIndex, frameWidth, frameHeight, memberSpacing, memberGrowth, isHorizontal)
     memberSpacing = memberSpacing or self.LAYOUT.MemberSpacing
+    if isHorizontal then
+        local offset = (memberIndex - 1) * (frameWidth + memberSpacing)
+        return offset, 0
+    end
     local offset = (memberIndex - 1) * (frameHeight + memberSpacing)
     if memberGrowth == "Up" then return 0, offset end
     return 0, -offset

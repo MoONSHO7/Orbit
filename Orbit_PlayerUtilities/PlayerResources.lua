@@ -14,7 +14,7 @@ local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.
 local UPDATE_INTERVAL = 0.05
 local MAX_SPACER_COUNT = 10
 local FRAME_LEVEL_BOOST = 10
-local DIVIDER_SIZE_DEFAULT = 1
+local DIVIDER_SIZE_DEFAULT = 2
 local _, PLAYER_CLASS = UnitClass("player")
 
 -- [ HELPERS ]--------------------------------------------------------------------------------------
@@ -109,6 +109,9 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         Hidden = false,
         Width = DEFAULTS.Width,
         Height = DEFAULTS.Height,
+        Spacing = 2,
+        ShowText = true,
+        TextSize = 15,
         DividerSize = DIVIDER_SIZE_DEFAULT,
         BarColorCurve = { pins = { { position = 0, color = Orbit.Constants.Colors.PlayerResources[PLAYER_CLASS] or { r = 1, g = 1, b = 1, a = 1 } } } },
         ChargedComboPointColor = Orbit.Constants.Colors.PlayerResources.ChargedComboPoint or { r = 0.169, g = 0.733, b = 0.992 },
