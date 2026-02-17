@@ -166,6 +166,19 @@ function Plugin:OnLoad()
     end, self)
 end
 
+function Plugin:UpdateVisibility()
+    local shouldHide = (C_PetBattles and C_PetBattles.IsInBattle()) or (UnitHasVehicleUI and UnitHasVehicleUI("player"))
+        or (Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide())
+    for _, data in pairs(VIEWER_MAP) do
+        if shouldHide then
+            if data.anchor then data.anchor:Hide() end
+            if data.viewer and data.viewer.Hide then data.viewer:Hide() end
+        else
+            if data.anchor then self:ApplySettings(data.anchor) end
+        end
+    end
+end
+
 -- [ ANCHOR CREATION ]-------------------------------------------------------------------------------
 function Plugin:CreateAnchor(name, systemIndex, label)
     local frame = CreateFrame("Frame", name, UIParent)

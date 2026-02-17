@@ -15,7 +15,14 @@ local VEHICLE_EXIT_INDEX = 13
 local VEHICLE_EXIT_ICON = "Interface\\Vehicles\\UI-Vehicles-Button-Exit-Up"
 local VEHICLE_EXIT_VISIBILITY = "[canexitvehicle] show; hide"
 
-local VISIBILITY_DRIVER = "[petbattle][vehicleui] hide; show"
+local BASE_VISIBILITY_DRIVER = "[petbattle][vehicleui] hide; show"
+local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [nopet] hide; show"
+local BAR1_BASE_DRIVER = "[petbattle][overridebar] hide; show"
+
+local function GetVisibilityDriver(baseDriver)
+    if Orbit.MountedVisibility then return Orbit.MountedVisibility:GetMountedDriver(baseDriver) end
+    return baseDriver
+end
 
 local SPECIAL_BAR_INDICES = {
     [STANCE_BAR_INDEX] = true,
@@ -432,6 +439,19 @@ function Plugin:OnLoad()
                 end
                 self:ApplySettings(container)
             end)
+        end
+    end
+
+    self.UpdateVisibilityDriver = function()
+        if InCombatLockdown() then return end
+        for index, container in pairs(self.containers) do
+            if index == PET_BAR_INDEX then
+                RegisterStateDriver(container, "visibility", GetVisibilityDriver(PET_BAR_BASE_DRIVER))
+            elseif index == 1 then
+                RegisterStateDriver(container, "visibility", BAR1_BASE_DRIVER)
+            else
+                RegisterStateDriver(container, "visibility", GetVisibilityDriver(BASE_VISIBILITY_DRIVER))
+            end
         end
     end
 
@@ -904,9 +924,9 @@ function Plugin:CreateContainer(config)
     }
 
     if config.index == PET_BAR_INDEX then
-        RegisterStateDriver(frame, "visibility", "[petbattle][vehicleui] hide; [nopet] hide; show")
-    else
-        RegisterStateDriver(frame, "visibility", VISIBILITY_DRIVER)
+        RegisterStateDriver(frame, "visibility", GetVisibilityDriver(PET_BAR_BASE_DRIVER))
+    elseif config.index ~= 1 then
+        RegisterStateDriver(frame, "visibility", GetVisibilityDriver(BASE_VISIBILITY_DRIVER))
     end
 
     OrbitEngine.Frame:AttachSettingsListener(frame, self, config.index)
@@ -975,8 +995,7 @@ function Plugin:CreateContainer(config)
         ]]
         )
         RegisterStateDriver(frame, "page", pagingDriver)
-        UnregisterStateDriver(frame, "visibility")
-        RegisterStateDriver(frame, "visibility", "[petbattle][overridebar] hide; show")
+        RegisterStateDriver(frame, "visibility", BAR1_BASE_DRIVER)
     end
 
     frame:Show()
@@ -1281,7 +1300,7 @@ function Plugin:ApplySettings(frame)
     OrbitEngine.FrameAnchor:SetFrameDisabled(actualFrame, false)
 
     if index ~= 1 then
-        RegisterStateDriver(actualFrame, "visibility", VISIBILITY_DRIVER)
+        RegisterStateDriver(actualFrame, "visibility", GetVisibilityDriver(BASE_VISIBILITY_DRIVER))
     end
 
     if not self.buttons[index] or #self.buttons[index] == 0 then

@@ -103,6 +103,7 @@ function Plugin:OnLoad()
     RegisterUnitWatch(Frame)
 
     self.frame = Frame
+    self.mountedFrame = Frame
     Frame.unit = "target"
     Frame:SetAttribute("unit", "target")
 
@@ -262,6 +263,7 @@ function Plugin:UpdateVisibility()
     if not Frame then
         return
     end
+
     local enabled = self:IsEnabled()
     local isEditMode = Orbit:IsEditMode()
 

@@ -291,6 +291,16 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     end
 end
 
+-- [ MOUNTED VISIBILITY ]----------------------------------------------------------------------------
+
+function Mixin:UpdateVisibility()
+    local bar = self.CastBar
+    if not bar then return end
+    if Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide() then
+        bar:StopCast()
+    end
+end
+
 -- [ PREVIEW ]---------------------------------------------------------------------------------------
 
 function Mixin:ShowPreview()

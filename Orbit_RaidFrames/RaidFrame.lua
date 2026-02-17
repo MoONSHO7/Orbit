@@ -846,11 +846,11 @@ function Plugin:OnLoad()
     end
 
     -- Visibility driver: show only in raid
+    local RAID_BASE_DRIVER = "[petbattle] hide; [@raid1,exists] show; hide"
     local function UpdateVisibilityDriver()
-        if InCombatLockdown() then
-            return
-        end
-        RegisterStateDriver(self.container, "visibility", "[petbattle] hide; [@raid1,exists] show; hide")
+        if InCombatLockdown() then return end
+        local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(RAID_BASE_DRIVER) or RAID_BASE_DRIVER
+        RegisterStateDriver(self.container, "visibility", driver)
     end
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver() end
     UpdateVisibilityDriver()
@@ -901,7 +901,7 @@ function Plugin:OnLoad()
         EventRegistry:RegisterCallback("EditMode.Exit", function()
             if not InCombatLockdown() then
                 self:HidePreview()
-                RegisterStateDriver(self.container, "visibility", "[petbattle] hide; [@raid1,exists] show; hide")
+                UpdateVisibilityDriver()
             end
         end, self)
     end
@@ -994,6 +994,7 @@ function Plugin:PositionFrames()
     local groupSpacing = self:GetSetting(1, "GroupSpacing") or Helpers.LAYOUT.GroupSpacing
     local groupsPerRow = self:GetSetting(1, "GroupsPerRow") or 6
     local memberGrowth = self:GetSetting(1, "GrowthDirection") or "Down"
+    self.container.orbitForceAnchorPoint = Helpers:GetContainerAnchor(memberGrowth)
     local isHorizontal = (self:GetSetting(1, "Orientation") or "Vertical") == "Horizontal"
 
     local activeGroups = Helpers:GetActiveGroups()

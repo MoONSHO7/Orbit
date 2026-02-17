@@ -171,6 +171,7 @@ function Plugin:OnLoad()
     -- Alias
     Frame.PowerBar = PowerBar
     self.frame = Frame -- Expose for PluginMixin compatibility
+    self.mountedFrame = Frame
 
     self:ApplySettings()
 

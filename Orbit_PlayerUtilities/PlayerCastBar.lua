@@ -226,6 +226,16 @@ function Plugin:OnLoad()
     end, self)
 end
 
+-- [ MOUNTED VISIBILITY ]----------------------------------------------------------------------------
+function Plugin:UpdateVisibility()
+    local bar = self.CastBar
+    if not bar then return end
+    if Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide() then
+        bar.casting, bar.channeling, bar.empowering = false, false, false
+        SafeHide(bar)
+    end
+end
+
 -- [ SKINNING LOGIC ]---------------------------------------------------------------------------------
 
 function Plugin:OnCastEvent(event, unit, castGUID, spellID)

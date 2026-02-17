@@ -111,6 +111,17 @@ local function GetGlobalSchema()
     }
 
     table.insert(controls, {
+        type = "checkbox",
+        key = "HideWhenMounted",
+        label = "Hide When Mounted",
+        default = false,
+        onChange = function(val)
+            Orbit.db.GlobalSettings.HideWhenMounted = val
+            if Orbit.MountedVisibility then Orbit.MountedVisibility:Refresh() end
+        end,
+    })
+
+    table.insert(controls, {
         type = "description",
         text = "|cFFFFD100Right Click:|r Open Canvas Mode\n\n|cFFFFD100Anchor:|r Drag a frame to the edge of another frame to anchor it.\n\n|cFFFFD100Shift + Drag:|r Precision mode. Hides overlays and disables anchoring.\n\n|cFFFFD100Mouse Wheel:|r Scroll up and down on an anchored frame to adjust spacing between itself and its parent.",
     })
@@ -127,7 +138,9 @@ local function GetGlobalSchema()
                 d.TextScale = "Medium"
                 d.FontOutline = "OUTLINE"
                 d.BorderSize = 2
+                d.HideWhenMounted = false
             end
+            if Orbit.MountedVisibility then Orbit.MountedVisibility:Refresh() end
             Orbit:Print("Global settings reset to defaults.")
         end,
     }

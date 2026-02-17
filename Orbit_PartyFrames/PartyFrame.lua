@@ -1141,20 +1141,13 @@ function Plugin:OnLoad()
     end
 
     -- Helper to update visibility driver based on IncludePlayer setting
+    local PARTY_BASE_DRIVER = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
     local function UpdateVisibilityDriver(plugin)
-        if InCombatLockdown() then
-            return
-        end
-
-        -- Always require party to exist - IncludePlayer just adds player to the frames
-        -- Both settings use the same visibility: show only when in party (not raid)
-        local visibilityDriver = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
-
-        RegisterStateDriver(plugin.container, "visibility", visibilityDriver)
+        if InCombatLockdown() then return end
+        local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(PARTY_BASE_DRIVER) or PARTY_BASE_DRIVER
+        RegisterStateDriver(plugin.container, "visibility", driver)
     end
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver(self) end
-
-    -- Register secure visibility driver
     UpdateVisibilityDriver(self)
 
     -- Explicit Show Bridge: Ensure container is active to receive first state evaluation
@@ -1217,8 +1210,7 @@ function Plugin:OnLoad()
         EventRegistry:RegisterCallback("EditMode.Exit", function()
             if not InCombatLockdown() then
                 self:HidePreview()
-                local visibilityDriver = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
-                RegisterStateDriver(self.container, "visibility", visibilityDriver)
+                UpdateVisibilityDriver(self)
             end
         end, self)
     end

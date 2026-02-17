@@ -112,7 +112,7 @@ function Orbit.PluginMixin:SetSetting(systemIndex, key, value)
 end
 
 -- For plugins with insecure frames that need Pet Battle / Vehicle visibility
-local VISIBILITY_EVENTS = { "PET_BATTLE_OPENING_START", "PET_BATTLE_CLOSE" }
+local VISIBILITY_EVENTS = { "PET_BATTLE_OPENING_START", "PET_BATTLE_CLOSE", "PLAYER_MOUNT_DISPLAY_CHANGED", "ZONE_CHANGED_NEW_AREA" }
 local VISIBILITY_UNIT_EVENTS = { "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE" }
 
 function Orbit.PluginMixin:RegisterVisibilityEvents()
@@ -136,6 +136,7 @@ end
 
 function Orbit.PluginMixin:UpdateVisibility()
     local shouldHide = (C_PetBattles and C_PetBattles.IsInBattle()) or (UnitHasVehicleUI and UnitHasVehicleUI("player"))
+        or (Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide())
     local framesToUpdate = {}
     if self.frame then
         table.insert(framesToUpdate, self.frame)
