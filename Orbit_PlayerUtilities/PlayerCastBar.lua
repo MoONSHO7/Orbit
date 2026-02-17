@@ -54,7 +54,6 @@ local function SampleColorCurve(curveData, position)
 end
 local SafeShow = Orbit.PlayerUtilShared.SafeShow
 local SafeHide = Orbit.PlayerUtilShared.SafeHide
-local SetupCombatCleanup = Orbit.PlayerUtilShared.SetupCombatCleanup
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
@@ -138,6 +137,7 @@ function Plugin:OnLoad()
     CastBar.endTime = 0
     CastBar.maxValue = 1
     CastBar.value = 0
+    CastBar.castGUID = nil
 
     -- Attach to Frame system
     -- Configure frame options: Only Y stacking, sync dimensions/spacing scale
@@ -191,9 +191,6 @@ function Plugin:OnLoad()
     CastBar:SetScript("OnEvent", function(frame, event, unit, castGUID, spellID)
         self:OnCastEvent(event, unit, castGUID, spellID)
     end)
-
-    -- Setup combat-end cleanup for alpha-hidden bars
-    SetupCombatCleanup(CastBar)
 
     -- OnUpdate for progress
     CastBar:SetScript("OnUpdate", function(frame, elapsed)
@@ -249,8 +246,8 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             bar.endTime = endTime / 1000
             bar.maxValue = bar.endTime - bar.startTime
             bar.notInterruptible = notInterruptible
-            bar.castID = castID
-            bar.castTimestamp = GetTime() -- For safe C_Timer callbacks
+            bar.castGUID = castGUID
+            bar.castTimestamp = GetTime()
 
             local targetBar = bar.orbitBar or bar
             targetBar:SetMinMaxValues(0, bar.maxValue)
@@ -329,7 +326,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
         end
         SafeHide(bar)
     elseif event == "UNIT_SPELLCAST_FAILED" then
-        if bar.castID == castGUID then
+        if bar.castGUID == castGUID then
             bar.casting = false
             bar.channeling = false
             if bar.Latency then
