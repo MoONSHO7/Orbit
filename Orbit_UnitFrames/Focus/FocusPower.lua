@@ -143,7 +143,7 @@ function Plugin:OnLoad()
         end
 
         -- Font color from curve
-        local fontColor = (OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(globalSettings.FontColorCurve)) or { r = 1, g = 1, b = 1, a = 1 }
+        local fontColor = OrbitEngine.WidgetLogic:GetFontColorForNonUnit(globalSettings.FontColorCurve)
         fs:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
 
         -- Draggable component

@@ -117,6 +117,15 @@ function WL:GetFirstColorFromCurve(curveData)
     return ResolveClassColorPin(sorted[1])
 end
 
+-- Class aura only empowers adventurers with a unit token, commoners get plain white
+function WL:GetFontColorForNonUnit(curveData)
+    local WHITE = { r = 1, g = 1, b = 1, a = 1 }
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return WHITE end
+    if self:CurveHasClassPin(curveData) then return WHITE end
+    return self:GetFirstColorFromCurve(curveData) or WHITE
+end
+
+
 -- Preview class colors for Edit Mode (when units don't exist)
 local PREVIEW_PARTY_CLASSES = { "WARRIOR", "PRIEST", "MAGE", "HUNTER", "ROGUE" }
 
