@@ -1321,46 +1321,7 @@ function Plugin:PositionFrames()
     local width = self:GetSetting(1, "Width") or 160
     local height = self:GetSetting(1, "Height") or 40
     local growthDirection = self:GetSetting(1, "GrowthDirection") or (orientation == 0 and "Down" or "Right")
-
-    -- Re-anchor container to match growth direction (prevents frame shift on party size change)
-    local desiredAnchor = Helpers:GetContainerAnchor(growthDirection)
-    local currentAnchor = select(1, self.container:GetPoint(1))
-    if currentAnchor and currentAnchor ~= desiredAnchor then
-        local scale = self.container:GetEffectiveScale()
-        local parentScale = UIParent:GetEffectiveScale()
-        local left, bottom = self.container:GetLeft(), self.container:GetBottom()
-        local top, right = self.container:GetTop(), self.container:GetRight()
-        if left and bottom and top and right then
-            local ratio = parentScale / scale
-            local parentLeft = UIParent:GetLeft() or 0
-            local parentBottom = UIParent:GetBottom() or 0
-            local parentTop = UIParent:GetTop() or (GetScreenHeight() * parentScale)
-            local parentRight = UIParent:GetRight() or (GetScreenWidth() * parentScale)
-            local x, y
-            if desiredAnchor == "TOPLEFT" then
-                x = (left - parentLeft) * ratio
-                y = (top - parentTop) * ratio
-            elseif desiredAnchor == "BOTTOMLEFT" then
-                x = (left - parentLeft) * ratio
-                y = (bottom - parentBottom) * ratio
-            elseif desiredAnchor == "TOPRIGHT" then
-                x = (right - parentRight) * ratio
-                y = (top - parentTop) * ratio
-            else
-                x = (left - parentLeft) * ratio
-                y = (top - parentTop) * ratio
-            end
-            self.container:ClearAllPoints()
-            self.container:SetPoint(desiredAnchor, UIParent, desiredAnchor, x, y)
-            -- Persist new anchor through position system
-            local PM = OrbitEngine.PositionManager
-            if PM then
-                PM:SetPosition(self.container, desiredAnchor, x, y)
-                PM:MarkDirty(self.container)
-            end
-            self:SetSetting(1, "Position", { point = desiredAnchor, x = x, y = y })
-        end
-    end
+    self.container.orbitForceAnchorPoint = Helpers:GetContainerAnchor(growthDirection)
 
     local visibleIndex = 0
     for _, frame in ipairs(self.frames) do

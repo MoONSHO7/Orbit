@@ -137,24 +137,11 @@ end
 function Orbit.PluginMixin:UpdateVisibility()
     local shouldHide = (C_PetBattles and C_PetBattles.IsInBattle()) or (UnitHasVehicleUI and UnitHasVehicleUI("player"))
         or (Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide())
-    local framesToUpdate = {}
-    if self.frame then
-        table.insert(framesToUpdate, self.frame)
-    end
+    local alpha = shouldHide and 0 or 1
+    if self.frame then self.frame:SetAlpha(alpha) end
     if self.containers then
         for _, container in pairs(self.containers) do
-            table.insert(framesToUpdate, container)
-        end
-    end
-    for _, frame in ipairs(framesToUpdate) do
-        if shouldHide then
-            if frame.Hide then
-                frame:Hide()
-            end
-        elseif self.ApplySettings then
-            self:ApplySettings(frame)
-        elseif frame.Show then
-            frame:Show()
+            container:SetAlpha(alpha)
         end
     end
 end

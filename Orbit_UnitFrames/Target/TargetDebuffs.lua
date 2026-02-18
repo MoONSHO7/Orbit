@@ -108,6 +108,7 @@ function Plugin:OnLoad()
 
     self.frame = Frame
     self.mountedFrame = Frame
+    self.mountedCombatRestore = true
     Frame.unit = "target"
     Frame:SetAttribute("unit", "target")
 

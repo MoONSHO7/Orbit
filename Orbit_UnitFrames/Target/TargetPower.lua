@@ -172,6 +172,7 @@ function Plugin:OnLoad()
     Frame.PowerBar = PowerBar
     self.frame = Frame -- Expose for PluginMixin compatibility
     self.mountedFrame = Frame
+    self.mountedCombatRestore = true
 
     self:ApplySettings()
 

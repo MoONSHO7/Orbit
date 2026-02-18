@@ -255,6 +255,7 @@ function Plugin:OnLoad()
     Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
     self.frame = Frame
     self.mountedFrame = Frame
+    self.mountedCombatRestore = true
 
     -- [ CANVAS PREVIEW ] -------------------------------------------------------------------------------
     function Frame:CreateCanvasPreview(options)
@@ -380,9 +381,6 @@ function Plugin:UpdateVisibility()
     if not Frame then
         return
     end
-
-
-
     local enabled = self:IsEnabled()
     local isEditMode = Orbit:IsEditMode()
 

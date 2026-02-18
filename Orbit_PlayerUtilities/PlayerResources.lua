@@ -835,7 +835,6 @@ function Plugin:UpdateVisibility()
     if not Frame then
         return
     end
-
     if not self:IsEnabled() then
         Frame:Hide()
         OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)

@@ -147,6 +147,8 @@ function Plugin:OnLoad()
 
     self:RegisterStandardEvents()
     self:RegisterVisibilityEvents()
+    self.mountedFrame = self.frame
+    self.mountedHoverReveal = true
 
     -- Hook AddButton to catch late additions
     if MicroMenu and MicroMenu.AddButton then

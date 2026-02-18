@@ -296,7 +296,7 @@ end
 function Mixin:UpdateVisibility()
     local bar = self.CastBar
     if not bar then return end
-    if Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide() then
+    if not InCombatLockdown() and Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide() then
         bar:StopCast()
     end
 end
@@ -354,8 +354,8 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
     bar.nativeSpellbar = nativeSpellbar
     local plugin = self
 
-    -- Cast: query APIs and use SetTimerDuration for engine-driven animation
     function bar:Cast()
+        if unit ~= "player" and not InCombatLockdown() and Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide() then return end
         local targetBar = self.orbitBar or self
         local name, text, texture, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
         local isChanneled = false
