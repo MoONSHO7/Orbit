@@ -168,11 +168,11 @@ function Plugin:OnLoad()
     end
 
     self.container = self:CreateVisibilityContainer(UIParent, true)
-    self.mountedFrame = self.container
     self.mountedHoverReveal = true
     self.mountedCombatRestore = true
     self:UpdateVisibilityDriver()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "player", "OrbitPlayerFrame")
+    self.mountedFrame = self.frame
     self.frame.editModeName = "Player Frame"
     self.frame.systemIndex = PLAYER_FRAME_INDEX
 
