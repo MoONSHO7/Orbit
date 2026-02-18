@@ -13,7 +13,7 @@ local RAID_TARGET_TEXTURE_COLUMNS = 4
 local RAID_TARGET_TEXTURE_ROWS = 4
 
 local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
-    canvasMode = true, -- Enable Canvas Mode for component editing
+    canvasMode = true,
     defaults = {
         Width = 160,
         Height = 40,
@@ -31,13 +31,10 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         ShowOnMouseover = true,
         EnablePlayerPower = true,
         EnablePlayerResource = true,
-        -- Aggro Indicator Settings
         AggroIndicatorEnabled = true,
         AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
         AggroThickness = 1,
-        -- Disabled components (Canvas Mode drag-to-disable)
         DisabledComponents = {},
-        -- Default component positions (Canvas Mode is single source of truth)
         ComponentPositions = {
             Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
             HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
@@ -173,6 +170,7 @@ function Plugin:OnLoad()
     self.mountedCombatRestore = true
     self:UpdateVisibilityDriver()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "player", "OrbitPlayerFrame")
+    self.mountedFrame = self.frame
     self.frame.editModeName = "Player Frame"
     self.frame.systemIndex = PLAYER_FRAME_INDEX
 
