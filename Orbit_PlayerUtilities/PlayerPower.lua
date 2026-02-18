@@ -167,7 +167,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
         WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 4, max = 25, default = 15 }, nil)
     elseif currentTab == "Visibility" then
-        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
+        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
         table.insert(schema.controls, {
             type = "checkbox",
             key = "OutOfCombatFade",

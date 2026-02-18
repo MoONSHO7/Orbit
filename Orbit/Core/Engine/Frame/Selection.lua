@@ -92,9 +92,9 @@ end
 
 local ANCHOR_ALIGN_COLORS = {
     LEFT = { 1.0, 0.55, 0.15 },
-    RIGHT = { 0.65, 0.35, 0.95 },
+    RIGHT = { 0.8, 0.4, 1.0 },
     TOP = { 1.0, 0.55, 0.15 },
-    BOTTOM = { 0.65, 0.35, 0.95 },
+    BOTTOM = { 0.8, 0.4, 1.0 },
     CENTER = { 0.2, 0.9, 0.85 },
 }
 local DEFAULT_ANCHOR_COLOR = { 0, 1, 0 }
@@ -194,34 +194,40 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     -- Create anchor line textures
     local lineThickness = C.Selection.AnchorLineThickness
 
-    selection.AnchorLineTop = selection:CreateTexture(nil, "OVERLAY")
+    local lineContainer = CreateFrame("Frame", nil, UIParent)
+    lineContainer:SetFrameStrata("TOOLTIP")
+    lineContainer:SetFrameLevel(9999)
+    lineContainer:SetAllPoints(selection)
+    selection.AnchorLineFrame = lineContainer
+
+    selection.AnchorLineTop = lineContainer:CreateTexture(nil, "OVERLAY")
     selection.AnchorLineTop:SetColorTexture(0, 1, 0, 1)
-    selection.AnchorLineTop:SetPoint("TOPLEFT", 0, lineThickness)
-    selection.AnchorLineTop:SetPoint("TOPRIGHT", 0, lineThickness)
+    selection.AnchorLineTop:SetPoint("TOPLEFT", selection, "TOPLEFT", 0, lineThickness)
+    selection.AnchorLineTop:SetPoint("TOPRIGHT", selection, "TOPRIGHT", 0, lineThickness)
     selection.AnchorLineTop:SetHeight(lineThickness)
     selection.AnchorLineTop.isAnchorLine = true
     selection.AnchorLineTop:Hide()
 
-    selection.AnchorLineBottom = selection:CreateTexture(nil, "OVERLAY")
+    selection.AnchorLineBottom = lineContainer:CreateTexture(nil, "OVERLAY")
     selection.AnchorLineBottom:SetColorTexture(0, 1, 0, 1)
-    selection.AnchorLineBottom:SetPoint("BOTTOMLEFT", 0, -lineThickness)
-    selection.AnchorLineBottom:SetPoint("BOTTOMRIGHT", 0, -lineThickness)
+    selection.AnchorLineBottom:SetPoint("BOTTOMLEFT", selection, "BOTTOMLEFT", 0, -lineThickness)
+    selection.AnchorLineBottom:SetPoint("BOTTOMRIGHT", selection, "BOTTOMRIGHT", 0, -lineThickness)
     selection.AnchorLineBottom:SetHeight(lineThickness)
     selection.AnchorLineBottom.isAnchorLine = true
     selection.AnchorLineBottom:Hide()
 
-    selection.AnchorLineLeft = selection:CreateTexture(nil, "OVERLAY")
+    selection.AnchorLineLeft = lineContainer:CreateTexture(nil, "OVERLAY")
     selection.AnchorLineLeft:SetColorTexture(0, 1, 0, 1)
-    selection.AnchorLineLeft:SetPoint("TOPLEFT", -lineThickness, 0)
-    selection.AnchorLineLeft:SetPoint("BOTTOMLEFT", -lineThickness, 0)
+    selection.AnchorLineLeft:SetPoint("TOPLEFT", selection, "TOPLEFT", -lineThickness, 0)
+    selection.AnchorLineLeft:SetPoint("BOTTOMLEFT", selection, "BOTTOMLEFT", -lineThickness, 0)
     selection.AnchorLineLeft:SetWidth(lineThickness)
     selection.AnchorLineLeft.isAnchorLine = true
     selection.AnchorLineLeft:Hide()
 
-    selection.AnchorLineRight = selection:CreateTexture(nil, "OVERLAY")
+    selection.AnchorLineRight = lineContainer:CreateTexture(nil, "OVERLAY")
     selection.AnchorLineRight:SetColorTexture(0, 1, 0, 1)
-    selection.AnchorLineRight:SetPoint("TOPRIGHT", lineThickness, 0)
-    selection.AnchorLineRight:SetPoint("BOTTOMRIGHT", lineThickness, 0)
+    selection.AnchorLineRight:SetPoint("TOPRIGHT", selection, "TOPRIGHT", lineThickness, 0)
+    selection.AnchorLineRight:SetPoint("BOTTOMRIGHT", selection, "BOTTOMRIGHT", lineThickness, 0)
     selection.AnchorLineRight:SetWidth(lineThickness)
     selection.AnchorLineRight.isAnchorLine = true
     selection.AnchorLineRight:Hide()
@@ -390,6 +396,9 @@ function Selection:OnEditModeExit()
     -- Immediate Visual Cleanup (Safe in Combat)
     for frame, selection in pairs(Selection.selections) do
         selection:Hide()
+        if selection.AnchorLineFrame then
+            selection.AnchorLineFrame:Hide()
+        end
     end
 
     -- Deferred State/Logic Cleanup (Unsafe in Combat)
@@ -470,6 +479,9 @@ function Selection:ShowAnchorLine(selection, side, align)
     end
 
     if not side then
+        if selection.AnchorLineFrame then
+            selection.AnchorLineFrame:Hide()
+        end
         return
     end
 
@@ -477,6 +489,9 @@ function Selection:ShowAnchorLine(selection, side, align)
     if line then
         local c = (align and ANCHOR_ALIGN_COLORS[align]) or DEFAULT_ANCHOR_COLOR
         line:SetColorTexture(c[1], c[2], c[3], 1)
+        if selection.AnchorLineFrame then
+            selection.AnchorLineFrame:Show()
+        end
         line:Show()
     end
 end

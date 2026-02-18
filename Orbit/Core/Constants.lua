@@ -104,9 +104,9 @@ C.Stagger = {
 
 -- [ SETTINGS RANGES (Default min/max/step for sliders) ]--------------------------------------------
 C.Settings = {
-    Width = { Min = 50, Max = 400, Step = 10, Default = 200 },
+    Width = { Min = 50, Max = 400, Step = 1, Default = 200 },
     Height = { Min = 10, Max = 50, Step = 1, Default = 20 },
-    Scale = { Min = 50, Max = 150, Step = 5, Default = 100 },
+    Scale = { Min = 50, Max = 150, Step = 1, Default = 100 },
     Opacity = { Min = 0, Max = 100, Step = 1, Default = 100 },
     TextSize = { Min = 8, Max = 32, Step = 1, Default = 12 },
     BorderSize = { Min = 1, Max = 5, Step = 1, Default = 1 },

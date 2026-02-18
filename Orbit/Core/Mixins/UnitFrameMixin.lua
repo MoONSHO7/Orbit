@@ -248,7 +248,14 @@ function Mixin:ApplySize(frame, width, height)
         return
     end
     Orbit:SafeAction(function()
-        frame:SetSize(width, height)
+        local anchor = Orbit.Engine.FrameAnchor and Orbit.Engine.FrameAnchor.anchors[frame]
+        local isHorizontalAnchor = anchor and (anchor.edge == "LEFT" or anchor.edge == "RIGHT")
+        local opts = isHorizontalAnchor and frame.anchorOptions
+        if isHorizontalAnchor and not (opts and opts.independentHeight) then
+            frame:SetWidth(width)
+        else
+            frame:SetSize(width, height)
+        end
     end)
 end
 

@@ -173,7 +173,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             end,
         })
     elseif currentTab == "Visibility" then
-        WL:AddOpacitySettings(self, schema, SYSTEM_INDEX, systemFrame, { step = 5 })
+        WL:AddOpacitySettings(self, schema, SYSTEM_INDEX, systemFrame)
         table.insert(schema.controls, {
             type = "checkbox",
             key = "OutOfCombatFade",

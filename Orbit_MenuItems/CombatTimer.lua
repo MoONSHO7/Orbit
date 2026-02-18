@@ -36,7 +36,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     })
 
     -- 2. Opacity
-    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
+    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end

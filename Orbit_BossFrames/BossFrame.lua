@@ -495,8 +495,8 @@ function Plugin:AddSettings(dialog, systemFrame)
     local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Auras" }, "Layout")
 
     if currentTab == "Layout" then
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 5, default = 150 })
-        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 5, default = 40 })
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 1, default = 150 })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 1, default = 40 })
         table.insert(schema.controls, {
             type = "dropdown",
             key = "CastBarPosition",

@@ -85,7 +85,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             label = "Scale",
             min = 50,
             max = 200,
-            step = 5,
+            step = 1,
             default = 100,
         })
     end

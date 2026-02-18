@@ -49,22 +49,25 @@ local function ClearChainLines(selectionOverlay)
 end
 
 local function RestorePreviewSize(selectionOverlay, isDragging)
+    local parent = selectionOverlay.parent
+    local needsReposition = selectionOverlay.previewOrigWidth or selectionOverlay.previewOrigHeight
+    if not needsReposition then return end
+    if isDragging then parent:StopMovingOrSizing() end
+    local l, b = parent:GetLeft(), parent:GetBottom()
+    local dw, dh = 0, 0
     if selectionOverlay.previewOrigWidth then
-        local parent = selectionOverlay.parent
-        local currentW = parent:GetWidth()
-        local origW = selectionOverlay.previewOrigWidth
+        dw = parent:GetWidth() - selectionOverlay.previewOrigWidth
+        parent:SetWidth(selectionOverlay.previewOrigWidth)
         selectionOverlay.previewOrigWidth = nil
-        if isDragging then
-            parent:StopMovingOrSizing()
-        end
-        local l, b = parent:GetLeft(), parent:GetBottom()
-        parent:SetWidth(origW)
-        parent:ClearAllPoints()
-        parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l + (currentW - origW) / 2, b)
-        if isDragging then
-            parent:StartMoving()
-        end
     end
+    if selectionOverlay.previewOrigHeight then
+        dh = parent:GetHeight() - selectionOverlay.previewOrigHeight
+        parent:SetHeight(selectionOverlay.previewOrigHeight)
+        selectionOverlay.previewOrigHeight = nil
+    end
+    parent:ClearAllPoints()
+    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l + dw / 2, b + dh / 2)
+    if isDragging then parent:StartMoving() end
 end
 
 local function OnDragUpdate(selectionOverlay, elapsed)
@@ -92,7 +95,10 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     local isVerticalEdge = anchorEdge and VERTICAL_EDGES[anchorEdge]
     local Anchor = Engine.FrameAnchor
     local opts = Anchor.GetFrameOptions(parent)
-    local willSyncWidth = isVerticalEdge and opts.syncDimensions ~= false
+    local rawSync = parent.anchorOptions and parent.anchorOptions.syncDimensions
+    local rawIndependentHeight = parent.anchorOptions and parent.anchorOptions.independentHeight
+    local willSyncWidth = isVerticalEdge and rawSync == true and not rawIndependentHeight
+    local willSyncHeight = not isVerticalEdge and anchorEdge and rawSync == true
     local lineAlign = willSyncWidth and "CENTER" or anchorAlign
 
     if
@@ -137,6 +143,20 @@ local function OnDragUpdate(selectionOverlay, elapsed)
                 parent:SetWidth(previewW)
                 parent:ClearAllPoints()
                 parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - (previewW - origW) / 2, b)
+                parent:StartMoving()
+            end
+        end
+
+        if willSyncHeight then
+            local previewH = (opts.useRowDimension and anchorTarget.orbitRowHeight) or anchorTarget:GetHeight()
+            if previewH then
+                local origH = selectionOverlay.previewOrigHeight or parent:GetHeight()
+                selectionOverlay.previewOrigHeight = origH
+                parent:StopMovingOrSizing()
+                local l, b = parent:GetLeft(), parent:GetBottom()
+                parent:SetHeight(previewH)
+                parent:ClearAllPoints()
+                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b - (previewH - origH) / 2)
                 parent:StartMoving()
             end
         end
