@@ -48,6 +48,40 @@ local function ClearChainLines(selectionOverlay)
     end
 end
 
+local CHAIN_HIGHLIGHT_ALPHA = 0.8
+
+local function ClearChainHighlights(selectionOverlay)
+    local Selection = Engine.FrameSelection
+    if not selectionOverlay.dragChainChildren then return end
+    for _, f in ipairs(selectionOverlay.dragChainChildren) do
+        local sel = Selection.selections[f]
+        if sel then Selection:UpdateVisuals(f, sel) end
+    end
+    selectionOverlay.dragChainChildren = nil
+end
+
+local function MaintainChainHighlights(selectionOverlay)
+    local Selection = Engine.FrameSelection
+    if not selectionOverlay.dragChainChildren then return end
+    for _, f in ipairs(selectionOverlay.dragChainChildren) do
+        local sel = Selection.selections[f]
+        if sel then
+            sel:Show()
+            sel:SetAlpha(CHAIN_HIGHLIGHT_ALPHA)
+            sel:EnableMouse(false)
+            sel:ShowSelected(true)
+            if sel.Label then sel.Label:SetText("") end
+            for i = 1, select("#", sel:GetRegions()) do
+                local region = select(i, sel:GetRegions())
+                if region:IsObjectType("Texture") and not region.isAnchorLine then
+                    region:SetDesaturated(false)
+                    region:SetVertexColor(1, 1, 1, 1)
+                end
+            end
+        end
+    end
+end
+
 local function RestorePreviewSize(selectionOverlay, isDragging)
     local parent = selectionOverlay.parent
     local needsReposition = selectionOverlay.previewOrigWidth or selectionOverlay.previewOrigHeight
@@ -73,6 +107,8 @@ end
 local function OnDragUpdate(selectionOverlay, elapsed)
     local parent = selectionOverlay.parent
     local Selection = Engine.FrameSelection
+
+    MaintainChainHighlights(selectionOverlay)
 
     local shiftHeld = IsShiftKeyDown()
     if shiftHeld and not selectionOverlay.precisionMode then
@@ -219,7 +255,10 @@ function Drag:OnDragStart(selectionOverlay)
         selectionOverlay.lastAnchorAlign = nil
         selectionOverlay.precisionMode = false
 
-        -- Shift held at drag start: enter precision mode immediately
+        local Anchor = Engine.FrameAnchor
+        selectionOverlay.dragChainChildren = Anchor:GetAnchoredDescendants(parent)
+        MaintainChainHighlights(selectionOverlay)
+
         if IsShiftKeyDown() then
             SetNonSelectedOverlaysVisible(selectionOverlay, false)
         end
@@ -239,6 +278,8 @@ function Drag:OnDragStop(selectionOverlay)
         selectionOverlay.lastAnchorAlign = nil
     end
     ClearChainLines(selectionOverlay)
+    ClearChainHighlights(selectionOverlay)
+    selectionOverlay.dragChainChildren = nil
     RestorePreviewSize(selectionOverlay)
     Engine.FrameSelection:ShowAnchorLine(selectionOverlay, nil)
     selectionOverlay:SetScript("OnUpdate", nil)

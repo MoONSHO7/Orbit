@@ -13,6 +13,9 @@ local POSSESS_BAR_INDEX = 11
 local MIN_STANCE_ICONS = 2
 local VEHICLE_EXIT_INDEX = 13
 local VEHICLE_EXIT_ICON = "Interface\\Vehicles\\UI-Vehicles-Button-Exit-Up"
+local VEHICLE_EXIT_ICON_DOWN = "Interface\\Vehicles\\UI-Vehicles-Button-Exit-Down"
+local VEHICLE_EXIT_HIGHLIGHT = "Interface\\Buttons\\ButtonHilight-Square"
+local VEHICLE_EXIT_TEXCOORDS = { 0.140625, 0.859375, 0.140625, 0.859375 }
 local VEHICLE_EXIT_VISIBILITY = "[canexitvehicle] show; hide"
 
 local BASE_VISIBILITY_DRIVER = "[petbattle][vehicleui] hide; show"
@@ -445,7 +448,9 @@ function Plugin:OnLoad()
     self.UpdateVisibilityDriver = function()
         if InCombatLockdown() then return end
         for index, container in pairs(self.containers) do
-            if index == PET_BAR_INDEX then
+            if index == VEHICLE_EXIT_INDEX then
+                RegisterStateDriver(container, "visibility", VEHICLE_EXIT_VISIBILITY)
+            elseif index == PET_BAR_INDEX then
                 RegisterStateDriver(container, "visibility", GetVisibilityDriver(PET_BAR_BASE_DRIVER))
             elseif index == 1 then
                 RegisterStateDriver(container, "visibility", BAR1_BASE_DRIVER)
@@ -477,6 +482,57 @@ function Plugin:OnLoad()
             btn.icon:SetDesaturated(true)
         end
     end)
+
+    local function HideFlyoutBackground()
+        local flyout = SpellFlyout
+        if not flyout or not flyout:IsShown() then return end
+        local bg = flyout.Background
+        if not bg then return end
+        if bg.End then bg.End:Hide() end
+        if bg.Start then bg.Start:Hide() end
+        if bg.VerticalMiddle then bg.VerticalMiddle:Hide() end
+        if bg.HorizontalMiddle then bg.HorizontalMiddle:Hide() end
+    end
+
+    local function SkinFlyoutButtons()
+        HideFlyoutBackground()
+        local flyout = SpellFlyout
+        if not flyout or not flyout:IsShown() then return end
+        if InCombatLockdown() then
+            self.flyoutSkinPending = true
+            return
+        end
+        flyout:SetWidthPadding(0)
+        flyout:SetHeightPadding(0)
+        local skinSettings = {
+            style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1,
+            borderSize = Orbit.db.GlobalSettings.BorderSize,
+            swipeColor = { r = 0, g = 0, b = 0, a = 0.8 },
+            showTimer = true, hideName = true,
+            backdropColor = self:GetSetting(1, "BackdropColour"),
+        }
+        local i = 1
+        local btn = _G["SpellFlyoutPopupButton" .. i]
+        while btn do
+            if btn:IsShown() then
+                btn:SetSize(BUTTON_SIZE, BUTTON_SIZE)
+                Orbit.Skin.Icons:ApplyActionButtonCustom(btn, skinSettings)
+            end
+            i = i + 1
+            btn = _G["SpellFlyoutPopupButton" .. i]
+        end
+        flyout:Layout()
+        self.flyoutSkinPending = false
+    end
+
+    if SpellFlyout then
+        hooksecurefunc(SpellFlyout, "Toggle", SkinFlyoutButtons)
+        hooksecurefunc(SpellFlyout, "UpdateBackground", HideFlyoutBackground)
+    end
+
+    Orbit.EventBus:On("PLAYER_REGEN_ENABLED", function()
+        if self.flyoutSkinPending then SkinFlyoutButtons() end
+    end, self)
 
     Orbit.EventBus:On("CURSOR_CHANGED", function()
         local cursorType = GetCursorInfo()
@@ -563,10 +619,12 @@ function Plugin:CreateVehicleExitButton()
     btn:SetScript("OnClick", function()
         if UnitOnTaxi("player") then TaxiRequestEarlyLanding() else VehicleExit() end
     end)
-
-    local icon = btn:CreateTexture(nil, "ARTWORK")
-    icon:SetAllPoints()
-    icon:SetTexture(VEHICLE_EXIT_ICON)
+    btn:SetNormalTexture(VEHICLE_EXIT_ICON)
+    btn:GetNormalTexture():SetTexCoord(unpack(VEHICLE_EXIT_TEXCOORDS))
+    btn:SetPushedTexture(VEHICLE_EXIT_ICON_DOWN)
+    btn:GetPushedTexture():SetTexCoord(unpack(VEHICLE_EXIT_TEXCOORDS))
+    btn:SetHighlightTexture(VEHICLE_EXIT_HIGHLIGHT, "ADD")
+    btn:GetHighlightTexture():SetTexCoord(unpack(VEHICLE_EXIT_TEXCOORDS))
 
     local bar1 = self.containers[1]
     if bar1 then

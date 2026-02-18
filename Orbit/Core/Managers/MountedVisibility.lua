@@ -97,8 +97,9 @@ local function RestorePlugin(plugin)
     if frame then
         frame:SetScript("OnUpdate", nil)
         frame.orbitMountedSuppressed = nil
+        frame.orbitLastVisibilityDriver = nil
         if plugin.mountedHoverReveal and Orbit.Animation then Orbit.Animation:StopHoverFade(frame) end
-        if not plugin.mountedHoverReveal then frame:SetAlpha(1) end
+        frame:SetAlpha(1)
         if frame.orbitHoverOverlay then frame.orbitHoverOverlay:Hide() end
     end
     if plugin.ApplySettings then
@@ -203,9 +204,10 @@ function Manager:Refresh(force)
         elseif not shouldHide and suppressedPlugins[plugin] then
             RestorePlugin(plugin)
         else
-            local isEditMode = Orbit.IsEditMode and Orbit:IsEditMode()
-            if not isEditMode and plugin.UpdateVisibilityDriver then
+            if plugin.UpdateVisibilityDriver then
                 plugin:UpdateVisibilityDriver()
+            elseif plugin.UpdateVisibility then
+                plugin:UpdateVisibility()
             end
         end
     end

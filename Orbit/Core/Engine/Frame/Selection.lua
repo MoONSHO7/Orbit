@@ -195,7 +195,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     local lineThickness = C.Selection.AnchorLineThickness
 
     local lineContainer = CreateFrame("Frame", nil, UIParent)
-    lineContainer:SetFrameStrata("TOOLTIP")
+    lineContainer:SetFrameStrata("FULLSCREEN_DIALOG")
     lineContainer:SetFrameLevel(9999)
     lineContainer:SetAllPoints(selection)
     selection.AnchorLineFrame = lineContainer
@@ -593,20 +593,16 @@ function Selection:UpdateVisuals(frame, selection)
         selection:SetFrameStrata("HIGH")
         selection:EnableMouse(true)
 
-        -- Show the label again
-        if selection.Label then
-            selection.Label:Show()
-        end
-
         ForEachRegion(selection, function(region)
             if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
                 region:SetDesaturated(false)
-                region:SetVertexColor(1, 1, 1, 1) -- Reset to normal
+                region:SetVertexColor(1, 1, 1, 1)
                 region:SetAlpha(1)
             end
         end)
 
         selection:ShowSelected(true)
+        if selection.Label then selection.Label:SetText("") end
         if selection.Highlight then
             selection.Highlight:SetVertexColor(1, 1, 1, 1)
             selection.Highlight:SetAlpha(1)
@@ -641,11 +637,6 @@ function Selection:UpdateVisuals(frame, selection)
         selection:SetFrameStrata("HIGH")
         selection:EnableMouse(true)
 
-        -- Show the label again
-        if selection.Label then
-            selection.Label:Show()
-        end
-
         ForEachRegion(selection, function(region)
             if region:IsObjectType("Texture") and region ~= selection.ComponentEditOverlay then
                 region:SetAlpha(1)
@@ -653,6 +644,7 @@ function Selection:UpdateVisuals(frame, selection)
         end)
 
         selection:ShowHighlighted()
+        if selection.Label then selection.Label:SetText("") end
 
         if selection.orbitInset or selection.orbitCanvasInset then
             selection:ClearAllPoints()

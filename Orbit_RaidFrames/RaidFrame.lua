@@ -848,7 +848,7 @@ function Plugin:OnLoad()
     -- Visibility driver: show only in raid
     local RAID_BASE_DRIVER = "[petbattle] hide; [@raid1,exists] show; hide"
     local function UpdateVisibilityDriver()
-        if InCombatLockdown() then return end
+        if InCombatLockdown() or Orbit:IsEditMode() then return end
         local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(RAID_BASE_DRIVER) or RAID_BASE_DRIVER
         RegisterStateDriver(self.container, "visibility", driver)
     end

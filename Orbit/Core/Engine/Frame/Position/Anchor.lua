@@ -430,6 +430,21 @@ function Anchor:GetAnchoredChildren(parent)
     return children
 end
 
+function Anchor:GetAnchoredDescendants(frame)
+    local result = {}
+    local function walk(parent)
+        if not self.childrenOf[parent] then return end
+        for child in pairs(self.childrenOf[parent]) do
+            if child.orbitChainSync then
+                table.insert(result, child)
+                walk(child)
+            end
+        end
+    end
+    walk(frame)
+    return result
+end
+
 local function GetChainRoot(anchors, frame)
     local root = frame
     while true do

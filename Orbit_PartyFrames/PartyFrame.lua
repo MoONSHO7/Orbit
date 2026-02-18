@@ -1143,7 +1143,7 @@ function Plugin:OnLoad()
     -- Helper to update visibility driver based on IncludePlayer setting
     local PARTY_BASE_DRIVER = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
     local function UpdateVisibilityDriver(plugin)
-        if InCombatLockdown() then return end
+        if InCombatLockdown() or Orbit:IsEditMode() then return end
         local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(PARTY_BASE_DRIVER) or PARTY_BASE_DRIVER
         RegisterStateDriver(plugin.container, "visibility", driver)
     end

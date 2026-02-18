@@ -98,7 +98,8 @@ function Orbit.Visibility:ApplyState(frame, visibilityMode)
     local driver
     if Orbit:IsEditMode() then
         driver = "show"
-        frame:SetAlpha(1) -- Ensure alpha is up
+        frame:SetAlpha(1)
+        frame.orbitLastVisibilityDriver = nil
     else
         local vis = visibilityMode or 0
         if vis == 3 then
