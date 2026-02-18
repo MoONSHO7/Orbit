@@ -578,9 +578,14 @@ function Plugin:OnLoad()
         self.container:SetPoint("RIGHT", UIParent, "RIGHT", -100, 100)
     end
 
-    local visibilityDriver =
-        "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
-    RegisterStateDriver(self.container, "visibility", visibilityDriver)
+    local BOSS_BASE_DRIVER = "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
+    local function UpdateVisibilityDriver()
+        if InCombatLockdown() then return end
+        local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(BOSS_BASE_DRIVER) or BOSS_BASE_DRIVER
+        RegisterStateDriver(self.container, "visibility", driver)
+    end
+    self.UpdateVisibilityDriver = function() UpdateVisibilityDriver() end
+    UpdateVisibilityDriver()
     self.container:Show()
     self.container:SetSize(self:GetSetting(1, "Width") or 150, 100)
     self:PositionFrames()
@@ -635,9 +640,7 @@ function Plugin:OnLoad()
             self:HidePreview()
 
             if not InCombatLockdown() then
-                local visibilityDriver =
-                    "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
-                RegisterStateDriver(self.container, "visibility", visibilityDriver)
+                UpdateVisibilityDriver()
                 self:UpdateContainerSize()
             end
         end, self)

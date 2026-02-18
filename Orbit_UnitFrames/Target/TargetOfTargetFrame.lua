@@ -62,6 +62,8 @@ function Plugin:OnLoad()
 
     -- Create frame directly on UIParent
     self.frame = OrbitEngine.UnitButton:Create(UIParent, "targettarget", "OrbitTargetOfTargetFrame")
+    self.mountedFrame = self.frame
+    self.mountedCombatRestore = true
     self.frame:SetFrameLevel(math.max(1, self.frame:GetFrameLevel() - FRAME_LEVEL_DEMOTE))
     self.frame.editModeName = "Target of Target"
     self.frame.systemIndex = TOT_FRAME_INDEX
@@ -177,11 +179,14 @@ function Plugin:RegisterEvents(enabled)
     end
 end
 
+function Plugin:UpdateVisibility() self:ApplySettings() end
+
 function Plugin:ApplySettings(frame)
     frame = self.frame
     if not frame or InCombatLockdown() then
         return
     end
+
     local systemIndex = TOT_FRAME_INDEX
 
     -- Check if enabled via TargetFrame setting

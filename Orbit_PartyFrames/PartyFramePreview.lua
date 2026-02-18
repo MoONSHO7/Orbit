@@ -137,10 +137,11 @@ function Orbit.PartyFramePreviewMixin:ShowPreview()
     for i = 1, MAX_PREVIEW_FRAMES do
         if self.frames[i] then
             SafeUnregisterUnitWatch(self.frames[i])
-            self.frames[i].preview = true
             if i <= framesToShow then
+                self.frames[i].preview = true
                 self.frames[i]:Show()
             else
+                self.frames[i].preview = nil
                 self.frames[i]:Hide()
             end
         end
@@ -151,6 +152,10 @@ function Orbit.PartyFramePreviewMixin:ShowPreview()
 
     -- Update container size for preview
     self:UpdateContainerSize()
+
+    -- Re-sync selection highlight after container resize
+    local OrbitEngine = Orbit.Engine
+    if OrbitEngine.FrameSelection then OrbitEngine.FrameSelection:ForceUpdate(self.container) end
 
     -- Apply preview visuals after a short delay to ensure they aren't overwritten
     C_Timer.After(DEBOUNCE_DELAY, function()

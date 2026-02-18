@@ -337,6 +337,7 @@ function Plugin:OnLoad()
     })
     Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
     self.frame = Frame -- Expose for PluginMixin compatibility
+    self.mountedFrame = Frame
 
     -- [ CANVAS PREVIEW ] -------------------------------------------------------------------------------
     function Frame:CreateCanvasPreview(options)

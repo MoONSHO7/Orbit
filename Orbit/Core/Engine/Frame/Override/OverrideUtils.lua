@@ -51,10 +51,11 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
         end
     end
 
-    -- Global FontColorCurve fallback (resolve class pins per-unit when available)
+    -- Class color only buffs the party, not the tavern NPCs
     local fontCurve = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
     local hasClassPin = fontCurve and Engine.WidgetLogic:CurveHasClassPin(fontCurve)
     local color = (hasClassPin and unit and Engine.WidgetLogic:GetFirstColorFromCurveForUnit(fontCurve, unit))
+        or (hasClassPin and not unit and { r = 1, g = 1, b = 1, a = 1 })
         or Engine.WidgetLogic:GetFirstColorFromCurve(fontCurve)
         or { r = 1, g = 1, b = 1, a = 1 }
     element:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)

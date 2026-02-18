@@ -166,7 +166,7 @@ function Plugin:OnLoad()
         OrbitEngine.NativeFrame:Hide(PlayerFrame)
     end
 
-    self.container = self:CreateVisibilityContainer(UIParent)
+    self.container = self:CreateVisibilityContainer(UIParent, true)
     self.frame = OrbitEngine.UnitButton:Create(self.container, "player", "OrbitPlayerFrame")
     self.frame.editModeName = "Player Frame"
     self.frame.systemIndex = PLAYER_FRAME_INDEX

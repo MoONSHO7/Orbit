@@ -291,6 +291,16 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     end
 end
 
+-- [ MOUNTED VISIBILITY ]----------------------------------------------------------------------------
+
+function Mixin:UpdateVisibility()
+    local bar = self.CastBar
+    if not bar then return end
+    if not InCombatLockdown() and Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide() then
+        bar:StopCast()
+    end
+end
+
 -- [ PREVIEW ]---------------------------------------------------------------------------------------
 
 function Mixin:ShowPreview()
@@ -344,8 +354,8 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
     bar.nativeSpellbar = nativeSpellbar
     local plugin = self
 
-    -- Cast: query APIs and use SetTimerDuration for engine-driven animation
     function bar:Cast()
+        if unit ~= "player" and not InCombatLockdown() and Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide() then return end
         local targetBar = self.orbitBar or self
         local name, text, texture, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
         local isChanneled = false
@@ -400,7 +410,12 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
         if self.Icon then
             self.Icon:SetTexture(texture or 136243)
         end
-        self:Show()
+        if InCombatLockdown() and self:IsProtected() then
+            self:SetAlpha(1)
+            if self.orbitBar then self.orbitBar:SetAlpha(1) end
+        else
+            self:Show()
+        end
     end
 
     -- StopCast: clear state and hide
@@ -409,7 +424,12 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
         self.channeling = false
         self.durationObj = nil
         if not self.preview then
-            self:Hide()
+            if InCombatLockdown() and self:IsProtected() then
+                self:SetAlpha(0)
+                if self.orbitBar then self.orbitBar:SetAlpha(0) end
+            else
+                self:Hide()
+            end
         end
     end
 
@@ -491,6 +511,22 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
         local handler = dispatch[event]
         if handler then
             handler()
+        end
+    end)
+
+    -- Pre-show at alpha=0 on combat enter so alpha-toggle works for protected frames
+    bar:RegisterEvent("PLAYER_REGEN_DISABLED")
+    bar:RegisterEvent("PLAYER_REGEN_ENABLED")
+    bar:HookScript("OnEvent", function(self, event)
+        if not self:IsProtected() then return end
+        if event == "PLAYER_REGEN_DISABLED" and not self:IsShown() then
+            self:Show()
+            self:SetAlpha(0)
+            if self.orbitBar then self.orbitBar:SetAlpha(0) end
+            self.orbitHiddenByAlpha = true
+        elseif event == "PLAYER_REGEN_ENABLED" and self.orbitHiddenByAlpha then
+            self:Hide()
+            self.orbitHiddenByAlpha = false
         end
     end)
 end

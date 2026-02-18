@@ -248,14 +248,10 @@ end
 -- Normalize position to nearest anchor point
 function Snap:NormalizePosition(frame)
     local parent = frame:GetParent()
-    if not parent then
-        return
-    end
+    if not parent then return end
 
     local scale = frame:GetScale()
-    if not scale then
-        return
-    end
+    if not scale then return end
 
     local left = frame:GetLeft() * scale
     local top = frame:GetTop() * scale
@@ -265,35 +261,40 @@ function Snap:NormalizePosition(frame)
     local parentWidth, parentHeight = parent:GetSize()
     local x, y, point
 
-    -- Horizontal
-    if left < (parentWidth - right) and left < math.abs((left + right) / 2 - parentWidth / 2) then
-        x = left
-        point = "LEFT"
-    elseif (parentWidth - right) < math.abs((left + right) / 2 - parentWidth / 2) then
-        x = right - parentWidth
-        point = "RIGHT"
+    if frame.orbitForceAnchorPoint then
+        point = frame.orbitForceAnchorPoint
+        local hasTop = point:find("TOP")
+        local hasBottom = point:find("BOTTOM")
+        local hasLeft = point:find("LEFT")
+        local hasRight = point:find("RIGHT")
+        x = hasLeft and left or hasRight and (right - parentWidth) or ((left + right) / 2 - parentWidth / 2)
+        y = hasBottom and bottom or hasTop and (top - parentHeight) or ((bottom + top) / 2 - parentHeight / 2)
     else
-        x = (left + right) / 2 - parentWidth / 2
-        point = ""
+        if left < (parentWidth - right) and left < math.abs((left + right) / 2 - parentWidth / 2) then
+            x = left
+            point = "LEFT"
+        elseif (parentWidth - right) < math.abs((left + right) / 2 - parentWidth / 2) then
+            x = right - parentWidth
+            point = "RIGHT"
+        else
+            x = (left + right) / 2 - parentWidth / 2
+            point = ""
+        end
+
+        if bottom < (parentHeight - top) and bottom < math.abs((bottom + top) / 2 - parentHeight / 2) then
+            y = bottom
+            point = "BOTTOM" .. point
+        elseif (parentHeight - top) < math.abs((bottom + top) / 2 - parentHeight / 2) then
+            y = top - parentHeight
+            point = "TOP" .. point
+        else
+            y = (bottom + top) / 2 - parentHeight / 2
+            point = "" .. point
+        end
+
+        if point == "" then point = "CENTER" end
     end
 
-    -- Vertical
-    if bottom < (parentHeight - top) and bottom < math.abs((bottom + top) / 2 - parentHeight / 2) then
-        y = bottom
-        point = "BOTTOM" .. point
-    elseif (parentHeight - top) < math.abs((bottom + top) / 2 - parentHeight / 2) then
-        y = top - parentHeight
-        point = "TOP" .. point
-    else
-        y = (bottom + top) / 2 - parentHeight / 2
-        point = "" .. point
-    end
-
-    if point == "" then
-        point = "CENTER"
-    end
-
-    -- Snap to pixel grid
     if Engine.Pixel then
         local effectiveScale = frame:GetEffectiveScale()
         if effectiveScale then

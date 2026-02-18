@@ -166,6 +166,15 @@ function Plugin:OnLoad()
     end, self)
 end
 
+function Plugin:UpdateVisibility()
+    local shouldHide = (C_PetBattles and C_PetBattles.IsInBattle()) or (UnitHasVehicleUI and UnitHasVehicleUI("player"))
+        or (Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide())
+    local alpha = shouldHide and 0 or 1
+    for _, data in pairs(VIEWER_MAP) do
+        if data.anchor then data.anchor:SetAlpha(alpha) end
+    end
+end
+
 -- [ ANCHOR CREATION ]-------------------------------------------------------------------------------
 function Plugin:CreateAnchor(name, systemIndex, label)
     local frame = CreateFrame("Frame", name, UIParent)
@@ -261,8 +270,9 @@ function Plugin:ApplySettings(frame)
         return
     end
 
+    local isMountedHidden = Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide()
     local alpha = self:GetSetting(systemIndex, "Opacity") or 100
-    OrbitEngine.NativeFrame:Modify(frame, { alpha = alpha / 100 })
+    OrbitEngine.NativeFrame:Modify(frame, { alpha = isMountedHidden and 0 or (alpha / 100) })
     frame:Show()
     OrbitEngine.Frame:RestorePosition(frame, self, systemIndex)
     self:ProcessChildren(frame)

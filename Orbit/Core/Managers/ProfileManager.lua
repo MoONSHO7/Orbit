@@ -75,6 +75,9 @@ function Orbit.Profile:Initialize()
     if gs.OverlayAllFrames == nil then
         gs.OverlayAllFrames = false
     end
+    if gs.HideWhenMounted == nil then
+        gs.HideWhenMounted = false
+    end
     if gs.OverlayTexture == nil then
         gs.OverlayTexture = "Orbit Gradient"
     end

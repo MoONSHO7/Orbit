@@ -253,11 +253,21 @@ function Mixin:ApplySize(frame, width, height)
 end
 
 -- [ VISIBILITY CONTAINER ]
-function Mixin:CreateVisibilityContainer(parent)
+function Mixin:CreateVisibilityContainer(parent, combatEssential)
     local container = CreateFrame("Frame", nil, parent or UIParent, "SecureHandlerStateTemplate")
     container:SetAllPoints()
-    RegisterStateDriver(container, "visibility", "[petbattle] hide; show")
+    local baseDriver = "[petbattle] hide; show"
+    local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(baseDriver, combatEssential) or baseDriver
+    RegisterStateDriver(container, "visibility", driver)
+    container.orbitBaseDriver = baseDriver
+    container.orbitCombatEssential = combatEssential
     return container
+end
+
+function Mixin:UpdateVisibilityDriver()
+    if not self.container or not self.container.orbitBaseDriver or InCombatLockdown() then return end
+    local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(self.container.orbitBaseDriver, self.container.orbitCombatEssential) or self.container.orbitBaseDriver
+    RegisterStateDriver(self.container, "visibility", driver)
 end
 
 -- [ STANDARD RESTORE POSITION ]

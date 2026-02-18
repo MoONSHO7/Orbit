@@ -115,6 +115,8 @@ function Plugin:OnLoad()
 
     self:RegisterStandardEvents()
     self:RegisterVisibilityEvents()
+    self.mountedFrame = self.frame
+    self.mountedHoverReveal = true
 
     -- Event-driven initialization with retry
     self:TryCapture()

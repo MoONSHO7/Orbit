@@ -76,6 +76,8 @@ function Plugin:OnLoad()
 
     self:RegisterStandardEvents()
     self:RegisterVisibilityEvents()
+    self.mountedFrame = self.frame
+    self.mountedHoverReveal = true
     self:ApplySettings()
     self:StartLoop()
 end

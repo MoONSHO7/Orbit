@@ -64,6 +64,8 @@ function UnitButton:Create(parent, unit, name)
     f:SetAttribute("unit", unit)
     f:SetAttribute("*type1", "target")
     f:SetAttribute("*type2", "togglemenu")
+    f:SetAttribute("ping-receiver", true)
+    Mixin(f, PingableType_UnitFrameMixin)
 
     f.unit = unit
 

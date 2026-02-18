@@ -1141,20 +1141,13 @@ function Plugin:OnLoad()
     end
 
     -- Helper to update visibility driver based on IncludePlayer setting
+    local PARTY_BASE_DRIVER = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
     local function UpdateVisibilityDriver(plugin)
-        if InCombatLockdown() then
-            return
-        end
-
-        -- Always require party to exist - IncludePlayer just adds player to the frames
-        -- Both settings use the same visibility: show only when in party (not raid)
-        local visibilityDriver = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
-
-        RegisterStateDriver(plugin.container, "visibility", visibilityDriver)
+        if InCombatLockdown() then return end
+        local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(PARTY_BASE_DRIVER) or PARTY_BASE_DRIVER
+        RegisterStateDriver(plugin.container, "visibility", driver)
     end
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver(self) end
-
-    -- Register secure visibility driver
     UpdateVisibilityDriver(self)
 
     -- Explicit Show Bridge: Ensure container is active to receive first state evaluation
@@ -1217,8 +1210,7 @@ function Plugin:OnLoad()
         EventRegistry:RegisterCallback("EditMode.Exit", function()
             if not InCombatLockdown() then
                 self:HidePreview()
-                local visibilityDriver = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
-                RegisterStateDriver(self.container, "visibility", visibilityDriver)
+                UpdateVisibilityDriver(self)
             end
         end, self)
     end
@@ -1329,46 +1321,7 @@ function Plugin:PositionFrames()
     local width = self:GetSetting(1, "Width") or 160
     local height = self:GetSetting(1, "Height") or 40
     local growthDirection = self:GetSetting(1, "GrowthDirection") or (orientation == 0 and "Down" or "Right")
-
-    -- Re-anchor container to match growth direction (prevents frame shift on party size change)
-    local desiredAnchor = Helpers:GetContainerAnchor(growthDirection)
-    local currentAnchor = select(1, self.container:GetPoint(1))
-    if currentAnchor and currentAnchor ~= desiredAnchor then
-        local scale = self.container:GetEffectiveScale()
-        local parentScale = UIParent:GetEffectiveScale()
-        local left, bottom = self.container:GetLeft(), self.container:GetBottom()
-        local top, right = self.container:GetTop(), self.container:GetRight()
-        if left and bottom and top and right then
-            local ratio = parentScale / scale
-            local parentLeft = UIParent:GetLeft() or 0
-            local parentBottom = UIParent:GetBottom() or 0
-            local parentTop = UIParent:GetTop() or (GetScreenHeight() * parentScale)
-            local parentRight = UIParent:GetRight() or (GetScreenWidth() * parentScale)
-            local x, y
-            if desiredAnchor == "TOPLEFT" then
-                x = (left - parentLeft) * ratio
-                y = (top - parentTop) * ratio
-            elseif desiredAnchor == "BOTTOMLEFT" then
-                x = (left - parentLeft) * ratio
-                y = (bottom - parentBottom) * ratio
-            elseif desiredAnchor == "TOPRIGHT" then
-                x = (right - parentRight) * ratio
-                y = (top - parentTop) * ratio
-            else
-                x = (left - parentLeft) * ratio
-                y = (top - parentTop) * ratio
-            end
-            self.container:ClearAllPoints()
-            self.container:SetPoint(desiredAnchor, UIParent, desiredAnchor, x, y)
-            -- Persist new anchor through position system
-            local PM = OrbitEngine.PositionManager
-            if PM then
-                PM:SetPosition(self.container, desiredAnchor, x, y)
-                PM:MarkDirty(self.container)
-            end
-            self:SetSetting(1, "Position", { point = desiredAnchor, x = x, y = y })
-        end
-    end
+    self.container.orbitForceAnchorPoint = Helpers:GetContainerAnchor(growthDirection)
 
     local visibleIndex = 0
     for _, frame in ipairs(self.frames) do
