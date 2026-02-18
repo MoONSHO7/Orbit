@@ -192,7 +192,8 @@ function Manager:Refresh(force)
         elseif not shouldHide and suppressedPlugins[plugin] then
             RestorePlugin(plugin)
         else
-            if plugin.UpdateVisibilityDriver then
+            local isEditMode = Orbit.IsEditMode and Orbit:IsEditMode()
+            if not isEditMode and plugin.UpdateVisibilityDriver then
                 plugin:UpdateVisibilityDriver()
             elseif plugin.UpdateVisibility then
                 plugin:UpdateVisibility()
