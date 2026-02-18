@@ -495,8 +495,8 @@ function Plugin:AddSettings(dialog, systemFrame)
     local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Auras" }, "Layout")
 
     if currentTab == "Layout" then
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 5, default = 150 })
-        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 5, default = 40 })
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 1, default = 150 })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 1, default = 40 })
         table.insert(schema.controls, {
             type = "dropdown",
             key = "CastBarPosition",
@@ -580,7 +580,7 @@ function Plugin:OnLoad()
 
     local BOSS_BASE_DRIVER = "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
     local function UpdateVisibilityDriver()
-        if InCombatLockdown() then return end
+        if InCombatLockdown() or Orbit:IsEditMode() then return end
         local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(BOSS_BASE_DRIVER) or BOSS_BASE_DRIVER
         RegisterStateDriver(self.container, "visibility", driver)
     end

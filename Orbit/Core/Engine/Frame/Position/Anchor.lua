@@ -31,6 +31,7 @@ local DEFAULT_OPTIONS = {
     mergeBorders = false, -- If true and Distance=0, redundant borders are hidden
     align = nil, -- Alignment override: TOP/CENTER/BOTTOM or LEFT/CENTER/RIGHT
     useRowDimension = false, -- Use parent's orbitRowHeight/orbitColumnWidth
+    independentHeight = false, -- Skip ongoing height sync so user can adjust via slider
 }
 
 local optionsCache = setmetatable({}, { __mode = "k" })
@@ -279,8 +280,13 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
         end
         if opts.syncDimensions then
             if edge == "LEFT" or edge == "RIGHT" then
-                local height = (opts.useRowDimension and parent.orbitRowHeight) or parentHeight
-                child:SetHeight(math.max(height, MIN_SYNC_HEIGHT))
+                if not (opts.independentHeight and suppressApplySettings) then
+                    local height = math.max((opts.useRowDimension and parent.orbitRowHeight) or parentHeight, MIN_SYNC_HEIGHT)
+                    child:SetHeight(height)
+                    if opts.independentHeight and child.orbitPlugin and child.orbitPlugin.SetSetting and child.systemIndex then
+                        child.orbitPlugin:SetSetting(child.systemIndex, "Height", math.floor(height + 0.5))
+                    end
+                end
             else
                 local chainWidth, offsetX = self:GetHorizontalChainExtent(parent)
                 if chainWidth then
@@ -422,6 +428,21 @@ function Anchor:GetAnchoredChildren(parent)
         end
     end
     return children
+end
+
+function Anchor:GetAnchoredDescendants(frame)
+    local result = {}
+    local function walk(parent)
+        if not self.childrenOf[parent] then return end
+        for child in pairs(self.childrenOf[parent]) do
+            if child.orbitChainSync then
+                table.insert(result, child)
+                walk(child)
+            end
+        end
+    end
+    walk(frame)
+    return result
 end
 
 local function GetChainRoot(anchors, frame)
@@ -600,8 +621,10 @@ local function SyncChild(child, parent, anchor, parentScale, parentWidth, parent
     local chainOffsetX = nil
     if opts.syncDimensions then
         if anchor.edge == "LEFT" or anchor.edge == "RIGHT" then
-            local h = (opts.useRowDimension and parent.orbitRowHeight) or parentHeight
-            child:SetHeight(math.max(h, MIN_SYNC_HEIGHT))
+            if not opts.independentHeight then
+                local h = (opts.useRowDimension and parent.orbitRowHeight) or parentHeight
+                child:SetHeight(math.max(h, MIN_SYNC_HEIGHT))
+            end
         else
             local chainWidth, offsetX = Anchor:GetHorizontalChainExtent(parent)
             if chainWidth then

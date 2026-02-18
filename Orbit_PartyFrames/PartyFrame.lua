@@ -913,11 +913,11 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
         table.insert(
             schema.controls,
-            { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 5, default = 160, onChange = makeOnChange(self, "Width") }
+            { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 1, default = 160, onChange = makeOnChange(self, "Width") }
         )
         table.insert(
             schema.controls,
-            { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 5, default = 40, onChange = makeOnChange(self, "Height") }
+            { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 40, onChange = makeOnChange(self, "Height") }
         )
         table.insert(
             schema.controls,
@@ -1143,7 +1143,7 @@ function Plugin:OnLoad()
     -- Helper to update visibility driver based on IncludePlayer setting
     local PARTY_BASE_DRIVER = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
     local function UpdateVisibilityDriver(plugin)
-        if InCombatLockdown() then return end
+        if InCombatLockdown() or Orbit:IsEditMode() then return end
         local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(PARTY_BASE_DRIVER) or PARTY_BASE_DRIVER
         RegisterStateDriver(plugin.container, "visibility", driver)
     end

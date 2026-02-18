@@ -23,6 +23,22 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
 
     -- Normalize to screen space
     left, top, right, bottom = left * fScale, top * fScale, right * fScale, bottom * fScale
+
+    local Anchor = Engine.FrameAnchor
+    local chainChildren = Anchor:GetAnchoredDescendants(frame)
+    for _, child in ipairs(chainChildren) do
+        local cl, cb, cw, ch = child:GetRect()
+        if cl then
+            local cs = child:GetEffectiveScale()
+            local cL, cR = cl * cs, (cl + cw) * cs
+            local cB, cT = cb * cs, (cb + ch) * cs
+            if cL < left then left = cL end
+            if cR > right then right = cR end
+            if cB < bottom then bottom = cB end
+            if cT > top then top = cT end
+        end
+    end
+
     local centerX, centerY = (left + right) / 2, (top + bottom) / 2
 
     local closestX, closestY = nil, nil

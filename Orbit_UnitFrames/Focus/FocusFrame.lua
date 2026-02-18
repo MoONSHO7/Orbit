@@ -108,12 +108,10 @@ function Plugin:AddSettings(dialog, systemFrame)
     local widthParams = { key = "Width", label = "Width", min = 50, max = 400, default = 160 }
     local heightParams = { key = "Height", label = "Height", min = 20, max = 100, default = 40 }
 
-    if isAnchored and anchorAxis == "x" then
-        heightParams = nil
-    end -- Horizontal stack locks height
     if isAnchored and anchorAxis == "y" then
         widthParams = nil
-    end -- Vertical stack locks width
+        heightParams = nil
+    end
 
     if WL and WL.AddSizeSettings then
         WL:AddSizeSettings(self, schema, systemIndex, systemFrame, widthParams, heightParams)
@@ -223,7 +221,7 @@ function Plugin:OnLoad()
     end
 
     -- Can only anchor side-by-side (horizontal), not above/below (vertical)
-    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, mergeBorders = true }
+    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, mergeBorders = true, independentHeight = true }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, FOCUS_FRAME_INDEX)
 
     -- Register standard events

@@ -142,8 +142,34 @@ function Tooltip:ShowPosition(frame, Selection, noFade, anchorLabel)
     local frameCenterX = (frameLeft + (frameWidth / 2)) * frameScale
     local frameCenterY = (frameBottom + (frameHeight / 2)) * frameScale
 
-    local relX = math.floor(frameCenterX - screenCenterX + 0.5)
-    local relY = math.floor(frameCenterY - screenCenterY + 0.5)
+    local pixelScale = Engine.Pixel and Engine.Pixel:GetScale() or 1
+    local Anchor = Engine.FrameAnchor
+    local descendants = Anchor:GetAnchoredDescendants(frame)
+    local relX, relY
+
+    if #descendants > 0 then
+        local minL, maxR = frameLeft * frameScale, (frameLeft + frameWidth) * frameScale
+        local minB, maxT = frameBottom * frameScale, (frameBottom + frameHeight) * frameScale
+        for _, child in ipairs(descendants) do
+            local cl, cb, cw, ch = child:GetRect()
+            if cl then
+                local cs = child:GetEffectiveScale()
+                local cLeft, cRight = cl * cs, (cl + cw) * cs
+                local cBot, cTop = cb * cs, (cb + ch) * cs
+                if cLeft < minL then minL = cLeft end
+                if cRight > maxR then maxR = cRight end
+                if cBot < minB then minB = cBot end
+                if cTop > maxT then maxT = cTop end
+            end
+        end
+        local chainCX = (minL + maxR) / 2
+        local chainCY = (minB + maxT) / 2
+        relX = math.floor((chainCX - screenCenterX) / pixelScale + 0.5)
+        relY = math.floor((chainCY - screenCenterY) / pixelScale + 0.5)
+    else
+        relX = math.floor((frameCenterX - screenCenterX) / pixelScale + 0.5)
+        relY = math.floor((frameCenterY - screenCenterY) / pixelScale + 0.5)
+    end
 
     local parent = Engine.FrameAnchor:GetAnchorParent(frame)
     local displayText

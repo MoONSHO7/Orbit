@@ -50,7 +50,7 @@ function CDM:AddSettings(dialog, systemFrame)
                 end,
             })
         elseif currentTab == "Visibility" then
-            WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
+            WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
             table.insert(schema.controls, {
                 type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
                 tooltip = "Hide frame when out of combat with no target",
@@ -107,7 +107,7 @@ function CDM:AddSettings(dialog, systemFrame)
             })
             table.insert(schema.controls, {
                 type = "slider", key = "IconSize", label = "Scale",
-                min = 50, max = 200, step = 5,
+                min = 50, max = 200, step = 1,
                 formatter = function(v) return v .. "%" end,
                 default = Constants.Cooldown.DefaultIconSize,
                 onChange = function(val)
@@ -179,7 +179,7 @@ function CDM:AddSettings(dialog, systemFrame)
             })
         end
     elseif currentTab == "Visibility" then
-        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame, { step = 5 })
+        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
         table.insert(schema.controls, {
             type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
             tooltip = "Hide frame when out of combat with no target",
@@ -223,7 +223,7 @@ function CDM:AddSettings(dialog, systemFrame)
                     onChange = function(val) self:SetSetting(systemIndex, "HideBorders", val); self:ApplyAll() end,
                 })
                 table.insert(schema.controls, {
-                    type = "slider", key = "InactiveAlpha", label = "Inactive Alpha", min = 20, max = 100, step = 5, default = 60,
+                    type = "slider", key = "InactiveAlpha", label = "Inactive Alpha", min = 20, max = 100, step = 1, default = 60,
                     onChange = function(val) self:SetSetting(systemIndex, "InactiveAlpha", val); self:ApplyAll() end,
                 })
             end

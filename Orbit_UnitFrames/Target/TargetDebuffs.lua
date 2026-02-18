@@ -70,7 +70,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         if not isAnchored then
             table.insert(schema.controls, {
                 type = "slider", key = "Scale", label = "Scale",
-                min = 50, max = 200, step = 5, default = 100,
+                min = 50, max = 200, step = 1, default = 100,
             })
         end
     elseif currentTab == "Glows" then

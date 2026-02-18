@@ -48,28 +48,67 @@ local function ClearChainLines(selectionOverlay)
     end
 end
 
-local function RestorePreviewSize(selectionOverlay, isDragging)
-    if selectionOverlay.previewOrigWidth then
-        local parent = selectionOverlay.parent
-        local currentW = parent:GetWidth()
-        local origW = selectionOverlay.previewOrigWidth
-        selectionOverlay.previewOrigWidth = nil
-        if isDragging then
-            parent:StopMovingOrSizing()
-        end
-        local l, b = parent:GetLeft(), parent:GetBottom()
-        parent:SetWidth(origW)
-        parent:ClearAllPoints()
-        parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l + (currentW - origW) / 2, b)
-        if isDragging then
-            parent:StartMoving()
+local CHAIN_HIGHLIGHT_ALPHA = 0.8
+
+local function ClearChainHighlights(selectionOverlay)
+    local Selection = Engine.FrameSelection
+    if not selectionOverlay.dragChainChildren then return end
+    for _, f in ipairs(selectionOverlay.dragChainChildren) do
+        local sel = Selection.selections[f]
+        if sel then Selection:UpdateVisuals(f, sel) end
+    end
+    selectionOverlay.dragChainChildren = nil
+end
+
+local function MaintainChainHighlights(selectionOverlay)
+    local Selection = Engine.FrameSelection
+    if not selectionOverlay.dragChainChildren then return end
+    for _, f in ipairs(selectionOverlay.dragChainChildren) do
+        local sel = Selection.selections[f]
+        if sel then
+            sel:Show()
+            sel:SetAlpha(CHAIN_HIGHLIGHT_ALPHA)
+            sel:EnableMouse(false)
+            sel:ShowSelected(true)
+            if sel.Label then sel.Label:SetText("") end
+            for i = 1, select("#", sel:GetRegions()) do
+                local region = select(i, sel:GetRegions())
+                if region:IsObjectType("Texture") and not region.isAnchorLine then
+                    region:SetDesaturated(false)
+                    region:SetVertexColor(1, 1, 1, 1)
+                end
+            end
         end
     end
+end
+
+local function RestorePreviewSize(selectionOverlay, isDragging)
+    local parent = selectionOverlay.parent
+    local needsReposition = selectionOverlay.previewOrigWidth or selectionOverlay.previewOrigHeight
+    if not needsReposition then return end
+    if isDragging then parent:StopMovingOrSizing() end
+    local l, b = parent:GetLeft(), parent:GetBottom()
+    local dw, dh = 0, 0
+    if selectionOverlay.previewOrigWidth then
+        dw = parent:GetWidth() - selectionOverlay.previewOrigWidth
+        parent:SetWidth(selectionOverlay.previewOrigWidth)
+        selectionOverlay.previewOrigWidth = nil
+    end
+    if selectionOverlay.previewOrigHeight then
+        dh = parent:GetHeight() - selectionOverlay.previewOrigHeight
+        parent:SetHeight(selectionOverlay.previewOrigHeight)
+        selectionOverlay.previewOrigHeight = nil
+    end
+    parent:ClearAllPoints()
+    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l + dw / 2, b + dh / 2)
+    if isDragging then parent:StartMoving() end
 end
 
 local function OnDragUpdate(selectionOverlay, elapsed)
     local parent = selectionOverlay.parent
     local Selection = Engine.FrameSelection
+
+    MaintainChainHighlights(selectionOverlay)
 
     local shiftHeld = IsShiftKeyDown()
     if shiftHeld and not selectionOverlay.precisionMode then
@@ -92,7 +131,10 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     local isVerticalEdge = anchorEdge and VERTICAL_EDGES[anchorEdge]
     local Anchor = Engine.FrameAnchor
     local opts = Anchor.GetFrameOptions(parent)
-    local willSyncWidth = isVerticalEdge and opts.syncDimensions ~= false
+    local rawSync = parent.anchorOptions and parent.anchorOptions.syncDimensions
+    local rawIndependentHeight = parent.anchorOptions and parent.anchorOptions.independentHeight
+    local willSyncWidth = isVerticalEdge and rawSync == true and not rawIndependentHeight
+    local willSyncHeight = not isVerticalEdge and anchorEdge and rawSync == true
     local lineAlign = willSyncWidth and "CENTER" or anchorAlign
 
     if
@@ -137,6 +179,20 @@ local function OnDragUpdate(selectionOverlay, elapsed)
                 parent:SetWidth(previewW)
                 parent:ClearAllPoints()
                 parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - (previewW - origW) / 2, b)
+                parent:StartMoving()
+            end
+        end
+
+        if willSyncHeight then
+            local previewH = (opts.useRowDimension and anchorTarget.orbitRowHeight) or anchorTarget:GetHeight()
+            if previewH then
+                local origH = selectionOverlay.previewOrigHeight or parent:GetHeight()
+                selectionOverlay.previewOrigHeight = origH
+                parent:StopMovingOrSizing()
+                local l, b = parent:GetLeft(), parent:GetBottom()
+                parent:SetHeight(previewH)
+                parent:ClearAllPoints()
+                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b - (previewH - origH) / 2)
                 parent:StartMoving()
             end
         end
@@ -199,7 +255,10 @@ function Drag:OnDragStart(selectionOverlay)
         selectionOverlay.lastAnchorAlign = nil
         selectionOverlay.precisionMode = false
 
-        -- Shift held at drag start: enter precision mode immediately
+        local Anchor = Engine.FrameAnchor
+        selectionOverlay.dragChainChildren = Anchor:GetAnchoredDescendants(parent)
+        MaintainChainHighlights(selectionOverlay)
+
         if IsShiftKeyDown() then
             SetNonSelectedOverlaysVisible(selectionOverlay, false)
         end
@@ -219,6 +278,8 @@ function Drag:OnDragStop(selectionOverlay)
         selectionOverlay.lastAnchorAlign = nil
     end
     ClearChainLines(selectionOverlay)
+    ClearChainHighlights(selectionOverlay)
+    selectionOverlay.dragChainChildren = nil
     RestorePreviewSize(selectionOverlay)
     Engine.FrameSelection:ShowAnchorLine(selectionOverlay, nil)
     selectionOverlay:SetScript("OnUpdate", nil)

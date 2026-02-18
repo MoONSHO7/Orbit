@@ -623,8 +623,8 @@ function Plugin:AddSettings(dialog, systemFrame)
                 C_Timer.After(0, function() OrbitEngine.Layout:Reset(dialog); self:AddSettings(dialog, systemFrame) end)
             end,
         })
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 40, max = 200, step = 5, default = 90, onChange = makeOnChange(self, "Width") })
-        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 16, max = 80, step = 2, default = 36, onChange = makeOnChange(self, "Height") })
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 40, max = 200, step = 1, default = 90, onChange = makeOnChange(self, "Width") })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 16, max = 80, step = 1, default = 36, onChange = makeOnChange(self, "Height") })
         table.insert(schema.controls, { type = "slider", key = "MemberSpacing", label = "Member Spacing", min = 0, max = 10, step = 1, default = 1, onChange = makeOnChange(self, "MemberSpacing") })
         if (self:GetSetting(1, "SortMode") or "Group") == "Group" then
             table.insert(schema.controls, {
@@ -848,7 +848,7 @@ function Plugin:OnLoad()
     -- Visibility driver: show only in raid
     local RAID_BASE_DRIVER = "[petbattle] hide; [@raid1,exists] show; hide"
     local function UpdateVisibilityDriver()
-        if InCombatLockdown() then return end
+        if InCombatLockdown() or Orbit:IsEditMode() then return end
         local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(RAID_BASE_DRIVER) or RAID_BASE_DRIVER
         RegisterStateDriver(self.container, "visibility", driver)
     end

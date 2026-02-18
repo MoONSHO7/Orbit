@@ -71,9 +71,10 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 10, default = 160 })
-        if not isAnchored then
-            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 10, default = 40 })
+        local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 1, default = 160 })
+        if not isAnchored or anchorAxis ~= "y" then
+            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 1, default = 40 })
         end
         table.insert(schema.controls, {
             type = "dropdown",
@@ -124,7 +125,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             end,
         })
     elseif currentTab == "Visibility" then
-        WL:AddOpacitySettings(self, schema, PLAYER_FRAME_INDEX, systemFrame, { step = 5 })
+        WL:AddOpacitySettings(self, schema, PLAYER_FRAME_INDEX, systemFrame)
         table.insert(schema.controls, {
             type = "checkbox",
             key = "OutOfCombatFade",
@@ -167,18 +168,31 @@ function Plugin:OnLoad()
     end
 
     self.container = self:CreateVisibilityContainer(UIParent, true)
+    self.mountedFrame = self.container
+    self.mountedHoverReveal = true
+    self.mountedCombatRestore = true
+    self:UpdateVisibilityDriver()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "player", "OrbitPlayerFrame")
     self.frame.editModeName = "Player Frame"
     self.frame.systemIndex = PLAYER_FRAME_INDEX
 
     self.frame.anchorOptions = {
-        horizontal = true, -- Can anchor side-by-side (LEFT/RIGHT)
-        vertical = true, -- Can stack above/below (TOP/BOTTOM)
+        horizontal = true,
+        vertical = true,
         syncScale = true,
         syncDimensions = true,
         useRowDimension = true,
         mergeBorders = true,
+        independentHeight = true,
     }
+
+    self.frame:HookScript("OnSizeChanged", function()
+        local targetPlugin = Orbit:GetPlugin("Orbit_TargetFrame")
+        if targetPlugin and targetPlugin.frame and targetPlugin.UpdateLayout then
+            targetPlugin:UpdateLayout(targetPlugin.frame)
+        end
+    end)
+
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, PLAYER_FRAME_INDEX)
 
     -- Create overlay container for Level/CombatIcon (use frame level, not strata, to avoid appearing above UI dialogs)

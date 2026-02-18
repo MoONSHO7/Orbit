@@ -201,7 +201,7 @@ function Plugin:OnLoad()
         end
     end)
 
-    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, useRowDimension = true, mergeBorders = true }
+    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, useRowDimension = true, mergeBorders = true, independentHeight = true }
     self.frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = 200, y = -140 }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, TARGET_FRAME_INDEX)
 
@@ -261,12 +261,13 @@ function Plugin:UpdateLayout(frame)
     end
     local systemIndex = TARGET_FRAME_INDEX
     local width = self:GetSetting(systemIndex, "Width") or self:GetPlayerSetting("Width") or 200
-    local height = self:GetSetting(systemIndex, "Height") or self:GetPlayerSetting("Height") or 40
+    local height = self:GetPlayerSetting("Height") or 40
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(frame) ~= nil
     if not isAnchored then
         frame:SetSize(width, height)
     else
         frame:SetWidth(width)
+        frame:SetHeight(height)
     end
 end
 
@@ -277,12 +278,11 @@ function Plugin:ApplySettings(frame)
     end
     local systemIndex = TARGET_FRAME_INDEX
     local width = self:GetSetting(systemIndex, "Width")
-    local height = self:GetSetting(systemIndex, "Height")
 
     self:ApplyUnitFrameSettings(frame, systemIndex, {
         inheritFromPlayer = true,
         width = width,
-        height = height,
+        height = self:GetPlayerSetting("Height"),
     })
 
     -- Target Specifics

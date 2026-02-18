@@ -104,18 +104,21 @@ function Nudge:NudgeFrame(frame, direction, Selection)
         relativePoint = "CENTER"
     end
 
-    -- Apply 1 pixel nudge
-    if direction == "UP" then
-        yOfs = yOfs + 1
-    elseif direction == "DOWN" then
-        yOfs = yOfs - 1
-    elseif direction == "LEFT" then
-        xOfs = xOfs - 1
-    elseif direction == "RIGHT" then
-        xOfs = xOfs + 1
+    local Pixel = Engine.Pixel
+    local effectiveScale = frame:GetEffectiveScale()
+    local step = Pixel and (Pixel:GetScale() / effectiveScale) or 1
+
+    local function nudgeAxis(val, dir)
+        local idx = math.floor(val / step + 0.5)
+        return (idx + dir) * step
     end
 
-    -- Reposition frame
+    if direction == "UP" then yOfs = nudgeAxis(yOfs, 1)
+    elseif direction == "DOWN" then yOfs = nudgeAxis(yOfs, -1)
+    elseif direction == "LEFT" then xOfs = nudgeAxis(xOfs, -1)
+    elseif direction == "RIGHT" then xOfs = nudgeAxis(xOfs, 1)
+    end
+
     frame:ClearAllPoints()
     frame:SetPoint(point, relativeTo, relativePoint, xOfs, yOfs)
 
