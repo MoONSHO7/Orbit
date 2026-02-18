@@ -54,6 +54,7 @@ local function SuppressPlugin(plugin)
         plugin.UpdateVisibility = NOOP
         plugin.ApplySettings = NOOP
     end
+    frame.orbitMountedSuppressed = true
     frame:SetAlpha(0)
     if plugin.mountedHoverReveal then
         if not frame.orbitHoverOverlay then
@@ -64,14 +65,17 @@ local function SuppressPlugin(plugin)
             overlay:SetMouseMotionEnabled(true)
             overlay:SetMouseClickEnabled(false)
             overlay:SetScript("OnEnter", function(self)
+                frame.orbitMountedSuppressed = false
                 frame:SetAlpha(1)
                 self:Hide()
                 frame:SetScript("OnUpdate", function()
                     if not frame:IsMouseOver() then
-                        frame:SetScript("OnUpdate", nil)
                         if suppressedPlugins[plugin] then
+                            frame.orbitMountedSuppressed = true
                             frame:SetAlpha(0)
-                            self:Show()
+                            if not self:IsShown() then self:Show() end
+                        else
+                            frame:SetScript("OnUpdate", nil)
                         end
                     end
                 end)
@@ -92,10 +96,17 @@ local function RestorePlugin(plugin)
     local frame = plugin.mountedFrame
     if frame then
         frame:SetScript("OnUpdate", nil)
-        frame:SetAlpha(1)
+        frame.orbitMountedSuppressed = nil
+        if plugin.mountedHoverReveal and Orbit.Animation then Orbit.Animation:StopHoverFade(frame) end
+        if not plugin.mountedHoverReveal then frame:SetAlpha(1) end
         if frame.orbitHoverOverlay then frame.orbitHoverOverlay:Hide() end
     end
-    if plugin.ApplySettings then plugin:ApplySettings() end
+    if plugin.ApplySettings then
+        plugin:ApplySettings()
+        if plugin.mountedHoverReveal then
+            C_Timer.After(0, function() plugin:ApplySettings() end)
+        end
+    end
 end
 
 -- [ COMBAT-ESSENTIAL RESTORE ]----------------------------------------------------------------------
@@ -195,8 +206,6 @@ function Manager:Refresh(force)
             local isEditMode = Orbit.IsEditMode and Orbit:IsEditMode()
             if not isEditMode and plugin.UpdateVisibilityDriver then
                 plugin:UpdateVisibilityDriver()
-            elseif plugin.UpdateVisibility then
-                plugin:UpdateVisibility()
             end
         end
     end

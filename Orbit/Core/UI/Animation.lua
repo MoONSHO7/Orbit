@@ -87,7 +87,7 @@ function Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, editModeActiv
             self.timer = 0
 
             local parent = self:GetParent()
-            if not parent:IsShown() then
+            if not parent:IsShown() or parent.orbitMountedSuppressed then
                 return
             end
 
@@ -122,4 +122,15 @@ function Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, editModeActiv
         -- Always apply minAlpha when not hovering (Opacity slider enforcement)
         frame:SetAlpha(minAlpha)
     end
+end
+
+function Orbit.Animation:StopHoverFade(frame)
+    if not frame then return end
+    local fader = faders[frame]
+    if fader then
+        fader:Hide()
+        fader.isHovering = false
+        fader.timer = 0
+    end
+    if not InCombatLockdown() then UIFrameFadeRemoveFrame(frame) end
 end
