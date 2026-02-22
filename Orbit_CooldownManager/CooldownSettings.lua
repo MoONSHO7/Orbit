@@ -38,8 +38,13 @@ function CDM:AddSettings(dialog, systemFrame)
                 onChange = function(val) self:SetSetting(systemIndex, "Height", val); self:LayoutChargeBars() end,
             })
             table.insert(schema.controls, {
-                type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 10, step = 1, default = 0,
+                type = "slider", key = "Spacing", label = "Spacing", min = -5, max = 50, step = 1, default = 0,
                 onChange = function(val) self:SetSetting(systemIndex, "Spacing", val); self:LayoutChargeBars() end,
+            })
+            table.insert(schema.controls, {
+                type = "slider", key = "TickSize", label = "Tick", min = 0, max = 6, step = 2, default = 2,
+                tooltip = "Width of the leading-edge tick mark (0 = hidden)",
+                onChange = function(val) self:SetSetting(systemIndex, "TickSize", val); self:LayoutChargeBars() end,
             })
         elseif currentTab == "Colors" then
             WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
@@ -58,6 +63,35 @@ function CDM:AddSettings(dialog, systemFrame)
                     self:SetSetting(systemIndex, "OutOfCombatFade", val)
                     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
                     if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+                end,
+            })
+            if self:GetSetting(systemIndex, "OutOfCombatFade") then
+                table.insert(schema.controls, {
+                    type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
+                    tooltip = "Reveal frame when mousing over it",
+                    onChange = function(val)
+                        self:SetSetting(systemIndex, "ShowOnMouseover", val)
+                        local data = VIEWER_MAP[systemIndex]
+                        if data and data.anchor and Orbit.OOCFadeMixin then
+                            Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", val)
+                            Orbit.OOCFadeMixin:RefreshAll()
+                        end
+                    end,
+                })
+            end
+            table.insert(schema.controls, {
+                type = "checkbox", key = "SmoothAnimation", label = "Smooth Animation", default = true,
+                tooltip = "Smoothly animate charge transitions",
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "SmoothAnimation", val)
+                end,
+            })
+            table.insert(schema.controls, {
+                type = "checkbox", key = "FrequentUpdates", label = "Frequent Updates", default = false,
+                tooltip = "Updates the charge bar every frame instead of interval ticks",
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "FrequentUpdates", val)
+                    self:RefreshChargeUpdateMethod()
                 end,
             })
             if self:GetSetting(systemIndex, "OutOfCombatFade") then
@@ -115,7 +149,7 @@ function CDM:AddSettings(dialog, systemFrame)
                     self:ApplySettings(systemFrame)
                 end,
             })
-            table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = -1, max = 10, step = 1, default = Constants.Cooldown.DefaultPadding })
+            table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = -5, max = 15, step = 1, default = Constants.Cooldown.DefaultPadding })
         end
         if not isTracked then
             table.insert(schema.controls, { type = "slider", key = "IconLimit", label = "# Columns", min = 1, max = 20, step = 1, default = Constants.Cooldown.DefaultLimit })

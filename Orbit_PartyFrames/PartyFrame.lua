@@ -11,6 +11,8 @@ local POWER_BAR_HEIGHT_RATIO = Orbit.PartyFrameHelpers.LAYOUT.PowerBarRatio
 local DEFENSIVE_ICON_SIZE = 24
 local IMPORTANT_ICON_SIZE = 24
 local CROWD_CONTROL_ICON_SIZE = 24
+local PRIVATE_AURA_ICON_SIZE = 24
+local MAX_PRIVATE_AURA_ANCHORS = 3
 local AURA_BASE_ICON_SIZE = Orbit.PartyFrameHelpers.LAYOUT.AuraBaseIconSize
 local AURA_SPACING = 2
 local MIN_ICON_SIZE = 10
@@ -44,6 +46,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
             DefensiveIcon = { anchorX = "LEFT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
             ImportantIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
             CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
+            PrivateAuraAnchor = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 2 },
             Buffs = {
                 anchorX = "LEFT",
                 anchorY = "CENTER",
@@ -340,18 +343,20 @@ local function UpdateDebuffs(frame, plugin)
     end
     frame.debuffPool:ReleaseAll()
 
-    -- Fetch harmful auras with post-filtering
     local allDebuffs = plugin:FetchAuras(unit, "HARMFUL", 40)
 
-    -- Post-filter: exclude crowd control if CrowdControlIcon is enabled (handled separately)
+    local inCombat = UnitAffectingCombat("player")
+    local raidFilter = inCombat and "HARMFUL|RAID_IN_COMBAT" or "HARMFUL"
     local excludeCC = not (plugin.IsComponentDisabled and plugin:IsComponentDisabled("CrowdControlIcon"))
     local debuffs = {}
     for _, aura in ipairs(allDebuffs) do
-        local dominated = excludeCC and aura.auraInstanceID and IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
-        if not dominated then
-            table.insert(debuffs, aura)
-            if #debuffs >= maxDebuffs then
-                break
+        if aura.auraInstanceID then
+            local passesRaid = IsAuraIncluded(unit, aura.auraInstanceID, raidFilter)
+            local passesCC = not excludeCC and IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
+            local dominated = excludeCC and IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
+            if (passesRaid or passesCC) and not dominated then
+                table.insert(debuffs, aura)
+                if #debuffs >= maxDebuffs then break end
             end
         end
     end
@@ -460,13 +465,12 @@ local function UpdateBuffs(frame, plugin)
     for _, aura in ipairs(allBuffs) do
         if aura.auraInstanceID then
             local passesRaid = IsAuraIncluded(unit, aura.auraInstanceID, raidFilter)
+            local passesDef = not excludeDefensives and (IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|BIG_DEFENSIVE") or IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|EXTERNAL_DEFENSIVE"))
             local isBigDef = excludeDefensives and IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|BIG_DEFENSIVE")
             local isExtDef = excludeDefensives and IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|EXTERNAL_DEFENSIVE")
-            if passesRaid and not isBigDef and not isExtDef then
+            if (passesRaid or passesDef) and not isBigDef and not isExtDef then
                 table.insert(buffs, aura)
-                if #buffs >= maxBuffs then
-                    break
-                end
+                if #buffs >= maxBuffs then break end
             end
         end
     end
@@ -579,6 +583,41 @@ local function UpdateImportantIcon(frame, plugin) UpdateSingleAuraIcon(frame, pl
 -- [ CROWD CONTROL ICON DISPLAY ]--------------------------------------------------------------------
 
 local function UpdateCrowdControlIcon(frame, plugin) UpdateSingleAuraIcon(frame, plugin, "CrowdControlIcon", "HARMFUL|CROWD_CONTROL", CROWD_CONTROL_ICON_SIZE) end
+
+-- [ PRIVATE AURA ANCHOR ]---------------------------------------------------------------------------
+
+local function UpdatePrivateAuras(frame, plugin)
+    local anchor = frame.PrivateAuraAnchor
+    if not anchor then return end
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("PrivateAuraAnchor") then
+        anchor:Hide()
+        return
+    end
+    local unit = frame.unit
+    if not unit or not UnitExists(unit) then anchor:Hide() return end
+    if frame._privateAuraIDs then
+        for _, id in ipairs(frame._privateAuraIDs) do C_UnitAuras.RemovePrivateAuraAnchor(id) end
+    end
+    frame._privateAuraIDs = {}
+    anchor:Show()
+    for i = 1, MAX_PRIVATE_AURA_ANCHORS do
+        local xOff = (i - 1) * (PRIVATE_AURA_ICON_SIZE + 2)
+        local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
+            unitToken = unit,
+            auraIndex = i,
+            parent = anchor,
+            showCountdownFrame = true,
+            showCountdownNumbers = true,
+            iconInfo = {
+                iconWidth = PRIVATE_AURA_ICON_SIZE,
+                iconHeight = PRIVATE_AURA_ICON_SIZE,
+                iconAnchor = { point = "TOPLEFT", relativeTo = anchor, relativePoint = "TOPLEFT", offsetX = xOff, offsetY = 0 },
+                borderScale = 1,
+            },
+        })
+        if anchorID then table.insert(frame._privateAuraIDs, anchorID) end
+    end
+end
 
 -- [ STATUS INDICATOR UPDATES ]---------------------------------------------------------------------
 local function UpdateRoleIcon(frame, plugin)
@@ -711,6 +750,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
         UpdateDefensiveIcon(self, plugin)
         UpdateImportantIcon(self, plugin)
         UpdateCrowdControlIcon(self, plugin)
+        UpdatePrivateAuras(self, plugin)
         UpdateAllStatusIndicators(self, plugin)
         UpdateInRange(self)
     end)
@@ -733,6 +773,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
                 UpdateDefensiveIcon(f, plugin)
                 UpdateImportantIcon(f, plugin)
                 UpdateCrowdControlIcon(f, plugin)
+                UpdatePrivateAuras(f, plugin)
                 -- Update dispel indicator
                 if plugin.UpdateDispelIndicator then
                     plugin:UpdateDispelIndicator(f, plugin)
@@ -743,6 +784,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
 
         -- Combat state change: force refresh buffs for combat-aware filtering
         if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+            UpdateDebuffs(f, plugin)
             UpdateBuffs(f, plugin)
             return
         end
@@ -921,7 +963,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         )
         table.insert(
             schema.controls,
-            { type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 25, step = 1, default = 0, onChange = makeOnChange(self, "Spacing") }
+            { type = "slider", key = "Spacing", label = "Spacing", min = -5, max = 50, step = 1, default = 0, onChange = makeOnChange(self, "Spacing") }
         )
         table.insert(schema.controls, {
             type = "dropdown",
@@ -1054,6 +1096,7 @@ function Plugin:OnLoad()
             "DefensiveIcon",
             "ImportantIcon",
             "CrowdControlIcon",
+            "PrivateAuraAnchor",
         }
 
         -- Register text components with justifyH support
@@ -1303,6 +1346,10 @@ function Plugin:PrepareIconsForCanvasMode()
         frame.CrowdControlIcon.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
         frame.CrowdControlIcon:SetSize(CROWD_CONTROL_ICON_SIZE, CROWD_CONTROL_ICON_SIZE)
         frame.CrowdControlIcon:Show()
+    end
+    if frame.PrivateAuraAnchor then
+        frame.PrivateAuraAnchor:SetSize(PRIVATE_AURA_ICON_SIZE, PRIVATE_AURA_ICON_SIZE)
+        frame.PrivateAuraAnchor:Show()
     end
 end
 
@@ -1558,6 +1605,7 @@ function Plugin:ApplySettings()
                 "DefensiveIcon",
                 "ImportantIcon",
                 "CrowdControlIcon",
+                "PrivateAuraAnchor",
             }
             for _, iconKey in ipairs(icons) do
                 if frame[iconKey] and savedPositions[iconKey] then

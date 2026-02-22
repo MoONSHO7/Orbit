@@ -101,21 +101,10 @@ function FrameFactory:Create(name, plugin, opts)
         end, 0.1)
     end
 
-    -- Border Helper (Clean pixel-perfect borders)
-    frame.SetBorderHidden = function(self, edge, hidden)
-        if not self.Borders then
-            return
-        end
-        local border = self.Borders[edge]
-        if border then
-            border:SetShown(not hidden)
-        end
-    end
-
     frame.SetBorder = function(self, size)
-        -- Delegate to Skin Engine
+        local oldBorderSize = self.borderPixelSize
         if Orbit.Skin:SkinBorder(self, self, size) then
-            -- Reset Bar Inset to 0 (Remove gap/shadow)
+            self._barInsets = nil
             local bar = self.orbitBar or self.Bar
             if bar then
                 bar:ClearAllPoints()
@@ -126,20 +115,23 @@ function FrameFactory:Create(name, plugin, opts)
             return
         end
 
-        -- Handle Bar Inset (use calculated pixelSize from Skin)
-        local pixelSize = self.borderPixelSize or Engine.Pixel:Multiple(1, self:GetEffectiveScale() or 1)
+        local pixelSize = Engine.Pixel:BorderInset(self, 1)
+        if oldBorderSize ~= self.borderPixelSize then self._barInsets = nil end
+
+        local iL, iT, iR, iB = pixelSize, pixelSize, pixelSize, pixelSize
+        if self._barInsets then
+            iL, iT, iR, iB = self._barInsets.x1, self._barInsets.y1, self._barInsets.x2, self._barInsets.y2
+        end
+
         local bar = self.orbitBar or self.Bar
         if bar then
             bar:ClearAllPoints()
-            bar:SetPoint("TOPLEFT", pixelSize, -pixelSize)
-            bar:SetPoint("BOTTOMRIGHT", -pixelSize, pixelSize)
+            bar:SetPoint("TOPLEFT", iL, -iT)
+            bar:SetPoint("BOTTOMRIGHT", -iR, iB)
         end
     end
 
-    -- Enforce Pixel Perfection on Sizing
-    if Engine.Pixel then
-        Engine.Pixel:Enforce(frame)
-    end
+    Engine.Pixel:Enforce(frame)
 
     return frame
 end

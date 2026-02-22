@@ -46,7 +46,7 @@ Button.label:SetTextColor(0.9, 0.9, 0.95)
 
 -- Tooltip
 Button:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT")
     GameTooltip:AddLine("Orbit Options", 1, 1, 1)
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("|cFF00FF00Left-click|r: Toggle plugins on/off", 0.8, 0.8, 0.8)

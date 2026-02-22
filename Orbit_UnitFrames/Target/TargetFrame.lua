@@ -124,6 +124,8 @@ function Plugin:OnLoad()
     -- Note: TargetFrameToT is now managed by TargetOfTargetFrame.lua plugin
 
     self.container = self:CreateVisibilityContainer(UIParent, true)
+    self.mountedHoverReveal = true
+    self:UpdateVisibilityDriver()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "target", "OrbitTargetFrame")
     self.frame.editModeName = "Target Frame"
     self.frame.systemIndex = TARGET_FRAME_INDEX

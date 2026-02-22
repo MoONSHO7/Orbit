@@ -61,9 +61,23 @@ end
 -- @param scale number: (Optional) Frame Effective Scale. Defaults to 1.
 -- @return number: Logical size that renders as exactly `count` physical pixels
 function Pixel:Multiple(count, scale)
+    local n = count or 0
+    if n <= 0 then return 0 end
     local frameScale = scale or 1
     if frameScale < 0.01 then frameScale = 1 end
-    return (count or 0) * SCREEN_SCALE / frameScale
+    local step = SCREEN_SCALE / frameScale
+    return math.max(math.floor(n + 0.5), 1) * step
+end
+
+--- Resolve the pixel-snapped border inset for a frame
+-- Returns cached borderPixelSize from SkinBorder when available, otherwise computes via Multiple.
+-- @param frame Frame: The frame to query
+-- @param fallbackSize number: (Optional) Border size in physical pixels if cache miss. Defaults to 0.
+-- @return number: Logical size for the border inset
+function Pixel:BorderInset(frame, fallbackSize)
+    if frame and frame.borderPixelSize then return frame.borderPixelSize end
+    local scale = (frame and frame.GetEffectiveScale and frame:GetEffectiveScale()) or 1
+    return self:Multiple(fallbackSize or 0, scale)
 end
 
 -- [ ENFORCEMENT ]-----------------------------------------------------------------------------------

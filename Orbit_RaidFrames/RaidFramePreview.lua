@@ -256,6 +256,16 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 else frame.LeaderIcon:Hide() end
             end
 
+            -- [ Main Tank Icon ]--------------------------------------------------------------------
+            if frame.MainTankIcon then
+                if isDisabled("MainTankIcon") then frame.MainTankIcon:Hide()
+                elseif isCanvasMode or (PREVIEW_ROLES[dataIdx] == "TANK" and i <= 2) then
+                    frame.MainTankIcon:SetAtlas(i == 1 and "RaidFrame-Icon-MainTank" or "RaidFrame-Icon-MainAssist")
+                    frame.MainTankIcon:Show()
+                    if componentPositions.MainTankIcon then ApplyIconPosition(frame.MainTankIcon, frame, componentPositions.MainTankIcon) end
+                else frame.MainTankIcon:Hide() end
+            end
+
             -- [ Selection / Aggro ]-----------------------------------------------------------------
             if frame.SelectionHighlight then
                 if i == 2 then frame.SelectionHighlight:Show() else frame.SelectionHighlight:Hide() end
@@ -286,11 +296,14 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                     { key = "DefensiveIcon", anchor = "LEFT", xMul = 0.5 },
                     { key = "ImportantIcon", anchor = "RIGHT", xMul = -0.5 },
                     { key = "CrowdControlIcon", anchor = "TOP", yMul = -0.5 },
+                    { key = "PrivateAuraAnchor", anchor = "BOTTOM", yMul = 0.5 },
                 }
                 for _, entry in ipairs(auraIconEntries) do
                     local btn = frame[entry.key]
                     if btn and not isDisabled(entry.key) then
-                        btn.Icon:SetTexture(Orbit.StatusIconMixin["Get" .. entry.key:gsub("Icon$", "") .. "Texture"](Orbit.StatusIconMixin))
+                        local texMethod = entry.key == "PrivateAuraAnchor" and "GetPrivateAuraTexture"
+                            or ("Get" .. entry.key:gsub("Icon$", "") .. "Texture")
+                        btn.Icon:SetTexture(Orbit.StatusIconMixin[texMethod](Orbit.StatusIconMixin))
                         btn:SetSize(CANVAS_ICON_SIZE, CANVAS_ICON_SIZE)
                         if not savedPositions[entry.key] then
                             btn:ClearAllPoints()
@@ -305,7 +318,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                     elseif btn then btn:Hide() end
                 end
             else
-                for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" }) do
+                for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "ImportantIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" }) do
                     if frame[key] then frame[key]:Hide() end
                 end
             end

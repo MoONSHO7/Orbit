@@ -110,7 +110,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         key = "Padding",
         label = "Nav Padding",
         min = -5,
-        max = 5,
+        max = 15,
         step = 1,
         default = -5,
     })

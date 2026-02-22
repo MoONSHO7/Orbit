@@ -65,7 +65,7 @@ function PreviewFrame:CreateBasePreview(sourceFrame, scale, parent, borderSize)
     local bgColor = Orbit.Constants and Orbit.Constants.Colors and Orbit.Constants.Colors.Background or { r = 0.1, g = 0.1, b = 0.1, a = 0.95 }
 
     -- Only include edgeFile when borderSize > 0 to avoid rendering glitches
-    local scaledBorder = borderSize * scale
+    local scaledBorder = Engine.Pixel:Multiple(borderSize, preview:GetEffectiveScale() or 1)
     local backdrop = {
         bgFile = "Interface\\BUTTONS\\WHITE8x8",
         insets = { left = 0, right = 0, top = 0, bottom = 0 },

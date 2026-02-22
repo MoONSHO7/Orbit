@@ -52,6 +52,12 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
     frame.LeaderIcon:SetPoint("LEFT", frame.RoleIcon, "RIGHT", 1, 0)
     frame.LeaderIcon:Hide()
 
+    frame.MainTankIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
+    frame.MainTankIcon:SetSize(ICON_SIZE, ICON_SIZE)
+    frame.MainTankIcon.orbitOriginalWidth, frame.MainTankIcon.orbitOriginalHeight = ICON_SIZE, ICON_SIZE
+    frame.MainTankIcon:SetPoint("LEFT", frame.LeaderIcon, "RIGHT", 1, 0)
+    frame.MainTankIcon:Hide()
+
     frame.SelectionHighlight = frame.BorderOverlay:CreateTexture(nil, "ARTWORK")
     frame.SelectionHighlight:SetAllPoints()
     frame.SelectionHighlight:SetColorTexture(1, 1, 1, 0)
@@ -124,6 +130,18 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
         btn:Hide()
         frame[iconKey] = btn
     end
+
+    local paa = CreateFrame("Frame", nil, frame)
+    paa:SetSize(CENTER_ICON_SIZE, CENTER_ICON_SIZE)
+    paa.orbitOriginalWidth, paa.orbitOriginalHeight = CENTER_ICON_SIZE, CENTER_ICON_SIZE
+    paa:SetPoint("CENTER", frame, "CENTER", 0, 0)
+    paa:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Text)
+    paa:EnableMouse(false)
+    paa.Icon = paa:CreateTexture(nil, "ARTWORK")
+    paa.Icon:SetAllPoints()
+    paa.icon = paa.Icon
+    paa:Hide()
+    frame.PrivateAuraAnchor = paa
 end
 
 -- [ EVENT REGISTRATION ]----------------------------------------------------------------------------

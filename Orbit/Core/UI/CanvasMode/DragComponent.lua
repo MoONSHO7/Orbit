@@ -241,6 +241,8 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
                 btn.Icon:SetTexture(StatusMixin:GetImportantTexture())
             elseif StatusMixin and key == "CrowdControlIcon" then
                 btn.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
+            elseif StatusMixin and key == "PrivateAuraAnchor" then
+                btn.Icon:SetTexture(StatusMixin:GetPrivateAuraTexture())
             else
                 local previewAtlases = Orbit.IconPreviewAtlases or {}
                 if previewAtlases[key] then

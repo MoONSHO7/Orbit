@@ -4,7 +4,7 @@ local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local DAMAGE_BAR_VERTICAL_INSET = 1
+
 local FALLBACK_HEIGHT = 40
 local DEFAULT_FONT_HEIGHT = 12
 local TEXT_PADDING = 5
@@ -31,14 +31,12 @@ local UnitButton = Engine.UnitButton
 local CanvasMixin = {}
 
 function CanvasMixin:SetBorderHidden(edge, hidden)
-    if not self.Borders then
-        return
-    end
-
-    local border = self.Borders[edge]
-    if border then
-        border:SetShown(not hidden)
-    end
+    local borders = (self._borderFrame and self._borderFrame.Borders) or self.Borders
+    if not borders then return end
+    local border = borders[edge]
+    if border then border:SetShown(not hidden) end
+    if not self._mergedEdges then self._mergedEdges = {} end
+    self._mergedEdges[edge] = hidden or nil
 end
 
 function CanvasMixin:UpdateTextLayout()
@@ -122,7 +120,9 @@ end
 -- [ BORDER MANAGEMENT ]-----------------------------------------------------------------------------
 
 function CanvasMixin:SetBorder(size)
+    local oldBorderSize = self.borderPixelSize
     if Orbit.Skin:SkinBorder(self, self, size) then
+        self._barInsets = nil
         self.borderPixelSize = 0
         if self.Health then
             self.Health:ClearAllPoints()
@@ -131,25 +131,30 @@ function CanvasMixin:SetBorder(size)
         end
         if self.HealthDamageBar then
             self.HealthDamageBar:ClearAllPoints()
-            self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, -DAMAGE_BAR_VERTICAL_INSET)
-            self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, DAMAGE_BAR_VERTICAL_INSET)
+            self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, 0)
+            self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, 0)
         end
         return
     end
 
     local pixelSize = self.borderPixelSize
+    if oldBorderSize ~= pixelSize then self._barInsets = nil end
+
+    local iL, iT, iR, iB = pixelSize, pixelSize, pixelSize, pixelSize
+    if self._barInsets then
+        iL, iT, iR, iB = self._barInsets.x1, self._barInsets.y1, self._barInsets.x2, self._barInsets.y2
+    end
 
     if self.Health then
         self.Health:ClearAllPoints()
-        self.Health:SetPoint("TOPLEFT", pixelSize, -pixelSize)
-        self.Health:SetPoint("BOTTOMRIGHT", -pixelSize, pixelSize)
+        self.Health:SetPoint("TOPLEFT", iL, -iT)
+        self.Health:SetPoint("BOTTOMRIGHT", -iR, iB)
     end
 
-    -- DamageBar follows Health like a faithful henchman
     if self.HealthDamageBar then
         self.HealthDamageBar:ClearAllPoints()
-        self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, -DAMAGE_BAR_VERTICAL_INSET)
-        self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, DAMAGE_BAR_VERTICAL_INSET)
+        self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, 0)
+        self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, 0)
     end
 end
 

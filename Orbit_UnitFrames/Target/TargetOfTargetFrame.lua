@@ -62,8 +62,6 @@ function Plugin:OnLoad()
 
     -- Create frame directly on UIParent
     self.frame = OrbitEngine.UnitButton:Create(UIParent, "targettarget", "OrbitTargetOfTargetFrame")
-    self.mountedFrame = self.frame
-    self.mountedCombatRestore = true
     self.frame:SetFrameLevel(math.max(1, self.frame:GetFrameLevel() - FRAME_LEVEL_DEMOTE))
     self.frame.editModeName = "Target of Target"
     self.frame.systemIndex = TOT_FRAME_INDEX

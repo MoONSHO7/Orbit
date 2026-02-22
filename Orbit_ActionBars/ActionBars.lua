@@ -243,7 +243,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             min = 50,
             max = 150,
         })
-        table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Padding", min = -1, max = 10, step = 1, default = 2 })
+        table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Padding", min = -5, max = 15, step = 1, default = 2 })
 
         local config = BAR_CONFIG[systemIndex]
         local isSpecialBar = config.isSpecial or SPECIAL_BAR_INDICES[systemIndex]
@@ -664,8 +664,9 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
 
         preview.sourceFrame = self
         local borderSize = Orbit.db.GlobalSettings.BorderSize
-        local contentW = w - (borderSize * 2)
-        local contentH = h - (borderSize * 2)
+        local borderPixels = OrbitEngine.Pixel:Multiple(borderSize)
+        local contentW = w - (borderPixels * 2)
+        local contentH = h - (borderPixels * 2)
         preview.sourceWidth = contentW
         preview.sourceHeight = contentH
         preview.previewScale = 1
@@ -695,7 +696,7 @@ function Plugin:SetupCanvasPreview(container, systemIndex)
         }
         if borderSize > 0 then
             backdrop.edgeFile = "Interface\\BUTTONS\\WHITE8x8"
-            backdrop.edgeSize = borderSize
+            backdrop.edgeSize = borderPixels
         end
         preview:SetBackdrop(backdrop)
         preview:SetBackdropColor(0, 0, 0, 0)

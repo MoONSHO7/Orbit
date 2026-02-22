@@ -498,6 +498,22 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 elseif frame.CrowdControlIcon then
                     frame.CrowdControlIcon:Hide()
                 end
+
+                if frame.PrivateAuraAnchor and not (self.IsComponentDisabled and self:IsComponentDisabled("PrivateAuraAnchor")) then
+                    frame.PrivateAuraAnchor.Icon:SetTexture(Orbit.StatusIconMixin:GetPrivateAuraTexture())
+                    frame.PrivateAuraAnchor:SetSize(iconSize, iconSize)
+                    local savedPositions = self:GetSetting(1, "ComponentPositions")
+                    if not savedPositions or not savedPositions.PrivateAuraAnchor then
+                        frame.PrivateAuraAnchor:ClearAllPoints()
+                        frame.PrivateAuraAnchor:SetPoint("CENTER", frame, "BOTTOM", 0, iconSize * 0.5 + 2)
+                    end
+                    if Orbit.Skin and Orbit.Skin.Icons then
+                        Orbit.Skin.Icons:ApplyCustom(frame.PrivateAuraAnchor, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
+                    end
+                    frame.PrivateAuraAnchor:Show()
+                elseif frame.PrivateAuraAnchor then
+                    frame.PrivateAuraAnchor:Hide()
+                end
             else
                 -- Hide in normal Edit Mode preview (they overlap)
                 if frame.PhaseIcon then
@@ -520,6 +536,9 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 end
                 if frame.CrowdControlIcon then
                     frame.CrowdControlIcon:Hide()
+                end
+                if frame.PrivateAuraAnchor then
+                    frame.PrivateAuraAnchor:Hide()
                 end
             end
 

@@ -225,8 +225,9 @@ function CDM:SetupCanvasPreview(anchor, systemIndex)
         preview.sourceFrame = self
 
         local borderSize = Orbit.db.GlobalSettings.BorderSize
-        preview.sourceWidth = w - (borderSize * 2)
-        preview.sourceHeight = h - (borderSize * 2)
+        local borderPixels = OrbitEngine.Pixel:Multiple(borderSize)
+        preview.sourceWidth = w - (borderPixels * 2)
+        preview.sourceHeight = h - (borderPixels * 2)
         preview.previewScale = 1
         preview.components = {}
 
@@ -248,7 +249,7 @@ function CDM:SetupCanvasPreview(anchor, systemIndex)
         local backdrop = { bgFile = "Interface\\BUTTONS\\WHITE8x8", insets = { left = 0, right = 0, top = 0, bottom = 0 } }
         if borderSize > 0 then
             backdrop.edgeFile = "Interface\\BUTTONS\\WHITE8x8"
-            backdrop.edgeSize = borderSize
+            backdrop.edgeSize = borderPixels
         end
         preview:SetBackdrop(backdrop)
         preview:SetBackdropColor(0, 0, 0, 0)

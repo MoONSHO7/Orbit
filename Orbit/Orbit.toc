@@ -21,6 +21,7 @@ Core\Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
 Core\Libs\LibSerialize\LibSerialize.lua
 Core\Libs\LibDeflate\LibDeflate.lua
 Core\Libs\LibCustomGlow-1.0\LibCustomGlow-1.0.xml
+Core\Libs\LibTransmogGlow-1.0\LibTransmogGlow-1.0.xml
 Core\Libs\LibOrbitColorPicker-1.0\LibOrbitColorPicker-1.0.lua
 
 # ==============================================================

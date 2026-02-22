@@ -136,16 +136,22 @@ function CooldownUtils:OnChargeCast(obj)
 end
 
 function CooldownUtils:TrackChargeCompletion(obj)
-    if not obj._rechargeEndsAt or not obj._trackedCharges or not obj._maxCharges then
+    local duration = obj._knownRechargeDuration
+    if not obj._rechargeEndsAt or not obj._trackedCharges or not obj._maxCharges or not duration or duration <= 0 then
         return
     end
     if obj._trackedCharges >= obj._maxCharges then
         obj._rechargeEndsAt = nil
         return
     end
-    if GetTime() >= obj._rechargeEndsAt then
+    while obj._rechargeEndsAt and GetTime() >= obj._rechargeEndsAt do
         obj._trackedCharges = obj._trackedCharges + 1
-        obj._rechargeEndsAt = (obj._trackedCharges < obj._maxCharges) and (GetTime() + (obj._knownRechargeDuration or 0)) or nil
+        if obj._trackedCharges < obj._maxCharges then
+            obj._rechargeEndsAt = obj._rechargeEndsAt + duration
+        else
+            obj._rechargeEndsAt = nil
+            break
+        end
     end
 end
 

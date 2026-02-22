@@ -24,6 +24,7 @@ local RAID_TARGET_TEXTURE_COLUMNS, RAID_TARGET_TEXTURE_ROWS = 4, 4
 Mixin.ICON_PREVIEW_ATLASES = {
     RoleIcon = "UI-LFG-RoleIcon-DPS",
     LeaderIcon = "UI-HUD-UnitFrame-Player-Group-LeaderIcon",
+    MainTankIcon = "RaidFrame-Icon-MainTank",
     MarkerIcon = "Interface\\TargetingFrame\\UI-RaidTargetingIcons",
     CombatIcon = "UI-HUD-UnitFrame-Player-CombatIcon",
     ReadyCheckIcon = "UI-LFG-ReadyMark-Raid",
@@ -33,6 +34,7 @@ Mixin.ICON_PREVIEW_ATLASES = {
     DefensiveIcon = "UI-LFG-RoleIcon-Tank",
     ImportantIcon = "UI-LFG-PendingMark-Raid",
     CrowdControlIcon = "UI-LFG-PendingMark-Raid",
+    PrivateAuraAnchor = "UI-LFG-PendingMark-Raid",
 }
 Mixin.MARKER_ICON_TEXCOORD = { 0.75, 1, 0.25, 0.5 }
 
@@ -78,9 +80,26 @@ local CLASS_CC_SPELLS = {
     EVOKER = 360806,      -- Sleep Walk
 }
 
+local CLASS_PRIVATE_AURA_SPELLS = {
+    WARRIOR = 386208,     -- Defensive Stance
+    PALADIN = 1022,       -- Blessing of Protection
+    HUNTER = 264735,      -- Survival of the Fittest
+    ROGUE = 31224,        -- Cloak of Shadows
+    PRIEST = 47788,       -- Guardian Spirit
+    DEATHKNIGHT = 48707,  -- Anti-Magic Shell
+    SHAMAN = 325174,      -- Spirit Link Totem
+    MAGE = 235450,        -- Prismatic Barrier
+    WARLOCK = 108416,     -- Dark Pact
+    MONK = 116849,        -- Life Cocoon
+    DRUID = 102342,       -- Ironbark
+    DEMONHUNTER = 196555, -- Netherwalk
+    EVOKER = 374348,      -- Renewing Blaze
+}
+
 local FALLBACK_DEFENSIVE_TEXTURE = 136041 -- Power Word: Shield
 local FALLBACK_IMPORTANT_TEXTURE = 132095 -- Skull & Crossbones (generic danger)
 local FALLBACK_CC_TEXTURE = 136071 -- Polymorph (generic CC)
+local FALLBACK_PRIVATE_AURA_TEXTURE = 136222 -- Spell Holy SealOfProtection
 
 function Mixin:GetClassPreviewTexture(spellTable, fallbackTexture)
     local _, playerClass = UnitClass("player")
@@ -108,6 +127,10 @@ end
 
 function Mixin:GetCrowdControlTexture()
     return self:GetClassPreviewTexture(CLASS_CC_SPELLS, FALLBACK_CC_TEXTURE)
+end
+
+function Mixin:GetPrivateAuraTexture()
+    return self:GetClassPreviewTexture(CLASS_PRIVATE_AURA_SPELLS, FALLBACK_PRIVATE_AURA_TEXTURE)
 end
 
 Orbit.IconPreviewAtlases, Orbit.MarkerIconTexCoord, Orbit.RoleAtlases = Mixin.ICON_PREVIEW_ATLASES, Mixin.MARKER_ICON_TEXCOORD, ROLE_ATLASES
@@ -175,6 +198,35 @@ function Mixin:UpdateLeaderIcon(frame, plugin)
         frame.LeaderIcon:Show()
     else
         frame.LeaderIcon:Hide()
+    end
+end
+
+-- MAIN TANK / MAIN ASSIST ICON (dual-atlas like LeaderIcon)
+
+function Mixin:UpdateMainTankIcon(frame, plugin)
+    local unit = GuardedUpdate(frame, plugin, "MainTankIcon")
+    if not unit then return end
+
+    local raidIndex = UnitInRaid(unit)
+    if raidIndex then
+        local _, _, _, _, _, _, _, _, _, role = GetRaidRosterInfo(raidIndex + 1)
+        if role == "MAINTANK" then
+            frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainTank")
+            frame.MainTankIcon:Show()
+            return
+        elseif role == "MAINASSIST" then
+            frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainAssist")
+            frame.MainTankIcon:Show()
+            return
+        end
+    end
+
+    local inEditMode = Orbit:IsEditMode()
+    if inEditMode then
+        frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainTank")
+        frame.MainTankIcon:Show()
+    else
+        frame.MainTankIcon:Hide()
     end
 end
 

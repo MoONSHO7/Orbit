@@ -141,6 +141,16 @@ function Plugin:OnLoad()
     self.frame.editModeName = "Focus Frame"
     self.frame.systemIndex = FOCUS_FRAME_INDEX
 
+    self.frame.anchorOptions = {
+        horizontal = true,
+        vertical = true,
+        syncScale = true,
+        syncDimensions = true,
+        useRowDimension = true,
+        mergeBorders = true,
+        independentHeight = true,
+    }
+
     self.frame:RegisterEvent("PLAYER_FOCUS_CHANGED")
     self.frame:RegisterEvent("UNIT_FACTION")
     self.frame:RegisterEvent("UNIT_LEVEL")

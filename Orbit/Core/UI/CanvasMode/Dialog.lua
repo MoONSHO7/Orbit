@@ -256,6 +256,10 @@ function Dialog:SaveOriginalPositions()
     end
 end
 
+-- [ AURA COMPONENT KEYS ]----------------------------------------------------------------
+
+local AURA_COMPONENT_KEYS = { DefensiveIcon = true, PrivateAuraAnchor = true, CrowdControlIcon = true, ImportantIcon = true }
+
 -- [ OPEN DIALOG ]------------------------------------------------------------------------
 
 function Dialog:Open(frame, plugin, systemIndex)
@@ -281,6 +285,9 @@ function Dialog:Open(frame, plugin, systemIndex)
     self.Title:SetText("Canvas Mode: " .. title)
 
     self:CleanupPreview()
+
+    -- Tab visibility deferred until after components are loaded
+    if self.FilterTabBar then self.FilterTabBar:Hide() end
 
     -- Reset zoom/pan state
     self.zoomLevel = C.DEFAULT_ZOOM
@@ -471,6 +478,29 @@ function Dialog:Open(frame, plugin, systemIndex)
         end
     end
 
+    -- The ranger finally counts the spoils to decide if the party needs filter tabs
+    local hasAuraComponents = false
+    for key, comp in pairs(self.previewComponents) do
+        if comp.isAuraContainer or AURA_COMPONENT_KEYS[key] then
+            hasAuraComponents = true
+            break
+        end
+    end
+    local showTabs = hasAuraComponents
+    local titleHeight = showTabs and C.TITLE_HEIGHT or C.TITLE_HEIGHT_NO_TABS
+    self.PreviewContainer:SetPoint("TOPLEFT", self, "TOPLEFT", C.VIEWPORT_PADDING, -titleHeight)
+    if self.FilterTabBar then
+        self.activeFilter = "All"
+        self.FilterTabBar:SetShown(showTabs)
+        if showTabs and self.filterTabButtons then
+            for _, btn in ipairs(self.filterTabButtons) do
+                local isAll = btn.filterName == "All"
+                btn.Text:SetTextColor(isAll and 1.0 or 0.8, isAll and 0.82 or 0.8, isAll and 0.0 or 0.8)
+                if btn.highlight then btn.highlight:SetShown(isAll) end
+            end
+        end
+    end
+
     self:SetSize(C.DIALOG_WIDTH, C.DIALOG_HEIGHT + C.DOCK_HEIGHT)
     self:LayoutFooterButtons()
 
@@ -478,9 +508,30 @@ function Dialog:Open(frame, plugin, systemIndex)
     return true
 end
 
+-- [ APPLY FILTER ]-----------------------------------------------------------------------
+
+function Dialog:ApplyFilter(filterName)
+    self.activeFilter = filterName or "All"
+    for key, comp in pairs(self.previewComponents) do
+        local isAura = comp.isAuraContainer or AURA_COMPONENT_KEYS[key]
+        local visible = true
+        if filterName == "Text" then
+            visible = comp.isFontString == true
+        elseif filterName == "Icons" then
+            visible = not comp.isFontString and not isAura
+        elseif filterName == "Auras" then
+            visible = isAura == true
+        end
+        comp:SetShown(visible)
+        if comp.handle then comp.handle:SetShown(visible) end
+    end
+end
+
 -- [ CLEANUP PREVIEW ]--------------------------------------------------------------------
 
 function Dialog:CleanupPreview()
+    self.activeFilter = "All"
+
     for key, comp in pairs(self.previewComponents) do
         comp:Hide()
         comp:SetParent(nil)
@@ -849,6 +900,10 @@ function Dialog:ResetPositions()
                 container.originalVisualHeight = nil
             end
         end
+    end
+
+    if self.activeFilter and self.activeFilter ~= "All" then
+        self:ApplyFilter(self.activeFilter)
     end
 end
 

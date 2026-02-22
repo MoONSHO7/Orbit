@@ -7,6 +7,17 @@ local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.
 local UPDATE_INTERVAL = 0.05
 local AUGMENTATION_SPEC_ID = 1473
 local FRAME_LEVEL_BOOST = 10
+local TICK_SIZE_DEFAULT = 2
+local TICK_SIZE_MAX = 6
+local TICK_OVERSHOOT = 2
+local TICK_ALPHA_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
+    local c = C_CurveUtil.CreateCurve()
+    c:AddPoint(0.0, 0)
+    c:AddPoint(0.001, 1)
+    c:AddPoint(0.999, 1)
+    c:AddPoint(1.0, 0)
+    return c
+end)()
 local TEXT_HEIGHT_PADDING = 2
 local TEXT_BOTTOM_OFFSET = -2
 local _, PLAYER_CLASS = UnitClass("player")
@@ -77,6 +88,8 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
         OutOfCombatFade = false,
         ShowOnMouseover = true,
         SmoothAnimation = true,
+        FrequentUpdates = false,
+        TickSize = TICK_SIZE_DEFAULT,
         ComponentPositions = {
             Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
         },
@@ -166,6 +179,20 @@ function Plugin:AddSettings(dialog, systemFrame)
             WL:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
         end
         WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 4, max = 25, default = 15 }, nil)
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "TickSize",
+            label = "Tick",
+            min = 0,
+            max = TICK_SIZE_MAX,
+            step = 2,
+            default = TICK_SIZE_DEFAULT,
+            tooltip = "Width of the leading-edge tick mark (0 = hidden)",
+            onChange = function(val)
+                self:SetSetting(systemIndex, "TickSize", val)
+                self:ApplySettings()
+            end,
+        })
     elseif currentTab == "Visibility" then
         WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
         table.insert(schema.controls, {
@@ -205,6 +232,17 @@ function Plugin:AddSettings(dialog, systemFrame)
             tooltip = "Smoothly animate bar value changes",
             onChange = function(val)
                 self:SetSetting(systemIndex, "SmoothAnimation", val)
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "FrequentUpdates",
+            label = "Frequent Updates",
+            default = false,
+            tooltip = "Update power bar every frame instead of on server ticks (smoother energy/mana/rage bars)",
+            onChange = function(val)
+                self:SetSetting(systemIndex, "FrequentUpdates", val)
+                self:RefreshFrequentUpdates()
             end,
         })
     elseif currentTab == "Colour" then
@@ -267,7 +305,7 @@ function Plugin:OnLoad()
 
         -- Create Power Bar visual
         local bar = CreateFrame("StatusBar", nil, preview)
-        local inset = borderSize * scale
+        local inset = OrbitEngine.Pixel:BorderInset(preview, borderSize)
         bar:SetPoint("TOPLEFT", preview, "TOPLEFT", inset, -inset)
         bar:SetPoint("BOTTOMRIGHT", preview, "BOTTOMRIGHT", -inset, inset)
         bar:SetMinMaxValues(0, 1)
@@ -295,6 +333,26 @@ function Plugin:OnLoad()
     -- Alias
     Frame.PowerBar = PowerBar
 
+    -- Tick mark (StatusBar overlay — C++ handles fill position, secret-safe)
+    local tickBar = CreateFrame("StatusBar", nil, Frame)
+    tickBar:SetAllPoints(PowerBar)
+    tickBar:SetFrameLevel(PowerBar:GetFrameLevel() + FRAME_LEVEL_BOOST)
+    tickBar:SetMinMaxValues(0, 1)
+    tickBar:SetValue(0)
+    tickBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
+    tickBar:GetStatusBarTexture():SetAlpha(0)
+    tickBar:GetStatusBarTexture():SetSnapToPixelGrid(true)
+    tickBar:GetStatusBarTexture():SetTexelSnappingBias(0)
+    local tickMark = tickBar:CreateTexture(nil, "OVERLAY")
+    tickMark:SetColorTexture(1, 1, 1, 1)
+    tickMark:SetSnapToPixelGrid(true)
+    tickMark:SetTexelSnappingBias(0)
+    tickMark:SetAlpha(0)
+    tickMark:SetPoint("RIGHT", tickBar:GetStatusBarTexture(), "RIGHT", 0, 0)
+    tickMark:SetSize(OrbitEngine.Pixel:Multiple(TICK_SIZE_DEFAULT), 1)
+    Frame.TickBar = tickBar
+    Frame.TickMark = tickMark
+
     self:ApplySettings()
 
     -- Events
@@ -304,6 +362,8 @@ function Plugin:OnLoad()
     Frame:RegisterUnitEvent("UNIT_AURA", "player")
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
     Frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+
+    self:RefreshFrequentUpdates()
 
     Frame:SetScript("OnEvent", function(f, event)
         if event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_SPECIALIZATION_CHANGED" then
@@ -342,6 +402,15 @@ function Plugin:OnLoad()
 
     self:UpdateVisibility()
     self:RefreshOnUpdate()
+end
+
+function Plugin:RefreshFrequentUpdates()
+    if not Frame then return end
+    if self:GetSetting(SYSTEM_INDEX, "FrequentUpdates") then
+        Frame:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+    else
+        Frame:UnregisterEvent("UNIT_POWER_FREQUENT")
+    end
 end
 
 function Plugin:RefreshOnUpdate()
@@ -428,6 +497,15 @@ function Plugin:ApplySettings()
 
     -- Texture
     Orbit.Skin:SkinStatusBar(PowerBar, textureName, nil, true)
+    local tickSize = 2 * math.floor(((self:GetSetting(systemIndex, "TickSize") or TICK_SIZE_DEFAULT) + 1) / 2)
+    if tickSize > 0 then
+        local overshoot = OrbitEngine.Pixel:Multiple(TICK_OVERSHOOT)
+        local tickWidth = math.max(OrbitEngine.Pixel:Multiple(tickSize), OrbitEngine.Pixel:Multiple(1))
+        Frame.TickMark:SetSize(tickWidth, OrbitEngine.Pixel:Snap(height + overshoot * 2))
+        Frame.TickBar:Show()
+    else
+        Frame.TickBar:Hide()
+    end
 
     -- Border
     Frame:SetBorder(borderSize)
@@ -500,8 +578,11 @@ function Plugin:UpdateAll()
         local current, max = Orbit.ResourceBarMixin:GetEbonMightState()
         if current and max and max > 0 then
             PowerBar:SetMinMaxValues(0, max)
+            Frame.TickBar:SetMinMaxValues(0, max)
             local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
             PowerBar:SetValue(current, smoothing)
+            Frame.TickBar:SetValue(current, smoothing)
+            Frame.TickMark:SetAlpha(max > 0 and current > 0 and current < max and 1 or 0)
 
             local curveData = self:GetSetting(SYSTEM_INDEX, "EbonMightColorCurve")
             local color = curveData and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
@@ -510,7 +591,7 @@ function Plugin:UpdateAll()
             end
 
             if Frame.Text:IsShown() then
-                Frame.Text:SetFormattedText("%.0f", current)
+                Frame.Text:SetText(current)
             end
             return
         end
@@ -521,8 +602,13 @@ function Plugin:UpdateAll()
     local max = UnitPowerMax("player", powerType)
 
     PowerBar:SetMinMaxValues(0, max)
+    Frame.TickBar:SetMinMaxValues(0, max)
     local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
     PowerBar:SetValue(cur, smoothing)
+    Frame.TickBar:SetValue(cur, smoothing)
+    if TICK_ALPHA_CURVE and CanUseUnitPowerPercent then
+        Frame.TickMark:SetAlpha(UnitPowerPercent("player", powerType, false, TICK_ALPHA_CURVE))
+    end
 
     -- Color: reset vertex tint then apply per-power-type curve
     PowerBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
@@ -549,7 +635,7 @@ function Plugin:UpdateAll()
         if powerToken == "MANA" then
             local percent = SafeUnitPowerPercent("player", powerType)
             if percent then
-                Frame.Text:SetFormattedText("%.0f", percent)
+                Frame.Text:SetText(percent)
             else
                 Frame.Text:SetText(cur)
             end

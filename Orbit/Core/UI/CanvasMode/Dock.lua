@@ -242,6 +242,7 @@ function Dialog:RestoreFromDock(key)
     if storedComp then
         storedComp:Show()
         Dialog.previewComponents[key] = storedComp
+        if Dialog.activeFilter and Dialog.activeFilter ~= "All" then Dialog:ApplyFilter(Dialog.activeFilter) end
         return
     end
 
@@ -307,6 +308,7 @@ function Dialog:RestoreFromDock(key)
             Dialog.previewComponents[key] = comp
         end
     end
+    if Dialog.activeFilter and Dialog.activeFilter ~= "All" then Dialog:ApplyFilter(Dialog.activeFilter) end
 end
 
 -- [ CLEAR DOCK ]-------------------------------------------------------------------------

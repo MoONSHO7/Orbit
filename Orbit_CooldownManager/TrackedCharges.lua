@@ -8,7 +8,8 @@ local CooldownUtils = OrbitEngine.CooldownUtils
 local CHARGE_BAR_INDEX = Constants.Cooldown.SystemIndex.ChargeBar
 local CHARGE_CHILD_START = Constants.Cooldown.SystemIndex.ChargeBar_ChildStart
 local MAX_CHARGE_CHILDREN = Constants.Cooldown.MaxChargeBarChildren
-local UPDATE_INTERVAL = 0.016
+local UPDATE_INTERVAL = 0.05
+local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
 local DEFAULT_WIDTH = 120
 local DEFAULT_HEIGHT = 12
 local EMPTY_SEED_SIZE = 40
@@ -20,6 +21,11 @@ local COLOR_BABY_BLUE = { r = 0.4, g = 0.7, b = 1.0 }
 local RECHARGE_PROGRESS_CURVE = C_CurveUtil.CreateCurve()
 RECHARGE_PROGRESS_CURVE:AddPoint(0.0, 1)
 RECHARGE_PROGRESS_CURVE:AddPoint(1.0, 0)
+
+local RECHARGE_ALPHA_CURVE = C_CurveUtil.CreateCurve()
+RECHARGE_ALPHA_CURVE:AddPoint(0.0, 0)
+RECHARGE_ALPHA_CURVE:AddPoint(0.001, 1)
+RECHARGE_ALPHA_CURVE:AddPoint(1.0, 1)
 local CHARGE_ADD_ICON = "Interface\\PaperDollInfoFrame\\Character-Plus"
 local CHARGE_REMOVE_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
 local CONTROL_BTN_SIZE = 10
@@ -27,6 +33,10 @@ local CONTROL_BTN_SPACING = 1
 local RECHARGE_DIM = 0.35
 local DEFAULT_SPACING = 0
 local SEED_PLUS_RATIO = 0.4
+local TICK_SIZE_DEFAULT = 2
+local TICK_SIZE_MAX = 6
+local TICK_OVERSHOOT = 2
+local TICK_LEVEL_BOOST = 10
 
 -- [ REFERENCES ]------------------------------------------------------------------------------------
 local Plugin = Orbit:GetPlugin("Orbit_CooldownViewer")
@@ -208,6 +218,29 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.CountText:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE")
     frame.CountText:SetPoint("CENTER", frame, "CENTER", 0, 0)
 
+    frame.RechargePositioner = CreateFrame("StatusBar", nil, frame)
+    frame.RechargePositioner:SetFrameLevel(0)
+    frame.RechargePositioner:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
+    frame.RechargePositioner:GetStatusBarTexture():SetAlpha(0)
+
+    frame.RechargeSegment = CreateFrame("StatusBar", nil, frame)
+    frame.RechargeSegment:SetFrameLevel(frame:GetFrameLevel() + 1)
+    frame.RechargeSegment:SetPoint("LEFT", frame.RechargePositioner:GetStatusBarTexture(), "RIGHT", 0, 0)
+    frame.RechargeSegment:SetMinMaxValues(0, 1)
+
+    frame.TickBar = CreateFrame("StatusBar", nil, frame)
+    frame.TickBar:SetFrameLevel(frame:GetFrameLevel() + TICK_LEVEL_BOOST)
+    frame.TickBar:SetPoint("LEFT", frame.RechargePositioner:GetStatusBarTexture(), "RIGHT", 0, 0)
+    frame.TickBar:SetMinMaxValues(0, 1)
+    frame.TickBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
+    frame.TickBar:GetStatusBarTexture():SetAlpha(0)
+    frame.TickBar:GetStatusBarTexture():SetSnapToPixelGrid(true)
+    frame.TickBar:GetStatusBarTexture():SetTexelSnappingBias(0)
+    frame.TickMark = frame.TickBar:CreateTexture(nil, "OVERLAY")
+    frame.TickMark:SetColorTexture(1, 1, 1, 1)
+    frame.TickMark:SetPoint("RIGHT", frame.TickBar:GetStatusBarTexture(), "RIGHT", 0, 0)
+    frame.TickMark:Show()
+
     frame:SetScript("OnReceiveDrag", function()
         plugin:OnChargeFrameDrop(frame)
     end)
@@ -367,6 +400,7 @@ function Plugin:SpawnChargeChild()
         OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
         frame.chargeSpellId = nil
         frame.cachedMaxCharges = nil
+        frame._maxCharges = nil
         for _, btn in ipairs(frame.buttons) do
             btn:Hide()
         end
@@ -411,6 +445,7 @@ function Plugin:DespawnChargeChild(frame)
     frame:ClearAllPoints()
     frame.chargeSpellId = nil
     frame.cachedMaxCharges = nil
+    frame._maxCharges = nil
     for _, btn in ipairs(frame.buttons) do
         btn:Hide()
     end
@@ -440,11 +475,6 @@ function Plugin:BuildChargeButtons(frame, maxCharges)
         if not frame.buttons[i] then
             local btn = CreateFrame("Frame", nil, frame)
             OrbitEngine.Pixel:Enforce(btn)
-            btn.RechargeBar = CreateFrame("StatusBar", nil, btn)
-            btn.RechargeBar:SetAllPoints()
-            btn.RechargeBar:SetMinMaxValues(0, 1)
-            btn.RechargeBar:SetValue(0)
-            btn.RechargeBar:SetFrameLevel(btn:GetFrameLevel() + 1)
             btn.Bar = CreateFrame("StatusBar", nil, btn)
             btn.Bar:SetAllPoints()
             btn.Bar:SetMinMaxValues(i - 1, i)
@@ -510,24 +540,51 @@ function Plugin:LayoutChargeBars()
 end
 
 function Plugin:SkinChargeButtons(frame, maxCharges, totalWidth, height, borderSize, spacing, texture, sysIndex, bgColor, scale)
-    local snappedGap = PixelMultiple(spacing - 1, scale)
-    local totalSpacing = (maxCharges - 1) * snappedGap
-    local usableWidth = totalWidth - totalSpacing
-    local btnWidth = SnapToPixel(usableWidth / maxCharges, scale)
+    local snappedGap = PixelMultiple(math.max(spacing - 1, spacing > 0 and 1 or 0), scale)
+    local snappedWidth = SnapToPixel(totalWidth, scale)
     local globalSettings = Orbit.db.GlobalSettings
+    
+    local screenScale = OrbitEngine.Pixel:GetScale()
+    local step = screenScale / scale
+    local physicalGap = (spacing > 0) and math.max(1, math.floor((spacing - 1) * scale / screenScale + 0.5)) or 0
+    if spacing <= 1 then physicalGap = 0 end
+    
+    local physicalTotalWidth = math.floor(totalWidth * scale / screenScale + 0.5)
+    local physicalRemaining = physicalTotalWidth - (physicalGap * (maxCharges - 1))
+    local baseBtnPhysical = math.floor(physicalRemaining / maxCharges)
+    local extraPixels = physicalRemaining % maxCharges
+
+    local segmentWidth = snappedWidth / math.max(1, maxCharges)
+    local snappedGap = 0
+    if physicalGap > 0 then snappedGap = physicalGap * step end
+    
+    local barColor1 = GetBarColor(self, sysIndex, 1, maxCharges)
+    local rechargeColor = { r = barColor1.r * RECHARGE_DIM, g = barColor1.g * RECHARGE_DIM, b = barColor1.b * RECHARGE_DIM }
+    Orbit.Skin:SkinStatusBar(frame.RechargeSegment, texture, rechargeColor)
+    if frame.RechargeSegment.Overlay then
+        frame.RechargeSegment.Overlay:Hide()
+    end
+
+    frame.RechargePositioner:SetSize(snappedWidth, height)
+    frame.RechargePositioner:SetPoint("LEFT", frame, "LEFT", 0, 0)
+    frame.RechargeSegment:SetSize(math.max(1, segmentWidth - snappedGap), height)
+    frame.TickBar:SetSize(math.max(1, segmentWidth - snappedGap), height)
+
+    local currentPhysicalLeft = 0
 
     for i = 1, maxCharges do
         local btn = frame.buttons[i]
-        if not btn then
-            break
-        end
+        if not btn then break end
 
-        local leftPos = SnapToPixel((i - 1) * (btnWidth + snappedGap), scale)
-        local actualWidth = (i == maxCharges) and (totalWidth - leftPos) or btnWidth
+        local btnPhysicalWidth = baseBtnPhysical + (i <= extraPixels and 1 or 0)
+        local logicalLeft = currentPhysicalLeft * step
+        local logicalWidth = btnPhysicalWidth * step
 
-        btn:SetSize(actualWidth, height)
+        btn:SetSize(logicalWidth, height)
         btn:ClearAllPoints()
-        btn:SetPoint("LEFT", frame, "LEFT", leftPos, 0)
+        btn:SetPoint("LEFT", frame, "LEFT", logicalLeft, 0)
+        
+        currentPhysicalLeft = currentPhysicalLeft + btnPhysicalWidth + physicalGap
 
         if not btn.bg then
             btn.bg = btn:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
@@ -540,11 +597,6 @@ function Plugin:SkinChargeButtons(frame, maxCharges, totalWidth, height, borderS
         if btn.Bar.Overlay then
             btn.Bar.Overlay:Hide()
         end
-        local rechargeColor = { r = barColor.r * RECHARGE_DIM, g = barColor.g * RECHARGE_DIM, b = barColor.b * RECHARGE_DIM }
-        Orbit.Skin:SkinStatusBar(btn.RechargeBar, texture, rechargeColor)
-        if btn.RechargeBar.Overlay then
-            btn.RechargeBar.Overlay:Hide()
-        end
 
         if not btn.orbitBackdrop then
             btn.orbitBackdrop = Orbit.Skin:CreateBackdrop(btn, nil)
@@ -554,6 +606,18 @@ function Plugin:SkinChargeButtons(frame, maxCharges, totalWidth, height, borderS
         Orbit.Skin:SkinBorder(btn, btn.orbitBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
 
         OrbitEngine.Pixel:Enforce(btn)
+    end
+
+    local tickSize = 2 * math.floor(((self:GetSetting(frame.systemIndex, "TickSize") or TICK_SIZE_DEFAULT) + 1) / 2)
+    local overshoot = PixelMultiple(TICK_OVERSHOOT)
+    local tickHeight = OrbitEngine.Pixel:Snap(height + overshoot * 2)
+    
+    if tickSize > 0 then
+        local tickWidth = math.max(PixelMultiple(tickSize), PixelMultiple(1))
+        frame.TickMark:SetSize(tickWidth, tickHeight)
+        frame.TickBar:Show()
+    else
+        frame.TickBar:Hide()
     end
 
     local sysIndex = frame.systemIndex
@@ -596,20 +660,30 @@ function Plugin:SetupChargeBarCanvasPreview(frame, sysIndex)
         preview.previewScale = 1
         preview.components = {}
 
-        local snappedGap = PixelMultiple(spacing - 1, scale)
-        local totalSpacing = (maxCharges - 1) * snappedGap
-        local usableWidth = width - totalSpacing
-        local btnWidth = SnapToPixel(usableWidth / maxCharges, scale)
+        local screenScale = OrbitEngine.Pixel:GetScale()
+        local step = screenScale / scale
+        local physicalGap = (spacing > 0) and math.max(1, math.floor((spacing - 1) * scale / screenScale + 0.5)) or 0
+        if spacing <= 1 then physicalGap = 0 end
+        
+        local physicalTotalWidth = math.floor(width * scale / screenScale + 0.5)
+        local physicalRemaining = physicalTotalWidth - (physicalGap * (maxCharges - 1))
+        local baseBtnPhysical = math.floor(physicalRemaining / maxCharges)
+        local extraPixels = physicalRemaining % maxCharges
+
+        local currentPhysicalLeft = 0
 
         for i = 1, maxCharges do
-            local leftPos = SnapToPixel((i - 1) * (btnWidth + snappedGap), scale)
-            local actualWidth = (i == maxCharges) and (width - leftPos) or btnWidth
-
+            local btnPhysicalWidth = baseBtnPhysical + (i <= extraPixels and 1 or 0)
+            local logicalLeft = currentPhysicalLeft * step
+            local logicalWidth = btnPhysicalWidth * step
+            
             local seg = CreateFrame("StatusBar", nil, preview)
-            seg:SetSize(actualWidth, height)
-            seg:SetPoint("LEFT", preview, "LEFT", leftPos, 0)
+            seg:SetSize(logicalWidth, height)
+            seg:SetPoint("LEFT", preview, "LEFT", logicalLeft, 0)
             seg:SetMinMaxValues(0, 1)
             seg:SetValue(1)
+            
+            currentPhysicalLeft = currentPhysicalLeft + btnPhysicalWidth + physicalGap
 
             seg.bg = seg:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
             seg.bg:SetAllPoints()
@@ -687,6 +761,7 @@ end
 function Plugin:AssignChargeSpell(frame, spellId, maxCharges)
     frame.chargeSpellId = spellId
     frame.cachedMaxCharges = maxCharges
+    frame._maxCharges = maxCharges
 
     local ci = C_Spell.GetSpellCharges(spellId)
     frame._trackedCharges = ci and ci.currentCharges or maxCharges
@@ -705,10 +780,13 @@ end
 function Plugin:ClearChargeFrame(frame)
     frame.chargeSpellId = nil
     frame.cachedMaxCharges = nil
+    frame._maxCharges = nil
     frame._trackedCharges = nil
     for _, btn in ipairs(frame.buttons) do
         btn:Hide()
     end
+    if frame.RechargeSegment then frame.RechargeSegment:SetValue(0) end
+    if frame.TickBar then frame.TickBar:SetValue(0) end
     frame.CountText:SetText("")
     frame.CountText:Hide()
 
@@ -762,41 +840,34 @@ function Plugin:UpdateChargeFrame(frame)
         return
     end
 
+    local smoothing = self:GetSetting(frame.systemIndex, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
+
     for _, btn in ipairs(frame.buttons) do
-        btn.Bar:SetValue(chargeInfo.currentCharges)
+        btn.Bar:SetValue(chargeInfo.currentCharges, smoothing)
     end
     frame.CountText:SetText(chargeInfo.currentCharges)
     frame.CountText:Show()
 
-    if not issecretvalue(chargeInfo.currentCharges) then
-        frame._trackedCharges = chargeInfo.currentCharges
-        frame._knownRechargeDuration = chargeInfo.cooldownDuration
-        frame._rechargeEndsAt = (chargeInfo.cooldownStartTime > 0 and chargeInfo.cooldownDuration > 0) and (chargeInfo.cooldownStartTime + chargeInfo.cooldownDuration) or nil
-    end
-    CooldownUtils:TrackChargeCompletion(frame)
+    frame.RechargePositioner:SetMinMaxValues(0, chargeInfo.maxCharges)
+    frame.RechargePositioner:SetValue(chargeInfo.currentCharges, smoothing)
 
     local progress = 0
-    local rechargeIdx = (frame._trackedCharges or frame.cachedMaxCharges) + 1
+    local alphaVal = 0
     local chargeDurObj = C_Spell.GetSpellChargeDuration(frame.chargeSpellId)
     if chargeDurObj then
         progress = chargeDurObj:EvaluateRemainingPercent(RECHARGE_PROGRESS_CURVE)
-    else
-        frame._trackedCharges = frame.cachedMaxCharges
-        frame._rechargeEndsAt = nil
+        alphaVal = chargeDurObj:EvaluateRemainingPercent(RECHARGE_ALPHA_CURVE)
     end
-    for i, btn in ipairs(frame.buttons) do
-        if btn.RechargeBar then
-            btn.RechargeBar:SetValue((i == rechargeIdx) and progress or 0)
-        end
-    end
+
+    frame.RechargeSegment:SetValue(progress)
+    frame.TickBar:SetValue(progress)
+    frame.RechargeSegment:SetAlpha(alphaVal)
+    frame.TickBar:SetAlpha(alphaVal)
 end
 
 -- [ TICKER ]----------------------------------------------------------------------------------------
 function Plugin:StartChargeUpdateTicker()
-    if self.chargeUpdateTicker then
-        return
-    end
-    self.chargeUpdateTicker = C_Timer.NewTicker(UPDATE_INTERVAL, function()
+    local function DoUpdate()
         local anchor = self.chargeBarAnchor
         if anchor and anchor:IsShown() and anchor.chargeSpellId then
             self:UpdateChargeFrame(anchor)
@@ -807,7 +878,30 @@ function Plugin:StartChargeUpdateTicker()
                 self:UpdateChargeFrame(f)
             end
         end
-    end)
+    end
+
+    if not self.chargeUpdateFrame then
+        self.chargeUpdateFrame = CreateFrame("Frame")
+    end
+
+    local useFrequent = self:GetSetting(CHARGE_BAR_INDEX, "FrequentUpdates")
+    
+    if useFrequent then
+        if self.chargeUpdateTicker then
+            self.chargeUpdateTicker:Cancel()
+            self.chargeUpdateTicker = nil
+        end
+        self.chargeUpdateFrame:SetScript("OnUpdate", DoUpdate)
+    else
+        self.chargeUpdateFrame:SetScript("OnUpdate", nil)
+        if not self.chargeUpdateTicker then
+            self.chargeUpdateTicker = C_Timer.NewTicker(UPDATE_INTERVAL, DoUpdate)
+        end
+    end
+end
+    
+function Plugin:RefreshChargeUpdateMethod()
+    self:StartChargeUpdateTicker()
 end
 
 -- [ SEED VISIBILITY ]------------------------------------------------------------------------------
@@ -876,9 +970,12 @@ function Plugin:ReloadChargeBarsForSpec()
     if anchor then
         anchor.chargeSpellId = nil
         anchor.cachedMaxCharges = nil
+        anchor._maxCharges = nil
         for _, btn in ipairs(anchor.buttons) do
             btn:Hide()
         end
+        if anchor.RechargeSegment then anchor.RechargeSegment:SetValue(0) end
+        if anchor.TickBar then anchor.TickBar:SetValue(0) end
     end
 
     for key, childData in pairs(self.activeChargeChildren) do
@@ -887,9 +984,12 @@ function Plugin:ReloadChargeBarsForSpec()
             childData.frame:ClearAllPoints()
             childData.frame.chargeSpellId = nil
             childData.frame.cachedMaxCharges = nil
+            childData.frame._maxCharges = nil
             for _, btn in ipairs(childData.frame.buttons) do
                 btn:Hide()
             end
+            if childData.frame.RechargeSegment then childData.frame.RechargeSegment:SetValue(0) end
+            if childData.frame.TickBar then childData.frame.TickBar:SetValue(0) end
             table.insert(self.chargeChildPool, childData.frame)
         end
     end
@@ -926,6 +1026,7 @@ function Plugin:RestoreChargeSpell(frame, sysIndex)
 
     frame.chargeSpellId = data.id
     frame.cachedMaxCharges = data.maxCharges or 2
+    frame._maxCharges = data.maxCharges or 2
     frame._trackedCharges = ci and ci.currentCharges or frame.cachedMaxCharges
     frame._knownRechargeDuration = ci and ci.cooldownDuration or nil
     self:BuildChargeButtons(frame, frame.cachedMaxCharges)
@@ -938,13 +1039,14 @@ function Plugin:RefreshChargeMaxCharges()
             return
         end
         local ci = C_Spell.GetSpellCharges(frame.chargeSpellId)
-        if not ci or not ci.maxCharges or ci.maxCharges < 2 then
+        if not ci or not ci.maxCharges or issecretvalue(ci.maxCharges) or ci.maxCharges < 2 then
             return
         end
         if ci.maxCharges == frame.cachedMaxCharges then
             return
         end
         frame.cachedMaxCharges = ci.maxCharges
+        frame._maxCharges = ci.maxCharges
         self:SetSetting(frame.systemIndex, self:GetSpecKey("ChargeSpell"), { id = frame.chargeSpellId, maxCharges = ci.maxCharges })
         self:BuildChargeButtons(frame, ci.maxCharges)
         self:LayoutChargeBar(frame)

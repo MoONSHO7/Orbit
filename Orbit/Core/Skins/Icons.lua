@@ -25,7 +25,7 @@ Icons.regionCache = setmetatable({}, { __mode = "k" })
 Icons.borderCache = setmetatable({}, { __mode = "k" })
 Icons.monitorTickers = setmetatable({}, { __mode = "k" })
 
-local Pixel = Orbit.Engine and Orbit.Engine.Pixel
+local Pixel = Orbit.Engine.Pixel
 
 function Icons:ApplyManualLayout(frame, icons, settings)
     local padding = tonumber(settings.padding)
@@ -61,13 +61,10 @@ function Icons:ApplyManualLayout(frame, icons, settings)
         end
     end
 
-    -- Pixel snap for consistent rendering
-    if Pixel then
-        local scale = frame:GetEffectiveScale()
-        w = Pixel:Snap(w, scale)
-        h = Pixel:Snap(h, scale)
-        padding = Pixel:Snap(padding, scale)
-    end
+    local scale = frame:GetEffectiveScale()
+    w = Pixel:Snap(w, scale)
+    h = Pixel:Snap(h, scale)
+    padding = Pixel:Snap(padding, scale)
 
     -- "Major" is the primary flow direction (Rows for Horiz, Cols for Vert)
     -- "Minor" is the secondary wrapping direction
@@ -134,7 +131,7 @@ function Icons:ApplyManualLayout(frame, icons, settings)
                 y = centeringOffset + (row * (h + padding))
             end
 
-            if Pixel then x = Pixel:Snap(x, scale); y = Pixel:Snap(y, scale) end
+            x = Pixel:Snap(x, scale); y = Pixel:Snap(y, scale)
             icon:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x, y)
         else
             if orientation == 0 then
@@ -145,7 +142,7 @@ function Icons:ApplyManualLayout(frame, icons, settings)
                 y = -(centeringOffset + (row * (h + padding)))
             end
 
-            if Pixel then x = Pixel:Snap(x, scale); y = Pixel:Snap(y, scale) end
+            x = Pixel:Snap(x, scale); y = Pixel:Snap(y, scale)
             icon:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
         end
     end
@@ -426,11 +423,9 @@ function Icons:ApplyCustom(icon, settings)
     if tex then
         local newWidth, newHeight, rw, rh = self:CalculateGeometry(icon, settings)
 
-        if Pixel then
-            local scale = icon:GetEffectiveScale()
-            newWidth = Pixel:Snap(newWidth, scale)
-            newHeight = Pixel:Snap(newHeight, scale)
-        end
+        local scale = icon:GetEffectiveScale()
+        newWidth = Pixel:Snap(newWidth, scale)
+        newHeight = Pixel:Snap(newHeight, scale)
 
         -- Use generic OrbSkin for base icon skinning
         Skin:SkinIcon(tex, settings)
@@ -641,8 +636,7 @@ function Icons:ApplyActionButtonCustom(button, settings)
     end
 
     local w, h = button:GetSize()
-    local borderEdge = settings.borderSize or 1
-    local borderInset = borderEdge * 2
+    local borderInset = (Pixel and Pixel:BorderInset(button, settings.borderSize or 1) or 1) * 2
 
     -- Reset Blizzard textures using helper
     ResetRegion(button.NormalTexture)
