@@ -37,6 +37,10 @@ function CanvasMixin:SetBorderHidden(edge, hidden)
     if border then border:SetShown(not hidden) end
     if not self._mergedEdges then self._mergedEdges = {} end
     self._mergedEdges[edge] = hidden or nil
+
+    if self.UpdateBarInsets then
+        self:UpdateBarInsets()
+    end
 end
 
 function CanvasMixin:UpdateTextLayout()
@@ -119,11 +123,9 @@ end
 
 -- [ BORDER MANAGEMENT ]-----------------------------------------------------------------------------
 
-function CanvasMixin:SetBorder(size)
+function CanvasMixin:UpdateBarInsets()
     local oldBorderSize = self.borderPixelSize
-    if Orbit.Skin:SkinBorder(self, self, size) then
-        self._barInsets = nil
-        self.borderPixelSize = 0
+    if not oldBorderSize or oldBorderSize <= 0 then
         if self.Health then
             self.Health:ClearAllPoints()
             self.Health:SetPoint("TOPLEFT", 0, 0)
@@ -137,12 +139,16 @@ function CanvasMixin:SetBorder(size)
         return
     end
 
-    local pixelSize = self.borderPixelSize
-    if oldBorderSize ~= pixelSize then self._barInsets = nil end
-
-    local iL, iT, iR, iB = pixelSize, pixelSize, pixelSize, pixelSize
+    local iL, iT, iR, iB = oldBorderSize, oldBorderSize, oldBorderSize, oldBorderSize
     if self._barInsets then
         iL, iT, iR, iB = self._barInsets.x1, self._barInsets.y1, self._barInsets.x2, self._barInsets.y2
+    end
+
+    if self._mergedEdges then
+        if self._mergedEdges.Left then iL = 0 end
+        if self._mergedEdges.Right then iR = 0 end
+        if self._mergedEdges.Top then iT = 0 end
+        if self._mergedEdges.Bottom then iB = 0 end
     end
 
     if self.Health then
@@ -156,6 +162,21 @@ function CanvasMixin:SetBorder(size)
         self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, 0)
         self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, 0)
     end
+end
+
+function CanvasMixin:SetBorder(size)
+    local oldBorderSize = self.borderPixelSize
+    if Orbit.Skin:SkinBorder(self, self, size) then
+        self._barInsets = nil
+        self.borderPixelSize = 0
+        self:UpdateBarInsets()
+        return
+    end
+
+    local pixelSize = self.borderPixelSize
+    if oldBorderSize ~= pixelSize then self._barInsets = nil end
+
+    self:UpdateBarInsets()
 end
 
 UnitButton.CanvasMixin = CanvasMixin

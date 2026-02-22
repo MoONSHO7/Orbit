@@ -190,7 +190,7 @@ function Plugin:OnLoad()
         end
     end)
 
-    Frame:SetScript("OnShow", function()
+    Frame:HookScript("OnShow", function()
         self:UpdateAll()
     end)
 
