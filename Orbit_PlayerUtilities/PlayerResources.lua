@@ -421,32 +421,25 @@ function Plugin:OnLoad()
                 end
 
                 local divMax = MAX_SPACER_COUNT
-                local screenScale = OrbitEngine.Pixel:GetScale()
-                local step = screenScale / scale
-                local physicalGap = (spacing > 0) and math.max(1, math.floor(spacing * scale / screenScale + 0.5)) or 0
-                local logicalGap = physicalGap * step
-                local physicalTotalWidth = math.floor(width * scale / screenScale + 0.5)
+                local logicalGap = OrbitEngine.Pixel:Multiple(spacing, scale)
+                local exactWidth = (width - (logicalGap * (divMax - 1))) / divMax
+                local snappedWidth = OrbitEngine.Pixel:Snap(exactWidth, scale)
 
-                local physicalRemaining = physicalTotalWidth - (physicalGap * (divMax - 1))
-                local baseSegmentPhysical = math.floor(physicalRemaining / divMax)
-                local extraPixels = physicalRemaining % divMax
-
-                local currentPhysicalLeft = 0
+                local currentLeft = 0
 
                 for i = 1, divMax - 1 do
-                    local btnPhysicalWidth = baseSegmentPhysical + (i <= extraPixels and 1 or 0)
-                    currentPhysicalLeft = currentPhysicalLeft + btnPhysicalWidth
+                    currentLeft = currentLeft + snappedWidth
 
                     local sp = bar:CreateTexture(nil, "OVERLAY", nil, 7)
                     sp:SetColorTexture(0, 0, 0, 1)
                     sp:SetSize(logicalGap, height)
                     
-                    local logicalLeft = currentPhysicalLeft * step
+                    local logicalLeft = OrbitEngine.Pixel:Snap(currentLeft, scale)
                     sp:SetPoint("LEFT", container, "LEFT", logicalLeft, 0)
                     
                     if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(sp) end
                     
-                    currentPhysicalLeft = currentPhysicalLeft + physicalGap
+                    currentLeft = currentLeft + logicalGap
                 end
             end
         else
@@ -454,32 +447,25 @@ function Plugin:OnLoad()
             local snappedHeight = OrbitEngine.Pixel:Snap(height, scale)
             local previewActive = math.max(1, max - 1)
 
-            local screenScale = OrbitEngine.Pixel:GetScale()
-            local step = screenScale / scale
-            local physicalGap = (spacing > 0) and math.max(1, math.floor(spacing * scale / screenScale + 0.5)) or 0
-            local physicalTotalWidth = math.floor(width * scale / screenScale + 0.5)
+            local logicalGap = OrbitEngine.Pixel:Multiple(spacing, scale)
+            local exactWidth = (width - (logicalGap * (max - 1))) / max
+            local snappedWidth = OrbitEngine.Pixel:Snap(exactWidth, scale)
 
-            local physicalRemaining = physicalTotalWidth - (physicalGap * (max - 1))
-            local baseBtnPhysical = math.floor(physicalRemaining / max)
-            local extraPixels = physicalRemaining % max
-
-            local currentPhysicalLeft = 0
+            local currentLeft = 0
 
             preview.buttons = {}
             for i = 1, max do
-                local btnPhysicalWidth = baseBtnPhysical + (i <= extraPixels and 1 or 0)
-                local logicalLeft = currentPhysicalLeft * step
-                local logicalWidth = btnPhysicalWidth * step
+                local logicalLeft = OrbitEngine.Pixel:Snap(currentLeft, scale)
 
                 local btn = CreateFrame("Frame", nil, preview)
                 btn:SetPoint("LEFT", preview, "LEFT", logicalLeft, 0)
-                btn:SetSize(logicalWidth, height)
+                btn:SetSize(snappedWidth, height)
                 
                 Orbit.Skin.ClassBar:SkinButton(btn, { borderSize = borderSize, texture = texture, backColor = bgColor })
                 
                 if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(btn) end
                 
-                currentPhysicalLeft = currentPhysicalLeft + btnPhysicalWidth + physicalGap
+                currentLeft = currentLeft + snappedWidth + logicalGap
                 
                 currentPxLeft = currentPxRight + gapPixels
 
@@ -839,7 +825,7 @@ function Plugin:ApplyButtonVisuals()
         return
     end
 
-    local borderSize = (Frame.settings and Frame.settings.borderSize) or 1
+    local borderSize = (Frame.settings and Frame.settings.borderSize) or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, Frame:GetEffectiveScale() or 1) or 1)
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
 
     local max = math.max(1, Frame.maxPower or #Frame.buttons)
@@ -1132,23 +1118,16 @@ function Plugin:RepositionSpacers(max, edges)
     local totalWidth = Frame:GetWidth()
     if totalWidth < 10 then totalWidth = (Frame.settings and Frame.settings.width) or 200 end
 
-    local screenScale = OrbitEngine.Pixel:GetScale()
-    local step = screenScale / scale
-    local physicalGap = (spacerWidth > 0) and math.max(1, math.floor(spacerWidth * scale / screenScale + 0.5)) or 0
-    local logicalGap = physicalGap * step
-    local physicalTotalWidth = math.floor(totalWidth * scale / screenScale + 0.5)
+    local logicalGap = PixelMultiple(spacerWidth, scale)
+    local exactWidth = (totalWidth - (logicalGap * (max - 1))) / max
+    local snappedWidth = SnapToPixel(exactWidth, scale)
 
-    local physicalRemaining = physicalTotalWidth - (physicalGap * (max - 1))
-    local baseSegmentPhysical = math.floor(physicalRemaining / max)
-    local extraPixels = physicalRemaining % max
-
-    local currentPhysicalLeft = 0
+    local currentLeft = 0
     local edges = {}
     for i = 1, max - 1 do
-        local btnPhysicalWidth = baseSegmentPhysical + (i <= extraPixels and 1 or 0)
-        currentPhysicalLeft = currentPhysicalLeft + btnPhysicalWidth
-        edges[i] = currentPhysicalLeft * step
-        currentPhysicalLeft = currentPhysicalLeft + physicalGap
+        currentLeft = currentLeft + snappedWidth
+        edges[i] = SnapToPixel(currentLeft, scale)
+        currentLeft = currentLeft + logicalGap
     end
 
     for i = 1, MAX_SPACER_COUNT do
@@ -1185,31 +1164,24 @@ function Plugin:UpdateLayout(frame)
     local snappedHeight = SnapToPixel(height, scale)
     Frame:SetHeight(snappedHeight)
 
-    local screenScale = OrbitEngine.Pixel:GetScale()
-    local step = screenScale / scale
-    local physicalGap = (spacing > 0) and math.max(1, math.floor(spacing * scale / screenScale + 0.5)) or 0
-    local physicalTotalWidth = math.floor(totalWidth * scale / screenScale + 0.5)
+    local logicalGap = PixelMultiple(spacing, scale)
+    local exactWidth = (totalWidth - (logicalGap * (max - 1))) / max
+    local snappedWidth = SnapToPixel(exactWidth, scale)
 
-    local physicalRemaining = physicalTotalWidth - (physicalGap * (max - 1))
-    local baseBtnPhysical = math.floor(physicalRemaining / max)
-    local extraPixels = physicalRemaining % max
-
-    local currentPhysicalLeft = 0
+    local currentLeft = 0
 
     for i = 1, max do
         local btn = buttons[i]
         if btn then
-            local btnPhysicalWidth = baseBtnPhysical + (i <= extraPixels and 1 or 0)
-            local logicalLeft = currentPhysicalLeft * step
-            local logicalWidth = btnPhysicalWidth * step
+            local logicalLeft = SnapToPixel(currentLeft, scale)
 
             btn:ClearAllPoints()
             btn:SetPoint("LEFT", Frame, "LEFT", logicalLeft, 0)
-            btn:SetSize(logicalWidth, height)
+            btn:SetSize(snappedWidth, snappedHeight)
             
             if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(btn) end
             
-            currentPhysicalLeft = currentPhysicalLeft + btnPhysicalWidth + physicalGap
+            currentLeft = currentLeft + snappedWidth + logicalGap
         end
     end
 

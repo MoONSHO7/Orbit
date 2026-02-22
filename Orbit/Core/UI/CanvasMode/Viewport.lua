@@ -122,8 +122,9 @@ local function GetPanBounds(transformLayer, viewport, zoomLevel)
     local viewH = viewport:GetHeight()
 
     -- Allow panning up to the point where preview edge reaches viewport center
-    local maxX = math.max(0, (scaledW / 2) - (viewW / 2) + C.PAN_CLAMP_PADDING)
-    local maxY = math.max(0, (scaledH / 2) - (viewH / 2) + C.PAN_CLAMP_PADDING)
+    local scale = viewport:GetEffectiveScale()
+    local maxX = OrbitEngine.Pixel:Snap(math.max(0, (scaledW / 2) - (viewW / 2) + C.PAN_CLAMP_PADDING), scale)
+    local maxY = OrbitEngine.Pixel:Snap(math.max(0, (scaledH / 2) - (viewH / 2) + C.PAN_CLAMP_PADDING), scale)
 
     return maxX, maxY
 end
@@ -174,8 +175,8 @@ Dialog.Viewport:SetScript("OnDragStart", function(self)
     self.isPanning = true
     local mx, my = GetCursorPosition()
     local scale = UIParent:GetEffectiveScale()
-    self.panStartMouseX = mx / scale
-    self.panStartMouseY = my / scale
+    self.panStartMouseX = Orbit.Engine.Pixel:Snap(mx / scale, scale)
+    self.panStartMouseY = Orbit.Engine.Pixel:Snap(my / scale, scale)
     self.panStartOffsetX = Dialog.panOffsetX
     self.panStartOffsetY = Dialog.panOffsetY
 end)
@@ -189,8 +190,8 @@ Dialog.Viewport:SetScript("OnUpdate", function(self)
     if self.isPanning then
         local mx, my = GetCursorPosition()
         local scale = UIParent:GetEffectiveScale()
-        mx = mx / scale
-        my = my / scale
+        mx = Orbit.Engine.Pixel:Snap(mx / scale, scale)
+        my = Orbit.Engine.Pixel:Snap(my / scale, scale)
 
         local deltaX = mx - self.panStartMouseX
         local deltaY = my - self.panStartMouseY

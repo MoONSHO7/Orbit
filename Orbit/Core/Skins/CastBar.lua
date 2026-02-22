@@ -173,7 +173,8 @@ function CastBar:Apply(bar, settings)
     -- Size SparkGlow based on parent height
     if bar.SparkGlow then
         local height = parent:GetHeight()
-        bar.SparkGlow:SetSize(height * 2.5, height)
+        local scale = parent:GetEffectiveScale()
+        bar.SparkGlow:SetSize(Orbit.Engine.Pixel:Snap(height * 2.5, scale), height)
 
         if settings.sparkColor then
             local c = settings.sparkColor

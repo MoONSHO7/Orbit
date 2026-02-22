@@ -127,6 +127,10 @@ function Plugin:OnLoad()
     self.mountedHoverReveal = true
     self:UpdateVisibilityDriver()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "target", "OrbitTargetFrame")
+    if self.frame.HealthDamageBar then
+        self.frame.HealthDamageBar:Hide()
+        self.frame.HealthDamageBar = nil
+    end
     self.frame.editModeName = "Target Frame"
     self.frame.systemIndex = TARGET_FRAME_INDEX
 

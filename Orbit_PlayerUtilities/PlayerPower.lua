@@ -298,7 +298,7 @@ function Plugin:OnLoad()
     -- [ CANVAS PREVIEW ] -------------------------------------------------------------------------------
     function Frame:CreateCanvasPreview(options)
         local scale = options.scale or 1
-        local borderSize = options.borderSize or 1
+        local borderSize = options.borderSize or OrbitEngine.Pixel:Multiple(1, scale)
 
         -- Base container
         local preview = OrbitEngine.Preview.Frame:CreateBasePreview(self, scale, options.parent, borderSize)

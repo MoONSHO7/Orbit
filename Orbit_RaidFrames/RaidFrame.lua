@@ -1354,7 +1354,7 @@ function Plugin:ApplySettings()
     local width = self:GetSetting(1, "Width") or 90
     local height = self:GetSetting(1, "Height") or 36
     local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
-    local borderSize = self:GetSetting(1, "BorderSize") or 1
+    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
     local textureName = self:GetSetting(1, "Texture")
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
 

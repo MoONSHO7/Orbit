@@ -78,7 +78,8 @@ function SharedMediaDropdown:Create(owner, buttonHeight, maxHeight, createItem, 
                 self.buttons[i] = btn
             end
 
-            btn:SetPoint("TOPLEFT", self.Content, "TOPLEFT", 0, -(i - 1) * buttonHeight)
+            local scale = self.Content:GetEffectiveScale()
+            btn:SetPoint("TOPLEFT", self.Content, "TOPLEFT", 0, Engine.Pixel:Snap(-(i - 1) * buttonHeight, scale))
             renderItem(btn, item, item == selectedValue)
             btn:SetScript("OnClick", function()
                 onSelect(item)

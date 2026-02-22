@@ -574,7 +574,8 @@ function Icons:ApplyCustom(icon, settings)
         end
 
         local borderStyle = settings.borderStyle or 0
-        local borderSize = settings.borderSize or 1
+        local scale = icon:GetEffectiveScale() or 1
+        local borderSize = settings.borderSize or (Pixel and Pixel:Multiple(1, scale) or 1)
 
         if r.border then
             if borderStyle == 1 then
@@ -636,7 +637,8 @@ function Icons:ApplyActionButtonCustom(button, settings)
     end
 
     local w, h = button:GetSize()
-    local borderInset = (Pixel and Pixel:BorderInset(button, settings.borderSize or 1) or 1) * 2
+    local scale = button:GetEffectiveScale() or 1
+    local borderInset = (Pixel and Pixel:BorderInset(button, settings.borderSize or (Pixel and Pixel:Multiple(1, scale) or 1)) or 1) * 2
 
     -- Reset Blizzard textures using helper
     ResetRegion(button.NormalTexture)
@@ -797,7 +799,8 @@ function Icons:ApplyActionButtonCustom(button, settings)
             local bw, bh = actionButton.orbitButtonWidth, actionButton.orbitButtonHeight
             frame:SetSize(bw, bh)
             if frame.Flipbook then
-                frame.Flipbook:SetSize(bw * 1.4, bh * 1.4)
+                local scale = actionButton:GetEffectiveScale()
+                frame.Flipbook:SetSize(Pixel:Snap(bw * 1.4, scale), Pixel:Snap(bh * 1.4, scale))
             end
             frame.orbitScaled = true
         end)

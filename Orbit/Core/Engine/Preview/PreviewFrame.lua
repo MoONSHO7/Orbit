@@ -52,7 +52,8 @@ function PreviewFrame:CreateBasePreview(sourceFrame, scale, parent, borderSize)
 
     -- Create container frame
     local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    preview:SetSize(sourceWidth * scale, sourceHeight * scale)
+    local effScale = preview:GetEffectiveScale()
+    preview:SetSize(Engine.Pixel:Snap(sourceWidth * scale, effScale), Engine.Pixel:Snap(sourceHeight * scale, effScale))
 
     -- Store metadata
     preview.sourceFrame = sourceFrame
@@ -184,8 +185,9 @@ function PreviewFrame:AddComponent(preview, key, options)
     container.justifyH = options.justifyH or "CENTER"
 
     -- Default size (caller typically overrides)
-    local width = (options.width or 60) * scale
-    local height = (options.height or 20) * scale
+    local effScale = container:GetEffectiveScale()
+    local width = Engine.Pixel:Snap((options.width or 60) * scale, effScale)
+    local height = Engine.Pixel:Snap((options.height or 20) * scale, effScale)
     container:SetSize(width, height)
 
     -- Border (subtle, visible on hover/drag)
@@ -229,20 +231,21 @@ function PreviewFrame:PositionComponent(container, scale)
 
     -- Calculate final position
     local finalX, finalY
+    local effScale = container:GetEffectiveScale()
 
     if anchorX == "CENTER" then
-        finalX = container.posX * scale
+        finalX = Engine.Pixel:Snap(container.posX * scale, effScale)
     else
-        finalX = container.offsetX * scale
+        finalX = Engine.Pixel:Snap(container.offsetX * scale, effScale)
         if anchorX == "RIGHT" then
             finalX = -finalX
         end
     end
 
     if anchorY == "CENTER" then
-        finalY = container.posY * scale
+        finalY = Engine.Pixel:Snap(container.posY * scale, effScale)
     else
-        finalY = container.offsetY * scale
+        finalY = Engine.Pixel:Snap(container.offsetY * scale, effScale)
         if anchorY == "TOP" then
             finalY = -finalY
         end

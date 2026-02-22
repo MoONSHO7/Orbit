@@ -601,7 +601,7 @@ local function UpdatePrivateAuras(frame, plugin)
     frame._privateAuraIDs = {}
     anchor:Show()
     for i = 1, MAX_PRIVATE_AURA_ANCHORS do
-        local xOff = (i - 1) * (PRIVATE_AURA_ICON_SIZE + 2)
+        local xOff = OrbitEngine.Pixel:Snap((i - 1) * (PRIVATE_AURA_ICON_SIZE + 2), 1)
         local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
             unitToken = unit,
             auraIndex = i,
@@ -1503,7 +1503,7 @@ function Plugin:ApplySettings()
     local width = self:GetSetting(1, "Width") or 160
     local height = self:GetSetting(1, "Height") or 40
     local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
-    local borderSize = self:GetSetting(1, "BorderSize") or 1
+    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
     local textureName = self:GetSetting(1, "Texture")
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
 

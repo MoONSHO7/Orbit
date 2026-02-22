@@ -315,7 +315,7 @@ function Dialog:Open(frame, plugin, systemIndex)
 
     -- Create preview frame
     local textureName = plugin and plugin:GetSetting(systemIndex, "Texture") or "Melli"
-    local borderSize = plugin and plugin:GetSetting(systemIndex, "BorderSize") or 1
+    local borderSize = plugin and plugin:GetSetting(systemIndex, "BorderSize") or OrbitEngine.Pixel:Multiple(1, canvasFrame:GetEffectiveScale())
 
     self.previewFrame = OrbitEngine.Preview.Frame:Create(canvasFrame, {
         scale = 1,

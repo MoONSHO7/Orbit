@@ -179,25 +179,25 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions,
         SetMergeBorderState(parent, child, edge, false)
     end
 
-    -- Snap padding to physical pixels
+    -- Snip padding to physical pixels
     if Orbit.Engine.Pixel then
-        padding = Orbit.Engine.Pixel:Snap(padding, child:GetEffectiveScale())
+        padding = Orbit.Engine.Pixel:Multiple(padding, child:GetEffectiveScale())
     end
 
     local ok, err = pcall(function()
         if edge == "BOTTOM" then
             if chainOffsetX then
-                child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", chainOffsetX, -padding)
+                child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", Orbit.Engine.Pixel:Snap(chainOffsetX, child:GetEffectiveScale()), -padding)
             else
                 local cLeft, cWidth = GetChainExtentForAlign(parent)
                 if cLeft then
                     local parentW = parent:GetWidth()
                     if align == "LEFT" then
-                        child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", cLeft, -padding)
+                        child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", Orbit.Engine.Pixel:Snap(cLeft, child:GetEffectiveScale()), -padding)
                     elseif align == "RIGHT" then
-                        child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", cLeft + cWidth - parentW, -padding)
+                        child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", Orbit.Engine.Pixel:Snap(cLeft + cWidth - parentW, child:GetEffectiveScale()), -padding)
                     else
-                        child:SetPoint("TOP", parent, "BOTTOM", cLeft + cWidth / 2 - parentW / 2, -padding)
+                        child:SetPoint("TOP", parent, "BOTTOM", Orbit.Engine.Pixel:Snap(cLeft + cWidth / 2 - parentW / 2, child:GetEffectiveScale()), -padding)
                     end
                 elseif align == "LEFT" then
                     child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 0, -padding)
@@ -209,17 +209,17 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions,
             end
         elseif edge == "TOP" then
             if chainOffsetX then
-                child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", chainOffsetX, padding)
+                child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", Orbit.Engine.Pixel:Snap(chainOffsetX, child:GetEffectiveScale()), padding)
             else
                 local cLeft, cWidth = GetChainExtentForAlign(parent)
                 if cLeft then
                     local parentW = parent:GetWidth()
                     if align == "LEFT" then
-                        child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", cLeft, padding)
+                        child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", Orbit.Engine.Pixel:Snap(cLeft, child:GetEffectiveScale()), padding)
                     elseif align == "RIGHT" then
-                        child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", cLeft + cWidth - parentW, padding)
+                        child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", Orbit.Engine.Pixel:Snap(cLeft + cWidth - parentW, child:GetEffectiveScale()), padding)
                     else
-                        child:SetPoint("BOTTOM", parent, "TOP", cLeft + cWidth / 2 - parentW / 2, padding)
+                        child:SetPoint("BOTTOM", parent, "TOP", Orbit.Engine.Pixel:Snap(cLeft + cWidth / 2 - parentW / 2, child:GetEffectiveScale()), padding)
                     end
                 elseif align == "LEFT" then
                     child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 0, padding)

@@ -34,7 +34,8 @@ function CoreMixin:CreateCanvasPreview(options)
     options = options or {}
     local parent = options.parent or UIParent
     local globalSettings = Orbit.db.GlobalSettings or {}
-    local borderSize = globalSettings.BorderSize or 1
+    local scale = self:GetEffectiveScale() or 1
+    local borderSize = globalSettings.BorderSize or (Engine.Pixel and Engine.Pixel:Multiple(1, scale) or 1)
     local textureName = options.textureName or globalSettings.Texture
     local width = self:GetWidth()
     local height = self:GetHeight()

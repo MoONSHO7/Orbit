@@ -380,6 +380,10 @@ local function CreateBossFrame(bossIndex, plugin)
     local frameName = "OrbitBossFrame" .. bossIndex
 
     local frame = OrbitEngine.UnitButton:Create(UIParent, unit, frameName)
+    if frame.HealthDamageBar then
+        frame.HealthDamageBar:Hide()
+        frame.HealthDamageBar = nil
+    end
     frame.editModeName = "Boss Frame " .. bossIndex
     frame.systemIndex = 1
     frame.bossIndex = bossIndex
@@ -765,7 +769,7 @@ function Plugin:ApplySettings()
     local castBarPosition = self:GetSetting(1, "CastBarPosition") or "Below"
     local castBarHeight = self:GetSetting(1, "CastBarHeight") or 14
 
-    local borderSize = self:GetSetting(1, "BorderSize") or self:GetPlayerSetting("BorderSize") or 1
+    local borderSize = self:GetSetting(1, "BorderSize") or self:GetPlayerSetting("BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
     local textureName = self:GetSetting(1, "Texture") or self:GetPlayerSetting("Texture")
     local fontName = self:GetSetting(1, "Font") or self:GetPlayerSetting("Font")
     local reactionColour = self:GetSetting(1, "ReactionColour")

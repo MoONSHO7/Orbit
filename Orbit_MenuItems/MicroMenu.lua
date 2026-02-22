@@ -277,7 +277,9 @@ function Plugin:ApplySettings()
     for i, button in ipairs(buttons) do
         button:ClearAllPoints()
         local row, col = math.ceil(i / cols), (i - 1) % cols + 1
-        button:SetPoint("TOPLEFT", frame, "TOPLEFT", (col - 1) * (w + padding), (row - 1) * (h + padding) * -1)
+        local x = OrbitEngine.Pixel:Snap((col - 1) * (w + padding), frame:GetEffectiveScale())
+        local y = OrbitEngine.Pixel:Snap((row - 1) * (h + padding) * -1, frame:GetEffectiveScale())
+        button:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
     end
 
     local finalW, finalH = (cols * w) + ((cols - 1) * padding), (rows * h) + ((rows - 1) * padding)

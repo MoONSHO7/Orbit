@@ -84,7 +84,8 @@ function Plugin:OnLoad()
         options = options or {}
         local parent = options.parent or UIParent
         local globalSettings = Orbit.db.GlobalSettings or {}
-        local borderSize = globalSettings.BorderSize or 1
+        local scale = self:GetEffectiveScale() or 1
+        local borderSize = globalSettings.BorderSize or OrbitEngine.Pixel:Multiple(1, scale)
         local textureName = Plugin:GetSetting(SYSTEM_INDEX, "Texture") or globalSettings.Texture
         local width = self:GetWidth()
         local height = self:GetHeight()

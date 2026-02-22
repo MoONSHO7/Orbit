@@ -137,7 +137,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
     local isCanvasMode = IsCanvasModeActive(self)
     local width = self:GetSetting(1, "Width") or Helpers.LAYOUT.DefaultWidth
     local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
-    local borderSize = self:GetSetting(1, "BorderSize") or 1
+    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, self.container:GetEffectiveScale() or 1) or 1)
     local showHealerPower = self:GetSetting(1, "ShowPowerBar")
     if showHealerPower == nil then showHealerPower = true end
     local textureName = self:GetSetting(1, "Texture")
@@ -286,7 +286,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                         frame[key]:SetSize(CANVAS_ICON_SIZE, CANVAS_ICON_SIZE)
                         if not savedPositions[key] then
                             frame[key]:ClearAllPoints()
-                            frame[key]:SetPoint("CENTER", frame, "CENTER", CANVAS_ICON_SPACING * (idx - 2.5), 0)
+                            frame[key]:SetPoint("CENTER", frame, "CENTER", Orbit.Engine.Pixel:Snap(CANVAS_ICON_SPACING * (idx - 2.5), frame:GetEffectiveScale()), 0)
                         end
                         frame[key]:Show()
                     end
@@ -307,8 +307,8 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                         btn:SetSize(CANVAS_ICON_SIZE, CANVAS_ICON_SIZE)
                         if not savedPositions[entry.key] then
                             btn:ClearAllPoints()
-                            local xOff = (entry.xMul or 0) * (CANVAS_ICON_SIZE + 2)
-                            local yOff = (entry.yMul or 0) * (CANVAS_ICON_SIZE + 2)
+                            local xOff = OrbitEngine.Pixel:Snap((entry.xMul or 0) * (CANVAS_ICON_SIZE + 2), 1)
+                            local yOff = OrbitEngine.Pixel:Snap((entry.yMul or 0) * (CANVAS_ICON_SIZE + 2), 1)
                             btn:SetPoint("CENTER", frame, entry.anchor, xOff, yOff)
                         end
                         if Orbit.Skin and Orbit.Skin.Icons then

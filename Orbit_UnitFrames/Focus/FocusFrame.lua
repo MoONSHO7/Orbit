@@ -138,6 +138,10 @@ function Plugin:OnLoad()
 
     self.container = self:CreateVisibilityContainer(UIParent)
     self.frame = OrbitEngine.UnitButton:Create(self.container, "focus", "OrbitFocusFrame")
+    if self.frame.HealthDamageBar then
+        self.frame.HealthDamageBar:Hide()
+        self.frame.HealthDamageBar = nil
+    end
     self.frame.editModeName = "Focus Frame"
     self.frame.systemIndex = FOCUS_FRAME_INDEX
 

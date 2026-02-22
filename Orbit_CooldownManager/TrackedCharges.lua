@@ -512,7 +512,7 @@ function Plugin:LayoutChargeBar(frame)
         width = frame:GetWidth()
         frame:SetHeight(height)
 
-        local borderSize = self:GetSetting(sysIndex, "BorderSize") or 1
+        local borderSize = self:GetSetting(sysIndex, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, frame:GetEffectiveScale() or 1) or 1)
         local spacing = self:GetSetting(sysIndex, "Spacing") or DEFAULT_SPACING
         local texture = self:GetSetting(sysIndex, "Texture")
         local scale = frame:GetEffectiveScale()
@@ -544,20 +544,11 @@ function Plugin:SkinChargeButtons(frame, maxCharges, totalWidth, height, borderS
     local snappedWidth = SnapToPixel(totalWidth, scale)
     local globalSettings = Orbit.db.GlobalSettings
     
-    local screenScale = OrbitEngine.Pixel:GetScale()
-    local step = screenScale / scale
-    local physicalGap = (spacing > 0) and math.max(1, math.floor((spacing - 1) * scale / screenScale + 0.5)) or 0
-    if spacing <= 1 then physicalGap = 0 end
-    
-    local physicalTotalWidth = math.floor(totalWidth * scale / screenScale + 0.5)
-    local physicalRemaining = physicalTotalWidth - (physicalGap * (maxCharges - 1))
-    local baseBtnPhysical = math.floor(physicalRemaining / maxCharges)
-    local extraPixels = physicalRemaining % maxCharges
+    local logicalGap = PixelMultiple(spacing, scale)
+    if spacing <= 1 then logicalGap = 0 end
+    local exactWidth = (totalWidth - (logicalGap * (maxCharges - 1))) / maxCharges
+    local segmentWidth = SnapToPixel(exactWidth, scale)
 
-    local segmentWidth = snappedWidth / math.max(1, maxCharges)
-    local snappedGap = 0
-    if physicalGap > 0 then snappedGap = physicalGap * step end
-    
     local barColor1 = GetBarColor(self, sysIndex, 1, maxCharges)
     local rechargeColor = { r = barColor1.r * RECHARGE_DIM, g = barColor1.g * RECHARGE_DIM, b = barColor1.b * RECHARGE_DIM }
     Orbit.Skin:SkinStatusBar(frame.RechargeSegment, texture, rechargeColor)
@@ -565,26 +556,26 @@ function Plugin:SkinChargeButtons(frame, maxCharges, totalWidth, height, borderS
         frame.RechargeSegment.Overlay:Hide()
     end
 
-    frame.RechargePositioner:SetSize(snappedWidth, height)
+    local stepWidth = segmentWidth + logicalGap
+    local positionerWidth = math.max(1, stepWidth * maxCharges)
+    frame.RechargePositioner:SetSize(positionerWidth, height)
     frame.RechargePositioner:SetPoint("LEFT", frame, "LEFT", 0, 0)
-    frame.RechargeSegment:SetSize(math.max(1, segmentWidth - snappedGap), height)
-    frame.TickBar:SetSize(math.max(1, segmentWidth - snappedGap), height)
+    frame.RechargeSegment:SetSize(math.max(1, segmentWidth), height)
+    frame.TickBar:SetSize(math.max(1, segmentWidth), height)
 
-    local currentPhysicalLeft = 0
+    local currentLeft = 0
 
     for i = 1, maxCharges do
         local btn = frame.buttons[i]
         if not btn then break end
 
-        local btnPhysicalWidth = baseBtnPhysical + (i <= extraPixels and 1 or 0)
-        local logicalLeft = currentPhysicalLeft * step
-        local logicalWidth = btnPhysicalWidth * step
+        local logicalLeft = SnapToPixel(currentLeft, scale)
 
-        btn:SetSize(logicalWidth, height)
+        btn:SetSize(segmentWidth, height)
         btn:ClearAllPoints()
         btn:SetPoint("LEFT", frame, "LEFT", logicalLeft, 0)
         
-        currentPhysicalLeft = currentPhysicalLeft + btnPhysicalWidth + physicalGap
+        currentLeft = currentLeft + segmentWidth + logicalGap
 
         if not btn.bg then
             btn.bg = btn:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
@@ -643,7 +634,7 @@ function Plugin:SetupChargeBarCanvasPreview(frame, sysIndex)
     frame.CreateCanvasPreview = function(self, options)
         local width = plugin:GetSetting(sysIndex, "Width") or DEFAULT_WIDTH
         local height = plugin:GetSetting(sysIndex, "Height") or DEFAULT_HEIGHT
-        local borderSize = plugin:GetSetting(sysIndex, "BorderSize") or 1
+        local borderSize = plugin:GetSetting(sysIndex, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, self:GetEffectiveScale() or 1) or 1)
         local spacing = plugin:GetSetting(sysIndex, "Spacing") or DEFAULT_SPACING
         local texture = plugin:GetSetting(sysIndex, "Texture")
         local bgColor = GetBgColor()
@@ -660,30 +651,23 @@ function Plugin:SetupChargeBarCanvasPreview(frame, sysIndex)
         preview.previewScale = 1
         preview.components = {}
 
-        local screenScale = OrbitEngine.Pixel:GetScale()
-        local step = screenScale / scale
-        local physicalGap = (spacing > 0) and math.max(1, math.floor((spacing - 1) * scale / screenScale + 0.5)) or 0
-        if spacing <= 1 then physicalGap = 0 end
-        
-        local physicalTotalWidth = math.floor(width * scale / screenScale + 0.5)
-        local physicalRemaining = physicalTotalWidth - (physicalGap * (maxCharges - 1))
-        local baseBtnPhysical = math.floor(physicalRemaining / maxCharges)
-        local extraPixels = physicalRemaining % maxCharges
+        local logicalGap = OrbitEngine.Pixel:Multiple(spacing, scale)
+        if spacing <= 1 then logicalGap = 0 end
+        local exactWidth = (width - (logicalGap * (maxCharges - 1))) / maxCharges
+        local snappedWidth = OrbitEngine.Pixel:Snap(exactWidth, scale)
 
-        local currentPhysicalLeft = 0
+        local currentLeft = 0
 
         for i = 1, maxCharges do
-            local btnPhysicalWidth = baseBtnPhysical + (i <= extraPixels and 1 or 0)
-            local logicalLeft = currentPhysicalLeft * step
-            local logicalWidth = btnPhysicalWidth * step
+            local logicalLeft = OrbitEngine.Pixel:Snap(currentLeft, scale)
             
             local seg = CreateFrame("StatusBar", nil, preview)
-            seg:SetSize(logicalWidth, height)
+            seg:SetSize(snappedWidth, height)
             seg:SetPoint("LEFT", preview, "LEFT", logicalLeft, 0)
             seg:SetMinMaxValues(0, 1)
             seg:SetValue(1)
             
-            currentPhysicalLeft = currentPhysicalLeft + btnPhysicalWidth + physicalGap
+            currentLeft = currentLeft + snappedWidth + logicalGap
 
             seg.bg = seg:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
             seg.bg:SetAllPoints()

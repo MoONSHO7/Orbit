@@ -252,7 +252,8 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
                 end
             end
 
-            local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
+            local scale = btn:GetEffectiveScale() or 1
+            local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:Multiple(1, scale)
             if Orbit.Skin and Orbit.Skin.Icons then
                 Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
             end
@@ -333,7 +334,8 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
                 btn:Hide()
             end
 
-            local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
+            local scale = self:GetEffectiveScale() or 1
+            local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:Multiple(1, scale)
             local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false }
 
             -- Create or reuse sample icons
@@ -483,8 +485,8 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
             self.pendingDrag = true
             local mx, my = GetCursorPosition()
             local scale = UIParent:GetEffectiveScale()
-            self.mouseDownX = mx / scale
-            self.mouseDownY = my / scale
+            self.mouseDownX = Orbit.Engine.Pixel:Snap(mx / scale, scale)
+            self.mouseDownY = Orbit.Engine.Pixel:Snap(my / scale, scale)
         end
     end)
 
@@ -530,7 +532,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
 
         local mX, mY = GetCursorPosition()
         local scale = UIParent:GetEffectiveScale()
-        mX, mY = mX / scale, mY / scale
+        mX, mY = Orbit.Engine.Pixel:Snap(mX / scale, scale), Orbit.Engine.Pixel:Snap(mY / scale, scale)
 
         local parentCenterX, parentCenterY = preview:GetCenter()
         local zoomLevel = Dialog.zoomLevel or 1
@@ -555,7 +557,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         if self.pendingDrag and self.mouseDownX and self.mouseDownY then
             local mX, mY = GetCursorPosition()
             local scale = UIParent:GetEffectiveScale()
-            mX, mY = mX / scale, mY / scale
+            mX, mY = Orbit.Engine.Pixel:Snap(mX / scale, scale), Orbit.Engine.Pixel:Snap(mY / scale, scale)
 
             local dx = math.abs(mX - self.mouseDownX)
             local dy = math.abs(mY - self.mouseDownY)
@@ -571,7 +573,7 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
 
             local mX, mY = GetCursorPosition()
             local scale = UIParent:GetEffectiveScale()
-            mX, mY = mX / scale, mY / scale
+            mX, mY = Orbit.Engine.Pixel:Snap(mX / scale, scale), Orbit.Engine.Pixel:Snap(mY / scale, scale)
 
             -- 2. Calculate where the Center SHOULD be (Mouse + Grip)
             local targetWorldX = mX + (self.dragGripX or 0)
@@ -629,7 +631,8 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
                     snapX = "LEFT" -- Show guide only, no snap
                 end
                 if not snapX then
-                    centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE
+                    local scale = UIParent:GetEffectiveScale()
+                    centerRelX = OrbitEngine.Pixel:Snap(math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE, scale)
                 end
 
                 -- Edge Magnet Y (snap when near edge, show guide when beyond)
@@ -655,7 +658,8 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
                     snapY = "BOTTOM" -- Show guide only, no snap
                 end
                 if not snapY then
-                    centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE
+                    local scale = UIParent:GetEffectiveScale()
+                    centerRelY = OrbitEngine.Pixel:Snap(math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE, scale)
                 end
             end
 
@@ -741,14 +745,15 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
         local SNAP = 5
         local snappedX = math.floor((self.posX or 0) / SNAP + 0.5) * SNAP
         local snappedY = math.floor((self.posY or 0) / SNAP + 0.5) * SNAP
-        self.posX = snappedX
-        self.posY = snappedY
+        local scale = UIParent:GetEffectiveScale()
+        self.posX = OrbitEngine.Pixel:Snap(snappedX, scale)
+        self.posY = OrbitEngine.Pixel:Snap(snappedY, scale)
 
-        self.offsetX = math.floor((self.offsetX or 0) / SNAP + 0.5) * SNAP
-        self.offsetY = math.floor((self.offsetY or 0) / SNAP + 0.5) * SNAP
+        self.offsetX = OrbitEngine.Pixel:Snap(math.floor((self.offsetX or 0) / SNAP + 0.5) * SNAP, scale)
+        self.offsetY = OrbitEngine.Pixel:Snap(math.floor((self.offsetY or 0) / SNAP + 0.5) * SNAP, scale)
 
         self:ClearAllPoints()
-        self:SetPoint("CENTER", preview, "CENTER", snappedX, snappedY)
+        self:SetPoint("CENTER", preview, "CENTER", self.posX, self.posY)
 
         if self.visual and self.isFontString then
             ApplyTextAlignment(self, self.visual, self.justifyH or "CENTER")

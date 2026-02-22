@@ -175,7 +175,8 @@ function PositionUtils.ApplyTextPosition(element, parent, pos, defaultAnchor, de
 
     -- Center-relative fallback (posX/posY)
     if pos.posX ~= nil and pos.posY ~= nil then
-        element:SetPoint("CENTER", parent, "CENTER", pos.posX, pos.posY)
+        local scale = parent:GetEffectiveScale()
+        element:SetPoint("CENTER", parent, "CENTER", Orbit.Engine.Pixel:Snap(pos.posX, scale), Orbit.Engine.Pixel:Snap(pos.posY, scale))
         return true
     end
 
