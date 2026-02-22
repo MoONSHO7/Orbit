@@ -209,23 +209,14 @@ function Mixin:UpdateFrameLayout(frame, borderSize, options)
     local scale = frame:GetEffectiveScale()
     local powerBarRatio = options.powerBarRatio or DEFAULT_POWER_BAR_RATIO
     local powerHeight = showPowerBar and Pixel:Snap(height * powerBarRatio, scale) or 0
-    local inset = Pixel:BorderInset(frame, borderSize or 0)
-
-    local iL, iT, iR, iB = inset, inset, inset, inset
-    if frame._barInsets then
-        iL = frame._barInsets.x1
-        iT = frame._barInsets.y1
-        iR = frame._barInsets.x2
-        iB = frame._barInsets.y2
-    end
 
     if frame.Power then
         if showPowerBar then
             frame.Power:ClearAllPoints()
-            frame.Power:SetPoint("BOTTOMLEFT", iL, iB)
-            frame.Power:SetPoint("BOTTOMRIGHT", -iR, iB)
+            frame.Power:SetPoint("BOTTOMLEFT", 0, 0)
+            frame.Power:SetPoint("BOTTOMRIGHT", 0, 0)
             frame.Power:SetHeight(powerHeight)
-            frame.Power:SetFrameLevel(frame:GetFrameLevel() + 3)
+            frame.Power:SetFrameLevel(frame:GetFrameLevel() + 1)
             frame.Power:Show()
         else
             frame.Power:Hide()
@@ -234,13 +225,13 @@ function Mixin:UpdateFrameLayout(frame, borderSize, options)
 
     if frame.Health then
         frame.Health:ClearAllPoints()
-        frame.Health:SetPoint("TOPLEFT", iL, -iT)
+        frame.Health:SetPoint("TOPLEFT", 0, 0)
         if showPowerBar then
-            frame.Health:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -iR, powerHeight + iB)
+            frame.Health:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, powerHeight)
         else
-            frame.Health:SetPoint("BOTTOMRIGHT", -iR, iB)
+            frame.Health:SetPoint("BOTTOMRIGHT", 0, 0)
         end
-        frame.Health:SetFrameLevel(frame:GetFrameLevel() + 2)
+        frame.Health:SetFrameLevel(frame:GetFrameLevel() + 1)
         if frame.HealthDamageBar then
             frame.HealthDamageBar:ClearAllPoints()
             frame.HealthDamageBar:SetPoint("TOPLEFT", frame.Health, "TOPLEFT", 0, 0)

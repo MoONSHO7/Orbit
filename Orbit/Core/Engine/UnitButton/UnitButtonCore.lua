@@ -58,12 +58,9 @@ function CoreMixin:CreateCanvasPreview(options)
     Orbit.Skin:SkinBorder(preview, preview, borderSize)
 
     -- [ HEALTH BAR ] --------------------------------------------------------------------------------
-    local Pixel = Engine.Pixel
-    local inset = Pixel:BorderInset(preview, borderSize)
-
     local bar = CreateFrame("StatusBar", nil, preview)
-    bar:SetPoint("TOPLEFT", inset, -inset)
-    bar:SetPoint("BOTTOMRIGHT", -inset, inset)
+    bar:SetPoint("TOPLEFT", 0, 0)
+    bar:SetPoint("BOTTOMRIGHT", 0, 0)
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(PREVIEW_HEALTH_VALUE)
     bar:SetFrameLevel(preview:GetFrameLevel() + HEALTH_BAR_LEVEL_OFFSET)

@@ -42,8 +42,19 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
             local x, y = pos.x, pos.y
             if Engine.Pixel then
                 local scale = frame:GetEffectiveScale()
-                x = Engine.Pixel:Snap(x, scale)
-                y = Engine.Pixel:Snap(y, scale)
+                local point = pos.point
+                if not point:match("LEFT") and not point:match("RIGHT") then
+                    local w = frame:GetWidth()
+                    x = Engine.Pixel:Snap(x - (w / 2), scale) + (w / 2)
+                else
+                    x = Engine.Pixel:Snap(x, scale)
+                end
+                if not point:match("TOP") and not point:match("BOTTOM") then
+                    local h = frame:GetHeight()
+                    y = Engine.Pixel:Snap(y - (h / 2), scale) + (h / 2)
+                else
+                    y = Engine.Pixel:Snap(y, scale)
+                end
             end
             frame:ClearAllPoints()
             frame:SetPoint(pos.point, x, y)
@@ -67,8 +78,19 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
         local x, y = pos.x, pos.y
         if Engine.Pixel then
             local scale = frame:GetEffectiveScale()
-            x = Engine.Pixel:Snap(x, scale)
-            y = Engine.Pixel:Snap(y, scale)
+            local point = pos.point
+            if not point:match("LEFT") and not point:match("RIGHT") then
+                local w = frame:GetWidth()
+                x = Engine.Pixel:Snap(x - (w / 2), scale) + (w / 2)
+            else
+                x = Engine.Pixel:Snap(x, scale)
+            end
+            if not point:match("TOP") and not point:match("BOTTOM") then
+                local h = frame:GetHeight()
+                y = Engine.Pixel:Snap(y - (h / 2), scale) + (h / 2)
+            else
+                y = Engine.Pixel:Snap(y, scale)
+            end
         end
         frame:ClearAllPoints()
         frame:SetPoint(pos.point, x, y)
@@ -81,8 +103,19 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
         local y = frame.defaultPosition.y
         if Engine.Pixel then
             local scale = frame:GetEffectiveScale()
-            x = Engine.Pixel:Snap(x, scale)
-            y = Engine.Pixel:Snap(y, scale)
+            local point = frame.defaultPosition.point
+            if not point:match("LEFT") and not point:match("RIGHT") then
+                local w = frame:GetWidth()
+                x = Engine.Pixel:Snap(x - (w / 2), scale) + (w / 2)
+            else
+                x = Engine.Pixel:Snap(x, scale)
+            end
+            if not point:match("TOP") and not point:match("BOTTOM") then
+                local h = frame:GetHeight()
+                y = Engine.Pixel:Snap(y - (h / 2), scale) + (h / 2)
+            else
+                y = Engine.Pixel:Snap(y, scale)
+            end
         end
 
         frame:ClearAllPoints()

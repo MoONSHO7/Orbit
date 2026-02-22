@@ -108,10 +108,9 @@ function Plugin:OnLoad()
         Orbit.Skin:SkinBorder(preview, preview, borderSize)
 
         -- Power Bar
-        local inset = OrbitEngine.Pixel:BorderInset(preview, borderSize)
         local bar = CreateFrame("StatusBar", nil, preview)
-        bar:SetPoint("TOPLEFT", inset, -inset)
-        bar:SetPoint("BOTTOMRIGHT", -inset, inset)
+        bar:SetPoint("TOPLEFT", 0, 0)
+        bar:SetPoint("BOTTOMRIGHT", 0, 0)
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(1)
         bar:SetFrameLevel(preview:GetFrameLevel() + 2)

@@ -69,35 +69,14 @@ local function HookParentSizeChange(parent, anchorModule)
     hookedParents[parent] = true
 end
 
-local EDGE_INSET_AXIS = { Top = "y1", Bottom = "y2", Left = "x1", Right = "x2" }
-
-local function SetBarEdgeInset(frame, edge, inset)
-    local bar = frame.orbitBar or frame.Bar or frame.Health
-    if not bar then return end
-    local axis = EDGE_INSET_AXIS[edge]
-    if not axis then return end
-    if not frame._barInsets then
-        local bp = frame.borderPixelSize or 0
-        frame._barInsets = { x1 = bp, y1 = bp, x2 = bp, y2 = bp }
-    end
-    frame._barInsets[axis] = inset
-    local i = frame._barInsets
-    local leftInset = i.x1 + (bar.iconOffset or 0)
-    bar:ClearAllPoints()
-    bar:SetPoint("TOPLEFT", leftInset, -i.y1)
-    bar:SetPoint("BOTTOMRIGHT", -i.x2, i.y2)
-end
-
 local function SetMergeBorderState(parent, child, edge, hidden)
     local map = EDGE_BORDER_MAP[edge]
     if not map then return end
     if parent and parent.SetBorderHidden then
         parent:SetBorderHidden(map.parent, hidden)
-        SetBarEdgeInset(parent, map.parent, hidden and 0 or (parent.borderPixelSize or 0))
     end
     if child.SetBorderHidden then
         child:SetBorderHidden(map.child, hidden)
-        SetBarEdgeInset(child, map.child, hidden and 0 or (child.borderPixelSize or 0))
     end
 end
 

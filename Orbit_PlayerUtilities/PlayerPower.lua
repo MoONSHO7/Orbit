@@ -305,9 +305,8 @@ function Plugin:OnLoad()
 
         -- Create Power Bar visual
         local bar = CreateFrame("StatusBar", nil, preview)
-        local inset = OrbitEngine.Pixel:BorderInset(preview, borderSize)
-        bar:SetPoint("TOPLEFT", preview, "TOPLEFT", inset, -inset)
-        bar:SetPoint("BOTTOMRIGHT", preview, "BOTTOMRIGHT", -inset, inset)
+        bar:SetPoint("TOPLEFT", preview, "TOPLEFT", 0, 0)
+        bar:SetPoint("BOTTOMRIGHT", preview, "BOTTOMRIGHT", 0, 0)
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(1)
 

@@ -102,32 +102,12 @@ function FrameFactory:Create(name, plugin, opts)
     end
 
     frame.SetBorder = function(self, size)
-        local oldBorderSize = self.borderPixelSize
-        if Orbit.Skin:SkinBorder(self, self, size) then
-            self._barInsets = nil
-            local bar = self.orbitBar or self.Bar
-            if bar then
-                bar:ClearAllPoints()
-                bar:SetPoint("TOPLEFT", 0, 0)
-                bar:SetPoint("BOTTOMRIGHT", 0, 0)
-            end
-            self.borderPixelSize = 0
-            return
-        end
-
-        local pixelSize = Engine.Pixel:BorderInset(self, 1)
-        if oldBorderSize ~= self.borderPixelSize then self._barInsets = nil end
-
-        local iL, iT, iR, iB = pixelSize, pixelSize, pixelSize, pixelSize
-        if self._barInsets then
-            iL, iT, iR, iB = self._barInsets.x1, self._barInsets.y1, self._barInsets.x2, self._barInsets.y2
-        end
-
+        Orbit.Skin:SkinBorder(self, self, size)
         local bar = self.orbitBar or self.Bar
         if bar then
             bar:ClearAllPoints()
-            bar:SetPoint("TOPLEFT", iL, -iT)
-            bar:SetPoint("BOTTOMRIGHT", -iR, iB)
+            bar:SetPoint("TOPLEFT", 0, 0)
+            bar:SetPoint("BOTTOMRIGHT", 0, 0)
         end
     end
 
