@@ -207,7 +207,7 @@ function TextMixin:UpdateName()
     self._hasNickname = false
     if NSAPI and NSAPI.GetName then
         local nickname = NSAPI:GetName(self.unit)
-        if nickname then name = nickname; self._hasNickname = true end
+        if nickname and nickname ~= name then name = nickname; self._hasNickname = true end
     end
 
     if #name > MAX_NAME_CHARS then name = string.sub(name, 1, MAX_NAME_CHARS) end
