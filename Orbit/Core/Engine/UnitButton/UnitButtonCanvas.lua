@@ -8,7 +8,6 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local FALLBACK_HEIGHT = 40
 local DEFAULT_FONT_HEIGHT = 12
 local TEXT_PADDING = 5
-local HEALTH_TEXT_WIDTH_MULTIPLIER = 3
 local TIGHT_FIT_MARGIN = 2
 
 -- The rogue mapped out which components can be pickpocketed to new positions
@@ -61,15 +60,15 @@ function CanvasMixin:UpdateTextLayout()
     fontHeight = fontHeight or DEFAULT_FONT_HEIGHT
     if issecretvalue and issecretvalue(fontHeight) then fontHeight = DEFAULT_FONT_HEIGHT end
 
-    local nameRightOffset = (fontHeight * HEALTH_TEXT_WIDTH_MULTIPLIER) + TEXT_PADDING + TEXT_PADDING
     local anchorV = height < (fontHeight + TIGHT_FIT_MARGIN) and "BOTTOM" or ""
 
     self.Name:ClearAllPoints()
     self.Name:SetPoint(anchorV .. "LEFT", self.TextFrame, anchorV .. "LEFT", TEXT_PADDING, 0)
-    self.Name:SetPoint(anchorV .. "RIGHT", self.TextFrame, anchorV .. "RIGHT", -nameRightOffset, 0)
 
     self.HealthText:ClearAllPoints()
     self.HealthText:SetPoint(anchorV .. "RIGHT", self.TextFrame, anchorV .. "RIGHT", -TEXT_PADDING, 0)
+
+    if self.ConstrainNameWidth then self:ConstrainNameWidth() end
 end
 
 -- [ COMPONENT POSITIONS ]---------------------------------------------------------------------------
@@ -106,6 +105,8 @@ function CanvasMixin:ApplyComponentPositions()
     end
 
     self:ApplyStyleOverrides(positions)
+
+    if self.ConstrainNameWidth then self:ConstrainNameWidth() end
 end
 
 -- [ STYLE OVERRIDES ]-------------------------------------------------------------------------------
