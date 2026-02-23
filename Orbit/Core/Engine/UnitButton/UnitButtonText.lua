@@ -29,6 +29,19 @@ local HEALTH_TEXT_MODES = {
 }
 UnitButton.HEALTH_TEXT_MODES = HEALTH_TEXT_MODES
 
+local FORMAT_MAP = {
+    [HEALTH_TEXT_MODES.PERCENT] = { "percent", "percent" },
+    [HEALTH_TEXT_MODES.SHORT] = { "short", "short" },
+    [HEALTH_TEXT_MODES.RAW] = { "raw", "raw" },
+    [HEALTH_TEXT_MODES.PERCENT_SHORT] = { "percent", "short" },
+    [HEALTH_TEXT_MODES.PERCENT_RAW] = { "percent", "raw" },
+    [HEALTH_TEXT_MODES.SHORT_PERCENT] = { "short", "percent" },
+    [HEALTH_TEXT_MODES.SHORT_RAW] = { "short", "raw" },
+    [HEALTH_TEXT_MODES.RAW_SHORT] = { "raw", "short" },
+    [HEALTH_TEXT_MODES.RAW_PERCENT] = { "raw", "percent" },
+}
+local DEFAULT_FORMAT = { "percent", "short" }
+
 -- [ LOCAL FORMATTERS ]------------------------------------------------------------------------------
 -- The party rolled Investigation and found the health formatter's lair
 
@@ -96,21 +109,7 @@ end
 local TextMixin = {}
 
 function TextMixin:GetHealthTextFormats()
-    local mode = self.healthTextMode or HEALTH_TEXT_MODES.PERCENT_SHORT
-
-    local formatMap = {
-        [HEALTH_TEXT_MODES.PERCENT] = { "percent", "percent" },
-        [HEALTH_TEXT_MODES.SHORT] = { "short", "short" },
-        [HEALTH_TEXT_MODES.RAW] = { "raw", "raw" },
-        [HEALTH_TEXT_MODES.PERCENT_SHORT] = { "percent", "short" },
-        [HEALTH_TEXT_MODES.PERCENT_RAW] = { "percent", "raw" },
-        [HEALTH_TEXT_MODES.SHORT_PERCENT] = { "short", "percent" },
-        [HEALTH_TEXT_MODES.SHORT_RAW] = { "short", "raw" },
-        [HEALTH_TEXT_MODES.RAW_SHORT] = { "raw", "short" },
-        [HEALTH_TEXT_MODES.RAW_PERCENT] = { "raw", "percent" },
-    }
-
-    local formats = formatMap[mode] or { "percent", "short" }
+    local formats = FORMAT_MAP[self.healthTextMode or HEALTH_TEXT_MODES.PERCENT_SHORT] or DEFAULT_FORMAT
     return formats[1], formats[2]
 end
 
@@ -243,5 +242,5 @@ function TextMixin:ApplyHealthTextColor()
     Engine.OverrideUtils.ApplyTextColor(self.HealthText, GetComponentOverrides(self, "HealthText"), nil, self.unit)
 end
 
--- Export for composition
+-- The scribe adds this mixin to the party's shared spellbook
 UnitButton.TextMixin = TextMixin

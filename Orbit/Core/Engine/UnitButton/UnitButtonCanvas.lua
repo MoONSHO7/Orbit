@@ -48,7 +48,7 @@ function CanvasMixin:UpdateTextLayout()
         return
     end
 
-    -- Canvas Mode is the single source of truth for component positions
+    -- The Dungeon Master's word is law; canvas positions override everything
     if self.orbitPlugin and self.orbitPlugin.GetSetting then
         local positions = self.orbitPlugin:GetSetting(self.systemIndex or 1, "ComponentPositions")
         if positions and (positions.Name or positions.HealthText) then return end
@@ -123,28 +123,28 @@ end
 
 -- [ BORDER MANAGEMENT ]-----------------------------------------------------------------------------
 
+-- The party's formation shifts to match the dungeon walls
+local function SetBarPoints(bar, parent, tl, br)
+    if not bar then return end
+    bar:ClearAllPoints()
+    bar:SetPoint("TOPLEFT", parent, "TOPLEFT", tl, -br)
+    bar:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -tl, br)
+end
+
 function CanvasMixin:UpdateBarInsets()
-    local oldBorderSize = self.borderPixelSize
-    if not oldBorderSize or oldBorderSize <= 0 then
+    local borderSize = self.borderPixelSize
+    if not borderSize or borderSize <= 0 then
         if self.Health then
             self.Health:ClearAllPoints()
             self.Health:SetPoint("TOPLEFT", 0, 0)
             self.Health:SetPoint("BOTTOMRIGHT", 0, 0)
         end
-        if self.HealthDamageBar then
-            self.HealthDamageBar:ClearAllPoints()
-            self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, 0)
-            self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, 0)
-        end
-        if self.HealthBlocker then
-            self.HealthBlocker:ClearAllPoints()
-            self.HealthBlocker:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, 0)
-            self.HealthBlocker:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, 0)
-        end
+        SetBarPoints(self.HealthDamageBar, self.Health, 0, 0)
+        SetBarPoints(self.HealthBlocker, self.Health, 0, 0)
         return
     end
 
-    local iL, iT, iR, iB = oldBorderSize, oldBorderSize, oldBorderSize, oldBorderSize
+    local iL, iT, iR, iB = borderSize, borderSize, borderSize, borderSize
     if self._barInsets then
         iL, iT, iR, iB = self._barInsets.x1, self._barInsets.y1, self._barInsets.x2, self._barInsets.y2
     end
@@ -161,16 +161,8 @@ function CanvasMixin:UpdateBarInsets()
         self.Health:SetPoint("TOPLEFT", iL, -iT)
         self.Health:SetPoint("BOTTOMRIGHT", -iR, iB)
     end
-    if self.HealthDamageBar then
-        self.HealthDamageBar:ClearAllPoints()
-        self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, 0)
-        self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, 0)
-    end
-    if self.HealthBlocker then
-        self.HealthBlocker:ClearAllPoints()
-        self.HealthBlocker:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, 0)
-        self.HealthBlocker:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, 0)
-    end
+    SetBarPoints(self.HealthDamageBar, self.Health, 0, 0)
+    SetBarPoints(self.HealthBlocker, self.Health, 0, 0)
 end
 
 function CanvasMixin:SetBorder(size)

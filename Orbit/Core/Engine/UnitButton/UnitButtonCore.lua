@@ -7,10 +7,9 @@ local LSM = LibStub("LibSharedMedia-3.0")
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 
-local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
+local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
 local PREVIEW_HEALTH_VALUE = 0.75
 local HEALTH_BAR_LEVEL_OFFSET = 2
-local BACKDROP_DEEP_FALLBACK = -8
 local _, PLAYER_CLASS = UnitClass("player")
 
 -- [ CORE MIXIN ]------------------------------------------------------------------------------------
@@ -33,14 +32,13 @@ end
 function CoreMixin:CreateCanvasPreview(options)
     options = options or {}
     local parent = options.parent or UIParent
-    local globalSettings = Orbit.db.GlobalSettings or {}
-    local scale = self:GetEffectiveScale() or 1
-    local borderSize = globalSettings.BorderSize or (Engine.Pixel and Engine.Pixel:Multiple(1, scale) or 1)
+    local globalSettings = Orbit.db.GlobalSettings
+    local borderSize = globalSettings.BorderSize or 0
     local textureName = options.textureName or globalSettings.Texture
     local width = self:GetWidth()
     local height = self:GetHeight()
 
-    -- [ CONTAINER ] ---------------------------------------------------------------------------------
+    -- [ CONTAINER ]-------------------------------------------------------------------------------------
     local preview = CreateFrame("Frame", nil, parent)
     preview:SetSize(width, height)
     preview.sourceFrame = self
@@ -49,15 +47,15 @@ function CoreMixin:CreateCanvasPreview(options)
     preview.previewScale = 1
     preview.components = {}
 
-    -- [ BACKGROUND ] --------------------------------------------------------------------------------
-    preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Orbit.Constants.Layers and Orbit.Constants.Layers.BackdropDeep or BACKDROP_DEEP_FALLBACK)
+    -- [ BACKGROUND ]------------------------------------------------------------------------------------
+    preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Orbit.Constants.Layers.BackdropDeep)
     preview.bg:SetAllPoints()
     Orbit.Skin:ApplyGradientBackground(preview, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
 
-    -- [ BORDERS ] -----------------------------------------------------------------------------------
+    -- [ BORDERS ]----------------------------------------------------------------------------------------
     Orbit.Skin:SkinBorder(preview, preview, borderSize)
 
-    -- [ HEALTH BAR ] --------------------------------------------------------------------------------
+    -- [ HEALTH BAR ]-------------------------------------------------------------------------------------
     local bar = CreateFrame("StatusBar", nil, preview)
     bar:SetPoint("TOPLEFT", 0, 0)
     bar:SetPoint("BOTTOMRIGHT", 0, 0)
@@ -76,8 +74,8 @@ function CoreMixin:CreateCanvasPreview(options)
             if classColor then barColor = { r = classColor.r, g = classColor.g, b = classColor.b } end
         end
     end
-    barColor = barColor or (Engine.WidgetLogic and Engine.WidgetLogic:GetFirstColorFromCurve(barCurve)) or { r = 0.2, g = 0.8, b = 0.2 }
-    bar:SetStatusBarColor(barColor.r, barColor.g, barColor.b, 1)
+    barColor = barColor or Engine.WidgetLogic:GetFirstColorFromCurve(barCurve)
+    if barColor then bar:SetStatusBarColor(barColor.r, barColor.g, barColor.b, 1) end
     preview.Health = bar
 
     return preview
