@@ -76,8 +76,29 @@ end
 -- @return number: Logical size for the border inset
 function Pixel:BorderInset(frame, fallbackSize)
     if frame and frame.borderPixelSize then return frame.borderPixelSize end
-    local scale = (frame and frame.GetEffectiveScale and frame:GetEffectiveScale()) or 1
-    return self:Multiple(fallbackSize or 0, scale)
+    return self:Multiple(fallbackSize or 0, frame:GetEffectiveScale())
+end
+
+--- Snap X/Y for a given anchor point, accounting for center alignment
+-- @param x number: Raw X position
+-- @param y number: Raw Y position
+-- @param point string: Anchor point (e.g. "TOPLEFT", "CENTER")
+-- @param width number: Frame width
+-- @param height number: Frame height
+-- @param scale number: Frame effective scale
+-- @return number, number: Snapped x, y
+function Pixel:SnapPosition(x, y, point, width, height, scale)
+    if point:find("LEFT", 1, true) or point:find("RIGHT", 1, true) then
+        x = self:Snap(x, scale)
+    else
+        x = self:Snap(x - (width / 2), scale) + (width / 2)
+    end
+    if point:find("TOP", 1, true) or point:find("BOTTOM", 1, true) then
+        y = self:Snap(y, scale)
+    else
+        y = self:Snap(y - (height / 2), scale) + (height / 2)
+    end
+    return x, y
 end
 
 -- [ ENFORCEMENT ]-----------------------------------------------------------------------------------

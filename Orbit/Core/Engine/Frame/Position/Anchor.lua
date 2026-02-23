@@ -10,6 +10,7 @@ Anchor.anchors = Anchor.anchors or {}
 Anchor.childrenOf = Anchor.childrenOf or setmetatable({}, { __mode = "k" })
 
 local hookedParents = setmetatable({}, { __mode = "k" })
+local optionsCache = setmetatable({}, { __mode = "k" })
 
 local ANCHOR_THRESHOLD = 5
 local DEFAULT_PADDING = 2
@@ -24,23 +25,26 @@ local EDGE_BORDER_MAP = {
 }
 
 local DEFAULT_OPTIONS = {
-    horizontal = true, -- Allow LEFT/RIGHT edge anchoring (horizontal expansion)
-    vertical = true, -- Allow TOP/BOTTOM edge anchoring (vertical stacking)
+    horizontal = true,
+    vertical = true,
     syncScale = true,
     syncDimensions = true,
-    mergeBorders = false, -- If true and Distance=0, redundant borders are hidden
-    align = nil, -- Alignment override: TOP/CENTER/BOTTOM or LEFT/CENTER/RIGHT
-    useRowDimension = false, -- Use parent's orbitRowHeight/orbitColumnWidth
-    independentHeight = false, -- Skip ongoing height sync so user can adjust via slider
+    mergeBorders = false,
+    align = nil,
+    useRowDimension = false,
+    independentHeight = false,
 }
 
 local function GetFrameOptions(frame)
     if frame:IsForbidden() then return DEFAULT_OPTIONS end
+    local cached = optionsCache[frame]
+    if cached then return cached end
     local opts = {}
     for k, v in pairs(DEFAULT_OPTIONS) do opts[k] = v end
     if frame.anchorOptions then
         for k, v in pairs(frame.anchorOptions) do opts[k] = v end
     end
+    optionsCache[frame] = opts
     return opts
 end
 
@@ -82,10 +86,6 @@ end
 
 local ApplyAnchorPosition
 
-local function IsChildVisible(child)
-    return child:IsShown()
-end
-
 local function ApplyMergeBorders(child, anchorModule)
     local a = anchorModule.anchors[child]
     if not a or not a.parent then return end
@@ -100,10 +100,6 @@ local function HookChildVisibility(child, anchorModule)
     child._orbitMergeBorderHooked = true
     child:HookScript("OnShow", function(self) ApplyMergeBorders(self, anchorModule) end)
     child:HookScript("OnHide", function(self) ApplyMergeBorders(self, anchorModule) end)
-end
-
-local function IsParentVisible(parent)
-    return parent:IsShown()
 end
 
 local function ReapplyChildrenMergeBorders(parent, anchorModule)
@@ -142,13 +138,13 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions,
     local parentOptions = GetFrameOptions(parent)
 
     local shouldMerge = parentOptions.mergeBorders and syncOptions and syncOptions.syncScale and syncOptions.syncDimensions and padding == 0
-    if shouldMerge and IsChildVisible(child) and IsParentVisible(parent) then
+    if shouldMerge and child:IsShown() and parent:IsShown() then
         SetMergeBorderState(parent, child, edge, true)
     elseif parentOptions.mergeBorders then
         SetMergeBorderState(parent, child, edge, false)
     end
 
-    -- Snip padding to physical pixels
+    -- Snap padding to physical pixels
     if Orbit.Engine.Pixel then
         padding = Orbit.Engine.Pixel:Multiple(padding, child:GetEffectiveScale())
     end
@@ -360,7 +356,7 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
 
         local pOpts = GetFrameOptions(oldAnchor.parent)
         if pOpts.mergeBorders then
-            SetMergeBorderState(oldAnchor.parent, child, oldAnchor.edge, false, 0)
+            SetMergeBorderState(oldAnchor.parent, child, oldAnchor.edge, false)
         end
 
         self.anchors[child] = nil

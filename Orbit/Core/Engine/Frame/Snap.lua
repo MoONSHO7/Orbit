@@ -315,22 +315,9 @@ function Snap:NormalizePosition(frame)
         local effectiveScale = frame:GetEffectiveScale()
         if effectiveScale then
             local rawX, rawY = x / scale, y / scale
-            
-            if not point:match("LEFT") and not point:match("RIGHT") then
-                local w = frame:GetWidth()
-                x = Engine.Pixel:Snap(rawX - (w / 2), effectiveScale) + (w / 2)
-            else
-                x = Engine.Pixel:Snap(rawX, effectiveScale)
-            end
-            
-            if not point:match("TOP") and not point:match("BOTTOM") then
-                local h = frame:GetHeight()
-                y = Engine.Pixel:Snap(rawY - (h / 2), effectiveScale) + (h / 2)
-            else
-                y = Engine.Pixel:Snap(rawY, effectiveScale)
-            end
-            x = x * scale
-            y = y * scale
+            rawX, rawY = Engine.Pixel:SnapPosition(rawX, rawY, point, frame:GetWidth(), frame:GetHeight(), effectiveScale)
+            x = rawX * scale
+            y = rawY * scale
         end
     end
 

@@ -33,9 +33,9 @@ local CONTROL_BTN_SPACING = 1
 local RECHARGE_DIM = 0.35
 local DEFAULT_SPACING = 0
 local SEED_PLUS_RATIO = 0.4
-local TICK_SIZE_DEFAULT = 6
-local TICK_SIZE_MAX = 6
-local TICK_OVERSHOOT = 2
+local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
+local TICK_SIZE_MAX = OrbitEngine.TickMixin.TICK_SIZE_MAX
+local TICK_OVERSHOOT = OrbitEngine.TickMixin.TICK_OVERSHOOT
 local TICK_LEVEL_BOOST = 10
 
 -- [ REFERENCES ]------------------------------------------------------------------------------------
@@ -228,18 +228,7 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.RechargeSegment:SetPoint("LEFT", frame.RechargePositioner:GetStatusBarTexture(), "RIGHT", 0, 0)
     frame.RechargeSegment:SetMinMaxValues(0, 1)
 
-    frame.TickBar = CreateFrame("StatusBar", nil, frame)
-    frame.TickBar:SetFrameLevel(frame:GetFrameLevel() + TICK_LEVEL_BOOST)
-    frame.TickBar:SetPoint("LEFT", frame.RechargePositioner:GetStatusBarTexture(), "RIGHT", 0, 0)
-    frame.TickBar:SetMinMaxValues(0, 1)
-    frame.TickBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
-    frame.TickBar:GetStatusBarTexture():SetAlpha(0)
-    frame.TickBar:GetStatusBarTexture():SetSnapToPixelGrid(true)
-    frame.TickBar:GetStatusBarTexture():SetTexelSnappingBias(0)
-    frame.TickMark = frame.TickBar:CreateTexture(nil, "OVERLAY")
-    frame.TickMark:SetColorTexture(1, 1, 1, 1)
-    frame.TickMark:SetPoint("RIGHT", frame.TickBar:GetStatusBarTexture(), "RIGHT", 0, 0)
-    frame.TickMark:Show()
+    OrbitEngine.TickMixin:Create(frame, frame.RechargeSegment, frame.RechargePositioner:GetStatusBarTexture())
 
     frame:SetScript("OnReceiveDrag", function()
         plugin:OnChargeFrameDrop(frame)
@@ -599,17 +588,8 @@ function Plugin:SkinChargeButtons(frame, maxCharges, totalWidth, height, borderS
         OrbitEngine.Pixel:Enforce(btn)
     end
 
-    local tickSize = 2 * math.floor(((self:GetSetting(frame.systemIndex, "TickSize") or TICK_SIZE_DEFAULT) + 1) / 2)
-    local overshoot = PixelMultiple(TICK_OVERSHOOT)
-    local tickHeight = OrbitEngine.Pixel:Snap(height + overshoot * 2)
-    
-    if tickSize > 0 then
-        local tickWidth = math.max(PixelMultiple(tickSize), PixelMultiple(1))
-        frame.TickMark:SetSize(tickWidth, tickHeight)
-        frame.TickBar:Show()
-    else
-        frame.TickBar:Hide()
-    end
+    local tickSize = self:GetSetting(frame.systemIndex, "TickSize") or TICK_SIZE_DEFAULT
+    OrbitEngine.TickMixin:Apply(frame, tickSize, height, frame.RechargeSegment)
 
     local sysIndex = frame.systemIndex
     local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition

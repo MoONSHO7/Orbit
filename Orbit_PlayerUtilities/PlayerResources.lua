@@ -16,17 +16,9 @@ local INACTIVE_DIM_FACTOR = 0.5
 local PARTIAL_DIM_FACTOR = 0.7
 local OVERLAY_LEVEL_OFFSET = 20
 local PREVIEW_BAR_FILL = 0.65
-local TICK_SIZE_DEFAULT = 2
-local TICK_SIZE_MAX = 6
-local TICK_OVERSHOOT = 2
-local TICK_ALPHA_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
-    local c = C_CurveUtil.CreateCurve()
-    c:AddPoint(0.0, 0)
-    c:AddPoint(0.001, 1)
-    c:AddPoint(0.999, 1)
-    c:AddPoint(1.0, 0)
-    return c
-end)()
+local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
+local TICK_SIZE_MAX = OrbitEngine.TickMixin.TICK_SIZE_MAX
+local TICK_ALPHA_CURVE = OrbitEngine.TickMixin.TICK_ALPHA_CURVE
 local OVERLAY_BLEND_ALPHA = 0.3
 local OVERLAY_TEXTURE = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
 local DK_SPEC_BLOOD = 250
@@ -564,26 +556,9 @@ function Plugin:OnLoad()
         end
     end
 
-    -- Tick mark (StatusBar overlay — C++ handles fill position, secret-safe)
+    -- Tick mark (geometry-clipped, secret-safe)
     if not Frame.TickBar then
-        local tickBar = CreateFrame("StatusBar", nil, Frame)
-        tickBar:SetAllPoints(Frame.StatusBar)
-        tickBar:SetFrameLevel(Frame.StatusBar:GetFrameLevel() + FRAME_LEVEL_BOOST)
-        tickBar:SetMinMaxValues(0, 1)
-        tickBar:SetValue(0)
-        tickBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
-        tickBar:GetStatusBarTexture():SetAlpha(0)
-        tickBar:GetStatusBarTexture():SetSnapToPixelGrid(true)
-        tickBar:GetStatusBarTexture():SetTexelSnappingBias(0)
-        local tickMark = tickBar:CreateTexture(nil, "OVERLAY")
-        tickMark:SetColorTexture(1, 1, 1, 1)
-        tickMark:SetSnapToPixelGrid(true)
-        tickMark:SetTexelSnappingBias(0)
-        tickMark:SetAlpha(0)
-        tickMark:SetPoint("RIGHT", tickBar:GetStatusBarTexture(), "RIGHT", 0, 0)
-        tickMark:SetSize(PixelMultiple(TICK_SIZE_DEFAULT), 1)
-        Frame.TickBar = tickBar
-        Frame.TickMark = tickMark
+        OrbitEngine.TickMixin:Create(Frame, Frame.StatusBar)
     end
 
     Frame:HookScript("OnSizeChanged", function()
@@ -785,16 +760,10 @@ function Plugin:ApplySettings()
         Orbit.Skin:SkinStatusBar(Frame.StatusBar, texture, nil, true)
         Frame:SetBorder(borderSize)
         Orbit.Skin:ApplyGradientBackground(Frame, Orbit.db.GlobalSettings.BackdropColourCurve, bgColor or Orbit.Constants.Colors.Background)
-        local tickSize = 2 * math.floor(((self:GetSetting(SYSTEM_INDEX, "TickSize") or TICK_SIZE_DEFAULT) + 1) / 2)
-        if tickSize > 0 and Frame.TickBar then
-            local overshoot = PixelMultiple(TICK_OVERSHOOT)
-            local tickWidth = math.max(PixelMultiple(tickSize), PixelMultiple(1))
-            Frame.TickMark:SetSize(tickWidth, OrbitEngine.Pixel:Snap(height + overshoot * 2))
-            Frame.TickBar:Show()
-        elseif Frame.TickBar then
-            Frame.TickBar:Hide()
-        end
     end
+
+    local tickSize = self:GetSetting(SYSTEM_INDEX, "TickSize") or TICK_SIZE_DEFAULT
+    OrbitEngine.TickMixin:Apply(Frame, tickSize, height)
 
     -- 2. Restore Position (must happen AFTER layout for anchored frames)
     OrbitEngine.Frame:RestorePosition(Frame, self, SYSTEM_INDEX)
@@ -1005,7 +974,7 @@ function Plugin:SetContinuousMode(isContinuous)
         if Frame.StatusBarContainer then
             Frame.StatusBarContainer:Show()
         end
-        if Frame.TickBar then Frame.TickBar:Show() end
+        OrbitEngine.TickMixin:Show(Frame)
 
         for _, btn in ipairs(Frame.buttons or {}) do
             btn:Hide()
@@ -1022,7 +991,7 @@ function Plugin:SetContinuousMode(isContinuous)
         if Frame.StatusBarContainer then
             Frame.StatusBarContainer:Hide()
         end
-        if Frame.TickBar then Frame.TickBar:Hide() end
+        OrbitEngine.TickMixin:Hide(Frame)
         -- Buttons will be shown by UpdateMaxPower
     end
 end
@@ -1197,16 +1166,11 @@ function Plugin:UpdateContinuousBar(curveKey, current, max)
         return
     end
     Frame.StatusBar:SetMinMaxValues(0, max)
-    if Frame.TickBar then Frame.TickBar:SetMinMaxValues(0, max) end
     local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
     Frame.StatusBar:SetValue(current, smoothing)
-    if Frame.TickBar then Frame.TickBar:SetValue(current, smoothing) end
-    if Frame.TickMark then
-        if self.continuousResource == "MANA" and TICK_ALPHA_CURVE and CanUseUnitPowerPercent then
-            Frame.TickMark:SetAlpha(UnitPowerPercent("player", Enum.PowerType.Mana, false, TICK_ALPHA_CURVE))
-        elseif not issecretvalue(current) and not issecretvalue(max) then
-            Frame.TickMark:SetAlpha(max > 0 and current > 0 and current < max and 1 or 0)
-        end
+    OrbitEngine.TickMixin:Update(Frame, current, max, smoothing)
+    if Frame.TickMark and self.continuousResource == "MANA" and TICK_ALPHA_CURVE and CanUseUnitPowerPercent then
+        Frame.TickMark:SetAlpha(UnitPowerPercent("player", Enum.PowerType.Mana, false, TICK_ALPHA_CURVE))
     end
     local curveData = self:GetSetting(SYSTEM_INDEX, curveKey)
     if not curveData then

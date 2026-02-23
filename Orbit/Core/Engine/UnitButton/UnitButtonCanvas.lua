@@ -145,9 +145,6 @@ function CanvasMixin:UpdateBarInsets()
     end
 
     local iL, iT, iR, iB = borderSize, borderSize, borderSize, borderSize
-    if self._barInsets then
-        iL, iT, iR, iB = self._barInsets.x1, self._barInsets.y1, self._barInsets.x2, self._barInsets.y2
-    end
 
     if self._mergedEdges then
         if self._mergedEdges.Left then iL = 0 end
@@ -166,17 +163,11 @@ function CanvasMixin:UpdateBarInsets()
 end
 
 function CanvasMixin:SetBorder(size)
-    local oldBorderSize = self.borderPixelSize
     if Orbit.Skin:SkinBorder(self, self, size) then
-        self._barInsets = nil
         self.borderPixelSize = 0
         self:UpdateBarInsets()
         return
     end
-
-    local pixelSize = self.borderPixelSize
-    if oldBorderSize ~= pixelSize then self._barInsets = nil end
-
     self:UpdateBarInsets()
 end
 

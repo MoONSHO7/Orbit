@@ -36,6 +36,7 @@ Core\Media.lua
 Core\Engine\Engine.lua
 Core\Engine\Registry.lua
 Core\Engine\Pixel.lua
+Core\Engine\TickMixin.lua
 Core\Engine\Layout.lua
 Core\Engine\KeybindSystem.lua
 
