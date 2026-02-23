@@ -407,6 +407,7 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("READY_CHECK")
     self.frame:RegisterEvent("READY_CHECK_CONFIRM")
     self.frame:RegisterEvent("READY_CHECK_FINISHED")
+    self.frame:RegisterEvent("PLAYER_TARGET_CHANGED")
 
     -- Register threat events for aggro indicator
     self.frame:RegisterUnitEvent("UNIT_THREAT_SITUATION_UPDATE", "player")
@@ -448,6 +449,23 @@ function Plugin:OnLoad()
             return
         elseif event == "PLAYER_UPDATE_RESTING" then
             self:UpdateRestingIcon(f)
+            return
+        elseif event == "PLAYER_TARGET_CHANGED" then
+            local mf = self.mountedFrame
+            if mf and IsMounted() and mf.orbitHoverOverlay then
+                if UnitExists("target") then
+                    mf.orbitTargetRevealed = true
+                    mf.orbitMountedSuppressed = false
+                    mf:SetAlpha(1)
+                    mf:SetScript("OnUpdate", nil)
+                    mf.orbitHoverOverlay:Hide()
+                else
+                    mf.orbitTargetRevealed = false
+                    mf.orbitMountedSuppressed = true
+                    mf:SetAlpha(0)
+                    mf.orbitHoverOverlay:Show()
+                end
+            end
             return
         end
         if originalOnEvent then

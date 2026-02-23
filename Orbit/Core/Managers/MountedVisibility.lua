@@ -70,12 +70,14 @@ local function SuppressPlugin(plugin)
                 self:Hide()
                 frame:SetScript("OnUpdate", function()
                     if not frame:IsMouseOver() then
-                        if suppressedPlugins[plugin] then
+                        if not suppressedPlugins[plugin] then
+                            frame:SetScript("OnUpdate", nil)
+                        elseif frame.orbitTargetRevealed then
+                            frame:SetScript("OnUpdate", nil)
+                        else
                             frame.orbitMountedSuppressed = true
                             frame:SetAlpha(0)
                             if not self:IsShown() then self:Show() end
-                        else
-                            frame:SetScript("OnUpdate", nil)
                         end
                     end
                 end)

@@ -314,8 +314,10 @@ function Snap:NormalizePosition(frame)
     if Engine.Pixel then
         local effectiveScale = frame:GetEffectiveScale()
         if effectiveScale then
-            x = Engine.Pixel:Snap(x / scale, effectiveScale) * scale
-            y = Engine.Pixel:Snap(y / scale, effectiveScale) * scale
+            local rawX, rawY = x / scale, y / scale
+            rawX, rawY = Engine.Pixel:SnapPosition(rawX, rawY, point, frame:GetWidth(), frame:GetHeight(), effectiveScale)
+            x = rawX * scale
+            y = rawY * scale
         end
     end
 

@@ -91,6 +91,8 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                     frame.Health:SetStatusBarColor(1, 0.1, 0.1)
                 end
                 frame.Health:Show()
+                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
+                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
             if frame.Power then
@@ -289,6 +291,12 @@ function Orbit.BossFramePreviewMixin:HidePreview()
         end
         if frame.CastBar then
             frame.CastBar:Hide()
+        end
+        if frame.HealthDamageBar then
+            frame.HealthDamageBar:Show()
+        end
+        if frame.HealthDamageTexture then
+            frame.HealthDamageTexture:Show()
         end
     end
     self:UpdateContainerSize()

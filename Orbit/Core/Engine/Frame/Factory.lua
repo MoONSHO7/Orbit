@@ -101,45 +101,17 @@ function FrameFactory:Create(name, plugin, opts)
         end, 0.1)
     end
 
-    -- Border Helper (Clean pixel-perfect borders)
-    frame.SetBorderHidden = function(self, edge, hidden)
-        if not self.Borders then
-            return
-        end
-        local border = self.Borders[edge]
-        if border then
-            border:SetShown(not hidden)
-        end
-    end
-
     frame.SetBorder = function(self, size)
-        -- Delegate to Skin Engine
-        if Orbit.Skin:SkinBorder(self, self, size) then
-            -- Reset Bar Inset to 0 (Remove gap/shadow)
-            local bar = self.orbitBar or self.Bar
-            if bar then
-                bar:ClearAllPoints()
-                bar:SetPoint("TOPLEFT", 0, 0)
-                bar:SetPoint("BOTTOMRIGHT", 0, 0)
-            end
-            self.borderPixelSize = 0
-            return
-        end
-
-        -- Handle Bar Inset (use calculated pixelSize from Skin)
-        local pixelSize = self.borderPixelSize or Engine.Pixel:Multiple(1, self:GetEffectiveScale() or 1)
+        Orbit.Skin:SkinBorder(self, self, size)
         local bar = self.orbitBar or self.Bar
         if bar then
             bar:ClearAllPoints()
-            bar:SetPoint("TOPLEFT", pixelSize, -pixelSize)
-            bar:SetPoint("BOTTOMRIGHT", -pixelSize, pixelSize)
+            bar:SetPoint("TOPLEFT", 0, 0)
+            bar:SetPoint("BOTTOMRIGHT", 0, 0)
         end
     end
 
-    -- Enforce Pixel Perfection on Sizing
-    if Engine.Pixel then
-        Engine.Pixel:Enforce(frame)
-    end
+    Engine.Pixel:Enforce(frame)
 
     return frame
 end

@@ -65,7 +65,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
         table.insert(schema.controls, {
             type = "slider", key = "Spacing", label = "Spacing",
-            min = 0, max = 10, step = 1, default = 2,
+            min = -5, max = 50, step = 1, default = 2,
         })
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
         if not isAnchored then

@@ -650,12 +650,15 @@ function Dialog:ApplyStyle(container, key, value)
             end
             local baseW = container.originalContainerWidth or 24
             local baseH = container.originalContainerHeight or 24
-            container:SetSize(baseW * value, baseH * value)
+            local scale = container:GetEffectiveScale()
+            local w, h = Orbit.Engine.Pixel:Snap(baseW * value, scale), Orbit.Engine.Pixel:Snap(baseH * value, scale)
+            container:SetSize(w, h)
             if visual.SetSize then
-                visual:SetSize(baseW * value, baseH * value)
+                visual:SetSize(w, h)
             end
             if Orbit.Skin and Orbit.Skin.Icons then
-                local globalBorder = Orbit.db.GlobalSettings.BorderSize or 1
+                local scale = visual:GetEffectiveScale() or 1
+                local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:Multiple(1, scale)
                 Orbit.Skin.Icons:ApplyCustom(visual, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
             end
         elseif visual.GetObjectType and visual:GetObjectType() == "Texture" then

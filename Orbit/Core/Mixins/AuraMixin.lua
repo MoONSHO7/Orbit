@@ -27,7 +27,6 @@ if C_CurveUtil and C_CurveUtil.CreateCurve then
 end
 
 local DEFAULT_AURA_COUNT = 40
-local TOOLTIP_ANCHOR_THRESHOLD = 0.7
 local TIMER_MIN_ICON_SIZE = 14
 
 -- [ AURA POOL CREATION ]----------------------------------------------------------------------------
@@ -310,16 +309,7 @@ function Mixin:CleanupPandemicGlow(icon)
     icon.orbitAura, icon.orbitUnit, icon.orbitPandemicAuraID, icon.orbitPandemicGlowType = nil, nil, nil, nil
 end
 
-local function GetSmartTooltipAnchor(icon)
-    if not icon or not icon.GetRight then
-        return "ANCHOR_BOTTOMRIGHT"
-    end
-    local screenWidth, iconRight = GetScreenWidth(), icon:GetRight()
-    if iconRight and screenWidth and iconRight > (screenWidth * TOOLTIP_ANCHOR_THRESHOLD) then
-        return "ANCHOR_BOTTOMLEFT"
-    end
-    return "ANCHOR_BOTTOMRIGHT"
-end
+
 
 function Mixin:SetupAuraTooltip(icon, aura, unit, filter)
     if not icon or not aura then
@@ -328,7 +318,7 @@ function Mixin:SetupAuraTooltip(icon, aura, unit, filter)
     filter = filter or "HELPFUL"
     local isHarmful = filter:find("HARMFUL")
     icon:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, GetSmartTooltipAnchor(self))
+        GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT")
         if aura.auraInstanceID then
             if isHarmful then
                 pcall(GameTooltip.SetUnitDebuffByAuraInstanceID, GameTooltip, unit, aura.auraInstanceID, filter)
@@ -360,14 +350,11 @@ function Mixin:LayoutAurasGrid(frame, icons, config)
     local currentX = xOffset
     local currentY = yOffset
 
-    -- Pixel Snap Layout
-    if Orbit.Engine.Pixel then
-        local scale = frame:GetEffectiveScale()
-        size = Orbit.Engine.Pixel:Snap(size, scale)
-        spacing = Orbit.Engine.Pixel:Snap(spacing, scale)
-        currentX = Orbit.Engine.Pixel:Snap(currentX, scale)
-        currentY = Orbit.Engine.Pixel:Snap(currentY, scale)
-    end
+    local scale = frame:GetEffectiveScale()
+    size = Orbit.Engine.Pixel:Snap(size, scale)
+    spacing = Orbit.Engine.Pixel:Snap(spacing, scale)
+    currentX = Orbit.Engine.Pixel:Snap(currentX, scale)
+    currentY = Orbit.Engine.Pixel:Snap(currentY, scale)
 
     -- Determine layout direction parameters
     local iconPoint, yStep
@@ -409,11 +396,9 @@ function Mixin:LayoutAurasLinear(container, icons, config)
 
     local xOffset = 0
 
-    if Orbit.Engine.Pixel then
-        local scale = container:GetEffectiveScale()
-        size = Orbit.Engine.Pixel:Snap(size, scale)
-        spacing = Orbit.Engine.Pixel:Snap(spacing, scale)
-    end
+    local scale = container:GetEffectiveScale()
+    size = Orbit.Engine.Pixel:Snap(size, scale)
+    spacing = Orbit.Engine.Pixel:Snap(spacing, scale)
 
     for i, icon in ipairs(icons) do
         icon:ClearAllPoints()

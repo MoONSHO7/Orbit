@@ -35,10 +35,10 @@ function Helpers:PositionDebuffContainer(container, parent, position, numDebuffs
 
     if position == "Left" then
         container:SetPoint("RIGHT", parent, "LEFT", -containerGap, 0)
-        container:SetSize((numDebuffs * iconSize) + ((numDebuffs - 1) * spacing), iconSize)
+        container:SetSize(Orbit.Engine.Pixel:Snap((numDebuffs * iconSize) + ((numDebuffs - 1) * spacing), parent:GetEffectiveScale()), Orbit.Engine.Pixel:Snap(iconSize, parent:GetEffectiveScale()))
     elseif position == "Right" then
         container:SetPoint("LEFT", parent, "RIGHT", containerGap, 0)
-        container:SetSize((numDebuffs * iconSize) + ((numDebuffs - 1) * spacing), iconSize)
+        container:SetSize(Orbit.Engine.Pixel:Snap((numDebuffs * iconSize) + ((numDebuffs - 1) * spacing), parent:GetEffectiveScale()), Orbit.Engine.Pixel:Snap(iconSize, parent:GetEffectiveScale()))
     elseif position == "Above" then
         local yOffset = elementGap
         if castBarPos == "Above" then

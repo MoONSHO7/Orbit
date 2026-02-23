@@ -4,7 +4,7 @@ local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local DAMAGE_BAR_VERTICAL_INSET = 1
+
 local FALLBACK_HEIGHT = 40
 local DEFAULT_FONT_HEIGHT = 12
 local TEXT_PADDING = 5
@@ -31,13 +31,15 @@ local UnitButton = Engine.UnitButton
 local CanvasMixin = {}
 
 function CanvasMixin:SetBorderHidden(edge, hidden)
-    if not self.Borders then
-        return
-    end
+    local borders = (self._borderFrame and self._borderFrame.Borders) or self.Borders
+    if not borders then return end
+    local border = borders[edge]
+    if border then border:SetShown(not hidden) end
+    if not self._mergedEdges then self._mergedEdges = {} end
+    self._mergedEdges[edge] = hidden or nil
 
-    local border = self.Borders[edge]
-    if border then
-        border:SetShown(not hidden)
+    if self.UpdateBarInsets then
+        self:UpdateBarInsets()
     end
 end
 
@@ -46,7 +48,7 @@ function CanvasMixin:UpdateTextLayout()
         return
     end
 
-    -- Canvas Mode is the single source of truth for component positions
+    -- The Dungeon Master's word is law; canvas positions override everything
     if self.orbitPlugin and self.orbitPlugin.GetSetting then
         local positions = self.orbitPlugin:GetSetting(self.systemIndex or 1, "ComponentPositions")
         if positions and (positions.Name or positions.HealthText) then return end
@@ -121,36 +123,52 @@ end
 
 -- [ BORDER MANAGEMENT ]-----------------------------------------------------------------------------
 
-function CanvasMixin:SetBorder(size)
-    if Orbit.Skin:SkinBorder(self, self, size) then
-        self.borderPixelSize = 0
+-- The party's formation shifts to match the dungeon walls
+local function SetBarPoints(bar, parent, tl, br)
+    if not bar then return end
+    bar:ClearAllPoints()
+    bar:SetPoint("TOPLEFT", parent, "TOPLEFT", tl, -br)
+    bar:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -tl, br)
+end
+
+function CanvasMixin:UpdateBarInsets()
+    local borderSize = self.borderPixelSize
+    if not borderSize or borderSize <= 0 then
         if self.Health then
             self.Health:ClearAllPoints()
             self.Health:SetPoint("TOPLEFT", 0, 0)
             self.Health:SetPoint("BOTTOMRIGHT", 0, 0)
         end
-        if self.HealthDamageBar then
-            self.HealthDamageBar:ClearAllPoints()
-            self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, -DAMAGE_BAR_VERTICAL_INSET)
-            self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, DAMAGE_BAR_VERTICAL_INSET)
-        end
+        SetBarPoints(self.HealthDamageBar, self.Health, 0, 0)
+        SetBarPoints(self.HealthBlocker, self.Health, 0, 0)
         return
     end
 
-    local pixelSize = self.borderPixelSize
+    local iL, iT, iR, iB = borderSize, borderSize, borderSize, borderSize
+
+    if self._mergedEdges then
+        if self._mergedEdges.Left then iL = 0 end
+        if self._mergedEdges.Right then iR = 0 end
+        if self._mergedEdges.Top then iT = 0 end
+        if self._mergedEdges.Bottom then iB = 0 end
+    end
 
     if self.Health then
         self.Health:ClearAllPoints()
-        self.Health:SetPoint("TOPLEFT", pixelSize, -pixelSize)
-        self.Health:SetPoint("BOTTOMRIGHT", -pixelSize, pixelSize)
+        self.Health:SetPoint("TOPLEFT", iL, -iT)
+        self.Health:SetPoint("BOTTOMRIGHT", -iR, iB)
     end
+    SetBarPoints(self.HealthDamageBar, self.Health, 0, 0)
+    SetBarPoints(self.HealthBlocker, self.Health, 0, 0)
+end
 
-    -- DamageBar follows Health like a faithful henchman
-    if self.HealthDamageBar then
-        self.HealthDamageBar:ClearAllPoints()
-        self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, -DAMAGE_BAR_VERTICAL_INSET)
-        self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, DAMAGE_BAR_VERTICAL_INSET)
+function CanvasMixin:SetBorder(size)
+    if Orbit.Skin:SkinBorder(self, self, size) then
+        self.borderPixelSize = 0
+        self:UpdateBarInsets()
+        return
     end
+    self:UpdateBarInsets()
 end
 
 UnitButton.CanvasMixin = CanvasMixin

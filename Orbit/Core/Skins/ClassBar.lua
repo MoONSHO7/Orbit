@@ -34,7 +34,8 @@ function ClassBar:SkinButton(btn, settings)
     end
 
     -- Update Backdrop (Dynamic Size)
-    local borderSize = settings.borderSize or 1
+    local scale = btn:GetEffectiveScale() or 1
+    local borderSize = settings.borderSize or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, scale) or 1)
     Skin:SkinBorder(btn, btn.orbitBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
 
     -- Setup Textures
@@ -104,7 +105,8 @@ function ClassBar:SkinStatusBar(container, bar, settings)
     end
 
     -- Update Backdrop (Dynamic Size)
-    local borderSize = settings.borderSize or 1
+    local scale = container:GetEffectiveScale() or 1
+    local borderSize = settings.borderSize or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, scale) or 1)
     Skin:SkinBorder(container, container.orbitBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
 
     -- Setup Textures

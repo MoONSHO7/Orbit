@@ -49,10 +49,20 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
         return
     end
 
+    -- The paladin's aura must shine ABOVE the rogue's cloak
+    if frame == backdrop then
+        if not frame._borderFrame then
+            frame._borderFrame = CreateFrame("Frame", nil, frame)
+            frame._borderFrame:SetAllPoints(frame)
+            frame._borderFrame:SetFrameLevel(frame:GetFrameLevel() + (Orbit.Constants.Levels.Border or 3))
+        end
+        backdrop = frame._borderFrame
+    end
+
     local targetSize = size or 1
 
-    -- Handle Hidden/Zero Border
     if targetSize <= 0 then
+        frame.borderPixelSize = 0
         if backdrop.Borders then
             for _, border in pairs(backdrop.Borders) do
                 border:Hide()
@@ -61,15 +71,11 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
         return true
     end
 
-    local pixelScale = self:GetPixelScale()
     local scale = frame:GetEffectiveScale()
-    if not scale or scale < 0.01 then
-        scale = 1
-    end
+    if not scale or scale < 0.01 then scale = 1 end
 
-    local mult = pixelScale / scale
-    local pixelSize = targetSize * mult
-    frame.borderPixelSize = pixelSize -- Store for Anchor:ApplyAnchorPosition
+    local pixelSize = Engine.Pixel:Multiple(targetSize, scale)
+    frame.borderPixelSize = pixelSize
 
     -- Create borders if needed
     if not backdrop.Borders then
@@ -93,35 +99,16 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
             if b and b[edge] then
                 b[edge]:SetShown(not hidden)
             end
-        end
-    end
-
-    -- Attach SetBackgroundInset to the owner frame if missing
-    -- This allows the Anchor engine to inset the background on merged edges
-    -- to prevent overlapping semi-transparent backgrounds from creating a darker seam
-    if not frame.SetBackgroundInset then
-        -- Track current insets per edge
-        frame.bgInsets = frame.bgInsets or { Top = 0, Bottom = 0, Left = 0, Right = 0 }
-
-        frame.SetBackgroundInset = function(self, edge, insetPixels)
-            if not self.bg then
-                return
-            end
-
-            -- Store current inset for this edge
-            self.bgInsets[edge] = insetPixels or 0
-
-            -- Recalculate background anchoring with all current insets
-            self.bg:ClearAllPoints()
-            self.bg:SetPoint("TOPLEFT", self, "TOPLEFT", self.bgInsets.Left, -self.bgInsets.Top)
-            self.bg:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -self.bgInsets.Right, self.bgInsets.Bottom)
+            if not self._mergedEdges then self._mergedEdges = {} end
+            self._mergedEdges[edge] = hidden or nil
         end
     end
 
     local c = color or { r = 0, g = 0, b = 0, a = 1 }
-    for _, t in pairs(backdrop.Borders) do
+    local merged = frame._mergedEdges
+    for edge, t in pairs(backdrop.Borders) do
         t:SetColorTexture(c.r, c.g, c.b, c.a)
-        t:Show() -- Ensure visible
+        if not (merged and merged[edge]) then t:Show() end
     end
 
     local b = backdrop.Borders
@@ -379,8 +366,10 @@ function Skin:ApplyGradientBackground(frame, curveData, fallbackColor)
         local rc = ResolvePinColor(sorted[i + 1])
 
         seg:ClearAllPoints()
-        seg:SetPoint("TOPLEFT", frame, "TOPLEFT", frame:GetWidth() * sorted[i].position, 0)
-        seg:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", frame:GetWidth() * sorted[i + 1].position, -frame:GetHeight())
+        local width = frame:GetWidth()
+        local scale = frame:GetEffectiveScale()
+        seg:SetPoint("TOPLEFT", frame, "TOPLEFT", Engine.Pixel:Snap(width * sorted[i].position, scale), 0)
+        seg:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", Engine.Pixel:Snap(width * sorted[i + 1].position, scale), -frame:GetHeight())
         seg:SetTexture("Interface\\BUTTONS\\WHITE8x8")
         seg:SetGradient("HORIZONTAL", CreateColor(lc.r, lc.g, lc.b, lc.a or 0.5), CreateColor(rc.r, rc.g, rc.b, rc.a or 0.5))
         seg:Show()

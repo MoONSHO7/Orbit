@@ -100,7 +100,8 @@ local function RestorePreviewSize(selectionOverlay, isDragging)
         selectionOverlay.previewOrigHeight = nil
     end
     parent:ClearAllPoints()
-    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l + dw / 2, b + dh / 2)
+    local scale = parent:GetEffectiveScale()
+    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l + dw / 2, scale), Engine.Pixel:Snap(b + dh / 2, scale))
     if isDragging then parent:StartMoving() end
 end
 
@@ -175,10 +176,11 @@ local function OnDragUpdate(selectionOverlay, elapsed)
                 local origW = selectionOverlay.previewOrigWidth or parent:GetWidth()
                 selectionOverlay.previewOrigWidth = origW
                 parent:StopMovingOrSizing()
+                local scale = parent:GetEffectiveScale()
                 local l, b = parent:GetLeft(), parent:GetBottom()
                 parent:SetWidth(previewW)
                 parent:ClearAllPoints()
-                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - (previewW - origW) / 2, b)
+                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l - (previewW - origW) / 2, scale), Engine.Pixel:Snap(b, scale))
                 parent:StartMoving()
             end
         end
@@ -189,10 +191,11 @@ local function OnDragUpdate(selectionOverlay, elapsed)
                 local origH = selectionOverlay.previewOrigHeight or parent:GetHeight()
                 selectionOverlay.previewOrigHeight = origH
                 parent:StopMovingOrSizing()
+                local scale = parent:GetEffectiveScale()
                 local l, b = parent:GetLeft(), parent:GetBottom()
                 parent:SetHeight(previewH)
                 parent:ClearAllPoints()
-                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b - (previewH - origH) / 2)
+                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l, scale), Engine.Pixel:Snap(b - (previewH - origH) / 2, scale))
                 parent:StartMoving()
             end
         end
@@ -240,9 +243,10 @@ function Drag:OnDragStart(selectionOverlay)
             local dw, dh = syncedW - naturalW, syncedH - naturalH
             if dw ~= 0 or dh ~= 0 or parent:GetScale() ~= syncedS then
                 parent:StopMovingOrSizing()
+                local scale = parent:GetEffectiveScale()
                 local l, b = parent:GetLeft(), parent:GetBottom()
                 parent:ClearAllPoints()
-                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l + dw / 2, b + dh / 2)
+                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l + dw / 2, scale), Engine.Pixel:Snap(b + dh / 2, scale))
                 parent:StartMoving()
             end
         end
@@ -471,7 +475,8 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
     local currentPadding = anchor.padding or 0
     local minPadding = -Orbit.db.GlobalSettings.BorderSize
 
-    if anchor.syncOptions and anchor.syncOptions.mergeBorders then
+    local anchorParentOpts = Engine.FrameAnchor.GetFrameOptions(anchor.parent)
+    if anchorParentOpts and anchorParentOpts.mergeBorders then
         minPadding = 0
     end
 

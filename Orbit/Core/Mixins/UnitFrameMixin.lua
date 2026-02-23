@@ -192,7 +192,7 @@ end
 
 -- [ FRAME LAYOUT ]
 local DEFAULT_POWER_BAR_RATIO = 0.2
-local DAMAGE_BAR_VERTICAL_INSET = 1
+
 
 function Mixin:UpdateFrameLayout(frame, borderSize, options)
     if not frame then
@@ -209,15 +209,14 @@ function Mixin:UpdateFrameLayout(frame, borderSize, options)
     local scale = frame:GetEffectiveScale()
     local powerBarRatio = options.powerBarRatio or DEFAULT_POWER_BAR_RATIO
     local powerHeight = showPowerBar and Pixel:Snap(height * powerBarRatio, scale) or 0
-    local inset = frame.borderPixelSize or Pixel:Multiple(borderSize or 0, scale)
 
     if frame.Power then
         if showPowerBar then
             frame.Power:ClearAllPoints()
-            frame.Power:SetPoint("BOTTOMLEFT", inset, inset)
-            frame.Power:SetPoint("BOTTOMRIGHT", -inset, inset)
+            frame.Power:SetPoint("BOTTOMLEFT", 0, 0)
+            frame.Power:SetPoint("BOTTOMRIGHT", 0, 0)
             frame.Power:SetHeight(powerHeight)
-            frame.Power:SetFrameLevel(frame:GetFrameLevel() + 3)
+            frame.Power:SetFrameLevel(frame:GetFrameLevel() + 1)
             frame.Power:Show()
         else
             frame.Power:Hide()
@@ -226,17 +225,17 @@ function Mixin:UpdateFrameLayout(frame, borderSize, options)
 
     if frame.Health then
         frame.Health:ClearAllPoints()
-        frame.Health:SetPoint("TOPLEFT", inset, -inset)
+        frame.Health:SetPoint("TOPLEFT", 0, 0)
         if showPowerBar then
-            frame.Health:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, powerHeight + inset)
+            frame.Health:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, powerHeight)
         else
-            frame.Health:SetPoint("BOTTOMRIGHT", -inset, inset)
+            frame.Health:SetPoint("BOTTOMRIGHT", 0, 0)
         end
-        frame.Health:SetFrameLevel(frame:GetFrameLevel() + 2)
+        frame.Health:SetFrameLevel(frame:GetFrameLevel() + 1)
         if frame.HealthDamageBar then
             frame.HealthDamageBar:ClearAllPoints()
-            frame.HealthDamageBar:SetPoint("TOPLEFT", frame.Health, "TOPLEFT", 0, -DAMAGE_BAR_VERTICAL_INSET)
-            frame.HealthDamageBar:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT", 0, DAMAGE_BAR_VERTICAL_INSET)
+            frame.HealthDamageBar:SetPoint("TOPLEFT", frame.Health, "TOPLEFT", 0, 0)
+            frame.HealthDamageBar:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT", 0, 0)
             frame.HealthDamageBar:SetFrameLevel(frame:GetFrameLevel() + 1)
         end
     end

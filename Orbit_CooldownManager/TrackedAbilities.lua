@@ -1759,8 +1759,9 @@ function Plugin:SetupTrackedCanvasPreview(anchor, systemIndex)
         preview:SetSize(w, h)
 
         local borderSize = Orbit.db.GlobalSettings.BorderSize
-        local contentW = w - (borderSize * 2)
-        local contentH = h - (borderSize * 2)
+        local borderPixels = OrbitEngine.Pixel:Multiple(borderSize)
+        local contentW = w - (borderPixels * 2)
+        local contentH = h - (borderPixels * 2)
         preview.sourceFrame = self
         preview.sourceWidth = contentW
         preview.sourceHeight = contentH
@@ -1787,7 +1788,7 @@ function Plugin:SetupTrackedCanvasPreview(anchor, systemIndex)
         local backdrop = { bgFile = "Interface\\BUTTONS\\WHITE8x8", insets = { left = 0, right = 0, top = 0, bottom = 0 } }
         if borderSize > 0 then
             backdrop.edgeFile = "Interface\\BUTTONS\\WHITE8x8"
-            backdrop.edgeSize = borderSize
+            backdrop.edgeSize = borderPixels
         end
         preview:SetBackdrop(backdrop)
         preview:SetBackdropColor(0, 0, 0, 0)

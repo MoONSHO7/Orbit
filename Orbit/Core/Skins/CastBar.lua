@@ -4,6 +4,9 @@ local Skin = Orbit.Skin
 local CastBar = {}
 Skin.CastBar = CastBar
 local Constants = Orbit.Constants
+local Pixel = Orbit.Engine.Pixel
+
+local EMPOWER_MARKER_WIDTH = 2
 
 local LSM = LibStub("LibSharedMedia-3.0")
 
@@ -89,14 +92,14 @@ function CastBar:Create(parent)
     bar.IconBorder = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     bar.IconBorder:SetAllPoints(bar.Icon)
     bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + 2) -- Ensure above bar border
-    Skin:SkinBorder(parent, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 }, true)
+    Skin:SkinBorder(bar.IconBorder, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 }, true)
 
     -- Empower Stage Markers (pool of dividers)
     bar.stageMarkers = {}
     for i = 1, 4 do -- Max 4 stages typically
         local marker = bar:CreateTexture(nil, "OVERLAY", nil, 1)
         marker:SetColorTexture(0, 0, 0, 1)
-        marker:SetSize(2, 1) -- Width 2px, height set dynamically
+        marker:SetSize(Pixel:Multiple(EMPOWER_MARKER_WIDTH), 1)
         marker:Hide()
         bar.stageMarkers[i] = marker
     end
@@ -110,34 +113,25 @@ function CastBar:Create(parent)
     -- Hook parent's OnSizeChanged to update icon/bar positioning when dimensions change
     -- This is needed for anchor system dimension sync to properly update the icon size
     parent:HookScript("OnSizeChanged", function(self)
-        -- Only update if icon is visible
-        if not bar.Icon or not bar.Icon:IsShown() then
-            -- No icon shown, reset orbitBar to fill parent
-            bar:ClearAllPoints()
-            bar:SetAllPoints(self)
-            return
-        end
-
         local height = self:GetHeight()
-
-        -- Snap icon size to pixel grid for crisp rendering
         local scale = self:GetEffectiveScale()
         local snappedHeight = height
         if Orbit.Engine.Pixel then
             snappedHeight = Orbit.Engine.Pixel:Snap(height, scale)
         end
-        local iconOffset = snappedHeight
 
-        -- Update icon size (square, pixel-snapped)
-        bar.Icon:SetSize(snappedHeight, snappedHeight)
+        if bar.Icon then
+            bar.Icon:SetSize(snappedHeight, snappedHeight)
+        end
+        bar.iconOffset = snappedHeight
 
-        -- Update orbitBar position to start after icon
         bar:ClearAllPoints()
-        bar:SetPoint("TOPLEFT", self, "TOPLEFT", iconOffset, 0)
-        bar:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
-
-        -- Store iconOffset for spark calculations
-        bar.iconOffset = iconOffset
+        if bar.Icon and bar.Icon:IsShown() then
+            bar:SetPoint("TOPLEFT", self, "TOPLEFT", snappedHeight, 0)
+            bar:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
+        else
+            bar:SetAllPoints(self)
+        end
     end)
 
     return bar
@@ -179,7 +173,8 @@ function CastBar:Apply(bar, settings)
     -- Size SparkGlow based on parent height
     if bar.SparkGlow then
         local height = parent:GetHeight()
-        bar.SparkGlow:SetSize(height * 2.5, height)
+        local scale = parent:GetEffectiveScale()
+        bar.SparkGlow:SetSize(Orbit.Engine.Pixel:Snap(height * 2.5, scale), height)
 
         if settings.sparkColor then
             local c = settings.sparkColor
@@ -242,7 +237,7 @@ function CastBar:Apply(bar, settings)
                 bar.IconBorder:Show()
                 if settings.borderSize and settings.borderSize > 0 then
                     -- Use horizontal layout for icon border (Top/Bottom full-width for horizontal merging)
-                    Skin:SkinBorder(parent, bar.IconBorder, settings.borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
+                    Skin:SkinBorder(bar.IconBorder, bar.IconBorder, settings.borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
                     -- Hide cast bar's left border edge to merge with icon's right border
                     if bar.Border.Borders and bar.Border.Borders.Left then
                         bar.Border.Borders.Left:Hide()

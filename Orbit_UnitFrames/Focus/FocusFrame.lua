@@ -138,8 +138,23 @@ function Plugin:OnLoad()
 
     self.container = self:CreateVisibilityContainer(UIParent)
     self.frame = OrbitEngine.UnitButton:Create(self.container, "focus", "OrbitFocusFrame")
+    if self.frame.HealthDamageBar then
+        self.frame.HealthDamageBar:Hide()
+        if self.frame.HealthDamageTexture then self.frame.HealthDamageTexture:Hide() end
+        self.frame.HealthDamageBar = nil
+    end
     self.frame.editModeName = "Focus Frame"
     self.frame.systemIndex = FOCUS_FRAME_INDEX
+
+    self.frame.anchorOptions = {
+        horizontal = true,
+        vertical = true,
+        syncScale = true,
+        syncDimensions = true,
+        useRowDimension = true,
+        mergeBorders = true,
+        independentHeight = true,
+    }
 
     self.frame:RegisterEvent("PLAYER_FOCUS_CHANGED")
     self.frame:RegisterEvent("UNIT_FACTION")

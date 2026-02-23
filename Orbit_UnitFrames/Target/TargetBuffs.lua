@@ -69,8 +69,8 @@ function Plugin:AddSettings(dialog, systemFrame)
         type = "slider",
         key = "Spacing",
         label = "Spacing",
-        min = 0,
-        max = 10,
+        min = -5,
+        max = 50,
         step = 1,
         default = 2,
     })
@@ -103,8 +103,6 @@ function Plugin:OnLoad()
     RegisterUnitWatch(Frame)
 
     self.frame = Frame
-    self.mountedFrame = Frame
-    self.mountedCombatRestore = true
     Frame.unit = "target"
     Frame:SetAttribute("unit", "target")
 

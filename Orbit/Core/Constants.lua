@@ -110,8 +110,8 @@ C.Settings = {
     Opacity = { Min = 0, Max = 100, Step = 1, Default = 100 },
     TextSize = { Min = 8, Max = 32, Step = 1, Default = 12 },
     BorderSize = { Min = 1, Max = 5, Step = 1, Default = 1 },
-    Spacing = { Min = -1, Max = 10, Step = 1, Default = 2 },
-    Padding = { Min = -10, Max = 10, Step = 1, Default = 0 },
+    Spacing = { Min = -5, Max = 50, Step = 1, Default = 2 },
+    Padding = { Min = -5, Max = 15, Step = 1, Default = 0 },
     Font = { Default = "PT Sans Narrow", FallbackPath = "Fonts\\FRIZQT__.TTF" },
     Texture = { Default = "Melli" },
 }

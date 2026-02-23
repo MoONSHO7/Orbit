@@ -35,6 +35,67 @@ Dialog.PreviewContainer.Border:SetAtlas("transmog-tabs-frame")
 Dialog.PreviewContainer.Border:SetPoint("TOPLEFT", Dialog.PreviewContainer, "TOPLEFT", -11, 12)
 Dialog.PreviewContainer.Border:SetPoint("BOTTOMRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", 11, -12)
 
+-- [ FILTER TAB BAR ]------------------------------------------------------------------------
+
+local FILTER_TABS = { "All", "Text", "Icons", "Auras" }
+local FILTER_TAB_ACTIVE_COLOR = { r = 1.0, g = 0.82, b = 0.0 }
+local FILTER_TAB_INACTIVE_COLOR = { r = 0.8, g = 0.8, b = 0.8 }
+local FILTER_TAB_TEXT_PADDING = 20
+local FILTER_TAB_HIGHLIGHT_ATLAS = "transmog-tab-hl"
+
+local function ApplyFilterTabState(btn, isActive)
+    local c = isActive and FILTER_TAB_ACTIVE_COLOR or FILTER_TAB_INACTIVE_COLOR
+    btn.Text:SetTextColor(c.r, c.g, c.b)
+    if btn.highlight then btn.highlight:SetShown(isActive) end
+end
+
+Dialog.FilterTabBar = CreateFrame("Frame", nil, Dialog)
+Dialog.FilterTabBar:SetPoint("TOPLEFT", Dialog, "TOPLEFT", C.VIEWPORT_PADDING + 30, C.FILTER_TAB_TOP_OFFSET)
+Dialog.FilterTabBar:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", -C.VIEWPORT_PADDING, C.FILTER_TAB_TOP_OFFSET)
+Dialog.FilterTabBar:SetHeight(C.FILTER_TAB_HEIGHT)
+Dialog.FilterTabBar:SetFrameLevel(Dialog:GetFrameLevel() + 200)
+Dialog.FilterTabBar:Hide()
+
+Dialog.filterTabButtons = {}
+local lastFilterBtn = nil
+for _, tabName in ipairs(FILTER_TABS) do
+    local btn = CreateFrame("Button", nil, Dialog.FilterTabBar, "MinimalTabTemplate")
+    btn:SetHeight(C.FILTER_TAB_HEIGHT)
+    btn.Text:SetText(tabName)
+    btn:SetWidth(btn.Text:GetStringWidth() + FILTER_TAB_TEXT_PADDING)
+
+    if lastFilterBtn then
+        btn:SetPoint("LEFT", lastFilterBtn, "RIGHT", C.FILTER_TAB_SPACING, 0)
+    else
+        btn:SetPoint("TOPLEFT", Dialog.FilterTabBar, "TOPLEFT", 0, 0)
+    end
+
+    local hlFrame = CreateFrame("Frame", nil, btn)
+    hlFrame:SetPoint("BOTTOMLEFT", btn, "BOTTOMLEFT", 2, -1)
+    hlFrame:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, -1)
+    hlFrame:SetHeight(1)
+    hlFrame:SetFrameLevel(btn:GetFrameLevel() + 10)
+    local hlTex = hlFrame:CreateTexture(nil, "ARTWORK")
+    hlTex:SetAtlas(FILTER_TAB_HIGHLIGHT_ATLAS)
+    hlTex:SetAllPoints(hlFrame)
+    btn.highlight = hlFrame
+
+    ApplyFilterTabState(btn, tabName == "All")
+
+    btn:SetScript("OnClick", function()
+        Dialog.activeFilter = tabName
+        for _, b in ipairs(Dialog.filterTabButtons) do
+            ApplyFilterTabState(b, b.filterName == tabName)
+        end
+        if Dialog.ApplyFilter then Dialog:ApplyFilter(tabName) end
+    end)
+
+    btn.filterName = tabName
+    Dialog.filterTabButtons[#Dialog.filterTabButtons + 1] = btn
+    lastFilterBtn = btn
+end
+
+
 -- Viewport: Clips children to create the viewable area (inset to clip before border)
 Dialog.Viewport = CreateFrame("Frame", nil, Dialog.PreviewContainer)
 Dialog.Viewport:SetPoint("TOPLEFT", 4, -4)
@@ -61,8 +122,9 @@ local function GetPanBounds(transformLayer, viewport, zoomLevel)
     local viewH = viewport:GetHeight()
 
     -- Allow panning up to the point where preview edge reaches viewport center
-    local maxX = math.max(0, (scaledW / 2) - (viewW / 2) + C.PAN_CLAMP_PADDING)
-    local maxY = math.max(0, (scaledH / 2) - (viewH / 2) + C.PAN_CLAMP_PADDING)
+    local scale = viewport:GetEffectiveScale()
+    local maxX = OrbitEngine.Pixel:Snap(math.max(0, (scaledW / 2) - (viewW / 2) + C.PAN_CLAMP_PADDING), scale)
+    local maxY = OrbitEngine.Pixel:Snap(math.max(0, (scaledH / 2) - (viewH / 2) + C.PAN_CLAMP_PADDING), scale)
 
     return maxX, maxY
 end
@@ -113,8 +175,8 @@ Dialog.Viewport:SetScript("OnDragStart", function(self)
     self.isPanning = true
     local mx, my = GetCursorPosition()
     local scale = UIParent:GetEffectiveScale()
-    self.panStartMouseX = mx / scale
-    self.panStartMouseY = my / scale
+    self.panStartMouseX = Orbit.Engine.Pixel:Snap(mx / scale, scale)
+    self.panStartMouseY = Orbit.Engine.Pixel:Snap(my / scale, scale)
     self.panStartOffsetX = Dialog.panOffsetX
     self.panStartOffsetY = Dialog.panOffsetY
 end)
@@ -128,8 +190,8 @@ Dialog.Viewport:SetScript("OnUpdate", function(self)
     if self.isPanning then
         local mx, my = GetCursorPosition()
         local scale = UIParent:GetEffectiveScale()
-        mx = mx / scale
-        my = my / scale
+        mx = Orbit.Engine.Pixel:Snap(mx / scale, scale)
+        my = Orbit.Engine.Pixel:Snap(my / scale, scale)
 
         local deltaX = mx - self.panStartMouseX
         local deltaY = my - self.panStartMouseY
@@ -182,7 +244,7 @@ Dialog.SyncToggle:SetScript("OnClick", function(self)
 end)
 
 Dialog.SyncToggle:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT")
     if self.isSynced then
         GameTooltip:SetText("Synced with all Action Bars")
         GameTooltip:AddLine("Changes apply to all synced bars", 0.7, 0.7, 0.7, true)

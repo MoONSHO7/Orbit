@@ -12,6 +12,8 @@ local FRAMES_PER_GROUP = 5
 local DEFENSIVE_ICON_SIZE = 18
 local IMPORTANT_ICON_SIZE = 18
 local CROWD_CONTROL_ICON_SIZE = 18
+local PRIVATE_AURA_ICON_SIZE = 18
+local MAX_PRIVATE_AURA_ANCHORS = 3
 local AURA_SPACING = 2
 local AURA_BASE_ICON_SIZE = 10
 local MIN_ICON_SIZE = 10
@@ -42,6 +44,7 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
             MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = -1, justifyH = "CENTER", posX = 0, posY = 21 },
             RoleIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "TOP", offsetY = 2, justifyH = "RIGHT", posX = 48, posY = 18, overrides = { Scale = 0.7 } },
             LeaderIcon = { anchorX = "LEFT", offsetX = 8, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", posX = -42, posY = 20, overrides = { Scale = 0.8 } },
+            MainTankIcon = { anchorX = "LEFT", offsetX = 20, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", posX = -30, posY = 20, overrides = { Scale = 0.8 } },
             SummonIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
@@ -49,6 +52,7 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
             DefensiveIcon = { anchorX = "LEFT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
             ImportantIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
             CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
+            PrivateAuraAnchor = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 2 },
             Buffs = {
                 anchorX = "RIGHT",
                 anchorY = "BOTTOM",
@@ -205,13 +209,19 @@ local function UpdateDebuffs(frame, plugin)
     frame.debuffPool:ReleaseAll()
 
     local allDebuffs = plugin:FetchAuras(unit, "HARMFUL", 40)
+    local inCombat = UnitAffectingCombat("player")
+    local raidFilter = inCombat and "HARMFUL|RAID_IN_COMBAT" or "HARMFUL"
     local excludeCC = not (plugin.IsComponentDisabled and plugin:IsComponentDisabled("CrowdControlIcon"))
     local debuffs = {}
     for _, aura in ipairs(allDebuffs) do
-        local dominated = excludeCC and aura.auraInstanceID and IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
-        if not dominated then
-            debuffs[#debuffs + 1] = aura
-            if #debuffs >= maxDebuffs then break end
+        if aura.auraInstanceID then
+            local passesRaid = IsAuraIncluded(unit, aura.auraInstanceID, raidFilter)
+            local passesCC = not excludeCC and IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
+            local dominated = excludeCC and IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
+            if (passesRaid or passesCC) and not dominated then
+                debuffs[#debuffs + 1] = aura
+                if #debuffs >= maxDebuffs then break end
+            end
         end
     end
 
@@ -279,9 +289,10 @@ local function UpdateBuffs(frame, plugin)
     for _, aura in ipairs(allBuffs) do
         if aura.auraInstanceID then
             local passesRaid = IsAuraIncluded(unit, aura.auraInstanceID, raidFilter)
+            local passesDef = not excludeDefensives and (IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|BIG_DEFENSIVE") or IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|EXTERNAL_DEFENSIVE"))
             local isBigDef = excludeDefensives and IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|BIG_DEFENSIVE")
             local isExtDef = excludeDefensives and IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|EXTERNAL_DEFENSIVE")
-            if passesRaid and not isBigDef and not isExtDef then
+            if (passesRaid or passesDef) and not isBigDef and not isExtDef then
                 buffs[#buffs + 1] = aura
                 if #buffs >= maxBuffs then break end
             end
@@ -364,6 +375,79 @@ local function UpdateImportantIcon(frame, plugin) UpdateSingleAuraIcon(frame, pl
 
 local function UpdateCrowdControlIcon(frame, plugin) UpdateSingleAuraIcon(frame, plugin, "CrowdControlIcon", "HARMFUL|CROWD_CONTROL", CROWD_CONTROL_ICON_SIZE) end
 
+-- [ PRIVATE AURA ANCHOR ]---------------------------------------------------------------------------
+
+local function UpdatePrivateAuras(frame, plugin)
+    local anchor = frame.PrivateAuraAnchor
+    if not anchor then return end
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("PrivateAuraAnchor") then
+        anchor:Hide()
+        return
+    end
+
+    -- Clear preview visuals assigned during Canvas Mode
+    if anchor.Icon then anchor.Icon:SetTexture(nil) end
+    if anchor.SetBackdrop then anchor:SetBackdrop(nil) end
+    if anchor.Border then anchor.Border:Hide() end
+    if anchor.Shadow then anchor.Shadow:Hide() end
+
+    local unit = frame.unit
+    if not unit or not UnitExists(unit) then anchor:Hide() return end
+
+    -- Only recreate anchors if they haven't been created yet for this session/unit
+    -- Constantly removing and re-adding them on UNIT_AURA breaks the native timeout UI
+    if not frame._privateAuraIDs or frame._privateAuraUnit ~= unit then
+        if frame._privateAuraIDs then
+            for _, id in ipairs(frame._privateAuraIDs) do 
+                C_UnitAuras.RemovePrivateAuraAnchor(id) 
+            end
+        end
+        frame._privateAuraIDs = {}
+        frame._privateAuraUnit = unit
+
+        local positions = plugin.GetSetting and plugin:GetSetting(1, "ComponentPositions") or {}
+        local posData = positions.PrivateAuraAnchor or {}
+        local overrides = posData.overrides
+        local scale = (overrides and overrides.Scale) or 1
+        local iconSize = math.floor(PRIVATE_AURA_ICON_SIZE * scale)
+        local spacing = 2
+        local totalWidth = (MAX_PRIVATE_AURA_ANCHORS * iconSize) + ((MAX_PRIVATE_AURA_ANCHORS - 1) * spacing)
+        local anchorX = posData.anchorX or "CENTER"
+
+        anchor:SetSize(totalWidth, iconSize)
+        
+        for i = 1, MAX_PRIVATE_AURA_ANCHORS do
+            local point, relPoint, xOff
+            if anchorX == "RIGHT" then
+                xOff = OrbitEngine.Pixel:Snap(-((i - 1) * (iconSize + spacing)), frame:GetEffectiveScale())
+                point, relPoint = "TOPRIGHT", "TOPRIGHT"
+            elseif anchorX == "LEFT" then
+                xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), frame:GetEffectiveScale())
+                point, relPoint = "TOPLEFT", "TOPLEFT"
+            else
+                xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), frame:GetEffectiveScale())
+                point, relPoint = "TOPLEFT", "TOPLEFT"
+            end
+            local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
+                unitToken = unit,
+                auraIndex = i,
+                parent = anchor,
+                showCountdownFrame = true,
+                showCountdownNumbers = true,
+                iconInfo = {
+                    iconWidth = iconSize,
+                    iconHeight = iconSize,
+                    iconAnchor = { point = point, relativeTo = anchor, relativePoint = relPoint, offsetX = xOff, offsetY = 0 },
+                    borderScale = 1,
+                },
+            })
+            if anchorID then table.insert(frame._privateAuraIDs, anchorID) end
+        end
+    end
+
+    anchor:Show()
+end
+
 -- [ STATUS INDICATOR WRAPPERS ]---------------------------------------------------------------------
 
 local function UpdateRoleIcon(frame, plugin)
@@ -374,6 +458,11 @@ end
 local function UpdateLeaderIcon(frame, plugin)
     if plugin.UpdateLeaderIcon then
         plugin:UpdateLeaderIcon(frame, plugin)
+    end
+end
+local function UpdateMainTankIcon(frame, plugin)
+    if plugin.UpdateMainTankIcon then
+        plugin:UpdateMainTankIcon(frame, plugin)
     end
 end
 local function UpdateSelectionHighlight(frame, plugin)
@@ -469,6 +558,7 @@ local function CreateRaidFrame(index, plugin)
         UpdateDefensiveIcon(self, plugin)
         UpdateImportantIcon(self, plugin)
         UpdateCrowdControlIcon(self, plugin)
+        UpdatePrivateAuras(self, plugin)
         UpdateAllStatusIndicators(self, plugin)
         UpdateInRange(self)
     end)
@@ -488,6 +578,7 @@ local function CreateRaidFrame(index, plugin)
                 UpdateDefensiveIcon(f, plugin)
                 UpdateImportantIcon(f, plugin)
                 UpdateCrowdControlIcon(f, plugin)
+                UpdatePrivateAuras(f, plugin)
                 if plugin.UpdateDispelIndicator then
                     plugin:UpdateDispelIndicator(f, plugin)
                 end
@@ -495,6 +586,7 @@ local function CreateRaidFrame(index, plugin)
             return
         end
         if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+            UpdateDebuffs(f, plugin)
             UpdateBuffs(f, plugin)
             return
         end
@@ -531,6 +623,7 @@ local function CreateRaidFrame(index, plugin)
         if event == "PLAYER_ROLES_ASSIGNED" or event == "GROUP_ROSTER_UPDATE" then
             UpdateRoleIcon(f, plugin)
             UpdateLeaderIcon(f, plugin)
+            UpdateMainTankIcon(f, plugin)
             return
         end
         if event == "RAID_TARGET_UPDATE" then
@@ -625,7 +718,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
         table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 40, max = 200, step = 1, default = 90, onChange = makeOnChange(self, "Width") })
         table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 16, max = 80, step = 1, default = 36, onChange = makeOnChange(self, "Height") })
-        table.insert(schema.controls, { type = "slider", key = "MemberSpacing", label = "Member Spacing", min = 0, max = 10, step = 1, default = 1, onChange = makeOnChange(self, "MemberSpacing") })
+        table.insert(schema.controls, { type = "slider", key = "MemberSpacing", label = "Member Spacing", min = -5, max = 50, step = 1, default = 1, onChange = makeOnChange(self, "MemberSpacing") })
         if (self:GetSetting(1, "SortMode") or "Group") == "Group" then
             table.insert(schema.controls, {
                 type = "slider",
@@ -643,8 +736,8 @@ function Plugin:AddSettings(dialog, systemFrame)
                     type = "slider",
                     key = "GroupSpacing",
                     label = "Group Spacing",
-                    min = 0,
-                    max = 30,
+                    min = -5,
+                    max = 50,
                     step = 1,
                     default = 4,
                     onChange = makeOnChange(self, "GroupSpacing"),
@@ -765,6 +858,7 @@ function Plugin:OnLoad()
         local iconComponents = {
             "RoleIcon",
             "LeaderIcon",
+            "MainTankIcon",
             "PhaseIcon",
             "ReadyCheckIcon",
             "ResIcon",
@@ -773,6 +867,7 @@ function Plugin:OnLoad()
             "DefensiveIcon",
             "ImportantIcon",
             "CrowdControlIcon",
+            "PrivateAuraAnchor",
         }
 
         for _, key in ipairs(textComponents) do
@@ -946,6 +1041,12 @@ function Plugin:PrepareIconsForCanvasMode()
             frame.LeaderIcon:SetAtlas(previewAtlases.LeaderIcon)
         end
         frame.LeaderIcon:SetSize(12, 12)
+    end
+    if frame.MainTankIcon then
+        if not frame.MainTankIcon:GetAtlas() then
+            frame.MainTankIcon:SetAtlas(previewAtlases.MainTankIcon)
+        end
+        frame.MainTankIcon:SetSize(12, 12)
     end
     if frame.MarkerIcon then
         frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
@@ -1266,7 +1367,7 @@ function Plugin:ApplySettings()
     local width = self:GetSetting(1, "Width") or 90
     local height = self:GetSetting(1, "Height") or 36
     local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
-    local borderSize = self:GetSetting(1, "BorderSize") or 1
+    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
     local textureName = self:GetSetting(1, "Texture")
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
 
@@ -1296,6 +1397,7 @@ function Plugin:ApplySettings()
             UpdateDefensiveIcon(frame, self)
             UpdateImportantIcon(frame, self)
             UpdateCrowdControlIcon(frame, self)
+            UpdatePrivateAuras(frame, self)
             UpdateAllStatusIndicators(frame, self)
             if frame.UpdateAll then
                 frame:UpdateAll()
@@ -1318,6 +1420,7 @@ function Plugin:ApplySettings()
             local icons = {
                 "RoleIcon",
                 "LeaderIcon",
+                "MainTankIcon",
                 "PhaseIcon",
                 "ReadyCheckIcon",
                 "ResIcon",
@@ -1326,6 +1429,7 @@ function Plugin:ApplySettings()
                 "DefensiveIcon",
                 "ImportantIcon",
                 "CrowdControlIcon",
+                "PrivateAuraAnchor",
             }
             for _, iconKey in ipairs(icons) do
                 if frame[iconKey] and savedPositions[iconKey] then

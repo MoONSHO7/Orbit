@@ -193,7 +193,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
     local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
     local textureName = self:GetSetting(1, "Texture")
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
-    local borderSize = self:GetSetting(1, "BorderSize") or 1
+    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, self.container:GetEffectiveScale() or 1) or 1)
 
     -- Get Colors tab global settings (for reference only - helpers read them)
     local globalSettings = Orbit.db.GlobalSettings or {}
@@ -235,6 +235,8 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     end
                 end
                 frame.Health:Show()
+                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
+                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
             -- Apply texture and set up power bar (healers always show power bar)
@@ -410,7 +412,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
                     if not savedPositions or not savedPositions.PhaseIcon then
                         frame.PhaseIcon:ClearAllPoints()
-                        frame.PhaseIcon:SetPoint("CENTER", frame, "CENTER", -spacing * 1.5, 0)
+                        frame.PhaseIcon:SetPoint("CENTER", frame, "CENTER", Orbit.Engine.Pixel:Snap(-spacing * 1.5, frame:GetEffectiveScale()), 0)
                     end
                     frame.PhaseIcon:Show()
                 end
@@ -421,7 +423,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
                     if not savedPositions or not savedPositions.ReadyCheckIcon then
                         frame.ReadyCheckIcon:ClearAllPoints()
-                        frame.ReadyCheckIcon:SetPoint("CENTER", frame, "CENTER", -spacing * 0.5, 0)
+                        frame.ReadyCheckIcon:SetPoint("CENTER", frame, "CENTER", Orbit.Engine.Pixel:Snap(-spacing * 0.5, frame:GetEffectiveScale()), 0)
                     end
                     frame.ReadyCheckIcon:Show()
                 end
@@ -432,7 +434,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
                     if not savedPositions or not savedPositions.ResIcon then
                         frame.ResIcon:ClearAllPoints()
-                        frame.ResIcon:SetPoint("CENTER", frame, "CENTER", spacing * 0.5, 0)
+                        frame.ResIcon:SetPoint("CENTER", frame, "CENTER", Orbit.Engine.Pixel:Snap(spacing * 0.5, frame:GetEffectiveScale()), 0)
                     end
                     frame.ResIcon:Show()
                 end
@@ -443,7 +445,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
                     if not savedPositions or not savedPositions.SummonIcon then
                         frame.SummonIcon:ClearAllPoints()
-                        frame.SummonIcon:SetPoint("CENTER", frame, "CENTER", spacing * 1.5, 0)
+                        frame.SummonIcon:SetPoint("CENTER", frame, "CENTER", Orbit.Engine.Pixel:Snap(spacing * 1.5, frame:GetEffectiveScale()), 0)
                     end
                     frame.SummonIcon:Show()
                 end
@@ -455,7 +457,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
                     if not savedPositions or not savedPositions.DefensiveIcon then
                         frame.DefensiveIcon:ClearAllPoints()
-                        frame.DefensiveIcon:SetPoint("CENTER", frame, "LEFT", iconSize * 0.5 + 2, 0)
+                        frame.DefensiveIcon:SetPoint("CENTER", frame, "LEFT", Orbit.Engine.Pixel:Snap(iconSize * 0.5 + 2, frame:GetEffectiveScale()), 0)
                     end
                     if Orbit.Skin and Orbit.Skin.Icons then
                         Orbit.Skin.Icons:ApplyCustom(frame.DefensiveIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
@@ -472,7 +474,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
                     if not savedPositions or not savedPositions.ImportantIcon then
                         frame.ImportantIcon:ClearAllPoints()
-                        frame.ImportantIcon:SetPoint("CENTER", frame, "RIGHT", -(iconSize * 0.5 + 2), 0)
+                        frame.ImportantIcon:SetPoint("CENTER", frame, "RIGHT", Orbit.Engine.Pixel:Snap(-(iconSize * 0.5 + 2), frame:GetEffectiveScale()), 0)
                     end
                     if Orbit.Skin and Orbit.Skin.Icons then
                         Orbit.Skin.Icons:ApplyCustom(frame.ImportantIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
@@ -489,7 +491,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     local savedPositions = self:GetSetting(1, "ComponentPositions")
                     if not savedPositions or not savedPositions.CrowdControlIcon then
                         frame.CrowdControlIcon:ClearAllPoints()
-                        frame.CrowdControlIcon:SetPoint("CENTER", frame, "TOP", 0, -(iconSize * 0.5 + 2))
+                        frame.CrowdControlIcon:SetPoint("CENTER", frame, "TOP", 0, Orbit.Engine.Pixel:Snap(-(iconSize * 0.5 + 2), frame:GetEffectiveScale()))
                     end
                     if Orbit.Skin and Orbit.Skin.Icons then
                         Orbit.Skin.Icons:ApplyCustom(frame.CrowdControlIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
@@ -497,6 +499,22 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     frame.CrowdControlIcon:Show()
                 elseif frame.CrowdControlIcon then
                     frame.CrowdControlIcon:Hide()
+                end
+
+                if frame.PrivateAuraAnchor and not (self.IsComponentDisabled and self:IsComponentDisabled("PrivateAuraAnchor")) then
+                    frame.PrivateAuraAnchor.Icon:SetTexture(Orbit.StatusIconMixin:GetPrivateAuraTexture())
+                    frame.PrivateAuraAnchor:SetSize(iconSize, iconSize)
+                    local savedPositions = self:GetSetting(1, "ComponentPositions")
+                    if not savedPositions or not savedPositions.PrivateAuraAnchor then
+                        frame.PrivateAuraAnchor:ClearAllPoints()
+                        frame.PrivateAuraAnchor:SetPoint("CENTER", frame, "BOTTOM", 0, Orbit.Engine.Pixel:Snap(iconSize * 0.5 + 2, frame:GetEffectiveScale()))
+                    end
+                    if Orbit.Skin and Orbit.Skin.Icons then
+                        Orbit.Skin.Icons:ApplyCustom(frame.PrivateAuraAnchor, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
+                    end
+                    frame.PrivateAuraAnchor:Show()
+                elseif frame.PrivateAuraAnchor then
+                    frame.PrivateAuraAnchor:Hide()
                 end
             else
                 -- Hide in normal Edit Mode preview (they overlap)
@@ -520,6 +538,9 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 end
                 if frame.CrowdControlIcon then
                     frame.CrowdControlIcon:Hide()
+                end
+                if frame.PrivateAuraAnchor then
+                    frame.PrivateAuraAnchor:Hide()
                 end
             end
 
@@ -805,7 +826,21 @@ function Orbit.PartyFramePreviewMixin:HidePreview()
             wipe(frame.previewBuffs)
         end
 
+        -- Clear any private aura anchors that were generated
+        if frame._privateAuraIDs then
+            for _, id in ipairs(frame._privateAuraIDs) do 
+                C_UnitAuras.RemovePrivateAuraAnchor(id) 
+            end
+            wipe(frame._privateAuraIDs)
+        end
+
         LCG.PixelGlow_Stop(frame, "preview")
+        if frame.HealthDamageBar then
+            frame.HealthDamageBar:Show()
+        end
+        if frame.HealthDamageTexture then
+            frame.HealthDamageTexture:Show()
+        end
         if frame.UpdateAll then
             frame:UpdateAll()
         end

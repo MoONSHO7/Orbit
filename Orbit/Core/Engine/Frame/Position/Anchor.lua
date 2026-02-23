@@ -10,6 +10,7 @@ Anchor.anchors = Anchor.anchors or {}
 Anchor.childrenOf = Anchor.childrenOf or setmetatable({}, { __mode = "k" })
 
 local hookedParents = setmetatable({}, { __mode = "k" })
+local optionsCache = setmetatable({}, { __mode = "k" })
 
 local ANCHOR_THRESHOLD = 5
 local DEFAULT_PADDING = 2
@@ -17,40 +18,31 @@ local MIN_SYNC_HEIGHT = 5
 local MIN_SYNC_WIDTH = 10
 
 local EDGE_BORDER_MAP = {
-    BOTTOM = { parent = "Bottom", child = "Top", inset = "Top" },
-    TOP = { parent = "Top", child = "Bottom", inset = "Bottom" },
-    LEFT = { parent = "Left", child = "Right", inset = "Right" },
-    RIGHT = { parent = "Right", child = "Left", inset = "Left" },
+    BOTTOM = { parent = "Bottom", child = "Top" },
+    TOP = { parent = "Top", child = "Bottom" },
+    LEFT = { parent = "Left", child = "Right" },
+    RIGHT = { parent = "Right", child = "Left" },
 }
 
 local DEFAULT_OPTIONS = {
-    horizontal = true, -- Allow LEFT/RIGHT edge anchoring (horizontal expansion)
-    vertical = true, -- Allow TOP/BOTTOM edge anchoring (vertical stacking)
+    horizontal = true,
+    vertical = true,
     syncScale = true,
     syncDimensions = true,
-    mergeBorders = false, -- If true and Distance=0, redundant borders are hidden
-    align = nil, -- Alignment override: TOP/CENTER/BOTTOM or LEFT/CENTER/RIGHT
-    useRowDimension = false, -- Use parent's orbitRowHeight/orbitColumnWidth
-    independentHeight = false, -- Skip ongoing height sync so user can adjust via slider
+    mergeBorders = false,
+    align = nil,
+    useRowDimension = false,
+    independentHeight = false,
 }
 
-local optionsCache = setmetatable({}, { __mode = "k" })
-
 local function GetFrameOptions(frame)
-    if frame:IsForbidden() then
-        return DEFAULT_OPTIONS
-    end
-    if optionsCache[frame] then
-        return optionsCache[frame]
-    end
+    if frame:IsForbidden() then return DEFAULT_OPTIONS end
+    local cached = optionsCache[frame]
+    if cached then return cached end
     local opts = {}
-    for k, v in pairs(DEFAULT_OPTIONS) do
-        opts[k] = v
-    end
+    for k, v in pairs(DEFAULT_OPTIONS) do opts[k] = v end
     if frame.anchorOptions then
-        for k, v in pairs(frame.anchorOptions) do
-            opts[k] = v
-        end
+        for k, v in pairs(frame.anchorOptions) do opts[k] = v end
     end
     optionsCache[frame] = opts
     return opts
@@ -81,20 +73,48 @@ local function HookParentSizeChange(parent, anchorModule)
     hookedParents[parent] = true
 end
 
-local function SetMergeBorderState(parent, child, edge, hidden, overlap)
+local function SetMergeBorderState(parent, child, edge, hidden)
     local map = EDGE_BORDER_MAP[edge]
-    if not map then
-        return
-    end
+    if not map then return end
     if parent and parent.SetBorderHidden then
         parent:SetBorderHidden(map.parent, hidden)
     end
     if child.SetBorderHidden then
         child:SetBorderHidden(map.child, hidden)
     end
-    if child.SetBackgroundInset then
-        child:SetBackgroundInset(map.inset, hidden and overlap or 0)
+end
+
+local ApplyAnchorPosition
+
+local function ApplyMergeBorders(child, anchorModule)
+    local a = anchorModule.anchors[child]
+    if not a or not a.parent then return end
+    local pOpts = GetFrameOptions(a.parent)
+    if not pOpts.mergeBorders then return end
+    if InCombatLockdown() and child:IsProtected() then return end
+    ApplyAnchorPosition(child, a.parent, a.edge, a.padding, a.align, a.syncOptions)
+end
+
+local function HookChildVisibility(child, anchorModule)
+    if child._orbitMergeBorderHooked then return end
+    child._orbitMergeBorderHooked = true
+    child:HookScript("OnShow", function(self) ApplyMergeBorders(self, anchorModule) end)
+    child:HookScript("OnHide", function(self) ApplyMergeBorders(self, anchorModule) end)
+end
+
+local function ReapplyChildrenMergeBorders(parent, anchorModule)
+    local children = anchorModule.childrenOf[parent]
+    if not children then return end
+    for child in pairs(children) do
+        ApplyMergeBorders(child, anchorModule)
     end
+end
+
+local function HookParentVisibility(parent, anchorModule)
+    if parent._orbitMergeParentHooked then return end
+    parent._orbitMergeParentHooked = true
+    parent:HookScript("OnShow", function(self) ReapplyChildrenMergeBorders(self, anchorModule) end)
+    parent:HookScript("OnHide", function(self) ReapplyChildrenMergeBorders(self, anchorModule) end)
 end
 
 local function GetChainExtentForAlign(parent)
@@ -108,7 +128,7 @@ local function GetChainExtentForAlign(parent)
     return leftOffset, chainWidth
 end
 
-local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOptions, chainOffsetX)
+ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions, chainOffsetX)
     if InCombatLockdown() and child:IsProtected() then
         return false
     end
@@ -117,88 +137,78 @@ local function ApplyAnchorPosition(child, parent, edge, padding, align, syncOpti
 
     local parentOptions = GetFrameOptions(parent)
 
-    -- The Gelatinous Cube absorbs both borders, leaving nothing between
-    local overlap = 0
-    if syncOptions and syncOptions.mergeBorders and parentOptions.mergeBorders and syncOptions.syncScale and syncOptions.syncDimensions and padding == 0 then
-        local pSize = (parent.borderPixelSize or 0)
-        local cSize = (child.borderPixelSize or 0)
-        if pSize == 0 then
-            pSize = Orbit.Engine.Pixel:Multiple(1, parent:GetEffectiveScale() or 1)
-        end
-        if cSize == 0 then
-            cSize = Orbit.Engine.Pixel:Multiple(1, child:GetEffectiveScale() or 1)
-        end
-        overlap = pSize + cSize
-        SetMergeBorderState(parent, child, edge, true, overlap)
-    elseif syncOptions and syncOptions.mergeBorders then
-        SetMergeBorderState(parent, child, edge, false, 0)
+    local shouldMerge = parentOptions.mergeBorders and syncOptions and syncOptions.syncScale and syncOptions.syncDimensions and padding == 0
+    if shouldMerge and child:IsShown() and parent:IsShown() then
+        SetMergeBorderState(parent, child, edge, true)
+    elseif parentOptions.mergeBorders then
+        SetMergeBorderState(parent, child, edge, false)
     end
 
     -- Snap padding to physical pixels
     if Orbit.Engine.Pixel then
-        padding = Orbit.Engine.Pixel:Snap(padding, child:GetEffectiveScale())
+        padding = Orbit.Engine.Pixel:Multiple(padding, child:GetEffectiveScale())
     end
 
     local ok, err = pcall(function()
         if edge == "BOTTOM" then
             if chainOffsetX then
-                child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", chainOffsetX, -padding + overlap)
+                child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", Orbit.Engine.Pixel:Snap(chainOffsetX, child:GetEffectiveScale()), -padding)
             else
                 local cLeft, cWidth = GetChainExtentForAlign(parent)
                 if cLeft then
                     local parentW = parent:GetWidth()
                     if align == "LEFT" then
-                        child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", cLeft, -padding + overlap)
+                        child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", Orbit.Engine.Pixel:Snap(cLeft, child:GetEffectiveScale()), -padding)
                     elseif align == "RIGHT" then
-                        child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", cLeft + cWidth - parentW, -padding + overlap)
+                        child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", Orbit.Engine.Pixel:Snap(cLeft + cWidth - parentW, child:GetEffectiveScale()), -padding)
                     else
-                        child:SetPoint("TOP", parent, "BOTTOM", cLeft + cWidth / 2 - parentW / 2, -padding + overlap)
+                        child:SetPoint("TOP", parent, "BOTTOM", Orbit.Engine.Pixel:Snap(cLeft + cWidth / 2 - parentW / 2, child:GetEffectiveScale()), -padding)
                     end
                 elseif align == "LEFT" then
-                    child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 0, -padding + overlap)
+                    child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 0, -padding)
                 elseif align == "RIGHT" then
-                    child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", 0, -padding + overlap)
+                    child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", 0, -padding)
                 else
-                    child:SetPoint("TOP", parent, "BOTTOM", 0, -padding + overlap)
+                    child:SetPoint("TOP", parent, "BOTTOM", 0, -padding)
                 end
             end
         elseif edge == "TOP" then
             if chainOffsetX then
-                child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", chainOffsetX, padding - overlap)
+                child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", Orbit.Engine.Pixel:Snap(chainOffsetX, child:GetEffectiveScale()), padding)
             else
                 local cLeft, cWidth = GetChainExtentForAlign(parent)
                 if cLeft then
                     local parentW = parent:GetWidth()
                     if align == "LEFT" then
-                        child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", cLeft, padding - overlap)
+                        child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", Orbit.Engine.Pixel:Snap(cLeft, child:GetEffectiveScale()), padding)
                     elseif align == "RIGHT" then
-                        child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", cLeft + cWidth - parentW, padding - overlap)
+                        child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", Orbit.Engine.Pixel:Snap(cLeft + cWidth - parentW, child:GetEffectiveScale()), padding)
                     else
-                        child:SetPoint("BOTTOM", parent, "TOP", cLeft + cWidth / 2 - parentW / 2, padding - overlap)
+                        child:SetPoint("BOTTOM", parent, "TOP", Orbit.Engine.Pixel:Snap(cLeft + cWidth / 2 - parentW / 2, child:GetEffectiveScale()), padding)
                     end
                 elseif align == "LEFT" then
-                    child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 0, padding - overlap)
+                    child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 0, padding)
                 elseif align == "RIGHT" then
-                    child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", 0, padding - overlap)
+                    child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", 0, padding)
                 else
-                    child:SetPoint("BOTTOM", parent, "TOP", 0, padding - overlap)
+                    child:SetPoint("BOTTOM", parent, "TOP", 0, padding)
                 end
             end
         elseif edge == "LEFT" then
             if align == "TOP" then
-                child:SetPoint("TOPRIGHT", parent, "TOPLEFT", -padding + overlap, 0)
+                child:SetPoint("TOPRIGHT", parent, "TOPLEFT", -padding, 0)
             elseif align == "BOTTOM" then
-                child:SetPoint("BOTTOMRIGHT", parent, "BOTTOMLEFT", -padding + overlap, 0)
+                child:SetPoint("BOTTOMRIGHT", parent, "BOTTOMLEFT", -padding, 0)
             else
-                child:SetPoint("RIGHT", parent, "LEFT", -padding + overlap, 0)
+                child:SetPoint("RIGHT", parent, "LEFT", -padding, 0)
             end
         elseif edge == "RIGHT" then
             if align == "TOP" then
-                child:SetPoint("TOPLEFT", parent, "TOPRIGHT", padding - overlap, 0)
+                child:SetPoint("TOPLEFT", parent, "TOPRIGHT", padding, 0)
             elseif align == "BOTTOM" then
-                child:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", padding - overlap, 0)
+                child:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", padding, 0)
             else
-                child:SetPoint("LEFT", parent, "RIGHT", padding - overlap, 0)
+                child:SetPoint("LEFT", parent, "RIGHT", padding, 0)
             end
         end
     end)
@@ -240,7 +250,7 @@ end
 
 function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, suppressApplySettings)
     if padding == nil then
-        padding = DEFAULT_PADDING -- Default 2px gap
+        padding = DEFAULT_PADDING
     end
 
     -- Prevent circular anchoring (checks full chain, not just immediate parent)
@@ -311,6 +321,12 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
         return false
     end
 
+    local pOpts = GetFrameOptions(parent)
+    if pOpts.mergeBorders then
+        HookChildVisibility(child, self)
+        HookParentVisibility(parent, self)
+    end
+
     if child.orbitPlugin then
         if child.orbitPlugin.UpdateLayout then
             child.orbitPlugin:UpdateLayout(child)
@@ -338,8 +354,9 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
     if self.anchors[child] then
         local oldAnchor = self.anchors[child]
 
-        if oldAnchor.syncOptions and oldAnchor.syncOptions.mergeBorders then
-            SetMergeBorderState(oldAnchor.parent, child, oldAnchor.edge, false, 0)
+        local pOpts = GetFrameOptions(oldAnchor.parent)
+        if pOpts.mergeBorders then
+            SetMergeBorderState(oldAnchor.parent, child, oldAnchor.edge, false)
         end
 
         self.anchors[child] = nil

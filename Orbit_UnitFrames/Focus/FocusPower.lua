@@ -84,7 +84,8 @@ function Plugin:OnLoad()
         options = options or {}
         local parent = options.parent or UIParent
         local globalSettings = Orbit.db.GlobalSettings or {}
-        local borderSize = globalSettings.BorderSize or 1
+        local scale = self:GetEffectiveScale() or 1
+        local borderSize = globalSettings.BorderSize or OrbitEngine.Pixel:Multiple(1, scale)
         local textureName = Plugin:GetSetting(SYSTEM_INDEX, "Texture") or globalSettings.Texture
         local width = self:GetWidth()
         local height = self:GetHeight()
@@ -107,10 +108,9 @@ function Plugin:OnLoad()
         Orbit.Skin:SkinBorder(preview, preview, borderSize)
 
         -- Power Bar
-        local inset = preview.borderPixelSize or OrbitEngine.Pixel:Multiple(borderSize, self:GetEffectiveScale() or 1)
         local bar = CreateFrame("StatusBar", nil, preview)
-        bar:SetPoint("TOPLEFT", inset, -inset)
-        bar:SetPoint("BOTTOMRIGHT", -inset, inset)
+        bar:SetPoint("TOPLEFT", 0, 0)
+        bar:SetPoint("BOTTOMRIGHT", 0, 0)
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(1)
         bar:SetFrameLevel(preview:GetFrameLevel() + 2)
@@ -191,7 +191,7 @@ function Plugin:OnLoad()
         end
     end)
 
-    Frame:SetScript("OnShow", function()
+    Frame:HookScript("OnShow", function()
         self:UpdateAll()
     end)
 

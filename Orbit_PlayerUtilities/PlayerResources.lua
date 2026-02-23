@@ -16,6 +16,9 @@ local INACTIVE_DIM_FACTOR = 0.5
 local PARTIAL_DIM_FACTOR = 0.7
 local OVERLAY_LEVEL_OFFSET = 20
 local PREVIEW_BAR_FILL = 0.65
+local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
+local TICK_SIZE_MAX = OrbitEngine.TickMixin.TICK_SIZE_MAX
+local TICK_ALPHA_CURVE = OrbitEngine.TickMixin.TICK_ALPHA_CURVE
 local OVERLAY_BLEND_ALPHA = 0.3
 local OVERLAY_TEXTURE = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
 local DK_SPEC_BLOOD = 250
@@ -36,7 +39,7 @@ local CONTINUOUS_RESOURCE_CONFIG = {
             return ResourceMixin:GetStaggerState()
         end,
         updateText = function(text, current)
-            text:SetFormattedText("%.0f", current)
+            text:SetText(current)
         end,
     },
     SOUL_FRAGMENTS = {
@@ -54,7 +57,7 @@ local CONTINUOUS_RESOURCE_CONFIG = {
             return ResourceMixin:GetEbonMightState()
         end,
         updateText = function(text, current)
-            text:SetFormattedText("%.1f", current)
+            text:SetText(current)
         end,
     },
     MANA = {
@@ -74,6 +77,7 @@ local CONTINUOUS_RESOURCE_CONFIG = {
     MAELSTROM_WEAPON = {
         curveKey = "MaelstromWeaponColorCurve",
         dividers = true,
+        maxDividers = 10,
         getState = function()
             return ResourceMixin:GetMaelstromWeaponState()
         end,
@@ -82,10 +86,11 @@ local CONTINUOUS_RESOURCE_CONFIG = {
                 text:SetText("0")
                 return
             end
-            local count = auraInstanceID
-                and C_UnitAuras.GetAuraApplicationDisplayCount
-                and tonumber(C_UnitAuras.GetAuraApplicationDisplayCount("player", auraInstanceID))
-            text:SetText((count and count > 0) and count or 1)
+            if auraInstanceID and C_UnitAuras.GetAuraApplicationDisplayCount then
+                text:SetText(C_UnitAuras.GetAuraApplicationDisplayCount("player", auraInstanceID))
+            else
+                text:SetText("1")
+            end
         end,
     },
 }
@@ -126,6 +131,8 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         OutOfCombatFade = false,
         ShowOnMouseover = true,
         SmoothAnimation = true,
+        FrequentUpdates = false,
+        TickSize = TICK_SIZE_DEFAULT,
         ComponentPositions = {
             Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
         },
@@ -172,6 +179,20 @@ function Plugin:AddSettings(dialog, systemFrame)
                 self:ApplySettings()
             end,
         })
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "TickSize",
+            label = "Tick",
+            min = 0,
+            max = TICK_SIZE_MAX,
+            step = 2,
+            default = TICK_SIZE_DEFAULT,
+            tooltip = "Width of the leading-edge tick mark (0 = hidden)",
+            onChange = function(val)
+                self:SetSetting(SYSTEM_INDEX, "TickSize", val)
+                self:ApplySettings()
+            end,
+        })
     elseif currentTab == "Visibility" then
         WL:AddOpacitySettings(self, schema, SYSTEM_INDEX, systemFrame)
         table.insert(schema.controls, {
@@ -211,6 +232,17 @@ function Plugin:AddSettings(dialog, systemFrame)
             tooltip = "Smoothly animate bar value changes",
             onChange = function(val)
                 self:SetSetting(SYSTEM_INDEX, "SmoothAnimation", val)
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "FrequentUpdates",
+            label = "Frequent Updates",
+            default = false,
+            tooltip = "Update resource bar every frame instead of on server ticks (smoother continuous bars)",
+            onChange = function(val)
+                self:SetSetting(SYSTEM_INDEX, "FrequentUpdates", val)
+                self:RefreshFrequentUpdates()
             end,
         })
     elseif currentTab == "Colour" then
@@ -381,36 +413,53 @@ function Plugin:OnLoad()
                 end
 
                 local divMax = MAX_SPACER_COUNT
-                local snappedSpacing = PixelMultiple(spacing, scale)
+                local logicalGap = OrbitEngine.Pixel:Multiple(spacing, scale)
+                local exactWidth = (width - (logicalGap * (divMax - 1))) / divMax
+                local snappedWidth = OrbitEngine.Pixel:Snap(exactWidth, scale)
+
+                local currentLeft = 0
+
                 for i = 1, divMax - 1 do
+                    currentLeft = currentLeft + snappedWidth
+
                     local sp = bar:CreateTexture(nil, "OVERLAY", nil, 7)
                     sp:SetColorTexture(0, 0, 0, 1)
-                    sp:SetWidth(snappedSpacing)
-                    sp:SetHeight(height)
-                    local leftPos = math.floor(width * (i / divMax) * scale) / scale
-                    sp:SetPoint("LEFT", container, "LEFT", leftPos, 0)
-                    OrbitEngine.Pixel:Enforce(sp)
+                    sp:SetSize(logicalGap, height)
+                    
+                    local logicalLeft = OrbitEngine.Pixel:Snap(currentLeft, scale)
+                    sp:SetPoint("LEFT", container, "LEFT", logicalLeft, 0)
+                    
+                    if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(sp) end
+                    
+                    currentLeft = currentLeft + logicalGap
                 end
             end
         else
             local max = self.maxPower or 5
-            local snappedWidth = SnapToPixel(width, scale)
-            local snappedHeight = SnapToPixel(height, scale)
-            local snappedSpacing = PixelMultiple(spacing, scale)
-            local usableWidth = snappedWidth - ((max - 1) * snappedSpacing)
+            local snappedHeight = OrbitEngine.Pixel:Snap(height, scale)
             local previewActive = math.max(1, max - 1)
+
+            local logicalGap = OrbitEngine.Pixel:Multiple(spacing, scale)
+            local exactWidth = (width - (logicalGap * (max - 1))) / max
+            local snappedWidth = OrbitEngine.Pixel:Snap(exactWidth, scale)
+
+            local currentLeft = 0
 
             preview.buttons = {}
             for i = 1, max do
-                local btnUsableWidth = usableWidth / max
-                local leftPos = SnapToPixel((i - 1) * (btnUsableWidth + snappedSpacing), scale)
-                local rightPos = (i == max) and snappedWidth or SnapToPixel(i * (btnUsableWidth + snappedSpacing) - snappedSpacing, scale)
-                local btnWidth = rightPos - leftPos
+                local logicalLeft = OrbitEngine.Pixel:Snap(currentLeft, scale)
 
                 local btn = CreateFrame("Frame", nil, preview)
-                btn:SetSize(btnWidth, snappedHeight)
-                btn:SetPoint("LEFT", preview, "LEFT", leftPos, 0)
+                btn:SetPoint("LEFT", preview, "LEFT", logicalLeft, 0)
+                btn:SetSize(snappedWidth, height)
+                
                 Orbit.Skin.ClassBar:SkinButton(btn, { borderSize = borderSize, texture = texture, backColor = bgColor })
+                
+                if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(btn) end
+                
+                currentLeft = currentLeft + snappedWidth + logicalGap
+                
+                currentPxLeft = currentPxRight + gapPixels
 
                 local color = Plugin:GetResourceColor(i, max)
                 if color and btn.orbitBar then
@@ -478,43 +527,47 @@ function Plugin:OnLoad()
 
     -- Create StatusBar container for continuous resources (Stagger, Soul Fragments, Ebon Might)
     if not Frame.StatusBarContainer then
-        -- Container with backdrop for border
-        Frame.StatusBarContainer = CreateFrame("Frame", nil, Frame, "BackdropTemplate")
+        Frame.StatusBarContainer = CreateFrame("Frame", nil, Frame)
         Frame.StatusBarContainer:SetAllPoints()
-        Frame.StatusBarContainer:SetBackdrop(nil)
 
-        -- StatusBar itself
         Frame.StatusBar = CreateFrame("StatusBar", nil, Frame.StatusBarContainer)
-        Frame.StatusBar:SetPoint("TOPLEFT", 1, -1)
-        Frame.StatusBar:SetPoint("BOTTOMRIGHT", -1, 1)
+        Frame.StatusBar:SetPoint("TOPLEFT")
+        Frame.StatusBar:SetPoint("BOTTOMRIGHT")
         Frame.StatusBar:SetMinMaxValues(0, 1)
         Frame.StatusBar:SetValue(0)
         Frame.StatusBar:SetStatusBarTexture(LSM:Fetch("statusbar", "Melli"))
+        Frame.orbitBar = Frame.StatusBar
 
-        -- Apply default border using ClassBar skin (creates orbitBg for background)
-        Orbit.Skin.ClassBar:SkinStatusBar(Frame.StatusBarContainer, Frame.StatusBar, {
-            borderSize = 1,
-            texture = "Melli",
-        })
+        if not Frame.bg then
+            Frame.bg = Frame:CreateTexture(nil, "BACKGROUND")
+            Frame.bg:SetAllPoints()
+            local c = Orbit.Constants.Colors.Background
+            Frame.bg:SetColorTexture(c.r, c.g, c.b, c.a or 0.9)
+        end
 
         OrbitEngine.Pixel:Enforce(Frame)
-        OrbitEngine.Pixel:Enforce(Frame.StatusBarContainer)
         OrbitEngine.Pixel:Enforce(Frame.StatusBar)
+
+        Frame.Spacers = {}
+        for i = 1, MAX_SPACER_COUNT do
+            Frame.Spacers[i] = Frame.StatusBar:CreateTexture(nil, "OVERLAY", nil, 7)
+            Frame.Spacers[i]:SetColorTexture(0, 0, 0, 1)
+            Frame.Spacers[i]:Hide()
+        end
     end
 
-    -- Support for mergeBorders (propagate to StatusBarContainer if active)
-    local originalSetBorderHidden = Frame.SetBorderHidden
-    Frame.SetBorderHidden = function(self, edge, hidden)
-        if originalSetBorderHidden then
-            originalSetBorderHidden(self, edge, hidden)
-        end
-        if self.StatusBarContainer and self.StatusBarContainer.Borders then
-            local border = self.StatusBarContainer.Borders[edge]
-            if border then
-                border:SetShown(not hidden)
-            end
-        end
+    -- Tick mark (geometry-clipped, secret-safe)
+    if not Frame.TickBar then
+        OrbitEngine.TickMixin:Create(Frame, Frame.StatusBar)
     end
+
+    Frame:HookScript("OnSizeChanged", function()
+        Orbit.Async:Debounce("PlayerResources_SpacerLayout", function()
+            if Frame.maxPower then Plugin:RepositionSpacers(Frame.maxPower) end
+        end, 0.05)
+    end)
+
+
 
     self:ApplySettings()
 
@@ -528,6 +581,8 @@ function Plugin:OnLoad()
     Frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
     Frame:RegisterUnitEvent("UNIT_MAXHEALTH", "player")
     Frame:RegisterUnitEvent("UNIT_AURA", "player")
+
+    self:RefreshFrequentUpdates()
 
     Frame:RegisterEvent("PET_BATTLE_OPENING_START")
     Frame:RegisterEvent("PET_BATTLE_CLOSE")
@@ -546,7 +601,7 @@ function Plugin:OnLoad()
         elseif event == "UNIT_MAXPOWER" and unit == "player" then
             self:UpdateMaxPower()
             self:UpdatePower()
-        elseif event == "UNIT_POWER_UPDATE" and unit == "player" then
+        elseif (event == "UNIT_POWER_UPDATE" or event == "UNIT_POWER_FREQUENT") and unit == "player" then
             if powerType == self.powerTypeName then
                 self:UpdatePower()
             end
@@ -589,6 +644,15 @@ function Plugin:OnLoad()
 
     self:UpdatePowerType()
     self:UpdatePower()
+end
+
+function Plugin:RefreshFrequentUpdates()
+    if not Frame then return end
+    if self:GetSetting(SYSTEM_INDEX, "FrequentUpdates") then
+        Frame:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+    else
+        Frame:UnregisterEvent("UNIT_POWER_FREQUENT")
+    end
 end
 
 -- [ SETTINGS APPLICATION ]-------------------------------------------------------------------------
@@ -693,12 +757,13 @@ function Plugin:ApplySettings()
             bgColor = OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve)
         end
 
-        Orbit.Skin.ClassBar:SkinStatusBar(Frame.StatusBarContainer, Frame.StatusBar, {
-            borderSize = borderSize,
-            texture = texture,
-            backColor = bgColor,
-        })
+        Orbit.Skin:SkinStatusBar(Frame.StatusBar, texture, nil, true)
+        Frame:SetBorder(borderSize)
+        Orbit.Skin:ApplyGradientBackground(Frame, Orbit.db.GlobalSettings.BackdropColourCurve, bgColor or Orbit.Constants.Colors.Background)
     end
+
+    local tickSize = self:GetSetting(SYSTEM_INDEX, "TickSize") or TICK_SIZE_DEFAULT
+    OrbitEngine.TickMixin:Apply(Frame, tickSize, height)
 
     -- 2. Restore Position (must happen AFTER layout for anchored frames)
     OrbitEngine.Frame:RestorePosition(Frame, self, SYSTEM_INDEX)
@@ -729,7 +794,7 @@ function Plugin:ApplyButtonVisuals()
         return
     end
 
-    local borderSize = (Frame.settings and Frame.settings.borderSize) or 1
+    local borderSize = (Frame.settings and Frame.settings.borderSize) or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, Frame:GetEffectiveScale() or 1) or 1)
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
 
     local max = math.max(1, Frame.maxPower or #Frame.buttons)
@@ -861,7 +926,9 @@ function Plugin:UpdatePowerType()
         self.powerType = nil
         self.powerTypeName = nil
 
-        -- Switch to continuous mode
+        local cfg = CONTINUOUS_RESOURCE_CONFIG[continuousResource]
+        Frame.maxPower = (cfg and cfg.maxDividers) or 0
+
         self:SetContinuousMode(true)
         Frame:SetScript("OnUpdate", Frame.onUpdateHandler)
         Frame.orbitDisabled = false
@@ -907,6 +974,7 @@ function Plugin:SetContinuousMode(isContinuous)
         if Frame.StatusBarContainer then
             Frame.StatusBarContainer:Show()
         end
+        OrbitEngine.TickMixin:Show(Frame)
 
         for _, btn in ipairs(Frame.buttons or {}) do
             btn:Hide()
@@ -923,6 +991,7 @@ function Plugin:SetContinuousMode(isContinuous)
         if Frame.StatusBarContainer then
             Frame.StatusBarContainer:Hide()
         end
+        OrbitEngine.TickMixin:Hide(Frame)
         -- Buttons will be shown by UpdateMaxPower
     end
 end
@@ -1003,47 +1072,43 @@ function Plugin:UpdateMaxPower()
 end
 
 -- [ SPACER REPOSITIONING ]-------------------------------------------------------------------------
-function Plugin:RepositionSpacers(max)
-    if not Frame or not Frame.Spacers then
-        return
-    end
+function Plugin:RepositionSpacers(max, edges)
+    if not Frame or not Frame.Spacers then return end
 
     local spacerWidth = (Frame.settings and Frame.settings.spacing) or 0
-    local hideAll = (not max or max <= 1 or spacerWidth <= 0)
-
-    if hideAll then
-        for _, s in ipairs(Frame.Spacers) do
-            s:Hide()
-        end
+    if not max or max <= 1 or spacerWidth <= 0 then
+        for _, s in ipairs(Frame.Spacers) do s:Hide() end
         return
-    end
-
-    local totalWidth = Frame:GetWidth()
-    if totalWidth < 10 and Frame.settings then
-        totalWidth = Frame.settings.width or 200
     end
 
     local scale = Frame:GetEffectiveScale()
-    if not scale or scale < 0.01 then
-        scale = 1
-    end
+    if not scale or scale < 0.01 then scale = 1 end
 
-    local snappedSpacerWidth = PixelMultiple(spacerWidth, scale)
-    local snappedTotalWidth = SnapToPixel(totalWidth, scale)
+    local totalWidth = Frame:GetWidth()
+    if totalWidth < 10 then totalWidth = (Frame.settings and Frame.settings.width) or 200 end
+
+    local logicalGap = PixelMultiple(spacerWidth, scale)
+    local exactWidth = (totalWidth - (logicalGap * (max - 1))) / max
+    local snappedWidth = SnapToPixel(exactWidth, scale)
+
+    local currentLeft = 0
+    local edges = {}
+    for i = 1, max - 1 do
+        currentLeft = currentLeft + snappedWidth
+        edges[i] = SnapToPixel(currentLeft, scale)
+        currentLeft = currentLeft + logicalGap
+    end
 
     for i = 1, MAX_SPACER_COUNT do
         local sp = Frame.Spacers[i]
         if sp then
-            if i < max then
+            if i < max and edges[i] then
                 sp:Show()
                 sp:ClearAllPoints()
-                sp:SetWidth(snappedSpacerWidth)
-                sp:SetHeight(Frame:GetHeight())
-                local leftPos = math.floor(snappedTotalWidth * (i / max) * scale) / scale
-                sp:SetPoint("LEFT", Frame, "LEFT", leftPos, 0)
-                if OrbitEngine.Pixel then
-                    OrbitEngine.Pixel:Enforce(sp)
-                end
+                sp:SetSize(logicalGap, Frame:GetHeight())
+                -- Draw the overlay exactly at the mathematically perfect left border map:
+                sp:SetPoint("LEFT", Frame, "LEFT", edges[i], 0)
+                if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(sp) end
             else
                 sp:Hide()
             end
@@ -1052,67 +1117,49 @@ function Plugin:RepositionSpacers(max)
 end
 
 function Plugin:UpdateLayout(frame)
-    if not Frame then
-        return
-    end
+    if not Frame then return end
     local buttons = Frame.buttons or {}
-    local max = Frame.maxPower or 5
-    if max == 0 then
-        return
-    end
+    local max = Frame.maxPower
+    if not max or max == 0 then return end
 
     local settings = Frame.settings or {}
-
-    -- When anchored, Width is set by Anchor engine, so we use current width
     local totalWidth = Frame:GetWidth()
-
-    -- If effectively zero or hidden, use settings default for initial calc
-    if totalWidth < 10 then
-        totalWidth = settings.width or 200
-    end
+    if totalWidth < 10 then totalWidth = settings.width or 200 end
 
     local height = settings.height or 15
     local spacing = settings.spacing or 2
-
-    -- Pixel snapping
     local scale = Frame:GetEffectiveScale() or 1
-
-    -- Snap values
-    local snappedTotalWidth = SnapToPixel(totalWidth, scale)
+    
     local snappedHeight = SnapToPixel(height, scale)
-    local snappedSpacing = PixelMultiple(spacing, scale)
-
-    -- Physical Updates
     Frame:SetHeight(snappedHeight)
-    local usableWidth = snappedTotalWidth - ((max - 1) * snappedSpacing)
+
+    local logicalGap = PixelMultiple(spacing, scale)
+    local exactWidth = (totalWidth - (logicalGap * (max - 1))) / max
+    local snappedWidth = SnapToPixel(exactWidth, scale)
+
+    local currentLeft = 0
 
     for i = 1, max do
         local btn = buttons[i]
         if btn then
-            local btnUsableWidth = usableWidth / max
-            local leftPos = SnapToPixel((i - 1) * (btnUsableWidth + snappedSpacing), scale)
-            local rightPos
-            if i == max then
-                rightPos = snappedTotalWidth
-            else
-                rightPos = SnapToPixel(i * (btnUsableWidth + snappedSpacing) - snappedSpacing, scale)
-            end
+            local logicalLeft = SnapToPixel(currentLeft, scale)
 
-            local btnWidth = rightPos - leftPos
-
-            btn:SetSize(btnWidth, snappedHeight)
             btn:ClearAllPoints()
-            btn:SetPoint("LEFT", Frame, "LEFT", leftPos, 0)
-
-            -- Apply Pixel:Enforce
-            if OrbitEngine.Pixel then
-                OrbitEngine.Pixel:Enforce(btn)
-            end
+            btn:SetPoint("LEFT", Frame, "LEFT", logicalLeft, 0)
+            btn:SetSize(snappedWidth, snappedHeight)
+            
+            if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(btn) end
+            
+            currentLeft = currentLeft + snappedWidth + logicalGap
         end
     end
 
-    self:RepositionSpacers(max)
+    -- Cleanup old math-based Dividers
+    if Frame.Dividers then
+        for _, d in pairs(Frame.Dividers) do d:Hide() end
+    end
 end
+
 
 function Plugin:UpdateContinuousBar(curveKey, current, max)
     if not Frame.StatusBar then
@@ -1121,6 +1168,10 @@ function Plugin:UpdateContinuousBar(curveKey, current, max)
     Frame.StatusBar:SetMinMaxValues(0, max)
     local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
     Frame.StatusBar:SetValue(current, smoothing)
+    OrbitEngine.TickMixin:Update(Frame, current, max, smoothing)
+    if Frame.TickMark and self.continuousResource == "MANA" and TICK_ALPHA_CURVE and CanUseUnitPowerPercent then
+        Frame.TickMark:SetAlpha(UnitPowerPercent("player", Enum.PowerType.Mana, false, TICK_ALPHA_CURVE))
+    end
     local curveData = self:GetSetting(SYSTEM_INDEX, curveKey)
     if not curveData then
         return

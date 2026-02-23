@@ -41,9 +41,7 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
         if pos and pos.point then
             local x, y = pos.x, pos.y
             if Engine.Pixel then
-                local scale = frame:GetEffectiveScale()
-                x = Engine.Pixel:Snap(x, scale)
-                y = Engine.Pixel:Snap(y, scale)
+                x, y = Engine.Pixel:SnapPosition(x, y, pos.point, frame:GetWidth(), frame:GetHeight(), frame:GetEffectiveScale())
             end
             frame:ClearAllPoints()
             frame:SetPoint(pos.point, x, y)
@@ -66,9 +64,7 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
     if pos and pos.point then
         local x, y = pos.x, pos.y
         if Engine.Pixel then
-            local scale = frame:GetEffectiveScale()
-            x = Engine.Pixel:Snap(x, scale)
-            y = Engine.Pixel:Snap(y, scale)
+            x, y = Engine.Pixel:SnapPosition(x, y, pos.point, frame:GetWidth(), frame:GetHeight(), frame:GetEffectiveScale())
         end
         frame:ClearAllPoints()
         frame:SetPoint(pos.point, x, y)
@@ -80,9 +76,7 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
         local x = frame.defaultPosition.x
         local y = frame.defaultPosition.y
         if Engine.Pixel then
-            local scale = frame:GetEffectiveScale()
-            x = Engine.Pixel:Snap(x, scale)
-            y = Engine.Pixel:Snap(y, scale)
+            x, y = Engine.Pixel:SnapPosition(x, y, frame.defaultPosition.point, frame:GetWidth(), frame:GetHeight(), frame:GetEffectiveScale())
         end
 
         frame:ClearAllPoints()

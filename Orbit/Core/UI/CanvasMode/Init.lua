@@ -24,7 +24,13 @@ CanvasMode.Constants = {
     -- Viewport
     VIEWPORT_PADDING = 20,
     FOOTER_HEIGHT = 55,
-    TITLE_HEIGHT = 40,
+    TITLE_HEIGHT = 64,
+    TITLE_HEIGHT_NO_TABS = 40,
+
+    -- Filter tabs
+    FILTER_TAB_HEIGHT = 24,
+    FILTER_TAB_SPACING = 4,
+    FILTER_TAB_TOP_OFFSET = -43.5,
 
     -- Dock
     DOCK_HEIGHT = 60,
@@ -103,6 +109,9 @@ Dialog.disabledComponentKeys = {}
 
 -- Preview components reference
 Dialog.previewComponents = {}
+
+-- Filter tab state
+Dialog.activeFilter = "All"
 
 -- [ EXPORT ]-------------------------------------------------------------------------------------
 

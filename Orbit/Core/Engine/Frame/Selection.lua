@@ -194,9 +194,10 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     -- Create anchor line textures
     local lineThickness = C.Selection.AnchorLineThickness
 
-    local lineContainer = CreateFrame("Frame", nil, UIParent)
-    lineContainer:SetFrameStrata("FULLSCREEN_DIALOG")
-    lineContainer:SetFrameLevel(9999)
+    local anchorLineLevelOffset = 10
+    local lineContainer = CreateFrame("Frame", nil, selection)
+    lineContainer:SetFrameStrata("DIALOG")
+    lineContainer:SetFrameLevel(selection:GetFrameLevel() + anchorLineLevelOffset)
     lineContainer:SetAllPoints(selection)
     selection.AnchorLineFrame = lineContainer
 
@@ -280,27 +281,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
             return
         end
 
-        -- Edge-aware anchor selection
-        local anchor = "ANCHOR_TOP"
-        local selfTop = self:GetTop()
-        local selfRight = self:GetRight()
-        local screenHeight = GetScreenHeight()
-        local screenWidth = GetScreenWidth()
-
-        -- If too close to top, anchor below instead
-        if selfTop and screenHeight and selfTop > (screenHeight * 0.85) then
-            anchor = "ANCHOR_BOTTOM"
-        end
-        -- If too close to right edge, flip to left-anchored variant
-        if selfRight and screenWidth and selfRight > (screenWidth * 0.85) then
-            if anchor == "ANCHOR_TOP" then
-                anchor = "ANCHOR_TOPLEFT"
-            else
-                anchor = "ANCHOR_BOTTOMLEFT"
-            end
-        end
-
-        GameTooltip:SetOwner(self, anchor)
+        GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT")
         GameTooltip:AddLine(self:GetLabelText(), 1, 0.82, 0)
         GameTooltip:AddLine(EDIT_MODE_CLICK_TO_EDIT, 1, 1, 1)
 

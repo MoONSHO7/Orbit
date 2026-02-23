@@ -137,7 +137,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
     local isCanvasMode = IsCanvasModeActive(self)
     local width = self:GetSetting(1, "Width") or Helpers.LAYOUT.DefaultWidth
     local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
-    local borderSize = self:GetSetting(1, "BorderSize") or 1
+    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, self.container:GetEffectiveScale() or 1) or 1)
     local showHealerPower = self:GetSetting(1, "ShowPowerBar")
     if showHealerPower == nil then showHealerPower = true end
     local textureName = self:GetSetting(1, "Texture")
@@ -178,6 +178,8 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                     if classColor then frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b) end
                 end
                 frame.Health:Show()
+                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
+                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
             -- [ Power Bar ]-------------------------------------------------------------------------
@@ -256,6 +258,16 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 else frame.LeaderIcon:Hide() end
             end
 
+            -- [ Main Tank Icon ]--------------------------------------------------------------------
+            if frame.MainTankIcon then
+                if isDisabled("MainTankIcon") then frame.MainTankIcon:Hide()
+                elseif isCanvasMode or (PREVIEW_ROLES[dataIdx] == "TANK" and i <= 2) then
+                    frame.MainTankIcon:SetAtlas(i == 1 and "RaidFrame-Icon-MainTank" or "RaidFrame-Icon-MainAssist")
+                    frame.MainTankIcon:Show()
+                    if componentPositions.MainTankIcon then ApplyIconPosition(frame.MainTankIcon, frame, componentPositions.MainTankIcon) end
+                else frame.MainTankIcon:Hide() end
+            end
+
             -- [ Selection / Aggro ]-----------------------------------------------------------------
             if frame.SelectionHighlight then
                 if i == 2 then frame.SelectionHighlight:Show() else frame.SelectionHighlight:Hide() end
@@ -276,7 +288,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                         frame[key]:SetSize(CANVAS_ICON_SIZE, CANVAS_ICON_SIZE)
                         if not savedPositions[key] then
                             frame[key]:ClearAllPoints()
-                            frame[key]:SetPoint("CENTER", frame, "CENTER", CANVAS_ICON_SPACING * (idx - 2.5), 0)
+                            frame[key]:SetPoint("CENTER", frame, "CENTER", Orbit.Engine.Pixel:Snap(CANVAS_ICON_SPACING * (idx - 2.5), frame:GetEffectiveScale()), 0)
                         end
                         frame[key]:Show()
                     end
@@ -286,16 +298,19 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                     { key = "DefensiveIcon", anchor = "LEFT", xMul = 0.5 },
                     { key = "ImportantIcon", anchor = "RIGHT", xMul = -0.5 },
                     { key = "CrowdControlIcon", anchor = "TOP", yMul = -0.5 },
+                    { key = "PrivateAuraAnchor", anchor = "BOTTOM", yMul = 0.5 },
                 }
                 for _, entry in ipairs(auraIconEntries) do
                     local btn = frame[entry.key]
                     if btn and not isDisabled(entry.key) then
-                        btn.Icon:SetTexture(Orbit.StatusIconMixin["Get" .. entry.key:gsub("Icon$", "") .. "Texture"](Orbit.StatusIconMixin))
+                        local texMethod = entry.key == "PrivateAuraAnchor" and "GetPrivateAuraTexture"
+                            or ("Get" .. entry.key:gsub("Icon$", "") .. "Texture")
+                        btn.Icon:SetTexture(Orbit.StatusIconMixin[texMethod](Orbit.StatusIconMixin))
                         btn:SetSize(CANVAS_ICON_SIZE, CANVAS_ICON_SIZE)
                         if not savedPositions[entry.key] then
                             btn:ClearAllPoints()
-                            local xOff = (entry.xMul or 0) * (CANVAS_ICON_SIZE + 2)
-                            local yOff = (entry.yMul or 0) * (CANVAS_ICON_SIZE + 2)
+                            local xOff = OrbitEngine.Pixel:Snap((entry.xMul or 0) * (CANVAS_ICON_SIZE + 2), 1)
+                            local yOff = OrbitEngine.Pixel:Snap((entry.yMul or 0) * (CANVAS_ICON_SIZE + 2), 1)
                             btn:SetPoint("CENTER", frame, entry.anchor, xOff, yOff)
                         end
                         if Orbit.Skin and Orbit.Skin.Icons then
@@ -305,7 +320,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                     elseif btn then btn:Hide() end
                 end
             else
-                for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" }) do
+                for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "ImportantIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" }) do
                     if frame[key] then frame[key]:Hide() end
                 end
             end
@@ -493,7 +508,22 @@ function Orbit.RaidFramePreviewMixin:HidePreview()
                 for _, icon in ipairs(frame.previewBuffs) do icon:Hide() end
                 wipe(frame.previewBuffs)
             end
+            
+            -- Clear any private aura anchors that were generated
+            if frame._privateAuraIDs then
+                for _, id in ipairs(frame._privateAuraIDs) do 
+                    C_UnitAuras.RemovePrivateAuraAnchor(id) 
+                end
+                wipe(frame._privateAuraIDs)
+            end
+
             LCG.PixelGlow_Stop(frame, "preview")
+            if frame.HealthDamageBar then
+                frame.HealthDamageBar:Show()
+            end
+            if frame.HealthDamageTexture then
+                frame.HealthDamageTexture:Show()
+            end
         end
     end
 
