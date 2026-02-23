@@ -241,6 +241,10 @@ function Orbit:OnLoad()
 
     self:InitializePlugins()
 
+    if NSAPI and NSAPI.RegisterCallback and self.EventBus then
+        NSAPI:RegisterCallback("NSRT_NICKNAME_UPDATED", function() self.EventBus:Fire("ORBIT_NICKNAME_UPDATED") end, self)
+    end
+
     -- Listen for Screen Resolution changes (Pixel Perfect Border Update)
     if self.EventBus then
         self.EventBus:On("ORBIT_DISPLAY_SIZE_CHANGED", function()
