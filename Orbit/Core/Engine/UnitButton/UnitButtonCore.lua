@@ -26,6 +26,12 @@ function CoreMixin:OnLoad()
     self:RegisterEvent("UNIT_HEAL_PREDICTION")
     self:RegisterEvent("UNIT_PET")
 
+    if NSAPI and NSAPI.RegisterCallback then
+        NSAPI:RegisterCallback("NSRT_NICKNAME_UPDATED", function(_, all, unit)
+            if all or (unit and self.unit and UnitIsUnit(unit, self.unit)) then self:UpdateName() end
+        end, self)
+    end
+
     self:UpdateAll()
 end
 
