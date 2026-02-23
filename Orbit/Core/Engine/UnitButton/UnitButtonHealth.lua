@@ -18,7 +18,6 @@ function HealthMixin:UpdateHealth()
     local maxHealth = UnitHealthMax(self.unit)
 
     self.Health:SetMinMaxValues(0, maxHealth)
-
     if self.HealthDamageBar then self.HealthDamageBar:SetMinMaxValues(0, maxHealth) end
 
     self.Health:SetValue(health)
@@ -43,17 +42,21 @@ function HealthMixin:ApplyHealthColor()
 
     -- The paladin casts Detect Magic to determine the bar's true color
     local hasClassPin = Engine.WidgetLogic:CurveHasClassPin(globalBarCurve)
-    local nativeCurve = hasClassPin
-        and Engine.WidgetLogic:ToNativeColorCurveForUnit(globalBarCurve, self.unit)
-        or  Engine.WidgetLogic:ToNativeColorCurve(globalBarCurve)
+    local isGradient = #globalBarCurve.pins > 1
 
-    if nativeCurve and UnitHealthPercent and self.unit and UnitExists(self.unit) then
-        local tex = self.Health:GetStatusBarTexture()
-        if tex then
-            local ok, color = pcall(UnitHealthPercent, self.unit, true, nativeCurve)
-            if ok and color and color.GetRGBA then
-                tex:SetVertexColor(color:GetRGBA())
-                return
+    if isGradient then
+        local nativeCurve = hasClassPin
+            and Engine.WidgetLogic:ToNativeColorCurveForUnit(globalBarCurve, self.unit)
+            or  Engine.WidgetLogic:ToNativeColorCurve(globalBarCurve)
+
+        if nativeCurve and UnitHealthPercent and self.unit and UnitExists(self.unit) then
+            local tex = self.Health:GetStatusBarTexture()
+            if tex then
+                local ok, color = pcall(UnitHealthPercent, self.unit, true, nativeCurve)
+                if ok and color and color.GetRGBA then
+                    tex:SetVertexColor(color:GetRGBA())
+                    return
+                end
             end
         end
     end
@@ -61,8 +64,14 @@ function HealthMixin:ApplyHealthColor()
     local staticColor = hasClassPin
         and Engine.WidgetLogic:GetFirstColorFromCurveForUnit(globalBarCurve, self.unit)
         or  Engine.WidgetLogic:GetFirstColorFromCurve(globalBarCurve)
+    
     if staticColor then
-        self.Health:SetStatusBarColor(staticColor.r, staticColor.g, staticColor.b)
+        local tex = self.Health:GetStatusBarTexture()
+        if tex then
+            tex:SetVertexColor(staticColor.r, staticColor.g, staticColor.b, staticColor.a or 1)
+        else
+            self.Health:SetStatusBarColor(staticColor.r, staticColor.g, staticColor.b, staticColor.a or 1)
+        end
     end
 end
 

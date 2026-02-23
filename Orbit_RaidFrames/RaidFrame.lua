@@ -409,13 +409,13 @@ local function UpdatePrivateAuras(frame, plugin)
     for i = 1, MAX_PRIVATE_AURA_ANCHORS do
         local point, relPoint, xOff
         if anchorX == "RIGHT" then
-            xOff = -((i - 1) * (iconSize + spacing))
+            xOff = OrbitEngine.Pixel:Snap(-((i - 1) * (iconSize + spacing)), frame:GetEffectiveScale())
             point, relPoint = "TOPRIGHT", "TOPRIGHT"
         elseif anchorX == "LEFT" then
-            xOff = (i - 1) * (iconSize + spacing)
+            xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), frame:GetEffectiveScale())
             point, relPoint = "TOPLEFT", "TOPLEFT"
         else
-            xOff = (i - 1) * (iconSize + spacing)
+            xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), frame:GetEffectiveScale())
             point, relPoint = "TOPLEFT", "TOPLEFT"
         end
         local anchorID = C_UnitAuras.AddPrivateAuraAnchor({

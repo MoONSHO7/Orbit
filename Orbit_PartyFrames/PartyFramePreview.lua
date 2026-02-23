@@ -235,6 +235,8 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     end
                 end
                 frame.Health:Show()
+                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
+                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
             -- Apply texture and set up power bar (healers always show power bar)
@@ -825,6 +827,12 @@ function Orbit.PartyFramePreviewMixin:HidePreview()
         end
 
         LCG.PixelGlow_Stop(frame, "preview")
+        if frame.HealthDamageBar then
+            frame.HealthDamageBar:Show()
+        end
+        if frame.HealthDamageTexture then
+            frame.HealthDamageTexture:Show()
+        end
         if frame.UpdateAll then
             frame:UpdateAll()
         end

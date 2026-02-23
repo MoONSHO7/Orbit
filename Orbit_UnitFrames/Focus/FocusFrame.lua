@@ -140,6 +140,7 @@ function Plugin:OnLoad()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "focus", "OrbitFocusFrame")
     if self.frame.HealthDamageBar then
         self.frame.HealthDamageBar:Hide()
+        if self.frame.HealthDamageTexture then self.frame.HealthDamageTexture:Hide() end
         self.frame.HealthDamageBar = nil
     end
     self.frame.editModeName = "Focus Frame"

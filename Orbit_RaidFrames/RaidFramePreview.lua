@@ -178,6 +178,8 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                     if classColor then frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b) end
                 end
                 frame.Health:Show()
+                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
+                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
             -- [ Power Bar ]-------------------------------------------------------------------------
@@ -507,6 +509,12 @@ function Orbit.RaidFramePreviewMixin:HidePreview()
                 wipe(frame.previewBuffs)
             end
             LCG.PixelGlow_Stop(frame, "preview")
+            if frame.HealthDamageBar then
+                frame.HealthDamageBar:Show()
+            end
+            if frame.HealthDamageTexture then
+                frame.HealthDamageTexture:Show()
+            end
         end
     end
 

@@ -74,7 +74,7 @@ function UnitButton:Create(parent, unit, name)
     local bg = Orbit.Constants.Colors.Background
     f.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
 
-    -- Damage Bar (Red) - Behind the Health bar, shows "damage taken" chunk
+    -- Damage Bar Tracker (Invisible StatusBar for smooth decay)
     -- NOTE: Initial insets are 0. Consuming plugins MUST call frame:SetBorder(size) to apply proper insets.
     f.HealthDamageBar = CreateFrame("StatusBar", nil, f)
     f.HealthDamageBar:SetPoint("TOPLEFT", 0, 0)
@@ -82,12 +82,8 @@ function UnitButton:Create(parent, unit, name)
     f.HealthDamageBar:SetMinMaxValues(0, 1)
     f.HealthDamageBar:SetValue(1)
     f.HealthDamageBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
-    f.HealthDamageBar:SetStatusBarColor(0.8, 0.1, 0.1, 0.6) -- Dark Red, 60% Opacity
-    f.HealthDamageBar:SetFrameLevel(f:GetFrameLevel() + 1) -- Behind Health
-
-    -- Animation state for smooth interpolation
-    f.damageBarTarget = 0
-    f.damageBarAnimating = false
+    f.HealthDamageBar:SetStatusBarColor(0, 0, 0, 0) -- Invisible!
+    f.HealthDamageBar:SetFrameLevel(f:GetFrameLevel() + 1)
 
     -- NOTE: Initial insets are 0. Consuming plugins MUST call frame:SetBorder(size) to apply proper insets.
     f.Health = CreateFrame("StatusBar", nil, f)
@@ -98,7 +94,15 @@ function UnitButton:Create(parent, unit, name)
     f.Health:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
     f.Health:SetStatusBarColor(0, 1, 0)
     f.Health:SetClipsChildren(true) -- Clip children to prevent heal absorb shadow leaks at 0 value
-    f.Health:SetFrameLevel(f:GetFrameLevel() + 2) -- Above DamageBar
+    f.Health:SetFrameLevel(f:GetFrameLevel() + 2) -- Base health bar layer
+
+    -- Red Damage Chunk (Driven by the gap between Health and HealthDamageBar)
+    f.HealthDamageTexture = f.Health:CreateTexture(nil, "BACKGROUND")
+    f.HealthDamageTexture:SetColorTexture(0.8, 0.1, 0.1, 0.6) -- Dark Red, 60% Opacity
+    f.HealthDamageTexture:SetPoint("TOPLEFT", f.Health:GetStatusBarTexture(), "TOPRIGHT", 0, 0)
+    f.HealthDamageTexture:SetPoint("BOTTOMLEFT", f.Health:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
+    f.HealthDamageTexture:SetPoint("TOPRIGHT", f.HealthDamageBar:GetStatusBarTexture(), "TOPRIGHT", 0, 0)
+    f.HealthDamageTexture:SetPoint("BOTTOMRIGHT", f.HealthDamageBar:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
 
     -- Apply Overlay
     local overlayPath = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"

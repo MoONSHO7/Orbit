@@ -33,7 +33,7 @@ local CONTROL_BTN_SPACING = 1
 local RECHARGE_DIM = 0.35
 local DEFAULT_SPACING = 0
 local SEED_PLUS_RATIO = 0.4
-local TICK_SIZE_DEFAULT = 2
+local TICK_SIZE_DEFAULT = 6
 local TICK_SIZE_MAX = 6
 local TICK_OVERSHOOT = 2
 local TICK_LEVEL_BOOST = 10
@@ -824,7 +824,7 @@ function Plugin:UpdateChargeFrame(frame)
         return
     end
 
-    local smoothing = self:GetSetting(frame.systemIndex, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
+    local smoothing = self:GetSetting(frame.systemIndex, "SmoothAnimation") and SMOOTH_ANIM or nil
 
     for _, btn in ipairs(frame.buttons) do
         btn.Bar:SetValue(chargeInfo.currentCharges, smoothing)
@@ -868,7 +868,7 @@ function Plugin:StartChargeUpdateTicker()
         self.chargeUpdateFrame = CreateFrame("Frame")
     end
 
-    local useFrequent = self:GetSetting(CHARGE_BAR_INDEX, "FrequentUpdates")
+    local useFrequent = self:GetSetting(CHARGE_BAR_INDEX, "FrequentUpdates") ~= false
     
     if useFrequent then
         if self.chargeUpdateTicker then

@@ -382,6 +382,7 @@ local function CreateBossFrame(bossIndex, plugin)
     local frame = OrbitEngine.UnitButton:Create(UIParent, unit, frameName)
     if frame.HealthDamageBar then
         frame.HealthDamageBar:Hide()
+        if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
         frame.HealthDamageBar = nil
     end
     frame.editModeName = "Boss Frame " .. bossIndex

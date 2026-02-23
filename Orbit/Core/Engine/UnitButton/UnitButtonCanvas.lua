@@ -136,6 +136,11 @@ function CanvasMixin:UpdateBarInsets()
             self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, 0)
             self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, 0)
         end
+        if self.HealthBlocker then
+            self.HealthBlocker:ClearAllPoints()
+            self.HealthBlocker:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, 0)
+            self.HealthBlocker:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, 0)
+        end
         return
     end
 
@@ -156,11 +161,15 @@ function CanvasMixin:UpdateBarInsets()
         self.Health:SetPoint("TOPLEFT", iL, -iT)
         self.Health:SetPoint("BOTTOMRIGHT", -iR, iB)
     end
-
     if self.HealthDamageBar then
         self.HealthDamageBar:ClearAllPoints()
         self.HealthDamageBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, 0)
         self.HealthDamageBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, 0)
+    end
+    if self.HealthBlocker then
+        self.HealthBlocker:ClearAllPoints()
+        self.HealthBlocker:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, 0)
+        self.HealthBlocker:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, 0)
     end
 end
 

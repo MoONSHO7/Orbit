@@ -83,8 +83,7 @@ end
 local ApplyAnchorPosition
 
 local function IsChildVisible(child)
-    if not child:IsShown() then return false end
-    return (child._orbitAlpha or 1) > 0
+    return child:IsShown()
 end
 
 local function ApplyMergeBorders(child, anchorModule)
@@ -101,15 +100,10 @@ local function HookChildVisibility(child, anchorModule)
     child._orbitMergeBorderHooked = true
     child:HookScript("OnShow", function(self) ApplyMergeBorders(self, anchorModule) end)
     child:HookScript("OnHide", function(self) ApplyMergeBorders(self, anchorModule) end)
-    hooksecurefunc(child, "SetAlpha", function(self, alpha)
-        self._orbitAlpha = alpha
-        ApplyMergeBorders(self, anchorModule)
-    end)
 end
 
 local function IsParentVisible(parent)
-    if not parent:IsShown() then return false end
-    return (parent._orbitAlpha or 1) > 0
+    return parent:IsShown()
 end
 
 local function ReapplyChildrenMergeBorders(parent, anchorModule)
@@ -125,10 +119,6 @@ local function HookParentVisibility(parent, anchorModule)
     parent._orbitMergeParentHooked = true
     parent:HookScript("OnShow", function(self) ReapplyChildrenMergeBorders(self, anchorModule) end)
     parent:HookScript("OnHide", function(self) ReapplyChildrenMergeBorders(self, anchorModule) end)
-    hooksecurefunc(parent, "SetAlpha", function(self, alpha)
-        self._orbitAlpha = alpha
-        ReapplyChildrenMergeBorders(self, anchorModule)
-    end)
 end
 
 local function GetChainExtentForAlign(parent)

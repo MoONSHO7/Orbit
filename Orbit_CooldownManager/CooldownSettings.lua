@@ -42,7 +42,7 @@ function CDM:AddSettings(dialog, systemFrame)
                 onChange = function(val) self:SetSetting(systemIndex, "Spacing", val); self:LayoutChargeBars() end,
             })
             table.insert(schema.controls, {
-                type = "slider", key = "TickSize", label = "Tick", min = 0, max = 6, step = 2, default = 2,
+                type = "slider", key = "TickSize", label = "Tick", min = 0, max = 6, step = 2, default = 6,
                 tooltip = "Width of the leading-edge tick mark (0 = hidden)",
                 onChange = function(val) self:SetSetting(systemIndex, "TickSize", val); self:LayoutChargeBars() end,
             })
@@ -80,14 +80,14 @@ function CDM:AddSettings(dialog, systemFrame)
                 })
             end
             table.insert(schema.controls, {
-                type = "checkbox", key = "SmoothAnimation", label = "Smooth Animation", default = true,
+                type = "checkbox", key = "SmoothAnimation", label = "Smooth Animation", default = false,
                 tooltip = "Smoothly animate charge transitions",
                 onChange = function(val)
                     self:SetSetting(systemIndex, "SmoothAnimation", val)
                 end,
             })
             table.insert(schema.controls, {
-                type = "checkbox", key = "FrequentUpdates", label = "Frequent Updates", default = false,
+                type = "checkbox", key = "FrequentUpdates", label = "Frequent Updates", default = true,
                 tooltip = "Updates the charge bar every frame instead of interval ticks",
                 onChange = function(val)
                     self:SetSetting(systemIndex, "FrequentUpdates", val)

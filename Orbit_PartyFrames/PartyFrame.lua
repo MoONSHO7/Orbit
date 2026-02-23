@@ -601,7 +601,7 @@ local function UpdatePrivateAuras(frame, plugin)
     frame._privateAuraIDs = {}
     anchor:Show()
     for i = 1, MAX_PRIVATE_AURA_ANCHORS do
-        local xOff = OrbitEngine.Pixel:Snap((i - 1) * (PRIVATE_AURA_ICON_SIZE + 2), 1)
+        local xOff = OrbitEngine.Pixel:Snap((i - 1) * (PRIVATE_AURA_ICON_SIZE + 2), frame:GetEffectiveScale())
         local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
             unitToken = unit,
             auraIndex = i,
