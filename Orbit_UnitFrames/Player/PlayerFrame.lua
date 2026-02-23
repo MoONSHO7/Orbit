@@ -452,7 +452,7 @@ function Plugin:OnLoad()
             return
         elseif event == "PLAYER_TARGET_CHANGED" then
             local mf = self.mountedFrame
-            if mf and IsMounted() and mf.orbitHoverOverlay then
+            if mf and Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide() and mf.orbitHoverOverlay then
                 if UnitExists("target") then
                     mf.orbitTargetRevealed = true
                     mf.orbitMountedSuppressed = false

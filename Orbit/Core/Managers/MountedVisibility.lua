@@ -7,6 +7,8 @@ local MOUNTED_COMBAT_PREFIX = "[mounted,nocombat] hide; "
 local MOUNTED_ALWAYS_PREFIX = "[mounted] hide; "
 local OPEN_WORLD_INSTANCE_TYPES = { ["none"] = true, ["scenario"] = true }
 local REAPPLY_DELAY = 0.5
+local DRUID_TRAVEL_FORMS = { [DRUID_TRAVEL_FORM] = true, [DRUID_FLIGHT_FORM] = true }
+local function IsInDruidTravelForm() return DRUID_TRAVEL_FORMS[GetShapeshiftFormID()] == true end
 
 local BLIZZARD_HIDE_FRAMES = {
     "ObjectiveTrackerFrame", "BuffFrame", "DebuffFrame",
@@ -29,7 +31,7 @@ local NOOP = function() end
 local function IsMountedHideActive()
     if not Orbit.db or not Orbit.db.GlobalSettings or not Orbit.db.GlobalSettings.HideWhenMounted then return false end
     if Orbit.IsEditMode and Orbit:IsEditMode() then return false end
-    if not IsMounted() then return false end
+    if not IsMounted() and not IsInDruidTravelForm() then return false end
     local _, instanceType = IsInInstance()
     return OPEN_WORLD_INSTANCE_TYPES[instanceType] == true
 end
@@ -218,6 +220,7 @@ end
 -- [ EVENT REGISTRATION ]----------------------------------------------------------------------------
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_MOUNT_DISPLAY_CHANGED")
+eventFrame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
