@@ -508,6 +508,15 @@ function Orbit.RaidFramePreviewMixin:HidePreview()
                 for _, icon in ipairs(frame.previewBuffs) do icon:Hide() end
                 wipe(frame.previewBuffs)
             end
+            
+            -- Clear any private aura anchors that were generated
+            if frame._privateAuraIDs then
+                for _, id in ipairs(frame._privateAuraIDs) do 
+                    C_UnitAuras.RemovePrivateAuraAnchor(id) 
+                end
+                wipe(frame._privateAuraIDs)
+            end
+
             LCG.PixelGlow_Stop(frame, "preview")
             if frame.HealthDamageBar then
                 frame.HealthDamageBar:Show()

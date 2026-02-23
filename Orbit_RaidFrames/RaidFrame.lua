@@ -384,55 +384,68 @@ local function UpdatePrivateAuras(frame, plugin)
         anchor:Hide()
         return
     end
+
+    -- Clear preview visuals assigned during Canvas Mode
+    if anchor.Icon then anchor.Icon:SetTexture(nil) end
+    if anchor.SetBackdrop then anchor:SetBackdrop(nil) end
+    if anchor.Border then anchor.Border:Hide() end
+    if anchor.Shadow then anchor.Shadow:Hide() end
+
     local unit = frame.unit
     if not unit or not UnitExists(unit) then anchor:Hide() return end
-    if frame._privateAuraIDs then
-        for _, id in ipairs(frame._privateAuraIDs) do C_UnitAuras.RemovePrivateAuraAnchor(id) end
-    end
-    frame._privateAuraIDs = {}
 
-    local positions = plugin.GetSetting and plugin:GetSetting(1, "ComponentPositions") or {}
-    local posData = positions.PrivateAuraAnchor or {}
-    local overrides = posData.overrides
-    local scale = (overrides and overrides.Scale) or 1
-    local iconSize = math.floor(PRIVATE_AURA_ICON_SIZE * scale)
-    local spacing = 2
-    local totalWidth = (MAX_PRIVATE_AURA_ANCHORS * iconSize) + ((MAX_PRIVATE_AURA_ANCHORS - 1) * spacing)
-    local anchorX = posData.anchorX or "CENTER"
-
-    anchor:SetSize(totalWidth, iconSize)
-    anchor:Show()
-    if anchor.Icon then anchor.Icon:Hide() end
-    if Orbit.Skin and Orbit.Skin.Icons and Orbit.Skin.Icons.borderCache and Orbit.Skin.Icons.borderCache[anchor] then
-        Orbit.Skin.Icons.borderCache[anchor]:Hide()
-    end
-    for i = 1, MAX_PRIVATE_AURA_ANCHORS do
-        local point, relPoint, xOff
-        if anchorX == "RIGHT" then
-            xOff = OrbitEngine.Pixel:Snap(-((i - 1) * (iconSize + spacing)), frame:GetEffectiveScale())
-            point, relPoint = "TOPRIGHT", "TOPRIGHT"
-        elseif anchorX == "LEFT" then
-            xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), frame:GetEffectiveScale())
-            point, relPoint = "TOPLEFT", "TOPLEFT"
-        else
-            xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), frame:GetEffectiveScale())
-            point, relPoint = "TOPLEFT", "TOPLEFT"
+    -- Only recreate anchors if they haven't been created yet for this session/unit
+    -- Constantly removing and re-adding them on UNIT_AURA breaks the native timeout UI
+    if not frame._privateAuraIDs or frame._privateAuraUnit ~= unit then
+        if frame._privateAuraIDs then
+            for _, id in ipairs(frame._privateAuraIDs) do 
+                C_UnitAuras.RemovePrivateAuraAnchor(id) 
+            end
         end
-        local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
-            unitToken = unit,
-            auraIndex = i,
-            parent = anchor,
-            showCountdownFrame = true,
-            showCountdownNumbers = true,
-            iconInfo = {
-                iconWidth = iconSize,
-                iconHeight = iconSize,
-                iconAnchor = { point = point, relativeTo = anchor, relativePoint = relPoint, offsetX = xOff, offsetY = 0 },
-                borderScale = 1,
-            },
-        })
-        if anchorID then table.insert(frame._privateAuraIDs, anchorID) end
+        frame._privateAuraIDs = {}
+        frame._privateAuraUnit = unit
+
+        local positions = plugin.GetSetting and plugin:GetSetting(1, "ComponentPositions") or {}
+        local posData = positions.PrivateAuraAnchor or {}
+        local overrides = posData.overrides
+        local scale = (overrides and overrides.Scale) or 1
+        local iconSize = math.floor(PRIVATE_AURA_ICON_SIZE * scale)
+        local spacing = 2
+        local totalWidth = (MAX_PRIVATE_AURA_ANCHORS * iconSize) + ((MAX_PRIVATE_AURA_ANCHORS - 1) * spacing)
+        local anchorX = posData.anchorX or "CENTER"
+
+        anchor:SetSize(totalWidth, iconSize)
+        
+        for i = 1, MAX_PRIVATE_AURA_ANCHORS do
+            local point, relPoint, xOff
+            if anchorX == "RIGHT" then
+                xOff = OrbitEngine.Pixel:Snap(-((i - 1) * (iconSize + spacing)), frame:GetEffectiveScale())
+                point, relPoint = "TOPRIGHT", "TOPRIGHT"
+            elseif anchorX == "LEFT" then
+                xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), frame:GetEffectiveScale())
+                point, relPoint = "TOPLEFT", "TOPLEFT"
+            else
+                xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), frame:GetEffectiveScale())
+                point, relPoint = "TOPLEFT", "TOPLEFT"
+            end
+            local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
+                unitToken = unit,
+                auraIndex = i,
+                parent = anchor,
+                showCountdownFrame = true,
+                showCountdownNumbers = true,
+                iconInfo = {
+                    iconWidth = iconSize,
+                    iconHeight = iconSize,
+                    iconAnchor = { point = point, relativeTo = anchor, relativePoint = relPoint, offsetX = xOff, offsetY = 0 },
+                    borderScale = 1,
+                },
+            })
+            if anchorID then table.insert(frame._privateAuraIDs, anchorID) end
+        end
     end
+
+    anchor:Show()
 end
 
 -- [ STATUS INDICATOR WRAPPERS ]---------------------------------------------------------------------

@@ -345,16 +345,14 @@ local function UpdateDebuffs(frame, plugin)
 
     local allDebuffs = plugin:FetchAuras(unit, "HARMFUL", 40)
 
-    local inCombat = UnitAffectingCombat("player")
-    local raidFilter = inCombat and "HARMFUL|RAID_IN_COMBAT" or "HARMFUL"
     local excludeCC = not (plugin.IsComponentDisabled and plugin:IsComponentDisabled("CrowdControlIcon"))
     local debuffs = {}
     for _, aura in ipairs(allDebuffs) do
         if aura.auraInstanceID then
-            local passesRaid = IsAuraIncluded(unit, aura.auraInstanceID, raidFilter)
+            local passesFilter = IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL")
             local passesCC = not excludeCC and IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
             local dominated = excludeCC and IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
-            if (passesRaid or passesCC) and not dominated then
+            if (passesFilter or passesCC) and not dominated then
                 table.insert(debuffs, aura)
                 if #debuffs >= maxDebuffs then break end
             end
@@ -593,30 +591,47 @@ local function UpdatePrivateAuras(frame, plugin)
         anchor:Hide()
         return
     end
+
+    -- Clear preview visuals assigned during Canvas Mode
+    if anchor.Icon then anchor.Icon:SetTexture(nil) end
+    if anchor.SetBackdrop then anchor:SetBackdrop(nil) end
+    if anchor.Border then anchor.Border:Hide() end
+    if anchor.Shadow then anchor.Shadow:Hide() end
+
     local unit = frame.unit
     if not unit or not UnitExists(unit) then anchor:Hide() return end
-    if frame._privateAuraIDs then
-        for _, id in ipairs(frame._privateAuraIDs) do C_UnitAuras.RemovePrivateAuraAnchor(id) end
+
+    -- Only recreate anchors if they haven't been created yet for this session/unit
+    -- Constantly removing and re-adding them on UNIT_AURA breaks the native timeout UI
+    if not frame._privateAuraIDs or frame._privateAuraUnit ~= unit then
+        if frame._privateAuraIDs then
+            for _, id in ipairs(frame._privateAuraIDs) do 
+                C_UnitAuras.RemovePrivateAuraAnchor(id) 
+            end
+        end
+        
+        frame._privateAuraIDs = {}
+        frame._privateAuraUnit = unit
+        for i = 1, MAX_PRIVATE_AURA_ANCHORS do
+            local xOff = OrbitEngine.Pixel:Snap((i - 1) * (PRIVATE_AURA_ICON_SIZE + 2), frame:GetEffectiveScale())
+            local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
+                unitToken = unit,
+                auraIndex = i,
+                parent = anchor,
+                showCountdownFrame = true,
+                showCountdownNumbers = true,
+                iconInfo = {
+                    iconWidth = PRIVATE_AURA_ICON_SIZE,
+                    iconHeight = PRIVATE_AURA_ICON_SIZE,
+                    iconAnchor = { point = "TOPLEFT", relativeTo = anchor, relativePoint = "TOPLEFT", offsetX = xOff, offsetY = 0 },
+                    borderScale = 1,
+                },
+            })
+            if anchorID then table.insert(frame._privateAuraIDs, anchorID) end
+        end
     end
-    frame._privateAuraIDs = {}
+    
     anchor:Show()
-    for i = 1, MAX_PRIVATE_AURA_ANCHORS do
-        local xOff = OrbitEngine.Pixel:Snap((i - 1) * (PRIVATE_AURA_ICON_SIZE + 2), frame:GetEffectiveScale())
-        local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
-            unitToken = unit,
-            auraIndex = i,
-            parent = anchor,
-            showCountdownFrame = true,
-            showCountdownNumbers = true,
-            iconInfo = {
-                iconWidth = PRIVATE_AURA_ICON_SIZE,
-                iconHeight = PRIVATE_AURA_ICON_SIZE,
-                iconAnchor = { point = "TOPLEFT", relativeTo = anchor, relativePoint = "TOPLEFT", offsetX = xOff, offsetY = 0 },
-                borderScale = 1,
-            },
-        })
-        if anchorID then table.insert(frame._privateAuraIDs, anchorID) end
-    end
 end
 
 -- [ STATUS INDICATOR UPDATES ]---------------------------------------------------------------------

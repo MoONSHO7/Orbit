@@ -446,6 +446,13 @@ local function CreateBossFrame(bossIndex, plugin)
     if frame.SetHealAbsorbsEnabled then
         frame:SetHealAbsorbsEnabled(true)
     end
+    
+    if frame.HealthDamageBar then
+        frame.HealthDamageBar:Hide()
+    end
+    if frame.HealthDamageTexture then
+        frame.HealthDamageTexture:Hide()
+    end
 
     return frame
 end
