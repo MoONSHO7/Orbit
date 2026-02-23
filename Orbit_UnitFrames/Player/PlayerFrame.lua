@@ -69,9 +69,9 @@ function Plugin:AddSettings(dialog, systemFrame)
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
         local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 1, default = 160 })
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160 })
         if not isAnchored or anchorAxis ~= "y" then
-            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 60, step = 1, default = 40 })
+            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40 })
         end
         table.insert(schema.controls, {
             type = "dropdown",

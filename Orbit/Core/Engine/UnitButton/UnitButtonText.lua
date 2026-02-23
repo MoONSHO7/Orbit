@@ -219,6 +219,9 @@ function TextMixin:UpdateName()
         maxChars = math.max(MIN_NAME_CHARS, math.min(math.floor(availableWidth / (fontHeight * CHAR_WIDTH_RATIO)), MAX_NAME_CHARS))
     end
 
+    if #name > maxChars and not UnitIsPlayer(self.unit) then
+        name = string.match(name, "(%S+)$") or name
+    end
     self.Name:SetText(#name > maxChars and string.sub(name, 1, maxChars) or name)
     self:ApplyNameColor()
 end
