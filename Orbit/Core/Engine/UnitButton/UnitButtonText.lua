@@ -6,13 +6,11 @@ Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local DEFAULT_FONT_HEIGHT = 12
-local DEFAULT_MAX_CHARS = 15
-local MIN_NAME_CHARS = 6
 local MAX_NAME_CHARS = 30
-local HEALTH_TEXT_WIDTH_MULTIPLIER = 3
-local CHAR_WIDTH_RATIO = 0.5
-local NAME_PADDING = 20
+local EDGE_PADDING = 1
+local MIN_NAME_WIDTH = 20
+local VERTICAL_OVERLAP_TOLERANCE = 2
+local TRUNCATION_SUFFIX = ".."
 
 -- [ HEALTH TEXT MODES ]-----------------------------------------------------------------------------
 local HEALTH_TEXT_MODES = {
@@ -195,6 +193,8 @@ function TextMixin:UpdateName()
     -- Nat 1 on Identify: the DM sealed the name scroll with arcane warding
     if issecretvalue and issecretvalue(name) then
         self.Name:SetText(name)
+        local available = self:GetNameAvailableWidth()
+        if available then self.Name:SetWidth(math.max(available, MIN_NAME_WIDTH)) end
         return
     end
 
@@ -204,23 +204,121 @@ function TextMixin:UpdateName()
     end
 
     -- The bard insists on calling everyone by their stage name
+    self._hasNickname = false
     if NSAPI and NSAPI.GetName then
-        name = NSAPI:GetName(self.unit) or name
+        local nickname = NSAPI:GetName(self.unit)
+        if nickname and nickname ~= name then name = nickname; self._hasNickname = true end
     end
 
-    local maxChars = DEFAULT_MAX_CHARS
-    local frameWidth = self:GetWidth()
-    if issecretvalue and issecretvalue(frameWidth) then frameWidth = 0 end
+    if #name > MAX_NAME_CHARS then name = string.sub(name, 1, MAX_NAME_CHARS) end
 
-    if type(frameWidth) == "number" and frameWidth > 0 then
-        local _, fontHeight = self.HealthText and self.HealthText:GetFont()
-        fontHeight = fontHeight or DEFAULT_FONT_HEIGHT
-        local availableWidth = frameWidth - (fontHeight * HEALTH_TEXT_WIDTH_MULTIPLIER) - NAME_PADDING
-        maxChars = math.max(MIN_NAME_CHARS, math.min(math.floor(availableWidth / (fontHeight * CHAR_WIDTH_RATIO)), MAX_NAME_CHARS))
-    end
-
-    self.Name:SetText(#name > maxChars and string.sub(name, 1, maxChars) or name)
+    self.Name:SetText(name)
     self:ApplyNameColor()
+    self:ConstrainNameWidth()
+end
+
+-- [ NAME WIDTH CONSTRAINT ]-------------------------------------------------------------------------
+
+local FALLBACK_FONT_HEIGHT = 12
+local HEALTH_CHAR_WIDTH_RATIO = 0.6
+local HEALTH_MODE_CHAR_COUNTS = {
+    percent = 4, short = 5, raw = 9,
+    percent_short = 4, percent_raw = 4, short_percent = 5,
+    short_raw = 5, raw_short = 9, raw_percent = 9,
+    short_and_percent = 12,
+}
+
+local function SafeGetValue(fn)
+    local ok, val = pcall(fn)
+    if not ok or val == nil then return nil end
+    if issecretvalue and issecretvalue(val) then return nil end
+    return type(val) == "number" and val or nil
+end
+
+local function VerticalRangesOverlap(topA, bottomA, topB, bottomB)
+    return bottomA < (topB + VERTICAL_OVERLAP_TOLERANCE) and bottomB < (topA + VERTICAL_OVERLAP_TOLERANCE)
+end
+
+function TextMixin:EstimateHealthTextWidth()
+    local _, fontHeight = self.Name:GetFont()
+    fontHeight = fontHeight or FALLBACK_FONT_HEIGHT
+    if issecretvalue and issecretvalue(fontHeight) then fontHeight = FALLBACK_FONT_HEIGHT end
+    local mode = self.healthTextMode or "percent_short"
+    local charCount = HEALTH_MODE_CHAR_COUNTS[mode] or 5
+    return fontHeight * HEALTH_CHAR_WIDTH_RATIO * charCount
+end
+
+function TextMixin:GetNameAvailableWidth()
+    local frameWidth = SafeGetValue(function() return self:GetWidth() end)
+    if not frameWidth or frameWidth <= 0 then return nil end
+
+    if not self.HealthText or not self.HealthText:IsShown() then
+        return frameWidth - (EDGE_PADDING * 2)
+    end
+
+    local nameLeft = SafeGetValue(function() return self.Name:GetLeft() end)
+    local healthLeft = SafeGetValue(function() return self.HealthText:GetLeft() end)
+
+    if nameLeft and healthLeft and healthLeft > nameLeft then
+        local nameTop = SafeGetValue(function() return self.Name:GetTop() end)
+        local nameBot = SafeGetValue(function() return self.Name:GetBottom() end)
+        local healthTop = SafeGetValue(function() return self.HealthText:GetTop() end)
+        local healthBot = SafeGetValue(function() return self.HealthText:GetBottom() end)
+        local sameRow = not nameTop or not nameBot or not healthTop or not healthBot or VerticalRangesOverlap(nameTop, nameBot, healthTop, healthBot)
+        return sameRow and (healthLeft - nameLeft - EDGE_PADDING) or (frameWidth - (EDGE_PADDING * 2))
+    end
+
+    local sameRow = true
+    if self.orbitPlugin and self.orbitPlugin.GetSetting then
+        local positions = self.orbitPlugin:GetSetting(self.systemIndex or 1, "ComponentPositions")
+        if positions and positions.Name and positions.HealthText then
+            local nameY = positions.Name.anchorY or "CENTER"
+            local healthY = positions.HealthText.anchorY or "CENTER"
+            sameRow = nameY == healthY
+        end
+    end
+
+    if not sameRow then return frameWidth - (EDGE_PADDING * 2) end
+    return frameWidth - self:EstimateHealthTextWidth() - (EDGE_PADDING * 3)
+end
+
+function TextMixin:ConstrainNameWidth()
+    if not self.Name then return end
+    local name = self.Name:GetText()
+    if not name then return end
+    if issecretvalue and issecretvalue(name) then return end
+    if type(name) ~= "string" or #name == 0 then return end
+
+    local available = self:GetNameAvailableWidth()
+    if not available then return end
+    available = math.max(available, MIN_NAME_WIDTH)
+
+    local textWidth = SafeGetValue(function() return self.Name:GetStringWidth() end)
+    if not textWidth or textWidth <= available then return end
+
+    -- The rogue shortens long titles when there's no room on the scroll
+    if not self._hasNickname then
+        local lastWord = string.match(name, "(%S+)$")
+        if lastWord and lastWord ~= name then
+            self.Name:SetText(lastWord)
+            local newWidth = SafeGetValue(function() return self.Name:GetStringWidth() end)
+            if not newWidth or newWidth <= available then return end
+            name = lastWord
+        end
+    end
+
+    -- The wizard binary-searches for the perfect truncation rune
+    local lo, hi = 1, #name
+    self.Name:SetText(TRUNCATION_SUFFIX)
+    local suffixWidth = SafeGetValue(function() return self.Name:GetStringWidth() end) or 0
+    local trimTarget = available - suffixWidth
+    while lo < hi do
+        local mid = math.ceil((lo + hi) / 2)
+        self.Name:SetText(string.sub(name, 1, mid))
+        local w = SafeGetValue(function() return self.Name:GetStringWidth() end)
+        if not w or w <= trimTarget then lo = mid else hi = mid - 1 end
+    end
+    self.Name:SetText(string.sub(name, 1, lo) .. TRUNCATION_SUFFIX)
 end
 
 -- [ TEXT COLOR ]-------------------------------------------------------------------------------------

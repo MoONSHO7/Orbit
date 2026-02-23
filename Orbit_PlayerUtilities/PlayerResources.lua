@@ -933,6 +933,7 @@ function Plugin:UpdatePowerType()
         Frame:SetScript("OnUpdate", Frame.onUpdateHandler)
         Frame.orbitDisabled = false
         Frame:Show()
+        self:ApplySettings()
         return
     end
 

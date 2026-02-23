@@ -944,7 +944,8 @@ function Plugin:OnLoad()
     local RAID_BASE_DRIVER = "[petbattle] hide; [@raid1,exists] show; hide"
     local function UpdateVisibilityDriver()
         if InCombatLockdown() or Orbit:IsEditMode() then return end
-        local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(RAID_BASE_DRIVER) or RAID_BASE_DRIVER
+        local mv = Orbit.MountedVisibility
+        local driver = (mv and mv:ShouldHide() and not IsMounted()) and "hide" or (mv and mv:GetMountedDriver(RAID_BASE_DRIVER) or RAID_BASE_DRIVER)
         RegisterStateDriver(self.container, "visibility", driver)
     end
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver() end

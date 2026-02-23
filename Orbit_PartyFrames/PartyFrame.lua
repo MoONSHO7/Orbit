@@ -970,11 +970,11 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
         table.insert(
             schema.controls,
-            { type = "slider", key = "Width", label = "Width", min = 50, max = 300, step = 1, default = 160, onChange = makeOnChange(self, "Width") }
+            { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160, onChange = makeOnChange(self, "Width") }
         )
         table.insert(
             schema.controls,
-            { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 40, onChange = makeOnChange(self, "Height") }
+            { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40, onChange = makeOnChange(self, "Height") }
         )
         table.insert(
             schema.controls,
@@ -1202,7 +1202,8 @@ function Plugin:OnLoad()
     local PARTY_BASE_DRIVER = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
     local function UpdateVisibilityDriver(plugin)
         if InCombatLockdown() or Orbit:IsEditMode() then return end
-        local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(PARTY_BASE_DRIVER) or PARTY_BASE_DRIVER
+        local mv = Orbit.MountedVisibility
+        local driver = (mv and mv:ShouldHide() and not IsMounted()) and "hide" or (mv and mv:GetMountedDriver(PARTY_BASE_DRIVER) or PARTY_BASE_DRIVER)
         RegisterStateDriver(plugin.container, "visibility", driver)
     end
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver(self) end

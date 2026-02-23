@@ -447,13 +447,16 @@ function Plugin:OnLoad()
 
     self.UpdateVisibilityDriver = function()
         if InCombatLockdown() then return end
+        local druidFormHide = Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide() and not IsMounted()
         for index, container in pairs(self.containers) do
             if index == VEHICLE_EXIT_INDEX then
                 RegisterStateDriver(container, "visibility", VEHICLE_EXIT_VISIBILITY)
-            elseif index == PET_BAR_INDEX then
-                RegisterStateDriver(container, "visibility", GetVisibilityDriver(PET_BAR_BASE_DRIVER))
             elseif index == 1 then
                 RegisterStateDriver(container, "visibility", BAR1_BASE_DRIVER)
+            elseif druidFormHide then
+                RegisterStateDriver(container, "visibility", "hide")
+            elseif index == PET_BAR_INDEX then
+                RegisterStateDriver(container, "visibility", GetVisibilityDriver(PET_BAR_BASE_DRIVER))
             else
                 RegisterStateDriver(container, "visibility", GetVisibilityDriver(BASE_VISIBILITY_DRIVER))
             end

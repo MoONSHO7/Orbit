@@ -106,7 +106,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
 
     local widthParams = { key = "Width", label = "Width", min = 50, max = 400, default = 160 }
-    local heightParams = { key = "Height", label = "Height", min = 20, max = 100, default = 40 }
+    local heightParams = { key = "Height", label = "Height", min = 10, max = 100, default = 40 }
 
     if isAnchored and anchorAxis == "y" then
         widthParams = nil
@@ -120,7 +120,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160 })
         end
         if heightParams then
-            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 40 })
+            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40 })
         end
     end
 
