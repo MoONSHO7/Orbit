@@ -634,7 +634,7 @@ function Plugin:UpdateAll()
         if powerToken == "MANA" then
             local percent = SafeUnitPowerPercent("player", powerType)
             if percent then
-                Frame.Text:SetText(percent)
+                Frame.Text:SetFormattedText("%.0f", percent)
             else
                 Frame.Text:SetText(cur)
             end

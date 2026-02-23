@@ -76,7 +76,7 @@ local CONTINUOUS_RESOURCE_CONFIG = {
         updateText = function(text, current)
             local percent = SafeUnitPowerPercent("player", Enum.PowerType.Mana)
             if percent then
-                text:SetText(percent)
+                text:SetFormattedText("%.0f", percent)
             else
                 text:SetText(current)
             end
