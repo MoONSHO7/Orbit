@@ -32,7 +32,6 @@ Mixin.ICON_PREVIEW_ATLASES = {
     ResIcon = "RaidFrame-Icon-Rez",
     SummonIcon = "RaidFrame-Icon-SummonPending",
     DefensiveIcon = "UI-LFG-RoleIcon-Tank",
-    ImportantIcon = "UI-LFG-PendingMark-Raid",
     CrowdControlIcon = "UI-LFG-PendingMark-Raid",
     PrivateAuraAnchor = "UI-LFG-PendingMark-Raid",
 }
@@ -56,13 +55,7 @@ local CLASS_DEFENSIVE_SPELLS = {
     EVOKER = 363916,      -- Obsidian Scales
 }
 
-local IMPORTANT_PREVIEW_SPELLS = {
-    240559, -- Grievous Wound (M+ affix)
-    240443, -- Bursting (M+ affix)
-    209858, -- Necrotic Wound (M+ affix)
-    226512, -- Sanguine Ichor (M+ affix)
-    240447, -- Quaking (M+ affix)
-}
+
 
 local CLASS_CC_SPELLS = {
     WARRIOR = 5246,       -- Intimidating Shout
@@ -97,7 +90,7 @@ local CLASS_PRIVATE_AURA_SPELLS = {
 }
 
 local FALLBACK_DEFENSIVE_TEXTURE = 136041 -- Power Word: Shield
-local FALLBACK_IMPORTANT_TEXTURE = 132095 -- Skull & Crossbones (generic danger)
+
 local FALLBACK_CC_TEXTURE = 136071 -- Polymorph (generic CC)
 local FALLBACK_PRIVATE_AURA_TEXTURE = 136222 -- Spell Holy SealOfProtection
 
@@ -115,15 +108,7 @@ function Mixin:GetDefensiveTexture()
     return self:GetClassPreviewTexture(CLASS_DEFENSIVE_SPELLS, FALLBACK_DEFENSIVE_TEXTURE)
 end
 
-function Mixin:GetImportantTexture()
-    if C_Spell and C_Spell.GetSpellTexture then
-        for _, spellID in ipairs(IMPORTANT_PREVIEW_SPELLS) do
-            local tex = C_Spell.GetSpellTexture(spellID)
-            if tex then return tex end
-        end
-    end
-    return FALLBACK_IMPORTANT_TEXTURE
-end
+
 
 function Mixin:GetCrowdControlTexture()
     return self:GetClassPreviewTexture(CLASS_CC_SPELLS, FALLBACK_CC_TEXTURE)

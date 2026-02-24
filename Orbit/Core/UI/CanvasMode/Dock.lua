@@ -138,7 +138,7 @@ function Dialog:AddToDock(key, sourceComponent)
         icon.visual:SetDesaturated(true)
         icon.visual:SetAlpha(0.7)
     elseif isIconFrame then
-        -- Button with .Icon child (DefensiveIcon, ImportantIcon, CrowdControlIcon)
+        -- Button with .Icon child (DefensiveIcon, CrowdControlIcon)
         icon.visual = icon:CreateTexture(nil, "OVERLAY")
         icon.visual:SetPoint("CENTER")
         icon.visual:SetSize(C.DOCK_ICON_SIZE - 4, C.DOCK_ICON_SIZE - 4)
@@ -150,8 +150,6 @@ function Dialog:AddToDock(key, sourceComponent)
             icon.visual:SetTexture(texturePath)
         elseif StatusMixin and key == "DefensiveIcon" then
             icon.visual:SetTexture(StatusMixin:GetDefensiveTexture())
-        elseif StatusMixin and key == "ImportantIcon" then
-            icon.visual:SetTexture(StatusMixin:GetImportantTexture())
         elseif StatusMixin and key == "CrowdControlIcon" then
             icon.visual:SetTexture(StatusMixin:GetCrowdControlTexture())
         else

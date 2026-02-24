@@ -258,7 +258,7 @@ end
 
 -- [ AURA COMPONENT KEYS ]----------------------------------------------------------------
 
-local AURA_COMPONENT_KEYS = { DefensiveIcon = true, PrivateAuraAnchor = true, CrowdControlIcon = true, ImportantIcon = true }
+local AURA_COMPONENT_KEYS = { DefensiveIcon = true, PrivateAuraAnchor = true, CrowdControlIcon = true }
 
 -- [ OPEN DIALOG ]------------------------------------------------------------------------
 
@@ -336,6 +336,9 @@ function Dialog:Open(frame, plugin, systemIndex)
     self.TransformLayer.baseWidth = canvasFrame:GetWidth()
     self.TransformLayer.baseHeight = canvasFrame:GetHeight()
     self.TransformLayer:SetSize(self.TransformLayer.baseWidth, self.TransformLayer.baseHeight)
+
+    -- The cleric's Detect Magic reveals changes to the dungeon walls in real time
+    self:HookSourceSizeChanged(canvasFrame)
 
     -- Get saved positions (use global if synced for Action Bars)
     local savedPositions
@@ -527,10 +530,41 @@ function Dialog:ApplyFilter(filterName)
     end
 end
 
+-- [ LIVE DIMENSION SYNC ]----------------------------------------------------------------
+
+function Dialog:HookSourceSizeChanged(sourceFrame)
+    self:UnhookSourceSizeChanged()
+    if not sourceFrame then return end
+
+    self._sizeHookActive = true
+
+    if not sourceFrame._orbitCanvasSizeHooked then
+        sourceFrame._orbitCanvasSizeHooked = true
+        sourceFrame:HookScript("OnSizeChanged", function(_, w, h)
+            local dlg = CanvasMode.Dialog
+            if not dlg._sizeHookActive or not dlg.previewFrame or not dlg:IsShown() then return end
+            if w <= 0 or h <= 0 then return end
+
+            dlg.previewFrame.sourceWidth = w
+            dlg.previewFrame.sourceHeight = h
+            dlg.previewFrame:SetSize(w, h)
+            dlg.TransformLayer.baseWidth = w
+            dlg.TransformLayer.baseHeight = h
+            dlg.TransformLayer:SetSize(w, h)
+            CanvasMode.ApplyPanOffset(dlg, dlg.panOffsetX, dlg.panOffsetY)
+        end)
+    end
+end
+
+function Dialog:UnhookSourceSizeChanged()
+    self._sizeHookActive = nil
+end
+
 -- [ CLEANUP PREVIEW ]--------------------------------------------------------------------
 
 function Dialog:CleanupPreview()
     self.activeFilter = "All"
+    self:UnhookSourceSizeChanged()
 
     for key, comp in pairs(self.previewComponents) do
         comp:Hide()

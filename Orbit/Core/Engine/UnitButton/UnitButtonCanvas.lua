@@ -18,7 +18,6 @@ local COMPONENT_POSITION_MAP = {
     { key = "RareEliteIcon",    parentKey = nil },
     { key = "CombatIcon",       parentKey = nil },
     { key = "DefensiveIcon",    parentKey = nil },
-    { key = "ImportantIcon",    parentKey = nil },
     { key = "CrowdControlIcon", parentKey = nil },
 }
 

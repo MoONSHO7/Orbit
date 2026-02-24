@@ -9,7 +9,7 @@ local Helpers = nil
 local MAX_PARTY_FRAMES = 5
 local POWER_BAR_HEIGHT_RATIO = Orbit.PartyFrameHelpers.LAYOUT.PowerBarRatio
 local DEFENSIVE_ICON_SIZE = 24
-local IMPORTANT_ICON_SIZE = 24
+
 local CROWD_CONTROL_ICON_SIZE = 24
 local PRIVATE_AURA_ICON_SIZE = 24
 local MAX_PRIVATE_AURA_ANCHORS = 3
@@ -44,7 +44,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
             ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             DefensiveIcon = { anchorX = "LEFT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
-            ImportantIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
+
             CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
             PrivateAuraAnchor = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 2 },
             Buffs = {
@@ -66,7 +66,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
                 overrides = { MaxIcons = 3, IconSize = 18, MaxRows = 1 },
             },
         },
-        DisabledComponents = { "DefensiveIcon", "ImportantIcon", "CrowdControlIcon", "RoleIcon" },
+        DisabledComponents = { "DefensiveIcon", "CrowdControlIcon", "RoleIcon" },
         DisabledComponentsMigrated = true,
         IncludePlayer = true,
         GrowthDirection = "Down",
@@ -576,7 +576,7 @@ end
 
 -- [ IMPORTANT ICON DISPLAY ]------------------------------------------------------------------------
 
-local function UpdateImportantIcon(frame, plugin) UpdateSingleAuraIcon(frame, plugin, "ImportantIcon", "HARMFUL|IMPORTANT", IMPORTANT_ICON_SIZE) end
+
 
 -- [ CROWD CONTROL ICON DISPLAY ]--------------------------------------------------------------------
 
@@ -763,7 +763,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
         UpdateDebuffs(self, plugin)
         UpdateBuffs(self, plugin)
         UpdateDefensiveIcon(self, plugin)
-        UpdateImportantIcon(self, plugin)
+
         UpdateCrowdControlIcon(self, plugin)
         UpdatePrivateAuras(self, plugin)
         UpdateAllStatusIndicators(self, plugin)
@@ -786,7 +786,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
                 UpdateDebuffs(f, plugin)
                 UpdateBuffs(f, plugin)
                 UpdateDefensiveIcon(f, plugin)
-                UpdateImportantIcon(f, plugin)
+
                 UpdateCrowdControlIcon(f, plugin)
                 UpdatePrivateAuras(f, plugin)
                 -- Update dispel indicator
@@ -1109,7 +1109,7 @@ function Plugin:OnLoad()
             "SummonIcon",
             "MarkerIcon",
             "DefensiveIcon",
-            "ImportantIcon",
+
             "CrowdControlIcon",
             "PrivateAuraAnchor",
         }
@@ -1346,18 +1346,14 @@ function Plugin:PrepareIconsForCanvasMode()
         frame.MarkerIcon:Show()
     end
 
-    -- DefensiveIcon/ImportantIcon: set .Icon texture for Canvas Mode cloning
+    -- DefensiveIcon: set .Icon texture for Canvas Mode cloning
     local StatusMixin = Orbit.StatusIconMixin
     if frame.DefensiveIcon then
         frame.DefensiveIcon.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
         frame.DefensiveIcon:SetSize(DEFENSIVE_ICON_SIZE, DEFENSIVE_ICON_SIZE)
         frame.DefensiveIcon:Show()
     end
-    if frame.ImportantIcon then
-        frame.ImportantIcon.Icon:SetTexture(StatusMixin:GetImportantTexture())
-        frame.ImportantIcon:SetSize(IMPORTANT_ICON_SIZE, IMPORTANT_ICON_SIZE)
-        frame.ImportantIcon:Show()
-    end
+
     if frame.CrowdControlIcon then
         frame.CrowdControlIcon.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
         frame.CrowdControlIcon:SetSize(CROWD_CONTROL_ICON_SIZE, CROWD_CONTROL_ICON_SIZE)
@@ -1575,7 +1571,7 @@ function Plugin:ApplySettings()
 
             -- Update defensive/important aura icons
             UpdateDefensiveIcon(frame, self)
-            UpdateImportantIcon(frame, self)
+
             UpdateCrowdControlIcon(frame, self)
 
             -- Update all status indicators
@@ -1619,7 +1615,7 @@ function Plugin:ApplySettings()
                 "SummonIcon",
                 "MarkerIcon",
                 "DefensiveIcon",
-                "ImportantIcon",
+
                 "CrowdControlIcon",
                 "PrivateAuraAnchor",
             }

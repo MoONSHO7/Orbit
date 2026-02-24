@@ -118,7 +118,7 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
     frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
     frame.MarkerIcon:Hide()
 
-    for _, iconKey in ipairs({ "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" }) do
+    for _, iconKey in ipairs({ "DefensiveIcon", "CrowdControlIcon" }) do
         local btn = CreateFrame("Button", nil, frame, "BackdropTemplate")
         btn:SetSize(CENTER_ICON_SIZE, CENTER_ICON_SIZE)
         btn.orbitOriginalWidth, btn.orbitOriginalHeight = CENTER_ICON_SIZE, CENTER_ICON_SIZE
@@ -128,6 +128,7 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
         btn.Icon:SetAllPoints()
         btn.icon = btn.Icon
         btn:Hide()
+        btn:EnableMouse(false)
         frame[iconKey] = btn
     end
 

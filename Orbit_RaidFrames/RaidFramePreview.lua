@@ -296,7 +296,6 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
 
                 local auraIconEntries = {
                     { key = "DefensiveIcon", anchor = "LEFT", xMul = 0.5 },
-                    { key = "ImportantIcon", anchor = "RIGHT", xMul = -0.5 },
                     { key = "CrowdControlIcon", anchor = "TOP", yMul = -0.5 },
                     { key = "PrivateAuraAnchor", anchor = "BOTTOM", yMul = 0.5 },
                 }
@@ -320,7 +319,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                     elseif btn then btn:Hide() end
                 end
             else
-                for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "ImportantIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" }) do
+                for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" }) do
                     if frame[key] then frame[key]:Hide() end
                 end
             end

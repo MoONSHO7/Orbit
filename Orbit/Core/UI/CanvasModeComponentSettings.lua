@@ -95,7 +95,6 @@ local COMPONENT_TITLES = {
     RareEliteIcon = "Classification Icon",
     RestingIcon = "Resting Icon",
     DefensiveIcon = "Defensive Icon",
-    ImportantIcon = "Important Icon",
     CrowdControlIcon = "Crowd Control Icon",
     Buffs = "Buffs",
     Debuffs = "Debuffs",

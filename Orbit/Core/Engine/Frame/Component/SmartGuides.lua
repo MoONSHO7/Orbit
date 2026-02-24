@@ -10,16 +10,18 @@ local SmartGuides = Engine.SmartGuides
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
 local GUIDE_COLORS = {
-    CENTER = { 0.4, 0.75, 1.0, 0.9 },   -- Orbit Cyan
-    EDGE = { 0.6, 0.35, 0.95, 0.9 },    -- Orbit Purple
+    LEFT   = { 1.0, 0.55, 0.15, 0.9 },
+    RIGHT  = { 0.8, 0.4, 1.0, 0.9 },
+    TOP    = { 1.0, 0.55, 0.15, 0.9 },
+    BOTTOM = { 0.8, 0.4, 1.0, 0.9 },
+    CENTER = { 0.2, 0.9, 0.85, 0.9 },
 }
 local GUIDE_THICKNESS = 2
 
 -- [ CREATE ]----------------------------------------------------------------------------------------
 
 function SmartGuides:Create(container)
-    local C = Orbit.Constants
-    local guideLevel = (C and C.Levels and C.Levels.SmartGuides) or 90
+    local guideLevel = (Orbit.Constants and Orbit.Constants.Levels and Orbit.Constants.Levels.SmartGuides) or 90
 
     local frame = CreateFrame("Frame", nil, container)
     frame:SetAllPoints(container)
@@ -40,24 +42,20 @@ end
 
 function SmartGuides:Update(guides, snapX, snapY, parentW, parentH)
     if snapX then
-        local color = snapX == "CENTER" and GUIDE_COLORS.CENTER or GUIDE_COLORS.EDGE
-        guides.vLine:SetColorTexture(unpack(color))
+        guides.vLine:SetColorTexture(unpack(GUIDE_COLORS[snapX] or GUIDE_COLORS.CENTER))
         guides.vLine:ClearAllPoints()
         guides.vLine:SetSize(GUIDE_THICKNESS, parentH)
-        local anchor = snapX == "CENTER" and "CENTER" or snapX
-        guides.vLine:SetPoint(anchor, guides.container, anchor, 0, 0)
+        guides.vLine:SetPoint(snapX == "CENTER" and "CENTER" or snapX, guides.container, snapX == "CENTER" and "CENTER" or snapX, 0, 0)
         guides.vLine:Show()
     else
         guides.vLine:Hide()
     end
 
     if snapY then
-        local color = snapY == "CENTER" and GUIDE_COLORS.CENTER or GUIDE_COLORS.EDGE
-        guides.hLine:SetColorTexture(unpack(color))
+        guides.hLine:SetColorTexture(unpack(GUIDE_COLORS[snapY] or GUIDE_COLORS.CENTER))
         guides.hLine:ClearAllPoints()
         guides.hLine:SetSize(parentW, GUIDE_THICKNESS)
-        local anchor = snapY == "CENTER" and "CENTER" or snapY
-        guides.hLine:SetPoint(anchor, guides.container, anchor, 0, 0)
+        guides.hLine:SetPoint(snapY == "CENTER" and "CENTER" or snapY, guides.container, snapY == "CENTER" and "CENTER" or snapY, 0, 0)
         guides.hLine:Show()
     else
         guides.hLine:Hide()

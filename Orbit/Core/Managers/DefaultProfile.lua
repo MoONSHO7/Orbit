@@ -275,7 +275,6 @@ Orbit.Profile.defaults = {
                     GroupsPerRow = 6,
                     DisabledComponents = {
                         "DefensiveIcon",
-                        "ImportantIcon",
                         "CrowdControlIcon",
                         "HealthText",
                     },
@@ -326,12 +325,7 @@ Orbit.Profile.defaults = {
                             anchorX = "LEFT",
                             anchorY = "TOP",
                         },
-                        ImportantIcon = {
-                            anchorX = "RIGHT",
-                            offsetY = 0,
-                            offsetX = 2,
-                            anchorY = "CENTER",
-                        },
+
                         MarkerIcon = {
                             offsetX = 0,
                             posY = 21,
@@ -456,7 +450,6 @@ Orbit.Profile.defaults = {
                     DisabledComponentsMigrated = true,
                     DisabledComponents = {
                         "DefensiveIcon",
-                        "ImportantIcon",
                         "CrowdControlIcon",
                         "RoleIcon",
                     },
@@ -500,12 +493,7 @@ Orbit.Profile.defaults = {
                             anchorX = "LEFT",
                             anchorY = "TOP",
                         },
-                        ImportantIcon = {
-                            offsetX = 2,
-                            offsetY = 0,
-                            anchorX = "RIGHT",
-                            anchorY = "CENTER",
-                        },
+
                         MarkerIcon = {
                             posY = 18,
                             offsetX = 0,

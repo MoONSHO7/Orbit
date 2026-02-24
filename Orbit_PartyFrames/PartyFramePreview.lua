@@ -467,22 +467,6 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     frame.DefensiveIcon:Hide()
                 end
 
-                -- ImportantIcon - skinned preview with class-specific texture
-                if frame.ImportantIcon and not (self.IsComponentDisabled and self:IsComponentDisabled("ImportantIcon")) then
-                    frame.ImportantIcon.Icon:SetTexture(Orbit.StatusIconMixin:GetImportantTexture())
-                    frame.ImportantIcon:SetSize(iconSize, iconSize)
-                    local savedPositions = self:GetSetting(1, "ComponentPositions")
-                    if not savedPositions or not savedPositions.ImportantIcon then
-                        frame.ImportantIcon:ClearAllPoints()
-                        frame.ImportantIcon:SetPoint("CENTER", frame, "RIGHT", Orbit.Engine.Pixel:Snap(-(iconSize * 0.5 + 2), frame:GetEffectiveScale()), 0)
-                    end
-                    if Orbit.Skin and Orbit.Skin.Icons then
-                        Orbit.Skin.Icons:ApplyCustom(frame.ImportantIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
-                    end
-                    frame.ImportantIcon:Show()
-                elseif frame.ImportantIcon then
-                    frame.ImportantIcon:Hide()
-                end
 
                 -- CrowdControlIcon - skinned preview with class-specific texture
                 if frame.CrowdControlIcon and not (self.IsComponentDisabled and self:IsComponentDisabled("CrowdControlIcon")) then
@@ -533,9 +517,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 if frame.DefensiveIcon then
                     frame.DefensiveIcon:Hide()
                 end
-                if frame.ImportantIcon then
-                    frame.ImportantIcon:Hide()
-                end
+
                 if frame.CrowdControlIcon then
                     frame.CrowdControlIcon:Hide()
                 end

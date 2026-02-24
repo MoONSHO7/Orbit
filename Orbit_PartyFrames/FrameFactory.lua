@@ -126,7 +126,7 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
 
     -- Defensive and Important single-aura icons (Button frames for skin/border support)
     local auraIconSize = centerIconSize
-    for _, iconKey in ipairs({ "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" }) do
+    for _, iconKey in ipairs({ "DefensiveIcon", "CrowdControlIcon" }) do
         local btn = CreateFrame("Button", nil, frame, "BackdropTemplate")
         btn:SetSize(auraIconSize, auraIconSize)
         btn.orbitOriginalWidth, btn.orbitOriginalHeight = auraIconSize, auraIconSize
