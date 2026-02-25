@@ -27,6 +27,28 @@ local suppressedPlugins = {}
 local combatRestoredPlugins = {}
 local NOOP = function() end
 
+local function SuppressAnchoredChildren(parentFrame)
+    local Anchor = OrbitEngine.FrameAnchor
+    if not Anchor then return end
+    local children = Anchor.childrenOf[parentFrame]
+    if not children then return end
+    for childFrame in pairs(children) do
+        childFrame.orbitMountedSuppressed = true
+        childFrame:SetAlpha(0)
+    end
+end
+
+local function RevealAnchoredChildren(parentFrame)
+    local Anchor = OrbitEngine.FrameAnchor
+    if not Anchor then return end
+    local children = Anchor.childrenOf[parentFrame]
+    if not children then return end
+    for childFrame in pairs(children) do
+        childFrame.orbitMountedSuppressed = false
+        childFrame:SetAlpha(1)
+    end
+end
+
 -- [ CORE LOGIC ]------------------------------------------------------------------------------------
 local function IsMountedHideActive()
     if not Orbit.db or not Orbit.db.GlobalSettings or not Orbit.db.GlobalSettings.HideWhenMounted then return false end
@@ -58,6 +80,8 @@ local function SuppressPlugin(plugin)
     end
     frame.orbitMountedSuppressed = true
     frame:SetAlpha(0)
+    if frame.Portrait then frame.Portrait:Hide() end
+    SuppressAnchoredChildren(frame)
     if plugin.mountedHoverReveal then
         if not frame.orbitHoverOverlay then
             local overlay = CreateFrame("Frame", nil, frame)
@@ -69,6 +93,8 @@ local function SuppressPlugin(plugin)
             overlay:SetScript("OnEnter", function(self)
                 frame.orbitMountedSuppressed = false
                 frame:SetAlpha(1)
+                if frame.UpdatePortrait then frame:UpdatePortrait() end
+                RevealAnchoredChildren(frame)
                 self:Hide()
                 frame:SetScript("OnUpdate", function()
                     if not frame:IsMouseOver() then
@@ -79,6 +105,8 @@ local function SuppressPlugin(plugin)
                         else
                             frame.orbitMountedSuppressed = true
                             frame:SetAlpha(0)
+                            if frame.Portrait then frame.Portrait:Hide() end
+                            SuppressAnchoredChildren(frame)
                             if not self:IsShown() then self:Show() end
                         end
                     end
@@ -105,6 +133,7 @@ local function RestorePlugin(plugin)
         if plugin.mountedHoverReveal and Orbit.Animation then Orbit.Animation:StopHoverFade(frame) end
         frame:SetAlpha(1)
         if frame.orbitHoverOverlay then frame.orbitHoverOverlay:Hide() end
+        RevealAnchoredChildren(frame)
     end
     if plugin.ApplySettings then
         plugin:ApplySettings()

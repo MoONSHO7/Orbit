@@ -50,6 +50,11 @@ function PortraitMixin:UpdatePortrait()
         return
     end
 
+    if self.orbitMountedSuppressed then
+        portrait:Hide()
+        return
+    end
+
     local unit = self.unit
     if not unit or not UnitExists(unit) then
         portrait:Hide()

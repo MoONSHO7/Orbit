@@ -171,7 +171,22 @@ function Plugin:UpdateVisibility()
         or (Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide())
     local alpha = shouldHide and 0 or 1
     for _, data in pairs(VIEWER_MAP) do
-        if data.anchor then data.anchor:SetAlpha(alpha) end
+        if data.anchor then
+            data.anchor.orbitMountedSuppressed = shouldHide or nil
+            data.anchor:SetAlpha(alpha)
+        end
+    end
+    for _, childData in pairs(self.activeChildren or {}) do
+        if childData.frame then
+            childData.frame.orbitMountedSuppressed = shouldHide or nil
+            childData.frame:SetAlpha(alpha)
+        end
+    end
+    for _, childData in pairs(self.activeChargeChildren or {}) do
+        if childData.frame then
+            childData.frame.orbitMountedSuppressed = shouldHide or nil
+            childData.frame:SetAlpha(alpha)
+        end
     end
 end
 

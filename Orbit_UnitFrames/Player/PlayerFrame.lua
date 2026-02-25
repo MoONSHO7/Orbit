@@ -476,11 +476,27 @@ function Plugin:OnLoad()
                     mf:SetAlpha(1)
                     mf:SetScript("OnUpdate", nil)
                     mf.orbitHoverOverlay:Hide()
+                    if mf.UpdatePortrait then mf:UpdatePortrait() end
+                    local Anchor = OrbitEngine.FrameAnchor
+                    if Anchor and Anchor.childrenOf[mf] then
+                        for childFrame in pairs(Anchor.childrenOf[mf]) do
+                            childFrame.orbitMountedSuppressed = false
+                            childFrame:SetAlpha(1)
+                        end
+                    end
                 else
                     mf.orbitTargetRevealed = false
                     mf.orbitMountedSuppressed = true
                     mf:SetAlpha(0)
                     mf.orbitHoverOverlay:Show()
+                    if mf.Portrait then mf.Portrait:Hide() end
+                    local Anchor = OrbitEngine.FrameAnchor
+                    if Anchor and Anchor.childrenOf[mf] then
+                        for childFrame in pairs(Anchor.childrenOf[mf]) do
+                            childFrame.orbitMountedSuppressed = true
+                            childFrame:SetAlpha(0)
+                        end
+                    end
                 end
             end
             return

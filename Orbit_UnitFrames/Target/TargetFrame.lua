@@ -126,8 +126,10 @@ function Plugin:OnLoad()
 
     self.container = self:CreateVisibilityContainer(UIParent, true)
     self.mountedHoverReveal = true
+    self.mountedCombatRestore = true
     self:UpdateVisibilityDriver()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "target", "OrbitTargetFrame")
+    self.mountedFrame = self.frame
     if self.frame.HealthDamageBar then
         self.frame.HealthDamageBar:Hide()
         if self.frame.HealthDamageTexture then self.frame.HealthDamageTexture:Hide() end
@@ -202,6 +204,37 @@ function Plugin:OnLoad()
     local originalOnEvent = self.frame:GetScript("OnEvent")
     self.frame:SetScript("OnEvent", function(f, event, unit, ...)
         if event == "PLAYER_TARGET_CHANGED" then
+            local mf = self.mountedFrame
+            if mf and Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide() and mf.orbitHoverOverlay then
+                if UnitExists("target") then
+                    mf.orbitTargetRevealed = true
+                    mf.orbitMountedSuppressed = false
+                    mf:SetAlpha(1)
+                    mf:SetScript("OnUpdate", nil)
+                    mf.orbitHoverOverlay:Hide()
+                    if mf.UpdatePortrait then mf:UpdatePortrait() end
+                    local Anchor = OrbitEngine.FrameAnchor
+                    if Anchor and Anchor.childrenOf[mf] then
+                        for childFrame in pairs(Anchor.childrenOf[mf]) do
+                            childFrame.orbitMountedSuppressed = false
+                            childFrame:SetAlpha(1)
+                        end
+                    end
+                else
+                    mf.orbitTargetRevealed = false
+                    mf.orbitMountedSuppressed = true
+                    mf:SetAlpha(0)
+                    mf.orbitHoverOverlay:Show()
+                    if mf.Portrait then mf.Portrait:Hide() end
+                    local Anchor = OrbitEngine.FrameAnchor
+                    if Anchor and Anchor.childrenOf[mf] then
+                        for childFrame in pairs(Anchor.childrenOf[mf]) do
+                            childFrame.orbitMountedSuppressed = true
+                            childFrame:SetAlpha(0)
+                        end
+                    end
+                end
+            end
             f:UpdateAll()
             f:UpdatePortrait()
             self:UpdateVisualsExtended(f, TARGET_FRAME_INDEX)

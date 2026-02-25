@@ -516,7 +516,7 @@ function Plugin:LayoutChargeBar(frame)
 
     frame._layoutInProgress = false
     OrbitEngine.Frame:ForceUpdateSelection(frame)
-    frame:Show()
+    if not frame.orbitMountedSuppressed then frame:Show() end
 end
 
 function Plugin:LayoutChargeBars()
@@ -785,7 +785,8 @@ function Plugin:ApplyChargeBarSettings(frame)
     self:LayoutChargeBar(frame)
     OrbitEngine.Frame:RestorePosition(frame, self, sysIndex)
 
-    local alpha = (self:GetSetting(sysIndex, "Opacity") or 100) / 100
+    local isMountedHidden = Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide()
+    local alpha = isMountedHidden and 0 or ((self:GetSetting(sysIndex, "Opacity") or 100) / 100)
     frame:SetAlpha(alpha)
 
     if Orbit.OOCFadeMixin then

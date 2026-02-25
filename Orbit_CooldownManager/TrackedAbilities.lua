@@ -377,7 +377,7 @@ function Plugin:SpawnChildFrame()
 
     frame:ClearAllPoints()
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-    frame:Show()
+    if not frame.orbitMountedSuppressed then frame:Show() end
     frame.isChildFrame = true
     frame.childSlot = slot
 
@@ -1871,9 +1871,10 @@ function Plugin:ApplyTrackedSettings(anchor)
     end
 
     local systemIndex = anchor.systemIndex
-    local alpha = self:GetSetting(systemIndex, "Opacity") or 100
-    OrbitEngine.NativeFrame:Modify(anchor, { alpha = alpha / 100 })
-    anchor:Show()
+    local isMountedHidden = Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide()
+    local alpha = isMountedHidden and 0 or ((self:GetSetting(systemIndex, "Opacity") or 100) / 100)
+    OrbitEngine.NativeFrame:Modify(anchor, { alpha = alpha })
+    if not anchor.orbitMountedSuppressed then anchor:Show() end
     OrbitEngine.Frame:RestorePosition(anchor, self, systemIndex)
     self:LoadTrackedItems(anchor, systemIndex)
     self:LayoutTrackedIcons(anchor, systemIndex)
