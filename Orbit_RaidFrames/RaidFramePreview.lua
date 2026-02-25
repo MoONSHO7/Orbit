@@ -16,6 +16,8 @@ local TIMER_MIN_ICON_SIZE = 14
 local OFFLINE_ALPHA = 0.35
 local CANVAS_ICON_SIZE = 18
 local CANVAS_ICON_SPACING = 22
+local PRIVATE_AURA_ICON_SIZE = 18
+local MAX_PRIVATE_AURA_ANCHORS = 3
 local PREVIEW_NAMES = {
     "Arthas", "Jaina", "Thrall", "Sylvanas", "Anduin",
     "Illidan", "Tyrande", "Velen", "Malfurion", "Genn",

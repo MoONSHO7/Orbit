@@ -13,6 +13,8 @@ local Helpers = nil -- Will be set when first needed
 local MAX_PREVIEW_FRAMES = 5 -- 4 party + 1 potential player
 local DEBOUNCE_DELAY = Orbit.Constants.Timing.DefaultDebounce
 local TIMER_MIN_ICON_SIZE = 14
+local PRIVATE_AURA_ICON_SIZE = 24
+local MAX_PRIVATE_AURA_ANCHORS = 3
 
 -- Combat-safe wrappers (matches PartyFrame.lua)
 local function SafeRegisterUnitWatch(frame)
