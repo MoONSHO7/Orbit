@@ -729,7 +729,7 @@ function Icons:ApplyActionButtonCustom(button, settings)
     if button.Flash then
         button.Flash:ClearAllPoints()
         button.Flash:SetAllPoints(button)
-        button.Flash:SetColorTexture(1, 1, 0.4, 1)
+        button.Flash:SetColorTexture(1, 1, 0.4, 0.2)
     end
 
     -- Resize autoCast shine

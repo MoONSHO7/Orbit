@@ -169,6 +169,7 @@ function Plugin:OnLoad()
     self.mountedFrame = self.container
     self.mountedHoverReveal = true
     self.mountedCombatRestore = true
+    self.mountedTargetReveal = true
     self:UpdateVisibilityDriver()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "player", "OrbitPlayerFrame")
     self.mountedFrame = self.frame

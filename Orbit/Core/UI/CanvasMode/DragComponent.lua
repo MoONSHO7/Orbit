@@ -592,17 +592,6 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
                 s.offsetY = oY
                 s.justifyH = jH
                 ApplyTextAlignment(s, s.visual, jH)
-                if plugin then
-                    local positions = plugin:GetSetting(sysIdx, "ComponentPositions") or {}
-                    if not positions.CastBar then positions.CastBar = {} end
-                    if not positions.CastBar.subComponents then positions.CastBar.subComponents = {} end
-                    positions.CastBar.subComponents[subKey] = {
-                        anchorX = aX, anchorY = aY,
-                        offsetX = oX, offsetY = oY,
-                        justifyH = jH,
-                    }
-                    plugin:SetSetting(sysIdx, "ComponentPositions", positions)
-                end
             end)
 
             subFrame:SetScript("OnUpdate", function(s)

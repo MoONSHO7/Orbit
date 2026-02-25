@@ -121,7 +121,7 @@ function Helpers:GetSortedRaidUnits(sortMode)
     for i = 1, numMembers do
         local name, _, subgroup, _, _, className, _, online, isDead, role = GetRaidRosterInfo(i)
         if name then
-            units[#units + 1] = { token = "raid" .. i, name = name, subgroup = subgroup, className = className, online = online, isDead = isDead, role = role or UnitGroupRolesAssigned("raid" .. i) }
+            units[#units + 1] = { token = "raid" .. i, rosterIndex = i, name = name, subgroup = subgroup, className = className, online = online, isDead = isDead, role = role or UnitGroupRolesAssigned("raid" .. i) }
         end
     end
     sortMode = sortMode or SORT_MODE.Group
@@ -136,7 +136,7 @@ function Helpers:GetSortedRaidUnits(sortMode)
     else
         table.sort(units, function(a, b)
             if a.subgroup ~= b.subgroup then return (a.subgroup or 1) < (b.subgroup or 1) end
-            return (a.name or "") < (b.name or "")
+            return (a.rosterIndex or 0) < (b.rosterIndex or 0)
         end)
     end
     return units

@@ -17,6 +17,7 @@ local AURA_BASE_ICON_SIZE = Orbit.PartyFrameHelpers.LAYOUT.AuraBaseIconSize
 local AURA_SPACING = 1
 local MIN_ICON_SIZE = 10
 local OUT_OF_RANGE_ALPHA = 0.2
+local OFFLINE_ALPHA = 0.35
 
 local ROLE_PRIORITY = { TANK = 1, HEALER = 2, DAMAGER = 3, NONE = 4 }
 
@@ -693,19 +694,18 @@ local function UpdateAllStatusIndicators(frame, plugin)
         plugin:UpdateAllPartyStatusIcons(frame, plugin)
     end
 end
+local function UpdateStatusText(frame, plugin)
+    if plugin.UpdateStatusText then plugin:UpdateStatusText(frame, plugin) end
+end
 
 -- [ RANGE CHECKING ]--------------------------------------------------------------------------------
 
 local function UpdateInRange(frame)
-    if not frame or not frame.unit then
-        return
-    end
-    if frame.isPlayerFrame or frame.preview then
-        frame:SetAlpha(1)
-        return
-    end
-    local inRange = UnitInRange(frame.unit)
-    frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(inRange, 1, OUT_OF_RANGE_ALPHA))
+    if not frame or not frame.unit then return end
+    if frame.isPlayerFrame or frame.preview then frame:SetAlpha(1); return end
+    if not UnitIsConnected(frame.unit) then frame:SetAlpha(OFFLINE_ALPHA); return end
+    if UnitPhaseReason(frame.unit) then frame:SetAlpha(OUT_OF_RANGE_ALPHA); return end
+    frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(UnitInRange(frame.unit), 1, OUT_OF_RANGE_ALPHA))
 end
 
 -- [ PARTY FRAME CREATION ]--------------------------------------------------------------------------
@@ -716,6 +716,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
 
     -- Create base unit button
     local frame = OrbitEngine.UnitButton:Create(plugin.container, unit, frameName)
+    if frame.NameFrame then frame.NameFrame:SetIgnoreParentAlpha(true) end
     frame.editModeName = unitOverride and "Party Player Frame" or ("Party Frame " .. partyIndex)
     frame.systemIndex = 1
     frame.partyIndex = partyIndex
@@ -824,6 +825,14 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
         if event == "UNIT_PHASE" or event == "UNIT_FLAGS" then
             if eventUnit == f.unit then
                 UpdatePhaseIcon(f, plugin)
+                UpdateInRange(f)
+            end
+            return
+        end
+        if event == "UNIT_CONNECTION" then
+            if eventUnit == f.unit then
+                UpdateInRange(f)
+                UpdateStatusText(f, plugin)
             end
             return
         end
@@ -869,6 +878,9 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
 
         if originalOnEvent then
             originalOnEvent(f, event, eventUnit, ...)
+        end
+        if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
+            UpdateStatusText(f, plugin)
         end
     end)
 
@@ -1552,6 +1564,11 @@ function Plugin:ApplySettings()
             if frame.SetHealthTextMode then
                 frame:SetHealthTextMode(healthTextMode)
             end
+            local showHealthValue = self:GetSetting(1, "ShowHealthValue")
+            if showHealthValue == nil then showHealthValue = true end
+            frame.healthTextEnabled = showHealthValue
+            if frame.UpdateHealthText then frame:UpdateHealthText() end
+            UpdateStatusText(frame, self)
 
             -- Re-apply class coloring (ensures it takes effect after preview)
             if frame.SetClassColour then

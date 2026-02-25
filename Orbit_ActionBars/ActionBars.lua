@@ -1342,8 +1342,12 @@ function Plugin:ApplySettings(frame)
     end
 
     if enabled == false then
-        -- cleanup disabled bars
         UnregisterStateDriver(actualFrame, "visibility")
+
+        local point, _, _, x, y = actualFrame:GetPoint(1)
+        if point then
+            self:SetSetting(index, "Position", { point = point, x = x, y = y })
+        end
 
         local buttons = self.buttons[index]
         if buttons and #buttons > 0 then

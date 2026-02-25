@@ -173,6 +173,17 @@ function Dialog:AddToDock(key, sourceComponent)
     if not alreadyTracked then table.insert(self.disabledComponentKeys, key) end
 
     self:LayoutDockIcons()
+
+    -- The paladin swaps their oath; HealthText and Status can't both be on the field
+    if not self._exclusiveSwapping then
+        local EXCLUSIVE_PAIRS = { HealthText = "Status", Status = "HealthText" }
+        local partner = EXCLUSIVE_PAIRS[key]
+        if partner and self.dockComponents[partner] then
+            self._exclusiveSwapping = true
+            self:RestoreFromDock(partner)
+            self._exclusiveSwapping = nil
+        end
+    end
 end
 
 -- [ REMOVE FROM DOCK ]-------------------------------------------------------------------
@@ -263,6 +274,23 @@ function Dialog:RestoreFromDock(key)
         end
     end
     if Dialog.activeFilter and Dialog.activeFilter ~= "All" then Dialog:ApplyFilter(Dialog.activeFilter) end
+
+    if not self._exclusiveSwapping then
+        local EXCLUSIVE_PAIRS = { HealthText = "Status", Status = "HealthText" }
+        local partner = EXCLUSIVE_PAIRS[key]
+        if partner and not self.dockComponents[partner] and self.previewComponents[partner] then
+            self._exclusiveSwapping = true
+            local comp = self.previewComponents[partner]
+            comp:Hide()
+            local sourceComp = comp.sourceComponent or comp.visual or comp
+            self:AddToDock(partner, sourceComp)
+            if self.dockComponents[partner] then
+                self.dockComponents[partner].storedDraggableComp = comp
+            end
+            self.previewComponents[partner] = nil
+            self._exclusiveSwapping = nil
+        end
+    end
 end
 
 -- [ CLEAR DOCK ]-------------------------------------------------------------------------

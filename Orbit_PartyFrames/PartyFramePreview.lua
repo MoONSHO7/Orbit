@@ -35,6 +35,7 @@ local PREVIEW_DEFAULTS = {
     PowerPercents = { 85, 60, 40, 15, 80 },
     Names = { "Healbot", "Tankenstein", "Stabby", "Pyromancer", "You" },
     Classes = { "PRIEST", "WARRIOR", "ROGUE", "MAGE", "PALADIN" },
+    Status = { nil, nil, nil, "Offline", nil },
     Roles = { "HEALER", "TANK", "DAMAGER", "DAMAGER", "HEALER" },
     AuraSpacing = 1,
     FakeCooldownElapsed = 10, -- Seconds already elapsed on fake cooldown
@@ -286,7 +287,17 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
 
             -- Preview health text - override UpdateHealthText
             if frame.HealthText then
+                local showHealthValue = self:GetSetting(1, "ShowHealthValue")
+                if showHealthValue == nil then showHealthValue = true end
+                local previewStatus = PREVIEW_DEFAULTS.Status[i]
+                local isDeadOrOffline = (previewStatus == "Dead" or previewStatus == "Offline")
                 if isHealthTextDisabled then
+                    frame.HealthText:Hide()
+                elseif isDeadOrOffline then
+                    frame.HealthText:SetText(previewStatus)
+                    frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1)
+                    frame.HealthText:Show()
+                elseif not showHealthValue then
                     frame.HealthText:Hide()
                 else
                     local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
@@ -314,6 +325,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     end
                     frame.HealthText:Show()
                 end
+                frame:SetAlpha(isDeadOrOffline and 0.35 or 1)
             end
 
             -- Apply global text styling (font, size, shadow)

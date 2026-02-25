@@ -282,7 +282,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
         end
 
         GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT")
-        GameTooltip:AddLine(self:GetLabelText(), 1, 0.82, 0)
+        GameTooltip:AddLine(self.system.GetSystemName(), 1, 0.82, 0)
         GameTooltip:AddLine(EDIT_MODE_CLICK_TO_EDIT, 1, 1, 1)
 
         -- Show Canvas Mode hint if plugin supports it
@@ -291,8 +291,15 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
         end
 
         if self.parent and self.parent.editModeTooltipLines then
+            GameTooltip:AddLine(" ", 1, 1, 1)
+            GameTooltip:AddLine("Exit edit mode and", 0.6, 0.6, 0.6)
             for _, line in ipairs(self.parent.editModeTooltipLines) do
-                GameTooltip:AddLine(line, 0.8, 0.8, 0.8)
+                GameTooltip:AddLine(line, 0.6, 0.6, 0.6)
+            end
+            if self.parent.isTrackedBar then
+                GameTooltip:AddLine("Shift-right click to delete icons", 0.6, 0.6, 0.6)
+            elseif self.parent.isChargeBar then
+                GameTooltip:AddLine("Shift-right click to delete bars", 0.6, 0.6, 0.6)
             end
         end
         GameTooltip:Show()

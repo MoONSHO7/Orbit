@@ -201,9 +201,12 @@ function UnitButton:Create(parent, unit, name)
     f.TextFrame:SetAllPoints(f.Health)
     f.TextFrame:SetFrameLevel(f.Health:GetFrameLevel() + 10)
 
-    f.Name = f.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    f.Name:SetPoint("LEFT", 5, 0)
-    -- Note: RIGHT point is set dynamically by UpdateTextLayout based on HealthText width
+    f.NameFrame = CreateFrame("Frame", nil, f)
+    f.NameFrame:SetAllPoints(f.Health)
+    f.NameFrame:SetFrameLevel(f:GetFrameLevel() + (Orbit.Constants.Levels.Text or 20) + 1)
+
+    f.Name = f.NameFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    f.Name:SetPoint("LEFT", f.TextFrame, "LEFT", 5, 0)
     f.Name:SetJustifyH("LEFT")
     f.Name:SetShadowOffset(1, -1)
     f.Name:SetShadowColor(0, 0, 0, 1)
@@ -218,13 +221,10 @@ function UnitButton:Create(parent, unit, name)
     f.HealthText:SetShadowColor(0, 0, 0, 1)
     f.HealthText:SetText("100%")
 
-    -- Register components for drag behavior (Component Edit mode)
-    -- Positions are saved as edge-relative (anchorX/Y, offsetX/Y) for resize compatibility
     if Engine.ComponentDrag then
         Engine.ComponentDrag:Attach(f.Name, f, {
             key = "Name",
             onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                -- Save edge-relative position to plugin settings
                 if f.orbitPlugin and f.orbitPlugin.SetSetting then
                     local systemIndex = f.systemIndex or 1
                     local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}

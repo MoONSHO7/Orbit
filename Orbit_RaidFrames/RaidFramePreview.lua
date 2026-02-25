@@ -13,6 +13,7 @@ local MAX_PREVIEW_FRAMES = 20
 local PREVIEW_GROUPS = 4
 local DEBOUNCE_DELAY = 0.05
 local TIMER_MIN_ICON_SIZE = 14
+local OFFLINE_ALPHA = 0.35
 local CANVAS_ICON_SIZE = 18
 local CANVAS_ICON_SPACING = 22
 local PREVIEW_NAMES = {
@@ -30,8 +31,14 @@ local PREVIEW_CLASSES = {
 local PREVIEW_HEALTH_PCTS = {
     100, 85, 60, 40, 95,
     75, 90, 50, 80, 70,
-    65, 100, 88, 55, 45,
-    92, 78, 83, 97, 100,
+    65, 100, 88, 0, 0,
+    92, 78, 83, 95, 100,
+}
+local PREVIEW_STATUS = {
+    nil, nil, nil, nil, nil,
+    nil, nil, nil, nil, nil,
+    nil, nil, nil, "Dead", "Dead",
+    nil, nil, nil, "Offline", "Offline",
 }
 local PREVIEW_ROLES = {
     "TANK", "HEALER", "DAMAGER", "DAMAGER", "HEALER",
@@ -212,8 +219,35 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             end
 
             -- [ Health Text ]-----------------------------------------------------------------------
+            local showHealthValue = self:GetSetting(1, "ShowHealthValue")
+            if showHealthValue == nil then showHealthValue = true end
+            local previewStatus = (not isCanvasMode) and PREVIEW_STATUS[dataIdx]
+            local isDeadOrOffline = (previewStatus == "Dead" or previewStatus == "Offline")
             if frame.HealthText then
-                if isDisabled("HealthText") then frame.HealthText:Hide()
+                if isCanvasMode then
+                    if showHealthValue then
+                        local mode = self:GetSetting(1, "HealthTextMode") or "percent_short"
+                        local SAMPLE_TEXT = {
+                            percent = "100%", short = "106K", raw = "106000",
+                            short_and_percent = "106K - 100%",
+                            percent_short = "100%", percent_raw = "100%",
+                            short_percent = "106K", short_raw = "106K",
+                            raw_short = "106000", raw_percent = "106000",
+                        }
+                        frame.HealthText:SetText(SAMPLE_TEXT[mode] or "100%")
+                    else
+                        frame.HealthText:SetText("Offline")
+                    end
+                    if self.GetPreviewTextColor then
+                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_CLASSES[dataIdx], nil)
+                        frame.HealthText:SetTextColor(r, g, b, a)
+                    else frame.HealthText:SetTextColor(1, 1, 1, 1) end
+                    frame.HealthText:Show()
+                elseif isDeadOrOffline then
+                    frame.HealthText:SetText(previewStatus)
+                    frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1)
+                    frame.HealthText:Show()
+                elseif not showHealthValue then frame.HealthText:Hide()
                 else
                     frame.HealthText:SetText(PREVIEW_HEALTH_PCTS[dataIdx] .. "%")
                     if self.GetPreviewTextColor then
@@ -224,6 +258,9 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 end
             end
 
+            -- [ Status Text ]-----------------------------------------------------------------------
+            frame:SetAlpha(isDeadOrOffline and OFFLINE_ALPHA or 1)
+
             if self.ApplyTextStyling then self:ApplyTextStyling(frame) end
 
             -- [ Component Overrides ]---------------------------------------------------------------
@@ -233,6 +270,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             if frame.HealthText and componentPositions.HealthText and componentPositions.HealthText.overrides then
                 OrbitEngine.OverrideUtils.ApplyOverrides(frame.HealthText, componentPositions.HealthText.overrides)
             end
+
             if frame.ApplyComponentPositions then frame:ApplyComponentPositions(componentPositions) end
 
             -- [ Role Icon ]-------------------------------------------------------------------------

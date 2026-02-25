@@ -128,6 +128,7 @@ function Plugin:OnLoad()
     self.container = self:CreateVisibilityContainer(UIParent, true)
     self.mountedHoverReveal = true
     self.mountedCombatRestore = true
+    self.mountedTargetReveal = true
     self:UpdateVisibilityDriver()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "target", "OrbitTargetFrame")
     self.mountedFrame = self.frame

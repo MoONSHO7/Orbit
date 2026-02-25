@@ -260,14 +260,10 @@ Dialog.SyncToggle:SetScript("OnClick", function(self)
     local wasLocal = not self.isSynced
     self.isSynced = self:GetChecked()
 
-    local plugin = Dialog.targetPlugin
-    local systemIndex = Dialog.targetSystemIndex
-    if plugin and plugin.SetSetting then
-        plugin:SetSetting(systemIndex, "UseGlobalTextStyle", self.isSynced)
-    end
-
     if wasLocal and self.isSynced then
         local frame = Dialog.targetFrame
+        local plugin = Dialog.targetPlugin
+        local systemIndex = Dialog.targetSystemIndex
         if frame and plugin then
             Dialog:Open(frame, plugin, systemIndex)
         end

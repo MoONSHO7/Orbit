@@ -193,22 +193,17 @@ function Mixin:UpdateMainTankIcon(frame, plugin)
     local unit = GuardedUpdate(frame, plugin, "MainTankIcon")
     if not unit then return end
 
-    local raidIndex = UnitInRaid(unit)
-    if raidIndex then
-        local _, _, _, _, _, _, _, _, _, role = GetRaidRosterInfo(raidIndex + 1)
-        if role == "MAINTANK" then
-            frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainTank")
-            frame.MainTankIcon:Show()
-            return
-        elseif role == "MAINASSIST" then
-            frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainAssist")
-            frame.MainTankIcon:Show()
-            return
-        end
+    if GetPartyAssignment("MAINTANK", unit) then
+        frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainTank")
+        frame.MainTankIcon:Show()
+        return
+    elseif GetPartyAssignment("MAINASSIST", unit) then
+        frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainAssist")
+        frame.MainTankIcon:Show()
+        return
     end
 
-    local inEditMode = Orbit:IsEditMode()
-    if inEditMode then
+    if Orbit:IsEditMode() then
         frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainTank")
         frame.MainTankIcon:Show()
     else
@@ -479,11 +474,24 @@ function Mixin:UpdateIncomingSummon(frame, plugin)
     end
 end
 
+-- STATUS TEXT (Offline / Dead indicator, independent of HealthText)
+
+function Mixin:UpdateStatusText(frame, plugin)
+    if not frame or not frame.HealthText then return end
+    if frame.healthTextEnabled then return end
+    local unit = frame.unit
+    if not unit or not UnitExists(unit) then frame.HealthText:Hide(); return end
+    if not UnitIsConnected(unit) then frame.HealthText:SetText("Offline"); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
+    if UnitIsDeadOrGhost(unit) then frame.HealthText:SetText("Dead"); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
+    frame.HealthText:Hide()
+end
+
 -- BATCH UPDATE: All common status indicators
 
 function Mixin:UpdateAllStatusIcons(frame, plugin)
     self:UpdateName(frame, plugin)
     self:UpdateHealthText(frame, plugin)
+    self:UpdateStatusText(frame, plugin)
     self:UpdateRoleIcon(frame, plugin)
     self:UpdateLeaderIcon(frame, plugin)
     self:UpdateMarkerIcon(frame, plugin)

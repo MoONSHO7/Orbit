@@ -158,16 +158,6 @@ function Dialog:NudgeComponent(container, direction)
         if OrbitEngine.SelectionTooltip then
             OrbitEngine.SelectionTooltip:ShowComponentPosition(container, container.key, aX, aY, relX, relY, oX, oY, jH)
         end
-        local plugin = self.targetPlugin
-        if plugin then
-            local positions = plugin:GetSetting(self.targetSystemIndex, "ComponentPositions") or {}
-            if not positions.CastBar then positions.CastBar = {} end
-            if not positions.CastBar.subComponents then positions.CastBar.subComponents = {} end
-            positions.CastBar.subComponents[container.key] = {
-                anchorX = aX, anchorY = aY, offsetX = oX, offsetY = oY, justifyH = jH,
-            }
-            plugin:SetSetting(self.targetSystemIndex, "ComponentPositions", positions)
-        end
         return
     end
 
@@ -473,11 +463,24 @@ function Dialog:Open(frame, plugin, systemIndex)
         table.insert(self.disabledComponentKeys, key)
     end
 
+    -- The rogue realizes Status and HealthText can't adventurer at the same time
+    local healthTextDisabled = false
+    for _, key in ipairs(self.disabledComponentKeys) do
+        if key == "HealthText" then healthTextDisabled = true; break end
+    end
+    if not healthTextDisabled then
+        local statusAlreadyDisabled = false
+        for _, key in ipairs(self.disabledComponentKeys) do
+            if key == "Status" then statusAlreadyDisabled = true; break end
+        end
+        if not statusAlreadyDisabled then table.insert(self.disabledComponentKeys, "Status") end
+    end
+
     local function isDisabled(key)
         if not hasDisabledFeature then
             return false
         end
-        for _, k in ipairs(disabledComponents) do
+        for _, k in ipairs(self.disabledComponentKeys) do
             if k == key then
                 return true
             end
@@ -710,16 +713,25 @@ function Dialog:Apply()
         end
 
         if key == "CastBar" then
-            local existing = self.targetPlugin:GetSetting(self.targetSystemIndex, "ComponentPositions") or {}
-            local existingCB = existing.CastBar or {}
-            positions[key].subComponents = existingCB.subComponents
+            local subs = {}
+            if comp.TextSub then
+                subs.Text = { anchorX = comp.TextSub.anchorX, anchorY = comp.TextSub.anchorY, offsetX = comp.TextSub.offsetX, offsetY = comp.TextSub.offsetY, justifyH = comp.TextSub.justifyH }
+            end
+            if comp.TimerSub then
+                subs.Timer = { anchorX = comp.TimerSub.anchorX, anchorY = comp.TimerSub.anchorY, offsetX = comp.TimerSub.offsetX, offsetY = comp.TimerSub.offsetY, justifyH = comp.TimerSub.justifyH }
+            end
+            if next(subs) then positions[key].subComponents = subs end
         end
     end
 
     local plugin = self.targetPlugin
     local systemIndex = self.targetSystemIndex
 
-    -- Check if synced (Action Bars specific)
+    -- Flush deferred sync toggle state
+    if self.SyncToggle and self.SyncToggle:IsShown() then
+        plugin:SetSetting(systemIndex, "UseGlobalTextStyle", self.SyncToggle.isSynced)
+    end
+
     local isSynced = self.SyncToggle and self.SyncToggle:IsShown() and self.SyncToggle.isSynced
 
     if isSynced and plugin.system == "Orbit_ActionBars" then
@@ -761,6 +773,9 @@ function Dialog:Apply()
 
     if plugin.ApplySettings then
         plugin:ApplySettings(targetFrame)
+    end
+    if plugin.SchedulePreviewUpdate then
+        plugin:SchedulePreviewUpdate()
     end
 
     -- For Action Bars, refresh all bars to pick up global changes

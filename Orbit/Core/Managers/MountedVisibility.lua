@@ -115,6 +115,14 @@ local function SuppressPlugin(plugin)
             frame.orbitHoverOverlay = overlay
         end
         frame.orbitHoverOverlay:Show()
+        if plugin.mountedTargetReveal and UnitExists("target") then
+            frame.orbitTargetRevealed = true
+            frame.orbitMountedSuppressed = false
+            frame:SetAlpha(1)
+            if frame.UpdatePortrait then frame:UpdatePortrait() end
+            RevealAnchoredChildren(frame)
+            frame.orbitHoverOverlay:Hide()
+        end
     end
 end
 
@@ -156,8 +164,10 @@ end
 local function SuppressCombatEssentials()
     for plugin in pairs(combatRestoredPlugins) do
         if suppressedPlugins[plugin] and plugin.mountedFrame then
-            plugin.mountedFrame:SetScript("OnUpdate", nil)
-            plugin.mountedFrame:SetAlpha(0)
+            if not plugin.mountedFrame.orbitTargetRevealed then
+                plugin.mountedFrame:SetScript("OnUpdate", nil)
+                plugin.mountedFrame:SetAlpha(0)
+            end
         end
     end
     wipe(combatRestoredPlugins)

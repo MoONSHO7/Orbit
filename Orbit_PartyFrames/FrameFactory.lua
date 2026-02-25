@@ -166,6 +166,7 @@ function Orbit.PartyFrameFactoryMixin:RegisterFrameEvents(frame, unit)
         "UNIT_FLAGS",
         "INCOMING_RESURRECT_CHANGED",
         "UNIT_IN_RANGE_UPDATE",
+        "UNIT_CONNECTION",
     }
     for _, event in ipairs(unitEvents) do
         frame:RegisterUnitEvent(event, unit)

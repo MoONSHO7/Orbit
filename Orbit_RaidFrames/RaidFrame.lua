@@ -18,6 +18,7 @@ local AURA_SPACING = 1
 local AURA_BASE_ICON_SIZE = 10
 local MIN_ICON_SIZE = 10
 local OUT_OF_RANGE_ALPHA = 0.2
+local OFFLINE_ALPHA = 0.35
 
 local _pendingPrivateAuraReanchor = false
 
@@ -38,11 +39,13 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
         FlatRows = 1,
         ShowPowerBar = true,
         ShowGroupLabels = true,
+        ShowHealthValue = true,
         HealthTextMode = "percent_short",
 
         ComponentPositions = {
             Name = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 10, justifyH = "CENTER", posX = 0, posY = 10 },
             HealthText = { anchorX = "RIGHT", offsetX = 3, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
+            Status = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
             MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = -1, justifyH = "CENTER", posX = 0, posY = 21 },
             RoleIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "TOP", offsetY = 2, justifyH = "RIGHT", posX = 48, posY = 18, overrides = { Scale = 0.7 } },
             LeaderIcon = { anchorX = "LEFT", offsetX = 8, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", posX = -42, posY = 20, overrides = { Scale = 0.8 } },
@@ -353,6 +356,10 @@ local function UpdateSingleAuraIcon(frame, plugin, iconKey, filter, iconSize)
         icon:Hide()
         return
     end
+    if not UnitIsConnected(unit) then
+        icon:Hide()
+        return
+    end
     local auras = plugin:FetchAuras(unit, filter, 1)
     if #auras == 0 then
         icon:Hide()
@@ -530,6 +537,9 @@ local function UpdateAllStatusIndicators(frame, plugin)
         plugin:UpdateAllPartyStatusIcons(frame, plugin)
     end
 end
+local function UpdateStatusText(frame, plugin)
+    if plugin.UpdateStatusText then plugin:UpdateStatusText(frame, plugin) end
+end
 
 -- [ RANGE CHECKING ]--------------------------------------------------------------------------------
 
@@ -538,8 +548,9 @@ local function UpdateInRange(frame)
         frame:SetAlpha(1)
         return
     end
-    local inRange = UnitInRange(frame.unit)
-    frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(inRange, 1, OUT_OF_RANGE_ALPHA))
+    if not UnitIsConnected(frame.unit) then frame:SetAlpha(OFFLINE_ALPHA); return end
+    if UnitPhaseReason(frame.unit) then frame:SetAlpha(OUT_OF_RANGE_ALPHA); return end
+    frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(UnitInRange(frame.unit), 1, OUT_OF_RANGE_ALPHA))
 end
 
 -- [ RAID FRAME CREATION ]---------------------------------------------------------------------------
@@ -549,6 +560,7 @@ local function CreateRaidFrame(index, plugin)
     local frameName = "OrbitRaidFrame" .. index
 
     local frame = OrbitEngine.UnitButton:Create(plugin.container, unit, frameName)
+    if frame.NameFrame then frame.NameFrame:SetIgnoreParentAlpha(true) end
     frame.editModeName = "Raid Frame " .. index
     frame.systemIndex = 1
     frame.raidIndex = index
@@ -627,6 +639,14 @@ local function CreateRaidFrame(index, plugin)
         if event == "UNIT_PHASE" or event == "UNIT_FLAGS" then
             if eventUnit == f.unit then
                 UpdatePhaseIcon(f, plugin)
+                UpdateInRange(f)
+            end
+            return
+        end
+        if event == "UNIT_CONNECTION" then
+            if eventUnit == f.unit then
+                UpdateInRange(f)
+                UpdateStatusText(f, plugin)
             end
             return
         end
@@ -662,6 +682,9 @@ local function CreateRaidFrame(index, plugin)
         end
         if originalOnEvent then
             originalOnEvent(f, event, eventUnit, ...)
+        end
+        if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
+            UpdateStatusText(f, plugin)
         end
     end)
 
@@ -779,29 +802,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 onChange = makeOnChange(self, "FlatRows"),
             })
         end
-        table.insert(schema.controls, {
-            type = "dropdown",
-            key = "HealthTextMode",
-            label = "Health Text",
-            default = "percent_short",
-            options = {
-                { text = "Percentage", value = "percent" },
-                { text = "Short Health", value = "short" },
-                { text = "Raw Health", value = "raw" },
-                { text = "Short - Percentage", value = "short_and_percent" },
-                { text = "Percentage / Short", value = "percent_short" },
-                { text = "Percentage / Raw", value = "percent_raw" },
-                { text = "Short / Percentage", value = "short_percent" },
-                { text = "Short / Raw", value = "short_raw" },
-                { text = "Raw / Short", value = "raw_short" },
-                { text = "Raw / Percentage", value = "raw_percent" },
-            },
-            onChange = makeOnChange(self, "HealthTextMode"),
-        })
-        table.insert(
-            schema.controls,
-            { type = "checkbox", key = "ShowPowerBar", label = "Show Healer Power Bars", default = true, onChange = makeOnChange(self, "ShowPowerBar") }
-        )
+        table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Healer Power Bars", default = true, onChange = makeOnChange(self, "ShowPowerBar") })
     elseif currentTab == "Indicators" then
         if (self:GetSetting(1, "SortMode") or "Group") == "Group" then
             table.insert(schema.controls, { type = "checkbox", key = "ShowGroupLabels", label = "Show Groups", default = true, onChange = makeOnChange(self, "ShowGroupLabels") })
@@ -879,6 +880,7 @@ function Plugin:OnLoad()
     local firstFrame = self.frames[1]
     if firstFrame and OrbitEngine.ComponentDrag then
         local textComponents = { "Name", "HealthText" }
+        local textKeyMap = {}
         local iconComponents = {
             "RoleIcon",
             "LeaderIcon",
@@ -896,12 +898,13 @@ function Plugin:OnLoad()
 
         for _, key in ipairs(textComponents) do
             local element = firstFrame[key]
+            local dragKey = textKeyMap[key] or key
             if element then
                 OrbitEngine.ComponentDrag:Attach(element, self.container, {
-                    key = key,
+                    key = dragKey,
                     onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                         local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
+                        positions[dragKey] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                         pluginRef:SetSetting(1, "ComponentPositions", positions)
                     end,
                 })
@@ -1151,7 +1154,7 @@ function Plugin:PositionFrames()
         local visibleFrames = {}
         for i = 1, MAX_RAID_FRAMES do
             local frame = self.frames[i]
-            if frame and (frame:IsShown() or frame.preview) then
+            if frame and ((frame.preview) or (frame.unit and UnitExists(frame.unit))) then
                 visibleFrames[#visibleFrames + 1] = frame
             end
         end
@@ -1178,16 +1181,17 @@ function Plugin:PositionFrames()
             local memberIndex = 0
             for i = 1, MAX_RAID_FRAMES do
                 local frame = self.frames[i]
-                if frame and (frame:IsShown() or frame.preview) then
+                if frame then
                     local belongsToGroup
                     if isPreview then
-                        belongsToGroup = math.ceil(i / FRAMES_PER_GROUP) == groupNum
-                    else
-                        local _, _, subgroup = GetRaidRosterInfo(i)
+                        if frame.preview and math.ceil(i / FRAMES_PER_GROUP) == groupNum then belongsToGroup = true end
+                    elseif frame.unit and UnitExists(frame.unit) then
+                        local raidIndex = tonumber(frame.unit:match("(%d+)"))
+                        local subgroup = raidIndex and select(3, GetRaidRosterInfo(raidIndex))
                         belongsToGroup = (subgroup == groupNum)
                     end
 
-                    if belongsToGroup then
+                    if belongsToGroup and memberIndex < FRAMES_PER_GROUP then
                         memberIndex = memberIndex + 1
                         local mx, my = Helpers:CalculateMemberPosition(memberIndex, width, height, memberSpacing, memberGrowth, isHorizontal)
                         frame:ClearAllPoints()
@@ -1211,7 +1215,7 @@ end
 local GROUP_LABEL_OFFSET = 50
 local GROUP_LABEL_FONT_SIZE = 12
 local GROUP_LABEL_ALPHA = 0.65
-local GROUP_LABEL_PADDING = 19
+local GROUP_LABEL_PADDING = 5
 
 function Plugin:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, growUp)
     if not self.groupLabels then self.groupLabels = {} end
@@ -1394,6 +1398,8 @@ function Plugin:ApplySettings()
 
     local width = self:GetSetting(1, "Width") or 90
     local height = self:GetSetting(1, "Height") or 36
+    local showHealthValue = self:GetSetting(1, "ShowHealthValue")
+    if showHealthValue == nil then showHealthValue = true end
     local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
     local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
     local textureName = self:GetSetting(1, "Texture")
@@ -1415,6 +1421,9 @@ function Plugin:ApplySettings()
             if frame.SetHealthTextMode then
                 frame:SetHealthTextMode(healthTextMode)
             end
+            frame.healthTextEnabled = showHealthValue
+            if frame.UpdateHealthText then frame:UpdateHealthText() end
+            UpdateStatusText(frame, self)
             if frame.SetClassColour then
                 frame:SetClassColour(true)
             end

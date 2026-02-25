@@ -84,6 +84,28 @@ local KEY_SCHEMAS = {
         },
         pluginSettings = true,
     },
+    HealthText = {
+        controls = {
+            { type = "checkbox", key = "ShowHealthValue", label = "Show Health Value", default = true, systems = { Orbit_RaidFrames = true, Orbit_PartyFrames = true } },
+            { type = "dropdown", key = "HealthTextMode", label = "Format", showIf = "ShowHealthValue", systems = { Orbit_RaidFrames = true, Orbit_PartyFrames = true },
+              options = {
+                { text = "Percentage", value = "percent" },
+                { text = "Short Health", value = "short" },
+                { text = "Raw Health", value = "raw" },
+                { text = "Short - Percentage", value = "short_and_percent" },
+                { text = "Percentage / Short", value = "percent_short" },
+                { text = "Percentage / Raw", value = "percent_raw" },
+                { text = "Short / Percentage", value = "short_percent" },
+                { text = "Short / Raw", value = "short_raw" },
+                { text = "Raw / Short", value = "raw_short" },
+                { text = "Raw / Percentage", value = "raw_percent" },
+              }, default = "percent_short" },
+            { type = "font", key = "Font", label = "Font" },
+            { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
+            { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = false },
+        },
+        pluginSettingKeys = { ShowHealthValue = true, HealthTextMode = true },
+    },
 }
 
 local COMPONENT_TITLES = {
@@ -197,13 +219,27 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     overrideContainer.Title:SetText(COMPONENT_TITLES[componentKey] or componentKey)
 
     local isPluginSettings = schema.pluginSettings
+    local pluginSettingKeys = schema.pluginSettingKeys
     if isPluginSettings and plugin then
         self.currentOverrides = {}
         for _, control in ipairs(schema.controls) do
             local val = plugin:GetSetting(systemIndex, control.key)
             if val ~= nil then self.currentOverrides[control.key] = val end
         end
-
+    elseif pluginSettingKeys and plugin then
+        self.currentOverrides = {}
+        for _, control in ipairs(schema.controls) do
+            if pluginSettingKeys[control.key] then
+                local val = plugin:GetSetting(systemIndex, control.key)
+                if val ~= nil then self.currentOverrides[control.key] = val end
+            end
+        end
+        local savedPositions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+        local savedOverrides = (savedPositions[componentKey] or {}).overrides or {}
+        for k, v in pairs(savedOverrides) do self.currentOverrides[k] = v end
+        if container.pendingOverrides then
+            for k, v in pairs(container.pendingOverrides) do self.currentOverrides[k] = v end
+        end
     elseif container.pendingOverrides then
         self.currentOverrides = container.pendingOverrides
     elseif container.existingOverrides then
@@ -302,8 +338,9 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             widget.gridCol = col
 
             local shouldShow = true
-            if control.hideIf then shouldShow = not self.currentOverrides[control.hideIf]
-            elseif control.showIf then shouldShow = self.currentOverrides[control.showIf] == true end
+            if control.systems and not control.systems[self.plugin and self.plugin.system or ""] then shouldShow = false end
+            if shouldShow and control.hideIf then shouldShow = not self.currentOverrides[control.hideIf]
+            elseif shouldShow and control.showIf then shouldShow = self.currentOverrides[control.showIf] == true end
 
             widget:ClearAllPoints()
             if col == 0 then
@@ -428,11 +465,14 @@ function Settings:OnValueChanged(key, value)
         self.container.pendingOverrides = self.currentOverrides
 
         local schema = KEY_SCHEMAS[self.componentKey]
-        if schema and schema.pluginSettings then
+        local isPluginSetting = schema and (schema.pluginSettings or (schema.pluginSettingKeys and schema.pluginSettingKeys[key]))
+        if isPluginSetting then
             self.pendingPluginSettings = self.pendingPluginSettings or {}
             self.pendingPluginSettings[key] = value
             if self.componentKey == "CastBar" then
                 self:ApplyCastBarPreview()
+            elseif self.componentKey == "HealthText" then
+                self:ApplyHealthTextPreview()
             else
                 self:ApplyPortraitPreview()
             end
@@ -501,6 +541,36 @@ function Settings:ApplyCastBarPreview()
     if comp.visual and comp.visual.SetAllPoints then comp.visual:SetAllPoints() end
 end
 
+function Settings:ApplyHealthTextPreview()
+    local canvasDialog = OrbitEngine.CanvasModeDialog
+    if not canvasDialog or not canvasDialog.previewComponents then return end
+    local comp = canvasDialog.previewComponents.HealthText
+    if not comp or not comp.visual then return end
+    local visual = comp.visual
+
+    local pending = self.pendingPluginSettings or {}
+    local plugin = self.plugin
+    local sysIdx = self.systemIndex or 1
+    local showValue = pending.ShowHealthValue
+    if showValue == nil then showValue = plugin and plugin:GetSetting(sysIdx, "ShowHealthValue") end
+    if showValue == nil then showValue = true end
+    local mode = pending.HealthTextMode or (plugin and plugin:GetSetting(sysIdx, "HealthTextMode")) or "percent_short"
+
+    if showValue then
+        local SAMPLE_TEXT = {
+            percent = "100%", short = "106K", raw = "106000",
+            short_and_percent = "106K - 100%",
+            percent_short = "100%", percent_raw = "100%",
+            short_percent = "106K", short_raw = "106K",
+            raw_short = "106000", raw_percent = "106000",
+        }
+        visual:SetText(SAMPLE_TEXT[mode] or "100%")
+    else
+        visual:SetText("Offline")
+    end
+    visual:Show()
+end
+
 function Settings:FlushPendingPluginSettings()
     if not self.pendingPluginSettings or not self.plugin then return end
     for k, v in pairs(self.pendingPluginSettings) do
@@ -513,17 +583,6 @@ end
 
 function Settings:ApplyStyle(container, key, value)
     if key == "MaxIcons" or key == "IconSize" or key == "MaxRows" then
-        if self.plugin and self.plugin.SchedulePreviewUpdate then
-            local componentKey = self.componentKey
-            if componentKey then
-                local positions = self.plugin:GetSetting(self.systemIndex, "ComponentPositions") or {}
-                if not positions[componentKey] then positions[componentKey] = {} end
-                if not positions[componentKey].overrides then positions[componentKey].overrides = {} end
-                positions[componentKey].overrides[key] = value
-                self.plugin:SetSetting(self.systemIndex, "ComponentPositions", positions)
-                self.plugin:SchedulePreviewUpdate()
-            end
-        end
         if self.container and self.container.RefreshAuraIcons then self.container:RefreshAuraIcons() end
         return
     end
@@ -615,6 +674,15 @@ function Settings:ApplyInitialPluginPreviews(plugin, systemIndex)
     }
     self.pendingPluginSettings = nil
     self:ApplyCastBarPreview()
+
+    self.currentOverrides = nil
+
+    self.currentOverrides = {
+        ShowHealthValue = plugin:GetSetting(sysIdx, "ShowHealthValue"),
+        HealthTextMode = plugin:GetSetting(sysIdx, "HealthTextMode") or "percent_short",
+    }
+    if self.currentOverrides.ShowHealthValue == nil then self.currentOverrides.ShowHealthValue = true end
+    self:ApplyHealthTextPreview()
 
     self.currentOverrides = nil
 end

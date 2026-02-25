@@ -151,7 +151,7 @@ function Orbit.RaidFrameFactoryMixin:RegisterFrameEvents(frame, unit)
     local unitEvents = {
         "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT",
         "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS",
-        "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE",
+        "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
     }
     for _, event in ipairs(unitEvents) do frame:RegisterUnitEvent(event, unit) end
     local globalEvents = {
