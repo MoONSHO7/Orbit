@@ -45,6 +45,9 @@ end
 if UnitButton.CanvasMixin then
     Mixin(UnitButtonMixin, UnitButton.CanvasMixin)
 end
+if UnitButton.PortraitMixin then
+    Mixin(UnitButtonMixin, UnitButton.PortraitMixin)
+end
 
 -- Export composed mixin
 UnitButton.Mixin = UnitButtonMixin
@@ -198,9 +201,12 @@ function UnitButton:Create(parent, unit, name)
     f.TextFrame:SetAllPoints(f.Health)
     f.TextFrame:SetFrameLevel(f.Health:GetFrameLevel() + 10)
 
-    f.Name = f.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    f.Name:SetPoint("LEFT", 5, 0)
-    -- Note: RIGHT point is set dynamically by UpdateTextLayout based on HealthText width
+    f.NameFrame = CreateFrame("Frame", nil, f)
+    f.NameFrame:SetAllPoints(f.Health)
+    f.NameFrame:SetFrameLevel(f:GetFrameLevel() + (Orbit.Constants.Levels.Text or 20) + 1)
+
+    f.Name = f.NameFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    f.Name:SetPoint("LEFT", f.TextFrame, "LEFT", 5, 0)
     f.Name:SetJustifyH("LEFT")
     f.Name:SetShadowOffset(1, -1)
     f.Name:SetShadowColor(0, 0, 0, 1)
@@ -215,28 +221,25 @@ function UnitButton:Create(parent, unit, name)
     f.HealthText:SetShadowColor(0, 0, 0, 1)
     f.HealthText:SetText("100%")
 
-    -- Register components for drag behavior (Component Edit mode)
-    -- Positions are saved as edge-relative (anchorX/Y, offsetX/Y) for resize compatibility
     if Engine.ComponentDrag then
         Engine.ComponentDrag:Attach(f.Name, f, {
             key = "Name",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
-                -- Save edge-relative position to plugin settings
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                 if f.orbitPlugin and f.orbitPlugin.SetSetting then
                     local systemIndex = f.systemIndex or 1
                     local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}
-                    positions.Name = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                    positions.Name = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                     f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
                 end
             end,
         })
         Engine.ComponentDrag:Attach(f.HealthText, f, {
             key = "HealthText",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                 if f.orbitPlugin and f.orbitPlugin.SetSetting then
                     local systemIndex = f.systemIndex or 1
                     local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}
-                    positions.HealthText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                    positions.HealthText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                     f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
                 end
             end,

@@ -13,6 +13,8 @@ local Helpers = nil -- Will be set when first needed
 local MAX_PREVIEW_FRAMES = 5 -- 4 party + 1 potential player
 local DEBOUNCE_DELAY = Orbit.Constants.Timing.DefaultDebounce
 local TIMER_MIN_ICON_SIZE = 14
+local PRIVATE_AURA_ICON_SIZE = 24
+local MAX_PRIVATE_AURA_ANCHORS = 3
 
 -- Combat-safe wrappers (matches PartyFrame.lua)
 local function SafeRegisterUnitWatch(frame)
@@ -35,8 +37,9 @@ local PREVIEW_DEFAULTS = {
     PowerPercents = { 85, 60, 40, 15, 80 },
     Names = { "Healbot", "Tankenstein", "Stabby", "Pyromancer", "You" },
     Classes = { "PRIEST", "WARRIOR", "ROGUE", "MAGE", "PALADIN" },
+    Status = { nil, nil, nil, "Offline", nil },
     Roles = { "HEALER", "TANK", "DAMAGER", "DAMAGER", "HEALER" },
-    AuraSpacing = 2,
+    AuraSpacing = 1,
     FakeCooldownElapsed = 10, -- Seconds already elapsed on fake cooldown
     FakeCooldownDuration = 60, -- Total fake cooldown duration
 }
@@ -286,7 +289,17 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
 
             -- Preview health text - override UpdateHealthText
             if frame.HealthText then
+                local showHealthValue = self:GetSetting(1, "ShowHealthValue")
+                if showHealthValue == nil then showHealthValue = true end
+                local previewStatus = PREVIEW_DEFAULTS.Status[i]
+                local isDeadOrOffline = (previewStatus == "Dead" or previewStatus == "Offline")
                 if isHealthTextDisabled then
+                    frame.HealthText:Hide()
+                elseif isDeadOrOffline then
+                    frame.HealthText:SetText(previewStatus)
+                    frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1)
+                    frame.HealthText:Show()
+                elseif not showHealthValue then
                     frame.HealthText:Hide()
                 else
                     local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
@@ -314,6 +327,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     end
                     frame.HealthText:Show()
                 end
+                frame:SetAlpha(isDeadOrOffline and 0.35 or 1)
             end
 
             -- Apply global text styling (font, size, shadow)
@@ -460,29 +474,13 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                         frame.DefensiveIcon:SetPoint("CENTER", frame, "LEFT", Orbit.Engine.Pixel:Snap(iconSize * 0.5 + 2, frame:GetEffectiveScale()), 0)
                     end
                     if Orbit.Skin and Orbit.Skin.Icons then
-                        Orbit.Skin.Icons:ApplyCustom(frame.DefensiveIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
+                        Orbit.Skin.Icons:ApplyCustom(frame.DefensiveIcon, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
                     end
                     frame.DefensiveIcon:Show()
                 elseif frame.DefensiveIcon then
                     frame.DefensiveIcon:Hide()
                 end
 
-                -- ImportantIcon - skinned preview with class-specific texture
-                if frame.ImportantIcon and not (self.IsComponentDisabled and self:IsComponentDisabled("ImportantIcon")) then
-                    frame.ImportantIcon.Icon:SetTexture(Orbit.StatusIconMixin:GetImportantTexture())
-                    frame.ImportantIcon:SetSize(iconSize, iconSize)
-                    local savedPositions = self:GetSetting(1, "ComponentPositions")
-                    if not savedPositions or not savedPositions.ImportantIcon then
-                        frame.ImportantIcon:ClearAllPoints()
-                        frame.ImportantIcon:SetPoint("CENTER", frame, "RIGHT", Orbit.Engine.Pixel:Snap(-(iconSize * 0.5 + 2), frame:GetEffectiveScale()), 0)
-                    end
-                    if Orbit.Skin and Orbit.Skin.Icons then
-                        Orbit.Skin.Icons:ApplyCustom(frame.ImportantIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
-                    end
-                    frame.ImportantIcon:Show()
-                elseif frame.ImportantIcon then
-                    frame.ImportantIcon:Hide()
-                end
 
                 -- CrowdControlIcon - skinned preview with class-specific texture
                 if frame.CrowdControlIcon and not (self.IsComponentDisabled and self:IsComponentDisabled("CrowdControlIcon")) then
@@ -494,7 +492,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                         frame.CrowdControlIcon:SetPoint("CENTER", frame, "TOP", 0, Orbit.Engine.Pixel:Snap(-(iconSize * 0.5 + 2), frame:GetEffectiveScale()))
                     end
                     if Orbit.Skin and Orbit.Skin.Icons then
-                        Orbit.Skin.Icons:ApplyCustom(frame.CrowdControlIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
+                        Orbit.Skin.Icons:ApplyCustom(frame.CrowdControlIcon, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
                     end
                     frame.CrowdControlIcon:Show()
                 elseif frame.CrowdControlIcon then
@@ -502,17 +500,57 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 end
 
                 if frame.PrivateAuraAnchor and not (self.IsComponentDisabled and self:IsComponentDisabled("PrivateAuraAnchor")) then
-                    frame.PrivateAuraAnchor.Icon:SetTexture(Orbit.StatusIconMixin:GetPrivateAuraTexture())
-                    frame.PrivateAuraAnchor:SetSize(iconSize, iconSize)
-                    local savedPositions = self:GetSetting(1, "ComponentPositions")
+                    local paa = frame.PrivateAuraAnchor
+                    local posData = (savedPositions and savedPositions.PrivateAuraAnchor) or {}
+                    local overrides = posData.overrides
+                    local paaScale = (overrides and overrides.Scale) or 1
+                    local paaIconSize = math.floor(PRIVATE_AURA_ICON_SIZE * paaScale)
+                    local spacing = 1
+                    local count = MAX_PRIVATE_AURA_ANCHORS
+                    local totalWidth = (count * paaIconSize) + ((count - 1) * spacing)
+                    local anchorX = posData.anchorX or "CENTER"
+                    local paaTexture = Orbit.StatusIconMixin:GetPrivateAuraTexture()
+
+                    paa.Icon:SetTexture(nil)
+                    paa:SetSize(totalWidth, paaIconSize)
+
                     if not savedPositions or not savedPositions.PrivateAuraAnchor then
-                        frame.PrivateAuraAnchor:ClearAllPoints()
-                        frame.PrivateAuraAnchor:SetPoint("CENTER", frame, "BOTTOM", 0, Orbit.Engine.Pixel:Snap(iconSize * 0.5 + 2, frame:GetEffectiveScale()))
+                        paa:ClearAllPoints()
+                        paa:SetPoint("CENTER", frame, "BOTTOM", 0, Orbit.Engine.Pixel:Snap(paaIconSize * 0.5 + 2, frame:GetEffectiveScale()))
                     end
-                    if Orbit.Skin and Orbit.Skin.Icons then
-                        Orbit.Skin.Icons:ApplyCustom(frame.PrivateAuraAnchor, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
+
+                    paa._previewIcons = paa._previewIcons or {}
+                    for pi = 1, count do
+                        local sub = paa._previewIcons[pi]
+                        if not sub then
+                            sub = CreateFrame("Button", nil, paa, "BackdropTemplate")
+                            sub.Icon = sub:CreateTexture(nil, "ARTWORK")
+                            sub.Icon:SetAllPoints()
+                            sub.icon = sub.Icon
+                            sub:EnableMouse(false)
+                            paa._previewIcons[pi] = sub
+                        end
+                        sub:SetParent(paa)
+                        sub:SetSize(paaIconSize, paaIconSize)
+                        sub.Icon:SetTexture(paaTexture)
+                        sub:ClearAllPoints()
+                        if anchorX == "RIGHT" then
+                            sub:SetPoint("TOPRIGHT", paa, "TOPRIGHT", -((pi - 1) * (paaIconSize + spacing)), 0)
+                        elseif anchorX == "LEFT" then
+                            sub:SetPoint("TOPLEFT", paa, "TOPLEFT", (pi - 1) * (paaIconSize + spacing), 0)
+                        else
+                            local centeredStart = -(totalWidth - paaIconSize) / 2
+                            sub:SetPoint("CENTER", paa, "CENTER", centeredStart + (pi - 1) * (paaIconSize + spacing), 0)
+                        end
+                        if Orbit.Skin and Orbit.Skin.Icons then
+                            Orbit.Skin.Icons:ApplyCustom(sub, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
+                        end
+                        sub:Show()
                     end
-                    frame.PrivateAuraAnchor:Show()
+                    for pi = count + 1, #(paa._previewIcons or {}) do
+                        paa._previewIcons[pi]:Hide()
+                    end
+                    paa:Show()
                 elseif frame.PrivateAuraAnchor then
                     frame.PrivateAuraAnchor:Hide()
                 end
@@ -533,9 +571,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 if frame.DefensiveIcon then
                     frame.DefensiveIcon:Hide()
                 end
-                if frame.ImportantIcon then
-                    frame.ImportantIcon:Hide()
-                end
+
                 if frame.CrowdControlIcon then
                     frame.CrowdControlIcon:Hide()
                 end
@@ -707,11 +743,10 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posD
     end
 
     -- Skin settings
-    local globalBorder = self:GetSetting(1, "BorderSize") or 1
     local skinSettings = {
         zoom = 0,
         borderStyle = 1,
-        borderSize = globalBorder,
+        borderSize = 1,
         showTimer = true,
     }
 

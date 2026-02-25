@@ -5,10 +5,25 @@ local Orbit = Orbit
 Orbit.BossFrameHelpers = {}
 local Helpers = Orbit.BossFrameHelpers
 Helpers.LAYOUT = {
-    Spacing = 2, -- Space between debuff icons
+    Spacing = 1, -- Space between debuff icons
     ElementGap = 2, -- Gap between frame and attached elements (cast bar, debuffs)
     ContainerGap = 2, -- Gap between frame edge and debuff container (left/right positions)
 }
+
+-- Derive aura display position from canvas mode center-relative coords
+function Helpers:AnchorToPosition(posX, posY, halfW, halfH)
+    if posX and posY and halfW and halfH then
+        local beyondX = math.max(0, math.abs(posX) - halfW)
+        local beyondY = math.max(0, math.abs(posY) - halfH)
+        if beyondY > beyondX then return posY > 0 and "Above" or "Below"
+        elseif beyondX > beyondY then return posX > 0 and "Right" or "Left" end
+        if math.abs(posX) / math.max(halfW, 1) > math.abs(posY) / math.max(halfH, 1) then
+            return posX > 0 and "Right" or "Left"
+        end
+        return posY > 0 and "Above" or "Below"
+    end
+    return "Left"
+end
 
 -- [ DEBUFF LAYOUT ]
 

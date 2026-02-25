@@ -13,8 +13,11 @@ local MAX_PREVIEW_FRAMES = 20
 local PREVIEW_GROUPS = 4
 local DEBOUNCE_DELAY = 0.05
 local TIMER_MIN_ICON_SIZE = 14
+local OFFLINE_ALPHA = 0.35
 local CANVAS_ICON_SIZE = 18
 local CANVAS_ICON_SPACING = 22
+local PRIVATE_AURA_ICON_SIZE = 18
+local MAX_PRIVATE_AURA_ANCHORS = 3
 local PREVIEW_NAMES = {
     "Arthas", "Jaina", "Thrall", "Sylvanas", "Anduin",
     "Illidan", "Tyrande", "Velen", "Malfurion", "Genn",
@@ -30,8 +33,14 @@ local PREVIEW_CLASSES = {
 local PREVIEW_HEALTH_PCTS = {
     100, 85, 60, 40, 95,
     75, 90, 50, 80, 70,
-    65, 100, 88, 55, 45,
-    92, 78, 83, 97, 100,
+    65, 100, 88, 0, 0,
+    92, 78, 83, 95, 100,
+}
+local PREVIEW_STATUS = {
+    nil, nil, nil, nil, nil,
+    nil, nil, nil, nil, nil,
+    nil, nil, nil, "Dead", "Dead",
+    nil, nil, nil, "Offline", "Offline",
 }
 local PREVIEW_ROLES = {
     "TANK", "HEALER", "DAMAGER", "DAMAGER", "HEALER",
@@ -212,8 +221,35 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             end
 
             -- [ Health Text ]-----------------------------------------------------------------------
+            local showHealthValue = self:GetSetting(1, "ShowHealthValue")
+            if showHealthValue == nil then showHealthValue = true end
+            local previewStatus = (not isCanvasMode) and PREVIEW_STATUS[dataIdx]
+            local isDeadOrOffline = (previewStatus == "Dead" or previewStatus == "Offline")
             if frame.HealthText then
-                if isDisabled("HealthText") then frame.HealthText:Hide()
+                if isCanvasMode then
+                    if showHealthValue then
+                        local mode = self:GetSetting(1, "HealthTextMode") or "percent_short"
+                        local SAMPLE_TEXT = {
+                            percent = "100%", short = "106K", raw = "106000",
+                            short_and_percent = "106K - 100%",
+                            percent_short = "100%", percent_raw = "100%",
+                            short_percent = "106K", short_raw = "106K",
+                            raw_short = "106000", raw_percent = "106000",
+                        }
+                        frame.HealthText:SetText(SAMPLE_TEXT[mode] or "100%")
+                    else
+                        frame.HealthText:SetText("Offline")
+                    end
+                    if self.GetPreviewTextColor then
+                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_CLASSES[dataIdx], nil)
+                        frame.HealthText:SetTextColor(r, g, b, a)
+                    else frame.HealthText:SetTextColor(1, 1, 1, 1) end
+                    frame.HealthText:Show()
+                elseif isDeadOrOffline then
+                    frame.HealthText:SetText(previewStatus)
+                    frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1)
+                    frame.HealthText:Show()
+                elseif not showHealthValue then frame.HealthText:Hide()
                 else
                     frame.HealthText:SetText(PREVIEW_HEALTH_PCTS[dataIdx] .. "%")
                     if self.GetPreviewTextColor then
@@ -224,6 +260,9 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 end
             end
 
+            -- [ Status Text ]-----------------------------------------------------------------------
+            frame:SetAlpha(isDeadOrOffline and OFFLINE_ALPHA or 1)
+
             if self.ApplyTextStyling then self:ApplyTextStyling(frame) end
 
             -- [ Component Overrides ]---------------------------------------------------------------
@@ -233,6 +272,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             if frame.HealthText and componentPositions.HealthText and componentPositions.HealthText.overrides then
                 OrbitEngine.OverrideUtils.ApplyOverrides(frame.HealthText, componentPositions.HealthText.overrides)
             end
+
             if frame.ApplyComponentPositions then frame:ApplyComponentPositions(componentPositions) end
 
             -- [ Role Icon ]-------------------------------------------------------------------------
@@ -296,15 +336,12 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
 
                 local auraIconEntries = {
                     { key = "DefensiveIcon", anchor = "LEFT", xMul = 0.5 },
-                    { key = "ImportantIcon", anchor = "RIGHT", xMul = -0.5 },
                     { key = "CrowdControlIcon", anchor = "TOP", yMul = -0.5 },
-                    { key = "PrivateAuraAnchor", anchor = "BOTTOM", yMul = 0.5 },
                 }
                 for _, entry in ipairs(auraIconEntries) do
                     local btn = frame[entry.key]
                     if btn and not isDisabled(entry.key) then
-                        local texMethod = entry.key == "PrivateAuraAnchor" and "GetPrivateAuraTexture"
-                            or ("Get" .. entry.key:gsub("Icon$", "") .. "Texture")
+                        local texMethod = "Get" .. entry.key:gsub("Icon$", "") .. "Texture"
                         btn.Icon:SetTexture(Orbit.StatusIconMixin[texMethod](Orbit.StatusIconMixin))
                         btn:SetSize(CANVAS_ICON_SIZE, CANVAS_ICON_SIZE)
                         if not savedPositions[entry.key] then
@@ -314,13 +351,67 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                             btn:SetPoint("CENTER", frame, entry.anchor, xOff, yOff)
                         end
                         if Orbit.Skin and Orbit.Skin.Icons then
-                            Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
+                            Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
                         end
                         btn:Show()
                     elseif btn then btn:Hide() end
                 end
+
+                local paa = frame.PrivateAuraAnchor
+                if paa and not isDisabled("PrivateAuraAnchor") then
+                    local posData = savedPositions.PrivateAuraAnchor or {}
+                    local overrides = posData.overrides
+                    local paaScale = (overrides and overrides.Scale) or 1
+                    local iconSize = math.floor(PRIVATE_AURA_ICON_SIZE * paaScale)
+                    local spacing = 1
+                    local count = MAX_PRIVATE_AURA_ANCHORS
+                    local totalWidth = (count * iconSize) + ((count - 1) * spacing)
+                    local anchorX = posData.anchorX or "CENTER"
+                    local paaTexture = Orbit.StatusIconMixin:GetPrivateAuraTexture()
+
+                    paa.Icon:SetTexture(nil)
+                    paa:SetSize(totalWidth, iconSize)
+
+                    if not savedPositions.PrivateAuraAnchor then
+                        paa:ClearAllPoints()
+                        paa:SetPoint("CENTER", frame, "BOTTOM", 0, OrbitEngine.Pixel:Snap(iconSize * 0.5 + 2, 1))
+                    end
+
+                    paa._previewIcons = paa._previewIcons or {}
+                    for pi = 1, count do
+                        local sub = paa._previewIcons[pi]
+                        if not sub then
+                            sub = CreateFrame("Button", nil, paa, "BackdropTemplate")
+                            sub.Icon = sub:CreateTexture(nil, "ARTWORK")
+                            sub.Icon:SetAllPoints()
+                            sub.icon = sub.Icon
+                            sub:EnableMouse(false)
+                            paa._previewIcons[pi] = sub
+                        end
+                        sub:SetParent(paa)
+                        sub:SetSize(iconSize, iconSize)
+                        sub.Icon:SetTexture(paaTexture)
+                        sub:ClearAllPoints()
+                        if anchorX == "RIGHT" then
+                            sub:SetPoint("TOPRIGHT", paa, "TOPRIGHT", -((pi - 1) * (iconSize + spacing)), 0)
+                        elseif anchorX == "LEFT" then
+                            sub:SetPoint("TOPLEFT", paa, "TOPLEFT", (pi - 1) * (iconSize + spacing), 0)
+                        else
+                            local centeredStart = -(totalWidth - iconSize) / 2
+                            sub:SetPoint("CENTER", paa, "CENTER", centeredStart + (pi - 1) * (iconSize + spacing), 0)
+                        end
+                        if Orbit.Skin and Orbit.Skin.Icons then
+                            Orbit.Skin.Icons:ApplyCustom(sub, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
+                        end
+                        sub:Show()
+                    end
+                    for pi = count + 1, #(paa._previewIcons or {}) do
+                        paa._previewIcons[pi]:Hide()
+                    end
+                    paa:Show()
+                elseif paa then paa:Hide() end
             else
-                for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "ImportantIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" }) do
+                for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" }) do
                     if frame[key] then frame[key]:Hide() end
                 end
             end
@@ -370,7 +461,7 @@ function Orbit.RaidFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posDa
     local containerKey = auraType .. "Container"
     local poolKey = "preview" .. auraType:gsub("^%l", string.upper) .. "s"
     local AURA_BASE_ICON_SIZE = Orbit.RaidFrameHelpers.LAYOUT.AuraBaseIconSize
-    local AURA_SPACING = 2
+    local AURA_SPACING = 1
 
     if numIcons == 0 then
         if frame[containerKey] then frame[containerKey]:Hide() end
@@ -429,8 +520,7 @@ function Orbit.RaidFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posDa
     if not frame[poolKey] then frame[poolKey] = {} end
     for _, icon in ipairs(frame[poolKey]) do icon:Hide() end
 
-    local globalBorder = self:GetSetting(1, "BorderSize") or 1
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = true }
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true }
     local growDown = (anchorY ~= "BOTTOM")
 
     for idx = 1, numIcons do

@@ -729,7 +729,7 @@ function Icons:ApplyActionButtonCustom(button, settings)
     if button.Flash then
         button.Flash:ClearAllPoints()
         button.Flash:SetAllPoints(button)
-        button.Flash:SetColorTexture(1, 1, 0.4, 1)
+        button.Flash:SetColorTexture(1, 1, 0.4, 0.2)
     end
 
     -- Resize autoCast shine
@@ -744,8 +744,7 @@ function Icons:ApplyActionButtonCustom(button, settings)
         -- Match CheckedTexture offsets: Shift right to fix alignment (Left 0, Right 1)
         autoCast:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 1)
         autoCast:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 1, -1)
-        autoCast:SetFrameStrata("HIGH")
-        autoCast:SetFrameLevel(Constants.Levels.ProcOverlay)
+        autoCast:SetFrameLevel(button:GetFrameLevel() + 10)
 
         -- Also force the Shine texture inside (if accessible) to match
         if autoCast.Shine then

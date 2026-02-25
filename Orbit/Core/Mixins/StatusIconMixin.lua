@@ -13,6 +13,7 @@ Orbit.StatusIconMixin = {}
 local Mixin = Orbit.StatusIconMixin
 
 local ROLE_ATLASES = { TANK = "UI-LFG-RoleIcon-Tank", HEALER = "UI-LFG-RoleIcon-Healer", DAMAGER = "UI-LFG-RoleIcon-DPS" }
+local ASSISTANT_ICON_TEXTURE = "Interface\\GroupFrame\\UI-Group-AssistantIcon"
 local THREAT_COLORS = {
     [0] = nil,
     [1] = { r = 1.0, g = 1.0, b = 0.0, a = 0.5 },
@@ -32,9 +33,9 @@ Mixin.ICON_PREVIEW_ATLASES = {
     ResIcon = "RaidFrame-Icon-Rez",
     SummonIcon = "RaidFrame-Icon-SummonPending",
     DefensiveIcon = "UI-LFG-RoleIcon-Tank",
-    ImportantIcon = "UI-LFG-PendingMark-Raid",
     CrowdControlIcon = "UI-LFG-PendingMark-Raid",
     PrivateAuraAnchor = "UI-LFG-PendingMark-Raid",
+    Portrait = "adventureguide-campfire",
 }
 Mixin.MARKER_ICON_TEXCOORD = { 0.75, 1, 0.25, 0.5 }
 
@@ -56,13 +57,7 @@ local CLASS_DEFENSIVE_SPELLS = {
     EVOKER = 363916,      -- Obsidian Scales
 }
 
-local IMPORTANT_PREVIEW_SPELLS = {
-    240559, -- Grievous Wound (M+ affix)
-    240443, -- Bursting (M+ affix)
-    209858, -- Necrotic Wound (M+ affix)
-    226512, -- Sanguine Ichor (M+ affix)
-    240447, -- Quaking (M+ affix)
-}
+
 
 local CLASS_CC_SPELLS = {
     WARRIOR = 5246,       -- Intimidating Shout
@@ -97,7 +92,7 @@ local CLASS_PRIVATE_AURA_SPELLS = {
 }
 
 local FALLBACK_DEFENSIVE_TEXTURE = 136041 -- Power Word: Shield
-local FALLBACK_IMPORTANT_TEXTURE = 132095 -- Skull & Crossbones (generic danger)
+
 local FALLBACK_CC_TEXTURE = 136071 -- Polymorph (generic CC)
 local FALLBACK_PRIVATE_AURA_TEXTURE = 136222 -- Spell Holy SealOfProtection
 
@@ -115,15 +110,7 @@ function Mixin:GetDefensiveTexture()
     return self:GetClassPreviewTexture(CLASS_DEFENSIVE_SPELLS, FALLBACK_DEFENSIVE_TEXTURE)
 end
 
-function Mixin:GetImportantTexture()
-    if C_Spell and C_Spell.GetSpellTexture then
-        for _, spellID in ipairs(IMPORTANT_PREVIEW_SPELLS) do
-            local tex = C_Spell.GetSpellTexture(spellID)
-            if tex then return tex end
-        end
-    end
-    return FALLBACK_IMPORTANT_TEXTURE
-end
+
 
 function Mixin:GetCrowdControlTexture()
     return self:GetClassPreviewTexture(CLASS_CC_SPELLS, FALLBACK_CC_TEXTURE)
@@ -188,12 +175,16 @@ function Mixin:UpdateLeaderIcon(frame, plugin)
     local inEditMode = Orbit:IsEditMode()
 
     if UnitIsGroupLeader(unit) then
+        frame.LeaderIcon:SetTexture(nil)
         frame.LeaderIcon:SetAtlas("UI-HUD-UnitFrame-Player-Group-LeaderIcon")
         frame.LeaderIcon:Show()
     elseif UnitIsGroupAssistant(unit) then
-        frame.LeaderIcon:SetAtlas("UI-HUD-UnitFrame-Player-Group-AssistantIcon")
+        frame.LeaderIcon:SetAtlas(nil)
+        frame.LeaderIcon:SetTexCoord(0, 1, 0, 1)
+        frame.LeaderIcon:SetTexture(ASSISTANT_ICON_TEXTURE)
         frame.LeaderIcon:Show()
     elseif inEditMode then
+        frame.LeaderIcon:SetTexture(nil)
         frame.LeaderIcon:SetAtlas("UI-HUD-UnitFrame-Player-Group-LeaderIcon")
         frame.LeaderIcon:Show()
     else
@@ -207,22 +198,17 @@ function Mixin:UpdateMainTankIcon(frame, plugin)
     local unit = GuardedUpdate(frame, plugin, "MainTankIcon")
     if not unit then return end
 
-    local raidIndex = UnitInRaid(unit)
-    if raidIndex then
-        local _, _, _, _, _, _, _, _, _, role = GetRaidRosterInfo(raidIndex + 1)
-        if role == "MAINTANK" then
-            frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainTank")
-            frame.MainTankIcon:Show()
-            return
-        elseif role == "MAINASSIST" then
-            frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainAssist")
-            frame.MainTankIcon:Show()
-            return
-        end
+    if GetPartyAssignment("MAINTANK", unit) then
+        frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainTank")
+        frame.MainTankIcon:Show()
+        return
+    elseif GetPartyAssignment("MAINASSIST", unit) then
+        frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainAssist")
+        frame.MainTankIcon:Show()
+        return
     end
 
-    local inEditMode = Orbit:IsEditMode()
-    if inEditMode then
+    if Orbit:IsEditMode() then
         frame.MainTankIcon:SetAtlas("RaidFrame-Icon-MainTank")
         frame.MainTankIcon:Show()
     else
@@ -493,11 +479,24 @@ function Mixin:UpdateIncomingSummon(frame, plugin)
     end
 end
 
+-- STATUS TEXT (Offline / Dead indicator, independent of HealthText)
+
+function Mixin:UpdateStatusText(frame, plugin)
+    if not frame or not frame.HealthText then return end
+    if frame.healthTextEnabled then return end
+    local unit = frame.unit
+    if not unit or not UnitExists(unit) then frame.HealthText:Hide(); return end
+    if not UnitIsConnected(unit) then frame.HealthText:SetText("Offline"); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
+    if UnitIsDeadOrGhost(unit) then frame.HealthText:SetText("Dead"); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
+    frame.HealthText:Hide()
+end
+
 -- BATCH UPDATE: All common status indicators
 
 function Mixin:UpdateAllStatusIcons(frame, plugin)
     self:UpdateName(frame, plugin)
     self:UpdateHealthText(frame, plugin)
+    self:UpdateStatusText(frame, plugin)
     self:UpdateRoleIcon(frame, plugin)
     self:UpdateLeaderIcon(frame, plugin)
     self:UpdateMarkerIcon(frame, plugin)

@@ -118,7 +118,7 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
     frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
     frame.MarkerIcon:Hide()
 
-    for _, iconKey in ipairs({ "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" }) do
+    for _, iconKey in ipairs({ "DefensiveIcon", "CrowdControlIcon" }) do
         local btn = CreateFrame("Button", nil, frame, "BackdropTemplate")
         btn:SetSize(CENTER_ICON_SIZE, CENTER_ICON_SIZE)
         btn.orbitOriginalWidth, btn.orbitOriginalHeight = CENTER_ICON_SIZE, CENTER_ICON_SIZE
@@ -128,6 +128,7 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
         btn.Icon:SetAllPoints()
         btn.icon = btn.Icon
         btn:Hide()
+        btn:EnableMouse(false)
         frame[iconKey] = btn
     end
 
@@ -150,13 +151,13 @@ function Orbit.RaidFrameFactoryMixin:RegisterFrameEvents(frame, unit)
     local unitEvents = {
         "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT",
         "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS",
-        "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE",
+        "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
     }
     for _, event in ipairs(unitEvents) do frame:RegisterUnitEvent(event, unit) end
     local globalEvents = {
         "READY_CHECK", "READY_CHECK_CONFIRM", "READY_CHECK_FINISHED",
         "INCOMING_SUMMON_CHANGED", "PLAYER_ROLES_ASSIGNED", "GROUP_ROSTER_UPDATE",
-        "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE",
+        "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE", "PARTY_LEADER_CHANGED",
         "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
     }
     for _, event in ipairs(globalEvents) do frame:RegisterEvent(event) end

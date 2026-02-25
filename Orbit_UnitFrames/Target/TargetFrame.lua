@@ -28,6 +28,8 @@ local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
             HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
             LevelText = { anchorX = "RIGHT", offsetX = -3, anchorY = "TOP", offsetY = 6, justifyH = "LEFT" },
             RareEliteIcon = { anchorX = "RIGHT", offsetX = -8, anchorY = "BOTTOM", offsetY = 10, justifyH = "LEFT" },
+            MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 0 },
+            Portrait = { anchorX = "LEFT", offsetX = 4, anchorY = "CENTER", offsetY = 0 },
         },
     },
 })
@@ -116,7 +118,7 @@ end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    Mixin(self, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin)
+    Mixin(self, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.StatusIconMixin)
     if TargetFrame then
         OrbitEngine.NativeFrame:Hide(TargetFrame)
     end
@@ -124,9 +126,10 @@ function Plugin:OnLoad()
     -- Note: TargetFrameToT is now managed by TargetOfTargetFrame.lua plugin
 
     self.container = self:CreateVisibilityContainer(UIParent, true)
-    self.mountedHoverReveal = true
+    self.mountedConfig = { frame = nil, hoverReveal = true, combatRestore = true, targetReveal = true }
     self:UpdateVisibilityDriver()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "target", "OrbitTargetFrame")
+    self.mountedConfig.frame = self.frame
     if self.frame.HealthDamageBar then
         self.frame.HealthDamageBar:Hide()
         if self.frame.HealthDamageTexture then self.frame.HealthDamageTexture:Hide() end
@@ -134,6 +137,7 @@ function Plugin:OnLoad()
     end
     self.frame.editModeName = "Target Frame"
     self.frame.systemIndex = TARGET_FRAME_INDEX
+    self.frame.showFilterTabs = true
 
     RegisterUnitWatch(self.frame)
 
@@ -142,6 +146,9 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("UNIT_FACTION")
     self.frame:RegisterEvent("UNIT_LEVEL")
     self.frame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
+    self.frame:RegisterEvent("UNIT_PORTRAIT_UPDATE")
+    self.frame:RegisterEvent("PORTRAITS_UPDATED")
+    self.frame:RegisterEvent("RAID_TARGET_UPDATE")
 
     -- Create overlay container for Level/EliteIcon (use frame level, not strata, to avoid appearing above UI dialogs)
     if not self.frame.OverlayFrame then
@@ -165,22 +172,51 @@ function Plugin:OnLoad()
         self.frame.RareEliteIcon:Hide()
     end
 
+    if not self.frame.MarkerIcon then
+        local iconSize = Constants.UnitFrame.StatusIconSize
+        self.frame.MarkerIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
+        self.frame.MarkerIcon:SetSize(iconSize, iconSize)
+        self.frame.MarkerIcon.orbitOriginalWidth = iconSize
+        self.frame.MarkerIcon.orbitOriginalHeight = iconSize
+        self.frame.MarkerIcon:SetPoint("TOP", self.frame, "TOP", 0, -2)
+        self.frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
+        self.frame.MarkerIcon:Hide()
+    end
+
+    self.frame:CreatePortrait()
+
     -- Register LevelText and RareEliteIcon for component drag with persistence callbacks
     local pluginRef = self
     if OrbitEngine.ComponentDrag then
         OrbitEngine.ComponentDrag:Attach(self.frame.LevelText, self.frame, {
             key = "LevelText",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                 local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
-                positions.LevelText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                positions.LevelText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                 pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
             end,
         })
         OrbitEngine.ComponentDrag:Attach(self.frame.RareEliteIcon, self.frame, {
             key = "RareEliteIcon",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                 local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
-                positions.RareEliteIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                positions.RareEliteIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
+                pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
+            end,
+        })
+        OrbitEngine.ComponentDrag:Attach(self.frame.MarkerIcon, self.frame, {
+            key = "MarkerIcon",
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
+                local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
+                positions.MarkerIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
+                pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
+            end,
+        })
+        OrbitEngine.ComponentDrag:Attach(self.frame.Portrait, self.frame, {
+            key = "Portrait",
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
+                local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
+                positions.Portrait = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                 pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
             end,
         })
@@ -190,12 +226,17 @@ function Plugin:OnLoad()
     self.frame:SetScript("OnEvent", function(f, event, unit, ...)
         if event == "PLAYER_TARGET_CHANGED" then
             f:UpdateAll()
+            f:UpdatePortrait()
             self:UpdateVisualsExtended(f, TARGET_FRAME_INDEX)
+            self:UpdateMarkerIcon(f, self)
             return
         elseif event == "UNIT_FACTION" then
             if unit == "target" then
                 f:UpdateHealth()
             end
+            return
+        elseif event == "RAID_TARGET_UPDATE" then
+            self:UpdateMarkerIcon(f, self)
             return
         end
 
@@ -205,6 +246,8 @@ function Plugin:OnLoad()
 
         if event == "UNIT_LEVEL" or event == "UNIT_CLASSIFICATION_CHANGED" then
             self:UpdateVisualsExtended(f, TARGET_FRAME_INDEX)
+        elseif event == "UNIT_PORTRAIT_UPDATE" or event == "PORTRAITS_UPDATED" then
+            f:UpdatePortrait()
         end
     end)
 
@@ -318,6 +361,8 @@ function Plugin:ApplySettings(frame)
     self:UpdateVisualsExtended(frame, systemIndex)
 
     frame:UpdateAll()
+    frame:UpdatePortrait()
+    self:UpdateMarkerIcon(frame, self)
 end
 
 function Plugin:UpdateVisuals(frame)

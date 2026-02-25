@@ -103,6 +103,8 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
         end
     end
 
+
+
     if Engine.SmartGuides and data.guides then
         Engine.SmartGuides:Update(data.guides, snapX, snapY, parentWidth, parentHeight)
     end
@@ -338,6 +340,7 @@ function ComponentDrag:Attach(component, parent, options)
         currentAlignment = "LEFT",
         isFontString = component.GetText ~= nil,
         isAuraContainer = options.isAuraContainer or false,
+
         guides = Engine.SmartGuides and Engine.SmartGuides:Create(parent) or nil,
         handle = nil,
     }

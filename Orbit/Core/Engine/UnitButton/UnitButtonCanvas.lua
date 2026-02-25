@@ -18,8 +18,12 @@ local COMPONENT_POSITION_MAP = {
     { key = "RareEliteIcon",    parentKey = nil },
     { key = "CombatIcon",       parentKey = nil },
     { key = "DefensiveIcon",    parentKey = nil },
-    { key = "ImportantIcon",    parentKey = nil },
     { key = "CrowdControlIcon", parentKey = nil },
+    { key = "Portrait",         parentKey = nil },
+    { key = "MarkerIcon",       parentKey = nil },
+    { key = "CastBar",          parentKey = nil },
+    { key = "Buffs",             parentKey = nil, isAura = true },
+    { key = "Debuffs",           parentKey = nil, isAura = true },
 }
 
 Engine.UnitButton = Engine.UnitButton or {}
@@ -99,8 +103,8 @@ function CanvasMixin:ApplyComponentPositions()
     for _, entry in ipairs(COMPONENT_POSITION_MAP) do
         local pos = positions[entry.key]
         local element = self[entry.key]
-        if pos and element then
-            ApplyTextPosition(element, entry.parentKey and self[entry.parentKey] or self, pos)
+        if pos and element and entry.key ~= "CastBar" then
+            ApplyTextPosition(element, entry.parentKey and self[entry.parentKey] or self, pos, nil, nil, nil, entry.isAura)
         end
     end
 

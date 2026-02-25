@@ -1,6 +1,5 @@
 -- [ CANVAS MODE - DOCK ]------------------------------------------------------------
--- Disabled Components Dock for Canvas Mode
--- Components dragged here are hidden from the frame
+-- Disabled Components Dock: vertical column on LEFT side of viewport
 --------------------------------------------------------------------------------
 
 local _, addonTable = ...
@@ -10,46 +9,33 @@ local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
 local C = CanvasMode.Constants
 local Layout = OrbitEngine.Layout
-local Constants = Orbit.Constants
 
--- Calculate positions: Footer height = TopPadding(12) + ButtonHeight(20) + BottomPadding(12) = 44
--- Footer starts at DIALOG_INSET(12) from bottom, so footer top is at 12 + 44 = 56
--- Dock is 2px above footer top
-local DOCK_BOTTOM_OFFSET = C.DIALOG_INSET + Constants.Footer.TopPadding + Constants.Footer.ButtonHeight + Constants.Footer.BottomPadding + 2
+-- [ DOCK FRAME ]-------------------------------------------------------------------------
 
-Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog)
-Dialog.DisabledDock:SetPoint("BOTTOMLEFT", Dialog, "BOTTOMLEFT", C.DIALOG_INSET, DOCK_BOTTOM_OFFSET)
-Dialog.DisabledDock:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -C.DIALOG_INSET, DOCK_BOTTOM_OFFSET)
+Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog.PreviewContainer)
+Dialog.DisabledDock:SetPoint("BOTTOMLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", 4, 4)
+Dialog.DisabledDock:SetPoint("BOTTOMRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -4, 4)
 Dialog.DisabledDock:SetHeight(C.DOCK_HEIGHT)
-
--- Dock label
-Dialog.DisabledDock.Label = Dialog.DisabledDock:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-Dialog.DisabledDock.Label:SetPoint("TOPLEFT", Dialog.DisabledDock, "TOPLEFT", C.DOCK_PADDING, -4)
-Dialog.DisabledDock.Label:SetText("Disabled Components")
-Dialog.DisabledDock.Label:SetTextColor(0.6, 0.6, 0.6, 1)
-
--- Zoom indicator (right-aligned in header row)
-Dialog.DisabledDock.ZoomIndicator = Dialog.DisabledDock:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-Dialog.DisabledDock.ZoomIndicator:SetPoint("TOPRIGHT", Dialog.DisabledDock, "TOPRIGHT", -C.DOCK_PADDING, -4)
-Dialog.DisabledDock.ZoomIndicator:SetText(string.format("%.0f%%", C.DEFAULT_ZOOM * 100))
-Dialog.DisabledDock.ZoomIndicator:SetTextColor(0.6, 0.6, 0.6, 1)
+Dialog.DisabledDock:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + 50)
 
 -- Dock hint text (shown when empty)
 Dialog.DisabledDock.EmptyHint = Dialog.DisabledDock:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-Dialog.DisabledDock.EmptyHint:SetPoint("CENTER", Dialog.DisabledDock, "CENTER", 0, -4)
-Dialog.DisabledDock.EmptyHint:SetText("Drag icons here to disable")
-Dialog.DisabledDock.EmptyHint:SetTextColor(0.5, 0.5, 0.5, 0.7)
+Dialog.DisabledDock.EmptyHint:SetPoint("CENTER", Dialog.DisabledDock, "CENTER", 0, 0)
+Dialog.DisabledDock.EmptyHint:SetText("drag here to disable")
+Dialog.DisabledDock.EmptyHint:SetTextColor(0.6, 0.6, 0.6, 0.15)
 
--- Container for dock component icons
+-- Container for dock component icons (horizontal row)
 Dialog.DisabledDock.IconContainer = CreateFrame("Frame", nil, Dialog.DisabledDock)
-Dialog.DisabledDock.IconContainer:SetPoint("TOPLEFT", Dialog.DisabledDock, "TOPLEFT", C.DOCK_PADDING, -18)
+Dialog.DisabledDock.IconContainer:SetPoint("TOPLEFT", Dialog.DisabledDock, "TOPLEFT", C.DOCK_PADDING, -C.DOCK_PADDING)
 Dialog.DisabledDock.IconContainer:SetPoint("BOTTOMRIGHT", Dialog.DisabledDock, "BOTTOMRIGHT", -C.DOCK_PADDING, C.DOCK_PADDING)
 
--- Drop highlight for dock (shows when dragging component over dock)
+-- Drop highlight for dock
 Dialog.DisabledDock.DropHighlight = Dialog.DisabledDock:CreateTexture(nil, "ARTWORK")
 Dialog.DisabledDock.DropHighlight:SetAllPoints()
 Dialog.DisabledDock.DropHighlight:SetColorTexture(0.3, 0.8, 0.3, 0.2)
 Dialog.DisabledDock.DropHighlight:Hide()
+
+
 
 -- [ DOCK LAYOUT ]------------------------------------------------------------------------
 
@@ -66,28 +52,21 @@ function Dialog:LayoutDockIcons()
         end
     end
 
-    -- Show/hide empty hint based on whether there are icons
-    self.DisabledDock.EmptyHint:SetShown(iconCount == 0)
 end
 
 -- [ ADD TO DOCK ]------------------------------------------------------------------------
 
 function Dialog:AddToDock(key, sourceComponent)
-    if self.dockComponents[key] then
-        return -- Already in dock
-    end
+    if self.dockComponents[key] then return end
 
-    -- Create a dock icon
     local icon = CreateFrame("Button", nil, self.DisabledDock.IconContainer)
     icon:SetSize(C.DOCK_ICON_SIZE, C.DOCK_ICON_SIZE)
     icon.key = key
 
-    -- Background
     icon.bg = icon:CreateTexture(nil, "BACKGROUND")
     icon.bg:SetAllPoints()
     icon.bg:SetColorTexture(0.2, 0.2, 0.2, 0.6)
 
-    -- Icon visual
     local isTexture = sourceComponent and sourceComponent.GetTexture
     local isFontString = sourceComponent and sourceComponent.GetFont ~= nil
     local isIconFrame = sourceComponent and sourceComponent.Icon and sourceComponent.Icon.GetTexture
@@ -102,9 +81,7 @@ function Dialog:AddToDock(key, sourceComponent)
             icon.visual:SetAtlas(atlasName)
         else
             local texturePath = sourceComponent:GetTexture()
-            if texturePath then
-                icon.visual:SetTexture(texturePath)
-            end
+            if texturePath then icon.visual:SetTexture(texturePath) end
 
             if sourceComponent.GetTexCoord then
                 local ULx, ULy, LLx, LLy, URx, URy, LRx, LRy = sourceComponent:GetTexCoord()
@@ -119,9 +96,7 @@ function Dialog:AddToDock(key, sourceComponent)
 
             if key == "MarkerIcon" then
                 local tc = Orbit.MarkerIconTexCoord
-                if tc then
-                    icon.visual:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
-                end
+                if tc then icon.visual:SetTexCoord(tc[1], tc[2], tc[3], tc[4]) end
             end
 
             if sourceComponent.orbitSpriteIndex then
@@ -138,7 +113,6 @@ function Dialog:AddToDock(key, sourceComponent)
         icon.visual:SetDesaturated(true)
         icon.visual:SetAlpha(0.7)
     elseif isIconFrame then
-        -- Button with .Icon child (DefensiveIcon, ImportantIcon, CrowdControlIcon)
         icon.visual = icon:CreateTexture(nil, "OVERLAY")
         icon.visual:SetPoint("CENTER")
         icon.visual:SetSize(C.DOCK_ICON_SIZE - 4, C.DOCK_ICON_SIZE - 4)
@@ -150,31 +124,32 @@ function Dialog:AddToDock(key, sourceComponent)
             icon.visual:SetTexture(texturePath)
         elseif StatusMixin and key == "DefensiveIcon" then
             icon.visual:SetTexture(StatusMixin:GetDefensiveTexture())
-        elseif StatusMixin and key == "ImportantIcon" then
-            icon.visual:SetTexture(StatusMixin:GetImportantTexture())
         elseif StatusMixin and key == "CrowdControlIcon" then
             icon.visual:SetTexture(StatusMixin:GetCrowdControlTexture())
         else
             local previewAtlases = Orbit.IconPreviewAtlases or {}
-            if previewAtlases[key] then
-                icon.visual:SetAtlas(previewAtlases[key], false)
-            end
+            if previewAtlases[key] then icon.visual:SetAtlas(previewAtlases[key], false) end
         end
 
         icon.visual:SetDesaturated(true)
         icon.visual:SetAlpha(0.7)
+    elseif key == "Portrait" then
+        icon.visual = icon:CreateTexture(nil, "OVERLAY")
+        icon.visual:SetPoint("CENTER")
+        icon.visual:SetSize(C.DOCK_ICON_SIZE - 4, C.DOCK_ICON_SIZE - 4)
+        SetPortraitTexture(icon.visual, "player")
+        icon.visual:SetDesaturated(true)
+        icon.visual:SetAlpha(0.7)
     else
-        -- Fallback: show key name
         icon.visual = icon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         icon.visual:SetPoint("CENTER")
         icon.visual:SetText(key:sub(1, 4))
         icon.visual:SetTextColor(0.7, 0.7, 0.7, 1)
     end
 
-    -- Hover effect
     icon:SetScript("OnEnter", function(self)
         self.bg:SetColorTexture(0.3, 0.5, 0.3, 0.8)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(key, 1, 1, 1)
         GameTooltip:AddLine("Click to enable", 0.7, 0.7, 0.7)
         GameTooltip:Show()
@@ -185,26 +160,30 @@ function Dialog:AddToDock(key, sourceComponent)
         GameTooltip:Hide()
     end)
 
-    -- Click to re-enable
     icon:SetScript("OnClick", function(self)
         Dialog:RestoreFromDock(self.key)
     end)
 
     self.dockComponents[key] = icon
 
-    -- Track as disabled (only if not already tracked)
     local alreadyTracked = false
     for _, k in ipairs(self.disabledComponentKeys) do
-        if k == key then
-            alreadyTracked = true
-            break
-        end
+        if k == key then alreadyTracked = true break end
     end
-    if not alreadyTracked then
-        table.insert(self.disabledComponentKeys, key)
-    end
+    if not alreadyTracked then table.insert(self.disabledComponentKeys, key) end
 
     self:LayoutDockIcons()
+
+    -- The paladin swaps their oath; HealthText and Status can't both be on the field
+    if not self._exclusiveSwapping then
+        local EXCLUSIVE_PAIRS = { HealthText = "Status", Status = "HealthText" }
+        local partner = EXCLUSIVE_PAIRS[key]
+        if partner and self.dockComponents[partner] then
+            self._exclusiveSwapping = true
+            self:RestoreFromDock(partner)
+            self._exclusiveSwapping = nil
+        end
+    end
 end
 
 -- [ REMOVE FROM DOCK ]-------------------------------------------------------------------
@@ -217,12 +196,8 @@ function Dialog:RemoveFromDock(key)
         self.dockComponents[key] = nil
     end
 
-    -- Remove from disabled keys array
     for i, k in ipairs(self.disabledComponentKeys) do
-        if k == key then
-            table.remove(self.disabledComponentKeys, i)
-            break
-        end
+        if k == key then table.remove(self.disabledComponentKeys, i) break end
     end
 
     self:LayoutDockIcons()
@@ -231,14 +206,19 @@ end
 -- [ RESTORE FROM DOCK ]------------------------------------------------------------------
 
 function Dialog:RestoreFromDock(key)
-    -- Get stored draggable component reference from dock icon
     local dockIcon = self.dockComponents[key]
+
+    if dockIcon and dockIcon.storedSubFrame then
+        local subFrame = dockIcon.storedSubFrame
+        subFrame:Show()
+        self:RemoveFromDock(key)
+        return
+    end
+
     local storedComp = dockIcon and dockIcon.storedDraggableComp
 
-    -- Remove from dock
     self:RemoveFromDock(key)
 
-    -- If we have a stored draggable component (CDM path), just re-show it
     if storedComp then
         storedComp:Show()
         Dialog.previewComponents[key] = storedComp
@@ -246,11 +226,9 @@ function Dialog:RestoreFromDock(key)
         return
     end
 
-    -- Create component in preview at saved position
     local savedPositions = self.targetPlugin and self.targetPlugin:GetSetting(self.targetSystemIndex, "ComponentPositions") or {}
     local pos = savedPositions[key]
 
-    -- Get source component from registered components
     local dragComponents = OrbitEngine.ComponentDrag:GetComponentsForFrame(self.targetFrame)
     local data = dragComponents and dragComponents[key]
 
@@ -272,43 +250,47 @@ function Dialog:RestoreFromDock(key)
             local halfW = frameW / 2
             local halfH = frameH / 2
 
-            if anchorX == "LEFT" then
-                centerX = offsetX - halfW
-            elseif anchorX == "RIGHT" then
-                centerX = halfW - offsetX
-            end
+            if anchorX == "LEFT" then centerX = offsetX - halfW
+            elseif anchorX == "RIGHT" then centerX = halfW - offsetX end
 
-            if anchorY == "BOTTOM" then
-                centerY = offsetY - halfH
-            elseif anchorY == "TOP" then
-                centerY = halfH - offsetY
-            end
+            if anchorY == "BOTTOM" then centerY = offsetY - halfH
+            elseif anchorY == "TOP" then centerY = halfH - offsetY end
         end
 
         local compData = {
             component = data.component,
-            x = centerX,
-            y = centerY,
-            anchorX = anchorX,
-            anchorY = anchorY,
-            offsetX = offsetX,
-            offsetY = offsetY,
+            x = centerX, y = centerY,
+            anchorX = anchorX, anchorY = anchorY,
+            offsetX = offsetX, offsetY = offsetY,
             justifyH = pos and pos.justifyH or "CENTER",
             overrides = pos and pos.overrides,
-            posX = pos and pos.posX,
-            posY = pos and pos.posY,
+            posX = pos and pos.posX, posY = pos and pos.posY,
         }
 
-        -- Use CreateDraggableComponent from DragComponent module
         if CanvasMode.CreateDraggableComponent then
             local comp = CanvasMode.CreateDraggableComponent(Dialog.previewFrame, key, data.component, centerX, centerY, compData)
-            if comp then
-                comp:SetFrameLevel(Dialog.previewFrame:GetFrameLevel() + 10)
-            end
+            if comp then comp:SetFrameLevel(Dialog.previewFrame:GetFrameLevel() + 10) end
             Dialog.previewComponents[key] = comp
         end
     end
     if Dialog.activeFilter and Dialog.activeFilter ~= "All" then Dialog:ApplyFilter(Dialog.activeFilter) end
+
+    if not self._exclusiveSwapping then
+        local EXCLUSIVE_PAIRS = { HealthText = "Status", Status = "HealthText" }
+        local partner = EXCLUSIVE_PAIRS[key]
+        if partner and not self.dockComponents[partner] and self.previewComponents[partner] then
+            self._exclusiveSwapping = true
+            local comp = self.previewComponents[partner]
+            comp:Hide()
+            local sourceComp = comp.sourceComponent or comp.visual or comp
+            self:AddToDock(partner, sourceComp)
+            if self.dockComponents[partner] then
+                self.dockComponents[partner].storedDraggableComp = comp
+            end
+            self.previewComponents[partner] = nil
+            self._exclusiveSwapping = nil
+        end
+    end
 end
 
 -- [ CLEAR DOCK ]-------------------------------------------------------------------------

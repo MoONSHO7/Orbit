@@ -58,8 +58,7 @@ function Plugin:OnLoad()
     self:EnableSmartAlignment(self.frame, self.frame.Text, 2)
     self:RegisterStandardEvents()
     self:RegisterVisibilityEvents()
-    self.mountedFrame = self.frame
-    self.mountedHoverReveal = true
+    self.mountedConfig = { frame = self.frame, hoverReveal = true }
     if Orbit.EventBus then
         Orbit.EventBus:On("PLAYER_REGEN_DISABLED", self.PLAYER_REGEN_DISABLED, self)
         Orbit.EventBus:On("PLAYER_REGEN_ENABLED", self.PLAYER_REGEN_ENABLED, self)

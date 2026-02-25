@@ -273,7 +273,7 @@ end
 function Mixin:UpdateVisibilityDriver()
     if not self.container or not self.container.orbitBaseDriver or InCombatLockdown() then return end
     local base = self.container.orbitBaseDriver
-    local skipMountedDriver = Orbit:IsEditMode() or self.mountedHoverReveal
+    local skipMountedDriver = Orbit:IsEditMode() or (self.mountedConfig and self.mountedConfig.hoverReveal)
     local driver = (skipMountedDriver and base) or (Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(base, self.container.orbitCombatEssential) or base)
     RegisterStateDriver(self.container, "visibility", driver)
 end

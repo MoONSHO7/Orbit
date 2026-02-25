@@ -1,5 +1,6 @@
 -- [ CANVAS MODE - VIEWPORT ]--------------------------------------------------------
 -- Viewport with zoom/pan controls for Canvas Mode
+-- Row layout: Title > Panels > Viewport (Dock | Preview) > Override > Footer
 --------------------------------------------------------------------------------
 
 local _, addonTable = ...
@@ -9,33 +10,7 @@ local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
 local C = CanvasMode.Constants
 
--- [ PREVIEW CONTAINER ]-------------------------------------------------------------------------
--- Architecture: PreviewContainer > Viewport (clips) > TransformLayer (zoom/pan) > PreviewFrame
-
--- Calculate viewport bottom offset: Footer(44) + DIALOG_INSET(12) + 2px + Dock(60) + 10px
-local FC = Orbit.Constants.Footer
-local VIEWPORT_BOTTOM_OFFSET = C.DIALOG_INSET + FC.TopPadding + FC.ButtonHeight + FC.BottomPadding + 2 + C.DOCK_HEIGHT + 10
-
-Dialog.PreviewContainer = CreateFrame("Frame", nil, Dialog)
-Dialog.PreviewContainer:SetPoint("TOPLEFT", Dialog, "TOPLEFT", C.VIEWPORT_PADDING, -C.TITLE_HEIGHT)
-Dialog.PreviewContainer:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -C.VIEWPORT_PADDING, VIEWPORT_BOTTOM_OFFSET)
-
--- Transmog-style background
-Dialog.PreviewContainer.Background = Dialog.PreviewContainer:CreateTexture(nil, "BACKGROUND")
-Dialog.PreviewContainer.Background:SetAtlas("transmog-tabs-frame-bg")
-Dialog.PreviewContainer.Background:SetPoint("TOPLEFT", 4, -4)
-Dialog.PreviewContainer.Background:SetPoint("BOTTOMRIGHT", -4, 4)
-
--- Transmog-style golden border (on high-level overlay to render above preview content)
-Dialog.BorderOverlay = CreateFrame("Frame", nil, Dialog.PreviewContainer)
-Dialog.BorderOverlay:SetAllPoints()
-Dialog.BorderOverlay:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + 100)
-Dialog.PreviewContainer.Border = Dialog.BorderOverlay:CreateTexture(nil, "OVERLAY")
-Dialog.PreviewContainer.Border:SetAtlas("transmog-tabs-frame")
-Dialog.PreviewContainer.Border:SetPoint("TOPLEFT", Dialog.PreviewContainer, "TOPLEFT", -11, 12)
-Dialog.PreviewContainer.Border:SetPoint("BOTTOMRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", 11, -12)
-
--- [ FILTER TAB BAR ]------------------------------------------------------------------------
+-- [ ROW 2: FILTER TAB BAR ]-------------------------------------------------------------
 
 local FILTER_TABS = { "All", "Text", "Icons", "Auras" }
 local FILTER_TAB_ACTIVE_COLOR = { r = 1.0, g = 0.82, b = 0.0 }
@@ -50,9 +25,9 @@ local function ApplyFilterTabState(btn, isActive)
 end
 
 Dialog.FilterTabBar = CreateFrame("Frame", nil, Dialog)
-Dialog.FilterTabBar:SetPoint("TOPLEFT", Dialog, "TOPLEFT", C.VIEWPORT_PADDING + 30, C.FILTER_TAB_TOP_OFFSET)
-Dialog.FilterTabBar:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", -C.VIEWPORT_PADDING, C.FILTER_TAB_TOP_OFFSET)
-Dialog.FilterTabBar:SetHeight(C.FILTER_TAB_HEIGHT)
+Dialog.FilterTabBar:SetPoint("TOPLEFT", Dialog, "TOPLEFT", C.VIEWPORT_PADDING + 30, -(C.TITLE_ROW_HEIGHT + 7))
+Dialog.FilterTabBar:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", -C.VIEWPORT_PADDING, -(C.TITLE_ROW_HEIGHT + 7))
+Dialog.FilterTabBar:SetHeight(C.PANELS_ROW_HEIGHT)
 Dialog.FilterTabBar:SetFrameLevel(Dialog:GetFrameLevel() + 200)
 Dialog.FilterTabBar:Hide()
 
@@ -95,8 +70,35 @@ for _, tabName in ipairs(FILTER_TABS) do
     lastFilterBtn = btn
 end
 
+-- [ ROW 3: VIEWPORT AREA ]--------------------------------------------------------------
+-- Architecture: PreviewContainer > Viewport (clips) > TransformLayer > PreviewFrame
+-- Dock lives as a vertical column on the LEFT side of the viewport area
 
--- Viewport: Clips children to create the viewable area (inset to clip before border)
+local function GetViewportTopOffset(showTabs)
+    return showTabs and (C.TITLE_ROW_HEIGHT + C.PANELS_ROW_HEIGHT) or C.TITLE_ROW_HEIGHT
+end
+
+Dialog.PreviewContainer = CreateFrame("Frame", nil, Dialog)
+Dialog.PreviewContainer:SetPoint("TOPLEFT", Dialog, "TOPLEFT", C.VIEWPORT_PADDING, -GetViewportTopOffset(true))
+Dialog.PreviewContainer:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", -C.VIEWPORT_PADDING, -GetViewportTopOffset(true))
+Dialog.PreviewContainer:SetHeight(C.VIEWPORT_HEIGHT)
+
+-- Transmog-style background
+Dialog.PreviewContainer.Background = Dialog.PreviewContainer:CreateTexture(nil, "BACKGROUND")
+Dialog.PreviewContainer.Background:SetAtlas("transmog-tabs-frame-bg")
+Dialog.PreviewContainer.Background:SetPoint("TOPLEFT", 4, -4)
+Dialog.PreviewContainer.Background:SetPoint("BOTTOMRIGHT", -4, 4)
+
+-- Transmog-style golden border (on high-level overlay to render above preview content)
+Dialog.BorderOverlay = CreateFrame("Frame", nil, Dialog.PreviewContainer)
+Dialog.BorderOverlay:SetAllPoints()
+Dialog.BorderOverlay:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + 100)
+Dialog.PreviewContainer.Border = Dialog.BorderOverlay:CreateTexture(nil, "OVERLAY")
+Dialog.PreviewContainer.Border:SetAtlas("transmog-tabs-frame")
+Dialog.PreviewContainer.Border:SetPoint("TOPLEFT", Dialog.PreviewContainer, "TOPLEFT", -11, 12)
+Dialog.PreviewContainer.Border:SetPoint("BOTTOMRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", 11, -12)
+
+-- Viewport: clips children to create the viewable area (inset from dock column)
 Dialog.Viewport = CreateFrame("Frame", nil, Dialog.PreviewContainer)
 Dialog.Viewport:SetPoint("TOPLEFT", 4, -4)
 Dialog.Viewport:SetPoint("BOTTOMRIGHT", -4, 4)
@@ -105,14 +107,57 @@ Dialog.Viewport:EnableMouse(true)
 Dialog.Viewport:EnableMouseWheel(true)
 Dialog.Viewport:RegisterForDrag("MiddleButton", "LeftButton")
 
--- TransformLayer: Receives zoom (SetScale) and pan (position offset)
+-- TransformLayer: receives zoom (SetScale) and pan (position offset)
 Dialog.TransformLayer = CreateFrame("Frame", nil, Dialog.Viewport)
-Dialog.TransformLayer:SetSize(1, 1) -- Size managed dynamically
-Dialog.TransformLayer:SetPoint("CENTER", Dialog.Viewport, "CENTER", 0, 0)
+Dialog.TransformLayer:SetSize(1, 1)
+Dialog.TransformLayer:SetPoint("CENTER", Dialog.Viewport, "CENTER", 0, C.DOCK_Y_OFFSET)
 
--- [ ZOOM/PAN HELPERS ]-----------------------------------------------------------------------
+-- [ ROW 4: OVERRIDE SETTINGS CONTAINER ]-------------------------------------------------
 
--- Calculate pan clamping bounds
+Dialog.OverrideContainer = CreateFrame("Frame", nil, Dialog)
+Dialog.OverrideContainer:SetPoint("TOPLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", 0, -C.OVERRIDE_SECTION_PADDING)
+Dialog.OverrideContainer:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", 0, -C.OVERRIDE_SECTION_PADDING)
+Dialog.OverrideContainer:SetHeight(1)
+Dialog.OverrideContainer:SetFrameLevel(Dialog.Border:GetFrameLevel() + 10)
+Dialog.OverrideContainer:Hide()
+
+Dialog.OverrideContainer.Title = Dialog.OverrideContainer:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+Dialog.OverrideContainer.Title:SetPoint("TOPLEFT", Dialog.OverrideContainer, "TOPLEFT", C.DIALOG_INSET, 0)
+
+-- [ DYNAMIC HEIGHT ]---------------------------------------------------------------------
+
+function Dialog:GetViewportTopOffset()
+    return GetViewportTopOffset(self.FilterTabBar and self.FilterTabBar:IsShown())
+end
+
+function Dialog:RecalculateHeight()
+    local FC = Orbit.Constants.Footer
+    local showTabs = self.FilterTabBar and self.FilterTabBar:IsShown()
+    local topOffset = GetViewportTopOffset(showTabs)
+
+    self.PreviewContainer:SetPoint("TOPLEFT", self, "TOPLEFT", C.VIEWPORT_PADDING, -topOffset)
+    self.PreviewContainer:SetPoint("TOPRIGHT", self, "TOPRIGHT", -C.VIEWPORT_PADDING, -topOffset)
+
+    local overrideShown = self.OverrideContainer:IsShown()
+    local overrideHeight = overrideShown and self.OverrideContainer:GetHeight() or 0
+    local overridePad = overrideHeight > 0 and C.OVERRIDE_SECTION_PADDING or 0
+    local footerHeight = FC.TopPadding + FC.ButtonHeight + FC.BottomPadding
+
+    local totalHeight = topOffset + C.VIEWPORT_HEIGHT + overridePad + overrideHeight + footerHeight + C.DIALOG_INSET
+
+    local top = self:GetTop()
+    local left = self:GetLeft()
+    if top and left then
+        self:ClearAllPoints()
+        self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+    end
+
+    self:SetHeight(math.max(C.DIALOG_MIN_HEIGHT, totalHeight))
+    self:LayoutFooterButtons()
+end
+
+-- [ ZOOM/PAN HELPERS ]-------------------------------------------------------------------
+
 local function GetPanBounds(transformLayer, viewport, zoomLevel)
     local baseWidth = transformLayer.baseWidth or 200
     local baseHeight = transformLayer.baseHeight or 60
@@ -121,15 +166,13 @@ local function GetPanBounds(transformLayer, viewport, zoomLevel)
     local viewW = viewport:GetWidth()
     local viewH = viewport:GetHeight()
 
-    -- Allow panning up to the point where preview edge reaches viewport center
     local scale = viewport:GetEffectiveScale()
-    local maxX = OrbitEngine.Pixel:Snap(math.max(0, (scaledW / 2) - (viewW / 2) + C.PAN_CLAMP_PADDING), scale)
-    local maxY = OrbitEngine.Pixel:Snap(math.max(0, (scaledH / 2) - (viewH / 2) + C.PAN_CLAMP_PADDING), scale)
+    local maxX = OrbitEngine.Pixel:Snap(math.max(C.MIN_PAN_RANGE, (scaledW / 2) - (viewW / 2) + C.PAN_CLAMP_PADDING), scale)
+    local maxY = OrbitEngine.Pixel:Snap(math.max(C.MIN_PAN_RANGE, (scaledH / 2) - (viewH / 2) + C.PAN_CLAMP_PADDING), scale)
 
     return maxX, maxY
 end
 
--- Apply pan with clamping
 local function ApplyPanOffset(dialog, offsetX, offsetY)
     local maxX, maxY = GetPanBounds(dialog.TransformLayer, dialog.Viewport, dialog.zoomLevel)
 
@@ -137,39 +180,33 @@ local function ApplyPanOffset(dialog, offsetX, offsetY)
     dialog.panOffsetY = math.max(-maxY, math.min(maxY, offsetY))
 
     dialog.TransformLayer:ClearAllPoints()
-    dialog.TransformLayer:SetPoint("CENTER", dialog.Viewport, "CENTER", dialog.panOffsetX, dialog.panOffsetY)
+    dialog.TransformLayer:SetPoint("CENTER", dialog.Viewport, "CENTER", dialog.panOffsetX, dialog.panOffsetY + C.DOCK_Y_OFFSET)
 end
 
--- Apply zoom level
 local function ApplyZoom(dialog, newZoom)
     newZoom = math.max(C.MIN_ZOOM, math.min(C.MAX_ZOOM, newZoom))
-    -- Round to 2 decimal places
     newZoom = math.floor(newZoom * 100 + 0.5) / 100
 
     dialog.zoomLevel = newZoom
     dialog.TransformLayer:SetScale(newZoom)
-
-    -- Re-clamp pan after zoom change (visible area may have changed)
     ApplyPanOffset(dialog, dialog.panOffsetX, dialog.panOffsetY)
 
-    -- Update zoom indicator in dock
-    if dialog.DisabledDock and dialog.DisabledDock.ZoomIndicator then
-        dialog.DisabledDock.ZoomIndicator:SetText(string.format("%.0f%%", newZoom * 100))
+    if dialog.ZoomIndicator then
+        dialog.ZoomIndicator:SetText(string.format("%.0f%%", newZoom * 100))
     end
 end
 
--- Export helpers for use by other modules
 CanvasMode.ApplyZoom = ApplyZoom
 CanvasMode.ApplyPanOffset = ApplyPanOffset
 
--- [ ZOOM HANDLER ]--------------------------------------------------------------------------
+-- [ ZOOM HANDLER ]-----------------------------------------------------------------------
 
 Dialog.Viewport:SetScript("OnMouseWheel", function(self, delta)
     local newZoom = Dialog.zoomLevel + (delta * C.ZOOM_STEP)
     ApplyZoom(Dialog, newZoom)
 end)
 
--- [ PAN HANDLERS ]--------------------------------------------------------------------------
+-- [ PAN HANDLERS ]-----------------------------------------------------------------------
 
 Dialog.Viewport:SetScript("OnDragStart", function(self)
     self.isPanning = true
@@ -200,22 +237,19 @@ Dialog.Viewport:SetScript("OnUpdate", function(self)
     end
 end)
 
--- [ SYNC TOGGLE ]--------------------------------------------------------------------------
--- Checkbox for syncing component positions across all action bars
+-- [ SYNC TOGGLE ]------------------------------------------------------------------------
 
 Dialog.SyncToggle = CreateFrame("CheckButton", nil, Dialog.BorderOverlay, "UICheckButtonTemplate")
 Dialog.SyncToggle:SetSize(26, 26)
 Dialog.SyncToggle:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "TOPRIGHT", -8, -4)
 Dialog.SyncToggle:SetFrameLevel(Dialog.BorderOverlay:GetFrameLevel() + 1)
-Dialog.SyncToggle:Hide() -- Hidden by default, shown only for plugins that support sync
+Dialog.SyncToggle:Hide()
 
--- Label to the left of checkbox
 Dialog.SyncToggle.label = Dialog.SyncToggle:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 Dialog.SyncToggle.label:SetPoint("RIGHT", Dialog.SyncToggle, "LEFT", -2, 0)
 Dialog.SyncToggle.label:SetText("Sync")
 Dialog.SyncToggle.label:SetTextColor(0.9, 0.9, 0.9, 1)
 
--- State tracking
 Dialog.SyncToggle.isSynced = true
 
 function Dialog.SyncToggle:UpdateVisual()
@@ -226,18 +260,11 @@ Dialog.SyncToggle:SetScript("OnClick", function(self)
     local wasLocal = not self.isSynced
     self.isSynced = self:GetChecked()
 
-    -- Save to plugin setting
-    local plugin = Dialog.targetPlugin
-    local systemIndex = Dialog.targetSystemIndex
-    if plugin and plugin.SetSetting then
-        plugin:SetSetting(systemIndex, "UseGlobalTextStyle", self.isSynced)
-    end
-
-    -- When switching from Local to Synced, reload canvas with global positions
     if wasLocal and self.isSynced then
         local frame = Dialog.targetFrame
+        local plugin = Dialog.targetPlugin
+        local systemIndex = Dialog.targetSystemIndex
         if frame and plugin then
-            -- Re-open to reload with global positions
             Dialog:Open(frame, plugin, systemIndex)
         end
     end
@@ -260,3 +287,10 @@ Dialog.SyncToggle:SetScript("OnLeave", function()
 end)
 
 Dialog.SyncToggle:UpdateVisual()
+
+-- [ ZOOM INDICATOR ]---------------------------------------------------------------------
+
+Dialog.ZoomIndicator = Dialog.BorderOverlay:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+Dialog.ZoomIndicator:SetPoint("BOTTOMRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -10, 8)
+Dialog.ZoomIndicator:SetText(string.format("%.0f%%", C.DEFAULT_ZOOM * 100))
+Dialog.ZoomIndicator:SetTextColor(0.6, 0.6, 0.6, 1)

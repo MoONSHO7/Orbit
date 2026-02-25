@@ -122,13 +122,18 @@ function TextMixin:UpdateHealthText()
     local mode = self.healthTextMode or HEALTH_TEXT_MODES.PERCENT_SHORT
 
     if self.healthTextEnabled == false then
-        self.HealthText:Hide()
         return
     end
 
     if not self.unit then
         self.HealthText:SetText("")
         self.HealthText:Hide()
+        return
+    end
+
+    if not UnitIsConnected(self.unit) then
+        self.HealthText:SetText("Offline")
+        self.HealthText:Show()
         return
     end
 

@@ -8,6 +8,11 @@ local Helpers = nil -- Loaded from BossFrameHelpers.lua
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local MAX_BOSS_FRAMES = 5
 local POWER_BAR_HEIGHT_RATIO = 0.2
+local AURA_SPACING = 1
+local MIN_ICON_SIZE = 10
+local DEFAULT_DEBUFF_ICON_SIZE = 25
+local DEFAULT_BUFF_ICON_SIZE = 20
+local MARKER_ICON_SIZE = 16
 
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_BossFrames"
@@ -17,10 +22,7 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
         Width = 120,
         Height = 25,
         Scale = 100,
-        DebuffPosition = "Left",
-        CastBarPosition = "Below",
-        DebuffSize = 32,
-        MaxDebuffs = 4,
+        Spacing = 40,
         CastBarHeight = 18,
         CastBarWidth = 120,
         CastBarIcon = false,
@@ -29,6 +31,28 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
         PandemicGlowColor = Orbit.Constants.PandemicGlow.DefaultColor,
         PandemicGlowColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
         DisabledComponents = {},
+        ComponentPositions = {
+            Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT", posX = -55, posY = 0 },
+            HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT", posX = 55, posY = 0 },
+            Debuffs = {
+                anchorX = "LEFT", anchorY = "CENTER", offsetX = -2, offsetY = 0,
+                posX = -95, posY = 0,
+                overrides = { MaxIcons = 4, IconSize = 25, MaxRows = 1 },
+            },
+            Buffs = {
+                anchorX = "RIGHT", anchorY = "CENTER", offsetX = -2, offsetY = 0,
+                posX = 95, posY = 0,
+                overrides = { MaxIcons = 3, IconSize = 20, MaxRows = 1 },
+            },
+            CastBar = {
+                anchorX = "CENTER", anchorY = "BOTTOM", offsetX = 0, offsetY = 2,
+                posX = 0, posY = -15,
+                subComponents = {
+                    Text = { anchorX = "LEFT", anchorY = "CENTER", offsetX = 4, offsetY = 0, justifyH = "LEFT" },
+                    Timer = { anchorX = "RIGHT", anchorY = "CENTER", offsetX = 4, offsetY = 0, justifyH = "RIGHT" },
+                },
+            },
+        },
         CastBarColor = { r = 1, g = 0.7, b = 0 },
         CastBarColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
         NonInterruptibleColor = { r = 0.7, g = 0.7, b = 0.7 },
@@ -38,7 +62,9 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
     },
 })
 
-Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.BossFramePreviewMixin, Orbit.AuraMixin)
+Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.BossFramePreviewMixin, Orbit.AuraMixin, Orbit.StatusIconMixin)
+
+Plugin.canvasMode = true
 
 -- [ POWER BAR ]--------------------------------------------------------------------------------------
 local function UpdateFrameLayout(frame, borderSize)
@@ -79,77 +105,192 @@ local function UpdatePowerBar(frame)
     frame.Power:SetStatusBarColor(color.r, color.g, color.b)
 end
 
+-- [ AURA LAYOUT HELPERS ]---------------------------------------------------------------------------
+
+local function CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxIcons, numIcons, overrides)
+    local isHorizontal = (position == "Above" or position == "Below")
+    local maxRows = (overrides and overrides.MaxRows) or 1
+    local iconSize = (overrides and overrides.IconSize) or DEFAULT_DEBUFF_ICON_SIZE
+    iconSize = math.max(MIN_ICON_SIZE, iconSize)
+    local rows, iconsPerRow, containerWidth, containerHeight
+    if isHorizontal then
+        iconsPerRow = math.max(1, math.floor((frameWidth + AURA_SPACING) / (iconSize + AURA_SPACING)))
+        rows = math.min(maxRows, math.ceil(numIcons / iconsPerRow))
+        local displayCols = math.min(math.min(numIcons, iconsPerRow * rows), iconsPerRow)
+        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * AURA_SPACING)
+        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
+    else
+        rows = math.min(maxRows, math.max(1, numIcons))
+        iconsPerRow = math.ceil(numIcons / rows)
+        containerWidth = math.max(iconSize, (iconsPerRow * iconSize) + ((iconsPerRow - 1) * AURA_SPACING))
+        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
+    end
+    return iconSize, rows, iconsPerRow, containerWidth, containerHeight
+end
+
+local function PositionAuraIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow)
+    local xOffset = col * (iconSize + AURA_SPACING)
+    local yOffset = row * (iconSize + AURA_SPACING)
+    icon:ClearAllPoints()
+    local growDown = (anchorY ~= "BOTTOM")
+    if justifyH == "RIGHT" then
+        if growDown then icon:SetPoint("TOPRIGHT", container, "TOPRIGHT", -xOffset, -yOffset)
+        else icon:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -xOffset, yOffset) end
+    else
+        if growDown then icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
+        else icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOffset, yOffset) end
+    end
+    local nextCol = col + 1
+    local nextRow = row
+    if nextCol >= iconsPerRow then nextCol = 0; nextRow = row + 1 end
+    return nextCol, nextRow
+end
+
 -- [ DEBUFF DISPLAY ]---------------------------------------------------------------------------------
 local function UpdateDebuffs(frame, plugin)
-    if not frame.debuffContainer then
-        return
-    end
-    local position = plugin:GetSetting(1, "DebuffPosition")
-    if position == "Disabled" then
+    if not frame.debuffContainer then return end
+
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("Debuffs") then
         frame.debuffContainer:Hide()
-        frame.debuffContainer:SetSize(0, 0)
-        frame.debuffContainer:ClearAllPoints()
         return
     end
+
+    local componentPositions = plugin:GetSetting(1, "ComponentPositions") or {}
+    local debuffData = componentPositions.Debuffs or {}
+    local debuffOverrides = debuffData.overrides or {}
+    local frameWidth = frame:GetWidth()
+    local frameHeight = frame:GetHeight()
+    local maxDebuffs = debuffOverrides.MaxIcons or 4
+
     local unit = frame.unit
     if not UnitExists(unit) then
         frame.debuffContainer:Hide()
-        frame.debuffContainer:SetSize(0, 0)
         return
     end
-
-    local isHorizontal = (position == "Above" or position == "Below")
-    local frameHeight = frame:GetHeight()
-    local frameWidth = frame:GetWidth()
-    local maxDebuffs = plugin:GetSetting(1, "MaxDebuffs") or 4
-
-    if not Helpers then
-        Helpers = Orbit.BossFrameHelpers
-    end
-    local spacing = Helpers.LAYOUT.Spacing
-    local iconSize, xOffsetStep = Helpers:CalculateDebuffLayout(isHorizontal, frameWidth, frameHeight, maxDebuffs, spacing)
 
     if not frame.debuffPool then
         frame.debuffPool = CreateFramePool("Button", frame.debuffContainer, "BackdropTemplate")
     end
     frame.debuffPool:ReleaseAll()
+
     local debuffs = plugin:FetchAuras(unit, "HARMFUL|PLAYER", maxDebuffs)
     if #debuffs == 0 then
         frame.debuffContainer:Hide()
-        frame.debuffContainer:SetSize(0, 0)
         return
     end
 
-    local castBarPos = plugin:GetSetting(1, "CastBarPosition")
-    local castBarHeight = plugin:GetSetting(1, "CastBarHeight") or 14
-    Helpers:PositionDebuffContainer(frame.debuffContainer, frame, position, #debuffs, iconSize, spacing, castBarPos, castBarHeight)
+    if not Helpers then Helpers = Orbit.BossFrameHelpers end
+    local position = Helpers:AnchorToPosition(debuffData.posX, debuffData.posY, frameWidth / 2, frameHeight / 2)
+    local iconSize, rows, iconsPerRow, containerWidth, containerHeight =
+        CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxDebuffs, #debuffs, debuffOverrides)
 
-    local globalBorder, Constants = Orbit.db.GlobalSettings.BorderSize, Orbit.Constants
+    frame.debuffContainer:ClearAllPoints()
+    frame.debuffContainer:SetSize(containerWidth, containerHeight)
+
+    local anchorX = debuffData.anchorX or "LEFT"
+    local anchorY = debuffData.anchorY or "CENTER"
+    local offsetX = debuffData.offsetX or 0
+    local offsetY = debuffData.offsetY or 0
+    local justifyH = debuffData.justifyH or "LEFT"
+
+    local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
+    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
+
+    local finalX = offsetX
+    local finalY = offsetY
+    if anchorX == "RIGHT" then finalX = -offsetX end
+    if anchorY == "TOP" then finalY = -offsetY end
+
+    frame.debuffContainer:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
+
+    local Constants = Orbit.Constants
     local skinSettings = {
-        zoom = 0,
-        borderStyle = 1,
-        borderSize = globalBorder,
-        showTimer = true,
+        zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true,
         enablePandemic = true,
         pandemicGlowType = plugin:GetSetting(1, "PandemicGlowType") or Constants.PandemicGlow.DefaultType,
         pandemicGlowColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "PandemicGlowColorCurve"))
-            or plugin:GetSetting(1, "PandemicGlowColor")
-            or Constants.PandemicGlow.DefaultColor,
+            or plugin:GetSetting(1, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
     }
 
-    local currentX = 0
-    for i, aura in ipairs(debuffs) do
+    local col, row = 0, 0
+    for _, aura in ipairs(debuffs) do
         local icon = frame.debuffPool:Acquire()
-        icon:SetSize(iconSize, iconSize)
-
-        currentX = Helpers:PositionDebuffIcon(icon, frame.debuffContainer, isHorizontal, position, currentX, iconSize, xOffsetStep, spacing)
+        icon:EnableMouse(false)
         plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
         plugin:SetupAuraTooltip(icon, aura, unit, "HARMFUL|PLAYER")
+        col, row = PositionAuraIcon(icon, frame.debuffContainer, justifyH, anchorY, col, row, iconSize, iconsPerRow)
     end
     frame.debuffContainer:Show()
-    if not InCombatLockdown() then
-        plugin:PositionFrames()
+end
+
+-- [ BUFF DISPLAY ]----------------------------------------------------------------------------------
+local function UpdateBuffs(frame, plugin)
+    if not frame.buffContainer then return end
+
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("Buffs") then
+        frame.buffContainer:Hide()
+        return
     end
+
+    local componentPositions = plugin:GetSetting(1, "ComponentPositions") or {}
+    local buffData = componentPositions.Buffs or {}
+    local buffOverrides = buffData.overrides or {}
+    local frameWidth = frame:GetWidth()
+    local frameHeight = frame:GetHeight()
+    local maxBuffs = buffOverrides.MaxIcons or 3
+
+    local unit = frame.unit
+    if not UnitExists(unit) then
+        frame.buffContainer:Hide()
+        return
+    end
+
+    if not frame.buffPool then
+        frame.buffPool = CreateFramePool("Button", frame.buffContainer, "BackdropTemplate")
+    end
+    frame.buffPool:ReleaseAll()
+
+    local buffs = plugin:FetchAuras(unit, "HELPFUL", maxBuffs)
+    if #buffs == 0 then
+        frame.buffContainer:Hide()
+        return
+    end
+
+    if not Helpers then Helpers = Orbit.BossFrameHelpers end
+    local position = Helpers:AnchorToPosition(buffData.posX, buffData.posY, frameWidth / 2, frameHeight / 2)
+    local iconSize, rows, iconsPerRow, containerWidth, containerHeight =
+        CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxBuffs, #buffs, buffOverrides)
+
+    frame.buffContainer:ClearAllPoints()
+    frame.buffContainer:SetSize(containerWidth, containerHeight)
+
+    local anchorX = buffData.anchorX or "RIGHT"
+    local anchorY = buffData.anchorY or "CENTER"
+    local offsetX = buffData.offsetX or 0
+    local offsetY = buffData.offsetY or 0
+    local justifyH = buffData.justifyH or "RIGHT"
+
+    local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
+    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
+
+    local finalX = offsetX
+    local finalY = offsetY
+    if anchorX == "RIGHT" then finalX = -offsetX end
+    if anchorY == "TOP" then finalY = -offsetY end
+
+    frame.buffContainer:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
+
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true }
+
+    local col, row = 0, 0
+    for _, aura in ipairs(buffs) do
+        local icon = frame.buffPool:Acquire()
+        icon:EnableMouse(false)
+        plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
+        plugin:SetupAuraTooltip(icon, aura, unit, "HELPFUL")
+        col, row = PositionAuraIcon(icon, frame.buffContainer, justifyH, anchorY, col, row, iconSize, iconsPerRow)
+    end
+    frame.buffContainer:Show()
 end
 
 -- [ CAST BAR ]--------------------------------------------------------------------------------------
@@ -196,14 +337,19 @@ local function CreateBossCastBar(parent, bossIndex, plugin)
     Orbit.Skin:SkinBorder(bar, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 }, true)
     bar.IconBorder:Hide()
 
-    bar.Text = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.Text:SetPoint("LEFT", 4, 0)
+    bar.TextOverlay = CreateFrame("Frame", nil, bar)
+    bar.TextOverlay:SetAllPoints()
+    bar.TextOverlay:SetFrameLevel(bar:GetFrameLevel() + (Orbit.Constants.Levels.Border or 3) + 1)
+    bar.TextOverlay:EnableMouse(false)
+
+    bar.Text = bar.TextOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    bar.Text:SetPoint("LEFT", bar, "LEFT", 4, 0)
     bar.Text:SetJustifyH("LEFT")
     bar.Text:SetShadowColor(0, 0, 0, 1)
     bar.Text:SetShadowOffset(1, -1)
 
-    bar.Timer = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.Timer:SetPoint("RIGHT", -4, 0)
+    bar.Timer = bar.TextOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    bar.Timer:SetPoint("RIGHT", bar, "RIGHT", -4, 0)
     bar.Timer:SetJustifyH("RIGHT")
     bar.Timer:SetShadowColor(0, 0, 0, 1)
     bar.Timer:SetShadowOffset(1, -1)
@@ -215,11 +361,23 @@ local function CreateBossCastBar(parent, bossIndex, plugin)
     return bar
 end
 
-function Plugin:PositionCastBar(castBar, parent, position)
+function Plugin:PositionCastBar(castBar, parent, _legacyPosition)
+    if not castBar or not parent then return end
+    local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+    local castData = componentPositions.CastBar
     castBar:ClearAllPoints()
-    if position == "Above" then
-        castBar:SetPoint("BOTTOM", parent, "TOP", 0, 2)
-    else -- Below
+    if castData and castData.anchorY then
+        local anchorX = castData.anchorX or "CENTER"
+        local anchorY = castData.anchorY or "BOTTOM"
+        local offsetX = castData.offsetX or 0
+        local offsetY = castData.offsetY or 0
+        local justifyH = castData.justifyH or "CENTER"
+        local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
+        local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, false, anchorY, justifyH)
+        if anchorX == "RIGHT" then offsetX = -offsetX end
+        if anchorY == "TOP" then offsetY = -offsetY end
+        castBar:SetPoint(selfAnchor, parent, anchorPoint, offsetX, offsetY)
+    else
         castBar:SetPoint("TOP", parent, "BOTTOM", 0, -2)
     end
 end
@@ -289,9 +447,10 @@ local function SetupCastBarHooks(castBar, unit)
         end
 
         local showText = plugin:GetSetting(1, "CastBarText")
+        local textDisabled = plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar.Text")
         if castBar.Text then
             castBar.Text:ClearAllPoints()
-            if showText then
+            if showText and not textDisabled then
                 castBar.Text:Show()
                 if showIcon and castBar.Icon then
                     castBar.Text:SetPoint("LEFT", castBar.Icon, "RIGHT", 4, 0)
@@ -307,8 +466,9 @@ local function SetupCastBarHooks(castBar, unit)
         end
 
         local showTimer = plugin:GetSetting(1, "CastBarTimer")
+        local timerDisabled = plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar.Timer")
         if castBar.Timer then
-            castBar.Timer:SetShown(showTimer)
+            castBar.Timer:SetShown(showTimer and not timerDisabled)
         end
 
         local min, max = nativeBar:GetMinMaxValues()
@@ -320,6 +480,7 @@ local function SetupCastBarHooks(castBar, unit)
         local color = nativeBar.notInterruptible and ResolveNonInterruptibleColor(plugin) or ResolveCastBarColor(plugin)
         castBar:SetStatusBarColor(color.r, color.g, color.b)
 
+        if plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar") then return end
         castBar:Show()
     end)
 
@@ -410,12 +571,29 @@ local function CreateBossFrame(bossIndex, plugin)
         UpdatePowerBar(self)
         UpdateFrameLayout(self, Orbit.db.GlobalSettings.BorderSize)
         UpdateDebuffs(self, plugin)
+        UpdateBuffs(self, plugin)
+        plugin:UpdateMarkerIcon(self, plugin)
     end)
 
     frame.debuffContainer = CreateFrame("Frame", nil, frame)
     frame.debuffContainer:SetSize(100, 20)
 
+    frame.buffContainer = CreateFrame("Frame", nil, frame)
+    frame.buffContainer:SetSize(100, 20)
+
+    frame.StatusOverlay = CreateFrame("Frame", nil, frame)
+    frame.StatusOverlay:SetAllPoints()
+    frame.StatusOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Text)
+
+    frame.MarkerIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
+    frame.MarkerIcon:SetSize(MARKER_ICON_SIZE, MARKER_ICON_SIZE)
+    frame.MarkerIcon.orbitOriginalWidth, frame.MarkerIcon.orbitOriginalHeight = MARKER_ICON_SIZE, MARKER_ICON_SIZE
+    frame.MarkerIcon:SetPoint("TOP", frame, "TOP", 0, -2)
+    frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
+    frame.MarkerIcon:Hide()
+
     frame:RegisterUnitEvent("UNIT_AURA", unit)
+    frame:RegisterEvent("RAID_TARGET_UPDATE")
 
     frame.CastBar = CreateBossCastBar(frame, bossIndex, plugin)
     plugin:PositionCastBar(frame.CastBar, frame, "Below")
@@ -423,20 +601,19 @@ local function CreateBossFrame(bossIndex, plugin)
     local originalOnEvent = frame:GetScript("OnEvent")
     frame:SetScript("OnEvent", function(f, event, eventUnit, ...)
         if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
-            if eventUnit == unit then
-                UpdatePowerBar(f)
-            end
+            if eventUnit == unit then UpdatePowerBar(f) end
             return
         elseif event == "UNIT_AURA" then
             if eventUnit == unit then
                 UpdateDebuffs(f, plugin)
+                UpdateBuffs(f, plugin)
             end
             return
+        elseif event == "RAID_TARGET_UPDATE" then
+            plugin:UpdateMarkerIcon(f, plugin)
+            return
         end
-
-        if originalOnEvent then
-            originalOnEvent(f, event, eventUnit, ...)
-        end
+        if originalOnEvent then originalOnEvent(f, event, eventUnit, ...) end
     end)
 
     frame.healthTextEnabled = true
@@ -502,30 +679,9 @@ function Plugin:AddSettings(dialog, systemFrame)
     if currentTab == "Layout" then
         table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 150 })
         table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40 })
-        table.insert(schema.controls, {
-            type = "dropdown",
-            key = "CastBarPosition",
-            label = "Cast Bar",
-            options = { { label = "Above", value = "Above" }, { label = "Below", value = "Below" } },
-            default = "Below",
-        })
-        table.insert(schema.controls, { type = "slider", key = "CastBarHeight", label = "Cast Bar Height", min = 15, max = 35, step = 1, default = 14 })
-        table.insert(schema.controls, { type = "checkbox", key = "CastBarIcon", label = "Show Cast Bar Icon", default = true })
+        table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = 20, max = 100, step = 1, default = 40,
+          formatter = function(v) return v .. "px" end })
     elseif currentTab == "Auras" then
-        table.insert(schema.controls, {
-            type = "dropdown",
-            key = "DebuffPosition",
-            label = "Debuffs",
-            options = {
-                { label = "Disabled", value = "Disabled" },
-                { label = "Left", value = "Left" },
-                { label = "Right", value = "Right" },
-                { label = "Above", value = "Above" },
-                { label = "Below", value = "Below" },
-            },
-            default = "Right",
-        })
-        table.insert(schema.controls, { type = "slider", key = "MaxDebuffs", label = "Max Debuffs", min = 2, max = 8, step = 1, default = 4 })
         local GlowType = Orbit.Constants.PandemicGlow.Type
         table.insert(schema.controls, {
             type = "dropdown",
@@ -566,6 +722,7 @@ function Plugin:OnLoad()
     for i = 1, MAX_BOSS_FRAMES do
         self.frames[i] = CreateBossFrame(i, self)
         self.frames[i]:SetParent(self.container)
+        self.frames[i].orbitPlugin = self
         RegisterUnitWatch(self.frames[i])
         local bossIndex = i
         Orbit:SafeAction(function()
@@ -575,8 +732,137 @@ function Plugin:OnLoad()
         end)
     end
 
+    -- Register components for Canvas Mode drag (using first frame's elements)
+    local pluginRef = self
+    local firstFrame = self.frames[1]
+    if OrbitEngine.ComponentDrag and firstFrame then
+        local textComponents = { "Name", "HealthText" }
+        for _, key in ipairs(textComponents) do
+            local element = firstFrame[key]
+            if element then
+                OrbitEngine.ComponentDrag:Attach(element, self.container, {
+                    key = key,
+                    onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
+                        local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
+                        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
+                        pluginRef:SetSetting(1, "ComponentPositions", positions)
+                    end,
+                })
+            end
+        end
+
+        if not firstFrame.debuffContainer then
+            firstFrame.debuffContainer = CreateFrame("Frame", nil, firstFrame)
+            firstFrame.debuffContainer:SetSize(DEFAULT_DEBUFF_ICON_SIZE, DEFAULT_DEBUFF_ICON_SIZE)
+        end
+        OrbitEngine.ComponentDrag:Attach(firstFrame.debuffContainer, self.container, {
+            key = "Debuffs",
+            isAuraContainer = true,
+            onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
+                local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
+                if not positions.Debuffs then positions.Debuffs = {} end
+                positions.Debuffs.anchorX = anchorX
+                positions.Debuffs.anchorY = anchorY
+                positions.Debuffs.offsetX = offsetX
+                positions.Debuffs.offsetY = offsetY
+                positions.Debuffs.justifyH = justifyH
+
+                positions.Debuffs.justifyV = justifyV
+                local compParent = comp:GetParent()
+                if compParent then
+                    local cx, cy = comp:GetCenter()
+                    local px, py = compParent:GetCenter()
+                    if cx and px then positions.Debuffs.posX = cx - px end
+                    if cy and py then positions.Debuffs.posY = cy - py end
+                end
+                pluginRef:SetSetting(1, "ComponentPositions", positions)
+            end,
+        })
+    end
+
     self.frame = self.container
     self.frame.anchorOptions = { horizontal = false, vertical = false, noAnchor = true }
+    self.container.orbitCanvasFrame = self.frames[1]
+    self.container.orbitCanvasTitle = "Boss Frame"
+
+    -- Register Buffs container for Canvas Mode drag
+    if OrbitEngine.ComponentDrag and firstFrame then
+        if not firstFrame.buffContainer then
+            firstFrame.buffContainer = CreateFrame("Frame", nil, firstFrame)
+            firstFrame.buffContainer:SetSize(DEFAULT_BUFF_ICON_SIZE, DEFAULT_BUFF_ICON_SIZE)
+        end
+        OrbitEngine.ComponentDrag:Attach(firstFrame.buffContainer, self.container, {
+            key = "Buffs",
+            isAuraContainer = true,
+            onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
+                local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
+                if not positions.Buffs then positions.Buffs = {} end
+                positions.Buffs.anchorX = anchorX
+                positions.Buffs.anchorY = anchorY
+                positions.Buffs.offsetX = offsetX
+                positions.Buffs.offsetY = offsetY
+                positions.Buffs.justifyH = justifyH
+
+                positions.Buffs.justifyV = justifyV
+                local compParent = comp:GetParent()
+                if compParent then
+                    local cx, cy = comp:GetCenter()
+                    local px, py = compParent:GetCenter()
+                    if cx and px then positions.Buffs.posX = cx - px end
+                    if cy and py then positions.Buffs.posY = cy - py end
+                end
+                pluginRef:SetSetting(1, "ComponentPositions", positions)
+            end,
+        })
+
+        if firstFrame.MarkerIcon then
+            OrbitEngine.ComponentDrag:Attach(firstFrame.MarkerIcon, self.container, {
+                key = "MarkerIcon",
+                onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
+                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
+                    positions.MarkerIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
+                    pluginRef:SetSetting(1, "ComponentPositions", positions)
+                end,
+            })
+        end
+
+        if firstFrame.CastBar then
+            OrbitEngine.ComponentDrag:Attach(firstFrame.CastBar, self.container, {
+                key = "CastBar",
+                onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
+                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
+                    local existingSubs = positions.CastBar and positions.CastBar.subComponents
+                    positions.CastBar = {
+                        anchorX = anchorX, anchorY = anchorY,
+                        offsetX = offsetX, offsetY = offsetY,
+                        justifyH = justifyH,
+                        subComponents = existingSubs,
+                    }
+                    local compParent = comp:GetParent()
+                    if compParent then
+                        local cx, cy = comp:GetCenter()
+                        local px, py = compParent:GetCenter()
+                        if cx and px then positions.CastBar.posX = cx - px end
+                        if cy and py then positions.CastBar.posY = cy - py end
+                    end
+                    pluginRef:SetSetting(1, "ComponentPositions", positions)
+                end,
+            })
+        end
+    end
+
+    local dialog = OrbitEngine.CanvasModeDialog or Orbit.CanvasModeDialog
+    if dialog and not self.canvasModeHooked then
+        self.canvasModeHooked = true
+        local originalOpen = dialog.Open
+        dialog.Open = function(dlg, frame, plugin, systemIndex)
+            if frame == self.container or frame == self.frames[1] then
+                self:PrepareIconsForCanvasMode()
+            end
+            return originalOpen(dlg, frame, plugin, systemIndex)
+        end
+    end
+
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, 1)
 
     if not self.container:GetPoint() then
@@ -657,61 +943,88 @@ function Plugin:OnLoad()
     end
 end
 
-function Plugin:CalculateFrameSpacing(index)
-    local castBarPos = self:GetSetting(1, "CastBarPosition") or "Below"
-    local castBarHeight = self:GetSetting(1, "CastBarHeight") or 14
-    local castBarGap = 2
-
-    local debuffPos = self:GetSetting(1, "DebuffPosition") or "Right"
-    local maxDebuffs = self:GetSetting(1, "MaxDebuffs") or 4
-    local frameWidth = self:GetSetting(1, "Width") or 150
-    local spacing = 2
-    local iconSize = 0
-
-    if debuffPos == "Above" or debuffPos == "Below" then
-        local totalSpacing = (maxDebuffs - 1) * spacing
-        iconSize = (frameWidth - totalSpacing) / maxDebuffs
-    else
-        -- Side positioning doesn't affect vertical spacing
-        iconSize = 0
+function Plugin:PrepareIconsForCanvasMode()
+    local frame = self.frames[1]
+    if not frame then return end
+    if frame.MarkerIcon then
+        frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
+        frame.MarkerIcon.orbitSpriteIndex = 8
+        frame.MarkerIcon.orbitSpriteRows = 4
+        frame.MarkerIcon.orbitSpriteCols = 4
+        local col = (8 - 1) % 4
+        local row = math.floor((8 - 1) / 4)
+        local w, h = 1 / 4, 1 / 4
+        frame.MarkerIcon:SetTexCoord(col * w, (col + 1) * w, row * h, (row + 1) * h)
+        frame.MarkerIcon:Show()
     end
+    if frame.CastBar then
+        local castBarHeight = self:GetSetting(1, "CastBarHeight") or 18
+        local castBarWidth = self:GetSetting(1, "CastBarWidth") or 120
+        local showIcon = self:GetSetting(1, "CastBarIcon")
+        local iconOffset = 0
+        frame.CastBar:SetSize(castBarWidth, castBarHeight)
 
-    local topPadding = 0
-    local bottomPadding = 0
-    local elementGap = 2
+        local textureName = self:GetSetting(1, "Texture") or self:GetPlayerSetting("Texture")
+        local texturePath = textureName and LSM:Fetch("statusbar", textureName)
+        if texturePath then frame.CastBar:SetStatusBarTexture(texturePath) end
 
-    if castBarPos == "Above" then
-        topPadding = topPadding + castBarHeight + castBarGap
-    elseif castBarPos == "Below" then
-        bottomPadding = bottomPadding + castBarHeight + castBarGap
+        frame.CastBar:SetMinMaxValues(0, 2.0)
+        frame.CastBar:SetValue(1.2)
+        frame.CastBar.unit = "preview"
+
+        if frame.CastBar.Icon then
+            if showIcon then
+                frame.CastBar.Icon:SetTexture(136243)
+                frame.CastBar.Icon:SetSize(castBarHeight, castBarHeight)
+                frame.CastBar.Icon:Show()
+                iconOffset = castBarHeight
+                if frame.CastBar.IconBorder then frame.CastBar.IconBorder:Show() end
+            else
+                frame.CastBar.Icon:Hide()
+                if frame.CastBar.IconBorder then frame.CastBar.IconBorder:Hide() end
+            end
+        end
+
+        local statusBarTexture = frame.CastBar:GetStatusBarTexture()
+        if statusBarTexture then
+            statusBarTexture:ClearAllPoints()
+            statusBarTexture:SetPoint("TOPLEFT", frame.CastBar, "TOPLEFT", iconOffset, 0)
+            statusBarTexture:SetPoint("BOTTOMLEFT", frame.CastBar, "BOTTOMLEFT", iconOffset, 0)
+            statusBarTexture:SetPoint("TOPRIGHT", frame.CastBar, "TOPRIGHT", 0, 0)
+            statusBarTexture:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
+        end
+        if frame.CastBar.bg then
+            frame.CastBar.bg:ClearAllPoints()
+            frame.CastBar.bg:SetPoint("TOPLEFT", frame.CastBar, "TOPLEFT", iconOffset, 0)
+            frame.CastBar.bg:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
+        end
+
+        if frame.CastBar.Text then
+            frame.CastBar.Text:ClearAllPoints()
+            if showIcon and frame.CastBar.Icon then
+                frame.CastBar.Text:SetPoint("LEFT", frame.CastBar.Icon, "RIGHT", 4, 0)
+            else
+                frame.CastBar.Text:SetPoint("LEFT", frame.CastBar, "LEFT", 4, 0)
+            end
+            frame.CastBar.Text:SetText("Boss Ability")
+        end
+        if frame.CastBar.Timer then frame.CastBar.Timer:SetText("1.5") end
+
+        frame.CastBar:Show()
     end
-
-    if debuffPos == "Above" then
-        topPadding = topPadding + iconSize + elementGap
-    elseif debuffPos == "Below" then
-        bottomPadding = bottomPadding + iconSize + elementGap
-    end
-
-    return topPadding, bottomPadding
 end
 
 function Plugin:PositionFrames()
-    if not self.frames or not self.container then
-        return
-    end
-    local baseSpacing = 2
+    if not self.frames or not self.container then return end
+    local spacing = self:GetSetting(1, "Spacing") or 40
     local frameHeight = self:GetSetting(1, "Height") or 40
 
     for i, frame in ipairs(self.frames) do
         frame:ClearAllPoints()
-        local topPadding, bottomPadding = self:CalculateFrameSpacing(i)
-        frame.layoutHeight = frameHeight + topPadding + bottomPadding
-
         if i == 1 then
-            frame:SetPoint("TOP", self.container, "TOP", 0, -topPadding)
+            frame:SetPoint("TOP", self.container, "TOP", 0, 0)
         else
-            local prevTop, prevBottom = self:CalculateFrameSpacing(i - 1)
-            frame:SetPoint("TOP", self.frames[i - 1], "BOTTOM", 0, -(prevBottom + baseSpacing + topPadding))
+            frame:SetPoint("TOP", self.frames[i - 1], "BOTTOM", 0, -spacing)
         end
     end
 
@@ -719,42 +1032,24 @@ function Plugin:PositionFrames()
 end
 
 function Plugin:UpdateContainerSize()
-    if not self.container or not self.frames then
-        return
-    end
+    if not self.container or not self.frames then return end
     local width = self:GetSetting(1, "Width") or 150
     local scale = (self:GetSetting(1, "Scale") or 100) / 100
-    local baseSpacing = 2
+    local spacing = self:GetSetting(1, "Spacing") or 40
     local isEditMode = Orbit:IsEditMode()
     local isPreviewActive = self.isPreviewActive
-    local visibleCount, lastVisibleIndex = 0, 0
+    local visibleCount = 0
     if isPreviewActive or isEditMode then
-        visibleCount, lastVisibleIndex = MAX_BOSS_FRAMES, MAX_BOSS_FRAMES
+        visibleCount = MAX_BOSS_FRAMES
     else
-        for i, frame in ipairs(self.frames) do
-            if frame:IsShown() then
-                visibleCount, lastVisibleIndex = visibleCount + 1, i
-            end
+        for _, frame in ipairs(self.frames) do
+            if frame:IsShown() then visibleCount = visibleCount + 1 end
         end
     end
-    if visibleCount == 0 then
-        visibleCount, lastVisibleIndex = MAX_BOSS_FRAMES, MAX_BOSS_FRAMES
-    end
-    local topPaddingFirst, _ = self:CalculateFrameSpacing(1)
-    local totalHeight = topPaddingFirst
+    if visibleCount == 0 then visibleCount = MAX_BOSS_FRAMES end
 
-    for i = 1, lastVisibleIndex do
-        totalHeight = totalHeight + self.frames[i]:GetHeight()
-        local _, b = self:CalculateFrameSpacing(i)
-        if i < lastVisibleIndex then
-            local _, prevB = self:CalculateFrameSpacing(i)
-            local nextT, _ = self:CalculateFrameSpacing(i + 1)
-            totalHeight = totalHeight + prevB + baseSpacing + nextT
-        else
-            totalHeight = totalHeight + b
-        end
-    end
-
+    local frameHeight = self:GetSetting(1, "Height") or 40
+    local totalHeight = visibleCount * frameHeight + (visibleCount - 1) * spacing
     self.container:SetSize(width, totalHeight)
     self.container:SetScale(scale)
 end
@@ -768,8 +1063,8 @@ function Plugin:ApplySettings()
     local scale = self:GetSetting(1, "Scale") or 100
     local width = self:GetSetting(1, "Width") or 150
     local height = self:GetSetting(1, "Height") or 40
-    local castBarPosition = self:GetSetting(1, "CastBarPosition") or "Below"
     local castBarHeight = self:GetSetting(1, "CastBarHeight") or 14
+    local castBarWidth = self:GetSetting(1, "CastBarWidth") or width
 
     local borderSize = self:GetSetting(1, "BorderSize") or self:GetPlayerSetting("BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
     local textureName = self:GetSetting(1, "Texture") or self:GetPlayerSetting("Texture")
@@ -811,9 +1106,15 @@ function Plugin:ApplySettings()
         Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)
         Orbit.Skin:ApplyUnitFrameText(frame.HealthText, "RIGHT", nil, textSize)
 
+        if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
+
         if frame.CastBar then
-            frame.CastBar:SetSize(width, castBarHeight)
-            self:PositionCastBar(frame.CastBar, frame, castBarPosition)
+            local castBarDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar")
+            if castBarDisabled then
+                frame.CastBar:Hide()
+            else
+            frame.CastBar:SetSize(castBarWidth, castBarHeight)
+            self:PositionCastBar(frame.CastBar, frame)
 
             if frame.CastBar.SetBorder then
                 frame.CastBar:SetBorder(borderSize)
@@ -831,11 +1132,39 @@ function Plugin:ApplySettings()
             if frame.CastBar.Timer then
                 frame.CastBar.Timer:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline())
             end
+
+            local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+            local castData = componentPositions.CastBar or {}
+            local subComps = castData.subComponents or {}
+            local function ApplySubPos(element, subPos, defaultJustify)
+                if not element or not subPos then return end
+                element:ClearAllPoints()
+                local aX = subPos.anchorX or defaultJustify
+                local aY = subPos.anchorY or "CENTER"
+                local oX = subPos.offsetX or 4
+                local oY = subPos.offsetY or 0
+                local jH = subPos.justifyH or defaultJustify
+                local anchor = OrbitEngine.PositionUtils.BuildAnchorPoint(aX, aY)
+                local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(true, false, aY, jH)
+                local fX = oX
+                local fY = oY
+                if aX == "RIGHT" then fX = -fX end
+                if aY == "TOP" then fY = -fY end
+                element:SetPoint(selfAnchor, frame.CastBar, anchor, fX, fY)
+                element:SetJustifyH(jH)
+            end
+            ApplySubPos(frame.CastBar.Text, subComps.Text or { anchorX = "LEFT", anchorY = "CENTER", offsetX = 4, offsetY = 0, justifyH = "LEFT" }, "LEFT")
+            ApplySubPos(frame.CastBar.Timer, subComps.Timer or { anchorX = "RIGHT", anchorY = "CENTER", offsetX = 4, offsetY = 0, justifyH = "RIGHT" }, "RIGHT")
+            if frame.CastBar.Text then frame.CastBar.Text:SetShown(not (self.IsComponentDisabled and self:IsComponentDisabled("CastBar.Text"))) end
+            if frame.CastBar.Timer then frame.CastBar.Timer:SetShown(not (self.IsComponentDisabled and self:IsComponentDisabled("CastBar.Timer"))) end
+            end
         end
 
         frame:UpdateAll()
         UpdatePowerBar(frame)
         UpdateDebuffs(frame, self)
+        UpdateBuffs(frame, self)
+        self:UpdateMarkerIcon(frame, self)
     end
 
     self:PositionFrames()
@@ -858,5 +1187,7 @@ function Plugin:UpdateVisuals()
         end
         UpdatePowerBar(frame)
         UpdateDebuffs(frame, self)
+        UpdateBuffs(frame, self)
+        self:UpdateMarkerIcon(frame, self)
     end
 end

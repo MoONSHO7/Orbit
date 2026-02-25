@@ -171,7 +171,7 @@ function Plugin:OnLoad()
     -- Alias
     Frame.PowerBar = PowerBar
     self.frame = Frame -- Expose for PluginMixin compatibility
-    self.mountedFrame = Frame
+    self.mountedConfig = { frame = Frame }
 
     self:ApplySettings()
 
@@ -210,9 +210,9 @@ function Plugin:OnLoad()
     if OrbitEngine.ComponentDrag and Frame.Text then
         OrbitEngine.ComponentDrag:Attach(Frame.Text, Frame, {
             key = "Text",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                 local positions = self:GetSetting(SYSTEM_INDEX, "ComponentPositions") or {}
-                positions.Text = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                positions.Text = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                 self:SetSetting(SYSTEM_INDEX, "ComponentPositions", positions)
             end,
         })

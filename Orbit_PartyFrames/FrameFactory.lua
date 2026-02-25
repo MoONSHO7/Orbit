@@ -126,7 +126,7 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
 
     -- Defensive and Important single-aura icons (Button frames for skin/border support)
     local auraIconSize = centerIconSize
-    for _, iconKey in ipairs({ "DefensiveIcon", "ImportantIcon", "CrowdControlIcon" }) do
+    for _, iconKey in ipairs({ "DefensiveIcon", "CrowdControlIcon" }) do
         local btn = CreateFrame("Button", nil, frame, "BackdropTemplate")
         btn:SetSize(auraIconSize, auraIconSize)
         btn.orbitOriginalWidth, btn.orbitOriginalHeight = auraIconSize, auraIconSize
@@ -136,6 +136,7 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
         btn.Icon:SetAllPoints()
         btn.icon = btn.Icon
         btn:Hide()
+        btn:EnableMouse(false)
         frame[iconKey] = btn
     end
 
@@ -165,6 +166,7 @@ function Orbit.PartyFrameFactoryMixin:RegisterFrameEvents(frame, unit)
         "UNIT_FLAGS",
         "INCOMING_RESURRECT_CHANGED",
         "UNIT_IN_RANGE_UPDATE",
+        "UNIT_CONNECTION",
     }
     for _, event in ipairs(unitEvents) do
         frame:RegisterUnitEvent(event, unit)
@@ -178,6 +180,7 @@ function Orbit.PartyFrameFactoryMixin:RegisterFrameEvents(frame, unit)
         "GROUP_ROSTER_UPDATE",
         "PLAYER_TARGET_CHANGED",
         "RAID_TARGET_UPDATE",
+        "PARTY_LEADER_CHANGED",
         "PLAYER_REGEN_DISABLED",
         "PLAYER_REGEN_ENABLED",
     }

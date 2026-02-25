@@ -203,7 +203,7 @@ end
 -- SHOW COMPONENT POSITION TOOLTIP
 -------------------------------------------------
 
-function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, posY, offsetX, offsetY, justifyH)
+function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, posY, offsetX, offsetY, justifyH, justifyV)
     if not component then
         return
     end
