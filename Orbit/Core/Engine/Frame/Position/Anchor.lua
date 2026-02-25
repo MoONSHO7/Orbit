@@ -502,6 +502,7 @@ function Anchor:GetHorizontalChainExtent(frame)
         return nil, nil
     end
     local root = GetChainRoot(self.anchors, frame)
+    local rootScale = root:GetEffectiveScale()
     local minX, maxX = 0, root:GetWidth()
     local function walk(parent, parentLeft)
         local children = self.childrenOf[parent]
@@ -511,8 +512,9 @@ function Anchor:GetHorizontalChainExtent(frame)
         for child in pairs(children) do
             local a = self.anchors[child]
             if a and (a.edge == "LEFT" or a.edge == "RIGHT") and child.orbitChainSync then
-                local childLeft = (a.edge == "RIGHT") and (parentLeft + parent:GetWidth() + (a.padding or 0))
-                    or (parentLeft - (a.padding or 0) - child:GetWidth())
+                local pad = Orbit.Engine.Pixel:Multiple(a.padding or 0, rootScale)
+                local childLeft = (a.edge == "RIGHT") and (parentLeft + parent:GetWidth() + pad)
+                    or (parentLeft - pad - child:GetWidth())
                 local childRight = childLeft + child:GetWidth()
                 if childLeft < minX then
                     minX = childLeft
@@ -536,10 +538,11 @@ function Anchor:GetHorizontalChainExtent(frame)
         if not a then
             break
         end
+        local pad = Orbit.Engine.Pixel:Multiple(a.padding or 0, rootScale)
         if a.edge == "RIGHT" then
-            frameRelX = frameRelX + a.parent:GetWidth() + (a.padding or 0)
+            frameRelX = frameRelX + a.parent:GetWidth() + pad
         elseif a.edge == "LEFT" then
-            frameRelX = frameRelX - (a.padding or 0) - current:GetWidth()
+            frameRelX = frameRelX - pad - current:GetWidth()
         end
         current = a.parent
     end
