@@ -62,7 +62,7 @@ function Plugin:OnLoad()
 
     -- Create frame directly on UIParent
     self.frame = OrbitEngine.UnitButton:Create(UIParent, "focustarget", "OrbitTargetOfFocusFrame")
-    self.mountedFrame = self.frame
+    self.mountedConfig = { frame = self.frame }
     self.frame:SetFrameLevel(math.max(1, self.frame:GetFrameLevel() - FRAME_LEVEL_DEMOTE))
     self.frame.editModeName = "Target of Focus"
     self.frame.systemIndex = TOF_FRAME_INDEX

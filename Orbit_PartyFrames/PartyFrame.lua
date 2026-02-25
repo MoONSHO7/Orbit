@@ -612,8 +612,32 @@ local function UpdatePrivateAuras(frame, plugin)
         
         frame._privateAuraIDs = {}
         frame._privateAuraUnit = unit
+
+        local positions = plugin.GetSetting and plugin:GetSetting(1, "ComponentPositions") or {}
+        local posData = positions.PrivateAuraAnchor or {}
+        local overrides = posData.overrides
+        local scale = (overrides and overrides.Scale) or 1
+        local iconSize = math.floor(PRIVATE_AURA_ICON_SIZE * scale)
+        local spacing = 1
+        local totalWidth = (MAX_PRIVATE_AURA_ANCHORS * iconSize) + ((MAX_PRIVATE_AURA_ANCHORS - 1) * spacing)
+        local anchorX = posData.anchorX or "CENTER"
+        local eff = frame:GetEffectiveScale()
+
+        anchor:SetSize(totalWidth, iconSize)
+
         for i = 1, MAX_PRIVATE_AURA_ANCHORS do
-            local xOff = OrbitEngine.Pixel:Snap((i - 1) * (PRIVATE_AURA_ICON_SIZE + 2), frame:GetEffectiveScale())
+            local point, relPoint, xOff
+            if anchorX == "RIGHT" then
+                xOff = OrbitEngine.Pixel:Snap(-((i - 1) * (iconSize + spacing)), eff)
+                point, relPoint = "TOPRIGHT", "TOPRIGHT"
+            elseif anchorX == "LEFT" then
+                xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), eff)
+                point, relPoint = "TOPLEFT", "TOPLEFT"
+            else
+                local centeredStart = -(totalWidth - iconSize) / 2
+                xOff = OrbitEngine.Pixel:Snap(centeredStart + (i - 1) * (iconSize + spacing), eff)
+                point, relPoint = "CENTER", "CENTER"
+            end
             local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
                 unitToken = unit,
                 auraIndex = i,
@@ -621,13 +645,13 @@ local function UpdatePrivateAuras(frame, plugin)
                 showCountdownFrame = true,
                 showCountdownNumbers = true,
                 iconInfo = {
-                    iconWidth = PRIVATE_AURA_ICON_SIZE,
-                    iconHeight = PRIVATE_AURA_ICON_SIZE,
-                    iconAnchor = { point = "TOPLEFT", relativeTo = anchor, relativePoint = "TOPLEFT", offsetX = xOff, offsetY = 0 },
+                    iconWidth = iconSize,
+                    iconHeight = iconSize,
+                    iconAnchor = { point = point, relativeTo = anchor, relativePoint = relPoint, offsetX = xOff, offsetY = 0 },
                     borderScale = 1,
                 },
             })
-            if anchorID then table.insert(frame._privateAuraIDs, anchorID) end
+            if anchorID then frame._privateAuraIDs[#frame._privateAuraIDs + 1] = anchorID end
         end
     end
     
@@ -825,6 +849,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
         if event == "UNIT_PHASE" or event == "UNIT_FLAGS" then
             if eventUnit == f.unit then
                 UpdatePhaseIcon(f, plugin)
+                UpdateLeaderIcon(f, plugin)
                 UpdateInRange(f)
             end
             return

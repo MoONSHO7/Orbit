@@ -108,7 +108,7 @@ function Plugin:OnLoad()
     RegisterUnitWatch(Frame)
 
     self.frame = Frame
-    self.mountedFrame = Frame
+    self.mountedConfig = { frame = Frame }
     Frame.unit = "focus"
     Frame:SetAttribute("unit", "focus")
 

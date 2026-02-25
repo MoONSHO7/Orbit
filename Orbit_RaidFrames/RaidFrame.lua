@@ -403,23 +403,25 @@ local function CreatePrivateAuraAnchors(frame, plugin)
     local overrides = posData.overrides
     local scale = (overrides and overrides.Scale) or 1
     local iconSize = math.floor(PRIVATE_AURA_ICON_SIZE * scale)
-    local spacing = 2
+    local spacing = 1
     local totalWidth = (MAX_PRIVATE_AURA_ANCHORS * iconSize) + ((MAX_PRIVATE_AURA_ANCHORS - 1) * spacing)
     local anchorX = posData.anchorX or "CENTER"
+    local eff = frame:GetEffectiveScale()
 
     anchor:SetSize(totalWidth, iconSize)
 
     for i = 1, MAX_PRIVATE_AURA_ANCHORS do
         local point, relPoint, xOff
         if anchorX == "RIGHT" then
-            xOff = OrbitEngine.Pixel:Snap(-((i - 1) * (iconSize + spacing)), frame:GetEffectiveScale())
+            xOff = OrbitEngine.Pixel:Snap(-((i - 1) * (iconSize + spacing)), eff)
             point, relPoint = "TOPRIGHT", "TOPRIGHT"
         elseif anchorX == "LEFT" then
-            xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), frame:GetEffectiveScale())
+            xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), eff)
             point, relPoint = "TOPLEFT", "TOPLEFT"
         else
-            xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), frame:GetEffectiveScale())
-            point, relPoint = "TOPLEFT", "TOPLEFT"
+            local centeredStart = -(totalWidth - iconSize) / 2
+            xOff = OrbitEngine.Pixel:Snap(centeredStart + (i - 1) * (iconSize + spacing), eff)
+            point, relPoint = "CENTER", "CENTER"
         end
         local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
             unitToken = unit,
@@ -639,6 +641,7 @@ local function CreateRaidFrame(index, plugin)
         if event == "UNIT_PHASE" or event == "UNIT_FLAGS" then
             if eventUnit == f.unit then
                 UpdatePhaseIcon(f, plugin)
+                UpdateLeaderIcon(f, plugin)
                 UpdateInRange(f)
             end
             return

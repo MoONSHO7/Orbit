@@ -13,6 +13,7 @@ Orbit.StatusIconMixin = {}
 local Mixin = Orbit.StatusIconMixin
 
 local ROLE_ATLASES = { TANK = "UI-LFG-RoleIcon-Tank", HEALER = "UI-LFG-RoleIcon-Healer", DAMAGER = "UI-LFG-RoleIcon-DPS" }
+local ASSISTANT_ICON_TEXTURE = "Interface\\GroupFrame\\UI-Group-AssistantIcon"
 local THREAT_COLORS = {
     [0] = nil,
     [1] = { r = 1.0, g = 1.0, b = 0.0, a = 0.5 },
@@ -174,12 +175,16 @@ function Mixin:UpdateLeaderIcon(frame, plugin)
     local inEditMode = Orbit:IsEditMode()
 
     if UnitIsGroupLeader(unit) then
+        frame.LeaderIcon:SetTexture(nil)
         frame.LeaderIcon:SetAtlas("UI-HUD-UnitFrame-Player-Group-LeaderIcon")
         frame.LeaderIcon:Show()
     elseif UnitIsGroupAssistant(unit) then
-        frame.LeaderIcon:SetAtlas("UI-HUD-UnitFrame-Player-Group-AssistantIcon")
+        frame.LeaderIcon:SetAtlas(nil)
+        frame.LeaderIcon:SetTexCoord(0, 1, 0, 1)
+        frame.LeaderIcon:SetTexture(ASSISTANT_ICON_TEXTURE)
         frame.LeaderIcon:Show()
     elseif inEditMode then
+        frame.LeaderIcon:SetTexture(nil)
         frame.LeaderIcon:SetAtlas("UI-HUD-UnitFrame-Player-Group-LeaderIcon")
         frame.LeaderIcon:Show()
     else

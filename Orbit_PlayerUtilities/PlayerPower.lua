@@ -285,8 +285,7 @@ function Plugin:OnLoad()
     })
     Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
     self.frame = Frame
-    self.mountedFrame = Frame
-    self.mountedCombatRestore = true
+    self.mountedConfig = { frame = Frame, combatRestore = true }
 
     -- [ CANVAS PREVIEW ] -------------------------------------------------------------------------------
     function Frame:CreateCanvasPreview(options)

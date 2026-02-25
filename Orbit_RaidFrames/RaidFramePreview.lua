@@ -335,13 +335,11 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 local auraIconEntries = {
                     { key = "DefensiveIcon", anchor = "LEFT", xMul = 0.5 },
                     { key = "CrowdControlIcon", anchor = "TOP", yMul = -0.5 },
-                    { key = "PrivateAuraAnchor", anchor = "BOTTOM", yMul = 0.5 },
                 }
                 for _, entry in ipairs(auraIconEntries) do
                     local btn = frame[entry.key]
                     if btn and not isDisabled(entry.key) then
-                        local texMethod = entry.key == "PrivateAuraAnchor" and "GetPrivateAuraTexture"
-                            or ("Get" .. entry.key:gsub("Icon$", "") .. "Texture")
+                        local texMethod = "Get" .. entry.key:gsub("Icon$", "") .. "Texture"
                         btn.Icon:SetTexture(Orbit.StatusIconMixin[texMethod](Orbit.StatusIconMixin))
                         btn:SetSize(CANVAS_ICON_SIZE, CANVAS_ICON_SIZE)
                         if not savedPositions[entry.key] then
@@ -356,6 +354,60 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                         btn:Show()
                     elseif btn then btn:Hide() end
                 end
+
+                local paa = frame.PrivateAuraAnchor
+                if paa and not isDisabled("PrivateAuraAnchor") then
+                    local posData = savedPositions.PrivateAuraAnchor or {}
+                    local overrides = posData.overrides
+                    local paaScale = (overrides and overrides.Scale) or 1
+                    local iconSize = math.floor(PRIVATE_AURA_ICON_SIZE * paaScale)
+                    local spacing = 1
+                    local count = MAX_PRIVATE_AURA_ANCHORS
+                    local totalWidth = (count * iconSize) + ((count - 1) * spacing)
+                    local anchorX = posData.anchorX or "CENTER"
+                    local paaTexture = Orbit.StatusIconMixin:GetPrivateAuraTexture()
+
+                    paa.Icon:SetTexture(nil)
+                    paa:SetSize(totalWidth, iconSize)
+
+                    if not savedPositions.PrivateAuraAnchor then
+                        paa:ClearAllPoints()
+                        paa:SetPoint("CENTER", frame, "BOTTOM", 0, OrbitEngine.Pixel:Snap(iconSize * 0.5 + 2, 1))
+                    end
+
+                    paa._previewIcons = paa._previewIcons or {}
+                    for pi = 1, count do
+                        local sub = paa._previewIcons[pi]
+                        if not sub then
+                            sub = CreateFrame("Button", nil, paa, "BackdropTemplate")
+                            sub.Icon = sub:CreateTexture(nil, "ARTWORK")
+                            sub.Icon:SetAllPoints()
+                            sub.icon = sub.Icon
+                            sub:EnableMouse(false)
+                            paa._previewIcons[pi] = sub
+                        end
+                        sub:SetParent(paa)
+                        sub:SetSize(iconSize, iconSize)
+                        sub.Icon:SetTexture(paaTexture)
+                        sub:ClearAllPoints()
+                        if anchorX == "RIGHT" then
+                            sub:SetPoint("TOPRIGHT", paa, "TOPRIGHT", -((pi - 1) * (iconSize + spacing)), 0)
+                        elseif anchorX == "LEFT" then
+                            sub:SetPoint("TOPLEFT", paa, "TOPLEFT", (pi - 1) * (iconSize + spacing), 0)
+                        else
+                            local centeredStart = -(totalWidth - iconSize) / 2
+                            sub:SetPoint("CENTER", paa, "CENTER", centeredStart + (pi - 1) * (iconSize + spacing), 0)
+                        end
+                        if Orbit.Skin and Orbit.Skin.Icons then
+                            Orbit.Skin.Icons:ApplyCustom(sub, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
+                        end
+                        sub:Show()
+                    end
+                    for pi = count + 1, #(paa._previewIcons or {}) do
+                        paa._previewIcons[pi]:Hide()
+                    end
+                    paa:Show()
+                elseif paa then paa:Hide() end
             else
                 for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" }) do
                     if frame[key] then frame[key]:Hide() end

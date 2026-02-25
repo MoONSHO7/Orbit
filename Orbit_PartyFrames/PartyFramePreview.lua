@@ -498,17 +498,57 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 end
 
                 if frame.PrivateAuraAnchor and not (self.IsComponentDisabled and self:IsComponentDisabled("PrivateAuraAnchor")) then
-                    frame.PrivateAuraAnchor.Icon:SetTexture(Orbit.StatusIconMixin:GetPrivateAuraTexture())
-                    frame.PrivateAuraAnchor:SetSize(iconSize, iconSize)
-                    local savedPositions = self:GetSetting(1, "ComponentPositions")
+                    local paa = frame.PrivateAuraAnchor
+                    local posData = (savedPositions and savedPositions.PrivateAuraAnchor) or {}
+                    local overrides = posData.overrides
+                    local paaScale = (overrides and overrides.Scale) or 1
+                    local paaIconSize = math.floor(PRIVATE_AURA_ICON_SIZE * paaScale)
+                    local spacing = 1
+                    local count = MAX_PRIVATE_AURA_ANCHORS
+                    local totalWidth = (count * paaIconSize) + ((count - 1) * spacing)
+                    local anchorX = posData.anchorX or "CENTER"
+                    local paaTexture = Orbit.StatusIconMixin:GetPrivateAuraTexture()
+
+                    paa.Icon:SetTexture(nil)
+                    paa:SetSize(totalWidth, paaIconSize)
+
                     if not savedPositions or not savedPositions.PrivateAuraAnchor then
-                        frame.PrivateAuraAnchor:ClearAllPoints()
-                        frame.PrivateAuraAnchor:SetPoint("CENTER", frame, "BOTTOM", 0, Orbit.Engine.Pixel:Snap(iconSize * 0.5 + 2, frame:GetEffectiveScale()))
+                        paa:ClearAllPoints()
+                        paa:SetPoint("CENTER", frame, "BOTTOM", 0, Orbit.Engine.Pixel:Snap(paaIconSize * 0.5 + 2, frame:GetEffectiveScale()))
                     end
-                    if Orbit.Skin and Orbit.Skin.Icons then
-                        Orbit.Skin.Icons:ApplyCustom(frame.PrivateAuraAnchor, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
+
+                    paa._previewIcons = paa._previewIcons or {}
+                    for pi = 1, count do
+                        local sub = paa._previewIcons[pi]
+                        if not sub then
+                            sub = CreateFrame("Button", nil, paa, "BackdropTemplate")
+                            sub.Icon = sub:CreateTexture(nil, "ARTWORK")
+                            sub.Icon:SetAllPoints()
+                            sub.icon = sub.Icon
+                            sub:EnableMouse(false)
+                            paa._previewIcons[pi] = sub
+                        end
+                        sub:SetParent(paa)
+                        sub:SetSize(paaIconSize, paaIconSize)
+                        sub.Icon:SetTexture(paaTexture)
+                        sub:ClearAllPoints()
+                        if anchorX == "RIGHT" then
+                            sub:SetPoint("TOPRIGHT", paa, "TOPRIGHT", -((pi - 1) * (paaIconSize + spacing)), 0)
+                        elseif anchorX == "LEFT" then
+                            sub:SetPoint("TOPLEFT", paa, "TOPLEFT", (pi - 1) * (paaIconSize + spacing), 0)
+                        else
+                            local centeredStart = -(totalWidth - paaIconSize) / 2
+                            sub:SetPoint("CENTER", paa, "CENTER", centeredStart + (pi - 1) * (paaIconSize + spacing), 0)
+                        end
+                        if Orbit.Skin and Orbit.Skin.Icons then
+                            Orbit.Skin.Icons:ApplyCustom(sub, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
+                        end
+                        sub:Show()
                     end
-                    frame.PrivateAuraAnchor:Show()
+                    for pi = count + 1, #(paa._previewIcons or {}) do
+                        paa._previewIcons[pi]:Hide()
+                    end
+                    paa:Show()
                 elseif frame.PrivateAuraAnchor then
                     frame.PrivateAuraAnchor:Hide()
                 end
