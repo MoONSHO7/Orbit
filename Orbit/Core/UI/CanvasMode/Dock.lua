@@ -133,6 +133,13 @@ function Dialog:AddToDock(key, sourceComponent)
 
         icon.visual:SetDesaturated(true)
         icon.visual:SetAlpha(0.7)
+    elseif key == "Portrait" then
+        icon.visual = icon:CreateTexture(nil, "OVERLAY")
+        icon.visual:SetPoint("CENTER")
+        icon.visual:SetSize(C.DOCK_ICON_SIZE - 4, C.DOCK_ICON_SIZE - 4)
+        SetPortraitTexture(icon.visual, "player")
+        icon.visual:SetDesaturated(true)
+        icon.visual:SetAlpha(0.7)
     else
         icon.visual = icon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         icon.visual:SetPoint("CENTER")

@@ -42,6 +42,9 @@ local function ApplySpriteSheetCell(texture, index, rows, cols)
     if not texture or not index then
         return
     end
+    if issecretvalue and issecretvalue(index) then
+        index = 8
+    end
     rows = rows or 4
     cols = cols or 4
 

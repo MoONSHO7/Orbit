@@ -174,6 +174,7 @@ function Plugin:OnLoad()
     self.mountedFrame = self.frame
     self.frame.editModeName = "Player Frame"
     self.frame.systemIndex = PLAYER_FRAME_INDEX
+    self.frame.showFilterTabs = true
 
     self.frame.anchorOptions = {
         horizontal = true,

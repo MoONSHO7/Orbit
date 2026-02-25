@@ -1087,6 +1087,9 @@ function lib:Open(options)
     self:UpdateClassColorSwatch()
     if self.ui.classSwatch then self.ui.classSwatch:Show() end
     if self.info.button then self.info.button:Show() end
+
+    self.ui.frame:ClearAllPoints()
+    self.ui.frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 375, -75)
     self.ui.frame:Show()
 
     C_Timer.After(REFRESH_DELAY, function()

@@ -557,7 +557,7 @@ function Plugin:UpdateAll()
             end
 
             if Frame.Text:IsShown() then
-                Frame.Text:SetText(current)
+                Frame.Text:SetFormattedText("%.1f", current)
             end
             return
         end

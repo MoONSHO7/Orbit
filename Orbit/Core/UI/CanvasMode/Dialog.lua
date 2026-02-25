@@ -511,7 +511,7 @@ function Dialog:Open(frame, plugin, systemIndex)
             else
                 local comp = CreateDraggableComponent(self.previewFrame, key, data.component, data.x, data.y, data)
                 if comp then
-                    comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + 10)
+                    comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + (key == "Portrait" and 5 or 10))
                 end
                 self.previewComponents[key] = comp
             end
@@ -536,15 +536,15 @@ function Dialog:Open(frame, plugin, systemIndex)
         end
     end
 
-    -- The ranger finally counts the spoils to decide if the party needs filter tabs
-    local hasAuraComponents = false
-    for key, comp in pairs(self.previewComponents) do
-        if comp.isAuraContainer or AURA_COMPONENT_KEYS[key] then
-            hasAuraComponents = true
-            break
+    local showTabs = canvasFrame.showFilterTabs or false
+    if not showTabs then
+        for key, comp in pairs(self.previewComponents) do
+            if comp.isAuraContainer or AURA_COMPONENT_KEYS[key] then
+                showTabs = true
+                break
+            end
         end
     end
-    local showTabs = hasAuraComponents
     if self.FilterTabBar then
         self.activeFilter = "All"
         self.FilterTabBar:SetShown(showTabs)
@@ -562,11 +562,12 @@ function Dialog:Open(frame, plugin, systemIndex)
     self:SetWidth(C.DIALOG_WIDTH)
     self:RecalculateHeight()
 
+    self:Show()
+
     if OrbitEngine.CanvasComponentSettings and OrbitEngine.CanvasComponentSettings.ApplyInitialPluginPreviews then
         OrbitEngine.CanvasComponentSettings:ApplyInitialPluginPreviews(self.targetPlugin, self.targetSystemIndex)
     end
 
-    self:Show()
     return true
 end
 

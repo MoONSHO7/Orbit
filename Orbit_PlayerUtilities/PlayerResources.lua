@@ -57,7 +57,7 @@ local CONTINUOUS_RESOURCE_CONFIG = {
             return ResourceMixin:GetEbonMightState()
         end,
         updateText = function(text, current)
-            text:SetText(current)
+            text:SetFormattedText("%.1f", current)
         end,
     },
     MANA = {

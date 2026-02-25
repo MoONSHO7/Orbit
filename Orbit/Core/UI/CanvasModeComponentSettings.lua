@@ -65,12 +65,11 @@ local KEY_SCHEMAS = {
     Portrait = {
         controls = {
             { type = "dropdown", key = "PortraitStyle", label = "Style",
-              options = { { text = "2D", value = "2d" }, { text = "3D", value = "3d" } }, default = "2d" },
+              options = { { text = "2D", value = "2d" }, { text = "3D", value = "3d" } }, default = "3d" },
             { type = "slider", key = "PortraitScale", label = "Scale", min = 50, max = 200, step = 1,
-              formatter = function(v) return v .. "%" end, default = 100 },
-            { type = "dropdown", key = "PortraitShape", label = "Shape",
-              options = { { text = "Square", value = "square" }, { text = "Circle", value = "circle" } }, default = "square", hideIf = "Is3D" },
-            { type = "checkbox", key = "PortraitBorder", label = "Border", default = true, hideIf = "IsCircle" },
+              formatter = function(v) return v .. "%" end, default = 120 },
+            { type = "checkbox", key = "PortraitBorder", label = "Border", default = true },
+            { type = "checkbox", key = "PortraitMirror", label = "Mirror", default = false },
         },
         pluginSettings = true,
     },
@@ -204,9 +203,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             local val = plugin:GetSetting(systemIndex, control.key)
             if val ~= nil then self.currentOverrides[control.key] = val end
         end
-        self.currentOverrides.IsCircle = (self.currentOverrides.PortraitShape == "circle")
-        self.currentOverrides.Is3D = (self.currentOverrides.PortraitStyle == "3d")
-        self.currentOverrides.HideBorder = self.currentOverrides.IsCircle or self.currentOverrides.Is3D
+
     elseif container.pendingOverrides then
         self.currentOverrides = container.pendingOverrides
     elseif container.existingOverrides then
@@ -434,27 +431,6 @@ function Settings:OnValueChanged(key, value)
         if schema and schema.pluginSettings then
             self.pendingPluginSettings = self.pendingPluginSettings or {}
             self.pendingPluginSettings[key] = value
-            if key == "PortraitShape" then
-                local isCircle = (value == "circle")
-                self.currentOverrides.IsCircle = isCircle
-                self.currentOverrides.HideBorder = isCircle or (self.currentOverrides.PortraitStyle == "3d")
-                if isCircle then
-                    self.currentOverrides.PortraitBorder = false
-                    self.pendingPluginSettings.PortraitBorder = false
-                end
-                self:OnValueChanged("IsCircle", isCircle)
-            end
-            if key == "PortraitStyle" then
-                local is3D = (value == "3d")
-                self.currentOverrides.Is3D = is3D
-                self.currentOverrides.HideBorder = is3D or (self.currentOverrides.PortraitShape == "circle")
-                if is3D then
-                    self.currentOverrides.PortraitShape = "square"
-                    self.pendingPluginSettings.PortraitShape = "square"
-                    self.currentOverrides.IsCircle = false
-                end
-                self:OnValueChanged("Is3D", is3D)
-            end
             if self.componentKey == "CastBar" then
                 self:ApplyCastBarPreview()
             else
@@ -475,9 +451,9 @@ function Settings:ApplyPortraitPreview()
     if not comp or not comp.visual then return end
 
     local overrides = self.currentOverrides or {}
-    local scale = (overrides.PortraitScale or 100) / 100
-    local shape = overrides.PortraitShape or "square"
-    local style = overrides.PortraitStyle or "2d"
+    local scale = (overrides.PortraitScale or 120) / 100
+    local style = overrides.PortraitStyle or "3d"
+    local mirror = overrides.PortraitMirror or false
     local showBorder = overrides.PortraitBorder
     if showBorder == nil then showBorder = true end
 
@@ -489,37 +465,22 @@ function Settings:ApplyPortraitPreview()
             comp._model = CreateFrame("PlayerModel", nil, comp)
             comp._model:SetAllPoints()
         end
-        if not comp._circleMask then
-            comp._circleMask = comp._model:CreateMaskTexture()
-            comp._circleMask:SetAllPoints()
-            comp._circleMask:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-            comp._circleMask:Hide()
-        end
         comp.visual:Hide()
         comp._model:Show()
         comp._model:SetUnit("player")
-        comp._model:SetPortraitZoom(1)
+        comp._model:SetPortraitZoom(mirror and 0.85 or 1)
         comp._model:SetCamDistanceScale(0.8)
-        if shape == "circle" then
-            comp._circleMask:Show()
-            Orbit.Skin:SkinBorder(comp, comp, 0)
-        else
-            comp._circleMask:Hide()
-            local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
-            Orbit.Skin:SkinBorder(comp, comp, borderSize)
-        end
+        comp._model:SetFacing(mirror and -1.05 or 0)
+        comp._model:SetPosition(mirror and 0.3 or 0, 0, mirror and -0.05 or 0)
+        local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
+        Orbit.Skin:SkinBorder(comp, comp, borderSize)
     else
         if comp._model then comp._model:Hide() end
         comp.visual:Show()
         SetPortraitTexture(comp.visual, "player")
-        if shape == "circle" then
-            comp.visual:SetTexCoord(0, 1, 0, 1)
-            Orbit.Skin:SkinBorder(comp, comp, 0)
-        else
-            comp.visual:SetTexCoord(0.15, 0.85, 0.15, 0.85)
-            local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
-            Orbit.Skin:SkinBorder(comp, comp, borderSize)
-        end
+        comp.visual:SetTexCoord(mirror and 1 or 0, mirror and 0 or 1, 0, 1)
+        local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
+        Orbit.Skin:SkinBorder(comp, comp, borderSize)
     end
     end)
     if not ok then print("|cffff0000ORBIT_PORTRAIT_PREVIEW ERROR:|r", err) end
@@ -640,10 +601,10 @@ function Settings:ApplyInitialPluginPreviews(plugin, systemIndex)
     self.systemIndex = sysIdx
 
     self.currentOverrides = {
-        PortraitStyle = plugin:GetSetting(sysIdx, "PortraitStyle") or "2d",
-        PortraitScale = plugin:GetSetting(sysIdx, "PortraitScale") or 100,
-        PortraitShape = plugin:GetSetting(sysIdx, "PortraitShape") or "square",
+        PortraitStyle = plugin:GetSetting(sysIdx, "PortraitStyle") or "3d",
+        PortraitScale = plugin:GetSetting(sysIdx, "PortraitScale") or 120,
         PortraitBorder = plugin:GetSetting(sysIdx, "PortraitBorder"),
+        PortraitMirror = plugin:GetSetting(sysIdx, "PortraitMirror") or false,
     }
     if self.currentOverrides.PortraitBorder == nil then self.currentOverrides.PortraitBorder = true end
     self:ApplyPortraitPreview()
