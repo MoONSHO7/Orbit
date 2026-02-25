@@ -1,38 +1,29 @@
 -- [ CANVAS MODE COMPONENT SETTINGS ]------------------------------------------------------------
--- Popout settings dialog for customizing component appearance in Canvas Mode
--- Similar to FontPicker pattern: FULLSCREEN_DIALOG strata, click-outside-to-close
+-- Inline override settings rendered inside Canvas Mode's OverrideContainer
 --------------------------------------------------------------------------------
 
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
 local Layout = OrbitEngine.Layout
+local C = OrbitEngine.CanvasMode.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
-local DIALOG_WIDTH = 220
-local DIALOG_MIN_HEIGHT = 120
 local WIDGET_HEIGHT = 28
 local WIDGET_SPACING = 4
-local PADDING = 17
-local BORDER_OVERLAP = 15
+local PADDING = 12
 local COMPACT_LABEL_WIDTH = 50
-local COMPACT_VALUE_WIDTH = 28
-local COMPACT_LABEL_GAP = 3
+local COMPACT_VALUE_WIDTH = 36
+local COMPACT_LABEL_GAP = 4
+local TITLE_HEIGHT = 20
 
 -- [ COMPONENT TYPE SCHEMAS ]-------------------------------------------------------------------------
 
--- Define settings based on component family/type, not individual names
-
--- Family-based schemas (auto-detected from visual element type)
 local SCALE_CONTROL = {
-    type = "slider",
-    key = "Scale",
-    label = "Scale",
-    min = 0.5,
-    max = 2.0,
-    step = 0.1,
+    type = "slider", key = "Scale", label = "Scale",
+    min = 0.5, max = 2.0, step = 0.1,
     formatter = function(v) return math.floor(v * 100 + 0.5) .. "%" end,
 }
 
@@ -58,208 +49,98 @@ local KEY_SCHEMAS = {
     Buffs = {
         controls = {
             { type = "slider", key = "MaxIcons", label = "Max Icons", min = 1, max = 10, step = 1 },
-            {
-                type = "slider",
-                key = "IconSize",
-                label = "Icon Size",
-                min = 10,
-                max = 50,
-                step = 1,
-                formatter = function(v) return v .. "px" end,
-            },
+            { type = "slider", key = "IconSize", label = "Icon Size", min = 10, max = 50, step = 1,
+              formatter = function(v) return v .. "px" end },
             { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
         },
     },
     Debuffs = {
         controls = {
             { type = "slider", key = "MaxIcons", label = "Max Icons", min = 1, max = 10, step = 1 },
-            {
-                type = "slider",
-                key = "IconSize",
-                label = "Icon Size",
-                min = 10,
-                max = 50,
-                step = 1,
-                formatter = function(v) return v .. "px" end,
-            },
+            { type = "slider", key = "IconSize", label = "Icon Size", min = 10, max = 50, step = 1,
+              formatter = function(v) return v .. "px" end },
             { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
         },
+    },
+    Portrait = {
+        controls = {
+            { type = "dropdown", key = "PortraitStyle", label = "Style",
+              options = { { text = "2D", value = "2d" }, { text = "3D", value = "3d" } }, default = "2d" },
+            { type = "slider", key = "PortraitScale", label = "Scale", min = 50, max = 200, step = 1,
+              formatter = function(v) return v .. "%" end, default = 100 },
+            { type = "dropdown", key = "PortraitShape", label = "Shape",
+              options = { { text = "Square", value = "square" }, { text = "Circle", value = "circle" } }, default = "square", hideIf = "Is3D" },
+            { type = "checkbox", key = "PortraitBorder", label = "Border", default = true, hideIf = "IsCircle" },
+        },
+        pluginSettings = true,
+    },
+    CastBar = {
+        controls = {
+            { type = "slider", key = "CastBarHeight", label = "Height", min = 8, max = 40, step = 1,
+              formatter = function(v) return v .. "px" end },
+            { type = "slider", key = "CastBarWidth", label = "Width", min = 50, max = 400, step = 1,
+              formatter = function(v) return v .. "px" end },
+            { type = "checkbox", key = "CastBarIcon", label = "Icon", default = true },
+            { type = "colorcurve", key = "CastBarColorCurve", label = "Color", singleColor = true },
+        },
+        pluginSettings = true,
     },
 }
 
 local COMPONENT_TITLES = {
-    Name = "Name Text",
-    HealthText = "Health Text",
-    LevelText = "Level Text",
-    CombatIcon = "Combat Icon",
-    RareEliteIcon = "Classification Icon",
-    RestingIcon = "Resting Icon",
-    DefensiveIcon = "Defensive Icon",
-    CrowdControlIcon = "Crowd Control Icon",
-    Buffs = "Buffs",
-    Debuffs = "Debuffs",
+    Name = "Name Text", HealthText = "Health Text", LevelText = "Level Text",
+    CombatIcon = "Combat Icon", RareEliteIcon = "Classification Icon",
+    RestingIcon = "Resting Icon", DefensiveIcon = "Defensive Icon",
+    CrowdControlIcon = "Crowd Control Icon", Buffs = "Buffs", Debuffs = "Debuffs",
+    Portrait = "Portrait", CastBar = "Cast Bar", MarkerIcon = "Raid Marker",
+    ["CastBar.Text"] = "Ability Text", ["CastBar.Timer"] = "Cast Timer",
 }
 
--- Detect component family from visual element
 local function GetComponentFamily(container)
-    if not container or not container.visual then
-        return nil
-    end
-    if container.isIconFrame then
-        return "IconFrame"
-    end
-    local visual = container.visual
-    local objType = visual.GetObjectType and visual:GetObjectType()
-    if objType == "FontString" then
-        return "FontString"
-    elseif objType == "Texture" then
-        return "Texture"
-    end
+    if not container or not container.visual then return nil end
+    if container.isIconFrame then return "IconFrame" end
+    local objType = container.visual.GetObjectType and container.visual:GetObjectType()
+    if objType == "FontString" then return "FontString"
+    elseif objType == "Texture" then return "Texture" end
     return nil
 end
 
--- [ CREATE DIALOG FRAME ]---------------------------------------------------------------------------
+-- [ MODULE ]-------------------------------------------------------------------------------------
 
-local Dialog = CreateFrame("Frame", "OrbitCanvasComponentSettings", UIParent)
-Dialog:SetSize(DIALOG_WIDTH, DIALOG_MIN_HEIGHT)
-Dialog:SetFrameStrata("FULLSCREEN_DIALOG")
-Dialog:SetFrameLevel(500) -- Above Canvas Mode dialog
-Dialog:SetClampedToScreen(true)
-Dialog:EnableMouse(true)
-Dialog:Hide()
-
--- Border using Blizzard's high-quality template
-Dialog.Border = CreateFrame("Frame", nil, Dialog, "DialogBorderTranslucentTemplate")
-Dialog.Border:SetAllPoints(Dialog)
-Dialog.Border:SetFrameLevel(Dialog:GetFrameLevel())
-
--- Title
-Dialog.Title = Dialog:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-Dialog.Title:SetPoint("TOP", Dialog, "TOP", 0, -PADDING)
-
--- Content container for widgets
-Dialog.Content = CreateFrame("Frame", nil, Dialog)
-Dialog.Content:SetPoint("TOPLEFT", Dialog, "TOPLEFT", PADDING, -PADDING - 24)
-Dialog.Content:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -PADDING, PADDING)
-
--- Widget pool
-Dialog.widgets = {}
-
--- [ CLOSE BEHAVIOR ]-------------------------------------------------------------------------------
-
--- ESC key
-Dialog:SetPropagateKeyboardInput(true)
-Dialog:SetScript("OnKeyDown", function(self, key)
-    if key == "ESCAPE" then
-        self:SetPropagateKeyboardInput(false)
-        self:Hide()
-        C_Timer.After(0.05, function()
-            if not InCombatLockdown() then
-                self:SetPropagateKeyboardInput(true)
-            end
-        end)
-    end
-end)
-
--- Click outside to close (via OnUpdate check)
-Dialog:SetScript("OnUpdate", function(self)
-    -- Don't close while ColorPickerFrame is open (user may be dragging colors)
-    if ColorPickerFrame and ColorPickerFrame:IsShown() then
-        return
-    end
-
-    if not self:IsMouseOver() and IsMouseButtonDown("LeftButton") then
-        -- Check if clicking on the parent Canvas Mode dialog
-        local canvasDialog = Orbit.CanvasModeDialog
-        if canvasDialog and canvasDialog:IsMouseOver() then
-            -- Clicked on canvas dialog, close this popout
-            self:Hide()
-        end
-    end
-end)
-
-Dialog:SetScript("OnHide", function(self)
-    -- Clear references
-    self.componentKey = nil
-    self.container = nil
-    self.plugin = nil
-    self.systemIndex = nil
-    self.currentOverrides = nil
-    self.widgetsByKey = nil
-
-    -- Hide all widgets
-    for _, widget in ipairs(self.widgets) do
-        widget:Hide()
-    end
-end)
+local Settings = {}
+Settings.widgets = {}
+Settings.componentKey = nil
+Settings.container = nil
+Settings.plugin = nil
+Settings.systemIndex = nil
+Settings.currentOverrides = nil
+Settings.widgetsByKey = nil
 
 -- [ WIDGET CREATION HELPERS ]-----------------------------------------------------------------------
 
 local function CreateSliderWidget(parent, control, currentValue, callback)
-    if not Layout or not Layout.CreateSlider then
-        return nil
-    end
-
-    local widget = Layout:CreateSlider(
-        parent,
-        control.label,
-        control.min,
-        control.max,
-        control.step or 1,
-        control.formatter,
-        currentValue or control.min,
-        function(value)
-            if callback then
-                callback(control.key, value)
-            end
-        end
-    )
-
-    if widget then
-        widget:SetHeight(32)
-    end
-
+    if not Layout or not Layout.CreateSlider then return nil end
+    local widget = Layout:CreateSlider(parent, control.label, control.min, control.max, control.step or 1,
+        control.formatter, currentValue or control.min, function(value) if callback then callback(control.key, value) end end)
+    if widget then widget:SetHeight(32) end
     return widget
 end
 
 local function CreateCheckboxWidget(parent, control, currentValue, callback)
-    if not Layout or not Layout.CreateCheckbox then
-        return nil
-    end
-
-    local widget = Layout:CreateCheckbox(
-        parent,
-        control.label,
-        nil, -- tooltip
-        currentValue or false,
-        function(checked)
-            if callback then
-                callback(control.key, checked)
-            end
-        end
-    )
-
-    if widget then
-        widget:SetHeight(30)
-    end
-
+    if not Layout or not Layout.CreateCheckbox then return nil end
+    local widget = Layout:CreateCheckbox(parent, control.label, nil, currentValue or false,
+        function(checked) if callback then callback(control.key, checked) end end)
+    if widget then widget:SetHeight(30) end
     return widget
 end
 
 local function CreateFontPickerWidget(parent, control, currentValue, callback)
     if Layout and Layout.CreateFontPicker then
-        local widget = Layout:CreateFontPicker(parent, control.label, currentValue, function(fontName)
-            if callback then
-                callback(control.key, fontName)
-            end
-        end)
-        if widget then
-            widget:SetHeight(32)
-        end
+        local widget = Layout:CreateFontPicker(parent, control.label, currentValue,
+            function(fontName) if callback then callback(control.key, fontName) end end)
+        if widget then widget:SetHeight(32) end
         return widget
     end
-
-    -- Fallback: simple label if FontPicker not available
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetHeight(WIDGET_HEIGHT)
     frame.Label = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -270,24 +151,12 @@ end
 
 local function CreateColorPickerWidget(parent, control, currentValue, callback)
     if Layout and Layout.CreateColorPicker then
-        -- Ensure initialColor is a proper table
-        local initialColor = currentValue
-        if type(currentValue) ~= "table" then
-            initialColor = { r = 1, g = 1, b = 1, a = 1 }
-        end
-
-        local widget = Layout:CreateColorPicker(parent, control.label, initialColor, function(color)
-            if callback then
-                callback(control.key, color)
-            end
-        end)
-        if widget then
-            widget:SetHeight(32)
-        end
+        local initialColor = type(currentValue) == "table" and currentValue or { r = 1, g = 1, b = 1, a = 1 }
+        local widget = Layout:CreateColorPicker(parent, control.label, initialColor,
+            function(color) if callback then callback(control.key, color) end end)
+        if widget then widget:SetHeight(32) end
         return widget
     end
-
-    -- Fallback: simple label if ColorPicker not available
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetHeight(WIDGET_HEIGHT)
     frame.Label = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -296,82 +165,65 @@ local function CreateColorPickerWidget(parent, control, currentValue, callback)
     return frame
 end
 
--- [ OPEN DIALOG ]-----------------------------------------------------------------------------------
+-- [ OPEN (INLINE) ]---------------------------------------------------------------------------------
 
-function Dialog:Open(componentKey, container, plugin, systemIndex)
-    if InCombatLockdown() then
-        return
-    end
+function Settings:Open(componentKey, container, plugin, systemIndex)
+    if InCombatLockdown() then return end
 
-    -- Store references
+    local canvasDialog = OrbitEngine.CanvasModeDialog
+    if not canvasDialog or not canvasDialog.OverrideContainer then return end
+
     self.componentKey = componentKey
     self.container = container
     self.plugin = plugin
     self.systemIndex = systemIndex or 1
 
-    -- Auto-detect component family from visual element
     local family = GetComponentFamily(container)
     local schema = KEY_SCHEMAS[componentKey] or (family and TYPE_SCHEMAS[family])
 
+    local overrideContainer = canvasDialog.OverrideContainer
+
+    self:HideWidgets()
+
+    -- Show container early so children have valid parent dimensions
+    overrideContainer:SetHeight(TITLE_HEIGHT + PADDING)
+    overrideContainer:Show()
+
     if not schema then
-        -- Unknown component type, show generic message
-        local title = COMPONENT_TITLES[componentKey] or componentKey
-        self.Title:SetText(title .. " (no settings)")
-        self:SetHeight(80)
-
-        -- Position to the LEFT of the Canvas Mode dialog
-        self:ClearAllPoints()
-        local canvasDialog = Orbit.CanvasModeDialog
-        if canvasDialog and canvasDialog:IsShown() then
-            self:SetPoint("TOPRIGHT", canvasDialog, "TOPLEFT", -10, 0)
-        else
-            self:SetPoint("CENTER", UIParent, "CENTER", -200, 0)
-        end
-
-        self:Show()
+        overrideContainer.Title:SetText((COMPONENT_TITLES[componentKey] or componentKey) .. " (no settings)")
+        canvasDialog:RecalculateHeight()
         return
     end
 
-    -- Set title from component name lookup or use key
-    local title = COMPONENT_TITLES[componentKey] or componentKey
-    self.Title:SetText(title)
+    overrideContainer.Title:SetText(COMPONENT_TITLES[componentKey] or componentKey)
 
-    -- Get current overrides: first check container's in-memory state, then fall back to saved
-    if container.pendingOverrides then
-        -- Overrides set during this session (not yet saved)
+    local isPluginSettings = schema.pluginSettings
+    if isPluginSettings and plugin then
+        self.currentOverrides = {}
+        for _, control in ipairs(schema.controls) do
+            local val = plugin:GetSetting(systemIndex, control.key)
+            if val ~= nil then self.currentOverrides[control.key] = val end
+        end
+        self.currentOverrides.IsCircle = (self.currentOverrides.PortraitShape == "circle")
+        self.currentOverrides.Is3D = (self.currentOverrides.PortraitStyle == "3d")
+        self.currentOverrides.HideBorder = self.currentOverrides.IsCircle or self.currentOverrides.Is3D
+    elseif container.pendingOverrides then
         self.currentOverrides = container.pendingOverrides
     elseif container.existingOverrides then
-        -- Overrides loaded from saved data when container was created
         self.currentOverrides = container.existingOverrides
     else
-        -- Fall back to plugin saved data
         local savedPositions = plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
-        local posData = savedPositions[componentKey] or {}
-        self.currentOverrides = posData.overrides or {}
+        self.currentOverrides = (savedPositions[componentKey] or {}).overrides or {}
     end
 
-    -- Hide all existing widgets
-    for _, widget in ipairs(self.widgets) do
-        widget:Hide()
-    end
-
-    -- Create widgets for each control
-    local yOffset = 0
-    local widgetIndex = 0
-
-    local function GetValueFromVisual(container, key)
-        if not container or not container.visual then
-            return nil
-        end
-        local visual = container.visual
-
+    local function GetValueFromVisual(cont, key)
+        if not cont or not cont.visual then return nil end
+        local visual = cont.visual
         if key == "Font" and visual.GetFont then
             local fontPath = visual:GetFont()
             if fontPath then
                 for name, path in pairs(LSM:HashTable("font")) do
-                    if path == fontPath then
-                        return name
-                    end
+                    if path == fontPath then return name end
                 end
             end
         elseif key == "FontSize" and visual.GetFont then
@@ -380,71 +232,65 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
         elseif key == "CustomColorValue" and visual.GetTextColor then
             local r, g, b, a = visual:GetTextColor()
             return { r = r, g = g, b = b, a = a or 1 }
-        elseif key == "Scale" then
-            return 1.0
-        end
+        elseif key == "Scale" then return 1.0 end
         return nil
     end
 
+    -- 2-column grid layout
+    local COLUMNS = 2
+    local COLUMN_GAP = 24
+    local widgetIndex = 0
+    local col = 0
+    local rowY = 0
+    local rowHeight = 0
+
     for _, control in ipairs(schema.controls) do
         widgetIndex = widgetIndex + 1
-        local widget = nil
-
         local currentValue = self.currentOverrides[control.key]
 
-        -- Get default value from plugin defaults if no override
         if currentValue == nil and plugin and plugin.defaults then
             local compDefaults = plugin.defaults.ComponentSettings and plugin.defaults.ComponentSettings[componentKey]
-            if compDefaults then
-                currentValue = compDefaults[control.key]
-            end
+            if compDefaults then currentValue = compDefaults[control.key] end
         end
 
-        -- Fallback to reading from visual or sane defaults
-        if currentValue == nil then
-            currentValue = GetValueFromVisual(container, control.key)
-        end
+        if currentValue == nil then currentValue = GetValueFromVisual(container, control.key) end
 
         local callback = function(key, value) self:OnValueChanged(key, value) end
+        local widget = nil
 
         if control.type == "slider" then
-            widget = CreateSliderWidget(self.Content, control, currentValue or control.min, callback)
+            widget = CreateSliderWidget(overrideContainer, control, currentValue or control.min, callback)
         elseif control.type == "checkbox" then
-            widget = CreateCheckboxWidget(self.Content, control, currentValue, callback)
+            widget = CreateCheckboxWidget(overrideContainer, control, currentValue, callback)
+        elseif control.type == "dropdown" then
+            if Layout and Layout.CreateDropdown then
+                widget = Layout:CreateDropdown(overrideContainer, control.label, control.options, currentValue or control.default,
+                    function(value) if callback then callback(control.key, value) end end)
+                if widget then widget:SetHeight(32) end
+            end
         elseif control.type == "font" then
-            widget = CreateFontPickerWidget(self.Content, control, currentValue, callback)
+            widget = CreateFontPickerWidget(overrideContainer, control, currentValue, callback)
         elseif control.type == "color" then
-            widget = CreateColorPickerWidget(self.Content, control, currentValue, callback)
+            widget = CreateColorPickerWidget(overrideContainer, control, currentValue, callback)
         elseif control.type == "colorcurve" then
             if Layout and Layout.CreateColorCurvePicker then
-                widget = Layout:CreateColorCurvePicker(self.Content, control.label, currentValue, function(curveData)
-                    if callback then
-                        callback(control.key, curveData)
-                    end
-                end)
-                if widget then
-                    widget:SetHeight(32)
-                    widget.singleColorMode = control.singleColor ~= false
-                end
+                widget = Layout:CreateColorCurvePicker(overrideContainer, control.label, currentValue,
+                    function(curveData) if callback then callback(control.key, curveData) end end)
+                if widget then widget:SetHeight(32); widget.singleColorMode = control.singleColor ~= false end
             else
-                widget = CreateColorPickerWidget(self.Content, control, currentValue and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(currentValue), callback)
+                widget = CreateColorPickerWidget(overrideContainer, control, currentValue and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(currentValue), callback)
             end
         end
 
-        -- Re-layout widget columns for compact panel
         if widget then
-            if widget.Label and control.type ~= "checkbox" then
-                widget.Label:SetWidth(COMPACT_LABEL_WIDTH)
-            end
+            if widget.Label and control.type ~= "checkbox" then widget.Label:SetWidth(COMPACT_LABEL_WIDTH) end
             local controlChild = widget.Slider or widget.Control or widget.GradientBar
             if controlChild then
                 controlChild:ClearAllPoints()
                 controlChild:SetPoint("LEFT", widget.Label, "RIGHT", COMPACT_LABEL_GAP, 0)
                 controlChild:SetPoint("RIGHT", widget, "RIGHT", -COMPACT_VALUE_WIDTH, 0)
             end
-            if widget.Value then
-                widget.Value:SetWidth(COMPACT_VALUE_WIDTH)
-            end
+            if widget.Value then widget.Value:SetWidth(COMPACT_VALUE_WIDTH) end
             if control.type == "checkbox" and widget.Label then
                 widget.Label:ClearAllPoints()
                 widget.Label:SetPoint("LEFT", widget, "LEFT", COMPACT_LABEL_WIDTH + COMPACT_LABEL_GAP, 0)
@@ -453,170 +299,284 @@ function Dialog:Open(componentKey, container, plugin, systemIndex)
         end
 
         if widget then
-            widget:ClearAllPoints()
-            widget:SetPoint("TOPLEFT", self.Content, "TOPLEFT", 0, -yOffset)
-            widget:SetPoint("TOPRIGHT", self.Content, "TOPRIGHT", 0, -yOffset)
-
-            -- Track widget by key for conditional visibility
             widget.controlKey = control.key
             widget.hideIf = control.hideIf
             widget.showIf = control.showIf
-            widget.yOffsetPosition = yOffset
+            widget.gridCol = col
 
-            -- Check conditional visibility (hideIf or showIf)
             local shouldShow = true
-            if control.hideIf then
-                local hideIfValue = self.currentOverrides[control.hideIf]
-                shouldShow = not hideIfValue
-            elseif control.showIf then
-                local showIfValue = self.currentOverrides[control.showIf]
-                shouldShow = showIfValue == true
+            if control.hideIf then shouldShow = not self.currentOverrides[control.hideIf]
+            elseif control.showIf then shouldShow = self.currentOverrides[control.showIf] == true end
+
+            widget:ClearAllPoints()
+            if col == 0 then
+                widget:SetPoint("TOPLEFT", overrideContainer, "TOPLEFT", C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
+                widget:SetPoint("TOPRIGHT", overrideContainer, "TOP", -(COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
+            else
+                widget:SetPoint("TOPLEFT", overrideContainer, "TOP", (COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
+                widget:SetPoint("TOPRIGHT", overrideContainer, "TOPRIGHT", -C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
             end
 
             if shouldShow then
                 widget:Show()
-                yOffset = yOffset + widget:GetHeight() + WIDGET_SPACING
+                rowHeight = math.max(rowHeight, widget:GetHeight())
             else
                 widget:Hide()
             end
 
             self.widgets[widgetIndex] = widget
-
-            -- Track by key for later updating
-            if not self.widgetsByKey then
-                self.widgetsByKey = {}
-            end
+            self.widgetsByKey = self.widgetsByKey or {}
             self.widgetsByKey[control.key] = widget
+
+            col = col + 1
+            if col >= COLUMNS then
+                col = 0
+                rowY = rowY + rowHeight + WIDGET_SPACING
+                rowHeight = 0
+            end
         end
     end
 
-    -- Size dialog to fit content
-    local contentHeight = yOffset + PADDING * 2 + 24 -- padding + title
-    self:SetHeight(math.max(DIALOG_MIN_HEIGHT, contentHeight + 20))
+    -- Close final partial row
+    if col > 0 then rowY = rowY + rowHeight + WIDGET_SPACING end
 
-    -- Position to the LEFT of the Canvas Mode dialog
-    self:ClearAllPoints()
-    local canvasDialog = Orbit.CanvasModeDialog
-    if canvasDialog and canvasDialog:IsShown() then
-        self:SetPoint("TOPRIGHT", canvasDialog, "TOPLEFT", BORDER_OVERLAP, 0)
-    elseif container then
-        self:SetPoint("TOPRIGHT", container, "TOPLEFT", -10, 0)
-    else
-        self:SetPoint("CENTER", UIParent, "CENTER", -200, 0)
-    end
+    local containerHeight = rowY + TITLE_HEIGHT + PADDING
+    overrideContainer:SetHeight(containerHeight)
+    canvasDialog:RecalculateHeight()
 
-    -- Apply existing overrides to preview (e.g., show class color if already enabled)
     if self.currentOverrides and next(self.currentOverrides) then
         self:ApplyAll(container, self.currentOverrides)
     end
+end
 
-    self:Show()
+-- [ CLOSE (INLINE) ]--------------------------------------------------------------------------------
+
+function Settings:Close()
+    self:HideWidgets()
+    self.componentKey = nil
+    self.container = nil
+    self.plugin = nil
+    self.systemIndex = nil
+    self.currentOverrides = nil
+    self.widgetsByKey = nil
+
+    local canvasDialog = OrbitEngine.CanvasModeDialog
+    if canvasDialog and canvasDialog.OverrideContainer then
+        canvasDialog.OverrideContainer:Hide()
+        canvasDialog:RecalculateHeight()
+    end
+end
+
+function Settings:HideWidgets()
+    for _, widget in ipairs(self.widgets) do widget:Hide() end
 end
 
 -- [ VALUE CHANGE HANDLER ]--------------------------------------------------------------------------
 
-function Dialog:OnValueChanged(key, value)
-    if not self.componentKey then
-        return
-    end
+function Settings:OnValueChanged(key, value)
+    if not self.componentKey then return end
 
-    -- Update current overrides
     self.currentOverrides = self.currentOverrides or {}
     self.currentOverrides[key] = value
 
-    -- Handle conditional visibility (hideIf or showIf) and recalculate height
     if self.widgetsByKey then
         local needsHeightRecalc = false
-        for widgetKey, widget in pairs(self.widgetsByKey) do
+        for _, widget in pairs(self.widgetsByKey) do
             if widget.hideIf and widget.hideIf == key then
-                if value then
-                    widget:Hide()
-                else
-                    widget:Show()
-                end
+                widget:SetShown(not value)
                 needsHeightRecalc = true
             elseif widget.showIf and widget.showIf == key then
-                if value then
-                    widget:Show()
-                else
-                    widget:Hide()
-                end
+                widget:SetShown(value == true)
                 needsHeightRecalc = true
             end
         end
 
-        -- Recalculate dialog height if visibility changed
         if needsHeightRecalc then
-            local yOffset = 0
+            local COLUMNS = 2
+            local COLUMN_GAP = 24
+            local col = 0
+            local rowY = 0
+            local rowHeight = 0
+            local canvasDialog = OrbitEngine.CanvasModeDialog
+            local oc = canvasDialog and canvasDialog.OverrideContainer
             for _, widget in ipairs(self.widgets) do
-                if widget:IsShown() then
+                if widget:IsShown() and oc then
                     widget:ClearAllPoints()
-                    widget:SetPoint("TOPLEFT", self.Content, "TOPLEFT", 0, -yOffset)
-                    widget:SetPoint("TOPRIGHT", self.Content, "TOPRIGHT", 0, -yOffset)
-                    yOffset = yOffset + widget:GetHeight() + WIDGET_SPACING
+                    if col == 0 then
+                        widget:SetPoint("TOPLEFT", oc, "TOPLEFT", C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
+                        widget:SetPoint("TOPRIGHT", oc, "TOP", -(COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
+                    else
+                        widget:SetPoint("TOPLEFT", oc, "TOP", (COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
+                        widget:SetPoint("TOPRIGHT", oc, "TOPRIGHT", -C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
+                    end
+                    rowHeight = math.max(rowHeight, widget:GetHeight())
+                    col = col + 1
+                    if col >= COLUMNS then
+                        col = 0
+                        rowY = rowY + rowHeight + WIDGET_SPACING
+                        rowHeight = 0
+                    end
                 end
             end
-            local contentHeight = yOffset + PADDING * 2 + 24
-            self:SetHeight(math.max(DIALOG_MIN_HEIGHT, contentHeight + 20))
+            if col > 0 then rowY = rowY + rowHeight + WIDGET_SPACING end
+            local containerHeight = rowY + TITLE_HEIGHT + PADDING
+            if canvasDialog and canvasDialog.OverrideContainer then
+                canvasDialog.OverrideContainer:SetHeight(containerHeight)
+                canvasDialog:RecalculateHeight()
+            end
         end
     end
 
-    -- Store on container for Apply to pick up
     if self.container then
         self.container.pendingOverrides = self.currentOverrides
 
-        -- Apply preview immediately
+        local schema = KEY_SCHEMAS[self.componentKey]
+        if schema and schema.pluginSettings then
+            self.pendingPluginSettings = self.pendingPluginSettings or {}
+            self.pendingPluginSettings[key] = value
+            if key == "PortraitShape" then
+                local isCircle = (value == "circle")
+                self.currentOverrides.IsCircle = isCircle
+                self.currentOverrides.HideBorder = isCircle or (self.currentOverrides.PortraitStyle == "3d")
+                if isCircle then
+                    self.currentOverrides.PortraitBorder = false
+                    self.pendingPluginSettings.PortraitBorder = false
+                end
+                self:OnValueChanged("IsCircle", isCircle)
+            end
+            if key == "PortraitStyle" then
+                local is3D = (value == "3d")
+                self.currentOverrides.Is3D = is3D
+                self.currentOverrides.HideBorder = is3D or (self.currentOverrides.PortraitShape == "circle")
+                if is3D then
+                    self.currentOverrides.PortraitShape = "square"
+                    self.pendingPluginSettings.PortraitShape = "square"
+                    self.currentOverrides.IsCircle = false
+                end
+                self:OnValueChanged("Is3D", is3D)
+            end
+            if self.componentKey == "CastBar" then
+                self:ApplyCastBarPreview()
+            else
+                self:ApplyPortraitPreview()
+            end
+            return
+        end
+
         self:ApplyStyle(self.container, key, value)
     end
 end
 
--- Apply a single style setting to a component container
-function Dialog:ApplyStyle(container, key, value)
-    -- Handle aura container settings (MaxIcons, IconSize, MaxRows) - these containers have no visual
+function Settings:ApplyPortraitPreview()
+    local ok, err = pcall(function()
+    local canvasDialog = OrbitEngine.CanvasModeDialog
+    if not canvasDialog or not canvasDialog.previewComponents then return end
+    local comp = canvasDialog.previewComponents.Portrait
+    if not comp or not comp.visual then return end
+
+    local overrides = self.currentOverrides or {}
+    local scale = (overrides.PortraitScale or 100) / 100
+    local shape = overrides.PortraitShape or "square"
+    local style = overrides.PortraitStyle or "2d"
+    local showBorder = overrides.PortraitBorder
+    if showBorder == nil then showBorder = true end
+
+    local size = 32 * scale
+    comp:SetSize(size, size)
+
+    if style == "3d" then
+        if not comp._model then
+            comp._model = CreateFrame("PlayerModel", nil, comp)
+            comp._model:SetAllPoints()
+        end
+        if not comp._circleMask then
+            comp._circleMask = comp._model:CreateMaskTexture()
+            comp._circleMask:SetAllPoints()
+            comp._circleMask:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            comp._circleMask:Hide()
+        end
+        comp.visual:Hide()
+        comp._model:Show()
+        comp._model:SetUnit("player")
+        comp._model:SetPortraitZoom(1)
+        comp._model:SetCamDistanceScale(0.8)
+        if shape == "circle" then
+            comp._circleMask:Show()
+            Orbit.Skin:SkinBorder(comp, comp, 0)
+        else
+            comp._circleMask:Hide()
+            local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
+            Orbit.Skin:SkinBorder(comp, comp, borderSize)
+        end
+    else
+        if comp._model then comp._model:Hide() end
+        comp.visual:Show()
+        SetPortraitTexture(comp.visual, "player")
+        if shape == "circle" then
+            comp.visual:SetTexCoord(0, 1, 0, 1)
+            Orbit.Skin:SkinBorder(comp, comp, 0)
+        else
+            comp.visual:SetTexCoord(0.15, 0.85, 0.15, 0.85)
+            local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
+            Orbit.Skin:SkinBorder(comp, comp, borderSize)
+        end
+    end
+    end)
+    if not ok then print("|cffff0000ORBIT_PORTRAIT_PREVIEW ERROR:|r", err) end
+end
+
+function Settings:ApplyCastBarPreview()
+    local canvasDialog = OrbitEngine.CanvasModeDialog
+    if not canvasDialog or not canvasDialog.previewComponents then return end
+    local comp = canvasDialog.previewComponents.CastBar
+    if not comp then return end
+
+    local pending = self.pendingPluginSettings or {}
+    local plugin = self.plugin
+    local sysIdx = self.systemIndex or 1
+    local w = pending.CastBarWidth or (plugin and plugin:GetSetting(sysIdx, "CastBarWidth")) or 120
+    local h = pending.CastBarHeight or (plugin and plugin:GetSetting(sysIdx, "CastBarHeight")) or 18
+    comp:SetSize(w, h)
+    if comp.visual and comp.visual.SetAllPoints then comp.visual:SetAllPoints() end
+end
+
+function Settings:FlushPendingPluginSettings()
+    if not self.pendingPluginSettings or not self.plugin then return end
+    for k, v in pairs(self.pendingPluginSettings) do
+        self.plugin:SetSetting(self.systemIndex, k, v)
+    end
+    self.pendingPluginSettings = nil
+end
+
+-- [ APPLY STYLE ]-----------------------------------------------------------------------------------
+
+function Settings:ApplyStyle(container, key, value)
     if key == "MaxIcons" or key == "IconSize" or key == "MaxRows" then
-        -- Trigger preview refresh so aura icons re-render with new settings
         if self.plugin and self.plugin.SchedulePreviewUpdate then
-            -- Temporarily write overrides to ComponentPositions so preview can read them
             local componentKey = self.componentKey
             if componentKey then
                 local positions = self.plugin:GetSetting(self.systemIndex, "ComponentPositions") or {}
-                if not positions[componentKey] then
-                    positions[componentKey] = {}
-                end
-                if not positions[componentKey].overrides then
-                    positions[componentKey].overrides = {}
-                end
+                if not positions[componentKey] then positions[componentKey] = {} end
+                if not positions[componentKey].overrides then positions[componentKey].overrides = {} end
                 positions[componentKey].overrides[key] = value
                 self.plugin:SetSetting(self.systemIndex, "ComponentPositions", positions)
                 self.plugin:SchedulePreviewUpdate()
             end
         end
-
-        -- Refresh the canvas mode draggable component directly
-        if self.container and self.container.RefreshAuraIcons then
-            self.container:RefreshAuraIcons()
-        end
+        if self.container and self.container.RefreshAuraIcons then self.container:RefreshAuraIcons() end
         return
     end
 
-    if not container or not container.visual then
-        return
-    end
-
+    if not container or not container.visual then return end
     local visual = container.visual
 
-    -- Apply style based on key
     if key == "FontSize" and visual.SetFont then
         local font, _, flags = visual:GetFont()
         flags = (flags and flags ~= "") and flags or Orbit.Skin:GetFontOutline()
         visual:SetFont(font, value, flags)
-
-        -- Resize container to match new text dimensions
         C_Timer.After(0.01, function()
             if container and visual and visual.GetStringWidth then
-                local textWidth = visual:GetStringWidth() or (value * 3)
-                local textHeight = visual:GetStringHeight() or value
-                container:SetSize(textWidth + 2, textHeight + 2)
+                container:SetSize((visual:GetStringWidth() or (value * 3)) + 2, (visual:GetStringHeight() or value) + 2)
             end
         end)
     elseif key == "Font" and visual.SetFont then
@@ -625,22 +585,15 @@ function Dialog:ApplyStyle(container, key, value)
             local _, size, flags = visual:GetFont()
             flags = (flags and flags ~= "") and flags or Orbit.Skin:GetFontOutline()
             visual:SetFont(fontPath, size or 12, flags)
-
-            -- Resize container to match new text dimensions
             C_Timer.After(0.01, function()
                 if container and visual and visual.GetStringWidth then
-                    local textWidth = visual:GetStringWidth() or ((size or 12) * 3)
-                    local textHeight = visual:GetStringHeight() or (size or 12)
-                    container:SetSize(textWidth + 2, textHeight + 2)
+                    container:SetSize((visual:GetStringWidth() or ((size or 12) * 3)) + 2, (visual:GetStringHeight() or (size or 12)) + 2)
                 end
             end)
         end
     elseif key == "CustomColorCurve" and visual.SetTextColor then
-        -- Color curve changed - apply directly
         local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(value)
-        if color then
-            visual:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
-        end
+        if color then visual:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1) end
     elseif key == "Scale" then
         if container.isIconFrame then
             if not container.originalContainerWidth then
@@ -652,12 +605,10 @@ function Dialog:ApplyStyle(container, key, value)
             local scale = container:GetEffectiveScale()
             local w, h = Orbit.Engine.Pixel:Snap(baseW * value, scale), Orbit.Engine.Pixel:Snap(baseH * value, scale)
             container:SetSize(w, h)
-            if visual.SetSize then
-                visual:SetSize(w, h)
-            end
+            if visual.SetSize then visual:SetSize(w, h) end
             if Orbit.Skin and Orbit.Skin.Icons then
-                local scale = visual:GetEffectiveScale() or 1
-                local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:Multiple(1, scale)
+                local s = visual:GetEffectiveScale() or 1
+                local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:Multiple(1, s)
                 Orbit.Skin.Icons:ApplyCustom(visual, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
             end
         elseif visual.GetObjectType and visual:GetObjectType() == "Texture" then
@@ -665,36 +616,49 @@ function Dialog:ApplyStyle(container, key, value)
                 container.originalVisualWidth = visual:GetWidth()
                 container.originalVisualHeight = visual:GetHeight()
             end
-            local origW = container.originalVisualWidth or 18
-            local origH = container.originalVisualHeight or 18
             visual:ClearAllPoints()
             visual:SetPoint("CENTER", container, "CENTER", 0, 0)
-            visual:SetSize(origW * value, origH * value)
+            visual:SetSize((container.originalVisualWidth or 18) * value, (container.originalVisualHeight or 18) * value)
         elseif visual.SetScale then
             visual:SetScale(value)
         end
     end
 end
 
--- Apply a table of overrides to a component container
-function Dialog:ApplyAll(container, overrides)
-    if not container or not overrides then
-        return
-    end
-
-    -- Set context so ApplyStyle can access related values (e.g., CustomColorValue when CustomColor is enabled)
+function Settings:ApplyAll(container, overrides)
+    if not container or not overrides then return end
     local previousOverrides = self.currentOverrides
     self.currentOverrides = overrides
-
-    for key, value in pairs(overrides) do
-        self:ApplyStyle(container, key, value)
-    end
-
-    -- Restore previous context (in case this is called during dialog interaction)
+    for key, value in pairs(overrides) do self:ApplyStyle(container, key, value) end
     self.currentOverrides = previousOverrides
+end
+
+function Settings:ApplyInitialPluginPreviews(plugin, systemIndex)
+    if not plugin then return end
+    local sysIdx = systemIndex or 1
+    self.plugin = plugin
+    self.systemIndex = sysIdx
+
+    self.currentOverrides = {
+        PortraitStyle = plugin:GetSetting(sysIdx, "PortraitStyle") or "2d",
+        PortraitScale = plugin:GetSetting(sysIdx, "PortraitScale") or 100,
+        PortraitShape = plugin:GetSetting(sysIdx, "PortraitShape") or "square",
+        PortraitBorder = plugin:GetSetting(sysIdx, "PortraitBorder"),
+    }
+    if self.currentOverrides.PortraitBorder == nil then self.currentOverrides.PortraitBorder = true end
+    self:ApplyPortraitPreview()
+
+    self.currentOverrides = {
+        CastBarWidth = plugin:GetSetting(sysIdx, "CastBarWidth") or 120,
+        CastBarHeight = plugin:GetSetting(sysIdx, "CastBarHeight") or 18,
+    }
+    self.pendingPluginSettings = nil
+    self:ApplyCastBarPreview()
+
+    self.currentOverrides = nil
 end
 
 -- [ EXPORT ]----------------------------------------------------------------------------------------
 
-Orbit.CanvasComponentSettings = Dialog
-OrbitEngine.CanvasComponentSettings = Dialog
+Orbit.CanvasComponentSettings = Settings
+OrbitEngine.CanvasComponentSettings = Settings

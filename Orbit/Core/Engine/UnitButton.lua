@@ -45,6 +45,9 @@ end
 if UnitButton.CanvasMixin then
     Mixin(UnitButtonMixin, UnitButton.CanvasMixin)
 end
+if UnitButton.PortraitMixin then
+    Mixin(UnitButtonMixin, UnitButton.PortraitMixin)
+end
 
 -- Export composed mixin
 UnitButton.Mixin = UnitButtonMixin
@@ -220,23 +223,23 @@ function UnitButton:Create(parent, unit, name)
     if Engine.ComponentDrag then
         Engine.ComponentDrag:Attach(f.Name, f, {
             key = "Name",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                 -- Save edge-relative position to plugin settings
                 if f.orbitPlugin and f.orbitPlugin.SetSetting then
                     local systemIndex = f.systemIndex or 1
                     local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}
-                    positions.Name = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                    positions.Name = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                     f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
                 end
             end,
         })
         Engine.ComponentDrag:Attach(f.HealthText, f, {
             key = "HealthText",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                 if f.orbitPlugin and f.orbitPlugin.SetSetting then
                     local systemIndex = f.systemIndex or 1
                     local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}
-                    positions.HealthText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                    positions.HealthText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                     f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
                 end
             end,

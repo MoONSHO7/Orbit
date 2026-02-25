@@ -132,8 +132,46 @@ function Dialog:NudgeComponent(container, direction)
         return
     end
 
-    local preview = self.previewFrame
     local NUDGE = 1
+
+    if container.isSubComponent then
+        local parent = container.subComponentParent
+        if not parent then return end
+        local cx, cy = container:GetCenter()
+        local px, py = parent:GetCenter()
+        local relX = (cx - px) or 0
+        local relY = (cy - py) or 0
+        if direction == "LEFT" then relX = relX - NUDGE
+        elseif direction == "RIGHT" then relX = relX + NUDGE
+        elseif direction == "UP" then relY = relY + NUDGE
+        elseif direction == "DOWN" then relY = relY - NUDGE end
+        container:ClearAllPoints()
+        container:SetPoint("CENTER", parent, "CENTER", relX, relY)
+        local halfW = parent:GetWidth() / 2
+        local halfH = parent:GetHeight() / 2
+        local aX, aY, oX, oY, jH = CalculateAnchorWithWidthCompensation(relX, relY, halfW, halfH, true, container:GetWidth())
+        container.anchorX = aX
+        container.anchorY = aY
+        container.offsetX = oX
+        container.offsetY = oY
+        container.justifyH = jH
+        if OrbitEngine.SelectionTooltip then
+            OrbitEngine.SelectionTooltip:ShowComponentPosition(container, container.key, aX, aY, relX, relY, oX, oY, jH)
+        end
+        local plugin = self.targetPlugin
+        if plugin then
+            local positions = plugin:GetSetting(self.targetSystemIndex, "ComponentPositions") or {}
+            if not positions.CastBar then positions.CastBar = {} end
+            if not positions.CastBar.subComponents then positions.CastBar.subComponents = {} end
+            positions.CastBar.subComponents[container.key] = {
+                anchorX = aX, anchorY = aY, offsetX = oX, offsetY = oY, justifyH = jH,
+            }
+            plugin:SetSetting(self.targetSystemIndex, "ComponentPositions", positions)
+        end
+        return
+    end
+
+    local preview = self.previewFrame
 
     local anchorX = container.anchorX or "CENTER"
     local anchorY = container.anchorY or "CENTER"
@@ -270,9 +308,8 @@ function Dialog:Open(frame, plugin, systemIndex)
         return false
     end
 
-    -- Close Component Settings dialog if open
-    if Orbit.CanvasComponentSettings and Orbit.CanvasComponentSettings:IsShown() then
-        Orbit.CanvasComponentSettings:Hide()
+    if Orbit.CanvasComponentSettings and Orbit.CanvasComponentSettings.componentKey then
+        Orbit.CanvasComponentSettings:Close()
     end
 
     local canvasFrame = frame.orbitCanvasFrame or frame
@@ -419,6 +456,7 @@ function Dialog:Open(frame, plugin, systemIndex)
             offsetY = offsetY,
             justifyH = justifyH,
             overrides = pos and pos.overrides,
+            subComponents = pos and pos.subComponents,
             posX = pos and pos.posX,
             posY = pos and pos.posY,
         }
@@ -449,16 +487,13 @@ function Dialog:Open(frame, plugin, systemIndex)
 
     wipe(self.previewComponents)
 
-    -- Check if preview already has components from CreateCanvasPreview hook
-    if self.previewFrame.components and next(self.previewFrame.components) then
+    -- Adopt any components pre-built by CreateCanvasPreview
+    if self.previewFrame.components then
         for key, comp in pairs(self.previewFrame.components) do
-            -- Check if this component should be disabled
             if isDisabled(key) then
-                -- Hide the component and add to dock instead
                 comp:Hide()
                 local sourceComponent = comp.sourceComponent or comp
                 self:AddToDock(key, sourceComponent)
-                -- Store reference to original draggable comp so we can restore it
                 if self.dockComponents[key] then
                     self.dockComponents[key].storedDraggableComp = comp
                 end
@@ -466,9 +501,11 @@ function Dialog:Open(frame, plugin, systemIndex)
                 self.previewComponents[key] = comp
             end
         end
-    else
-        -- Fallback: create from ComponentDrag-registered components
-        for key, data in pairs(components) do
+    end
+
+    -- Create remaining components from ComponentDrag registry
+    for key, data in pairs(components) do
+        if not self.previewComponents[key] and not (self.dockComponents and self.dockComponents[key]) then
             if isDisabled(key) then
                 self:AddToDock(key, data.component)
             else
@@ -477,6 +514,24 @@ function Dialog:Open(frame, plugin, systemIndex)
                     comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + 10)
                 end
                 self.previewComponents[key] = comp
+            end
+        end
+    end
+
+    -- Re-dock disabled subcomponents (keys like "CastBar.Text" aren't in dragComponents)
+    local SUB_FRAME_MAP = { Text = "TextSub", Timer = "TimerSub" }
+    for _, disabledKey in ipairs(disabledComponents) do
+        local parentKey, subKey = disabledKey:match("^(.+)%.(.+)$")
+        if parentKey and subKey and self.previewComponents[parentKey] then
+            local subFieldName = SUB_FRAME_MAP[subKey]
+            local subFrame = subFieldName and self.previewComponents[parentKey][subFieldName]
+            if subFrame then
+                subFrame:Hide()
+                self:AddToDock(disabledKey, subFrame.visual)
+                if self.dockComponents[disabledKey] then
+                    self.dockComponents[disabledKey].storedSubFrame = subFrame
+                    self.dockComponents[disabledKey].parentContainer = self.previewComponents[parentKey]
+                end
             end
         end
     end
@@ -490,8 +545,6 @@ function Dialog:Open(frame, plugin, systemIndex)
         end
     end
     local showTabs = hasAuraComponents
-    local titleHeight = showTabs and C.TITLE_HEIGHT or C.TITLE_HEIGHT_NO_TABS
-    self.PreviewContainer:SetPoint("TOPLEFT", self, "TOPLEFT", C.VIEWPORT_PADDING, -titleHeight)
     if self.FilterTabBar then
         self.activeFilter = "All"
         self.FilterTabBar:SetShown(showTabs)
@@ -504,8 +557,14 @@ function Dialog:Open(frame, plugin, systemIndex)
         end
     end
 
-    self:SetSize(C.DIALOG_WIDTH, C.DIALOG_HEIGHT + C.DOCK_HEIGHT)
-    self:LayoutFooterButtons()
+    if self.OverrideContainer then self.OverrideContainer:Hide() end
+
+    self:SetWidth(C.DIALOG_WIDTH)
+    self:RecalculateHeight()
+
+    if OrbitEngine.CanvasComponentSettings and OrbitEngine.CanvasComponentSettings.ApplyInitialPluginPreviews then
+        OrbitEngine.CanvasComponentSettings:ApplyInitialPluginPreviews(self.targetPlugin, self.targetSystemIndex)
+    end
 
     self:Show()
     return true
@@ -584,8 +643,8 @@ end
 -- [ CLOSE DIALOG ]-----------------------------------------------------------------------
 
 function Dialog:CloseDialog()
-    if Orbit.CanvasComponentSettings and Orbit.CanvasComponentSettings:IsShown() then
-        Orbit.CanvasComponentSettings:Hide()
+    if Orbit.CanvasComponentSettings and Orbit.CanvasComponentSettings.componentKey then
+        Orbit.CanvasComponentSettings:Close()
     end
 
     self:CleanupPreview()
@@ -630,11 +689,7 @@ function Dialog:Apply()
             local posY = comp.posY or 0
             local needsWidthComp = NeedsEdgeCompensation(comp.isFontString, comp.isAuraContainer)
             anchorX, anchorY, offsetX, offsetY, justifyH =
-                CalculateAnchorWithWidthCompensation(posX, posY, halfWidth, halfHeight, needsWidthComp, comp:GetWidth())
-            -- Aura containers need height compensation for vertical self-anchors
-            if comp.isAuraContainer and anchorY ~= "CENTER" then
-                offsetY = offsetY - (comp:GetHeight() or 0) / 2
-            end
+                CalculateAnchorWithWidthCompensation(posX, posY, halfWidth, halfHeight, needsWidthComp, comp:GetWidth(), comp:GetHeight(), comp.isAuraContainer)
         end
 
         positions[key] = {
@@ -643,7 +698,7 @@ function Dialog:Apply()
             offsetX = offsetX,
             offsetY = offsetY,
             justifyH = justifyH,
-            posX = comp.posX or 0, -- Also save center-relative for easier restoration
+            posX = comp.posX or 0,
             posY = comp.posY or 0,
         }
 
@@ -651,6 +706,12 @@ function Dialog:Apply()
             positions[key].overrides = comp.pendingOverrides
         elseif comp.existingOverrides then
             positions[key].overrides = comp.existingOverrides
+        end
+
+        if key == "CastBar" then
+            local existing = self.targetPlugin:GetSetting(self.targetSystemIndex, "ComponentPositions") or {}
+            local existingCB = existing.CastBar or {}
+            positions[key].subComponents = existingCB.subComponents
         end
     end
 
@@ -690,6 +751,11 @@ function Dialog:Apply()
 
     -- Apply settings to the specific frame that was edited
     local targetFrame = self.targetFrame
+
+    if OrbitEngine.CanvasComponentSettings and OrbitEngine.CanvasComponentSettings.FlushPendingPluginSettings then
+        OrbitEngine.CanvasComponentSettings:FlushPendingPluginSettings()
+    end
+
     self:CloseDialog()
 
     if plugin.ApplySettings then

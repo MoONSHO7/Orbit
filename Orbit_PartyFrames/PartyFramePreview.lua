@@ -36,7 +36,7 @@ local PREVIEW_DEFAULTS = {
     Names = { "Healbot", "Tankenstein", "Stabby", "Pyromancer", "You" },
     Classes = { "PRIEST", "WARRIOR", "ROGUE", "MAGE", "PALADIN" },
     Roles = { "HEALER", "TANK", "DAMAGER", "DAMAGER", "HEALER" },
-    AuraSpacing = 2,
+    AuraSpacing = 1,
     FakeCooldownElapsed = 10, -- Seconds already elapsed on fake cooldown
     FakeCooldownDuration = 60, -- Total fake cooldown duration
 }
@@ -460,7 +460,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                         frame.DefensiveIcon:SetPoint("CENTER", frame, "LEFT", Orbit.Engine.Pixel:Snap(iconSize * 0.5 + 2, frame:GetEffectiveScale()), 0)
                     end
                     if Orbit.Skin and Orbit.Skin.Icons then
-                        Orbit.Skin.Icons:ApplyCustom(frame.DefensiveIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
+                        Orbit.Skin.Icons:ApplyCustom(frame.DefensiveIcon, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
                     end
                     frame.DefensiveIcon:Show()
                 elseif frame.DefensiveIcon then
@@ -478,7 +478,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                         frame.CrowdControlIcon:SetPoint("CENTER", frame, "TOP", 0, Orbit.Engine.Pixel:Snap(-(iconSize * 0.5 + 2), frame:GetEffectiveScale()))
                     end
                     if Orbit.Skin and Orbit.Skin.Icons then
-                        Orbit.Skin.Icons:ApplyCustom(frame.CrowdControlIcon, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
+                        Orbit.Skin.Icons:ApplyCustom(frame.CrowdControlIcon, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
                     end
                     frame.CrowdControlIcon:Show()
                 elseif frame.CrowdControlIcon then
@@ -494,7 +494,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                         frame.PrivateAuraAnchor:SetPoint("CENTER", frame, "BOTTOM", 0, Orbit.Engine.Pixel:Snap(iconSize * 0.5 + 2, frame:GetEffectiveScale()))
                     end
                     if Orbit.Skin and Orbit.Skin.Icons then
-                        Orbit.Skin.Icons:ApplyCustom(frame.PrivateAuraAnchor, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
+                        Orbit.Skin.Icons:ApplyCustom(frame.PrivateAuraAnchor, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
                     end
                     frame.PrivateAuraAnchor:Show()
                 elseif frame.PrivateAuraAnchor then
@@ -689,11 +689,10 @@ function Orbit.PartyFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posD
     end
 
     -- Skin settings
-    local globalBorder = self:GetSetting(1, "BorderSize") or 1
     local skinSettings = {
         zoom = 0,
         borderStyle = 1,
-        borderSize = globalBorder,
+        borderSize = 1,
         showTimer = true,
     }
 

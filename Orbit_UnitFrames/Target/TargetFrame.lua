@@ -28,6 +28,7 @@ local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
             HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
             LevelText = { anchorX = "RIGHT", offsetX = -3, anchorY = "TOP", offsetY = 6, justifyH = "LEFT" },
             RareEliteIcon = { anchorX = "RIGHT", offsetX = -8, anchorY = "BOTTOM", offsetY = 10, justifyH = "LEFT" },
+            Portrait = { anchorX = "LEFT", offsetX = 4, anchorY = "CENTER", offsetY = 0 },
         },
     },
 })
@@ -142,6 +143,8 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("UNIT_FACTION")
     self.frame:RegisterEvent("UNIT_LEVEL")
     self.frame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
+    self.frame:RegisterEvent("UNIT_PORTRAIT_UPDATE")
+    self.frame:RegisterEvent("PORTRAITS_UPDATED")
 
     -- Create overlay container for Level/EliteIcon (use frame level, not strata, to avoid appearing above UI dialogs)
     if not self.frame.OverlayFrame then
@@ -165,22 +168,32 @@ function Plugin:OnLoad()
         self.frame.RareEliteIcon:Hide()
     end
 
+    self.frame:CreatePortrait()
+
     -- Register LevelText and RareEliteIcon for component drag with persistence callbacks
     local pluginRef = self
     if OrbitEngine.ComponentDrag then
         OrbitEngine.ComponentDrag:Attach(self.frame.LevelText, self.frame, {
             key = "LevelText",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                 local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
-                positions.LevelText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                positions.LevelText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                 pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
             end,
         })
         OrbitEngine.ComponentDrag:Attach(self.frame.RareEliteIcon, self.frame, {
             key = "RareEliteIcon",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH)
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                 local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
-                positions.RareEliteIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                positions.RareEliteIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
+                pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
+            end,
+        })
+        OrbitEngine.ComponentDrag:Attach(self.frame.Portrait, self.frame, {
+            key = "Portrait",
+            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
+                local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
+                positions.Portrait = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                 pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
             end,
         })
@@ -190,6 +203,7 @@ function Plugin:OnLoad()
     self.frame:SetScript("OnEvent", function(f, event, unit, ...)
         if event == "PLAYER_TARGET_CHANGED" then
             f:UpdateAll()
+            f:UpdatePortrait()
             self:UpdateVisualsExtended(f, TARGET_FRAME_INDEX)
             return
         elseif event == "UNIT_FACTION" then
@@ -205,6 +219,8 @@ function Plugin:OnLoad()
 
         if event == "UNIT_LEVEL" or event == "UNIT_CLASSIFICATION_CHANGED" then
             self:UpdateVisualsExtended(f, TARGET_FRAME_INDEX)
+        elseif event == "UNIT_PORTRAIT_UPDATE" or event == "PORTRAITS_UPDATED" then
+            f:UpdatePortrait()
         end
     end)
 
@@ -318,6 +334,7 @@ function Plugin:ApplySettings(frame)
     self:UpdateVisualsExtended(frame, systemIndex)
 
     frame:UpdateAll()
+    frame:UpdatePortrait()
 end
 
 function Plugin:UpdateVisuals(frame)

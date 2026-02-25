@@ -14,7 +14,7 @@ local CROWD_CONTROL_ICON_SIZE = 24
 local PRIVATE_AURA_ICON_SIZE = 24
 local MAX_PRIVATE_AURA_ANCHORS = 3
 local AURA_BASE_ICON_SIZE = Orbit.PartyFrameHelpers.LAYOUT.AuraBaseIconSize
-local AURA_SPACING = 2
+local AURA_SPACING = 1
 local MIN_ICON_SIZE = 10
 local OUT_OF_RANGE_ALPHA = 0.2
 
@@ -397,11 +397,10 @@ local function UpdateDebuffs(frame, plugin)
     frame.debuffContainer:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
 
     -- Skin settings
-    local globalBorder = Orbit.db.GlobalSettings.BorderSize
     local skinSettings = {
         zoom = 0,
         borderStyle = 1,
-        borderSize = globalBorder,
+        borderSize = 1,
         showTimer = true,
     }
 
@@ -409,6 +408,7 @@ local function UpdateDebuffs(frame, plugin)
     local col, row = 0, 0
     for i, aura in ipairs(debuffs) do
         local icon = frame.debuffPool:Acquire()
+        icon:EnableMouse(false)
         plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
         plugin:SetupAuraTooltip(icon, aura, unit, "HARMFUL")
 
@@ -511,11 +511,10 @@ local function UpdateBuffs(frame, plugin)
     frame.buffContainer:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
 
     -- Skin settings
-    local globalBorder = Orbit.db.GlobalSettings.BorderSize
     local skinSettings = {
         zoom = 0,
         borderStyle = 1,
-        borderSize = globalBorder,
+        borderSize = 1,
         showTimer = true,
     }
 
@@ -523,6 +522,7 @@ local function UpdateBuffs(frame, plugin)
     local col, row = 0, 0
     for i, aura in ipairs(buffs) do
         local icon = frame.buffPool:Acquire()
+        icon:EnableMouse(false)
         plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
         plugin:SetupAuraTooltip(icon, aura, unit, "HELPFUL")
 
@@ -557,8 +557,7 @@ local function UpdateSingleAuraIcon(frame, plugin, iconKey, filter, iconSize)
     end
 
     local aura = auras[1]
-    local globalBorder = Orbit.db.GlobalSettings.BorderSize
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false }
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false }
     plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
     local tooltipFilter = filter:find("HARMFUL") and "HARMFUL" or "HELPFUL"
     plugin:SetupAuraTooltip(icon, aura, unit, tooltipFilter)
@@ -1120,9 +1119,9 @@ function Plugin:OnLoad()
             if element then
                 OrbitEngine.ComponentDrag:Attach(element, self.container, {
                     key = key,
-                    onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH)
+                    onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                         local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                         pluginRef:SetSetting(1, "ComponentPositions", positions)
                     end,
                 })
@@ -1135,9 +1134,9 @@ function Plugin:OnLoad()
             if element then
                 OrbitEngine.ComponentDrag:Attach(element, self.container, {
                     key = key,
-                    onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY)
+                    onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                         local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY }
+                        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                         pluginRef:SetSetting(1, "ComponentPositions", positions)
                     end,
                 })
@@ -1156,7 +1155,7 @@ function Plugin:OnLoad()
             OrbitEngine.ComponentDrag:Attach(firstFrame[containerKey], self.container, {
                 key = key,
                 isAuraContainer = true,
-                onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
+                onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                     local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
                     if not positions[key] then
                         positions[key] = {}
@@ -1166,6 +1165,8 @@ function Plugin:OnLoad()
                     positions[key].offsetX = offsetX
                     positions[key].offsetY = offsetY
                     positions[key].justifyH = justifyH
+
+                    positions[key].justifyV = justifyV
                     local compParent = comp:GetParent()
                     if compParent then
                         local cx, cy = comp:GetCenter()

@@ -34,6 +34,7 @@ Mixin.ICON_PREVIEW_ATLASES = {
     DefensiveIcon = "UI-LFG-RoleIcon-Tank",
     CrowdControlIcon = "UI-LFG-PendingMark-Raid",
     PrivateAuraAnchor = "UI-LFG-PendingMark-Raid",
+    Portrait = "adventureguide-campfire",
 }
 Mixin.MARKER_ICON_TEXCOORD = { 0.75, 1, 0.25, 0.5 }
 

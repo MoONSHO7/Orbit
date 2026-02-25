@@ -136,6 +136,7 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
         btn.Icon:SetAllPoints()
         btn.icon = btn.Icon
         btn:Hide()
+        btn:EnableMouse(false)
         frame[iconKey] = btn
     end
 

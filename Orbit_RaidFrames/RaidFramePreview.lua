@@ -313,7 +313,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                             btn:SetPoint("CENTER", frame, entry.anchor, xOff, yOff)
                         end
                         if Orbit.Skin and Orbit.Skin.Icons then
-                            Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = borderSize, showTimer = false })
+                            Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
                         end
                         btn:Show()
                     elseif btn then btn:Hide() end
@@ -369,7 +369,7 @@ function Orbit.RaidFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posDa
     local containerKey = auraType .. "Container"
     local poolKey = "preview" .. auraType:gsub("^%l", string.upper) .. "s"
     local AURA_BASE_ICON_SIZE = Orbit.RaidFrameHelpers.LAYOUT.AuraBaseIconSize
-    local AURA_SPACING = 2
+    local AURA_SPACING = 1
 
     if numIcons == 0 then
         if frame[containerKey] then frame[containerKey]:Hide() end
@@ -428,8 +428,7 @@ function Orbit.RaidFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posDa
     if not frame[poolKey] then frame[poolKey] = {} end
     for _, icon in ipairs(frame[poolKey]) do icon:Hide() end
 
-    local globalBorder = self:GetSetting(1, "BorderSize") or 1
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = true }
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true }
     local growDown = (anchorY ~= "BOTTOM")
 
     for idx = 1, numIcons do

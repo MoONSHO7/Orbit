@@ -17,23 +17,24 @@ local CanvasMode = OrbitEngine.CanvasMode
 CanvasMode.Constants = {
     -- Dialog dimensions
     DIALOG_WIDTH = 600,
-    DIALOG_HEIGHT = 350,
     DIALOG_MIN_HEIGHT = 200,
     DIALOG_INSET = 12,
 
+    -- Row heights (stacked top-to-bottom)
+    TITLE_ROW_HEIGHT = 40,
+    PANELS_ROW_HEIGHT = 28,
+    VIEWPORT_HEIGHT = 260,
+    OVERRIDE_SECTION_PADDING = 8,
+
     -- Viewport
     VIEWPORT_PADDING = 20,
-    FOOTER_HEIGHT = 55,
-    TITLE_HEIGHT = 64,
-    TITLE_HEIGHT_NO_TABS = 40,
 
     -- Filter tabs
     FILTER_TAB_HEIGHT = 24,
     FILTER_TAB_SPACING = 4,
-    FILTER_TAB_TOP_OFFSET = -43.5,
 
-    -- Dock
-    DOCK_HEIGHT = 60,
+    -- Dock (horizontal bar at bottom of viewport)
+    DOCK_HEIGHT = 40,
     DOCK_ICON_SIZE = 28,
     DOCK_ICON_SPACING = 6,
     DOCK_PADDING = 8,

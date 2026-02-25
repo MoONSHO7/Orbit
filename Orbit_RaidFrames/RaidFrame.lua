@@ -586,9 +586,9 @@ local function UpdateInRange(frame)
         local result
         if UnitIsDead(unit) then
             local rezSpell = GetPlayerRezSpell()
-            if rezSpell then result = IsSpellInRange(rezSpell, unit) end
+            if rezSpell then result = C_Spell.IsSpellInRange(rezSpell, unit) end
         else
-            result = IsSpellInRange(rangeSpell, unit)
+            result = C_Spell.IsSpellInRange(rangeSpell, unit)
         end
         if result and not issecretvalue(result) then
             local alpha = (result == RANGE_IN_RANGE) and 1 or OUT_OF_RANGE_ALPHA
@@ -961,9 +961,9 @@ function Plugin:OnLoad()
             if element then
                 OrbitEngine.ComponentDrag:Attach(element, self.container, {
                     key = key,
-                    onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH)
+                    onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                         local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                         pluginRef:SetSetting(1, "ComponentPositions", positions)
                     end,
                 })
@@ -975,9 +975,9 @@ function Plugin:OnLoad()
             if element then
                 OrbitEngine.ComponentDrag:Attach(element, self.container, {
                     key = key,
-                    onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY)
+                    onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                         local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY }
+                        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
                         pluginRef:SetSetting(1, "ComponentPositions", positions)
                     end,
                 })
@@ -994,7 +994,7 @@ function Plugin:OnLoad()
             OrbitEngine.ComponentDrag:Attach(firstFrame[containerKey], self.container, {
                 key = key,
                 isAuraContainer = true,
-                onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
+                onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
                     local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
                     if not positions[key] then positions[key] = {} end
                     positions[key].anchorX = anchorX
@@ -1002,6 +1002,8 @@ function Plugin:OnLoad()
                     positions[key].offsetX = offsetX
                     positions[key].offsetY = offsetY
                     positions[key].justifyH = justifyH
+
+                    positions[key].justifyV = justifyV
                     local compParent = comp:GetParent()
                     if compParent then
                         local cx, cy = comp:GetCenter()
