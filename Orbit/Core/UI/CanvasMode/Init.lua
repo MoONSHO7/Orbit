@@ -38,6 +38,7 @@ CanvasMode.Constants = {
     DOCK_ICON_SIZE = 28,
     DOCK_ICON_SPACING = 6,
     DOCK_PADDING = 8,
+    DOCK_Y_OFFSET = 10,
 
     -- Zoom
     DEFAULT_ZOOM = 2.0,
@@ -47,6 +48,7 @@ CanvasMode.Constants = {
 
     -- Pan clamping
     PAN_CLAMP_PADDING = 50,
+    MIN_PAN_RANGE = 80,
 }
 
 local C = CanvasMode.Constants

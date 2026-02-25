@@ -25,8 +25,8 @@ local function ApplyFilterTabState(btn, isActive)
 end
 
 Dialog.FilterTabBar = CreateFrame("Frame", nil, Dialog)
-Dialog.FilterTabBar:SetPoint("TOPLEFT", Dialog, "TOPLEFT", C.VIEWPORT_PADDING + 30, -C.TITLE_ROW_HEIGHT)
-Dialog.FilterTabBar:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", -C.VIEWPORT_PADDING, -C.TITLE_ROW_HEIGHT)
+Dialog.FilterTabBar:SetPoint("TOPLEFT", Dialog, "TOPLEFT", C.VIEWPORT_PADDING + 30, -(C.TITLE_ROW_HEIGHT + 7))
+Dialog.FilterTabBar:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", -C.VIEWPORT_PADDING, -(C.TITLE_ROW_HEIGHT + 7))
 Dialog.FilterTabBar:SetHeight(C.PANELS_ROW_HEIGHT)
 Dialog.FilterTabBar:SetFrameLevel(Dialog:GetFrameLevel() + 200)
 Dialog.FilterTabBar:Hide()
@@ -110,7 +110,7 @@ Dialog.Viewport:RegisterForDrag("MiddleButton", "LeftButton")
 -- TransformLayer: receives zoom (SetScale) and pan (position offset)
 Dialog.TransformLayer = CreateFrame("Frame", nil, Dialog.Viewport)
 Dialog.TransformLayer:SetSize(1, 1)
-Dialog.TransformLayer:SetPoint("CENTER", Dialog.Viewport, "CENTER", 0, 0)
+Dialog.TransformLayer:SetPoint("CENTER", Dialog.Viewport, "CENTER", 0, C.DOCK_Y_OFFSET)
 
 -- [ ROW 4: OVERRIDE SETTINGS CONTAINER ]-------------------------------------------------
 
@@ -144,6 +144,14 @@ function Dialog:RecalculateHeight()
     local footerHeight = FC.TopPadding + FC.ButtonHeight + FC.BottomPadding
 
     local totalHeight = topOffset + C.VIEWPORT_HEIGHT + overridePad + overrideHeight + footerHeight + C.DIALOG_INSET
+
+    local top = self:GetTop()
+    local left = self:GetLeft()
+    if top and left then
+        self:ClearAllPoints()
+        self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+    end
+
     self:SetHeight(math.max(C.DIALOG_MIN_HEIGHT, totalHeight))
     self:LayoutFooterButtons()
 end
@@ -159,8 +167,8 @@ local function GetPanBounds(transformLayer, viewport, zoomLevel)
     local viewH = viewport:GetHeight()
 
     local scale = viewport:GetEffectiveScale()
-    local maxX = OrbitEngine.Pixel:Snap(math.max(0, (scaledW / 2) - (viewW / 2) + C.PAN_CLAMP_PADDING), scale)
-    local maxY = OrbitEngine.Pixel:Snap(math.max(0, (scaledH / 2) - (viewH / 2) + C.PAN_CLAMP_PADDING), scale)
+    local maxX = OrbitEngine.Pixel:Snap(math.max(C.MIN_PAN_RANGE, (scaledW / 2) - (viewW / 2) + C.PAN_CLAMP_PADDING), scale)
+    local maxY = OrbitEngine.Pixel:Snap(math.max(C.MIN_PAN_RANGE, (scaledH / 2) - (viewH / 2) + C.PAN_CLAMP_PADDING), scale)
 
     return maxX, maxY
 end
@@ -172,7 +180,7 @@ local function ApplyPanOffset(dialog, offsetX, offsetY)
     dialog.panOffsetY = math.max(-maxY, math.min(maxY, offsetY))
 
     dialog.TransformLayer:ClearAllPoints()
-    dialog.TransformLayer:SetPoint("CENTER", dialog.Viewport, "CENTER", dialog.panOffsetX, dialog.panOffsetY)
+    dialog.TransformLayer:SetPoint("CENTER", dialog.Viewport, "CENTER", dialog.panOffsetX, dialog.panOffsetY + C.DOCK_Y_OFFSET)
 end
 
 local function ApplyZoom(dialog, newZoom)

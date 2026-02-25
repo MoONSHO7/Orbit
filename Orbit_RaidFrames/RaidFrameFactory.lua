@@ -157,7 +157,7 @@ function Orbit.RaidFrameFactoryMixin:RegisterFrameEvents(frame, unit)
     local globalEvents = {
         "READY_CHECK", "READY_CHECK_CONFIRM", "READY_CHECK_FINISHED",
         "INCOMING_SUMMON_CHANGED", "PLAYER_ROLES_ASSIGNED", "GROUP_ROSTER_UPDATE",
-        "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE",
+        "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE", "PARTY_LEADER_CHANGED",
         "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
     }
     for _, event in ipairs(globalEvents) do frame:RegisterEvent(event) end

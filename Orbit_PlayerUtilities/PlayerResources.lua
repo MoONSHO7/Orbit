@@ -458,8 +458,6 @@ function Plugin:OnLoad()
                 if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(btn) end
                 
                 currentLeft = currentLeft + snappedWidth + logicalGap
-                
-                currentPxLeft = currentPxRight + gapPixels
 
                 local color = Plugin:GetResourceColor(i, max)
                 if color and btn.orbitBar then

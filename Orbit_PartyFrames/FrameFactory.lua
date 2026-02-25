@@ -179,6 +179,7 @@ function Orbit.PartyFrameFactoryMixin:RegisterFrameEvents(frame, unit)
         "GROUP_ROSTER_UPDATE",
         "PLAYER_TARGET_CHANGED",
         "RAID_TARGET_UPDATE",
+        "PARTY_LEADER_CHANGED",
         "PLAYER_REGEN_DISABLED",
         "PLAYER_REGEN_ENABLED",
     }

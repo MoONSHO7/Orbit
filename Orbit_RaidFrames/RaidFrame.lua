@@ -18,31 +18,7 @@ local AURA_SPACING = 1
 local AURA_BASE_ICON_SIZE = 10
 local MIN_ICON_SIZE = 10
 local OUT_OF_RANGE_ALPHA = 0.2
-local RANGE_IN_RANGE = 1
 
--- [ SPEC RANGE SPELLS ]-----------------------------------------------------------------------------
-local SPEC_RANGE_SPELLS = {
-    [62]   = { friendly = 1459 },   [63]   = { friendly = 1459 },   [64]   = { friendly = 1459 },
-    [65]   = { friendly = 19750 },  [66]   = { friendly = 19750 },  [70]   = { friendly = 19750 },
-    [71]   = { friendly = 100 },    [72]   = { friendly = 100 },    [73]   = { friendly = 100 },
-    [102]  = { friendly = 8936 },   [103]  = { friendly = 8936 },   [104]  = { friendly = 8936 },   [105]  = { friendly = 8936 },
-    [250]  = { friendly = 47541 },  [251]  = { friendly = 47541 },  [252]  = { friendly = 47541 },
-    [253]  = { friendly = 34477 },  [254]  = { friendly = 34477 },  [255]  = { friendly = 34477 },
-    [256]  = { friendly = 17 },     [257]  = { friendly = 2061 },   [258]  = { friendly = 17 },
-    [259]  = { friendly = 36554 },  [260]  = { friendly = 36554 },  [261]  = { friendly = 36554 },
-    [262]  = { friendly = 8004 },   [263]  = { friendly = 8004 },   [264]  = { friendly = 8004 },
-    [265]  = { friendly = 5697 },   [266]  = { friendly = 5697 },   [267]  = { friendly = 5697 },
-    [268]  = { friendly = 116670 }, [269]  = { friendly = 116670 }, [270]  = { friendly = 116670 },
-    [577]  = { friendly = 195072 }, [581]  = { friendly = 195072 },
-    [1467] = { friendly = 361469 }, [1468] = { friendly = 361469 }, [1473] = { friendly = 361469 },
-}
-
-local CLASS_REZ_SPELLS = {
-    DRUID = 50769, PALADIN = 7328, PRIEST = 2006, SHAMAN = 2008,
-    MONK = 115178, EVOKER = 361227, DEATHKNIGHT = 61999,
-}
-
-local _playerSpecID, _playerRezSpell
 local _pendingPrivateAuraReanchor = false
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
@@ -557,51 +533,13 @@ end
 
 -- [ RANGE CHECKING ]--------------------------------------------------------------------------------
 
-local function GetPlayerRangeSpell()
-    if not _playerSpecID then
-        local specIndex = GetSpecialization()
-        if specIndex then _playerSpecID = GetSpecializationInfo(specIndex) end
-    end
-    local entry = _playerSpecID and SPEC_RANGE_SPELLS[_playerSpecID]
-    return entry and entry.friendly
-end
-
-local function GetPlayerRezSpell()
-    if _playerRezSpell ~= nil then return _playerRezSpell end
-    local _, className = UnitClass("player")
-    local spellID = className and CLASS_REZ_SPELLS[className]
-    _playerRezSpell = (spellID and IsSpellKnown(spellID)) and spellID or false
-    return _playerRezSpell
-end
-
 local function UpdateInRange(frame)
     if not frame or not frame.unit or frame.preview then
         frame:SetAlpha(1)
         return
     end
-    local unit = frame.unit
-    local rangeSpell = GetPlayerRangeSpell()
-
-    if rangeSpell then
-        local result
-        if UnitIsDead(unit) then
-            local rezSpell = GetPlayerRezSpell()
-            if rezSpell then result = C_Spell.IsSpellInRange(rezSpell, unit) end
-        else
-            result = C_Spell.IsSpellInRange(rangeSpell, unit)
-        end
-        if result and not issecretvalue(result) then
-            local alpha = (result == RANGE_IN_RANGE) and 1 or OUT_OF_RANGE_ALPHA
-            if frame._lastRangeAlpha ~= alpha then
-                frame._lastRangeAlpha = alpha
-                frame:SetAlpha(alpha)
-            end
-            return
-        end
-    end
-
-    frame._lastRangeAlpha = nil
-    frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(UnitInRange(unit), 1, OUT_OF_RANGE_ALPHA))
+    local inRange = UnitInRange(frame.unit)
+    frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(inRange, 1, OUT_OF_RANGE_ALPHA))
 end
 
 -- [ RAID FRAME CREATION ]---------------------------------------------------------------------------
@@ -706,7 +644,7 @@ local function CreateRaidFrame(index, plugin)
             UpdateIncomingSummon(f, plugin)
             return
         end
-        if event == "PLAYER_ROLES_ASSIGNED" or event == "GROUP_ROSTER_UPDATE" then
+        if event == "PLAYER_ROLES_ASSIGNED" or event == "GROUP_ROSTER_UPDATE" or event == "PARTY_LEADER_CHANGED" then
             UpdateRoleIcon(f, plugin)
             UpdateLeaderIcon(f, plugin)
             UpdateMainTankIcon(f, plugin)
@@ -1051,14 +989,8 @@ function Plugin:OnLoad()
     eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
     eventFrame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-    eventFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 
-    eventFrame:SetScript("OnEvent", function(_, event, eventUnit)
-        if event == "PLAYER_SPECIALIZATION_CHANGED" and eventUnit == "player" then
-            _playerSpecID = nil
-            _playerRezSpell = nil
-            return
-        end
+    eventFrame:SetScript("OnEvent", function(_, event)
         if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
             if not InCombatLockdown() then
                 self:UpdateFrameUnits()

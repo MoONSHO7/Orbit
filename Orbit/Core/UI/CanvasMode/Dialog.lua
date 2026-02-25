@@ -332,7 +332,7 @@ function Dialog:Open(frame, plugin, systemIndex)
     self.panOffsetY = 0
     self.TransformLayer:SetScale(C.DEFAULT_ZOOM)
     self.TransformLayer:ClearAllPoints()
-    self.TransformLayer:SetPoint("CENTER", self.Viewport, "CENTER", 0, 0)
+    self.TransformLayer:SetPoint("CENTER", self.Viewport, "CENTER", 0, C.DOCK_Y_OFFSET)
     if self.ZoomIndicator then
         self.ZoomIndicator:SetText(string.format("%.0f%%", C.DEFAULT_ZOOM * 100))
     end

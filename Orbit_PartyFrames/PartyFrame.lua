@@ -848,7 +848,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
             return
         end
 
-        if event == "PLAYER_ROLES_ASSIGNED" or event == "GROUP_ROSTER_UPDATE" then
+        if event == "PLAYER_ROLES_ASSIGNED" or event == "GROUP_ROSTER_UPDATE" or event == "PARTY_LEADER_CHANGED" then
             UpdateRoleIcon(f, plugin)
             UpdateLeaderIcon(f, plugin)
             return
