@@ -22,25 +22,7 @@ Helpers.GROWTH_DIRECTION = { Down = "Down", Up = "Up", Left = "Left", Right = "R
 -- which edge the container is beyond (above/below takes priority over left/right
 -- when the container is further outside vertically, and vice versa)
 function Helpers:AnchorToPosition(posX, posY, halfW, halfH)
-    if posX and posY and halfW and halfH then
-        -- How far beyond each frame edge is the container center?
-        local beyondX = math.max(0, math.abs(posX) - halfW)
-        local beyondY = math.max(0, math.abs(posY) - halfH)
-
-        if beyondY > beyondX then
-            return posY > 0 and "Above" or "Below"
-        elseif beyondX > beyondY then
-            return posX > 0 and "Right" or "Left"
-        end
-        -- Neither is outside: use whichever axis is closer to edge
-        if math.abs(posX) / math.max(halfW, 1) > math.abs(posY) / math.max(halfH, 1) then
-            return posX > 0 and "Right" or "Left"
-        else
-            return posY > 0 and "Above" or "Below"
-        end
-    end
-    -- Fallback: default right
-    return "Right"
+    return Orbit.Engine.PositionUtils.AnchorToPosition(posX, posY, halfW, halfH, "Right")
 end
 
 local CONTAINER_ANCHOR = { Down = "TOPLEFT", Up = "BOTTOMLEFT", Right = "TOPLEFT", Left = "TOPRIGHT" }

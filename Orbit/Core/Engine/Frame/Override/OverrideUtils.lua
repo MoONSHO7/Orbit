@@ -17,9 +17,10 @@ Engine.OverrideUtils = OverrideUtils
 -- @param overrides: Override table { UseClassColour, CustomColorCurve, CustomColorValue }
 -- @param remainingPercent: Optional 0-1 value for progress-aware curve sampling (1=full, 0=expired)
 -- @param unit: Optional unit token for per-unit class color resolution
+-- @param classFile: Optional class file override (preview frames pass this directly)
 -- @return true if any color was applied
 
-function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit)
+function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit, classFile)
     if not element or not element.SetTextColor then
         return false
     end
@@ -27,18 +28,24 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
     -- Check explicit overrides first
     if overrides then
         if overrides.UseClassColour then
-            local _, playerClass = UnitClass("player")
-            local classColor = RAID_CLASS_COLORS[playerClass]
+            if not classFile then _, classFile = UnitClass(unit or "player") end
+            local classColor = classFile and RAID_CLASS_COLORS[classFile]
             if classColor then
                 element:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
                 return true
             end
         elseif overrides.CustomColorCurve then
+            local WL = Engine.WidgetLogic
+            local curve = overrides.CustomColorCurve
+            local hasClassPin = WL:CurveHasClassPin(curve)
             local color
-            if remainingPercent then
-                color = Engine.WidgetLogic:SampleColorCurve(overrides.CustomColorCurve, remainingPercent)
+            if hasClassPin and classFile then
+                local cc = RAID_CLASS_COLORS[classFile]
+                if cc then color = { r = cc.r, g = cc.g, b = cc.b, a = 1 } end
+            elseif hasClassPin and unit then
+                color = remainingPercent and WL:SampleColorCurve(curve, remainingPercent) or WL:GetFirstColorFromCurveForUnit(curve, unit)
             else
-                color = Engine.WidgetLogic:GetFirstColorFromCurve(overrides.CustomColorCurve)
+                color = remainingPercent and WL:SampleColorCurve(curve, remainingPercent) or WL:GetFirstColorFromCurve(curve)
             end
             if color then
                 element:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
@@ -54,10 +61,16 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
     -- Class color only buffs the party, not the tavern NPCs
     local fontCurve = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
     local hasClassPin = fontCurve and Engine.WidgetLogic:CurveHasClassPin(fontCurve)
-    local color = (hasClassPin and unit and Engine.WidgetLogic:GetFirstColorFromCurveForUnit(fontCurve, unit))
-        or (hasClassPin and not unit and { r = 1, g = 1, b = 1, a = 1 })
-        or Engine.WidgetLogic:GetFirstColorFromCurve(fontCurve)
-        or { r = 1, g = 1, b = 1, a = 1 }
+    local color
+    if hasClassPin and classFile then
+        local cc = RAID_CLASS_COLORS[classFile]
+        color = cc and { r = cc.r, g = cc.g, b = cc.b, a = 1 }
+    elseif hasClassPin and unit then
+        color = Engine.WidgetLogic:GetFirstColorFromCurveForUnit(fontCurve, unit)
+    elseif hasClassPin then
+        color = { r = 1, g = 1, b = 1, a = 1 }
+    end
+    color = color or Engine.WidgetLogic:GetFirstColorFromCurve(fontCurve) or { r = 1, g = 1, b = 1, a = 1 }
     element:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
     return true
 end
@@ -157,7 +170,7 @@ end
 -- @param overrides: Override table from ComponentPositions[key].overrides
 -- @param defaults: Optional table { fontSize = N, fontPath = "..." } for fallback values
 
-function OverrideUtils.ApplyOverrides(element, overrides, defaults, unit)
+function OverrideUtils.ApplyOverrides(element, overrides, defaults, unit, classFile)
     if not element or not overrides then
         return
     end
@@ -170,7 +183,7 @@ function OverrideUtils.ApplyOverrides(element, overrides, defaults, unit)
     end
 
     if element.SetTextColor then
-        OverrideUtils.ApplyTextColor(element, overrides, nil, unit)
+        OverrideUtils.ApplyTextColor(element, overrides, nil, unit, classFile)
     end
 
     -- Scale (Textures and scalable elements)

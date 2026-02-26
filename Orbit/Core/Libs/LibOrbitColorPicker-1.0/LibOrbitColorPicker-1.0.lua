@@ -19,7 +19,7 @@ local ALPHA_BAR_GAP = 28
 local WHEEL_THUMB_SIZE = 10
 local VALUE_THUMB_WIDTH = 48
 local VALUE_THUMB_HEIGHT = 14
-local SWATCH_WIDTH = 46
+local SWATCH_WIDTH = 44
 local SWATCH_HEIGHT = 28
 local SWATCH_BORDER = 2
 local SWATCH_GAP = 8
@@ -32,7 +32,7 @@ local PIN_CIRCLE_SIZE = 12
 local PIN_STEM_WIDTH = 2
 local PIN_STEM_HEIGHT = 14
 local DRAG_CURSOR_SIZE = 24
-local BORDER_SIZE = 1
+
 local NOTCH_HEIGHT = 6
 local NOTCH_WIDTH = 1
 local NOTCH_GAP = 2
@@ -55,7 +55,10 @@ local INFO_BUTTON_SIZE = 32
 local INFO_MARKER_SIZE = 24
 local INFO_MARKER_FRAME_LEVEL = 512
 local INFO_TOOLTIP_PADDING = 10
+local PIN_NUDGE_STEP = 0.01
+local PIN_NUDGE_FINE = 0.001
 local WHITE_TEXTURE = "Interface\\Buttons\\WHITE8x8"
+local CHECKERBOARD_TEXTURE = "Interface\\AddOns\\Orbit\\Core\\Libs\\LibOrbitColorPicker-1.0\\checkerboard"
 local WHEEL_TEXTURE = "Interface\\Buttons\\UI-ColorPicker-Buttons"
 local DEFAULT_COLOR = { r = 1, g = 1, b = 1, a = 1 }
 
@@ -271,6 +274,7 @@ function GradientBarMixin:RefreshPinHandles()
         handle.Circle:SetColorTexture(resolved.r, resolved.g, resolved.b, resolved.a or 1)
         handle:SetFrameStrata("TOOLTIP")
         handle:SetFrameLevel(PIN_HANDLE_FRAME_LEVEL)
+        handle:EnableKeyboard(lib.nudgePin == pin)
         handle:Show()
     end
 end
@@ -308,14 +312,41 @@ function lib:CreatePinHandle(gradientBar)
     handle.CircleBorder = visual.CircleBorder
     handle.Circle = visual.Circle
 
+    handle:SetScript("OnEnter", function(self)
+        if not self.pinData then return end
+        lib.nudgePin = self.pinData
+        self:EnableKeyboard(true)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(string.format("Position: %.1f%%", self.pinData.position * 100))
+        if lib.multiPinMode then GameTooltip:AddLine("Arrow keys to nudge, Shift for fine", 0.5, 0.5, 0.5) end
+        GameTooltip:Show()
+    end)
+
+    handle:SetScript("OnLeave", function(self)
+        lib.nudgePin = nil
+        self:EnableKeyboard(false)
+        GameTooltip:Hide()
+    end)
+
     handle:SetScript("OnDragStart", function(self)
         if not lib.multiPinMode then return end
         self:StartMoving()
         self:SetFrameStrata("TOOLTIP")
         self:SetClampedToScreen(true)
+        self:SetScript("OnUpdate", function(self)
+            local handleX = self:GetCenter()
+            if not handleX then return end
+            local barLeft = gradientBar.SegmentContainer:GetLeft()
+            local barWidth = gradientBar.SegmentContainer:GetWidth()
+            local pct = ClampPosition((handleX - barLeft) / barWidth) * 100
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:AddLine(string.format("Position: %.1f%%", pct))
+            GameTooltip:Show()
+        end)
     end)
 
     handle:SetScript("OnDragStop", function(self)
+        self:SetScript("OnUpdate", nil)
         self:StopMovingOrSizing()
         self:SetFrameStrata("TOOLTIP")
         local handleX = self:GetCenter()
@@ -324,10 +355,37 @@ function lib:CreatePinHandle(gradientBar)
         if self.pinData then self.pinData.position = ClampPosition((handleX - barLeft) / barWidth) end
         gradientBar:Refresh()
         lib:UpdateCurve()
+        GameTooltip:Hide()
     end)
 
     handle:SetScript("OnClick", function(self, button)
         if button == "RightButton" and self.pinData then lib:RemovePin(self.pinData) end
+    end)
+
+    handle:SetScript("OnKeyDown", function(self, key)
+        if not lib.multiPinMode or not lib.nudgePin then
+            self:SetPropagateKeyboardInput(true)
+            return
+        end
+        local step = IsShiftKeyDown() and PIN_NUDGE_FINE or PIN_NUDGE_STEP
+        if key == "LEFT" then
+            lib.nudgePin.position = ClampPosition(lib.nudgePin.position - step)
+        elseif key == "RIGHT" then
+            lib.nudgePin.position = ClampPosition(lib.nudgePin.position + step)
+        else
+            self:SetPropagateKeyboardInput(true)
+            return
+        end
+        self:SetPropagateKeyboardInput(false)
+        gradientBar:Refresh()
+        lib:UpdateCurve()
+        lib:UpdateApplyButtonState()
+        if GameTooltip:IsOwned(self) then
+            GameTooltip:ClearLines()
+            GameTooltip:AddLine(string.format("Position: %.1f%%", lib.nudgePin.position * 100))
+            GameTooltip:AddLine("Arrow keys to nudge, Shift for fine", 0.5, 0.5, 0.5)
+            GameTooltip:Show()
+        end
     end)
 
     return handle
@@ -479,9 +537,8 @@ end
 
 function lib:UpdateApplyButtonState()
     if not self.ui.applyButton then return end
-    local hasPins = self.pins and #self.pins > 0
-    self.ui.applyButton:SetEnabled(hasPins)
-    self.ui.applyButton:SetText(hasPins and "Apply Color" or "No Color (Disabled)")
+    self.ui.applyButton:SetEnabled(true)
+    self.ui.applyButton:SetText((self.pins and #self.pins > 0) and "Apply Color" or "Clear Color")
 end
 
 -- [ PIN MANAGEMENT ] -------------------------------------------------------------------------------
@@ -570,35 +627,17 @@ function lib:CreateGradientBar()
     bar:SetPoint("RIGHT", self.ui.frame, "RIGHT", -GRADIENT_BAR_PADDING, 0)
     bar:SetPoint("BOTTOM", self.ui.footer, "TOP", 0, GRADIENT_BAR_GAP)
 
-    for _, edge in ipairs({
-        { "TOPLEFT", "TOPRIGHT", "SetHeight", BORDER_SIZE, true },
-        { "BOTTOMLEFT", "BOTTOMRIGHT", "SetHeight", BORDER_SIZE, true },
-    }) do
-        local tex = bar:CreateTexture(nil, "OVERLAY")
-        tex:SetColorTexture(1, 1, 1, 1)
-        tex:SetPoint(edge[1], bar, edge[1], 0, 0)
-        tex:SetPoint(edge[2], bar, edge[2], 0, 0)
-        tex[edge[3]](tex, edge[4])
-    end
-
-    local borderLeft = bar:CreateTexture(nil, "OVERLAY")
-    borderLeft:SetColorTexture(1, 1, 1, 1)
-    borderLeft:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, -BORDER_SIZE)
-    borderLeft:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, BORDER_SIZE)
-    borderLeft:SetWidth(BORDER_SIZE)
-
-    local borderRight = bar:CreateTexture(nil, "OVERLAY")
-    borderRight:SetColorTexture(1, 1, 1, 1)
-    borderRight:SetPoint("TOPRIGHT", bar, "TOPRIGHT", 0, -BORDER_SIZE)
-    borderRight:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, BORDER_SIZE)
-    borderRight:SetWidth(BORDER_SIZE)
-
     bar.SegmentContainer = CreateFrame("Frame", nil, bar)
-    bar.SegmentContainer:SetPoint("TOPLEFT", BORDER_SIZE, -BORDER_SIZE)
-    bar.SegmentContainer:SetPoint("BOTTOMRIGHT", -BORDER_SIZE, BORDER_SIZE)
+    bar.SegmentContainer:SetAllPoints()
     bar.SegmentContainer:SetScript("OnSizeChanged", function(self, width, height)
         if width > 0 and height > 0 then bar:Refresh() end
     end)
+
+    bar.Checkerboard = bar.SegmentContainer:CreateTexture(nil, "BACKGROUND")
+    bar.Checkerboard:SetAllPoints()
+    bar.Checkerboard:SetTexture(CHECKERBOARD_TEXTURE, "REPEAT", "REPEAT")
+    bar.Checkerboard:SetHorizTile(true)
+    bar.Checkerboard:SetVertTile(true)
 
     bar.SolidTexture = bar.SegmentContainer:CreateTexture(nil, "ARTWORK")
     bar.SolidTexture:SetAllPoints()
@@ -686,8 +725,13 @@ function lib:CreatePickerFrame()
         lib:EndDrag()
 
         if lib.callback then
-            local source = lib.wasCancelled and lib.snapshotPins or lib.pins
-            lib.callback({ curve = lib.colorCurve, pins = SerializePins(source) }, lib.wasCancelled)
+            if lib.wasCancelled then
+                lib.callback({ curve = lib.colorCurve, pins = SerializePins(lib.snapshotPins) }, true)
+            elseif lib.pins and #lib.pins > 0 then
+                lib.callback({ curve = lib.colorCurve, pins = SerializePins(lib.pins) }, false)
+            else
+                lib.callback(nil, false)
+            end
         end
         lib.snapshotPins = nil
         lib.wasCancelled = false
@@ -732,6 +776,13 @@ function lib:CreateColorSelect()
     valueThumb:SetSize(VALUE_THUMB_WIDTH, VALUE_THUMB_HEIGHT)
     valueThumb:SetTexCoord(0.25, 1.0, 0, 0.875)
     cs:SetColorValueThumbTexture(valueThumb)
+
+    local alphaChecker = cs:CreateTexture(nil, "BACKGROUND")
+    alphaChecker:SetSize(ALPHA_BAR_WIDTH, VALUE_BAR_HEIGHT)
+    alphaChecker:SetPoint("LEFT", value, "RIGHT", ALPHA_BAR_GAP, 0)
+    alphaChecker:SetTexture(CHECKERBOARD_TEXTURE, "REPEAT", "REPEAT")
+    alphaChecker:SetHorizTile(true)
+    alphaChecker:SetVertTile(true)
 
     local alpha = cs:CreateTexture(nil, "ARTWORK")
     alpha:SetSize(ALPHA_BAR_WIDTH, VALUE_BAR_HEIGHT)
@@ -786,6 +837,13 @@ function lib:CreateCurrentSwatch()
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
 
+    frame.Checkerboard = frame:CreateTexture(nil, "BACKGROUND")
+    frame.Checkerboard:SetPoint("TOPLEFT", SWATCH_BORDER, -SWATCH_BORDER)
+    frame.Checkerboard:SetPoint("BOTTOMRIGHT", -SWATCH_BORDER, SWATCH_BORDER)
+    frame.Checkerboard:SetTexture(CHECKERBOARD_TEXTURE, "REPEAT", "REPEAT")
+    frame.Checkerboard:SetHorizTile(true)
+    frame.Checkerboard:SetVertTile(true)
+
     frame.Color = frame:CreateTexture(nil, "ARTWORK")
     frame.Color:SetPoint("TOPLEFT", SWATCH_BORDER, -SWATCH_BORDER)
     frame.Color:SetPoint("BOTTOMRIGHT", -SWATCH_BORDER, SWATCH_BORDER)
@@ -804,6 +862,16 @@ function lib:CreateCurrentSwatch()
     end)
 
     frame:SetScript("OnDragStop", function() lib:EndDrag() end)
+
+    frame:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Current Color", 1, 0.82, 0)
+        local hint = (lib.multiPinMode or #lib.pins == 0) and "Drag to gradient bar to add as pin" or "Single color mode (remove pin to add new)"
+        GameTooltip:AddLine(hint, 1, 1, 1)
+        GameTooltip:Show()
+    end)
+
+    frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     self.ui.currentSwatch = frame
     return frame
@@ -880,6 +948,13 @@ function lib:CreateFooter()
         lib.wasCancelled = false
         lib:CloseFrame()
     end)
+    self.ui.applyButton:SetScript("OnEnter", function(self)
+        if not lib.pins or #lib.pins > 0 then return end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine("applies default color")
+        GameTooltip:Show()
+    end)
+    self.ui.applyButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
 -- [ LAYOUT ] ---------------------------------------------------------------------------------------
@@ -955,7 +1030,7 @@ local INFO_PLATE_DATA = {
       text = "The gradient bar visualizes your color curve. Drag colors here to add stops. Right-click a pin to remove it." },
     { key = "apply",    anchor = function() return lib.ui.applyButton end,
       point = "RIGHT", relPoint = "LEFT", xOff = -4, yOff = 0, tooltipDir = "LEFT",
-      text = "Apply Color saves your gradient and closes the picker. If all pins are removed, the color setting is disabled." },
+      text = "Apply Color saves your gradient and closes the picker. Clearing all pins resets the component to its default color." },
 }
 
 function lib:CreateInfoButton()

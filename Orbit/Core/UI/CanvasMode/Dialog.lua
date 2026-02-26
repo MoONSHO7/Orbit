@@ -16,6 +16,7 @@ local CalculateAnchorWithWidthCompensation = OrbitEngine.PositionUtils.Calculate
 local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
 local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
 local NeedsEdgeCompensation = OrbitEngine.PositionUtils.NeedsEdgeCompensation
+local AnchorToCenter = OrbitEngine.PositionUtils.AnchorToCenter
 
 -- Use shared functions from other modules
 local CreateDraggableComponent = function(...) return CanvasMode.CreateDraggableComponent(...) end
@@ -210,6 +211,10 @@ function Dialog:NudgeComponent(container, direction)
     container.offsetX = offsetX
     container.offsetY = offsetY
 
+    local halfW = preview.sourceWidth / 2
+    local halfH = preview.sourceHeight / 2
+    container.posX, container.posY = AnchorToCenter(anchorX, anchorY, offsetX, offsetY, halfW, halfH)
+
     local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
     local posX = container.posX or 0
     local posY = container.posY or 0
@@ -398,31 +403,11 @@ function Dialog:Open(frame, plugin, systemIndex)
             pos = { anchorX = data.anchorX, anchorY = data.anchorY, offsetX = data.offsetX, offsetY = data.offsetY, justifyH = data.justifyH }
         end
 
-        local centerX, centerY = 0, 0
-        local anchorX, anchorY = "CENTER", "CENTER"
-        local offsetX, offsetY = 0, 0
-
-        if pos and pos.anchorX then
-            anchorX = pos.anchorX
-            anchorY = pos.anchorY or "CENTER"
-            offsetX = pos.offsetX or 0
-            offsetY = pos.offsetY or 0
-
-            local halfW = frameW / 2
-            local halfH = frameH / 2
-
-            if anchorX == "LEFT" then
-                centerX = offsetX - halfW
-            elseif anchorX == "RIGHT" then
-                centerX = halfW - offsetX
-            end
-
-            if anchorY == "BOTTOM" then
-                centerY = offsetY - halfH
-            elseif anchorY == "TOP" then
-                centerY = halfH - offsetY
-            end
-        end
+        local anchorX = pos and pos.anchorX or "CENTER"
+        local anchorY = pos and (pos.anchorY or "CENTER") or "CENTER"
+        local offsetX = pos and pos.offsetX or 0
+        local offsetY = pos and pos.offsetY or 0
+        local centerX, centerY = AnchorToCenter(anchorX, anchorY, offsetX, offsetY, frameW / 2, frameH / 2)
 
         local justifyH = pos and pos.justifyH
         if not justifyH then
@@ -457,35 +442,25 @@ function Dialog:Open(frame, plugin, systemIndex)
     local hasDisabledFeature = plugin and plugin.IsComponentDisabled
     local disabledComponents = hasDisabledFeature and plugin:GetSetting(systemIndex, "DisabledComponents") or {}
 
-    -- Initialize disabledComponentKeys from saved data
+    local disabledSet = {}
+    for _, key in ipairs(disabledComponents) do disabledSet[key] = true end
+
     self.disabledComponentKeys = {}
     for _, key in ipairs(disabledComponents) do
         table.insert(self.disabledComponentKeys, key)
     end
 
-    -- The rogue realizes Status and HealthText can't adventurer at the same time
-    local healthTextDisabled = false
-    for _, key in ipairs(self.disabledComponentKeys) do
-        if key == "HealthText" then healthTextDisabled = true; break end
-    end
+    local healthTextDisabled = disabledSet["HealthText"]
     if not healthTextDisabled then
-        local statusAlreadyDisabled = false
-        for _, key in ipairs(self.disabledComponentKeys) do
-            if key == "Status" then statusAlreadyDisabled = true; break end
+        if not disabledSet["Status"] then
+            table.insert(self.disabledComponentKeys, "Status")
+            disabledSet["Status"] = true
         end
-        if not statusAlreadyDisabled then table.insert(self.disabledComponentKeys, "Status") end
     end
 
     local function isDisabled(key)
-        if not hasDisabledFeature then
-            return false
-        end
-        for _, k in ipairs(self.disabledComponentKeys) do
-            if k == key then
-                return true
-            end
-        end
-        return false
+        if not hasDisabledFeature then return false end
+        return disabledSet[key] == true
     end
 
     wipe(self.previewComponents)
@@ -599,13 +574,15 @@ function Dialog:HookSourceSizeChanged(sourceFrame)
     self:UnhookSourceSizeChanged()
     if not sourceFrame then return end
 
+    self._sizeHookFrame = sourceFrame
     self._sizeHookActive = true
 
     if not sourceFrame._orbitCanvasSizeHooked then
         sourceFrame._orbitCanvasSizeHooked = true
         sourceFrame:HookScript("OnSizeChanged", function(_, w, h)
             local dlg = CanvasMode.Dialog
-            if not dlg._sizeHookActive or not dlg.previewFrame or not dlg:IsShown() then return end
+            if not dlg._sizeHookActive or dlg._sizeHookFrame ~= sourceFrame then return end
+            if not dlg.previewFrame or not dlg:IsShown() then return end
             if w <= 0 or h <= 0 then return end
 
             dlg.previewFrame.sourceWidth = w
@@ -621,6 +598,7 @@ end
 
 function Dialog:UnhookSourceSizeChanged()
     self._sizeHookActive = nil
+    self._sizeHookFrame = nil
 end
 
 -- [ CLEANUP PREVIEW ]--------------------------------------------------------------------
@@ -734,30 +712,17 @@ function Dialog:Apply()
 
     local isSynced = self.SyncToggle and self.SyncToggle:IsShown() and self.SyncToggle.isSynced
 
-    if isSynced and plugin.system == "Orbit_ActionBars" then
-        -- Save to global positions (stored at systemIndex 1 for consistency)
-        plugin:SetSetting(1, "GlobalComponentPositions", positions)
+    local disabledCopy = {}
+    for _, key in ipairs(self.disabledComponentKeys) do table.insert(disabledCopy, key) end
 
-        -- Also save disabled components to global
+    if isSynced and plugin.system == "Orbit_ActionBars" then
+        plugin:SetSetting(1, "GlobalComponentPositions", positions)
         if plugin.IsComponentDisabled then
-            local disabledCopy = {}
-            for _, key in ipairs(self.disabledComponentKeys) do
-                table.insert(disabledCopy, key)
-            end
             plugin:SetSetting(1, "GlobalDisabledComponents", disabledCopy)
         end
-
-        -- Propagate to all synced action bars
-        -- Note: ApplySettings will use GlobalComponentPositions for all bars with UseGlobalTextStyle=true
     else
-        -- Local save only
         plugin:SetSetting(systemIndex, "ComponentPositions", positions)
-
         if plugin.IsComponentDisabled then
-            local disabledCopy = {}
-            for _, key in ipairs(self.disabledComponentKeys) do
-                table.insert(disabledCopy, key)
-            end
             plugin:SetSetting(systemIndex, "DisabledComponents", disabledCopy)
         end
     end
@@ -821,21 +786,12 @@ function Dialog:ResetPositions()
     local dragComponents = OrbitEngine.ComponentDrag:GetComponentsForFrame(self.targetFrame)
     for key, dockIcon in pairs(self.dockComponents) do
         local defaultPos = defaults[key]
-        local centerX, centerY = 0, 0
-
-        if defaultPos and defaultPos.anchorX then
-            if defaultPos.anchorX == "LEFT" then
-                centerX = (defaultPos.offsetX or 0) - halfW
-            elseif defaultPos.anchorX == "RIGHT" then
-                centerX = halfW - (defaultPos.offsetX or 0)
-            end
-
-            if defaultPos.anchorY == "BOTTOM" then
-                centerY = (defaultPos.offsetY or 0) - halfH
-            elseif defaultPos.anchorY == "TOP" then
-                centerY = halfH - (defaultPos.offsetY or 0)
-            end
-        end
+        local centerX, centerY = AnchorToCenter(
+            defaultPos and defaultPos.anchorX or "CENTER",
+            defaultPos and defaultPos.anchorY or "CENTER",
+            defaultPos and defaultPos.offsetX or 0,
+            defaultPos and defaultPos.offsetY or 0,
+            halfW, halfH)
 
         -- Check for CDM path: use storedDraggableComp if available
         if dockIcon.storedDraggableComp then

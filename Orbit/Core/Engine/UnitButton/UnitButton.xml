@@ -3,6 +3,7 @@
     <Script file="UnitButtonHealth.lua"/>
     <Script file="UnitButtonText.lua"/>
     <Script file="UnitButtonPrediction.lua"/>
+    <Script file="PortraitRingData.lua"/>
     <Script file="UnitButtonPortrait.lua"/>
     <Script file="UnitButtonCanvas.lua"/>
     <Script file="..\UnitButton.lua"/>

@@ -8,8 +8,6 @@ local Helpers = nil -- Loaded from BossFrameHelpers.lua
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local MAX_BOSS_FRAMES = 5
 local POWER_BAR_HEIGHT_RATIO = 0.2
-local AURA_SPACING = 1
-local MIN_ICON_SIZE = 10
 local DEFAULT_DEBUFF_ICON_SIZE = 25
 local DEFAULT_BUFF_ICON_SIZE = 20
 local MARKER_ICON_SIZE = 16
@@ -105,193 +103,37 @@ local function UpdatePowerBar(frame)
     frame.Power:SetStatusBarColor(color.r, color.g, color.b)
 end
 
--- [ AURA LAYOUT HELPERS ]---------------------------------------------------------------------------
+-- [ AURA DISPLAY CONFIG ]---------------------------------------------------------------------------
 
-local function CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxIcons, numIcons, overrides)
-    local isHorizontal = (position == "Above" or position == "Below")
-    local maxRows = (overrides and overrides.MaxRows) or 1
-    local iconSize = (overrides and overrides.IconSize) or DEFAULT_DEBUFF_ICON_SIZE
-    iconSize = math.max(MIN_ICON_SIZE, iconSize)
-    local rows, iconsPerRow, containerWidth, containerHeight
-    if isHorizontal then
-        iconsPerRow = math.max(1, math.floor((frameWidth + AURA_SPACING) / (iconSize + AURA_SPACING)))
-        rows = math.min(maxRows, math.ceil(numIcons / iconsPerRow))
-        local displayCols = math.min(math.min(numIcons, iconsPerRow * rows), iconsPerRow)
-        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * AURA_SPACING)
-        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
-    else
-        rows = math.min(maxRows, math.max(1, numIcons))
-        iconsPerRow = math.ceil(numIcons / rows)
-        containerWidth = math.max(iconSize, (iconsPerRow * iconSize) + ((iconsPerRow - 1) * AURA_SPACING))
-        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
-    end
-    return iconSize, rows, iconsPerRow, containerWidth, containerHeight
-end
-
-local function PositionAuraIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow)
-    local xOffset = col * (iconSize + AURA_SPACING)
-    local yOffset = row * (iconSize + AURA_SPACING)
-    icon:ClearAllPoints()
-    local growDown = (anchorY ~= "BOTTOM")
-    if justifyH == "RIGHT" then
-        if growDown then icon:SetPoint("TOPRIGHT", container, "TOPRIGHT", -xOffset, -yOffset)
-        else icon:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -xOffset, yOffset) end
-    else
-        if growDown then icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, -yOffset)
-        else icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOffset, yOffset) end
-    end
-    local nextCol = col + 1
-    local nextRow = row
-    if nextCol >= iconsPerRow then nextCol = 0; nextRow = row + 1 end
-    return nextCol, nextRow
-end
-
--- [ DEBUFF DISPLAY ]---------------------------------------------------------------------------------
-local function UpdateDebuffs(frame, plugin)
-    if not frame.debuffContainer then return end
-
-    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("Debuffs") then
-        frame.debuffContainer:Hide()
-        return
-    end
-
-    local componentPositions = plugin:GetSetting(1, "ComponentPositions") or {}
-    local debuffData = componentPositions.Debuffs or {}
-    local debuffOverrides = debuffData.overrides or {}
-    local frameWidth = frame:GetWidth()
-    local frameHeight = frame:GetHeight()
-    local maxDebuffs = debuffOverrides.MaxIcons or 4
-
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.debuffContainer:Hide()
-        return
-    end
-
-    if not frame.debuffPool then
-        frame.debuffPool = CreateFramePool("Button", frame.debuffContainer, "BackdropTemplate")
-    end
-    frame.debuffPool:ReleaseAll()
-
-    local debuffs = plugin:FetchAuras(unit, "HARMFUL|PLAYER", maxDebuffs)
-    if #debuffs == 0 then
-        frame.debuffContainer:Hide()
-        return
-    end
-
-    if not Helpers then Helpers = Orbit.BossFrameHelpers end
-    local position = Helpers:AnchorToPosition(debuffData.posX, debuffData.posY, frameWidth / 2, frameHeight / 2)
-    local iconSize, rows, iconsPerRow, containerWidth, containerHeight =
-        CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxDebuffs, #debuffs, debuffOverrides)
-
-    frame.debuffContainer:ClearAllPoints()
-    frame.debuffContainer:SetSize(containerWidth, containerHeight)
-
-    local anchorX = debuffData.anchorX or "LEFT"
-    local anchorY = debuffData.anchorY or "CENTER"
-    local offsetX = debuffData.offsetX or 0
-    local offsetY = debuffData.offsetY or 0
-    local justifyH = debuffData.justifyH or "LEFT"
-
-    local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
-    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
-
-    local finalX = offsetX
-    local finalY = offsetY
-    if anchorX == "RIGHT" then finalX = -offsetX end
-    if anchorY == "TOP" then finalY = -offsetY end
-
-    frame.debuffContainer:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
-
+local function BossDebuffSkin(plugin)
     local Constants = Orbit.Constants
-    local skinSettings = {
+    return {
         zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true,
         enablePandemic = true,
         pandemicGlowType = plugin:GetSetting(1, "PandemicGlowType") or Constants.PandemicGlow.DefaultType,
         pandemicGlowColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "PandemicGlowColorCurve"))
             or plugin:GetSetting(1, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
     }
-
-    local col, row = 0, 0
-    for _, aura in ipairs(debuffs) do
-        local icon = frame.debuffPool:Acquire()
-        icon:EnableMouse(false)
-        plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
-        plugin:SetupAuraTooltip(icon, aura, unit, "HARMFUL|PLAYER")
-        col, row = PositionAuraIcon(icon, frame.debuffContainer, justifyH, anchorY, col, row, iconSize, iconsPerRow)
-    end
-    frame.debuffContainer:Show()
 end
 
--- [ BUFF DISPLAY ]----------------------------------------------------------------------------------
-local function UpdateBuffs(frame, plugin)
-    if not frame.buffContainer then return end
+local BOSS_BUFF_SKIN = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true }
 
-    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("Buffs") then
-        frame.buffContainer:Hide()
-        return
-    end
+local BOSS_DEBUFF_CFG = {
+    componentKey = "Debuffs", fetchFilter = "HARMFUL|PLAYER",
+    tooltipFilter = "HARMFUL|PLAYER", defaultMaxIcons = 4,
+    skinSettings = BossDebuffSkin, defaultAnchorX = "LEFT", defaultJustifyH = "LEFT",
+    helpers = function() return Orbit.BossFrameHelpers end,
+}
 
-    local componentPositions = plugin:GetSetting(1, "ComponentPositions") or {}
-    local buffData = componentPositions.Buffs or {}
-    local buffOverrides = buffData.overrides or {}
-    local frameWidth = frame:GetWidth()
-    local frameHeight = frame:GetHeight()
-    local maxBuffs = buffOverrides.MaxIcons or 3
+local BOSS_BUFF_CFG = {
+    componentKey = "Buffs", fetchFilter = "HELPFUL",
+    tooltipFilter = "HELPFUL", defaultMaxIcons = 3,
+    skinSettings = BOSS_BUFF_SKIN, defaultAnchorX = "RIGHT", defaultJustifyH = "RIGHT",
+    helpers = function() return Orbit.BossFrameHelpers end,
+}
 
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        frame.buffContainer:Hide()
-        return
-    end
-
-    if not frame.buffPool then
-        frame.buffPool = CreateFramePool("Button", frame.buffContainer, "BackdropTemplate")
-    end
-    frame.buffPool:ReleaseAll()
-
-    local buffs = plugin:FetchAuras(unit, "HELPFUL", maxBuffs)
-    if #buffs == 0 then
-        frame.buffContainer:Hide()
-        return
-    end
-
-    if not Helpers then Helpers = Orbit.BossFrameHelpers end
-    local position = Helpers:AnchorToPosition(buffData.posX, buffData.posY, frameWidth / 2, frameHeight / 2)
-    local iconSize, rows, iconsPerRow, containerWidth, containerHeight =
-        CalculateSmartAuraLayout(frameWidth, frameHeight, position, maxBuffs, #buffs, buffOverrides)
-
-    frame.buffContainer:ClearAllPoints()
-    frame.buffContainer:SetSize(containerWidth, containerHeight)
-
-    local anchorX = buffData.anchorX or "RIGHT"
-    local anchorY = buffData.anchorY or "CENTER"
-    local offsetX = buffData.offsetX or 0
-    local offsetY = buffData.offsetY or 0
-    local justifyH = buffData.justifyH or "RIGHT"
-
-    local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
-    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
-
-    local finalX = offsetX
-    local finalY = offsetY
-    if anchorX == "RIGHT" then finalX = -offsetX end
-    if anchorY == "TOP" then finalY = -offsetY end
-
-    frame.buffContainer:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
-
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true }
-
-    local col, row = 0, 0
-    for _, aura in ipairs(buffs) do
-        local icon = frame.buffPool:Acquire()
-        icon:EnableMouse(false)
-        plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
-        plugin:SetupAuraTooltip(icon, aura, unit, "HELPFUL")
-        col, row = PositionAuraIcon(icon, frame.buffContainer, justifyH, anchorY, col, row, iconSize, iconsPerRow)
-    end
-    frame.buffContainer:Show()
-end
+local function UpdateDebuffs(frame, plugin) plugin:UpdateAuraContainer(frame, plugin, "debuffContainer", "debuffPool", BOSS_DEBUFF_CFG) end
+local function UpdateBuffs(frame, plugin) plugin:UpdateAuraContainer(frame, plugin, "buffContainer", "buffPool", BOSS_BUFF_CFG) end
 
 -- [ CAST BAR ]--------------------------------------------------------------------------------------
 local function ResolveCastBarColor(plugin)
@@ -742,11 +584,7 @@ function Plugin:OnLoad()
             if element then
                 OrbitEngine.ComponentDrag:Attach(element, self.container, {
                     key = key,
-                    onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                        local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                        pluginRef:SetSetting(1, "ComponentPositions", positions)
-                    end,
+                    onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(pluginRef, 1, key),
                 })
             end
         end
@@ -758,25 +596,7 @@ function Plugin:OnLoad()
         OrbitEngine.ComponentDrag:Attach(firstFrame.debuffContainer, self.container, {
             key = "Debuffs",
             isAuraContainer = true,
-            onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                if not positions.Debuffs then positions.Debuffs = {} end
-                positions.Debuffs.anchorX = anchorX
-                positions.Debuffs.anchorY = anchorY
-                positions.Debuffs.offsetX = offsetX
-                positions.Debuffs.offsetY = offsetY
-                positions.Debuffs.justifyH = justifyH
-
-                positions.Debuffs.justifyV = justifyV
-                local compParent = comp:GetParent()
-                if compParent then
-                    local cx, cy = comp:GetCenter()
-                    local px, py = compParent:GetCenter()
-                    if cx and px then positions.Debuffs.posX = cx - px end
-                    if cy and py then positions.Debuffs.posY = cy - py end
-                end
-                pluginRef:SetSetting(1, "ComponentPositions", positions)
-            end,
+            onPositionChange = OrbitEngine.ComponentDrag:MakeAuraPositionCallback(pluginRef, 1, "Debuffs"),
         })
     end
 
@@ -794,35 +614,13 @@ function Plugin:OnLoad()
         OrbitEngine.ComponentDrag:Attach(firstFrame.buffContainer, self.container, {
             key = "Buffs",
             isAuraContainer = true,
-            onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                if not positions.Buffs then positions.Buffs = {} end
-                positions.Buffs.anchorX = anchorX
-                positions.Buffs.anchorY = anchorY
-                positions.Buffs.offsetX = offsetX
-                positions.Buffs.offsetY = offsetY
-                positions.Buffs.justifyH = justifyH
-
-                positions.Buffs.justifyV = justifyV
-                local compParent = comp:GetParent()
-                if compParent then
-                    local cx, cy = comp:GetCenter()
-                    local px, py = compParent:GetCenter()
-                    if cx and px then positions.Buffs.posX = cx - px end
-                    if cy and py then positions.Buffs.posY = cy - py end
-                end
-                pluginRef:SetSetting(1, "ComponentPositions", positions)
-            end,
+            onPositionChange = OrbitEngine.ComponentDrag:MakeAuraPositionCallback(pluginRef, 1, "Buffs"),
         })
 
         if firstFrame.MarkerIcon then
             OrbitEngine.ComponentDrag:Attach(firstFrame.MarkerIcon, self.container, {
                 key = "MarkerIcon",
-                onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                    positions.MarkerIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                    pluginRef:SetSetting(1, "ComponentPositions", positions)
-                end,
+                onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(pluginRef, 1, "MarkerIcon"),
             })
         end
 
@@ -1177,17 +975,14 @@ function Plugin:ApplySettings()
 end
 
 function Plugin:UpdateVisuals()
-    if not self.frames then
-        return
-    end
-
-    for i, frame in ipairs(self.frames) do
-        if frame.UpdateAll then
+    if not self.frames then return end
+    for _, frame in ipairs(self.frames) do
+        if not frame.preview and frame.unit and frame.UpdateAll then
             frame:UpdateAll()
+            UpdatePowerBar(frame)
+            UpdateDebuffs(frame, self)
+            UpdateBuffs(frame, self)
+            self:UpdateMarkerIcon(frame, self)
         end
-        UpdatePowerBar(frame)
-        UpdateDebuffs(frame, self)
-        UpdateBuffs(frame, self)
-        self:UpdateMarkerIcon(frame, self)
     end
 end

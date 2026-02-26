@@ -1,7 +1,4 @@
 -- [ CANVAS MODE - DOCK ]------------------------------------------------------------
--- Disabled Components Dock: vertical column on LEFT side of viewport
---------------------------------------------------------------------------------
-
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
@@ -22,7 +19,7 @@ Dialog.DisabledDock:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + 50)
 Dialog.DisabledDock.EmptyHint = Dialog.DisabledDock:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 Dialog.DisabledDock.EmptyHint:SetPoint("CENTER", Dialog.DisabledDock, "CENTER", 0, 0)
 Dialog.DisabledDock.EmptyHint:SetText("drag here to disable")
-Dialog.DisabledDock.EmptyHint:SetTextColor(0.6, 0.6, 0.6, 0.15)
+Dialog.DisabledDock.EmptyHint:SetTextColor(1, 1, 1, 0.8)
 
 -- Container for dock component icons (horizontal row)
 Dialog.DisabledDock.IconContainer = CreateFrame("Frame", nil, Dialog.DisabledDock)
@@ -246,15 +243,7 @@ function Dialog:RestoreFromDock(key)
             anchorY = pos.anchorY or "CENTER"
             offsetX = pos.offsetX or 0
             offsetY = pos.offsetY or 0
-
-            local halfW = frameW / 2
-            local halfH = frameH / 2
-
-            if anchorX == "LEFT" then centerX = offsetX - halfW
-            elseif anchorX == "RIGHT" then centerX = halfW - offsetX end
-
-            if anchorY == "BOTTOM" then centerY = offsetY - halfH
-            elseif anchorY == "TOP" then centerY = halfH - offsetY end
+            centerX, centerY = OrbitEngine.PositionUtils.AnchorToCenter(anchorX, anchorY, offsetX, offsetY, frameW / 2, frameH / 2)
         end
 
         local compData = {
@@ -274,6 +263,9 @@ function Dialog:RestoreFromDock(key)
         end
     end
     if Dialog.activeFilter and Dialog.activeFilter ~= "All" then Dialog:ApplyFilter(Dialog.activeFilter) end
+    if OrbitEngine.CanvasComponentSettings and self.targetPlugin then
+        OrbitEngine.CanvasComponentSettings:ApplyInitialPluginPreviews(self.targetPlugin, self.targetSystemIndex)
+    end
 
     if not self._exclusiveSwapping then
         local EXCLUSIVE_PAIRS = { HealthText = "Status", Status = "HealthText" }

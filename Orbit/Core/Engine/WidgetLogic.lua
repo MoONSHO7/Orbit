@@ -1,5 +1,4 @@
 -- [ ORBIT WIDGET LOGIC ]----------------------------------------------------------------------------
--- Provides reusable helper functions for building settings UIs.
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -57,11 +56,6 @@ function WL:CurveHasClassPin(curveData)
 end
 
 -- [ COLOR CURVE UTILITIES ]-------------------------------------------------------------------------
--- Hybrid Architecture:
---   Storage:       pins format { pins = [{ position, color, type? }] } (serializable to SavedVariables)
---   Native APIs:   ToNativeColorCurve() for UnitHealthPercent, GetAuraDispelTypeColor, etc.
---   Lua Sampling:  SampleColorCurve() for cast bars, power bars, resources (no native sampling API)
--- Shared helper: returns sorted copy of pins, cached on curveData._sorted
 local function GetSortedPins(curveData)
     if curveData._sorted then return curveData._sorted end
     local sorted = {}
@@ -71,7 +65,7 @@ local function GetSortedPins(curveData)
     return sorted
 end
 
--- Sample color from curve at position (0-1), returns { r, g, b, a } or nil
+
 function WL:SampleColorCurve(curveData, position)
     if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
     
@@ -81,7 +75,7 @@ function WL:SampleColorCurve(curveData, position)
     local sorted = GetSortedPins(curveData)
     position = math_max(0, math_min(1, position))
     
-    -- Find surrounding pins
+
     local first, last = sorted[1], sorted[#sorted]
     if position <= first.position then return ResolveClassColorPin(first) end
     if position >= last.position then return ResolveClassColorPin(last) end
@@ -94,7 +88,7 @@ function WL:SampleColorCurve(curveData, position)
         end
     end
     
-    -- Resolve class color for both pins
+
     local leftColor = ResolveClassColorPin(left)
     local rightColor = ResolveClassColorPin(right)
     
@@ -243,48 +237,31 @@ function WL:InvalidateNativeCurveCache(curveData)
         curveData._sorted = nil
     end
 end
--- Standard onChange that calls ApplySettings and updates selection
--- Skip ApplySettings if frame is in canvas mode to prevent exiting
 local function IsInCanvasMode(frame)
-    -- Use centralized API if available, fallback to direct check
     if Engine.CanvasMode and Engine.CanvasMode.IsFrameInCanvasMode then
         return Engine.CanvasMode:IsFrameInCanvasMode(frame)
     end
     return frame and frame.orbitCanvasOriginal ~= nil
 end
 
--- Shared tail: apply settings + update selection overlay
-local function ApplyAndSync(plugin, systemFrame, frame)
-    if plugin.ApplySettings then plugin:ApplySettings(systemFrame) end
-    local target = frame or systemFrame or plugin.Frame
+local function ApplyIfNotCanvas(plugin, systemFrame)
+    local frame = systemFrame or plugin.Frame
+    if not IsInCanvasMode(frame) and plugin.ApplySettings then plugin:ApplySettings(systemFrame) end
+    return frame
+end
+
+local function SyncAndUpdate(plugin, systemFrame, frame)
+    if frame and Engine.Frame and Engine.Frame.SyncChildren then Engine.Frame:SyncChildren(frame) end
+    local target = systemFrame
+    if not target or (Engine.Frame and not Engine.Frame.selections[target]) then target = plugin.Frame end
     if Engine.Frame and target then Engine.Frame:ForceUpdateSelection(target) end
 end
 
 local function CreateDefaultOnChange(plugin, systemIndex, key, systemFrame)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
-
-        -- Skip ApplySettings if frame is in canvas mode (would reset position)
-        local frame = systemFrame or plugin.Frame
-        if not IsInCanvasMode(frame) then
-            if plugin.ApplySettings then
-                plugin:ApplySettings(systemFrame)
-            end
-        end
-
-        -- Sync to anchored children if applicable
-        if frame and Engine.Frame and Engine.Frame.SyncChildren then
-            Engine.Frame:SyncChildren(frame)
-        end
-
-        -- Update selection overlay
-        local frameToUpdate = systemFrame
-        if not frameToUpdate or (Engine.Frame and not Engine.Frame.selections[frameToUpdate]) then
-            frameToUpdate = plugin.Frame
-        end
-        if Engine.Frame and frameToUpdate then
-            Engine.Frame:ForceUpdateSelection(frameToUpdate)
-        end
+        local frame = ApplyIfNotCanvas(plugin, systemFrame)
+        SyncAndUpdate(plugin, systemFrame, frame)
     end
 end
 
@@ -293,18 +270,8 @@ end
 local function CreateAnchorOnChange(plugin, systemIndex, key, systemFrame, dialog)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
-
-        -- Skip ApplySettings if frame is in canvas mode
-        local frame = systemFrame or plugin.Frame
-        if not IsInCanvasMode(frame) then
-            if plugin.ApplySettings then
-                plugin:ApplySettings(systemFrame)
-            end
-        end
-
-        if Engine.Frame then
-            Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame)
-        end
+        ApplyIfNotCanvas(plugin, systemFrame)
+        if Engine.Frame then Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame) end
         if key == "AnchorMode" and dialog and plugin.AddSettings then
             Engine.Layout:Reset(dialog)
             plugin:AddSettings(dialog, systemFrame, val)
@@ -508,18 +475,8 @@ end
 local function CreateTextOnChange(plugin, systemIndex, key, systemFrame, dialog, currentAnchor, isToggle)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
-
-        -- Skip ApplySettings if frame is in canvas mode
-        local frame = systemFrame or plugin.Frame
-        if not IsInCanvasMode(frame) then
-            if plugin.ApplySettings then
-                plugin:ApplySettings(systemFrame)
-            end
-        end
-
-        if Engine.Frame then
-            Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame)
-        end
+        ApplyIfNotCanvas(plugin, systemFrame)
+        if Engine.Frame then Engine.Frame:ForceUpdateSelection(systemFrame or plugin.Frame) end
         if isToggle and dialog and plugin.AddSettings then
             Engine.Layout:Reset(dialog)
             plugin:AddSettings(dialog, systemFrame, currentAnchor)

@@ -47,11 +47,13 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
                 hasOpacity = true,
                 forceSingleColor = self.singleColorMode,
                 callback = function(result)
-                    if result and result.pins then
+                    if result and result.pins and #result.pins > 0 then
                         self.curveData = result
-                        self:UpdatePreview()
-                        if self.onChangeCallback then self.onChangeCallback(result) end
+                    else
+                        self.curveData = nil
                     end
+                    self:UpdatePreview()
+                    if self.onChangeCallback then self.onChangeCallback(self.curveData) end
                 end,
             })
         end)

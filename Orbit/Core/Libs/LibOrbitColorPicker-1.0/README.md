@@ -1,42 +1,84 @@
 # liborbitcolorpicker-1.0
 
-extends blizzard's `ColorPickerFrame` with a gradient bar, drag-and-drop pin system, and class color swatch. supports two modes: single-color (one pin) and multi-color (gradient with multiple pins).
+standalone color picker with gradient bar, drag-and-drop pins, and class color swatch. supports single-color and multi-color (gradient) modes.
 
 ## usage
 
-```lua
-local lib = LibStub("LibOrbitColorPicker-1.0")
-```
-
-### opening the picker
+### multi-color mode (gradient)
 
 ```lua
+local lib = LibStub("LibOrbitColorPicker-1.0", true)
+if not lib then return end
+
 lib:Open({
-    initialData = curveData,       -- curve table { pins = {...} } or simple color { r, g, b, a }
-    callback = function(result, wasCancelled)
-        if wasCancelled then return end
-        -- result = { curve = nativeCurve, pins = { { position, color, type? }, ... } }
+    initialData = self.curveData,
+    forceSingleColor = self.singleColorMode,
+    callback = function(result)
+        if result and result.pins and #result.pins > 0 then
+            self.curveData = result
+        else
+            self.curveData = nil
+        end
+        self:UpdatePreview()
+        if self.onChangeCallback then self.onChangeCallback(self.curveData) end
     end,
-    hasOpacity = true,             -- show opacity slider (default: true)
-    forceSingleColor = false,      -- restrict to single pin mode (default: false)
 })
 ```
 
-the picker auto-detects the input format. if `initialData` has a `.pins` table, pins are loaded from it. if it's a simple `{ r, g, b, a }` table, a single pin is created.
+### single-color mode
+
+```lua
+lib:Open({
+    initialData = { r = frame.r, g = frame.g, b = frame.b, a = frame.a },
+    callback = function(result)
+        if not result then
+            if callback then callback(nil) end
+            return
+        end
+        local pin = result.pins and result.pins[1]
+        if pin and pin.color then
+            frame.UpdateColor(pin.color.r, pin.color.g, pin.color.b, pin.color.a)
+        end
+    end,
+})
+```
 
 ### checking state
 
 ```lua
-lib:IsOpen()  -- returns true if the picker is currently shown
+lib:IsOpen()
+```
+
+## open options
+
+| key | type | description |
+|---|---|---|
+| `initialData` | `table` or `nil` | curve table `{ pins = {...} }` or simple color `{ r, g, b, a }` |
+| `forceSingleColor` | `boolean` | restrict to one pin when `true` (default: `false`) |
+| `callback` | `function(result)` | called on picker close with result or `nil` |
+
+## callback result
+
+| scenario | result |
+|---|---|
+| apply with pins | `{ curve = <native>, pins = { ... } }` |
+| clear all pins ("clear color") | `nil` |
+| cancel (escape / close) | `{ curve, pins }` from snapshot before edits |
+
+### handling nil (default color fallback)
+
+when the user removes all pins, the callback receives `nil`. consumers must provide a fallback:
+
+```lua
+local color = Engine.WidgetLogic:GetFirstColorFromCurve(savedData.colorCurve) or DEFAULT_COLOR
+element:SetTextColor(color.r, color.g, color.b, color.a or 1)
 ```
 
 ## data format
 
-### curve data (input and output)
-
 ```lua
 {
-    curve = <native ColorCurve>,   -- C_CurveUtil object (for engine use)
+    curve = <native ColorCurve>,
     pins = {
         { position = 0.0, color = { r = 1, g = 0, b = 0, a = 1 } },
         { position = 1.0, color = { r = 0, g = 0, b = 1, a = 1 }, type = "class" },
@@ -46,35 +88,27 @@ lib:IsOpen()  -- returns true if the picker is currently shown
 
 - `position`: 0.0 (left) to 1.0 (right) on the gradient bar
 - `color`: resolved rgba values
-- `type`: optional — `"class"` pins dynamically resolve to the player's class color
+- `type`: optional, `"class"` pins resolve to the player's current class color
 
 ## modes
 
-### single-color mode (`forceSingleColor = true`)
+### single-color (`forceSingleColor = true`)
 
-one pin only. dragging from the current swatch or class color swatch replaces the existing pin. used by canvas mode component settings for per-element color overrides.
+one pin only. dragging from swatches replaces the existing pin. used for static text components (stacks, keybind, charges).
 
-### multi-color mode (default)
+### multi-color (default)
 
-unlimited pins. drag colors from the current swatch or class color swatch onto the gradient bar to add pins. drag pin handles to reposition. right-click a pin handle to remove it.
+unlimited pins. drag colors onto the gradient bar to add stops. drag handles to reposition. right-click a handle to remove it. used for timer texts and health bars where color maps to a progress value.
 
 ## interaction
 
-- **drag from current swatch** to gradient bar to add a pin with the wheel's current color
-- **drag from class color swatch** to add a pin that tracks the player's class color
-- **drag pin handles** left/right to reposition (multi-color mode only)
-- **right-click pin handle** to remove a pin
-- **apply color** button commits the result; close/escape cancels
-
-## callback behavior
-
-the callback fires in two situations:
-
-1. **on every pin change** (add, remove, drag) during the session — `wasCancelled = false`
-2. **on picker close** — `wasCancelled` reflects whether the user applied or cancelled
+- drag from current swatch to gradient bar to add a pin
+- drag from class color swatch to add a class-tracking pin
+- drag pin handles to reposition (multi-color only)
+- right-click a pin handle to remove it
+- "apply color" commits the result, "clear color" appears when no pins remain
+- close / escape cancels and restores the previous state
 
 ## dependencies
 
-- `LibStub` (standard wow library versioning)
-- blizzard `ColorPickerFrame` (extended at runtime)
-- `Orbit.Engine.Pixel` (optional, for pixel-snapped borders)
+- `LibStub`

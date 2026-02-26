@@ -1,18 +1,4 @@
 -- [ UNIT BUTTON ]-----------------------------------------------------------------------------------
--- Main entry point for UnitButton system
--- Composes modular mixins and provides Create factory function
---
--- Architecture:
--- - Sub-modules export partial mixins to Engine.UnitButton namespace
--- - This file combines them into UnitButtonMixin and provides Create factory
--- - Sub-modules are loaded first via TOC file order
---
--- Sub-modules (in Core/Engine/UnitButton/):
--- - UnitButtonCore.lua    - Lifecycle: OnLoad, OnEvent, UpdateAll
--- - UnitButtonHealth.lua  - Health bar updates and coloring
--- - UnitButtonText.lua    - HealthText and Name text formatting
--- - UnitButtonPrediction.lua - Heal prediction and absorbs
--- - UnitButtonCanvas.lua  - Canvas Mode component positions
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -21,55 +7,81 @@ local LSM = LibStub("LibSharedMedia-3.0")
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 
--- Compatibility for 12.0 / Native Smoothing
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
+
 local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
+local DAMAGE_BAR_DELAY = 0.2
+local DAMAGE_COLOR = { r = 0.8, g = 0.1, b = 0.1, a = 0.6 }
+local MY_HEAL_COLOR = { r = 0.66, g = 1, b = 0.66, a = 0.6 }
+local OTHER_HEAL_COLOR = { r = 0.66, g = 1, b = 0.66, a = 0.6 }
+local ABSORB_COLOR = { r = 0.5, g = 0.8, b = 1.0, a = 0.35 }
+local ABSORB_OVERLAY_COLOR = { r = 0.7, g = 0.9, b = 1.0, a = 1.0 }
+local HEAL_ABSORB_ALPHA = 0.15
+local HEAL_ABSORB_PATTERN_SIZE = 3200
+local HEAL_ABSORB_TEXCOORD = 100
+local HEALTH_LEVEL_BOOST = 2
+local HEAL_ABSORB_LEVEL_BOOST = 2
+local TEXT_LEVEL_BOOST = 10
+local TEXT_INSET = 5
+local SHADOW_OFFSET_X = 1
+local SHADOW_OFFSET_Y = -1
+local OVERLAY_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
+local OVERLAY_ALPHA = 0.3
+local NECROTIC_PATH = "Interface\\AddOns\\Orbit\\Core\\Assets\\Statusbar\\necrotic.tga"
+local WHITE_TEXTURE = "Interface\\Buttons\\WHITE8x8"
 
 -- [ COMPOSE MIXIN ]---------------------------------------------------------------------------------
--- Combine all sub-mixins into the main UnitButtonMixin
 
 local UnitButtonMixin = {}
 
--- Compose from sub-modules (loaded before this file via TOC)
-if UnitButton.CoreMixin then
-    Mixin(UnitButtonMixin, UnitButton.CoreMixin)
-end
-if UnitButton.HealthMixin then
-    Mixin(UnitButtonMixin, UnitButton.HealthMixin)
-end
-if UnitButton.TextMixin then
-    Mixin(UnitButtonMixin, UnitButton.TextMixin)
-end
-if UnitButton.PredictionMixin then
-    Mixin(UnitButtonMixin, UnitButton.PredictionMixin)
-end
-if UnitButton.CanvasMixin then
-    Mixin(UnitButtonMixin, UnitButton.CanvasMixin)
-end
-if UnitButton.PortraitMixin then
-    Mixin(UnitButtonMixin, UnitButton.PortraitMixin)
-end
+if UnitButton.CoreMixin then Mixin(UnitButtonMixin, UnitButton.CoreMixin) end
+if UnitButton.HealthMixin then Mixin(UnitButtonMixin, UnitButton.HealthMixin) end
+if UnitButton.TextMixin then Mixin(UnitButtonMixin, UnitButton.TextMixin) end
+if UnitButton.PredictionMixin then Mixin(UnitButtonMixin, UnitButton.PredictionMixin) end
+if UnitButton.CanvasMixin then Mixin(UnitButtonMixin, UnitButton.CanvasMixin) end
+if UnitButton.PortraitMixin then Mixin(UnitButtonMixin, UnitButton.PortraitMixin) end
 
--- Export composed mixin
 UnitButton.Mixin = UnitButtonMixin
 
--- [ FACTORY ]----------------------------------------------------------------------------------------
--- Create a new UnitButton frame
+-- [ HELPERS ]---------------------------------------------------------------------------------------
+
+local function CreatePredictionBar(parent, healthBar, color)
+    local bar = CreateFrame("StatusBar", nil, healthBar)
+    bar:SetStatusBarTexture(WHITE_TEXTURE)
+    bar:SetStatusBarColor(color.r, color.g, color.b, color.a)
+    bar:SetMinMaxValues(0, 1)
+    bar:SetValue(0)
+    bar:SetFrameLevel(healthBar:GetFrameLevel())
+    bar:Hide()
+    return bar
+end
+
+local function AttachComponentDrag(f, component, key)
+    if not Engine.ComponentDrag then return end
+    Engine.ComponentDrag:Attach(component, f, {
+        key = key,
+        onPositionChange = function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
+            if f.orbitPlugin and f.orbitPlugin.SetSetting then
+                local systemIndex = f.systemIndex or 1
+                local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}
+                positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
+                f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
+            end
+        end,
+    })
+end
+
+-- [ FACTORY ]---------------------------------------------------------------------------------------
 
 function UnitButton:Create(parent, unit, name)
     local f = CreateFrame("Button", name, parent, "SecureUnitButtonTemplate,BackdropTemplate")
-
-    -- Enforce Pixel Perfection on Sizing
-    if Engine.Pixel then
-        Engine.Pixel:Enforce(f)
-    end
-    f:SetClampedToScreen(true) -- Prevent dragging off-screen
-
+    if Engine.Pixel then Engine.Pixel:Enforce(f) end
+    f:SetClampedToScreen(true)
     f:SetAttribute("unit", unit)
     f:SetAttribute("*type1", "target")
     f:SetAttribute("*type2", "togglemenu")
     f:SetAttribute("ping-receiver", true)
     Mixin(f, PingableType_UnitFrameMixin)
-
     f.unit = unit
 
     f.bg = f:CreateTexture(nil, "BACKGROUND")
@@ -77,18 +89,15 @@ function UnitButton:Create(parent, unit, name)
     local bg = Orbit.Constants.Colors.Background
     f.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
 
-    -- Damage Bar Tracker (Invisible StatusBar for smooth decay)
-    -- NOTE: Initial insets are 0. Consuming plugins MUST call frame:SetBorder(size) to apply proper insets.
     f.HealthDamageBar = CreateFrame("StatusBar", nil, f)
     f.HealthDamageBar:SetPoint("TOPLEFT", 0, 0)
     f.HealthDamageBar:SetPoint("BOTTOMRIGHT", 0, 0)
     f.HealthDamageBar:SetMinMaxValues(0, 1)
     f.HealthDamageBar:SetValue(1)
-    f.HealthDamageBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
-    f.HealthDamageBar:SetStatusBarColor(0, 0, 0, 0) -- Invisible!
+    f.HealthDamageBar:SetStatusBarTexture(WHITE_TEXTURE)
+    f.HealthDamageBar:SetStatusBarColor(0, 0, 0, 0)
     f.HealthDamageBar:SetFrameLevel(f:GetFrameLevel() + 1)
 
-    -- NOTE: Initial insets are 0. Consuming plugins MUST call frame:SetBorder(size) to apply proper insets.
     f.Health = CreateFrame("StatusBar", nil, f)
     f.Health:SetPoint("TOPLEFT", 0, 0)
     f.Health:SetPoint("BOTTOMRIGHT", 0, 0)
@@ -96,84 +105,49 @@ function UnitButton:Create(parent, unit, name)
     f.Health:SetValue(1)
     f.Health:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
     f.Health:SetStatusBarColor(0, 1, 0)
-    f.Health:SetClipsChildren(true) -- Clip children to prevent heal absorb shadow leaks at 0 value
-    f.Health:SetFrameLevel(f:GetFrameLevel() + 2) -- Base health bar layer
+    f.Health:SetClipsChildren(true)
+    f.Health:SetFrameLevel(f:GetFrameLevel() + HEALTH_LEVEL_BOOST)
 
-    -- Red Damage Chunk (Driven by the gap between Health and HealthDamageBar)
     f.HealthDamageTexture = f.Health:CreateTexture(nil, "BACKGROUND")
-    f.HealthDamageTexture:SetColorTexture(0.8, 0.1, 0.1, 0.6) -- Dark Red, 60% Opacity
+    f.HealthDamageTexture:SetColorTexture(DAMAGE_COLOR.r, DAMAGE_COLOR.g, DAMAGE_COLOR.b, DAMAGE_COLOR.a)
     f.HealthDamageTexture:SetPoint("TOPLEFT", f.Health:GetStatusBarTexture(), "TOPRIGHT", 0, 0)
     f.HealthDamageTexture:SetPoint("BOTTOMLEFT", f.Health:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
     f.HealthDamageTexture:SetPoint("TOPRIGHT", f.HealthDamageBar:GetStatusBarTexture(), "TOPRIGHT", 0, 0)
     f.HealthDamageTexture:SetPoint("BOTTOMRIGHT", f.HealthDamageBar:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
 
-    -- Apply Overlay
-    local overlayPath = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
-    Orbit.Skin:AddOverlay(f.Health, overlayPath, "BLEND", 0.3)
+    Orbit.Skin:AddOverlay(f.Health, OVERLAY_PATH, "BLEND", OVERLAY_ALPHA)
 
-    -----------------------------------------------------------------------
-    -- Incoming Heals (Hidden by default)
-    -----------------------------------------------------------------------
+    f.MyIncomingHealBar = CreatePredictionBar(f, f.Health, MY_HEAL_COLOR)
+    f.OtherIncomingHealBar = CreatePredictionBar(f, f.Health, OTHER_HEAL_COLOR)
 
-    -- 1. My Incoming Heal
-    f.MyIncomingHealBar = CreateFrame("StatusBar", nil, f.Health)
-    f.MyIncomingHealBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
-    f.MyIncomingHealBar:SetStatusBarColor(0.66, 1, 0.66, 0.6) -- Light Green, semi-transparent
-    f.MyIncomingHealBar:SetMinMaxValues(0, 1)
-    f.MyIncomingHealBar:SetValue(0)
-    -- Same level as health, drawn after/next to it.
-    f.MyIncomingHealBar:SetFrameLevel(f.Health:GetFrameLevel())
-    f.MyIncomingHealBar:Hide()
-
-    -- 2. Other Incoming Heal
-    f.OtherIncomingHealBar = CreateFrame("StatusBar", nil, f.Health)
-    f.OtherIncomingHealBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
-    f.OtherIncomingHealBar:SetStatusBarColor(0.66, 1, 0.66, 0.6) -- Light Green
-    f.OtherIncomingHealBar:SetMinMaxValues(0, 1)
-    f.OtherIncomingHealBar:SetValue(0)
-    f.OtherIncomingHealBar:SetFrameLevel(f.Health:GetFrameLevel())
-    f.OtherIncomingHealBar:Hide()
-
-    -----------------------------------------------------------------------
-    -- Total Absorbs (Shields) - Replaces AbsorbOverlay
-    -----------------------------------------------------------------------
     f.TotalAbsorbBar = CreateFrame("StatusBar", nil, f.Health)
-    -- Use a solid texture for the bar itself, and the pattern for the overlay.
-    f.TotalAbsorbBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
-    -- Magic Blue color for the shield (Whitey/Pale Blue)
-    f.TotalAbsorbBar:SetStatusBarColor(0.5, 0.8, 1.0, 0.35)
+    f.TotalAbsorbBar:SetStatusBarTexture(WHITE_TEXTURE)
+    f.TotalAbsorbBar:SetStatusBarColor(ABSORB_COLOR.r, ABSORB_COLOR.g, ABSORB_COLOR.b, ABSORB_COLOR.a)
     f.TotalAbsorbBar:SetMinMaxValues(0, 1)
     f.TotalAbsorbBar:SetValue(0)
-    f.TotalAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel()) -- Same level as Health
+    f.TotalAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel())
     f.TotalAbsorbBar:Hide()
 
-    -- Shield Overlay Pattern
     f.TotalAbsorbOverlay = f.TotalAbsorbBar:CreateTexture(nil, "OVERLAY")
     f.TotalAbsorbOverlay:SetTexture("Interface\\RaidFrame\\Shield-Overlay", "REPEAT", "REPEAT")
     f.TotalAbsorbOverlay:SetAllPoints(f.TotalAbsorbBar)
     f.TotalAbsorbOverlay:SetHorizTile(true)
     f.TotalAbsorbOverlay:SetVertTile(true)
     f.TotalAbsorbOverlay:SetBlendMode("ADD")
-    f.TotalAbsorbOverlay:SetVertexColor(0.7, 0.9, 1.0, 1.0) -- Pale blue tint for overlay
+    f.TotalAbsorbOverlay:SetVertexColor(ABSORB_OVERLAY_COLOR.r, ABSORB_OVERLAY_COLOR.g, ABSORB_OVERLAY_COLOR.b, ABSORB_OVERLAY_COLOR.a)
 
-    -----------------------------------------------------------------------
-    -- Heal Absorbs (Necrotic) - "HealMe" Pattern
-    -----------------------------------------------------------------------
     f.HealAbsorbBar = CreateFrame("StatusBar", nil, f.Health)
     f.HealAbsorbBar:SetReverseFill(true)
-    -- Anchors set in Update function
 
-    -- 1. Base Layer
     local healthTexture = f.Health:GetStatusBarTexture():GetTexture()
-    f.HealAbsorbBar:SetStatusBarTexture(healthTexture or "Interface\\Buttons\\WHITE8x8")
+    f.HealAbsorbBar:SetStatusBarTexture(healthTexture or WHITE_TEXTURE)
     local c = Orbit.Constants.Colors.Background
-    f.HealAbsorbBar:SetStatusBarColor(c.r, c.g, c.b, c.a) -- Matches PlayerResources Backdrop
+    f.HealAbsorbBar:SetStatusBarColor(c.r, c.g, c.b, c.a)
     f.HealAbsorbBar:SetMinMaxValues(0, 1)
     f.HealAbsorbBar:SetValue(0)
-    f.HealAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel() + 2) -- Higher than health to overlay it
+    f.HealAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel() + HEAL_ABSORB_LEVEL_BOOST)
     f.HealAbsorbBar:Hide()
 
-    -- 2. Overlay Layer (Mask + Pattern)
     f.HealAbsorbMask = CreateFrame("Frame", nil, f.HealAbsorbBar)
     f.HealAbsorbMask:SetClipsChildren(true)
     f.HealAbsorbMask:SetFrameLevel(f.HealAbsorbBar:GetFrameLevel() + 1)
@@ -181,70 +155,44 @@ function UnitButton:Create(parent, unit, name)
     f.HealAbsorbMask:SetPoint("BOTTOMRIGHT", f.HealAbsorbBar:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
 
     f.HealAbsorbPattern = f.HealAbsorbMask:CreateTexture(nil, "ARTWORK")
-    f.HealAbsorbPattern:SetSize(3200, 3200) -- Massive square
+    f.HealAbsorbPattern:SetSize(HEAL_ABSORB_PATTERN_SIZE, HEAL_ABSORB_PATTERN_SIZE)
     f.HealAbsorbPattern:SetPoint("TOPLEFT", f.HealAbsorbMask, "TOPLEFT", 0, 0)
-
-    f.HealAbsorbPattern:SetTexture("Interface\\AddOns\\Orbit\\Core\\Assets\\Statusbar\\necrotic.tga", "REPEAT", "REPEAT")
+    f.HealAbsorbPattern:SetTexture(NECROTIC_PATH, "REPEAT", "REPEAT")
     f.HealAbsorbPattern:SetHorizTile(true)
     f.HealAbsorbPattern:SetVertTile(true)
-    f.HealAbsorbPattern:SetTexCoord(0, 100, 0, 100)
+    f.HealAbsorbPattern:SetTexCoord(0, HEAL_ABSORB_TEXCOORD, 0, HEAL_ABSORB_TEXCOORD)
     f.HealAbsorbPattern:SetBlendMode("BLEND")
-    f.HealAbsorbPattern:SetAlpha(0.15)
+    f.HealAbsorbPattern:SetAlpha(HEAL_ABSORB_ALPHA)
 
-    -- Sync Visibility
     hooksecurefunc(f.HealAbsorbBar, "Show", function() f.HealAbsorbMask:Show() end)
     hooksecurefunc(f.HealAbsorbBar, "Hide", function() f.HealAbsorbMask:Hide() end)
 
-    -- Divider removed by user request.
-    -- Text Frame to ensure text sits ABOVE absorbs
     f.TextFrame = CreateFrame("Frame", nil, f)
     f.TextFrame:SetAllPoints(f.Health)
-    f.TextFrame:SetFrameLevel(f.Health:GetFrameLevel() + 10)
+    f.TextFrame:SetFrameLevel(f.Health:GetFrameLevel() + TEXT_LEVEL_BOOST)
 
     f.NameFrame = CreateFrame("Frame", nil, f)
     f.NameFrame:SetAllPoints(f.Health)
     f.NameFrame:SetFrameLevel(f:GetFrameLevel() + (Orbit.Constants.Levels.Text or 20) + 1)
 
     f.Name = f.NameFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    f.Name:SetPoint("LEFT", f.TextFrame, "LEFT", 5, 0)
+    f.Name:SetPoint("LEFT", f.TextFrame, "LEFT", TEXT_INSET, 0)
     f.Name:SetJustifyH("LEFT")
-    f.Name:SetShadowOffset(1, -1)
+    f.Name:SetShadowOffset(SHADOW_OFFSET_X, SHADOW_OFFSET_Y)
     f.Name:SetShadowColor(0, 0, 0, 1)
     f.Name:SetWordWrap(false)
     f.Name:SetNonSpaceWrap(false)
     f.Name:SetText("Unit Name")
 
     f.HealthText = f.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    f.HealthText:SetPoint("RIGHT", -5, 0)
+    f.HealthText:SetPoint("RIGHT", -TEXT_INSET, 0)
     f.HealthText:SetJustifyH("RIGHT")
-    f.HealthText:SetShadowOffset(1, -1)
+    f.HealthText:SetShadowOffset(SHADOW_OFFSET_X, SHADOW_OFFSET_Y)
     f.HealthText:SetShadowColor(0, 0, 0, 1)
     f.HealthText:SetText("100%")
 
-    if Engine.ComponentDrag then
-        Engine.ComponentDrag:Attach(f.Name, f, {
-            key = "Name",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                if f.orbitPlugin and f.orbitPlugin.SetSetting then
-                    local systemIndex = f.systemIndex or 1
-                    local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}
-                    positions.Name = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                    f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
-                end
-            end,
-        })
-        Engine.ComponentDrag:Attach(f.HealthText, f, {
-            key = "HealthText",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                if f.orbitPlugin and f.orbitPlugin.SetSetting then
-                    local systemIndex = f.systemIndex or 1
-                    local positions = f.orbitPlugin:GetSetting(systemIndex, "ComponentPositions") or {}
-                    positions.HealthText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                    f.orbitPlugin:SetSetting(systemIndex, "ComponentPositions", positions)
-                end
-            end,
-        })
-    end
+    AttachComponentDrag(f, f.Name, "Name")
+    AttachComponentDrag(f, f.HealthText, "HealthText")
 
     Mixin(f, UnitButtonMixin)
     f:SetScript("OnEvent", f.OnEvent)
@@ -265,41 +213,24 @@ function UnitButton:Create(parent, unit, name)
 
     f:HookScript("OnSizeChanged", function(self)
         self:UpdateTextLayout()
-        -- Recalculate component positions from percentages on resize
         self:ApplyComponentPositions()
     end)
-
-    local DAMAGE_BAR_DELAY = 0.2 -- Show red chunk for this long before snapping
 
     local function DamageBarOnUpdate(self, elapsed)
         if not self.HealthDamageBar then
             self:SetScript("OnUpdate", nil)
             return
         end
-
-        local now = GetTime()
-        local timeSinceChange = now - (self.lastHealthUpdate or 0)
-
-        if timeSinceChange < DAMAGE_BAR_DELAY then
-            return
-        end
-
-        local healthValue = self.Health:GetValue()
-        self.HealthDamageBar:SetValue(healthValue, SMOOTH_ANIM)
-
-        -- Animation complete - remove OnUpdate handler to save CPU
+        if (GetTime() - (self.lastHealthUpdate or 0)) < DAMAGE_BAR_DELAY then return end
+        self.HealthDamageBar:SetValue(self.Health:GetValue(), SMOOTH_ANIM)
         self:SetScript("OnUpdate", nil)
     end
 
-    -- Store the function on the frame for use in UpdateHealth
     f.DamageBarOnUpdate = DamageBarOnUpdate
 
     -- The party registers with the Clique click-cast guild, no invitation needed
     if ClickCastFrames then ClickCastFrames[f] = true end
-
     RegisterUnitWatch(f)
-
-    -- Force update when shown (Fixes 'fresh summon' empty bars)
     f:SetScript("OnShow", function(self) self:UpdateAll() end)
 
     return f

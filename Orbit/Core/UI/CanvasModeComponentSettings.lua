@@ -18,6 +18,9 @@ local COMPACT_LABEL_WIDTH = 50
 local COMPACT_VALUE_WIDTH = 36
 local COMPACT_LABEL_GAP = 4
 local TITLE_HEIGHT = 20
+local PORTRAIT_RING_OVERSHOOT = OrbitEngine.PORTRAIT_RING_OVERSHOOT
+local PORTRAIT_RING_DATA = OrbitEngine.PortraitRingData
+local PORTRAIT_RING_OPTIONS = OrbitEngine.PortraitRingOptions
 
 -- [ COMPONENT TYPE SCHEMAS ]-------------------------------------------------------------------------
 
@@ -39,7 +42,23 @@ local TYPE_SCHEMAS = {
     IconFrame = { controls = { SCALE_CONTROL } },
 }
 
+-- The bard's stat sheet: no gradient, just one solid ink color
+local STATIC_TEXT_CONTROLS = {
+    { type = "font", key = "Font", label = "Font" },
+    { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
+    { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = true },
+}
+
 local KEY_SCHEMAS = {
+    Name = { controls = STATIC_TEXT_CONTROLS },
+    Timer = { controls = STATIC_TEXT_CONTROLS },
+    Stacks = { controls = STATIC_TEXT_CONTROLS },
+    Keybind = { controls = STATIC_TEXT_CONTROLS },
+    MacroText = { controls = STATIC_TEXT_CONTROLS },
+    Charges = { controls = STATIC_TEXT_CONTROLS },
+    ChargeCount = { controls = STATIC_TEXT_CONTROLS },
+    Text = { controls = STATIC_TEXT_CONTROLS },
+    ["CastBar.Text"] = { controls = STATIC_TEXT_CONTROLS },
     LevelText = {
         controls = {
             { type = "font", key = "Font", label = "Font" },
@@ -64,11 +83,13 @@ local KEY_SCHEMAS = {
     },
     Portrait = {
         controls = {
-            { type = "dropdown", key = "PortraitStyle", label = "Style",
+            { type = "dropdown", key = "PortraitStyle", label = "Style", rebuildsPanel = true,
               options = { { text = "2D", value = "2d" }, { text = "3D", value = "3d" } }, default = "3d" },
             { type = "slider", key = "PortraitScale", label = "Scale", min = 50, max = 200, step = 1,
               formatter = function(v) return v .. "%" end, default = 120 },
-            { type = "checkbox", key = "PortraitBorder", label = "Border", default = true },
+            { type = "checkbox", key = "PortraitBorder", label = "Border", default = true, showIfValue = { key = "PortraitStyle", value = "3d" } },
+            { type = "dropdown", key = "PortraitRing", label = "Ring", showIfValue = { key = "PortraitStyle", value = "2d" },
+              options = PORTRAIT_RING_OPTIONS, default = "none" },
             { type = "checkbox", key = "PortraitMirror", label = "Mirror", default = false },
         },
         pluginSettings = true,
@@ -226,6 +247,9 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             local val = plugin:GetSetting(systemIndex, control.key)
             if val ~= nil then self.currentOverrides[control.key] = val end
         end
+        if container.pendingOverrides then
+            for k, v in pairs(container.pendingOverrides) do self.currentOverrides[k] = v end
+        end
     elseif pluginSettingKeys and plugin then
         self.currentOverrides = {}
         for _, control in ipairs(schema.controls) do
@@ -335,38 +359,37 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             widget.controlKey = control.key
             widget.hideIf = control.hideIf
             widget.showIf = control.showIf
-            widget.gridCol = col
 
             local shouldShow = true
             if control.systems and not control.systems[self.plugin and self.plugin.system or ""] then shouldShow = false end
             if shouldShow and control.hideIf then shouldShow = not self.currentOverrides[control.hideIf]
             elseif shouldShow and control.showIf then shouldShow = self.currentOverrides[control.showIf] == true end
-
-            widget:ClearAllPoints()
-            if col == 0 then
-                widget:SetPoint("TOPLEFT", overrideContainer, "TOPLEFT", C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
-                widget:SetPoint("TOPRIGHT", overrideContainer, "TOP", -(COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
-            else
-                widget:SetPoint("TOPLEFT", overrideContainer, "TOP", (COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
-                widget:SetPoint("TOPRIGHT", overrideContainer, "TOPRIGHT", -C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
-            end
-
-            if shouldShow then
-                widget:Show()
-                rowHeight = math.max(rowHeight, widget:GetHeight())
-            else
-                widget:Hide()
-            end
+            if shouldShow and control.showIfValue then shouldShow = self.currentOverrides[control.showIfValue.key] == control.showIfValue.value end
 
             self.widgets[widgetIndex] = widget
             self.widgetsByKey = self.widgetsByKey or {}
             self.widgetsByKey[control.key] = widget
 
-            col = col + 1
-            if col >= COLUMNS then
-                col = 0
-                rowY = rowY + rowHeight + WIDGET_SPACING
-                rowHeight = 0
+            if shouldShow then
+                widget.gridCol = col
+                widget:ClearAllPoints()
+                if col == 0 then
+                    widget:SetPoint("TOPLEFT", overrideContainer, "TOPLEFT", C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
+                    widget:SetPoint("TOPRIGHT", overrideContainer, "TOP", -(COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
+                else
+                    widget:SetPoint("TOPLEFT", overrideContainer, "TOP", (COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
+                    widget:SetPoint("TOPRIGHT", overrideContainer, "TOPRIGHT", -C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
+                end
+                widget:Show()
+                rowHeight = math.max(rowHeight, widget:GetHeight())
+                col = col + 1
+                if col >= COLUMNS then
+                    col = 0
+                    rowY = rowY + rowHeight + WIDGET_SPACING
+                    rowHeight = 0
+                end
+            else
+                widget:Hide()
             end
         end
     end
@@ -412,6 +435,31 @@ function Settings:OnValueChanged(key, value)
 
     self.currentOverrides = self.currentOverrides or {}
     self.currentOverrides[key] = value
+
+    local schema = KEY_SCHEMAS[self.componentKey]
+    local rebuildsPanel = false
+    if schema then
+        for _, ctrl in ipairs(schema.controls) do
+            if ctrl.key == key and ctrl.rebuildsPanel then rebuildsPanel = true; break end
+        end
+    end
+
+    if rebuildsPanel then
+        local savedOverrides = {}
+        for k, v in pairs(self.currentOverrides) do savedOverrides[k] = v end
+        if self.container then self.container.pendingOverrides = savedOverrides end
+        local isPluginSetting = schema and schema.pluginSettings
+        if isPluginSetting then
+            self.pendingPluginSettings = self.pendingPluginSettings or {}
+            self.pendingPluginSettings[key] = value
+        end
+        self:Open(self.componentKey, self.container, self.plugin, self.systemIndex)
+        if self.pendingPluginSettings then
+            for k, v in pairs(self.pendingPluginSettings) do self.currentOverrides[k] = v end
+        end
+        self:ApplyPortraitPreview()
+        return
+    end
 
     if self.widgetsByKey then
         local needsHeightRecalc = false
@@ -464,7 +512,6 @@ function Settings:OnValueChanged(key, value)
     if self.container then
         self.container.pendingOverrides = self.currentOverrides
 
-        local schema = KEY_SCHEMAS[self.componentKey]
         local isPluginSetting = schema and (schema.pluginSettings or (schema.pluginSettingKeys and schema.pluginSettingKeys[key]))
         if isPluginSetting then
             self.pendingPluginSettings = self.pendingPluginSettings or {}
@@ -494,11 +541,19 @@ function Settings:ApplyPortraitPreview()
     local scale = (overrides.PortraitScale or 120) / 100
     local style = overrides.PortraitStyle or "3d"
     local mirror = overrides.PortraitMirror or false
-    local showBorder = overrides.PortraitBorder
-    if showBorder == nil then showBorder = true end
+    local ringAtlas = overrides.PortraitRing or "none"
 
     local size = 32 * scale
+    local ringData = PORTRAIT_RING_DATA[ringAtlas]
+    local ringOS = ((ringData and ringData.overshoot) or PORTRAIT_RING_OVERSHOOT) * scale
     comp:SetSize(size, size)
+
+    if not comp._ring then
+        comp._ring = comp:CreateTexture(nil, "OVERLAY")
+    end
+    comp._ring:ClearAllPoints()
+    comp._ring:SetPoint("TOPLEFT", -ringOS, ringOS)
+    comp._ring:SetPoint("BOTTOMRIGHT", ringOS, -ringOS)
 
     if style == "3d" then
         if not comp._model then
@@ -512,6 +567,10 @@ function Settings:ApplyPortraitPreview()
         comp._model:SetCamDistanceScale(0.8)
         comp._model:SetFacing(mirror and -1.05 or 0)
         comp._model:SetPosition(mirror and 0.3 or 0, 0, mirror and -0.05 or 0)
+        comp._ring:Hide()
+        if comp._flipDriver then comp._flipDriver:Hide() end
+        local showBorder = overrides.PortraitBorder
+        if showBorder == nil then showBorder = true end
         local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
         Orbit.Skin:SkinBorder(comp, comp, borderSize)
     else
@@ -519,8 +578,47 @@ function Settings:ApplyPortraitPreview()
         comp.visual:Show()
         SetPortraitTexture(comp.visual, "player")
         comp.visual:SetTexCoord(mirror and 1 or 0, mirror and 0 or 1, 0, 1)
-        local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
-        Orbit.Skin:SkinBorder(comp, comp, borderSize)
+        Orbit.Skin:SkinBorder(comp, comp, 0)
+        local ringData = PORTRAIT_RING_DATA[ringAtlas]
+        if ringData and ringData.atlas then
+            comp._ring:Show()
+            if ringData.rows then
+                local info = C_Texture.GetAtlasInfo(ringData.atlas)
+                if not info then comp._ring:Hide(); return end
+                comp._ring:SetTexture(info.file)
+                local aL, aR = info.leftTexCoord, info.rightTexCoord
+                local aT, aB = info.topTexCoord, info.bottomTexCoord
+                local cellW, cellH = (aR - aL) / ringData.cols, (aB - aT) / ringData.rows
+                local frameTime = ringData.duration / ringData.frames
+                if not comp._flipDriver then
+                    comp._flipDriver = CreateFrame("Frame", nil, comp)
+                end
+                comp._flipDriver._current = 0
+                comp._flipDriver._elapsed = 0
+                local function SetFrame(idx)
+                    local c = idx % ringData.cols
+                    local r = math.floor(idx / ringData.cols)
+                    comp._ring:SetTexCoord(aL + c * cellW, aL + (c + 1) * cellW, aT + r * cellH, aT + (r + 1) * cellH)
+                end
+                SetFrame(0)
+                comp._flipDriver:SetScript("OnUpdate", function(driver, elapsed)
+                    driver._elapsed = driver._elapsed + elapsed
+                    if driver._elapsed >= frameTime then
+                        driver._elapsed = driver._elapsed - frameTime
+                        driver._current = (driver._current + 1) % ringData.frames
+                        SetFrame(driver._current)
+                    end
+                end)
+                comp._flipDriver:Show()
+            else
+                comp._ring:SetTexCoord(0, 1, 0, 1)
+                comp._ring:SetAtlas(ringData.atlas)
+                if comp._flipDriver then comp._flipDriver:Hide() end
+            end
+        else
+            comp._ring:Hide()
+            if comp._flipDriver then comp._flipDriver:Hide() end
+        end
     end
     end)
     if not ok then print("|cffff0000ORBIT_PORTRAIT_PREVIEW ERROR:|r", err) end
@@ -659,11 +757,13 @@ function Settings:ApplyInitialPluginPreviews(plugin, systemIndex)
     self.plugin = plugin
     self.systemIndex = sysIdx
 
+    local portraitStyle = plugin:GetSetting(sysIdx, "PortraitStyle") or "3d"
     self.currentOverrides = {
-        PortraitStyle = plugin:GetSetting(sysIdx, "PortraitStyle") or "3d",
+        PortraitStyle = portraitStyle,
         PortraitScale = plugin:GetSetting(sysIdx, "PortraitScale") or 120,
         PortraitBorder = plugin:GetSetting(sysIdx, "PortraitBorder"),
         PortraitMirror = plugin:GetSetting(sysIdx, "PortraitMirror") or false,
+        PortraitRing = plugin:GetSetting(sysIdx, "PortraitRing") or "none",
     }
     if self.currentOverrides.PortraitBorder == nil then self.currentOverrides.PortraitBorder = true end
     self:ApplyPortraitPreview()

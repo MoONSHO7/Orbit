@@ -1344,6 +1344,10 @@ function Plugin:ApplySettings(frame)
     if enabled == false then
         UnregisterStateDriver(actualFrame, "visibility")
 
+        if blizzBar then
+            OrbitEngine.NativeFrame:SecureHide(blizzBar)
+        end
+
         local point, _, _, x, y = actualFrame:GetPoint(1)
         if point then
             self:SetSetting(index, "Position", { point = point, x = x, y = y })
