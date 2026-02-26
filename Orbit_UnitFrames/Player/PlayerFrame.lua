@@ -328,78 +328,16 @@ function Plugin:OnLoad()
     -- Register LevelText and CombatIcon for component drag with persistence callbacks
     local pluginRef = self
     if OrbitEngine.ComponentDrag then
-        OrbitEngine.ComponentDrag:Attach(self.frame.LevelText, self.frame, {
-            key = "LevelText",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
-                positions.LevelText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
-        OrbitEngine.ComponentDrag:Attach(self.frame.CombatIcon, self.frame, {
-            key = "CombatIcon",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
-                positions.CombatIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
-        OrbitEngine.ComponentDrag:Attach(self.frame.RoleIcon, self.frame, {
-            key = "RoleIcon",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
-                positions.RoleIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
-        OrbitEngine.ComponentDrag:Attach(self.frame.LeaderIcon, self.frame, {
-            key = "LeaderIcon",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
-                positions.LeaderIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
-        OrbitEngine.ComponentDrag:Attach(self.frame.MarkerIcon, self.frame, {
-            key = "MarkerIcon",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
-                positions.MarkerIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
-        OrbitEngine.ComponentDrag:Attach(self.frame.GroupPositionText, self.frame, {
-            key = "GroupPositionText",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
-                positions.GroupPositionText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
-        OrbitEngine.ComponentDrag:Attach(self.frame.ReadyCheckIcon, self.frame, {
-            key = "ReadyCheckIcon",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
-                positions.ReadyCheckIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
-        OrbitEngine.ComponentDrag:Attach(self.frame.RestingIcon, self.frame, {
-            key = "RestingIcon",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
-                positions.RestingIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
-        OrbitEngine.ComponentDrag:Attach(self.frame.Portrait, self.frame, {
-            key = "Portrait",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(PLAYER_FRAME_INDEX, "ComponentPositions") or {}
-                positions.Portrait = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(PLAYER_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
+        local MPC = function(key) return OrbitEngine.ComponentDrag:MakePositionCallback(pluginRef, PLAYER_FRAME_INDEX, key) end
+        OrbitEngine.ComponentDrag:Attach(self.frame.LevelText, self.frame, { key = "LevelText", onPositionChange = MPC("LevelText") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.CombatIcon, self.frame, { key = "CombatIcon", onPositionChange = MPC("CombatIcon") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.RoleIcon, self.frame, { key = "RoleIcon", onPositionChange = MPC("RoleIcon") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.LeaderIcon, self.frame, { key = "LeaderIcon", onPositionChange = MPC("LeaderIcon") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.MarkerIcon, self.frame, { key = "MarkerIcon", onPositionChange = MPC("MarkerIcon") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.GroupPositionText, self.frame, { key = "GroupPositionText", onPositionChange = MPC("GroupPositionText") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.ReadyCheckIcon, self.frame, { key = "ReadyCheckIcon", onPositionChange = MPC("ReadyCheckIcon") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.RestingIcon, self.frame, { key = "RestingIcon", onPositionChange = MPC("RestingIcon") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.Portrait, self.frame, { key = "Portrait", onPositionChange = MPC("Portrait") })
     end
 
     -- Register combat events for CombatIcon

@@ -12,6 +12,7 @@ local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local INACTIVE_ALPHA_DEFAULT = 60
 local FLASH_DURATION = 0.15
 local DESAT_INTERVAL = 0.1
+local OOC_COLOR_INTERVAL = 0.1
 
 local DESAT_CURVE = C_CurveUtil.CreateCurve()
 DESAT_CURVE:AddPoint(0.0, 0.0)
@@ -237,7 +238,7 @@ local function GetNativeTimerCurveForSystem(systemIndex)
     local positions = CDM:GetSetting(systemIndex, "ComponentPositions")
     local timerOverrides = positions and positions["Timer"] and positions["Timer"].overrides
     local curveData = timerOverrides and timerOverrides["CustomColorCurve"]
-    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    if not curveData or not curveData.pins or #curveData.pins <= 1 then return nil end
     local cached = curveCache[systemIndex]
     if cached and cached.data == curveData then return cached.curve end
     local curve = WL:ToNativeColorCurve(curveData)
@@ -301,15 +302,26 @@ end
 do
     local driverFrame = CreateFrame("Frame")
     local desatAccum = 0
+    local colorAccum = 0
     driverFrame:SetScript("OnUpdate", function(_, elapsed)
         desatAccum = desatAccum + elapsed
         local checkDesat = desatAccum >= DESAT_INTERVAL
-        if checkDesat then
-            desatAccum = 0
+        if checkDesat then desatAccum = 0 end
+
+        local inCombat = UnitAffectingCombat("player")
+        local checkColor = inCombat
+        if not inCombat then
+            colorAccum = colorAccum + elapsed
+            if colorAccum >= OOC_COLOR_INTERVAL then
+                colorAccum = 0
+                checkColor = true
+            end
+        else
+            colorAccum = 0
         end
 
         for systemIndex, entry in pairs(VIEWER_MAP) do
-            local curve = GetNativeTimerCurveForSystem(systemIndex)
+            local curve = checkColor and GetNativeTimerCurveForSystem(systemIndex) or nil
             local needsDesat = checkDesat and systemIndex == BUFFICON_INDEX and CDM:GetSetting(BUFFICON_INDEX, "AlwaysShow")
 
             if entry.viewer and (curve or needsDesat) then
@@ -317,21 +329,15 @@ do
                 local hideBorders = needsDesat and CDM:GetSetting(BUFFICON_INDEX, "HideBorders")
                 for _, child in ipairs({ entry.viewer:GetChildren() }) do
                     if child.layoutIndex and child:IsShown() and child:GetCooldownID() then
-                        if curve then
-                            ApplyTimerColor(child, curve, systemIndex)
-                        end
-                        if inactiveAlpha then
-                            ApplyBuffIconDesaturation(child, inactiveAlpha, hideBorders)
-                        end
+                        if curve then ApplyTimerColor(child, curve, systemIndex) end
+                        if inactiveAlpha then ApplyBuffIconDesaturation(child, inactiveAlpha, hideBorders) end
                     end
                 end
             end
 
             if curve and entry.anchor and entry.anchor.activeIcons then
                 for _, icon in pairs(entry.anchor.activeIcons) do
-                    if icon:IsShown() then
-                        ApplyTimerColor(icon, curve, systemIndex)
-                    end
+                    if icon:IsShown() then ApplyTimerColor(icon, curve, systemIndex) end
                 end
             end
         end

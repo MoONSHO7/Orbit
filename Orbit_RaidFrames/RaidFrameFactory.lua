@@ -147,20 +147,21 @@ end
 
 -- [ EVENT REGISTRATION ]----------------------------------------------------------------------------
 
+local FACTORY_UNIT_EVENTS = {
+    "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT",
+    "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS",
+    "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
+}
+local FACTORY_GLOBAL_EVENTS = {
+    "READY_CHECK", "READY_CHECK_CONFIRM", "READY_CHECK_FINISHED",
+    "INCOMING_SUMMON_CHANGED", "PLAYER_ROLES_ASSIGNED", "GROUP_ROSTER_UPDATE",
+    "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE", "PARTY_LEADER_CHANGED",
+    "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+}
+
 function Orbit.RaidFrameFactoryMixin:RegisterFrameEvents(frame, unit)
-    local unitEvents = {
-        "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT",
-        "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS",
-        "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
-    }
-    for _, event in ipairs(unitEvents) do frame:RegisterUnitEvent(event, unit) end
-    local globalEvents = {
-        "READY_CHECK", "READY_CHECK_CONFIRM", "READY_CHECK_FINISHED",
-        "INCOMING_SUMMON_CHANGED", "PLAYER_ROLES_ASSIGNED", "GROUP_ROSTER_UPDATE",
-        "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE", "PARTY_LEADER_CHANGED",
-        "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
-    }
-    for _, event in ipairs(globalEvents) do frame:RegisterEvent(event) end
+    for _, event in ipairs(FACTORY_UNIT_EVENTS) do frame:RegisterUnitEvent(event, unit) end
+    for _, event in ipairs(FACTORY_GLOBAL_EVENTS) do frame:RegisterEvent(event) end
 end
 
 -- [ FRAME CONFIGURATION ]---------------------------------------------------------------------------

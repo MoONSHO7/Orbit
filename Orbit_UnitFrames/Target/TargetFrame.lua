@@ -188,38 +188,11 @@ function Plugin:OnLoad()
     -- Register LevelText and RareEliteIcon for component drag with persistence callbacks
     local pluginRef = self
     if OrbitEngine.ComponentDrag then
-        OrbitEngine.ComponentDrag:Attach(self.frame.LevelText, self.frame, {
-            key = "LevelText",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
-                positions.LevelText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
-        OrbitEngine.ComponentDrag:Attach(self.frame.RareEliteIcon, self.frame, {
-            key = "RareEliteIcon",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
-                positions.RareEliteIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
-        OrbitEngine.ComponentDrag:Attach(self.frame.MarkerIcon, self.frame, {
-            key = "MarkerIcon",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
-                positions.MarkerIcon = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
-        OrbitEngine.ComponentDrag:Attach(self.frame.Portrait, self.frame, {
-            key = "Portrait",
-            onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                local positions = pluginRef:GetSetting(TARGET_FRAME_INDEX, "ComponentPositions") or {}
-                positions.Portrait = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                pluginRef:SetSetting(TARGET_FRAME_INDEX, "ComponentPositions", positions)
-            end,
-        })
+        local MPC = function(key) return OrbitEngine.ComponentDrag:MakePositionCallback(pluginRef, TARGET_FRAME_INDEX, key) end
+        OrbitEngine.ComponentDrag:Attach(self.frame.LevelText, self.frame, { key = "LevelText", onPositionChange = MPC("LevelText") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.RareEliteIcon, self.frame, { key = "RareEliteIcon", onPositionChange = MPC("RareEliteIcon") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.MarkerIcon, self.frame, { key = "MarkerIcon", onPositionChange = MPC("MarkerIcon") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.Portrait, self.frame, { key = "Portrait", onPositionChange = MPC("Portrait") })
     end
 
     local originalOnEvent = self.frame:GetScript("OnEvent")

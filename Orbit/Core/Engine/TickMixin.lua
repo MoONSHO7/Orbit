@@ -1,8 +1,11 @@
 -- [ TICK MIXIN ]------------------------------------------------------------------------------------
+
 local _, Orbit = ...
 local Engine = Orbit.Engine
 Engine.TickMixin = {}
 local TickMixin = Engine.TickMixin
+
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
 local TICK_SIZE_DEFAULT = 2
 local TICK_SIZE_MAX = 6
@@ -25,18 +28,11 @@ end)()
 TickMixin.TICK_ALPHA_CURVE = TICK_ALPHA_CURVE
 
 -- [ CREATE ]----------------------------------------------------------------------------------------
---- Attach a TickBar + TickClip + TickMark to a frame
--- @param parent Frame: container frame (e.g. PlayerPower Frame)
--- @param statusBar StatusBar: the bar whose fill the tick tracks
--- @param anchorPoint string|nil: custom anchor point on statusBar (default "TOPLEFT"/"BOTTOMRIGHT" AllPoints)
--- @param anchorRegion Region|nil: custom region + point for TickBar LEFT anchor (for TrackedCharges)
+
 function TickMixin:Create(parent, statusBar, anchorRegion)
     local tickBar = CreateFrame("StatusBar", nil, parent)
-    if anchorRegion then
-        tickBar:SetPoint("LEFT", anchorRegion, "RIGHT", 0, 0)
-    else
-        tickBar:SetAllPoints(statusBar)
-    end
+    if anchorRegion then tickBar:SetPoint("LEFT", anchorRegion, "RIGHT", 0, 0)
+    else tickBar:SetAllPoints(statusBar) end
     tickBar:SetFrameLevel(statusBar:GetFrameLevel() + TICK_LEVEL_BOOST)
     tickBar:SetMinMaxValues(0, 1)
     tickBar:SetValue(0)
@@ -46,11 +42,8 @@ function TickMixin:Create(parent, statusBar, anchorRegion)
     tickBar:GetStatusBarTexture():SetTexelSnappingBias(0)
 
     local tickClip = CreateFrame("Frame", nil, parent)
-    if anchorRegion then
-        tickClip:SetPoint("LEFT", anchorRegion, "RIGHT", 0, 0)
-    else
-        tickClip:SetAllPoints(statusBar)
-    end
+    if anchorRegion then tickClip:SetPoint("LEFT", anchorRegion, "RIGHT", 0, 0)
+    else tickClip:SetAllPoints(statusBar) end
     tickClip:SetClipsChildren(true)
     tickClip:SetFrameLevel(tickBar:GetFrameLevel() + 1)
 
@@ -70,11 +63,7 @@ function TickMixin:Create(parent, statusBar, anchorRegion)
 end
 
 -- [ APPLY ]-----------------------------------------------------------------------------------------
---- Size the tick and update clip insets for edge hiding
--- @param frame Frame: parent frame with .TickBar/.TickClip/.TickMark
--- @param tickSize number: raw tick size setting (0 = hidden)
--- @param height number: bar height for overshoot calculation
--- @param anchorBar StatusBar|nil: bar to anchor clip to (defaults to TickBar's existing anchors)
+
 function TickMixin:Apply(frame, tickSize, height, anchorBar)
     local rounded = 2 * math.floor((tickSize + 1) / 2)
     if rounded > 0 and frame.TickBar then
@@ -95,6 +84,7 @@ function TickMixin:Apply(frame, tickSize, height, anchorBar)
 end
 
 -- [ SHOW / HIDE ]-----------------------------------------------------------------------------------
+
 function TickMixin:Show(frame)
     if frame.TickBar then frame.TickBar:Show() end
     if frame.TickClip then frame.TickClip:Show() end
@@ -106,7 +96,7 @@ function TickMixin:Hide(frame)
 end
 
 -- [ UPDATE ]----------------------------------------------------------------------------------------
---- Set value on TickBar (secret-safe via StatusBar sink)
+
 function TickMixin:Update(frame, current, max, smoothing)
     if not frame.TickBar then return end
     frame.TickBar:SetMinMaxValues(0, max)

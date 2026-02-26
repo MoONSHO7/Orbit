@@ -60,6 +60,16 @@ function PositionUtils.CalculateAnchor(posX, posY, halfW, halfH)
     return anchorX, anchorY, offsetX, offsetY, justifyH
 end
 
+-- Inverse of CalculateAnchor: convert anchor-based offsets back to center-relative coordinates
+function PositionUtils.AnchorToCenter(anchorX, anchorY, offsetX, offsetY, halfW, halfH)
+    local centerX, centerY = 0, 0
+    if anchorX == "LEFT" then centerX = (offsetX or 0) - halfW
+    elseif anchorX == "RIGHT" then centerX = halfW - (offsetX or 0) end
+    if anchorY == "BOTTOM" then centerY = (offsetY or 0) - halfH
+    elseif anchorY == "TOP" then centerY = halfH - (offsetY or 0) end
+    return centerX, centerY
+end
+
 -------------------------------------------------
 -- ANCHOR POINT BUILDER
 -------------------------------------------------
@@ -203,4 +213,31 @@ function PositionUtils.ApplyTextPosition(element, parent, pos, defaultAnchor, de
     end
 
     return false
+end
+
+-- [ ANCHOR TO POSITION ]----------------------------------------------------------------------------
+
+function PositionUtils.AnchorToPosition(posX, posY, halfW, halfH, defaultPosition)
+    if posX and posY and halfW and halfH then
+        local beyondX = math.max(0, math.abs(posX) - halfW)
+        local beyondY = math.max(0, math.abs(posY) - halfH)
+        if beyondY > beyondX then return posY > 0 and "Above" or "Below"
+        elseif beyondX > beyondY then return posX > 0 and "Right" or "Left" end
+        if math.abs(posX) / math.max(halfW, 1) > math.abs(posY) / math.max(halfH, 1) then return posX > 0 and "Right" or "Left"
+        else return posY > 0 and "Above" or "Below" end
+    end
+    return defaultPosition or "Right"
+end
+
+-- [ APPLY ICON POSITION ]---------------------------------------------------------------------------
+
+function PositionUtils.ApplyIconPosition(icon, parentFrame, pos)
+    if not pos or not pos.anchorX then return end
+    local anchorPoint = PositionUtils.BuildAnchorPoint(pos.anchorX, pos.anchorY or "CENTER")
+    local finalX = pos.offsetX or 0
+    local finalY = pos.offsetY or 0
+    if pos.anchorX == "RIGHT" then finalX = -finalX end
+    if pos.anchorY == "TOP" then finalY = -finalY end
+    icon:ClearAllPoints()
+    icon:SetPoint("CENTER", parentFrame, anchorPoint, finalX, finalY)
 end

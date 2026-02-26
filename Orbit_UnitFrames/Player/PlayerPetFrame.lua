@@ -110,21 +110,13 @@ function Plugin:OnLoad()
         if self.frame.Name then
             OrbitEngine.ComponentDrag:Attach(self.frame.Name, self.frame, {
                 key = "Name",
-                onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                    local positions = self:GetSetting(PET_FRAME_INDEX, "ComponentPositions") or {}
-                    positions.Name = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                    self:SetSetting(PET_FRAME_INDEX, "ComponentPositions", positions)
-                end,
+                onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(self, PET_FRAME_INDEX, "Name"),
             })
         end
         if self.frame.HealthText then
             OrbitEngine.ComponentDrag:Attach(self.frame.HealthText, self.frame, {
                 key = "HealthText",
-                onPositionChange = function(component, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-                    local positions = self:GetSetting(PET_FRAME_INDEX, "ComponentPositions") or {}
-                    positions.HealthText = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
-                    self:SetSetting(PET_FRAME_INDEX, "ComponentPositions", positions)
-                end,
+                onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(self, PET_FRAME_INDEX, "HealthText"),
             })
         end
     end

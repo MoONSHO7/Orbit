@@ -12,12 +12,12 @@ local Helpers = nil
 local MAX_PREVIEW_FRAMES = 20
 local PREVIEW_GROUPS = 4
 local DEBOUNCE_DELAY = 0.05
-local TIMER_MIN_ICON_SIZE = 14
+
 local OFFLINE_ALPHA = 0.35
 local CANVAS_ICON_SIZE = 18
 local CANVAS_ICON_SPACING = 22
 local PRIVATE_AURA_ICON_SIZE = 18
-local MAX_PRIVATE_AURA_ANCHORS = 3
+
 local PREVIEW_NAMES = {
     "Arthas", "Jaina", "Thrall", "Sylvanas", "Anduin",
     "Illidan", "Tyrande", "Velen", "Malfurion", "Genn",
@@ -50,26 +50,10 @@ local PREVIEW_ROLES = {
 }
 local SAMPLE_DEBUFF_ICONS = { 136096, 136118, 132158, 136048, 132212 }
 local SAMPLE_BUFF_ICONS = { 135907, 136048, 136041, 135944, 135987 }
-local FAKE_COOLDOWN_ELAPSED = 10
-local FAKE_COOLDOWN_DURATION = 60
 
--- [ ICON POSITION HELPER ]--------------------------------------------------------------------------
 
-local function ApplyIconPosition(icon, parentFrame, pos)
-    if not pos or not pos.anchorX then return end
-    local anchorX = pos.anchorX
-    local anchorY = pos.anchorY or "CENTER"
-    local anchorPoint
-    if anchorY == "CENTER" and anchorX == "CENTER" then anchorPoint = "CENTER"
-    elseif anchorY == "CENTER" then anchorPoint = anchorX
-    elseif anchorX == "CENTER" then anchorPoint = anchorY
-    else anchorPoint = anchorY .. anchorX end
-    local finalX = pos.offsetX or 0
-    local finalY = pos.offsetY or 0
-    if anchorX == "RIGHT" then finalX = -finalX end
-    if anchorY == "TOP" then finalY = -finalY end
-    icon:ClearAllPoints()
-    icon:SetPoint("CENTER", parentFrame, anchorPoint, finalX, finalY)
+local ApplyIconPosition = function(icon, parentFrame, pos)
+    OrbitEngine.PositionUtils.ApplyIconPosition(icon, parentFrame, pos)
 end
 
 -- [ CANVAS MODE DETECTION ]-------------------------------------------------------------------------
@@ -265,14 +249,8 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
 
             if self.ApplyTextStyling then self:ApplyTextStyling(frame) end
 
-            -- [ Component Overrides ]---------------------------------------------------------------
-            if frame.Name and componentPositions.Name and componentPositions.Name.overrides then
-                OrbitEngine.OverrideUtils.ApplyOverrides(frame.Name, componentPositions.Name.overrides)
-            end
-            if frame.HealthText and componentPositions.HealthText and componentPositions.HealthText.overrides then
-                OrbitEngine.OverrideUtils.ApplyOverrides(frame.HealthText, componentPositions.HealthText.overrides)
-            end
-
+            -- [ Component Overrides + Positions ]--------------------------------------------------
+            frame.previewClassFile = PREVIEW_CLASSES[dataIdx]
             if frame.ApplyComponentPositions then frame:ApplyComponentPositions(componentPositions) end
 
             -- [ Role Icon ]-------------------------------------------------------------------------
@@ -359,56 +337,8 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
 
                 local paa = frame.PrivateAuraAnchor
                 if paa and not isDisabled("PrivateAuraAnchor") then
-                    local posData = savedPositions.PrivateAuraAnchor or {}
-                    local overrides = posData.overrides
-                    local paaScale = (overrides and overrides.Scale) or 1
-                    local iconSize = math.floor(PRIVATE_AURA_ICON_SIZE * paaScale)
-                    local spacing = 1
-                    local count = MAX_PRIVATE_AURA_ANCHORS
-                    local totalWidth = (count * iconSize) + ((count - 1) * spacing)
-                    local anchorX = posData.anchorX or "CENTER"
-                    local paaTexture = Orbit.StatusIconMixin:GetPrivateAuraTexture()
-
-                    paa.Icon:SetTexture(nil)
-                    paa:SetSize(totalWidth, iconSize)
-
-                    if not savedPositions.PrivateAuraAnchor then
-                        paa:ClearAllPoints()
-                        paa:SetPoint("CENTER", frame, "BOTTOM", 0, OrbitEngine.Pixel:Snap(iconSize * 0.5 + 2, 1))
-                    end
-
-                    paa._previewIcons = paa._previewIcons or {}
-                    for pi = 1, count do
-                        local sub = paa._previewIcons[pi]
-                        if not sub then
-                            sub = CreateFrame("Button", nil, paa, "BackdropTemplate")
-                            sub.Icon = sub:CreateTexture(nil, "ARTWORK")
-                            sub.Icon:SetAllPoints()
-                            sub.icon = sub.Icon
-                            sub:EnableMouse(false)
-                            paa._previewIcons[pi] = sub
-                        end
-                        sub:SetParent(paa)
-                        sub:SetSize(iconSize, iconSize)
-                        sub.Icon:SetTexture(paaTexture)
-                        sub:ClearAllPoints()
-                        if anchorX == "RIGHT" then
-                            sub:SetPoint("TOPRIGHT", paa, "TOPRIGHT", -((pi - 1) * (iconSize + spacing)), 0)
-                        elseif anchorX == "LEFT" then
-                            sub:SetPoint("TOPLEFT", paa, "TOPLEFT", (pi - 1) * (iconSize + spacing), 0)
-                        else
-                            local centeredStart = -(totalWidth - iconSize) / 2
-                            sub:SetPoint("CENTER", paa, "CENTER", centeredStart + (pi - 1) * (iconSize + spacing), 0)
-                        end
-                        if Orbit.Skin and Orbit.Skin.Icons then
-                            Orbit.Skin.Icons:ApplyCustom(sub, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
-                        end
-                        sub:Show()
-                    end
-                    for pi = count + 1, #(paa._previewIcons or {}) do
-                        paa._previewIcons[pi]:Hide()
-                    end
-                    paa:Show()
+                    local posData = savedPositions and savedPositions.PrivateAuraAnchor
+                    self:ShowPreviewPrivateAuras(frame, posData, PRIVATE_AURA_ICON_SIZE)
                 elseif paa then paa:Hide() end
             else
                 for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" }) do
@@ -439,139 +369,25 @@ end
 
 -- [ PREVIEW AURAS ]---------------------------------------------------------------------------------
 
+local RAID_PREVIEW_AURA_CFG = {
+    helpers = function() return Orbit.RaidFrameHelpers end,
+    defaultAnchorX = "RIGHT", defaultJustifyH = "LEFT",
+}
+local RAID_PREVIEW_BUFF_CFG = {
+    helpers = function() return Orbit.RaidFrameHelpers end,
+    defaultAnchorX = "LEFT", defaultJustifyH = "RIGHT",
+}
+
 function Orbit.RaidFramePreviewMixin:ShowPreviewAuras(frame, frameIndex)
     local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
     local debuffData = componentPositions.Debuffs or {}
     local buffData = componentPositions.Buffs or {}
-    local debuffOverrides = debuffData.overrides or {}
-    local buffOverrides = buffData.overrides or {}
     local debuffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Debuffs")
     local buffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Buffs")
-    local maxDebuffs = debuffOverrides.MaxIcons or 3
-    local maxBuffs = buffOverrides.MaxIcons or 3
-    local numDebuffs = debuffDisabled and 0 or maxDebuffs
-    local numBuffs = buffDisabled and 0 or maxBuffs
-    self:ShowPreviewAuraIcons(frame, "debuff", debuffData, numDebuffs, maxDebuffs, SAMPLE_DEBUFF_ICONS, debuffOverrides)
-    self:ShowPreviewAuraIcons(frame, "buff", buffData, numBuffs, maxBuffs, SAMPLE_BUFF_ICONS, buffOverrides)
-end
-
--- [ PREVIEW AURA ICON DISPLAY ]---------------------------------------------------------------------
-
-function Orbit.RaidFramePreviewMixin:ShowPreviewAuraIcons(frame, auraType, posData, numIcons, maxIcons, sampleIcons, overrides)
-    local containerKey = auraType .. "Container"
-    local poolKey = "preview" .. auraType:gsub("^%l", string.upper) .. "s"
-    local AURA_BASE_ICON_SIZE = Orbit.RaidFrameHelpers.LAYOUT.AuraBaseIconSize
-    local AURA_SPACING = 1
-
-    if numIcons == 0 then
-        if frame[containerKey] then frame[containerKey]:Hide() end
-        return
-    end
-
-    if not frame[containerKey] then frame[containerKey] = CreateFrame("Frame", nil, frame) end
-    local container = frame[containerKey]
-    container:SetParent(frame)
-    container:SetFrameStrata("MEDIUM")
-    container:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
-    container:Show()
-
-    local frameWidth = frame:GetWidth()
-    local frameHeight = frame:GetHeight()
-    local RaidHelpers = Orbit.RaidFrameHelpers
-    local position = RaidHelpers:AnchorToPosition(posData.posX, posData.posY, frameWidth / 2, frameHeight / 2)
-    local isHorizontal = (position == "Above" or position == "Below")
-    local maxRows = (overrides and overrides.MaxRows) or 2
-    local iconSize = (overrides and overrides.IconSize) or AURA_BASE_ICON_SIZE
-    iconSize = math.max(10, iconSize)
-
-    local rows, iconsPerRow, containerWidth, containerHeight
-    if isHorizontal then
-        iconsPerRow = math.max(1, math.floor((frameWidth + AURA_SPACING) / (iconSize + AURA_SPACING)))
-        rows = math.min(maxRows, math.ceil(numIcons / iconsPerRow))
-        local displayCount = math.min(numIcons, iconsPerRow * rows)
-        local displayCols = math.min(displayCount, iconsPerRow)
-        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * AURA_SPACING)
-        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
-    else
-        rows = math.min(maxRows, numIcons)
-        iconsPerRow = math.ceil(numIcons / rows)
-        containerWidth = (iconsPerRow * iconSize) + ((iconsPerRow - 1) * AURA_SPACING)
-        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
-    end
-
-    container:SetSize(containerWidth, containerHeight)
-    container:ClearAllPoints()
-
-    local anchorX = posData.anchorX or "RIGHT"
-    local anchorY = posData.anchorY or "CENTER"
-    local offsetX = posData.offsetX or 0
-    local offsetY = posData.offsetY or 0
-    local justifyH = posData.justifyH or "LEFT"
-
-    local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
-    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
-
-    local finalX = offsetX
-    local finalY = offsetY
-    if anchorX == "RIGHT" then finalX = -offsetX end
-    if anchorY == "TOP" then finalY = -offsetY end
-    container:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
-
-    if not frame[poolKey] then frame[poolKey] = {} end
-    for _, icon in ipairs(frame[poolKey]) do icon:Hide() end
-
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true }
-    local growDown = (anchorY ~= "BOTTOM")
-
-    for idx = 1, numIcons do
-        local icon = frame[poolKey][idx]
-        if not icon then
-            icon = CreateFrame("Button", nil, container, "BackdropTemplate")
-            icon.Icon = icon:CreateTexture(nil, "ARTWORK")
-            icon.Icon:SetAllPoints()
-            icon.icon = icon.Icon
-            icon.Cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
-            icon.Cooldown:SetAllPoints()
-            icon.Cooldown:SetHideCountdownNumbers(false)
-            icon.cooldown = icon.Cooldown
-            frame[poolKey][idx] = icon
-        end
-
-        icon:SetParent(container)
-        icon:SetSize(iconSize, iconSize)
-        icon:ClearAllPoints()
-        local col = (idx - 1) % iconsPerRow
-        local row = math.floor((idx - 1) / iconsPerRow)
-        local xOff = col * (iconSize + AURA_SPACING)
-        local yOff = row * (iconSize + AURA_SPACING)
-        if justifyH == "RIGHT" then
-            if growDown then icon:SetPoint("TOPRIGHT", container, "TOPRIGHT", -xOff, -yOff)
-            else icon:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -xOff, yOff) end
-        else
-            if growDown then icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOff, -yOff)
-            else icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOff, yOff) end
-        end
-
-        icon.Icon:SetTexture(sampleIcons[((idx - 1) % #sampleIcons) + 1])
-        if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(icon, skinSettings) end
-
-        local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or "Fonts\\FRIZQT__.TTF"
-        local fontOutline = Orbit.Skin:GetFontOutline()
-        local timerText = icon.Cooldown.Text
-        if not timerText then
-            for _, region in pairs({ icon.Cooldown:GetRegions() }) do
-                if region:IsObjectType("FontString") then timerText = region; break end
-            end
-            icon.Cooldown.Text = timerText
-        end
-        if timerText and timerText.SetFont then
-            timerText:SetFont(fontPath, Orbit.Skin:GetAdaptiveTextSize(iconSize, 8, nil, 0.45), fontOutline)
-        end
-        icon.Cooldown:SetHideCountdownNumbers(iconSize < TIMER_MIN_ICON_SIZE)
-        icon.Cooldown:SetCooldown(GetTime() - FAKE_COOLDOWN_ELAPSED, FAKE_COOLDOWN_DURATION)
-        icon.Cooldown:Show()
-        icon:Show()
-    end
+    local maxDebuffs = (debuffData.overrides or {}).MaxIcons or 3
+    local maxBuffs = (buffData.overrides or {}).MaxIcons or 3
+    self:ShowPreviewAuraIcons(frame, "debuff", debuffData, debuffDisabled and 0 or maxDebuffs, SAMPLE_DEBUFF_ICONS, debuffData.overrides, RAID_PREVIEW_AURA_CFG)
+    self:ShowPreviewAuraIcons(frame, "buff", buffData, buffDisabled and 0 or maxBuffs, SAMPLE_BUFF_ICONS, buffData.overrides, RAID_PREVIEW_BUFF_CFG)
 end
 
 -- [ PREVIEW HIDE ]----------------------------------------------------------------------------------

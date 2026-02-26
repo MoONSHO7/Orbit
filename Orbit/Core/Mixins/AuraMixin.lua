@@ -420,3 +420,276 @@ function Mixin:ApplyAuraSkin(icon, settings)
     if not icon or not Orbit.Skin or not Orbit.Skin.Icons then return end
     Orbit.Skin.Icons:ApplyCustom(icon, settings or { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true })
 end
+
+-- [ SMART AURA LAYOUT ]-----------------------------------------------------------------------------
+
+local SMART_AURA_SPACING = 1
+local SMART_MIN_ICON_SIZE = 10
+local SMART_DEFAULT_ICON_SIZE = 10
+
+function Mixin:CalculateSmartAuraLayout(frameW, frameH, position, maxIcons, numIcons, overrides)
+    local isHorizontal = (position == "Above" or position == "Below")
+    local maxRows = (overrides and overrides.MaxRows) or 2
+    local iconSize = math_max(SMART_MIN_ICON_SIZE, (overrides and overrides.IconSize) or SMART_DEFAULT_ICON_SIZE)
+    local rows, iconsPerRow, containerWidth, containerHeight
+    if isHorizontal then
+        iconsPerRow = math_max(1, math.floor((frameW + SMART_AURA_SPACING) / (iconSize + SMART_AURA_SPACING)))
+        rows = math.min(maxRows, math.ceil(numIcons / iconsPerRow))
+        local displayCols = math.min(math.min(numIcons, iconsPerRow * rows), iconsPerRow)
+        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * SMART_AURA_SPACING)
+        containerHeight = (rows * iconSize) + ((rows - 1) * SMART_AURA_SPACING)
+    else
+        rows = math.min(maxRows, math_max(1, numIcons))
+        iconsPerRow = math.ceil(numIcons / rows)
+        containerWidth = math_max(iconSize, (iconsPerRow * iconSize) + ((iconsPerRow - 1) * SMART_AURA_SPACING))
+        containerHeight = (rows * iconSize) + ((rows - 1) * SMART_AURA_SPACING)
+    end
+    return iconSize, rows, iconsPerRow, containerWidth, containerHeight
+end
+
+-- [ AURA ICON POSITIONING ]-------------------------------------------------------------------------
+
+function Mixin:PositionAuraIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow)
+    local xOff = col * (iconSize + SMART_AURA_SPACING)
+    local yOff = row * (iconSize + SMART_AURA_SPACING)
+    icon:ClearAllPoints()
+    local growDown = (anchorY ~= "BOTTOM")
+    if justifyH == "RIGHT" then
+        if growDown then icon:SetPoint("TOPRIGHT", container, "TOPRIGHT", -xOff, -yOff)
+        else icon:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -xOff, yOff) end
+    else
+        if growDown then icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOff, -yOff)
+        else icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOff, yOff) end
+    end
+    local nextCol = col + 1
+    local nextRow = row
+    if nextCol >= iconsPerRow then nextCol = 0; nextRow = row + 1 end
+    return nextCol, nextRow
+end
+
+-- [ AURA FILTER ]-----------------------------------------------------------------------------------
+
+function Mixin:IsAuraIncluded(unit, auraInstanceID, filter)
+    return not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, auraInstanceID, filter)
+end
+
+-- [ AURA CONTAINER DISPLAY ]------------------------------------------------------------------------
+
+local OrbitEngine = Orbit.Engine
+local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
+local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
+
+function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
+    local container = frame[containerKey]
+    if not container then return end
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled(cfg.componentKey) then container:Hide(); return end
+
+    local positions = plugin:GetSetting(1, "ComponentPositions") or {}
+    local auraData = positions[cfg.componentKey] or {}
+    local overrides = auraData.overrides or {}
+    local frameW, frameH = frame:GetWidth(), frame:GetHeight()
+    local maxIcons = overrides.MaxIcons or cfg.defaultMaxIcons or 3
+    local unit = frame.unit
+    if not unit or not UnitExists(unit) then container:Hide(); return end
+
+    if not frame[poolKey] then frame[poolKey] = CreateFramePool("Button", container, "BackdropTemplate") end
+    frame[poolKey]:ReleaseAll()
+
+    local auras
+    if cfg.postFilter then
+        local rawAuras = plugin:FetchAuras(unit, cfg.fetchFilter, cfg.fetchMax or 40)
+        auras = cfg.postFilter(plugin, unit, rawAuras, maxIcons)
+    else
+        auras = plugin:FetchAuras(unit, cfg.fetchFilter, maxIcons)
+    end
+    if #auras == 0 then container:Hide(); return end
+
+    local helpers = type(cfg.helpers) == "function" and cfg.helpers() or cfg.helpers
+    local position = helpers:AnchorToPosition(auraData.posX, auraData.posY, frameW / 2, frameH / 2)
+    local iconSize, _, iconsPerRow, containerW, containerH = self:CalculateSmartAuraLayout(frameW, frameH, position, maxIcons, #auras, overrides)
+
+    container:ClearAllPoints()
+    container:SetSize(containerW, containerH)
+
+    local anchorX = auraData.anchorX or cfg.defaultAnchorX or "LEFT"
+    local anchorY = auraData.anchorY or cfg.defaultAnchorY or "CENTER"
+    local offsetX = auraData.offsetX or 0
+    local offsetY = auraData.offsetY or 0
+    local justifyH = auraData.justifyH or cfg.defaultJustifyH or "LEFT"
+
+    local finalX = (anchorX == "RIGHT") and -offsetX or offsetX
+    local finalY = (anchorY == "TOP") and -offsetY or offsetY
+    container:SetPoint(BuildComponentSelfAnchor(false, true, anchorY, justifyH), frame, BuildAnchorPoint(anchorX, anchorY), finalX, finalY)
+
+    local skinSettings = cfg.skinSettings
+    if type(skinSettings) == "function" then skinSettings = skinSettings(plugin) end
+
+    local col, row = 0, 0
+    for _, aura in ipairs(auras) do
+        local icon = frame[poolKey]:Acquire()
+        icon:EnableMouse(false)
+        plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
+        plugin:SetupAuraTooltip(icon, aura, unit, cfg.tooltipFilter)
+        col, row = self:PositionAuraIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow)
+    end
+    container:Show()
+end
+
+-- [ SINGLE AURA ICON DISPLAY ]----------------------------------------------------------------------
+
+function Mixin:UpdateSingleAuraIcon(frame, plugin, iconKey, filter, iconSize)
+    local icon = frame[iconKey]
+    if not icon then return end
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled(iconKey) then icon:Hide(); return end
+    local unit = frame.unit
+    if not unit or not UnitExists(unit) or not UnitIsConnected(unit) then icon:Hide(); return end
+    local auras = plugin:FetchAuras(unit, filter, 1)
+    local aura = auras[1]
+    if not aura or not aura.auraInstanceID or not plugin:IsAuraIncluded(unit, aura.auraInstanceID, filter) then icon:Hide(); return end
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false }
+    plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
+    plugin:SetupAuraTooltip(icon, aura, unit, filter:find("HARMFUL") and "HARMFUL" or "HELPFUL")
+    icon:Show()
+end
+
+-- [ DEFENSIVE ICON DISPLAY ]------------------------------------------------------------------------
+
+function Mixin:UpdateDefensiveIcon(frame, plugin, iconSize)
+    self:UpdateSingleAuraIcon(frame, plugin, "DefensiveIcon", "HELPFUL|BIG_DEFENSIVE", iconSize)
+    if frame.DefensiveIcon and not frame.DefensiveIcon:IsShown() then
+        self:UpdateSingleAuraIcon(frame, plugin, "DefensiveIcon", "HELPFUL|EXTERNAL_DEFENSIVE", iconSize)
+    end
+end
+
+-- [ CROWD CONTROL ICON DISPLAY ]--------------------------------------------------------------------
+
+function Mixin:UpdateCrowdControlIcon(frame, plugin, iconSize)
+    self:UpdateSingleAuraIcon(frame, plugin, "CrowdControlIcon", "HARMFUL|CROWD_CONTROL", iconSize)
+end
+
+-- [ PREVIEW AURA ICON DISPLAY ]---------------------------------------------------------------------
+
+local PREVIEW_SKIN = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true }
+local PREVIEW_TIMER_MIN_SIZE = 14
+local PREVIEW_COOLDOWN_ELAPSED = 10
+local PREVIEW_COOLDOWN_DURATION = 60
+
+function Mixin:ShowPreviewAuraIcons(frame, auraType, posData, numIcons, sampleIcons, overrides, cfg)
+    local containerKey = auraType .. "Container"
+    local poolKey = "preview" .. auraType:gsub("^%l", string.upper) .. "s"
+    if numIcons == 0 then
+        if frame[containerKey] then frame[containerKey]:Hide() end
+        return
+    end
+    if not frame[containerKey] then frame[containerKey] = CreateFrame("Frame", nil, frame) end
+    local container = frame[containerKey]
+    container:SetParent(frame)
+    container:SetFrameStrata("MEDIUM")
+    container:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
+    container:Show()
+    local helpers = cfg.helpers()
+    local frameW, frameH = frame:GetWidth(), frame:GetHeight()
+    local position = helpers:AnchorToPosition(posData.posX, posData.posY, frameW / 2, frameH / 2)
+    local iconSize, _, iconsPerRow, containerW, containerH = self:CalculateSmartAuraLayout(frameW, frameH, position, numIcons, numIcons, overrides)
+    container:SetSize(containerW, containerH)
+    container:ClearAllPoints()
+    local anchorX = posData.anchorX or (cfg.defaultAnchorX or "RIGHT")
+    local anchorY = posData.anchorY or "CENTER"
+    local justifyH = posData.justifyH or (cfg.defaultJustifyH or "LEFT")
+    local offsetX, offsetY = posData.offsetX or 0, posData.offsetY or 0
+    local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
+    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
+    local finalX, finalY = offsetX, offsetY
+    if anchorX == "RIGHT" then finalX = -offsetX end
+    if anchorY == "TOP" then finalY = -offsetY end
+    container:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
+    if not frame[poolKey] then frame[poolKey] = {} end
+    for _, icon in ipairs(frame[poolKey]) do icon:Hide() end
+    local col, row = 0, 0
+    for idx = 1, numIcons do
+        local icon = frame[poolKey][idx]
+        if not icon then
+            icon = CreateFrame("Button", nil, container, "BackdropTemplate")
+            icon.Icon = icon:CreateTexture(nil, "ARTWORK")
+            icon.Icon:SetAllPoints()
+            icon.icon = icon.Icon
+            icon.Cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
+            icon.Cooldown:SetAllPoints()
+            icon.Cooldown:SetHideCountdownNumbers(false)
+            icon.cooldown = icon.Cooldown
+            frame[poolKey][idx] = icon
+        end
+        icon:SetParent(container)
+        icon:SetSize(iconSize, iconSize)
+        icon.Icon:SetTexture(sampleIcons[((idx - 1) % #sampleIcons) + 1])
+        if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(icon, PREVIEW_SKIN) end
+        local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or "Fonts\\FRIZQT__.TTF"
+        local fontOutline = Orbit.Skin:GetFontOutline()
+        local timerText = icon.Cooldown.Text
+        if not timerText then
+            for _, region in pairs({ icon.Cooldown:GetRegions() }) do
+                if region:IsObjectType("FontString") then timerText = region; break end
+            end
+            icon.Cooldown.Text = timerText
+        end
+        if timerText and timerText.SetFont then
+            timerText:SetFont(fontPath, Orbit.Skin:GetAdaptiveTextSize(iconSize, 8, nil, 0.45), fontOutline)
+        end
+        icon.Cooldown:SetHideCountdownNumbers(iconSize < PREVIEW_TIMER_MIN_SIZE)
+        icon.Cooldown:SetCooldown(GetTime() - PREVIEW_COOLDOWN_ELAPSED, PREVIEW_COOLDOWN_DURATION)
+        icon.Cooldown:Show()
+        col, row = self:PositionAuraIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow)
+        icon:Show()
+    end
+end
+
+-- [ PREVIEW PRIVATE AURA ANCHORS ]-----------------------------------------------------------------
+
+local PREVIEW_PAA_SKIN = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false }
+local PREVIEW_PAA_SPACING = 1
+local PREVIEW_PAA_COUNT = 3
+
+function Mixin:ShowPreviewPrivateAuras(frame, posData, baseIconSize)
+    local paa = frame.PrivateAuraAnchor
+    if not paa then return end
+    local overrides = posData and posData.overrides
+    local paaScale = (overrides and overrides.Scale) or 1
+    local iconSize = math.floor(baseIconSize * paaScale)
+    local totalWidth = (PREVIEW_PAA_COUNT * iconSize) + ((PREVIEW_PAA_COUNT - 1) * PREVIEW_PAA_SPACING)
+    local anchorX = (posData and posData.anchorX) or "CENTER"
+    local paaTexture = Orbit.StatusIconMixin:GetPrivateAuraTexture()
+    paa.Icon:SetTexture(nil)
+    paa:SetSize(totalWidth, iconSize)
+    if not posData or not posData.anchorX then
+        paa:ClearAllPoints()
+        paa:SetPoint("CENTER", frame, "BOTTOM", 0, OrbitEngine.Pixel:Snap(iconSize * 0.5 + 2, frame:GetEffectiveScale() or 1))
+    end
+    paa._previewIcons = paa._previewIcons or {}
+    for pi = 1, PREVIEW_PAA_COUNT do
+        local sub = paa._previewIcons[pi]
+        if not sub then
+            sub = CreateFrame("Button", nil, paa, "BackdropTemplate")
+            sub.Icon = sub:CreateTexture(nil, "ARTWORK")
+            sub.Icon:SetAllPoints()
+            sub.icon = sub.Icon
+            sub:EnableMouse(false)
+            paa._previewIcons[pi] = sub
+        end
+        sub:SetParent(paa)
+        sub:SetSize(iconSize, iconSize)
+        sub.Icon:SetTexture(paaTexture)
+        sub:ClearAllPoints()
+        if anchorX == "RIGHT" then
+            sub:SetPoint("TOPRIGHT", paa, "TOPRIGHT", -((pi - 1) * (iconSize + PREVIEW_PAA_SPACING)), 0)
+        elseif anchorX == "LEFT" then
+            sub:SetPoint("TOPLEFT", paa, "TOPLEFT", (pi - 1) * (iconSize + PREVIEW_PAA_SPACING), 0)
+        else
+            local centeredStart = -(totalWidth - iconSize) / 2
+            sub:SetPoint("CENTER", paa, "CENTER", centeredStart + (pi - 1) * (iconSize + PREVIEW_PAA_SPACING), 0)
+        end
+        if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(sub, PREVIEW_PAA_SKIN) end
+        sub:Show()
+    end
+    for pi = PREVIEW_PAA_COUNT + 1, #(paa._previewIcons or {}) do paa._previewIcons[pi]:Hide() end
+    paa:Show()
+end

@@ -45,6 +45,8 @@ local function StripEscapes(text)
     return text
 end
 
+local ACTIVE_DURATION_PATTERNS = { "for (%d+%.?%d*) sec", "lasts (%d+%.?%d*) sec", "over (%d+%.?%d*) sec" }
+
 local function ParseActiveDuration(itemType, id)
     if itemType == "spell" and ACTIVE_DURATION_OVERRIDES[id] then
         return ACTIVE_DURATION_OVERRIDES[id]
@@ -64,7 +66,7 @@ local function ParseActiveDuration(itemType, id)
         return nil
     end
     text = StripEscapes(text)
-    for _, pattern in ipairs({ "for (%d+%.?%d*) sec", "lasts (%d+%.?%d*) sec", "over (%d+%.?%d*) sec" }) do
+    for _, pattern in ipairs(ACTIVE_DURATION_PATTERNS) do
         local num = text:match(pattern)
         if num then
             return tonumber(num)
@@ -72,6 +74,8 @@ local function ParseActiveDuration(itemType, id)
     end
     return nil
 end
+
+local COOLDOWN_KEYWORDS = { "[Cc]ooldown", "[Rr]echarge" }
 
 local function ParseCooldownDuration(itemType, id)
     local tooltipData = nil
@@ -93,7 +97,7 @@ local function ParseCooldownDuration(itemType, id)
                 best = val
             end
         else
-            for _, keyword in ipairs({ "[Cc]ooldown", "[Rr]echarge" }) do
+            for _, keyword in ipairs(COOLDOWN_KEYWORDS) do
                 local min = text:match("(%d+%.?%d*) [Mm]in " .. keyword)
                 if min then
                     local val = tonumber(min) * 60
@@ -114,7 +118,7 @@ local function ParseCooldownDuration(itemType, id)
     return best
 end
 
-local function BuildDesatCurve(activeDuration, cooldownDuration)
+local function BuildPhaseCurve(activeDuration, cooldownDuration)
     local curve = C_CurveUtil.CreateCurve()
     curve:AddPoint(0.0, 0)
     if not activeDuration or not cooldownDuration or cooldownDuration <= 0 or activeDuration >= cooldownDuration then
@@ -123,23 +127,6 @@ local function BuildDesatCurve(activeDuration, cooldownDuration)
         return curve
     end
     local breakpoint = 1.0 - (activeDuration / cooldownDuration)
-    curve:AddPoint(0.001, 1)
-    curve:AddPoint(math.max(breakpoint, 0.002), 1)
-    curve:AddPoint(breakpoint + 0.001, 0)
-    curve:AddPoint(1.0, 0)
-    return curve
-end
-
-local function BuildCooldownAlphaCurve(activeDuration, cooldownDuration)
-    local curve = C_CurveUtil.CreateCurve()
-    if not activeDuration or not cooldownDuration or cooldownDuration <= 0 or activeDuration >= cooldownDuration then
-        curve:AddPoint(0.0, 0)
-        curve:AddPoint(0.001, 1)
-        curve:AddPoint(1.0, 1)
-        return curve
-    end
-    local breakpoint = 1.0 - (activeDuration / cooldownDuration)
-    curve:AddPoint(0.0, 0)
     curve:AddPoint(0.001, 1)
     curve:AddPoint(math.max(breakpoint, 0.002), 1)
     curve:AddPoint(breakpoint + 0.001, 0)
@@ -481,79 +468,49 @@ local function HasCooldown(itemType, id)
     return false
 end
 
-local function IsDraggingCooldownAbility()
+local function ResolveCursorInfo()
     local cursorType, id, subType, spellID = GetCursorInfo()
-    if not cursorType then
-        return false
-    end
     if cursorType == "spell" then
         local actualId = spellID or id
         if not spellID and subType and subType ~= "" then
             local bookInfo = C_SpellBook.GetSpellBookItemInfo(id, Enum.SpellBookSpellBank[subType] or Enum.SpellBookSpellBank.Player)
-            if bookInfo and bookInfo.spellID then
-                actualId = bookInfo.spellID
-            end
+            if bookInfo and bookInfo.spellID then actualId = bookInfo.spellID end
         end
-        return HasCooldown("spell", actualId)
+        return "spell", actualId
     elseif cursorType == "item" then
-        return HasCooldown("item", id)
+        return "item", id
     end
-    return false
+    return nil, nil
+end
+
+local function IsDraggingCooldownAbility()
+    local itemType, actualId = ResolveCursorInfo()
+    if not itemType then return false end
+    return HasCooldown(itemType, actualId)
 end
 
 -- [ DRAG AND DROP ]----------------------------------------------------------------------------------
 function Plugin:OnEdgeAddButtonClick(anchor, x, y)
-    local cursorType, id, subType, spellID = GetCursorInfo()
-    if cursorType ~= "spell" and cursorType ~= "item" then
-        return
-    end
-
-    local actualId = id
-    if cursorType == "spell" then
-        actualId = spellID or id
-        if not spellID and subType and subType ~= "" then
-            local bookInfo = C_SpellBook.GetSpellBookItemInfo(id, Enum.SpellBookSpellBank[subType] or Enum.SpellBookSpellBank.Player)
-            if bookInfo and bookInfo.spellID then
-                actualId = bookInfo.spellID
-            end
-        end
-    end
-
+    local itemType, actualId = ResolveCursorInfo()
+    if not itemType then return end
     ClearCursor()
-    self:SaveTrackedItem(anchor.systemIndex, x, y, cursorType, actualId)
+    self:SaveTrackedItem(anchor.systemIndex, x, y, itemType, actualId)
     self:LoadTrackedItems(anchor, anchor.systemIndex)
 end
 
 function Plugin:OnTrackedAnchorReceiveDrag(anchor)
     local gridItems = anchor.gridItems or {}
-    local hasAny = next(gridItems) ~= nil
-    if not hasAny then
+    if not next(gridItems) then
         self:OnEdgeAddButtonClick(anchor, 0, 0)
     end
 end
 
 function Plugin:OnTrackedIconReceiveDrag(icon)
-    local cursorType, id, subType, spellID = GetCursorInfo()
-    if cursorType ~= "spell" and cursorType ~= "item" then
-        return
-    end
-
-    local actualId = id
-    if cursorType == "spell" then
-        actualId = spellID or id
-        if not spellID and subType and subType ~= "" then
-            local bookInfo = C_SpellBook.GetSpellBookItemInfo(id, Enum.SpellBookSpellBank[subType] or Enum.SpellBookSpellBank.Player)
-            if bookInfo and bookInfo.spellID then
-                actualId = bookInfo.spellID
-            end
-        end
-    end
-
-    if not HasCooldown(cursorType, actualId) then
-        return
-    end
+    local itemType, actualId = ResolveCursorInfo()
+    if not itemType then return end
+    if not HasCooldown(itemType, actualId) then return end
     ClearCursor()
-    self:SaveTrackedItem(icon.systemIndex, icon.gridX, icon.gridY, cursorType, actualId)
+    self:SaveTrackedItem(icon.systemIndex, icon.gridX, icon.gridY, itemType, actualId)
     self:LoadTrackedItems(icon:GetParent(), icon.systemIndex)
 end
 
@@ -1272,8 +1229,8 @@ function Plugin:LayoutTrackedIcons(anchor, systemIndex)
         icon.activeDuration = data.activeDuration
         icon.cooldownDuration = data.cooldownDuration
         local hasActive = data.activeDuration and data.cooldownDuration
-        icon.desatCurve = hasActive and BuildDesatCurve(data.activeDuration, data.cooldownDuration) or nil
-        icon.cdAlphaCurve = hasActive and BuildCooldownAlphaCurve(data.activeDuration, data.cooldownDuration) or nil
+        icon.desatCurve = hasActive and BuildPhaseCurve(data.activeDuration, data.cooldownDuration) or nil
+        icon.cdAlphaCurve = hasActive and BuildPhaseCurve(data.activeDuration, data.cooldownDuration) or nil
         if data.type == "spell" and C_Spell.GetSpellCharges then
             local ci = C_Spell.GetSpellCharges(data.id)
             if ci and ci.maxCharges and not issecretvalue(ci.maxCharges) then
@@ -1566,8 +1523,8 @@ function Plugin:ReparseActiveDurations()
                 icon.cooldownDuration = data.cooldownDuration
             end
             local hasActive = icon.activeDuration and icon.cooldownDuration
-            icon.desatCurve = hasActive and BuildDesatCurve(icon.activeDuration, icon.cooldownDuration) or nil
-            icon.cdAlphaCurve = hasActive and BuildCooldownAlphaCurve(icon.activeDuration, icon.cooldownDuration) or nil
+            icon.desatCurve = hasActive and BuildPhaseCurve(icon.activeDuration, icon.cooldownDuration) or nil
+            icon.cdAlphaCurve = hasActive and BuildPhaseCurve(icon.activeDuration, icon.cooldownDuration) or nil
         end
     end
     local entry = viewerMap[TRACKED_INDEX]

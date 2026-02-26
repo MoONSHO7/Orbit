@@ -112,18 +112,6 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
     data.currentX = centerRelX
     data.currentY = centerRelY
 
-    local origWidth, origHeight = parentWidth, parentHeight
-    if parent.orbitCanvasOriginal then
-        origWidth = parent.orbitCanvasOriginal.width or parentWidth
-        origHeight = parent.orbitCanvasOriginal.height or parentHeight
-        local scaleRatio = (parent.orbitCanvasOriginal.scale or 1) / (parent:GetScale() or 1)
-        data.xPercent = origWidth > 0 and ((centerRelX * scaleRatio) / origWidth) or 0
-        data.yPercent = origHeight > 0 and ((centerRelY * scaleRatio) / origHeight) or 0
-    else
-        data.xPercent = parentWidth > 0 and (centerRelX / parentWidth) or 0
-        data.yPercent = parentHeight > 0 and (centerRelY / parentHeight) or 0
-    end
-
     component:ClearAllPoints()
     component:SetPoint("CENTER", componentParent, "CENTER", centerRelX, centerRelY)
 
@@ -134,11 +122,7 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
         local needsComp = NeedsEdgeCompensation(data.isFontString, data.isAuraContainer)
         local compW, compH = SafeGetSize(component)
         local anchorX, anchorY, edgeOffX, edgeOffY, justifyH =
-            CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsComp, compW, compH)
-        -- Aura containers also need height compensation (vertical self-anchor is BOTTOM/TOP, not CENTER)
-        if data.isAuraContainer and anchorY ~= "CENTER" then
-            edgeOffY = edgeOffY - (compH or 0) / 2
-        end
+            CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsComp, compW, compH, data.isAuraContainer)
         Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH)
     end
 end
@@ -282,17 +266,6 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
     data.currentX = newX
     data.currentY = newY
 
-    if parent and parent.orbitCanvasOriginal then
-        local origWidth = parent.orbitCanvasOriginal.width or parentWidth
-        local origHeight = parent.orbitCanvasOriginal.height or parentHeight
-        local scaleRatio = (parent.orbitCanvasOriginal.scale or 1) / (parent:GetScale() or 1)
-        data.xPercent = origWidth > 0 and ((newX * scaleRatio) / origWidth) or 0
-        data.yPercent = origHeight > 0 and ((newY * scaleRatio) / origHeight) or 0
-    else
-        data.xPercent = parentWidth > 0 and (newX / parentWidth) or 0
-        data.yPercent = parentHeight > 0 and (newY / parentHeight) or 0
-    end
-
     component:ClearAllPoints()
     component:SetPoint("CENTER", componentParent, "CENTER", newX, newY)
 
@@ -303,12 +276,9 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
 
     if data.options and data.options.onPositionChange then
         local needsWidthComp = NeedsEdgeCompensation(data.isFontString, data.isAuraContainer)
+        local compW, compH = SafeGetSize(component)
         local anchorX, anchorY, offsetX, offsetY, justifyH =
-            CalculateAnchorWithWidthCompensation(newX, newY, halfW, halfH, needsWidthComp, SafeGetSize(component))
-        if data.isAuraContainer and anchorY ~= "CENTER" then
-            local _, compHeight = SafeGetSize(component)
-            offsetY = offsetY - (compHeight or 0) / 2
-        end
+            CalculateAnchorWithWidthCompensation(newX, newY, halfW, halfH, needsWidthComp, compW, compH, data.isAuraContainer)
         data.options.onPositionChange(component, anchorX, anchorY, offsetX, offsetY, justifyH)
     end
 
@@ -319,6 +289,36 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
     if Engine.SelectionTooltip and Engine.SelectionTooltip.ShowComponentPosition then
         local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(newX, newY, halfW, halfH)
         Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, newX, newY, edgeOffX, edgeOffY, justifyH)
+    end
+end
+
+-- [ POSITION CALLBACK FACTORY ]---------------------------------------------------------------------
+function ComponentDrag:MakePositionCallback(plugin, systemIndex, key)
+    return function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
+        local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
+        plugin:SetSetting(systemIndex, "ComponentPositions", positions)
+    end
+end
+
+function ComponentDrag:MakeAuraPositionCallback(plugin, systemIndex, key)
+    return function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
+        local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+        if not positions[key] then positions[key] = {} end
+        positions[key].anchorX = anchorX
+        positions[key].anchorY = anchorY
+        positions[key].offsetX = offsetX
+        positions[key].offsetY = offsetY
+        positions[key].justifyH = justifyH
+        positions[key].justifyV = justifyV
+        local compParent = comp:GetParent()
+        if compParent then
+            local cx, cy = comp:GetCenter()
+            local px, py = compParent:GetCenter()
+            if cx and px then positions[key].posX = cx - px end
+            if cy and py then positions[key].posY = cy - py end
+        end
+        plugin:SetSetting(systemIndex, "ComponentPositions", positions)
     end
 end
 

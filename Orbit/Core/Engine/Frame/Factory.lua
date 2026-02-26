@@ -1,6 +1,4 @@
 -- [ ORBIT FRAME FACTORY ]---------------------------------------------------------------------------
--- Standardized frame creation for Orbit plugins.
--- Reduces boilerplate and ensures consistent frame setup.
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -8,97 +6,58 @@ local Engine = Orbit.Engine
 Engine.FrameFactory = Engine.FrameFactory or {}
 local FrameFactory = Engine.FrameFactory
 
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
+
+local DEFAULT_WIDTH = 200
+local DEFAULT_HEIGHT = 40
+local DEFAULT_Y_OFFSET = -200
+local DEFAULT_STRATA = "MEDIUM"
+local DEFAULT_SYSTEM_INDEX = 1
+local RESTORE_DEBOUNCE = 0.1
+local TEXT_OVERLAY_LEVEL_BOOST = 20
+
 -- [ FRAME CREATION ]--------------------------------------------------------------------------------
 
---- Create a standard Orbit frame with all required properties
--- @param name string: Unique name for the frame (will be prefixed with "Orbit")
--- @param plugin table: The plugin that owns this frame
--- @param opts table: Options table with:
---   - frameType string: Frame type (default: "Frame")
---   - template string: Frame template (optional)
---   - parent Frame: Parent frame (default: UIParent)
---   - width number: Initial width (default: 200)
---   - height number: Initial height (default: 40)
---   - x number: Initial X offset (default: 0)
---   - y number: Initial Y offset (default: -200)
---   - point string: Anchor point (default: "CENTER")
---   - strata string: Frame strata (default: "MEDIUM")
---   - systemIndex number: System index for settings (default: 1)
---   - anchorOptions table: Anchoring options (default: {horizontal=true, vertical=false})
---   - autoAttach boolean: Auto-attach to Orbit.Frame (default: true)
---   - autoRestore boolean: Auto-restore position (default: true)
--- @return Frame: The created frame
 function FrameFactory:Create(name, plugin, opts)
+    if not name then error("FrameFactory:Create requires a name") end
+    if not plugin then error("FrameFactory:Create requires a plugin") end
     opts = opts or {}
 
-    -- Validate inputs
-    if not name then
-        error("FrameFactory:Create requires a name")
-    end
-    if not plugin then
-        error("FrameFactory:Create requires a plugin")
-    end
-
-    -- Defaults
     local frameType = opts.frameType or "Frame"
-    local template = opts.template
     local parent = opts.parent or UIParent
-    local width = opts.width or 200
-    local height = opts.height or 40
+    local width = opts.width or DEFAULT_WIDTH
+    local height = opts.height or DEFAULT_HEIGHT
     local x = opts.x or 0
-    local y = opts.y or -200
+    local y = opts.y or DEFAULT_Y_OFFSET
     local point = opts.point or "CENTER"
-    local strata = opts.strata or "MEDIUM"
-    local systemIndex = opts.systemIndex or 1
-    local autoAttach = opts.autoAttach ~= false -- default true
-    local autoRestore = opts.autoRestore ~= false -- default true
+    local strata = opts.strata or DEFAULT_STRATA
+    local systemIndex = opts.systemIndex or DEFAULT_SYSTEM_INDEX
 
-    -- Create frame
     local frameName = "Orbit" .. name
-    local frame
-    if template then
-        frame = CreateFrame(frameType, frameName, parent, template)
-    else
-        frame = CreateFrame(frameType, frameName, parent)
-    end
+    local frame = CreateFrame(frameType, frameName, parent, opts.template)
 
-    -- Basic setup
     frame:SetSize(width, height)
     frame:SetPoint(point, parent, point, x, y)
     frame:SetFrameStrata(strata)
-    frame:SetClampedToScreen(true) -- Prevent dragging off-screen
+    frame:SetClampedToScreen(true)
 
-    -- Orbit metadata
     frame.systemIndex = systemIndex
     frame.orbitName = plugin.name
     frame.editModeName = plugin.name
     frame.orbitPlugin = plugin
-
-    -- Anchor options (default: vertical stacking only)
     frame.anchorOptions = opts.anchorOptions or { horizontal = true, vertical = false }
+    frame.defaultPosition = { point = point, relativeTo = parent, relativePoint = point, x = x, y = y }
 
-    -- Store Default Position for Reset
-    frame.defaultPosition = {
-        point = point,
-        relativeTo = parent,
-        relativePoint = point,
-        x = x,
-        y = y,
-    }
-
-    -- Store reference on plugin
     plugin.Frame = frame
 
-    -- Auto-attach to Frame system
-    if autoAttach then
+    if opts.autoAttach ~= false then
         Engine.Frame:AttachSettingsListener(frame, plugin, systemIndex)
     end
 
-    -- Auto-restore position (debounced)
-    if autoRestore then
+    if opts.autoRestore ~= false then
         Orbit.Async:Debounce(frameName .. "_RestorePos", function()
             Engine.Frame:RestorePosition(frame, plugin, systemIndex)
-        end, 0.1)
+        end, RESTORE_DEBOUNCE)
     end
 
     frame.SetBorder = function(self, size)
@@ -112,54 +71,30 @@ function FrameFactory:Create(name, plugin, opts)
     end
 
     Engine.Pixel:Enforce(frame)
-
     return frame
 end
 
---- Create a StatusBar Orbit frame
--- Convenience wrapper for StatusBar frames with common setup
--- @param name string: Unique name for the frame
--- @param plugin table: The plugin that owns this frame
--- @param opts table: Same options as Create, plus:
---   - minValue number: Min value (default: 0)
---   - maxValue number: Max value (default: 1)
---   - value number: Initial value (default: 0)
--- @return StatusBar: The created StatusBar frame
+-- [ STATUS BAR CREATION ]---------------------------------------------------------------------------
+
 function FrameFactory:CreateStatusBar(name, plugin, opts)
     opts = opts or {}
     opts.frameType = "StatusBar"
 
     local frame = self:Create(name, plugin, opts)
-
-    -- StatusBar specific setup
-    local minVal = opts.minValue or 0
-    local maxVal = opts.maxValue or 1
-    local val = opts.value or 0
-
-    frame:SetMinMaxValues(minVal, maxVal)
-    frame:SetValue(val)
-
-    -- Default to no texture (let skin handle it)
+    frame:SetMinMaxValues(opts.minValue or 0, opts.maxValue or 1)
+    frame:SetValue(opts.value or 0)
     frame:SetStatusBarTexture("")
-
     return frame
 end
 
---- Create a container frame with child bar (common pattern)
--- Used by PlayerPower, PlayerResources, etc.
--- @param name string: Unique name for the frame
--- @param plugin table: The plugin that owns this frame
--- @param opts table: Same options as Create, plus:
---   - barName string: Name for the child bar (default: name.."Bar")
---   - bgColor table: Background color {r,g,b,a} (optional)
--- @return Frame, StatusBar: The container frame and child bar
+-- [ CONTAINER WITH BAR ]----------------------------------------------------------------------------
+
 function FrameFactory:CreateWithBar(name, plugin, opts)
     opts = opts or {}
     opts.template = opts.template or "BackdropTemplate"
 
     local container = self:Create(name, plugin, opts)
 
-    -- Create child bar
     local barName = opts.barName or (name .. "Bar")
     local bar = CreateFrame("StatusBar", "Orbit" .. barName, container)
     bar:SetPoint("TOPLEFT")
@@ -170,98 +105,63 @@ function FrameFactory:CreateWithBar(name, plugin, opts)
     container.Bar = bar
     container.orbitBar = bar
 
-    -- Background
-    if opts.bgColor then
+    local bgColor = opts.bgColor or (Orbit.Colors and Orbit.Colors.Background)
+    if bgColor then
         local bg = container:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints()
-        bg:SetColorTexture(opts.bgColor.r, opts.bgColor.g, opts.bgColor.b, opts.bgColor.a or 0.9)
-        container.bg = bg
-    elseif Orbit.Colors and Orbit.Colors.Background then
-        local c = Orbit.Colors.Background
-        local bg = container:CreateTexture(nil, "BACKGROUND")
-        bg:SetAllPoints()
-        bg:SetColorTexture(c.r, c.g, c.b, c.a or 0.9)
+        bg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a or 0.9)
         container.bg = bg
     end
 
     return container, bar
 end
 
---- Create a button container frame (for PlayerResources style)
--- @param name string: Unique name for the frame
--- @param plugin table: The plugin that owns this frame
--- @param opts table: Same options as Create, plus:
---   - maxButtons number: Pre-create this many buttons (default: 0)
--- @return Frame: The container frame with .buttons array
+-- [ BUTTON CONTAINER ]------------------------------------------------------------------------------
+
 function FrameFactory:CreateButtonContainer(name, plugin, opts)
     opts = opts or {}
 
     local container = self:Create(name, plugin, opts)
     container.buttons = {}
 
-    -- Pre-create buttons if requested
-    local maxButtons = opts.maxButtons or 0
-    for i = 1, maxButtons do
+    for i = 1, (opts.maxButtons or 0) do
         local btn = CreateFrame("Frame", nil, container)
-
-        -- Standard SetActive API
         btn.SetActive = function(self, active)
             self.isActive = active
-            if self.orbitBar then
-                if active then
-                    self.orbitBar:Show()
-                else
-                    self.orbitBar:Hide()
-                end
-            end
+            if self.orbitBar then self.orbitBar:SetShown(active) end
         end
-
         container.buttons[i] = btn
     end
 
     return container
 end
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
+-- [ TEXT HELPERS ]-----------------------------------------------------------------------------------
 
---- Add a text overlay to a frame
--- @param frame Frame: The frame to add text to
--- @param opts table: Options for text (optional):
---   - point string: Anchor point (default: "CENTER")
---   - font string: Font template (default: "GameFontHighlight")
---   - layer string: Draw layer (default: "OVERLAY")
--- @return FontString: The created text
 function FrameFactory:AddText(frame, opts)
     opts = opts or {}
-
     local point = opts.point or "CENTER"
     local font = opts.font or "GameFontHighlight"
     local layer = opts.layer or "OVERLAY"
-
-    -- Allow full anchor customization
     local relativeTo = opts.relativeTo or frame
     local relativePoint = opts.relativePoint or point
-    local x = opts.x or 0
-    local y = opts.y or 0
 
     if opts.useOverlay then
-        -- Create overlay for text (use frame level only, not strata, to avoid appearing above UI dialogs)
         local overlay = CreateFrame("Frame", nil, frame)
         overlay:SetAllPoints()
-        overlay:SetFrameLevel(frame:GetFrameLevel() + 20)
+        overlay:SetFrameLevel(frame:GetFrameLevel() + TEXT_OVERLAY_LEVEL_BOOST)
         frame.Overlay = overlay
 
         local text = overlay:CreateFontString(nil, layer, font)
-        text:SetPoint(point, relativeTo, relativePoint, x, y)
+        text:SetPoint(point, relativeTo, relativePoint, opts.x or 0, opts.y or 0)
         frame.Text = text
         return text
     end
 
     local text = frame:CreateFontString(nil, layer, font)
-    text:SetPoint(point, relativeTo, relativePoint, x, y)
+    text:SetPoint(point, relativeTo, relativePoint, opts.x or 0, opts.y or 0)
     text:SetShadowColor(0, 0, 0, 1)
     text:SetShadowOffset(1, -1)
     frame.Text = text
-
     return text
 end

@@ -164,9 +164,8 @@ local function OnTargetChanged()
     local hasTarget = UnitExists("target")
     for plugin in pairs(suppressedPlugins) do
         local cfg = GetConfig(plugin)
-        if cfg and cfg.targetReveal then
+        if cfg and cfg.targetReveal and cfg.frame then
             local frame = cfg.frame
-            if not frame then return end
             if hasTarget then
                 frame.orbitTargetRevealed = true
                 RevealFrame(frame)

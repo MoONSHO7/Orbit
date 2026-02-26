@@ -9,10 +9,9 @@ local Helpers = nil
 local MAX_BOSS_FRAMES = 5
 local POWER_BAR_HEIGHT_RATIO = 0.2
 local DEBOUNCE_DELAY = Orbit.Constants.Timing.DefaultDebounce
-local DEFAULT_DEBUFF_ICON_SIZE = 25
-local DEFAULT_BUFF_ICON_SIZE = 20
+
 local MARKER_ICON_SIZE = 16
-local AURA_SPACING = 1
+
 
 local PREVIEW_DEFAULTS = {
     Width = 150,
@@ -79,15 +78,12 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
     local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, self.container:GetEffectiveScale() or 1) or 1)
 
-    local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
-    local debuffData = componentPositions.Debuffs or {}
-    local debuffOverrides = debuffData.overrides or {}
-    local maxDebuffs = debuffOverrides.MaxIcons or 4
-
     for i = 1, MAX_BOSS_FRAMES do
         if self.frames[i] and self.frames[i].preview then
             local frame = self.frames[i]
             frame:SetSize(width, height)
+
+            local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
 
             self:UpdateFrameLayout(frame, borderSize, { powerBarRatio = POWER_BAR_HEIGHT_RATIO })
 
@@ -175,12 +171,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                 end
             end
 
-            self:ShowPreviewDebuffs(frame, maxDebuffs)
-
-            local buffData = componentPositions.Buffs or {}
-            local buffOverrides = buffData.overrides or {}
-            local maxBuffs = buffOverrides.MaxIcons or 3
-            self:ShowPreviewBuffs(frame, maxBuffs)
+            self:ShowPreviewAuras(frame)
 
             if frame.MarkerIcon then
                 local RAID_TARGET_TEXTURE_COLUMNS, RAID_TARGET_TEXTURE_ROWS = 4, 4
@@ -195,226 +186,27 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
     end
 end
 
--- [ PREVIEW DEBUFFS ]-------------------------------------------------------------------------------
-function Orbit.BossFramePreviewMixin:ShowPreviewDebuffs(frame, numDebuffsToShow)
+-- [ PREVIEW AURAS ]---------------------------------------------------------------------------------
+
+local BOSS_PREVIEW_DEBUFF_CFG = {
+    helpers = function() return Orbit.BossFrameHelpers end,
+    defaultAnchorX = "LEFT", defaultJustifyH = "LEFT",
+}
+local BOSS_PREVIEW_BUFF_CFG = {
+    helpers = function() return Orbit.BossFrameHelpers end,
+    defaultAnchorX = "RIGHT", defaultJustifyH = "RIGHT",
+}
+
+function Orbit.BossFramePreviewMixin:ShowPreviewAuras(frame)
     local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
     local debuffData = componentPositions.Debuffs or {}
-    local debuffOverrides = debuffData.overrides or {}
-
-    local debuffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Debuffs")
-    if debuffDisabled then
-        if frame.debuffContainer then frame.debuffContainer:Hide() end
-        return
-    end
-
-    local maxDebuffs = debuffOverrides.MaxIcons or 4
-    local numDebuffs = math.min(numDebuffsToShow, maxDebuffs, #SAMPLE_DEBUFF_ICONS)
-    if numDebuffs == 0 then return end
-
-    if not frame.debuffContainer then
-        frame.debuffContainer = CreateFrame("Frame", nil, frame)
-    end
-    frame.debuffContainer:SetParent(frame)
-    frame.debuffContainer:SetFrameStrata("MEDIUM")
-    frame.debuffContainer:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
-
-    if not Helpers then Helpers = Orbit.BossFrameHelpers end
-
-    local frameWidth = frame:GetWidth()
-    local frameHeight = frame:GetHeight()
-    local position = Helpers:AnchorToPosition(debuffData.posX, debuffData.posY, frameWidth / 2, frameHeight / 2)
-    local isHorizontal = (position == "Above" or position == "Below")
-    local maxRows = debuffOverrides.MaxRows or 1
-
-    local iconSize = debuffOverrides.IconSize or DEFAULT_DEBUFF_ICON_SIZE
-    iconSize = math.max(10, iconSize)
-
-    local rows, iconsPerRow, containerWidth, containerHeight
-    if isHorizontal then
-        iconsPerRow = math.max(1, math.floor((frameWidth + AURA_SPACING) / (iconSize + AURA_SPACING)))
-        rows = math.min(maxRows, math.ceil(numDebuffs / iconsPerRow))
-        local displayCols = math.min(math.min(numDebuffs, iconsPerRow * rows), iconsPerRow)
-        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * AURA_SPACING)
-        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
-    else
-        rows = math.min(maxRows, numDebuffs)
-        iconsPerRow = math.ceil(numDebuffs / rows)
-        containerWidth = (iconsPerRow * iconSize) + ((iconsPerRow - 1) * AURA_SPACING)
-        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
-    end
-
-    frame.debuffContainer:SetSize(containerWidth, containerHeight)
-    frame.debuffContainer:ClearAllPoints()
-
-    local anchorX = debuffData.anchorX or "LEFT"
-    local anchorY = debuffData.anchorY or "CENTER"
-    local offsetX = debuffData.offsetX or 0
-    local offsetY = debuffData.offsetY or 0
-    local justifyH = debuffData.justifyH or "LEFT"
-
-    local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
-    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
-
-    local finalX = offsetX
-    local finalY = offsetY
-    if anchorX == "RIGHT" then finalX = -offsetX end
-    if anchorY == "TOP" then finalY = -offsetY end
-
-    frame.debuffContainer:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
-    frame.debuffContainer:Show()
-
-    if not frame.previewDebuffs then frame.previewDebuffs = {} end
-    for _, icon in ipairs(frame.previewDebuffs) do icon:Hide() end
-
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true }
-    local growDown = (anchorY ~= "BOTTOM")
-
-    for idx = 1, numDebuffs do
-        local icon = frame.previewDebuffs[idx]
-        if not icon then
-            icon = CreateFrame("Button", nil, frame.debuffContainer, "BackdropTemplate")
-            icon.Icon = icon:CreateTexture(nil, "ARTWORK")
-            icon.Icon:SetAllPoints()
-            icon.icon = icon.Icon
-            icon.Cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
-            icon.Cooldown:SetAllPoints()
-            icon.Cooldown:SetHideCountdownNumbers(false)
-            icon.cooldown = icon.Cooldown
-            frame.previewDebuffs[idx] = icon
-        end
-        icon:SetParent(frame.debuffContainer)
-        icon:SetSize(iconSize, iconSize)
-
-        local col = (idx - 1) % iconsPerRow
-        local row = math.floor((idx - 1) / iconsPerRow)
-        local xOff = col * (iconSize + AURA_SPACING)
-        local yOff = row * (iconSize + AURA_SPACING)
-        icon:ClearAllPoints()
-        if justifyH == "RIGHT" then
-            if growDown then icon:SetPoint("TOPRIGHT", frame.debuffContainer, "TOPRIGHT", -xOff, -yOff)
-            else icon:SetPoint("BOTTOMRIGHT", frame.debuffContainer, "BOTTOMRIGHT", -xOff, yOff) end
-        else
-            if growDown then icon:SetPoint("TOPLEFT", frame.debuffContainer, "TOPLEFT", xOff, -yOff)
-            else icon:SetPoint("BOTTOMLEFT", frame.debuffContainer, "BOTTOMLEFT", xOff, yOff) end
-        end
-
-        local iconIndex = ((idx - 1) % #SAMPLE_DEBUFF_ICONS) + 1
-        icon.Icon:SetTexture(SAMPLE_DEBUFF_ICONS[iconIndex])
-        if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(icon, skinSettings) end
-        icon.Cooldown:SetCooldown(GetTime() - PREVIEW_DEFAULTS.FakeCooldownElapsed, PREVIEW_DEFAULTS.FakeCooldownDuration)
-        icon.Cooldown:Show()
-        icon:Show()
-    end
-end
-
--- [ PREVIEW BUFFS ]---------------------------------------------------------------------------------
-function Orbit.BossFramePreviewMixin:ShowPreviewBuffs(frame, numBuffsToShow)
-    local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
     local buffData = componentPositions.Buffs or {}
-    local buffOverrides = buffData.overrides or {}
-
+    local debuffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Debuffs")
     local buffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Buffs")
-    if buffDisabled then
-        if frame.buffContainer then frame.buffContainer:Hide() end
-        return
-    end
-
-    local maxBuffs = buffOverrides.MaxIcons or 3
-    local numBuffs = math.min(numBuffsToShow, maxBuffs, #SAMPLE_BUFF_ICONS)
-    if numBuffs == 0 then return end
-
-    if not frame.buffContainer then
-        frame.buffContainer = CreateFrame("Frame", nil, frame)
-    end
-    frame.buffContainer:SetParent(frame)
-    frame.buffContainer:SetFrameStrata("MEDIUM")
-    frame.buffContainer:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
-
-    if not Helpers then Helpers = Orbit.BossFrameHelpers end
-
-    local frameWidth = frame:GetWidth()
-    local frameHeight = frame:GetHeight()
-    local position = Helpers:AnchorToPosition(buffData.posX, buffData.posY, frameWidth / 2, frameHeight / 2)
-    local isHorizontal = (position == "Above" or position == "Below")
-    local maxRows = buffOverrides.MaxRows or 1
-    local iconSize = math.max(10, buffOverrides.IconSize or DEFAULT_BUFF_ICON_SIZE)
-
-    local rows, iconsPerRow, containerWidth, containerHeight
-    if isHorizontal then
-        iconsPerRow = math.max(1, math.floor((frameWidth + AURA_SPACING) / (iconSize + AURA_SPACING)))
-        rows = math.min(maxRows, math.ceil(numBuffs / iconsPerRow))
-        local displayCols = math.min(math.min(numBuffs, iconsPerRow * rows), iconsPerRow)
-        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * AURA_SPACING)
-        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
-    else
-        rows = math.min(maxRows, numBuffs)
-        iconsPerRow = math.ceil(numBuffs / rows)
-        containerWidth = (iconsPerRow * iconSize) + ((iconsPerRow - 1) * AURA_SPACING)
-        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
-    end
-
-    frame.buffContainer:SetSize(containerWidth, containerHeight)
-    frame.buffContainer:ClearAllPoints()
-
-    local anchorX = buffData.anchorX or "RIGHT"
-    local anchorY = buffData.anchorY or "CENTER"
-    local offsetX = buffData.offsetX or 0
-    local offsetY = buffData.offsetY or 0
-    local justifyH = buffData.justifyH or "RIGHT"
-
-    local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
-    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
-
-    local finalX = offsetX
-    local finalY = offsetY
-    if anchorX == "RIGHT" then finalX = -offsetX end
-    if anchorY == "TOP" then finalY = -offsetY end
-
-    frame.buffContainer:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
-    frame.buffContainer:Show()
-
-    if not frame.previewBuffs then frame.previewBuffs = {} end
-    for _, icon in ipairs(frame.previewBuffs) do icon:Hide() end
-
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true }
-    local growDown = (anchorY ~= "BOTTOM")
-
-    for idx = 1, numBuffs do
-        local icon = frame.previewBuffs[idx]
-        if not icon then
-            icon = CreateFrame("Button", nil, frame.buffContainer, "BackdropTemplate")
-            icon.Icon = icon:CreateTexture(nil, "ARTWORK")
-            icon.Icon:SetAllPoints()
-            icon.icon = icon.Icon
-            icon.Cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
-            icon.Cooldown:SetAllPoints()
-            icon.Cooldown:SetHideCountdownNumbers(false)
-            icon.cooldown = icon.Cooldown
-            frame.previewBuffs[idx] = icon
-        end
-        icon:SetParent(frame.buffContainer)
-        icon:SetSize(iconSize, iconSize)
-
-        local col = (idx - 1) % iconsPerRow
-        local row = math.floor((idx - 1) / iconsPerRow)
-        local xOff = col * (iconSize + AURA_SPACING)
-        local yOff = row * (iconSize + AURA_SPACING)
-        icon:ClearAllPoints()
-        if justifyH == "RIGHT" then
-            if growDown then icon:SetPoint("TOPRIGHT", frame.buffContainer, "TOPRIGHT", -xOff, -yOff)
-            else icon:SetPoint("BOTTOMRIGHT", frame.buffContainer, "BOTTOMRIGHT", -xOff, yOff) end
-        else
-            if growDown then icon:SetPoint("TOPLEFT", frame.buffContainer, "TOPLEFT", xOff, -yOff)
-            else icon:SetPoint("BOTTOMLEFT", frame.buffContainer, "BOTTOMLEFT", xOff, yOff) end
-        end
-
-        local iconIndex = ((idx - 1) % #SAMPLE_BUFF_ICONS) + 1
-        icon.Icon:SetTexture(SAMPLE_BUFF_ICONS[iconIndex])
-        if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(icon, skinSettings) end
-        icon.Cooldown:SetCooldown(GetTime() - PREVIEW_DEFAULTS.FakeCooldownElapsed, PREVIEW_DEFAULTS.FakeCooldownDuration)
-        icon.Cooldown:Show()
-        icon:Show()
-    end
+    local maxDebuffs = (debuffData.overrides or {}).MaxIcons or 4
+    local maxBuffs = (buffData.overrides or {}).MaxIcons or 3
+    self:ShowPreviewAuraIcons(frame, "debuff", debuffData, debuffDisabled and 0 or maxDebuffs, SAMPLE_DEBUFF_ICONS, debuffData.overrides, BOSS_PREVIEW_DEBUFF_CFG)
+    self:ShowPreviewAuraIcons(frame, "buff", buffData, buffDisabled and 0 or maxBuffs, SAMPLE_BUFF_ICONS, buffData.overrides, BOSS_PREVIEW_BUFF_CFG)
 end
 
 -- [ HIDE PREVIEW ]----------------------------------------------------------------------------------

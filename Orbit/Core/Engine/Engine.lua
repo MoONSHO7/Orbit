@@ -1,6 +1,6 @@
-local _, Orbit = ...
-
 -- [ ORBIT ENGINE ]----------------------------------------------------------------------------------
+
+local _, Orbit = ...
 
 ---@class OrbitEngine
 ---@field WidgetLogic OrbitWidgetLogic
@@ -14,7 +14,4 @@ Orbit.Engine = {}
 local Engine = Orbit.Engine
 
 Engine.internal = Engine.internal or {}
-
--- [ CONSTANTS ALIAS ]-----------------------------------------------------------------------------
--- All constants are unified in Core/Constants.lua
 Engine.Constants = Orbit.Constants
