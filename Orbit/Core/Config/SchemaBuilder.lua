@@ -422,3 +422,13 @@ function SB:AddSettingsTabs(schema, dialog, tabsList, defaultTab)
     })
     return dialog.orbitCurrentTab
 end
+
+-- [ PLUGIN ON-CHANGE ]------------------------------------------------------------------------------
+function SB:MakePluginOnChange(plugin, systemIndex, key, preApply)
+    return function(val)
+        plugin:SetSetting(systemIndex, key, val)
+        if preApply then preApply(val) end
+        plugin:ApplySettings()
+        if plugin.frames and plugin.frames[1] and plugin.frames[1].preview then plugin:SchedulePreviewUpdate() end
+    end
+end

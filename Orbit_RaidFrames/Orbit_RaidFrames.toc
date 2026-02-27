@@ -15,4 +15,5 @@
 RaidFrameHelpers.lua
 RaidFramePreview.lua
 RaidFrameFactory.lua
+RaidFrameSettings.lua
 RaidFrame.lua

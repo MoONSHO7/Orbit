@@ -19,6 +19,7 @@ CooldownGlows.lua
 CooldownViewerHooks.lua
 CooldownLayout.lua
 CooldownText.lua
+TrackedTooltipParser.lua
 TrackedAbilities.lua
 TrackedCharges.lua
 KeybindSystem.lua
