@@ -44,16 +44,16 @@ Core\Infrastructure\Animation.lua
 # Engine - Base
 Core\Engine\Engine.lua
 Core\Plugin\Registry.lua
-Core\Engine\Layout.lua
+Core\Config\ConfigLayout.lua
 
-# Engine - Widgets & Config
+# Config UI
 Core\Color\ReactionColorResolver.lua
 Core\Color\ClassColorResolver.lua
 Core\Color\ColorCurveEngine.lua
-Core\Engine\SchemaBuilder.lua
+Core\Config\SchemaBuilder.lua
 Core\Engine\WidgetLogic.lua
-Core\Engine\Widgets\Widgets.xml
-Core\Engine\Config.lua
+Core\Config\Widgets\Widgets.xml
+Core\Config\ConfigRenderer.lua
 
 # Engine - Frame System
 Core\Engine\NativeFrame.lua
@@ -88,12 +88,11 @@ Core\API.lua
 Core\Engine\Preview\Preview.xml
 
 # UI
-
-Core\UI\OrbitSettingsDialog.lua
+Core\Config\OrbitSettingsDialog.lua
 Core\UI\CanvasMode\CanvasMode.xml
 Core\UI\CanvasModeComponentSettings.lua
-Core\UI\OrbitOptionsPanel.lua
-Core\UI\OrbitOptionsButton.lua
+Core\Config\OrbitOptionsPanel.lua
+Core\Config\OrbitOptionsButton.lua
 
 # Skins
 Core\Skins\Skins.xml
