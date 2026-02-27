@@ -1,6 +1,4 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <Script file="PositionManager.lua"/>
-    <Script file="DefaultProfile.lua"/>
-    <Script file="ProfileManager.lua"/>
     <Script file="MountedVisibility.lua"/>
 </Ui>

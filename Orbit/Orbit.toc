@@ -43,7 +43,7 @@ Core\Infrastructure\Animation.lua
 
 # Engine - Base
 Core\Engine\Engine.lua
-Core\Engine\Registry.lua
+Core\Plugin\Registry.lua
 Core\Engine\Layout.lua
 
 # Engine - Widgets & Config
@@ -65,11 +65,20 @@ Core\Engine\UnitButton\UnitButton.xml
 
 
 
-# Mixins
+# Mixins (Unit Display)
 Core\Mixins\Mixins.xml
+
+# Plugin Framework
+Core\Plugin\PluginMixin.lua
+Core\Plugin\NativeBarMixin.lua
+Core\Plugin\OOCFadeMixin.lua
 
 # Managers
 Core\Managers\Managers.xml
+
+# Plugin Profiles
+Core\Plugin\DefaultProfile.lua
+Core\Plugin\ProfileManager.lua
 
 # Init & API
 Core\Init.lua
