@@ -164,7 +164,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                         frame.CastBar.Timer:SetShown(not timerDisabled)
                         if not timerDisabled then frame.CastBar.Timer:SetText(tostring(PREVIEW_DEFAULTS.CastProgress)) end
                     end
-                    local cbColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(self:GetSetting(1, "CastBarColorCurve"))
+                    local cbColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "CastBarColorCurve"))
                         or self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
                     frame.CastBar:SetStatusBarColor(cbColor.r, cbColor.g, cbColor.b)
                     frame.CastBar:Show()
@@ -205,8 +205,8 @@ function Orbit.BossFramePreviewMixin:ShowPreviewAuras(frame)
     local buffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Buffs")
     local maxDebuffs = (debuffData.overrides or {}).MaxIcons or 4
     local maxBuffs = (buffData.overrides or {}).MaxIcons or 3
-    self:ShowPreviewAuraIcons(frame, "debuff", debuffData, debuffDisabled and 0 or maxDebuffs, SAMPLE_DEBUFF_ICONS, debuffData.overrides, BOSS_PREVIEW_DEBUFF_CFG)
-    self:ShowPreviewAuraIcons(frame, "buff", buffData, buffDisabled and 0 or maxBuffs, SAMPLE_BUFF_ICONS, buffData.overrides, BOSS_PREVIEW_BUFF_CFG)
+    Orbit.AuraPreview:ShowIcons(frame, "debuff", debuffData, debuffDisabled and 0 or maxDebuffs, SAMPLE_DEBUFF_ICONS, debuffData.overrides, BOSS_PREVIEW_DEBUFF_CFG)
+    Orbit.AuraPreview:ShowIcons(frame, "buff", buffData, buffDisabled and 0 or maxBuffs, SAMPLE_BUFF_ICONS, buffData.overrides, BOSS_PREVIEW_BUFF_CFG)
 end
 
 -- [ HIDE PREVIEW ]----------------------------------------------------------------------------------

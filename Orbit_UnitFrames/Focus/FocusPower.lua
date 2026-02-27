@@ -46,7 +46,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
     local systemIndex = SYSTEM_INDEX
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
     if dialog.Title then
         dialog.Title:SetText("Focus Power")
     end
@@ -55,11 +55,11 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     -- Width (only when not anchored)
     if not isAnchored then
-        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
+        SB:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
     end
 
     -- Height
-    WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 4, max = 25, default = 15 }, nil)
+    SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 4, max = 25, default = 15 }, nil)
 
     -- Note: Show Text is now controlled via Canvas Mode (drag Text to disabled dock)
 
@@ -143,7 +143,7 @@ function Plugin:OnLoad()
         end
 
         -- Font color from curve
-        local fontColor = OrbitEngine.WidgetLogic:GetFontColorForNonUnit(globalSettings.FontColorCurve)
+        local fontColor = OrbitEngine.ColorCurve:GetFontColorForNonUnit(globalSettings.FontColorCurve)
         fs:SetTextColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1)
 
         -- Draggable component

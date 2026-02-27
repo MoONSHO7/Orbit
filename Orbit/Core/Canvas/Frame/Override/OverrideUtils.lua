@@ -35,17 +35,16 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
                 return true
             end
         elseif overrides.CustomColorCurve then
-            local WL = Engine.WidgetLogic
             local curve = overrides.CustomColorCurve
-            local hasClassPin = WL:CurveHasClassPin(curve)
+            local hasClassPin = Engine.ColorCurve:CurveHasClassPin(curve)
             local color
             if hasClassPin and classFile then
                 local cc = RAID_CLASS_COLORS[classFile]
                 if cc then color = { r = cc.r, g = cc.g, b = cc.b, a = 1 } end
             elseif hasClassPin and unit then
-                color = remainingPercent and WL:SampleColorCurve(curve, remainingPercent) or WL:GetFirstColorFromCurveForUnit(curve, unit)
+                color = remainingPercent and Engine.ColorCurve:SampleColorCurve(curve, remainingPercent) or Engine.ColorCurve:GetFirstColorFromCurveForUnit(curve, unit)
             else
-                color = remainingPercent and WL:SampleColorCurve(curve, remainingPercent) or WL:GetFirstColorFromCurve(curve)
+                color = remainingPercent and Engine.ColorCurve:SampleColorCurve(curve, remainingPercent) or Engine.ColorCurve:GetFirstColorFromCurve(curve)
             end
             if color then
                 element:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
@@ -60,17 +59,17 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
 
     -- Class color only buffs the party, not the tavern NPCs
     local fontCurve = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
-    local hasClassPin = fontCurve and Engine.WidgetLogic:CurveHasClassPin(fontCurve)
+    local hasClassPin = fontCurve and Engine.ColorCurve:CurveHasClassPin(fontCurve)
     local color
     if hasClassPin and classFile then
         local cc = RAID_CLASS_COLORS[classFile]
         color = cc and { r = cc.r, g = cc.g, b = cc.b, a = 1 }
     elseif hasClassPin and unit then
-        color = Engine.WidgetLogic:GetFirstColorFromCurveForUnit(fontCurve, unit)
+        color = Engine.ColorCurve:GetFirstColorFromCurveForUnit(fontCurve, unit)
     elseif hasClassPin then
         color = { r = 1, g = 1, b = 1, a = 1 }
     end
-    color = color or Engine.WidgetLogic:GetFirstColorFromCurve(fontCurve) or { r = 1, g = 1, b = 1, a = 1 }
+    color = color or Engine.ColorCurve:GetFirstColorFromCurve(fontCurve) or { r = 1, g = 1, b = 1, a = 1 }
     element:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
     return true
 end

@@ -41,13 +41,13 @@ function HealthMixin:ApplyHealthColor()
     end
 
     -- The paladin casts Detect Magic to determine the bar's true color
-    local hasClassPin = Engine.WidgetLogic:CurveHasClassPin(globalBarCurve)
+    local hasClassPin = Engine.ColorCurve:CurveHasClassPin(globalBarCurve)
     local isGradient = #globalBarCurve.pins > 1
 
     if isGradient then
         local nativeCurve = hasClassPin
-            and Engine.WidgetLogic:ToNativeColorCurveForUnit(globalBarCurve, self.unit)
-            or  Engine.WidgetLogic:ToNativeColorCurve(globalBarCurve)
+            and Engine.ColorCurve:ToNativeColorCurveForUnit(globalBarCurve, self.unit)
+            or  Engine.ColorCurve:ToNativeColorCurve(globalBarCurve)
 
         if nativeCurve and UnitHealthPercent and self.unit and UnitExists(self.unit) then
             local tex = self.Health:GetStatusBarTexture()
@@ -62,8 +62,8 @@ function HealthMixin:ApplyHealthColor()
     end
 
     local staticColor = hasClassPin
-        and Engine.WidgetLogic:GetFirstColorFromCurveForUnit(globalBarCurve, self.unit)
-        or  Engine.WidgetLogic:GetFirstColorFromCurve(globalBarCurve)
+        and Engine.ColorCurve:GetFirstColorFromCurveForUnit(globalBarCurve, self.unit)
+        or  Engine.ColorCurve:GetFirstColorFromCurve(globalBarCurve)
     
     if staticColor then
         local tex = self.Health:GetStatusBarTexture()

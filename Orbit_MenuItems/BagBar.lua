@@ -20,7 +20,7 @@ Mixin(Plugin, Orbit.NativeBarMixin)
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or SYSTEM_ID
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
 
     local currentOrientation = self:GetSetting(systemIndex, "Orientation")
 
@@ -44,7 +44,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     }
 
     -- 1. Orientation
-    WL:AddOrientationSettings(self, schema, systemIndex, dialog, systemFrame, {
+    SB:AddOrientationSettings(self, schema, systemIndex, dialog, systemFrame, {
         options = {
             { text = "Horizontal", value = Enum.BagsOrientation.Horizontal },
             { text = "Vertical", value = Enum.BagsOrientation.Vertical },
@@ -75,7 +75,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     })
 
     -- 3. Scale
-    WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
+    SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
         key = "Scale",
         label = "Scale",
         default = 100,
@@ -84,7 +84,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     })
 
     -- 4. Opacity
-    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
+    SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end

@@ -81,7 +81,7 @@ end
 -- [ SETTINGS UI ]--------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or 1
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
     local container = self.containers[systemIndex]
     local schema = { hideNativeSettings = true, controls = {} }
     if systemIndex == 1 then
@@ -90,9 +90,9 @@ function Plugin:AddSettings(dialog, systemFrame)
             if self.containers[config.index] then table.insert(schema.multiFrameOverride, self.containers[config.index]) end
         end
     end
-    WL:SetTabRefreshCallback(dialog, self, systemFrame)
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
     local tabs = (systemIndex == 1) and { "Layout", "Colors", "Visibility" } or { "Layout", "Visibility" }
-    local currentTab = WL:AddSettingsTabs(schema, dialog, tabs, "Layout")
+    local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
     if currentTab == "Layout" then
         if systemIndex == 1 then
             table.insert(schema.controls, { type = "slider", key = "NumActionBars", label = "|cFFFFD100# Action Bars|r", min = 1, max = 8, step = 1, default = 4, isGlobal = true,
@@ -152,7 +152,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 self:ApplyAll()
             end })
     elseif currentTab == "Visibility" then
-        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
+        SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
         table.insert(schema.controls, { type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
             onChange = function(val) self:SetSetting(systemIndex, "OutOfCombatFade", val); self:ApplySettings(container) end })
         if self:GetSetting(systemIndex, "OutOfCombatFade") then
@@ -184,7 +184,7 @@ function Plugin:OnLoad()
                     local isDisabled = false
                     if MasqueBridge.IsGroupEnabled then isDisabled = not MasqueBridge:IsGroupEnabled(groupName) end
                     for _, btn in ipairs(self.buttons[index] or {}) do
-                        if isDisabled then Orbit.Skin.Icons:ApplyActionButtonCustom(btn, { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize }) end
+                        if isDisabled then Orbit.Skin.ActionButtonSkin:Apply(btn, { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize }) end
                     end
                     if not isDisabled then MasqueBridge:ReSkinGroup(groupName) end
                     self:ApplySettings(container)
@@ -230,7 +230,7 @@ function Plugin:OnLoad()
             local btn = _G["SpellFlyoutButton" .. i]
             if not btn then break end
             btn:SetSize(BUTTON_SIZE, BUTTON_SIZE)
-            Orbit.Skin.Icons:ApplyActionButtonCustom(btn, skinSettings)
+            Orbit.Skin.ActionButtonSkin:Apply(btn, skinSettings)
             i = i + 1
         end
     end
@@ -351,7 +351,7 @@ function Plugin:LayoutButtons(index)
                 if button.orbitHidden and not InCombatLockdown() then button:SetParent(container) end
                 button.orbitHidden = false; button:Show(); button:SetSize(w, h)
                 if useMasque then MasqueBridge:AddActionButton(masqueGroup, button) end
-                if not useMasque or not MasqueBridge:IsGroupEnabled(masqueGroup) then Orbit.Skin.Icons:ApplyActionButtonCustom(button, skinSettings) end
+                if not useMasque or not MasqueBridge:IsGroupEnabled(masqueGroup) then Orbit.Skin.ActionButtonSkin:Apply(button, skinSettings) end
                 ABText:Apply(self, button, index)
                 button:ClearAllPoints()
                 local pos = cachedPositions[i]

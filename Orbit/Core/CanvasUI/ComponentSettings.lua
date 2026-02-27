@@ -335,7 +335,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
                     function(curveData) if callback then callback(control.key, curveData) end end)
                 if widget then widget:SetHeight(32); widget.singleColorMode = control.singleColor ~= false end
             else
-                widget = CreateColorPickerWidget(overrideContainer, control, currentValue and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(currentValue), callback)
+                widget = CreateColorPickerWidget(overrideContainer, control, currentValue and OrbitEngine.ColorCurve:GetFirstColorFromCurve(currentValue), callback)
             end
         end
 
@@ -710,7 +710,7 @@ function Settings:ApplyStyle(container, key, value)
             end)
         end
     elseif key == "CustomColorCurve" and visual.SetTextColor then
-        local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(value)
+        local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(value)
         if color then visual:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1) end
     elseif key == "Scale" then
         if container.isIconFrame then

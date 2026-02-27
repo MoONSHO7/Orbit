@@ -148,7 +148,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
 
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
 
     if dialog.Title then
         dialog.Title:SetText("Player Resources")
@@ -156,15 +156,15 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     local schema = { hideNativeSettings = true, controls = {} }
 
-    WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Visibility", "Colour" }, "Layout")
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Visibility", "Colour" }, "Layout")
 
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
         if not isAnchored then
-            WL:AddSizeSettings(self, schema, SYSTEM_INDEX, systemFrame, { default = DEFAULTS.Width }, nil, nil)
+            SB:AddSizeSettings(self, schema, SYSTEM_INDEX, systemFrame, { default = DEFAULTS.Width }, nil, nil)
         end
-        WL:AddSizeSettings(self, schema, SYSTEM_INDEX, systemFrame, nil, { min = 5, max = 20, default = DEFAULTS.Height }, nil)
+        SB:AddSizeSettings(self, schema, SYSTEM_INDEX, systemFrame, nil, { min = 5, max = 20, default = DEFAULTS.Height }, nil)
         table.insert(schema.controls, {
             type = "slider",
             key = "DividerSize",
@@ -194,7 +194,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             end,
         })
     elseif currentTab == "Visibility" then
-        WL:AddOpacitySettings(self, schema, SYSTEM_INDEX, systemFrame)
+        SB:AddOpacitySettings(self, schema, SYSTEM_INDEX, systemFrame)
         table.insert(schema.controls, {
             type = "checkbox",
             key = "OutOfCombatFade",
@@ -389,7 +389,7 @@ function Plugin:OnLoad()
         preview.previewScale = 1
         preview.components = {}
 
-        local bgColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve) or Orbit.Constants.Colors.Background
+        local bgColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve) or Orbit.Constants.Colors.Background
 
         local isContinuous = Plugin.continuousResource ~= nil
         if isContinuous then
@@ -406,7 +406,7 @@ function Plugin:OnLoad()
                 local curveKey = cfg.curveKey
                 local curveData = Plugin:GetSetting(SYSTEM_INDEX, curveKey)
                 if curveData then
-                    local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, PREVIEW_BAR_FILL)
+                    local color = OrbitEngine.ColorCurve:SampleColorCurve(curveData, PREVIEW_BAR_FILL)
                     if color then
                         bar:SetStatusBarColor(color.r, color.g, color.b)
                     end
@@ -748,7 +748,7 @@ function Plugin:ApplySettings()
     if Frame.StatusBarContainer and Frame.StatusBarContainer:IsShown() then
         local bgColor = self:GetSetting(SYSTEM_INDEX, "BackdropColour")
         if not bgColor and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColourCurve then
-            bgColor = OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve)
+            bgColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve)
         end
 
         Orbit.Skin:SkinStatusBar(Frame.StatusBar, texture, nil, true)
@@ -792,7 +792,7 @@ function Plugin:ApplyButtonVisuals()
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
 
     local max = math.max(1, Frame.maxPower or #Frame.buttons)
-    local bgColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve) or Orbit.Constants.Colors.Background
+    local bgColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve) or Orbit.Constants.Colors.Background
 
     for i, btn in ipairs(Frame.buttons) do
         if btn:IsShown() then
@@ -852,9 +852,9 @@ function Plugin:GetResourceColor(index, maxResources, isCharged)
         local curveColor
         if index and maxResources and maxResources > 1 then
             local position = (index - 1) / (maxResources - 1)
-            curveColor = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, position)
+            curveColor = OrbitEngine.ColorCurve:SampleColorCurve(curveData, position)
         else
-            curveColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+            curveColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
         end
         if curveColor then
             return curveColor
@@ -874,7 +874,7 @@ function Plugin:GetResourceColor(index, maxResources, isCharged)
         if specID == DK_SPEC_UNHOLY then return colors.RuneUnholy end
     end
 
-    local firstColor = curveData and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+    local firstColor = curveData and OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
     return firstColor or Orbit.Colors.PlayerResources[PLAYER_CLASS]
 end
 
@@ -1174,7 +1174,7 @@ function Plugin:UpdateContinuousBar(curveKey, current, max)
 
     -- MANA: use UnitPowerPercent + native ColorCurve (fully secret-safe)
     if self.continuousResource == "MANA" then
-        local nativeCurve = OrbitEngine.WidgetLogic:ToNativeColorCurve(curveData)
+        local nativeCurve = OrbitEngine.ColorCurve:ToNativeColorCurve(curveData)
         if nativeCurve and CanUseUnitPowerPercent then
             local color = UnitPowerPercent("player", Enum.PowerType.Mana, false, nativeCurve)
             if color then
@@ -1188,7 +1188,7 @@ function Plugin:UpdateContinuousBar(curveKey, current, max)
         return
     end
     local progress = (max > 0) and (current / max) or 0
-    local color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
+    local color = OrbitEngine.ColorCurve:SampleColorCurve(curveData, progress)
     if color then
         Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
     end
@@ -1362,7 +1362,7 @@ function Plugin:UpdatePower()
 
     if curveData and #curveData.pins > 1 then
         local progress = (max > 0) and (cur / max) or 0
-        color = OrbitEngine.WidgetLogic:SampleColorCurve(curveData, progress)
+        color = OrbitEngine.ColorCurve:SampleColorCurve(curveData, progress)
     end
     color = color or self:GetResourceColor(nil, nil, false)
 

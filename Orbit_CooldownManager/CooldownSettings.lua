@@ -12,7 +12,7 @@ local CooldownUtils = OrbitEngine.CooldownUtils
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function CDM:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or 1
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
 
     local frame = self:GetFrameBySystemIndex(systemIndex)
     local isAnchored = frame and OrbitEngine.Frame:GetAnchorParent(frame) ~= nil
@@ -23,8 +23,8 @@ function CDM:AddSettings(dialog, systemFrame)
 
     -- Charge Bars get their own dedicated dialog
     if frame and frame.isChargeBar then
-        WL:SetTabRefreshCallback(dialog, self, systemFrame)
-        local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Colors", "Visibility" }, "Layout")
+        SB:SetTabRefreshCallback(dialog, self, systemFrame)
+        local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colors", "Visibility" }, "Layout")
 
         if currentTab == "Layout" then
             if not isAnchored then
@@ -47,7 +47,7 @@ function CDM:AddSettings(dialog, systemFrame)
                 onChange = function(val) self:SetSetting(systemIndex, "TickSize", val); self:LayoutChargeBars() end,
             })
         elseif currentTab == "Colors" then
-            WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
                 key = "BarColorCurve", label = "Bar Color",
                 onChange = function(curveData)
                     self:SetSetting(systemIndex, "BarColorCurve", curveData)
@@ -55,7 +55,7 @@ function CDM:AddSettings(dialog, systemFrame)
                 end,
             })
         elseif currentTab == "Visibility" then
-            WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
+            SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
             table.insert(schema.controls, {
                 type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
                 tooltip = "Hide frame when out of combat with no target",
@@ -124,8 +124,8 @@ function CDM:AddSettings(dialog, systemFrame)
         })
     end
 
-    WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Glow", "Colors", "Visibility" }, "Layout")
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Glow", "Colors", "Visibility" }, "Layout")
 
     if currentTab == "Layout" then
         if isInheriting then
@@ -189,31 +189,31 @@ function CDM:AddSettings(dialog, systemFrame)
             })
         end
     elseif currentTab == "Colors" then
-        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "SwipeColorCurve", label = "Swipe Color",
             default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
             singleColor = true,
         })
         if not isTracked then
-            WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
+            SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
                 key = "PandemicGlowColor", label = "Pandemic Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },
             })
-            WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
+            SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
                 key = "ProcGlowColor", label = "Proc Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },
             })
         else
-            WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
+            SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
                 key = "ActiveGlowColor", label = "Active Glow Color", default = { r = 0.3, g = 0.8, b = 1, a = 1 },
             })
         end
         if systemIndex ~= Constants.Cooldown.SystemIndex.BuffIcon then
-            WL:AddColorSettings(self, schema, systemIndex, systemFrame, {
+            SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
                 key = "KeypressColor", label = "Keypress Flash",
                 default = { r = 1, g = 1, b = 1, a = 0 },
             })
         end
     elseif currentTab == "Visibility" then
-        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
+        SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
         table.insert(schema.controls, {
             type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
             tooltip = "Hide frame when out of combat with no target",

@@ -97,7 +97,7 @@ function Mixin:GetPreviewHealthColor(isPlayer, className, reaction)
     
     -- Check if curve has class pins
     if barCurve and barCurve.pins and #barCurve.pins > 0 then
-        local hasClassPin = OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:CurveHasClassPin(barCurve)
+        local hasClassPin = OrbitEngine.ColorCurve:CurveHasClassPin(barCurve)
         
         if hasClassPin then
             -- Resolve class pin based on preview context
@@ -105,15 +105,15 @@ function Mixin:GetPreviewHealthColor(isPlayer, className, reaction)
             if isPlayer and className then
                 local classColor = RAID_CLASS_COLORS[className]
                 if classColor then resolvedColor = { r = classColor.r, g = classColor.g, b = classColor.b } end
-            elseif reaction and OrbitEngine.WidgetLogic then
-                resolvedColor = OrbitEngine.WidgetLogic:GetReactionColor(reaction)
+            elseif reaction then
+                resolvedColor = OrbitEngine.ReactionColor:GetReactionColor(reaction)
             end
             if resolvedColor then return resolvedColor.r, resolvedColor.g, resolvedColor.b end
         end
     end
     
     -- No class pins or fallback - use first color from curve
-    local barColor = (OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(barCurve)) or { r = 0.2, g = 0.8, b = 0.2 }
+    local barColor = (OrbitEngine.ColorCurve:GetFirstColorFromCurve(barCurve)) or { r = 0.2, g = 0.8, b = 0.2 }
     return barColor.r, barColor.g, barColor.b
 end
 
@@ -122,20 +122,20 @@ function Mixin:GetPreviewTextColor(isPlayer, className, reaction)
     local fontCurve = globalSettings.FontColorCurve
 
     if fontCurve and fontCurve.pins and #fontCurve.pins > 0 then
-        local hasClassPin = OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:CurveHasClassPin(fontCurve)
+        local hasClassPin = OrbitEngine.ColorCurve:CurveHasClassPin(fontCurve)
         if hasClassPin then
             local resolvedColor
             if isPlayer and className then
                 local classColor = RAID_CLASS_COLORS[className]
                 if classColor then resolvedColor = { r = classColor.r, g = classColor.g, b = classColor.b, a = 1 } end
-            elseif reaction and OrbitEngine.WidgetLogic then
-                resolvedColor = OrbitEngine.WidgetLogic:GetReactionColor(reaction)
+            elseif reaction then
+                resolvedColor = OrbitEngine.ReactionColor:GetReactionColor(reaction)
             end
             if resolvedColor then return resolvedColor.r, resolvedColor.g, resolvedColor.b, resolvedColor.a or 1 end
         end
     end
 
-    local fontColor = (OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(fontCurve)) or { r = 1, g = 1, b = 1, a = 1 }
+    local fontColor = (OrbitEngine.ColorCurve:GetFirstColorFromCurve(fontCurve)) or { r = 1, g = 1, b = 1, a = 1 }
     return fontColor.r, fontColor.g, fontColor.b, fontColor.a or 1
 end
 

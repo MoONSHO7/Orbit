@@ -176,7 +176,7 @@ function CDM:ProcessChildren(anchor)
             EnsureFlashOverlay(icon)
         end
 
-        Orbit.Skin.Icons:ApplyManualLayout(blizzFrame, activeChildren, skinSettings)
+        Orbit.Skin.IconLayout:ApplyManualLayout(blizzFrame, activeChildren, skinSettings)
 
         if not InCombatLockdown() then
             local w, h = blizzFrame:GetSize()
@@ -231,7 +231,7 @@ function CDM:HookAlwaysShow(icon)
 end
 
 -- [ TIMER COLOR CURVE ]-----------------------------------------------------------------------------
-local WL = OrbitEngine.WidgetLogic
+local SB = OrbitEngine.SchemaBuilder
 local curveCache = {}
 
 local function GetNativeTimerCurveForSystem(systemIndex)

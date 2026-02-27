@@ -643,13 +643,13 @@ end
 
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = 1
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
     local orientation = self:GetSetting(1, "Orientation") or 0
 
     local schema = { hideNativeSettings = true, controls = {} }
 
-    WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Auras", "Indicators" }, "Layout")
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Auras", "Indicators" }, "Layout")
 
     if currentTab == "Layout" then
         table.insert(schema.controls, {

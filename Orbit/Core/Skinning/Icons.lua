@@ -11,17 +11,8 @@ local Pixel = Orbit.Engine.Pixel
 Icons.iconSettings = setmetatable({}, { __mode = "k" })
 Icons.regionCache = setmetatable({}, { __mode = "k" })
 Icons.borderCache = setmetatable({}, { __mode = "k" })
-
--- [ LAYOUT & MONITOR DELEGATES ]--------------------------------------------------------------------
-local IL = Skin.IconLayout
 local IM = Skin.IconMonitor
-local ABS = Skin.ActionButtonSkin
-
-function Icons:ApplyManualLayout(frame, icons, settings) IL:ApplyManualLayout(frame, icons, settings) end
-function Icons:CalculateGeometry(frame, settings) return IL:CalculateGeometry(frame, settings) end
-function Icons:ApplyActionButtonCustom(button, settings) ABS:Apply(button, settings) end
-function Icons:StripOrbitSkin(button) ABS:Strip(button) end
-function Icons:StripMasqueSkin(button) ABS:StripMasque(button) end
+local IL = Skin.IconLayout
 
 -- [ APPLY & MONITORING ]----------------------------------------------------------------------------
 function Icons:Apply(frame, settings)

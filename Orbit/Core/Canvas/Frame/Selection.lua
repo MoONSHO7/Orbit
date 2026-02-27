@@ -35,7 +35,7 @@ end
 
 local function GetOrbitEditModeColor()
     local curveData = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.EditModeColorCurve
-    return (Orbit.Engine.WidgetLogic and Orbit.Engine.WidgetLogic:GetFirstColorFromCurve(curveData)) or Engine.Constants.Frame.EditModeColor
+    return (Orbit.Engine.ColorCurve:GetFirstColorFromCurve(curveData)) or Engine.Constants.Frame.EditModeColor
 end
 
 -- [ SYMMETRIC PAIR REGISTRATION ]------------------------------------------------------------------

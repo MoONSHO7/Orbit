@@ -142,7 +142,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     end
 
     local systemIndex = SYSTEM_INDEX
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
 
     if dialog.Title then
         dialog.Title:SetText("Player Power")
@@ -150,8 +150,8 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     local schema = { hideNativeSettings = true, controls = {} }
 
-    WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Visibility", "Colour" }, "Layout")
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Visibility", "Colour" }, "Layout")
 
     if currentTab == "Layout" then
         local playerPlugin = Orbit:GetPlugin("Orbit_PlayerFrame")
@@ -169,9 +169,9 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
         if not isAnchored then
-            WL:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
+            SB:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
         end
-        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 4, max = 25, default = 15 }, nil)
+        SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 4, max = 25, default = 15 }, nil)
         table.insert(schema.controls, {
             type = "slider",
             key = "TickSize",
@@ -187,7 +187,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             end,
         })
     elseif currentTab == "Visibility" then
-        WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
+        SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
         table.insert(schema.controls, {
             type = "checkbox",
             key = "OutOfCombatFade",
@@ -309,7 +309,7 @@ function Plugin:OnLoad()
         local powerType = UnitPowerType("player")
         local curveKey = POWER_TYPE_TO_CURVE_KEY[powerType]
         local curveData = curveKey and Plugin:GetSetting(SYSTEM_INDEX, curveKey)
-        local color = curveData and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+        local color = curveData and OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
         if color then
             bar:SetStatusBarColor(color.r, color.g, color.b)
         end
@@ -546,7 +546,7 @@ function Plugin:UpdateAll()
             OrbitEngine.TickMixin:Update(Frame, current, max, smoothing)
 
             local curveData = self:GetSetting(SYSTEM_INDEX, "EbonMightColorCurve")
-            local color = curveData and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+            local color = curveData and OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
             if color then
                 PowerBar:SetStatusBarColor(color.r, color.g, color.b)
             end
@@ -576,14 +576,14 @@ function Plugin:UpdateAll()
     local curveData = curveKey and self:GetSetting(SYSTEM_INDEX, curveKey)
 
     if curveData then
-        local nativeCurve = OrbitEngine.WidgetLogic:ToNativeColorCurve(curveData)
+        local nativeCurve = OrbitEngine.ColorCurve:ToNativeColorCurve(curveData)
         if nativeCurve and CanUseUnitPowerPercent then
             local ok, color = pcall(UnitPowerPercent, "player", powerType, false, nativeCurve)
             if ok and color then
                 PowerBar:GetStatusBarTexture():SetVertexColor(color:GetRGBA())
             end
         else
-            local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+            local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
             if color then
                 PowerBar:SetStatusBarColor(color.r, color.g, color.b)
             end

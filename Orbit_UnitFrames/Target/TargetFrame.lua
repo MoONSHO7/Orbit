@@ -41,7 +41,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
 
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
 
     local schema = {
         hideNativeSettings = true,

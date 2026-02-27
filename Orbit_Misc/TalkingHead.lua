@@ -18,7 +18,7 @@ Mixin(Plugin, Orbit.NativeBarMixin)
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or SYSTEM_ID
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
 
     local schema = {
         hideNativeSettings = true,
@@ -34,7 +34,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     }
 
     -- Scale setting
-    WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
+    SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
         key = "Scale",
         label = "Scale",
         default = 60,

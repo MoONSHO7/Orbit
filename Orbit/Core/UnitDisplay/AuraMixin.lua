@@ -12,25 +12,6 @@ local Mixin = Orbit.AuraMixin
 local DEFAULT_AURA_COUNT = 40
 local TIMER_MIN_ICON_SIZE = 14
 
--- [ DOMAIN DELEGATES ]------------------------------------------------------------------------------
-local PG = Orbit.PandemicGlow
-local AL = Orbit.AuraLayout
-local AP = Orbit.AuraPreview
-
--- [ LAYOUT FACADE ]---------------------------------------------------------------------------------
-function Mixin:LayoutAurasGrid(frame, icons, config) AL:LayoutGrid(frame, icons, config) end
-function Mixin:LayoutAurasLinear(container, icons, config) AL:LayoutLinear(container, icons, config) end
-function Mixin:CalculateSmartAuraLayout(...) return AL:CalculateSmartLayout(...) end
-function Mixin:PositionAuraIcon(...) return AL:PositionIcon(...) end
-
--- [ PANDEMIC FACADE ]-------------------------------------------------------------------------------
-function Mixin:ApplyPandemicGlow(icon, aura, unit, skinSettings) PG:Apply(icon, aura, unit, skinSettings) end
-function Mixin:StopPandemicGlow(icon) PG:Stop(icon) end
-
--- [ PREVIEW FACADE ]--------------------------------------------------------------------------------
-function Mixin:ShowPreviewAuraIcons(...) AP:ShowIcons(...) end
-function Mixin:ShowPreviewPrivateAuras(...) AP:ShowPrivateAuras(...) end
-
 -- [ SKIN FACADE ]-----------------------------------------------------------------------------------
 function Mixin:ApplyAuraSkin(icon, settings)
     if not icon or not Orbit.Skin or not Orbit.Skin.Icons then return end
@@ -102,7 +83,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
         end
         icon.Cooldown:SetHideCountdownNumbers(size < TIMER_MIN_ICON_SIZE)
     end
-    if skinSettings and skinSettings.enablePandemic then self:ApplyPandemicGlow(icon, aura, unit, skinSettings) end
+    if skinSettings and skinSettings.enablePandemic then Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings) end
     icon:Show()
     return icon
 end

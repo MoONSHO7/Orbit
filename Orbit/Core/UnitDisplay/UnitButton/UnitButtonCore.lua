@@ -72,13 +72,13 @@ function CoreMixin:CreateCanvasPreview(options)
     local barCurve = globalSettings.BarColorCurve
     local barColor
     if barCurve and barCurve.pins and #barCurve.pins > 0 then
-        local hasClassPin = Engine.WidgetLogic and Engine.WidgetLogic:CurveHasClassPin(barCurve)
+        local hasClassPin = Engine.ColorCurve:CurveHasClassPin(barCurve)
         if hasClassPin then
             local classColor = RAID_CLASS_COLORS[PLAYER_CLASS]
             if classColor then barColor = { r = classColor.r, g = classColor.g, b = classColor.b } end
         end
     end
-    barColor = barColor or Engine.WidgetLogic:GetFirstColorFromCurve(barCurve)
+    barColor = barColor or Engine.ColorCurve:GetFirstColorFromCurve(barCurve)
     if barColor then bar:SetStatusBarColor(barColor.r, barColor.g, barColor.b, 1) end
     preview.Health = bar
 

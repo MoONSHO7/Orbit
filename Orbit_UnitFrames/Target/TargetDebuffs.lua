@@ -43,11 +43,11 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
     local systemIndex = SYSTEM_INDEX
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
     local schema = { hideNativeSettings = true, controls = {} }
 
-    WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Glows" }, "Layout")
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Glows" }, "Layout")
 
     if currentTab == "Layout" then
         table.insert(schema.controls, {
@@ -86,7 +86,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             },
             default = Constants.PandemicGlow.DefaultType,
         })
-        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "PandemicGlowColorCurve", label = "Pandemic Colour",
             default = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
             singleColor = true,
@@ -236,7 +236,7 @@ function Plugin:UpdateDebuffs()
         showTimer = true,
         enablePandemic = true,
         pandemicGlowType = self:GetSetting(SYSTEM_INDEX, "PandemicGlowType") or Constants.PandemicGlow.DefaultType,
-        pandemicGlowColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(self:GetSetting(SYSTEM_INDEX, "PandemicGlowColorCurve")) or self:GetSetting(SYSTEM_INDEX, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
+        pandemicGlowColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(SYSTEM_INDEX, "PandemicGlowColorCurve")) or self:GetSetting(SYSTEM_INDEX, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
     }
 
     local activeIcons = {}
@@ -259,7 +259,7 @@ function Plugin:UpdateDebuffs()
         yOffset = 0,
     }
 
-    self:LayoutAurasGrid(Frame, activeIcons, anchorConfig)
+    Orbit.AuraLayout:LayoutGrid(Frame, activeIcons, anchorConfig)
 end
 
 -- [ VISIBILITY ]-------------------------------------------------------------------------------------
@@ -383,7 +383,7 @@ function Plugin:ShowPreviewAuras()
         growthY = growthY,
         yOffset = 0,
     }
-    self:LayoutAurasGrid(Frame, previews, anchorConfig)
+    Orbit.AuraLayout:LayoutGrid(Frame, previews, anchorConfig)
 end
 
 -- [ APPLY SETTINGS ]---------------------------------------------------------------------------------

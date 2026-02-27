@@ -42,10 +42,10 @@ function Mixin:ApplyCastColor(bar, state)
         color = self:GetSetting(1, "InterruptedColor") or DEFAULT_INTERRUPTED_COLOR
     elseif state == "NON_INTERRUPTIBLE" then
         local curveData = self:GetSetting(1, "NonInterruptibleColorCurve")
-        color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData) or self:GetSetting(1, "NonInterruptibleColor") or DEFAULT_PROTECTED_COLOR
+        color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or self:GetSetting(1, "NonInterruptibleColor") or DEFAULT_PROTECTED_COLOR
     else
         local curveData = self:GetSetting(1, "CastBarColorCurve")
-        color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData) or self:GetSetting(1, "CastBarColor") or DEFAULT_CAST_COLOR
+        color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or self:GetSetting(1, "CastBarColor") or DEFAULT_CAST_COLOR
     end
     if color then
         bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
@@ -169,17 +169,17 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
     end
 
     local systemIndex = systemFrame.systemIndex or 1
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
     local schema = { hideNativeSettings = true, controls = {} }
 
-    WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Colour" }, "Layout")
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colour" }, "Layout")
 
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(bar) ~= nil
         local anchorAxis = isAnchored and self:GetAnchorAxis(bar) or nil
         if not (isAnchored and anchorAxis == "x") then
-            WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, {
+            SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, {
                 key = "CastBarHeight",
                 label = "Height",
                 min = 15,
@@ -202,13 +202,13 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
         table.insert(schema.controls, { type = "checkbox", key = "CastBarIcon", label = "Show Icon", default = true })
         table.insert(schema.controls, { type = "checkbox", key = "CastBarTimer", label = "Show Timer", default = true })
     elseif currentTab == "Colour" then
-        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "CastBarColorCurve",
             label = "Normal",
             default = { pins = { { position = 0, color = DEFAULT_CAST_COLOR } } },
             singleColor = true,
         })
-        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "NonInterruptibleColorCurve",
             label = "Protected",
             default = { pins = { { position = 0, color = DEFAULT_PROTECTED_COLOR } } },
@@ -239,7 +239,7 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 10, 18, 0.40)
     local showTimer = self:GetSetting(systemIndex, "CastBarTimer")
     local curveData = self:GetSetting(systemIndex, "CastBarColorCurve")
-    local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData) or self:GetSetting(systemIndex, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
+    local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or self:GetSetting(systemIndex, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
     local fontName = self:GetSetting(systemIndex, "Font")
     local backdropColor = self:GetSetting(systemIndex, "BackdropColour")
     local sparkColor = self:GetSetting(systemIndex, "SparkColor")

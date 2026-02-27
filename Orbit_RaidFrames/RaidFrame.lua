@@ -490,11 +490,11 @@ local function makeOnChange(plugin, key, preApply)
 end
 
 function Plugin:AddSettings(dialog, systemFrame)
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
     local schema = { hideNativeSettings = true, controls = {} }
 
-    WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Indicators" }, "Layout")
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Indicators" }, "Layout")
 
     if currentTab == "Layout" then
         if (self:GetSetting(1, "SortMode") or "Group") == "Group" then

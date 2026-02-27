@@ -218,8 +218,8 @@ local function Create(container, preview, key, source, data)
 
     local cbColorCurve = plugin and plugin:GetSetting(sysIdx, "CastBarColorCurve")
     local cbColor = plugin and plugin:GetSetting(sysIdx, "CastBarColor") or DEFAULT_CB_COLOR
-    if cbColorCurve and OrbitEngine.WidgetLogic then
-        local c = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(cbColorCurve)
+    if cbColorCurve then
+        local c = OrbitEngine.ColorCurve:GetFirstColorFromCurve(cbColorCurve)
         if c then bar:SetStatusBarColor(c.r, c.g, c.b, c.a or 1) end
     else
         bar:SetStatusBarColor(cbColor.r, cbColor.g, cbColor.b, 1)

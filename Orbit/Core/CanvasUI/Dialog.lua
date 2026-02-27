@@ -71,7 +71,6 @@ end
 Dialog.Footer:SetHeight(FC.TopPadding + FC.ButtonHeight + FC.BottomPadding)
 
 -- [ ESC KEY SUPPORT ]--------------------------------------------------------------------
-
 table.insert(UISpecialFrames, "OrbitCanvasModeDialog")
 
 Dialog:SetPropagateKeyboardInput(true)
@@ -118,7 +117,6 @@ Dialog:SetScript("OnKeyUp", function(self, key)
 end)
 
 -- [ STATE ]------------------------------------------------------------------------------
-
 Dialog.targetFrame = nil
 Dialog.targetPlugin = nil
 Dialog.targetSystemIndex = nil
@@ -127,7 +125,6 @@ Dialog.previewFrame = nil
 Dialog.hoveredComponent = nil
 
 -- [ NUDGE COMPONENT ]--------------------------------------------------------------------
-
 function Dialog:NudgeComponent(container, direction)
     if not container or not self.previewFrame then
         return
@@ -258,7 +255,6 @@ function Dialog:NudgeComponent(container, direction)
 end
 
 -- [ SAVE ORIGINAL POSITIONS ]------------------------------------------------------------
-
 function Dialog:SaveOriginalPositions()
     self.originalPositions = {}
     if not self.targetPlugin or not self.targetPlugin.GetSetting then
@@ -290,11 +286,9 @@ function Dialog:SaveOriginalPositions()
 end
 
 -- [ AURA COMPONENT KEYS ]----------------------------------------------------------------
-
 local AURA_COMPONENT_KEYS = { DefensiveIcon = true, PrivateAuraAnchor = true, CrowdControlIcon = true }
 
 -- [ OPEN DIALOG ]------------------------------------------------------------------------
-
 function Dialog:Open(frame, plugin, systemIndex)
     if InCombatLockdown() then
         return false

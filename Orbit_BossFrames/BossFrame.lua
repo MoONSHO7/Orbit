@@ -82,7 +82,7 @@ local function BossDebuffSkin(plugin)
     return {
         zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true, enablePandemic = true,
         pandemicGlowType = plugin:GetSetting(1, "PandemicGlowType") or Constants.PandemicGlow.DefaultType,
-        pandemicGlowColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "PandemicGlowColorCurve"))
+        pandemicGlowColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(1, "PandemicGlowColorCurve"))
             or plugin:GetSetting(1, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
     }
 end
@@ -179,10 +179,10 @@ end
 
 -- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
     local schema = { hideNativeSettings = true, controls = {} }
-    WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Auras" }, "Layout")
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Auras" }, "Layout")
     if currentTab == "Layout" then
         table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 150 })
         table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40 })
@@ -190,7 +190,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     elseif currentTab == "Auras" then
         local GlowType = Orbit.Constants.PandemicGlow.Type
         table.insert(schema.controls, { type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow", options = { { text = "None", value = GlowType.None }, { text = "Pixel Glow", value = GlowType.Pixel }, { text = "Proc Glow", value = GlowType.Proc }, { text = "Autocast Shine", value = GlowType.Autocast }, { text = "Button Glow", value = GlowType.Button } }, default = Orbit.Constants.PandemicGlow.DefaultType })
-        WL:AddColorCurveSettings(self, schema, 1, systemFrame, { key = "PandemicGlowColorCurve", label = "Pandemic Colour", default = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } }, singleColor = true })
+        SB:AddColorCurveSettings(self, schema, 1, systemFrame, { key = "PandemicGlowColorCurve", label = "Pandemic Colour", default = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } }, singleColor = true })
     end
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end

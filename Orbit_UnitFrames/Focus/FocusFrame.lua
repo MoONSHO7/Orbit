@@ -40,7 +40,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
 
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
 
     local schema = {
         hideNativeSettings = true,
@@ -103,7 +103,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         },
     }
 
-    -- Width/Height settings are now standard via WidgetLogic if available, or we check if anchored
+    -- Width/Height settings are now standard via SchemaBuilder if available, or we check if anchored
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
     local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
 
@@ -116,7 +116,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     end
 
     if WL and WL.AddSizeSettings then
-        WL:AddSizeSettings(self, schema, systemIndex, systemFrame, widthParams, heightParams)
+        SB:AddSizeSettings(self, schema, systemIndex, systemFrame, widthParams, heightParams)
     else
         if widthParams then
             table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160 })

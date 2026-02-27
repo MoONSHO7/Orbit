@@ -66,11 +66,11 @@ end
 
 local function GetBarColor(plugin, sysIndex, index, maxCharges)
     local curveData = plugin:GetSetting(sysIndex, "BarColorCurve")
-    if curveData and OrbitEngine.WidgetLogic then
+    if curveData then
         if index and maxCharges and maxCharges > 1 and #curveData.pins > 1 then
-            return OrbitEngine.WidgetLogic:SampleColorCurve(curveData, (index - 1) / (maxCharges - 1))
+            return OrbitEngine.ColorCurve:SampleColorCurve(curveData, (index - 1) / (maxCharges - 1))
         end
-        local c = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(curveData)
+        local c = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
         if c then
             return c
         end
@@ -81,7 +81,7 @@ end
 
 local function GetBgColor()
     local gc = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColourCurve
-    local c = gc and OrbitEngine.WidgetLogic and OrbitEngine.WidgetLogic:GetFirstColorFromCurve(gc)
+    local c = gc and OrbitEngine.ColorCurve:GetFirstColorFromCurve(gc)
     return c or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
 end
 

@@ -58,7 +58,6 @@ Core\Color\ColorCurveEngine.lua
 # Config UI
 Core\Config\ConfigLayout.lua
 Core\Config\SchemaBuilder.lua
-Core\Engine\WidgetLogic.lua
 Core\Config\Widgets\Widgets.xml
 Core\Config\ConfigRenderer.lua
 

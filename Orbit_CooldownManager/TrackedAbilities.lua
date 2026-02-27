@@ -1061,7 +1061,7 @@ function Plugin:ApplyTimerTextColor(icon, durObj)
     local overrides = timerPos.overrides or {}
 
     if durObj and overrides.CustomColorCurve then
-        local wowColorCurve = OrbitEngine.WidgetLogic:ToNativeColorCurve(overrides.CustomColorCurve)
+        local wowColorCurve = OrbitEngine.ColorCurve:ToNativeColorCurve(overrides.CustomColorCurve)
         if wowColorCurve then
             local secretColor = durObj:EvaluateRemainingPercent(wowColorCurve)
             timerText:SetTextColor(secretColor:GetRGBA())

@@ -338,7 +338,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 local paa = frame.PrivateAuraAnchor
                 if paa and not isDisabled("PrivateAuraAnchor") then
                     local posData = savedPositions and savedPositions.PrivateAuraAnchor
-                    self:ShowPreviewPrivateAuras(frame, posData, PRIVATE_AURA_ICON_SIZE)
+                    Orbit.AuraPreview:ShowPrivateAuras(frame, posData, PRIVATE_AURA_ICON_SIZE)
                 elseif paa then paa:Hide() end
             else
                 for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" }) do
@@ -386,8 +386,8 @@ function Orbit.RaidFramePreviewMixin:ShowPreviewAuras(frame, frameIndex)
     local buffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Buffs")
     local maxDebuffs = (debuffData.overrides or {}).MaxIcons or 3
     local maxBuffs = (buffData.overrides or {}).MaxIcons or 3
-    self:ShowPreviewAuraIcons(frame, "debuff", debuffData, debuffDisabled and 0 or maxDebuffs, SAMPLE_DEBUFF_ICONS, debuffData.overrides, RAID_PREVIEW_AURA_CFG)
-    self:ShowPreviewAuraIcons(frame, "buff", buffData, buffDisabled and 0 or maxBuffs, SAMPLE_BUFF_ICONS, buffData.overrides, RAID_PREVIEW_BUFF_CFG)
+    Orbit.AuraPreview:ShowIcons(frame, "debuff", debuffData, debuffDisabled and 0 or maxDebuffs, SAMPLE_DEBUFF_ICONS, debuffData.overrides, RAID_PREVIEW_AURA_CFG)
+    Orbit.AuraPreview:ShowIcons(frame, "buff", buffData, buffDisabled and 0 or maxBuffs, SAMPLE_BUFF_ICONS, buffData.overrides, RAID_PREVIEW_BUFF_CFG)
 end
 
 -- [ PREVIEW HIDE ]----------------------------------------------------------------------------------

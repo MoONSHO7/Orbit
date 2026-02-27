@@ -38,7 +38,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
     local systemIndex = SYSTEM_INDEX
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
     local schema = { hideNativeSettings = true, controls = {} }
 
     table.insert(schema.controls, {
@@ -254,7 +254,7 @@ function Plugin:UpdateBuffs()
         yOffset = 0,
     }
 
-    self:LayoutAurasGrid(Frame, activeIcons, anchorConfig)
+    Orbit.AuraLayout:LayoutGrid(Frame, activeIcons, anchorConfig)
 end
 
 -- [ VISIBILITY ]-------------------------------------------------------------------------------------
@@ -379,7 +379,7 @@ function Plugin:ShowPreviewAuras()
         growthY = growthY,
         yOffset = 0,
     }
-    self:LayoutAurasGrid(Frame, previews, anchorConfig)
+    Orbit.AuraLayout:LayoutGrid(Frame, previews, anchorConfig)
 end
 
 -- [ APPLY SETTINGS ]---------------------------------------------------------------------------------

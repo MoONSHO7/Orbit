@@ -3,7 +3,9 @@
 local _, Orbit = ...
 
 ---@class OrbitEngine
----@field WidgetLogic OrbitWidgetLogic
+---@field ColorCurve OrbitColorCurveEngine
+---@field SchemaBuilder OrbitSchemaBuilder
+---@field ReactionColor OrbitReactionColor
 ---@field Frame OrbitFrameManager
 ---@field FramePersistence OrbitFramePersistence
 ---@field Config OrbitConfig

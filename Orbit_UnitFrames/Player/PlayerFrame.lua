@@ -61,11 +61,11 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
 
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
     local schema = { hideNativeSettings = true, controls = {} }
 
-    WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Visibility" }, "Layout")
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Visibility" }, "Layout")
 
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
@@ -123,7 +123,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             end,
         })
     elseif currentTab == "Visibility" then
-        WL:AddOpacitySettings(self, schema, PLAYER_FRAME_INDEX, systemFrame)
+        SB:AddOpacitySettings(self, schema, PLAYER_FRAME_INDEX, systemFrame)
         table.insert(schema.controls, {
             type = "checkbox",
             key = "OutOfCombatFade",

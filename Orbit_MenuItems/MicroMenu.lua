@@ -37,7 +37,7 @@ end
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or SYSTEM_ID
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
 
     local schema = {
         hideNativeSettings = true,
@@ -45,7 +45,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     }
 
     -- 1. Scale
-    WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
+    SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
         key = "Scale",
         label = "Menu Size",
         default = 100,
@@ -116,7 +116,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     })
 
     -- 4. Opacity
-    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
+    SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
 
     Orbit.Config:Render(dialog, systemFrame, self, schema)
 end

@@ -42,8 +42,8 @@ function Plugin:AddSettings(dialog, systemFrame)
     }
 
     -- Opacity (resting alpha when visible)
-    local WL = OrbitEngine.WidgetLogic
-    WL:AddOpacitySettings(self, schema, systemIndex, systemFrame)
+    local SB = OrbitEngine.SchemaBuilder
+    SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
 
     table.insert(schema.controls, {
         type = "checkbox",

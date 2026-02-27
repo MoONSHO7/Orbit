@@ -333,12 +333,11 @@ end
 
 function Skin:ApplyGradientBackground(frame, curveData, fallbackColor)
     if not frame then return end
-    local WL = Engine.WidgetLogic
     local pins = curveData and curveData.pins
     local pinCount = pins and #pins or 0
 
     if pinCount <= 1 then
-        local c = (pinCount == 1 and WL and WL:GetFirstColorFromCurve(curveData)) or fallbackColor or Constants.Colors.Background
+        local c = (pinCount == 1 and Engine.ColorCurve:GetFirstColorFromCurve(curveData)) or fallbackColor or Constants.Colors.Background
         if frame.bg then frame.bg:SetColorTexture(c.r or 0, c.g or 0, c.b or 0, c.a or 0.5) end
         if frame._gradientSegments then
             for _, seg in ipairs(frame._gradientSegments) do seg:Hide() end

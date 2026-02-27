@@ -50,7 +50,7 @@ local function CalculateSparkPos(bar, value, maxValue)
 end
 
 local function SampleColorCurve(curveData, position)
-    return OrbitEngine.WidgetLogic:SampleColorCurve(curveData, position)
+    return OrbitEngine.ColorCurve:SampleColorCurve(curveData, position)
 end
 local SafeShow = Orbit.PlayerUtilShared.SafeShow
 local SafeHide = Orbit.PlayerUtilShared.SafeHide
@@ -62,17 +62,17 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
     end
 
     local systemIndex = systemFrame.systemIndex or 1
-    local WL = OrbitEngine.WidgetLogic
+    local SB = OrbitEngine.SchemaBuilder
     local schema = { hideNativeSettings = true, controls = {} }
 
-    WL:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = WL:AddSettingsTabs(schema, dialog, { "Layout", "Colour" }, "Layout")
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colour" }, "Layout")
 
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(CastBar) ~= nil
         local anchorAxis = isAnchored and GetAnchorAxis(CastBar) or nil
         if not (isAnchored and anchorAxis == "x") then
-            WL:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, {
+            SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, {
                 key = "CastBarHeight", label = "Height",
                 min = 15, max = 35, default = Orbit.Constants.PlayerCastBar.DefaultHeight,
             })
@@ -88,16 +88,16 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
         table.insert(schema.controls, { type = "checkbox", key = "CastBarTimer", label = "Show Timer", default = true })
         table.insert(schema.controls, { type = "checkbox", key = "ShowLatency", label = "Show Latency", default = true })
     elseif currentTab == "Colour" then
-        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "CastBarColorCurve", label = "Normal",
             default = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
         })
-        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "NonInterruptibleColorCurve", label = "Protected",
             default = { pins = { { position = 0, color = { r = 0.7, g = 0.7, b = 0.7, a = 1 } } } },
             singleColor = true,
         })
-        WL:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "SparkColorCurve", label = "Spark / Glow",
             default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
             singleColor = true,
@@ -611,7 +611,7 @@ function Plugin:ApplySettings(systemFrame)
             textColor = { r = 1, g = 1, b = 1, a = 1 },
             backdropColor = backdropColor,
             backdropCurve = globalSettings.BackdropColourCurve,
-            sparkColor = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(self:GetSetting(systemIndex, "SparkColorCurve")) or self:GetSetting(systemIndex, "SparkColor") or { r = 1, g = 1, b = 1, a = 1 },
+            sparkColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(systemIndex, "SparkColorCurve")) or self:GetSetting(systemIndex, "SparkColor") or { r = 1, g = 1, b = 1, a = 1 },
         })
 
         if bar.Latency then
@@ -639,7 +639,7 @@ function Plugin:ApplyColor()
     local systemIndex = bar.systemIndex or 1
     
     if bar.notInterruptible then
-        local color = OrbitEngine.WidgetLogic:GetFirstColorFromCurve(self:GetSetting(systemIndex, "NonInterruptibleColorCurve")) or self:GetSetting(systemIndex, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
+        local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(systemIndex, "NonInterruptibleColorCurve")) or self:GetSetting(systemIndex, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
         bar.colorCurve = nil
         if bar.orbitBar and color then
             bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)

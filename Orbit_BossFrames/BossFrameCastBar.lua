@@ -8,12 +8,12 @@ Orbit.BossFrameCastBar = {}
 local CB = Orbit.BossFrameCastBar
 
 local function ResolveCastBarColor(plugin)
-    return OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "CastBarColorCurve"))
+    return OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(1, "CastBarColorCurve"))
         or plugin:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
 end
 
 local function ResolveNonInterruptibleColor(plugin)
-    return OrbitEngine.WidgetLogic:GetFirstColorFromCurve(plugin:GetSetting(1, "NonInterruptibleColorCurve"))
+    return OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(1, "NonInterruptibleColorCurve"))
         or plugin:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
 end
 
