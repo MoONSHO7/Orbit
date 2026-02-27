@@ -28,17 +28,23 @@ Core\Libs\LibOrbitColorPicker-1.0\LibOrbitColorPicker-1.0.lua
 # CORE
 # ==============================================================
 
-# Constants & Media
-Core\Constants.lua
-Core\Media.lua
+# Shared Kernel
+Core\Shared\Constants.lua
+Core\Shared\Media.lua
+
+# Infrastructure
+Core\Infrastructure\EventBus.lua
+Core\Infrastructure\Async.lua
+Core\Infrastructure\Pixel.lua
+Core\Infrastructure\TickMixin.lua
+Core\Infrastructure\KeybindSystem.lua
+Core\Infrastructure\CombatManager.lua
+Core\Infrastructure\Animation.lua
 
 # Engine - Base
 Core\Engine\Engine.lua
 Core\Engine\Registry.lua
-Core\Engine\Pixel.lua
-Core\Engine\TickMixin.lua
 Core\Engine\Layout.lua
-Core\Engine\KeybindSystem.lua
 
 # Engine - Widgets & Config
 Core\Color\ReactionColorResolver.lua
@@ -57,8 +63,7 @@ Core\Engine\Frame\Frame.xml
 # Engine - UnitButton
 Core\Engine\UnitButton\UnitButton.xml
 
-# Services
-Core\Services\Services.xml
+
 
 # Mixins
 Core\Mixins\Mixins.xml
@@ -74,7 +79,7 @@ Core\API.lua
 Core\Engine\Preview\Preview.xml
 
 # UI
-Core\UI\Animation.lua
+
 Core\UI\OrbitSettingsDialog.lua
 Core\UI\CanvasMode\CanvasMode.xml
 Core\UI\CanvasModeComponentSettings.lua
