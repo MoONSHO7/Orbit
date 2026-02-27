@@ -3,10 +3,69 @@ local Orbit = addonTable
 ---@class OrbitSkin
 Orbit.Skin = {}
 local Skin = Orbit.Skin
-local Engine = Orbit.Engine -- Added Engine reference
+local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local Constants = Orbit.Constants
 local math_max, math_min = math.max, math.min
+
+-- [ NINESLICE BORDER REGISTRY ]---------------------------------------------------------------------
+local NINESLICE_CORNER_SIZE = 16
+local NINESLICE_EDGE_THICKNESS = 3
+local NINESLICE_CORNER_OVERHANG = 1
+local LSM_BORDER_EDGE_SIZE = 12
+
+local NINESLICE_SETS = {
+    Dragonflight = {
+        TopLeft     = "dragonflight-nineslice-cornertopleft",
+        TopRight    = "dragonflight-nineslice-cornertopright",
+        BottomLeft  = "dragonflight-nineslice-cornerbottomleft",
+        BottomRight = "dragonflight-nineslice-cornerbottomright",
+        Top         = "_dragonflight-nineslice-edgetop",
+        Bottom      = "_dragonflight-nineslice-edgebottom",
+        Left        = "!dragonflight-nineslice-edgeleft",
+        Right       = "!dragonflight-nineslice-edgeright",
+    },
+    Plunderstorm = {
+        TopLeft     = "plunderstorm-nineslice-cornertopleft",
+        TopRight    = "plunderstorm-nineslice-cornertopright",
+        BottomLeft  = "plunderstorm-nineslice-cornerbottomleft",
+        BottomRight = "plunderstorm-nineslice-cornerbottomright",
+        Top         = "_plunderstorm-nineslice-edgetop",
+        Bottom      = "_plunderstorm-nineslice-edgebottom",
+        Left        = "!plunderstorm-nineslice-edgeleft",
+        Right       = "!plunderstorm-nineslice-edgeright",
+    },
+    DiamondMetal = {
+        TopLeft     = "ui-frame-diamondmetal-cornertopleft-2x",
+        TopRight    = "ui-frame-diamondmetal-cornertopright-2x",
+        BottomLeft  = "ui-frame-diamondmetal-cornerbottomleft-2x",
+        BottomRight = "ui-frame-diamondmetal-cornerbottomright-2x",
+        Top         = "_ui-frame-diamondmetal-edgetop-2x",
+        Bottom      = "_ui-frame-diamondmetal-edgebottom-2x",
+        Left        = "!ui-frame-diamondmetal-edgeleft-2x",
+        Right       = "!ui-frame-diamondmetal-edgeright-2x",
+    },
+    GenericMetal = {
+        TopLeft     = "GenericMetal2-NineSlice-CornerTopLeft",
+        TopRight    = "GenericMetal2-NineSlice-CornerTopRight",
+        BottomLeft  = "GenericMetal2-NineSlice-CornerBottomLeft",
+        BottomRight = "GenericMetal2-NineSlice-CornerBottomRight",
+        Top         = "_GenericMetal2-NineSlice-EdgeTop",
+        Bottom      = "_GenericMetal2-NineSlice-EdgeBottom",
+        Left        = "!GenericMetal2-NineSlice-EdgeLeft",
+        Right       = "!GenericMetal2-NineSlice-EdgeRight",
+    },
+    Oribos = {
+        TopLeft     = "UI-Frame-Oribos-CornerTopLeft",
+        TopRight    = "UI-Frame-Oribos-CornerTopRight",
+        BottomLeft  = "UI-Frame-Oribos-CornerBottomLeft",
+        BottomRight = "UI-Frame-Oribos-CornerBottomRight",
+        Top         = "_UI-Frame-Oribos-TileTop",
+        Bottom      = "_UI-Frame-Oribos-TileBottom",
+        Left        = "!UI-Frame-Oribos-TileLeft",
+        Right       = "!UI-Frame-Oribos-TileRight",
+    },
+}
 
 -- Register Orbit's overlay texture with LibSharedMedia
 local ORBIT_OVERLAY_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
@@ -21,12 +80,8 @@ end
 -- [ ICON SKINNING ]---------------------------------------------------------------------------------
 
 function Skin:SkinIcon(icon, settings)
-    if not icon then
-        return
-    end
-    if not icon.SetTexCoord then
-        return
-    end -- Safety check
+    if not icon then return end
+    if not icon.SetTexCoord then return end
 
     local zoom = settings.zoom or 0
     local trim = Constants.Texture.BlizzardIconBorderTrim
@@ -45,11 +100,8 @@ function Skin:CreateBackdrop(frame, name)
 end
 
 function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
-    if not frame or not backdrop then
-        return
-    end
+    if not frame or not backdrop then return end
 
-    -- The paladin's aura must shine ABOVE the rogue's cloak
     if frame == backdrop then
         if not frame._borderFrame then
             frame._borderFrame = CreateFrame("Frame", nil, frame)
@@ -77,12 +129,11 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
     local pixelSize = Engine.Pixel:Multiple(targetSize, scale)
     frame.borderPixelSize = pixelSize
 
-    -- Create borders if needed
     if not backdrop.Borders then
         backdrop.Borders = {}
         local function CreateLine()
             local t = backdrop:CreateTexture(nil, "OVERLAY")
-            t:SetColorTexture(1, 1, 1, 1) -- Set white initially, tinted by color arg
+            t:SetColorTexture(1, 1, 1, 1)
             return t
         end
         backdrop.Borders.Top = CreateLine()
@@ -91,8 +142,6 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
         backdrop.Borders.Right = CreateLine()
     end
 
-    -- Attach SetBorderHidden to the owner frame if missing
-    -- This allows the Anchor engine to toggle border visibility during merging
     if not frame.SetBorderHidden then
         frame.SetBorderHidden = function(self, edge, hidden)
             local b = backdrop.Borders
@@ -113,11 +162,7 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
 
     local b = backdrop.Borders
 
-    -- Non-overlapping Layout
-    -- horizontal = true: Top/Bottom full width (for horizontal arrangements like icon → bar)
-    -- horizontal = false/nil: Left/Right full height (for vertical stacking like health → power)
     if horizontal then
-        -- Top/Bottom: Full Width (Priority for horizontal merging)
         b.Top:ClearAllPoints()
         b.Top:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, 0)
         b.Top:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", 0, 0)
@@ -128,7 +173,6 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
         b.Bottom:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, 0)
         b.Bottom:SetHeight(pixelSize)
 
-        -- Left/Right: Inset by Top/Bottom height
         b.Left:ClearAllPoints()
         b.Left:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, -pixelSize)
         b.Left:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, pixelSize)
@@ -139,7 +183,6 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
         b.Right:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, pixelSize)
         b.Right:SetWidth(pixelSize)
     else
-        -- Left/Right: Full Height (Priority for vertical stacking)
         b.Left:ClearAllPoints()
         b.Left:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, 0)
         b.Left:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, 0)
@@ -150,7 +193,6 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
         b.Right:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, 0)
         b.Right:SetWidth(pixelSize)
 
-        -- Top/Bottom: Inset by Left/Right width
         b.Top:ClearAllPoints()
         b.Top:SetPoint("TOPLEFT", backdrop, "TOPLEFT", pixelSize, 0)
         b.Top:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", -pixelSize, 0)
@@ -164,7 +206,125 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
     return false
 end
 
--- [ STATUSBAR SKINNING ]----------------------------------------------------------------------------
+-- [ NINESLICE BORDER ]------------------------------------------------------------------------------
+
+function Skin:ApplyNineSlice(frame, setKey)
+    if not frame then return end
+
+    if not setKey then
+        if frame._nineSliceFrame then frame._nineSliceFrame:Hide() end
+        return
+    end
+
+    local atlasSet = NINESLICE_SETS[setKey]
+    if not atlasSet then
+        if frame._nineSliceFrame then frame._nineSliceFrame:Hide() end
+        return
+    end
+
+    if not frame._nineSliceFrame then
+        local ns = CreateFrame("Frame", nil, frame)
+        ns:SetAllPoints()
+        ns:SetFrameLevel(frame:GetFrameLevel() + (Orbit.Constants.Levels.Border or 3))
+        ns.pieces = {}
+
+        local keys = { "TopLeft", "TopRight", "BottomLeft", "BottomRight", "Top", "Bottom", "Left", "Right" }
+        for _, key in ipairs(keys) do
+            ns.pieces[key] = ns:CreateTexture(nil, "OVERLAY")
+        end
+
+        local p = ns.pieces
+        local cs = NINESLICE_CORNER_SIZE
+        local et = NINESLICE_EDGE_THICKNESS
+        local oh = NINESLICE_CORNER_OVERHANG
+
+        p.TopLeft:SetSize(cs, cs)
+        p.TopLeft:SetPoint("TOPLEFT", -oh, oh)
+
+        p.TopRight:SetSize(cs, cs)
+        p.TopRight:SetPoint("TOPRIGHT", oh, oh)
+
+        p.BottomLeft:SetSize(cs, cs)
+        p.BottomLeft:SetPoint("BOTTOMLEFT", -oh, -oh)
+
+        p.BottomRight:SetSize(cs, cs)
+        p.BottomRight:SetPoint("BOTTOMRIGHT", oh, -oh)
+
+        p.Top:SetHeight(et)
+        p.Top:SetPoint("TOPLEFT", p.TopLeft, "TOPRIGHT", 0, 0)
+        p.Top:SetPoint("TOPRIGHT", p.TopRight, "TOPLEFT", 0, 0)
+
+        p.Bottom:SetHeight(et)
+        p.Bottom:SetPoint("BOTTOMLEFT", p.BottomLeft, "BOTTOMRIGHT", 0, 0)
+        p.Bottom:SetPoint("BOTTOMRIGHT", p.BottomRight, "BOTTOMLEFT", 0, 0)
+
+        p.Left:SetWidth(et)
+        p.Left:SetPoint("TOPLEFT", p.TopLeft, "BOTTOMLEFT", 0, 0)
+        p.Left:SetPoint("BOTTOMLEFT", p.BottomLeft, "TOPLEFT", 0, 0)
+
+        p.Right:SetWidth(et)
+        p.Right:SetPoint("TOPRIGHT", p.TopRight, "BOTTOMRIGHT", 0, 0)
+        p.Right:SetPoint("BOTTOMRIGHT", p.BottomRight, "TOPRIGHT", 0, 0)
+
+        frame._nineSliceFrame = ns
+    end
+
+    if frame._nineSliceFrame._activeSet ~= setKey then
+        for key, tex in pairs(frame._nineSliceFrame.pieces) do
+            tex:SetAtlas(atlasSet[key], false)
+        end
+        frame._nineSliceFrame._activeSet = setKey
+    end
+
+    frame._nineSliceFrame:Show()
+end
+
+-- [ LSM BORDER ]------------------------------------------------------------------------------------
+
+function Skin:ApplyLSMBorder(frame, borderName)
+    if not frame then return end
+
+    if not borderName then
+        if frame._lsmBorderFrame then frame._lsmBorderFrame:Hide() end
+        return
+    end
+
+    local borderPath = LSM:Fetch("border", borderName)
+    if not borderPath then
+        if frame._lsmBorderFrame then frame._lsmBorderFrame:Hide() end
+        return
+    end
+
+    if not frame._lsmBorderFrame then
+        frame._lsmBorderFrame = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+        frame._lsmBorderFrame:SetAllPoints()
+        frame._lsmBorderFrame:SetFrameLevel(frame:GetFrameLevel() + (Orbit.Constants.Levels.Border or 3))
+    end
+
+    frame._lsmBorderFrame:SetBackdrop({ edgeFile = borderPath, edgeSize = LSM_BORDER_EDGE_SIZE })
+    frame._lsmBorderFrame:SetBackdropBorderColor(1, 1, 1, 1)
+    frame._lsmBorderFrame:Show()
+end
+
+-- [ UNIFIED GRAPHICAL BORDER ]----------------------------------------------------------------------
+
+function Skin:ApplyGraphicalBorder(frame, style)
+    if not frame then return end
+
+    if not style then
+        self:ApplyNineSlice(frame, nil)
+        self:ApplyLSMBorder(frame, nil)
+        return
+    end
+
+    if NINESLICE_SETS[style] then
+        self:ApplyLSMBorder(frame, nil)
+        self:ApplyNineSlice(frame, style)
+    else
+        self:ApplyNineSlice(frame, nil)
+        self:ApplyLSMBorder(frame, style)
+    end
+end
 
 function Skin:SkinStatusBar(bar, textureName, color, isUnitFrame)
     if not bar then

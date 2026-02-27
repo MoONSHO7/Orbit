@@ -168,6 +168,15 @@ function CanvasMixin:UpdateBarInsets()
 end
 
 function CanvasMixin:SetBorder(size)
+    if self._nineSliceStyle then
+        Orbit.Skin:SkinBorder(self, self, 0)
+        Orbit.Skin:ApplyGraphicalBorder(self, self._nineSliceStyle)
+        self.borderPixelSize = 0
+        self:UpdateBarInsets()
+        return
+    end
+
+    Orbit.Skin:ApplyGraphicalBorder(self, nil)
     if Orbit.Skin:SkinBorder(self, self, size) then
         self.borderPixelSize = 0
         self:UpdateBarInsets()

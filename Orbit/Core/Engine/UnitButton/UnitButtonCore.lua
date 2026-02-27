@@ -58,6 +58,9 @@ function CoreMixin:CreateCanvasPreview(options)
 
     -- [ BORDERS ]----------------------------------------------------------------------------------------
     Orbit.Skin:SkinBorder(preview, preview, borderSize)
+    if self._nineSliceStyle then
+        Orbit.Skin:ApplyGraphicalBorder(preview, self._nineSliceStyle)
+    end
 
     -- [ HEALTH BAR ]-------------------------------------------------------------------------------------
     local bar = CreateFrame("StatusBar", nil, preview)

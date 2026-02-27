@@ -34,6 +34,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         AggroIndicatorEnabled = true,
         AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
         AggroThickness = 1,
+        NineSliceBorder = "None",
         DisabledComponents = {},
         ComponentPositions = {
             Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
@@ -120,6 +121,32 @@ function Plugin:AddSettings(dialog, systemFrame)
                 if prPlugin and prPlugin.UpdateVisibility then
                     prPlugin:UpdateVisibility()
                 end
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "dropdown",
+            key = "NineSliceBorder",
+            label = "Graphical Border",
+            options = (function()
+                local opts = {
+                    { text = "None", value = "None" },
+                    { text = "Dragonflight", value = "Dragonflight" },
+                    { text = "Plunderstorm", value = "Plunderstorm" },
+                    { text = "Diamond Metal", value = "DiamondMetal" },
+                    { text = "Generic Metal", value = "GenericMetal" },
+                    { text = "Oribos", value = "Oribos" },
+                }
+                local lsmBorders = LSM:List("border")
+                for _, name in ipairs(lsmBorders) do
+                    opts[#opts + 1] = { text = name, value = name }
+                end
+                return opts
+            end)(),
+            default = "None",
+            onChange = function(val)
+                self:SetSetting(PLAYER_FRAME_INDEX, "NineSliceBorder", val)
+                if self.frame then self.frame._nineSliceStyle = (val ~= "None") and val or nil end
+                self:ApplySettings()
             end,
         })
     elseif currentTab == "Visibility" then
@@ -443,6 +470,8 @@ function Plugin:ApplySettings(frame)
 
     -- 1. Apply Base Settings via Mixin (Handling Size, Visuals, RestorePosition)
     -- Note: UpdateTextLayout runs here but only applies defaults if no custom positions
+    local nsBorder = self:GetSetting(systemIndex, "NineSliceBorder") or "None"
+    frame._nineSliceStyle = (nsBorder ~= "None") and nsBorder or nil
     self:ApplyUnitFrameSettings(frame, systemIndex)
 
     -- 2. Apply Player Specific Logic
