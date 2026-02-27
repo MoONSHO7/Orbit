@@ -14,4 +14,5 @@
 
 BossFrameHelpers.lua
 BossFramePreview.lua
+BossFrameCastBar.lua
 BossFrame.lua
