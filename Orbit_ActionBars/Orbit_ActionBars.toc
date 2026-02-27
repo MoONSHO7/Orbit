@@ -13,4 +13,7 @@
 ## X-License: All Rights Reserved
 ## X-Part-Of: Orbit
 
+ActionBarsText.lua
+ActionBarsContainer.lua
+ActionBarsPreview.lua
 ActionBars.lua
