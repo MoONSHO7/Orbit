@@ -41,40 +41,39 @@ Core\Infrastructure\KeybindSystem.lua
 Core\Infrastructure\CombatManager.lua
 Core\Infrastructure\Animation.lua
 
-# Engine - Base
+# Engine Bootstrap
 Core\Engine\Engine.lua
-Core\Plugin\Registry.lua
-Core\Config\ConfigLayout.lua
 
-# Config UI
+# Plugin Framework
+Core\Plugin\Registry.lua
+Core\Plugin\PluginMixin.lua
+Core\Plugin\NativeBarMixin.lua
+Core\Plugin\OOCFadeMixin.lua
+
+# Color System
 Core\Color\ReactionColorResolver.lua
 Core\Color\ClassColorResolver.lua
 Core\Color\ColorCurveEngine.lua
+
+# Config UI
+Core\Config\ConfigLayout.lua
 Core\Config\SchemaBuilder.lua
 Core\Engine\WidgetLogic.lua
 Core\Config\Widgets\Widgets.xml
 Core\Config\ConfigRenderer.lua
 
-# Engine - Frame System
-Core\Engine\NativeFrame.lua
-Core\Engine\EditMode.lua
-Core\Engine\Frame\Frame.xml
+# Canvas Editor
+Core\Canvas\NativeFrame.lua
+Core\Canvas\EditMode.lua
+Core\Canvas\Frame\Frame.xml
 
-# Engine - UnitButton
-Core\Engine\UnitButton\UnitButton.xml
+# Unit Display
+Core\UnitDisplay\UnitButton\UnitButton.xml
+Core\UnitDisplay\UnitDisplay.xml
 
-
-
-# Mixins (Unit Display)
-Core\Mixins\Mixins.xml
-
-# Plugin Framework
-Core\Plugin\PluginMixin.lua
-Core\Plugin\NativeBarMixin.lua
-Core\Plugin\OOCFadeMixin.lua
-
-# Managers
-Core\Managers\Managers.xml
+# Canvas Managers
+Core\Canvas\PositionManager.lua
+Core\Canvas\MountedVisibility.lua
 
 # Plugin Profiles
 Core\Plugin\DefaultProfile.lua
@@ -84,15 +83,15 @@ Core\Plugin\ProfileManager.lua
 Core\Init.lua
 Core\API.lua
 
-# Preview System
-Core\Engine\Preview\Preview.xml
+# Canvas Preview
+Core\Canvas\Preview\Preview.xml
 
 # UI
 Core\Config\OrbitSettingsDialog.lua
-Core\UI\CanvasMode\CanvasMode.xml
-Core\UI\CanvasModeComponentSettings.lua
+Core\CanvasUI\CanvasMode.xml
+Core\CanvasUI\ComponentSettings.lua
 Core\Config\OrbitOptionsPanel.lua
 Core\Config\OrbitOptionsButton.lua
 
-# Skins
-Core\Skins\Skins.xml
+# Skinning
+Core\Skinning\Skins.xml

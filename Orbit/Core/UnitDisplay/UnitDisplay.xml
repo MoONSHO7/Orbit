@@ -1,0 +1,11 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="AuraLayout.lua"/>
+    <Script file="PandemicGlow.lua"/>
+    <Script file="AuraPreview.lua"/>
+    <Script file="UnitFrameMixin.lua"/>
+    <Script file="CastBarMixin.lua"/>
+    <Script file="AuraMixin.lua"/>
+    <Script file="ResourceBarMixin.lua"/>
+    <Script file="AggroIndicatorMixin.lua"/>
+    <Script file="StatusIconMixin.lua"/>
+</Ui>

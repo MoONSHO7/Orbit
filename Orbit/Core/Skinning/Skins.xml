@@ -7,4 +7,5 @@
     <Script file="Icons.lua"/>
     <Script file="CastBar.lua"/>
     <Script file="ClassBar.lua"/>
+    <Script file="VisualsExtendedMixin.lua"/>
 </Ui>
