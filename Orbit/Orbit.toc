@@ -41,6 +41,9 @@ Core\Engine\Layout.lua
 Core\Engine\KeybindSystem.lua
 
 # Engine - Widgets & Config
+Core\Color\ReactionColorResolver.lua
+Core\Color\ClassColorResolver.lua
+Core\Color\ColorCurveEngine.lua
 Core\Engine\WidgetLogic.lua
 Core\Engine\Widgets\Widgets.xml
 Core\Engine\Config.lua
