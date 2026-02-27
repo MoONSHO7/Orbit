@@ -5,4 +5,5 @@
     <Include file="Creators/Creators.xml"/>
     <Script file="DragComponent.lua"/>
     <Script file="Dialog.lua"/>
+    <Script file="DialogActions.lua"/>
 </Ui>
