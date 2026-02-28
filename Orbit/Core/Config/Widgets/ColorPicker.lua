@@ -1,5 +1,6 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local Constants = Orbit.Constants
 local Layout = Engine.Layout
 
 -- [ COLOR PICKER WIDGET ] ------------------------------------------------------------------------------------
@@ -66,7 +67,7 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
         if callback then callback({ r = r, g = g, b = b, a = a }) end
     end
 
-    local C = Engine.Constants
+    local C = Constants
     frame.Label:SetText(label)
     frame.Label:SetWidth(C.Widget.LabelWidth)
     frame.Label:SetJustifyH("LEFT")

@@ -7,6 +7,9 @@ local Dialog = CanvasMode.Dialog
 local C = CanvasMode.Constants
 local Layout = OrbitEngine.Layout
 
+local DOCK_ICON_ALPHA = 0.7
+local DOCK_BG_COLOR = { 0.2, 0.2, 0.2, 0.6 }
+local DOCK_BG_HOVER = { 0.3, 0.5, 0.3, 0.8 }
 -- [ DOCK FRAME ]-------------------------------------------------------------------------
 
 Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog.PreviewContainer)
@@ -62,7 +65,7 @@ function Dialog:AddToDock(key, sourceComponent)
 
     icon.bg = icon:CreateTexture(nil, "BACKGROUND")
     icon.bg:SetAllPoints()
-    icon.bg:SetColorTexture(0.2, 0.2, 0.2, 0.6)
+    icon.bg:SetColorTexture(unpack(DOCK_BG_COLOR))
 
     local isTexture = sourceComponent and sourceComponent.GetTexture
     local isFontString = sourceComponent and sourceComponent.GetFont ~= nil
@@ -108,7 +111,7 @@ function Dialog:AddToDock(key, sourceComponent)
         end
 
         icon.visual:SetDesaturated(true)
-        icon.visual:SetAlpha(0.7)
+        icon.visual:SetAlpha(DOCK_ICON_ALPHA)
     elseif isIconFrame then
         icon.visual = icon:CreateTexture(nil, "OVERLAY")
         icon.visual:SetPoint("CENTER")
@@ -129,14 +132,14 @@ function Dialog:AddToDock(key, sourceComponent)
         end
 
         icon.visual:SetDesaturated(true)
-        icon.visual:SetAlpha(0.7)
+        icon.visual:SetAlpha(DOCK_ICON_ALPHA)
     elseif key == "Portrait" then
         icon.visual = icon:CreateTexture(nil, "OVERLAY")
         icon.visual:SetPoint("CENTER")
         icon.visual:SetSize(C.DOCK_ICON_SIZE - 4, C.DOCK_ICON_SIZE - 4)
         SetPortraitTexture(icon.visual, "player")
         icon.visual:SetDesaturated(true)
-        icon.visual:SetAlpha(0.7)
+        icon.visual:SetAlpha(DOCK_ICON_ALPHA)
     else
         icon.visual = icon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         icon.visual:SetPoint("CENTER")
@@ -145,7 +148,7 @@ function Dialog:AddToDock(key, sourceComponent)
     end
 
     icon:SetScript("OnEnter", function(self)
-        self.bg:SetColorTexture(0.3, 0.5, 0.3, 0.8)
+        self.bg:SetColorTexture(unpack(DOCK_BG_HOVER))
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(key, 1, 1, 1)
         GameTooltip:AddLine("Click to enable", 0.7, 0.7, 0.7)
@@ -153,7 +156,7 @@ function Dialog:AddToDock(key, sourceComponent)
     end)
 
     icon:SetScript("OnLeave", function(self)
-        self.bg:SetColorTexture(0.2, 0.2, 0.2, 0.6)
+        self.bg:SetColorTexture(unpack(DOCK_BG_COLOR))
         GameTooltip:Hide()
     end)
 

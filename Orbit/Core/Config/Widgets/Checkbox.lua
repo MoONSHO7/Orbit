@@ -1,5 +1,6 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local Constants = Orbit.Constants
 local Layout = Engine.Layout
 
 -- [ CHECKBOX WIDGET ]-------------------------------------------------------------------------------
@@ -31,7 +32,7 @@ function Layout:CreateCheckbox(parent, label, tooltip, initialValue, callback)
     end
 
     -- Apply 3-column layout
-    local C = Engine.Constants
+    local C = Constants
 
     if frame.Button then
         -- Checkbox LEFT aligned in the Label column space

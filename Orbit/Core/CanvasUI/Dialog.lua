@@ -328,7 +328,7 @@ function Dialog:Open(frame, plugin, systemIndex)
 
     -- Sync toggle: Show only for Action Bars plugin (or other plugins with GlobalComponentPositions)
     if self.SyncToggle then
-        local supportsSync = plugin and plugin.system == "Orbit_ActionBars"
+        local supportsSync = plugin and plugin.supportsGlobalSync
         if supportsSync then
             local isSynced = plugin:GetSetting(systemIndex, "UseGlobalTextStyle")
             self.SyncToggle.isSynced = (isSynced ~= false) -- default true
@@ -368,7 +368,7 @@ function Dialog:Open(frame, plugin, systemIndex)
 
     -- Get saved positions (use global if synced for Action Bars)
     local savedPositions
-    local isSynced = plugin and plugin.system == "Orbit_ActionBars" and plugin:GetSetting(systemIndex, "UseGlobalTextStyle") ~= false
+    local isSynced = plugin and plugin.supportsGlobalSync and plugin:GetSetting(systemIndex, "UseGlobalTextStyle") ~= false
     if isSynced then
         savedPositions = plugin:GetSetting(1, "GlobalComponentPositions") or {}
     else
@@ -632,8 +632,8 @@ function Dialog:CloseDialog()
 
     self:Hide()
 
-    if OrbitEngine.ComponentEdit then
-        OrbitEngine.ComponentEdit.currentFrame = nil
+    if OrbitEngine.CanvasMode then
+        OrbitEngine.CanvasMode.currentFrame = nil
     end
 
     if OrbitEngine.FrameSelection then

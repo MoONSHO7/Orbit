@@ -2,10 +2,16 @@
     <Script file="AuraLayout.lua"/>
     <Script file="PandemicGlow.lua"/>
     <Script file="AuraPreview.lua"/>
+    <Script file="GroupAuraFilters.lua"/>
     <Script file="UnitFrameMixin.lua"/>
+    <Script file="GroupFrameMixin.lua"/>
     <Script file="CastBarMixin.lua"/>
+    <Script file="UnitPowerBarMixin.lua"/>
     <Script file="AuraMixin.lua"/>
+    <Script file="UnitAuraGridMixin.lua"/>
+    <Script file="SecondaryUnitFrameMixin.lua"/>
     <Script file="ResourceBarMixin.lua"/>
     <Script file="AggroIndicatorMixin.lua"/>
+    <Script file="DispelIndicatorMixin.lua"/>
     <Script file="StatusIconMixin.lua"/>
 </Ui>

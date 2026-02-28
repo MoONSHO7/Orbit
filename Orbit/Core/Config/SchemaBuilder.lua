@@ -1,6 +1,7 @@
 -- [ ORBIT SCHEMA BUILDER ]--------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local Constants = Orbit.Constants
 local tinsert = table.insert
 local InCombatLockdown = InCombatLockdown
 Engine.SchemaBuilder = {}
@@ -70,7 +71,7 @@ function SB:AddAnchorSettings(plugin, schema, systemIndex, dialog, systemFrame, 
             options = anchorTargets, default = anchorTargets[1] and anchorTargets[1].value,
             onChange = CreateAnchorOnChange(plugin, systemIndex, "AnchorTarget", systemFrame, nil),
         })
-        local defaults = Engine.Constants.Settings.Padding
+        local defaults = Constants.Settings.Padding
         tinsert(schema.controls, {
             type = "slider", key = "AnchorPadding", label = "Padding",
             min = defaults.Min, max = defaults.Max, step = defaults.Step, default = defaults.Default,
@@ -121,7 +122,7 @@ local function CreateScaleOnChange(plugin, systemIndex, key, systemFrame)
 end
 
 function SB:AddSizeSettings(plugin, schema, systemIndex, systemFrame, widthParams, heightParams, scaleParams)
-    local widthDefaults = Engine.Constants.Settings.Width
+    local widthDefaults = Constants.Settings.Width
     if widthParams then
         local key = widthParams.key or "Width"
         tinsert(schema.controls, { type = "slider", key = key, label = widthParams.label or "Width",
@@ -129,7 +130,7 @@ function SB:AddSizeSettings(plugin, schema, systemIndex, systemFrame, widthParam
             step = widthParams.step or widthDefaults.Step, default = widthParams.default or widthDefaults.Default,
             onChange = widthParams.onChange or CreateDefaultOnChange(plugin, systemIndex, key, systemFrame) })
     end
-    local heightDefaults = Engine.Constants.Settings.Height
+    local heightDefaults = Constants.Settings.Height
     if heightParams then
         local key = heightParams.key or "Height"
         tinsert(schema.controls, { type = "slider", key = key, label = heightParams.label or "Height",
@@ -137,7 +138,7 @@ function SB:AddSizeSettings(plugin, schema, systemIndex, systemFrame, widthParam
             step = heightParams.step or heightDefaults.Step, default = heightParams.default or heightDefaults.Default,
             onChange = heightParams.onChange or CreateDefaultOnChange(plugin, systemIndex, key, systemFrame) })
     end
-    local scaleDefaults = Engine.Constants.Settings.Scale
+    local scaleDefaults = Constants.Settings.Scale
     if scaleParams then
         local key = scaleParams.key or "Scale"
         tinsert(schema.controls, { type = "slider", key = key, label = scaleParams.label or "Scale",
@@ -165,7 +166,7 @@ function SB:AddTextSettings(plugin, schema, systemIndex, dialog, systemFrame, cu
         onChange = CreateTextOnChange(plugin, systemIndex, showKey, systemFrame, dialog, currentAnchor, true) })
     local show = Get(plugin, systemIndex, showKey, true)
     if show ~= false then
-        local defaults = Engine.Constants.Settings.TextSize
+        local defaults = Constants.Settings.TextSize
         tinsert(schema.controls, { type = "slider", key = sizeKey, label = "Text Size",
             min = defaults.Min, max = defaults.Max, step = defaults.Step, default = defaults.Default,
             onChange = CreateTextOnChange(plugin, systemIndex, sizeKey, systemFrame, nil, nil, false) })
@@ -238,7 +239,7 @@ local function CreateOrientationOnChange(plugin, systemIndex, key, systemFrame, 
 end
 
 function SB:AddBorderSpacingSettings(plugin, schema, systemIndex, systemFrame, borderParams, spacingParams)
-    local borderDefaults = Engine.Constants.Settings.BorderSize
+    local borderDefaults = Constants.Settings.BorderSize
     if borderParams then
         local key = borderParams.key or "BorderSize"
         tinsert(schema.controls, { type = "slider", key = key, label = borderParams.label or "Border Size",
@@ -246,7 +247,7 @@ function SB:AddBorderSpacingSettings(plugin, schema, systemIndex, systemFrame, b
             step = borderParams.step or borderDefaults.Step, default = borderParams.default or borderDefaults.Default,
             onChange = borderParams.onChange or CreateBorderOnChange(plugin, systemIndex, key, systemFrame) })
     end
-    local spacingDefaults = Engine.Constants.Settings.Spacing
+    local spacingDefaults = Constants.Settings.Spacing
     if spacingParams then
         local key = spacingParams.key or "Spacing"
         tinsert(schema.controls, { type = "slider", key = key, label = spacingParams.label or "Spacing",
@@ -259,14 +260,14 @@ end
 function SB:AddTextureSettings(plugin, schema, systemIndex, systemFrame, keyOverride, previewColor, textureTarget)
     local key = keyOverride or "Texture"
     tinsert(schema.controls, { type = "texture", key = key, label = "Texture",
-        default = Engine.Constants.Settings.Texture.Default, previewColor = previewColor,
+        default = Constants.Settings.Texture.Default, previewColor = previewColor,
         onChange = CreateTextureOnChange(plugin, systemIndex, key, systemFrame, textureTarget or systemFrame) })
 end
 
 function SB:AddFontSettings(plugin, schema, systemIndex, systemFrame, keyOverride, fontTarget)
     local key = keyOverride or "Font"
     tinsert(schema.controls, { type = "font", key = key, label = "Font",
-        default = Engine.Constants.Settings.Font.Default,
+        default = Constants.Settings.Font.Default,
         onChange = CreateFontOnChange(plugin, systemIndex, key, systemFrame, fontTarget) })
 end
 
@@ -326,7 +327,7 @@ end
 
 function SB:AddOpacitySettings(plugin, schema, systemIndex, systemFrame, params)
     params = params or {}
-    local defaults = Engine.Constants.Settings.Opacity
+    local defaults = Constants.Settings.Opacity
     local key = params.key or "Opacity"
     tinsert(schema.controls, { type = "slider", key = key, label = "Opacity",
         min = params.min or defaults.Min, max = params.max or defaults.Max, step = params.step or defaults.Step,

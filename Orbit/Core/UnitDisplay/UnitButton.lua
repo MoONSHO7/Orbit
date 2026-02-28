@@ -9,7 +9,7 @@ local UnitButton = Engine.UnitButton
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
-local SMOOTH_ANIM = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
+local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
 local DAMAGE_BAR_DELAY = 0.2
 local DAMAGE_COLOR = { r = 0.8, g = 0.1, b = 0.1, a = 0.6 }
 local MY_HEAL_COLOR = { r = 0.66, g = 1, b = 0.66, a = 0.6 }

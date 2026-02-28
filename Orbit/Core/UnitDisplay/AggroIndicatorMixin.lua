@@ -90,6 +90,3 @@ function Orbit.AggroIndicatorMixin:UpdateAllAggroIndicators(plugin)
         end
     end
 end
-
--- Backward compatibility alias
-Orbit.PartyFrameAggroMixin = Orbit.AggroIndicatorMixin

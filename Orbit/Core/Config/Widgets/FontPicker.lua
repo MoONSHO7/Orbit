@@ -1,5 +1,6 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local Constants = Orbit.Constants
 local Layout = Engine.Layout
 local LSM = LibStub("LibSharedMedia-3.0")
 local tinsert, tsort = table.insert, table.sort
@@ -61,7 +62,7 @@ function Layout:CreateFontPicker(parent, label, initialFont, callback)
     frame:SetParent(parent)
 
     -- Configure control logic
-    frame.selectedFont = initialFont or Engine.Constants.Settings.Font.Default
+    frame.selectedFont = initialFont or Constants.Settings.Font.Default
 
     local function UpdatePreview()
         local text = frame.selectedFont
@@ -72,7 +73,7 @@ function Layout:CreateFontPicker(parent, label, initialFont, callback)
             frame.Control.Text:SetFont(fontPath, 12, "")
             frame.Control.Text:SetText(text)
         else
-            frame.Control.Text:SetFont(Engine.Constants.Settings.Font.FallbackPath, 12, "")
+            frame.Control.Text:SetFont(Constants.Settings.Font.FallbackPath, 12, "")
             frame.Control.Text:SetText(text .. " (missing)")
         end
     end
@@ -132,7 +133,7 @@ function Layout:CreateFontPicker(parent, label, initialFont, callback)
     UpdatePreview()
 
     -- Apply 3-column layout
-    local C = Engine.Constants
+    local C = Constants
 
     frame.Label:SetText(label)
     frame.Label:SetWidth(C.Widget.LabelWidth)

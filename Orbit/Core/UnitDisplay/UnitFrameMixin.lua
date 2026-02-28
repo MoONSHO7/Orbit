@@ -10,18 +10,11 @@ local LSM = LibStub("LibSharedMedia-3.0")
 Orbit.UnitFrameMixin = {}
 local Mixin = Orbit.UnitFrameMixin
 
--- [ PLAYER SETTINGS INHERITANCE ] ---------------------------------------------------------------
-function Mixin:GetPlayerFramePlugin()
-    return Orbit:GetPlugin("Orbit_PlayerFrame")
-end
-
+-- [ SETTINGS INHERITANCE ] ------------------------------------------------------------------
 function Mixin:GetPlayerSetting(key)
-    local playerPlugin = self:GetPlayerFramePlugin()
-    local playerIndex = Enum.EditModeUnitFrameSystemIndices.Player
-    if playerPlugin and playerPlugin.GetSetting then
-        return playerPlugin:GetSetting(playerIndex, key)
-    end
-    return nil
+    local plugin = self.inheritPlugin or "Orbit_PlayerFrame"
+    local index = self.inheritIndex or Enum.EditModeUnitFrameSystemIndices.Player
+    return Orbit:ReadPluginSetting(plugin, index, key)
 end
 
 function Mixin:GetInheritedSetting(systemIndex, key, inheritFromPlayer)
@@ -263,7 +256,7 @@ function Mixin:CreateVisibilityContainer(parent, combatEssential)
     local container = CreateFrame("Frame", nil, parent or UIParent, "SecureHandlerStateTemplate")
     container:SetAllPoints()
     local baseDriver = "[petbattle] hide; show"
-    local driver = Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(baseDriver, combatEssential) or baseDriver
+    local driver = Orbit.MountedVisibility:GetMountedDriver(baseDriver, combatEssential) or baseDriver
     RegisterStateDriver(container, "visibility", driver)
     container.orbitBaseDriver = baseDriver
     container.orbitCombatEssential = combatEssential
@@ -274,7 +267,7 @@ function Mixin:UpdateVisibilityDriver()
     if not self.container or not self.container.orbitBaseDriver or InCombatLockdown() then return end
     local base = self.container.orbitBaseDriver
     local skipMountedDriver = Orbit:IsEditMode() or (self.mountedConfig and self.mountedConfig.hoverReveal)
-    local driver = (skipMountedDriver and base) or (Orbit.MountedVisibility and Orbit.MountedVisibility:GetMountedDriver(base, self.container.orbitCombatEssential) or base)
+    local driver = (skipMountedDriver and base) or (Orbit.MountedVisibility:GetMountedDriver(base, self.container.orbitCombatEssential) or base)
     RegisterStateDriver(self.container, "visibility", driver)
 end
 
@@ -318,4 +311,50 @@ function Mixin:ApplyUnitFrameSettings(frame, systemIndex, options)
 
     -- Restore position
     self:RestoreFramePosition(frame, systemIndex)
+end
+
+-- [ OVERLAY ICON BUILDER ] -------------------------------------------------------------------
+-- Creates OverlayFrame, LevelText, RareEliteIcon, MarkerIcon, Portrait + ComponentDrag registration
+function Mixin:CreateOverlayIcons(frame, systemIndex)
+    local Constants = Orbit.Constants
+    local iconSize = Constants.UnitFrame.StatusIconSize
+
+    if not frame.OverlayFrame then
+        frame.OverlayFrame = CreateFrame("Frame", nil, frame)
+        frame.OverlayFrame:SetAllPoints()
+        frame.OverlayFrame:SetFrameLevel(frame:GetFrameLevel() + 20)
+    end
+
+    if not frame.LevelText then
+        frame.LevelText = frame.OverlayFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        frame.LevelText:SetDrawLayer("OVERLAY", 7)
+        frame.LevelText:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
+    end
+
+    if not frame.RareEliteIcon then
+        frame.RareEliteIcon = frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
+        frame.RareEliteIcon:SetSize(iconSize, iconSize)
+        frame.RareEliteIcon:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", 2, 0)
+        frame.RareEliteIcon:Hide()
+    end
+
+    if not frame.MarkerIcon then
+        frame.MarkerIcon = frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
+        frame.MarkerIcon:SetSize(iconSize, iconSize)
+        frame.MarkerIcon.orbitOriginalWidth = iconSize
+        frame.MarkerIcon.orbitOriginalHeight = iconSize
+        frame.MarkerIcon:SetPoint("TOP", frame, "TOP", 0, -2)
+        frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
+        frame.MarkerIcon:Hide()
+    end
+
+    frame:CreatePortrait()
+
+    if OrbitEngine.ComponentDrag then
+        local MPC = function(key) return OrbitEngine.ComponentDrag:MakePositionCallback(self, systemIndex, key) end
+        OrbitEngine.ComponentDrag:Attach(frame.LevelText, frame, { key = "LevelText", onPositionChange = MPC("LevelText") })
+        OrbitEngine.ComponentDrag:Attach(frame.RareEliteIcon, frame, { key = "RareEliteIcon", onPositionChange = MPC("RareEliteIcon") })
+        OrbitEngine.ComponentDrag:Attach(frame.MarkerIcon, frame, { key = "MarkerIcon", onPositionChange = MPC("MarkerIcon") })
+        OrbitEngine.ComponentDrag:Attach(frame.Portrait, frame, { key = "Portrait", onPositionChange = MPC("Portrait") })
+    end
 end

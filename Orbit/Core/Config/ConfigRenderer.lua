@@ -1,5 +1,6 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local Constants = Orbit.Constants
 
 ---@class OrbitConfig
 Engine.Config = {}
@@ -8,7 +9,7 @@ local Layout = Engine.Layout
 
 function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
     local systemIndex = systemFrame.systemIndex or plugin.system or 1
-    local Constants = Engine.Constants
+    local Constants = Constants
 
     local footerHeight = Constants.Footer.TopPadding + Constants.Footer.ButtonHeight + Constants.Footer.BottomPadding
     local contentWidthWithScroll = Constants.Panel.Width - Constants.Panel.ScrollbarWidth - (Constants.Panel.ContentPadding * 2)
@@ -274,7 +275,7 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
     -- Row 2: Overflow (1-3 buttons).
     -- Rules: Buttons in a row fill the available width evenly.
 
-    local Constants = Engine.Constants
+    local Constants = Constants
 
     local buttonCount = #buttons
     local maxPerRow = 3

@@ -295,4 +295,3 @@ function CanvasMode:Initialize()
     EditModeManagerFrame:HookScript("OnHide", function() CanvasMode:ExitAll() end)
 end
 
-Engine.ComponentEdit = Engine.CanvasMode

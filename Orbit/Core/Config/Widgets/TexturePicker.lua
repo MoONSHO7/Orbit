@@ -1,5 +1,6 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local Constants = Orbit.Constants
 local Layout = Engine.Layout
 local LSM = LibStub("LibSharedMedia-3.0")
 local tinsert, tsort = table.insert, table.sort
@@ -66,7 +67,7 @@ function Layout:CreateTexturePicker(parent, label, initialTexture, callback, pre
     frame:SetParent(parent)
 
     -- Configure control logic
-    frame.selectedTexture = initialTexture or Engine.Constants.Settings.Texture.Default
+    frame.selectedTexture = initialTexture or Constants.Settings.Texture.Default
     frame.previewColor = previewColor or { r = 0.8, g = 0.8, b = 0.8 }
 
     local function UpdatePreview()
@@ -133,7 +134,7 @@ function Layout:CreateTexturePicker(parent, label, initialTexture, callback, pre
     UpdatePreview()
 
     -- Apply 3-column layout
-    local C = Engine.Constants
+    local C = Constants
 
     frame.Label:SetText(label)
     frame.Label:SetWidth(C.Widget.LabelWidth)

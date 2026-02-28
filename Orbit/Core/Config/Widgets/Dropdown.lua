@@ -1,5 +1,6 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local Constants = Orbit.Constants
 local Layout = Engine.Layout
 
 local MAX_TEXT_LENGTH = 22
@@ -78,7 +79,7 @@ function Layout:CreateDropdown(parent, label, options, initialValue, callback)
     end
 
     -- Apply 3-column layout
-    local C = Engine.Constants
+    local C = Constants
 
     if frame.Label then
         frame.Label:SetText(label)

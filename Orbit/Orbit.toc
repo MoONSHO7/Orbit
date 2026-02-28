@@ -41,8 +41,6 @@ Core\Infrastructure\KeybindSystem.lua
 Core\Infrastructure\CombatManager.lua
 Core\Infrastructure\Animation.lua
 
-# Engine Bootstrap
-Core\Engine\Engine.lua
 
 # Plugin Framework
 Core\Plugin\Registry.lua
@@ -94,3 +92,81 @@ Core\Config\OrbitOptionsButton.lua
 
 # Skinning
 Core\Skinning\Skins.xml
+
+# Plugin Manager
+Core\Config\PluginManager.lua
+
+# ==============================================================
+# PLUGINS
+# ==============================================================
+
+# Unit Frames
+Plugins\UnitFrames\Player\PlayerPower.lua
+Plugins\UnitFrames\Player\PlayerCastBar.lua
+Plugins\UnitFrames\Player\PlayerResources.lua
+Plugins\UnitFrames\Player\PlayerResourceSettings.lua
+Plugins\UnitFrames\Player\PlayerFrame.lua
+Plugins\UnitFrames\Player\PlayerPetFrame.lua
+Plugins\UnitFrames\Target\TargetFrame.lua
+Plugins\UnitFrames\Target\TargetCastBar.lua
+Plugins\UnitFrames\Target\TargetPower.lua
+Plugins\UnitFrames\Target\TargetBuffs.lua
+Plugins\UnitFrames\Target\TargetDebuffs.lua
+Plugins\UnitFrames\Target\TargetOfTargetFrame.lua
+Plugins\UnitFrames\Focus\FocusFrame.lua
+Plugins\UnitFrames\Focus\FocusCastBar.lua
+Plugins\UnitFrames\Focus\FocusPower.lua
+Plugins\UnitFrames\Focus\FocusBuffs.lua
+Plugins\UnitFrames\Focus\FocusDebuffs.lua
+Plugins\UnitFrames\Focus\TargetOfFocusFrame.lua
+
+# Party Frames
+Plugins\PartyFrames\PartyFrameHelpers.lua
+Plugins\PartyFrames\PartyFramePreview.lua
+Plugins\PartyFrames\FrameFactory.lua
+Plugins\PartyFrames\PartyFrameSettings.lua
+Plugins\PartyFrames\PartyFrame.lua
+
+# Raid Frames
+Plugins\RaidFrames\RaidFrameHelpers.lua
+Plugins\RaidFrames\RaidFramePreview.lua
+Plugins\RaidFrames\RaidFrameFactory.lua
+Plugins\RaidFrames\RaidFrameSettings.lua
+Plugins\RaidFrames\RaidFrame.lua
+
+# Boss Frames
+Plugins\BossFrames\BossFrameHelpers.lua
+Plugins\BossFrames\BossFramePreview.lua
+Plugins\BossFrames\BossFrameCastBar.lua
+Plugins\BossFrames\BossFrame.lua
+
+# Action Bars
+Plugins\ActionBars\ActionBarsText.lua
+Plugins\ActionBars\ActionBarsContainer.lua
+Plugins\ActionBars\ActionBarsPreview.lua
+Plugins\ActionBars\ActionBars.lua
+
+# Cooldown Manager
+Plugins\CooldownManager\CooldownUtils.lua
+Plugins\CooldownManager\CooldownManager.lua
+Plugins\CooldownManager\CooldownSettings.lua
+Plugins\CooldownManager\CooldownGlows.lua
+Plugins\CooldownManager\CooldownViewerHooks.lua
+Plugins\CooldownManager\CooldownLayout.lua
+Plugins\CooldownManager\CooldownText.lua
+Plugins\CooldownManager\TrackedTooltipParser.lua
+Plugins\CooldownManager\ControlButtonFactory.lua
+Plugins\CooldownManager\TrackedAbilities.lua
+Plugins\CooldownManager\TrackedCanvasPreview.lua
+Plugins\CooldownManager\TrackedCharges.lua
+Plugins\CooldownManager\KeybindSystem.lua
+
+# Menu Items
+Plugins\MenuItems\MicroMenu.lua
+Plugins\MenuItems\QueueStatus.lua
+Plugins\MenuItems\BagBar.lua
+Plugins\MenuItems\Performance.lua
+Plugins\MenuItems\CombatTimer.lua
+
+# Misc
+Plugins\Misc\TalkingHead.lua

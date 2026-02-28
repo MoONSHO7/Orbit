@@ -87,7 +87,7 @@ function Nudge:NudgeFrame(frame, direction, Selection)
     end
 
     -- Block nudging frames in Component Edit mode
-    if Engine.ComponentEdit and Engine.ComponentEdit:IsActive(frame) then
+    if Engine.CanvasMode and Engine.CanvasMode:IsActive(frame) then
         return
     end
 
@@ -148,7 +148,7 @@ function Nudge:NudgeNativeFrame(frame, direction, Selection)
     end
 
     -- Block nudging frames in Component Edit mode
-    if Engine.ComponentEdit and Engine.ComponentEdit:IsActive(frame) then
+    if Engine.CanvasMode and Engine.CanvasMode:IsActive(frame) then
         return
     end
 

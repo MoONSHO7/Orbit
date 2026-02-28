@@ -12,7 +12,7 @@ local CLEAN_PROFILE_SOURCE = ":CLEAN:"
 local DEBOUNCE_KEY = "ProfileManager_SpecCheck"
 local DEBOUNCE_DELAY = 0.1
 local NO_SPEC_PROFILE = "No-Spec"
-local ANCHOR_TARGET_SYSTEM = "Orbit_CooldownViewer"
+
 local DELAYED_REFRESH = 0.1
 
 local GLOBAL_DEFAULTS = {
@@ -184,10 +184,10 @@ function Orbit.Profile:SetActiveProfile(name)
 
     if Orbit.Engine and Orbit.Engine.systems then
         for _, plugin in ipairs(Orbit.Engine.systems) do
-            if plugin.ApplySettings and plugin.system == ANCHOR_TARGET_SYSTEM then SafeApplyPlugin(plugin) end
+            if plugin.ApplySettings and plugin.refreshPriority then SafeApplyPlugin(plugin) end
         end
         for _, plugin in ipairs(Orbit.Engine.systems) do
-            if plugin.ApplySettings and plugin.system ~= ANCHOR_TARGET_SYSTEM then SafeApplyPlugin(plugin) end
+            if plugin.ApplySettings and not plugin.refreshPriority then SafeApplyPlugin(plugin) end
         end
         C_Timer.After(DELAYED_REFRESH, function()
             for _, plugin in ipairs(Orbit.Engine.systems) do

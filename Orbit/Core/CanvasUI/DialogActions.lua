@@ -42,7 +42,7 @@ function Dialog:Apply()
     local isSynced = self.SyncToggle and self.SyncToggle:IsShown() and self.SyncToggle.isSynced
     local disabledCopy = {}
     for _, key in ipairs(self.disabledComponentKeys) do table.insert(disabledCopy, key) end
-    if isSynced and plugin.system == "Orbit_ActionBars" then
+    if isSynced and plugin.supportsGlobalSync then
         plugin:SetSetting(1, "GlobalComponentPositions", positions)
         if plugin.IsComponentDisabled then plugin:SetSetting(1, "GlobalDisabledComponents", disabledCopy) end
     else

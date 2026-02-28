@@ -107,8 +107,8 @@ local KEY_SCHEMAS = {
     },
     HealthText = {
         controls = {
-            { type = "checkbox", key = "ShowHealthValue", label = "Show Health Value", default = true, systems = { Orbit_RaidFrames = true, Orbit_PartyFrames = true } },
-            { type = "dropdown", key = "HealthTextMode", label = "Format", showIf = "ShowHealthValue", systems = { Orbit_RaidFrames = true, Orbit_PartyFrames = true },
+            { type = "checkbox", key = "ShowHealthValue", label = "Show Health Value", default = true, capability = "supportsHealthText" },
+            { type = "dropdown", key = "HealthTextMode", label = "Format", showIf = "ShowHealthValue", capability = "supportsHealthText",
               options = {
                 { text = "Percentage", value = "percent" },
                 { text = "Short Health", value = "short" },
@@ -361,7 +361,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             widget.showIf = control.showIf
 
             local shouldShow = true
-            if control.systems and not control.systems[self.plugin and self.plugin.system or ""] then shouldShow = false end
+            if control.capability and not (self.plugin and self.plugin[control.capability]) then shouldShow = false end
             if shouldShow and control.hideIf then shouldShow = not self.currentOverrides[control.hideIf]
             elseif shouldShow and control.showIf then shouldShow = self.currentOverrides[control.showIf] == true end
             if shouldShow and control.showIfValue then shouldShow = self.currentOverrides[control.showIfValue.key] == control.showIfValue.value end

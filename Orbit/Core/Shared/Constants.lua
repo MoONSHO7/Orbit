@@ -1,7 +1,7 @@
 -- [ ORBIT CONSTANTS - Unified Constants Module ]----------------------------------------------------
 -- All constants consolidated here for easy access and maintenance.
--- Access via: Orbit.Constants or Orbit.Engine.Constants
--- This file loads FIRST, before Engine.lua
+-- Access via: Orbit.Constants
+-- This file loads FIRST, before Init.lua
 
 local _, Orbit = ...
 
@@ -95,6 +95,16 @@ C.UnitFrame = {
 C.BossFrame = {
     PowerBarRatio = 0.2, -- Power bar height as ratio of frame height
     FrameSpacing = 20, -- Base spacing between stacked boss frames
+}
+
+C.GroupFrames = {
+    OutOfRangeAlpha = 0.2,
+    OfflineAlpha = 0.35,
+    MaxPrivateAuraAnchors = 3,
+    AuraBaseIconSize = 10,
+    RolePriority = { TANK = 1, HEALER = 2, DAMAGER = 3, NONE = 4 },
+    GrowthDirection = { Down = "Down", Up = "Up", Left = "Left", Right = "Right" },
+    ContainerAnchor = { Down = "TOPLEFT", Up = "BOTTOMLEFT", Right = "TOPLEFT", Left = "TOPRIGHT" },
 }
 
 C.Stagger = {

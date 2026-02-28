@@ -20,7 +20,7 @@ local SAMPLE_DEBUFF_ICONS = { 132122, 136207, 135824 }
 -- [ REFRESH LOGIC ]---------------------------------------------------------------------------------
 
 local function RefreshAuraIcons(self)
-    local AURA_BASE_ICON_SIZE = Orbit.PartyFrameHelpers and Orbit.PartyFrameHelpers.LAYOUT.AuraBaseIconSize or AURA_MIN_ICON_SIZE
+    local AURA_BASE_ICON_SIZE = (Orbit.Constants.GroupFrames and Orbit.Constants.GroupFrames.AuraBaseIconSize) or AURA_MIN_ICON_SIZE
     local overrides = self.pendingOverrides or self.existingOverrides or {}
     local maxIcons = overrides.MaxIcons or DEFAULT_MAX_ICONS
     local maxRows = overrides.MaxRows or DEFAULT_MAX_ROWS
@@ -29,8 +29,7 @@ local function RefreshAuraIcons(self)
     local preview = self:GetParent()
     local parentWidth = preview and (preview.sourceWidth or preview:GetWidth()) or DEFAULT_PARENT_WIDTH
     local parentHeight = preview and (preview.sourceHeight or preview:GetHeight()) or DEFAULT_PARENT_HEIGHT
-    local Helpers = Orbit.PartyFrameHelpers
-    local position = Helpers and Helpers.AnchorToPosition and Helpers:AnchorToPosition(self.posX, self.posY, parentWidth / 2, parentHeight / 2) or "Right"
+    local position = OrbitEngine.PositionUtils.AnchorToPosition(self.posX, self.posY, parentWidth / 2, parentHeight / 2, "Right")
     local isHorizontal = (position == "Above" or position == "Below")
 
     local rows, iconsPerRow, containerWidth, containerHeight

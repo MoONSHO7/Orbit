@@ -1,7 +1,17 @@
 local _, addonTable = ...
 local Orbit = addonTable
 
--- Abstract Mixin for Orbit Plugins
+local DEFAULT_LAYOUT_ID = "Default"
+
+-- Traverse nested tables safely, returning nil if any key is missing
+local function SafeTablePath(tbl, ...)
+    for i = 1, select("#", ...) do
+        if type(tbl) ~= "table" then return nil end
+        tbl = tbl[select(i, ...)]
+    end
+    return tbl
+end
+
 ---@class OrbitPluginMixin
 Orbit.PluginMixin = {}
 
@@ -60,6 +70,13 @@ function Orbit.PluginMixin:GetLayoutID()
     return "Orbit"
 end
 
+-- Read a setting from any plugin's DB without needing a plugin reference (zero coupling)
+function Orbit:ReadPluginSetting(system, systemIndex, key)
+    local db = Orbit.runtime and Orbit.runtime.Layouts
+    local node = SafeTablePath(db, "Orbit", system, systemIndex)
+    return node and node[key]
+end
+
 function Orbit.PluginMixin:GetSetting(systemIndex, key)
     systemIndex = systemIndex or 1
     local layoutID = self:GetLayoutID()
@@ -79,13 +96,12 @@ function Orbit.PluginMixin:GetSetting(systemIndex, key)
         return val
     end
 
-    local val = nil
-    if db and db[layoutID] and db[layoutID][self.system] and db[layoutID][self.system][systemIndex] then
-        val = db[layoutID][self.system][systemIndex][key]
-    end
+    local node = SafeTablePath(db, layoutID, self.system, systemIndex)
+    local val = node and node[key]
     -- Backward compatibility: Fallback to "Default" layout
-    if val == nil and db and db["Default"] and db["Default"][self.system] and db["Default"][self.system][systemIndex] then
-        val = db["Default"][self.system][systemIndex][key]
+    if val == nil then
+        node = SafeTablePath(db, DEFAULT_LAYOUT_ID, self.system, systemIndex)
+        val = node and node[key]
     end
 
     if val == nil and self.indexDefaults and self.indexDefaults[systemIndex] and self.indexDefaults[systemIndex][key] ~= nil then
@@ -136,7 +152,7 @@ end
 
 function Orbit.PluginMixin:UpdateVisibility()
     local shouldHide = (C_PetBattles and C_PetBattles.IsInBattle()) or (UnitHasVehicleUI and UnitHasVehicleUI("player"))
-        or (Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide())
+        or (Orbit.MountedVisibility:ShouldHide())
     if shouldHide then
         if self.frame then self.frame:SetAlpha(0) end
         if self.containers then

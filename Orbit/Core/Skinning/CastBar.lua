@@ -7,6 +7,13 @@ local Constants = Orbit.Constants
 local Pixel = Orbit.Engine.Pixel
 
 local EMPOWER_MARKER_WIDTH = 2
+local SPARK_GLOW_ALPHA = 0.4
+local ICON_DEFAULT_SIZE = 20
+local TEXT_H_PADDING = 5
+local INTERRUPT_FLASH_ALPHA = 0.5
+local LATENCY_ALPHA = 0.5
+local SPARK_GLOW_WIDTH_RATIO = 2.5
+local INTERRUPT_FADE_DURATION = 0.5
 
 local LSM = LibStub("LibSharedMedia-3.0")
 
@@ -34,11 +41,11 @@ function CastBar:Create(parent)
 
     -- Spell Name Text
     bar.Text = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    bar.Text:SetPoint("LEFT", bar, "LEFT", 5, 0)
+    bar.Text:SetPoint("LEFT", bar, "LEFT", TEXT_H_PADDING, 0)
 
     -- Timer Text
     bar.Timer = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    bar.Timer:SetPoint("RIGHT", bar, "RIGHT", -5, 0)
+    bar.Timer:SetPoint("RIGHT", bar, "RIGHT", -TEXT_H_PADDING, 0)
 
     -- Border
     bar.Border = CreateFrame("Frame", nil, bar, "BackdropTemplate")
@@ -56,19 +63,19 @@ function CastBar:Create(parent)
     bar.SparkGlow = bar:CreateTexture(nil, "OVERLAY", nil, 1)
     bar.SparkGlow:SetAtlas("cast_standard_pipglow")
     bar.SparkGlow:SetBlendMode("ADD")
-    bar.SparkGlow:SetAlpha(0.4) -- Reduced opacity for subtler effect
+    bar.SparkGlow:SetAlpha(SPARK_GLOW_ALPHA)
     bar.SparkGlow:SetPoint("RIGHT", bar.Spark, "CENTER", 0, 0)
     -- Size will be set dynamically based on bar height in Apply
 
     -- Latency
     bar.Latency = bar:CreateTexture(nil, "ARTWORK")
-    bar.Latency:SetColorTexture(1, 0, 0, 0.5)
+    bar.Latency:SetColorTexture(1, 0, 0, LATENCY_ALPHA)
     bar.Latency:Hide()
 
     -- Interrupt Overlay (White Flash)
     bar.InterruptOverlay = bar:CreateTexture(nil, "OVERLAY")
     bar.InterruptOverlay:SetAllPoints()
-    bar.InterruptOverlay:SetColorTexture(1, 1, 1, 0.5)
+    bar.InterruptOverlay:SetColorTexture(1, 1, 1, INTERRUPT_FLASH_ALPHA)
     bar.InterruptOverlay:SetBlendMode("ADD")
     bar.InterruptOverlay:SetAlpha(0)
 
@@ -77,14 +84,14 @@ function CastBar:Create(parent)
     local alpha = animGroup:CreateAnimation("Alpha")
     alpha:SetFromAlpha(1)
     alpha:SetToAlpha(0)
-    alpha:SetDuration(0.5)
+    alpha:SetDuration(INTERRUPT_FADE_DURATION)
     alpha:SetSmoothing("OUT")
     bar.InterruptAnim = animGroup
 
     -- Icon (Created on PARENT, positioned at parent's left edge - stays fixed while orbitBar moves)
     bar.Icon = parent:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
     bar.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
-    bar.Icon:SetSize(20, 20)
+    bar.Icon:SetSize(ICON_DEFAULT_SIZE, ICON_DEFAULT_SIZE)
     bar.Icon:SetPoint("LEFT", parent, "LEFT", 0, 0)
     bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
 
@@ -174,7 +181,7 @@ function CastBar:Apply(bar, settings)
     if bar.SparkGlow then
         local height = parent:GetHeight()
         local scale = parent:GetEffectiveScale()
-        bar.SparkGlow:SetSize(Orbit.Engine.Pixel:Snap(height * 2.5, scale), height)
+        bar.SparkGlow:SetSize(Orbit.Engine.Pixel:Snap(height * SPARK_GLOW_WIDTH_RATIO, scale), height)
 
         if settings.sparkColor then
             local c = settings.sparkColor
@@ -200,9 +207,9 @@ function CastBar:Apply(bar, settings)
             bar.Text:Show()
             bar.Text:ClearAllPoints()
             if settings.showIcon and bar.Icon then
-                bar.Text:SetPoint("LEFT", bar.Icon, "RIGHT", 5, 0)
+                bar.Text:SetPoint("LEFT", bar.Icon, "RIGHT", TEXT_H_PADDING, 0)
             else
-                bar.Text:SetPoint("LEFT", bar, "LEFT", 5, 0)
+                bar.Text:SetPoint("LEFT", bar, "LEFT", TEXT_H_PADDING, 0)
             end
             Skin:SkinText(bar.Text, settings)
         else

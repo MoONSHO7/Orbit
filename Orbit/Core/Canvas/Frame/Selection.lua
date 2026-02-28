@@ -4,6 +4,7 @@
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local Constants = Orbit.Constants
 local C = Orbit.Constants
 
 Engine.FrameSelection = Engine.FrameSelection or {}
@@ -35,7 +36,7 @@ end
 
 local function GetOrbitEditModeColor()
     local curveData = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.EditModeColorCurve
-    return (Orbit.Engine.ColorCurve:GetFirstColorFromCurve(curveData)) or Engine.Constants.Frame.EditModeColor
+    return (Orbit.Engine.ColorCurve:GetFirstColorFromCurve(curveData)) or Constants.Frame.EditModeColor
 end
 
 -- [ SYMMETRIC PAIR REGISTRATION ]------------------------------------------------------------------
@@ -252,7 +253,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
 
     selection:SetScript("OnMouseUp", function(self, button)
         if button == "RightButton" then
-            Engine.ComponentEdit:Toggle(self.parent, function(f)
+            Engine.CanvasMode:Toggle(self.parent, function(f)
                 Selection:UpdateVisuals(f)
             end)
         end
@@ -544,7 +545,7 @@ function Selection:UpdateVisuals(frame, selection)
     end
 
     -- Canvas Mode: Show green selection to indicate editable state
-    local isComponentEdit = Engine.ComponentEdit:IsActive(selection.parent)
+    local isComponentEdit = Engine.CanvasMode:IsActive(selection.parent)
     if isComponentEdit then
         -- Show selection with green tint for Canvas Mode
         selection:Show()

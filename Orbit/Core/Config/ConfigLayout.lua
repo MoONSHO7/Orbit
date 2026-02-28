@@ -1,5 +1,6 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local Constants = Orbit.Constants
 
 ---@class OrbitLayout
 Engine.Layout = {}

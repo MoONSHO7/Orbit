@@ -1,5 +1,6 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local Constants = Orbit.Constants
 local Layout = Engine.Layout
 
 -- [ COLOR CURVE PICKER WIDGET ] ---------------------------------------------------------------------
@@ -102,7 +103,7 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
     frame:UpdatePreview()
 
     -- Apply 3-column layout
-    local C = Engine.Constants
+    local C = Constants
 
     frame.Label:SetText(label)
     frame.Label:SetWidth(C.Widget.LabelWidth)

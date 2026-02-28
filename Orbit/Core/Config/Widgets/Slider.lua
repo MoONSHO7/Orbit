@@ -1,5 +1,6 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local Constants = Orbit.Constants
 local Layout = Engine.Layout
 local math_floor = math.floor
 
@@ -139,7 +140,7 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
     end
 
     -- Apply 3-column layout
-    local C = Engine.Constants
+    local C = Constants
 
     if frame.Label then
         frame.Label:SetText(label)

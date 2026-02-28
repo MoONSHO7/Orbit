@@ -20,7 +20,7 @@ local addonName, addonTable = ...
 ---@field Config OrbitConfig
 ---@field Layout OrbitLayout
 Orbit = addonTable
-
+Orbit.Engine = Orbit.Engine or {}
 local OrbitEngine = Orbit.Engine
 Orbit.Layout = OrbitEngine.Layout
 Orbit.Config = OrbitEngine.Config
@@ -197,7 +197,17 @@ function Orbit:OnLoad()
 end
 
 function Orbit:Print(...) print("|cFF00FFFF" .. self.title .. ":|r", ...) end
-function Orbit:IsPluginEnabled(name) return true end
+
+function Orbit:IsPluginEnabled(name)
+    if not self.db or not self.db.DisabledPlugins then return true end
+    return not self.db.DisabledPlugins[name]
+end
+
+function Orbit:SetPluginEnabled(name, enabled)
+    if not self.db then return end
+    if not self.db.DisabledPlugins then self.db.DisabledPlugins = {} end
+    self.db.DisabledPlugins[name] = (not enabled) or nil
+end
 
 -- [ EVENT HANDLERS ]--------------------------------------------------------------------------------
 

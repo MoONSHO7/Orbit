@@ -224,7 +224,7 @@ function Drag:OnDragStart(selectionOverlay)
     end
     local parent = selectionOverlay.parent
 
-    if Engine.ComponentEdit:IsActive(parent) then
+    if Engine.CanvasMode:IsActive(parent) then
         return
     end
 
@@ -301,7 +301,7 @@ function Drag:OnDragStop(selectionOverlay)
     local parent = selectionOverlay.parent
     parent:StopMovingOrSizing()
 
-    if Engine.ComponentEdit:IsActive(parent) then
+    if Engine.CanvasMode:IsActive(parent) then
         parent.orbitIsDragging = nil
         return
     end
@@ -401,10 +401,10 @@ function Drag:OnMouseDown(selectionOverlay)
     local clickedFrame = selectionOverlay.parent
 
     -- Exit Canvas Mode on any other frame when clicking a different frame
-    if Engine.ComponentEdit and Engine.ComponentEdit.currentFrame then
-        local currentCanvasFrame = Engine.ComponentEdit.currentFrame
+    if Engine.CanvasMode and Engine.CanvasMode.currentFrame then
+        local currentCanvasFrame = Engine.CanvasMode.currentFrame
         if currentCanvasFrame ~= clickedFrame then
-            Engine.ComponentEdit:Exit(currentCanvasFrame, function(f)
+            Engine.CanvasMode:Exit(currentCanvasFrame, function(f)
                 Selection:UpdateVisuals(f)
             end)
         end
@@ -455,7 +455,7 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
     local parent = selectionOverlay.parent
     local Selection = Engine.FrameSelection
 
-    if Engine.ComponentEdit:IsActive(parent) then
+    if Engine.CanvasMode:IsActive(parent) then
         return
     end
     if not Engine.FrameAnchor then

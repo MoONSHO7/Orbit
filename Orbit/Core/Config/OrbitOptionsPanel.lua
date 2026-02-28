@@ -84,7 +84,7 @@ local function GetGlobalSchema()
         type = "checkbox", key = "HideWhenMounted", label = "Hide When Mounted", default = false,
         onChange = function(val)
             Orbit.db.GlobalSettings.HideWhenMounted = val
-            if Orbit.MountedVisibility then Orbit.MountedVisibility:Refresh() end
+            Orbit.MountedVisibility:Refresh()
         end,
     })
 
@@ -106,7 +106,7 @@ local function GetGlobalSchema()
                 d.BorderSize = 2
                 d.HideWhenMounted = false
             end
-            if Orbit.MountedVisibility then Orbit.MountedVisibility:Refresh() end
+            Orbit.MountedVisibility:Refresh()
             Orbit:Print("Global settings reset to defaults.")
         end,
     }
@@ -517,6 +517,7 @@ StaticPopupDialogs["ORBIT_CONFIRM_COPY_PROFILE"] = {
 local function Help()
     print("|cFFAA77FFOrbit Commands:|r")
     print("  |cFFAA77FF/orbit|r |cFF00D4FF- Toggle Edit Mode / Options|r")
+    print("  |cFFAA77FF/orbit plugins|r |cFF00D4FF- Open Plugin Manager|r")
     print("  |cFFAA77FF/orbit reset|r |cFF00D4FF- Reset CURRENT profile to defaults|r")
     print("  |cFFAA77FF/orbit hardreset|r |cFF00D4FF- Factory Reset (Wipe All Data)|r")
     print("  |cFFAA77FF/orbit portal|r |cFF00D4FF- Portal Dock commands|r")
@@ -544,6 +545,12 @@ SlashCmdList["ORBIT"] = function(msg)
     end
 
     if cmd == "help" then Help()
+    elseif cmd == "plugins" then
+        if Orbit._pluginSettingsCategoryID then
+            Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
+        else
+            Orbit:Print("Plugin Manager not yet loaded.")
+        end
     elseif cmd == "reset" then
         local profile = Orbit.Profile:GetActiveProfileName()
         StaticPopup_Show("ORBIT_CONFIRM_RESET", profile, nil, profile)
