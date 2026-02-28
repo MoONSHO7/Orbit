@@ -94,6 +94,10 @@ function Plugin:OnLoad()
         end
     end)
 
+    Orbit.EventBus:On("ORBIT_GLOBAL_BACKDROP_CHANGED", function()
+        self:ApplySettings()
+    end, self)
+
     -- Create frame ONLY when plugin is enabled (OnLoad is only called for enabled plugins)
     Frame = OrbitEngine.FrameFactory:CreateButtonContainer("PlayerResources", self, {
         width = DEFAULTS.Width,

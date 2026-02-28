@@ -21,6 +21,9 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 | AuraPreview.lua | aura preview generation for canvas mode. |
 | GroupAuraFilters.lua | aura filter rules for party/raid (dispellable, defensive, etc.). |
 | GroupFrameMixin.lua | shared group frame behavior (party/raid header management). |
+| GroupFrameEventHandler.lua | shared OnEvent/OnShow handler factory for group frames. |
+| PrivateAuraMixin.lua | shared private aura anchor creation and management. |
+| GroupCanvasRegistration.lua | shared canvas mode component registration and icon position application. |
 | StatusIconMixin.lua | status indicators (defensive, crowd control, movement speed). |
 | AggroIndicatorMixin.lua | threat/aggro border coloring. |
 | DispelIndicatorMixin.lua | dispellable debuff type indication. |

@@ -18,7 +18,10 @@ provides three viewer types: essential cooldowns (class rotation), utility coold
 | CooldownUtils.lua | shared utilities: icon dimension calculation, skin settings builder. |
 | CooldownViewerHooks.lua | hooks into blizzard's cooldown viewer api (`C_CooldownViewer`). |
 | ControlButtonFactory.lua | +/- control buttons for adding/removing child frames in edit mode. |
-| TrackedAbilities.lua | user-tracked ability/item grid. drag-and-drop spell/item assignment. |
+| TrackedAbilities.lua | user-tracked ability/item grid. anchor lifecycle, child frames, drag-and-drop, data persistence. |
+| TrackedIconFactory.lua | tracked icon creation, pooling, skinning, and text styling. |
+| TrackedLayout.lua | tracked grid layout engine, edge buttons, usability detection. |
+| TrackedUpdater.lua | tracked icon cooldown state, glow, timer color, ticker, cursor/talent watchers. |
 | TrackedCharges.lua | charge bar frame. tracks multi-charge spell recharge progress. |
 | ChargeBarLayout.lua | charge bar layout, button building, and skinning. |
 | ChargeBarCanvasPreview.lua | canvas mode preview for charge bars. |
@@ -36,6 +39,9 @@ graph TD
     CDM --> Charges[TrackedCharges]
     Charges --> ChargeLayout[ChargeBarLayout]
     Charges --> ChargePreview[ChargeBarCanvasPreview]
+    Tracked --> IconFactory[TrackedIconFactory]
+    Tracked --> TrackedLayoutMod[TrackedLayout]
+    Tracked --> TrackedUpdaterMod[TrackedUpdater]
     Tracked --> TooltipParser[TrackedTooltipParser]
     Tracked --> ControlButtons[ControlButtonFactory]
     CDM --> Layout[CooldownLayout]

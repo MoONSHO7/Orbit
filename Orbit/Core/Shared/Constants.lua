@@ -84,6 +84,8 @@ C.Levels = {
 }
 
 C.UnitFrame = {
+    InheritPlugin = "Orbit_PlayerFrame", -- Canonical plugin for settings inheritance
+    InheritIndex = 1, -- Enum.EditModeUnitFrameSystemIndices.Player (resolved at runtime)
     TextPadding = 5, -- SetPoint offset for Name/HealthText labels
     ShadowOffset = { x = 1, y = -1 }, -- Standard shadow for text
     AdaptiveTextMin = 14, -- Min font size for adaptive text scaling

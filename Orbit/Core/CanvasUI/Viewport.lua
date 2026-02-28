@@ -9,6 +9,7 @@ local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
 local C = CanvasMode.Constants
+local OVERLAY_LEVEL_BOOST = 100
 
 -- [ ROW 2: FILTER TAB BAR ]-------------------------------------------------------------
 
@@ -92,7 +93,7 @@ Dialog.PreviewContainer.Background:SetPoint("BOTTOMRIGHT", -4, 4)
 -- Transmog-style golden border (on high-level overlay to render above preview content)
 Dialog.BorderOverlay = CreateFrame("Frame", nil, Dialog.PreviewContainer)
 Dialog.BorderOverlay:SetAllPoints()
-Dialog.BorderOverlay:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + 100)
+Dialog.BorderOverlay:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
 Dialog.PreviewContainer.Border = Dialog.BorderOverlay:CreateTexture(nil, "OVERLAY")
 Dialog.PreviewContainer.Border:SetAtlas("transmog-tabs-frame")
 Dialog.PreviewContainer.Border:SetPoint("TOPLEFT", Dialog.PreviewContainer, "TOPLEFT", -11, 12)

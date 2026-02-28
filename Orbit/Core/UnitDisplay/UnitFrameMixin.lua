@@ -11,10 +11,11 @@ Orbit.UnitFrameMixin = {}
 local Mixin = Orbit.UnitFrameMixin
 
 -- [ SETTINGS INHERITANCE ] ------------------------------------------------------------------
+local INHERIT_PLUGIN = Orbit.Constants.UnitFrame.InheritPlugin
+local INHERIT_INDEX = Orbit.Constants.UnitFrame.InheritIndex
+
 function Mixin:GetPlayerSetting(key)
-    local plugin = self.inheritPlugin or "Orbit_PlayerFrame"
-    local index = self.inheritIndex or Enum.EditModeUnitFrameSystemIndices.Player
-    return Orbit:ReadPluginSetting(plugin, index, key)
+    return Orbit:ReadPluginSetting(self.inheritPlugin or INHERIT_PLUGIN, self.inheritIndex or INHERIT_INDEX, key)
 end
 
 function Mixin:GetInheritedSetting(systemIndex, key, inheritFromPlayer)

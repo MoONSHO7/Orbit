@@ -8,6 +8,7 @@ local MOUNTED_COMBAT_PREFIX = "[mounted,nocombat] hide; "
 local MOUNTED_ALWAYS_PREFIX = "[mounted] hide; "
 local OPEN_WORLD_INSTANCE_TYPES = { ["none"] = true, ["scenario"] = true }
 local REAPPLY_DELAY = 0.5
+local OVERLAY_LEVEL_BOOST = 100
 local DRUID_TRAVEL_FORMS = { [DRUID_TRAVEL_FORM] = true, [DRUID_FLIGHT_FORM] = true }
 
 local BLIZZARD_HIDE_FRAMES = {
@@ -83,7 +84,7 @@ local function CreateHoverOverlay(frame, plugin)
     if frame.orbitHoverOverlay then return end
     local overlay = CreateFrame("Frame", nil, frame)
     overlay:SetAllPoints()
-    overlay:SetFrameLevel(frame:GetFrameLevel() + 100)
+    overlay:SetFrameLevel(frame:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
     overlay:EnableMouse(true)
     overlay:SetMouseMotionEnabled(true)
     overlay:SetMouseClickEnabled(false)
@@ -231,7 +232,7 @@ local function SetupMinimapHoverOverlay()
     if not cluster or cluster.orbitHoverOverlay then return end
     local overlay = CreateFrame("Frame", nil, cluster)
     overlay:SetAllPoints()
-    overlay:SetFrameLevel(cluster:GetFrameLevel() + 100)
+    overlay:SetFrameLevel(cluster:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
     overlay:EnableMouse(true)
     overlay:SetMouseMotionEnabled(true)
     overlay:SetMouseClickEnabled(false)

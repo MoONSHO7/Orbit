@@ -5,6 +5,9 @@
     <Script file="GroupAuraFilters.lua"/>
     <Script file="UnitFrameMixin.lua"/>
     <Script file="GroupFrameMixin.lua"/>
+    <Script file="GroupFrameEventHandler.lua"/>
+    <Script file="PrivateAuraMixin.lua"/>
+    <Script file="GroupCanvasRegistration.lua"/>
     <Script file="CastBarMixin.lua"/>
     <Script file="UnitPowerBarMixin.lua"/>
     <Script file="AuraMixin.lua"/>

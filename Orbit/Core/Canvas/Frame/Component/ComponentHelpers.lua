@@ -11,16 +11,18 @@ local Helpers = Engine.ComponentHelpers
 -- [ CONFIGURATION ]-----------------------------------------------------------------------------
 
 Helpers.PADDING = 25 -- Drag boundary padding
+local DEFAULT_MIN_WIDTH = 40
+local DEFAULT_MIN_HEIGHT = 16
 
 -- [ SAFE SIZE ACCESSOR ]------------------------------------------------------------------------
 
 -- For FontStrings, uses GetStringWidth/GetStringHeight which return actual text bounds
 function Helpers.SafeGetSize(region)
     if not region then
-        return 40, 16 -- Default minimum size
+        return DEFAULT_MIN_WIDTH, DEFAULT_MIN_HEIGHT
     end
 
-    local width, height = 40, 16 -- Defaults
+    local width, height = DEFAULT_MIN_WIDTH, DEFAULT_MIN_HEIGHT
 
     -- For FontStrings, prefer GetStringWidth/GetStringHeight for actual text bounds
     local isFontString = region.GetStringWidth ~= nil

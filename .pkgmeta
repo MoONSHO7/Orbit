@@ -13,5 +13,6 @@ ignore:
   - .pkgmeta
   - .vscode
   - README.md
+  - readme.md
   - Plugins
   - Docs

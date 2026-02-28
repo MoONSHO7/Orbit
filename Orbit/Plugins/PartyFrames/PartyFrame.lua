@@ -270,80 +270,7 @@ local function UpdateDefensiveIcon(frame, plugin) plugin:UpdateDefensiveIcon(fra
 local function UpdateCrowdControlIcon(frame, plugin) plugin:UpdateCrowdControlIcon(frame, plugin, CROWD_CONTROL_ICON_SIZE) end
 
 -- [ PRIVATE AURA ANCHOR ]---------------------------------------------------------------------------
-
-local function UpdatePrivateAuras(frame, plugin)
-    local anchor = frame.PrivateAuraAnchor
-    if not anchor then return end
-    if plugin.IsComponentDisabled and plugin:IsComponentDisabled("PrivateAuraAnchor") then
-        anchor:Hide()
-        return
-    end
-
-    -- Clear preview visuals assigned during Canvas Mode
-    if anchor.Icon then anchor.Icon:SetTexture(nil) end
-    if anchor.SetBackdrop then anchor:SetBackdrop(nil) end
-    if anchor.Border then anchor.Border:Hide() end
-    if anchor.Shadow then anchor.Shadow:Hide() end
-
-    local unit = frame.unit
-    if not unit or not UnitExists(unit) then anchor:Hide() return end
-
-    -- Only recreate anchors if they haven't been created yet for this session/unit
-    -- Constantly removing and re-adding them on UNIT_AURA breaks the native timeout UI
-    if not frame._privateAuraIDs or frame._privateAuraUnit ~= unit then
-        if frame._privateAuraIDs then
-            for _, id in ipairs(frame._privateAuraIDs) do 
-                C_UnitAuras.RemovePrivateAuraAnchor(id) 
-            end
-        end
-        
-        frame._privateAuraIDs = {}
-        frame._privateAuraUnit = unit
-
-        local positions = plugin.GetSetting and plugin:GetSetting(1, "ComponentPositions") or {}
-        local posData = positions.PrivateAuraAnchor or {}
-        local overrides = posData.overrides
-        local scale = (overrides and overrides.Scale) or 1
-        local iconSize = math.floor(PRIVATE_AURA_ICON_SIZE * scale)
-        local spacing = 1
-        local totalWidth = (MAX_PRIVATE_AURA_ANCHORS * iconSize) + ((MAX_PRIVATE_AURA_ANCHORS - 1) * spacing)
-        local anchorX = posData.anchorX or "CENTER"
-        local eff = frame:GetEffectiveScale()
-
-        anchor:SetSize(totalWidth, iconSize)
-
-        for i = 1, MAX_PRIVATE_AURA_ANCHORS do
-            local point, relPoint, xOff
-            if anchorX == "RIGHT" then
-                xOff = OrbitEngine.Pixel:Snap(-((i - 1) * (iconSize + spacing)), eff)
-                point, relPoint = "TOPRIGHT", "TOPRIGHT"
-            elseif anchorX == "LEFT" then
-                xOff = OrbitEngine.Pixel:Snap((i - 1) * (iconSize + spacing), eff)
-                point, relPoint = "TOPLEFT", "TOPLEFT"
-            else
-                local centeredStart = -(totalWidth - iconSize) / 2
-                xOff = OrbitEngine.Pixel:Snap(centeredStart + (i - 1) * (iconSize + spacing), eff)
-                point, relPoint = "CENTER", "CENTER"
-            end
-            local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
-                unitToken = unit,
-                auraIndex = i,
-                parent = anchor,
-                showCountdownFrame = true,
-                showCountdownNumbers = true,
-                iconInfo = {
-                    iconWidth = iconSize,
-                    iconHeight = iconSize,
-                    iconAnchor = { point = point, relativeTo = anchor, relativePoint = relPoint, offsetX = xOff, offsetY = 0 },
-                    borderScale = 1,
-                },
-            })
-            if anchorID then frame._privateAuraIDs[#frame._privateAuraIDs + 1] = anchorID end
-        end
-    end
-    
-    anchor:Show()
-end
+local function UpdatePrivateAuras(frame, plugin) Orbit.PrivateAuraMixin:Update(frame, plugin, PRIVATE_AURA_ICON_SIZE) end
 
 -- [ STATUS INDICATOR DISPATCH ]---------------------------------------------------------------------
 
@@ -395,141 +322,15 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
     -- Register frame events (delegated to factory mixin)
     plugin:RegisterFrameEvents(frame, unit)
 
-    -- Update Loop
-    frame:SetScript("OnShow", function(self)
-        -- Guard against nil unit (frames start hidden, unit assigned later)
-        if not self.unit then
-            return
-        end
-
-        self:UpdateAll()
-        UpdatePowerBar(self, plugin)
-        UpdateFrameLayout(self, Orbit.db.GlobalSettings.BorderSize, plugin)
-        UpdateDebuffs(self, plugin)
-        UpdateBuffs(self, plugin)
-        UpdateDefensiveIcon(self, plugin)
-
-        UpdateCrowdControlIcon(self, plugin)
-        UpdatePrivateAuras(self, plugin)
-        StatusDispatch(self, plugin, "UpdateAllPartyStatusIcons")
-        StatusDispatch(self, plugin, "UpdateStatusText")
-        UpdateInRange(self)
-    end)
-
-    -- Extended OnEvent handler
+    -- Shared callbacks for event/show handlers
+    local eventCallbacks = {
+        UpdatePowerBar = UpdatePowerBar, UpdateDebuffs = UpdateDebuffs, UpdateBuffs = UpdateBuffs,
+        UpdateDefensiveIcon = UpdateDefensiveIcon, UpdateCrowdControlIcon = UpdateCrowdControlIcon,
+        UpdatePrivateAuras = UpdatePrivateAuras, UpdateFrameLayout = UpdateFrameLayout,
+    }
     local originalOnEvent = frame:GetScript("OnEvent")
-    frame:SetScript("OnEvent", function(f, event, eventUnit, ...)
-        if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
-            if eventUnit == f.unit then
-                UpdatePowerBar(f, plugin)
-            end
-            return
-        end
-
-        if event == "UNIT_AURA" then
-            -- Use f.unit (current assigned unit) not closure 'unit' which may be stale
-            if eventUnit == f.unit then
-                UpdateDebuffs(f, plugin)
-                UpdateBuffs(f, plugin)
-                UpdateDefensiveIcon(f, plugin)
-
-                UpdateCrowdControlIcon(f, plugin)
-                UpdatePrivateAuras(f, plugin)
-                -- Update dispel indicator
-                if plugin.UpdateDispelIndicator then
-                    plugin:UpdateDispelIndicator(f, plugin)
-                end
-            end
-            return
-        end
-
-        -- Combat state change: force refresh buffs for combat-aware filtering
-        if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
-            UpdateDebuffs(f, plugin)
-            UpdateBuffs(f, plugin)
-            return
-        end
-
-        -- Target changed - update selection highlight for ALL frames
-        if event == "PLAYER_TARGET_CHANGED" then
-            StatusDispatch(f, plugin, "UpdateSelectionHighlight")
-            return
-        end
-
-        -- Threat updates
-        if event == "UNIT_THREAT_SITUATION_UPDATE" then
-            if eventUnit == f.unit then
-                -- Update aggro indicator
-                if plugin.UpdateAggroIndicator then
-                    plugin:UpdateAggroIndicator(f, plugin)
-                end
-            end
-            return
-        end
-
-        -- Phase updates
-        if event == "UNIT_PHASE" or event == "UNIT_FLAGS" then
-            if eventUnit == f.unit then
-                StatusDispatch(f, plugin, "UpdatePhaseIcon")
-                StatusDispatch(f, plugin, "UpdateLeaderIcon")
-                UpdateInRange(f)
-            end
-            return
-        end
-        if event == "UNIT_CONNECTION" then
-            if eventUnit == f.unit then
-                UpdateInRange(f)
-                StatusDispatch(f, plugin, "UpdateStatusText")
-            end
-            return
-        end
-
-        -- Ready check events
-        if event == "READY_CHECK" or event == "READY_CHECK_CONFIRM" or event == "READY_CHECK_FINISHED" then
-            StatusDispatch(f, plugin, "UpdateReadyCheck")
-            return
-        end
-
-        -- Resurrection updates
-        if event == "INCOMING_RESURRECT_CHANGED" then
-            if eventUnit == f.unit then
-                StatusDispatch(f, plugin, "UpdateIncomingRes")
-            end
-            return
-        end
-
-        -- Summon updates
-        if event == "INCOMING_SUMMON_CHANGED" then
-            StatusDispatch(f, plugin, "UpdateIncomingSummon")
-            return
-        end
-
-        if event == "PLAYER_ROLES_ASSIGNED" or event == "GROUP_ROSTER_UPDATE" or event == "PARTY_LEADER_CHANGED" then
-            StatusDispatch(f, plugin, "UpdateRoleIcon")
-            StatusDispatch(f, plugin, "UpdateLeaderIcon")
-            return
-        end
-
-        if event == "RAID_TARGET_UPDATE" then
-            StatusDispatch(f, plugin, "UpdateMarkerIcon")
-            return
-        end
-
-        -- Range updates (fade out-of-range party members)
-        if event == "UNIT_IN_RANGE_UPDATE" then
-            if eventUnit == f.unit then
-                UpdateInRange(f)
-            end
-            return
-        end
-
-        if originalOnEvent then
-            originalOnEvent(f, event, eventUnit, ...)
-        end
-        if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
-            StatusDispatch(f, plugin, "UpdateStatusText")
-        end
-    end)
+    frame:SetScript("OnShow", Orbit.GroupFrameMixin.CreateOnShowHandler(plugin, eventCallbacks))
+    frame:SetScript("OnEvent", Orbit.GroupFrameMixin.CreateEventHandler(plugin, eventCallbacks, originalOnEvent))
 
     -- Configure frame features (delegated to factory mixin)
     plugin:ConfigureFrame(frame)
@@ -609,58 +410,11 @@ function Plugin:OnLoad()
     -- Canvas Mode opens on the container, so components must be registered there
     local pluginRef = self
     local firstFrame = self.frames[1]
-    if OrbitEngine.ComponentDrag and firstFrame then
-        -- Components that support justifyH (text elements)
-        local textComponents = { "Name", "HealthText" }
-        -- Components that don't support justifyH (icons)
-        local iconComponents = {
-            "RoleIcon",
-            "LeaderIcon",
-            "PhaseIcon",
-            "ReadyCheckIcon",
-            "ResIcon",
-            "SummonIcon",
-            "MarkerIcon",
-            "DefensiveIcon",
-
-            "CrowdControlIcon",
-            "PrivateAuraAnchor",
-        }
-
-        for _, key in ipairs(textComponents) do
-            local element = firstFrame[key]
-            if element then
-                OrbitEngine.ComponentDrag:Attach(element, self.container, {
-                    key = key,
-                    onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(pluginRef, 1, key),
-                })
-            end
-        end
-
-        for _, key in ipairs(iconComponents) do
-            local element = firstFrame[key]
-            if element then
-                OrbitEngine.ComponentDrag:Attach(element, self.container, {
-                    key = key,
-                    onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(pluginRef, 1, key),
-                })
-            end
-        end
-
-        local auraContainerComponents = { "Buffs", "Debuffs" }
-        for _, key in ipairs(auraContainerComponents) do
-            local containerKey = key == "Buffs" and "buffContainer" or "debuffContainer"
-            if not firstFrame[containerKey] then
-                firstFrame[containerKey] = CreateFrame("Frame", nil, firstFrame)
-                firstFrame[containerKey]:SetSize(AURA_BASE_ICON_SIZE, AURA_BASE_ICON_SIZE)
-            end
-            OrbitEngine.ComponentDrag:Attach(firstFrame[containerKey], self.container, {
-                key = key,
-                isAuraContainer = true,
-                onPositionChange = OrbitEngine.ComponentDrag:MakeAuraPositionCallback(pluginRef, 1, key),
-            })
-        end
-    end
+    Orbit.GroupCanvasRegistration:RegisterComponents(pluginRef, self.container, firstFrame,
+        { "Name", "HealthText" },
+        { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" },
+        AURA_BASE_ICON_SIZE
+    )
 
     -- Container is the selectable frame for Edit Mode
     self.frame = self.container
@@ -1081,64 +835,9 @@ function Plugin:ApplySettings()
     -- Apply saved component positions to all party frames
     local savedPositions = self:GetSetting(1, "ComponentPositions")
     if savedPositions then
-        -- Restore positions for components registered on container
         OrbitEngine.ComponentDrag:RestoreFramePositions(self.container, savedPositions)
-
-        -- Also apply positions to ALL frames' elements (not just first frame)
-        for _, frame in ipairs(self.frames) do
-            -- Apply via UnitButton mixin (for Name/HealthText with justifyH)
-            if frame.ApplyComponentPositions then
-                frame:ApplyComponentPositions(savedPositions)
-            end
-
-            -- Apply positions for other status icons
-            local icons = {
-                "RoleIcon",
-                "LeaderIcon",
-                "PhaseIcon",
-                "ReadyCheckIcon",
-                "ResIcon",
-                "SummonIcon",
-                "MarkerIcon",
-                "DefensiveIcon",
-
-                "CrowdControlIcon",
-                "PrivateAuraAnchor",
-            }
-            for _, iconKey in ipairs(icons) do
-                if frame[iconKey] and savedPositions[iconKey] then
-                    local pos = savedPositions[iconKey]
-                    local anchorX = pos.anchorX or "CENTER"
-                    local anchorY = pos.anchorY or "CENTER"
-                    local offsetX = pos.offsetX or 0
-                    local offsetY = pos.offsetY or 0
-
-                    local anchorPoint
-                    if anchorY == "CENTER" and anchorX == "CENTER" then
-                        anchorPoint = "CENTER"
-                    elseif anchorY == "CENTER" then
-                        anchorPoint = anchorX
-                    elseif anchorX == "CENTER" then
-                        anchorPoint = anchorY
-                    else
-                        anchorPoint = anchorY .. anchorX
-                    end
-
-                    local finalX = offsetX
-                    local finalY = offsetY
-                    if anchorX == "RIGHT" then
-                        finalX = -offsetX
-                    end
-                    if anchorY == "TOP" then
-                        finalY = -offsetY
-                    end
-
-                    frame[iconKey]:ClearAllPoints()
-                    -- These are parented to StatusOverlay but positioned relative to frame for drag consistency
-                    frame[iconKey]:SetPoint("CENTER", frame, anchorPoint, finalX, finalY)
-                end
-            end
-        end
+        local iconKeys = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+        Orbit.GroupCanvasRegistration:ApplyIconPositions(self.frames, savedPositions, iconKeys)
     end
 
     -- Refresh preview if active (e.g., after Canvas Mode Apply)

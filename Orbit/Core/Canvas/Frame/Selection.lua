@@ -7,6 +7,8 @@ local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 local C = Orbit.Constants
 
+local OVERLAY_LEVEL_BOOST = 100
+
 Engine.FrameSelection = Engine.FrameSelection or {}
 local Selection = Engine.FrameSelection
 
@@ -189,7 +191,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     local selection = CreateFrame("Frame", nil, frame, "EditModeSystemSelectionTemplate")
     selection:SetAllPoints()
     selection:SetFrameStrata("HIGH")
-    selection:SetFrameLevel(frame:GetFrameLevel() + 100)
+    selection:SetFrameLevel(frame:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
     selection.isOrbitSelection = true
 
     -- Create anchor line textures
