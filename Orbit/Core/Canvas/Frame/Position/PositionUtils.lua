@@ -132,7 +132,7 @@ function PositionUtils.CalculateAnchorWithWidthCompensation(posX, posY, halfW, h
         offsetX = halfW - posX + widthComp
     end
 
-    if isAuraContainer and anchorY ~= "CENTER" then
+    if isAuraContainer and anchorY ~= "CENTER" and justifyH ~= "CENTER" then
         local compHalfH = (compHeight or 0) / 2
         local isOutsideTop = posY > halfH
         local isOutsideBottom = posY < -halfH

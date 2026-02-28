@@ -165,10 +165,7 @@ local function GetColorsSchema()
                 Orbit.Async:Debounce("ColorsPanel_BackdropColour", function()
                     ColorsPlugin:ApplySettings()
                     RefreshAllPreviews()
-                    local playerResources = OrbitEngine.systems and OrbitEngine.systems["Player Resources"]
-                    if playerResources and playerResources.ApplyButtonVisuals then
-                        playerResources:ApplyButtonVisuals()
-                    end
+                    Orbit.EventBus:Fire("ORBIT_GLOBAL_BACKDROP_CHANGED")
                 end, 0.15)
             end,
         },
@@ -553,9 +550,7 @@ SlashCmdList["ORBIT"] = function(msg)
     elseif cmd == "hardreset" then StaticPopup_Show("ORBIT_CONFIRM_HARD_RESET")
     elseif cmd == "portal" or cmd == "p" then
         local subCmd = args[2] and args[2]:lower() or ""
-        local portalPlugin = Orbit:GetPlugin("Orbit_Portal")
-        if portalPlugin and portalPlugin.HandleCommand then portalPlugin:HandleCommand(subCmd)
-        else Orbit:Print("Portal Dock is not loaded.") end
+        Orbit.EventBus:Fire("ORBIT_PORTAL_COMMAND", subCmd)
     elseif cmd == "refresh" then
         local subCmd = args[2] or ""
         if subCmd == "" then

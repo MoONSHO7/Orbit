@@ -8,7 +8,7 @@
     <Script file="..\Handle\HandleCore.lua"/>
     <Script file="Component\ComponentHandle.lua"/>
     <Script file="Component\ComponentEdit.lua"/>
-    <Script file="Component\ComponentDrag.lua"/>
+    <Script file="Component\ComponentRegistry.lua"/>
     <Script file="Component\SmartGuides.lua"/>
     <Script file="Snap.lua"/>
     <Script file="NudgeRepeat.lua"/>

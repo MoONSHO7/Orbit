@@ -1,7 +1,7 @@
--- [ ORBIT COMPONENT DRAG ]--------------------------------------------------------------------------
--- Enables dragging of internal frame components (Name, HealthText, Level, etc.)
--- when the parent frame is in "Component Edit" mode.
---
+-- [ COMPONENT REGISTRY ]----------------------------------------------------------------------------
+-- Registers internal frame components (Name, HealthText, Level, etc.)
+-- and restores their positions from saved ComponentPositions data.
+-- Component positioning is managed exclusively through Canvas Mode.
 -- Usage:
 --   Engine.ComponentDrag:Attach(component, parentFrame, {
 --       key = "Name",

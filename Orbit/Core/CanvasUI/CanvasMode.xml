@@ -3,7 +3,7 @@
     <Script file="Viewport.lua"/>
     <Script file="Dock.lua"/>
     <Include file="Creators/Creators.xml"/>
-    <Script file="DragComponent.lua"/>
+    <Script file="CanvasModeDrag.lua"/>
     <Script file="Dialog.lua"/>
     <Script file="DialogActions.lua"/>
 </Ui>
