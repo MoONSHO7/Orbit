@@ -59,10 +59,8 @@ function Plugin:OnLoad()
     self:RegisterStandardEvents()
     self:RegisterVisibilityEvents()
     self.mountedConfig = { frame = self.frame, hoverReveal = true }
-    if Orbit.EventBus then
-        Orbit.EventBus:On("PLAYER_REGEN_DISABLED", self.PLAYER_REGEN_DISABLED, self)
-        Orbit.EventBus:On("PLAYER_REGEN_ENABLED", self.PLAYER_REGEN_ENABLED, self)
-    end
+    Orbit.EventBus:On("PLAYER_REGEN_DISABLED", self.PLAYER_REGEN_DISABLED, self)
+    Orbit.EventBus:On("PLAYER_REGEN_ENABLED", self.PLAYER_REGEN_ENABLED, self)
     self:ApplySettings()
 end
 

@@ -283,10 +283,8 @@ local CACHE_INVALIDATION_EVENTS = {
     "SPELLS_CHANGED",
 }
 
-if Orbit.EventBus then
-    for _, event in ipairs(CACHE_INVALIDATION_EVENTS) do
-        Orbit.EventBus:On(event, function()
-            KeybindSystem:InvalidateCache()
-        end)
-    end
+for _, event in ipairs(CACHE_INVALIDATION_EVENTS) do
+    Orbit.EventBus:On(event, function()
+        KeybindSystem:InvalidateCache()
+    end)
 end

@@ -17,9 +17,7 @@ local function UpdateScreenScale()
         SCREEN_SCALE = 768.0 / physicalHeight
     end
 
-    if Orbit.EventBus then
-        Orbit.EventBus:Fire("ORBIT_DISPLAY_SIZE_CHANGED", SCREEN_SCALE)
-    end
+    Orbit.EventBus:Fire("ORBIT_DISPLAY_SIZE_CHANGED", SCREEN_SCALE)
 end
 
 -- Hook event frame to update scale when resolution changes

@@ -38,11 +38,9 @@ local function SetFrameMouseEnabled(frame, enabled, includeChildren)
         return
     end
     if InCombatLockdown() then
-        if Orbit.CombatManager then
-            Orbit.CombatManager:QueueUpdate(function()
-                SetFrameMouseEnabled(frame, enabled, includeChildren)
-            end)
-        end
+        Orbit.CombatManager:QueueUpdate(function()
+            SetFrameMouseEnabled(frame, enabled, includeChildren)
+        end)
         return
     end
     if frame.EnableMouse then
@@ -73,11 +71,7 @@ local function UpdateFrameVisibility(frame, fadeEnabled, data)
             local opacity = data.plugin:GetSetting(data.systemIndex, "Opacity") or 100
             local minAlpha = opacity / 100
             local isEditMode = Orbit:IsEditMode()
-            if Orbit.Animation then
-                Orbit.Animation:ApplyHoverFade(frame, minAlpha, 1, isEditMode)
-            else
-                frame:SetAlpha(minAlpha)
-            end
+            Orbit.Animation:ApplyHoverFade(frame, minAlpha, 1, isEditMode)
         end
     else
         frame:SetAlpha(0)

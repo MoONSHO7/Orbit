@@ -199,7 +199,7 @@ function Orbit.Profile:SetActiveProfile(name)
     if Orbit.OptionsPanel and Orbit.OptionsPanel.Refresh then Orbit.OptionsPanel:Refresh() end
     isActivatingProfile = false
 
-    if Orbit.EventBus then Orbit.EventBus:Fire("ORBIT_PROFILE_CHANGED", name) end
+    Orbit.EventBus:Fire("ORBIT_PROFILE_CHANGED", name)
     return true
 end
 

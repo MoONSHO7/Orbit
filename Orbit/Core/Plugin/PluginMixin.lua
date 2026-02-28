@@ -33,13 +33,11 @@ function Orbit.PluginMixin:RegisterStandardEvents()
     local debounceKey = (self.name or "Plugin") .. "_Apply"
     local debounceDelay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.DefaultDebounce) or 0.1
 
-    if Orbit.EventBus then
-        Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
-            Orbit.Async:Debounce(debounceKey, function()
-                self:ApplySettings()
-            end, debounceDelay)
-        end, self)
-    end
+    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+        Orbit.Async:Debounce(debounceKey, function()
+            self:ApplySettings()
+        end, debounceDelay)
+    end, self)
 
     if Orbit.Engine and Orbit.Engine.EditMode then
         Orbit.Engine.EditMode:RegisterCallbacks({

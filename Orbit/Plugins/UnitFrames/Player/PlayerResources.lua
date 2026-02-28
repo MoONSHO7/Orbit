@@ -88,13 +88,11 @@ function Plugin:OnLoad()
     self:RegisterStandardEvents()
 
     -- Listen for master plugin state changes (PlayerFrame enabled/disabled via Addon Manager)
-    if Orbit.EventBus then
-        Orbit.EventBus:On("ORBIT_PLUGIN_STATE_CHANGED", function(pluginName, enabled)
-            if pluginName == "Player Frame" then
-                self:UpdateVisibility()
-            end
-        end)
-    end
+    Orbit.EventBus:On("ORBIT_PLUGIN_STATE_CHANGED", function(pluginName, enabled)
+        if pluginName == "Player Frame" then
+            self:UpdateVisibility()
+        end
+    end)
 
     -- Create frame ONLY when plugin is enabled (OnLoad is only called for enabled plugins)
     Frame = OrbitEngine.FrameFactory:CreateButtonContainer("PlayerResources", self, {

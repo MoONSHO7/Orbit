@@ -26,9 +26,7 @@ function CoreMixin:OnLoad()
     self:RegisterEvent("UNIT_HEAL_PREDICTION")
     self:RegisterEvent("UNIT_PET")
 
-    if Orbit.EventBus then
-        Orbit.EventBus:On("ORBIT_NICKNAME_UPDATED", function() self:UpdateName() end)
-    end
+    Orbit.EventBus:On("ORBIT_NICKNAME_UPDATED", function() self:UpdateName() end)
 
     self:UpdateAll()
 end
