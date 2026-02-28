@@ -345,16 +345,14 @@ function Plugin:OnLoad()
     end)
 
     -- Edit Mode
-    if OrbitEngine.EditMode then
-        OrbitEngine.EditMode:RegisterCallbacks({
-            Enter = function()
-                self:UpdateVisibility()
-            end,
-            Exit = function()
-                self:UpdateVisibility()
-            end,
-        }, self)
-    end
+    OrbitEngine.EditMode:RegisterCallbacks({
+        Enter = function()
+            self:UpdateVisibility()
+        end,
+        Exit = function()
+            self:UpdateVisibility()
+        end,
+    }, self)
 
     -- Canvas Mode: Register draggable components
     if OrbitEngine.ComponentDrag and Frame.Text then

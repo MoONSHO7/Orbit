@@ -127,7 +127,7 @@ Dialog:SetScript("OnHide", function(self)
     self.attachedToSystem = nil
     self.attachedPlugin = nil
     self.attachedSystemIndex = nil
-    if OrbitEngine.FrameSelection then OrbitEngine.FrameSelection:DeselectAll() end
+    OrbitEngine.FrameSelection:DeselectAll()
 end)
 
 -- [ POSITION HELPER ]--------------------------------------------------------------

@@ -104,7 +104,7 @@ function Mixin:CreateAuraGridPlugin(config)
     self._agConfig = config
     local Frame = CreateFrame("Frame", config.frameName, UIParent)
     Frame:SetSize(config.initialWidth or 200, config.initialHeight or 20)
-    if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(Frame) end
+    OrbitEngine.Pixel:Enforce(Frame)
     RegisterUnitWatch(Frame)
 
     self.frame = Frame
@@ -151,12 +151,10 @@ function Mixin:CreateAuraGridPlugin(config)
         end
     end)
 
-    if OrbitEngine.EditMode then
-        OrbitEngine.EditMode:RegisterCallbacks({
-            Enter = function() self:UpdateVisibility() end,
-            Exit = function() self:UpdateVisibility() end,
-        }, self)
-    end
+    OrbitEngine.EditMode:RegisterCallbacks({
+        Enter = function() self:UpdateVisibility() end,
+        Exit = function() self:UpdateVisibility() end,
+    }, self)
 
     self:UpdateVisibility()
 end

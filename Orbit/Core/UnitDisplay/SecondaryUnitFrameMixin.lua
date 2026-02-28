@@ -156,11 +156,11 @@ function Mixin:ApplySettings()
     if frame.SetReactionColour then frame:SetReactionColour(true) end
     if enabled then frame:UpdateAll() end
 
-    local isInCanvasMode = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode:IsActive(frame)
+    local isInCanvasMode = OrbitEngine.CanvasMode:IsActive(frame)
     if not isInCanvasMode then
         local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
         if savedPositions then
-            if OrbitEngine.ComponentDrag then OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions) end
+            OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
             if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
         end
     end

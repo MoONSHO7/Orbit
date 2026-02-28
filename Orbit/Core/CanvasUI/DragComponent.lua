@@ -134,9 +134,7 @@ local function SetupDragHandlers(container, preview, key, data)
             Dialog.DisabledDock.DropHighlight:Hide()
         elseif not self.wasDragged and self.mouseDownTime then
             if (GetTime() - self.mouseDownTime) < CLICK_THRESHOLD then
-                if OrbitEngine.CanvasComponentSettings then
-                    OrbitEngine.CanvasComponentSettings:Open(self.key, self, Dialog.targetPlugin, Dialog.targetSystemIndex)
-                end
+                OrbitEngine.CanvasComponentSettings:Open(self.key, self, Dialog.targetPlugin, Dialog.targetSystemIndex)
             end
         end
         self.mouseDownTime = nil
@@ -231,9 +229,7 @@ local function SetupDragHandlers(container, preview, key, data)
 
         Dialog.DisabledDock.DropHighlight:SetShown(Dialog.DisabledDock:IsMouseOver())
 
-        if OrbitEngine.SelectionTooltip then
-            OrbitEngine.SelectionTooltip:ShowComponentPosition(self, key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH)
-        end
+        OrbitEngine.SelectionTooltip:ShowComponentPosition(self, key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH)
     end)
 
     container:SetScript("OnDragStop", function(self)

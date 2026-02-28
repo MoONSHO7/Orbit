@@ -936,7 +936,7 @@ function Plugin:ApplySettings()
     local showHealthValue = self:GetSetting(1, "ShowHealthValue")
     if showHealthValue == nil then showHealthValue = true end
     local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
-    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
+    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
     local textureName = self:GetSetting(1, "Texture")
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
 
@@ -982,9 +982,7 @@ function Plugin:ApplySettings()
 
     local savedPositions = self:GetSetting(1, "ComponentPositions")
     if savedPositions then
-        if OrbitEngine.ComponentDrag then
-            OrbitEngine.ComponentDrag:RestoreFramePositions(self.container, savedPositions)
-        end
+        OrbitEngine.ComponentDrag:RestoreFramePositions(self.container, savedPositions)
         for _, frame in ipairs(self.frames) do
             if frame.ApplyComponentPositions then
                 frame:ApplyComponentPositions(savedPositions)

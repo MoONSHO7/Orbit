@@ -184,33 +184,31 @@ function Plugin:OnLoad()
 
     -- Edit Mode Visibility: Show frame even without focus for positioning
     -- Use "player" as preview unit so we can see colors/name/health
-    if OrbitEngine.EditMode then
-        OrbitEngine.EditMode:RegisterCallbacks({
-            Enter = function()
-                if self.frame and not InCombatLockdown() then
-                    self.isEditing = true
-                    UnregisterUnitWatch(self.frame)
-                    -- Use player as preview unit if no focus exists
-                    if not UnitExists("focus") then
-                        self.frame.unit = "player"
-                    end
-                    self.frame:Show()
-                    self.frame:UpdateAll()
-                    self:UpdateVisualsExtended(self.frame, FOCUS_FRAME_INDEX)
+    OrbitEngine.EditMode:RegisterCallbacks({
+        Enter = function()
+            if self.frame and not InCombatLockdown() then
+                self.isEditing = true
+                UnregisterUnitWatch(self.frame)
+                -- Use player as preview unit if no focus exists
+                if not UnitExists("focus") then
+                    self.frame.unit = "player"
                 end
-            end,
-            Exit = function()
-                if self.frame and not InCombatLockdown() then
-                    self.isEditing = false
-                    -- Restore original unit
-                    self.frame.unit = "focus"
-                    RegisterUnitWatch(self.frame)
-                    self.frame:UpdateAll()
-                    self:UpdateVisualsExtended(self.frame, FOCUS_FRAME_INDEX)
-                end
-            end,
-        }, self)
-    end
+                self.frame:Show()
+                self.frame:UpdateAll()
+                self:UpdateVisualsExtended(self.frame, FOCUS_FRAME_INDEX)
+            end
+        end,
+        Exit = function()
+            if self.frame and not InCombatLockdown() then
+                self.isEditing = false
+                -- Restore original unit
+                self.frame.unit = "focus"
+                RegisterUnitWatch(self.frame)
+                self.frame:UpdateAll()
+                self:UpdateVisualsExtended(self.frame, FOCUS_FRAME_INDEX)
+            end
+        end,
+    }, self)
 
     -- Also listen for Focus Changed to re-apply if needed (mostly for ensuring visual state)
     Orbit.EventBus:On("PLAYER_FOCUS_CHANGED", function()
@@ -244,11 +242,11 @@ function Plugin:ApplySettings(frame)
         frame.reactionColour = reactionColour
     end
     -- Restore positions before visuals (SetFont in overrides clobbers text color)
-    local isInCanvasMode = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode:IsActive(frame)
+    local isInCanvasMode = OrbitEngine.CanvasMode:IsActive(frame)
     if not isInCanvasMode then
         local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
         if savedPositions then
-            if OrbitEngine.ComponentDrag then OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions) end
+            OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
             if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
         end
     end

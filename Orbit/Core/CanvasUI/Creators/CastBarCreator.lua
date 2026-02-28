@@ -106,9 +106,7 @@ local function CreateSubText(parent, parentContainer, subKey, subPos, text, just
     subFrame:SetScript("OnMouseUp", function(s, button)
         if button ~= "LeftButton" then return end
         if not s.wasDragged and s.mouseDownTime and (GetTime() - s.mouseDownTime) < CLICK_THRESHOLD then
-            if OrbitEngine.CanvasComponentSettings then
-                OrbitEngine.CanvasComponentSettings:Open("CastBar", parentContainer, Dialog.targetPlugin, Dialog.targetSystemIndex)
-            end
+            OrbitEngine.CanvasComponentSettings:Open("CastBar", parentContainer, Dialog.targetPlugin, Dialog.targetSystemIndex)
         end
         s.mouseDownTime = nil
     end)
@@ -185,9 +183,7 @@ local function CreateSubText(parent, parentContainer, subKey, subPos, text, just
         if Dialog.DisabledDock then Dialog.DisabledDock.DropHighlight:SetShown(Dialog.DisabledDock:IsMouseOver()) end
 
         local aX, aY, oX, oY, jH = CalculateAnchorWithWidthCompensation(relX, relY, halfW, halfH, true, s:GetWidth())
-        if OrbitEngine.SelectionTooltip then
-            OrbitEngine.SelectionTooltip:ShowComponentPosition(s, subKey, aX, aY, relX, relY, oX, oY, jH)
-        end
+        OrbitEngine.SelectionTooltip:ShowComponentPosition(s, subKey, aX, aY, relX, relY, oX, oY, jH)
 
         s:ClearAllPoints()
         s:SetPoint("CENTER", parent, "CENTER", relX, relY)
@@ -251,7 +247,7 @@ local function Create(container, preview, key, source, data)
     end
 
     local borderSize = plugin and (plugin:GetSetting(sysIdx, "BorderSize") or plugin:GetPlayerSetting("BorderSize"))
-        or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
+        or (Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
     if Orbit.Skin and Orbit.Skin.SkinBorder then Orbit.Skin:SkinBorder(bar, bar, borderSize, nil, true) end
 
     local fontName = plugin and (plugin:GetSetting(sysIdx, "Font") or plugin:GetPlayerSetting("Font"))

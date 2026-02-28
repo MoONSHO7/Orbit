@@ -155,7 +155,7 @@ function CastBar:Apply(bar, settings)
     if settings.showIcon and bar.Icon then
         local height = parent:GetHeight()
         local scale = parent:GetEffectiveScale()
-        iconOffset = (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Snap(height, scale)) or height
+        iconOffset = (Orbit.Engine.Pixel:Snap(height, scale)) or height
     end
     bar.iconOffset = iconOffset -- Store for spark position calculations
 

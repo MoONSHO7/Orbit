@@ -329,7 +329,7 @@ function Plugin:LayoutButtons(index)
         local scale = buttons[1] and buttons[1]:GetEffectiveScale() or 1
         for i = 1, numIcons do
             local x, y = OrbitEngine.Layout:ComputeGridPosition(i, limitPerLine, orientation, w, h, padding)
-            if OrbitEngine.Pixel then x = OrbitEngine.Pixel:Snap(x, scale); y = OrbitEngine.Pixel:Snap(y, scale) end
+            x = OrbitEngine.Pixel:Snap(x, scale); y = OrbitEngine.Pixel:Snap(y, scale)
             positions[i] = { x = x, y = y }
         end
         self.gridCache[index] = { key = cacheKey, positions = positions }

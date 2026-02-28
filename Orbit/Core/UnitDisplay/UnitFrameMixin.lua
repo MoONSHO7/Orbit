@@ -350,11 +350,9 @@ function Mixin:CreateOverlayIcons(frame, systemIndex)
 
     frame:CreatePortrait()
 
-    if OrbitEngine.ComponentDrag then
-        local MPC = function(key) return OrbitEngine.ComponentDrag:MakePositionCallback(self, systemIndex, key) end
-        OrbitEngine.ComponentDrag:Attach(frame.LevelText, frame, { key = "LevelText", onPositionChange = MPC("LevelText") })
-        OrbitEngine.ComponentDrag:Attach(frame.RareEliteIcon, frame, { key = "RareEliteIcon", onPositionChange = MPC("RareEliteIcon") })
-        OrbitEngine.ComponentDrag:Attach(frame.MarkerIcon, frame, { key = "MarkerIcon", onPositionChange = MPC("MarkerIcon") })
-        OrbitEngine.ComponentDrag:Attach(frame.Portrait, frame, { key = "Portrait", onPositionChange = MPC("Portrait") })
-    end
+    local MPC = function(key) return OrbitEngine.ComponentDrag:MakePositionCallback(self, systemIndex, key) end
+    OrbitEngine.ComponentDrag:Attach(frame.LevelText, frame, { key = "LevelText", onPositionChange = MPC("LevelText") })
+    OrbitEngine.ComponentDrag:Attach(frame.RareEliteIcon, frame, { key = "RareEliteIcon", onPositionChange = MPC("RareEliteIcon") })
+    OrbitEngine.ComponentDrag:Attach(frame.MarkerIcon, frame, { key = "MarkerIcon", onPositionChange = MPC("MarkerIcon") })
+    OrbitEngine.ComponentDrag:Attach(frame.Portrait, frame, { key = "Portrait", onPositionChange = MPC("Portrait") })
 end

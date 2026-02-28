@@ -112,8 +112,7 @@ function Orbit.PartyFramePreviewMixin:ShowPreview()
 
     -- Re-sync selection highlight after container resize
     local OrbitEngine = Orbit.Engine
-    if OrbitEngine.FrameSelection then OrbitEngine.FrameSelection:ForceUpdate(self.container) end
-
+    OrbitEngine.FrameSelection:ForceUpdate(self.container)
     -- Apply preview visuals after a short delay to ensure they aren't overwritten
     C_Timer.After(DEBOUNCE_DELAY, function()
         if self.frames then
@@ -150,7 +149,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
     local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
     local textureName = self:GetSetting(1, "Texture")
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
-    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, self.container:GetEffectiveScale() or 1) or 1)
+    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel:Multiple(1, self.container:GetEffectiveScale() or 1) or 1)
 
     -- Get Colors tab global settings (for reference only - helpers read them)
     local globalSettings = Orbit.db.GlobalSettings or {}

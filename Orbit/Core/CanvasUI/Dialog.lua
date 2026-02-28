@@ -153,9 +153,7 @@ function Dialog:NudgeComponent(container, direction)
         container.offsetX = oX
         container.offsetY = oY
         container.justifyH = jH
-        if OrbitEngine.SelectionTooltip then
-            OrbitEngine.SelectionTooltip:ShowComponentPosition(container, container.key, aX, aY, relX, relY, oX, oY, jH)
-        end
+        OrbitEngine.SelectionTooltip:ShowComponentPosition(container, container.key, aX, aY, relX, relY, oX, oY, jH)
         return
     end
 
@@ -239,19 +237,17 @@ function Dialog:NudgeComponent(container, direction)
     local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, anchorY, justifyH)
     container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
-    if OrbitEngine.SelectionTooltip then
-        OrbitEngine.SelectionTooltip:ShowComponentPosition(
-            container,
-            container.key,
-            anchorX,
-            anchorY,
-            container.posX or 0,
-            container.posY or 0,
-            offsetX,
-            offsetY,
-            justifyH
-        )
-    end
+    OrbitEngine.SelectionTooltip:ShowComponentPosition(
+        container,
+        container.key,
+        anchorX,
+        anchorY,
+        container.posX or 0,
+        container.posY or 0,
+        offsetX,
+        offsetY,
+        justifyH
+    )
 end
 
 -- [ SAVE ORIGINAL POSITIONS ]------------------------------------------------------------
@@ -355,9 +351,7 @@ function Dialog:Open(frame, plugin, systemIndex)
     self.previewFrame:SetPoint("CENTER", self.TransformLayer, "CENTER", 0, 0)
 
     -- Create SmartGuides for visual snap feedback
-    if OrbitEngine.SmartGuides then
-        self.previewFrame.guides = OrbitEngine.SmartGuides:Create(self.previewFrame)
-    end
+    self.previewFrame.guides = OrbitEngine.SmartGuides:Create(self.previewFrame)
 
     self.TransformLayer.baseWidth = canvasFrame:GetWidth()
     self.TransformLayer.baseHeight = canvasFrame:GetHeight()
@@ -632,13 +626,9 @@ function Dialog:CloseDialog()
 
     self:Hide()
 
-    if OrbitEngine.CanvasMode then
-        OrbitEngine.CanvasMode.currentFrame = nil
-    end
+    OrbitEngine.CanvasMode.currentFrame = nil
 
-    if OrbitEngine.FrameSelection then
-        OrbitEngine.FrameSelection:RefreshVisuals()
-    end
+    OrbitEngine.FrameSelection:RefreshVisuals()
 end
 
 -- [ EDIT MODE LIFECYCLE ]----------------------------------------------------------------

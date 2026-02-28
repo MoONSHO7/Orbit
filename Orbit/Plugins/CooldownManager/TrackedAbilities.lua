@@ -257,13 +257,11 @@ function Plugin:ClearStaleTrackedSpatial(frame, sysIndex)
     end
     self:SetSetting(sysIndex, "Anchor", nil)
     self:SetSetting(sysIndex, "Position", nil)
-    if OrbitEngine.FrameAnchor then
-        OrbitEngine.FrameAnchor:BreakAnchor(frame, true)
-        for _, child in ipairs(OrbitEngine.FrameAnchor:GetAnchoredChildren(frame)) do
-            OrbitEngine.FrameAnchor:BreakAnchor(child, true)
-            if child.orbitPlugin and child.systemIndex then
-                child.orbitPlugin:SetSetting(child.systemIndex, "Anchor", nil)
-            end
+    OrbitEngine.FrameAnchor:BreakAnchor(frame, true)
+    for _, child in ipairs(OrbitEngine.FrameAnchor:GetAnchoredChildren(frame)) do
+        OrbitEngine.FrameAnchor:BreakAnchor(child, true)
+        if child.orbitPlugin and child.systemIndex then
+            child.orbitPlugin:SetSetting(child.systemIndex, "Anchor", nil)
         end
     end
 end

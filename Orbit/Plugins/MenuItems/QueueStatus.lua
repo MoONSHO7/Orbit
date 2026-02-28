@@ -131,7 +131,5 @@ function Plugin:ApplySettings()
     end
 
     self:ApplyMouseOver(frame, SYSTEM_ID)
-    if OrbitEngine.FrameSelection then
-        OrbitEngine.FrameSelection:ForceUpdate(frame)
-    end
+    OrbitEngine.FrameSelection:ForceUpdate(frame)
 end

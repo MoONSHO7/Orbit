@@ -390,7 +390,7 @@ function Plugin:ApplySettings()
     local height = self:GetSetting(1, "Height") or 40
     local castBarHeight = self:GetSetting(1, "CastBarHeight") or 14
     local castBarWidth = self:GetSetting(1, "CastBarWidth") or width
-    local borderSize = self:GetSetting(1, "BorderSize") or self:GetPlayerSetting("BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
+    local borderSize = self:GetSetting(1, "BorderSize") or self:GetPlayerSetting("BorderSize") or (Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
     local textureName = self:GetSetting(1, "Texture") or self:GetPlayerSetting("Texture")
     local fontName = self:GetSetting(1, "Font") or self:GetPlayerSetting("Font")
     local reactionColour = self:GetSetting(1, "ReactionColour")

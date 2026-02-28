@@ -129,9 +129,7 @@ end
 function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     local plugin = self
     local frame = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
-    if OrbitEngine.Pixel then
-        OrbitEngine.Pixel:Enforce(frame)
-    end
+    OrbitEngine.Pixel:Enforce(frame)
     frame:SetSize(EMPTY_SEED_SIZE, EMPTY_SEED_SIZE)
     frame:SetClampedToScreen(true)
 
@@ -424,7 +422,7 @@ function Plugin:LayoutChargeBar(frame)
         width = frame:GetWidth()
         frame:SetHeight(height)
 
-        local borderSize = self:GetSetting(sysIndex, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, frame:GetEffectiveScale() or 1) or 1)
+        local borderSize = self:GetSetting(sysIndex, "BorderSize") or (Orbit.Engine.Pixel:Multiple(1, frame:GetEffectiveScale() or 1) or 1)
         local spacing = self:GetSetting(sysIndex, "Spacing") or DEFAULT_SPACING
         local texture = self:GetSetting(sysIndex, "Texture")
         local scale = frame:GetEffectiveScale()
@@ -537,7 +535,7 @@ function Plugin:SetupChargeBarCanvasPreview(frame, sysIndex)
     frame.CreateCanvasPreview = function(self, options)
         local width = plugin:GetSetting(sysIndex, "Width") or DEFAULT_WIDTH
         local height = plugin:GetSetting(sysIndex, "Height") or DEFAULT_HEIGHT
-        local borderSize = plugin:GetSetting(sysIndex, "BorderSize") or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, self:GetEffectiveScale() or 1) or 1)
+        local borderSize = plugin:GetSetting(sysIndex, "BorderSize") or (Orbit.Engine.Pixel:Multiple(1, self:GetEffectiveScale() or 1) or 1)
         local spacing = plugin:GetSetting(sysIndex, "Spacing") or DEFAULT_SPACING
         local texture = plugin:GetSetting(sysIndex, "Texture")
         local bgColor = GetBgColor()
@@ -948,13 +946,11 @@ function Plugin:ClearStaleChargeBarSpatial(frame, sysIndex)
     end
     self:SetSetting(sysIndex, "Anchor", nil)
     self:SetSetting(sysIndex, "Position", nil)
-    if OrbitEngine.FrameAnchor then
-        OrbitEngine.FrameAnchor:BreakAnchor(frame, true)
-        for _, child in ipairs(OrbitEngine.FrameAnchor:GetAnchoredChildren(frame)) do
-            OrbitEngine.FrameAnchor:BreakAnchor(child, true)
-            if child.orbitPlugin and child.systemIndex then
-                child.orbitPlugin:SetSetting(child.systemIndex, "Anchor", nil)
-            end
+    OrbitEngine.FrameAnchor:BreakAnchor(frame, true)
+    for _, child in ipairs(OrbitEngine.FrameAnchor:GetAnchoredChildren(frame)) do
+        OrbitEngine.FrameAnchor:BreakAnchor(child, true)
+        if child.orbitPlugin and child.systemIndex then
+            child.orbitPlugin:SetSetting(child.systemIndex, "Anchor", nil)
         end
     end
 end

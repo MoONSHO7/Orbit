@@ -21,10 +21,8 @@ Orbit.OptionsPanel = {}
 local Panel = Orbit.OptionsPanel
 
 local function RefreshAllPreviews()
-    if OrbitEngine.systems then
-        for _, plugin in ipairs(OrbitEngine.systems) do
-            if plugin.ApplyPreviewVisuals then plugin:ApplyPreviewVisuals() end
-        end
+    for _, plugin in ipairs(OrbitEngine.systems) do
+        if plugin.ApplyPreviewVisuals then plugin:ApplyPreviewVisuals() end
     end
 end
 
@@ -43,11 +41,9 @@ local function CreateGlobalSettingsPlugin(name, onSetOverride)
             if onSetOverride then onSetOverride(key, value) end
         end,
         ApplySettings = function(self, systemFrame)
-            if OrbitEngine.systems then
-                for _, plugin in ipairs(OrbitEngine.systems) do
-                    if plugin.ApplyAll then plugin:ApplyAll()
-                    elseif plugin.ApplySettings then plugin:ApplySettings() end
-                end
+            for _, plugin in ipairs(OrbitEngine.systems) do
+                if plugin.ApplyAll then plugin:ApplyAll()
+                elseif plugin.ApplySettings then plugin:ApplySettings() end
             end
             RefreshAllPreviews()
         end,

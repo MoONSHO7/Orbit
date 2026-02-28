@@ -228,8 +228,7 @@ function Plugin:OnLoad()
                     local logicalLeft = OrbitEngine.Pixel:Snap(currentLeft, scale)
                     sp:SetPoint("LEFT", container, "LEFT", logicalLeft, 0)
                     
-                    if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(sp) end
-                    
+                    OrbitEngine.Pixel:Enforce(sp)
                     currentLeft = currentLeft + logicalGap
                 end
             end
@@ -254,8 +253,7 @@ function Plugin:OnLoad()
                 
                 Orbit.Skin.ClassBar:SkinButton(btn, { borderSize = borderSize, texture = texture, backColor = bgColor })
                 
-                if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(btn) end
-                
+                OrbitEngine.Pixel:Enforce(btn)
                 currentLeft = currentLeft + snappedWidth + logicalGap
 
                 local color = Plugin:GetResourceColor(i, max)
@@ -584,7 +582,7 @@ function Plugin:ApplyButtonVisuals()
         return
     end
 
-    local borderSize = (Frame.settings and Frame.settings.borderSize) or (Orbit.Engine.Pixel and Orbit.Engine.Pixel:Multiple(1, Frame:GetEffectiveScale() or 1) or 1)
+    local borderSize = (Frame.settings and Frame.settings.borderSize) or (Orbit.Engine.Pixel:Multiple(1, Frame:GetEffectiveScale() or 1) or 1)
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
 
     local max = math.max(1, Frame.maxPower or #Frame.buttons)
@@ -893,7 +891,7 @@ function Plugin:RepositionSpacers(max, edges)
                 sp:SetSize(logicalGap, Frame:GetHeight())
                 -- Draw the overlay exactly at the mathematically perfect left border map:
                 sp:SetPoint("LEFT", Frame, "LEFT", edges[i], 0)
-                if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(sp) end
+                OrbitEngine.Pixel:Enforce(sp)
             else
                 sp:Hide()
             end
@@ -933,8 +931,7 @@ function Plugin:UpdateLayout(frame)
             btn:SetPoint("LEFT", Frame, "LEFT", logicalLeft, 0)
             btn:SetSize(snappedWidth, snappedHeight)
             
-            if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(btn) end
-            
+            OrbitEngine.Pixel:Enforce(btn)
             currentLeft = currentLeft + snappedWidth + logicalGap
         end
     end

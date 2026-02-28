@@ -314,18 +314,16 @@ function Plugin:OnLoad()
 
     -- Register LevelText and CombatIcon for component drag with persistence callbacks
     local pluginRef = self
-    if OrbitEngine.ComponentDrag then
-        local MPC = function(key) return OrbitEngine.ComponentDrag:MakePositionCallback(pluginRef, PLAYER_FRAME_INDEX, key) end
-        OrbitEngine.ComponentDrag:Attach(self.frame.LevelText, self.frame, { key = "LevelText", onPositionChange = MPC("LevelText") })
-        OrbitEngine.ComponentDrag:Attach(self.frame.CombatIcon, self.frame, { key = "CombatIcon", onPositionChange = MPC("CombatIcon") })
-        OrbitEngine.ComponentDrag:Attach(self.frame.RoleIcon, self.frame, { key = "RoleIcon", onPositionChange = MPC("RoleIcon") })
-        OrbitEngine.ComponentDrag:Attach(self.frame.LeaderIcon, self.frame, { key = "LeaderIcon", onPositionChange = MPC("LeaderIcon") })
-        OrbitEngine.ComponentDrag:Attach(self.frame.MarkerIcon, self.frame, { key = "MarkerIcon", onPositionChange = MPC("MarkerIcon") })
-        OrbitEngine.ComponentDrag:Attach(self.frame.GroupPositionText, self.frame, { key = "GroupPositionText", onPositionChange = MPC("GroupPositionText") })
-        OrbitEngine.ComponentDrag:Attach(self.frame.ReadyCheckIcon, self.frame, { key = "ReadyCheckIcon", onPositionChange = MPC("ReadyCheckIcon") })
-        OrbitEngine.ComponentDrag:Attach(self.frame.RestingIcon, self.frame, { key = "RestingIcon", onPositionChange = MPC("RestingIcon") })
-        OrbitEngine.ComponentDrag:Attach(self.frame.Portrait, self.frame, { key = "Portrait", onPositionChange = MPC("Portrait") })
-    end
+    local MPC = function(key) return OrbitEngine.ComponentDrag:MakePositionCallback(pluginRef, PLAYER_FRAME_INDEX, key) end
+    OrbitEngine.ComponentDrag:Attach(self.frame.LevelText, self.frame, { key = "LevelText", onPositionChange = MPC("LevelText") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.CombatIcon, self.frame, { key = "CombatIcon", onPositionChange = MPC("CombatIcon") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.RoleIcon, self.frame, { key = "RoleIcon", onPositionChange = MPC("RoleIcon") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.LeaderIcon, self.frame, { key = "LeaderIcon", onPositionChange = MPC("LeaderIcon") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.MarkerIcon, self.frame, { key = "MarkerIcon", onPositionChange = MPC("MarkerIcon") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.GroupPositionText, self.frame, { key = "GroupPositionText", onPositionChange = MPC("GroupPositionText") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.ReadyCheckIcon, self.frame, { key = "ReadyCheckIcon", onPositionChange = MPC("ReadyCheckIcon") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.RestingIcon, self.frame, { key = "RestingIcon", onPositionChange = MPC("RestingIcon") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.Portrait, self.frame, { key = "Portrait", onPositionChange = MPC("Portrait") })
 
     -- Register combat events for CombatIcon
     self.frame:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -437,11 +435,11 @@ function Plugin:ApplySettings(frame)
     frame:SetClassColour(classColour)
 
     -- Restore positions before visuals (SetFont in overrides clobbers text color)
-    local isInCanvasMode = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode:IsActive(frame)
+    local isInCanvasMode = OrbitEngine.CanvasMode:IsActive(frame)
     if not isInCanvasMode then
         local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
         if savedPositions then
-            if OrbitEngine.ComponentDrag then OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions) end
+            OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
             if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
         end
     end

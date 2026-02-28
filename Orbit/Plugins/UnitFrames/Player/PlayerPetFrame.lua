@@ -103,19 +103,17 @@ function Plugin:OnLoad()
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, PET_FRAME_INDEX)
 
     -- Canvas Mode: Register draggable components
-    if OrbitEngine.ComponentDrag then
-        if self.frame.Name then
-            OrbitEngine.ComponentDrag:Attach(self.frame.Name, self.frame, {
-                key = "Name",
-                onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(self, PET_FRAME_INDEX, "Name"),
-            })
-        end
-        if self.frame.HealthText then
-            OrbitEngine.ComponentDrag:Attach(self.frame.HealthText, self.frame, {
-                key = "HealthText",
-                onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(self, PET_FRAME_INDEX, "HealthText"),
-            })
-        end
+    if self.frame.Name then
+        OrbitEngine.ComponentDrag:Attach(self.frame.Name, self.frame, {
+            key = "Name",
+            onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(self, PET_FRAME_INDEX, "Name"),
+        })
+    end
+    if self.frame.HealthText then
+        OrbitEngine.ComponentDrag:Attach(self.frame.HealthText, self.frame, {
+            key = "HealthText",
+            onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(self, PET_FRAME_INDEX, "HealthText"),
+        })
     end
 
     -- Apply settings
@@ -208,11 +206,11 @@ function Plugin:ApplySettings(frame)
 
     OrbitEngine.Frame:RestorePosition(frame, self, systemIndex)
 
-    local isInCanvasMode = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode:IsActive(frame)
+    local isInCanvasMode = OrbitEngine.CanvasMode:IsActive(frame)
     if not isInCanvasMode then
         local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
         if savedPositions then
-            if OrbitEngine.ComponentDrag then OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions) end
+            OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
             if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
         end
     end

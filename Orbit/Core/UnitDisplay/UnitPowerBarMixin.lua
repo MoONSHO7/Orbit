@@ -146,10 +146,8 @@ function Mixin:CreatePowerBarPlugin(config)
     Frame:SetScript("OnEvent", function() self:UpdateAll() end)
     Frame:HookScript("OnShow", function() self:UpdateAll() end)
 
-    if OrbitEngine.EditMode then
-        OrbitEngine.EditMode:RegisterEnterCallback(function() self:UpdateVisibility() end, self)
-        OrbitEngine.EditMode:RegisterExitCallback(function() self:ApplySettings() end, self)
-    end
+    OrbitEngine.EditMode:RegisterEnterCallback(function() self:UpdateVisibility() end, self)
+    OrbitEngine.EditMode:RegisterExitCallback(function() self:ApplySettings() end, self)
 
     if OrbitEngine.ComponentDrag and Frame.Text then
         OrbitEngine.ComponentDrag:Attach(Frame.Text, Frame, {

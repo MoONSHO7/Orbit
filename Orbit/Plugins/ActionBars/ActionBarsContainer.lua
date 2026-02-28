@@ -83,7 +83,7 @@ function ABC:CreateVehicleExit(plugin)
     container:EnableMouse(true)
     container:SetClampedToScreen(true)
     container.anchorOptions = { x = true, y = true, syncScale = false, syncDimensions = false }
-    if OrbitEngine.Pixel then OrbitEngine.Pixel:Enforce(container) end
+    OrbitEngine.Pixel:Enforce(container)
     container.Selection = container:CreateTexture(nil, "OVERLAY")
     container.Selection:SetColorTexture(1, 1, 1, 0.1)
     container.Selection:SetAllPoints()
