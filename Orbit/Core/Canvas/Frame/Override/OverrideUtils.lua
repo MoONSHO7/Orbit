@@ -153,7 +153,7 @@ function OverrideUtils.ApplyScaleOverride(element, overrides)
         local scale = element:GetEffectiveScale()
         element:SetSize(Engine.Pixel:Snap(baseW * overrides.Scale, scale), Engine.Pixel:Snap(baseH * overrides.Scale, scale))
         if Orbit.Skin and Orbit.Skin.Icons then
-            local globalBorder = Orbit.db.GlobalSettings.BorderSize or Engine.Pixel:Multiple(1, scale)
+            local globalBorder = Orbit.db.GlobalSettings.BorderSize or Engine.Pixel:DefaultBorderSize(scale)
             Orbit.Skin.Icons:ApplyCustom(element, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
         end
     elseif element.SetScale then

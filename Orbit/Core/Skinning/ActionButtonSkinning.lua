@@ -23,7 +23,7 @@ function ABS:Apply(button, settings)
     if not button then return end
     local w, h = button:GetSize()
     local scale = button:GetEffectiveScale() or 1
-    local borderInset = (Pixel and Pixel:BorderInset(button, settings.borderSize or (Pixel and Pixel:Multiple(1, scale) or 1)) or 1) * 2
+    local borderInset = (Pixel and Pixel:BorderInset(button, settings.borderSize or Pixel:DefaultBorderSize(scale)) or 1) * 2
 
     ResetRegion(button.NormalTexture)
     ResetRegion(button.PushedTexture)

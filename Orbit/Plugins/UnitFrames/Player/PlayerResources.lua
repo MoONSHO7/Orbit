@@ -582,7 +582,7 @@ function Plugin:ApplyButtonVisuals()
         return
     end
 
-    local borderSize = (Frame.settings and Frame.settings.borderSize) or (Orbit.Engine.Pixel:Multiple(1, Frame:GetEffectiveScale() or 1) or 1)
+    local borderSize = (Frame.settings and Frame.settings.borderSize) or Orbit.Engine.Pixel:DefaultBorderSize(Frame:GetEffectiveScale() or 1)
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
 
     local max = math.max(1, Frame.maxPower or #Frame.buttons)

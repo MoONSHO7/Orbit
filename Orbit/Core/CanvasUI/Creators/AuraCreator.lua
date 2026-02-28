@@ -50,7 +50,7 @@ local function RefreshAuraIcons(self)
     for _, btn in ipairs(self.auraIconPool) do btn:Hide() end
 
     local scale = self:GetEffectiveScale() or 1
-    local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:Multiple(1, scale)
+    local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(scale)
     local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false }
     local sampleIcons = self.sampleIcons
 

@@ -47,7 +47,7 @@ local function Create(container, preview, key, source, data)
         end
 
         local scale = btn:GetEffectiveScale() or 1
-        local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:Multiple(1, scale)
+        local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(scale)
         if Orbit.Skin and Orbit.Skin.Icons then
             Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
         end

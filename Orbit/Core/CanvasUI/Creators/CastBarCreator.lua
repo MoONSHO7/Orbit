@@ -247,7 +247,7 @@ local function Create(container, preview, key, source, data)
     end
 
     local borderSize = plugin and (plugin:GetSetting(sysIdx, "BorderSize") or plugin:GetPlayerSetting("BorderSize"))
-        or (Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
+        or Orbit.Engine.Pixel:DefaultBorderSize(UIParent:GetEffectiveScale() or 1)
     if Orbit.Skin and Orbit.Skin.SkinBorder then Orbit.Skin:SkinBorder(bar, bar, borderSize, nil, true) end
 
     local fontName = plugin and (plugin:GetSetting(sysIdx, "Font") or plugin:GetPlayerSetting("Font"))

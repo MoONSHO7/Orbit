@@ -76,7 +76,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
     local height = self:GetSetting(1, "Height") or PREVIEW_DEFAULTS.Height
     local textureName = self:GetSetting(1, "Texture")
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
-    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel:Multiple(1, self.container:GetEffectiveScale() or 1) or 1)
+    local borderSize = self:GetSetting(1, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(self.container:GetEffectiveScale() or 1)
 
     for i = 1, MAX_BOSS_FRAMES do
         if self.frames[i] and self.frames[i].preview then

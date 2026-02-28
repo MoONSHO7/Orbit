@@ -131,7 +131,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
     local isCanvasMode = IsCanvasModeActive(self)
     local width = self:GetSetting(1, "Width") or Helpers.LAYOUT.DefaultWidth
     local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
-    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel:Multiple(1, self.container:GetEffectiveScale() or 1) or 1)
+    local borderSize = self:GetSetting(1, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(self.container:GetEffectiveScale() or 1)
     local showHealerPower = self:GetSetting(1, "ShowPowerBar")
     if showHealerPower == nil then showHealerPower = true end
     local textureName = self:GetSetting(1, "Texture")

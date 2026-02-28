@@ -13,6 +13,8 @@ local FRAMES_PER_GROUP = 5
 local DEFENSIVE_ICON_SIZE = 18
 local CROWD_CONTROL_ICON_SIZE = 18
 local PRIVATE_AURA_ICON_SIZE = 18
+local STATUS_ICON_SIZE = 18
+local ROLE_ICON_SIZE = 12
 local MAX_PRIVATE_AURA_ANCHORS = GF.MaxPrivateAuraAnchors
 local AURA_BASE_ICON_SIZE = GF.AuraBaseIconSize
 local OUT_OF_RANGE_ALPHA = GF.OutOfRangeAlpha
@@ -609,26 +611,26 @@ function Plugin:PrepareIconsForCanvasMode()
     for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }) do
         if frame[key] then
             frame[key]:SetAtlas(previewAtlases[key])
-            frame[key]:SetSize(18, 18)
+            frame[key]:SetSize(STATUS_ICON_SIZE, STATUS_ICON_SIZE)
         end
     end
     if frame.RoleIcon then
         if not frame.RoleIcon:GetAtlas() then
             frame.RoleIcon:SetAtlas(previewAtlases.RoleIcon)
         end
-        frame.RoleIcon:SetSize(12, 12)
+        frame.RoleIcon:SetSize(ROLE_ICON_SIZE, ROLE_ICON_SIZE)
     end
     if frame.LeaderIcon then
         if not frame.LeaderIcon:GetAtlas() then
             frame.LeaderIcon:SetAtlas(previewAtlases.LeaderIcon)
         end
-        frame.LeaderIcon:SetSize(12, 12)
+        frame.LeaderIcon:SetSize(ROLE_ICON_SIZE, ROLE_ICON_SIZE)
     end
     if frame.MainTankIcon then
         if not frame.MainTankIcon:GetAtlas() then
             frame.MainTankIcon:SetAtlas(previewAtlases.MainTankIcon)
         end
-        frame.MainTankIcon:SetSize(12, 12)
+        frame.MainTankIcon:SetSize(ROLE_ICON_SIZE, ROLE_ICON_SIZE)
     end
     if frame.MarkerIcon then
         frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
@@ -936,7 +938,7 @@ function Plugin:ApplySettings()
     local showHealthValue = self:GetSetting(1, "ShowHealthValue")
     if showHealthValue == nil then showHealthValue = true end
     local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
-    local borderSize = self:GetSetting(1, "BorderSize") or (Orbit.Engine.Pixel:Multiple(1, UIParent:GetEffectiveScale() or 1) or 1)
+    local borderSize = self:GetSetting(1, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(UIParent:GetEffectiveScale() or 1)
     local textureName = self:GetSetting(1, "Texture")
     local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
 

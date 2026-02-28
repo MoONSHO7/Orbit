@@ -422,7 +422,7 @@ function Plugin:LayoutChargeBar(frame)
         width = frame:GetWidth()
         frame:SetHeight(height)
 
-        local borderSize = self:GetSetting(sysIndex, "BorderSize") or (Orbit.Engine.Pixel:Multiple(1, frame:GetEffectiveScale() or 1) or 1)
+        local borderSize = self:GetSetting(sysIndex, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(frame:GetEffectiveScale() or 1)
         local spacing = self:GetSetting(sysIndex, "Spacing") or DEFAULT_SPACING
         local texture = self:GetSetting(sysIndex, "Texture")
         local scale = frame:GetEffectiveScale()
@@ -535,7 +535,7 @@ function Plugin:SetupChargeBarCanvasPreview(frame, sysIndex)
     frame.CreateCanvasPreview = function(self, options)
         local width = plugin:GetSetting(sysIndex, "Width") or DEFAULT_WIDTH
         local height = plugin:GetSetting(sysIndex, "Height") or DEFAULT_HEIGHT
-        local borderSize = plugin:GetSetting(sysIndex, "BorderSize") or (Orbit.Engine.Pixel:Multiple(1, self:GetEffectiveScale() or 1) or 1)
+        local borderSize = plugin:GetSetting(sysIndex, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(self:GetEffectiveScale() or 1)
         local spacing = plugin:GetSetting(sysIndex, "Spacing") or DEFAULT_SPACING
         local texture = plugin:GetSetting(sysIndex, "Texture")
         local bgColor = GetBgColor()

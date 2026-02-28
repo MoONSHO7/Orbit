@@ -187,7 +187,7 @@ function Icons:ApplyCustom(icon, settings)
         end
         local borderStyle = settings.borderStyle or 0
         local bScale = icon:GetEffectiveScale() or 1
-        local borderSize = settings.borderSize or (Pixel and Pixel:Multiple(1, bScale) or 1)
+        local borderSize = settings.borderSize or Pixel:DefaultBorderSize(bScale)
         if r.border then
             if borderStyle == 1 then r.border:SetAlpha(0)
             else

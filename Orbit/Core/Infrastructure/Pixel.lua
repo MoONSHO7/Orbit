@@ -79,6 +79,13 @@ function Pixel:BorderInset(frame, fallbackSize)
     return self:Multiple(fallbackSize or 0, frame:GetEffectiveScale())
 end
 
+--- Compute the default 1-pixel border size in logical units for a given scale
+-- @param scale number: Frame effective scale
+-- @return number: Logical size for 1 physical pixel border
+function Pixel:DefaultBorderSize(scale)
+    return self:Multiple(1, scale)
+end
+
 --- Snap X/Y for a given anchor point, accounting for center alignment
 -- @param x number: Raw X position
 -- @param y number: Raw Y position

@@ -726,7 +726,7 @@ function Settings:ApplyStyle(container, key, value)
             if visual.SetSize then visual:SetSize(w, h) end
             if Orbit.Skin and Orbit.Skin.Icons then
                 local s = visual:GetEffectiveScale() or 1
-                local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:Multiple(1, s)
+                local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(s)
                 Orbit.Skin.Icons:ApplyCustom(visual, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
             end
         elseif visual.GetObjectType and visual:GetObjectType() == "Texture" then

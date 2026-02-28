@@ -69,7 +69,7 @@ function TickMixin:Apply(frame, tickSize, height, anchorBar)
     if rounded > 0 and frame.TickBar then
         local scale = frame:GetEffectiveScale()
         local overshoot = Engine.Pixel:Multiple(TICK_OVERSHOOT, scale)
-        local tickWidth = math.max(Engine.Pixel:Multiple(rounded, scale), Engine.Pixel:Multiple(1, scale))
+        local tickWidth = math.max(Engine.Pixel:Multiple(rounded, scale), Engine.Pixel:DefaultBorderSize(scale))
         frame.TickMark:SetSize(tickWidth, Engine.Pixel:Snap(height + overshoot * 2, scale))
         frame.TickClip:ClearAllPoints()
         local ref = anchorBar or frame.TickBar

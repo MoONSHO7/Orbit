@@ -7,6 +7,10 @@ local LSM = LibStub("LibSharedMedia-3.0")
 Orbit.BossFrameCastBar = {}
 local CB = Orbit.BossFrameCastBar
 
+local CAST_BAR_WIDTH = 150
+local CAST_BAR_HEIGHT = 14
+local CAST_BAR_ICON_SIZE = 14
+
 local function ResolveCastBarColor(plugin)
     return OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(1, "CastBarColorCurve"))
         or plugin:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
@@ -22,7 +26,7 @@ CB.ResolveNonInterruptibleColor = ResolveNonInterruptibleColor
 
 function CB:Create(parent, bossIndex, plugin)
     local bar = CreateFrame("StatusBar", "OrbitBoss" .. bossIndex .. "CastBar", parent)
-    bar:SetSize(150, 14)
+    bar:SetSize(CAST_BAR_WIDTH, CAST_BAR_HEIGHT)
     bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
     bar:SetStatusBarColor(1, 0.7, 0)
     bar:SetMinMaxValues(0, 1)
@@ -39,7 +43,7 @@ function CB:Create(parent, bossIndex, plugin)
 
     bar.Icon = bar:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
     bar.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
-    bar.Icon:SetSize(14, 14)
+    bar.Icon:SetSize(CAST_BAR_ICON_SIZE, CAST_BAR_ICON_SIZE)
     bar.Icon:SetPoint("LEFT", bar, "LEFT", 0, 0)
     bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
     bar.Icon:Hide()

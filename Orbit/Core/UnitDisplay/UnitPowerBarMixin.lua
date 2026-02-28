@@ -58,7 +58,7 @@ function Mixin:CreatePowerBarPlugin(config)
         local parent = options.parent or UIParent
         local gs = Orbit.db.GlobalSettings or {}
         local scale = self:GetEffectiveScale() or 1
-        local borderSize = gs.BorderSize or OrbitEngine.Pixel:Multiple(1, scale)
+        local borderSize = gs.BorderSize or OrbitEngine.Pixel:DefaultBorderSize(scale)
         local textureName = plugin:GetSetting(1, "Texture") or gs.Texture
         local w, h = self:GetWidth(), self:GetHeight()
 
