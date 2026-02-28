@@ -20,6 +20,8 @@ provides three viewer types: essential cooldowns (class rotation), utility coold
 | ControlButtonFactory.lua | +/- control buttons for adding/removing child frames in edit mode. |
 | TrackedAbilities.lua | user-tracked ability/item grid. drag-and-drop spell/item assignment. |
 | TrackedCharges.lua | charge bar frame. tracks multi-charge spell recharge progress. |
+| ChargeBarLayout.lua | charge bar layout, button building, and skinning. |
+| ChargeBarCanvasPreview.lua | canvas mode preview for charge bars. |
 | TrackedCanvasPreview.lua | canvas mode preview for tracked ability grids. |
 | TrackedTooltipParser.lua | tooltip scanning for active duration and cooldown duration extraction. |
 | KeybindSystem.lua | keybind text resolution for tracked ability icons. |
@@ -32,8 +34,10 @@ graph TD
     CDM --> Utility[utility viewers]
     CDM --> Tracked[TrackedAbilities]
     CDM --> Charges[TrackedCharges]
-    Tracked --> ControlButtons[ControlButtonFactory]
+    Charges --> ChargeLayout[ChargeBarLayout]
+    Charges --> ChargePreview[ChargeBarCanvasPreview]
     Tracked --> TooltipParser[TrackedTooltipParser]
+    Tracked --> ControlButtons[ControlButtonFactory]
     CDM --> Layout[CooldownLayout]
     CDM --> Text[CooldownText]
     CDM --> Glows[CooldownGlows]

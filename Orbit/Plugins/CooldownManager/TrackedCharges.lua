@@ -1,8 +1,10 @@
----@type Orbit
+﻿---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
+local ChargeBarLayout = Orbit.ChargeBarLayout
+local ChargeBarCanvasPreview = Orbit.ChargeBarCanvasPreview
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local CHARGE_BAR_INDEX = Constants.Cooldown.SystemIndex.ChargeBar
@@ -60,27 +62,6 @@ local function IsChargeSpell(spellId)
     end
     local ci = C_Spell.GetSpellCharges(spellId)
     return ci and ci.maxCharges and ci.maxCharges > 1, ci
-end
-
-local function GetBarColor(plugin, sysIndex, index, maxCharges)
-    local curveData = plugin:GetSetting(sysIndex, "BarColorCurve")
-    if curveData then
-        if index and maxCharges and maxCharges > 1 and #curveData.pins > 1 then
-            return OrbitEngine.ColorCurve:SampleColorCurve(curveData, (index - 1) / (maxCharges - 1))
-        end
-        local c = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
-        if c then
-            return c
-        end
-    end
-    local _, class = UnitClass("player")
-    return (Orbit.Colors.PlayerResources and Orbit.Colors.PlayerResources[class]) or { r = 1, g = 0.8, b = 0 }
-end
-
-local function GetBgColor()
-    local gc = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColourCurve
-    local c = gc and OrbitEngine.ColorCurve:GetFirstColorFromCurve(gc)
-    return c or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
 end
 
 local function ResolveSpellFromCursor()
@@ -166,7 +147,7 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
             return
         end
         if frame.chargeSpellId then
-            plugin:LayoutChargeBar(frame)
+            ChargeBarLayout:LayoutChargeBar(plugin, frame)
         end
     end)
 
@@ -330,8 +311,8 @@ function Plugin:SpawnChargeChild()
     self:SetSetting(systemIndex, "Enabled", true)
 
     self:CreateChargeControlButtons(frame)
-    self:LayoutChargeBar(frame)
-    self:SetupChargeBarCanvasPreview(frame, systemIndex)
+    ChargeBarLayout:LayoutChargeBar(self, frame)
+    ChargeBarCanvasPreview:Setup(self, frame, systemIndex)
     self:UpdateAllChargeControlColors()
     self:UpdateSeedVisibility(frame)
     self:SaveChargeChildren()
@@ -379,254 +360,6 @@ function Plugin:DespawnChargeChild(frame)
     end
 end
 
--- [ BUTTON BUILDING ]------------------------------------------------------------------------------
-function Plugin:BuildChargeButtons(frame, maxCharges)
-    for i = 1, maxCharges do
-        if not frame.buttons[i] then
-            local btn = CreateFrame("Frame", nil, frame)
-            OrbitEngine.Pixel:Enforce(btn)
-            btn.Bar = CreateFrame("StatusBar", nil, btn)
-            btn.Bar:SetAllPoints()
-            btn.Bar:SetMinMaxValues(i - 1, i)
-            btn.Bar:SetValue(0)
-            btn.Bar:SetFrameLevel(btn:GetFrameLevel() + 2)
-            frame.buttons[i] = btn
-        end
-        frame.buttons[i].Bar:SetMinMaxValues(i - 1, i)
-        frame.buttons[i]:Show()
-    end
-    for i = maxCharges + 1, #frame.buttons do
-        frame.buttons[i]:Hide()
-    end
-end
-
--- [ LAYOUT ]----------------------------------------------------------------------------------------
-function Plugin:LayoutChargeBar(frame)
-    if not frame then
-        return
-    end
-    if frame._layoutInProgress then
-        return
-    end
-    frame._layoutInProgress = true
-
-    local sysIndex = frame.systemIndex
-    local isAnchored = OrbitEngine.Frame:GetAnchorParent(frame) ~= nil
-
-    if frame.chargeSpellId then
-        local width = self:GetSetting(sysIndex, "Width") or DEFAULT_WIDTH
-        local height = self:GetSetting(sysIndex, "Height") or DEFAULT_HEIGHT
-        if not isAnchored then
-            frame:SetWidth(width)
-        end
-        width = frame:GetWidth()
-        frame:SetHeight(height)
-
-        local borderSize = self:GetSetting(sysIndex, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(frame:GetEffectiveScale() or 1)
-        local spacing = self:GetSetting(sysIndex, "Spacing") or DEFAULT_SPACING
-        local texture = self:GetSetting(sysIndex, "Texture")
-        local scale = frame:GetEffectiveScale()
-        local maxCharges = frame.cachedMaxCharges or 2
-        local bgColor = GetBgColor()
-
-        self:SkinChargeButtons(frame, maxCharges, width, height, borderSize, spacing, texture, sysIndex, bgColor, scale)
-        frame.SeedButton:Hide()
-    else
-        frame:SetSize(EMPTY_SEED_SIZE, EMPTY_SEED_SIZE)
-    end
-
-    frame._layoutInProgress = false
-    OrbitEngine.Frame:ForceUpdateSelection(frame)
-    if not frame.orbitMountedSuppressed then frame:Show() end
-end
-
-function Plugin:LayoutChargeBars()
-    self:LayoutChargeBar(self.chargeBarAnchor)
-    for _, childData in pairs(self.activeChargeChildren) do
-        if childData.frame then
-            self:LayoutChargeBar(childData.frame)
-        end
-    end
-end
-
-function Plugin:SkinChargeButtons(frame, maxCharges, totalWidth, height, borderSize, spacing, texture, sysIndex, bgColor, scale)
-    local snappedGap = PixelMultiple(math.max(spacing - 1, spacing > 0 and 1 or 0), scale)
-    local snappedWidth = SnapToPixel(totalWidth, scale)
-    local globalSettings = Orbit.db.GlobalSettings
-    
-    local logicalGap = PixelMultiple(spacing, scale)
-    if spacing <= 1 then logicalGap = 0 end
-    local exactWidth = (totalWidth - (logicalGap * (maxCharges - 1))) / maxCharges
-    local segmentWidth = SnapToPixel(exactWidth, scale)
-
-    local barColor1 = GetBarColor(self, sysIndex, 1, maxCharges)
-    local rechargeColor = { r = barColor1.r * RECHARGE_DIM, g = barColor1.g * RECHARGE_DIM, b = barColor1.b * RECHARGE_DIM }
-    Orbit.Skin:SkinStatusBar(frame.RechargeSegment, texture, rechargeColor)
-    if frame.RechargeSegment.Overlay then
-        frame.RechargeSegment.Overlay:Hide()
-    end
-
-    local stepWidth = segmentWidth + logicalGap
-    local positionerWidth = math.max(1, stepWidth * maxCharges)
-    frame.RechargePositioner:SetSize(positionerWidth, height)
-    frame.RechargePositioner:SetPoint("LEFT", frame, "LEFT", 0, 0)
-    frame.RechargeSegment:SetSize(math.max(1, segmentWidth), height)
-    frame.TickBar:SetSize(math.max(1, segmentWidth), height)
-
-    local currentLeft = 0
-
-    for i = 1, maxCharges do
-        local btn = frame.buttons[i]
-        if not btn then break end
-
-        local logicalLeft = SnapToPixel(currentLeft, scale)
-
-        btn:SetSize(segmentWidth, height)
-        btn:ClearAllPoints()
-        btn:SetPoint("LEFT", frame, "LEFT", logicalLeft, 0)
-        
-        currentLeft = currentLeft + segmentWidth + logicalGap
-
-        if not btn.bg then
-            btn.bg = btn:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
-            btn.bg:SetAllPoints()
-        end
-        Orbit.Skin:ApplyGradientBackground(btn, globalSettings.BackdropColourCurve, bgColor)
-
-        local barColor = GetBarColor(self, sysIndex, i, maxCharges)
-        Orbit.Skin:SkinStatusBar(btn.Bar, texture, barColor)
-        if btn.Bar.Overlay then
-            btn.Bar.Overlay:Hide()
-        end
-
-        if not btn.orbitBackdrop then
-            btn.orbitBackdrop = Orbit.Skin:CreateBackdrop(btn, nil)
-            btn.orbitBackdrop:SetFrameLevel(btn:GetFrameLevel() + Constants.Levels.Highlight)
-            btn.orbitBackdrop:SetBackdrop(nil)
-        end
-        Orbit.Skin:SkinBorder(btn, btn.orbitBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
-
-        OrbitEngine.Pixel:Enforce(btn)
-    end
-
-    local tickSize = self:GetSetting(frame.systemIndex, "TickSize") or TICK_SIZE_DEFAULT
-    OrbitEngine.TickMixin:Apply(frame, tickSize, height, frame.RechargeSegment)
-
-    local sysIndex = frame.systemIndex
-    local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
-    local positions = self:GetSetting(sysIndex, "ComponentPositions") or {}
-    local pos = positions["ChargeCount"] or {}
-    local overrides = pos.overrides or {}
-    local LSM = LibStub("LibSharedMedia-3.0", true)
-    local fontName = self:GetSetting(sysIndex, "Font")
-    local fontPath = LSM and LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
-    local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
-    OrbitEngine.OverrideUtils.ApplyOverrides(frame.CountText, overrides, { fontSize = textSize, fontPath = fontPath })
-    if ApplyTextPosition then
-        ApplyTextPosition(frame.CountText, frame, pos)
-    end
-end
-
--- [ CANVAS PREVIEW ]--------------------------------------------------------------------------------
-function Plugin:SetupChargeBarCanvasPreview(frame, sysIndex)
-    local plugin = self
-    local LSM = LibStub("LibSharedMedia-3.0", true)
-
-    frame.CreateCanvasPreview = function(self, options)
-        local width = plugin:GetSetting(sysIndex, "Width") or DEFAULT_WIDTH
-        local height = plugin:GetSetting(sysIndex, "Height") or DEFAULT_HEIGHT
-        local borderSize = plugin:GetSetting(sysIndex, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(self:GetEffectiveScale() or 1)
-        local spacing = plugin:GetSetting(sysIndex, "Spacing") or DEFAULT_SPACING
-        local texture = plugin:GetSetting(sysIndex, "Texture")
-        local bgColor = GetBgColor()
-        local maxCharges = self.cachedMaxCharges or 3
-        local previewCharges = maxCharges - 1
-        local scale = self:GetEffectiveScale()
-
-        local parent = options.parent
-        local preview = CreateFrame("Frame", nil, parent)
-        preview:SetSize(width, height)
-        preview.sourceFrame = self
-        preview.sourceWidth = width
-        preview.sourceHeight = height
-        preview.previewScale = 1
-        preview.components = {}
-
-        local logicalGap = OrbitEngine.Pixel:Multiple(spacing, scale)
-        if spacing <= 1 then logicalGap = 0 end
-        local exactWidth = (width - (logicalGap * (maxCharges - 1))) / maxCharges
-        local snappedWidth = OrbitEngine.Pixel:Snap(exactWidth, scale)
-
-        local currentLeft = 0
-
-        for i = 1, maxCharges do
-            local logicalLeft = OrbitEngine.Pixel:Snap(currentLeft, scale)
-            
-            local seg = CreateFrame("StatusBar", nil, preview)
-            seg:SetSize(snappedWidth, height)
-            seg:SetPoint("LEFT", preview, "LEFT", logicalLeft, 0)
-            seg:SetMinMaxValues(0, 1)
-            seg:SetValue(1)
-            
-            currentLeft = currentLeft + snappedWidth + logicalGap
-
-            seg.bg = seg:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
-            seg.bg:SetAllPoints()
-            Orbit.Skin:ApplyGradientBackground(seg, Orbit.db.GlobalSettings.BackdropColourCurve, bgColor)
-
-            local barColor = GetBarColor(plugin, sysIndex, i, maxCharges)
-            local segColor = (i <= previewCharges) and barColor
-                or { r = barColor.r * RECHARGE_DIM, g = barColor.g * RECHARGE_DIM, b = barColor.b * RECHARGE_DIM }
-            Orbit.Skin:SkinStatusBar(seg, texture, segColor)
-            if seg.Overlay then
-                seg.Overlay:Hide()
-            end
-
-            local segBackdrop = Orbit.Skin:CreateBackdrop(seg, nil)
-            segBackdrop:SetFrameLevel(seg:GetFrameLevel() + Constants.Levels.Highlight)
-            segBackdrop:SetBackdrop(nil)
-            Orbit.Skin:SkinBorder(seg, segBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
-        end
-
-        local savedPositions = plugin:GetSetting(sysIndex, "ComponentPositions") or {}
-        local fontName = plugin:GetSetting(sysIndex, "Font")
-        local fontPath = LSM and LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
-        local fontSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
-        local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
-        fs:SetFont(fontPath, fontSize, Orbit.Skin:GetFontOutline())
-        fs:SetText(tostring(previewCharges))
-        fs:SetTextColor(1, 1, 1, 1)
-        fs:SetPoint("CENTER", preview, "CENTER", 0, 0)
-
-        local saved = savedPositions["ChargeCount"] or {}
-        local data = {
-            anchorX = saved.anchorX or "CENTER",
-            anchorY = saved.anchorY or "CENTER",
-            offsetX = saved.offsetX or 0,
-            offsetY = saved.offsetY or 0,
-            justifyH = saved.justifyH or "CENTER",
-            overrides = saved.overrides,
-        }
-
-        local startX = saved.posX or 0
-        local startY = saved.posY or 0
-
-        local CreateDraggableComponent = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.CreateDraggableComponent
-        if CreateDraggableComponent then
-            local comp = CreateDraggableComponent(preview, "ChargeCount", fs, startX, startY, data)
-            if comp then
-                comp:SetFrameLevel(preview:GetFrameLevel() + 10)
-                preview.components["ChargeCount"] = comp
-                fs:Hide()
-            end
-        else
-            fs:ClearAllPoints()
-            fs:SetPoint("CENTER", preview, "CENTER", startX, startY)
-        end
-
-        return preview
-    end
-end
 
 -- [ DRAG AND DROP ]---------------------------------------------------------------------------------
 function Plugin:OnChargeFrameDrop(frame)
@@ -654,8 +387,8 @@ function Plugin:AssignChargeSpell(frame, spellId, maxCharges)
 
     self:SetSetting(frame.systemIndex, self:GetSpecKey("ChargeSpell"), { id = spellId, maxCharges = maxCharges })
 
-    self:BuildChargeButtons(frame, maxCharges)
-    self:LayoutChargeBar(frame)
+    ChargeBarLayout:BuildChargeButtons(frame, maxCharges)
+    ChargeBarLayout:LayoutChargeBar(self, frame)
     self:UpdateChargeFrame(frame)
     self:UpdateSeedVisibility(frame)
     self:UpdateAllChargeControlColors()
@@ -676,7 +409,7 @@ function Plugin:ClearChargeFrame(frame)
     frame.CountText:Hide()
 
     self:SetSetting(frame.systemIndex, self:GetSpecKey("ChargeSpell"), nil)
-    self:LayoutChargeBar(frame)
+    ChargeBarLayout:LayoutChargeBar(self, frame)
     self:ClearStaleChargeBarSpatial(frame, frame.systemIndex)
     self:UpdateSeedVisibility(frame)
     self:UpdateAllChargeControlColors()
@@ -703,7 +436,7 @@ function Plugin:ApplyChargeBarSettings(frame)
         return
     end
     local sysIndex = frame.systemIndex
-    self:LayoutChargeBar(frame)
+    ChargeBarLayout:LayoutChargeBar(self, frame)
     OrbitEngine.Frame:RestorePosition(frame, self, sysIndex)
 
     local isMountedHidden = Orbit.MountedVisibility:ShouldHide()
@@ -890,7 +623,7 @@ function Plugin:ReloadChargeBarsForSpec()
         end
     end
 
-    self:LayoutChargeBars()
+    ChargeBarLayout:LayoutChargeBars(self)
 end
 
 function Plugin:RestoreChargeSpell(frame, sysIndex)
@@ -912,7 +645,7 @@ function Plugin:RestoreChargeSpell(frame, sysIndex)
     frame._maxCharges = data.maxCharges or 2
     frame._trackedCharges = ci and ci.currentCharges or frame.cachedMaxCharges
     frame._knownRechargeDuration = ci and ci.cooldownDuration or nil
-    self:BuildChargeButtons(frame, frame.cachedMaxCharges)
+    ChargeBarLayout:BuildChargeButtons(frame, frame.cachedMaxCharges)
     UpdateChargeBarLabel(frame)
 end
 
@@ -931,8 +664,8 @@ function Plugin:RefreshChargeMaxCharges()
         frame.cachedMaxCharges = ci.maxCharges
         frame._maxCharges = ci.maxCharges
         self:SetSetting(frame.systemIndex, self:GetSpecKey("ChargeSpell"), { id = frame.chargeSpellId, maxCharges = ci.maxCharges })
-        self:BuildChargeButtons(frame, ci.maxCharges)
-        self:LayoutChargeBar(frame)
+        ChargeBarLayout:BuildChargeButtons(frame, ci.maxCharges)
+        ChargeBarLayout:LayoutChargeBar(self, frame)
     end
     Refresh(self.chargeBarAnchor)
     for _, childData in pairs(self.activeChargeChildren) do
@@ -978,8 +711,8 @@ function Plugin:RestoreChargeBars()
     end
 
     self:CreateChargeControlButtons(anchor)
-    self:SetupChargeBarCanvasPreview(anchor, CHARGE_BAR_INDEX)
-    self:LayoutChargeBars()
+    ChargeBarCanvasPreview:Setup(self, anchor, CHARGE_BAR_INDEX)
+    ChargeBarLayout:LayoutChargeBars(self)
     OrbitEngine.Frame:RestorePosition(anchor, self, CHARGE_BAR_INDEX)
     self:RegisterChargeCursorWatcher()
     self:RegisterChargeRechargeWatcher()

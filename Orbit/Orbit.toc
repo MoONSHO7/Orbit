@@ -160,6 +160,8 @@ Plugins\CooldownManager\TrackedTooltipParser.lua
 Plugins\CooldownManager\ControlButtonFactory.lua
 Plugins\CooldownManager\TrackedAbilities.lua
 Plugins\CooldownManager\TrackedCanvasPreview.lua
+Plugins\CooldownManager\ChargeBarLayout.lua
+Plugins\CooldownManager\ChargeBarCanvasPreview.lua
 Plugins\CooldownManager\TrackedCharges.lua
 Plugins\CooldownManager\KeybindSystem.lua
 
