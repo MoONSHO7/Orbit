@@ -103,6 +103,8 @@ Core\Config\PluginManager.lua
 # Unit Frames
 Plugins\UnitFrames\Player\PlayerPower.lua
 Plugins\UnitFrames\Player\PlayerCastBar.lua
+Plugins\UnitFrames\Player\ContinuousBarRenderer.lua
+Plugins\UnitFrames\Player\DiscreteBarRenderer.lua
 Plugins\UnitFrames\Player\PlayerResources.lua
 Plugins\UnitFrames\Player\PlayerResourceSettings.lua
 Plugins\UnitFrames\Player\PlayerFrame.lua

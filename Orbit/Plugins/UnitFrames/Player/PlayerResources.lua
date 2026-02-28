@@ -1,10 +1,10 @@
----@type Orbit
+﻿---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local ResourceMixin = Orbit.ResourceBarMixin
-local CanUseUnitPowerPercent = Orbit.PlayerUtilShared.CanUseUnitPowerPercent
-local SafeUnitPowerPercent = Orbit.PlayerUtilShared.SafeUnitPowerPercent
+local ContinuousRenderer = Orbit.ContinuousBarRenderer
+local DiscreteRenderer = Orbit.DiscreteBarRenderer
 
 local DEFAULTS = { Width = 200, Height = 12, Y = -200 }
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
@@ -31,69 +31,7 @@ local _, PLAYER_CLASS = UnitClass("player")
 local function SnapToPixel(value, scale) return OrbitEngine.Pixel:Snap(value, scale) end
 local function PixelMultiple(count, scale) return OrbitEngine.Pixel:Multiple(count, scale) end
 
--- [ CONTINUOUS RESOURCE CONFIG ]--------------------------------------------------------------------
-local CONTINUOUS_RESOURCE_CONFIG = {
-    STAGGER = {
-        curveKey = "StaggerColorCurve",
-        getState = function()
-            return ResourceMixin:GetStaggerState()
-        end,
-        updateText = function(text, current)
-            text:SetText(current)
-        end,
-    },
-    SOUL_FRAGMENTS = {
-        curveKey = "SoulFragmentsColorCurve",
-        getState = function()
-            return ResourceMixin:GetSoulFragmentsState()
-        end,
-        updateText = function(text, current)
-            text:SetText(current)
-        end,
-    },
-    EBON_MIGHT = {
-        curveKey = "EbonMightColorCurve",
-        getState = function()
-            return ResourceMixin:GetEbonMightState()
-        end,
-        updateText = function(text, current)
-            text:SetFormattedText("%.1f", current)
-        end,
-    },
-    MANA = {
-        curveKey = "ManaColorCurve",
-        getState = function()
-            return UnitPower("player", Enum.PowerType.Mana), UnitPowerMax("player", Enum.PowerType.Mana)
-        end,
-        updateText = function(text, current)
-            local percent = SafeUnitPowerPercent("player", Enum.PowerType.Mana)
-            if percent then
-                text:SetFormattedText("%.0f", percent)
-            else
-                text:SetText(current)
-            end
-        end,
-    },
-    MAELSTROM_WEAPON = {
-        curveKey = "MaelstromWeaponColorCurve",
-        dividers = true,
-        maxDividers = 10,
-        getState = function()
-            return ResourceMixin:GetMaelstromWeaponState()
-        end,
-        updateText = function(text, _, _, hasAura, auraInstanceID)
-            if not hasAura then
-                text:SetText("0")
-                return
-            end
-            if auraInstanceID and C_UnitAuras.GetAuraApplicationDisplayCount then
-                text:SetText(C_UnitAuras.GetAuraApplicationDisplayCount("player", auraInstanceID))
-            else
-                text:SetText("1")
-            end
-        end,
-    },
-}
+local CONTINUOUS_RESOURCE_CONFIG = ContinuousRenderer.CONFIG
 
 -- [ PLUGIN REGISTRATION ]--------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerResources"
@@ -111,7 +49,7 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         DividerSize = DIVIDER_SIZE_DEFAULT,
         BarColorCurve = { pins = { { position = 0, color = Orbit.Constants.Colors.PlayerResources[PLAYER_CLASS] or { r = 1, g = 1, b = 1, a = 1 } } } },
         ChargedComboPointColor = Orbit.Constants.Colors.PlayerResources.ChargedComboPoint or { r = 0.169, g = 0.733, b = 0.992 },
-        -- Stagger (Brewmaster Monk) - Green→Yellow→Red gradient
+        -- Stagger (Brewmaster Monk) - Greenâ†’Yellowâ†’Red gradient
         StaggerColorCurve = {
             pins = {
                 { position = 0, color = { r = 0.52, g = 1.0, b = 0.52, a = 1 } },
@@ -539,7 +477,7 @@ function Plugin:ApplySettings()
     end
 
     -- 1. Update Layout (Physical)
-    self:UpdateLayout(Frame)
+    DiscreteRenderer:UpdateLayout(Frame)
 
     -- Apply Visuals to Single Bar Container
     if Frame.StatusBarContainer and Frame.StatusBarContainer:IsShown() then
@@ -566,7 +504,7 @@ function Plugin:ApplySettings()
     end
 
     -- 3. Update Visuals (Skinning Buttons)
-    self:ApplyButtonVisuals()
+    DiscreteRenderer:ApplyButtonVisuals(self, Frame, SYSTEM_INDEX)
 
     -- 4. Update Power (Refresh Logic & Spacer Positions)
     self:UpdatePower()
@@ -576,100 +514,9 @@ function Plugin:ApplySettings()
     Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, SYSTEM_INDEX, "OutOfCombatFade", enableHover)
 end
 
--- [ BUTTON VISUAL APPLICATION ]--------------------------------------------------------------------
-function Plugin:ApplyButtonVisuals()
-    if not Frame or not Frame.buttons then
-        return
-    end
-
-    local borderSize = (Frame.settings and Frame.settings.borderSize) or Orbit.Engine.Pixel:DefaultBorderSize(Frame:GetEffectiveScale() or 1)
-    local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
-
-    local max = math.max(1, Frame.maxPower or #Frame.buttons)
-    local bgColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve) or Orbit.Constants.Colors.Background
-
-    for i, btn in ipairs(Frame.buttons) do
-        if btn:IsShown() then
-            if Orbit.Skin.ClassBar then
-                Orbit.Skin.ClassBar:SkinButton(btn, {
-                    borderSize = borderSize,
-                    texture = texture,
-                    backColor = bgColor,
-                })
-            end
-
-            local color = self:GetResourceColor(i, max)
-            if color and btn.orbitBar then
-                btn.orbitBar:SetVertexColor(color.r, color.g, color.b)
-
-                if i <= max then
-                    btn.orbitBar:SetTexCoord((i - 1) / max, i / max, 0, 1)
-                end
-
-                if not btn.Overlay then
-                    btn.Overlay = btn:CreateTexture(nil, "OVERLAY")
-                    btn.Overlay:SetAllPoints(btn.orbitBar)
-                    btn.Overlay:SetTexture(OVERLAY_TEXTURE)
-                    btn.Overlay:SetBlendMode("BLEND")
-                    btn.Overlay:SetAlpha(OVERLAY_BLEND_ALPHA)
-                end
-                if btn.isActive then
-                    btn.Overlay:Show()
-                else
-                    btn.Overlay:Hide()
-                end
-            end
-
-            -- Create progress bar overlay for partial fills (runes/essence)
-            if not btn.progressBar then
-                btn.progressBar = CreateFrame("StatusBar", nil, btn)
-                btn.progressBar:SetAllPoints()
-                btn.progressBar:SetMinMaxValues(0, 1)
-                btn.progressBar:SetValue(0)
-                btn.progressBar:SetFrameLevel(btn:GetFrameLevel() + 1)
-                btn.progressBar:Hide()
-            end
-
-            if color then
-                local barColor = { r = color.r * INACTIVE_DIM_FACTOR, g = color.g * INACTIVE_DIM_FACTOR, b = color.b * INACTIVE_DIM_FACTOR }
-                Orbit.Skin:SkinStatusBar(btn.progressBar, texture, barColor)
-            end
-        end
-    end
-end
-
--- [ RESOURCE COLOR HELPER ]-------------------------------------------------------------------------
+-- [ RESOURCE COLOR (DELEGATE) ]---------------------------------------------------------------------
 function Plugin:GetResourceColor(index, maxResources, isCharged)
-    local curveData = self:GetSetting(SYSTEM_INDEX, "BarColorCurve")
-
-    if curveData and #curveData.pins > 1 then
-        local curveColor
-        if index and maxResources and maxResources > 1 then
-            local position = (index - 1) / (maxResources - 1)
-            curveColor = OrbitEngine.ColorCurve:SampleColorCurve(curveData, position)
-        else
-            curveColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
-        end
-        if curveColor then
-            return curveColor
-        end
-    end
-
-    if isCharged then
-        return self:GetSetting(SYSTEM_INDEX, "ChargedComboPointColor") or Orbit.Colors.PlayerResources.ChargedComboPoint
-    end
-
-    if PLAYER_CLASS == "DEATHKNIGHT" then
-        local colors = Orbit.Colors.PlayerResources
-        local spec = GetSpecialization()
-        local specID = spec and GetSpecializationInfo(spec)
-        if specID == DK_SPEC_BLOOD then return colors.RuneBlood end
-        if specID == DK_SPEC_FROST then return colors.RuneFrost end
-        if specID == DK_SPEC_UNHOLY then return colors.RuneUnholy end
-    end
-
-    local firstColor = curveData and OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
-    return firstColor or Orbit.Colors.PlayerResources[PLAYER_CLASS]
+    return DiscreteRenderer:GetResourceColor(self, SYSTEM_INDEX, index, maxResources, isCharged)
 end
 
 function Plugin:IsEnabled()
@@ -711,7 +558,7 @@ function Plugin:UpdatePowerType()
         local cfg = CONTINUOUS_RESOURCE_CONFIG[continuousResource]
         Frame.maxPower = (cfg and cfg.maxDividers) or 0
 
-        self:SetContinuousMode(true)
+        ContinuousRenderer:SetContinuousMode(Frame, true)
         Frame:SetScript("OnUpdate", Frame.onUpdateHandler)
         Frame.orbitDisabled = false
         Frame:Show()
@@ -721,7 +568,7 @@ function Plugin:UpdatePowerType()
 
     -- Otherwise, check for discrete resources
     self.continuousResource = nil
-    self:SetContinuousMode(false)
+    ContinuousRenderer:SetContinuousMode(Frame, false)
 
     local powerType, powerTypeName = ResourceMixin:GetResourceForPlayer()
 
@@ -733,7 +580,7 @@ function Plugin:UpdatePowerType()
         Frame.orbitDisabled = false
         local needsOnUpdate = (self.powerType == Enum.PowerType.Runes or self.powerType == Enum.PowerType.Essence)
         Frame:SetScript("OnUpdate", needsOnUpdate and Frame.onUpdateHandler or nil)
-        self:UpdateMaxPower()
+        DiscreteRenderer:UpdateMaxPower(self, Frame, SYSTEM_INDEX)
     else
         Frame:SetScript("OnUpdate", nil)
         if Orbit:IsEditMode() then
@@ -745,113 +592,6 @@ function Plugin:UpdatePowerType()
             Frame.orbitDisabled = true
         end
     end
-end
-
-function Plugin:SetContinuousMode(isContinuous)
-    if not Frame then
-        return
-    end
-
-    if isContinuous then
-        -- Show StatusBar container, hide discrete buttons (skinning handled by ApplySettings)
-        if Frame.StatusBarContainer then
-            Frame.StatusBarContainer:Show()
-        end
-        OrbitEngine.TickMixin:Show(Frame)
-
-        for _, btn in ipairs(Frame.buttons or {}) do
-            btn:Hide()
-        end
-
-        -- Hide spacers for continuous mode
-        if Frame.Spacers then
-            for _, s in ipairs(Frame.Spacers) do
-                s:Hide()
-            end
-        end
-    else
-        -- Hide StatusBar container, show discrete buttons
-        if Frame.StatusBarContainer then
-            Frame.StatusBarContainer:Hide()
-        end
-        OrbitEngine.TickMixin:Hide(Frame)
-        -- Buttons will be shown by UpdateMaxPower
-    end
-end
-
-function Plugin:UpdateMaxPower()
-    if not Frame or not self.powerType then
-        return
-    end
-    local max = self.powerType == Enum.PowerType.Runes and 6 or UnitPowerMax("player", self.powerType)
-    Frame.maxPower = max
-
-    if not Frame.StatusBar then
-        Frame.StatusBarContainer = CreateFrame("Frame", nil, Frame, "BackdropTemplate")
-        Frame.StatusBarContainer:SetAllPoints()
-        Frame.StatusBarContainer:SetBackdrop(nil)
-        Frame.StatusBar = CreateFrame("StatusBar", nil, Frame.StatusBarContainer)
-        Frame.StatusBar:SetAllPoints()
-        Frame.StatusBar:SetMinMaxValues(0, 1)
-        Frame.StatusBar:SetValue(0)
-    end
-
-    Frame.Spacers = Frame.Spacers or {}
-    for i = 1, MAX_SPACER_COUNT do
-        if not Frame.Spacers[i] then
-            Frame.Spacers[i] = Frame.StatusBar:CreateTexture(nil, "OVERLAY", nil, 7)
-            Frame.Spacers[i]:SetColorTexture(0, 0, 0, 1)
-        end
-        Frame.Spacers[i]:Hide()
-    end
-
-    Frame.buttons = Frame.buttons or {}
-
-    -- Create buttons as needed
-    for i = 1, max do
-        if not Frame.buttons[i] then
-            local btn = CreateFrame("Frame", nil, Frame)
-            btn:SetScript("OnEnter", function() end)
-            Frame.buttons[i] = btn
-
-            btn.SetActive = function(self, active)
-                self.isActive = active
-                if self.orbitBar then
-                    self.orbitBar:SetShown(active)
-                end
-                if self.Overlay then
-                    self.Overlay:SetShown(active)
-                end
-                if active and self.progressBar then
-                    self.progressBar:Hide()
-                end
-            end
-
-            btn.SetFraction = function(self, fraction)
-                if self.progressBar then
-                    if fraction > 0 and fraction < 1 then
-                        self.progressBar:SetValue(fraction)
-                        self.progressBar:Show()
-                    else
-                        self.progressBar:Hide()
-                    end
-                end
-            end
-        end
-    end
-
-    for i = max + 1, #Frame.buttons do
-        if Frame.buttons[i] then
-            Frame.buttons[i]:Hide()
-        end
-    end
-    for i = 1, max do
-        if Frame.buttons[i] then
-            Frame.buttons[i]:Show()
-        end
-    end
-
-    self:ApplySettings()
 end
 
 -- [ SPACER REPOSITIONING ]-------------------------------------------------------------------------
@@ -899,331 +639,12 @@ function Plugin:RepositionSpacers(max, edges)
     end
 end
 
-function Plugin:UpdateLayout(frame)
-    if not Frame then return end
-    local buttons = Frame.buttons or {}
-    local max = Frame.maxPower
-    if not max or max == 0 then return end
-
-    local settings = Frame.settings or {}
-    local totalWidth = Frame:GetWidth()
-    if totalWidth < 10 then totalWidth = settings.width or 200 end
-
-    local height = settings.height or 15
-    local spacing = settings.spacing or 2
-    local scale = Frame:GetEffectiveScale() or 1
-    
-    local snappedHeight = SnapToPixel(height, scale)
-    Frame:SetHeight(snappedHeight)
-
-    local logicalGap = PixelMultiple(spacing, scale)
-    local exactWidth = (totalWidth - (logicalGap * (max - 1))) / max
-    local snappedWidth = SnapToPixel(exactWidth, scale)
-
-    local currentLeft = 0
-
-    for i = 1, max do
-        local btn = buttons[i]
-        if btn then
-            local logicalLeft = SnapToPixel(currentLeft, scale)
-
-            btn:ClearAllPoints()
-            btn:SetPoint("LEFT", Frame, "LEFT", logicalLeft, 0)
-            btn:SetSize(snappedWidth, snappedHeight)
-            
-            OrbitEngine.Pixel:Enforce(btn)
-            currentLeft = currentLeft + snappedWidth + logicalGap
-        end
-    end
-
-    -- Cleanup old math-based Dividers
-    if Frame.Dividers then
-        for _, d in pairs(Frame.Dividers) do d:Hide() end
-    end
-end
-
-
-function Plugin:UpdateContinuousBar(curveKey, current, max)
-    if not Frame.StatusBar then
-        return
-    end
-    Frame.StatusBar:SetMinMaxValues(0, max)
-    local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
-    Frame.StatusBar:SetValue(current, smoothing)
-    OrbitEngine.TickMixin:Update(Frame, current, max, smoothing)
-    if Frame.TickMark and self.continuousResource == "MANA" and TICK_ALPHA_CURVE and CanUseUnitPowerPercent then
-        Frame.TickMark:SetAlpha(UnitPowerPercent("player", Enum.PowerType.Mana, false, TICK_ALPHA_CURVE))
-    end
-    local curveData = self:GetSetting(SYSTEM_INDEX, curveKey)
-    if not curveData then
-        return
-    end
-
-    -- MANA: use UnitPowerPercent + native ColorCurve (fully secret-safe)
-    if self.continuousResource == "MANA" then
-        local nativeCurve = OrbitEngine.ColorCurve:ToNativeColorCurve(curveData)
-        if nativeCurve and CanUseUnitPowerPercent then
-            local color = UnitPowerPercent("player", Enum.PowerType.Mana, false, nativeCurve)
-            if color then
-                Frame.StatusBar:GetStatusBarTexture():SetVertexColor(color:GetRGBA())
-                return
-            end
-        end
-    end
-
-    if issecretvalue and (issecretvalue(current) or issecretvalue(max)) then
-        return
-    end
-    local progress = (max > 0) and (current / max) or 0
-    local color = OrbitEngine.ColorCurve:SampleColorCurve(curveData, progress)
-    if color then
-        Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
-    end
-end
-
-function Plugin:UpdateContinuousSpacers(cfg, max)
-    if not Frame or not Frame.StatusBar then
-        return
-    end
-    if not cfg.dividers or max <= 1 then
-        if Frame.Spacers then
-            for _, s in ipairs(Frame.Spacers) do
-                s:Hide()
-            end
-        end
-        return
-    end
-
-    -- Lazy-create spacers (UpdateMaxPower is never called for continuous resources)
-    Frame.Spacers = Frame.Spacers or {}
-    for i = 1, MAX_SPACER_COUNT do
-        if not Frame.Spacers[i] then
-            Frame.Spacers[i] = Frame.StatusBar:CreateTexture(nil, "OVERLAY", nil, 7)
-            Frame.Spacers[i]:SetColorTexture(0, 0, 0, 1)
-        end
-    end
-
-    self:RepositionSpacers(max)
-end
-
 function Plugin:UpdatePower()
-    if not Frame then
-        return
-    end
-
+    if not Frame then return end
     local textEnabled = not OrbitEngine.ComponentDrag:IsDisabled(Frame.Text)
-
-    -- CONTINUOUS RESOURCES
     if self.continuousResource then
-        local cfg = CONTINUOUS_RESOURCE_CONFIG[self.continuousResource]
-        if cfg then
-            local current, max, extra1, extra2 = cfg.getState()
-            if current and max then
-                self:UpdateContinuousBar(cfg.curveKey, current, max)
-                self:UpdateContinuousSpacers(cfg, max)
-                if Frame.Text and textEnabled then
-                    cfg.updateText(Frame.Text, current, max, extra1, extra2)
-                end
-            elseif Frame.StatusBar then
-                Frame.StatusBar:SetValue(0)
-            end
-        end
-        return
-    end
-
-    if not self.powerType then
-        return
-    end
-
-    if self.powerType == Enum.PowerType.Runes then
-        if Frame.StatusBarContainer then
-            Frame.StatusBarContainer:Hide()
-        end
-        if Frame.Spacers then
-            for _, s in ipairs(Frame.Spacers) do
-                s:Hide()
-            end
-        end
-
-        local sortedRunes = ResourceMixin:GetSortedRuneOrder()
-        local readyCount = 0
-        local maxRunes = #sortedRunes
-
-        for pos, runeData in ipairs(sortedRunes) do
-            local btn = Frame.buttons[pos]
-            if btn then
-                local color = self:GetResourceColor(pos, maxRunes)
-                if runeData.ready then
-                    readyCount = readyCount + 1
-                    btn:SetActive(true)
-                    btn:SetFraction(0)
-
-                    if btn.orbitBar then
-                        btn.orbitBar:SetVertexColor(color.r, color.g, color.b)
-                    end
-                else
-                    btn:SetActive(false)
-                    btn:SetFraction(runeData.fraction)
-
-                    if btn.progressBar then
-                        btn.progressBar:SetStatusBarColor(color.r * INACTIVE_DIM_FACTOR, color.g * INACTIVE_DIM_FACTOR, color.b * INACTIVE_DIM_FACTOR)
-                    end
-                end
-            end
-        end
-
-        if Frame.Text and Frame.Text:IsShown() then
-            Frame.Text:SetText(readyCount)
-        end
-        return
-    end
-
-    if self.powerType == Enum.PowerType.Essence then
-        if Frame.StatusBarContainer then
-            Frame.StatusBarContainer:Hide()
-        end
-        if Frame.Spacers then
-            for _, s in ipairs(Frame.Spacers) do
-                s:Hide()
-            end
-        end
-
-        local current = UnitPower("player", self.powerType)
-        local max = Frame.maxPower or 5
-
-        for i = 1, max do
-            local btn = Frame.buttons[i]
-            if btn then
-                local color = self:GetResourceColor(i, max)
-                local state, remaining, fraction = ResourceMixin:GetEssenceState(i, current, max)
-
-                if state == "full" then
-                    if btn.orbitBar then
-                        btn.orbitBar:Show()
-                        btn.orbitBar:SetVertexColor(color.r, color.g, color.b)
-                    end
-                    if btn.Overlay then btn.Overlay:Show() end
-                    if btn.progressBar then btn.progressBar:Hide() end
-                elseif state == "partial" then
-                    if btn.orbitBar then
-                        btn.orbitBar:Show()
-                        btn.orbitBar:SetVertexColor(color.r * INACTIVE_DIM_FACTOR, color.g * INACTIVE_DIM_FACTOR, color.b * INACTIVE_DIM_FACTOR)
-                    end
-                    if btn.Overlay then btn.Overlay:Hide() end
-                    btn:SetFraction(fraction)
-                    if btn.progressBar then
-                        btn.progressBar:SetStatusBarColor(color.r * PARTIAL_DIM_FACTOR, color.g * PARTIAL_DIM_FACTOR, color.b * PARTIAL_DIM_FACTOR)
-                    end
-                else
-                    if btn.orbitBar then btn.orbitBar:Hide() end
-                    if btn.Overlay then btn.Overlay:Hide() end
-                    if btn.progressBar then btn.progressBar:Hide() end
-                end
-            end
-        end
-
-        if Frame.Text and Frame.Text:IsShown() then
-            Frame.Text:SetText(current)
-        end
-        return
-    end
-
-    if Frame.buttons then
-        for _, btn in ipairs(Frame.buttons) do
-            btn:Hide()
-        end
-    end
-    if Frame.StatusBarContainer then
-        Frame.StatusBarContainer:Show()
-    end
-
-    local cur = UnitPower("player", self.powerType, true)
-    local max = Frame.maxPower or 5
-    local mod = UnitPowerDisplayMod(self.powerType)
-    if mod and mod > 0 then
-        cur = cur / mod
-    end
-
-    local curveData = self:GetSetting(SYSTEM_INDEX, "BarColorCurve")
-    local color
-
-    if curveData and #curveData.pins > 1 then
-        local progress = (max > 0) and (cur / max) or 0
-        color = OrbitEngine.ColorCurve:SampleColorCurve(curveData, progress)
-    end
-    color = color or self:GetResourceColor(nil, nil, false)
-
-    if Frame.StatusBar then
-        Frame.StatusBar:SetMinMaxValues(0, max)
-        local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
-        Frame.StatusBar:SetValue(cur, smoothing)
-        if color then
-            Frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
-        end
-    end
-
-    self:RepositionSpacers(max)
-
-    -- Charged combo point overlays (secret-safe: StatusBars handle fill in C++)
-    Frame.ChargedOverlays = Frame.ChargedOverlays or {}
-    if self.powerType == Enum.PowerType.ComboPoints then
-        local chargedPoints = GetUnitChargedPowerPoints("player")
-        local chargedLookup = {}
-        if chargedPoints then
-            for _, idx in ipairs(chargedPoints) do
-                chargedLookup[idx] = true
-            end
-        end
-        local chargedColor = self:GetSetting(SYSTEM_INDEX, "ChargedComboPointColor")
-            or Orbit.Colors.PlayerResources.ChargedComboPoint
-        local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
-        local texturePath = LSM:Fetch("statusbar", texture)
-        local overlayScale = Frame:GetEffectiveScale() or 1
-        local overlayTotalWidth = SnapToPixel(Frame:GetWidth(), overlayScale)
-        local spacerWidth = (Frame.settings and Frame.settings.spacing) or 0
-        local overlaySpacerWidth = PixelMultiple(spacerWidth, overlayScale)
-
-        for i = 1, max do
-            local overlay = Frame.ChargedOverlays[i]
-            if not overlay then
-                overlay = CreateFrame("StatusBar", nil, Frame.StatusBarContainer)
-                overlay:SetFrameLevel(Frame.StatusBar:GetFrameLevel() + 1)
-                Frame.ChargedOverlays[i] = overlay
-            end
-            if chargedLookup[i] then
-                local segLeft = math.floor(overlayTotalWidth * ((i - 1) / max) * overlayScale) / overlayScale
-                local segRight = math.floor(overlayTotalWidth * (i / max) * overlayScale) / overlayScale
-                local left = (i > 1) and (segLeft + overlaySpacerWidth) or 0
-                local right = (i < max) and segRight or overlayTotalWidth
-
-                overlay:ClearAllPoints()
-                overlay:SetPoint("TOPLEFT", Frame.StatusBarContainer, "TOPLEFT", left, 0)
-                overlay:SetPoint("BOTTOMRIGHT", Frame.StatusBarContainer, "TOPLEFT", right, -Frame:GetHeight())
-                overlay:SetStatusBarTexture(texturePath)
-                overlay:SetStatusBarColor(chargedColor.r, chargedColor.g, chargedColor.b)
-                overlay:SetMinMaxValues(i - 1, i)
-                overlay:SetValue(cur)
-                overlay:Show()
-            else
-                overlay:Hide()
-            end
-        end
-        for i = max + 1, #Frame.ChargedOverlays do
-            Frame.ChargedOverlays[i]:Hide()
-        end
+        ContinuousRenderer:UpdatePower(self, Frame, SYSTEM_INDEX, textEnabled)
     else
-        for _, overlay in ipairs(Frame.ChargedOverlays) do
-            overlay:Hide()
-        end
-    end
-
-    if Frame.Text and Frame.Text:IsShown() then
-        local spec = GetSpecialization()
-        local specID = spec and GetSpecializationInfo(spec)
-        if PLAYER_CLASS == "WARLOCK" and specID == WARLOCK_SPEC_DESTRUCTION then
-            Frame.Text:SetFormattedText("%.1f", cur)
-        else
-            Frame.Text:SetText(math.floor(cur))
-        end
+        DiscreteRenderer:UpdatePower(self, Frame, SYSTEM_INDEX, textEnabled)
     end
 end
