@@ -216,7 +216,7 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
         })
     end
 
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 -- [ APPLY SETTINGS (SHARED) ]----------------------------------------------------------------------

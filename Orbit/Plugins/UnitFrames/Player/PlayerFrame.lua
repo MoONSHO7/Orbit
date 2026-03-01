@@ -29,8 +29,6 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
-        EnablePlayerPower = true,
-        EnablePlayerResource = true,
         AggroIndicatorEnabled = true,
         AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
         AggroThickness = 1,
@@ -96,26 +94,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 self:ApplySettings()
             end,
         })
-        table.insert(schema.controls, {
-            type = "checkbox",
-            key = "EnablePlayerPower",
-            label = "Enable Player Power",
-            default = true,
-            onChange = function(val)
-                self:SetSetting(PLAYER_FRAME_INDEX, "EnablePlayerPower", val)
-                Orbit.EventBus:Emit("PLAYER_SETTINGS_CHANGED")
-            end,
-        })
-        table.insert(schema.controls, {
-            type = "checkbox",
-            key = "EnablePlayerResource",
-            label = "Enable Player Resource",
-            default = true,
-            onChange = function(val)
-                self:SetSetting(PLAYER_FRAME_INDEX, "EnablePlayerResource", val)
-                Orbit.EventBus:Emit("PLAYER_SETTINGS_CHANGED")
-            end,
-        })
+
     elseif currentTab == "Visibility" then
         SB:AddOpacitySettings(self, schema, PLAYER_FRAME_INDEX, systemFrame)
         table.insert(schema.controls, {
@@ -145,7 +124,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
     end
 
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
@@ -175,7 +154,7 @@ function Plugin:OnLoad()
     }
 
     self.frame:HookScript("OnSizeChanged", function()
-        Orbit.EventBus:Emit("PLAYER_FRAME_RESIZED")
+        Orbit.EventBus:Fire("PLAYER_FRAME_RESIZED")
     end)
 
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, PLAYER_FRAME_INDEX)
@@ -459,7 +438,7 @@ function Plugin:ApplySettings(frame)
 
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
     Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover)
-    Orbit.EventBus:Emit("PLAYER_SETTINGS_CHANGED")
+    Orbit.EventBus:Fire("PLAYER_SETTINGS_CHANGED")
 end
 
 function Plugin:UpdateVisuals(frame)

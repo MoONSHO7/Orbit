@@ -523,14 +523,13 @@ end
 
 -- [ SEED VISIBILITY ]------------------------------------------------------------------------------
 function Plugin:UpdateSeedVisibility(frame)
-    if InCombatLockdown() or not frame or not frame.SeedButton then
+    if not frame or not frame.SeedButton then
         return
     end
 
     local hasSpell = frame.chargeSpellId ~= nil
     local cursorSpell = ResolveSpellFromCursor()
     local isDraggingCharge = cursorSpell and IsChargeSpell(cursorSpell) or false
-    local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
 
     frame.DropHighlight:SetShown(hasSpell and isDraggingCharge)
 
@@ -539,16 +538,11 @@ function Plugin:UpdateSeedVisibility(frame)
         return
     end
 
-    if isEditMode or isDraggingCharge then
+    if isDraggingCharge then
         local plusSize = OrbitEngine.Pixel:Snap(math.min(frame:GetWidth(), frame:GetHeight()) * SEED_PLUS_RATIO)
         frame.SeedButton.Plus:SetSize(plusSize, plusSize)
         frame.SeedButton:Show()
-        if isDraggingCharge then
-            frame.SeedButton.PulseAnim:Play()
-        else
-            frame.SeedButton.PulseAnim:Stop()
-            frame.SeedButton.Glow:SetAlpha(SEED_GLOW_ALPHA)
-        end
+        frame.SeedButton.PulseAnim:Play()
     else
         frame.SeedButton:Hide()
     end
@@ -733,7 +727,7 @@ function Plugin:RegisterChargeRechargeWatcher()
     frame:SetScript("OnEvent", function(_, event, unit, _, spellId)
         if event == "SPELLS_CHANGED" then
             plugin:RefreshChargeMaxCharges()
-            plugin:LayoutChargeBars()
+            ChargeBarLayout:LayoutChargeBars(plugin)
             return
         end
         if unit ~= "player" then

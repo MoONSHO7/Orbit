@@ -18,6 +18,8 @@ local OFFLINE_ALPHA = GF.OfflineAlpha
 local CANVAS_ICON_SIZE = 18
 local CANVAS_ICON_SPACING = 22
 local PRIVATE_AURA_ICON_SIZE = 18
+local HEALER_AURA_ICON_SIZE = 12
+local HealerReg = Orbit.HealerAuraRegistry
 
 local PREVIEW_NAMES = {
     "Arthas", "Jaina", "Thrall", "Sylvanas", "Anduin",
@@ -341,8 +343,25 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                     local posData = savedPositions and savedPositions.PrivateAuraAnchor
                     Orbit.AuraPreview:ShowPrivateAuras(frame, posData, PRIVATE_AURA_ICON_SIZE)
                 elseif paa then paa:Hide() end
+                for _, slot in ipairs(HealerReg:ActiveSlots()) do
+                    if not isDisabled(slot.key) then
+                        local hIcon = self:EnsureAuraButton(frame, slot.key, HEALER_AURA_ICON_SIZE)
+                        local tex = C_Spell.GetSpellTexture(slot.spellId)
+                        if tex then hIcon.Icon:SetTexture(tex) end
+                        hIcon:SetSize(HEALER_AURA_ICON_SIZE, HEALER_AURA_ICON_SIZE)
+                        if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(hIcon, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false }) end
+                        hIcon:Show()
+                    elseif frame[slot.key] then frame[slot.key]:Hide() end
+                end
+                local raidBuffs = HealerReg:ActiveRaidBuffs()
+                if #raidBuffs > 0 and not isDisabled("RaidBuff") then
+                    self:EnsureRaidBuffContainer(frame, "RaidBuff", raidBuffs, HEALER_AURA_ICON_SIZE):Show()
+                elseif frame.RaidBuff then frame.RaidBuff:Hide() end
             else
                 for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" }) do
+                    if frame[key] then frame[key]:Hide() end
+                end
+                for _, key in ipairs(HealerReg:ActiveKeys()) do
                     if frame[key] then frame[key]:Hide() end
                 end
             end
@@ -425,6 +444,9 @@ function Orbit.RaidFramePreviewMixin:HidePreview()
             end
 
             LCG.PixelGlow_Stop(frame, "preview")
+            for _, key in ipairs(HealerReg:ActiveKeys()) do
+                if frame[key] then frame[key]:Hide() end
+            end
             if frame.HealthDamageBar then
                 frame.HealthDamageBar:Show()
             end

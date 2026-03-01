@@ -78,6 +78,7 @@ C.Levels = {
     Highlight = 5,      -- Highlight frame
     Glow = 10,          -- Glow effect container
     Text = 20,          -- Text overlay frame
+    HealerAura = 25,    -- Healer aura icons (above text, below procs)
     ProcOverlay = 50,   -- High level procs (SpellActivationAlert)
     SmartGuides = 90,   -- Canvas Mode snap guides
     Tooltip = 100,      -- Tooltip/flyout layer

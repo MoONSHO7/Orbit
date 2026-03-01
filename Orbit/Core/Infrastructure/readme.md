@@ -17,6 +17,7 @@ provides foundational services: event dispatch, pixel-perfect math, combat state
 | Async.lua | deferred execution helpers (throttle, debounce). |
 | KeybindSystem.lua | keybind resolution for action bar buttons and tracked abilities. |
 | TickMixin.lua | tick mark overlay for status bars (recharge segments). |
+| HealerAuraRegistry.lua | healer-specific spell and raid buff registry. maps aura slots by class/spec. |
 
 ## adding a new system
 

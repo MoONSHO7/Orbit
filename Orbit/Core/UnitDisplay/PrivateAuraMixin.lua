@@ -55,7 +55,7 @@ function Mixin:CreateAnchors(frame, plugin, iconSize)
             iconInfo = {
                 iconWidth = size, iconHeight = size,
                 iconAnchor = { point = point, relativeTo = anchor, relativePoint = relPoint, offsetX = xOff, offsetY = 0 },
-                borderScale = 1,
+                borderScale = 0,
             },
         })
         if anchorID then frame._privateAuraIDs[#frame._privateAuraIDs + 1] = anchorID end
@@ -76,6 +76,7 @@ function Mixin:Update(frame, plugin, iconSize)
     if anchor.SetBackdrop then anchor:SetBackdrop(nil) end
     if anchor.Border then anchor.Border:Hide() end
     if anchor.Shadow then anchor.Shadow:Hide() end
+    if anchor._previewIcons then for _, sub in ipairs(anchor._previewIcons) do sub:Hide() end end
 
     local unit = frame.unit
     if not unit or not UnitExists(unit) then anchor:Hide() return end

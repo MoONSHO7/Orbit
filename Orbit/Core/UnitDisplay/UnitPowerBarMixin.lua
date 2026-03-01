@@ -36,7 +36,7 @@ function Mixin:AddPowerBarSettings(dialog, systemFrame)
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(self._pbFrame) ~= nil
     if not isAnchored then SB:AddSizeSettings(self, schema, 1, systemFrame, { default = 200 }, nil, nil) end
     SB:AddSizeSettings(self, schema, 1, systemFrame, nil, { min = 4, max = 25, default = 15 }, nil)
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------

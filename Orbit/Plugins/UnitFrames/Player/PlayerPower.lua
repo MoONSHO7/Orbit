@@ -63,7 +63,6 @@ local SYSTEM_INDEX = 1
 local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
     canvasMode = true,
     defaults = {
-        Enabled = true,
         Hidden = false,
         Width = 200,
         Height = 10,
@@ -154,19 +153,6 @@ function Plugin:AddSettings(dialog, systemFrame)
     local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Visibility", "Colour" }, "Layout")
 
     if currentTab == "Layout" then
-        local parentManaged = Orbit:ReadPluginSetting("Orbit_PlayerFrame", Enum.EditModeUnitFrameSystemIndices.Player, "EnablePlayerPower")
-        if parentManaged == nil then
-            table.insert(schema.controls, {
-                type = "checkbox",
-                key = "Enabled",
-                label = "Enable",
-                default = true,
-                onChange = function(val)
-                    self:SetSetting(systemIndex, "Enabled", val)
-                    self:UpdateVisibility()
-                end,
-            })
-        end
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
         if not isAnchored then
             SB:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
@@ -266,7 +252,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
     end
 
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
@@ -391,42 +377,19 @@ function Plugin:RefreshOnUpdate()
     end or nil)
 end
 
--- [ VISIBILITY ]-------------------------------------------------------------------------------------
-function Plugin:IsEnabled()
-    local localEnabled = self:GetSetting(SYSTEM_INDEX, "Enabled")
-    if localEnabled == false then return false end
-    local enabled = Orbit:ReadPluginSetting("Orbit_PlayerFrame", Enum.EditModeUnitFrameSystemIndices.Player, "EnablePlayerPower")
-    if enabled ~= nil then return enabled == true end
-    return true
-end
-
 function Plugin:UpdateVisibility()
     if not Frame then
         return
     end
-    local enabled = self:IsEnabled()
     local isEditMode = Orbit:IsEditMode()
-
     if isEditMode then
-        if enabled then
-            OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
-            SafeShow(Frame)
-        else
-            OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
-            SafeShow(Frame)
-            Frame:SetAlpha(0.5)
-        end
+        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
+        SafeShow(Frame)
         return
     end
-
-    if enabled then
-        SafeShow(Frame)
-        self:UpdateAll()
-        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
-    else
-        SafeHide(Frame)
-        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
-    end
+    SafeShow(Frame)
+    self:UpdateAll()
+    OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
 end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------

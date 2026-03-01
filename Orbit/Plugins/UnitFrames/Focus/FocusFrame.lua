@@ -51,7 +51,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 default = false,
                 onChange = function(val)
                     self:SetSetting(FOCUS_FRAME_INDEX, "EnableFocusTarget", val)
-                    Orbit.EventBus:Emit("FOCUS_SETTINGS_CHANGED")
+                    Orbit.EventBus:Fire("FOCUS_SETTINGS_CHANGED")
                 end,
             },
             {
@@ -61,7 +61,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 default = false,
                 onChange = function(val)
                     self:SetSetting(FOCUS_FRAME_INDEX, "EnableFocusPower", val)
-                    Orbit.EventBus:Emit("FOCUS_SETTINGS_CHANGED")
+                    Orbit.EventBus:Fire("FOCUS_SETTINGS_CHANGED")
                 end,
             },
             {
@@ -71,7 +71,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 default = true,
                 onChange = function(val)
                     self:SetSetting(FOCUS_FRAME_INDEX, "EnableBuffs", val)
-                    Orbit.EventBus:Emit("FOCUS_SETTINGS_CHANGED")
+                    Orbit.EventBus:Fire("FOCUS_SETTINGS_CHANGED")
                 end,
             },
             {
@@ -81,7 +81,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 default = true,
                 onChange = function(val)
                     self:SetSetting(FOCUS_FRAME_INDEX, "EnableDebuffs", val)
-                    Orbit.EventBus:Emit("FOCUS_SETTINGS_CHANGED")
+                    Orbit.EventBus:Fire("FOCUS_SETTINGS_CHANGED")
                 end,
             },
         },
@@ -101,7 +101,7 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     SB:AddSizeSettings(self, schema, systemIndex, systemFrame, widthParams, heightParams)
 
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------

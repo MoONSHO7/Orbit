@@ -79,7 +79,16 @@ local KEY_SCHEMAS = {
             { type = "slider", key = "IconSize", label = "Icon Size", min = 10, max = 50, step = 1,
               formatter = function(v) return v .. "px" end },
             { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
+            { type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
+              options = {
+                  { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
+                  { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
+                  { text = "Button Glow", value = 4 },
+              }, default = 2 },
+            { type = "colorcurve", key = "PandemicGlowColorCurve", label = "Pandemic Colour",
+              singleColor = true },
         },
+        pluginSettingKeys = { PandemicGlowType = true, PandemicGlowColorCurve = true },
     },
     Portrait = {
         controls = {
@@ -129,6 +138,47 @@ local KEY_SCHEMAS = {
     },
 }
 
+-- Healer aura component schema (pandemic glow, swipe, timer text)
+local HEALER_AURA_SCHEMA = {
+    controls = {
+        { type = "slider", key = "IconSize", label = "Icon Size", min = 8, max = 50, step = 1,
+          formatter = function(v) return v .. "px" end },
+        { type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
+          options = {
+              { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
+              { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
+              { text = "Button Glow", value = 4 },
+          }, default = 0 },
+        { type = "colorcurve", key = "PandemicGlowColorCurve", label = "Pandemic Colour", singleColor = true },
+        { type = "colorcurve", key = "SwipeColorCurve", label = "Swipe Colour", singleColor = false },
+        { type = "colorcurve", key = "TimerTextColorCurve", label = "Timer Text Colour", singleColor = false },
+    },
+}
+
+-- Raid buff (missing) component schema (proc glow)
+local RAID_BUFF_SCHEMA = {
+    controls = {
+        { type = "slider", key = "IconSize", label = "Icon Size", min = 8, max = 50, step = 1,
+          formatter = function(v) return v .. "px" end },
+        { type = "dropdown", key = "ProcGlowType", label = "Proc Glow",
+          options = {
+              { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
+              { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
+              { text = "Button Glow", value = 4 },
+          }, default = 0 },
+        { type = "colorcurve", key = "ProcGlowColorCurve", label = "Proc Colour", singleColor = true },
+    },
+}
+
+-- Register healer aura + raid buff schemas dynamically
+do
+    local HealerReg = Orbit.HealerAuraRegistry
+    if HealerReg then
+        for _, key in ipairs(HealerReg.SLOT_KEYS) do KEY_SCHEMAS[key] = HEALER_AURA_SCHEMA end
+        KEY_SCHEMAS[HealerReg.RAID_BUFF_KEY] = RAID_BUFF_SCHEMA
+    end
+end
+
 local COMPONENT_TITLES = {
     Name = "Name Text", HealthText = "Health Text", LevelText = "Level Text",
     CombatIcon = "Combat Icon", RareEliteIcon = "Classification Icon",
@@ -137,6 +187,16 @@ local COMPONENT_TITLES = {
     Portrait = "Portrait", CastBar = "Cast Bar", MarkerIcon = "Raid Marker",
     ["CastBar.Text"] = "Ability Text", ["CastBar.Timer"] = "Cast Timer",
 }
+
+-- Register healer aura + raid buff titles dynamically
+do
+    local HealerReg = Orbit.HealerAuraRegistry
+    if HealerReg then
+        for _, key in ipairs(HealerReg:AllSlotKeys()) do
+            COMPONENT_TITLES[key] = HealerReg:GetSlotLabel(key)
+        end
+    end
+end
 
 local function GetComponentFamily(container)
     if not container or not container.visual then return nil end

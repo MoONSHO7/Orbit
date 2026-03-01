@@ -2,8 +2,6 @@
 local _, Orbit = ...
 Orbit.PandemicGlow = {}
 local PG = Orbit.PandemicGlow
-
-local pcall = pcall
 local LibCustomGlow = LibStub and LibStub("LibCustomGlow-1.0", true)
 local GLOW_KEY = "orbitPandemic"
 
@@ -27,11 +25,9 @@ local GlowConfig = {
 
 function PG:Apply(icon, aura, unit, skinSettings)
     if not icon or not aura or not LibCustomGlow then return end
-    if not PANDEMIC_CURVE or not C_UnitAuras or not C_UnitAuras.GetAuraDuration or not aura.auraInstanceID then return end
+    if not PANDEMIC_CURVE or not C_UnitAuras or not C_UnitAuras.GetAuraDuration then return end
     local durObj = C_UnitAuras.GetAuraDuration(unit, aura.auraInstanceID)
     if not durObj then return end
-    local ok, hasRemaining = pcall(durObj.HasRemainingTime, durObj)
-    if not ok or not hasRemaining then return end
     local glowType = (skinSettings and skinSettings.pandemicGlowType) or GlowType.Pixel
     local pandemicColor = (skinSettings and skinSettings.pandemicColor) or { r = 1, g = 0.8, b = 0 }
     local colorTable = { pandemicColor.r, pandemicColor.g, pandemicColor.b, 1 }
@@ -74,12 +70,9 @@ function PG:Apply(icon, aura, unit, skinSettings)
             if not pUnit or not auraID then self:Hide(); return end
             local dur = C_UnitAuras.GetAuraDuration(pUnit, auraID)
             if not dur then PG:Stop(parent); self:Hide(); return end
-            local ok1, stillHas = pcall(dur.HasRemainingTime, dur)
-            if not ok1 or not stillHas then PG:Stop(parent); self:Hide(); return end
             local glow = parent["_PixelGlow" .. GLOW_KEY] or parent["_ProcGlow" .. GLOW_KEY] or parent["_AutoCastGlow" .. GLOW_KEY] or parent["__ButtonGlow"]
             if not glow then self:Hide(); return end
-            local ok2, pandemicAlpha = pcall(dur.EvaluateRemainingPercent, dur, PANDEMIC_CURVE)
-            if ok2 and pandemicAlpha then glow:SetAlpha(pandemicAlpha) end
+            glow:SetAlpha(dur:EvaluateRemainingPercent(PANDEMIC_CURVE))
         end)
     end
     icon.PandemicController:Show()

@@ -131,7 +131,7 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
         btn:SetSize(auraIconSize, auraIconSize)
         btn.orbitOriginalWidth, btn.orbitOriginalHeight = auraIconSize, auraIconSize
         btn:SetPoint("CENTER", frame, "CENTER", 0, 0)
-        btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Text)
+        btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.ProcOverlay)
         btn.Icon = btn:CreateTexture(nil, "ARTWORK")
         btn.Icon:SetAllPoints()
         btn.icon = btn.Icon
@@ -144,10 +144,11 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
     paa:SetSize(auraIconSize, auraIconSize)
     paa.orbitOriginalWidth, paa.orbitOriginalHeight = auraIconSize, auraIconSize
     paa:SetPoint("CENTER", frame, "CENTER", 0, 0)
-    paa:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Text)
+    paa:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.ProcOverlay)
     paa.Icon = paa:CreateTexture(nil, "ARTWORK")
     paa.Icon:SetAllPoints()
     paa.icon = paa.Icon
+    paa:EnableMouse(false)
     paa:Hide()
     frame.PrivateAuraAnchor = paa
 end

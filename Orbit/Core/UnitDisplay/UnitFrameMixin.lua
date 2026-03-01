@@ -155,7 +155,7 @@ function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
     options = options or {}
 
     local borderSize = Orbit.db.GlobalSettings.BorderSize
-    local textureName = self:GetInheritedSetting(systemIndex, "Texture", options.inheritFromPlayer)
+    local textureName = self:GetSetting(systemIndex, "Texture")
     local healthTextMode = self:GetInheritedSetting(systemIndex, "HealthTextMode", options.inheritFromPlayer) or "percent_short"
 
     -- Apply texture

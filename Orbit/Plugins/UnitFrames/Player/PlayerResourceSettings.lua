@@ -126,6 +126,12 @@ function Plugin:AddSettings(dialog, systemFrame)
             { classes = { SHAMAN = true }, key = "MaelstromWeaponColorCurve", label = "Maelstrom Colour",
               tooltip = "Color gradient from empty (left) to full (right)",
               default = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } } },
+            { classes = { MAGE = true }, key = "IciclesColorCurve", label = "Icicles Colour",
+              tooltip = "Color gradient from empty (left) to full (right)",
+              default = { pins = { { position = 0, color = { r = 0.42, g = 0.8, b = 1.0, a = 1 } } } } },
+            { classes = { HUNTER = true }, key = "TipOfTheSpearColorCurve", label = "Tip of the Spear Colour",
+              tooltip = "Color gradient from empty (left) to full (right)",
+              default = { pins = { { position = 0, color = { r = 0.47, g = 0.78, b = 0.22, a = 1 } } } } },
         }
         for _, ctrl in ipairs(curveControls) do
             if ctrl.classes[PLAYER_CLASS] then
@@ -141,5 +147,5 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
     end
 
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end

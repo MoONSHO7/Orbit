@@ -241,7 +241,7 @@ local function GetNativeTimerCurveForSystem(systemIndex)
     if not curveData or not curveData.pins or #curveData.pins <= 1 then return nil end
     local cached = curveCache[systemIndex]
     if cached and cached.data == curveData then return cached.curve end
-    local curve = WL:ToNativeColorCurve(curveData)
+    local curve = OrbitEngine.ColorCurve:ToNativeColorCurve(curveData)
     curveCache[systemIndex] = { data = curveData, curve = curve }
     return curve
 end

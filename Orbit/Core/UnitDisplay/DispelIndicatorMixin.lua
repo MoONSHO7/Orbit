@@ -25,7 +25,7 @@ local function CaptureDispellableFromBlizzardFrame(frame, triggerUpdate)
         end
     end
     if triggerUpdate and Orbit.EventBus then
-        Orbit.EventBus:Emit("DISPEL_STATE_CHANGED", unit)
+        Orbit.EventBus:Fire("DISPEL_STATE_CHANGED", unit)
     end
 end
 

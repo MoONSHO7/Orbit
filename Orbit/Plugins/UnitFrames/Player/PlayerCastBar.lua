@@ -32,6 +32,7 @@ local SCALE_DIVISOR = 100
 local PREVIEW_ICON_ID = 136243
 local PREVIEW_CAST_DURATION = 3
 local PREVIEW_CAST_PROGRESS = 1.5
+local CAST_COMPLETION_GRACE = 0.5
 local CastBar
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
@@ -104,7 +105,7 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
         })
     end
 
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
@@ -216,11 +217,9 @@ function Plugin:OnLoad()
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
         Orbit.Async:Debounce("CastBar_Init", function()
             self:ApplySettings()
-            -- Hide bar until needed (not in Edit Mode)
-            if not (Orbit:IsEditMode()) then
-                if not CastBar.casting and not CastBar.channeling then
-                    SafeHide(CastBar)
-                end
+            -- Hide bar until needed (not in Edit Mode, not in combat)
+            if not Orbit:IsEditMode() and not InCombatLockdown() and not CastBar.casting and not CastBar.channeling then
+                SafeHide(CastBar)
             end
         end, 0.5)
     end, self)
@@ -481,7 +480,7 @@ function Plugin:OnUpdate(elapsed)
 
     if bar.casting then
         local value = GetTime() - bar.startTime
-        if value >= bar.maxValue then
+        if value >= bar.maxValue + CAST_COMPLETION_GRACE then
             bar.casting = false
             SafeHide(bar)
             return
@@ -505,7 +504,7 @@ function Plugin:OnUpdate(elapsed)
         end
     elseif bar.channeling then
         local value = bar.endTime - GetTime()
-        if value <= 0 then
+        if value <= -CAST_COMPLETION_GRACE then
             bar.channeling = false
             SafeHide(bar)
             return

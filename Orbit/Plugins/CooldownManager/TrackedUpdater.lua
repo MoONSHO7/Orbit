@@ -182,6 +182,20 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                 icon.CountText:SetText("0")
                 icon.CountText:Show()
                 if icon._activeGlowing then self:StopActiveGlow(icon) end
+            elseif icon.useSpellId then
+                durObj = C_Spell.GetSpellCooldownDuration(icon.useSpellId)
+                if durObj then
+                    icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
+                    icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE))
+                else
+                    icon.Cooldown:Clear()
+                    icon.Icon:SetDesaturation(0)
+                end
+                icon.ActiveCooldown:Clear()
+                if icon._activeGlowing then self:StopActiveGlow(icon) end
+                local count = C_Item.GetItemCount(icon.trackedId, false, true)
+                if count and count > 1 then icon.CountText:SetText(count); icon.CountText:Show()
+                else icon.CountText:Hide() end
             else
                 local start, duration = C_Container.GetItemCooldown(icon.trackedId)
                 if start and duration and duration > 0 then

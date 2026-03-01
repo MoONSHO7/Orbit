@@ -104,6 +104,16 @@ function Orbit.Profile:Initialize()
         end
     end
 
+    -- Migrate global DisabledPlugins into profiles (one-time migration)
+    if Orbit.db.DisabledPlugins then
+        for _, profileData in pairs(Orbit.db.profiles) do
+            if not profileData.DisabledPlugins then
+                profileData.DisabledPlugins = CopyTable(Orbit.db.DisabledPlugins, {})
+            end
+        end
+        Orbit.db.DisabledPlugins = Orbit.db.profiles[Orbit.db.activeProfile] and CopyTable(Orbit.db.profiles[Orbit.db.activeProfile].DisabledPlugins or {}, {}) or {}
+    end
+
     self:InitializeSpecSwitching()
 end
 
@@ -173,13 +183,17 @@ function Orbit.Profile:SetActiveProfile(name)
     end
 
     local oldProfile = Orbit.db.profiles[Orbit.db.activeProfile]
-    if oldProfile then oldProfile.GlobalSettings = CopyTable(Orbit.db.GlobalSettings, {}) end
+    if oldProfile then
+        oldProfile.GlobalSettings = CopyTable(Orbit.db.GlobalSettings, {})
+        oldProfile.DisabledPlugins = CopyTable(Orbit.db.DisabledPlugins or {}, {})
+    end
 
     Orbit.db.activeProfile = name
     Orbit.runtime = Orbit.runtime or {}
     Orbit.runtime.Layouts = profile.Layouts
 
     if profile.GlobalSettings then Orbit.db.GlobalSettings = CopyTable(profile.GlobalSettings, {}) end
+    Orbit.db.DisabledPlugins = CopyTable(profile.DisabledPlugins or {}, {})
     Orbit:Print(name .. " Profile Loaded.")
 
     if Orbit.Engine and Orbit.Engine.systems then
@@ -238,7 +252,9 @@ function Orbit.Profile:CopyProfileData(sourceProfileName)
     local activeProfile = Orbit.db.profiles[activeProfileName]
     activeProfile.Layouts = CopyTable(sourceProfile.Layouts or {}, {})
     activeProfile.GlobalSettings = CopyTable(sourceProfile.GlobalSettings or Orbit.db.GlobalSettings, {})
+    activeProfile.DisabledPlugins = CopyTable(sourceProfile.DisabledPlugins or {}, {})
     Orbit.db.GlobalSettings = CopyTable(activeProfile.GlobalSettings, {})
+    Orbit.db.DisabledPlugins = CopyTable(activeProfile.DisabledPlugins, {})
     Orbit:Print("Copied settings from '" .. sourceProfileName .. "' to '" .. activeProfileName .. "'")
     return true
 end
@@ -261,7 +277,10 @@ end
 
 function Orbit.Profile:FlushGlobalSettings()
     local active = Orbit.db.profiles[Orbit.db.activeProfile]
-    if active then active.GlobalSettings = CopyTable(Orbit.db.GlobalSettings, {}) end
+    if active then
+        active.GlobalSettings = CopyTable(Orbit.db.GlobalSettings, {})
+        active.DisabledPlugins = CopyTable(Orbit.db.DisabledPlugins or {}, {})
+    end
 end
 
 -- [ IMPORT / EXPORT ]-------------------------------------------------------------------------------

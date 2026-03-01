@@ -15,9 +15,15 @@ local COLLAPSING_STAR_AURA_ID = 1227702
 local SOUL_GLUTTON_TALENT_ID = 1247534
 local EBON_MIGHT_AURA_ID = 395296
 local EBON_MIGHT_MAX_DURATION = 20
+local ICICLES_AURA_ID = 205473
+local ICICLES_MAX = 5
+local TIP_OF_THE_SPEAR_AURA_ID = 260286
+local TIP_OF_THE_SPEAR_MAX = 2
 local VENGEANCE_SPEC_ID = 581
 local DEVOURER_SPEC_ID = 1480
 local AUGMENTATION_SPEC_ID = 1473
+local FROST_MAGE_SPEC_ID = 64
+local SURVIVAL_HUNTER_SPEC_ID = 255
 
 local CLASS_RESOURCES = {
     ROGUE = Enum.PowerType.ComboPoints,
@@ -150,6 +156,12 @@ function Mixin:GetContinuousResourceForPlayer()
     if class == "SHAMAN" and specID == 263 then
         return "MAELSTROM_WEAPON"
     end
+    if class == "MAGE" and specID == FROST_MAGE_SPEC_ID then
+        return "ICICLES"
+    end
+    if class == "HUNTER" and specID == SURVIVAL_HUNTER_SPEC_ID then
+        return "TIP_OF_THE_SPEAR"
+    end
     if class == "DRUID" and specID == 102 then
         local formID, primary = GetShapeshiftFormID(), UnitPowerType("player")
         if formID ~= SHAPESHIFT.CAT and formID ~= SHAPESHIFT.BEAR and primary ~= Enum.PowerType.Mana then
@@ -195,4 +207,14 @@ function Mixin:GetMaelstromWeaponState()
         return 0, 10, false, nil
     end
     return aura.applications or 0, 10, true, aura.auraInstanceID
+end
+
+function Mixin:GetIciclesState()
+    local aura = C_UnitAuras.GetPlayerAuraBySpellID(ICICLES_AURA_ID)
+    return aura and aura.applications or 0, ICICLES_MAX
+end
+
+function Mixin:GetTipOfTheSpearState()
+    local aura = C_UnitAuras.GetPlayerAuraBySpellID(TIP_OF_THE_SPEAR_AURA_ID)
+    return aura and aura.applications or 0, TIP_OF_THE_SPEAR_MAX
 end

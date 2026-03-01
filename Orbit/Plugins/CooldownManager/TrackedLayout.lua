@@ -146,7 +146,7 @@ function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
     -- Empty grid: show seed button or hide
     if not hasItems then
         for _, placeholder in ipairs(anchor.placeholders or {}) do placeholder:Hide() end
-        if isEditMode or isDragging then
+        if isDragging then
             anchor.edgeButtons = anchor.edgeButtons or {}
             local btn = anchor.edgeButtons[1] or CreateEdgeButton(anchor, 1)
             SizeEdgeButton(btn, iconWidth, iconHeight, Pixel)
@@ -179,6 +179,7 @@ function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
         icon.gridX, icon.gridY = x, y
         icon.trackedType = data.type
         icon.trackedId = data.id
+        icon.useSpellId = data.useSpellId
         icon.activeDuration = data.activeDuration
         icon.cooldownDuration = data.cooldownDuration
         local hasActive = data.activeDuration and data.cooldownDuration

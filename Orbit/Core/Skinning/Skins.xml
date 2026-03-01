@@ -3,8 +3,8 @@
     <Script file="Masque.lua"/>
     <Script file="IconLayout.lua"/>
     <Script file="IconMonitor.lua"/>
-    <Script file="ActionButtonSkinning.lua"/>
     <Script file="Icons.lua"/>
+    <Script file="ActionButtonSkinning.lua"/>
     <Script file="CastBar.lua"/>
     <Script file="ClassBar.lua"/>
     <Script file="VisualsExtendedMixin.lua"/>

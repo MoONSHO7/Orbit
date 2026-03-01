@@ -127,6 +127,8 @@ end
 function CDM:CheckViewer(viewer, anchor)
     if not viewer or not anchor then return end
     if viewer:GetParent() ~= anchor then self:EnforceViewerParentage(viewer, anchor); return end
+    local _, _, relativeTo = viewer:GetPoint(1)
+    if relativeTo ~= anchor then self:EnforceViewerParentage(viewer, anchor); return end
     if not viewer:IsShown() then viewer:Show(); viewer:SetAlpha(1) end
 
     local count = 0

@@ -283,6 +283,12 @@ end
 
 -- [ AURA COMPONENT KEYS ]----------------------------------------------------------------
 local AURA_COMPONENT_KEYS = { DefensiveIcon = true, PrivateAuraAnchor = true, CrowdControlIcon = true }
+do
+    local HealerReg = Orbit.HealerAuraRegistry
+    if HealerReg then
+        for _, k in ipairs(HealerReg:AllSlotKeys()) do AURA_COMPONENT_KEYS[k] = true end
+    end
+end
 
 -- [ OPEN DIALOG ]------------------------------------------------------------------------
 function Dialog:Open(frame, plugin, systemIndex)

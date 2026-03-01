@@ -880,7 +880,6 @@ Orbit.Profile.defaults = {
                     PortraitShape = "square",
                     Anchor = false,
                     TextSize = 12,
-                    EnablePlayerPower = true,
                     PortraitMirror = false,
                     ShowHealAbsorbs = true,
                     DisabledComponents = {

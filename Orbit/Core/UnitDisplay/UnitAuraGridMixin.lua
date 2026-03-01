@@ -52,7 +52,7 @@ function Mixin:AddAuraGridSettings(dialog, systemFrame)
         self:_addLayoutControls(schema)
     end
 
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 function Mixin:_addLayoutControls(schema)

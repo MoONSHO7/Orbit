@@ -24,6 +24,8 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
                 callbacks.UpdateDefensiveIcon(f, plugin)
                 callbacks.UpdateCrowdControlIcon(f, plugin)
                 if callbacks.UpdatePrivateAuras then callbacks.UpdatePrivateAuras(f, plugin) end
+                if callbacks.UpdateHealerAuras then callbacks.UpdateHealerAuras(f, plugin) end
+                if callbacks.UpdateMissingRaidBuffs then callbacks.UpdateMissingRaidBuffs(f, plugin) end
                 if plugin.UpdateDispelIndicator then plugin:UpdateDispelIndicator(f, plugin) end
             end
             return
@@ -104,6 +106,8 @@ function GroupFrameMixin.CreateOnShowHandler(plugin, callbacks)
         callbacks.UpdateDefensiveIcon(self, plugin)
         callbacks.UpdateCrowdControlIcon(self, plugin)
         if callbacks.UpdatePrivateAuras then callbacks.UpdatePrivateAuras(self, plugin) end
+        if callbacks.UpdateHealerAuras then callbacks.UpdateHealerAuras(self, plugin) end
+        if callbacks.UpdateMissingRaidBuffs then callbacks.UpdateMissingRaidBuffs(self, plugin) end
         StatusDispatch(self, plugin, "UpdateAllPartyStatusIcons")
         StatusDispatch(self, plugin, "UpdateStatusText")
         UpdateInRange(self)

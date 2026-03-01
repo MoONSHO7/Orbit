@@ -16,6 +16,7 @@ local ManagedFrames = {}
 -- [ VISIBILITY LOGIC ]------------------------------------------------------------------------------
 
 local function ShouldShowFrame(frame)
+    if frame and not frame:IsShown() then return false end
     if Orbit:IsEditMode() then
         return true
     end

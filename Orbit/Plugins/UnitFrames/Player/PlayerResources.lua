@@ -65,6 +65,10 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         ManaColorCurve = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
         -- Maelstrom Weapon (Enhancement Shaman) - Blue
         MaelstromWeaponColorCurve = { pins = { { position = 0, color = { r = 0.0, g = 0.5, b = 1.0, a = 1 } } } },
+        -- Icicles (Frost Mage) - Icy blue
+        IciclesColorCurve = { pins = { { position = 0, color = { r = 0.42, g = 0.8, b = 1.0, a = 1 } } } },
+        -- Tip of the Spear (Survival Hunter) - Nature green
+        TipOfTheSpearColorCurve = { pins = { { position = 0, color = { r = 0.47, g = 0.78, b = 0.22, a = 1 } } } },
         Opacity = 100,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
@@ -87,12 +91,7 @@ function Plugin:OnLoad()
     -- Register standard events (Handle PEW, EditMode -> ApplySettings)
     self:RegisterStandardEvents()
 
-    -- Listen for master plugin state changes (PlayerFrame enabled/disabled via Addon Manager)
-    Orbit.EventBus:On("ORBIT_PLUGIN_STATE_CHANGED", function(pluginName, enabled)
-        if pluginName == "Player Frame" then
-            self:UpdateVisibility()
-        end
-    end)
+
 
     Orbit.EventBus:On("ORBIT_GLOBAL_BACKDROP_CHANGED", function()
         self:ApplySettings()
@@ -326,15 +325,15 @@ function Plugin:OnLoad()
         if event == "PLAYER_ENTERING_WORLD" then
             Orbit.Async:Debounce("PlayerResources_Init", function()
                 self:UpdatePowerType()
-                self:UpdateMaxPower()
+                DiscreteRenderer:UpdateMaxPower(self, Frame, SYSTEM_INDEX)
                 self:UpdatePower()
             end, 0.5)
         elseif event == "UNIT_DISPLAYPOWER" or event == "UPDATE_SHAPESHIFT_FORM" or event == "PLAYER_SPECIALIZATION_CHANGED" then
             self:UpdatePowerType()
-            self:UpdateMaxPower()
+            DiscreteRenderer:UpdateMaxPower(self, Frame, SYSTEM_INDEX)
             self:UpdatePower()
         elseif event == "UNIT_MAXPOWER" and unit == "player" then
-            self:UpdateMaxPower()
+            DiscreteRenderer:UpdateMaxPower(self, Frame, SYSTEM_INDEX)
             self:UpdatePower()
         elseif (event == "UNIT_POWER_UPDATE" or event == "UNIT_POWER_FREQUENT") and unit == "player" then
             if powerType == self.powerTypeName then
@@ -346,7 +345,8 @@ function Plugin:OnLoad()
             end
         elseif event == "UNIT_MAXHEALTH" or event == "UNIT_AURA" then
             -- Aura-based continuous resources need to update on UNIT_AURA
-            if self.continuousResource == "STAGGER" or self.continuousResource == "MAELSTROM_WEAPON" then
+            if self.continuousResource == "STAGGER" or self.continuousResource == "MAELSTROM_WEAPON"
+                or self.continuousResource == "ICICLES" or self.continuousResource == "TIP_OF_THE_SPEAR" then
                 self:UpdatePower()
             end
         elseif event == "PET_BATTLE_OPENING_START" or event == "PET_BATTLE_CLOSE" then
@@ -389,12 +389,6 @@ end
 -- [ SETTINGS APPLICATION ]-------------------------------------------------------------------------
 function Plugin:ApplySettings()
     if not Frame then
-        return
-    end
-
-    if not self:IsEnabled() then
-        Frame:Hide()
-        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
         return
     end
 
@@ -521,19 +515,8 @@ function Plugin:GetResourceColor(index, maxResources, isCharged)
     return DiscreteRenderer:GetResourceColor(self, SYSTEM_INDEX, index, maxResources, isCharged)
 end
 
-function Plugin:IsEnabled()
-    if Orbit.IsPluginEnabled and not Orbit:IsPluginEnabled("Player Frame") then return true end
-    local enabled = Orbit:ReadPluginSetting("Orbit_PlayerFrame", Enum.EditModeUnitFrameSystemIndices.Player, "EnablePlayerResource")
-    return enabled == nil or enabled == true
-end
-
 function Plugin:UpdateVisibility()
     if not Frame then
-        return
-    end
-    if not self:IsEnabled() then
-        Frame:Hide()
-        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
         return
     end
     OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
@@ -544,7 +527,7 @@ function Plugin:UpdatePowerType()
     if not Frame then
         return
     end
-    if not self:IsEnabled() or (C_PetBattles and C_PetBattles.IsInBattle()) then
+    if C_PetBattles and C_PetBattles.IsInBattle() then
         Frame:Hide()
         return
     end

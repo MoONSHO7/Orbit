@@ -52,6 +52,20 @@ Renderer.CONFIG = {
             else text:SetText("1") end
         end,
     },
+    ICICLES = {
+        curveKey = "IciclesColorCurve",
+        dividers = true,
+        maxDividers = 5,
+        getState = function() return ResourceMixin:GetIciclesState() end,
+        updateText = function(text, current) text:SetText(current) end,
+    },
+    TIP_OF_THE_SPEAR = {
+        curveKey = "TipOfTheSpearColorCurve",
+        dividers = true,
+        maxDividers = 2,
+        getState = function() return ResourceMixin:GetTipOfTheSpearState() end,
+        updateText = function(text, current) text:SetText(current) end,
+    },
 }
 
 -- [ MODE SWITCHING ]-------------------------------------------------------------------------------

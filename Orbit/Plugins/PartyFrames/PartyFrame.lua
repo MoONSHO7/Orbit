@@ -12,6 +12,8 @@ local POWER_BAR_HEIGHT_RATIO = Orbit.PartyFrameHelpers.LAYOUT.PowerBarRatio
 local DEFENSIVE_ICON_SIZE = 24
 local CROWD_CONTROL_ICON_SIZE = 24
 local PRIVATE_AURA_ICON_SIZE = 24
+local HEALER_AURA_ICON_SIZE = 16
+local HealerReg = Orbit.HealerAuraRegistry
 local MAX_PRIVATE_AURA_ANCHORS = GF.MaxPrivateAuraAnchors
 local AURA_BASE_ICON_SIZE = Orbit.PartyFrameHelpers.LAYOUT.AuraBaseIconSize
 local OUT_OF_RANGE_ALPHA = GF.OutOfRangeAlpha
@@ -64,7 +66,11 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
                 overrides = { MaxIcons = 3, IconSize = 18, MaxRows = 1 },
             },
         },
-        DisabledComponents = { "DefensiveIcon", "CrowdControlIcon", "RoleIcon" },
+        DisabledComponents = (function()
+            local d = { "DefensiveIcon", "CrowdControlIcon", "RoleIcon" }
+            for _, k in ipairs(Orbit.HealerAuraRegistry:AllSlotKeys()) do d[#d + 1] = k end
+            return d
+        end)(),
         DisabledComponentsMigrated = true,
         IncludePlayer = true,
         GrowthDirection = "Down",
@@ -268,6 +274,14 @@ local function UpdateDebuffs(frame, plugin) plugin:UpdateAuraContainer(frame, pl
 local function UpdateBuffs(frame, plugin) plugin:UpdateAuraContainer(frame, plugin, "buffContainer", "buffPool", PARTY_BUFF_CFG) end
 local function UpdateDefensiveIcon(frame, plugin) plugin:UpdateDefensiveIcon(frame, plugin, DEFENSIVE_ICON_SIZE) end
 local function UpdateCrowdControlIcon(frame, plugin) plugin:UpdateCrowdControlIcon(frame, plugin, CROWD_CONTROL_ICON_SIZE) end
+local function UpdateHealerAuras(frame, plugin)
+    for _, slot in ipairs(HealerReg:ActiveSlots()) do
+        plugin:UpdateSpellAuraIcon(frame, plugin, slot.key, slot.spellId, HEALER_AURA_ICON_SIZE, slot.altSpellId)
+    end
+end
+local function UpdateMissingRaidBuffs(frame, plugin)
+    plugin:UpdateMissingRaidBuffs(frame, plugin, "RaidBuff", HealerReg:ActiveRaidBuffs(), HEALER_AURA_ICON_SIZE)
+end
 
 -- [ PRIVATE AURA ANCHOR ]---------------------------------------------------------------------------
 local function UpdatePrivateAuras(frame, plugin) Orbit.PrivateAuraMixin:Update(frame, plugin, PRIVATE_AURA_ICON_SIZE) end
@@ -327,6 +341,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
         UpdatePowerBar = UpdatePowerBar, UpdateDebuffs = UpdateDebuffs, UpdateBuffs = UpdateBuffs,
         UpdateDefensiveIcon = UpdateDefensiveIcon, UpdateCrowdControlIcon = UpdateCrowdControlIcon,
         UpdatePrivateAuras = UpdatePrivateAuras, UpdateFrameLayout = UpdateFrameLayout,
+        UpdateHealerAuras = UpdateHealerAuras, UpdateMissingRaidBuffs = UpdateMissingRaidBuffs,
     }
     local originalOnEvent = frame:GetScript("OnEvent")
     frame:SetScript("OnShow", Orbit.GroupFrameMixin.CreateOnShowHandler(plugin, eventCallbacks))
@@ -410,9 +425,12 @@ function Plugin:OnLoad()
     -- Canvas Mode opens on the container, so components must be registered there
     local pluginRef = self
     local firstFrame = self.frames[1]
+    for _, k in ipairs(HealerReg:ActiveKeys()) do self:EnsureAuraButton(firstFrame, k, HEALER_AURA_ICON_SIZE) end
+    local healerIconKeys = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+    for _, k in ipairs(HealerReg:ActiveKeys()) do healerIconKeys[#healerIconKeys + 1] = k end
     Orbit.GroupCanvasRegistration:RegisterComponents(pluginRef, self.container, firstFrame,
         { "Name", "HealthText" },
-        { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" },
+        healerIconKeys,
         AURA_BASE_ICON_SIZE
     )
 
@@ -439,12 +457,11 @@ function Plugin:OnLoad()
     local PARTY_BASE_DRIVER = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
     local function UpdateVisibilityDriver(plugin)
         if InCombatLockdown() or Orbit:IsEditMode() then return end
-        local mv = Orbit.MountedVisibility
-        local driver = (mv and mv:ShouldHide() and not IsMounted()) and "hide" or (mv and mv:GetMountedDriver(PARTY_BASE_DRIVER) or PARTY_BASE_DRIVER)
-        RegisterStateDriver(plugin.container, "visibility", driver)
+        RegisterStateDriver(plugin.container, "visibility", PARTY_BASE_DRIVER)
     end
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver(self) end
     UpdateVisibilityDriver(self)
+    self.mountedConfig = { frame = self.container, hoverReveal = true, combatRestore = true }
 
     -- Explicit Show Bridge: Ensure container is active to receive first state evaluation
     self.container:Show()
@@ -599,6 +616,19 @@ function Plugin:PrepareIconsForCanvasMode()
     if frame.PrivateAuraAnchor then
         frame.PrivateAuraAnchor:SetSize(PRIVATE_AURA_ICON_SIZE, PRIVATE_AURA_ICON_SIZE)
         frame.PrivateAuraAnchor:Show()
+    end
+    for _, slot in ipairs(HealerReg:ActiveSlots()) do
+        if not (self.IsComponentDisabled and self:IsComponentDisabled(slot.key)) then
+            local icon = self:EnsureAuraButton(frame, slot.key, HEALER_AURA_ICON_SIZE)
+            local tex = C_Spell.GetSpellTexture(slot.spellId)
+            if tex then icon.Icon:SetTexture(tex) end
+            icon:SetSize(HEALER_AURA_ICON_SIZE, HEALER_AURA_ICON_SIZE)
+            icon:Show()
+        end
+    end
+    local raidBuffs = HealerReg:ActiveRaidBuffs()
+    if #raidBuffs > 0 and not (self.IsComponentDisabled and self:IsComponentDisabled("RaidBuff")) then
+        self:EnsureRaidBuffContainer(frame, "RaidBuff", raidBuffs, HEALER_AURA_ICON_SIZE):Show()
     end
 end
 
@@ -813,8 +843,9 @@ function Plugin:ApplySettings()
 
             -- Update defensive/important aura icons
             UpdateDefensiveIcon(frame, self)
-
             UpdateCrowdControlIcon(frame, self)
+            UpdateHealerAuras(frame, self)
+            UpdateMissingRaidBuffs(frame, self)
 
             -- Update all status indicators
             StatusDispatch(frame, self, "UpdateAllPartyStatusIcons")
@@ -837,6 +868,26 @@ function Plugin:ApplySettings()
     if savedPositions then
         OrbitEngine.ComponentDrag:RestoreFramePositions(self.container, savedPositions)
         local iconKeys = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+        local activeKeys = HealerReg:ActiveKeys()
+        for _, k in ipairs(activeKeys) do iconKeys[#iconKeys + 1] = k end
+        for _, frame in ipairs(self.frames) do
+            for _, k in ipairs(activeKeys) do
+                if savedPositions[k] then
+                    if k == "RaidBuff" then
+                        if not frame.RaidBuff then
+                            local c = CreateFrame("Frame", nil, frame)
+                            c:SetPoint("CENTER", frame, "CENTER", 0, 0)
+                            c:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.HealerAura)
+                            c._raidIcons = {}
+                            c:SetSize(HEALER_AURA_ICON_SIZE, HEALER_AURA_ICON_SIZE)
+                            frame.RaidBuff = c
+                        end
+                    else
+                        self:EnsureAuraButton(frame, k, HEALER_AURA_ICON_SIZE)
+                    end
+                end
+            end
+        end
         Orbit.GroupCanvasRegistration:ApplyIconPositions(self.frames, savedPositions, iconKeys)
     end
 

@@ -100,8 +100,12 @@ local function CreateBossFrame(bossIndex, plugin)
     local frame = OrbitEngine.UnitButton:Create(UIParent, unit, "OrbitBossFrame" .. bossIndex)
     if frame.HealthDamageBar then
         frame.HealthDamageBar:Hide()
-        if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
         frame.HealthDamageBar = nil
+    end
+    if frame.HealthDamageTexture then
+        frame.HealthDamageTexture:Hide()
+        frame.HealthDamageTexture:ClearAllPoints()
+        frame.HealthDamageTexture = nil
     end
     frame.editModeName = "Boss Frame " .. bossIndex
     frame.systemIndex, frame.bossIndex = 1, bossIndex
@@ -181,18 +185,10 @@ end
 function Plugin:AddSettings(dialog, systemFrame)
     local SB = OrbitEngine.SchemaBuilder
     local schema = { hideNativeSettings = true, controls = {} }
-    SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Auras" }, "Layout")
-    if currentTab == "Layout" then
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 150 })
-        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40 })
-        table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = 20, max = 100, step = 1, default = 40, formatter = function(v) return v .. "px" end })
-    elseif currentTab == "Auras" then
-        local GlowType = Orbit.Constants.PandemicGlow.Type
-        table.insert(schema.controls, { type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow", options = { { text = "None", value = GlowType.None }, { text = "Pixel Glow", value = GlowType.Pixel }, { text = "Proc Glow", value = GlowType.Proc }, { text = "Autocast Shine", value = GlowType.Autocast }, { text = "Button Glow", value = GlowType.Button } }, default = Orbit.Constants.PandemicGlow.DefaultType })
-        SB:AddColorCurveSettings(self, schema, 1, systemFrame, { key = "PandemicGlowColorCurve", label = "Pandemic Colour", default = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } }, singleColor = true })
-    end
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 150 })
+    table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40 })
+    table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = 20, max = 100, step = 1, default = 40, formatter = function(v) return v .. "px" end })
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 -- [ LIFECYCLE ]--------------------------------------------------------------------------------------

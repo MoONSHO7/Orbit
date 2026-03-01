@@ -253,6 +253,32 @@ local function SetupMinimapHoverOverlay()
     overlay:Hide()
 end
 
+local function SetupObjectiveHoverOverlay()
+    local objective = _G["ObjectiveTrackerFrame"]
+    if not objective or objective.orbitHoverOverlay then return end
+    local overlay = CreateFrame("Frame", nil, objective)
+    overlay:SetAllPoints()
+    overlay:SetFrameLevel(objective:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
+    overlay:EnableMouse(true)
+    overlay:SetMouseMotionEnabled(true)
+    overlay:SetMouseClickEnabled(false)
+    overlay:SetScript("OnEnter", function(self)
+        objective:SetAlpha(1)
+        self:Hide()
+        objective:SetScript("OnUpdate", function()
+            if not objective:IsMouseOver() then
+                objective:SetScript("OnUpdate", nil)
+                if cachedShouldHide then
+                    objective:SetAlpha(0)
+                    self:Show()
+                end
+            end
+        end)
+    end)
+    objective.orbitHoverOverlay = overlay
+    overlay:Hide()
+end
+
 -- [ REFRESH ALL SYSTEMS ]---------------------------------------------------------------------------
 function Manager:Refresh(force)
     local shouldHide = self:ShouldHide()
@@ -269,6 +295,12 @@ function Manager:Refresh(force)
             cluster:SetScript("OnUpdate", nil)
             cluster.orbitHoverOverlay:Hide()
         end
+    end
+
+    SetupObjectiveHoverOverlay()
+    local objective = _G["ObjectiveTrackerFrame"]
+    if objective and objective.orbitHoverOverlay then
+        if shouldHide then objective.orbitHoverOverlay:Show() else objective:SetScript("OnUpdate", nil); objective.orbitHoverOverlay:Hide() end
     end
 
     local systems = OrbitEngine.systems

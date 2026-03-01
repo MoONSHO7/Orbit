@@ -22,9 +22,6 @@ local addonName, addonTable = ...
 Orbit = addonTable
 Orbit.Engine = Orbit.Engine or {}
 local OrbitEngine = Orbit.Engine
-Orbit.Layout = OrbitEngine.Layout
-Orbit.Config = OrbitEngine.Config
-Orbit.Frame = OrbitEngine.Frame
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 

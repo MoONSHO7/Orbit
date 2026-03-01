@@ -46,7 +46,8 @@ local function HasCooldown(itemType, id)
         if ci and ci.maxCharges and ci.maxCharges > 1 then return true end
         return ParseCooldownDuration("spell", activeId) ~= nil
     elseif itemType == "item" then
-        return ParseCooldownDuration("item", id) ~= nil
+        if ParseCooldownDuration("item", id) ~= nil then return true end
+        return GetItemSpell(id) ~= nil
     end
     return false
 end
@@ -308,7 +309,8 @@ function Plugin:SaveTrackedItem(systemIndex, x, y, itemType, itemId)
         local parseId = (itemType == "spell") and GetActiveSpellID(itemId) or itemId
         local actDur = ParseActiveDuration(itemType, parseId)
         local cdDur = ParseCooldownDuration(itemType, parseId)
-        tracked[key] = { type = itemType, id = itemId, x = x, y = y, activeDuration = actDur, cooldownDuration = cdDur }
+        local useSpellId = (itemType == "item") and select(2, GetItemSpell(itemId)) or nil
+        tracked[key] = { type = itemType, id = itemId, x = x, y = y, activeDuration = actDur, cooldownDuration = cdDur, useSpellId = useSpellId }
     else
         tracked[key] = nil
     end
@@ -337,7 +339,7 @@ function Plugin:LoadTrackedItems(anchor, systemIndex)
 
     local copy = {}
     for k, v in pairs(tracked) do
-        copy[k] = { type = v.type, id = v.id, x = v.x, y = v.y, activeDuration = v.activeDuration, cooldownDuration = v.cooldownDuration }
+        copy[k] = { type = v.type, id = v.id, x = v.x, y = v.y, activeDuration = v.activeDuration, cooldownDuration = v.cooldownDuration, useSpellId = v.useSpellId }
     end
     anchor.gridItems = copy
     Layout:LayoutTrackedIcons(self, anchor, systemIndex, IsDraggingCooldownAbility)

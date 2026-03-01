@@ -370,9 +370,13 @@ function Selection:OnEditModeEnter()
             return
         end
         for frame, selection in pairs(Selection.selections) do
-            Selection:UpdateVisuals(frame, selection)
-            if not frame.disableMovement then
-                frame:SetMovable(true)
+            if frame.orbitDisabled then
+                selection:Hide()
+            else
+                Selection:UpdateVisuals(frame, selection)
+                if not frame.disableMovement then
+                    frame:SetMovable(true)
+                end
             end
         end
 
@@ -503,7 +507,9 @@ function Selection:RefreshVisuals()
     local showOrbit = ShouldShowOrbitFrames()
 
     for frame, selection in pairs(self.selections) do
-        if selection.isOrbitSelection then
+        if frame.orbitDisabled then
+            selection:Hide()
+        elseif selection.isOrbitSelection then
             if showOrbit then
                 self:UpdateVisuals(frame, selection)
             else

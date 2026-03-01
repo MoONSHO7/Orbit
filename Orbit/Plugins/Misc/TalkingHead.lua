@@ -40,7 +40,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         default = 60,
     })
 
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------

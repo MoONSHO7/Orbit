@@ -28,11 +28,15 @@ Core\Libs\LibOrbitColorPicker-1.0\LibOrbitColorPicker-1.0.lua
 # CORE
 # ==============================================================
 
+# Init (bootstraps Orbit.Engine — must load before all core files)
+Core\Init.lua
+
 # Shared Kernel
 Core\Shared\Constants.lua
 Core\Shared\Media.lua
 
 # Infrastructure
+Core\Infrastructure\HealerAuraRegistry.lua
 Core\Infrastructure\EventBus.lua
 Core\Infrastructure\Async.lua
 Core\Infrastructure\Pixel.lua
@@ -76,8 +80,7 @@ Core\Canvas\MountedVisibility.lua
 Core\Plugin\DefaultProfile.lua
 Core\Plugin\ProfileManager.lua
 
-# Init & API
-Core\Init.lua
+# API
 Core\API.lua
 
 # Canvas Preview

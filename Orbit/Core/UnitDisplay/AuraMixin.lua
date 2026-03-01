@@ -11,6 +11,8 @@ local Mixin = Orbit.AuraMixin
 
 local DEFAULT_AURA_COUNT = 40
 local TIMER_MIN_ICON_SIZE = 14
+local AURA_MIN_DISPLAY_COUNT = 2
+local AURA_MAX_DISPLAY_COUNT = 99
 
 -- [ SKIN FACADE ]-----------------------------------------------------------------------------------
 function Mixin:ApplyAuraSkin(icon, settings)
@@ -49,6 +51,12 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
     icon.Icon:ClearAllPoints()
     icon.Icon:SetAllPoints(icon)
     icon.Icon:Show()
+    if not icon.Cooldown then
+        icon.Cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
+        icon.Cooldown:SetAllPoints()
+        icon.Cooldown:SetHideCountdownNumbers(false)
+        icon.cooldown = icon.Cooldown
+    end
     if not icon.Overlay then
         icon.Overlay = CreateFrame("Frame", nil, icon)
         icon.Overlay:SetAllPoints(icon)
@@ -83,6 +91,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
         end
         icon.Cooldown:SetHideCountdownNumbers(size < TIMER_MIN_ICON_SIZE)
     end
+    if skinSettings then self:ApplyAuraSkin(icon, skinSettings) end
     if skinSettings and skinSettings.enablePandemic then Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings) end
     icon:Show()
     return icon
@@ -90,22 +99,17 @@ end
 
 function Mixin:ApplyAuraCooldown(icon, aura, unit)
     if not icon or not icon.Cooldown then return end
-    local applied = false
-    if aura.duration and aura.expirationTime and aura.duration > 0 then
-        local startTime = aura.expirationTime - aura.duration
-        if startTime > 0 then
-            icon.Cooldown:SetCooldown(startTime, aura.duration)
-            applied = true
-        end
+    if aura.expirationTime then
+        icon.Cooldown:SetCooldownFromExpirationTime(aura.expirationTime, aura.duration)
+        return
     end
-    if not applied then icon.Cooldown:Clear() end
+    icon.Cooldown:Clear()
 end
 
 function Mixin:ApplyAuraCount(icon, aura, unit)
     if not icon or not icon.count then return end
-    if aura.applications and aura.applications > 1 then
-        local displayCount = aura.applications
-        if displayCount > 99 then displayCount = 99 end
+    if aura.auraInstanceID and unit then
+        local displayCount = C_UnitAuras.GetAuraApplicationDisplayCount(unit, aura.auraInstanceID, AURA_MIN_DISPLAY_COUNT, AURA_MAX_DISPLAY_COUNT)
         icon.count:SetText(displayCount)
         icon.count:Show()
         return
@@ -117,6 +121,7 @@ end
 -- [ AURA TOOLTIP ]-----------------------------------------------------------------------------------
 function Mixin:SetupAuraTooltip(icon, aura, unit, filter)
     icon:EnableMouse(true)
+    icon:SetMouseClickEnabled(false)
     icon:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
         if aura.auraInstanceID and unit then
@@ -136,6 +141,7 @@ end
 
 -- [ AURA CONTAINER DISPLAY ]------------------------------------------------------------------------
 local OrbitEngine = Orbit.Engine
+local AL = Orbit.AuraLayout
 local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
 local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
 
@@ -212,4 +218,254 @@ end
 
 function Mixin:UpdateCrowdControlIcon(frame, plugin, iconSize)
     self:UpdateSingleAuraIcon(frame, plugin, "CrowdControlIcon", "HARMFUL|CROWD_CONTROL", iconSize)
+end
+
+-- [ LAZY ICON CREATION ]----------------------------------------------------------------------------
+local HEALER_ICON_FRAME_LEVEL_OFFSET = Orbit.Constants.Levels.HealerAura
+local DEFAULT_HEALER_SKIN = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false }
+
+function Mixin:EnsureAuraButton(frame, iconKey, iconSize)
+    if frame[iconKey] then return frame[iconKey] end
+    local btn = CreateFrame("Button", nil, frame, "BackdropTemplate")
+    btn:SetSize(iconSize, iconSize)
+    btn.orbitOriginalWidth, btn.orbitOriginalHeight = iconSize, iconSize
+    btn:SetPoint("CENTER", frame, "CENTER", 0, 0)
+    btn:SetFrameLevel(frame:GetFrameLevel() + HEALER_ICON_FRAME_LEVEL_OFFSET)
+    btn.Icon = btn:CreateTexture(nil, "ARTWORK")
+    btn.Icon:SetAllPoints()
+    btn.icon = btn.Icon
+    btn:Hide()
+    btn:EnableMouse(false)
+    frame[iconKey] = btn
+    return btn
+end
+
+-- Read saved overrides for a component key from plugin settings.
+local function GetComponentOverrides(plugin, iconKey)
+    if not plugin or not plugin.GetSetting then return nil end
+    local positions = plugin:GetSetting(1, "ComponentPositions")
+    if not positions or not positions[iconKey] then return nil end
+    return positions[iconKey].overrides
+end
+
+-- Build skinSettings from overrides, merging onto defaults.
+local function BuildSkinSettings(overrides)
+    if not overrides then return DEFAULT_HEALER_SKIN end
+    local showTimer = overrides.TimerTextColorCurve ~= nil
+    local skin = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = showTimer }
+    if overrides.SwipeColorCurve then
+        local color = OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:SampleColorCurve(overrides.SwipeColorCurve, 1)
+        if color then skin.swipeColor = color end
+    end
+    if overrides.PandemicGlowType then
+        skin.pandemicGlowType = overrides.PandemicGlowType
+    end
+    if overrides.PandemicGlowColorCurve then
+        local color = OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:SampleColorCurve(overrides.PandemicGlowColorCurve, 1)
+        if color then skin.pandemicColor = color end
+    end
+    return skin
+end
+
+-- [ SPELL-ID AURA ICON DISPLAY ]-------------------------------------------------------------------
+local SPELL_AURA_SCAN_MAX = 40
+local IsSecret = issecretvalue or function() return false end
+function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, altSpellId)
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled(iconKey) then
+        if frame[iconKey] then frame[iconKey]:Hide() end
+        return
+    end
+    local unit = frame.unit
+    if not unit or not UnitExists(unit) or not UnitIsConnected(unit) then
+        if frame[iconKey] then frame[iconKey]:Hide() end
+        return
+    end
+    local overrides = GetComponentOverrides(plugin, iconKey)
+    local skinSettings = BuildSkinSettings(overrides)
+    for i = 1, SPELL_AURA_SCAN_MAX do
+        local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
+        if not aura then break end
+        local sid = aura.spellId
+        if not IsSecret(sid) and (sid == spellId or (altSpellId and sid == altSpellId)) then
+            local icon = self:EnsureAuraButton(frame, iconKey, iconSize)
+            self:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
+            self:SetupAuraTooltip(icon, aura, unit, "HELPFUL")
+            if skinSettings.pandemicGlowType and skinSettings.pandemicGlowType > 0 then
+                Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings)
+            elseif icon.orbitPandemicGlowActive then
+                Orbit.PandemicGlow:Stop(icon)
+            end
+            if overrides and overrides.TimerTextColorCurve and icon.Cooldown then
+                local color = OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:SampleColorCurve(overrides.TimerTextColorCurve, 1)
+                if color then icon.Cooldown:SetTextColor(color.r or 1, color.g or 1, color.b or 1) end
+            end
+            icon:Show()
+            return
+        end
+    end
+    if frame[iconKey] then
+        if frame[iconKey].orbitPandemicGlowActive then Orbit.PandemicGlow:Stop(frame[iconKey]) end
+        frame[iconKey]:Hide()
+    end
+end
+
+-- [ MISSING BUFF ICON DISPLAY ]--------------------------------------------------------------------
+local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
+local MISSING_GLOW_KEY = "orbitMissing"
+local GlowType = { Pixel = 1, Proc = 2, AutoCast = 3, Button = 4 }
+
+local function ApplyMissingGlow(icon, overrides)
+    if not LCG or not overrides then return end
+    local glowType = overrides.ProcGlowType
+    if not glowType or glowType == 0 then return end
+    local color = { 1, 0.2, 0.2, 1 }
+    if overrides.ProcGlowColorCurve and OrbitEngine.ColorCurve then
+        local c = OrbitEngine.ColorCurve:SampleColorCurve(overrides.ProcGlowColorCurve, 1)
+        if c then color = { c.r, c.g, c.b, c.a or 1 } end
+    end
+    if glowType == GlowType.Pixel then
+        LCG.PixelGlow_Start(icon, color, 8, 0.25, 4, 2, 0, 0, false, MISSING_GLOW_KEY)
+    elseif glowType == GlowType.Proc then
+        LCG.ProcGlow_Start(icon, { color = color, startAnim = false, key = MISSING_GLOW_KEY })
+    elseif glowType == GlowType.AutoCast then
+        LCG.AutoCastGlow_Start(icon, color, 4, 0.12, 2, 2, MISSING_GLOW_KEY)
+    elseif glowType == GlowType.Button then
+        LCG.ButtonGlow_Start(icon, color, 0.3)
+    end
+end
+
+local function StopMissingGlow(icon)
+    if not LCG then return end
+    LCG.PixelGlow_Stop(icon, MISSING_GLOW_KEY)
+    LCG.ProcGlow_Stop(icon, MISSING_GLOW_KEY)
+    LCG.AutoCastGlow_Stop(icon, MISSING_GLOW_KEY)
+    LCG.ButtonGlow_Stop(icon)
+end
+
+-- [ MISSING RAID BUFF CONTAINER ]------------------------------------------------------------------
+local RAID_BUFF_ICON_SPACING = 1
+function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, iconSize)
+    if plugin.IsComponentDisabled and plugin:IsComponentDisabled(containerKey) then
+        if frame[containerKey] then frame[containerKey]:Hide() end
+        return
+    end
+    local unit = frame.unit
+    if not unit or not UnitExists(unit) or not UnitIsConnected(unit) then
+        if frame[containerKey] then frame[containerKey]:Hide() end
+        return
+    end
+    -- Scan auras once, build set of present buff spell IDs
+    local present = {}
+    for i = 1, SPELL_AURA_SCAN_MAX do
+        local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
+        if not aura then break end
+        local sid = aura.spellId
+        if not IsSecret(sid) then present[sid] = true end
+    end
+    -- Collect missing buffs
+    local missing = {}
+    for _, buff in ipairs(raidBuffs) do
+        if not present[buff.spellId] then missing[#missing + 1] = buff end
+    end
+    if #missing == 0 then
+        if frame[containerKey] then
+            local container = frame[containerKey]
+            if container._raidIcons then
+                for _, icon in ipairs(container._raidIcons) do
+                    StopMissingGlow(icon); icon.orbitMissingGlowActive = nil; icon:Hide()
+                end
+            end
+            container:Hide()
+        end
+        return
+    end
+    -- Ensure container
+    local container = frame[containerKey]
+    if not container then
+        container = CreateFrame("Frame", nil, frame)
+        container:SetPoint("CENTER", frame, "CENTER", 0, 0)
+        container:SetFrameLevel(frame:GetFrameLevel() + HEALER_ICON_FRAME_LEVEL_OFFSET)
+        container._raidIcons = {}
+        container:Hide()
+        frame[containerKey] = container
+    end
+    -- Ensure enough sub-icons
+    for idx = 1, #missing do
+        if not container._raidIcons[idx] then
+            local btn = CreateFrame("Button", nil, container, "BackdropTemplate")
+            btn.Icon = btn:CreateTexture(nil, "ARTWORK")
+            btn.Icon:SetAllPoints()
+            btn.icon = btn.Icon
+            btn:EnableMouse(true)
+            btn:SetMouseClickEnabled(false)
+            btn:Hide()
+            container._raidIcons[idx] = btn
+        end
+    end
+    -- Hide excess icons
+    for idx = #missing + 1, #container._raidIcons do
+        StopMissingGlow(container._raidIcons[idx])
+        container._raidIcons[idx].orbitMissingGlowActive = nil
+        container._raidIcons[idx]:Hide()
+    end
+    -- Layout missing icons
+    local overrides = GetComponentOverrides(plugin, containerKey)
+    for idx, buff in ipairs(missing) do
+        local icon = container._raidIcons[idx]
+        local tex = C_Spell.GetSpellTexture(buff.spellId)
+        if tex then icon.Icon:SetTexture(tex); icon.Icon:SetAllPoints(icon); icon.Icon:Show() end
+        icon:SetSize(iconSize, iconSize)
+        self:ApplyAuraSkin(icon, DEFAULT_HEALER_SKIN)
+        icon:ClearAllPoints()
+        icon:SetPoint("LEFT", container, "LEFT", (idx - 1) * (iconSize + RAID_BUFF_ICON_SPACING), 0)
+        local sid = buff.spellId
+        icon:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+            GameTooltip:SetSpellByID(sid)
+            GameTooltip:AddLine("|cffff4444Missing|r", 1, 0, 0)
+            GameTooltip:Show()
+        end)
+        icon:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        if not icon.orbitMissingGlowActive then ApplyMissingGlow(icon, overrides); icon.orbitMissingGlowActive = true end
+        icon:Show()
+    end
+    local totalW = #missing * iconSize + (#missing - 1) * RAID_BUFF_ICON_SPACING
+    container:SetSize(totalW, iconSize)
+    container.orbitOriginalWidth, container.orbitOriginalHeight = totalW, iconSize
+    container:Show()
+end
+
+-- [ RAID BUFF CONTAINER FACTORY ]------------------------------------------------------------------
+function Mixin:EnsureRaidBuffContainer(frame, containerKey, raidBuffs, iconSize)
+    local container = frame[containerKey]
+    if not container then
+        container = CreateFrame("Frame", nil, frame)
+        container:SetPoint("CENTER", frame, "CENTER", 0, 0)
+        container:SetFrameLevel(frame:GetFrameLevel() + HEALER_ICON_FRAME_LEVEL_OFFSET)
+        container._raidIcons = {}
+        frame[containerKey] = container
+    end
+    for idx, buff in ipairs(raidBuffs) do
+        if not container._raidIcons[idx] then
+            local btn = CreateFrame("Button", nil, container, "BackdropTemplate")
+            btn.Icon = btn:CreateTexture(nil, "ARTWORK")
+            btn.Icon:SetAllPoints()
+            btn.icon = btn.Icon
+            btn:EnableMouse(true)
+            btn:SetMouseClickEnabled(false)
+            container._raidIcons[idx] = btn
+        end
+        local icon = container._raidIcons[idx]
+        local tex = C_Spell.GetSpellTexture(buff.spellId)
+        if tex then icon.Icon:SetTexture(tex); icon.Icon:Show() end
+        icon:SetSize(iconSize, iconSize)
+        self:ApplyAuraSkin(icon, DEFAULT_HEALER_SKIN)
+        icon:ClearAllPoints()
+        icon:SetPoint("LEFT", container, "LEFT", (idx - 1) * (iconSize + RAID_BUFF_ICON_SPACING), 0)
+        icon:Show()
+    end
+    local totalW = #raidBuffs * iconSize + (#raidBuffs - 1) * RAID_BUFF_ICON_SPACING
+    container:SetSize(totalW, iconSize)
+    container.orbitOriginalWidth, container.orbitOriginalHeight = totalW, iconSize
+    return container
 end

@@ -110,7 +110,7 @@ function CDM:AddSettings(dialog, systemFrame)
             end
         end
 
-        Orbit.Config:Render(dialog, systemFrame, self, schema)
+        OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
         return
     end
 
@@ -264,7 +264,7 @@ function CDM:AddSettings(dialog, systemFrame)
         end
     end
 
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 -- [ COMPONENT UTILITY ]-----------------------------------------------------------------------------

@@ -21,7 +21,7 @@ Mixin.sharedDefaults = {
 function Mixin:AddSecondarySettings(dialog, systemFrame)
     local cfg = self._sufConfig
     if systemFrame.systemIndex ~= cfg.frameIndex then return end
-    Orbit.Config:Render(dialog, systemFrame, self, {
+    OrbitEngine.Config:Render(dialog, systemFrame, self, {
         hideNativeSettings = true,
         controls = {
             { type = "slider", key = "Width", label = "Width", min = 50, max = 200, step = 1, default = 100 },

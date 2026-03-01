@@ -52,7 +52,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 default = false,
                 onChange = function(val)
                     self:SetSetting(TARGET_FRAME_INDEX, "EnableTargetTarget", val)
-                    Orbit.EventBus:Emit("TARGET_SETTINGS_CHANGED")
+                    Orbit.EventBus:Fire("TARGET_SETTINGS_CHANGED")
                 end,
             },
             {
@@ -62,7 +62,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 default = false,
                 onChange = function(val)
                     self:SetSetting(TARGET_FRAME_INDEX, "EnableTargetPower", val)
-                    Orbit.EventBus:Emit("TARGET_SETTINGS_CHANGED")
+                    Orbit.EventBus:Fire("TARGET_SETTINGS_CHANGED")
                 end,
             },
         },
@@ -80,7 +80,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         default = true,
         onChange = function(val)
             self:SetSetting(TARGET_FRAME_INDEX, "EnableBuffs", val)
-            Orbit.EventBus:Emit("TARGET_SETTINGS_CHANGED")
+            Orbit.EventBus:Fire("TARGET_SETTINGS_CHANGED")
         end,
     })
 
@@ -91,11 +91,11 @@ function Plugin:AddSettings(dialog, systemFrame)
         default = true,
         onChange = function(val)
             self:SetSetting(TARGET_FRAME_INDEX, "EnableDebuffs", val)
-            Orbit.EventBus:Emit("TARGET_SETTINGS_CHANGED")
+            Orbit.EventBus:Fire("TARGET_SETTINGS_CHANGED")
         end,
     })
 
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------

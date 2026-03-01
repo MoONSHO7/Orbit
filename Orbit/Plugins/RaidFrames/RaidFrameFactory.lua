@@ -123,7 +123,7 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
         btn:SetSize(CENTER_ICON_SIZE, CENTER_ICON_SIZE)
         btn.orbitOriginalWidth, btn.orbitOriginalHeight = CENTER_ICON_SIZE, CENTER_ICON_SIZE
         btn:SetPoint("CENTER", frame, "CENTER", 0, 0)
-        btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Text)
+        btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.ProcOverlay)
         btn.Icon = btn:CreateTexture(nil, "ARTWORK")
         btn.Icon:SetAllPoints()
         btn.icon = btn.Icon
@@ -136,7 +136,7 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
     paa:SetSize(CENTER_ICON_SIZE, CENTER_ICON_SIZE)
     paa.orbitOriginalWidth, paa.orbitOriginalHeight = CENTER_ICON_SIZE, CENTER_ICON_SIZE
     paa:SetPoint("CENTER", frame, "CENTER", 0, 0)
-    paa:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Text)
+    paa:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.ProcOverlay)
     paa:EnableMouse(false)
     paa.Icon = paa:CreateTexture(nil, "ARTWORK")
     paa.Icon:SetAllPoints()

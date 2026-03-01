@@ -164,7 +164,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         if EditModeManagerFrame and EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
         if QuickKeybindFrame then QuickKeybindFrame:Show() end
     end } }
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 -- [ LIFECYCLE ]----------------------------------------------------------------------------------
@@ -180,9 +180,8 @@ function Plugin:OnLoad()
             local config = BAR_CONFIG[index]
             if config then
                 local groupName = config.label
-                MasqueBridge:OnGroupSkinChange(groupName, function()
-                    local isDisabled = false
-                    if MasqueBridge.IsGroupEnabled then isDisabled = not MasqueBridge:IsGroupEnabled(groupName) end
+                MasqueBridge:RegisterDisableCallback(groupName, function()
+                    local isDisabled = not MasqueBridge:IsGroupEnabled(groupName)
                     for _, btn in ipairs(self.buttons[index] or {}) do
                         if isDisabled then Orbit.Skin.ActionButtonSkin:Apply(btn, { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize }) end
                     end
@@ -195,8 +194,9 @@ function Plugin:OnLoad()
     self.UpdateVisibilityDriver = function()
         if InCombatLockdown() then return end
         local druidFormHide = Orbit.MountedVisibility:ShouldHide() and not IsMounted()
+        local numBars = self:GetSetting(1, "NumActionBars") or 4
         for index, container in pairs(self.containers) do
-            if index ~= PET_BAR_INDEX and index ~= VEHICLE_EXIT_INDEX then
+            if index ~= PET_BAR_INDEX and index ~= VEHICLE_EXIT_INDEX and not (index <= 8 and index > numBars) then
                 if druidFormHide then RegisterStateDriver(container, "visibility", "hide")
                 elseif index == 1 then RegisterStateDriver(container, "visibility", BAR1_BASE_DRIVER)
                 else RegisterStateDriver(container, "visibility", GetVisibilityDriver(BASE_VISIBILITY_DRIVER)) end
@@ -412,7 +412,8 @@ function Plugin:ApplySettings(frame)
         return
     end
     OrbitEngine.FrameAnchor:SetFrameDisabled(actualFrame, false)
-    if index ~= 1 then RegisterStateDriver(actualFrame, "visibility", GetVisibilityDriver(BASE_VISIBILITY_DRIVER)) end
+    if index == 1 then RegisterStateDriver(actualFrame, "visibility", BAR1_BASE_DRIVER)
+    else RegisterStateDriver(actualFrame, "visibility", GetVisibilityDriver(BASE_VISIBILITY_DRIVER)) end
     if not self.buttons[index] or #self.buttons[index] == 0 then self:ReparentButtons(index) end
     self:ApplyScale(actualFrame, index, "Scale")
     if index ~= PET_BAR_INDEX then
@@ -431,7 +432,6 @@ function Plugin:ApplySettings(frame)
             if button.UpdateFlyout then button:UpdateFlyout() end
         end
     end
-    actualFrame:Show()
 end
 
 function Plugin:GetFrameBySystemIndex(systemIndex) return self.containers[systemIndex] end

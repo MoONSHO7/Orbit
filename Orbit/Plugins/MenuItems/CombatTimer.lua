@@ -38,7 +38,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     -- 2. Opacity
     SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
 
-    Orbit.Config:Render(dialog, systemFrame, self, schema)
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
 function Plugin:OnLoad()
