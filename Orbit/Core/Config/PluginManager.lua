@@ -34,7 +34,8 @@ local PLUGIN_GROUPS = {
     { header = "UI",           names = {
         { label = "Menu Bar", plugins = { "Menu Bar" }, triState = true },
         { label = "Bag Bar",  plugins = { "Bag Bar" },  triState = true },
-        "Queue Status", "Performance Info", "Combat Timer", "Talking Head",
+        "Queue Status", "Performance Info", "Combat Timer",
+        { label = "Talking Head", plugins = { "Talking Head" }, triState = true },
     }},
 }
 

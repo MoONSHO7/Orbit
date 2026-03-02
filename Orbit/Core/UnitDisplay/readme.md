@@ -12,7 +12,13 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 |---|---|
 | UnitFrameMixin.lua | base unit frame behavior: show/hide, unit events, health bar display. |
 | UnitButton.lua | clickable unit button (secure frame). target, assist, focus on click. |
-| UnitButton/ | sub-modules for unit button (text logic, orchestration, canvas). |
+| UnitButton/UnitButtonCore.lua | unit button initialization and lifecycle orchestration. |
+| UnitButton/UnitButtonHealth.lua | health bar display and update logic. |
+| UnitButton/UnitButtonText.lua | name, level, and status text rendering. |
+| UnitButton/UnitButtonCanvas.lua | canvas mode component registration for unit buttons. |
+| UnitButton/UnitButtonPortrait.lua | portrait frame creation and class/race portrait rendering. |
+| UnitButton/UnitButtonPrediction.lua | incoming heal prediction overlay. |
+| UnitButton/PortraitRingData.lua | portrait ring atlas coordinate data. |
 | UnitPowerBarMixin.lua | power bar (mana/energy/rage) shared across player, target, focus. |
 | ResourceBarMixin.lua | class resource bars (combo points, holy power, essence, etc.). |
 | CastBarMixin.lua | cast bar update logic (channeling, empowering, interrupt detection). |

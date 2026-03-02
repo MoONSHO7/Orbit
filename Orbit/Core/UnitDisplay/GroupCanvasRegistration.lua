@@ -113,7 +113,6 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
     end
     if frame.PrivateAuraAnchor then
         frame.PrivateAuraAnchor:SetSize(cfg.privateAuraSize or cfg.defensiveSize, cfg.privateAuraSize or cfg.defensiveSize)
-        frame.PrivateAuraAnchor:Show()
     end
     local container = frame:GetParent()
     local savedPositions = plugin:GetSetting(1, "ComponentPositions") or {}

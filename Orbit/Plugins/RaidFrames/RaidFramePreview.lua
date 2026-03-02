@@ -353,6 +353,13 @@ function Orbit.RaidFramePreviewMixin:HidePreview()
                 wipe(frame._privateAuraIDs)
             end
 
+            -- Hide private aura preview icons created by AuraPreview:ShowPrivateAuras
+            local paa = frame.PrivateAuraAnchor
+            if paa then
+                if paa._previewIcons then for _, sub in ipairs(paa._previewIcons) do sub:Hide() end end
+                paa:Hide()
+            end
+
             LCG.PixelGlow_Stop(frame, "preview")
             for _, key in ipairs(HealerReg:ActiveKeys()) do
                 if frame[key] then frame[key]:Hide() end

@@ -30,6 +30,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
         Scale = 100,
         ClassColour = true,
         ShowPowerBar = true,
+        PowerBarHeight = 10,
         Orientation = 0,
         Spacing = 3,
         HealthTextMode = "percent_short",
@@ -246,7 +247,9 @@ local function UpdateFrameLayout(frame, borderSize, plugin)
     if not showPowerBar and frame.unit and UnitGroupRolesAssigned(frame.unit) == "HEALER" then
         showPowerBar = true
     end
-    Helpers:UpdateFrameLayout(frame, borderSize, showPowerBar)
+    local pct = plugin and plugin:GetSetting(1, "PowerBarHeight")
+    local ratio = pct and (pct / 100) or nil
+    Helpers:UpdateFrameLayout(frame, borderSize, showPowerBar, ratio)
 end
 
 local Filters = Orbit.GroupAuraFilters

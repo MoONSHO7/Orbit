@@ -49,6 +49,7 @@ function Orbit.PartyFrameSettings(plugin, dialog, systemFrame)
             end),
         })
         table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true, onChange = MOC("ShowPowerBar") })
+        table.insert(schema.controls, { type = "slider", key = "PowerBarHeight", label = "Powerbar Height", min = 5, max = 30, step = 1, default = 10, suffix = "%", onChange = MOC("PowerBarHeight") })
     elseif currentTab == "Indicators" then
         local dispelRefresh = function() if plugin.UpdateAllDispelIndicators then plugin:UpdateAllDispelIndicators(plugin) end end
         table.insert(schema.controls, { type = "checkbox", key = "DispelIndicatorEnabled", label = "Enable Dispel Indicators", default = true, onChange = MOC("DispelIndicatorEnabled", dispelRefresh) })

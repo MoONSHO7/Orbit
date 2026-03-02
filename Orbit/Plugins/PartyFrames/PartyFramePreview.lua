@@ -78,11 +78,10 @@ function Orbit.PartyFramePreviewMixin:ShowPreview()
     local isCanvasMode = false
     local OrbitEngine = Orbit.Engine
     if OrbitEngine and OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame then
-        -- Canvas Mode active on one of our frames
-        for _, frame in ipairs(self.frames) do
-            if OrbitEngine.CanvasMode.currentFrame == frame then
-                isCanvasMode = true
-                break
+        if OrbitEngine.CanvasMode.currentFrame == self.container then isCanvasMode = true
+        else
+            for _, frame in ipairs(self.frames) do
+                if OrbitEngine.CanvasMode.currentFrame == frame then isCanvasMode = true; break end
             end
         end
     end
@@ -131,9 +130,10 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
     local isCanvasMode = false
     local OrbitEngine = Orbit.Engine
     if OrbitEngine and OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame then
-        for _, frame in ipairs(self.frames) do
-            if OrbitEngine.CanvasMode.currentFrame == frame or OrbitEngine.CanvasMode.currentFrame == self.container then
-                isCanvasMode = true; break
+        if OrbitEngine.CanvasMode.currentFrame == self.container then isCanvasMode = true
+        else
+            for _, frame in ipairs(self.frames) do
+                if OrbitEngine.CanvasMode.currentFrame == frame then isCanvasMode = true; break end
             end
         end
     end
@@ -348,6 +348,13 @@ function Orbit.PartyFramePreviewMixin:HidePreview()
                 C_UnitAuras.RemovePrivateAuraAnchor(id) 
             end
             wipe(frame._privateAuraIDs)
+        end
+
+        -- Hide private aura preview icons created by AuraPreview:ShowPrivateAuras
+        local paa = frame.PrivateAuraAnchor
+        if paa then
+            if paa._previewIcons then for _, sub in ipairs(paa._previewIcons) do sub:Hide() end end
+            paa:Hide()
         end
 
         LCG.PixelGlow_Stop(frame, "preview")

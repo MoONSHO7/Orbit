@@ -15,6 +15,8 @@ UnitFrames/
     PlayerPower.lua              -- player power bar (mana/energy/rage)
     PlayerResources.lua          -- class resource bar (combo points, holy power, etc.)
     PlayerResourceSettings.lua   -- resource bar settings schema
+    ContinuousBarRenderer.lua    -- continuous bar rendering strategy (smooth fill)
+    DiscreteBarRenderer.lua      -- discrete bar rendering strategy (segmented pips)
     PlayerPetFrame.lua           -- player pet frame
     PlayerCastBar.lua            -- player cast bar
   Target/

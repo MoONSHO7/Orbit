@@ -102,8 +102,8 @@ end
 
 -- [ POWER BAR LAYOUT ]------------------------------------------------------------------------------
 
-function Helpers:UpdateFrameLayout(frame, borderSize, showPowerBar)
-    Orbit.UnitFrameMixin:UpdateFrameLayout(frame, borderSize, { showPowerBar = showPowerBar, powerBarRatio = self.LAYOUT.PowerBarRatio })
+function Helpers:UpdateFrameLayout(frame, borderSize, showPowerBar, powerBarRatio)
+    Orbit.UnitFrameMixin:UpdateFrameLayout(frame, borderSize, { showPowerBar = showPowerBar, powerBarRatio = powerBarRatio or self.LAYOUT.PowerBarRatio })
 end
 
 -- [ SORTING ]---------------------------------------------------------------------------------------

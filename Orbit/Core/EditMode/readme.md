@@ -30,11 +30,19 @@ EditMode/
     EditFrame.xml       -- xml script bundle
     Factory.lua         -- frame factory
     Snap.lua            -- snap-to-grid and snap-to-frame
+    Selection.lua       -- selection overlay rendering and state management
     Orientation.lua     -- left/right orientation detection
     Guard.lua           -- frame protection (combat lockdown safety)
     NudgeRepeat.lua     -- keyboard nudge repeat timer
-    Position/           -- anchor chains, persistence, position math
-    Selection/          -- selection overlay, drag, nudge, tooltip, native hooks
+    Position/
+      Anchor.lua        -- anchor chain resolution and parent/child relationships
+      Persistence.lua   -- position save/restore to saved variables
+      PositionUtils.lua -- position math helpers (offset calculation, bounds)
+    Selection/
+      Drag.lua          -- drag-to-move interaction
+      NativeHook.lua    -- hooks into blizzard's native selection system
+      Nudge.lua         -- arrow-key pixel nudge
+      Tooltip.lua       -- selection tooltip display
   Handle/
     HandleCore.lua      -- shared handle frame infrastructure (used by both edit mode and canvas mode)
   Preview/

@@ -198,3 +198,8 @@ function Plugin:ApplySettings()
     -- Apply MouseOver
     self:ApplyMouseOver(frame, SYSTEM_ID)
 end
+
+-- [ BLIZZARD HIDER ]--------------------------------------------------------------------------------
+Orbit:RegisterBlizzardHider("Talking Head", function()
+    if TalkingHeadFrame then OrbitEngine.NativeFrame:SecureHide(TalkingHeadFrame) end
+end)

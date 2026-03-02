@@ -41,6 +41,7 @@ function Orbit.RaidFrameSettings(plugin, dialog, systemFrame)
             table.insert(schema.controls, { type = "slider", key = "FlatRows", label = "Rows", min = 1, max = 4, step = 1, default = 1, onChange = MOC("FlatRows") })
         end
         table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Healer Power Bars", default = true, onChange = MOC("ShowPowerBar") })
+        table.insert(schema.controls, { type = "slider", key = "PowerBarHeight", label = "Powerbar Height", min = 5, max = 30, step = 1, default = 8, suffix = "%", onChange = MOC("PowerBarHeight") })
     elseif currentTab == "Indicators" then
         if (plugin:GetSetting(1, "SortMode") or "Group") == "Group" then
             table.insert(schema.controls, { type = "checkbox", key = "ShowGroupLabels", label = "Show Groups", default = true, onChange = MOC("ShowGroupLabels") })

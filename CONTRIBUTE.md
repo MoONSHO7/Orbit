@@ -38,21 +38,21 @@ graph LR
 ```mermaid
 graph TD
     subgraph core
-        shared --> infrastructure
-        infrastructure --> plugin
-        infrastructure --> skinning
-        plugin --> config
-        shared --> color
-        shared --> skinning
-        skinning --> unitdisplay
-        plugin --> unitdisplay
-        infrastructure --> unitdisplay
-        infrastructure --> editmode
-        plugin --> editmode
-        editmode --> canvasmode
-        skinning --> canvasmode
-        plugin --> config
-        skinning --> config
+        infrastructure --> shared
+        plugin --> infrastructure
+        plugin --> shared
+        color --> shared
+        skinning --> shared
+        skinning --> infrastructure
+        unitdisplay --> skinning
+        unitdisplay --> plugin
+        unitdisplay --> infrastructure
+        editmode --> infrastructure
+        editmode --> plugin
+        canvasmode --> editmode
+        canvasmode --> skinning
+        config --> plugin
+        config --> skinning
     end
     plugins --> core
 ```

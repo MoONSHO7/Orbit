@@ -368,7 +368,11 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             if Layout and Layout.CreateColorCurvePicker then
                 widget = Layout:CreateColorCurvePicker(overrideContainer, control.label, currentValue,
                     function(curveData) if callback then callback(control.key, curveData) end end)
-                if widget then widget:SetHeight(32); widget.singleColorMode = control.singleColor ~= false end
+                if widget then
+                    widget:SetHeight(32)
+                    widget.singleColorMode = control.singleColor ~= false
+                    if self.componentKey == "Timer" and self.systemIndex ~= 3 then widget.singleColorMode = true end
+                end
             else
                 widget = CreateColorPickerWidget(overrideContainer, control, currentValue and OrbitEngine.ColorCurve:GetFirstColorFromCurve(currentValue), callback)
             end

@@ -39,9 +39,9 @@ graph TD
         unitdisplay --> skinning
         unitdisplay --> plugin
         unitdisplay --> infrastructure
-        canvas --> infrastructure
-        canvas --> plugin
-        canvasmode --> canvas
+        editmode --> infrastructure
+        editmode --> plugin
+        canvasmode --> editmode
         canvasmode --> skinning
         config --> plugin
         config --> skinning

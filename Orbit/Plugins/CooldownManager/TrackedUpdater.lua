@@ -264,38 +264,8 @@ function Updater:UpdateTrackedIcon(plugin, icon)
         icon.CountText:Hide()
     end
 
-    self:ApplyTimerTextColor(plugin, icon, durObj)
+
     icon:Show()
-end
-
--- [ TIMER TEXT COLOR ]------------------------------------------------------------------------------
-function Updater:ApplyTimerTextColor(plugin, icon, durObj)
-    local cooldown = icon.Cooldown
-    if not cooldown then return end
-    local timerText = cooldown.Text
-    if not timerText then
-        local regions = { cooldown:GetRegions() }
-        for _, region in ipairs(regions) do
-            if region:GetObjectType() == "FontString" then timerText = region; break end
-        end
-        cooldown.Text = timerText
-    end
-    if not timerText then return end
-
-    local systemIndex = icon.systemIndex or TRACKED_INDEX
-    local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
-    local timerPos = positions["Timer"] or {}
-    local overrides = timerPos.overrides or {}
-
-    if durObj and overrides.CustomColorCurve then
-        local wowColorCurve = OrbitEngine.ColorCurve:ToNativeColorCurve(overrides.CustomColorCurve)
-        if wowColorCurve then
-            local secretColor = durObj:EvaluateRemainingPercent(wowColorCurve)
-            timerText:SetTextColor(secretColor:GetRGBA())
-            return
-        end
-    end
-    CooldownUtils:ApplyTextColor(timerText, overrides)
 end
 
 -- [ BATCH UPDATE ]----------------------------------------------------------------------------------

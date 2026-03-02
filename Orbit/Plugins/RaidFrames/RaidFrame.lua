@@ -46,6 +46,7 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
         Orientation = "Horizontal",
         FlatRows = 1,
         ShowPowerBar = true,
+        PowerBarHeight = 8,
         ShowGroupLabels = true,
         ShowHealthValue = true,
         HealthTextMode = "percent_short",
@@ -139,7 +140,9 @@ local function UpdateFrameLayout(frame, borderSize, plugin)
     local showHealerPower = plugin and plugin:GetSetting(1, "ShowPowerBar")
     if showHealerPower == nil then showHealerPower = true end
     local isHealer = frame.unit and UnitGroupRolesAssigned(frame.unit) == "HEALER"
-    Helpers:UpdateFrameLayout(frame, borderSize, showHealerPower and isHealer)
+    local pct = plugin and plugin:GetSetting(1, "PowerBarHeight")
+    local ratio = pct and (pct / 100) or nil
+    Helpers:UpdateFrameLayout(frame, borderSize, showHealerPower and isHealer, ratio)
 end
 
 -- [ AURA DISPLAY CONFIG ]--------------------------------------------------------------------------
