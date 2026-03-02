@@ -1,4 +1,4 @@
--- [ ORBIT FRAME SYSTEM ]----------------------------------------------------------------------------
+-- [ ORBIT EDIT MODE FRAME SYSTEM ]-----------------------------------------------------------------
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -9,13 +9,12 @@ local Frame = Engine.Frame
 
 -- [ MODULE REFERENCES ]-----------------------------------------------------------------------------
 
-local Anchor, Snap, Selection, CanvasMode, Persistence, Guard
+local Anchor, Snap, Selection, Persistence, Guard
 
 local function EnsureModules()
     Anchor = Anchor or Engine.FrameAnchor
     Snap = Snap or Engine.FrameSnap
     Selection = Selection or Engine.FrameSelection
-    CanvasMode = CanvasMode or Engine.CanvasMode
     Persistence = Persistence or Engine.FramePersistence
     Guard = Guard or Engine.FrameGuard
 end
@@ -122,26 +121,31 @@ function Frame:GetSelectedFrame()
     return Selection:GetSelectedFrame()
 end
 
--- [ CANVAS MODE API ]-------------------------------------------------------------------------------
+-- [ CANVAS MODE DELEGATION ]------------------------------------------------------------------------
+-- These methods delegate to Engine.CanvasMode (cross-domain call).
+-- Edit Mode needs to trigger Canvas Mode entry from selection double-click.
 
 function Frame:EnterCanvasMode(frame)
     EnsureModules()
-    CanvasMode:Enter(frame, function(f) Selection:UpdateVisuals(f) end)
+    local CM = Engine.CanvasMode
+    if CM then CM:Enter(frame, function(f) Selection:UpdateVisuals(f) end) end
 end
 
 function Frame:ExitCanvasMode(frame)
     EnsureModules()
-    CanvasMode:Exit(frame, function(f) Selection:UpdateVisuals(f) end)
+    local CM = Engine.CanvasMode
+    if CM then CM:Exit(frame, function(f) Selection:UpdateVisuals(f) end) end
 end
 
 function Frame:IsCanvasModeActive(frame)
-    EnsureModules()
-    return CanvasMode:IsActive(frame)
+    local CM = Engine.CanvasMode
+    return CM and CM:IsActive(frame) or false
 end
 
 function Frame:ToggleCanvasMode(frame)
     EnsureModules()
-    CanvasMode:Toggle(frame, function(f) Selection:UpdateVisuals(f) end)
+    local CM = Engine.CanvasMode
+    if CM then CM:Toggle(frame, function(f) Selection:UpdateVisuals(f) end) end
 end
 
 Frame.EnterComponentEdit = Frame.EnterCanvasMode
@@ -190,10 +194,8 @@ end
 -- [ NATIVE FRAME INTEGRATION ]----------------------------------------------------------------------
 
 function Frame:UpdateNativeFrameVisual(systemFrame)
-    EnsureModules()
-    if CanvasMode and CanvasMode.UpdateNativeFrameVisual then
-        CanvasMode:UpdateNativeFrameVisual(systemFrame)
-    end
+    local CM = Engine.CanvasMode
+    if CM and CM.UpdateNativeFrameVisual then CM:UpdateNativeFrameVisual(systemFrame) end
 end
 
 -- [ CLICK-THROUGH ]---------------------------------------------------------------------------------
@@ -235,8 +237,8 @@ setmetatable(Frame, {
             EnsureModules()
             return Anchor and Anchor.anchors or {}
         elseif k == "currentCanvasModeFrame" then
-            EnsureModules()
-            return CanvasMode and CanvasMode.currentFrame or nil
+            local CM = Engine.CanvasMode
+            return CM and CM.currentFrame or nil
         elseif k == "dragCallbacks" then
             EnsureModules()
             return Selection and Selection.dragCallbacks or {}

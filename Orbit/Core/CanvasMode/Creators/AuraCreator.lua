@@ -7,7 +7,7 @@ local CanvasMode = OrbitEngine.CanvasMode
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
-local AURA_SPACING = 2
+local AURA_SPACING = Orbit.Constants.GroupFrames.AuraSpacing
 local AURA_MIN_ICON_SIZE = 10
 local DEFAULT_MAX_ICONS = 3
 local DEFAULT_MAX_ROWS = 2
@@ -74,7 +74,10 @@ local function RefreshAuraIcons(self)
         btn:SetSize(iconSize, iconSize)
         btn.Icon:SetTexture(sampleIcons[((i - 1) % #sampleIcons) + 1])
 
-        if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(btn, skinSettings) end
+        if Orbit.Skin and Orbit.Skin.Icons then
+            Orbit.Skin.Icons:ApplyCustom(btn, skinSettings)
+            Orbit.Skin:SkinBorder(btn, btn, globalBorder)
+        end
 
         btn:ClearAllPoints()
         local xOffset = col * (iconSize + AURA_SPACING)

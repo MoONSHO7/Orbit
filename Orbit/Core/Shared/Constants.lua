@@ -105,6 +105,7 @@ C.GroupFrames = {
     OfflineAlpha = 0.35,
     MaxPrivateAuraAnchors = 3,
     AuraBaseIconSize = 10,
+    AuraSpacing = 1,
     RolePriority = { TANK = 1, HEALER = 2, DAMAGER = 3, NONE = 4 },
     GrowthDirection = { Down = "Down", Up = "Up", Left = "Left", Right = "Right" },
     ContainerAnchor = { Down = "TOPLEFT", Up = "BOTTOMLEFT", Right = "TOPLEFT", Left = "TOPRIGHT" },
@@ -176,6 +177,11 @@ C.Skin = {
     BorderOffsetPandemic = 6,
     OORAlpha = 0.5,
     DebuffBorderAlpha = 0,
+}
+
+C.Aura = {
+    SkinWithTimer = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true },
+    SkinNoTimer = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false },
 }
 
 -- [ COMPONENT DEFAULTS ]----------------------------------------------------------------------------

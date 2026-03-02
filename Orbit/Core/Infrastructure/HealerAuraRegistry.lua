@@ -66,6 +66,7 @@ local SPEC_SPELLS = {
 
 -- [ RAID BUFF DATA ]--------------------------------------------------------------------------------
 local RAID_BUFFS = {
+    { spellId = 1126,   label = "Mark of the Wild",        classFilter = "DRUID" },
     { spellId = 1459,   label = "Arcane Intellect",       classFilter = "MAGE" },
     { spellId = 6673,   label = "Battle Shout",           classFilter = "WARRIOR" },
     { spellId = 21562,  label = "Power Word: Fortitude",  classFilter = "PRIEST" },
@@ -73,6 +74,10 @@ local RAID_BUFFS = {
     { spellId = 462854, label = "Skyfury",                classFilter = "SHAMAN" },
     { spellId = 474754, label = "Symbiotic Relationship", classFilter = "EVOKER" },
 }
+
+-- Lookup of ALL raid buff spell IDs (all classes) for presence checking
+local ALL_RAID_BUFF_IDS = {}
+for _, buff in ipairs(RAID_BUFFS) do ALL_RAID_BUFF_IDS[buff.spellId] = true end
 
 -- [ SLOT KEY GENERATION ]---------------------------------------------------------------------------
 local SLOT_KEYS = {}
@@ -92,7 +97,8 @@ _allSlotKeys[#_allSlotKeys + 1] = RAID_BUFF_KEY
 
 -- Resolve active spec at load time
 local function BuildCaches()
-    local specId = GetSpecializationInfo and GetSpecializationInfo(GetSpecialization() or 0)
+    local specIndex = GetSpecialization and GetSpecialization() or 0
+    local specId = GetSpecializationInfo and specIndex and specIndex > 0 and GetSpecializationInfo(specIndex)
     local spells = specId and SPEC_SPELLS[specId]
     _activeSlots = {}
     _activeRaidBuffs = {}
@@ -118,6 +124,13 @@ local function BuildCaches()
 end
 BuildCaches()
 
+local rebuildFrame = CreateFrame("Frame")
+rebuildFrame:RegisterEvent("PLAYER_LOGIN")
+rebuildFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+rebuildFrame:SetScript("OnEvent", BuildCaches)
+
+function Registry:Rebuild() BuildCaches() end
+
 -- [ PUBLIC API ]------------------------------------------------------------------------------------
 function Registry:ActiveSlots() return _activeSlots end
 function Registry:ActiveRaidBuffs() return _activeRaidBuffs end
@@ -136,5 +149,6 @@ end
 
 -- Expose raw data for filter/exclusion building
 Registry.RaidBuffs = RAID_BUFFS
+Registry.AllRaidBuffIds = ALL_RAID_BUFF_IDS
 Registry.SLOT_KEYS = SLOT_KEYS
 Registry.RAID_BUFF_KEY = RAID_BUFF_KEY

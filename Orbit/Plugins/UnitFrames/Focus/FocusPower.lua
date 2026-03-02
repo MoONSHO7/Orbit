@@ -2,6 +2,7 @@
 local Orbit = Orbit
 
 local Plugin = Orbit:RegisterPlugin("Focus Power", "Orbit_FocusPower", {
+    liveToggle = true,
     canvasMode = true,
     defaults = Orbit.UnitPowerBarMixin.sharedDefaults,
 })

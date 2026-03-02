@@ -39,6 +39,14 @@ Mixin.ICON_PREVIEW_ATLASES = {
 }
 Mixin.MARKER_ICON_TEXCOORD = { 0.75, 1, 0.25, 0.5 }
 
+function Mixin:ApplyMarkerSprite(icon, index)
+    icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
+    local col = (index - 1) % RAID_TARGET_TEXTURE_COLUMNS
+    local row = math_floor((index - 1) / RAID_TARGET_TEXTURE_COLUMNS)
+    local w, h = 1 / RAID_TARGET_TEXTURE_COLUMNS, 1 / RAID_TARGET_TEXTURE_ROWS
+    icon:SetTexCoord(col * w, (col + 1) * w, row * h, (row + 1) * h)
+end
+
 -- [ CLASS PREVIEW SPELL IDS ]-------------------------------------------------------------------
 
 local CLASS_DEFENSIVE_SPELLS = {

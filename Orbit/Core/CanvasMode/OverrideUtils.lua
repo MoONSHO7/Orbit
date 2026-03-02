@@ -161,6 +161,23 @@ function OverrideUtils.ApplyScaleOverride(element, overrides)
     end
 end
 
+-- [ APPLY ICON SIZE OVERRIDE ]----------------------------------------------------------------------
+function OverrideUtils.ApplyIconSizeOverride(element, overrides)
+    if not element or not overrides or not overrides.IconSize then return end
+    local size = overrides.IconSize
+    local objType = element.GetObjectType and element:GetObjectType()
+    if objType == "Button" and element.Icon then
+        local scale = element:GetEffectiveScale()
+        element:SetSize(Engine.Pixel:Snap(size, scale), Engine.Pixel:Snap(size, scale))
+        if Orbit.Skin and Orbit.Skin.Icons then
+            local globalBorder = Orbit.db.GlobalSettings.BorderSize or Engine.Pixel:DefaultBorderSize(scale)
+            Orbit.Skin.Icons:ApplyCustom(element, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
+        end
+    else
+        element:SetSize(size, size)
+    end
+end
+
 -- [ APPLY ALL OVERRIDES ]---------------------------------------------------------------------------
 -- One-stop function: applies all relevant overrides based on element type.
 -- FontStrings get Font + FontSize + Color overrides.
@@ -187,4 +204,5 @@ function OverrideUtils.ApplyOverrides(element, overrides, defaults, unit, classF
 
     -- Scale (Textures and scalable elements)
     OverrideUtils.ApplyScaleOverride(element, overrides)
+    OverrideUtils.ApplyIconSizeOverride(element, overrides)
 end

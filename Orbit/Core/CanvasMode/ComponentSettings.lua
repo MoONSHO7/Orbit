@@ -22,102 +22,108 @@ local PORTRAIT_RING_OVERSHOOT = OrbitEngine.PORTRAIT_RING_OVERSHOOT
 local PORTRAIT_RING_DATA = OrbitEngine.PortraitRingData
 local PORTRAIT_RING_OPTIONS = OrbitEngine.PortraitRingOptions
 
--- [ COMPONENT TYPE SCHEMAS ]-------------------------------------------------------------------------
+-- [ SCHEMA HELPERS ]---------------------------------------------------------------------------------
+local function Compose(...)
+    local controls = {}
+    for i = 1, select("#", ...) do
+        for _, ctrl in ipairs(select(i, ...)) do controls[#controls + 1] = ctrl end
+    end
+    return { controls = controls }
+end
 
+-- [ REUSABLE CONTROLS ]------------------------------------------------------------------------------
 local SCALE_CONTROL = {
     type = "slider", key = "Scale", label = "Scale",
     min = 0.5, max = 2.0, step = 0.1,
     formatter = function(v) return math.floor(v * 100 + 0.5) .. "%" end,
 }
 
-local TYPE_SCHEMAS = {
-    FontString = {
-        controls = {
-            { type = "font", key = "Font", label = "Font" },
-            { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
-            { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = false },
-        },
-    },
-    Texture = { controls = { SCALE_CONTROL } },
-    IconFrame = { controls = { SCALE_CONTROL } },
+local ICON_SIZE_CONTROL = {
+    type = "slider", key = "IconSize", label = "Icon Size", min = 8, max = 50, step = 1,
+    formatter = function(v) return v .. "px" end,
 }
 
--- The bard's stat sheet: no gradient, just one solid ink color
-local STATIC_TEXT_CONTROLS = {
+-- [ PRESETS ]----------------------------------------------------------------------------------------
+local STATIC_TEXT = {
     { type = "font", key = "Font", label = "Font" },
     { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
     { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = true },
 }
 
+local DYNAMIC_TEXT = {
+    { type = "font", key = "Font", label = "Font" },
+    { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
+    { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = false },
+}
+
+local TEXT_NO_COLOR = {
+    { type = "font", key = "Font", label = "Font" },
+    { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
+}
+
+local AURA_GRID = {
+    ICON_SIZE_CONTROL,
+    { type = "slider", key = "MaxIcons", label = "Max Icons", min = 1, max = 10, step = 1 },
+    { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
+}
+
+local PANDEMIC_GLOW = {
+    { type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow", plugin = true,
+      options = {
+          { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
+          { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
+          { text = "Button Glow", value = 4 },
+      }, default = 0 },
+    { type = "colorcurve", key = "PandemicGlowColorCurve", label = "Pandemic Colour", plugin = true, singleColor = true },
+}
+
+-- [ COMPONENT TYPE SCHEMAS ]-------------------------------------------------------------------------
+local TYPE_SCHEMAS = {
+    FontString = Compose(DYNAMIC_TEXT),
+    Texture = { controls = { SCALE_CONTROL } },
+    IconFrame = { controls = { ICON_SIZE_CONTROL } },
+}
+
+-- [ KEY SCHEMAS ]------------------------------------------------------------------------------------
 local KEY_SCHEMAS = {
-    Name = { controls = STATIC_TEXT_CONTROLS },
-    Timer = { controls = STATIC_TEXT_CONTROLS },
-    Stacks = { controls = STATIC_TEXT_CONTROLS },
-    Keybind = { controls = STATIC_TEXT_CONTROLS },
-    MacroText = { controls = STATIC_TEXT_CONTROLS },
-    Charges = { controls = STATIC_TEXT_CONTROLS },
-    ChargeCount = { controls = STATIC_TEXT_CONTROLS },
-    Text = { controls = STATIC_TEXT_CONTROLS },
-    ["CastBar.Text"] = { controls = STATIC_TEXT_CONTROLS },
-    LevelText = {
-        controls = {
-            { type = "font", key = "Font", label = "Font" },
-            { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
-        },
-    },
-    Buffs = {
-        controls = {
-            { type = "slider", key = "MaxIcons", label = "Max Icons", min = 1, max = 10, step = 1 },
-            { type = "slider", key = "IconSize", label = "Icon Size", min = 10, max = 50, step = 1,
-              formatter = function(v) return v .. "px" end },
-            { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
-        },
-    },
-    Debuffs = {
-        controls = {
-            { type = "slider", key = "MaxIcons", label = "Max Icons", min = 1, max = 10, step = 1 },
-            { type = "slider", key = "IconSize", label = "Icon Size", min = 10, max = 50, step = 1,
-              formatter = function(v) return v .. "px" end },
-            { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
-            { type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
-              options = {
-                  { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
-                  { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
-                  { text = "Button Glow", value = 4 },
-              }, default = 2 },
-            { type = "colorcurve", key = "PandemicGlowColorCurve", label = "Pandemic Colour",
-              singleColor = true },
-        },
-        pluginSettingKeys = { PandemicGlowType = true, PandemicGlowColorCurve = true },
-    },
+    Name            = Compose(STATIC_TEXT),
+    Timer           = Compose(DYNAMIC_TEXT),
+    Stacks          = Compose(STATIC_TEXT),
+    Keybind         = Compose(STATIC_TEXT),
+    MacroText       = Compose(STATIC_TEXT),
+    Charges         = Compose(STATIC_TEXT),
+    ChargeCount     = Compose(STATIC_TEXT),
+    Text            = Compose(STATIC_TEXT),
+    ["CastBar.Text"] = Compose(STATIC_TEXT),
+    LevelText       = Compose(TEXT_NO_COLOR),
+    Buffs           = Compose(AURA_GRID),
+    Debuffs         = Compose(AURA_GRID, PANDEMIC_GLOW),
     Portrait = {
         controls = {
-            { type = "dropdown", key = "PortraitStyle", label = "Style", rebuildsPanel = true,
+            { type = "dropdown", key = "PortraitStyle", label = "Style", plugin = true, rebuildsPanel = true,
               options = { { text = "2D", value = "2d" }, { text = "3D", value = "3d" } }, default = "3d" },
-            { type = "slider", key = "PortraitScale", label = "Scale", min = 50, max = 200, step = 1,
+            { type = "slider", key = "PortraitScale", label = "Scale", plugin = true, min = 50, max = 200, step = 1,
               formatter = function(v) return v .. "%" end, default = 120 },
-            { type = "checkbox", key = "PortraitBorder", label = "Border", default = true, showIfValue = { key = "PortraitStyle", value = "3d" } },
-            { type = "dropdown", key = "PortraitRing", label = "Ring", showIfValue = { key = "PortraitStyle", value = "2d" },
+            { type = "checkbox", key = "PortraitBorder", label = "Border", plugin = true, default = true, showIfValue = { key = "PortraitStyle", value = "3d" } },
+            { type = "dropdown", key = "PortraitRing", label = "Ring", plugin = true, showIfValue = { key = "PortraitStyle", value = "2d" },
               options = PORTRAIT_RING_OPTIONS, default = "none" },
-            { type = "checkbox", key = "PortraitMirror", label = "Mirror", default = false },
+            { type = "checkbox", key = "PortraitMirror", label = "Mirror", plugin = true, default = false },
         },
-        pluginSettings = true,
     },
     CastBar = {
         controls = {
-            { type = "slider", key = "CastBarHeight", label = "Height", min = 8, max = 40, step = 1,
+            { type = "slider", key = "CastBarHeight", label = "Height", plugin = true, min = 8, max = 40, step = 1,
               formatter = function(v) return v .. "px" end },
-            { type = "slider", key = "CastBarWidth", label = "Width", min = 50, max = 400, step = 1,
+            { type = "slider", key = "CastBarWidth", label = "Width", plugin = true, min = 50, max = 400, step = 1,
               formatter = function(v) return v .. "px" end },
-            { type = "checkbox", key = "CastBarIcon", label = "Icon", default = true },
-            { type = "colorcurve", key = "CastBarColorCurve", label = "Color", singleColor = true },
+            { type = "checkbox", key = "CastBarIcon", label = "Icon", plugin = true, default = true },
+            { type = "colorcurve", key = "CastBarColorCurve", label = "Color", plugin = true, singleColor = true },
         },
-        pluginSettings = true,
     },
     HealthText = {
         controls = {
-            { type = "checkbox", key = "ShowHealthValue", label = "Show Health Value", default = true, capability = "supportsHealthText" },
-            { type = "dropdown", key = "HealthTextMode", label = "Format", showIf = "ShowHealthValue", capability = "supportsHealthText",
+            { type = "checkbox", key = "ShowHealthValue", label = "Show Health Value", plugin = true, default = true, capability = "supportsHealthText" },
+            { type = "dropdown", key = "HealthTextMode", label = "Format", plugin = true, showIf = "ShowHealthValue", capability = "supportsHealthText",
               options = {
                 { text = "Percentage", value = "percent" },
                 { text = "Short Health", value = "short" },
@@ -134,39 +140,6 @@ local KEY_SCHEMAS = {
             { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
             { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = false },
         },
-        pluginSettingKeys = { ShowHealthValue = true, HealthTextMode = true },
-    },
-}
-
--- Healer aura component schema (pandemic glow, swipe, timer text)
-local HEALER_AURA_SCHEMA = {
-    controls = {
-        { type = "slider", key = "IconSize", label = "Icon Size", min = 8, max = 50, step = 1,
-          formatter = function(v) return v .. "px" end },
-        { type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
-          options = {
-              { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
-              { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
-              { text = "Button Glow", value = 4 },
-          }, default = 0 },
-        { type = "colorcurve", key = "PandemicGlowColorCurve", label = "Pandemic Colour", singleColor = true },
-        { type = "colorcurve", key = "SwipeColorCurve", label = "Swipe Colour", singleColor = false },
-        { type = "colorcurve", key = "TimerTextColorCurve", label = "Timer Text Colour", singleColor = false },
-    },
-}
-
--- Raid buff (missing) component schema (proc glow)
-local RAID_BUFF_SCHEMA = {
-    controls = {
-        { type = "slider", key = "IconSize", label = "Icon Size", min = 8, max = 50, step = 1,
-          formatter = function(v) return v .. "px" end },
-        { type = "dropdown", key = "ProcGlowType", label = "Proc Glow",
-          options = {
-              { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
-              { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
-              { text = "Button Glow", value = 4 },
-          }, default = 0 },
-        { type = "colorcurve", key = "ProcGlowColorCurve", label = "Proc Colour", singleColor = true },
     },
 }
 
@@ -174,8 +147,24 @@ local RAID_BUFF_SCHEMA = {
 do
     local HealerReg = Orbit.HealerAuraRegistry
     if HealerReg then
-        for _, key in ipairs(HealerReg.SLOT_KEYS) do KEY_SCHEMAS[key] = HEALER_AURA_SCHEMA end
-        KEY_SCHEMAS[HealerReg.RAID_BUFF_KEY] = RAID_BUFF_SCHEMA
+        for _, key in ipairs(HealerReg.SLOT_KEYS) do
+            KEY_SCHEMAS[key] = Compose({ ICON_SIZE_CONTROL }, PANDEMIC_GLOW, {
+                { type = "colorcurve", key = "SwipeColorCurve", label = "Swipe Colour", singleColor = false },
+                { type = "colorcurve", key = "TimerTextColorCurve", label = "Timer Text Colour", singleColor = false },
+            })
+        end
+        KEY_SCHEMAS[HealerReg.RAID_BUFF_KEY] = {
+            controls = {
+                ICON_SIZE_CONTROL,
+                { type = "dropdown", key = "ProcGlowType", label = "Proc Glow",
+                  options = {
+                      { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
+                      { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
+                      { text = "Button Glow", value = 4 },
+                  }, default = 0 },
+                { type = "colorcurve", key = "ProcGlowColorCurve", label = "Proc Colour", singleColor = true },
+            },
+        }
     end
 end
 
@@ -299,38 +288,26 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
 
     overrideContainer.Title:SetText(COMPONENT_TITLES[componentKey] or componentKey)
 
-    local isPluginSettings = schema.pluginSettings
-    local pluginSettingKeys = schema.pluginSettingKeys
-    if isPluginSettings and plugin then
-        self.currentOverrides = {}
-        for _, control in ipairs(schema.controls) do
-            local val = plugin:GetSetting(systemIndex, control.key)
-            if val ~= nil then self.currentOverrides[control.key] = val end
+    -- Unified override loading: overrides first, then plugin-level settings, then pending
+    self.currentOverrides = {}
+    local savedPositions = plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+    local savedOverrides = (savedPositions[componentKey] or {}).overrides or {}
+    for k, v in pairs(savedOverrides) do self.currentOverrides[k] = v end
+    if container.existingOverrides then
+        for k, v in pairs(container.existingOverrides) do
+            if self.currentOverrides[k] == nil then self.currentOverrides[k] = v end
         end
-        if container.pendingOverrides then
-            for k, v in pairs(container.pendingOverrides) do self.currentOverrides[k] = v end
-        end
-    elseif pluginSettingKeys and plugin then
-        self.currentOverrides = {}
+    end
+    if plugin then
         for _, control in ipairs(schema.controls) do
-            if pluginSettingKeys[control.key] then
+            if control.plugin then
                 local val = plugin:GetSetting(systemIndex, control.key)
                 if val ~= nil then self.currentOverrides[control.key] = val end
             end
         end
-        local savedPositions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
-        local savedOverrides = (savedPositions[componentKey] or {}).overrides or {}
-        for k, v in pairs(savedOverrides) do self.currentOverrides[k] = v end
-        if container.pendingOverrides then
-            for k, v in pairs(container.pendingOverrides) do self.currentOverrides[k] = v end
-        end
-    elseif container.pendingOverrides then
-        self.currentOverrides = container.pendingOverrides
-    elseif container.existingOverrides then
-        self.currentOverrides = container.existingOverrides
-    else
-        local savedPositions = plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
-        self.currentOverrides = (savedPositions[componentKey] or {}).overrides or {}
+    end
+    if container.pendingOverrides then
+        for k, v in pairs(container.pendingOverrides) do self.currentOverrides[k] = v end
     end
 
     local function GetValueFromVisual(cont, key)
@@ -488,6 +465,24 @@ function Settings:HideWidgets()
     for _, widget in ipairs(self.widgets) do widget:Hide() end
 end
 
+-- [ CONTROL LOOKUP ]--------------------------------------------------------------------------------
+function Settings:GetControlDef(key)
+    local schema = KEY_SCHEMAS[self.componentKey]
+    if not schema then return nil end
+    for _, ctrl in ipairs(schema.controls) do
+        if ctrl.key == key then return ctrl end
+    end
+    return nil
+end
+
+function Settings:ApplyPluginPreview()
+    local key = self.componentKey
+    if key == "CastBar" then self:ApplyCastBarPreview()
+    elseif key == "Portrait" then self:ApplyPortraitPreview()
+    elseif key == "HealthText" then self:ApplyHealthTextPreview() end
+end
+
+
 -- [ VALUE CHANGE HANDLER ]--------------------------------------------------------------------------
 
 function Settings:OnValueChanged(key, value)
@@ -508,8 +503,8 @@ function Settings:OnValueChanged(key, value)
         local savedOverrides = {}
         for k, v in pairs(self.currentOverrides) do savedOverrides[k] = v end
         if self.container then self.container.pendingOverrides = savedOverrides end
-        local isPluginSetting = schema and schema.pluginSettings
-        if isPluginSetting then
+        local control = self:GetControlDef(key)
+        if control and control.plugin then
             self.pendingPluginSettings = self.pendingPluginSettings or {}
             self.pendingPluginSettings[key] = value
         end
@@ -517,7 +512,7 @@ function Settings:OnValueChanged(key, value)
         if self.pendingPluginSettings then
             for k, v in pairs(self.pendingPluginSettings) do self.currentOverrides[k] = v end
         end
-        self:ApplyPortraitPreview()
+        self:ApplyPluginPreview()
         return
     end
 
@@ -572,17 +567,11 @@ function Settings:OnValueChanged(key, value)
     if self.container then
         self.container.pendingOverrides = self.currentOverrides
 
-        local isPluginSetting = schema and (schema.pluginSettings or (schema.pluginSettingKeys and schema.pluginSettingKeys[key]))
-        if isPluginSetting then
+        local control = self:GetControlDef(key)
+        if control and control.plugin then
             self.pendingPluginSettings = self.pendingPluginSettings or {}
             self.pendingPluginSettings[key] = value
-            if self.componentKey == "CastBar" then
-                self:ApplyCastBarPreview()
-            elseif self.componentKey == "HealthText" then
-                self:ApplyHealthTextPreview()
-            else
-                self:ApplyPortraitPreview()
-            end
+            self:ApplyPluginPreview()
             return
         end
 
@@ -740,8 +729,23 @@ end
 -- [ APPLY STYLE ]-----------------------------------------------------------------------------------
 
 function Settings:ApplyStyle(container, key, value)
-    if key == "MaxIcons" or key == "IconSize" or key == "MaxRows" then
+    if key == "MaxIcons" or key == "MaxRows" then
         if self.container and self.container.RefreshAuraIcons then self.container:RefreshAuraIcons() end
+        return
+    end
+    if key == "IconSize" then
+        if self.container and self.container.RefreshAuraIcons then
+            self.container:RefreshAuraIcons()
+        elseif self.container then
+            self.container:SetSize(value, value)
+            if self.container.visual and self.container.visual.SetSize then self.container.visual:SetSize(value, value) end
+            if self.container.visual and Orbit.Skin and Orbit.Skin.Icons then
+                local s = self.container:GetEffectiveScale() or 1
+                local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(s)
+                Orbit.Skin.Icons:ApplyCustom(self.container.visual, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
+                Orbit.Skin:SkinBorder(self.container.visual, self.container.visual, globalBorder)
+            end
+        end
         return
     end
 
@@ -773,23 +777,7 @@ function Settings:ApplyStyle(container, key, value)
         local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(value)
         if color then visual:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1) end
     elseif key == "Scale" then
-        if container.isIconFrame then
-            if not container.originalContainerWidth then
-                container.originalContainerWidth = container:GetWidth()
-                container.originalContainerHeight = container:GetHeight()
-            end
-            local baseW = container.originalContainerWidth or 24
-            local baseH = container.originalContainerHeight or 24
-            local scale = container:GetEffectiveScale()
-            local w, h = Orbit.Engine.Pixel:Snap(baseW * value, scale), Orbit.Engine.Pixel:Snap(baseH * value, scale)
-            container:SetSize(w, h)
-            if visual.SetSize then visual:SetSize(w, h) end
-            if Orbit.Skin and Orbit.Skin.Icons then
-                local s = visual:GetEffectiveScale() or 1
-                local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(s)
-                Orbit.Skin.Icons:ApplyCustom(visual, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
-            end
-        elseif visual.GetObjectType and visual:GetObjectType() == "Texture" then
+        if visual.GetObjectType and visual:GetObjectType() == "Texture" then
             if not container.originalVisualWidth then
                 container.originalVisualWidth = visual:GetWidth()
                 container.originalVisualHeight = visual:GetHeight()

@@ -22,15 +22,30 @@ local FONT_GROUP = "GameFontNormal"
 local GROUP_HEADER_COLOR = { r = 1, g = 0.82, b = 0 }
 
 -- Entries: string = single plugin, table = { label, plugins = { ... } } compound toggle
+-- triState = true marks entries that support 3-state: off / on / hide-blizzard-too
 local PLUGIN_GROUPS = {
     { header = "Unit Frames", names = {
         "Player Frame", "Player Power", "Player Cast Bar", "Player Resources", "Pet Frame",
         { label = "Target Frame", plugins = { "Target Frame", "Target Power", "Target Cast Bar", "Target Buffs", "Target Debuffs", "Target of Target" } },
-        { label = "Focus Frame",  plugins = { "Focus Frame", "Focus Power", "Focus Cast Bar", "Focus Buffs", "Focus Debuffs", "Target of Focus" } },
+        { label = "Focus Frame",  plugins = { "Focus Frame", "Focus Power", "Focus Cast Bar", "Focus Buffs", "Focus Debuffs", "Target of Focus" }, triState = true },
     }},
     { header = "Group Frames", names = { "Party Frames", "Raid Frames", "Boss Frames" } },
     { header = "Combat",       names = { "Action Bars", "Cooldown Manager" } },
-    { header = "UI",           names = { "Menu Bar", "Bag Bar", "Queue Status", "Performance Info", "Combat Timer", "Talking Head" } },
+    { header = "UI",           names = {
+        { label = "Menu Bar", plugins = { "Menu Bar" }, triState = true },
+        { label = "Bag Bar",  plugins = { "Bag Bar" },  triState = true },
+        "Queue Status", "Performance Info", "Combat Timer", "Talking Head",
+    }},
+}
+
+-- [ TRI-STATE VISUALS ]-----------------------------------------------------------------------------
+local TRI_COLOR_YELLOW = { r = 1, g = 0.82, b = 0 }
+local CHECK_TEXTURE = "Interface\\Buttons\\UI-CheckBox-Check"
+local CROSS_TEXTURE = "Interface\\RAIDFRAME\\ReadyCheck-NotReady"
+local TRI_TOOLTIPS = {
+    [0] = "Blizzard default frame will show.",
+    [1] = "Orbit replaces Blizzard frame.",
+    [2] = "Both Orbit and Blizzard frames disabled.",
 }
 
 -- [ PANEL CREATION ]--------------------------------------------------------------------------------
@@ -43,6 +58,31 @@ local function CreateCheckbox(parent, index)
     return cb
 end
 
+local function ApplyTriStateVisual(cb, state)
+    if state == 0 then
+        cb:SetChecked(false)
+        cb:SetCheckedTexture(CHECK_TEXTURE)
+    elseif state == 1 then
+        cb:SetChecked(true)
+        cb:SetCheckedTexture(CHECK_TEXTURE)
+        cb:GetCheckedTexture():SetVertexColor(TRI_COLOR_YELLOW.r, TRI_COLOR_YELLOW.g, TRI_COLOR_YELLOW.b)
+    else
+        cb:SetChecked(true)
+        cb:SetCheckedTexture(CROSS_TEXTURE)
+        cb:GetCheckedTexture():SetVertexColor(1, 0.3, 0.3)
+    end
+end
+
+local function GetTriState(primaryPlugin, pluginNames)
+    -- Red (2): disabled + blizzard hidden
+    if Orbit:IsBlizzardHidden(primaryPlugin) then return 2 end
+    -- Yellow (1): all sub-plugins enabled
+    for _, name in ipairs(pluginNames) do
+        if not Orbit:IsPluginEnabled(name) then return 0 end
+    end
+    return 1
+end
+
 local function CreatePluginPanel()
     local frame = CreateFrame("Frame", "OrbitPluginManagerPanel")
     frame:Hide()
@@ -53,7 +93,7 @@ local function CreatePluginPanel()
 
     local desc = frame:CreateFontString(nil, "OVERLAY", FONT_SMALL)
     desc:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -4)
-    desc:SetText("|cFF888888Toggle plugins on or off. Changes require a UI reload.|r")
+    desc:SetText("|cFF888888Toggle plugins on or off. Some changes require a UI reload.|r")
 
     local checkboxPool = {}
     local headerPool = {}
@@ -72,9 +112,11 @@ local function CreatePluginPanel()
     local function CheckPendingChanges()
         pendingChanges = false
         for _, existing in ipairs(checkboxes) do
-            if existing._initialState ~= existing:GetChecked() then
-                pendingChanges = true
-                break
+            if existing._allLiveToggle then -- skip: applied immediately
+            elseif existing._isTriState then
+                if existing._initialTriState ~= existing._triState then pendingChanges = true; break end
+            else
+                if existing._initialState ~= existing:GetChecked() then pendingChanges = true; break end
             end
         end
         UpdateReloadButton()
@@ -90,7 +132,7 @@ local function CreatePluginPanel()
         return map
     end
 
-    local function AddCheckbox(pluginMap, displayName, pluginNames, yOffset, col)
+    local function AddCheckbox(pluginMap, displayName, pluginNames, yOffset, col, isTriState)
         -- Verify at least one plugin exists
         local exists = false
         for _, name in ipairs(pluginNames) do
@@ -106,23 +148,77 @@ local function CreatePluginPanel()
         cb:ClearAllPoints()
         cb:SetPoint("TOPLEFT", xOffset, yOffset)
         cb.text:SetText(displayName)
+        cb._isTriState = isTriState
 
-        -- Compound: checked only if ALL sub-plugins are enabled
-        local allEnabled = true
-        for _, name in ipairs(pluginNames) do
-            if not Orbit:IsPluginEnabled(name) then allEnabled = false; break end
-        end
-        cb:SetChecked(allEnabled)
-
-        local initialState = cb:GetChecked()
-        cb._initialState = initialState
-        cb:SetScript("OnClick", function(self)
-            local checked = self:GetChecked()
+        if isTriState then
+            local primaryPlugin = pluginNames[1]
+            local state = GetTriState(primaryPlugin, pluginNames)
+            cb._triState = state
+            cb._initialTriState = state
+            ApplyTriStateVisual(cb, state)
+            cb:SetScript("OnClick", function(self)
+                self._triState = (self._triState + 1) % 3
+                ApplyTriStateVisual(self, self._triState)
+                if self._triState == 0 then
+                    for _, name in ipairs(pluginNames) do
+                        if Orbit:IsLiveToggle(name) then Orbit:LiveTogglePlugin(name, false)
+                        else Orbit:SetPluginEnabled(name, false) end
+                    end
+                    Orbit:SetBlizzardHidden(primaryPlugin, false)
+                elseif self._triState == 1 then
+                    for _, name in ipairs(pluginNames) do
+                        if Orbit:IsLiveToggle(name) then Orbit:LiveTogglePlugin(name, true)
+                        else Orbit:SetPluginEnabled(name, true) end
+                    end
+                    Orbit:SetBlizzardHidden(primaryPlugin, false)
+                else
+                    for _, name in ipairs(pluginNames) do
+                        if Orbit:IsLiveToggle(name) then Orbit:LiveTogglePlugin(name, false)
+                        else Orbit:SetPluginEnabled(name, false) end
+                    end
+                    Orbit:SetBlizzardHidden(primaryPlugin, true)
+                end
+                CheckPendingChanges()
+            end)
+            cb:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(displayName, 1, 1, 1)
+                GameTooltip:AddLine(TRI_TOOLTIPS[self._triState], nil, nil, nil, true)
+                GameTooltip:Show()
+            end)
+            cb:SetScript("OnLeave", GameTooltip_Hide)
+        else
+            cb._triState = nil
+            cb._initialTriState = nil
+            local allEnabled = true
             for _, name in ipairs(pluginNames) do
-                Orbit:SetPluginEnabled(name, checked)
+                if not Orbit:IsPluginEnabled(name) then allEnabled = false; break end
             end
-            CheckPendingChanges()
-        end)
+            cb:SetChecked(allEnabled)
+            cb:SetCheckedTexture(CHECK_TEXTURE)
+            cb:GetCheckedTexture():SetVertexColor(1, 1, 1)
+            cb:SetScript("OnEnter", nil)
+            cb:SetScript("OnLeave", nil)
+            local initialState = cb:GetChecked()
+            cb._initialState = initialState
+            -- Check if all plugins in this entry support live toggle
+            local allLive = true
+            for _, name in ipairs(pluginNames) do
+                if not Orbit:IsLiveToggle(name) then allLive = false; break end
+            end
+            cb._allLiveToggle = allLive
+            cb:SetScript("OnClick", function(self)
+                local checked = self:GetChecked()
+                if allLive then
+                    for _, name in ipairs(pluginNames) do Orbit:LiveTogglePlugin(name, checked) end
+                    self._initialState = checked
+                else
+                    for _, name in ipairs(pluginNames) do Orbit:SetPluginEnabled(name, checked) end
+                end
+                CheckPendingChanges()
+            end)
+        end
+
         cb:Show()
         table.insert(checkboxes, cb)
 
@@ -164,9 +260,9 @@ local function CreatePluginPanel()
             local col = 0
             for _, entry in ipairs(group.names) do
                 if type(entry) == "table" then
-                    yOffset, col = AddCheckbox(pluginMap, entry.label, entry.plugins, yOffset, col)
+                    yOffset, col = AddCheckbox(pluginMap, entry.label, entry.plugins, yOffset, col, entry.triState)
                 else
-                    yOffset, col = AddCheckbox(pluginMap, entry, { entry }, yOffset, col)
+                    yOffset, col = AddCheckbox(pluginMap, entry, { entry }, yOffset, col, false)
                 end
             end
             -- Finish partial row

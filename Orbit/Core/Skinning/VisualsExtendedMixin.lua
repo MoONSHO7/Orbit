@@ -12,11 +12,11 @@ function Mixin:GetComponentOverrides(systemIndex, key)
     return positions and positions[key] and positions[key].overrides
 end
 
-function Mixin:UpdateLevelDisplay(frame, systemIndex)
+function Mixin:UpdateLevelDisplay(frame, systemIndex, overrideLevel)
     if not frame or not frame.LevelText then return end
     if not UnitExists(frame.unit) then frame.LevelText:Hide() return end
     if self.IsComponentDisabled and self:IsComponentDisabled("LevelText") then frame.LevelText:Hide() return end
-    local level = UnitLevel(frame.unit)
+    local level = overrideLevel or UnitLevel(frame.unit)
     if level and level > 0 then
         local color = GetCreatureDifficultyColor(level)
         frame.LevelText:SetText(level)
@@ -79,9 +79,9 @@ function Mixin:UpdateClassificationVisuals(frame, systemIndex)
     end
 end
 
-function Mixin:UpdateVisualsExtended(frame, systemIndex)
+function Mixin:UpdateVisualsExtended(frame, systemIndex, overrideLevel)
     if not frame then return end
     self:StyleLevelText(frame, systemIndex)
-    self:UpdateLevelDisplay(frame, systemIndex)
+    self:UpdateLevelDisplay(frame, systemIndex, overrideLevel)
     self:UpdateClassificationVisuals(frame, systemIndex)
 end

@@ -149,7 +149,7 @@ local RaidDebuffPostFilter = Filters:CreateDebuffFilter({
 })
 local RaidBuffPostFilter = Filters:CreateBuffFilter()
 
-local RAID_SKIN = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true }
+local RAID_SKIN = Orbit.Constants.Aura.SkinWithTimer
 
 local RAID_DEBUFF_CFG = {
     componentKey = "Debuffs", fetchFilter = "HARMFUL", fetchMax = 40,
@@ -169,13 +169,19 @@ local function UpdateDebuffs(frame, plugin) plugin:UpdateAuraContainer(frame, pl
 local function UpdateBuffs(frame, plugin) plugin:UpdateAuraContainer(frame, plugin, "buffContainer", "buffPool", RAID_BUFF_CFG) end
 local function UpdateDefensiveIcon(frame, plugin) plugin:UpdateDefensiveIcon(frame, plugin, DEFENSIVE_ICON_SIZE) end
 local function UpdateCrowdControlIcon(frame, plugin) plugin:UpdateCrowdControlIcon(frame, plugin, CROWD_CONTROL_ICON_SIZE) end
+local function GetComponentIconSize(plugin, key)
+    local positions = plugin:GetSetting(1, "ComponentPositions")
+    local overrides = positions and positions[key] and positions[key].overrides
+    return (overrides and overrides.IconSize) or HEALER_AURA_ICON_SIZE
+end
+
 local function UpdateHealerAuras(frame, plugin)
     for _, slot in ipairs(HealerReg:ActiveSlots()) do
-        plugin:UpdateSpellAuraIcon(frame, plugin, slot.key, slot.spellId, HEALER_AURA_ICON_SIZE, slot.altSpellId)
+        plugin:UpdateSpellAuraIcon(frame, plugin, slot.key, slot.spellId, GetComponentIconSize(plugin, slot.key), slot.altSpellId)
     end
 end
 local function UpdateMissingRaidBuffs(frame, plugin)
-    plugin:UpdateMissingRaidBuffs(frame, plugin, "RaidBuff", HealerReg:ActiveRaidBuffs(), HEALER_AURA_ICON_SIZE)
+    plugin:UpdateMissingRaidBuffs(frame, plugin, "RaidBuff", HealerReg:ActiveRaidBuffs(), GetComponentIconSize(plugin, "RaidBuff"))
 end
 
 -- [ PRIVATE AURA ANCHOR ]---------------------------------------------------------------------------
@@ -290,7 +296,14 @@ function Plugin:OnLoad()
     -- Canvas Mode: use first raid frame for component editing
     local pluginRef = self
     local firstFrame = self.frames[1]
-    for _, k in ipairs(HealerReg:ActiveKeys()) do self:EnsureAuraButton(firstFrame, k, HEALER_AURA_ICON_SIZE) end
+    for _, k in ipairs(HealerReg:ActiveKeys()) do
+        if k == "RaidBuff" then
+            local raidBuffs = HealerReg:ActiveRaidBuffs()
+            if #raidBuffs > 0 then self:EnsureRaidBuffContainer(firstFrame, k, raidBuffs, GetComponentIconSize(self, k)) end
+        else
+            self:EnsureAuraIcon(firstFrame, k, GetComponentIconSize(self, k))
+        end
+    end
     local raidIconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
     for _, k in ipairs(HealerReg:ActiveKeys()) do raidIconKeys[#raidIconKeys + 1] = k end
     Orbit.GroupCanvasRegistration:RegisterComponents(pluginRef, self.container, firstFrame,
@@ -341,8 +354,9 @@ function Plugin:OnLoad()
                 SchedulePrivateAuraReanchor(self)
             end
             for _, frame in ipairs(self.frames) do
-                if frame.unit and frame.UpdateAll then
-                    frame:UpdateAll()
+                if frame.unit then
+                    UpdateInRange(frame)
+                    if frame.UpdateAll then frame:UpdateAll() end
                     UpdatePowerBar(frame, self)
                 end
             end
@@ -385,7 +399,11 @@ function Plugin:OnLoad()
             if frame == self.container or frame == self.frames[1] then
                 self:PrepareIconsForCanvasMode()
             end
-            return originalOpen(dlg, frame, plugin, systemIndex)
+            local result = originalOpen(dlg, frame, plugin, systemIndex)
+            if frame == self.container or frame == self.frames[1] then
+                self:SchedulePreviewUpdate()
+            end
+            return result
         end
     end
 end
@@ -394,73 +412,17 @@ end
 
 function Plugin:PrepareIconsForCanvasMode()
     local frame = self.frames[1]
-    if not frame then
-        return
-    end
-    local previewAtlases = Orbit.IconPreviewAtlases
-
-    for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }) do
-        if frame[key] then
-            frame[key]:SetAtlas(previewAtlases[key])
-            frame[key]:SetSize(STATUS_ICON_SIZE, STATUS_ICON_SIZE)
-        end
-    end
-    if frame.RoleIcon then
-        if not frame.RoleIcon:GetAtlas() then
-            frame.RoleIcon:SetAtlas(previewAtlases.RoleIcon)
-        end
-        frame.RoleIcon:SetSize(ROLE_ICON_SIZE, ROLE_ICON_SIZE)
-    end
-    if frame.LeaderIcon then
-        if not frame.LeaderIcon:GetAtlas() then
-            frame.LeaderIcon:SetAtlas(previewAtlases.LeaderIcon)
-        end
-        frame.LeaderIcon:SetSize(ROLE_ICON_SIZE, ROLE_ICON_SIZE)
-    end
-    if frame.MainTankIcon then
-        if not frame.MainTankIcon:GetAtlas() then
-            frame.MainTankIcon:SetAtlas(previewAtlases.MainTankIcon)
-        end
-        frame.MainTankIcon:SetSize(ROLE_ICON_SIZE, ROLE_ICON_SIZE)
-    end
-    if frame.MarkerIcon then
-        frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
-        frame.MarkerIcon.orbitSpriteIndex = 8
-        frame.MarkerIcon.orbitSpriteRows = 4
-        frame.MarkerIcon.orbitSpriteCols = 4
-        local i = 8
-        local col = (i - 1) % 4
-        local row = math.floor((i - 1) / 4)
-        local w, h = 1 / 4, 1 / 4
-        frame.MarkerIcon:SetTexCoord(col * w, (col + 1) * w, row * h, (row + 1) * h)
-        frame.MarkerIcon:Show()
-    end
-
-    local StatusMixin = Orbit.StatusIconMixin
-    if frame.DefensiveIcon then
-        frame.DefensiveIcon.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
-        frame.DefensiveIcon:SetSize(DEFENSIVE_ICON_SIZE, DEFENSIVE_ICON_SIZE)
-        frame.DefensiveIcon:Show()
-    end
-
-    if frame.CrowdControlIcon then
-        frame.CrowdControlIcon.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
-        frame.CrowdControlIcon:SetSize(CROWD_CONTROL_ICON_SIZE, CROWD_CONTROL_ICON_SIZE)
-        frame.CrowdControlIcon:Show()
-    end
-    for _, slot in ipairs(HealerReg:ActiveSlots()) do
-        if not (self.IsComponentDisabled and self:IsComponentDisabled(slot.key)) then
-            local icon = self:EnsureAuraButton(frame, slot.key, HEALER_AURA_ICON_SIZE)
-            local tex = C_Spell.GetSpellTexture(slot.spellId)
-            if tex then icon.Icon:SetTexture(tex) end
-            icon:SetSize(HEALER_AURA_ICON_SIZE, HEALER_AURA_ICON_SIZE)
-            icon:Show()
-        end
-    end
-    local raidBuffs = HealerReg:ActiveRaidBuffs()
-    if #raidBuffs > 0 and not (self.IsComponentDisabled and self:IsComponentDisabled("RaidBuff")) then
-        self:EnsureRaidBuffContainer(frame, "RaidBuff", raidBuffs, HEALER_AURA_ICON_SIZE):Show()
-    end
+    if not frame then return end
+    Orbit.GroupCanvasRegistration:PrepareIcons(self, frame, {
+        statusIcons = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" },
+        statusIconSize = STATUS_ICON_SIZE,
+        roleIcons = { "RoleIcon", "LeaderIcon", "MainTankIcon" },
+        roleIconSize = ROLE_ICON_SIZE,
+        defensiveSize = DEFENSIVE_ICON_SIZE,
+        crowdControlSize = CROWD_CONTROL_ICON_SIZE,
+        privateAuraSize = PRIVATE_AURA_ICON_SIZE,
+        healerAuraSize = HEALER_AURA_ICON_SIZE, -- Default for PrepareIcons
+    }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs())
 end
 
 -- [ FRAME POSITIONING ]-----------------------------------------------------------------------------
@@ -732,43 +694,80 @@ function Plugin:UpdateLayout(frame)
     self:PositionFrames()
 end
 
-function Plugin:ApplySettings()
-    if not self.frames then
-        return
-    end
-
+-- Shared styling applied to BOTH live and preview frames (single source of truth)
+function Plugin:ApplyFrameStyle(frame, showPower)
     local width = self:GetSetting(1, "Width") or 90
     local height = self:GetSetting(1, "Height") or 36
-    local showHealthValue = self:GetSetting(1, "ShowHealthValue")
-    if showHealthValue == nil then showHealthValue = true end
-    local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
     local borderSize = self:GetSetting(1, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(UIParent:GetEffectiveScale() or 1)
     local textureName = self:GetSetting(1, "Texture")
-    local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
+
+    frame:SetSize(width, height)
+    if frame.SetBorder then frame:SetBorder(borderSize) end
+    UpdateFrameLayout(frame, borderSize, self)
+
+    -- Texture
+    if frame.Health then Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true) end
+    if frame.Power then
+        local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
+        frame.Power:SetStatusBarTexture(texturePath)
+    end
+
+    -- Power bar visibility
+    if showPower ~= nil then
+        if frame.Power then
+            if showPower then frame.Power:Show() else frame.Power:Hide() end
+        end
+    end
+
+    -- Text styling
+    self:ApplyTextStyling(frame)
+
+    -- Component positions + style overrides
+    if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
+
+    -- Icon positions (healer auras, status icons, etc.)
+    local savedPositions = self:GetSetting(1, "ComponentPositions")
+    if savedPositions then
+        local iconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+        local activeKeys = HealerReg:ActiveKeys()
+        for _, k in ipairs(activeKeys) do iconKeys[#iconKeys + 1] = k end
+        for _, k in ipairs(activeKeys) do
+            if savedPositions[k] then
+                if k == "RaidBuff" then
+                    if not frame.RaidBuff then
+                        local sz = GetComponentIconSize(self, k)
+                        local c = CreateFrame("Frame", nil, frame)
+                        c:SetPoint("CENTER", frame, "CENTER", 0, 0)
+                        c:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.HealerAura)
+                        c._raidIcons = {}
+                        c:SetSize(sz, sz)
+                        frame.RaidBuff = c
+                    end
+                else
+                    self:EnsureAuraIcon(frame, k, GetComponentIconSize(self, k))
+                end
+            end
+        end
+        Orbit.GroupCanvasRegistration:ApplyIconPositions({ frame }, savedPositions, iconKeys)
+    end
+end
+
+function Plugin:ApplySettings()
+    if not self.frames then return end
 
     for _, frame in ipairs(self.frames) do
         if not frame.preview and frame.unit then
-            Orbit:SafeAction(function() frame:SetSize(width, height) end)
-            if frame.Health then
-                frame.Health:SetStatusBarTexture(texturePath)
-            end
-            if frame.Power then
-                frame.Power:SetStatusBarTexture(texturePath)
-            end
-            if frame.SetBorder then
-                frame:SetBorder(borderSize)
-            end
-            UpdateFrameLayout(frame, borderSize, self)
-            if frame.SetHealthTextMode then
-                frame:SetHealthTextMode(healthTextMode)
-            end
+            Orbit:SafeAction(function() self:ApplyFrameStyle(frame) end)
+
+            -- Live-only: real data updates
+            local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
+            if frame.SetHealthTextMode then frame:SetHealthTextMode(healthTextMode) end
+            local showHealthValue = self:GetSetting(1, "ShowHealthValue")
+            if showHealthValue == nil then showHealthValue = true end
             frame.healthTextEnabled = showHealthValue
             if frame.UpdateHealthText then frame:UpdateHealthText() end
             StatusDispatch(frame, self, "UpdateStatusText")
-            if frame.SetClassColour then
-                frame:SetClassColour(true)
-            end
-            self:ApplyTextStyling(frame)
+            if frame.SetClassColour then frame:SetClassColour(true) end
             UpdatePowerBar(frame, self)
             UpdateDebuffs(frame, self)
             UpdateBuffs(frame, self)
@@ -778,40 +777,17 @@ function Plugin:ApplySettings()
             UpdateMissingRaidBuffs(frame, self)
             UpdatePrivateAuras(frame, self)
             StatusDispatch(frame, self, "UpdateAllPartyStatusIcons")
-            if frame.UpdateAll then
-                frame:UpdateAll()
-            end
+            if frame.UpdateAll then frame:UpdateAll() end
         end
     end
 
     self:PositionFrames()
     OrbitEngine.Frame:RestorePosition(self.container, self, 1)
 
+    -- Restore drag positions on container (first frame)
     local savedPositions = self:GetSetting(1, "ComponentPositions")
     if savedPositions then
         OrbitEngine.ComponentDrag:RestoreFramePositions(self.container, savedPositions)
-        local iconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
-        local activeKeys = HealerReg:ActiveKeys()
-        for _, k in ipairs(activeKeys) do iconKeys[#iconKeys + 1] = k end
-        for _, frame in ipairs(self.frames) do
-            for _, k in ipairs(activeKeys) do
-                if savedPositions[k] then
-                    if k == "RaidBuff" then
-                        if not frame.RaidBuff then
-                            local c = CreateFrame("Frame", nil, frame)
-                            c:SetPoint("CENTER", frame, "CENTER", 0, 0)
-                            c:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.HealerAura)
-                            c._raidIcons = {}
-                            c:SetSize(HEALER_AURA_ICON_SIZE, HEALER_AURA_ICON_SIZE)
-                            frame.RaidBuff = c
-                        end
-                    else
-                        self:EnsureAuraButton(frame, k, HEALER_AURA_ICON_SIZE)
-                    end
-                end
-            end
-        end
-        Orbit.GroupCanvasRegistration:ApplyIconPositions(self.frames, savedPositions, iconKeys)
     end
 
     if self.frames[1] and self.frames[1].preview then

@@ -237,3 +237,8 @@ function Plugin:ApplySettings()
 
     self:ApplyMouseOver(frame, SYSTEM_ID)
 end
+
+-- [ BLIZZARD HIDER ]--------------------------------------------------------------------------------
+Orbit:RegisterBlizzardHider("Bag Bar", function()
+    if BagsBar then OrbitEngine.NativeFrame:SecureHide(BagsBar) end
+end)

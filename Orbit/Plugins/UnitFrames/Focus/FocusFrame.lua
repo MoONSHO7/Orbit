@@ -131,6 +131,7 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("UNIT_FACTION")
     self.frame:RegisterEvent("UNIT_LEVEL")
     self.frame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
+    self.frame:RegisterEvent("PLAYER_LEVEL_UP")
     self.frame:RegisterEvent("UNIT_PORTRAIT_UPDATE")
     self.frame:RegisterEvent("PORTRAITS_UPDATED")
     self.frame:RegisterEvent("RAID_TARGET_UPDATE")
@@ -163,6 +164,8 @@ function Plugin:OnLoad()
 
         if event == "UNIT_LEVEL" or event == "UNIT_CLASSIFICATION_CHANGED" then
             self:UpdateVisualsExtended(f, FOCUS_FRAME_INDEX)
+        elseif event == "PLAYER_LEVEL_UP" then
+            if UnitIsUnit("focus", "player") then self:UpdateVisualsExtended(f, FOCUS_FRAME_INDEX, unit) end
         elseif event == "UNIT_PORTRAIT_UPDATE" or event == "PORTRAITS_UPDATED" then
             f:UpdatePortrait()
         end
@@ -264,3 +267,8 @@ function Plugin:UpdateVisuals(frame)
         self:UpdateVisualsExtended(frame, FOCUS_FRAME_INDEX)
     end
 end
+
+-- [ BLIZZARD HIDER ]--------------------------------------------------------------------------------
+Orbit:RegisterBlizzardHider("Focus Frame", function()
+    if FocusFrame then OrbitEngine.NativeFrame:Hide(FocusFrame) end
+end)

@@ -61,6 +61,7 @@ local SYSTEM_ID = "Orbit_PlayerPower"
 local SYSTEM_INDEX = 1
 
 local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
+    liveToggle = true,
     canvasMode = true,
     defaults = {
         Hidden = false,

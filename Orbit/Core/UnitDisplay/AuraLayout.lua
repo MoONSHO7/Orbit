@@ -6,7 +6,7 @@ local AL = Orbit.AuraLayout
 local Pixel = Orbit.Engine.Pixel
 local math_max = math.max
 
-local SMART_AURA_SPACING = 1
+local SMART_AURA_SPACING = Orbit.Constants.GroupFrames.AuraSpacing
 local SMART_MIN_ICON_SIZE = 10
 local SMART_DEFAULT_ICON_SIZE = 10
 

@@ -4,6 +4,7 @@ local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Target Cast Bar", "Orbit_TargetCastBar", {
+    liveToggle = true,
     defaults = Orbit.CastBarMixin.sharedDefaults,
 })
 

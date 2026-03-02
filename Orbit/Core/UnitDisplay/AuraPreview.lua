@@ -7,11 +7,10 @@ local OrbitEngine = Orbit.Engine
 local AL = Orbit.AuraLayout
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 
-local PREVIEW_SKIN = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true }
+local PREVIEW_SKIN = Orbit.Constants.Aura.SkinWithTimer
 local PREVIEW_TIMER_MIN_SIZE = 14
 local PREVIEW_COOLDOWN_ELAPSED = 10
 local PREVIEW_COOLDOWN_DURATION = 60
-local PREVIEW_PAA_SKIN = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false }
 local PREVIEW_PAA_SPACING = 1
 local PREVIEW_PAA_COUNT = 3
 
@@ -81,6 +80,18 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, sampleIcons, overrides
     end
 end
 
+function AP:ShowFrameAuras(plugin, frame, debuffCfg, buffCfg)
+    local positions = plugin:GetSetting(1, "ComponentPositions") or {}
+    local debuffData = positions.Debuffs or {}
+    local buffData = positions.Buffs or {}
+    local debuffOff = plugin.IsComponentDisabled and plugin:IsComponentDisabled("Debuffs")
+    local buffOff = plugin.IsComponentDisabled and plugin:IsComponentDisabled("Buffs")
+    local maxDebuffs = (debuffData.overrides or {}).MaxIcons or debuffCfg.defaultMax or 3
+    local maxBuffs = (buffData.overrides or {}).MaxIcons or buffCfg.defaultMax or 3
+    AP:ShowIcons(frame, "debuff", debuffData, debuffOff and 0 or maxDebuffs, debuffCfg.sampleIcons, debuffData.overrides, debuffCfg)
+    AP:ShowIcons(frame, "buff", buffData, buffOff and 0 or maxBuffs, buffCfg.sampleIcons, buffData.overrides, buffCfg)
+end
+
 function AP:ShowPrivateAuras(frame, posData, baseIconSize)
     local paa = frame.PrivateAuraAnchor
     if not paa then return end
@@ -100,7 +111,7 @@ function AP:ShowPrivateAuras(frame, posData, baseIconSize)
     for pi = 1, PREVIEW_PAA_COUNT do
         local sub = paa._previewIcons[pi]
         if not sub then
-            sub = CreateFrame("Button", nil, paa, "BackdropTemplate")
+            sub = CreateFrame("Frame", nil, paa)
             sub.Icon = sub:CreateTexture(nil, "ARTWORK")
             sub.Icon:SetAllPoints()
             sub.icon = sub.Icon
@@ -117,7 +128,6 @@ function AP:ShowPrivateAuras(frame, posData, baseIconSize)
             local centeredStart = -(totalWidth - iconSize) / 2
             sub:SetPoint("CENTER", paa, "CENTER", centeredStart + (pi - 1) * (iconSize + PREVIEW_PAA_SPACING), 0)
         end
-        if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(sub, PREVIEW_PAA_SKIN) end
         sub:Show()
     end
     for pi = PREVIEW_PAA_COUNT + 1, #(paa._previewIcons or {}) do paa._previewIcons[pi]:Hide() end

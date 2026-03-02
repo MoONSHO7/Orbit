@@ -2,6 +2,7 @@
 local Orbit = Orbit
 
 local Plugin = Orbit:RegisterPlugin("Target Debuffs", "Orbit_TargetDebuffs", {
+    liveToggle = true,
     defaults = Orbit.UnitAuraGridMixin.sharedDebuffDefaults,
 })
 

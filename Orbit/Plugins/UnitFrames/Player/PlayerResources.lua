@@ -38,6 +38,7 @@ local SYSTEM_ID = "Orbit_PlayerResources"
 local SYSTEM_INDEX = 1
 
 local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
+    liveToggle = true,
     canvasMode = true,
     defaults = {
         Hidden = false,

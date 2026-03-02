@@ -174,11 +174,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
             self:ShowPreviewAuras(frame)
 
             if frame.MarkerIcon then
-                local RAID_TARGET_TEXTURE_COLUMNS, RAID_TARGET_TEXTURE_ROWS = 4, 4
-                local col = (8 - 1) % RAID_TARGET_TEXTURE_COLUMNS
-                local row = math.floor((8 - 1) / RAID_TARGET_TEXTURE_COLUMNS)
-                local w, h = 1 / RAID_TARGET_TEXTURE_COLUMNS, 1 / RAID_TARGET_TEXTURE_ROWS
-                frame.MarkerIcon:SetTexCoord(col * w, (col + 1) * w, row * h, (row + 1) * h)
+                Orbit.StatusIconMixin:ApplyMarkerSprite(frame.MarkerIcon, 8)
                 frame.MarkerIcon:Show()
                 if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
             end
@@ -191,22 +187,16 @@ end
 local BOSS_PREVIEW_DEBUFF_CFG = {
     helpers = function() return Orbit.BossFrameHelpers end,
     defaultAnchorX = "LEFT", defaultJustifyH = "LEFT",
+    sampleIcons = SAMPLE_DEBUFF_ICONS, defaultMax = 4,
 }
 local BOSS_PREVIEW_BUFF_CFG = {
     helpers = function() return Orbit.BossFrameHelpers end,
     defaultAnchorX = "RIGHT", defaultJustifyH = "RIGHT",
+    sampleIcons = SAMPLE_BUFF_ICONS, defaultMax = 3,
 }
 
 function Orbit.BossFramePreviewMixin:ShowPreviewAuras(frame)
-    local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
-    local debuffData = componentPositions.Debuffs or {}
-    local buffData = componentPositions.Buffs or {}
-    local debuffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Debuffs")
-    local buffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Buffs")
-    local maxDebuffs = (debuffData.overrides or {}).MaxIcons or 4
-    local maxBuffs = (buffData.overrides or {}).MaxIcons or 3
-    Orbit.AuraPreview:ShowIcons(frame, "debuff", debuffData, debuffDisabled and 0 or maxDebuffs, SAMPLE_DEBUFF_ICONS, debuffData.overrides, BOSS_PREVIEW_DEBUFF_CFG)
-    Orbit.AuraPreview:ShowIcons(frame, "buff", buffData, buffDisabled and 0 or maxBuffs, SAMPLE_BUFF_ICONS, buffData.overrides, BOSS_PREVIEW_BUFF_CFG)
+    Orbit.AuraPreview:ShowFrameAuras(self, frame, BOSS_PREVIEW_DEBUFF_CFG, BOSS_PREVIEW_BUFF_CFG)
 end
 
 -- [ HIDE PREVIEW ]----------------------------------------------------------------------------------

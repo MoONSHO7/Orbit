@@ -18,8 +18,8 @@ Core/
   Color/            -- color resolution (class colors, reaction colors, curve engine)
   Skinning/         -- visual rendering (borders, textures, icons, cast bars)
   UnitDisplay/      -- unit frame mixins (health bars, auras, cast bars, status icons)
-  Canvas/           -- canvas mode engine (dragging, anchoring, positioning)
-  CanvasUI/         -- canvas mode ui (dialog, dock, viewport, component settings)
+  EditMode/         -- edit mode engine (dragging, anchoring, positioning, preview frames)
+  CanvasMode/       -- canvas mode dialog (intra-frame component editor, overrides, creators)
   Config/           -- settings ui (schema builder, renderer, widgets, options panel)
   Libs/             -- third-party libraries
   assets/           -- textures and media files
@@ -41,8 +41,8 @@ graph TD
         unitdisplay --> infrastructure
         canvas --> infrastructure
         canvas --> plugin
-        canvasui --> canvas
-        canvasui --> skinning
+        canvasmode --> canvas
+        canvasmode --> skinning
         config --> plugin
         config --> skinning
     end

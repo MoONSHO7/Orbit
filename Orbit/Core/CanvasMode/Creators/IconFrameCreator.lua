@@ -50,13 +50,17 @@ local function Create(container, preview, key, source, data)
         local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(scale)
         if Orbit.Skin and Orbit.Skin.Icons then
             Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
+            Orbit.Skin:SkinBorder(btn, btn, globalBorder)
         end
 
         visual = btn
         container.isIconFrame = true
     end
 
+    local overrides = data and data.overrides
+    local savedSize = overrides and overrides.IconSize
     local w, h = GetSourceSize(source, CC.DEFAULT_ICON_SIZE, CC.DEFAULT_ICON_SIZE)
+    if savedSize and savedSize > 0 then w, h = savedSize, savedSize end
     container:SetSize(w, h)
 
     return visual

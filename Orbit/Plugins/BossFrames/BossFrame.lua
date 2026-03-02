@@ -87,7 +87,7 @@ local function BossDebuffSkin(plugin)
     }
 end
 
-local BOSS_BUFF_SKIN = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true }
+local BOSS_BUFF_SKIN = Orbit.Constants.Aura.SkinWithTimer
 local BOSS_DEBUFF_CFG = { componentKey = "Debuffs", fetchFilter = "HARMFUL|PLAYER", tooltipFilter = "HARMFUL|PLAYER", defaultMaxIcons = 4, skinSettings = BossDebuffSkin, defaultAnchorX = "LEFT", defaultJustifyH = "LEFT", helpers = function() return Orbit.BossFrameHelpers end }
 local BOSS_BUFF_CFG = { componentKey = "Buffs", fetchFilter = "HELPFUL", tooltipFilter = "HELPFUL", defaultMaxIcons = 3, skinSettings = BOSS_BUFF_SKIN, defaultAnchorX = "RIGHT", defaultJustifyH = "RIGHT", helpers = function() return Orbit.BossFrameHelpers end }
 
@@ -302,12 +302,7 @@ function Plugin:PrepareIconsForCanvasMode()
     local frame = self.frames[1]
     if not frame then return end
     if frame.MarkerIcon then
-        frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
-        local SPRITE_INDEX, COLS, ROWS = 8, 4, 4
-        local col = (SPRITE_INDEX - 1) % COLS
-        local row = math.floor((SPRITE_INDEX - 1) / COLS)
-        local w, h = 1 / COLS, 1 / ROWS
-        frame.MarkerIcon:SetTexCoord(col * w, (col + 1) * w, row * h, (row + 1) * h)
+        Orbit.StatusIconMixin:ApplyMarkerSprite(frame.MarkerIcon, 8)
         frame.MarkerIcon:Show()
     end
     if frame.CastBar then

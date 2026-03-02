@@ -140,15 +140,15 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
         frame[iconKey] = btn
     end
 
-    local paa = CreateFrame("Button", nil, frame, "BackdropTemplate")
+    local paa = CreateFrame("Frame", nil, frame)
     paa:SetSize(auraIconSize, auraIconSize)
     paa.orbitOriginalWidth, paa.orbitOriginalHeight = auraIconSize, auraIconSize
     paa:SetPoint("CENTER", frame, "CENTER", 0, 0)
     paa:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.ProcOverlay)
+    paa:EnableMouse(false)
     paa.Icon = paa:CreateTexture(nil, "ARTWORK")
     paa.Icon:SetAllPoints()
     paa.icon = paa.Icon
-    paa:EnableMouse(false)
     paa:Hide()
     frame.PrivateAuraAnchor = paa
 end

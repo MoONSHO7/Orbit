@@ -131,20 +131,13 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
     if not Helpers then Helpers = Orbit.RaidFrameHelpers end
 
     local isCanvasMode = IsCanvasModeActive(self)
-    local width = self:GetSetting(1, "Width") or Helpers.LAYOUT.DefaultWidth
-    local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
-    local borderSize = self:GetSetting(1, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(self.container:GetEffectiveScale() or 1)
+    local globalSettings = Orbit.db.GlobalSettings or {}
+    local roleAtlases = Orbit.RoleAtlases
+    local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+    local isDisabled = self.IsComponentDisabled and function(key) return self:IsComponentDisabled(key) end or function() return false end
+    local sortOrder = GetPreviewSortOrder(self)
     local showHealerPower = self:GetSetting(1, "ShowPowerBar")
     if showHealerPower == nil then showHealerPower = true end
-    local textureName = self:GetSetting(1, "Texture")
-    local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
-    local roleAtlases = Orbit.RoleAtlases
-    local globalSettings = Orbit.db.GlobalSettings or {}
-    local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
-
-    local isDisabled = self.IsComponentDisabled and function(key) return self:IsComponentDisabled(key) end or function() return false end
-
-    local sortOrder = GetPreviewSortOrder(self)
 
     for i = 1, MAX_PREVIEW_FRAMES do
         local frame = self.frames[i]
@@ -152,18 +145,19 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             local dataIdx = sortOrder[i]
             local isHealer = PREVIEW_ROLES[dataIdx] == "HEALER"
             local showThisPower = showHealerPower and isHealer
-            frame:SetSize(width, height)
-            Helpers:UpdateFrameLayout(frame, borderSize, showThisPower)
 
+            -- Shared styling (size, border, texture, text, positions, overrides)
+            self:ApplyFrameStyle(frame, showThisPower)
+
+            -- Preview-only: backdrop
             if self.ApplyPreviewBackdrop then self:ApplyPreviewBackdrop(frame)
             elseif self.CreateBackground then
                 self:CreateBackground(frame)
                 Orbit.Skin:ApplyGradientBackground(frame, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
             end
 
-            -- [ Health Bar ]------------------------------------------------------------------------
+            -- Preview-only: fake health data
             if frame.Health then
-                Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true)
                 frame.Health:SetMinMaxValues(0, 100)
                 frame.Health:SetValue(PREVIEW_HEALTH_PCTS[dataIdx])
                 if self.GetPreviewHealthColor then
@@ -178,23 +172,15 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
-            -- [ Power Bar ]-------------------------------------------------------------------------
-            if frame.Power then
-                if showThisPower then
-                    Orbit.Skin:SkinStatusBar(frame.Power, textureName, nil, true)
-                    frame.Power:SetMinMaxValues(0, 100)
-                    frame.Power:SetValue(80)
-                    frame.Power:SetStatusBarColor(0.0, 0.44, 0.87)
-                    Orbit.Skin:ApplyGradientBackground(frame.Power, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
-                    frame.Power:Show()
-                else
-                    frame.Power:Hide()
-                end
+            -- Preview-only: fake power data
+            if frame.Power and showThisPower then
+                frame.Power:SetMinMaxValues(0, 100)
+                frame.Power:SetValue(80)
+                frame.Power:SetStatusBarColor(0.0, 0.44, 0.87)
+                Orbit.Skin:ApplyGradientBackground(frame.Power, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
             end
 
-            if frame.SetBorder then frame:SetBorder(borderSize) end
-
-            -- [ Name ]------------------------------------------------------------------------------
+            -- Preview-only: fake name
             if frame.Name then
                 if isDisabled("Name") then frame.Name:Hide()
                 else
@@ -207,7 +193,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 end
             end
 
-            -- [ Health Text ]-----------------------------------------------------------------------
+            -- Preview-only: fake health text
             local showHealthValue = self:GetSetting(1, "ShowHealthValue")
             if showHealthValue == nil then showHealthValue = true end
             local previewStatus = (not isCanvasMode) and PREVIEW_STATUS[dataIdx]
@@ -224,9 +210,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                             raw_short = "106000", raw_percent = "106000",
                         }
                         frame.HealthText:SetText(SAMPLE_TEXT[mode] or "100%")
-                    else
-                        frame.HealthText:SetText("Offline")
-                    end
+                    else frame.HealthText:SetText("Offline") end
                     if self.GetPreviewTextColor then
                         local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_CLASSES[dataIdx], nil)
                         frame.HealthText:SetTextColor(r, g, b, a)
@@ -247,16 +231,10 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 end
             end
 
-            -- [ Status Text ]-----------------------------------------------------------------------
             frame:SetAlpha(isDeadOrOffline and OFFLINE_ALPHA or 1)
-
-            if self.ApplyTextStyling then self:ApplyTextStyling(frame) end
-
-            -- [ Component Overrides + Positions ]--------------------------------------------------
             frame.previewClassFile = PREVIEW_CLASSES[dataIdx]
-            if frame.ApplyComponentPositions then frame:ApplyComponentPositions(componentPositions) end
 
-            -- [ Role Icon ]-------------------------------------------------------------------------
+            -- Preview-only: role/leader/tank/selection/aggro icons with fake data
             if frame.RoleIcon and roleAtlases then
                 if isDisabled("RoleIcon") then frame.RoleIcon:Hide()
                 else
@@ -269,7 +247,6 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 end
             end
 
-            -- [ Leader Icon ]-----------------------------------------------------------------------
             if frame.LeaderIcon then
                 if isDisabled("LeaderIcon") then frame.LeaderIcon:Hide()
                 elseif i == 1 then
@@ -279,7 +256,6 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 else frame.LeaderIcon:Hide() end
             end
 
-            -- [ Main Tank Icon ]--------------------------------------------------------------------
             if frame.MainTankIcon then
                 if isDisabled("MainTankIcon") then frame.MainTankIcon:Hide()
                 elseif isCanvasMode or (PREVIEW_ROLES[dataIdx] == "TANK" and i <= 2) then
@@ -289,7 +265,6 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 else frame.MainTankIcon:Hide() end
             end
 
-            -- [ Selection / Aggro ]-----------------------------------------------------------------
             if frame.SelectionHighlight then
                 if i == 2 then frame.SelectionHighlight:Show() else frame.SelectionHighlight:Hide() end
             end
@@ -298,80 +273,21 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 else frame.AggroHighlight:Hide() end
             end
 
-            -- [ Canvas Mode Status Icons ]----------------------------------------------------------
-            if isCanvasMode then
-                local previewAtlases = Orbit.IconPreviewAtlases or {}
-                local savedPositions = self:GetSetting(1, "ComponentPositions") or {}
+            -- Canvas Mode icons (status, defensive, CC, PAA, healer, raidbuff)
+            Orbit.GroupCanvasRegistration:ShowCanvasModeIcons(self, frame, isCanvasMode, {
+                statusIcons = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" },
+                statusIconSize = CANVAS_ICON_SIZE, statusIconSpacing = CANVAS_ICON_SPACING,
+                privateAuraSize = PRIVATE_AURA_ICON_SIZE,
+                healerAuraSize = HEALER_AURA_ICON_SIZE,
+                hideKeys = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" },
+            }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs(), HealerReg:ActiveKeys())
 
-                for idx, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }) do
-                    if frame[key] then
-                        frame[key]:SetAtlas(previewAtlases[key])
-                        frame[key]:SetSize(CANVAS_ICON_SIZE, CANVAS_ICON_SIZE)
-                        if not savedPositions[key] then
-                            frame[key]:ClearAllPoints()
-                            frame[key]:SetPoint("CENTER", frame, "CENTER", Orbit.Engine.Pixel:Snap(CANVAS_ICON_SPACING * (idx - 2.5), frame:GetEffectiveScale()), 0)
-                        end
-                        frame[key]:Show()
-                    end
-                end
-
-                local auraIconEntries = {
-                    { key = "DefensiveIcon", anchor = "LEFT", xMul = 0.5 },
-                    { key = "CrowdControlIcon", anchor = "TOP", yMul = -0.5 },
-                }
-                for _, entry in ipairs(auraIconEntries) do
-                    local btn = frame[entry.key]
-                    if btn and not isDisabled(entry.key) then
-                        local texMethod = "Get" .. entry.key:gsub("Icon$", "") .. "Texture"
-                        btn.Icon:SetTexture(Orbit.StatusIconMixin[texMethod](Orbit.StatusIconMixin))
-                        btn:SetSize(CANVAS_ICON_SIZE, CANVAS_ICON_SIZE)
-                        if not savedPositions[entry.key] then
-                            btn:ClearAllPoints()
-                            local xOff = OrbitEngine.Pixel:Snap((entry.xMul or 0) * (CANVAS_ICON_SIZE + 2), 1)
-                            local yOff = OrbitEngine.Pixel:Snap((entry.yMul or 0) * (CANVAS_ICON_SIZE + 2), 1)
-                            btn:SetPoint("CENTER", frame, entry.anchor, xOff, yOff)
-                        end
-                        if Orbit.Skin and Orbit.Skin.Icons then
-                            Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
-                        end
-                        btn:Show()
-                    elseif btn then btn:Hide() end
-                end
-
-                local paa = frame.PrivateAuraAnchor
-                if paa and not isDisabled("PrivateAuraAnchor") then
-                    local posData = savedPositions and savedPositions.PrivateAuraAnchor
-                    Orbit.AuraPreview:ShowPrivateAuras(frame, posData, PRIVATE_AURA_ICON_SIZE)
-                elseif paa then paa:Hide() end
-                for _, slot in ipairs(HealerReg:ActiveSlots()) do
-                    if not isDisabled(slot.key) then
-                        local hIcon = self:EnsureAuraButton(frame, slot.key, HEALER_AURA_ICON_SIZE)
-                        local tex = C_Spell.GetSpellTexture(slot.spellId)
-                        if tex then hIcon.Icon:SetTexture(tex) end
-                        hIcon:SetSize(HEALER_AURA_ICON_SIZE, HEALER_AURA_ICON_SIZE)
-                        if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(hIcon, { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false }) end
-                        hIcon:Show()
-                    elseif frame[slot.key] then frame[slot.key]:Hide() end
-                end
-                local raidBuffs = HealerReg:ActiveRaidBuffs()
-                if #raidBuffs > 0 and not isDisabled("RaidBuff") then
-                    self:EnsureRaidBuffContainer(frame, "RaidBuff", raidBuffs, HEALER_AURA_ICON_SIZE):Show()
-                elseif frame.RaidBuff then frame.RaidBuff:Hide() end
-            else
-                for _, key in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" }) do
-                    if frame[key] then frame[key]:Hide() end
-                end
-                for _, key in ipairs(HealerReg:ActiveKeys()) do
-                    if frame[key] then frame[key]:Hide() end
-                end
-            end
-
-            -- [ Preview Auras ]---------------------------------------------------------------------
+            -- Preview auras
             if frame.debuffPool then frame.debuffPool:ReleaseAll() end
             if frame.buffPool then frame.buffPool:ReleaseAll() end
             self:ShowPreviewAuras(frame, i)
 
-            -- [ Dispel Glow ]-----------------------------------------------------------------------
+            -- Preview dispel glow
             local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
             local dispelColorMap = { [4] = "DispelColorMagic", [9] = "DispelColorCurse", [14] = "DispelColorPoison" }
             local dispelKey = dispelColorMap[i]
@@ -392,22 +308,16 @@ end
 local RAID_PREVIEW_AURA_CFG = {
     helpers = function() return Orbit.RaidFrameHelpers end,
     defaultAnchorX = "RIGHT", defaultJustifyH = "LEFT",
+    sampleIcons = SAMPLE_DEBUFF_ICONS, defaultMax = 3,
 }
 local RAID_PREVIEW_BUFF_CFG = {
     helpers = function() return Orbit.RaidFrameHelpers end,
     defaultAnchorX = "LEFT", defaultJustifyH = "RIGHT",
+    sampleIcons = SAMPLE_BUFF_ICONS, defaultMax = 3,
 }
 
 function Orbit.RaidFramePreviewMixin:ShowPreviewAuras(frame, frameIndex)
-    local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
-    local debuffData = componentPositions.Debuffs or {}
-    local buffData = componentPositions.Buffs or {}
-    local debuffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Debuffs")
-    local buffDisabled = self.IsComponentDisabled and self:IsComponentDisabled("Buffs")
-    local maxDebuffs = (debuffData.overrides or {}).MaxIcons or 3
-    local maxBuffs = (buffData.overrides or {}).MaxIcons or 3
-    Orbit.AuraPreview:ShowIcons(frame, "debuff", debuffData, debuffDisabled and 0 or maxDebuffs, SAMPLE_DEBUFF_ICONS, debuffData.overrides, RAID_PREVIEW_AURA_CFG)
-    Orbit.AuraPreview:ShowIcons(frame, "buff", buffData, buffDisabled and 0 or maxBuffs, SAMPLE_BUFF_ICONS, buffData.overrides, RAID_PREVIEW_BUFF_CFG)
+    Orbit.AuraPreview:ShowFrameAuras(self, frame, RAID_PREVIEW_AURA_CFG, RAID_PREVIEW_BUFF_CFG)
 end
 
 -- [ PREVIEW HIDE ]----------------------------------------------------------------------------------

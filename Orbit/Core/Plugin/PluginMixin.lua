@@ -64,6 +64,12 @@ function Orbit.PluginMixin:IsComponentDisabled(componentKey)
     return false
 end
 
+-- Single entry point for Canvas Mode Apply — updates live frames + edit mode previews
+function Orbit.PluginMixin:OnCanvasApply()
+    if self.ApplySettings then self:ApplySettings() end
+    if self.SchedulePreviewUpdate then self:SchedulePreviewUpdate() end
+end
+
 function Orbit.PluginMixin:GetLayoutID()
     return "Orbit"
 end

@@ -262,7 +262,7 @@ function Mixin:ShowPreviewAuras()
         self:SetupAuraIcon(icon, {
             icon = 136000, applications = i, duration = 0,
             expirationTime = 0, index = i, isHarmful = self._agConfig.isHarmful,
-        }, iconSize, "player", { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false })
+        }, iconSize, "player", Orbit.Constants.Aura.SkinNoTimer)
         icon:SetScript("OnEnter", nil)
         icon:SetScript("OnLeave", nil)
         table.insert(previews, icon)

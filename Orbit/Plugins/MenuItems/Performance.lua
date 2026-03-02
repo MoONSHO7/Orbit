@@ -6,6 +6,7 @@ local OrbitEngine = Orbit.Engine
 local SYSTEM_ID = "Orbit_Performance"
 
 local Plugin = Orbit:RegisterPlugin("Performance Info", SYSTEM_ID, {
+    liveToggle = true,
     defaults = {
         Scale = 100,
         Opacity = 100,

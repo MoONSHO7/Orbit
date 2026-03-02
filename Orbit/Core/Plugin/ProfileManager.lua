@@ -110,8 +110,12 @@ function Orbit.Profile:Initialize()
             if not profileData.DisabledPlugins then
                 profileData.DisabledPlugins = CopyTable(Orbit.db.DisabledPlugins, {})
             end
+            if not profileData.HideBlizzardFrames then
+                profileData.HideBlizzardFrames = CopyTable(Orbit.db.HideBlizzardFrames or {}, {})
+            end
         end
         Orbit.db.DisabledPlugins = Orbit.db.profiles[Orbit.db.activeProfile] and CopyTable(Orbit.db.profiles[Orbit.db.activeProfile].DisabledPlugins or {}, {}) or {}
+        Orbit.db.HideBlizzardFrames = Orbit.db.profiles[Orbit.db.activeProfile] and CopyTable(Orbit.db.profiles[Orbit.db.activeProfile].HideBlizzardFrames or {}, {}) or {}
     end
 
     self:InitializeSpecSwitching()
@@ -186,6 +190,7 @@ function Orbit.Profile:SetActiveProfile(name)
     if oldProfile then
         oldProfile.GlobalSettings = CopyTable(Orbit.db.GlobalSettings, {})
         oldProfile.DisabledPlugins = CopyTable(Orbit.db.DisabledPlugins or {}, {})
+        oldProfile.HideBlizzardFrames = CopyTable(Orbit.db.HideBlizzardFrames or {}, {})
     end
 
     Orbit.db.activeProfile = name
@@ -193,10 +198,30 @@ function Orbit.Profile:SetActiveProfile(name)
     Orbit.runtime.Layouts = profile.Layouts
 
     if profile.GlobalSettings then Orbit.db.GlobalSettings = CopyTable(profile.GlobalSettings, {}) end
+    local oldDisabled = CopyTable(Orbit.db.DisabledPlugins or {}, {})
+    local oldHidden = CopyTable(Orbit.db.HideBlizzardFrames or {}, {})
     Orbit.db.DisabledPlugins = CopyTable(profile.DisabledPlugins or {}, {})
+    Orbit.db.HideBlizzardFrames = CopyTable(profile.HideBlizzardFrames or {}, {})
     Orbit:Print(name .. " Profile Loaded.")
 
+    -- Diff plugin states: live-toggle clean plugins, flag dirty ones for reload
+    local needsReload = false
     if Orbit.Engine and Orbit.Engine.systems then
+        for _, plugin in ipairs(Orbit.Engine.systems) do
+            local wasDisabled = oldDisabled[plugin.name] or false
+            local nowDisabled = Orbit.db.DisabledPlugins[plugin.name] or false
+            local wasHidden = oldHidden[plugin.name] or false
+            local nowHidden = Orbit.db.HideBlizzardFrames[plugin.name] or false
+            local stateChanged = (wasDisabled ~= nowDisabled) or (wasHidden ~= nowHidden)
+            if stateChanged then
+                if plugin.liveToggle and not nowHidden and not wasHidden then
+                    Orbit:LiveTogglePlugin(plugin.name, not nowDisabled)
+                else
+                    needsReload = true
+                end
+            end
+        end
+
         for _, plugin in ipairs(Orbit.Engine.systems) do
             if plugin.ApplySettings and plugin.refreshPriority then SafeApplyPlugin(plugin) end
         end
@@ -212,6 +237,19 @@ function Orbit.Profile:SetActiveProfile(name)
 
     if Orbit.OptionsPanel and Orbit.OptionsPanel.Refresh then Orbit.OptionsPanel:Refresh() end
     isActivatingProfile = false
+
+    if needsReload then
+        StaticPopupDialogs["ORBIT_PROFILE_RELOAD"] = StaticPopupDialogs["ORBIT_PROFILE_RELOAD"] or {
+            text = "Some plugin changes require a UI reload to take effect.",
+            button1 = "Reload Now",
+            button2 = "Later",
+            OnAccept = function() ReloadUI() end,
+            timeout = 0,
+            whileDead = true,
+            hideOnEscape = true,
+        }
+        StaticPopup_Show("ORBIT_PROFILE_RELOAD")
+    end
 
     Orbit.EventBus:Fire("ORBIT_PROFILE_CHANGED", name)
     return true
@@ -253,8 +291,10 @@ function Orbit.Profile:CopyProfileData(sourceProfileName)
     activeProfile.Layouts = CopyTable(sourceProfile.Layouts or {}, {})
     activeProfile.GlobalSettings = CopyTable(sourceProfile.GlobalSettings or Orbit.db.GlobalSettings, {})
     activeProfile.DisabledPlugins = CopyTable(sourceProfile.DisabledPlugins or {}, {})
+    activeProfile.HideBlizzardFrames = CopyTable(sourceProfile.HideBlizzardFrames or {}, {})
     Orbit.db.GlobalSettings = CopyTable(activeProfile.GlobalSettings, {})
     Orbit.db.DisabledPlugins = CopyTable(activeProfile.DisabledPlugins, {})
+    Orbit.db.HideBlizzardFrames = CopyTable(activeProfile.HideBlizzardFrames, {})
     Orbit:Print("Copied settings from '" .. sourceProfileName .. "' to '" .. activeProfileName .. "'")
     return true
 end
@@ -280,6 +320,7 @@ function Orbit.Profile:FlushGlobalSettings()
     if active then
         active.GlobalSettings = CopyTable(Orbit.db.GlobalSettings, {})
         active.DisabledPlugins = CopyTable(Orbit.db.DisabledPlugins or {}, {})
+        active.HideBlizzardFrames = CopyTable(Orbit.db.HideBlizzardFrames or {}, {})
     end
 end
 

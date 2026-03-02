@@ -309,19 +309,22 @@ do
         if checkDesat then desatAccum = 0 end
 
         local inCombat = UnitAffectingCombat("player")
-        local checkColor = inCombat
+        local oocColorReady = false
         if not inCombat then
             colorAccum = colorAccum + elapsed
             if colorAccum >= OOC_COLOR_INTERVAL then
                 colorAccum = 0
-                checkColor = true
+                oocColorReady = true
             end
         else
             colorAccum = 0
         end
 
         for systemIndex, entry in pairs(VIEWER_MAP) do
-            local curve = checkColor and GetNativeTimerCurveForSystem(systemIndex) or nil
+            local curve = GetNativeTimerCurveForSystem(systemIndex)
+            -- Color curves run every frame; systems without a curve use the OOC throttle
+            local checkColor = curve and true or inCombat or oocColorReady
+            if not checkColor then curve = nil end
             local needsDesat = checkDesat and systemIndex == BUFFICON_INDEX and CDM:GetSetting(BUFFICON_INDEX, "AlwaysShow")
 
             if entry.viewer and (curve or needsDesat) then

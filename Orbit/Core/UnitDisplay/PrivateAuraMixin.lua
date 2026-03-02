@@ -51,7 +51,7 @@ function Mixin:CreateAnchors(frame, plugin, iconSize)
         end
         local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
             unitToken = unit, auraIndex = i, parent = anchor,
-            showCountdownFrame = true, showCountdownNumbers = true,
+            showCountdownFrame = false, showCountdownNumbers = false,
             iconInfo = {
                 iconWidth = size, iconHeight = size,
                 iconAnchor = { point = point, relativeTo = anchor, relativePoint = relPoint, offsetX = xOff, offsetY = 0 },
@@ -81,8 +81,6 @@ function Mixin:Update(frame, plugin, iconSize)
     local unit = frame.unit
     if not unit or not UnitExists(unit) then anchor:Hide() return end
 
-    if not frame._privateAuraIDs or frame._privateAuraUnit ~= unit then
-        self:CreateAnchors(frame, plugin, iconSize)
-    end
+    self:CreateAnchors(frame, plugin, iconSize)
     anchor:Show()
 end

@@ -26,6 +26,7 @@ end
 -- [ RANGE CHECKING ]--------------------------------------------------------------------------------
 function Mixin.UpdateInRange(frame)
     if not frame or not frame.unit then return end
+    if not UnitExists(frame.unit) then frame:SetAlpha(0); return end
     if frame.isPlayerFrame or frame.preview then frame:SetAlpha(1); return end
     if not UnitIsConnected(frame.unit) then frame:SetAlpha(GF.OfflineAlpha); return end
     if UnitPhaseReason(frame.unit) then frame:SetAlpha(GF.OutOfRangeAlpha); return end

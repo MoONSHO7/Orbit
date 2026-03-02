@@ -2,6 +2,7 @@
 local Orbit = Orbit
 
 local Plugin = Orbit:RegisterPlugin("Focus Buffs", "Orbit_FocusBuffs", {
+    liveToggle = true,
     defaults = Orbit.UnitAuraGridMixin.sharedBuffDefaults,
 })
 

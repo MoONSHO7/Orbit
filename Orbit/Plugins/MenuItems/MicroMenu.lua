@@ -295,3 +295,10 @@ function Plugin:ApplySettings()
         end
     end
 end
+
+-- [ BLIZZARD HIDER ]--------------------------------------------------------------------------------
+Orbit:RegisterBlizzardHider("Menu Bar", function()
+    for _, f in ipairs({ MicroMenu, MicroMenuContainer }) do
+        if f then OrbitEngine.NativeFrame:SecureHide(f) end
+    end
+end)

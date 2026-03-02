@@ -337,7 +337,8 @@ function Plugin:OnLoad()
             self:UpdateCombatIcon(f, self)
             return
         elseif event == "PLAYER_LEVEL_UP" then
-            self:UpdateVisualsExtended(f, PLAYER_FRAME_INDEX)
+            local newLevel = ...
+            self:UpdateVisualsExtended(f, PLAYER_FRAME_INDEX, newLevel)
             return
         elseif event == "PLAYER_ROLES_ASSIGNED" then
             self:UpdateRoleIcon(f, self)

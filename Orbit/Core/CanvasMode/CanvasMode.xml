@@ -1,4 +1,10 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="ComponentHelpers.lua"/>
+    <Script file="ComponentHandle.lua"/>
+    <Script file="CanvasEdit.lua"/>
+    <Script file="ComponentRegistry.lua"/>
+    <Script file="SmartGuides.lua"/>
+    <Script file="OverrideUtils.lua"/>
     <Script file="Init.lua"/>
     <Script file="Viewport.lua"/>
     <Script file="Dock.lua"/>

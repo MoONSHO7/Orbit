@@ -2,6 +2,7 @@
 local Orbit = Orbit
 
 local Plugin = Orbit:RegisterPlugin("Target Power", "Orbit_TargetPower", {
+    liveToggle = true,
     canvasMode = true,
     defaults = Orbit.UnitPowerBarMixin.sharedDefaults,
 })

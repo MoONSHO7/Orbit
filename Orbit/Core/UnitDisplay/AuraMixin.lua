@@ -17,7 +17,7 @@ local AURA_MAX_DISPLAY_COUNT = 99
 -- [ SKIN FACADE ]-----------------------------------------------------------------------------------
 function Mixin:ApplyAuraSkin(icon, settings)
     if not icon or not Orbit.Skin or not Orbit.Skin.Icons then return end
-    Orbit.Skin.Icons:ApplyCustom(icon, settings or { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true })
+    Orbit.Skin.Icons:ApplyCustom(icon, settings or Orbit.Constants.Aura.SkinWithTimer)
 end
 
 -- [ AURA POOL CREATION ]----------------------------------------------------------------------------
@@ -55,12 +55,14 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
         icon.Cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
         icon.Cooldown:SetAllPoints()
         icon.Cooldown:SetHideCountdownNumbers(false)
+        icon.Cooldown:EnableMouse(false)
         icon.cooldown = icon.Cooldown
     end
     if not icon.Overlay then
         icon.Overlay = CreateFrame("Frame", nil, icon)
         icon.Overlay:SetAllPoints(icon)
         icon.Overlay:SetFrameLevel(icon:GetFrameLevel() + 2)
+        icon.Overlay:EnableMouse(false)
     end
     if not icon.count then
         icon.count = icon.Overlay:CreateFontString(nil, "OVERLAY")
@@ -76,7 +78,6 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
     icon.count:ClearAllPoints()
     icon.count:SetPoint("BOTTOMRIGHT", icon.Overlay, "BOTTOMRIGHT", -1, 1)
     icon.count:SetJustifyH("RIGHT")
-    self:ApplyAuraCooldown(icon, aura, unit)
     self:ApplyAuraCount(icon, aura, unit)
     if icon.Cooldown then
         local timerText = icon.Cooldown.Text
@@ -91,7 +92,12 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
         end
         icon.Cooldown:SetHideCountdownNumbers(size < TIMER_MIN_ICON_SIZE)
     end
+    if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons.regionCache[icon] = nil end
     if skinSettings then self:ApplyAuraSkin(icon, skinSettings) end
+    self:ApplyAuraCooldown(icon, aura, unit)
+    if skinSettings and skinSettings.swipeColor and icon.Cooldown then
+        icon.Cooldown:SetSwipeColor(skinSettings.swipeColor.r, skinSettings.swipeColor.g, skinSettings.swipeColor.b, skinSettings.swipeColor.a or 0.8)
+    end
     if skinSettings and skinSettings.enablePandemic then Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings) end
     icon:Show()
     return icon
@@ -121,11 +127,18 @@ end
 -- [ AURA TOOLTIP ]-----------------------------------------------------------------------------------
 function Mixin:SetupAuraTooltip(icon, aura, unit, filter)
     icon:EnableMouse(true)
-    icon:SetMouseClickEnabled(false)
+    if not icon._orbitPassThrough and not InCombatLockdown() then
+        icon:SetPassThroughButtons("LeftButton", "RightButton")
+        icon._orbitPassThrough = true
+    end
     icon:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
-        if aura.auraInstanceID and unit then
-            GameTooltip:SetUnitAura(unit, aura.auraInstanceID, filter)
+        if aura.auraInstanceID and unit and filter then
+            if filter:find("HARMFUL") then
+                GameTooltip:SetUnitDebuffByAuraInstanceID(unit, aura.auraInstanceID)
+            else
+                GameTooltip:SetUnitBuffByAuraInstanceID(unit, aura.auraInstanceID)
+            end
         elseif aura.spellId then
             GameTooltip:SetSpellByID(aura.spellId)
         end
@@ -202,7 +215,7 @@ function Mixin:UpdateSingleAuraIcon(frame, plugin, iconKey, filter, iconSize)
     local auras = plugin:FetchAuras(unit, filter, 1)
     local aura = auras[1]
     if not aura or not aura.auraInstanceID or not plugin:IsAuraIncluded(unit, aura.auraInstanceID, filter) then icon:Hide(); return end
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false }
+    local skinSettings = Orbit.Constants.Aura.SkinNoTimer
     plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
     plugin:SetupAuraTooltip(icon, aura, unit, filter:find("HARMFUL") and "HARMFUL" or "HELPFUL")
     icon:Show()
@@ -222,9 +235,9 @@ end
 
 -- [ LAZY ICON CREATION ]----------------------------------------------------------------------------
 local HEALER_ICON_FRAME_LEVEL_OFFSET = Orbit.Constants.Levels.HealerAura
-local DEFAULT_HEALER_SKIN = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false }
+local DEFAULT_HEALER_SKIN = Orbit.Constants.Aura.SkinNoTimer
 
-function Mixin:EnsureAuraButton(frame, iconKey, iconSize)
+function Mixin:EnsureAuraIcon(frame, iconKey, iconSize)
     if frame[iconKey] then return frame[iconKey] end
     local btn = CreateFrame("Button", nil, frame, "BackdropTemplate")
     btn:SetSize(iconSize, iconSize)
@@ -234,8 +247,8 @@ function Mixin:EnsureAuraButton(frame, iconKey, iconSize)
     btn.Icon = btn:CreateTexture(nil, "ARTWORK")
     btn.Icon:SetAllPoints()
     btn.icon = btn.Icon
-    btn:Hide()
     btn:EnableMouse(false)
+    btn:Hide()
     frame[iconKey] = btn
     return btn
 end
@@ -248,20 +261,19 @@ local function GetComponentOverrides(plugin, iconKey)
     return positions[iconKey].overrides
 end
 
--- Build skinSettings from overrides, merging onto defaults.
-local function BuildSkinSettings(overrides)
+local function BuildSkinSettings(overrides, remainingPercent)
     if not overrides then return DEFAULT_HEALER_SKIN end
     local showTimer = overrides.TimerTextColorCurve ~= nil
+    local needsCopy = overrides.SwipeColorCurve or overrides.PandemicGlowType or overrides.PandemicGlowColorCurve
+    if not needsCopy then return showTimer and Orbit.Constants.Aura.SkinWithTimer or Orbit.Constants.Aura.SkinNoTimer end
     local skin = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = showTimer }
     if overrides.SwipeColorCurve then
-        local color = OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:SampleColorCurve(overrides.SwipeColorCurve, 1)
+        local color = OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:SampleColorCurve(overrides.SwipeColorCurve, remainingPercent or 1)
         if color then skin.swipeColor = color end
     end
-    if overrides.PandemicGlowType then
-        skin.pandemicGlowType = overrides.PandemicGlowType
-    end
+    if overrides.PandemicGlowType then skin.pandemicGlowType = overrides.PandemicGlowType end
     if overrides.PandemicGlowColorCurve then
-        local color = OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:SampleColorCurve(overrides.PandemicGlowColorCurve, 1)
+        local color = OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:GetFirstColorFromCurve(overrides.PandemicGlowColorCurve)
         if color then skin.pandemicColor = color end
     end
     return skin
@@ -270,7 +282,44 @@ end
 -- [ SPELL-ID AURA ICON DISPLAY ]-------------------------------------------------------------------
 local SPELL_AURA_SCAN_MAX = 40
 local IsSecret = issecretvalue or function() return false end
+
+-- OnUpdate handler for continuous curve sampling on healer aura icons
+local function HealerCurveOnUpdate(icon)
+    local d = icon._orbitCurveData
+    if not d then return end
+    local remainingPercent = 1
+    if d.duration > 0 and d.expirationTime then
+        remainingPercent = math_max(0, (d.expirationTime - GetTime()) / d.duration)
+    end
+    local CCE = OrbitEngine.ColorCurve
+    if d.swipeCurve and icon.Cooldown then
+        local c = CCE:SampleColorCurve(d.swipeCurve, remainingPercent)
+        if c then
+            local cd = icon.Cooldown
+            local swipeTex = Orbit.Constants.Assets.SwipeCustom
+            cd.orbitUpdating = true
+            cd:SetSwipeTexture(swipeTex)
+            cd:SetSwipeColor(c.r, c.g, c.b, c.a or 0.8)
+            cd.orbitUpdating = false
+            cd.orbitDesiredSwipe = cd.orbitDesiredSwipe or {}
+            cd.orbitDesiredSwipe.texture = swipeTex
+            cd.orbitDesiredSwipe.r = c.r
+            cd.orbitDesiredSwipe.g = c.g
+            cd.orbitDesiredSwipe.b = c.b
+            cd.orbitDesiredSwipe.a = c.a or 0.8
+        end
+    end
+    if d.timerCurve and icon.Cooldown then
+        local text = icon.Cooldown.Text
+        if text and text.SetTextColor then
+            local c = CCE:SampleColorCurve(d.timerCurve, remainingPercent)
+            if c then text:SetTextColor(c.r or 1, c.g or 1, c.b or 1) end
+        end
+    end
+end
+
 function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, altSpellId)
+    if frame.preview or (OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame) then return end
     if plugin.IsComponentDisabled and plugin:IsComponentDisabled(iconKey) then
         if frame[iconKey] then frame[iconKey]:Hide() end
         return
@@ -281,13 +330,17 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
         return
     end
     local overrides = GetComponentOverrides(plugin, iconKey)
-    local skinSettings = BuildSkinSettings(overrides)
     for i = 1, SPELL_AURA_SCAN_MAX do
-        local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
+        local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL|PLAYER")
         if not aura then break end
         local sid = aura.spellId
         if not IsSecret(sid) and (sid == spellId or (altSpellId and sid == altSpellId)) then
-            local icon = self:EnsureAuraButton(frame, iconKey, iconSize)
+            local icon = self:EnsureAuraIcon(frame, iconKey, iconSize)
+            local remainingPercent = 1
+            if aura.duration and aura.duration > 0 and aura.expirationTime then
+                remainingPercent = math_max(0, (aura.expirationTime - GetTime()) / aura.duration)
+            end
+            local skinSettings = BuildSkinSettings(overrides, remainingPercent)
             self:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
             self:SetupAuraTooltip(icon, aura, unit, "HELPFUL")
             if skinSettings.pandemicGlowType and skinSettings.pandemicGlowType > 0 then
@@ -295,15 +348,28 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
             elseif icon.orbitPandemicGlowActive then
                 Orbit.PandemicGlow:Stop(icon)
             end
-            if overrides and overrides.TimerTextColorCurve and icon.Cooldown then
-                local color = OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:SampleColorCurve(overrides.TimerTextColorCurve, 1)
-                if color then icon.Cooldown:SetTextColor(color.r or 1, color.g or 1, color.b or 1) end
+            local hasCurves = overrides and (overrides.SwipeColorCurve or overrides.TimerTextColorCurve)
+            if hasCurves then
+                icon._orbitCurveData = {
+                    duration = aura.duration or 0,
+                    expirationTime = aura.expirationTime,
+                    swipeCurve = overrides.SwipeColorCurve,
+                    timerCurve = overrides.TimerTextColorCurve,
+                }
+                if not icon._orbitCurveHooked then
+                    icon._orbitCurveHooked = true
+                    icon:HookScript("OnUpdate", function(self) HealerCurveOnUpdate(self) end)
+                end
+                HealerCurveOnUpdate(icon)
+            else
+                icon._orbitCurveData = nil
             end
             icon:Show()
             return
         end
     end
     if frame[iconKey] then
+        frame[iconKey]._orbitCurveData = nil
         if frame[iconKey].orbitPandemicGlowActive then Orbit.PandemicGlow:Stop(frame[iconKey]) end
         frame[iconKey]:Hide()
     end
@@ -345,15 +411,17 @@ end
 -- [ MISSING RAID BUFF CONTAINER ]------------------------------------------------------------------
 local RAID_BUFF_ICON_SPACING = 1
 function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, iconSize)
+    if frame.preview or (OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame) then return end
     if plugin.IsComponentDisabled and plugin:IsComponentDisabled(containerKey) then
         if frame[containerKey] then frame[containerKey]:Hide() end
         return
     end
     local unit = frame.unit
-    if not unit or not UnitExists(unit) or not UnitIsConnected(unit) then
+    if not unit or not UnitExists(unit) or not UnitIsConnected(unit) or UnitIsDeadOrGhost(unit) then
         if frame[containerKey] then frame[containerKey]:Hide() end
         return
     end
+
     -- Scan auras once, build set of present buff spell IDs
     local present = {}
     for i = 1, SPELL_AURA_SCAN_MAX do
@@ -362,7 +430,7 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
         local sid = aura.spellId
         if not IsSecret(sid) then present[sid] = true end
     end
-    -- Collect missing buffs
+    -- Collect missing buffs (only YOUR class's raid buff, from any caster)
     local missing = {}
     for _, buff in ipairs(raidBuffs) do
         if not present[buff.spellId] then missing[#missing + 1] = buff end
@@ -379,9 +447,10 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
         end
         return
     end
-    -- Ensure container
+    -- Ensure container (replace stale Button from old code if missing _raidIcons)
     local container = frame[containerKey]
-    if not container then
+    if not container or not container._raidIcons then
+        if container then container:Hide() end
         container = CreateFrame("Frame", nil, frame)
         container:SetPoint("CENTER", frame, "CENTER", 0, 0)
         container:SetFrameLevel(frame:GetFrameLevel() + HEALER_ICON_FRAME_LEVEL_OFFSET)
@@ -392,14 +461,14 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
     -- Ensure enough sub-icons
     for idx = 1, #missing do
         if not container._raidIcons[idx] then
-            local btn = CreateFrame("Button", nil, container, "BackdropTemplate")
-            btn.Icon = btn:CreateTexture(nil, "ARTWORK")
-            btn.Icon:SetAllPoints()
-            btn.icon = btn.Icon
-            btn:EnableMouse(true)
-            btn:SetMouseClickEnabled(false)
-            btn:Hide()
-            container._raidIcons[idx] = btn
+            local icon = CreateFrame("Frame", nil, container, "BackdropTemplate")
+            icon.Icon = icon:CreateTexture(nil, "ARTWORK")
+            icon.Icon:SetAllPoints()
+            icon.icon = icon.Icon
+            icon:EnableMouse(true)
+            icon:SetMouseClickEnabled(false)
+            icon:Hide()
+            container._raidIcons[idx] = icon
         end
     end
     -- Hide excess icons
@@ -433,12 +502,14 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
     container:SetSize(totalW, iconSize)
     container.orbitOriginalWidth, container.orbitOriginalHeight = totalW, iconSize
     container:Show()
+    container:SetAlphaFromBoolean(UnitInRange(unit), 1, 0)
 end
 
 -- [ RAID BUFF CONTAINER FACTORY ]------------------------------------------------------------------
 function Mixin:EnsureRaidBuffContainer(frame, containerKey, raidBuffs, iconSize)
     local container = frame[containerKey]
-    if not container then
+    if not container or not container._raidIcons then
+        if container then container:Hide() end
         container = CreateFrame("Frame", nil, frame)
         container:SetPoint("CENTER", frame, "CENTER", 0, 0)
         container:SetFrameLevel(frame:GetFrameLevel() + HEALER_ICON_FRAME_LEVEL_OFFSET)
@@ -447,13 +518,13 @@ function Mixin:EnsureRaidBuffContainer(frame, containerKey, raidBuffs, iconSize)
     end
     for idx, buff in ipairs(raidBuffs) do
         if not container._raidIcons[idx] then
-            local btn = CreateFrame("Button", nil, container, "BackdropTemplate")
-            btn.Icon = btn:CreateTexture(nil, "ARTWORK")
-            btn.Icon:SetAllPoints()
-            btn.icon = btn.Icon
-            btn:EnableMouse(true)
-            btn:SetMouseClickEnabled(false)
-            container._raidIcons[idx] = btn
+            local icon = CreateFrame("Frame", nil, container, "BackdropTemplate")
+            icon.Icon = icon:CreateTexture(nil, "ARTWORK")
+            icon.Icon:SetAllPoints()
+            icon.icon = icon.Icon
+            icon:EnableMouse(true)
+            icon:SetMouseClickEnabled(false)
+            container._raidIcons[idx] = icon
         end
         local icon = container._raidIcons[idx]
         local tex = C_Spell.GetSpellTexture(buff.spellId)
@@ -467,5 +538,7 @@ function Mixin:EnsureRaidBuffContainer(frame, containerKey, raidBuffs, iconSize)
     local totalW = #raidBuffs * iconSize + (#raidBuffs - 1) * RAID_BUFF_ICON_SPACING
     container:SetSize(totalW, iconSize)
     container.orbitOriginalWidth, container.orbitOriginalHeight = totalW, iconSize
+    -- Expose first sub-icon's texture as container.Icon for Canvas Mode detection
+    if container._raidIcons[1] then container.Icon = container._raidIcons[1].Icon end
     return container
 end

@@ -120,7 +120,6 @@ end)
 Dialog.targetFrame = nil
 Dialog.targetPlugin = nil
 Dialog.targetSystemIndex = nil
-Dialog.originalPositions = {}
 Dialog.previewFrame = nil
 Dialog.hoveredComponent = nil
 
@@ -250,36 +249,7 @@ function Dialog:NudgeComponent(container, direction)
     )
 end
 
--- [ SAVE ORIGINAL POSITIONS ]------------------------------------------------------------
-function Dialog:SaveOriginalPositions()
-    self.originalPositions = {}
-    if not self.targetPlugin or not self.targetPlugin.GetSetting then
-        return
-    end
 
-    local positions = self.targetPlugin:GetSetting(self.targetSystemIndex, "ComponentPositions")
-    if positions then
-        for key, pos in pairs(positions) do
-            local saved = {
-                anchorX = pos.anchorX,
-                anchorY = pos.anchorY,
-                offsetX = pos.offsetX,
-                offsetY = pos.offsetY,
-                justifyH = pos.justifyH,
-                posX = pos.posX,
-                posY = pos.posY,
-            }
-            -- Deep-copy overrides so they can be restored on Cancel
-            if pos.overrides then
-                saved.overrides = {}
-                for k, v in pairs(pos.overrides) do
-                    saved.overrides[k] = v
-                end
-            end
-            self.originalPositions[key] = saved
-        end
-    end
-end
 
 -- [ AURA COMPONENT KEYS ]----------------------------------------------------------------
 local AURA_COMPONENT_KEYS = { DefensiveIcon = true, PrivateAuraAnchor = true, CrowdControlIcon = true }
@@ -628,7 +598,6 @@ function Dialog:CloseDialog()
     self.targetFrame = nil
     self.targetPlugin = nil
     self.targetSystemIndex = nil
-    wipe(self.originalPositions)
 
     self:Hide()
 

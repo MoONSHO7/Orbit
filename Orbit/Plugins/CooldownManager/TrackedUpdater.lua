@@ -183,16 +183,41 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                 icon.CountText:Show()
                 if icon._activeGlowing then self:StopActiveGlow(icon) end
             elseif icon.useSpellId then
-                durObj = C_Spell.GetSpellCooldownDuration(icon.useSpellId)
-                if durObj then
-                    icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
-                    icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE))
+                -- Prefer item cooldown (correct for trinkets). Fall back to spell cooldown (Healthstones in combat).
+                local start, duration = C_Container.GetItemCooldown(icon.trackedId)
+                if start and duration and duration > 1.5 then
+                    icon.Cooldown:SetCooldown(start, duration)
+                    if icon.activeDuration and duration > icon.activeDuration then
+                        local inActivePhase = (GetTime() - start) < icon.activeDuration
+                        if inActivePhase then
+                            icon.Icon:SetDesaturation(0)
+                            icon.Cooldown:SetAlpha(0)
+                            icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
+                            if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
+                        else
+                            icon.Icon:SetDesaturation(1)
+                            icon.Cooldown:SetAlpha(1)
+                            icon.ActiveCooldown:Clear()
+                            if icon._activeGlowing then self:StopActiveGlow(icon) end
+                        end
+                    else
+                        icon.Icon:SetDesaturation(1)
+                        icon.Cooldown:SetAlpha(1)
+                        icon.ActiveCooldown:Clear()
+                    end
                 else
-                    icon.Cooldown:Clear()
-                    icon.Icon:SetDesaturation(0)
+                    durObj = C_Spell.GetSpellCooldownDuration(icon.useSpellId)
+                    if durObj then
+                        icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
+                        icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE))
+                    else
+                        icon.Cooldown:Clear()
+                        icon.Cooldown:SetAlpha(1)
+                        icon.Icon:SetDesaturation(0)
+                    end
+                    icon.ActiveCooldown:Clear()
+                    if icon._activeGlowing then self:StopActiveGlow(icon) end
                 end
-                icon.ActiveCooldown:Clear()
-                if icon._activeGlowing then self:StopActiveGlow(icon) end
                 local count = C_Item.GetItemCount(icon.trackedId, false, true)
                 if count and count > 1 then icon.CountText:SetText(count); icon.CountText:Show()
                 else icon.CountText:Hide() end
@@ -402,7 +427,9 @@ function Updater:RegisterSpellCastWatcher(plugin)
         local function CheckAnchor(anchor)
             if not anchor or not anchor.activeIcons then return end
             for _, icon in pairs(anchor.activeIcons) do
-                if icon.trackedType == "spell" and icon.trackedId == spellId then
+                local isMatch = (icon.trackedType == "spell" and icon.trackedId == spellId)
+                    or (icon.trackedType == "item" and icon.useSpellId == spellId)
+                if isMatch then
                     if icon.activeDuration then icon._activeGlowExpiry = GetTime() + icon.activeDuration end
                     if icon.isChargeSpell then CooldownUtils:OnChargeCast(icon) end
                 end

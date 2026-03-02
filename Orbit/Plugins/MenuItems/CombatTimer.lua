@@ -6,6 +6,7 @@ local OrbitEngine = Orbit.Engine
 local SYSTEM_ID = "Orbit_CombatTimer"
 
 local Plugin = Orbit:RegisterPlugin("Combat Timer", SYSTEM_ID, {
+    liveToggle = true,
     defaults = {
         Scale = 100,
         Opacity = 100,

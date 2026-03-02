@@ -66,6 +66,7 @@ local function IsInDruidTravelForm() return DRUID_TRAVEL_FORMS[GetShapeshiftForm
 local function IsMountedHideActive()
     if not Orbit.db or not Orbit.db.GlobalSettings or not Orbit.db.GlobalSettings.HideWhenMounted then return false end
     if Orbit.IsEditMode and Orbit:IsEditMode() then return false end
+    if OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame then return false end
     if not IsMounted() and not IsInDruidTravelForm() then return false end
     local _, instanceType = IsInInstance()
     return OPEN_WORLD_INSTANCE_TYPES[instanceType] == true

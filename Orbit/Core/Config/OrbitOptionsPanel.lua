@@ -515,6 +515,7 @@ local function Help()
     print("  |cFFAA77FF/orbit hardreset|r |cFF00D4FF- Factory Reset (Wipe All Data)|r")
     print("  |cFFAA77FF/orbit portal|r |cFF00D4FF- Portal Dock commands|r")
     print("  |cFFAA77FF/orbit refresh <plugin>|r |cFF00D4FF- Force refresh a plugin|r")
+    print("  |cFFAA77FF/orbit whatsnew|r |cFF00D4FF- Show the What's New window|r")
 end
 
 SlashCmdList["ORBIT"] = function(msg)
@@ -536,6 +537,8 @@ SlashCmdList["ORBIT"] = function(msg)
         end
         return
     end
+
+    if cmd == "whatsnew" then Orbit:ShowWhatsNew(); return end
 
     if cmd == "help" then Help()
     elseif cmd == "plugins" then

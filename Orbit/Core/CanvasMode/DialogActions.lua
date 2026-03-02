@@ -52,20 +52,12 @@ function Dialog:Apply()
     local targetFrame = self.targetFrame
     if OrbitEngine.CanvasComponentSettings and OrbitEngine.CanvasComponentSettings.FlushPendingPluginSettings then OrbitEngine.CanvasComponentSettings:FlushPendingPluginSettings() end
     self:CloseDialog()
-    if plugin.ApplySettings then plugin:ApplySettings(targetFrame) end
-    if plugin.SchedulePreviewUpdate then plugin:SchedulePreviewUpdate() end
+    if plugin.OnCanvasApply then plugin:OnCanvasApply() end
     if isSynced and plugin.ApplyAll then plugin:ApplyAll() end
 end
 
 -- [ CANCEL ]-----------------------------------------------------------------------------
 function Dialog:Cancel()
-    if self.targetPlugin and self.targetPlugin.SetSetting and next(self.originalPositions) then
-        local positions = self.targetPlugin:GetSetting(self.targetSystemIndex, "ComponentPositions") or {}
-        for key, original in pairs(self.originalPositions) do
-            if positions[key] then positions[key].overrides = original.overrides end
-        end
-        self.targetPlugin:SetSetting(self.targetSystemIndex, "ComponentPositions", positions)
-    end
     self:CloseDialog()
 end
 

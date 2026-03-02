@@ -63,18 +63,18 @@ Core\Config\SchemaBuilder.lua
 Core\Config\Widgets\Widgets.xml
 Core\Config\ConfigRenderer.lua
 
-# Canvas Editor
-Core\Canvas\NativeFrame.lua
-Core\Canvas\EditMode.lua
-Core\Canvas\Frame\Frame.xml
+# Edit Mode
+Core\EditMode\NativeFrame.lua
+Core\EditMode\EditMode.lua
+Core\EditMode\Frame\EditFrame.xml
 
 # Unit Display
 Core\UnitDisplay\UnitButton\UnitButton.xml
 Core\UnitDisplay\UnitDisplay.xml
 
-# Canvas Managers
-Core\Canvas\PositionManager.lua
-Core\Canvas\MountedVisibility.lua
+# Edit Mode Managers
+Core\EditMode\PositionManager.lua
+Core\EditMode\MountedVisibility.lua
 
 # Plugin Profiles
 Core\Plugin\DefaultProfile.lua
@@ -83,14 +83,15 @@ Core\Plugin\ProfileManager.lua
 # API
 Core\API.lua
 
-# Canvas Preview
-Core\Canvas\Preview\Preview.xml
+# Edit Mode Preview
+Core\EditMode\Preview\Preview.xml
 
 # UI
 Core\Config\OrbitSettingsDialog.lua
-Core\CanvasUI\CanvasMode.xml
-Core\CanvasUI\ComponentSettings.lua
+Core\CanvasMode\CanvasMode.xml
+Core\CanvasMode\ComponentSettings.lua
 Core\Config\OrbitOptionsPanel.lua
+Core\Config\WhatsNew.lua
 Core\Config\OrbitOptionsButton.lua
 
 # Skinning
