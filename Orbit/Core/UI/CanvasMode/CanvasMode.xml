@@ -1,8 +1,0 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/">
-    <Script file="Init.lua"/>
-    <Script file="Viewport.lua"/>
-    <Script file="Dock.lua"/>
-    <Include file="Creators/Creators.xml"/>
-    <Script file="DragComponent.lua"/>
-    <Script file="Dialog.lua"/>
-</Ui>

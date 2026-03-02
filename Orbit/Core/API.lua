@@ -93,8 +93,8 @@ function API:UnlockFrames()
                 count = count + 1
             end
 
-            -- 2. CooldownManager (Specific Anchors)
-            if plugin.name == "Cooldown Manager" then
+            -- 2. Multi-Anchor Plugins (e.g. CooldownManager)
+            if plugin.essentialAnchor or plugin.utilityAnchor or plugin.buffIconAnchor then
                 local anchors = { plugin.essentialAnchor, plugin.utilityAnchor, plugin.buffIconAnchor }
                 for _, anchor in ipairs(anchors) do
                     if anchor and anchor.ClearAllPoints then

@@ -20,11 +20,8 @@ local addonName, addonTable = ...
 ---@field Config OrbitConfig
 ---@field Layout OrbitLayout
 Orbit = addonTable
-
+Orbit.Engine = Orbit.Engine or {}
 local OrbitEngine = Orbit.Engine
-Orbit.Layout = OrbitEngine.Layout
-Orbit.Config = OrbitEngine.Config
-Orbit.Frame = OrbitEngine.Frame
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
@@ -130,6 +127,7 @@ end
 function Orbit:RegisterPlugin(name, system, mixin)
     local combinedMixin = Mixin({}, Orbit.PluginMixin, mixin)
     local plugin = OrbitEngine:RegisterSystem(name, system, combinedMixin)
+    plugin.liveToggle = mixin.liveToggle or false
 
     if plugin.ApplySettings then
         local originalApplySettings = plugin.ApplySettings
@@ -151,6 +149,7 @@ function Orbit:InitializePlugins()
     for _, plugin in ipairs(OrbitEngine.systems) do
         if self:IsPluginEnabled(plugin.name) and plugin.OnLoad then
             self.ErrorHandler:Wrap(function() plugin:OnLoad() end, plugin.name .. ".OnLoad")()
+            plugin._initialized = true
         end
     end
     for _, plugin in ipairs(OrbitEngine.systems) do
@@ -197,7 +196,59 @@ function Orbit:OnLoad()
 end
 
 function Orbit:Print(...) print("|cFF00FFFF" .. self.title .. ":|r", ...) end
-function Orbit:IsPluginEnabled(name) return true end
+
+function Orbit:IsPluginEnabled(name)
+    if not self.db or not self.db.DisabledPlugins then return true end
+    return not self.db.DisabledPlugins[name]
+end
+
+function Orbit:SetPluginEnabled(name, enabled)
+    if not self.db then return end
+    if not self.db.DisabledPlugins then self.db.DisabledPlugins = {} end
+    self.db.DisabledPlugins[name] = (not enabled) or nil
+end
+
+function Orbit:IsBlizzardHidden(name)
+    if not self.db or not self.db.HideBlizzardFrames then return false end
+    return self.db.HideBlizzardFrames[name] == true
+end
+
+function Orbit:SetBlizzardHidden(name, hidden)
+    if not self.db then return end
+    if not self.db.HideBlizzardFrames then self.db.HideBlizzardFrames = {} end
+    self.db.HideBlizzardFrames[name] = hidden or nil
+end
+
+function Orbit:IsLiveToggle(name)
+    if not OrbitEngine.systems then return false end
+    for _, plugin in ipairs(OrbitEngine.systems) do
+        if plugin.name == name then return plugin.liveToggle end
+    end
+    return false
+end
+
+function Orbit:LiveTogglePlugin(name, enabled)
+    self:SetPluginEnabled(name, enabled)
+    for _, plugin in ipairs(OrbitEngine.systems) do
+        if plugin.name ~= name then -- skip
+        elseif enabled then
+            if plugin.OnLoad and not plugin._initialized then
+                self.ErrorHandler:Wrap(function() plugin:OnLoad() end, name .. ".OnLoad")()
+                plugin._initialized = true
+            end
+            if plugin.ApplySettings then plugin:ApplySettings() end
+        else
+            if plugin.ApplySettings then plugin:ApplySettings() end
+        end
+    end
+end
+
+-- [ BLIZZARD FRAME HIDERS ]-------------------------------------------------------------------------
+Orbit._blizzardHiders = {}
+
+function Orbit:RegisterBlizzardHider(pluginName, hiderFunc)
+    self._blizzardHiders[pluginName] = hiderFunc
+end
 
 -- [ EVENT HANDLERS ]--------------------------------------------------------------------------------
 
@@ -207,6 +258,9 @@ eventFrame:RegisterEvent("PLAYER_LOGOUT")
 eventFrame:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_LOGIN" then
         Orbit:OnLoad()
+        for name, hider in pairs(Orbit._blizzardHiders) do
+            if not Orbit:IsPluginEnabled(name) and Orbit:IsBlizzardHidden(name) then hider() end
+        end
     elseif event == "PLAYER_LOGOUT" then
         if Orbit.Engine and Orbit.Engine.PositionManager then Orbit.Engine.PositionManager:FlushToStorage() end
         if Orbit.Profile then Orbit.Profile:FlushGlobalSettings() end
