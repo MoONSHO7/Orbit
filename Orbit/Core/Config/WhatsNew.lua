@@ -12,7 +12,7 @@ local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips aut
 
 local WHATS_NEW_ENTRIES = {
     { title = "Updates",
-      body = "• Added Icicles & Top of the Spear to Resource Bars\n"
+      body = "• Added Icicles (Mage) & Tip of the Spear (Hunter) to Resource Bars\n"
         .. "• This WhatsNew window so I can communicate changes to you.\n"
         .. "• AddOns are no longer managed in the Addons menu, but in the Blizzard Options / AddOns menu.\n"
         .. "• type /Orbit Plugins to quick open\n"

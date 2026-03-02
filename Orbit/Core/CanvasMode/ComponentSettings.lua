@@ -177,14 +177,12 @@ local COMPONENT_TITLES = {
     ["CastBar.Text"] = "Ability Text", ["CastBar.Timer"] = "Cast Timer",
 }
 
--- Register healer aura + raid buff titles dynamically
-do
+-- Resolve display title dynamically (healer aura slots aren't active at load time)
+local function ResolveTitle(key)
+    if COMPONENT_TITLES[key] then return COMPONENT_TITLES[key] end
     local HealerReg = Orbit.HealerAuraRegistry
-    if HealerReg then
-        for _, key in ipairs(HealerReg:AllSlotKeys()) do
-            COMPONENT_TITLES[key] = HealerReg:GetSlotLabel(key)
-        end
-    end
+    if HealerReg then return HealerReg:GetSlotLabel(key) end
+    return key
 end
 
 local function GetComponentFamily(container)
@@ -281,12 +279,12 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     overrideContainer:Show()
 
     if not schema then
-        overrideContainer.Title:SetText((COMPONENT_TITLES[componentKey] or componentKey) .. " (no settings)")
+        overrideContainer.Title:SetText(ResolveTitle(componentKey) .. " (no settings)")
         canvasDialog:RecalculateHeight()
         return
     end
 
-    overrideContainer.Title:SetText(COMPONENT_TITLES[componentKey] or componentKey)
+    overrideContainer.Title:SetText(ResolveTitle(componentKey))
 
     -- Unified override loading: overrides first, then plugin-level settings, then pending
     self.currentOverrides = {}

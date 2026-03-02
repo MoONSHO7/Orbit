@@ -10,6 +10,8 @@ local Layout = OrbitEngine.Layout
 local DOCK_ICON_ALPHA = 0.7
 local DOCK_BG_COLOR = { 0.2, 0.2, 0.2, 0.6 }
 local DOCK_BG_HOVER = { 0.3, 0.5, 0.3, 0.8 }
+local HealerReg = Orbit.HealerAuraRegistry
+local function DisplayName(key) return HealerReg and HealerReg:GetSlotLabel(key) or key end
 -- [ DOCK FRAME ]-------------------------------------------------------------------------
 
 Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog.PreviewContainer)
@@ -143,14 +145,14 @@ function Dialog:AddToDock(key, sourceComponent)
     else
         icon.visual = icon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         icon.visual:SetPoint("CENTER")
-        icon.visual:SetText(key:sub(1, 4))
+        icon.visual:SetText(DisplayName(key):sub(1, 4))
         icon.visual:SetTextColor(0.7, 0.7, 0.7, 1)
     end
 
     icon:SetScript("OnEnter", function(self)
         self.bg:SetColorTexture(unpack(DOCK_BG_HOVER))
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(key, 1, 1, 1)
+        GameTooltip:SetText(DisplayName(key), 1, 1, 1)
         GameTooltip:AddLine("Click to enable", 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
