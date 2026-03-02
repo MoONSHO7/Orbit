@@ -16,17 +16,20 @@ local WHATS_NEW_ENTRIES = {
         .. "• This WhatsNew window so I can communicate changes to you.\n"
         .. "• AddOns are no longer managed in the Addons menu, but in the Blizzard Options / AddOns menu.\n"
         .. "• type /Orbit Plugins to quick open\n"
+        .. "• Added option to disable both Orbit & Blizzard Frames, X on plugin checkboxes.\n"
         .. "• Tweaks to the Mounted Visibilty option, additional mouseover enablements\n"
+        .. "• Performance on CDM\n"
         .. "• Various bugfixes.\n"
         .. "• Backend Architecture Overhaul for the project so other devs can better contribute.\n",
     },
     {
       title = "Group Frames",
       body = "• Added healer auras to Party and RaidFrames, enable them in Canvas mode.\n"
-        .. "• Add Missing RaidBuffs to Party/Raid Frames\n"
-        .. "• Tweaks to buffs/debuffs on Party+Raid Frames\n"
-        .. "• More customization options for buffs/debuffs on Party+Raid Frames\n"
-        .. "• Adjsutments to OutOfRange functionality"
+        .. "• Add Missing RaidBuffs\n"
+        .. "• Tweaks to buffs/debuffs\n"
+        .. "• More customization options for buffs/debuffs\n"
+        .. "• Adjsutments to OutOfRange functionality\n"
+        .. "• Added option to increase powerbar size"
     },
 }
 
