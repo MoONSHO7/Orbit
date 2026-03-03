@@ -33,8 +33,8 @@ function ABC:Create(plugin, config)
     frame:EnableMouse(true)
     frame:SetClampedToScreen(true)
     frame.anchorOptions = { x = true, y = true, syncScale = false, syncDimensions = false }
-    if config.index == PET_BAR_INDEX then RegisterStateDriver(frame, "visibility", GetVisibilityDriver(PET_BAR_BASE_DRIVER))
-    elseif config.index ~= 1 then RegisterStateDriver(frame, "visibility", GetVisibilityDriver(BASE_VISIBILITY_DRIVER)) end
+    if config.index == PET_BAR_INDEX then RegisterStateDriver(frame, "visibility", PET_BAR_BASE_DRIVER)
+    elseif config.index ~= 1 then RegisterStateDriver(frame, "visibility", BASE_VISIBILITY_DRIVER) end
     OrbitEngine.Frame:AttachSettingsListener(frame, plugin, config.index)
     frame.Selection = frame:CreateTexture(nil, "OVERLAY")
     frame.Selection:SetColorTexture(1, 1, 1, 0.1)

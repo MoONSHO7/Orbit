@@ -15,6 +15,7 @@ local POSSESS_BAR_INDEX = 11
 local MIN_STANCE_ICONS = 2
 local VEHICLE_EXIT_INDEX = 13
 local VEHICLE_EXIT_VISIBILITY = "[canexitvehicle] show; hide"
+local MOUNTED_OVERLAY_LEVEL = 100
 
 local BASE_VISIBILITY_DRIVER = "[petbattle][vehicleui] hide; show"
 local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [nopet] hide; show"
@@ -197,13 +198,38 @@ function Plugin:OnLoad()
     end
     self.UpdateVisibilityDriver = function()
         if InCombatLockdown() then return end
-        local druidFormHide = Orbit.MountedVisibility:ShouldHide() and not IsMounted()
+        local shouldHide = Orbit.MountedVisibility:ShouldHide()
         local numBars = self:GetSetting(1, "NumActionBars") or 4
         for index, container in pairs(self.containers) do
-            if index ~= PET_BAR_INDEX and index ~= VEHICLE_EXIT_INDEX and not (index <= 8 and index > numBars) then
-                if druidFormHide then RegisterStateDriver(container, "visibility", "hide")
+            if index <= 8 and index > numBars then -- disabled bar, skip
+            else
+                if index == VEHICLE_EXIT_INDEX then RegisterStateDriver(container, "visibility", VEHICLE_EXIT_VISIBILITY)
+                elseif index == PET_BAR_INDEX then RegisterStateDriver(container, "visibility", PET_BAR_BASE_DRIVER)
                 elseif index == 1 then RegisterStateDriver(container, "visibility", BAR1_BASE_DRIVER)
-                else RegisterStateDriver(container, "visibility", GetVisibilityDriver(BASE_VISIBILITY_DRIVER)) end
+                else RegisterStateDriver(container, "visibility", BASE_VISIBILITY_DRIVER) end
+                if shouldHide then
+                    container.orbitMountedSuppressed = true
+                    container:SetAlpha(0)
+                    if not container.orbitMountedOverlay then
+                        local o = CreateFrame("Frame", nil, container)
+                        o:SetAllPoints(); o:SetFrameLevel(container:GetFrameLevel() + MOUNTED_OVERLAY_LEVEL)
+                        o:EnableMouse(true); o:SetMouseMotionEnabled(true); o:SetMouseClickEnabled(false)
+                        o:SetScript("OnEnter", function(ov)
+                            container:SetAlpha(1); ov:Hide()
+                            container:SetScript("OnUpdate", function()
+                                if not container:IsMouseOver() then
+                                    container:SetScript("OnUpdate", nil)
+                                    if Orbit.MountedVisibility:ShouldHide() then container:SetAlpha(0); ov:Show() end
+                                end
+                            end)
+                        end)
+                        container.orbitMountedOverlay = o
+                    end
+                    container.orbitMountedOverlay:Show()
+                elseif container.orbitMountedOverlay then
+                    container.orbitMountedSuppressed = nil
+                    container.orbitMountedOverlay:Hide(); container:SetScript("OnUpdate", nil); container:SetAlpha(1)
+                end
             end
         end
     end
@@ -417,7 +443,8 @@ function Plugin:ApplySettings(frame)
     end
     OrbitEngine.FrameAnchor:SetFrameDisabled(actualFrame, false)
     if index == 1 then RegisterStateDriver(actualFrame, "visibility", BAR1_BASE_DRIVER)
-    else RegisterStateDriver(actualFrame, "visibility", GetVisibilityDriver(BASE_VISIBILITY_DRIVER)) end
+    elseif index == PET_BAR_INDEX then RegisterStateDriver(actualFrame, "visibility", PET_BAR_BASE_DRIVER)
+    else RegisterStateDriver(actualFrame, "visibility", BASE_VISIBILITY_DRIVER) end
     if not self.buttons[index] or #self.buttons[index] == 0 then self:ReparentButtons(index) end
     self:ApplyScale(actualFrame, index, "Scale")
     if index ~= PET_BAR_INDEX then

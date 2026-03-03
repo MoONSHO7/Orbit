@@ -41,8 +41,10 @@ local function SuppressFrame(frame)
     local Anchor = OrbitEngine.FrameAnchor
     if Anchor and Anchor.childrenOf[frame] then
         for child in pairs(Anchor.childrenOf[frame]) do
-            child.orbitMountedSuppressed = true
-            child:SetAlpha(0)
+            if not child.orbitHoverOverlay then
+                child.orbitMountedSuppressed = true
+                child:SetAlpha(0)
+            end
         end
     end
 end
@@ -228,6 +230,32 @@ local function SetBlizzardFramesAlpha(alpha)
     end
 end
 
+local function SetupBlizzardHoverOverlay(frame)
+    if not frame or frame.orbitHoverOverlay then return end
+    local overlay = CreateFrame("Frame", nil, frame)
+    overlay:SetAllPoints()
+    overlay:SetFrameLevel(frame:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
+    overlay:EnableMouse(true); overlay:SetMouseMotionEnabled(true); overlay:SetMouseClickEnabled(false)
+    overlay:SetScript("OnEnter", function(self)
+        frame:SetAlpha(1); self:Hide()
+        frame:SetScript("OnUpdate", function()
+            if not frame:IsMouseOver() then
+                frame:SetScript("OnUpdate", nil)
+                if cachedShouldHide then frame:SetAlpha(0); self:Show() end
+            end
+        end)
+    end)
+    frame.orbitHoverOverlay = overlay
+    overlay:Hide()
+end
+
+local function ToggleBlizzardOverlay(frame, shouldHide)
+    if not frame or not frame.orbitHoverOverlay then return end
+    if shouldHide then frame.orbitHoverOverlay:Show() else frame:SetScript("OnUpdate", nil); frame.orbitHoverOverlay:Hide() end
+end
+
+local HOVER_REVEAL_FRAMES = { "BuffFrame", "DebuffFrame" }
+
 local function SetupMinimapHoverOverlay()
     local cluster = _G["MinimapCluster"]
     if not cluster or cluster.orbitHoverOverlay then return end
@@ -302,6 +330,11 @@ function Manager:Refresh(force)
     local objective = _G["ObjectiveTrackerFrame"]
     if objective and objective.orbitHoverOverlay then
         if shouldHide then objective.orbitHoverOverlay:Show() else objective:SetScript("OnUpdate", nil); objective.orbitHoverOverlay:Hide() end
+    end
+
+    for _, name in ipairs(HOVER_REVEAL_FRAMES) do
+        local frame = _G[name]
+        if frame then SetupBlizzardHoverOverlay(frame); ToggleBlizzardOverlay(frame, shouldHide) end
     end
 
     local systems = OrbitEngine.systems

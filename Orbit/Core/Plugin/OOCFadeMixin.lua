@@ -60,6 +60,7 @@ local function UpdateFrameVisibility(frame, fadeEnabled, data)
     if not frame then
         return
     end
+    if Orbit.MountedVisibility:ShouldHide() then return end
     local includeChildren = data and not data.enableHover
     if not fadeEnabled then
         SetFrameMouseEnabled(frame, true, includeChildren)
@@ -145,6 +146,7 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover)
             local parent = self:GetParent()
             if not parent:IsShown() then return end
             local isOver = MouseIsOver(parent)
+            if Orbit.MountedVisibility:ShouldHide() then return end
             if isOver and not parent.orbitMouseOver then
                 parent.orbitMouseOver = true
                 local data = ManagedFrames[parent]
@@ -175,7 +177,7 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover)
         local originalSetAlpha = frame.SetAlpha
         frame.SetAlpha = function(self, alpha)
             local data = ManagedFrames[self]
-            if data and data.plugin:GetSetting(data.systemIndex, data.settingKey) and not ShouldShowFrame(self) and alpha > 0 then
+            if data and data.plugin:GetSetting(data.systemIndex, data.settingKey) and not ShouldShowFrame(self) and alpha > 0 and not Orbit.MountedVisibility:ShouldHide() then
                 return originalSetAlpha(self, 0)
             end
             return originalSetAlpha(self, alpha)
