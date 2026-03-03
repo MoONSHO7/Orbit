@@ -337,11 +337,8 @@ function Plugin:LoadTrackedItems(anchor, systemIndex)
         self:SetSetting(systemIndex, self:GetSpecKey("TrackedItems"), tracked)
     end
 
-    local copy = {}
-    for k, v in pairs(tracked) do
-        copy[k] = { type = v.type, id = v.id, x = v.x, y = v.y, activeDuration = v.activeDuration, cooldownDuration = v.cooldownDuration, useSpellId = v.useSpellId }
-    end
-    anchor.gridItems = copy
+    anchor.gridItems = tracked
+    anchor._gridFingerprint = nil
     Layout:LayoutTrackedIcons(self, anchor, systemIndex, IsDraggingCooldownAbility)
 end
 

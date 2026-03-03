@@ -347,17 +347,6 @@ end
 function Updater:RegisterTalentWatcher(plugin)
     if plugin.talentWatcherSetup then return end
     plugin.talentWatcherSetup = true
-    local TALENT_REPARSE_DELAY = 0.5
-    local frame = CreateFrame("Frame")
-    frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
-    frame:SetScript("OnEvent", function()
-        C_Timer.After(TALENT_REPARSE_DELAY, function()
-            if InCombatLockdown() then return end
-            self:ReparseActiveDurations(plugin)
-            plugin:RefreshChargeMaxCharges()
-            self:RefreshAllTrackedLayouts(plugin)
-        end)
-    end)
 end
 
 function Updater:RefreshAllTrackedLayouts(plugin)
@@ -384,15 +373,24 @@ function Updater:ReloadTrackedForSpec(plugin)
     end
     plugin:ReloadChargeBarsForSpec()
 end
-
--- [ SPELL CAST WATCHER ]----------------------------------------------------------------------------
 function Updater:RegisterSpellCastWatcher(plugin)
     if plugin.spellCastWatcherSetup then return end
     plugin.spellCastWatcherSetup = true
+    local TALENT_REPARSE_DELAY = 0.5
     local viewerMap = plugin.viewerMap
     local frame = CreateFrame("Frame")
     frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-    frame:SetScript("OnEvent", function(_, _, unit, _, spellId)
+    frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
+    frame:SetScript("OnEvent", function(_, event, unit, _, spellId)
+        if event == "TRAIT_CONFIG_UPDATED" then
+            C_Timer.After(TALENT_REPARSE_DELAY, function()
+                if InCombatLockdown() then return end
+                self:ReparseActiveDurations(plugin)
+                plugin:RefreshChargeMaxCharges()
+                self:RefreshAllTrackedLayouts(plugin)
+            end)
+            return
+        end
         if unit ~= "player" then return end
         local function CheckAnchor(anchor)
             if not anchor or not anchor.activeIcons then return end
@@ -468,5 +466,8 @@ function Updater:RegisterCursorWatcher(plugin)
                 if isDroppable then childData.frame.DropHighlight:Show() else childData.frame.DropHighlight:Hide() end
             end
         end
+        -- Charge bar cursor updates (merged from separate watcher)
+        plugin:UpdateAllSeedVisibility()
+        plugin:RefreshAllChargeControlVisibility()
     end)
 end

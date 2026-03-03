@@ -81,18 +81,26 @@ function Parser:ParseCooldownDuration(itemType, id)
 end
 
 -- [ BUILD PHASE CURVE ]-----------------------------------------------------------------------------
+local _phaseCurveCache = {}
 function Parser:BuildPhaseCurve(activeDuration, cooldownDuration)
+    if not activeDuration or not cooldownDuration or cooldownDuration <= 0 or activeDuration >= cooldownDuration then
+        local key = "fallback"
+        if not _phaseCurveCache[key] then
+            local c = C_CurveUtil.CreateCurve()
+            c:AddPoint(0.0, 0); c:AddPoint(0.001, 1); c:AddPoint(1.0, 1)
+            _phaseCurveCache[key] = c
+        end
+        return _phaseCurveCache[key]
+    end
+    local key = activeDuration .. ":" .. cooldownDuration
+    if _phaseCurveCache[key] then return _phaseCurveCache[key] end
+    local breakpoint = 1.0 - (activeDuration / cooldownDuration)
     local curve = C_CurveUtil.CreateCurve()
     curve:AddPoint(0.0, 0)
-    if not activeDuration or not cooldownDuration or cooldownDuration <= 0 or activeDuration >= cooldownDuration then
-        curve:AddPoint(0.001, 1)
-        curve:AddPoint(1.0, 1)
-        return curve
-    end
-    local breakpoint = 1.0 - (activeDuration / cooldownDuration)
     curve:AddPoint(0.001, 1)
     curve:AddPoint(math.max(breakpoint, 0.002), 1)
     curve:AddPoint(breakpoint + 0.001, 0)
     curve:AddPoint(1.0, 0)
+    _phaseCurveCache[key] = curve
     return curve
 end

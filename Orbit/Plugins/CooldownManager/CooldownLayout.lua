@@ -13,6 +13,15 @@ local INACTIVE_ALPHA_DEFAULT = 60
 local FLASH_DURATION = 0.15
 local DESAT_INTERVAL = 0.1
 
+-- Reusable child buffers — avoids { frame:GetChildren() } table alloc per call
+local _scratch1, _scratch2 = {}, {}
+local function PackChildren(buf, ...)
+    wipe(buf)
+    for i = 1, select('#', ...) do buf[i] = select(i, ...) end
+    return buf
+end
+local _activeChildBuf = {}
+
 local DESAT_CURVE = C_CurveUtil.CreateCurve()
 DESAT_CURVE:AddPoint(0.0, 0.0)
 DESAT_CURVE:AddPoint(0.001, 0.0)
@@ -55,7 +64,7 @@ end
 local function FindIconBySpellID(spellID)
     for _, entry in pairs(VIEWER_MAP) do
         if entry.viewer then
-            for _, child in ipairs({ entry.viewer:GetChildren() }) do
+            for _, child in ipairs(PackChildren(_scratch1, entry.viewer:GetChildren())) do
                 local cached = child.orbitCachedSpellID
                 if child:IsShown() and cached and not issecretvalue(cached) and cached == spellID then
                     return child
@@ -95,10 +104,11 @@ function CDM:ProcessChildren(anchor)
     if not blizzFrame then return end
 
     local systemIndex = anchor.systemIndex
-    local activeChildren = {}
+    wipe(_activeChildBuf)
+    local activeChildren = _activeChildBuf
     local alwaysShow = (systemIndex == BUFFICON_INDEX) and self:GetSetting(systemIndex, "AlwaysShow")
 
-    for _, child in ipairs({ blizzFrame:GetChildren() }) do
+    for _, child in ipairs(PackChildren(_scratch1, blizzFrame:GetChildren())) do
         if child.layoutIndex then
             if not child.orbitOnShowHooked then
                 local plugin = self
@@ -306,7 +316,7 @@ do
         if buffEntry and buffEntry.viewer and (curve or needsDesat) then
             local inactiveAlpha = needsDesat and (CDM:GetSetting(BUFFICON_INDEX, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100 or nil
             local hideBorders = needsDesat and CDM:GetSetting(BUFFICON_INDEX, "HideBorders")
-            for _, child in ipairs({ buffEntry.viewer:GetChildren() }) do
+            for _, child in ipairs(PackChildren(_scratch1, buffEntry.viewer:GetChildren())) do
                 if child.layoutIndex and child:IsShown() and child:GetCooldownID() then
                     if curve then ApplyTimerColor(child, curve) end
                     if inactiveAlpha then ApplyBuffIconDesaturation(child, inactiveAlpha, hideBorders) end
@@ -321,7 +331,7 @@ do
                     if alwaysShow then
                         local inactiveAlpha = (CDM:GetSetting(systemIndex, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100
                         local hideBorders = CDM:GetSetting(systemIndex, "HideBorders")
-                        for _, child in ipairs({ entry.viewer:GetChildren() }) do
+                        for _, child in ipairs(PackChildren(_scratch2, entry.viewer:GetChildren())) do
                             if child.layoutIndex and child:IsShown() and child:GetCooldownID() then
                                 ApplyBuffIconDesaturation(child, inactiveAlpha, hideBorders)
                             end

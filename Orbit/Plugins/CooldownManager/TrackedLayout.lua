@@ -91,8 +91,24 @@ local function SizeEdgeButton(btn, iconWidth, iconHeight, Pixel)
 end
 
 -- [ LAYOUT MAIN ]-----------------------------------------------------------------------------------
+local function GridFingerprint(gridItems, isDragging)
+    local parts, n = {}, 0
+    for key, data in pairs(gridItems) do
+        if Layout.IsGridItemUsable(data) then n = n + 1; parts[n] = key end
+    end
+    table.sort(parts)
+    parts[n + 1] = isDragging and "D" or "N"
+    return table.concat(parts, "|")
+end
+
 function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
     if not anchor then return end
+
+    local isDragging = isDraggingFn and isDraggingFn() or false
+    local rawGridItems = anchor.gridItems or {}
+    local fp = GridFingerprint(rawGridItems, isDragging)
+    if fp == anchor._gridFingerprint then return end
+    anchor._gridFingerprint = fp
 
     local IconFactory = Orbit.TrackedIconFactory
     local Updater = Orbit.TrackedUpdater
@@ -110,8 +126,6 @@ function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
     local Pixel = OrbitEngine.Pixel
     local padding = Pixel and Pixel:Snap(rawPadding) or rawPadding
 
-    local rawGridItems = anchor.gridItems or {}
-    local isDragging = isDraggingFn and isDraggingFn() or false
     local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
 
     local gridItems = {}

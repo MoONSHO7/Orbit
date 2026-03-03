@@ -502,19 +502,13 @@ function Plugin:StartChargeUpdateTicker()
     end
 
     local useFrequent = self:GetSetting(CHARGE_BAR_INDEX, "FrequentUpdates") ~= false
-    
-    if useFrequent then
-        if self.chargeUpdateTicker then
-            self.chargeUpdateTicker:Cancel()
-            self.chargeUpdateTicker = nil
-        end
-        self.chargeUpdateFrame:SetScript("OnUpdate", DoUpdate)
-    else
-        self.chargeUpdateFrame:SetScript("OnUpdate", nil)
-        if not self.chargeUpdateTicker then
-            self.chargeUpdateTicker = C_Timer.NewTicker(UPDATE_INTERVAL, DoUpdate)
-        end
+    local interval = useFrequent and UPDATE_INTERVAL or (UPDATE_INTERVAL * 2)
+
+    if self.chargeUpdateTicker then
+        self.chargeUpdateTicker:Cancel()
+        self.chargeUpdateTicker = nil
     end
+    self.chargeUpdateTicker = C_Timer.NewTicker(interval, DoUpdate)
 end
     
 function Plugin:RefreshChargeUpdateMethod()
@@ -557,23 +551,8 @@ function Plugin:UpdateAllSeedVisibility()
     end
 end
 
--- [ CURSOR WATCHER ]-------------------------------------------------------------------------------
-function Plugin:RegisterChargeCursorWatcher()
-    local lastCursor, lastEditMode
-
-    local watcher = CreateFrame("Frame")
-    watcher:SetScript("OnUpdate", function()
-        local cursorType = GetCursorInfo()
-        local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
-        if cursorType == lastCursor and isEditMode == lastEditMode then
-            return
-        end
-        lastCursor = cursorType
-        lastEditMode = isEditMode
-        self:UpdateAllSeedVisibility()
-        self:RefreshAllChargeControlVisibility()
-    end)
-end
+-- Charge cursor watcher merged into TrackedUpdater:RegisterCursorWatcher
+function Plugin:RegisterChargeCursorWatcher() end
 
 -- [ SPEC CHANGE ]----------------------------------------------------------------------------------
 function Plugin:ReloadChargeBarsForSpec()

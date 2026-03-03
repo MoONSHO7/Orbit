@@ -11,6 +11,13 @@ if not CDM then return end
 local VIEWER_MAP = CDM.viewerMap
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 
+local _scratch = {}
+local function PackChildren(buf, ...)
+    wipe(buf)
+    for i = 1, select('#', ...) do buf[i] = select(i, ...) end
+    return buf
+end
+
 local function GetViewerAnchorPoint(plugin, anchor)
     local vPoint = (plugin:GetGrowthDirection(anchor) == "UP") and "BOTTOM" or "TOP"
     if anchor.systemIndex ~= BUFFICON_INDEX then return vPoint end
@@ -132,7 +139,7 @@ function CDM:CheckViewer(viewer, anchor)
     if not viewer:IsShown() then viewer:Show(); viewer:SetAlpha(1) end
 
     local count = 0
-    for _, child in ipairs({ viewer:GetChildren() }) do
+    for _, child in ipairs(PackChildren(_scratch, viewer:GetChildren())) do
         if child:IsShown() then count = count + 1 end
     end
     if count ~= (viewer.orbitLastCount or 0) then
