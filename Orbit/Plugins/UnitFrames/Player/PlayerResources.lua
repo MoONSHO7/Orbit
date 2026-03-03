@@ -151,7 +151,7 @@ function Plugin:OnLoad()
                     end
                 end
 
-                local divMax = MAX_SPACER_COUNT
+                local divMax = cfg.maxDividers or MAX_SPACER_COUNT
                 local logicalGap = OrbitEngine.Pixel:Multiple(spacing, scale)
                 local exactWidth = (width - (logicalGap * (divMax - 1))) / divMax
                 local snappedWidth = OrbitEngine.Pixel:Snap(exactWidth, scale)

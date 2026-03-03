@@ -62,7 +62,7 @@ Renderer.CONFIG = {
     TIP_OF_THE_SPEAR = {
         curveKey = "TipOfTheSpearColorCurve",
         dividers = true,
-        maxDividers = 2,
+        maxDividers = 3,
         getState = function() return ResourceMixin:GetTipOfTheSpearState() end,
         updateText = function(text, current) text:SetText(current) end,
     },
