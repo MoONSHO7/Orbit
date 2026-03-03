@@ -238,7 +238,16 @@ function Orbit:LiveTogglePlugin(name, enabled)
             end
             if plugin.ApplySettings then plugin:ApplySettings() end
         else
-            if plugin.ApplySettings then plugin:ApplySettings() end
+            if plugin.frame then
+                plugin.frame:SetScript("OnEvent", nil)
+                plugin.frame:SetScript("OnUpdate", nil)
+                plugin.frame:UnregisterAllEvents()
+                if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame) end
+                plugin.frame:Hide()
+            end
+            if plugin.timer then plugin.timer:Cancel(); plugin.timer = nil end
+            Orbit.EventBus:OffContext(plugin)
+            plugin._initialized = false
         end
     end
 end
