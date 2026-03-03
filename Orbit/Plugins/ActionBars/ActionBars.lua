@@ -130,6 +130,10 @@ function Plugin:AddSettings(dialog, systemFrame)
                     end
                 end })
         end
+        table.insert(schema.controls, { type = "slider", key = "Scale", label = "Scale", min = 50, max = 150, step = 1, default = 90, formatter = function(v) return v .. "%" end,
+            onChange = function(val) self:SetSetting(systemIndex, "Scale", val); self:ApplySettings(container) end })
+        table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = 0, max = 10, step = 1, default = 2,
+            onChange = function(val) self:SetSetting(systemIndex, "IconPadding", val); self:ApplySettings(container) end })
         local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
         if not isForcedHideEmpty then table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = "Hide Empty Buttons", default = false }) end
     elseif currentTab == "Colors" then
