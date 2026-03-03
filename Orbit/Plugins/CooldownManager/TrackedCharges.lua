@@ -482,37 +482,65 @@ function Plugin:UpdateChargeFrame(frame)
     frame.TickBar:SetAlpha(alphaVal)
 end
 
--- [ TICKER ]----------------------------------------------------------------------------------------
-function Plugin:StartChargeUpdateTicker()
-    local function DoUpdate()
-        local anchor = self.chargeBarAnchor
-        if anchor and anchor:IsShown() and anchor.chargeSpellId then
-            self:UpdateChargeFrame(anchor)
-        end
-        for _, childData in pairs(self.activeChargeChildren) do
-            local f = childData.frame
-            if f and f:IsShown() and f.chargeSpellId then
-                self:UpdateChargeFrame(f)
-            end
+-- [ EVENT-DRIVEN CHARGE UPDATES ]-------------------------------------------------------------------
+function Plugin:UpdateAllChargeBars()
+    local anchor = self.chargeBarAnchor
+    if anchor and anchor:IsShown() and anchor.chargeSpellId then
+        self:UpdateChargeFrame(anchor)
+    end
+    for _, childData in pairs(self.activeChargeChildren) do
+        local f = childData.frame
+        if f and f:IsShown() and f.chargeSpellId then
+            self:UpdateChargeFrame(f)
         end
     end
+end
 
-    if not self.chargeUpdateFrame then
-        self.chargeUpdateFrame = CreateFrame("Frame")
+function Plugin:IsAnyChargeRecharging()
+    local anchor = self.chargeBarAnchor
+    if anchor and anchor.chargeSpellId and anchor._trackedCharges and anchor._maxCharges then
+        if anchor._trackedCharges < anchor._maxCharges then return true end
     end
+    for _, childData in pairs(self.activeChargeChildren) do
+        local f = childData.frame
+        if f and f.chargeSpellId and f._trackedCharges and f._maxCharges then
+            if f._trackedCharges < f._maxCharges then return true end
+        end
+    end
+    return false
+end
 
+function Plugin:StartRechargeAnimationTicker()
+    if self.chargeUpdateTicker then return end
     local useFrequent = self:GetSetting(CHARGE_BAR_INDEX, "FrequentUpdates") ~= false
     local interval = useFrequent and UPDATE_INTERVAL or (UPDATE_INTERVAL * 2)
-
-    if self.chargeUpdateTicker then
-        self.chargeUpdateTicker:Cancel()
-        self.chargeUpdateTicker = nil
-    end
-    self.chargeUpdateTicker = C_Timer.NewTicker(interval, DoUpdate)
+    self.chargeUpdateTicker = C_Timer.NewTicker(interval, function()
+        self:UpdateAllChargeBars()
+        if not self:IsAnyChargeRecharging() then
+            self.chargeUpdateTicker:Cancel()
+            self.chargeUpdateTicker = nil
+        end
+    end)
 end
-    
+
+function Plugin:StartChargeUpdateTicker()
+    if self._chargeEventSetup then return end
+    self._chargeEventSetup = true
+    local frame = CreateFrame("Frame")
+    frame:RegisterEvent("SPELL_UPDATE_CHARGES")
+    frame:SetScript("OnEvent", function()
+        self:UpdateAllChargeBars()
+        if self:IsAnyChargeRecharging() then
+            self:StartRechargeAnimationTicker()
+        end
+    end)
+    self._chargeEventFrame = frame
+end
+
 function Plugin:RefreshChargeUpdateMethod()
-    self:StartChargeUpdateTicker()
+    if self:IsAnyChargeRecharging() then
+        self:StartRechargeAnimationTicker()
+    end
 end
 
 -- [ SEED VISIBILITY ]------------------------------------------------------------------------------
@@ -691,6 +719,10 @@ function Plugin:RestoreChargeBars()
     self:RegisterChargeCursorWatcher()
     self:RegisterChargeRechargeWatcher()
     self:StartChargeUpdateTicker()
+    self:UpdateAllChargeBars()
+    if self:IsAnyChargeRecharging() then
+        self:StartRechargeAnimationTicker()
+    end
 end
 
 -- [ RECHARGE WATCHER ]------------------------------------------------------------------------------

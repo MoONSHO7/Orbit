@@ -119,7 +119,10 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     IconFactory:CreateTrackedIcons(self, frame, systemIndex)
     self:CreateFrameControlButtons(frame)
 
-    frame.OnAnchorChanged = function(self) Layout:LayoutTrackedIcons(plugin, self, self.systemIndex, IsDraggingCooldownAbility) end
+    frame.OnAnchorChanged = function(self)
+        self._gridFingerprint = nil
+        Layout:LayoutTrackedIcons(plugin, self, self.systemIndex, IsDraggingCooldownAbility)
+    end
     return frame
 end
 

@@ -98,8 +98,8 @@ function Updater:UpdateTrackedIcon(plugin, icon)
         texture = C_Spell.GetSpellTexture(activeId)
         if texture then
             icon.Icon:SetTexture(texture)
-            local cdInfo = C_Spell.GetSpellCooldown(activeId) or {}
-            local onGCD = cdInfo.isOnGCD
+            local cdInfo = C_Spell.GetSpellCooldown(activeId)
+            local onGCD = cdInfo and cdInfo.isOnGCD
             local chargeInfo = icon.isChargeSpell and C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
 
             if chargeInfo then
@@ -142,7 +142,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
                     icon.Icon:SetDesaturation(onGCD and 0 or durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE))
                     if icon.cdAlphaCurve then icon.Cooldown:SetAlpha(durObj:EvaluateRemainingPercent(icon.cdAlphaCurve)) end
-                    local onRealCD = issecretvalue(cdInfo.startTime) or cdInfo.startTime > 0
+                    local onRealCD = cdInfo and (issecretvalue(cdInfo.startTime) or cdInfo.startTime > 0)
                     if icon.activeDuration and onRealCD and not onGCD then
                         icon.ActiveCooldown:SetCooldown(cdInfo.startTime, icon.activeDuration)
                     else
@@ -276,12 +276,15 @@ function Updater:UpdateTrackedIconsDisplay(plugin, anchor)
     end
 end
 
--- [ TICKER ]----------------------------------------------------------------------------------------
+-- [ EVENT-DRIVEN UPDATE ]----------------------------------------------------------------------------
+local COOLDOWN_THROTTLE = 0.1
 function Updater:StartTrackedUpdateTicker(plugin)
-    if plugin.trackedTicker then return end
+    if plugin._trackedEventSetup then return end
+    plugin._trackedEventSetup = true
     local Layout = Orbit.TrackedLayout
     local viewerMap = plugin.viewerMap
-    plugin.trackedTicker = C_Timer.NewTicker(Constants.Timing.IconMonitorInterval, function()
+    local nextUpdate = 0
+    local function DoUpdate()
         local entry = viewerMap[TRACKED_INDEX]
         if entry and entry.anchor then
             if Layout:HasUsabilityChanged(entry.anchor) then
@@ -305,7 +308,18 @@ function Updater:StartTrackedUpdateTicker(plugin)
                 end
             end
         end
+    end
+    local frame = CreateFrame("Frame")
+    frame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+    frame:RegisterEvent("BAG_UPDATE_COOLDOWN")
+    frame:RegisterEvent("SPELLS_CHANGED")
+    frame:SetScript("OnEvent", function()
+        local now = GetTime()
+        if now < nextUpdate then return end
+        nextUpdate = now + COOLDOWN_THROTTLE
+        DoUpdate()
     end)
+    plugin._trackedEventFrame = frame
 end
 
 -- [ TALENT REPARSE ]--------------------------------------------------------------------------------
@@ -398,7 +412,13 @@ function Updater:RegisterSpellCastWatcher(plugin)
                 local isMatch = (icon.trackedType == "spell" and icon.trackedId == spellId)
                     or (icon.trackedType == "item" and icon.useSpellId == spellId)
                 if isMatch then
-                    if icon.activeDuration then icon._activeGlowExpiry = GetTime() + icon.activeDuration end
+                    if icon.activeDuration then
+                        icon._activeGlowExpiry = GetTime() + icon.activeDuration
+                        C_Timer.After(icon.activeDuration, function()
+                            if icon._activeGlowing then self:StopActiveGlow(icon) end
+                            icon._activeGlowExpiry = nil
+                        end)
+                    end
                     if icon.isChargeSpell then CooldownUtils:OnChargeCast(icon) end
                 end
             end
@@ -441,8 +461,12 @@ function Updater:RegisterCursorWatcher(plugin)
     local lastShift = nil
     local viewerMap = plugin.viewerMap
     local Layout = Orbit.TrackedLayout
+    local accum = 0
     local frame = CreateFrame("Frame")
-    frame:SetScript("OnUpdate", function()
+    frame:SetScript("OnUpdate", function(_, elapsed)
+        accum = accum + elapsed
+        if accum < 0.25 then return end
+        accum = 0
         local cursorType = GetCursorInfo()
         local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
         local isShift = IsShiftKeyDown()

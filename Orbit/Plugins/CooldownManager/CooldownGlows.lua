@@ -148,9 +148,12 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
 
     local GlowConfig = Constants.PandemicGlow
     local pandemicColor = self:GetSetting(systemIndex, "PandemicGlowColor") or GlowConfig.DefaultColor
-    local colorTable = { pandemicColor.r, pandemicColor.g, pandemicColor.b, pandemicColor.a or 1 }
+    local ct = self._pandemicColorCache
+    if not ct then ct = { 0, 0, 0, 1 }; self._pandemicColorCache = ct end
+    ct[1], ct[2], ct[3], ct[4] = pandemicColor.r, pandemicColor.g, pandemicColor.b, pandemicColor.a or 1
 
-    local icons = viewer.GetItemFrames and viewer:GetItemFrames() or {}
+    local icons = viewer.GetItemFrames and viewer:GetItemFrames()
+    if not icons then return end
     for _, icon in ipairs(icons) do
         local inPandemic = icon.PandemicIcon and icon.PandemicIcon:IsShown()
         if inPandemic then
@@ -160,7 +163,7 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
                     local cfg = GlowConfig.Pixel
                     LibCustomGlow.PixelGlow_Start(
                         icon,
-                        colorTable,
+                        ct,
                         cfg.Lines,
                         cfg.Frequency,
                         cfg.Length,
@@ -172,7 +175,7 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
                     )
                 elseif glowType == GlowType.Proc then
                     local cfg = GlowConfig.Proc
-                    LibCustomGlow.ProcGlow_Start(icon, { color = colorTable, startAnim = cfg.StartAnim, duration = cfg.Duration, key = "orbitPandemic" })
+                    LibCustomGlow.ProcGlow_Start(icon, { color = ct, startAnim = cfg.StartAnim, duration = cfg.Duration, key = "orbitPandemic" })
                     local glowFrame = icon["_ProcGloworbitPandemic"]
                     if glowFrame then
                         glowFrame.startAnim = false
@@ -180,10 +183,10 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
                     end
                 elseif glowType == GlowType.Autocast then
                     local cfg = GlowConfig.Autocast
-                    LibCustomGlow.AutoCastGlow_Start(icon, colorTable, cfg.Particles, cfg.Frequency, cfg.Scale, cfg.XOffset, cfg.YOffset, "orbitPandemic")
+                    LibCustomGlow.AutoCastGlow_Start(icon, ct, cfg.Particles, cfg.Frequency, cfg.Scale, cfg.XOffset, cfg.YOffset, "orbitPandemic")
                 elseif glowType == GlowType.Button then
                     local cfg = GlowConfig.Button
-                    LibCustomGlow.ButtonGlow_Start(icon, colorTable, cfg.Frequency, cfg.FrameLevel)
+                    LibCustomGlow.ButtonGlow_Start(icon, ct, cfg.Frequency, cfg.FrameLevel)
                 end
                 icon.orbitPandemicGlowActive = glowType
             end

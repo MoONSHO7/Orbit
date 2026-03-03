@@ -11,10 +11,9 @@ local VIEWER_MAP = CDM.viewerMap
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local INACTIVE_ALPHA_DEFAULT = 60
 local FLASH_DURATION = 0.15
-local DESAT_INTERVAL = 0.1
 
--- Reusable child buffers — avoids { frame:GetChildren() } table alloc per call
-local _scratch1, _scratch2 = {}, {}
+-- Reusable child buffers
+local _scratch1 = {}
 local function PackChildren(buf, ...)
     wipe(buf)
     for i = 1, select('#', ...) do buf[i] = select(i, ...) end
@@ -26,6 +25,11 @@ local DESAT_CURVE = C_CurveUtil.CreateCurve()
 DESAT_CURVE:AddPoint(0.0, 0.0)
 DESAT_CURVE:AddPoint(0.001, 0.0)
 DESAT_CURVE:AddPoint(1.0, 0.0)
+
+-- Forward declarations for functions used in ProcessChildren but defined later
+local GetNativeTimerCurveForSystem
+local ApplyTimerColor
+local ApplyBuffIconDesaturation
 
 -- [ FLASH OVERLAY ]----------------------------------------------------------------------------------
 local function EnsureFlashOverlay(icon)
@@ -171,6 +175,10 @@ function CDM:ProcessChildren(anchor)
         end
         Orbit.Skin.Icons.frameSettings[blizzFrame] = skinSettings
 
+        local curve = (systemIndex == BUFFICON_INDEX) and GetNativeTimerCurveForSystem(BUFFICON_INDEX) or nil
+        local alwaysShow = self:GetSetting(systemIndex, "AlwaysShow")
+        local inactiveAlpha = alwaysShow and (self:GetSetting(systemIndex, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100 or nil
+        local hideBorders = alwaysShow and self:GetSetting(systemIndex, "HideBorders")
         for _, icon in ipairs(activeChildren) do
             Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
             self:HookGCDSwipe(icon, systemIndex)
@@ -183,6 +191,8 @@ function CDM:ProcessChildren(anchor)
                 end
             end
             EnsureFlashOverlay(icon)
+            if curve then ApplyTimerColor(icon, curve) end
+            if inactiveAlpha then ApplyBuffIconDesaturation(icon, inactiveAlpha, hideBorders) end
         end
 
         Orbit.Skin.IconLayout:ApplyManualLayout(blizzFrame, activeChildren, skinSettings)
@@ -243,7 +253,7 @@ end
 local SB = OrbitEngine.SchemaBuilder
 local curveCache = {}
 
-local function GetNativeTimerCurveForSystem(systemIndex)
+GetNativeTimerCurveForSystem = function(systemIndex)
     local positions = CDM:GetSetting(systemIndex, "ComponentPositions")
     local timerOverrides = positions and positions["Timer"] and positions["Timer"].overrides
     local curveData = timerOverrides and timerOverrides["CustomColorCurve"]
@@ -273,20 +283,47 @@ local function GetTimerFontStrings(icon)
     return icon.orbitTimerFS, icon.orbitActiveFS
 end
 
-local function ApplyTimerColor(icon, curve)
+local function EnsureTimerColorHook(fs)
+    if fs._orbitColorHooked then return end
+    fs._orbitColorHooked = true
+    hooksecurefunc(fs, "SetTextColor", function(self)
+        if self._orbitSettingColor then return end
+        local c = self._orbitCurveColor
+        if not c then return end
+        self._orbitSettingColor = true
+        self:SetTextColor(c[1], c[2], c[3], c[4])
+        self._orbitSettingColor = false
+    end)
+end
+
+local function SetCachedColor(fs, r, g, b, a)
+    EnsureTimerColorHook(fs)
+    local c = fs._orbitCurveColor
+    if not c then c = { 0, 0, 0, 1 }; fs._orbitCurveColor = c end
+    c[1], c[2], c[3], c[4] = r, g, b, a
+    fs._orbitSettingColor = true
+    fs:SetTextColor(r, g, b, a)
+    fs._orbitSettingColor = false
+end
+
+ApplyTimerColor = function(icon, curve)
     local timerFS, activeFS = GetTimerFontStrings(icon)
     if not timerFS and not activeFS then return end
     local durObj = GetBuffIconAuraDuration(icon)
-    if not durObj then return end
+    if not durObj then
+        if timerFS then timerFS._orbitCurveColor = nil end
+        if activeFS then activeFS._orbitCurveColor = nil end
+        return
+    end
     local color = durObj:EvaluateRemainingPercent(curve)
     if not color then return end
     local r, g, b, a = color:GetRGBA()
-    if timerFS then timerFS:SetTextColor(r, g, b, a) end
-    if activeFS then activeFS:SetTextColor(r, g, b, a) end
+    if timerFS then SetCachedColor(timerFS, r, g, b, a) end
+    if activeFS then SetCachedColor(activeFS, r, g, b, a) end
 end
 
 -- [ BUFF ICON DESATURATION ]------------------------------------------------------------------------
-local function ApplyBuffIconDesaturation(icon, inactiveAlpha, hideBorders)
+ApplyBuffIconDesaturation = function(icon, inactiveAlpha, hideBorders)
     if not icon.Icon then return end
     local durObj = GetBuffIconAuraDuration(icon)
     local borderFrame = hideBorders and Orbit.Skin.Icons.borderCache and Orbit.Skin.Icons.borderCache[icon]
@@ -301,47 +338,6 @@ local function ApplyBuffIconDesaturation(icon, inactiveAlpha, hideBorders)
     end
 end
 
-do
-    local driverFrame = CreateFrame("Frame")
-    local desatAccum = 0
-    driverFrame:SetScript("OnUpdate", function(_, elapsed)
-        desatAccum = desatAccum + elapsed
-        local checkDesat = desatAccum >= DESAT_INTERVAL
-        if checkDesat then desatAccum = 0 end
-
-        local buffEntry = VIEWER_MAP[BUFFICON_INDEX]
-        local curve = buffEntry and GetNativeTimerCurveForSystem(BUFFICON_INDEX) or nil
-        local needsDesat = checkDesat and CDM:GetSetting(BUFFICON_INDEX, "AlwaysShow")
-
-        if buffEntry and buffEntry.viewer and (curve or needsDesat) then
-            local inactiveAlpha = needsDesat and (CDM:GetSetting(BUFFICON_INDEX, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100 or nil
-            local hideBorders = needsDesat and CDM:GetSetting(BUFFICON_INDEX, "HideBorders")
-            for _, child in ipairs(PackChildren(_scratch1, buffEntry.viewer:GetChildren())) do
-                if child.layoutIndex and child:IsShown() and child:GetCooldownID() then
-                    if curve then ApplyTimerColor(child, curve) end
-                    if inactiveAlpha then ApplyBuffIconDesaturation(child, inactiveAlpha, hideBorders) end
-                end
-            end
-        end
-
-        if checkDesat then
-            for systemIndex, entry in pairs(VIEWER_MAP) do
-                if systemIndex ~= BUFFICON_INDEX and entry.viewer then
-                    local alwaysShow = CDM:GetSetting(systemIndex, "AlwaysShow")
-                    if alwaysShow then
-                        local inactiveAlpha = (CDM:GetSetting(systemIndex, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100
-                        local hideBorders = CDM:GetSetting(systemIndex, "HideBorders")
-                        for _, child in ipairs(PackChildren(_scratch2, entry.viewer:GetChildren())) do
-                            if child.layoutIndex and child:IsShown() and child:GetCooldownID() then
-                                ApplyBuffIconDesaturation(child, inactiveAlpha, hideBorders)
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end
 
 -- [ GROWTH DIRECTION ]------------------------------------------------------------------------------
 function CDM:GetGrowthDirection(anchorFrame) local info = GetAnchorInfo(anchorFrame); return info and info.edge == "TOP" and "UP" or "DOWN" end

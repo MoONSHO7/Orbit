@@ -119,16 +119,33 @@ function CDM:EnforceViewerParentage(viewer, anchor)
     self:ProcessChildren(anchor)
 end
 
--- [ MONITOR TICKER ]--------------------------------------------------------------------------------
+-- [ EVENT-DRIVEN MONITOR ]--------------------------------------------------------------------------
 function CDM:MonitorViewers()
-    if self.monitorTicker then self.monitorTicker:Cancel() end
+    if self._monitorEventSetup then return end
+    self._monitorEventSetup = true
     local plugin = self
-    self.monitorTicker = C_Timer.NewTicker(Constants.Timing.LayoutMonitorInterval, function()
+    local inCombat = false
+
+    local function CheckAll()
         for systemIndex, entry in pairs(VIEWER_MAP) do
             plugin:CheckViewer(entry.viewer, entry.anchor)
-            if LibCustomGlow then plugin:CheckPandemicFrames(entry.viewer, systemIndex) end
+            if inCombat and LibCustomGlow then plugin:CheckPandemicFrames(entry.viewer, systemIndex) end
         end
+    end
+
+    local frame = CreateFrame("Frame")
+    frame:RegisterEvent("UNIT_AURA")
+    frame:RegisterEvent("PLAYER_REGEN_DISABLED")
+    frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    frame:SetScript("OnEvent", function(_, event, unit)
+        if event == "UNIT_AURA" then
+            if unit == "player" then CheckAll() end
+            return
+        end
+        inCombat = (event == "PLAYER_REGEN_DISABLED")
+        CheckAll()
     end)
+    self._monitorEventFrame = frame
 end
 
 function CDM:CheckViewer(viewer, anchor)

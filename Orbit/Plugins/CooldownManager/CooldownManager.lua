@@ -318,12 +318,17 @@ end
 
 -- [ CLEANUP ]---------------------------------------------------------------------------------------
 function Plugin:OnDisable()
-    if self.monitorTicker then
-        self.monitorTicker:Cancel()
-        self.monitorTicker = nil
+    if self._monitorEventFrame then
+        self._monitorEventFrame:UnregisterAllEvents()
     end
-    if self.trackedTicker then
-        self.trackedTicker:Cancel()
-        self.trackedTicker = nil
+    if self._trackedEventFrame then
+        self._trackedEventFrame:UnregisterAllEvents()
+    end
+    if self._chargeEventFrame then
+        self._chargeEventFrame:UnregisterAllEvents()
+    end
+    if self.chargeUpdateTicker then
+        self.chargeUpdateTicker:Cancel()
+        self.chargeUpdateTicker = nil
     end
 end
