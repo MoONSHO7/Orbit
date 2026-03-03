@@ -12,14 +12,16 @@ local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips aut
 
 local WHATS_NEW_ENTRIES = {
     { title = "Updates",
-      body = "• Added Icicles (Mage) & Tip of the Spear (Hunter) to Resource Bars\n"
-        .. "• This WhatsNew window so I can communicate changes to you.\n"
-        .. "• AddOns are no longer managed in the Addons menu, but in the Blizzard Options / AddOns menu.\n"
-        .. "• type /Orbit Plugins to quick open\n"
+      body = "• Added Minimap button for quick access to Edit Mode and Plugin Manager.\n"
+        .. "• Mounted Visibility now uses hover-reveal on action bars and buff/debuff frames.\n"
+        .. "• Plugins with live toggles now properly disable on screen without a reload.\n"
+        .. "• Fixed color picker cancel applying unwanted changes.\n"
+        .. "• Fixed Tip of the Spear displaying 2 cells instead of 3.\n"
+        .. "• Added Icicles (Mage) & Tip of the Spear (Hunter) to Resource Bars.\n"
+        .. "• AddOns are no longer managed in the Addons menu, but in Blizzard Options / AddOns.\n"
+        .. "• type /Orbit Plugins to quick open.\n"
         .. "• Added option to disable both Orbit & Blizzard Frames, X on plugin checkboxes.\n"
-        .. "• Tweaks to the Mounted Visibilty option, additional mouseover enablements\n"
-        .. "• Performance on CDM\n"
-        .. "• Various bugfixes.\n"
+        .. "• Performance on CDM.\n"
         .. "• Backend Architecture Overhaul for the project so other devs can better contribute.\n",
     },
     {
