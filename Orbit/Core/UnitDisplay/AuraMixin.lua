@@ -398,14 +398,17 @@ local function ApplyMissingGlow(icon, overrides)
     elseif glowType == GlowType.Button then
         LCG.ButtonGlow_Start(icon, color, 0.3)
     end
+    icon.orbitMissingGlowActive = glowType
 end
 
 local function StopMissingGlow(icon)
     if not LCG then return end
-    LCG.PixelGlow_Stop(icon, MISSING_GLOW_KEY)
-    LCG.ProcGlow_Stop(icon, MISSING_GLOW_KEY)
-    LCG.AutoCastGlow_Stop(icon, MISSING_GLOW_KEY)
-    LCG.ButtonGlow_Stop(icon)
+    local active = icon.orbitMissingGlowActive
+    if active == GlowType.Pixel then LCG.PixelGlow_Stop(icon, MISSING_GLOW_KEY)
+    elseif active == GlowType.Proc then LCG.ProcGlow_Stop(icon, MISSING_GLOW_KEY)
+    elseif active == GlowType.AutoCast then LCG.AutoCastGlow_Stop(icon, MISSING_GLOW_KEY)
+    elseif active == GlowType.Button then LCG.ButtonGlow_Stop(icon) end
+    icon.orbitMissingGlowActive = nil
 end
 
 -- [ MISSING RAID BUFF CONTAINER ]------------------------------------------------------------------
@@ -495,7 +498,7 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
             GameTooltip:Show()
         end)
         icon:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        if not icon.orbitMissingGlowActive then ApplyMissingGlow(icon, overrides); icon.orbitMissingGlowActive = true end
+        if not icon.orbitMissingGlowActive then ApplyMissingGlow(icon, overrides) end
         icon:Show()
     end
     local totalW = #missing * iconSize + (#missing - 1) * RAID_BUFF_ICON_SPACING

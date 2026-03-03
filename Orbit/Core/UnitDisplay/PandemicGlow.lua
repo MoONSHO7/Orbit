@@ -80,10 +80,11 @@ end
 
 function PG:Stop(icon)
     if not icon or not LibCustomGlow then return end
-    LibCustomGlow.PixelGlow_Stop(icon, GLOW_KEY)
-    LibCustomGlow.ProcGlow_Stop(icon, GLOW_KEY)
-    LibCustomGlow.AutoCastGlow_Stop(icon, GLOW_KEY)
-    LibCustomGlow.ButtonGlow_Stop(icon)
+    local active = icon.orbitPandemicGlowActive
+    if active == GlowType.Pixel then LibCustomGlow.PixelGlow_Stop(icon, GLOW_KEY)
+    elseif active == GlowType.Proc then LibCustomGlow.ProcGlow_Stop(icon, GLOW_KEY)
+    elseif active == GlowType.AutoCast then LibCustomGlow.AutoCastGlow_Stop(icon, GLOW_KEY)
+    elseif active == GlowType.Button then LibCustomGlow.ButtonGlow_Stop(icon) end
     icon.orbitPandemicGlowActive = nil
     icon.orbitAura = nil
     icon.orbitUnit = nil
