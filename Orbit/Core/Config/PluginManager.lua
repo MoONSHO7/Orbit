@@ -208,6 +208,26 @@ local function CreatePluginPanel()
         end
 
         cb:Show()
+
+        -- Conflict indicator: red text + tooltip when another addon controls this frame
+        local hasConflict = false
+        for _, name in ipairs(pluginNames) do
+            local p = pluginMap[name]
+            if p and p.conflicted then hasConflict = true; break end
+        end
+        if hasConflict then
+            cb.text:SetText("|cFFFF4444" .. displayName .. "|r")
+            if not cb._isTriState then
+                cb:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:SetText(displayName, 1, 0.27, 0.27)
+                    GameTooltip:AddLine("Conflicting addon detected. Another addon is managing this element.", 0.8, 0.8, 0.8, true)
+                    GameTooltip:Show()
+                end)
+                cb:SetScript("OnLeave", GameTooltip_Hide)
+            end
+        end
+
         table.insert(checkboxes, cb)
 
         col = col + 1

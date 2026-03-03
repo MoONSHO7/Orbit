@@ -158,7 +158,13 @@ function Plugin:ReparentAll()
         end)
         return
     end
-    if BagsBar:GetParent() ~= self.frame then
+    local parent = BagsBar:GetParent()
+    -- Only capture from native Blizzard parents, never from another addon's container
+    if parent ~= self.frame and parent ~= UIParent and parent ~= MicroMenuContainer then
+        self.conflicted = true
+        return
+    end
+    if parent ~= self.frame then
         BagsBar:SetParent(self.frame)
     end
     BagsBar:ClearAllPoints()

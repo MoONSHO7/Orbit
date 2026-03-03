@@ -30,6 +30,11 @@ function PG:Apply(icon, aura, unit, skinSettings)
     if not durObj then return end
     local glowType = (skinSettings and skinSettings.pandemicGlowType) or GlowType.Pixel
     local pandemicColor = (skinSettings and skinSettings.pandemicColor) or { r = 1, g = 0.8, b = 0 }
+    -- Same aura + same glow type already active → update tracking, skip glow restart
+    if icon.orbitPandemicGlowActive == glowType and icon.orbitPandemicAuraID == aura.auraInstanceID then
+        icon.orbitAura, icon.orbitUnit = aura, unit
+        return
+    end
     local colorTable = { pandemicColor.r, pandemicColor.g, pandemicColor.b, 1 }
     if icon.orbitPandemicGlowActive then self:Stop(icon) end
     icon.orbitAura, icon.orbitUnit, icon.orbitPandemicAuraID = aura, unit, aura.auraInstanceID

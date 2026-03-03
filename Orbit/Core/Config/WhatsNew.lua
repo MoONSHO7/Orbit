@@ -17,22 +17,14 @@ local WHATS_NEW_ENTRIES = {
         .. "• Plugins with live toggles now properly disable on screen without a reload.\n"
         .. "• Fixed color picker cancel applying unwanted changes.\n"
         .. "• Fixed Tip of the Spear displaying 2 cells instead of 3.\n"
-        .. "• Added Icicles (Mage) & Tip of the Spear (Hunter) to Resource Bars.\n"
-        .. "• AddOns are no longer managed in the Addons menu, but in Blizzard Options / AddOns.\n"
-        .. "• type /Orbit Plugins to quick open.\n"
-        .. "• Added option to disable both Orbit & Blizzard Frames, X on plugin checkboxes.\n"
-        .. "• Performance on CDM.\n"
-        .. "• Backend Architecture Overhaul for the project so other devs can better contribute.\n",
+        .. "• ColorPicker bugfixes.\n"
+        .. "• Pandemic Glow fixes on debuff auras.\n"
+        .. "• Added defensive programming against conflicting addons\n"
     },
     {
-      title = "Group Frames",
-      body = "• Added healer auras to Party and RaidFrames, enable them in Canvas mode.\n"
-        .. "• Add Missing RaidBuffs\n"
-        .. "• Tweaks to buffs/debuffs\n"
-        .. "• More customization options for buffs/debuffs\n"
-        .. "• Adjsutments to OutOfRange functionality\n"
-        .. "• Added option to increase powerbar size"
-    },
+      title = "Message",
+      body = "Some big changes in the backend, expecting some issues to pop up. Please report via discord, github or curse page.\n\nHappy Hunting in Midnight! May the loot be forever in your favor."
+    }
 }
 
 local DISCORD_URL = "https://discord.gg/2sZj63kBqy"
@@ -105,7 +97,7 @@ FooterDivider:SetPoint("TOP", Footer, "TOP", 0, FOOTER_DIVIDER_OFFSET)
 
 local FooterText = Footer:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
 FooterText:SetPoint("TOP", Footer, "TOP", 0, FOOTER_TEXT_HEIGHT)
-FooterText:SetText("Thanks for your support! -- MoONSHO7")
+FooterText:SetText("Thanks for your support! - MoONSHO7")
 
 local btnTop = -FOOTER_TOP_PADDING
 

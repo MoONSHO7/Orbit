@@ -110,6 +110,12 @@ function Plugin:ReparentAll()
         return
     end
     if TalkingHeadFrame:GetParent() ~= self.frame then
+        local parent = TalkingHeadFrame:GetParent()
+        -- Only capture from native Blizzard parents, never from another addon's container
+        if parent ~= UIParent and parent ~= (TalkingHeadContainerFrame or UIParent) then
+            self.conflicted = true
+            return
+        end
         TalkingHeadFrame:SetParent(self.frame)
     end
 
