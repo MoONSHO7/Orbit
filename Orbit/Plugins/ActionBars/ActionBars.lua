@@ -157,7 +157,12 @@ function Plugin:AddSettings(dialog, systemFrame)
                 self:ApplyAll()
             end })
     elseif currentTab == "Visibility" then
-        SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
+        SB:AddOpacitySettings(self, schema, systemIndex, systemFrame, {
+            onChange = function(val)
+                self:SetSetting(systemIndex, "Opacity", val)
+                self:ApplySettings(container)
+            end,
+        })
         table.insert(schema.controls, { type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
             onChange = function(val) self:SetSetting(systemIndex, "OutOfCombatFade", val); self:ApplySettings(container) end })
         if self:GetSetting(systemIndex, "OutOfCombatFade") then
@@ -197,16 +202,17 @@ function Plugin:OnLoad()
         end
     end
     self.UpdateVisibilityDriver = function()
-        if InCombatLockdown() then return end
         local shouldHide = Orbit.MountedVisibility:ShouldHide()
         local numBars = self:GetSetting(1, "NumActionBars") or 4
         for index, container in pairs(self.containers) do
             if index <= 8 and index > numBars then -- disabled bar, skip
             else
-                if index == VEHICLE_EXIT_INDEX then RegisterStateDriver(container, "visibility", VEHICLE_EXIT_VISIBILITY)
-                elseif index == PET_BAR_INDEX then RegisterStateDriver(container, "visibility", PET_BAR_BASE_DRIVER)
-                elseif index == 1 then RegisterStateDriver(container, "visibility", BAR1_BASE_DRIVER)
-                else RegisterStateDriver(container, "visibility", BASE_VISIBILITY_DRIVER) end
+                if not InCombatLockdown() then
+                    if index == VEHICLE_EXIT_INDEX then RegisterStateDriver(container, "visibility", VEHICLE_EXIT_VISIBILITY)
+                    elseif index == PET_BAR_INDEX then RegisterStateDriver(container, "visibility", PET_BAR_BASE_DRIVER)
+                    elseif index == 1 then RegisterStateDriver(container, "visibility", BAR1_BASE_DRIVER)
+                    else RegisterStateDriver(container, "visibility", BASE_VISIBILITY_DRIVER) end
+                end
                 if shouldHide then
                     container.orbitMountedSuppressed = true
                     container:SetAlpha(0)
@@ -232,8 +238,14 @@ function Plugin:OnLoad()
                 end
             end
         end
+        if InCombatLockdown() then
+            Orbit.CombatManager:QueueUpdate(function() self:UpdateVisibilityDriver() end)
+        end
     end
     Orbit.EventBus:On("PLAYER_REGEN_ENABLED", self.OnCombatEnd, self)
+    if Orbit.Engine.EditMode then
+        Orbit.Engine.EditMode:RegisterCallbacks({ Enter = function() self:ApplyAll() end, Exit = function() self:ApplyAll() end }, self)
+    end
     Orbit.EventBus:On("UPDATE_MULTI_CAST_ACTIONBAR", function() C_Timer.After(0.1, function() self:ApplyAll() end) end, self)
     hooksecurefunc("ActionButton_UpdateRangeIndicator", function(btn, checksRange, inRange)
         if not btn or not btn.icon then return end

@@ -92,8 +92,6 @@ function Plugin:OnLoad()
     -- Register standard events (Handle PEW, EditMode -> ApplySettings)
     self:RegisterStandardEvents()
 
-
-
     Orbit.EventBus:On("ORBIT_GLOBAL_BACKDROP_CHANGED", function()
         self:ApplySettings()
     end, self)
@@ -581,7 +579,7 @@ function Plugin:UpdatePowerType()
 end
 
 -- [ SPACER REPOSITIONING ]-------------------------------------------------------------------------
-function Plugin:RepositionSpacers(max, edges)
+function Plugin:RepositionSpacers(max)
     if not Frame or not Frame.Spacers then return end
 
     local spacerWidth = (Frame.settings and Frame.settings.spacing) or 0

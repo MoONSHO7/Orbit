@@ -58,6 +58,7 @@ function PG:Apply(icon, aura, unit, skinSettings)
     end
 
     local glowFrame = icon["_PixelGlow" .. GLOW_KEY] or icon["_ProcGlow" .. GLOW_KEY] or icon["_AutoCastGlow" .. GLOW_KEY] or icon["__ButtonGlow"]
+    icon.orbitPandemicGlowFrame = glowFrame
     if glowFrame then glowFrame:SetAlpha(0) end
 
     if not icon.PandemicController then
@@ -75,7 +76,7 @@ function PG:Apply(icon, aura, unit, skinSettings)
             if not pUnit or not auraID then self:Hide(); return end
             local dur = C_UnitAuras.GetAuraDuration(pUnit, auraID)
             if not dur then PG:Stop(parent); self:Hide(); return end
-            local glow = parent["_PixelGlow" .. GLOW_KEY] or parent["_ProcGlow" .. GLOW_KEY] or parent["_AutoCastGlow" .. GLOW_KEY] or parent["__ButtonGlow"]
+            local glow = parent.orbitPandemicGlowFrame
             if not glow then self:Hide(); return end
             glow:SetAlpha(dur:EvaluateRemainingPercent(PANDEMIC_CURVE))
         end)
@@ -94,5 +95,6 @@ function PG:Stop(icon)
     icon.orbitAura = nil
     icon.orbitUnit = nil
     icon.orbitPandemicAuraID = nil
+    icon.orbitPandemicGlowFrame = nil
     if icon.PandemicController then icon.PandemicController:Hide() end
 end

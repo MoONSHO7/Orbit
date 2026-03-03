@@ -16,6 +16,7 @@ provides the entire settings interface for orbit. plugins declare their settings
 | OrbitOptionsPanel.lua | main orbit settings panel. slash command handler. tab navigation. |
 | OrbitSettingsDialog.lua | settings dialog frame. hosts the tab bar and content area. |
 | OrbitOptionsButton.lua | minimap/addon compartment button. |
+| MinimapButton.lua | LibDBIcon minimap button. left-click opens edit mode + options, right-click opens plugin manager. |
 | PluginManager.lua | plugin enable/disable ui (wow addons settings tab). |
 | Widgets/ | individual control widgets (slider, checkbox, dropdown, color picker, font/texture pickers, etc.). |
 

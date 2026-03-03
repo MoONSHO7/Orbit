@@ -127,11 +127,10 @@ function ABC:ReparentButtons(plugin, index, barConfig)
     end
     if #buttons == 0 then return end
     plugin.buttons[index] = buttons
+    -- Pre-scan for conflicts before reparenting any buttons
     for _, button in ipairs(buttons) do
         local parent = button:GetParent()
-        -- Only capture from native Blizzard parents or Orbit's own frames, never from another addon
         if parent ~= container and parent ~= UIParent and parent ~= Orbit.ButtonHideFrame then
-            -- Walk parent chain to check if button descends from the native blizzard bar
             local isNative = false
             if blizzBar then
                 local p = parent
@@ -140,13 +139,12 @@ function ABC:ReparentButtons(plugin, index, barConfig)
                     p = p and p:GetParent()
                 end
             else
-                isNative = true -- blizzBar is nil, can't distinguish — assume native
+                isNative = true
             end
-            if not isNative then
-                plugin.conflicted = true
-                break
-            end
+            if not isNative then plugin.conflicted = true; return end
         end
+    end
+    for _, button in ipairs(buttons) do
         button:SetParent(container)
         button:Show()
         if config and config.buttonPrefix == "ExtraActionButton" and button.style then button.style:SetAlpha(0) end

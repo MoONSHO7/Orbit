@@ -49,5 +49,5 @@ frame:SetScript("OnEvent", function(self)
     if not OrbitDB.minimap then OrbitDB.minimap = {} end
     icon:Register(BUTTON_NAME, dataObj, OrbitDB.minimap)
     icon:AddButtonToCompartment(BUTTON_NAME)
-    self:SetScript("OnEvent", nil)
+    self:UnregisterAllEvents()
 end)

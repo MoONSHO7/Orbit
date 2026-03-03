@@ -230,18 +230,19 @@ local function SetBlizzardFramesAlpha(alpha)
     end
 end
 
-local function SetupBlizzardHoverOverlay(frame)
+local function CreateSimpleHoverOverlay(frame, revealFn, suppressFn)
     if not frame or frame.orbitHoverOverlay then return end
     local overlay = CreateFrame("Frame", nil, frame)
     overlay:SetAllPoints()
     overlay:SetFrameLevel(frame:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
     overlay:EnableMouse(true); overlay:SetMouseMotionEnabled(true); overlay:SetMouseClickEnabled(false)
     overlay:SetScript("OnEnter", function(self)
-        frame:SetAlpha(1); self:Hide()
+        revealFn()
+        self:Hide()
         frame:SetScript("OnUpdate", function()
             if not frame:IsMouseOver() then
                 frame:SetScript("OnUpdate", nil)
-                if cachedShouldHide then frame:SetAlpha(0); self:Show() end
+                if cachedShouldHide then suppressFn(); self:Show() end
             end
         end)
     end)
@@ -249,7 +250,7 @@ local function SetupBlizzardHoverOverlay(frame)
     overlay:Hide()
 end
 
-local function ToggleBlizzardOverlay(frame, shouldHide)
+local function ToggleOverlay(frame, shouldHide)
     if not frame or not frame.orbitHoverOverlay then return end
     if shouldHide then frame.orbitHoverOverlay:Show() else frame:SetScript("OnUpdate", nil); frame.orbitHoverOverlay:Hide() end
 end
@@ -258,54 +259,14 @@ local HOVER_REVEAL_FRAMES = { "BuffFrame", "DebuffFrame" }
 
 local function SetupMinimapHoverOverlay()
     local cluster = _G["MinimapCluster"]
-    if not cluster or cluster.orbitHoverOverlay then return end
-    local overlay = CreateFrame("Frame", nil, cluster)
-    overlay:SetAllPoints()
-    overlay:SetFrameLevel(cluster:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
-    overlay:EnableMouse(true)
-    overlay:SetMouseMotionEnabled(true)
-    overlay:SetMouseClickEnabled(false)
-    overlay:SetScript("OnEnter", function(self)
-        SetBlizzardFramesAlpha(1)
-        self:Hide()
-        cluster:SetScript("OnUpdate", function()
-            if not cluster:IsMouseOver() then
-                cluster:SetScript("OnUpdate", nil)
-                if cachedShouldHide then
-                    SetBlizzardFramesAlpha(0)
-                    self:Show()
-                end
-            end
-        end)
-    end)
-    cluster.orbitHoverOverlay = overlay
-    overlay:Hide()
+    if not cluster then return end
+    CreateSimpleHoverOverlay(cluster, function() SetBlizzardFramesAlpha(1) end, function() SetBlizzardFramesAlpha(0) end)
 end
 
 local function SetupObjectiveHoverOverlay()
     local objective = _G["ObjectiveTrackerFrame"]
-    if not objective or objective.orbitHoverOverlay then return end
-    local overlay = CreateFrame("Frame", nil, objective)
-    overlay:SetAllPoints()
-    overlay:SetFrameLevel(objective:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
-    overlay:EnableMouse(true)
-    overlay:SetMouseMotionEnabled(true)
-    overlay:SetMouseClickEnabled(false)
-    overlay:SetScript("OnEnter", function(self)
-        objective:SetAlpha(1)
-        self:Hide()
-        objective:SetScript("OnUpdate", function()
-            if not objective:IsMouseOver() then
-                objective:SetScript("OnUpdate", nil)
-                if cachedShouldHide then
-                    objective:SetAlpha(0)
-                    self:Show()
-                end
-            end
-        end)
-    end)
-    objective.orbitHoverOverlay = overlay
-    overlay:Hide()
+    if not objective then return end
+    CreateSimpleHoverOverlay(objective, function() objective:SetAlpha(1) end, function() objective:SetAlpha(0) end)
 end
 
 -- [ REFRESH ALL SYSTEMS ]---------------------------------------------------------------------------
@@ -316,25 +277,17 @@ function Manager:Refresh(force)
 
     SetBlizzardFramesAlpha(shouldHide and 0 or 1)
     SetupMinimapHoverOverlay()
-    local cluster = _G["MinimapCluster"]
-    if cluster and cluster.orbitHoverOverlay then
-        if shouldHide then
-            cluster.orbitHoverOverlay:Show()
-        else
-            cluster:SetScript("OnUpdate", nil)
-            cluster.orbitHoverOverlay:Hide()
-        end
-    end
+    ToggleOverlay(_G["MinimapCluster"], shouldHide)
 
     SetupObjectiveHoverOverlay()
-    local objective = _G["ObjectiveTrackerFrame"]
-    if objective and objective.orbitHoverOverlay then
-        if shouldHide then objective.orbitHoverOverlay:Show() else objective:SetScript("OnUpdate", nil); objective.orbitHoverOverlay:Hide() end
-    end
+    ToggleOverlay(_G["ObjectiveTrackerFrame"], shouldHide)
 
     for _, name in ipairs(HOVER_REVEAL_FRAMES) do
         local frame = _G[name]
-        if frame then SetupBlizzardHoverOverlay(frame); ToggleBlizzardOverlay(frame, shouldHide) end
+        if frame then
+            CreateSimpleHoverOverlay(frame, function() frame:SetAlpha(1) end, function() frame:SetAlpha(0) end)
+            ToggleOverlay(frame, shouldHide)
+        end
     end
 
     local systems = OrbitEngine.systems
