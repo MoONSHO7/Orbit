@@ -179,10 +179,14 @@ end
 
 -- [ LOGIC ]-----------------------------------------------------------------------------------------
 function Plugin:CaptureButton(button)
-    if not button or InCombatLockdown() or button == QueueStatusButton then
+    if not button or InCombatLockdown() or button == QueueStatusButton then return end
+    local parent = button:GetParent()
+    -- Only capture from native Blizzard parents, never from another addon's container
+    if parent ~= self.frame and parent ~= MicroMenu and parent ~= MicroMenuContainer and parent ~= UIParent then
+        self.conflicted = true
         return
     end
-    if button:GetParent() ~= self.frame then
+    if parent ~= self.frame then
         button:SetParent(self.frame)
         button:Show()
     end

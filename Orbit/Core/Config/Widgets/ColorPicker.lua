@@ -40,11 +40,9 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
             lib:Open({
                 initialData = { r = frame.r, g = frame.g, b = frame.b, a = frame.a },
                 hasOpacity = true,
-                callback = function(result)
-                    if not result then
-                        if callback then callback(nil) end
-                        return
-                    end
+                forceSingleColor = true,
+                callback = function(result, wasCancelled)
+                    if wasCancelled or not result then return end
                     local pin = result.pins and result.pins[1]
                     if pin and pin.color then
                         frame.UpdateColor(pin.color.r, pin.color.g, pin.color.b, pin.color.a)

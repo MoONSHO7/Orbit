@@ -12,25 +12,20 @@ local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips aut
 
 local WHATS_NEW_ENTRIES = {
     { title = "Updates",
-      body = "• Added Icicles (Mage) & Tip of the Spear (Hunter) to Resource Bars\n"
-        .. "• This WhatsNew window so I can communicate changes to you.\n"
-        .. "• AddOns are no longer managed in the Addons menu, but in the Blizzard Options / AddOns menu.\n"
-        .. "• type /Orbit Plugins to quick open\n"
-        .. "• Added option to disable both Orbit & Blizzard Frames, X on plugin checkboxes.\n"
-        .. "• Tweaks to the Mounted Visibilty option, additional mouseover enablements\n"
-        .. "• Performance on CDM\n"
-        .. "• Various bugfixes.\n"
-        .. "• Backend Architecture Overhaul for the project so other devs can better contribute.\n",
+      body = "• Added Minimap button for quick access to Edit Mode and Plugin Manager.\n"
+        .. "• Mounted Visibility now uses hover-reveal on action bars and buff/debuff frames.\n"
+        .. "• Plugins with live toggles now properly disable on screen without a reload.\n"
+        .. "• Fixed color picker cancel applying unwanted changes.\n"
+        .. "• Fixed Tip of the Spear displaying 2 cells instead of 3.\n"
+        .. "• ColorPicker bugfixes. Various other minor bugfixes.\n"
+        .. "• Added HealerAuras priority to how they work in Canvas Mode (this might move them around if you've already set them up)\n"
+        .. "• Pandemic Glow fixes on debuff auras.\n"
+        .. "• Added defensive programming against conflicting addons\n"
     },
     {
-      title = "Group Frames",
-      body = "• Added healer auras to Party and RaidFrames, enable them in Canvas mode.\n"
-        .. "• Add Missing RaidBuffs\n"
-        .. "• Tweaks to buffs/debuffs\n"
-        .. "• More customization options for buffs/debuffs\n"
-        .. "• Adjsutments to OutOfRange functionality\n"
-        .. "• Added option to increase powerbar size"
-    },
+      title = "Message",
+      body = "Some big changes in the backend, expecting some issues to pop up. Please report via discord, github or curse page.\n\nHappy Hunting in Midnight! May the loot be forever in your favor."
+    }
 }
 
 local DISCORD_URL = "https://discord.gg/2sZj63kBqy"
@@ -103,7 +98,7 @@ FooterDivider:SetPoint("TOP", Footer, "TOP", 0, FOOTER_DIVIDER_OFFSET)
 
 local FooterText = Footer:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
 FooterText:SetPoint("TOP", Footer, "TOP", 0, FOOTER_TEXT_HEIGHT)
-FooterText:SetText("Thanks for your support! -- MoONSHO7")
+FooterText:SetText("Thanks for your support! - MoONSHO7")
 
 local btnTop = -FOOTER_TOP_PADDING
 
@@ -185,8 +180,7 @@ CloseButton:SetPoint("TOPRIGHT", Footer, "TOPRIGHT", -FOOTER_SIDE_PADDING, btnTo
 CloseButton:SetScript("OnClick", function() Window:Hide() end)
 
 -- [ SCROLL FRAME ]-----------------------------------------------------------------
--- DefaultPanelTemplate Bg insets: left=6, right=2, top=21
--- Layout: | border | 10px | content | 10px | slider | 2px | border |
+-- DefaultPanelTemplate Bg insets: left=6 right=2 top=21 | border | 10px | content | 10px | slider | 2px | border |
 
 local BG_LEFT = 6
 local BG_RIGHT = 2
@@ -203,10 +197,13 @@ ScrollFrame:SetScrollChild(Content)
 
 -- [ RENDER ENTRIES ]----------------------------------------------------------------
 
+local renderedFontStrings = {}
+
 local function RenderEntries()
-    -- Pre-calculate content width so text wraps correctly
-    local scrollWidth = ScrollFrame:GetWidth()
-    local contentWidth = scrollWidth
+    for _, fs in ipairs(renderedFontStrings) do fs:Hide(); fs:SetText("") end
+    wipe(renderedFontStrings)
+
+    local contentWidth = ScrollFrame:GetWidth()
     Content:SetWidth(contentWidth)
 
     local yOffset = 0
@@ -216,6 +213,7 @@ local function RenderEntries()
         titleText:SetWidth(contentWidth)
         titleText:SetJustifyH("LEFT")
         titleText:SetText("|cFFFFD100" .. entry.title .. "|r")
+        tinsert(renderedFontStrings, titleText)
         yOffset = yOffset + titleText:GetStringHeight() + ENTRY_TITLE_BODY_GAP
 
         local bodyText = Content:CreateFontString(nil, "ARTWORK", ENTRY_BODY_FONT)
@@ -223,15 +221,13 @@ local function RenderEntries()
         bodyText:SetWidth(contentWidth)
         bodyText:SetJustifyH("LEFT")
         bodyText:SetText(entry.body)
+        tinsert(renderedFontStrings, bodyText)
         yOffset = yOffset + bodyText:GetStringHeight() + ENTRY_SPACING
     end
     Content:SetHeight(yOffset)
 
-    -- Dynamic window sizing: shrink to fit, grow up to MAX_HEIGHT
     local desiredHeight = BG_TOP + CONTENT_PADDING + yOffset + CONTENT_PADDING + FOOTER_TOTAL
     Window:SetHeight(math.min(desiredHeight, MAX_HEIGHT))
-
-    -- Show scrollbar only when content exceeds max frame height
     if ScrollFrame.ScrollBar then
         ScrollFrame.ScrollBar:SetAlpha(desiredHeight > MAX_HEIGHT and 1 or 0)
     end

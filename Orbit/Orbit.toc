@@ -23,6 +23,8 @@ Core\Libs\LibDeflate\LibDeflate.lua
 Core\Libs\LibCustomGlow-1.0\LibCustomGlow-1.0.xml
 Core\Libs\LibTransmogGlow-1.0\LibTransmogGlow-1.0.xml
 Core\Libs\LibOrbitColorPicker-1.0\LibOrbitColorPicker-1.0.lua
+Core\Libs\LibDBIcon-1.0\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Core\Libs\LibDBIcon-1.0\LibDBIcon-1.0\LibDBIcon-1.0.lua
 
 # ==============================================================
 # CORE
@@ -93,6 +95,7 @@ Core\CanvasMode\ComponentSettings.lua
 Core\Config\OrbitOptionsPanel.lua
 Core\Config\WhatsNew.lua
 Core\Config\OrbitOptionsButton.lua
+Core\Config\MinimapButton.lua
 
 # Skinning
 Core\Skinning\Skins.xml

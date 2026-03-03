@@ -30,6 +30,11 @@ function PG:Apply(icon, aura, unit, skinSettings)
     if not durObj then return end
     local glowType = (skinSettings and skinSettings.pandemicGlowType) or GlowType.Pixel
     local pandemicColor = (skinSettings and skinSettings.pandemicColor) or { r = 1, g = 0.8, b = 0 }
+    -- Same aura + same glow type already active → update tracking, skip glow restart
+    if icon.orbitPandemicGlowActive == glowType and icon.orbitPandemicAuraID == aura.auraInstanceID then
+        icon.orbitAura, icon.orbitUnit = aura, unit
+        return
+    end
     local colorTable = { pandemicColor.r, pandemicColor.g, pandemicColor.b, 1 }
     if icon.orbitPandemicGlowActive then self:Stop(icon) end
     icon.orbitAura, icon.orbitUnit, icon.orbitPandemicAuraID = aura, unit, aura.auraInstanceID
@@ -53,6 +58,7 @@ function PG:Apply(icon, aura, unit, skinSettings)
     end
 
     local glowFrame = icon["_PixelGlow" .. GLOW_KEY] or icon["_ProcGlow" .. GLOW_KEY] or icon["_AutoCastGlow" .. GLOW_KEY] or icon["__ButtonGlow"]
+    icon.orbitPandemicGlowFrame = glowFrame
     if glowFrame then glowFrame:SetAlpha(0) end
 
     if not icon.PandemicController then
@@ -70,7 +76,7 @@ function PG:Apply(icon, aura, unit, skinSettings)
             if not pUnit or not auraID then self:Hide(); return end
             local dur = C_UnitAuras.GetAuraDuration(pUnit, auraID)
             if not dur then PG:Stop(parent); self:Hide(); return end
-            local glow = parent["_PixelGlow" .. GLOW_KEY] or parent["_ProcGlow" .. GLOW_KEY] or parent["_AutoCastGlow" .. GLOW_KEY] or parent["__ButtonGlow"]
+            local glow = parent.orbitPandemicGlowFrame
             if not glow then self:Hide(); return end
             glow:SetAlpha(dur:EvaluateRemainingPercent(PANDEMIC_CURVE))
         end)
@@ -80,13 +86,15 @@ end
 
 function PG:Stop(icon)
     if not icon or not LibCustomGlow then return end
-    LibCustomGlow.PixelGlow_Stop(icon, GLOW_KEY)
-    LibCustomGlow.ProcGlow_Stop(icon, GLOW_KEY)
-    LibCustomGlow.AutoCastGlow_Stop(icon, GLOW_KEY)
-    LibCustomGlow.ButtonGlow_Stop(icon)
+    local active = icon.orbitPandemicGlowActive
+    if active == GlowType.Pixel then LibCustomGlow.PixelGlow_Stop(icon, GLOW_KEY)
+    elseif active == GlowType.Proc then LibCustomGlow.ProcGlow_Stop(icon, GLOW_KEY)
+    elseif active == GlowType.AutoCast then LibCustomGlow.AutoCastGlow_Stop(icon, GLOW_KEY)
+    elseif active == GlowType.Button then LibCustomGlow.ButtonGlow_Stop(icon) end
     icon.orbitPandemicGlowActive = nil
     icon.orbitAura = nil
     icon.orbitUnit = nil
     icon.orbitPandemicAuraID = nil
+    icon.orbitPandemicGlowFrame = nil
     if icon.PandemicController then icon.PandemicController:Hide() end
 end

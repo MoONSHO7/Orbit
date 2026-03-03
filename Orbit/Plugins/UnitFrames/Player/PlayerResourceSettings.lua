@@ -94,7 +94,6 @@ function Plugin:AddSettings(dialog, systemFrame)
                 type = "colorcurve", key = "BarColorCurve", label = discreteLabel,
                 onChange = function(curveData)
                     self:SetSetting(SYSTEM_INDEX, "BarColorCurve", curveData)
-                    self:ApplyButtonVisuals()
                     self:UpdatePower()
                 end,
             })
@@ -105,7 +104,6 @@ function Plugin:AddSettings(dialog, systemFrame)
                 default = Orbit.Constants.Colors.PlayerResources.ChargedComboPoint or { r = 0.169, g = 0.733, b = 0.992 },
                 onChange = function(val)
                     self:SetSetting(SYSTEM_INDEX, "ChargedComboPointColor", val)
-                    self:ApplyButtonVisuals()
                     self:UpdatePower()
                 end,
             })

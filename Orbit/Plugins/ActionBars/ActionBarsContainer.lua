@@ -33,8 +33,8 @@ function ABC:Create(plugin, config)
     frame:EnableMouse(true)
     frame:SetClampedToScreen(true)
     frame.anchorOptions = { x = true, y = true, syncScale = false, syncDimensions = false }
-    if config.index == PET_BAR_INDEX then RegisterStateDriver(frame, "visibility", GetVisibilityDriver(PET_BAR_BASE_DRIVER))
-    elseif config.index ~= 1 then RegisterStateDriver(frame, "visibility", GetVisibilityDriver(BASE_VISIBILITY_DRIVER)) end
+    if config.index == PET_BAR_INDEX then RegisterStateDriver(frame, "visibility", PET_BAR_BASE_DRIVER)
+    elseif config.index ~= 1 then RegisterStateDriver(frame, "visibility", BASE_VISIBILITY_DRIVER) end
     OrbitEngine.Frame:AttachSettingsListener(frame, plugin, config.index)
     frame.Selection = frame:CreateTexture(nil, "OVERLAY")
     frame.Selection:SetColorTexture(1, 1, 1, 0.1)
@@ -127,6 +127,23 @@ function ABC:ReparentButtons(plugin, index, barConfig)
     end
     if #buttons == 0 then return end
     plugin.buttons[index] = buttons
+    -- Pre-scan for conflicts before reparenting any buttons
+    for _, button in ipairs(buttons) do
+        local parent = button:GetParent()
+        if parent ~= container and parent ~= UIParent and parent ~= Orbit.ButtonHideFrame then
+            local isNative = false
+            if blizzBar then
+                local p = parent
+                for _ = 1, 3 do
+                    if p == blizzBar then isNative = true; break end
+                    p = p and p:GetParent()
+                end
+            else
+                isNative = true
+            end
+            if not isNative then plugin.conflicted = true; return end
+        end
+    end
     for _, button in ipairs(buttons) do
         button:SetParent(container)
         button:Show()

@@ -129,6 +129,9 @@ function Orbit:RegisterPlugin(name, system, mixin)
     local plugin = OrbitEngine:RegisterSystem(name, system, combinedMixin)
     plugin.liveToggle = mixin.liveToggle or false
 
+    if not self._pluginsByName then self._pluginsByName = {} end
+    self._pluginsByName[name] = plugin
+
     if plugin.ApplySettings then
         local originalApplySettings = plugin.ApplySettings
         plugin.ApplySettings = function(self, ...)
@@ -220,26 +223,31 @@ function Orbit:SetBlizzardHidden(name, hidden)
 end
 
 function Orbit:IsLiveToggle(name)
-    if not OrbitEngine.systems then return false end
-    for _, plugin in ipairs(OrbitEngine.systems) do
-        if plugin.name == name then return plugin.liveToggle end
-    end
-    return false
+    local plugin = self._pluginsByName and self._pluginsByName[name]
+    return plugin and plugin.liveToggle or false
 end
 
 function Orbit:LiveTogglePlugin(name, enabled)
     self:SetPluginEnabled(name, enabled)
-    for _, plugin in ipairs(OrbitEngine.systems) do
-        if plugin.name ~= name then -- skip
-        elseif enabled then
-            if plugin.OnLoad and not plugin._initialized then
-                self.ErrorHandler:Wrap(function() plugin:OnLoad() end, name .. ".OnLoad")()
-                plugin._initialized = true
-            end
-            if plugin.ApplySettings then plugin:ApplySettings() end
-        else
-            if plugin.ApplySettings then plugin:ApplySettings() end
+    local plugin = self._pluginsByName and self._pluginsByName[name]
+    if not plugin then return end
+    if enabled then
+        if plugin.OnLoad and not plugin._initialized then
+            self.ErrorHandler:Wrap(function() plugin:OnLoad() end, name .. ".OnLoad")()
+            plugin._initialized = true
         end
+        if plugin.ApplySettings then plugin:ApplySettings() end
+    else
+        if plugin.frame then
+            plugin.frame:SetScript("OnEvent", nil)
+            plugin.frame:SetScript("OnUpdate", nil)
+            plugin.frame:UnregisterAllEvents()
+            if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame) end
+            plugin.frame:Hide()
+        end
+        if plugin.timer then plugin.timer:Cancel(); plugin.timer = nil end
+        Orbit.EventBus:OffContext(plugin)
+        plugin._initialized = false
     end
 end
 

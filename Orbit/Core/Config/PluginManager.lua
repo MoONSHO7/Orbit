@@ -160,26 +160,11 @@ local function CreatePluginPanel()
             cb:SetScript("OnClick", function(self)
                 self._triState = (self._triState + 1) % 3
                 ApplyTriStateVisual(self, self._triState)
-                if self._triState == 0 then
-                    for _, name in ipairs(pluginNames) do
-                        if Orbit:IsLiveToggle(name) then Orbit:LiveTogglePlugin(name, false)
-                        else Orbit:SetPluginEnabled(name, false) end
-                    end
-                    Orbit:SetBlizzardHidden(primaryPlugin, false)
-                elseif self._triState == 1 then
-                    for _, name in ipairs(pluginNames) do
-                        if Orbit:IsLiveToggle(name) then Orbit:LiveTogglePlugin(name, true)
-                        else Orbit:SetPluginEnabled(name, true) end
-                    end
-                    Orbit:SetBlizzardHidden(primaryPlugin, false)
-                else
-                    for _, name in ipairs(pluginNames) do
-                        if Orbit:IsLiveToggle(name) then Orbit:LiveTogglePlugin(name, false)
-                        else Orbit:SetPluginEnabled(name, false) end
-                    end
-                    Orbit:SetBlizzardHidden(primaryPlugin, true)
-                end
+                local enable = self._triState == 1
+                for _, name in ipairs(pluginNames) do Orbit:SetPluginEnabled(name, enable) end
+                Orbit:SetBlizzardHidden(primaryPlugin, self._triState == 2)
                 CheckPendingChanges()
+                if GameTooltip:IsOwned(self) then self:GetScript("OnEnter")(self) end
             end)
             cb:SetScript("OnEnter", function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -213,6 +198,8 @@ local function CreatePluginPanel()
                 if allLive then
                     for _, name in ipairs(pluginNames) do Orbit:LiveTogglePlugin(name, checked) end
                     self._initialState = checked
+                    self:SetCheckedTexture(CHECK_TEXTURE)
+                    if checked then self:GetCheckedTexture():SetVertexColor(1, 1, 1) end
                 else
                     for _, name in ipairs(pluginNames) do Orbit:SetPluginEnabled(name, checked) end
                 end
@@ -221,6 +208,26 @@ local function CreatePluginPanel()
         end
 
         cb:Show()
+
+        -- Conflict indicator: red text + tooltip when another addon controls this frame
+        local hasConflict = false
+        for _, name in ipairs(pluginNames) do
+            local p = pluginMap[name]
+            if p and p.conflicted then hasConflict = true; break end
+        end
+        if hasConflict then
+            cb.text:SetText("|cFFFF4444" .. displayName .. "|r")
+            if not cb._isTriState then
+                cb:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:SetText(displayName, 1, 0.27, 0.27)
+                    GameTooltip:AddLine("Conflicting addon detected. Another addon is managing this element.", 0.8, 0.8, 0.8, true)
+                    GameTooltip:Show()
+                end)
+                cb:SetScript("OnLeave", GameTooltip_Hide)
+            end
+        end
+
         table.insert(checkboxes, cb)
 
         col = col + 1

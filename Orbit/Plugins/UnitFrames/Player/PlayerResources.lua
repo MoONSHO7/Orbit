@@ -92,8 +92,6 @@ function Plugin:OnLoad()
     -- Register standard events (Handle PEW, EditMode -> ApplySettings)
     self:RegisterStandardEvents()
 
-
-
     Orbit.EventBus:On("ORBIT_GLOBAL_BACKDROP_CHANGED", function()
         self:ApplySettings()
     end, self)
@@ -151,7 +149,7 @@ function Plugin:OnLoad()
                     end
                 end
 
-                local divMax = MAX_SPACER_COUNT
+                local divMax = cfg.maxDividers or MAX_SPACER_COUNT
                 local logicalGap = OrbitEngine.Pixel:Multiple(spacing, scale)
                 local exactWidth = (width - (logicalGap * (divMax - 1))) / divMax
                 local snappedWidth = OrbitEngine.Pixel:Snap(exactWidth, scale)
@@ -581,7 +579,7 @@ function Plugin:UpdatePowerType()
 end
 
 -- [ SPACER REPOSITIONING ]-------------------------------------------------------------------------
-function Plugin:RepositionSpacers(max, edges)
+function Plugin:RepositionSpacers(max)
     if not Frame or not Frame.Spacers then return end
 
     local spacerWidth = (Frame.settings and Frame.settings.spacing) or 0

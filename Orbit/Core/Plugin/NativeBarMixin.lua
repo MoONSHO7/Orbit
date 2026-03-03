@@ -28,6 +28,7 @@ function Mixin:ApplyMouseOver(frame, systemIndex)
     if not frame then
         return
     end
+    if Orbit.MountedVisibility:ShouldHide() then return end
     local baseAlpha = (self:GetSetting(systemIndex, "Opacity") or 100) / 100
     Orbit.Animation:ApplyHoverFade(frame, baseAlpha, 1, Orbit:IsEditMode())
 end

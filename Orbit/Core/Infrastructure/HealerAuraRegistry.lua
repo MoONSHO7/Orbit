@@ -10,49 +10,16 @@ local _, playerClass = UnitClass("player")
 -- [ MAX SLOTS ]-------------------------------------------------------------------------------------
 local MAX_HEALER_SLOTS = 7
 
--- [ SPEC SPELL DATA (sorted by spellId ascending) ]------------------------------------------------
+-- [ SPEC SPELL DATA ]-------------------------------------------------------------------------------
 local SPEC_SPELLS = {
-    [65]   = { -- Holy Paladin
-        { spellId = 53563,   label = "Beacon of Light" },
-        { spellId = 156322,  label = "Eternal Flame" },
-        { spellId = 156910,  label = "Beacon of Faith" },
-        { spellId = 1244893, label = "Beacon of the Savior" },
-    },
-    [105]  = { -- Resto Druid
-        { spellId = 774,    label = "Rejuvenation" },
-        { spellId = 8936,   label = "Regrowth" },
-        { spellId = 33763,  label = "Lifebloom" },
-        { spellId = 48438,  label = "Wild Growth" },
-        { spellId = 155777, label = "Germination" },
-    },
-    [256]  = { -- Disc Priest
-        { spellId = 17,      label = "Power Word: Shield" },
-        { spellId = 194384,  label = "Atonement" },
-        { spellId = 1253593, label = "Void Shield" },
-    },
-    [257]  = { -- Holy Priest
-        { spellId = 139,   label = "Renew" },
-        { spellId = 41635, label = "Prayer of Mending" },
-        { spellId = 77489, label = "Echo of Light" },
-    },
-    [264]  = { -- Restoration Shaman
-        { spellId = 974,   label = "Earth Shield", altSpellId = 383648 },
-        { spellId = 61295, label = "Riptide" },
-    },
-    [270]  = { -- Mistweaver Monk
-        { spellId = 115175, label = "Soothing Mist" },
-        { spellId = 119611, label = "Renewing Mist" },
-        { spellId = 124682, label = "Enveloping Mist" },
-        { spellId = 450769, label = "Aspect of Harmony" },
-    },
     [1468] = { -- Preservation Evoker
-        { spellId = 355941, label = "Dream Breath" },
-        { spellId = 363502, label = "Dream Flight" },
         { spellId = 364343, label = "Echo" },
+        { spellId = 355941, label = "Dream Breath" },
         { spellId = 366155, label = "Reversion" },
+        { spellId = 376788, label = "Echo Dream Breath" },
         { spellId = 367364, label = "Echo Reversion" },
         { spellId = 373267, label = "Lifebind" },
-        { spellId = 376788, label = "Echo Dream Breath" },
+        { spellId = 363502, label = "Dream Flight" },
     },
     [1473] = { -- Augmentation Evoker
         { spellId = 360827, label = "Blistering Scales" },
@@ -61,6 +28,39 @@ local SPEC_SPELLS = {
         { spellId = 410263, label = "Inferno's Blessing" },
         { spellId = 410686, label = "Symbiotic Bloom" },
         { spellId = 413984, label = "Shifting Sands" },
+    },
+    [105]  = { -- Resto Druid
+        { spellId = 33763,  label = "Lifebloom" },
+        { spellId = 774,    label = "Rejuvenation" },
+        { spellId = 155777, label = "Germination" },
+        { spellId = 8936,   label = "Regrowth" },
+        { spellId = 48438,  label = "Wild Growth" },
+    },
+    [256]  = { -- Disc Priest
+        { spellId = 194384,  label = "Atonement" },
+        { spellId = 17,      label = "Power Word: Shield" },
+        { spellId = 1253593, label = "Void Shield" },
+    },
+    [257]  = { -- Holy Priest
+        { spellId = 41635, label = "Prayer of Mending" },
+        { spellId = 139,   label = "Renew" },
+        { spellId = 77489, label = "Echo of Light" },
+    },
+    [270]  = { -- Mistweaver Monk
+        { spellId = 115175, label = "Soothing Mist" },
+        { spellId = 119611, label = "Renewing Mist" },
+        { spellId = 124682, label = "Enveloping Mist" },
+        { spellId = 450769, label = "Aspect of Harmony" },
+    },
+    [264]  = { -- Restoration Shaman
+        { spellId = 974,   label = "Earth Shield", altSpellId = 383648 },
+        { spellId = 61295, label = "Riptide" },
+    },
+    [65]   = { -- Holy Paladin
+        { spellId = 53563,   label = "Beacon of Light" },
+        { spellId = 156322,  label = "Eternal Flame" },
+        { spellId = 156910,  label = "Beacon of Faith" },
+        { spellId = 1244893, label = "Beacon of the Savior" },
     },
 }
 
