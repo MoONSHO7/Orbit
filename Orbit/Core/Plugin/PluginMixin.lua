@@ -55,11 +55,15 @@ end
 
 -- Check if a component is disabled via Canvas Mode drag-to-disable (linear scan, small N)
 function Orbit.PluginMixin:IsComponentDisabled(componentKey)
-    local disabled = self:GetSetting(self.frame and self.frame.systemIndex or 1, "DisabledComponents") or {}
+    local Txn = Orbit.Engine.CanvasMode and Orbit.Engine.CanvasMode.Transaction
+    local disabled
+    if Txn and Txn:IsActive() and Txn:GetPlugin() == self then
+        disabled = Txn:GetDisabledComponents()
+    else
+        disabled = self:GetSetting(self.frame and self.frame.systemIndex or 1, "DisabledComponents") or {}
+    end
     for _, key in ipairs(disabled) do
-        if key == componentKey then
-            return true
-        end
+        if key == componentKey then return true end
     end
     return false
 end

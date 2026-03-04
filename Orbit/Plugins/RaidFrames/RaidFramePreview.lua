@@ -1,8 +1,8 @@
 ---@type Orbit
 local Orbit = Orbit
+local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local LCG = LibStub("LibCustomGlow-1.0")
-local OrbitEngine = Orbit.Engine
 
 Orbit.RaidFramePreviewMixin = {}
 
@@ -122,6 +122,17 @@ function Orbit.RaidFramePreviewMixin:ShowPreview()
     C_Timer.After(DEBOUNCE_DELAY, function()
         if self.frames then self:ApplyPreviewVisuals() end
     end)
+
+    -- Listen for live Canvas Mode edits
+    if not self._canvasSettingsCallback then
+        self._canvasSettingsCallback = function(targetPlugin)
+            if targetPlugin ~= self then return end
+            if self.frames and self.frames[1] and self.frames[1].preview then
+                self:SchedulePreviewUpdate()
+            end
+        end
+    end
+    Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", self._canvasSettingsCallback)
 end
 
 -- [ PREVIEW VISUALS ]-------------------------------------------------------------------------------
@@ -133,7 +144,9 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
     local isCanvasMode = IsCanvasModeActive(self)
     local globalSettings = Orbit.db.GlobalSettings or {}
     local roleAtlases = Orbit.RoleAtlases
-    local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+    local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == self
+    local componentPositions = txnActive and Txn:GetPositions() or self:GetSetting(1, "ComponentPositions") or {}
     local isDisabled = self.IsComponentDisabled and function(key) return self:IsComponentDisabled(key) end or function() return false end
     local sortOrder = GetPreviewSortOrder(self)
     local showHealerPower = self:GetSetting(1, "ShowPowerBar")
@@ -325,6 +338,11 @@ end
 function Orbit.RaidFramePreviewMixin:HidePreview()
     if InCombatLockdown() or not self.frames then return end
     if not Helpers then Helpers = Orbit.RaidFrameHelpers end
+
+    -- Stop listening for Canvas Mode edits
+    if self._canvasSettingsCallback then
+        Orbit.EventBus:Off("CANVAS_SETTINGS_CHANGED", self._canvasSettingsCallback)
+    end
 
     for i = 1, Helpers.LAYOUT.MaxRaidFrames do
         local frame = self.frames[i]

@@ -26,12 +26,15 @@ function Reg:RegisterComponents(plugin, container, firstFrame, textKeys, iconKey
         end
     end
 
+local AURA_ICON_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true }
+
     for _, key in ipairs(iconKeys) do
         local element = firstFrame[key]
         if element then
+            local isAura = AURA_ICON_KEYS[key]
             OrbitEngine.ComponentDrag:Attach(element, container, {
-                key = key,
-                onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(plugin, 1, key),
+                key = key, isAuraContainer = isAura or false,
+                onPositionChange = isAura and OrbitEngine.ComponentDrag:MakeAuraPositionCallback(plugin, 1, key) or OrbitEngine.ComponentDrag:MakePositionCallback(plugin, 1, key),
             })
         end
     end
@@ -67,9 +70,12 @@ end
 
 -- [ APPLY ICON POSITIONS ]-------------------------------------------------------------------------
 -- Applies saved component positions to all icon elements on each frame.
+local AURA_POSITION_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true, Buffs = true, Debuffs = true }
 function Reg:ApplyIconPositions(frames, savedPositions, iconKeys)
     if not savedPositions then return end
     local ApplyOverrides = OrbitEngine.OverrideUtils and OrbitEngine.OverrideUtils.ApplyOverrides
+    local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
+    local BuildSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
     for _, frame in ipairs(frames) do
         if frame.ApplyComponentPositions then
             frame:ApplyComponentPositions(savedPositions)
@@ -79,12 +85,9 @@ function Reg:ApplyIconPositions(frames, savedPositions, iconKeys)
                 local pos = savedPositions[iconKey]
                 local anchorX = pos.anchorX or "CENTER"
                 local anchorY = pos.anchorY or "CENTER"
-
-                local anchorPoint
-                if anchorY == "CENTER" and anchorX == "CENTER" then anchorPoint = "CENTER"
-                elseif anchorY == "CENTER" then anchorPoint = anchorX
-                elseif anchorX == "CENTER" then anchorPoint = anchorY
-                else anchorPoint = anchorY .. anchorX end
+                local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
+                local isAura = AURA_POSITION_KEYS[iconKey]
+                local selfAnchor = isAura and BuildSelfAnchor(false, true, anchorY, pos.justifyH or "CENTER") or "CENTER"
 
                 local finalX = pos.offsetX or 0
                 local finalY = pos.offsetY or 0
@@ -92,7 +95,7 @@ function Reg:ApplyIconPositions(frames, savedPositions, iconKeys)
                 if anchorY == "TOP" then finalY = -finalY end
 
                 frame[iconKey]:ClearAllPoints()
-                frame[iconKey]:SetPoint("CENTER", frame, anchorPoint, finalX, finalY)
+                frame[iconKey]:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
                 if pos.overrides and ApplyOverrides then ApplyOverrides(frame[iconKey], pos.overrides) end
             end
         end
@@ -163,7 +166,7 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
         icon:Show()
         if OrbitEngine.ComponentDrag and not icon._canvasAttached then
             icon._canvasAttached = true
-            OrbitEngine.ComponentDrag:Attach(icon, container, { key = slot.key, onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(plugin, 1, slot.key) })
+            OrbitEngine.ComponentDrag:Attach(icon, container, { key = slot.key, isAuraContainer = true, onPositionChange = OrbitEngine.ComponentDrag:MakeAuraPositionCallback(plugin, 1, slot.key) })
         end
     end
     if raidBuffs and #raidBuffs > 0 then
@@ -173,7 +176,7 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
         rb:Show()
         if OrbitEngine.ComponentDrag and not rb._canvasAttached then
             rb._canvasAttached = true
-            OrbitEngine.ComponentDrag:Attach(rb, container, { key = "RaidBuff", onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(plugin, 1, "RaidBuff") })
+            OrbitEngine.ComponentDrag:Attach(rb, container, { key = "RaidBuff", isAuraContainer = true, onPositionChange = OrbitEngine.ComponentDrag:MakeAuraPositionCallback(plugin, 1, "RaidBuff") })
         end
     end
 end
@@ -186,13 +189,16 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
     local isDisabled = plugin.IsComponentDisabled and function(k) return plugin:IsComponentDisabled(k) end or function() return false end
     if isCanvasMode then
         local previewAtlases = Orbit.IconPreviewAtlases or {}
-        local savedPositions = plugin:GetSetting(1, "ComponentPositions") or {}
+        local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+        local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == plugin
+        local savedPositions = txnActive and Txn:GetPositions() or plugin:GetSetting(1, "ComponentPositions") or {}
         local StatusMixin = Orbit.StatusIconMixin
         local iconSize = cfg.statusIconSize
         local spacing = cfg.statusIconSpacing or (iconSize + 4)
         local statusIcons = cfg.statusIcons or { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }
         -- Position all status icons at the grouped StatusIcons position (or default center)
         local groupPos = savedPositions.StatusIcons
+        local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
         for _, key in ipairs(statusIcons) do
             if frame[key] then
                 frame[key]:SetAtlas(previewAtlases[key])
@@ -200,11 +206,7 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
                 if groupPos then
                     local anchorX = groupPos.anchorX or "CENTER"
                     local anchorY = groupPos.anchorY or "CENTER"
-                    local anchorPoint
-                    if anchorY == "CENTER" and anchorX == "CENTER" then anchorPoint = "CENTER"
-                    elseif anchorY == "CENTER" then anchorPoint = anchorX
-                    elseif anchorX == "CENTER" then anchorPoint = anchorY
-                    else anchorPoint = anchorY .. anchorX end
+                    local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
                     local finalX = groupPos.offsetX or 0
                     local finalY = groupPos.offsetY or 0
                     if anchorX == "RIGHT" then finalX = -finalX end

@@ -31,6 +31,8 @@ local DEFAULT_COMP_HEIGHT = 16
 
 -- [ TYPE DETECTION ]--------------------------------------------------------------------------------
 
+local AURA_ICON_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true }
+
 local function DetectCreatorType(key, source)
     local isFontString = source and source.GetFont ~= nil
     local isTexture = source and source.GetTexture ~= nil and not isFontString
@@ -38,10 +40,12 @@ local function DetectCreatorType(key, source)
 
     if isFontString then return "FontString", true, false, false end
     if key == "StatusIcons" or key == "RoleIcon" then return "CyclingAtlas", false, false, false end
-    if isTexture then return "Texture", false, false, false end
-    if isIconFrame then return "IconFrame", false, false, false end
-    if key == "Portrait" then return "Portrait", false, false, false end
     if key == "Buffs" or key == "Debuffs" then return "Aura", false, true, false end
+    -- Known aura icons + healer aura keys (dynamic keys not in standard icon sets)
+    local isAuraKey = AURA_ICON_KEYS[key] or (isIconFrame and not ({ MarkerIcon=1, LeaderIcon=1, MainTankIcon=1 })[key])
+    if isTexture then return "Texture", false, false, false end
+    if isIconFrame then return "IconFrame", false, isAuraKey or false, false end
+    if key == "Portrait" then return "Portrait", false, false, false end
     if key == "CastBar" then return "CastBar", false, false, false end
     return nil, false, false, false
 end
@@ -67,6 +71,7 @@ local function SetupContainerState(container, preview, key, isFontString, isAura
     container.posY = container.posY or startY
     container.key = key
     container.isFontString = isFontString
+    container.isAuraContainer = isAuraContainer
     container.existingOverrides = data and data.overrides
 
     local halfW = preview.sourceWidth / 2
@@ -133,6 +138,15 @@ local function SetupDragHandlers(container, preview, key, data)
             SetBorderColor(self.border, CC.BORDER_COLOR_IDLE)
             if SmartGuides and preview.guides then SmartGuides:Hide(preview.guides) end
             Dialog.DisabledDock.DropHighlight:Hide()
+            -- Stage position into transaction for live preview updates
+            if CanvasMode.Transaction and CanvasMode.Transaction:IsActive() and self.key then
+                CanvasMode.Transaction:SetPosition(self.key, {
+                    anchorX = self.anchorX, anchorY = self.anchorY,
+                    offsetX = self.offsetX, offsetY = self.offsetY,
+                    justifyH = self.justifyH,
+                    posX = self.posX, posY = self.posY,
+                })
+            end
         elseif not self.wasDragged and self.mouseDownTime then
             if (GetTime() - self.mouseDownTime) < CLICK_THRESHOLD then
                 OrbitEngine.CanvasComponentSettings:Open(self.key, self, Dialog.targetPlugin, Dialog.targetSystemIndex)
@@ -261,6 +275,16 @@ local function SetupDragHandlers(container, preview, key, data)
         self:SetPoint("CENTER", preview, "CENTER", self.posX, self.posY)
 
         if self.visual and self.isFontString then ApplyTextAlignment(self, self.visual, self.justifyH or "CENTER") end
+
+        -- Stage position into transaction for live preview updates
+        if CanvasMode.Transaction and CanvasMode.Transaction:IsActive() then
+            CanvasMode.Transaction:SetPosition(key, {
+                anchorX = self.anchorX, anchorY = self.anchorY,
+                offsetX = self.offsetX, offsetY = self.offsetY,
+                justifyH = self.justifyH,
+                posX = self.posX, posY = self.posY,
+            })
+        end
     end)
 end
 

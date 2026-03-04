@@ -25,7 +25,7 @@ function EventBus:Off(event, callback)
         if self.listeners[event][i].callback == callback then
             table.remove(self.listeners[event], i)
             if #self.listeners[event] == 0 then
-                eventFrame:UnregisterEvent(event)
+                pcall(eventFrame.UnregisterEvent, eventFrame, event)
                 self.listeners[event] = nil
             end
             return true
@@ -42,7 +42,7 @@ function EventBus:OffContext(context)
             end
         end
         if #listeners == 0 then
-            eventFrame:UnregisterEvent(event)
+            pcall(eventFrame.UnregisterEvent, eventFrame, event)
             self.listeners[event] = nil
         end
     end

@@ -65,6 +65,8 @@ function Dialog:Apply()
     end
     local targetFrame = self.targetFrame
     if OrbitEngine.CanvasComponentSettings and OrbitEngine.CanvasComponentSettings.FlushPendingPluginSettings then OrbitEngine.CanvasComponentSettings:FlushPendingPluginSettings() end
+    -- Clear transaction without rollback (we already wrote above)
+    CanvasMode.Transaction:Clear()
     self:CloseDialog()
     if plugin.OnCanvasApply then plugin:OnCanvasApply() end
     if isSynced and plugin.ApplyAll then plugin:ApplyAll() end
@@ -72,6 +74,7 @@ end
 
 -- [ CANCEL ]-----------------------------------------------------------------------------
 function Dialog:Cancel()
+    CanvasMode.Transaction:Rollback()
     self:CloseDialog()
 end
 

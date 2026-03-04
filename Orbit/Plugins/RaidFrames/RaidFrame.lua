@@ -739,7 +739,9 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
 
     -- Icon positions (healer auras, status icons, etc.)
-    local savedPositions = self:GetSetting(1, "ComponentPositions")
+    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+    local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == self
+    local savedPositions = txnActive and Txn:GetPositions() or self:GetSetting(1, "ComponentPositions")
     if savedPositions then
         local iconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "StatusIcons", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
         local activeKeys = HealerReg:ActiveKeys()

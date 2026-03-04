@@ -66,6 +66,17 @@ function Orbit.BossFramePreviewMixin:ShowPreview()
     C_Timer.After(DEBOUNCE_DELAY, function()
         if self.frames then self:ApplyPreviewVisuals() end
     end)
+
+    -- Listen for live Canvas Mode edits
+    if not self._canvasSettingsCallback then
+        self._canvasSettingsCallback = function(targetPlugin)
+            if targetPlugin ~= self then return end
+            if self.frames and self.frames[1] and self.frames[1].preview then
+                self:SchedulePreviewUpdate()
+            end
+        end
+    end
+    Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", self._canvasSettingsCallback)
 end
 
 function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
@@ -83,7 +94,9 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
             local frame = self.frames[i]
             frame:SetSize(width, height)
 
-            local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+            local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+            local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == self
+            local componentPositions = txnActive and Txn:GetPositions() or self:GetSetting(1, "ComponentPositions") or {}
 
             self:UpdateFrameLayout(frame, borderSize, { powerBarRatio = POWER_BAR_HEIGHT_RATIO })
 
@@ -203,6 +216,11 @@ end
 function Orbit.BossFramePreviewMixin:HidePreview()
     if InCombatLockdown() or not self.frames then return end
     self.isPreviewActive = false
+
+    -- Stop listening for Canvas Mode edits
+    if self._canvasSettingsCallback then
+        Orbit.EventBus:Off("CANVAS_SETTINGS_CHANGED", self._canvasSettingsCallback)
+    end
     local visibilityDriver = "[@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
     RegisterAttributeDriver(self.container, "state-visibility", visibilityDriver)
 

@@ -23,7 +23,7 @@ CanvasMode.Constants = {
     -- Row heights (stacked top-to-bottom)
     TITLE_ROW_HEIGHT = 40,
     PANELS_ROW_HEIGHT = 28,
-    VIEWPORT_HEIGHT = 260,
+    VIEWPORT_HEIGHT = 265,
     OVERRIDE_SECTION_PADDING = 8,
 
     -- Viewport
@@ -66,10 +66,21 @@ Dialog:EnableMouse(true)
 Dialog:RegisterForDrag("LeftButton")
 Dialog:Hide()
 
--- Backdrop: Use Blizzard's high-quality DialogBorderTranslucentTemplate
-Dialog.Border = CreateFrame("Frame", nil, Dialog, "DialogBorderTranslucentTemplate")
-Dialog.Border:SetAllPoints(Dialog)
-Dialog.Border:SetFrameLevel(Dialog:GetFrameLevel())
+-- Outer NineSlice: Blizzard metal panel border (no portrait)
+Dialog.NineSlice = CreateFrame("Frame", nil, Dialog, "NineSlicePanelTemplate")
+Dialog.NineSlice.layoutType = "ButtonFrameTemplateNoPortrait"
+NineSliceUtil.ApplyLayoutByName(Dialog.NineSlice, "ButtonFrameTemplateNoPortrait")
+-- Panel background (Journeys style)
+Dialog.Bg = Dialog:CreateTexture(nil, "BACKGROUND", nil, -6)
+Dialog.Bg:SetAtlas("UI-Journeys-BG")
+Dialog.Bg:SetPoint("TOPLEFT", 6, -21)
+Dialog.Bg:SetPoint("BOTTOMRIGHT", -2, 2)
+
+-- Gradient streaks under title bar
+Dialog.TopTileStreaks = Dialog:CreateTexture(nil, "BACKGROUND", nil, -5)
+Dialog.TopTileStreaks:SetAtlas("_UI-Frame-TopTileStreaks", true)
+Dialog.TopTileStreaks:SetPoint("TOPLEFT", Dialog.Bg, "TOPLEFT", -2, 7)
+Dialog.TopTileStreaks:SetPoint("TOPRIGHT", Dialog.Bg, "TOPRIGHT", 2, 7)
 
 -- Drag handlers
 Dialog:SetScript("OnDragStart", function(self)
@@ -89,13 +100,18 @@ Dialog:SetScript("OnEvent", function(self, event)
 end)
 
 -- [ TITLE ]--------------------------------------------------------------------------------------
-Dialog.Title = Dialog:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
-Dialog.Title:SetPoint("TOP", Dialog, "TOP", 0, -15)
-Dialog.Title:SetText("Canvas Mode")
+Dialog.TitleContainer = CreateFrame("Frame", nil, Dialog)
+Dialog.TitleContainer:SetFrameLevel(510)
+Dialog.TitleContainer:SetPoint("TOPLEFT", 30, -1)
+Dialog.TitleContainer:SetPoint("TOPRIGHT", -24, -1)
+Dialog.TitleContainer:SetHeight(20)
+Dialog.Title = Dialog.TitleContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+Dialog.Title:SetPoint("TOP", Dialog.TitleContainer, "TOP", 0, -5)
 
 -- [ CLOSE BUTTON ]------------------------------------------------------------------------------
 Dialog.CloseButton = CreateFrame("Button", nil, Dialog, "UIPanelCloseButton")
-Dialog.CloseButton:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", -2, -2)
+Dialog.CloseButton:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", 0, -1)
+Dialog.CloseButton:SetFrameLevel(510)
 Dialog.CloseButton:SetScript("OnClick", function()
     Dialog:Cancel()
 end)

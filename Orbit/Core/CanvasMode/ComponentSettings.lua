@@ -63,9 +63,9 @@ local TEXT_NO_COLOR = {
 }
 
 local AURA_GRID = {
-    ICON_SIZE_CONTROL,
     { type = "slider", key = "MaxIcons", label = "Max Icons", min = 1, max = 10, step = 1 },
     { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
+    ICON_SIZE_CONTROL,
 }
 
 local PANDEMIC_GLOW = {
@@ -530,6 +530,9 @@ function Settings:OnValueChanged(key, value)
         if control and control.plugin then
             self.pendingPluginSettings = self.pendingPluginSettings or {}
             self.pendingPluginSettings[key] = value
+            if OrbitEngine.CanvasMode.Transaction and OrbitEngine.CanvasMode.Transaction:IsActive() then
+                OrbitEngine.CanvasMode.Transaction:Set(key, value)
+            end
         end
         self:Open(self.componentKey, self.container, self.plugin, self.systemIndex)
         if self.pendingPluginSettings then
@@ -594,11 +597,21 @@ function Settings:OnValueChanged(key, value)
         if control and control.plugin then
             self.pendingPluginSettings = self.pendingPluginSettings or {}
             self.pendingPluginSettings[key] = value
+            -- Stage into transaction for live preview updates
+            if OrbitEngine.CanvasMode.Transaction and OrbitEngine.CanvasMode.Transaction:IsActive() then
+                OrbitEngine.CanvasMode.Transaction:Set(key, value)
+            end
             self:ApplyPluginPreview()
             return
         end
 
         self:ApplyStyle(self.container, key, value)
+
+        -- Stage overrides into transaction for live preview updates
+        local Txn = OrbitEngine.CanvasMode.Transaction
+        if Txn and Txn:IsActive() and self.componentKey then
+            Txn:SetPositionOverride(self.componentKey, key, value)
+        end
     end
 end
 

@@ -12,32 +12,36 @@ when a user double-clicks a frame in edit mode, canvas mode opens a dialog windo
 graph LR
     SV[(SavedVariables)] -->|read settings| dialog[Canvas Mode Dialog]
     dialog -->|user adjusts| buffer[Pending Overrides]
-    buffer -->|Apply| SV
+    buffer -->|staged| txn[Settings Transaction Cache]
+    txn -->|CANVAS_SETTINGS_CHANGED| preview[Edit Mode Preview]
+    txn -->|Apply| SV
+    txn -->|Cancel/ESC| discard((Discard))
     SV -->|ApplySettings| live[Live Frames]
-    SV -->|ApplySettings| edit[Edit Mode Preview]
+    SV -->|ApplySettings| preview
 ```
 
-canvas mode reads the same settings as live frames and edit mode. all changes are buffered as pending overrides. when the user hits "apply," overrides are written to saved variables, which triggers `ApplySettings` on both live frames and edit mode previews simultaneously. cancel discards all pending changes.
+canvas mode reads the same settings as live frames and edit mode. all changes are buffered as pending overrides and staged into the settings transaction cache. the transaction fires `CANVAS_SETTINGS_CHANGED` on each edit, allowing preview frames to live-update without touching saved variables. when the user hits "apply," the transaction commits to saved variables and triggers `ApplySettings` on both live frames and edit mode previews. cancel discards the transaction and restores preview frames to their pre-edit state.
 
 ## directory structure
 
 ```
 CanvasMode/
-  CanvasMode.xml        -- xml script bundle (load order)
-  CanvasEdit.lua        -- canvas mode engine: enter/exit/toggle, selection tinting, background overlay
-  ComponentRegistry.lua -- component registration, drag mechanics, position callbacks, nudge
-  ComponentHandle.lua   -- drag handle creation and pooling for components
-  ComponentHelpers.lua  -- safe size/position utilities (WoW 12.0+ secret value handling)
-  SmartGuides.lua       -- visual snap feedback lines (edge/center alignment)
-  OverrideUtils.lua     -- per-component override read/write helpers
-  Init.lua              -- canvas mode initialization and constants
-  Dialog.lua            -- main dialog window: open/close, tab filtering, frame selection
-  DialogActions.lua     -- dialog button handlers (apply, reset, cancel)
-  Viewport.lua          -- viewport controls (zoom, pan, sync toggle, preview switching)
-  Dock.lua              -- disabled component dock (drag-to-disable, click-to-restore)
-  CanvasModeDrag.lua    -- intra-dialog component drag-and-drop
-  ComponentSettings.lua -- per-component settings panel (font, size, color, position overrides)
-  Creators/             -- component creator registry (how to build draggable previews per type)
+  CanvasMode.xml          -- xml script bundle (load order)
+  CanvasEdit.lua          -- canvas mode engine: enter/exit/toggle, selection tinting, background overlay
+  ComponentRegistry.lua   -- component registration, drag mechanics, position callbacks, nudge
+  ComponentHandle.lua     -- drag handle creation and pooling for components
+  ComponentHelpers.lua    -- safe size/position utilities (WoW 12.0+ secret value handling)
+  SmartGuides.lua         -- visual snap feedback lines (edge/center alignment)
+  OverrideUtils.lua       -- per-component override read/write helpers
+  Init.lua                -- canvas mode initialization and constants
+  SettingsTransaction.lua -- transactional cache for edit sessions (Begin/Commit/Rollback)
+  Dialog.lua              -- main dialog window: open/close, tab filtering, frame selection
+  DialogActions.lua       -- dialog button handlers (apply, reset, cancel)
+  Viewport.lua            -- viewport controls (zoom, pan, sync toggle, preview switching)
+  Dock.lua                -- disabled component dock (drag-to-disable, click-to-restore)
+  CanvasModeDrag.lua      -- intra-dialog component drag-and-drop
+  ComponentSettings.lua   -- per-component settings panel (font, size, color, position overrides)
+  Creators/               -- component creator registry (how to build draggable previews per type)
     Registry.lua
     AuraCreator.lua
     CastBarCreator.lua

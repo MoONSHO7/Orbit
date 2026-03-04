@@ -2,6 +2,7 @@
 local Orbit = Orbit
 local LSM = LibStub("LibSharedMedia-3.0")
 local LCG = LibStub("LibCustomGlow-1.0")
+local OrbitEngine = Orbit.Engine
 
 -- Define Mixin
 Orbit.PartyFramePreviewMixin = {}
@@ -120,6 +121,17 @@ function Orbit.PartyFramePreviewMixin:ShowPreview()
             self:ApplyPreviewVisuals()
         end
     end)
+
+    -- Listen for live Canvas Mode edits
+    if not self._canvasSettingsCallback then
+        self._canvasSettingsCallback = function(targetPlugin)
+            if targetPlugin ~= self then return end
+            if self.frames and self.frames[1] and self.frames[1].preview then
+                self:SchedulePreviewUpdate()
+            end
+        end
+    end
+    Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", self._canvasSettingsCallback)
 end
 
 function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
@@ -237,7 +249,9 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
             -- Preview-only: role/leader/selection/aggro icons with fake data
             local previewRoles = { "HEALER", "TANK", "DAMAGER", "DAMAGER" }
             local roleAtlases = Orbit.RoleAtlases
-            local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+            local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+            local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == self
+            local componentPositions = txnActive and Txn:GetPositions() or self:GetSetting(1, "ComponentPositions") or {}
 
             if self:GetSetting(1, "ShowRoleIcon") ~= false and frame.RoleIcon then
                 local roleAtlas = roleAtlases[previewRoles[i]]
@@ -317,6 +331,11 @@ function Orbit.PartyFramePreviewMixin:HidePreview()
     end
     if not self.frames then
         return
+    end
+
+    -- Stop listening for Canvas Mode edits
+    if self._canvasSettingsCallback then
+        Orbit.EventBus:Off("CANVAS_SETTINGS_CHANGED", self._canvasSettingsCallback)
     end
 
     -- Restore visibility driver for normal gameplay (hide in raids)
