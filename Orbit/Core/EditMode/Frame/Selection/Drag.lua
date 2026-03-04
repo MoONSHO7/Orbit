@@ -13,6 +13,15 @@ local function GetOppositeEdge(edge)
     return OPPOSITE_EDGES[edge]
 end
 
+local function GetChainScreenCenterX(root)
+    local minL, maxR = Engine.FrameAnchor:GetHorizontalChainScreenBounds(root)
+    if minL then return (minL + maxR) / 2 end
+    local s = root:GetEffectiveScale()
+    local l, r = root:GetLeft(), root:GetRight()
+    if l and r and s then return (l + r) / 2 * s end
+    return nil
+end
+
 -- [ PRECISION MODE (SHIFT-DRAG OVERLAY SUPPRESSION) ]----------------------------------------------
 
 local function SetNonSelectedOverlaysVisible(selectionOverlay, visible)
@@ -235,10 +244,24 @@ function Drag:OnDragStart(selectionOverlay)
         local anchor = Engine.FrameAnchor.anchors[parent]
         if anchor then
             local syncedW, syncedH, syncedS = parent:GetWidth(), parent:GetHeight(), parent:GetScale()
+            local oldParent = anchor.parent
+            local wasHorizontal = (anchor.edge == "LEFT" or anchor.edge == "RIGHT")
+            local root, oldScreenCenterX
+            if wasHorizontal and oldParent then
+                root = Engine.FrameAnchor:GetRootParent(oldParent)
+                if root then oldScreenCenterX = GetChainScreenCenterX(root) end
+            end
+
             Engine.FrameAnchor:BreakAnchor(parent, true)
             if parent.orbitPlugin and parent.orbitPlugin.ApplySettings then
                 parent.orbitPlugin:ApplySettings(parent)
             end
+
+            if root then
+                Engine.FrameAnchor:SyncChildren(root)
+                Engine.FrameAnchor:RebalanceChainCenter(root, oldScreenCenterX)
+            end
+
             local naturalW, naturalH = parent:GetWidth(), parent:GetHeight()
             local dw, dh = syncedW - naturalW, syncedH - naturalH
             if dw ~= 0 or dh ~= 0 or parent:GetScale() ~= syncedS then
@@ -348,7 +371,19 @@ function Drag:OnDragStop(selectionOverlay)
                 end
             end
 
+            local isHoriz = (anchorEdge == "LEFT" or anchorEdge == "RIGHT")
+            local oldCenterX
+            if isHoriz then
+                local existingRoot = Engine.FrameAnchor:GetRootParent(anchorTarget)
+                if existingRoot then oldCenterX = GetChainScreenCenterX(existingRoot) end
+            end
+
             Engine.FrameAnchor:CreateAnchor(parent, anchorTarget, anchorEdge, padding, nil, anchorAlign)
+
+            if isHoriz and oldCenterX then
+                local root = Engine.FrameAnchor:GetRootParent(parent)
+                Engine.FrameAnchor:RebalanceChainCenter(root, oldCenterX)
+            end
 
             if Selection.dragCallbacks[parent] then
                 Selection.dragCallbacks[parent](parent, "ANCHORED", anchorTarget, anchorEdge)

@@ -12,13 +12,8 @@ local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local INACTIVE_ALPHA_DEFAULT = 60
 local FLASH_DURATION = 0.15
 
--- Reusable child buffers
-local _scratch1 = {}
-local function PackChildren(buf, ...)
-    wipe(buf)
-    for i = 1, select('#', ...) do buf[i] = select(i, ...) end
-    return buf
-end
+-- Reusable child buffer alias
+local PackChildren = function(...) return CooldownUtils:PackChildren(...) end
 local _activeChildBuf = {}
 
 local DESAT_CURVE = C_CurveUtil.CreateCurve()
@@ -68,7 +63,7 @@ end
 local function FindIconBySpellID(spellID)
     for _, entry in pairs(VIEWER_MAP) do
         if entry.viewer then
-            for _, child in ipairs(PackChildren(_scratch1, entry.viewer:GetChildren())) do
+            for _, child in ipairs(PackChildren(entry.viewer:GetChildren())) do
                 local cached = child.orbitCachedSpellID
                 if child:IsShown() and cached and not issecretvalue(cached) and cached == spellID then
                     return child
@@ -112,7 +107,7 @@ function CDM:ProcessChildren(anchor)
     local activeChildren = _activeChildBuf
     local alwaysShow = (systemIndex == BUFFICON_INDEX) and self:GetSetting(systemIndex, "AlwaysShow")
 
-    for _, child in ipairs(PackChildren(_scratch1, blizzFrame:GetChildren())) do
+    for _, child in ipairs(PackChildren(blizzFrame:GetChildren())) do
         if child.layoutIndex then
             if not child.orbitOnShowHooked then
                 local plugin = self
@@ -267,7 +262,7 @@ end
 
 local function FindFontString(cd)
     if not cd then return nil end
-    for _, region in ipairs({ cd:GetRegions() }) do
+    for _, region in ipairs(PackChildren(cd:GetRegions())) do
         if region:GetObjectType() == "FontString" then return region end
     end
     return nil
@@ -413,7 +408,7 @@ do
         for systemIndex, entry in pairs(VIEWER_MAP) do
             if IsEnabledForSystem(systemIndex) then
                 if entry.viewer then
-                    for _, child in ipairs({ entry.viewer:GetChildren() }) do
+                    for _, child in ipairs(PackChildren(entry.viewer:GetChildren())) do
                         if child:IsShown() and GetIconSpellID(child) == nextSpell then
                             SetHighlightShown(child, true)
                             highlightedIcons[child] = true

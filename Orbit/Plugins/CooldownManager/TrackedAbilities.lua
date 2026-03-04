@@ -340,7 +340,11 @@ function Plugin:LoadTrackedItems(anchor, systemIndex)
         self:SetSetting(systemIndex, self:GetSpecKey("TrackedItems"), tracked)
     end
 
-    anchor.gridItems = tracked
+    local copy = {}
+    for k, v in pairs(tracked) do
+        copy[k] = { type = v.type, id = v.id, x = v.x, y = v.y, activeDuration = v.activeDuration, cooldownDuration = v.cooldownDuration, useSpellId = v.useSpellId }
+    end
+    anchor.gridItems = copy
     anchor._gridFingerprint = nil
     Layout:LayoutTrackedIcons(self, anchor, systemIndex, IsDraggingCooldownAbility)
 end
@@ -353,7 +357,7 @@ function Plugin:ApplyTrackedIconSkin(icon, systemIndex, overrides) IconFactory:A
 function Plugin:StartTrackedUpdateTicker() Updater:StartTrackedUpdateTicker(self) end
 function Plugin:RegisterSpellCastWatcher() Updater:RegisterSpellCastWatcher(self) end
 function Plugin:RegisterCursorWatcher() Updater:RegisterCursorWatcher(self) end
-function Plugin:RegisterTalentWatcher() Updater:RegisterTalentWatcher(self) end
+-- RegisterTalentWatcher: talent events handled by RegisterSpellCastWatcher
 function Plugin:ReparseActiveDurations() Updater:ReparseActiveDurations(self) end
 function Plugin:RefreshAllTrackedLayouts() Updater:RefreshAllTrackedLayouts(self) end
 function Plugin:ReloadTrackedForSpec() Updater:ReloadTrackedForSpec(self) end

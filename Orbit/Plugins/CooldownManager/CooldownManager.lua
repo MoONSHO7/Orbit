@@ -120,7 +120,6 @@ function Plugin:OnLoad()
     self:StartTrackedUpdateTicker()
     self:RegisterCursorWatcher()
     self:SetupEditModeHooks()
-    self:RegisterTalentWatcher()
     self:RegisterSpellCastWatcher()
     self:RestoreChargeBars()
 

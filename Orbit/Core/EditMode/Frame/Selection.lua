@@ -280,7 +280,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     end)
 
     function selection:ShowTooltip()
-        if not self.parent then
+        if not self.parent or self.parent.orbitIsDragging then
             return
         end
 

@@ -81,7 +81,7 @@ function Parser:ParseCooldownDuration(itemType, id)
 end
 
 -- [ BUILD PHASE CURVE ]-----------------------------------------------------------------------------
-local _phaseCurveCache = {}
+local _phaseCurveCache = setmetatable({}, { __mode = "v" })
 function Parser:BuildPhaseCurve(activeDuration, cooldownDuration)
     if not activeDuration or not cooldownDuration or cooldownDuration <= 0 or activeDuration >= cooldownDuration then
         local key = "fallback"

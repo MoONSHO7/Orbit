@@ -155,5 +155,13 @@ function CooldownUtils:TrackChargeCompletion(obj)
     end
 end
 
+-- [ REUSABLE CHILD BUFFER ]--------------------------------------------------------------------------
+local _sharedChildBuf = {}
+function CooldownUtils:PackChildren(...)
+    wipe(_sharedChildBuf)
+    for i = 1, select('#', ...) do _sharedChildBuf[i] = select(i, ...) end
+    return _sharedChildBuf
+end
+
 -- Export to Orbit Engine
 OrbitEngine.CooldownUtils = CooldownUtils

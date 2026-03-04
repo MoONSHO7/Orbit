@@ -38,6 +38,7 @@ local function SuppressFrame(frame)
     frame.orbitMountedSuppressed = true
     frame:SetAlpha(0)
     if frame.Portrait then frame.Portrait:Hide() end
+    if frame.NameFrame then frame.NameFrame:Hide() end
     local Anchor = OrbitEngine.FrameAnchor
     if Anchor and Anchor.childrenOf[frame] then
         for child in pairs(Anchor.childrenOf[frame]) do
@@ -53,6 +54,7 @@ local function RevealFrame(frame)
     frame.orbitMountedSuppressed = false
     frame:SetAlpha(1)
     if frame.UpdatePortrait then frame:UpdatePortrait() end
+    if frame.NameFrame then frame.NameFrame:Show() end
     local Anchor = OrbitEngine.FrameAnchor
     if Anchor and Anchor.childrenOf[frame] then
         for child in pairs(Anchor.childrenOf[frame]) do

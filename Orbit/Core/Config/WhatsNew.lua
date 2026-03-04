@@ -12,6 +12,12 @@ local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips aut
 
 local WHATS_NEW_ENTRIES = {
     { title = "Updates",
+      body = "• CDM Performance Parse. 50% better performance. (half the CPU+Ram)\n"
+        .. "• CDM Better Left/Right anchoring against vertical stacked frames\n"
+        .. "• Chaining CDM frames left and right will maintain the position of the CDM in the center now\n"
+        .. "• bugfixes: Party/Raid frames names showing while mounted, combat timer bugfix, groups not updating properly if raidleader changes player position\n"
+    },
+    { title = "Previous Updates",
       body = "• Added Minimap button for quick access to Edit Mode and Plugin Manager.\n"
         .. "• Mounted Visibility now uses hover-reveal on action bars and buff/debuff frames.\n"
         .. "• Plugins with live toggles now properly disable on screen without a reload.\n"

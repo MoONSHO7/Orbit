@@ -347,6 +347,7 @@ function Plugin:OnLoad()
             self:UpdateRoleIcon(f, self)
             self:UpdateLeaderIcon(f, self)
             self:UpdateGroupPosition(f, self)
+            C_Timer.After(0.2, function() self:UpdateGroupPosition(f, self) end)
             return
         elseif event == "PARTY_LEADER_CHANGED" then
             self:UpdateLeaderIcon(f, self)

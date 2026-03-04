@@ -353,6 +353,18 @@ end
 function Anchor:BreakAnchor(child, suppressApplySettings)
     if self.anchors[child] then
         local oldAnchor = self.anchors[child]
+        local oldParent = oldAnchor.parent
+        local wasHorizontal = (oldAnchor.edge == "LEFT" or oldAnchor.edge == "RIGHT")
+
+        -- Capture chain state before break for rebalancing
+        local root, oldScreenCenterX
+        if not suppressApplySettings and wasHorizontal and oldParent then
+            root = self:GetRootParent(oldParent)
+            if root then
+                local minLeft, maxRight = self:GetHorizontalChainScreenBounds(root)
+                if minLeft then oldScreenCenterX = (minLeft + maxRight) / 2 end
+            end
+        end
 
         local pOpts = GetFrameOptions(oldAnchor.parent)
         if pOpts.mergeBorders then
@@ -372,9 +384,39 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
             child:OnAnchorChanged(nil, nil, nil)
         end
 
+        -- Re-sync chain width and rebalance center
+        if root then
+            self:SyncChildren(root)
+            self:RebalanceChainCenter(root, oldScreenCenterX)
+        end
+
         return true
     end
     return false
+end
+
+function Anchor:RebalanceChainCenter(root, oldScreenCenterX)
+    if not oldScreenCenterX or not root then return end
+    local scale = root:GetEffectiveScale()
+    if not scale or scale == 0 then return end
+
+    local newScreenCenterX
+    local newMinLeft, newMaxRight = self:GetHorizontalChainScreenBounds(root)
+    if newMinLeft then
+        newScreenCenterX = (newMinLeft + newMaxRight) / 2
+    else
+        local left, right = root:GetLeft(), root:GetRight()
+        if left and right then newScreenCenterX = (left + right) / 2 * scale end
+    end
+    if not newScreenCenterX then return end
+
+    local shift = oldScreenCenterX - newScreenCenterX
+    if math.abs(shift) < 0.5 then return end
+
+    local point, relativeTo, relativePoint, offsetX, offsetY = root:GetPoint(1)
+    if not point or not relativeTo then return end
+    root:ClearAllPoints()
+    root:SetPoint(point, relativeTo, relativePoint, offsetX + shift / scale, offsetY)
 end
 
 -- [ DESTROY ANCHOR ]--------------------------------------------------------------------------------

@@ -11,6 +11,9 @@ local GlowConfig = Constants.PandemicGlow
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local TRACKED_INDEX = Constants.Cooldown.SystemIndex.Tracked
 local TRACKED_PLACEHOLDER_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
+local COOLDOWN_THROTTLE = 0.1
+local TALENT_REPARSE_DELAY = 0.5
+local CURSOR_POLL_INTERVAL = 0.25
 
 local DESAT_CURVE = C_CurveUtil.CreateCurve()
 DESAT_CURVE:AddPoint(0.0, 0)
@@ -277,7 +280,6 @@ function Updater:UpdateTrackedIconsDisplay(plugin, anchor)
 end
 
 -- [ EVENT-DRIVEN UPDATE ]----------------------------------------------------------------------------
-local COOLDOWN_THROTTLE = 0.1
 function Updater:StartTrackedUpdateTicker(plugin)
     if plugin._trackedEventSetup then return end
     plugin._trackedEventSetup = true
@@ -358,10 +360,7 @@ function Updater:ReparseActiveDurations(plugin)
     end
 end
 
-function Updater:RegisterTalentWatcher(plugin)
-    if plugin.talentWatcherSetup then return end
-    plugin.talentWatcherSetup = true
-end
+-- RegisterTalentWatcher: talent events handled by RegisterSpellCastWatcher (TRAIT_CONFIG_UPDATED)
 
 function Updater:RefreshAllTrackedLayouts(plugin)
     local viewerMap = plugin.viewerMap
@@ -390,7 +389,7 @@ end
 function Updater:RegisterSpellCastWatcher(plugin)
     if plugin.spellCastWatcherSetup then return end
     plugin.spellCastWatcherSetup = true
-    local TALENT_REPARSE_DELAY = 0.5
+
     local viewerMap = plugin.viewerMap
     local frame = CreateFrame("Frame")
     frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
@@ -414,7 +413,9 @@ function Updater:RegisterSpellCastWatcher(plugin)
                 if isMatch then
                     if icon.activeDuration then
                         icon._activeGlowExpiry = GetTime() + icon.activeDuration
+                        local expectedId = icon.trackedId
                         C_Timer.After(icon.activeDuration, function()
+                            if icon.trackedId ~= expectedId then return end
                             if icon._activeGlowing then self:StopActiveGlow(icon) end
                             icon._activeGlowExpiry = nil
                         end)
@@ -465,7 +466,7 @@ function Updater:RegisterCursorWatcher(plugin)
     local frame = CreateFrame("Frame")
     frame:SetScript("OnUpdate", function(_, elapsed)
         accum = accum + elapsed
-        if accum < 0.25 then return end
+        if accum < CURSOR_POLL_INTERVAL then return end
         accum = 0
         local cursorType = GetCursorInfo()
         local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()

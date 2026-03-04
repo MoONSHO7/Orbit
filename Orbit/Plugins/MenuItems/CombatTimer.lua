@@ -44,7 +44,7 @@ end
 
 function Plugin:OnLoad()
     self.frame = CreateFrame("Frame", "OrbitCombatTimerFrame", UIParent)
-    self.frame:SetSize(100, 20)
+
     self.frame:SetClampedToScreen(true)
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Combat Timer"
@@ -101,7 +101,6 @@ function Plugin:UpdateTimer()
     end
     local duration = GetTime() - self.startTime
     self.frame.Text:SetText(string.format("%d:%02d", math.floor(duration / 60), math.floor(duration % 60)))
-    self.frame:SetSize(self.frame.Text:GetStringWidth() + 8, 20)
 end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
@@ -114,6 +113,8 @@ function Plugin:ApplySettings()
     local s = Orbit.db.GlobalSettings.TextScale
     local textMultiplier = s == "Small" and 0.85 or s == "Large" and 1.15 or s == "ExtraLarge" and 1.30 or 1
     Orbit.Skin:SkinText(frame.Text, { font = Orbit.db.GlobalSettings.Font, textSize = 14 * textMultiplier })
+    frame.Text:SetText("99:59")
+    frame:SetSize(frame.Text:GetStringWidth() + 8, frame.Text:GetStringHeight() + 4)
     frame:Show()
     self:ApplyMouseOver(frame, SYSTEM_ID)
     self:UpdateTimer()

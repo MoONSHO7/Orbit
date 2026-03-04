@@ -116,6 +116,14 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
                         anchorCandidateX_Target = sp.target
                         anchorCandidateX_Edge = sp.edge
                         minDiffX_Anchor = absDiff
+                        anchorCandidateX_CenterDist = math.abs(tCenterY - centerY)
+                    elseif sp.edge and absDiff == minDiffX_Anchor then
+                        local dist = math.abs(tCenterY - centerY)
+                        if dist < (anchorCandidateX_CenterDist or math.huge) then
+                            anchorCandidateX_Target = sp.target
+                            anchorCandidateX_Edge = sp.edge
+                            anchorCandidateX_CenterDist = dist
+                        end
                     end
                 end
 
