@@ -7,6 +7,10 @@ local OrbitEngine = Orbit.Engine
 Orbit.GroupCanvasRegistration = {}
 local Reg = Orbit.GroupCanvasRegistration
 
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
+
+local STATUS_GROUP_KEYS = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }
+
 -- [ REGISTER COMPONENTS ]--------------------------------------------------------------------------
 -- Registers text, icon, and aura container components on a group frame container for Canvas Mode.
 function Reg:RegisterComponents(plugin, container, firstFrame, textKeys, iconKeys, auraBaseIconSize)
@@ -30,6 +34,22 @@ function Reg:RegisterComponents(plugin, container, firstFrame, textKeys, iconKey
                 onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(plugin, 1, key),
             })
         end
+    end
+
+    -- StatusIcons: single grouped component that fans out to all 4 status icon keys
+    if firstFrame.StatusIcons then
+        OrbitEngine.ComponentDrag:Attach(firstFrame.StatusIcons, container, {
+            key = "StatusIcons",
+            onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
+                local positions = plugin:GetSetting(1, "ComponentPositions") or {}
+                local pos = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                positions.StatusIcons = pos
+                for _, subKey in ipairs(STATUS_GROUP_KEYS) do
+                    positions[subKey] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, posX = pos.posX, posY = pos.posY }
+                end
+                plugin:SetSetting(1, "ComponentPositions", positions)
+            end,
+        })
     end
 
     for _, key in ipairs({ "Buffs", "Debuffs" }) do
@@ -88,9 +108,16 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
     for _, key in ipairs(cfg.statusIcons or {}) do
         if frame[key] then frame[key]:SetAtlas(previewAtlases[key]); frame[key]:SetSize(cfg.statusIconSize, cfg.statusIconSize) end
     end
+    local savedPositions = plugin:GetSetting(1, "ComponentPositions") or {}
     for _, key in ipairs(cfg.roleIcons or {}) do
         if frame[key] then
-            if not frame[key]:GetAtlas() then frame[key]:SetAtlas(previewAtlases[key]) end
+            local atlas = previewAtlases[key]
+            -- Respect HideDPS override for RoleIcon preview
+            if key == "RoleIcon" then
+                local roleOverrides = savedPositions.RoleIcon and savedPositions.RoleIcon.overrides
+                if roleOverrides and roleOverrides.HideDPS then atlas = "UI-LFG-RoleIcon-Healer" end
+            end
+            if not frame[key]:GetAtlas() then frame[key]:SetAtlas(atlas) end
             frame[key]:SetSize(cfg.roleIconSize, cfg.roleIconSize)
         end
     end
@@ -113,6 +140,16 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
     end
     if frame.PrivateAuraAnchor then
         frame.PrivateAuraAnchor:SetSize(cfg.privateAuraSize or cfg.defensiveSize, cfg.privateAuraSize or cfg.defensiveSize)
+    end
+    -- Create synthetic StatusIcons element for Canvas Mode creator to clone
+    if not frame.StatusIcons then
+        local si = CreateFrame("Button", nil, frame)
+        si.Icon = si:CreateTexture(nil, "ARTWORK")
+        si.Icon:SetAllPoints()
+        si:SetSize(cfg.statusIconSize, cfg.statusIconSize)
+        si.Icon:SetAtlas(previewAtlases.PhaseIcon or "RaidFrame-Icon-Phasing")
+        si:Hide()
+        frame.StatusIcons = si
     end
     local container = frame:GetParent()
     local savedPositions = plugin:GetSetting(1, "ComponentPositions") or {}
@@ -154,13 +191,29 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
         local iconSize = cfg.statusIconSize
         local spacing = cfg.statusIconSpacing or (iconSize + 4)
         local statusIcons = cfg.statusIcons or { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }
-        for idx, key in ipairs(statusIcons) do
+        -- Position all status icons at the grouped StatusIcons position (or default center)
+        local groupPos = savedPositions.StatusIcons
+        for _, key in ipairs(statusIcons) do
             if frame[key] then
                 frame[key]:SetAtlas(previewAtlases[key])
                 frame[key]:SetSize(iconSize, iconSize)
-                if not savedPositions[key] then
+                if groupPos then
+                    local anchorX = groupPos.anchorX or "CENTER"
+                    local anchorY = groupPos.anchorY or "CENTER"
+                    local anchorPoint
+                    if anchorY == "CENTER" and anchorX == "CENTER" then anchorPoint = "CENTER"
+                    elseif anchorY == "CENTER" then anchorPoint = anchorX
+                    elseif anchorX == "CENTER" then anchorPoint = anchorY
+                    else anchorPoint = anchorY .. anchorX end
+                    local finalX = groupPos.offsetX or 0
+                    local finalY = groupPos.offsetY or 0
+                    if anchorX == "RIGHT" then finalX = -finalX end
+                    if anchorY == "TOP" then finalY = -finalY end
                     frame[key]:ClearAllPoints()
-                    frame[key]:SetPoint("CENTER", frame, "CENTER", OrbitEngine.Pixel:Snap(spacing * (idx - (#statusIcons + 1) / 2), frame:GetEffectiveScale()), 0)
+                    frame[key]:SetPoint("CENTER", frame, anchorPoint, finalX, finalY)
+                elseif not savedPositions[key] then
+                    frame[key]:ClearAllPoints()
+                    frame[key]:SetPoint("CENTER", frame, "CENTER", 0, 0)
                 end
                 frame[key]:Show()
             end

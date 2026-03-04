@@ -37,6 +37,7 @@ local function DetectCreatorType(key, source)
     local isIconFrame = source and source.Icon and source.Icon.GetTexture and key ~= "CastBar"
 
     if isFontString then return "FontString", true, false, false end
+    if key == "StatusIcons" or key == "RoleIcon" then return "CyclingAtlas", false, false, false end
     if isTexture then return "Texture", false, false, false end
     if isIconFrame then return "IconFrame", false, false, false end
     if key == "Portrait" then return "Portrait", false, false, false end

@@ -42,6 +42,20 @@ function Dialog:Apply()
     local isSynced = self.SyncToggle and self.SyncToggle:IsShown() and self.SyncToggle.isSynced
     local disabledCopy = {}
     for _, key in ipairs(self.disabledComponentKeys) do table.insert(disabledCopy, key) end
+    -- Fan out StatusIcons grouped position to individual status icon keys
+    if positions.StatusIcons then
+        local sp = positions.StatusIcons
+        for _, subKey in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }) do
+            positions[subKey] = positions[subKey] or {}
+            positions[subKey].anchorX = sp.anchorX
+            positions[subKey].anchorY = sp.anchorY
+            positions[subKey].offsetX = sp.offsetX
+            positions[subKey].offsetY = sp.offsetY
+            positions[subKey].justifyH = sp.justifyH
+            positions[subKey].posX = sp.posX
+            positions[subKey].posY = sp.posY
+        end
+    end
     if isSynced and plugin.supportsGlobalSync then
         plugin:SetSetting(1, "GlobalComponentPositions", positions)
         if plugin.IsComponentDisabled then plugin:SetSetting(1, "GlobalDisabledComponents", disabledCopy) end

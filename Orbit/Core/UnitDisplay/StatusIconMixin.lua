@@ -163,11 +163,24 @@ function Mixin:UpdateRoleIcon(frame, plugin)
     local roleAtlas = ROLE_ATLASES[role]
     local inEditMode = Orbit:IsEditMode()
 
-    if roleAtlas then
+    -- HideDPS override: suppress DAMAGER role icon
+    local hideDPS = false
+    if plugin then
+        local positions = plugin:GetSetting(1, "ComponentPositions")
+        local roleOverrides = positions and positions.RoleIcon and positions.RoleIcon.overrides
+        hideDPS = roleOverrides and roleOverrides.HideDPS
+    end
+
+    if role == "DAMAGER" and hideDPS then
+        frame.RoleIcon:Hide()
+    elseif roleAtlas then
         frame.RoleIcon:SetAtlas(roleAtlas)
         frame.RoleIcon:Show()
-    elseif inEditMode then
+    elseif inEditMode and not hideDPS then
         frame.RoleIcon:SetAtlas(ROLE_ATLASES["DAMAGER"])
+        frame.RoleIcon:Show()
+    elseif inEditMode and hideDPS then
+        frame.RoleIcon:SetAtlas(ROLE_ATLASES["HEALER"])
         frame.RoleIcon:Show()
     else
         frame.RoleIcon:Hide()

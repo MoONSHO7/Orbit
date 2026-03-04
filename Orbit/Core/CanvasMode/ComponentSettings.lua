@@ -18,6 +18,7 @@ local COMPACT_LABEL_WIDTH = 50
 local COMPACT_VALUE_WIDTH = 36
 local COMPACT_LABEL_GAP = 4
 local TITLE_HEIGHT = 20
+local SUBTITLE_HEIGHT = 16
 local PORTRAIT_RING_OVERSHOOT = OrbitEngine.PORTRAIT_RING_OVERSHOOT
 local PORTRAIT_RING_DATA = OrbitEngine.PortraitRingData
 local PORTRAIT_RING_OPTIONS = OrbitEngine.PortraitRingOptions
@@ -82,6 +83,7 @@ local TYPE_SCHEMAS = {
     FontString = Compose(DYNAMIC_TEXT),
     Texture = { controls = { SCALE_CONTROL } },
     IconFrame = { controls = { ICON_SIZE_CONTROL } },
+    CyclingAtlas = { controls = { ICON_SIZE_CONTROL } },
 }
 
 -- [ KEY SCHEMAS ]------------------------------------------------------------------------------------
@@ -96,6 +98,8 @@ local KEY_SCHEMAS = {
     Text            = Compose(STATIC_TEXT),
     ["CastBar.Text"] = Compose(STATIC_TEXT),
     LevelText       = Compose(TEXT_NO_COLOR),
+    StatusIcons     = { controls = { ICON_SIZE_CONTROL } },
+    RoleIcon        = { controls = { SCALE_CONTROL, { type = "checkbox", key = "HideDPS", label = "Hide DPS", default = false } } },
     Buffs           = Compose(AURA_GRID),
     Debuffs         = Compose(AURA_GRID, PANDEMIC_GLOW),
     Portrait = {
@@ -175,6 +179,7 @@ local COMPONENT_TITLES = {
     CrowdControlIcon = "Crowd Control Icon", Buffs = "Buffs", Debuffs = "Debuffs",
     Portrait = "Portrait", CastBar = "Cast Bar", MarkerIcon = "Raid Marker",
     ["CastBar.Text"] = "Ability Text", ["CastBar.Timer"] = "Cast Timer",
+    StatusIcons = "Status Icons",
 }
 
 -- Resolve display title dynamically (healer aura slots aren't active at load time)
@@ -286,6 +291,21 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
 
     overrideContainer.Title:SetText(ResolveTitle(componentKey))
 
+    -- StatusIcons: static group description to the right of the title
+    if componentKey == "StatusIcons" then
+        if not overrideContainer.StatusSubtitle then
+            local sub = overrideContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            sub:SetPoint("LEFT", overrideContainer.Title, "RIGHT", 6, 0)
+            sub:SetJustifyH("LEFT")
+            sub:SetTextColor(1, 1, 1, 0.8)
+            overrideContainer.StatusSubtitle = sub
+        end
+        overrideContainer.StatusSubtitle:SetText("Group containing rez, readycheck, phase and summon icons.")
+        overrideContainer.StatusSubtitle:Show()
+    elseif overrideContainer.StatusSubtitle then
+        overrideContainer.StatusSubtitle:Hide()
+    end
+
     -- Unified override loading: overrides first, then plugin-level settings, then pending
     self.currentOverrides = {}
     local savedPositions = plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
@@ -335,6 +355,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     local col = 0
     local rowY = 0
     local rowHeight = 0
+    local titleOffset = TITLE_HEIGHT
 
     for _, control in ipairs(schema.controls) do
         widgetIndex = widgetIndex + 1
@@ -413,11 +434,11 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
                 widget.gridCol = col
                 widget:ClearAllPoints()
                 if col == 0 then
-                    widget:SetPoint("TOPLEFT", overrideContainer, "TOPLEFT", C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
-                    widget:SetPoint("TOPRIGHT", overrideContainer, "TOP", -(COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
+                    widget:SetPoint("TOPLEFT", overrideContainer, "TOPLEFT", C.DIALOG_INSET, -(rowY + titleOffset))
+                    widget:SetPoint("TOPRIGHT", overrideContainer, "TOP", -(COLUMN_GAP / 2), -(rowY + titleOffset))
                 else
-                    widget:SetPoint("TOPLEFT", overrideContainer, "TOP", (COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
-                    widget:SetPoint("TOPRIGHT", overrideContainer, "TOPRIGHT", -C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
+                    widget:SetPoint("TOPLEFT", overrideContainer, "TOP", (COLUMN_GAP / 2), -(rowY + titleOffset))
+                    widget:SetPoint("TOPRIGHT", overrideContainer, "TOPRIGHT", -C.DIALOG_INSET, -(rowY + titleOffset))
                 end
                 widget:Show()
                 rowHeight = math.max(rowHeight, widget:GetHeight())
@@ -436,7 +457,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     -- Close final partial row
     if col > 0 then rowY = rowY + rowHeight + WIDGET_SPACING end
 
-    local containerHeight = rowY + TITLE_HEIGHT + PADDING
+    local containerHeight = rowY + titleOffset + PADDING
     overrideContainer:SetHeight(containerHeight)
     canvasDialog:RecalculateHeight()
 
@@ -740,8 +761,8 @@ function Settings:ApplyStyle(container, key, value)
             self.container:RefreshAuraIcons()
         elseif self.container then
             self.container:SetSize(value, value)
-            if self.container.visual and self.container.visual.SetSize then self.container.visual:SetSize(value, value) end
-            if self.container.visual and Orbit.Skin and Orbit.Skin.Icons then
+            if self.container.visual and self.container.visual.SetSize and not self.container._cyclingTicker then self.container.visual:SetSize(value, value) end
+            if self.container.visual and Orbit.Skin and Orbit.Skin.Icons and self.container.visual.GetRegions then
                 local s = self.container:GetEffectiveScale() or 1
                 local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(s)
                 Orbit.Skin.Icons:ApplyCustom(self.container.visual, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
@@ -779,7 +800,11 @@ function Settings:ApplyStyle(container, key, value)
         local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(value)
         if color then visual:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1) end
     elseif key == "Scale" then
-        if visual.GetObjectType and visual:GetObjectType() == "Texture" then
+        if container._cyclingTicker then
+            if not container._originalSize then container._originalSize = container:GetWidth() end
+            local newSize = (container._originalSize or 18) * value
+            container:SetSize(newSize, newSize)
+        elseif visual.GetObjectType and visual:GetObjectType() == "Texture" then
             if not container.originalVisualWidth then
                 container.originalVisualWidth = visual:GetWidth()
                 container.originalVisualHeight = visual:GetHeight()

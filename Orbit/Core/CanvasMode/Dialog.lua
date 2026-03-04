@@ -572,6 +572,7 @@ function Dialog:CleanupPreview()
     self:UnhookSourceSizeChanged()
 
     for key, comp in pairs(self.previewComponents) do
+        if comp._cyclingTicker then comp._cyclingTicker:Cancel(); comp._cyclingTicker = nil end
         comp:Hide()
         comp:SetParent(nil)
     end
