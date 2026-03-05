@@ -29,7 +29,7 @@ local PREVIEW_DEFAULTS = {
     PowerPercents = { 85, 60, 40, 15, 80 },
     Names = { "Healbot", "Tankenstein", "Stabby", "Pyromancer", "You" },
     Classes = { "PRIEST", "WARRIOR", "ROGUE", "MAGE", "PALADIN" },
-    Status = { nil, nil, nil, "Offline", nil },
+    Status = { nil, nil, nil, nil, nil },
     Roles = { "HEALER", "TANK", "DAMAGER", "DAMAGER", "HEALER" },
 
 }
@@ -270,10 +270,12 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 healerAuraSize = HEALER_AURA_ICON_SIZE,
             }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs(), HealerReg:ActiveKeys())
 
-            -- Preview auras
-            if frame.debuffPool then frame.debuffPool:ReleaseAll() end
-            if frame.buffPool then frame.buffPool:ReleaseAll() end
-            self:ShowPreviewAuras(frame, i)
+            -- Preview auras (skip if animator is handling them)
+            if not Orbit.PreviewAnimator:IsRunning() then
+                if frame.debuffPool then frame.debuffPool:ReleaseAll() end
+                if frame.buffPool then frame.buffPool:ReleaseAll() end
+                self:ShowPreviewAuras(frame, i)
+            end
 
             -- Preview dispel glow
             local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")

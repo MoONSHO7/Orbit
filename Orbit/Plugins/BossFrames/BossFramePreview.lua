@@ -182,7 +182,9 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                 end
             end
 
-            self:ShowPreviewAuras(frame)
+            if not Orbit.PreviewAnimator:IsRunning() then
+                self:ShowPreviewAuras(frame)
+            end
 
             if frame.MarkerIcon then
                 Orbit.StatusIconMixin:ApplyMarkerSprite(frame.MarkerIcon, 8)

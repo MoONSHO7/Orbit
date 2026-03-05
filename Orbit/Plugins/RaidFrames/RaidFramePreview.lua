@@ -36,15 +36,10 @@ local PREVIEW_CLASSES = {
 local PREVIEW_HEALTH_PCTS = {
     100, 85, 60, 40, 95,
     75, 90, 50, 80, 70,
-    65, 100, 88, 0, 0,
+    65, 100, 88, 55, 72,
     92, 78, 83, 95, 100,
 }
-local PREVIEW_STATUS = {
-    nil, nil, nil, nil, nil,
-    nil, nil, nil, nil, nil,
-    nil, nil, nil, "Dead", "Dead",
-    nil, nil, nil, "Offline", "Offline",
-}
+local PREVIEW_STATUS = {}
 local PREVIEW_ROLES = {
     "TANK", "HEALER", "DAMAGER", "DAMAGER", "HEALER",
     "TANK", "HEALER", "DAMAGER", "DAMAGER", "DAMAGER",
@@ -294,22 +289,26 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 hideKeys = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" },
             }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs(), HealerReg:ActiveKeys())
 
-            -- Preview auras
-            if frame.debuffPool then frame.debuffPool:ReleaseAll() end
-            if frame.buffPool then frame.buffPool:ReleaseAll() end
-            self:ShowPreviewAuras(frame, i)
+            -- Preview auras (skip if animator is handling them)
+            if not Orbit.PreviewAnimator:IsRunning() then
+                if frame.debuffPool then frame.debuffPool:ReleaseAll() end
+                if frame.buffPool then frame.buffPool:ReleaseAll() end
+                self:ShowPreviewAuras(frame, i)
+            end
 
-            -- Preview dispel glow
-            local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
-            local dispelColorMap = { [4] = "DispelColorMagic", [9] = "DispelColorCurse", [14] = "DispelColorPoison" }
-            local dispelKey = dispelColorMap[i]
-            if dispelEnabled and dispelKey then
-                local thickness = self:GetSetting(1, "DispelThickness") or 2
-                local frequency = self:GetSetting(1, "DispelFrequency") or 0.25
-                local c = self:GetSetting(1, dispelKey) or { r = 0.2, g = 0.6, b = 1.0, a = 1 }
-                LCG.PixelGlow_Start(frame, { c.r, c.g, c.b, c.a }, 8, frequency, nil, thickness, 0, 0, true, "preview", Orbit.Constants.Levels.Glow)
-            else
-                LCG.PixelGlow_Stop(frame, "preview")
+            -- Preview dispel glow (skip if animator is handling them)
+            if not Orbit.PreviewAnimator:IsRunning() then
+                local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
+                local dispelColorMap = { [4] = "DispelColorMagic", [9] = "DispelColorCurse", [14] = "DispelColorPoison" }
+                local dispelKey = dispelColorMap[i]
+                if dispelEnabled and dispelKey then
+                    local thickness = self:GetSetting(1, "DispelThickness") or 2
+                    local frequency = self:GetSetting(1, "DispelFrequency") or 0.25
+                    local c = self:GetSetting(1, dispelKey) or { r = 0.2, g = 0.6, b = 1.0, a = 1 }
+                    LCG.PixelGlow_Start(frame, { c.r, c.g, c.b, c.a }, 8, frequency, nil, thickness, 0, 0, true, "preview", Orbit.Constants.Levels.Glow)
+                else
+                    LCG.PixelGlow_Stop(frame, "preview")
+                end
             end
         end
     end
@@ -342,6 +341,7 @@ function Orbit.RaidFramePreviewMixin:HidePreview()
     Orbit.PreviewAnimator:Stop(self)
     Orbit.PreviewAnimator:StopAuras(self)
     Orbit.PreviewAnimator:StopHealerAuras(self)
+    Orbit.PreviewAnimator:StopDispels(self)
 
     -- Stop listening for Canvas Mode edits
     if self._canvasSettingsCallback then
@@ -469,4 +469,19 @@ function Orbit.RaidFramePreviewMixin:StartPreviewAnimation()
     if #animFrames > 0 then Orbit.PreviewAnimator:Start(self, animFrames, animCfg) end
     if #auraFrames > 0 then Orbit.PreviewAnimator:StartAuras(self, auraFrames, auraCfg) end
     if #healerFrames > 0 then Orbit.PreviewAnimator:StartHealerAuras(self, healerFrames, healerCfg) end
+    -- Dispel animation
+    local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
+    if dispelEnabled and #animFrames > 0 then
+        Orbit.PreviewAnimator:StartDispels(self, animFrames, {
+            thickness = self:GetSetting(1, "DispelThickness") or 2,
+            frequency = self:GetSetting(1, "DispelFrequency") or 0.25,
+            numLines = self:GetSetting(1, "DispelNumLines") or 8,
+            colors = {
+                Magic = self:GetSetting(1, "DispelColorMagic") or { r = 0.2, g = 0.6, b = 1.0, a = 1 },
+                Curse = self:GetSetting(1, "DispelColorCurse") or { r = 0.6, g = 0.0, b = 1.0, a = 1 },
+                Disease = self:GetSetting(1, "DispelColorDisease") or { r = 0.6, g = 0.4, b = 0.0, a = 1 },
+                Poison = self:GetSetting(1, "DispelColorPoison") or { r = 0.0, g = 0.6, b = 0.0, a = 1 },
+            },
+        })
+    end
 end
