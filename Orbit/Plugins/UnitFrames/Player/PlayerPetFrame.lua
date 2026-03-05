@@ -126,6 +126,19 @@ function Plugin:OnLoad()
     if not self.frame:GetPoint() then
         self.frame:SetPoint("CENTER", UIParent, "CENTER", -250, -100)
     end
+
+    -- Force refresh on pet change (mount/dismount/summon/dismiss)
+    self.frame:RegisterEvent("UNIT_PET")
+    self.frame:HookScript("OnEvent", function(_, event, unit)
+        if event == "UNIT_PET" and unit == "player" then
+            C_Timer.After(0.2, function()
+                if self.frame and UnitExists("pet") then
+                    self.frame:SetAlpha(1)
+                    self.frame:UpdateAll()
+                end
+            end)
+        end
+    end)
 end
 
 -- [ VISIBILITY ]------------------------------------------------------------------------------------
