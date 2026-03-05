@@ -253,6 +253,8 @@ function Drag:OnDragStart(selectionOverlay)
             end
 
             Engine.FrameAnchor:BreakAnchor(parent, true)
+            -- Capture position before ApplySettings re-anchors to plugin parent
+            local savedL, savedB = parent:GetLeft(), parent:GetBottom()
             if parent.orbitPlugin and parent.orbitPlugin.ApplySettings then
                 parent.orbitPlugin:ApplySettings(parent)
             end
@@ -262,16 +264,16 @@ function Drag:OnDragStart(selectionOverlay)
                 Engine.FrameAnchor:RebalanceChainCenter(root, oldScreenCenterX)
             end
 
-            local naturalW, naturalH = parent:GetWidth(), parent:GetHeight()
-            local dw, dh = syncedW - naturalW, syncedH - naturalH
-            if dw ~= 0 or dh ~= 0 or parent:GetScale() ~= syncedS then
-                parent:StopMovingOrSizing()
-                local scale = parent:GetEffectiveScale()
-                local l, b = parent:GetLeft(), parent:GetBottom()
+            -- Always free frame to UIParent so it can be dragged
+            parent:StopMovingOrSizing()
+            local scale = parent:GetEffectiveScale()
+            if savedL and savedB then
+                local naturalW, naturalH = parent:GetWidth(), parent:GetHeight()
+                local dw, dh = syncedW - naturalW, syncedH - naturalH
                 parent:ClearAllPoints()
-                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l + dw / 2, scale), Engine.Pixel:Snap(b + dh / 2, scale))
-                parent:StartMoving()
+                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(savedL + dw / 2, scale), Engine.Pixel:Snap(savedB + dh / 2, scale))
             end
+            parent:StartMoving()
         end
 
         if parent.orbitAutoOrient and Engine.FrameOrientation then
@@ -390,8 +392,11 @@ function Drag:OnDragStop(selectionOverlay)
             end
         else
             local point, x, y = Engine.FrameSnap:NormalizePosition(parent)
+            if not point then
+                point, _, _, x, y = parent:GetPoint(1)
+            end
             parent:ClearAllPoints()
-            parent:SetPoint(point, x, y)
+            parent:SetPoint(point or "CENTER", x or 0, y or 0)
 
             if parent.orbitPlugin and parent.orbitPlugin.ApplySettings then
                 parent.orbitPlugin:ApplySettings(parent)
