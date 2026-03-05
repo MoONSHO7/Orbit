@@ -512,6 +512,7 @@ function Dialog:Open(frame, plugin, systemIndex)
     end
 
     if self.OverrideContainer then self.OverrideContainer:Hide() end
+    if self.ViewportDivider then self.ViewportDivider:Hide() end
 
     self:SetWidth(C.DIALOG_WIDTH)
     self:RecalculateHeight()

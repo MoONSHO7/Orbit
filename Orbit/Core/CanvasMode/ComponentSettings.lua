@@ -282,6 +282,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     -- Show container early so children have valid parent dimensions
     overrideContainer:SetHeight(TITLE_HEIGHT + PADDING)
     overrideContainer:Show()
+    if canvasDialog.ViewportDivider then canvasDialog.ViewportDivider:Show() end
 
     if not schema then
         overrideContainer.Title:SetText(ResolveTitle(componentKey) .. " (no settings)")
@@ -480,6 +481,7 @@ function Settings:Close()
     local canvasDialog = OrbitEngine.CanvasModeDialog
     if canvasDialog and canvasDialog.OverrideContainer then
         canvasDialog.OverrideContainer:Hide()
+        if canvasDialog.ViewportDivider then canvasDialog.ViewportDivider:Hide() end
         canvasDialog:RecalculateHeight()
     end
 end

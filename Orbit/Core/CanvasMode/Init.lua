@@ -70,9 +70,11 @@ Dialog:Hide()
 Dialog.NineSlice = CreateFrame("Frame", nil, Dialog, "NineSlicePanelTemplate")
 Dialog.NineSlice.layoutType = "ButtonFrameTemplateNoPortrait"
 NineSliceUtil.ApplyLayoutByName(Dialog.NineSlice, "ButtonFrameTemplateNoPortrait")
--- Panel background (Journeys style)
+-- Panel background (tiled rock texture)
 Dialog.Bg = Dialog:CreateTexture(nil, "BACKGROUND", nil, -6)
-Dialog.Bg:SetAtlas("UI-Journeys-BG")
+Dialog.Bg:SetTexture("Interface\\FrameGeneral\\UI-Background-Rock")
+Dialog.Bg:SetHorizTile(true)
+Dialog.Bg:SetVertTile(true)
 Dialog.Bg:SetPoint("TOPLEFT", 6, -21)
 Dialog.Bg:SetPoint("BOTTOMRIGHT", -2, 2)
 

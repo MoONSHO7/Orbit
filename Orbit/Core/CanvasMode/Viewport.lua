@@ -35,6 +35,8 @@ Dialog.PreviewContainer:SetPoint("TOPLEFT", Dialog, "TOPLEFT", INSET_LEFT, INSET
 Dialog.PreviewContainer:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", INSET_RIGHT, INSET_TOP)
 Dialog.PreviewContainer:SetHeight(C.VIEWPORT_HEIGHT)
 
+
+
 -- Recessed NineSlice behind the viewport (slightly larger for depth)
 Dialog.Inset = CreateFrame("Frame", nil, Dialog, "InsetFrameTemplate")
 Dialog.Inset:SetPoint("TOPLEFT", Dialog, "TOPLEFT", 6, -22)
@@ -56,13 +58,8 @@ Dialog.BorderFrame.TopDetail = Dialog.BorderFrame:CreateTexture(nil, "ARTWORK")
 Dialog.BorderFrame.TopDetail:SetAtlas("questlog-frame-filigree", true)
 Dialog.BorderFrame.TopDetail:SetPoint("TOP", 0, 1)
 
--- Divider between viewport and dock (outside viewport)
-Dialog.ViewportDivider = Dialog:CreateTexture(nil, "ARTWORK")
-Dialog.ViewportDivider:SetAtlas("ui-journeys-renown-divider", true)
-Dialog.ViewportDivider:SetPoint("TOPLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", 14, 3)
-Dialog.ViewportDivider:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -14, 3)
+-- Divider (created in Dock.lua after DisabledDock is available)
 
--- Overlay frame for controls that render above viewport content
 Dialog.BorderOverlay = CreateFrame("Frame", nil, Dialog.PreviewContainer)
 Dialog.BorderOverlay:SetAllPoints()
 Dialog.BorderOverlay:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
@@ -127,7 +124,7 @@ function Dialog:RecalculateHeight()
     local overridePad = overrideHeight > 0 and C.OVERRIDE_SECTION_PADDING or 0
     local footerHeight = FC.TopPadding + FC.ButtonHeight + FC.BottomPadding
 
-    local dividerHeight = Dialog.ViewportDivider and select(2, Dialog.ViewportDivider:GetSize()) or 0
+    local dividerHeight = (Dialog.ViewportDivider and Dialog.ViewportDivider:IsShown()) and select(2, Dialog.ViewportDivider:GetSize()) or 0
     local dockHeight = C.DOCK_HEIGHT + 2
     local totalHeight = topOffset + C.VIEWPORT_HEIGHT + dividerHeight + dockHeight + overridePad + overrideHeight + footerHeight + C.DIALOG_INSET
 

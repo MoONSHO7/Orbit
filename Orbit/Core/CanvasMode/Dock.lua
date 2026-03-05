@@ -15,8 +15,8 @@ local function DisplayName(key) return HealerReg and HealerReg:GetSlotLabel(key)
 -- [ DOCK FRAME ]-------------------------------------------------------------------------
 
 Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog)
-Dialog.DisabledDock:SetPoint("TOPLEFT", Dialog.ViewportDivider, "BOTTOMLEFT", 0, 8)
-Dialog.DisabledDock:SetPoint("TOPRIGHT", Dialog.ViewportDivider, "BOTTOMRIGHT", 0, 8)
+Dialog.DisabledDock:SetPoint("TOPLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", 14, 8)
+Dialog.DisabledDock:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -14, 8)
 Dialog.DisabledDock:SetHeight(C.DOCK_HEIGHT)
 Dialog.DisabledDock:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + 50)
 
@@ -37,10 +37,17 @@ Dialog.DisabledDock.DropHighlight:SetAllPoints()
 Dialog.DisabledDock.DropHighlight:SetColorTexture(0.3, 0.8, 0.3, 0.2)
 Dialog.DisabledDock.DropHighlight:Hide()
 
--- [ OVERRIDE SETTINGS CONTAINER (below dock) ]-------------------------------------------
+-- [ DIVIDER (between dock and override settings, shown on component selection) ]-----
+Dialog.ViewportDivider = Dialog:CreateTexture(nil, "ARTWORK")
+Dialog.ViewportDivider:SetAtlas("ui-journeys-renown-divider", true)
+Dialog.ViewportDivider:SetPoint("TOPLEFT", Dialog.DisabledDock, "BOTTOMLEFT", 0, 0)
+Dialog.ViewportDivider:SetPoint("TOPRIGHT", Dialog.DisabledDock, "BOTTOMRIGHT", 0, 0)
+Dialog.ViewportDivider:Hide()
+
+-- [ OVERRIDE SETTINGS CONTAINER (below divider) ]----------------------------------------
 Dialog.OverrideContainer = CreateFrame("Frame", nil, Dialog)
-Dialog.OverrideContainer:SetPoint("TOPLEFT", Dialog.DisabledDock, "BOTTOMLEFT", 0, -C.OVERRIDE_SECTION_PADDING)
-Dialog.OverrideContainer:SetPoint("TOPRIGHT", Dialog.DisabledDock, "BOTTOMRIGHT", 0, -C.OVERRIDE_SECTION_PADDING)
+Dialog.OverrideContainer:SetPoint("TOPLEFT", Dialog.ViewportDivider, "BOTTOMLEFT", 0, -C.OVERRIDE_SECTION_PADDING)
+Dialog.OverrideContainer:SetPoint("TOPRIGHT", Dialog.ViewportDivider, "BOTTOMRIGHT", 0, -C.OVERRIDE_SECTION_PADDING)
 Dialog.OverrideContainer:SetHeight(1)
 Dialog.OverrideContainer:SetFrameLevel(Dialog.NineSlice:GetFrameLevel() + 10)
 Dialog.OverrideContainer:Hide()
@@ -77,6 +84,15 @@ function Dialog:AddToDock(key, sourceComponent)
     icon.bg = icon:CreateTexture(nil, "BACKGROUND")
     icon.bg:SetAllPoints()
     icon.bg:SetColorTexture(unpack(DOCK_BG_COLOR))
+
+    for _, edge in ipairs({"TOP", "BOTTOM", "LEFT", "RIGHT"}) do
+        local t = icon:CreateTexture(nil, "BORDER")
+        t:SetColorTexture(1, 0, 0, 0.3)
+        if edge == "TOP" then t:SetPoint("TOPLEFT"); t:SetPoint("TOPRIGHT"); t:SetHeight(1)
+        elseif edge == "BOTTOM" then t:SetPoint("BOTTOMLEFT"); t:SetPoint("BOTTOMRIGHT"); t:SetHeight(1)
+        elseif edge == "LEFT" then t:SetPoint("TOPLEFT"); t:SetPoint("BOTTOMLEFT"); t:SetWidth(1)
+        else t:SetPoint("TOPRIGHT"); t:SetPoint("BOTTOMRIGHT"); t:SetWidth(1) end
+    end
 
     local isTexture = sourceComponent and sourceComponent.GetTexture
     local isFontString = sourceComponent and sourceComponent.GetFont ~= nil
