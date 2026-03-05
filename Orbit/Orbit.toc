@@ -118,7 +118,6 @@ Plugins\UnitFrames\Player\PlayerFrame.lua
 Plugins\UnitFrames\Player\PlayerPetFrame.lua
 Plugins\UnitFrames\Player\PlayerBuffs.lua
 Plugins\UnitFrames\Player\PlayerDebuffs.lua
-Plugins\UnitFrames\Player\PlayerPrivateAura.lua
 Plugins\UnitFrames\Target\TargetFrame.lua
 Plugins\UnitFrames\Target\TargetCastBar.lua
 Plugins\UnitFrames\Target\TargetPower.lua

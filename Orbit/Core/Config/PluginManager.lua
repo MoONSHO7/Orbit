@@ -26,6 +26,7 @@ local GROUP_HEADER_COLOR = { r = 1, g = 0.82, b = 0 }
 local PLUGIN_GROUPS = {
     { header = "Unit Frames", names = {
         "Player Frame", "Player Power", "Player Cast Bar", "Player Resources", "Pet Frame",
+        "Player Buffs", "Player Debuffs",
         { label = "Target Frame", plugins = { "Target Frame", "Target Power", "Target Cast Bar", "Target Buffs", "Target Debuffs", "Target of Target" } },
         { label = "Focus Frame",  plugins = { "Focus Frame", "Focus Power", "Focus Cast Bar", "Focus Buffs", "Focus Debuffs", "Target of Focus" }, triState = true },
     }},
@@ -55,6 +56,7 @@ local function CreateCheckbox(parent, index)
     local cb = CreateFrame("CheckButton", "OrbitPluginToggle" .. index, parent, "UICheckButtonTemplate")
     cb:SetSize(26, 26)
     cb.text = cb.text or cb:CreateFontString(nil, "OVERLAY", FONT_HIGHLIGHT)
+    cb.text:SetTextColor(1, 1, 1)
     cb.text:SetPoint("LEFT", cb, "RIGHT", 4, 0)
     return cb
 end

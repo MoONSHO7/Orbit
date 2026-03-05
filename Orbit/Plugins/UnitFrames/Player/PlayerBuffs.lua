@@ -3,7 +3,6 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 
 local Plugin = Orbit:RegisterPlugin("Player Buffs", "Orbit_PlayerBuffs", {
-    liveToggle = true,
     defaults = Orbit.UnitAuraGridMixin.playerBuffDefaults,
 })
 
