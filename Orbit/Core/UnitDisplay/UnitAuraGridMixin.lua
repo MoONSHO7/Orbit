@@ -28,11 +28,10 @@ Mixin.playerBuffDefaults = {
 }
 
 Mixin.playerDebuffDefaults = {
-    IconLimit = 16, Rows = 1, Spacing = 2, Scale = 100, aspectRatio = "1:1", DispelIndicators = true,
+    IconLimit = 16, Rows = 1, Spacing = 2, Scale = 100, aspectRatio = "1:1",
     ComponentPositions = {
         Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0 },
         Stacks = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 1 },
-        DispelIcon = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 1, offsetY = 1 },
     },
 }
 
@@ -42,25 +41,7 @@ local ASPECT_RATIOS = {
     { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
 }
 
--- [ DISPEL COLORS ]----------------------------------------------------------------------------------
-local DISPEL_COLORS = {
-    Magic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
-    Curse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
-    Disease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
-    Poison = { r = 0.0, g = 0.6, b = 0.0, a = 1 },
-}
-local DISPEL_TYPE_NUMS = { [1] = "Magic", [2] = "Curse", [3] = "Disease", [4] = "Poison" }
-local _dispelCurve
-local function GetDispelCurve()
-    if _dispelCurve then return _dispelCurve end
-    _dispelCurve = C_CurveUtil.CreateColorCurve()
-    _dispelCurve:SetType(Enum.LuaCurveType.Step)
-    for typeNum, typeName in pairs(DISPEL_TYPE_NUMS) do
-        local c = DISPEL_COLORS[typeName]
-        _dispelCurve:AddPoint(typeNum, CreateColor(c.r, c.g, c.b, c.a))
-    end
-    return _dispelCurve
-end
+
 
 -- [ PREVIEW ICON ]---------------------------------------------------------------------------------
 local _previewIconProvider
@@ -187,6 +168,10 @@ function Mixin:_addLayoutControls(schema)
     local cfg = self._agConfig
     if cfg.showIconLimit then
         table.insert(schema.controls, {
+            type = "dropdown", key = "aspectRatio", label = "Icon Aspect Ratio",
+            options = ASPECT_RATIOS, default = "1:1",
+        })
+        table.insert(schema.controls, {
             type = "slider", key = "IconLimit", label = "Icon Limit",
             min = 2, max = 40, step = 2, default = cfg.defaultIconLimit or 20,
             onChange = function(val) self:SetSetting(1, "IconLimit", val); self:ApplySettings() end,
@@ -211,6 +196,12 @@ function Mixin:_addLayoutControls(schema)
                 end,
             })
         end
+        table.insert(schema.controls, {
+            type = "slider", key = "Scale", label = "Scale",
+            min = 50, max = 200, step = 1, default = 100,
+            formatter = function(v) return v .. "%" end,
+            onChange = function(val) self:SetSetting(1, "Scale", val); self:ApplySettings() end,
+        })
     else
         table.insert(schema.controls, {
             type = "slider", key = "IconsPerRow", label = "Icons Per Row",
@@ -221,19 +212,6 @@ function Mixin:_addLayoutControls(schema)
             type = "slider", key = "MaxRows", label = "Max Rows",
             min = 1, max = cfg.maxRowsMax or 4, step = 1, default = 2,
         })
-    end
-    if cfg.showIconLimit then
-        table.insert(schema.controls, {
-            type = "dropdown", key = "aspectRatio", label = "Icon Aspect Ratio",
-            options = ASPECT_RATIOS, default = "1:1",
-        })
-        table.insert(schema.controls, {
-            type = "slider", key = "Scale", label = "Scale",
-            min = 50, max = 200, step = 1, default = 100,
-            formatter = function(v) return v .. "%" end,
-            onChange = function(val) self:SetSetting(1, "Scale", val); self:ApplySettings() end,
-        })
-    else
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(self._agFrame) ~= nil
         if not isAnchored then
             table.insert(schema.controls, {
@@ -247,13 +225,7 @@ function Mixin:_addLayoutControls(schema)
         min = -5, max = 50, step = 1, default = 2,
         onChange = function(val) self:SetSetting(1, "Spacing", val); self:ApplySettings() end,
     })
-    if cfg.showDispelIndicators then
-        table.insert(schema.controls, {
-            type = "checkbox", key = "DispelIndicators", label = "Dispel Indicators",
-            default = true,
-            onChange = function(val) self:SetSetting(1, "DispelIndicators", val); self:ApplySettings() end,
-        })
-    end
+
 end
 
 function Mixin:_addGlowControls(schema, SB, systemFrame)
@@ -513,7 +485,6 @@ function Mixin:UpdateAuras()
         skinSettings.pandemicGlowColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "PandemicGlowColorCurve")) or self:GetSetting(1, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor
     end
 
-    local dispelEnabled = cfg.showDispelIndicators and (self:GetSetting(1, "DispelIndicators") ~= false)
     local componentPositions = self:GetSetting(1, "ComponentPositions")
     local activeIcons = {}
     local tooltipFilter = cfg.auraFilter
@@ -524,14 +495,6 @@ function Mixin:UpdateAuras()
         icon:SetSize(iconW, iconH)
         CropIconTexture(icon, iconW, iconH)
         self:SetupAuraTooltip(icon, aura, cfg.unit, tooltipFilter)
-        if dispelEnabled then
-            local color = C_UnitAuras.GetAuraDispelTypeColor(cfg.unit, aura.auraInstanceID, GetDispelCurve())
-            if color then
-                icon:SetBackdropBorderColor(color:GetRGBA())
-            else
-                icon:SetBackdropBorderColor(0, 0, 0, 1)
-            end
-        end
         table.insert(activeIcons, icon)
     end
 
@@ -582,7 +545,7 @@ function Mixin:UpdateVisibility()
 end
 
 -- [ PREVIEW ]---------------------------------------------------------------------------------------
-local PREVIEW_DISPEL_TYPES = { "Magic", "Curse", "Disease", "Poison" }
+
 
 function Mixin:ShowPreviewAuras()
     local Frame = self._agFrame
@@ -609,11 +572,7 @@ function Mixin:ShowPreviewAuras()
         }, iconH, "player", Orbit.Constants.Aura.SkinNoTimer)
         icon:SetSize(iconW, iconH)
         CropIconTexture(icon, iconW, iconH)
-        if isDebuff and icon.SetBackdropBorderColor then
-            local dispelType = PREVIEW_DISPEL_TYPES[((i - 1) % #PREVIEW_DISPEL_TYPES) + 1]
-            local c = DISPEL_COLORS[dispelType]
-            icon:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
-        end
+
         icon:SetScript("OnEnter", nil)
         icon:SetScript("OnLeave", nil)
         table.insert(previews, icon)

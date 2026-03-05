@@ -3,7 +3,6 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 
 local Plugin = Orbit:RegisterPlugin("Player Debuffs", "Orbit_PlayerDebuffs", {
-    liveToggle = true,
     defaults = Orbit.UnitAuraGridMixin.playerDebuffDefaults,
 })
 
@@ -23,7 +22,6 @@ function Plugin:OnLoad()
         showTimer = true, enablePandemic = false,
         showIconLimit = true, defaultIconLimit = 16,
         showRows = true,
-        showDispelIndicators = true,
     })
     if DebuffFrame then OrbitEngine.NativeFrame:Protect(DebuffFrame) end
 end
