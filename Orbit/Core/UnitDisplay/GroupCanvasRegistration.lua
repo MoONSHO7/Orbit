@@ -224,13 +224,17 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
             { key = "DefensiveIcon", anchor = "LEFT", xMul = 0.5 },
             { key = "CrowdControlIcon", anchor = "TOP", yMul = -0.5 },
         }
+        local ApplyTextPosition = OrbitEngine.PositionUtils.ApplyTextPosition
         for _, entry in ipairs(auraIconEntries) do
             local btn = frame[entry.key]
             if btn and not isDisabled(entry.key) then
                 local texMethod = "Get" .. entry.key:gsub("Icon$", "") .. "Texture"
                 btn.Icon:SetTexture(StatusMixin[texMethod](StatusMixin))
                 btn:SetSize(iconSize, iconSize)
-                if not savedPositions[entry.key] then
+                local pos = savedPositions[entry.key]
+                if pos then
+                    ApplyTextPosition(btn, frame, pos, nil, nil, nil, true)
+                else
                     btn:ClearAllPoints()
                     local xOff = OrbitEngine.Pixel:Snap((entry.xMul or 0) * (iconSize + 2), 1)
                     local yOff = OrbitEngine.Pixel:Snap((entry.yMul or 0) * (iconSize + 2), 1)
@@ -252,6 +256,7 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
                 local tex = C_Spell.GetSpellTexture(slot.spellId)
                 if tex then hIcon.Icon:SetTexture(tex) end
                 hIcon:SetSize(slotSize, slotSize)
+                if slotPos then ApplyTextPosition(hIcon, frame, slotPos, nil, nil, nil, true) end
                 if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(hIcon, Orbit.Constants.Aura.SkinNoTimer) end
                 hIcon:Show()
             elseif frame[slot.key] then frame[slot.key]:Hide() end
@@ -259,7 +264,9 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
         if raidBuffs and #raidBuffs > 0 and not isDisabled("RaidBuff") then
             local rbPos = savedPositions["RaidBuff"]
             local rbSize = (rbPos and rbPos.overrides and rbPos.overrides.IconSize) or cfg.healerAuraSize
-            plugin:EnsureRaidBuffContainer(frame, "RaidBuff", raidBuffs, rbSize):Show()
+            local rb = plugin:EnsureRaidBuffContainer(frame, "RaidBuff", raidBuffs, rbSize)
+            if rbPos then ApplyTextPosition(rb, frame, rbPos, nil, nil, nil, true) end
+            rb:Show()
         elseif frame.RaidBuff then frame.RaidBuff:Hide() end
     else
         local hideKeys = cfg.hideKeys or { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }

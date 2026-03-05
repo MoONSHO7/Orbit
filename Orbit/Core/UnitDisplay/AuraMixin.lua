@@ -31,18 +31,17 @@ function Mixin:FetchAuras(unit, filter, maxCount)
     local auras = {}
     if unit and UnitExists(unit) then
         local count = maxCount or DEFAULT_AURA_COUNT
-        for i = 1, count do
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, filter)
-            if not aura then break end
-            aura.index = i
+        AuraUtil.ForEachAura(unit, filter, count, function(aura)
+            aura.index = #auras + 1
             tinsert(auras, aura)
-        end
+            if #auras >= count then return true end
+        end, true)
     end
     return auras
 end
 
 -- [ ICON SETUP ]------------------------------------------------------------------------------------
-function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
+function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPositions)
     if not icon or not aura then return end
     icon:SetSize(size, size)
     if not icon.Icon then icon.Icon = icon:CreateTexture(nil, "ARTWORK") end
@@ -99,6 +98,23 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
         icon.Cooldown:SetSwipeColor(skinSettings.swipeColor.r, skinSettings.swipeColor.g, skinSettings.swipeColor.b, skinSettings.swipeColor.a or 0.8)
     end
     if skinSettings and skinSettings.enablePandemic then Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings) end
+    -- Apply canvas mode component overrides (must be last to avoid skin/cooldown clobbering)
+    if componentPositions then
+        local OverrideUtils = Orbit.Engine.CanvasMode and Orbit.Engine.CanvasMode.OverrideUtils
+        local ApplyTextPosition = Orbit.Engine.PositionUtils and Orbit.Engine.PositionUtils.ApplyTextPosition
+        if OverrideUtils then
+            local stacksData = componentPositions.Stacks
+            if stacksData then
+                OverrideUtils.ApplyOverrides(icon.count, stacksData.overrides or {}, { fontSize = countSize, fontPath = fontPath })
+                if ApplyTextPosition then ApplyTextPosition(icon.count, icon, stacksData) end
+            end
+            local timerData = componentPositions.Timer
+            if timerData and icon.Cooldown and icon.Cooldown.Text then
+                OverrideUtils.ApplyOverrides(icon.Cooldown.Text, timerData.overrides or {}, { fontSize = Orbit.Skin:GetAdaptiveTextSize(size, 8, nil, 0.45), fontPath = fontPath })
+                if ApplyTextPosition then ApplyTextPosition(icon.Cooldown.Text, icon, timerData) end
+            end
+        end
+    end
     icon:Show()
     return icon
 end

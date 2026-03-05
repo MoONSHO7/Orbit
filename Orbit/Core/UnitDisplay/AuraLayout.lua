@@ -13,31 +13,43 @@ local SMART_DEFAULT_ICON_SIZE = 10
 function AL:LayoutGrid(frame, icons, config)
     config = config or {}
     local size = config.size or 20
+    local sizeW = config.sizeW or size
     local spacing = config.spacing or 2
     local maxPerRow = config.maxPerRow or 8
     local anchor = config.anchor or "BOTTOMLEFT"
     local xOffset = config.xOffset or 0
     local yOffset = config.yOffset or 0
+    local growthX = config.growthX or "RIGHT"
     local growthY = config.growthY or "DOWN"
+    local numIcons = #icons
     local col = 0
-    local currentX = xOffset
     local currentY = yOffset
     local scale = frame:GetEffectiveScale()
     size = Pixel:Snap(size, scale)
+    sizeW = Pixel:Snap(sizeW, scale)
     spacing = Pixel:Snap(spacing, scale)
-    currentX = Pixel:Snap(currentX, scale)
+    xOffset = Pixel:Snap(xOffset, scale)
     currentY = Pixel:Snap(currentY, scale)
-    local iconPoint, yStep
-    if growthY == "UP" then iconPoint = "BOTTOMLEFT"; yStep = size + spacing
-    else
-        iconPoint = "TOPLEFT"; yStep = -(size + spacing)
-        if not config.yOffset then currentY = -4 end
+    local isCenter = (growthX == "CENTER")
+    local yAnchor = (growthY == "UP") and "BOTTOM" or "TOP"
+    local xAnchor = isCenter and "" or ((growthX == "LEFT") and "RIGHT" or "LEFT")
+    local iconPoint = yAnchor .. xAnchor
+    local yStep = (growthY == "UP") and (size + spacing) or -(size + spacing)
+    local xStep = isCenter and (sizeW + spacing) or ((growthX == "LEFT") and -(sizeW + spacing) or (sizeW + spacing))
+    if growthY == "DOWN" and not config.yOffset then currentY = -4 end
+    local function rowStartX(rowIdx)
+        if not isCenter then return xOffset end
+        local remaining = numIcons - (rowIdx * maxPerRow)
+        local count = math.min(maxPerRow, math.max(0, remaining))
+        return -((count - 1) * (sizeW + spacing)) / 2
     end
+    local currentX = rowStartX(0)
+    local rowIdx = 0
     for i, icon in ipairs(icons) do
         icon:ClearAllPoints()
-        if col >= maxPerRow then col = 0; currentY = currentY + yStep; currentX = xOffset end
+        if col >= maxPerRow then col = 0; rowIdx = rowIdx + 1; currentY = currentY + yStep; currentX = rowStartX(rowIdx) end
         icon:SetPoint(iconPoint, frame, anchor, currentX, currentY)
-        currentX = currentX + size + spacing
+        currentX = currentX + xStep
         col = col + 1
     end
 end
