@@ -830,6 +830,15 @@ function Settings:ApplyStyle(container, key, value)
         elseif visual.SetScale then
             visual:SetScale(value)
         end
+    elseif key == "HideDPS" then
+        local plugin = self.plugin
+        if plugin and plugin.frames then
+            for _, frame in ipairs(plugin.frames) do
+                if frame.RoleIcon then
+                    frame.RoleIcon:SetAtlas(value and "UI-LFG-RoleIcon-Healer" or "UI-LFG-RoleIcon-DPS")
+                end
+            end
+        end
     end
 end
 
