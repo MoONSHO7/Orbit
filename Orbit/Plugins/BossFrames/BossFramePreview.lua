@@ -25,9 +25,6 @@ local PREVIEW_DEFAULTS = {
     FakeCooldownDuration = 60,
 }
 
-local SAMPLE_DEBUFF_ICONS = { 136096, 136118, 132158, 136048, 132212 }
-local SAMPLE_BUFF_ICONS = { 135907, 136048, 136041, 135944, 135987 }
-
 -- [ PREVIEW LOGIC ]---------------------------------------------------------------------------------
 function Orbit.BossFramePreviewMixin:ShowPreview()
     if InCombatLockdown() or not self.frames or not self.container then return end
@@ -64,7 +61,10 @@ function Orbit.BossFramePreviewMixin:ShowPreview()
     self:UpdateContainerSize()
 
     C_Timer.After(DEBOUNCE_DELAY, function()
-        if self.frames then self:ApplyPreviewVisuals() end
+        if self.frames then
+            self:ApplyPreviewVisuals()
+            if not isCanvasMode then self:StartPreviewAnimation() end
+        end
     end)
 
     -- Listen for live Canvas Mode edits
@@ -113,8 +113,6 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                     frame.Health:SetStatusBarColor(1, 0.1, 0.1)
                 end
                 frame.Health:Show()
-                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
-                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
             if frame.Power then
@@ -200,12 +198,12 @@ end
 local BOSS_PREVIEW_DEBUFF_CFG = {
     helpers = function() return Orbit.BossFrameHelpers end,
     defaultAnchorX = "LEFT", defaultJustifyH = "LEFT",
-    sampleIcons = SAMPLE_DEBUFF_ICONS, defaultMax = 4,
+    defaultMax = 4,
 }
 local BOSS_PREVIEW_BUFF_CFG = {
     helpers = function() return Orbit.BossFrameHelpers end,
     defaultAnchorX = "RIGHT", defaultJustifyH = "RIGHT",
-    sampleIcons = SAMPLE_BUFF_ICONS, defaultMax = 3,
+    defaultMax = 3,
 }
 
 function Orbit.BossFramePreviewMixin:ShowPreviewAuras(frame)
@@ -216,6 +214,11 @@ end
 function Orbit.BossFramePreviewMixin:HidePreview()
     if InCombatLockdown() or not self.frames then return end
     self.isPreviewActive = false
+
+    -- Stop animation
+    Orbit.PreviewAnimator:Stop(self)
+    Orbit.PreviewAnimator:StopAuras(self)
+    Orbit.PreviewAnimator:StopHealerAuras(self)
 
     -- Stop listening for Canvas Mode edits
     if self._canvasSettingsCallback then
@@ -258,4 +261,38 @@ function Orbit.BossFramePreviewMixin:SchedulePreviewUpdate()
             if self.frames then self:ApplyPreviewVisuals() end
         end)
     end
+end
+
+function Orbit.BossFramePreviewMixin:StartPreviewAnimation()
+    if not self.frames then return end
+    local animFrames, animCfg = {}, {}
+    local auraFrames, auraCfg = {}, {}
+    local healerFrames, healerCfg = {}, {}
+    local isDisabled = self.IsComponentDisabled and function(k) return self:IsComponentDisabled(k) end or function() return false end
+    local buffsEnabled = not isDisabled("Buffs")
+    local debuffsEnabled = not isDisabled("Debuffs")
+    local getHelpers = function() return Orbit.BossFrameHelpers end
+    for i = 1, MAX_BOSS_FRAMES do
+        local frame = self.frames[i]
+        if frame and frame.preview and frame:IsShown() then
+            animFrames[#animFrames + 1] = frame
+            animCfg[#animCfg + 1] = { baseHealth = PREVIEW_DEFAULTS.HealthPercent / 100 }
+            if buffsEnabled or debuffsEnabled then
+                local plugin = self
+                auraFrames[#auraFrames + 1] = frame
+                auraCfg[#auraCfg + 1] = {
+                    initAuras = function(f) return Orbit.AuraPreview:InitAnimatedAuras(plugin, f, getHelpers) end,
+                }
+            end
+            healerFrames[#healerFrames + 1] = frame
+            healerCfg[#healerCfg + 1] = {
+                healerSlots = {},
+                defensiveDisabled = isDisabled("DefensiveIcon"),
+                ccDisabled = isDisabled("CrowdControlIcon"),
+            }
+        end
+    end
+    if #animFrames > 0 then Orbit.PreviewAnimator:Start(self, animFrames, animCfg) end
+    if #auraFrames > 0 then Orbit.PreviewAnimator:StartAuras(self, auraFrames, auraCfg) end
+    if #healerFrames > 0 then Orbit.PreviewAnimator:StartHealerAuras(self, healerFrames, healerCfg) end
 end

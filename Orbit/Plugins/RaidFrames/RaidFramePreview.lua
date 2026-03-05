@@ -51,8 +51,6 @@ local PREVIEW_ROLES = {
     "TANK", "HEALER", "DAMAGER", "DAMAGER", "DAMAGER",
     "TANK", "HEALER", "DAMAGER", "DAMAGER", "HEALER",
 }
-local SAMPLE_DEBUFF_ICONS = { 136096, 136118, 132158, 136048, 132212 }
-local SAMPLE_BUFF_ICONS = { 135907, 136048, 136041, 135944, 135987 }
 
 
 local ApplyIconPosition = function(icon, parentFrame, pos)
@@ -120,7 +118,10 @@ function Orbit.RaidFramePreviewMixin:ShowPreview()
     self:PositionFrames()
     self:UpdateContainerSize()
     C_Timer.After(DEBOUNCE_DELAY, function()
-        if self.frames then self:ApplyPreviewVisuals() end
+        if self.frames then
+            self:ApplyPreviewVisuals()
+            if not isCanvasMode then self:StartPreviewAnimation() end
+        end
     end)
 
     -- Listen for live Canvas Mode edits
@@ -181,8 +182,6 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                     if classColor then frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b) end
                 end
                 frame.Health:Show()
-                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
-                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
             -- Preview-only: fake power data
@@ -321,12 +320,12 @@ end
 local RAID_PREVIEW_AURA_CFG = {
     helpers = function() return Orbit.RaidFrameHelpers end,
     defaultAnchorX = "RIGHT", defaultJustifyH = "LEFT",
-    sampleIcons = SAMPLE_DEBUFF_ICONS, defaultMax = 3,
+    defaultMax = 3,
 }
 local RAID_PREVIEW_BUFF_CFG = {
     helpers = function() return Orbit.RaidFrameHelpers end,
     defaultAnchorX = "LEFT", defaultJustifyH = "RIGHT",
-    sampleIcons = SAMPLE_BUFF_ICONS, defaultMax = 3,
+    defaultMax = 3,
 }
 
 function Orbit.RaidFramePreviewMixin:ShowPreviewAuras(frame, frameIndex)
@@ -338,6 +337,11 @@ end
 function Orbit.RaidFramePreviewMixin:HidePreview()
     if InCombatLockdown() or not self.frames then return end
     if not Helpers then Helpers = Orbit.RaidFrameHelpers end
+
+    -- Stop animation
+    Orbit.PreviewAnimator:Stop(self)
+    Orbit.PreviewAnimator:StopAuras(self)
+    Orbit.PreviewAnimator:StopHealerAuras(self)
 
     -- Stop listening for Canvas Mode edits
     if self._canvasSettingsCallback then
@@ -419,4 +423,50 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewBackdrop(frame)
     self:CreateBackground(frame)
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(frame, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
+end
+
+function Orbit.RaidFramePreviewMixin:StartPreviewAnimation()
+    if not self.frames then return end
+    local animFrames, animCfg, auraFrames, auraCfg = {}, {}, {}, {}
+    local healerFrames, healerCfg = {}, {}
+    local sortOrder = GetPreviewSortOrder(self)
+    local HealerReg = Orbit.HealerAuraRegistry
+    local healerSlots = HealerReg:ActiveSlots()
+    local isDisabled = self.IsComponentDisabled and function(k) return self:IsComponentDisabled(k) end or function() return false end
+    local buffsEnabled = not isDisabled("Buffs")
+    local debuffsEnabled = not isDisabled("Debuffs")
+    local enabledSlots = {}
+    for _, slot in ipairs(healerSlots) do
+        if not isDisabled(slot.key) then enabledSlots[#enabledSlots + 1] = slot end
+    end
+    local raidBuffKey = not isDisabled("RaidBuff") and "RaidBuff" or nil
+    local getHelpers = function() return Orbit.RaidFrameHelpers end
+
+    for i = 1, MAX_PREVIEW_FRAMES do
+        local frame = self.frames[i]
+        if frame and frame.preview and frame:IsShown() then
+            local dataIdx = sortOrder[i]
+            local status = PREVIEW_STATUS[dataIdx]
+            local dead = (status == "Dead" or status == "Offline")
+            animFrames[#animFrames + 1] = frame
+            animCfg[#animCfg + 1] = { baseHealth = (PREVIEW_HEALTH_PCTS[dataIdx] or 75) / 100, dead = dead }
+            if buffsEnabled or debuffsEnabled then
+                local plugin = self
+                auraFrames[#auraFrames + 1] = frame
+                auraCfg[#auraCfg + 1] = {
+                    initAuras = function(f) return Orbit.AuraPreview:InitAnimatedAuras(plugin, f, getHelpers) end,
+                }
+            end
+            healerFrames[#healerFrames + 1] = frame
+            healerCfg[#healerCfg + 1] = {
+                healerSlots = enabledSlots,
+                raidBuffKey = raidBuffKey,
+                defensiveDisabled = isDisabled("DefensiveIcon"),
+                ccDisabled = isDisabled("CrowdControlIcon"),
+            }
+        end
+    end
+    if #animFrames > 0 then Orbit.PreviewAnimator:Start(self, animFrames, animCfg) end
+    if #auraFrames > 0 then Orbit.PreviewAnimator:StartAuras(self, auraFrames, auraCfg) end
+    if #healerFrames > 0 then Orbit.PreviewAnimator:StartHealerAuras(self, healerFrames, healerCfg) end
 end

@@ -9,12 +9,21 @@ local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 
 local PREVIEW_SKIN = Orbit.Constants.Aura.SkinWithTimer
 local PREVIEW_TIMER_MIN_SIZE = 14
-local PREVIEW_COOLDOWN_ELAPSED = 10
-local PREVIEW_COOLDOWN_DURATION = 60
+local PREVIEW_COOLDOWN_MIN = 1
+local PREVIEW_COOLDOWN_MAX = 5
 local PREVIEW_PAA_SPACING = 1
 local PREVIEW_PAA_COUNT = 3
 
-function AP:ShowIcons(frame, auraType, posData, numIcons, sampleIcons, overrides, cfg)
+-- [ SPELLBOOK ICON PROVIDER ]-----------------------------------------------------------------------
+local _iconProvider
+local function GetSpellbookIcon()
+    if not _iconProvider then
+        _iconProvider = CreateAndInitFromMixin(IconDataProviderMixin, IconDataProviderExtraType.Spellbook, true)
+    end
+    return _iconProvider:GetIconByIndex(math.random(1, _iconProvider:GetNumIcons()))
+end
+
+function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
     local containerKey = auraType .. "Container"
     local poolKey = "preview" .. auraType:gsub("^%l", string.upper) .. "s"
     if numIcons == 0 then if frame[containerKey] then frame[containerKey]:Hide() end; return end
@@ -58,7 +67,7 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, sampleIcons, overrides
         end
         icon:SetParent(container)
         icon:SetSize(iconSize, iconSize)
-        icon.Icon:SetTexture(sampleIcons[((idx - 1) % #sampleIcons) + 1])
+        icon.Icon:SetTexture(GetSpellbookIcon())
         if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(icon, PREVIEW_SKIN) end
         local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or "Fonts\\FRIZQT__.TTF"
         local fontOutline = Orbit.Skin:GetFontOutline()
@@ -73,11 +82,15 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, sampleIcons, overrides
             timerText:SetFont(fontPath, Orbit.Skin:GetAdaptiveTextSize(iconSize, 8, nil, 0.45), fontOutline)
         end
         icon.Cooldown:SetHideCountdownNumbers(iconSize < PREVIEW_TIMER_MIN_SIZE)
-        icon.Cooldown:SetCooldown(GetTime() - PREVIEW_COOLDOWN_ELAPSED, PREVIEW_COOLDOWN_DURATION)
+        icon.Cooldown:SetCooldown(GetTime(), math.random(PREVIEW_COOLDOWN_MIN, PREVIEW_COOLDOWN_MAX))
         icon.Cooldown:Show()
         col, row = AL:PositionIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow)
         icon:Show()
     end
+    container._justifyH = justifyH
+    container._anchorY = anchorY
+    container._iconSize = iconSize
+    container._iconsPerRow = iconsPerRow
 end
 
 function AP:ShowFrameAuras(plugin, frame, debuffCfg, buffCfg)
@@ -90,9 +103,43 @@ function AP:ShowFrameAuras(plugin, frame, debuffCfg, buffCfg)
     local buffOff = plugin.IsComponentDisabled and plugin:IsComponentDisabled("Buffs")
     local maxDebuffs = (debuffData.overrides or {}).MaxIcons or debuffCfg.defaultMax or 3
     local maxBuffs = (buffData.overrides or {}).MaxIcons or buffCfg.defaultMax or 3
-    AP:ShowIcons(frame, "debuff", debuffData, debuffOff and 0 or maxDebuffs, debuffCfg.sampleIcons, debuffData.overrides, debuffCfg)
-    AP:ShowIcons(frame, "buff", buffData, buffOff and 0 or maxBuffs, buffCfg.sampleIcons, buffData.overrides, buffCfg)
+    AP:ShowIcons(frame, "debuff", debuffData, debuffOff and 0 or maxDebuffs, debuffData.overrides, debuffCfg)
+    AP:ShowIcons(frame, "buff", buffData, buffOff and 0 or maxBuffs, buffData.overrides, buffCfg)
 end
+
+function AP:HideFrameAuras(frame)
+    for _, key in ipairs({ "previewDebuffs", "previewBuffs" }) do
+        if frame[key] then
+            for _, icon in ipairs(frame[key]) do icon:Hide() end
+        end
+    end
+    if frame.debuffContainer then frame.debuffContainer:Hide() end
+    if frame.buffContainer then frame.buffContainer:Hide() end
+end
+
+function AP:InitAnimatedAuras(plugin, frame, helpers)
+    local dCfg = { helpers = helpers, defaultAnchorX = "RIGHT", defaultJustifyH = "LEFT" }
+    local bCfg = { helpers = helpers, defaultAnchorX = "LEFT", defaultJustifyH = "RIGHT" }
+    AP:ShowFrameAuras(plugin, frame, dCfg, bCfg)
+    local groups = {}
+    for _, info in ipairs({
+        { pool = "previewBuffs", cont = "buffContainer" },
+        { pool = "previewDebuffs", cont = "debuffContainer" },
+    }) do
+        local container = frame[info.cont]
+        local pool = frame[info.pool]
+        if container and pool then
+            local icons = {}
+            for _, icon in ipairs(pool) do icons[#icons + 1] = icon; icon:Hide() end
+            if #icons > 0 then
+                groups[#groups + 1] = { container = container, icons = icons }
+            end
+        end
+    end
+    return groups
+end
+
+AP.GetSpellbookIcon = GetSpellbookIcon
 
 function AP:ShowPrivateAuras(frame, posData, baseIconSize)
     local paa = frame.PrivateAuraAnchor

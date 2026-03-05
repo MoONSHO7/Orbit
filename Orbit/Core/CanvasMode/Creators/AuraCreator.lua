@@ -14,8 +14,13 @@ local DEFAULT_MAX_ROWS = 2
 local DEFAULT_PARENT_WIDTH = 200
 local DEFAULT_PARENT_HEIGHT = 40
 
-local SAMPLE_BUFF_ICONS = { 135936, 136051, 135994 }
-local SAMPLE_DEBUFF_ICONS = { 132122, 136207, 135824 }
+local _iconProvider
+local function GetSpellbookIcon()
+    if not _iconProvider then
+        _iconProvider = CreateAndInitFromMixin(IconDataProviderMixin, IconDataProviderExtraType.Spellbook, true)
+    end
+    return _iconProvider:GetIconByIndex(math.random(1, _iconProvider:GetNumIcons()))
+end
 
 -- [ REFRESH LOGIC ]---------------------------------------------------------------------------------
 
@@ -52,7 +57,6 @@ local function RefreshAuraIcons(self)
     local scale = self:GetEffectiveScale() or 1
     local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(scale)
     local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false }
-    local sampleIcons = self.sampleIcons
 
     local iconIndex = 0
     for i = 1, maxIcons do
@@ -72,7 +76,7 @@ local function RefreshAuraIcons(self)
         end
 
         btn:SetSize(iconSize, iconSize)
-        btn.Icon:SetTexture(sampleIcons[((i - 1) % #sampleIcons) + 1])
+        btn.Icon:SetTexture(GetSpellbookIcon())
 
         if Orbit.Skin and Orbit.Skin.Icons then
             Orbit.Skin.Icons:ApplyCustom(btn, skinSettings)
@@ -99,8 +103,6 @@ end
 
 local function Create(container, preview, key, source, data)
     container.auraIconPool = {}
-    container.isAuraContainer = true
-    container.sampleIcons = (key == "Buffs") and SAMPLE_BUFF_ICONS or SAMPLE_DEBUFF_ICONS
     container.RefreshAuraIcons = RefreshAuraIcons
 
     container.posX = (data and data.posX) or 0
