@@ -121,7 +121,7 @@ function CanvasMode:Enter(frame, updateVisualsCallback)
     if not frame then return end
     if InCombatLockdown() then return end
 
-    if not (frame.orbitPlugin and frame.orbitPlugin.canvasMode == true) then
+    if frame.disableCanvasMode or not (frame.orbitPlugin and frame.orbitPlugin.canvasMode == true) then
         PlayDeniedFeedback(frame)
         return
     end
