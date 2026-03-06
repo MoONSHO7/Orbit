@@ -33,62 +33,47 @@ end
 
 -- [ REUSABLE CONTROLS ]------------------------------------------------------------------------------
 local SCALE_CONTROL = {
-    type = "slider",
-    key = "Scale",
-    label = "Scale",
-    min = 0.5,
-    max = 2.0,
-    step = 0.1,
+    type = "slider", key = "Scale", label = "Scale",
+    min = 0.5, max = 2.0, step = 0.1,
     formatter = function(v) return math.floor(v * 100 + 0.5) .. "%" end,
 }
 
 local ICON_SIZE_CONTROL = {
-    type = "slider",
-    key = "IconSize",
-    label = "Icon Size",
-    min = 8,
-    max = 50,
-    step = 1,
+    type = "slider", key = "IconSize", label = "Icon Size", min = 8, max = 50, step = 1,
     formatter = function(v) return v .. "px" end,
 }
 
 -- [ PRESETS ]----------------------------------------------------------------------------------------
 local STATIC_TEXT = {
-    { type = "font",       key = "Font",             label = "Font" },
-    { type = "slider",     key = "FontSize",         label = "Size",  min = 6,           max = 32, step = 1 },
+    { type = "font", key = "Font", label = "Font" },
+    { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
     { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = true },
 }
 
 local DYNAMIC_TEXT = {
-    { type = "font",       key = "Font",             label = "Font" },
-    { type = "slider",     key = "FontSize",         label = "Size",  min = 6,            max = 32, step = 1 },
+    { type = "font", key = "Font", label = "Font" },
+    { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
     { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = false },
 }
 
 local TEXT_NO_COLOR = {
-    { type = "font",   key = "Font",     label = "Font" },
+    { type = "font", key = "Font", label = "Font" },
     { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
 }
 
 local AURA_GRID = {
     ICON_SIZE_CONTROL,
     { type = "slider", key = "MaxIcons", label = "Max Icons", min = 1, max = 10, step = 1 },
-    { type = "slider", key = "MaxRows",  label = "Max Rows",  min = 1, max = 3,  step = 1 },
+    { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
 }
 
 local PANDEMIC_GLOW = {
-    {
-        type = "dropdown",
-        key = "PandemicGlowType",
-        label = "Pandemic Glow",
-        plugin = true,
-        options = {
-            { text = "None",      value = 0 }, { text = "Pixel Glow", value = 1 },
-            { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
-            { text = "Button Glow", value = 4 },
-        },
-        default = 0
-    },
+    { type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow", plugin = true,
+      options = {
+          { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
+          { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
+          { text = "Button Glow", value = 4 },
+      }, default = 0 },
     { type = "colorcurve", key = "PandemicGlowColorCurve", label = "Pandemic Colour", plugin = true, singleColor = true },
 }
 
@@ -101,116 +86,69 @@ local TYPE_SCHEMAS = {
 
 -- [ KEY SCHEMAS ]------------------------------------------------------------------------------------
 local KEY_SCHEMAS = {
-    Name             = Compose(STATIC_TEXT),
-    Timer            = Compose(DYNAMIC_TEXT),
-    Stacks           = Compose(STATIC_TEXT),
-    Keybind          = Compose(STATIC_TEXT),
-    MacroText        = Compose(STATIC_TEXT),
-    Charges          = Compose(STATIC_TEXT),
-    ChargeCount      = Compose(STATIC_TEXT),
-    Text             = Compose(STATIC_TEXT),
+    Name            = Compose(STATIC_TEXT),
+    Timer           = Compose(DYNAMIC_TEXT),
+    Stacks          = Compose(STATIC_TEXT),
+    Keybind         = Compose(STATIC_TEXT),
+    MacroText       = Compose(STATIC_TEXT),
+    Charges         = Compose(STATIC_TEXT),
+    ChargeCount     = Compose(STATIC_TEXT),
+    Text            = Compose(STATIC_TEXT),
     ["CastBar.Text"] = Compose(STATIC_TEXT),
-    LevelText        = Compose(TEXT_NO_COLOR),
-    Buffs            = Compose(AURA_GRID),
-    Debuffs          = Compose(AURA_GRID, PANDEMIC_GLOW),
-    Portrait         = {
+    LevelText       = Compose(TEXT_NO_COLOR),
+    Buffs           = Compose(AURA_GRID),
+    Debuffs         = Compose(AURA_GRID, PANDEMIC_GLOW),
+    Portrait = {
         controls = {
-            {
-                type = "dropdown",
-                key = "PortraitStyle",
-                label = "Style",
-                plugin = true,
-                rebuildsPanel = true,
-                options = { { text = "2D", value = "2d" }, { text = "3D", value = "3d" } },
-                default = "3d"
-            },
-            {
-                type = "slider",
-                key = "PortraitScale",
-                label = "Scale",
-                plugin = true,
-                min = 50,
-                max = 200,
-                step = 1,
-                formatter = function(v) return v .. "%" end,
-                default = 120
-            },
+            { type = "dropdown", key = "PortraitStyle", label = "Style", plugin = true, rebuildsPanel = true,
+              options = { { text = "2D", value = "2d" }, { text = "3D", value = "3d" } }, default = "3d" },
+            { type = "slider", key = "PortraitScale", label = "Scale", plugin = true, min = 50, max = 200, step = 1,
+              formatter = function(v) return v .. "%" end, default = 120 },
             { type = "checkbox", key = "PortraitBorder", label = "Border", plugin = true, default = true, showIfValue = { key = "PortraitStyle", value = "3d" } },
-            {
-                type = "dropdown",
-                key = "PortraitRing",
-                label = "Ring",
-                plugin = true,
-                showIfValue = { key = "PortraitStyle", value = "2d" },
-                options = PORTRAIT_RING_OPTIONS,
-                default = "none"
-            },
+            { type = "dropdown", key = "PortraitRing", label = "Ring", plugin = true, showIfValue = { key = "PortraitStyle", value = "2d" },
+              options = PORTRAIT_RING_OPTIONS, default = "none" },
             { type = "checkbox", key = "PortraitMirror", label = "Mirror", plugin = true, default = false },
         },
     },
-    CastBar          = {
+    CastBar = {
         controls = {
-            {
-                type = "slider",
-                key = "CastBarHeight",
-                label = "Height",
-                plugin = true,
-                min = 8,
-                max = 40,
-                step = 1,
-                formatter = function(v) return v .. "px" end
-            },
-            {
-                type = "slider",
-                key = "CastBarWidth",
-                label = "Width",
-                plugin = true,
-                min = 50,
-                max = 400,
-                step = 1,
-                formatter = function(v) return v .. "px" end
-            },
-            { type = "checkbox",   key = "CastBarIcon",       label = "Icon",  plugin = true, default = true },
+            { type = "slider", key = "CastBarHeight", label = "Height", plugin = true, min = 8, max = 40, step = 1,
+              formatter = function(v) return v .. "px" end },
+            { type = "slider", key = "CastBarWidth", label = "Width", plugin = true, min = 50, max = 400, step = 1,
+              formatter = function(v) return v .. "px" end },
+            { type = "checkbox", key = "CastBarIcon", label = "Icon", plugin = true, default = true },
             { type = "colorcurve", key = "CastBarColorCurve", label = "Color", plugin = true, singleColor = true },
         },
     },
-    ZoneText         = {
+    ZoneText = {
         controls = {
-            { type = "font",       key = "Font",             label = "Font" },
-            { type = "slider",     key = "FontSize",         label = "Size",          min = 6,           max = 32,       step = 1 },
-            { type = "colorcurve", key = "CustomColorCurve", label = "Color",         singleColor = true },
-            { type = "checkbox",   key = "ZoneTextColoring", label = "Zone Coloring", plugin = true,     default = false },
+            { type = "font", key = "Font", label = "Font" },
+            { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
+            { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = true },
+            { type = "checkbox", key = "ZoneTextColoring", label = "Zone Coloring", plugin = true, default = false },
         },
     },
-    Clock            = Compose(STATIC_TEXT),
-    Coords           = Compose(STATIC_TEXT),
-    HealthText       = {
+    Clock = Compose(STATIC_TEXT),
+    Coords = Compose(STATIC_TEXT),
+    HealthText = {
         controls = {
-            { type = "checkbox",   key = "ShowHealthValue",  label = "Show Health Value", plugin = true,      default = true, capability = "supportsHealthText" },
-            {
-                type = "dropdown",
-                key = "HealthTextMode",
-                label = "Format",
-                plugin = true,
-                showIf = "ShowHealthValue",
-                capability = "supportsHealthText",
-                options = {
-                    { text = "Percentage",         value = "percent" },
-                    { text = "Short Health",       value = "short" },
-                    { text = "Raw Health",         value = "raw" },
-                    { text = "Short - Percentage", value = "short_and_percent" },
-                    { text = "Percentage / Short", value = "percent_short" },
-                    { text = "Percentage / Raw",   value = "percent_raw" },
-                    { text = "Short / Percentage", value = "short_percent" },
-                    { text = "Short / Raw",        value = "short_raw" },
-                    { text = "Raw / Short",        value = "raw_short" },
-                    { text = "Raw / Percentage",   value = "raw_percent" },
-                },
-                default = "percent_short"
-            },
-            { type = "font",       key = "Font",             label = "Font" },
-            { type = "slider",     key = "FontSize",         label = "Size",              min = 6,            max = 32,       step = 1 },
-            { type = "colorcurve", key = "CustomColorCurve", label = "Color",             singleColor = false },
+            { type = "checkbox", key = "ShowHealthValue", label = "Show Health Value", plugin = true, default = true, capability = "supportsHealthText" },
+            { type = "dropdown", key = "HealthTextMode", label = "Format", plugin = true, showIf = "ShowHealthValue", capability = "supportsHealthText",
+              options = {
+                { text = "Percentage", value = "percent" },
+                { text = "Short Health", value = "short" },
+                { text = "Raw Health", value = "raw" },
+                { text = "Short - Percentage", value = "short_and_percent" },
+                { text = "Percentage / Short", value = "percent_short" },
+                { text = "Percentage / Raw", value = "percent_raw" },
+                { text = "Short / Percentage", value = "short_percent" },
+                { text = "Short / Raw", value = "short_raw" },
+                { text = "Raw / Short", value = "raw_short" },
+                { text = "Raw / Percentage", value = "raw_percent" },
+              }, default = "percent_short" },
+            { type = "font", key = "Font", label = "Font" },
+            { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
+            { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = false },
         },
     },
 }
@@ -221,24 +159,19 @@ do
     if HealerReg then
         for _, key in ipairs(HealerReg.SLOT_KEYS) do
             KEY_SCHEMAS[key] = Compose({ ICON_SIZE_CONTROL }, PANDEMIC_GLOW, {
-                { type = "colorcurve", key = "SwipeColorCurve",     label = "Swipe Colour",      singleColor = false },
+                { type = "colorcurve", key = "SwipeColorCurve", label = "Swipe Colour", singleColor = false },
                 { type = "colorcurve", key = "TimerTextColorCurve", label = "Timer Text Colour", singleColor = false },
             })
         end
         KEY_SCHEMAS[HealerReg.RAID_BUFF_KEY] = {
             controls = {
                 ICON_SIZE_CONTROL,
-                {
-                    type = "dropdown",
-                    key = "ProcGlowType",
-                    label = "Proc Glow",
-                    options = {
-                        { text = "None",      value = 0 }, { text = "Pixel Glow", value = 1 },
-                        { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
-                        { text = "Button Glow", value = 4 },
-                    },
-                    default = 0
-                },
+                { type = "dropdown", key = "ProcGlowType", label = "Proc Glow",
+                  options = {
+                      { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
+                      { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
+                      { text = "Button Glow", value = 4 },
+                  }, default = 0 },
                 { type = "colorcurve", key = "ProcGlowColorCurve", label = "Proc Colour", singleColor = true },
             },
         }
@@ -246,24 +179,13 @@ do
 end
 
 local COMPONENT_TITLES = {
-    Name = "Name Text",
-    HealthText = "Health Text",
-    LevelText = "Level Text",
-    ZoneText = "Zone Text",
-    Clock = "Clock",
-    Coords = "Coordinates",
-    CombatIcon = "Combat Icon",
-    RareEliteIcon = "Classification Icon",
-    RestingIcon = "Resting Icon",
-    DefensiveIcon = "Defensive Icon",
-    CrowdControlIcon = "Crowd Control Icon",
-    Buffs = "Buffs",
-    Debuffs = "Debuffs",
-    Portrait = "Portrait",
-    CastBar = "Cast Bar",
-    MarkerIcon = "Raid Marker",
-    ["CastBar.Text"] = "Ability Text",
-    ["CastBar.Timer"] = "Cast Timer",
+    Name = "Name Text", HealthText = "Health Text", LevelText = "Level Text",
+    ZoneText = "Zone Text", Clock = "Clock", Coords = "Coordinates",
+    CombatIcon = "Combat Icon", RareEliteIcon = "Classification Icon",
+    RestingIcon = "Resting Icon", DefensiveIcon = "Defensive Icon",
+    CrowdControlIcon = "Crowd Control Icon", Buffs = "Buffs", Debuffs = "Debuffs",
+    Portrait = "Portrait", CastBar = "Cast Bar", MarkerIcon = "Raid Marker",
+    ["CastBar.Text"] = "Ability Text", ["CastBar.Timer"] = "Cast Timer",
 }
 
 -- Resolve display title dynamically (healer aura slots aren't active at load time)
@@ -278,11 +200,8 @@ local function GetComponentFamily(container)
     if not container or not container.visual then return nil end
     if container.isIconFrame then return "IconFrame" end
     local objType = container.visual.GetObjectType and container.visual:GetObjectType()
-    if objType == "FontString" then
-        return "FontString"
-    elseif objType == "Texture" then
-        return "Texture"
-    end
+    if objType == "FontString" then return "FontString"
+    elseif objType == "Texture" then return "Texture" end
     return nil
 end
 
@@ -302,8 +221,7 @@ Settings.widgetsByKey = nil
 local function CreateSliderWidget(parent, control, currentValue, callback)
     if not Layout or not Layout.CreateSlider then return nil end
     local widget = Layout:CreateSlider(parent, control.label, control.min, control.max, control.step or 1,
-        control.formatter, currentValue or control.min,
-        function(value) if callback then callback(control.key, value) end end)
+        control.formatter, currentValue or control.min, function(value) if callback then callback(control.key, value) end end)
     if widget then widget:SetHeight(32) end
     return widget
 end
@@ -417,9 +335,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
         elseif key == "CustomColorValue" and visual.GetTextColor then
             local r, g, b, a = visual:GetTextColor()
             return { r = r, g = g, b = b, a = a or 1 }
-        elseif key == "Scale" then
-            return 1.0
-        end
+        elseif key == "Scale" then return 1.0 end
         return nil
     end
 
@@ -451,8 +367,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             widget = CreateCheckboxWidget(overrideContainer, control, currentValue, callback)
         elseif control.type == "dropdown" then
             if Layout and Layout.CreateDropdown then
-                widget = Layout:CreateDropdown(overrideContainer, control.label, control.options,
-                    currentValue or control.default,
+                widget = Layout:CreateDropdown(overrideContainer, control.label, control.options, currentValue or control.default,
                     function(value) if callback then callback(control.key, value) end end)
                 if widget then widget:SetHeight(32) end
             end
@@ -470,8 +385,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
                     if self.componentKey == "Timer" and self.systemIndex ~= 3 then widget.singleColorMode = true end
                 end
             else
-                widget = CreateColorPickerWidget(overrideContainer, control,
-                    currentValue and OrbitEngine.ColorCurve:GetFirstColorFromCurve(currentValue), callback)
+                widget = CreateColorPickerWidget(overrideContainer, control, currentValue and OrbitEngine.ColorCurve:GetFirstColorFromCurve(currentValue), callback)
             end
         end
 
@@ -498,15 +412,9 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
 
             local shouldShow = true
             if control.capability and not (self.plugin and self.plugin[control.capability]) then shouldShow = false end
-            if shouldShow and control.hideIf then
-                shouldShow = not self.currentOverrides[control.hideIf]
-            elseif shouldShow and control.showIf then
-                shouldShow = self.currentOverrides[control.showIf] == true
-            end
-            if shouldShow and control.showIfValue then
-                shouldShow = self.currentOverrides[control.showIfValue.key] ==
-                    control.showIfValue.value
-            end
+            if shouldShow and control.hideIf then shouldShow = not self.currentOverrides[control.hideIf]
+            elseif shouldShow and control.showIf then shouldShow = self.currentOverrides[control.showIf] == true end
+            if shouldShow and control.showIfValue then shouldShow = self.currentOverrides[control.showIfValue.key] == control.showIfValue.value end
 
             self.widgets[widgetIndex] = widget
             self.widgetsByKey = self.widgetsByKey or {}
@@ -582,16 +490,12 @@ end
 
 function Settings:ApplyPluginPreview()
     local key = self.componentKey
-    if key == "CastBar" then
-        self:ApplyCastBarPreview()
-    elseif key == "Portrait" then
-        self:ApplyPortraitPreview()
-    elseif key == "HealthText" then
-        self:ApplyHealthTextPreview()
-    elseif key == "ZoneText" then
-        self:ApplyZoneTextPreview()
-    end
+    if key == "CastBar" then self:ApplyCastBarPreview()
+    elseif key == "Portrait" then self:ApplyPortraitPreview()
+    elseif key == "HealthText" then self:ApplyHealthTextPreview()
+    elseif key == "ZoneText" then self:ApplyZoneTextPreview() end
 end
+
 
 -- [ VALUE CHANGE HANDLER ]--------------------------------------------------------------------------
 
@@ -605,9 +509,7 @@ function Settings:OnValueChanged(key, value)
     local rebuildsPanel = false
     if schema then
         for _, ctrl in ipairs(schema.controls) do
-            if ctrl.key == key and ctrl.rebuildsPanel then
-                rebuildsPanel = true; break
-            end
+            if ctrl.key == key and ctrl.rebuildsPanel then rebuildsPanel = true; break end
         end
     end
 
@@ -693,96 +595,94 @@ end
 
 function Settings:ApplyPortraitPreview()
     local ok, err = pcall(function()
-        local canvasDialog = OrbitEngine.CanvasModeDialog
-        if not canvasDialog or not canvasDialog.previewComponents then return end
-        local comp = canvasDialog.previewComponents.Portrait
-        if not comp or not comp.visual then return end
+    local canvasDialog = OrbitEngine.CanvasModeDialog
+    if not canvasDialog or not canvasDialog.previewComponents then return end
+    local comp = canvasDialog.previewComponents.Portrait
+    if not comp or not comp.visual then return end
 
-        local overrides = self.currentOverrides or {}
-        local scale = (overrides.PortraitScale or 120) / 100
-        local style = overrides.PortraitStyle or "3d"
-        local mirror = overrides.PortraitMirror or false
-        local ringAtlas = overrides.PortraitRing or "none"
+    local overrides = self.currentOverrides or {}
+    local scale = (overrides.PortraitScale or 120) / 100
+    local style = overrides.PortraitStyle or "3d"
+    local mirror = overrides.PortraitMirror or false
+    local ringAtlas = overrides.PortraitRing or "none"
 
-        local size = 32 * scale
-        local ringData = PORTRAIT_RING_DATA[ringAtlas]
-        local ringOS = ((ringData and ringData.overshoot) or PORTRAIT_RING_OVERSHOOT) * scale
-        comp:SetSize(size, size)
+    local size = 32 * scale
+    local ringData = PORTRAIT_RING_DATA[ringAtlas]
+    local ringOS = ((ringData and ringData.overshoot) or PORTRAIT_RING_OVERSHOOT) * scale
+    comp:SetSize(size, size)
 
-        if not comp._ring then
-            comp._ring = comp:CreateTexture(nil, "OVERLAY")
+    if not comp._ring then
+        comp._ring = comp:CreateTexture(nil, "OVERLAY")
+    end
+    comp._ring:ClearAllPoints()
+    comp._ring:SetPoint("TOPLEFT", -ringOS, ringOS)
+    comp._ring:SetPoint("BOTTOMRIGHT", ringOS, -ringOS)
+
+    if style == "3d" then
+        if not comp._model then
+            comp._model = CreateFrame("PlayerModel", nil, comp)
+            comp._model:SetAllPoints()
         end
-        comp._ring:ClearAllPoints()
-        comp._ring:SetPoint("TOPLEFT", -ringOS, ringOS)
-        comp._ring:SetPoint("BOTTOMRIGHT", ringOS, -ringOS)
-
-        if style == "3d" then
-            if not comp._model then
-                comp._model = CreateFrame("PlayerModel", nil, comp)
-                comp._model:SetAllPoints()
-            end
-            comp.visual:Hide()
-            comp._model:Show()
-            comp._model:SetUnit("player")
-            comp._model:SetPortraitZoom(mirror and 0.85 or 1)
-            comp._model:SetCamDistanceScale(0.8)
-            comp._model:SetFacing(mirror and -1.05 or 0)
-            comp._model:SetPosition(mirror and 0.3 or 0, 0, mirror and -0.05 or 0)
-            comp._ring:Hide()
-            if comp._flipDriver then comp._flipDriver:Hide() end
-            local showBorder = overrides.PortraitBorder
-            if showBorder == nil then showBorder = true end
-            local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
-            Orbit.Skin:SkinBorder(comp, comp, borderSize)
-        else
-            if comp._model then comp._model:Hide() end
-            comp.visual:Show()
-            SetPortraitTexture(comp.visual, "player")
-            comp.visual:SetTexCoord(mirror and 1 or 0, mirror and 0 or 1, 0, 1)
-            Orbit.Skin:SkinBorder(comp, comp, 0)
-            local ringData = PORTRAIT_RING_DATA[ringAtlas]
-            if ringData and ringData.atlas then
-                comp._ring:Show()
-                if ringData.rows then
-                    local info = C_Texture.GetAtlasInfo(ringData.atlas)
-                    if not info then
-                        comp._ring:Hide(); return
-                    end
-                    comp._ring:SetTexture(info.file)
-                    local aL, aR = info.leftTexCoord, info.rightTexCoord
-                    local aT, aB = info.topTexCoord, info.bottomTexCoord
-                    local cellW, cellH = (aR - aL) / ringData.cols, (aB - aT) / ringData.rows
-                    local frameTime = ringData.duration / ringData.frames
-                    if not comp._flipDriver then
-                        comp._flipDriver = CreateFrame("Frame", nil, comp)
-                    end
-                    comp._flipDriver._current = 0
-                    comp._flipDriver._elapsed = 0
-                    local function SetFrame(idx)
-                        local c = idx % ringData.cols
-                        local r = math.floor(idx / ringData.cols)
-                        comp._ring:SetTexCoord(aL + c * cellW, aL + (c + 1) * cellW, aT + r * cellH, aT + (r + 1) * cellH)
-                    end
-                    SetFrame(0)
-                    comp._flipDriver:SetScript("OnUpdate", function(driver, elapsed)
-                        driver._elapsed = driver._elapsed + elapsed
-                        if driver._elapsed >= frameTime then
-                            driver._elapsed = driver._elapsed - frameTime
-                            driver._current = (driver._current + 1) % ringData.frames
-                            SetFrame(driver._current)
-                        end
-                    end)
-                    comp._flipDriver:Show()
-                else
-                    comp._ring:SetTexCoord(0, 1, 0, 1)
-                    comp._ring:SetAtlas(ringData.atlas)
-                    if comp._flipDriver then comp._flipDriver:Hide() end
+        comp.visual:Hide()
+        comp._model:Show()
+        comp._model:SetUnit("player")
+        comp._model:SetPortraitZoom(mirror and 0.85 or 1)
+        comp._model:SetCamDistanceScale(0.8)
+        comp._model:SetFacing(mirror and -1.05 or 0)
+        comp._model:SetPosition(mirror and 0.3 or 0, 0, mirror and -0.05 or 0)
+        comp._ring:Hide()
+        if comp._flipDriver then comp._flipDriver:Hide() end
+        local showBorder = overrides.PortraitBorder
+        if showBorder == nil then showBorder = true end
+        local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
+        Orbit.Skin:SkinBorder(comp, comp, borderSize)
+    else
+        if comp._model then comp._model:Hide() end
+        comp.visual:Show()
+        SetPortraitTexture(comp.visual, "player")
+        comp.visual:SetTexCoord(mirror and 1 or 0, mirror and 0 or 1, 0, 1)
+        Orbit.Skin:SkinBorder(comp, comp, 0)
+        local ringData = PORTRAIT_RING_DATA[ringAtlas]
+        if ringData and ringData.atlas then
+            comp._ring:Show()
+            if ringData.rows then
+                local info = C_Texture.GetAtlasInfo(ringData.atlas)
+                if not info then comp._ring:Hide(); return end
+                comp._ring:SetTexture(info.file)
+                local aL, aR = info.leftTexCoord, info.rightTexCoord
+                local aT, aB = info.topTexCoord, info.bottomTexCoord
+                local cellW, cellH = (aR - aL) / ringData.cols, (aB - aT) / ringData.rows
+                local frameTime = ringData.duration / ringData.frames
+                if not comp._flipDriver then
+                    comp._flipDriver = CreateFrame("Frame", nil, comp)
                 end
+                comp._flipDriver._current = 0
+                comp._flipDriver._elapsed = 0
+                local function SetFrame(idx)
+                    local c = idx % ringData.cols
+                    local r = math.floor(idx / ringData.cols)
+                    comp._ring:SetTexCoord(aL + c * cellW, aL + (c + 1) * cellW, aT + r * cellH, aT + (r + 1) * cellH)
+                end
+                SetFrame(0)
+                comp._flipDriver:SetScript("OnUpdate", function(driver, elapsed)
+                    driver._elapsed = driver._elapsed + elapsed
+                    if driver._elapsed >= frameTime then
+                        driver._elapsed = driver._elapsed - frameTime
+                        driver._current = (driver._current + 1) % ringData.frames
+                        SetFrame(driver._current)
+                    end
+                end)
+                comp._flipDriver:Show()
             else
-                comp._ring:Hide()
+                comp._ring:SetTexCoord(0, 1, 0, 1)
+                comp._ring:SetAtlas(ringData.atlas)
                 if comp._flipDriver then comp._flipDriver:Hide() end
             end
+        else
+            comp._ring:Hide()
+            if comp._flipDriver then comp._flipDriver:Hide() end
         end
+    end
     end)
     if not ok then print("|cffff0000ORBIT_PORTRAIT_PREVIEW ERROR:|r", err) end
 end
@@ -819,16 +719,11 @@ function Settings:ApplyHealthTextPreview()
 
     if showValue then
         local SAMPLE_TEXT = {
-            percent = "100%",
-            short = "106K",
-            raw = "106000",
+            percent = "100%", short = "106K", raw = "106000",
             short_and_percent = "106K - 100%",
-            percent_short = "100%",
-            percent_raw = "100%",
-            short_percent = "106K",
-            short_raw = "106K",
-            raw_short = "106000",
-            raw_percent = "106000",
+            percent_short = "100%", percent_raw = "100%",
+            short_percent = "106K", short_raw = "106K",
+            raw_short = "106000", raw_percent = "106000",
         }
         visual:SetText(SAMPLE_TEXT[mode] or "100%")
     else
@@ -867,7 +762,6 @@ function Settings:ApplyZoneTextPreview()
             visual:SetTextColor(1, 1, 1, 1)
         end
     else
-        -- Check if a custom color curve override is applied; if not, default to white
         local overrides = self.currentOverrides or {}
         if overrides.CustomColorCurve then
             local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(overrides.CustomColorCurve)
@@ -904,8 +798,7 @@ function Settings:ApplyStyle(container, key, value)
             if self.container.visual and Orbit.Skin and Orbit.Skin.Icons then
                 local s = self.container:GetEffectiveScale() or 1
                 local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(s)
-                Orbit.Skin.Icons:ApplyCustom(self.container.visual,
-                    { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
+                Orbit.Skin.Icons:ApplyCustom(self.container.visual, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
                 Orbit.Skin:SkinBorder(self.container.visual, self.container.visual, globalBorder)
             end
         end
@@ -932,8 +825,7 @@ function Settings:ApplyStyle(container, key, value)
             visual:SetFont(fontPath, size or 12, flags)
             C_Timer.After(0.01, function()
                 if container and visual and visual.GetStringWidth then
-                    container:SetSize((visual:GetStringWidth() or ((size or 12) * 3)) + 2,
-                        (visual:GetStringHeight() or (size or 12)) + 2)
+                    container:SetSize((visual:GetStringWidth() or ((size or 12) * 3)) + 2, (visual:GetStringHeight() or (size or 12)) + 2)
                 end
             end)
         end

@@ -34,7 +34,8 @@ function Plugin:CreateCompartmentButton()
     local frame = self.frame
 
     -- Drawer toggle button (bottom-right corner of minimap, hidden until hover)
-    local btn = CreateFrame("Button", "OrbitMinimapCompartmentButton", frame)
+    -- Parented to Overlay so it renders above the Minimap render surface
+    local btn = CreateFrame("Button", "OrbitMinimapCompartmentButton", frame.Overlay or frame)
     btn:SetSize(COMPARTMENT_BUTTON_SIZE, COMPARTMENT_BUTTON_SIZE)
     btn:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
     btn:SetFrameLevel(frame:GetFrameLevel() + 10)
