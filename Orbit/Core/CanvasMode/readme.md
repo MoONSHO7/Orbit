@@ -48,6 +48,7 @@ CanvasMode/
     FontStringCreator.lua
     IconFrameCreator.lua
     PortraitCreator.lua
+    StatusIconGroupCreator.lua
     TextureCreator.lua
 ```
 

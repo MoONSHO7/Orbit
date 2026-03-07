@@ -18,7 +18,6 @@ local COMPACT_LABEL_WIDTH = 50
 local COMPACT_VALUE_WIDTH = 36
 local COMPACT_LABEL_GAP = 4
 local TITLE_HEIGHT = 20
-local SUBTITLE_HEIGHT = 16
 local PORTRAIT_RING_OVERSHOOT = OrbitEngine.PORTRAIT_RING_OVERSHOOT
 local PORTRAIT_RING_DATA = OrbitEngine.PortraitRingData
 local PORTRAIT_RING_OPTIONS = OrbitEngine.PortraitRingOptions
@@ -356,7 +355,6 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     local col = 0
     local rowY = 0
     local rowHeight = 0
-    local titleOffset = TITLE_HEIGHT
 
     for _, control in ipairs(schema.controls) do
         widgetIndex = widgetIndex + 1
@@ -435,11 +433,11 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
                 widget.gridCol = col
                 widget:ClearAllPoints()
                 if col == 0 then
-                    widget:SetPoint("TOPLEFT", overrideContainer, "TOPLEFT", C.DIALOG_INSET, -(rowY + titleOffset))
-                    widget:SetPoint("TOPRIGHT", overrideContainer, "TOP", -(COLUMN_GAP / 2), -(rowY + titleOffset))
+                    widget:SetPoint("TOPLEFT", overrideContainer, "TOPLEFT", C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
+                    widget:SetPoint("TOPRIGHT", overrideContainer, "TOP", -(COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
                 else
-                    widget:SetPoint("TOPLEFT", overrideContainer, "TOP", (COLUMN_GAP / 2), -(rowY + titleOffset))
-                    widget:SetPoint("TOPRIGHT", overrideContainer, "TOPRIGHT", -C.DIALOG_INSET, -(rowY + titleOffset))
+                    widget:SetPoint("TOPLEFT", overrideContainer, "TOP", (COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
+                    widget:SetPoint("TOPRIGHT", overrideContainer, "TOPRIGHT", -C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
                 end
                 widget:Show()
                 rowHeight = math.max(rowHeight, widget:GetHeight())
@@ -458,7 +456,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     -- Close final partial row
     if col > 0 then rowY = rowY + rowHeight + WIDGET_SPACING end
 
-    local containerHeight = rowY + titleOffset + PADDING
+    local containerHeight = rowY + TITLE_HEIGHT + PADDING
     overrideContainer:SetHeight(containerHeight)
     canvasDialog:RecalculateHeight()
 

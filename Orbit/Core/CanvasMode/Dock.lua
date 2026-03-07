@@ -87,7 +87,7 @@ function Dialog:AddToDock(key, sourceComponent)
 
     for _, edge in ipairs({"TOP", "BOTTOM", "LEFT", "RIGHT"}) do
         local t = icon:CreateTexture(nil, "BORDER")
-        t:SetColorTexture(1, 0, 0, 0.3)
+        t:SetColorTexture(0.15, 0.15, 0.15, 0.4)
         if edge == "TOP" then t:SetPoint("TOPLEFT"); t:SetPoint("TOPRIGHT"); t:SetHeight(1)
         elseif edge == "BOTTOM" then t:SetPoint("BOTTOMLEFT"); t:SetPoint("BOTTOMRIGHT"); t:SetHeight(1)
         elseif edge == "LEFT" then t:SetPoint("TOPLEFT"); t:SetPoint("BOTTOMLEFT"); t:SetWidth(1)

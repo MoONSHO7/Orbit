@@ -445,15 +445,6 @@ function Plugin:OnLoad()
     end
     local healerIconKeys = { "RoleIcon", "LeaderIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
     for _, k in ipairs(HealerReg:ActiveKeys()) do healerIconKeys[#healerIconKeys + 1] = k end
-    -- Ensure synthetic StatusIcons element exists before registration
-    if not firstFrame.StatusIcons then
-        local si = CreateFrame("Button", nil, firstFrame)
-        si.Icon = si:CreateTexture(nil, "ARTWORK")
-        si.Icon:SetAllPoints()
-        si:SetSize(24, 24)
-        si:Hide()
-        firstFrame.StatusIcons = si
-    end
     Orbit.GroupCanvasRegistration:RegisterComponents(pluginRef, self.container, firstFrame,
         { "Name", "HealthText" },
         healerIconKeys,

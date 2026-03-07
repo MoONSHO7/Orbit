@@ -86,7 +86,6 @@ local function Create(container, preview, key, source, data)
     container._cyclingTicker = ticker
 
     -- Size: IconSize override > Scale override on source size > source size > default
-    local overrides = data and data.overrides
     local savedSize = overrides and overrides.IconSize
     local scale = overrides and overrides.Scale or 1
     local size
