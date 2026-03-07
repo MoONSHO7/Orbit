@@ -369,6 +369,7 @@ local function HideNativePartyFrames()
         if partyFrame then
             partyFrame:ClearAllPoints()
             partyFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
+            partyFrame:UnregisterAllEvents()
             partyFrame:SetAlpha(0)
             partyFrame:SetScale(0.001)
             partyFrame:EnableMouse(false)
@@ -389,10 +390,20 @@ local function HideNativePartyFrames()
         end
     end
     if PartyFrame then
-        OrbitEngine.NativeFrame:Hide(PartyFrame)
+        PartyFrame:ClearAllPoints()
+        PartyFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
+        PartyFrame:UnregisterAllEvents()
+        PartyFrame:SetAlpha(0)
+        PartyFrame:SetScale(0.001)
+        PartyFrame:EnableMouse(false)
     end
     if CompactPartyFrame then
-        OrbitEngine.NativeFrame:Hide(CompactPartyFrame)
+        CompactPartyFrame:ClearAllPoints()
+        CompactPartyFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
+        CompactPartyFrame:UnregisterAllEvents()
+        CompactPartyFrame:SetAlpha(0)
+        CompactPartyFrame:SetScale(0.001)
+        CompactPartyFrame:EnableMouse(false)
     end
 end
 

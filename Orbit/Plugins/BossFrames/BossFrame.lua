@@ -155,6 +155,7 @@ local function HideNativeBossFrames()
     if BossTargetFrameContainer then
         BossTargetFrameContainer:ClearAllPoints()
         BossTargetFrameContainer:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
+        BossTargetFrameContainer:UnregisterAllEvents()
         BossTargetFrameContainer:SetAlpha(0)
         BossTargetFrameContainer:SetScale(0.001)
         BossTargetFrameContainer:EnableMouse(false)
@@ -164,6 +165,7 @@ local function HideNativeBossFrames()
         if bossFrame then
             bossFrame:ClearAllPoints()
             bossFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
+            bossFrame:UnregisterAllEvents()
             bossFrame:SetAlpha(0); bossFrame:SetScale(0.001); bossFrame:EnableMouse(false)
             if not bossFrame.orbitSetPointHooked then
                 hooksecurefunc(bossFrame, "SetPoint", function(self)
