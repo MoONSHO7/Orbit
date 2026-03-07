@@ -261,6 +261,12 @@ end
 -- [ HIDE NATIVE RAID FRAMES ]----------------------------------------------------------------------
 
 local function HideNativeRaidFrames()
+    if CompactRaidFrameContainer then
+        OrbitEngine.NativeFrame:Hide(CompactRaidFrameContainer)
+    end
+    if CompactRaidFrameManager then
+        OrbitEngine.NativeFrame:Hide(CompactRaidFrameManager)
+    end
 end
 
 function Plugin:AddSettings(dialog, systemFrame)
