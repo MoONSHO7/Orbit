@@ -228,11 +228,17 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
             local componentPositions = txnActive and Txn:GetPositions() or self:GetSetting(1, "ComponentPositions") or {}
 
             if self:GetSetting(1, "ShowRoleIcon") ~= false and frame.RoleIcon then
-                local roleAtlas = roleAtlases[previewRoles[i]]
-                if roleAtlas then
-                    frame.RoleIcon:SetAtlas(roleAtlas)
-                    frame.RoleIcon:Show()
-                    if componentPositions.RoleIcon then ApplyIconPosition(frame.RoleIcon, frame, componentPositions.RoleIcon) end
+                local role = previewRoles[i]
+                local roleOverrides = componentPositions.RoleIcon and componentPositions.RoleIcon.overrides
+                local hideDPS = roleOverrides and roleOverrides.HideDPS
+                if role == "DAMAGER" and hideDPS then frame.RoleIcon:Hide()
+                else
+                    local roleAtlas = roleAtlases[role]
+                    if roleAtlas then
+                        frame.RoleIcon:SetAtlas(roleAtlas)
+                        frame.RoleIcon:Show()
+                        if componentPositions.RoleIcon then ApplyIconPosition(frame.RoleIcon, frame, componentPositions.RoleIcon) end
+                    end
                 end
             elseif frame.RoleIcon then frame.RoleIcon:Hide() end
 
@@ -261,8 +267,8 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 healerAuraSize = HEALER_AURA_ICON_SIZE,
             }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs(), HealerReg:ActiveKeys())
 
-            -- Preview auras (skip if animator is handling them)
-            if not Orbit.PreviewAnimator:IsRunning() then
+            -- Preview auras (skip if animator is handling them, unless in Canvas Mode)
+            if isCanvasMode or not Orbit.PreviewAnimator:IsRunning() then
                 if frame.debuffPool then frame.debuffPool:ReleaseAll() end
                 if frame.buffPool then frame.buffPool:ReleaseAll() end
                 self:ShowPreviewAuras(frame, i)

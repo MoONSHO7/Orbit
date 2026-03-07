@@ -764,6 +764,7 @@ function Plugin:OnCanvasApply()
     if StatusMixin then
         for _, frame in ipairs(self.frames) do StatusMixin:UpdateRoleIcon(frame, self) end
     end
+    if self.frames[1] and self.frames[1].preview then self:SchedulePreviewUpdate() end
 end
 
 function Plugin:ApplySettings()

@@ -237,7 +237,10 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 if isDisabled("RoleIcon") then frame.RoleIcon:Hide()
                 else
                     local role = PREVIEW_ROLES[dataIdx]
-                    if roleAtlases[role] then
+                    local roleOverrides = componentPositions.RoleIcon and componentPositions.RoleIcon.overrides
+                    local hideDPS = roleOverrides and roleOverrides.HideDPS
+                    if role == "DAMAGER" and hideDPS then frame.RoleIcon:Hide()
+                    elseif roleAtlases[role] then
                         frame.RoleIcon:SetAtlas(roleAtlases[role])
                         frame.RoleIcon:Show()
                         if componentPositions.RoleIcon then ApplyIconPosition(frame.RoleIcon, frame, componentPositions.RoleIcon) end
@@ -280,8 +283,8 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 hideKeys = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" },
             }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs(), HealerReg:ActiveKeys())
 
-            -- Preview auras (skip if animator is handling them)
-            if not Orbit.PreviewAnimator:IsRunning() then
+            -- Preview auras (skip if animator is handling them, unless in Canvas Mode)
+            if isCanvasMode or not Orbit.PreviewAnimator:IsRunning() then
                 if frame.debuffPool then frame.debuffPool:ReleaseAll() end
                 if frame.buffPool then frame.buffPool:ReleaseAll() end
                 self:ShowPreviewAuras(frame, i)
