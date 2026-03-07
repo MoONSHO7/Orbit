@@ -16,16 +16,18 @@ local WHATS_NEW_ENTRIES = {
     },
     { title = "Update",
       body = "• Canvas Mode overhaul: new layout, dock, and component settings\n"
+        .. "• Grouped Status Icons & Animated\n"
+        .. "• Grouped Role Icons & Animated\n"
         .. "• Added PlayerBuffs and Debuffs to Orbit\n"
         .. "• Animated Party/Raid/Boss Preview Frames\n"
         .. "• PVP Icon on Player Frame\n"
         .. "• Role Icon: Hide DPS Role option in Canvas Mode\n"
-        .. "• Vehicle Exit button visible in Edit Mode with settings\n"
     },
     { title = "Bugfixes",
       body = "• Frames no longer jump when dragging chain-anchored frames\n"
         .. "• Queue Status no longer errors during combat\n"
         .. "• Pet Frame now refreshes properly on pet changes\n"
+        .. "• Vehicle Exit Settings Fixes\n"
         .. "• Various other minor bugfixes\n"
     },
     { title = "Previous Updates",
