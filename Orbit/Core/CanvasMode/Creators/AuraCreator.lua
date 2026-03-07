@@ -13,14 +13,7 @@ local DEFAULT_MAX_ICONS = 3
 local DEFAULT_MAX_ROWS = 2
 local DEFAULT_PARENT_WIDTH = 200
 local DEFAULT_PARENT_HEIGHT = 40
-
-local _iconProvider
-local function GetSpellbookIcon()
-    if not _iconProvider then
-        _iconProvider = CreateAndInitFromMixin(IconDataProviderMixin, IconDataProviderExtraType.Spellbook, true)
-    end
-    return _iconProvider:GetIconByIndex(math.random(1, _iconProvider:GetNumIcons()))
-end
+local GetSpellbookIcon = function() return Orbit.AuraPreview.GetSpellbookIcon() end
 
 -- [ REFRESH LOGIC ]---------------------------------------------------------------------------------
 

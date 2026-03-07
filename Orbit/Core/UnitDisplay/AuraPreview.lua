@@ -67,7 +67,7 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
         end
         icon:SetParent(container)
         icon:SetSize(iconSize, iconSize)
-        icon.Icon:SetTexture(GetSpellbookIcon())
+        if not icon.Icon:GetTexture() then icon.Icon:SetTexture(GetSpellbookIcon()) end
         if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(icon, PREVIEW_SKIN) end
         local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or "Fonts\\FRIZQT__.TTF"
         local fontOutline = Orbit.Skin:GetFontOutline()

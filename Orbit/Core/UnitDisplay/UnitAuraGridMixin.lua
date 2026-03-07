@@ -41,16 +41,7 @@ local ASPECT_RATIOS = {
     { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
 }
 
-
-
--- [ PREVIEW ICON ]---------------------------------------------------------------------------------
-local _previewIconProvider
-local function GetPreviewIcon()
-    if not _previewIconProvider then
-        _previewIconProvider = CreateAndInitFromMixin(IconDataProviderMixin, IconDataProviderExtraType.Spellbook, true)
-    end
-    return _previewIconProvider:GetIconByIndex(math.random(1, _previewIconProvider:GetNumIcons()))
-end
+local GetPreviewIcon = function() return Orbit.AuraPreview.GetSpellbookIcon() end
 
 -- [ COLLAPSE ARROW ]--------------------------------------------------------------------------------
 local ARROW_SIZE = 15
@@ -420,7 +411,7 @@ function Mixin:CreateAuraGridPlugin(config)
     end)
 
     OrbitEngine.EditMode:RegisterCallbacks({
-        Enter = function() self:UpdateVisibility() end,
+        Enter = function() self._agFrame._previewTexCache = nil; self:UpdateVisibility() end,
         Exit = function() self:UpdateVisibility() end,
     }, self)
 
@@ -559,6 +550,9 @@ function Mixin:ShowPreviewAuras()
     Frame:SetSize(math.max(1, width), math.max(1, height))
 
     if not Frame.previewPool then Frame.previewPool = self:CreateAuraPool(Frame, "BackdropTemplate") end
+    -- Snapshot existing textures before release
+    Frame._previewTexCache = Frame._previewTexCache or {}
+    local cache = Frame._previewTexCache
     Frame.previewPool:ReleaseAll()
 
     local isDebuff = cfg.isHarmful
@@ -566,8 +560,10 @@ function Mixin:ShowPreviewAuras()
     for i = 1, maxAuras do
         local icon = Frame.previewPool:Acquire()
         icon:SetSize(iconW, iconH)
+        local tex = cache[i] or GetPreviewIcon()
+        cache[i] = tex
         self:SetupAuraIcon(icon, {
-            icon = GetPreviewIcon(), applications = i, duration = 0,
+            icon = tex, applications = i, duration = 0,
             expirationTime = 0, index = i, isHarmful = isDebuff,
         }, iconH, "player", Orbit.Constants.Aura.SkinNoTimer)
         icon:SetSize(iconW, iconH)
@@ -577,6 +573,8 @@ function Mixin:ShowPreviewAuras()
         icon:SetScript("OnLeave", nil)
         table.insert(previews, icon)
     end
+    -- Trim cache if count decreased
+    for i = maxAuras + 1, #cache do cache[i] = nil end
 
     local anchor, growthX, growthY = ResolveGrowthDirection(Frame)
     Orbit.AuraLayout:LayoutGrid(Frame, previews, {
