@@ -34,6 +34,21 @@ CanvasMode.Constants = {
     -- Viewport
     VIEWPORT_PADDING = 20,
 
+    -- NineSlice chrome offsets
+    BG_INSET_LEFT = 6,
+    BG_INSET_TOP = 21,
+    BG_INSET_RIGHT = 2,
+    BG_INSET_BOTTOM = 2,
+    TITLE_INSET_LEFT = 30,
+    TITLE_INSET_RIGHT = 24,
+    TITLE_OFFSET_TOP = 1,
+    TITLE_TEXT_OFFSET = 5,
+    CLOSE_BTN_OFFSET_TOP = 1,
+    STREAKS_OVERSHOOT_X = 2,
+    STREAKS_OVERSHOOT_Y = 7,
+    RESIZE_OFFSET_X = 5,
+    RESIZE_OFFSET_Y = 4,
+
     -- Filter tabs
     FILTER_TAB_HEIGHT = 24,
     FILTER_TAB_SPACING = 4,
@@ -82,14 +97,14 @@ Dialog.Bg = Dialog:CreateTexture(nil, "BACKGROUND", nil, -6)
 Dialog.Bg:SetTexture("Interface\\FrameGeneral\\UI-Background-Rock")
 Dialog.Bg:SetHorizTile(true)
 Dialog.Bg:SetVertTile(true)
-Dialog.Bg:SetPoint("TOPLEFT", 6, -21)
-Dialog.Bg:SetPoint("BOTTOMRIGHT", -2, 2)
+Dialog.Bg:SetPoint("TOPLEFT", C.BG_INSET_LEFT, -C.BG_INSET_TOP)
+Dialog.Bg:SetPoint("BOTTOMRIGHT", -C.BG_INSET_RIGHT, C.BG_INSET_BOTTOM)
 
 -- Gradient streaks under title bar
 Dialog.TopTileStreaks = Dialog:CreateTexture(nil, "BACKGROUND", nil, -5)
 Dialog.TopTileStreaks:SetAtlas("_UI-Frame-TopTileStreaks", true)
-Dialog.TopTileStreaks:SetPoint("TOPLEFT", Dialog.Bg, "TOPLEFT", -2, 7)
-Dialog.TopTileStreaks:SetPoint("TOPRIGHT", Dialog.Bg, "TOPRIGHT", 2, 7)
+Dialog.TopTileStreaks:SetPoint("TOPLEFT", Dialog.Bg, "TOPLEFT", -C.STREAKS_OVERSHOOT_X, C.STREAKS_OVERSHOOT_Y)
+Dialog.TopTileStreaks:SetPoint("TOPRIGHT", Dialog.Bg, "TOPRIGHT", C.STREAKS_OVERSHOOT_X, C.STREAKS_OVERSHOOT_Y)
 
 -- Drag handlers
 Dialog:SetScript("OnDragStart", function(self)
@@ -103,7 +118,7 @@ end)
 -- [ RESIZE HANDLE ]--------------------------------------------------------------------------
 Dialog.ResizeHandle = CreateFrame("Button", nil, Dialog)
 Dialog.ResizeHandle:SetSize(C.RESIZE_HANDLE_SIZE, C.RESIZE_HANDLE_SIZE)
-Dialog.ResizeHandle:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", 5, -4)
+Dialog.ResizeHandle:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", C.RESIZE_OFFSET_X, -C.RESIZE_OFFSET_Y)
 Dialog.ResizeHandle:SetFrameStrata("TOOLTIP")
 Dialog.ResizeHandle:SetNormalAtlas("damagemeters-scalehandle")
 Dialog.ResizeHandle:SetHighlightAtlas("damagemeters-scalehandle-hover")
@@ -141,15 +156,15 @@ end)
 -- [ TITLE ]--------------------------------------------------------------------------------------
 Dialog.TitleContainer = CreateFrame("Frame", nil, Dialog)
 Dialog.TitleContainer:SetFrameLevel(510)
-Dialog.TitleContainer:SetPoint("TOPLEFT", 30, -1)
-Dialog.TitleContainer:SetPoint("TOPRIGHT", -24, -1)
+Dialog.TitleContainer:SetPoint("TOPLEFT", C.TITLE_INSET_LEFT, -C.TITLE_OFFSET_TOP)
+Dialog.TitleContainer:SetPoint("TOPRIGHT", -C.TITLE_INSET_RIGHT, -C.TITLE_OFFSET_TOP)
 Dialog.TitleContainer:SetHeight(20)
 Dialog.Title = Dialog.TitleContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-Dialog.Title:SetPoint("TOP", Dialog.TitleContainer, "TOP", 0, -5)
+Dialog.Title:SetPoint("TOP", Dialog.TitleContainer, "TOP", 0, -C.TITLE_TEXT_OFFSET)
 
 -- [ CLOSE BUTTON ]------------------------------------------------------------------------------
 Dialog.CloseButton = CreateFrame("Button", nil, Dialog, "UIPanelCloseButton")
-Dialog.CloseButton:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", 0, -1)
+Dialog.CloseButton:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", 0, -C.CLOSE_BTN_OFFSET_TOP)
 Dialog.CloseButton:SetFrameLevel(510)
 Dialog.CloseButton:SetScript("OnClick", function()
     Dialog:Cancel()

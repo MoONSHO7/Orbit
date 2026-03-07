@@ -263,8 +263,6 @@ local function SetupDragHandlers(container, preview, key, data)
 
     container:SetScript("OnDragStop", function(self)
         self.isDragging = false
-        self.dragStartLocalX = nil
-        self.dragStartLocalY = nil
         SetBorderColor(self.border, CC.BORDER_COLOR_IDLE)
         Dialog.DisabledDock.DropHighlight:Hide()
 
@@ -281,9 +279,9 @@ local function SetupDragHandlers(container, preview, key, data)
 
         self:ClearAllPoints()
         if self.isAuraContainer and self.justifyH and self.justifyH ~= "CENTER" then
-            local selfAnchor = BuildComponentSelfAnchor(false, true, self.selfAnchorY or self.anchorY, self.justifyH)
+            local selfAnchor = BuildComponentSelfAnchor(false, true, self.selfAnchorY, self.justifyH)
             local anchorPoint = BuildAnchorPoint(self.anchorX, self.anchorY)
-            local fx, fy = self.offsetX or 0, self.offsetY or 0
+            local fx, fy = self.offsetX, self.offsetY
             if self.anchorX == "RIGHT" then fx = -fx end
             if self.anchorY == "TOP" then fy = -fy end
             self:SetPoint(selfAnchor, preview, anchorPoint, fx, fy)

@@ -34,13 +34,10 @@ Dialog.PreviewContainer = CreateFrame("Frame", nil, Dialog)
 Dialog.PreviewContainer:SetPoint("TOPLEFT", Dialog, "TOPLEFT", INSET_LEFT, INSET_TOP)
 Dialog.PreviewContainer:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", INSET_RIGHT, INSET_TOP)
 Dialog.PreviewContainer:SetHeight(C.VIEWPORT_HEIGHT)
-
-
-
 -- Recessed NineSlice behind the viewport (slightly larger for depth)
 Dialog.Inset = CreateFrame("Frame", nil, Dialog, "InsetFrameTemplate")
-Dialog.Inset:SetPoint("TOPLEFT", Dialog, "TOPLEFT", 6, -22)
-Dialog.Inset:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -2, 4)
+Dialog.Inset:SetPoint("TOPLEFT", Dialog, "TOPLEFT", C.BG_INSET_LEFT, -(C.BG_INSET_TOP + 1))
+Dialog.Inset:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -C.BG_INSET_RIGHT, C.BG_INSET_BOTTOM + 2)
 Dialog.Inset:SetFrameLevel(Dialog:GetFrameLevel() + 1)
 Dialog.Inset.NineSlice.layoutType = "InsetFrameTemplate"
 NineSliceUtil.ApplyLayoutByName(Dialog.Inset.NineSlice, "InsetFrameTemplate")

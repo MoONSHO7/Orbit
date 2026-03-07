@@ -11,8 +11,19 @@ local Reg = Orbit.GroupCanvasRegistration
 
 local STATUS_GROUP_KEYS = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }
 
+-- Propagates the StatusIcons grouped position to each individual status icon key.
+function Reg:FanOutStatusIcons(positions)
+    local sp = positions.StatusIcons
+    if not sp then return end
+    for _, subKey in ipairs(STATUS_GROUP_KEYS) do
+        positions[subKey] = { anchorX = sp.anchorX, anchorY = sp.anchorY, offsetX = sp.offsetX, offsetY = sp.offsetY, justifyH = sp.justifyH, posX = sp.posX, posY = sp.posY }
+    end
+end
+
 -- [ REGISTER COMPONENTS ]--------------------------------------------------------------------------
 -- Registers text, icon, and aura container components on a group frame container for Canvas Mode.
+local AURA_ICON_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true }
+
 function Reg:RegisterComponents(plugin, container, firstFrame, textKeys, iconKeys, auraBaseIconSize)
     if not OrbitEngine.ComponentDrag or not firstFrame then return end
 
@@ -25,8 +36,6 @@ function Reg:RegisterComponents(plugin, container, firstFrame, textKeys, iconKey
             })
         end
     end
-
-local AURA_ICON_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true }
 
     for _, key in ipairs(iconKeys) do
         local element = firstFrame[key]
@@ -45,11 +54,8 @@ local AURA_ICON_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateA
             key = "StatusIcons",
             onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
                 local positions = plugin:GetSetting(1, "ComponentPositions") or {}
-                local pos = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
-                positions.StatusIcons = pos
-                for _, subKey in ipairs(STATUS_GROUP_KEYS) do
-                    positions[subKey] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, posX = pos.posX, posY = pos.posY }
-                end
+                positions.StatusIcons = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                Reg:FanOutStatusIcons(positions)
                 plugin:SetSetting(1, "ComponentPositions", positions)
             end,
         })
@@ -155,6 +161,19 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
         si:Hide()
         frame.StatusIcons = si
     end
+    if OrbitEngine.ComponentDrag and frame.StatusIcons and not frame.StatusIcons._canvasAttached then
+        frame.StatusIcons._canvasAttached = true
+        local container = frame:GetParent()
+        OrbitEngine.ComponentDrag:Attach(frame.StatusIcons, container, {
+            key = "StatusIcons",
+            onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
+                local positions = plugin:GetSetting(1, "ComponentPositions") or {}
+                positions.StatusIcons = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                Reg:FanOutStatusIcons(positions)
+                plugin:SetSetting(1, "ComponentPositions", positions)
+            end,
+        })
+    end
     local container = frame:GetParent()
     local savedPositions = plugin:GetSetting(1, "ComponentPositions") or {}
     for _, slot in ipairs(healerSlots) do
@@ -190,9 +209,7 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
     local isDisabled = plugin.IsComponentDisabled and function(k) return plugin:IsComponentDisabled(k) end or function() return false end
     if isCanvasMode then
         local previewAtlases = Orbit.IconPreviewAtlases or {}
-        local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
-        local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == plugin
-        local savedPositions = txnActive and Txn:GetPositions() or plugin:GetSetting(1, "ComponentPositions") or {}
+        local savedPositions = plugin:GetComponentPositions(1)
         local StatusMixin = Orbit.StatusIconMixin
         local iconSize = cfg.statusIconSize
         local spacing = cfg.statusIconSpacing or (iconSize + 4)
