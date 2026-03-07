@@ -119,14 +119,4 @@ eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 
 eventFrame:SetScript("OnEvent", function()
     SetupBlizzardHooks()
-    C_Timer.After(0.5, function()
-        for i = 1, 5 do
-            local frame = _G["CompactPartyFrameMember" .. i]
-            if frame then CaptureDispellableFromBlizzardFrame(frame, true) end
-        end
-        for i = 1, 40 do
-            local frame = _G["CompactRaidFrame" .. i]
-            if frame then CaptureDispellableFromBlizzardFrame(frame, true) end
-        end
-    end)
 end)
