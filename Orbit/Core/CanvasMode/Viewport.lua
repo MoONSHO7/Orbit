@@ -115,18 +115,24 @@ function Dialog:GetViewportTopOffset()
     return -INSET_TOP
 end
 
-function Dialog:RecalculateHeight()
+function Dialog:GetChromeHeight()
     local FC = Orbit.Constants.Footer
     local topOffset = -INSET_TOP
-
-    local overrideShown = self.OverrideContainer:IsShown()
+    local overrideShown = self.OverrideContainer and self.OverrideContainer:IsShown()
     local overrideHeight = overrideShown and self.OverrideContainer:GetHeight() or 0
     local overridePad = overrideHeight > 0 and C.OVERRIDE_SECTION_PADDING or 0
     local footerHeight = FC.TopPadding + FC.ButtonHeight + FC.BottomPadding
-
-    local dividerHeight = (Dialog.ViewportDivider and Dialog.ViewportDivider:IsShown()) and select(2, Dialog.ViewportDivider:GetSize()) or 0
+    local dividerHeight = (self.ViewportDivider and self.ViewportDivider:IsShown()) and select(2, self.ViewportDivider:GetSize()) or 0
     local dockHeight = C.DOCK_HEIGHT + 2
-    local totalHeight = topOffset + C.VIEWPORT_HEIGHT + dividerHeight + dockHeight + overridePad + overrideHeight + footerHeight + C.DIALOG_INSET
+    return topOffset + dividerHeight + dockHeight + overridePad + overrideHeight + footerHeight + C.DIALOG_INSET
+end
+
+function Dialog:RecalculateHeight()
+    local vpH = self.viewportHeight or C.VIEWPORT_HEIGHT
+    self.PreviewContainer:SetHeight(vpH)
+
+    local chromeH = self:GetChromeHeight()
+    local totalHeight = chromeH + vpH
 
     local top = self:GetTop()
     local left = self:GetLeft()

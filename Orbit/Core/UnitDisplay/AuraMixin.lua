@@ -197,7 +197,7 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     if #auras == 0 then container:Hide(); return end
     local helpers = type(cfg.helpers) == "function" and cfg.helpers() or cfg.helpers
     local position = helpers:AnchorToPosition(auraData.posX, auraData.posY, frameW / 2, frameH / 2)
-    local iconSize, _, iconsPerRow, containerW, containerH = AL:CalculateSmartLayout(frameW, frameH, position, maxIcons, #auras, overrides)
+    local iconSize, _, iconsPerRow, containerW, containerH, iconsPerCol = AL:CalculateSmartLayout(frameW, frameH, position, maxIcons, #auras, overrides)
     container:ClearAllPoints()
     container:SetSize(containerW, containerH)
     local anchorX = auraData.anchorX or cfg.defaultAnchorX or "LEFT"
@@ -207,7 +207,8 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     local justifyH = auraData.justifyH or cfg.defaultJustifyH or "LEFT"
     local finalX = (anchorX == "RIGHT") and -offsetX or offsetX
     local finalY = (anchorY == "TOP") and -offsetY or offsetY
-    container:SetPoint(BuildComponentSelfAnchor(false, true, anchorY, justifyH), frame, BuildAnchorPoint(anchorX, anchorY), finalX, finalY)
+    local selfAnchorY = auraData.selfAnchorY or anchorY
+    container:SetPoint(BuildComponentSelfAnchor(false, true, selfAnchorY, justifyH), frame, BuildAnchorPoint(anchorX, anchorY), finalX, finalY)
     local skinSettings = cfg.skinSettings
     if type(skinSettings) == "function" then skinSettings = skinSettings(plugin) end
     local col, row = 0, 0
@@ -216,7 +217,7 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
         icon:EnableMouse(false)
         plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
         plugin:SetupAuraTooltip(icon, aura, unit, cfg.tooltipFilter)
-        col, row = AL:PositionIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow)
+        col, row = AL:PositionIcon(icon, container, justifyH, selfAnchorY, col, row, iconSize, iconsPerRow, #auras, iconsPerCol)
     end
     container:Show()
 end

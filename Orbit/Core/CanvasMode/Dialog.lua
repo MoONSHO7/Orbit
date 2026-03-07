@@ -233,7 +233,7 @@ function Dialog:NudgeComponent(container, direction)
     end
 
     container:ClearAllPoints()
-    local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, anchorY, justifyH)
+    local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, container.selfAnchorY or anchorY, justifyH)
     container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
     OrbitEngine.SelectionTooltip:ShowComponentPosition(
@@ -245,7 +245,8 @@ function Dialog:NudgeComponent(container, direction)
         container.posY or 0,
         offsetX,
         offsetY,
-        justifyH
+        justifyH,
+        container.selfAnchorY
     )
 
     -- Stage nudged position into transaction for live preview updates
@@ -253,7 +254,7 @@ function Dialog:NudgeComponent(container, direction)
         CanvasMode.Transaction:SetPosition(container.key, {
             anchorX = anchorX, anchorY = anchorY,
             offsetX = offsetX, offsetY = offsetY,
-            justifyH = justifyH,
+            justifyH = justifyH, selfAnchorY = container.selfAnchorY,
             posX = container.posX, posY = container.posY,
         })
     end
@@ -410,6 +411,7 @@ function Dialog:Open(frame, plugin, systemIndex)
             subComponents = pos and pos.subComponents,
             posX = pos and pos.posX,
             posY = pos and pos.posY,
+            selfAnchorY = pos and pos.selfAnchorY,
         }
     end
 
@@ -514,7 +516,7 @@ function Dialog:Open(frame, plugin, systemIndex)
     if self.OverrideContainer then self.OverrideContainer:Hide() end
     if self.ViewportDivider then self.ViewportDivider:Hide() end
 
-    self:SetWidth(C.DIALOG_WIDTH)
+    self:SetWidth(math.max(C.DIALOG_MIN_WIDTH, self:GetWidth()))
     self:RecalculateHeight()
 
     self:Show()

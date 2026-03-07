@@ -36,15 +36,16 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
     local helpers = cfg.helpers()
     local frameW, frameH = frame:GetWidth(), frame:GetHeight()
     local position = helpers:AnchorToPosition(posData.posX, posData.posY, frameW / 2, frameH / 2)
-    local iconSize, _, iconsPerRow, containerW, containerH = AL:CalculateSmartLayout(frameW, frameH, position, numIcons, numIcons, overrides)
+    local iconSize, _, iconsPerRow, containerW, containerH, iconsPerCol = AL:CalculateSmartLayout(frameW, frameH, position, numIcons, numIcons, overrides)
     container:SetSize(containerW, containerH)
     container:ClearAllPoints()
     local anchorX = posData.anchorX or (cfg.defaultAnchorX or "RIGHT")
     local anchorY = posData.anchorY or "CENTER"
     local justifyH = posData.justifyH or (cfg.defaultJustifyH or "LEFT")
     local offsetX, offsetY = posData.offsetX or 0, posData.offsetY or 0
+    local selfAnchorY = posData.selfAnchorY or anchorY
     local anchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
-    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, anchorY, justifyH)
+    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, true, selfAnchorY, justifyH)
     local finalX, finalY = offsetX, offsetY
     if anchorX == "RIGHT" then finalX = -offsetX end
     if anchorY == "TOP" then finalY = -offsetY end
@@ -84,11 +85,11 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
         icon.Cooldown:SetHideCountdownNumbers(iconSize < PREVIEW_TIMER_MIN_SIZE)
         icon.Cooldown:SetCooldown(GetTime(), math.random(PREVIEW_COOLDOWN_MIN, PREVIEW_COOLDOWN_MAX))
         icon.Cooldown:Show()
-        col, row = AL:PositionIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow)
+        col, row = AL:PositionIcon(icon, container, justifyH, selfAnchorY, col, row, iconSize, iconsPerRow, numIcons, iconsPerCol)
         icon:Show()
     end
     container._justifyH = justifyH
-    container._anchorY = anchorY
+    container._anchorY = selfAnchorY
     container._iconSize = iconSize
     container._iconsPerRow = iconsPerRow
 end

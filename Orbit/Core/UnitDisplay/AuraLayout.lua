@@ -79,30 +79,54 @@ function AL:CalculateSmartLayout(frameW, frameH, position, maxIcons, numIcons, o
     local rows, iconsPerRow, containerWidth, containerHeight
     if isHorizontal then
         iconsPerRow = math_max(1, math.floor((frameW + SMART_AURA_SPACING) / (iconSize + SMART_AURA_SPACING)))
-        rows = math.min(maxRows, math.ceil(numIcons / iconsPerRow))
+        if maxRows > 1 then iconsPerRow = math.min(iconsPerRow, math.ceil(maxIcons / maxRows)) end
+        rows = math.min(maxRows, math.ceil(math_max(1, numIcons) / iconsPerRow))
         local displayCols = math.min(math.min(numIcons, iconsPerRow * rows), iconsPerRow)
         containerWidth = (displayCols * iconSize) + ((displayCols - 1) * SMART_AURA_SPACING)
         containerHeight = (rows * iconSize) + ((rows - 1) * SMART_AURA_SPACING)
     else
-        rows = math.min(maxRows, math_max(1, numIcons))
-        iconsPerRow = math.ceil(numIcons / rows)
-        containerWidth = math_max(iconSize, (iconsPerRow * iconSize) + ((iconsPerRow - 1) * SMART_AURA_SPACING))
-        containerHeight = (rows * iconSize) + ((rows - 1) * SMART_AURA_SPACING)
+        local iconsPerCol = maxRows
+        iconsPerRow = math.ceil(math_max(1, maxIcons) / iconsPerCol)
+        local actualCols = math.ceil(math_max(1, numIcons) / iconsPerCol)
+        local actualRows = math.min(iconsPerCol, numIcons)
+        containerWidth = math_max(iconSize, (actualCols * iconSize) + ((actualCols - 1) * SMART_AURA_SPACING))
+        containerHeight = math_max(iconSize, (actualRows * iconSize) + ((actualRows - 1) * SMART_AURA_SPACING))
+        rows = actualRows
     end
-    return iconSize, rows, iconsPerRow, containerWidth, containerHeight
+    return iconSize, rows, iconsPerRow, containerWidth, containerHeight, not isHorizontal and maxRows or nil
 end
 
-function AL:PositionIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow)
+function AL:PositionIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow, totalIcons, iconsPerCol)
     local xOff = col * (iconSize + SMART_AURA_SPACING)
     local yOff = row * (iconSize + SMART_AURA_SPACING)
+    -- Vertical centering for partial columns on side positions
+    if iconsPerCol and anchorY ~= "TOP" and anchorY ~= "BOTTOM" and totalIcons then
+        local iconsInCol = math.min(iconsPerCol, totalIcons - (col * iconsPerCol))
+        local colHeight = (iconsInCol * iconSize) + ((iconsInCol - 1) * SMART_AURA_SPACING)
+        local containerH = container:GetHeight()
+        yOff = yOff + (containerH - colHeight) / 2
+    end
     icon:ClearAllPoints()
     local growDown = (anchorY ~= "BOTTOM")
-    if justifyH == "RIGHT" then
+    if justifyH == "CENTER" then
+        local iconsInRow = totalIcons and math.min(iconsPerRow, totalIcons - (row * iconsPerRow)) or iconsPerRow
+        local rowWidth = (iconsInRow * iconSize) + ((iconsInRow - 1) * SMART_AURA_SPACING)
+        local containerW = container:GetWidth()
+        local centerOff = (containerW - rowWidth) / 2
+        if growDown then icon:SetPoint("TOPLEFT", container, "TOPLEFT", centerOff + xOff, -yOff)
+        else icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", centerOff + xOff, yOff) end
+    elseif justifyH == "RIGHT" then
         if growDown then icon:SetPoint("TOPRIGHT", container, "TOPRIGHT", -xOff, -yOff)
         else icon:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -xOff, yOff) end
     else
         if growDown then icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOff, -yOff)
         else icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", xOff, yOff) end
+    end
+    if iconsPerCol then
+        local nextRow = row + 1
+        local nextCol = col
+        if nextRow >= iconsPerCol then nextRow = 0; nextCol = col + 1 end
+        return nextCol, nextRow
     end
     local nextCol = col + 1
     local nextRow = row

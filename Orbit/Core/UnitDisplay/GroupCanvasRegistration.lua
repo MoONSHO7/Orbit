@@ -70,7 +70,8 @@ end
 
 -- [ APPLY ICON POSITIONS ]-------------------------------------------------------------------------
 -- Applies saved component positions to all icon elements on each frame.
-local AURA_POSITION_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true, Buffs = true, Debuffs = true }
+local AURA_POSITION_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true, Buffs = true, Debuffs = true, RaidBuff = true }
+do local HR = Orbit.HealerAuraRegistry; if HR then for _, k in ipairs(HR:AllSlotKeys()) do AURA_POSITION_KEYS[k] = true end end end
 function Reg:ApplyIconPositions(frames, savedPositions, iconKeys)
     if not savedPositions then return end
     local ApplyOverrides = OrbitEngine.OverrideUtils and OrbitEngine.OverrideUtils.ApplyOverrides
@@ -87,7 +88,7 @@ function Reg:ApplyIconPositions(frames, savedPositions, iconKeys)
                 local anchorY = pos.anchorY or "CENTER"
                 local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
                 local isAura = AURA_POSITION_KEYS[iconKey]
-                local selfAnchor = isAura and BuildSelfAnchor(false, true, anchorY, pos.justifyH or "CENTER") or "CENTER"
+                local selfAnchor = isAura and BuildSelfAnchor(false, true, pos.selfAnchorY or anchorY, pos.justifyH or "CENTER") or "CENTER"
 
                 local finalX = pos.offsetX or 0
                 local finalY = pos.offsetY or 0

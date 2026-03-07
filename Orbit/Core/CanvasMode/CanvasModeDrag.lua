@@ -20,14 +20,10 @@ local SetBorderColor = CanvasMode.SetBorderColor
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
 local SNAP_SIZE = 5
-local EDGE_THRESHOLD = 3
 local DRAG_THRESHOLD = 3
 local CLICK_THRESHOLD = 0.3
-local CLAMP_PADDING_X = 100
-local CLAMP_PADDING_Y = 50
-local SNAP_GRID = 5
-local DEFAULT_COMP_WIDTH = 40
-local DEFAULT_COMP_HEIGHT = 16
+local CLAMP_PADDING_X = 200
+local CLAMP_PADDING_Y = 200
 
 -- [ TYPE DETECTION ]--------------------------------------------------------------------------------
 
@@ -94,8 +90,15 @@ local function SetupContainerState(container, preview, key, isFontString, isAura
     local finalX = anchorX == "CENTER" and startX or (anchorX == "RIGHT" and -offsetX or offsetX)
     local finalY = anchorY == "CENTER" and startY or (anchorY == "TOP" and -offsetY or offsetY)
 
+    local selfAnchorY = (data and data.selfAnchorY) or anchorY
+    if not (data and data.selfAnchorY) and isAuraContainer and data and data.anchorX then
+        local needsComp = NeedsEdgeCompensation(isFontString, isAuraContainer)
+        _, _, _, _, _, selfAnchorY = CalculateAnchorWithWidthCompensation(startX, startY, halfW, halfH, needsComp, container:GetWidth(), container:GetHeight(), isAuraContainer)
+    end
+    container.selfAnchorY = selfAnchorY
+
     container:ClearAllPoints()
-    local selfAnchor = BuildComponentSelfAnchor(isFontString, isAuraContainer, anchorY, justifyH)
+    local selfAnchor = BuildComponentSelfAnchor(isFontString, isAuraContainer, selfAnchorY, justifyH)
     container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
     if isFontString and container.visual then ApplyTextAlignment(container, container.visual, justifyH) end
@@ -143,7 +146,7 @@ local function SetupDragHandlers(container, preview, key, data)
                 CanvasMode.Transaction:SetPosition(self.key, {
                     anchorX = self.anchorX, anchorY = self.anchorY,
                     offsetX = self.offsetX, offsetY = self.offsetY,
-                    justifyH = self.justifyH,
+                    justifyH = self.justifyH, selfAnchorY = self.selfAnchorY,
                     posX = self.posX, posY = self.posY,
                 })
             end
@@ -192,59 +195,70 @@ local function SetupDragHandlers(container, preview, key, data)
         local snapX, snapY
         local compHalfW = (self:GetWidth() or DEFAULT_COMP_WIDTH) / 2
         local compHalfH = (self:GetHeight() or DEFAULT_COMP_HEIGHT) / 2
+        local doSnap = not IsShiftKeyDown()
 
-        if not IsShiftKeyDown() then
+        -- Compute anchors and offsets from raw position
+        local needsWidthComp = NeedsEdgeCompensation(self.isFontString, self.isAuraContainer)
+        local anchorX, anchorY, edgeOffX, edgeOffY, justifyH, selfAnchorY =
+            CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsWidthComp, self:GetWidth(), self:GetHeight(), self.isAuraContainer)
+
+        -- Snap the offsets (the values the user sees) to grid
+        if doSnap then
+            edgeOffX = math.floor(edgeOffX / SNAP_SIZE + 0.5) * SNAP_SIZE
+            edgeOffY = math.floor(edgeOffY / SNAP_SIZE + 0.5) * SNAP_SIZE
+            if not needsWidthComp then
+                centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE
+                centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE
+            end
+
+            -- Edge/center guide detection
             local rightEdge = halfW - compHalfW
             local leftEdge = -halfW + compHalfW
-            local distR = math.abs(centerRelX - rightEdge)
-            local distL = math.abs(centerRelX - leftEdge)
-
-            if distR <= EDGE_THRESHOLD and centerRelX <= rightEdge then centerRelX = rightEdge; snapX = "RIGHT"
-            elseif distL <= EDGE_THRESHOLD and centerRelX >= leftEdge then centerRelX = leftEdge; snapX = "LEFT"
-            elseif math.abs(centerRelX) <= EDGE_THRESHOLD then centerRelX = 0; snapX = "CENTER"
+            if edgeOffX == 0 and anchorX ~= "CENTER" then snapX = (anchorX == "RIGHT") and "RIGHT" or "LEFT"
+            elseif centerRelX == 0 or math.abs(centerRelX) < SNAP_SIZE then snapX = "CENTER"; centerRelX = 0; edgeOffX = 0
             elseif centerRelX > rightEdge then snapX = "RIGHT"
             elseif centerRelX < leftEdge then snapX = "LEFT" end
-            if not snapX then centerRelX = OrbitEngine.Pixel:Snap(math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE, scale) end
 
             local topEdge = halfH - compHalfH
             local bottomEdge = -halfH + compHalfH
-            local distT = math.abs(centerRelY - topEdge)
-            local distB = math.abs(centerRelY - bottomEdge)
-
-            if distT <= EDGE_THRESHOLD and centerRelY <= topEdge then centerRelY = topEdge; snapY = "TOP"
-            elseif distB <= EDGE_THRESHOLD and centerRelY >= bottomEdge then centerRelY = bottomEdge; snapY = "BOTTOM"
-            elseif math.abs(centerRelY) <= EDGE_THRESHOLD then centerRelY = 0; snapY = "CENTER"
+            if edgeOffY == 0 and anchorY ~= "CENTER" then snapY = (anchorY == "TOP") and "TOP" or "BOTTOM"
+            elseif centerRelY == 0 or math.abs(centerRelY) < SNAP_SIZE then snapY = "CENTER"; centerRelY = 0; edgeOffY = 0
             elseif centerRelY > topEdge then snapY = "TOP"
             elseif centerRelY < bottomEdge then snapY = "BOTTOM" end
-            if not snapY then centerRelY = OrbitEngine.Pixel:Snap(math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE, scale) end
         end
-
-        local needsWidthComp = NeedsEdgeCompensation(self.isFontString, self.isAuraContainer)
-        local anchorX, anchorY, edgeOffX, edgeOffY, justifyH =
-            CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsWidthComp, self:GetWidth(), self:GetHeight(), self.isAuraContainer)
 
         if SmartGuides and preview.guides then SmartGuides:Update(preview.guides, snapX, snapY, preview.sourceWidth, preview.sourceHeight) end
         if self.isFontString and self.visual then ApplyTextAlignment(self, self.visual, justifyH) end
 
         self:ClearAllPoints()
-        self:SetPoint("CENTER", preview, "CENTER", centerRelX, centerRelY)
+        if self.isAuraContainer and justifyH ~= "CENTER" then
+            local selfAnchor = BuildComponentSelfAnchor(false, true, selfAnchorY, justifyH)
+            local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
+            local finalX, finalY = edgeOffX, edgeOffY
+            if anchorX == "RIGHT" then finalX = -finalX end
+            if anchorY == "TOP" then finalY = -finalY end
+            self:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
+        else
+            self:SetPoint("CENTER", preview, "CENTER", centerRelX, centerRelY)
+        end
 
-        local prevAnchorX, prevAnchorY, prevJustifyH = self.anchorX, self.anchorY, self.justifyH
+        local prevAnchorX, prevAnchorY, prevJustifyH, prevSelfAnchorY = self.anchorX, self.anchorY, self.justifyH, self.selfAnchorY
         self.anchorX = anchorX
         self.anchorY = anchorY
+        self.selfAnchorY = selfAnchorY
         self.offsetX = edgeOffX
         self.offsetY = edgeOffY
         self.justifyH = justifyH
         self.posX = centerRelX
         self.posY = centerRelY
 
-        if self.isAuraContainer and self.RefreshAuraIcons and (prevAnchorX ~= anchorX or prevAnchorY ~= anchorY or prevJustifyH ~= justifyH) then
+        if self.isAuraContainer and self.RefreshAuraIcons and (prevAnchorX ~= anchorX or prevAnchorY ~= anchorY or prevJustifyH ~= justifyH or prevSelfAnchorY ~= selfAnchorY) then
             self:RefreshAuraIcons()
         end
 
         Dialog.DisabledDock.DropHighlight:SetShown(Dialog.DisabledDock:IsMouseOver())
 
-        OrbitEngine.SelectionTooltip:ShowComponentPosition(self, key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH)
+        OrbitEngine.SelectionTooltip:ShowComponentPosition(self, key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH, selfAnchorY)
     end)
 
     container:SetScript("OnDragStop", function(self)
@@ -265,14 +279,17 @@ local function SetupDragHandlers(container, preview, key, data)
             return
         end
 
-        local scale = UIParent:GetEffectiveScale()
-        self.posX = OrbitEngine.Pixel:Snap(math.floor((self.posX or 0) / SNAP_GRID + 0.5) * SNAP_GRID, scale)
-        self.posY = OrbitEngine.Pixel:Snap(math.floor((self.posY or 0) / SNAP_GRID + 0.5) * SNAP_GRID, scale)
-        self.offsetX = OrbitEngine.Pixel:Snap(math.floor((self.offsetX or 0) / SNAP_GRID + 0.5) * SNAP_GRID, scale)
-        self.offsetY = OrbitEngine.Pixel:Snap(math.floor((self.offsetY or 0) / SNAP_GRID + 0.5) * SNAP_GRID, scale)
-
         self:ClearAllPoints()
-        self:SetPoint("CENTER", preview, "CENTER", self.posX, self.posY)
+        if self.isAuraContainer and self.justifyH and self.justifyH ~= "CENTER" then
+            local selfAnchor = BuildComponentSelfAnchor(false, true, self.selfAnchorY or self.anchorY, self.justifyH)
+            local anchorPoint = BuildAnchorPoint(self.anchorX, self.anchorY)
+            local fx, fy = self.offsetX or 0, self.offsetY or 0
+            if self.anchorX == "RIGHT" then fx = -fx end
+            if self.anchorY == "TOP" then fy = -fy end
+            self:SetPoint(selfAnchor, preview, anchorPoint, fx, fy)
+        else
+            self:SetPoint("CENTER", preview, "CENTER", self.posX, self.posY)
+        end
 
         if self.visual and self.isFontString then ApplyTextAlignment(self, self.visual, self.justifyH or "CENTER") end
 
@@ -281,7 +298,7 @@ local function SetupDragHandlers(container, preview, key, data)
             CanvasMode.Transaction:SetPosition(key, {
                 anchorX = self.anchorX, anchorY = self.anchorY,
                 offsetX = self.offsetX, offsetY = self.offsetY,
-                justifyH = self.justifyH,
+                justifyH = self.justifyH, selfAnchorY = self.selfAnchorY,
                 posX = self.posX, posY = self.posY,
             })
         end

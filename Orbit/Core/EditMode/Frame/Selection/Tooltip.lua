@@ -227,7 +227,7 @@ function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, p
     local displayOffY = math.floor((offsetY or 0) + 0.5)
     local displayPosX = math.floor((posX or 0) + 0.5)
     local displayPosY = math.floor((posY or 0) + 0.5)
-    local justifyStr = justifyH or "CENTER"
+    local justifyStr = (justifyH or "CENTER") .. (justifyV and (", " .. justifyV) or "")
 
     -- Build tooltip text based on anchor type
     local tooltipText
