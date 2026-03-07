@@ -283,10 +283,12 @@ end
 local function RelayoutGroup(group)
     local c = group.container
     local col, row = 0, 0
+    local visibleCount = 0
+    for _, icon in ipairs(group.icons) do if icon:IsShown() then visibleCount = visibleCount + 1 end end
     for _, icon in ipairs(group.icons) do
         if icon:IsShown() then
             icon:ClearAllPoints()
-            col, row = Orbit.AuraLayout:PositionIcon(icon, c, c._justifyH, c._anchorY, col, row, c._iconSize, c._iconsPerRow)
+            col, row = Orbit.AuraLayout:PositionIcon(icon, c, c._justifyH, c._anchorY, col, row, c._iconSize, c._iconsPerRow, visibleCount)
         end
     end
 end
@@ -407,11 +409,13 @@ function PA:IsRunning() return ticker ~= nil end
 function PA:StartAuras(owner, frames, cfgList)
     self:StopAuras(owner)
     local now = GetTime()
+    local frameCount = #frames
+    local offsetScale = math.min(1, frameCount / 20)
     for i, cfg in ipairs(cfgList) do
         local frame = frames[i]
         if frame:IsShown() and cfg.initAuras then
             cfg.groups = cfg.initAuras(frame)
-            local offset = math.random() * 15
+            local offset = math.random() * 15 * offsetScale
             for _, group in ipairs(cfg.groups) do
                 -- Shuffle icons so positions aren't predictable
                 for k = #group.icons, 2, -1 do
@@ -420,7 +424,7 @@ function PA:StartAuras(owner, frames, cfgList)
                 end
                 group.slots = {}
                 for j = 1, #group.icons do
-                    group.slots[j] = { active = false, nextEvent = now + offset + math.random() * 12 }
+                    group.slots[j] = { active = false, nextEvent = now + offset + math.random() * 12 * offsetScale }
                 end
             end
         end

@@ -173,7 +173,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                 end
             end
 
-            if not Orbit.PreviewAnimator:IsRunning() then
+            if txnActive or not Orbit.PreviewAnimator:IsRunning() then
                 self:ShowPreviewAuras(frame)
             end
 
