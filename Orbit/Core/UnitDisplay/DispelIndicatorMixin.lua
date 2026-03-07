@@ -7,48 +7,6 @@ local LCG = LibStub("LibCustomGlow-1.0")
 
 Orbit.DispelIndicatorMixin = {}
 
--- [ BLIZZARD AURA CACHE ]--------------------------------------------------------------------------
-local BlizzardDispelCache = {}
-local HooksSetup = false
-
-local function CaptureDispellableFromBlizzardFrame(frame, triggerUpdate)
-    if not frame or not frame.unit then return end
-    local unit = frame.unit
-    if not BlizzardDispelCache[unit] then BlizzardDispelCache[unit] = {} end
-    wipe(BlizzardDispelCache[unit])
-
-    if frame.dispelDebuffFrames then
-        for _, debuffFrame in ipairs(frame.dispelDebuffFrames) do
-            if debuffFrame:IsShown() and debuffFrame.auraInstanceID then
-                BlizzardDispelCache[unit][debuffFrame.auraInstanceID] = true
-            end
-        end
-    end
-    if triggerUpdate and Orbit.EventBus then
-        Orbit.EventBus:Fire("DISPEL_STATE_CHANGED", unit)
-    end
-end
-
-local function SetupBlizzardHooks()
-    if HooksSetup then return end
-    if CompactUnitFrame_UpdateAuras then
-        hooksecurefunc("CompactUnitFrame_UpdateAuras", function(frame)
-            C_Timer.After(0, function() CaptureDispellableFromBlizzardFrame(frame, true) end)
-        end)
-        HooksSetup = true
-    end
-    if CompactUnitFrame_UpdateDebuffs then
-        hooksecurefunc("CompactUnitFrame_UpdateDebuffs", function(frame)
-            C_Timer.After(0, function() CaptureDispellableFromBlizzardFrame(frame, true) end)
-        end)
-    end
-end
-
-local function IsDispellable(unit, auraInstanceID)
-    local cache = BlizzardDispelCache[unit]
-    return cache and cache[auraInstanceID] == true
-end
-
 -- [ DISPEL COLORS ]--------------------------------------------------------------------------------
 local DEFAULT_COLORS = {
     Magic = { r = 0.0, g = 0.4, b = 1.0, a = 1 },
@@ -63,7 +21,6 @@ local DISPEL_TYPE_NAMES = { [1] = "Magic", [2] = "Curse", [3] = "Disease", [4] =
 -- [ UPDATE DISPEL INDICATOR ]----------------------------------------------------------------------
 function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin)
     if not frame or not frame.unit then return end
-    SetupBlizzardHooks()
     local unit = frame.unit
     local enabled = plugin:GetSetting(1, "DispelIndicatorEnabled")
     if not enabled then LCG.PixelGlow_Stop(frame); return end
@@ -72,9 +29,10 @@ function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin)
     local auras = C_UnitAuras.GetUnitAuras(unit, "HARMFUL")
     if not auras or #auras == 0 then LCG.PixelGlow_Stop(frame); return end
 
+    -- Find first dispellable aura using C_UnitAuras data directly (no Blizzard frame access)
     local bestAuraInstanceID = nil
     for _, aura in ipairs(auras) do
-        if IsDispellable(unit, aura.auraInstanceID) then
+        if aura.dispelName then
             bestAuraInstanceID = aura.auraInstanceID
             break
         end
@@ -111,12 +69,3 @@ function Orbit.DispelIndicatorMixin:UpdateAllDispelIndicators(plugin)
         if frame and frame.unit then self:UpdateDispelIndicator(frame, plugin) end
     end
 end
-
--- [ EVENT FRAME FOR INITIAL SCAN ]-----------------------------------------------------------------
-local eventFrame = CreateFrame("Frame")
-eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
-
-eventFrame:SetScript("OnEvent", function()
-    SetupBlizzardHooks()
-end)
