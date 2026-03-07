@@ -262,10 +262,7 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
                 btn:Show()
             elseif btn then btn:Hide() end
         end
-        if frame.PrivateAuraAnchor and not isDisabled("PrivateAuraAnchor") then
-            local posData = savedPositions.PrivateAuraAnchor
-            Orbit.AuraPreview:ShowPrivateAuras(frame, posData, cfg.privateAuraSize or iconSize)
-        elseif frame.PrivateAuraAnchor then frame.PrivateAuraAnchor:Hide() end
+        if frame.PrivateAuraAnchor then frame.PrivateAuraAnchor:Hide() end
         for _, slot in ipairs(healerSlots) do
             if not isDisabled(slot.key) then
                 local slotPos = savedPositions[slot.key]

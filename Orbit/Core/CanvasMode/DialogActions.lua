@@ -130,6 +130,10 @@ function Dialog:ResetPositions()
 
     for key, container in pairs(self.previewComponents) do
         local defaultPos = defaults[key]
+        if not defaultPos and dragComponents then
+            local reg = dragComponents[key]
+            if reg and reg.anchorX then defaultPos = { anchorX = reg.anchorX, anchorY = reg.anchorY, offsetX = reg.offsetX, offsetY = reg.offsetY, justifyH = reg.justifyH } end
+        end
         if defaultPos and defaultPos.anchorX then
             container.anchorX = defaultPos.anchorX
             container.anchorY = defaultPos.anchorY or "CENTER"
@@ -169,4 +173,16 @@ function Dialog:ResetPositions()
         end
     end
     if self.activeFilter and self.activeFilter ~= "All" then self:ApplyFilter(self.activeFilter) end
+
+    if CanvasMode.Transaction:IsActive() then
+        CanvasMode.Transaction:ClearPositions()
+        for key, pos in pairs(defaults) do CanvasMode.Transaction:SetPosition(key, pos) end
+        if dragComponents then
+            for key, reg in pairs(dragComponents) do
+                if not defaults[key] and reg.anchorX then
+                    CanvasMode.Transaction:SetPosition(key, { anchorX = reg.anchorX, anchorY = reg.anchorY, offsetX = reg.offsetX, offsetY = reg.offsetY, justifyH = reg.justifyH })
+                end
+            end
+        end
+    end
 end

@@ -124,6 +124,8 @@ function Transaction:GetDisabledComponents()
     return self:Get("DisabledComponents") or (plugin and plugin:GetSetting(systemIndex, "DisabledComponents")) or {}
 end
 
+function Transaction:ClearPositions() wipe(pendingPositions) end
+
 -- [ COMMIT ]-------------------------------------------------------------------------------------
 
 function Transaction:Commit()
