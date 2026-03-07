@@ -95,9 +95,7 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
 end
 
 function AP:ShowFrameAuras(plugin, frame, debuffCfg, buffCfg)
-    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
-    local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == plugin
-    local positions = txnActive and Txn:GetPositions() or plugin:GetSetting(1, "ComponentPositions") or {}
+    local positions = plugin:GetComponentPositions(1)
     local debuffData = positions.Debuffs or {}
     local buffData = positions.Buffs or {}
     local debuffOff = plugin.IsComponentDisabled and plugin:IsComponentDisabled("Debuffs")

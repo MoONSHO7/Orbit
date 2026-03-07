@@ -81,9 +81,7 @@ function CanvasMixin:ApplyComponentPositions()
     if not self.orbitPlugin or not self.orbitPlugin.GetSetting then return end
 
     local systemIndex = self.systemIndex or 1
-    local Txn = Engine.CanvasMode and Engine.CanvasMode.Transaction
-    local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == self.orbitPlugin
-    local positions = txnActive and Txn:GetPositions() or self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
+    local positions = self.orbitPlugin:GetComponentPositions(systemIndex)
     local defaults = self.orbitPlugin.defaults and self.orbitPlugin.defaults.ComponentPositions
 
     if defaults then

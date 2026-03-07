@@ -131,9 +131,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
     local isCanvasMode = IsCanvasModeActive(self)
     local globalSettings = Orbit.db.GlobalSettings or {}
     local roleAtlases = Orbit.RoleAtlases
-    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
-    local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == self
-    local componentPositions = txnActive and Txn:GetPositions() or self:GetSetting(1, "ComponentPositions") or {}
+    local componentPositions = self:GetComponentPositions(1)
     local isDisabled = self.IsComponentDisabled and function(key) return self:IsComponentDisabled(key) end or function() return false end
     local sortOrder = GetPreviewSortOrder(self)
     local showHealerPower = self:GetSetting(1, "ShowPowerBar")

@@ -223,9 +223,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
             -- Preview-only: role/leader/selection/aggro icons with fake data
             local previewRoles = { "HEALER", "TANK", "DAMAGER", "DAMAGER" }
             local roleAtlases = Orbit.RoleAtlases
-            local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
-            local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == self
-            local componentPositions = txnActive and Txn:GetPositions() or self:GetSetting(1, "ComponentPositions") or {}
+            local componentPositions = self:GetComponentPositions(1)
 
             if self:GetSetting(1, "ShowRoleIcon") ~= false and frame.RoleIcon then
                 local role = previewRoles[i]

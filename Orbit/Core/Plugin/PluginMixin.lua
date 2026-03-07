@@ -53,15 +53,22 @@ function Orbit.PluginMixin:RegisterStandardEvents()
     end
 end
 
+-- Returns the active Transaction if it belongs to this plugin, or nil.
+function Orbit.PluginMixin:_ActiveTransaction()
+    local Txn = Orbit.Engine.CanvasMode and Orbit.Engine.CanvasMode.Transaction
+    if Txn and Txn:IsActive() and Txn:GetPlugin() == self then return Txn end
+end
+
+-- Returns ComponentPositions, preferring any active Transaction's staged positions.
+function Orbit.PluginMixin:GetComponentPositions(systemIndex)
+    local txn = self:_ActiveTransaction()
+    return (txn and txn:GetPositions()) or self:GetSetting(systemIndex or 1, "ComponentPositions") or {}
+end
+
 -- Check if a component is disabled via Canvas Mode drag-to-disable (linear scan, small N)
 function Orbit.PluginMixin:IsComponentDisabled(componentKey)
-    local Txn = Orbit.Engine.CanvasMode and Orbit.Engine.CanvasMode.Transaction
-    local disabled
-    if Txn and Txn:IsActive() and Txn:GetPlugin() == self then
-        disabled = Txn:GetDisabledComponents()
-    else
-        disabled = self:GetSetting(self.frame and self.frame.systemIndex or 1, "DisabledComponents") or {}
-    end
+    local txn = self:_ActiveTransaction()
+    local disabled = txn and txn:GetDisabledComponents() or self:GetSetting(self.frame and self.frame.systemIndex or 1, "DisabledComponents") or {}
     for _, key in ipairs(disabled) do
         if key == componentKey then return true end
     end

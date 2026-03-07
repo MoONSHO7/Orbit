@@ -85,9 +85,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
             local frame = self.frames[i]
             frame:SetSize(width, height)
 
-            local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
-            local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == self
-            local componentPositions = txnActive and Txn:GetPositions() or self:GetSetting(1, "ComponentPositions") or {}
+            local componentPositions = self:GetComponentPositions(1)
 
             self:UpdateFrameLayout(frame, borderSize, { powerBarRatio = POWER_BAR_HEIGHT_RATIO })
 
