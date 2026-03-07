@@ -391,9 +391,6 @@ local function HideNativePartyFrames()
     if PartyFrame then
         OrbitEngine.NativeFrame:SecureHide(PartyFrame)
     end
-    if CompactPartyFrame then
-        OrbitEngine.NativeFrame:SecureHide(CompactPartyFrame)
-    end
 end
 
 function Plugin:AddSettings(dialog, systemFrame)
