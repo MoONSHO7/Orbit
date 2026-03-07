@@ -657,6 +657,7 @@ function Selection:UpdateVisuals(frame, selection)
                 if ShouldShowOrbitFrames() then
                     local c = GetOrbitEditModeColor()
                     TintSelection(selection, c.r, c.g, c.b, true)
+                    selection:Show()
                     selection:SetAlpha(1)
                     selection:EnableMouse(true)
                 else
@@ -687,6 +688,7 @@ function Selection:UpdateVisuals(frame, selection)
                 if ShouldShowOrbitFrames() then
                     local c = GetOrbitEditModeColor()
                     TintSelection(selection, c.r, c.g, c.b, true)
+                    selection:Show()
                     selection:SetAlpha(1)
                     selection:EnableMouse(true)
                 else
