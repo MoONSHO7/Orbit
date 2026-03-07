@@ -6,11 +6,19 @@ Orbit.EventBus = {}
 local EventBus = Orbit.EventBus
 EventBus.listeners = {}
 local eventFrame = CreateFrame("Frame")
+local customEvents = {}
+
+local function IsWoWEvent(event)
+    local ok = pcall(eventFrame.RegisterEvent, eventFrame, event)
+    if ok then eventFrame:UnregisterEvent(event) end
+    return ok
+end
 
 function EventBus:On(event, callback, context)
     if not self.listeners[event] then
         self.listeners[event] = {}
-        pcall(eventFrame.RegisterEvent, eventFrame, event)
+        if customEvents[event] == nil then customEvents[event] = not IsWoWEvent(event) end
+        if not customEvents[event] then eventFrame:RegisterEvent(event) end
     end
     local listener = { callback = callback, context = context }
     table.insert(self.listeners[event], listener)
@@ -25,7 +33,7 @@ function EventBus:Off(event, callback)
         if self.listeners[event][i].callback == callback then
             table.remove(self.listeners[event], i)
             if #self.listeners[event] == 0 then
-                pcall(eventFrame.UnregisterEvent, eventFrame, event)
+                if not customEvents[event] then eventFrame:UnregisterEvent(event) end
                 self.listeners[event] = nil
             end
             return true
@@ -42,7 +50,7 @@ function EventBus:OffContext(context)
             end
         end
         if #listeners == 0 then
-            pcall(eventFrame.UnregisterEvent, eventFrame, event)
+            if not customEvents[event] then eventFrame:UnregisterEvent(event) end
             self.listeners[event] = nil
         end
     end
@@ -74,7 +82,7 @@ end
 
 function EventBus:Clear()
     for event in pairs(self.listeners) do
-        eventFrame:UnregisterEvent(event)
+        if not customEvents[event] then eventFrame:UnregisterEvent(event) end
     end
     self.listeners = {}
 end
