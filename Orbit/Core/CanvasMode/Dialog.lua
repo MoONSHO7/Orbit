@@ -233,7 +233,7 @@ function Dialog:NudgeComponent(container, direction)
     end
 
     container:ClearAllPoints()
-    local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, anchorY, justifyH)
+    local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, container.selfAnchorY or anchorY, justifyH)
     container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
     OrbitEngine.SelectionTooltip:ShowComponentPosition(
@@ -245,8 +245,19 @@ function Dialog:NudgeComponent(container, direction)
         container.posY or 0,
         offsetX,
         offsetY,
-        justifyH
+        justifyH,
+        container.selfAnchorY
     )
+
+    -- Stage nudged position into transaction for live preview updates
+    if CanvasMode.Transaction and CanvasMode.Transaction:IsActive() and container.key then
+        CanvasMode.Transaction:SetPosition(container.key, {
+            anchorX = anchorX, anchorY = anchorY,
+            offsetX = offsetX, offsetY = offsetY,
+            justifyH = justifyH, selfAnchorY = container.selfAnchorY,
+            posX = container.posX, posY = container.posY,
+        })
+    end
 end
 
 
@@ -280,12 +291,14 @@ function Dialog:Open(frame, plugin, systemIndex)
     self.targetSystemIndex = systemIndex
 
     local title = frame.orbitCanvasTitle or canvasFrame.editModeName or canvasFrame:GetName() or "Frame"
-    self.Title:SetText("Canvas Mode: " .. title)
+    self.Title:SetText(title)
 
     self:CleanupPreview()
 
     -- Tab visibility deferred until after components are loaded
-    if self.FilterTabBar then self.FilterTabBar:Hide() end
+    if self.filterTabButtons then
+        for _, label in ipairs(self.filterTabButtons) do label:Hide(); if label.hitButton then label.hitButton:Hide() end end
+    end
 
     -- Reset zoom/pan state
     self.zoomLevel = C.DEFAULT_ZOOM
@@ -398,6 +411,7 @@ function Dialog:Open(frame, plugin, systemIndex)
             subComponents = pos and pos.subComponents,
             posX = pos and pos.posX,
             posY = pos and pos.posY,
+            selfAnchorY = pos and pos.selfAnchorY,
         }
     end
 
@@ -487,24 +501,28 @@ function Dialog:Open(frame, plugin, systemIndex)
             end
         end
     end
-    if self.FilterTabBar then
+    if self.filterTabButtons then
         self.activeFilter = "All"
-        self.FilterTabBar:SetShown(showTabs)
-        if showTabs and self.filterTabButtons then
-            for _, btn in ipairs(self.filterTabButtons) do
-                local isAll = btn.filterName == "All"
-                btn.Text:SetTextColor(isAll and 1.0 or 0.8, isAll and 0.82 or 0.8, isAll and 0.0 or 0.8)
-                if btn.highlight then btn.highlight:SetShown(isAll) end
+        for _, label in ipairs(self.filterTabButtons) do
+            label:SetShown(showTabs)
+            if label.hitButton then label.hitButton:SetShown(showTabs) end
+            if showTabs then
+                local isAll = label.filterName == "All"
+                label:SetTextColor(isAll and 1.0 or 0.6, isAll and 0.82 or 0.6, isAll and 0.0 or 0.6)
             end
         end
     end
 
     if self.OverrideContainer then self.OverrideContainer:Hide() end
+    if self.ViewportDivider then self.ViewportDivider:Hide() end
 
-    self:SetWidth(C.DIALOG_WIDTH)
+    self:SetWidth(math.max(C.DIALOG_MIN_WIDTH, self:GetWidth()))
     self:RecalculateHeight()
 
     self:Show()
+
+    -- Begin transactional cache so edits are buffered until Apply/Cancel
+    CanvasMode.Transaction:Begin(plugin, systemIndex)
 
     if OrbitEngine.CanvasComponentSettings and OrbitEngine.CanvasComponentSettings.ApplyInitialPluginPreviews then
         OrbitEngine.CanvasComponentSettings:ApplyInitialPluginPreviews(self.targetPlugin, self.targetSystemIndex)
@@ -572,6 +590,7 @@ function Dialog:CleanupPreview()
     self:UnhookSourceSizeChanged()
 
     for key, comp in pairs(self.previewComponents) do
+        if comp._cyclingTicker then comp._cyclingTicker:Cancel(); comp._cyclingTicker = nil end
         comp:Hide()
         comp:SetParent(nil)
     end

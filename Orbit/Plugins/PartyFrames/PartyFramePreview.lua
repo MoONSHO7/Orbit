@@ -2,6 +2,7 @@
 local Orbit = Orbit
 local LSM = LibStub("LibSharedMedia-3.0")
 local LCG = LibStub("LibCustomGlow-1.0")
+local OrbitEngine = Orbit.Engine
 
 -- Define Mixin
 Orbit.PartyFramePreviewMixin = {}
@@ -28,28 +29,11 @@ local PREVIEW_DEFAULTS = {
     PowerPercents = { 85, 60, 40, 15, 80 },
     Names = { "Healbot", "Tankenstein", "Stabby", "Pyromancer", "You" },
     Classes = { "PRIEST", "WARRIOR", "ROGUE", "MAGE", "PALADIN" },
-    Status = { nil, nil, nil, "Offline", nil },
+    Status = { nil, nil, nil, nil, nil },
     Roles = { "HEALER", "TANK", "DAMAGER", "DAMAGER", "HEALER" },
 
 }
 
--- Sample debuff icons for preview (harmful auras)
-local SAMPLE_DEBUFF_ICONS = {
-    136096, -- Moonfire
-    136118, -- Corruption
-    132158, -- Nature's Grasp (Roots)
-    136048, -- Insect Swarm
-    132212, -- Faerie Fire
-}
-
--- Sample buff icons for preview (helpful auras from player)
-local SAMPLE_BUFF_ICONS = {
-    135907, -- Rejuvenation
-    136048, -- Regrowth
-    136041, -- Power Word: Shield
-    135944, -- Renew
-    135987, -- Earth Shield
-}
 
 local ApplyIconPosition = function(icon, parentFrame, pos)
     Orbit.Engine.PositionUtils.ApplyIconPosition(icon, parentFrame, pos)
@@ -118,8 +102,12 @@ function Orbit.PartyFramePreviewMixin:ShowPreview()
     C_Timer.After(DEBOUNCE_DELAY, function()
         if self.frames then
             self:ApplyPreviewVisuals()
+            -- Start animation in Edit Mode only (not Canvas Mode)
+            if not isCanvasMode then self:StartPreviewAnimation() end
         end
     end)
+
+    Orbit.PreviewAnimator:WatchCanvas(self)
 end
 
 function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
@@ -165,8 +153,6 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                     if classColor then frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b) end
                 end
                 frame.Health:Show()
-                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
-                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
             -- Preview-only: fake power data
@@ -237,14 +223,20 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
             -- Preview-only: role/leader/selection/aggro icons with fake data
             local previewRoles = { "HEALER", "TANK", "DAMAGER", "DAMAGER" }
             local roleAtlases = Orbit.RoleAtlases
-            local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+            local componentPositions = self:GetComponentPositions(1)
 
             if self:GetSetting(1, "ShowRoleIcon") ~= false and frame.RoleIcon then
-                local roleAtlas = roleAtlases[previewRoles[i]]
-                if roleAtlas then
-                    frame.RoleIcon:SetAtlas(roleAtlas)
-                    frame.RoleIcon:Show()
-                    if componentPositions.RoleIcon then ApplyIconPosition(frame.RoleIcon, frame, componentPositions.RoleIcon) end
+                local role = previewRoles[i]
+                local roleOverrides = componentPositions.RoleIcon and componentPositions.RoleIcon.overrides
+                local hideDPS = roleOverrides and roleOverrides.HideDPS
+                if role == "DAMAGER" and hideDPS then frame.RoleIcon:Hide()
+                else
+                    local roleAtlas = roleAtlases[role]
+                    if roleAtlas then
+                        frame.RoleIcon:SetAtlas(roleAtlas)
+                        frame.RoleIcon:Show()
+                        if componentPositions.RoleIcon then ApplyIconPosition(frame.RoleIcon, frame, componentPositions.RoleIcon) end
+                    end
                 end
             elseif frame.RoleIcon then frame.RoleIcon:Hide() end
 
@@ -273,10 +265,12 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 healerAuraSize = HEALER_AURA_ICON_SIZE,
             }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs(), HealerReg:ActiveKeys())
 
-            -- Preview auras
-            if frame.debuffPool then frame.debuffPool:ReleaseAll() end
-            if frame.buffPool then frame.buffPool:ReleaseAll() end
-            self:ShowPreviewAuras(frame, i)
+            -- Preview auras (skip if animator is handling them, unless in Canvas Mode)
+            if isCanvasMode or not Orbit.PreviewAnimator:IsRunning() then
+                if frame.debuffPool then frame.debuffPool:ReleaseAll() end
+                if frame.buffPool then frame.buffPool:ReleaseAll() end
+                self:ShowPreviewAuras(frame, i)
+            end
 
             -- Preview dispel glow
             local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
@@ -298,12 +292,12 @@ end
 local PARTY_PREVIEW_AURA_CFG = {
     helpers = function() return Orbit.PartyFrameHelpers end,
     defaultAnchorX = "RIGHT", defaultJustifyH = "LEFT",
-    sampleIcons = SAMPLE_DEBUFF_ICONS, defaultMax = 3,
+    defaultMax = 3,
 }
 local PARTY_PREVIEW_BUFF_CFG = {
     helpers = function() return Orbit.PartyFrameHelpers end,
     defaultAnchorX = "LEFT", defaultJustifyH = "RIGHT",
-    sampleIcons = SAMPLE_BUFF_ICONS, defaultMax = 3,
+    defaultMax = 3,
 }
 
 function Orbit.PartyFramePreviewMixin:ShowPreviewAuras(frame, frameIndex)
@@ -318,6 +312,13 @@ function Orbit.PartyFramePreviewMixin:HidePreview()
     if not self.frames then
         return
     end
+
+    -- Stop animation
+    Orbit.PreviewAnimator:Stop(self)
+    Orbit.PreviewAnimator:StopAuras(self)
+    Orbit.PreviewAnimator:StopHealerAuras(self)
+
+    Orbit.PreviewAnimator:UnwatchCanvas(self)
 
     -- Restore visibility driver for normal gameplay (hide in raids)
     local visibilityDriver = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
@@ -395,4 +396,30 @@ function Orbit.PartyFramePreviewMixin:SchedulePreviewUpdate()
             end
         end)
     end
+end
+
+function Orbit.PartyFramePreviewMixin:StartPreviewAnimation()
+    if not self.frames then return end
+    local includePlayer = self:GetSetting(1, "IncludePlayer")
+    local framesToShow = includePlayer and 5 or 4
+    local HealerReg = Orbit.HealerAuraRegistry
+    local healerSlots = HealerReg:ActiveSlots()
+    local isDisabled = self.IsComponentDisabled and function(k) return self:IsComponentDisabled(k) end or function() return false end
+    local enabledSlots = {}
+    for _, slot in ipairs(healerSlots) do
+        if not isDisabled(slot.key) then enabledSlots[#enabledSlots + 1] = slot end
+    end
+    local visibleFrames = {}
+    for i = 1, framesToShow do
+        local f = self.frames[i]
+        if f and f.preview and f:IsShown() then visibleFrames[#visibleFrames + 1] = f end
+    end
+    Orbit.PreviewAnimator:StartAll(self, {
+        frames = visibleFrames,
+        getHelpers = function() return Orbit.PartyFrameHelpers end,
+        getHealth = function(i) return (PREVIEW_DEFAULTS.HealthPercents[i] or 75) / 100 end,
+        getDead = function(i) local s = PREVIEW_DEFAULTS.Status[i]; return s == "Dead" or s == "Offline" end,
+        healerSlots = enabledSlots,
+        raidBuffKey = not isDisabled("RaidBuff") and "RaidBuff" or nil,
+    })
 end

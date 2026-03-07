@@ -14,9 +14,9 @@ local HealerReg = Orbit.HealerAuraRegistry
 local function DisplayName(key) return HealerReg and HealerReg:GetSlotLabel(key) or key end
 -- [ DOCK FRAME ]-------------------------------------------------------------------------
 
-Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog.PreviewContainer)
-Dialog.DisabledDock:SetPoint("BOTTOMLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", 4, 4)
-Dialog.DisabledDock:SetPoint("BOTTOMRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -4, 4)
+Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog)
+Dialog.DisabledDock:SetPoint("TOPLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", 14, 8)
+Dialog.DisabledDock:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -14, 8)
 Dialog.DisabledDock:SetHeight(C.DOCK_HEIGHT)
 Dialog.DisabledDock:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + 50)
 
@@ -37,7 +37,23 @@ Dialog.DisabledDock.DropHighlight:SetAllPoints()
 Dialog.DisabledDock.DropHighlight:SetColorTexture(0.3, 0.8, 0.3, 0.2)
 Dialog.DisabledDock.DropHighlight:Hide()
 
+-- [ DIVIDER (between dock and override settings, shown on component selection) ]-----
+Dialog.ViewportDivider = Dialog:CreateTexture(nil, "ARTWORK")
+Dialog.ViewportDivider:SetAtlas("ui-journeys-renown-divider", true)
+Dialog.ViewportDivider:SetPoint("TOPLEFT", Dialog.DisabledDock, "BOTTOMLEFT", 0, 0)
+Dialog.ViewportDivider:SetPoint("TOPRIGHT", Dialog.DisabledDock, "BOTTOMRIGHT", 0, 0)
+Dialog.ViewportDivider:Hide()
 
+-- [ OVERRIDE SETTINGS CONTAINER (below divider) ]----------------------------------------
+Dialog.OverrideContainer = CreateFrame("Frame", nil, Dialog)
+Dialog.OverrideContainer:SetPoint("TOPLEFT", Dialog.ViewportDivider, "BOTTOMLEFT", 0, -C.OVERRIDE_SECTION_PADDING)
+Dialog.OverrideContainer:SetPoint("TOPRIGHT", Dialog.ViewportDivider, "BOTTOMRIGHT", 0, -C.OVERRIDE_SECTION_PADDING)
+Dialog.OverrideContainer:SetHeight(1)
+Dialog.OverrideContainer:SetFrameLevel(Dialog.NineSlice:GetFrameLevel() + 10)
+Dialog.OverrideContainer:Hide()
+
+Dialog.OverrideContainer.Title = Dialog.OverrideContainer:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+Dialog.OverrideContainer.Title:SetPoint("TOPLEFT", Dialog.OverrideContainer, "TOPLEFT", C.DIALOG_INSET, 0)
 
 -- [ DOCK LAYOUT ]------------------------------------------------------------------------
 
@@ -68,6 +84,15 @@ function Dialog:AddToDock(key, sourceComponent)
     icon.bg = icon:CreateTexture(nil, "BACKGROUND")
     icon.bg:SetAllPoints()
     icon.bg:SetColorTexture(unpack(DOCK_BG_COLOR))
+
+    for _, edge in ipairs({"TOP", "BOTTOM", "LEFT", "RIGHT"}) do
+        local t = icon:CreateTexture(nil, "BORDER")
+        t:SetColorTexture(0.15, 0.15, 0.15, 0.4)
+        if edge == "TOP" then t:SetPoint("TOPLEFT"); t:SetPoint("TOPRIGHT"); t:SetHeight(1)
+        elseif edge == "BOTTOM" then t:SetPoint("BOTTOMLEFT"); t:SetPoint("BOTTOMRIGHT"); t:SetHeight(1)
+        elseif edge == "LEFT" then t:SetPoint("TOPLEFT"); t:SetPoint("BOTTOMLEFT"); t:SetWidth(1)
+        else t:SetPoint("TOPRIGHT"); t:SetPoint("BOTTOMRIGHT"); t:SetWidth(1) end
+    end
 
     local isTexture = sourceComponent and sourceComponent.GetTexture
     local isFontString = sourceComponent and sourceComponent.GetFont ~= nil
@@ -174,6 +199,10 @@ function Dialog:AddToDock(key, sourceComponent)
     end
     if not alreadyTracked then table.insert(self.disabledComponentKeys, key) end
 
+    -- Stage into transaction for live preview
+    local Txn = OrbitEngine.CanvasMode.Transaction
+    if Txn and Txn:IsActive() then Txn:SetDisabledComponents(self.disabledComponentKeys) end
+
     self:LayoutDockIcons()
 
     -- The paladin swaps their oath; HealthText and Status can't both be on the field
@@ -201,6 +230,10 @@ function Dialog:RemoveFromDock(key)
     for i, k in ipairs(self.disabledComponentKeys) do
         if k == key then table.remove(self.disabledComponentKeys, i) break end
     end
+
+    -- Stage into transaction for live preview
+    local Txn = OrbitEngine.CanvasMode.Transaction
+    if Txn and Txn:IsActive() then Txn:SetDisabledComponents(self.disabledComponentKeys) end
 
     self:LayoutDockIcons()
 end

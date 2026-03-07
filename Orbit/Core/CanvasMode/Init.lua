@@ -17,17 +17,37 @@ local CanvasMode = OrbitEngine.CanvasMode
 CanvasMode.Constants = {
     -- Dialog dimensions
     DIALOG_WIDTH = 600,
+    DIALOG_MIN_WIDTH = 600,
+    DIALOG_MAX_WIDTH = 1000,
     DIALOG_MIN_HEIGHT = 200,
     DIALOG_INSET = 12,
+    RESIZE_HANDLE_SIZE = 35,
+    THREE_COL_THRESHOLD = 800,
 
     -- Row heights (stacked top-to-bottom)
     TITLE_ROW_HEIGHT = 40,
     PANELS_ROW_HEIGHT = 28,
-    VIEWPORT_HEIGHT = 260,
+    VIEWPORT_HEIGHT = 265,
+    VIEWPORT_MAX_HEIGHT = 530,
     OVERRIDE_SECTION_PADDING = 8,
 
     -- Viewport
     VIEWPORT_PADDING = 20,
+
+    -- NineSlice chrome offsets
+    BG_INSET_LEFT = 6,
+    BG_INSET_TOP = 21,
+    BG_INSET_RIGHT = 2,
+    BG_INSET_BOTTOM = 2,
+    TITLE_INSET_LEFT = 30,
+    TITLE_INSET_RIGHT = 24,
+    TITLE_OFFSET_TOP = 1,
+    TITLE_TEXT_OFFSET = 5,
+    CLOSE_BTN_OFFSET_TOP = 1,
+    STREAKS_OVERSHOOT_X = 2,
+    STREAKS_OVERSHOOT_Y = 7,
+    RESIZE_OFFSET_X = 5,
+    RESIZE_OFFSET_Y = 4,
 
     -- Filter tabs
     FILTER_TAB_HEIGHT = 24,
@@ -61,15 +81,30 @@ Dialog:SetPoint("CENTER", UIParent, "CENTER", 0, 50)
 Dialog:SetFrameStrata("FULLSCREEN_DIALOG")
 Dialog:SetFrameLevel(100)
 Dialog:SetMovable(true)
+Dialog:SetResizable(true)
+Dialog:SetResizeBounds(C.DIALOG_MIN_WIDTH, C.DIALOG_MIN_HEIGHT, C.DIALOG_MAX_WIDTH, nil)
 Dialog:SetClampedToScreen(true)
 Dialog:EnableMouse(true)
 Dialog:RegisterForDrag("LeftButton")
 Dialog:Hide()
 
--- Backdrop: Use Blizzard's high-quality DialogBorderTranslucentTemplate
-Dialog.Border = CreateFrame("Frame", nil, Dialog, "DialogBorderTranslucentTemplate")
-Dialog.Border:SetAllPoints(Dialog)
-Dialog.Border:SetFrameLevel(Dialog:GetFrameLevel())
+-- Outer NineSlice: Blizzard metal panel border (no portrait)
+Dialog.NineSlice = CreateFrame("Frame", nil, Dialog, "NineSlicePanelTemplate")
+Dialog.NineSlice.layoutType = "ButtonFrameTemplateNoPortrait"
+NineSliceUtil.ApplyLayoutByName(Dialog.NineSlice, "ButtonFrameTemplateNoPortrait")
+-- Panel background (tiled rock texture)
+Dialog.Bg = Dialog:CreateTexture(nil, "BACKGROUND", nil, -6)
+Dialog.Bg:SetTexture("Interface\\FrameGeneral\\UI-Background-Rock")
+Dialog.Bg:SetHorizTile(true)
+Dialog.Bg:SetVertTile(true)
+Dialog.Bg:SetPoint("TOPLEFT", C.BG_INSET_LEFT, -C.BG_INSET_TOP)
+Dialog.Bg:SetPoint("BOTTOMRIGHT", -C.BG_INSET_RIGHT, C.BG_INSET_BOTTOM)
+
+-- Gradient streaks under title bar
+Dialog.TopTileStreaks = Dialog:CreateTexture(nil, "BACKGROUND", nil, -5)
+Dialog.TopTileStreaks:SetAtlas("_UI-Frame-TopTileStreaks", true)
+Dialog.TopTileStreaks:SetPoint("TOPLEFT", Dialog.Bg, "TOPLEFT", -C.STREAKS_OVERSHOOT_X, C.STREAKS_OVERSHOOT_Y)
+Dialog.TopTileStreaks:SetPoint("TOPRIGHT", Dialog.Bg, "TOPRIGHT", C.STREAKS_OVERSHOOT_X, C.STREAKS_OVERSHOOT_Y)
 
 -- Drag handlers
 Dialog:SetScript("OnDragStart", function(self)
@@ -78,6 +113,36 @@ end)
 
 Dialog:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
+end)
+
+-- [ RESIZE HANDLE ]--------------------------------------------------------------------------
+Dialog.ResizeHandle = CreateFrame("Button", nil, Dialog)
+Dialog.ResizeHandle:SetSize(C.RESIZE_HANDLE_SIZE, C.RESIZE_HANDLE_SIZE)
+Dialog.ResizeHandle:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", C.RESIZE_OFFSET_X, -C.RESIZE_OFFSET_Y)
+Dialog.ResizeHandle:SetFrameStrata("TOOLTIP")
+Dialog.ResizeHandle:SetNormalAtlas("damagemeters-scalehandle")
+Dialog.ResizeHandle:SetHighlightAtlas("damagemeters-scalehandle-hover")
+Dialog.ResizeHandle:SetPushedAtlas("damagemeters-scalehandle-pressed")
+Dialog.ResizeHandle:RegisterForDrag("LeftButton")
+Dialog.ResizeHandle:SetScript("OnDragStart", function() Dialog:StartSizing("BOTTOMRIGHT") end)
+Dialog.ResizeHandle:SetScript("OnDragStop", function() Dialog:StopMovingOrSizing() end)
+
+Dialog:SetScript("OnSizeChanged", function(self, w, h)
+    if not self:IsShown() or self._inSizeChanged then return end
+    self._inSizeChanged = true
+    -- Reverse-compute viewport height from total dialog height
+    if self.GetChromeHeight then
+        local chromeH = self:GetChromeHeight()
+        local newVpH = math.max(C.VIEWPORT_HEIGHT, math.min(C.VIEWPORT_MAX_HEIGHT, h - chromeH))
+        self.viewportHeight = newVpH
+        self.PreviewContainer:SetHeight(newVpH)
+    end
+    if self.LayoutFooterButtons then self:LayoutFooterButtons() end
+    if self.RecalculateHeight then self:RecalculateHeight() end
+    if Orbit.CanvasComponentSettings and Orbit.CanvasComponentSettings.componentKey then
+        Orbit.CanvasComponentSettings:RelayoutWidgets()
+    end
+    self._inSizeChanged = nil
 end)
 
 -- Close on combat
@@ -89,13 +154,18 @@ Dialog:SetScript("OnEvent", function(self, event)
 end)
 
 -- [ TITLE ]--------------------------------------------------------------------------------------
-Dialog.Title = Dialog:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
-Dialog.Title:SetPoint("TOP", Dialog, "TOP", 0, -15)
-Dialog.Title:SetText("Canvas Mode")
+Dialog.TitleContainer = CreateFrame("Frame", nil, Dialog)
+Dialog.TitleContainer:SetFrameLevel(510)
+Dialog.TitleContainer:SetPoint("TOPLEFT", C.TITLE_INSET_LEFT, -C.TITLE_OFFSET_TOP)
+Dialog.TitleContainer:SetPoint("TOPRIGHT", -C.TITLE_INSET_RIGHT, -C.TITLE_OFFSET_TOP)
+Dialog.TitleContainer:SetHeight(20)
+Dialog.Title = Dialog.TitleContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+Dialog.Title:SetPoint("TOP", Dialog.TitleContainer, "TOP", 0, -C.TITLE_TEXT_OFFSET)
 
 -- [ CLOSE BUTTON ]------------------------------------------------------------------------------
 Dialog.CloseButton = CreateFrame("Button", nil, Dialog, "UIPanelCloseButton")
-Dialog.CloseButton:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", -2, -2)
+Dialog.CloseButton:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", 0, -C.CLOSE_BTN_OFFSET_TOP)
+Dialog.CloseButton:SetFrameLevel(510)
 Dialog.CloseButton:SetScript("OnClick", function()
     Dialog:Cancel()
 end)
@@ -105,6 +175,7 @@ end)
 Dialog.zoomLevel = C.DEFAULT_ZOOM
 Dialog.panOffsetX = 0
 Dialog.panOffsetY = 0
+Dialog.viewportHeight = C.VIEWPORT_HEIGHT
 
 -- Store dock component references
 Dialog.dockComponents = {}

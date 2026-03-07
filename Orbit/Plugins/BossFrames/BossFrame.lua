@@ -411,7 +411,7 @@ function Plugin:ApplySettings()
                 local fontPath = LSM:Fetch("font", fontName)
                 if frame.CastBar.Text then frame.CastBar.Text:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline()) end
                 if frame.CastBar.Timer then frame.CastBar.Timer:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline()) end
-                local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+                local componentPositions = self:GetComponentPositions(1)
                 local castData = componentPositions.CastBar or {}
                 local subComps = castData.subComponents or {}
                 local function ApplySubPos(element, subPos, defaultJustify)

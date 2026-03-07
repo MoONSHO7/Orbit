@@ -1,6 +1,6 @@
 -- [ CANVAS MODE - VIEWPORT ]--------------------------------------------------------
 -- Viewport with zoom/pan controls for Canvas Mode
--- Row layout: Title > Panels > Viewport (Dock | Preview) > Override > Footer
+-- Row layout: Title > Viewport (Dock | Preview) > Override > Footer
 --------------------------------------------------------------------------------
 
 local _, addonTable = ...
@@ -10,94 +10,84 @@ local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
 local C = CanvasMode.Constants
 local OVERLAY_LEVEL_BOOST = 100
+local INSET_LEFT = 10
+local INSET_RIGHT = -6
+local INSET_TOP = -27
+local INSET_BOTTOM = 3
+local FILTER_TAB_INSET = 8
+local FILTER_TAB_SPACING = 12
 
--- [ ROW 2: FILTER TAB BAR ]-------------------------------------------------------------
-
+-- [ FILTER CONSTANTS ]------------------------------------------------------------------
 local FILTER_TABS = { "All", "Text", "Icons", "Auras" }
 local FILTER_TAB_ACTIVE_COLOR = { r = 1.0, g = 0.82, b = 0.0 }
-local FILTER_TAB_INACTIVE_COLOR = { r = 0.8, g = 0.8, b = 0.8 }
-local FILTER_TAB_TEXT_PADDING = 20
-local FILTER_TAB_HIGHLIGHT_ATLAS = "transmog-tab-hl"
+local FILTER_TAB_INACTIVE_COLOR = { r = 0.6, g = 0.6, b = 0.6 }
 
 local function ApplyFilterTabState(btn, isActive)
     local c = isActive and FILTER_TAB_ACTIVE_COLOR or FILTER_TAB_INACTIVE_COLOR
-    btn.Text:SetTextColor(c.r, c.g, c.b)
-    if btn.highlight then btn.highlight:SetShown(isActive) end
+    btn:SetTextColor(c.r, c.g, c.b)
 end
 
-Dialog.FilterTabBar = CreateFrame("Frame", nil, Dialog)
-Dialog.FilterTabBar:SetPoint("TOPLEFT", Dialog, "TOPLEFT", C.VIEWPORT_PADDING + 30, -(C.TITLE_ROW_HEIGHT + 7))
-Dialog.FilterTabBar:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", -C.VIEWPORT_PADDING, -(C.TITLE_ROW_HEIGHT + 7))
-Dialog.FilterTabBar:SetHeight(C.PANELS_ROW_HEIGHT)
-Dialog.FilterTabBar:SetFrameLevel(Dialog:GetFrameLevel() + 200)
-Dialog.FilterTabBar:Hide()
-
-Dialog.filterTabButtons = {}
-local lastFilterBtn = nil
-for _, tabName in ipairs(FILTER_TABS) do
-    local btn = CreateFrame("Button", nil, Dialog.FilterTabBar, "MinimalTabTemplate")
-    btn:SetHeight(C.FILTER_TAB_HEIGHT)
-    btn.Text:SetText(tabName)
-    btn:SetWidth(btn.Text:GetStringWidth() + FILTER_TAB_TEXT_PADDING)
-
-    if lastFilterBtn then
-        btn:SetPoint("LEFT", lastFilterBtn, "RIGHT", C.FILTER_TAB_SPACING, 0)
-    else
-        btn:SetPoint("TOPLEFT", Dialog.FilterTabBar, "TOPLEFT", 0, 0)
-    end
-
-    local hlFrame = CreateFrame("Frame", nil, btn)
-    hlFrame:SetPoint("BOTTOMLEFT", btn, "BOTTOMLEFT", 2, -1)
-    hlFrame:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, -1)
-    hlFrame:SetHeight(1)
-    hlFrame:SetFrameLevel(btn:GetFrameLevel() + 10)
-    local hlTex = hlFrame:CreateTexture(nil, "ARTWORK")
-    hlTex:SetAtlas(FILTER_TAB_HIGHLIGHT_ATLAS)
-    hlTex:SetAllPoints(hlFrame)
-    btn.highlight = hlFrame
-
-    ApplyFilterTabState(btn, tabName == "All")
-
-    btn:SetScript("OnClick", function()
-        Dialog.activeFilter = tabName
-        for _, b in ipairs(Dialog.filterTabButtons) do
-            ApplyFilterTabState(b, b.filterName == tabName)
-        end
-        if Dialog.ApplyFilter then Dialog:ApplyFilter(tabName) end
-    end)
-
-    btn.filterName = tabName
-    Dialog.filterTabButtons[#Dialog.filterTabButtons + 1] = btn
-    lastFilterBtn = btn
-end
-
--- [ ROW 3: VIEWPORT AREA ]--------------------------------------------------------------
+-- [ VIEWPORT AREA ]---------------------------------------------------------------------
 -- Architecture: PreviewContainer > Viewport (clips) > TransformLayer > PreviewFrame
--- Dock lives as a vertical column on the LEFT side of the viewport area
-
-local function GetViewportTopOffset(showTabs)
-    return showTabs and (C.TITLE_ROW_HEIGHT + C.PANELS_ROW_HEIGHT) or C.TITLE_ROW_HEIGHT
-end
 
 Dialog.PreviewContainer = CreateFrame("Frame", nil, Dialog)
-Dialog.PreviewContainer:SetPoint("TOPLEFT", Dialog, "TOPLEFT", C.VIEWPORT_PADDING, -GetViewportTopOffset(true))
-Dialog.PreviewContainer:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", -C.VIEWPORT_PADDING, -GetViewportTopOffset(true))
+Dialog.PreviewContainer:SetPoint("TOPLEFT", Dialog, "TOPLEFT", INSET_LEFT, INSET_TOP)
+Dialog.PreviewContainer:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", INSET_RIGHT, INSET_TOP)
 Dialog.PreviewContainer:SetHeight(C.VIEWPORT_HEIGHT)
+-- Recessed NineSlice behind the viewport (slightly larger for depth)
+Dialog.Inset = CreateFrame("Frame", nil, Dialog, "InsetFrameTemplate")
+Dialog.Inset:SetPoint("TOPLEFT", Dialog, "TOPLEFT", C.BG_INSET_LEFT, -(C.BG_INSET_TOP + 1))
+Dialog.Inset:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", -C.BG_INSET_RIGHT, C.BG_INSET_BOTTOM + 2)
+Dialog.Inset:SetFrameLevel(Dialog:GetFrameLevel() + 1)
+Dialog.Inset.NineSlice.layoutType = "InsetFrameTemplate"
+NineSliceUtil.ApplyLayoutByName(Dialog.Inset.NineSlice, "InsetFrameTemplate")
+if Dialog.Inset.Bg then Dialog.Inset.Bg:Hide() end
 
--- Transmog-style background
-Dialog.PreviewContainer.Background = Dialog.PreviewContainer:CreateTexture(nil, "BACKGROUND")
-Dialog.PreviewContainer.Background:SetAtlas("transmog-tabs-frame-bg")
-Dialog.PreviewContainer.Background:SetPoint("TOPLEFT", 4, -4)
-Dialog.PreviewContainer.Background:SetPoint("BOTTOMRIGHT", -4, 4)
+-- QuestLogBorderFrame: covers entire content area above the Inset
+Dialog.BorderFrame = CreateFrame("Frame", nil, Dialog)
+Dialog.BorderFrame:SetPoint("TOPLEFT", Dialog.Inset, "TOPLEFT", -1, 4)
+Dialog.BorderFrame:SetPoint("BOTTOMRIGHT", Dialog.Inset, "BOTTOMRIGHT", 2, -3)
+Dialog.BorderFrame:SetFrameLevel(Dialog.Inset:GetFrameLevel() + 5)
+Dialog.BorderFrame.Border = Dialog.BorderFrame:CreateTexture(nil, "BORDER")
+Dialog.BorderFrame.Border:SetAtlas("questlog-frame")
+Dialog.BorderFrame.Border:SetAllPoints()
+Dialog.BorderFrame.TopDetail = Dialog.BorderFrame:CreateTexture(nil, "ARTWORK")
+Dialog.BorderFrame.TopDetail:SetAtlas("questlog-frame-filigree", true)
+Dialog.BorderFrame.TopDetail:SetPoint("TOP", 0, 1)
 
--- Transmog-style golden border (on high-level overlay to render above preview content)
+-- Divider (created in Dock.lua after DisabledDock is available)
+
 Dialog.BorderOverlay = CreateFrame("Frame", nil, Dialog.PreviewContainer)
 Dialog.BorderOverlay:SetAllPoints()
 Dialog.BorderOverlay:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
-Dialog.PreviewContainer.Border = Dialog.BorderOverlay:CreateTexture(nil, "OVERLAY")
-Dialog.PreviewContainer.Border:SetAtlas("transmog-tabs-frame")
-Dialog.PreviewContainer.Border:SetPoint("TOPLEFT", Dialog.PreviewContainer, "TOPLEFT", -11, 12)
-Dialog.PreviewContainer.Border:SetPoint("BOTTOMRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", 11, -12)
+
+-- [ FILTER TAB LABELS (inside viewport overlay) ]---------------------------------------
+Dialog.FilterTabBar = Dialog.BorderOverlay -- reuse overlay as logical container
+Dialog.filterTabButtons = {}
+local lastFilterBtn = nil
+for _, tabName in ipairs(FILTER_TABS) do
+    local label = Dialog.BorderOverlay:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    if lastFilterBtn then
+        label:SetPoint("LEFT", lastFilterBtn, "RIGHT", FILTER_TAB_SPACING, 0)
+    else
+        label:SetPoint("TOPLEFT", Dialog.BorderOverlay, "TOPLEFT", FILTER_TAB_INSET, -FILTER_TAB_INSET)
+    end
+    label:SetText(tabName)
+    label.filterName = tabName
+    ApplyFilterTabState(label, tabName == "All")
+
+    local hitBtn = CreateFrame("Button", nil, Dialog.BorderOverlay)
+    hitBtn:SetAllPoints(label)
+    hitBtn:SetScript("OnClick", function()
+        Dialog.activeFilter = tabName
+        for _, b in ipairs(Dialog.filterTabButtons) do ApplyFilterTabState(b, b.filterName == tabName) end
+        if Dialog.ApplyFilter then Dialog:ApplyFilter(tabName) end
+    end)
+
+    label.hitButton = hitBtn
+    Dialog.filterTabButtons[#Dialog.filterTabButtons + 1] = label
+    lastFilterBtn = label
+end
 
 -- Viewport: clips children to create the viewable area (inset from dock column)
 Dialog.Viewport = CreateFrame("Frame", nil, Dialog.PreviewContainer)
@@ -114,37 +104,32 @@ Dialog.TransformLayer:SetSize(1, 1)
 Dialog.TransformLayer:SetPoint("CENTER", Dialog.Viewport, "CENTER", 0, C.DOCK_Y_OFFSET)
 
 -- [ ROW 4: OVERRIDE SETTINGS CONTAINER ]-------------------------------------------------
-
-Dialog.OverrideContainer = CreateFrame("Frame", nil, Dialog)
-Dialog.OverrideContainer:SetPoint("TOPLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", 0, -C.OVERRIDE_SECTION_PADDING)
-Dialog.OverrideContainer:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", 0, -C.OVERRIDE_SECTION_PADDING)
-Dialog.OverrideContainer:SetHeight(1)
-Dialog.OverrideContainer:SetFrameLevel(Dialog.Border:GetFrameLevel() + 10)
-Dialog.OverrideContainer:Hide()
-
-Dialog.OverrideContainer.Title = Dialog.OverrideContainer:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-Dialog.OverrideContainer.Title:SetPoint("TOPLEFT", Dialog.OverrideContainer, "TOPLEFT", C.DIALOG_INSET, 0)
+-- (Created in Dock.lua after DisabledDock is available)
 
 -- [ DYNAMIC HEIGHT ]---------------------------------------------------------------------
 
 function Dialog:GetViewportTopOffset()
-    return GetViewportTopOffset(self.FilterTabBar and self.FilterTabBar:IsShown())
+    return -INSET_TOP
 end
 
-function Dialog:RecalculateHeight()
+function Dialog:GetChromeHeight()
     local FC = Orbit.Constants.Footer
-    local showTabs = self.FilterTabBar and self.FilterTabBar:IsShown()
-    local topOffset = GetViewportTopOffset(showTabs)
-
-    self.PreviewContainer:SetPoint("TOPLEFT", self, "TOPLEFT", C.VIEWPORT_PADDING, -topOffset)
-    self.PreviewContainer:SetPoint("TOPRIGHT", self, "TOPRIGHT", -C.VIEWPORT_PADDING, -topOffset)
-
-    local overrideShown = self.OverrideContainer:IsShown()
+    local topOffset = -INSET_TOP
+    local overrideShown = self.OverrideContainer and self.OverrideContainer:IsShown()
     local overrideHeight = overrideShown and self.OverrideContainer:GetHeight() or 0
     local overridePad = overrideHeight > 0 and C.OVERRIDE_SECTION_PADDING or 0
     local footerHeight = FC.TopPadding + FC.ButtonHeight + FC.BottomPadding
+    local dividerHeight = (self.ViewportDivider and self.ViewportDivider:IsShown()) and select(2, self.ViewportDivider:GetSize()) or 0
+    local dockHeight = C.DOCK_HEIGHT + 2
+    return topOffset + dividerHeight + dockHeight + overridePad + overrideHeight + footerHeight + C.DIALOG_INSET
+end
 
-    local totalHeight = topOffset + C.VIEWPORT_HEIGHT + overridePad + overrideHeight + footerHeight + C.DIALOG_INSET
+function Dialog:RecalculateHeight()
+    local vpH = self.viewportHeight or C.VIEWPORT_HEIGHT
+    self.PreviewContainer:SetHeight(vpH)
+
+    local chromeH = self:GetChromeHeight()
+    local totalHeight = chromeH + vpH
 
     local top = self:GetTop()
     local left = self:GetLeft()

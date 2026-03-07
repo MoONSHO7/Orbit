@@ -64,6 +64,7 @@ function Plugin:OnLoad()
 
     self:RegisterStandardEvents()
     self:RegisterVisibilityEvents()
+    Orbit.EventBus:On("PLAYER_REGEN_ENABLED", function() self:ApplySettings() end, self)
     self.mountedConfig = { frame = self.frame, hoverReveal = true }
     NeutralizeNativeAnchoring()
     self:ReparentAll()
@@ -114,9 +115,7 @@ end
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 function Plugin:ApplySettings()
     local frame = self.frame
-    if not frame then
-        return
-    end
+    if not frame or InCombatLockdown() then return end
     NeutralizeNativeAnchoring()
     self:ReparentAll()
     local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100

@@ -17,8 +17,8 @@ local COMPONENT_POSITION_MAP = {
     { key = "LevelText",        parentKey = nil },
     { key = "RareEliteIcon",    parentKey = nil },
     { key = "CombatIcon",       parentKey = nil },
-    { key = "DefensiveIcon",    parentKey = nil },
-    { key = "CrowdControlIcon", parentKey = nil },
+    { key = "DefensiveIcon",    parentKey = nil, isAura = true },
+    { key = "CrowdControlIcon", parentKey = nil, isAura = true },
     { key = "Portrait",         parentKey = nil },
     { key = "MarkerIcon",       parentKey = nil },
     { key = "CastBar",          parentKey = nil },
@@ -81,7 +81,7 @@ function CanvasMixin:ApplyComponentPositions()
     if not self.orbitPlugin or not self.orbitPlugin.GetSetting then return end
 
     local systemIndex = self.systemIndex or 1
-    local positions = self.orbitPlugin:GetSetting(systemIndex, "ComponentPositions")
+    local positions = self.orbitPlugin:GetComponentPositions(systemIndex)
     local defaults = self.orbitPlugin.defaults and self.orbitPlugin.defaults.ComponentPositions
 
     if defaults then

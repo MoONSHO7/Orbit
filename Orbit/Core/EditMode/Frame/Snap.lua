@@ -275,12 +275,10 @@ function Snap:NormalizePosition(frame)
     if not parent then return end
 
     local scale = frame:GetScale()
-    if not scale then return end
+    local left, top, right, bottom = frame:GetLeft(), frame:GetTop(), frame:GetRight(), frame:GetBottom()
+    if not scale or not left then return end
 
-    local left = frame:GetLeft() * scale
-    local top = frame:GetTop() * scale
-    local right = frame:GetRight() * scale
-    local bottom = frame:GetBottom() * scale
+    left, top, right, bottom = left * scale, top * scale, right * scale, bottom * scale
 
     local parentWidth, parentHeight = parent:GetSize()
     local x, y, point

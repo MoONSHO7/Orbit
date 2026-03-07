@@ -342,6 +342,15 @@ Orbit.Profile.defaults = {
                         point = "TOPLEFT",
                     },
                     ComponentPositions = {
+                        StatusIcons = {
+                            posY = 0,
+                            offsetX = 0,
+                            posX = 0,
+                            justifyH = "CENTER",
+                            offsetY = 0,
+                            anchorX = "CENTER",
+                            anchorY = "CENTER",
+                        },
                         ResIcon = {
                             posY = 0,
                             offsetX = 0,
@@ -559,6 +568,15 @@ Orbit.Profile.defaults = {
                         "RaidBuff",
                     },
                     ComponentPositions = {
+                        StatusIcons = {
+                            posY = 0,
+                            offsetX = 0,
+                            posX = 0,
+                            justifyH = "CENTER",
+                            offsetY = 0,
+                            anchorX = "CENTER",
+                            anchorY = "CENTER",
+                        },
                         RoleIcon = {
                             posY = 15.0,
                             offsetX = 4.9,
@@ -815,20 +833,30 @@ Orbit.Profile.defaults = {
                     Rows = 12,
                     IconPadding = 2,
                     Position = {
-                        y = -40,
-                        x = -3,
+                        y = -40.17095947265625,
+                        x = -2.735043048858643,
                         point = "RIGHT",
                     },
                 },
                 [7] = {
                     Rows = 12,
                     IconPadding = 2,
+                    Position = {
+                        y = -450,
+                        x = 0,
+                        point = "CENTER",
+                    },
                 },
                 [8] = {
                     Scale = 90,
                     Rows = 12,
                     IconPadding = 2,
                     NumIcons = 12,
+                    Position = {
+                        y = -500.0000305175781,
+                        x = 0,
+                        point = "CENTER",
+                    },
                 },
                 [9] = {
                     Scale = 80,
@@ -1009,6 +1037,12 @@ Orbit.Profile.defaults = {
                             offsetY = 0,
                             offsetX = 4,
                             anchorY = "CENTER",
+                        },
+                        PvpIcon = {
+                            offsetX = 10,
+                            offsetY = 0,
+                            anchorX = "RIGHT",
+                            anchorY = "BOTTOM",
                         },
                     },
                     ShowLevel = true,
@@ -1458,6 +1492,28 @@ Orbit.Profile.defaults = {
                     Opacity = 100,
                 },
             },
+            ["Orbit_PlayerBuffs"] = {
+                [1] = {
+                    Anchor = false,
+                    Rows = 2,
+                    Position = {
+                        y = -4.376068536581614,
+                        x = -241.7777866461342,
+                        point = "TOPRIGHT",
+                    },
+                },
+            },
+            ["Orbit_PlayerDebuffs"] = {
+                [1] = {
+                    Anchor = {
+                        target = "OrbitPlayerBuffsFrame",
+                        padding = 50,
+                        edge = "BOTTOM",
+                        align = "RIGHT",
+                    },
+                    IconLimit = 6,
+                },
+            },
         },
     },
     GlobalSettings = {
@@ -1475,7 +1531,7 @@ Orbit.Profile.defaults = {
         TextScale = "Medium",
         BorderSize = 2,
         OverlayAllFrames = false,
-        HideWhenMounted = true,
+        HideWhenMounted = false,
         ClassColorBackground = false,
         FontOutline = "OUTLINE",
         UseClassColors = true,

@@ -40,6 +40,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
             MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2, justifyH = "CENTER", posX = 0, posY = 18 },
             RoleIcon = { anchorX = "RIGHT", offsetX = 10, anchorY = "TOP", offsetY = 3, justifyH = "RIGHT" },
             LeaderIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", posX = -70, posY = 20 },
+            StatusIcons = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             SummonIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
@@ -442,7 +443,7 @@ function Plugin:OnLoad()
             self:EnsureAuraIcon(firstFrame, k, GetComponentIconSize(self, k))
         end
     end
-    local healerIconKeys = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+    local healerIconKeys = { "RoleIcon", "LeaderIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
     for _, k in ipairs(HealerReg:ActiveKeys()) do healerIconKeys[#healerIconKeys + 1] = k end
     Orbit.GroupCanvasRegistration:RegisterComponents(pluginRef, self.container, firstFrame,
         { "Name", "HealthText" },
@@ -749,9 +750,9 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
 
     -- Icon positions (healer auras, status icons, etc.)
-    local savedPositions = self:GetSetting(1, "ComponentPositions")
+    local savedPositions = self:GetComponentPositions(1)
     if savedPositions then
-        local iconKeys = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+        local iconKeys = { "RoleIcon", "LeaderIcon", "StatusIcons", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
         local activeKeys = HealerReg:ActiveKeys()
         for _, k in ipairs(activeKeys) do iconKeys[#iconKeys + 1] = k end
         -- Ensure healer aura icons exist with correct size
@@ -774,6 +775,15 @@ function Plugin:ApplyFrameStyle(frame, showPower)
         end
         Orbit.GroupCanvasRegistration:ApplyIconPositions({ frame }, savedPositions, iconKeys)
     end
+end
+
+function Plugin:OnCanvasApply()
+    if not self.frames then return end
+    local StatusMixin = Orbit.StatusIconMixin
+    if StatusMixin then
+        for _, frame in ipairs(self.frames) do StatusMixin:UpdateRoleIcon(frame, self) end
+    end
+    if self.frames[1] and self.frames[1].preview then self:SchedulePreviewUpdate() end
 end
 
 function Plugin:ApplySettings()

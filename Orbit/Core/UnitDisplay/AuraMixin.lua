@@ -31,18 +31,17 @@ function Mixin:FetchAuras(unit, filter, maxCount)
     local auras = {}
     if unit and UnitExists(unit) then
         local count = maxCount or DEFAULT_AURA_COUNT
-        for i = 1, count do
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, filter)
-            if not aura then break end
-            aura.index = i
+        AuraUtil.ForEachAura(unit, filter, count, function(aura)
+            aura.index = #auras + 1
             tinsert(auras, aura)
-        end
+            if #auras >= count then return true end
+        end, true)
     end
     return auras
 end
 
 -- [ ICON SETUP ]------------------------------------------------------------------------------------
-function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
+function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPositions)
     if not icon or not aura then return end
     icon:SetSize(size, size)
     if not icon.Icon then icon.Icon = icon:CreateTexture(nil, "ARTWORK") end
@@ -99,6 +98,23 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings)
         icon.Cooldown:SetSwipeColor(skinSettings.swipeColor.r, skinSettings.swipeColor.g, skinSettings.swipeColor.b, skinSettings.swipeColor.a or 0.8)
     end
     if skinSettings and skinSettings.enablePandemic then Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings) end
+    -- Apply canvas mode component overrides (must be last to avoid skin/cooldown clobbering)
+    if componentPositions then
+        local OverrideUtils = Orbit.Engine.CanvasMode and Orbit.Engine.CanvasMode.OverrideUtils
+        local ApplyTextPosition = Orbit.Engine.PositionUtils and Orbit.Engine.PositionUtils.ApplyTextPosition
+        if OverrideUtils then
+            local stacksData = componentPositions.Stacks
+            if stacksData then
+                OverrideUtils.ApplyOverrides(icon.count, stacksData.overrides or {}, { fontSize = countSize, fontPath = fontPath })
+                if ApplyTextPosition then ApplyTextPosition(icon.count, icon, stacksData) end
+            end
+            local timerData = componentPositions.Timer
+            if timerData and icon.Cooldown and icon.Cooldown.Text then
+                OverrideUtils.ApplyOverrides(icon.Cooldown.Text, timerData.overrides or {}, { fontSize = Orbit.Skin:GetAdaptiveTextSize(size, 8, nil, 0.45), fontPath = fontPath })
+                if ApplyTextPosition then ApplyTextPosition(icon.Cooldown.Text, icon, timerData) end
+            end
+        end
+    end
     icon:Show()
     return icon
 end
@@ -181,7 +197,7 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     if #auras == 0 then container:Hide(); return end
     local helpers = type(cfg.helpers) == "function" and cfg.helpers() or cfg.helpers
     local position = helpers:AnchorToPosition(auraData.posX, auraData.posY, frameW / 2, frameH / 2)
-    local iconSize, _, iconsPerRow, containerW, containerH = AL:CalculateSmartLayout(frameW, frameH, position, maxIcons, #auras, overrides)
+    local iconSize, _, iconsPerRow, containerW, containerH, iconsPerCol = AL:CalculateSmartLayout(frameW, frameH, position, maxIcons, #auras, overrides)
     container:ClearAllPoints()
     container:SetSize(containerW, containerH)
     local anchorX = auraData.anchorX or cfg.defaultAnchorX or "LEFT"
@@ -191,7 +207,8 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     local justifyH = auraData.justifyH or cfg.defaultJustifyH or "LEFT"
     local finalX = (anchorX == "RIGHT") and -offsetX or offsetX
     local finalY = (anchorY == "TOP") and -offsetY or offsetY
-    container:SetPoint(BuildComponentSelfAnchor(false, true, anchorY, justifyH), frame, BuildAnchorPoint(anchorX, anchorY), finalX, finalY)
+    local selfAnchorY = auraData.selfAnchorY or anchorY
+    container:SetPoint(BuildComponentSelfAnchor(false, true, selfAnchorY, justifyH), frame, BuildAnchorPoint(anchorX, anchorY), finalX, finalY)
     local skinSettings = cfg.skinSettings
     if type(skinSettings) == "function" then skinSettings = skinSettings(plugin) end
     local col, row = 0, 0
@@ -200,7 +217,7 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
         icon:EnableMouse(false)
         plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
         plugin:SetupAuraTooltip(icon, aura, unit, cfg.tooltipFilter)
-        col, row = AL:PositionIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow)
+        col, row = AL:PositionIcon(icon, container, justifyH, selfAnchorY, col, row, iconSize, iconsPerRow, #auras, iconsPerCol)
     end
     container:Show()
 end

@@ -25,9 +25,6 @@ local PREVIEW_DEFAULTS = {
     FakeCooldownDuration = 60,
 }
 
-local SAMPLE_DEBUFF_ICONS = { 136096, 136118, 132158, 136048, 132212 }
-local SAMPLE_BUFF_ICONS = { 135907, 136048, 136041, 135944, 135987 }
-
 -- [ PREVIEW LOGIC ]---------------------------------------------------------------------------------
 function Orbit.BossFramePreviewMixin:ShowPreview()
     if InCombatLockdown() or not self.frames or not self.container then return end
@@ -64,8 +61,13 @@ function Orbit.BossFramePreviewMixin:ShowPreview()
     self:UpdateContainerSize()
 
     C_Timer.After(DEBOUNCE_DELAY, function()
-        if self.frames then self:ApplyPreviewVisuals() end
+        if self.frames then
+            self:ApplyPreviewVisuals()
+            if not isCanvasMode then self:StartPreviewAnimation() end
+        end
     end)
+
+    Orbit.PreviewAnimator:WatchCanvas(self)
 end
 
 function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
@@ -83,7 +85,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
             local frame = self.frames[i]
             frame:SetSize(width, height)
 
-            local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+            local componentPositions = self:GetComponentPositions(1)
 
             self:UpdateFrameLayout(frame, borderSize, { powerBarRatio = POWER_BAR_HEIGHT_RATIO })
 
@@ -100,8 +102,6 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                     frame.Health:SetStatusBarColor(1, 0.1, 0.1)
                 end
                 frame.Health:Show()
-                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
-                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
             if frame.Power then
@@ -171,7 +171,9 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                 end
             end
 
-            self:ShowPreviewAuras(frame)
+            if txnActive or not Orbit.PreviewAnimator:IsRunning() then
+                self:ShowPreviewAuras(frame)
+            end
 
             if frame.MarkerIcon then
                 Orbit.StatusIconMixin:ApplyMarkerSprite(frame.MarkerIcon, 8)
@@ -187,12 +189,12 @@ end
 local BOSS_PREVIEW_DEBUFF_CFG = {
     helpers = function() return Orbit.BossFrameHelpers end,
     defaultAnchorX = "LEFT", defaultJustifyH = "LEFT",
-    sampleIcons = SAMPLE_DEBUFF_ICONS, defaultMax = 4,
+    defaultMax = 4,
 }
 local BOSS_PREVIEW_BUFF_CFG = {
     helpers = function() return Orbit.BossFrameHelpers end,
     defaultAnchorX = "RIGHT", defaultJustifyH = "RIGHT",
-    sampleIcons = SAMPLE_BUFF_ICONS, defaultMax = 3,
+    defaultMax = 3,
 }
 
 function Orbit.BossFramePreviewMixin:ShowPreviewAuras(frame)
@@ -203,6 +205,13 @@ end
 function Orbit.BossFramePreviewMixin:HidePreview()
     if InCombatLockdown() or not self.frames then return end
     self.isPreviewActive = false
+
+    -- Stop animation
+    Orbit.PreviewAnimator:Stop(self)
+    Orbit.PreviewAnimator:StopAuras(self)
+    Orbit.PreviewAnimator:StopHealerAuras(self)
+
+    Orbit.PreviewAnimator:UnwatchCanvas(self)
     local visibilityDriver = "[@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
     RegisterAttributeDriver(self.container, "state-visibility", visibilityDriver)
 
@@ -240,4 +249,20 @@ function Orbit.BossFramePreviewMixin:SchedulePreviewUpdate()
             if self.frames then self:ApplyPreviewVisuals() end
         end)
     end
+end
+
+function Orbit.BossFramePreviewMixin:StartPreviewAnimation()
+    if not self.frames then return end
+    local getHelpers = function() return Orbit.BossFrameHelpers end
+    local visibleFrames = {}
+    for i = 1, MAX_BOSS_FRAMES do
+        local f = self.frames[i]
+        if f and f.preview and f:IsShown() then visibleFrames[#visibleFrames + 1] = f end
+    end
+    Orbit.PreviewAnimator:StartAll(self, {
+        frames = visibleFrames,
+        getHelpers = getHelpers,
+        getHealth = function() return PREVIEW_DEFAULTS.HealthPercent / 100 end,
+        healerSlots = {},
+    })
 end

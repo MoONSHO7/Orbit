@@ -91,6 +91,12 @@ function Plugin:AddSettings(dialog, systemFrame)
             if self.containers[config.index] then table.insert(schema.multiFrameOverride, self.containers[config.index]) end
         end
     end
+    if systemIndex == VEHICLE_EXIT_INDEX then
+        table.insert(schema.controls, { type = "slider", key = "Scale", label = "Scale", min = 50, max = 150, step = 1, default = 90, formatter = function(v) return v .. "%" end,
+            onChange = function(val) self:SetSetting(systemIndex, "Scale", val); self:ApplySettings(container) end })
+        OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
+        return
+    end
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
     local tabs = (systemIndex == 1) and { "Layout", "Colors", "Visibility" } or { "Layout", "Visibility" }
     local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
@@ -105,7 +111,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 end })
         end
         local config = BAR_CONFIG[systemIndex]
-        local isSpecialBar = config.isSpecial or SPECIAL_BAR_INDICES[systemIndex]
+        local isSpecialBar = (config and config.isSpecial) or SPECIAL_BAR_INDICES[systemIndex]
         if config and config.count > 1 and not isSpecialBar then
             table.insert(schema.controls, { type = "slider", key = "NumIcons", label = "# Icons", min = 1, max = config.count, step = 1, default = config.count,
                 onChange = function(val)
@@ -164,7 +170,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             end,
         })
         table.insert(schema.controls, { type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
-            onChange = function(val) self:SetSetting(systemIndex, "OutOfCombatFade", val); self:ApplySettings(container) end })
+            onChange = function(val) self:SetSetting(systemIndex, "OutOfCombatFade", val); self:ApplySettings(container); if dialog.orbitTabCallback then dialog.orbitTabCallback() end end })
         if self:GetSetting(systemIndex, "OutOfCombatFade") then
             table.insert(schema.controls, { type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
                 onChange = function(val) self:SetSetting(systemIndex, "ShowOnMouseover", val); self:ApplySettings(container) end })
@@ -205,11 +211,11 @@ function Plugin:OnLoad()
         local shouldHide = Orbit.MountedVisibility:ShouldHide()
         local numBars = self:GetSetting(1, "NumActionBars") or 4
         for index, container in pairs(self.containers) do
-            if index <= 8 and index > numBars then -- disabled bar, skip
-            else
+            if index == VEHICLE_EXIT_INDEX then
+                if not InCombatLockdown() and Orbit:IsEditMode() then UnregisterStateDriver(container, "visibility"); container:Show() end
+            elseif not (index <= 8 and index > numBars) then
                 if not InCombatLockdown() then
-                    if index == VEHICLE_EXIT_INDEX then RegisterStateDriver(container, "visibility", VEHICLE_EXIT_VISIBILITY)
-                    elseif index == PET_BAR_INDEX then RegisterStateDriver(container, "visibility", PET_BAR_BASE_DRIVER)
+                    if index == PET_BAR_INDEX then RegisterStateDriver(container, "visibility", PET_BAR_BASE_DRIVER)
                     elseif index == 1 then RegisterStateDriver(container, "visibility", BAR1_BASE_DRIVER)
                     else RegisterStateDriver(container, "visibility", BASE_VISIBILITY_DRIVER) end
                 end

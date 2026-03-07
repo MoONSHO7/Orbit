@@ -89,7 +89,6 @@ local _activeSlots = {}    -- { { key, spellId, label, altSpellId }, ... }
 local _activeRaidBuffs = {} -- { { key = "RaidBuff", spellId, label }, ... }
 local _activeKeys = {}     -- { "HealerAura1", ..., "RaidBuff" }
 local _allSlotKeys = {}    -- all 7 + RaidBuff (for DisabledComponents)
-local _excludedSpellIds = {} -- set of all active spell IDs for filter exclusion
 
 -- Build all slot keys (for DisabledComponents defaults)
 for i = 1, MAX_HEALER_SLOTS do _allSlotKeys[#_allSlotKeys + 1] = SLOT_KEYS[i] end
@@ -103,21 +102,17 @@ local function BuildCaches()
     _activeSlots = {}
     _activeRaidBuffs = {}
     _activeKeys = {}
-    _excludedSpellIds = {}
     if spells then
         for i, spell in ipairs(spells) do
             if i > MAX_HEALER_SLOTS then break end
             local slot = { key = SLOT_KEYS[i], spellId = spell.spellId, label = spell.label, altSpellId = spell.altSpellId }
             _activeSlots[i] = slot
             _activeKeys[#_activeKeys + 1] = slot.key
-            _excludedSpellIds[spell.spellId] = true
-            if spell.altSpellId then _excludedSpellIds[spell.altSpellId] = true end
         end
     end
     for _, buff in ipairs(RAID_BUFFS) do
         if buff.classFilter == playerClass then
             _activeRaidBuffs[#_activeRaidBuffs + 1] = { spellId = buff.spellId, label = buff.label }
-            _excludedSpellIds[buff.spellId] = true
         end
     end
     if #_activeRaidBuffs > 0 then _activeKeys[#_activeKeys + 1] = RAID_BUFF_KEY end
@@ -137,7 +132,6 @@ function Registry:ActiveRaidBuffs() return _activeRaidBuffs end
 function Registry:ActiveKeys() return _activeKeys end
 function Registry:AllSlotKeys() return _allSlotKeys end
 function Registry:SlotCount() return #_activeSlots end
-function Registry:ExcludedSpellIds() return _excludedSpellIds end
 
 function Registry:GetSlotLabel(key)
     for _, slot in ipairs(_activeSlots) do

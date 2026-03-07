@@ -14,11 +14,17 @@ local IsSecret = issecretvalue or function() return false end
 local ALWAYS_EXCLUDED = {}
 for _, entry in ipairs(HealerReg.RaidBuffs) do ALWAYS_EXCLUDED[entry.spellId] = true end
 
--- Use the registry's cached exclusion set (built once at load).
+-- Exclude active healer aura spellIds unless their slot is disabled.
 local function GetExcludedSpellIds(plugin)
     local excluded = {}
     for id in pairs(ALWAYS_EXCLUDED) do excluded[id] = true end
-    for id in pairs(HealerReg:ExcludedSpellIds()) do excluded[id] = true end
+    local isDisabled = plugin and plugin.IsComponentDisabled
+    for _, slot in ipairs(HealerReg:ActiveSlots()) do
+        if not (isDisabled and plugin:IsComponentDisabled(slot.key)) then
+            excluded[slot.spellId] = true
+            if slot.altSpellId then excluded[slot.altSpellId] = true end
+        end
+    end
     return excluded
 end
 
@@ -53,8 +59,7 @@ end
 -- Creates a buff post-filter function.
 function Orbit.GroupAuraFilters:CreateBuffFilter()
     return function(plugin, unit, rawAuras, maxCount)
-        local inCombat = UnitAffectingCombat("player")
-        local raidFilter = inCombat and "HELPFUL|PLAYER|RAID_IN_COMBAT" or "HELPFUL|PLAYER|RAID"
+        local raidFilter = "HELPFUL|PLAYER"
         local excludeDefensives = not (plugin.IsComponentDisabled and plugin:IsComponentDisabled("DefensiveIcon"))
         local excluded = GetExcludedSpellIds(plugin)
         local result = {}

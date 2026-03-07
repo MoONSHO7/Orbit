@@ -113,9 +113,10 @@ function PositionUtils.NeedsEdgeCompensation(isFontString, isAuraContainer) retu
 -- [ EDGE COMPENSATION ]-----------------------------------------------------------------------------
 function PositionUtils.CalculateAnchorWithWidthCompensation(posX, posY, halfW, halfH, needsWidthComp, compWidth, compHeight, isAuraContainer)
     local anchorX, anchorY, offsetX, offsetY, justifyH = PositionUtils.CalculateAnchor(posX, posY, halfW, halfH)
+    local selfAnchorY = anchorY
 
     if not needsWidthComp then
-        return anchorX, anchorY, offsetX, offsetY, justifyH
+        return anchorX, anchorY, offsetX, offsetY, justifyH, selfAnchorY
     end
 
     local compHalfW = (compWidth or 0) / 2
@@ -132,20 +133,22 @@ function PositionUtils.CalculateAnchorWithWidthCompensation(posX, posY, halfW, h
         offsetX = halfW - posX + widthComp
     end
 
-    if isAuraContainer and anchorY ~= "CENTER" and justifyH ~= "CENTER" then
-        local compHalfH = (compHeight or 0) / 2
+    if isAuraContainer and anchorY ~= "CENTER" then
         local isOutsideTop = posY > halfH
         local isOutsideBottom = posY < -halfH
-        if anchorY == "TOP" then
-            local heightComp = isOutsideTop and compHalfH or -compHalfH
-            offsetY = halfH - posY + heightComp
-        elseif anchorY == "BOTTOM" then
-            local heightComp = isOutsideBottom and compHalfH or -compHalfH
-            offsetY = posY + halfH + heightComp
+        if anchorY == "TOP" then selfAnchorY = isOutsideTop and "BOTTOM" or "TOP"
+        elseif anchorY == "BOTTOM" then selfAnchorY = isOutsideBottom and "TOP" or "BOTTOM" end
+        if justifyH ~= "CENTER" then
+            local compHalfH = (compHeight or 0) / 2
+            if anchorY == "TOP" then
+                offsetY = halfH - posY + (isOutsideTop and compHalfH or -compHalfH)
+            elseif anchorY == "BOTTOM" then
+                offsetY = posY + halfH + (isOutsideBottom and compHalfH or -compHalfH)
+            end
         end
     end
 
-    return anchorX, anchorY, offsetX, offsetY, justifyH
+    return anchorX, anchorY, offsetX, offsetY, justifyH, selfAnchorY
 end
 
 -- [ APPLY TEXT POSITION ]--------------------------------------------------------------------------
@@ -189,7 +192,7 @@ function PositionUtils.ApplyTextPosition(element, parent, pos, defaultAnchor, de
 
         local selfAnchor
         if isAuraContainer then
-            selfAnchor = PositionUtils.BuildComponentSelfAnchor(false, true, pos.anchorY, pos.justifyH)
+            selfAnchor = PositionUtils.BuildComponentSelfAnchor(false, true, pos.selfAnchorY or pos.anchorY, pos.justifyH)
         elseif pos.justifyH and pos.justifyH ~= "CENTER" and element.SetJustifyH then
             selfAnchor = pos.justifyH
         else

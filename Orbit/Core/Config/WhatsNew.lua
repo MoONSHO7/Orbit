@@ -24,21 +24,39 @@ local WHATS_NEW_ENTRIES = {
             .. "• Canvas overrides for font, size, and colour on text components.\n"
             .. "• Live toggle — disable/enable without a reload.\n",
     },
-    {
-        title = "Previous Updates",
-        body = "• CDM Performance Parse. 50% better performance. (half the CPU+Ram)\n"
-            .. "• CDM Better Left/Right anchoring against vertical stacked frames\n"
-            .. "• Chaining CDM frames left and right will maintain the position of the CDM in the center now\n"
-            .. "• bugfixes: Party/Raid frames names showing while mounted, combat timer bugfix, groups not updating properly if raidleader changes player position\n"
-            .. "• Added Minimap button for quick access to Edit Mode and Plugin Manager.\n"
-            .. "• Mounted Visibility now uses hover-reveal on action bars and buff/debuff frames.\n"
-            .. "• Plugins with live toggles now properly disable on screen without a reload.\n"
-            .. "• Fixed color picker cancel applying unwanted changes.\n"
-            .. "• Fixed Tip of the Spear displaying 2 cells instead of 3.\n"
-            .. "• ColorPicker bugfixes. Various other minor bugfixes.\n"
-            .. "• Added HealerAuras priority to how they work in Canvas Mode (this might move them around if you've already set them up)\n"
-            .. "• Pandemic Glow fixes on debuff auras.\n"
-            .. "• Added defensive programming against conflicting addons\n",
+    { title = "Note",
+      body = "Made some updates to the anchoring logic inside Canvas mode, you may need to update some positions for your components"
+    },
+    { title = "Update",
+      body = "• Canvas Mode overhaul: new layout, dock, and component settings\n"
+        .. "• Grouped Status Icons & Animated\n"
+        .. "• Grouped Role Icons & Animated\n"
+        .. "• Added PlayerBuffs and Debuffs to Orbit\n"
+        .. "• Animated Party/Raid/Boss Preview Frames\n"
+        .. "• PVP Icon on Player Frame\n"
+        .. "• Role Icon: Hide DPS Role option in Canvas Mode\n"
+    },
+    { title = "Bugfixes",
+      body = "• Frames no longer jump when dragging chain-anchored frames\n"
+        .. "• Queue Status no longer errors during combat\n"
+        .. "• Pet Frame now refreshes properly on pet changes\n"
+        .. "• Vehicle Exit Settings Fixes\n"
+        .. "• Various other minor bugfixes\n"
+    },
+    { title = "Previous Updates",
+      body = "• CDM Performance Parse. 50% better performance. (half the CPU+Ram)\n"
+        .. "• CDM Better Left/Right anchoring against vertical stacked frames\n"
+        .. "• Chaining CDM frames left and right will maintain the position of the CDM in the center now\n"
+        .. "• bugfixes: Party/Raid frames names showing while mounted, combat timer bugfix, groups not updating properly if raidleader changes player position\n"
+        .. "• Added Minimap button for quick access to Edit Mode and Plugin Manager.\n"
+        .. "• Mounted Visibility now uses hover-reveal on action bars and buff/debuff frames.\n"
+        .. "• Plugins with live toggles now properly disable on screen without a reload.\n"
+        .. "• Fixed color picker cancel applying unwanted changes.\n"
+        .. "• Fixed Tip of the Spear displaying 2 cells instead of 3.\n"
+        .. "• ColorPicker bugfixes. Various other minor bugfixes.\n"
+        .. "• Added HealerAuras priority to how they work in Canvas Mode (this might move them around if you've already set them up)\n"
+        .. "• Pandemic Glow fixes on debuff auras.\n"
+        .. "• Added defensive programming against conflicting addons\n",
     },
     {
         title = "Message",

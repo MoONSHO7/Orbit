@@ -3,6 +3,7 @@
     <Script file="FontStringCreator.lua"/>
     <Script file="TextureCreator.lua"/>
     <Script file="IconFrameCreator.lua"/>
+    <Script file="StatusIconGroupCreator.lua"/>
     <Script file="PortraitCreator.lua"/>
     <Script file="AuraCreator.lua"/>
     <Script file="CastBarCreator.lua"/>

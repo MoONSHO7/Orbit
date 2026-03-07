@@ -1,8 +1,8 @@
 ---@type Orbit
 local Orbit = Orbit
+local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local LCG = LibStub("LibCustomGlow-1.0")
-local OrbitEngine = Orbit.Engine
 
 Orbit.RaidFramePreviewMixin = {}
 
@@ -36,23 +36,16 @@ local PREVIEW_CLASSES = {
 local PREVIEW_HEALTH_PCTS = {
     100, 85, 60, 40, 95,
     75, 90, 50, 80, 70,
-    65, 100, 88, 0, 0,
+    65, 100, 88, 55, 72,
     92, 78, 83, 95, 100,
 }
-local PREVIEW_STATUS = {
-    nil, nil, nil, nil, nil,
-    nil, nil, nil, nil, nil,
-    nil, nil, nil, "Dead", "Dead",
-    nil, nil, nil, "Offline", "Offline",
-}
+local PREVIEW_STATUS = {}
 local PREVIEW_ROLES = {
     "TANK", "HEALER", "DAMAGER", "DAMAGER", "HEALER",
     "TANK", "HEALER", "DAMAGER", "DAMAGER", "DAMAGER",
     "TANK", "HEALER", "DAMAGER", "DAMAGER", "DAMAGER",
     "TANK", "HEALER", "DAMAGER", "DAMAGER", "HEALER",
 }
-local SAMPLE_DEBUFF_ICONS = { 136096, 136118, 132158, 136048, 132212 }
-local SAMPLE_BUFF_ICONS = { 135907, 136048, 136041, 135944, 135987 }
 
 
 local ApplyIconPosition = function(icon, parentFrame, pos)
@@ -120,8 +113,13 @@ function Orbit.RaidFramePreviewMixin:ShowPreview()
     self:PositionFrames()
     self:UpdateContainerSize()
     C_Timer.After(DEBOUNCE_DELAY, function()
-        if self.frames then self:ApplyPreviewVisuals() end
+        if self.frames then
+            self:ApplyPreviewVisuals()
+            if not isCanvasMode then self:StartPreviewAnimation() end
+        end
     end)
+
+    Orbit.PreviewAnimator:WatchCanvas(self)
 end
 
 -- [ PREVIEW VISUALS ]-------------------------------------------------------------------------------
@@ -133,7 +131,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
     local isCanvasMode = IsCanvasModeActive(self)
     local globalSettings = Orbit.db.GlobalSettings or {}
     local roleAtlases = Orbit.RoleAtlases
-    local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+    local componentPositions = self:GetComponentPositions(1)
     local isDisabled = self.IsComponentDisabled and function(key) return self:IsComponentDisabled(key) end or function() return false end
     local sortOrder = GetPreviewSortOrder(self)
     local showHealerPower = self:GetSetting(1, "ShowPowerBar")
@@ -168,8 +166,6 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                     if classColor then frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b) end
                 end
                 frame.Health:Show()
-                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
-                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
             -- Preview-only: fake power data
@@ -239,7 +235,10 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 if isDisabled("RoleIcon") then frame.RoleIcon:Hide()
                 else
                     local role = PREVIEW_ROLES[dataIdx]
-                    if roleAtlases[role] then
+                    local roleOverrides = componentPositions.RoleIcon and componentPositions.RoleIcon.overrides
+                    local hideDPS = roleOverrides and roleOverrides.HideDPS
+                    if role == "DAMAGER" and hideDPS then frame.RoleIcon:Hide()
+                    elseif roleAtlases[role] then
                         frame.RoleIcon:SetAtlas(roleAtlases[role])
                         frame.RoleIcon:Show()
                         if componentPositions.RoleIcon then ApplyIconPosition(frame.RoleIcon, frame, componentPositions.RoleIcon) end
@@ -282,22 +281,26 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 hideKeys = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" },
             }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs(), HealerReg:ActiveKeys())
 
-            -- Preview auras
-            if frame.debuffPool then frame.debuffPool:ReleaseAll() end
-            if frame.buffPool then frame.buffPool:ReleaseAll() end
-            self:ShowPreviewAuras(frame, i)
+            -- Preview auras (skip if animator is handling them, unless in Canvas Mode)
+            if isCanvasMode or not Orbit.PreviewAnimator:IsRunning() then
+                if frame.debuffPool then frame.debuffPool:ReleaseAll() end
+                if frame.buffPool then frame.buffPool:ReleaseAll() end
+                self:ShowPreviewAuras(frame, i)
+            end
 
-            -- Preview dispel glow
-            local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
-            local dispelColorMap = { [4] = "DispelColorMagic", [9] = "DispelColorCurse", [14] = "DispelColorPoison" }
-            local dispelKey = dispelColorMap[i]
-            if dispelEnabled and dispelKey then
-                local thickness = self:GetSetting(1, "DispelThickness") or 2
-                local frequency = self:GetSetting(1, "DispelFrequency") or 0.25
-                local c = self:GetSetting(1, dispelKey) or { r = 0.2, g = 0.6, b = 1.0, a = 1 }
-                LCG.PixelGlow_Start(frame, { c.r, c.g, c.b, c.a }, 8, frequency, nil, thickness, 0, 0, true, "preview", Orbit.Constants.Levels.Glow)
-            else
-                LCG.PixelGlow_Stop(frame, "preview")
+            -- Preview dispel glow (skip if animator is handling them)
+            if not Orbit.PreviewAnimator:IsRunning() then
+                local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
+                local dispelColorMap = { [4] = "DispelColorMagic", [9] = "DispelColorCurse", [14] = "DispelColorPoison" }
+                local dispelKey = dispelColorMap[i]
+                if dispelEnabled and dispelKey then
+                    local thickness = self:GetSetting(1, "DispelThickness") or 2
+                    local frequency = self:GetSetting(1, "DispelFrequency") or 0.25
+                    local c = self:GetSetting(1, dispelKey) or { r = 0.2, g = 0.6, b = 1.0, a = 1 }
+                    LCG.PixelGlow_Start(frame, { c.r, c.g, c.b, c.a }, 8, frequency, nil, thickness, 0, 0, true, "preview", Orbit.Constants.Levels.Glow)
+                else
+                    LCG.PixelGlow_Stop(frame, "preview")
+                end
             end
         end
     end
@@ -308,12 +311,12 @@ end
 local RAID_PREVIEW_AURA_CFG = {
     helpers = function() return Orbit.RaidFrameHelpers end,
     defaultAnchorX = "RIGHT", defaultJustifyH = "LEFT",
-    sampleIcons = SAMPLE_DEBUFF_ICONS, defaultMax = 3,
+    defaultMax = 3,
 }
 local RAID_PREVIEW_BUFF_CFG = {
     helpers = function() return Orbit.RaidFrameHelpers end,
     defaultAnchorX = "LEFT", defaultJustifyH = "RIGHT",
-    sampleIcons = SAMPLE_BUFF_ICONS, defaultMax = 3,
+    defaultMax = 3,
 }
 
 function Orbit.RaidFramePreviewMixin:ShowPreviewAuras(frame, frameIndex)
@@ -325,6 +328,14 @@ end
 function Orbit.RaidFramePreviewMixin:HidePreview()
     if InCombatLockdown() or not self.frames then return end
     if not Helpers then Helpers = Orbit.RaidFrameHelpers end
+
+    -- Stop animation
+    Orbit.PreviewAnimator:Stop(self)
+    Orbit.PreviewAnimator:StopAuras(self)
+    Orbit.PreviewAnimator:StopHealerAuras(self)
+    Orbit.PreviewAnimator:StopDispels(self)
+
+    Orbit.PreviewAnimator:UnwatchCanvas(self)
 
     for i = 1, Helpers.LAYOUT.MaxRaidFrames do
         local frame = self.frames[i]
@@ -401,4 +412,41 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewBackdrop(frame)
     self:CreateBackground(frame)
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(frame, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
+end
+
+function Orbit.RaidFramePreviewMixin:StartPreviewAnimation()
+    if not self.frames then return end
+    local sortOrder = GetPreviewSortOrder(self)
+    local HealerReg = Orbit.HealerAuraRegistry
+    local healerSlots = HealerReg:ActiveSlots()
+    local isDisabled = self.IsComponentDisabled and function(k) return self:IsComponentDisabled(k) end or function() return false end
+    local enabledSlots = {}
+    for _, slot in ipairs(healerSlots) do
+        if not isDisabled(slot.key) then enabledSlots[#enabledSlots + 1] = slot end
+    end
+    local visibleFrames = {}
+    for i = 1, MAX_PREVIEW_FRAMES do
+        local f = self.frames[i]
+        if f and f.preview and f:IsShown() then visibleFrames[#visibleFrames + 1] = f end
+    end
+    local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
+    Orbit.PreviewAnimator:StartAll(self, {
+        frames = visibleFrames,
+        getHelpers = function() return Orbit.RaidFrameHelpers end,
+        getHealth = function(i) local idx = sortOrder[i]; return (PREVIEW_HEALTH_PCTS[idx] or 75) / 100 end,
+        getDead = function(i) local idx = sortOrder[i]; local s = PREVIEW_STATUS[idx]; return s == "Dead" or s == "Offline" end,
+        healerSlots = enabledSlots,
+        raidBuffKey = not isDisabled("RaidBuff") and "RaidBuff" or nil,
+        dispelSettings = dispelEnabled and {
+            thickness = self:GetSetting(1, "DispelThickness") or 2,
+            frequency = self:GetSetting(1, "DispelFrequency") or 0.25,
+            numLines = self:GetSetting(1, "DispelNumLines") or 8,
+            colors = {
+                Magic = self:GetSetting(1, "DispelColorMagic") or { r = 0.2, g = 0.6, b = 1.0, a = 1 },
+                Curse = self:GetSetting(1, "DispelColorCurse") or { r = 0.6, g = 0.0, b = 1.0, a = 1 },
+                Disease = self:GetSetting(1, "DispelColorDisease") or { r = 0.6, g = 0.4, b = 0.0, a = 1 },
+                Poison = self:GetSetting(1, "DispelColorPoison") or { r = 0.0, g = 0.6, b = 0.0, a = 1 },
+            },
+        } or nil,
+    })
 end
