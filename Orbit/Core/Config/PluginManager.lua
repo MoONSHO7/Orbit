@@ -24,19 +24,25 @@ local GROUP_HEADER_COLOR = { r = 1, g = 0.82, b = 0 }
 -- Entries: string = single plugin, table = { label, plugins = { ... } } compound toggle
 -- triState = true marks entries that support 3-state: off / on / hide-blizzard-too
 local PLUGIN_GROUPS = {
-    { header = "Unit Frames", names = {
-        "Player Frame", "Player Power", "Player Cast Bar", "Player Resources", "Pet Frame",
-        { label = "Target Frame", plugins = { "Target Frame", "Target Power", "Target Cast Bar", "Target Buffs", "Target Debuffs", "Target of Target" } },
-        { label = "Focus Frame",  plugins = { "Focus Frame", "Focus Power", "Focus Cast Bar", "Focus Buffs", "Focus Debuffs", "Target of Focus" }, triState = true },
-    }},
+    {
+        header = "Unit Frames",
+        names = {
+            "Player Frame", "Player Power", "Player Cast Bar", "Player Resources", "Pet Frame",
+            { label = "Target Frame", plugins = { "Target Frame", "Target Power", "Target Cast Bar", "Target Buffs", "Target Debuffs", "Target of Target" } },
+            { label = "Focus Frame",  plugins = { "Focus Frame", "Focus Power", "Focus Cast Bar", "Focus Buffs", "Focus Debuffs", "Target of Focus" },      triState = true },
+        }
+    },
     { header = "Group Frames", names = { "Party Frames", "Raid Frames", "Boss Frames" } },
     { header = "Combat",       names = { "Action Bars", "Cooldown Manager" } },
-    { header = "UI",           names = {
-        { label = "Menu Bar", plugins = { "Menu Bar" }, triState = true },
-        { label = "Bag Bar",  plugins = { "Bag Bar" },  triState = true },
-        "Queue Status", "Performance Info", "Combat Timer", "Minimap",
-        { label = "Talking Head", plugins = { "Talking Head" }, triState = true },
-    }},
+    {
+        header = "UI",
+        names = {
+            { label = "Menu Bar", plugins = { "Menu Bar" }, triState = true },
+            { label = "Bag Bar",  plugins = { "Bag Bar" },  triState = true },
+            "Queue Status", "Performance Info", "Combat Timer", "Minimap",
+            { label = "Talking Head", plugins = { "Talking Head" }, triState = true },
+        }
+    },
 }
 
 -- [ TRI-STATE VISUALS ]-----------------------------------------------------------------------------
@@ -115,9 +121,13 @@ local function CreatePluginPanel()
         for _, existing in ipairs(checkboxes) do
             if existing._allLiveToggle then -- skip: applied immediately
             elseif existing._isTriState then
-                if existing._initialTriState ~= existing._triState then pendingChanges = true; break end
+                if existing._initialTriState ~= existing._triState then
+                    pendingChanges = true; break
+                end
             else
-                if existing._initialState ~= existing:GetChecked() then pendingChanges = true; break end
+                if existing._initialState ~= existing:GetChecked() then
+                    pendingChanges = true; break
+                end
             end
         end
         UpdateReloadButton()
@@ -137,7 +147,9 @@ local function CreatePluginPanel()
         -- Verify at least one plugin exists
         local exists = false
         for _, name in ipairs(pluginNames) do
-            if pluginMap[name] then exists = true; break end
+            if pluginMap[name] then
+                exists = true; break
+            end
         end
         if not exists then return yOffset, col end
 
@@ -178,7 +190,9 @@ local function CreatePluginPanel()
             cb._initialTriState = nil
             local allEnabled = true
             for _, name in ipairs(pluginNames) do
-                if not Orbit:IsPluginEnabled(name) then allEnabled = false; break end
+                if not Orbit:IsPluginEnabled(name) then
+                    allEnabled = false; break
+                end
             end
             cb:SetChecked(allEnabled)
             cb:SetCheckedTexture(CHECK_TEXTURE)
@@ -190,7 +204,9 @@ local function CreatePluginPanel()
             -- Check if all plugins in this entry support live toggle
             local allLive = true
             for _, name in ipairs(pluginNames) do
-                if not Orbit:IsLiveToggle(name) then allLive = false; break end
+                if not Orbit:IsLiveToggle(name) then
+                    allLive = false; break
+                end
             end
             cb._allLiveToggle = allLive
             cb:SetScript("OnClick", function(self)
@@ -213,7 +229,9 @@ local function CreatePluginPanel()
         local hasConflict = false
         for _, name in ipairs(pluginNames) do
             local p = pluginMap[name]
-            if p and p.conflicted then hasConflict = true; break end
+            if p and p.conflicted then
+                hasConflict = true; break
+            end
         end
         if hasConflict then
             cb.text:SetText("|cFFFF4444" .. displayName .. "|r")
@@ -221,7 +239,8 @@ local function CreatePluginPanel()
                 cb:SetScript("OnEnter", function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                     GameTooltip:SetText(displayName, 1, 0.27, 0.27)
-                    GameTooltip:AddLine("Conflicting addon detected. Another addon is managing this element.", 0.8, 0.8, 0.8, true)
+                    GameTooltip:AddLine("Conflicting addon detected. Another addon is managing this element.", 0.8, 0.8,
+                        0.8, true)
                     GameTooltip:Show()
                 end)
                 cb:SetScript("OnLeave", GameTooltip_Hide)

@@ -266,7 +266,8 @@ function Plugin:PopulateCompartmentFlyout()
     end
 
     -- Size flyout to fit content
-    local rowWidth = COMPARTMENT_PADDING + COMPARTMENT_ICON_SIZE + COMPARTMENT_ICON_PADDING + maxTextWidth + COMPARTMENT_PADDING + 10
+    local rowWidth = COMPARTMENT_PADDING + COMPARTMENT_ICON_SIZE + COMPARTMENT_ICON_PADDING + maxTextWidth +
+    COMPARTMENT_PADDING + 10
     local width = math.min(math.max(rowWidth, 120), COMPARTMENT_MAX_WIDTH)
     local height = (#collected * COMPARTMENT_ROW_HEIGHT) + (COMPARTMENT_PADDING * 2)
     flyout:SetSize(width, height)
@@ -343,7 +344,8 @@ function Plugin:CollectAddonButtons()
                 local frameName = child:GetName()
                 local isBlizzard = false
                 if frameName then
-                    isBlizzard = BLIZZARD_MINIMAP_CHILDREN[frameName] or frameName:find("^Minimap") or frameName:find("^OrbitMinimap")
+                    isBlizzard = BLIZZARD_MINIMAP_CHILDREN[frameName] or frameName:find("^Minimap") or
+                    frameName:find("^OrbitMinimap")
                 end
                 if not isBlizzard and child:IsShown() then
                     local icon = nil

@@ -1435,8 +1435,6 @@ Orbit.Profile.defaults = {
                         ZoneText = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 4, justifyH = "CENTER" },
                         Clock = { anchorX = "LEFT", offsetX = 4, anchorY = "BOTTOM", offsetY = 4, justifyH = "LEFT" },
                         Compartment = { anchorX = "RIGHT", offsetX = 2, anchorY = "BOTTOM", offsetY = 2 },
-                        Calendar = { anchorX = "RIGHT", offsetX = 4, anchorY = "TOP", offsetY = 4 },
-                        Tracking = { anchorX = "LEFT", offsetX = 4, anchorY = "TOP", offsetY = 4 },
                         Coords = { anchorX = "RIGHT", offsetX = 4, anchorY = "BOTTOM", offsetY = 4, justifyH = "RIGHT" },
                     },
                     Position = {

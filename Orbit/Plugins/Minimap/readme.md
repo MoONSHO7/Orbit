@@ -26,11 +26,11 @@ all components below are individually positionable via canvas mode and can be di
 | component       | description                                                                                                              |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | **ZoneText**    | zone name font string. optional pvp zone colouring via canvas component settings toggle                                  |
-| **Clock**       | game or local time, updates every second, respects `timeMgrUseLocalTime` and `timeMgrUseMilitaryTime` cvars              |
+| **Clock**       | game/local time, updates every second. left-click opens time manager, right-click opens calendar. pending invite glow     |
 | **Coords**      | player map coordinates (x, y), updates every 0.1s. supports canvas font/size/color overrides                             |
-| **Calendar**    | clickable button showing today's date with `ui-hud-minimap-calendar` atlas; pending invite glow; opens calendar on click |
-| **Tracking**    | clickable button with `ui-hud-minimap-tracking-up` atlas; opens blizzard's native tracking context menu on click         |
 | **Compartment** | collects all LibDBIcon + legacy minimap buttons into a hover-reveal drawer with icon, name, click/tooltip handlers       |
+
+right-click on the minimap itself opens blizzard's native tracking context menu.
 
 canvas overrides (font, size, color) are supported for ZoneText, Clock, and Coords via the canvas component settings panel.
 

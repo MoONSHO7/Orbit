@@ -20,8 +20,6 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
             ZoneText = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 4, justifyH = "CENTER" },
             Clock = { anchorX = "LEFT", offsetX = 4, anchorY = "BOTTOM", offsetY = 4, justifyH = "LEFT" },
             Compartment = { anchorX = "RIGHT", offsetX = 2, anchorY = "BOTTOM", offsetY = 2 },
-            Calendar = { anchorX = "RIGHT", offsetX = 4, anchorY = "TOP", offsetY = 4 },
-            Tracking = { anchorX = "LEFT", offsetX = 4, anchorY = "TOP", offsetY = 4 },
             Coords = { anchorX = "RIGHT", offsetX = 4, anchorY = "BOTTOM", offsetY = 4, justifyH = "RIGHT" },
         },
     },
@@ -37,11 +35,6 @@ local DEFAULT_SIZE = 200
 local ZONE_TEXT_PADDING = 4
 local CLOCK_UPDATE_INTERVAL = 1
 local COORDS_UPDATE_INTERVAL = 0.1
-local CALENDAR_BUTTON_SIZE = 20
-local TRACKING_BUTTON_SIZE = 20
-local CALENDAR_DAY_TEXT_OFFSET_Y = -1
-local CALENDAR_TEXT_SIZE = 10
-local DAY_FORMAT = "%d"
 
 -- [ BLIZZARD FRAME REFERENCES ]---------------------------------------------------------------------
 
@@ -142,80 +135,48 @@ function Plugin:OnLoad()
     self.frame.ZoneText = self.frame.Overlay:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     self.frame.ZoneText:SetPoint("TOP", self.frame, "BOTTOM", 0, -ZONE_TEXT_PADDING)
 
-    -- [ Clock component ]
-    self.frame.Clock = self.frame.Overlay:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    -- [ Clock component ] — clickable: left = time manager, right = calendar
+    self.frame.Clock = CreateFrame("Button", "OrbitMinimapClock", self.frame.Overlay)
+    self.frame.Clock:SetSize(1, 1) -- sized dynamically from text width
     self.frame.Clock:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMLEFT", 4, 4)
-    self._lastCalendarDay = date(DAY_FORMAT)
+    self.frame.Clock:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+
+    self.frame.Clock.Text = self.frame.Clock:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    self.frame.Clock.Text:SetAllPoints()
+    self.frame.Clock.visual = self.frame.Clock.Text -- canvas override target
+
+    -- Pending calendar invites glow (attached to clock since calendar opens from here)
+    self.frame.Clock.InviteGlow = self.frame.Clock:CreateTexture(nil, "BACKGROUND")
+    self.frame.Clock.InviteGlow:SetAllPoints()
+    self.frame.Clock.InviteGlow:SetColorTexture(1, 0.82, 0, 0.35)
+    self.frame.Clock.InviteGlow:Hide()
+
+    self.frame.Clock:SetScript("OnClick", function(btn, button)
+        if button == "RightButton" then
+            ToggleCalendar()
+        else
+            TimeManager_Toggle()
+        end
+    end)
+    self.frame.Clock:SetScript("OnEnter", function(btn)
+        GameTooltip:SetOwner(btn, "ANCHOR_LEFT")
+        GameTooltip:SetText(TIMEMANAGER_TITLE or "Clock", 1, 1, 1)
+        GameTooltip:AddLine("Left-click: Time Manager", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine("Right-click: Calendar", 0.7, 0.7, 0.7)
+        local pending = C_Calendar.GetNumPendingInvites and C_Calendar.GetNumPendingInvites() or 0
+        if pending > 0 then
+            GameTooltip:AddLine(string.format("%d pending calendar invite(s)", pending), 1, 0.82, 0)
+        end
+        GameTooltip:Show()
+    end)
+    self.frame.Clock:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    Orbit.EventBus:On("CALENDAR_UPDATE_PENDING_INVITES", function() self:UpdateCalendarInvites() end, self)
 
     -- [ Coords component ]
     self.frame.Coords = self.frame.Overlay:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     self.frame.Coords:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -4, 4)
     self.frame.Coords:SetJustifyH("RIGHT")
-
-    -- [ Calendar component ]
-    self.frame.Calendar = CreateFrame("Button", "OrbitMinimapCalendar", self.frame.Overlay)
-    self.frame.Calendar:SetSize(CALENDAR_BUTTON_SIZE, CALENDAR_BUTTON_SIZE)
-    self.frame.Calendar:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -4, -4)
-    self.frame.Calendar.orbitOriginalWidth = CALENDAR_BUTTON_SIZE
-    self.frame.Calendar.orbitOriginalHeight = CALENDAR_BUTTON_SIZE
-
-    self.frame.Calendar.Icon = self.frame.Calendar:CreateTexture(nil, "ARTWORK")
-    self.frame.Calendar.Icon:SetAllPoints()
-    self.frame.Calendar.Icon:SetAtlas("ui-hud-minimap-calendar")
-
-    self.frame.Calendar.DayText = self.frame.Calendar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    self.frame.Calendar.DayText:SetPoint("CENTER", 0, CALENDAR_DAY_TEXT_OFFSET_Y)
-    self.frame.Calendar.DayText:SetText(date(DAY_FORMAT))
-
-    -- Pending invites glow
-    self.frame.Calendar.InviteGlow = self.frame.Calendar:CreateTexture(nil, "OVERLAY", nil, 1)
-    self.frame.Calendar.InviteGlow:SetAllPoints()
-    self.frame.Calendar.InviteGlow:SetColorTexture(1, 0.82, 0, 0.4)
-    self.frame.Calendar.InviteGlow:Hide()
-
-    self.frame.Calendar:SetScript("OnClick", function() ToggleCalendar() end)
-    self.frame.Calendar:SetScript("OnEnter", function(btn)
-        GameTooltip:SetOwner(btn, "ANCHOR_LEFT")
-        GameTooltip:SetText(GAMETIME_TOOLTIP_TOGGLE_CALENDAR or "Calendar", 1, 1, 1)
-        local pending = C_Calendar.GetNumPendingInvites and C_Calendar.GetNumPendingInvites() or 0
-        if pending > 0 then
-            GameTooltip:AddLine(string.format(CALENDAR_PENDING_INVITES_TOOLTIP or "%d pending invites", pending), 1, 0.82, 0)
-        end
-        GameTooltip:Show()
-    end)
-    self.frame.Calendar:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-    Orbit.EventBus:On("CALENDAR_UPDATE_PENDING_INVITES", function() self:UpdateCalendarInvites() end, self)
-
-    -- [ Tracking component ]
-    self.frame.Tracking = CreateFrame("Button", "OrbitMinimapTracking", self.frame.Overlay)
-    self.frame.Tracking:SetSize(TRACKING_BUTTON_SIZE, TRACKING_BUTTON_SIZE)
-    self.frame.Tracking:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 4, -4)
-    self.frame.Tracking.orbitOriginalWidth = TRACKING_BUTTON_SIZE
-    self.frame.Tracking.orbitOriginalHeight = TRACKING_BUTTON_SIZE
-
-    self.frame.Tracking.Icon = self.frame.Tracking:CreateTexture(nil, "ARTWORK")
-    self.frame.Tracking.Icon:SetAllPoints()
-    self.frame.Tracking.Icon:SetAtlas("ui-hud-minimap-tracking-up")
-
-    self.frame.Tracking:SetScript("OnClick", function(btn)
-        -- Reuse the native Blizzard tracking menu generator but anchor it to our visible button
-        local nativeButton = MinimapCluster and MinimapCluster.Tracking and MinimapCluster.Tracking.Button
-        if nativeButton and nativeButton.menuGenerator then
-            MenuUtil.CreateContextMenu(btn, nativeButton.menuGenerator)
-        end
-    end)
-    self.frame.Tracking:SetScript("OnEnter", function(btn)
-        btn.Icon:SetAtlas("ui-hud-minimap-tracking-mouseover")
-        GameTooltip:SetOwner(btn, "ANCHOR_LEFT")
-        GameTooltip:SetText(TRACKING or "Tracking", 1, 1, 1)
-        GameTooltip:AddLine(MINIMAP_TRACKING_TOOLTIP_NONE or "Click to set tracking", nil, nil, nil, true)
-        GameTooltip:Show()
-    end)
-    self.frame.Tracking:SetScript("OnLeave", function(btn)
-        btn.Icon:SetAtlas("ui-hud-minimap-tracking-up")
-        GameTooltip:Hide()
-    end)
 
     -- [ Compartment component ]
     self:CreateCompartmentButton()
@@ -224,8 +185,6 @@ function Plugin:OnLoad()
     local MPC = function(key) return OrbitEngine.ComponentDrag:MakePositionCallback(self, SYSTEM_ID, key) end
     OrbitEngine.ComponentDrag:Attach(self.frame.ZoneText, self.frame, { key = "ZoneText", onPositionChange = MPC("ZoneText") })
     OrbitEngine.ComponentDrag:Attach(self.frame.Clock, self.frame, { key = "Clock", onPositionChange = MPC("Clock") })
-    OrbitEngine.ComponentDrag:Attach(self.frame.Calendar, self.frame, { key = "Calendar", onPositionChange = MPC("Calendar") })
-    OrbitEngine.ComponentDrag:Attach(self.frame.Tracking, self.frame, { key = "Tracking", onPositionChange = MPC("Tracking") })
     OrbitEngine.ComponentDrag:Attach(self.frame.Coords, self.frame, { key = "Coords", onPositionChange = MPC("Coords") })
     OrbitEngine.ComponentDrag:Attach(self._compartmentButton, self.frame, { key = "Compartment", onPositionChange = MPC("Compartment") })
 
@@ -259,18 +218,14 @@ function Plugin:UpdateClock()
     if not self.frame or not self.frame.Clock then
         return
     end
+    local text = self.frame.Clock.Text
     if GetCVarBool("timeMgrUseLocalTime") then
-        self.frame.Clock:SetText(GameTime_GetLocalTime(GetCVarBool("timeMgrUseMilitaryTime")))
+        text:SetText(GameTime_GetLocalTime(GetCVarBool("timeMgrUseMilitaryTime")))
     else
-        self.frame.Clock:SetText(GameTime_GetGameTime(GetCVarBool("timeMgrUseMilitaryTime")))
+        text:SetText(GameTime_GetGameTime(GetCVarBool("timeMgrUseMilitaryTime")))
     end
-
-    -- Refresh calendar day text at midnight
-    local today = date(DAY_FORMAT)
-    if self._lastCalendarDay ~= today then
-        self._lastCalendarDay = today
-        self.frame.Calendar.DayText:SetText(today)
-    end
+    -- Resize button to match text extents so tooltip/click area is accurate
+    self.frame.Clock:SetSize(text:GetStringWidth() + 2, text:GetStringHeight() + 2)
 end
 
 function Plugin:StartClockTicker()
@@ -373,6 +328,19 @@ function Plugin:CaptureBlizzardMinimap()
         minimap._orbitSetPointHooked = true
     end
 
+    -- Right-click on the minimap opens the tracking menu
+    if not minimap._orbitRightClickHooked then
+        minimap:SetScript("OnMouseUp", function(f, button)
+            if button == "RightButton" then
+                local nativeButton = MinimapCluster and MinimapCluster.Tracking and MinimapCluster.Tracking.Button
+                if nativeButton and nativeButton.menuGenerator then
+                    MenuUtil.CreateContextMenu(f, nativeButton.menuGenerator)
+                end
+            end
+        end)
+        minimap._orbitRightClickHooked = true
+    end
+
     self._captured = true
 end
 
@@ -435,11 +403,11 @@ function Plugin:ApplySettings()
     if not self:IsComponentDisabled("Clock") then
         frame.Clock:Show()
         local clockOverrides = (savedPositions.Clock or {}).overrides or {}
-        Orbit.Skin:SkinText(frame.Clock, {
+        Orbit.Skin:SkinText(frame.Clock.Text, {
             font = Orbit.db.GlobalSettings.Font,
             textSize = (zoneTextSize - 1) * textMultiplier,
         })
-        OrbitEngine.OverrideUtils.ApplyOverrides(frame.Clock, clockOverrides, {
+        OrbitEngine.OverrideUtils.ApplyOverrides(frame.Clock.Text, clockOverrides, {
             fontSize = (zoneTextSize - 1) * textMultiplier,
             fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font),
         })
@@ -448,25 +416,6 @@ function Plugin:ApplySettings()
     else
         self:StopClockTicker()
         frame.Clock:Hide()
-    end
-
-    -- Calendar (disabled via Canvas Mode dock)
-    if not self:IsComponentDisabled("Calendar") then
-        frame.Calendar:Show()
-        frame.Calendar.DayText:SetText(date(DAY_FORMAT))
-        Orbit.Skin:SkinText(frame.Calendar.DayText, {
-            font = Orbit.db.GlobalSettings.Font,
-            textSize = CALENDAR_TEXT_SIZE * textMultiplier,
-        })
-    else
-        frame.Calendar:Hide()
-    end
-
-    -- Tracking (disabled via Canvas Mode dock)
-    if not self:IsComponentDisabled("Tracking") then
-        frame.Tracking:Show()
-    else
-        frame.Tracking:Hide()
     end
 
     -- Coords (disabled via Canvas Mode dock)
@@ -523,10 +472,10 @@ end
 -- [ CALENDAR PENDING INVITES ]----------------------------------------------------------------------
 
 function Plugin:UpdateCalendarInvites()
-    if not self.frame or not self.frame.Calendar then
+    if not self.frame or not self.frame.Clock then
         return
     end
-    local glow = self.frame.Calendar.InviteGlow
+    local glow = self.frame.Clock.InviteGlow
     if not glow then
         return
     end

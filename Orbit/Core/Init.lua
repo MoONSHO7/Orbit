@@ -64,8 +64,11 @@ function ErrorHandler:LogError(source, method, err)
     local index = (Orbit.db.ErrorLogIndex % MAX_ERRORS) + 1
     Orbit.db.ErrorLogIndex = index
     Orbit.db.ErrorLog[index] = {
-        time = time(), date = date("%Y-%m-%d %H:%M:%S"),
-        source = tostring(source), method = tostring(method), error = tostring(err),
+        time = time(),
+        date = date("%Y-%m-%d %H:%M:%S"),
+        source = tostring(source),
+        method = tostring(method),
+        error = tostring(err),
     }
 end
 
@@ -84,10 +87,15 @@ function Orbit.Visibility:ApplyState(frame, visibilityMode)
         frame.orbitLastVisibilityDriver = nil
     else
         local vis = visibilityMode or 0
-        if vis == 3 then driver = "hide"
-        elseif vis == 1 then driver = "[combat] show; hide"
-        elseif vis == 2 then driver = "[combat] hide; show"
-        else driver = "show" end
+        if vis == 3 then
+            driver = "hide"
+        elseif vis == 1 then
+            driver = "[combat] show; hide"
+        elseif vis == 2 then
+            driver = "[combat] hide; show"
+        else
+            driver = "show"
+        end
     end
 
     if frame.orbitLastVisibilityDriver == driver then
@@ -96,7 +104,8 @@ function Orbit.Visibility:ApplyState(frame, visibilityMode)
     end
     frame.orbitLastVisibilityDriver = driver
 
-    if driver then RegisterStateDriver(frame, "visibility", driver)
+    if driver then
+        RegisterStateDriver(frame, "visibility", driver)
     else
         UnregisterStateDriver(frame, "visibility")
         frame:Show()
@@ -173,7 +182,8 @@ function Orbit:OnLoad()
     self.db.GlobalSettings = self.db.GlobalSettings or {}
     for k, v in pairs(GLOBAL_DEFAULTS) do
         if self.db.GlobalSettings[k] == nil then
-            self.db.GlobalSettings[k] = type(v) == "table" and Orbit.Profile and Orbit.Profile.CopyTable and Orbit.Profile.CopyTable(v, {}) or v
+            self.db.GlobalSettings[k] = type(v) == "table" and Orbit.Profile and Orbit.Profile.CopyTable and
+            Orbit.Profile.CopyTable(v, {}) or v
         end
     end
 
@@ -188,8 +198,11 @@ function Orbit:OnLoad()
         self.EventBus:On("ORBIT_DISPLAY_SIZE_CHANGED", function()
             if self.Engine and self.Engine.systems then
                 for _, plugin in ipairs(self.Engine.systems) do
-                    if plugin.ApplyAll then plugin:ApplyAll()
-                    elseif plugin.ApplySettings then plugin:ApplySettings() end
+                    if plugin.ApplyAll then
+                        plugin:ApplyAll()
+                    elseif plugin.ApplySettings then
+                        plugin:ApplySettings()
+                    end
                 end
             end
         end)
@@ -248,7 +261,9 @@ function Orbit:LiveTogglePlugin(name, enabled)
             if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame) end
             plugin.frame:Hide()
         end
-        if plugin.timer then plugin.timer:Cancel(); plugin.timer = nil end
+        if plugin.timer then
+            plugin.timer:Cancel(); plugin.timer = nil
+        end
         Orbit.EventBus:OffContext(plugin)
         plugin._initialized = false
     end
