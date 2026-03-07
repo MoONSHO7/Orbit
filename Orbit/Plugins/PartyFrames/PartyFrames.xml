@@ -1,0 +1,7 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="PartyFrameHelpers.lua"/>
+    <Script file="PartyFramePreview.lua"/>
+    <Script file="FrameFactory.lua"/>
+    <Script file="PartyFrameSettings.lua"/>
+    <Script file="PartyFrame.lua"/>
+</Ui>

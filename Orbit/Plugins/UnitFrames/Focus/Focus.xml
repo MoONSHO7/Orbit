@@ -1,0 +1,8 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="FocusFrame.lua"/>
+    <Script file="FocusCastBar.lua"/>
+    <Script file="FocusPower.lua"/>
+    <Script file="FocusBuffs.lua"/>
+    <Script file="FocusDebuffs.lua"/>
+    <Script file="TargetOfFocusFrame.lua"/>
+</Ui>

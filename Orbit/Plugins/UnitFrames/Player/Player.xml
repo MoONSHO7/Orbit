@@ -1,0 +1,12 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="PlayerPower.lua"/>
+    <Script file="PlayerCastBar.lua"/>
+    <Script file="ContinuousBarRenderer.lua"/>
+    <Script file="DiscreteBarRenderer.lua"/>
+    <Script file="PlayerResources.lua"/>
+    <Script file="PlayerResourceSettings.lua"/>
+    <Script file="PlayerFrame.lua"/>
+    <Script file="PlayerPetFrame.lua"/>
+    <Script file="PlayerBuffs.lua"/>
+    <Script file="PlayerDebuffs.lua"/>
+</Ui>

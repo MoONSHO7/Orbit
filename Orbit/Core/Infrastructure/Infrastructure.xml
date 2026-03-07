@@ -1,0 +1,10 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="HealerAuraRegistry.lua"/>
+    <Script file="EventBus.lua"/>
+    <Script file="Async.lua"/>
+    <Script file="Pixel.lua"/>
+    <Script file="TickMixin.lua"/>
+    <Script file="KeybindSystem.lua"/>
+    <Script file="CombatManager.lua"/>
+    <Script file="Animation.lua"/>
+</Ui>

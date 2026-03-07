@@ -1,0 +1,7 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="RaidFrameHelpers.lua"/>
+    <Script file="RaidFramePreview.lua"/>
+    <Script file="RaidFrameFactory.lua"/>
+    <Script file="RaidFrameSettings.lua"/>
+    <Script file="RaidFrame.lua"/>
+</Ui>

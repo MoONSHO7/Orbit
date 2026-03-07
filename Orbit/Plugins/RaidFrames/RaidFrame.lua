@@ -262,10 +262,10 @@ end
 
 local function HideNativeRaidFrames()
     if CompactRaidFrameContainer then
-        OrbitEngine.NativeFrame:Hide(CompactRaidFrameContainer)
+        OrbitEngine.NativeFrame:SecureHide(CompactRaidFrameContainer)
     end
     if CompactRaidFrameManager then
-        OrbitEngine.NativeFrame:Hide(CompactRaidFrameManager)
+        OrbitEngine.NativeFrame:SecureHide(CompactRaidFrameManager)
     end
 end
 

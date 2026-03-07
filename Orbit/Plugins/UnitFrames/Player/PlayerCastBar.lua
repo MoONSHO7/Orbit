@@ -54,6 +54,19 @@ local function SampleColorCurve(curveData, position)
     return OrbitEngine.ColorCurve:SampleColorCurve(curveData, position)
 end
 
+-- Alpha-only visibility: secure frame may be anchored to cast bar, making Show/Hide protected
+-- orbitBar has SetIgnoreParentAlpha(true), so we must set its alpha directly
+local function ShowBar(bar)
+    bar:SetAlpha(1)
+    if bar.orbitBar then bar.orbitBar:SetAlpha(1) end
+    if bar.Icon then bar.Icon:SetAlpha(1) end
+end
+local function HideBar(bar)
+    bar:SetAlpha(0)
+    if bar.orbitBar then bar.orbitBar:SetAlpha(0) end
+    if bar.Icon then bar.Icon:SetAlpha(0) end
+end
+
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
@@ -119,6 +132,8 @@ function Plugin:OnLoad()
     CastBar:SetStatusBarTexture("")
     CastBar:SetMinMaxValues(0, 1)
     CastBar:SetValue(0)
+    CastBar:Show()
+    CastBar:SetAlpha(0)
 
     -- Edit Mode metadata
     CastBar.systemIndex = 1
@@ -202,7 +217,7 @@ function Plugin:OnLoad()
         EventRegistry:RegisterCallback("EditMode.Exit", function()
             CastBar.preview = false
             if not CastBar.casting and not CastBar.channeling and not CastBar.empowering then
-                CastBar:Hide()
+                HideBar(CastBar)
             end
             self:ApplySettings()
         end, self)
@@ -218,7 +233,7 @@ function Plugin:OnLoad()
             self:ApplySettings()
             -- Hide bar until needed (not in Edit Mode, not in combat)
             if not Orbit:IsEditMode() and not InCombatLockdown() and not CastBar.casting and not CastBar.channeling and not CastBar.empowering then
-                CastBar:Hide()
+                HideBar(CastBar)
             end
         end, 0.5)
     end, self)
@@ -277,7 +292,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
                 bar.Latency:Show()
             end
 
-            bar:Show()
+            ShowBar(bar)
         end
     elseif event == "UNIT_SPELLCAST_CHANNEL_START" then
         local name, text, texture, startTime, endTime, isTradeSkill, notInterruptible = UnitChannelInfo("player")
@@ -317,7 +332,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
                 bar.Latency:Show()
             end
 
-            bar:Show()
+            ShowBar(bar)
         end
     elseif event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_CHANNEL_STOP" then
         bar.casting = false
@@ -325,7 +340,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
         if bar.Latency then
             bar.Latency:Hide()
         end
-        bar:Hide()
+        HideBar(bar)
     elseif event == "UNIT_SPELLCAST_FAILED" then
         if bar.castGUID == castGUID then
             bar.casting = false
@@ -340,7 +355,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             C_Timer.After(INTERRUPT_FLASH_DURATION, function()
                 -- Only hide if no new cast has started
                 if bar.castTimestamp == failTimestamp and not bar.casting and not bar.channeling then
-                    bar:Hide()
+                    HideBar(bar)
                 end
             end)
         end
@@ -368,7 +383,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
         C_Timer.After(INTERRUPT_FLASH_DURATION, function()
             -- Only hide/restore if no new cast has started
             if bar.castTimestamp == interruptTimestamp and not bar.casting and not bar.channeling then
-                bar:Hide()
+                HideBar(bar)
                 self:ApplyColor() -- Restore color
             end
         end)
@@ -443,7 +458,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
                 bar.Latency:Hide()
             end
 
-            bar:Show()
+            ShowBar(bar)
         end
     elseif event == "UNIT_SPELLCAST_EMPOWER_UPDATE" then
         local name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellID, _, numStages = UnitChannelInfo("player")
@@ -464,14 +479,14 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
         if bar.Latency then
             bar.Latency:Hide()
         end
-        bar:Hide()
+        HideBar(bar)
         self:ApplyColor() -- Restore normal color
     end
 end
 
 function Plugin:OnUpdate(elapsed)
     local bar = self.CastBar
-    if not bar or not bar:IsShown() or bar.preview then
+    if not bar or bar.preview or not (bar.casting or bar.channeling or bar.empowering) then
         return
     end
 
@@ -481,7 +496,7 @@ function Plugin:OnUpdate(elapsed)
         local value = GetTime() - bar.startTime
         if value >= bar.maxValue + CAST_COMPLETION_GRACE then
             bar.casting = false
-            bar:Hide()
+            HideBar(bar)
             return
         else
             targetBar:SetValue(value)
@@ -505,7 +520,7 @@ function Plugin:OnUpdate(elapsed)
         local value = bar.endTime - GetTime()
         if value <= -CAST_COMPLETION_GRACE then
             bar.channeling = false
-            bar:Hide()
+            HideBar(bar)
             return
         else
             targetBar:SetValue(value)
@@ -681,7 +696,7 @@ function Plugin:ShowPreview()
     if bar.Timer then
         bar.Timer:SetText("1.5")
     end
-    bar:Show()
+    ShowBar(bar)
 end
 
 function Plugin:SetupEmpowerMarkers(bar, numStages)

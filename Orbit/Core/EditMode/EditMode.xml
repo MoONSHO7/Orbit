@@ -1,0 +1,7 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="NativeFrame.lua"/>
+    <Script file="EditMode.lua"/>
+    <Include file="Frame\EditFrame.xml"/>
+    <Script file="PositionManager.lua"/>
+    <Script file="MountedVisibility.lua"/>
+</Ui>

@@ -389,10 +389,10 @@ local function HideNativePartyFrames()
         end
     end
     if PartyFrame then
-        OrbitEngine.NativeFrame:Hide(PartyFrame)
+        OrbitEngine.NativeFrame:SecureHide(PartyFrame)
     end
     if CompactPartyFrame then
-        OrbitEngine.NativeFrame:Hide(CompactPartyFrame)
+        OrbitEngine.NativeFrame:SecureHide(CompactPartyFrame)
     end
 end
 

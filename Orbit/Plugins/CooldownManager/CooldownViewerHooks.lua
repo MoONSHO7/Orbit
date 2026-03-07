@@ -116,6 +116,8 @@ function CDM:EnforceViewerParentage(viewer, anchor)
 end
 
 -- [ EVENT-DRIVEN MONITOR ]--------------------------------------------------------------------------
+local PANDEMIC_TICK = 0.1
+
 function CDM:MonitorViewers()
     if self._monitorEventSetup then return end
     self._monitorEventSetup = true
@@ -123,9 +125,28 @@ function CDM:MonitorViewers()
     local inCombat = false
 
     local function CheckAll()
-        for systemIndex, entry in pairs(VIEWER_MAP) do
+        for _, entry in pairs(VIEWER_MAP) do
             plugin:CheckViewer(entry.viewer, entry.anchor)
-            if inCombat and LibCustomGlow then plugin:CheckPandemicFrames(entry.viewer, systemIndex) end
+        end
+    end
+
+    local function StartPandemicTicker()
+        if plugin._pandemicTicker or not LibCustomGlow then return end
+        plugin._pandemicTicker = C_Timer.NewTicker(PANDEMIC_TICK, function()
+            for systemIndex, entry in pairs(VIEWER_MAP) do
+                if entry.viewer then plugin:CheckPandemicFrames(entry.viewer, systemIndex) end
+            end
+        end)
+    end
+
+    local function StopPandemicTicker()
+        if not plugin._pandemicTicker then return end
+        plugin._pandemicTicker:Cancel()
+        plugin._pandemicTicker = nil
+        if LibCustomGlow then
+            for systemIndex, entry in pairs(VIEWER_MAP) do
+                if entry.viewer then plugin:CheckPandemicFrames(entry.viewer, systemIndex) end
+            end
         end
     end
 
@@ -139,6 +160,7 @@ function CDM:MonitorViewers()
             return
         end
         inCombat = (event == "PLAYER_REGEN_DISABLED")
+        if inCombat then StartPandemicTicker() else StopPandemicTicker() end
         CheckAll()
     end)
     self._monitorEventFrame = frame

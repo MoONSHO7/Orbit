@@ -1,0 +1,8 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="TargetFrame.lua"/>
+    <Script file="TargetCastBar.lua"/>
+    <Script file="TargetPower.lua"/>
+    <Script file="TargetBuffs.lua"/>
+    <Script file="TargetDebuffs.lua"/>
+    <Script file="TargetOfTargetFrame.lua"/>
+</Ui>

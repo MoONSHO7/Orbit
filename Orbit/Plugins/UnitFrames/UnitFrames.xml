@@ -1,0 +1,5 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Include file="Player\Player.xml"/>
+    <Include file="Target\Target.xml"/>
+    <Include file="Focus\Focus.xml"/>
+</Ui>

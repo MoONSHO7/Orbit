@@ -550,6 +550,7 @@ end
 
 
 function Mixin:ShowPreviewAuras()
+    if InCombatLockdown() then return end
     local Frame = self._agFrame
     local cfg = self._agConfig
     local maxAuras, iconsPerRow, spacing, iconH, iconW = self:_resolveGrid()

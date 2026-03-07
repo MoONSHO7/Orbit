@@ -1,0 +1,12 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="ConfigLayout.lua"/>
+    <Script file="SchemaBuilder.lua"/>
+    <Include file="Widgets\Widgets.xml"/>
+    <Script file="ConfigRenderer.lua"/>
+    <Script file="OrbitSettingsDialog.lua"/>
+    <Script file="OrbitOptionsPanel.lua"/>
+    <Script file="WhatsNew.lua"/>
+    <Script file="OrbitOptionsButton.lua"/>
+    <Script file="MinimapButton.lua"/>
+    <Script file="PluginManager.lua"/>
+</Ui>
