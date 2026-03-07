@@ -59,19 +59,30 @@ local function CreateCollapseArrow(frame, plugin)
     btn.tex:SetPoint("CENTER")
     btn.tex:SetAtlas(ARROW_ATLAS)
     btn.tex:SetAlpha(0.7)
-    btn:SetScript("OnClick", function()
+    btn:SetScript("OnClick", function(self)
         local collapsed = not plugin:GetSetting(1, "Collapsed")
         plugin:SetSetting(1, "Collapsed", collapsed)
         plugin:UpdateAuras()
+        if GameTooltip:IsOwned(self) then GameTooltip:SetText(self.tooltipText or "") end
     end)
-    btn:SetScript("OnEnter", function(self) self.tex:SetAlpha(1) end)
-    btn:SetScript("OnLeave", function(self) self.tex:SetAlpha(0.6) end)
+    btn:SetScript("OnEnter", function(self)
+        self.tex:SetAlpha(1)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(self.tooltipText or "")
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", function(self)
+        self.tex:SetAlpha(0.6)
+        GameTooltip:Hide()
+    end)
+    btn.tooltipText = plugin:GetSetting(1, "Collapsed") and "My Buffs" or "All Buffs"
     btn:Show()
     return btn
 end
 
 local function UpdateCollapseArrow(btn, collapsed, iconH, growthY)
     btn.tex:SetRotation(collapsed and math.rad(180) or 0)
+    btn.tooltipText = collapsed and "My Buffs" or "All Buffs"
     btn:ClearAllPoints()
     if growthY == "UP" then
         btn:SetPoint("LEFT", btn:GetParent(), "BOTTOMRIGHT", 4, iconH / 2)
@@ -463,7 +474,7 @@ function Mixin:UpdateAuras()
         UpdateCollapseArrow(Frame.collapseArrow, collapsed, iconH, growthY)
     end
 
-    local auraFilter = collapsed and (cfg.auraFilter .. "|PLAYER") or cfg.auraFilter
+    local auraFilter = collapsed and (cfg.auraFilter .. "|PLAYER|CANCELABLE") or cfg.auraFilter
     local auras = self:FetchAuras(cfg.unit, auraFilter, maxAuras)
     if #auras == 0 then
         if collapsed then Frame:SetSize(iconW, iconH) end
