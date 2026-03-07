@@ -36,6 +36,7 @@ Mixin.ICON_PREVIEW_ATLASES = {
     CrowdControlIcon = "UI-LFG-PendingMark-Raid",
     PrivateAuraAnchor = "UI-LFG-PendingMark-Raid",
     Portrait = "adventureguide-campfire",
+    PvpIcon = "UI-HUD-UnitFrame-Player-PVP-AllianceIcon",
 }
 Mixin.MARKER_ICON_TEXCOORD = { 0.75, 1, 0.25, 0.5 }
 
@@ -294,6 +295,29 @@ function Mixin:UpdateCombatIcon(frame, plugin)
         frame.CombatIcon:Show()
     else
         frame.CombatIcon:Hide()
+    end
+end
+
+-- PVP ICON
+
+local PVP_FACTION_ATLASES = {
+    Alliance = "UI-HUD-UnitFrame-Player-PVP-AllianceIcon",
+    Horde = "UI-HUD-UnitFrame-Player-PVP-HordeIcon",
+}
+
+function Mixin:UpdatePvpIcon(frame, plugin)
+    local unit = GuardedUpdate(frame, plugin, "PvpIcon")
+    if not unit then return end
+    if UnitIsPVP(unit) then
+        local faction = UnitFactionGroup(unit)
+        frame.PvpIcon:SetAtlas(PVP_FACTION_ATLASES[faction] or PVP_FACTION_ATLASES.Alliance)
+        frame.PvpIcon:Show()
+    elseif Orbit:IsEditMode() then
+        local faction = UnitFactionGroup("player")
+        frame.PvpIcon:SetAtlas(PVP_FACTION_ATLASES[faction] or PVP_FACTION_ATLASES.Alliance)
+        frame.PvpIcon:Show()
+    else
+        frame.PvpIcon:Hide()
     end
 end
 

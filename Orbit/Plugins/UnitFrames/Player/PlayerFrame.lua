@@ -21,6 +21,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         HealthTextEnabled = true,
         ShowLevel = true,
         ShowCombatIcon = true,
+        ShowPvpIcon = false,
         ShowRoleIcon = false,
         ShowLeaderIcon = false,
         ShowMarkerIcon = false,
@@ -45,6 +46,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
             RestingIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 5, overrides = { Scale = 0.5 } },
             ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
             Portrait = { anchorX = "LEFT", offsetX = 4, anchorY = "CENTER", offsetY = 0 },
+            PvpIcon = { anchorX = "RIGHT", offsetX = 10, anchorY = "BOTTOM", offsetY = 0 },
         },
     },
 })
@@ -241,6 +243,17 @@ function Plugin:OnLoad()
         self.frame.ReadyCheckIcon:Hide()
     end
 
+    -- Create PvpIcon
+    if not self.frame.PvpIcon then
+        self.frame.PvpIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
+        self.frame.PvpIcon:SetSize(iconSize, iconSize)
+        self.frame.PvpIcon.orbitOriginalWidth = iconSize
+        self.frame.PvpIcon.orbitOriginalHeight = iconSize
+        self.frame.PvpIcon:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -2, 2)
+        self.frame.PvpIcon:SetAtlas(previewAtlases.PvpIcon)
+        self.frame.PvpIcon:Hide()
+    end
+
     -- Create RestingIcon (animated FlipBook)
     if not self.frame.RestingIcon then
         local restingIconSize = 30
@@ -302,6 +315,7 @@ function Plugin:OnLoad()
     OrbitEngine.ComponentDrag:Attach(self.frame.GroupPositionText, self.frame, { key = "GroupPositionText", onPositionChange = MPC("GroupPositionText") })
     OrbitEngine.ComponentDrag:Attach(self.frame.ReadyCheckIcon, self.frame, { key = "ReadyCheckIcon", onPositionChange = MPC("ReadyCheckIcon") })
     OrbitEngine.ComponentDrag:Attach(self.frame.RestingIcon, self.frame, { key = "RestingIcon", onPositionChange = MPC("RestingIcon") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.PvpIcon, self.frame, { key = "PvpIcon", onPositionChange = MPC("PvpIcon") })
     OrbitEngine.ComponentDrag:Attach(self.frame.Portrait, self.frame, { key = "Portrait", onPositionChange = MPC("Portrait") })
 
     -- Register combat events for CombatIcon
@@ -313,6 +327,7 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
     self.frame:RegisterEvent("GROUP_ROSTER_UPDATE")
     self.frame:RegisterEvent("PLAYER_UPDATE_RESTING")
+    self.frame:RegisterEvent("PLAYER_FLAGS_CHANGED")
     self.frame:RegisterEvent("PARTY_LEADER_CHANGED")
     self.frame:RegisterEvent("RAID_TARGET_UPDATE")
 
@@ -366,6 +381,9 @@ function Plugin:OnLoad()
             return
         elseif event == "PLAYER_UPDATE_RESTING" then
             self:UpdateRestingIcon(f)
+            return
+        elseif event == "PLAYER_FLAGS_CHANGED" then
+            self:UpdatePvpIcon(f, self)
             return
         elseif event == "UNIT_PORTRAIT_UPDATE" or event == "PORTRAITS_UPDATED" then
             f:UpdatePortrait()
@@ -432,6 +450,7 @@ function Plugin:ApplySettings(frame)
     self:UpdateMarkerIcon(frame, self)
     self:UpdateGroupPosition(frame, self)
     self:UpdateReadyCheck(frame, self)
+    self:UpdatePvpIcon(frame, self)
     self:UpdateRestingIcon(frame)
     frame:UpdatePortrait()
 
@@ -452,6 +471,7 @@ function Plugin:UpdateVisuals(frame)
         self:UpdateLeaderIcon(frame, self)
         self:UpdateMarkerIcon(frame, self)
         self:UpdateGroupPosition(frame, self)
+        self:UpdatePvpIcon(frame, self)
     end
 end
 
