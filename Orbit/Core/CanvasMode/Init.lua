@@ -17,13 +17,18 @@ local CanvasMode = OrbitEngine.CanvasMode
 CanvasMode.Constants = {
     -- Dialog dimensions
     DIALOG_WIDTH = 600,
+    DIALOG_MIN_WIDTH = 600,
+    DIALOG_MAX_WIDTH = 1000,
     DIALOG_MIN_HEIGHT = 200,
     DIALOG_INSET = 12,
+    RESIZE_HANDLE_SIZE = 35,
+    THREE_COL_THRESHOLD = 800,
 
     -- Row heights (stacked top-to-bottom)
     TITLE_ROW_HEIGHT = 40,
     PANELS_ROW_HEIGHT = 28,
     VIEWPORT_HEIGHT = 265,
+    VIEWPORT_MAX_HEIGHT = 530,
     OVERRIDE_SECTION_PADDING = 8,
 
     -- Viewport
@@ -61,6 +66,8 @@ Dialog:SetPoint("CENTER", UIParent, "CENTER", 0, 50)
 Dialog:SetFrameStrata("FULLSCREEN_DIALOG")
 Dialog:SetFrameLevel(100)
 Dialog:SetMovable(true)
+Dialog:SetResizable(true)
+Dialog:SetResizeBounds(C.DIALOG_MIN_WIDTH, C.DIALOG_MIN_HEIGHT, C.DIALOG_MAX_WIDTH, nil)
 Dialog:SetClampedToScreen(true)
 Dialog:EnableMouse(true)
 Dialog:RegisterForDrag("LeftButton")
@@ -93,6 +100,36 @@ Dialog:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
 end)
 
+-- [ RESIZE HANDLE ]--------------------------------------------------------------------------
+Dialog.ResizeHandle = CreateFrame("Button", nil, Dialog)
+Dialog.ResizeHandle:SetSize(C.RESIZE_HANDLE_SIZE, C.RESIZE_HANDLE_SIZE)
+Dialog.ResizeHandle:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", 5, -4)
+Dialog.ResizeHandle:SetFrameStrata("TOOLTIP")
+Dialog.ResizeHandle:SetNormalAtlas("damagemeters-scalehandle")
+Dialog.ResizeHandle:SetHighlightAtlas("damagemeters-scalehandle-hover")
+Dialog.ResizeHandle:SetPushedAtlas("damagemeters-scalehandle-pressed")
+Dialog.ResizeHandle:RegisterForDrag("LeftButton")
+Dialog.ResizeHandle:SetScript("OnDragStart", function() Dialog:StartSizing("BOTTOMRIGHT") end)
+Dialog.ResizeHandle:SetScript("OnDragStop", function() Dialog:StopMovingOrSizing() end)
+
+Dialog:SetScript("OnSizeChanged", function(self, w, h)
+    if not self:IsShown() or self._inSizeChanged then return end
+    self._inSizeChanged = true
+    -- Reverse-compute viewport height from total dialog height
+    if self.GetChromeHeight then
+        local chromeH = self:GetChromeHeight()
+        local newVpH = math.max(C.VIEWPORT_HEIGHT, math.min(C.VIEWPORT_MAX_HEIGHT, h - chromeH))
+        self.viewportHeight = newVpH
+        self.PreviewContainer:SetHeight(newVpH)
+    end
+    if self.LayoutFooterButtons then self:LayoutFooterButtons() end
+    if self.RecalculateHeight then self:RecalculateHeight() end
+    if Orbit.CanvasComponentSettings and Orbit.CanvasComponentSettings.componentKey then
+        Orbit.CanvasComponentSettings:RelayoutWidgets()
+    end
+    self._inSizeChanged = nil
+end)
+
 -- Close on combat
 Dialog:RegisterEvent("PLAYER_REGEN_DISABLED")
 Dialog:SetScript("OnEvent", function(self, event)
@@ -123,6 +160,7 @@ end)
 Dialog.zoomLevel = C.DEFAULT_ZOOM
 Dialog.panOffsetX = 0
 Dialog.panOffsetY = 0
+Dialog.viewportHeight = C.VIEWPORT_HEIGHT
 
 -- Store dock component references
 Dialog.dockComponents = {}

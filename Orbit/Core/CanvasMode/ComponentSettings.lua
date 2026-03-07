@@ -98,7 +98,7 @@ local KEY_SCHEMAS = {
     ["CastBar.Text"] = Compose(STATIC_TEXT),
     LevelText       = Compose(TEXT_NO_COLOR),
     StatusIcons     = { controls = { ICON_SIZE_CONTROL } },
-    RoleIcon        = { controls = { SCALE_CONTROL, { type = "checkbox", key = "HideDPS", label = "Hide DPS", default = false } } },
+    RoleIcon        = { controls = { SCALE_CONTROL, { type = "checkbox", key = "HideDPS", label = "Hide DPS Role", default = false } } },
     Buffs           = Compose(AURA_GRID),
     Debuffs         = Compose(AURA_GRID, PANDEMIC_GLOW),
     Portrait = {
@@ -177,6 +177,7 @@ local COMPONENT_TITLES = {
     RestingIcon = "Resting Icon", DefensiveIcon = "Defensive Icon",
     CrowdControlIcon = "Crowd Control Icon", Buffs = "Buffs", Debuffs = "Debuffs",
     Portrait = "Portrait", CastBar = "Cast Bar", MarkerIcon = "Raid Marker",
+    RoleIcon = "Role Icon",
     ["CastBar.Text"] = "Ability Text", ["CastBar.Timer"] = "Cast Timer",
     StatusIcons = "Status Icons",
 }
@@ -208,6 +209,12 @@ Settings.plugin = nil
 Settings.systemIndex = nil
 Settings.currentOverrides = nil
 Settings.widgetsByKey = nil
+
+function Settings:GetColumnCount()
+    local canvasDialog = OrbitEngine.CanvasModeDialog
+    local w = canvasDialog and canvasDialog:GetWidth() or C.DIALOG_WIDTH
+    return w >= C.THREE_COL_THRESHOLD and 3 or 2
+end
 
 -- [ WIDGET CREATION HELPERS ]-----------------------------------------------------------------------
 
@@ -348,13 +355,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
         return nil
     end
 
-    -- 2-column grid layout
-    local COLUMNS = 2
-    local COLUMN_GAP = 24
     local widgetIndex = 0
-    local col = 0
-    local rowY = 0
-    local rowHeight = 0
 
     for _, control in ipairs(schema.controls) do
         widgetIndex = widgetIndex + 1
@@ -428,37 +429,11 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             self.widgets[widgetIndex] = widget
             self.widgetsByKey = self.widgetsByKey or {}
             self.widgetsByKey[control.key] = widget
-
-            if shouldShow then
-                widget.gridCol = col
-                widget:ClearAllPoints()
-                if col == 0 then
-                    widget:SetPoint("TOPLEFT", overrideContainer, "TOPLEFT", C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
-                    widget:SetPoint("TOPRIGHT", overrideContainer, "TOP", -(COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
-                else
-                    widget:SetPoint("TOPLEFT", overrideContainer, "TOP", (COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
-                    widget:SetPoint("TOPRIGHT", overrideContainer, "TOPRIGHT", -C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
-                end
-                widget:Show()
-                rowHeight = math.max(rowHeight, widget:GetHeight())
-                col = col + 1
-                if col >= COLUMNS then
-                    col = 0
-                    rowY = rowY + rowHeight + WIDGET_SPACING
-                    rowHeight = 0
-                end
-            else
-                widget:Hide()
-            end
+            widget:SetShown(shouldShow)
         end
     end
 
-    -- Close final partial row
-    if col > 0 then rowY = rowY + rowHeight + WIDGET_SPACING end
-
-    local containerHeight = rowY + TITLE_HEIGHT + PADDING
-    overrideContainer:SetHeight(containerHeight)
-    canvasDialog:RecalculateHeight()
+    self:RelayoutWidgets()
 
     if self.currentOverrides and next(self.currentOverrides) then
         self:ApplyAll(container, self.currentOverrides)
@@ -554,40 +529,7 @@ function Settings:OnValueChanged(key, value)
             end
         end
 
-        if needsHeightRecalc then
-            local COLUMNS = 2
-            local COLUMN_GAP = 24
-            local col = 0
-            local rowY = 0
-            local rowHeight = 0
-            local canvasDialog = OrbitEngine.CanvasModeDialog
-            local oc = canvasDialog and canvasDialog.OverrideContainer
-            for _, widget in ipairs(self.widgets) do
-                if widget:IsShown() and oc then
-                    widget:ClearAllPoints()
-                    if col == 0 then
-                        widget:SetPoint("TOPLEFT", oc, "TOPLEFT", C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
-                        widget:SetPoint("TOPRIGHT", oc, "TOP", -(COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
-                    else
-                        widget:SetPoint("TOPLEFT", oc, "TOP", (COLUMN_GAP / 2), -(rowY + TITLE_HEIGHT))
-                        widget:SetPoint("TOPRIGHT", oc, "TOPRIGHT", -C.DIALOG_INSET, -(rowY + TITLE_HEIGHT))
-                    end
-                    rowHeight = math.max(rowHeight, widget:GetHeight())
-                    col = col + 1
-                    if col >= COLUMNS then
-                        col = 0
-                        rowY = rowY + rowHeight + WIDGET_SPACING
-                        rowHeight = 0
-                    end
-                end
-            end
-            if col > 0 then rowY = rowY + rowHeight + WIDGET_SPACING end
-            local containerHeight = rowY + TITLE_HEIGHT + PADDING
-            if canvasDialog and canvasDialog.OverrideContainer then
-                canvasDialog.OverrideContainer:SetHeight(containerHeight)
-                canvasDialog:RecalculateHeight()
-            end
-        end
+        if needsHeightRecalc then self:RelayoutWidgets() end
     end
 
     if self.container then
@@ -613,6 +555,42 @@ function Settings:OnValueChanged(key, value)
             Txn:SetPositionOverride(self.componentKey, key, value)
         end
     end
+end
+
+function Settings:RelayoutWidgets()
+    if not self.componentKey or not self.widgets then return end
+    local canvasDialog = OrbitEngine.CanvasModeDialog
+    local oc = canvasDialog and canvasDialog.OverrideContainer
+    if not oc then return end
+    local COLUMNS = self:GetColumnCount()
+    local COLUMN_GAP = 24
+    local containerWidth = oc:GetWidth()
+    local availableWidth = containerWidth - (2 * C.DIALOG_INSET)
+    local totalGap = COLUMN_GAP * (COLUMNS - 1)
+    local colWidth = (availableWidth - totalGap) / COLUMNS
+    local col = 0
+    local rowY = 0
+    local rowHeight = 0
+    for _, widget in ipairs(self.widgets) do
+        if widget:IsShown() then
+            local leftX = C.DIALOG_INSET + col * (colWidth + COLUMN_GAP)
+            local y = -(rowY + TITLE_HEIGHT)
+            widget:ClearAllPoints()
+            widget:SetPoint("TOPLEFT", oc, "TOPLEFT", leftX, y)
+            widget:SetPoint("TOPRIGHT", oc, "TOPLEFT", leftX + colWidth, y)
+            rowHeight = math.max(rowHeight, widget:GetHeight())
+            col = col + 1
+            if col >= COLUMNS then
+                col = 0
+                rowY = rowY + rowHeight + WIDGET_SPACING
+                rowHeight = 0
+            end
+        end
+    end
+    if col > 0 then rowY = rowY + rowHeight + WIDGET_SPACING end
+    local containerHeight = rowY + TITLE_HEIGHT + PADDING
+    oc:SetHeight(containerHeight)
+    if canvasDialog.RecalculateHeight then canvasDialog:RecalculateHeight() end
 end
 
 function Settings:ApplyPortraitPreview()
@@ -830,13 +808,7 @@ function Settings:ApplyStyle(container, key, value)
         end
     elseif key == "HideDPS" then
         local plugin = self.plugin
-        if plugin and plugin.frames then
-            for _, frame in ipairs(plugin.frames) do
-                if frame.RoleIcon then
-                    frame.RoleIcon:SetAtlas(value and "UI-LFG-RoleIcon-Healer" or "UI-LFG-RoleIcon-DPS")
-                end
-            end
-        end
+        if plugin and plugin.SchedulePreviewUpdate then plugin:SchedulePreviewUpdate() end
     end
 end
 
