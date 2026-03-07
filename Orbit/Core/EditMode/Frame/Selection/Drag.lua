@@ -238,12 +238,12 @@ function Drag:OnDragStart(selectionOverlay)
     end
 
     if parent:IsMovable() and not parent.orbitNoDrag then
-        parent:StartMoving()
         parent.orbitIsDragging = true
 
         local anchor = Engine.FrameAnchor.anchors[parent]
         if anchor then
-            local syncedW, syncedH, syncedS = parent:GetWidth(), parent:GetHeight(), parent:GetScale()
+            -- Capture stable position before breaking anything
+            local savedL, savedB = parent:GetLeft(), parent:GetBottom()
             local oldParent = anchor.parent
             local wasHorizontal = (anchor.edge == "LEFT" or anchor.edge == "RIGHT")
             local root, oldScreenCenterX
@@ -253,26 +253,20 @@ function Drag:OnDragStart(selectionOverlay)
             end
 
             Engine.FrameAnchor:BreakAnchor(parent, true)
-            -- Capture position before ApplySettings re-anchors to plugin parent
-            local savedL, savedB = parent:GetLeft(), parent:GetBottom()
-            if parent.orbitPlugin and parent.orbitPlugin.ApplySettings then
-                parent.orbitPlugin:ApplySettings(parent)
-            end
 
             if root then
                 Engine.FrameAnchor:SyncChildren(root)
                 Engine.FrameAnchor:RebalanceChainCenter(root, oldScreenCenterX)
             end
 
-            -- Always free frame to UIParent so it can be dragged
-            parent:StopMovingOrSizing()
+            -- Free frame to UIParent at its original screen position, then start moving
             local scale = parent:GetEffectiveScale()
             if savedL and savedB then
-                local naturalW, naturalH = parent:GetWidth(), parent:GetHeight()
-                local dw, dh = syncedW - naturalW, syncedH - naturalH
                 parent:ClearAllPoints()
-                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(savedL + dw / 2, scale), Engine.Pixel:Snap(savedB + dh / 2, scale))
+                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(savedL, scale), Engine.Pixel:Snap(savedB, scale))
             end
+            parent:StartMoving()
+        else
             parent:StartMoving()
         end
 
