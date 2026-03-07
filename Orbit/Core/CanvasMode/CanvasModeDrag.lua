@@ -36,24 +36,12 @@ local function DetectCreatorType(key, source)
     local isTexture = source and source.GetTexture ~= nil and not isFontString
     local isIconFrame = source and source.Icon and source.Icon.GetTexture and key ~= "CastBar"
 
-    if isFontString then
-        return "FontString", true, false, false
-    end
-    if isTexture then
-        return "Texture", false, false, false
-    end
-    if isIconFrame then
-        return "IconFrame", false, false, false
-    end
-    if key == "Portrait" then
-        return "Portrait", false, false, false
-    end
-    if key == "Buffs" or key == "Debuffs" then
-        return "Aura", false, true, false
-    end
-    if key == "CastBar" then
-        return "CastBar", false, false, false
-    end
+    if isFontString then return "FontString", true, false, false end
+    if isTexture then return "Texture", false, false, false end
+    if isIconFrame then return "IconFrame", false, false, false end
+    if key == "Portrait" then return "Portrait", false, false, false end
+    if key == "Buffs" or key == "Debuffs" then return "Aura", false, true, false end
+    if key == "CastBar" then return "CastBar", false, false, false end
     return nil, false, false, false
 end
 
@@ -86,7 +74,8 @@ local function SetupContainerState(container, preview, key, isFontString, isAura
     local anchorX, anchorY, offsetX, offsetY, justifyH
 
     if data and data.anchorX then
-        anchorX, anchorY, offsetX, offsetY, justifyH = data.anchorX, data.anchorY, data.offsetX, data.offsetY, data.justifyH
+        anchorX, anchorY, offsetX, offsetY, justifyH = data.anchorX, data.anchorY, data.offsetX, data.offsetY,
+            data.justifyH
     else
         anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchor(startX, startY, halfW, halfH)
     end
@@ -105,18 +94,14 @@ local function SetupContainerState(container, preview, key, isFontString, isAura
     local selfAnchor = BuildComponentSelfAnchor(isFontString, isAuraContainer, anchorY, justifyH)
     container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
-    if isFontString and container.visual then
-        ApplyTextAlignment(container, container.visual, justifyH)
-    end
+    if isFontString and container.visual then ApplyTextAlignment(container, container.visual, justifyH) end
 end
 
 -- [ DRAG HANDLERS ]---------------------------------------------------------------------------------
 
 local function SetupDragHandlers(container, preview, key, data)
     local function StartDrag(self)
-        if InCombatLockdown() then
-            return
-        end
+        if InCombatLockdown() then return end
         self.wasDragged = true
         self.pendingDrag = false
         local mX, mY = GetCursorPosition()
@@ -131,9 +116,7 @@ local function SetupDragHandlers(container, preview, key, data)
     end
 
     container:SetScript("OnMouseDown", function(self, button)
-        if button ~= "LeftButton" then
-            return
-        end
+        if button ~= "LeftButton" then return end
         self.mouseDownTime = GetTime()
         self.wasDragged = false
         self.pendingDrag = true
@@ -144,16 +127,12 @@ local function SetupDragHandlers(container, preview, key, data)
     end)
 
     container:SetScript("OnMouseUp", function(self, button)
-        if button ~= "LeftButton" then
-            return
-        end
+        if button ~= "LeftButton" then return end
         self.pendingDrag = false
         if self.isDragging then
             self.isDragging = false
             SetBorderColor(self.border, CC.BORDER_COLOR_IDLE)
-            if SmartGuides and preview.guides then
-                SmartGuides:Hide(preview.guides)
-            end
+            if SmartGuides and preview.guides then SmartGuides:Hide(preview.guides) end
             Dialog.DisabledDock.DropHighlight:Hide()
         elseif not self.wasDragged and self.mouseDownTime then
             if (GetTime() - self.mouseDownTime) < CLICK_THRESHOLD then
@@ -166,9 +145,7 @@ local function SetupDragHandlers(container, preview, key, data)
     end)
 
     container:SetScript("OnDragStart", function(self)
-        if not self.isDragging and not self.wasDragged then
-            StartDrag(self)
-        end
+        if not self.isDragging and not self.wasDragged then StartDrag(self) end
     end)
 
     container:SetScript("OnUpdate", function(self)
@@ -181,9 +158,7 @@ local function SetupDragHandlers(container, preview, key, data)
             end
         end
 
-        if not self.isDragging then
-            return
-        end
+        if not self.isDragging then return end
 
         local halfW = preview.sourceWidth / 2
         local halfH = preview.sourceHeight / 2
@@ -212,22 +187,18 @@ local function SetupDragHandlers(container, preview, key, data)
             local distL = math.abs(centerRelX - leftEdge)
 
             if distR <= EDGE_THRESHOLD and centerRelX <= rightEdge then
-                centerRelX = rightEdge
-                snapX = "RIGHT"
+                centerRelX = rightEdge; snapX = "RIGHT"
             elseif distL <= EDGE_THRESHOLD and centerRelX >= leftEdge then
-                centerRelX = leftEdge
-                snapX = "LEFT"
+                centerRelX = leftEdge; snapX = "LEFT"
             elseif math.abs(centerRelX) <= EDGE_THRESHOLD then
-                centerRelX = 0
-                snapX = "CENTER"
+                centerRelX = 0; snapX = "CENTER"
             elseif centerRelX > rightEdge then
                 snapX = "RIGHT"
             elseif centerRelX < leftEdge then
                 snapX = "LEFT"
             end
-            if not snapX then
-                centerRelX = OrbitEngine.Pixel:Snap(math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE, scale)
-            end
+            if not snapX then centerRelX = OrbitEngine.Pixel:Snap(math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE,
+                    scale) end
 
             local topEdge = halfH - compHalfH
             local bottomEdge = -halfH + compHalfH
@@ -235,34 +206,28 @@ local function SetupDragHandlers(container, preview, key, data)
             local distB = math.abs(centerRelY - bottomEdge)
 
             if distT <= EDGE_THRESHOLD and centerRelY <= topEdge then
-                centerRelY = topEdge
-                snapY = "TOP"
+                centerRelY = topEdge; snapY = "TOP"
             elseif distB <= EDGE_THRESHOLD and centerRelY >= bottomEdge then
-                centerRelY = bottomEdge
-                snapY = "BOTTOM"
+                centerRelY = bottomEdge; snapY = "BOTTOM"
             elseif math.abs(centerRelY) <= EDGE_THRESHOLD then
-                centerRelY = 0
-                snapY = "CENTER"
+                centerRelY = 0; snapY = "CENTER"
             elseif centerRelY > topEdge then
                 snapY = "TOP"
             elseif centerRelY < bottomEdge then
                 snapY = "BOTTOM"
             end
-            if not snapY then
-                centerRelY = OrbitEngine.Pixel:Snap(math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE, scale)
-            end
+            if not snapY then centerRelY = OrbitEngine.Pixel:Snap(math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE,
+                    scale) end
         end
 
         local needsWidthComp = NeedsEdgeCompensation(self.isFontString, self.isAuraContainer)
         local anchorX, anchorY, edgeOffX, edgeOffY, justifyH =
-            CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsWidthComp, self:GetWidth(), self:GetHeight(), self.isAuraContainer)
+            CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsWidthComp, self:GetWidth(),
+                self:GetHeight(), self.isAuraContainer)
 
-        if SmartGuides and preview.guides then
-            SmartGuides:Update(preview.guides, snapX, snapY, preview.sourceWidth, preview.sourceHeight)
-        end
-        if self.isFontString and self.visual then
-            ApplyTextAlignment(self, self.visual, justifyH)
-        end
+        if SmartGuides and preview.guides then SmartGuides:Update(preview.guides, snapX, snapY, preview.sourceWidth,
+                preview.sourceHeight) end
+        if self.isFontString and self.visual then ApplyTextAlignment(self, self.visual, justifyH) end
 
         self:ClearAllPoints()
         self:SetPoint("CENTER", preview, "CENTER", centerRelX, centerRelY)
@@ -282,7 +247,8 @@ local function SetupDragHandlers(container, preview, key, data)
 
         Dialog.DisabledDock.DropHighlight:SetShown(Dialog.DisabledDock:IsMouseOver())
 
-        OrbitEngine.SelectionTooltip:ShowComponentPosition(self, key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH)
+        OrbitEngine.SelectionTooltip:ShowComponentPosition(self, key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX,
+            edgeOffY, justifyH)
     end)
 
     container:SetScript("OnDragStop", function(self)
@@ -292,9 +258,7 @@ local function SetupDragHandlers(container, preview, key, data)
         SetBorderColor(self.border, CC.BORDER_COLOR_IDLE)
         Dialog.DisabledDock.DropHighlight:Hide()
 
-        if SmartGuides and preview.guides then
-            SmartGuides:Hide(preview.guides)
-        end
+        if SmartGuides and preview.guides then SmartGuides:Hide(preview.guides) end
 
         if Dialog.DisabledDock:IsMouseOver() then
             local compKey = self.key
@@ -314,9 +278,7 @@ local function SetupDragHandlers(container, preview, key, data)
         self:ClearAllPoints()
         self:SetPoint("CENTER", preview, "CENTER", self.posX, self.posY)
 
-        if self.visual and self.isFontString then
-            ApplyTextAlignment(self, self.visual, self.justifyH or "CENTER")
-        end
+        if self.visual and self.isFontString then ApplyTextAlignment(self, self.visual, self.justifyH or "CENTER") end
     end)
 end
 
@@ -329,9 +291,7 @@ local function SetupHoverEffects(container)
     end)
     container:SetScript("OnLeave", function(self)
         SetBorderColor(self.border, CC.BORDER_COLOR_IDLE)
-        if Dialog.hoveredComponent == self then
-            Dialog.hoveredComponent = nil
-        end
+        if Dialog.hoveredComponent == self then Dialog.hoveredComponent = nil end
     end)
 end
 
@@ -355,7 +315,9 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     local creatorType, isFontString, isAuraContainer = DetectCreatorType(key, sourceComponent)
     local creator = creatorType and CanvasMode.ComponentCreators[creatorType]
 
-    local visual = creator and creator(container, preview, key, sourceComponent, data) or CreateFallbackVisual(container, key)
+    local visual = creator
+        and creator(container, preview, key, sourceComponent, data)
+        or CreateFallbackVisual(container, key)
 
     -- If the source component declares an explicit size, override the fallback container dimensions
     -- so the canvas representation matches the real on-screen element.

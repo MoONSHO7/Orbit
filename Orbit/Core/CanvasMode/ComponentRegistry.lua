@@ -28,8 +28,8 @@ local HandleModule = Engine.ComponentHandle
 -- [ STATE ]-----------------------------------------------------------------------------------------
 
 local registeredComponents = {} -- { [component] = { parent, key, options, handle } }
-local frameComponents = {} -- { [parentFrame] = { component1, component2, ... } }
-local selectedComponent = nil -- Currently selected component for nudge
+local frameComponents = {}      -- { [parentFrame] = { component1, component2, ... } }
+local selectedComponent = nil   -- Currently selected component for nudge
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
@@ -103,6 +103,8 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
         end
     end
 
+
+
     if Engine.SmartGuides and data.guides then
         Engine.SmartGuides:Update(data.guides, snapX, snapY, parentWidth, parentHeight)
     end
@@ -120,8 +122,10 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
         local needsComp = NeedsEdgeCompensation(data.isFontString, data.isAuraContainer)
         local compW, compH = SafeGetSize(component)
         local anchorX, anchorY, edgeOffX, edgeOffY, justifyH =
-            CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsComp, compW, compH, data.isAuraContainer)
-        Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH)
+            CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsComp, compW, compH,
+                data.isAuraContainer)
+        Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY,
+            edgeOffX, edgeOffY, justifyH)
     end
 end
 
@@ -276,7 +280,8 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
         local needsWidthComp = NeedsEdgeCompensation(data.isFontString, data.isAuraContainer)
         local compW, compH = SafeGetSize(component)
         local anchorX, anchorY, offsetX, offsetY, justifyH =
-            CalculateAnchorWithWidthCompensation(newX, newY, halfW, halfH, needsWidthComp, compW, compH, data.isAuraContainer)
+            CalculateAnchorWithWidthCompensation(newX, newY, halfW, halfH, needsWidthComp, compW, compH,
+                data.isAuraContainer)
         data.options.onPositionChange(component, anchorX, anchorY, offsetX, offsetY, justifyH)
     end
 
@@ -286,7 +291,8 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
 
     if Engine.SelectionTooltip and Engine.SelectionTooltip.ShowComponentPosition then
         local anchorX, anchorY, edgeOffX, edgeOffY, justifyH = CalculateAnchor(newX, newY, halfW, halfH)
-        Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, newX, newY, edgeOffX, edgeOffY, justifyH)
+        Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, newX, newY, edgeOffX,
+            edgeOffY, justifyH)
     end
 end
 
@@ -294,7 +300,8 @@ end
 function ComponentDrag:MakePositionCallback(plugin, systemIndex, key)
     return function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
         local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
-        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
+        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH =
+        justifyH, justifyV = justifyV }
         plugin:SetSetting(systemIndex, "ComponentPositions", positions)
     end
 end
@@ -302,9 +309,7 @@ end
 function ComponentDrag:MakeAuraPositionCallback(plugin, systemIndex, key)
     return function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
         local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
-        if not positions[key] then
-            positions[key] = {}
-        end
+        if not positions[key] then positions[key] = {} end
         positions[key].anchorX = anchorX
         positions[key].anchorY = anchorY
         positions[key].offsetX = offsetX
@@ -315,12 +320,8 @@ function ComponentDrag:MakeAuraPositionCallback(plugin, systemIndex, key)
         if compParent then
             local cx, cy = comp:GetCenter()
             local px, py = compParent:GetCenter()
-            if cx and px then
-                positions[key].posX = cx - px
-            end
-            if cy and py then
-                positions[key].posY = cy - py
-            end
+            if cx and px then positions[key].posX = cx - px end
+            if cy and py then positions[key].posY = cy - py end
         end
         plugin:SetSetting(systemIndex, "ComponentPositions", positions)
     end
@@ -499,7 +500,8 @@ function ComponentDrag:RestoreFramePositions(parent, positions)
                     component:SetJustifyH(pos.justifyH)
                 end
 
-                local selfAnchor = BuildComponentSelfAnchor(data.isFontString, data.isAuraContainer, anchorY, pos.justifyH)
+                local selfAnchor = BuildComponentSelfAnchor(data.isFontString, data.isAuraContainer, anchorY,
+                    pos.justifyH)
                 component:SetPoint(selfAnchor, componentParent, anchorPoint, finalX, finalY)
 
                 data.anchorX = anchorX
