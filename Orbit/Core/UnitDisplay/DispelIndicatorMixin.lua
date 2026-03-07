@@ -33,13 +33,13 @@ local function SetupBlizzardHooks()
     if HooksSetup then return end
     if CompactUnitFrame_UpdateAuras then
         hooksecurefunc("CompactUnitFrame_UpdateAuras", function(frame)
-            CaptureDispellableFromBlizzardFrame(frame, true)
+            C_Timer.After(0, function() CaptureDispellableFromBlizzardFrame(frame, true) end)
         end)
         HooksSetup = true
     end
     if CompactUnitFrame_UpdateDebuffs then
         hooksecurefunc("CompactUnitFrame_UpdateDebuffs", function(frame)
-            CaptureDispellableFromBlizzardFrame(frame, true)
+            C_Timer.After(0, function() CaptureDispellableFromBlizzardFrame(frame, true) end)
         end)
     end
 end

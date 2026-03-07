@@ -545,10 +545,12 @@ function PA:StartAll(plugin, desc)
             end
         end
     end
-    if #animFrames > 0 then self:Start(plugin, animFrames, animCfg) end
-    if #auraFrames > 0 then self:StartAuras(plugin, auraFrames, auraCfg) end
-    if #healerFrames > 0 then self:StartHealerAuras(plugin, healerFrames, healerCfg) end
-    if desc.dispelSettings and #animFrames > 0 then self:StartDispels(plugin, animFrames, desc.dispelSettings) end
+    C_Timer.After(5, function()
+        if #animFrames > 0 then self:Start(plugin, animFrames, animCfg) end
+        if #auraFrames > 0 then self:StartAuras(plugin, auraFrames, auraCfg) end
+        if #healerFrames > 0 then self:StartHealerAuras(plugin, healerFrames, healerCfg) end
+        if desc.dispelSettings and #animFrames > 0 then self:StartDispels(plugin, animFrames, desc.dispelSettings) end
+    end)
 end
 
 -- [ CANVAS SETTINGS WATCH ]-------------------------------------------------------------------------
