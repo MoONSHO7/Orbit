@@ -107,16 +107,7 @@ function Orbit.PartyFramePreviewMixin:ShowPreview()
         end
     end)
 
-    -- Listen for live Canvas Mode edits
-    if not self._canvasSettingsCallback then
-        self._canvasSettingsCallback = function(targetPlugin)
-            if targetPlugin ~= self then return end
-            if self.frames and self.frames[1] and self.frames[1].preview then
-                self:SchedulePreviewUpdate()
-            end
-        end
-    end
-    Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", self._canvasSettingsCallback)
+    Orbit.PreviewAnimator:WatchCanvas(self)
 end
 
 function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
@@ -323,10 +314,7 @@ function Orbit.PartyFramePreviewMixin:HidePreview()
     Orbit.PreviewAnimator:StopAuras(self)
     Orbit.PreviewAnimator:StopHealerAuras(self)
 
-    -- Stop listening for Canvas Mode edits
-    if self._canvasSettingsCallback then
-        Orbit.EventBus:Off("CANVAS_SETTINGS_CHANGED", self._canvasSettingsCallback)
-    end
+    Orbit.PreviewAnimator:UnwatchCanvas(self)
 
     -- Restore visibility driver for normal gameplay (hide in raids)
     local visibilityDriver = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
@@ -408,47 +396,26 @@ end
 
 function Orbit.PartyFramePreviewMixin:StartPreviewAnimation()
     if not self.frames then return end
-    local animFrames, animCfg, auraFrames, auraCfg = {}, {}, {}, {}
-    local healerFrames, healerCfg = {}, {}
     local includePlayer = self:GetSetting(1, "IncludePlayer")
     local framesToShow = includePlayer and 5 or 4
     local HealerReg = Orbit.HealerAuraRegistry
     local healerSlots = HealerReg:ActiveSlots()
     local isDisabled = self.IsComponentDisabled and function(k) return self:IsComponentDisabled(k) end or function() return false end
-    local buffsEnabled = not isDisabled("Buffs")
-    local debuffsEnabled = not isDisabled("Debuffs")
-    -- Pre-compute healer slot filter once
     local enabledSlots = {}
     for _, slot in ipairs(healerSlots) do
         if not isDisabled(slot.key) then enabledSlots[#enabledSlots + 1] = slot end
     end
-    local raidBuffKey = not isDisabled("RaidBuff") and "RaidBuff" or nil
-    local getHelpers = function() return Orbit.PartyFrameHelpers end
-
+    local visibleFrames = {}
     for i = 1, framesToShow do
-        local frame = self.frames[i]
-        if frame and frame.preview and frame:IsShown() then
-            local status = PREVIEW_DEFAULTS.Status[i]
-            local dead = (status == "Dead" or status == "Offline")
-            animFrames[#animFrames + 1] = frame
-            animCfg[#animCfg + 1] = { baseHealth = (PREVIEW_DEFAULTS.HealthPercents[i] or 75) / 100, dead = dead }
-            if buffsEnabled or debuffsEnabled then
-                local plugin = self
-                auraFrames[#auraFrames + 1] = frame
-                auraCfg[#auraCfg + 1] = {
-                    initAuras = function(f) return Orbit.AuraPreview:InitAnimatedAuras(plugin, f, getHelpers) end,
-                }
-            end
-            healerFrames[#healerFrames + 1] = frame
-            healerCfg[#healerCfg + 1] = {
-                healerSlots = enabledSlots,
-                raidBuffKey = raidBuffKey,
-                defensiveDisabled = isDisabled("DefensiveIcon"),
-                ccDisabled = isDisabled("CrowdControlIcon"),
-            }
-        end
+        local f = self.frames[i]
+        if f and f.preview and f:IsShown() then visibleFrames[#visibleFrames + 1] = f end
     end
-    if #animFrames > 0 then Orbit.PreviewAnimator:Start(self, animFrames, animCfg) end
-    if #auraFrames > 0 then Orbit.PreviewAnimator:StartAuras(self, auraFrames, auraCfg) end
-    if #healerFrames > 0 then Orbit.PreviewAnimator:StartHealerAuras(self, healerFrames, healerCfg) end
+    Orbit.PreviewAnimator:StartAll(self, {
+        frames = visibleFrames,
+        getHelpers = function() return Orbit.PartyFrameHelpers end,
+        getHealth = function(i) return (PREVIEW_DEFAULTS.HealthPercents[i] or 75) / 100 end,
+        getDead = function(i) local s = PREVIEW_DEFAULTS.Status[i]; return s == "Dead" or s == "Offline" end,
+        healerSlots = enabledSlots,
+        raidBuffKey = not isDisabled("RaidBuff") and "RaidBuff" or nil,
+    })
 end

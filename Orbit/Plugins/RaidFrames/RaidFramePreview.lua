@@ -119,16 +119,7 @@ function Orbit.RaidFramePreviewMixin:ShowPreview()
         end
     end)
 
-    -- Listen for live Canvas Mode edits
-    if not self._canvasSettingsCallback then
-        self._canvasSettingsCallback = function(targetPlugin)
-            if targetPlugin ~= self then return end
-            if self.frames and self.frames[1] and self.frames[1].preview then
-                self:SchedulePreviewUpdate()
-            end
-        end
-    end
-    Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", self._canvasSettingsCallback)
+    Orbit.PreviewAnimator:WatchCanvas(self)
 end
 
 -- [ PREVIEW VISUALS ]-------------------------------------------------------------------------------
@@ -343,10 +334,7 @@ function Orbit.RaidFramePreviewMixin:HidePreview()
     Orbit.PreviewAnimator:StopHealerAuras(self)
     Orbit.PreviewAnimator:StopDispels(self)
 
-    -- Stop listening for Canvas Mode edits
-    if self._canvasSettingsCallback then
-        Orbit.EventBus:Off("CANVAS_SETTINGS_CHANGED", self._canvasSettingsCallback)
-    end
+    Orbit.PreviewAnimator:UnwatchCanvas(self)
 
     for i = 1, Helpers.LAYOUT.MaxRaidFrames do
         local frame = self.frames[i]
@@ -427,52 +415,28 @@ end
 
 function Orbit.RaidFramePreviewMixin:StartPreviewAnimation()
     if not self.frames then return end
-    local animFrames, animCfg, auraFrames, auraCfg = {}, {}, {}, {}
-    local healerFrames, healerCfg = {}, {}
     local sortOrder = GetPreviewSortOrder(self)
     local HealerReg = Orbit.HealerAuraRegistry
     local healerSlots = HealerReg:ActiveSlots()
     local isDisabled = self.IsComponentDisabled and function(k) return self:IsComponentDisabled(k) end or function() return false end
-    local buffsEnabled = not isDisabled("Buffs")
-    local debuffsEnabled = not isDisabled("Debuffs")
     local enabledSlots = {}
     for _, slot in ipairs(healerSlots) do
         if not isDisabled(slot.key) then enabledSlots[#enabledSlots + 1] = slot end
     end
-    local raidBuffKey = not isDisabled("RaidBuff") and "RaidBuff" or nil
-    local getHelpers = function() return Orbit.RaidFrameHelpers end
-
+    local visibleFrames = {}
     for i = 1, MAX_PREVIEW_FRAMES do
-        local frame = self.frames[i]
-        if frame and frame.preview and frame:IsShown() then
-            local dataIdx = sortOrder[i]
-            local status = PREVIEW_STATUS[dataIdx]
-            local dead = (status == "Dead" or status == "Offline")
-            animFrames[#animFrames + 1] = frame
-            animCfg[#animCfg + 1] = { baseHealth = (PREVIEW_HEALTH_PCTS[dataIdx] or 75) / 100, dead = dead }
-            if buffsEnabled or debuffsEnabled then
-                local plugin = self
-                auraFrames[#auraFrames + 1] = frame
-                auraCfg[#auraCfg + 1] = {
-                    initAuras = function(f) return Orbit.AuraPreview:InitAnimatedAuras(plugin, f, getHelpers) end,
-                }
-            end
-            healerFrames[#healerFrames + 1] = frame
-            healerCfg[#healerCfg + 1] = {
-                healerSlots = enabledSlots,
-                raidBuffKey = raidBuffKey,
-                defensiveDisabled = isDisabled("DefensiveIcon"),
-                ccDisabled = isDisabled("CrowdControlIcon"),
-            }
-        end
+        local f = self.frames[i]
+        if f and f.preview and f:IsShown() then visibleFrames[#visibleFrames + 1] = f end
     end
-    if #animFrames > 0 then Orbit.PreviewAnimator:Start(self, animFrames, animCfg) end
-    if #auraFrames > 0 then Orbit.PreviewAnimator:StartAuras(self, auraFrames, auraCfg) end
-    if #healerFrames > 0 then Orbit.PreviewAnimator:StartHealerAuras(self, healerFrames, healerCfg) end
-    -- Dispel animation
     local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
-    if dispelEnabled and #animFrames > 0 then
-        Orbit.PreviewAnimator:StartDispels(self, animFrames, {
+    Orbit.PreviewAnimator:StartAll(self, {
+        frames = visibleFrames,
+        getHelpers = function() return Orbit.RaidFrameHelpers end,
+        getHealth = function(i) local idx = sortOrder[i]; return (PREVIEW_HEALTH_PCTS[idx] or 75) / 100 end,
+        getDead = function(i) local idx = sortOrder[i]; local s = PREVIEW_STATUS[idx]; return s == "Dead" or s == "Offline" end,
+        healerSlots = enabledSlots,
+        raidBuffKey = not isDisabled("RaidBuff") and "RaidBuff" or nil,
+        dispelSettings = dispelEnabled and {
             thickness = self:GetSetting(1, "DispelThickness") or 2,
             frequency = self:GetSetting(1, "DispelFrequency") or 0.25,
             numLines = self:GetSetting(1, "DispelNumLines") or 8,
@@ -482,6 +446,6 @@ function Orbit.RaidFramePreviewMixin:StartPreviewAnimation()
                 Disease = self:GetSetting(1, "DispelColorDisease") or { r = 0.6, g = 0.4, b = 0.0, a = 1 },
                 Poison = self:GetSetting(1, "DispelColorPoison") or { r = 0.0, g = 0.6, b = 0.0, a = 1 },
             },
-        })
-    end
+        } or nil,
+    })
 end

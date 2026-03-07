@@ -34,6 +34,28 @@ local DEFENSIVE_SHOW_CHANCE = 0.15
 local CC_SHOW_CHANCE = 0.12
 local DISPEL_DURATION = 6
 local DISPEL_TYPES = { "Magic", "Curse", "Disease", "Poison" }
+local DYING_DELAY_BASE = 3
+local DYING_DELAY_RANGE = 5
+local SHIELD_CHANCE = 0.55
+local NECROTIC_CHANCE = 0.35
+local HEALTH_AMP_BASE = 0.10
+local HEALTH_AMP_RANGE = 0.15
+local CHUNK_DAMAGE_CHANCE = 0.30
+local CHUNK_NEXT_BASE = 2
+local CHUNK_NEXT_RANGE = 4
+local DEAD_DURATION_BASE = 5
+local DEAD_DURATION_RANGE = 5
+local OOR_DURATION_BASE = 3
+local OOR_DURATION_RANGE = 4
+local CHUNK_DROP_BASE = 0.20
+local CHUNK_DROP_RANGE = 0.20
+local CHUNK_MIN_HEALTH = 0.10
+local CHUNK_REGEN_RATE = 0.003
+local CHUNK_REFIRE_BASE = 3
+local CHUNK_REFIRE_RANGE = 5
+local DEFAULT_BASE_HEALTH = 0.75
+local DEFAULT_SHIELD_CHANCE = 0.4
+local DEFAULT_NECROTIC_CHANCE = 0.2
 
 -- [ BEHAVIOR TYPES ]--------------------------------------------------------------------------------
 local B_NORMAL = 1
@@ -74,16 +96,16 @@ local function AssignRandomBehaviors(activeCfg)
         local cfg = activeCfg[idx]
         assigned = assigned + 1
         if assigned == 1 then
-            cfg.canDie = true; cfg.dyingDelay = 3 + math.random() * 5; cfg.canOOR = false
+            cfg.canDie = true; cfg.dyingDelay = DYING_DELAY_BASE + math.random() * DYING_DELAY_RANGE; cfg.canOOR = false
         else
             cfg.canDie = false; cfg.canOOR = false
         end
-        cfg.showShield = (math.random() < 0.55)
-        cfg.showNecrotic = (math.random() < 0.35)
-        cfg.healthAmplitude = 0.10 + math.random() * 0.15
-        cfg.chunkyDamage = (math.random() < 0.30)
+        cfg.showShield = (math.random() < SHIELD_CHANCE)
+        cfg.showNecrotic = (math.random() < NECROTIC_CHANCE)
+        cfg.healthAmplitude = HEALTH_AMP_BASE + math.random() * HEALTH_AMP_RANGE
+        cfg.chunkyDamage = (math.random() < CHUNK_DAMAGE_CHANCE)
         if cfg.chunkyDamage then
-            cfg.nextChunkAt = cfg.elapsed + 2 + math.random() * 4
+            cfg.nextChunkAt = cfg.elapsed + CHUNK_NEXT_BASE + math.random() * CHUNK_NEXT_RANGE
         end
     end
 end
@@ -96,7 +118,7 @@ local function TransitionBehavior(cfg, frame)
         if cfg.canDie and cfg.elapsed > cfg.dyingDelay then
             cfg.behavior = B_DYING; cfg.elapsed = 0
         elseif cfg.canOOR and cfg.elapsed > cfg.oorDelay then
-            cfg.behavior = B_OOR; cfg.oorDuration = 3 + math.random() * 4; cfg.elapsed = 0
+            cfg.behavior = B_OOR; cfg.oorDuration = OOR_DURATION_BASE + math.random() * OOR_DURATION_RANGE; cfg.elapsed = 0
         end
     elseif b == B_DYING then
         cfg.currentHealth = math.max(0, cfg.currentHealth - DEATH_FADE_RATE)
@@ -107,7 +129,7 @@ local function TransitionBehavior(cfg, frame)
         end
         if cfg.currentHealth <= 0 then
             cfg.currentHealth = 0
-            cfg.behavior = B_DEAD; cfg.deadDuration = 5 + math.random() * 5; cfg.elapsed = 0
+            cfg.behavior = B_DEAD; cfg.deadDuration = DEAD_DURATION_BASE + math.random() * DEAD_DURATION_RANGE; cfg.elapsed = 0
             frame.Health:SetValue(0)
             if frame.HealthText and frame.HealthText:IsShown() then frame.HealthText:SetText("Dead") end
             cfg.alpha = OFFLINE_ALPHA; frame:SetAlpha(OFFLINE_ALPHA)
@@ -209,11 +231,11 @@ local function AnimateTick()
                         if cfg.chunkyDamage then
                             cfg.elapsed = cfg.elapsed + TICK_INTERVAL
                             if cfg.elapsed >= (cfg.nextChunkAt or 999) then
-                                local drop = 0.20 + math.random() * 0.20
-                                cfg.currentHealth = math.max(0.10, cfg.currentHealth - drop)
-                                cfg.nextChunkAt = cfg.elapsed + 3 + math.random() * 5
+                                local drop = CHUNK_DROP_BASE + math.random() * CHUNK_DROP_RANGE
+                                cfg.currentHealth = math.max(CHUNK_MIN_HEALTH, cfg.currentHealth - drop)
+                                cfg.nextChunkAt = cfg.elapsed + CHUNK_REFIRE_BASE + math.random() * CHUNK_REFIRE_RANGE
                             else
-                                cfg.currentHealth = math.min(cfg.baseHealth or 0.75, cfg.currentHealth + 0.003)
+                                cfg.currentHealth = math.min(cfg.baseHealth or DEFAULT_BASE_HEALTH, cfg.currentHealth + CHUNK_REGEN_RATE)
                             end
                             hp = cfg.currentHealth
                         else
@@ -345,14 +367,14 @@ end
 function PA:Start(owner, frames, cfgList)
     self:Stop(owner)
     for _, cfg in ipairs(cfgList) do
-        cfg.prevHealth = cfg.baseHealth or 0.75
-        cfg.currentHealth = cfg.baseHealth or 0.75
-        cfg.dmgBarVal = cfg.baseHealth or 0.75
+        cfg.prevHealth = cfg.baseHealth or DEFAULT_BASE_HEALTH
+        cfg.currentHealth = cfg.baseHealth or DEFAULT_BASE_HEALTH
+        cfg.dmgBarVal = cfg.baseHealth or DEFAULT_BASE_HEALTH
         cfg.elapsed = 0; cfg.alpha = 1
         cfg.behavior = cfg.behavior or B_NORMAL
-        if cfg.showShield == nil then cfg.showShield = (math.random() < 0.4) end
-        if cfg.showNecrotic == nil then cfg.showNecrotic = (math.random() < 0.2) end
-        cfg.healthAmplitude = cfg.healthAmplitude or (0.10 + math.random() * 0.15)
+        if cfg.showShield == nil then cfg.showShield = (math.random() < DEFAULT_SHIELD_CHANCE) end
+        if cfg.showNecrotic == nil then cfg.showNecrotic = (math.random() < DEFAULT_NECROTIC_CHANCE) end
+        cfg.healthAmplitude = cfg.healthAmplitude or (HEALTH_AMP_BASE + math.random() * HEALTH_AMP_RANGE)
     end
     AssignRandomBehaviors(cfgList)
     sessions[owner] = { frames = frames, cfg = cfgList }
@@ -489,4 +511,55 @@ function PA:StopDispels(owner)
         end
     end
     dispelSessions[owner] = nil
+end
+
+-- [ CONSOLIDATED START ]----------------------------------------------------------------------------
+-- desc = { frames, getHelpers, getHealth(i), getDead(i), healerSlots?, raidBuffKey?, dispelSettings? }
+function PA:StartAll(plugin, desc)
+    local isDisabled = plugin.IsComponentDisabled and function(k) return plugin:IsComponentDisabled(k) end or function() return false end
+    local buffsEnabled = not isDisabled("Buffs")
+    local debuffsEnabled = not isDisabled("Debuffs")
+    local animFrames, animCfg = {}, {}
+    local auraFrames, auraCfg = {}, {}
+    local healerFrames, healerCfg = {}, {}
+    for i, frame in ipairs(desc.frames) do
+        if frame.preview and frame:IsShown() then
+            animFrames[#animFrames + 1] = frame
+            animCfg[#animCfg + 1] = { baseHealth = desc.getHealth(i), dead = desc.getDead and desc.getDead(i) }
+            if buffsEnabled or debuffsEnabled then
+                auraFrames[#auraFrames + 1] = frame
+                auraCfg[#auraCfg + 1] = { initAuras = function(f) return Orbit.AuraPreview:InitAnimatedAuras(plugin, f, desc.getHelpers) end }
+            end
+            if desc.healerSlots then
+                healerFrames[#healerFrames + 1] = frame
+                healerCfg[#healerCfg + 1] = {
+                    healerSlots = desc.healerSlots,
+                    raidBuffKey = desc.raidBuffKey,
+                    defensiveDisabled = isDisabled("DefensiveIcon"),
+                    ccDisabled = isDisabled("CrowdControlIcon"),
+                }
+            end
+        end
+    end
+    if #animFrames > 0 then self:Start(plugin, animFrames, animCfg) end
+    if #auraFrames > 0 then self:StartAuras(plugin, auraFrames, auraCfg) end
+    if #healerFrames > 0 then self:StartHealerAuras(plugin, healerFrames, healerCfg) end
+    if desc.dispelSettings and #animFrames > 0 then self:StartDispels(plugin, animFrames, desc.dispelSettings) end
+end
+
+-- [ CANVAS SETTINGS WATCH ]-------------------------------------------------------------------------
+function PA:WatchCanvas(plugin)
+    if not plugin._canvasSettingsCallback then
+        plugin._canvasSettingsCallback = function(targetPlugin)
+            if targetPlugin ~= plugin then return end
+            if plugin.SchedulePreviewUpdate then plugin:SchedulePreviewUpdate() end
+        end
+    end
+    Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", plugin._canvasSettingsCallback)
+end
+
+function PA:UnwatchCanvas(plugin)
+    if plugin._canvasSettingsCallback then
+        Orbit.EventBus:Off("CANVAS_SETTINGS_CHANGED", plugin._canvasSettingsCallback)
+    end
 end

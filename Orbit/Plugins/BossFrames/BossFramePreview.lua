@@ -67,16 +67,7 @@ function Orbit.BossFramePreviewMixin:ShowPreview()
         end
     end)
 
-    -- Listen for live Canvas Mode edits
-    if not self._canvasSettingsCallback then
-        self._canvasSettingsCallback = function(targetPlugin)
-            if targetPlugin ~= self then return end
-            if self.frames and self.frames[1] and self.frames[1].preview then
-                self:SchedulePreviewUpdate()
-            end
-        end
-    end
-    Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", self._canvasSettingsCallback)
+    Orbit.PreviewAnimator:WatchCanvas(self)
 end
 
 function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
@@ -222,10 +213,7 @@ function Orbit.BossFramePreviewMixin:HidePreview()
     Orbit.PreviewAnimator:StopAuras(self)
     Orbit.PreviewAnimator:StopHealerAuras(self)
 
-    -- Stop listening for Canvas Mode edits
-    if self._canvasSettingsCallback then
-        Orbit.EventBus:Off("CANVAS_SETTINGS_CHANGED", self._canvasSettingsCallback)
-    end
+    Orbit.PreviewAnimator:UnwatchCanvas(self)
     local visibilityDriver = "[@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
     RegisterAttributeDriver(self.container, "state-visibility", visibilityDriver)
 
@@ -267,34 +255,16 @@ end
 
 function Orbit.BossFramePreviewMixin:StartPreviewAnimation()
     if not self.frames then return end
-    local animFrames, animCfg = {}, {}
-    local auraFrames, auraCfg = {}, {}
-    local healerFrames, healerCfg = {}, {}
-    local isDisabled = self.IsComponentDisabled and function(k) return self:IsComponentDisabled(k) end or function() return false end
-    local buffsEnabled = not isDisabled("Buffs")
-    local debuffsEnabled = not isDisabled("Debuffs")
     local getHelpers = function() return Orbit.BossFrameHelpers end
+    local visibleFrames = {}
     for i = 1, MAX_BOSS_FRAMES do
-        local frame = self.frames[i]
-        if frame and frame.preview and frame:IsShown() then
-            animFrames[#animFrames + 1] = frame
-            animCfg[#animCfg + 1] = { baseHealth = PREVIEW_DEFAULTS.HealthPercent / 100 }
-            if buffsEnabled or debuffsEnabled then
-                local plugin = self
-                auraFrames[#auraFrames + 1] = frame
-                auraCfg[#auraCfg + 1] = {
-                    initAuras = function(f) return Orbit.AuraPreview:InitAnimatedAuras(plugin, f, getHelpers) end,
-                }
-            end
-            healerFrames[#healerFrames + 1] = frame
-            healerCfg[#healerCfg + 1] = {
-                healerSlots = {},
-                defensiveDisabled = isDisabled("DefensiveIcon"),
-                ccDisabled = isDisabled("CrowdControlIcon"),
-            }
-        end
+        local f = self.frames[i]
+        if f and f.preview and f:IsShown() then visibleFrames[#visibleFrames + 1] = f end
     end
-    if #animFrames > 0 then Orbit.PreviewAnimator:Start(self, animFrames, animCfg) end
-    if #auraFrames > 0 then Orbit.PreviewAnimator:StartAuras(self, auraFrames, auraCfg) end
-    if #healerFrames > 0 then Orbit.PreviewAnimator:StartHealerAuras(self, healerFrames, healerCfg) end
+    Orbit.PreviewAnimator:StartAll(self, {
+        frames = visibleFrames,
+        getHelpers = getHelpers,
+        getHealth = function() return PREVIEW_DEFAULTS.HealthPercent / 100 end,
+        healerSlots = {},
+    })
 end
