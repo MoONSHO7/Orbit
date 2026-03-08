@@ -10,7 +10,7 @@ function Orbit.RaidFrameSettings(plugin, dialog, systemFrame)
     local schema = { hideNativeSettings = true, controls = {} }
 
     SB:SetTabRefreshCallback(dialog, plugin, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Indicators" }, "Layout")
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Indicators" }, "Layout", plugin)
 
     if currentTab == "Layout" then
         if (plugin:GetSetting(1, "SortMode") or "Group") == "Group" then

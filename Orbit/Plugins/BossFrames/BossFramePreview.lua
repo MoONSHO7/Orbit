@@ -94,45 +94,30 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
             if frame.Health then
                 Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true)
                 frame.Health:SetMinMaxValues(0, 100)
-                frame.Health:SetValue(PREVIEW_DEFAULTS.HealthPercent)
-                if self.GetPreviewHealthColor then
-                    local r, g, b = self:GetPreviewHealthColor(false, nil, 1)
-                    frame.Health:SetStatusBarColor(r, g, b)
-                else
-                    frame.Health:SetStatusBarColor(1, 0.1, 0.1)
-                end
+                frame.Health:SetValue(100)
+                frame.Health:SetStatusBarColor(1, 0.1, 0.1)
                 frame.Health:Show()
+                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
+                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
             if frame.Power then
                 Orbit.Skin:SkinStatusBar(frame.Power, textureName, nil, true)
                 frame.Power:SetMinMaxValues(0, 100)
-                frame.Power:SetValue(PREVIEW_DEFAULTS.PowerPercent)
+                frame.Power:SetValue(100)
                 frame.Power:SetStatusBarColor(0, 0.5, 1)
-                local globalSettings = Orbit.db.GlobalSettings or {}
-                Orbit.Skin:ApplyGradientBackground(frame.Power, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
                 frame.Power:Show()
             end
 
             if frame.Name then
                 frame.Name:SetText("Boss " .. i)
-                if self.GetPreviewTextColor then
-                    local r, g, b, a = self:GetPreviewTextColor(false, nil, 1)
-                    frame.Name:SetTextColor(r, g, b, a)
-                else
-                    frame.Name:SetTextColor(1, 0.1, 0.1, 1)
-                end
+                frame.Name:SetTextColor(1, 0.1, 0.1, 1)
                 frame.Name:Show()
             end
 
             if frame.HealthText then
-                frame.HealthText:SetText(PREVIEW_DEFAULTS.HealthPercent .. "%")
-                if self.GetPreviewTextColor then
-                    local r, g, b, a = self:GetPreviewTextColor(false, nil, 1)
-                    frame.HealthText:SetTextColor(r, g, b, a)
-                else
-                    frame.HealthText:SetTextColor(1, 0.1, 0.1, 1)
-                end
+                frame.HealthText:SetText("100%")
+                frame.HealthText:SetTextColor(1, 0.1, 0.1, 1)
                 frame.HealthText:Show()
             end
 
@@ -170,9 +155,11 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                     frame.CastBar:Show()
                 end
             end
-
-            if txnActive or not Orbit.PreviewAnimator:IsRunning() then
+            -- Auras: show in Canvas Mode, hide otherwise
+            if txnActive then
                 self:ShowPreviewAuras(frame)
+            else
+                Orbit.AuraPreview:HideFrameAuras(frame)
             end
 
             if frame.MarkerIcon then

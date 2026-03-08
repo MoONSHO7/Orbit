@@ -12,6 +12,7 @@ local CanvasMode = OrbitEngine.CanvasMode
 
 local Transaction = {}
 CanvasMode.Transaction = Transaction
+local NIL_SENTINEL = {}
 
 -- [ STATE ]--------------------------------------------------------------------------------------
 
@@ -70,16 +71,16 @@ function Transaction:Set(key, value)
     -- Snapshot original if first time touching this key
     if originalSettings[key] == nil then
         local current = plugin:GetSetting(systemIndex, key)
-        originalSettings[key] = current ~= nil and DeepCopy(current) or false -- false = sentinel for nil
+        originalSettings[key] = current ~= nil and DeepCopy(current) or NIL_SENTINEL
     end
-    pendingSettings[key] = value ~= nil and value or false
+    pendingSettings[key] = value ~= nil and value or NIL_SENTINEL
     self:FireChanged()
 end
 
 function Transaction:Get(key)
     if not active then return plugin and plugin:GetSetting(systemIndex, key) end
     local pending = pendingSettings[key]
-    if pending ~= nil then return pending ~= false and pending or nil end
+    if pending ~= nil then return pending ~= NIL_SENTINEL and pending or nil end
     return plugin:GetSetting(systemIndex, key)
 end
 
@@ -121,7 +122,7 @@ function Transaction:SetDisabledComponents(keys)
 end
 
 function Transaction:GetDisabledComponents()
-    return self:Get("DisabledComponents") or (plugin and plugin:GetSetting(systemIndex, "DisabledComponents")) or {}
+    return self:Get("DisabledComponents") or {}
 end
 
 function Transaction:ClearPositions() wipe(pendingPositions) end
@@ -133,7 +134,7 @@ function Transaction:Commit()
 
     -- Write pending settings to SavedVariables
     for key, value in pairs(pendingSettings) do
-        local writeVal = value ~= false and value or nil
+        local writeVal = value ~= NIL_SENTINEL and value or nil
         plugin:SetSetting(systemIndex, key, writeVal)
     end
 
@@ -164,6 +165,7 @@ end
 
 function Transaction:Clear()
     active = false
+    fireTimer = nil
     plugin = nil
     systemIndex = nil
     wipe(originalSettings)
@@ -172,6 +174,13 @@ function Transaction:Clear()
     wipe(pendingPositions)
 end
 
+local fireTimer = nil
+local FIRE_DEBOUNCE = 0.05
 function Transaction:FireChanged()
-    Orbit.EventBus:Fire("CANVAS_SETTINGS_CHANGED", plugin)
+    if fireTimer then return end
+    local p = plugin
+    fireTimer = C_Timer.After(FIRE_DEBOUNCE, function()
+        fireTimer = nil
+        if active and p then Orbit.EventBus:Fire("CANVAS_SETTINGS_CHANGED", p) end
+    end)
 end

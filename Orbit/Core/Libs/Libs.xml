@@ -1,0 +1,12 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="LibStub\LibStub.lua"/>
+    <Include file="CallbackHandler-1.0\CallbackHandler-1.0.xml"/>
+    <Script file="LibSharedMedia-3.0\LibSharedMedia-3.0.lua"/>
+    <Script file="LibSerialize\LibSerialize.lua"/>
+    <Script file="LibDeflate\LibDeflate.lua"/>
+    <Include file="LibCustomGlow-1.0\LibCustomGlow-1.0.xml"/>
+    <Include file="LibTransmogGlow-1.0\LibTransmogGlow-1.0.xml"/>
+    <Script file="LibOrbitColorPicker-1.0\LibOrbitColorPicker-1.0.lua"/>
+    <Script file="LibDBIcon-1.0\LibDataBroker-1.1\LibDataBroker-1.1.lua"/>
+    <Script file="LibDBIcon-1.0\LibDBIcon-1.0\LibDBIcon-1.0.lua"/>
+</Ui>

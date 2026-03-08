@@ -141,29 +141,25 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
             -- Preview-only: backdrop
             if self.ApplyPreviewBackdrop then self:ApplyPreviewBackdrop(frame) end
 
-            -- Preview-only: fake health data
+            -- Preview-only: full health
             if frame.Health then
                 frame.Health:SetMinMaxValues(0, 100)
-                frame.Health:SetValue(PREVIEW_DEFAULTS.HealthPercents[i])
-                if self.GetPreviewHealthColor then
-                    local r, g, b = self:GetPreviewHealthColor(true, PREVIEW_DEFAULTS.Classes[i], nil)
-                    frame.Health:SetStatusBarColor(r, g, b)
-                else
-                    local classColor = C_ClassColor.GetClassColor(PREVIEW_DEFAULTS.Classes[i])
-                    if classColor then frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b) end
-                end
+                frame.Health:SetValue(100)
+                local classColor = C_ClassColor.GetClassColor(PREVIEW_DEFAULTS.Classes[i])
+                if classColor then frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b) end
                 frame.Health:Show()
+                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
+                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
-            -- Preview-only: fake power data
+            -- Preview-only: full power
             if frame.Power and showThisPower then
                 frame.Power:SetMinMaxValues(0, 100)
-                frame.Power:SetValue(PREVIEW_DEFAULTS.PowerPercents[i])
+                frame.Power:SetValue(100)
                 frame.Power:SetStatusBarColor(0, 0.5, 1)
-                Orbit.Skin:ApplyGradientBackground(frame.Power, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
             end
 
-            -- Preview-only: fake name
+            -- Preview-only: name
             local disabledComponents = self:GetSetting(1, "DisabledComponents") or {}
             local isNameDisabled, isHealthTextDisabled = false, false
             for _, key in ipairs(disabledComponents) do
@@ -175,46 +171,22 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 if isNameDisabled then frame.Name:Hide()
                 else
                     frame.Name:SetText(PREVIEW_DEFAULTS.Names[i])
-                    if self.GetPreviewTextColor then
-                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_DEFAULTS.Classes[i], nil)
-                        frame.Name:SetTextColor(r, g, b, a)
-                    else frame.Name:SetTextColor(1, 1, 1, 1) end
+                    frame.Name:SetTextColor(1, 1, 1, 1)
                     frame.Name:Show()
                 end
             end
 
-            -- Preview-only: fake health text
+            -- Preview-only: health text
             if frame.HealthText then
                 local showHealthValue = self:GetSetting(1, "ShowHealthValue")
                 if showHealthValue == nil then showHealthValue = true end
-                local previewStatus = PREVIEW_DEFAULTS.Status[i]
-                local isDeadOrOffline = (previewStatus == "Dead" or previewStatus == "Offline")
-                if isHealthTextDisabled then frame.HealthText:Hide()
-                elseif isDeadOrOffline then
-                    frame.HealthText:SetText(previewStatus)
-                    frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1)
-                    frame.HealthText:Show()
-                elseif not showHealthValue then frame.HealthText:Hide()
+                if isHealthTextDisabled or not showHealthValue then frame.HealthText:Hide()
                 else
-                    local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
-                    local pct = PREVIEW_DEFAULTS.HealthPercents[i]
-                    local shortVals = { "125K", "98.5K", "45.2K", "22.1K", "150K" }
-                    local rawVals = { "125,000", "98,500", "45,200", "22,100", "150,000" }
-                    local fmtMap = {
-                        percent = pct .. "%", short = shortVals[i], raw = rawVals[i],
-                        percent_short = pct .. "%", percent_raw = pct .. "%",
-                        short_percent = shortVals[i], short_raw = shortVals[i],
-                        raw_short = rawVals[i], raw_percent = rawVals[i],
-                        short_and_percent = shortVals[i] .. " - " .. pct .. "%",
-                    }
-                    frame.HealthText:SetText(fmtMap[healthTextMode] or (pct .. "%"))
-                    if self.GetPreviewTextColor then
-                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_DEFAULTS.Classes[i], nil)
-                        frame.HealthText:SetTextColor(r, g, b, a)
-                    else frame.HealthText:SetTextColor(1, 1, 1, 1) end
+                    frame.HealthText:SetText("100%")
+                    frame.HealthText:SetTextColor(1, 1, 1, 1)
                     frame.HealthText:Show()
                 end
-                frame:SetAlpha(isDeadOrOffline and Orbit.Constants.GroupFrames.OfflineAlpha or 1)
+                frame:SetAlpha(1)
             end
 
             -- Preview-only: class file for overrides
@@ -265,24 +237,14 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 healerAuraSize = HEALER_AURA_ICON_SIZE,
             }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs(), HealerReg:ActiveKeys())
 
-            -- Preview auras (skip if animator is handling them, unless in Canvas Mode)
-            if isCanvasMode or not Orbit.PreviewAnimator:IsRunning() then
-                if frame.debuffPool then frame.debuffPool:ReleaseAll() end
-                if frame.buffPool then frame.buffPool:ReleaseAll() end
+            -- Auras: show in Canvas Mode, hide otherwise
+            if isCanvasMode then
                 self:ShowPreviewAuras(frame, i)
+            else
+                Orbit.AuraPreview:HideFrameAuras(frame)
             end
 
-            -- Preview dispel glow
-            local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
-            if dispelEnabled and i == 2 then
-                local thickness = self:GetSetting(1, "DispelThickness") or 2
-                local frequency = self:GetSetting(1, "DispelFrequency") or 0.25
-                local numLines = self:GetSetting(1, "DispelNumLines") or 8
-                local color = { 0.0, 0.4, 1.0, 1 }
-                LCG.PixelGlow_Start(frame, color, numLines, frequency, nil, thickness, 0, 0, true, "preview", Orbit.Constants.Levels.Glow)
-            else
-                LCG.PixelGlow_Stop(frame, "preview")
-            end
+            LCG.PixelGlow_Stop(frame, "preview")
         end
     end
 end

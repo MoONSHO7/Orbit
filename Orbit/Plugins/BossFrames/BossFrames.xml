@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="BossFrameHelpers.lua"/>
+    <Script file="BossFramePreview.lua"/>
+    <Script file="BossFrameCastBar.lua"/>
+    <Script file="BossFrame.lua"/>
+</Ui>

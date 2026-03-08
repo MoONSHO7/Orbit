@@ -339,6 +339,7 @@ function Orbit.Profile:ExportProfile()
 end
 
 function Orbit.Profile:ImportProfile(str, name)
+    EnsureLibs()
     local decoded = LibDeflate:DecodeForPrint(str)
     if not decoded then return false, "Decoding Failed" end
     local decompressed = LibDeflate:DecompressDeflate(decoded)

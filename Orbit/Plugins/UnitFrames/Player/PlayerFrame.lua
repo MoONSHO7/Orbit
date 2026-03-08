@@ -53,6 +53,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
 
 -- Apply Mixins (including aggro indicator support and shared status icons)
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.AggroIndicatorMixin, Orbit.StatusIconMixin)
+Plugin.supportsHealthText = true
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
@@ -70,35 +71,13 @@ function Plugin:AddSettings(dialog, systemFrame)
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
         local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160 })
+        local sizeOnChange = function(key) return function(val) self:SetSetting(PLAYER_FRAME_INDEX, key, val); self:UpdateLayout(self.frame) end end
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160, onChange = sizeOnChange("Width") })
         if not isAnchored or anchorAxis ~= "y" then
-            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40 })
+            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40, onChange = sizeOnChange("Height") })
         end
-        table.insert(schema.controls, {
-            type = "dropdown",
-            key = "HealthTextMode",
-            label = "Health Text",
-            options = {
-                { text = "Percentage", value = "percent" },
-                { text = "Short Health", value = "short" },
-                { text = "Raw Health", value = "raw" },
-                { text = "Short - Percentage", value = "short_and_percent" },
-                { text = "Percentage / Short", value = "percent_short" },
-                { text = "Percentage / Raw", value = "percent_raw" },
-                { text = "Short / Percentage", value = "short_percent" },
-                { text = "Short / Raw", value = "short_raw" },
-                { text = "Raw / Short", value = "raw_short" },
-                { text = "Raw / Percentage", value = "raw_percent" },
-            },
-            default = "percent_short",
-            onChange = function(val)
-                self:SetSetting(PLAYER_FRAME_INDEX, "HealthTextMode", val)
-                self:ApplySettings()
-            end,
-        })
 
     elseif currentTab == "Visibility" then
-        SB:AddOpacitySettings(self, schema, PLAYER_FRAME_INDEX, systemFrame)
         table.insert(schema.controls, {
             type = "checkbox",
             key = "OutOfCombatFade",
@@ -133,7 +112,7 @@ end
 function Plugin:OnLoad()
     self:RegisterStandardEvents()
     if PlayerFrame then
-        OrbitEngine.NativeFrame:Hide(PlayerFrame)
+        OrbitEngine.NativeFrame:Disable(PlayerFrame)
     end
 
     self.container = self:CreateVisibilityContainer(UIParent, true)
@@ -410,12 +389,7 @@ function Plugin:UpdateLayout(frame)
     end
     local systemIndex = PLAYER_FRAME_INDEX
     local width, height = self:GetSetting(systemIndex, "Width"), self:GetSetting(systemIndex, "Height")
-    local isAnchored = OrbitEngine.Frame:GetAnchorParent(frame) ~= nil
-    if not isAnchored then
-        frame:SetSize(width, height)
-    else
-        frame:SetWidth(width)
-    end
+    self:ApplySize(frame, width, height)
 end
 
 function Plugin:ApplySettings(frame)

@@ -13,6 +13,7 @@ local UpdateInRange = GroupFrameMixin.UpdateInRange
 --              UpdateCrowdControlIcon, UpdatePrivateAuras }
 function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
     return function(f, event, eventUnit, ...)
+        if f.preview then return end
         if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
             if eventUnit == f.unit then callbacks.UpdatePowerBar(f, plugin) end
             return
@@ -97,6 +98,7 @@ end
 -- Creates a shared OnShow handler for group frames.
 function GroupFrameMixin.CreateOnShowHandler(plugin, callbacks)
     return function(self)
+        if self.preview then return end
         if not self.unit then return end
         self:UpdateAll()
         callbacks.UpdatePowerBar(self, plugin)

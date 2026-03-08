@@ -19,7 +19,7 @@ jobs:
 
       - name: Calculate version and create tag
         run: |
-          # Count all commits on main branch
+          # Count all commits on branch
           VERSION=$(git rev-list --count HEAD)
           echo "Calculated version: $VERSION"
           
@@ -34,5 +34,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           # Create and push tag
-          git tag -a "$VERSION" -m "Release version $VERSION"
+          git tag -a "$VERSION" -m "Release $VERSION"
           git push origin "$VERSION"

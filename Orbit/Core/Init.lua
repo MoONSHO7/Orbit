@@ -149,15 +149,22 @@ end
 function Orbit:GetPlugin(system) return OrbitEngine:GetSystem(system) end
 
 function Orbit:InitializePlugins()
-    for _, plugin in ipairs(OrbitEngine.systems) do
+    local systems = OrbitEngine.systems
+    for _, plugin in ipairs(systems) do
         if self:IsPluginEnabled(plugin.name) and plugin.OnLoad then
             self.ErrorHandler:Wrap(function() plugin:OnLoad() end, plugin.name .. ".OnLoad")()
             plugin._initialized = true
         end
     end
-    for _, plugin in ipairs(OrbitEngine.systems) do
+    local i = 0
+    local function ApplyNext()
+        i = i + 1
+        if i > #systems then return end
+        local plugin = systems[i]
         if self:IsPluginEnabled(plugin.name) and plugin.ApplySettings then plugin:ApplySettings() end
+        C_Timer.After(0, ApplyNext)
     end
+    ApplyNext()
 end
 
 -- [ ADDON INITIALIZATION ]--------------------------------------------------------------------------

@@ -110,7 +110,7 @@ Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.StatusIcon
 
 function Plugin:OnLoad()
     if FocusFrame then
-        OrbitEngine.NativeFrame:Hide(FocusFrame)
+        OrbitEngine.NativeFrame:Disable(FocusFrame)
     end
 
     -- Note: FocusFrameToT is now managed by TargetOfFocusFrame.lua plugin
@@ -270,5 +270,5 @@ end
 
 -- [ BLIZZARD HIDER ]--------------------------------------------------------------------------------
 Orbit:RegisterBlizzardHider("Focus Frame", function()
-    if FocusFrame then OrbitEngine.NativeFrame:Hide(FocusFrame) end
+    if FocusFrame then OrbitEngine.NativeFrame:Disable(FocusFrame) end
 end)

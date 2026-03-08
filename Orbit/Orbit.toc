@@ -15,179 +15,36 @@
 # ==============================================================
 # LIBRARIES
 # ==============================================================
-Core\Libs\LibStub\LibStub.lua
-Core\Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
-Core\Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
-Core\Libs\LibSerialize\LibSerialize.lua
-Core\Libs\LibDeflate\LibDeflate.lua
-Core\Libs\LibCustomGlow-1.0\LibCustomGlow-1.0.xml
-Core\Libs\LibTransmogGlow-1.0\LibTransmogGlow-1.0.xml
-Core\Libs\LibOrbitColorPicker-1.0\LibOrbitColorPicker-1.0.lua
-Core\Libs\LibDBIcon-1.0\LibDataBroker-1.1\LibDataBroker-1.1.lua
-Core\Libs\LibDBIcon-1.0\LibDBIcon-1.0\LibDBIcon-1.0.lua
+Core\Libs\Libs.xml
 
 # ==============================================================
 # CORE
 # ==============================================================
-
-# Init (bootstraps Orbit.Engine — must load before all core files)
 Core\Init.lua
-
-# Shared Kernel
-Core\Shared\Constants.lua
-Core\Shared\Media.lua
-
-# Infrastructure
-Core\Infrastructure\HealerAuraRegistry.lua
-Core\Infrastructure\EventBus.lua
-Core\Infrastructure\Async.lua
-Core\Infrastructure\Pixel.lua
-Core\Infrastructure\TickMixin.lua
-Core\Infrastructure\KeybindSystem.lua
-Core\Infrastructure\CombatManager.lua
-Core\Infrastructure\Animation.lua
-
-
-# Plugin Framework
-Core\Plugin\Registry.lua
-Core\Plugin\PluginMixin.lua
-Core\Plugin\NativeBarMixin.lua
-Core\Plugin\OOCFadeMixin.lua
-
-# Color System
-Core\Color\ReactionColorResolver.lua
-Core\Color\ClassColorResolver.lua
-Core\Color\ColorCurveEngine.lua
-
-# Config UI
-Core\Config\ConfigLayout.lua
-Core\Config\SchemaBuilder.lua
-Core\Config\Widgets\Widgets.xml
-Core\Config\ConfigRenderer.lua
-
-# Edit Mode
-Core\EditMode\NativeFrame.lua
-Core\EditMode\EditMode.lua
-Core\EditMode\Frame\EditFrame.xml
-
-# Unit Display
+Core\Shared\Shared.xml
+Core\Infrastructure\Infrastructure.xml
+Core\Plugin\Plugin.xml
+Core\Color\Color.xml
+Core\Config\Config.xml
+Core\EditMode\EditMode.xml
 Core\UnitDisplay\UnitButton\UnitButton.xml
 Core\UnitDisplay\UnitDisplay.xml
-
-# Edit Mode Managers
-Core\EditMode\PositionManager.lua
-Core\EditMode\MountedVisibility.lua
-
-# Plugin Profiles
-Core\Plugin\DefaultProfile.lua
-Core\Plugin\ProfileManager.lua
-
-# API
+Core\Plugin\Profiles.xml
 Core\API.lua
-
-# Edit Mode Preview
 Core\EditMode\Preview\Preview.xml
-
-# UI
-Core\Config\OrbitSettingsDialog.lua
 Core\CanvasMode\CanvasMode.xml
 Core\CanvasMode\ComponentSettings.lua
-Core\Config\OrbitOptionsPanel.lua
-Core\Config\WhatsNew.lua
-Core\Config\OrbitOptionsButton.lua
-Core\Config\MinimapButton.lua
-
-# Skinning
 Core\Skinning\Skins.xml
-
-# Plugin Manager
-Core\Config\PluginManager.lua
 
 # ==============================================================
 # PLUGINS
 # ==============================================================
-
-# Unit Frames
-Plugins\UnitFrames\Player\PlayerPower.lua
-Plugins\UnitFrames\Player\PlayerCastBar.lua
-Plugins\UnitFrames\Player\ContinuousBarRenderer.lua
-Plugins\UnitFrames\Player\DiscreteBarRenderer.lua
-Plugins\UnitFrames\Player\PlayerResources.lua
-Plugins\UnitFrames\Player\PlayerResourceSettings.lua
-Plugins\UnitFrames\Player\PlayerFrame.lua
-Plugins\UnitFrames\Player\PlayerPetFrame.lua
-Plugins\UnitFrames\Player\PlayerBuffs.lua
-Plugins\UnitFrames\Player\PlayerDebuffs.lua
-Plugins\UnitFrames\Target\TargetFrame.lua
-Plugins\UnitFrames\Target\TargetCastBar.lua
-Plugins\UnitFrames\Target\TargetPower.lua
-Plugins\UnitFrames\Target\TargetBuffs.lua
-Plugins\UnitFrames\Target\TargetDebuffs.lua
-Plugins\UnitFrames\Target\TargetOfTargetFrame.lua
-Plugins\UnitFrames\Focus\FocusFrame.lua
-Plugins\UnitFrames\Focus\FocusCastBar.lua
-Plugins\UnitFrames\Focus\FocusPower.lua
-Plugins\UnitFrames\Focus\FocusBuffs.lua
-Plugins\UnitFrames\Focus\FocusDebuffs.lua
-Plugins\UnitFrames\Focus\TargetOfFocusFrame.lua
-
-# Party Frames
-Plugins\PartyFrames\PartyFrameHelpers.lua
-Plugins\PartyFrames\PartyFramePreview.lua
-Plugins\PartyFrames\FrameFactory.lua
-Plugins\PartyFrames\PartyFrameSettings.lua
-Plugins\PartyFrames\PartyFrame.lua
-
-# Raid Frames
-Plugins\RaidFrames\RaidFrameHelpers.lua
-Plugins\RaidFrames\RaidFramePreview.lua
-Plugins\RaidFrames\RaidFrameFactory.lua
-Plugins\RaidFrames\RaidFrameSettings.lua
-Plugins\RaidFrames\RaidFrame.lua
-
-# Boss Frames
-Plugins\BossFrames\BossFrameHelpers.lua
-Plugins\BossFrames\BossFramePreview.lua
-Plugins\BossFrames\BossFrameCastBar.lua
-Plugins\BossFrames\BossFrame.lua
-
-# Action Bars
-Plugins\ActionBars\ActionBarsText.lua
-Plugins\ActionBars\ActionBarsContainer.lua
-Plugins\ActionBars\ActionBarsPreview.lua
-Plugins\ActionBars\ActionBars.lua
-
-# Cooldown Manager
-Plugins\CooldownManager\CooldownUtils.lua
-Plugins\CooldownManager\CooldownManager.lua
-Plugins\CooldownManager\CooldownSettings.lua
-Plugins\CooldownManager\CooldownGlows.lua
-Plugins\CooldownManager\CooldownViewerHooks.lua
-Plugins\CooldownManager\CooldownLayout.lua
-Plugins\CooldownManager\CooldownText.lua
-Plugins\CooldownManager\TrackedTooltipParser.lua
-Plugins\CooldownManager\ControlButtonFactory.lua
-Plugins\CooldownManager\TrackedIconFactory.lua
-Plugins\CooldownManager\TrackedLayout.lua
-Plugins\CooldownManager\TrackedUpdater.lua
-Plugins\CooldownManager\TrackedAbilities.lua
-Plugins\CooldownManager\TrackedCanvasPreview.lua
-Plugins\CooldownManager\ChargeBarLayout.lua
-Plugins\CooldownManager\ChargeBarCanvasPreview.lua
-Plugins\CooldownManager\TrackedCharges.lua
-Plugins\CooldownManager\KeybindSystem.lua
-
-# Menu Items
-Plugins\MenuItems\MicroMenu.lua
-Plugins\MenuItems\QueueStatus.lua
-Plugins\MenuItems\BagBar.lua
-Plugins\MenuItems\Performance.lua
-Plugins\MenuItems\CombatTimer.lua
-
-# Minimap
-Plugins\Minimap\Minimap.lua
-Plugins\Minimap\MinimapCompartment.lua
-Plugins\Minimap\MinimapSettings.lua
-
-# Misc
+Plugins\UnitFrames\UnitFrames.xml
+Plugins\PartyFrames\PartyFrames.xml
+Plugins\RaidFrames\RaidFrames.xml
+Plugins\BossFrames\BossFrames.xml
+Plugins\ActionBars\ActionBars.xml
+Plugins\CooldownManager\CooldownManager.xml
+Plugins\MenuItems\MenuItems.xml
+Plugins\Minimap\Minimap.xml
 Plugins\Misc\TalkingHead.lua

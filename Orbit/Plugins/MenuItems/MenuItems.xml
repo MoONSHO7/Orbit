@@ -1,0 +1,7 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="MicroMenu.lua"/>
+    <Script file="QueueStatus.lua"/>
+    <Script file="BagBar.lua"/>
+    <Script file="Performance.lua"/>
+    <Script file="CombatTimer.lua"/>
+</Ui>

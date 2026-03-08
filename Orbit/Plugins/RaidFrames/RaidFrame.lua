@@ -261,12 +261,8 @@ end
 -- [ HIDE NATIVE RAID FRAMES ]----------------------------------------------------------------------
 
 local function HideNativeRaidFrames()
-    if CompactRaidFrameContainer then
-        OrbitEngine.NativeFrame:Hide(CompactRaidFrameContainer)
-    end
-    if CompactRaidFrameManager then
-        OrbitEngine.NativeFrame:Hide(CompactRaidFrameManager)
-    end
+    OrbitEngine.NativeFrame:Disable(CompactRaidFrameContainer)
+    OrbitEngine.NativeFrame:Disable(CompactRaidFrameManager)
 end
 
 function Plugin:AddSettings(dialog, systemFrame)
@@ -374,6 +370,7 @@ function Plugin:OnLoad()
         end
     end)
 
+    self.skipEditModeApply = true
     self:RegisterStandardEvents()
 
     -- Edit Mode callbacks
@@ -757,12 +754,7 @@ function Plugin:ApplyFrameStyle(frame, showPower)
 end
 
 function Plugin:OnCanvasApply()
-    if not self.frames then return end
-    local StatusMixin = Orbit.StatusIconMixin
-    if StatusMixin then
-        for _, frame in ipairs(self.frames) do StatusMixin:UpdateRoleIcon(frame, self) end
-    end
-    if self.frames[1] and self.frames[1].preview then self:SchedulePreviewUpdate() end
+    Orbit.GroupCanvasRegistration:OnCanvasApply(self)
 end
 
 function Plugin:ApplySettings()

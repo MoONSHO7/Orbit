@@ -4,10 +4,12 @@ local _, Orbit = ...
 
 Orbit.PreviewAnimator = {}
 local PA = Orbit.PreviewAnimator
+-- Per-owner enable table: animations only run for explicitly enabled plugins.
+local enabledOwners = {}
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local TICK_INTERVAL = 0.05
-local PHASE_SPEED = 0.015
+local TICK_INTERVAL = 0.10
+local PHASE_SPEED = 0.03
 local HEALTH_AMPLITUDE = 0.18
 local SHIELD_AMPLITUDE = 0.15
 local SHIELD_BASE = 0.25
@@ -15,12 +17,12 @@ local SHIELD_FREQUENCY = 0.4
 local NECROTIC_AMPLITUDE = 0.12
 local NECROTIC_BASE = 0.20
 local NECROTIC_FREQUENCY = 0.3
-local DAMAGE_BAR_DECAY = 0.04
+local DAMAGE_BAR_DECAY = 0.08
 local TWO_PI = math.pi * 2
 local OFFLINE_ALPHA = 0.35
 local OOR_ALPHA = 0.55
-local DEATH_FADE_RATE = 0.008
-local REVIVE_RATE = 0.012
+local DEATH_FADE_RATE = 0.016
+local REVIVE_RATE = 0.024
 local RESHUFFLE_INTERVAL = 12
 local AURA_TICK_INTERVAL = 1
 local AURA_DURATION_MIN = 8
@@ -63,6 +65,10 @@ local B_DYING = 2
 local B_DEAD = 3
 local B_REVIVING = 4
 local B_OOR = 5
+local B_EXIT = 6
+local EXIT_RATE = 0.05
+local EXIT_ALPHA_RATE = 0.03
+local EXIT_MIN_HEALTH = 0.01
 
 -- [ SESSION REGISTRY ]------------------------------------------------------------------------------
 -- Keyed by owner (plugin self), so Party/Raid/Boss can animate concurrently.
@@ -170,6 +176,28 @@ local function TransitionBehavior(cfg, frame)
                 cfg.alpha = 1; frame:SetAlpha(1)
             end
         end
+    elseif b == B_EXIT then
+        local done = true
+        -- Lerp health to 1.0
+        if cfg.currentHealth < 1.0 then
+            cfg.currentHealth = math.min(1.0, cfg.currentHealth + EXIT_RATE)
+            done = false
+        end
+        frame.Health:SetMinMaxValues(0, 1)
+        frame.Health:SetValue(cfg.currentHealth)
+        if frame.HealthText and frame.HealthText:IsShown() then
+            frame.HealthText:SetFormattedText("%.0f%%", cfg.currentHealth * 100)
+        end
+        -- Fade alpha to 1
+        if cfg.alpha < 1 then cfg.alpha = math.min(1, cfg.alpha + EXIT_ALPHA_RATE); frame:SetAlpha(cfg.alpha); done = false end
+        -- Hide overlay bars
+        if frame.TotalAbsorbBar then frame.TotalAbsorbBar:Hide(); if frame.TotalAbsorbOverlay then frame.TotalAbsorbOverlay:Hide() end end
+        if frame.HealAbsorbBar then frame.HealAbsorbBar:Hide() end
+        if frame.HealthDamageBar then frame.HealthDamageBar:Hide(); if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end end
+        if frame.ResIcon then frame.ResIcon:Hide() end
+        frame._previewDead = nil
+        if done then cfg.exitDone = true end
+        return true
     end
     return false
 end
@@ -218,8 +246,8 @@ local function AnimateTick()
     local shouldReshuffle = globalElapsed > RESHUFFLE_INTERVAL
     if shouldReshuffle then globalElapsed = 0 end
 
-    for _, session in pairs(sessions) do
-        if shouldReshuffle then AssignRandomBehaviors(session.cfg) end
+    for owner, session in pairs(sessions) do
+        if shouldReshuffle and not session.exitPlugin then AssignRandomBehaviors(session.cfg) end
         for i, frame in ipairs(session.frames) do
             if frame:IsShown() then
                 local cfg = session.cfg[i]
@@ -274,6 +302,22 @@ local function AnimateTick()
                 end
             end
         end
+
+        -- Check if exit transition completed for all frames
+        if session.exitPlugin then
+            local allDone = true
+            for _, cfg in ipairs(session.cfg) do
+                if not cfg.exitDone then allDone = false; break end
+            end
+            if allDone then
+                local p = session.exitPlugin
+                sessions[owner] = nil
+                PA:StopAuras(p)
+                PA:StopHealerAuras(p)
+                PA:StopDispels(p)
+                if p.ApplyPreviewVisuals then p:ApplyPreviewVisuals() end
+            end
+        end
     end
 
     if not next(sessions) then ticker:Cancel(); ticker = nil end
@@ -311,6 +355,9 @@ local function AuraTick()
                                     slot.active = false
                                     slot.nextEvent = now + math.random(AURA_RESPAWN_MIN, AURA_RESPAWN_MAX)
                                 else
+                                    -- Skip spawning new auras when draining
+                                    if session.draining then slot.nextEvent = now + 9999
+                                    else
                                     local activeCount = 0
                                     for _, s in ipairs(group.slots) do if s.active then activeCount = activeCount + 1 end end
                                     local spawnChance = (1 - (activeCount / #group.icons)) ^ 2
@@ -323,6 +370,7 @@ local function AuraTick()
                                         slot.nextEvent = now + dur
                                     else
                                         slot.nextEvent = now + math.random(2, 5)
+                                    end
                                     end
                                 end
                                 changed = true
@@ -340,6 +388,7 @@ end
 -- [ HEALER AURA TICK ]------------------------------------------------------------------------------
 local function HealerAuraTick()
     for _, session in pairs(healerSessions) do
+        if session.draining then break end
         for i, frame in ipairs(session.frames) do
             if frame:IsShown() then
                 local cfg = session.cfg[i]
@@ -367,6 +416,7 @@ end
 
 -- [ PUBLIC API ]------------------------------------------------------------------------------------
 function PA:Start(owner, frames, cfgList)
+    if not enabledOwners[owner] then return end
     self:Stop(owner)
     for _, cfg in ipairs(cfgList) do
         cfg.prevHealth = cfg.baseHealth or DEFAULT_BASE_HEALTH
@@ -405,8 +455,12 @@ end
 
 function PA:IsRunning() return ticker ~= nil end
 
+function PA:SetEnabled(owner, enabled) enabledOwners[owner] = enabled or nil end
+function PA:IsEnabled(owner) return enabledOwners[owner] == true end
+
 -- [ AURA ANIMATION API ]---------------------------------------------------------------------------
 function PA:StartAuras(owner, frames, cfgList)
+    if not enabledOwners[owner] then return end
     self:StopAuras(owner)
     local now = GetTime()
     local frameCount = #frames
@@ -443,6 +497,7 @@ end
 
 -- [ HEALER AURA ANIMATION API ]---------------------------------------------------------------------
 function PA:StartHealerAuras(owner, frames, cfgList)
+    if not enabledOwners[owner] then return end
     self:StopHealerAuras(owner)
     healerSessions[owner] = { frames = frames, cfg = cfgList }
     -- Fire immediately
@@ -465,9 +520,10 @@ function PA:StopHealerAuras(owner)
 end
 
 -- [ DISPEL ANIMATION ]------------------------------------------------------------------------------
-local LCG = LibStub("LibCustomGlow-1.0")
+local LCG = LibStub("LibCustomGlow-1.0", true)
 
 local function DispelTick()
+    if not LCG then return end
     local now = GetTime()
     for _, session in pairs(dispelSessions) do
         local frames = session.frames
@@ -475,9 +531,7 @@ local function DispelTick()
         if numFrames == 0 then break end
         for _, slot in ipairs(session.slots) do
             if now >= slot.expiresAt then
-                -- Clear old glow
                 if slot.frame then LCG.PixelGlow_Stop(slot.frame, "dispelPreview") end
-                -- Pick new random alive frame (different from current)
                 local alive = {}
                 for _, f in ipairs(frames) do if not f._previewDead then alive[#alive + 1] = f end end
                 if #alive == 0 then
@@ -497,6 +551,7 @@ local function DispelTick()
 end
 
 function PA:StartDispels(owner, frames, cfg)
+    if not enabledOwners[owner] then return end
     self:StopDispels(owner)
     local now = GetTime()
     local slots = {}
@@ -509,7 +564,7 @@ end
 
 function PA:StopDispels(owner)
     local session = dispelSessions[owner]
-    if session then
+    if session and LCG then
         for _, slot in ipairs(session.slots) do
             if slot.frame then LCG.PixelGlow_Stop(slot.frame, "dispelPreview") end
         end
@@ -520,6 +575,7 @@ end
 -- [ CONSOLIDATED START ]----------------------------------------------------------------------------
 -- desc = { frames, getHelpers, getHealth(i), getDead(i), healerSlots?, raidBuffKey?, dispelSettings? }
 function PA:StartAll(plugin, desc)
+    if not enabledOwners[plugin] then return end
     local isDisabled = plugin.IsComponentDisabled and function(k) return plugin:IsComponentDisabled(k) end or function() return false end
     local buffsEnabled = not isDisabled("Buffs")
     local debuffsEnabled = not isDisabled("Debuffs")
@@ -551,7 +607,37 @@ function PA:StartAll(plugin, desc)
     if desc.dispelSettings and #animFrames > 0 then self:StartDispels(plugin, animFrames, desc.dispelSettings) end
 end
 
--- [ CANVAS SETTINGS WATCH ]-------------------------------------------------------------------------
+function PA:StopAll(plugin)
+    self:Stop(plugin)
+    self:StopAuras(plugin)
+    self:StopHealerAuras(plugin)
+    self:StopDispels(plugin)
+    self:SetEnabled(plugin, false)
+end
+
+function PA:ExitAll(plugin)
+    -- Mark secondary systems as draining (no new spawns, existing ones stay visible)
+    self:SetEnabled(plugin, false)
+    if auraSessions[plugin] then auraSessions[plugin].draining = true end
+    if healerSessions[plugin] then healerSessions[plugin].draining = true end
+    if dispelSessions[plugin] then dispelSessions[plugin].draining = true end
+    -- Switch health bar session to exit mode (lerp back to static state)
+    local session = sessions[plugin]
+    if session then
+        for _, cfg in ipairs(session.cfg) do
+            cfg.behavior = B_EXIT
+            cfg.canDie = false; cfg.canOOR = false; cfg.exitDone = false
+            if cfg.currentHealth <= 0 then cfg.currentHealth = EXIT_MIN_HEALTH end
+        end
+        session.exitPlugin = plugin
+    else
+        -- No active bar session, clean up and apply immediately
+        self:StopAuras(plugin)
+        self:StopHealerAuras(plugin)
+        self:StopDispels(plugin)
+        if plugin.ApplyPreviewVisuals then plugin:ApplyPreviewVisuals() end
+    end
+end
 function PA:WatchCanvas(plugin)
     if not plugin._canvasSettingsCallback then
         plugin._canvasSettingsCallback = function(targetPlugin)

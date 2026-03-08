@@ -238,6 +238,10 @@ function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
     local max = frame.maxPower or 5
     local mod = UnitPowerDisplayMod(plugin.powerType)
     if mod and mod > 0 then cur = cur / mod end
+    local spec = GetSpecialization()
+    local specID = spec and GetSpecializationInfo(spec)
+    local isDestruction = PLAYER_CLASS == "WARLOCK" and specID == WARLOCK_SPEC_DESTRUCTION
+    if not isDestruction then cur = math.floor(cur) end
     local curveData = plugin:GetSetting(systemIndex, "BarColorCurve")
     local color
     if curveData and #curveData.pins > 1 then
@@ -255,12 +259,10 @@ function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
     -- Charged combo point overlays (secret-safe: StatusBars handle fill in C++)
     self:UpdateChargedOverlays(plugin, frame, systemIndex, cur, max)
     if frame.Text and frame.Text:IsShown() then
-        local spec = GetSpecialization()
-        local specID = spec and GetSpecializationInfo(spec)
-        if PLAYER_CLASS == "WARLOCK" and specID == WARLOCK_SPEC_DESTRUCTION then
+        if isDestruction then
             frame.Text:SetFormattedText("%.1f", cur)
         else
-            frame.Text:SetText(math.floor(cur))
+            frame.Text:SetText(cur)
         end
     end
 end

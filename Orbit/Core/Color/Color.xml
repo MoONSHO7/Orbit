@@ -1,0 +1,5 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="ReactionColorResolver.lua"/>
+    <Script file="ClassColorResolver.lua"/>
+    <Script file="ColorCurveEngine.lua"/>
+</Ui>

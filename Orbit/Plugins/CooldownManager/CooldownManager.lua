@@ -330,4 +330,8 @@ function Plugin:OnDisable()
         self.chargeUpdateTicker:Cancel()
         self.chargeUpdateTicker = nil
     end
+    if self._pandemicTicker then
+        self._pandemicTicker:Cancel()
+        self._pandemicTicker = nil
+    end
 end

@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="ActionBarsText.lua"/>
+    <Script file="ActionBarsContainer.lua"/>
+    <Script file="ActionBarsPreview.lua"/>
+    <Script file="ActionBars.lua"/>
+</Ui>

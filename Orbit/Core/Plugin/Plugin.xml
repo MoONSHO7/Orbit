@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="Registry.lua"/>
+    <Script file="PluginMixin.lua"/>
+    <Script file="NativeBarMixin.lua"/>
+    <Script file="OOCFadeMixin.lua"/>
+</Ui>

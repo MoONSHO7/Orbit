@@ -250,14 +250,12 @@ function Plugin:OnLoad()
     end
     Orbit.EventBus:On("PLAYER_REGEN_ENABLED", self.OnCombatEnd, self)
     if Orbit.Engine.EditMode then
-        Orbit.Engine.EditMode:RegisterCallbacks({ Enter = function() self:ApplyAll() end, Exit = function() self:ApplyAll() end }, self)
+        Orbit.Engine.EditMode:RegisterCallbacks({
+            Enter = function() self:UpdateVisibilityDriver() end,
+            Exit = function() self:ApplyAll() end,
+        }, self)
     end
     Orbit.EventBus:On("UPDATE_MULTI_CAST_ACTIONBAR", function() C_Timer.After(0.1, function() self:ApplyAll() end) end, self)
-    hooksecurefunc("ActionButton_UpdateRangeIndicator", function(btn, checksRange, inRange)
-        if not btn or not btn.icon then return end
-        btn.orbitOutOfRange = checksRange and not inRange
-        if btn.orbitOutOfRange then btn.icon:SetVertexColor(1, 0.2, 0.2) else btn.icon:SetVertexColor(1, 1, 1) end
-    end)
     local function HideFlyoutBackground()
         local bg = SpellFlyoutBackgroundEnd
         if not bg then return end
