@@ -412,7 +412,7 @@ function Mixin:CreateAuraGridPlugin(config)
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
     Frame:SetScript("OnEvent", function(f, event, unit)
-        if Orbit:IsEditMode() and event == "UNIT_AURA" then return end
+        if Orbit:IsEditMode() then return end
         if event == config.changeEvent or event == "PLAYER_ENTERING_WORLD" then
             self:UpdateVisibility()
             self:UpdateAuras()
