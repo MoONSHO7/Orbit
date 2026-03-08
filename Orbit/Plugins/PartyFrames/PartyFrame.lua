@@ -40,6 +40,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
             MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2, justifyH = "CENTER", posX = 0, posY = 18 },
             RoleIcon = { anchorX = "RIGHT", offsetX = 10, anchorY = "TOP", offsetY = 3, justifyH = "RIGHT" },
             LeaderIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", posX = -70, posY = 20 },
+            StatusIcons = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             SummonIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
@@ -366,16 +367,10 @@ local function HideNativePartyFrames()
     for i = 1, 4 do
         local partyFrame = _G["PartyMemberFrame" .. i]
         if partyFrame then
-            partyFrame:ClearAllPoints()
-            partyFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-            partyFrame:SetAlpha(0)
-            partyFrame:SetScale(0.001)
-            partyFrame:EnableMouse(false)
+            OrbitEngine.NativeFrame:Banish(partyFrame)
             if not partyFrame.orbitSetPointHooked then
                 hooksecurefunc(partyFrame, "SetPoint", function(self)
-                    if InCombatLockdown() then
-                        return
-                    end
+                    if InCombatLockdown() then return end
                     if not self.isMovingOffscreen then
                         self.isMovingOffscreen = true
                         self:ClearAllPoints()
@@ -387,11 +382,11 @@ local function HideNativePartyFrames()
             end
         end
     end
-    if PartyFrame then
-        OrbitEngine.NativeFrame:Hide(PartyFrame)
-    end
-    if CompactPartyFrame then
-        OrbitEngine.NativeFrame:Hide(CompactPartyFrame)
+    OrbitEngine.NativeFrame:Banish(PartyFrame)
+    OrbitEngine.NativeFrame:Banish(CompactPartyFrame)
+    for i = 1, 5 do
+        local member = _G["CompactPartyFrameMember" .. i]
+        if member then member:UnregisterAllEvents() end
     end
 end
 
@@ -442,7 +437,7 @@ function Plugin:OnLoad()
             self:EnsureAuraIcon(firstFrame, k, GetComponentIconSize(self, k))
         end
     end
-    local healerIconKeys = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+    local healerIconKeys = { "RoleIcon", "LeaderIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
     for _, k in ipairs(HealerReg:ActiveKeys()) do healerIconKeys[#healerIconKeys + 1] = k end
     Orbit.GroupCanvasRegistration:RegisterComponents(pluginRef, self.container, firstFrame,
         { "Name", "HealthText" },
@@ -523,6 +518,7 @@ function Plugin:OnLoad()
         end
     end)
 
+    self.skipEditModeApply = true
     self:RegisterStandardEvents()
 
     -- Edit Mode callbacks
@@ -749,9 +745,9 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
 
     -- Icon positions (healer auras, status icons, etc.)
-    local savedPositions = self:GetSetting(1, "ComponentPositions")
+    local savedPositions = self:GetComponentPositions(1)
     if savedPositions then
-        local iconKeys = { "RoleIcon", "LeaderIcon", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+        local iconKeys = { "RoleIcon", "LeaderIcon", "StatusIcons", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
         local activeKeys = HealerReg:ActiveKeys()
         for _, k in ipairs(activeKeys) do iconKeys[#iconKeys + 1] = k end
         -- Ensure healer aura icons exist with correct size
@@ -774,6 +770,10 @@ function Plugin:ApplyFrameStyle(frame, showPower)
         end
         Orbit.GroupCanvasRegistration:ApplyIconPositions({ frame }, savedPositions, iconKeys)
     end
+end
+
+function Plugin:OnCanvasApply()
+    Orbit.GroupCanvasRegistration:OnCanvasApply(self)
 end
 
 function Plugin:ApplySettings()

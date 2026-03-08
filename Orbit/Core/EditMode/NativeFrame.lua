@@ -26,6 +26,18 @@ local function TableCount(t)
     return count
 end
 
+-- [ SCENARIO 0: BANISH ]----------------------------------------------------------------------------
+-- Moves a frame fully offscreen AND silences it. No backup — one-way removal.
+function NativeFrame:Banish(frame)
+    if not frame then return end
+    frame:ClearAllPoints()
+    frame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
+    frame:UnregisterAllEvents()
+    frame:SetAlpha(0)
+    frame:SetScale(0.001)
+    frame:EnableMouse(false)
+end
+
 -- [ SCENARIO 1: HIDE & REPLACE ]--------------------------------------------------------------------
 
 function NativeFrame:Hide(nativeFrame, options)

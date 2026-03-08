@@ -152,19 +152,11 @@ end
 
 -- [ NATIVE FRAME HIDING ]----------------------------------------------------------------------------
 local function HideNativeBossFrames()
-    if BossTargetFrameContainer then
-        BossTargetFrameContainer:ClearAllPoints()
-        BossTargetFrameContainer:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-        BossTargetFrameContainer:SetAlpha(0)
-        BossTargetFrameContainer:SetScale(0.001)
-        BossTargetFrameContainer:EnableMouse(false)
-    end
+    OrbitEngine.NativeFrame:Banish(BossTargetFrameContainer)
     for i = 1, MAX_BOSS_FRAMES do
         local bossFrame = _G["Boss" .. i .. "TargetFrame"]
         if bossFrame then
-            bossFrame:ClearAllPoints()
-            bossFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-            bossFrame:SetAlpha(0); bossFrame:SetScale(0.001); bossFrame:EnableMouse(false)
+            OrbitEngine.NativeFrame:Banish(bossFrame)
             if not bossFrame.orbitSetPointHooked then
                 hooksecurefunc(bossFrame, "SetPoint", function(self)
                     if InCombatLockdown() then return end
@@ -185,9 +177,13 @@ end
 function Plugin:AddSettings(dialog, systemFrame)
     local SB = OrbitEngine.SchemaBuilder
     local schema = { hideNativeSettings = true, controls = {} }
-    table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 150 })
-    table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40 })
-    table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = 20, max = 100, step = 1, default = 40, formatter = function(v) return v .. "px" end })
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout" }, "Layout", self)
+    if currentTab == "Layout" then
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 150 })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40 })
+        table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = 20, max = 100, step = 1, default = 40, formatter = function(v) return v .. "px" end })
+    end
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
@@ -282,12 +278,13 @@ function Plugin:OnLoad()
         end
         if not InCombatLockdown() then self:UpdateContainerSize() end
     end)
+    self.skipEditModeApply = true
     self:RegisterStandardEvents()
     if EventRegistry and not self.editModeCallbacksRegistered then
         self.editModeCallbacksRegistered = true
         EventRegistry:RegisterCallback("EditMode.Enter", function()
-            if not InCombatLockdown() then UnregisterStateDriver(self.container, "visibility"); self.container:Show(); self:UpdateContainerSize() end
-            self:ShowPreview(); self:ApplySettings()
+            if not InCombatLockdown() then UnregisterStateDriver(self.container, "visibility"); self.container:Show() end
+            self:ShowPreview()
         end, self)
         EventRegistry:RegisterCallback("EditMode.Exit", function()
             self:HidePreview()
@@ -411,7 +408,7 @@ function Plugin:ApplySettings()
                 local fontPath = LSM:Fetch("font", fontName)
                 if frame.CastBar.Text then frame.CastBar.Text:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline()) end
                 if frame.CastBar.Timer then frame.CastBar.Timer:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline()) end
-                local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+                local componentPositions = self:GetComponentPositions(1)
                 local castData = componentPositions.CastBar or {}
                 local subComps = castData.subComponents or {}
                 local function ApplySubPos(element, subPos, defaultJustify)
