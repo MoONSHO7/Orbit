@@ -71,13 +71,13 @@ function Plugin:AddSettings(dialog, systemFrame)
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
         local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160 })
+        local sizeOnChange = function(key) return function(val) self:SetSetting(PLAYER_FRAME_INDEX, key, val); self:UpdateLayout(self.frame) end end
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160, onChange = sizeOnChange("Width") })
         if not isAnchored or anchorAxis ~= "y" then
-            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40 })
+            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40, onChange = sizeOnChange("Height") })
         end
 
     elseif currentTab == "Visibility" then
-        SB:AddOpacitySettings(self, schema, PLAYER_FRAME_INDEX, systemFrame)
         table.insert(schema.controls, {
             type = "checkbox",
             key = "OutOfCombatFade",
@@ -389,12 +389,7 @@ function Plugin:UpdateLayout(frame)
     end
     local systemIndex = PLAYER_FRAME_INDEX
     local width, height = self:GetSetting(systemIndex, "Width"), self:GetSetting(systemIndex, "Height")
-    local isAnchored = OrbitEngine.Frame:GetAnchorParent(frame) ~= nil
-    if not isAnchored then
-        frame:SetSize(width, height)
-    else
-        frame:SetWidth(width)
-    end
+    self:ApplySize(frame, width, height)
 end
 
 function Plugin:ApplySettings(frame)

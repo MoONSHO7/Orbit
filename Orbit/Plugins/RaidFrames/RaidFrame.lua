@@ -261,22 +261,8 @@ end
 -- [ HIDE NATIVE RAID FRAMES ]----------------------------------------------------------------------
 
 local function HideNativeRaidFrames()
-    if CompactRaidFrameContainer then
-        CompactRaidFrameContainer:ClearAllPoints()
-        CompactRaidFrameContainer:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-        CompactRaidFrameContainer:UnregisterAllEvents()
-        CompactRaidFrameContainer:SetAlpha(0)
-        CompactRaidFrameContainer:SetScale(0.001)
-        CompactRaidFrameContainer:EnableMouse(false)
-    end
-    if CompactRaidFrameManager then
-        CompactRaidFrameManager:ClearAllPoints()
-        CompactRaidFrameManager:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-        CompactRaidFrameManager:UnregisterAllEvents()
-        CompactRaidFrameManager:SetAlpha(0)
-        CompactRaidFrameManager:SetScale(0.001)
-        CompactRaidFrameManager:EnableMouse(false)
-    end
+    OrbitEngine.NativeFrame:Banish(CompactRaidFrameContainer)
+    OrbitEngine.NativeFrame:Banish(CompactRaidFrameManager)
 end
 
 function Plugin:AddSettings(dialog, systemFrame)

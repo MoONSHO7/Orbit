@@ -367,17 +367,10 @@ local function HideNativePartyFrames()
     for i = 1, 4 do
         local partyFrame = _G["PartyMemberFrame" .. i]
         if partyFrame then
-            partyFrame:ClearAllPoints()
-            partyFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-            partyFrame:UnregisterAllEvents()
-            partyFrame:SetAlpha(0)
-            partyFrame:SetScale(0.001)
-            partyFrame:EnableMouse(false)
+            OrbitEngine.NativeFrame:Banish(partyFrame)
             if not partyFrame.orbitSetPointHooked then
                 hooksecurefunc(partyFrame, "SetPoint", function(self)
-                    if InCombatLockdown() then
-                        return
-                    end
+                    if InCombatLockdown() then return end
                     if not self.isMovingOffscreen then
                         self.isMovingOffscreen = true
                         self:ClearAllPoints()
@@ -389,21 +382,11 @@ local function HideNativePartyFrames()
             end
         end
     end
-    if PartyFrame then
-        PartyFrame:ClearAllPoints()
-        PartyFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-        PartyFrame:UnregisterAllEvents()
-        PartyFrame:SetAlpha(0)
-        PartyFrame:SetScale(0.001)
-        PartyFrame:EnableMouse(false)
-    end
-    if CompactPartyFrame then
-        CompactPartyFrame:ClearAllPoints()
-        CompactPartyFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-        CompactPartyFrame:UnregisterAllEvents()
-        CompactPartyFrame:SetAlpha(0)
-        CompactPartyFrame:SetScale(0.001)
-        CompactPartyFrame:EnableMouse(false)
+    OrbitEngine.NativeFrame:Banish(PartyFrame)
+    OrbitEngine.NativeFrame:Banish(CompactPartyFrame)
+    for i = 1, 5 do
+        local member = _G["CompactPartyFrameMember" .. i]
+        if member then member:UnregisterAllEvents() end
     end
 end
 

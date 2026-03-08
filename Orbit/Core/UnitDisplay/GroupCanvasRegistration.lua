@@ -7,6 +7,21 @@ local OrbitEngine = Orbit.Engine
 Orbit.GroupCanvasRegistration = {}
 local Reg = Orbit.GroupCanvasRegistration
 
+local function MakeStatusIconsPositionCallback(plugin)
+    return function(_, anchorX, anchorY, offsetX, offsetY, justifyH)
+        local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+        local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+        if Txn and Txn:IsActive() then
+            Txn:SetPosition("StatusIcons", posData)
+        else
+            local positions = plugin:GetSetting(1, "ComponentPositions") or {}
+            positions.StatusIcons = posData
+            Reg:FanOutStatusIcons(positions)
+            plugin:SetSetting(1, "ComponentPositions", positions)
+        end
+    end
+end
+
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
 local STATUS_GROUP_KEYS = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }
@@ -52,18 +67,7 @@ function Reg:RegisterComponents(plugin, container, firstFrame, textKeys, iconKey
     if firstFrame.StatusIcons then
         OrbitEngine.ComponentDrag:Attach(firstFrame.StatusIcons, container, {
             key = "StatusIcons",
-            onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
-                local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
-                local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
-                if Txn and Txn:IsActive() then
-                    Txn:SetPosition("StatusIcons", posData)
-                else
-                    local positions = plugin:GetSetting(1, "ComponentPositions") or {}
-                    positions.StatusIcons = posData
-                    Reg:FanOutStatusIcons(positions)
-                    plugin:SetSetting(1, "ComponentPositions", positions)
-                end
-            end,
+            onPositionChange = MakeStatusIconsPositionCallback(plugin),
         })
     end
 
@@ -172,18 +176,7 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
         local container = frame:GetParent()
         OrbitEngine.ComponentDrag:Attach(frame.StatusIcons, container, {
             key = "StatusIcons",
-            onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
-                local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
-                local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
-                if Txn and Txn:IsActive() then
-                    Txn:SetPosition("StatusIcons", posData)
-                else
-                    local positions = plugin:GetSetting(1, "ComponentPositions") or {}
-                    positions.StatusIcons = posData
-                    Reg:FanOutStatusIcons(positions)
-                    plugin:SetSetting(1, "ComponentPositions", positions)
-                end
-            end,
+            onPositionChange = MakeStatusIconsPositionCallback(plugin),
         })
     end
     local container = frame:GetParent()

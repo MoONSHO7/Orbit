@@ -404,7 +404,7 @@ function Mixin:CreateAuraGridPlugin(config)
         if not Orbit:IsEditMode() then self:UpdateAuras() end
     end)
     Frame:HookScript("OnSizeChanged", function()
-        if Orbit:IsEditMode() then self:ShowPreviewAuras() else self:UpdateAuras() end
+        if Orbit:IsEditMode() then self:ResizePreviewAuras() else self:UpdateAuras() end
     end)
 
     Frame:RegisterUnitEvent("UNIT_AURA", config.unit)
@@ -589,8 +589,25 @@ function Mixin:ShowPreviewAuras()
     -- Trim cache if count decreased
     for i = renderCount + 1, #cache do cache[i] = nil end
 
+    Frame._activePreviewIcons = previews
     local anchor, growthX, growthY = ResolveGrowthDirection(Frame)
     Orbit.AuraLayout:LayoutGrid(Frame, previews, {
+        size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
+        anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
+    })
+end
+
+-- Lightweight resize: reuse existing preview icons, just resize and re-layout
+function Mixin:ResizePreviewAuras()
+    local Frame = self._agFrame
+    if not Frame or not Frame._activePreviewIcons or #Frame._activePreviewIcons == 0 then return end
+    local _, iconsPerRow, spacing, iconH, iconW = self:_resolveGrid()
+    for _, icon in ipairs(Frame._activePreviewIcons) do
+        icon:SetSize(iconW, iconH)
+        CropIconTexture(icon, iconW, iconH)
+    end
+    local anchor, growthX, growthY = ResolveGrowthDirection(Frame)
+    Orbit.AuraLayout:LayoutGrid(Frame, Frame._activePreviewIcons, {
         size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
         anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
     })
@@ -650,5 +667,5 @@ function Mixin:UpdateLayout()
     local height = math.max(1, (rows * iconH) + ((rows - 1) * spacing))
     Frame:SetHeight(height)
 
-    if Orbit:IsEditMode() then self:ShowPreviewAuras() else self:UpdateAuras() end
+    if Orbit:IsEditMode() then self:ResizePreviewAuras() else self:UpdateAuras() end
 end

@@ -67,6 +67,8 @@ local B_REVIVING = 4
 local B_OOR = 5
 local B_EXIT = 6
 local EXIT_RATE = 0.05
+local EXIT_ALPHA_RATE = 0.03
+local EXIT_MIN_HEALTH = 0.01
 
 -- [ SESSION REGISTRY ]------------------------------------------------------------------------------
 -- Keyed by owner (plugin self), so Party/Raid/Boss can animate concurrently.
@@ -187,7 +189,7 @@ local function TransitionBehavior(cfg, frame)
             frame.HealthText:SetFormattedText("%.0f%%", cfg.currentHealth * 100)
         end
         -- Fade alpha to 1
-        if cfg.alpha < 1 then cfg.alpha = math.min(1, cfg.alpha + 0.03); frame:SetAlpha(cfg.alpha); done = false end
+        if cfg.alpha < 1 then cfg.alpha = math.min(1, cfg.alpha + EXIT_ALPHA_RATE); frame:SetAlpha(cfg.alpha); done = false end
         -- Hide overlay bars
         if frame.TotalAbsorbBar then frame.TotalAbsorbBar:Hide(); if frame.TotalAbsorbOverlay then frame.TotalAbsorbOverlay:Hide() end end
         if frame.HealAbsorbBar then frame.HealAbsorbBar:Hide() end
@@ -625,7 +627,7 @@ function PA:ExitAll(plugin)
         for _, cfg in ipairs(session.cfg) do
             cfg.behavior = B_EXIT
             cfg.canDie = false; cfg.canOOR = false; cfg.exitDone = false
-            if cfg.currentHealth <= 0 then cfg.currentHealth = 0.01 end
+            if cfg.currentHealth <= 0 then cfg.currentHealth = EXIT_MIN_HEALTH end
         end
         session.exitPlugin = plugin
     else

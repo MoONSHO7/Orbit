@@ -67,7 +67,6 @@ local function HideBar(bar)
     if bar.Icon then bar.Icon:SetAlpha(0) end
 end
 
-
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
     if not CastBar then
