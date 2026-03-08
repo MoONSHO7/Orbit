@@ -44,7 +44,9 @@ function CooldownUtils:BuildSkinSettings(plugin, systemIndex, options)
         zoom = options.zoom or 0,
         borderStyle = options.borderStyle or 1,
         borderSize = Orbit.db.GlobalSettings.BorderSize,
-        swipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(systemIndex, "SwipeColorCurve"))
+        activeSwipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(systemIndex, "ActiveSwipeColorCurve"))
+            or { r = 1, g = 0.95, b = 0.57, a = 0.7 },
+        cooldownSwipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(systemIndex, "CooldownSwipeColorCurve"))
             or plugin:GetSetting(systemIndex, "SwipeColor")
             or { r = 0, g = 0, b = 0, a = 0.8 },
         orientation = plugin:GetSetting(systemIndex, "Orientation"),

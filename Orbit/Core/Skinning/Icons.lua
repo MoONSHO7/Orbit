@@ -135,7 +135,7 @@ function Icons:ApplyCustom(icon, settings)
             r.cooldown:ClearAllPoints()
             r.cooldown:SetAllPoints(icon)
             local desiredTexture = Constants.Assets.SwipeCustom
-            local desiredColor = settings.swipeColor or { r = 0, g = 0, b = 0, a = 0.8 }
+            local desiredColor = settings.cooldownSwipeColor or settings.swipeColor or { r = 0, g = 0, b = 0, a = 0.8 }
             r.cooldown.orbitDesiredSwipe = { texture = desiredTexture, r = desiredColor.r, g = desiredColor.g, b = desiredColor.b, a = desiredColor.a }
             r.cooldown.orbitUpdating = true
             r.cooldown:SetSwipeTexture(desiredTexture)

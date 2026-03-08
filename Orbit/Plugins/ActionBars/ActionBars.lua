@@ -240,7 +240,8 @@ function Plugin:OnLoad()
                     container.orbitMountedOverlay:Show()
                 elseif container.orbitMountedOverlay then
                     container.orbitMountedSuppressed = nil
-                    container.orbitMountedOverlay:Hide(); container:SetScript("OnUpdate", nil); container:SetAlpha(1)
+                    container.orbitMountedOverlay:Hide(); container:SetScript("OnUpdate", nil)
+                    self:ApplySettings(container)
                 end
             end
         end

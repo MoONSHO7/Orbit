@@ -179,6 +179,15 @@ function CDM:ProcessChildren(anchor)
             self:HookGCDSwipe(icon, systemIndex)
             self:ApplyTextSettings(icon, systemIndex)
             icon.orbitCDMSystemIndex = systemIndex
+            local cd = icon.Cooldown or (icon.GetCooldownFrame and icon:GetCooldownFrame())
+            if cd then
+                local c = icon.wasSetFromAura and skinSettings.activeSwipeColor or skinSettings.cooldownSwipeColor
+                cd.orbitDesiredSwipe = cd.orbitDesiredSwipe or {}
+                cd.orbitDesiredSwipe.r, cd.orbitDesiredSwipe.g, cd.orbitDesiredSwipe.b, cd.orbitDesiredSwipe.a = c.r, c.g, c.b, c.a
+                cd.orbitUpdating = true
+                cd:SetSwipeColor(c.r, c.g, c.b, c.a)
+                cd.orbitUpdating = false
+            end
             if not InCombatLockdown() and icon.GetSpellID then
                 local sid = icon:GetSpellID()
                 if sid and not issecretvalue(sid) then

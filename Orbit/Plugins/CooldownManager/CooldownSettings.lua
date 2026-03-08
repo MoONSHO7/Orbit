@@ -191,7 +191,12 @@ function CDM:AddSettings(dialog, systemFrame)
         end
     elseif currentTab == "Colors" then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-            key = "SwipeColorCurve", label = "Swipe Color",
+            key = "ActiveSwipeColorCurve", label = "Active Swipe",
+            default = { pins = { { position = 0, color = { r = 1, g = 0.95, b = 0.57, a = 0.7 } } } },
+            singleColor = true,
+        })
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "CooldownSwipeColorCurve", label = "Cooldown Swipe",
             default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
             singleColor = true,
         })
