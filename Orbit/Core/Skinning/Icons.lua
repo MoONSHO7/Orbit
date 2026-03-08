@@ -47,7 +47,7 @@ end
 function Icons:FindRegions(icon)
     if self.regionCache[icon] then return self.regionCache[icon] end
     local regions = {
-        icon = icon.Icon or icon.icon, cooldown = icon.Cooldown,
+        icon = icon.Icon or icon.icon, cooldown = icon.Cooldown or icon.cooldown,
         outOfRange = icon.OutOfRange or icon.outOfRange,
         border = icon.Border or icon.IconBorder,
         proc = icon.SpellActivationAlert, pandemic = icon.PandemicIcon,

@@ -47,10 +47,12 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
                 initialData = self.curveData,
                 hasOpacity = true,
                 forceSingleColor = self.singleColorMode,
+                hasDesaturation = self.hasDesaturation,
                 callback = function(result, wasCancelled)
                     if wasCancelled then return end
                     if result and result.pins and #result.pins > 0 then
                         self.curveData = { pins = result.pins }
+                        if result.desaturated ~= nil then self.curveData.desaturated = result.desaturated end
                     else
                         self.curveData = nil
                     end

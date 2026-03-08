@@ -16,6 +16,10 @@ local MIN_STANCE_ICONS = 2
 local VEHICLE_EXIT_INDEX = 13
 local VEHICLE_EXIT_VISIBILITY = "[canexitvehicle] show; hide"
 local MOUNTED_OVERLAY_LEVEL = 100
+local DEFAULT_OOR_COLOR = { pins = { { position = 0, color = { r = 0.8, g = 0.2, b = 0.2, a = 1 } } } }
+local DEFAULT_OOM_COLOR = { pins = { { position = 0, color = { r = 0.2, g = 0.2, b = 0.8, a = 1 } } } }
+local DEFAULT_UNUSABLE_COLOR = { pins = { { position = 0, color = { r = 0.4, g = 0.4, b = 0.4, a = 1 } } } }
+local DEFAULT_CD_SWIPE = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } }
 
 local BASE_VISIBILITY_DRIVER = "[petbattle][vehicleui] hide; show"
 local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [nopet] hide; show"
@@ -58,6 +62,8 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
         OutOfCombatFade = false, ShowOnMouseover = true,
         KeypressColor = { r = 1, g = 1, b = 1, a = 0.6 },
         BackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
+        OORColor = DEFAULT_OOR_COLOR, OOMColor = DEFAULT_OOM_COLOR, UnusableColor = DEFAULT_UNUSABLE_COLOR,
+        CooldownSwipeColor = DEFAULT_CD_SWIPE,
     },
 })
 
@@ -68,6 +74,48 @@ Plugin.containers = {}
 Plugin.buttons = {}
 Plugin.blizzBars = {}
 Plugin.gridCache = {}
+
+-- [ SPELL STATE ]--------------------------------------------------------------------------------
+local function ExtractColor(curveData)
+    if curveData and curveData.pins and curveData.pins[1] then return curveData.pins[1].color end
+    return curveData
+end
+
+local function IsDesaturated(curveData) return curveData and curveData.desaturated or false end
+
+local function RefreshIconColor(plugin, button)
+    if not button or not button.icon or not button.action then return end
+    if not C_ActionBar.HasAction(button.action) then return end
+    local _, spellID = GetActionInfo(button.action)
+    local isUsable, notEnoughMana = IsUsableAction(button.action)
+    local outOfRange = spellID and C_Spell.SpellHasRange(spellID) and C_Spell.IsSpellInRange(spellID) == false
+    local oorData = plugin:GetSetting(1, "OORColor") or DEFAULT_OOR_COLOR
+    local oomData = plugin:GetSetting(1, "OOMColor") or DEFAULT_OOM_COLOR
+    local unusableData = plugin:GetSetting(1, "UnusableColor") or DEFAULT_UNUSABLE_COLOR
+    if outOfRange then
+        local c = ExtractColor(oorData)
+        button.icon:SetVertexColor(c.r, c.g, c.b)
+        button.icon:SetDesaturated(IsDesaturated(oorData))
+    elseif isUsable then
+        button.icon:SetVertexColor(1, 1, 1)
+        button.icon:SetDesaturated(false)
+    elseif notEnoughMana then
+        local c = ExtractColor(oomData)
+        button.icon:SetVertexColor(c.r, c.g, c.b)
+        button.icon:SetDesaturated(IsDesaturated(oomData))
+    else
+        local c = ExtractColor(unusableData)
+        button.icon:SetVertexColor(c.r, c.g, c.b)
+        button.icon:SetDesaturated(IsDesaturated(unusableData))
+    end
+end
+
+local function HookButtonState(plugin, button)
+    if button.__orbitStateHooked then return end
+    if button.UpdateUsable then hooksecurefunc(button, "UpdateUsable", function(self) RefreshIconColor(plugin, self) end) end
+    if button.Update then hooksecurefunc(button, "Update", function(self) RefreshIconColor(plugin, self) end) end
+    button.__orbitStateHooked = true
+end
 
 -- [ HELPERS ]------------------------------------------------------------------------------------
 local function EnsureHiddenFrame()
@@ -162,6 +210,23 @@ function Plugin:AddSettings(dialog, systemFrame)
                 self:SetSetting(1, "KeypressColor", CurveToColor(val) or DEFAULT_KEYPRESS)
                 self:ApplyAll()
             end })
+        local function RefreshAllButtons()
+            for _, buttons in pairs(self.buttons) do
+                for _, button in ipairs(buttons) do RefreshIconColor(self, button) end
+            end
+        end
+        table.insert(schema.controls, { type = "colorcurve", key = "OORColor", label = "Out of Range", singleColor = true, hasDesaturation = true,
+            default = DEFAULT_OOR_COLOR,
+            onChange = function(val) self:SetSetting(1, "OORColor", val); RefreshAllButtons() end })
+        table.insert(schema.controls, { type = "colorcurve", key = "OOMColor", label = "Out of Mana", singleColor = true, hasDesaturation = true,
+            default = DEFAULT_OOM_COLOR,
+            onChange = function(val) self:SetSetting(1, "OOMColor", val); RefreshAllButtons() end })
+        table.insert(schema.controls, { type = "colorcurve", key = "UnusableColor", label = "Not Usable", singleColor = true, hasDesaturation = true,
+            default = DEFAULT_UNUSABLE_COLOR,
+            onChange = function(val) self:SetSetting(1, "UnusableColor", val); RefreshAllButtons() end })
+        table.insert(schema.controls, { type = "colorcurve", key = "CooldownSwipeColor", label = "Cooldown Swipe", singleColor = true,
+            default = DEFAULT_CD_SWIPE,
+            onChange = function(val) self:SetSetting(1, "CooldownSwipeColor", val); self:ApplyAll() end })
     elseif currentTab == "Visibility" then
         SB:AddOpacitySettings(self, schema, systemIndex, systemFrame, {
             onChange = function(val)
@@ -295,6 +360,18 @@ function Plugin:OnLoad()
         if self.cursorTimer then self.cursorTimer:Cancel() end
         self.cursorTimer = C_Timer.NewTimer(0.05, function() if not InCombatLockdown() then self:ApplyAll() end end)
     end, self)
+    -- [ SPELL STATE HOOKS ]--------------------------------------------------------------------------
+    Orbit.EventBus:On("PLAYER_TARGET_CHANGED", function()
+        for _, buttons in pairs(self.buttons) do
+            for _, button in ipairs(buttons) do RefreshIconColor(self, button) end
+        end
+    end, self)
+    local plugin = self
+    Orbit.EventBus:On("ACTION_RANGE_CHECK_UPDATE", function(slot)
+        local buttons = ActionBarButtonRangeCheckFrame.actions[slot]
+        if not buttons then return end
+        for _, button in pairs(buttons) do RefreshIconColor(plugin, button) end
+    end)
 end
 
 -- [ EDIT MODE NUM ICONS PATCH ]------------------------------------------------------------------
@@ -364,7 +441,9 @@ function Plugin:LayoutButtons(index)
     local w, h = BUTTON_SIZE, BUTTON_SIZE
     local useMasque = MasqueBridge and MasqueBridge.enabled
     local masqueGroup = useMasque and (config and config.label or "Action Bar " .. index)
-    local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, swipeColor = { r = 0, g = 0, b = 0, a = 0.8 }, showTimer = true, hideName = false, backdropColor = self:GetSetting(1, "BackdropColour"), keypressColor = self:GetSetting(1, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 } }
+    local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize,
+        cooldownSwipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "CooldownSwipeColor")) or { r = 0, g = 0, b = 0, a = 0.8 },
+        showTimer = true, hideName = false, backdropColor = self:GetSetting(1, "BackdropColour"), keypressColor = self:GetSetting(1, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 } }
     local totalEffective = math.min(#buttons, numIcons)
     local limitPerLine
     if orientation == 0 then limitPerLine = math.max(1, math.ceil(totalEffective / rows))
@@ -400,6 +479,7 @@ function Plugin:LayoutButtons(index)
                 if useMasque then MasqueBridge:AddActionButton(masqueGroup, button) end
                 if not useMasque or not MasqueBridge:IsGroupEnabled(masqueGroup) then Orbit.Skin.ActionButtonSkin:Apply(button, skinSettings) end
                 ABText:Apply(self, button, index)
+                HookButtonState(self, button)
                 button:ClearAllPoints()
                 local pos = cachedPositions[i]
                 button:SetPoint("TOPLEFT", container, "TOPLEFT", pos.x, pos.y)

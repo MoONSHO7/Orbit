@@ -55,15 +55,18 @@ lib:IsOpen()
 |---|---|---|
 | `initialData` | `table` or `nil` | curve table `{ pins = {...} }` or simple color `{ r, g, b, a }` |
 | `forceSingleColor` | `boolean` | restrict to one pin when `true` (default: `false`) |
+| `hasDesaturation` | `boolean` | show desaturation checkbox when `true` (default: `false`) |
 | `callback` | `function(result)` | called on picker close with result or `nil` |
 
 ## callback result
 
 | scenario | result |
 |---|---|
-| apply with pins | `{ curve = <native>, pins = { ... } }` |
+| apply with pins | `{ curve = <native>, pins = { ... }, desaturated = bool }` |
 | clear all pins ("clear color") | `nil` |
-| cancel (escape / close) | `{ curve, pins }` from snapshot before edits |
+| cancel (escape / close) | `{ curve, pins, desaturated }` from snapshot before edits |
+
+`desaturated` is only present when `hasDesaturation = true` was set in open options.
 
 ### handling nil (default color fallback)
 
@@ -89,6 +92,7 @@ element:SetTextColor(color.r, color.g, color.b, color.a or 1)
 - `position`: 0.0 (left) to 1.0 (right) on the gradient bar
 - `color`: resolved rgba values
 - `type`: optional, `"class"` pins resolve to the player's current class color
+- `desaturated`: optional `boolean`, present when `hasDesaturation` was used
 
 ## modes
 

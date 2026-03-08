@@ -70,6 +70,8 @@ lib.callback = nil
 lib.wasCancelled = false
 lib.snapshotPins = nil
 lib.multiPinMode = false
+lib.desaturated = false
+lib.hasDesaturation = false
 
 lib.ui = lib.ui or {}
 lib.drag = lib.drag or {}
@@ -431,6 +433,33 @@ function lib:CreateClassColorSwatch()
     return frame
 end
 
+-- [ DESATURATION CHECKBOX ] ------------------------------------------------------------------------
+local DESAT_CHECKBOX_SIZE = 18
+
+function lib:CreateDesaturationCheckbox()
+    if self.ui.desatCheckbox then return self.ui.desatCheckbox end
+    local cb = CreateFrame("CheckButton", nil, self.ui.frame, "UICheckButtonTemplate")
+    cb:SetSize(DESAT_CHECKBOX_SIZE, DESAT_CHECKBOX_SIZE)
+    cb.text:SetText("")
+    cb.Label = cb:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    cb.Label:SetPoint("TOP", cb, "BOTTOM", 0, -1)
+    cb.Label:SetText("Desat")
+    cb.Label:SetTextColor(0.7, 0.7, 0.7, 1)
+    cb:SetScript("OnClick", function(self)
+        lib.desaturated = self:GetChecked()
+        lib:UpdateCurve()
+    end)
+    cb:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Desaturated", 1, 0.82, 0)
+        GameTooltip:AddLine("Apply grayscale to the texture", 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    self.ui.desatCheckbox = cb
+    return cb
+end
+
 function lib:UpdateClassColorSwatch()
     if not self.ui.classSwatch then return end
     local c = GetCurrentClassColor()
@@ -587,7 +616,9 @@ end
 function lib:UpdateCurve()
     self.colorCurve = self:BuildColorCurve()
     if self.callback then
-        self.callback({ curve = self.colorCurve, pins = SerializePins(self.pins) }, false)
+        local result = { curve = self.colorCurve, pins = SerializePins(self.pins) }
+        if self.hasDesaturation then result.desaturated = self.desaturated end
+        self.callback(result, false)
     end
 end
 
@@ -725,10 +756,15 @@ function lib:CreatePickerFrame()
         lib:EndDrag()
 
         if lib.callback then
+            local function BuildResult(pins)
+                local result = { curve = lib.colorCurve, pins = SerializePins(pins) }
+                if lib.hasDesaturation then result.desaturated = lib.desaturated end
+                return result
+            end
             if lib.wasCancelled then
-                lib.callback({ curve = lib.colorCurve, pins = SerializePins(lib.snapshotPins) }, true)
+                lib.callback(BuildResult(lib.snapshotPins), true)
             elseif lib.pins and #lib.pins > 0 then
-                lib.callback({ curve = lib.colorCurve, pins = SerializePins(lib.pins) }, false)
+                lib.callback(BuildResult(lib.pins), false)
             else
                 lib.callback(nil, false)
             end
@@ -981,6 +1017,14 @@ function lib:LayoutControls()
     classSwatch:ClearAllPoints()
     classSwatch:SetPoint("TOP", swatch, "BOTTOM", 0, -(CLASS_SWATCH_GAP + 14))
 
+    if self.ui.desatCheckbox then
+        self.ui.desatCheckbox:SetParent(container)
+        self.ui.desatCheckbox:ClearAllPoints()
+        self.ui.desatCheckbox:SetPoint("TOP", classSwatch, "BOTTOM", 0, -(CLASS_SWATCH_GAP + 14))
+        if self.hasDesaturation then self.ui.desatCheckbox:Show()
+        else self.ui.desatCheckbox:Hide() end
+    end
+
     hexBox:ClearAllPoints()
     hexBox:SetPoint("TOP", cs, "BOTTOMLEFT", WHEEL_SIZE / 2, -SWATCH_GAP)
 end
@@ -1002,6 +1046,7 @@ function lib:Initialize()
     self:SetupClassColorEvents()
     self:CreateDragTexture()
     self:CreateInfoButton()
+    self:CreateDesaturationCheckbox()
 
     self.ui.initialized = true
 end
@@ -1142,6 +1187,10 @@ function lib:Open(options)
     end
 
     self:Initialize()
+
+    self.hasDesaturation = options.hasDesaturation or false
+    self.desaturated = (data and data.desaturated) or false
+    if self.ui.desatCheckbox then self.ui.desatCheckbox:SetChecked(self.desaturated) end
 
     self.snapshotPins = DeepCopyPins(self.pins)
 
