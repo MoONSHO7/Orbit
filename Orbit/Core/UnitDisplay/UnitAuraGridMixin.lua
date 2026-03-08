@@ -568,8 +568,9 @@ function Mixin:ShowPreviewAuras()
     Frame.previewPool:ReleaseAll()
 
     local isDebuff = cfg.isHarmful
+    local renderCount = math.ceil(maxAuras * 0.6)
     local previews = {}
-    for i = 1, maxAuras do
+    for i = 1, renderCount do
         local icon = Frame.previewPool:Acquire()
         icon:SetSize(iconW, iconH)
         local tex = cache[i] or GetPreviewIcon()
@@ -586,7 +587,7 @@ function Mixin:ShowPreviewAuras()
         table.insert(previews, icon)
     end
     -- Trim cache if count decreased
-    for i = maxAuras + 1, #cache do cache[i] = nil end
+    for i = renderCount + 1, #cache do cache[i] = nil end
 
     local anchor, growthX, growthY = ResolveGrowthDirection(Frame)
     Orbit.AuraLayout:LayoutGrid(Frame, previews, {

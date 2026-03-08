@@ -212,17 +212,36 @@ end
 -- [ INITIALIZATION ]--------------------------------------------------------------------------------
 
 if EditModeManagerFrame then
-    hooksecurefunc(EditModeManagerFrame, "SelectSystem", function()
-        if Engine.FrameSelection then Engine.FrameSelection:DeselectAll() end
+    hooksecurefunc(EditModeManagerFrame, "SelectSystem", function(_, systemFrame)
+        local Selection = Engine.FrameSelection
+        if Selection then
+            Selection:DeselectAll()
+            if systemFrame then
+                Selection:SetSelectedFrame(systemFrame, true)
+                Selection:EnableKeyboardNudge()
+                local systemID = systemFrame.system
+                local plugin = Orbit:GetPlugin(systemID)
+                if plugin and Orbit.SettingsDialog then
+                    if EditModeSystemSettingsDialog then EditModeSystemSettingsDialog:Hide() end
+                    Orbit.SettingsDialog:UpdateDialog({ system = systemID, systemIndex = systemFrame.systemIndex or systemID, systemFrame = systemFrame })
+                    Orbit.SettingsDialog:Show()
+                    Orbit.SettingsDialog:PositionNearButton()
+                elseif Orbit.SettingsDialog and Orbit.SettingsDialog:IsShown() then
+                    Orbit.SettingsDialog:Hide()
+                end
+            end
+        end
     end)
 
     hooksecurefunc(EditModeManagerFrame, "ClearSelectedSystem", function()
-        if Engine.FrameSelection and not Engine.FrameSelection.isClearingNativeSelection then
+        local Selection = Engine.FrameSelection
+        if Selection and not Selection.isClearingNativeSelection then
+            if Selection.isNativeFrame then Selection:DisableKeyboardNudge() end
             local foci = GetMouseFoci and GetMouseFoci() or {}
             for _, focus in ipairs(foci) do
                 if focus and focus.isOrbitSelection then return end
             end
-            Engine.FrameSelection:DeselectAll()
+            Selection:DeselectAll()
         end
     end)
 

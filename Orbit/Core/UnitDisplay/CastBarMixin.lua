@@ -286,7 +286,9 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
             sparkColor = sparkColor,
         })
     end
-    if Orbit:IsEditMode() then
+    if Orbit:IsEditMode() and not self._previewShownThisFrame then
+        self._previewShownThisFrame = true
+        C_Timer.After(0, function() self._previewShownThisFrame = nil end)
         self:ShowPreview()
     end
 end

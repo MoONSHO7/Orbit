@@ -98,7 +98,14 @@ function Dialog:UpdateDialog(context)
     end
     if not plugin then return end
 
-    if plugin ~= self.attachedPlugin then self.orbitCurrentTab = nil end
+    if plugin ~= self.attachedPlugin then
+        self.orbitCurrentTab = nil
+        -- Stop preview animations from previous plugin
+        if self.attachedPlugin and Orbit.PreviewAnimator then
+            Orbit.PreviewAnimator:ExitAll(self.attachedPlugin)
+        end
+        self.orbitEyeToggle = nil
+    end
 
     self.attachedToSystem = systemFrame
     self.attachedPlugin = plugin
@@ -124,6 +131,11 @@ end)
 
 Dialog:SetScript("OnHide", function(self)
     PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE)
+    -- Stop preview animations
+    if self.attachedPlugin and Orbit.PreviewAnimator then
+        Orbit.PreviewAnimator:ExitAll(self.attachedPlugin)
+    end
+    self.orbitEyeToggle = nil
     self.attachedToSystem = nil
     self.attachedPlugin = nil
     self.attachedSystemIndex = nil

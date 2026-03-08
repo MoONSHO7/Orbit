@@ -14,13 +14,13 @@ local PREVIEW_COOLDOWN_MAX = 5
 local PREVIEW_PAA_SPACING = 1
 local PREVIEW_PAA_COUNT = 3
 
--- [ SPELLBOOK ICON PROVIDER ]-----------------------------------------------------------------------
-local _iconProvider
-local function GetSpellbookIcon()
-    if not _iconProvider then
-        _iconProvider = CreateAndInitFromMixin(IconDataProviderMixin, IconDataProviderExtraType.Spellbook, true)
-    end
-    return _iconProvider:GetIconByIndex(math.random(1, _iconProvider:GetNumIcons()))
+-- [ CACHED PREVIEW ICONS ]--------------------------------------------------------------------------
+local PREVIEW_BUFF_ICONS = { 135932, 136085, 135987, 132292, 135753, 136075, 135884, 136205, 135963, 136033, 135964, 136101 }
+local PREVIEW_DEBUFF_ICONS = { 136016, 136188, 136140, 136133, 132099, 136066, 135952, 132104, 136160, 136118, 136130, 135903 }
+local BUFF_COUNT, DEBUFF_COUNT = #PREVIEW_BUFF_ICONS, #PREVIEW_DEBUFF_ICONS
+local function GetSpellbookIcon(auraType)
+    if auraType == "debuff" then return PREVIEW_DEBUFF_ICONS[math.random(1, DEBUFF_COUNT)] end
+    return PREVIEW_BUFF_ICONS[math.random(1, BUFF_COUNT)]
 end
 
 function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
@@ -68,7 +68,7 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
         end
         icon:SetParent(container)
         icon:SetSize(iconSize, iconSize)
-        if not icon.Icon:GetTexture() then icon.Icon:SetTexture(GetSpellbookIcon()) end
+        if not icon.Icon:GetTexture() then icon.Icon:SetTexture(GetSpellbookIcon(auraType)) end
         if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(icon, PREVIEW_SKIN) end
         local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or "Fonts\\FRIZQT__.TTF"
         local fontOutline = Orbit.Skin:GetFontOutline()
@@ -83,8 +83,13 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
             timerText:SetFont(fontPath, Orbit.Skin:GetAdaptiveTextSize(iconSize, 8, nil, 0.45), fontOutline)
         end
         icon.Cooldown:SetHideCountdownNumbers(iconSize < PREVIEW_TIMER_MIN_SIZE)
-        icon.Cooldown:SetCooldown(GetTime(), math.random(PREVIEW_COOLDOWN_MIN, PREVIEW_COOLDOWN_MAX))
-        icon.Cooldown:Show()
+        if Orbit.PreviewAnimator:IsRunning() then
+            icon.Cooldown:SetCooldown(GetTime(), math.random(PREVIEW_COOLDOWN_MIN, PREVIEW_COOLDOWN_MAX))
+            icon.Cooldown:Show()
+        else
+            icon.Cooldown:Clear()
+            icon.Cooldown:Hide()
+        end
         col, row = AL:PositionIcon(icon, container, justifyH, selfAnchorY, col, row, iconSize, iconsPerRow, numIcons, iconsPerCol)
         icon:Show()
     end
@@ -139,7 +144,7 @@ function AP:InitAnimatedAuras(plugin, frame, helpers)
 end
 
 AP.GetSpellbookIcon = GetSpellbookIcon
-function AP:ReleaseIconProvider() _iconProvider = nil end
+function AP:ReleaseIconProvider() end
 
 function AP:ShowPrivateAuras(frame, posData, baseIconSize)
     local paa = frame.PrivateAuraAnchor

@@ -369,9 +369,13 @@ function Selection:OnEditModeEnter()
         if not (EditModeManagerFrame and EditModeManagerFrame:IsShown()) then
             return
         end
+        local showOrbit = ShouldShowOrbitFrames()
         for frame, selection in pairs(Selection.selections) do
             if frame.orbitDisabled then
                 selection:Hide()
+            elseif selection.isOrbitSelection and not showOrbit then
+                selection:SetAlpha(0)
+                selection:EnableMouse(false)
             else
                 Selection:UpdateVisuals(frame, selection)
                 if not frame.disableMovement then
@@ -380,10 +384,17 @@ function Selection:OnEditModeEnter()
             end
         end
 
-        -- Force refresh to apply native visibility settings immediately
-        Selection:RefreshVisuals()
+        -- Update native Blizzard frames
+        if EditModeManagerFrame.registeredSystemFrames then
+            local showNative = ShouldShowBlizzardFrames()
+            for _, frame in ipairs(EditModeManagerFrame.registeredSystemFrames) do
+                if frame.Selection then
+                    frame.Selection:SetAlpha(showNative and 1 or 0)
+                    frame.Selection:EnableMouse(showNative)
+                end
+            end
+        end
 
-        Engine.SelectionNativeHook:Hook(Selection)
     end)
 end
 

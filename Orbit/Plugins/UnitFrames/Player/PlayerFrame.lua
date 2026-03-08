@@ -53,6 +53,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
 
 -- Apply Mixins (including aggro indicator support and shared status icons)
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.AggroIndicatorMixin, Orbit.StatusIconMixin)
+Plugin.supportsHealthText = true
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
@@ -74,28 +75,6 @@ function Plugin:AddSettings(dialog, systemFrame)
         if not isAnchored or anchorAxis ~= "y" then
             table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40 })
         end
-        table.insert(schema.controls, {
-            type = "dropdown",
-            key = "HealthTextMode",
-            label = "Health Text",
-            options = {
-                { text = "Percentage", value = "percent" },
-                { text = "Short Health", value = "short" },
-                { text = "Raw Health", value = "raw" },
-                { text = "Short - Percentage", value = "short_and_percent" },
-                { text = "Percentage / Short", value = "percent_short" },
-                { text = "Percentage / Raw", value = "percent_raw" },
-                { text = "Short / Percentage", value = "short_percent" },
-                { text = "Short / Raw", value = "short_raw" },
-                { text = "Raw / Short", value = "raw_short" },
-                { text = "Raw / Percentage", value = "raw_percent" },
-            },
-            default = "percent_short",
-            onChange = function(val)
-                self:SetSetting(PLAYER_FRAME_INDEX, "HealthTextMode", val)
-                self:ApplySettings()
-            end,
-        })
 
     elseif currentTab == "Visibility" then
         SB:AddOpacitySettings(self, schema, PLAYER_FRAME_INDEX, systemFrame)

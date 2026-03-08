@@ -42,6 +42,7 @@ function Orbit.PluginMixin:RegisterStandardEvents()
     if Orbit.Engine and Orbit.Engine.EditMode then
         Orbit.Engine.EditMode:RegisterCallbacks({
             Enter = function()
+                if self.skipEditModeApply then return end
                 Orbit.Async:Debounce(debounceKey, function()
                     self:ApplySettings()
                 end, debounceDelay)

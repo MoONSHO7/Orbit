@@ -26,6 +26,7 @@ Orbit.MountedVisibility = Manager
 local cachedShouldHide = false
 local suppressedPlugins = {}
 local combatRestoredPlugins = {}
+local isEditModeRestoring = false
 local NOOP = function() end
 
 -- [ CONFIG READER ]---------------------------------------------------------------------------------
@@ -161,7 +162,7 @@ local function RestorePlugin(plugin)
         if frame.orbitHoverOverlay then frame.orbitHoverOverlay:Hide() end
         RevealFrame(frame)
     end
-    if plugin.ApplySettings then
+    if not isEditModeRestoring and plugin.ApplySettings then
         plugin:ApplySettings()
         local cfg = GetConfig(plugin)
         if cfg.hoverReveal then C_Timer.After(0, function() plugin:ApplySettings() end) end
@@ -340,6 +341,12 @@ eventFrame:SetScript("OnEvent", function(_, event)
 end)
 
 if EditModeManagerFrame then
-    hooksecurefunc(EditModeManagerFrame, "EnterEditMode", function() Manager:Refresh(true) end)
+    hooksecurefunc(EditModeManagerFrame, "EnterEditMode", function()
+        C_Timer.After(0, function()
+            isEditModeRestoring = true
+            Manager:Refresh(true)
+            isEditModeRestoring = false
+        end)
+    end)
     hooksecurefunc(EditModeManagerFrame, "ExitEditMode", function() Manager:Refresh(true) end)
 end

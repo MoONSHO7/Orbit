@@ -415,10 +415,10 @@ function SB:SetTabRefreshCallback(dialog, plugin, systemFrame)
     dialog.orbitTabCallback = function() Engine.Layout:Reset(dialog); plugin:AddSettings(dialog, systemFrame) end
 end
 
-function SB:AddSettingsTabs(schema, dialog, tabsList, defaultTab)
+function SB:AddSettingsTabs(schema, dialog, tabsList, defaultTab, plugin)
     dialog.orbitCurrentTab = dialog.orbitCurrentTab or defaultTab
     tinsert(schema.controls, {
-        type = "tabs", tabs = tabsList, activeTab = dialog.orbitCurrentTab,
+        type = "tabs", tabs = tabsList, activeTab = dialog.orbitCurrentTab, plugin = plugin,
         onTabSelected = function(tabName) dialog.orbitCurrentTab = tabName; if dialog.orbitTabCallback then dialog.orbitTabCallback() end end,
     })
     return dialog.orbitCurrentTab

@@ -11,7 +11,7 @@ function Orbit.PartyFrameSettings(plugin, dialog, systemFrame)
     local schema = { hideNativeSettings = true, controls = {} }
 
     SB:SetTabRefreshCallback(dialog, plugin, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Auras", "Indicators" }, "Layout")
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Auras", "Indicators" }, "Layout", plugin)
 
     if currentTab == "Layout" then
         table.insert(schema.controls, {

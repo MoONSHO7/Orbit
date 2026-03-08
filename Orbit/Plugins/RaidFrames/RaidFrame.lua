@@ -384,6 +384,7 @@ function Plugin:OnLoad()
         end
     end)
 
+    self.skipEditModeApply = true
     self:RegisterStandardEvents()
 
     -- Edit Mode callbacks

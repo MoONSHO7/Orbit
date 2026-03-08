@@ -144,7 +144,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             local isHealer = PREVIEW_ROLES[dataIdx] == "HEALER"
             local showThisPower = showHealerPower and isHealer
 
-            -- Shared styling (size, border, texture, text, positions, overrides)
+            -- Shared styling
             self:ApplyFrameStyle(frame, showThisPower)
 
             -- Preview-only: backdrop
@@ -154,80 +154,47 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 Orbit.Skin:ApplyGradientBackground(frame, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
             end
 
-            -- Preview-only: fake health data
+            -- Preview-only: full health
             if frame.Health then
                 frame.Health:SetMinMaxValues(0, 100)
-                frame.Health:SetValue(PREVIEW_HEALTH_PCTS[dataIdx])
-                if self.GetPreviewHealthColor then
-                    local r, g, b = self:GetPreviewHealthColor(true, PREVIEW_CLASSES[dataIdx], nil)
-                    frame.Health:SetStatusBarColor(r, g, b)
-                else
-                    local classColor = RAID_CLASS_COLORS[PREVIEW_CLASSES[dataIdx]]
-                    if classColor then frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b) end
-                end
+                frame.Health:SetValue(100)
+                local classColor = RAID_CLASS_COLORS[PREVIEW_CLASSES[dataIdx]]
+                if classColor then frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b) end
                 frame.Health:Show()
+                if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
+                if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
             end
 
-            -- Preview-only: fake power data
+            -- Preview-only: full power
             if frame.Power and showThisPower then
                 frame.Power:SetMinMaxValues(0, 100)
-                frame.Power:SetValue(80)
+                frame.Power:SetValue(100)
                 frame.Power:SetStatusBarColor(0.0, 0.44, 0.87)
-                Orbit.Skin:ApplyGradientBackground(frame.Power, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
             end
 
-            -- Preview-only: fake name
+            -- Preview-only: name
             if frame.Name then
                 if isDisabled("Name") then frame.Name:Hide()
                 else
                     frame.Name:SetText(PREVIEW_NAMES[dataIdx])
-                    if self.GetPreviewTextColor then
-                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_CLASSES[dataIdx], nil)
-                        frame.Name:SetTextColor(r, g, b, a)
-                    else frame.Name:SetTextColor(1, 1, 1, 1) end
+                    frame.Name:SetTextColor(1, 1, 1, 1)
                     frame.Name:Show()
                 end
             end
 
-            -- Preview-only: fake health text
-            local showHealthValue = self:GetSetting(1, "ShowHealthValue")
-            if showHealthValue == nil then showHealthValue = true end
-            local previewStatus = nil
-            local isDeadOrOffline = false
+            -- Preview-only: health text
             if frame.HealthText then
-                if isCanvasMode then
-                    if showHealthValue then
-                        local mode = self:GetSetting(1, "HealthTextMode") or "percent_short"
-                        local SAMPLE_TEXT = {
-                            percent = "100%", short = "106K", raw = "106000",
-                            short_and_percent = "106K - 100%",
-                            percent_short = "100%", percent_raw = "100%",
-                            short_percent = "106K", short_raw = "106K",
-                            raw_short = "106000", raw_percent = "106000",
-                        }
-                        frame.HealthText:SetText(SAMPLE_TEXT[mode] or "100%")
-                    else frame.HealthText:SetText("Offline") end
-                    if self.GetPreviewTextColor then
-                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_CLASSES[dataIdx], nil)
-                        frame.HealthText:SetTextColor(r, g, b, a)
-                    else frame.HealthText:SetTextColor(1, 1, 1, 1) end
-                    frame.HealthText:Show()
-                elseif isDeadOrOffline then
-                    frame.HealthText:SetText(previewStatus)
-                    frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1)
-                    frame.HealthText:Show()
-                elseif not showHealthValue then frame.HealthText:Hide()
+                local showHealthValue = self:GetSetting(1, "ShowHealthValue")
+                if showHealthValue == nil then showHealthValue = true end
+                if isDisabled("HealthText") or not showHealthValue then frame.HealthText:Hide()
                 else
-                    frame.HealthText:SetText(PREVIEW_HEALTH_PCTS[dataIdx] .. "%")
-                    if self.GetPreviewTextColor then
-                        local r, g, b, a = self:GetPreviewTextColor(true, PREVIEW_CLASSES[dataIdx], nil)
-                        frame.HealthText:SetTextColor(r, g, b, a)
-                    else frame.HealthText:SetTextColor(1, 1, 1, 1) end
+                    frame.HealthText:SetText("100%")
+                    frame.HealthText:SetTextColor(1, 1, 1, 1)
                     frame.HealthText:Show()
                 end
             end
 
-            frame:SetAlpha(isDeadOrOffline and OFFLINE_ALPHA or 1)
+            frame:SetAlpha(1)
             frame.previewClassFile = PREVIEW_CLASSES[dataIdx]
 
             -- Preview-only: role/leader/tank/selection/aggro icons with fake data
@@ -281,27 +248,14 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 hideKeys = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" },
             }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs(), HealerReg:ActiveKeys())
 
-            -- Preview auras (skip if animator is handling them, unless in Canvas Mode)
-            if isCanvasMode or not Orbit.PreviewAnimator:IsRunning() then
-                if frame.debuffPool then frame.debuffPool:ReleaseAll() end
-                if frame.buffPool then frame.buffPool:ReleaseAll() end
+            -- Auras: show in Canvas Mode, hide otherwise
+            if isCanvasMode then
                 self:ShowPreviewAuras(frame, i)
+            else
+                Orbit.AuraPreview:HideFrameAuras(frame)
             end
 
-            -- Preview dispel glow (skip if animator is handling them)
-            if not Orbit.PreviewAnimator:IsRunning() then
-                local dispelEnabled = self:GetSetting(1, "DispelIndicatorEnabled")
-                local dispelColorMap = { [4] = "DispelColorMagic", [9] = "DispelColorCurse", [14] = "DispelColorPoison" }
-                local dispelKey = dispelColorMap[i]
-                if dispelEnabled and dispelKey then
-                    local thickness = self:GetSetting(1, "DispelThickness") or 2
-                    local frequency = self:GetSetting(1, "DispelFrequency") or 0.25
-                    local c = self:GetSetting(1, dispelKey) or { r = 0.2, g = 0.6, b = 1.0, a = 1 }
-                    LCG.PixelGlow_Start(frame, { c.r, c.g, c.b, c.a }, 8, frequency, nil, thickness, 0, 0, true, "preview", Orbit.Constants.Levels.Glow)
-                else
-                    LCG.PixelGlow_Stop(frame, "preview")
-                end
-            end
+            LCG.PixelGlow_Stop(frame, "preview")
         end
     end
 end

@@ -379,11 +379,93 @@ function Layout:InitializeWidgetTypes()
         end
     end
 
+    -- [ EYE TOGGLE CONSTANTS ]--------------------------------------------------------------------------
+    local EYE_SIZE = TAB_HEIGHT
+    local FLIPBOOK_ATLAS = "groupfinder-eye-flipbook-found-initial"
+    -- From Blizzard QueueStatusFrame.xml: flipBookRows=7, flipBookColumns=11, flipBookFrames=70, duration=2
+    local FLIPBOOK_COLS = 11
+    local FLIPBOOK_ROWS = 7
+    local FLIPBOOK_TOTAL = 70
+    local FLIPBOOK_FPS = 35
+    local FRAME_W = 1 / FLIPBOOK_COLS
+    local FRAME_H = 1 / FLIPBOOK_ROWS
+
+    local function EyeSetFrame(eye, idx)
+        local col = idx % FLIPBOOK_COLS
+        local row = math.floor(idx / FLIPBOOK_COLS)
+        eye.tex:SetTexCoord(col * FRAME_W, (col + 1) * FRAME_W, row * FRAME_H, (row + 1) * FRAME_H)
+    end
+
+    local function EyeSetClosed(eye) EyeSetFrame(eye, 0) end
+    local function EyeSetOpen(eye) EyeSetFrame(eye, FLIPBOOK_TOTAL - 1) end
+
+    local function EyePlayFlipbook(eye)
+        if eye.animating then return end
+        eye.animating = true
+        local idx = 0
+        eye.flipTicker = C_Timer.NewTicker(1 / FLIPBOOK_FPS, function()
+            idx = idx + 1
+            if idx >= FLIPBOOK_TOTAL then
+                eye.flipTicker:Cancel(); eye.flipTicker = nil; eye.animating = false
+                EyeSetOpen(eye)
+                return
+            end
+            EyeSetFrame(eye, idx)
+        end)
+    end
+
     self:RegisterWidgetType("tabs", function(container, def)
         local frame = CreateFrame("Frame", nil, container)
         frame:SetHeight(TAB_HEIGHT + TAB_DIVIDER_HEIGHT + TAB_BOTTOM_PADDING)
         frame.OrbitType = "Tabs"
         Layout:CreateTabBar(frame, container, def.tabs, def.activeTab, def.onTabSelected)
+
+        -- Eye toggle: preview animator on/off
+        local plugin = def.plugin
+        if plugin and plugin.StartPreviewAnimation then
+            local PA = Orbit.PreviewAnimator
+            local dialog = container:GetParent() and container:GetParent():GetParent()
+            -- Reuse existing eye button across tab re-renders
+            local eye = dialog and dialog.orbitEyeToggle
+            if not eye then
+                eye = CreateFrame("Button", nil, frame)
+                eye:SetSize(EYE_SIZE, EYE_SIZE)
+                eye.tex = eye:CreateTexture(nil, "ARTWORK")
+                eye.tex:SetAllPoints()
+                eye.tex:SetAtlas(FLIPBOOK_ATLAS)
+                EyeSetClosed(eye)
+                eye.animating = false
+                eye.active = false
+                eye:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:SetText(self.active and "Stop Preview Animation" or "Start Preview Animation")
+                    GameTooltip:Show()
+                end)
+                eye:SetScript("OnLeave", function() GameTooltip:Hide() end)
+                if dialog then dialog.orbitEyeToggle = eye end
+            end
+            eye:SetParent(frame)
+            eye:ClearAllPoints()
+            eye:SetPoint("RIGHT", frame, "RIGHT", 0, -2)
+            eye:Show()
+            -- Sync visual state with PA
+            if PA:IsEnabled(plugin) then EyeSetOpen(eye); eye.active = true
+            else EyeSetClosed(eye); eye.active = false end
+            eye:SetScript("OnClick", function(btn)
+                if btn.active then
+                    if btn.flipTicker then btn.flipTicker:Cancel(); btn.flipTicker = nil end
+                    btn.animating = false; btn.active = false
+                    EyeSetClosed(btn)
+                    PA:ExitAll(plugin)
+                else
+                    btn.active = true
+                    PA:SetEnabled(plugin, true)
+                    EyePlayFlipbook(btn)
+                    plugin:StartPreviewAnimation()
+                end
+            end)
+        end
+
         return frame
     end)
 
