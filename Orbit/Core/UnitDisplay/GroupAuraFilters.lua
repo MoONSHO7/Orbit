@@ -15,7 +15,10 @@ local ALWAYS_EXCLUDED = {}
 for _, entry in ipairs(HealerReg.RaidBuffs) do ALWAYS_EXCLUDED[entry.spellId] = true end
 
 -- Exclude active healer aura spellIds unless their slot is disabled.
+local _excludedCache = nil
+local _excludedCachePlugin = nil
 local function GetExcludedSpellIds(plugin)
+    if _excludedCache and _excludedCachePlugin == plugin then return _excludedCache end
     local excluded = {}
     for id in pairs(ALWAYS_EXCLUDED) do excluded[id] = true end
     local isDisabled = plugin and plugin.IsComponentDisabled
@@ -25,8 +28,11 @@ local function GetExcludedSpellIds(plugin)
             if slot.altSpellId then excluded[slot.altSpellId] = true end
         end
     end
+    _excludedCache = excluded
+    _excludedCachePlugin = plugin
     return excluded
 end
+Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", function() _excludedCache = nil end)
 
 -- Creates a debuff post-filter function.
 -- cfg.raidFilterFn: function() returning the filter string (e.g. "HARMFUL" or combat-aware)

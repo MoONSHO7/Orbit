@@ -53,10 +53,16 @@ function Reg:RegisterComponents(plugin, container, firstFrame, textKeys, iconKey
         OrbitEngine.ComponentDrag:Attach(firstFrame.StatusIcons, container, {
             key = "StatusIcons",
             onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
-                local positions = plugin:GetSetting(1, "ComponentPositions") or {}
-                positions.StatusIcons = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
-                Reg:FanOutStatusIcons(positions)
-                plugin:SetSetting(1, "ComponentPositions", positions)
+                local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+                if Txn and Txn:IsActive() then
+                    Txn:SetPosition("StatusIcons", posData)
+                else
+                    local positions = plugin:GetSetting(1, "ComponentPositions") or {}
+                    positions.StatusIcons = posData
+                    Reg:FanOutStatusIcons(positions)
+                    plugin:SetSetting(1, "ComponentPositions", positions)
+                end
             end,
         })
     end
@@ -167,10 +173,16 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
         OrbitEngine.ComponentDrag:Attach(frame.StatusIcons, container, {
             key = "StatusIcons",
             onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
-                local positions = plugin:GetSetting(1, "ComponentPositions") or {}
-                positions.StatusIcons = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
-                Reg:FanOutStatusIcons(positions)
-                plugin:SetSetting(1, "ComponentPositions", positions)
+                local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
+                local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+                if Txn and Txn:IsActive() then
+                    Txn:SetPosition("StatusIcons", posData)
+                else
+                    local positions = plugin:GetSetting(1, "ComponentPositions") or {}
+                    positions.StatusIcons = posData
+                    Reg:FanOutStatusIcons(positions)
+                    plugin:SetSetting(1, "ComponentPositions", positions)
+                end
             end,
         })
     end
@@ -288,4 +300,14 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
         for _, key in ipairs(hideKeys) do if frame[key] then frame[key]:Hide() end end
         for _, key in ipairs(healerKeys) do if frame[key] then frame[key]:Hide() end end
     end
+end
+
+-- [ ON CANVAS APPLY ]-------------------------------------------------------------------------------
+function Reg:OnCanvasApply(plugin)
+    if not plugin.frames then return end
+    local StatusMixin = Orbit.StatusIconMixin
+    if StatusMixin then
+        for _, frame in ipairs(plugin.frames) do StatusMixin:UpdateRoleIcon(frame, plugin) end
+    end
+    if plugin.frames[1] and plugin.frames[1].preview then plugin:SchedulePreviewUpdate() end
 end
