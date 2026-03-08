@@ -139,6 +139,7 @@ function AP:InitAnimatedAuras(plugin, frame, helpers)
 end
 
 AP.GetSpellbookIcon = GetSpellbookIcon
+function AP:ReleaseIconProvider() _iconProvider = nil end
 
 function AP:ShowPrivateAuras(frame, posData, baseIconSize)
     local paa = frame.PrivateAuraAnchor

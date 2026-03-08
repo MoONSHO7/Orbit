@@ -39,7 +39,7 @@ local PREVIEW_HEALTH_PCTS = {
     65, 100, 88, 55, 72,
     92, 78, 83, 95, 100,
 }
-local PREVIEW_STATUS = {}
+
 local PREVIEW_ROLES = {
     "TANK", "HEALER", "DAMAGER", "DAMAGER", "HEALER",
     "TANK", "HEALER", "DAMAGER", "DAMAGER", "DAMAGER",
@@ -192,8 +192,8 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             -- Preview-only: fake health text
             local showHealthValue = self:GetSetting(1, "ShowHealthValue")
             if showHealthValue == nil then showHealthValue = true end
-            local previewStatus = (not isCanvasMode) and PREVIEW_STATUS[dataIdx]
-            local isDeadOrOffline = (previewStatus == "Dead" or previewStatus == "Offline")
+            local previewStatus = nil
+            local isDeadOrOffline = false
             if frame.HealthText then
                 if isCanvasMode then
                     if showHealthValue then
@@ -434,7 +434,7 @@ function Orbit.RaidFramePreviewMixin:StartPreviewAnimation()
         frames = visibleFrames,
         getHelpers = function() return Orbit.RaidFrameHelpers end,
         getHealth = function(i) local idx = sortOrder[i]; return (PREVIEW_HEALTH_PCTS[idx] or 75) / 100 end,
-        getDead = function(i) local idx = sortOrder[i]; local s = PREVIEW_STATUS[idx]; return s == "Dead" or s == "Offline" end,
+        getDead = function() return false end,
         healerSlots = enabledSlots,
         raidBuffKey = not isDisabled("RaidBuff") and "RaidBuff" or nil,
         dispelSettings = dispelEnabled and {

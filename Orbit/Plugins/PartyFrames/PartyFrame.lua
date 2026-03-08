@@ -789,12 +789,7 @@ function Plugin:ApplyFrameStyle(frame, showPower)
 end
 
 function Plugin:OnCanvasApply()
-    if not self.frames then return end
-    local StatusMixin = Orbit.StatusIconMixin
-    if StatusMixin then
-        for _, frame in ipairs(self.frames) do StatusMixin:UpdateRoleIcon(frame, self) end
-    end
-    if self.frames[1] and self.frames[1].preview then self:SchedulePreviewUpdate() end
+    Orbit.GroupCanvasRegistration:OnCanvasApply(self)
 end
 
 function Plugin:ApplySettings()

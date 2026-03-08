@@ -6,8 +6,8 @@ Orbit.PreviewAnimator = {}
 local PA = Orbit.PreviewAnimator
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local TICK_INTERVAL = 0.05
-local PHASE_SPEED = 0.015
+local TICK_INTERVAL = 0.10
+local PHASE_SPEED = 0.03
 local HEALTH_AMPLITUDE = 0.18
 local SHIELD_AMPLITUDE = 0.15
 local SHIELD_BASE = 0.25
@@ -15,12 +15,12 @@ local SHIELD_FREQUENCY = 0.4
 local NECROTIC_AMPLITUDE = 0.12
 local NECROTIC_BASE = 0.20
 local NECROTIC_FREQUENCY = 0.3
-local DAMAGE_BAR_DECAY = 0.04
+local DAMAGE_BAR_DECAY = 0.08
 local TWO_PI = math.pi * 2
 local OFFLINE_ALPHA = 0.35
 local OOR_ALPHA = 0.55
-local DEATH_FADE_RATE = 0.008
-local REVIVE_RATE = 0.012
+local DEATH_FADE_RATE = 0.016
+local REVIVE_RATE = 0.024
 local RESHUFFLE_INTERVAL = 12
 local AURA_TICK_INTERVAL = 1
 local AURA_DURATION_MIN = 8
@@ -465,9 +465,10 @@ function PA:StopHealerAuras(owner)
 end
 
 -- [ DISPEL ANIMATION ]------------------------------------------------------------------------------
-local LCG = LibStub("LibCustomGlow-1.0")
+local LCG = LibStub("LibCustomGlow-1.0", true)
 
 local function DispelTick()
+    if not LCG then return end
     local now = GetTime()
     for _, session in pairs(dispelSessions) do
         local frames = session.frames
@@ -475,9 +476,7 @@ local function DispelTick()
         if numFrames == 0 then break end
         for _, slot in ipairs(session.slots) do
             if now >= slot.expiresAt then
-                -- Clear old glow
                 if slot.frame then LCG.PixelGlow_Stop(slot.frame, "dispelPreview") end
-                -- Pick new random alive frame (different from current)
                 local alive = {}
                 for _, f in ipairs(frames) do if not f._previewDead then alive[#alive + 1] = f end end
                 if #alive == 0 then
@@ -509,7 +508,7 @@ end
 
 function PA:StopDispels(owner)
     local session = dispelSessions[owner]
-    if session then
+    if session and LCG then
         for _, slot in ipairs(session.slots) do
             if slot.frame then LCG.PixelGlow_Stop(slot.frame, "dispelPreview") end
         end

@@ -50,5 +50,6 @@ if EditModeManagerFrame then
     hooksecurefunc(EditModeManagerFrame, "OnHide", function()
         local PM = Orbit.Engine and Orbit.Engine.PositionManager
         if PM then PM:FlushToStorage() end
+        if Orbit.AuraPreview then Orbit.AuraPreview:ReleaseIconProvider() end
     end)
 end
