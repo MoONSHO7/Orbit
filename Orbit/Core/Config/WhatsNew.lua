@@ -16,10 +16,11 @@ local WHATS_NEW_ENTRIES = {
     },
     { title = "Update",
       body = "• Canvas Mode overhaul: new layout, dock, and component settings\n"
+        .. "• Improved drag and drop experience in Canvas Mode\n"
         .. "• Grouped Status Icons & Animated\n"
         .. "• Grouped Role Icons & Animated\n"
-        .. "• Added PlayerBuffs and Debuffs to Orbit\n"
-        .. "• Animated Party/Raid/Boss Preview Frames\n"
+        .. "• Added PlayerBuffs and Debuffs to Orbit, They are smart, will grow based on screen or anchor location\n"
+        .. "• Animated Party/Raid/Boss Preview Frames (click eyeball in settings)\n"
         .. "• PVP Icon on Player Frame\n"
         .. "• Role Icon: Hide DPS Role option in Canvas Mode\n"
     },
@@ -27,14 +28,10 @@ local WHATS_NEW_ENTRIES = {
       body = "• Frames no longer jump when dragging chain-anchored frames\n"
         .. "• Queue Status no longer errors during combat\n"
         .. "• Pet Frame now refreshes properly on pet changes\n"
+        .. "• Player Resources should only show whole numbers, not decimals for classes that dont require them\n"
+        .. "• Castbar visibility issues hopefully resolved (let me know)\n"
         .. "• Vehicle Exit Settings Fixes\n"
         .. "• Various other minor bugfixes\n"
-    },
-    { title = "Previous Updates",
-      body = "• CDM Performance Parse. 50% better performance. (half the CPU+Ram)\n"
-        .. "• CDM Better Left/Right anchoring against vertical stacked frames\n"
-        .. "• Chaining CDM frames left and right will maintain the position of the CDM in the center now\n"
-        .. "• bugfixes: Party/Raid frames names showing while mounted, combat timer bugfix, groups not updating properly if raidleader changes player position\n"
     },
 }
 
