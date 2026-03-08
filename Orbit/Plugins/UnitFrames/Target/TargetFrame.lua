@@ -104,7 +104,7 @@ Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.StatusIcon
 
 function Plugin:OnLoad()
     if TargetFrame then
-        OrbitEngine.NativeFrame:Hide(TargetFrame)
+        OrbitEngine.NativeFrame:Disable(TargetFrame)
     end
 
     -- Note: TargetFrameToT is now managed by TargetOfTargetFrame.lua plugin

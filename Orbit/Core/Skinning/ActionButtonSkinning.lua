@@ -8,8 +8,6 @@ Skin.ActionButtonSkin = {}
 local ABS = Skin.ActionButtonSkin
 
 local STANDARD_ACTION_BUTTON_SIZE = 45
-local DESAT_NONE = 0
-local DESAT_FULL = 1
 local MASQUE_REGION_KEYS = { "Backdrop", "Normal_Custom", "Shadow", "Gloss" }
 
 local function ResetRegion(region)
@@ -223,16 +221,6 @@ function ABS:Apply(button, settings)
         if button.FlyoutBorderShadow then button.FlyoutBorderShadow:SetParent(button.orbitOverlayFrame) end
     end
 
-    if button.action and not button.orbitRangeHooked then
-        hooksecurefunc(button, "OnEvent", function(self, event, ...)
-            if event == "ACTION_RANGE_CHECK_UPDATE" then
-                local _, inRange, checksRange = ...
-                local icon = self.icon or self.Icon
-                if icon and checksRange then icon:SetDesaturation(C_CurveUtil.EvaluateColorValueFromBoolean(inRange, DESAT_NONE, DESAT_FULL)) end
-            end
-        end)
-        button.orbitRangeHooked = true
-    end
 end
 
 function ABS:Strip(button)

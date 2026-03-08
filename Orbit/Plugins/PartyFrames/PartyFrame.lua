@@ -367,7 +367,7 @@ local function HideNativePartyFrames()
     for i = 1, 4 do
         local partyFrame = _G["PartyMemberFrame" .. i]
         if partyFrame then
-            OrbitEngine.NativeFrame:Banish(partyFrame)
+            OrbitEngine.NativeFrame:Disable(partyFrame)
             if not partyFrame.orbitSetPointHooked then
                 hooksecurefunc(partyFrame, "SetPoint", function(self)
                     if InCombatLockdown() then return end
@@ -382,8 +382,8 @@ local function HideNativePartyFrames()
             end
         end
     end
-    OrbitEngine.NativeFrame:Banish(PartyFrame)
-    OrbitEngine.NativeFrame:Banish(CompactPartyFrame)
+    OrbitEngine.NativeFrame:Disable(PartyFrame)
+    OrbitEngine.NativeFrame:Disable(CompactPartyFrame)
     for i = 1, 5 do
         local member = _G["CompactPartyFrameMember" .. i]
         if member then member:UnregisterAllEvents() end

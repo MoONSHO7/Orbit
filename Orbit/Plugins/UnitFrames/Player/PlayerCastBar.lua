@@ -38,7 +38,7 @@ local CastBar
 -- [ HELPERS ]---------------------------------------------------------------------------------------
 local function DisableBlizzardCastBar()
     if not PlayerCastingBarFrame then return end
-    OrbitEngine.NativeFrame:Disable(PlayerCastingBarFrame, { unregisterEvents = true })
+    OrbitEngine.NativeFrame:Disable(PlayerCastingBarFrame)
 end
 
 local function GetAnchorAxis(frame) return OrbitEngine.Frame:GetAnchorAxis(frame) end

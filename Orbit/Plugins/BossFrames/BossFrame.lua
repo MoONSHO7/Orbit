@@ -152,11 +152,11 @@ end
 
 -- [ NATIVE FRAME HIDING ]----------------------------------------------------------------------------
 local function HideNativeBossFrames()
-    OrbitEngine.NativeFrame:Banish(BossTargetFrameContainer)
+    OrbitEngine.NativeFrame:Disable(BossTargetFrameContainer)
     for i = 1, MAX_BOSS_FRAMES do
         local bossFrame = _G["Boss" .. i .. "TargetFrame"]
         if bossFrame then
-            OrbitEngine.NativeFrame:Banish(bossFrame)
+            OrbitEngine.NativeFrame:Disable(bossFrame)
             if not bossFrame.orbitSetPointHooked then
                 hooksecurefunc(bossFrame, "SetPoint", function(self)
                     if InCombatLockdown() then return end

@@ -26,17 +26,7 @@ local function TableCount(t)
     return count
 end
 
--- [ SCENARIO 0: BANISH ]----------------------------------------------------------------------------
--- Moves a frame fully offscreen AND silences it. No backup — one-way removal.
-function NativeFrame:Banish(frame)
-    if not frame then return end
-    frame:ClearAllPoints()
-    frame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
-    frame:UnregisterAllEvents()
-    frame:SetAlpha(0)
-    frame:SetScale(0.001)
-    frame:EnableMouse(false)
-end
+
 
 -- [ SCENARIO 1: HIDE & REPLACE ]--------------------------------------------------------------------
 
@@ -78,19 +68,16 @@ end
 
 -- [ SCENARIO 2: DISABLE ONLY ]----------------------------------------------------------------------
 
-function NativeFrame:Disable(nativeFrame, options)
+function NativeFrame:Disable(nativeFrame)
     if not nativeFrame then return false end
-    options = options or {}
 
     local backup = { onShow = nativeFrame:GetScript("OnShow"), shown = nativeFrame:IsShown() }
 
-    nativeFrame:Hide()
-    nativeFrame:SetScript("OnShow", function(self) self:Hide() end)
-
-    if options.unregisterEvents then
-        nativeFrame:UnregisterAllEvents()
-        backup.eventsUnregistered = true
-    end
+    -- Edit Mode systems override Hide→HideOverride→HideBase (protected). Call HideBase directly to avoid taint.
+    local hide = nativeFrame.HideBase or nativeFrame.Hide
+    hide(nativeFrame)
+    nativeFrame:UnregisterAllEvents()
+    nativeFrame:SetScript("OnShow", function(self) (self.HideBase or self.Hide)(self) end)
 
     self.disabled[nativeFrame] = backup
     return true
