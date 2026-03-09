@@ -240,6 +240,7 @@ function Mixin:_addGlowControls(schema, SB, systemFrame)
             { text = "Proc Glow", value = GlowType.Proc },
             { text = "Autocast Shine", value = GlowType.Autocast },
             { text = "Button Glow", value = GlowType.Button },
+            { text = "Blizzard", value = GlowType.Blizzard },
         },
         default = Constants.PandemicGlow.DefaultType,
     })

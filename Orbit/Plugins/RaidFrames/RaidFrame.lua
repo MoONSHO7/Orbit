@@ -320,7 +320,7 @@ function Plugin:OnLoad()
     self.container.orbitCanvasTitle = "Raid Frame"
 
     if not self.container:GetPoint() then
-        self.container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -300)
+        self.container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", GF.DefaultRaidOffsetX, GF.DefaultRaidOffsetY)
     end
 
     -- Visibility driver: show only in raid

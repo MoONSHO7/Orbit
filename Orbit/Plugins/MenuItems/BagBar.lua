@@ -4,6 +4,8 @@ local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_BagBar"
+local DEFAULT_POSITION_X = -50
+local DEFAULT_POSITION_Y = 40
 
 local Plugin = Orbit:RegisterPlugin("Bag Bar", SYSTEM_ID, {
     defaults = {
@@ -107,7 +109,7 @@ function Plugin:OnLoad()
     }
 
     -- Default Position
-    self.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -50, 40)
+    self.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
 
     -- Register to Orbit
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)

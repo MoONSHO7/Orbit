@@ -12,6 +12,8 @@ local POWER_BAR_HEIGHT_RATIO = 0.2
 local DEFAULT_DEBUFF_ICON_SIZE = 25
 local DEFAULT_BUFF_ICON_SIZE = 20
 local MARKER_ICON_SIZE = 16
+local DEFAULT_BOSS_OFFSET_X = -100
+local DEFAULT_BOSS_OFFSET_Y = 100
 
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_BossFrames"
@@ -253,7 +255,7 @@ function Plugin:OnLoad()
         end
     end
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, 1)
-    if not self.container:GetPoint() then self.container:SetPoint("RIGHT", UIParent, "RIGHT", -100, 100) end
+    if not self.container:GetPoint() then self.container:SetPoint("RIGHT", UIParent, "RIGHT", DEFAULT_BOSS_OFFSET_X, DEFAULT_BOSS_OFFSET_Y) end
     local BOSS_BASE_DRIVER = "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
     local function UpdateVisibilityDriver()
         if InCombatLockdown() or Orbit:IsEditMode() then return end

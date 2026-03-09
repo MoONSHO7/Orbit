@@ -157,7 +157,14 @@ function CDM:MonitorViewers()
     frame:RegisterEvent("PLAYER_REGEN_ENABLED")
     frame:SetScript("OnEvent", function(_, event, unit)
         if event == "UNIT_AURA" then
-            if unit == "player" then CheckAll() end
+            if unit == "player" then
+                CheckAll()
+                if LibCustomGlow then
+                    for si, entry in pairs(VIEWER_MAP) do
+                        if entry.viewer then plugin:CheckPandemicFrames(entry.viewer, si) end
+                    end
+                end
+            end
             return
         end
         inCombat = (event == "PLAYER_REGEN_DISABLED")

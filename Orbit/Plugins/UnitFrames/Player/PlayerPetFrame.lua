@@ -7,6 +7,8 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SYSTEM_ID = "Orbit_PlayerPetFrame"
 local PET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Pet
 local FRAME_LEVEL_DEMOTE = 5
+local DEFAULT_POSITION_X = -250
+local DEFAULT_POSITION_Y = -100
 
 local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
     canvasMode = true, -- Enable Canvas Mode for component editing
@@ -124,7 +126,7 @@ function Plugin:OnLoad()
 
     -- Default Position
     if not self.frame:GetPoint() then
-        self.frame:SetPoint("CENTER", UIParent, "CENTER", -250, -100)
+        self.frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
     end
 
     -- Force refresh on pet change (mount/dismount/summon/dismiss)

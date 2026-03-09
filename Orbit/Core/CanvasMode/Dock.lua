@@ -7,6 +7,8 @@ local Dialog = CanvasMode.Dialog
 local C = CanvasMode.Constants
 local Layout = OrbitEngine.Layout
 
+local DOCK_OFFSET_X = 14
+local DOCK_OFFSET_Y = 8
 local DOCK_ICON_ALPHA = 0.7
 local DOCK_BG_COLOR = { 0.2, 0.2, 0.2, 0.6 }
 local DOCK_BG_HOVER = { 0.3, 0.5, 0.3, 0.8 }
@@ -15,8 +17,8 @@ local function DisplayName(key) return HealerReg and HealerReg:GetSlotLabel(key)
 -- [ DOCK FRAME ]-------------------------------------------------------------------------
 
 Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog)
-Dialog.DisabledDock:SetPoint("TOPLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", 14, 8)
-Dialog.DisabledDock:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -14, 8)
+Dialog.DisabledDock:SetPoint("TOPLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", DOCK_OFFSET_X, DOCK_OFFSET_Y)
+Dialog.DisabledDock:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -DOCK_OFFSET_X, DOCK_OFFSET_Y)
 Dialog.DisabledDock:SetHeight(C.DOCK_HEIGHT)
 Dialog.DisabledDock:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + 50)
 

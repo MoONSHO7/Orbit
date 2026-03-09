@@ -11,6 +11,7 @@ local TRACKED_CHILD_START = Constants.Cooldown.SystemIndex.Tracked_ChildStart
 local MAX_CHILD_FRAMES = Constants.Cooldown.MaxChildFrames
 local TRACKED_ADD_ICON = "Interface\\PaperDollInfoFrame\\Character-Plus"
 local TRACKED_REMOVE_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
+local DEFAULT_TRACKED_OFFSET_X = -30
 
 -- [ TOOLTIP PARSER ALIASES ]------------------------------------------------------------------------
 local Parser = Orbit.TrackedTooltipParser
@@ -104,7 +105,7 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.DropHighlight:Hide()
 
     if not frame:GetPoint() then
-        frame:SetPoint("CENTER", UIParent, "CENTER", -30, 0)
+        frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_TRACKED_OFFSET_X, 0)
     end
 
     frame:SetScript("OnReceiveDrag", function() plugin:OnTrackedAnchorReceiveDrag(frame) end)

@@ -72,7 +72,7 @@ local PANDEMIC_GLOW = {
       options = {
           { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
           { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
-          { text = "Button Glow", value = 4 },
+          { text = "Button Glow", value = 4 }, { text = "Blizzard", value = 5 },
       }, default = 0 },
     { type = "colorcurve", key = "PandemicGlowColorCurve", label = "Pandemic Colour", plugin = true, singleColor = true },
 }
@@ -165,7 +165,7 @@ do
                   options = {
                       { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
                       { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
-                      { text = "Button Glow", value = 4 },
+                      { text = "Button Glow", value = 4 }, { text = "Blizzard", value = 5 },
                   }, default = 0 },
                 { type = "colorcurve", key = "ProcGlowColorCurve", label = "Proc Colour", singleColor = true },
             },

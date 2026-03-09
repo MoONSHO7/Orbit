@@ -31,6 +31,7 @@ local CHARGE_ADD_ICON = "Interface\\PaperDollInfoFrame\\Character-Plus"
 local CHARGE_REMOVE_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
 local RECHARGE_DIM = 0.35
 local DEFAULT_SPACING = 0
+local DEFAULT_CHARGE_OFFSET_X = 30
 local SEED_GLOW_ALPHA = 0.6
 local SEED_PLUS_RATIO = 0.4
 local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
@@ -125,8 +126,8 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }
     frame.orbitChainSync = true
 
-    frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = 30, y = 0 }
-    frame:SetPoint("CENTER", UIParent, "CENTER", 30, 0)
+    frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = DEFAULT_CHARGE_OFFSET_X, y = 0 }
+    frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_CHARGE_OFFSET_X, 0)
 
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
     frame.buttons = {}

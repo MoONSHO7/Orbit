@@ -16,6 +16,7 @@ local CanvasMode = OrbitEngine.CanvasMode
 
 CanvasMode.Constants = {
     -- Dialog dimensions
+    DIALOG_CENTER_OFFSET_Y = 50,
     DIALOG_WIDTH = 600,
     DIALOG_MIN_WIDTH = 600,
     DIALOG_MAX_WIDTH = 1000,
@@ -77,7 +78,7 @@ local C = CanvasMode.Constants
 
 local Dialog = CreateFrame("Frame", "OrbitCanvasModeDialog", UIParent)
 Dialog:SetSize(C.DIALOG_WIDTH, C.DIALOG_MIN_HEIGHT)
-Dialog:SetPoint("CENTER", UIParent, "CENTER", 0, 50)
+Dialog:SetPoint("CENTER", UIParent, "CENTER", 0, C.DIALOG_CENTER_OFFSET_Y)
 Dialog:SetFrameStrata("FULLSCREEN_DIALOG")
 Dialog:SetFrameLevel(100)
 Dialog:SetMovable(true)

@@ -135,16 +135,41 @@ function CDM:FixGlowTransparency(glowFrame, alpha)
 end
 
 -- [ PANDEMIC GLOW ]----------------------------------------------------------------------------------
+local PANDEMIC_ATLAS = "UI-CooldownManager-PandemicBorder"
+local PANDEMIC_INSET = Constants.IconScale.PandemicPadding / 2
+
+local function EnsureBlizzardGlowFrame(icon)
+    if icon._orbitBlizzardGlow then return icon._orbitBlizzardGlow end
+    local f = CreateFrame("Frame", nil, icon)
+    f:SetFrameStrata("HIGH")
+    f:SetFrameLevel(icon:GetFrameLevel() + 30)
+    local tex = f:CreateTexture(nil, "OVERLAY")
+    tex:SetAtlas(PANDEMIC_ATLAS)
+    tex:SetAllPoints(f)
+    f.tex = tex
+    f:Hide()
+    icon._orbitBlizzardGlow = f
+    return f
+end
+
+local function HookPandemicIcon(icon)
+    if icon._orbitPandemicHooked or not icon.PandemicIcon then return end
+    icon._orbitPandemicHooked = true
+    local pi = icon.PandemicIcon
+    hooksecurefunc(pi, "Show", function(self)
+        if icon.orbitSuppressPandemic then self:SetAlpha(0) end
+    end)
+    hooksecurefunc(pi, "SetAlpha", function(self, a)
+        if icon.orbitSuppressPandemic and a > 0 then self:SetAlpha(0) end
+    end)
+end
+
 function CDM:CheckPandemicFrames(viewer, systemIndex)
-    if not viewer then
-        return
-    end
+    if not viewer then return end
 
     local GlowType = Constants.PandemicGlow.Type
     local glowType = self:GetSetting(systemIndex, "PandemicGlowType") or GlowType.None
-    if glowType == GlowType.None then
-        return
-    end
+    if glowType == GlowType.None then return end
 
     local GlowConfig = Constants.PandemicGlow
     local pandemicColor = self:GetSetting(systemIndex, "PandemicGlowColor") or GlowConfig.DefaultColor
@@ -155,24 +180,22 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
     local icons = viewer.GetItemFrames and viewer:GetItemFrames()
     if not icons then return end
     for _, icon in ipairs(icons) do
+        HookPandemicIcon(icon)
         local inPandemic = icon.PandemicIcon and icon.PandemicIcon:IsShown()
         if inPandemic then
             if not icon.orbitPandemicGlowActive then
+                -- Suppress Blizzard's red border for all glow types
+                icon.orbitSuppressPandemic = true
                 icon.PandemicIcon:SetAlpha(0)
-                if glowType == GlowType.Pixel then
+                if glowType == GlowType.Blizzard then
+                    local glow = EnsureBlizzardGlowFrame(icon)
+                    glow:ClearAllPoints()
+                    glow:SetPoint("TOPLEFT", icon, "TOPLEFT", -PANDEMIC_INSET, PANDEMIC_INSET)
+                    glow:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", PANDEMIC_INSET, -PANDEMIC_INSET)
+                    glow:Show()
+                elseif glowType == GlowType.Pixel then
                     local cfg = GlowConfig.Pixel
-                    LibCustomGlow.PixelGlow_Start(
-                        icon,
-                        ct,
-                        cfg.Lines,
-                        cfg.Frequency,
-                        cfg.Length,
-                        cfg.Thickness,
-                        cfg.XOffset,
-                        cfg.YOffset,
-                        cfg.Border,
-                        "orbitPandemic"
-                    )
+                    LibCustomGlow.PixelGlow_Start(icon, ct, cfg.Lines, cfg.Frequency, cfg.Length, cfg.Thickness, cfg.XOffset, cfg.YOffset, cfg.Border, "orbitPandemic")
                 elseif glowType == GlowType.Proc then
                     local cfg = GlowConfig.Proc
                     LibCustomGlow.ProcGlow_Start(icon, { color = ct, startAnim = cfg.StartAnim, duration = cfg.Duration, key = "orbitPandemic" })
@@ -193,7 +216,10 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
         else
             if icon.orbitPandemicGlowActive then
                 local activeType = icon.orbitPandemicGlowActive
-                if activeType == GlowType.Pixel then
+                icon.orbitSuppressPandemic = nil
+                if activeType == GlowType.Blizzard then
+                    if icon._orbitBlizzardGlow then icon._orbitBlizzardGlow:Hide() end
+                elseif activeType == GlowType.Pixel then
                     LibCustomGlow.PixelGlow_Stop(icon, "orbitPandemic")
                 elseif activeType == GlowType.Proc then
                     LibCustomGlow.ProcGlow_Stop(icon, "orbitPandemic")

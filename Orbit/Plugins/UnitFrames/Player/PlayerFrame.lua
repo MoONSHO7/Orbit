@@ -11,6 +11,8 @@ local PLAYER_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Player
 -- Raid Target Icon constants
 local RAID_TARGET_TEXTURE_COLUMNS = 4
 local RAID_TARGET_TEXTURE_ROWS = 4
+local DEFAULT_POSITION_X = -200
+local DEFAULT_POSITION_Y = -140
 
 local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
     canvasMode = true,
@@ -378,7 +380,7 @@ function Plugin:OnLoad()
     self:ApplySettings(self.frame)
 
     if not self.frame:GetPoint() then
-        self.frame:SetPoint("CENTER", UIParent, "CENTER", -200, -140)
+        self.frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
     end
 end
 

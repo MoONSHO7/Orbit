@@ -461,7 +461,7 @@ function Plugin:OnLoad()
         end
         local growDir = self:GetSetting(1, "GrowthDirection") or "Down"
         local anchor = Helpers:GetContainerAnchor(growDir)
-        self.container:SetPoint(anchor, UIParent, "TOPLEFT", 20, -200)
+        self.container:SetPoint(anchor, UIParent, "TOPLEFT", GF.DefaultPartyOffsetX, GF.DefaultPartyOffsetY)
     end
 
     -- Helper to update visibility driver based on IncludePlayer setting

@@ -10,6 +10,11 @@ local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local TRACKED_INDEX = Constants.Cooldown.SystemIndex.Tracked
 local BUFFBAR_INDEX = Constants.Cooldown.SystemIndex.BuffBar
 local VIEWER_MAP = {}
+local DEFAULT_ESSENTIAL_Y = -100
+local DEFAULT_UTILITY_Y = -150
+local DEFAULT_BUFFICON_Y = -200
+local DEFAULT_BUFFBAR_X = 200
+local DEFAULT_BUFFBAR_Y = -100
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", {
@@ -260,6 +265,9 @@ function Plugin:OnLoad()
             Orbit.OOCFadeMixin:RefreshAll()
         end
     end, self)
+
+    -- Disable Blizzard's Cooldown Manager while Orbit's is active
+    SetCVar("cooldownViewerEnabled", 0)
 end
 
 function Plugin:UpdateVisibility()
@@ -306,13 +314,13 @@ function Plugin:CreateAnchor(name, systemIndex, label, overrideOptions)
 
     if not frame:GetPoint() then
         if systemIndex == ESSENTIAL_INDEX then
-            frame:SetPoint("CENTER", UIParent, "CENTER", 0, -100)
+            frame:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_ESSENTIAL_Y)
         elseif systemIndex == UTILITY_INDEX then
-            frame:SetPoint("CENTER", UIParent, "CENTER", 0, -150)
+            frame:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_UTILITY_Y)
         elseif systemIndex == BUFFICON_INDEX then
-            frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
+            frame:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_BUFFICON_Y)
         elseif systemIndex == BUFFBAR_INDEX then
-            frame:SetPoint("CENTER", UIParent, "CENTER", 200, -100)
+            frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_BUFFBAR_X, DEFAULT_BUFFBAR_Y)
         end
     end
 
@@ -438,4 +446,6 @@ function Plugin:OnDisable()
         self._pandemicTicker:Cancel()
         self._pandemicTicker = nil
     end
+    -- Restore Blizzard's Cooldown Manager when Orbit's is disabled
+    SetCVar("cooldownViewerEnabled", 1)
 end

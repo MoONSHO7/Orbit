@@ -148,8 +148,8 @@ ddDesc:SetText("Join the discord to request features, report bugs\nor ask for he
 
 local ddEditBox = CreateFrame("EditBox", nil, DiscordDialog, "InputBoxTemplate")
 ddEditBox:SetHeight(DISCORD_EDITBOX_HEIGHT)
-ddEditBox:SetPoint("LEFT", DiscordDialog, "LEFT", 20, 0)
-ddEditBox:SetPoint("RIGHT", DiscordDialog, "RIGHT", -20, 0)
+ddEditBox:SetPoint("LEFT", DiscordDialog, "LEFT", CONTENT_PADDING * 2, 0)
+ddEditBox:SetPoint("RIGHT", DiscordDialog, "RIGHT", -CONTENT_PADDING * 2, 0)
 ddEditBox:SetPoint("TOP", ddDesc, "BOTTOM", 0, -10)
 ddEditBox:SetAutoFocus(false)
 ddEditBox:SetScript("OnChar", function(self) self:SetText(DISCORD_URL); self:HighlightText() end)

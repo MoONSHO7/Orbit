@@ -228,7 +228,7 @@ function CDM:AddSettings(dialog, systemFrame)
         local GLOW_OPTIONS = {
             { text = "None", value = GlowType.None }, { text = "Pixel Glow", value = GlowType.Pixel },
             { text = "Proc Glow", value = GlowType.Proc }, { text = "Autocast Shine", value = GlowType.Autocast },
-            { text = "Button Glow", value = GlowType.Button },
+            { text = "Button Glow", value = GlowType.Button }, { text = "Blizzard", value = GlowType.Blizzard },
         }
         if not isTracked then
             table.insert(schema.controls, {

@@ -7,6 +7,8 @@ local LSM = LibStub("LibSharedMedia-3.0")
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_FocusFrame"
 local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus or 3
+local DEFAULT_POSITION_X = -200
+local DEFAULT_POSITION_Y = -140
 
 local Plugin = Orbit:RegisterPlugin("Focus Frame", SYSTEM_ID, {
     canvasMode = true, -- Enable Canvas Mode for component editing
@@ -175,7 +177,7 @@ function Plugin:OnLoad()
 
     -- Default Position
     if not self.frame:GetPoint() then
-        self.frame:SetPoint("CENTER", UIParent, "CENTER", -200, -140)
+        self.frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
     end
 
     -- Can only anchor side-by-side (horizontal), not above/below (vertical)

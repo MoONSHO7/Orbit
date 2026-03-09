@@ -106,6 +106,10 @@ C.GroupFrames = {
     MaxPrivateAuraAnchors = 3,
     AuraBaseIconSize = 10,
     AuraSpacing = 1,
+    DefaultPartyOffsetX = 20,
+    DefaultPartyOffsetY = -200,
+    DefaultRaidOffsetX = 20,
+    DefaultRaidOffsetY = -300,
     RolePriority = { TANK = 1, HEALER = 2, DAMAGER = 3, NONE = 4 },
     GrowthDirection = { Down = "Down", Up = "Up", Left = "Left", Right = "Right" },
     ContainerAnchor = { Down = "TOPLEFT", Up = "BOTTOMLEFT", Right = "TOPLEFT", Left = "TOPRIGHT" },
@@ -219,6 +223,7 @@ C.PandemicGlow = {
         Proc = 2,
         Autocast = 3,
         Button = 4,
+        Blizzard = 5,
     },
 
     -- Default glow type and color
