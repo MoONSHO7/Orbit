@@ -162,6 +162,10 @@ function Plugin:OnLoad()
     self.frame.Overlay = CreateFrame("Frame", nil, self.frame)
     self.frame.Overlay:SetAllPoints()
     self.frame.Overlay:SetFrameLevel(self.frame:GetFrameLevel() + 10)
+    -- MiniMapMailFrameMixin and MiniMapCraftingOrderFrameMixin call self:GetParent():Layout()
+    -- after UPDATE_PENDING_MAIL / CRAFTINGORDERS_UPDATED events. Since we reparent those
+    -- frames here, we provide a no-op to prevent the error.
+    self.frame.Overlay.Layout = function() end
 
     -- [ Zone Text component ] — clickable: opens World Map, tooltip shows zone/subzone/PvP info
     self.frame.ZoneText = CreateFrame("Button", "OrbitMinimapZoneText", self.frame.Overlay)
@@ -558,7 +562,7 @@ function Plugin:ReparentBlizzardComponents()
 
     -- Crafting Order indicator
     local craftingOrder = MinimapCluster and MinimapCluster.IndicatorFrame and
-    MinimapCluster.IndicatorFrame.CraftingOrderFrame
+        MinimapCluster.IndicatorFrame.CraftingOrderFrame
     if craftingOrder then
         self._origCraftingOrderParent = craftingOrder:GetParent()
         craftingOrder:SetParent(overlay)
@@ -831,7 +835,8 @@ function Plugin:ApplySettings()
     if frame.CraftingOrder then
         if not self:IsComponentDisabled("CraftingOrder") then
             frame.CraftingOrder:SetScript("OnShow", nil)
-            ApplyIconScale(frame.CraftingOrder, (savedPositions.CraftingOrder or {}).overrides, frame.CraftingOrder:GetWidth())
+            ApplyIconScale(frame.CraftingOrder, (savedPositions.CraftingOrder or {}).overrides,
+            frame.CraftingOrder:GetWidth())
         else
             frame.CraftingOrder:Hide()
             frame.CraftingOrder:SetScript("OnShow", function(f) f:Hide() end)
