@@ -246,8 +246,10 @@ local function SetupDragHandlers(container, preview, key, data)
             end
         end
 
-        if SmartGuides and preview.guides then SmartGuides:Update(preview.guides, snapX, snapY, preview.sourceWidth,
-                preview.sourceHeight) end
+        if SmartGuides and preview.guides then
+            SmartGuides:Update(preview.guides, snapX, snapY, preview.sourceWidth,
+            preview.sourceHeight)
+        end
         if self.isFontString and self.visual then ApplyTextAlignment(self, self.visual, justifyH) end
 
         self:ClearAllPoints()
