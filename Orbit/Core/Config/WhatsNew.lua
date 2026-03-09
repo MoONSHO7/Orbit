@@ -11,10 +11,21 @@ local Constants = Orbit.Constants
 local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips auto-show)
 
 local WHATS_NEW_ENTRIES = {
-    { title = "Note",
-      body = "Made some updates to the anchoring logic inside Canvas mode, you may need to update some positions for your components" 
+    { title = "New Features",
+      body = "• Buff Bars: new bar-style buff tracker with per-bar colors, and Canvas Mode support\n"
+        .. "• Action Bars: out-of-range, out-of-mana, and unusable spell coloring with customizable colors\n"
+        .. "• Action Bars: icon desaturation on cooldown\n"
+        .. "• Action Bars: cooldown swipe color setting\n"
+        .. "• Cooldown Manager: separate Active Swipe and Cooldown Swipe color settings\n"
+        .. "• Right-click to cancel player buffs on player buffs frame\n"
+        .. "• Color Picker: desaturation checkbox for textures that support it\n"
     },
-    { title = "Update",
+    { title = "Bugfixes",
+      body = "• Fixed taint errors when hiding native Blizzard frames (no more blocked actions in delves/boss deaths)\n"
+        .. "• Fixed snap alignment using wrong reference point for chain-anchored frames\n"
+        .. "• Buff/Debuff frames now refresh correctly after leaving combat\n"
+    },
+    { title = "Previous Updates",
       body = "• Canvas Mode overhaul: new layout, dock, and component settings\n"
         .. "• Improved drag and drop experience in Canvas Mode\n"
         .. "• Grouped Status Icons & Animated\n"
@@ -23,16 +34,7 @@ local WHATS_NEW_ENTRIES = {
         .. "• Animated Party/Raid/Boss Preview Frames (click eyeball in settings)\n"
         .. "• PVP Icon on Player Frame\n"
         .. "• Role Icon: Hide DPS Role option in Canvas Mode\n"
-    },
-    { title = "Bugfixes",
-      body = "• Frames no longer jump when dragging chain-anchored frames\n"
-        .. "• Queue Status no longer errors during combat\n"
-        .. "• Pet Frame now refreshes properly on pet changes\n"
-        .. "• Player Resources should only show whole numbers, not decimals for classes that dont require them\n"
-        .. "• Castbar visibility issues hopefully resolved (let me know)\n"
-        .. "• Vehicle Exit Settings Fixes\n"
-        .. "• Various other minor bugfixes\n"
-    },
+    }
 }
 
 local DISCORD_URL = "https://discord.gg/2sZj63kBqy"
