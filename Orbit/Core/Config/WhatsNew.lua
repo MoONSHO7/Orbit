@@ -12,7 +12,7 @@ local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips aut
 
 local WHATS_NEW_ENTRIES = {
     { title = "New Features",
-      body = "• Buff Bars: new bar-style buff tracker with per-bar colors, and Canvas Mode support\n"
+      body = "• CDM Buff Bars: Added to Orbit with Canvas Mode support and coloring\n"
         .. "• Action Bars: out-of-range, out-of-mana, and unusable spell coloring with customizable colors\n"
         .. "• Action Bars: icon desaturation on cooldown\n"
         .. "• Action Bars: cooldown swipe color setting\n"
