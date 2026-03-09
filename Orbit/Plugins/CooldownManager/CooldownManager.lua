@@ -8,6 +8,7 @@ local ESSENTIAL_INDEX = Constants.Cooldown.SystemIndex.Essential
 local UTILITY_INDEX = Constants.Cooldown.SystemIndex.Utility
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local TRACKED_INDEX = Constants.Cooldown.SystemIndex.Tracked
+local BUFFBAR_INDEX = Constants.Cooldown.SystemIndex.BuffBar
 local VIEWER_MAP = {}
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
@@ -50,6 +51,7 @@ Plugin.indexDefaults = {
     [1] = { IconSize = 120, IconLimit = 12 }, -- Essential
     [2] = { IconSize = 90, IconLimit = 8 }, -- Utility
     [3] = { PandemicGlowType = 1 }, -- BuffIcon
+    [30] = { PandemicGlowType = 1 }, -- BuffBar
 }
 
 -- Generates a spec-specific settings key, e.g. "TrackedItems_267"
@@ -75,6 +77,7 @@ function Plugin:MonitorViewers() end
 function Plugin:CheckViewer() end
 function Plugin:OnPlayerEnteringWorld() end
 function Plugin:ProcessChildren() end
+function Plugin:OnCanvasApply() if self.buffBarAnchor then self:ProcessChildren(self.buffBarAnchor) end end
 function Plugin:HookGCDSwipe() end
 function Plugin:GetGrowthDirection()
     return "DOWN"
@@ -90,16 +93,26 @@ function Plugin:CreateKeybindText() end
 function Plugin:ApplyTextSettings() end
 function Plugin:SetupCanvasPreview() end
 
+Plugin.defaults = {
+    ComponentPositions = {
+        BuffBarName  = { anchorX = "LEFT",  anchorY = "CENTER", offsetX = 5, offsetY = 0, justifyH = "LEFT" },
+        BuffBarTimer = { anchorX = "RIGHT", anchorY = "CENTER", offsetX = 5, offsetY = 0, justifyH = "RIGHT" },
+    },
+}
+
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     self.essentialAnchor = self:CreateAnchor("OrbitEssentialCooldowns", ESSENTIAL_INDEX, "Essential Cooldowns")
     self.utilityAnchor = self:CreateAnchor("OrbitUtilityCooldowns", UTILITY_INDEX, "Utility Cooldowns")
     self.buffIconAnchor = self:CreateAnchor("OrbitBuffIconCooldowns", BUFFICON_INDEX, "Buff Icons")
+    self.buffBarAnchor = self:CreateAnchor("OrbitBuffBarCooldowns", BUFFBAR_INDEX, "Buff Bars",
+        { horizontal = false, vertical = true, syncScale = true, syncDimensions = true })
     self.trackedAnchor = self:CreateTrackedAnchor("OrbitTrackedCooldowns", TRACKED_INDEX, "Tracked Cooldowns")
 
     VIEWER_MAP[ESSENTIAL_INDEX] = { viewer = EssentialCooldownViewer, anchor = self.essentialAnchor }
     VIEWER_MAP[UTILITY_INDEX] = { viewer = UtilityCooldownViewer, anchor = self.utilityAnchor }
     VIEWER_MAP[BUFFICON_INDEX] = { viewer = BuffIconCooldownViewer, anchor = self.buffIconAnchor }
+    VIEWER_MAP[BUFFBAR_INDEX] = { viewer = BuffBarCooldownViewer, anchor = self.buffBarAnchor }
     VIEWER_MAP[TRACKED_INDEX] = { viewer = nil, anchor = self.trackedAnchor, isTracked = true }
 
     -- Exclude Blizzard viewer frames from snap targets; Orbit anchor frames handle positioning
@@ -114,6 +127,92 @@ function Plugin:OnLoad()
     self:SetupCanvasPreview(self.utilityAnchor, UTILITY_INDEX)
     self:SetupCanvasPreview(self.buffIconAnchor, BUFFICON_INDEX)
     self:SetupTrackedCanvasPreview(self.trackedAnchor, TRACKED_INDEX)
+
+    -- BuffBar gets a bar-shaped canvas preview instead of icon grid
+    local buffBarPlugin = self
+    self.buffBarAnchor.CreateCanvasPreview = function(anchor, options)
+        local parent = options.parent or UIParent
+        local barH = buffBarPlugin:GetSetting(BUFFBAR_INDEX, "Height") or 20
+        local barW = buffBarPlugin:GetSetting(BUFFBAR_INDEX, "Width") or 200
+
+        local preview = CreateFrame("Frame", nil, parent)
+        preview:SetSize(barW, barH)
+        preview.sourceFrame = anchor
+        preview.sourceWidth = barW
+        preview.sourceHeight = barH
+        preview.previewScale = 1
+        preview.components = {}
+
+        -- Icon (static decoration, outside left of bar)
+        local iconSize = barH
+        local icon = preview:CreateTexture(nil, "OVERLAY")
+        icon:SetSize(iconSize, iconSize)
+        icon:SetPoint("LEFT", preview, "LEFT", 0, 0)
+        local iconTex = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(21562) or "Interface\\Icons\\Spell_Holy_WordFortitude"
+        icon:SetTexture(iconTex)
+        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+
+        -- Bar background (starts after icon)
+        local bg = preview:CreateTexture(nil, "BACKGROUND")
+        bg:SetPoint("TOPLEFT", preview, "TOPLEFT", iconSize, 0)
+        bg:SetPoint("BOTTOMRIGHT", preview, "BOTTOMRIGHT", 0, 0)
+        local bgColor = Orbit.Constants.Colors.Background
+        bg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
+
+        -- Bar fill (partial width to simulate remaining duration)
+        local fill = preview:CreateTexture(nil, "ARTWORK")
+        fill:SetPoint("TOPLEFT", preview, "TOPLEFT", iconSize, 0)
+        fill:SetPoint("BOTTOM", preview, "BOTTOM", 0, 0)
+        fill:SetWidth((barW - iconSize) * 0.6)
+        local LSM = LibStub("LibSharedMedia-3.0", true)
+        local texturePath = LSM and LSM:Fetch("statusbar", Orbit.db.GlobalSettings.Texture or "Blizzard") or ""
+        fill:SetTexture(texturePath)
+        fill:SetVertexColor(0.3, 0.7, 1, 1)
+
+        -- Border
+        local borderSize = Orbit.db.GlobalSettings.BorderSize or 1
+        Orbit.Skin:SkinBorder(preview, preview, borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
+
+        -- Text sources
+        local fontPath = buffBarPlugin:GetGlobalFont()
+        local textSize = Orbit.Skin:GetAdaptiveTextSize(barH, 8, 14, 0.55)
+        local name = preview:CreateFontString(nil, "OVERLAY", nil, 7)
+        name:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
+        name:SetPoint("LEFT", preview, "LEFT", iconSize + 5, 0)
+        name:SetText("Preview Buff")
+        name:SetTextColor(1, 1, 1, 1)
+
+        local timer = preview:CreateFontString(nil, "OVERLAY", nil, 7)
+        timer:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
+        timer:SetPoint("RIGHT", preview, "RIGHT", -5, 0)
+        timer:SetText("12.4")
+        timer:SetTextColor(1, 1, 1, 1)
+
+        -- Register text components for Canvas Mode drag
+        local savedPositions = buffBarPlugin:GetSetting(BUFFBAR_INDEX, "ComponentPositions") or {}
+        local barW2 = barW / 2
+        local namePos = savedPositions["BuffBarName"]
+        local timerPos = savedPositions["BuffBarTimer"]
+        local nameX = namePos and namePos.posX or (-barW2 + name:GetStringWidth() / 2 + iconSize + 5)
+        local nameY = namePos and namePos.posY or 0
+        local timerX = timerPos and timerPos.posX or (barW2 - timer:GetStringWidth() / 2 - 5)
+        local timerY = timerPos and timerPos.posY or 0
+
+        local CDC = OrbitEngine.CanvasMode.CreateDraggableComponent
+        if CDC then
+            local nameComp = CDC(preview, "BuffBarName", name, nameX, nameY, namePos)
+            local timerComp = CDC(preview, "BuffBarTimer", timer, timerX, timerY, timerPos)
+            local fl = preview:GetFrameLevel() + 10
+            if nameComp then nameComp:SetFrameLevel(fl) end
+            if timerComp then timerComp:SetFrameLevel(fl) end
+            name:Hide()
+            timer:Hide()
+            if nameComp then preview.components["BuffBarName"] = nameComp end
+            if timerComp then preview.components["BuffBarTimer"] = timerComp end
+        end
+
+        return preview
+    end
 
     self:RestoreChildFrames()
     self:HookBlizzardViewers()
@@ -188,7 +287,7 @@ function Plugin:UpdateVisibility()
 end
 
 -- [ ANCHOR CREATION ]-------------------------------------------------------------------------------
-function Plugin:CreateAnchor(name, systemIndex, label)
+function Plugin:CreateAnchor(name, systemIndex, label, overrideOptions)
     local frame = CreateFrame("Frame", name, UIParent)
     OrbitEngine.Pixel:Enforce(frame)
     frame:SetSize(40, 40)
@@ -196,7 +295,7 @@ function Plugin:CreateAnchor(name, systemIndex, label)
     frame.systemIndex = systemIndex
     frame.editModeName = label
     frame:EnableMouse(false)
-    frame.anchorOptions = { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true }
+    frame.anchorOptions = overrideOptions or { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true }
     frame.orbitChainSync = true
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 
@@ -212,6 +311,8 @@ function Plugin:CreateAnchor(name, systemIndex, label)
             frame:SetPoint("CENTER", UIParent, "CENTER", 0, -150)
         elseif systemIndex == BUFFICON_INDEX then
             frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
+        elseif systemIndex == BUFFBAR_INDEX then
+            frame:SetPoint("CENTER", UIParent, "CENTER", 200, -100)
         end
     end
 
@@ -233,6 +334,9 @@ function Plugin:ApplyAll()
     end
     if self.buffIconAnchor then
         self:ApplySettings(self.buffIconAnchor)
+    end
+    if self.buffBarAnchor then
+        self:ApplySettings(self.buffBarAnchor)
     end
     if self.trackedAnchor then
         self:ApplyTrackedSettings(self.trackedAnchor)

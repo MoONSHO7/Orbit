@@ -205,6 +205,7 @@ C.Cooldown = {
         Tracked_ChildStart = 5,
         ChargeBar = 20,
         ChargeBar_ChildStart = 21,
+        BuffBar = 30,
     },
     MaxChargeBarChildren = 4,
 }

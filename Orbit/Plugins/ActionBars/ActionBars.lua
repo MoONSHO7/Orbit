@@ -306,6 +306,7 @@ function Plugin:OnLoad()
                 elseif container.orbitMountedOverlay then
                     container.orbitMountedSuppressed = nil
                     container.orbitMountedOverlay:Hide(); container:SetScript("OnUpdate", nil)
+                    container:SetAlpha((self:GetSetting(index, "Opacity") or 100) / 100)
                     self:ApplySettings(container)
                 end
             end

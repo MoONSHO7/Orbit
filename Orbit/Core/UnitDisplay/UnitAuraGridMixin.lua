@@ -410,10 +410,13 @@ function Mixin:CreateAuraGridPlugin(config)
     Frame:RegisterUnitEvent("UNIT_AURA", config.unit)
     Frame:RegisterEvent(config.changeEvent)
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    if config.unit == "player" and not config.isHarmful then
+        Frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    end
 
     Frame:SetScript("OnEvent", function(f, event, unit)
         if Orbit:IsEditMode() then return end
-        if event == config.changeEvent or event == "PLAYER_ENTERING_WORLD" then
+        if event == config.changeEvent or event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_REGEN_ENABLED" then
             self:UpdateVisibility()
             self:UpdateAuras()
         elseif event == "UNIT_AURA" and unit == f.unit then
@@ -463,7 +466,7 @@ function Mixin:UpdateAuras()
     if not self:IsEnabled() then return end
 
     local collapsed = cfg.showIconLimit and not cfg.isHarmful and self:GetSetting(1, "Collapsed")
-
+    local cancelable = cfg.unit == "player" and not cfg.isHarmful
     local maxAuras, iconsPerRow, spacing, iconH, iconW = self:_resolveGrid()
 
     if not Frame.auraPool then self:CreateAuraPool(Frame, "BackdropTemplate") end
@@ -477,7 +480,8 @@ function Mixin:UpdateAuras()
     local auraFilter = collapsed and (cfg.auraFilter .. "|PLAYER|CANCELABLE") or cfg.auraFilter
     local auras = self:FetchAuras(cfg.unit, auraFilter, maxAuras)
     if #auras == 0 then
-        if collapsed then Frame:SetSize(iconW, iconH) end
+        if collapsed and (not cancelable or not InCombatLockdown()) then Frame:SetSize(iconW, iconH) end
+        if cancelable and not InCombatLockdown() then self:_hideCancelOverlays(Frame) end
         return
     end
     local skinSettings = { zoom = 0, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, showTimer = cfg.showTimer }
@@ -504,6 +508,64 @@ function Mixin:UpdateAuras()
         size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
         anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
     })
+
+    if cancelable and not InCombatLockdown() then
+        self:_syncCancelOverlays(Frame, auras, {
+            iconH = iconH, iconW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
+            anchor = anchor, growthX = growthX, growthY = growthY,
+        })
+    end
+end
+
+-- [ CANCEL OVERLAYS ]-------------------------------------------------------------------------------
+function Mixin:_syncCancelOverlays(frame, auras, layout)
+    if not frame._cancelButtons then frame._cancelButtons = {} end
+    local indexMap = {}
+    for i = 1, 40 do
+        local data = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
+        if not data then break end
+        indexMap[data.auraInstanceID] = i
+    end
+    local activeBtns = {}
+    for i, aura in ipairs(auras) do
+        local btn = frame._cancelButtons[i]
+        if not btn then
+            btn = CreateFrame("Button", nil, frame, "SecureActionButtonTemplate")
+            btn:RegisterForClicks("RightButtonUp")
+            btn:SetAttribute("type2", "cancelaura")
+            btn:SetAttribute("unit", "player")
+            btn:SetAttribute("filter", "HELPFUL")
+            btn:EnableMouse(true)
+            btn:SetMouseMotionEnabled(false)
+            btn:SetPassThroughButtons("LeftButton")
+            btn:SetAlpha(0)
+            btn:SetFrameStrata("HIGH")
+            frame._cancelButtons[i] = btn
+        end
+        local idx = indexMap[aura.auraInstanceID]
+        if idx then
+            btn:SetAttribute("index", idx)
+            btn:SetSize(layout.iconW, layout.iconH)
+            btn:Show()
+            table.insert(activeBtns, btn)
+        else
+            btn:Hide()
+        end
+    end
+    for i = #auras + 1, #frame._cancelButtons do
+        frame._cancelButtons[i]:Hide()
+    end
+    -- Position via LayoutGrid anchored to parent frame, NOT to pool icons
+    Orbit.AuraLayout:LayoutGrid(frame, activeBtns, {
+        size = layout.iconH, sizeW = layout.iconW, spacing = layout.spacing,
+        maxPerRow = layout.maxPerRow, anchor = layout.anchor,
+        growthX = layout.growthX, growthY = layout.growthY, yOffset = 0,
+    })
+end
+
+function Mixin:_hideCancelOverlays(frame)
+    if not frame._cancelButtons then return end
+    for _, btn in ipairs(frame._cancelButtons) do btn:Hide() end
 end
 
 -- [ VISIBILITY ]-------------------------------------------------------------------------------------

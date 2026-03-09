@@ -9,8 +9,20 @@ if not CDM then return end
 
 local VIEWER_MAP = CDM.viewerMap
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
+local BUFFBAR_INDEX = Constants.Cooldown.SystemIndex.BuffBar
 local INACTIVE_ALPHA_DEFAULT = 60
 local FLASH_DURATION = 0.15
+local BUFFBAR_MIN_WIDTH = 40
+local BUFFBAR_MAX_COLORS = 5
+local BUFFBAR_DEFAULT_COLORS = {
+    { r = 0.3, g = 0.7, b = 1, a = 1 },
+    { r = 0.4, g = 0.9, b = 0.4, a = 1 },
+    { r = 1, g = 0.7, b = 0.3, a = 1 },
+    { r = 0.9, g = 0.4, b = 0.9, a = 1 },
+    { r = 1, g = 0.4, b = 0.4, a = 1 },
+}
+local BUFFBAR_TEXT_PADDING = 5
+local BUFFBAR_ICON_TRIM = 0.07
 
 -- Reusable child buffer alias
 local PackChildren = function(...) return CooldownUtils:PackChildren(...) end
@@ -25,6 +37,7 @@ DESAT_CURVE:AddPoint(1.0, 0.0)
 local GetNativeTimerCurveForSystem
 local ApplyTimerColor
 local ApplyBuffIconDesaturation
+local ApplyBuffBarSkin
 
 -- [ FLASH OVERLAY ]----------------------------------------------------------------------------------
 local function EnsureFlashOverlay(icon)
@@ -95,6 +108,11 @@ end
 -- [ ANCHOR LOOKUP ]----------------------------------------------------------------------------------
 local function GetAnchorInfo(anchorFrame) return anchorFrame and OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors[anchorFrame] end
 
+-- [ LIVE CANVAS PREVIEW ]----------------------------------------------------------------------------
+Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", function(changedPlugin)
+    if changedPlugin == CDM and CDM.buffBarAnchor then CDM:ProcessChildren(CDM.buffBarAnchor) end
+end)
+
 -- [ PROCESS CHILDREN ]-------------------------------------------------------------------------------
 function CDM:ProcessChildren(anchor)
     if not anchor then return end
@@ -152,7 +170,7 @@ function CDM:ProcessChildren(anchor)
     table.sort(activeChildren, function(a, b) return (a.layoutIndex or 0) < (b.layoutIndex or 0) end)
 
     if #activeChildren > 0 then
-        local hGrowth = (systemIndex == BUFFICON_INDEX) and self:GetHorizontalGrowth(anchor) or nil
+        local hGrowth = (systemIndex == BUFFICON_INDEX or systemIndex == BUFFBAR_INDEX) and self:GetHorizontalGrowth(anchor) or nil
         local vGrowth = self:GetGrowthDirection(anchor)
         local parentIndex = CooldownUtils:GetInheritedParentIndex(anchor, VIEWER_MAP)
         local overrides = parentIndex
@@ -174,10 +192,20 @@ function CDM:ProcessChildren(anchor)
         local alwaysShow = self:GetSetting(systemIndex, "AlwaysShow")
         local inactiveAlpha = alwaysShow and (self:GetSetting(systemIndex, "InactiveAlpha") or INACTIVE_ALPHA_DEFAULT) / 100 or nil
         local hideBorders = alwaysShow and self:GetSetting(systemIndex, "HideBorders")
-        for _, icon in ipairs(activeChildren) do
-            Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
+        local isBuffBar = (systemIndex == BUFFBAR_INDEX)
+        if isBuffBar then
+            skinSettings.buffBarHeight = self:GetSetting(systemIndex, "Height") or 20
+            skinSettings.buffBarWidth = self:GetSetting(systemIndex, "Width") or 200
+            skinSettings.buffBarSpacing = self:GetSetting(systemIndex, "Spacing") or 2
+        end
+        for barIdx, icon in ipairs(activeChildren) do
+            if isBuffBar then
+                ApplyBuffBarSkin(icon, skinSettings, barIdx)
+            else
+                Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
+            end
             self:HookGCDSwipe(icon, systemIndex)
-            self:ApplyTextSettings(icon, systemIndex)
+            if not isBuffBar then self:ApplyTextSettings(icon, systemIndex) end
             icon.orbitCDMSystemIndex = systemIndex
             local cd = icon.Cooldown or (icon.GetCooldownFrame and icon:GetCooldownFrame())
             if cd then
@@ -199,15 +227,64 @@ function CDM:ProcessChildren(anchor)
             if inactiveAlpha then ApplyBuffIconDesaturation(icon, inactiveAlpha, hideBorders) end
         end
 
-        Orbit.Skin.IconLayout:ApplyManualLayout(blizzFrame, activeChildren, skinSettings)
+        if isBuffBar then
+            -- Stack bars vertically with spacing, pixel-perfect dimensions
+            local Pixel = OrbitEngine.Pixel
+            local anchorFrame = entry.anchor
+            local scale = anchorFrame:GetEffectiveScale()
+            local spacing = Pixel:Multiple(skinSettings.buffBarSpacing or 2, scale)
+            local barH = Pixel:Snap(skinSettings.buffBarHeight or 20, scale)
+            local settingW = Pixel:Snap(math.max(skinSettings.buffBarWidth or 200, BUFFBAR_MIN_WIDTH), scale)
+            -- Use whichever is larger: anchor width (from parent sync) or setting width
+            local barW = math.max(anchorFrame:GetWidth(), settingW)
+            local vGrowth = self:GetGrowthDirection(anchorFrame)
+            local totalH = (#activeChildren * barH) + (math.max(#activeChildren - 1, 0) * spacing)
+            blizzFrame:SetSize(barW, math.max(totalH, barH))
+            for i, item in ipairs(activeChildren) do
+                item:ClearAllPoints()
+                local yOff = Pixel:Snap((i - 1) * (barH + spacing), scale)
+                if vGrowth == "UP" then
+                    item:SetPoint("BOTTOMLEFT", blizzFrame, "BOTTOMLEFT", 0, yOff)
+                    item:SetPoint("BOTTOMRIGHT", blizzFrame, "BOTTOMRIGHT", 0, yOff)
+                else
+                    item:SetPoint("TOPLEFT", blizzFrame, "TOPLEFT", 0, -yOff)
+                    item:SetPoint("TOPRIGHT", blizzFrame, "TOPRIGHT", 0, -yOff)
+                end
+                item:SetHeight(barH)
+            end
+        else
+            Orbit.Skin.IconLayout:ApplyManualLayout(blizzFrame, activeChildren, skinSettings)
+        end
 
         if not InCombatLockdown() then
+            local anchorFrame = entry.anchor
             local w, h = blizzFrame:GetSize()
-            if w and h and w > 0 and h > 0 then
-                anchor:SetSize(w, h)
+            -- BuffIcons: lock anchor width to total configured spells, not active count
+            if systemIndex == BUFFICON_INDEX then
+                local totalConfigured = 0
+                for _, child in ipairs(PackChildren(blizzFrame:GetChildren())) do
+                    if child.layoutIndex and child.GetCooldownID and child:GetCooldownID() then totalConfigured = totalConfigured + 1 end
+                end
+                if totalConfigured > 0 then
+                    local limit = tonumber(skinSettings.limit) or 10
+                    local scale = anchorFrame:GetEffectiveScale()
+                    local iconW = OrbitEngine.Pixel:Snap((skinSettings.baseIconSize or Constants.Skin.DefaultIconSize) * ((skinSettings.size or 100) / 100), scale)
+                    local pad = OrbitEngine.Pixel:Snap(tonumber(skinSettings.padding) or 0, scale)
+                    local cols = math.min(totalConfigured, limit)
+                    w = (cols * iconW) + ((cols - 1) * pad)
+                end
             end
-            anchor.orbitRowHeight = blizzFrame.orbitRowHeight
-            anchor.orbitColumnWidth = blizzFrame.orbitColumnWidth
+            if isBuffBar then
+                -- Only sync height — width owned by anchor system (syncDimensions)
+                if h and h > 0 then anchorFrame:SetHeight(h) end
+                -- When undocked, set width from CDM setting
+                local sW = OrbitEngine.Pixel:Snap(math.max(skinSettings.buffBarWidth or 200, BUFFBAR_MIN_WIDTH), anchorFrame:GetEffectiveScale())
+                if anchorFrame:GetWidth() < sW then anchorFrame:SetWidth(sW) end
+            elseif w and h and w > 0 and h > 0 then
+                anchorFrame:SetSize(w, h)
+            end
+            anchorFrame.orbitRowHeight = blizzFrame.orbitRowHeight
+            anchorFrame.orbitColumnWidth = blizzFrame.orbitColumnWidth
         end
     end
 end
@@ -310,6 +387,29 @@ local function SetCachedColor(fs, r, g, b, a)
     fs._orbitSettingColor = false
 end
 
+local function EnsureBarColorHook(bar)
+    if bar._orbitBarColorHooked then return end
+    bar._orbitBarColorHooked = true
+    hooksecurefunc(bar, "SetStatusBarColor", function(self)
+        if self._orbitSettingColor then return end
+        local c = self._orbitBarColor
+        if not c then return end
+        self._orbitSettingColor = true
+        self:SetStatusBarColor(c[1], c[2], c[3], c[4])
+        self._orbitSettingColor = false
+    end)
+end
+
+local function SetBarColor(bar, r, g, b, a)
+    EnsureBarColorHook(bar)
+    local c = bar._orbitBarColor
+    if not c then c = { 0, 0, 0, 1 }; bar._orbitBarColor = c end
+    c[1], c[2], c[3], c[4] = r, g, b, a
+    bar._orbitSettingColor = true
+    bar:SetStatusBarColor(r, g, b, a)
+    bar._orbitSettingColor = false
+end
+
 ApplyTimerColor = function(icon, curve)
     local timerFS, activeFS = GetTimerFontStrings(icon)
     if not timerFS and not activeFS then return end
@@ -340,6 +440,155 @@ ApplyBuffIconDesaturation = function(icon, inactiveAlpha, hideBorders)
         icon.Icon:SetAlpha(inactiveAlpha)
         if borderFrame then borderFrame:SetAlpha(0) end
     end
+end
+
+-- [ BUFF BAR SKINNING ]-----------------------------------------------------------------------------
+ApplyBuffBarSkin = function(item, skinSettings, barIndex)
+    local bar = item.Bar
+    if not bar then return end
+    local globals = Orbit.db.GlobalSettings
+    local borderSize = globals.BorderSize or 1
+    local textureName = globals.Texture
+    local fontPath = CDM:GetGlobalFont()
+    local baseFontSize = CDM:GetBaseFontSize()
+
+    -- Icon size follows bar height from settings (skinning runs before layout anchoring)
+    local barHeight = skinSettings.buffBarHeight or 20
+    local iconFrame = item.Icon
+    local Pixel = OrbitEngine.Pixel
+    local scale = item:GetEffectiveScale()
+    local iconSize = Pixel:Snap(barHeight, scale)
+    if iconFrame then
+        iconFrame:SetSize(iconSize, iconSize)
+        iconFrame:ClearAllPoints()
+        iconFrame:SetPoint("LEFT", item, "LEFT", 0, 0)
+    end
+
+    -- Position bar after icon
+    bar:ClearAllPoints()
+    bar:SetPoint("TOPLEFT", item, "TOPLEFT", iconSize, 0)
+    bar:SetPoint("BOTTOMRIGHT", item, "BOTTOMRIGHT", 0, 0)
+
+    -- Resolve Canvas Mode positions (read from Transaction if active, else saved settings)
+    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+    local compPositions = (Txn and Txn:IsActive() and Txn:GetPlugin() == CDM) and Txn:GetPositions() or CDM:GetSetting(BUFFBAR_INDEX, "ComponentPositions")
+    local OU = OrbitEngine.OverrideUtils
+
+    -- StatusBar texture + overlay (global texture setting)
+    Orbit.Skin:SkinStatusBar(bar, textureName)
+
+    -- Per-bar color (cycles through BarColor1–BarColor5, same hook pattern as timer text)
+    local colorIdx = ((barIndex - 1) % BUFFBAR_MAX_COLORS) + 1
+    local colorCurve = CDM:GetSetting(BUFFBAR_INDEX, "BarColor" .. colorIdx)
+    local barColor = colorCurve and OrbitEngine.ColorCurve:GetFirstColorFromCurve(colorCurve)
+    if not barColor then barColor = BUFFBAR_DEFAULT_COLORS[colorIdx] end
+    SetBarColor(bar, barColor.r, barColor.g, barColor.b, barColor.a or 1)
+
+    -- Background
+    if not bar.orbitBG then
+        bar.orbitBG = bar:CreateTexture(nil, "BACKGROUND")
+        bar.orbitBG:SetAllPoints(bar)
+    end
+    local bg = Constants.Colors.Background
+    bar.orbitBG:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
+
+    -- Global backdrop gradient
+    local backdropCurve = globals.BackdropColourCurve
+    if backdropCurve then
+        Orbit.Skin:ApplyGradientBackground(bar, backdropCurve, bg)
+    end
+
+    -- Border (global border size)
+    if not bar.orbitBorder then
+        bar.orbitBorder = CreateFrame("Frame", nil, bar, "BackdropTemplate")
+        bar.orbitBorder:SetAllPoints(bar)
+        bar.orbitBorder:SetFrameLevel(bar:GetFrameLevel() + 1)
+    end
+    Orbit.Skin:SkinBorder(bar, bar.orbitBorder, borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
+
+     -- Hide Blizzard bar chrome
+    if bar.BarBG then bar.BarBG:SetAlpha(0) end
+    if bar.Pip then bar.Pip:SetAlpha(0) end
+
+    -- Reparent text to border frame so it renders above backdrop
+    if bar.orbitBorder then
+        if bar.Name then bar.Name:SetParent(bar.orbitBorder) end
+        if bar.Duration then bar.Duration:SetParent(bar.orbitBorder) end
+    end
+
+    -- Text styling (global font + adaptive size from bar height)
+    local textSize = Orbit.Skin:GetAdaptiveTextSize(barHeight, 8, 14, 0.55)
+    local textPad = Pixel:Multiple(BUFFBAR_TEXT_PADDING, scale)
+    local textSettings = { textSize = textSize, font = globals.Font, textColor = { r = 1, g = 1, b = 1, a = 1 } }
+    if bar.Name then Orbit.Skin:SkinText(bar.Name, textSettings) end
+    if bar.Duration then Orbit.Skin:SkinText(bar.Duration, textSettings) end
+
+    -- Apply Canvas Mode text component positions and overrides
+    local nameData = compPositions and compPositions["BuffBarName"]
+    local timerData = compPositions and compPositions["BuffBarTimer"]
+    local nameDisabled = CDM:IsComponentDisabled("BuffBarName", BUFFBAR_INDEX)
+    local timerDisabled = CDM:IsComponentDisabled("BuffBarTimer", BUFFBAR_INDEX)
+    local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
+
+    if bar.Name then
+        bar.Name:SetShown(not nameDisabled)
+        if not nameDisabled then
+            if not (ApplyTextPosition and nameData and ApplyTextPosition(bar.Name, item, nameData)) then
+                bar.Name:ClearAllPoints()
+                bar.Name:SetPoint("LEFT", bar, "LEFT", textPad, 0)
+                bar.Name:SetPoint("RIGHT", bar.Duration or bar, "LEFT", -textPad, 0)
+                bar.Name:SetJustifyH("LEFT")
+            end
+            if OU and nameData and nameData.overrides then OU.ApplyOverrides(bar.Name, nameData.overrides) end
+        end
+    end
+    if bar.Duration then
+        bar.Duration:SetShown(not timerDisabled)
+        if not timerDisabled then
+            if not (ApplyTextPosition and timerData and ApplyTextPosition(bar.Duration, item, timerData)) then
+                bar.Duration:ClearAllPoints()
+                bar.Duration:SetPoint("RIGHT", bar, "RIGHT", -textPad, 0)
+                bar.Duration:SetJustifyH("RIGHT")
+            end
+            if OU and timerData and timerData.overrides then OU.ApplyOverrides(bar.Duration, timerData.overrides) end
+        end
+    end
+
+    -- Icon styling (trim texcoords, square, remove mask)
+    if iconFrame then
+        local iconTex = iconFrame.Icon
+        if iconTex and iconTex.SetTexCoord then
+            iconTex:SetTexCoord(BUFFBAR_ICON_TRIM, 1 - BUFFBAR_ICON_TRIM, BUFFBAR_ICON_TRIM, 1 - BUFFBAR_ICON_TRIM)
+            if not iconFrame.orbitMaskRemoved then
+                for _, region in ipairs({ iconFrame:GetRegions() }) do
+                    if region:IsObjectType("MaskTexture") and iconTex.RemoveMaskTexture then
+                        iconTex:RemoveMaskTexture(region)
+                        region:Hide()
+                    end
+                end
+                iconFrame.orbitMaskRemoved = true
+            end
+        end
+        -- Icon border (global border size)
+        if not iconFrame.orbitBorder then
+            iconFrame.orbitBorder = CreateFrame("Frame", nil, iconFrame, "BackdropTemplate")
+            iconFrame.orbitBorder:SetAllPoints(iconFrame)
+            iconFrame.orbitBorder:SetFrameLevel(iconFrame:GetFrameLevel() + 2)
+        end
+        Orbit.Skin:SkinBorder(iconFrame, iconFrame.orbitBorder, borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
+        -- Hide Blizzard icon overlay atlas
+        if not iconFrame.orbitOverlayHidden then
+            for _, region in ipairs({ iconFrame:GetRegions() }) do
+                if region:IsObjectType("Texture") and region:GetAtlas() == "UI-HUD-CoolDownManager-IconOverlay" then
+                    region:SetAlpha(0)
+                end
+            end
+            iconFrame.orbitOverlayHidden = true
+        end
+    end
+
+    -- Hide Blizzard debuff border
+    if item.DebuffBorder then item.DebuffBorder:SetAlpha(0); item.DebuffBorder:Hide() end
 end
 
 

@@ -4,7 +4,7 @@ tracks ability cooldowns, active durations, and charge-based spells with visual 
 
 ## purpose
 
-provides three viewer types: essential cooldowns (class rotation), utility cooldowns (defensive/utility), and user-tracked abilities/items. also provides charge bar tracking for multi-charge spells.
+provides four viewer types: essential cooldowns (class rotation), utility cooldowns (defensive/utility), buff icons (tracked buffs), and buff bars (tracked buff status bars). also provides user-tracked abilities/items and charge bar tracking for multi-charge spells.
 
 ## files
 
@@ -35,6 +35,8 @@ provides three viewer types: essential cooldowns (class rotation), utility coold
 graph TD
     CDM[CooldownManager] --> Essential[essential viewers]
     CDM --> Utility[utility viewers]
+    CDM --> BuffIcon[buff icon viewers]
+    CDM --> BuffBar[buff bar viewers]
     CDM --> Tracked[TrackedAbilities]
     CDM --> Charges[TrackedCharges]
     Charges --> ChargeLayout[ChargeBarLayout]

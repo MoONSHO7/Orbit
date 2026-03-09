@@ -10,13 +10,14 @@ if not CDM then return end
 
 local VIEWER_MAP = CDM.viewerMap
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
+local BUFFBAR_INDEX = Constants.Cooldown.SystemIndex.BuffBar
 
 local CooldownUtils = OrbitEngine.CooldownUtils
 local PackChildren = function(...) return CooldownUtils:PackChildren(...) end
 
 local function GetViewerAnchorPoint(plugin, anchor)
     local vPoint = (plugin:GetGrowthDirection(anchor) == "UP") and "BOTTOM" or "TOP"
-    if anchor.systemIndex ~= BUFFICON_INDEX then return vPoint end
+    if anchor.systemIndex ~= BUFFICON_INDEX and anchor.systemIndex ~= BUFFBAR_INDEX then return vPoint end
     local hGrowth = plugin:GetHorizontalGrowth(anchor)
     if hGrowth == "LEFT" then return vPoint .. "RIGHT" end
     if hGrowth == "RIGHT" then return vPoint .. "LEFT" end

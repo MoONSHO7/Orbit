@@ -25,6 +25,8 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
     left, top, right, bottom = left * fScale, top * fScale, right * fScale, bottom * fScale
 
     local Anchor = Engine.FrameAnchor
+    -- Parent-only bounds for anchor overlap detection (children must not influence anchor zones)
+    local parentLeft, parentTop, parentRight, parentBottom = left, top, right, bottom
     local chainChildren = Anchor:GetAnchoredDescendants(frame)
     for _, child in ipairs(chainChildren) do
         local cl, cb, cw, ch = child:GetRect()
@@ -78,11 +80,11 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
 
                 -- STRICT OVERLAP DETECTION
                 -- Horizontal overlap uses chain bounds for chain members
-                local horizontalOverlap = (right > tbLeft and left < tbRight)
+                local horizontalOverlap = (parentRight > tbLeft and parentLeft < tbRight)
 
                 -- Vertical overlap: dragged frame's Y range overlaps target's Y range
                 -- Required for LEFT/RIGHT anchoring (frame must be directly beside)
-                local verticalOverlap = (top > tBottom and bottom < tTop)
+                local verticalOverlap = (parentTop > tBottom and parentBottom < tTop)
 
                 -- X Axis snap points (alignment only, no threshold modification)
                 local snapPointsX = {

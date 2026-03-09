@@ -70,14 +70,13 @@ end
 
 function NativeFrame:Disable(nativeFrame)
     if not nativeFrame then return false end
+    if InCombatLockdown() then return false end
 
     local backup = { onShow = nativeFrame:GetScript("OnShow"), shown = nativeFrame:IsShown() }
 
-    -- Edit Mode systems override Hide→HideOverride→HideBase (protected). Call HideBase directly to avoid taint.
-    local hide = nativeFrame.HideBase or nativeFrame.Hide
-    hide(nativeFrame)
     nativeFrame:UnregisterAllEvents()
-    nativeFrame:SetScript("OnShow", function(self) (self.HideBase or self.Hide)(self) end)
+    UnregisterStateDriver(nativeFrame, "visibility")
+    RegisterStateDriver(nativeFrame, "visibility", "hide")
 
     self.disabled[nativeFrame] = backup
     return true
@@ -85,10 +84,12 @@ end
 
 function NativeFrame:Enable(nativeFrame)
     if not nativeFrame then return false end
+    if InCombatLockdown() then return false end
     local backup = self.disabled[nativeFrame]
     if not backup then return false end
 
-    nativeFrame:SetScript("OnShow", backup.onShow)
+    UnregisterStateDriver(nativeFrame, "visibility")
+    if backup.onShow then nativeFrame:SetScript("OnShow", backup.onShow) end
     if backup.shown then nativeFrame:Show() end
     self.disabled[nativeFrame] = nil
     return true

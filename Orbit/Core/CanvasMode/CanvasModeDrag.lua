@@ -271,9 +271,11 @@ local function SetupDragHandlers(container, preview, key, data)
         if Dialog.DisabledDock:IsMouseOver() then
             local compKey = self.key
             self:Hide()
-            self:SetParent(nil)
             Dialog.previewComponents[compKey] = nil
             Dialog:AddToDock(compKey, data and data.component)
+            if Dialog.dockComponents[compKey] then
+                Dialog.dockComponents[compKey].storedDraggableComp = self
+            end
             return
         end
 

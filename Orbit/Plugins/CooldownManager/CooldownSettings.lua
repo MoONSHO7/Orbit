@@ -115,6 +115,62 @@ function CDM:AddSettings(dialog, systemFrame)
         return
     end
 
+    -- Buff Bars get their own dedicated dialog
+    if systemIndex == Constants.Cooldown.SystemIndex.BuffBar then
+        SB:SetTabRefreshCallback(dialog, self, systemFrame)
+        local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colors" }, "Layout")
+
+        if currentTab == "Layout" then
+            local buffBarAnchor = self.buffBarAnchor
+            local isDocked = OrbitEngine.Frame:GetAnchorParent(buffBarAnchor) ~= nil
+            local function ResizeCanvasPreview()
+                local dlg = OrbitEngine.CanvasModeDialog
+                if not dlg or not dlg:IsShown() or not dlg.previewFrame then return end
+                local w = self:GetSetting(systemIndex, "Width") or 200
+                local h = self:GetSetting(systemIndex, "Height") or 20
+                dlg.previewFrame.sourceWidth = w
+                dlg.previewFrame.sourceHeight = h
+                dlg.previewFrame:SetSize(w, h)
+                if dlg.TransformLayer then
+                    dlg.TransformLayer.baseWidth = w
+                    dlg.TransformLayer.baseHeight = h
+                    dlg.TransformLayer:SetSize(w, h)
+                    if OrbitEngine.CanvasMode.ApplyPanOffset then OrbitEngine.CanvasMode.ApplyPanOffset(dlg, dlg.panOffsetX, dlg.panOffsetY) end
+                end
+            end
+            table.insert(schema.controls, {
+                type = "slider", key = "Height", label = "Bar Height", min = 12, max = 40, step = 1, default = 20,
+                onChange = function(val) self:SetSetting(systemIndex, "Height", val); self:ProcessChildren(buffBarAnchor); ResizeCanvasPreview() end,
+            })
+            if not isDocked then
+                table.insert(schema.controls, {
+                    type = "slider", key = "Width", label = "Bar Width", min = 80, max = 400, step = 1, default = 200,
+                    onChange = function(val) self:SetSetting(systemIndex, "Width", val); self:ProcessChildren(buffBarAnchor); ResizeCanvasPreview() end,
+                })
+            end
+            table.insert(schema.controls, {
+                type = "slider", key = "Spacing", label = "Spacing", min = -3, max = 20, step = 1, default = 2,
+                onChange = function(val) self:SetSetting(systemIndex, "Spacing", val); self:ProcessChildren(buffBarAnchor) end,
+            })
+        elseif currentTab == "Colors" then
+            local barColors = {
+                { key = "BarColor1", label = "Bar 1", default = { pins = { { position = 0, color = { r = 0.3, g = 0.7, b = 1, a = 1 } } } } },
+                { key = "BarColor2", label = "Bar 2", default = { pins = { { position = 0, color = { r = 0.4, g = 0.9, b = 0.4, a = 1 } } } } },
+                { key = "BarColor3", label = "Bar 3", default = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0.3, a = 1 } } } } },
+                { key = "BarColor4", label = "Bar 4", default = { pins = { { position = 0, color = { r = 0.9, g = 0.4, b = 0.9, a = 1 } } } } },
+                { key = "BarColor5", label = "Bar 5", default = { pins = { { position = 0, color = { r = 1, g = 0.4, b = 0.4, a = 1 } } } } },
+            }
+            for _, def in ipairs(barColors) do
+                SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+                    key = def.key, label = def.label, default = def.default, singleColor = true,
+                })
+            end
+        end
+
+        OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
+        return
+    end
+
     if not isTracked then
         table.insert(schema.extraButtons, {
             text = "Cooldown Settings",
@@ -212,7 +268,7 @@ function CDM:AddSettings(dialog, systemFrame)
                 key = "ActiveGlowColor", label = "Active Glow Color", default = { r = 0.3, g = 0.8, b = 1, a = 1 },
             })
         end
-        if systemIndex ~= Constants.Cooldown.SystemIndex.BuffIcon then
+        if systemIndex ~= Constants.Cooldown.SystemIndex.BuffIcon and systemIndex ~= Constants.Cooldown.SystemIndex.BuffBar then
             SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
                 key = "KeypressColor", label = "Keypress Flash",
                 default = { r = 1, g = 1, b = 1, a = 0 },
@@ -276,7 +332,8 @@ end
 -- [ COMPONENT UTILITY ]-----------------------------------------------------------------------------
 function CDM:IsComponentDisabled(componentKey, systemIndex)
     systemIndex = systemIndex or 1
-    local disabled = self:GetSetting(systemIndex, "DisabledComponents") or {}
+    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+    local disabled = (Txn and Txn:IsActive() and Txn:GetPlugin() == self) and Txn:GetDisabledComponents() or self:GetSetting(systemIndex, "DisabledComponents") or {}
     for _, key in ipairs(disabled) do
         if key == componentKey then return true end
     end
