@@ -25,8 +25,9 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
     left, top, right, bottom = left * fScale, top * fScale, right * fScale, bottom * fScale
 
     local Anchor = Engine.FrameAnchor
-    -- Parent-only bounds for anchor overlap detection (children must not influence anchor zones)
+    -- Parent-only bounds for anchor overlap and alignment detection (children must not influence anchor zones)
     local parentLeft, parentTop, parentRight, parentBottom = left, top, right, bottom
+    local parentCenterX, parentCenterY = (parentLeft + parentRight) / 2, (parentTop + parentBottom) / 2
     local chainChildren = Anchor:GetAnchoredDescendants(frame)
     for _, child in ipairs(chainChildren) do
         local cl, cb, cw, ch = child:GetRect()
@@ -195,13 +196,13 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
         local tScale = anchorTarget:GetEffectiveScale()
         if anchorEdge == "LEFT" or anchorEdge == "RIGHT" then
             local tTop, tBottom = anchorTarget:GetTop() * tScale, anchorTarget:GetBottom() * tScale
-            local ratio = (tTop - centerY) / (tTop - tBottom)
+            local ratio = (tTop - parentCenterY) / (tTop - tBottom)
             anchorAlign = (ratio < ALIGN_THIRD) and "TOP" or (ratio > (1 - ALIGN_THIRD)) and "BOTTOM" or "CENTER"
         else
             local cL, cR = Engine.FrameAnchor:GetHorizontalChainScreenBounds(anchorTarget)
             local alignLeft = cL or (anchorTarget:GetLeft() * tScale)
             local alignRight = cR or (anchorTarget:GetRight() * tScale)
-            local ratio = (centerX - alignLeft) / (alignRight - alignLeft)
+            local ratio = (parentCenterX - alignLeft) / (alignRight - alignLeft)
             local edgeThreshold = cL and CHAIN_ALIGN_EDGE or ALIGN_THIRD
             anchorAlign = (ratio < edgeThreshold) and "LEFT" or (ratio > (1 - edgeThreshold)) and "RIGHT" or "CENTER"
         end

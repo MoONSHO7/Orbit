@@ -400,6 +400,7 @@ function Mixin:CreateAuraGridPlugin(config)
         Frame.collapseArrow = CreateCollapseArrow(Frame, self)
     end
 
+
     Frame:HookScript("OnShow", function()
         if not Orbit:IsEditMode() then self:UpdateAuras() end
     end)
@@ -480,7 +481,7 @@ function Mixin:UpdateAuras()
     local auraFilter = collapsed and (cfg.auraFilter .. "|PLAYER|CANCELABLE") or cfg.auraFilter
     local auras = self:FetchAuras(cfg.unit, auraFilter, maxAuras)
     if #auras == 0 then
-        if collapsed and (not cancelable or not InCombatLockdown()) then Frame:SetSize(iconW, iconH) end
+        if collapsed and not InCombatLockdown() then Frame:SetSize(iconW, iconH) end
         if cancelable and not InCombatLockdown() then self:_hideCancelOverlays(Frame) end
         return
     end
@@ -555,7 +556,6 @@ function Mixin:_syncCancelOverlays(frame, auras, layout)
     for i = #auras + 1, #frame._cancelButtons do
         frame._cancelButtons[i]:Hide()
     end
-    -- Position via LayoutGrid anchored to parent frame, NOT to pool icons
     Orbit.AuraLayout:LayoutGrid(frame, activeBtns, {
         size = layout.iconH, sizeW = layout.iconW, spacing = layout.spacing,
         maxPerRow = layout.maxPerRow, anchor = layout.anchor,
