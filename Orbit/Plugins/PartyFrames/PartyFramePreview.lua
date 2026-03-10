@@ -170,6 +170,7 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
             if frame.Name then
                 if isNameDisabled then frame.Name:Hide()
                 else
+                    frame._fullName = PREVIEW_DEFAULTS.Names[i]
                     frame.Name:SetText(PREVIEW_DEFAULTS.Names[i])
                     frame.Name:SetTextColor(1, 1, 1, 1)
                     frame.Name:Show()

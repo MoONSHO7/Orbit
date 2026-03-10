@@ -11,8 +11,6 @@ local PLAYER_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Player
 -- Raid Target Icon constants
 local RAID_TARGET_TEXTURE_COLUMNS = 4
 local RAID_TARGET_TEXTURE_ROWS = 4
-local DEFAULT_POSITION_X = -200
-local DEFAULT_POSITION_Y = -140
 
 local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
     canvasMode = true,
@@ -76,7 +74,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         local sizeOnChange = function(key) return function(val) self:SetSetting(PLAYER_FRAME_INDEX, key, val); self:UpdateLayout(self.frame) end end
         table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160, onChange = sizeOnChange("Width") })
         if not isAnchored or anchorAxis ~= "y" then
-            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40, onChange = sizeOnChange("Height") })
+            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 40, onChange = sizeOnChange("Height") })
         end
 
     elseif currentTab == "Visibility" then
@@ -135,6 +133,7 @@ function Plugin:OnLoad()
         mergeBorders = true,
         independentHeight = true,
     }
+    self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 10, maxH = 100 }
 
     self.frame:HookScript("OnSizeChanged", function()
         Orbit.EventBus:Fire("PLAYER_FRAME_RESIZED")
@@ -309,6 +308,9 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("GROUP_ROSTER_UPDATE")
     self.frame:RegisterEvent("PLAYER_UPDATE_RESTING")
     self.frame:RegisterEvent("PLAYER_FLAGS_CHANGED")
+    self.frame:RegisterUnitEvent("UNIT_FACTION", "player")
+    self.frame:RegisterEvent("WAR_MODE_STATUS_UPDATE")
+    self.frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     self.frame:RegisterEvent("PARTY_LEADER_CHANGED")
     self.frame:RegisterEvent("RAID_TARGET_UPDATE")
 
@@ -363,7 +365,7 @@ function Plugin:OnLoad()
         elseif event == "PLAYER_UPDATE_RESTING" then
             self:UpdateRestingIcon(f)
             return
-        elseif event == "PLAYER_FLAGS_CHANGED" then
+        elseif event == "PLAYER_FLAGS_CHANGED" or event == "UNIT_FACTION" or event == "WAR_MODE_STATUS_UPDATE" or event == "ZONE_CHANGED_NEW_AREA" then
             self:UpdatePvpIcon(f, self)
             return
         elseif event == "UNIT_PORTRAIT_UPDATE" or event == "PORTRAITS_UPDATED" then
@@ -380,7 +382,7 @@ function Plugin:OnLoad()
     self:ApplySettings(self.frame)
 
     if not self.frame:GetPoint() then
-        self.frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
+        self.frame:SetPoint("CENTER", UIParent, "CENTER", Constants.UnitFrame.DefaultOffsetX, Constants.UnitFrame.DefaultOffsetY)
     end
 end
 
@@ -392,6 +394,8 @@ function Plugin:UpdateLayout(frame)
     local systemIndex = PLAYER_FRAME_INDEX
     local width, height = self:GetSetting(systemIndex, "Width"), self:GetSetting(systemIndex, "Height")
     self:ApplySize(frame, width, height)
+    self:UpdateTextSize(frame)
+    if frame.ConstrainNameWidth then frame:ConstrainNameWidth() end
 end
 
 function Plugin:ApplySettings(frame)

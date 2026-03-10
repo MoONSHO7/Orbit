@@ -60,11 +60,13 @@ end
 -- @return number: Logical size that renders as exactly `count` physical pixels
 function Pixel:Multiple(count, scale)
     local n = count or 0
-    if n <= 0 then return 0 end
+    if n == 0 then return 0 end
+    local sign = n > 0 and 1 or -1
+    local abs = math.abs(n)
     local frameScale = scale or 1
     if frameScale < 0.01 then frameScale = 1 end
     local step = SCREEN_SCALE / frameScale
-    return math.max(math.floor(n + 0.5), 1) * step
+    return sign * math.max(math.floor(abs + 0.5), 1) * step
 end
 
 --- Resolve the pixel-snapped border inset for a frame

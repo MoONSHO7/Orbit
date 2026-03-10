@@ -83,6 +83,27 @@ function Mixin:ApplyTextStyling(frame, textSize)
     end
 end
 
+-- Updates only font size without repositioning (preserves Canvas Mode custom positions)
+function Mixin:UpdateTextSize(frame, textSize)
+    if not frame then return end
+    if not textSize or textSize <= 0 then
+        local height = frame:GetHeight() or 40
+        textSize = Orbit.Skin:GetAdaptiveTextSize(height, Orbit.Constants.UnitFrame.AdaptiveTextMin, Orbit.Constants.UnitFrame.AdaptiveTextMax, 0.3)
+    end
+    local globalFontName = Orbit.db.GlobalSettings.Font
+    local fontPath = LSM:Fetch("font", globalFontName) or "Fonts\\FRIZQT__.TTF"
+    local outline = Orbit.Skin:GetFontOutline()
+    if frame.Name then
+        frame.Name:SetFont(fontPath, textSize, outline)
+        if frame._fullName then frame.Name:SetText(frame._fullName) end
+        if frame.GetNameAvailableWidth then
+            local available = frame:GetNameAvailableWidth()
+            if available then frame.Name:SetWidth(math.max(available, 20)) end
+        end
+    end
+    if frame.HealthText then frame.HealthText:SetFont(fontPath, textSize, outline) end
+end
+
 -- [ PREVIEW COLOR HELPERS ] -------------------------------------------------------------------
 
 function Mixin:GetPreviewHealthColor(isPlayer, className, reaction)

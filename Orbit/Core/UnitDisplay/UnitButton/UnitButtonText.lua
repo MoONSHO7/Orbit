@@ -217,6 +217,7 @@ function TextMixin:UpdateName()
 
     if #name > MAX_NAME_CHARS then name = string.sub(name, 1, MAX_NAME_CHARS) end
 
+    self._fullName = name
     self.Name:SetText(name)
     self:ApplyNameColor()
     self:ConstrainNameWidth()
@@ -289,10 +290,11 @@ end
 
 function TextMixin:ConstrainNameWidth()
     if not self.Name then return end
-    local name = self.Name:GetText()
+    local name = self._fullName or self.Name:GetText()
     if not name then return end
     if issecretvalue and issecretvalue(name) then return end
     if type(name) ~= "string" or #name == 0 then return end
+    self.Name:SetText(name)
 
     local available = self:GetNameAvailableWidth()
     if not available then return end

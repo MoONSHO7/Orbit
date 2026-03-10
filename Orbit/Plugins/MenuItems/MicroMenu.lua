@@ -7,7 +7,7 @@ local OrbitEngine = Orbit.Engine
 local SYSTEM_ID = "Orbit_MicroMenu"
 local DEFAULT_POSITION_X = -50
 local DEFAULT_POSITION_Y = 40
-local OFFSCREEN_OFFSET = -9000
+local OFFSCREEN_OFFSET = 9000
 -- We still want to hook into the "EditModeSystem" for MicroMenu to hide the native selection if possible,
 -- but the user effectively wants an Orbit Frame.
 -- Let's use our own ID and specific "Micro Menu" label.
@@ -297,7 +297,7 @@ function Plugin:ApplySettings()
             OrbitEngine.NativeFrame:SecureHide(f)
             if not InCombatLockdown() then
                 f:ClearAllPoints()
-                f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", OFFSCREEN_OFFSET, -OFFSCREEN_OFFSET)
+                f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
             end
         end
     end
