@@ -247,3 +247,18 @@ function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, p
     PositionAtCursor(tooltip, "BOTTOMRIGHT")
     ShowAndFade(self)
 end
+
+-------------------------------------------------
+-- SHOW RESIZE INFO TOOLTIP
+-------------------------------------------------
+
+function Tooltip:ShowResizeInfo(frame, width, height, noFade)
+    if not frame then return end
+    local tooltip = EnsureTooltip(self)
+    tooltip.text:SetText(string.format("%d × %d", width, height))
+    local textWidth = tooltip.text:GetStringWidth()
+    local textHeight = tooltip.text:GetStringHeight()
+    tooltip:SetSize(textWidth + 16, textHeight + 12)
+    PositionAtCursor(tooltip, "BOTTOMRIGHT")
+    ShowAndFade(self, noFade)
+end

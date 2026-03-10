@@ -110,6 +110,7 @@ function Dialog:UpdateDialog(context)
     self.attachedToSystem = systemFrame
     self.attachedPlugin = plugin
     self.attachedSystemIndex = systemIndex
+    self.attachedGroupFrames = nil
 
     local title = plugin.name
     if systemFrame and systemFrame.editModeName then title = systemFrame.editModeName end
@@ -118,6 +119,117 @@ function Dialog:UpdateDialog(context)
     local renderContext = { system = pluginName, systemIndex = systemIndex, systemFrame = systemFrame }
 
     if plugin.AddSettings then plugin:AddSettings(self, renderContext) end
+end
+
+function Dialog:UpdateGroupDialog(plugin, selectedFrames)
+    if InCombatLockdown() then return end
+    if not plugin or not selectedFrames then return end
+    if plugin ~= self.attachedPlugin then
+        self.orbitCurrentTab = nil
+        if self.attachedPlugin and Orbit.PreviewAnimator then
+            Orbit.PreviewAnimator:ExitAll(self.attachedPlugin)
+        end
+        self.orbitEyeToggle = nil
+    end
+    self.attachedPlugin = plugin
+    self.attachedToSystem = nil
+    self.attachedSystemIndex = nil
+    self.attachedGroupFrames = selectedFrames
+    self.Title:SetText((plugin.name or "Settings") .. " (Group)")
+    -- Collect sorted frames
+    local frames = {}
+    for frame in pairs(selectedFrames) do
+        if frame.systemIndex then table.insert(frames, frame) end
+    end
+    table.sort(frames, function(a, b) return a.systemIndex < b.systemIndex end)
+    if #frames == 0 then return end
+    -- Capture schemas by intercepting Config:Render
+    local Config = OrbitEngine.Config
+    local capturedSchemas = {}
+    local origRender = Config.Render
+    Config.Render = function(_, dlg, sf, plg, schema)
+        table.insert(capturedSchemas, schema)
+    end
+    for _, frame in ipairs(frames) do
+        plugin:AddSettings(self, { systemIndex = frame.systemIndex, systemFrame = frame })
+    end
+    Config.Render = origRender
+    if #capturedSchemas == 0 then return end
+    -- Index controls by key for each schema
+    local keySets = {}
+    for i, schema in ipairs(capturedSchemas) do
+        keySets[i] = {}
+        for _, ctrl in ipairs(schema.controls or {}) do
+            if ctrl.key then keySets[i][ctrl.key] = ctrl end
+        end
+    end
+    -- Intersect tabs
+    local firstSchema = capturedSchemas[1]
+    local commonTabs
+    for _, ctrl in ipairs(firstSchema.controls or {}) do
+        if ctrl.type == "tabs" then
+            commonTabs = {}
+            for _, tabName in ipairs(ctrl.tabs) do
+                local inAll = true
+                for i = 2, #capturedSchemas do
+                    local found = false
+                    for _, c in ipairs(capturedSchemas[i].controls or {}) do
+                        if c.type == "tabs" then
+                            for _, t in ipairs(c.tabs) do
+                                if t == tabName then found = true; break end
+                            end
+                            break
+                        end
+                    end
+                    if not found then inAll = false; break end
+                end
+                if inAll then table.insert(commonTabs, tabName) end
+            end
+            break
+        end
+    end
+    -- Build merged schema
+    local merged = { hideNativeSettings = true, hideResetButton = true, controls = {} }
+    for _, ctrl in ipairs(firstSchema.controls or {}) do
+        if ctrl.type == "tabs" and commonTabs then
+            table.insert(merged.controls, {
+                type = "tabs", tabs = commonTabs, activeTab = self.orbitCurrentTab,
+                onTabSelected = function(tabName)
+                    self.orbitCurrentTab = tabName
+                    if self.orbitTabCallback then self.orbitTabCallback() end
+                end,
+            })
+        elseif ctrl.key then
+            local inAll = true
+            for i = 2, #capturedSchemas do
+                if not keySets[i][ctrl.key] then inAll = false; break end
+            end
+            if inAll then
+                local groupCtrl = {}
+                for k, v in pairs(ctrl) do groupCtrl[k] = v end
+                local key = ctrl.key
+                groupCtrl.onChange = function(val)
+                    for i, frame in ipairs(frames) do
+                        local c = keySets[i][key]
+                        if c and c.onChange then
+                            c.onChange(val)
+                        else
+                            plugin:SetSetting(frame.systemIndex, key, val)
+                            if plugin.ApplySettings then plugin:ApplySettings(frame) end
+                        end
+                    end
+                end
+                table.insert(merged.controls, groupCtrl)
+            end
+        end
+    end
+    merged.extraButtons = firstSchema.extraButtons
+    -- Tab refresh for group mode
+    self.orbitTabCallback = function()
+        OrbitEngine.Layout:Reset(self)
+        self:UpdateGroupDialog(plugin, selectedFrames)
+    end
+    Config:Render(self, { systemIndex = frames[1].systemIndex, systemFrame = frames[1] }, plugin, merged)
 end
 
 -- [ SHOW/HIDE HANDLERS ]-----------------------------------------------------------
@@ -139,6 +251,7 @@ Dialog:SetScript("OnHide", function(self)
     self.attachedToSystem = nil
     self.attachedPlugin = nil
     self.attachedSystemIndex = nil
+    self.attachedGroupFrames = nil
     OrbitEngine.FrameSelection:DeselectAll()
 end)
 
