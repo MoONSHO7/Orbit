@@ -159,8 +159,16 @@ function Plugin:SetupEditModeHooks()
     self.editModeHooksSetup = true
     local plugin = self
     if EditModeManagerFrame then
-        EditModeManagerFrame:HookScript("OnShow", function() plugin:RefreshAllControlButtonVisibility() end)
-        EditModeManagerFrame:HookScript("OnHide", function() plugin:RefreshAllControlButtonVisibility() end)
+        EditModeManagerFrame:HookScript("OnShow", function()
+            plugin:RefreshAllControlButtonVisibility()
+            plugin:RefreshAllTrackedLayouts()
+            plugin:UpdateAllSeedVisibility()
+        end)
+        EditModeManagerFrame:HookScript("OnHide", function()
+            plugin:RefreshAllControlButtonVisibility()
+            plugin:RefreshAllTrackedLayouts()
+            plugin:UpdateAllSeedVisibility()
+        end)
     end
 end
 

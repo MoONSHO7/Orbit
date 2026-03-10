@@ -70,6 +70,7 @@ function Updater:StopActiveGlow(icon)
     icon._activeGlowType = nil
 end
 
+
 -- [ ICON UPDATE ]-----------------------------------------------------------------------------------
 function Updater:UpdateTrackedIcon(plugin, icon)
     if not icon.trackedId then icon:Hide(); return end
@@ -105,6 +106,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
             local onGCD = cdInfo and cdInfo.isOnGCD
             local chargeInfo = icon.isChargeSpell and C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
 
+
             if chargeInfo then
                 if not issecretvalue(chargeInfo.currentCharges) then
                     icon._trackedCharges = chargeInfo.currentCharges
@@ -117,10 +119,12 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                 local chargeDurObj = C_Spell.GetSpellChargeDuration and C_Spell.GetSpellChargeDuration(activeId)
                 if chargeDurObj then
                     icon.Cooldown:SetCooldownFromDurationObject(chargeDurObj, true)
+
                 else
                     icon.Cooldown:Clear()
                     icon._trackedCharges = icon._maxCharges
                     icon._rechargeEndsAt = nil
+
                 end
                 local allConsumed = icon._trackedCharges and icon._trackedCharges == 0
                 icon.Icon:SetDesaturation(allConsumed and 1 or 0)
@@ -130,26 +134,32 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     local castTime = icon._activeGlowExpiry - icon.activeDuration
                     icon.ActiveCooldown:SetCooldown(castTime, icon.activeDuration)
                     if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
+
                 else
                     icon.ActiveCooldown:Clear()
                     if icon._activeGlowing then self:StopActiveGlow(icon) end
                     icon._activeGlowExpiry = nil
+
                 end
             elseif onGCD and not showGCDSwipe then
                 icon.Cooldown:Clear()
                 icon.ActiveCooldown:Clear()
                 icon.Icon:SetDesaturation(0)
+
             else
                 durObj = C_Spell.GetSpellCooldownDuration(activeId)
                 if durObj then
                     icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
-                    icon.Icon:SetDesaturation(onGCD and 0 or durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE))
+                    local desatPct = onGCD and 0 or durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE)
+                    icon.Icon:SetDesaturation(desatPct)
                     if icon.cdAlphaCurve then icon.Cooldown:SetAlpha(durObj:EvaluateRemainingPercent(icon.cdAlphaCurve)) end
                     local onRealCD = cdInfo and (issecretvalue(cdInfo.startTime) or cdInfo.startTime > 0)
                     if icon.activeDuration and onRealCD and not onGCD then
                         icon.ActiveCooldown:SetCooldown(cdInfo.startTime, icon.activeDuration)
+
                     else
                         icon.ActiveCooldown:Clear()
+
                     end
                     if LCG and icon._activeGlowExpiry then
                         if GetTime() < icon._activeGlowExpiry then
@@ -157,6 +167,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                         else
                             self:StopActiveGlow(icon)
                             icon._activeGlowExpiry = nil
+
                         end
                     end
                 else
@@ -165,7 +176,16 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     icon.ActiveCooldown:Clear()
                     icon.Icon:SetDesaturation(0)
                     if icon._activeGlowing then self:StopActiveGlow(icon) end
+
                 end
+            end
+            if icon._textStyleDirty then
+                icon._textStyleDirty = nil
+                C_Timer.After(0, function()
+                    if icon and icon.trackedId then
+                        Orbit.TrackedIconFactory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
+                    end
+                end)
             end
             local displayCount = chargeInfo and chargeInfo.currentCharges or C_Spell.GetSpellDisplayCount(activeId)
             if displayCount then icon.CountText:SetText(displayCount); icon.CountText:Show()
@@ -320,6 +340,52 @@ function Updater:StartTrackedUpdateTicker(plugin)
         if now < nextUpdate then return end
         nextUpdate = now + COOLDOWN_THROTTLE
         DoUpdate()
+    end)
+    -- Visual-state poll: re-evaluate desat/alpha/glow without touching cooldown frames
+    local function PollVisualState()
+        local function PollAnchor(anchor)
+            if not anchor or not anchor.activeIcons then return end
+            for _, icon in pairs(anchor.activeIcons) do
+                if icon.trackedId and icon:IsShown() and icon.trackedType == "spell" then
+                    local activeId = GetActiveSpellID(icon.trackedId)
+                    local durObj = C_Spell.GetSpellCooldownDuration(activeId)
+                    local cdInfo = C_Spell.GetSpellCooldown(activeId)
+                    local onGCD = cdInfo and cdInfo.isOnGCD
+                    local isActive = icon._activeGlowExpiry and GetTime() < icon._activeGlowExpiry
+                    if durObj then
+                        local desat = onGCD and 0 or durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE)
+                        icon.Icon:SetDesaturation(desat)
+                        if icon.cdAlphaCurve then icon.Cooldown:SetAlpha(durObj:EvaluateRemainingPercent(icon.cdAlphaCurve)) end
+                    else
+                        icon.Icon:SetDesaturation(0)
+                        icon.Cooldown:SetAlpha(1)
+                        icon.ActiveCooldown:Clear()
+                    end
+                    if isActive then
+                        if not icon._activeGlowing then Updater:StartActiveGlow(plugin, icon) end
+                    else
+                        if icon._activeGlowing then Updater:StopActiveGlow(icon) end
+                        if icon._activeGlowExpiry then
+                            icon._activeGlowExpiry = nil
+                            icon.ActiveCooldown:Clear()
+                        end
+                    end
+                end
+            end
+        end
+        local entry = viewerMap[TRACKED_INDEX]
+        if entry and entry.anchor then PollAnchor(entry.anchor) end
+        for _, childData in pairs(plugin.activeChildren) do
+            if childData.frame then PollAnchor(childData.frame) end
+        end
+    end
+    local pollAccum = 0
+    local POLL_INTERVAL = 0.15
+    frame:SetScript("OnUpdate", function(_, elapsed)
+        pollAccum = pollAccum + elapsed
+        if pollAccum < POLL_INTERVAL then return end
+        pollAccum = 0
+        PollVisualState()
     end)
     plugin._trackedEventFrame = frame
 end

@@ -561,11 +561,12 @@ function Plugin:UpdateSeedVisibility(frame)
         return
     end
 
-    if isDraggingCharge then
+    local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
+    if isDraggingCharge or isEditMode then
         local plusSize = OrbitEngine.Pixel:Snap(math.min(frame:GetWidth(), frame:GetHeight()) * SEED_PLUS_RATIO)
         frame.SeedButton.Plus:SetSize(plusSize, plusSize)
         frame.SeedButton:Show()
-        frame.SeedButton.PulseAnim:Play()
+        if isDraggingCharge then frame.SeedButton.PulseAnim:Play() else frame.SeedButton.PulseAnim:Stop(); frame.SeedButton.Glow:SetAlpha(SEED_GLOW_ALPHA) end
     else
         frame.SeedButton:Hide()
     end

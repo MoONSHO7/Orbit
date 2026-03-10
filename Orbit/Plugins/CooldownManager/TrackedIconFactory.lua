@@ -71,11 +71,16 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
     icon.Cooldown:SetAllPoints()
     icon.Cooldown:SetDrawSwipe(true)
     icon.Cooldown:SetDrawBling(false)
+    icon.Cooldown:SetCooldown(0, 0)
+    icon.Cooldown:Clear()
 
     icon.ActiveCooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
     icon.ActiveCooldown:SetAllPoints()
     icon.ActiveCooldown:SetDrawSwipe(true)
     icon.ActiveCooldown:SetDrawBling(false)
+    icon.ActiveCooldown:SetReverse(true)
+    icon.ActiveCooldown:SetCooldown(0, 0)
+    icon.ActiveCooldown:Clear()
 
     local textOverlay = CreateFrame("Frame", nil, icon)
     textOverlay:SetAllPoints()
@@ -93,6 +98,7 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
     icon.DropHighlight:Hide()
 
     self:ApplyTrackedIconSkin(plugin, icon, systemIndex)
+    icon._textStyleDirty = true
 
     icon:EnableMouse(false)
     icon.orbitClickThrough = true
@@ -116,6 +122,15 @@ function Factory:ApplyTrackedIconSkin(plugin, icon, systemIndex, inheritOverride
     local skinSettings = CooldownUtils:BuildSkinSettings(plugin, systemIndex, { zoom = 8, inheritOverrides = inheritOverrides })
     if Orbit.Skin and Orbit.Skin.Icons then
         Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
+    end
+    local c = skinSettings.cooldownSwipeColor
+    if c and icon.Cooldown then icon.Cooldown:SetSwipeColor(c.r, c.g, c.b, c.a or 0.8) end
+    local ac = skinSettings.activeSwipeColor
+    if ac and icon.ActiveCooldown then
+        local swipeTex = Orbit.Constants.Assets.SwipeCustom
+        if swipeTex then icon.ActiveCooldown:SetSwipeTexture(swipeTex) end
+        icon.ActiveCooldown:SetSwipeColor(ac.r, ac.g, ac.b, ac.a or 0.7)
+        icon.ActiveCooldown:SetReverse(true)
     end
     self:ApplyTrackedTextSettings(plugin, icon, systemIndex)
 end
