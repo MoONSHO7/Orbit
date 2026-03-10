@@ -209,11 +209,16 @@ function CDM:ProcessChildren(anchor)
             icon.orbitCDMSystemIndex = systemIndex
             local cd = icon.Cooldown or (icon.GetCooldownFrame and icon:GetCooldownFrame())
             if cd then
-                local c = icon.wasSetFromAura and skinSettings.activeSwipeColor or skinSettings.cooldownSwipeColor
-                cd.orbitDesiredSwipe = cd.orbitDesiredSwipe or {}
-                cd.orbitDesiredSwipe.r, cd.orbitDesiredSwipe.g, cd.orbitDesiredSwipe.b, cd.orbitDesiredSwipe.a = c.r, c.g, c.b, c.a
+                local ac, cc = skinSettings.activeSwipeColor, skinSettings.cooldownSwipeColor
+                local isAura = icon.wasSetFromAura == true
+                local c = isAura and ac or cc
+                local ds = cd.orbitDesiredSwipe or {}; cd.orbitDesiredSwipe = ds
+                ds.activeR, ds.activeG, ds.activeB, ds.activeA = ac.r, ac.g, ac.b, ac.a
+                ds.cooldownR, ds.cooldownG, ds.cooldownB, ds.cooldownA = cc.r, cc.g, cc.b, cc.a
+                ds.r, ds.g, ds.b, ds.a = c.r, c.g, c.b, c.a
                 cd.orbitUpdating = true
                 cd:SetSwipeColor(c.r, c.g, c.b, c.a)
+                cd:SetReverse(isAura)
                 cd.orbitUpdating = false
             end
             if not InCombatLockdown() and icon.GetSpellID then
@@ -235,8 +240,9 @@ function CDM:ProcessChildren(anchor)
             local spacing = Pixel:Multiple(skinSettings.buffBarSpacing or 2, scale)
             local barH = Pixel:Snap(skinSettings.buffBarHeight or 20, scale)
             local settingW = Pixel:Snap(math.max(skinSettings.buffBarWidth or 200, BUFFBAR_MIN_WIDTH), scale)
-            -- Use whichever is larger: anchor width (from parent sync) or setting width
-            local barW = math.max(anchorFrame:GetWidth(), settingW)
+            -- When docked, anchor width is authoritative (syncDimensions from parent); when undocked, use setting width
+            local isDocked = GetAnchorInfo(anchorFrame) ~= nil
+            local barW = isDocked and anchorFrame:GetWidth() or math.max(anchorFrame:GetWidth(), settingW)
             local vGrowth = self:GetGrowthDirection(anchorFrame)
             local totalH = (#activeChildren * barH) + (math.max(#activeChildren - 1, 0) * spacing)
             blizzFrame:SetSize(barW, math.max(totalH, barH))
@@ -277,14 +283,45 @@ function CDM:ProcessChildren(anchor)
             if isBuffBar then
                 -- Only sync height — width owned by anchor system (syncDimensions)
                 if h and h > 0 then anchorFrame:SetHeight(h) end
-                -- When undocked, set width from CDM setting
-                local sW = OrbitEngine.Pixel:Snap(math.max(skinSettings.buffBarWidth or 200, BUFFBAR_MIN_WIDTH), anchorFrame:GetEffectiveScale())
-                if anchorFrame:GetWidth() < sW then anchorFrame:SetWidth(sW) end
+                -- When undocked, set width from CDM setting; when docked, width is owned by parent sync
+                if not GetAnchorInfo(anchorFrame) then
+                    local sW = OrbitEngine.Pixel:Snap(math.max(skinSettings.buffBarWidth or 200, BUFFBAR_MIN_WIDTH), anchorFrame:GetEffectiveScale())
+                    if anchorFrame:GetWidth() < sW then anchorFrame:SetWidth(sW) end
+                end
             elseif w and h and w > 0 and h > 0 then
                 anchorFrame:SetSize(w, h)
             end
             anchorFrame.orbitRowHeight = blizzFrame.orbitRowHeight
             anchorFrame.orbitColumnWidth = blizzFrame.orbitColumnWidth
+        end
+    end
+end
+
+-- [ PRE-SIZE ANCHORS ]------------------------------------------------------------------------------
+-- Pre-sizes all viewer anchors to their max configured width so they don't need to resize during combat.
+function CDM:PreSizeAnchors()
+    if InCombatLockdown() then return end
+    for systemIndex, entry in pairs(VIEWER_MAP) do
+        local viewer = entry.viewer
+        local anchor = entry.anchor
+        if not viewer or not anchor then break end
+        local skinSettings = CooldownUtils:BuildSkinSettings(self, systemIndex, {
+            inheritOverrides = CooldownUtils:IsInheritingLayout(self, anchor, VIEWER_MAP)
+                and CooldownUtils:BuildSkinSettings(self, CooldownUtils:GetInheritedParentIndex(anchor, VIEWER_MAP)) or nil,
+        })
+        local totalConfigured = 0
+        for _, child in ipairs(PackChildren(viewer:GetChildren())) do
+            if child.layoutIndex then totalConfigured = totalConfigured + 1 end
+        end
+        if totalConfigured > 0 and systemIndex ~= BUFFBAR_INDEX then
+            local limit = tonumber(skinSettings.limit) or 10
+            local scale = anchor:GetEffectiveScale()
+            local baseSize = skinSettings.baseIconSize or Constants.Skin.DefaultIconSize
+            local iconW, iconH = CooldownUtils:CalculateIconDimensions(self, systemIndex, skinSettings)
+            local pad = OrbitEngine.Pixel:Snap(tonumber(skinSettings.padding) or 0, scale)
+            local cols = math.min(totalConfigured, limit)
+            local w = (cols * iconW) + ((cols - 1) * pad)
+            if w > anchor:GetWidth() then anchor:SetSize(w, iconH) end
         end
     end
 end
@@ -298,10 +335,20 @@ function CDM:HookGCDSwipe(icon, systemIndex)
     hooksecurefunc(icon, "RefreshSpellCooldownInfo", function(self)
         local plugin, sysIdx = self.orbitPlugin, self.orbitSystemIndex
         if not plugin or not sysIdx then return end
-        if plugin:GetSetting(sysIdx, "ShowGCDSwipe") then return end
-        if self.isOnGCD and not self.wasSetFromAura then
-            local cooldown = self:GetCooldownFrame()
-            if cooldown then cooldown:SetDrawSwipe(false) end
+        local cooldown = self:GetCooldownFrame()
+        if cooldown then
+            local isAura = self.wasSetFromAura == true
+            cooldown:SetReverse(isAura)
+            local ds = cooldown.orbitDesiredSwipe
+            if ds then
+                local r = isAura and ds.activeR or ds.cooldownR
+                if r then
+                    local g, b, a = isAura and ds.activeG or ds.cooldownG, isAura and ds.activeB or ds.cooldownB, isAura and ds.activeA or ds.cooldownA
+                    ds.r, ds.g, ds.b, ds.a = r, g, b, a
+                    cooldown.orbitUpdating = true; cooldown:SetSwipeColor(r, g, b, a); cooldown.orbitUpdating = false
+                end
+            end
+            if not plugin:GetSetting(sysIdx, "ShowGCDSwipe") and self.isOnGCD and not isAura then cooldown:SetDrawSwipe(false) end
         end
     end)
     icon.orbitGCDHooked = true

@@ -40,18 +40,7 @@ local function StartProcGlow(button, glowType, colorTable)
     local GlowConfig = Constants.PandemicGlow
     if glowType == GlowType.Pixel then
         local cfg = GlowConfig.Pixel
-        LibCustomGlow.PixelGlow_Start(
-            button,
-            colorTable,
-            cfg.Lines,
-            cfg.Frequency,
-            cfg.Length,
-            cfg.Thickness,
-            cfg.XOffset,
-            cfg.YOffset,
-            cfg.Border,
-            PROC_GLOW_KEY
-        )
+        LibCustomGlow.PixelGlow_Start(button, colorTable, cfg.Lines, cfg.Frequency, cfg.Length, cfg.Thickness, cfg.XOffset, cfg.YOffset, cfg.Border, PROC_GLOW_KEY)
     elseif glowType == GlowType.Proc then
         local cfg = GlowConfig.Proc
         LibCustomGlow.ProcGlow_Start(button, { color = colorTable, startAnim = false, duration = cfg.Duration, key = PROC_GLOW_KEY })
@@ -137,24 +126,24 @@ end
 -- [ PANDEMIC GLOW ]----------------------------------------------------------------------------------
 local PANDEMIC_ATLAS = "UI-CooldownManager-PandemicBorder"
 local PANDEMIC_INSET = Constants.IconScale.PandemicPadding / 2
+local BLIZZARD_GLOW_LEVEL = Constants.Levels.Glow + 20
 
 local function EnsureBlizzardGlowFrame(icon)
-    if icon._orbitBlizzardGlow then return icon._orbitBlizzardGlow end
+    if icon.orbitBlizzardGlow then return icon.orbitBlizzardGlow end
     local f = CreateFrame("Frame", nil, icon)
-    f:SetFrameStrata("HIGH")
-    f:SetFrameLevel(icon:GetFrameLevel() + 30)
+    f:SetFrameLevel(icon:GetFrameLevel() + BLIZZARD_GLOW_LEVEL)
     local tex = f:CreateTexture(nil, "OVERLAY")
     tex:SetAtlas(PANDEMIC_ATLAS)
     tex:SetAllPoints(f)
     f.tex = tex
     f:Hide()
-    icon._orbitBlizzardGlow = f
+    icon.orbitBlizzardGlow = f
     return f
 end
 
 local function HookPandemicIcon(icon)
-    if icon._orbitPandemicHooked or not icon.PandemicIcon then return end
-    icon._orbitPandemicHooked = true
+    if icon.orbitPandemicHooked or not icon.PandemicIcon then return end
+    icon.orbitPandemicHooked = true
     local pi = icon.PandemicIcon
     hooksecurefunc(pi, "Show", function(self)
         if icon.orbitSuppressPandemic then self:SetAlpha(0) end
@@ -218,7 +207,7 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
                 local activeType = icon.orbitPandemicGlowActive
                 icon.orbitSuppressPandemic = nil
                 if activeType == GlowType.Blizzard then
-                    if icon._orbitBlizzardGlow then icon._orbitBlizzardGlow:Hide() end
+                    if icon.orbitBlizzardGlow then icon.orbitBlizzardGlow:Hide() end
                 elseif activeType == GlowType.Pixel then
                     LibCustomGlow.PixelGlow_Stop(icon, "orbitPandemic")
                 elseif activeType == GlowType.Proc then

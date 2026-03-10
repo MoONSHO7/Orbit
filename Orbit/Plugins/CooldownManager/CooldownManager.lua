@@ -112,6 +112,7 @@ function Plugin:OnLoad()
     self.buffIconAnchor = self:CreateAnchor("OrbitBuffIconCooldowns", BUFFICON_INDEX, "Buff Icons")
     self.buffBarAnchor = self:CreateAnchor("OrbitBuffBarCooldowns", BUFFBAR_INDEX, "Buff Bars",
         { horizontal = false, vertical = true, syncScale = true, syncDimensions = true })
+    self.buffBarAnchor.orbitNoGroupSelect = true
     self.trackedAnchor = self:CreateTrackedAnchor("OrbitTrackedCooldowns", TRACKED_INDEX, "Tracked Cooldowns")
 
     VIEWER_MAP[ESSENTIAL_INDEX] = { viewer = EssentialCooldownViewer, anchor = self.essentialAnchor }
@@ -266,8 +267,6 @@ function Plugin:OnLoad()
         end
     end, self)
 
-    -- Disable Blizzard's Cooldown Manager while Orbit's is active
-    SetCVar("cooldownViewerEnabled", 0)
 end
 
 function Plugin:UpdateVisibility()
@@ -446,6 +445,4 @@ function Plugin:OnDisable()
         self._pandemicTicker:Cancel()
         self._pandemicTicker = nil
     end
-    -- Restore Blizzard's Cooldown Manager when Orbit's is disabled
-    SetCVar("cooldownViewerEnabled", 1)
 end
