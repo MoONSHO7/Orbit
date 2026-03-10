@@ -39,7 +39,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         hideNativeSettings = true,
         controls = {
             { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 100 },
-            { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 20 },
+            { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 20 },
         },
     }
 
@@ -90,6 +90,7 @@ function Plugin:OnLoad()
     self.frame.editModeName = "Pet Frame"
     self.frame.systemIndex = PET_FRAME_INDEX
     self.frame.anchorOptions = { horizontal = false, vertical = true, syncScale = false, syncDimensions = false }
+    self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 20, maxH = 100 }
 
     -- Register Edit Mode callbacks for visibility updates
     if EditModeManagerFrame then

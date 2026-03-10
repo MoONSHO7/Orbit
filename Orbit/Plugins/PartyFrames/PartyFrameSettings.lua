@@ -29,7 +29,7 @@ function Orbit.PartyFrameSettings(plugin, dialog, systemFrame)
             or { { text = "Right", value = "Right" }, { text = "Left", value = "Left" } }
         table.insert(schema.controls, { type = "dropdown", key = "GrowthDirection", label = "Growth Direction", default = orientation == 0 and "Down" or "Right", options = growthOptions, onChange = MOC("GrowthDirection") })
         table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160, onChange = MOC("Width") })
-        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40, onChange = MOC("Height") })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 40, onChange = MOC("Height") })
         table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = -5, max = 50, step = 1, default = 0, onChange = MOC("Spacing") })
         table.insert(schema.controls, {
             type = "dropdown", key = "HealthTextMode", label = "Health Text", default = "percent_short",

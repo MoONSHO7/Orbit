@@ -183,7 +183,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout" }, "Layout", self)
     if currentTab == "Layout" then
         table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 150 })
-        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 40 })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 40 })
         table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = 20, max = 100, step = 1, default = 40, formatter = function(v) return v .. "px" end })
     end
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
@@ -220,6 +220,7 @@ function Plugin:OnLoad()
     end
     self.frame = self.container
     self.frame.anchorOptions = { horizontal = false, vertical = false, noAnchor = true }
+    self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 20, maxH = 100 }
     self.container.orbitCanvasFrame = self.frames[1]
     self.container.orbitCanvasTitle = "Boss Frame"
     if OrbitEngine.ComponentDrag and firstFrame then
@@ -370,6 +371,24 @@ function Plugin:UpdateContainerSize()
     local frameHeight = self:GetSetting(1, "Height") or 40
     self.container:SetSize(width, visibleCount * frameHeight + (visibleCount - 1) * spacing)
     self.container:SetScale(scale)
+end
+
+function Plugin:UpdateLayout()
+    if not self.frames or InCombatLockdown() then return end
+    local width = self:GetSetting(1, "Width") or 150
+    local height = self:GetSetting(1, "Height") or 40
+    local borderSize = self:GetSetting(1, "BorderSize") or self:GetPlayerSetting("BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(UIParent:GetEffectiveScale() or 1)
+    for _, frame in ipairs(self.frames) do
+        frame:SetSize(width, height)
+        UpdateFrameLayout(frame, borderSize)
+        local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 12, 24, 0.25)
+        local fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
+        local outline = Orbit.Skin:GetFontOutline()
+        if frame.Name then frame.Name:SetFont(fontPath, textSize, outline) end
+        if frame.HealthText then frame.HealthText:SetFont(fontPath, textSize, outline) end
+        if frame.ConstrainNameWidth then frame:ConstrainNameWidth() end
+    end
+    self:PositionFrames()
 end
 
 -- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------

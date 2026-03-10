@@ -5,6 +5,7 @@
     <Script file="ComponentRegistry.lua"/>
     <Script file="SmartGuides.lua"/>
     <Script file="OverrideUtils.lua"/>
+    <Script file="IconCanvasPreview.lua"/>
     <Script file="Init.lua"/>
     <Script file="SettingsTransaction.lua"/>
     <Script file="Viewport.lua"/>

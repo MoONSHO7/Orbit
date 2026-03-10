@@ -7,8 +7,6 @@ local LSM = LibStub("LibSharedMedia-3.0")
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_FocusFrame"
 local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus or 3
-local DEFAULT_POSITION_X = -200
-local DEFAULT_POSITION_Y = -140
 
 local Plugin = Orbit:RegisterPlugin("Focus Frame", SYSTEM_ID, {
     canvasMode = true, -- Enable Canvas Mode for component editing
@@ -94,7 +92,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
 
     local widthParams = { key = "Width", label = "Width", min = 50, max = 400, default = 160 }
-    local heightParams = { key = "Height", label = "Height", min = 10, max = 100, default = 40 }
+    local heightParams = { key = "Height", label = "Height", min = 20, max = 100, default = 40 }
 
     if isAnchored and anchorAxis == "y" then
         widthParams = nil
@@ -177,11 +175,12 @@ function Plugin:OnLoad()
 
     -- Default Position
     if not self.frame:GetPoint() then
-        self.frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
+        self.frame:SetPoint("CENTER", UIParent, "CENTER", Constants.UnitFrame.DefaultOffsetX, Constants.UnitFrame.DefaultOffsetY)
     end
 
     -- Can only anchor side-by-side (horizontal), not above/below (vertical)
     self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, mergeBorders = true, independentHeight = true }
+    self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 10, maxH = 100 }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, FOCUS_FRAME_INDEX)
 
     -- Register standard events

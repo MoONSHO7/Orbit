@@ -98,6 +98,7 @@ function Mixin:CreateCastBarFrame(name, config)
 
     -- Frame options
     bar.anchorOptions = config.anchorOptions or { horizontal = false, vertical = true, syncScale = true, syncDimensions = true }
+    bar.orbitResizeBounds = { minW = 100, maxW = 600, minH = 5, maxH = 40, widthKey = "CastBarWidth", heightKey = "CastBarHeight" }
 
     -- Attach to Frame system
     OrbitEngine.Frame:AttachSettingsListener(bar, self, 1)
@@ -182,8 +183,8 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
             SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, {
                 key = "CastBarHeight",
                 label = "Height",
-                min = 15,
-                max = 35,
+                min = 5,
+                max = 40,
                 default = 18,
             })
         end
@@ -192,8 +193,8 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
                 type = "slider",
                 key = "CastBarWidth",
                 label = "Width",
-                min = 120,
-                max = 350,
+                min = 100,
+                max = 600,
                 step = 10,
                 default = 200,
             })

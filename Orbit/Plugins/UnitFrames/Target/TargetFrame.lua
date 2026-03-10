@@ -169,6 +169,7 @@ function Plugin:OnLoad()
     end)
 
     self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, useRowDimension = true, mergeBorders = true, independentHeight = true }
+    self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 10, maxH = 100 }
     self.frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = 200, y = -140 }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, TARGET_FRAME_INDEX)
 

@@ -314,6 +314,7 @@ function Plugin:OnLoad()
 
     self.frame = self.container
     self.frame.anchorOptions = { horizontal = true, vertical = false }
+    self.frame.orbitResizeBounds = { minW = 50, maxW = 200, minH = 20, maxH = 80 }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, 1)
 
     self.container.orbitCanvasFrame = self.frames[1]
@@ -691,8 +692,12 @@ function Plugin:UpdateLayout(frame)
     for _, raidFrame in ipairs(self.frames) do
         raidFrame:SetSize(width, height)
         UpdateFrameLayout(raidFrame, self:GetSetting(1, "BorderSize"), self)
+        self:UpdateTextSize(raidFrame)
     end
     self:PositionFrames()
+    for _, raidFrame in ipairs(self.frames) do
+        if raidFrame.ConstrainNameWidth then raidFrame:ConstrainNameWidth() end
+    end
 end
 
 -- Shared styling applied to BOTH live and preview frames (single source of truth)
@@ -754,6 +759,7 @@ function Plugin:ApplyFrameStyle(frame, showPower)
 end
 
 function Plugin:OnCanvasApply()
+    self:ApplySettings()
     Orbit.GroupCanvasRegistration:OnCanvasApply(self)
 end
 

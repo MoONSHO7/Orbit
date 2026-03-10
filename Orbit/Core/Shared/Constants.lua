@@ -93,6 +93,8 @@ C.UnitFrame = {
     AdaptiveTextMax = 24, -- Max font size for adaptive text scaling
     CombatIconSize = 18, -- Player combat indicator icon size
     StatusIconSize = 16, -- Role/Leader/Marker/RareElite icon size
+    DefaultOffsetX = -200, -- Default X offset for unit frames
+    DefaultOffsetY = -140, -- Default Y offset for unit frames
 }
 
 C.BossFrame = {
