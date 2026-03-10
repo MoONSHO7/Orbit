@@ -88,6 +88,10 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
         end
         if timerText and timerText.SetFont then
             timerText:SetFont(fontPath, Orbit.Skin:GetAdaptiveTextSize(size, 8, nil, 0.45), fontOutline)
+            timerText:ClearAllPoints()
+            timerText:SetPoint("CENTER", icon, "CENTER", 0, 0)
+            timerText:SetJustifyH("CENTER")
+            timerText:SetDrawLayer("OVERLAY", 7)
         end
         icon.Cooldown:SetHideCountdownNumbers(size < TIMER_MIN_ICON_SIZE)
     end
@@ -187,12 +191,17 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     if not unit or not UnitExists(unit) then container:Hide(); return end
     if not frame[poolKey] then frame[poolKey] = CreateFramePool("Button", container, "BackdropTemplate") end
     frame[poolKey]:ReleaseAll()
+    local fetchFilter = cfg.fetchFilter
+    local density = overrides.FilterDensity or 1
+    if density <= 1 then fetchFilter = fetchFilter .. "|RAID_IN_COMBAT"
+    elseif density and density >= 3 then fetchFilter = fetchFilter:gsub("|PLAYER", "") end
     local auras
+    local postFilterOverride = fetchFilter
     if cfg.postFilter then
-        local rawAuras = plugin:FetchAuras(unit, cfg.fetchFilter, cfg.fetchMax or 40)
-        auras = cfg.postFilter(plugin, unit, rawAuras, maxIcons)
+        local rawAuras = plugin:FetchAuras(unit, fetchFilter, cfg.fetchMax or 40)
+        auras = cfg.postFilter(plugin, unit, rawAuras, maxIcons, postFilterOverride)
     else
-        auras = plugin:FetchAuras(unit, cfg.fetchFilter, maxIcons)
+        auras = plugin:FetchAuras(unit, fetchFilter, maxIcons)
     end
     if #auras == 0 then container:Hide(); return end
     local helpers = type(cfg.helpers) == "function" and cfg.helpers() or cfg.helpers
@@ -280,7 +289,7 @@ end
 
 local function BuildSkinSettings(overrides, remainingPercent)
     if not overrides then return DEFAULT_HEALER_SKIN end
-    local showTimer = overrides.TimerTextColorCurve ~= nil
+    local showTimer = overrides.ShowTimer == true
     local needsCopy = overrides.SwipeColorCurve or overrides.PandemicGlowType or overrides.PandemicGlowColorCurve
     if not needsCopy then return showTimer and Orbit.Constants.Aura.SkinWithTimer or Orbit.Constants.Aura.SkinNoTimer end
     local skin = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = showTimer }

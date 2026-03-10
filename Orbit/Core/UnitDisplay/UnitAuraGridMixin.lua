@@ -80,19 +80,27 @@ local function CreateCollapseArrow(frame, plugin)
     return btn
 end
 
-local function UpdateCollapseArrow(btn, collapsed, iconH, growthY)
-    btn.tex:SetRotation(collapsed and math.rad(180) or 0)
+local ARROW_OFFSET = 4
+local function UpdateCollapseArrow(btn, collapsed, iconH, growthX, growthY)
+    local onLeft = (growthX == "RIGHT")
+    local baseRot = onLeft and math.rad(180) or 0
+    btn.tex:SetRotation(collapsed and (math.pi - baseRot) or baseRot)
     btn.tooltipText = collapsed and "My Buffs" or "All Buffs"
     btn:ClearAllPoints()
-    if growthY == "UP" then
-        btn:SetPoint("LEFT", btn:GetParent(), "BOTTOMRIGHT", 4, iconH / 2)
+    local parent = btn:GetParent()
+    if onLeft then
+        local anchorY = (growthY == "UP") and "BOTTOMLEFT" or "TOPLEFT"
+        local yOff = (growthY == "UP") and (iconH / 2) or -(iconH / 2)
+        btn:SetPoint("RIGHT", parent, anchorY, -ARROW_OFFSET, yOff)
     else
-        btn:SetPoint("LEFT", btn:GetParent(), "TOPRIGHT", 4, -(iconH / 2))
+        local anchorY = (growthY == "UP") and "BOTTOMRIGHT" or "TOPRIGHT"
+        local yOff = (growthY == "UP") and (iconH / 2) or -(iconH / 2)
+        btn:SetPoint("LEFT", parent, anchorY, ARROW_OFFSET, yOff)
     end
 end
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
-local function ResolveGrowthDirection(frame)
+local function ResolveGrowthDirection(frame, noCenterGrowth)
     local anchors = OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors
     local a = anchors and anchors[frame]
     local growthX, growthY
@@ -125,6 +133,11 @@ local function ResolveGrowthDirection(frame)
             growthY = growthY or "DOWN"
         end
     end
+    if noCenterGrowth and growthX == "CENTER" then
+        local cx = frame:GetCenter()
+        local sw = UIParent:GetWidth()
+        growthX = (cx and cx > sw / 2) and "LEFT" or "RIGHT"
+    end
     local anchorY = (growthY == "UP") and "BOTTOM" or "TOP"
     if growthX == "CENTER" then return anchorY, growthX, growthY end
     local anchorX = (growthX == "LEFT") and "RIGHT" or "LEFT"
@@ -142,6 +155,10 @@ local function CropIconTexture(icon, w, h)
     local crop = (1 - h / w) / 2
     icon.Icon:SetTexCoord(0, 1, crop, 1 - crop)
 end
+
+Mixin.ResolveGrowthDirection = ResolveGrowthDirection
+Mixin.UpdateCollapseArrow = UpdateCollapseArrow
+Mixin.CropIconTexture = CropIconTexture
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Mixin:AddAuraGridSettings(dialog, systemFrame)
@@ -474,9 +491,9 @@ function Mixin:UpdateAuras()
     if not Frame.auraPool then self:CreateAuraPool(Frame, "BackdropTemplate") end
     Frame.auraPool:ReleaseAll()
 
-    local anchor, growthX, growthY = ResolveGrowthDirection(Frame)
+    local anchor, growthX, growthY = ResolveGrowthDirection(Frame, cfg.showIconLimit)
     if Frame.collapseArrow then
-        UpdateCollapseArrow(Frame.collapseArrow, collapsed, iconH, growthY)
+        UpdateCollapseArrow(Frame.collapseArrow, collapsed, iconH, growthX, growthY)
     end
 
     local auraFilter = collapsed and (cfg.auraFilter .. "|PLAYER|CANCELABLE") or cfg.auraFilter
@@ -512,23 +529,19 @@ function Mixin:UpdateAuras()
     })
 
     if cancelable and not InCombatLockdown() then
-        self:_syncCancelOverlays(Frame, auras, {
-            iconH = iconH, iconW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
-            anchor = anchor, growthX = growthX, growthY = growthY,
-        })
+        self:_syncCancelOverlays(Frame, auras, auraFilter, activeIcons)
     end
 end
 
 -- [ CANCEL OVERLAYS ]-------------------------------------------------------------------------------
-function Mixin:_syncCancelOverlays(frame, auras, layout)
+function Mixin:_syncCancelOverlays(frame, auras, auraFilter, icons)
     if not frame._cancelButtons then frame._cancelButtons = {} end
     local indexMap = {}
     for i = 1, 40 do
-        local data = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
+        local data = C_UnitAuras.GetAuraDataByIndex("player", i, auraFilter)
         if not data then break end
         indexMap[data.auraInstanceID] = i
     end
-    local activeBtns = {}
     for i, aura in ipairs(auras) do
         local btn = frame._cancelButtons[i]
         if not btn then
@@ -536,7 +549,6 @@ function Mixin:_syncCancelOverlays(frame, auras, layout)
             btn:RegisterForClicks("RightButtonUp")
             btn:SetAttribute("type2", "cancelaura")
             btn:SetAttribute("unit", "player")
-            btn:SetAttribute("filter", "HELPFUL")
             btn:EnableMouse(true)
             btn:SetMouseMotionEnabled(false)
             btn:SetPassThroughButtons("LeftButton")
@@ -545,11 +557,15 @@ function Mixin:_syncCancelOverlays(frame, auras, layout)
             frame._cancelButtons[i] = btn
         end
         local idx = indexMap[aura.auraInstanceID]
-        if idx then
+        local icon = icons[i]
+        if idx and icon then
             btn:SetAttribute("index", idx)
-            btn:SetSize(layout.iconW, layout.iconH)
+            btn:SetAttribute("filter", auraFilter)
+            btn:ClearAllPoints()
+            local point, relativeTo, relativePoint, x, y = icon:GetPoint(1)
+            btn:SetPoint(point, relativeTo, relativePoint, x, y)
+            btn:SetSize(icon:GetSize())
             btn:Show()
-            table.insert(activeBtns, btn)
         else
             btn:Hide()
         end
@@ -557,18 +573,12 @@ function Mixin:_syncCancelOverlays(frame, auras, layout)
     for i = #auras + 1, #frame._cancelButtons do
         frame._cancelButtons[i]:Hide()
     end
-    Orbit.AuraLayout:LayoutGrid(frame, activeBtns, {
-        size = layout.iconH, sizeW = layout.iconW, spacing = layout.spacing,
-        maxPerRow = layout.maxPerRow, anchor = layout.anchor,
-        growthX = layout.growthX, growthY = layout.growthY, yOffset = 0,
-    })
 end
 
 function Mixin:_hideCancelOverlays(frame)
     if not frame._cancelButtons then return end
     for _, btn in ipairs(frame._cancelButtons) do btn:Hide() end
 end
-
 -- [ VISIBILITY ]-------------------------------------------------------------------------------------
 function Mixin:UpdateVisibility()
     local Frame = self._agFrame
@@ -653,7 +663,8 @@ function Mixin:ShowPreviewAuras()
     for i = renderCount + 1, #cache do cache[i] = nil end
 
     Frame._activePreviewIcons = previews
-    local anchor, growthX, growthY = ResolveGrowthDirection(Frame)
+    local anchor, growthX, growthY = ResolveGrowthDirection(Frame, cfg.showIconLimit)
+    if Frame.collapseArrow then UpdateCollapseArrow(Frame.collapseArrow, false, iconH, growthX, growthY) end
     Orbit.AuraLayout:LayoutGrid(Frame, previews, {
         size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
         anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
@@ -669,7 +680,8 @@ function Mixin:ResizePreviewAuras()
         icon:SetSize(iconW, iconH)
         CropIconTexture(icon, iconW, iconH)
     end
-    local anchor, growthX, growthY = ResolveGrowthDirection(Frame)
+    local anchor, growthX, growthY = ResolveGrowthDirection(Frame, self._agConfig.showIconLimit)
+    if Frame.collapseArrow then UpdateCollapseArrow(Frame.collapseArrow, false, iconH, growthX, growthY) end
     Orbit.AuraLayout:LayoutGrid(Frame, Frame._activePreviewIcons, {
         size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
         anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,

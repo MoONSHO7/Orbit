@@ -62,6 +62,8 @@ local TEXT_NO_COLOR = {
 }
 
 local AURA_GRID = {
+    { type = "slider", key = "FilterDensity", label = "Aura Filter", min = 1, max = 3, step = 1,
+      formatter = function(v) return v <= 1 and "Less" or v >= 3 and "All" or "More" end },
     { type = "slider", key = "MaxIcons", label = "Max Icons", min = 1, max = 10, step = 1 },
     { type = "slider", key = "MaxRows", label = "Max Rows", min = 1, max = 3, step = 1 },
     ICON_SIZE_CONTROL,
@@ -153,7 +155,10 @@ do
     local HealerReg = Orbit.HealerAuraRegistry
     if HealerReg then
         for _, key in ipairs(HealerReg.SLOT_KEYS) do
-            KEY_SCHEMAS[key] = Compose({ ICON_SIZE_CONTROL }, PANDEMIC_GLOW, {
+            KEY_SCHEMAS[key] = Compose({
+                { type = "checkbox", key = "ShowTimer", label = "Show Timer", default = false },
+                ICON_SIZE_CONTROL,
+            }, PANDEMIC_GLOW, {
                 { type = "colorcurve", key = "SwipeColorCurve", label = "Swipe Colour", singleColor = false },
                 { type = "colorcurve", key = "TimerTextColorCurve", label = "Timer Text Colour", singleColor = false },
             })
@@ -746,7 +751,7 @@ end
 -- [ APPLY STYLE ]-----------------------------------------------------------------------------------
 
 function Settings:ApplyStyle(container, key, value)
-    if key == "MaxIcons" or key == "MaxRows" then
+    if key == "MaxIcons" or key == "MaxRows" or key == "FilterDensity" then
         if self.container and self.container.RefreshAuraIcons then self.container:RefreshAuraIcons() end
         return
     end
