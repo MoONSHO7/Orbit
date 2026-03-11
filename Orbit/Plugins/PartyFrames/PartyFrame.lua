@@ -494,15 +494,12 @@ function Plugin:OnLoad()
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
     eventFrame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
+    eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
     eventFrame:SetScript("OnEvent", function(_, event)
-        if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
-            -- Re-sort and reassign units when group or roles change
-            if not InCombatLockdown() then
-                self:UpdateFrameUnits()
-            end
-
+        if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" or event == "PLAYER_ENTERING_WORLD" then
+            self:UpdateFrameUnits()
             for i, frame in ipairs(self.frames) do
                 if frame.unit then
                     UpdateInRange(frame)
@@ -633,9 +630,6 @@ end
 -- [ DYNAMIC UNIT ASSIGNMENT ]----------------------------------------------------------------------
 
 function Plugin:UpdateFrameUnits()
-    if InCombatLockdown() then
-        return
-    end
     if self.frames and self.frames[1] and self.frames[1].preview then
         return
     end
@@ -652,7 +646,7 @@ function Plugin:UpdateFrameUnits()
                 -- Update secure unit attribute (only if changed)
                 local currentUnit = frame:GetAttribute("unit")
                 if currentUnit ~= unit then
-                    frame:SetAttribute("unit", unit)
+                    pcall(frame.SetAttribute, frame, "unit", unit)
                     frame.unit = unit
 
                     -- Re-register unit-specific events
@@ -680,19 +674,19 @@ function Plugin:UpdateFrameUnits()
                 end
 
                 -- Update unit watch for visibility
-                SafeUnregisterUnitWatch(frame)
-                SafeRegisterUnitWatch(frame)
+                pcall(UnregisterUnitWatch, frame)
+                pcall(RegisterUnitWatch, frame)
 
-                frame:Show()
+                pcall(frame.Show, frame)
                 if frame.UpdateAll then
                     frame:UpdateAll()
                 end
             else
                 -- No unit for this slot - hide frame and clear unit
-                SafeUnregisterUnitWatch(frame)
-                frame:SetAttribute("unit", nil)
+                pcall(UnregisterUnitWatch, frame)
+                pcall(frame.SetAttribute, frame, "unit", nil)
+                pcall(frame.Hide, frame)
                 frame.unit = nil
-                frame:Hide()
             end
         end
     end
