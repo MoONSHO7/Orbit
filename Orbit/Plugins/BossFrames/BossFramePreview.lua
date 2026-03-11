@@ -112,13 +112,11 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
             if frame.Name then
                 frame._fullName = "Boss " .. i
                 frame.Name:SetText("Boss " .. i)
-                frame.Name:SetTextColor(1, 0.1, 0.1, 1)
                 frame.Name:Show()
             end
 
             if frame.HealthText then
                 frame.HealthText:SetText("100%")
-                frame.HealthText:SetTextColor(1, 0.1, 0.1, 1)
                 frame.HealthText:Show()
             end
 

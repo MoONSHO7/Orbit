@@ -1206,6 +1206,7 @@ Orbit.Profile.defaults = {
             },
             ["Orbit_BossFrames"] = {
                 [1] = {
+                    ReactionColour = false,
                     CastBarHeight = 18,
                     Scale = 100,
                     DebuffSize = 32,
