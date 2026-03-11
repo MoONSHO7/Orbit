@@ -167,6 +167,10 @@ function Orbit.PluginMixin:RegisterVisibilityEvents()
 end
 
 function Orbit.PluginMixin:UpdateVisibility()
+    if not Orbit:IsPluginEnabled(self.name) then
+        if self.frame then self.frame:Hide() end
+        return
+    end
     local shouldHide = (C_PetBattles and C_PetBattles.IsInBattle()) or (UnitHasVehicleUI and UnitHasVehicleUI("player"))
         or (Orbit.MountedVisibility:ShouldHide())
     if shouldHide then

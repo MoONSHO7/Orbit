@@ -379,9 +379,8 @@ function Plugin:RefreshOnUpdate()
 end
 
 function Plugin:UpdateVisibility()
-    if not Frame then
-        return
-    end
+    if not Frame then return end
+    if not Orbit:IsPluginEnabled(self.name) then SafeHide(Frame); return end
     local isEditMode = Orbit:IsEditMode()
     if isEditMode then
         OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)

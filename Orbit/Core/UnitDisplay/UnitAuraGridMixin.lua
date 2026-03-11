@@ -762,6 +762,11 @@ function Mixin:UpdateVisibility()
     local Frame = self._agFrame
     local cfg = self._agConfig
     if not Frame then return end
+    if not Orbit:IsPluginEnabled(self.name) then
+        if not InCombatLockdown() then UnregisterUnitWatch(Frame); Frame:Hide() end
+        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
+        return
+    end
 
     local enabled = self:IsEnabled()
     local isEditMode = Orbit:IsEditMode()

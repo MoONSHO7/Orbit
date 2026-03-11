@@ -169,6 +169,12 @@ end
 function Mixin:UpdateVisibility()
     local Frame = self._pbFrame
     if not Frame then return end
+    if not Orbit:IsPluginEnabled(self.name) then
+        if not InCombatLockdown() then UnregisterUnitWatch(Frame) end
+        Orbit:SafeAction(function() Frame:Hide() end)
+        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
+        return
+    end
     if InCombatLockdown() then
         Orbit.CombatManager:QueueUpdate(function() self:UpdateVisibility() end)
         return
