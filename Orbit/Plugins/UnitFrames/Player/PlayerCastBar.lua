@@ -60,11 +60,13 @@ local function ShowBar(bar)
     bar:SetAlpha(1)
     if bar.orbitBar then bar.orbitBar:SetAlpha(1) end
     if bar.Icon then bar.Icon:SetAlpha(1) end
+    if bar.orbitBar and bar.orbitBar.IconBorder then bar.orbitBar.IconBorder:SetAlpha(1) end
 end
 local function HideBar(bar)
     bar:SetAlpha(0)
     if bar.orbitBar then bar.orbitBar:SetAlpha(0) end
     if bar.Icon then bar.Icon:SetAlpha(0) end
+    if bar.orbitBar and bar.orbitBar.IconBorder then bar.orbitBar.IconBorder:SetAlpha(0) end
 end
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
