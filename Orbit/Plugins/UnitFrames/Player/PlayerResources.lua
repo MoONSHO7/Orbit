@@ -1,4 +1,4 @@
-﻿---@type Orbit
+---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
@@ -40,6 +40,19 @@ local SYSTEM_INDEX = 1
 local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
     liveToggle = true,
     canvasMode = true,
+    disabledSpecs = {
+        [71]  = true, -- Warrior: Arms
+        [72]  = true, -- Warrior: Fury
+        [73]  = true, -- Warrior: Protection
+        [253] = true, -- Hunter: Beast Mastery
+        [254] = true, -- Hunter: Marksmanship
+        [256] = true, -- Priest: Discipline
+        [257] = true, -- Priest: Holy
+        [63]  = true, -- Mage: Fire
+        [270] = true, -- Monk: Mistweaver
+        [264] = true, -- Shaman: Restoration
+        [577] = true, -- Demon Hunter: Havoc
+    },
     defaults = {
         Hidden = false,
         Width = DEFAULTS.Width,
@@ -105,6 +118,7 @@ function Plugin:OnLoad()
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }, -- Vertical stacking only
     })
     Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
+    Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 5, maxH = 40 }
     self.frame = Frame -- Expose for PluginMixin compatibility
     self.mountedConfig = { frame = Frame }
 
@@ -387,9 +401,7 @@ end
 
 -- [ SETTINGS APPLICATION ]-------------------------------------------------------------------------
 function Plugin:ApplySettings()
-    if not Frame then
-        return
-    end
+    if not Frame then return end
 
     OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
 
@@ -476,14 +488,9 @@ function Plugin:ApplySettings()
 
     -- Apply Visuals to Single Bar Container
     if Frame.StatusBarContainer and Frame.StatusBarContainer:IsShown() then
-        local bgColor = self:GetSetting(SYSTEM_INDEX, "BackdropColour")
-        if not bgColor and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColourCurve then
-            bgColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve)
-        end
-
         Orbit.Skin:SkinStatusBar(Frame.StatusBar, texture, nil, true)
         Frame:SetBorder(borderSize)
-        Orbit.Skin:ApplyGradientBackground(Frame, Orbit.db.GlobalSettings.BackdropColourCurve, bgColor or Orbit.Constants.Colors.Background)
+        Orbit.Skin:ApplyGradientBackground(Frame, Orbit.db.GlobalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
     end
 
     local tickSize = self:GetSetting(SYSTEM_INDEX, "TickSize") or TICK_SIZE_DEFAULT
@@ -523,7 +530,10 @@ function Plugin:UpdateVisibility()
 end
 
 function Plugin:UpdatePowerType()
-    if not Frame then
+    if not Frame then return end
+    if not Orbit:IsPluginEnabled(self.name) then
+        Frame.orbitDisabled = true
+        Frame:Hide()
         return
     end
     if C_PetBattles and C_PetBattles.IsInBattle() then

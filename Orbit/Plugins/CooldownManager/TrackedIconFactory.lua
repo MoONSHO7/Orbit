@@ -71,11 +71,16 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
     icon.Cooldown:SetAllPoints()
     icon.Cooldown:SetDrawSwipe(true)
     icon.Cooldown:SetDrawBling(false)
+    icon.Cooldown:SetCooldown(0, 0)
+    icon.Cooldown:Clear()
 
     icon.ActiveCooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
     icon.ActiveCooldown:SetAllPoints()
     icon.ActiveCooldown:SetDrawSwipe(true)
     icon.ActiveCooldown:SetDrawBling(false)
+    icon.ActiveCooldown:SetReverse(true)
+    icon.ActiveCooldown:SetCooldown(0, 0)
+    icon.ActiveCooldown:Clear()
 
     local textOverlay = CreateFrame("Frame", nil, icon)
     textOverlay:SetAllPoints()
@@ -93,6 +98,7 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
     icon.DropHighlight:Hide()
 
     self:ApplyTrackedIconSkin(plugin, icon, systemIndex)
+    icon._textStyleDirty = true
 
     icon:EnableMouse(false)
     icon.orbitClickThrough = true
@@ -108,6 +114,25 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
         end
     end)
     icon:Hide()
+    
+    local function OnSetCooldown()
+        if icon.trackedId and icon:IsShown() then
+            Factory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
+        end
+    end
+
+    if not icon._cdHookSetup then
+        icon._cdHookSetup = true
+        hooksecurefunc(icon.Cooldown, "SetCooldown", OnSetCooldown)
+        if icon.Cooldown.SetCooldownFromDurationObject then
+            hooksecurefunc(icon.Cooldown, "SetCooldownFromDurationObject", OnSetCooldown)
+        end
+        hooksecurefunc(icon.ActiveCooldown, "SetCooldown", OnSetCooldown)
+        if icon.ActiveCooldown.SetCooldownFromDurationObject then
+            hooksecurefunc(icon.ActiveCooldown, "SetCooldownFromDurationObject", OnSetCooldown)
+        end
+    end
+
     return icon
 end
 
@@ -116,6 +141,15 @@ function Factory:ApplyTrackedIconSkin(plugin, icon, systemIndex, inheritOverride
     local skinSettings = CooldownUtils:BuildSkinSettings(plugin, systemIndex, { zoom = 8, inheritOverrides = inheritOverrides })
     if Orbit.Skin and Orbit.Skin.Icons then
         Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
+    end
+    local c = skinSettings.cooldownSwipeColor
+    if c and icon.Cooldown then icon.Cooldown:SetSwipeColor(c.r, c.g, c.b, c.a or 0.8) end
+    local ac = skinSettings.activeSwipeColor
+    if ac and icon.ActiveCooldown then
+        local swipeTex = Orbit.Constants.Assets.SwipeCustom
+        if swipeTex then icon.ActiveCooldown:SetSwipeTexture(swipeTex) end
+        icon.ActiveCooldown:SetSwipeColor(ac.r, ac.g, ac.b, ac.a or 0.7)
+        icon.ActiveCooldown:SetReverse(true)
     end
     self:ApplyTrackedTextSettings(plugin, icon, systemIndex)
 end
@@ -137,19 +171,37 @@ function Factory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
             for _, region in ipairs({ cd:GetRegions() }) do
                 if region:GetObjectType() == "FontString" then
                     fs = region
+                    cd.Text = fs
                     break
                 end
             end
         end
-        if not fs then return end
+        if not fs then
+            icon._timerStyled = false
+            return
+        end
+        
+        fs:Show()
+        fs:SetAlpha(1)
+        
+        if cd and cd.SetHideCountdownNumbers then
+            cd:SetHideCountdownNumbers(false)
+        end
+        
+        if not fs:GetFont() then
+            fs:SetFont(fontPath, math.max(6, baseSize + 2), "OUTLINE")
+        end
+
         local pos = positions[posKey] or positions["Timer"] or {}
         local overrides = pos.overrides or {}
+
         if OverrideUtils then
             OverrideUtils.ApplyOverrides(fs, overrides, { fontSize = math.max(6, baseSize + 2), fontPath = fontPath })
         end
         fs:SetDrawLayer("OVERLAY", 7)
         if ApplyTextPosition then
-            ApplyTextPosition(fs, icon, pos)
+            local defaultAnchor = (posKey == "Timer" or posKey == "Active") and "CENTER" or "BOTTOMRIGHT"
+            ApplyTextPosition(fs, icon, pos, defaultAnchor, 0, 0)
         end
     end
 

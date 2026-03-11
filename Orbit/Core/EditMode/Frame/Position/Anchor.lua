@@ -17,6 +17,21 @@ local DEFAULT_PADDING = 2
 local MIN_SYNC_HEIGHT = 5
 local MIN_SYNC_WIDTH = 10
 
+local ANCHOR_LEVEL_BOOST = Orbit.Constants.Levels.AnchorBoost
+
+local function ElevateFrameLevel(child, parent)
+    if child._orbitOrigLevel then return end
+    child._orbitOrigLevel = child:GetFrameLevel()
+    child:SetFrameLevel(parent:GetFrameLevel() + ANCHOR_LEVEL_BOOST)
+end
+
+local function RestoreFrameLevel(child)
+    if child._orbitOrigLevel then
+        child:SetFrameLevel(child._orbitOrigLevel)
+        child._orbitOrigLevel = nil
+    end
+end
+
 local EDGE_BORDER_MAP = {
     BOTTOM = { parent = "Bottom", child = "Top" },
     TOP = { parent = "Top", child = "Bottom" },
@@ -90,7 +105,8 @@ local function ApplyMergeBorders(child, anchorModule)
     local a = anchorModule.anchors[child]
     if not a or not a.parent then return end
     local pOpts = GetFrameOptions(a.parent)
-    if not pOpts.mergeBorders then return end
+    local cOpts = GetFrameOptions(child)
+    if not pOpts.mergeBorders or not cOpts.mergeBorders then return end
     if InCombatLockdown() and child:IsProtected() then return end
     ApplyAnchorPosition(child, a.parent, a.edge, a.padding, a.align, a.syncOptions)
 end
@@ -136,11 +152,13 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions,
     child:ClearAllPoints()
 
     local parentOptions = GetFrameOptions(parent)
+    local childOptions = GetFrameOptions(child)
 
-    local shouldMerge = parentOptions.mergeBorders and syncOptions and syncOptions.syncScale and syncOptions.syncDimensions and padding == 0
+    local bothMerge = parentOptions.mergeBorders and childOptions.mergeBorders
+    local shouldMerge = bothMerge and syncOptions and syncOptions.syncScale and syncOptions.syncDimensions and padding == 0
     if shouldMerge and child:IsShown() and parent:IsShown() then
         SetMergeBorderState(parent, child, edge, true)
-    elseif parentOptions.mergeBorders then
+    elseif bothMerge then
         SetMergeBorderState(parent, child, edge, false)
     end
 
@@ -322,7 +340,8 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
     end
 
     local pOpts = GetFrameOptions(parent)
-    if pOpts.mergeBorders then
+    local cOpts = GetFrameOptions(child)
+    if pOpts.mergeBorders and cOpts.mergeBorders then
         HookChildVisibility(child, self)
         HookParentVisibility(parent, self)
     end
@@ -337,6 +356,13 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
             end
         end
     end
+    -- Notify parent it gained a child
+    if not suppressApplySettings and parent.orbitPlugin then
+        if parent.orbitPlugin.UpdateLayout then parent.orbitPlugin:UpdateLayout(parent)
+        elseif parent.orbitPlugin.ApplySettings then parent.orbitPlugin:ApplySettings(parent) end
+    end
+
+    ElevateFrameLevel(child, parent)
 
     if child.OnAnchorChanged then
         child:OnAnchorChanged(parent, edge, padding)
@@ -367,7 +393,8 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
         end
 
         local pOpts = GetFrameOptions(oldAnchor.parent)
-        if pOpts.mergeBorders then
+        local cOpts = GetFrameOptions(child)
+        if pOpts.mergeBorders and cOpts.mergeBorders then
             SetMergeBorderState(oldAnchor.parent, child, oldAnchor.edge, false)
         end
 
@@ -376,8 +403,15 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
             self.childrenOf[oldAnchor.parent][child] = nil
         end
 
+        RestoreFrameLevel(child)
+
         if not suppressApplySettings and child.orbitPlugin and child.orbitPlugin.ApplySettings then
             child.orbitPlugin:ApplySettings(child)
+        end
+        -- Notify parent it lost a child
+        if not suppressApplySettings and oldParent and oldParent.orbitPlugin then
+            if oldParent.orbitPlugin.UpdateLayout then oldParent.orbitPlugin:UpdateLayout(oldParent)
+            elseif oldParent.orbitPlugin.ApplySettings then oldParent.orbitPlugin:ApplySettings(oldParent) end
         end
 
         if child.OnAnchorChanged then

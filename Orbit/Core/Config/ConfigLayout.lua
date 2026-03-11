@@ -109,9 +109,11 @@ function Layout:AddControl(container, frame)
     table.insert(self.containerControls[container], frame)
 end
 
+local LAYOUT_PADDING = 10
+
 function Layout:Stack(container, startY, spacing)
-    local y = startY or -10
-    local gap = spacing or 10
+    local y = startY or -LAYOUT_PADDING
+    local gap = spacing or LAYOUT_PADDING
 
     local controls = self.containerControls[container]
     if not controls then
@@ -120,9 +122,8 @@ function Layout:Stack(container, startY, spacing)
 
     for _, child in ipairs(controls) do
         if child:IsShown() and child:GetParent() == container then
-            child:SetPoint("TOPLEFT", container, "TOPLEFT", 10, y)
-            local rightPadding = 10
-            child:SetPoint("TOPRIGHT", container, "TOPRIGHT", -rightPadding, y)
+            child:SetPoint("TOPLEFT", container, "TOPLEFT", LAYOUT_PADDING, y)
+            child:SetPoint("TOPRIGHT", container, "TOPRIGHT", -LAYOUT_PADDING, y)
             y = y - child:GetHeight() - gap
         end
     end

@@ -15,7 +15,7 @@ if C_CurveUtil and C_CurveUtil.CreateCurve then
     PANDEMIC_CURVE:AddPoint(1.0, 0)
 end
 
-local GlowType = { Pixel = 1, Proc = 2, AutoCast = 3, Button = 4 }
+local GlowType = { Pixel = 1, Proc = 2, AutoCast = 3, Button = 4, Blizzard = 5 }
 local GlowConfig = {
     Pixel    = { Lines = 8, Frequency = 0.25, Length = 4, Thickness = 2, XOffset = 0, YOffset = 0, Border = false },
     Proc     = { StartAnim = false, FrameLevel = nil },
@@ -30,6 +30,8 @@ function PG:Apply(icon, aura, unit, skinSettings)
     if not durObj then return end
     local glowType = (skinSettings and skinSettings.pandemicGlowType) or GlowType.Pixel
     local pandemicColor = (skinSettings and skinSettings.pandemicColor) or { r = 1, g = 0.8, b = 0 }
+    -- Blizzard type — no custom glow, native aura display handles it
+    if glowType == GlowType.Blizzard then return end
     -- Same aura + same glow type already active → update tracking, skip glow restart
     if icon.orbitPandemicGlowActive == glowType and icon.orbitPandemicAuraID == aura.auraInstanceID then
         icon.orbitAura, icon.orbitUnit = aura, unit

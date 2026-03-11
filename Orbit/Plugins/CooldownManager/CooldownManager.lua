@@ -10,6 +10,11 @@ local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local TRACKED_INDEX = Constants.Cooldown.SystemIndex.Tracked
 local BUFFBAR_INDEX = Constants.Cooldown.SystemIndex.BuffBar
 local VIEWER_MAP = {}
+local DEFAULT_ESSENTIAL_Y = -100
+local DEFAULT_UTILITY_Y = -150
+local DEFAULT_BUFFICON_Y = -200
+local DEFAULT_BUFFBAR_X = 200
+local DEFAULT_BUFFBAR_Y = -100
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", {
@@ -83,9 +88,14 @@ function Plugin:GetGrowthDirection()
     return "DOWN"
 end
 function Plugin:GetBaseFontSize()
-    return 12
+    local s = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.TextScale or 1
+    return 12 * s
 end
 function Plugin:GetGlobalFont()
+    local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
+    if fontName and LSM then
+        return LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
+    end
     return STANDARD_TEXT_FONT
 end
 function Plugin:GetTextOverlay() end
@@ -107,6 +117,7 @@ function Plugin:OnLoad()
     self.buffIconAnchor = self:CreateAnchor("OrbitBuffIconCooldowns", BUFFICON_INDEX, "Buff Icons")
     self.buffBarAnchor = self:CreateAnchor("OrbitBuffBarCooldowns", BUFFBAR_INDEX, "Buff Bars",
         { horizontal = false, vertical = true, syncScale = true, syncDimensions = true })
+    self.buffBarAnchor.orbitNoGroupSelect = true
     self.trackedAnchor = self:CreateTrackedAnchor("OrbitTrackedCooldowns", TRACKED_INDEX, "Tracked Cooldowns")
 
     VIEWER_MAP[ESSENTIAL_INDEX] = { viewer = EssentialCooldownViewer, anchor = self.essentialAnchor }
@@ -260,6 +271,7 @@ function Plugin:OnLoad()
             Orbit.OOCFadeMixin:RefreshAll()
         end
     end, self)
+
 end
 
 function Plugin:UpdateVisibility()
@@ -306,13 +318,13 @@ function Plugin:CreateAnchor(name, systemIndex, label, overrideOptions)
 
     if not frame:GetPoint() then
         if systemIndex == ESSENTIAL_INDEX then
-            frame:SetPoint("CENTER", UIParent, "CENTER", 0, -100)
+            frame:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_ESSENTIAL_Y)
         elseif systemIndex == UTILITY_INDEX then
-            frame:SetPoint("CENTER", UIParent, "CENTER", 0, -150)
+            frame:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_UTILITY_Y)
         elseif systemIndex == BUFFICON_INDEX then
-            frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
+            frame:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_BUFFICON_Y)
         elseif systemIndex == BUFFBAR_INDEX then
-            frame:SetPoint("CENTER", UIParent, "CENTER", 200, -100)
+            frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_BUFFBAR_X, DEFAULT_BUFFBAR_Y)
         end
     end
 

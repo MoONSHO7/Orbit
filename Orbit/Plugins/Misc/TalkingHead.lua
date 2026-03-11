@@ -4,6 +4,7 @@ local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_TalkingHead"
+local DEFAULT_OFFSET_Y = -100
 
 local Plugin = Orbit:RegisterPlugin("Talking Head", SYSTEM_ID, {
     defaults = {
@@ -61,7 +62,7 @@ function Plugin:OnLoad()
     }
 
     -- Default Position (top center, like native)
-    self.frame:SetPoint("TOP", UIParent, "TOP", 0, -100)
+    self.frame:SetPoint("TOP", UIParent, "TOP", 0, DEFAULT_OFFSET_Y)
 
     -- Register to Orbit
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)

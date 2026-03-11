@@ -4,6 +4,7 @@ local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_CombatTimer"
+local DEFAULT_OFFSET_Y = -200
 
 local Plugin = Orbit:RegisterPlugin("Combat Timer", SYSTEM_ID, {
     liveToggle = true,
@@ -52,7 +53,7 @@ function Plugin:OnLoad()
     self.frame.Text:SetPoint("CENTER", self.frame, "CENTER")
     self.frame.Text:SetText("0:00")
     self.frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
-    self.frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
+    self.frame:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_OFFSET_Y)
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)
     OrbitEngine.Frame:RestorePosition(self.frame, self, SYSTEM_ID)
 

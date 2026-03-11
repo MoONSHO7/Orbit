@@ -146,11 +146,13 @@ local function CreatePluginPanel()
         cbIndex = cbIndex + 1
         local cb = checkboxPool[cbIndex] or CreateCheckbox(frame, cbIndex)
         checkboxPool[cbIndex] = cb
+        cb:Enable()
 
         local xOffset = PADDING + (col * CHECKBOX_WIDTH)
         cb:ClearAllPoints()
         cb:SetPoint("TOPLEFT", xOffset, yOffset)
         cb.text:SetText(displayName)
+        cb.text:SetTextColor(1, 1, 1)
         cb._isTriState = isTriState
 
         if isTriState then
@@ -211,13 +213,32 @@ local function CreatePluginPanel()
 
         cb:Show()
 
+        -- Spec-lock indicator: greyed out + disabled when the plugin is not applicable to the current spec
+        local allSpecLocked = true
+        for _, name in ipairs(pluginNames) do
+            if not Orbit:IsPluginSpecLocked(name) then allSpecLocked = false; break end
+        end
+        if allSpecLocked then
+            cb:Disable()
+            cb:SetChecked(false)
+            cb.text:SetText("|cFF666666" .. displayName .. "|r")
+            cb:SetScript("OnClick", nil)
+            cb:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(displayName, 0.4, 0.4, 0.4)
+                GameTooltip:AddLine("Not available for your current specialization.", 0.6, 0.6, 0.6, true)
+                GameTooltip:Show()
+            end)
+            cb:SetScript("OnLeave", GameTooltip_Hide)
+        end
+
         -- Conflict indicator: red text + tooltip when another addon controls this frame
         local hasConflict = false
         for _, name in ipairs(pluginNames) do
             local p = pluginMap[name]
             if p and p.conflicted then hasConflict = true; break end
         end
-        if hasConflict then
+        if not allSpecLocked and hasConflict then
             cb.text:SetText("|cFFFF4444" .. displayName .. "|r")
             if not cb._isTriState then
                 cb:SetScript("OnEnter", function(self)

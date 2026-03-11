@@ -20,6 +20,7 @@ Selection.selectionCallbacks = Selection.selectionCallbacks or {}
 Selection.symmetricPairs = Selection.symmetricPairs or {}
 
 Selection.selectedFrame = nil
+Selection.selectedFrames = {}
 Selection.isNativeFrame = false
 Selection.keyboardHandler = nil
 Selection.editModeHooked = false
@@ -56,11 +57,44 @@ end
 
 function Selection:SetSelectedFrame(frame, isNative)
     self.selectedFrame = frame
+    self.selectedFrames = {}
+    if frame then self.selectedFrames[frame] = true end
     self.isNativeFrame = isNative or false
 end
 
 function Selection:GetSelectedFrame()
     return self.selectedFrame
+end
+
+function Selection:AddSelectedFrame(frame)
+    self.selectedFrames[frame] = true
+    local sel = self.selections[frame]
+    if sel then
+        sel.isSelected = true
+        self:UpdateVisuals(frame, sel)
+        if Engine.SelectionResize then Engine.SelectionResize:Show(sel) end
+    end
+end
+
+function Selection:RemoveSelectedFrame(frame)
+    self.selectedFrames[frame] = nil
+    local sel = self.selections[frame]
+    if sel then
+        sel.isSelected = false
+        sel:ShowHighlighted()
+        self:UpdateVisuals(frame, sel)
+        if Engine.SelectionResize then Engine.SelectionResize:Hide(sel) end
+    end
+end
+
+function Selection:GetSelectedFrames()
+    return self.selectedFrames
+end
+
+function Selection:IsMultiSelected()
+    local count = 0
+    for _ in pairs(self.selectedFrames) do count = count + 1; if count > 1 then return true end end
+    return false
 end
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
@@ -339,6 +373,9 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     self.dragCallbacks[frame] = dragCallback
     self.selectionCallbacks[frame] = selectionCallback
 
+    -- Attach resize handle for plugins with Width/Height settings
+    if Engine.SelectionResize then Engine.SelectionResize:Attach(selection, frame) end
+
     if not self.editModeHooked then
         EditModeManagerFrame:HookScript("OnShow", function()
             self:OnEditModeEnter()
@@ -405,6 +442,7 @@ function Selection:OnEditModeExit()
         if selection.AnchorLineFrame then
             selection.AnchorLineFrame:Hide()
         end
+        if Engine.SelectionResize then Engine.SelectionResize:Hide(selection) end
     end
 
     -- Deferred State/Logic Cleanup (Unsafe in Combat)
@@ -428,7 +466,9 @@ function Selection:OnEditModeExit()
 end
 
 function Selection:DeselectAll()
-    self:SetSelectedFrame(nil, false)
+    self.selectedFrame = nil
+    self.selectedFrames = {}
+    self.isNativeFrame = false
     self:DisableKeyboardNudge()
 
     for _, selection in pairs(self.selections) do
@@ -436,6 +476,7 @@ function Selection:DeselectAll()
             selection.isSelected = false
             selection:ShowSelected(false)
             selection:ShowHighlighted()
+            if Engine.SelectionResize then Engine.SelectionResize:Hide(selection) end
 
             if EditModeManagerFrame:IsShown() then
                 self:UpdateVisuals(nil, selection)

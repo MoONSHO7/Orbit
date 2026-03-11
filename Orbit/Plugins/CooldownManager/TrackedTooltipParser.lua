@@ -11,8 +11,63 @@ local ACTIVE_DURATION_OVERRIDES = {
     [48743] = 0, -- Death Pact: instant heal, absorb debuff is not active phase
 }
 
-local ACTIVE_DURATION_PATTERNS = { "for (%d+%.?%d*) sec", "lasts (%d+%.?%d*) sec", "over (%d+%.?%d*) sec" }
-local COOLDOWN_KEYWORDS = { "[Cc]ooldown", "[Rr]echarge" }
+-- [ LOCALE PATTERNS ]-------------------------------------------------------------------------------
+local LOCALE_DATA = {
+    enUS = {
+        active = { "for (%d+%.?%d*) sec", "lasts (%d+%.?%d*) sec", "over (%d+%.?%d*) sec" },
+        cdKeywords = { "[Cc]ooldown", "[Rr]echarge" },
+        sec = "[Ss]ec", min = "[Mm]in",
+    },
+    deDE = {
+        active = { "für (%d+%.?%d*) Sek", "(%d+%.?%d*) Sek%. lang", "über (%d+%.?%d*) Sek" },
+        cdKeywords = { "[Aa]bklingzeit", "[Aa]ufladung" },
+        sec = "Sek%.?", min = "Min%.?",
+    },
+    frFR = {
+        active = { "pendant (%d+%.?%d*) s", "dure (%d+%.?%d*) s", "sur (%d+%.?%d*) s" },
+        cdKeywords = { "[Rr]echarge", "[Rr]écupération" },
+        sec = "s%.?", min = "min%.?",
+    },
+    esES = {
+        active = { "durante (%d+%.?%d*) s", "(%d+%.?%d*) s de duración", "a lo largo de (%d+%.?%d*) s" },
+        cdKeywords = { "[Rr]eutilización", "[Rr]ecarga" },
+        sec = "s%.?", min = "min%.?",
+    },
+    ptBR = {
+        active = { "por (%d+%.?%d*) s", "durante (%d+%.?%d*) s", "ao longo de (%d+%.?%d*) s" },
+        cdKeywords = { "[Rr]ecarga", "[Rr]ecuperação" },
+        sec = "s%.?", min = "min%.?",
+    },
+    ruRU = {
+        active = { "в течение (%d+%.?%d*) сек", "на (%d+%.?%d*) сек", "(%d+%.?%d*) сек%.?" },
+        cdKeywords = { "[Пп]ерезарядк", "[Вв]осстановлени" },
+        sec = "сек%.?", min = "мин%.?",
+    },
+    koKR = {
+        active = { "(%d+%.?%d*)초 동안", "(%d+%.?%d*)초에 걸쳐" },
+        cdKeywords = { "재사용 대기시간", "충전" },
+        sec = "초", min = "분",
+    },
+    zhCN = {
+        active = { "持续(%d+%.?%d*)秒", "(%d+%.?%d*)秒内" },
+        cdKeywords = { "冷却", "充能" },
+        sec = "秒", min = "分",
+    },
+    zhTW = {
+        active = { "持續(%d+%.?%d*)秒", "(%d+%.?%d*)秒內" },
+        cdKeywords = { "冷卻", "充能" },
+        sec = "秒", min = "分",
+    },
+}
+LOCALE_DATA.enGB = LOCALE_DATA.enUS
+LOCALE_DATA.esMX = LOCALE_DATA.esES
+
+local locale = GetLocale()
+local L = LOCALE_DATA[locale] or LOCALE_DATA.enUS
+local ACTIVE_DURATION_PATTERNS = L.active
+local COOLDOWN_KEYWORDS = L.cdKeywords
+local SEC_UNIT = L.sec
+local MIN_UNIT = L.min
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
 local function StripEscapes(text)
@@ -58,18 +113,18 @@ function Parser:ParseCooldownDuration(itemType, id)
     local best
     for _, line in ipairs(tooltipData.lines) do
         local text = StripEscapes(line.rightText or line.leftText or "")
-        local compoundMin, compoundSec = text:match("(%d+%.?%d*) [Mm]in (%d+%.?%d*) [Ss]ec [Cc]ooldown")
+        local compoundMin, compoundSec = text:match("(%d+%.?%d*)%s*" .. MIN_UNIT .. "%s+(%d+%.?%d*)%s*" .. SEC_UNIT)
         if compoundMin and compoundSec then
             local val = (tonumber(compoundMin) * 60) + tonumber(compoundSec)
             if not best or val > best then best = val end
         else
             for _, keyword in ipairs(COOLDOWN_KEYWORDS) do
-                local min = text:match("(%d+%.?%d*) [Mm]in " .. keyword)
+                local min = text:match("(%d+%.?%d*)%s*" .. MIN_UNIT .. "%s+" .. keyword)
                 if min then
                     local val = tonumber(min) * 60
                     if not best or val > best then best = val end
                 end
-                local sec = text:match("(%d+%.?%d*) [Ss]ec " .. keyword)
+                local sec = text:match("(%d+%.?%d*)%s*" .. SEC_UNIT .. "%s+" .. keyword)
                 if sec then
                     local val = tonumber(sec)
                     if not best or val > best then best = val end

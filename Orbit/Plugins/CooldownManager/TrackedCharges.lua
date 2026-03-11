@@ -31,6 +31,7 @@ local CHARGE_ADD_ICON = "Interface\\PaperDollInfoFrame\\Character-Plus"
 local CHARGE_REMOVE_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
 local RECHARGE_DIM = 0.35
 local DEFAULT_SPACING = 0
+local DEFAULT_CHARGE_OFFSET_X = 30
 local SEED_GLOW_ALPHA = 0.6
 local SEED_PLUS_RATIO = 0.4
 local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
@@ -125,8 +126,8 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }
     frame.orbitChainSync = true
 
-    frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = 30, y = 0 }
-    frame:SetPoint("CENTER", UIParent, "CENTER", 30, 0)
+    frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = DEFAULT_CHARGE_OFFSET_X, y = 0 }
+    frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_CHARGE_OFFSET_X, 0)
 
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
     frame.buttons = {}
@@ -560,11 +561,12 @@ function Plugin:UpdateSeedVisibility(frame)
         return
     end
 
-    if isDraggingCharge then
+    local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
+    if isDraggingCharge or isEditMode then
         local plusSize = OrbitEngine.Pixel:Snap(math.min(frame:GetWidth(), frame:GetHeight()) * SEED_PLUS_RATIO)
         frame.SeedButton.Plus:SetSize(plusSize, plusSize)
         frame.SeedButton:Show()
-        frame.SeedButton.PulseAnim:Play()
+        if isDraggingCharge then frame.SeedButton.PulseAnim:Play() else frame.SeedButton.PulseAnim:Stop(); frame.SeedButton.Glow:SetAlpha(SEED_GLOW_ALPHA) end
     else
         frame.SeedButton:Hide()
     end

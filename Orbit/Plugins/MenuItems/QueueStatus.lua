@@ -4,6 +4,8 @@ local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_QueueStatus"
+local DEFAULT_POSITION_X = -250
+local DEFAULT_POSITION_Y = 40
 
 local Plugin = Orbit:RegisterPlugin("Queue Status", SYSTEM_ID, {
     defaults = {
@@ -58,7 +60,7 @@ function Plugin:OnLoad()
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Queue Status"
     self.frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
-    self.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -250, 40)
+    self.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)
     OrbitEngine.Frame:RestorePosition(self.frame, self, SYSTEM_ID)
 

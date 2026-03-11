@@ -4,6 +4,7 @@ local OrbitEngine = Orbit.Engine
 
 local Plugin = Orbit:RegisterPlugin("Player Debuffs", "Orbit_PlayerDebuffs", {
     defaults = Orbit.UnitAuraGridMixin.playerDebuffDefaults,
+    canvasMode = true,
 })
 
 Mixin(Plugin, Orbit.AuraMixin)

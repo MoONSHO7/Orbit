@@ -89,7 +89,11 @@ function CDM:SetupViewerHooks(viewer, anchor)
     if not viewer.orbitHideHooked then
         hooksecurefunc(viewer, "Hide", function(s)
             if s._orbitRestoringVis or (anchor and not anchor:IsShown()) then return end
-            s._orbitRestoringVis = true; s:Show(); s:SetAlpha(1); s._orbitRestoringVis = false
+            -- Defer to break taint chain — synchronous Show() taints GetTotemInfo() returns
+            C_Timer.After(0, function()
+                if not s or not anchor or not anchor:IsShown() then return end
+                s._orbitRestoringVis = true; s:Show(); s:SetAlpha(1); s._orbitRestoringVis = false
+            end)
         end)
         viewer.orbitHideHooked = true
     end
@@ -157,12 +161,20 @@ function CDM:MonitorViewers()
     frame:RegisterEvent("PLAYER_REGEN_ENABLED")
     frame:SetScript("OnEvent", function(_, event, unit)
         if event == "UNIT_AURA" then
-            if unit == "player" then CheckAll() end
+            if unit == "player" then
+                CheckAll()
+                if LibCustomGlow then
+                    for si, entry in pairs(VIEWER_MAP) do
+                        if entry.viewer then plugin:CheckPandemicFrames(entry.viewer, si) end
+                    end
+                end
+            end
             return
         end
         inCombat = (event == "PLAYER_REGEN_DISABLED")
         if inCombat then StartPandemicTicker() else StopPandemicTicker() end
         CheckAll()
+        if not inCombat then plugin:PreSizeAnchors() end
     end)
     self._monitorEventFrame = frame
 end
@@ -187,5 +199,5 @@ end
 -- [ PLAYER ENTERING WORLD ]-------------------------------------------------------------------------
 function CDM:OnPlayerEnteringWorld()
     C_Timer.After(Constants.Timing.RetryShort, function() self:ReapplyParentage(); self:ApplyAll() end)
-    C_Timer.After(Constants.Timing.RetryLong, function() self:ReapplyParentage() end)
+    C_Timer.After(Constants.Timing.RetryLong, function() self:ReapplyParentage(); self:PreSizeAnchors() end)
 end

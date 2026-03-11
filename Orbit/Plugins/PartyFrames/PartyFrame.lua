@@ -448,6 +448,7 @@ function Plugin:OnLoad()
     -- Container is the selectable frame for Edit Mode
     self.frame = self.container
     self.frame.anchorOptions = { horizontal = true, vertical = false }
+    self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 20, maxH = 100 }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, 1)
 
     -- Canvas Mode should use the first party frame for preview (not entire container)
@@ -461,7 +462,7 @@ function Plugin:OnLoad()
         end
         local growDir = self:GetSetting(1, "GrowthDirection") or "Down"
         local anchor = Helpers:GetContainerAnchor(growDir)
-        self.container:SetPoint(anchor, UIParent, "TOPLEFT", 20, -200)
+        self.container:SetPoint(anchor, UIParent, "TOPLEFT", GF.DefaultPartyOffsetX, GF.DefaultPartyOffsetY)
     end
 
     -- Helper to update visibility driver based on IncludePlayer setting
@@ -709,8 +710,12 @@ function Plugin:UpdateLayout(frame)
     for _, partyFrame in ipairs(self.frames) do
         partyFrame:SetSize(width, height)
         UpdateFrameLayout(partyFrame, self:GetSetting(1, "BorderSize"), self)
+        self:UpdateTextSize(partyFrame)
     end
     self:PositionFrames()
+    for _, partyFrame in ipairs(self.frames) do
+        if partyFrame.ConstrainNameWidth then partyFrame:ConstrainNameWidth() end
+    end
 end
 
 -- Shared styling applied to BOTH live and preview frames (single source of truth)
@@ -774,6 +779,7 @@ end
 
 function Plugin:OnCanvasApply()
     Orbit.GroupCanvasRegistration:OnCanvasApply(self)
+    self:ApplySettings()
 end
 
 function Plugin:ApplySettings()
@@ -807,13 +813,6 @@ function Plugin:ApplySettings()
     self:PositionFrames()
     OrbitEngine.Frame:RestorePosition(self.container, self, 1)
 
-    -- Restore drag positions on container (first frame)
-    local savedPositions = self:GetSetting(1, "ComponentPositions")
-    if savedPositions then
-        OrbitEngine.ComponentDrag:RestoreFramePositions(self.container, savedPositions)
-    end
-
-    -- Refresh preview if active (e.g., after Canvas Mode Apply)
     if self.frames[1] and self.frames[1].preview then
         self:SchedulePreviewUpdate()
     end

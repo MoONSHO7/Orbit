@@ -35,6 +35,16 @@ local WHATS_NEW_ENTRIES = {
             .. "• Cooldown Manager: separate Active Swipe and Cooldown Swipe color settings\n"
             .. "• Right-click to cancel player buffs on player buffs frame\n"
             .. "• Color Picker: desaturation checkbox for textures that support it\n"
+            .. "• Edge Resizing on edit mode frames (bottom right corner)\n"
+            .. "• Action Bars/CDM multi-select in Edit Mode (shift-click)\n"
+            .. "• Added Active Swipe color as an option to CDM\n"
+            .. "• Added localization to Tracked Cooldowns\n"
+    },
+    {
+        title = "Group Frames",
+        body = "• Added exclusion filters to Buffs/Debuffs on party/raid frames\n"
+            .. "• New Aura Filter slider on Party/Raid frames. Less = Only HoTs, More = HoTs+Some Others, All = All buffs/debuffs\n"
+            .. "• Smarter Auras on Party/Raid Frames (no duplicates)\n"
     },
     {
         title = "Bugfixes",
@@ -45,6 +55,8 @@ local WHATS_NEW_ENTRIES = {
             .. "• Queue Status no longer errors during combat\n"
             .. "• Pet Frame now refreshes properly on pet changes\n"
             .. "• Vehicle Exit Settings Fixes\n"
+            .. "• Resource Bar is better managed across profiles (class/specs)\n"
+            .. "• Single Icons were being misplaced on Unit Frame 1 in party frames\n"
             .. "• Various other minor bugfixes\n"
     },
     {
@@ -175,8 +187,8 @@ ddDesc:SetText("Join the discord to request features, report bugs\nor ask for he
 
 local ddEditBox = CreateFrame("EditBox", nil, DiscordDialog, "InputBoxTemplate")
 ddEditBox:SetHeight(DISCORD_EDITBOX_HEIGHT)
-ddEditBox:SetPoint("LEFT", DiscordDialog, "LEFT", 20, 0)
-ddEditBox:SetPoint("RIGHT", DiscordDialog, "RIGHT", -20, 0)
+ddEditBox:SetPoint("LEFT", DiscordDialog, "LEFT", CONTENT_PADDING * 2, 0)
+ddEditBox:SetPoint("RIGHT", DiscordDialog, "RIGHT", -CONTENT_PADDING * 2, 0)
 ddEditBox:SetPoint("TOP", ddDesc, "BOTTOM", 0, -10)
 ddEditBox:SetAutoFocus(false)
 ddEditBox:SetScript("OnChar", function(self)

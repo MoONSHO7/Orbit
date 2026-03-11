@@ -82,6 +82,7 @@ C.Levels = {
     ProcOverlay = 50,   -- High level procs (SpellActivationAlert)
     SmartGuides = 90,   -- Canvas Mode snap guides
     Tooltip = 100,      -- Tooltip/flyout layer
+    AnchorBoost = 50,   -- Frame level boost for anchored children
 }
 
 C.UnitFrame = {
@@ -93,6 +94,8 @@ C.UnitFrame = {
     AdaptiveTextMax = 24, -- Max font size for adaptive text scaling
     CombatIconSize = 18, -- Player combat indicator icon size
     StatusIconSize = 16, -- Role/Leader/Marker/RareElite icon size
+    DefaultOffsetX = -200, -- Default X offset for unit frames
+    DefaultOffsetY = -140, -- Default Y offset for unit frames
 }
 
 C.BossFrame = {
@@ -106,6 +109,10 @@ C.GroupFrames = {
     MaxPrivateAuraAnchors = 3,
     AuraBaseIconSize = 10,
     AuraSpacing = 1,
+    DefaultPartyOffsetX = 20,
+    DefaultPartyOffsetY = -200,
+    DefaultRaidOffsetX = 20,
+    DefaultRaidOffsetY = -300,
     RolePriority = { TANK = 1, HEALER = 2, DAMAGER = 3, NONE = 4 },
     GrowthDirection = { Down = "Down", Up = "Up", Left = "Left", Right = "Right" },
     ContainerAnchor = { Down = "TOPLEFT", Up = "BOTTOMLEFT", Right = "TOPLEFT", Left = "TOPRIGHT" },
@@ -219,6 +226,7 @@ C.PandemicGlow = {
         Proc = 2,
         Autocast = 3,
         Button = 4,
+        Blizzard = 5,
     },
 
     -- Default glow type and color

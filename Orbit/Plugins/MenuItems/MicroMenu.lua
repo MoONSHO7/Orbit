@@ -5,6 +5,9 @@ local OrbitEngine = Orbit.Engine
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 -- Using a custom ID to denote we are replacing the native bar behavior fully
 local SYSTEM_ID = "Orbit_MicroMenu"
+local DEFAULT_POSITION_X = -50
+local DEFAULT_POSITION_Y = 40
+local OFFSCREEN_OFFSET = 9000
 -- We still want to hook into the "EditModeSystem" for MicroMenu to hide the native selection if possible,
 -- but the user effectively wants an Orbit Frame.
 -- Let's use our own ID and specific "Micro Menu" label.
@@ -139,7 +142,7 @@ function Plugin:OnLoad()
     }
 
     -- Default Position
-    self.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -50, 40)
+    self.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
 
     -- Register to Orbit
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)
@@ -294,7 +297,7 @@ function Plugin:ApplySettings()
             OrbitEngine.NativeFrame:SecureHide(f)
             if not InCombatLockdown() then
                 f:ClearAllPoints()
-                f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -9000, 9000)
+                f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
             end
         end
     end

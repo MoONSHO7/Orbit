@@ -26,9 +26,9 @@ function Plugin:AddSettings(dialog, systemFrame)
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
         if not isAnchored then
-            SB:AddSizeSettings(self, schema, SYSTEM_INDEX, systemFrame, { default = DEFAULTS.Width }, nil, nil)
+            SB:AddSizeSettings(self, schema, SYSTEM_INDEX, systemFrame, { min = 100, max = 600, default = DEFAULTS.Width }, nil, nil)
         end
-        SB:AddSizeSettings(self, schema, SYSTEM_INDEX, systemFrame, nil, { min = 5, max = 20, default = DEFAULTS.Height }, nil)
+        SB:AddSizeSettings(self, schema, SYSTEM_INDEX, systemFrame, nil, { min = 5, max = 40, default = DEFAULTS.Height }, nil)
         table.insert(schema.controls, {
             type = "slider", key = "DividerSize", label = "Divider Size",
             min = 0, max = 4, step = 1, default = DIVIDER_SIZE_DEFAULT,

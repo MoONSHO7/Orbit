@@ -31,8 +31,8 @@ function Orbit.RaidFrameSettings(plugin, dialog, systemFrame)
                 C_Timer.After(0, function() OrbitEngine.Layout:Reset(dialog); Orbit.RaidFrameSettings(plugin, dialog, systemFrame) end)
             end,
         })
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 40, max = 200, step = 1, default = 90, onChange = MOC("Width") })
-        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 16, max = 80, step = 1, default = 36, onChange = MOC("Height") })
+        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 200, step = 1, default = 90, onChange = MOC("Width") })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 80, step = 1, default = 36, onChange = MOC("Height") })
         table.insert(schema.controls, { type = "slider", key = "MemberSpacing", label = "Member Spacing", min = -5, max = 50, step = 1, default = 1, onChange = MOC("MemberSpacing") })
         if (plugin:GetSetting(1, "SortMode") or "Group") == "Group" then
             table.insert(schema.controls, { type = "slider", key = "GroupsPerRow", label = "Groups Per Row", min = 1, max = 6, step = 1, default = 6, onChange = MOC("GroupsPerRow") })

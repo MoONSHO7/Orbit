@@ -155,9 +155,15 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
 
         -- Refresh settings (e.g. show/hide width/height sliders based on anchor)
         RefreshDialog()
-    end, function(f)
+    end, function(f, isGroupAdd)
         -- Selection callback: Open Orbit's settings dialog
         if Orbit.SettingsDialog then
+            if isGroupAdd then
+                Orbit.SettingsDialog:UpdateGroupDialog(plugin, Engine.FrameSelection:GetSelectedFrames())
+                Orbit.SettingsDialog:Show()
+                return
+            end
+
             -- Deselect any native Blizzard frames first
             if EditModeManagerFrame then
                 EditModeManagerFrame:ClearSelectedSystem()

@@ -42,6 +42,7 @@ function Mixin:CreateSecondaryPlugin(config)
     self.frame.editModeName = config.editModeName
     self.frame.systemIndex = config.frameIndex
     self.frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false, mergeBorders = true }
+    self.frame.orbitResizeBounds = { minW = 50, maxW = 200, minH = 10, maxH = 40 }
 
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, config.frameIndex)
 

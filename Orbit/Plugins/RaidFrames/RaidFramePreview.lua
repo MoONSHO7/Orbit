@@ -176,6 +176,7 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             if frame.Name then
                 if isDisabled("Name") then frame.Name:Hide()
                 else
+                    frame._fullName = PREVIEW_NAMES[dataIdx]
                     frame.Name:SetText(PREVIEW_NAMES[dataIdx])
                     frame.Name:SetTextColor(1, 1, 1, 1)
                     frame.Name:Show()

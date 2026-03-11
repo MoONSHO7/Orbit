@@ -314,13 +314,14 @@ function Plugin:OnLoad()
 
     self.frame = self.container
     self.frame.anchorOptions = { horizontal = true, vertical = false }
+    self.frame.orbitResizeBounds = { minW = 50, maxW = 200, minH = 20, maxH = 80 }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, 1)
 
     self.container.orbitCanvasFrame = self.frames[1]
     self.container.orbitCanvasTitle = "Raid Frame"
 
     if not self.container:GetPoint() then
-        self.container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -300)
+        self.container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", GF.DefaultRaidOffsetX, GF.DefaultRaidOffsetY)
     end
 
     -- Visibility driver: show only in raid
@@ -691,8 +692,12 @@ function Plugin:UpdateLayout(frame)
     for _, raidFrame in ipairs(self.frames) do
         raidFrame:SetSize(width, height)
         UpdateFrameLayout(raidFrame, self:GetSetting(1, "BorderSize"), self)
+        self:UpdateTextSize(raidFrame)
     end
     self:PositionFrames()
+    for _, raidFrame in ipairs(self.frames) do
+        if raidFrame.ConstrainNameWidth then raidFrame:ConstrainNameWidth() end
+    end
 end
 
 -- Shared styling applied to BOTH live and preview frames (single source of truth)
@@ -754,6 +759,7 @@ function Plugin:ApplyFrameStyle(frame, showPower)
 end
 
 function Plugin:OnCanvasApply()
+    self:ApplySettings()
     Orbit.GroupCanvasRegistration:OnCanvasApply(self)
 end
 
@@ -788,12 +794,6 @@ function Plugin:ApplySettings()
 
     self:PositionFrames()
     OrbitEngine.Frame:RestorePosition(self.container, self, 1)
-
-    -- Restore drag positions on container (first frame)
-    local savedPositions = self:GetSetting(1, "ComponentPositions")
-    if savedPositions then
-        OrbitEngine.ComponentDrag:RestoreFramePositions(self.container, savedPositions)
-    end
 
     if self.frames[1] and self.frames[1].preview then
         self:SchedulePreviewUpdate()

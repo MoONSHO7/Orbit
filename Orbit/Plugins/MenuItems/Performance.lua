@@ -4,6 +4,8 @@ local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_Performance"
+local DEFAULT_POSITION_X = -300
+local DEFAULT_POSITION_Y = 40
 
 local Plugin = Orbit:RegisterPlugin("Performance Info", SYSTEM_ID, {
     liveToggle = true,
@@ -70,7 +72,7 @@ function Plugin:OnLoad()
     self.frame.Text:SetPoint("CENTER", self.frame, "CENTER")
 
     self.frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
-    self.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -300, 40)
+    self.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)
     OrbitEngine.Frame:RestorePosition(self.frame, self, SYSTEM_ID)
     self:EnableSmartAlignment(self.frame, self.frame.Text, 2)

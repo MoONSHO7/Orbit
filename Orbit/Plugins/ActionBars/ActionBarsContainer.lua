@@ -15,6 +15,7 @@ local BUTTON_SIZE = 36
 local BASE_VISIBILITY_DRIVER = "[petbattle][vehicleui] hide; show"
 local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [nopet] hide; show"
 local BAR1_BASE_DRIVER = "[petbattle][overridebar] hide; show"
+local DEFAULT_BOTTOM_OFFSET_Y = 40
 
 local function GetVisibilityDriver(baseDriver)
     return Orbit.MountedVisibility:GetMountedDriver(baseDriver)
@@ -102,7 +103,7 @@ function ABC:CreateVehicleExit(plugin)
     btn:GetHighlightTexture():SetTexCoord(unpack(VEHICLE_EXIT_TEXCOORDS))
     local bar1 = plugin.containers[1]
     if bar1 then container:SetPoint("LEFT", bar1, "RIGHT", 4, 0)
-    else container:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 40) end
+    else container:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, DEFAULT_BOTTOM_OFFSET_Y) end
     RegisterStateDriver(container, "visibility", VEHICLE_EXIT_VISIBILITY)
     plugin.containers[VEHICLE_EXIT_INDEX] = container
     plugin.vehicleExitButton = container

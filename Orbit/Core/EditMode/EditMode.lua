@@ -29,6 +29,12 @@ function EditMode:RegisterCallbacks(callbacks, owner)
     if callbacks.Exit then self:RegisterExitCallback(callbacks.Exit, owner) end
 end
 
+function EditMode:UnregisterCallbacks(owner)
+    if not EventRegistry then return end
+    EventRegistry:UnregisterCallback("EditMode.Enter", owner)
+    EventRegistry:UnregisterCallback("EditMode.Exit", owner)
+end
+
 -- [ COMBAT SAFETY: AUTO-EXIT EDIT MODE ]-----------------------------------------------------------
 
 if EditModeManagerFrame then

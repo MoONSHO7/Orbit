@@ -49,7 +49,7 @@ local BAR_CONFIG = {
 
 local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     defaults = {
-        Orientation = 0, Scale = 90, IconPadding = 2, Rows = 1, NumIcons = 12,
+        Scale = 90, IconPadding = 2, Rows = 1, NumIcons = 12,
         Opacity = 100, HideEmptyButtons = false, UseGlobalTextStyle = true,
         DisabledComponents = {},
         ComponentPositions = {}, GlobalComponentPositions = {
@@ -146,7 +146,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local tabs = (systemIndex == 1) and { "Layout", "Colors", "Visibility" } or { "Layout", "Visibility" }
+    local tabs = { "Layout", "Colors", "Visibility" }
     local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
     if currentTab == "Layout" then
         if systemIndex == 1 then
@@ -167,7 +167,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                     self:ApplySettings(container)
                 end })
         end
-        table.insert(schema.controls, { type = "slider", key = "Orientation", label = "Orientation", min = 0, max = 1, step = 1, default = 0, formatter = function(v) return v == 0 and "Horizontal" or "Vertical" end })
+
         local numIcons = self:GetSetting(systemIndex, "NumIcons") or (config and config.count or 12)
         local factors = {}
         for i = 1, numIcons do if numIcons % i == 0 then table.insert(factors, i) end end
@@ -431,7 +431,7 @@ function Plugin:LayoutButtons(index)
     if not container or not buttons or #buttons == 0 then return end
     local padding = self:GetSetting(index, "IconPadding") or 2
     local rows = self:GetSetting(index, "Rows") or 1
-    local orientation = self:GetSetting(index, "Orientation") or 0
+    local orientation = 0
     local hideEmpty = self:GetSetting(index, "HideEmptyButtons")
     if SPECIAL_BAR_INDICES[index] then hideEmpty = true end
     local cursorType = GetCursorInfo()

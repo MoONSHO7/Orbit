@@ -104,7 +104,6 @@ function Updater:UpdateTrackedIcon(plugin, icon)
             local cdInfo = C_Spell.GetSpellCooldown(activeId)
             local onGCD = cdInfo and cdInfo.isOnGCD
             local chargeInfo = icon.isChargeSpell and C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
-
             if chargeInfo then
                 if not issecretvalue(chargeInfo.currentCharges) then
                     icon._trackedCharges = chargeInfo.currentCharges
@@ -143,7 +142,8 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                 durObj = C_Spell.GetSpellCooldownDuration(activeId)
                 if durObj then
                     icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
-                    icon.Icon:SetDesaturation(onGCD and 0 or durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE))
+                    local desatPct = onGCD and 0 or durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE)
+                    icon.Icon:SetDesaturation(desatPct)
                     if icon.cdAlphaCurve then icon.Cooldown:SetAlpha(durObj:EvaluateRemainingPercent(icon.cdAlphaCurve)) end
                     local onRealCD = cdInfo and (issecretvalue(cdInfo.startTime) or cdInfo.startTime > 0)
                     if icon.activeDuration and onRealCD and not onGCD then
@@ -167,6 +167,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     if icon._activeGlowing then self:StopActiveGlow(icon) end
                 end
             end
+
             local displayCount = chargeInfo and chargeInfo.currentCharges or C_Spell.GetSpellDisplayCount(activeId)
             if displayCount then icon.CountText:SetText(displayCount); icon.CountText:Show()
             else icon.CountText:Hide() end
@@ -266,8 +267,6 @@ function Updater:UpdateTrackedIcon(plugin, icon)
         icon.Cooldown:Clear()
         icon.CountText:Hide()
     end
-
-
     icon:Show()
 end
 
@@ -320,6 +319,52 @@ function Updater:StartTrackedUpdateTicker(plugin)
         if now < nextUpdate then return end
         nextUpdate = now + COOLDOWN_THROTTLE
         DoUpdate()
+    end)
+    -- Visual-state poll: re-evaluate desat/alpha/glow without touching cooldown frames
+    local function PollVisualState()
+        local function PollAnchor(anchor)
+            if not anchor or not anchor.activeIcons then return end
+            for _, icon in pairs(anchor.activeIcons) do
+                if icon.trackedId and icon:IsShown() and icon.trackedType == "spell" then
+                    local activeId = GetActiveSpellID(icon.trackedId)
+                    local durObj = C_Spell.GetSpellCooldownDuration(activeId)
+                    local cdInfo = C_Spell.GetSpellCooldown(activeId)
+                    local onGCD = cdInfo and cdInfo.isOnGCD
+                    local isActive = icon._activeGlowExpiry and GetTime() < icon._activeGlowExpiry
+                    if durObj then
+                        local desat = onGCD and 0 or durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE)
+                        icon.Icon:SetDesaturation(desat)
+                        if icon.cdAlphaCurve then icon.Cooldown:SetAlpha(durObj:EvaluateRemainingPercent(icon.cdAlphaCurve)) end
+                    else
+                        icon.Icon:SetDesaturation(0)
+                        icon.Cooldown:SetAlpha(1)
+                        icon.ActiveCooldown:Clear()
+                    end
+                    if isActive then
+                        if not icon._activeGlowing then Updater:StartActiveGlow(plugin, icon) end
+                    else
+                        if icon._activeGlowing then Updater:StopActiveGlow(icon) end
+                        if icon._activeGlowExpiry then
+                            icon._activeGlowExpiry = nil
+                            icon.ActiveCooldown:Clear()
+                        end
+                    end
+                end
+            end
+        end
+        local entry = viewerMap[TRACKED_INDEX]
+        if entry and entry.anchor then PollAnchor(entry.anchor) end
+        for _, childData in pairs(plugin.activeChildren) do
+            if childData.frame then PollAnchor(childData.frame) end
+        end
+    end
+    local pollAccum = 0
+    local POLL_INTERVAL = 0.15
+    frame:SetScript("OnUpdate", function(_, elapsed)
+        pollAccum = pollAccum + elapsed
+        if pollAccum < POLL_INTERVAL then return end
+        pollAccum = 0
+        PollVisualState()
     end)
     plugin._trackedEventFrame = frame
 end

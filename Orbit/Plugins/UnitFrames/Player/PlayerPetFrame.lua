@@ -7,6 +7,8 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SYSTEM_ID = "Orbit_PlayerPetFrame"
 local PET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Pet
 local FRAME_LEVEL_DEMOTE = 5
+local DEFAULT_POSITION_X = -250
+local DEFAULT_POSITION_Y = -100
 
 local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
     canvasMode = true, -- Enable Canvas Mode for component editing
@@ -37,7 +39,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         hideNativeSettings = true,
         controls = {
             { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 100 },
-            { type = "slider", key = "Height", label = "Height", min = 10, max = 100, step = 1, default = 20 },
+            { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 20 },
         },
     }
 
@@ -88,6 +90,7 @@ function Plugin:OnLoad()
     self.frame.editModeName = "Pet Frame"
     self.frame.systemIndex = PET_FRAME_INDEX
     self.frame.anchorOptions = { horizontal = false, vertical = true, syncScale = false, syncDimensions = false }
+    self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 20, maxH = 100 }
 
     -- Register Edit Mode callbacks for visibility updates
     if EditModeManagerFrame then
@@ -124,7 +127,7 @@ function Plugin:OnLoad()
 
     -- Default Position
     if not self.frame:GetPoint() then
-        self.frame:SetPoint("CENTER", UIParent, "CENTER", -250, -100)
+        self.frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
     end
 
     -- Force refresh on pet change (mount/dismount/summon/dismiss)

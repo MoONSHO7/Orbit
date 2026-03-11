@@ -4,6 +4,7 @@ local OrbitEngine = Orbit.Engine
 
 local Plugin = Orbit:RegisterPlugin("Player Buffs", "Orbit_PlayerBuffs", {
     defaults = Orbit.UnitAuraGridMixin.playerBuffDefaults,
+    canvasMode = true,
 })
 
 Mixin(Plugin, Orbit.AuraMixin)
@@ -22,6 +23,8 @@ function Plugin:OnLoad()
         showTimer = true, enablePandemic = false,
         showIconLimit = true, defaultIconLimit = 20,
         showRows = true,
+        useBlizzardButtons = true, blizzardFrame = BuffFrame,
     })
     if BuffFrame then OrbitEngine.NativeFrame:Protect(BuffFrame) end
 end
+

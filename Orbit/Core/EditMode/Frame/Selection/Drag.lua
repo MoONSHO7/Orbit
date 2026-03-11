@@ -8,6 +8,7 @@ local C = Orbit.Constants
 local Drag = {}
 Engine.SelectionDrag = Drag
 
+local MAX_PADDING = 500
 local OPPOSITE_EDGES = { TOP = "BOTTOM", BOTTOM = "TOP", LEFT = "RIGHT", RIGHT = "LEFT" }
 local function GetOppositeEdge(edge)
     return OPPOSITE_EDGES[edge]
@@ -426,13 +427,48 @@ function Drag:OnMouseDown(selectionOverlay)
         return
     end
 
-    -- Already selected, do nothing
+    local Selection = Engine.FrameSelection
+    local clickedFrame = selectionOverlay.parent
+
+    -- Shift-click: add/remove from group selection if same plugin
+    if IsShiftKeyDown() and Selection.selectedFrame then
+        local existingPlugin = Selection.selectedFrame.orbitPlugin
+        local clickedPlugin = clickedFrame.orbitPlugin
+        if existingPlugin and clickedPlugin and existingPlugin == clickedPlugin
+            and not clickedFrame.orbitNoGroupSelect
+            and not Selection.selectedFrame.orbitNoGroupSelect then
+            if selectionOverlay.isSelected then
+                -- Deselect from group (only if more than 1 remain)
+                local count = 0
+                for _ in pairs(Selection.selectedFrames) do count = count + 1 end
+                if count > 2 then
+                    Selection:RemoveSelectedFrame(clickedFrame)
+                    if Selection.selectionCallbacks[clickedFrame] then
+                        Selection.selectionCallbacks[clickedFrame](clickedFrame, true)
+                    end
+                elseif count == 2 then
+                    -- Removing leaves one frame — revert to single-select
+                    Selection:RemoveSelectedFrame(clickedFrame)
+                    local remainingFrame
+                    for f in pairs(Selection.selectedFrames) do remainingFrame = f; break end
+                    if remainingFrame and Selection.selectionCallbacks[remainingFrame] then
+                        Selection.selectionCallbacks[remainingFrame](remainingFrame)
+                    end
+                end
+            else
+                Selection:AddSelectedFrame(clickedFrame)
+                if Selection.selectionCallbacks[clickedFrame] then
+                    Selection.selectionCallbacks[clickedFrame](clickedFrame, true)
+                end
+            end
+            return
+        end
+    end
+
+    -- Already selected (non-shift), do nothing
     if selectionOverlay.isSelected then
         return
     end
-
-    local Selection = Engine.FrameSelection
-    local clickedFrame = selectionOverlay.parent
 
     -- Exit Canvas Mode on any other frame when clicking a different frame
     if Engine.CanvasMode and Engine.CanvasMode.currentFrame then
@@ -466,6 +502,8 @@ function Drag:OnMouseDown(selectionOverlay)
     Selection:SetSelectedFrame(selectionOverlay.parent, false)
     Selection:EnableKeyboardNudge()
     Selection:UpdateVisuals(nil, selectionOverlay)
+
+    if Engine.SelectionResize then Engine.SelectionResize:Show(selectionOverlay) end
 
     if Selection.selectionCallbacks[selectionOverlay.parent] then
         Selection.selectionCallbacks[selectionOverlay.parent](selectionOverlay.parent)
@@ -507,14 +545,15 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
     end
 
     local currentPadding = anchor.padding or 0
-    local minPadding = -Orbit.db.GlobalSettings.BorderSize
+    local minPadding = -MAX_PADDING
 
     local anchorParentOpts = Engine.FrameAnchor.GetFrameOptions(anchor.parent)
-    if anchorParentOpts and anchorParentOpts.mergeBorders then
+    local anchorChildOpts = Engine.FrameAnchor.GetFrameOptions(parent)
+    if anchorParentOpts.mergeBorders and anchorChildOpts.mergeBorders then
         minPadding = 0
     end
 
-    local newPadding = Clamp(currentPadding + change, minPadding, 500)
+    local newPadding = Clamp(currentPadding + change, minPadding, MAX_PADDING)
 
     if newPadding ~= currentPadding then
         Engine.FrameAnchor:CreateAnchor(parent, anchor.parent, anchor.edge, newPadding, anchor.syncOptions, anchor.align)

@@ -308,7 +308,9 @@ local PVP_FACTION_ATLASES = {
 function Mixin:UpdatePvpIcon(frame, plugin)
     local unit = GuardedUpdate(frame, plugin, "PvpIcon")
     if not unit then return end
-    if UnitIsPVP(unit) then
+    local isPlayer = UnitIsUnit(unit, "player")
+    local isPvp = (isPlayer and C_PvP and C_PvP.IsWarModeDesired and C_PvP.IsWarModeDesired()) or (not isPlayer and UnitIsPVP(unit))
+    if isPvp then
         local faction = UnitFactionGroup(unit)
         frame.PvpIcon:SetAtlas(PVP_FACTION_ATLASES[faction] or PVP_FACTION_ATLASES.Alliance)
         frame.PvpIcon:Show()

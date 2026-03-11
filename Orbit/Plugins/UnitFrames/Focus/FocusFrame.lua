@@ -92,7 +92,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
 
     local widthParams = { key = "Width", label = "Width", min = 50, max = 400, default = 160 }
-    local heightParams = { key = "Height", label = "Height", min = 10, max = 100, default = 40 }
+    local heightParams = { key = "Height", label = "Height", min = 20, max = 100, default = 40 }
 
     if isAnchored and anchorAxis == "y" then
         widthParams = nil
@@ -175,11 +175,12 @@ function Plugin:OnLoad()
 
     -- Default Position
     if not self.frame:GetPoint() then
-        self.frame:SetPoint("CENTER", UIParent, "CENTER", -200, -140)
+        self.frame:SetPoint("CENTER", UIParent, "CENTER", Constants.UnitFrame.DefaultOffsetX, Constants.UnitFrame.DefaultOffsetY)
     end
 
     -- Can only anchor side-by-side (horizontal), not above/below (vertical)
     self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, mergeBorders = true, independentHeight = true }
+    self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 10, maxH = 100 }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, FOCUS_FRAME_INDEX)
 
     -- Register standard events
