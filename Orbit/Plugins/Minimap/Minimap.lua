@@ -29,16 +29,15 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
     },
 })
 
--- Apply NativeBarMixin for mouseOver / scale helpers
-Mixin(Plugin, Orbit.NativeBarMixin)
-
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
 local BORDER_COLOR = { r = 0, g = 0, b = 0, a = 1 }
 local DEFAULT_SIZE = 200
 local CLOCK_UPDATE_INTERVAL = 1
 local COORDS_UPDATE_INTERVAL = 0.1
-local ZOOM_BUTTON_SIZE = 20
+local ZOOM_BUTTON_W = 17
+local ZOOM_BUTTON_IN_H = 17
+local ZOOM_BUTTON_OUT_H = 9
 local MISSIONS_BASE_SIZE = 36
 local ZOOM_FADE_IN = 0.15
 local ZOOM_FADE_OUT = 0.3
@@ -239,7 +238,7 @@ function Plugin:OnLoad()
 
     -- [ Coords component ] — wrapper frame holds the FontString so ComponentDrag can move it
     self.frame.Coords = CreateFrame("Frame", nil, self.frame.Overlay)
-    self.frame.Coords:SetSize(80, 16)
+    self.frame.Coords:SetSize(1, 1) -- sized dynamically from text width on first tick
     self.frame.Coords:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -4, 4)
     self.frame.Coords.Text = self.frame.Coords:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     self.frame.Coords.Text:SetAllPoints()
@@ -266,7 +265,7 @@ function Plugin:OnLoad()
         onPositionChange = MPC("Coords"),
     })
     OrbitEngine.ComponentDrag:Attach(self._compartmentButton, self.frame,
-        { key = "Compartment", onPositionChange = MPC("Compartment") })
+        { key = "Compartment", sourceOverride = self._compartmentButton.icon, onPositionChange = MPC("Compartment") })
     OrbitEngine.ComponentDrag:Attach(self.frame.ZoomContainer, self.frame,
         { key = "Zoom", onPositionChange = MPC("Zoom") })
     if self.frame.Difficulty then
@@ -406,19 +405,19 @@ end
 function Plugin:CreateZoomButtons()
     -- Container holds both buttons so they move as a single unit in canvas mode
     local container = CreateFrame("Frame", nil, self.frame.Overlay)
-    container:SetSize(ZOOM_BUTTON_SIZE, ZOOM_BUTTON_SIZE * 2 + 2)
+    container:SetSize(ZOOM_BUTTON_W, ZOOM_BUTTON_IN_H + 2 + ZOOM_BUTTON_OUT_H)
     container:SetPoint("RIGHT", self.frame, "RIGHT", -2, 0)
     self.frame.ZoomContainer = container
 
-    -- Hidden icon for canvas mode dock preview (texture left empty; atlas resolved via IconPreviewAtlases)
+    -- Hidden icon for canvas mode dock preview (sized to match ZoomIn button)
     container.Icon = container:CreateTexture(nil, "ARTWORK")
-    container.Icon:SetSize(16, 16)
+    container.Icon:SetSize(ZOOM_BUTTON_W, ZOOM_BUTTON_W)
     container.Icon:SetPoint("CENTER")
     container.Icon:SetAlpha(0)
 
-    -- Zoom In
+    -- Zoom In (17x17, matching Blizzard XML)
     local zoomIn = CreateFrame("Button", nil, container)
-    zoomIn:SetSize(ZOOM_BUTTON_SIZE, ZOOM_BUTTON_SIZE)
+    zoomIn:SetSize(ZOOM_BUTTON_W, ZOOM_BUTTON_IN_H)
     zoomIn:SetPoint("TOP", container, "TOP", 0, 0)
     zoomIn:SetNormalAtlas("ui-hud-minimap-zoom-in")
     zoomIn:SetPushedAtlas("ui-hud-minimap-zoom-in-down")
@@ -443,9 +442,9 @@ function Plugin:CreateZoomButtons()
     zoomIn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     container.ZoomIn = zoomIn
 
-    -- Zoom Out
+    -- Zoom Out (17x9, matching Blizzard XML)
     local zoomOut = CreateFrame("Button", nil, container)
-    zoomOut:SetSize(ZOOM_BUTTON_SIZE, ZOOM_BUTTON_SIZE)
+    zoomOut:SetSize(ZOOM_BUTTON_W, ZOOM_BUTTON_OUT_H)
     zoomOut:SetPoint("TOP", zoomIn, "BOTTOM", 0, -2)
     zoomOut:SetNormalAtlas("ui-hud-minimap-zoom-out")
     zoomOut:SetPushedAtlas("ui-hud-minimap-zoom-out-down")
@@ -535,13 +534,15 @@ function Plugin:ReparentBlizzardComponents()
         missions:ClearAllPoints()
         missions:SetPoint("CENTER", self.frame, "BOTTOMLEFT", 20, 20)
         missions:SetSize(MISSIONS_BASE_SIZE, MISSIONS_BASE_SIZE) -- slightly smaller than default 53×53 to fit minimap
-        -- Hidden icon for canvas mode dock preview (texture left empty; atlas resolved via IconPreviewAtlases)
+        -- Hidden icon for canvas mode dock/cycling preview.
+        -- Must be sized to MISSIONS_BASE_SIZE so CyclingAtlas creator's GetSourceSize
+        -- returns the correct dimensions for the crossfade preview.
         if not missions.Icon then
             missions.Icon = missions:CreateTexture(nil, "ARTWORK")
-            missions.Icon:SetSize(16, 16)
             missions.Icon:SetPoint("CENTER")
             missions.Icon:SetAlpha(0)
         end
+        missions.Icon:SetSize(MISSIONS_BASE_SIZE, MISSIONS_BASE_SIZE)
         self.frame.Missions = missions
     end
 
@@ -554,11 +555,11 @@ function Plugin:ReparentBlizzardComponents()
         mail:SetPoint("CENTER", self.frame, "TOPRIGHT", -20, -20)
         -- Explicitly show the frame so its event handling stays active
         mail:Show()
-        -- Re-trigger mail notification state after reparent (cluster hide may have reset it)
+        -- Re-trigger mail notification after reparent via the mixin's own logic so
+        -- flipbook animations (NewMailAnim, MailReminderAnim) play correctly.
+        -- Never manually set MailIcon visibility — that bypasses the animations.
         if mail.TryPlayMailNotification and HasNewMail and HasNewMail() then
             mail:TryPlayMailNotification()
-        elseif mail.MailIcon then
-            mail.MailIcon:SetShown(HasNewMail and HasNewMail() or false)
         end
         -- Hidden icon for canvas mode dock preview (texture left empty; atlas resolved via IconPreviewAtlases)
         if not mail.Icon then
@@ -682,14 +683,13 @@ function Plugin:CaptureBlizzardMinimap()
             if button == "RightButton" then
                 local nativeButton = MinimapCluster and MinimapCluster.Tracking and MinimapCluster.Tracking.Button
                 if nativeButton and nativeButton.menuGenerator then
-                    local menu = MenuUtil.CreateContextMenu(f, nativeButton.menuGenerator)
-                    -- Scale the menu down to compensate for the minimap container's scale
-                    if menu and self.frame then
-                        local containerScale = self.frame:GetScale() or 1
-                        if containerScale ~= 1 then
-                            menu:SetScale(menu:GetScale() / containerScale)
-                        end
-                    end
+                    -- Open the tracking menu anchored to our minimap frame instead of
+                    -- the hidden native button, so it appears adjacent to the minimap.
+                    local menuMixin = (f.menuMixin or MenuVariants.GetDefaultContextMenuMixin())
+                    local description = MenuUtil.CreateRootMenuDescription(menuMixin)
+                    Menu.PopulateDescription(nativeButton.menuGenerator, nativeButton, description)
+                    local anchor = AnchorUtil.CreateAnchor("TOPLEFT", f, "BOTTOMLEFT", 0, 0)
+                    Menu.GetManager():OpenMenu(f, description, anchor)
                 end
             end
         end)
@@ -730,6 +730,14 @@ function Plugin:ApplySettings()
 
     -- Size (square minimap)
     frame:SetSize(size, size)
+
+    -- Force the Minimap render surface to match the container size.
+    -- SetAllPoints establishes the anchor relationship but Blizzard internally calls
+    -- Minimap:SetSize() which can override it; we must explicitly keep them in sync.
+    local minimapSurface = GetBlizzardMinimap()
+    if minimapSurface and minimapSurface:GetParent() == frame then
+        minimapSurface:SetSize(size, size)
+    end
 
     -- Border
     local backdropColor = Orbit.db.GlobalSettings.BackdropColour or { r = 0.145, g = 0.145, b = 0.145, a = 0.7 }
@@ -805,7 +813,7 @@ function Plugin:ApplySettings()
     if frame.ZoomContainer then
         if not self:IsComponentDisabled("Zoom") then
             frame.ZoomContainer:Show()
-            ApplyIconScale(frame.ZoomContainer, (savedPositions.Zoom or {}).overrides, ZOOM_BUTTON_SIZE)
+            ApplyIconScale(frame.ZoomContainer, (savedPositions.Zoom or {}).overrides, ZOOM_BUTTON_W)
             self:UpdateZoomState()
         else
             frame.ZoomContainer:Hide()
@@ -850,7 +858,7 @@ function Plugin:ApplySettings()
         if not self:IsComponentDisabled("CraftingOrder") then
             frame.CraftingOrder:SetScript("OnShow", nil)
             ApplyIconScale(frame.CraftingOrder, (savedPositions.CraftingOrder or {}).overrides,
-            frame.CraftingOrder:GetWidth())
+                frame.CraftingOrder:GetWidth())
         else
             frame.CraftingOrder:Hide()
             frame.CraftingOrder:SetScript("OnShow", function(f) f:Hide() end)
@@ -866,7 +874,8 @@ function Plugin:ApplySettings()
     end
 
     -- Opacity / Mouse-over fade
-    self:ApplyMouseOver(frame, SYSTEM_ID)
+    local baseAlpha = (self:GetSetting(SYSTEM_ID, "Opacity") or 100) / 100
+    Orbit.Animation:ApplyHoverFade(frame, baseAlpha, 1, Orbit:IsEditMode())
 
     -- Restore position from saved variables
     OrbitEngine.Frame:RestorePosition(frame, self, SYSTEM_ID)

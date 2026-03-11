@@ -1,18 +1,26 @@
 -- [ CANVAS MODE - ICON FRAME CREATOR ]--------------------------------------------------------------
 
-local _, addonTable = ...
-local Orbit = addonTable
-local OrbitEngine = Orbit.Engine
-local CanvasMode = OrbitEngine.CanvasMode
-local CC = CanvasMode.CreatorConstants
-local GetSourceSize = CanvasMode.GetSourceSize
+local _, addonTable          = ...
+local Orbit                  = addonTable
+local OrbitEngine            = Orbit.Engine
+local CanvasMode             = OrbitEngine.CanvasMode
+local CC                     = CanvasMode.CreatorConstants
+local GetSourceSize          = CanvasMode.GetSourceSize
 
-local ZOOM_BUTTON_GAP = 2
+local ZOOM_BUTTON_GAP        = 2
+-- Match Blizzard's actual zoom button proportions from Minimap.xml:
+--   ZoomIn:  17 x 17  (square)
+--   ZoomOut: 17 x  9  (flat rectangle)
+local ZOOM_IN_W, ZOOM_IN_H   = 17, 17
+local ZOOM_OUT_W, ZOOM_OUT_H = 17, 9
 
 -- Keys that are reparented Blizzard frames — no border/skin on canvas preview
-local NO_BORDER_KEYS = {
-    Missions = true, Mail = true, CraftingOrder = true,
-    Difficulty = true, Compartment = true,
+local NO_BORDER_KEYS         = {
+    Missions = true,
+    Mail = true,
+    CraftingOrder = true,
+    Difficulty = true,
+    Compartment = true,
 }
 
 -- [ CREATOR ]---------------------------------------------------------------------------------------
@@ -22,24 +30,27 @@ local function Create(container, preview, key, source, data)
     local hasFlipbook = iconTexture and iconTexture.orbitPreviewTexCoord
     local visual
 
-    -- Zoom component: render stacked zoom-in / zoom-out icons to match the real minimap
+    -- Zoom component: render stacked zoom-in / zoom-out icons matching Blizzard's real proportions
     if key == "Zoom" then
         local overrides = data and data.overrides
         local savedSize = overrides and overrides.IconSize
-        local w, h = GetSourceSize(source, CC.DEFAULT_ICON_SIZE, CC.DEFAULT_ICON_SIZE)
-        if savedSize and savedSize > 0 then
-            h = savedSize * (h / math.max(w, 1))
-            w = savedSize
-        end
-        container:SetSize(w, h)
+        -- Scale both buttons proportionally if IconSize override is set (based on width)
+        local scale     = (savedSize and savedSize > 0) and (savedSize / ZOOM_IN_W) or 1
+        local inW       = math.floor(ZOOM_IN_W * scale + 0.5)
+        local inH       = math.floor(ZOOM_IN_H * scale + 0.5)
+        local outW      = math.floor(ZOOM_OUT_W * scale + 0.5)
+        local outH      = math.floor(ZOOM_OUT_H * scale + 0.5)
+        local totalH    = inH + ZOOM_BUTTON_GAP + outH
+
+        container:SetSize(inW, totalH)
 
         local zoomInTex = container:CreateTexture(nil, "ARTWORK")
-        zoomInTex:SetSize(w, w)
+        zoomInTex:SetSize(inW, inH)
         zoomInTex:SetPoint("TOP", container, "TOP", 0, 0)
         zoomInTex:SetAtlas("ui-hud-minimap-zoom-in", false)
 
         local zoomOutTex = container:CreateTexture(nil, "ARTWORK")
-        zoomOutTex:SetSize(w, w)
+        zoomOutTex:SetSize(outW, outH)
         zoomOutTex:SetPoint("TOP", zoomInTex, "BOTTOM", 0, -ZOOM_BUTTON_GAP)
         zoomOutTex:SetAtlas("ui-hud-minimap-zoom-out", false)
 
@@ -90,7 +101,8 @@ local function Create(container, preview, key, source, data)
             local scale = btn:GetEffectiveScale() or 1
             local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(scale)
             if Orbit.Skin and Orbit.Skin.Icons then
-                Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
+                Orbit.Skin.Icons:ApplyCustom(btn,
+                    { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
                 Orbit.Skin:SkinBorder(btn, btn, globalBorder)
             end
         end
