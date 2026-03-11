@@ -114,6 +114,25 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
         end
     end)
     icon:Hide()
+    
+    local function OnSetCooldown()
+        if icon.trackedId and icon:IsShown() then
+            Factory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
+        end
+    end
+
+    if not icon._cdHookSetup then
+        icon._cdHookSetup = true
+        hooksecurefunc(icon.Cooldown, "SetCooldown", OnSetCooldown)
+        if icon.Cooldown.SetCooldownFromDurationObject then
+            hooksecurefunc(icon.Cooldown, "SetCooldownFromDurationObject", OnSetCooldown)
+        end
+        hooksecurefunc(icon.ActiveCooldown, "SetCooldown", OnSetCooldown)
+        if icon.ActiveCooldown.SetCooldownFromDurationObject then
+            hooksecurefunc(icon.ActiveCooldown, "SetCooldownFromDurationObject", OnSetCooldown)
+        end
+    end
+
     return icon
 end
 
@@ -152,19 +171,37 @@ function Factory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
             for _, region in ipairs({ cd:GetRegions() }) do
                 if region:GetObjectType() == "FontString" then
                     fs = region
+                    cd.Text = fs
                     break
                 end
             end
         end
-        if not fs then return end
+        if not fs then
+            icon._timerStyled = false
+            return
+        end
+        
+        fs:Show()
+        fs:SetAlpha(1)
+        
+        if cd and cd.SetHideCountdownNumbers then
+            cd:SetHideCountdownNumbers(false)
+        end
+        
+        if not fs:GetFont() then
+            fs:SetFont(fontPath, math.max(6, baseSize + 2), "OUTLINE")
+        end
+
         local pos = positions[posKey] or positions["Timer"] or {}
         local overrides = pos.overrides or {}
+
         if OverrideUtils then
             OverrideUtils.ApplyOverrides(fs, overrides, { fontSize = math.max(6, baseSize + 2), fontPath = fontPath })
         end
         fs:SetDrawLayer("OVERLAY", 7)
         if ApplyTextPosition then
-            ApplyTextPosition(fs, icon, pos)
+            local defaultAnchor = (posKey == "Timer" or posKey == "Active") and "CENTER" or "BOTTOMRIGHT"
+            ApplyTextPosition(fs, icon, pos, defaultAnchor, 0, 0)
         end
     end
 

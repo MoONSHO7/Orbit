@@ -77,16 +77,34 @@ function CDM:ApplyTextSettings(icon, systemIndex)
                 for _, region in ipairs({ cooldown:GetRegions() }) do
                     if region:GetObjectType() == "FontString" then
                         timerText = region
+                        cooldown.Text = timerText
                         break
+                    end
+                end
+                if not timerText then
+                    for _, child in ipairs({ cooldown:GetChildren() }) do
+                        for _, region in ipairs({ child:GetRegions() }) do
+                            if region:GetObjectType() == "FontString" then
+                                timerText = region
+                                cooldown.Text = timerText
+                                break
+                            end
+                        end
+                        if timerText then break end
                     end
                 end
             end
             if timerText then
                 local defaultSize = math.max(6, baseSize + 2)
+                
+                if not timerText:GetFont() then
+                    timerText:SetFont(fontPath, defaultSize, "OUTLINE")
+                end
+                
                 OverrideUtils.ApplyOverrides(timerText, timerOverrides, { fontSize = defaultSize, fontPath = fontPath })
                 timerText:SetDrawLayer("OVERLAY", 7)
                 if ApplyTextPosition then
-                    ApplyTextPosition(timerText, icon, timerPos)
+                    ApplyTextPosition(timerText, icon, timerPos, "CENTER", 0, 0)
                 end
             end
         end

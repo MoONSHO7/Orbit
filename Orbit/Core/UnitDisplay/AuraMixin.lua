@@ -104,7 +104,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
     if skinSettings and skinSettings.enablePandemic then Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings) end
     -- Apply canvas mode component overrides (must be last to avoid skin/cooldown clobbering)
     if componentPositions then
-        local OverrideUtils = Orbit.Engine.CanvasMode and Orbit.Engine.CanvasMode.OverrideUtils
+        local OverrideUtils = Orbit.Engine.OverrideUtils
         local ApplyTextPosition = Orbit.Engine.PositionUtils and Orbit.Engine.PositionUtils.ApplyTextPosition
         if OverrideUtils then
             local stacksData = componentPositions.Stacks
@@ -194,7 +194,7 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     local fetchFilter = cfg.fetchFilter
     local density = overrides.FilterDensity or 1
     if density <= 1 then fetchFilter = fetchFilter .. "|RAID_IN_COMBAT"
-    elseif density and density >= 3 then fetchFilter = fetchFilter:gsub("|PLAYER", "") end
+    elseif density >= 3 then fetchFilter = fetchFilter:gsub("|PLAYER", "") end
     local auras
     local postFilterOverride = fetchFilter
     if cfg.postFilter then

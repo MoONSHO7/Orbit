@@ -156,10 +156,6 @@ local function CropIconTexture(icon, w, h)
     icon.Icon:SetTexCoord(0, 1, crop, 1 - crop)
 end
 
-Mixin.ResolveGrowthDirection = ResolveGrowthDirection
-Mixin.UpdateCollapseArrow = UpdateCollapseArrow
-Mixin.CropIconTexture = CropIconTexture
-
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Mixin:AddAuraGridSettings(dialog, systemFrame)
     local Frame = self._agFrame
@@ -378,46 +374,17 @@ function Mixin:CreateAuraGridPlugin(config)
                 end
             end
 
-            -- Dispel Icon (texture, not text)
-            if config.isHarmful then
-                local dispelTex = preview:CreateTexture(nil, "OVERLAY", nil, 7)
-                dispelTex:SetSize(12, 12)
-                dispelTex:SetAtlas("ui-debuff-border-magic-icon")
-                dispelTex:SetPoint("CENTER", preview, "CENTER", 0, 0)
 
-                local saved = savedPositions["DispelIcon"] or {}
-                local data = {
-                    anchorX = saved.anchorX or "LEFT", anchorY = saved.anchorY or "BOTTOM",
-                    offsetX = saved.offsetX or 1, offsetY = saved.offsetY or 1,
-                    overrides = saved.overrides,
-                }
-                local halfW, halfH = contentW / 2, contentH / 2
-                local startX = saved.posX or (-halfW + data.offsetX)
-                local startY = saved.posY or (-halfH + data.offsetY)
-
-                if CreateDraggableComponent then
-                    local comp = CreateDraggableComponent(preview, "DispelIcon", dispelTex, startX, startY, data)
-                    if comp then
-                        comp:SetFrameLevel(preview:GetFrameLevel() + 10)
-                        preview.components["DispelIcon"] = comp
-                        dispelTex:Hide()
-                    end
-                else
-                    dispelTex:ClearAllPoints()
-                    dispelTex:SetPoint("CENTER", preview, "CENTER", startX, startY)
-                end
-            end
 
             return preview
         end
     end
 
-    function self:OnCanvasApply() self:UpdateAuras() end
+    function self:OnCanvasApply() Frame._orbitSkinVersion = (Frame._orbitSkinVersion or 0) + 1; self:UpdateAuras() end
 
     if config.showIconLimit and not config.isHarmful then
         Frame.collapseArrow = CreateCollapseArrow(Frame, self)
     end
-
 
     Frame:HookScript("OnShow", function()
         if not Orbit:IsEditMode() then self:UpdateAuras() end
@@ -425,27 +392,63 @@ function Mixin:CreateAuraGridPlugin(config)
     Frame:HookScript("OnSizeChanged", function()
         if Orbit:IsEditMode() then self:ResizePreviewAuras() else self:UpdateAuras() end
     end)
-
-    Frame:RegisterUnitEvent("UNIT_AURA", config.unit)
-    Frame:RegisterEvent(config.changeEvent)
-    Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    if config.unit == "player" and not config.isHarmful then
-        Frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    if config.useBlizzardButtons and EditModeManagerFrame then
+        EditModeManagerFrame:HookScript("OnHide", function()
+            Frame._orbitSkinVersion = (Frame._orbitSkinVersion or 0) + 1
+            self:ApplySettings()
+        end)
     end
 
-    Frame:SetScript("OnEvent", function(f, event, unit)
-        if Orbit:IsEditMode() then return end
-        if event == config.changeEvent or event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_REGEN_ENABLED" then
+    if config.useBlizzardButtons then
+        -- Hook Blizzard's BuffFrame update cycle instead of our own events
+        -- Defer to clean context: hooksecurefunc runs in tainted context where all API returns are secret
+        local blizzFrame = config.blizzardFrame
+        if blizzFrame then
+            hooksecurefunc(blizzFrame, "Update", function()
+                if Orbit:IsEditMode() then return end
+                if not Frame._blizzDirty then
+                    Frame._blizzDirty = true
+                    C_Timer.After(0, function()
+                        Frame._blizzDirty = false
+                        self:UpdateAuras()
+                    end)
+                end
+            end)
+        end
+        Frame:RegisterEvent(config.changeEvent)
+        Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+        Frame:SetScript("OnEvent", function(f, event)
+            if Orbit:IsEditMode() then return end
             self:UpdateVisibility()
             self:UpdateAuras()
-        elseif event == "UNIT_AURA" and unit == f.unit then
-            self:UpdateAuras()
+        end)
+    else
+        Frame:RegisterUnitEvent("UNIT_AURA", config.unit)
+        Frame:RegisterEvent(config.changeEvent)
+        Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+        if config.unit == "player" and not config.isHarmful then
+            Frame:RegisterEvent("PLAYER_REGEN_ENABLED")
         end
-    end)
+        Frame:SetScript("OnEvent", function(f, event, unit)
+            if Orbit:IsEditMode() then return end
+            if event == config.changeEvent or event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_REGEN_ENABLED" then
+                self:UpdateVisibility()
+                self:UpdateAuras()
+            elseif event == "UNIT_AURA" and unit == f.unit then
+                self:UpdateAuras()
+            end
+        end)
+    end
 
     OrbitEngine.EditMode:RegisterCallbacks({
-        Enter = function() self._agFrame._previewTexCache = nil; self:UpdateVisibility() end,
-        Exit = function() self:UpdateVisibility() end,
+        Enter = function()
+            if config.useBlizzardButtons then self:_returnBlizzardButtons() end
+            self._agFrame._previewTexCache = nil; self:UpdateVisibility()
+        end,
+        Exit = function()
+            if config.useBlizzardButtons then self:_returnBlizzardButtons() end
+            self:UpdateVisibility()
+        end,
     }, self)
 
     self:UpdateVisibility()
@@ -479,8 +482,9 @@ function Mixin:_resolveGrid()
 end
 
 function Mixin:UpdateAuras()
-    local Frame = self._agFrame
     local cfg = self._agConfig
+    if cfg and cfg.useBlizzardButtons then return self:_updateBlizzardBuffs() end
+    local Frame = self._agFrame
     if not Frame then return end
     if not self:IsEnabled() then return end
 
@@ -533,6 +537,179 @@ function Mixin:UpdateAuras()
     end
 end
 
+-- [ BLIZZARD BUTTON REPARENTING ]-------------------------------------------------------------------
+function Mixin:_updateBlizzardBuffs()
+    local Frame = self._agFrame
+    local cfg = self._agConfig
+    if not Frame then return end
+    if not self:IsEnabled() then return end
+    if Orbit:IsEditMode() then return end
+
+    local blizzFrame = cfg.blizzardFrame
+    if not blizzFrame or not blizzFrame.auraFrames then return end
+
+    local collapsed = cfg.showIconLimit and self:GetSetting(1, "Collapsed")
+    local maxAuras, iconsPerRow, spacing, iconH, iconW = self:_resolveGrid()
+    local anchor, growthX, growthY = ResolveGrowthDirection(Frame, cfg.showIconLimit)
+    if Frame.collapseArrow then UpdateCollapseArrow(Frame.collapseArrow, collapsed, iconH, growthX, growthY) end
+
+    -- When collapsed, build a set of HELPFUL indices that are player-cast and not excluded
+    -- auraInstanceID is the ONLY non-secret field; use C-side filter HELPFUL|PLAYER to identify player auras
+    -- spellId may be non-secret from clean context; use issecretvalue guard
+    local showIndices
+    if collapsed then
+        local IsSecret = issecretvalue or function() return false end
+        local excludedSpells = Orbit.GroupAuraFilters and Orbit.GroupAuraFilters.AlwaysExcluded or {}
+        local playerIDs = {}
+        AuraUtil.ForEachAura("player", "HELPFUL|PLAYER", 40, function(aura)
+            playerIDs[aura.auraInstanceID] = true
+        end, true)
+        showIndices = {}
+        local idx = 0
+        AuraUtil.ForEachAura("player", "HELPFUL", 40, function(aura)
+            idx = idx + 1
+            local sid = aura.spellId
+            local isExcluded = not IsSecret(sid) and excludedSpells[sid]
+            if playerIDs[aura.auraInstanceID] and not isExcluded then showIndices[idx] = true end
+        end, true)
+    end
+
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
+    local fontPath = (LSM and fontName and LSM:Fetch("font", fontName)) or "Fonts\\FRIZQT__.TTF"
+    local fontOutline = Orbit.Skin and Orbit.Skin.GetFontOutline and Orbit.Skin:GetFontOutline() or ""
+    local timerFontSize = Orbit.Skin:GetAdaptiveTextSize(iconH, 8, nil, 0.45)
+    local countFontSize = Orbit.Skin:GetAdaptiveTextSize(iconH, 8, nil, 0.4)
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, showTimer = true, aspectRatio = self:GetSetting(1, "aspectRatio") or "1:1" }
+    local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+    local OverrideUtils = OrbitEngine.OverrideUtils
+
+    local function ApplyComponentPosition(textElement, btn, key, defaultAnchorX, defaultAnchorY, defaultOffsetX, defaultOffsetY)
+        if not textElement then return end
+        local pos = componentPositions[key] or {}
+        local anchorX = pos.anchorX or defaultAnchorX
+        local anchorY = pos.anchorY or defaultAnchorY
+        local offsetX = pos.offsetX or defaultOffsetX
+        local offsetY = pos.offsetY or defaultOffsetY
+        local justifyH = pos.justifyH or "CENTER"
+        local anchorPoint
+        if anchorY == "CENTER" and anchorX == "CENTER" then anchorPoint = "CENTER"
+        elseif anchorY == "CENTER" then anchorPoint = anchorX
+        elseif anchorX == "CENTER" then anchorPoint = anchorY
+        else anchorPoint = anchorY .. anchorX end
+        local textPoint = justifyH == "LEFT" and "LEFT" or justifyH == "RIGHT" and "RIGHT" or "CENTER"
+        local finalOffsetX = anchorX == "LEFT" and offsetX or -offsetX
+        local finalOffsetY = anchorY == "BOTTOM" and offsetY or -offsetY
+        textElement:ClearAllPoints()
+        textElement:SetPoint(textPoint, btn, anchorPoint, finalOffsetX, finalOffsetY)
+        if textElement.SetJustifyH then textElement:SetJustifyH(justifyH) end
+    end
+
+    local skinVersion = (Frame._orbitSkinVersion or 0)
+    local activeIcons = {}
+    for _, btn in ipairs(blizzFrame.auraFrames) do
+        if btn.hasValidInfo and not btn.isAuraAnchor then
+            local bi = btn.buttonInfo
+            -- When collapsed: hide temp enchants and non-player buffs
+            local excluded = collapsed and (bi.auraType ~= "Buff" or not showIndices[bi.index])
+            if excluded or #activeIcons >= maxAuras then
+                if btn:GetParent() == Frame then
+                    btn:SetParent(blizzFrame.AuraContainer)
+                    btn._orbitSkinned = nil
+                end
+                btn:EnableMouse(false)
+                btn:Hide()
+            else
+                -- Full setup only on first reparent or settings change
+                if btn._orbitSkinned ~= skinVersion then
+                    btn:SetParent(Frame)
+                    btn:SetFrameLevel(Frame:GetFrameLevel() + 2)
+                    btn:SetScale(1)
+                    btn:SetAlpha(1)
+                    btn:SetSize(iconW, iconH)
+                    CropIconTexture(btn, iconW, iconH)
+                    Orbit.Skin.Icons:ApplyCustom(btn, skinSettings)
+                    btn.Duration:Hide()
+                    if btn.TempEnchantBorder then btn.TempEnchantBorder:Hide() end
+                    -- Resize Blizzard's DebuffBorder (already has dispel type color) to 1px larger all around
+                    if btn.DebuffBorder then
+                        btn.DebuffBorder:ClearAllPoints()
+                        btn.DebuffBorder:SetPoint("CENTER", btn, "CENTER", 0, 0)
+                        btn.DebuffBorder:SetSize(iconW + 2, iconH + 2)
+                        btn.DebuffBorder:SetDrawLayer("OVERLAY", 6)
+                    end
+                    -- Cooldown frame for timer
+                    if not btn.Cooldown then
+                        btn.Cooldown = CreateFrame("Cooldown", nil, btn, "CooldownFrameTemplate")
+                        btn.Cooldown:SetAllPoints()
+                        btn.Cooldown:SetHideCountdownNumbers(false)
+                        btn.Cooldown:EnableMouse(false)
+                        btn.cooldown = btn.Cooldown
+                    end
+                    -- Text overlay above border
+                    if not btn.orbitTextOverlay then
+                        btn.orbitTextOverlay = CreateFrame("Frame", nil, btn)
+                        btn.orbitTextOverlay:SetAllPoints(btn)
+                        btn.orbitTextOverlay:SetFrameLevel(btn:GetFrameLevel() + 10)
+                    end
+                    -- Style timer text
+                    local timerText = btn.Cooldown.Text
+                    if not timerText then
+                        for _, region in pairs({ btn.Cooldown:GetRegions() }) do
+                            if region:IsObjectType("FontString") then timerText = region; break end
+                        end
+                        btn.Cooldown.Text = timerText
+                    end
+                    if timerText and timerText.SetFont then
+                        timerText:SetParent(btn.orbitTextOverlay)
+                        if OverrideUtils then OverrideUtils.ApplyOverrides(timerText, (componentPositions.Timer or {}).overrides or {}, { fontSize = timerFontSize, fontPath = fontPath }) end
+                        timerText:SetDrawLayer("OVERLAY", 7)
+                        ApplyComponentPosition(timerText, btn, "Timer", "CENTER", "CENTER", 0, 0)
+                    end
+                    -- Style stacks
+                    btn.Count:SetParent(btn.orbitTextOverlay)
+                    if OverrideUtils then OverrideUtils.ApplyOverrides(btn.Count, (componentPositions.Stacks or {}).overrides or {}, { fontSize = countFontSize, fontPath = fontPath }) end
+                    btn.Count:SetShadowColor(0, 0, 0, 1)
+                    btn.Count:SetShadowOffset(1, -1)
+                    btn.Count:SetDrawLayer("OVERLAY", 7)
+                    ApplyComponentPosition(btn.Count, btn, "Stacks", "RIGHT", "BOTTOM", 1, 1)
+                    btn._orbitSkinned = skinVersion
+                end
+                -- Lightweight refresh: cooldown only
+                btn:EnableMouse(true)
+                btn.Cooldown:Clear()
+                if btn.Cooldown.Text then btn.Cooldown.Text:SetText("") end
+                if bi and bi.expirationTime then
+                    if bi.duration then
+                        btn.Cooldown:SetCooldownFromExpirationTime(bi.expirationTime, bi.duration)
+                    elseif bi.auraType == "TempEnchant" then
+                        local timeLeft = bi.expirationTime - GetTime()
+                        if timeLeft > 0 then btn.Cooldown:SetCooldownFromExpirationTime(bi.expirationTime, timeLeft) end
+                    end
+                end
+                btn:Show()
+                table.insert(activeIcons, btn)
+            end
+        end
+    end
+
+    if #activeIcons == 0 then return end
+    Orbit.AuraLayout:LayoutGrid(Frame, activeIcons, {
+        size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
+        anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
+    })
+end
+
+function Mixin:_returnBlizzardButtons()
+    local cfg = self._agConfig
+    if not cfg or not cfg.useBlizzardButtons then return end
+    local blizzFrame = cfg.blizzardFrame
+    if not blizzFrame or not blizzFrame.auraFrames then return end
+    for _, btn in ipairs(blizzFrame.auraFrames) do
+        if not btn.isAuraAnchor then btn:SetParent(blizzFrame.AuraContainer) end
+    end
+end
+
 -- [ CANCEL OVERLAYS ]-------------------------------------------------------------------------------
 function Mixin:_syncCancelOverlays(frame, auras, auraFilter, icons)
     if not frame._cancelButtons then frame._cancelButtons = {} end
@@ -579,6 +756,7 @@ function Mixin:_hideCancelOverlays(frame)
     if not frame._cancelButtons then return end
     for _, btn in ipairs(frame._cancelButtons) do btn:Hide() end
 end
+
 -- [ VISIBILITY ]-------------------------------------------------------------------------------------
 function Mixin:UpdateVisibility()
     local Frame = self._agFrame
@@ -692,6 +870,7 @@ end
 function Mixin:ApplySettings()
     local Frame = self._agFrame
     if not Frame or InCombatLockdown() then return end
+    Frame._orbitSkinVersion = (Frame._orbitSkinVersion or 0) + 1
 
     local cfg = self._agConfig
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil

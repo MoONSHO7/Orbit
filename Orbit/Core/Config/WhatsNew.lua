@@ -11,30 +11,25 @@ local Constants = Orbit.Constants
 local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips auto-show)
 
 local WHATS_NEW_ENTRIES = {
-    { title = "New Features",
-      body = "• CDM Buff Bars: Added to Orbit with Canvas Mode support and coloring\n"
-        .. "• Action Bars: out-of-range, out-of-mana, and unusable spell coloring with customizable colors\n"
-        .. "• Action Bars: icon desaturation on cooldown\n"
-        .. "• Action Bars: cooldown swipe color setting\n"
-        .. "• Cooldown Manager: separate Active Swipe and Cooldown Swipe color settings\n"
-        .. "• Right-click to cancel player buffs on player buffs frame\n"
-        .. "• Color Picker: desaturation checkbox for textures that support it\n"
+    { title = "New",
+      body = "• Added Edge Resizing to a lot of edit mode frames, click on the bottom right edge and drag to resize (frame must be selected)\n"
+        .. "• Action Bars or CDM frames can now be selected as a group, in Edit Mode shift-click them to select multiple frames and edit all their settings at the same time\n"
+        .. "• Reworked Player Buffs/Debuffs now much more stable and accurate, with better filtering when collapsing the frame\n"
+        .. "• Reworked Tracked Cooldowns, these should be much more accurate with their data now - please continue to report issues with these.\n"
+        .. "• Added localization to Tracked Cooldowns, should work with different languages now\n"
+        .. "• Added Active Swipe color as an option to CDM\n"
+
+    },
+    { title = "Group Frames",
+      body = "• Added a lot of exclusion filters to Buffs/Debuffs to clear up more clutter on frames\n"
+        .. "• New Aura Filter slider on Party/Raid frames. Less = Only HoTs, More = HoTs+Some Others, All=All buffs/debuffs\n"
+        .. "• Smarter Auras on Party/Raid Frames (no duplicates)\n"
     },
     { title = "Bugfixes",
-      body = "• Fixed taint errors when hiding native Blizzard frames (no more blocked actions in delves/boss deaths)\n"
-        .. "• Fixed snap alignment using wrong reference point for chain-anchored frames\n"
-        .. "• Buff/Debuff frames now refresh correctly after leaving combat\n"
+      body = "• Resource Bar is better managed across profiles (class/specs)\n"
+        .. "• Single Icons where being misplaced on Unit Frame 1 in party frames\n"
+        .. "• minor changes to account for some reported edge case lua errors\n"
     },
-    { title = "Previous Updates",
-      body = "• Canvas Mode overhaul: new layout, dock, and component settings\n"
-        .. "• Improved drag and drop experience in Canvas Mode\n"
-        .. "• Grouped Status Icons & Animated\n"
-        .. "• Grouped Role Icons & Animated\n"
-        .. "• Added PlayerBuffs and Debuffs to Orbit, They are smart, will grow based on screen or anchor location\n"
-        .. "• Animated Party/Raid/Boss Preview Frames (click eyeball in settings)\n"
-        .. "• PVP Icon on Player Frame\n"
-        .. "• Role Icon: Hide DPS Role option in Canvas Mode\n"
-    }
 }
 
 local DISCORD_URL = "https://discord.gg/2sZj63kBqy"

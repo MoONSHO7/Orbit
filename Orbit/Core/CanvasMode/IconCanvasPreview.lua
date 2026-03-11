@@ -11,12 +11,8 @@ local IconCanvasPreview = {}
 OrbitEngine.IconCanvasPreview = IconCanvasPreview
 
 -- [ CREATE ]------------------------------------------------------------------------------------
--- Builds the BackdropTemplate frame, icon texture, and border for a single-icon preview.
--- @param sourceFrame: the anchor frame (stored as preview.sourceFrame)
--- @param parent: viewport parent
--- @param width, height: raw icon dimensions
--- @param iconTexture: spell/item texture path
--- @return preview frame with sourceWidth, sourceHeight, previewScale, components set
+-- Creates a BackdropTemplate preview frame with icon texture and border.
+-- sourceFrame=anchor, parent=viewport parent, width/height=raw icon dimensions, iconTexture=texture path
 function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTexture)
     local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     preview:SetSize(width, height)
@@ -45,12 +41,7 @@ function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTextur
 end
 
 -- [ ATTACH TEXT COMPONENTS ]--------------------------------------------------------------------
--- Creates FontStrings, calculates start positions, wraps in CreateDraggableComponent,
--- and re-hydrates saved overrides via OverrideUtils.
--- @param preview: frame returned by Create()
--- @param textComponents: array of { key, preview, anchorX, anchorY, offsetX, offsetY }
--- @param savedPositions: ComponentPositions table from plugin settings
--- @param fontPath: resolved font path
+-- Attaches FontStrings and CreateDraggableComponent wrappers onto a preview frame.
 function IconCanvasPreview:AttachTextComponents(preview, textComponents, savedPositions, fontPath)
     local CreateDraggableComponent = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.CreateDraggableComponent
     local halfW, halfH = preview.sourceWidth / 2, preview.sourceHeight / 2

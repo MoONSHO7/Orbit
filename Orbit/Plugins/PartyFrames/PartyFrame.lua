@@ -813,15 +813,8 @@ function Plugin:ApplySettings()
     self:PositionFrames()
     OrbitEngine.Frame:RestorePosition(self.container, self, 1)
 
-    -- Restore drag positions on container (first frame) — skip during preview
-    -- to avoid overriding consistent positions set by ApplyPreviewVisuals
     if self.frames[1] and self.frames[1].preview then
         self:SchedulePreviewUpdate()
-    else
-        local savedPositions = self:GetSetting(1, "ComponentPositions")
-        if savedPositions then
-            OrbitEngine.ComponentDrag:RestoreFramePositions(self.container, savedPositions)
-        end
     end
 end
 

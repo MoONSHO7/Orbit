@@ -17,7 +17,7 @@ local DEFAULT_PADDING = 2
 local MIN_SYNC_HEIGHT = 5
 local MIN_SYNC_WIDTH = 10
 
-local ANCHOR_LEVEL_BOOST = 50
+local ANCHOR_LEVEL_BOOST = Orbit.Constants.Levels.AnchorBoost
 
 local function ElevateFrameLevel(child, parent)
     if child._orbitOrigLevel then return end
@@ -356,6 +356,11 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
             end
         end
     end
+    -- Notify parent it gained a child
+    if not suppressApplySettings and parent.orbitPlugin then
+        if parent.orbitPlugin.UpdateLayout then parent.orbitPlugin:UpdateLayout(parent)
+        elseif parent.orbitPlugin.ApplySettings then parent.orbitPlugin:ApplySettings(parent) end
+    end
 
     ElevateFrameLevel(child, parent)
 
@@ -402,6 +407,11 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
 
         if not suppressApplySettings and child.orbitPlugin and child.orbitPlugin.ApplySettings then
             child.orbitPlugin:ApplySettings(child)
+        end
+        -- Notify parent it lost a child
+        if not suppressApplySettings and oldParent and oldParent.orbitPlugin then
+            if oldParent.orbitPlugin.UpdateLayout then oldParent.orbitPlugin:UpdateLayout(oldParent)
+            elseif oldParent.orbitPlugin.ApplySettings then oldParent.orbitPlugin:ApplySettings(oldParent) end
         end
 
         if child.OnAnchorChanged then

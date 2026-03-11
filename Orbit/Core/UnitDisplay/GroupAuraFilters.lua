@@ -13,6 +13,7 @@ local IsSecret = issecretvalue or function() return false end
 -- Raid buffs always excluded from buff containers (long-term, low-value clutter).
 local ALWAYS_EXCLUDED = {}
 for _, entry in ipairs(HealerReg.RaidBuffs) do ALWAYS_EXCLUDED[entry.spellId] = true end
+Orbit.GroupAuraFilters.AlwaysExcluded = ALWAYS_EXCLUDED
 -- Raid buffs (explicit, all classes)
 ALWAYS_EXCLUDED[1126] = true   -- Mark of the Wild
 ALWAYS_EXCLUDED[1459] = true   -- Arcane Intellect
@@ -164,7 +165,10 @@ ALWAYS_EXCLUDED[445441] = true -- Path of the Warding Candles
 ALWAYS_EXCLUDED[445443] = true -- Path of the Fallen Stormriders
 
 -- Exclude active healer aura spellIds unless their slot is disabled.
+-- Cached to avoid O(n) copy of 150+ entries on every aura update.
+local excludedCache = nil
 local function GetExcludedSpellIds(plugin)
+    if excludedCache then return excludedCache end
     local excluded = {}
     for id in pairs(ALWAYS_EXCLUDED) do excluded[id] = true end
     local isDisabled = plugin and plugin.IsComponentDisabled
@@ -174,8 +178,14 @@ local function GetExcludedSpellIds(plugin)
             if slot.altSpellId then excluded[slot.altSpellId] = true end
         end
     end
+    excludedCache = excluded
     return excluded
 end
+
+function Orbit.GroupAuraFilters:InvalidateCache() excludedCache = nil end
+
+-- Flush cache when component visibility changes affect the exclusion set.
+Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", function() excludedCache = nil end)
 
 -- Creates a debuff post-filter function.
 -- cfg.raidFilterFn: function() returning the filter string (e.g. "HARMFUL" or combat-aware)

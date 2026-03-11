@@ -70,7 +70,6 @@ function Updater:StopActiveGlow(icon)
     icon._activeGlowType = nil
 end
 
-
 -- [ ICON UPDATE ]-----------------------------------------------------------------------------------
 function Updater:UpdateTrackedIcon(plugin, icon)
     if not icon.trackedId then icon:Hide(); return end
@@ -105,8 +104,6 @@ function Updater:UpdateTrackedIcon(plugin, icon)
             local cdInfo = C_Spell.GetSpellCooldown(activeId)
             local onGCD = cdInfo and cdInfo.isOnGCD
             local chargeInfo = icon.isChargeSpell and C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
-
-
             if chargeInfo then
                 if not issecretvalue(chargeInfo.currentCharges) then
                     icon._trackedCharges = chargeInfo.currentCharges
@@ -119,12 +116,10 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                 local chargeDurObj = C_Spell.GetSpellChargeDuration and C_Spell.GetSpellChargeDuration(activeId)
                 if chargeDurObj then
                     icon.Cooldown:SetCooldownFromDurationObject(chargeDurObj, true)
-
                 else
                     icon.Cooldown:Clear()
                     icon._trackedCharges = icon._maxCharges
                     icon._rechargeEndsAt = nil
-
                 end
                 local allConsumed = icon._trackedCharges and icon._trackedCharges == 0
                 icon.Icon:SetDesaturation(allConsumed and 1 or 0)
@@ -134,18 +129,15 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     local castTime = icon._activeGlowExpiry - icon.activeDuration
                     icon.ActiveCooldown:SetCooldown(castTime, icon.activeDuration)
                     if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
-
                 else
                     icon.ActiveCooldown:Clear()
                     if icon._activeGlowing then self:StopActiveGlow(icon) end
                     icon._activeGlowExpiry = nil
-
                 end
             elseif onGCD and not showGCDSwipe then
                 icon.Cooldown:Clear()
                 icon.ActiveCooldown:Clear()
                 icon.Icon:SetDesaturation(0)
-
             else
                 durObj = C_Spell.GetSpellCooldownDuration(activeId)
                 if durObj then
@@ -156,10 +148,8 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     local onRealCD = cdInfo and (issecretvalue(cdInfo.startTime) or cdInfo.startTime > 0)
                     if icon.activeDuration and onRealCD and not onGCD then
                         icon.ActiveCooldown:SetCooldown(cdInfo.startTime, icon.activeDuration)
-
                     else
                         icon.ActiveCooldown:Clear()
-
                     end
                     if LCG and icon._activeGlowExpiry then
                         if GetTime() < icon._activeGlowExpiry then
@@ -167,7 +157,6 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                         else
                             self:StopActiveGlow(icon)
                             icon._activeGlowExpiry = nil
-
                         end
                     end
                 else
@@ -176,17 +165,9 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     icon.ActiveCooldown:Clear()
                     icon.Icon:SetDesaturation(0)
                     if icon._activeGlowing then self:StopActiveGlow(icon) end
-
                 end
             end
-            if icon._textStyleDirty then
-                icon._textStyleDirty = nil
-                C_Timer.After(0, function()
-                    if icon and icon.trackedId then
-                        Orbit.TrackedIconFactory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
-                    end
-                end)
-            end
+
             local displayCount = chargeInfo and chargeInfo.currentCharges or C_Spell.GetSpellDisplayCount(activeId)
             if displayCount then icon.CountText:SetText(displayCount); icon.CountText:Show()
             else icon.CountText:Hide() end
@@ -286,8 +267,6 @@ function Updater:UpdateTrackedIcon(plugin, icon)
         icon.Cooldown:Clear()
         icon.CountText:Hide()
     end
-
-
     icon:Show()
 end
 

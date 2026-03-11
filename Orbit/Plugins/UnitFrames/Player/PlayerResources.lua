@@ -1,4 +1,4 @@
-﻿---@type Orbit
+---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
@@ -402,11 +402,6 @@ end
 -- [ SETTINGS APPLICATION ]-------------------------------------------------------------------------
 function Plugin:ApplySettings()
     if not Frame then return end
-    if not Orbit:IsPluginEnabled(self.name) then
-        Frame.orbitDisabled = true
-        Frame:Hide()
-        return
-    end
 
     OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
 

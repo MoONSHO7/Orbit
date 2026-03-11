@@ -37,16 +37,16 @@ Orbit.Profile.defaults = {
                     DisabledComponents = {
                         "Portrait",
                     },
-                    Width = 160,
+                    Width = 138,
                     Is3D = true,
                     PortraitBorder = true,
                     PortraitShape = "square",
-                    Position = {
-                        y = -273.5,
-                        x = -376.9,
-                        point = "RIGHT",
+                    Anchor = {
+                        target = "OrbitTargetFrame",
+                        padding = 42,
+                        edge = "RIGHT",
+                        align = "CENTER",
                     },
-                    Anchor = false,
                     PortraitScale = 125,
                     ComponentPositions = {
                         LevelText = {
@@ -101,7 +101,7 @@ Orbit.Profile.defaults = {
                             anchorY = "CENTER",
                         },
                     },
-                    Height = 40,
+                    Height = 26,
                 },
             },
             ["Orbit_CooldownViewer"] = {
@@ -136,22 +136,36 @@ Orbit.Profile.defaults = {
                             anchorX = "LEFT",
                             anchorY = "BOTTOM",
                         },
-                        Keybind = {
-                            offsetX = 2,
-                            justifyH = "RIGHT",
-                            offsetY = 2,
-                            anchorX = "RIGHT",
-                            anchorY = "TOP",
+                    },
+                    ActiveSwipeColorCurve = {
+                        pins = {
+                            {
+                                color = { a = 0.7696304321289062, b = 0.5686274766921997, g = 0.9490196704864502, r = 1 },
+                                position = 0.4343791964382053,
+                            },
                         },
+                    },
+                    CooldownSwipeColorCurve = {
+                        pins = {
+                            {
+                                color = { a = 0.800000011920929, b = 0, g = 0, r = 0 },
+                                position = 0.4649682788830493,
+                            },
+                        },
+                    },
+                    PandemicGlowType = 2,
+                    DisabledComponents = {
+                        "Status",
+                        "Keybind",
                     },
                     IconLimit = 12,
                     Anchor = false,
                     Opacity = 100,
                     IconPadding = 2,
                     Position = {
-                        y = -225,
-                        x = 0,
-                        point = "CENTER",
+                        y = 244.5128294814977,
+                        x = 2.856132232409436e-05,
+                        point = "BOTTOM",
                     },
                 },
                 [2] = {
@@ -186,14 +200,31 @@ Orbit.Profile.defaults = {
                             anchorY = "BOTTOM",
                         },
                     },
+                    ActiveSwipeColorCurve = {
+                        pins = {
+                            {
+                                color = { a = 0.7696304321289062, b = 0.5686274766921997, g = 0.9490196704864502, r = 1 },
+                                position = 0.4343791964382053,
+                            },
+                        },
+                    },
+                    CooldownSwipeColorCurve = {
+                        pins = {
+                            {
+                                color = { a = 0.800000011920929, b = 0, g = 0, r = 0 },
+                                position = 0.4649682788830493,
+                            },
+                        },
+                    },
+                    PandemicGlowType = 2,
                     IconLimit = 8,
                     Anchor = false,
                     Opacity = 100,
                     IconPadding = 2,
                     Position = {
-                        y = -284,
+                        y = 188.7179556400821,
                         x = 0,
-                        point = "CENTER",
+                        point = "BOTTOM",
                     },
                 },
                 [3] = {
@@ -202,12 +233,28 @@ Orbit.Profile.defaults = {
                     IconPadding = 1,
                     aspectRatio = "4:3",
                     Position = {
-                        y = -146,
-                        x = -1,
+                        y = -251.6239408534428,
+                        x = 0,
                         point = "CENTER",
                     },
                     IconSize = 100,
-                    PandemicGlowType = 1,
+                    PandemicGlowType = 2,
+                    ActiveSwipeColorCurve = {
+                        pins = {
+                            {
+                                color = { a = 0.7696304321289062, b = 0.5686274766921997, g = 0.9490196704864502, r = 1 },
+                                position = 0.4343791964382053,
+                            },
+                        },
+                    },
+                    CooldownSwipeColorCurve = {
+                        pins = {
+                            {
+                                color = { a = 0.800000011920929, b = 0, g = 0, r = 0 },
+                                position = 0.4649682788830493,
+                            },
+                        },
+                    },
                     ComponentPositions = {
                         Timer = {
                             posY = 0,
@@ -236,13 +283,6 @@ Orbit.Profile.defaults = {
                             anchorX = "LEFT",
                             anchorY = "BOTTOM",
                         },
-                        Keybind = {
-                            offsetX = 2,
-                            justifyH = "RIGHT",
-                            offsetY = 2,
-                            anchorX = "RIGHT",
-                            anchorY = "TOP",
-                        },
                     },
                     Anchor = false,
                 },
@@ -254,8 +294,77 @@ Orbit.Profile.defaults = {
                         x = -31.99999546675529,
                         point = "CENTER",
                     },
+                    ComponentPositions = {
+                        Timer = {
+                            posY = 0,
+                            offsetX = 0,
+                            posX = 0,
+                            justifyH = "CENTER",
+                            offsetY = 0,
+                            anchorX = "CENTER",
+                            anchorY = "CENTER",
+                        },
+                        Stacks = {
+                            posY = -13.54871780826886,
+                            offsetX = 0,
+                            posX = 14.62222339597525,
+                            justifyH = "RIGHT",
+                            offsetY = 5,
+                            anchorX = "RIGHT",
+                            anchorY = "BOTTOM",
+                        },
+                    },
+                    DisabledComponents = {
+                        "Status",
+                        "Keybind",
+                    },
                 },
                 [20] = {
+                    ComponentPositions = {
+                        ChargeCount = {
+                            posY = 0,
+                            offsetX = 0,
+                            posX = 0,
+                            justifyH = "CENTER",
+                            offsetY = 0,
+                            anchorX = "CENTER",
+                            anchorY = "CENTER",
+                        },
+                    },
+                    DisabledComponents = {
+                        "Status",
+                    },
+                },
+                [30] = {
+                    Anchor = {
+                        target = "OrbitPlayerFrame",
+                        padding = 50,
+                        edge = "TOP",
+                        align = "CENTER",
+                    },
+                    ComponentPositions = {
+                        BuffBarName = {
+                            posY = 0,
+                            offsetX = 25,
+                            posX = -46.55555340994511,
+                            justifyH = "LEFT",
+                            offsetY = 0,
+                            anchorX = "LEFT",
+                            anchorY = "CENTER",
+                        },
+                        BuffBarTimer = {
+                            posY = 0,
+                            offsetX = 5,
+                            posX = 85.70085430145264,
+                            justifyH = "RIGHT",
+                            offsetY = 0,
+                            anchorX = "RIGHT",
+                            anchorY = "CENTER",
+                        },
+                    },
+                    DisabledComponents = {
+                        "Status",
+                    },
                 },
             },
             ["Orbit_BagBar"] = {
@@ -279,19 +388,19 @@ Orbit.Profile.defaults = {
             ["Orbit_TargetDebuffs"] = {
                 [1] = {
                     Scale = 100,
-                    MaxRows = 2,
-                    IconsPerRow = 8,
+                    MaxRows = 1,
+                    IconsPerRow = 5,
                     Anchor = {
                         target = "OrbitTargetCastBar",
                         padding = 2,
                         edge = "TOP",
-                        align = "RIGHT",
+                        align = "LEFT",
                     },
                 },
             },
             ["Orbit_FocusDebuffs"] = {
                 [1] = {
-                    MaxRows = 2,
+                    MaxRows = 1,
                     Spacing = 2,
                     Anchor = {
                         target = "OrbitFocusCastBar",
@@ -300,7 +409,7 @@ Orbit.Profile.defaults = {
                         align = "LEFT",
                     },
                     Scale = 100,
-                    IconsPerRow = 8,
+                    IconsPerRow = 5,
                 },
             },
             ["Orbit_TalkingHead"] = {
@@ -519,6 +628,25 @@ Orbit.Profile.defaults = {
                     Height = 40,
                 },
             },
+            ["Orbit_CombatTimer"] = {
+                ["Orbit_CombatTimer"] = {
+                    Anchor = {
+                        target = "OrbitActionBar3",
+                        padding = 15,
+                        edge = "LEFT",
+                        align = "CENTER",
+                    },
+                    Opacity = 100,
+                    Scale = 100,
+                    Position = {
+                        y = 0,
+                        relativeTo = "OrbitActionBar3",
+                        point = "RIGHT",
+                        relativePoint = "LEFT",
+                        x = -9,
+                    },
+                },
+            },
             ["Orbit_TargetPower"] = {
                 [1] = {
                     Height = 10,
@@ -547,6 +675,7 @@ Orbit.Profile.defaults = {
             ["Orbit_PartyFrames"] = {
                 [1] = {
                     DisabledComponentsMigrated = true,
+                    ShowPowerBar = false,
                     Spacing = 3,
                     Position = {
                         y = -466,
@@ -579,13 +708,13 @@ Orbit.Profile.defaults = {
                             anchorY = "CENTER",
                         },
                         RoleIcon = {
-                            posY = 15.0,
-                            offsetX = 4.9,
-                            posX = 74.9,
-                            justifyH = "RIGHT",
-                            offsetY = 4.9,
-                            anchorX = "RIGHT",
-                            anchorY = "TOP",
+                            posY = 0,
+                            offsetX = 5,
+                            posX = -75,
+                            justifyH = "LEFT",
+                            offsetY = 0,
+                            anchorX = "LEFT",
+                            anchorY = "CENTER",
                         },
                         Debuffs = {
                             posY = 0,
@@ -654,8 +783,8 @@ Orbit.Profile.defaults = {
                         },
                         Name = {
                             posY = 0,
-                            offsetX = 4.9,
-                            posX = -74.9,
+                            offsetX = 15,
+                            posX = -43.8,
                             justifyH = "LEFT",
                             offsetY = 0,
                             anchorX = "LEFT",
@@ -818,34 +947,39 @@ Orbit.Profile.defaults = {
                     NumIcons = 8,
                 },
                 [5] = {
+                    Scale = 90,
                     Opacity = 100,
-                    IconPadding = 2,
+                    HideEmptyButtons = true,
                     Position = {
-                        y = -5,
-                        x = 5,
+                        y = -4.862298965454102,
+                        x = 4.862298965454102,
                         point = "TOPLEFT",
                     },
                     Anchor = false,
                     NumIcons = 12,
-                    HideEmptyButtons = true,
+                    IconPadding = 2,
                     Rows = 1,
                 },
                 [6] = {
+                    Scale = 90,
                     Rows = 12,
                     IconPadding = 2,
+                    Anchor = false,
                     Position = {
-                        y = -40.17095947265625,
-                        x = -2.735043048858643,
+                        y = -48.3760871887207,
+                        x = -2.188034296035767,
                         point = "RIGHT",
                     },
                 },
                 [7] = {
+                    Scale = 90,
                     Rows = 12,
                     IconPadding = 2,
+                    Anchor = false,
                     Position = {
-                        y = -450,
-                        x = 0,
-                        point = "CENTER",
+                        y = -45.09402084350586,
+                        x = -90.80342864990234,
+                        point = "RIGHT",
                     },
                 },
                 [8] = {
@@ -853,10 +987,11 @@ Orbit.Profile.defaults = {
                     Rows = 12,
                     IconPadding = 2,
                     NumIcons = 12,
+                    Anchor = false,
                     Position = {
-                        y = -500.0000305175781,
-                        x = 0,
-                        point = "CENTER",
+                        y = -45.64102554321289,
+                        x = -45.40171432495117,
+                        point = "RIGHT",
                     },
                 },
                 [9] = {
@@ -933,8 +1068,8 @@ Orbit.Profile.defaults = {
                     Width = 160,
                     PortraitBorder = true,
                     Position = {
-                        y = 297.0,
-                        x = -363.8,
+                        y = 242.3247952132069,
+                        x = -382.906005859375,
                         point = "BOTTOM",
                     },
                     Height = 40,
@@ -1040,10 +1175,16 @@ Orbit.Profile.defaults = {
                             anchorY = "CENTER",
                         },
                         PvpIcon = {
+                            posY = -25,
+                            posX = 70,
                             offsetX = 10,
-                            offsetY = 0,
+                            offsetY = -5,
+                            justifyH = "RIGHT",
                             anchorX = "RIGHT",
                             anchorY = "BOTTOM",
+                            overrides = {
+                                Scale = 1.5,
+                            },
                         },
                     },
                     ShowLevel = true,
@@ -1057,7 +1198,7 @@ Orbit.Profile.defaults = {
                         target = "OrbitTargetPower",
                         padding = 2,
                         edge = "BOTTOM",
-                        align = "CENTER",
+                        align = "LEFT",
                     },
                     IconsPerRow = 8,
                     Scale = 100,
@@ -1070,6 +1211,7 @@ Orbit.Profile.defaults = {
                     DebuffSize = 32,
                     DisabledComponents = {
                         "Buffs",
+                        "Status",
                     },
                     MaxDebuffs = 4,
                     Width = 120,
@@ -1085,7 +1227,7 @@ Orbit.Profile.defaults = {
                     Spacing = 22,
                     ComponentPositions = {
                         CastBar = {
-                            posY = -25.16239408534428,
+                            posY = -22.42733859451566,
                             subComponents = {
                                 Timer = {
                                     offsetX = 4,
@@ -1222,9 +1364,9 @@ Orbit.Profile.defaults = {
                     PortraitBorder = true,
                     MaxBuffs = 16,
                     Position = {
-                        y = -273.5,
-                        x = 363.8,
-                        point = "CENTER",
+                        y = 242.3248138427734,
+                        x = 382.9059969508912,
+                        point = "BOTTOM",
                     },
                     Anchor = false,
                     PortraitScale = 125,
@@ -1348,6 +1490,14 @@ Orbit.Profile.defaults = {
                 [1] = {
                     CastBarTextSize = 10,
                     CastBarHeight = 35,
+                    CastBarColorCurve = {
+                        pins = {
+                            {
+                                color = { a = 1, b = 0, g = 0.7, r = 1 },
+                                position = 0,
+                            },
+                        },
+                    },
                     SparkColorCurve = {
                         pins = {
                             {
@@ -1357,8 +1507,8 @@ Orbit.Profile.defaults = {
                         },
                     },
                     Position = {
-                        y = 217,
-                        x = -1,
+                        y = 135.6581115722656,
+                        x = 0,
                         point = "BOTTOM",
                     },
                     Anchor = false,
@@ -1471,6 +1621,8 @@ Orbit.Profile.defaults = {
                 [1] = {
                     Anchor = false,
                     Rows = 2,
+                    Collapsed = false,
+                    IconLimit = 24,
                     Position = {
                         y = -4.376068536581614,
                         x = -241.7777866461342,
@@ -1486,7 +1638,7 @@ Orbit.Profile.defaults = {
                         edge = "BOTTOM",
                         align = "RIGHT",
                     },
-                    IconLimit = 6,
+                    IconLimit = 10,
                 },
             },
         },
@@ -1505,13 +1657,13 @@ Orbit.Profile.defaults = {
         BackdropColour = { a = 0.7, b = 0.145, g = 0.145, r = 0.145 },
         TextScale = "Medium",
         BorderSize = 2,
-        OverlayAllFrames = false,
+        OverlayAllFrames = true,
         HideWhenMounted = false,
         ClassColorBackground = false,
         FontOutline = "OUTLINE",
         UseClassColors = true,
         BarColor = { a = 1, b = 0.2, g = 0.8, r = 0.2 },
-        Font = "PT Sans Narrow",
+        Font = "Barlow Condensed Black",
         Texture = "Solid",
     },
 }

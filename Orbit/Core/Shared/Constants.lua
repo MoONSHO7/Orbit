@@ -82,6 +82,7 @@ C.Levels = {
     ProcOverlay = 50,   -- High level procs (SpellActivationAlert)
     SmartGuides = 90,   -- Canvas Mode snap guides
     Tooltip = 100,      -- Tooltip/flyout layer
+    AnchorBoost = 50,   -- Frame level boost for anchored children
 }
 
 C.UnitFrame = {

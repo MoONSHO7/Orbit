@@ -88,9 +88,14 @@ function Plugin:GetGrowthDirection()
     return "DOWN"
 end
 function Plugin:GetBaseFontSize()
-    return 12
+    local s = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.TextScale or 1
+    return 12 * s
 end
 function Plugin:GetGlobalFont()
+    local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
+    if fontName and LSM then
+        return LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
+    end
     return STANDARD_TEXT_FONT
 end
 function Plugin:GetTextOverlay() end

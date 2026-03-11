@@ -382,10 +382,8 @@ function Plugin:UpdateLayout()
         frame:SetSize(width, height)
         UpdateFrameLayout(frame, borderSize)
         local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 12, 24, 0.25)
-        local fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
-        local outline = Orbit.Skin:GetFontOutline()
-        if frame.Name then frame.Name:SetFont(fontPath, textSize, outline) end
-        if frame.HealthText then frame.HealthText:SetFont(fontPath, textSize, outline) end
+        Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)
+        Orbit.Skin:ApplyUnitFrameText(frame.HealthText, "RIGHT", nil, textSize)
         if frame.ConstrainNameWidth then frame:ConstrainNameWidth() end
     end
     self:PositionFrames()

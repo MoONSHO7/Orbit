@@ -8,6 +8,7 @@ local C = Orbit.Constants
 local Drag = {}
 Engine.SelectionDrag = Drag
 
+local MAX_PADDING = 500
 local OPPOSITE_EDGES = { TOP = "BOTTOM", BOTTOM = "TOP", LEFT = "RIGHT", RIGHT = "LEFT" }
 local function GetOppositeEdge(edge)
     return OPPOSITE_EDGES[edge]
@@ -544,7 +545,7 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
     end
 
     local currentPadding = anchor.padding or 0
-    local minPadding = -500
+    local minPadding = -MAX_PADDING
 
     local anchorParentOpts = Engine.FrameAnchor.GetFrameOptions(anchor.parent)
     local anchorChildOpts = Engine.FrameAnchor.GetFrameOptions(parent)
@@ -552,7 +553,7 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
         minPadding = 0
     end
 
-    local newPadding = Clamp(currentPadding + change, minPadding, 500)
+    local newPadding = Clamp(currentPadding + change, minPadding, MAX_PADDING)
 
     if newPadding ~= currentPadding then
         Engine.FrameAnchor:CreateAnchor(parent, anchor.parent, anchor.edge, newPadding, anchor.syncOptions, anchor.align)
