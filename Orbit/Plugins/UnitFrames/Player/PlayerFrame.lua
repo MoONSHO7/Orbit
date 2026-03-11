@@ -434,9 +434,6 @@ function Plugin:ApplySettings(frame)
     self:UpdateRestingIcon(frame)
     frame:UpdatePortrait()
 
-    local healthTextMode = self:GetSetting(systemIndex, "HealthTextMode") or "percent_short"
-    if frame.SetHealthTextMode then frame:SetHealthTextMode(healthTextMode) end
-
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
     Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover)
     Orbit.EventBus:Fire("PLAYER_SETTINGS_CHANGED")

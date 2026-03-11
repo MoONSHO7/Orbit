@@ -119,12 +119,6 @@ function TextMixin:UpdateHealthText()
         return
     end
 
-    local mode = self.healthTextMode or HEALTH_TEXT_MODES.PERCENT_SHORT
-
-    if self.healthTextEnabled == false then
-        return
-    end
-
     if not self.unit then
         self.HealthText:SetText("")
         self.HealthText:Hide()
@@ -142,6 +136,14 @@ function TextMixin:UpdateHealthText()
         self.HealthText:Show()
         return
     end
+
+    if self.healthTextEnabled == false then
+        self.HealthText:SetText("")
+        self.HealthText:Hide()
+        return
+    end
+
+    local mode = self.healthTextMode or HEALTH_TEXT_MODES.PERCENT_SHORT
 
     if mode == HEALTH_TEXT_MODES.SHORT_AND_PERCENT then
         self.HealthText:SetText(GetHealthTextForFormat(self.unit, "short") .. " - " .. GetHealthTextForFormat(self.unit, "percent"))
@@ -170,7 +172,6 @@ end
 
 function TextMixin:SetHealthTextMode(mode)
     self.healthTextMode = mode
-    if mode ~= HEALTH_TEXT_MODES.HIDE then self.healthTextEnabled = true end
     self:UpdateHealthText()
 end
 

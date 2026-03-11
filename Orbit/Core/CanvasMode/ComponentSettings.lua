@@ -105,6 +105,7 @@ local KEY_SCHEMAS = {
     RoleIcon        = { controls = { SCALE_CONTROL, { type = "checkbox", key = "HideDPS", label = "Hide DPS Role", default = false } } },
     Buffs           = Compose(AURA_GRID),
     Debuffs         = Compose(AURA_GRID, PANDEMIC_GLOW),
+    PrivateAuraAnchor = { controls = { SCALE_CONTROL } },
     Portrait = {
         controls = {
             { type = "dropdown", key = "PortraitStyle", label = "Style", plugin = true, rebuildsPanel = true,

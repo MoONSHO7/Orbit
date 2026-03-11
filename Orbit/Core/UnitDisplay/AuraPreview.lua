@@ -151,7 +151,8 @@ function AP:ShowPrivateAuras(frame, posData, baseIconSize)
     if not paa then return end
     local overrides = posData and posData.overrides
     local paaScale = (overrides and overrides.Scale) or 1
-    local iconSize = math.floor(baseIconSize * paaScale)
+    paa:SetScale(paaScale)
+    local iconSize = baseIconSize
     local totalWidth = (PREVIEW_PAA_COUNT * iconSize) + ((PREVIEW_PAA_COUNT - 1) * PREVIEW_PAA_SPACING)
     local anchorX = (posData and posData.anchorX) or "CENTER"
     local paaTexture = Orbit.StatusIconMixin:GetPrivateAuraTexture()

@@ -198,6 +198,11 @@ function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
         frame:SetHealthTextMode(healthTextMode)
     end
 
+    -- Apply health value visibility
+    local showHealthValue = self:GetInheritedSetting(systemIndex, "ShowHealthValue", options.inheritFromPlayer)
+    if showHealthValue == nil then showHealthValue = true end
+    if frame.SetHealthTextEnabled then frame:SetHealthTextEnabled(showHealthValue) end
+
     -- Apply absorbs (if available)
     if frame.SetAbsorbsEnabled then
         frame:SetAbsorbsEnabled(true)
