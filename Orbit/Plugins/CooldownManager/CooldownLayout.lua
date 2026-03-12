@@ -201,8 +201,9 @@ function CDM:ProcessChildren(anchor)
         for barIdx, icon in ipairs(activeChildren) do
             if isBuffBar then
                 ApplyBuffBarSkin(icon, skinSettings, barIdx)
-            else
+            elseif not icon.orbitSkinApplied then
                 Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
+                icon.orbitSkinApplied = true
             end
             self:HookGCDSwipe(icon, systemIndex)
             if not isBuffBar then self:ApplyTextSettings(icon, systemIndex) end

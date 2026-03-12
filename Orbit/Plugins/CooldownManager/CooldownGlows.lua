@@ -15,6 +15,7 @@ end
 local ESSENTIAL_INDEX = Constants.Cooldown.SystemIndex.Essential
 local UTILITY_INDEX = Constants.Cooldown.SystemIndex.Utility
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
+local PANDEMIC_CLEAR_DEBOUNCE = 0
 
 -- [ PROC GLOW HOOKS ]-------------------------------------------------------------------------------
 local PROC_GLOW_KEY = "orbitProc"
@@ -168,12 +169,13 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
 
     local icons = viewer.GetItemFrames and viewer:GetItemFrames()
     if not icons then return end
+    local now = GetTime()
     for _, icon in ipairs(icons) do
         HookPandemicIcon(icon)
         local inPandemic = icon.PandemicIcon and icon.PandemicIcon:IsShown()
         if inPandemic then
+            icon.orbitPandemicClearAt = nil
             if not icon.orbitPandemicGlowActive then
-                -- Suppress Blizzard's red border for all glow types
                 icon.orbitSuppressPandemic = true
                 icon.PandemicIcon:SetAlpha(0)
                 if glowType == GlowType.Blizzard then
@@ -204,20 +206,48 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
             end
         else
             if icon.orbitPandemicGlowActive then
-                local activeType = icon.orbitPandemicGlowActive
-                icon.orbitSuppressPandemic = nil
-                if activeType == GlowType.Blizzard then
-                    if icon.orbitBlizzardGlow then icon.orbitBlizzardGlow:Hide() end
-                elseif activeType == GlowType.Pixel then
-                    LibCustomGlow.PixelGlow_Stop(icon, "orbitPandemic")
-                elseif activeType == GlowType.Proc then
-                    LibCustomGlow.ProcGlow_Stop(icon, "orbitPandemic")
-                elseif activeType == GlowType.Autocast then
-                    LibCustomGlow.AutoCastGlow_Stop(icon, "orbitPandemic")
-                elseif activeType == GlowType.Button then
-                    LibCustomGlow.ButtonGlow_Stop(icon)
+                -- Debounce: wait 0.3s of sustained hidden state before clearing
+                if not icon.orbitPandemicClearAt then
+                    icon.orbitPandemicClearAt = now
+                elseif now - icon.orbitPandemicClearAt >= PANDEMIC_CLEAR_DEBOUNCE then
+                    local activeType = icon.orbitPandemicGlowActive
+                    icon.orbitSuppressPandemic = nil
+                    icon.orbitPandemicClearAt = nil
+                    if activeType == GlowType.Blizzard then
+                        if icon.orbitBlizzardGlow then icon.orbitBlizzardGlow:Hide() end
+                    elseif activeType == GlowType.Pixel then LibCustomGlow.PixelGlow_Stop(icon, "orbitPandemic")
+                    elseif activeType == GlowType.Proc then LibCustomGlow.ProcGlow_Stop(icon, "orbitPandemic")
+                    elseif activeType == GlowType.Autocast then LibCustomGlow.AutoCastGlow_Stop(icon, "orbitPandemic")
+                    elseif activeType == GlowType.Button then LibCustomGlow.ButtonGlow_Stop(icon) end
+                    icon.orbitPandemicGlowActive = nil
                 end
-                icon.orbitPandemicGlowActive = nil
+            end
+        end
+    end
+end
+
+-- [ CLEAR ALL PANDEMIC GLOWS ]----------------------------------------------------------------------
+local function StopPandemicGlowOnIcon(icon)
+    local GlowType = Constants.PandemicGlow.Type
+    local activeType = icon.orbitPandemicGlowActive
+    if not activeType then return end
+    icon.orbitSuppressPandemic = nil
+    icon.orbitPandemicClearAt = nil
+    if activeType == GlowType.Blizzard then
+        if icon.orbitBlizzardGlow then icon.orbitBlizzardGlow:Hide() end
+    elseif activeType == GlowType.Pixel then LibCustomGlow.PixelGlow_Stop(icon, "orbitPandemic")
+    elseif activeType == GlowType.Proc then LibCustomGlow.ProcGlow_Stop(icon, "orbitPandemic")
+    elseif activeType == GlowType.Autocast then LibCustomGlow.AutoCastGlow_Stop(icon, "orbitPandemic")
+    elseif activeType == GlowType.Button then LibCustomGlow.ButtonGlow_Stop(icon) end
+    icon.orbitPandemicGlowActive = nil
+end
+
+function CDM:ClearAllPandemicGlows()
+    for _, entry in pairs(VIEWER_MAP) do
+        if entry.viewer and entry.viewer.GetItemFrames then
+            local icons = entry.viewer:GetItemFrames()
+            if icons then
+                for _, icon in ipairs(icons) do StopPandemicGlowOnIcon(icon) end
             end
         end
     end
