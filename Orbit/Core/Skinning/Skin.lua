@@ -44,9 +44,151 @@ function Skin:CreateBackdrop(frame, name)
     return backdrop
 end
 
+-- [ NINESLICE BORDER ]------------------------------------------------------------------------------
+local NINESLICE_LEVEL_OFFSET = Constants.Levels.Border or 3
+
+function Skin:ApplyNineSliceBorder(frame, styleEntry)
+    if not frame or not styleEntry then return end
+    local offset = styleEntry.offset or Constants.BorderStyle.Offset
+
+    if styleEntry.layoutName then
+        if frame._singleSliceOverlay then frame._singleSliceOverlay:Hide() end
+        local layout = NineSliceUtil.GetLayout(styleEntry.layoutName)
+        if not layout then return end
+        
+        if not frame._nineSliceOverlay then
+            local overlay = CreateFrame("Frame", nil, frame, "NineSlicePanelTemplate")
+            overlay:SetFrameLevel(frame:GetFrameLevel() + NINESLICE_LEVEL_OFFSET)
+            overlay.layoutTextureLayer = "OVERLAY"
+            
+            -- Prevent native atlas sizes from overflowing on small frames without ruining aspect ratio
+            overlay:SetScript("OnSizeChanged", function(self, width, height)
+                if width <= 0 or height <= 0 then return end
+                
+                -- Discover native layout dimensions from the corner textures
+                local topH = (self.TopLeftCorner and self.TopLeftCorner:GetHeight()) or 32
+                local botH = (self.BottomLeftCorner and self.BottomLeftCorner:GetHeight()) or 32
+                local leftW = (self.TopLeftCorner and self.TopLeftCorner:GetWidth()) or 32
+                local rightW = (self.TopRightCorner and self.TopRightCorner:GetWidth()) or 32
+                
+                local reqH = topH + botH
+                local reqW = leftW + rightW
+                if reqH <= 0 then reqH = 64 end
+                if reqW <= 0 then reqW = 64 end
+                
+                -- Determine required physical scale to prevent corner overlap
+                local physW = width * self:GetScale()
+                local physH = height * self:GetScale()
+                
+                local scaleW = physW / reqW
+                local scaleH = physH / reqH
+                
+                local scale = math.min(scaleW, scaleH)
+                scale = math.max(0.1, scale) -- avoid making it microscopically invisible
+                
+                -- Only update scale if meaningfully different
+                if math.abs(self:GetScale() - scale) > 0.01 then
+                    self:SetScale(scale)
+                end
+            end)
+            
+            frame._nineSliceOverlay = overlay
+        end
+        
+        local overlay = frame._nineSliceOverlay
+        overlay.baseThickness = styleEntry.thickness or 16
+        
+        overlay:ClearAllPoints()
+        overlay:SetPoint("TOPLEFT", frame, "TOPLEFT", -offset, offset)
+        overlay:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", offset, -offset)
+        
+        NineSliceUtil.ApplyLayout(overlay, layout, styleEntry.textureKit)
+        
+        -- Force an immediate size update
+        local w, h = overlay:GetSize()
+        if w > 0 and h > 0 then
+            overlay:GetScript("OnSizeChanged")(overlay, w, h)
+        end
+        
+        overlay:Show()
+        NineSliceUtil.ShowLayout(overlay)
+
+    elseif styleEntry.path or styleEntry.atlasSlice then
+        if frame._nineSliceOverlay then
+            NineSliceUtil.HideLayout(frame._nineSliceOverlay)
+            frame._nineSliceOverlay:Hide()
+        end
+        if not frame._singleSliceOverlay then
+            local overlay = CreateFrame("Frame", nil, frame)
+            overlay:SetFrameLevel(frame:GetFrameLevel() + NINESLICE_LEVEL_OFFSET)
+            overlay.tex = overlay:CreateTexture(nil, "OVERLAY")
+            overlay.tex:SetAllPoints()
+            frame._singleSliceOverlay = overlay
+        end
+        
+        local overlay = frame._singleSliceOverlay
+        overlay:ClearAllPoints()
+        overlay:SetPoint("TOPLEFT", frame, "TOPLEFT", -offset, offset)
+        overlay:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", offset, -offset)
+        
+        local margin = styleEntry.margin or 64
+        if styleEntry.path then
+            overlay.tex:SetTexture(styleEntry.path)
+        else
+            overlay.tex:SetAtlas(styleEntry.atlasSlice, false)
+        end
+        overlay.tex:SetTextureSliceMargins(margin, margin, margin, margin)
+        overlay.tex:SetTextureSliceMode(Enum.UITextureSliceMode.Tiled)
+        overlay:Show()
+    end
+end
+
+function Skin:ClearNineSliceBorder(frame)
+    if not frame then return end
+    if frame._nineSliceOverlay then
+        NineSliceUtil.HideLayout(frame._nineSliceOverlay)
+        frame._nineSliceOverlay:Hide()
+    end
+    if frame._singleSliceOverlay then
+        frame._singleSliceOverlay:Hide()
+    end
+end
+
+function Skin:GetActiveBorderStyle()
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    local styleKey = gs and gs.BorderStyle
+    if not styleKey or styleKey == Constants.BorderStyle.Default then return nil end
+    local builtIn = Constants.BorderStyle.Lookup[styleKey]
+    if builtIn then return builtIn end
+    -- Resolve LibSharedMedia border entries (stored as "lsm:Name")
+    local lsmName = styleKey:match("^lsm:(.+)$")
+    if lsmName then
+        local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+        local path = LSM and LSM:Fetch("border", lsmName)
+        if path and path ~= "" then return { path = path, margin = 64 } end
+    end
+    return nil
+end
+
 function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
     if not frame or not backdrop then
         return
+    end
+
+    -- Route to NineSlice for unit frames (non-horizontal callers only)
+    if not horizontal then
+        local nineSliceStyle = self:GetActiveBorderStyle()
+        if nineSliceStyle then
+            -- Hide flat borders
+            if backdrop.Borders then
+                for _, border in pairs(backdrop.Borders) do border:Hide() end
+            end
+            self:ApplyNineSliceBorder(frame, nineSliceStyle)
+            frame.borderPixelSize = 0
+            return true
+        end
+        -- Flat mode: clear any leftover NineSlice overlay
+        self:ClearNineSliceBorder(frame)
     end
 
     -- The paladin's aura must shine ABOVE the rogue's cloak
@@ -106,8 +248,7 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
 
     if not color then
         local gs = Orbit.db and Orbit.db.GlobalSettings
-        local curve = gs and gs.BorderColorCurve
-        color = curve and Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(curve)
+        color = gs and gs.BorderColor
     end
     local c = color or { r = 0, g = 0, b = 0, a = 1 }
     local merged = frame._mergedEdges

@@ -630,26 +630,25 @@ end
 -- [ DYNAMIC UNIT ASSIGNMENT ]----------------------------------------------------------------------
 
 function Plugin:UpdateFrameUnits()
-    if self.frames and self.frames[1] and self.frames[1].preview then
+    if InCombatLockdown() then
+        Orbit.CombatManager:QueueUpdate(function() self:UpdateFrameUnits() end)
         return
     end
+    if self.frames and self.frames[1] and self.frames[1].preview then return end
 
     local includePlayer = self:GetSetting(1, "IncludePlayer")
     local sortedUnits = GetSortedPartyUnits(includePlayer)
 
-    -- Assign units to frames
     for i = 1, MAX_PARTY_FRAMES do
         local frame = self.frames[i]
         if frame then
             local unit = sortedUnits[i]
             if unit then
-                -- Update secure unit attribute (only if changed)
                 local currentUnit = frame:GetAttribute("unit")
                 if currentUnit ~= unit then
-                    pcall(frame.SetAttribute, frame, "unit", unit)
+                    frame:SetAttribute("unit", unit)
                     frame.unit = unit
 
-                    -- Re-register unit-specific events
                     frame:UnregisterEvent("UNIT_POWER_UPDATE")
                     frame:UnregisterEvent("UNIT_MAXPOWER")
                     frame:UnregisterEvent("UNIT_DISPLAYPOWER")
@@ -673,20 +672,15 @@ function Plugin:UpdateFrameUnits()
                     frame:RegisterUnitEvent("UNIT_IN_RANGE_UPDATE", unit)
                 end
 
-                -- Update unit watch for visibility
-                pcall(UnregisterUnitWatch, frame)
-                pcall(RegisterUnitWatch, frame)
-
-                pcall(frame.Show, frame)
-                if frame.UpdateAll then
-                    frame:UpdateAll()
-                end
+                SafeUnregisterUnitWatch(frame)
+                SafeRegisterUnitWatch(frame)
+                frame:Show()
+                if frame.UpdateAll then frame:UpdateAll() end
             else
-                -- No unit for this slot - hide frame and clear unit
-                pcall(UnregisterUnitWatch, frame)
-                pcall(frame.SetAttribute, frame, "unit", nil)
-                pcall(frame.Hide, frame)
+                SafeUnregisterUnitWatch(frame)
+                frame:SetAttribute("unit", nil)
                 frame.unit = nil
+                frame:Hide()
             end
         end
     end

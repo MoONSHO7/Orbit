@@ -15,7 +15,7 @@ end
 local ESSENTIAL_INDEX = Constants.Cooldown.SystemIndex.Essential
 local UTILITY_INDEX = Constants.Cooldown.SystemIndex.Utility
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
-local PANDEMIC_CLEAR_DEBOUNCE = 0
+local PANDEMIC_CLEAR_DEBOUNCE = 0.3
 
 -- [ PROC GLOW HOOKS ]-------------------------------------------------------------------------------
 local PROC_GLOW_KEY = "orbitProc"

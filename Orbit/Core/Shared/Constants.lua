@@ -137,6 +137,38 @@ C.Settings = {
     Texture = { Default = "Melli" },
 }
 
+-- [ BORDER STYLE ]---------------------------------------------------------------------------------
+C.BorderStyle = {
+    Default = "flat",
+    Offset = 6,
+    Styles = {
+        { label = "Flat", value = "flat" },
+        { label = "Alliance", value = "alliance", layoutName = "BFAMissionAlliance" },
+        { label = "Alliance Portrait", value = "allianceportrait", atlasSlice = "UI-Frame-Alliance-PortraitWider", margin = 64 },
+        { label = "Horde", value = "horde", layoutName = "BFAMissionHorde" },
+        { label = "Dragonflight", value = "dragonflight", layoutName = "DragonflightMissionFrame" },
+        { label = "Generic Metal", value = "genericmetal", layoutName = "GenericMetal" },
+        { label = "Neutral", value = "neutral", layoutName = "WoodenNeutralFrameTemplate" },
+        { label = "Oribos", value = "oribos", layoutName = "CovenantMissionFrame" },
+        { label = "Kyrian", value = "kyrian", path = "Interface\\FrameGeneral\\UIFrameKyrian", margin = 64 },
+        { label = "Venthyr", value = "venthyr", path = "Interface\\FrameGeneral\\UIFrameVenthyr", margin = 64 },
+        { label = "Necrolord", value = "necrolord", path = "Interface\\FrameGeneral\\UIFrameNecrolord", margin = 64 },
+        { label = "Night Fae", value = "nightfae", path = "Interface\\FrameGeneral\\UIFrameNightFae", margin = 64 },
+        { label = "Marine", value = "marine", path = "Interface\\FrameGeneral\\UIFrameMarine", margin = 64 },
+        { label = "Mechagon", value = "mechagon", path = "Interface\\FrameGeneral\\UIFrameMechagon", margin = 64 },
+        { label = "Plunderstorm", value = "plunderstorm", path = "Interface\\FrameGeneral\\UIFramePlunderstorm", margin = 64 },
+        { label = "Achievement Wood", value = "achievementwood", path = "Interface\\AchievementFrame\\UIFrameAchievementWood", margin = 64 },
+        { label = "Pirate Day", value = "pirateday", path = "Interface\\Store\\PerksThemePirateDayNineSlice", margin = 64 },
+    },
+}
+
+-- Build reverse lookup: value → style entry
+C.BorderStyle.Lookup = {}
+for _, entry in ipairs(C.BorderStyle.Styles) do
+    C.BorderStyle.Lookup[entry.value] = entry
+end
+
+
 -- [ TIMING CONSTANTS ]------------------------------------------------------------------------------
 C.Timing = {
     DefaultDebounce = 0.1,

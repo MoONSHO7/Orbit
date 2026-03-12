@@ -13,11 +13,12 @@ local CAST_BAR_FRAME_LEVEL = 100
 local SPARK_OVERFLOW = 4
 local DEFAULT_CAST_COLOR = { r = 1, g = 0.7, b = 0 }
 local DEFAULT_PROTECTED_COLOR = { r = 0.7, g = 0.7, b = 0.7 }
-local DEFAULT_INTERRUPTED_COLOR = { r = 1, g = 0, b = 0 }
 
 Mixin.sharedDefaults = {
     CastBarColor = { r = 1, g = 0.7, b = 0 },
     CastBarColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
+    NonInterruptibleColor = { r = 0.7, g = 0.7, b = 0.7 },
+    NonInterruptibleColorCurve = { pins = { { position = 0, color = { r = 0.7, g = 0.7, b = 0.7, a = 1 } } } },
     CastBarText = true,
     CastBarIcon = true,
     CastBarTimer = true,
@@ -34,22 +35,16 @@ function Mixin:GetAnchorAxis(frame)
 end
 
 function Mixin:ApplyCastColor(bar, state)
-    if not bar or not bar.orbitBar then
-        return
-    end
+    if not bar or not bar.orbitBar then return end
     local color
-    if state == "INTERRUPTED" then
-        color = self:GetSetting(1, "InterruptedColor") or DEFAULT_INTERRUPTED_COLOR
-    elseif state == "NON_INTERRUPTIBLE" then
+    if state == "NON_INTERRUPTIBLE" then
         local curveData = self:GetSetting(1, "NonInterruptibleColorCurve")
         color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or self:GetSetting(1, "NonInterruptibleColor") or DEFAULT_PROTECTED_COLOR
     else
         local curveData = self:GetSetting(1, "CastBarColorCurve")
         color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or self:GetSetting(1, "CastBarColor") or DEFAULT_CAST_COLOR
     end
-    if color then
-        bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
-    end
+    bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
 end
 
 -- Update interrupt state (called by UNIT_SPELLCAST_INTERRUPTIBLE / NOT_INTERRUPTIBLE events)
@@ -301,6 +296,10 @@ function Mixin:UpdateVisibility()
     if not bar then return end
     if not InCombatLockdown() and Orbit.MountedVisibility:ShouldHide() then
         bar:StopCast()
+        return
+    end
+    if not bar.casting and not bar.channeling and not bar.preview then
+        bar:StopCast()
     end
 end
 
@@ -395,18 +394,9 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
         if targetBar.SetTimerDuration then
             pcall(targetBar.SetTimerDuration, targetBar, durationObj, 0, direction)
         end
-        -- Safely check notInterruptible (may be a secret boolean for enemy units in combat).
-        -- pcall catches the taint error if it's secret; events will correct it in that case.
-        local ok, isProtected = pcall(function()
-            return notInterruptible and true or false
-        end)
-        if ok and isProtected then
-            self.notInterruptible = true
-            plugin:ApplyCastColor(self, "NON_INTERRUPTIBLE")
-        else
-            self.notInterruptible = false
-            plugin:ApplyCastColor(self, "INTERRUPTIBLE")
-        end
+        -- notInterruptible from API can be a secret boolean for enemy units in WoW 12.0+.
+        -- Don't read it here; events (INTERRUPTIBLE/NOT_INTERRUPTIBLE) drive the correct state.
+        plugin:ApplyCastColor(self, self.notInterruptible and "NON_INTERRUPTIBLE" or "INTERRUPTIBLE")
         if self.Text then
             self.Text:SetText(name)
         end
@@ -451,9 +441,11 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
             bar:Cast()
         end,
         PLAYER_TARGET_CHANGED = function()
+            bar.notInterruptible = false
             bar:Cast()
         end,
         PLAYER_FOCUS_CHANGED = function()
+            bar.notInterruptible = false
             bar:Cast()
         end,
         UNIT_SPELLCAST_STOP = function()
@@ -480,25 +472,7 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
             end)
         end,
         UNIT_SPELLCAST_INTERRUPTED = function()
-            local interruptTimestamp = bar.castTimestamp
-            bar.casting = false
-            bar.channeling = false
-            bar.durationObj = nil
-            if bar.Text then
-                bar.Text:SetText(INTERRUPTED)
-            end
-            if bar.InterruptAnim then
-                bar.InterruptAnim:Play()
-            end
-            if bar.orbitBar then
-                bar.orbitBar:SetStatusBarColor(1, 0, 0)
-            end
-            C_Timer.After(INTERRUPT_FLASH_DURATION, function()
-                if bar.castTimestamp == interruptTimestamp and not bar.casting and not bar.channeling then
-                    bar:StopCast()
-                    plugin:ApplyCastColor(bar, "INTERRUPTIBLE")
-                end
-            end)
+            bar:StopCast()
         end,
         UNIT_SPELLCAST_INTERRUPTIBLE = function()
             bar.notInterruptible = false

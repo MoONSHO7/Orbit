@@ -26,6 +26,32 @@ local function RefreshAllPreviews()
     end
 end
 
+local function GetBorderStyleOptions()
+    local opts = {}
+    for _, entry in ipairs(Constants.BorderStyle.Styles) do
+        opts[#opts + 1] = entry
+    end
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    if LSM then
+        local existing = {}
+        for _, entry in ipairs(opts) do existing[entry.label] = true end
+        local borders = LSM:HashTable("border")
+        if borders then
+            for name, path in pairs(borders) do
+                if not existing[name] and path and path ~= "" then
+                    opts[#opts + 1] = { label = name, value = "lsm:" .. name }
+                end
+            end
+        end
+    end
+    table.sort(opts, function(a, b)
+        if a.value == "flat" then return true end
+        if b.value == "flat" then return false end
+        return a.label < b.label
+    end)
+    return opts
+end
+
 local function CreateGlobalSettingsPlugin(name, onSetOverride)
     return {
         name = name,
@@ -74,6 +100,7 @@ local function GetGlobalSchema()
             default = "OUTLINE",
         },
         { type = "slider", key = "BorderSize", label = "Border Size", default = 2, min = 0, max = 5, step = 1, updateOnRelease = true },
+        { type = "dropdown", key = "BorderStyle", label = "Border Style", options = GetBorderStyleOptions(), default = Constants.BorderStyle.Default },
     }
 
     table.insert(controls, {
@@ -100,6 +127,7 @@ local function GetGlobalSchema()
                 d.TextScale = "Medium"
                 d.FontOutline = "OUTLINE"
                 d.BorderSize = 2
+                d.BorderStyle = Constants.BorderStyle.Default
                 d.HideWhenMounted = false
             end
             Orbit.MountedVisibility:Refresh()
@@ -170,11 +198,11 @@ local function GetColorsSchema()
             end,
         },
         {
-            type = "colorcurve", key = "BorderColorCurve", label = "Border Color",
-            default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 1 } } } },
+            type = "color", key = "BorderColor", label = "Border Color",
+            default = { r = 0, g = 0, b = 0, a = 1 },
             tooltip = "Border color for all frames.",
             onChange = function(val)
-                ColorsPlugin:SetSetting(nil, "BorderColorCurve", val)
+                ColorsPlugin:SetSetting(nil, "BorderColor", val)
                 Orbit.Async:Debounce("ColorsPanel_BorderColor", function()
                     ColorsPlugin:ApplySettings()
                     RefreshAllPreviews()
@@ -198,7 +226,7 @@ local function GetColorsSchema()
                 d.UnitFrameBackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
                 d.BackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
                 d.FontColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
-                d.BorderColorCurve = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 1 } } } }
+                d.BorderColor = { r = 0, g = 0, b = 0, a = 1 }
             end
             Orbit:Print("Colors settings reset to defaults.")
             if Orbit.OptionsPanel then Orbit.OptionsPanel:Refresh() end

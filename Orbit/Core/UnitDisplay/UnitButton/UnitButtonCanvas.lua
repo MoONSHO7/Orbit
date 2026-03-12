@@ -168,10 +168,9 @@ function CanvasMixin:UpdateBarInsets()
 end
 
 function CanvasMixin:SetBorder(size)
-    if Orbit.Skin:SkinBorder(self, self, size) then
+    local isNineSlice = Orbit.Skin:SkinBorder(self, self, size)
+    if isNineSlice then
         self.borderPixelSize = 0
-        self:UpdateBarInsets()
-        return
     end
     self:UpdateBarInsets()
 end

@@ -14,7 +14,7 @@ local WHATS_NEW_ENTRIES = {
     { title = "New",
       body = "• Added Info Tour to Canvas Mode and Color Picker (New Info Buttons)\n"
         .. "• Improved Canvas Mode Drag a bit more\n"
-        .. "• Imrpovements to CDM proc glows & performance -- Feedback on this would be great!\n"
+        .. "• Improvements to CDM proc glows & performance -- Feedback on this would be great!\n"
         .. "• Added Global Border Color Picker (Orbit Options > Colors), enjoy that pink UI!\n"
     },
     { title = "Bugfixes",

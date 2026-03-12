@@ -241,7 +241,17 @@ function Plugin:OnLoad()
 end
 
 -- [ MOUNTED VISIBILITY ]----------------------------------------------------------------------------
-function Plugin:UpdateVisibility() end
+function Plugin:UpdateVisibility()
+    local bar = self.CastBar
+    if not bar then return end
+    if not InCombatLockdown() and Orbit.MountedVisibility:ShouldHide() then
+        HideBar(bar)
+        return
+    end
+    if not bar.casting and not bar.channeling and not bar.empowering and not bar.preview then
+        HideBar(bar)
+    end
+end
 
 -- [ SKINNING LOGIC ]---------------------------------------------------------------------------------
 
