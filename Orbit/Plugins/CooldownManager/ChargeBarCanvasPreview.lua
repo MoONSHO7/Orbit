@@ -87,7 +87,7 @@ function Preview:Setup(plugin, frame, sysIndex)
             local segBackdrop = Orbit.Skin:CreateBackdrop(seg, nil)
             segBackdrop:SetFrameLevel(seg:GetFrameLevel() + Constants.Levels.Highlight)
             segBackdrop:SetBackdrop(nil)
-            Orbit.Skin:SkinBorder(seg, segBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
+            Orbit.Skin:SkinBorder(seg, segBackdrop, borderSize)
         end
 
         local savedPositions = plugin:GetSetting(sysIndex, "ComponentPositions") or {}

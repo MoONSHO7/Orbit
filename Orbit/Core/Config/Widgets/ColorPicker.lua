@@ -41,6 +41,13 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
                 initialData = { r = frame.r, g = frame.g, b = frame.b, a = frame.a },
                 hasOpacity = true,
                 forceSingleColor = true,
+                onOpen = function(picker)
+                    local gs = Orbit.db and Orbit.db.GlobalSettings
+                    if gs and not gs.ColorPickerTourSeen then
+                        gs.ColorPickerTourSeen = true
+                        C_Timer.After(0.1, function() if picker:IsOpen() then picker:StartTour() end end)
+                    end
+                end,
                 callback = function(result, wasCancelled)
                     if wasCancelled or not result then return end
                     local pin = result.pins and result.pins[1]

@@ -51,7 +51,7 @@ function CB:Create(parent, bossIndex, plugin)
     bar.IconBorder = CreateFrame("Frame", nil, bar, "BackdropTemplate")
     bar.IconBorder:SetAllPoints(bar.Icon)
     bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + Orbit.Constants.Levels.Border)
-    Orbit.Skin:SkinBorder(bar, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 }, true)
+    Orbit.Skin:SkinBorder(bar.IconBorder, bar.IconBorder, 1, nil, true)
     bar.IconBorder:Hide()
 
     bar.TextOverlay = CreateFrame("Frame", nil, bar)

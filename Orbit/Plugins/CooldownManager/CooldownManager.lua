@@ -182,7 +182,7 @@ function Plugin:OnLoad()
 
         -- Border
         local borderSize = Orbit.db.GlobalSettings.BorderSize or 1
-        Orbit.Skin:SkinBorder(preview, preview, borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
+        Orbit.Skin:SkinBorder(preview, preview, borderSize, nil, true)
 
         -- Text sources
         local fontPath = buffBarPlugin:GetGlobalFont()
@@ -449,5 +449,9 @@ function Plugin:OnDisable()
     if self._pandemicTicker then
         self._pandemicTicker:Cancel()
         self._pandemicTicker = nil
+    end
+    if self._oocThrottleTimer then
+        self._oocThrottleTimer:Cancel()
+        self._oocThrottleTimer = nil
     end
 end

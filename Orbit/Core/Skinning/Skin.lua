@@ -104,6 +104,11 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
         end
     end
 
+    if not color then
+        local gs = Orbit.db and Orbit.db.GlobalSettings
+        local curve = gs and gs.BorderColorCurve
+        color = curve and Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(curve)
+    end
     local c = color or { r = 0, g = 0, b = 0, a = 1 }
     local merged = frame._mergedEdges
     for edge, t in pairs(backdrop.Borders) do
@@ -204,17 +209,7 @@ function Skin:AddOverlay(bar, texturePath, blendMode, alpha)
 
     if not bar.Overlay then
         bar.Overlay = bar:CreateTexture(nil, "OVERLAY")
-        -- If it's a StatusBar, anchor to the status bar texture so it only covers the fill
-        if bar.GetStatusBarTexture then
-            local statusTexture = bar:GetStatusBarTexture()
-            if statusTexture then
-                bar.Overlay:SetAllPoints(statusTexture)
-            else
-                bar.Overlay:SetAllPoints(bar)
-            end
-        else
-            bar.Overlay:SetAllPoints(bar)
-        end
+        bar.Overlay:SetAllPoints(bar)
     end
 
     bar.Overlay:SetTexture(texturePath)

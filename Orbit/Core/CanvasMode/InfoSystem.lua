@@ -466,7 +466,7 @@ end
 -- [ INFO BUTTON (in dialog header, hard left) ]---------------------------------------
 local btn = CreateFrame("Button", nil, Dialog.TitleContainer)
 btn:SetSize(BUTTON_SIZE, BUTTON_SIZE)
-btn:SetPoint("LEFT", Dialog.TitleContainer, "LEFT", -6, 0)
+btn:SetPoint("TOPLEFT", Dialog, "TOPLEFT", 0, 5)
 btn:SetFrameLevel(Dialog.TitleContainer:GetFrameLevel() + 1)
 btn.Icon = btn:CreateTexture(nil, "ARTWORK")
 btn.Icon:SetTexture("Interface\\common\\help-i")

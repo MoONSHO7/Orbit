@@ -169,6 +169,19 @@ local function GetColorsSchema()
                 end, 0.15)
             end,
         },
+        {
+            type = "colorcurve", key = "BorderColorCurve", label = "Border Color",
+            default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 1 } } } },
+            tooltip = "Border color for all frames.",
+            onChange = function(val)
+                ColorsPlugin:SetSetting(nil, "BorderColorCurve", val)
+                Orbit.Async:Debounce("ColorsPanel_BorderColor", function()
+                    ColorsPlugin:ApplySettings()
+                    RefreshAllPreviews()
+                    Orbit.EventBus:Fire("ORBIT_GLOBAL_BORDER_COLOR_CHANGED")
+                end, 0.15)
+            end,
+        },
     }
 
     return {
@@ -185,6 +198,7 @@ local function GetColorsSchema()
                 d.UnitFrameBackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
                 d.BackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
                 d.FontColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
+                d.BorderColorCurve = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 1 } } } }
             end
             Orbit:Print("Colors settings reset to defaults.")
             if Orbit.OptionsPanel then Orbit.OptionsPanel:Refresh() end

@@ -18,26 +18,21 @@ local INTERRUPT_FADE_DURATION = 0.5
 local LSM = LibStub("LibSharedMedia-3.0")
 
 function CastBar:Create(parent)
-    if not parent then
-        return
-    end
-
-    if parent.orbitBar then
-        return parent.orbitBar
-    end
+    if not parent then return end
+    if parent.orbitBar then return parent.orbitBar end
 
     local bar = CreateFrame("StatusBar", nil, parent)
-    bar:SetAllPoints(parent)
+    bar:SetAllPoints(parent) -- Repositioned by UpdateBarInsets
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0)
     bar:SetIgnoreParentAlpha(true)
-    bar:SetClipsChildren(true) -- Clip SparkGlow so it doesn't extend outside bar
+    bar:SetClipsChildren(true)
 
-    -- Background
-    bar.bg = bar:CreateTexture(nil, "BACKGROUND")
-    bar.bg:SetAllPoints()
+    -- Background on parent (fills behind borders, icon, and bar)
+    parent.bg = parent:CreateTexture(nil, "BACKGROUND")
+    parent.bg:SetAllPoints()
     local bg = Constants.Colors.Background
-    bar.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
+    parent.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
 
     -- Spell Name Text
     bar.Text = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -47,25 +42,18 @@ function CastBar:Create(parent)
     bar.Timer = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     bar.Timer:SetPoint("RIGHT", bar, "RIGHT", -TEXT_H_PADDING, 0)
 
-    -- Border
-    bar.Border = CreateFrame("Frame", nil, bar, "BackdropTemplate")
-    bar.Border:SetAllPoints()
-    bar.Border:SetFrameLevel(bar:GetFrameLevel() + 1)
-
-    -- Spark (progress indicator pip - hidden, used as anchor for SparkGlow)
+    -- Spark (progress indicator pip)
     bar.Spark = bar:CreateTexture(nil, "OVERLAY", nil, 2)
     bar.Spark:SetAtlas("ui-castingbar-pip")
     bar.Spark:SetSize(8, 20)
-    bar.Spark:SetAlpha(0) -- Hidden - only used as anchor point for SparkGlow
-    -- Note: Position is set dynamically in OnUpdate via SetPoint("CENTER", bar, "LEFT", sparkPos, 0)
+    bar.Spark:SetAlpha(0)
 
-    -- SparkGlow (Blizzard-style pip glow - trails behind the spark)
+    -- SparkGlow (Blizzard-style pip glow)
     bar.SparkGlow = bar:CreateTexture(nil, "OVERLAY", nil, 1)
     bar.SparkGlow:SetAtlas("cast_standard_pipglow")
     bar.SparkGlow:SetBlendMode("ADD")
     bar.SparkGlow:SetAlpha(SPARK_GLOW_ALPHA)
     bar.SparkGlow:SetPoint("RIGHT", bar.Spark, "CENTER", 0, 0)
-    -- Size will be set dynamically based on bar height in Apply
 
     -- Latency
     bar.Latency = bar:CreateTexture(nil, "ARTWORK")
@@ -88,22 +76,22 @@ function CastBar:Create(parent)
     alpha:SetSmoothing("OUT")
     bar.InterruptAnim = animGroup
 
-    -- Icon (Created on PARENT, positioned at parent's left edge - stays fixed while orbitBar moves)
+    -- Icon (on parent, positioned by UpdateBarInsets)
     bar.Icon = parent:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
     bar.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
     bar.Icon:SetSize(ICON_DEFAULT_SIZE, ICON_DEFAULT_SIZE)
     bar.Icon:SetPoint("LEFT", parent, "LEFT", 0, 0)
     bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
 
-    -- Icon Border (also on parent)
+    -- Icon Border (visual divider between icon and bar)
     bar.IconBorder = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     bar.IconBorder:SetAllPoints(bar.Icon)
-    bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + 2) -- Ensure above bar border
-    Skin:SkinBorder(bar.IconBorder, bar.IconBorder, 1, { r = 0, g = 0, b = 0, a = 1 }, true)
+    bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + 2)
+    Skin:SkinBorder(bar.IconBorder, bar.IconBorder, 1, nil, true)
 
-    -- Empower Stage Markers (pool of dividers)
+    -- Empower Stage Markers
     bar.stageMarkers = {}
-    for i = 1, 4 do -- Max 4 stages typically
+    for i = 1, 4 do
         local marker = bar:CreateTexture(nil, "OVERLAY", nil, 1)
         marker:SetColorTexture(0, 0, 0, 1)
         marker:SetSize(Pixel:Multiple(EMPOWER_MARKER_WIDTH), 1)
@@ -117,72 +105,93 @@ function CastBar:Create(parent)
     parent.InterruptAnim = bar.InterruptAnim
     parent.Icon = bar.Icon
 
-    -- Hook parent's OnSizeChanged to update icon/bar positioning when dimensions change
-    -- This is needed for anchor system dimension sync to properly update the icon size
-    parent:HookScript("OnSizeChanged", function(self)
+    -- [ BORDER MANAGEMENT (matches UnitButtonCanvas pattern) ]---------------------------------------
+    parent.SetBorder = function(self, size)
+        if Orbit.Skin:SkinBorder(self, self, size, nil, true) then
+            self.borderPixelSize = 0
+            self:UpdateBarInsets()
+            return
+        end
+        self:UpdateBarInsets()
+    end
+
+    parent.SetBorderHidden = function(self, edge, hidden)
+        local borders = (self._borderFrame and self._borderFrame.Borders) or self.Borders
+        if not borders then return end
+        local border = borders[edge]
+        if border then border:SetShown(not hidden) end
+        if not self._mergedEdges then self._mergedEdges = {} end
+        self._mergedEdges[edge] = hidden or nil
+        self:UpdateBarInsets()
+    end
+
+    parent.UpdateBarInsets = function(self)
+        local bs = self.borderPixelSize or 0
+        local iL, iT, iR, iB = bs, bs, bs, bs
+        if self._mergedEdges then
+            if self._mergedEdges.Left then iL = 0 end
+            if self._mergedEdges.Right then iR = 0 end
+            if self._mergedEdges.Top then iT = 0 end
+            if self._mergedEdges.Bottom then iB = 0 end
+        end
+        local b = self.orbitBar
+        if not b then return end
         local height = self:GetHeight()
         local scale = self:GetEffectiveScale()
-        local snappedHeight = height
-        if Orbit.Engine.Pixel then
-            snappedHeight = Orbit.Engine.Pixel:Snap(height, scale)
+        local showIcon = b.Icon and b.Icon:IsShown()
+        local iconSize = showIcon and Pixel:Snap(height - iT - iB, scale) or 0
+        if b.Icon then
+            b.Icon:ClearAllPoints()
+            b.Icon:SetSize(iconSize, iconSize)
+            b.Icon:SetPoint("TOPLEFT", self, "TOPLEFT", iL, -iT)
         end
+        if b.IconBorder then
+            b.IconBorder:ClearAllPoints()
+            b.IconBorder:SetAllPoints(b.Icon)
+        end
+        b.iconOffset = iconSize
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", self, "TOPLEFT", iL + iconSize, -iT)
+        b:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -iR, iB)
+    end
 
-        if bar.Icon then
-            bar.Icon:SetSize(snappedHeight, snappedHeight)
-        end
-        bar.iconOffset = snappedHeight
-
-        bar:ClearAllPoints()
-        if bar.Icon and bar.Icon:IsShown() then
-            bar:SetPoint("TOPLEFT", self, "TOPLEFT", snappedHeight, 0)
-            bar:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
-        else
-            bar:SetAllPoints(self)
-        end
-    end)
+    parent:HookScript("OnSizeChanged", function(self) self:UpdateBarInsets() end)
 
     return bar
 end
 
 function CastBar:Apply(bar, settings)
-    if not bar then
-        return
-    end
-
-    -- Calculate icon offset for bar fill (use parent's height since orbitBar may not have it yet)
+    if not bar then return end
     local parent = bar:GetParent()
-    local iconOffset = 0
-    if settings.showIcon and bar.Icon then
-        local height = parent:GetHeight()
-        local scale = parent:GetEffectiveScale()
-        iconOffset = (Orbit.Engine.Pixel:Snap(height, scale)) or height
-    end
-    bar.iconOffset = iconOffset -- Store for spark position calculations
-
-    -- Reposition the StatusBar itself to start after the icon
-    -- WoW's StatusBar internally manages fill texture positioning, so we can't just offset the texture
-    -- Instead, we resize/reposition the StatusBar to not overlap the icon area
-    bar:ClearAllPoints()
-    bar:SetPoint("TOPLEFT", bar:GetParent(), "TOPLEFT", iconOffset, 0)
-    bar:SetPoint("BOTTOMRIGHT", bar:GetParent(), "BOTTOMRIGHT", 0, 0)
 
     -- Skin StatusBar (Texture & Color)
     Skin:SkinStatusBar(bar, settings.texture, settings.color)
 
-    -- Skin Border (use horizontal layout since icon is to the left)
-    if settings.borderSize and settings.borderSize > 0 then
-        bar.Border:Show()
-        Skin:SkinBorder(bar, bar.Border, settings.borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
-    else
-        bar.Border:Hide()
+    -- Icon visibility (must be set before UpdateBarInsets since it affects layout)
+    if bar.Icon then
+        if settings.showIcon then
+            bar.Icon:Show()
+            bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
+            if bar.IconBorder and settings.borderSize and settings.borderSize > 0 then
+                bar.IconBorder:Show()
+                Skin:SkinBorder(bar.IconBorder, bar.IconBorder, settings.borderSize, nil, true)
+            elseif bar.IconBorder then
+                bar.IconBorder:Hide()
+            end
+        else
+            bar.Icon:Hide()
+            if bar.IconBorder then bar.IconBorder:Hide() end
+        end
     end
 
-    -- Size SparkGlow based on parent height
-    if bar.SparkGlow then
-        local height = parent:GetHeight()
-        local scale = parent:GetEffectiveScale()
-        bar.SparkGlow:SetSize(Orbit.Engine.Pixel:Snap(height * SPARK_GLOW_WIDTH_RATIO, scale), height)
+    -- Apply borders on parent frame and inset content
+    parent:SetBorder(settings.borderSize or 0)
 
+    -- SparkGlow sizing (based on inner bar height after insets)
+    if bar.SparkGlow then
+        local barHeight = bar:GetHeight()
+        local scale = parent:GetEffectiveScale()
+        bar.SparkGlow:SetSize(Pixel:Snap(barHeight * SPARK_GLOW_WIDTH_RATIO, scale), barHeight)
         if settings.sparkColor then
             local c = settings.sparkColor
             bar.SparkGlow:SetVertexColor(c.r, c.g, c.b, c.a or 1)
@@ -191,14 +200,12 @@ function CastBar:Apply(bar, settings)
         end
     end
 
-    -- Skin Background (gradient-aware)
+    -- Skin Background
     if settings.backdropCurve then
-        Skin:ApplyGradientBackground(bar, settings.backdropCurve, settings.backdropColor or Constants.Colors.Background)
-    elseif bar.bg then
+        Skin:ApplyGradientBackground(parent, settings.backdropCurve, settings.backdropColor or Constants.Colors.Background)
+    elseif parent.bg then
         local backdropColor = settings.backdropColor or Constants.Colors.Background
-        bar.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.5)
-        bar.bg:ClearAllPoints()
-        bar.bg:SetAllPoints(bar)
+        parent.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.5)
     end
 
     -- Skin Text
@@ -206,11 +213,7 @@ function CastBar:Apply(bar, settings)
         if settings.showText then
             bar.Text:Show()
             bar.Text:ClearAllPoints()
-            if settings.showIcon and bar.Icon then
-                bar.Text:SetPoint("LEFT", bar.Icon, "RIGHT", TEXT_H_PADDING, 0)
-            else
-                bar.Text:SetPoint("LEFT", bar, "LEFT", TEXT_H_PADDING, 0)
-            end
+            bar.Text:SetPoint("LEFT", bar, "LEFT", TEXT_H_PADDING, 0)
             Skin:SkinText(bar.Text, settings)
         else
             bar.Text:Hide()
@@ -224,40 +227,6 @@ function CastBar:Apply(bar, settings)
             Skin:SkinText(bar.Timer, settings)
         else
             bar.Timer:Hide()
-        end
-    end
-
-    -- Skin Icon (icon is on parent, so use parent height)
-    if bar.Icon then
-        if settings.showIcon then
-            bar.Icon:Show()
-            local height = parent:GetHeight()
-            -- Snap icon size to pixel grid for crisp rendering
-            local scale = parent:GetEffectiveScale()
-            local snappedHeight = height
-            if Orbit.Engine.Pixel then
-                snappedHeight = Orbit.Engine.Pixel:Snap(height, scale)
-            end
-            bar.Icon:SetSize(snappedHeight, snappedHeight)
-
-            if bar.IconBorder then
-                bar.IconBorder:Show()
-                if settings.borderSize and settings.borderSize > 0 then
-                    -- Use horizontal layout for icon border (Top/Bottom full-width for horizontal merging)
-                    Skin:SkinBorder(bar.IconBorder, bar.IconBorder, settings.borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
-                    -- Hide cast bar's left border edge to merge with icon's right border
-                    if bar.Border.Borders and bar.Border.Borders.Left then
-                        bar.Border.Borders.Left:Hide()
-                    end
-                else
-                    bar.IconBorder:Hide()
-                end
-            end
-        else
-            bar.Icon:Hide()
-            if bar.IconBorder then
-                bar.IconBorder:Hide()
-            end
         end
     end
 end

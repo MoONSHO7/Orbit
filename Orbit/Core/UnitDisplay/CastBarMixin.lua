@@ -114,7 +114,7 @@ function Mixin:InitializeSkin(bar)
     end
     local skinned = Orbit.Skin.CastBar:Create(bar)
     bar.orbitBar, bar.Text, bar.Timer, bar.Icon = skinned, skinned.Text, skinned.Timer, skinned.Icon
-    bar.Border, bar.Latency, bar.InterruptOverlay, bar.InterruptAnim = skinned.Border, skinned.Latency, skinned.InterruptOverlay, skinned.InterruptAnim
+    bar.Latency, bar.InterruptOverlay, bar.InterruptAnim = skinned.Latency, skinned.InterruptOverlay, skinned.InterruptAnim
     if skinned.Spark then
         skinned.Spark:Hide()
     end

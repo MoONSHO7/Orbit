@@ -12,23 +12,19 @@ local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips aut
 
 local WHATS_NEW_ENTRIES = {
     { title = "New",
-      body = "• Added Edge Resizing to a lot of edit mode frames, click on the bottom right edge and drag to resize (frame must be selected)\n"
-        .. "• Action Bars or CDM frames can now be selected as a group, in Edit Mode shift-click them to select multiple frames and edit all their settings at the same time\n"
-        .. "• Reworked Player Buffs/Debuffs now much more stable and accurate, with better filtering when collapsing the frame\n"
-        .. "• Reworked Tracked Cooldowns, these should be much more accurate with their data now - please continue to report issues with these.\n"
-        .. "• Added localization to Tracked Cooldowns, should work with different languages now\n"
-        .. "• Added Active Swipe color as an option to CDM\n"
-
-    },
-    { title = "Group Frames",
-      body = "• Added a lot of exclusion filters to Buffs/Debuffs to clear up more clutter on frames\n"
-        .. "• New Aura Filter slider on Party/Raid frames. Less = Only HoTs, More = HoTs+Some Others, All=All buffs/debuffs\n"
-        .. "• Smarter Auras on Party/Raid Frames (no duplicates)\n"
+      body = "• Added Info Tour to Canvas Mode and Color Picker (New Info Buttons)\n"
+        .. "• Improved Canvas Mode Drag a bit more\n"
+        .. "• Imrpovements to CDM proc glows & performance -- Feedback on this would be great!\n"
+        .. "• Added Global Border Color Picker (Orbit Options > Colors), enjoy that pink UI!\n"
     },
     { title = "Bugfixes",
-      body = "• Resource Bar is better managed across profiles (class/specs)\n"
-        .. "• Single Icons where being misplaced on Unit Frame 1 in party frames\n"
-        .. "• minor changes to account for some reported edge case lua errors\n"
+      body = "• Maelstrom Color Picker for Elemental Shaman\n"
+        .. "• Cast Bar Icon Border showing after demounting when Hide While Mounted is on\n"
+        .. "• Turned off blizzard timers from Player Buffs (duplicate timers)\n"
+        .. "• Text should now be above border in strata on Player Buffs/Debuffs\n"
+        .. "• Fixed some border merging issues\n"
+        .. "• Fixed some Strata issues with text when anchoring frames (due to a previous enhancement)\n"
+        .. "• Some other minor bugfixes\n"
     },
 }
 

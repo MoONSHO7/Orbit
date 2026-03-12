@@ -203,7 +203,7 @@ function Icons:ApplyCustom(icon, settings)
             b:SetFrameStrata("MEDIUM")
             b:SetFrameLevel(icon:GetFrameLevel() + 5)
             b:Show()
-            Skin:SkinBorder(icon, b, borderSize, { r = 0, g = 0, b = 0, a = 1 })
+            Skin:SkinBorder(icon, b, borderSize)
         else
             if self.borderCache[icon] then self.borderCache[icon]:Hide() end
         end

@@ -551,7 +551,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
         bar.orbitBorder:SetAllPoints(bar)
         bar.orbitBorder:SetFrameLevel(bar:GetFrameLevel() + 1)
     end
-    Orbit.Skin:SkinBorder(bar, bar.orbitBorder, borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
+    Orbit.Skin:SkinBorder(bar, bar.orbitBorder, borderSize, nil, true)
 
      -- Hide Blizzard bar chrome
     if bar.BarBG then bar.BarBG:SetAlpha(0) end
@@ -622,7 +622,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
             iconFrame.orbitBorder:SetAllPoints(iconFrame)
             iconFrame.orbitBorder:SetFrameLevel(iconFrame:GetFrameLevel() + 2)
         end
-        Orbit.Skin:SkinBorder(iconFrame, iconFrame.orbitBorder, borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
+        Orbit.Skin:SkinBorder(iconFrame, iconFrame.orbitBorder, borderSize, nil, true)
         -- Hide Blizzard icon overlay atlas
         if not iconFrame.orbitOverlayHidden then
             for _, region in ipairs({ iconFrame:GetRegions() }) do

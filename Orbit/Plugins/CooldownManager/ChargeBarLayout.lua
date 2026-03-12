@@ -154,7 +154,7 @@ function Layout:SkinChargeButtons(plugin, frame, maxCharges, totalWidth, height,
             btn.orbitBackdrop:SetFrameLevel(btn:GetFrameLevel() + Constants.Levels.Highlight)
             btn.orbitBackdrop:SetBackdrop(nil)
         end
-        Orbit.Skin:SkinBorder(btn, btn.orbitBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
+        Orbit.Skin:SkinBorder(btn, btn.orbitBackdrop, borderSize)
 
         OrbitEngine.Pixel:Enforce(btn)
     end

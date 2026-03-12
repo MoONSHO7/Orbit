@@ -177,7 +177,6 @@ function Plugin:OnLoad()
         CastBar.Text = skinned.Text
         CastBar.Timer = skinned.Timer
         CastBar.Spark = skinned.Spark
-        CastBar.Border = skinned.Border
         CastBar.Latency = skinned.Latency
         CastBar.InterruptOverlay = skinned.InterruptOverlay
         CastBar.InterruptAnim = skinned.InterruptAnim
