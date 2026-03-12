@@ -87,6 +87,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
             icon.Cooldown.Text = timerText
         end
         if timerText and timerText.SetFont then
+            timerText:SetParent(icon.Overlay)
             timerText:SetFont(fontPath, Orbit.Skin:GetAdaptiveTextSize(size, 8, nil, 0.45), fontOutline)
             timerText:ClearAllPoints()
             timerText:SetPoint("CENTER", icon, "CENTER", 0, 0)
