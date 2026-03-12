@@ -157,6 +157,10 @@ function Orbit:InitializePlugins()
             self.ErrorHandler:Wrap(function() plugin:OnLoad() end, plugin.name .. ".OnLoad")()
             plugin._initialized = true
         end
+        -- Auto-subscribe canvasMode plugins to live preview (skip preview-based plugins)
+        if plugin.canvasMode and not plugin.SchedulePreviewUpdate and plugin.WatchCanvasChanges then
+            plugin:WatchCanvasChanges()
+        end
     end
     local i = 0
     local function ApplyNext()

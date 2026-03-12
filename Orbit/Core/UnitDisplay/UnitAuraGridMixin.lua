@@ -310,11 +310,10 @@ function Mixin:CreateAuraGridPlugin(config)
 
             local borderSize = Orbit.db.GlobalSettings.BorderSize
             local borderPixels = OrbitEngine.Pixel:Multiple(borderSize)
-            local contentW = iconW - (borderPixels * 2)
-            local contentH = iconH - (borderPixels * 2)
             preview.sourceFrame = self
-            preview.sourceWidth = contentW
-            preview.sourceHeight = contentH
+            preview.sourceWidth = iconW
+            preview.sourceHeight = iconH
+            preview.borderInset = borderPixels
             preview.previewScale = 1
             preview.components = {}
 
@@ -323,13 +322,9 @@ function Mixin:CreateAuraGridPlugin(config)
             icon:SetTexture(GetPreviewIcon())
 
             local backdrop = { bgFile = "Interface\\BUTTONS\\WHITE8x8", insets = { left = 0, right = 0, top = 0, bottom = 0 } }
-            if borderSize > 0 then
-                backdrop.edgeFile = "Interface\\BUTTONS\\WHITE8x8"
-                backdrop.edgeSize = borderPixels
-            end
             preview:SetBackdrop(backdrop)
             preview:SetBackdropColor(0, 0, 0, 0)
-            if borderSize > 0 then preview:SetBackdropBorderColor(0, 0, 0, 1) end
+            Orbit.Skin:SkinBorder(preview, preview, borderSize)
 
             local savedPositions = plugin:GetSetting(1, "ComponentPositions") or {}
             local LSM = LibStub("LibSharedMedia-3.0")
@@ -357,7 +352,7 @@ function Mixin:CreateAuraGridPlugin(config)
                     overrides = saved.overrides,
                 }
 
-                local halfW, halfH = contentW / 2, contentH / 2
+                local halfW, halfH = iconW / 2, iconH / 2
                 local startX = saved.posX or (data.anchorX == "LEFT" and -halfW + data.offsetX or data.anchorX == "RIGHT" and halfW - data.offsetX or 0)
                 local startY = saved.posY or (data.anchorY == "BOTTOM" and -halfH + data.offsetY or data.anchorY == "TOP" and halfH - data.offsetY or 0)
 

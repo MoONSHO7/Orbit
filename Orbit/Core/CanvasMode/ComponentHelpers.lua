@@ -85,16 +85,3 @@ function Helpers.SafeGetNumber(val, default)
     return val
 end
 
--- [ CLAMP POSITION ]----------------------------------------------------------------------------
-
-function Helpers.ClampPosition(x, y, parentWidth, parentHeight)
-    x = Helpers.SafeGetNumber(x, 0)
-    y = Helpers.SafeGetNumber(y, 0)
-    parentWidth = Helpers.SafeGetNumber(parentWidth, 100)
-    parentHeight = Helpers.SafeGetNumber(parentHeight, 40)
-
-    local PADDING = Helpers.PADDING
-    local clampedX = math.max(-PADDING, math.min(x, parentWidth + PADDING))
-    local clampedY = math.max(-PADDING, math.min(y, parentHeight + PADDING))
-    return clampedX, clampedY
-end

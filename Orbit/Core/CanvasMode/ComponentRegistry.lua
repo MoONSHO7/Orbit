@@ -33,8 +33,9 @@ local selectedComponent = nil -- Currently selected component for nudge
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
-local SNAP_SIZE = 5
-local EDGE_THRESHOLD = 3
+local SnapEngine = Engine.CanvasMode.SnapEngine
+local SNAP_OPTIONS = { edgeThreshold = SnapEngine.EDGE_THRESHOLD, gridSize = SnapEngine.SNAP_SIZE }
+local PRECISION_OPTIONS = { precisionMode = true }
 
 -- [ DRAG MECHANICS ]--------------------------------------------------------------------------------
 
@@ -61,49 +62,12 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
     centerRelY = math.max(-halfH - PADDING, math.min(centerRelY, halfH + PADDING))
 
     local snapX, snapY = nil, nil
-    local compWidth = SafeGetSize(component)
+    local compWidth, compHeight = SafeGetSize(component)
     local compHalfW = compWidth / 2
+    local compHalfH = compHeight / 2
 
-    if IsShiftKeyDown() then
-        -- Precision mode: no snapping
-    else
-        -- Edge Magnet X (0px flush)
-        local distRight = math.abs((centerRelX + compHalfW) - halfW)
-        local distLeft = math.abs((centerRelX - compHalfW) + halfW)
-        if distRight <= EDGE_THRESHOLD then
-            centerRelX = halfW - compHalfW
-            snapX = "RIGHT"
-        elseif distLeft <= EDGE_THRESHOLD then
-            centerRelX = -halfW + compHalfW
-            snapX = "LEFT"
-        elseif math.abs(centerRelX) <= EDGE_THRESHOLD then
-            centerRelX = 0
-            snapX = "CENTER"
-        end
-        if not snapX then
-            centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE
-        end
-
-        -- Edge Magnet Y
-        local distTop = math.abs((centerRelY + (component:GetHeight() or 0) / 2) - halfH)
-        local distBottom = math.abs((centerRelY - (component:GetHeight() or 0) / 2) + halfH)
-        local compHalfH = (component:GetHeight() or 0) / 2
-        if distTop <= EDGE_THRESHOLD then
-            centerRelY = halfH - compHalfH
-            snapY = "TOP"
-        elseif distBottom <= EDGE_THRESHOLD then
-            centerRelY = -halfH + compHalfH
-            snapY = "BOTTOM"
-        elseif math.abs(centerRelY) <= EDGE_THRESHOLD then
-            centerRelY = 0
-            snapY = "CENTER"
-        end
-        if not snapY then
-            centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE
-        end
-    end
-
-
+    local snapOpts = IsShiftKeyDown() and PRECISION_OPTIONS or SNAP_OPTIONS
+    centerRelX, centerRelY, snapX, snapY = SnapEngine:Calculate(centerRelX, centerRelY, halfW, halfH, compHalfW, compHalfH, snapOpts)
 
     if Engine.SmartGuides and data.guides then
         Engine.SmartGuides:Update(data.guides, snapX, snapY, parentWidth, parentHeight)

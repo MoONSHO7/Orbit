@@ -430,7 +430,7 @@ function Plugin:ApplySettings()
         Frame.Text:Show()
 
         -- Get Canvas Mode overrides
-        local positions = self:GetSetting(systemIndex, "ComponentPositions") or {}
+        local positions = self:GetComponentPositions(systemIndex)
         local textPos = positions.Text or {}
         local overrides = textPos.overrides or {}
 
@@ -455,7 +455,7 @@ function Plugin:ApplySettings()
     OrbitEngine.Frame:RestorePosition(Frame, self, systemIndex)
 
     -- Restore component positions (Canvas Mode)
-    local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
+    local savedPositions = self:GetComponentPositions(systemIndex)
     if savedPositions and OrbitEngine.ComponentDrag then
         OrbitEngine.ComponentDrag:RestoreFramePositions(Frame, savedPositions)
     end

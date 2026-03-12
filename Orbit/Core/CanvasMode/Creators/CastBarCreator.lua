@@ -33,7 +33,8 @@ local SUB_TEXT_PADDING = 4
 local SUB_TEXT_HEIGHT_PADDING = 2
 local SUB_PAD_X = 20
 local SUB_PAD_Y = 10
-local EDGE_THRESHOLD = 3
+local SnapEngine = OrbitEngine.CanvasMode.SnapEngine
+local SUB_SNAP_OPTIONS = { edgeThreshold = SnapEngine.EDGE_THRESHOLD }
 local CLICK_THRESHOLD = 0.3
 local DEFAULT_TEXT_OFFSET_X = 4
 
@@ -166,17 +167,7 @@ local function CreateSubText(parent, parentContainer, subKey, subPos, text, just
         local compHalfW = (s:GetWidth() or 40) / 2
         local compHalfH = (s:GetHeight() or 12) / 2
         if not IsShiftKeyDown() then
-            local distR = math.abs((relX + compHalfW) - halfW)
-            local distL = math.abs((relX - compHalfW) + halfW)
-            if distR <= EDGE_THRESHOLD then relX = halfW - compHalfW; snapX = "RIGHT"
-            elseif distL <= EDGE_THRESHOLD then relX = -halfW + compHalfW; snapX = "LEFT"
-            elseif math.abs(relX) <= EDGE_THRESHOLD then relX = 0; snapX = "CENTER" end
-
-            local distT = math.abs((relY + compHalfH) - halfH)
-            local distB = math.abs((relY - compHalfH) + halfH)
-            if distT <= EDGE_THRESHOLD then relY = halfH - compHalfH; snapY = "TOP"
-            elseif distB <= EDGE_THRESHOLD then relY = -halfH + compHalfH; snapY = "BOTTOM"
-            elseif math.abs(relY) <= EDGE_THRESHOLD then relY = 0; snapY = "CENTER" end
+            relX, relY, snapX, snapY = SnapEngine:Calculate(relX, relY, halfW, halfH, compHalfW, compHalfH, SUB_SNAP_OPTIONS)
         end
 
         if SmartGuides and s.guides then SmartGuides:Update(s.guides, snapX, snapY, parent:GetWidth(), parent:GetHeight()) end

@@ -33,7 +33,10 @@ Core\Plugin\Profiles.xml
 Core\API.lua
 Core\EditMode\Preview\Preview.xml
 Core\CanvasMode\CanvasMode.xml
+Core\CanvasMode\ComponentSettingsSchema.lua
+Core\CanvasMode\ComponentSettingsWidgets.lua
 Core\CanvasMode\ComponentSettings.lua
+Core\CanvasMode\ComponentSettingsPreview.lua
 Core\Skinning\Skins.xml
 
 # ==============================================================

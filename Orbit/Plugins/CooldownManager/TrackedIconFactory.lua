@@ -160,7 +160,7 @@ function Factory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
 
     local fontPath = plugin:GetGlobalFont()
     local baseSize = plugin:GetBaseFontSize()
-    local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+    local positions = plugin:GetComponentPositions(systemIndex)
     local OverrideUtils = OrbitEngine.OverrideUtils
     local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
 

@@ -53,7 +53,7 @@ end
 function CDM:ApplyTextSettings(icon, systemIndex)
     local fontPath = self:GetGlobalFont()
     local baseSize = self:GetBaseFontSize()
-    local positions = self:GetSetting(systemIndex, "ComponentPositions") or {}
+    local positions = self:GetComponentPositions(systemIndex)
     local OverrideUtils = OrbitEngine.OverrideUtils
 
     local function GetComponentOverrides(key)

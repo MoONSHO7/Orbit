@@ -205,8 +205,9 @@ function Dialog:NudgeComponent(container, direction)
     container.offsetX = offsetX
     container.offsetY = offsetY
 
-    local halfW = preview.sourceWidth / 2
-    local halfH = preview.sourceHeight / 2
+    local borderInset = preview.borderInset or 0
+    local halfW = preview.sourceWidth / 2 - borderInset
+    local halfH = preview.sourceHeight / 2 - borderInset
     container.posX, container.posY = AnchorToCenter(anchorX, anchorY, offsetX, offsetY, halfW, halfH)
 
     local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
@@ -528,6 +529,13 @@ function Dialog:Open(frame, plugin, systemIndex)
         OrbitEngine.CanvasComponentSettings:ApplyInitialPluginPreviews(self.targetPlugin, self.targetSystemIndex)
     end
 
+    -- Auto-start tour for first-time users
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    if gs and not gs.CanvasTourSeen then
+        gs.CanvasTourSeen = true
+        C_Timer.After(0.1, function() if self:IsShown() then self:StartTour() end end)
+    end
+
     return true
 end
 
@@ -569,6 +577,8 @@ function Dialog:HookSourceSizeChanged(sourceFrame)
 
             dlg.previewFrame.sourceWidth = w
             dlg.previewFrame.sourceHeight = h
+            local globalBorder = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize or 0
+            dlg.previewFrame.borderInset = Orbit.Engine.Pixel:Multiple(globalBorder, sourceFrame:GetEffectiveScale())
             dlg.previewFrame:SetSize(w, h)
             dlg.TransformLayer.baseWidth = w
             dlg.TransformLayer.baseHeight = h
@@ -612,6 +622,7 @@ function Dialog:CloseDialog()
         Orbit.CanvasComponentSettings:Close()
     end
 
+    self:HideInfoMarkers()
     self:CleanupPreview()
 
     self.targetFrame = nil

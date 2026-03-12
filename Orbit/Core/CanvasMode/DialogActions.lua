@@ -18,8 +18,9 @@ local ApplyTextAlignment = function(...) return CanvasMode.ApplyTextAlignment(..
 function Dialog:Apply()
     if not self.targetPlugin or not self.previewFrame then self:CloseDialog(); return end
     local positions = {}
-    local halfWidth = self.previewFrame.sourceWidth / 2
-    local halfHeight = self.previewFrame.sourceHeight / 2
+    local borderInset = self.previewFrame.borderInset or 0
+    local halfWidth = self.previewFrame.sourceWidth / 2 - borderInset
+    local halfHeight = self.previewFrame.sourceHeight / 2 - borderInset
     for key, comp in pairs(self.previewComponents) do
         local anchorX, anchorY, offsetX, offsetY, justifyH = comp.anchorX, comp.anchorY, comp.offsetX, comp.offsetY, comp.justifyH
         if not anchorX then
@@ -55,7 +56,8 @@ function Dialog:Apply()
     end
     local targetFrame = self.targetFrame
     if OrbitEngine.CanvasComponentSettings and OrbitEngine.CanvasComponentSettings.FlushPendingPluginSettings then OrbitEngine.CanvasComponentSettings:FlushPendingPluginSettings() end
-    -- Clear transaction without rollback (we already wrote above)
+    -- Bypass Transaction:Commit() — Apply needs fine-grained control over sync/global writes
+    -- and builds positions from preview state, not from pendingPositions.
     CanvasMode.Transaction:Clear()
     self:CloseDialog()
     if plugin.OnCanvasApply then plugin:OnCanvasApply() end
@@ -75,8 +77,9 @@ function Dialog:ResetPositions()
     local defaults = plugin.defaults and plugin.defaults.ComponentPositions
     if not defaults then return end
     local preview = self.previewFrame
-    local halfW = preview.sourceWidth / 2
-    local halfH = preview.sourceHeight / 2
+    local borderInset = preview.borderInset or 0
+    local halfW = preview.sourceWidth / 2 - borderInset
+    local halfH = preview.sourceHeight / 2 - borderInset
     local dragComponents = OrbitEngine.ComponentDrag:GetComponentsForFrame(self.targetFrame)
 
     for key, dockIcon in pairs(self.dockComponents) do

@@ -110,7 +110,7 @@ function CooldownUtils:ApplySimpleTextStyle(plugin, systemIndex, textElement, co
 
     local fontPath = plugin:GetGlobalFont()
     local baseSize = plugin:GetBaseFontSize()
-    local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+    local positions = plugin:GetComponentPositions(systemIndex)
     local pos = positions[componentKey] or {}
     local overrides = pos.overrides or {}
     local defaultSize = math.max(6, baseSize)

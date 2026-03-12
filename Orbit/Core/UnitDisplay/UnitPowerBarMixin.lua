@@ -68,6 +68,7 @@ function Mixin:CreatePowerBarPlugin(config)
         preview.sourceFrame = self
         preview.sourceWidth = w
         preview.sourceHeight = h
+        preview.borderInset = OrbitEngine.Pixel:Multiple(borderSize, scale)
         preview.previewScale = 1
         preview.components = {}
 

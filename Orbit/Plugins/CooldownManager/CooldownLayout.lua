@@ -382,7 +382,7 @@ local SB = OrbitEngine.SchemaBuilder
 local curveCache = {}
 
 GetNativeTimerCurveForSystem = function(systemIndex)
-    local positions = CDM:GetSetting(systemIndex, "ComponentPositions")
+    local positions = CDM:GetComponentPositions(systemIndex)
     local timerOverrides = positions and positions["Timer"] and positions["Timer"].overrides
     local curveData = timerOverrides and timerOverrides["CustomColorCurve"]
     if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
@@ -516,9 +516,8 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
     bar:SetPoint("TOPLEFT", item, "TOPLEFT", iconSize, 0)
     bar:SetPoint("BOTTOMRIGHT", item, "BOTTOMRIGHT", 0, 0)
 
-    -- Resolve Canvas Mode positions (read from Transaction if active, else saved settings)
-    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
-    local compPositions = (Txn and Txn:IsActive() and Txn:GetPlugin() == CDM) and Txn:GetPositions() or CDM:GetSetting(BUFFBAR_INDEX, "ComponentPositions")
+    -- Resolve Canvas Mode positions (Transaction-aware for live preview)
+    local compPositions = CDM:GetComponentPositions(BUFFBAR_INDEX)
     local OU = OrbitEngine.OverrideUtils
 
     -- StatusBar texture + overlay (global texture setting)

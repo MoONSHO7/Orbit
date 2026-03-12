@@ -163,7 +163,7 @@ function Layout:SkinChargeButtons(plugin, frame, maxCharges, totalWidth, height,
     OrbitEngine.TickMixin:Apply(frame, tickSize, height, frame.RechargeSegment)
 
     local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
-    local positions = plugin:GetSetting(sysIndex, "ComponentPositions") or {}
+    local positions = plugin:GetComponentPositions(sysIndex)
     local pos = positions["ChargeCount"] or {}
     local overrides = pos.overrides or {}
     local LSM = LibStub("LibSharedMedia-3.0", true)
