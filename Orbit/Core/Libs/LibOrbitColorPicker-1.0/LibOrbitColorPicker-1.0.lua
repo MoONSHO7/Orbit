@@ -741,7 +741,7 @@ function lib:CreatePickerFrame()
     f:SetScript("OnHide", function()
         if lib.ui.gradientBar then lib.ui.gradientBar:Hide() end
         if lib.ui.classSwatch then lib.ui.classSwatch:Hide() end
-        lib:HideInfoMarkers()
+        lib:EndTourCleanup()
         if lib.info.button then lib.info.button:Hide() end
         lib:EndDrag()
 
@@ -1028,7 +1028,7 @@ function lib:Initialize()
     self:CreateClassColorSwatch()
     self:SetupClassColorEvents()
     self:CreateDragTexture()
-    self:CreateInfoButton()
+    self:CreateTourButton()
     self:CreateDesaturationCheckbox()
 
     self.ui.initialized = true
@@ -1391,11 +1391,11 @@ function lib:EndTour()
     ReleaseCPPulses()
 end
 
-function lib:HideInfoMarkers()
+function lib:EndTourCleanup()
     self:EndTour()
 end
 
-function lib:ToggleInfoMode()
+function lib:ToggleTour()
     if not self.info.tourActive then
         self:StartTour()
     elseif self.info.tourIndex < #TOUR_STOPS_CP then
@@ -1405,7 +1405,7 @@ function lib:ToggleInfoMode()
     end
 end
 
-function lib:CreateInfoButton()
+function lib:CreateTourButton()
     if self.info.button then return self.info.button end
     local btn = CreateFrame("Button", nil, self.ui.frame)
     btn:SetSize(INFO_BUTTON_SIZE, INFO_BUTTON_SIZE)
@@ -1423,7 +1423,7 @@ function lib:CreateInfoButton()
     btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     btn:SetScript("OnClick", function()
         PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-        lib:ToggleInfoMode()
+        lib:ToggleTour()
     end)
     self.info.button = btn
     return btn

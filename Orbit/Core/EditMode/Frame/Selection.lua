@@ -432,10 +432,18 @@ function Selection:OnEditModeEnter()
             end
         end
 
+        -- Auto-start Edit Mode tour (DEV: always-on while iterating)
+        C_Timer.After(0.5, function()
+            if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
+                if Engine.EditModeTour then Engine.EditModeTour:StartTour() end
+            end
+        end)
     end)
 end
 
 function Selection:OnEditModeExit()
+    -- End tour if active
+    if Engine.EditModeTour then Engine.EditModeTour:EndTour() end
     -- Immediate Visual Cleanup (Safe in Combat)
     for frame, selection in pairs(Selection.selections) do
         selection:Hide()

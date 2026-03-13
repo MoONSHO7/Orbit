@@ -110,6 +110,7 @@ end
 
 function CDM:EnforceViewerParentage(viewer, anchor)
     if not viewer or not anchor then return end
+    if InCombatLockdown() then return end
     if viewer:GetParent() ~= anchor then viewer:SetParent(anchor) end
     viewer:SetScale(1)
     viewer:ClearAllPoints()
@@ -233,6 +234,7 @@ end
 
 function CDM:CheckViewer(viewer, anchor)
     if not viewer or not anchor then return end
+    if InCombatLockdown() then return end
     if viewer:GetParent() ~= anchor then self:EnforceViewerParentage(viewer, anchor); return end
     local _, _, relativeTo = viewer:GetPoint(1)
     if relativeTo ~= anchor then self:EnforceViewerParentage(viewer, anchor); return end
