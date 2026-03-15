@@ -592,8 +592,7 @@ function Plugin:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpa
         label:SetText("G" .. groupNum)
         label:ClearAllPoints()
 
-        local gx, gy = Helpers:CalculateGroupPosition(idx, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing,
-            groupsPerRow, isHorizontal)
+        local gx, gy = Helpers:CalculateGroupPosition(idx, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
         if isHorizontal then
             local rowCenter = height / 2
             if growUp then
@@ -656,8 +655,7 @@ function Plugin:UpdateContainerSize()
     end
 
     local isHorizontal = (self:GetSetting(1, "Orientation") or "Vertical") == "Horizontal"
-    local containerW, containerH = Helpers:CalculateContainerSize(numGroups, FRAMES_PER_GROUP, width, height,
-        memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
+    local containerW, containerH = Helpers:CalculateContainerSize(numGroups, FRAMES_PER_GROUP, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
     self.container:SetSize(containerW, containerH)
 end
 
@@ -738,8 +736,7 @@ end
 function Plugin:ApplyFrameStyle(frame, showPower)
     local width = self:GetSetting(1, "Width") or 90
     local height = self:GetSetting(1, "Height") or 36
-    local borderSize = self:GetSetting(1, "BorderSize") or
-        Orbit.Engine.Pixel:DefaultBorderSize(UIParent:GetEffectiveScale() or 1)
+    local borderSize = self:GetSetting(1, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(UIParent:GetEffectiveScale() or 1)
     local textureName = self:GetSetting(1, "Texture")
 
     frame:SetSize(width, height)
@@ -769,8 +766,7 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     -- Icon positions (healer auras, status icons, etc.)
     local savedPositions = self:GetComponentPositions(1)
     if savedPositions then
-        local iconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "StatusIcons", "PhaseIcon", "ReadyCheckIcon",
-            "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+        local iconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "StatusIcons", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
         local activeKeys = HealerReg:ActiveKeys()
         for _, k in ipairs(activeKeys) do iconKeys[#iconKeys + 1] = k end
         for _, k in ipairs(activeKeys) do
