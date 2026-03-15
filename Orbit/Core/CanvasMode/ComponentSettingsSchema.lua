@@ -182,8 +182,6 @@ local COMPONENT_TITLES = {
     StatusIcons = "Status Icons",
     BuffBarName = "Buff Bar Name", BuffBarTimer = "Buff Bar Timer",
     ZoneText = "Zone Text", Clock = "Clock", Coords = "Coordinates",
-    Zoom = "Zoom Buttons", Difficulty = "Instance Difficulty",
-    Missions = "Missions", Mail = "New Mail", CraftingOrder = "Crafting Order",
 }
 
 function Schema.ResolveTitle(key)
