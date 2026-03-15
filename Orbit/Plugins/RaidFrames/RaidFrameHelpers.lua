@@ -100,6 +100,8 @@ function Helpers:CalculateMemberPosition(memberIndex, frameWidth, frameHeight, m
     return 0, -offset
 end
 
+
+
 -- [ POWER BAR LAYOUT ]------------------------------------------------------------------------------
 
 function Helpers:UpdateFrameLayout(frame, borderSize, showPowerBar, powerBarRatio)

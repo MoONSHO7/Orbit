@@ -16,9 +16,9 @@ local ROLE_ATLASES = { TANK = "UI-LFG-RoleIcon-Tank", HEALER = "UI-LFG-RoleIcon-
 local ASSISTANT_ICON_TEXTURE = "Interface\\GroupFrame\\UI-Group-AssistantIcon"
 local THREAT_COLORS = {
     [0] = nil,
-    [1] = { r = 1.0, g = 1.0, b = 0.0, a = 0.5 },
-    [2] = { r = 1.0, g = 0.6, b = 0.0, a = 0.6 },
-    [3] = { r = 1.0, g = 0.4, b = 0.0, a = 0.7 },
+    [1] = { r = 1.0, g = 1.0, b = 0.0, a = 0.7 },
+    [2] = { r = 1.0, g = 0.6, b = 0.0, a = 0.8 },
+    [3] = { r = 1.0, g = 0.0, b = 0.0, a = 1.0 },
 }
 local RAID_TARGET_TEXTURE_COLUMNS, RAID_TARGET_TEXTURE_ROWS = 4, 4
 
@@ -325,31 +325,45 @@ end
 
 -- SELECTION HIGHLIGHT
 
-function Mixin:UpdateSelectionHighlight(frame, plugin)
-    local unit = GuardedUpdate(frame, plugin, "SelectionHighlight")
-    if not unit then return end
+local SELECTION_STORAGE_KEY = "_selectionBorderOverlay"
+local SELECTION_COLOR_DEFAULT = { r = 0.8, g = 0.9, b = 1.0, a = 1.0 }
 
+function Mixin:UpdateSelectionHighlight(frame, plugin)
+    if not frame then return end
+    local unit = frame.unit
+    if not unit or not UnitExists(unit) then
+        Orbit.Skin:ClearHighlightBorder(frame, SELECTION_STORAGE_KEY)
+        return
+    end
     if UnitIsUnit(unit, "target") then
-        frame.SelectionHighlight:Show()
+        local color = plugin and plugin.GetSetting and plugin:GetSetting(1, "SelectionColor") or SELECTION_COLOR_DEFAULT
+        Orbit.Skin:ApplyHighlightBorder(frame, SELECTION_STORAGE_KEY, color, Orbit.Constants.Levels.Border + 1, "ADD")
     else
-        frame.SelectionHighlight:Hide()
+        Orbit.Skin:ClearHighlightBorder(frame, SELECTION_STORAGE_KEY)
     end
 end
 
 -- AGGRO HIGHLIGHT (Threat glow)
 
+local AGGRO_HIGHLIGHT_KEY = "_aggroHighlightOverlay"
+
 function Mixin:UpdateAggroHighlight(frame, plugin)
-    local unit = GuardedUpdate(frame, plugin, "AggroHighlight")
-    if not unit then return end
-
+    if not frame then return end
+    if IsDisabled(plugin, "AggroHighlight") then
+        Orbit.Skin:ClearHighlightBorder(frame, AGGRO_HIGHLIGHT_KEY)
+        return
+    end
+    local unit = frame.unit
+    if not unit or not UnitExists(unit) then
+        Orbit.Skin:ClearHighlightBorder(frame, AGGRO_HIGHLIGHT_KEY)
+        return
+    end
     local threatStatus = UnitThreatSituation(unit)
-    local threatColor = threatStatus and THREAT_COLORS[threatStatus]
-
-    if threatColor then
-        frame.AggroHighlight:SetVertexColor(threatColor.r, threatColor.g, threatColor.b, threatColor.a)
-        frame.AggroHighlight:Show()
+    if threatStatus and threatStatus >= 1 then
+        local color = (threatStatus == 3) and (plugin and plugin.GetSetting and plugin:GetSetting(1, "AggroColor") or THREAT_COLORS[3]) or THREAT_COLORS[threatStatus]
+        Orbit.Skin:ApplyHighlightBorder(frame, AGGRO_HIGHLIGHT_KEY, color, Orbit.Constants.Levels.Border + 2)
     else
-        frame.AggroHighlight:Hide()
+        Orbit.Skin:ClearHighlightBorder(frame, AGGRO_HIGHLIGHT_KEY)
     end
 end
 

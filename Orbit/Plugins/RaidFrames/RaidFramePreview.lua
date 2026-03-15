@@ -232,13 +232,10 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 else frame.MainTankIcon:Hide() end
             end
 
-            if frame.SelectionHighlight then
-                if i == 2 then frame.SelectionHighlight:Show() else frame.SelectionHighlight:Hide() end
-            end
-            if frame.AggroHighlight then
-                if i == 2 then frame.AggroHighlight:SetVertexColor(1.0, 0.6, 0.0, 0.6); frame.AggroHighlight:Show()
-                else frame.AggroHighlight:Hide() end
-            end
+            if i == 2 then Orbit.Skin:ApplyHighlightBorder(frame, "_selectionBorderOverlay", { r = 1, g = 1, b = 1, a = 0.5 })
+            else Orbit.Skin:ClearHighlightBorder(frame, "_selectionBorderOverlay") end
+            if i == 2 then Orbit.Skin:ApplyHighlightBorder(frame, "_aggroHighlightOverlay", { r = 1.0, g = 0.6, b = 0.0, a = 0.6 })
+            else Orbit.Skin:ClearHighlightBorder(frame, "_aggroHighlightOverlay") end
 
             -- Canvas Mode icons (status, defensive, CC, PAA, healer, raidbuff)
             Orbit.GroupCanvasRegistration:ShowCanvasModeIcons(self, frame, isCanvasMode, {

@@ -48,7 +48,7 @@ function Layout:BuildChargeButtons(frame, maxCharges)
             btn.Bar:SetAllPoints()
             btn.Bar:SetMinMaxValues(i - 1, i)
             btn.Bar:SetValue(0)
-            btn.Bar:SetFrameLevel(btn:GetFrameLevel() + 2)
+            btn.Bar:SetFrameLevel(btn:GetFrameLevel() + Constants.Levels.StatusBar)
             frame.buttons[i] = btn
         end
         frame.buttons[i].Bar:SetMinMaxValues(i - 1, i)
@@ -149,12 +149,9 @@ function Layout:SkinChargeButtons(plugin, frame, maxCharges, totalWidth, height,
         Orbit.Skin:SkinStatusBar(btn.Bar, texture, barColor)
         if btn.Bar.Overlay then btn.Bar.Overlay:Hide() end
 
-        if not btn.orbitBackdrop then
-            btn.orbitBackdrop = Orbit.Skin:CreateBackdrop(btn, nil)
-            btn.orbitBackdrop:SetFrameLevel(btn:GetFrameLevel() + Constants.Levels.Highlight)
-            btn.orbitBackdrop:SetBackdrop(nil)
-        end
-        Orbit.Skin:SkinBorder(btn, btn.orbitBackdrop, borderSize)
+        -- Hide stale orbitBackdrop if present
+        if btn.orbitBackdrop then btn.orbitBackdrop:Hide() end
+        Orbit.Skin:SkinBorder(btn, btn, borderSize)
 
         OrbitEngine.Pixel:Enforce(btn)
     end

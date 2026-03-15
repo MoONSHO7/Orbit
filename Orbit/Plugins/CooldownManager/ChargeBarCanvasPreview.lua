@@ -85,7 +85,7 @@ function Preview:Setup(plugin, frame, sysIndex)
             if seg.Overlay then seg.Overlay:Hide() end
 
             local segBackdrop = Orbit.Skin:CreateBackdrop(seg, nil)
-            segBackdrop:SetFrameLevel(seg:GetFrameLevel() + Constants.Levels.Highlight)
+            segBackdrop:SetFrameLevel(seg:GetFrameLevel() + Constants.Levels.Border)
             segBackdrop:SetBackdrop(nil)
             Orbit.Skin:SkinBorder(seg, segBackdrop, borderSize)
         end
@@ -117,7 +117,7 @@ function Preview:Setup(plugin, frame, sysIndex)
         if CreateDraggableComponent then
             local comp = CreateDraggableComponent(preview, "ChargeCount", fs, startX, startY, data)
             if comp then
-                comp:SetFrameLevel(preview:GetFrameLevel() + 10)
+                comp:SetFrameLevel(preview:GetFrameLevel() + Constants.Levels.Overlay)
                 preview.components["ChargeCount"] = comp
                 fs:Hide()
             end

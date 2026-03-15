@@ -53,7 +53,7 @@ local function CreateCollapseArrow(frame, plugin)
     local btn = CreateFrame("Button", nil, frame)
     btn:SetSize(ARROW_SIZE, ARROW_SIZE * 2)
     btn:SetPoint("LEFT", frame, "TOPRIGHT", 4, -15)
-    btn:SetFrameLevel(frame:GetFrameLevel() + 5)
+    btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     btn.tex = btn:CreateTexture(nil, "ARTWORK")
     btn.tex:SetSize(ARROW_TEX_SIZE.w, ARROW_TEX_SIZE.h)
     btn.tex:SetPoint("CENTER")
@@ -237,7 +237,7 @@ function Mixin:_addLayoutControls(schema)
     end
     table.insert(schema.controls, {
         type = "slider", key = "Spacing", label = "Spacing",
-        min = -5, max = 50, step = 1, default = 2,
+        min = 0, max = 50, step = 1, default = 2,
         onChange = function(val) self:SetSetting(1, "Spacing", val); self:ApplySettings() end,
     })
 
@@ -324,7 +324,7 @@ function Mixin:CreateAuraGridPlugin(config)
             local backdrop = { bgFile = "Interface\\BUTTONS\\WHITE8x8", insets = { left = 0, right = 0, top = 0, bottom = 0 } }
             preview:SetBackdrop(backdrop)
             preview:SetBackdropColor(0, 0, 0, 0)
-            Orbit.Skin:SkinBorder(preview, preview, borderSize)
+            Orbit.Skin:SkinBorder(preview, preview, borderSize, nil, true)
 
             local savedPositions = plugin:GetSetting(1, "ComponentPositions") or {}
             local LSM = LibStub("LibSharedMedia-3.0")
@@ -359,7 +359,7 @@ function Mixin:CreateAuraGridPlugin(config)
                 if CreateDraggableComponent then
                     local comp = CreateDraggableComponent(preview, def.key, fs, startX, startY, data)
                     if comp then
-                        comp:SetFrameLevel(preview:GetFrameLevel() + 10)
+                        comp:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
                         preview.components[def.key] = comp
                         fs:Hide()
                     end
@@ -500,9 +500,12 @@ function Mixin:UpdateAuras()
     if #auras == 0 then
         if collapsed and not InCombatLockdown() then Frame:SetSize(iconW, iconH) end
         if cancelable and not InCombatLockdown() then self:_hideCancelOverlays(Frame) end
+        if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
         return
     end
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, showTimer = cfg.showTimer }
+    local isPlayerGrid = cfg.showIconLimit
+    local skinBorderSize = isPlayerGrid and (Orbit.db.GlobalSettings.IconBorderSize or 2) or 1
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = skinBorderSize, showTimer = cfg.showTimer, iconBorder = isPlayerGrid or nil, padding = spacing, aspectRatio = self:GetSetting(1, "aspectRatio") or "1:1" }
     if cfg.enablePandemic then
         skinSettings.enablePandemic = true
         skinSettings.pandemicGlowType = self:GetSetting(1, "PandemicGlowType") or Constants.PandemicGlow.DefaultType
@@ -526,6 +529,7 @@ function Mixin:UpdateAuras()
         size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
         anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
     })
+    if isPlayerGrid then self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings) end
 
     if cancelable and not InCombatLockdown() then
         self:_syncCancelOverlays(Frame, auras, auraFilter, activeIcons)
@@ -575,7 +579,9 @@ function Mixin:_updateBlizzardBuffs()
     local fontOutline = Orbit.Skin and Orbit.Skin.GetFontOutline and Orbit.Skin:GetFontOutline() or ""
     local timerFontSize = Orbit.Skin:GetAdaptiveTextSize(iconH, 8, nil, 0.45)
     local countFontSize = Orbit.Skin:GetAdaptiveTextSize(iconH, 8, nil, 0.4)
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, showTimer = true, aspectRatio = self:GetSetting(1, "aspectRatio") or "1:1" }
+    local isPlayerGrid = self._agConfig and self._agConfig.unit == "player"
+    local skinBorderSize = isPlayerGrid and (Orbit.db.GlobalSettings.IconBorderSize or 2) or 1
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = skinBorderSize, showTimer = true, iconBorder = isPlayerGrid or nil, padding = spacing, aspectRatio = self:GetSetting(1, "aspectRatio") or "1:1" }
     local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
     local OverrideUtils = OrbitEngine.OverrideUtils
 
@@ -618,7 +624,7 @@ function Mixin:_updateBlizzardBuffs()
                 -- Full setup only on first reparent or settings change
                 if btn._orbitSkinned ~= skinVersion then
                     btn:SetParent(Frame)
-                    btn:SetFrameLevel(Frame:GetFrameLevel() + 2)
+                    btn:SetFrameLevel(Frame:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
                     btn:SetScale(1)
                     btn:SetAlpha(1)
                     btn:SetSize(iconW, iconH)
@@ -645,7 +651,7 @@ function Mixin:_updateBlizzardBuffs()
                     if not btn.orbitTextOverlay then
                         btn.orbitTextOverlay = CreateFrame("Frame", nil, btn)
                         btn.orbitTextOverlay:SetAllPoints(btn)
-                        btn.orbitTextOverlay:SetFrameLevel(btn:GetFrameLevel() + 10)
+                        btn.orbitTextOverlay:SetFrameLevel(btn:GetFrameLevel() + Orbit.Constants.Levels.IconOverlay)
                     end
                     -- Style timer text
                     local timerText = btn.Cooldown.Text
@@ -688,11 +694,70 @@ function Mixin:_updateBlizzardBuffs()
         end
     end
 
-    if #activeIcons == 0 then return end
+    if #activeIcons == 0 then
+        if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
+        return
+    end
     Orbit.AuraLayout:LayoutGrid(Frame, activeIcons, {
         size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
         anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
     })
+    self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
+end
+
+-- [ GRID GROUP BORDER ]-----------------------------------------------------------------------------
+function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
+    if not skinSettings.iconBorder or spacing ~= 0 or #activeIcons == 0 then
+        if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
+        return
+    end
+    -- Compute tight bounding box relative to Frame
+    local minX, maxX, minY, maxY
+    for _, icon in ipairs(activeIcons) do
+        local l, b, w, h = icon:GetLeft(), icon:GetBottom(), icon:GetWidth(), icon:GetHeight()
+        local fl, fb = Frame:GetLeft(), Frame:GetBottom()
+        if l and b and fl and fb then
+            local rx, ry = l - fl, b - fb
+            minX = minX and math.min(minX, rx) or rx
+            maxX = maxX and math.max(maxX, rx + w) or (rx + w)
+            minY = minY and math.min(minY, ry) or ry
+            maxY = maxY and math.max(maxY, ry + h) or (ry + h)
+        end
+    end
+    if not minX then if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end; return end
+    if not Frame._gridGroupBorder then
+        Frame._gridGroupBorder = CreateFrame("Frame", nil, Frame, "BackdropTemplate")
+    end
+    local overlay = Frame._gridGroupBorder
+    overlay:SetFrameLevel(Frame:GetFrameLevel() + Orbit.Constants.Levels.Border)
+    local Skin = Orbit.Skin
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    local iconNineSlice = Skin:GetActiveIconBorderStyle()
+    local scale = Frame:GetEffectiveScale()
+    if not scale or scale < 0.01 then scale = 1 end
+    if iconNineSlice and iconNineSlice.edgeFile then
+        local style = Skin:BuildIconStyle(iconNineSlice)
+        local edgeSize = style.edgeSize or 16
+        local borderOffset = style.borderOffset or 0
+        local outset = Orbit.Engine.Pixel:Snap((edgeSize / 2) + borderOffset, scale)
+        overlay:ClearAllPoints()
+        overlay:SetPoint("TOPLEFT", Frame, "BOTTOMLEFT", minX - outset, maxY + outset)
+        overlay:SetSize(Orbit.Engine.Pixel:Snap((maxX - minX) + 2 * outset, scale), Orbit.Engine.Pixel:Snap((maxY - minY) + 2 * outset, scale))
+        overlay:SetBackdrop({ edgeFile = style.edgeFile, edgeSize = edgeSize })
+        overlay:SetBackdropBorderColor(1, 1, 1, 1)
+    else
+        local borderSize = gs and gs.IconBorderSize or 2
+        if borderSize <= 0 then overlay:Hide(); return end
+        local pixelSize = Orbit.Engine.Pixel:Multiple(borderSize, scale)
+        local outset = pixelSize
+        overlay:ClearAllPoints()
+        overlay:SetPoint("TOPLEFT", Frame, "BOTTOMLEFT", minX - outset, maxY + outset)
+        overlay:SetSize((maxX - minX) + 2 * outset, (maxY - minY) + 2 * outset)
+        overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
+        local c = (gs and gs.IconBorderColor) or { r = 0, g = 0, b = 0, a = 1 }
+        overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
+    end
+    overlay:Show()
 end
 
 function Mixin:_returnBlizzardButtons()

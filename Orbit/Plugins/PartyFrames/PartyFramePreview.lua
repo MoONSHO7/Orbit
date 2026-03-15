@@ -221,14 +221,15 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 else frame.LeaderIcon:Hide() end
             elseif frame.LeaderIcon then frame.LeaderIcon:Hide() end
 
-            if self:GetSetting(1, "ShowSelectionHighlight") ~= false and frame.SelectionHighlight then
-                if i == 2 then frame.SelectionHighlight:Show() else frame.SelectionHighlight:Hide() end
-            elseif frame.SelectionHighlight then frame.SelectionHighlight:Hide() end
+            if self:GetSetting(1, "ShowSelectionHighlight") ~= false then
+                if i == 2 then Orbit.Skin:ApplyHighlightBorder(frame, "_selectionBorderOverlay", { r = 1, g = 1, b = 1, a = 0.5 })
+                else Orbit.Skin:ClearHighlightBorder(frame, "_selectionBorderOverlay") end
+            else Orbit.Skin:ClearHighlightBorder(frame, "_selectionBorderOverlay") end
 
-            if self:GetSetting(1, "ShowAggroHighlight") ~= false and frame.AggroHighlight then
-                if i == 2 then frame.AggroHighlight:SetVertexColor(1.0, 0.6, 0.0, 0.6); frame.AggroHighlight:Show()
-                else frame.AggroHighlight:Hide() end
-            elseif frame.AggroHighlight then frame.AggroHighlight:Hide() end
+            if self:GetSetting(1, "ShowAggroHighlight") ~= false then
+                if i == 2 then Orbit.Skin:ApplyHighlightBorder(frame, "_aggroHighlightOverlay", { r = 1.0, g = 0.6, b = 0.0, a = 0.6 })
+                else Orbit.Skin:ClearHighlightBorder(frame, "_aggroHighlightOverlay") end
+            else Orbit.Skin:ClearHighlightBorder(frame, "_aggroHighlightOverlay") end
 
             -- Canvas Mode icons (status, defensive, CC, PAA, healer, raidbuff)
             Orbit.GroupCanvasRegistration:ShowCanvasModeIcons(self, frame, isCanvasMode, {

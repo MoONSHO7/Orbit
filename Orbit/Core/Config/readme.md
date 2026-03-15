@@ -13,7 +13,7 @@ provides the entire settings interface for orbit. plugins declare their settings
 | SchemaBuilder.lua | schema declaration api: `AddTab`, `AddSlider`, `AddCheckbox`, `AddDropdown`, `AddColorCurve`, etc. |
 | ConfigRenderer.lua | renders a schema into ui frames. walks the schema tree and creates widgets. |
 | ConfigLayout.lua | layout engine for settings panels (3-column grid, spacing, tab bar). |
-| OrbitOptionsPanel.lua | main orbit settings panel. slash command handler. tab navigation. |
+| OrbitOptionsPanel.lua | main orbit settings panel. slash command handler. tab navigation. Global tab exposes font, border (size, style, edge size, offset), and `IconBorderStyle` (action bars/cooldown icons only). Colors tab exposes textures, color curves, and `BorderColor`. Border Edge Size and Border Offset are conditionally hidden when Border Style is "Orbit Pixel" (flat). |
 | OrbitSettingsDialog.lua | settings dialog frame. hosts the tab bar and content area. |
 | OrbitOptionsButton.lua | minimap/addon compartment button. |
 | MinimapButton.lua | LibDBIcon minimap button. left-click opens edit mode + options, right-click opens plugin manager. |

@@ -542,7 +542,7 @@ local function DispelTick()
                     slot.frame = pick
                     slot.expiresAt = now + DISPEL_DURATION + math.random() * 4
                     local c = session.colors[slot.dispelType]
-                    LCG.PixelGlow_Start(slot.frame, { c.r, c.g, c.b, c.a }, session.numLines, session.frequency, nil, session.thickness, 0, 0, true, "dispelPreview", Orbit.Constants.Levels.Glow)
+                    LCG.PixelGlow_Start(slot.frame, { c.r, c.g, c.b, c.a }, session.numLines, session.frequency, nil, session.thickness, 0, 0, true, "dispelPreview", Orbit.Constants.Levels.Border)
                 end
             end
         end

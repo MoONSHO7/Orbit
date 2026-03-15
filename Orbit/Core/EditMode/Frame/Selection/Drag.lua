@@ -254,6 +254,7 @@ function Drag:OnDragStart(selectionOverlay)
             end
 
             Engine.FrameAnchor:BreakAnchor(parent, true)
+            Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
 
             if root then
                 Engine.FrameAnchor:SyncChildren(root)
@@ -376,6 +377,9 @@ function Drag:OnDragStop(selectionOverlay)
             end
 
             Engine.FrameAnchor:CreateAnchor(parent, anchorTarget, anchorEdge, padding, nil, anchorAlign)
+
+            -- Defer group border update after new anchor is established
+            Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
 
             if isHoriz and oldCenterX then
                 local root = Engine.FrameAnchor:GetRootParent(parent)

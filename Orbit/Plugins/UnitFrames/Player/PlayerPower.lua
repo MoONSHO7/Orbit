@@ -6,7 +6,6 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
 local UPDATE_INTERVAL = 0.05
 local AUGMENTATION_SPEC_ID = 1473
-local FRAME_LEVEL_BOOST = 10
 local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
 local TICK_SIZE_MAX = OrbitEngine.TickMixin.TICK_SIZE_MAX
 local TICK_OVERSHOOT = OrbitEngine.TickMixin.TICK_OVERSHOOT
@@ -268,7 +267,6 @@ function Plugin:OnLoad()
         template = "BackdropTemplate",
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = true },
     })
-    Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 4, maxH = 25 }
     self.frame = Frame
     self.mountedConfig = { frame = Frame }
@@ -398,6 +396,10 @@ end
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 function Plugin:ApplySettings()
     if not Frame then
+        return
+    end
+    if InCombatLockdown() then
+        Orbit.CombatManager:QueueUpdate(function() self:ApplySettings() end)
         return
     end
 

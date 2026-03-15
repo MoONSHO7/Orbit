@@ -175,10 +175,7 @@ function Settings:ApplyStyle(container, key, value)
             self.container:SetSize(value, value)
             if self.container.visual and self.container.visual.SetSize and not self.container._cyclingTicker then self.container.visual:SetSize(value, value) end
             if self.container.visual and Orbit.Skin and Orbit.Skin.Icons and self.container.visual.GetRegions then
-                local s = self.container:GetEffectiveScale() or 1
-                local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(s)
-                Orbit.Skin.Icons:ApplyCustom(self.container.visual, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
-                Orbit.Skin:SkinBorder(self.container.visual, self.container.visual, globalBorder)
+                Orbit.Skin.Icons:ApplyCustom(self.container.visual, Orbit.Constants.Aura.SkinNoTimer)
             end
         end
         return

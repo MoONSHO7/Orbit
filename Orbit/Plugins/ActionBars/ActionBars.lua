@@ -264,7 +264,7 @@ function Plugin:OnLoad()
                 MasqueBridge:RegisterDisableCallback(groupName, function()
                     local isDisabled = not MasqueBridge:IsGroupEnabled(groupName)
                     for _, btn in ipairs(self.buttons[index] or {}) do
-                        if isDisabled then Orbit.Skin.ActionButtonSkin:Apply(btn, { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize }) end
+                        if isDisabled then Orbit.Skin.ActionButtonSkin:Apply(btn, { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, iconBorder = true }) end
                     end
                     if not isDisabled then MasqueBridge:ReSkinGroup(groupName) end
                     self:ApplySettings(container)
@@ -337,7 +337,7 @@ function Plugin:OnLoad()
         if not flyout or not flyout:IsShown() then return end
         if InCombatLockdown() then self.flyoutSkinPending = true; return end
         self.flyoutSkinPending = false
-        local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, swipeColor = { r = 0, g = 0, b = 0, a = 0.8 }, showTimer = true, hideName = false, backdropColor = self:GetSetting(1, "BackdropColour"), keypressColor = self:GetSetting(1, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 } }
+        local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, iconBorder = true, swipeColor = { r = 0, g = 0, b = 0, a = 0.8 }, showTimer = true, hideName = false, backdropColor = self:GetSetting(1, "BackdropColour"), keypressColor = self:GetSetting(1, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 } }
         local i = 1
         while true do
             local btn = _G["SpellFlyoutButton" .. i]
@@ -429,7 +429,7 @@ function Plugin:LayoutButtons(index)
     local buttons = self.buttons[index]
     if container and container.orbitDisabled then return end
     if not container or not buttons or #buttons == 0 then return end
-    local padding = self:GetSetting(index, "IconPadding") or 2
+    local rawPadding = self:GetSetting(index, "IconPadding") or 2
     local rows = self:GetSetting(index, "Rows") or 1
     local orientation = 0
     local hideEmpty = self:GetSetting(index, "HideEmptyButtons")
@@ -439,24 +439,29 @@ function Plugin:LayoutButtons(index)
     if cursorOverridesHide and not SPECIAL_BAR_INDICES[index] then hideEmpty = false end
     local config = BAR_CONFIG[index]
     local numIcons = self:GetSetting(index, "NumIcons") or (config and config.count or 12)
-    local w, h = BUTTON_SIZE, BUTTON_SIZE
+    local scale = container:GetEffectiveScale() or 1
+    local w = OrbitEngine.Pixel:Snap(BUTTON_SIZE, scale)
+    local h = w
+    local padding = OrbitEngine.Pixel:Multiple(rawPadding, scale)
+    if rawPadding > 0 then
+        local borderOutset = OrbitEngine.Pixel:Multiple(Orbit.db.GlobalSettings.IconBorderSize or 2, scale)
+        padding = padding + 2 * borderOutset
+    end
     local useMasque = MasqueBridge and MasqueBridge.enabled
     local masqueGroup = useMasque and (config and config.label or "Action Bar " .. index)
-    local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize,
+    local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, iconBorder = true, padding = rawPadding,
         cooldownSwipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "CooldownSwipeColor")) or { r = 0, g = 0, b = 0, a = 0.8 },
         showTimer = true, hideName = false, backdropColor = self:GetSetting(1, "BackdropColour"), keypressColor = self:GetSetting(1, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 } }
     local totalEffective = math.min(#buttons, numIcons)
     local limitPerLine
     if orientation == 0 then limitPerLine = math.max(1, math.ceil(totalEffective / rows))
     else limitPerLine = rows end
-    local cacheKey = string.format("%d_%d_%d_%d_%d", numIcons, limitPerLine, orientation, w, padding)
+    local cacheKey = string.format("%d_%d_%d_%d_%d_%d_%.4f", numIcons, limitPerLine, orientation, BUTTON_SIZE, rawPadding, Orbit.db.GlobalSettings.IconBorderSize or 2, scale)
     local cache = self.gridCache[index]
     if not cache or cache.key ~= cacheKey then
         local positions = {}
-        local scale = buttons[1] and buttons[1]:GetEffectiveScale() or 1
         for i = 1, numIcons do
             local x, y = OrbitEngine.Layout:ComputeGridPosition(i, limitPerLine, orientation, w, h, padding)
-            x = OrbitEngine.Pixel:Snap(x, scale); y = OrbitEngine.Pixel:Snap(y, scale)
             positions[i] = { x = x, y = y }
         end
         self.gridCache[index] = { key = cacheKey, positions = positions }
@@ -497,6 +502,11 @@ function Plugin:LayoutButtons(index)
     local finalW, finalH = OrbitEngine.Layout:ComputeGridContainerSize(sizeCount, sizeLimitPerLine, orientation, w, h, padding)
     container:SetSize(finalW, finalH)
     container.orbitRowHeight, container.orbitColumnWidth = h, w
+    container._isIconContainer = true
+    local iconNineSlice = Orbit.Skin:GetActiveIconBorderStyle()
+    if rawPadding == 0 then Orbit.Skin:ApplyIconGroupBorder(container, iconNineSlice)
+    else Orbit.Skin:ClearIconGroupBorder(container) end
+    Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
 end
 
 -- [ SETTINGS APPLICATION ]-----------------------------------------------------------------------

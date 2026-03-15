@@ -60,7 +60,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
     if not icon.Overlay then
         icon.Overlay = CreateFrame("Frame", nil, icon)
         icon.Overlay:SetAllPoints(icon)
-        icon.Overlay:SetFrameLevel(icon:GetFrameLevel() + 2)
+        icon.Overlay:SetFrameLevel(icon:GetFrameLevel() + Orbit.Constants.Levels.IconOverlay)
         icon.Overlay:EnableMouse(false)
     end
     if not icon.count then
@@ -102,7 +102,10 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
     if skinSettings and skinSettings.swipeColor and icon.Cooldown then
         icon.Cooldown:SetSwipeColor(skinSettings.swipeColor.r, skinSettings.swipeColor.g, skinSettings.swipeColor.b, skinSettings.swipeColor.a or 0.8)
     end
-    if skinSettings and skinSettings.enablePandemic then Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings) end
+    if skinSettings and skinSettings.enablePandemic then
+        Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings)
+        if icon.PandemicIcon then icon.PandemicIcon:SetAlpha(0) end
+    end
     -- Apply canvas mode component overrides (must be last to avoid skin/cooldown clobbering)
     if componentPositions then
         local OverrideUtils = Orbit.Engine.OverrideUtils
@@ -207,7 +210,8 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     if #auras == 0 then container:Hide(); return end
     local helpers = type(cfg.helpers) == "function" and cfg.helpers() or cfg.helpers
     local position = helpers:AnchorToPosition(auraData.posX, auraData.posY, frameW / 2, frameH / 2)
-    local iconSize, _, iconsPerRow, containerW, containerH, iconsPerCol = AL:CalculateSmartLayout(frameW, frameH, position, maxIcons, #auras, overrides)
+    local scale = frame:GetEffectiveScale() or 1
+    local iconSize, _, iconsPerRow, containerW, containerH, iconsPerCol = AL:CalculateSmartLayout(frameW, frameH, position, maxIcons, #auras, overrides, scale)
     container:ClearAllPoints()
     container:SetSize(containerW, containerH)
     local anchorX = auraData.anchorX or cfg.defaultAnchorX or "LEFT"
@@ -261,7 +265,7 @@ function Mixin:UpdateCrowdControlIcon(frame, plugin, iconSize)
 end
 
 -- [ LAZY ICON CREATION ]----------------------------------------------------------------------------
-local HEALER_ICON_FRAME_LEVEL_OFFSET = Orbit.Constants.Levels.HealerAura
+local HEALER_ICON_FRAME_LEVEL_OFFSET = Orbit.Constants.Levels.Overlay
 local DEFAULT_HEALER_SKIN = Orbit.Constants.Aura.SkinNoTimer
 
 function Mixin:EnsureAuraIcon(frame, iconKey, iconSize)
@@ -372,6 +376,7 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
             self:SetupAuraTooltip(icon, aura, unit, "HELPFUL")
             if skinSettings.pandemicGlowType and skinSettings.pandemicGlowType > 0 then
                 Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings)
+                if icon.PandemicIcon then icon.PandemicIcon:SetAlpha(0) end
             elseif icon.orbitPandemicGlowActive then
                 Orbit.PandemicGlow:Stop(icon)
             end

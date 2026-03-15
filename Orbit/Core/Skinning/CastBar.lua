@@ -83,11 +83,7 @@ function CastBar:Create(parent)
     bar.Icon:SetPoint("LEFT", parent, "LEFT", 0, 0)
     bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
 
-    -- Icon Border (visual divider between icon and bar)
-    bar.IconBorder = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    bar.IconBorder:SetAllPoints(bar.Icon)
-    bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + 2)
-    Skin:SkinBorder(bar.IconBorder, bar.IconBorder, 1, nil, true)
+
 
     -- Empower Stage Markers
     bar.stageMarkers = {}
@@ -107,52 +103,38 @@ function CastBar:Create(parent)
 
     -- [ BORDER MANAGEMENT (matches UnitButtonCanvas pattern) ]---------------------------------------
     parent.SetBorder = function(self, size)
-        if Orbit.Skin:SkinBorder(self, self, size, nil, true) then
-            self.borderPixelSize = 0
-            self:UpdateBarInsets()
-            return
-        end
+        Orbit.Skin:SkinBorder(self, self, size)
         self:UpdateBarInsets()
     end
 
-    parent.SetBorderHidden = function(self, edge, hidden)
-        local borders = (self._borderFrame and self._borderFrame.Borders) or self.Borders
-        if not borders then return end
-        local border = borders[edge]
-        if border then border:SetShown(not hidden) end
-        if not self._mergedEdges then self._mergedEdges = {} end
-        self._mergedEdges[edge] = hidden or nil
-        self:UpdateBarInsets()
+    parent.SetBorderHidden = function(self, hidden)
+        if hidden then
+            if self._borderFrame then self._borderFrame:Hide() end
+            if self._edgeBorderOverlay then self._edgeBorderOverlay:Hide() end
+        elseif self._activeBorderMode == "nineslice" then
+            if self._edgeBorderOverlay then self._edgeBorderOverlay:Show() end
+        else
+            if self._borderFrame then self._borderFrame:Show() end
+        end
     end
 
     parent.UpdateBarInsets = function(self)
-        local bs = self.borderPixelSize or 0
-        local iL, iT, iR, iB = bs, bs, bs, bs
-        if self._mergedEdges then
-            if self._mergedEdges.Left then iL = 0 end
-            if self._mergedEdges.Right then iR = 0 end
-            if self._mergedEdges.Top then iT = 0 end
-            if self._mergedEdges.Bottom then iB = 0 end
-        end
         local b = self.orbitBar
         if not b then return end
         local height = self:GetHeight()
         local scale = self:GetEffectiveScale()
         local showIcon = b.Icon and b.Icon:IsShown()
-        local iconSize = showIcon and Pixel:Snap(height - iT - iB, scale) or 0
+        local iconSize = showIcon and Pixel:Snap(height, scale) or 0
         if b.Icon then
             b.Icon:ClearAllPoints()
             b.Icon:SetSize(iconSize, iconSize)
-            b.Icon:SetPoint("TOPLEFT", self, "TOPLEFT", iL, -iT)
+            b.Icon:SetPoint("TOPLEFT", self, "TOPLEFT", 0, 0)
         end
-        if b.IconBorder then
-            b.IconBorder:ClearAllPoints()
-            b.IconBorder:SetAllPoints(b.Icon)
-        end
+
         b.iconOffset = iconSize
         b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", self, "TOPLEFT", iL + iconSize, -iT)
-        b:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -iR, iB)
+        b:SetPoint("TOPLEFT", self, "TOPLEFT", iconSize, 0)
+        b:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
     end
 
     parent:HookScript("OnSizeChanged", function(self) self:UpdateBarInsets() end)
@@ -172,15 +154,8 @@ function CastBar:Apply(bar, settings)
         if settings.showIcon then
             bar.Icon:Show()
             bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
-            if bar.IconBorder and settings.borderSize and settings.borderSize > 0 then
-                bar.IconBorder:Show()
-                Skin:SkinBorder(bar.IconBorder, bar.IconBorder, settings.borderSize, nil, true)
-            elseif bar.IconBorder then
-                bar.IconBorder:Hide()
-            end
         else
             bar.Icon:Hide()
-            if bar.IconBorder then bar.IconBorder:Hide() end
         end
     end
 

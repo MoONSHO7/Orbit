@@ -9,7 +9,7 @@ local OrbitEngine = Orbit.Engine
 Orbit.CastBarMixin = {}
 local Mixin = Orbit.CastBarMixin
 
-local CAST_BAR_FRAME_LEVEL = 100
+local CAST_BAR_CANCEL_THRESHOLD = 0.15
 local SPARK_OVERFLOW = 4
 local DEFAULT_CAST_COLOR = { r = 1, g = 0.7, b = 0 }
 local DEFAULT_PROTECTED_COLOR = { r = 0.7, g = 0.7, b = 0.7 }
@@ -34,12 +34,16 @@ function Mixin:GetAnchorAxis(frame)
     return OrbitEngine.Frame:GetAnchorAxis(frame)
 end
 
+function Mixin:ResolveProtectedColor()
+    local curveData = self:GetSetting(1, "NonInterruptibleColorCurve")
+    return OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or self:GetSetting(1, "NonInterruptibleColor") or DEFAULT_PROTECTED_COLOR
+end
+
 function Mixin:ApplyCastColor(bar, state)
     if not bar or not bar.orbitBar then return end
     local color
     if state == "NON_INTERRUPTIBLE" then
-        local curveData = self:GetSetting(1, "NonInterruptibleColorCurve")
-        color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or self:GetSetting(1, "NonInterruptibleColor") or DEFAULT_PROTECTED_COLOR
+        color = self:ResolveProtectedColor()
     else
         local curveData = self:GetSetting(1, "CastBarColorCurve")
         color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or self:GetSetting(1, "CastBarColor") or DEFAULT_CAST_COLOR
@@ -47,13 +51,8 @@ function Mixin:ApplyCastColor(bar, state)
     bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
 end
 
--- Update interrupt state (called by UNIT_SPELLCAST_INTERRUPTIBLE / NOT_INTERRUPTIBLE events)
--- In WoW 12.0+, notInterruptible from API returns can be a "secret boolean" for enemy units in combat,
--- so we only set interrupt state via the dedicated events which pass explicit true/false values.
 function Mixin:UpdateInterruptState(bar, notInterruptible)
-    if not bar then
-        return
-    end
+    if not bar then return end
     bar.notInterruptible = notInterruptible
     self:ApplyCastColor(bar, notInterruptible and "NON_INTERRUPTIBLE" or "INTERRUPTIBLE")
 end
@@ -67,7 +66,6 @@ function Mixin:CreateCastBarFrame(name, config)
     bar:SetSize(config.width or Orbit.Constants.PlayerCastBar.DefaultWidth or 200, config.height or Orbit.Constants.PlayerCastBar.DefaultHeight or 18)
     bar:SetPoint("CENTER", 0, config.yOffset or Orbit.Constants.PlayerCastBar.DefaultY or -150)
     bar:SetFrameStrata("MEDIUM")
-    bar:SetFrameLevel(CAST_BAR_FRAME_LEVEL)
     bar:SetStatusBarTexture("") -- Handled by Skin
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0)
@@ -104,18 +102,28 @@ end
 -- [ SKIN INITIALIZATION ]---------------------------------------------------------------------------
 
 function Mixin:InitializeSkin(bar)
-    if not Orbit.Skin.CastBar then
-        return
-    end
+    if not Orbit.Skin.CastBar then return end
     local skinned = Orbit.Skin.CastBar:Create(bar)
     bar.orbitBar, bar.Text, bar.Timer, bar.Icon = skinned, skinned.Text, skinned.Timer, skinned.Icon
     bar.Latency, bar.InterruptOverlay, bar.InterruptAnim = skinned.Latency, skinned.InterruptOverlay, skinned.InterruptAnim
-    if skinned.Spark then
-        skinned.Spark:Hide()
-    end
-    if skinned.SparkGlow then
-        skinned.SparkGlow:Hide()
-    end
+    if skinned.Spark then skinned.Spark:Hide() end
+    if skinned.SparkGlow then skinned.SparkGlow:Hide() end
+    -- Protected overlay: mirrors orbitBar but with the protected color.
+    -- SetAlphaFromBoolean drives visibility from the secret notInterruptible value.
+    local overlay = CreateFrame("StatusBar", nil, skinned)
+    overlay:SetAllPoints(skinned)
+    overlay:SetMinMaxValues(0, 1)
+    overlay:SetValue(0)
+    overlay:SetFrameLevel(skinned:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
+    overlay:SetAlpha(0)
+    bar.protectedOverlay = overlay
+    -- Raise text above the protected overlay so it isn't obscured
+    local textContainer = CreateFrame("Frame", nil, skinned)
+    textContainer:SetAllPoints(skinned)
+    textContainer:SetFrameLevel(overlay:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
+    textContainer:EnableMouse(false)
+    if skinned.Text then skinned.Text:SetParent(textContainer) end
+    if skinned.Timer then skinned.Timer:SetParent(textContainer) end
     return skinned
 end
 
@@ -148,6 +156,7 @@ function Mixin:RegisterWorldEvent(bar, debounceKey)
             end
         end, 0.5)
     end, self)
+    Orbit.EventBus:On("MOUNTED_VISIBILITY_CHANGED", function() self:UpdateVisibility() end, self)
 end
 
 function Mixin:RestorePositionDebounced(bar, debounceKey)
@@ -282,6 +291,17 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
             sparkColor = sparkColor,
         })
     end
+    -- Sync protected overlay texture and color
+    if bar.protectedOverlay then
+        local LSM = LibStub("LibSharedMedia-3.0")
+        local texPath = LSM:Fetch("statusbar", texture or "Blizzard")
+        bar.protectedOverlay:SetStatusBarTexture(texPath)
+        local pColor = self:ResolveProtectedColor()
+        bar.protectedOverlay:SetStatusBarColor(pColor.r, pColor.g, pColor.b)
+    end
+    if bar.casting or bar.channeling then
+        self:ApplyCastColor(bar, bar.notInterruptible and "NON_INTERRUPTIBLE" or "INTERRUPTIBLE")
+    end
     if Orbit:IsEditMode() and not self._previewShownThisFrame then
         self._previewShownThisFrame = true
         C_Timer.After(0, function() self._previewShownThisFrame = nil end)
@@ -295,11 +315,11 @@ function Mixin:UpdateVisibility()
     local bar = self.CastBar
     if not bar then return end
     if not InCombatLockdown() and Orbit.MountedVisibility:ShouldHide() then
-        bar:StopCast()
+        if bar.StopCast then bar:StopCast() end
         return
     end
     if not bar.casting and not bar.channeling and not bar.preview then
-        bar:StopCast()
+        if bar.StopCast then bar:StopCast() end
     end
 end
 
@@ -314,15 +334,10 @@ function Mixin:ShowPreview()
     local targetBar = bar.orbitBar or bar
     targetBar:SetMinMaxValues(0, 3)
     targetBar:SetValue(1.5)
-    if bar.Text then
-        bar.Text:SetText(self.previewText or "Preview Cast")
-    end
-    if bar.Icon then
-        bar.Icon:SetTexture(136243)
-    end
-    if bar.Timer then
-        bar.Timer:SetText("1.5")
-    end
+    if bar.protectedOverlay then bar.protectedOverlay:SetAlpha(0) end
+    if bar.Text then bar.Text:SetText(self.previewText or "Preview Cast") end
+    if bar.Icon then bar.Icon:SetTexture(136243) end
+    if bar.Timer then bar.Timer:SetText("1.5") end
     bar:Show()
 end
 
@@ -394,15 +409,24 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
         if targetBar.SetTimerDuration then
             pcall(targetBar.SetTimerDuration, targetBar, durationObj, 0, direction)
         end
-        -- notInterruptible from API can be a secret boolean for enemy units in WoW 12.0+.
-        -- Don't read it here; events (INTERRUPTIBLE/NOT_INTERRUPTIBLE) drive the correct state.
+        -- Protected overlay: secret-value-safe interrupt color via SetAlphaFromBoolean.
+        -- notInterruptible is a secret boolean in combat for enemy units (WoW 12.0+).
+        local overlay = self.protectedOverlay
+        if overlay and notInterruptible ~= nil then
+            if overlay.SetTimerDuration then
+                pcall(overlay.SetTimerDuration, overlay, durationObj, 0, direction)
+            end
+            overlay:SetAlphaFromBoolean(notInterruptible, 1, 0)
+        elseif overlay then
+            overlay:SetAlpha(0)
+        end
+        -- Non-secret fallback for out-of-combat / event-driven state
+        if notInterruptible ~= nil and not issecretvalue(notInterruptible) then
+            self.notInterruptible = notInterruptible
+        end
         plugin:ApplyCastColor(self, self.notInterruptible and "NON_INTERRUPTIBLE" or "INTERRUPTIBLE")
-        if self.Text then
-            self.Text:SetText(name)
-        end
-        if self.Icon then
-            self.Icon:SetTexture(texture or 136243)
-        end
+        if self.Text then self.Text:SetText(name) end
+        if self.Icon then self.Icon:SetTexture(texture or 136243) end
         if InCombatLockdown() and self:IsProtected() then
             self:SetAlpha(1)
             if self.orbitBar then self.orbitBar:SetAlpha(1) end
@@ -416,6 +440,7 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
         self.casting = false
         self.channeling = false
         self.durationObj = nil
+        if self.protectedOverlay then self.protectedOverlay:SetAlpha(0) end
         if not self.preview then
             if InCombatLockdown() and self:IsProtected() then
                 self:SetAlpha(0)

@@ -14,7 +14,7 @@ local OFFSCREEN_OFFSET = 9000
 
 local Plugin = Orbit:RegisterPlugin("Menu Bar", SYSTEM_ID, {
     defaults = {
-        Padding = -5,
+        Padding = 0,
         Rows = 1,
         Scale = 100,
         Opacity = 100,
@@ -112,10 +112,10 @@ function Plugin:AddSettings(dialog, systemFrame)
         type = "slider",
         key = "Padding",
         label = "Nav Padding",
-        min = -5,
+        min = 0,
         max = 15,
         step = 1,
-        default = -5,
+        default = 0,
     })
 
     -- 4. Opacity
@@ -254,7 +254,7 @@ function Plugin:ApplySettings()
     end
 
     local scale, padding, rows =
-        self:GetSetting(SYSTEM_ID, "Scale") or 100, self:GetSetting(SYSTEM_ID, "Padding") or -5, self:GetSetting(SYSTEM_ID, "Rows") or 1
+        self:GetSetting(SYSTEM_ID, "Scale") or 100, self:GetSetting(SYSTEM_ID, "Padding") or 0, self:GetSetting(SYSTEM_ID, "Rows") or 1
     self:ReparentAll()
     local buttons = {}
     for _, child in ipairs({ frame:GetChildren() }) do

@@ -46,13 +46,6 @@ local function Create(container, preview, key, source, data)
             else btn.Icon:SetColorTexture(CC.FALLBACK_GRAY[1], CC.FALLBACK_GRAY[2], CC.FALLBACK_GRAY[3], CC.FALLBACK_GRAY[4]) end
         end
 
-        local scale = btn:GetEffectiveScale() or 1
-        local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(scale)
-        if Orbit.Skin and Orbit.Skin.Icons and key ~= "PrivateAuraAnchor" then
-            Orbit.Skin.Icons:ApplyCustom(btn, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
-            Orbit.Skin:SkinBorder(btn, btn, globalBorder)
-        end
-
         visual = btn
         container.isIconFrame = true
     end
@@ -62,6 +55,11 @@ local function Create(container, preview, key, source, data)
     local w, h = GetSourceSize(source, CC.DEFAULT_ICON_SIZE, CC.DEFAULT_ICON_SIZE)
     if savedSize and savedSize > 0 and key ~= "PrivateAuraAnchor" then w, h = savedSize, savedSize end
     container:SetSize(w, h)
+
+    if container.isIconFrame and visual and Orbit.Skin and Orbit.Skin.Icons and key ~= "PrivateAuraAnchor" then
+        visual:SetSize(w, h)
+        Orbit.Skin.Icons:ApplyCustom(visual, Orbit.Constants.Aura.SkinNoTimer)
+    end
 
     return visual
 end

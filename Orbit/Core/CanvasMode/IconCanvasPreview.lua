@@ -33,7 +33,7 @@ function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTextur
     local backdrop = { bgFile = "Interface\\BUTTONS\\WHITE8x8", insets = { left = 0, right = 0, top = 0, bottom = 0 } }
     preview:SetBackdrop(backdrop)
     preview:SetBackdropColor(0, 0, 0, 0)
-    Orbit.Skin:SkinBorder(preview, preview, borderSize)
+    Orbit.Skin:SkinBorder(preview, preview, borderSize, nil, true)
 
     return preview
 end
@@ -77,7 +77,7 @@ function IconCanvasPreview:AttachTextComponents(preview, textComponents, savedPo
         if CreateDraggableComponent then
             local comp = CreateDraggableComponent(preview, def.key, fs, startX, startY, data)
             if comp then
-                comp:SetFrameLevel(preview:GetFrameLevel() + 10)
+                comp:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
                 preview.components[def.key] = comp
                 fs:Hide()
             end

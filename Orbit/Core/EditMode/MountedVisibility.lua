@@ -27,7 +27,6 @@ local cachedShouldHide = false
 local suppressedPlugins = {}
 local combatRestoredPlugins = {}
 local isEditModeRestoring = false
-local NOOP = function() end
 
 -- [ CONFIG READER ]---------------------------------------------------------------------------------
 -- The party's scout reads the mounted config scroll before engaging
@@ -42,15 +41,6 @@ local function SuppressFrame(frame)
     for _, child in ipairs({ frame:GetChildren() }) do
         if child.NameFrame then child.NameFrame:Hide() end
     end
-    local Anchor = OrbitEngine.FrameAnchor
-    if Anchor and Anchor.childrenOf[frame] then
-        for child in pairs(Anchor.childrenOf[frame]) do
-            if not child.orbitHoverOverlay then
-                child.orbitMountedSuppressed = true
-                child:SetAlpha(0)
-            end
-        end
-    end
 end
 
 local function RevealFrame(frame)
@@ -59,13 +49,6 @@ local function RevealFrame(frame)
     if frame.UpdatePortrait then frame:UpdatePortrait() end
     for _, child in ipairs({ frame:GetChildren() }) do
         if child.NameFrame then child.NameFrame:Show() end
-    end
-    local Anchor = OrbitEngine.FrameAnchor
-    if Anchor and Anchor.childrenOf[frame] then
-        for child in pairs(Anchor.childrenOf[frame]) do
-            child.orbitMountedSuppressed = false
-            child:SetAlpha(1)
-        end
     end
 end
 
@@ -123,14 +106,7 @@ local function SuppressPlugin(plugin)
     if not cfg then return end
     local frame = cfg.frame
     if not frame then return end
-    if not suppressedPlugins[plugin] then
-        suppressedPlugins[plugin] = {
-            UpdateVisibility = plugin.UpdateVisibility,
-            ApplySettings = plugin.ApplySettings,
-        }
-        plugin.UpdateVisibility = NOOP
-        plugin.ApplySettings = NOOP
-    end
+    suppressedPlugins[plugin] = true
     SuppressFrame(frame)
     if cfg.hoverReveal then
         CreateHoverOverlay(frame, plugin)
@@ -144,12 +120,9 @@ local function SuppressPlugin(plugin)
 end
 
 local function RestorePlugin(plugin)
-    local saved = suppressedPlugins[plugin]
-    if not saved then return end
+    if not suppressedPlugins[plugin] then return end
     suppressedPlugins[plugin] = nil
     combatRestoredPlugins[plugin] = nil
-    if saved.UpdateVisibility then plugin.UpdateVisibility = saved.UpdateVisibility end
-    if saved.ApplySettings then plugin.ApplySettings = saved.ApplySettings end
     local frame = GetFrame(plugin)
     if frame then
         frame:SetScript("OnUpdate", nil)
@@ -313,6 +286,7 @@ function Manager:Refresh(force)
             end
         end
     end
+    Orbit.EventBus:Fire("MOUNTED_VISIBILITY_CHANGED", shouldHide)
 end
 
 -- [ EVENT REGISTRATION ]----------------------------------------------------------------------------

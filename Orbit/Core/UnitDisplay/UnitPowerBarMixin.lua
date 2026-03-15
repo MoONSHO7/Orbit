@@ -7,7 +7,7 @@ local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
-local FRAME_LEVEL_BOOST = 10
+local FRAME_LEVEL_BOOST = Orbit.Constants.Levels.StatusBar
 local CanUseUnitPowerPercent = (type(UnitPowerPercent) == "function" and CurveConstants and CurveConstants.ScaleTo100)
 
 Orbit.UnitPowerBarMixin = {}
@@ -82,7 +82,7 @@ function Mixin:CreatePowerBarPlugin(config)
         bar:SetPoint("BOTTOMRIGHT", 0, 0)
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(1)
-        bar:SetFrameLevel(preview:GetFrameLevel() + 2)
+        bar:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
         Orbit.Skin:SkinStatusBar(bar, textureName, nil, true)
 
         local info = Orbit.Constants.Colors.PowerType[0]
@@ -96,7 +96,7 @@ function Mixin:CreatePowerBarPlugin(config)
 
         local textFrame = CreateFrame("Frame", nil, preview)
         textFrame:SetAllPoints(bar)
-        textFrame:SetFrameLevel(bar:GetFrameLevel() + 5)
+        textFrame:SetFrameLevel(bar:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
 
         local fs = textFrame:CreateFontString(nil, "OVERLAY", nil, 7)
         fs:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
@@ -120,7 +120,7 @@ function Mixin:CreatePowerBarPlugin(config)
             }
             local comp = CreateDraggableComponent(preview, "Text", fs, textSaved.posX or 0, textSaved.posY or 0, compData)
             if comp then
-                comp:SetFrameLevel(textFrame:GetFrameLevel() + 1)
+                comp:SetFrameLevel(textFrame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
                 preview.components["Text"] = comp
                 fs:Hide()
             end

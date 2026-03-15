@@ -35,7 +35,7 @@ function CDM:GetTextOverlay(icon)
     end
     local overlay = CreateFrame("Frame", nil, icon)
     overlay:SetAllPoints()
-    overlay:SetFrameLevel(icon:GetFrameLevel() + 20)
+    overlay:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconOverlay)
     icon.OrbitTextOverlay = overlay
     return overlay
 end
@@ -141,7 +141,7 @@ function CDM:ApplyTextSettings(icon, systemIndex)
             OverrideUtils.ApplyOverrides(icon.ChargeCount.Current, chargesOverrides, { fontSize = defaultSize, fontPath = fontPath })
             icon.ChargeCount.Current:SetDrawLayer("OVERLAY", 7)
             if icon.ChargeCount.SetFrameLevel then
-                icon.ChargeCount:SetFrameLevel(icon:GetFrameLevel() + 20)
+                icon.ChargeCount:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconOverlay)
             end
             if ApplyTextPosition then
                 ApplyTextPosition(icon.ChargeCount.Current, icon, chargesPos)
@@ -173,7 +173,7 @@ function CDM:ApplyTextSettings(icon, systemIndex)
                     stackText:SetDrawLayer("OVERLAY", 7)
                 end
                 if icon.Applications.SetFrameLevel then
-                    icon.Applications:SetFrameLevel(icon:GetFrameLevel() + 20)
+                    icon.Applications:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconOverlay)
                 end
                 if ApplyTextPosition then
                     ApplyTextPosition(stackText, icon, stacksPos)

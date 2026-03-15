@@ -122,6 +122,7 @@ function Plugin:ReparentAll()
 
     TalkingHeadFrame:ClearAllPoints()
     TalkingHeadFrame:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
+    TalkingHeadFrame:EnableMouse(false)
 
     -- Mark as captured
     self._captured = true

@@ -4,7 +4,7 @@ local Engine = Orbit.Engine
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local PORTRAIT_DEFAULT_SIZE = 32
-local PORTRAIT_LEVEL_OFFSET = 15
+local PORTRAIT_LEVEL_OFFSET = Orbit.Constants.Levels.Overlay
 local PORTRAIT_RING_OVERSHOOT = Engine.PORTRAIT_RING_OVERSHOOT
 local PORTRAIT_3D_MIRROR_FACING = -1.05
 local PORTRAIT_3D_MIRROR_OFFSET = 0.3

@@ -73,16 +73,18 @@ C.Layers = {
 
 -- Frame Level Offsets (relative to parent)
 C.Levels = {
-    Cooldown = 2,       -- Cooldown swipe frame
-    Border = 3,         -- Border container frame
-    Highlight = 5,      -- Highlight frame
-    Glow = 10,          -- Glow effect container
-    Text = 20,          -- Text overlay frame
-    HealerAura = 25,    -- Healer aura icons (above text, below procs)
-    ProcOverlay = 50,   -- High level procs (SpellActivationAlert)
-    SmartGuides = 90,   -- Canvas Mode snap guides
-    Tooltip = 100,      -- Tooltip/flyout layer
-    AnchorBoost = 15,   -- Frame level boost for anchored children (above Glow, below Text)
+    StatusBar = 1,       -- Health/power/damage/absorb bars, cooldown swipe
+    Border = 5,          -- Borders, highlights, glows, aggro, selection, dispel
+    Overlay = 7,         -- Text, icons, components, proc overlays, aura containers
+    SmartGuides = 90,    -- Canvas Mode snap guides (different strata)
+    Tooltip = 100,       -- Tooltip/flyout layer (different strata)
+    IconContent = 1,     -- Icon backdrop
+    IconSwipe = 2,       -- Cooldown swipe (border group, below glow)
+    IconGlow = 3,        -- Pandemic/proc glow (border group, above swipe, below border)
+    IconBorder = 4,      -- Per-icon pixel/NineSlice border
+    IconOverlay = 5,     -- Timer text, stacks, flash
+    GroupContainer = 49, -- Group frame container base level
+    GroupBase = 50,      -- Individual group frame base level (+ index)
 }
 
 C.UnitFrame = {
@@ -141,24 +143,9 @@ C.Settings = {
 C.BorderStyle = {
     Default = "flat",
     Offset = 6,
+    EdgeSize = 16,
     Styles = {
-        { label = "Flat", value = "flat" },
-        { label = "Alliance", value = "alliance", layoutName = "BFAMissionAlliance" },
-        { label = "Alliance Portrait", value = "allianceportrait", atlasSlice = "UI-Frame-Alliance-PortraitWider", margin = 64 },
-        { label = "Horde", value = "horde", layoutName = "BFAMissionHorde" },
-        { label = "Dragonflight", value = "dragonflight", layoutName = "DragonflightMissionFrame" },
-        { label = "Generic Metal", value = "genericmetal", layoutName = "GenericMetal" },
-        { label = "Neutral", value = "neutral", layoutName = "WoodenNeutralFrameTemplate" },
-        { label = "Oribos", value = "oribos", layoutName = "CovenantMissionFrame" },
-        { label = "Kyrian", value = "kyrian", path = "Interface\\FrameGeneral\\UIFrameKyrian", margin = 64 },
-        { label = "Venthyr", value = "venthyr", path = "Interface\\FrameGeneral\\UIFrameVenthyr", margin = 64 },
-        { label = "Necrolord", value = "necrolord", path = "Interface\\FrameGeneral\\UIFrameNecrolord", margin = 64 },
-        { label = "Night Fae", value = "nightfae", path = "Interface\\FrameGeneral\\UIFrameNightFae", margin = 64 },
-        { label = "Marine", value = "marine", path = "Interface\\FrameGeneral\\UIFrameMarine", margin = 64 },
-        { label = "Mechagon", value = "mechagon", path = "Interface\\FrameGeneral\\UIFrameMechagon", margin = 64 },
-        { label = "Plunderstorm", value = "plunderstorm", path = "Interface\\FrameGeneral\\UIFramePlunderstorm", margin = 64 },
-        { label = "Achievement Wood", value = "achievementwood", path = "Interface\\AchievementFrame\\UIFrameAchievementWood", margin = 64 },
-        { label = "Pirate Day", value = "pirateday", path = "Interface\\Store\\PerksThemePirateDayNineSlice", margin = 64 },
+        { label = "Orbit Pixel", value = "flat" },
     },
 }
 
@@ -167,7 +154,6 @@ C.BorderStyle.Lookup = {}
 for _, entry in ipairs(C.BorderStyle.Styles) do
     C.BorderStyle.Lookup[entry.value] = entry
 end
-
 
 -- [ TIMING CONSTANTS ]------------------------------------------------------------------------------
 C.Timing = {

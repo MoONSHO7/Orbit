@@ -4,10 +4,11 @@ local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
+local Pixel = OrbitEngine.Pixel
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
-local AURA_SPACING = Orbit.Constants.GroupFrames.AuraSpacing
+local AURA_SPACING_RAW = Orbit.Constants.GroupFrames.AuraSpacing
 local AURA_MIN_ICON_SIZE = 10
 local DEFAULT_MAX_ICONS = 3
 local DEFAULT_MAX_ROWS = 2
@@ -22,7 +23,10 @@ local function RefreshAuraIcons(self)
     local overrides = self.pendingOverrides or self.existingOverrides or {}
     local maxIcons = overrides.MaxIcons or DEFAULT_MAX_ICONS
     local maxRows = overrides.MaxRows or DEFAULT_MAX_ROWS
-    local iconSize = math.max(AURA_MIN_ICON_SIZE, overrides.IconSize or AURA_BASE_ICON_SIZE)
+    local rawSize = math.max(AURA_MIN_ICON_SIZE, overrides.IconSize or AURA_BASE_ICON_SIZE)
+    local scale = UIParent:GetEffectiveScale() or 1
+    local iconSize = Pixel:Multiple(rawSize, scale)
+    local spacing = Pixel:Multiple(AURA_SPACING_RAW, scale)
 
     local preview = self:GetParent()
     local parentWidth = preview and (preview.sourceWidth or preview:GetWidth()) or DEFAULT_PARENT_WIDTH
@@ -32,27 +36,25 @@ local function RefreshAuraIcons(self)
 
     local rows, iconsPerRow, containerWidth, containerHeight, iconsPerCol
     if isHorizontal then
-        iconsPerRow = math.min(math.max(1, math.floor((parentWidth + AURA_SPACING) / (iconSize + AURA_SPACING))), maxIcons)
+        iconsPerRow = math.min(math.max(1, math.floor((parentWidth + spacing) / (iconSize + spacing))), maxIcons)
         if maxRows > 1 then iconsPerRow = math.min(iconsPerRow, math.ceil(maxIcons / maxRows)) end
         rows = math.min(maxRows, math.ceil(maxIcons / iconsPerRow))
         local displayCols = math.min(math.min(maxIcons, iconsPerRow * rows), iconsPerRow)
-        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * AURA_SPACING)
-        containerHeight = (rows * iconSize) + ((rows - 1) * AURA_SPACING)
+        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * spacing)
+        containerHeight = (rows * iconSize) + ((rows - 1) * spacing)
     else
         iconsPerCol = maxRows
         iconsPerRow = math.ceil(maxIcons / iconsPerCol)
         local actualCols = math.min(iconsPerRow, math.ceil(maxIcons / iconsPerCol))
         rows = math.min(iconsPerCol, maxIcons)
-        containerWidth = math.max(iconSize, (actualCols * iconSize) + ((actualCols - 1) * AURA_SPACING))
-        containerHeight = math.max(iconSize, (rows * iconSize) + ((rows - 1) * AURA_SPACING))
+        containerWidth = math.max(iconSize, (actualCols * iconSize) + ((actualCols - 1) * spacing))
+        containerHeight = math.max(iconSize, (rows * iconSize) + ((rows - 1) * spacing))
     end
     self:SetSize(containerWidth, containerHeight)
 
     for _, btn in ipairs(self.auraIconPool) do btn:Hide() end
 
-    local scale = self:GetEffectiveScale() or 1
-    local globalBorder = Orbit.db.GlobalSettings.BorderSize or Orbit.Engine.Pixel:DefaultBorderSize(scale)
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false }
+    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false }
 
     local iconIndex = 0
     local col, row = 0, 0
@@ -75,23 +77,22 @@ local function RefreshAuraIcons(self)
 
         if Orbit.Skin and Orbit.Skin.Icons then
             Orbit.Skin.Icons:ApplyCustom(btn, skinSettings)
-            Orbit.Skin:SkinBorder(btn, btn, globalBorder)
         end
 
         btn:ClearAllPoints()
-        local xOffset = col * (iconSize + AURA_SPACING)
-        local yOffset = row * (iconSize + AURA_SPACING)
+        local xOffset = col * (iconSize + spacing)
+        local yOffset = row * (iconSize + spacing)
         local selfAY = self.selfAnchorY or self.anchorY
         local growDown = (selfAY ~= "BOTTOM")
         if iconsPerCol and selfAY ~= "TOP" and selfAY ~= "BOTTOM" then
             local iconsInCol = math.min(iconsPerCol, maxIcons - (col * iconsPerCol))
-            local colHeight = (iconsInCol * iconSize) + ((iconsInCol - 1) * AURA_SPACING)
+            local colHeight = (iconsInCol * iconSize) + ((iconsInCol - 1) * spacing)
             yOffset = yOffset + (self:GetHeight() - colHeight) / 2
         end
 
         if self.justifyH == "CENTER" then
             local iconsInRow = math.min(iconsPerRow, maxIcons - (row * iconsPerRow))
-            local rowWidth = (iconsInRow * iconSize) + ((iconsInRow - 1) * AURA_SPACING)
+            local rowWidth = (iconsInRow * iconSize) + ((iconsInRow - 1) * spacing)
             local containerW = self:GetWidth()
             local centerOff = (containerW - rowWidth) / 2
             local anchor = growDown and "TOPLEFT" or "BOTTOMLEFT"

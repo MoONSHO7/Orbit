@@ -38,7 +38,7 @@ local function CreateTourFrame(name, label, systemIndex, offsetX)
     frame.editModeName = nil
     frame.isTourFrame = true
     frame.orbitNoSnap = false
-    frame.anchorOptions = { syncDimensions = true, mergeBorders = true }
+    frame.anchorOptions = { syncDimensions = false, mergeBorders = true }
     frame.orbitResizeBounds = { minW = MIN_W, maxW = MAX_W, minH = MIN_H, maxH = MAX_H }
     -- Background
     frame.bg = frame:CreateTexture(nil, "BACKGROUND")
@@ -46,14 +46,16 @@ local function CreateTourFrame(name, label, systemIndex, offsetX)
     frame.bg:SetColorTexture(FRAME_BG.r, FRAME_BG.g, FRAME_BG.b, FRAME_BG.a)
     -- Border edges
     local bc = FRAME_BORDER
+    local scale = frame:GetEffectiveScale()
+    local borderPx = Engine.Pixel:Multiple(1, scale)
     local top = frame:CreateTexture(nil, "BORDER"); top:SetColorTexture(bc.r, bc.g, bc.b, bc.a)
-    top:SetPoint("TOPLEFT"); top:SetPoint("TOPRIGHT"); top:SetHeight(1)
+    top:SetPoint("TOPLEFT"); top:SetPoint("TOPRIGHT"); top:SetHeight(borderPx)
     local bot = frame:CreateTexture(nil, "BORDER"); bot:SetColorTexture(bc.r, bc.g, bc.b, bc.a)
-    bot:SetPoint("BOTTOMLEFT"); bot:SetPoint("BOTTOMRIGHT"); bot:SetHeight(1)
+    bot:SetPoint("BOTTOMLEFT"); bot:SetPoint("BOTTOMRIGHT"); bot:SetHeight(borderPx)
     local lft = frame:CreateTexture(nil, "BORDER"); lft:SetColorTexture(bc.r, bc.g, bc.b, bc.a)
-    lft:SetPoint("TOPLEFT"); lft:SetPoint("BOTTOMLEFT"); lft:SetWidth(1)
+    lft:SetPoint("TOPLEFT"); lft:SetPoint("BOTTOMLEFT"); lft:SetWidth(borderPx)
     local rgt = frame:CreateTexture(nil, "BORDER"); rgt:SetColorTexture(bc.r, bc.g, bc.b, bc.a)
-    rgt:SetPoint("TOPRIGHT"); rgt:SetPoint("BOTTOMRIGHT"); rgt:SetWidth(1)
+    rgt:SetPoint("TOPRIGHT"); rgt:SetPoint("BOTTOMRIGHT"); rgt:SetWidth(borderPx)
     -- Label
     frame.label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     frame.label:SetPoint("CENTER")
@@ -65,8 +67,8 @@ end
 
 -- [ LIFECYCLE ]----------------------------------------------------------------------
 function Plugin:OnLoad()
-    self.frameA = CreateTourFrame("TourFrameA", "Frame A", INDEX_A, -FRAME_OFFSET_X)
-    self.frameB = CreateTourFrame("TourFrameB", "Frame B", INDEX_B, FRAME_OFFSET_X)
+    self.frameA = CreateTourFrame("TourFrameA", "A", INDEX_A, -FRAME_OFFSET_X)
+    self.frameB = CreateTourFrame("TourFrameB", "B", INDEX_B, FRAME_OFFSET_X)
     -- Override Plugin.Frame (Factory sets it to last created frame)
     self.Frame = nil
 end

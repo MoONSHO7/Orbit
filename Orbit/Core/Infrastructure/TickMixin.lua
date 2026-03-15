@@ -10,7 +10,7 @@ local TickMixin = Engine.TickMixin
 local TICK_SIZE_DEFAULT = 2
 local TICK_SIZE_MAX = 6
 local TICK_OVERSHOOT = 2
-local TICK_LEVEL_BOOST = 10
+local TICK_LEVEL_BOOST = Orbit.Constants.Levels.Overlay
 local WHITE_TEXTURE = "Interface\\Buttons\\WHITE8x8"
 
 TickMixin.TICK_SIZE_DEFAULT = TICK_SIZE_DEFAULT
@@ -45,7 +45,7 @@ function TickMixin:Create(parent, statusBar, anchorRegion)
     if anchorRegion then tickClip:SetPoint("LEFT", anchorRegion, "RIGHT", 0, 0)
     else tickClip:SetAllPoints(statusBar) end
     tickClip:SetClipsChildren(true)
-    tickClip:SetFrameLevel(tickBar:GetFrameLevel() + 1)
+    tickClip:SetFrameLevel(tickBar:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
 
     local tickMark = CreateFrame("Frame", nil, tickClip)
     tickMark:SetPoint("RIGHT", tickBar:GetStatusBarTexture(), "RIGHT", 0, 0)

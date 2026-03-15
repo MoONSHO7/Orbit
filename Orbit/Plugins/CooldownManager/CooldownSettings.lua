@@ -39,7 +39,7 @@ function CDM:AddSettings(dialog, systemFrame)
                 onChange = function(val) self:SetSetting(systemIndex, "Height", val); RelayoutChargeBars(self) end,
             })
             table.insert(schema.controls, {
-                type = "slider", key = "Spacing", label = "Spacing", min = -5, max = 50, step = 1, default = 0,
+                type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 50, step = 1, default = 0,
                 onChange = function(val) self:SetSetting(systemIndex, "Spacing", val); RelayoutChargeBars(self) end,
             })
             table.insert(schema.controls, {
@@ -206,7 +206,7 @@ function CDM:AddSettings(dialog, systemFrame)
                     self:ApplySettings(systemFrame)
                 end,
             })
-            table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = -5, max = 15, step = 1, default = Constants.Cooldown.DefaultPadding })
+            table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = 0, max = 15, step = 1, default = Constants.Cooldown.DefaultPadding })
         end
         if not isTracked then
             table.insert(schema.controls, { type = "slider", key = "IconLimit", label = "# Columns", min = 1, max = 20, step = 1, default = Constants.Cooldown.DefaultLimit })
