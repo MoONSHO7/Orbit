@@ -93,7 +93,7 @@ function Preview:Setup(plugin, frame, sysIndex)
         local savedPositions = plugin:GetSetting(sysIndex, "ComponentPositions") or {}
         local fontName = plugin:GetSetting(sysIndex, "Font")
         local fontPath = LSM and LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
-        local fontSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
+        local fontSize = 18
         local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         fs:SetFont(fontPath, fontSize, Orbit.Skin:GetFontOutline())
         fs:SetText(tostring(previewCharges))

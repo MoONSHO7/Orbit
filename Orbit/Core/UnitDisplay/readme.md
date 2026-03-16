@@ -30,10 +30,10 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 | GroupFrameEventHandler.lua | shared OnEvent/OnShow handler factory for group frames. |
 | PrivateAuraMixin.lua | shared private aura anchor creation and management. |
 | GroupCanvasRegistration.lua | shared canvas mode component registration and icon position application. |
-| StatusIconMixin.lua | status indicators (defensive, crowd control, movement speed). |
-| AggroIndicatorMixin.lua | threat/aggro border coloring. |
-| DispelIndicatorMixin.lua | dispellable debuff type indication. |
-| PandemicGlow.lua | pandemic window glow for dots/hots. |
+| StatusIconMixin.lua | status indicators (defensive, crowd control, movement speed), selection/aggro highlight borders via `Skin:ApplyHighlightBorder`. |
+| AggroIndicatorMixin.lua | threat/aggro border coloring via `Skin:ApplyHighlightBorder`. |
+| DispelIndicatorMixin.lua | dispellable debuff type indication with `DispelOnlyByMe` filter support. |
+| PandemicGlow.lua | hook-driven pandemic glow for dots/hots. queries CooldownViewer pandemic state instead of polling. |
 | UnitAuraGridMixin.lua | grid-based aura display with size categories (big/small). |
 | SecondaryUnitFrameMixin.lua | secondary frames (target-of-target, focus-target). |
 

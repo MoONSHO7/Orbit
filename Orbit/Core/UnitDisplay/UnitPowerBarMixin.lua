@@ -91,7 +91,7 @@ function Mixin:CreatePowerBarPlugin(config)
 
         local savedPositions = plugin:GetSetting(1, "ComponentPositions") or {}
         local textSaved = savedPositions.Text or {}
-        local textSize = Orbit.Skin:GetAdaptiveTextSize(h, 12, 18, 1)
+        local textSize = 12
         local fontPath = LSM:Fetch("font", plugin:GetSetting(1, "Font") or gs.Font) or STANDARD_TEXT_FONT
 
         local textFrame = CreateFrame("Frame", nil, preview)
@@ -242,7 +242,7 @@ function Mixin:ApplySettings()
         Frame.Text:Hide()
     else
         Frame.Text:Show()
-        local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 12, 18, 1)
+        local textSize = 12
         OrbitEngine.OverrideUtils.ApplyOverrides(Frame.Text, overrides, { fontSize = textSize, fontPath = fontPath })
         Frame.Text:ClearAllPoints()
         Frame.Text:SetPoint("CENTER", Frame.Overlay, "CENTER", 0, 0)

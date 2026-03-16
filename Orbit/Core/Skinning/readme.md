@@ -10,7 +10,9 @@ all visual rendering — borders, textures, status bar coloring, icon styling, c
 
 | file | responsibility |
 |---|---|
-| Skin.lua | core skinning api: `SkinBorder`, `SkinStatusBar`, `SkinText`, `ApplyGradientBackground`, `CreateBackdrop`. `GetActiveBorderStyle` resolves frame border style, `GetActiveIconBorderStyle` resolves icon border style (action bars / cooldown manager only). `ApplyIconGroupBorder`/`ClearIconGroupBorder` wraps an icon container in a single NineSlice border when Icon Padding = 0. |
+| Skin.lua | core skinning api: `SkinBorder`, `SkinStatusBar`, `SkinText`, `ApplyGradientBackground`, `CreateBackdrop`, `DefaultSetBorderHidden`. `GetActiveBorderStyle` resolves frame border style, `GetActiveIconBorderStyle` resolves icon border style (action bars / cooldown manager only). `ApplyIconGroupBorder`/`ClearIconGroupBorder` wraps an icon container in a single NineSlice border when Icon Padding = 0. |
+| HighlightBorder.lua | tinted border overlay for aggro/selection/dispel indicators: `ApplyHighlightBorder`, `ClearHighlightBorder`. respects group border merge state. |
+| GroupBorder.lua | group border merging for anchored frames at zero padding: `UpdateGroupBorder`, `ClearGroupBorder`, `RefreshAllGroupBorders`, `DeferGroupBorderRefresh`. includes debounced `BORDER_LAYOUT_CHANGED` listener. |
 | Icons.lua | icon frame skinning: borders, zoom, desaturation, glow anchoring. supports `iconBorder` flag in settings to opt into `GlobalSettings.IconBorderStyle` NineSlice routing. when `padding == 0`, per-icon NineSlice is skipped in favor of container-level group border. |
 | IconLayout.lua | icon grid layout math (rows, columns, spacing). |
 | IconMonitor.lua | monitors icon visibility changes for layout recalculation. |

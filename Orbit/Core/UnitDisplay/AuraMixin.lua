@@ -70,7 +70,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
     local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
     local fontPath = (LSM and fontName and LSM:Fetch("font", fontName)) or "Fonts\\FRIZQT__.TTF"
     local fontOutline = Orbit.Skin and Orbit.Skin.GetFontOutline and Orbit.Skin:GetFontOutline() or ""
-    local countSize = Orbit.Skin:GetAdaptiveTextSize(size, 8, nil, 0.4)
+    local countSize = 8
     icon.count:SetFont(fontPath, countSize, fontOutline)
     icon.count:SetShadowColor(0, 0, 0, 1)
     icon.count:SetShadowOffset(1, -1)
@@ -88,7 +88,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
         end
         if timerText and timerText.SetFont then
             timerText:SetParent(icon.Overlay)
-            timerText:SetFont(fontPath, Orbit.Skin:GetAdaptiveTextSize(size, 8, nil, 0.45), fontOutline)
+            timerText:SetFont(fontPath, 8, fontOutline)
             timerText:ClearAllPoints()
             timerText:SetPoint("CENTER", icon, "CENTER", 0, 0)
             timerText:SetJustifyH("CENTER")
@@ -118,7 +118,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
             end
             local timerData = componentPositions.Timer
             if timerData and icon.Cooldown and icon.Cooldown.Text then
-                OverrideUtils.ApplyOverrides(icon.Cooldown.Text, timerData.overrides or {}, { fontSize = Orbit.Skin:GetAdaptiveTextSize(size, 8, nil, 0.45), fontPath = fontPath })
+                OverrideUtils.ApplyOverrides(icon.Cooldown.Text, timerData.overrides or {}, { fontSize = 8, fontPath = fontPath })
                 if ApplyTextPosition then ApplyTextPosition(icon.Cooldown.Text, icon, timerData) end
             end
         end
@@ -312,7 +312,7 @@ end
 
 -- [ SPELL-ID AURA ICON DISPLAY ]-------------------------------------------------------------------
 local SPELL_AURA_SCAN_MAX = 40
-local IsSecret = issecretvalue or function() return false end
+local IsSecret = issecretvalue
 
 -- OnUpdate handler for continuous curve sampling on healer aura icons
 local function HealerCurveOnUpdate(icon)

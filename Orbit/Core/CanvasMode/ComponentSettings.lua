@@ -98,7 +98,13 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     if plugin then
         for _, control in ipairs(schema.controls) do
             if control.plugin then
-                local val = plugin:GetSetting(systemIndex, control.key)
+                local val
+                if plugin.GetInheritedSetting then
+                    val = plugin:GetInheritedSetting(systemIndex, control.key, true)
+                else
+                    val = plugin:GetSetting(systemIndex, control.key)
+                end
+                
                 if val ~= nil then self.currentOverrides[control.key] = val end
             end
         end

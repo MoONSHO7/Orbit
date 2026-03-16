@@ -25,8 +25,7 @@ local CB_ICON_TEXTURE = 136243
 local CB_ICON_TEXCOORD = 0.1
 local CB_ICON_TEXCOORD_MAX = 0.9
 local CB_TEXT_SIZE_MIN = 10
-local CB_TEXT_SIZE_MAX = 18
-local CB_TEXT_SIZE_RATIO = 0.40
+
 local SUB_LEVEL_BOOST = 5
 local SUB_TEXT_MIN_WIDTH = 20
 local SUB_TEXT_PADDING = 4
@@ -245,7 +244,7 @@ local function Create(container, preview, key, source, data)
     local fontPath = fontName and LSM:Fetch("font", fontName)
         or LSM:Fetch("font", Orbit.db.GlobalSettings.Font)
         or Orbit.Constants.Settings.Font.FallbackPath
-    local cbTextSize = Orbit.Skin:GetAdaptiveTextSize(cbHeight, CB_TEXT_SIZE_MIN, CB_TEXT_SIZE_MAX, CB_TEXT_SIZE_RATIO)
+    local cbTextSize = CB_TEXT_SIZE_MIN
     local fontFlags = Orbit.Skin:GetFontOutline()
 
     local subData = data and data.subComponents or {}

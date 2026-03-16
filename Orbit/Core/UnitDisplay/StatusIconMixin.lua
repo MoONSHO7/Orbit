@@ -13,6 +13,7 @@ Orbit.StatusIconMixin = {}
 local Mixin = Orbit.StatusIconMixin
 
 local ROLE_ATLASES = { TANK = "UI-LFG-RoleIcon-Tank", HEALER = "UI-LFG-RoleIcon-Healer", DAMAGER = "UI-LFG-RoleIcon-DPS" }
+local ROUND_ROLE_ATLASES = { TANK = "icons_64x64_tank", HEALER = "icons_64x64_heal", DAMAGER = "icons_64x64_damage" }
 local ASSISTANT_ICON_TEXTURE = "Interface\\GroupFrame\\UI-Group-AssistantIcon"
 local THREAT_COLORS = {
     [0] = nil,
@@ -36,7 +37,7 @@ Mixin.ICON_PREVIEW_ATLASES = {
     CrowdControlIcon = "UI-LFG-PendingMark-Raid",
     PrivateAuraAnchor = "UI-LFG-PendingMark-Raid",
     Portrait = "adventureguide-campfire",
-    PvpIcon = "UI-HUD-UnitFrame-Player-PVP-AllianceIcon",
+    PvpIcon = "QuestPortraitIcon-Alliance",
 }
 Mixin.MARKER_ICON_TEXCOORD = { 0.75, 1, 0.25, 0.5 }
 
@@ -161,27 +162,31 @@ function Mixin:UpdateRoleIcon(frame, plugin)
     end
 
     local role = UnitGroupRolesAssigned(unit)
-    local roleAtlas = ROLE_ATLASES[role]
     local inEditMode = Orbit:IsEditMode()
 
-    -- HideDPS override: suppress DAMAGER role icon
+    -- Resolve overrides: RoleIconStyle + HideDPS
+    local atlases = ROLE_ATLASES
     local hideDPS = false
     if plugin then
         local positions = plugin:GetSetting(1, "ComponentPositions")
         local roleOverrides = positions and positions.RoleIcon and positions.RoleIcon.overrides
-        hideDPS = roleOverrides and roleOverrides.HideDPS
+        if roleOverrides then
+            if roleOverrides.RoleIconStyle == "round" then atlases = ROUND_ROLE_ATLASES end
+            hideDPS = roleOverrides.HideDPS
+        end
     end
 
+    local roleAtlas = atlases[role]
     if role == "DAMAGER" and hideDPS then
         frame.RoleIcon:Hide()
     elseif roleAtlas then
         frame.RoleIcon:SetAtlas(roleAtlas)
         frame.RoleIcon:Show()
     elseif inEditMode and not hideDPS then
-        frame.RoleIcon:SetAtlas(ROLE_ATLASES["DAMAGER"])
+        frame.RoleIcon:SetAtlas(atlases["DAMAGER"])
         frame.RoleIcon:Show()
     elseif inEditMode and hideDPS then
-        frame.RoleIcon:SetAtlas(ROLE_ATLASES["HEALER"])
+        frame.RoleIcon:SetAtlas(atlases["HEALER"])
         frame.RoleIcon:Show()
     else
         frame.RoleIcon:Hide()
@@ -277,6 +282,11 @@ end
 
 -- COMBAT ICON
 
+local COMBAT_ICON_ATLASES = {
+    default = "UI-HUD-UnitFrame-Player-CombatIcon",
+    pvp = "UI-EventPoi-pvp",
+}
+
 function Mixin:UpdateCombatIcon(frame, plugin)
     if not frame or not frame.CombatIcon then
         return
@@ -292,6 +302,13 @@ function Mixin:UpdateCombatIcon(frame, plugin)
     local inEditMode = Orbit:IsEditMode()
 
     if inCombat or inEditMode then
+        local style = "default"
+        if plugin then
+            local positions = plugin:GetSetting(1, "ComponentPositions")
+            local overrides = positions and positions.CombatIcon and positions.CombatIcon.overrides
+            if overrides and overrides.CombatIconStyle then style = overrides.CombatIconStyle end
+        end
+        frame.CombatIcon:SetAtlas(COMBAT_ICON_ATLASES[style] or COMBAT_ICON_ATLASES.default, false)
         frame.CombatIcon:Show()
     else
         frame.CombatIcon:Hide()
@@ -301,22 +318,32 @@ end
 -- PVP ICON
 
 local PVP_FACTION_ATLASES = {
-    Alliance = "UI-HUD-UnitFrame-Player-PVP-AllianceIcon",
-    Horde = "UI-HUD-UnitFrame-Player-PVP-HordeIcon",
+    default = { Alliance = "QuestPortraitIcon-Alliance", Horde = "QuestPortraitIcon-Horde" },
+    crest = { Alliance = "glues-characterSelect-icon-faction-alliance-selected", Horde = "glues-characterSelect-icon-faction-horde-selected" },
 }
+local PVP_FALLBACK = PVP_FACTION_ATLASES.default
 
 function Mixin:UpdatePvpIcon(frame, plugin)
     local unit = GuardedUpdate(frame, plugin, "PvpIcon")
     if not unit then return end
+
+    -- Resolve style override
+    local atlases = PVP_FALLBACK
+    if plugin then
+        local positions = plugin:GetSetting(1, "ComponentPositions")
+        local overrides = positions and positions.PvpIcon and positions.PvpIcon.overrides
+        if overrides and overrides.PvpIconStyle then atlases = PVP_FACTION_ATLASES[overrides.PvpIconStyle] or PVP_FALLBACK end
+    end
+
     local isPlayer = UnitIsUnit(unit, "player")
     local isPvp = (isPlayer and C_PvP and C_PvP.IsWarModeDesired and C_PvP.IsWarModeDesired()) or (not isPlayer and UnitIsPVP(unit))
     if isPvp then
         local faction = UnitFactionGroup(unit)
-        frame.PvpIcon:SetAtlas(PVP_FACTION_ATLASES[faction] or PVP_FACTION_ATLASES.Alliance)
+        frame.PvpIcon:SetAtlas(atlases[faction] or atlases.Alliance)
         frame.PvpIcon:Show()
     elseif Orbit:IsEditMode() then
         local faction = UnitFactionGroup("player")
-        frame.PvpIcon:SetAtlas(PVP_FACTION_ATLASES[faction] or PVP_FACTION_ATLASES.Alliance)
+        frame.PvpIcon:SetAtlas(atlases[faction] or atlases.Alliance)
         frame.PvpIcon:Show()
     else
         frame.PvpIcon:Hide()

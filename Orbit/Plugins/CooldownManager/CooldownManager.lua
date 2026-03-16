@@ -186,7 +186,7 @@ function Plugin:OnLoad()
 
         -- Text sources
         local fontPath = buffBarPlugin:GetGlobalFont()
-        local textSize = Orbit.Skin:GetAdaptiveTextSize(barH, 8, 14, 0.55)
+        local textSize = 8
         local name = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         name:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
         name:SetPoint("LEFT", preview, "LEFT", iconSize + 5, 0)

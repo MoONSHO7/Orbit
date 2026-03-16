@@ -218,9 +218,9 @@ end
 
 -- [ HOOK-DRIVEN PANDEMIC GLOW ]---------------------------------------------------------------------
 HookPandemicIcon = function(icon, plugin, systemIndex)
-    if icon.orbitPandemicHooked or not icon.PandemicIcon then return end
+    if icon.orbitPandemicHooked then return end
+    if not icon.ShowPandemicStateFrame then return end
     icon.orbitPandemicHooked = true
-    local pi = icon.PandemicIcon
     local GlowType = Constants.PandemicGlow.Type
     local function BuildColorTable()
         local pandemicColor = plugin:GetSetting(systemIndex, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor
@@ -229,40 +229,45 @@ HookPandemicIcon = function(icon, plugin, systemIndex)
         ct[1], ct[2], ct[3], ct[4] = pandemicColor.r, pandemicColor.g, pandemicColor.b, pandemicColor.a or 1
         return ct
     end
-    local function OnPandemicShow()
+    -- Suppress Blizzard's PandemicIcon alpha whenever it's shown
+    local function SuppressPandemicIcon(self)
+        local pi = self.PandemicIcon
+        if pi and self.orbitSuppressPandemic then pi:SetAlpha(0) end
+    end
+    local function OnPandemicShow(self)
         local glowType = plugin:GetSetting(systemIndex, "PandemicGlowType") or GlowType.None
         if glowType == GlowType.None then return end
-        local activeType = icon.orbitPandemicGlowActive
-        if activeType and activeType ~= glowType then StopPandemicGlowFull(icon); activeType = nil end
+        local activeType = self.orbitPandemicGlowActive
+        if activeType and activeType ~= glowType then StopPandemicGlowFull(self); activeType = nil end
         if not activeType then
-            icon.orbitSuppressPandemic = true
-            pi:SetAlpha(0)
-            CreatePandemicGlow(icon, glowType, BuildColorTable(), plugin)
-            icon.orbitPandemicGlowActive = glowType
-        elseif icon.orbitPandemicGlowHidden then
-            icon.orbitSuppressPandemic = true
-            pi:SetAlpha(0)
-            ShowPandemicGlow(icon, activeType)
-            icon.orbitPandemicGlowHidden = nil
+            self.orbitSuppressPandemic = true
+            SuppressPandemicIcon(self)
+            CreatePandemicGlow(self, glowType, BuildColorTable(), plugin)
+            self.orbitPandemicGlowActive = glowType
+        elseif self.orbitPandemicGlowHidden then
+            self.orbitSuppressPandemic = true
+            SuppressPandemicIcon(self)
+            ShowPandemicGlow(self, activeType)
+            self.orbitPandemicGlowHidden = nil
         else
-            icon.orbitSuppressPandemic = true
-            pi:SetAlpha(0)
+            self.orbitSuppressPandemic = true
+            SuppressPandemicIcon(self)
         end
     end
-    local function OnPandemicHide()
-        if icon.orbitPandemicGlowActive and not icon.orbitPandemicGlowHidden then
-            HidePandemicGlow(icon, icon.orbitPandemicGlowActive)
-            icon.orbitPandemicGlowHidden = true
-            icon.orbitSuppressPandemic = nil
+    local function OnPandemicHide(self)
+        if self.orbitPandemicGlowActive and not self.orbitPandemicGlowHidden then
+            HidePandemicGlow(self, self.orbitPandemicGlowActive)
+            self.orbitPandemicGlowHidden = true
+            self.orbitSuppressPandemic = nil
         end
     end
-    hooksecurefunc(pi, "Show", function(self)
-        if icon.orbitSuppressPandemic then self:SetAlpha(0) end
-        OnPandemicShow()
+    -- Hook the ITEM's methods, not the PandemicIcon frame (which gets pooled/recreated)
+    hooksecurefunc(icon, "ShowPandemicStateFrame", function(self)
+        SuppressPandemicIcon(self)
+        OnPandemicShow(self)
     end)
-    hooksecurefunc(pi, "Hide", OnPandemicHide)
-    hooksecurefunc(pi, "SetAlpha", function(self, a)
-        if icon.orbitSuppressPandemic and a > 0 then self:SetAlpha(0) end
+    hooksecurefunc(icon, "HidePandemicStateFrame", function(self)
+        OnPandemicHide(self)
     end)
 end
 

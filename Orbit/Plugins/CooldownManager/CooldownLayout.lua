@@ -571,16 +571,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
             Orbit.Skin:SkinBorder(self, self, size)
             self:UpdateBarInsets()
         end
-        item.SetBorderHidden = function(self, hidden)
-            if hidden then
-                if self._borderFrame then self._borderFrame:Hide() end
-                if self._edgeBorderOverlay then self._edgeBorderOverlay:Hide() end
-            elseif self._activeBorderMode == "nineslice" then
-                if self._edgeBorderOverlay then self._edgeBorderOverlay:Show() end
-            else
-                if self._borderFrame then self._borderFrame:Show() end
-            end
-        end
+        item.SetBorderHidden = Orbit.Skin.DefaultSetBorderHidden
         item.UpdateBarInsets = function(self)
             local b = self.Bar
             if not b then return end
@@ -650,7 +641,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
     if bar.Duration then bar.Duration:SetParent(item.orbitTextOverlay) end
 
     -- Text styling (global font + adaptive size from bar height)
-    local textSize = Orbit.Skin:GetAdaptiveTextSize(barHeight, 8, 14, 0.55)
+    local textSize = 8
     local textPad = Pixel:Multiple(BUFFBAR_TEXT_PADDING, scale)
     local textSettings = { textSize = textSize, font = globals.Font, textColor = { r = 1, g = 1, b = 1, a = 1 } }
     if bar.Name then Orbit.Skin:SkinText(bar.Name, textSettings) end

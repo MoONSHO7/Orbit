@@ -107,16 +107,7 @@ function CastBar:Create(parent)
         self:UpdateBarInsets()
     end
 
-    parent.SetBorderHidden = function(self, hidden)
-        if hidden then
-            if self._borderFrame then self._borderFrame:Hide() end
-            if self._edgeBorderOverlay then self._edgeBorderOverlay:Hide() end
-        elseif self._activeBorderMode == "nineslice" then
-            if self._edgeBorderOverlay then self._edgeBorderOverlay:Show() end
-        else
-            if self._borderFrame then self._borderFrame:Show() end
-        end
-    end
+    parent.SetBorderHidden = Orbit.Skin.DefaultSetBorderHidden
 
     parent.UpdateBarInsets = function(self)
         local b = self.orbitBar

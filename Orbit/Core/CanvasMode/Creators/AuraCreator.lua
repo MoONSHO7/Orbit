@@ -14,7 +14,7 @@ local DEFAULT_MAX_ICONS = 3
 local DEFAULT_MAX_ROWS = 2
 local DEFAULT_PARENT_WIDTH = 200
 local DEFAULT_PARENT_HEIGHT = 40
-local GetSpellbookIcon = function() return Orbit.AuraPreview.GetSpellbookIcon() end
+local GetSpellbookIcon = function(auraType) return Orbit.AuraPreview.GetSpellbookIcon(auraType) end
 
 -- [ REFRESH LOGIC ]---------------------------------------------------------------------------------
 
@@ -73,7 +73,7 @@ local function RefreshAuraIcons(self)
         end
 
         btn:SetSize(iconSize, iconSize)
-        btn.Icon:SetTexture(GetSpellbookIcon())
+        if not btn.Icon:GetTexture() then btn.Icon:SetTexture(GetSpellbookIcon(self.auraType)) end
 
         if Orbit.Skin and Orbit.Skin.Icons then
             Orbit.Skin.Icons:ApplyCustom(btn, skinSettings)
@@ -121,6 +121,7 @@ local function Create(container, preview, key, source, data)
     container.auraIconPool = {}
     container.RefreshAuraIcons = RefreshAuraIcons
 
+    container.auraType = (key == "Debuffs") and "debuff" or "buff"
     container.posX = (data and data.posX) or 0
     container.posY = (data and data.posY) or 0
     container.anchorX = data and data.anchorX

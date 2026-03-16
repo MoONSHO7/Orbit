@@ -417,8 +417,11 @@ function Plugin:ApplySettings(frame)
     local savedPositions = self:GetComponentPositions(systemIndex)
     if savedPositions and next(savedPositions) then
         OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
-        if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
     end
+    
+    -- Component positions + style overrides (positions, font, color, scale)
+    -- Must run unconditionally to restore overrides after ApplyBaseVisuals resets text
+    if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
 
     self:UpdateVisualsExtended(frame, systemIndex)
     self:UpdateCombatIcon(frame, self)

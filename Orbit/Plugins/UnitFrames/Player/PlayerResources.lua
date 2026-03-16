@@ -220,7 +220,7 @@ function Plugin:OnLoad()
         local savedPositions = Plugin:GetSetting(SYSTEM_INDEX, "ComponentPositions") or {}
         local fontName = Plugin:GetSetting(SYSTEM_INDEX, "Font")
         local fontPath = LSM:Fetch("font", fontName)
-        local fontSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
+        local fontSize = 18
         local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         fs:SetFont(fontPath, fontSize, Orbit.Skin:GetFontOutline())
         if isContinuous then
@@ -445,7 +445,7 @@ function Plugin:ApplySettings()
         Frame.Text:Show()
 
         -- Apply font, size, and color overrides
-        local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
+        local textSize = 18
         OrbitEngine.OverrideUtils.ApplyOverrides(Frame.Text, overrides, { fontSize = textSize, fontPath = fontPath })
 
         -- Read back final size for position calculation

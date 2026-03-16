@@ -241,7 +241,7 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     local texture = self:GetSetting(systemIndex, "Texture")
     local showText = self:GetSetting(systemIndex, "CastBarText")
     local showIcon = self:GetSetting(systemIndex, "CastBarIcon")
-    local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 10, 18, 0.40)
+    local textSize = 10
     local showTimer = self:GetSetting(systemIndex, "CastBarTimer")
     local curveData = self:GetSetting(systemIndex, "CastBarColorCurve")
     local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or self:GetSetting(systemIndex, "CastBarColor") or { r = 1, g = 0.7, b = 0 }

@@ -381,7 +381,7 @@ function Plugin:UpdateLayout()
     for _, frame in ipairs(self.frames) do
         frame:SetSize(width, height)
         UpdateFrameLayout(frame, borderSize)
-        local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 12, 24, 0.25)
+        local textSize = 12
         Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)
         Orbit.Skin:ApplyUnitFrameText(frame.HealthText, "RIGHT", nil, textSize)
         if frame.ConstrainNameWidth then frame:ConstrainNameWidth() end
@@ -401,7 +401,7 @@ function Plugin:ApplySettings()
     local textureName = self:GetSetting(1, "Texture") or self:GetPlayerSetting("Texture")
     local fontName = self:GetSetting(1, "Font") or self:GetPlayerSetting("Font")
     local reactionColour = self:GetSetting(1, "ReactionColour")
-    local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 12, 24, 0.25)
+    local textSize = 12
     for _, frame in ipairs(self.frames) do
         frame.borderSize = borderSize
         frame:SetSize(width, height)
@@ -423,7 +423,7 @@ function Plugin:ApplySettings()
                 CB:Position(frame.CastBar, frame, self)
                 if frame.CastBar.SetBorder then frame.CastBar:SetBorder(borderSize) end
                 if textureName then Orbit.Skin:SkinStatusBar(frame.CastBar, textureName, nil, true) end
-                local cbTextSize = Orbit.Skin:GetAdaptiveTextSize(castBarHeight, 10, 18, 0.40)
+                local cbTextSize = 10
                 local fontPath = LSM:Fetch("font", fontName)
                 if frame.CastBar.Text then frame.CastBar.Text:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline()) end
                 if frame.CastBar.Timer then frame.CastBar.Timer:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline()) end

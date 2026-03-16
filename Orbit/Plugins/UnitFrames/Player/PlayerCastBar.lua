@@ -603,7 +603,7 @@ function Plugin:ApplySettings(systemFrame)
     local texture = self:GetSetting(systemIndex, "Texture")
     local showText = self:GetSetting(systemIndex, "CastBarText")
     local showIcon = self:GetSetting(systemIndex, "CastBarIcon")
-    local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 10, 18, 0.40)
+    local textSize = 10
     local showTimer = self:GetSetting(systemIndex, "CastBarTimer")
 
     self.cachedHeight = height

@@ -134,14 +134,7 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
 
     frame.SetBorderHidden = function(self, hidden)
         for _, btn in ipairs(self.buttons) do
-            if hidden then
-                if btn._borderFrame then btn._borderFrame:Hide() end
-                if btn._edgeBorderOverlay then btn._edgeBorderOverlay:Hide() end
-            elseif btn._activeBorderMode == "nineslice" then
-                if btn._edgeBorderOverlay then btn._edgeBorderOverlay:Show() end
-            else
-                if btn._borderFrame then btn._borderFrame:Show() end
-            end
+            Orbit.Skin.DefaultSetBorderHidden(btn, hidden)
         end
     end
 

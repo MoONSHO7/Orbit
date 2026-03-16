@@ -92,8 +92,7 @@ C.UnitFrame = {
     InheritIndex = 1, -- Enum.EditModeUnitFrameSystemIndices.Player (resolved at runtime)
     TextPadding = 5, -- SetPoint offset for Name/HealthText labels
     ShadowOffset = { x = 1, y = -1 }, -- Standard shadow for text
-    AdaptiveTextMin = 14, -- Min font size for adaptive text scaling
-    AdaptiveTextMax = 24, -- Max font size for adaptive text scaling
+
     CombatIconSize = 18, -- Player combat indicator icon size
     StatusIconSize = 16, -- Role/Leader/Marker/RareElite icon size
     DefaultOffsetX = -200, -- Default X offset for unit frames

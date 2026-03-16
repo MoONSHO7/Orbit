@@ -166,7 +166,7 @@ function Layout:SkinChargeButtons(plugin, frame, maxCharges, totalWidth, height,
     local LSM = LibStub("LibSharedMedia-3.0", true)
     local fontName = plugin:GetSetting(sysIndex, "Font")
     local fontPath = LSM and LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
-    local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
+    local textSize = 18
     OrbitEngine.OverrideUtils.ApplyOverrides(frame.CountText, overrides, { fontSize = textSize, fontPath = fontPath })
     if ApplyTextPosition then
         ApplyTextPosition(frame.CountText, frame, pos)

@@ -133,10 +133,21 @@ function Settings:ApplyHealthTextPreview()
     local pending = self.pendingPluginSettings or {}
     local plugin = self.plugin
     local sysIdx = self.systemIndex or 1
-    local showValue = pending.ShowHealthValue
-    if showValue == nil then showValue = plugin and plugin:GetSetting(sysIdx, "ShowHealthValue") end
+
+    local function GetValue(key)
+        if pending[key] ~= nil then return pending[key] end
+        if plugin then
+            if plugin.GetInheritedSetting then
+                return plugin:GetInheritedSetting(sysIdx, key, true)
+            end
+            return plugin:GetSetting(sysIdx, key)
+        end
+        return nil
+    end
+
+    local showValue = GetValue("ShowHealthValue")
     if showValue == nil then showValue = true end
-    local mode = pending.HealthTextMode or (plugin and plugin:GetSetting(sysIdx, "HealthTextMode")) or "percent_short"
+    local mode = GetValue("HealthTextMode") or "percent_short"
 
     if showValue then
         local SAMPLE_TEXT = {
@@ -224,7 +235,37 @@ function Settings:ApplyStyle(container, key, value)
         elseif visual.SetScale then
             visual:SetScale(value)
         end
-    elseif key == "HideDPS" then
+    elseif key == "HideDPS" or key == "RoleIconStyle" or key == "CombatIconStyle" or key == "PvpIconStyle" then
+        local cont = self.container
+        local overrides = self.currentOverrides or {}
+        local compKey = self.componentKey
+        if compKey == "CombatIcon" and cont and cont.visual then
+            local COMBAT = { default = "UI-HUD-UnitFrame-Player-CombatIcon", pvp = "UI-EventPoi-pvp" }
+            cont.visual:SetAtlas(COMBAT[overrides.CombatIconStyle or "default"] or COMBAT.default, false)
+        elseif cont and cont._cyclingAtlases then
+            local newAtlases
+            if compKey == "RoleIcon" then
+                local ROLE_DEFAULT = { { atlas = "UI-LFG-RoleIcon-Tank" }, { atlas = "UI-LFG-RoleIcon-Healer" }, { atlas = "UI-LFG-RoleIcon-DPS" } }
+                local ROLE_ROUND = { { atlas = "icons_64x64_tank" }, { atlas = "icons_64x64_heal" }, { atlas = "icons_64x64_damage" } }
+                newAtlases = (overrides.RoleIconStyle == "round") and ROLE_ROUND or ROLE_DEFAULT
+                if overrides.HideDPS then
+                    local dpsAtlas = (newAtlases == ROLE_ROUND) and "icons_64x64_damage" or "UI-LFG-RoleIcon-DPS"
+                    local filtered = {}
+                    for _, e in ipairs(newAtlases) do if e.atlas ~= dpsAtlas then filtered[#filtered + 1] = e end end
+                    newAtlases = filtered
+                end
+            elseif compKey == "PvpIcon" then
+                local PVP = { default = { { atlas = "QuestPortraitIcon-Alliance" }, { atlas = "QuestPortraitIcon-Horde" } },
+                    crest = { { atlas = "glues-characterSelect-icon-faction-alliance-selected" }, { atlas = "glues-characterSelect-icon-faction-horde-selected" } } }
+                newAtlases = PVP[overrides.PvpIconStyle or "default"] or PVP.default
+            end
+            if newAtlases and #newAtlases > 0 then
+                cont._cyclingAtlases = newAtlases
+                cont._cyclingTexA:SetAtlas(newAtlases[1].atlas, false)
+                cont._cyclingTexA:SetAlpha(1)
+                if cont._cyclingTexB then cont._cyclingTexB:SetAlpha(0) end
+            end
+        end
         local plugin = self.plugin
         if plugin and plugin.SchedulePreviewUpdate then plugin:SchedulePreviewUpdate() end
     end
@@ -266,9 +307,12 @@ function Settings:ApplyInitialPluginPreviews(plugin, systemIndex)
 
     self.currentOverrides = nil
 
+    local showValue = plugin.GetInheritedSetting and plugin:GetInheritedSetting(sysIdx, "ShowHealthValue", true) or plugin:GetSetting(sysIdx, "ShowHealthValue")
+    local textMode = plugin.GetInheritedSetting and plugin:GetInheritedSetting(sysIdx, "HealthTextMode", true) or plugin:GetSetting(sysIdx, "HealthTextMode")
+
     self.currentOverrides = {
-        ShowHealthValue = plugin:GetSetting(sysIdx, "ShowHealthValue"),
-        HealthTextMode = plugin:GetSetting(sysIdx, "HealthTextMode") or "percent_short",
+        ShowHealthValue = showValue,
+        HealthTextMode = textMode or "percent_short",
     }
     if self.currentOverrides.ShowHealthValue == nil then self.currentOverrides.ShowHealthValue = true end
     self:ApplyHealthTextPreview()

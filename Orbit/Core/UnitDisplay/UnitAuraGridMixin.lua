@@ -557,7 +557,7 @@ function Mixin:_updateBlizzardBuffs()
     -- spellId may be non-secret from clean context; use issecretvalue guard
     local showIndices
     if collapsed then
-        local IsSecret = issecretvalue or function() return false end
+        local IsSecret = issecretvalue
         local excludedSpells = Orbit.GroupAuraFilters and Orbit.GroupAuraFilters.AlwaysExcluded or {}
         local playerIDs = {}
         AuraUtil.ForEachAura("player", "HELPFUL|PLAYER", 40, function(aura)
@@ -577,8 +577,8 @@ function Mixin:_updateBlizzardBuffs()
     local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
     local fontPath = (LSM and fontName and LSM:Fetch("font", fontName)) or "Fonts\\FRIZQT__.TTF"
     local fontOutline = Orbit.Skin and Orbit.Skin.GetFontOutline and Orbit.Skin:GetFontOutline() or ""
-    local timerFontSize = Orbit.Skin:GetAdaptiveTextSize(iconH, 8, nil, 0.45)
-    local countFontSize = Orbit.Skin:GetAdaptiveTextSize(iconH, 8, nil, 0.4)
+    local timerFontSize = 8
+    local countFontSize = 8
     local isPlayerGrid = self._agConfig and self._agConfig.unit == "player"
     local skinBorderSize = isPlayerGrid and (Orbit.db.GlobalSettings.IconBorderSize or 2) or 1
     local skinSettings = { zoom = 0, borderStyle = 1, borderSize = skinBorderSize, showTimer = true, iconBorder = isPlayerGrid or nil, padding = spacing, aspectRatio = self:GetSetting(1, "aspectRatio") or "1:1" }

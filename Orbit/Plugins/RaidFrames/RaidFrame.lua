@@ -137,14 +137,20 @@ local function UpdatePowerBar(frame, plugin)
     frame.Power:SetStatusBarColor(color.r, color.g, color.b)
 end
 
-local function UpdateFrameLayout(frame, borderSize, plugin)
+local function UpdateFrameLayout(frame, borderSize, plugin, showPowerOverride)
     if not Helpers then Helpers = Orbit.RaidFrameHelpers end
-    local showHealerPower = plugin and plugin:GetSetting(1, "ShowPowerBar")
-    if showHealerPower == nil then showHealerPower = true end
-    local isHealer = frame.unit and UnitGroupRolesAssigned(frame.unit) == "HEALER"
+    local showPower
+    if showPowerOverride ~= nil then
+        showPower = showPowerOverride
+    else
+        local showHealerPower = plugin and plugin:GetSetting(1, "ShowPowerBar")
+        if showHealerPower == nil then showHealerPower = true end
+        local isHealer = frame.unit and UnitGroupRolesAssigned(frame.unit) == "HEALER"
+        showPower = (showHealerPower and isHealer) or false
+    end
     local pct = plugin and plugin:GetSetting(1, "PowerBarHeight")
     local ratio = pct and (pct / 100) or nil
-    Helpers:UpdateFrameLayout(frame, borderSize, showHealerPower and isHealer, ratio)
+    Helpers:UpdateFrameLayout(frame, borderSize, showPower, ratio)
 end
 
 -- [ AURA DISPLAY CONFIG ]--------------------------------------------------------------------------
@@ -717,7 +723,7 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     local textureName = self:GetSetting(1, "Texture")
 
     frame:SetSize(width, height)
-    UpdateFrameLayout(frame, borderSize, self)
+    UpdateFrameLayout(frame, borderSize, self, showPower)
     if frame.SetBorder then frame:SetBorder(borderSize) end
 
     -- Texture

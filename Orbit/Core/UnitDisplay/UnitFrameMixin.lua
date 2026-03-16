@@ -72,7 +72,7 @@ function Mixin:ApplyTextStyling(frame, textSize)
     end
     if not textSize or textSize <= 0 then
         local height = frame:GetHeight() or 40
-        textSize = Orbit.Skin:GetAdaptiveTextSize(height, Orbit.Constants.UnitFrame.AdaptiveTextMin, Orbit.Constants.UnitFrame.AdaptiveTextMax, 0.3)
+        textSize = 14
     end
     Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)
     Orbit.Skin:ApplyUnitFrameText(frame.HealthText, "RIGHT", nil, textSize)
@@ -88,7 +88,7 @@ function Mixin:UpdateTextSize(frame, textSize)
     if not frame then return end
     if not textSize or textSize <= 0 then
         local height = frame:GetHeight() or 40
-        textSize = Orbit.Skin:GetAdaptiveTextSize(height, Orbit.Constants.UnitFrame.AdaptiveTextMin, Orbit.Constants.UnitFrame.AdaptiveTextMax, 0.3)
+        textSize = 14
     end
     local globalFontName = Orbit.db.GlobalSettings.Font
     local fontPath = LSM:Fetch("font", globalFontName) or "Fonts\\FRIZQT__.TTF"

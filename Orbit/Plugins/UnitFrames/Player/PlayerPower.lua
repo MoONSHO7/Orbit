@@ -408,7 +408,7 @@ function Plugin:ApplySettings()
     local height = self:GetSetting(systemIndex, "Height")
     local borderSize = self:GetSetting(systemIndex, "BorderSize")
     local textureName = self:GetSetting(systemIndex, "Texture")
-    local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
+    local textSize = 18
     local fontName = self:GetSetting(systemIndex, "Font")
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
 

@@ -433,12 +433,9 @@ function Selection:OnEditModeEnter()
         end
 
         -- Auto-start Edit Mode tour for first-time users
-        C_Timer.After(0.5, function()
-            if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
-                if Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.TourComplete then return end
-                if Engine.EditModeTour then Engine.EditModeTour:StartTour() end
-            end
-        end)
+        if Orbit.db and Orbit.db.GlobalSettings and not Orbit.db.GlobalSettings.TourComplete then
+            if Engine.EditModeTour then Engine.EditModeTour:StartTour() end
+        end
     end)
 end
 

@@ -202,6 +202,9 @@ function Orbit.PartyFramePreviewMixin:ApplyPreviewVisuals()
                 local role = previewRoles[i]
                 local roleOverrides = componentPositions.RoleIcon and componentPositions.RoleIcon.overrides
                 local hideDPS = roleOverrides and roleOverrides.HideDPS
+                if roleOverrides and roleOverrides.RoleIconStyle == "round" then
+                    roleAtlases = { TANK = "icons_64x64_tank", HEALER = "icons_64x64_heal", DAMAGER = "icons_64x64_damage" }
+                end
                 if role == "DAMAGER" and hideDPS then frame.RoleIcon:Hide()
                 else
                     local roleAtlas = roleAtlases[role]

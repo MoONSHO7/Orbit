@@ -33,16 +33,7 @@ local UnitButton = Engine.UnitButton
 
 local CanvasMixin = {}
 
-function CanvasMixin:SetBorderHidden(hidden)
-    if hidden then
-        if self._borderFrame then self._borderFrame:Hide() end
-        if self._edgeBorderOverlay then self._edgeBorderOverlay:Hide() end
-    elseif self._activeBorderMode == "nineslice" then
-        if self._edgeBorderOverlay then self._edgeBorderOverlay:Show() end
-    else
-        if self._borderFrame then self._borderFrame:Show() end
-    end
-end
+function CanvasMixin:SetBorderHidden(hidden) Orbit.Skin.DefaultSetBorderHidden(self, hidden) end
 
 function CanvasMixin:UpdateTextLayout()
     if not self.Name or not self.HealthText or not self.TextFrame then
@@ -85,7 +76,15 @@ function CanvasMixin:ApplyComponentPositions()
     if defaults then
         positions = positions or {}
         for key, defaultPos in pairs(defaults) do
-            if not positions[key] or not positions[key].anchorX then positions[key] = defaultPos end
+            if not positions[key] then
+                positions[key] = defaultPos
+            elseif not positions[key].anchorX then
+                -- Merge default position fields without overwriting existing overrides
+                local existing = positions[key]
+                for k, v in pairs(defaultPos) do
+                    if existing[k] == nil then existing[k] = v end
+                end
+            end
         end
     end
 

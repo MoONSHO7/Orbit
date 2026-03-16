@@ -81,7 +81,7 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
             icon.Cooldown.Text = timerText
         end
         if timerText and timerText.SetFont then
-            timerText:SetFont(fontPath, Orbit.Skin:GetAdaptiveTextSize(iconSize, 8, nil, 0.45), fontOutline)
+            timerText:SetFont(fontPath, 8, fontOutline)
         end
         icon.Cooldown:SetHideCountdownNumbers(iconSize < PREVIEW_TIMER_MIN_SIZE)
         if Orbit.PreviewAnimator:IsRunning() then

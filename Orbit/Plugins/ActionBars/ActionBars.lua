@@ -25,6 +25,12 @@ local BASE_VISIBILITY_DRIVER = "[petbattle][vehicleui] hide; show"
 local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [nopet] hide; show"
 local BAR1_BASE_DRIVER = "[petbattle][overridebar] hide; show"
 
+local BAR_ART_ATLASES = {
+    Alliance = { left = "UI-HUD-ActionBar-Gryphon-Left", right = "UI-HUD-ActionBar-Gryphon-Right" },
+    Horde = { left = "UI-HUD-ActionBar-Wyvern-Left", right = "UI-HUD-ActionBar-Wyvern-Right" },
+}
+local BAR_ART_FALLBACK = BAR_ART_ATLASES.Alliance
+
 local function GetVisibilityDriver(baseDriver)
     return Orbit.MountedVisibility:GetMountedDriver(baseDriver)
 end
@@ -51,6 +57,7 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     defaults = {
         Scale = 90, IconPadding = 2, Rows = 1, NumIcons = 12,
         Opacity = 100, HideEmptyButtons = false, UseGlobalTextStyle = true,
+        ShowBarArt = false,
         DisabledComponents = {},
         ComponentPositions = {}, GlobalComponentPositions = {
             Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2, justifyH = "RIGHT" },
@@ -189,6 +196,10 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = function(val) self:SetSetting(systemIndex, "Scale", val); self:ApplySettings(container) end })
         table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = 0, max = 10, step = 1, default = 2,
             onChange = function(val) self:SetSetting(systemIndex, "IconPadding", val); self:ApplySettings(container) end })
+        if systemIndex == 1 then
+            table.insert(schema.controls, { type = "checkbox", key = "ShowBarArt", label = "Show Bar Art", default = false,
+                onChange = function(val) self:SetSetting(1, "ShowBarArt", val); self:ApplySettings(container) end })
+        end
         local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
         if not isForcedHideEmpty then table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = "Hide Empty Buttons", default = false }) end
     elseif currentTab == "Colors" then
@@ -422,6 +433,30 @@ end
 
 function Plugin:OnCombatEnd() C_Timer.After(0.5, function() self:ApplyAll() end) end
 
+-- [ BAR ART ]------------------------------------------------------------------------------------
+local function UpdateBarArt(plugin, container)
+    local show = plugin:GetSetting(1, "ShowBarArt")
+    if not show then
+        if container.barArtLeft then container.barArtLeft:Hide() end
+        if container.barArtRight then container.barArtRight:Hide() end
+        return
+    end
+    local faction = UnitFactionGroup("player")
+    local atlases = BAR_ART_ATLASES[faction] or BAR_ART_FALLBACK
+    if not container.barArtLeft then
+        container.barArtLeft = container:CreateTexture(nil, "ARTWORK")
+        container.barArtRight = container:CreateTexture(nil, "ARTWORK")
+    end
+    container.barArtLeft:SetAtlas(atlases.left, true)
+    container.barArtLeft:ClearAllPoints()
+    container.barArtLeft:SetPoint("BOTTOMRIGHT", container, "BOTTOMLEFT", 0, 0)
+    container.barArtLeft:Show()
+    container.barArtRight:SetAtlas(atlases.right, true)
+    container.barArtRight:ClearAllPoints()
+    container.barArtRight:SetPoint("BOTTOMLEFT", container, "BOTTOMRIGHT", 0, 0)
+    container.barArtRight:Show()
+end
+
 -- [ BUTTON LAYOUT AND SKINNING ]-----------------------------------------------------------------
 function Plugin:LayoutButtons(index)
     if InCombatLockdown() then return end
@@ -507,6 +542,7 @@ function Plugin:LayoutButtons(index)
     if rawPadding == 0 then Orbit.Skin:ApplyIconGroupBorder(container, iconNineSlice)
     else Orbit.Skin:ClearIconGroupBorder(container) end
     Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+    if index == 1 then UpdateBarArt(self, container) end
 end
 
 -- [ SETTINGS APPLICATION ]-----------------------------------------------------------------------
