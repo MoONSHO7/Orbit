@@ -530,9 +530,9 @@ function Dialog:Open(frame, plugin, systemIndex)
     end
 
     -- Auto-start tour for first-time users
-    local gs = Orbit.db and Orbit.db.GlobalSettings
-    if gs and not gs.CanvasTourSeen then
-        gs.CanvasTourSeen = true
+    local as = Orbit.db and Orbit.db.AccountSettings
+    if as and not as.CanvasTourComplete then
+        as.CanvasTourComplete = true
         C_Timer.After(0.1, function() if self:IsShown() then self:StartTour() end end)
     end
 
@@ -622,7 +622,7 @@ function Dialog:CloseDialog()
         Orbit.CanvasComponentSettings:Close()
     end
 
-    self:HideInfoMarkers()
+    self:EndTourCleanup()
     self:CleanupPreview()
 
     self.targetFrame = nil

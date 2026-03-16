@@ -12,6 +12,7 @@ ignore:
   - .styluaignore
   - .pkgmeta
   - .vscode
+  - .scripts
   - README.md
   - readme.md
   - Plugins

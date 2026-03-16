@@ -26,6 +26,7 @@ local ABC = Orbit.ActionBarsContainer
 
 function ABC:Create(plugin, config)
     local frame = CreateFrame("Frame", config.orbitName, UIParent, "SecureHandlerStateTemplate")
+    OrbitEngine.Pixel:Enforce(frame)
     frame:SetSize(INITIAL_FRAME_SIZE, INITIAL_FRAME_SIZE)
     frame.systemIndex = config.index
     frame.editModeName = config.label
@@ -33,7 +34,7 @@ function ABC:Create(plugin, config)
     frame.isSpecial = config.isSpecial
     frame:EnableMouse(true)
     frame:SetClampedToScreen(true)
-    frame.anchorOptions = { x = true, y = true, syncScale = false, syncDimensions = false }
+    frame.anchorOptions = { x = true, y = true, syncScale = false, syncDimensions = false, mergeBorders = true }
     if config.index == PET_BAR_INDEX then RegisterStateDriver(frame, "visibility", PET_BAR_BASE_DRIVER)
     elseif config.index ~= 1 then RegisterStateDriver(frame, "visibility", BASE_VISIBILITY_DRIVER) end
     OrbitEngine.Frame:AttachSettingsListener(frame, plugin, config.index)
@@ -102,8 +103,9 @@ function ABC:CreateVehicleExit(plugin)
     btn:SetHighlightTexture(VEHICLE_EXIT_HIGHLIGHT, "ADD")
     btn:GetHighlightTexture():SetTexCoord(unpack(VEHICLE_EXIT_TEXCOORDS))
     local bar1 = plugin.containers[1]
-    if bar1 then container:SetPoint("LEFT", bar1, "RIGHT", 4, 0)
-    else container:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, DEFAULT_BOTTOM_OFFSET_Y) end
+    local vScale = container:GetEffectiveScale() or 1
+    if bar1 then container:SetPoint("LEFT", bar1, "RIGHT", OrbitEngine.Pixel:Multiple(4, vScale), 0)
+    else container:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, OrbitEngine.Pixel:Multiple(DEFAULT_BOTTOM_OFFSET_Y, vScale)) end
     RegisterStateDriver(container, "visibility", VEHICLE_EXIT_VISIBILITY)
     plugin.containers[VEHICLE_EXIT_INDEX] = container
     plugin.vehicleExitButton = container

@@ -77,7 +77,7 @@ function ABText:Apply(plugin, button, systemIndex)
         if not button.orbitTextOverlay then
             button.orbitTextOverlay = CreateFrame("Frame", nil, button)
             button.orbitTextOverlay:SetAllPoints(button)
-            button.orbitTextOverlay:SetFrameLevel(button:GetFrameLevel() + 10)
+            button.orbitTextOverlay:SetFrameLevel(button:GetFrameLevel() + Orbit.Constants.Levels.IconOverlay)
         end
         button.Name:SetParent(button.orbitTextOverlay)
         ApplyComponentPosition(button.Name, "MacroText", "CENTER", "BOTTOM", 0, 2)

@@ -33,18 +33,7 @@ local UnitButton = Engine.UnitButton
 
 local CanvasMixin = {}
 
-function CanvasMixin:SetBorderHidden(edge, hidden)
-    local borders = (self._borderFrame and self._borderFrame.Borders) or self.Borders
-    if not borders then return end
-    local border = borders[edge]
-    if border then border:SetShown(not hidden) end
-    if not self._mergedEdges then self._mergedEdges = {} end
-    self._mergedEdges[edge] = hidden or nil
-
-    if self.UpdateBarInsets then
-        self:UpdateBarInsets()
-    end
-end
+function CanvasMixin:SetBorderHidden(hidden) Orbit.Skin.DefaultSetBorderHidden(self, hidden) end
 
 function CanvasMixin:UpdateTextLayout()
     if not self.Name or not self.HealthText or not self.TextFrame then
@@ -87,7 +76,15 @@ function CanvasMixin:ApplyComponentPositions()
     if defaults then
         positions = positions or {}
         for key, defaultPos in pairs(defaults) do
-            if not positions[key] or not positions[key].anchorX then positions[key] = defaultPos end
+            if not positions[key] then
+                positions[key] = defaultPos
+            elseif not positions[key].anchorX then
+                -- Merge default position fields without overwriting existing overrides
+                local existing = positions[key]
+                for k, v in pairs(defaultPos) do
+                    if existing[k] == nil then existing[k] = v end
+                end
+            end
         end
     end
 
@@ -128,52 +125,9 @@ end
 
 -- [ BORDER MANAGEMENT ]-----------------------------------------------------------------------------
 
--- The party's formation shifts to match the dungeon walls
-local function SetBarPoints(bar, parent, tl, br)
-    if not bar then return end
-    bar:ClearAllPoints()
-    bar:SetPoint("TOPLEFT", parent, "TOPLEFT", tl, -br)
-    bar:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -tl, br)
-end
-
-function CanvasMixin:UpdateBarInsets()
-    local borderSize = self.borderPixelSize
-    if not borderSize or borderSize <= 0 then
-        if self.Health then
-            self.Health:ClearAllPoints()
-            self.Health:SetPoint("TOPLEFT", 0, 0)
-            self.Health:SetPoint("BOTTOMRIGHT", 0, 0)
-        end
-        SetBarPoints(self.HealthDamageBar, self.Health, 0, 0)
-        SetBarPoints(self.HealthBlocker, self.Health, 0, 0)
-        return
-    end
-
-    local iL, iT, iR, iB = borderSize, borderSize, borderSize, borderSize
-
-    if self._mergedEdges then
-        if self._mergedEdges.Left then iL = 0 end
-        if self._mergedEdges.Right then iR = 0 end
-        if self._mergedEdges.Top then iT = 0 end
-        if self._mergedEdges.Bottom then iB = 0 end
-    end
-
-    if self.Health then
-        self.Health:ClearAllPoints()
-        self.Health:SetPoint("TOPLEFT", iL, -iT)
-        self.Health:SetPoint("BOTTOMRIGHT", -iR, iB)
-    end
-    SetBarPoints(self.HealthDamageBar, self.Health, 0, 0)
-    SetBarPoints(self.HealthBlocker, self.Health, 0, 0)
-end
-
 function CanvasMixin:SetBorder(size)
-    if Orbit.Skin:SkinBorder(self, self, size) then
-        self.borderPixelSize = 0
-        self:UpdateBarInsets()
-        return
-    end
-    self:UpdateBarInsets()
+    Orbit.Skin:SkinBorder(self, self, size)
+    -- Borders are now outset — no insets needed
 end
 
 UnitButton.CanvasMixin = CanvasMixin

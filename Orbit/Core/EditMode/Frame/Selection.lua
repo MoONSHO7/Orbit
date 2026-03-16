@@ -432,10 +432,16 @@ function Selection:OnEditModeEnter()
             end
         end
 
+        -- Auto-start Edit Mode tour for first-time users
+        if Orbit.db and Orbit.db.AccountSettings and not Orbit.db.AccountSettings.TourComplete then
+            if Engine.EditModeTour then Engine.EditModeTour:StartTour() end
+        end
     end)
 end
 
 function Selection:OnEditModeExit()
+    -- End tour if active
+    if Engine.EditModeTour then Engine.EditModeTour:EndTour() end
     -- Immediate Visual Cleanup (Safe in Combat)
     for frame, selection in pairs(Selection.selections) do
         selection:Hide()

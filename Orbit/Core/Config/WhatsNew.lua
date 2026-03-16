@@ -29,8 +29,8 @@ local WHATS_NEW_ENTRIES = {
 }
 
 local DISCORD_URL = "https://discord.gg/2sZj63kBqy"
-local WINDOW_WIDTH = 420
-local MAX_HEIGHT = 400
+local WINDOW_WIDTH = 600
+local MAX_HEIGHT = 800
 local CONTENT_PADDING = 10
 local ENTRY_TITLE_FONT = "GameFontNormalLarge"
 local ENTRY_BODY_FONT = "GameFontHighlight"
@@ -199,6 +199,25 @@ ScrollFrame:SetScrollChild(Content)
 
 local renderedFontStrings = {}
 
+local function FormatMarkdown(text)
+    if not text then return "" end
+    -- Fix double-escaped newlines and quotes (common in generated Lua)
+    text = text:gsub("\\n", "\n")
+    text = text:gsub("\\\"", "\"")
+
+    -- Bold: **text** -> Gold
+    text = text:gsub("%*%*(.-)%*%*", "|cFFFFD100%1|r")
+
+    -- Code: `text` -> Cyan
+    text = text:gsub("`(.-)%`", "|cFF00D4FF%1|r")
+
+    -- Bullets: Replace leading "- " with dots
+    text = text:gsub("^%- ", "• ")
+    text = text:gsub("\n%- ", "\n• ")
+
+    return text
+end
+
 local function RenderEntries()
     for _, fs in ipairs(renderedFontStrings) do fs:Hide(); fs:SetText("") end
     wipe(renderedFontStrings)
@@ -207,12 +226,13 @@ local function RenderEntries()
     Content:SetWidth(contentWidth)
 
     local yOffset = 0
-    for _, entry in ipairs(WHATS_NEW_ENTRIES) do
+    if not Orbit.WHATS_NEW_ENTRIES then return end
+    for _, entry in ipairs(Orbit.WHATS_NEW_ENTRIES) do
         local titleText = Content:CreateFontString(nil, "ARTWORK", ENTRY_TITLE_FONT)
         titleText:SetPoint("TOPLEFT", Content, "TOPLEFT", 0, -yOffset)
         titleText:SetWidth(contentWidth)
         titleText:SetJustifyH("LEFT")
-        titleText:SetText("|cFFFFD100" .. entry.title .. "|r")
+        titleText:SetText("|cFFFFD100" .. FormatMarkdown(entry.title) .. "|r")
         tinsert(renderedFontStrings, titleText)
         yOffset = yOffset + titleText:GetStringHeight() + ENTRY_TITLE_BODY_GAP
 
@@ -220,7 +240,7 @@ local function RenderEntries()
         bodyText:SetPoint("TOPLEFT", Content, "TOPLEFT", 0, -yOffset)
         bodyText:SetWidth(contentWidth)
         bodyText:SetJustifyH("LEFT")
-        bodyText:SetText(entry.body)
+        bodyText:SetText(FormatMarkdown(entry.body))
         tinsert(renderedFontStrings, bodyText)
         yOffset = yOffset + bodyText:GetStringHeight() + ENTRY_SPACING
     end
@@ -265,7 +285,7 @@ end)
 
 Window:SetScript("OnHide", function()
     PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE)
-    if Orbit.db then Orbit.db.WhatsNewRead = Orbit.version end
+    if Orbit.db then Orbit.db.WhatsNewRead = Orbit.LatestChangelogVersion end
 end)
 
 -- [ PUBLIC API ]-------------------------------------------------------------------
@@ -285,7 +305,7 @@ trigger:SetScript("OnEvent", function(self)
         if not WHATS_NEW_ENABLED then return end
         if InCombatLockdown() then return end
         if not Orbit.db then return end
-        if Orbit.db.WhatsNewRead == Orbit.version then return end
+        if Orbit.db.WhatsNewRead == Orbit.LatestChangelogVersion then return end
         Orbit:ShowWhatsNew()
     end)
 end)

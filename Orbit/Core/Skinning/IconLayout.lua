@@ -59,6 +59,11 @@ function IL:ApplyManualLayout(frame, icons, settings)
     w = Pixel:Snap(w, scale)
     h = Pixel:Snap(h, scale)
     padding = Pixel:Snap(padding, scale)
+    if padding > 0 then
+        local gs = Orbit.db and Orbit.db.GlobalSettings
+        local borderOutset = Pixel:Multiple(gs and gs.IconBorderSize or 2, scale)
+        padding = padding + 2 * borderOutset
+    end
 
     local numGroups = math.ceil(totalIcons / limit)
     local maxMajorSize = (math.min(totalIcons, limit) * (orientation == 0 and w or h)) + ((math.min(totalIcons, limit) - 1) * padding)

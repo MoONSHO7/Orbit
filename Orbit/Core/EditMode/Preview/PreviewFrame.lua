@@ -112,7 +112,7 @@ function PreviewFrame:AddComponent(preview, key, options)
     local scale = preview.previewScale
 
     local container = CreateFrame("Frame", nil, preview)
-    container:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.Glow)
+    container:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.Border)
     container:EnableMouse(true)
     container:SetMovable(true)
     container:RegisterForDrag("LeftButton")

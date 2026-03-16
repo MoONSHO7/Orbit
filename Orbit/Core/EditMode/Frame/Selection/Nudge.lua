@@ -107,10 +107,11 @@ function Nudge:NudgeFrame(frame, direction, Selection)
     local Pixel = Engine.Pixel
     local effectiveScale = frame:GetEffectiveScale()
     local step = Pixel and (Pixel:GetScale() / effectiveScale) or 1
+    local multiplier = IsShiftKeyDown() and 10 or 1
 
     local function nudgeAxis(val, dir)
         local idx = math.floor(val / step + 0.5)
-        return (idx + dir) * step
+        return (idx + dir * multiplier) * step
     end
 
     if direction == "UP" then yOfs = nudgeAxis(yOfs, 1)

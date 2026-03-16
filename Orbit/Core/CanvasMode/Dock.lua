@@ -10,8 +10,8 @@ local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
 local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
 
 local DOCK_OFFSET_X = 14
-local EXCLUSIVE_PAIRS = { HealthText = "Status", Status = "HealthText" }
 local DOCK_OFFSET_Y = 8
+local EXCLUSIVE_PAIRS = { HealthText = "Status", Status = "HealthText" }
 local DOCK_ICON_ALPHA = 0.7
 local DOCK_BG_COLOR = { 0.2, 0.2, 0.2, 0.6 }
 local DOCK_BG_HOVER = { 0.3, 0.5, 0.3, 0.8 }

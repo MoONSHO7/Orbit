@@ -98,7 +98,13 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     if plugin then
         for _, control in ipairs(schema.controls) do
             if control.plugin then
-                local val = plugin:GetSetting(systemIndex, control.key)
+                local val
+                if plugin.GetInheritedSetting then
+                    val = plugin:GetInheritedSetting(systemIndex, control.key, true)
+                else
+                    val = plugin:GetSetting(systemIndex, control.key)
+                end
+                
                 if val ~= nil then self.currentOverrides[control.key] = val end
             end
         end
@@ -246,9 +252,7 @@ end
 
 function Settings:ApplyPluginPreview()
     local key = self.componentKey
-    if key == "CastBar" then self:ApplyCastBarPreview()
-    elseif key == "Portrait" then self:ApplyPortraitPreview()
-    elseif key == "HealthText" then self:ApplyHealthTextPreview() end
+    if key == "CastBar" then self:ApplyCastBarPreview() elseif key == "Portrait" then self:ApplyPortraitPreview() elseif key == "HealthText" then self:ApplyHealthTextPreview() end
 end
 
 -- [ VALUE CHANGE HANDLER ]--------------------------------------------------------------------------

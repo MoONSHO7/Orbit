@@ -1,4 +1,4 @@
-﻿---@type Orbit
+---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
@@ -132,14 +132,9 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
     frame.buttons = {}
 
-    frame.SetBorderHidden = function(self, edge, hidden)
+    frame.SetBorderHidden = function(self, hidden)
         for _, btn in ipairs(self.buttons) do
-            if btn.orbitBackdrop and btn.orbitBackdrop.Borders then
-                local border = btn.orbitBackdrop.Borders[edge]
-                if border then
-                    border:SetShown(not hidden)
-                end
-            end
+            Orbit.Skin.DefaultSetBorderHidden(btn, hidden)
         end
     end
 
@@ -191,7 +186,7 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
 
     frame.TextOverlay = CreateFrame("Frame", nil, frame)
     frame.TextOverlay:SetAllPoints()
-    frame.TextOverlay:SetFrameLevel(frame:GetFrameLevel() + 20)
+    frame.TextOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.IconOverlay)
     frame.CountText = frame.TextOverlay:CreateFontString(nil, "OVERLAY")
     frame.CountText:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE")
     frame.CountText:SetPoint("CENTER", frame, "CENTER", 0, 0)
@@ -202,7 +197,7 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.RechargePositioner:GetStatusBarTexture():SetAlpha(0)
 
     frame.RechargeSegment = CreateFrame("StatusBar", nil, frame)
-    frame.RechargeSegment:SetFrameLevel(frame:GetFrameLevel() + 1)
+    frame.RechargeSegment:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
     frame.RechargeSegment:SetPoint("LEFT", frame.RechargePositioner:GetStatusBarTexture(), "RIGHT", 0, 0)
     frame.RechargeSegment:SetMinMaxValues(0, 1)
 

@@ -86,6 +86,7 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
         DispelColorPoison = { r = 0.0, g = 0.6, b = 0.0, a = 1 },
         AggroIndicatorEnabled = true,
         AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
+        SelectionColor = { r = 0.8, g = 0.9, b = 1.0, a = 1 },
         AggroThickness = 1,
         AggroFrequency = 0.25,
         AggroNumLines = 8,
@@ -325,7 +326,7 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
 
     -- Set frame strata/level for visibility
     frame:SetFrameStrata("MEDIUM")
-    frame:SetFrameLevel(50 + partyIndex)
+    frame:SetFrameLevel(Orbit.Constants.Levels.GroupBase + partyIndex)
 
     UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize, plugin)
 
@@ -334,11 +335,11 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
 
     -- Create debuff container (renders above/below party frame)
     frame.debuffContainer = CreateFrame("Frame", nil, frame)
-    frame.debuffContainer:SetFrameLevel(frame:GetFrameLevel() + 10)
+    frame.debuffContainer:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
 
     -- Create buff container (for player-cast buffs)
     frame.buffContainer = CreateFrame("Frame", nil, frame)
-    frame.buffContainer:SetFrameLevel(frame:GetFrameLevel() + 10)
+    frame.buffContainer:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
 
     -- Create Status Indicators (delegated to factory mixin)
     plugin:CreateStatusIcons(frame)
@@ -408,7 +409,7 @@ function Plugin:OnLoad()
     self.container.editModeName = "Party Frames"
     self.container.systemIndex = 1
     self.container:SetFrameStrata("MEDIUM")
-    self.container:SetFrameLevel(49)
+    self.container:SetFrameLevel(Orbit.Constants.Levels.GroupContainer)
     self.container:SetClampedToScreen(true)
 
     -- Create party frames (parented to container)
@@ -466,10 +467,14 @@ function Plugin:OnLoad()
     end
 
     -- Helper to update visibility driver based on IncludePlayer setting
-    local PARTY_BASE_DRIVER = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
+    local PARTY_DRIVER_OPEN = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
+    local PARTY_DRIVER_PVP = "[petbattle] hide; hide" -- always hide in BG (raid frames take over)
+    local PARTY_DRIVER_ARENA = "[petbattle] hide; show" -- always show in arena
     local function UpdateVisibilityDriver(plugin)
         if InCombatLockdown() or Orbit:IsEditMode() then return end
-        RegisterStateDriver(plugin.container, "visibility", PARTY_BASE_DRIVER)
+        local _, instanceType = IsInInstance()
+        local driver = instanceType == "arena" and PARTY_DRIVER_ARENA or instanceType == "pvp" and PARTY_DRIVER_PVP or PARTY_DRIVER_OPEN
+        RegisterStateDriver(plugin.container, "visibility", driver)
     end
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver(self) end
     UpdateVisibilityDriver(self)
@@ -498,8 +503,10 @@ function Plugin:OnLoad()
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
     eventFrame:SetScript("OnEvent", function(_, event)
-        if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" or event == "PLAYER_ENTERING_WORLD" then
-            self:UpdateFrameUnits()
+        if event == "PLAYER_ENTERING_WORLD" then C_Timer.After(0.5, function() UpdateVisibilityDriver(self); self:UpdateFrameUnits() end); return end
+        if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
+            UpdateVisibilityDriver(self) -- Re-evaluate driver on roster changes
+            if not InCombatLockdown() then self:UpdateFrameUnits() end
             for i, frame in ipairs(self.frames) do
                 if frame.unit then
                     UpdateInRange(frame)
@@ -509,7 +516,7 @@ function Plugin:OnLoad()
             end
         end
 
-        -- Update container size and reposition frames if out of combat
+        if event == "PLAYER_REGEN_ENABLED" then UpdateVisibilityDriver(self) end
         if not InCombatLockdown() then
             self:PositionFrames()
             self:UpdateContainerSize()
@@ -591,6 +598,7 @@ function Plugin:PositionFrames()
     local growthDirection = self:GetSetting(1, "GrowthDirection") or (orientation == 0 and "Down" or "Right")
     self.container.orbitForceAnchorPoint = Helpers:GetContainerAnchor(growthDirection)
 
+    local visibleFrames = {}
     local visibleIndex = 0
     for _, frame in ipairs(self.frames) do
         frame:ClearAllPoints()
@@ -599,8 +607,10 @@ function Plugin:PositionFrames()
             local xOffset, yOffset, frameAnchor, containerAnchor =
                 Helpers:CalculateFramePosition(visibleIndex, width, height, spacing, orientation, growthDirection)
             frame:SetPoint(frameAnchor, self.container, containerAnchor, xOffset, yOffset)
+            visibleFrames[#visibleFrames + 1] = frame
         end
     end
+
 
     self:UpdateContainerSize()
 end
@@ -630,26 +640,25 @@ end
 -- [ DYNAMIC UNIT ASSIGNMENT ]----------------------------------------------------------------------
 
 function Plugin:UpdateFrameUnits()
-    if self.frames and self.frames[1] and self.frames[1].preview then
+    if InCombatLockdown() then
+        Orbit.CombatManager:QueueUpdate(function() self:UpdateFrameUnits() end)
         return
     end
+    if self.frames and self.frames[1] and self.frames[1].preview then return end
 
     local includePlayer = self:GetSetting(1, "IncludePlayer")
     local sortedUnits = GetSortedPartyUnits(includePlayer)
 
-    -- Assign units to frames
     for i = 1, MAX_PARTY_FRAMES do
         local frame = self.frames[i]
         if frame then
             local unit = sortedUnits[i]
             if unit then
-                -- Update secure unit attribute (only if changed)
                 local currentUnit = frame:GetAttribute("unit")
                 if currentUnit ~= unit then
-                    pcall(frame.SetAttribute, frame, "unit", unit)
+                    frame:SetAttribute("unit", unit)
                     frame.unit = unit
 
-                    -- Re-register unit-specific events
                     frame:UnregisterEvent("UNIT_POWER_UPDATE")
                     frame:UnregisterEvent("UNIT_MAXPOWER")
                     frame:UnregisterEvent("UNIT_DISPLAYPOWER")
@@ -673,20 +682,15 @@ function Plugin:UpdateFrameUnits()
                     frame:RegisterUnitEvent("UNIT_IN_RANGE_UPDATE", unit)
                 end
 
-                -- Update unit watch for visibility
-                pcall(UnregisterUnitWatch, frame)
-                pcall(RegisterUnitWatch, frame)
-
-                pcall(frame.Show, frame)
-                if frame.UpdateAll then
-                    frame:UpdateAll()
-                end
+                SafeUnregisterUnitWatch(frame)
+                SafeRegisterUnitWatch(frame)
+                frame:Show()
+                if frame.UpdateAll then frame:UpdateAll() end
             else
-                -- No unit for this slot - hide frame and clear unit
-                pcall(UnregisterUnitWatch, frame)
-                pcall(frame.SetAttribute, frame, "unit", nil)
-                pcall(frame.Hide, frame)
+                SafeUnregisterUnitWatch(frame)
+                frame:SetAttribute("unit", nil)
                 frame.unit = nil
+                frame:Hide()
             end
         end
     end
@@ -720,8 +724,8 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     local textureName = self:GetSetting(1, "Texture")
 
     frame:SetSize(width, height)
-    if frame.SetBorder then frame:SetBorder(borderSize) end
     UpdateFrameLayout(frame, borderSize, self)
+    if frame.SetBorder then frame:SetBorder(borderSize) end
 
     -- Texture
     if frame.Health then Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true) end
@@ -757,7 +761,7 @@ function Plugin:ApplyFrameStyle(frame, showPower)
                         local sz = GetComponentIconSize(self, k)
                         local c = CreateFrame("Frame", nil, frame)
                         c:SetPoint("CENTER", frame, "CENTER", 0, 0)
-                        c:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.HealerAura)
+                        c:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
                         c._raidIcons = {}
                         c:SetSize(sz, sz)
                         frame.RaidBuff = c

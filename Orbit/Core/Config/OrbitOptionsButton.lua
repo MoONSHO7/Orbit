@@ -17,7 +17,7 @@ local Button = CreateFrame("Button", "OrbitOptionsButton", UIParent, "BackdropTe
 Button:SetSize(BUTTON_WIDTH, BUTTON_HEIGHT)
 Button:SetPoint("TOPLEFT", UIParent, "TOPLEFT", BUTTON_PADDING, -BUTTON_PADDING)
 Button:SetFrameStrata("TOOLTIP")
-Button:SetFrameLevel(100)
+Button:SetFrameLevel(500)
 Button:Hide()
 
 -- Backdrop (background + border unified)

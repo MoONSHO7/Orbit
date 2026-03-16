@@ -113,7 +113,7 @@ local function CreateBossFrame(bossIndex, plugin)
     frame.systemIndex, frame.bossIndex = 1, bossIndex
     frame:SetSize(plugin:GetSetting(1, "Width") or 150, plugin:GetSetting(1, "Height") or 40)
     frame:SetFrameStrata("MEDIUM")
-    frame:SetFrameLevel(50 + bossIndex)
+    frame:SetFrameLevel(Orbit.Constants.Levels.GroupBase + bossIndex)
     UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize)
     frame.Power = CreatePowerBar(frame, unit)
     frame:RegisterUnitEvent("UNIT_POWER_UPDATE", unit)
@@ -128,7 +128,7 @@ local function CreateBossFrame(bossIndex, plugin)
     frame.buffContainer = CreateFrame("Frame", nil, frame); frame.buffContainer:SetSize(100, 20)
     frame.StatusOverlay = CreateFrame("Frame", nil, frame)
     frame.StatusOverlay:SetAllPoints()
-    frame.StatusOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Text)
+    frame.StatusOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     frame.MarkerIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
     frame.MarkerIcon:SetSize(MARKER_ICON_SIZE, MARKER_ICON_SIZE)
     frame.MarkerIcon.orbitOriginalWidth, frame.MarkerIcon.orbitOriginalHeight = MARKER_ICON_SIZE, MARKER_ICON_SIZE
@@ -195,7 +195,7 @@ function Plugin:OnLoad()
     self.container = CreateFrame("Frame", "OrbitBossContainer", UIParent, "SecureHandlerStateTemplate")
     self.container.editModeName, self.container.systemIndex = "Boss Frames", 1
     self.container:SetFrameStrata("MEDIUM")
-    self.container:SetFrameLevel(49)
+    self.container:SetFrameLevel(Orbit.Constants.Levels.GroupContainer)
     self.container:SetClampedToScreen(true)
     self.frames = {}
     for i = 1, MAX_BOSS_FRAMES do
@@ -381,7 +381,7 @@ function Plugin:UpdateLayout()
     for _, frame in ipairs(self.frames) do
         frame:SetSize(width, height)
         UpdateFrameLayout(frame, borderSize)
-        local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 12, 24, 0.25)
+        local textSize = 12
         Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)
         Orbit.Skin:ApplyUnitFrameText(frame.HealthText, "RIGHT", nil, textSize)
         if frame.ConstrainNameWidth then frame:ConstrainNameWidth() end
@@ -401,7 +401,7 @@ function Plugin:ApplySettings()
     local textureName = self:GetSetting(1, "Texture") or self:GetPlayerSetting("Texture")
     local fontName = self:GetSetting(1, "Font") or self:GetPlayerSetting("Font")
     local reactionColour = self:GetSetting(1, "ReactionColour")
-    local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 12, 24, 0.25)
+    local textSize = 12
     for _, frame in ipairs(self.frames) do
         frame.borderSize = borderSize
         frame:SetSize(width, height)
@@ -423,7 +423,7 @@ function Plugin:ApplySettings()
                 CB:Position(frame.CastBar, frame, self)
                 if frame.CastBar.SetBorder then frame.CastBar:SetBorder(borderSize) end
                 if textureName then Orbit.Skin:SkinStatusBar(frame.CastBar, textureName, nil, true) end
-                local cbTextSize = Orbit.Skin:GetAdaptiveTextSize(castBarHeight, 10, 18, 0.40)
+                local cbTextSize = 10
                 local fontPath = LSM:Fetch("font", fontName)
                 if frame.CastBar.Text then frame.CastBar.Text:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline()) end
                 if frame.CastBar.Timer then frame.CastBar.Timer:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline()) end

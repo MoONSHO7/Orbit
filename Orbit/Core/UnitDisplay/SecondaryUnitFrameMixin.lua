@@ -134,7 +134,7 @@ function Mixin:ApplySettings()
     local fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
     if frame.Name then
         local h = frame:GetHeight()
-        frame.Name:SetFont(fontPath, Orbit.Skin:GetAdaptiveTextSize(h, 10, 18, 0.25), Orbit.Skin:GetFontOutline())
+        frame.Name:SetFont(fontPath, 10, Orbit.Skin:GetFontOutline())
         frame.Name:ClearAllPoints()
         frame.Name:SetPoint("CENTER", 0, 0)
         frame.Name:SetJustifyH("CENTER")
@@ -157,14 +157,12 @@ function Mixin:ApplySettings()
     if frame.SetReactionColour then frame:SetReactionColour(true) end
     if enabled then frame:UpdateAll() end
 
-    local isInCanvasMode = OrbitEngine.CanvasMode:IsActive(frame)
-    if not isInCanvasMode then
-        local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
-        if savedPositions then
-            OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
-            if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
-        end
+    local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
+    if savedPositions and next(savedPositions) then
+        OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
     end
+    
+    if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
 end
 
 function Mixin:UpdateVisuals(frame)

@@ -43,18 +43,30 @@ function Layout:CreateFontPicker(parent, label, initialFont, callback)
 
         -- Dropdown arrow
         frame.Control.Arrow = frame.Control:CreateTexture(nil, "OVERLAY")
-        frame.Control.Arrow:SetSize(10, 10)
+        frame.Control.Arrow:SetSize(12, 12)
         frame.Control.Arrow:SetPoint("RIGHT", -4, 0)
-        frame.Control.Arrow:SetAtlas("NPE_ArrowDown")
+        frame.Control.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown")
 
         frame.Control:SetScript("OnClick", function()
             if frame.ShowDropdown then frame:ShowDropdown() end
         end)
         frame.Control:SetScript("OnEnter", function(self)
             self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+            self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown-hover")
         end)
         frame.Control:SetScript("OnLeave", function(self)
             self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+            self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown")
+        end)
+        frame.Control:SetScript("OnMouseDown", function(self)
+            self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown-pressed-hover")
+        end)
+        frame.Control:SetScript("OnMouseUp", function(self)
+            if MouseIsOver(self) then
+                self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown-hover")
+            else
+                self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown")
+            end
         end)
     end
 
