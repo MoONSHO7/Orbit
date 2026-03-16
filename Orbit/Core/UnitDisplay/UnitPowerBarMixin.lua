@@ -8,7 +8,26 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
 local FRAME_LEVEL_BOOST = Orbit.Constants.Levels.StatusBar
+local DEFAULT_FRAME_STRATA = "MEDIUM"
+local DEFAULT_FRAME_LEVEL_OFFSET = 0
 local CanUseUnitPowerPercent = (type(UnitPowerPercent) == "function" and CurveConstants and CurveConstants.ScaleTo100)
+
+local POWER_CURVE_CONFIG = {
+    { key = "ManaColorCurve", label = "Mana Colour", powerType = Enum.PowerType.Mana, default = { r = 0, g = 0, b = 1, a = 1 } },
+    { key = "RageColorCurve", label = "Rage Colour", powerType = Enum.PowerType.Rage, default = { r = 1, g = 0, b = 0, a = 1 } },
+    { key = "FocusColorCurve", label = "Focus Colour", powerType = Enum.PowerType.Focus, default = { r = 1, g = 0.5, b = 0.25, a = 1 } },
+    { key = "EnergyColorCurve", label = "Energy Colour", powerType = Enum.PowerType.Energy, default = { r = 1, g = 1, b = 0, a = 1 } },
+    { key = "RunicPowerColorCurve", label = "Runic Power Colour", powerType = Enum.PowerType.RunicPower, default = { r = 0, g = 0.82, b = 1, a = 1 } },
+    { key = "LunarPowerColorCurve", label = "Astral Power Colour", powerType = Enum.PowerType.LunarPower, default = { r = 0.95, g = 0.9, b = 0.6, a = 1 } },
+    { key = "FuryColorCurve", label = "Fury Colour", powerType = Enum.PowerType.Fury, default = { r = 1, g = 0.6, b = 0.2, a = 1 } },
+    { key = "InsanityColorCurve", label = "Insanity Colour", powerType = Enum.PowerType.Insanity, default = { r = 0.6, g = 0.2, b = 1.0, a = 1 } },
+    { key = "MaelstromColorCurve", label = "Maelstrom Colour", powerType = Enum.PowerType.Maelstrom, default = { r = 0.65, g = 0.63, b = 0.35, a = 1 } },
+}
+
+local POWER_TYPE_TO_CURVE_KEY = {}
+for _, cfg in ipairs(POWER_CURVE_CONFIG) do
+    POWER_TYPE_TO_CURVE_KEY[cfg.powerType] = cfg.key
+end
 
 Orbit.UnitPowerBarMixin = {}
 local Mixin = Orbit.UnitPowerBarMixin
@@ -16,6 +35,18 @@ local Mixin = Orbit.UnitPowerBarMixin
 Mixin.sharedDefaults = {
     Hidden = false, Width = 200, Height = 10,
     ShowText = true, ShowPercent = false, TextSize = 12, TextAlignment = "CENTER",
+    PowerBackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
+    FrameStrata = DEFAULT_FRAME_STRATA,
+    FrameLevelOffset = DEFAULT_FRAME_LEVEL_OFFSET,
+    ManaColorCurve = { pins = { { position = 0, color = POWER_CURVE_CONFIG[1].default } } },
+    RageColorCurve = { pins = { { position = 0, color = POWER_CURVE_CONFIG[2].default } } },
+    FocusColorCurve = { pins = { { position = 0, color = POWER_CURVE_CONFIG[3].default } } },
+    EnergyColorCurve = { pins = { { position = 0, color = POWER_CURVE_CONFIG[4].default } } },
+    RunicPowerColorCurve = { pins = { { position = 0, color = POWER_CURVE_CONFIG[5].default } } },
+    LunarPowerColorCurve = { pins = { { position = 0, color = POWER_CURVE_CONFIG[6].default } } },
+    FuryColorCurve = { pins = { { position = 0, color = POWER_CURVE_CONFIG[7].default } } },
+    InsanityColorCurve = { pins = { { position = 0, color = POWER_CURVE_CONFIG[8].default } } },
+    MaelstromColorCurve = { pins = { { position = 0, color = POWER_CURVE_CONFIG[9].default } } },
     ComponentPositions = { Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" } },
 }
 
@@ -33,9 +64,71 @@ function Mixin:AddPowerBarSettings(dialog, systemFrame)
     local SB = OrbitEngine.SchemaBuilder
     if dialog.Title then dialog.Title:SetText(cfg.displayName) end
     local schema = { hideNativeSettings = true, controls = {} }
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colour", "Layer" }, "Layout")
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(self._pbFrame) ~= nil
-    if not isAnchored then SB:AddSizeSettings(self, schema, 1, systemFrame, { default = 200 }, nil, nil) end
-    SB:AddSizeSettings(self, schema, 1, systemFrame, nil, { min = 4, max = 25, default = 15 }, nil)
+
+    if currentTab == "Layout" then
+        if not isAnchored then SB:AddSizeSettings(self, schema, 1, systemFrame, { default = 200 }, nil, nil) end
+        SB:AddSizeSettings(self, schema, 1, systemFrame, nil, { min = 4, max = 25, default = 15 }, nil)
+    elseif currentTab == "Colour" then
+        table.insert(schema.controls, {
+            type = "color",
+            key = "PowerBackdropColour",
+            label = "Backdrop Colour",
+            default = Orbit.Constants.Colors.Background,
+            onChange = function(val)
+                self:SetSetting(1, "PowerBackdropColour", val)
+                self:ApplySettings()
+            end,
+        })
+        for _, cfg in ipairs(POWER_CURVE_CONFIG) do
+            table.insert(schema.controls, {
+                type = "colorcurve",
+                key = cfg.key,
+                label = cfg.label,
+                onChange = function(curveData)
+                    self:SetSetting(1, cfg.key, curveData)
+                    self:UpdateAll()
+                end,
+            })
+        end
+    elseif currentTab == "Layer" then
+        table.insert(schema.controls, {
+            type = "dropdown",
+            key = "FrameStrata",
+            label = "Frame Strata",
+            options = {
+                { text = "Background", value = "BACKGROUND" },
+                { text = "Low", value = "LOW" },
+                { text = "Medium", value = "MEDIUM" },
+                { text = "High", value = "HIGH" },
+                { text = "Dialog", value = "DIALOG" },
+                { text = "Fullscreen", value = "FULLSCREEN" },
+                { text = "Fullscreen Dialog", value = "FULLSCREEN_DIALOG" },
+                { text = "Tooltip", value = "TOOLTIP" },
+            },
+            default = DEFAULT_FRAME_STRATA,
+            onChange = function(val)
+                self:SetSetting(1, "FrameStrata", val)
+                self:ApplySettings()
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "FrameLevelOffset",
+            label = "Level Offset",
+            min = -50,
+            max = 50,
+            step = 1,
+            default = DEFAULT_FRAME_LEVEL_OFFSET,
+            onChange = function(val)
+                self:SetSetting(1, "FrameLevelOffset", val)
+                self:ApplySettings()
+            end,
+        })
+    end
+
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
@@ -48,6 +141,8 @@ function Mixin:CreatePowerBarPlugin(config)
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = true },
     })
     Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
+    Frame.orbitBaseFrameLevel = Frame:GetFrameLevel()
+    Frame.orbitBaseStrata = Frame:GetFrameStrata()
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 4, maxH = 25 }
     self._pbFrame = Frame
     self._pbBar = PowerBar
@@ -217,15 +312,23 @@ function Mixin:ApplySettings()
     local borderSize = self:GetSetting(1, "BorderSize")
     local textureName = self:GetSetting(1, "Texture")
     local fontName = self:GetSetting(1, "Font")
+    local frameStrata = self:GetSetting(1, "FrameStrata") or Frame.orbitBaseStrata or DEFAULT_FRAME_STRATA
+    local frameLevelOffset = self:GetSetting(1, "FrameLevelOffset") or DEFAULT_FRAME_LEVEL_OFFSET
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
 
     Frame:SetHeight(height)
     if not isAnchored then Frame:SetWidth(width) end
+    Frame:SetFrameStrata(frameStrata)
+    Frame:SetFrameLevel(math.max(1, (Frame.orbitBaseFrameLevel or Frame:GetFrameLevel()) + frameLevelOffset))
+    PowerBar:SetFrameLevel(Frame:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
+    if Frame.Overlay then
+        Frame.Overlay:SetFrameLevel(Frame:GetFrameLevel() + 20)
+    end
 
     Orbit.Skin:SkinStatusBar(PowerBar, textureName, nil, true)
     Frame:SetBorder(borderSize)
 
-    local backdropColor = self:GetSetting(1, "BackdropColour")
+    local backdropColor = self:GetSetting(1, "PowerBackdropColour")
     if backdropColor and Frame.bg then
         Frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.9)
     elseif Frame.bg then
@@ -275,9 +378,27 @@ function Mixin:UpdateAll()
     PowerBar:SetMinMaxValues(0, max)
     PowerBar:SetValue(cur, SMOOTH_ANIM)
 
-    local info = Orbit.Constants.Colors.PowerType[powerType]
-    if info then PowerBar:SetStatusBarColor(info.r, info.g, info.b)
-    else PowerBar:SetStatusBarColor(0.5, 0.5, 0.5) end
+    PowerBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
+    local curveKey = POWER_TYPE_TO_CURVE_KEY[powerType]
+    local curveData = curveKey and self:GetSetting(1, curveKey)
+    if curveData then
+        local nativeCurve = OrbitEngine.ColorCurve:ToNativeColorCurve(curveData)
+        if nativeCurve and CanUseUnitPowerPercent then
+            local ok, color = pcall(UnitPowerPercent, unit, powerType, false, nativeCurve)
+            if ok and color then
+                PowerBar:GetStatusBarTexture():SetVertexColor(color:GetRGBA())
+            end
+        else
+            local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
+            if color then
+                PowerBar:SetStatusBarColor(color.r, color.g, color.b)
+            end
+        end
+    else
+        local info = Orbit.Constants.Colors.PowerType[powerType]
+        if info then PowerBar:SetStatusBarColor(info.r, info.g, info.b)
+        else PowerBar:SetStatusBarColor(0.5, 0.5, 0.5) end
+    end
 
     if Frame.Text:IsShown() then
         if powerToken == "MANA" then
