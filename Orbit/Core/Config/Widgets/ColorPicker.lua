@@ -42,9 +42,9 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
                 hasOpacity = true,
                 forceSingleColor = true,
                 onOpen = function(picker)
-                    local gs = Orbit.db and Orbit.db.GlobalSettings
-                    if gs and not gs.ColorPickerTourSeen then
-                        gs.ColorPickerTourSeen = true
+                    local as = Orbit.db and Orbit.db.AccountSettings
+                    if as and not as.ColorPickerTourComplete then
+                        as.ColorPickerTourComplete = true
                         C_Timer.After(0.1, function() if picker:IsOpen() then picker:StartTour() end end)
                     end
                 end,

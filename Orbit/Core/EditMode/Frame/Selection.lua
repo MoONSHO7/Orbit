@@ -433,7 +433,7 @@ function Selection:OnEditModeEnter()
         end
 
         -- Auto-start Edit Mode tour for first-time users
-        if Orbit.db and Orbit.db.GlobalSettings and not Orbit.db.GlobalSettings.TourComplete then
+        if Orbit.db and Orbit.db.AccountSettings and not Orbit.db.AccountSettings.TourComplete then
             if Engine.EditModeTour then Engine.EditModeTour:StartTour() end
         end
     end)

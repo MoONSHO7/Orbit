@@ -1,11 +1,10 @@
 -- [ EDIT MODE - GUIDED TOUR (PLAYGROUND) ]-------------------------------------------
--- First-login-only anchoring playground with dark overlay and guided steps
 ---@type Orbit
 local Orbit = Orbit
 local Engine = Orbit.Engine
 
 -- [ CONSTANTS ]----------------------------------------------------------------------
-local OVERLAY_ALPHA = 0.60
+local OVERLAY_ALPHA = 0.98
 local OVERLAY_STRATA = "MEDIUM"
 local OVERLAY_LEVEL = 900
 local FRAME_STRATA = "HIGH"
@@ -20,8 +19,18 @@ local NEXT_BTN_HEIGHT = 20
 local NEXT_BTN_WIDTH = 70
 local NEXT_BTN_GAP = 6
 local FADE_DURATION = 0.3
+local NEXT_ENABLE_TIMER = 10
+local STAR_COUNT = 150
+local STAR_SIZE = 2
+local STAR_SPEED_MIN = 0.10
+local STAR_SPEED_MAX = 0.40
+local STAR_HOLD_MIN = 2.0
+local STAR_HOLD_MAX = 7.0
+local STAR_ALPHA_MIN = 0.08
+local STAR_ALPHA_MAX = 0.60
 local DIALOG_STRATA = "DIALOG"
 local DIALOG_LEVEL = 100
+local BLOCKER_FRAME_LEVEL = 990
 local ACCENT = { r = 0.3, g = 0.8, b = 0.3 }
 local BG = { r = 0.08, g = 0.08, b = 0.08, a = 0.95 }
 local BORDER_CLR = { r = 0.25, g = 0.25, b = 0.25, a = 0.9 }
@@ -271,6 +280,64 @@ overlay.bg = overlay:CreateTexture(nil, "BACKGROUND")
 overlay.bg:SetAllPoints()
 overlay.bg:SetColorTexture(0, 0, 0, OVERLAY_ALPHA)
 
+-- [ STAR FIELD ]----------------------------------------------------------------------
+local stars = {}
+local function BuildStars()
+    if #stars > 0 then return end
+    local sw, sh = UIParent:GetWidth(), UIParent:GetHeight()
+    for i = 1, STAR_COUNT do
+        local tex = overlay:CreateTexture(nil, "ARTWORK")
+        tex:SetSize(STAR_SIZE, STAR_SIZE)
+        tex:SetColorTexture(1, 1, 1, 1)
+        tex:SetPoint("TOPLEFT", overlay, "TOPLEFT", math.random(0, math.floor(sw)), -math.random(0, math.floor(sh)))
+        tex:SetAlpha(0)
+        tex:Hide()
+        stars[i] = {
+            tex = tex,
+            alpha = 0,
+            maxAlpha = STAR_ALPHA_MIN + math.random() * (STAR_ALPHA_MAX - STAR_ALPHA_MIN),
+            dir = 1,
+            speed = STAR_SPEED_MIN + math.random() * (STAR_SPEED_MAX - STAR_SPEED_MIN),
+            hold = math.random() * STAR_HOLD_MAX, -- staggered initial delay
+        }
+    end
+end
+local function ShowStars() BuildStars(); for _, s in ipairs(stars) do s.tex:Show() end end
+local function HideStars() for _, s in ipairs(stars) do s.tex:Hide() end end
+
+-- [ OPTIONS BLOCKER ]------------------------------------------------------------------
+local optionsBlocker = CreateFrame("Frame", nil, UIParent)
+optionsBlocker:SetFrameStrata("TOOLTIP")
+optionsBlocker:SetFrameLevel(BLOCKER_FRAME_LEVEL)
+optionsBlocker:EnableMouse(true)
+optionsBlocker:Hide()
+
+local function ShowOptionsBlocker()
+    optionsBlocker:ClearAllPoints()
+    optionsBlocker:SetAllPoints(Orbit.SettingsDialog)
+    optionsBlocker:Show()
+end
+local function HideOptionsBlocker() optionsBlocker:Hide() end
+
+overlay:SetScript("OnUpdate", function(self, elapsed)
+    if not Tour.active then return end
+    for _, s in ipairs(stars) do
+        if s.hold and s.hold > 0 then
+            s.hold = s.hold - elapsed
+        else
+            s.hold = nil
+            s.alpha = s.alpha + s.dir * s.speed * elapsed
+            if s.alpha >= s.maxAlpha then
+                s.alpha = s.maxAlpha; s.dir = -1
+            elseif s.alpha <= 0 then
+                s.alpha = 0; s.dir = 1
+                s.hold = STAR_HOLD_MIN + math.random() * (STAR_HOLD_MAX - STAR_HOLD_MIN)
+            end
+            s.tex:SetAlpha(s.alpha)
+        end
+    end
+end)
+
 -- [ WELCOME TITLE ]------------------------------------------------------------------
 
 local BARLOW_BLACK = "Interface\\AddOns\\Orbit\\Core\\assets\\Fonts\\BarlowCondensed-Black.ttf"
@@ -393,7 +460,6 @@ tip.nextBtn:SetScript("OnClick", function()
     if Tour.index < #TOUR_STOPS then
         Tour:ShowTourStop(Tour.index + 1)
     else
-        if Orbit.db and Orbit.db.GlobalSettings then Orbit.db.GlobalSettings.TourComplete = true end
         Tour:EndTour()
         Tour:ShowCanvasHint()
     end
@@ -432,9 +498,11 @@ end
 -- [ TASK STATE POLLER ]---------------------------------------------------------------
 local CHECK_INTERVAL = 0.1
 local checkElapsed = 0
+local stopElapsed = 0
 tip:SetScript("OnUpdate", function(self, elapsed)
     if not Tour.active then return end
     checkElapsed = checkElapsed + elapsed
+    stopElapsed = stopElapsed + elapsed
     if checkElapsed < CHECK_INTERVAL then return end
     checkElapsed = 0
     local stop = TOUR_STOPS[Tour.index]
@@ -477,10 +545,8 @@ tip:SetScript("OnUpdate", function(self, elapsed)
         dialog:SetFrameStrata(DIALOG_STRATA)
         dialog:SetFrameLevel(DIALOG_LEVEL)
     end
-    -- Enable Next button when check passes
-    if stop.check and stop.check() then
-        tip.nextBtn:Enable()
-    end
+    -- Enable Next button when check passes or fallback timer expires
+    if (stop.check and stop.check()) or stopElapsed >= NEXT_ENABLE_TIMER then tip.nextBtn:Enable() end
 end)
 
 -- [ LAYOUT TOOLTIP ]-----------------------------------------------------------------
@@ -593,7 +659,23 @@ end
 TOUR_STOPS = {
     { anchorKey = "A",
       title = L.STEP1_TITLE, text = L.STEP1_TEXT,
-      check = function() return taskState.dragged end },
+      check = function() return taskState.dragged end,
+      onLeave = function()
+          -- Ensure frameA is selected so the settings dialog is open for step 2
+          local frameA = GetFrameA()
+          local Selection = Engine.FrameSelection
+          if not frameA or not Selection then return end
+          local sel = Selection.selections[frameA]
+          if sel and not sel.isSelected then
+              Selection:DeselectAll()
+              sel.isSelected = true
+              Selection:SetSelectedFrame(frameA, false)
+              Selection:UpdateVisuals(nil, sel)
+              if Selection.selectionCallbacks[frameA] then
+                  Selection.selectionCallbacks[frameA](frameA)
+              end
+          end
+      end },
     { anchorKey = "dialog", tooltipPoint = "LEFT", tooltipRel = "RIGHT", tpX = 8, tpY = 0,
       title = L.STEP2_TITLE, text = L.STEP2_TEXT,
       check = function() return taskState.settingsChanged end },
@@ -643,14 +725,28 @@ TOUR_STOPS = {
       title = L.STEP8_TITLE, text = L.STEP8_TEXT,
       check = function() return true end,
       onEnter = function()
-          if Orbit.OptionsPanel then Orbit.OptionsPanel:Open("Global") end
+          if Orbit.OptionsPanel then
+              Orbit.OptionsPanel:Open("Global")
+              C_Timer.After(0.05, ShowOptionsBlocker)
+          end
       end,
       onLeave = function()
+          HideOptionsBlocker()
           if Orbit.OptionsPanel then Orbit.OptionsPanel:Hide() end
       end },
     { anchorKey = "center", tooltipPoint = "CENTER", tooltipRel = "CENTER", tpX = 0, tpY = 0,
       title = L.STEP9_TITLE, text = L.STEP9_TEXT,
-      check = function() return true end },
+      check = function() return true end,
+      onEnter = function()
+          if Orbit.OptionsPanel then
+              Orbit.OptionsPanel:Open("Global")
+              C_Timer.After(0.05, ShowOptionsBlocker)
+          end
+      end,
+      onLeave = function()
+          HideOptionsBlocker()
+          if Orbit.OptionsPanel then Orbit.OptionsPanel:Hide() end
+      end },
 }
 
 
@@ -732,6 +828,8 @@ function Tour:ShowTourStop(idx)
     if not stop then self:EndTour(); return end
     self.index = idx
     checkElapsed = 0
+    stopElapsed = 0
+    taskCompleteAt = nil
 
     local anchor = ResolveAnchor(stop)
     if not anchor then self:EndTour(); return end
@@ -760,9 +858,12 @@ end
 
 function Tour:StartTour(force)
     if self.active then return end
-    if not force and Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.TourComplete then return end
+    if not force and Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.TourComplete then return end
     local plugin = GetPlugin()
     if not plugin or not plugin.frameA or not plugin.frameB then return end
+    if not force and Orbit.db and Orbit.db.AccountSettings then
+        Orbit.db.AccountSettings.TourComplete = true
+    end
 
     local ok, err = xpcall(function()
         local frameA, frameB = plugin.frameA, plugin.frameB
@@ -773,6 +874,8 @@ function Tour:StartTour(force)
         if dialog then
             savedDialogStrata = dialog:GetFrameStrata()
             savedDialogLevel = dialog:GetFrameLevel()
+            dialog:SetFrameStrata(DIALOG_STRATA)
+            dialog:SetFrameLevel(DIALOG_LEVEL)
         end
         if not originalSetSetting then
             originalSetSetting = plugin.SetSetting
@@ -827,6 +930,7 @@ function Tour:StartTour(force)
         plugin:SetSetting("B", "Width", FRAME_W); plugin:SetSetting("B", "Height", FRAME_H)
         taskState.settingsChanged = false
         overlay:Show()
+        ShowStars()
         overlay.welcomeTitle:SetAlpha(1)
         overlay.welcomeSub:SetAlpha(1)
         frameA:SetSize(FRAME_W, FRAME_H)
@@ -898,6 +1002,7 @@ function Tour:EndTour()
     overlay.welcomeTitle:SetAlpha(0)
     overlay.welcomeSub:SetAlpha(0)
     overlay:Hide()
+    HideStars()
     HideResizePulse()
     ResetHierarchyLabels()
     -- Restore settings dialog strata

@@ -176,14 +176,27 @@ end
 -- [ ADDON INITIALIZATION ]--------------------------------------------------------------------------
 
 Orbit.addonName = addonName
-Orbit.version = "1.0"
+Orbit.version = "@project-version@"
 Orbit.title = "Orbit"
+
+-- Dev Fallback for version token
+if Orbit.version == "@" .. "project-version" .. "@" then
+    Orbit.version = "1.0.1"
+end
 _G["Orbit"] = Orbit
 OrbitDB = OrbitDB or {}
 
 function Orbit:OnLoad()
     self.db = OrbitDB
     self.db.GlobalSettings = self.db.GlobalSettings or {}
+    self.db.AccountSettings = self.db.AccountSettings or {}
+
+    -- Migrate TourComplete from profile-synced GlobalSettings to account-wide AccountSettings
+    if self.db.GlobalSettings.TourComplete ~= nil and self.db.AccountSettings.TourComplete == nil then
+        self.db.AccountSettings.TourComplete = self.db.GlobalSettings.TourComplete
+        self.db.GlobalSettings.TourComplete = nil
+    end
+
     for k, v in pairs(GLOBAL_DEFAULTS) do
         if self.db.GlobalSettings[k] == nil then
             self.db.GlobalSettings[k] = type(v) == "table" and Orbit.Profile and Orbit.Profile.CopyTable and Orbit.Profile.CopyTable(v, {}) or v
