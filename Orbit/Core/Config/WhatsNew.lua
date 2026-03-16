@@ -267,7 +267,7 @@ end)
 
 Window:SetScript("OnHide", function()
     PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE)
-    if Orbit.db then Orbit.db.WhatsNewRead = Orbit.version end
+    if Orbit.db then Orbit.db.WhatsNewRead = Orbit.LatestChangelogVersion end
 end)
 
 -- [ PUBLIC API ]-------------------------------------------------------------------
@@ -287,7 +287,7 @@ trigger:SetScript("OnEvent", function(self)
         if not WHATS_NEW_ENABLED then return end
         if InCombatLockdown() then return end
         if not Orbit.db then return end
-        if Orbit.db.WhatsNewRead == Orbit.version then return end
+        if Orbit.db.WhatsNewRead == Orbit.LatestChangelogVersion then return end
         Orbit:ShowWhatsNew()
     end)
 end)

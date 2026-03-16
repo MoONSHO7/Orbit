@@ -5,7 +5,6 @@ import os
 
 CHANGELOG_PATH = "CHANGELOG.md"
 OUTPUT_PATH = "Orbit/Orbit/Core/Config/ChangelogData.lua"
-INIT_PATH = "Orbit/Orbit/Core/Init.lua"
 
 # [ PARSING ] ----------------------------------------------------------------------
 
@@ -77,23 +76,6 @@ Orbit.WHATS_NEW_ENTRIES = {{
         f.write(lua_content)
     print(f"Generated {OUTPUT_PATH}")
 
-# [ VERSION SYNC ] -----------------------------------------------------------------
-
-def sync_version(version):
-    if not os.path.exists(INIT_PATH):
-        print(f"Warning: {INIT_PATH} not found, skipping version sync.")
-        return
-
-    with open(INIT_PATH, 'r', encoding='utf-8') as f:
-        content = f.read()
-
-    # Replace Orbit.version = "..."
-    new_content = re.sub(r'Orbit\.version = ".*?"', f'Orbit.version = "{version}"', content)
-    
-    with open(INIT_PATH, 'w', encoding='utf-8') as f:
-        f.write(new_content)
-    print(f"Updated Orbit.version to {version} in {INIT_PATH}")
-
 # [ MAIN ] -------------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -101,4 +83,3 @@ if __name__ == "__main__":
     if result:
         ver, ents = result
         generate_lua(ver, ents)
-        sync_version(ver)
