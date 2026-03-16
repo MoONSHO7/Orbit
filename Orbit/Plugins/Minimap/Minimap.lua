@@ -210,7 +210,6 @@ function Plugin:OnLoad()
     OrbitEngine.Frame:RestorePosition(self.frame, self, SYSTEM_ID)
 
     self:RegisterStandardEvents()
-    self:RegisterVisibilityEvents()
 
     -- Zone text update events
     local function OnZoneChanged()
