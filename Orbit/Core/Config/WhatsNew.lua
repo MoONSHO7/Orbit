@@ -8,7 +8,7 @@ local Constants = Orbit.Constants
 
 -- [ CONSTANTS ]--------------------------------------------------------------------
 
-local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips auto-show)
+local WHATS_NEW_ENABLED = false -- set false for backend-only releases (skips auto-show)
 
 local DISCORD_URL = "https://discord.gg/2sZj63kBqy"
 local WINDOW_WIDTH = 600
