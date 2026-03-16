@@ -10,11 +10,10 @@ local DEFAULTS = { Width = 200, Height = 12, Y = -200 }
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
 local UPDATE_INTERVAL = 0.05
 local MAX_SPACER_COUNT = 10
-local FRAME_LEVEL_BOOST = 10
 local DIVIDER_SIZE_DEFAULT = 2
 local INACTIVE_DIM_FACTOR = 0.5
 local PARTIAL_DIM_FACTOR = 0.7
-local OVERLAY_LEVEL_OFFSET = 20
+local OVERLAY_LEVEL_OFFSET = Orbit.Constants.Levels.Overlay
 local PREVIEW_BAR_FILL = 0.65
 local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
 local TICK_SIZE_MAX = OrbitEngine.TickMixin.TICK_SIZE_MAX
@@ -117,7 +116,6 @@ function Plugin:OnLoad()
         systemIndex = SYSTEM_INDEX,
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }, -- Vertical stacking only
     })
-    Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 5, maxH = 40 }
     self.frame = Frame -- Expose for PluginMixin compatibility
     self.mountedConfig = { frame = Frame }
@@ -222,7 +220,7 @@ function Plugin:OnLoad()
         local savedPositions = Plugin:GetSetting(SYSTEM_INDEX, "ComponentPositions") or {}
         local fontName = Plugin:GetSetting(SYSTEM_INDEX, "Font")
         local fontPath = LSM:Fetch("font", fontName)
-        local fontSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
+        local fontSize = 18
         local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         fs:SetFont(fontPath, fontSize, Orbit.Skin:GetFontOutline())
         if isContinuous then
@@ -249,7 +247,7 @@ function Plugin:OnLoad()
         if CreateDraggableComponent then
             local comp = CreateDraggableComponent(preview, "Text", fs, startX, startY, data)
             if comp then
-                comp:SetFrameLevel(preview:GetFrameLevel() + 10)
+                comp:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
                 preview.components["Text"] = comp
                 fs:Hide()
             end
@@ -447,7 +445,7 @@ function Plugin:ApplySettings()
         Frame.Text:Show()
 
         -- Apply font, size, and color overrides
-        local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
+        local textSize = 18
         OrbitEngine.OverrideUtils.ApplyOverrides(Frame.Text, overrides, { fontSize = textSize, fontPath = fontPath })
 
         -- Read back final size for position calculation

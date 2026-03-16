@@ -13,9 +13,9 @@ provides four viewer types: essential cooldowns (class rotation), utility cooldo
 | CooldownManager.lua | main plugin. viewer creation, essential/utility icon grids, settings application. |
 | CooldownLayout.lua | icon grid layout engine. handles row/column math for cooldown viewers. |
 | CooldownText.lua | timer text rendering and color curve sampling for cooldown timers. |
-| CooldownGlows.lua | pandemic window glow effects (pixel, proc, autocast, button glows). |
+| CooldownGlows.lua | pandemic window glow effects (pixel, proc, autocast, button glows). uses alpha-hiding: glows are created once and toggled via SetAlpha instead of LCG stop/start to prevent animation restarts. |
 | CooldownSettings.lua | settings schema builder with sub-tabs (layout, text, glow, visibility). |
-| CooldownUtils.lua | shared utilities: icon dimension calculation, skin settings builder. |
+| CooldownUtils.lua | shared utilities: icon dimension calculation, skin settings builder. `BuildSkinSettings` includes `iconBorder = true` to opt into `GlobalSettings.IconBorderStyle`. when `IconPadding = 0`, a single group border wraps the viewer anchor instead of per-icon borders. |
 | CooldownViewerHooks.lua | hooks into blizzard's cooldown viewer api (`C_CooldownViewer`). |
 | ControlButtonFactory.lua | +/- control buttons for adding/removing child frames in edit mode. |
 | TrackedAbilities.lua | user-tracked ability/item grid. anchor lifecycle, child frames, drag-and-drop, data persistence. |

@@ -121,7 +121,6 @@ function CDM:EnforceViewerParentage(viewer, anchor)
 end
 
 -- [ EVENT-DRIVEN MONITOR ]--------------------------------------------------------------------------
-local PANDEMIC_TICK = 0.25
 local OOC_THROTTLE_DELAY = 20
 local OOC_THROTTLE_INTERVAL = 0.5
 
@@ -129,7 +128,6 @@ function CDM:MonitorViewers()
     if self._monitorEventSetup then return end
     self._monitorEventSetup = true
     local plugin = self
-    local inCombat = false
     local oocThrottled = false
     local oocNextUpdate = 0
     local oocDirty = false
@@ -144,26 +142,6 @@ function CDM:MonitorViewers()
         if not LibCustomGlow then return end
         for si, entry in pairs(VIEWER_MAP) do
             if entry.viewer then plugin:CheckPandemicFrames(entry.viewer, si) end
-        end
-    end
-
-    local function StartPandemicTicker()
-        if plugin._pandemicTicker or not LibCustomGlow then return end
-        plugin._pandemicTicker = C_Timer.NewTicker(PANDEMIC_TICK, function()
-            for systemIndex, entry in pairs(VIEWER_MAP) do
-                if entry.viewer then plugin:CheckPandemicFrames(entry.viewer, systemIndex) end
-            end
-        end)
-    end
-
-    local function StopPandemicTicker()
-        if not plugin._pandemicTicker then return end
-        plugin._pandemicTicker:Cancel()
-        plugin._pandemicTicker = nil
-        if LibCustomGlow then
-            for systemIndex, entry in pairs(VIEWER_MAP) do
-                if entry.viewer then plugin:CheckPandemicFrames(entry.viewer, systemIndex) end
-            end
         end
     end
 
@@ -185,14 +163,12 @@ function CDM:MonitorViewers()
             end
             return
         end
-        inCombat = (event == "PLAYER_REGEN_DISABLED")
+        local inCombat = (event == "PLAYER_REGEN_DISABLED")
         if inCombat then
             oocThrottled = false
             oocDirty = false
             if plugin._oocThrottleTimer then plugin._oocThrottleTimer:Cancel(); plugin._oocThrottleTimer = nil end
-            StartPandemicTicker()
         else
-            StopPandemicTicker()
             plugin._oocThrottleTimer = C_Timer.NewTimer(OOC_THROTTLE_DELAY, function()
                 oocThrottled = true
                 oocNextUpdate = 0
@@ -202,11 +178,7 @@ function CDM:MonitorViewers()
         CheckAll()
         if not inCombat then plugin:PreSizeAnchors() end
     end)
-    local pandemicAccum = 0
-    local PANDEMIC_OOC_INTERVAL = 1
-    local PANDEMIC_OOC_THROTTLED_INTERVAL = 5
-    frame:SetScript("OnUpdate", function(_, elapsed)
-        -- OOC throttle flush
+    frame:SetScript("OnUpdate", function()
         if oocThrottled and oocDirty then
             local now = GetTime()
             if now >= oocNextUpdate then
@@ -215,17 +187,6 @@ function CDM:MonitorViewers()
                 CheckAll()
                 CheckPandemicAll()
             end
-        end
-        -- OOC pandemic poll: 1s normally, 5s when throttled
-        if not inCombat then
-            pandemicAccum = pandemicAccum + elapsed
-            local interval = oocThrottled and PANDEMIC_OOC_THROTTLED_INTERVAL or PANDEMIC_OOC_INTERVAL
-            if pandemicAccum >= interval then
-                pandemicAccum = 0
-                CheckPandemicAll()
-            end
-        else
-            pandemicAccum = 0
         end
     end)
     self._monitorEventFrame = frame

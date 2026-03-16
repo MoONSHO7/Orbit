@@ -92,8 +92,10 @@ function Layout:RecycleControls(controls)
         elseif control.Label and control.Swatch then
             table.insert(self.colorPool, control)
         elseif control.OrbitType == "Font" then
+            if control.DropdownFrame then control.DropdownFrame:Hide(); control.DropdownFrame = nil end
             table.insert(self.fontPool, control)
         elseif control.OrbitType == "Texture" then
+            if control.DropdownFrame then control.DropdownFrame:Hide(); control.DropdownFrame = nil end
             table.insert(self.texturePool, control)
         end
     end

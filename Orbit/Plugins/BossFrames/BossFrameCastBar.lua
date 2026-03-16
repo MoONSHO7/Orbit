@@ -38,7 +38,7 @@ function CB:Create(parent, bossIndex, plugin)
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(bar, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
 
-    bar.SetBorder = function(self, size) Orbit.Skin:SkinBorder(self, self, size, nil, true) end
+    bar.SetBorder = function(self, size) Orbit.Skin:SkinBorder(self, self, size) end
     bar:SetBorder(1)
 
     bar.Icon = bar:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
@@ -56,7 +56,7 @@ function CB:Create(parent, bossIndex, plugin)
 
     bar.TextOverlay = CreateFrame("Frame", nil, bar)
     bar.TextOverlay:SetAllPoints()
-    bar.TextOverlay:SetFrameLevel(bar:GetFrameLevel() + (Orbit.Constants.Levels.Border or 3) + 1)
+    bar.TextOverlay:SetFrameLevel(bar:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     bar.TextOverlay:EnableMouse(false)
 
     bar.Text = bar.TextOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")

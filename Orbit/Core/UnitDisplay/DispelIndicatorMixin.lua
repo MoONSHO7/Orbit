@@ -17,6 +17,8 @@ local DEFAULT_COLORS = {
 }
 
 local DISPEL_TYPE_NAMES = { [1] = "Magic", [2] = "Curse", [3] = "Disease", [4] = "Poison", [9] = "Bleed", [11] = "Bleed" }
+local DISPEL_FILTER = "HARMFUL|RAID_PLAYER_DISPELLABLE"
+local IsAuraFilteredOut = C_UnitAuras and C_UnitAuras.IsAuraFilteredOutByInstanceID
 
 -- [ UPDATE DISPEL INDICATOR ]----------------------------------------------------------------------
 function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin)
@@ -26,15 +28,18 @@ function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin)
     if not enabled then LCG.PixelGlow_Stop(frame); return end
     if not UnitExists(unit) then LCG.PixelGlow_Stop(frame); return end
     if not C_UnitAuras or not C_UnitAuras.GetUnitAuras then return end
+    local onlyByMe = plugin:GetSetting(1, "DispelOnlyByMe")
     local auras = C_UnitAuras.GetUnitAuras(unit, "HARMFUL")
     if not auras or #auras == 0 then LCG.PixelGlow_Stop(frame); return end
 
-    -- Find first dispellable aura using C_UnitAuras data directly (no Blizzard frame access)
+    -- Find first dispellable aura; when onlyByMe use IsAuraFilteredOutByInstanceID to check player-dispellability
     local bestAuraInstanceID = nil
     for _, aura in ipairs(auras) do
         if aura.dispelName then
-            bestAuraInstanceID = aura.auraInstanceID
-            break
+            if not onlyByMe or (IsAuraFilteredOut and not IsAuraFilteredOut(unit, aura.auraInstanceID, DISPEL_FILTER)) then
+                bestAuraInstanceID = aura.auraInstanceID
+                break
+            end
         end
     end
 
@@ -53,7 +58,7 @@ function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin)
             local thickness = plugin:GetSetting(1, "DispelThickness") or 2
             local frequency = plugin:GetSetting(1, "DispelFrequency") or 0.25
             local numLines = plugin:GetSetting(1, "DispelNumLines") or 8
-            LCG.PixelGlow_Start(frame, color, numLines, frequency, nil, thickness, 0, 0, true, nil, 15)
+            LCG.PixelGlow_Start(frame, color, numLines, frequency, nil, thickness, 0, 0, true, nil, Orbit.Constants.Levels.Border)
         else
             LCG.PixelGlow_Stop(frame)
         end
@@ -69,3 +74,4 @@ function Orbit.DispelIndicatorMixin:UpdateAllDispelIndicators(plugin)
         if frame and frame.unit then self:UpdateDispelIndicator(frame, plugin) end
     end
 end
+

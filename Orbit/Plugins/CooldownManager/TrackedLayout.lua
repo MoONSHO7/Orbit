@@ -338,4 +338,14 @@ function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
     end
 
     anchor:SetSize(math.max(totalW, iconWidth), math.max(totalH, iconHeight))
+
+    -- Group border: when padding=0, merge individual borders into single anchor border
+    anchor._isIconContainer = true
+    local iconNineSlice = Orbit.Skin:GetActiveIconBorderStyle()
+    if padding == 0 then
+        Orbit.Skin:ApplyIconGroupBorder(anchor, iconNineSlice)
+    else
+        Orbit.Skin:ClearIconGroupBorder(anchor)
+    end
+    Orbit.Skin:DeferGroupBorderRefresh()
 end

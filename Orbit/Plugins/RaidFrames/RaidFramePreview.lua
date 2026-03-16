@@ -199,15 +199,19 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
             frame.previewClassFile = PREVIEW_CLASSES[dataIdx]
 
             -- Preview-only: role/leader/tank/selection/aggro icons with fake data
-            if frame.RoleIcon and roleAtlases then
+            if frame.RoleIcon then
                 if isDisabled("RoleIcon") then frame.RoleIcon:Hide()
                 else
                     local role = PREVIEW_ROLES[dataIdx]
                     local roleOverrides = componentPositions.RoleIcon and componentPositions.RoleIcon.overrides
                     local hideDPS = roleOverrides and roleOverrides.HideDPS
+                    local activeAtlases = roleAtlases
+                    if roleOverrides and roleOverrides.RoleIconStyle == "round" then
+                        activeAtlases = { TANK = "icons_64x64_tank", HEALER = "icons_64x64_heal", DAMAGER = "icons_64x64_damage" }
+                    end
                     if role == "DAMAGER" and hideDPS then frame.RoleIcon:Hide()
-                    elseif roleAtlases[role] then
-                        frame.RoleIcon:SetAtlas(roleAtlases[role])
+                    elseif activeAtlases[role] then
+                        frame.RoleIcon:SetAtlas(activeAtlases[role])
                         frame.RoleIcon:Show()
                         if componentPositions.RoleIcon then ApplyIconPosition(frame.RoleIcon, frame, componentPositions.RoleIcon) end
                     else frame.RoleIcon:Hide() end
@@ -232,13 +236,10 @@ function Orbit.RaidFramePreviewMixin:ApplyPreviewVisuals()
                 else frame.MainTankIcon:Hide() end
             end
 
-            if frame.SelectionHighlight then
-                if i == 2 then frame.SelectionHighlight:Show() else frame.SelectionHighlight:Hide() end
-            end
-            if frame.AggroHighlight then
-                if i == 2 then frame.AggroHighlight:SetVertexColor(1.0, 0.6, 0.0, 0.6); frame.AggroHighlight:Show()
-                else frame.AggroHighlight:Hide() end
-            end
+            if i == 2 then Orbit.Skin:ApplyHighlightBorder(frame, "_selectionBorderOverlay", { r = 1, g = 1, b = 1, a = 0.5 })
+            else Orbit.Skin:ClearHighlightBorder(frame, "_selectionBorderOverlay") end
+            if i == 2 then Orbit.Skin:ApplyHighlightBorder(frame, "_aggroHighlightOverlay", { r = 1.0, g = 0.6, b = 0.0, a = 0.6 })
+            else Orbit.Skin:ClearHighlightBorder(frame, "_aggroHighlightOverlay") end
 
             -- Canvas Mode icons (status, defensive, CC, PAA, healer, raidbuff)
             Orbit.GroupCanvasRegistration:ShowCanvasModeIcons(self, frame, isCanvasMode, {

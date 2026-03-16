@@ -141,6 +141,7 @@ function Icons:ApplyCustom(icon, settings)
             r.cooldown:SetSwipeTexture(desiredTexture)
             if r.cooldown.SetSwipeColor then r.cooldown:SetSwipeColor(desiredColor.r, desiredColor.g, desiredColor.b, desiredColor.a) end
             r.cooldown.orbitUpdating = false
+            r.cooldown:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconSwipe)
             if not r.cooldown.orbitHooked then
                 hooksecurefunc(r.cooldown, "SetSwipeTexture", function(self, texture)
                     if self.orbitUpdating then return end
@@ -170,8 +171,7 @@ function Icons:ApplyCustom(icon, settings)
         if r.flash then
             r.flash:ClearAllPoints()
             r.flash:SetAllPoints(icon)
-            r.flash:SetFrameStrata("HIGH")
-            r.flash:SetFrameLevel(50)
+            r.flash:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconOverlay)
             if r.flash.Flipbook then
                 r.flash.Flipbook:ClearAllPoints()
                 r.flash.Flipbook:SetPoint("CENTER")
@@ -182,12 +182,13 @@ function Icons:ApplyCustom(icon, settings)
             r.pandemic:ClearAllPoints()
             r.pandemic:SetPoint("CENTER")
             r.pandemic:SetSize(newWidth + Constants.IconScale.PandemicPadding, newHeight + Constants.IconScale.PandemicPadding)
-            r.pandemic:SetFrameStrata("HIGH")
-            r.pandemic:SetFrameLevel(50)
+            r.pandemic:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconGlow)
         end
         local borderStyle = settings.borderStyle or 0
         local bScale = icon:GetEffectiveScale() or 1
         local borderSize = settings.borderSize or Pixel:DefaultBorderSize(bScale)
+        local iconNineSlice = settings.iconBorder and Skin:GetActiveIconBorderStyle() or nil
+        local mergeIconBorders = (tonumber(settings.padding) or 1) == 0
         if r.border then
             if borderStyle == 1 then r.border:SetAlpha(0)
             else
@@ -198,14 +199,29 @@ function Icons:ApplyCustom(icon, settings)
             end
         end
         if borderStyle == 1 then
-            if not self.borderCache[icon] then self.borderCache[icon] = Skin:CreateBackdrop(icon, nil) end
-            local b = self.borderCache[icon]
-            b:SetFrameStrata("MEDIUM")
-            b:SetFrameLevel(icon:GetFrameLevel() + 5)
-            b:Show()
-            Skin:SkinBorder(icon, b, borderSize)
+            if iconNineSlice and not mergeIconBorders then
+                if self.borderCache[icon] then self.borderCache[icon]:Hide() end
+                if icon._borderFrame then icon._borderFrame:Hide() end
+                icon._activeBorderMode = "nineslice"
+                Skin:ApplyNineSliceBorder(icon, Skin:BuildIconStyle(iconNineSlice))
+            else
+                Skin:ClearNineSliceBorder(icon)
+                if not mergeIconBorders then
+                    if self.borderCache[icon] then self.borderCache[icon]:Hide() end
+                    if settings.iconBorder then
+                        Skin:SkinBorder(icon, icon, borderSize, nil, true)
+                    else
+                        -- Unit frame auras: forced 1px pixel border
+                        Skin:SkinBorder(icon, icon, borderSize, nil, false, true)
+                    end
+                else
+                    if self.borderCache[icon] then self.borderCache[icon]:Hide() end
+                    if icon._borderFrame then icon._borderFrame:Hide() end
+                end
+            end
         else
             if self.borderCache[icon] then self.borderCache[icon]:Hide() end
+            Skin:ClearNineSliceBorder(icon)
         end
     end
     if icon.Cooldown and icon.Cooldown.SetHideCountdownNumbers then

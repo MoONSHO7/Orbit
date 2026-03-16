@@ -11,20 +11,27 @@ local Constants = Orbit.Constants
 local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips auto-show)
 
 local WHATS_NEW_ENTRIES = {
-    { title = "New",
-      body = "• Added Info Tour to Canvas Mode and Color Picker (New Info Buttons)\n"
-        .. "• Improved Canvas Mode Drag a bit more\n"
-        .. "• Imrpovements to CDM proc glows & performance -- Feedback on this would be great!\n"
-        .. "• Added Global Border Color Picker (Orbit Options > Colors), enjoy that pink UI!\n"
+    { title = "Message",
+      body = "Sorry squad! some of your UIs may need minor adjust again this update, have overhauled the Border system :) Check the addon page for an image of whats possible with it\n"
+        .. "Lots of updates in this one, we are nearing closer to completion and out of work in progress status! I plan on doing a video soon to show off how to really go deep with customizations in Orbit\n"
+        .. "For those non-English users, please let me know if the language localization is off :) (discord)\n"
+        .. "Next round of updates will involve finishing off RaidFrames and Fixing/Enhancing Profiles plus adding Global Profiles"
+    },
+    { title = "Features",
+      body = "• SharedMedia Borders are now integrated with Orbit - I recommend you download LS: Borders from curseforge.\n"
+        .. "• Borders can now be merged by anchoring frames together and reducing their distance to 0 and spacing to 0\n"
+        .. "• Borders are now split between Status Textures (Unit Frames) and Icons (Action Bars, CDM) (Orbit Options)\n"
+        .. "• Border colors are now split between status textures and icons (Orbit Options > Colors)\n"
+        .. "• Updated Texture/Font with search functionality and performance improvements\n"
+        .. "• Added Guided Tour mode for new users\n"
+        .. "• Added Expressway font\n"
+        .. "• Adding Different Icon Choices in Edit Mode (ie RoleIcons)"
     },
     { title = "Bugfixes",
-      body = "• Maelstrom Color Picker for Elemental Shaman\n"
-        .. "• Cast Bar Icon Border showing after demounting when Hide While Mounted is on\n"
-        .. "• Turned off blizzard timers from Player Buffs (duplicate timers)\n"
-        .. "• Text should now be above border in strata on Player Buffs/Debuffs\n"
-        .. "• Fixed some border merging issues\n"
-        .. "• Fixed some Strata issues with text when anchoring frames (due to a previous enhancement)\n"
-        .. "• Some other minor bugfixes\n"
+      body = "• Target and Focus Target cast bars are working again and can be recolored properly\n"
+        .. "• Action bars are now pixel-perfect\n"
+        .. "• Health Value text not adjusting size"
+        .. "• Many more minor bugfixes\n"
     },
 }
 
