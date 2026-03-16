@@ -26,5 +26,10 @@ function Plugin:OnLoad()
         useBlizzardButtons = true, blizzardFrame = BuffFrame,
     })
     if BuffFrame then OrbitEngine.NativeFrame:Protect(BuffFrame) end
+    SetCVar("buffDurations", 0)
+    Orbit.EventBus:On("PLAYER_LOGOUT", function() SetCVar("buffDurations", 1) end)
 end
 
+function Plugin:OnDisable()
+    SetCVar("buffDurations", 1)
+end

@@ -2,6 +2,7 @@
     <Script file="ComponentHelpers.lua"/>
     <Script file="ComponentHandle.lua"/>
     <Script file="CanvasEdit.lua"/>
+    <Script file="SnapEngine.lua"/>
     <Script file="ComponentRegistry.lua"/>
     <Script file="SmartGuides.lua"/>
     <Script file="OverrideUtils.lua"/>
@@ -10,6 +11,7 @@
     <Script file="SettingsTransaction.lua"/>
     <Script file="Viewport.lua"/>
     <Script file="Dock.lua"/>
+    <Script file="CanvasModeTour.lua"/>
     <Include file="Creators/Creators.xml"/>
     <Script file="CanvasModeDrag.lua"/>
     <Script file="Dialog.lua"/>

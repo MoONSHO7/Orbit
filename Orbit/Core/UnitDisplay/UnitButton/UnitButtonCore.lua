@@ -40,12 +40,17 @@ function CoreMixin:CreateCanvasPreview(options)
     local width = self:GetWidth()
     local height = self:GetHeight()
 
+    -- Source dimensions = full frame, borderInset for edge-aware positioning
+    local scale = self:GetEffectiveScale()
+    local borderInset = Engine.Pixel:Multiple(borderSize, scale)
+
     -- [ CONTAINER ]-------------------------------------------------------------------------------------
     local preview = CreateFrame("Frame", nil, parent)
     preview:SetSize(width, height)
     preview.sourceFrame = self
     preview.sourceWidth = width
     preview.sourceHeight = height
+    preview.borderInset = borderInset
     preview.previewScale = 1
     preview.components = {}
 

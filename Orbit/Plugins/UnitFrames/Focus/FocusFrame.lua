@@ -171,17 +171,12 @@ function Plugin:OnLoad()
         end
     end)
 
-    self:ApplySettings(self.frame)
-
-    -- Default Position
-    if not self.frame:GetPoint() then
-        self.frame:SetPoint("CENTER", UIParent, "CENTER", Constants.UnitFrame.DefaultOffsetX, Constants.UnitFrame.DefaultOffsetY)
-    end
-
-    -- Can only anchor side-by-side (horizontal), not above/below (vertical)
-    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, mergeBorders = true, independentHeight = true }
+    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, useRowDimension = true, mergeBorders = true, independentHeight = true }
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 10, maxH = 100 }
+    self.frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = Constants.UnitFrame.DefaultOffsetX, y = Constants.UnitFrame.DefaultOffsetY }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, FOCUS_FRAME_INDEX)
+
+    self:ApplySettings(self.frame)
 
     -- Register standard events
     self:RegisterStandardEvents()
@@ -245,15 +240,15 @@ function Plugin:ApplySettings(frame)
     else
         frame.reactionColour = reactionColour
     end
-    -- Restore positions before visuals (SetFont in overrides clobbers text color)
-    local isInCanvasMode = OrbitEngine.CanvasMode:IsActive(frame)
-    if not isInCanvasMode then
-        local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
-        if savedPositions then
-            OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
-            if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
-        end
+    -- Restore component positions (Transaction-aware for live canvas preview)
+    local savedPositions = self:GetComponentPositions(systemIndex)
+    if savedPositions and next(savedPositions) then
+        OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
     end
+    
+    -- Component positions + style overrides (positions, font, color, scale)
+    -- Must run unconditionally to restore overrides after ApplyBaseVisuals resets text
+    if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
 
     self:UpdateVisualsExtended(frame, systemIndex)
 

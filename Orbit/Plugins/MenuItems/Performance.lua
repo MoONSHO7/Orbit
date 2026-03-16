@@ -124,9 +124,8 @@ end
 
 function Plugin:ApplySettings()
     local frame = self.frame
-    if not frame then
-        return
-    end
+    if not frame then return end
+    if not Orbit:IsPluginEnabled(self.name) then frame:Hide(); return end
     frame:SetScale((self:GetSetting(SYSTEM_ID, "Scale") or 100) / 100)
     local s = Orbit.db.GlobalSettings.TextScale
     local textMultiplier = s == "Small" and 0.85 or s == "Large" and 1.15 or s == "ExtraLarge" and 1.30 or 1

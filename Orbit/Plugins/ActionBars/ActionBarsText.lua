@@ -16,8 +16,11 @@ function ABText:Apply(plugin, button, systemIndex)
     local baseFontPath = (Orbit.Fonts and Orbit.Fonts[globalFontName]) or Orbit.Constants.Settings.Font.FallbackPath
     if LSM then baseFontPath = LSM:Fetch("font", globalFontName) or baseFontPath end
     local useGlobal = plugin:GetSetting(systemIndex, "UseGlobalTextStyle")
+    -- Transaction-aware: canvas staged positions first, then Global/per-bar SV
+    local txnPositions = plugin.GetComponentPositions and plugin:GetComponentPositions(systemIndex)
     local positions
-    if useGlobal ~= false then positions = plugin:GetSetting(1, "GlobalComponentPositions") or {}
+    if txnPositions and next(txnPositions) then positions = txnPositions
+    elseif useGlobal ~= false then positions = plugin:GetSetting(1, "GlobalComponentPositions") or {}
     else positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {} end
     local w = button:GetWidth()
     if w < 20 then w = BUTTON_SIZE end
@@ -74,7 +77,7 @@ function ABText:Apply(plugin, button, systemIndex)
         if not button.orbitTextOverlay then
             button.orbitTextOverlay = CreateFrame("Frame", nil, button)
             button.orbitTextOverlay:SetAllPoints(button)
-            button.orbitTextOverlay:SetFrameLevel(button:GetFrameLevel() + 10)
+            button.orbitTextOverlay:SetFrameLevel(button:GetFrameLevel() + Orbit.Constants.Levels.IconOverlay)
         end
         button.Name:SetParent(button.orbitTextOverlay)
         ApplyComponentPosition(button.Name, "MacroText", "CENTER", "BOTTOM", 0, 2)

@@ -29,26 +29,28 @@ function PreviewFrame:CreateBasePreview(sourceFrame, scale, parent, borderSize)
     local sourceWidth = sourceFrame:GetWidth()
     local sourceHeight = sourceFrame:GetHeight()
 
+    local effScale = sourceFrame:GetEffectiveScale()
+    local globalBorder = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize or 0
+    local borderInset = Engine.Pixel:Multiple(globalBorder, effScale)
+
     local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    local effScale = preview:GetEffectiveScale()
-    preview:SetSize(Engine.Pixel:Snap(sourceWidth * scale, effScale), Engine.Pixel:Snap(sourceHeight * scale, effScale))
+    local previewScale = preview:GetEffectiveScale()
+    preview:SetSize(Engine.Pixel:Snap(sourceWidth * scale, previewScale), Engine.Pixel:Snap(sourceHeight * scale, previewScale))
 
     preview.sourceFrame = sourceFrame
     preview.sourceWidth = sourceWidth
     preview.sourceHeight = sourceHeight
+    preview.borderInset = borderInset
     preview.previewScale = scale
     preview.components = {}
 
     local bgColor = Orbit.Constants and Orbit.Constants.Colors and Orbit.Constants.Colors.Background or { r = 0.1, g = 0.1, b = 0.1, a = 0.95 }
-    local scaledBorder = Engine.Pixel:Multiple(borderSize, preview:GetEffectiveScale() or 1)
     local backdrop = { bgFile = "Interface\\BUTTONS\\WHITE8x8", insets = { left = 0, right = 0, top = 0, bottom = 0 } }
-    if scaledBorder > 0 then
-        backdrop.edgeFile = "Interface\\BUTTONS\\WHITE8x8"
-        backdrop.edgeSize = scaledBorder
-    end
     preview:SetBackdrop(backdrop)
     preview:SetBackdropColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a or 0.95)
-    if scaledBorder > 0 then preview:SetBackdropBorderColor(0, 0, 0, 1) end
+
+    -- Use Orbit's overlay-based border (matches live frame rendering)
+    Orbit.Skin:SkinBorder(preview, preview, borderSize)
 
     return preview
 end
@@ -69,6 +71,8 @@ function PreviewFrame:Create(sourceFrame, options)
                 preview.sourceFrame = sourceFrame
                 preview.sourceWidth = sourceFrame:GetWidth()
                 preview.sourceHeight = sourceFrame:GetHeight()
+                local globalBorder = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize or 0
+                preview.borderInset = Engine.Pixel:Multiple(globalBorder, sourceFrame:GetEffectiveScale())
                 preview.previewScale = scale
                 preview.components = preview.components or {}
             end
@@ -108,7 +112,7 @@ function PreviewFrame:AddComponent(preview, key, options)
     local scale = preview.previewScale
 
     local container = CreateFrame("Frame", nil, preview)
-    container:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.Glow)
+    container:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.Border)
     container:EnableMouse(true)
     container:SetMovable(true)
     container:RegisterForDrag("LeftButton")

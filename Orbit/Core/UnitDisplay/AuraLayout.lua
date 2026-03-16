@@ -72,47 +72,51 @@ function AL:LayoutLinear(container, icons, config)
     container:SetSize(xOffset > 0 and xOffset or 1, size)
 end
 
-function AL:CalculateSmartLayout(frameW, frameH, position, maxIcons, numIcons, overrides)
+function AL:CalculateSmartLayout(frameW, frameH, position, maxIcons, numIcons, overrides, scale)
     local isHorizontal = (position == "Above" or position == "Below")
     local maxRows = (overrides and overrides.MaxRows) or 2
-    local iconSize = math_max(SMART_MIN_ICON_SIZE, (overrides and overrides.IconSize) or SMART_DEFAULT_ICON_SIZE)
+    local rawSize = math_max(SMART_MIN_ICON_SIZE, (overrides and overrides.IconSize) or SMART_DEFAULT_ICON_SIZE)
+    local iconSize = scale and Pixel:Multiple(rawSize, scale) or rawSize
+    local spacing = scale and Pixel:Multiple(SMART_AURA_SPACING, scale) or SMART_AURA_SPACING
     local rows, iconsPerRow, containerWidth, containerHeight
     if isHorizontal then
-        iconsPerRow = math_max(1, math.floor((frameW + SMART_AURA_SPACING) / (iconSize + SMART_AURA_SPACING)))
+        iconsPerRow = math_max(1, math.floor((frameW + spacing) / (iconSize + spacing)))
         if maxRows > 1 then iconsPerRow = math.min(iconsPerRow, math.ceil(maxIcons / maxRows)) end
         rows = math.min(maxRows, math.ceil(math_max(1, numIcons) / iconsPerRow))
         local displayCols = math.min(math.min(numIcons, iconsPerRow * rows), iconsPerRow)
-        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * SMART_AURA_SPACING)
-        containerHeight = (rows * iconSize) + ((rows - 1) * SMART_AURA_SPACING)
+        containerWidth = (displayCols * iconSize) + ((displayCols - 1) * spacing)
+        containerHeight = (rows * iconSize) + ((rows - 1) * spacing)
     else
         local iconsPerCol = maxRows
         iconsPerRow = math.ceil(math_max(1, maxIcons) / iconsPerCol)
         local actualCols = math.ceil(math_max(1, numIcons) / iconsPerCol)
         local actualRows = math.min(iconsPerCol, numIcons)
-        containerWidth = math_max(iconSize, (actualCols * iconSize) + ((actualCols - 1) * SMART_AURA_SPACING))
-        containerHeight = math_max(iconSize, (actualRows * iconSize) + ((actualRows - 1) * SMART_AURA_SPACING))
+        containerWidth = math_max(iconSize, (actualCols * iconSize) + ((actualCols - 1) * spacing))
+        containerHeight = math_max(iconSize, (actualRows * iconSize) + ((actualRows - 1) * spacing))
         rows = actualRows
     end
     return iconSize, rows, iconsPerRow, containerWidth, containerHeight, not isHorizontal and maxRows or nil
 end
 
 function AL:PositionIcon(icon, container, justifyH, anchorY, col, row, iconSize, iconsPerRow, totalIcons, iconsPerCol)
-    local xOff = col * (iconSize + SMART_AURA_SPACING)
-    local yOff = row * (iconSize + SMART_AURA_SPACING)
+    local scale = container:GetEffectiveScale() or 1
+    local spacing = Pixel:Multiple(SMART_AURA_SPACING, scale)
+    local xOff = Pixel:Snap(col * (iconSize + spacing), scale)
+    local yOff = Pixel:Snap(row * (iconSize + spacing), scale)
     -- Vertical centering for partial columns on side positions
     if iconsPerCol and anchorY ~= "TOP" and anchorY ~= "BOTTOM" and totalIcons then
         local iconsInCol = math.min(iconsPerCol, totalIcons - (col * iconsPerCol))
-        local colHeight = (iconsInCol * iconSize) + ((iconsInCol - 1) * SMART_AURA_SPACING)
+        local colHeight = (iconsInCol * iconSize) + ((iconsInCol - 1) * spacing)
         local containerH = container:GetHeight()
-        yOff = yOff + (containerH - colHeight) / 2
+        yOff = Pixel:Snap(yOff + (containerH - colHeight) / 2, scale)
     end
     icon:ClearAllPoints()
     local growDown = (anchorY ~= "BOTTOM")
     if justifyH == "CENTER" then
         local iconsInRow = totalIcons and math.min(iconsPerRow, totalIcons - (row * iconsPerRow)) or iconsPerRow
-        local rowWidth = (iconsInRow * iconSize) + ((iconsInRow - 1) * SMART_AURA_SPACING)
+        local rowWidth = (iconsInRow * iconSize) + ((iconsInRow - 1) * spacing)
         local containerW = container:GetWidth()
-        local centerOff = (containerW - rowWidth) / 2
+        local centerOff = Pixel:Snap((containerW - rowWidth) / 2, scale)
         if growDown then icon:SetPoint("TOPLEFT", container, "TOPLEFT", centerOff + xOff, -yOff)
         else icon:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", centerOff + xOff, yOff) end
     elseif justifyH == "RIGHT" then

@@ -90,7 +90,7 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.editModeTooltipLines = { "Drag and drop items and spells that have cooldowns here." }
     frame:EnableMouse(false)
     frame.orbitClickThrough = true
-    frame.anchorOptions = { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true }
+    frame.anchorOptions = { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true, mergeBorders = true }
     frame.orbitChainSync = true
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 

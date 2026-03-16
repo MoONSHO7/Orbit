@@ -189,7 +189,7 @@ function Plugin:ApplySettings(frame)
     local frameHeight = frame:GetHeight()
 
     if frame.Name then
-        local textSize = Orbit.Skin:GetAdaptiveTextSize(frameHeight, 12, 24, 0.25)
+        local textSize = 12
         frame.Name:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
         frame.Name:ClearAllPoints()
         frame.Name:SetPoint("CENTER", 0, 0)
@@ -222,13 +222,11 @@ function Plugin:ApplySettings(frame)
 
     OrbitEngine.Frame:RestorePosition(frame, self, systemIndex)
 
-    local isInCanvasMode = OrbitEngine.CanvasMode:IsActive(frame)
-    if not isInCanvasMode then
-        local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
-        if savedPositions then
-            OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
-            if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
-        end
+    -- Restore component positions (Transaction-aware for live canvas preview)
+    local savedPositions = self:GetComponentPositions(systemIndex)
+    if savedPositions and next(savedPositions) then
+        OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
+        if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
     end
 
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false

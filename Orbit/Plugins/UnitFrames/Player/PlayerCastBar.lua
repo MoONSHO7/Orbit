@@ -26,7 +26,7 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local INTERRUPT_FLASH_DURATION = Orbit.Constants.Timing.FlashDuration
 local EMPOWER_STAGE_COLORS = Orbit.Colors.EmpowerStage
-local CASTBAR_FRAME_LEVEL = 10
+local CAST_CANCEL_THRESHOLD = 0.15
 local SPARK_HEIGHT_PADDING = 4
 local SCALE_DIVISOR = 100
 local PREVIEW_ICON_ID = 136243
@@ -54,17 +54,19 @@ local function SampleColorCurve(curveData, position)
     return OrbitEngine.ColorCurve:SampleColorCurve(curveData, position)
 end
 
--- Alpha-only visibility: secure frame may be anchored to cast bar, making Show/Hide protected
--- orbitBar has SetIgnoreParentAlpha(true), so we must set its alpha directly
+-- Alpha-only visibility: cast bar is protected when secure frames anchor to it.
+-- Fire BORDER_LAYOUT_CHANGED so merged borders update on show/hide.
 local function ShowBar(bar)
     bar:SetAlpha(1)
     if bar.orbitBar then bar.orbitBar:SetAlpha(1) end
     if bar.Icon then bar.Icon:SetAlpha(1) end
+    Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
 end
 local function HideBar(bar)
     bar:SetAlpha(0)
     if bar.orbitBar then bar.orbitBar:SetAlpha(0) end
     if bar.Icon then bar.Icon:SetAlpha(0) end
+    Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
 end
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
@@ -127,7 +129,7 @@ function Plugin:OnLoad()
     CastBar:SetPoint("CENTER", 0, Orbit.Constants.PlayerCastBar.DefaultY)
     OrbitEngine.Pixel:Enforce(CastBar)
     CastBar:SetFrameStrata("MEDIUM")
-    CastBar:SetFrameLevel(CASTBAR_FRAME_LEVEL)
+
     CastBar:SetStatusBarTexture("")
     CastBar:SetMinMaxValues(0, 1)
     CastBar:SetValue(0)
@@ -175,7 +177,6 @@ function Plugin:OnLoad()
         CastBar.Text = skinned.Text
         CastBar.Timer = skinned.Timer
         CastBar.Spark = skinned.Spark
-        CastBar.Border = skinned.Border
         CastBar.Latency = skinned.Latency
         CastBar.InterruptOverlay = skinned.InterruptOverlay
         CastBar.InterruptAnim = skinned.InterruptAnim
@@ -237,10 +238,21 @@ function Plugin:OnLoad()
             end
         end, 0.5)
     end, self)
+    Orbit.EventBus:On("MOUNTED_VISIBILITY_CHANGED", function() self:UpdateVisibility() end, self)
 end
 
 -- [ MOUNTED VISIBILITY ]----------------------------------------------------------------------------
-function Plugin:UpdateVisibility() end
+function Plugin:UpdateVisibility()
+    local bar = self.CastBar
+    if not bar then return end
+    if not InCombatLockdown() and Orbit.MountedVisibility:ShouldHide() then
+        HideBar(bar)
+        return
+    end
+    if not bar.casting and not bar.channeling and not bar.empowering and not bar.preview then
+        HideBar(bar)
+    end
+end
 
 -- [ SKINNING LOGIC ]---------------------------------------------------------------------------------
 
@@ -591,7 +603,7 @@ function Plugin:ApplySettings(systemFrame)
     local texture = self:GetSetting(systemIndex, "Texture")
     local showText = self:GetSetting(systemIndex, "CastBarText")
     local showIcon = self:GetSetting(systemIndex, "CastBarIcon")
-    local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 10, 18, 0.40)
+    local textSize = 10
     local showTimer = self:GetSetting(systemIndex, "CastBarTimer")
 
     self.cachedHeight = height

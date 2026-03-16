@@ -21,11 +21,19 @@ local MAX_PRIVATE_AURA_ANCHORS = GF.MaxPrivateAuraAnchors
 local AURA_BASE_ICON_SIZE = GF.AuraBaseIconSize
 local OUT_OF_RANGE_ALPHA = GF.OutOfRangeAlpha
 local OFFLINE_ALPHA = GF.OfflineAlpha
-local OVERLAY_LEVEL_BOOST = 100
+local OVERLAY_LEVEL_BOOST = Orbit.Constants.Levels.Tooltip
 local UNIT_REREGISTER_EVENTS = {
-    "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT",
-    "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS",
-    "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
+    "UNIT_POWER_UPDATE",
+    "UNIT_MAXPOWER",
+    "UNIT_DISPLAYPOWER",
+    "UNIT_POWER_FREQUENT",
+    "UNIT_AURA",
+    "UNIT_THREAT_SITUATION_UPDATE",
+    "UNIT_PHASE",
+    "UNIT_FLAGS",
+    "INCOMING_RESURRECT_CHANGED",
+    "UNIT_IN_RANGE_UPDATE",
+    "UNIT_CONNECTION",
 }
 
 local _pendingPrivateAuraReanchor = false
@@ -58,7 +66,16 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
             MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = -1, justifyH = "CENTER", posX = 0, posY = 21 },
             RoleIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "TOP", offsetY = 2, justifyH = "RIGHT", posX = 48, posY = 18, overrides = { Scale = 0.7 } },
             LeaderIcon = { anchorX = "LEFT", offsetX = 8, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", posX = -42, posY = 20, overrides = { Scale = 0.8 } },
-            MainTankIcon = { anchorX = "LEFT", offsetX = 20, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", posX = -30, posY = 20, overrides = { Scale = 0.8 } },
+            MainTankIcon = {
+                anchorX = "LEFT",
+                offsetX = 20,
+                anchorY = "TOP",
+                offsetY = 0,
+                justifyH = "LEFT",
+                posX = -30,
+                posY = 20,
+                overrides = { Scale = 0.8 },
+            },
             StatusIcons = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             SummonIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
@@ -89,12 +106,15 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
         },
         DisabledComponents = (function()
             local d = { "DefensiveIcon", "CrowdControlIcon", "HealthText" }
-            for _, k in ipairs(Orbit.HealerAuraRegistry:AllSlotKeys()) do d[#d + 1] = k end
+            for _, k in ipairs(Orbit.HealerAuraRegistry:AllSlotKeys()) do
+                d[#d + 1] = k
+            end
             return d
         end)(),
         DisabledComponentsMigrated = true,
         AggroIndicatorEnabled = true,
         AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
+        SelectionColor = { r = 0.8, g = 0.9, b = 1.0, a = 1 },
         AggroThickness = 1,
         DispelIndicatorEnabled = true,
         DispelThickness = 2,
@@ -124,10 +144,15 @@ local SafeUnregisterUnitWatch = Orbit.GroupFrameMixin.SafeUnregisterUnitWatch
 -- [ POWER BAR UPDATE ]------------------------------------------------------------------------------
 
 local function UpdatePowerBar(frame, plugin)
-    if not frame.Power or not frame.unit or not UnitExists(frame.unit) then return end
+    if not frame.Power or not frame.unit or not UnitExists(frame.unit) then
+        return
+    end
     local showHealerPower = plugin:GetSetting(1, "ShowPowerBar")
     local isHealer = UnitGroupRolesAssigned(frame.unit) == "HEALER"
-    if not isHealer or showHealerPower == false then frame.Power:Hide(); return end
+    if not isHealer or showHealerPower == false then
+        frame.Power:Hide()
+        return
+    end
     frame.Power:Show()
     local power, maxPower, powerType = UnitPower(frame.unit), UnitPowerMax(frame.unit), UnitPowerType(frame.unit)
     frame.Power:SetMinMaxValues(0, maxPower)
@@ -136,14 +161,24 @@ local function UpdatePowerBar(frame, plugin)
     frame.Power:SetStatusBarColor(color.r, color.g, color.b)
 end
 
-local function UpdateFrameLayout(frame, borderSize, plugin)
-    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
-    local showHealerPower = plugin and plugin:GetSetting(1, "ShowPowerBar")
-    if showHealerPower == nil then showHealerPower = true end
-    local isHealer = frame.unit and UnitGroupRolesAssigned(frame.unit) == "HEALER"
+local function UpdateFrameLayout(frame, borderSize, plugin, showPowerOverride)
+    if not Helpers then
+        Helpers = Orbit.RaidFrameHelpers
+    end
+    local showPower
+    if showPowerOverride ~= nil then
+        showPower = showPowerOverride
+    else
+        local showHealerPower = plugin and plugin:GetSetting(1, "ShowPowerBar")
+        if showHealerPower == nil then
+            showHealerPower = true
+        end
+        local isHealer = frame.unit and UnitGroupRolesAssigned(frame.unit) == "HEALER"
+        showPower = (showHealerPower and isHealer) or false
+    end
     local pct = plugin and plugin:GetSetting(1, "PowerBarHeight")
     local ratio = pct and (pct / 100) or nil
-    Helpers:UpdateFrameLayout(frame, borderSize, showHealerPower and isHealer, ratio)
+    Helpers:UpdateFrameLayout(frame, borderSize, showPower, ratio)
 end
 
 -- [ AURA DISPLAY CONFIG ]--------------------------------------------------------------------------
@@ -156,16 +191,26 @@ local RaidBuffPostFilter = Filters:CreateBuffFilter()
 local RAID_SKIN = Orbit.Constants.Aura.SkinWithTimer
 
 local RAID_DEBUFF_CFG = {
-    componentKey = "Debuffs", fetchFilter = "HARMFUL", fetchMax = 40,
-    postFilter = RaidDebuffPostFilter, tooltipFilter = "HARMFUL",
-    skinSettings = RAID_SKIN, defaultAnchorX = "RIGHT", defaultJustifyH = "LEFT",
+    componentKey = "Debuffs",
+    fetchFilter = "HARMFUL",
+    fetchMax = 40,
+    postFilter = RaidDebuffPostFilter,
+    tooltipFilter = "HARMFUL",
+    skinSettings = RAID_SKIN,
+    defaultAnchorX = "RIGHT",
+    defaultJustifyH = "LEFT",
     helpers = function() return Orbit.RaidFrameHelpers end,
 }
 
 local RAID_BUFF_CFG = {
-    componentKey = "Buffs", fetchFilter = "HELPFUL|PLAYER", fetchMax = 40,
-    postFilter = RaidBuffPostFilter, tooltipFilter = "HELPFUL",
-    skinSettings = RAID_SKIN, defaultAnchorX = "LEFT", defaultJustifyH = "RIGHT",
+    componentKey = "Buffs",
+    fetchFilter = "HELPFUL|PLAYER",
+    fetchMax = 40,
+    postFilter = RaidBuffPostFilter,
+    tooltipFilter = "HELPFUL",
+    skinSettings = RAID_SKIN,
+    defaultAnchorX = "LEFT",
+    defaultJustifyH = "RIGHT",
     helpers = function() return Orbit.RaidFrameHelpers end,
 }
 
@@ -192,11 +237,15 @@ end
 local function UpdatePrivateAuras(frame, plugin) Orbit.PrivateAuraMixin:Update(frame, plugin, PRIVATE_AURA_ICON_SIZE) end
 
 local function SchedulePrivateAuraReanchor(plugin)
-    if _pendingPrivateAuraReanchor then return end
+    if _pendingPrivateAuraReanchor then
+        return
+    end
     _pendingPrivateAuraReanchor = true
     C_Timer.After(0, function()
         _pendingPrivateAuraReanchor = false
-        if not plugin.frames then return end
+        if not plugin.frames then
+            return
+        end
         for _, frame in ipairs(plugin.frames) do
             if frame.unit and frame:IsShown() then
                 Orbit.PrivateAuraMixin:Update(frame, plugin, PRIVATE_AURA_ICON_SIZE)
@@ -220,7 +269,9 @@ local function CreateRaidFrame(index, plugin)
     local frameName = "OrbitRaidFrame" .. index
 
     local frame = OrbitEngine.UnitButton:Create(plugin.container, unit, frameName)
-    if frame.NameFrame then frame.NameFrame:SetIgnoreParentAlpha(true) end
+    if frame.NameFrame then
+        frame.NameFrame:SetIgnoreParentAlpha(true)
+    end
     frame.editModeName = "Raid Frame " .. index
     frame.systemIndex = 1
     frame.raidIndex = index
@@ -229,24 +280,29 @@ local function CreateRaidFrame(index, plugin)
     local height = plugin:GetSetting(1, "Height") or 36
     frame:SetSize(width, height)
     frame:SetFrameStrata("MEDIUM")
-    frame:SetFrameLevel(50 + index)
+    frame:SetFrameLevel(Orbit.Constants.Levels.GroupBase + index)
 
     UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize, plugin)
 
     frame.Power = plugin:CreatePowerBar(frame, unit)
     frame.debuffContainer = CreateFrame("Frame", nil, frame)
-    frame.debuffContainer:SetFrameLevel(frame:GetFrameLevel() + 10)
+    frame.debuffContainer:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     frame.buffContainer = CreateFrame("Frame", nil, frame)
-    frame.buffContainer:SetFrameLevel(frame:GetFrameLevel() + 10)
+    frame.buffContainer:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
 
     plugin:CreateStatusIcons(frame)
     plugin:RegisterFrameEvents(frame, unit)
 
     local eventCallbacks = {
-        UpdatePowerBar = UpdatePowerBar, UpdateDebuffs = UpdateDebuffs, UpdateBuffs = UpdateBuffs,
-        UpdateDefensiveIcon = UpdateDefensiveIcon, UpdateCrowdControlIcon = UpdateCrowdControlIcon,
-        UpdatePrivateAuras = UpdatePrivateAuras, UpdateFrameLayout = UpdateFrameLayout,
-        UpdateHealerAuras = UpdateHealerAuras, UpdateMissingRaidBuffs = UpdateMissingRaidBuffs,
+        UpdatePowerBar = UpdatePowerBar,
+        UpdateDebuffs = UpdateDebuffs,
+        UpdateBuffs = UpdateBuffs,
+        UpdateDefensiveIcon = UpdateDefensiveIcon,
+        UpdateCrowdControlIcon = UpdateCrowdControlIcon,
+        UpdatePrivateAuras = UpdatePrivateAuras,
+        UpdateFrameLayout = UpdateFrameLayout,
+        UpdateHealerAuras = UpdateHealerAuras,
+        UpdateMissingRaidBuffs = UpdateMissingRaidBuffs,
         UpdateMainTankIcon = true,
     }
     local originalOnEvent = frame:GetScript("OnEvent")
@@ -265,9 +321,7 @@ local function HideNativeRaidFrames()
     OrbitEngine.NativeFrame:Disable(CompactRaidFrameManager)
 end
 
-function Plugin:AddSettings(dialog, systemFrame)
-    Orbit.RaidFrameSettings(self, dialog, systemFrame)
-end
+function Plugin:AddSettings(dialog, systemFrame) Orbit.RaidFrameSettings(self, dialog, systemFrame) end
 
 -- [ ON LOAD ]---------------------------------------------------------------------------------------
 
@@ -280,7 +334,7 @@ function Plugin:OnLoad()
     self.container.editModeName = "Raid Frames"
     self.container.systemIndex = 1
     self.container:SetFrameStrata("MEDIUM")
-    self.container:SetFrameLevel(49)
+    self.container:SetFrameLevel(Orbit.Constants.Levels.GroupContainer)
     self.container:SetClampedToScreen(true)
 
     self.frames = {}
@@ -299,18 +353,18 @@ function Plugin:OnLoad()
     for _, k in ipairs(HealerReg:ActiveKeys()) do
         if k == "RaidBuff" then
             local raidBuffs = HealerReg:ActiveRaidBuffs()
-            if #raidBuffs > 0 then self:EnsureRaidBuffContainer(firstFrame, k, raidBuffs, GetComponentIconSize(self, k)) end
+            if #raidBuffs > 0 then
+                self:EnsureRaidBuffContainer(firstFrame, k, raidBuffs, GetComponentIconSize(self, k))
+            end
         else
             self:EnsureAuraIcon(firstFrame, k, GetComponentIconSize(self, k))
         end
     end
     local raidIconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
-    for _, k in ipairs(HealerReg:ActiveKeys()) do raidIconKeys[#raidIconKeys + 1] = k end
-    Orbit.GroupCanvasRegistration:RegisterComponents(pluginRef, self.container, firstFrame,
-        { "Name", "HealthText" },
-        raidIconKeys,
-        AURA_BASE_ICON_SIZE
-    )
+    for _, k in ipairs(HealerReg:ActiveKeys()) do
+        raidIconKeys[#raidIconKeys + 1] = k
+    end
+    Orbit.GroupCanvasRegistration:RegisterComponents(pluginRef, self.container, firstFrame, { "Name", "HealthText" }, raidIconKeys, AURA_BASE_ICON_SIZE)
 
     self.frame = self.container
     self.frame.anchorOptions = { horizontal = true, vertical = false }
@@ -324,11 +378,17 @@ function Plugin:OnLoad()
         self.container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", GF.DefaultRaidOffsetX, GF.DefaultRaidOffsetY)
     end
 
-    -- Visibility driver: show only in raid
-    local RAID_BASE_DRIVER = "[petbattle] hide; [@arena1,exists] hide; [@raid1,exists] show; hide"
+    -- Visibility driver: show only in raid/BG, hide in arena and pet battles
+    local RAID_DRIVER_OPEN = "[petbattle] hide; [@raid1,exists] show; hide"
+    local RAID_DRIVER_PVP = "[petbattle] hide; show" -- always show in BG (we're always in a raid)
+    local RAID_DRIVER_ARENA = "[petbattle] hide; hide" -- always hide in arena main
     local function UpdateVisibilityDriver()
-        if InCombatLockdown() or Orbit:IsEditMode() then return end
-        RegisterStateDriver(self.container, "visibility", RAID_BASE_DRIVER)
+        if InCombatLockdown() or Orbit:IsEditMode() then
+            return
+        end
+        local _, instanceType = IsInInstance()
+        local driver = instanceType == "arena" and RAID_DRIVER_ARENA or instanceType == "pvp" and RAID_DRIVER_PVP or RAID_DRIVER_OPEN
+        RegisterStateDriver(self.container, "visibility", driver)
     end
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver() end
     UpdateVisibilityDriver()
@@ -346,9 +406,18 @@ function Plugin:OnLoad()
     eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
     eventFrame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
     eventFrame:SetScript("OnEvent", function(_, event)
+        if event == "PLAYER_ENTERING_WORLD" then
+            C_Timer.After(0.5, function()
+                UpdateVisibilityDriver()
+                self:UpdateFrameUnits()
+            end)
+            return
+        end
         if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
+            UpdateVisibilityDriver()
             if not InCombatLockdown() then
                 self:UpdateFrameUnits()
             else
@@ -357,12 +426,15 @@ function Plugin:OnLoad()
             for _, frame in ipairs(self.frames) do
                 if frame.unit then
                     UpdateInRange(frame)
-                    if frame.UpdateAll then frame:UpdateAll() end
+                    if frame.UpdateAll then
+                        frame:UpdateAll()
+                    end
                     UpdatePowerBar(frame, self)
                 end
             end
         end
         if event == "PLAYER_REGEN_ENABLED" then
+            UpdateVisibilityDriver()
             self:UpdateFrameUnits()
         end
         if not InCombatLockdown() then
@@ -414,7 +486,9 @@ end
 
 function Plugin:PrepareIconsForCanvasMode()
     local frame = self.frames[1]
-    if not frame then return end
+    if not frame then
+        return
+    end
     Orbit.GroupCanvasRegistration:PrepareIcons(self, frame, {
         statusIcons = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" },
         statusIconSize = STATUS_ICON_SIZE,
@@ -465,18 +539,22 @@ function Plugin:PositionFrames()
     end
 
     local growUp = (memberGrowth == "Up")
+    local groupedFrames = {}
 
     if sortMode ~= "Group" then
         local flatRows = math.max(1, self:GetSetting(1, "FlatRows") or 1)
         local visibleFrames = {}
         for i = 1, MAX_RAID_FRAMES do
             local frame = self.frames[i]
-            if frame and ((frame.preview) or (frame.unit and UnitExists(frame.unit))) then
+            if frame and (frame.preview or (frame.unit and UnitExists(frame.unit))) then
                 visibleFrames[#visibleFrames + 1] = frame
             end
         end
         local totalFrames = #visibleFrames
         local framesPerCol = math.ceil(totalFrames / flatRows)
+        for c = 1, flatRows do
+            groupedFrames[c] = {}
+        end
         for idx, frame in ipairs(visibleFrames) do
             local col = math.floor((idx - 1) / framesPerCol)
             local row = (idx - 1) % framesPerCol
@@ -488,12 +566,15 @@ function Plugin:PositionFrames()
             else
                 frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", fx, -fy)
             end
+            local gIdx = col + 1
+            groupedFrames[gIdx][#groupedFrames[gIdx] + 1] = frame
         end
     else
         local groupIndex = 0
         for _, groupNum in ipairs(groupOrder) do
             groupIndex = groupIndex + 1
             local gx, gy = Helpers:CalculateGroupPosition(groupIndex, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
+            local groupFrames = {}
 
             local memberIndex = 0
             for i = 1, MAX_RAID_FRAMES do
@@ -501,7 +582,9 @@ function Plugin:PositionFrames()
                 if frame then
                     local belongsToGroup
                     if isPreview then
-                        if frame.preview and math.ceil(i / FRAMES_PER_GROUP) == groupNum then belongsToGroup = true end
+                        if frame.preview and math.ceil(i / FRAMES_PER_GROUP) == groupNum then
+                            belongsToGroup = true
+                        end
                     elseif frame.unit and UnitExists(frame.unit) then
                         local raidIndex = tonumber(frame.unit:match("(%d+)"))
                         local subgroup = raidIndex and select(3, GetRaidRosterInfo(raidIndex))
@@ -517,9 +600,11 @@ function Plugin:PositionFrames()
                         else
                             frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", gx + mx, gy + my)
                         end
+                        groupFrames[#groupFrames + 1] = frame
                     end
                 end
             end
+            groupedFrames[#groupedFrames + 1] = groupFrames
         end
     end
 
@@ -535,13 +620,19 @@ local GROUP_LABEL_ALPHA = 0.65
 local GROUP_LABEL_PADDING = 5
 
 function Plugin:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, growUp)
-    if not self.groupLabels then self.groupLabels = {} end
+    if not self.groupLabels then
+        self.groupLabels = {}
+    end
     local showLabels = (sortMode == "Group") and self:GetSetting(1, "ShowGroupLabels")
 
     for i = 1, MAX_RAID_GROUPS do
-        if self.groupLabels[i] then self.groupLabels[i]:Hide() end
+        if self.groupLabels[i] then
+            self.groupLabels[i]:Hide()
+        end
     end
-    if not showLabels then return end
+    if not showLabels then
+        return
+    end
 
     if not self.groupLabelOverlay then
         self.groupLabelOverlay = CreateFrame("Frame", nil, self.container)
@@ -601,7 +692,9 @@ function Plugin:UpdateContainerSize()
         local flatRows = math.max(1, self:GetSetting(1, "FlatRows") or 1)
         local totalFrames = 0
         for _, frame in ipairs(self.frames) do
-            if frame:IsShown() or frame.preview then totalFrames = totalFrames + 1 end
+            if frame:IsShown() or frame.preview then
+                totalFrames = totalFrames + 1
+            end
         end
         totalFrames = math.max(1, totalFrames)
         local framesPerCol = math.ceil(totalFrames / flatRows)
@@ -623,7 +716,8 @@ function Plugin:UpdateContainerSize()
     end
 
     local isHorizontal = (self:GetSetting(1, "Orientation") or "Vertical") == "Horizontal"
-    local containerW, containerH = Helpers:CalculateContainerSize(numGroups, FRAMES_PER_GROUP, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
+    local containerW, containerH =
+        Helpers:CalculateContainerSize(numGroups, FRAMES_PER_GROUP, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
     self.container:SetSize(containerW, containerH)
 end
 
@@ -696,7 +790,9 @@ function Plugin:UpdateLayout(frame)
     end
     self:PositionFrames()
     for _, raidFrame in ipairs(self.frames) do
-        if raidFrame.ConstrainNameWidth then raidFrame:ConstrainNameWidth() end
+        if raidFrame.ConstrainNameWidth then
+            raidFrame:ConstrainNameWidth()
+        end
     end
 end
 
@@ -708,11 +804,15 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     local textureName = self:GetSetting(1, "Texture")
 
     frame:SetSize(width, height)
-    if frame.SetBorder then frame:SetBorder(borderSize) end
-    UpdateFrameLayout(frame, borderSize, self)
+    UpdateFrameLayout(frame, borderSize, self, showPower)
+    if frame.SetBorder then
+        frame:SetBorder(borderSize)
+    end
 
     -- Texture
-    if frame.Health then Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true) end
+    if frame.Health then
+        Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true)
+    end
     if frame.Power then
         local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
         frame.Power:SetStatusBarTexture(texturePath)
@@ -721,7 +821,11 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     -- Power bar visibility
     if showPower ~= nil then
         if frame.Power then
-            if showPower then frame.Power:Show() else frame.Power:Hide() end
+            if showPower then
+                frame.Power:Show()
+            else
+                frame.Power:Hide()
+            end
         end
     end
 
@@ -729,14 +833,31 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     self:ApplyTextStyling(frame)
 
     -- Component positions + style overrides
-    if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
+    if frame.ApplyComponentPositions then
+        frame:ApplyComponentPositions()
+    end
 
     -- Icon positions (healer auras, status icons, etc.)
     local savedPositions = self:GetComponentPositions(1)
     if savedPositions then
-        local iconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "StatusIcons", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+        local iconKeys = {
+            "RoleIcon",
+            "LeaderIcon",
+            "MainTankIcon",
+            "StatusIcons",
+            "PhaseIcon",
+            "ReadyCheckIcon",
+            "ResIcon",
+            "SummonIcon",
+            "MarkerIcon",
+            "DefensiveIcon",
+            "CrowdControlIcon",
+            "PrivateAuraAnchor",
+        }
         local activeKeys = HealerReg:ActiveKeys()
-        for _, k in ipairs(activeKeys) do iconKeys[#iconKeys + 1] = k end
+        for _, k in ipairs(activeKeys) do
+            iconKeys[#iconKeys + 1] = k
+        end
         for _, k in ipairs(activeKeys) do
             if savedPositions[k] then
                 if k == "RaidBuff" then
@@ -744,7 +865,7 @@ function Plugin:ApplyFrameStyle(frame, showPower)
                         local sz = GetComponentIconSize(self, k)
                         local c = CreateFrame("Frame", nil, frame)
                         c:SetPoint("CENTER", frame, "CENTER", 0, 0)
-                        c:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.HealerAura)
+                        c:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
                         c._raidIcons = {}
                         c:SetSize(sz, sz)
                         frame.RaidBuff = c
@@ -764,7 +885,9 @@ function Plugin:OnCanvasApply()
 end
 
 function Plugin:ApplySettings()
-    if not self.frames then return end
+    if not self.frames then
+        return
+    end
 
     for _, frame in ipairs(self.frames) do
         if not frame.preview and frame.unit then
@@ -772,13 +895,21 @@ function Plugin:ApplySettings()
 
             -- Live-only: real data updates
             local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
-            if frame.SetHealthTextMode then frame:SetHealthTextMode(healthTextMode) end
+            if frame.SetHealthTextMode then
+                frame:SetHealthTextMode(healthTextMode)
+            end
             local showHealthValue = self:GetSetting(1, "ShowHealthValue")
-            if showHealthValue == nil then showHealthValue = true end
+            if showHealthValue == nil then
+                showHealthValue = true
+            end
             frame.healthTextEnabled = showHealthValue
-            if frame.UpdateHealthText then frame:UpdateHealthText() end
+            if frame.UpdateHealthText then
+                frame:UpdateHealthText()
+            end
             StatusDispatch(frame, self, "UpdateStatusText")
-            if frame.SetClassColour then frame:SetClassColour(true) end
+            if frame.SetClassColour then
+                frame:SetClassColour(true)
+            end
             UpdatePowerBar(frame, self)
             UpdateDebuffs(frame, self)
             UpdateBuffs(frame, self)
@@ -788,7 +919,9 @@ function Plugin:ApplySettings()
             UpdateMissingRaidBuffs(frame, self)
             UpdatePrivateAuras(frame, self)
             StatusDispatch(frame, self, "UpdateAllPartyStatusIcons")
-            if frame.UpdateAll then frame:UpdateAll() end
+            if frame.UpdateAll then
+                frame:UpdateAll()
+            end
         end
     end
 
@@ -810,7 +943,9 @@ function Plugin:UpdateVisuals()
 end
 
 Orbit.EventBus:On("DISPEL_STATE_CHANGED", function(unit)
-    if not Plugin.frames then return end
+    if not Plugin.frames then
+        return
+    end
     for _, frame in ipairs(Plugin.frames) do
         if frame and frame.unit == unit and frame:IsShown() and Plugin.UpdateDispelIndicator then
             Plugin:UpdateDispelIndicator(frame, Plugin)

@@ -24,19 +24,16 @@ function ClassBar:SkinButton(btn, settings)
         btn.orbitBar = btn:CreateTexture(nil, "BORDER")
         btn.orbitBar:SetAllPoints(btn)
 
-        -- Backdrop Frame for Border (just for line borders, NO background)
-        btn.orbitBackdrop = Skin:CreateBackdrop(btn, nil)
-        btn.orbitBackdrop:SetFrameLevel(btn:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
-        -- Clear any backdrop that might come from BackdropTemplate
-        if btn.orbitBackdrop.SetBackdrop then
-            btn.orbitBackdrop:SetBackdrop(nil)
-        end
+        -- Legacy orbitBackdrop no longer needed — SkinBorder creates _borderFrame
     end
 
-    -- Update Backdrop (Dynamic Size)
+    -- Hide stale backdrop from prior skin pass
+    if btn.orbitBackdrop then btn.orbitBackdrop:Hide() end
+
+    -- Update Border (Dynamic Size)
     local scale = btn:GetEffectiveScale() or 1
     local borderSize = settings.borderSize or Orbit.Engine.Pixel:DefaultBorderSize(scale)
-    Skin:SkinBorder(btn, btn.orbitBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
+    Skin:SkinBorder(btn, btn, borderSize)
 
     -- Setup Textures
     local texture = LSM:Fetch("statusbar", settings.texture or "Blizzard")
@@ -73,7 +70,7 @@ function ClassBar:SkinButton(btn, settings)
     if btn.Cooldown then
         btn.Cooldown:SetAlpha(1)
         if btn.Cooldown.SetFrameLevel then
-            btn.Cooldown:SetFrameLevel(btn:GetFrameLevel() + Orbit.Constants.Levels.Cooldown)
+            btn.Cooldown:SetFrameLevel(btn:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
         end
     end
 end
@@ -93,21 +90,16 @@ function ClassBar:SkinStatusBar(container, bar, settings)
             container.orbitBg:SetAllPoints(container)
         end
 
-        -- Backdrop Frame for Border (just for line borders, NO background)
-        if not container.orbitBackdrop then
-            container.orbitBackdrop = Skin:CreateBackdrop(container, nil)
-            container.orbitBackdrop:SetFrameLevel(container:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
-            -- Clear any backdrop that might come from BackdropTemplate
-            if container.orbitBackdrop.SetBackdrop then
-                container.orbitBackdrop:SetBackdrop(nil)
-            end
-        end
+        -- Legacy orbitBackdrop no longer needed — SkinBorder creates _borderFrame
     end
 
-    -- Update Backdrop (Dynamic Size)
+    -- Hide stale backdrop from prior skin pass
+    if container.orbitBackdrop then container.orbitBackdrop:Hide() end
+
+    -- Update Border (Dynamic Size)
     local scale = container:GetEffectiveScale() or 1
     local borderSize = settings.borderSize or Orbit.Engine.Pixel:DefaultBorderSize(scale)
-    Skin:SkinBorder(container, container.orbitBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
+    Skin:SkinBorder(container, container, borderSize)
 
     -- Setup Textures
     if settings.texture then

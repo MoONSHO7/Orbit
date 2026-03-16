@@ -2,8 +2,6 @@ local addonName, addonTable = ...
 local LSM = LibStub("LibSharedMedia-3.0")
 
 -- Media Registration
--- We use the addonName to dynamically build the path, ensuring it works
--- regardless of what the addon folder is named (Orbit, Orbit_m7, etc.)
 
 local mediaPath = "Interface\\AddOns\\" .. addonName .. "\\Core\\assets\\"
 
@@ -18,5 +16,10 @@ LSM:Register("font", "Fira Sans Extra Condensed Bold", mediaPath .. "Fonts\\Fira
 LSM:Register("font", "Fira Sans Extra Condensed SemiBold", mediaPath .. "Fonts\\FiraSansExtraCondensed-SemiBold.ttf")
 LSM:Register("font", "Roboto Condensed ExtraBold", mediaPath .. "Fonts\\RobotoCondensed-ExtraBold.ttf")
 LSM:Register("font", "Roboto Condensed SemiBold", mediaPath .. "Fonts\\RobotoCondensed-SemiBold.ttf")
+LSM:Register("font", "Expressway", mediaPath .. "Fonts\\expressway.ttf")
 
 -- Statusbars
+-- LSM:Register("statusbar", "Dummy", mediaPath .. "Statusbar\\Dummy.tga")
+
+-- Borders
+-- LSM:Register("border", "Dummy", mediaPath .. "Borders\\Dummy.tga")

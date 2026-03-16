@@ -1,12 +1,12 @@
 ---@type Orbit
-local Orbit              = Orbit
-local OrbitEngine        = Orbit.Engine
-local LSM                = LibStub("LibSharedMedia-3.0")
+local Orbit = Orbit
+local OrbitEngine = Orbit.Engine
+local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
-local SYSTEM_ID          = "Orbit_Minimap"
+local SYSTEM_ID = "Orbit_Minimap"
 
-local Plugin             = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
+local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
     liveToggle = true,
     canvasMode = true,
     defaults = {
@@ -37,24 +37,24 @@ local Plugin             = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 -- All values sourced from MinimapConstants.lua via Orbit.MinimapConstants.
 
-local C                  = Orbit.MinimapConstants
-local DEFAULT_SIZE       = C.DEFAULT_SIZE
-local BORDER_COLOR       = C.BORDER_COLOR
-local ZOOM_BUTTON_W      = C.ZOOM_BUTTON_W
+local C = Orbit.MinimapConstants
+local DEFAULT_SIZE = C.DEFAULT_SIZE
+local BORDER_COLOR = C.BORDER_COLOR
+local ZOOM_BUTTON_W = C.ZOOM_BUTTON_W
 local MISSIONS_BASE_SIZE = C.MISSIONS_BASE_SIZE
-local BORDER_RING_ATLAS  = C.BORDER_RING_ATLAS
+local BORDER_RING_ATLAS = C.BORDER_RING_ATLAS
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 
 function Plugin:OnLoad()
-    Orbit.IconPreviewAtlases               = Orbit.IconPreviewAtlases or {}
-    Orbit.IconPreviewAtlases.Zoom          = "common-icon-zoomin"
-    Orbit.IconPreviewAtlases.Difficulty    = "UI-HUD-UnitFrame-Player-PVP-FFAIcon"
-    Orbit.IconPreviewAtlases.Mail          = "ui-hud-minimap-mail-up"
+    Orbit.IconPreviewAtlases = Orbit.IconPreviewAtlases or {}
+    Orbit.IconPreviewAtlases.Zoom = "common-icon-zoomin"
+    Orbit.IconPreviewAtlases.Difficulty = "UI-HUD-UnitFrame-Player-PVP-FFAIcon"
+    Orbit.IconPreviewAtlases.Mail = "ui-hud-minimap-mail-up"
     Orbit.IconPreviewAtlases.CraftingOrder = "UI-HUD-Minimap-CraftingOrder-Up"
 
     -- Create orbit container
-    self.frame                             = CreateFrame("Frame", "OrbitMinimapContainer", UIParent)
+    self.frame = CreateFrame("Frame", "OrbitMinimapContainer", UIParent)
     self.frame:SetSize(DEFAULT_SIZE, DEFAULT_SIZE)
     self.frame:SetClampedToScreen(true)
     self.frame.systemIndex = SYSTEM_ID
@@ -183,32 +183,26 @@ function Plugin:OnLoad()
 
     -- Register all canvas components for drag
     local MPC = function(key) return OrbitEngine.ComponentDrag:MakePositionCallback(self, SYSTEM_ID, key) end
-    OrbitEngine.ComponentDrag:Attach(self.frame.ZoneText, self.frame,
-        { key = "ZoneText", onPositionChange = MPC("ZoneText") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.ZoneText, self.frame, { key = "ZoneText", onPositionChange = MPC("ZoneText") })
     OrbitEngine.ComponentDrag:Attach(self.frame.Clock, self.frame, { key = "Clock", onPositionChange = MPC("Clock") })
     OrbitEngine.ComponentDrag:Attach(self.frame.Coords, self.frame, {
         key = "Coords",
         sourceOverride = self.frame.Coords.Text,
         onPositionChange = MPC("Coords"),
     })
-    OrbitEngine.ComponentDrag:Attach(self._compartmentButton, self.frame,
-        { key = "Compartment", onPositionChange = MPC("Compartment") })
-    OrbitEngine.ComponentDrag:Attach(self.frame.ZoomContainer, self.frame,
-        { key = "Zoom", onPositionChange = MPC("Zoom") })
+    OrbitEngine.ComponentDrag:Attach(self._compartmentButton, self.frame, { key = "Compartment", onPositionChange = MPC("Compartment") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.ZoomContainer, self.frame, { key = "Zoom", onPositionChange = MPC("Zoom") })
     if self.frame.Difficulty then
-        OrbitEngine.ComponentDrag:Attach(self.frame.Difficulty, self.frame,
-            { key = "Difficulty", onPositionChange = MPC("Difficulty") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.Difficulty, self.frame, { key = "Difficulty", onPositionChange = MPC("Difficulty") })
     end
     if self.frame.Missions then
-        OrbitEngine.ComponentDrag:Attach(self.frame.Missions, self.frame,
-            { key = "Missions", onPositionChange = MPC("Missions") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.Missions, self.frame, { key = "Missions", onPositionChange = MPC("Missions") })
     end
     if self.frame.Mail then
         OrbitEngine.ComponentDrag:Attach(self.frame.Mail, self.frame, { key = "Mail", onPositionChange = MPC("Mail") })
     end
     if self.frame.CraftingOrder then
-        OrbitEngine.ComponentDrag:Attach(self.frame.CraftingOrder, self.frame,
-            { key = "CraftingOrder", onPositionChange = MPC("CraftingOrder") })
+        OrbitEngine.ComponentDrag:Attach(self.frame.CraftingOrder, self.frame, { key = "CraftingOrder", onPositionChange = MPC("CraftingOrder") })
     end
 
     -- Register with edit mode
@@ -242,11 +236,11 @@ function Plugin:OnLoad()
         preview:SetFrameLevel(parent:GetFrameLevel() + 5)
         preview:SetSize(w, h)
         preview:SetPoint("CENTER", parent, "CENTER", 0, 0)
-        preview.sourceFrame  = frame
-        preview.sourceWidth  = w
+        preview.sourceFrame = frame
+        preview.sourceWidth = w
         preview.sourceHeight = h
         preview.previewScale = 1
-        preview.components   = {}
+        preview.components = {}
 
         -- Dark bg texture — always visible as a square baseline
         preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, 1)
@@ -271,7 +265,9 @@ function Plugin:OnLoad()
 end
 
 local function ApplyIconScale(frame, overrides, baseW)
-    if not frame then return end
+    if not frame then
+        return
+    end
     local size = overrides and overrides.IconSize
     frame:SetScale((size and baseW and baseW > 0) and (size / baseW) or 1)
 end
@@ -419,8 +415,7 @@ function Plugin:ApplySettings()
     if frame.CraftingOrder then
         if not self:IsComponentDisabled("CraftingOrder") then
             frame.CraftingOrder:SetScript("OnShow", nil)
-            ApplyIconScale(frame.CraftingOrder, (savedPositions.CraftingOrder or {}).overrides,
-                frame.CraftingOrder:GetWidth())
+            ApplyIconScale(frame.CraftingOrder, (savedPositions.CraftingOrder or {}).overrides, frame.CraftingOrder:GetWidth())
         else
             frame.CraftingOrder:Hide()
             frame.CraftingOrder:SetScript("OnShow", function(f) f:Hide() end)
@@ -486,5 +481,7 @@ function Plugin:OnDisable()
         minimap:ClearAllPoints()
         minimap:SetPoint("CENTER", cluster, "CENTER", 9, -1)
     end
-    if cluster then cluster:Show() end
+    if cluster then
+        cluster:Show()
+    end
 end

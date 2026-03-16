@@ -52,13 +52,11 @@ local GHOST_PIN_ALPHA = 0.6
 local REFRESH_DELAY = 0.05
 local NOTCH_POSITION_DELAY = 0.1
 local INFO_BUTTON_SIZE = 32
-local INFO_MARKER_SIZE = 24
-local INFO_MARKER_FRAME_LEVEL = 512
-local INFO_TOOLTIP_PADDING = 10
 local PIN_NUDGE_STEP = 0.01
 local PIN_NUDGE_FINE = 0.001
 local WHITE_TEXTURE = "Interface\\Buttons\\WHITE8x8"
-local CHECKERBOARD_TEXTURE = "Interface\\AddOns\\Orbit\\Core\\Libs\\LibOrbitColorPicker-1.0\\checkerboard"
+local LIB_PATH = debugstack(1, 1, 0):match("(.+)LibOrbitColorPicker%-1%.0%.lua") or ""
+local CHECKERBOARD_TEXTURE = LIB_PATH .. "checkerboard"
 local WHEEL_TEXTURE = "Interface\\Buttons\\UI-ColorPicker-Buttons"
 local DEFAULT_COLOR = { r = 1, g = 1, b = 1, a = 1 }
 
@@ -320,7 +318,6 @@ function lib:CreatePinHandle(gradientBar)
         self:EnableKeyboard(true)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:AddLine(string.format("Position: %.1f%%", self.pinData.position * 100))
-        if lib.multiPinMode then GameTooltip:AddLine("Arrow keys to nudge, Shift for fine", 0.5, 0.5, 0.5) end
         GameTooltip:Show()
     end)
 
@@ -418,15 +415,8 @@ function lib:CreateClassColorSwatch()
 
     frame:SetScript("OnDragStop", function() lib:EndDrag() end)
 
-    frame:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Class Color", 1, 0.82, 0)
-        local hint = (lib.multiPinMode or #lib.pins == 0) and "Drag to gradient bar to add as pin" or "Single color mode (remove pin to add new)"
-        GameTooltip:AddLine(hint, 1, 1, 1)
-        GameTooltip:Show()
-    end)
-
-    frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    frame:SetScript("OnEnter", nil)
+    frame:SetScript("OnLeave", nil)
 
     self.ui.classSwatch = frame
     self:UpdateClassColorSwatch()
@@ -751,7 +741,7 @@ function lib:CreatePickerFrame()
     f:SetScript("OnHide", function()
         if lib.ui.gradientBar then lib.ui.gradientBar:Hide() end
         if lib.ui.classSwatch then lib.ui.classSwatch:Hide() end
-        lib:HideInfoMarkers()
+        lib:EndTourCleanup()
         if lib.info.button then lib.info.button:Hide() end
         lib:EndDrag()
 
@@ -899,15 +889,8 @@ function lib:CreateCurrentSwatch()
 
     frame:SetScript("OnDragStop", function() lib:EndDrag() end)
 
-    frame:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Current Color", 1, 0.82, 0)
-        local hint = (lib.multiPinMode or #lib.pins == 0) and "Drag to gradient bar to add as pin" or "Single color mode (remove pin to add new)"
-        GameTooltip:AddLine(hint, 1, 1, 1)
-        GameTooltip:Show()
-    end)
-
-    frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    frame:SetScript("OnEnter", nil)
+    frame:SetScript("OnLeave", nil)
 
     self.ui.currentSwatch = frame
     return frame
@@ -1045,125 +1028,405 @@ function lib:Initialize()
     self:CreateClassColorSwatch()
     self:SetupClassColorEvents()
     self:CreateDragTexture()
-    self:CreateInfoButton()
+    self:CreateTourButton()
     self:CreateDesaturationCheckbox()
 
     self.ui.initialized = true
 end
 
--- [ INFO SYSTEM ] ----------------------------------------------------------------------------------
+-- [ TOUR SYSTEM ] ----------------------------------------------------------------------------------
 
-local INFO_TOOLTIP_DIRECTIONS = {
-    UP    = { arrow = "ArrowUp",    glow = "ArrowGlowUp",    point = "BOTTOM", rel = "TOP",    x = 0, y = INFO_TOOLTIP_PADDING },
-    DOWN  = { arrow = "ArrowDown",  glow = "ArrowGlowDown",  point = "TOP",    rel = "BOTTOM", x = 0, y = -INFO_TOOLTIP_PADDING },
-    LEFT  = { arrow = "ArrowLeft",  glow = "ArrowGlowLeft",  point = "RIGHT",  rel = "LEFT",   x = -INFO_TOOLTIP_PADDING, y = 0 },
-    RIGHT = { arrow = "ArrowRight", glow = "ArrowGlowRight", point = "LEFT",   rel = "RIGHT",  x = INFO_TOOLTIP_PADDING,  y = 0 },
+local TOUR_ACCENT = { r = 0.3, g = 0.8, b = 0.3 }
+local TOUR_BG = { r = 0.08, g = 0.08, b = 0.08, a = 0.95 }
+local TOUR_BORDER_CLR = { r = 0.25, g = 0.25, b = 0.25, a = 0.9 }
+local TOUR_TEXT_CLR = { r = 0.85, g = 0.85, b = 0.85 }
+local TOUR_TITLE_CLR = { r = TOUR_ACCENT.r, g = TOUR_ACCENT.g, b = TOUR_ACCENT.b }
+local TOUR_PAD = 8
+local TOUR_MAX_WIDTH = 220
+local TOUR_BORDER = 1
+local TOUR_BTN_H = 18
+local TOUR_BTN_W = 60
+local TOUR_BTN_GAP = 6
+local TOUR_PULSE_LEVEL = 512
+
+-- [ TOUR LOCALIZATION ]-----------------------------------------------------------------------------
+local CP_LOCALE = {
+    enUS = {
+        TOUR_TIP = "Color Picker Tour",
+        NEXT = "Next", DONE = "Done",
+        WHEEL_TITLE = "Color Wheel",
+        WHEEL_TEXT = "Select a hue and saturation on the wheel.\nThe vertical slider adjusts brightness.",
+        SWATCH_TITLE = "Current Color",
+        SWATCH_TEXT = "Your selected color preview.\nDrag it onto the gradient bar to add\na color stop.",
+        CLASS_TITLE = "Class Color",
+        CLASS_TEXT = "Your class color swatch.\nDrag onto the gradient bar to add a\nclass-colored stop that follows your spec.",
+        GRADIENT_TITLE = "Gradient Bar",
+        GRADIENT_TEXT = "Visualizes your color curve.\nDrag colors here to add stops.\nRight-click a pin to remove it.",
+        PIN_TITLE = "Pin Controls",
+        PIN_TEXT = "Use arrow keys to nudge a pin position.\nHold Shift for fine-grained precision.",
+        APPLY_TITLE = "Apply / Clear",
+        APPLY_TEXT = "Apply Color saves your gradient.\nClearing all pins resets the component\nto its default color.",
+    },
+    deDE = {
+        TOUR_TIP = "Farbwähler-Tour",
+        NEXT = "Weiter", DONE = "Fertig",
+        WHEEL_TITLE = "Farbrad",
+        WHEEL_TEXT = "Farbton und Sättigung auf dem Rad wählen.\nDer vertikale Regler passt die Helligkeit an.",
+        SWATCH_TITLE = "Aktuelle Farbe",
+        SWATCH_TEXT = "Vorschau der gewählten Farbe.\nAuf den Verlaufsbalken ziehen, um\neinen Farbstopp hinzuzufügen.",
+        CLASS_TITLE = "Klassenfarbe",
+        CLASS_TEXT = "Klassenfarbmuster.\nAuf den Verlaufsbalken ziehen für einen\nklassengebundenen Farbstopp.",
+        GRADIENT_TITLE = "Verlaufsbalken",
+        GRADIENT_TEXT = "Zeigt Ihre Farbkurve an.\nFarben hierher ziehen zum Hinzufügen.\nRechtsklick auf einen Pin zum Entfernen.",
+        PIN_TITLE = "Pin-Steuerung",
+        PIN_TEXT = "Pfeiltasten verschieben einen Pin.\nUmschalttaste für feine Schritte.",
+        APPLY_TITLE = "Anwenden / Löschen",
+        APPLY_TEXT = "Farbe anwenden speichert den Verlauf.\nAlle Pins entfernen setzt die Komponente\nauf die Standardfarbe zurück.",
+    },
+    frFR = {
+        TOUR_TIP = "Visite du sélecteur",
+        NEXT = "Suivant", DONE = "Terminé",
+        WHEEL_TITLE = "Roue chromatique",
+        WHEEL_TEXT = "Sélectionnez une teinte et saturation.\nLe curseur vertical ajuste la luminosité.",
+        SWATCH_TITLE = "Couleur actuelle",
+        SWATCH_TEXT = "Aperçu de la couleur sélectionnée.\nFaites glisser sur la barre de dégradé\npour ajouter un arrêt.",
+        CLASS_TITLE = "Couleur de classe",
+        CLASS_TEXT = "Échantillon de classe.\nFaites glisser sur la barre de dégradé\npour un arrêt lié à votre spé.",
+        GRADIENT_TITLE = "Barre de dégradé",
+        GRADIENT_TEXT = "Visualise votre courbe de couleur.\nFaites glisser des couleurs ici.\nClic droit sur un point pour le supprimer.",
+        PIN_TITLE = "Contrôles des points",
+        PIN_TEXT = "Utilisez les flèches pour ajuster un point.\nMaintenez Maj pour un réglage fin.",
+        APPLY_TITLE = "Appliquer / Effacer",
+        APPLY_TEXT = "Appliquer sauvegarde le dégradé.\nSupprimer tous les points réinitialise\nla couleur par défaut.",
+    },
+    esES = {
+        TOUR_TIP = "Tour del selector",
+        NEXT = "Siguiente", DONE = "Hecho",
+        WHEEL_TITLE = "Rueda de color",
+        WHEEL_TEXT = "Selecciona tono y saturación en la rueda.\nEl control vertical ajusta el brillo.",
+        SWATCH_TITLE = "Color actual",
+        SWATCH_TEXT = "Vista previa del color seleccionado.\nArrástralo a la barra de gradiente\npara añadir una parada.",
+        CLASS_TITLE = "Color de clase",
+        CLASS_TEXT = "Muestra de color de clase.\nArrástralo a la barra de gradiente para\nuna parada vinculada a tu especialización.",
+        GRADIENT_TITLE = "Barra de gradiente",
+        GRADIENT_TEXT = "Visualiza tu curva de color.\nArrastra colores aquí para añadir paradas.\nClic derecho en un pin para eliminarlo.",
+        PIN_TITLE = "Controles de pines",
+        PIN_TEXT = "Usa las flechas para ajustar un pin.\nMantén Mayús para precisión fina.",
+        APPLY_TITLE = "Aplicar / Borrar",
+        APPLY_TEXT = "Aplicar guarda el gradiente.\nEliminar todos los pines restablece\nel color predeterminado.",
+    },
+    ptBR = {
+        TOUR_TIP = "Tour do seletor",
+        NEXT = "Próximo", DONE = "Concluído",
+        WHEEL_TITLE = "Roda de cores",
+        WHEEL_TEXT = "Selecione matiz e saturação na roda.\nO controle vertical ajusta o brilho.",
+        SWATCH_TITLE = "Cor atual",
+        SWATCH_TEXT = "Prévia da cor selecionada.\nArraste para a barra de gradiente\npara adicionar uma parada.",
+        CLASS_TITLE = "Cor de classe",
+        CLASS_TEXT = "Amostra de cor da classe.\nArraste para a barra de gradiente para\numa parada vinculada à sua spec.",
+        GRADIENT_TITLE = "Barra de gradiente",
+        GRADIENT_TEXT = "Visualiza sua curva de cor.\nArraste cores aqui para adicionar paradas.\nClique direito em um pin para remover.",
+        PIN_TITLE = "Controles de pinos",
+        PIN_TEXT = "Use as setas para ajustar um pino.\nSegure Shift para precisão fina.",
+        APPLY_TITLE = "Aplicar / Limpar",
+        APPLY_TEXT = "Aplicar salva o gradiente.\nRemover todos os pins redefine\na cor padrão.",
+    },
+    ruRU = {
+        TOUR_TIP = "Обзор палитры",
+        NEXT = "Далее", DONE = "Готово",
+        WHEEL_TITLE = "Цветовой круг",
+        WHEEL_TEXT = "Выберите оттенок и насыщенность.\nВертикальный ползунок регулирует яркость.",
+        SWATCH_TITLE = "Текущий цвет",
+        SWATCH_TEXT = "Предпросмотр выбранного цвета.\nПеретащите на полосу градиента,\nчтобы добавить точку.",
+        CLASS_TITLE = "Цвет класса",
+        CLASS_TEXT = "Образец цвета класса.\nПеретащите на полосу градиента для\nточки, связанной с вашей специализацией.",
+        GRADIENT_TITLE = "Полоса градиента",
+        GRADIENT_TEXT = "Показывает вашу кривую цвета.\nПеретащите цвета сюда.\nПКМ по точке для удаления.",
+        PIN_TITLE = "Управление точками",
+        PIN_TEXT = "Стрелки для сдвига точки.\nShift для мелких шагов.",
+        APPLY_TITLE = "Применить / Очистить",
+        APPLY_TEXT = "Применить сохраняет градиент.\nУдаление всех точек сбрасывает\nцвет по умолчанию.",
+    },
+    koKR = {
+        TOUR_TIP = "색상 선택기 안내",
+        NEXT = "다음", DONE = "완료",
+        WHEEL_TITLE = "색상 휠",
+        WHEEL_TEXT = "휠에서 색조와 채도를 선택합니다.\n세로 슬라이더로 밝기를 조절합니다.",
+        SWATCH_TITLE = "현재 색상",
+        SWATCH_TEXT = "선택한 색상 미리보기입니다.\n그라데이션 바로 드래그하여\n색상 정지점을 추가합니다.",
+        CLASS_TITLE = "직업 색상",
+        CLASS_TEXT = "직업 색상 견본입니다.\n그라데이션 바로 드래그하여\n전문화에 연동되는 정지점을 추가합니다.",
+        GRADIENT_TITLE = "그라데이션 바",
+        GRADIENT_TEXT = "색상 곡선을 시각화합니다.\n색상을 여기로 드래그하여 추가합니다.\n핀을 우클릭하여 제거합니다.",
+        PIN_TITLE = "핀 조작",
+        PIN_TEXT = "화살표 키로 핀 위치를 조정합니다.\nShift를 누르면 미세 조정됩니다.",
+        APPLY_TITLE = "적용 / 초기화",
+        APPLY_TEXT = "색상 적용은 그라데이션을 저장합니다.\n모든 핀을 제거하면 기본 색상으로\n초기화됩니다.",
+    },
+    zhCN = {
+        TOUR_TIP = "取色器导览",
+        NEXT = "下一步", DONE = "完成",
+        WHEEL_TITLE = "色轮",
+        WHEEL_TEXT = "在色轮上选择色调和饱和度。\n垂直滑块调整亮度。",
+        SWATCH_TITLE = "当前颜色",
+        SWATCH_TEXT = "所选颜色预览。\n拖动到渐变条上\n添加颜色停靠点。",
+        CLASS_TITLE = "职业颜色",
+        CLASS_TEXT = "职业颜色样本。\n拖动到渐变条上添加\n跟随专精变化的停靠点。",
+        GRADIENT_TITLE = "渐变条",
+        GRADIENT_TEXT = "显示您的颜色曲线。\n将颜色拖到这里添加停靠点。\n右键点击图钉以移除。",
+        PIN_TITLE = "图钉控制",
+        PIN_TEXT = "方向键微调图钉位置。\n按住Shift进行精细调整。",
+        APPLY_TITLE = "应用 / 清除",
+        APPLY_TEXT = "应用颜色保存渐变。\n清除所有图钉将重置为\n默认颜色。",
+    },
+    zhTW = {
+        TOUR_TIP = "取色器導覽",
+        NEXT = "下一步", DONE = "完成",
+        WHEEL_TITLE = "色輪",
+        WHEEL_TEXT = "在色輪上選擇色調和飽和度。\n垂直滑桿調整亮度。",
+        SWATCH_TITLE = "目前顏色",
+        SWATCH_TEXT = "所選顏色預覽。\n拖動到漸層條上\n新增顏色停靠點。",
+        CLASS_TITLE = "職業顏色",
+        CLASS_TEXT = "職業顏色樣本。\n拖動到漸層條上新增\n跟隨專精變化的停靠點。",
+        GRADIENT_TITLE = "漸層條",
+        GRADIENT_TEXT = "顯示您的顏色曲線。\n將顏色拖到這裡新增停靠點。\n右鍵點擊圖釘以移除。",
+        PIN_TITLE = "圖釘控制",
+        PIN_TEXT = "方向鍵微調圖釘位置。\n按住Shift進行精細調整。",
+        APPLY_TITLE = "套用 / 清除",
+        APPLY_TEXT = "套用顏色儲存漸層。\n清除所有圖釘將重設為\n預設顏色。",
+    },
+}
+CP_LOCALE.enGB = CP_LOCALE.enUS
+CP_LOCALE.esMX = CP_LOCALE.esES
+local CL = CP_LOCALE[GetLocale()] or CP_LOCALE.enUS
+
+local isCJK_CP = ({ koKR = true, zhCN = true, zhTW = true })[GetLocale()]
+if isCJK_CP then TOUR_MAX_WIDTH = 240 end
+
+-- [ TOUR STOPS ]------------------------------------------------------------------------------------
+local TOUR_STOPS_CP = {
+    { anchor = function() return lib.ui.colorSelect end,
+      tooltipPoint = "TOPLEFT", tooltipRel = "TOPRIGHT", tpX = 8, tpY = 0,
+      title = CL.WHEEL_TITLE, text = CL.WHEEL_TEXT },
+    { anchor = function() return lib.ui.currentSwatch end,
+      tooltipPoint = "RIGHT", tooltipRel = "LEFT", tpX = -8, tpY = 0,
+      title = CL.SWATCH_TITLE, text = CL.SWATCH_TEXT },
+    { anchor = function() return lib.ui.classSwatch end,
+      tooltipPoint = "RIGHT", tooltipRel = "LEFT", tpX = -8, tpY = 0,
+      title = CL.CLASS_TITLE, text = CL.CLASS_TEXT },
+    { anchor = function() return lib.ui.gradientBar end,
+      tooltipPoint = "BOTTOM", tooltipRel = "TOP", tpX = 0, tpY = 8,
+      title = CL.GRADIENT_TITLE, text = CL.GRADIENT_TEXT },
+    { anchor = function() return lib.ui.gradientBar and lib.ui.gradientBar.PinsContainer end,
+      tooltipPoint = "BOTTOM", tooltipRel = "TOP", tpX = 0, tpY = 8,
+      title = CL.PIN_TITLE, text = CL.PIN_TEXT },
+    { anchor = function() return lib.ui.applyButton end,
+      tooltipPoint = "TOP", tooltipRel = "BOTTOM", tpX = 0, tpY = -8,
+      title = CL.APPLY_TITLE, text = CL.APPLY_TEXT },
 }
 
-local INFO_PLATE_DATA = {
-    { key = "wheel",    anchor = function() return lib.ui.colorSelect end,
-      point = "TOPRIGHT", relPoint = "TOPRIGHT", xOff = -4, yOff = -4, tooltipDir = "LEFT",
-      text = "Use the color wheel to select a hue and saturation. The vertical slider adjusts brightness." },
-    { key = "swatch",   anchor = function() return lib.ui.currentSwatch end,
-      point = "TOPRIGHT", relPoint = "TOPRIGHT", xOff = 4, yOff = 4, tooltipDir = "RIGHT",
-      text = "This is your currently selected color. Drag it onto the gradient bar below to add it as a color stop." },
-    { key = "class",    anchor = function() return lib.ui.classSwatch end,
-      point = "TOPRIGHT", relPoint = "TOPRIGHT", xOff = 4, yOff = 4, tooltipDir = "RIGHT",
-      text = "Your class color. Drag this onto the gradient bar to add a class-colored stop that updates dynamically with your spec." },
-    { key = "gradient", anchor = function() return lib.ui.gradientBar end,
-      point = "TOPRIGHT", relPoint = "TOPRIGHT", xOff = 4, yOff = 4, tooltipDir = "RIGHT",
-      text = "The gradient bar visualizes your color curve. Drag colors here to add stops. Right-click a pin to remove it." },
-    { key = "apply",    anchor = function() return lib.ui.applyButton end,
-      point = "RIGHT", relPoint = "LEFT", xOff = -4, yOff = 0, tooltipDir = "LEFT",
-      text = "Apply Color saves your gradient and closes the picker. Clearing all pins resets the component to its default color." },
-}
+-- [ TOUR TOOLTIP ]---------------------------------------------------------------------------------
+local cpTip = CreateFrame("Frame", nil, UIParent)
+cpTip:SetFrameStrata("TOOLTIP")
+cpTip:SetFrameLevel(999)
+cpTip:Hide()
 
-function lib:CreateInfoButton()
-    if self.info.button then return self.info.button end
+cpTip.bg = cpTip:CreateTexture(nil, "BACKGROUND")
+cpTip.bg:SetAllPoints()
+cpTip.bg:SetColorTexture(TOUR_BG.r, TOUR_BG.g, TOUR_BG.b, TOUR_BG.a)
 
-    local btn = CreateFrame("Button", nil, self.ui.frame, "MainHelpPlateButton")
-    btn:SetSize(INFO_BUTTON_SIZE, INFO_BUTTON_SIZE)
-    btn:SetHitRectInsets(0, 0, 0, 0)
-    btn:SetPoint("TOPLEFT", self.ui.frame, "TOPLEFT", 4, -4)
-    btn.mainHelpPlateButtonTooltipText = "Toggle info markers to learn how to use the color picker."
+local function MakeCPBorder(parent, horiz, p1, r1, p2, r2)
+    local t = parent:CreateTexture(nil, "BORDER")
+    t:SetColorTexture(TOUR_BORDER_CLR.r, TOUR_BORDER_CLR.g, TOUR_BORDER_CLR.b, TOUR_BORDER_CLR.a)
+    t:SetPoint(p1, parent, r1)
+    t:SetPoint(p2, parent, r2)
+    if horiz then t:SetHeight(TOUR_BORDER) else t:SetWidth(TOUR_BORDER) end
+end
+MakeCPBorder(cpTip, true, "TOPLEFT", "TOPLEFT", "TOPRIGHT", "TOPRIGHT")
+MakeCPBorder(cpTip, true, "BOTTOMLEFT", "BOTTOMLEFT", "BOTTOMRIGHT", "BOTTOMRIGHT")
+MakeCPBorder(cpTip, false, "TOPLEFT", "TOPLEFT", "BOTTOMLEFT", "BOTTOMLEFT")
+MakeCPBorder(cpTip, false, "TOPRIGHT", "TOPRIGHT", "BOTTOMRIGHT", "BOTTOMRIGHT")
 
-    local innerSize = INFO_BUTTON_SIZE - 8
-    btn.I:SetSize(innerSize, innerSize)
-    btn.Ring:Hide()
-    btn.BigIPulse:SetSize(innerSize, innerSize)
-    btn.RingPulse:SetSize(INFO_BUTTON_SIZE - 4, INFO_BUTTON_SIZE - 4)
-    local hl = btn:GetHighlightTexture()
-    if hl then hl:SetSize(innerSize, innerSize) end
+-- Directional accent bars
+local AW = 2
+local B = TOUR_BORDER
+cpTip.accents = {}
+cpTip.accents.top = cpTip:CreateTexture(nil, "ARTWORK")
+cpTip.accents.top:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
+cpTip.accents.top:SetHeight(AW)
+cpTip.accents.top:SetPoint("TOPLEFT", B, -B); cpTip.accents.top:SetPoint("TOPRIGHT", -B, -B)
+cpTip.accents.bottom = cpTip:CreateTexture(nil, "ARTWORK")
+cpTip.accents.bottom:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
+cpTip.accents.bottom:SetHeight(AW)
+cpTip.accents.bottom:SetPoint("BOTTOMLEFT", B, B); cpTip.accents.bottom:SetPoint("BOTTOMRIGHT", -B, B)
+cpTip.accents.left = cpTip:CreateTexture(nil, "ARTWORK")
+cpTip.accents.left:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
+cpTip.accents.left:SetWidth(AW)
+cpTip.accents.left:SetPoint("TOPLEFT", B, -B); cpTip.accents.left:SetPoint("BOTTOMLEFT", B, B)
+cpTip.accents.right = cpTip:CreateTexture(nil, "ARTWORK")
+cpTip.accents.right:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
+cpTip.accents.right:SetWidth(AW)
+cpTip.accents.right:SetPoint("TOPRIGHT", -B, -B); cpTip.accents.right:SetPoint("BOTTOMRIGHT", -B, B)
 
-    btn:HookScript("OnEnter", function() HelpPlateTooltip:SetFrameStrata("TOOLTIP") end)
-    btn:HookScript("OnMouseUp", function()
-        PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-        lib:ToggleInfoMode()
-    end)
-
-    self.info.button = btn
-    return btn
+local function ApplyCPAccent(tooltipPoint)
+    for _, bar in pairs(cpTip.accents) do bar:Hide() end
+    local pt = tooltipPoint:upper()
+    if pt == "CENTER" then for _, bar in pairs(cpTip.accents) do bar:Show() end; return end
+    if pt:find("TOP") then cpTip.accents.top:Show() end
+    if pt:find("BOTTOM") then cpTip.accents.bottom:Show() end
+    if pt:find("LEFT") then cpTip.accents.left:Show() end
+    if pt:find("RIGHT") then cpTip.accents.right:Show() end
 end
 
-function lib:ShowInfoTooltip(anchor, direction, text)
-    local dir = INFO_TOOLTIP_DIRECTIONS[direction] or INFO_TOOLTIP_DIRECTIONS.RIGHT
-    HelpPlateTooltip.LingerAndFade:Stop()
-    HelpPlateTooltip:ClearAllPoints()
-    HelpPlateTooltip:SetParent(GetAppropriateTopLevelParent())
-    HelpPlateTooltip:SetFrameStrata("TOOLTIP")
-    HelpPlateTooltip:SetFrameLevel(2)
-    HelpPlateTooltip:HideTextures()
-    HelpPlateTooltip[dir.arrow]:Show()
-    HelpPlateTooltip[dir.glow]:Show()
-    HelpPlateTooltip:SetPoint(dir.point, anchor, dir.rel, dir.x, dir.y)
-    HelpPlateTooltip.Text:SetText(text)
-    HelpPlateTooltip:SetHeight(HelpPlateTooltip.Text:GetHeight() + 30)
-    HelpPlateTooltip:Show()
+cpTip.counter = cpTip:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+cpTip.counter:SetPoint("TOPLEFT", TOUR_PAD + 4, -TOUR_PAD)
+cpTip.counter:SetTextColor(0.5, 0.5, 0.5)
+cpTip.counter:SetJustifyH("LEFT")
+
+cpTip.title = cpTip:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+cpTip.title:SetPoint("TOPLEFT", cpTip.counter, "BOTTOMLEFT", 0, -2)
+cpTip.title:SetTextColor(TOUR_TITLE_CLR.r, TOUR_TITLE_CLR.g, TOUR_TITLE_CLR.b)
+cpTip.title:SetJustifyH("LEFT")
+cpTip.title:SetWidth(TOUR_MAX_WIDTH - TOUR_PAD * 2 - 4)
+
+cpTip.text = cpTip:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+cpTip.text:SetPoint("TOPLEFT", cpTip.title, "BOTTOMLEFT", 0, -3)
+cpTip.text:SetTextColor(TOUR_TEXT_CLR.r, TOUR_TEXT_CLR.g, TOUR_TEXT_CLR.b)
+cpTip.text:SetJustifyH("LEFT")
+cpTip.text:SetWidth(TOUR_MAX_WIDTH - TOUR_PAD * 2 - 4)
+cpTip.text:SetSpacing(2)
+
+cpTip.nextBtn = CreateFrame("Button", nil, cpTip, "UIPanelButtonTemplate")
+cpTip.nextBtn:SetSize(TOUR_BTN_W, TOUR_BTN_H)
+cpTip.nextBtn:SetPoint("BOTTOMRIGHT", cpTip, "BOTTOMRIGHT", -TOUR_PAD, TOUR_PAD)
+cpTip.nextBtn:SetScript("OnClick", function()
+    if lib.info.tourIndex < #TOUR_STOPS_CP then
+        lib:ShowTourStop(lib.info.tourIndex + 1)
+    else
+        lib:EndTour()
+    end
+end)
+
+-- [ PULSE POOL ]-----------------------------------------------------------------------------------
+local cpPulsePool = {}
+local cpActivePulses = {}
+
+local function CreateCPPulse()
+    local f = CreateFrame("Frame", nil, UIParent)
+    f:SetFrameStrata("TOOLTIP")
+    f:SetFrameLevel(TOUR_PULSE_LEVEL)
+    f.tex = f:CreateTexture(nil, "OVERLAY")
+    f.tex:SetAllPoints()
+    f.tex:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.3)
+    f.ag = f:CreateAnimationGroup()
+    f.ag:SetLooping("BOUNCE")
+    local a = f.ag:CreateAnimation("Alpha")
+    a:SetFromAlpha(1); a:SetToAlpha(0.2); a:SetDuration(0.6); a:SetSmoothing("IN_OUT")
+    f:Hide()
+    return f
 end
 
-function lib:CreateInfoMarker(data)
-    local anchorFrame = data.anchor()
-    if not anchorFrame then return nil end
-
-    local marker = CreateFrame("Button", nil, self.ui.frame)
-    marker:SetSize(INFO_MARKER_SIZE, INFO_MARKER_SIZE)
-    marker:SetFrameStrata("TOOLTIP")
-    marker:SetFrameLevel(INFO_MARKER_FRAME_LEVEL)
-    marker:SetPoint(data.point, anchorFrame, data.relPoint, data.xOff, data.yOff)
-
-    marker.Icon = marker:CreateTexture(nil, "ARTWORK")
-    marker.Icon:SetTexture("Interface\\common\\help-i")
-    marker.Icon:SetSize(INFO_MARKER_SIZE, INFO_MARKER_SIZE)
-    marker.Icon:SetPoint("CENTER")
-
-    marker:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight", "ADD")
-    local hl = marker:GetHighlightTexture()
-    hl:SetSize(INFO_MARKER_SIZE, INFO_MARKER_SIZE)
-    hl:SetPoint("CENTER")
-
-    marker:SetScript("OnEnter", function(self) lib:ShowInfoTooltip(self, data.tooltipDir, data.text) end)
-    marker:SetScript("OnLeave", function() HelpPlateTooltip:Hide() end)
-    return marker
+local function AcquireCPPulse()
+    local p = table.remove(cpPulsePool) or CreateCPPulse()
+    cpActivePulses[#cpActivePulses + 1] = p
+    return p
 end
 
-function lib:ToggleInfoMode()
-    self.info.active = not self.info.active
-    if self.info.active then self:ShowInfoMarkers() else self:HideInfoMarkers() end
-end
-
-function lib:ShowInfoMarkers()
-    for _, data in ipairs(INFO_PLATE_DATA) do
-        if not self.info.markers[data.key] then
-            self.info.markers[data.key] = self:CreateInfoMarker(data)
-        end
-        if self.info.markers[data.key] then self.info.markers[data.key]:Show() end
+local function ReleaseCPPulses()
+    for i = #cpActivePulses, 1, -1 do
+        local p = cpActivePulses[i]
+        p.ag:Stop(); p:Hide()
+        cpPulsePool[#cpPulsePool + 1] = p
+        cpActivePulses[i] = nil
     end
 end
 
-function lib:HideInfoMarkers()
-    for _, marker in pairs(self.info.markers) do marker:Hide() end
-    if HelpPlateTooltip then HelpPlateTooltip:Hide() end
-    self.info.active = false
+local function ShowCPPulseOn(anchor)
+    local p = AcquireCPPulse()
+    p:ClearAllPoints(); p:SetAllPoints(anchor)
+    p:SetParent(anchor:GetParent() or UIParent)
+    p:SetFrameStrata("TOOLTIP")
+    p:SetFrameLevel(TOUR_PULSE_LEVEL)
+    p:Show(); p.ag:Play()
+end
+
+local function LayoutCPTooltip(anchor, stop, idx, total)
+    cpTip.counter:SetText(idx .. " / " .. total)
+    cpTip.title:SetText(stop.title)
+    cpTip.text:SetText(stop.text)
+    cpTip.nextBtn:SetText(idx == total and CL.DONE or CL.NEXT)
+    local textH = cpTip.counter:GetStringHeight() + 2 + cpTip.title:GetStringHeight() + 3 + cpTip.text:GetStringHeight()
+    cpTip:SetSize(TOUR_MAX_WIDTH, textH + TOUR_PAD * 2 + TOUR_BTN_GAP + TOUR_BTN_H + TOUR_PAD)
+    cpTip:ClearAllPoints()
+    cpTip:SetPoint(stop.tooltipPoint, anchor, stop.tooltipRel, stop.tpX, stop.tpY)
+    ApplyCPAccent(stop.tooltipPoint)
+    cpTip:Show()
+    ReleaseCPPulses()
+    ShowCPPulseOn(anchor)
+end
+
+-- [ TOUR CONTROL ]----------------------------------------------------------------------------------
+function lib:ShowTourStop(idx)
+    local stop = TOUR_STOPS_CP[idx]
+    if not stop then self:EndTour(); return end
+    local anchor = stop.anchor()
+    if not anchor or not anchor:IsShown() then
+        if idx < #TOUR_STOPS_CP then self:ShowTourStop(idx + 1) else self:EndTour() end
+        return
+    end
+    self.info.tourIndex = idx
+    LayoutCPTooltip(anchor, stop, idx, #TOUR_STOPS_CP)
+end
+
+function lib:StartTour()
+    self.info.tourActive = true
+    self.info.tourIndex = 0
+    self:ShowTourStop(1)
+end
+
+function lib:EndTour()
+    self.info.tourActive = false
+    self.info.tourIndex = 0
+    cpTip:Hide()
+    ReleaseCPPulses()
+end
+
+function lib:EndTourCleanup()
+    self:EndTour()
+end
+
+function lib:ToggleTour()
+    if not self.info.tourActive then
+        self:StartTour()
+    elseif self.info.tourIndex < #TOUR_STOPS_CP then
+        self:ShowTourStop(self.info.tourIndex + 1)
+    else
+        self:EndTour()
+    end
+end
+
+function lib:CreateTourButton()
+    if self.info.button then return self.info.button end
+    local btn = CreateFrame("Button", nil, self.ui.frame)
+    btn:SetSize(INFO_BUTTON_SIZE, INFO_BUTTON_SIZE)
+    btn:SetPoint("TOPLEFT", self.ui.frame, "TOPLEFT", 6, -6)
+    btn:SetFrameLevel(self.ui.frame:GetFrameLevel() + 10)
+    btn.Icon = btn:CreateTexture(nil, "ARTWORK")
+    btn.Icon:SetTexture("Interface\\common\\help-i")
+    btn.Icon:SetSize(INFO_BUTTON_SIZE, INFO_BUTTON_SIZE)
+    btn.Icon:SetPoint("CENTER")
+    btn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(CL.TOUR_TIP, 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    btn:SetScript("OnClick", function()
+        PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+        lib:ToggleTour()
+    end)
+    self.info.button = btn
+    return btn
 end
 
 -- [ PUBLIC API ] -----------------------------------------------------------------------------------
@@ -1222,6 +1485,7 @@ function lib:Open(options)
             lib.ui.gradientBar:Refresh()
         end
         lib:UpdateApplyButtonState()
+        if options.onOpen then options.onOpen(lib) end
     end)
 end
 

@@ -84,6 +84,14 @@ function Transaction:Get(key)
     return plugin:GetSetting(systemIndex, key)
 end
 
+-- Read pending state only — no fallback to GetSetting (avoids recursion from PluginMixin:GetSetting)
+function Transaction:GetPending(key)
+    if not active then return nil end
+    local pending = pendingSettings[key]
+    if pending == NIL_SENTINEL then return nil end
+    return pending
+end
+
 -- [ POSITIONS ]----------------------------------------------------------------------------------
 
 function Transaction:SetPosition(compKey, posData)
@@ -127,8 +135,9 @@ end
 
 function Transaction:ClearPositions() wipe(pendingPositions) end
 
--- [ COMMIT ]-------------------------------------------------------------------------------------
-
+-- Writes all pending settings and positions to SavedVariables.
+-- NOTE: Unused — Dialog:Apply() writes directly because it needs sync/global
+-- routing and rebuilds positions from preview component state.
 function Transaction:Commit()
     if not active or not plugin then return end
 
@@ -157,7 +166,8 @@ function Transaction:Rollback()
     if not active then return end
     local savedPlugin = plugin
     self:Clear()
-    -- Restore preview frames to their pre-edit state
+    -- Restore all frames to their pre-edit state (live + preview)
+    if savedPlugin and savedPlugin.ApplySettings then savedPlugin:ApplySettings() end
     if savedPlugin and savedPlugin.SchedulePreviewUpdate then savedPlugin:SchedulePreviewUpdate() end
 end
 

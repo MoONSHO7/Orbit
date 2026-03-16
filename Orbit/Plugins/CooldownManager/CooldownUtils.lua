@@ -44,6 +44,7 @@ function CooldownUtils:BuildSkinSettings(plugin, systemIndex, options)
         zoom = options.zoom or 0,
         borderStyle = options.borderStyle or 1,
         borderSize = Orbit.db.GlobalSettings.BorderSize,
+        iconBorder = true,
         activeSwipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(systemIndex, "ActiveSwipeColorCurve"))
             or { r = 1, g = 0.95, b = 0.57, a = 0.7 },
         cooldownSwipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(systemIndex, "CooldownSwipeColorCurve"))
@@ -110,7 +111,7 @@ function CooldownUtils:ApplySimpleTextStyle(plugin, systemIndex, textElement, co
 
     local fontPath = plugin:GetGlobalFont()
     local baseSize = plugin:GetBaseFontSize()
-    local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+    local positions = plugin:GetComponentPositions(systemIndex)
     local pos = positions[componentKey] or {}
     local overrides = pos.overrides or {}
     local defaultSize = math.max(6, baseSize)

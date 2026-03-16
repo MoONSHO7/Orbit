@@ -2,14 +2,14 @@
 -- Blizzard minimap capture, art stripping, frame guard, and Blizzard component reparenting.
 
 ---@type Orbit
-local Orbit              = Orbit
-local OrbitEngine        = Orbit.Engine
-local C                  = Orbit.MinimapConstants
+local Orbit = Orbit
+local OrbitEngine = Orbit.Engine
+local C = Orbit.MinimapConstants
 
-local SYSTEM_ID          = C.SYSTEM_ID
+local SYSTEM_ID = C.SYSTEM_ID
 local MISSIONS_BASE_SIZE = C.MISSIONS_BASE_SIZE
 
-local Plugin             = Orbit:GetPlugin(SYSTEM_ID)
+local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
 -- [ BLIZZARD REFERENCES ]---------------------------------------------------------------------------
 
@@ -24,7 +24,9 @@ Plugin.GetBlizzardCluster = GetBlizzardCluster
 
 local function StripBlizzardArt()
     local cluster = GetBlizzardCluster()
-    if not cluster then return end
+    if not cluster then
+        return
+    end
 
     -- Hide the entire cluster (takes BorderTop, ZoneTextButton, Tracking, IndicatorFrame, InstanceDifficulty)
     OrbitEngine.NativeFrame:Hide(cluster, { unregisterEvents = false, clearScripts = false })
@@ -123,8 +125,7 @@ function Plugin:ReparentBlizzardComponents()
     end
 
     -- Crafting Order indicator
-    local craftingOrder = MinimapCluster and MinimapCluster.IndicatorFrame and
-        MinimapCluster.IndicatorFrame.CraftingOrderFrame
+    local craftingOrder = MinimapCluster and MinimapCluster.IndicatorFrame and MinimapCluster.IndicatorFrame.CraftingOrderFrame
     if craftingOrder then
         self._origCraftingOrderParent = craftingOrder:GetParent()
         craftingOrder:SetParent(overlay)
@@ -195,14 +196,15 @@ function Plugin:CaptureBlizzardMinimap()
     end
 
     OrbitEngine.FrameGuard:Protect(minimap, self.frame)
-    OrbitEngine.FrameGuard:UpdateProtection(minimap, self.frame, function() self:ApplySettings() end,
-        { enforceShow = true })
+    OrbitEngine.FrameGuard:UpdateProtection(minimap, self.frame, function() self:ApplySettings() end, { enforceShow = true })
 
     -- Hook SetPoint to prevent Blizzard from repositioning.
     -- No pcall: if ClearAllPoints/SetAllPoints throws here, that is a real bug.
     if not minimap._orbitSetPointHooked then
         hooksecurefunc(minimap, "SetPoint", function(f, ...)
-            if f._orbitRestoringPoint then return end
+            if f._orbitRestoringPoint then
+                return
+            end
             if f:GetParent() == self.frame then
                 local point = ...
                 if point ~= "TOPLEFT" or select(2, ...) ~= self.frame then

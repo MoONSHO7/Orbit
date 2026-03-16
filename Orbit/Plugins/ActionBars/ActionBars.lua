@@ -25,6 +25,12 @@ local BASE_VISIBILITY_DRIVER = "[petbattle][vehicleui] hide; show"
 local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [nopet] hide; show"
 local BAR1_BASE_DRIVER = "[petbattle][overridebar] hide; show"
 
+local BAR_ART_ATLASES = {
+    Alliance = { left = "UI-HUD-ActionBar-Gryphon-Left", right = "UI-HUD-ActionBar-Gryphon-Right" },
+    Horde = { left = "UI-HUD-ActionBar-Wyvern-Left", right = "UI-HUD-ActionBar-Wyvern-Right" },
+}
+local BAR_ART_FALLBACK = BAR_ART_ATLASES.Alliance
+
 local function GetVisibilityDriver(baseDriver)
     return Orbit.MountedVisibility:GetMountedDriver(baseDriver)
 end
@@ -51,6 +57,7 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     defaults = {
         Scale = 90, IconPadding = 2, Rows = 1, NumIcons = 12,
         Opacity = 100, HideEmptyButtons = false, UseGlobalTextStyle = true,
+        ShowBarArt = false,
         DisabledComponents = {},
         ComponentPositions = {}, GlobalComponentPositions = {
             Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2, justifyH = "RIGHT" },
@@ -189,6 +196,10 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = function(val) self:SetSetting(systemIndex, "Scale", val); self:ApplySettings(container) end })
         table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = 0, max = 10, step = 1, default = 2,
             onChange = function(val) self:SetSetting(systemIndex, "IconPadding", val); self:ApplySettings(container) end })
+        if systemIndex == 1 then
+            table.insert(schema.controls, { type = "checkbox", key = "ShowBarArt", label = "Show Bar Art", default = false,
+                onChange = function(val) self:SetSetting(1, "ShowBarArt", val); self:ApplySettings(container) end })
+        end
         local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
         if not isForcedHideEmpty then table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = "Hide Empty Buttons", default = false }) end
     elseif currentTab == "Colors" then
@@ -264,7 +275,7 @@ function Plugin:OnLoad()
                 MasqueBridge:RegisterDisableCallback(groupName, function()
                     local isDisabled = not MasqueBridge:IsGroupEnabled(groupName)
                     for _, btn in ipairs(self.buttons[index] or {}) do
-                        if isDisabled then Orbit.Skin.ActionButtonSkin:Apply(btn, { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize }) end
+                        if isDisabled then Orbit.Skin.ActionButtonSkin:Apply(btn, { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, iconBorder = true }) end
                     end
                     if not isDisabled then MasqueBridge:ReSkinGroup(groupName) end
                     self:ApplySettings(container)
@@ -337,7 +348,7 @@ function Plugin:OnLoad()
         if not flyout or not flyout:IsShown() then return end
         if InCombatLockdown() then self.flyoutSkinPending = true; return end
         self.flyoutSkinPending = false
-        local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, swipeColor = { r = 0, g = 0, b = 0, a = 0.8 }, showTimer = true, hideName = false, backdropColor = self:GetSetting(1, "BackdropColour"), keypressColor = self:GetSetting(1, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 } }
+        local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, iconBorder = true, swipeColor = { r = 0, g = 0, b = 0, a = 0.8 }, showTimer = true, hideName = false, backdropColor = self:GetSetting(1, "BackdropColour"), keypressColor = self:GetSetting(1, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 } }
         local i = 1
         while true do
             local btn = _G["SpellFlyoutButton" .. i]
@@ -422,6 +433,30 @@ end
 
 function Plugin:OnCombatEnd() C_Timer.After(0.5, function() self:ApplyAll() end) end
 
+-- [ BAR ART ]------------------------------------------------------------------------------------
+local function UpdateBarArt(plugin, container)
+    local show = plugin:GetSetting(1, "ShowBarArt")
+    if not show then
+        if container.barArtLeft then container.barArtLeft:Hide() end
+        if container.barArtRight then container.barArtRight:Hide() end
+        return
+    end
+    local faction = UnitFactionGroup("player")
+    local atlases = BAR_ART_ATLASES[faction] or BAR_ART_FALLBACK
+    if not container.barArtLeft then
+        container.barArtLeft = container:CreateTexture(nil, "ARTWORK")
+        container.barArtRight = container:CreateTexture(nil, "ARTWORK")
+    end
+    container.barArtLeft:SetAtlas(atlases.left, true)
+    container.barArtLeft:ClearAllPoints()
+    container.barArtLeft:SetPoint("BOTTOMRIGHT", container, "BOTTOMLEFT", 0, 0)
+    container.barArtLeft:Show()
+    container.barArtRight:SetAtlas(atlases.right, true)
+    container.barArtRight:ClearAllPoints()
+    container.barArtRight:SetPoint("BOTTOMLEFT", container, "BOTTOMRIGHT", 0, 0)
+    container.barArtRight:Show()
+end
+
 -- [ BUTTON LAYOUT AND SKINNING ]-----------------------------------------------------------------
 function Plugin:LayoutButtons(index)
     if InCombatLockdown() then return end
@@ -429,7 +464,7 @@ function Plugin:LayoutButtons(index)
     local buttons = self.buttons[index]
     if container and container.orbitDisabled then return end
     if not container or not buttons or #buttons == 0 then return end
-    local padding = self:GetSetting(index, "IconPadding") or 2
+    local rawPadding = self:GetSetting(index, "IconPadding") or 2
     local rows = self:GetSetting(index, "Rows") or 1
     local orientation = 0
     local hideEmpty = self:GetSetting(index, "HideEmptyButtons")
@@ -439,24 +474,29 @@ function Plugin:LayoutButtons(index)
     if cursorOverridesHide and not SPECIAL_BAR_INDICES[index] then hideEmpty = false end
     local config = BAR_CONFIG[index]
     local numIcons = self:GetSetting(index, "NumIcons") or (config and config.count or 12)
-    local w, h = BUTTON_SIZE, BUTTON_SIZE
+    local scale = container:GetEffectiveScale() or 1
+    local w = OrbitEngine.Pixel:Snap(BUTTON_SIZE, scale)
+    local h = w
+    local padding = OrbitEngine.Pixel:Multiple(rawPadding, scale)
+    if rawPadding > 0 then
+        local borderOutset = OrbitEngine.Pixel:Multiple(Orbit.db.GlobalSettings.IconBorderSize or 2, scale)
+        padding = padding + 2 * borderOutset
+    end
     local useMasque = MasqueBridge and MasqueBridge.enabled
     local masqueGroup = useMasque and (config and config.label or "Action Bar " .. index)
-    local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize,
+    local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, iconBorder = true, padding = rawPadding,
         cooldownSwipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "CooldownSwipeColor")) or { r = 0, g = 0, b = 0, a = 0.8 },
         showTimer = true, hideName = false, backdropColor = self:GetSetting(1, "BackdropColour"), keypressColor = self:GetSetting(1, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 } }
     local totalEffective = math.min(#buttons, numIcons)
     local limitPerLine
     if orientation == 0 then limitPerLine = math.max(1, math.ceil(totalEffective / rows))
     else limitPerLine = rows end
-    local cacheKey = string.format("%d_%d_%d_%d_%d", numIcons, limitPerLine, orientation, w, padding)
+    local cacheKey = string.format("%d_%d_%d_%d_%d_%d_%.4f", numIcons, limitPerLine, orientation, BUTTON_SIZE, rawPadding, Orbit.db.GlobalSettings.IconBorderSize or 2, scale)
     local cache = self.gridCache[index]
     if not cache or cache.key ~= cacheKey then
         local positions = {}
-        local scale = buttons[1] and buttons[1]:GetEffectiveScale() or 1
         for i = 1, numIcons do
             local x, y = OrbitEngine.Layout:ComputeGridPosition(i, limitPerLine, orientation, w, h, padding)
-            x = OrbitEngine.Pixel:Snap(x, scale); y = OrbitEngine.Pixel:Snap(y, scale)
             positions[i] = { x = x, y = y }
         end
         self.gridCache[index] = { key = cacheKey, positions = positions }
@@ -497,6 +537,12 @@ function Plugin:LayoutButtons(index)
     local finalW, finalH = OrbitEngine.Layout:ComputeGridContainerSize(sizeCount, sizeLimitPerLine, orientation, w, h, padding)
     container:SetSize(finalW, finalH)
     container.orbitRowHeight, container.orbitColumnWidth = h, w
+    container._isIconContainer = true
+    local iconNineSlice = Orbit.Skin:GetActiveIconBorderStyle()
+    if rawPadding == 0 then Orbit.Skin:ApplyIconGroupBorder(container, iconNineSlice)
+    else Orbit.Skin:ClearIconGroupBorder(container) end
+    Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+    if index == 1 then UpdateBarArt(self, container) end
 end
 
 -- [ SETTINGS APPLICATION ]-----------------------------------------------------------------------

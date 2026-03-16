@@ -85,15 +85,15 @@ function Preview:Setup(plugin, frame, sysIndex)
             if seg.Overlay then seg.Overlay:Hide() end
 
             local segBackdrop = Orbit.Skin:CreateBackdrop(seg, nil)
-            segBackdrop:SetFrameLevel(seg:GetFrameLevel() + Constants.Levels.Highlight)
+            segBackdrop:SetFrameLevel(seg:GetFrameLevel() + Constants.Levels.Border)
             segBackdrop:SetBackdrop(nil)
-            Orbit.Skin:SkinBorder(seg, segBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
+            Orbit.Skin:SkinBorder(seg, segBackdrop, borderSize)
         end
 
         local savedPositions = plugin:GetSetting(sysIndex, "ComponentPositions") or {}
         local fontName = plugin:GetSetting(sysIndex, "Font")
         local fontPath = LSM and LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
-        local fontSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
+        local fontSize = 18
         local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         fs:SetFont(fontPath, fontSize, Orbit.Skin:GetFontOutline())
         fs:SetText(tostring(previewCharges))
@@ -117,7 +117,7 @@ function Preview:Setup(plugin, frame, sysIndex)
         if CreateDraggableComponent then
             local comp = CreateDraggableComponent(preview, "ChargeCount", fs, startX, startY, data)
             if comp then
-                comp:SetFrameLevel(preview:GetFrameLevel() + 10)
+                comp:SetFrameLevel(preview:GetFrameLevel() + Constants.Levels.Overlay)
                 preview.components["ChargeCount"] = comp
                 fs:Hide()
             end

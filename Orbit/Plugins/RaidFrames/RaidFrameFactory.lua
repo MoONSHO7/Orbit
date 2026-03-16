@@ -8,7 +8,6 @@ Orbit.RaidFrameFactoryMixin = {}
 local POWER_BAR_HEIGHT_RATIO = Orbit.RaidFrameHelpers.LAYOUT.PowerBarRatio
 local ICON_SIZE = 12
 local CENTER_ICON_SIZE = 18
-local SELECTION_BORDER_THICKNESS = 2
 
 -- [ POWER BAR CREATION ]----------------------------------------------------------------------------
 
@@ -18,7 +17,7 @@ function Orbit.RaidFrameFactoryMixin:CreatePowerBar(parent, unit)
     power:SetPoint("BOTTOMRIGHT", 0, 0)
     power:SetHeight(parent:GetHeight() * POWER_BAR_HEIGHT_RATIO)
     power:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-    power:SetFrameLevel(parent:GetFrameLevel() + Orbit.Constants.Levels.Cooldown)
+    power:SetFrameLevel(parent:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
     power:SetMinMaxValues(0, 1)
     power:SetValue(0)
     power.unit = unit
@@ -34,11 +33,11 @@ end
 function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
     frame.BorderOverlay = CreateFrame("Frame", nil, frame)
     frame.BorderOverlay:SetAllPoints()
-    frame.BorderOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
+    frame.BorderOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Border)
 
     frame.StatusOverlay = CreateFrame("Frame", nil, frame)
     frame.StatusOverlay:SetAllPoints()
-    frame.StatusOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Text)
+    frame.StatusOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
 
     frame.RoleIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
     frame.RoleIcon:SetSize(ICON_SIZE, ICON_SIZE)
@@ -58,48 +57,7 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
     frame.MainTankIcon:SetPoint("LEFT", frame.LeaderIcon, "RIGHT", 1, 0)
     frame.MainTankIcon:Hide()
 
-    frame.SelectionHighlight = frame.BorderOverlay:CreateTexture(nil, "ARTWORK")
-    frame.SelectionHighlight:SetAllPoints()
-    frame.SelectionHighlight:SetColorTexture(1, 1, 1, 0)
-    frame.SelectionHighlight:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Highlight)
-    frame.SelectionHighlight:Hide()
 
-    local thickness = OrbitEngine.Pixel:Multiple(SELECTION_BORDER_THICKNESS, frame:GetEffectiveScale() or 1)
-    frame.SelectionBorders = {}
-    for _, edge in pairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
-        local border = frame.BorderOverlay:CreateTexture(nil, "ARTWORK")
-        border:SetColorTexture(1, 1, 1, 0.8)
-        border:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Highlight)
-        if edge == "TOP" then
-            border:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-            border:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-            border:SetHeight(thickness)
-        elseif edge == "BOTTOM" then
-            border:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
-            border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-            border:SetHeight(thickness)
-        elseif edge == "LEFT" then
-            border:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-            border:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
-            border:SetWidth(thickness)
-        else
-            border:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-            border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-            border:SetWidth(thickness)
-        end
-        border:Hide()
-        frame.SelectionBorders[edge] = border
-    end
-
-    frame.SelectionHighlight.Show = function() for _, b in pairs(frame.SelectionBorders) do b:Show() end end
-    frame.SelectionHighlight.Hide = function() for _, b in pairs(frame.SelectionBorders) do b:Hide() end end
-
-    frame.AggroHighlight = frame.BorderOverlay:CreateTexture(nil, "ARTWORK")
-    frame.AggroHighlight:SetAllPoints()
-    frame.AggroHighlight:SetAtlas("UI-HUD-ActionBar-IconFrame-Highlight")
-    frame.AggroHighlight:SetBlendMode("ADD")
-    frame.AggroHighlight:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Highlight)
-    frame.AggroHighlight:Hide()
 
     for _, iconKey in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }) do
         local icon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
@@ -123,7 +81,7 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
         btn:SetSize(CENTER_ICON_SIZE, CENTER_ICON_SIZE)
         btn.orbitOriginalWidth, btn.orbitOriginalHeight = CENTER_ICON_SIZE, CENTER_ICON_SIZE
         btn:SetPoint("CENTER", frame, "CENTER", 0, 0)
-        btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.ProcOverlay)
+        btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
         btn.Icon = btn:CreateTexture(nil, "ARTWORK")
         btn.Icon:SetAllPoints()
         btn.icon = btn.Icon
@@ -136,7 +94,7 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
     paa:SetSize(CENTER_ICON_SIZE, CENTER_ICON_SIZE)
     paa.orbitOriginalWidth, paa.orbitOriginalHeight = CENTER_ICON_SIZE, CENTER_ICON_SIZE
     paa:SetPoint("CENTER", frame, "CENTER", 0, 0)
-    paa:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.ProcOverlay)
+    paa:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     paa:EnableMouse(false)
     paa.Icon = paa:CreateTexture(nil, "ARTWORK")
     paa.Icon:SetAllPoints()

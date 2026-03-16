@@ -44,30 +44,138 @@ function Skin:CreateBackdrop(frame, name)
     return backdrop
 end
 
-function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
+-- [ NINESLICE BORDER ]------------------------------------------------------------------------------
+local NINESLICE_LEVEL_OFFSET = Constants.Levels.Border
+
+function Skin:ApplyNineSliceBorder(frame, styleEntry)
+    if not frame or not styleEntry then return end
+    if not styleEntry.edgeFile then return end
+    if not frame._edgeBorderOverlay then
+        frame._edgeBorderOverlay = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    end
+    frame._edgeBorderOverlay:SetFrameLevel(frame:GetFrameLevel() + NINESLICE_LEVEL_OFFSET)
+    local overlay = frame._edgeBorderOverlay
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    local edgeSize = styleEntry.edgeSize or (gs and gs.BorderEdgeSize) or 16
+    local borderOffset = styleEntry.borderOffset or (gs and gs.BorderOffset) or 0
+    local scale = frame:GetEffectiveScale()
+    if not scale or scale < 0.01 then scale = 1 end
+    local outset = Engine.Pixel:Snap((edgeSize / 2) + borderOffset, scale)
+    frame.borderPixelSize = outset
+    overlay:ClearAllPoints()
+    overlay:SetPoint("TOPLEFT", frame, "TOPLEFT", -outset, outset)
+    overlay:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", outset, -outset)
+    overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = edgeSize })
+    local c = styleEntry.color
+    if c then overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a or 1)
+    else overlay:SetBackdropBorderColor(1, 1, 1, 1) end
+    overlay:SetShown(not frame._groupBorderActive)
+end
+
+function Skin:ClearNineSliceBorder(frame)
+    if not frame then return end
+    if frame._edgeBorderOverlay then frame._edgeBorderOverlay:Hide() end
+end
+
+-- Highlight border functions → HighlightBorder.lua
+
+-- [ ICON GROUP BORDER ]------------------------------------------------------------------------------
+-- Wraps an icon container in a single NineSlice/edge border when Icon Padding = 0.
+function Skin:ApplyIconGroupBorder(container, styleEntry)
+    if not container then return end
+    if container._groupBorderActive then return end
+    container._isIconContainer = true
+    if styleEntry then
+        container._activeBorderMode = "nineslice"
+        if container._borderFrame then container._borderFrame:Hide() end
+        self:ApplyNineSliceBorder(container, self:BuildIconStyle(styleEntry))
+        local overlay = container._edgeBorderOverlay
+        if overlay then overlay:SetFrameLevel(container:GetFrameLevel() + Constants.Levels.IconOverlay) end
+    else
+        -- Pixel mode: flat border on container
+        self:ClearNineSliceBorder(container)
+        local gs = Orbit.db and Orbit.db.GlobalSettings
+        local borderSize = gs and gs.IconBorderSize or 2
+        self:SkinBorder(container, container, borderSize, nil, true, true)
+        if container._borderFrame then
+            container._borderFrame:SetFrameLevel(container:GetFrameLevel() + Constants.Levels.IconOverlay)
+        end
+    end
+end
+
+function Skin:ClearIconGroupBorder(container)
+    if not container then return end
+    -- NOTE: _isIconContainer is NOT cleared here — it reflects frame type, not border style.
+    self:ClearNineSliceBorder(container)
+end
+
+-- Group border functions → GroupBorder.lua
+
+function Skin:ResolveStyle(settingsKey)
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    local styleKey = gs and gs[settingsKey]
+    if not styleKey or styleKey == Constants.BorderStyle.Default then return nil end
+    local builtIn = Constants.BorderStyle.Lookup[styleKey]
+    if builtIn then return builtIn end
+    local lsmName = styleKey:match("^lsm:(.+)$")
+    if lsmName then
+        local edgeFile = LSM:Fetch("border", lsmName)
+        if edgeFile and edgeFile ~= "" then return { edgeFile = edgeFile } end
+    end
+    return nil
+end
+
+function Skin:GetActiveBorderStyle() return self:ResolveStyle("BorderStyle") end
+function Skin:GetActiveIconBorderStyle() return self:ResolveStyle("IconBorderStyle") end
+
+function Skin:BuildIconStyle(baseStyle)
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    local style = {}
+    for k, v in pairs(baseStyle) do style[k] = v end
+    style.edgeSize = (gs and gs.IconBorderEdgeSize) or Constants.BorderStyle.EdgeSize
+    style.borderOffset = (gs and gs.IconBorderOffset) or 0
+    return style
+end
+
+function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
     if not frame or not backdrop then
         return
     end
 
-    -- The paladin's aura must shine ABOVE the rogue's cloak
-    if frame == backdrop then
-        if not frame._borderFrame then
-            frame._borderFrame = CreateFrame("Frame", nil, frame)
-            frame._borderFrame:SetAllPoints(frame)
-            frame._borderFrame:SetFrameLevel(frame:GetFrameLevel() + (Orbit.Constants.Levels.Border or 3))
-        end
-        backdrop = frame._borderFrame
+    -- Route to NineSlice when a border style is active (unless forced pixel)
+    local nineSliceStyle
+    if not forcePixel then
+        if isIcon then nineSliceStyle = self:GetActiveIconBorderStyle()
+        else nineSliceStyle = self:GetActiveBorderStyle() end
     end
+    if nineSliceStyle then
+        if frame._borderFrame then frame._borderFrame:Hide() end
+        frame._activeBorderMode = "nineslice"
+        local styleEntry = isIcon and self:BuildIconStyle(nineSliceStyle) or nineSliceStyle
+        self:ApplyNineSliceBorder(frame, styleEntry)
+        -- Hide individual border if frame is part of a merge group
+        if frame._groupBorderActive and frame._edgeBorderOverlay then
+            frame._edgeBorderOverlay:Hide()
+        end
+        return true
+    end
+    -- Flat mode: clear any leftover NineSlice overlay
+    frame._activeBorderMode = "flat"
+    self:ClearNineSliceBorder(frame)
 
-    local targetSize = size or 1
+    -- Create or reuse the border frame (sits above content at Border level)
+    if not frame._borderFrame then
+        frame._borderFrame = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    end
+    local bf = frame._borderFrame
+    bf:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Border)
 
+    -- For icons, use the icon-specific border size setting
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    local targetSize = isIcon and (gs and gs.IconBorderSize or 2) or (size or 1)
     if targetSize <= 0 then
         frame.borderPixelSize = 0
-        if backdrop.Borders then
-            for _, border in pairs(backdrop.Borders) do
-                border:Hide()
-            end
-        end
+        bf:Hide()
         return true
     end
 
@@ -77,91 +185,47 @@ function Skin:SkinBorder(frame, backdrop, size, color, horizontal)
     local pixelSize = Engine.Pixel:Multiple(targetSize, scale)
     frame.borderPixelSize = pixelSize
 
-    -- Create borders if needed
-    if not backdrop.Borders then
-        backdrop.Borders = {}
-        local function CreateLine()
-            local t = backdrop:CreateTexture(nil, "OVERLAY")
-            t:SetColorTexture(1, 1, 1, 1) -- Set white initially, tinted by color arg
-            return t
-        end
-        backdrop.Borders.Top = CreateLine()
-        backdrop.Borders.Bottom = CreateLine()
-        backdrop.Borders.Left = CreateLine()
-        backdrop.Borders.Right = CreateLine()
-    end
+    -- Outset border frame by FULL pixelSize so the BackdropTemplate edge
+    -- (which renders INSIDE the frame boundary) lands entirely outside the content.
+    local outset = pixelSize
+    bf:ClearAllPoints()
+    bf:SetPoint("TOPLEFT", frame, "TOPLEFT", -outset, outset)
+    bf:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", outset, -outset)
 
-    -- Attach SetBorderHidden to the owner frame if missing
-    -- This allows the Anchor engine to toggle border visibility during merging
-    if not frame.SetBorderHidden then
-        frame.SetBorderHidden = function(self, edge, hidden)
-            local b = backdrop.Borders
-            if b and b[edge] then
-                b[edge]:SetShown(not hidden)
-            end
-            if not self._mergedEdges then self._mergedEdges = {} end
-            self._mergedEdges[edge] = hidden or nil
-        end
-    end
+    -- Apply solid pixel border via BackdropTemplate
+    bf:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
 
+    if not color then
+        local gs = Orbit.db and Orbit.db.GlobalSettings
+        color = isIcon and (gs and gs.IconBorderColor) or (gs and gs.BorderColor)
+    end
     local c = color or { r = 0, g = 0, b = 0, a = 1 }
-    local merged = frame._mergedEdges
-    for edge, t in pairs(backdrop.Borders) do
-        t:SetColorTexture(c.r, c.g, c.b, c.a)
-        if not (merged and merged[edge]) then t:Show() end
-    end
+    bf:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
 
-    local b = backdrop.Borders
-
-    -- Non-overlapping Layout
-    -- horizontal = true: Top/Bottom full width (for horizontal arrangements like icon → bar)
-    -- horizontal = false/nil: Left/Right full height (for vertical stacking like health → power)
-    if horizontal then
-        -- Top/Bottom: Full Width (Priority for horizontal merging)
-        b.Top:ClearAllPoints()
-        b.Top:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, 0)
-        b.Top:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", 0, 0)
-        b.Top:SetHeight(pixelSize)
-
-        b.Bottom:ClearAllPoints()
-        b.Bottom:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, 0)
-        b.Bottom:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, 0)
-        b.Bottom:SetHeight(pixelSize)
-
-        -- Left/Right: Inset by Top/Bottom height
-        b.Left:ClearAllPoints()
-        b.Left:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, -pixelSize)
-        b.Left:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, pixelSize)
-        b.Left:SetWidth(pixelSize)
-
-        b.Right:ClearAllPoints()
-        b.Right:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", 0, -pixelSize)
-        b.Right:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, pixelSize)
-        b.Right:SetWidth(pixelSize)
+    if frame._groupBorderActive then
+        bf:Hide()
     else
-        -- Left/Right: Full Height (Priority for vertical stacking)
-        b.Left:ClearAllPoints()
-        b.Left:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, 0)
-        b.Left:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, 0)
-        b.Left:SetWidth(pixelSize)
-
-        b.Right:ClearAllPoints()
-        b.Right:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", 0, 0)
-        b.Right:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, 0)
-        b.Right:SetWidth(pixelSize)
-
-        -- Top/Bottom: Inset by Left/Right width
-        b.Top:ClearAllPoints()
-        b.Top:SetPoint("TOPLEFT", backdrop, "TOPLEFT", pixelSize, 0)
-        b.Top:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", -pixelSize, 0)
-        b.Top:SetHeight(pixelSize)
-
-        b.Bottom:ClearAllPoints()
-        b.Bottom:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", pixelSize, 0)
-        b.Bottom:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", -pixelSize, 0)
-        b.Bottom:SetHeight(pixelSize)
+        bf:Show()
     end
+
+    if not frame.SetBorderHidden then
+        frame.SetBorderHidden = Skin.DefaultSetBorderHidden
+    end
+
     return false
+end
+
+-- [ SHARED BORDER VISIBILITY ]----------------------------------------------------------------------
+-- Canonical implementation — assigned to frames by SkinBorder, CastBar, CooldownLayout, etc.
+function Skin.DefaultSetBorderHidden(self, hidden)
+    if hidden then
+        if self._borderFrame then self._borderFrame:Hide() end
+        if self._edgeBorderOverlay then self._edgeBorderOverlay:Hide() end
+    elseif self._activeBorderMode == "nineslice" then
+        if self._edgeBorderOverlay then self._edgeBorderOverlay:Show() end
+    else
+        if self._borderFrame then self._borderFrame:Show() end
+    end
 end
 
 -- [ STATUSBAR SKINNING ]----------------------------------------------------------------------------
@@ -192,8 +256,11 @@ function Skin:SkinStatusBar(bar, textureName, color, isUnitFrame)
 
     -- Get overlay texture from settings
     local overlayTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.OverlayTexture or "Orbit Gradient"
+    if overlayTextureName == "None" then
+        if bar.Overlay then bar.Overlay:Hide() end
+        return
+    end
     local overlayPath = LSM:Fetch("statusbar", overlayTextureName) or ORBIT_OVERLAY_PATH
-
     self:AddOverlay(bar, overlayPath, "BLEND", 0.5)
 end
 
@@ -204,17 +271,7 @@ function Skin:AddOverlay(bar, texturePath, blendMode, alpha)
 
     if not bar.Overlay then
         bar.Overlay = bar:CreateTexture(nil, "OVERLAY")
-        -- If it's a StatusBar, anchor to the status bar texture so it only covers the fill
-        if bar.GetStatusBarTexture then
-            local statusTexture = bar:GetStatusBarTexture()
-            if statusTexture then
-                bar.Overlay:SetAllPoints(statusTexture)
-            else
-                bar.Overlay:SetAllPoints(bar)
-            end
-        else
-            bar.Overlay:SetAllPoints(bar)
-        end
+        bar.Overlay:SetAllPoints(bar)
     end
 
     bar.Overlay:SetTexture(texturePath)
@@ -250,46 +307,6 @@ function Skin:SkinText(fontString, settings)
 end
 
 -- [ UNITFRAME TEXT STYLING ]------------------------------------------------------------------------
-
-function Skin:GetAdaptiveTextSize(height, minSize, maxSize, ratio)
-    minSize = minSize or Constants.UI.UnitFrameTextSize
-    if not height then
-        return minSize
-    end
-
-    -- Apply ratio if provided (e.g. 0.6 = 60% of height)
-    local targetSize = height
-    if ratio then
-        targetSize = height * ratio
-    end
-
-    -- Global Multiplier
-    local globalScale = 1.0
-    local s = Orbit.db.GlobalSettings.TextScale
-    if s == "Small" then
-        globalScale = 0.85
-    elseif s == "Large" then
-        globalScale = 1.15
-    elseif s == "ExtraLarge" then
-        globalScale = 1.30
-    end
-
-    targetSize = targetSize * globalScale
-
-    -- Also scale min/max constraints to allow "Small" to actually go below the hard floor
-    if minSize then
-        minSize = minSize * globalScale
-    end
-    if maxSize then
-        maxSize = maxSize * globalScale
-    end
-
-    local size = math_max(minSize, targetSize)
-    if maxSize then
-        size = math_min(size, maxSize)
-    end
-    return size
-end
 
 function Skin:ApplyUnitFrameText(fontString, alignment, fontPath, textSize)
     if not fontString then

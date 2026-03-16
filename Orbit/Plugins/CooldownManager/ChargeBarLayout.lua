@@ -48,7 +48,7 @@ function Layout:BuildChargeButtons(frame, maxCharges)
             btn.Bar:SetAllPoints()
             btn.Bar:SetMinMaxValues(i - 1, i)
             btn.Bar:SetValue(0)
-            btn.Bar:SetFrameLevel(btn:GetFrameLevel() + 2)
+            btn.Bar:SetFrameLevel(btn:GetFrameLevel() + Constants.Levels.StatusBar)
             frame.buttons[i] = btn
         end
         frame.buttons[i].Bar:SetMinMaxValues(i - 1, i)
@@ -149,12 +149,9 @@ function Layout:SkinChargeButtons(plugin, frame, maxCharges, totalWidth, height,
         Orbit.Skin:SkinStatusBar(btn.Bar, texture, barColor)
         if btn.Bar.Overlay then btn.Bar.Overlay:Hide() end
 
-        if not btn.orbitBackdrop then
-            btn.orbitBackdrop = Orbit.Skin:CreateBackdrop(btn, nil)
-            btn.orbitBackdrop:SetFrameLevel(btn:GetFrameLevel() + Constants.Levels.Highlight)
-            btn.orbitBackdrop:SetBackdrop(nil)
-        end
-        Orbit.Skin:SkinBorder(btn, btn.orbitBackdrop, borderSize, { r = 0, g = 0, b = 0, a = 1 })
+        -- Hide stale orbitBackdrop if present
+        if btn.orbitBackdrop then btn.orbitBackdrop:Hide() end
+        Orbit.Skin:SkinBorder(btn, btn, borderSize)
 
         OrbitEngine.Pixel:Enforce(btn)
     end
@@ -163,13 +160,13 @@ function Layout:SkinChargeButtons(plugin, frame, maxCharges, totalWidth, height,
     OrbitEngine.TickMixin:Apply(frame, tickSize, height, frame.RechargeSegment)
 
     local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
-    local positions = plugin:GetSetting(sysIndex, "ComponentPositions") or {}
+    local positions = plugin:GetComponentPositions(sysIndex)
     local pos = positions["ChargeCount"] or {}
     local overrides = pos.overrides or {}
     local LSM = LibStub("LibSharedMedia-3.0", true)
     local fontName = plugin:GetSetting(sysIndex, "Font")
     local fontPath = LSM and LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
-    local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
+    local textSize = 18
     OrbitEngine.OverrideUtils.ApplyOverrides(frame.CountText, overrides, { fontSize = textSize, fontPath = fontPath })
     if ApplyTextPosition then
         ApplyTextPosition(frame.CountText, frame, pos)

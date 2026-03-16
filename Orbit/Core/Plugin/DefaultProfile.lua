@@ -423,6 +423,10 @@ Orbit.Profile.defaults = {
                     },
                 },
             },
+            ["Orbit_Tour"] = {
+                ["A"] = { Width = 150, Height = 50 },
+                ["B"] = { Width = 150, Height = 50 },
+            },
             ["Orbit_RaidFrames"] = {
                 [1] = {
                     GroupsPerRow = 6,

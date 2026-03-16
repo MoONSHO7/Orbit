@@ -240,8 +240,8 @@ function CanvasMode:UpdateOrbitFrameVisual(frame)
 
         UpdateCanvasPosition()
 
-        if not CanvasMode.borderFrame._sizeHooked then
-            CanvasMode.borderFrame._sizeHooked = true
+        if not frame._orbitCanvasSizeHooked then
+            frame._orbitCanvasSizeHooked = true
             frame:HookScript("OnSizeChanged", function()
                 if CanvasMode.currentFrame == frame then UpdateCanvasPosition() end
             end)

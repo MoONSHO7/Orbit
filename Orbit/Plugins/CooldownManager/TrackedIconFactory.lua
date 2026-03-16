@@ -84,7 +84,7 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
 
     local textOverlay = CreateFrame("Frame", nil, icon)
     textOverlay:SetAllPoints()
-    textOverlay:SetFrameLevel(icon:GetFrameLevel() + 20)
+    textOverlay:SetFrameLevel(icon:GetFrameLevel() + Orbit.Constants.Levels.IconOverlay)
     icon.TextOverlay = textOverlay
 
     icon.CountText = textOverlay:CreateFontString(nil, "OVERLAY", nil, 7)
@@ -160,7 +160,7 @@ function Factory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
 
     local fontPath = plugin:GetGlobalFont()
     local baseSize = plugin:GetBaseFontSize()
-    local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+    local positions = plugin:GetComponentPositions(systemIndex)
     local OverrideUtils = OrbitEngine.OverrideUtils
     local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
 

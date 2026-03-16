@@ -36,6 +36,23 @@ local CYCLING_ATLASES = {
     },
 }
 
+local ROUND_ROLE_ATLASES = {
+    { atlas = "icons_64x64_tank" },
+    { atlas = "icons_64x64_heal" },
+    { atlas = "icons_64x64_damage" },
+}
+
+local PVP_ICON_ATLASES = {
+    default = {
+        { atlas = "QuestPortraitIcon-Alliance" },
+        { atlas = "QuestPortraitIcon-Horde" },
+    },
+    crest = {
+        { atlas = "glues-characterSelect-icon-faction-alliance-selected" },
+        { atlas = "glues-characterSelect-icon-faction-horde-selected" },
+    },
+}
+
 -- [ HELPERS ]---------------------------------------------------------------------------------------
 
 local function CreateFadeGroup(tex, fromAlpha, toAlpha)
@@ -52,24 +69,35 @@ end
 
 local function Create(container, preview, key, source, data)
     local atlases = CYCLING_ATLASES[key]
+    local overrides = data and data.overrides
+
+    -- Resolve atlas set from overrides for keys not in CYCLING_ATLASES or with style variants
+    if key == "PvpIcon" then
+        local style = (overrides and overrides.PvpIconStyle) or "default"
+        atlases = PVP_ICON_ATLASES[style] or PVP_ICON_ATLASES.default
+    elseif key == "RoleIcon" then
+        if overrides and overrides.RoleIconStyle == "round" then atlases = ROUND_ROLE_ATLASES end
+        if overrides and overrides.HideDPS then
+            local dpsAtlas = (atlases == ROUND_ROLE_ATLASES) and "icons_64x64_damage" or "UI-LFG-RoleIcon-DPS"
+            local filtered = {}
+            for _, entry in ipairs(atlases or {}) do
+                if entry.atlas ~= dpsAtlas then filtered[#filtered + 1] = entry end
+            end
+            atlases = filtered
+        end
+    end
+
     if not atlases or #atlases == 0 then return nil end
 
-    -- Filter atlases based on overrides (e.g. HideDPS for RoleIcon)
-    local overrides = data and data.overrides
-    if key == "RoleIcon" and overrides and overrides.HideDPS then
-        local filtered = {}
-        for _, entry in ipairs(atlases) do
-            if entry.atlas ~= "UI-LFG-RoleIcon-DPS" then filtered[#filtered + 1] = entry end
-        end
-        atlases = filtered
-    end
-    if #atlases == 0 then return nil end
+    container._cyclingAtlases = atlases
 
     local texA = container:CreateTexture(nil, "OVERLAY", nil, 1)
     texA:SetAllPoints(container)
     local texB = container:CreateTexture(nil, "OVERLAY", nil, 2)
     texB:SetAllPoints(container)
     texB:SetAlpha(0)
+    container._cyclingTexA = texA
+    container._cyclingTexB = texB
 
     local fadeOutA = CreateFadeGroup(texA, 1, 0)
     local fadeInA = CreateFadeGroup(texA, 0, 1)
@@ -83,8 +111,9 @@ local function Create(container, preview, key, source, data)
 
     local function Crossfade()
         if not container:IsShown() then return end
-        cycleIndex = (cycleIndex % #atlases) + 1
-        incoming:SetAtlas(atlases[cycleIndex].atlas, false)
+        local a = container._cyclingAtlases
+        cycleIndex = (cycleIndex % #a) + 1
+        incoming:SetAtlas(a[cycleIndex].atlas, false)
         activeOut:Play()
         incomingIn:Play()
         active, incoming = incoming, active

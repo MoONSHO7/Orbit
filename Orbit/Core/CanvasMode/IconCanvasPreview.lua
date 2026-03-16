@@ -20,10 +20,9 @@ function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTextur
 
     local borderSize = Orbit.db.GlobalSettings.BorderSize
     local borderPixels = OrbitEngine.Pixel:Multiple(borderSize)
-    local contentW = width - (borderPixels * 2)
-    local contentH = height - (borderPixels * 2)
-    preview.sourceWidth = contentW
-    preview.sourceHeight = contentH
+    preview.sourceWidth = width
+    preview.sourceHeight = height
+    preview.borderInset = borderPixels
     preview.previewScale = 1
     preview.components = {}
 
@@ -32,10 +31,9 @@ function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTextur
     icon:SetTexture(iconTexture)
 
     local backdrop = { bgFile = "Interface\\BUTTONS\\WHITE8x8", insets = { left = 0, right = 0, top = 0, bottom = 0 } }
-    if borderSize > 0 then backdrop.edgeFile = "Interface\\BUTTONS\\WHITE8x8"; backdrop.edgeSize = borderPixels end
     preview:SetBackdrop(backdrop)
     preview:SetBackdropColor(0, 0, 0, 0)
-    if borderSize > 0 then preview:SetBackdropBorderColor(0, 0, 0, 1) end
+    Orbit.Skin:SkinBorder(preview, preview, borderSize, nil, true)
 
     return preview
 end
@@ -79,7 +77,7 @@ function IconCanvasPreview:AttachTextComponents(preview, textComponents, savedPo
         if CreateDraggableComponent then
             local comp = CreateDraggableComponent(preview, def.key, fs, startX, startY, data)
             if comp then
-                comp:SetFrameLevel(preview:GetFrameLevel() + 10)
+                comp:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
                 preview.components[def.key] = comp
                 fs:Hide()
             end

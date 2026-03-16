@@ -31,12 +31,13 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
     local container = frame[containerKey]
     container:SetParent(frame)
     container:SetFrameStrata("MEDIUM")
-    container:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
+    container:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Border)
     container:Show()
     local helpers = cfg.helpers()
     local frameW, frameH = frame:GetWidth(), frame:GetHeight()
     local position = helpers:AnchorToPosition(posData.posX, posData.posY, frameW / 2, frameH / 2)
-    local iconSize, _, iconsPerRow, containerW, containerH, iconsPerCol = AL:CalculateSmartLayout(frameW, frameH, position, numIcons, numIcons, overrides)
+    local scale = frame:GetEffectiveScale() or 1
+    local iconSize, _, iconsPerRow, containerW, containerH, iconsPerCol = AL:CalculateSmartLayout(frameW, frameH, position, numIcons, numIcons, overrides, scale)
     container:SetSize(containerW, containerH)
     container:ClearAllPoints()
     local anchorX = posData.anchorX or (cfg.defaultAnchorX or "RIGHT")
@@ -80,7 +81,7 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
             icon.Cooldown.Text = timerText
         end
         if timerText and timerText.SetFont then
-            timerText:SetFont(fontPath, Orbit.Skin:GetAdaptiveTextSize(iconSize, 8, nil, 0.45), fontOutline)
+            timerText:SetFont(fontPath, 8, fontOutline)
         end
         icon.Cooldown:SetHideCountdownNumbers(iconSize < PREVIEW_TIMER_MIN_SIZE)
         if Orbit.PreviewAnimator:IsRunning() then
@@ -151,7 +152,8 @@ function AP:ShowPrivateAuras(frame, posData, baseIconSize)
     if not paa then return end
     local overrides = posData and posData.overrides
     local paaScale = (overrides and overrides.Scale) or 1
-    local iconSize = math.floor(baseIconSize * paaScale)
+    paa:SetScale(paaScale)
+    local iconSize = baseIconSize
     local totalWidth = (PREVIEW_PAA_COUNT * iconSize) + ((PREVIEW_PAA_COUNT - 1) * PREVIEW_PAA_SPACING)
     local anchorX = (posData and posData.anchorX) or "CENTER"
     local paaTexture = Orbit.StatusIconMixin:GetPrivateAuraTexture()

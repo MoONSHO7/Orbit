@@ -25,15 +25,20 @@ Core\Shared\Shared.xml
 Core\Infrastructure\Infrastructure.xml
 Core\Plugin\Plugin.xml
 Core\Color\Color.xml
+Core\Config\ChangelogData.lua
 Core\Config\Config.xml
 Core\EditMode\EditMode.xml
+Core\Onboarding\Onboarding.xml
 Core\UnitDisplay\UnitButton\UnitButton.xml
 Core\UnitDisplay\UnitDisplay.xml
 Core\Plugin\Profiles.xml
 Core\API.lua
 Core\EditMode\Preview\Preview.xml
 Core\CanvasMode\CanvasMode.xml
+Core\CanvasMode\ComponentSettingsSchema.lua
+Core\CanvasMode\ComponentSettingsWidgets.lua
 Core\CanvasMode\ComponentSettings.lua
+Core\CanvasMode\ComponentSettingsPreview.lua
 Core\Skinning\Skins.xml
 
 # ==============================================================

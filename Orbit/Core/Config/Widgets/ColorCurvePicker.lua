@@ -48,6 +48,13 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
                 hasOpacity = true,
                 forceSingleColor = self.singleColorMode,
                 hasDesaturation = self.hasDesaturation,
+                onOpen = function(picker)
+                    local as = Orbit.db and Orbit.db.AccountSettings
+                    if as and not as.ColorPickerTourComplete then
+                        as.ColorPickerTourComplete = true
+                        C_Timer.After(0.1, function() if picker:IsOpen() then picker:StartTour() end end)
+                    end
+                end,
                 callback = function(result, wasCancelled)
                     if wasCancelled then return end
                     if result and result.pins and #result.pins > 0 then

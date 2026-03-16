@@ -2,22 +2,22 @@
 -- Per-component updaters and creators: Clock, Coords, ZoomButtons, ZoneText, CalendarInvites.
 
 ---@type Orbit
-local Orbit                  = Orbit
-local OrbitEngine            = Orbit.Engine
-local C                      = Orbit.MinimapConstants
+local Orbit = Orbit
+local OrbitEngine = Orbit.Engine
+local C = Orbit.MinimapConstants
 
-local SYSTEM_ID              = C.SYSTEM_ID
-local MASK_SQUARE            = C.MASK_SQUARE
-local MASK_ROUND             = C.MASK_ROUND
-local CLOCK_UPDATE_INTERVAL  = C.CLOCK_UPDATE_INTERVAL
+local SYSTEM_ID = C.SYSTEM_ID
+local MASK_SQUARE = C.MASK_SQUARE
+local MASK_ROUND = C.MASK_ROUND
+local CLOCK_UPDATE_INTERVAL = C.CLOCK_UPDATE_INTERVAL
 local COORDS_UPDATE_INTERVAL = C.COORDS_UPDATE_INTERVAL
-local ZOOM_BUTTON_W          = C.ZOOM_BUTTON_W
-local ZOOM_BUTTON_IN_H       = C.ZOOM_BUTTON_IN_H
-local ZOOM_BUTTON_OUT_H      = C.ZOOM_BUTTON_OUT_H
-local ZOOM_FADE_IN           = C.ZOOM_FADE_IN
-local ZOOM_FADE_OUT          = C.ZOOM_FADE_OUT
+local ZOOM_BUTTON_W = C.ZOOM_BUTTON_W
+local ZOOM_BUTTON_IN_H = C.ZOOM_BUTTON_IN_H
+local ZOOM_BUTTON_OUT_H = C.ZOOM_BUTTON_OUT_H
+local ZOOM_FADE_IN = C.ZOOM_FADE_IN
+local ZOOM_FADE_OUT = C.ZOOM_FADE_OUT
 
-local Plugin                 = Orbit:GetPlugin(SYSTEM_ID)
+local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
 -- [ SHAPE ]----------------------------------------------------------------------------------------
 
@@ -75,11 +75,11 @@ end
 
 local ZONE_PVP_COLORS = {
     sanctuary = { r = 0.41, g = 0.80, b = 0.94 },
-    friendly  = { r = 0.10, g = 1.00, b = 0.10 },
-    hostile   = { r = 1.00, g = 0.10, b = 0.10 },
+    friendly = { r = 0.10, g = 1.00, b = 0.10 },
+    hostile = { r = 1.00, g = 0.10, b = 0.10 },
     contested = { r = 1.00, g = 0.70, b = 0.00 },
 }
-Plugin.ZonePVPColors  = ZONE_PVP_COLORS -- shared with Minimap.lua for tooltip colouring
+Plugin.ZonePVPColors = ZONE_PVP_COLORS -- shared with Minimap.lua for tooltip colouring
 
 function Plugin:UpdateZoneText(button, coloring, overrides)
     local fontString = button.Text or button
@@ -115,7 +115,9 @@ function Plugin:UpdateClock()
 end
 
 function Plugin:StartClockTicker()
-    if self._clockTicker then return end
+    if self._clockTicker then
+        return
+    end
     self._clockTicker = C_Timer.NewTicker(CLOCK_UPDATE_INTERVAL, function() self:UpdateClock() end)
 end
 
@@ -146,7 +148,9 @@ function Plugin:UpdateCoords()
 end
 
 function Plugin:StartCoordsTicker()
-    if self._coordsTicker then return end
+    if self._coordsTicker then
+        return
+    end
     self._coordsTicker = C_Timer.NewTicker(COORDS_UPDATE_INTERVAL, function() self:UpdateCoords() end)
 end
 
@@ -266,14 +270,18 @@ end
 
 function Plugin:StartAutoZoomOut()
     local delay = self:GetSetting(SYSTEM_ID, "AutoZoomOutDelay") or 0
-    if delay <= 0 then return end
+    if delay <= 0 then
+        return
+    end
 
     self:CancelAutoZoomOut()
 
     self._autoZoomTimer = C_Timer.NewTimer(delay, function()
         self._autoZoomTimer = nil
         local minimap = self:GetBlizzardMinimap()
-        if not minimap then return end
+        if not minimap then
+            return
+        end
         -- Step zoom out one level at a time until we reach 0
         local function StepOut()
             local zoom = minimap:GetZoom()

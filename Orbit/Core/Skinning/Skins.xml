@@ -1,5 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <Script file="Skin.lua"/>
+    <Script file="HighlightBorder.lua"/>
+    <Script file="GroupBorder.lua"/>
     <Script file="Masque.lua"/>
     <Script file="IconLayout.lua"/>
     <Script file="IconMonitor.lua"/>

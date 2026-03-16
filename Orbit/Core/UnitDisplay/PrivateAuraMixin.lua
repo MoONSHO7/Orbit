@@ -5,6 +5,7 @@ local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local GF = Orbit.Constants.GroupFrames
 local MAX_PRIVATE_AURA_ANCHORS = GF.MaxPrivateAuraAnchors
+local BORDER_INSET = 2
 
 Orbit.PrivateAuraMixin = {}
 local Mixin = Orbit.PrivateAuraMixin
@@ -26,27 +27,26 @@ function Mixin:CreateAnchors(frame, plugin, iconSize)
 
     local positions = plugin.GetSetting and plugin:GetSetting(1, "ComponentPositions") or {}
     local posData = positions.PrivateAuraAnchor or {}
-    local overrides = posData.overrides
-    local scale = (overrides and overrides.Scale) or 1
-    local size = math.floor(iconSize * scale)
+    local size = iconSize
+    local cellSize = size + BORDER_INSET * 2
     local spacing = 1
-    local totalWidth = (MAX_PRIVATE_AURA_ANCHORS * size) + ((MAX_PRIVATE_AURA_ANCHORS - 1) * spacing)
+    local totalWidth = (MAX_PRIVATE_AURA_ANCHORS * cellSize) + ((MAX_PRIVATE_AURA_ANCHORS - 1) * spacing)
     local anchorX = posData.anchorX or "CENTER"
     local eff = frame:GetEffectiveScale()
 
-    anchor:SetSize(totalWidth, size)
+    anchor:SetSize(totalWidth, cellSize)
 
     for i = 1, MAX_PRIVATE_AURA_ANCHORS do
         local point, relPoint, xOff
         if anchorX == "RIGHT" then
-            xOff = OrbitEngine.Pixel:Snap(-((i - 1) * (size + spacing)), eff)
+            xOff = OrbitEngine.Pixel:Snap(-((i - 1) * (cellSize + spacing)), eff)
             point, relPoint = "TOPRIGHT", "TOPRIGHT"
         elseif anchorX == "LEFT" then
-            xOff = OrbitEngine.Pixel:Snap((i - 1) * (size + spacing), eff)
+            xOff = OrbitEngine.Pixel:Snap((i - 1) * (cellSize + spacing), eff)
             point, relPoint = "TOPLEFT", "TOPLEFT"
         else
-            local centeredStart = -(totalWidth - size) / 2
-            xOff = OrbitEngine.Pixel:Snap(centeredStart + (i - 1) * (size + spacing), eff)
+            local centeredStart = -(totalWidth - cellSize) / 2
+            xOff = OrbitEngine.Pixel:Snap(centeredStart + (i - 1) * (cellSize + spacing), eff)
             point, relPoint = "CENTER", "CENTER"
         end
         local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
@@ -55,7 +55,6 @@ function Mixin:CreateAnchors(frame, plugin, iconSize)
             iconInfo = {
                 iconWidth = size, iconHeight = size,
                 iconAnchor = { point = point, relativeTo = anchor, relativePoint = relPoint, offsetX = xOff, offsetY = 0 },
-                borderScale = 0,
             },
         })
         if anchorID then frame._privateAuraIDs[#frame._privateAuraIDs + 1] = anchorID end

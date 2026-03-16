@@ -145,7 +145,7 @@ function Plugin:OnLoad()
     if not self.frame.OverlayFrame then
         self.frame.OverlayFrame = CreateFrame("Frame", nil, self.frame)
         self.frame.OverlayFrame:SetAllPoints()
-        self.frame.OverlayFrame:SetFrameLevel(self.frame:GetFrameLevel() + 20)
+        self.frame.OverlayFrame:SetFrameLevel(self.frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     end
 
     -- Create LevelText (on overlay frame so it stays above health bars)
@@ -413,15 +413,15 @@ function Plugin:ApplySettings(frame)
     local classColour = true -- Enforced
     frame:SetClassColour(classColour)
 
-    -- Restore positions before visuals (SetFont in overrides clobbers text color)
-    local isInCanvasMode = OrbitEngine.CanvasMode:IsActive(frame)
-    if not isInCanvasMode then
-        local savedPositions = self:GetSetting(systemIndex, "ComponentPositions")
-        if savedPositions then
-            OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
-            if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
-        end
+    -- Restore component positions (Transaction-aware for live canvas preview)
+    local savedPositions = self:GetComponentPositions(systemIndex)
+    if savedPositions and next(savedPositions) then
+        OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
     end
+    
+    -- Component positions + style overrides (positions, font, color, scale)
+    -- Must run unconditionally to restore overrides after ApplyBaseVisuals resets text
+    if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
 
     self:UpdateVisualsExtended(frame, systemIndex)
     self:UpdateCombatIcon(frame, self)
@@ -433,9 +433,6 @@ function Plugin:ApplySettings(frame)
     self:UpdatePvpIcon(frame, self)
     self:UpdateRestingIcon(frame)
     frame:UpdatePortrait()
-
-    local healthTextMode = self:GetSetting(systemIndex, "HealthTextMode") or "percent_short"
-    if frame.SetHealthTextMode then frame:SetHealthTextMode(healthTextMode) end
 
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
     Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover)

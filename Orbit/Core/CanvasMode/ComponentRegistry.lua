@@ -33,8 +33,9 @@ local selectedComponent = nil -- Currently selected component for nudge
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
-local SNAP_SIZE = 5
-local EDGE_THRESHOLD = 3
+local SnapEngine = Engine.CanvasMode.SnapEngine
+local SNAP_OPTIONS = { edgeThreshold = SnapEngine.EDGE_THRESHOLD, gridSize = SnapEngine.SNAP_SIZE }
+local PRECISION_OPTIONS = { precisionMode = true }
 
 -- [ DRAG MECHANICS ]--------------------------------------------------------------------------------
 
@@ -61,49 +62,12 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
     centerRelY = math.max(-halfH - PADDING, math.min(centerRelY, halfH + PADDING))
 
     local snapX, snapY = nil, nil
-    local compWidth = SafeGetSize(component)
+    local compWidth, compHeight = SafeGetSize(component)
     local compHalfW = compWidth / 2
+    local compHalfH = compHeight / 2
 
-    if IsShiftKeyDown() then
-        -- Precision mode: no snapping
-    else
-        -- Edge Magnet X (0px flush)
-        local distRight = math.abs((centerRelX + compHalfW) - halfW)
-        local distLeft = math.abs((centerRelX - compHalfW) + halfW)
-        if distRight <= EDGE_THRESHOLD then
-            centerRelX = halfW - compHalfW
-            snapX = "RIGHT"
-        elseif distLeft <= EDGE_THRESHOLD then
-            centerRelX = -halfW + compHalfW
-            snapX = "LEFT"
-        elseif math.abs(centerRelX) <= EDGE_THRESHOLD then
-            centerRelX = 0
-            snapX = "CENTER"
-        end
-        if not snapX then
-            centerRelX = math.floor(centerRelX / SNAP_SIZE + 0.5) * SNAP_SIZE
-        end
-
-        -- Edge Magnet Y
-        local distTop = math.abs((centerRelY + (component:GetHeight() or 0) / 2) - halfH)
-        local distBottom = math.abs((centerRelY - (component:GetHeight() or 0) / 2) + halfH)
-        local compHalfH = (component:GetHeight() or 0) / 2
-        if distTop <= EDGE_THRESHOLD then
-            centerRelY = halfH - compHalfH
-            snapY = "TOP"
-        elseif distBottom <= EDGE_THRESHOLD then
-            centerRelY = -halfH + compHalfH
-            snapY = "BOTTOM"
-        elseif math.abs(centerRelY) <= EDGE_THRESHOLD then
-            centerRelY = 0
-            snapY = "CENTER"
-        end
-        if not snapY then
-            centerRelY = math.floor(centerRelY / SNAP_SIZE + 0.5) * SNAP_SIZE
-        end
-    end
-
-
+    local snapOpts = IsShiftKeyDown() and PRECISION_OPTIONS or SNAP_OPTIONS
+    centerRelX, centerRelY, snapX, snapY = SnapEngine:Calculate(centerRelX, centerRelY, halfW, halfH, compHalfW, compHalfH, snapOpts)
 
     if Engine.SmartGuides and data.guides then
         Engine.SmartGuides:Update(data.guides, snapX, snapY, parentWidth, parentHeight)
@@ -121,11 +85,26 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
         local selfAnchor = BuildComponentSelfAnchor(false, true, selfAnchorY, justifyH)
         local anchorPoint = Engine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
         local finalX, finalY = edgeOffX, edgeOffY
-        if anchorX == "RIGHT" then finalX = -finalX end
-        if anchorY == "TOP" then finalY = -finalY end
+        if anchorX == "RIGHT" then
+            finalX = -finalX
+        end
+        if anchorY == "TOP" then
+            finalY = -finalY
+        end
         component:SetPoint(selfAnchor, componentParent, anchorPoint, finalX, finalY)
         if Engine.SelectionTooltip and Engine.SelectionTooltip.ShowComponentPosition then
-            Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH, selfAnchorY)
+            Engine.SelectionTooltip:ShowComponentPosition(
+                component,
+                data.key,
+                anchorX,
+                anchorY,
+                centerRelX,
+                centerRelY,
+                edgeOffX,
+                edgeOffY,
+                justifyH,
+                selfAnchorY
+            )
         end
     else
         component:SetPoint("CENTER", componentParent, "CENTER", centerRelX, centerRelY)
@@ -134,7 +113,18 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
             local compW, compH = SafeGetSize(component)
             local anchorX, anchorY, edgeOffX, edgeOffY, justifyH, selfAnchorY =
                 CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsComp, compW, compH, false)
-            Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH, selfAnchorY)
+            Engine.SelectionTooltip:ShowComponentPosition(
+                component,
+                data.key,
+                anchorX,
+                anchorY,
+                centerRelX,
+                centerRelY,
+                edgeOffX,
+                edgeOffY,
+                justifyH,
+                selfAnchorY
+            )
         end
     end
 
@@ -329,10 +319,24 @@ function ComponentDrag:MakeAuraPositionCallback(plugin, systemIndex, key)
         if compParent then
             local cx, cy = comp:GetCenter()
             local px, py = compParent:GetCenter()
-            if cx and px then posX = cx - px end
-            if cy and py then posY = cy - py end
+            if cx and px then
+                posX = cx - px
+            end
+            if cy and py then
+                posY = cy - py
+            end
         end
-        local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV, posX = posX, posY = posY, selfAnchorY = selfAnchorY }
+        local posData = {
+            anchorX = anchorX,
+            anchorY = anchorY,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            justifyH = justifyH,
+            justifyV = justifyV,
+            posX = posX,
+            posY = posY,
+            selfAnchorY = selfAnchorY,
+        }
         local Txn = GetTransaction()
         if Txn and Txn:IsActive() and Txn:GetPlugin() == plugin then
             Txn:SetPosition(key, posData)
@@ -492,44 +496,23 @@ function ComponentDrag:RestoreFramePositions(parent, positions)
                 local offsetX = pos.offsetX or 0
                 local offsetY = pos.offsetY or 0
 
-                local anchorPoint
-                if anchorY == "CENTER" and anchorX == "CENTER" then
-                    anchorPoint = "CENTER"
-                elseif anchorY == "CENTER" then
-                    anchorPoint = anchorX
-                elseif anchorX == "CENTER" then
-                    anchorPoint = anchorY
-                else
-                    anchorPoint = anchorY .. anchorX
-                end
-
-                local finalX = offsetX
-                local finalY = offsetY
-                if anchorX == "RIGHT" then
-                    finalX = -offsetX
-                end
-                if anchorY == "TOP" then
-                    finalY = -offsetY
-                end
+                local anchorPoint = (anchorY == "CENTER" and anchorX == "CENTER") and "CENTER"
+                    or anchorY == "CENTER" and anchorX
+                    or anchorX == "CENTER" and anchorY
+                    or anchorY .. anchorX
+                local finalX = anchorX == "RIGHT" and -offsetX or offsetX
+                local finalY = anchorY == "TOP" and -offsetY or offsetY
 
                 component:ClearAllPoints()
-
                 if pos.justifyH and component.SetJustifyH then
                     component:SetJustifyH(pos.justifyH)
                 end
-
                 local selfAnchorY = pos.selfAnchorY or anchorY
                 local selfAnchor = BuildComponentSelfAnchor(data.isFontString, data.isAuraContainer, selfAnchorY, pos.justifyH)
-                
                 local s = component:GetScale() or 1
                 component:SetPoint(selfAnchor, componentParent, anchorPoint, (s > 0) and (finalX / s) or finalX, (s > 0) and (finalY / s) or finalY)
-
-                data.anchorX = anchorX
-                data.anchorY = anchorY
-                data.selfAnchorY = selfAnchorY
-                data.offsetX = offsetX
-                data.offsetY = offsetY
-                data.justifyH = pos.justifyH
+                data.anchorX, data.anchorY, data.selfAnchorY, data.offsetX, data.offsetY, data.justifyH =
+                    anchorX, anchorY, selfAnchorY, offsetX, offsetY, pos.justifyH
             end
 
             if data.handle then

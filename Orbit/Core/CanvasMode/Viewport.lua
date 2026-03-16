@@ -62,21 +62,25 @@ Dialog.BorderOverlay:SetAllPoints()
 Dialog.BorderOverlay:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
 
 -- [ FILTER TAB LABELS (inside viewport overlay) ]---------------------------------------
-Dialog.FilterTabBar = Dialog.BorderOverlay -- reuse overlay as logical container
+Dialog.FilterTabBar = CreateFrame("Frame", nil, Dialog.BorderOverlay)
+Dialog.FilterTabBar:SetPoint("TOPLEFT", Dialog.BorderOverlay, "TOPLEFT", 0, 0)
+Dialog.FilterTabBar:SetPoint("RIGHT", Dialog.BorderOverlay, "RIGHT", 0, 0)
+Dialog.FilterTabBar:SetHeight(FILTER_TAB_INSET * 2 + 12)
+Dialog.FilterTabBar:SetFrameLevel(Dialog.BorderOverlay:GetFrameLevel() + 1)
 Dialog.filterTabButtons = {}
 local lastFilterBtn = nil
 for _, tabName in ipairs(FILTER_TABS) do
-    local label = Dialog.BorderOverlay:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local label = Dialog.FilterTabBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     if lastFilterBtn then
         label:SetPoint("LEFT", lastFilterBtn, "RIGHT", FILTER_TAB_SPACING, 0)
     else
-        label:SetPoint("TOPLEFT", Dialog.BorderOverlay, "TOPLEFT", FILTER_TAB_INSET, -FILTER_TAB_INSET)
+        label:SetPoint("TOPLEFT", Dialog.FilterTabBar, "TOPLEFT", FILTER_TAB_INSET, -FILTER_TAB_INSET)
     end
     label:SetText(tabName)
     label.filterName = tabName
     ApplyFilterTabState(label, tabName == "All")
 
-    local hitBtn = CreateFrame("Button", nil, Dialog.BorderOverlay)
+    local hitBtn = CreateFrame("Button", nil, Dialog.FilterTabBar)
     hitBtn:SetAllPoints(label)
     hitBtn:SetScript("OnClick", function()
         Dialog.activeFilter = tabName

@@ -41,6 +41,9 @@ party frames use wow's secure group header system. `FrameFactory` creates unit b
 ## rules
 
 - frame creation and destruction must use the secure header api (no manual show/hide in combat)
+- `UpdateFrameUnits` defers to `CombatManager:QueueUpdate` during `InCombatLockdown()`
 - preview frames must match live frames exactly (authoritative visual parity)
 - party-specific aura filters go in the plugin. shared filters go in `GroupAuraFilters.lua`
 - border merging between stacked frames uses `PartyFrameHelpers`
+- selection, aggro, and dispel highlights use `Skin:ApplyHighlightBorder` (not per-frame texture creation)
+- customizable `SelectionColor` and `DispelOnlyByMe` settings available in the colors sub-tab

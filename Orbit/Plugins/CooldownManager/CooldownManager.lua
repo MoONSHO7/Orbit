@@ -116,7 +116,7 @@ function Plugin:OnLoad()
     self.utilityAnchor = self:CreateAnchor("OrbitUtilityCooldowns", UTILITY_INDEX, "Utility Cooldowns")
     self.buffIconAnchor = self:CreateAnchor("OrbitBuffIconCooldowns", BUFFICON_INDEX, "Buff Icons")
     self.buffBarAnchor = self:CreateAnchor("OrbitBuffBarCooldowns", BUFFBAR_INDEX, "Buff Bars",
-        { horizontal = false, vertical = true, syncScale = true, syncDimensions = true })
+        { horizontal = false, vertical = true, syncScale = true, syncDimensions = true, mergeBorders = true })
     self.buffBarAnchor.orbitNoGroupSelect = true
     self.trackedAnchor = self:CreateTrackedAnchor("OrbitTrackedCooldowns", TRACKED_INDEX, "Tracked Cooldowns")
 
@@ -182,11 +182,11 @@ function Plugin:OnLoad()
 
         -- Border
         local borderSize = Orbit.db.GlobalSettings.BorderSize or 1
-        Orbit.Skin:SkinBorder(preview, preview, borderSize, { r = 0, g = 0, b = 0, a = 1 }, true)
+        Orbit.Skin:SkinBorder(preview, preview, borderSize)
 
         -- Text sources
         local fontPath = buffBarPlugin:GetGlobalFont()
-        local textSize = Orbit.Skin:GetAdaptiveTextSize(barH, 8, 14, 0.55)
+        local textSize = 8
         local name = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         name:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
         name:SetPoint("LEFT", preview, "LEFT", iconSize + 5, 0)
@@ -296,6 +296,11 @@ function Plugin:UpdateVisibility()
             childData.frame:SetAlpha(alpha)
         end
     end
+    if not shouldHide then
+        for _, data in pairs(VIEWER_MAP) do
+            if data.anchor then self:ProcessChildren(data.anchor) end
+        end
+    end
 end
 
 -- [ ANCHOR CREATION ]-------------------------------------------------------------------------------
@@ -307,7 +312,7 @@ function Plugin:CreateAnchor(name, systemIndex, label, overrideOptions)
     frame.systemIndex = systemIndex
     frame.editModeName = label
     frame:EnableMouse(false)
-    frame.anchorOptions = overrideOptions or { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true }
+    frame.anchorOptions = overrideOptions or { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true, mergeBorders = true }
     frame.orbitChainSync = true
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 
@@ -446,8 +451,8 @@ function Plugin:OnDisable()
         self.chargeUpdateTicker:Cancel()
         self.chargeUpdateTicker = nil
     end
-    if self._pandemicTicker then
-        self._pandemicTicker:Cancel()
-        self._pandemicTicker = nil
+    if self._oocThrottleTimer then
+        self._oocThrottleTimer:Cancel()
+        self._oocThrottleTimer = nil
     end
 end

@@ -95,7 +95,7 @@ function ABS:Apply(button, settings)
         autoCast:ClearAllPoints()
         autoCast:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 1)
         autoCast:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 1, -1)
-        autoCast:SetFrameLevel(button:GetFrameLevel() + 10)
+        autoCast:SetFrameLevel(button:GetFrameLevel() + Constants.Levels.IconOverlay)
         if autoCast.Shine then autoCast.Shine:ClearAllPoints(); autoCast.Shine:SetAllPoints(autoCast) end
         if autoCast.Corners then autoCast.Corners:ClearAllPoints(); autoCast.Corners:SetAllPoints(autoCast) end
     end
@@ -181,7 +181,7 @@ function ABS:Apply(button, settings)
     if not button.orbitKeypressFlash then
         local flashFrame = CreateFrame("Frame", nil, button)
         flashFrame:SetAllPoints(button)
-        flashFrame:SetFrameLevel(button:GetFrameLevel() + 3)
+        flashFrame:SetFrameLevel(button:GetFrameLevel() + Constants.Levels.IconOverlay)
         flashFrame:Hide()
         local flash = flashFrame:CreateTexture(nil, "OVERLAY", nil, 7)
         flash:SetAllPoints(flashFrame)
@@ -208,17 +208,62 @@ function ABS:Apply(button, settings)
         end)
     end
 
-    if button.FlyoutArrow then
-        if not button.orbitOverlayFrame then
-            button.orbitOverlayFrame = CreateFrame("Frame", nil, button)
-            button.orbitOverlayFrame:SetAllPoints(button)
-            button.orbitOverlayFrame:SetFrameStrata("TOOLTIP")
-            button.orbitOverlayFrame:SetFrameLevel(100)
+    if button.Arrow then
+        if not button.orbitFlyoutOverlay then
+            local overlay = CreateFrame("Frame", nil, button)
+            overlay:SetAllPoints(button)
+            local arrow = overlay:CreateTexture(nil, "OVERLAY", nil, 7)
+            arrow:SetAtlas(button.arrowNormalTexture or "UI-HUD-ActionBar-Flyout")
+            arrow:SetSize(button.arrowMainAxisSize or 15, button.arrowCrossAxisSize or 6)
+            overlay.arrow = arrow
+            button.orbitFlyoutOverlay = overlay
         end
-        button.FlyoutArrow:SetParent(button.orbitOverlayFrame)
-        button.FlyoutArrow:ClearAllPoints()
-        button.FlyoutArrow:SetPoint("TOP", button.orbitOverlayFrame, "TOP", 0, 2)
-        if button.FlyoutBorderShadow then button.FlyoutBorderShadow:SetParent(button.orbitOverlayFrame) end
+        local overlay = button.orbitFlyoutOverlay
+        overlay:SetFrameLevel(button:GetFrameLevel() + Constants.Levels.Tooltip)
+        overlay.arrow:SetShown(button.Arrow:IsShown())
+        button.Arrow:SetAlpha(0)
+        if button.BorderShadow then button.BorderShadow:SetAlpha(0) end
+        if not button.orbitFlyoutHooked then
+            local function SyncArrow(self)
+                local ov = self.orbitFlyoutOverlay
+                if not ov then return end
+                ov.arrow:SetShown(self.Arrow:IsShown())
+                self.Arrow:SetAlpha(0)
+                if self.BorderShadow then self.BorderShadow:SetAlpha(0) end
+            end
+            local function SyncPosition(self)
+                local ov = self.orbitFlyoutOverlay
+                if not ov then return end
+                ov.arrow:ClearAllPoints()
+                local direction = self:GetPopupDirection()
+                local offset = (self.IsPopupOpen and self:IsPopupOpen()) and self.openArrowOffset or self.closedArrowOffset
+                if direction == "UP" then ov.arrow:SetPoint("TOP", ov, "TOP", 0, offset)
+                elseif direction == "DOWN" then ov.arrow:SetPoint("BOTTOM", ov, "BOTTOM", 0, -offset)
+                elseif direction == "LEFT" then ov.arrow:SetPoint("LEFT", ov, "LEFT", -offset, 0)
+                elseif direction == "RIGHT" then ov.arrow:SetPoint("RIGHT", ov, "RIGHT", offset, 0) end
+            end
+            local function SyncTexture(self)
+                local ov = self.orbitFlyoutOverlay
+                if not ov then return end
+                local atlas = self.arrowNormalTexture or "UI-HUD-ActionBar-Flyout"
+                if self.IsDown and self:IsDown() then atlas = self.arrowDownTexture or "UI-HUD-ActionBar-Flyout-Down"
+                elseif self.IsOver and self:IsOver() then atlas = self.arrowOverTexture or "UI-HUD-ActionBar-Flyout-Mouseover" end
+                ov.arrow:SetAtlas(atlas, false)
+            end
+            local function SyncRotation(self)
+                local ov = self.orbitFlyoutOverlay
+                if not ov then return end
+                local rotation = self.GetArrowRotation and self:GetArrowRotation() or 0
+                SetClampedTextureRotation(ov.arrow, rotation)
+            end
+            hooksecurefunc(button, "UpdateArrowShown", SyncArrow)
+            hooksecurefunc(button, "UpdateArrowPosition", function(self) SyncPosition(self); SyncRotation(self) end)
+            if button.UpdateArrowTexture then hooksecurefunc(button, "UpdateArrowTexture", SyncTexture) end
+            if button.UpdateArrowRotation then hooksecurefunc(button, "UpdateArrowRotation", SyncRotation) end
+            SyncPosition(button)
+            SyncRotation(button)
+            button.orbitFlyoutHooked = true
+        end
     end
 
 end

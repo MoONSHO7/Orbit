@@ -160,7 +160,7 @@ function Renderer:ApplyButtonVisuals(plugin, frame, systemIndex)
                 btn.progressBar:SetAllPoints()
                 btn.progressBar:SetMinMaxValues(0, 1)
                 btn.progressBar:SetValue(0)
-                btn.progressBar:SetFrameLevel(btn:GetFrameLevel() + 1)
+                btn.progressBar:SetFrameLevel(btn:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
                 btn.progressBar:Hide()
                 local texturePath = LSM:Fetch("statusbar", texture)
                 if texturePath then btn.progressBar:SetStatusBarTexture(texturePath) end
@@ -285,7 +285,7 @@ function Renderer:UpdateChargedOverlays(plugin, frame, systemIndex, cur, max)
             local overlay = frame.ChargedOverlays[i]
             if not overlay then
                 overlay = CreateFrame("StatusBar", nil, frame.StatusBarContainer)
-                overlay:SetFrameLevel(frame.StatusBar:GetFrameLevel() + 1)
+                overlay:SetFrameLevel(frame.StatusBar:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
                 frame.ChargedOverlays[i] = overlay
             end
             if chargedLookup[i] then

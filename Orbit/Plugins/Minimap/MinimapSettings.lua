@@ -30,7 +30,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         label = "Shape",
         options = {
             { value = "square", label = "Square" },
-            { value = "round",  label = "Round" },
+            { value = "round", label = "Round" },
         },
         default = "square",
     })
@@ -91,7 +91,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         key = "MiddleClickAction",
         label = "Middle-click",
         options = {
-            { value = "none",     label = "None" },
+            { value = "none", label = "None" },
             { value = "worldmap", label = "World Map" },
             { value = "tracking", label = "Tracking Menu" },
         },

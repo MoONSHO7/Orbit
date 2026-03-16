@@ -6,9 +6,12 @@ local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
 local C = CanvasMode.Constants
 local Layout = OrbitEngine.Layout
+local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
+local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
 
 local DOCK_OFFSET_X = 14
 local DOCK_OFFSET_Y = 8
+local EXCLUSIVE_PAIRS = { HealthText = "Status", Status = "HealthText" }
 local DOCK_ICON_ALPHA = 0.7
 local DOCK_BG_COLOR = { 0.2, 0.2, 0.2, 0.6 }
 local DOCK_BG_HOVER = { 0.3, 0.5, 0.3, 0.8 }
@@ -26,7 +29,7 @@ Dialog.DisabledDock:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + 50)
 Dialog.DisabledDock.EmptyHint = Dialog.DisabledDock:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 Dialog.DisabledDock.EmptyHint:SetPoint("CENTER", Dialog.DisabledDock, "CENTER", 0, 0)
 Dialog.DisabledDock.EmptyHint:SetText("drag here to disable")
-Dialog.DisabledDock.EmptyHint:SetTextColor(1, 1, 1, 0.8)
+Dialog.DisabledDock.EmptyHint:SetTextColor(1, 1, 1, 0.3)
 
 -- Container for dock component icons (horizontal row)
 Dialog.DisabledDock.IconContainer = CreateFrame("Frame", nil, Dialog.DisabledDock)
@@ -209,7 +212,6 @@ function Dialog:AddToDock(key, sourceComponent)
 
     -- The paladin swaps their oath; HealthText and Status can't both be on the field
     if not self._exclusiveSwapping then
-        local EXCLUSIVE_PAIRS = { HealthText = "Status", Status = "HealthText" }
         local partner = EXCLUSIVE_PAIRS[key]
         if partner and self.dockComponents[partner] then
             self._exclusiveSwapping = true
@@ -257,8 +259,33 @@ function Dialog:RestoreFromDock(key)
     self:RemoveFromDock(key)
 
     if storedComp then
+        -- Restore pre-drag position if available (drag updates posX/anchorX to cursor pos)
+        local pos = storedComp._preDragPos
+        if pos then
+            storedComp.posX = pos.posX
+            storedComp.posY = pos.posY
+            storedComp.anchorX = pos.anchorX
+            storedComp.anchorY = pos.anchorY
+            storedComp.offsetX = pos.offsetX
+            storedComp.offsetY = pos.offsetY
+            storedComp.selfAnchorY = pos.selfAnchorY
+            storedComp.justifyH = pos.justifyH
+            storedComp._preDragPos = nil
+        end
         storedComp:Show()
         Dialog.previewComponents[key] = storedComp
+        -- Re-anchor using restored position data
+        local preview = self.previewFrame
+        if preview then
+            storedComp:ClearAllPoints()
+            local anchorPoint = BuildAnchorPoint(storedComp.anchorX or "CENTER", storedComp.anchorY or "CENTER")
+            local selfAnchor = BuildComponentSelfAnchor(storedComp.isFontString, storedComp.isAuraContainer, storedComp.selfAnchorY, storedComp.justifyH)
+            local ax = storedComp.anchorX or "CENTER"
+            local ay = storedComp.anchorY or "CENTER"
+            local fx = ax == "CENTER" and (storedComp.posX or 0) or (ax == "RIGHT" and -(storedComp.offsetX or 0) or (storedComp.offsetX or 0))
+            local fy = ay == "CENTER" and (storedComp.posY or 0) or (ay == "TOP" and -(storedComp.offsetY or 0) or (storedComp.offsetY or 0))
+            storedComp:SetPoint(selfAnchor, preview, anchorPoint, fx, fy)
+        end
         if Dialog.activeFilter and Dialog.activeFilter ~= "All" then Dialog:ApplyFilter(Dialog.activeFilter) end
         return
     end
@@ -308,7 +335,6 @@ function Dialog:RestoreFromDock(key)
     end
 
     if not self._exclusiveSwapping then
-        local EXCLUSIVE_PAIRS = { HealthText = "Status", Status = "HealthText" }
         local partner = EXCLUSIVE_PAIRS[key]
         if partner and not self.dockComponents[partner] and self.previewComponents[partner] then
             self._exclusiveSwapping = true

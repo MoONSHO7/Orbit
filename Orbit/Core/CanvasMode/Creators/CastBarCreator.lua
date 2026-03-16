@@ -25,15 +25,15 @@ local CB_ICON_TEXTURE = 136243
 local CB_ICON_TEXCOORD = 0.1
 local CB_ICON_TEXCOORD_MAX = 0.9
 local CB_TEXT_SIZE_MIN = 10
-local CB_TEXT_SIZE_MAX = 18
-local CB_TEXT_SIZE_RATIO = 0.40
+
 local SUB_LEVEL_BOOST = 5
 local SUB_TEXT_MIN_WIDTH = 20
 local SUB_TEXT_PADDING = 4
 local SUB_TEXT_HEIGHT_PADDING = 2
 local SUB_PAD_X = 20
 local SUB_PAD_Y = 10
-local EDGE_THRESHOLD = 3
+local SnapEngine = OrbitEngine.CanvasMode.SnapEngine
+local SUB_SNAP_OPTIONS = { edgeThreshold = SnapEngine.EDGE_THRESHOLD }
 local CLICK_THRESHOLD = 0.3
 local DEFAULT_TEXT_OFFSET_X = 4
 
@@ -166,17 +166,7 @@ local function CreateSubText(parent, parentContainer, subKey, subPos, text, just
         local compHalfW = (s:GetWidth() or 40) / 2
         local compHalfH = (s:GetHeight() or 12) / 2
         if not IsShiftKeyDown() then
-            local distR = math.abs((relX + compHalfW) - halfW)
-            local distL = math.abs((relX - compHalfW) + halfW)
-            if distR <= EDGE_THRESHOLD then relX = halfW - compHalfW; snapX = "RIGHT"
-            elseif distL <= EDGE_THRESHOLD then relX = -halfW + compHalfW; snapX = "LEFT"
-            elseif math.abs(relX) <= EDGE_THRESHOLD then relX = 0; snapX = "CENTER" end
-
-            local distT = math.abs((relY + compHalfH) - halfH)
-            local distB = math.abs((relY - compHalfH) + halfH)
-            if distT <= EDGE_THRESHOLD then relY = halfH - compHalfH; snapY = "TOP"
-            elseif distB <= EDGE_THRESHOLD then relY = -halfH + compHalfH; snapY = "BOTTOM"
-            elseif math.abs(relY) <= EDGE_THRESHOLD then relY = 0; snapY = "CENTER" end
+            relX, relY, snapX, snapY = SnapEngine:Calculate(relX, relY, halfW, halfH, compHalfW, compHalfH, SUB_SNAP_OPTIONS)
         end
 
         if SmartGuides and s.guides then SmartGuides:Update(s.guides, snapX, snapY, parent:GetWidth(), parent:GetHeight()) end
@@ -248,13 +238,13 @@ local function Create(container, preview, key, source, data)
 
     local borderSize = plugin and (plugin:GetSetting(sysIdx, "BorderSize") or plugin:GetPlayerSetting("BorderSize"))
         or Orbit.Engine.Pixel:DefaultBorderSize(UIParent:GetEffectiveScale() or 1)
-    if Orbit.Skin and Orbit.Skin.SkinBorder then Orbit.Skin:SkinBorder(bar, bar, borderSize, nil, true) end
+    if Orbit.Skin and Orbit.Skin.SkinBorder then Orbit.Skin:SkinBorder(bar, bar, borderSize) end
 
     local fontName = plugin and (plugin:GetSetting(sysIdx, "Font") or plugin:GetPlayerSetting("Font"))
     local fontPath = fontName and LSM:Fetch("font", fontName)
         or LSM:Fetch("font", Orbit.db.GlobalSettings.Font)
         or Orbit.Constants.Settings.Font.FallbackPath
-    local cbTextSize = Orbit.Skin:GetAdaptiveTextSize(cbHeight, CB_TEXT_SIZE_MIN, CB_TEXT_SIZE_MAX, CB_TEXT_SIZE_RATIO)
+    local cbTextSize = CB_TEXT_SIZE_MIN
     local fontFlags = Orbit.Skin:GetFontOutline()
 
     local subData = data and data.subComponents or {}

@@ -16,7 +16,7 @@ local GUIDE_COLORS = {
     BOTTOM = { 0.8, 0.4, 1.0, 0.9 },
     CENTER = { 0.2, 0.9, 0.85, 0.9 },
 }
-local GUIDE_THICKNESS = 2
+local GUIDE_THICKNESS = 1
 
 -- [ CREATE ]----------------------------------------------------------------------------------------
 

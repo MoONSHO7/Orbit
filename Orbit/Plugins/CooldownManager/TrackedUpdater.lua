@@ -359,7 +359,7 @@ function Updater:StartTrackedUpdateTicker(plugin)
         end
     end
     local pollAccum = 0
-    local POLL_INTERVAL = 0.15
+    local POLL_INTERVAL = 0.3
     frame:SetScript("OnUpdate", function(_, elapsed)
         pollAccum = pollAccum + elapsed
         if pollAccum < POLL_INTERVAL then return end

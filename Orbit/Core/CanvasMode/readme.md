@@ -31,6 +31,7 @@ CanvasMode/
   ComponentRegistry.lua   -- component registration, drag mechanics, position callbacks, nudge
   ComponentHandle.lua     -- drag handle creation and pooling for components
   ComponentHelpers.lua    -- safe size/position utilities (WoW 12.0+ secret value handling)
+  SnapEngine.lua          -- unified edge-magnet and grid-round snap logic
   SmartGuides.lua         -- visual snap feedback lines (edge/center alignment)
   OverrideUtils.lua       -- per-component override read/write helpers
   Init.lua                -- canvas mode initialization and constants
@@ -39,8 +40,12 @@ CanvasMode/
   DialogActions.lua       -- dialog button handlers (apply, reset, cancel)
   Viewport.lua            -- viewport controls (zoom, pan, sync toggle, preview switching)
   Dock.lua                -- disabled component dock (drag-to-disable, click-to-restore)
+  CanvasModeTour.lua      -- guided tour explaining Canvas Mode features
   CanvasModeDrag.lua      -- intra-dialog component drag-and-drop
-  ComponentSettings.lua   -- per-component settings panel (font, size, color, position overrides)
+  ComponentSettings.lua         -- per-component settings core (open/close, value routing, layout)
+  ComponentSettingsSchema.lua   -- schema definitions, presets, titles, type detection
+  ComponentSettingsWidgets.lua  -- widget creation helpers (slider, checkbox, font, color)
+  ComponentSettingsPreview.lua  -- preview renderers (portrait, cast bar, health text) + style applicators
   Creators/               -- component creator registry (how to build draggable previews per type)
     Registry.lua
     AuraCreator.lua
@@ -52,13 +57,59 @@ CanvasMode/
     TextureCreator.lua
 ```
 
-## adding a new component type to canvas mode
+## plugin onboarding contract
 
-see `Creators/Registry.lua` for the full pattern. in brief:
+### required plugin fields
 
-1. create a creator function in `Creators/`
-2. register it via `OrbitEngine.CanvasMode.RegisterCreator(key, creatorFn)`
-3. the creator receives the source component and returns a draggable preview
+| field | type | description |
+|-------|------|-------------|
+| `canvasMode` | `true` | enables canvas mode for this plugin. set on the plugin table. |
+
+### optional plugin fields
+
+| field | type | description |
+|-------|------|-------------|
+| `supportsGlobalSync` | `boolean` | multi-instance plugins (e.g. ActionBars) where one layout applies to all instances. enables the sync toggle UI. |
+| `defaults.ComponentPositions` | `table` | default positions per component key. used by "reset positions" in canvas mode. |
+| `defaults.DisabledComponents` | `table` | default disabled component keys. used by "reset positions". |
+
+### lifecycle hooks (from PluginMixin)
+
+these are already provided by `PluginMixin`. only override if you need plugin-specific behavior.
+
+| hook | default behavior | when to override |
+|------|------------------|------------------|
+| `OnCanvasApply()` | calls `ApplySettings()` + `SchedulePreviewUpdate()` | group frames that delegate to `GroupCanvasRegistration` |
+| `IsComponentDisabled(key)` | checks `DisabledComponents` setting (respects active transaction) | plugins with non-standard disabled storage (e.g. CooldownManager) |
+| `GetComponentPositions(sysIdx)` | reads `ComponentPositions` (respects active transaction) | never — use the mixin default |
+
+### settings contract
+
+canvas mode reads and writes these settings keys per `systemIndex`:
+
+| key | type | written by |
+|-----|------|------------|
+| `ComponentPositions` | `{[key] = {anchorX, anchorY, offsetX, offsetY, justifyH, posX, posY}}` | Apply |
+| `DisabledComponents` | `{key, key, ...}` | Apply |
+| `UseGlobalTextStyle` | `boolean` | Apply (sync toggle) |
+| `GlobalComponentPositions` | same as ComponentPositions | Apply (when synced) |
+| `GlobalDisabledComponents` | same as DisabledComponents | Apply (when synced) |
+
+per-component overrides (font, size, color) are written via `ComponentSettings:FlushPendingPluginSettings()`.
+
+### 4-step onboarding
+
+1. **set the flag**: `Plugin.canvasMode = true` on your plugin table
+2. **register components**: your plugin's `ApplySettings` must call `PositionUtils.ApplyTextPosition` or equivalent for each positioned component. canvas mode will generate position data that these functions consume.
+3. **provide defaults** (optional): set `Plugin.defaults.ComponentPositions` and `Plugin.defaults.DisabledComponents` to enable the "reset positions" button.
+4. **add a creator** (only if new component type): follow [canvas-creators SKILL.md](file:///c:/Users/benmo/Documents/git/.agent/skills/canvas-creators/SKILL.md) to register a new creator type in `Creators/`.
+
+### component key naming
+
+- PascalCase: `HealthText`, `CastBar`, `StatusIcons`
+- sub-components use dot notation: `CastBar.Text`, `CastBar.Timer`
+- aura containers: `Buffs`, `Debuffs`
+- icons: `DefensiveIcon`, `CrowdControlIcon`, `PrivateAuraAnchor`
 
 ## rules
 
@@ -68,3 +119,5 @@ see `Creators/Registry.lua` for the full pattern. in brief:
 - the dialog must render correctly regardless of which plugin is active
 - component drag functions run frequently — they must be performant (no allocations, no string concat)
 - the apply action must update both live frames and edit mode previews in one pass via `ApplySettings`
+- snap constants are centralized in `SnapEngine.lua` — never define `SNAP_SIZE` or `EDGE_THRESHOLD` locally
+
