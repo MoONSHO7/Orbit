@@ -17,27 +17,7 @@ local DEFAULT_PADDING = 2
 local MIN_SYNC_HEIGHT = 5
 local MIN_SYNC_WIDTH = 10
 
-local ANCHOR_LEVEL_BOOST = Orbit.Constants.Levels.AnchorBoost
 
-local function ElevateFrameLevel(child, parent)
-    if child._orbitOrigLevel then return end
-    child._orbitOrigLevel = child:GetFrameLevel()
-    child:SetFrameLevel(parent:GetFrameLevel() + ANCHOR_LEVEL_BOOST)
-end
-
-local function RestoreFrameLevel(child)
-    if child._orbitOrigLevel then
-        child:SetFrameLevel(child._orbitOrigLevel)
-        child._orbitOrigLevel = nil
-    end
-end
-
-local EDGE_BORDER_MAP = {
-    BOTTOM = { parent = "Bottom", child = "Top" },
-    TOP = { parent = "Top", child = "Bottom" },
-    LEFT = { parent = "Left", child = "Right" },
-    RIGHT = { parent = "Right", child = "Left" },
-}
 
 local DEFAULT_OPTIONS = {
     horizontal = true,
@@ -89,13 +69,32 @@ local function HookParentSizeChange(parent, anchorModule)
 end
 
 local function SetMergeBorderState(parent, child, edge, hidden)
-    local map = EDGE_BORDER_MAP[edge]
-    if not map then return end
     if parent and parent.SetBorderHidden then
-        parent:SetBorderHidden(map.parent, hidden)
+        parent:SetBorderHidden(hidden)
     end
     if child.SetBorderHidden then
-        child:SetBorderHidden(map.child, hidden)
+        child:SetBorderHidden(hidden)
+    end
+    -- Clear group flag on the child only; parent may still be merged with other children
+    if not hidden then
+        child._groupBorderActive = nil
+    end
+    -- Update group border on the merge root directly — no deferral needed since
+    -- bounding box is computed from anchor data, not screen coordinates.
+    if Orbit.Skin and Orbit.Skin.UpdateGroupBorder then
+        local mergeRoot = parent or child
+        while true do
+            local pa = Anchor.anchors[mergeRoot]
+            if not pa or pa.padding ~= 0 then break end
+            local pO = GetFrameOptions(pa.parent)
+            local cO = GetFrameOptions(mergeRoot)
+            if not (pO.mergeBorders and cO.mergeBorders) then break end
+            mergeRoot = pa.parent
+        end
+        if mergeRoot and mergeRoot.GetFrameLevel then Orbit.Skin:UpdateGroupBorder(mergeRoot) end
+        -- Only clear stale group overlays on the child when UN-merging; during merge,
+        -- UpdateGroupBorder already handles hiding stale overlays on non-root frames.
+        if not hidden and child and child.GetFrameLevel then Orbit.Skin:ClearGroupBorder(child) end
     end
 end
 
@@ -155,8 +154,8 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions,
     local childOptions = GetFrameOptions(child)
 
     local bothMerge = parentOptions.mergeBorders and childOptions.mergeBorders
-    local shouldMerge = bothMerge and syncOptions and syncOptions.syncScale and syncOptions.syncDimensions and padding == 0
-    if shouldMerge and child:IsShown() and parent:IsShown() then
+    local shouldMerge = bothMerge and padding == 0
+    if shouldMerge and child:IsShown() then
         SetMergeBorderState(parent, child, edge, true)
     elseif bothMerge then
         SetMergeBorderState(parent, child, edge, false)
@@ -362,8 +361,6 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
         elseif parent.orbitPlugin.ApplySettings then parent.orbitPlugin:ApplySettings(parent) end
     end
 
-    ElevateFrameLevel(child, parent)
-
     if child.OnAnchorChanged then
         child:OnAnchorChanged(parent, edge, padding)
     end
@@ -402,8 +399,6 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
         if oldAnchor.parent and self.childrenOf[oldAnchor.parent] then
             self.childrenOf[oldAnchor.parent][child] = nil
         end
-
-        RestoreFrameLevel(child)
 
         if not suppressApplySettings and child.orbitPlugin and child.orbitPlugin.ApplySettings then
             child.orbitPlugin:ApplySettings(child)
@@ -791,5 +786,22 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited)
     end
 end
 
+-- [ RESYNC ALL ]-------------------------------------------------------------------------------------
+-- Re-syncs all anchored frames (e.g. after border size changes affect spacing).
+function Anchor:ResyncAll()
+    if InCombatLockdown() then return end
+    local roots = {}
+    for child in pairs(self.anchors) do
+        local root = self:GetRootParent(child)
+        roots[root] = true
+    end
+    for root in pairs(roots) do
+        self:SyncChildren(root)
+    end
+end
+
 Anchor.GetFrameOptions = GetFrameOptions
 Anchor.DEFAULT_OPTIONS = DEFAULT_OPTIONS
+
+-- Listen for border size changes to re-sync anchor distances
+Orbit.EventBus:On("ORBIT_BORDER_SIZE_CHANGED", function() Anchor:ResyncAll() end)

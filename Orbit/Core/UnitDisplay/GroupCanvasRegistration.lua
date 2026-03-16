@@ -128,14 +128,17 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
     for _, key in ipairs(cfg.statusIcons or {}) do
         if frame[key] then frame[key]:SetAtlas(previewAtlases[key]); frame[key]:SetSize(cfg.statusIconSize, cfg.statusIconSize) end
     end
-    local savedPositions = plugin:GetSetting(1, "ComponentPositions") or {}
+    local savedPositions = plugin:GetComponentPositions(1)
     for _, key in ipairs(cfg.roleIcons or {}) do
         if frame[key] then
             local atlas = previewAtlases[key]
-            -- Respect HideDPS override for RoleIcon preview
+            -- Respect RoleIconStyle + HideDPS overrides for RoleIcon preview
             if key == "RoleIcon" then
                 local roleOverrides = savedPositions.RoleIcon and savedPositions.RoleIcon.overrides
-                if roleOverrides and roleOverrides.HideDPS then atlas = "UI-LFG-RoleIcon-Healer" end
+                if roleOverrides then
+                    if roleOverrides.RoleIconStyle == "round" then atlas = "icons_64x64_damage" end
+                    if roleOverrides.HideDPS then atlas = (roleOverrides.RoleIconStyle == "round") and "icons_64x64_heal" or "UI-LFG-RoleIcon-Healer" end
+                end
             end
             if not frame[key]:GetAtlas() then frame[key]:SetAtlas(atlas) end
             frame[key]:SetSize(cfg.roleIconSize, cfg.roleIconSize)
@@ -241,6 +244,24 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
                     frame[key]:SetPoint("CENTER", frame, "CENTER", 0, 0)
                 end
                 frame[key]:Show()
+            end
+        end
+        -- Update role/pvp/combat icon atlases from overrides
+        for _, iconKey in ipairs(cfg.roleIcons or {}) do
+            if frame[iconKey] then
+                local atlas = previewAtlases[iconKey]
+                local iconOverrides = savedPositions[iconKey] and savedPositions[iconKey].overrides
+                if iconKey == "RoleIcon" and iconOverrides then
+                    if iconOverrides.RoleIconStyle == "round" then atlas = "icons_64x64_damage" end
+                    if iconOverrides.HideDPS then atlas = (iconOverrides.RoleIconStyle == "round") and "icons_64x64_heal" or "UI-LFG-RoleIcon-Healer" end
+                elseif iconKey == "PvpIcon" and iconOverrides and iconOverrides.PvpIconStyle then
+                    local PVP = { default = "QuestPortraitIcon-Alliance", crest = "glues-characterSelect-icon-faction-alliance-selected" }
+                    atlas = PVP[iconOverrides.PvpIconStyle] or PVP.default
+                elseif iconKey == "CombatIcon" and iconOverrides and iconOverrides.CombatIconStyle then
+                    local COMBAT = { default = "UI-HUD-UnitFrame-Player-CombatIcon", pvp = "UI-EventPoi-pvp" }
+                    atlas = COMBAT[iconOverrides.CombatIconStyle] or COMBAT.default
+                end
+                frame[iconKey]:SetAtlas(atlas)
             end
         end
         local auraIconEntries = {

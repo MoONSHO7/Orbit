@@ -1,4 +1,4 @@
--- [ CANVAS MODE - INFO SYSTEM ]-----------------------------------------------------
+-- [ CANVAS MODE - TOUR ]------------------------------------------------------------
 -- Sequential tour that cycles through help points with Next/Done
 local _, addonTable = ...
 local Orbit = addonTable
@@ -449,11 +449,11 @@ function Dialog:EndTour()
     ReleaseAllPulses()
 end
 
-function Dialog:HideInfoMarkers()
+function Dialog:EndTourCleanup()
     self:EndTour()
 end
 
-function Dialog:ToggleInfoMode()
+function Dialog:ToggleTour()
     if not self.tourActive then
         self:StartTour()
     elseif self.tourIndex < #TOUR_STOPS then
@@ -463,7 +463,7 @@ function Dialog:ToggleInfoMode()
     end
 end
 
--- [ INFO BUTTON (in dialog header, hard left) ]---------------------------------------
+-- [ TOUR BUTTON (in dialog header, hard left) ]--------------------------------------
 local btn = CreateFrame("Button", nil, Dialog.TitleContainer)
 btn:SetSize(BUTTON_SIZE, BUTTON_SIZE)
 btn:SetPoint("TOPLEFT", Dialog, "TOPLEFT", 0, 5)
@@ -480,6 +480,6 @@ end)
 btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 btn:SetScript("OnClick", function()
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-    Dialog:ToggleInfoMode()
+    Dialog:ToggleTour()
 end)
-Dialog.InfoButton = btn
+Dialog.TourButton = btn

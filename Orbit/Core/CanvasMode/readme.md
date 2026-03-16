@@ -40,7 +40,7 @@ CanvasMode/
   DialogActions.lua       -- dialog button handlers (apply, reset, cancel)
   Viewport.lua            -- viewport controls (zoom, pan, sync toggle, preview switching)
   Dock.lua                -- disabled component dock (drag-to-disable, click-to-restore)
-  InfoSystem.lua          -- toggle-able info markers explaining Canvas Mode features
+  CanvasModeTour.lua      -- guided tour explaining Canvas Mode features
   CanvasModeDrag.lua      -- intra-dialog component drag-and-drop
   ComponentSettings.lua         -- per-component settings core (open/close, value routing, layout)
   ComponentSettingsSchema.lua   -- schema definitions, presets, titles, type detection

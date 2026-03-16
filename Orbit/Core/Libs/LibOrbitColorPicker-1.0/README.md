@@ -153,9 +153,9 @@ the tour is localized for: english, german, french, spanish, portuguese, russian
 |---|---|
 | `lib:StartTour()` | begin the tour at stop 1 |
 | `lib:EndTour()` | dismiss the tour |
-| `lib:ToggleInfoMode()` | cycle: start → next stop → ... → end |
+| `lib:ToggleTour()` | cycle: start → next stop → ... → end |
 
-the info button (top-left corner) calls `ToggleInfoMode()`.
+the tour button (top-left corner) calls `ToggleTour()`.
 
 ## bundled assets
 

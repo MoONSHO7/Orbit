@@ -10,7 +10,7 @@ provides the single source of truth for numeric constants, layer indices, color 
 
 | file | responsibility |
 |---|---|
-| Constants.lua | all project constants: colors, layer indices, cooldown system indices, padding values, glow configurations. |
+| Constants.lua | all project constants: colors, layer indices (`C.Levels`), border style definitions (`C.BorderStyle`), cooldown system indices, padding values, glow configurations, aura skin presets. |
 | Media.lua | libsharedmedia registrations for custom fonts and textures. |
 
 ## adding a new constant

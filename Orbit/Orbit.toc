@@ -27,6 +27,7 @@ Core\Plugin\Plugin.xml
 Core\Color\Color.xml
 Core\Config\Config.xml
 Core\EditMode\EditMode.xml
+Core\Onboarding\Onboarding.xml
 Core\UnitDisplay\UnitButton\UnitButton.xml
 Core\UnitDisplay\UnitDisplay.xml
 Core\Plugin\Profiles.xml

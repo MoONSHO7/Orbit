@@ -32,3 +32,5 @@ raid frames use a grid layout driven by group count and sort order. performance 
 - aura filtering must use the optimized grid mixin (`UnitAuraGridMixin`)
 - frame recycling must properly reset all state. no stale data between unit assignments
 - sort order changes must not trigger combat-unsafe operations
+- selection, aggro, and dispel highlights use `Skin:ApplyHighlightBorder` (not per-frame texture creation)
+- customizable `SelectionColor` and `DispelOnlyByMe` settings available in the colors sub-tab

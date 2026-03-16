@@ -26,6 +26,32 @@ local function RefreshAllPreviews()
     end
 end
 
+local function GetBorderStyleOptions()
+    local opts = {}
+    for _, entry in ipairs(Constants.BorderStyle.Styles) do
+        opts[#opts + 1] = entry
+    end
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    if LSM then
+        local existing = {}
+        for _, entry in ipairs(opts) do existing[entry.label] = true end
+        local borders = LSM:HashTable("border")
+        if borders then
+            for name, path in pairs(borders) do
+                if not existing[name] and path and path ~= "" and name ~= "None" and not name:match("^Blizzard") then
+                    opts[#opts + 1] = { label = name, value = "lsm:" .. name }
+                end
+            end
+        end
+    end
+    table.sort(opts, function(a, b)
+        if a.value == "flat" then return true end
+        if b.value == "flat" then return false end
+        return a.label < b.label
+    end)
+    return opts
+end
+
 local function CreateGlobalSettingsPlugin(name, onSetOverride)
     return {
         name = name,
@@ -73,8 +99,65 @@ local function GetGlobalSchema()
             },
             default = "OUTLINE",
         },
-        { type = "slider", key = "BorderSize", label = "Border Size", default = 2, min = 0, max = 5, step = 1, updateOnRelease = true },
+        {
+            type = "dropdown", key = "BorderStyle", label = "Border Style", options = GetBorderStyleOptions(), default = Constants.BorderStyle.Default,
+            onChange = function(val)
+                GlobalPlugin:SetSetting(nil, "BorderStyle", val)
+                GlobalPlugin:ApplySettings()
+                Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
+                local dialog = Orbit.SettingsDialog
+                if dialog and dialog.OrbitPanel and dialog.OrbitPanel.Tabs then
+                    local oldTab = dialog.OrbitPanel.Tabs["Global"]
+                    if oldTab then
+                        Layout:Reset(oldTab)
+                        oldTab:Hide()
+                    end
+                    dialog.OrbitPanel.Tabs["Global"] = nil
+                end
+                Panel.lastTab = nil
+                Panel:Open("Global")
+            end,
+        },
     }
+
+    local currentStyle = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderStyle or Constants.BorderStyle.Default
+    local function borderSizeChanged(key, val)
+        GlobalPlugin:SetSetting(nil, key, val)
+        GlobalPlugin:ApplySettings()
+        Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
+    end
+    if currentStyle == "flat" then
+        tinsert(controls, { type = "slider", key = "BorderSize", label = "Border Size", default = 2, min = 0, max = 5, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderSize", v) end })
+    else
+        tinsert(controls, { type = "slider", key = "BorderEdgeSize", label = "Border Edge Size", default = 16, min = 1, max = 32, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderEdgeSize", v) end })
+        tinsert(controls, { type = "slider", key = "BorderOffset", label = "Border Offset", default = 0, min = 0, max = 16, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderOffset", v) end })
+    end
+
+    tinsert(controls, {
+        type = "dropdown", key = "IconBorderStyle", label = "Icon Border Style", options = GetBorderStyleOptions(), default = Constants.BorderStyle.Default,
+        onChange = function(val)
+            GlobalPlugin:SetSetting(nil, "IconBorderStyle", val)
+            GlobalPlugin:ApplySettings()
+            Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
+            local dialog = Orbit.SettingsDialog
+            if dialog and dialog.OrbitPanel and dialog.OrbitPanel.Tabs then
+                local oldTab = dialog.OrbitPanel.Tabs["Global"]
+                if oldTab then Layout:Reset(oldTab); oldTab:Hide()
+                    dialog.OrbitPanel.Tabs["Global"] = nil
+                end
+                Panel.lastTab = nil
+                Panel:Open("Global")
+            end
+        end,
+    })
+
+    local currentIconStyle = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.IconBorderStyle or Constants.BorderStyle.Default
+    if currentIconStyle == "flat" then
+        tinsert(controls, { type = "slider", key = "IconBorderSize", label = "Icon Border Size", default = 2, min = 0, max = 5, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderSize", v) end })
+    else
+        tinsert(controls, { type = "slider", key = "IconBorderEdgeSize", label = "Icon Border Edge Size", default = 16, min = 1, max = 32, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderEdgeSize", v) end })
+        tinsert(controls, { type = "slider", key = "IconBorderOffset", label = "Icon Border Offset", default = 0, min = 0, max = 16, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderOffset", v) end })
+    end
 
     table.insert(controls, {
         type = "checkbox", key = "HideWhenMounted", label = "Hide When Mounted", default = false,
@@ -84,10 +167,6 @@ local function GetGlobalSchema()
         end,
     })
 
-    table.insert(controls, {
-        type = "description",
-        text = "|cFFFFD100Right Click:|r Open Canvas Mode\n\n|cFFFFD100Anchor:|r Drag a frame to the edge of another frame to anchor it.\n\n|cFFFFD100Shift + Drag:|r Precision mode. Hides overlays and disables anchoring.\n\n|cFFFFD100Mouse Wheel:|r Scroll up and down on an anchored frame to adjust spacing between itself and its parent.",
-    })
 
     return {
         hideNativeSettings = true,
@@ -100,6 +179,13 @@ local function GetGlobalSchema()
                 d.TextScale = "Medium"
                 d.FontOutline = "OUTLINE"
                 d.BorderSize = 2
+                d.BorderStyle = Constants.BorderStyle.Default
+                d.BorderEdgeSize = 16
+                d.BorderOffset = 0
+                d.IconBorderStyle = Constants.BorderStyle.Default
+                d.IconBorderSize = 2
+                d.IconBorderEdgeSize = 16
+                d.IconBorderOffset = 0
                 d.HideWhenMounted = false
             end
             Orbit.MountedVisibility:Refresh()
@@ -170,12 +256,25 @@ local function GetColorsSchema()
             end,
         },
         {
-            type = "colorcurve", key = "BorderColorCurve", label = "Border Color",
-            default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 1 } } } },
-            tooltip = "Border color for all frames.",
+            type = "color", key = "BorderColor", label = "Border Color",
+            default = { r = 0, g = 0, b = 0, a = 1 },
+            tooltip = "Border color for unit frames, cast bars, and other non-icon frames.",
             onChange = function(val)
-                ColorsPlugin:SetSetting(nil, "BorderColorCurve", val)
+                ColorsPlugin:SetSetting(nil, "BorderColor", val)
                 Orbit.Async:Debounce("ColorsPanel_BorderColor", function()
+                    ColorsPlugin:ApplySettings()
+                    RefreshAllPreviews()
+                    Orbit.EventBus:Fire("ORBIT_GLOBAL_BORDER_COLOR_CHANGED")
+                end, 0.15)
+            end,
+        },
+        {
+            type = "color", key = "IconBorderColor", label = "Icon Border Color",
+            default = { r = 0, g = 0, b = 0, a = 1 },
+            tooltip = "Border color for aura icons, cooldown icons, and other icon frames.",
+            onChange = function(val)
+                ColorsPlugin:SetSetting(nil, "IconBorderColor", val)
+                Orbit.Async:Debounce("ColorsPanel_IconBorderColor", function()
                     ColorsPlugin:ApplySettings()
                     RefreshAllPreviews()
                     Orbit.EventBus:Fire("ORBIT_GLOBAL_BORDER_COLOR_CHANGED")
@@ -198,7 +297,8 @@ local function GetColorsSchema()
                 d.UnitFrameBackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
                 d.BackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
                 d.FontColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
-                d.BorderColorCurve = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 1 } } } }
+                d.BorderColor = { r = 0, g = 0, b = 0, a = 1 }
+                d.IconBorderColor = { r = 0, g = 0, b = 0, a = 1 }
             end
             Orbit:Print("Colors settings reset to defaults.")
             if Orbit.OptionsPanel then Orbit.OptionsPanel:Refresh() end

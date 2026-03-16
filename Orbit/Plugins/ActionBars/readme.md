@@ -28,8 +28,9 @@ graph LR
 1. native bars are hidden and their buttons reparented into orbit container frames
 2. each container uses a grid layout engine for button positioning
 3. `ActionButtonSkinning` (in core/skinning) handles visual overrides
-4. visibility is driven by combat state and ooc fade settings
-5. spell state hooks (`UpdateUsable`, `ActionBarButtonRangeCheckFrame`, `PLAYER_TARGET_CHANGED`) tint icons for out-of-range, out-of-mana, and not-usable states
+4. skin settings include `iconBorder = true` to opt into `GlobalSettings.IconBorderStyle` (NineSlice/LSM icon borders). when `IconPadding = 0`, a single group border wraps the container instead of per-icon borders. containers set `mergeBorders = true` in `anchorOptions`, enabling cross-bar group borders when anchored at padding=0
+5. visibility is driven by combat state and ooc fade settings
+6. spell state hooks (`UpdateUsable`, `ActionBarButtonRangeCheckFrame`, `PLAYER_TARGET_CHANGED`) tint icons for out-of-range, out-of-mana, and not-usable states
 
 ## adding a new bar feature
 

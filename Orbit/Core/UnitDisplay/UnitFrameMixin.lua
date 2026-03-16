@@ -72,7 +72,7 @@ function Mixin:ApplyTextStyling(frame, textSize)
     end
     if not textSize or textSize <= 0 then
         local height = frame:GetHeight() or 40
-        textSize = Orbit.Skin:GetAdaptiveTextSize(height, Orbit.Constants.UnitFrame.AdaptiveTextMin, Orbit.Constants.UnitFrame.AdaptiveTextMax, 0.3)
+        textSize = 14
     end
     Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)
     Orbit.Skin:ApplyUnitFrameText(frame.HealthText, "RIGHT", nil, textSize)
@@ -88,7 +88,7 @@ function Mixin:UpdateTextSize(frame, textSize)
     if not frame then return end
     if not textSize or textSize <= 0 then
         local height = frame:GetHeight() or 40
-        textSize = Orbit.Skin:GetAdaptiveTextSize(height, Orbit.Constants.UnitFrame.AdaptiveTextMin, Orbit.Constants.UnitFrame.AdaptiveTextMax, 0.3)
+        textSize = 14
     end
     local globalFontName = Orbit.db.GlobalSettings.Font
     local fontPath = LSM:Fetch("font", globalFontName) or "Fonts\\FRIZQT__.TTF"
@@ -236,7 +236,7 @@ function Mixin:UpdateFrameLayout(frame, borderSize, options)
             frame.Power:SetPoint("BOTTOMLEFT", 0, 0)
             frame.Power:SetPoint("BOTTOMRIGHT", 0, 0)
             frame.Power:SetHeight(powerHeight)
-            frame.Power:SetFrameLevel(frame:GetFrameLevel() + 1)
+            frame.Power:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
             frame.Power:Show()
         else
             frame.Power:Hide()
@@ -251,12 +251,12 @@ function Mixin:UpdateFrameLayout(frame, borderSize, options)
         else
             frame.Health:SetPoint("BOTTOMRIGHT", 0, 0)
         end
-        frame.Health:SetFrameLevel(frame:GetFrameLevel() + 1)
+        frame.Health:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
         if frame.HealthDamageBar then
             frame.HealthDamageBar:ClearAllPoints()
             frame.HealthDamageBar:SetPoint("TOPLEFT", frame.Health, "TOPLEFT", 0, 0)
             frame.HealthDamageBar:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT", 0, 0)
-            frame.HealthDamageBar:SetFrameLevel(frame:GetFrameLevel() + 1)
+            frame.HealthDamageBar:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
         end
     end
 end
@@ -349,7 +349,7 @@ function Mixin:CreateOverlayIcons(frame, systemIndex)
     if not frame.OverlayFrame then
         frame.OverlayFrame = CreateFrame("Frame", nil, frame)
         frame.OverlayFrame:SetAllPoints()
-        frame.OverlayFrame:SetFrameLevel(frame:GetFrameLevel() + 20)
+        frame.OverlayFrame:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     end
 
     if not frame.LevelText then

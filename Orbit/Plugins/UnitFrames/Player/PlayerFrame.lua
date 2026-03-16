@@ -145,7 +145,7 @@ function Plugin:OnLoad()
     if not self.frame.OverlayFrame then
         self.frame.OverlayFrame = CreateFrame("Frame", nil, self.frame)
         self.frame.OverlayFrame:SetAllPoints()
-        self.frame.OverlayFrame:SetFrameLevel(self.frame:GetFrameLevel() + 20)
+        self.frame.OverlayFrame:SetFrameLevel(self.frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     end
 
     -- Create LevelText (on overlay frame so it stays above health bars)
@@ -417,8 +417,11 @@ function Plugin:ApplySettings(frame)
     local savedPositions = self:GetComponentPositions(systemIndex)
     if savedPositions and next(savedPositions) then
         OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
-        if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
     end
+    
+    -- Component positions + style overrides (positions, font, color, scale)
+    -- Must run unconditionally to restore overrides after ApplyBaseVisuals resets text
+    if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
 
     self:UpdateVisualsExtended(frame, systemIndex)
     self:UpdateCombatIcon(frame, self)

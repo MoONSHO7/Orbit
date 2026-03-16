@@ -189,7 +189,7 @@ function Plugin:ApplySettings(frame)
     local frameHeight = frame:GetHeight()
 
     if frame.Name then
-        local textSize = Orbit.Skin:GetAdaptiveTextSize(frameHeight, 12, 24, 0.25)
+        local textSize = 12
         frame.Name:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
         frame.Name:ClearAllPoints()
         frame.Name:SetPoint("CENTER", 0, 0)

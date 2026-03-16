@@ -30,3 +30,6 @@ function Plugin:OnLoad()
     Orbit.EventBus:On("PLAYER_LOGOUT", function() SetCVar("buffDurations", 1) end)
 end
 
+function Plugin:OnDisable()
+    SetCVar("buffDurations", 1)
+end

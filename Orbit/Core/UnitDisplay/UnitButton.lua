@@ -3,6 +3,7 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
+local Constants = Orbit.Constants
 
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
@@ -19,9 +20,9 @@ local ABSORB_OVERLAY_COLOR = { r = 0.7, g = 0.9, b = 1.0, a = 1.0 }
 local HEAL_ABSORB_ALPHA = 0.15
 local HEAL_ABSORB_PATTERN_SIZE = 3200
 local HEAL_ABSORB_TEXCOORD = 100
-local HEALTH_LEVEL_BOOST = 2
-local HEAL_ABSORB_LEVEL_BOOST = 2
-local TEXT_LEVEL_BOOST = 10
+local HEALTH_LEVEL_BOOST = Constants.Levels.StatusBar
+local HEAL_ABSORB_LEVEL_BOOST = Constants.Levels.StatusBar
+local TEXT_LEVEL_BOOST = Constants.Levels.Overlay
 local TEXT_INSET = 5
 local SHADOW_OFFSET_X = 1
 local SHADOW_OFFSET_Y = -1
@@ -96,7 +97,7 @@ function UnitButton:Create(parent, unit, name)
     f.HealthDamageBar:SetValue(1)
     f.HealthDamageBar:SetStatusBarTexture(WHITE_TEXTURE)
     f.HealthDamageBar:SetStatusBarColor(0, 0, 0, 0)
-    f.HealthDamageBar:SetFrameLevel(f:GetFrameLevel() + 1)
+    f.HealthDamageBar:SetFrameLevel(f:GetFrameLevel() + Constants.Levels.StatusBar)
 
     f.Health = CreateFrame("StatusBar", nil, f)
     f.Health:SetPoint("TOPLEFT", 0, 0)
@@ -150,7 +151,7 @@ function UnitButton:Create(parent, unit, name)
 
     f.HealAbsorbMask = CreateFrame("Frame", nil, f.HealAbsorbBar)
     f.HealAbsorbMask:SetClipsChildren(true)
-    f.HealAbsorbMask:SetFrameLevel(f.HealAbsorbBar:GetFrameLevel() + 1)
+    f.HealAbsorbMask:SetFrameLevel(f.HealAbsorbBar:GetFrameLevel() + Constants.Levels.StatusBar)
     f.HealAbsorbMask:SetPoint("TOPLEFT", f.HealAbsorbBar:GetStatusBarTexture(), "TOPLEFT", 0, 0)
     f.HealAbsorbMask:SetPoint("BOTTOMRIGHT", f.HealAbsorbBar:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
 
@@ -173,7 +174,7 @@ function UnitButton:Create(parent, unit, name)
 
     f.NameFrame = CreateFrame("Frame", nil, f)
     f.NameFrame:SetAllPoints(f.Health)
-    f.NameFrame:SetFrameLevel(f:GetFrameLevel() + (Orbit.Constants.Levels.Text or 20) + 1)
+    f.NameFrame:SetFrameLevel(f:GetFrameLevel() + Constants.Levels.Overlay)
 
     f.Name = f.NameFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     f.Name:SetPoint("LEFT", f.TextFrame, "LEFT", TEXT_INSET, 0)

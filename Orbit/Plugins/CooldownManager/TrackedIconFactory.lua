@@ -84,7 +84,7 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
 
     local textOverlay = CreateFrame("Frame", nil, icon)
     textOverlay:SetAllPoints()
-    textOverlay:SetFrameLevel(icon:GetFrameLevel() + 20)
+    textOverlay:SetFrameLevel(icon:GetFrameLevel() + Orbit.Constants.Levels.IconOverlay)
     icon.TextOverlay = textOverlay
 
     icon.CountText = textOverlay:CreateFontString(nil, "OVERLAY", nil, 7)

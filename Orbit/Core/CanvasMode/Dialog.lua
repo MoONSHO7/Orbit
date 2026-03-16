@@ -622,7 +622,7 @@ function Dialog:CloseDialog()
         Orbit.CanvasComponentSettings:Close()
     end
 
-    self:HideInfoMarkers()
+    self:EndTourCleanup()
     self:CleanupPreview()
 
     self.targetFrame = nil

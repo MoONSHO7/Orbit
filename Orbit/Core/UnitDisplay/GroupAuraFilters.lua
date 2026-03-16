@@ -8,7 +8,7 @@ local Orbit = Orbit
 Orbit.GroupAuraFilters = {}
 
 local HealerReg = Orbit.HealerAuraRegistry
-local IsSecret = issecretvalue or function() return false end
+local IsSecret = issecretvalue
 
 -- Raid buffs always excluded from buff containers (long-term, low-value clutter).
 local ALWAYS_EXCLUDED = {}

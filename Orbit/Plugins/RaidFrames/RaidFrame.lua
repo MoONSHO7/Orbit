@@ -21,7 +21,7 @@ local MAX_PRIVATE_AURA_ANCHORS = GF.MaxPrivateAuraAnchors
 local AURA_BASE_ICON_SIZE = GF.AuraBaseIconSize
 local OUT_OF_RANGE_ALPHA = GF.OutOfRangeAlpha
 local OFFLINE_ALPHA = GF.OfflineAlpha
-local OVERLAY_LEVEL_BOOST = 100
+local OVERLAY_LEVEL_BOOST = Orbit.Constants.Levels.Tooltip
 local UNIT_REREGISTER_EVENTS = {
     "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT",
     "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS",
@@ -95,6 +95,7 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
         DisabledComponentsMigrated = true,
         AggroIndicatorEnabled = true,
         AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
+        SelectionColor = { r = 0.8, g = 0.9, b = 1.0, a = 1 },
         AggroThickness = 1,
         DispelIndicatorEnabled = true,
         DispelThickness = 2,
@@ -139,14 +140,20 @@ local function UpdatePowerBar(frame, plugin)
     frame.Power:SetStatusBarColor(color.r, color.g, color.b)
 end
 
-local function UpdateFrameLayout(frame, borderSize, plugin)
+local function UpdateFrameLayout(frame, borderSize, plugin, showPowerOverride)
     if not Helpers then Helpers = Orbit.RaidFrameHelpers end
-    local showHealerPower = plugin and plugin:GetSetting(1, "ShowPowerBar")
-    if showHealerPower == nil then showHealerPower = true end
-    local isHealer = frame.unit and UnitGroupRolesAssigned(frame.unit) == "HEALER"
+    local showPower
+    if showPowerOverride ~= nil then
+        showPower = showPowerOverride
+    else
+        local showHealerPower = plugin and plugin:GetSetting(1, "ShowPowerBar")
+        if showHealerPower == nil then showHealerPower = true end
+        local isHealer = frame.unit and UnitGroupRolesAssigned(frame.unit) == "HEALER"
+        showPower = (showHealerPower and isHealer) or false
+    end
     local pct = plugin and plugin:GetSetting(1, "PowerBarHeight")
     local ratio = pct and (pct / 100) or nil
-    Helpers:UpdateFrameLayout(frame, borderSize, showHealerPower and isHealer, ratio)
+    Helpers:UpdateFrameLayout(frame, borderSize, showPower, ratio)
 end
 
 -- [ AURA DISPLAY CONFIG ]--------------------------------------------------------------------------
@@ -250,15 +257,15 @@ local function CreateRaidFrame(index, plugin)
     local height = plugin:GetSetting(1, "Height") or 36
     frame:SetSize(width, height)
     frame:SetFrameStrata("MEDIUM")
-    frame:SetFrameLevel(50 + index)
+    frame:SetFrameLevel(Orbit.Constants.Levels.GroupBase + index)
 
     UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize, plugin)
 
     frame.Power = plugin:CreatePowerBar(frame, unit)
     frame.debuffContainer = CreateFrame("Frame", nil, frame)
-    frame.debuffContainer:SetFrameLevel(frame:GetFrameLevel() + 10)
+    frame.debuffContainer:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     frame.buffContainer = CreateFrame("Frame", nil, frame)
-    frame.buffContainer:SetFrameLevel(frame:GetFrameLevel() + 10)
+    frame.buffContainer:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
 
     plugin:CreateStatusIcons(frame)
     plugin:RegisterFrameEvents(frame, unit)
@@ -306,7 +313,7 @@ function Plugin:OnLoad()
     self.container.editModeName = "Raid Frames"
     self.container.systemIndex = 1
     self.container:SetFrameStrata("MEDIUM")
-    self.container:SetFrameLevel(49)
+    self.container:SetFrameLevel(Orbit.Constants.Levels.GroupContainer)
     self.container:SetClampedToScreen(true)
 
     self.frames = {}
@@ -493,6 +500,7 @@ function Plugin:PositionFrames()
     end
 
     local growUp = (memberGrowth == "Up")
+    local groupedFrames = {}
 
     if sortMode ~= "Group" then
         local flatRows = math.max(1, self:GetSetting(1, "FlatRows") or 1)
@@ -505,6 +513,7 @@ function Plugin:PositionFrames()
         end
         local totalFrames = #visibleFrames
         local framesPerCol = math.ceil(totalFrames / flatRows)
+        for c = 1, flatRows do groupedFrames[c] = {} end
         for idx, frame in ipairs(visibleFrames) do
             local col = math.floor((idx - 1) / framesPerCol)
             local row = (idx - 1) % framesPerCol
@@ -516,13 +525,15 @@ function Plugin:PositionFrames()
             else
                 frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", fx, -fy)
             end
+            local gIdx = col + 1
+            groupedFrames[gIdx][#groupedFrames[gIdx] + 1] = frame
         end
     else
         local groupIndex = 0
         for _, groupNum in ipairs(groupOrder) do
             groupIndex = groupIndex + 1
-            local gx, gy = Helpers:CalculateGroupPosition(groupIndex, width, height, FRAMES_PER_GROUP, memberSpacing,
-                groupSpacing, groupsPerRow, isHorizontal)
+            local gx, gy = Helpers:CalculateGroupPosition(groupIndex, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
+            local groupFrames = {}
 
             local memberIndex = 0
             for i = 1, MAX_RAID_FRAMES do
@@ -547,14 +558,15 @@ function Plugin:PositionFrames()
                         else
                             frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", gx + mx, gy + my)
                         end
+                        groupFrames[#groupFrames + 1] = frame
                     end
                 end
             end
+            groupedFrames[#groupedFrames + 1] = groupFrames
         end
     end
 
-    self:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal,
-        growUp)
+    self:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, growUp)
     self:UpdateContainerSize()
 end
 
@@ -740,8 +752,8 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     local textureName = self:GetSetting(1, "Texture")
 
     frame:SetSize(width, height)
+    UpdateFrameLayout(frame, borderSize, self, showPower)
     if frame.SetBorder then frame:SetBorder(borderSize) end
-    UpdateFrameLayout(frame, borderSize, self)
 
     -- Texture
     if frame.Health then Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true) end
@@ -776,7 +788,7 @@ function Plugin:ApplyFrameStyle(frame, showPower)
                         local sz = GetComponentIconSize(self, k)
                         local c = CreateFrame("Frame", nil, frame)
                         c:SetPoint("CENTER", frame, "CENTER", 0, 0)
-                        c:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.HealerAura)
+                        c:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
                         c._raidIcons = {}
                         c:SetSize(sz, sz)
                         frame.RaidBuff = c

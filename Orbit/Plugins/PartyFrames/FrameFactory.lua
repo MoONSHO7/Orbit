@@ -6,7 +6,6 @@ Orbit.PartyFrameFactoryMixin = {}
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local POWER_BAR_HEIGHT_RATIO = Orbit.PartyFrameHelpers.LAYOUT.PowerBarRatio
-local SELECTION_BORDER_THICKNESS = 2
 
 -- [ POWER BAR CREATION ]----------------------------------------------------------------------------
 function Orbit.PartyFrameFactoryMixin:CreatePowerBar(parent, unit, plugin)
@@ -15,7 +14,7 @@ function Orbit.PartyFrameFactoryMixin:CreatePowerBar(parent, unit, plugin)
     power:SetPoint("BOTTOMRIGHT", 0, 0)
     power:SetHeight(parent:GetHeight() * POWER_BAR_HEIGHT_RATIO)
     power:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-    power:SetFrameLevel(parent:GetFrameLevel() + Orbit.Constants.Levels.Cooldown)
+    power:SetFrameLevel(parent:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
     power.bg = power:CreateTexture(nil, "BACKGROUND")
     power.bg:SetAllPoints()
     local powerType = UnitPowerType(unit)
@@ -37,12 +36,12 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
     -- BorderOverlay: Selection/Aggro borders (below glow, above icons)
     frame.BorderOverlay = CreateFrame("Frame", nil, frame)
     frame.BorderOverlay:SetAllPoints()
-    frame.BorderOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Highlight)
+    frame.BorderOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Border)
 
     -- StatusOverlay: Text and component icons (above glow)
     frame.StatusOverlay = CreateFrame("Frame", nil, frame)
     frame.StatusOverlay:SetAllPoints()
-    frame.StatusOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Text)
+    frame.StatusOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
 
     frame.RoleIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
     frame.RoleIcon:SetSize(iconSize, iconSize)
@@ -56,56 +55,7 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
     frame.LeaderIcon:SetPoint("LEFT", frame.RoleIcon, "RIGHT", 2, 0)
     frame.LeaderIcon:Hide()
 
-    -- Selection highlight (on BorderOverlay - below glow)
-    frame.SelectionHighlight = frame.BorderOverlay:CreateTexture(nil, "ARTWORK")
-    frame.SelectionHighlight:SetAllPoints()
-    frame.SelectionHighlight:SetColorTexture(1, 1, 1, 0)
-    frame.SelectionHighlight:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Highlight)
-    frame.SelectionHighlight:Hide()
-    local borderThickness = OrbitEngine.Pixel:Multiple(SELECTION_BORDER_THICKNESS, frame:GetEffectiveScale() or 1)
-    frame.SelectionBorders = {}
-    for _, edge in pairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
-        local border = frame.BorderOverlay:CreateTexture(nil, "ARTWORK")
-        border:SetColorTexture(1, 1, 1, 0.8)
-        border:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Highlight)
-        if edge == "TOP" then
-            border:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-            border:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-            border:SetHeight(borderThickness)
-        elseif edge == "BOTTOM" then
-            border:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
-            border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-            border:SetHeight(borderThickness)
-        elseif edge == "LEFT" then
-            border:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-            border:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
-            border:SetWidth(borderThickness)
-        elseif edge == "RIGHT" then
-            border:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-            border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-            border:SetWidth(borderThickness)
-        end
-        border:Hide()
-        frame.SelectionBorders[edge] = border
-    end
-    frame.SelectionHighlight.Show = function(self)
-        for _, border in pairs(frame.SelectionBorders) do
-            border:Show()
-        end
-    end
-    frame.SelectionHighlight.Hide = function(self)
-        for _, border in pairs(frame.SelectionBorders) do
-            border:Hide()
-        end
-    end
 
-    -- Aggro highlight (on BorderOverlay - below glow)
-    frame.AggroHighlight = frame.BorderOverlay:CreateTexture(nil, "ARTWORK")
-    frame.AggroHighlight:SetAllPoints()
-    frame.AggroHighlight:SetAtlas("UI-HUD-ActionBar-IconFrame-Highlight")
-    frame.AggroHighlight:SetBlendMode("ADD")
-    frame.AggroHighlight:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Highlight)
-    frame.AggroHighlight:Hide()
 
     local centerIconSize = iconSize * 1.5
     for _, iconKey in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }) do
@@ -131,7 +81,7 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
         btn:SetSize(auraIconSize, auraIconSize)
         btn.orbitOriginalWidth, btn.orbitOriginalHeight = auraIconSize, auraIconSize
         btn:SetPoint("CENTER", frame, "CENTER", 0, 0)
-        btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.ProcOverlay)
+        btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
         btn.Icon = btn:CreateTexture(nil, "ARTWORK")
         btn.Icon:SetAllPoints()
         btn.icon = btn.Icon
@@ -144,7 +94,7 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
     paa:SetSize(auraIconSize, auraIconSize)
     paa.orbitOriginalWidth, paa.orbitOriginalHeight = auraIconSize, auraIconSize
     paa:SetPoint("CENTER", frame, "CENTER", 0, 0)
-    paa:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.ProcOverlay)
+    paa:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     paa:EnableMouse(false)
     paa.Icon = paa:CreateTexture(nil, "ARTWORK")
     paa.Icon:SetAllPoints()

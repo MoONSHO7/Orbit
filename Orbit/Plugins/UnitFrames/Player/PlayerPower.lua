@@ -6,7 +6,6 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
 local UPDATE_INTERVAL = 0.05
 local AUGMENTATION_SPEC_ID = 1473
-local FRAME_LEVEL_BOOST = 10
 local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
 local TICK_SIZE_MAX = OrbitEngine.TickMixin.TICK_SIZE_MAX
 local TICK_OVERSHOOT = OrbitEngine.TickMixin.TICK_OVERSHOOT
@@ -268,7 +267,6 @@ function Plugin:OnLoad()
         template = "BackdropTemplate",
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = true },
     })
-    Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 4, maxH = 25 }
     self.frame = Frame
     self.mountedConfig = { frame = Frame }
@@ -400,13 +398,17 @@ function Plugin:ApplySettings()
     if not Frame then
         return
     end
+    if InCombatLockdown() then
+        Orbit.CombatManager:QueueUpdate(function() self:ApplySettings() end)
+        return
+    end
 
     local systemIndex = SYSTEM_INDEX
     local width = self:GetSetting(systemIndex, "Width")
     local height = self:GetSetting(systemIndex, "Height")
     local borderSize = self:GetSetting(systemIndex, "BorderSize")
     local textureName = self:GetSetting(systemIndex, "Texture")
-    local textSize = Orbit.Skin:GetAdaptiveTextSize(height, 18, 26, 1)
+    local textSize = 18
     local fontName = self:GetSetting(systemIndex, "Font")
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
 
