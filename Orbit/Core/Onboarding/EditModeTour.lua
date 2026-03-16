@@ -393,7 +393,7 @@ tip.nextBtn:SetScript("OnClick", function()
     if Tour.index < #TOUR_STOPS then
         Tour:ShowTourStop(Tour.index + 1)
     else
-        if Orbit.db and Orbit.db.GlobalSettings then Orbit.db.GlobalSettings.TourComplete = true end
+        if Orbit.db and Orbit.db.AccountSettings then Orbit.db.AccountSettings.TourComplete = true end
         Tour:EndTour()
         Tour:ShowCanvasHint()
     end
@@ -760,7 +760,7 @@ end
 
 function Tour:StartTour(force)
     if self.active then return end
-    if not force and Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.TourComplete then return end
+    if not force and Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.TourComplete then return end
     local plugin = GetPlugin()
     if not plugin or not plugin.frameA or not plugin.frameB then return end
 

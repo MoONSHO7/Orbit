@@ -25,6 +25,7 @@ Core\Shared\Shared.xml
 Core\Infrastructure\Infrastructure.xml
 Core\Plugin\Plugin.xml
 Core\Color\Color.xml
+Core\Config\ChangelogData.lua
 Core\Config\Config.xml
 Core\EditMode\EditMode.xml
 Core\Onboarding\Onboarding.xml

@@ -8,36 +8,11 @@ local Constants = Orbit.Constants
 
 -- [ CONSTANTS ]--------------------------------------------------------------------
 
-local WHATS_NEW_ENABLED = false -- set false for backend-only releases (skips auto-show)
-
-local WHATS_NEW_ENTRIES = {
-    { title = "Message",
-      body = "Sorry squad! some of your UIs may need minor adjust again this update, have overhauled the Border system :) Check the addon page for an image of whats possible with it\n"
-        .. "Lots of updates in this one, we are nearing closer to completion and out of work in progress status! I plan on doing a video soon to show off how to really go deep with customizations in Orbit\n"
-        .. "For those non-English users, please let me know if the language localization is off :) (discord)\n"
-        .. "Next round of updates will involve finishing off RaidFrames and Fixing/Enhancing Profiles plus adding Global Profiles"
-    },
-    { title = "Features",
-      body = "• SharedMedia Borders are now integrated with Orbit - I recommend you download LS: Borders from curseforge.\n"
-        .. "• Borders can now be merged by anchoring frames together and reducing their distance to 0 and spacing to 0\n"
-        .. "• Borders are now split between Status Textures (Unit Frames) and Icons (Action Bars, CDM) (Orbit Options)\n"
-        .. "• Border colors are now split between status textures and icons (Orbit Options > Colors)\n"
-        .. "• Updated Texture/Font with search functionality and performance improvements\n"
-        .. "• Added Guided Tour mode for new users\n"
-        .. "• Added Expressway font\n"
-        .. "• Adding Different Icon Choices in Edit Mode (ie RoleIcons)"
-    },
-    { title = "Bugfixes",
-      body = "• Target and Focus Target cast bars are working again and can be recolored properly\n"
-        .. "• Action bars are now pixel-perfect\n"
-        .. "• Health Value text not adjusting size"
-        .. "• Many more minor bugfixes\n"
-    },
-}
+local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips auto-show)
 
 local DISCORD_URL = "https://discord.gg/2sZj63kBqy"
-local WINDOW_WIDTH = 420
-local MAX_HEIGHT = 400
+local WINDOW_WIDTH = 600
+local MAX_HEIGHT = 800
 local CONTENT_PADDING = 10
 local ENTRY_TITLE_FONT = "GameFontNormalLarge"
 local ENTRY_BODY_FONT = "GameFontHighlight"
@@ -206,6 +181,25 @@ ScrollFrame:SetScrollChild(Content)
 
 local renderedFontStrings = {}
 
+local function FormatMarkdown(text)
+    if not text then return "" end
+    -- Fix double-escaped newlines and quotes (common in generated Lua)
+    text = text:gsub("\\n", "\n")
+    text = text:gsub("\\\"", "\"")
+
+    -- Bold: **text** -> Gold
+    text = text:gsub("%*%*(.-)%*%*", "|cFFFFD100%1|r")
+
+    -- Code: `text` -> Cyan
+    text = text:gsub("`(.-)%`", "|cFF00D4FF%1|r")
+
+    -- Bullets: Replace leading "- " with dots
+    text = text:gsub("^%- ", "• ")
+    text = text:gsub("\n%- ", "\n• ")
+
+    return text
+end
+
 local function RenderEntries()
     for _, fs in ipairs(renderedFontStrings) do fs:Hide(); fs:SetText("") end
     wipe(renderedFontStrings)
@@ -214,12 +208,13 @@ local function RenderEntries()
     Content:SetWidth(contentWidth)
 
     local yOffset = 0
-    for _, entry in ipairs(WHATS_NEW_ENTRIES) do
+    if not Orbit.WHATS_NEW_ENTRIES then return end
+    for _, entry in ipairs(Orbit.WHATS_NEW_ENTRIES) do
         local titleText = Content:CreateFontString(nil, "ARTWORK", ENTRY_TITLE_FONT)
         titleText:SetPoint("TOPLEFT", Content, "TOPLEFT", 0, -yOffset)
         titleText:SetWidth(contentWidth)
         titleText:SetJustifyH("LEFT")
-        titleText:SetText("|cFFFFD100" .. entry.title .. "|r")
+        titleText:SetText("|cFFFFD100" .. FormatMarkdown(entry.title) .. "|r")
         tinsert(renderedFontStrings, titleText)
         yOffset = yOffset + titleText:GetStringHeight() + ENTRY_TITLE_BODY_GAP
 
@@ -227,7 +222,7 @@ local function RenderEntries()
         bodyText:SetPoint("TOPLEFT", Content, "TOPLEFT", 0, -yOffset)
         bodyText:SetWidth(contentWidth)
         bodyText:SetJustifyH("LEFT")
-        bodyText:SetText(entry.body)
+        bodyText:SetText(FormatMarkdown(entry.body))
         tinsert(renderedFontStrings, bodyText)
         yOffset = yOffset + bodyText:GetStringHeight() + ENTRY_SPACING
     end

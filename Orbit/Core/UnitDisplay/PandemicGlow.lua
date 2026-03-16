@@ -1,7 +1,5 @@
 -- [ ORBIT PANDEMIC GLOW ]--------------------------------------------------------------------------
 -- Curve-driven pandemic glow for UnitDisplay aura icons.
--- Uses C_CurveUtil Step curve + wrapper frame + SetAlpha(secretNumber).
--- Pattern from Platynator: compute pandemic from the aura's own duration, no CDM dependency.
 local _, Orbit = ...
 Orbit.PandemicGlow = {}
 local PG = Orbit.PandemicGlow
@@ -24,8 +22,6 @@ local GlowConfig = {
 }
 
 -- [ WRAPPER FRAME ]--------------------------------------------------------------------------------
--- Glow runs inside a wrapper. Wrapper alpha is driven by the curve (secret number).
--- LibCustomGlow animations only affect the glow frame's alpha, not the wrapper's.
 local function GetOrCreateWrapper(icon)
     local w = icon.orbitPandemicWrapper
     local iw, ih = icon:GetSize()
@@ -81,9 +77,6 @@ function PG:Stop(icon)
 end
 
 -- [ APPLY ]----------------------------------------------------------------------------------------
--- Called from AuraMixin on every UNIT_AURA rebuild.
--- Gets the aura's DurationObject, evaluates the pandemic curve, and sets wrapper alpha.
--- The glow runs continuously inside the wrapper; only the wrapper alpha controls visibility.
 function PG:Apply(icon, aura, unit, skinSettings)
     if not icon or not aura or not LibCustomGlow then return end
     local glowType = (skinSettings and skinSettings.pandemicGlowType) or GlowType.Pixel
@@ -97,15 +90,10 @@ function PG:Apply(icon, aura, unit, skinSettings)
         self:Stop(icon)
         return
     end
-    -- Evaluate pandemic curve — returns secret number (0 or 1 from Step curve)
-    -- EvaluateColorValueFromBoolean: if duration is zero (permanent aura), return 0. Otherwise return curve result.
     local alpha = C_CurveUtil.EvaluateColorValueFromBoolean(durObj:IsZero(), 0, durObj:EvaluateRemainingPercent(pandemicCurve))
-    -- Get or create wrapper, drive its alpha (also checks for size changes)
     local wrapper = GetOrCreateWrapper(icon)
     wrapper:SetAlpha(alpha)
-    -- Ensure glow is running inside wrapper (create once, alpha controls visibility)
     if icon.orbitPandemicGlowType == glowType then return end
-    -- Glow type changed or first time — recreate
     if icon.orbitPandemicGlowType then StopGlow(wrapper, icon.orbitPandemicGlowType) end
     local c = (skinSettings and skinSettings.pandemicGlowColor) or { r = 1, g = 0.8, b = 0 }
     StartGlow(wrapper, glowType, { c.r, c.g, c.b, 1 })

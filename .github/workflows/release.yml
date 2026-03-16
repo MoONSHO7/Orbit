@@ -20,5 +20,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Build Changelog Data
+        run: |
+          python .scripts/update_changelog.py
+        working-directory: Orbit
+
       - name: Build and Package
         uses: BigWigsMods/packager@v2
