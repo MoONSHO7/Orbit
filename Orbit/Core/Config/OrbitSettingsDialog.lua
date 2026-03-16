@@ -274,7 +274,10 @@ function Dialog:OnNativeFrameSelected() self:Hide() end
 -- [ EDIT MODE LIFECYCLE ]----------------------------------------------------------
 
 if EditModeManagerFrame then
-    EditModeManagerFrame:HookScript("OnHide", function() Dialog:Hide() end)
+    EditModeManagerFrame:HookScript("OnHide", function()
+        Dialog.hasAutoPositionedNearButton = false
+        Dialog:Hide()
+    end)
 end
 
 -- [ EXPORT ]-----------------------------------------------------------------------
