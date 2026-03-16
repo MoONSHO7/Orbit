@@ -103,6 +103,9 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
     -- (Fixes data loss for frames created manually without FrameFactory)
     frame.orbitPlugin = plugin
     frame.systemIndex = systemIndex
+    if plugin.RegisterFrameForSettings then
+        plugin:RegisterFrameForSettings(frame, systemIndex)
+    end
 
     -- Shared logic to refresh dialog (Trailing Debounce)
     local refreshTimer

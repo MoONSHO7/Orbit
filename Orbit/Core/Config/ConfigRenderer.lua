@@ -7,9 +7,69 @@ Engine.Config = {}
 local Config = Engine.Config
 local Layout = Engine.Layout
 
+local function BuildRenderedSchema(dialog, plugin, systemFrame, systemIndex, schema)
+    local controls = {}
+    for _, def in ipairs(schema.controls or schema) do
+        controls[#controls + 1] = def
+    end
+
+    if plugin and systemFrame and systemFrame.systemFrame then
+        systemFrame = systemFrame.systemFrame
+    end
+
+    if dialog == Orbit.SettingsDialog and plugin and systemFrame and systemFrame.GetFrameLevel and not schema.hideLayerControls then
+        controls[#controls + 1] = {
+            type = "dropdown",
+            key = "FrameStrata",
+            label = "Frame Strata",
+            options = Constants.Strata.FrameOptions,
+            default = "MEDIUM",
+            getValue = function()
+                return plugin:GetSetting(systemIndex, "FrameStrata") or systemFrame:GetFrameStrata() or "MEDIUM"
+            end,
+            onChange = function(value)
+                plugin:SetSetting(systemIndex, "FrameStrata", value)
+                if plugin.ApplyStoredFrameLayers then
+                    plugin:ApplyStoredFrameLayers(systemFrame, systemIndex)
+                end
+                if Engine.Frame then Engine.Frame:ForceUpdateSelection(systemFrame) end
+            end,
+        }
+        controls[#controls + 1] = {
+            type = "slider",
+            key = "FrameLevel",
+            label = "Frame Level",
+            min = Constants.Strata.FrameLevel.Min,
+            max = Constants.Strata.FrameLevel.Max,
+            step = Constants.Strata.FrameLevel.Step,
+            default = Constants.Strata.FrameLevel.Default,
+            getValue = function()
+                local value = plugin:GetSetting(systemIndex, "FrameLevel")
+                if value == nil and systemFrame.GetFrameLevel then
+                    value = systemFrame:GetFrameLevel()
+                end
+                return value or Constants.Strata.FrameLevel.Default
+            end,
+            onChange = function(value)
+                plugin:SetSetting(systemIndex, "FrameLevel", value)
+                if plugin.ApplyStoredFrameLayers then
+                    plugin:ApplyStoredFrameLayers(systemFrame, systemIndex)
+                end
+                if Engine.Frame then Engine.Frame:ForceUpdateSelection(systemFrame) end
+            end,
+        }
+    end
+
+    local rendered = {}
+    for k, v in pairs(schema) do rendered[k] = v end
+    rendered.controls = controls
+    return rendered
+end
+
 function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
     local systemIndex = systemFrame.systemIndex or plugin.system or 1
     local Constants = Constants
+    schema = BuildRenderedSchema(dialog, plugin, systemFrame, systemIndex, schema)
 
     local footerHeight = Constants.Footer.TopPadding + Constants.Footer.ButtonHeight + Constants.Footer.BottomPadding
     local contentWidthWithScroll = Constants.Panel.Width - Constants.Panel.ScrollbarWidth - (Constants.Panel.ContentPadding * 2)

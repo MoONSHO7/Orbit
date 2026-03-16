@@ -15,6 +15,16 @@ end
 ---@class OrbitPluginMixin
 Orbit.PluginMixin = {}
 
+local function ApplyFrameLayerSettings(frame, strata, level)
+    if not frame then return end
+    if strata and frame.SetFrameStrata then
+        frame:SetFrameStrata(strata)
+    end
+    if level ~= nil and frame.SetFrameLevel then
+        frame:SetFrameLevel(level)
+    end
+end
+
 function Orbit.PluginMixin:Init() end
 
 function Orbit.PluginMixin:OnLoad() end
@@ -80,6 +90,25 @@ end
 function Orbit.PluginMixin:OnCanvasApply()
     if self.ApplySettings then self:ApplySettings() end
     if self.SchedulePreviewUpdate then self:SchedulePreviewUpdate() end
+end
+
+function Orbit.PluginMixin:RegisterFrameForSettings(frame, systemIndex)
+    if not frame then return end
+    self._orbitFramesBySystemIndex = self._orbitFramesBySystemIndex or {}
+    self._orbitFramesBySystemIndex[systemIndex or frame.systemIndex or 1] = frame
+end
+
+function Orbit.PluginMixin:ApplyStoredFrameLayers(frame, systemIndex)
+    if frame and frame.GetFrameLevel then
+        local idx = systemIndex or frame.systemIndex or 1
+        ApplyFrameLayerSettings(frame, self:GetSetting(idx, "FrameStrata"), self:GetSetting(idx, "FrameLevel"))
+        return
+    end
+
+    if not self._orbitFramesBySystemIndex then return end
+    for idx, registeredFrame in pairs(self._orbitFramesBySystemIndex) do
+        ApplyFrameLayerSettings(registeredFrame, self:GetSetting(idx, "FrameStrata"), self:GetSetting(idx, "FrameLevel"))
+    end
 end
 
 -- Subscribe to live preview updates during Canvas Mode editing

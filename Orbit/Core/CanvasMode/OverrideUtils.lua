@@ -10,6 +10,28 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local OverrideUtils = {}
 Engine.OverrideUtils = OverrideUtils
 
+function OverrideUtils.ApplyLayerOverrides(element, overrides)
+    if not element or not overrides then return end
+
+    local strata = overrides.Strata
+    local level = overrides.Level
+
+    if strata and element.SetFrameStrata then
+        element:SetFrameStrata(strata)
+    end
+
+    if level ~= nil and element.SetFrameLevel then
+        element:SetFrameLevel(level)
+        return
+    end
+
+    if (strata or level ~= nil) and element.SetDrawLayer then
+        local currentLayer = element.GetDrawLayer and select(1, element:GetDrawLayer()) or "ARTWORK"
+        local drawLayer = strata and Orbit.Constants.Strata.DrawLayerByStrata[strata] or currentLayer
+        element:SetDrawLayer(drawLayer or "ARTWORK", level or 0)
+    end
+end
+
 -- [ TEXT COLOR ]-------------------------------------------------------------------------------------
 -- Apply color to a text element.
 -- Priority: UseClassColour > CustomColorCurve > CustomColorValue > Global FontColorCurve > white
@@ -205,4 +227,5 @@ function OverrideUtils.ApplyOverrides(element, overrides, defaults, unit, classF
     -- Scale (Textures and scalable elements)
     OverrideUtils.ApplyScaleOverride(element, overrides)
     OverrideUtils.ApplyIconSizeOverride(element, overrides)
+    OverrideUtils.ApplyLayerOverrides(element, overrides)
 end
