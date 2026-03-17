@@ -41,6 +41,7 @@ Dialog:SetScript("OnDragStop", function(self)
     local top, left = self:GetTop(), self:GetLeft()
     self:ClearAllPoints()
     self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+    self.hasAutoPositionedNearButton = true
 end)
 
 Dialog:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -81,6 +82,7 @@ end)
 Dialog.attachedToSystem = nil
 Dialog.attachedPlugin = nil
 Dialog.attachedSystemIndex = nil
+Dialog.hasAutoPositionedNearButton = false
 
 -- [ CORE API: UpdateDialog ]-------------------------------------------------------
 
@@ -258,9 +260,10 @@ end)
 -- [ POSITION HELPER ]--------------------------------------------------------------
 
 function Dialog:PositionNearButton()
-    if Orbit.OptionsButton then
+    if not self.hasAutoPositionedNearButton and Orbit.OptionsButton then
         self:ClearAllPoints()
         self:SetPoint("TOPLEFT", Orbit.OptionsButton, "BOTTOMLEFT", OPTIONS_BUTTON_OFFSET_X, OPTIONS_BUTTON_OFFSET_Y)
+        self.hasAutoPositionedNearButton = true
     end
 end
 
@@ -271,7 +274,10 @@ function Dialog:OnNativeFrameSelected() self:Hide() end
 -- [ EDIT MODE LIFECYCLE ]----------------------------------------------------------
 
 if EditModeManagerFrame then
-    EditModeManagerFrame:HookScript("OnHide", function() Dialog:Hide() end)
+    EditModeManagerFrame:HookScript("OnHide", function()
+        Dialog.hasAutoPositionedNearButton = false
+        Dialog:Hide()
+    end)
 end
 
 -- [ EXPORT ]-----------------------------------------------------------------------

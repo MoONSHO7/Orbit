@@ -10,6 +10,24 @@ local Constants = Orbit.Constants
 
 local WHATS_NEW_ENABLED = false -- set false for backend-only releases (skips auto-show)
 
+local WHATS_NEW_ENTRIES = {
+    { title = "New",
+      body = "• Added Info Tour to Canvas Mode and Color Picker (New Info Buttons)\n"
+        .. "• Improved Canvas Mode Drag a bit more\n"
+        .. "• Imrpovements to CDM proc glows & performance -- Feedback on this would be great!\n"
+        .. "• Added Global Border Color Picker (Orbit Options > Colors), enjoy that pink UI!\n"
+    },
+    { title = "Bugfixes",
+      body = "• Maelstrom Color Picker for Elemental Shaman\n"
+        .. "• Cast Bar Icon Border showing after demounting when Hide While Mounted is on\n"
+        .. "• Turned off blizzard timers from Player Buffs (duplicate timers)\n"
+        .. "• Text should now be above border in strata on Player Buffs/Debuffs\n"
+        .. "• Fixed some border merging issues\n"
+        .. "• Fixed some Strata issues with text when anchoring frames (due to a previous enhancement)\n"
+        .. "• Some other minor bugfixes\n"
+    },
+}
+
 local DISCORD_URL = "https://discord.gg/2sZj63kBqy"
 local WINDOW_WIDTH = 600
 local MAX_HEIGHT = 800
