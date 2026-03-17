@@ -40,7 +40,7 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
         ProcGlowType = Constants.PandemicGlow.DefaultType,
         ProcGlowColor = Constants.PandemicGlow.DefaultColor,
         OutOfCombatFade = false,
-        ShowOnMouseover = true,
+        MouseoverOnly = false,
         TrackedItems = {},
         KeypressColor = { r = 1, g = 1, b = 1, a = 0 },
         AssistedHighlight = false,
@@ -246,26 +246,23 @@ function Plugin:OnLoad()
 
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
         for systemIndex, data in pairs(VIEWER_MAP) do
-            local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
             if data.viewer then
-                Orbit.OOCFadeMixin:ApplyOOCFade(data.viewer, self, systemIndex, "OutOfCombatFade", enableHover)
+                Orbit.OOCFadeMixin:ApplyOOCFade(data.viewer, self, systemIndex, "OutOfCombatFade", false)
             end
             if (data.isTracked or data.isChargeBar) and data.anchor then
-                Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", enableHover)
+                Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", false)
             end
             for _, childData in pairs(self.activeChildren or {}) do
                 if childData.frame then
                     local csi = childData.frame.systemIndex
-                    local hover = self:GetSetting(csi, "ShowOnMouseover") ~= false
-                    Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover)
+                    Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", false)
                 end
             end
             -- Also apply to charge bar children
             for _, childData in pairs(self.activeChargeChildren or {}) do
                 if childData.frame then
                     local csi = childData.frame.systemIndex
-                    local hover = self:GetSetting(csi, "ShowOnMouseover") ~= false
-                    Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover)
+                    Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", false)
                 end
             end
             Orbit.OOCFadeMixin:RefreshAll()

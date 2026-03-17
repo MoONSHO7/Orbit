@@ -58,16 +58,14 @@ function Plugin:AddSettings(dialog, systemFrame)
                 if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
-        if self:GetSetting(SYSTEM_INDEX, "OutOfCombatFade") then
-            table.insert(schema.controls, {
-                type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover",
-                default = true, tooltip = "Reveal frame when mousing over it",
-                onChange = function(val)
-                    self:SetSetting(SYSTEM_INDEX, "ShowOnMouseover", val)
-                    self:ApplySettings()
-                end,
-            })
-        end
+        table.insert(schema.controls, {
+            type = "checkbox", key = "MouseoverOnly", label = "Mouseover Only",
+            default = false, tooltip = "Only show the frame while mousing over it",
+            onChange = function(val)
+                self:SetSetting(SYSTEM_INDEX, "MouseoverOnly", val)
+                self:ApplySettings()
+            end,
+        })
         table.insert(schema.controls, {
             type = "checkbox", key = "SmoothAnimation", label = "Smooth Animation",
             default = true, tooltip = "Smoothly animate bar value changes",

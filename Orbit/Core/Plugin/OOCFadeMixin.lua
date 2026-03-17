@@ -15,8 +15,7 @@ local ManagedFrames = {}
 
 -- [ VISIBILITY LOGIC ]------------------------------------------------------------------------------
 
-local function ShouldShowFrame(frame)
-    if frame and not frame:IsShown() then return false end
+local function IsForceVisible()
     if Orbit:IsEditMode() then
         return true
     end
@@ -24,8 +23,24 @@ local function ShouldShowFrame(frame)
         return true
     end
     local cursorType = GetCursorInfo()
-    if cursorType == "spell" or cursorType == "item" then
+    return cursorType == "spell" or cursorType == "item"
+end
+
+local function IsMouseoverOnlyEnabled(data)
+    return data and data.plugin and data.plugin.GetSetting and data.plugin:GetSetting(data.systemIndex, "MouseoverOnly")
+end
+
+local function IsHoverEnabled(data)
+    return (data and data.enableHover) or IsMouseoverOnlyEnabled(data)
+end
+
+local function ShouldShowFrame(frame, data)
+    if frame and not frame:IsShown() then return false end
+    if IsForceVisible() then
         return true
+    end
+    if IsMouseoverOnlyEnabled(data) then
+        return frame and frame.orbitMouseOver
     end
     return InCombatLockdown() or UnitAffectingCombat("player") or UnitExists("target") or (frame and frame.orbitMouseOver)
 end
@@ -61,17 +76,24 @@ local function UpdateFrameVisibility(frame, fadeEnabled, data)
         return
     end
     if Orbit.MountedVisibility:ShouldHide() then return end
-    local includeChildren = data and not data.enableHover
-    if not fadeEnabled then
+
+    local includeChildren = data and not IsHoverEnabled(data)
+    local mouseoverOnly = IsMouseoverOnlyEnabled(data)
+
+    if not fadeEnabled and not mouseoverOnly then
         SetFrameMouseEnabled(frame, true, includeChildren)
-        return
-    end
-    if ShouldShowFrame(frame) then
-        SetFrameMouseEnabled(frame, true, includeChildren)
-        -- Apply Opacity setting instead of forcing alpha=1 (new precedence: OOC → Opacity → MouseOver)
         if data and data.plugin then
             local opacity = data.plugin:GetSetting(data.systemIndex, "Opacity") or 100
-            local minAlpha = opacity / 100
+            frame:SetAlpha(opacity / 100)
+        end
+        return
+    end
+
+    if ShouldShowFrame(frame, data) then
+        SetFrameMouseEnabled(frame, true, includeChildren)
+        if data and data.plugin then
+            local opacity = data.plugin:GetSetting(data.systemIndex, "Opacity") or 100
+            local minAlpha = mouseoverOnly and 0 or (opacity / 100)
             local isEditMode = Orbit:IsEditMode()
             Orbit.Animation:ApplyHoverFade(frame, minAlpha, 1, isEditMode)
         end
@@ -98,13 +120,12 @@ EventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
 
 EventFrame:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_REGEN_DISABLED" then
-        UpdateAllFrames() -- Update immediately before combat lockdown
+        UpdateAllFrames()
     else
         C_Timer.After(0.05, UpdateAllFrames)
     end
 end)
 
--- Hook Edit Mode show/hide
 if EditModeManagerFrame then
     EditModeManagerFrame:HookScript("OnShow", function()
         C_Timer.After(0.1, UpdateAllFrames)
@@ -114,7 +135,6 @@ if EditModeManagerFrame then
     end)
 end
 
--- Hook CooldownViewerSettings show/hide (delayed for load order)
 C_Timer.After(2, function()
     if CooldownViewerSettings then
         CooldownViewerSettings:HookScript("OnShow", function()
@@ -128,29 +148,36 @@ end)
 
 -- [ MIXIN FUNCTIONS ]-------------------------------------------------------------------------------
 
---- Apply Out of Combat Fade behavior to a frame
 function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover)
     if not frame or not plugin then
         return
     end
-    settingKey = settingKey or "OutOfCombatFade"
-    ManagedFrames[frame] = { plugin = plugin, systemIndex = systemIndex, settingKey = settingKey, enableHover = enableHover or false }
 
-    -- Create hover ticker if not exists (uses MouseIsOver for child-inclusive detection)
+    settingKey = settingKey or "OutOfCombatFade"
+    ManagedFrames[frame] = {
+        plugin = plugin,
+        systemIndex = systemIndex,
+        settingKey = settingKey,
+        enableHover = enableHover or false,
+    }
+
     if not frame.orbitOOCHoverTicker then
         local hoverTicker = CreateFrame("Frame", nil, frame)
         hoverTicker:SetScript("OnUpdate", function(self, elapsed)
             self.timer = (self.timer or 0) + elapsed
             if self.timer < Orbit.Constants.Timing.HoverCheckInterval then return end
             self.timer = 0
+
             local parent = self:GetParent()
             if not parent:IsShown() then return end
+
             local isOver = MouseIsOver(parent)
             if Orbit.MountedVisibility:ShouldHide() then return end
+
             if isOver and not parent.orbitMouseOver then
                 parent.orbitMouseOver = true
                 local data = ManagedFrames[parent]
-                if data and data.plugin:GetSetting(data.systemIndex, data.settingKey) then
+                if data and (data.plugin:GetSetting(data.systemIndex, data.settingKey) or IsMouseoverOnlyEnabled(data)) then
                     parent:SetAlpha(1)
                 end
             elseif not isOver and parent.orbitMouseOver then
@@ -164,30 +191,29 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover)
         frame.orbitOOCHoverTicker = hoverTicker
     end
 
-    -- Show/hide ticker based on enableHover setting (allows dynamic toggle)
-    if enableHover then
+    if IsHoverEnabled(ManagedFrames[frame]) then
         frame.orbitOOCHoverTicker:Show()
     else
         frame.orbitOOCHoverTicker:Hide()
         frame.orbitMouseOver = nil
     end
 
-    -- Hook SetAlpha to prevent external override when OOC fade should hide
     if not frame.orbitOOCSetAlphaHooked then
         local originalSetAlpha = frame.SetAlpha
         frame.SetAlpha = function(self, alpha)
             local data = ManagedFrames[self]
-            if data and data.plugin:GetSetting(data.systemIndex, data.settingKey) and not ShouldShowFrame(self) and alpha > 0 and not Orbit.MountedVisibility:ShouldHide() then
+            if data and (data.plugin:GetSetting(data.systemIndex, data.settingKey) or IsMouseoverOnlyEnabled(data))
+                and not ShouldShowFrame(self, data) and alpha > 0 and not Orbit.MountedVisibility:ShouldHide() then
                 return originalSetAlpha(self, 0)
             end
             return originalSetAlpha(self, alpha)
         end
         frame.orbitOOCSetAlphaHooked = true
     end
+
     UpdateFrameVisibility(frame, plugin:GetSetting(systemIndex, settingKey), ManagedFrames[frame])
 end
 
---- Remove OOC Fade behavior from a frame
 function Mixin:RemoveOOCFade(frame)
     if not frame then
         return

@@ -29,7 +29,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         HealthTextMode = "percent_short",
         Opacity = 100,
         OutOfCombatFade = false,
-        ShowOnMouseover = true,
+        MouseoverOnly = false,
         AggroIndicatorEnabled = true,
         AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
         AggroThickness = 1,
@@ -90,19 +90,17 @@ function Plugin:AddSettings(dialog, systemFrame)
                 dialog.orbitTabCallback()
             end,
         })
-        if self:GetSetting(PLAYER_FRAME_INDEX, "OutOfCombatFade") then
-            table.insert(schema.controls, {
-                type = "checkbox",
-                key = "ShowOnMouseover",
-                label = "Show on Mouseover",
-                default = true,
-                tooltip = "Reveal frame when mousing over it",
-                onChange = function(val)
-                    self:SetSetting(PLAYER_FRAME_INDEX, "ShowOnMouseover", val)
-                    self:ApplySettings()
-                end,
-            })
-        end
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "MouseoverOnly",
+            label = "Mouseover Only",
+            default = false,
+            tooltip = "Only show the frame while mousing over it",
+            onChange = function(val)
+                self:SetSetting(PLAYER_FRAME_INDEX, "MouseoverOnly", val)
+                self:ApplySettings()
+            end,
+        })
     end
 
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
@@ -434,8 +432,7 @@ function Plugin:ApplySettings(frame)
     self:UpdateRestingIcon(frame)
     frame:UpdatePortrait()
 
-    local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
-    Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover)
+    Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", false)
     Orbit.EventBus:Fire("PLAYER_SETTINGS_CHANGED")
 end
 

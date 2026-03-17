@@ -80,7 +80,7 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
         EbonMightColorCurve = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.4, a = 1 } } } },
         Opacity = 100,
         OutOfCombatFade = false,
-        ShowOnMouseover = true,
+        MouseoverOnly = false,
         SmoothAnimation = true,
         FrequentUpdates = false,
         TickSize = TICK_SIZE_DEFAULT,
@@ -188,19 +188,17 @@ function Plugin:AddSettings(dialog, systemFrame)
                 dialog.orbitTabCallback()
             end,
         })
-        if self:GetSetting(systemIndex, "OutOfCombatFade") then
-            table.insert(schema.controls, {
-                type = "checkbox",
-                key = "ShowOnMouseover",
-                label = "Show on Mouseover",
-                default = true,
-                tooltip = "Reveal frame when mousing over it",
-                onChange = function(val)
-                    self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                    self:ApplySettings()
-                end,
-            })
-        end
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "MouseoverOnly",
+            label = "Mouseover Only",
+            default = false,
+            tooltip = "Only show the frame while mousing over it",
+            onChange = function(val)
+                self:SetSetting(systemIndex, "MouseoverOnly", val)
+                self:ApplySettings()
+            end,
+        })
         table.insert(schema.controls, {
             type = "checkbox",
             key = "SmoothAnimation",
@@ -470,8 +468,7 @@ function Plugin:ApplySettings()
     end
 
     -- Apply Out of Combat Fade (with hover detection based on setting)
-    local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
-    Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, systemIndex, "OutOfCombatFade", enableHover)
+    Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, systemIndex, "OutOfCombatFade", false)
 
     self:UpdateVisibility()
 end

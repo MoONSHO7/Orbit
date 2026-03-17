@@ -66,20 +66,18 @@ function CDM:AddSettings(dialog, systemFrame)
                     if dialog.orbitTabCallback then dialog.orbitTabCallback() end
                 end,
             })
-            if self:GetSetting(systemIndex, "OutOfCombatFade") then
-                table.insert(schema.controls, {
-                    type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
-                    tooltip = "Reveal frame when mousing over it",
-                    onChange = function(val)
-                        self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                        local data = VIEWER_MAP[systemIndex]
-                        if data and data.anchor then
-                            Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", val)
-                            Orbit.OOCFadeMixin:RefreshAll()
-                        end
-                    end,
-                })
-            end
+            table.insert(schema.controls, {
+                type = "checkbox", key = "MouseoverOnly", label = "Mouseover Only", default = false,
+                tooltip = "Only show frame while mousing over it",
+                onChange = function(val)
+                    self:SetSetting(systemIndex, "MouseoverOnly", val)
+                    local data = VIEWER_MAP[systemIndex]
+                    if data and data.anchor then
+                        Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", false)
+                        Orbit.OOCFadeMixin:RefreshAll()
+                    end
+                end,
+            })
             table.insert(schema.controls, {
                 type = "checkbox", key = "SmoothAnimation", label = "Smooth Animation", default = false,
                 tooltip = "Smoothly animate charge transitions",
@@ -95,20 +93,6 @@ function CDM:AddSettings(dialog, systemFrame)
                     self:RefreshChargeUpdateMethod()
                 end,
             })
-            if self:GetSetting(systemIndex, "OutOfCombatFade") then
-                table.insert(schema.controls, {
-                    type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
-                    tooltip = "Reveal frame when mousing over it",
-                    onChange = function(val)
-                        self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                        local data = VIEWER_MAP[systemIndex]
-                        if data and data.anchor then
-                            Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", val)
-                            Orbit.OOCFadeMixin:RefreshAll()
-                        end
-                    end,
-                })
-            end
         end
 
         OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
@@ -285,23 +269,21 @@ function CDM:AddSettings(dialog, systemFrame)
                 if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
-        if self:GetSetting(systemIndex, "OutOfCombatFade") then
-            table.insert(schema.controls, {
-                type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
-                tooltip = "Reveal frame when mousing over it",
-                onChange = function(val)
-                    self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                    local data = VIEWER_MAP[systemIndex]
-                    if data then
-                        local target = data.isTracked and data.anchor or data.viewer
-                        if target then
-                            Orbit.OOCFadeMixin:ApplyOOCFade(target, self, systemIndex, "OutOfCombatFade", val)
-                            Orbit.OOCFadeMixin:RefreshAll()
-                        end
+        table.insert(schema.controls, {
+            type = "checkbox", key = "MouseoverOnly", label = "Mouseover Only", default = false,
+            tooltip = "Only show frame while mousing over it",
+            onChange = function(val)
+                self:SetSetting(systemIndex, "MouseoverOnly", val)
+                local data = VIEWER_MAP[systemIndex]
+                if data then
+                    local target = data.isTracked and data.anchor or data.viewer
+                    if target then
+                        Orbit.OOCFadeMixin:ApplyOOCFade(target, self, systemIndex, "OutOfCombatFade", false)
+                        Orbit.OOCFadeMixin:RefreshAll()
                     end
-                end,
-            })
-        end
+                end
+            end,
+        })
         if systemIndex == Constants.Cooldown.SystemIndex.BuffIcon then
             table.insert(schema.controls, {
                 type = "checkbox", key = "AlwaysShow", label = "Always Show", default = false,

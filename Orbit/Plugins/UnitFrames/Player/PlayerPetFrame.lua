@@ -17,7 +17,7 @@ local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
         Height = 20,
         Opacity = 100,
         OutOfCombatFade = false,
-        ShowOnMouseover = true,
+        MouseoverOnly = false,
         DisabledComponents = { "HealthText" },
         ComponentPositions = {
             Name = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
@@ -59,20 +59,18 @@ function Plugin:AddSettings(dialog, systemFrame)
             self:AddSettings(dialog, systemFrame)
         end,
     })
+    table.insert(schema.controls, {
+        type = "checkbox",
+        key = "MouseoverOnly",
+        label = "Mouseover Only",
+        default = false,
+        tooltip = "Only show the frame while mousing over it",
+        onChange = function(val)
+            self:SetSetting(PET_FRAME_INDEX, "MouseoverOnly", val)
+            self:ApplySettings()
+        end,
+    })
 
-    if self:GetSetting(PET_FRAME_INDEX, "OutOfCombatFade") then
-        table.insert(schema.controls, {
-            type = "checkbox",
-            key = "ShowOnMouseover",
-            label = "Show on Mouseover",
-            default = true,
-            tooltip = "Reveal frame when mousing over it",
-            onChange = function(val)
-                self:SetSetting(PET_FRAME_INDEX, "ShowOnMouseover", val)
-                self:ApplySettings()
-            end,
-        })
-    end
 
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
@@ -229,8 +227,7 @@ function Plugin:ApplySettings(frame)
         if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
     end
 
-    local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
-    Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover)
+    Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", false)
     -- Ensure visibility is correctly set (Edit Mode awareness)
     self:UpdateVisibility()
 end
