@@ -8,23 +8,10 @@ local CC = CanvasMode.CreatorConstants
 local GetSourceSize = CanvasMode.GetSourceSize
 
 local ZOOM_BUTTON_GAP = 2
--- Match Blizzard's actual zoom button proportions from Minimap.xml:
---   ZoomIn:  17 x 17  (square)
---   ZoomOut: 17 x  9  (flat rectangle)
 local ZOOM_IN_W, ZOOM_IN_H = 17, 17
 local ZOOM_OUT_W, ZOOM_OUT_H = 17, 9
 
--- Keys that are reparented Blizzard frames — no border/skin on canvas preview
-local NO_BORDER_KEYS = {
-    Missions = true,
-    Mail = true,
-    CraftingOrder = true,
-    Difficulty = true,
-    Compartment = true,
-}
-
 -- [ CREATOR ]---------------------------------------------------------------------------------------
-
 local function Create(container, preview, key, source, data)
     local iconTexture = source.Icon
     local hasFlipbook = iconTexture and iconTexture.orbitPreviewTexCoord
@@ -79,21 +66,12 @@ local function Create(container, preview, key, source, data)
 
         local texturePath = iconTexture and iconTexture:GetTexture()
         local StatusMixin = Orbit.StatusIconMixin
-        if texturePath then
-            btn.Icon:SetTexture(texturePath)
-        elseif StatusMixin and key == "DefensiveIcon" then
-            btn.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
-        elseif StatusMixin and key == "CrowdControlIcon" then
-            btn.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
-        elseif StatusMixin and key == "PrivateAuraAnchor" then
-            btn.Icon:SetTexture(StatusMixin:GetPrivateAuraTexture())
-        else
-            local previewAtlases = Orbit.IconPreviewAtlases or {}
-            if previewAtlases[key] then
-                btn.Icon:SetAtlas(previewAtlases[key], false)
-            else
-                btn.Icon:SetColorTexture(CC.FALLBACK_GRAY[1], CC.FALLBACK_GRAY[2], CC.FALLBACK_GRAY[3], CC.FALLBACK_GRAY[4])
-            end
+        if texturePath then btn.Icon:SetTexture(texturePath)
+        elseif StatusMixin and key == "DefensiveIcon" then btn.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
+        elseif StatusMixin and key == "CrowdControlIcon" then btn.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
+        elseif StatusMixin and key == "PrivateAuraAnchor" then btn.Icon:SetTexture(StatusMixin:GetPrivateAuraTexture())
+        else local previewAtlases = Orbit.IconPreviewAtlases or {} if previewAtlases[key] then btn.Icon:SetAtlas(previewAtlases[key], false)
+        else btn.Icon:SetColorTexture(CC.FALLBACK_GRAY[1], CC.FALLBACK_GRAY[2], CC.FALLBACK_GRAY[3], CC.FALLBACK_GRAY[4]) end
         end
 
         visual = btn
@@ -103,9 +81,7 @@ local function Create(container, preview, key, source, data)
     local overrides = data and data.overrides
     local savedSize = overrides and overrides.IconSize
     local w, h = GetSourceSize(source, CC.DEFAULT_ICON_SIZE, CC.DEFAULT_ICON_SIZE)
-    if savedSize and savedSize > 0 and key ~= "PrivateAuraAnchor" then
-        w, h = savedSize, savedSize
-    end
+    if savedSize and savedSize > 0 and key ~= "PrivateAuraAnchor" then w, h = savedSize, savedSize end
     container:SetSize(w, h)
 
     if container.isIconFrame and visual and Orbit.Skin and Orbit.Skin.Icons and key ~= "PrivateAuraAnchor" then
