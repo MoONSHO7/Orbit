@@ -36,29 +36,15 @@ local function DetectCreatorType(key, source)
     local isTexture = source and source.GetTexture ~= nil and not isFontString
     local isIconFrame = source and source.Icon and source.Icon.GetTexture and key ~= "CastBar"
 
-    if isFontString then
-        return "FontString", true, false, false
-    end
-    if key == "StatusIcons" or key == "RoleIcon" or key == "Missions" or key == "PvpIcon" then
-        return "CyclingAtlas", false, false, false
-    end
-    if key == "Buffs" or key == "Debuffs" then
-        return "Aura", false, true, false
-    end
+    if isFontString then return "FontString", true, false, false end
+    if key == "StatusIcons" or key == "RoleIcon" or key == "Missions" or key == "PvpIcon" then return "CyclingAtlas", false, false, false end
+    if key == "Buffs" or key == "Debuffs" then return "Aura", false, true, false end
     -- Known aura icons + healer aura keys (dynamic keys not in standard icon sets)
     local isAuraKey = AURA_ICON_KEYS[key] or (isIconFrame and not STANDARD_ICON_KEYS[key])
-    if isTexture then
-        return "Texture", false, false, false
-    end
-    if isIconFrame then
-        return "IconFrame", false, isAuraKey or false, false
-    end
-    if key == "Portrait" then
-        return "Portrait", false, false, false
-    end
-    if key == "CastBar" then
-        return "CastBar", false, false, false
-    end
+    if isTexture then return "Texture", false, false, false end
+    if isIconFrame then return "IconFrame", false, isAuraKey or false, false end
+    if key == "Portrait" then return "Portrait", false, false, false end
+    if key == "CastBar" then return "CastBar", false, false, false end
     return nil, false, false, false
 end
 
@@ -110,8 +96,7 @@ local function SetupContainerState(container, preview, key, isFontString, isAura
 
     local selfAnchorY = (data and data.selfAnchorY) or anchorY
     if not (data and data.selfAnchorY) and isAuraContainer and data and data.anchorX then
-        local needsComp = NeedsEdgeCompensation(isFontString, isAuraContainer)
-        _, _, _, _, _, selfAnchorY =
+        local needsComp = NeedsEdgeCompensation(isFontString, isAuraContainer) _, _, _, _, _, selfAnchorY =
             CalculateAnchorWithWidthCompensation(startX, startY, halfW, halfH, needsComp, container:GetWidth(), container:GetHeight(), isAuraContainer)
     end
     container.selfAnchorY = selfAnchorY
@@ -120,31 +105,18 @@ local function SetupContainerState(container, preview, key, isFontString, isAura
     local selfAnchor = BuildComponentSelfAnchor(isFontString, isAuraContainer, selfAnchorY, justifyH)
     container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
-    if isFontString and container.visual then
-        ApplyTextAlignment(container, container.visual, justifyH)
-    end
+    if isFontString and container.visual then ApplyTextAlignment(container, container.visual, justifyH) end
 end
 
 -- [ DRAG HANDLERS ]---------------------------------------------------------------------------------
 
 local function SetupDragHandlers(container, preview, key, data)
     local function StartDrag(self)
-        if InCombatLockdown() then
-            return
-        end
+        if InCombatLockdown() then return end
         self.wasDragged = true
         self.pendingDrag = false
         -- Snapshot pre-drag position for dock restore
-        self._preDragPos = {
-            posX = self.posX,
-            posY = self.posY,
-            anchorX = self.anchorX,
-            anchorY = self.anchorY,
-            offsetX = self.offsetX,
-            offsetY = self.offsetY,
-            selfAnchorY = self.selfAnchorY,
-            justifyH = self.justifyH,
-        }
+        self._preDragPos = { posX = self.posX, posY = self.posY, anchorX = self.anchorX, anchorY = self.anchorY, offsetX = self.offsetX, offsetY = self.offsetY, selfAnchorY = self.selfAnchorY, justifyH = self.justifyH, }
         local mX, mY = GetCursorPosition()
         local scale = UIParent:GetEffectiveScale()
         mX, mY = Orbit.Engine.Pixel:Snap(mX / scale, scale), Orbit.Engine.Pixel:Snap(mY / scale, scale)
@@ -157,9 +129,7 @@ local function SetupDragHandlers(container, preview, key, data)
     end
 
     container:SetScript("OnMouseDown", function(self, button)
-        if button ~= "LeftButton" then
-            return
-        end
+        if button ~= "LeftButton" then return end
         self.mouseDownTime = GetTime()
         self.wasDragged = false
         self.pendingDrag = true
@@ -170,29 +140,16 @@ local function SetupDragHandlers(container, preview, key, data)
     end)
 
     container:SetScript("OnMouseUp", function(self, button)
-        if button ~= "LeftButton" then
-            return
-        end
+        if button ~= "LeftButton" then return end
         self.pendingDrag = false
         if self.isDragging then
             self.isDragging = false
             SetBorderColor(self.border, CC.BORDER_COLOR_IDLE)
-            if SmartGuides and preview.guides then
-                SmartGuides:Hide(preview.guides)
-            end
+            if SmartGuides and preview.guides then SmartGuides:Hide(preview.guides) end
             Dialog.DisabledDock.DropHighlight:Hide()
             -- Stage position into transaction for live preview updates
             if CanvasMode.Transaction and CanvasMode.Transaction:IsActive() and self.key then
-                local pos = {
-                    anchorX = self.anchorX,
-                    anchorY = self.anchorY,
-                    offsetX = self.offsetX,
-                    offsetY = self.offsetY,
-                    justifyH = self.justifyH,
-                    selfAnchorY = self.selfAnchorY,
-                    posX = self.posX,
-                    posY = self.posY,
-                }
+                local pos = { anchorX = self.anchorX, anchorY = self.anchorY, offsetX = self.offsetX, offsetY = self.offsetY, justifyH = self.justifyH, selfAnchorY = self.selfAnchorY, posX = self.posX, posY = self.posY, }
                 CanvasMode.Transaction:SetPosition(self.key, pos)
             end
         elseif not self.wasDragged and self.mouseDownTime then
@@ -206,9 +163,7 @@ local function SetupDragHandlers(container, preview, key, data)
     end)
 
     container:SetScript("OnDragStart", function(self)
-        if not self.isDragging and not self.wasDragged then
-            StartDrag(self)
-        end
+        if not self.isDragging and not self.wasDragged then StartDrag(self) end
     end)
 
     container:SetScript("OnUpdate", function(self)
@@ -290,45 +245,25 @@ local function SetupDragHandlers(container, preview, key, data)
 
             local topEdge = innerHalfH - compHalfH
             local bottomEdge = -innerHalfH + compHalfH
-            if edgeOffY == 0 and anchorY ~= "CENTER" then
-                snapY = (anchorY == "TOP") and "TOP" or "BOTTOM"
-            elseif centerRelY == 0 or math.abs(centerRelY) < SNAP_SIZE then
-                snapY = "CENTER"
-                centerRelY = 0
-                edgeOffY = 0
-            elseif centerRelY > topEdge then
-                snapY = "TOP"
-            elseif centerRelY < bottomEdge then
-                snapY = "BOTTOM"
+            if edgeOffY == 0 and anchorY ~= "CENTER" then snapY = (anchorY == "TOP") and "TOP" or "BOTTOM"
+            elseif centerRelY == 0 or math.abs(centerRelY) < SNAP_SIZE then snapY = "CENTER" centerRelY = 0 edgeOffY = 0
+            elseif centerRelY > topEdge then snapY = "TOP"
+            elseif centerRelY < bottomEdge then snapY = "BOTTOM"
             end
         end
 
-        if SmartGuides and preview.guides then
-            SmartGuides:Update(preview.guides, snapX, snapY, preview.sourceWidth, preview.sourceHeight)
-        end
-        if self.isFontString and self.visual then
-            ApplyTextAlignment(self, self.visual, justifyH)
-        end
+        if SmartGuides and preview.guides then SmartGuides:Update(preview.guides, snapX, snapY, preview.sourceWidth, preview.sourceHeight) end
+        if self.isFontString and self.visual then ApplyTextAlignment(self, self.visual, justifyH) end
 
         self:ClearAllPoints()
         local selfAnchor = BuildComponentSelfAnchor(self.isFontString, self.isAuraContainer, selfAnchorY, justifyH)
         local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
         local finalX, finalY
-        if anchorX == "CENTER" then
-            finalX = centerRelX
-        else
-            finalX = edgeOffX
-            if anchorX == "RIGHT" then
-                finalX = -finalX
-            end
+        if anchorX == "CENTER" then finalX = centerRelX
+        else finalX = edgeOffX if anchorX == "RIGHT" then finalX = -finalX end
         end
-        if anchorY == "CENTER" then
-            finalY = centerRelY
-        else
-            finalY = edgeOffY
-            if anchorY == "TOP" then
-                finalY = -finalY
-            end
+        if anchorY == "CENTER" then finalY = centerRelY
+        else finalY = edgeOffY if anchorY == "TOP" then finalY = -finalY end
         end
         self:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
@@ -383,23 +318,17 @@ local function SetupDragHandlers(container, preview, key, data)
             fx = self.posX or 0
         else
             fx = self.offsetX or 0
-            if self.anchorX == "RIGHT" then
-                fx = -fx
-            end
+            if self.anchorX == "RIGHT" then fx = -fx end
         end
         if self.anchorY == "CENTER" then
             fy = self.posY or 0
         else
             fy = self.offsetY or 0
-            if self.anchorY == "TOP" then
-                fy = -fy
-            end
+            if self.anchorY == "TOP" then fy = -fy end
         end
         self:SetPoint(selfAnchor, preview, anchorPoint, fx, fy)
 
-        if self.visual and self.isFontString then
-            ApplyTextAlignment(self, self.visual, self.justifyH or "CENTER")
-        end
+        if self.visual and self.isFontString then ApplyTextAlignment(self, self.visual, self.justifyH or "CENTER") end
 
         -- Stage position into transaction for live preview updates
         if CanvasMode.Transaction and CanvasMode.Transaction:IsActive() then
