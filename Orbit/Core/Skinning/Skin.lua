@@ -107,6 +107,7 @@ function Skin:ClearIconGroupBorder(container)
     if not container then return end
     -- NOTE: _isIconContainer is NOT cleared here — it reflects frame type, not border style.
     self:ClearNineSliceBorder(container)
+    if container._borderFrame then container._borderFrame:Hide() end
 end
 
 -- Group border functions → GroupBorder.lua
