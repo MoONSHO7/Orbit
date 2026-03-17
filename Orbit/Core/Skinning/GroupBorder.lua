@@ -21,6 +21,8 @@ function Skin:UpdateGroupBorder(rootFrame)
     local allFrames = { rootFrame }
     local hasMerge = false
 
+    local ShouldMergeBorders = FrameAnchor.ShouldMergeBorders
+
     local function walk(frame)
         local children = FrameAnchor.childrenOf[frame]
         if not children then return end
@@ -29,7 +31,7 @@ function Skin:UpdateGroupBorder(rootFrame)
             if a and a.padding == 0 then
                 local pOpts = GetFrameOptions(frame)
                 local cOpts = GetFrameOptions(child)
-                local merged = pOpts.mergeBorders and cOpts.mergeBorders
+                local merged = ShouldMergeBorders(pOpts, a.edge) and ShouldMergeBorders(cOpts, a.edge)
                     and child:IsShown() and child:GetAlpha() > 0
                 if merged then
                     hasMerge = true
@@ -96,6 +98,7 @@ function Skin:UpdateGroupBorder(rootFrame)
 
     if not rootFrame._groupBorderOverlay then
         rootFrame._groupBorderOverlay = CreateFrame("Frame", nil, rootFrame, "BackdropTemplate")
+        rootFrame._groupBorderOverlay:SetFrameStrata("LOW")
         rootFrame._groupBorderOverlay:EnableMouse(false)
     end
     rootFrame._groupBorderOverlay:SetFrameLevel(overlayLevel)
@@ -199,17 +202,13 @@ end
 function Skin:ClearGroupBorder(rootFrame)
     if not rootFrame then return end
     local function restoreFrame(frame)
+        local wasActive = frame._groupBorderActive
         frame._groupBorderActive = nil
         frame._groupBorderRoot = nil
+        frame._groupBorderHiddenNineSlice = nil
+        frame._groupBorderHiddenPixels = nil
         if frame._groupBorderOverlay then frame._groupBorderOverlay:Hide() end
-        if frame._groupBorderHiddenNineSlice then
-            frame._groupBorderHiddenNineSlice = nil
-            if frame._edgeBorderOverlay then frame._edgeBorderOverlay:Show() end
-        end
-        if frame._groupBorderHiddenPixels then
-            frame._groupBorderHiddenPixels = nil
-            if frame._borderFrame then frame._borderFrame:Show() end
-        end
+        if wasActive and frame.SetBorderHidden then frame:SetBorderHidden(false) end
     end
     restoreFrame(rootFrame)
     local FrameAnchor = Orbit.Engine.FrameAnchor
@@ -236,7 +235,7 @@ function Skin:RefreshAllGroupBorders()
             if not pa or pa.padding ~= 0 then break end
             local pO = FrameAnchor.GetFrameOptions(pa.parent)
             local cO = FrameAnchor.GetFrameOptions(mergeRoot)
-            if not (pO.mergeBorders and cO.mergeBorders) then break end
+            if not (FrameAnchor.ShouldMergeBorders(pO, pa.edge) and FrameAnchor.ShouldMergeBorders(cO, pa.edge)) then break end
             mergeRoot = pa.parent
         end
         if not visited[mergeRoot] then

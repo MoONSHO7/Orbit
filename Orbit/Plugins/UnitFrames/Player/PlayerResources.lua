@@ -114,7 +114,7 @@ function Plugin:OnLoad()
         height = DEFAULTS.Height,
         y = DEFAULTS.Y,
         systemIndex = SYSTEM_INDEX,
-        anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }, -- Vertical stacking only
+        anchorOptions = { horizontal = false, vertical = true, mergeBorders = { x = false, y = true } }, -- Vertical stacking only
     })
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 5, maxH = 40 }
     self.frame = Frame -- Expose for PluginMixin compatibility

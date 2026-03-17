@@ -30,6 +30,14 @@ local DEFAULT_OPTIONS = {
     independentHeight = false,
 }
 
+local function ShouldMergeBorders(opts, edge)
+    local mb = opts.mergeBorders
+    if not mb then return false end
+    if mb == true then return true end
+    if edge == "LEFT" or edge == "RIGHT" then return mb.x end
+    return mb.y
+end
+
 local function GetFrameOptions(frame)
     if frame:IsForbidden() then return DEFAULT_OPTIONS end
     local cached = optionsCache[frame]
@@ -88,7 +96,7 @@ local function SetMergeBorderState(parent, child, edge, hidden)
             if not pa or pa.padding ~= 0 then break end
             local pO = GetFrameOptions(pa.parent)
             local cO = GetFrameOptions(mergeRoot)
-            if not (pO.mergeBorders and cO.mergeBorders) then break end
+            if not (ShouldMergeBorders(pO, pa.edge) and ShouldMergeBorders(cO, pa.edge)) then break end
             mergeRoot = pa.parent
         end
         if mergeRoot and mergeRoot.GetFrameLevel then Orbit.Skin:UpdateGroupBorder(mergeRoot) end
@@ -105,7 +113,7 @@ local function ApplyMergeBorders(child, anchorModule)
     if not a or not a.parent then return end
     local pOpts = GetFrameOptions(a.parent)
     local cOpts = GetFrameOptions(child)
-    if not pOpts.mergeBorders or not cOpts.mergeBorders then return end
+    if not ShouldMergeBorders(pOpts, a.edge) or not ShouldMergeBorders(cOpts, a.edge) then return end
     if InCombatLockdown() and child:IsProtected() then return end
     ApplyAnchorPosition(child, a.parent, a.edge, a.padding, a.align, a.syncOptions)
 end
@@ -153,9 +161,9 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions,
     local parentOptions = GetFrameOptions(parent)
     local childOptions = GetFrameOptions(child)
 
-    local bothMerge = parentOptions.mergeBorders and childOptions.mergeBorders
+    local bothMerge = ShouldMergeBorders(parentOptions, edge) and ShouldMergeBorders(childOptions, edge)
     local shouldMerge = bothMerge and padding == 0
-    if shouldMerge and child:IsShown() then
+    if shouldMerge and child:IsShown() and child:GetAlpha() > 0 then
         SetMergeBorderState(parent, child, edge, true)
     elseif bothMerge then
         SetMergeBorderState(parent, child, edge, false)
@@ -340,7 +348,7 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
 
     local pOpts = GetFrameOptions(parent)
     local cOpts = GetFrameOptions(child)
-    if pOpts.mergeBorders and cOpts.mergeBorders then
+    if ShouldMergeBorders(pOpts, edge) and ShouldMergeBorders(cOpts, edge) then
         HookChildVisibility(child, self)
         HookParentVisibility(parent, self)
     end
@@ -391,7 +399,7 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
 
         local pOpts = GetFrameOptions(oldAnchor.parent)
         local cOpts = GetFrameOptions(child)
-        if pOpts.mergeBorders and cOpts.mergeBorders then
+        if ShouldMergeBorders(pOpts, oldAnchor.edge) and ShouldMergeBorders(cOpts, oldAnchor.edge) then
             SetMergeBorderState(oldAnchor.parent, child, oldAnchor.edge, false)
         end
 
@@ -801,6 +809,7 @@ function Anchor:ResyncAll()
 end
 
 Anchor.GetFrameOptions = GetFrameOptions
+Anchor.ShouldMergeBorders = ShouldMergeBorders
 Anchor.DEFAULT_OPTIONS = DEFAULT_OPTIONS
 
 -- Listen for border size changes to re-sync anchor distances

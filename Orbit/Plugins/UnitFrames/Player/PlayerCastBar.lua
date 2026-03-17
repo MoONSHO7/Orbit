@@ -157,7 +157,7 @@ function Plugin:OnLoad()
 
     -- Attach to Frame system
     -- Configure frame options: Only Y stacking, sync dimensions/spacing scale
-    CastBar.anchorOptions = { horizontal = false, vertical = true, syncScale = true, syncDimensions = true, mergeBorders = true }
+    CastBar.anchorOptions = { horizontal = false, vertical = true, syncScale = true, syncDimensions = true, mergeBorders = { x = false, y = true } }
     CastBar.orbitResizeBounds = { minW = 100, maxW = 600, minH = 5, maxH = 40, widthKey = "CastBarWidth", heightKey = "CastBarHeight" }
     OrbitEngine.Frame:AttachSettingsListener(CastBar, self, 1)
 

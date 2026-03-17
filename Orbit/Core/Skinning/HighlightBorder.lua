@@ -16,6 +16,7 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
     local overlay = frame[storageKey]
     if not overlay then
         overlay = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+        overlay:SetFrameStrata("LOW")
         overlay:EnableMouse(false)
         frame[storageKey] = overlay
     end
