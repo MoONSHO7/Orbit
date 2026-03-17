@@ -188,6 +188,7 @@ function Plugin:OnLoad()
     OrbitEngine.ComponentDrag:Attach(self.frame.Coords, self.frame, {
         key = "Coords",
         sourceOverride = self.frame.Coords.Text,
+        isFontString = true,
         onPositionChange = MPC("Coords"),
     })
     OrbitEngine.ComponentDrag:Attach(self._compartmentButton, self.frame, { key = "Compartment", onPositionChange = MPC("Compartment") })

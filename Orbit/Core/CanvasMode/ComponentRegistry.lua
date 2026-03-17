@@ -364,7 +364,7 @@ function ComponentDrag:Attach(component, parent, options)
         currentX = 0,
         currentY = 0,
         currentAlignment = "LEFT",
-        isFontString = component.IsObjectType and component:IsObjectType("FontString") or false,
+        isFontString = options.isFontString or (component.IsObjectType and component:IsObjectType("FontString")) or false,
         isAuraContainer = options.isAuraContainer or false,
         sourceOverride = options.sourceOverride or nil,
 
