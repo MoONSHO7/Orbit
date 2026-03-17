@@ -70,8 +70,7 @@ function ABC:Create(plugin, config)
     end
     frame:Show()
     if config.index ~= PET_BAR_INDEX then
-        local enableHover = plugin:GetSetting(config.index, "ShowOnMouseover") ~= false
-        Orbit.OOCFadeMixin:ApplyOOCFade(frame, plugin, config.index, "OutOfCombatFade", enableHover)
+        Orbit.OOCFadeMixin:ApplyOOCFade(frame, plugin, config.index, "OutOfCombatFade", false)
     end
     return frame
 end

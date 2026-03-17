@@ -84,7 +84,7 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         TipOfTheSpearColorCurve = { pins = { { position = 0, color = { r = 0.47, g = 0.78, b = 0.22, a = 1 } } } },
         Opacity = 100,
         OutOfCombatFade = false,
-        ShowOnMouseover = true,
+        MouseoverOnly = false,
         SmoothAnimation = true,
         FrequentUpdates = false,
         TickSize = TICK_SIZE_DEFAULT,
@@ -510,8 +510,7 @@ function Plugin:ApplySettings()
     self:UpdatePower()
 
     -- 5. Apply Out of Combat Fade (with hover detection based on setting)
-    local enableHover = self:GetSetting(SYSTEM_INDEX, "ShowOnMouseover") ~= false
-    Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, SYSTEM_INDEX, "OutOfCombatFade", enableHover)
+    Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, SYSTEM_INDEX, "OutOfCombatFade", false)
 end
 
 -- [ RESOURCE COLOR (DELEGATE) ]---------------------------------------------------------------------

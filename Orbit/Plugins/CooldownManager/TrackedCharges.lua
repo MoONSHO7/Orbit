@@ -439,8 +439,7 @@ function Plugin:ApplyChargeBarSettings(frame)
     local alpha = isMountedHidden and 0 or ((self:GetSetting(sysIndex, "Opacity") or 100) / 100)
     frame:SetAlpha(alpha)
 
-    local enableHover = self:GetSetting(sysIndex, "ShowOnMouseover") ~= false
-    Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, sysIndex, "OutOfCombatFade", enableHover)
+    Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, sysIndex, "OutOfCombatFade", false)
 end
 
 -- [ UPDATE LOGIC ]---------------------------------------------------------------------------------

@@ -66,7 +66,7 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
             Stacks = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 2, offsetY = 2, justifyH = "LEFT" },
         },
         GlobalDisabledComponents = {},
-        OutOfCombatFade = false, ShowOnMouseover = true,
+        OutOfCombatFade = false, MouseoverOnly = false,
         KeypressColor = { r = 1, g = 1, b = 1, a = 0.6 },
         BackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
         OORColor = DEFAULT_OOR_COLOR, OOMColor = DEFAULT_OOM_COLOR, UnusableColor = DEFAULT_UNUSABLE_COLOR,
@@ -247,10 +247,8 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
         table.insert(schema.controls, { type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
             onChange = function(val) self:SetSetting(systemIndex, "OutOfCombatFade", val); self:ApplySettings(container); if dialog.orbitTabCallback then dialog.orbitTabCallback() end end })
-        if self:GetSetting(systemIndex, "OutOfCombatFade") then
-            table.insert(schema.controls, { type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
-                onChange = function(val) self:SetSetting(systemIndex, "ShowOnMouseover", val); self:ApplySettings(container) end })
-        end
+        table.insert(schema.controls, { type = "checkbox", key = "MouseoverOnly", label = "Mouseover Only", default = false,
+            onChange = function(val) self:SetSetting(systemIndex, "MouseoverOnly", val); self:ApplySettings(container) end })
     end
     schema.extraButtons = { { text = "Quick Keybind", callback = function()
         if EditModeManagerFrame and EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
@@ -592,8 +590,7 @@ function Plugin:ApplySettings(frame)
     if not self.buttons[index] or #self.buttons[index] == 0 then self:ReparentButtons(index) end
     self:ApplyScale(actualFrame, index, "Scale")
     if index ~= PET_BAR_INDEX then
-        local enableHover = self:GetSetting(index, "ShowOnMouseover") ~= false
-        Orbit.OOCFadeMixin:ApplyOOCFade(actualFrame, self, index, "OutOfCombatFade", enableHover)
+        Orbit.OOCFadeMixin:ApplyOOCFade(actualFrame, self, index, "OutOfCombatFade", false)
     end
     self:ApplyMouseOver(actualFrame, index)
     self:LayoutButtons(index)
