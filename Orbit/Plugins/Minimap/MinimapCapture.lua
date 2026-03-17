@@ -260,33 +260,3 @@ function Plugin:CaptureBlizzardMinimap()
 
     self._captured = true
 end
-
--- [ RELEASE ]--------------------------------------------------------------------------------------
-
-function Plugin:ReleaseBlizzardMinimap()
-    local minimap = GetBlizzardMinimap()
-    local cluster = GetBlizzardCluster()
-    if not minimap or not cluster then
-        return
-    end
-
-    -- Disarm FrameGuard: nil the guard parent so the SetParent hook no longer fights us,
-    -- and clear enforceShow so the OnHide hook stops forcing Show().
-    minimap._orbitGuardParent = nil
-    minimap._orbitGuardEnforceShow = nil
-
-    -- Clear the mask we applied so Blizzard's default round mask takes effect.
-    minimap:SetMaskTexture("")
-
-    -- Re-parent back into the Blizzard cluster.
-    minimap:SetParent(cluster)
-    minimap:ClearAllPoints()
-    minimap:SetPoint("CENTER", cluster, "CENTER", 9, -1)
-    minimap:Show()
-
-    -- Restore the Blizzard cluster itself (NativeFrame:Hide moved it to a hidden parent).
-    OrbitEngine.NativeFrame:Restore(cluster)
-    cluster:Show()
-
-    self._captured = false
-end

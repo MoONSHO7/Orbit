@@ -7,7 +7,6 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local SYSTEM_ID = "Orbit_Minimap"
 
 local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
-    liveToggle = true,
     canvasMode = true,
     defaults = {
         Opacity = 100,
@@ -458,22 +457,6 @@ end
 -- [ TEARDOWN ]--------------------------------------------------------------------------------------
 
 function Plugin:OnDisable()
-    -- Stop tickers
-    self:StopClockTicker()
-    self:StopCoordsTicker()
-
-    -- Restore collected addon buttons
-    self._compartmentActive = false
-    self:RestoreCollectedButtons()
-
-    -- Hide our frames
-    if self._compartmentFlyout then
-        self._compartmentFlyout:Hide()
-    end
-
-    -- Restore reparented Blizzard components to their original parents
-    self:RestoreBlizzardComponents()
-
-    -- Disarm FrameGuard hooks and restore the Blizzard minimap + cluster.
-    self:ReleaseBlizzardMinimap()
+    -- Toggling the Minimap plugin requires a UI reload (Blizzard hooks cannot be cleanly undone).
+    -- The reload button in the Plugin Manager handles this; nothing to do at runtime.
 end
