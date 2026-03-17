@@ -474,19 +474,6 @@ function Plugin:OnDisable()
     -- Restore reparented Blizzard components to their original parents
     self:RestoreBlizzardComponents()
 
-    local minimap = self:GetBlizzardMinimap()
-    local cluster = self:GetBlizzardCluster()
-    if minimap and cluster then
-        minimap:SetParent(cluster)
-        minimap:ClearAllPoints()
-        minimap:SetPoint("CENTER", cluster, "CENTER", 9, -1)
-        minimap:SetMaskTexture("")
-        minimap:Show()
-    end
-    if cluster then
-        -- NativeFrame:Hide() re-parented the cluster to an off-screen hidden parent;
-        -- Restore() undoes that and returns it to UIParent so it becomes visible again.
-        OrbitEngine.NativeFrame:Restore(cluster)
-        cluster:Show()
-    end
+    -- Disarm FrameGuard hooks and restore the Blizzard minimap + cluster.
+    self:ReleaseBlizzardMinimap()
 end
