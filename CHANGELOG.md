@@ -19,12 +19,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [@project-version@] - @project-date-iso@
 ### Message
-- This is an automated test of the new changelog system!
-- Thanks for sticking with Orbit.
+- The Minimap plugin is here! It's marked **Experimental** for now — expect rough edges, but it's fully functional and ready to try.
+- As always, feedback on the Discord is very welcome.
 
 ### Added
-- Automated `CHANGELOG.md` integration with in-game "What's New" prompt.
-- Scripted update process for release workflows.
+- **Minimap plugin** — replaces the default Blizzard minimap with a fully Orbit-managed version.
+  - Drag and reposition the minimap anywhere on screen via Edit Mode.
+  - Choose between a **square** or **round** shape.
+  - Set any **size** from 100 to 400 pixels.
+  - **Opacity** control with optional mouse-over fade-in.
+  - **Rotate Minimap** option to keep north up or rotate with your character.
+  - **Middle-click** action: open the World Map or the Tracking menu.
+  - **Zone Text** — shows your current zone above the minimap. Click it to open the World Map. Optionally colour the text by PvP zone type (sanctuary, friendly, hostile, contested).
+  - **Clock** — displays the current time (local or realm). Left-click opens the Time Manager, right-click opens the Calendar. Glows when you have pending calendar invites.
+  - **Coordinates** — shows your current map position (X, Y) and updates in real time.
+  - **Zoom Buttons** — fade in on hover, fade out when you move away. Optional auto-zoom-out timer resets zoom after a configurable delay.
+  - **Addon Compartment** — consolidates addon buttons into a single Orbit-managed compartment button with a flyout list.
+  - **Instance Difficulty**, **Missions**, **Mail**, and **Crafting Order** indicators all carried over from the Blizzard minimap.
+  - All components are individually toggleable and repositionable in Canvas Mode.
 
 ### Fixed
 - Orbit Tour persisting across profiles
