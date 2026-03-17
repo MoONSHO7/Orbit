@@ -62,6 +62,9 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
     -- Restore Position
     local pos = plugin:GetSetting(systemIndex, "Position")
     if pos and pos.point then
+        if Engine.FrameAnchor and Engine.FrameAnchor:GetAnchorParent(frame) then
+            Engine.FrameAnchor:BreakAnchor(frame, true)
+        end
         local x, y = pos.x, pos.y
         if Engine.Pixel then
             x, y = Engine.Pixel:SnapPosition(x, y, pos.point, frame:GetWidth(), frame:GetHeight(), frame:GetEffectiveScale())
