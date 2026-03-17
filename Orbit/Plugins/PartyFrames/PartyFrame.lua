@@ -274,7 +274,6 @@ local PARTY_DEBUFF_CFG = {
     defaultJustifyH = "LEFT",
     helpers = function() return Orbit.PartyFrameHelpers end,
 }
-
 local PARTY_BUFF_CFG = {
     componentKey = "Buffs",
     fetchFilter = "HELPFUL|PLAYER",

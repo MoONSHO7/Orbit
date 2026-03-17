@@ -183,7 +183,7 @@ local function SetupDragHandlers(container, preview, key, data)
             Dialog.DisabledDock.DropHighlight:Hide()
             -- Stage position into transaction for live preview updates
             if CanvasMode.Transaction and CanvasMode.Transaction:IsActive() and self.key then
-                CanvasMode.Transaction:SetPosition(self.key, {
+                local pos = {
                     anchorX = self.anchorX,
                     anchorY = self.anchorY,
                     offsetX = self.offsetX,
@@ -192,7 +192,8 @@ local function SetupDragHandlers(container, preview, key, data)
                     selfAnchorY = self.selfAnchorY,
                     posX = self.posX,
                     posY = self.posY,
-                })
+                }
+                CanvasMode.Transaction:SetPosition(self.key, pos)
             end
         elseif not self.wasDragged and self.mouseDownTime then
             if (GetTime() - self.mouseDownTime) < CLICK_THRESHOLD then
@@ -402,7 +403,7 @@ local function SetupDragHandlers(container, preview, key, data)
 
         -- Stage position into transaction for live preview updates
         if CanvasMode.Transaction and CanvasMode.Transaction:IsActive() then
-            CanvasMode.Transaction:SetPosition(key, {
+            local pos = {
                 anchorX = self.anchorX,
                 anchorY = self.anchorY,
                 offsetX = self.offsetX,
@@ -411,7 +412,8 @@ local function SetupDragHandlers(container, preview, key, data)
                 selfAnchorY = self.selfAnchorY,
                 posX = self.posX,
                 posY = self.posY,
-            })
+            }
+            CanvasMode.Transaction:SetPosition(key, pos)
         end
     end)
 end
