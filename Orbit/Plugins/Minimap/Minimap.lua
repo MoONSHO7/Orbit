@@ -480,8 +480,13 @@ function Plugin:OnDisable()
         minimap:SetParent(cluster)
         minimap:ClearAllPoints()
         minimap:SetPoint("CENTER", cluster, "CENTER", 9, -1)
+        minimap:SetMaskTexture("")
+        minimap:Show()
     end
     if cluster then
+        -- NativeFrame:Hide() re-parented the cluster to an off-screen hidden parent;
+        -- Restore() undoes that and returns it to UIParent so it becomes visible again.
+        OrbitEngine.NativeFrame:Restore(cluster)
         cluster:Show()
     end
 end
