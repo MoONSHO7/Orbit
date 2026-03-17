@@ -114,9 +114,7 @@ Plugin.supportsHealthText = true
 -- Migrate from legacy ShowXXX boolean settings to DisabledComponents array
 local function MigrateDisabledComponents(plugin)
     local migrated = plugin:GetSetting(1, "DisabledComponentsMigrated")
-    if migrated then
-        return
-    end
+    if migrated then return end
 
     local disabled = {}
 
@@ -154,9 +152,7 @@ local function GetPowerColor(powerType) return Orbit.Constants.Colors:GetPowerCo
 -- [ ROLE SORTING ]---------------------------------------------------------------------------------
 
 local function GetRolePriority(unit)
-    if not UnitExists(unit) then
-        return 99
-    end
+    if not UnitExists(unit) then return 99 end
     return ROLE_PRIORITY[UnitGroupRolesAssigned(unit)] or 4
 end
 
@@ -217,13 +213,9 @@ local function CreatePowerBar(parent, unit, plugin)
 end
 
 local function UpdatePowerBar(frame, plugin)
-    if not frame.Power then
-        return
-    end
+    if not frame.Power then return end
     local unit = frame.unit
-    if not UnitExists(unit) then
-        return
-    end
+    if not UnitExists(unit) then return end
 
     local showPower = plugin:GetSetting(1, "ShowPowerBar")
     local isHealer = UnitGroupRolesAssigned(unit) == "HEALER"
@@ -241,9 +233,7 @@ local function UpdatePowerBar(frame, plugin)
 end
 
 local function UpdateFrameLayout(frame, borderSize, plugin)
-    if not Helpers then
-        Helpers = Orbit.PartyFrameHelpers
-    end
+    if not Helpers then Helpers = Orbit.PartyFrameHelpers end
     local showPowerBar = plugin and plugin:GetSetting(1, "ShowPowerBar")
     if showPowerBar == nil then
         showPowerBar = true
@@ -389,9 +379,7 @@ local function HideNativePartyFrames()
             OrbitEngine.NativeFrame:Disable(partyFrame)
             if not partyFrame.orbitSetPointHooked then
                 hooksecurefunc(partyFrame, "SetPoint", function(self)
-                    if InCombatLockdown() then
-                        return
-                    end
+                    if InCombatLockdown() then return end
                     if not self.isMovingOffscreen then
                         self.isMovingOffscreen = true
                         self:ClearAllPoints()
@@ -407,9 +395,7 @@ local function HideNativePartyFrames()
     OrbitEngine.NativeFrame:Disable(CompactPartyFrame)
     for i = 1, 5 do
         local member = _G["CompactPartyFrameMember" .. i]
-        if member then
-            member:UnregisterAllEvents()
-        end
+        if member then member:UnregisterAllEvents() end
     end
 end
 
@@ -478,9 +464,7 @@ function Plugin:OnLoad()
 
     -- Set default container position (anchor matches growth direction)
     if not self.container:GetPoint() then
-        if not Helpers then
-            Helpers = Orbit.PartyFrameHelpers
-        end
+        if not Helpers then Helpers = Orbit.PartyFrameHelpers end
         local growDir = self:GetSetting(1, "GrowthDirection") or "Down"
         local anchor = Helpers:GetContainerAnchor(growDir)
         self.container:SetPoint(anchor, UIParent, "TOPLEFT", GF.DefaultPartyOffsetX, GF.DefaultPartyOffsetY)
@@ -491,9 +475,7 @@ function Plugin:OnLoad()
     local PARTY_DRIVER_PVP = "[petbattle] hide; hide" -- always hide in BG (raid frames take over)
     local PARTY_DRIVER_ARENA = "[petbattle] hide; show" -- always show in arena main
     local function UpdateVisibilityDriver(plugin)
-        if InCombatLockdown() or Orbit:IsEditMode() then
-            return
-        end
+        if InCombatLockdown() or Orbit:IsEditMode() then return end
         local _, instanceType = IsInInstance()
         local driver = instanceType == "arena" and PARTY_DRIVER_ARENA or instanceType == "pvp" and PARTY_DRIVER_PVP or PARTY_DRIVER_OPEN
         RegisterStateDriver(plugin.container, "visibility", driver)
@@ -602,9 +584,7 @@ end
 -- Prepare status icons with placeholder atlases for Canvas Mode cloning
 function Plugin:PrepareIconsForCanvasMode()
     local frame = self.frames[1]
-    if not frame then
-        return
-    end
+    if not frame then return end
     Orbit.GroupCanvasRegistration:PrepareIcons(self, frame, {
         statusIcons = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" },
         statusIconSize = 24,
@@ -620,12 +600,8 @@ end
 -- [ FRAME POSITIONING ]-----------------------------------------------------------------------------
 
 function Plugin:PositionFrames()
-    if InCombatLockdown() then
-        return
-    end
-    if not Helpers then
-        Helpers = Orbit.PartyFrameHelpers
-    end
+    if InCombatLockdown() then return end
+    if not Helpers then Helpers = Orbit.PartyFrameHelpers end
 
     local spacing = self:GetSetting(1, "Spacing") or 0
     local orientation = self:GetSetting(1, "Orientation") or 0
@@ -651,12 +627,8 @@ function Plugin:PositionFrames()
 end
 
 function Plugin:UpdateContainerSize()
-    if InCombatLockdown() then
-        return
-    end
-    if not Helpers then
-        Helpers = Orbit.PartyFrameHelpers
-    end
+    if InCombatLockdown() then return end
+    if not Helpers then Helpers = Orbit.PartyFrameHelpers end
     local width = self:GetSetting(1, "Width") or 160
     local height = self:GetSetting(1, "Height") or 40
     local spacing, orientation = self:GetSetting(1, "Spacing") or 0, self:GetSetting(1, "Orientation") or 0
@@ -679,9 +651,7 @@ function Plugin:UpdateFrameUnits()
         Orbit.CombatManager:QueueUpdate(function() self:UpdateFrameUnits() end)
         return
     end
-    if self.frames and self.frames[1] and self.frames[1].preview then
-        return
-    end
+    if self.frames and self.frames[1] and self.frames[1].preview then return end
 
     local includePlayer = self:GetSetting(1, "IncludePlayer")
     local sortedUnits = GetSortedPartyUnits(includePlayer)
@@ -741,9 +711,7 @@ end
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 
 function Plugin:UpdateLayout(frame)
-    if not frame or InCombatLockdown() then
-        return
-    end
+    if not frame or InCombatLockdown() then return end
     local width = self:GetSetting(1, "Width") or 160
     local height = self:GetSetting(1, "Height") or 40
     for _, partyFrame in ipairs(self.frames) do
@@ -753,9 +721,7 @@ function Plugin:UpdateLayout(frame)
     end
     self:PositionFrames()
     for _, partyFrame in ipairs(self.frames) do
-        if partyFrame.ConstrainNameWidth then
-            partyFrame:ConstrainNameWidth()
-        end
+        if partyFrame.ConstrainNameWidth then partyFrame:ConstrainNameWidth() end
     end
 end
 
@@ -848,9 +814,7 @@ function Plugin:OnCanvasApply()
 end
 
 function Plugin:ApplySettings()
-    if not self.frames then
-        return
-    end
+    if not self.frames then return end
 
     for _, frame in ipairs(self.frames) do
         if not frame.preview and frame.unit then
@@ -905,9 +869,7 @@ function Plugin:UpdateVisuals()
 end
 
 Orbit.EventBus:On("DISPEL_STATE_CHANGED", function(unit)
-    if not Plugin.frames then
-        return
-    end
+    if not Plugin.frames then return end
     for _, frame in ipairs(Plugin.frames) do
         if frame and frame.unit == unit and frame:IsShown() and Plugin.UpdateDispelIndicator then
             Plugin:UpdateDispelIndicator(frame, Plugin)

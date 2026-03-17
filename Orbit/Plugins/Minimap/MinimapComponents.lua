@@ -115,9 +115,7 @@ function Plugin:UpdateClock()
 end
 
 function Plugin:StartClockTicker()
-    if self._clockTicker then
-        return
-    end
+    if self._clockTicker then return end
     self._clockTicker = C_Timer.NewTicker(CLOCK_UPDATE_INTERVAL, function() self:UpdateClock() end)
 end
 
@@ -133,24 +131,16 @@ end
 function Plugin:UpdateCoords()
     local fs = self.frame.Coords.Text
     local map = C_Map.GetBestMapForUnit("player")
-    if not map then
-        fs:SetText("")
-        return
-    end
+    if not map then fs:SetText(""); return end
     local pos = C_Map.GetPlayerMapPosition(map, "player")
-    if not pos then
-        fs:SetText("")
-        return
-    end
+    if not pos then fs:SetText(""); return end
     local x, y = pos:GetXY()
     fs:SetFormattedText("%.1f, %.1f", x * 100, y * 100)
     self.frame.Coords:SetSize(fs:GetStringWidth() + 2, fs:GetStringHeight() + 2)
 end
 
 function Plugin:StartCoordsTicker()
-    if self._coordsTicker then
-        return
-    end
+    if self._coordsTicker then return end
     self._coordsTicker = C_Timer.NewTicker(COORDS_UPDATE_INTERVAL, function() self:UpdateCoords() end)
 end
 
@@ -240,14 +230,10 @@ function Plugin:CreateZoomButtons()
     container:SetAlpha(0)
 
     local function FadeIn()
-        if not self:IsComponentDisabled("Zoom") then
-            UIFrameFadeIn(container, ZOOM_FADE_IN, container:GetAlpha(), 1)
-        end
+        if not self:IsComponentDisabled("Zoom") then UIFrameFadeIn(container, ZOOM_FADE_IN, container:GetAlpha(), 1) end
     end
     local function FadeOut()
-        if not container:IsMouseOver() and not self.frame:IsMouseOver() then
-            UIFrameFadeOut(container, ZOOM_FADE_OUT, container:GetAlpha(), 0)
-        end
+        if not container:IsMouseOver() and not self.frame:IsMouseOver() then UIFrameFadeOut(container, ZOOM_FADE_OUT, container:GetAlpha(), 0) end
     end
 
     self.frame:HookScript("OnEnter", FadeIn)
@@ -262,26 +248,19 @@ end
 -- [ AUTO ZOOM-OUT TIMER ]---------------------------------------------------------------------------
 
 function Plugin:CancelAutoZoomOut()
-    if self._autoZoomTimer then
-        self._autoZoomTimer:Cancel()
-        self._autoZoomTimer = nil
-    end
+    if self._autoZoomTimer then self._autoZoomTimer:Cancel(); self._autoZoomTimer = nil end
 end
 
 function Plugin:StartAutoZoomOut()
     local delay = self:GetSetting(SYSTEM_ID, "AutoZoomOutDelay") or 0
-    if delay <= 0 then
-        return
-    end
+    if delay <= 0 then return end
 
     self:CancelAutoZoomOut()
 
     self._autoZoomTimer = C_Timer.NewTimer(delay, function()
         self._autoZoomTimer = nil
         local minimap = self:GetBlizzardMinimap()
-        if not minimap then
-            return
-        end
+        if not minimap then return end
         -- Step zoom out one level at a time until we reach 0
         local function StepOut()
             local zoom = minimap:GetZoom()
@@ -302,9 +281,5 @@ end
 function Plugin:UpdateCalendarInvites()
     local glow = self.frame.Clock.InviteGlow
     local pending = C_Calendar.GetNumPendingInvites and C_Calendar.GetNumPendingInvites() or 0
-    if pending > 0 then
-        glow:Show()
-    else
-        glow:Hide()
-    end
+    if pending > 0 then glow:Show() else glow:Hide() end
 end

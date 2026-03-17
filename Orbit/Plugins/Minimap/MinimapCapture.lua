@@ -24,25 +24,16 @@ Plugin.GetBlizzardCluster = GetBlizzardCluster
 
 local function StripBlizzardArt()
     local cluster = GetBlizzardCluster()
-    if not cluster then
-        return
-    end
+    if not cluster then return end
 
     -- Hide the entire cluster (takes BorderTop, ZoneTextButton, Tracking, IndicatorFrame, InstanceDifficulty)
     OrbitEngine.NativeFrame:Hide(cluster, { unregisterEvents = false, clearScripts = false })
 
-    if MinimapBackdrop then
-        MinimapBackdrop:SetAlpha(0)
-    end
-    if MinimapCompassTexture then
-        MinimapCompassTexture:Hide()
-    end
+    if MinimapBackdrop then MinimapBackdrop:SetAlpha(0) end
+    if MinimapCompassTexture then MinimapCompassTexture:Hide() end
 
     -- Suppress Blizzard's edit mode selection on the minimap cluster
-    if cluster.Selection then
-        cluster.Selection:SetAlpha(0)
-        cluster.Selection:EnableMouse(false)
-    end
+    if cluster.Selection then cluster.Selection:SetAlpha(0); cluster.Selection:EnableMouse(false) end
 
     -- Hide Blizzard's native zoom buttons and hover area (we provide our own)
     local minimap = GetBlizzardMinimap()
@@ -112,9 +103,7 @@ function Plugin:ReparentBlizzardComponents()
         mail:Show()
         -- Call via mixin so flipbook animations (NewMailAnim, MailReminderAnim) play correctly.
         -- Never manually set MailIcon visibility — that bypasses the animations.
-        if mail.TryPlayMailNotification and HasNewMail and HasNewMail() then
-            mail:TryPlayMailNotification()
-        end
+        if mail.TryPlayMailNotification and HasNewMail and HasNewMail() then mail:TryPlayMailNotification() end
         if not mail.Icon then
             mail.Icon = mail:CreateTexture(nil, "ARTWORK")
             mail.Icon:SetSize(16, 16)
@@ -189,11 +178,7 @@ function Plugin:CaptureBlizzardMinimap()
     -- Apply the correct mask immediately at capture time.
     -- ApplyShape (called from ApplySettings) will update it if the setting changes.
     local shape = self:GetSetting(C.SYSTEM_ID, "Shape") or "square"
-    if shape == "round" then
-        minimap:SetMaskTexture(C.MASK_ROUND)
-    else
-        minimap:SetMaskTexture(C.MASK_SQUARE)
-    end
+    if shape == "round" then minimap:SetMaskTexture(C.MASK_ROUND) else minimap:SetMaskTexture(C.MASK_SQUARE) end
 
     OrbitEngine.FrameGuard:Protect(minimap, self.frame)
     OrbitEngine.FrameGuard:UpdateProtection(minimap, self.frame, function() self:ApplySettings() end, { enforceShow = true })

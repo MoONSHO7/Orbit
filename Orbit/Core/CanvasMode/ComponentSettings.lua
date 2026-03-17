@@ -40,14 +40,10 @@ end
 
 -- [ OPEN (INLINE) ]---------------------------------------------------------------------------------
 function Settings:Open(componentKey, container, plugin, systemIndex)
-    if InCombatLockdown() then
-        return
-    end
+    if InCombatLockdown() then return end
 
     local canvasDialog = OrbitEngine.CanvasModeDialog
-    if not canvasDialog or not canvasDialog.OverrideContainer then
-        return
-    end
+    if not canvasDialog or not canvasDialog.OverrideContainer then return end
 
     self.componentKey = componentKey
     self.container = container
@@ -64,9 +60,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     -- Show container early so children have valid parent dimensions
     overrideContainer:SetHeight(TITLE_HEIGHT + PADDING)
     overrideContainer:Show()
-    if canvasDialog.ViewportDivider then
-        canvasDialog.ViewportDivider:Show()
-    end
+    if canvasDialog.ViewportDivider then canvasDialog.ViewportDivider:Show() end
 
     if not schema then
         overrideContainer.Title:SetText(Schema.ResolveTitle(componentKey) .. " (no settings)")
@@ -115,9 +109,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
                     val = plugin:GetSetting(systemIndex, control.key)
                 end
 
-                if val ~= nil then
-                    self.currentOverrides[control.key] = val
-                end
+                if val ~= nil then self.currentOverrides[control.key] = val end
             end
         end
     end
@@ -171,7 +163,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
         end
 
         local callback = function(key, value) self:OnValueChanged(key, value) end
-        local widget = nil
+        local widget
 
         if control.type == "slider" then
             widget = Widgets.CreateSlider(overrideContainer, control, currentValue or control.min, callback)
@@ -217,18 +209,14 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
         end
 
         if widget then
-            if widget.Label and control.type ~= "checkbox" then
-                widget.Label:SetWidth(COMPACT_LABEL_WIDTH)
-            end
+            if widget.Label and control.type ~= "checkbox" then widget.Label:SetWidth(COMPACT_LABEL_WIDTH) end
             local controlChild = widget.Slider or widget.Control or widget.GradientBar
             if controlChild then
                 controlChild:ClearAllPoints()
                 controlChild:SetPoint("LEFT", widget.Label, "RIGHT", COMPACT_LABEL_GAP, 0)
                 controlChild:SetPoint("RIGHT", widget, "RIGHT", -COMPACT_VALUE_WIDTH, 0)
             end
-            if widget.Value then
-                widget.Value:SetWidth(COMPACT_VALUE_WIDTH)
-            end
+            if widget.Value then widget.Value:SetWidth(COMPACT_VALUE_WIDTH) end
             if control.type == "checkbox" and widget.Label then
                 widget.Label:ClearAllPoints()
                 widget.Label:SetPoint("LEFT", widget, "LEFT", COMPACT_LABEL_WIDTH + COMPACT_LABEL_GAP, 0)
@@ -281,9 +269,7 @@ function Settings:Close()
     local canvasDialog = OrbitEngine.CanvasModeDialog
     if canvasDialog and canvasDialog.OverrideContainer then
         canvasDialog.OverrideContainer:Hide()
-        if canvasDialog.ViewportDivider then
-            canvasDialog.ViewportDivider:Hide()
-        end
+        if canvasDialog.ViewportDivider then canvasDialog.ViewportDivider:Hide() end
         canvasDialog:RecalculateHeight()
     end
 end
@@ -297,9 +283,7 @@ end
 -- [ CONTROL LOOKUP ]--------------------------------------------------------------------------------
 function Settings:GetControlDef(key)
     local schema = KEY_SCHEMAS[self.componentKey]
-    if not schema then
-        return nil
-    end
+    if not schema then return nil end
     for _, ctrl in ipairs(schema.controls) do
         if ctrl.key == key then
             return ctrl
@@ -323,9 +307,7 @@ end
 
 -- [ VALUE CHANGE HANDLER ]--------------------------------------------------------------------------
 function Settings:OnValueChanged(key, value)
-    if not self.componentKey then
-        return
-    end
+    if not self.componentKey then return end
 
     self.currentOverrides = self.currentOverrides or {}
     self.currentOverrides[key] = value
@@ -411,14 +393,10 @@ end
 
 -- [ RELAYOUT ]--------------------------------------------------------------------------------------
 function Settings:RelayoutWidgets()
-    if not self.componentKey or not self.widgets then
-        return
-    end
+    if not self.componentKey or not self.widgets then return end
     local canvasDialog = OrbitEngine.CanvasModeDialog
     local oc = canvasDialog and canvasDialog.OverrideContainer
-    if not oc then
-        return
-    end
+    if not oc then return end
     local COLUMNS = self:GetColumnCount()
     local COLUMN_GAP = 24
     local containerWidth = oc:GetWidth()
@@ -449,9 +427,7 @@ function Settings:RelayoutWidgets()
     end
     local containerHeight = rowY + TITLE_HEIGHT + PADDING
     oc:SetHeight(containerHeight)
-    if canvasDialog.RecalculateHeight then
-        canvasDialog:RecalculateHeight()
-    end
+    if canvasDialog.RecalculateHeight then canvasDialog:RecalculateHeight() end
 end
 
 -- [ EXPORT ]----------------------------------------------------------------------------------------

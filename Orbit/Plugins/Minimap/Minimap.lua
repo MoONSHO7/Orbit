@@ -192,18 +192,10 @@ function Plugin:OnLoad()
     })
     OrbitEngine.ComponentDrag:Attach(self._compartmentButton, self.frame, { key = "Compartment", onPositionChange = MPC("Compartment") })
     OrbitEngine.ComponentDrag:Attach(self.frame.ZoomContainer, self.frame, { key = "Zoom", onPositionChange = MPC("Zoom") })
-    if self.frame.Difficulty then
-        OrbitEngine.ComponentDrag:Attach(self.frame.Difficulty, self.frame, { key = "Difficulty", onPositionChange = MPC("Difficulty") })
-    end
-    if self.frame.Missions then
-        OrbitEngine.ComponentDrag:Attach(self.frame.Missions, self.frame, { key = "Missions", onPositionChange = MPC("Missions") })
-    end
-    if self.frame.Mail then
-        OrbitEngine.ComponentDrag:Attach(self.frame.Mail, self.frame, { key = "Mail", onPositionChange = MPC("Mail") })
-    end
-    if self.frame.CraftingOrder then
-        OrbitEngine.ComponentDrag:Attach(self.frame.CraftingOrder, self.frame, { key = "CraftingOrder", onPositionChange = MPC("CraftingOrder") })
-    end
+    if self.frame.Difficulty then OrbitEngine.ComponentDrag:Attach(self.frame.Difficulty, self.frame, { key = "Difficulty", onPositionChange = MPC("Difficulty") }) end
+    if self.frame.Missions then OrbitEngine.ComponentDrag:Attach(self.frame.Missions, self.frame, { key = "Missions", onPositionChange = MPC("Missions") }) end
+    if self.frame.Mail then OrbitEngine.ComponentDrag:Attach(self.frame.Mail, self.frame, { key = "Mail", onPositionChange = MPC("Mail") }) end
+    if self.frame.CraftingOrder then OrbitEngine.ComponentDrag:Attach(self.frame.CraftingOrder, self.frame, { key = "CraftingOrder", onPositionChange = MPC("CraftingOrder") }) end
 
     -- Register with edit mode
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)
@@ -264,9 +256,7 @@ function Plugin:OnLoad()
 end
 
 local function ApplyIconScale(frame, overrides, baseW)
-    if not frame then
-        return
-    end
+    if not frame then return end
     local size = overrides and overrides.IconSize
     frame:SetScale((size and baseW and baseW > 0) and (size / baseW) or 1)
 end
@@ -301,9 +291,7 @@ function Plugin:ApplySettings()
 
     -- Background
     local backdropColor = Orbit.db.GlobalSettings.BackdropColour or { r = 0.145, g = 0.145, b = 0.145, a = 0.7 }
-    if frame.bg then
-        frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a)
-    end
+    if frame.bg then frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a) end
 
     local s = Orbit.db.GlobalSettings.TextScale
     local textMultiplier = s == "Small" and 0.85 or s == "Large" and 1.15 or s == "ExtraLarge" and 1.30 or 1
@@ -424,9 +412,7 @@ function Plugin:ApplySettings()
     -- Restore component positions from saved variables
     local isInCanvasMode = OrbitEngine.CanvasMode:IsActive(frame)
     if not isInCanvasMode then
-        if savedPositions then
-            OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
-        end
+        if savedPositions then OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions) end
     end
 
     -- Opacity / Mouse-over fade
@@ -449,9 +435,7 @@ function Plugin:ApplySettings()
     self:ApplyAddonCompartment()
 
     -- In edit mode, always full alpha
-    if isEditMode then
-        frame:SetAlpha(1)
-    end
+    if isEditMode then frame:SetAlpha(1) end
 end
 
 -- [ TEARDOWN ]--------------------------------------------------------------------------------------

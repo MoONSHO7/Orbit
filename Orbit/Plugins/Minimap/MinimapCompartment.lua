@@ -31,9 +31,7 @@ local BLIZZARD_MINIMAP_CHILDREN = {
 -- [ COMPARTMENT BUTTON ]----------------------------------------------------------------------------
 
 function Plugin:CreateCompartmentButton()
-    if self._compartmentButton then
-        return
-    end
+    if self._compartmentButton then return end
     local frame = self.frame
 
     -- Drawer toggle button (bottom-right corner of minimap, hidden until hover)
@@ -81,9 +79,7 @@ end
 -- [ COMPARTMENT FLYOUT ]----------------------------------------------------------------------------
 
 function Plugin:CreateCompartmentFlyout()
-    if self._compartmentFlyout then
-        return
-    end
+    if self._compartmentFlyout then return end
 
     local flyout = CreateFrame("Frame", "OrbitMinimapCompartmentFlyout", self.frame)
     flyout:SetFrameStrata("DIALOG")
@@ -134,9 +130,7 @@ end
 
 function Plugin:PopulateCompartmentFlyout()
     local flyout = self._compartmentFlyout
-    if not flyout then
-        return
-    end
+    if not flyout then return end
 
     -- Hide existing rows
     for _, row in ipairs(flyout.rows) do
@@ -156,9 +150,7 @@ function Plugin:PopulateCompartmentFlyout()
         flyout._emptyText:Show()
         return
     end
-    if flyout._emptyText then
-        flyout._emptyText:Hide()
-    end
+    if flyout._emptyText then flyout._emptyText:Hide() end
 
     local maxTextWidth = 0
     for i, entry in ipairs(collected) do
@@ -208,9 +200,7 @@ function Plugin:PopulateCompartmentFlyout()
         -- Click handler: trigger the original addon button's OnClick
         -- RegisterForClicks("AnyUp") is set on row creation so right-clicks are received.
         row:SetScript("OnClick", function(_, button)
-            if not entry.button then
-                return
-            end
+            if not entry.button then return end
             local btn = entry.button
             local b = button or "LeftButton"
             if btn.dataObject and btn.dataObject.OnClick then
@@ -227,9 +217,7 @@ function Plugin:PopulateCompartmentFlyout()
 
         -- Tooltip passthrough
         row:SetScript("OnEnter", function(r)
-            if not entry.button then
-                return
-            end
+            if not entry.button then return end
             local btn = entry.button
             local obj = btn.dataObject
             if obj and obj.OnTooltipShow then
@@ -379,9 +367,7 @@ function Plugin:CollectAddonButtons()
 end
 
 function Plugin:HideCollectedButtons()
-    if not self._collectedButtons then
-        return
-    end
+    if not self._collectedButtons then return end
     for _, entry in ipairs(self._collectedButtons) do
         if entry.button then
             entry.button:Hide()
@@ -410,9 +396,7 @@ function Plugin:HideCollectedButtons()
 end
 
 function Plugin:RestoreCollectedButtons()
-    if not self._collectedButtons then
-        return
-    end
+    if not self._collectedButtons then return end
     for _, entry in ipairs(self._collectedButtons) do
         if entry.button then
             -- Hooks installed via hooksecurefunc cannot be removed; just clear the
@@ -447,24 +431,14 @@ function Plugin:ApplyAddonCompartment()
         if not frame._compartmentHoverHooked then
             local minimap = Minimap
             local function ShowCompartmentButton()
-                if not btn:IsShown() then
-                    return
-                end
+                if not btn:IsShown() then return end
                 UIFrameFadeIn(btn, 0.15, btn:GetAlpha(), 1)
             end
             local function HideCompartmentButton()
-                if not btn:IsShown() then
-                    return
-                end
-                if btn:IsMouseOver() then
-                    return
-                end
-                if minimap and minimap:IsMouseOver() then
-                    return
-                end
-                if self._compartmentFlyout and self._compartmentFlyout:IsShown() then
-                    return
-                end
+                if not btn:IsShown() then return end
+                if btn:IsMouseOver() then return end
+                if minimap and minimap:IsMouseOver() then return end
+                if self._compartmentFlyout and self._compartmentFlyout:IsShown() then return end
                 UIFrameFadeOut(btn, 0.3, btn:GetAlpha(), 0)
             end
             frame:HookScript("OnEnter", ShowCompartmentButton)
@@ -484,11 +458,7 @@ function Plugin:ApplyAddonCompartment()
     else
         self._compartmentActive = false
         self:RestoreCollectedButtons()
-        if self._compartmentButton then
-            self._compartmentButton:Hide()
-        end
-        if self._compartmentFlyout then
-            self._compartmentFlyout:Hide()
-        end
+        if self._compartmentButton then self._compartmentButton:Hide() end
+        if self._compartmentFlyout then self._compartmentFlyout:Hide() end
     end
 end

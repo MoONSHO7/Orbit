@@ -144,9 +144,7 @@ local SafeUnregisterUnitWatch = Orbit.GroupFrameMixin.SafeUnregisterUnitWatch
 -- [ POWER BAR UPDATE ]------------------------------------------------------------------------------
 
 local function UpdatePowerBar(frame, plugin)
-    if not frame.Power or not frame.unit or not UnitExists(frame.unit) then
-        return
-    end
+    if not frame.Power or not frame.unit or not UnitExists(frame.unit) then return end
     local showHealerPower = plugin:GetSetting(1, "ShowPowerBar")
     local isHealer = UnitGroupRolesAssigned(frame.unit) == "HEALER"
     if not isHealer or showHealerPower == false then
@@ -162,9 +160,7 @@ local function UpdatePowerBar(frame, plugin)
 end
 
 local function UpdateFrameLayout(frame, borderSize, plugin, showPowerOverride)
-    if not Helpers then
-        Helpers = Orbit.RaidFrameHelpers
-    end
+    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
     local showPower
     if showPowerOverride ~= nil then
         showPower = showPowerOverride
@@ -237,15 +233,11 @@ end
 local function UpdatePrivateAuras(frame, plugin) Orbit.PrivateAuraMixin:Update(frame, plugin, PRIVATE_AURA_ICON_SIZE) end
 
 local function SchedulePrivateAuraReanchor(plugin)
-    if _pendingPrivateAuraReanchor then
-        return
-    end
+    if _pendingPrivateAuraReanchor then return end
     _pendingPrivateAuraReanchor = true
     C_Timer.After(0, function()
         _pendingPrivateAuraReanchor = false
-        if not plugin.frames then
-            return
-        end
+        if not plugin.frames then return end
         for _, frame in ipairs(plugin.frames) do
             if frame.unit and frame:IsShown() then
                 Orbit.PrivateAuraMixin:Update(frame, plugin, PRIVATE_AURA_ICON_SIZE)
@@ -326,9 +318,7 @@ function Plugin:AddSettings(dialog, systemFrame) Orbit.RaidFrameSettings(self, d
 -- [ ON LOAD ]---------------------------------------------------------------------------------------
 
 function Plugin:OnLoad()
-    if not Helpers then
-        Helpers = Orbit.RaidFrameHelpers
-    end
+    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
 
     self.container = CreateFrame("Frame", "OrbitRaidFrameContainer", UIParent, "SecureHandlerStateTemplate")
     self.container.editModeName = "Raid Frames"
@@ -383,9 +373,7 @@ function Plugin:OnLoad()
     local RAID_DRIVER_PVP = "[petbattle] hide; show" -- always show in BG (we're always in a raid)
     local RAID_DRIVER_ARENA = "[petbattle] hide; hide" -- always hide in arena main
     local function UpdateVisibilityDriver()
-        if InCombatLockdown() or Orbit:IsEditMode() then
-            return
-        end
+        if InCombatLockdown() or Orbit:IsEditMode() then return end
         local _, instanceType = IsInInstance()
         local driver = instanceType == "arena" and RAID_DRIVER_ARENA or instanceType == "pvp" and RAID_DRIVER_PVP or RAID_DRIVER_OPEN
         RegisterStateDriver(self.container, "visibility", driver)
@@ -486,9 +474,7 @@ end
 
 function Plugin:PrepareIconsForCanvasMode()
     local frame = self.frames[1]
-    if not frame then
-        return
-    end
+    if not frame then return end
     Orbit.GroupCanvasRegistration:PrepareIcons(self, frame, {
         statusIcons = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" },
         statusIconSize = STATUS_ICON_SIZE,
@@ -504,12 +490,8 @@ end
 -- [ FRAME POSITIONING ]-----------------------------------------------------------------------------
 
 function Plugin:PositionFrames()
-    if InCombatLockdown() then
-        return
-    end
-    if not Helpers then
-        Helpers = Orbit.RaidFrameHelpers
-    end
+    if InCombatLockdown() then return end
+    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
 
     local width = self:GetSetting(1, "Width") or Helpers.LAYOUT.DefaultWidth
     local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
@@ -626,9 +608,7 @@ function Plugin:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpa
     local showLabels = (sortMode == "Group") and self:GetSetting(1, "ShowGroupLabels")
 
     for i = 1, MAX_RAID_GROUPS do
-        if self.groupLabels[i] then
-            self.groupLabels[i]:Hide()
-        end
+        if self.groupLabels[i] then self.groupLabels[i]:Hide() end
     end
     if not showLabels then
         return
@@ -672,12 +652,8 @@ function Plugin:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpa
 end
 
 function Plugin:UpdateContainerSize()
-    if InCombatLockdown() then
-        return
-    end
-    if not Helpers then
-        Helpers = Orbit.RaidFrameHelpers
-    end
+    if InCombatLockdown() then return end
+    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
 
     local width = self:GetSetting(1, "Width") or Helpers.LAYOUT.DefaultWidth
     local height = self:GetSetting(1, "Height") or Helpers.LAYOUT.DefaultHeight
@@ -724,15 +700,9 @@ end
 -- [ DYNAMIC UNIT ASSIGNMENT ]----------------------------------------------------------------------
 
 function Plugin:UpdateFrameUnits()
-    if InCombatLockdown() then
-        return
-    end
-    if self.frames and self.frames[1] and self.frames[1].preview then
-        return
-    end
-    if not Helpers then
-        Helpers = Orbit.RaidFrameHelpers
-    end
+    if InCombatLockdown() then return end
+    if self.frames and self.frames[1] and self.frames[1].preview then return end
+    if not Helpers then Helpers = Orbit.RaidFrameHelpers end
 
     local sortMode = self:GetSetting(1, "SortMode") or "Group"
     local sortedUnits = Helpers:GetSortedRaidUnits(sortMode)
@@ -778,9 +748,7 @@ end
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
 
 function Plugin:UpdateLayout(frame)
-    if not frame or InCombatLockdown() then
-        return
-    end
+    if not frame or InCombatLockdown() then return end
     local width = self:GetSetting(1, "Width") or 90
     local height = self:GetSetting(1, "Height") or 36
     for _, raidFrame in ipairs(self.frames) do
@@ -790,9 +758,7 @@ function Plugin:UpdateLayout(frame)
     end
     self:PositionFrames()
     for _, raidFrame in ipairs(self.frames) do
-        if raidFrame.ConstrainNameWidth then
-            raidFrame:ConstrainNameWidth()
-        end
+        if raidFrame.ConstrainNameWidth then raidFrame:ConstrainNameWidth() end
     end
 end
 
@@ -885,9 +851,7 @@ function Plugin:OnCanvasApply()
 end
 
 function Plugin:ApplySettings()
-    if not self.frames then
-        return
-    end
+    if not self.frames then return end
 
     for _, frame in ipairs(self.frames) do
         if not frame.preview and frame.unit then
@@ -943,9 +907,7 @@ function Plugin:UpdateVisuals()
 end
 
 Orbit.EventBus:On("DISPEL_STATE_CHANGED", function(unit)
-    if not Plugin.frames then
-        return
-    end
+    if not Plugin.frames then return end
     for _, frame in ipairs(Plugin.frames) do
         if frame and frame.unit == unit and frame:IsShown() and Plugin.UpdateDispelIndicator then
             Plugin:UpdateDispelIndicator(frame, Plugin)

@@ -129,9 +129,7 @@ local function CreatePluginPanel()
     local headerIndex = 0
 
     local function UpdateReloadButton()
-        if not reloadButton then
-            return
-        end
+        if not reloadButton then return end
         reloadButton:SetEnabled(pendingChanges)
         reloadButton:SetText(pendingChanges and "|cFFFF8800Reload UI to Apply|r" or "Reload UI")
     end
@@ -158,9 +156,7 @@ local function CreatePluginPanel()
     -- Build a name->plugin lookup from OrbitEngine.systems
     local function BuildPluginMap()
         local map = {}
-        if not OrbitEngine.systems then
-            return map
-        end
+        if not OrbitEngine.systems then return map end
         for _, plugin in ipairs(OrbitEngine.systems) do
             map[plugin.name] = plugin
         end
@@ -176,9 +172,7 @@ local function CreatePluginPanel()
                 break
             end
         end
-        if not exists then
-            return yOffset, col
-        end
+        if not exists then return yOffset, col end
 
         cbIndex = cbIndex + 1
         local cb = checkboxPool[cbIndex] or CreateCheckbox(frame, cbIndex)
@@ -252,9 +246,7 @@ local function CreatePluginPanel()
                     end
                     self._initialState = checked
                     self:SetCheckedTexture(CHECK_TEXTURE)
-                    if checked then
-                        self:GetCheckedTexture():SetVertexColor(1, 1, 1)
-                    end
+                    if checked then self:GetCheckedTexture():SetVertexColor(1, 1, 1) end
                 else
                     for _, name in ipairs(pluginNames) do
                         Orbit:SetPluginEnabled(name, checked)
@@ -360,9 +352,7 @@ local function CreatePluginPanel()
                 end
             end
             -- Finish partial row
-            if col > 0 then
-                yOffset = yOffset - CHECKBOX_HEIGHT
-            end
+            if col > 0 then yOffset = yOffset - CHECKBOX_HEIGHT end
             yOffset = yOffset - GROUP_SPACING
         end
 

@@ -55,9 +55,7 @@ function ErrorHandler:Wrap(func, context)
 end
 
 function ErrorHandler:LogError(source, method, err)
-    if not Orbit.db then
-        return
-    end
+    if not Orbit.db then return end
     if not Orbit.db.ErrorLog then
         Orbit.db.ErrorLog = {}
         Orbit.db.ErrorLogIndex = 0
@@ -79,9 +77,7 @@ end
 Orbit.Visibility = {}
 
 function Orbit.Visibility:ApplyState(frame, visibilityMode)
-    if frame.isOrbitUpdating then
-        return
-    end
+    if frame.isOrbitUpdating then return end
     frame.isOrbitUpdating = true
 
     local driver
@@ -161,10 +157,7 @@ function Orbit:InitializePlugins()
             local original = plugin.ApplySettings
             plugin.ApplySettings = function(self, ...)
                 if not Orbit:IsPluginEnabled(self.name) then
-                    if self.frame then
-                        self.frame.orbitDisabled = true
-                        self.frame:Hide()
-                    end
+                    if self.frame then self.frame.orbitDisabled = true; self.frame:Hide() end
                     return
                 end
                 return original(self, ...)
@@ -225,9 +218,7 @@ function Orbit:OnLoad()
         end
     end
 
-    if self.Profile then
-        self.Profile:Initialize()
-    end
+    if self.Profile then self.Profile:Initialize() end
     self:InitializePlugins()
 
     if NSAPI and NSAPI.RegisterCallback and self.EventBus then
@@ -274,9 +265,7 @@ function Orbit:IsPluginSpecLocked(name)
 end
 
 function Orbit:SetPluginEnabled(name, enabled)
-    if not self.db then
-        return
-    end
+    if not self.db then return end
     if not self.db.DisabledPlugins then
         self.db.DisabledPlugins = {}
     end
@@ -291,9 +280,7 @@ function Orbit:IsBlizzardHidden(name)
 end
 
 function Orbit:SetBlizzardHidden(name, hidden)
-    if not self.db then
-        return
-    end
+    if not self.db then return end
     if not self.db.HideBlizzardFrames then
         self.db.HideBlizzardFrames = {}
     end
@@ -308,9 +295,7 @@ end
 function Orbit:LiveTogglePlugin(name, enabled)
     self:SetPluginEnabled(name, enabled)
     local plugin = self._pluginsByName and self._pluginsByName[name]
-    if not plugin then
-        return
-    end
+    if not plugin then return end
     if enabled then
         if plugin.OnLoad and not plugin._initialized then
             self.ErrorHandler:Wrap(function() plugin:OnLoad() end, name .. ".OnLoad")()
@@ -328,9 +313,7 @@ function Orbit:LiveTogglePlugin(name, enabled)
             plugin.frame:SetScript("OnEvent", nil)
             plugin.frame:SetScript("OnUpdate", nil)
             plugin.frame:UnregisterAllEvents()
-            if Orbit.OOCFadeMixin then
-                Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame)
-            end
+            if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame) end
             plugin.frame:Hide()
         end
         if plugin.timer then
@@ -338,9 +321,7 @@ function Orbit:LiveTogglePlugin(name, enabled)
             plugin.timer = nil
         end
         Orbit.EventBus:OffContext(plugin)
-        if OrbitEngine.EditMode then
-            OrbitEngine.EditMode:UnregisterCallbacks(plugin)
-        end
+        if OrbitEngine.EditMode then OrbitEngine.EditMode:UnregisterCallbacks(plugin) end
         plugin._initialized = false
     end
 end
@@ -368,19 +349,13 @@ eventFrame:SetScript("OnEvent", function(self, event)
     elseif event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_SPECIALIZATION_CHANGED" then
         Orbit:RefreshSpecLockedPlugins()
     elseif event == "PLAYER_LOGOUT" then
-        if Orbit.Engine and Orbit.Engine.PositionManager then
-            Orbit.Engine.PositionManager:FlushToStorage()
-        end
-        if Orbit.Profile then
-            Orbit.Profile:FlushGlobalSettings()
-        end
+        if Orbit.Engine and Orbit.Engine.PositionManager then Orbit.Engine.PositionManager:FlushToStorage() end
+        if Orbit.Profile then Orbit.Profile:FlushGlobalSettings() end
     end
 end)
 
 function Orbit:RefreshSpecLockedPlugins()
-    if not self._pluginsByName then
-        return
-    end
+    if not self._pluginsByName then return end
     for name, plugin in pairs(self._pluginsByName) do
         if plugin.disabledSpecs then
             local locked = self:IsPluginSpecLocked(name)
@@ -390,9 +365,7 @@ function Orbit:RefreshSpecLockedPlugins()
                     plugin.frame:SetScript("OnEvent", nil)
                     plugin.frame:SetScript("OnUpdate", nil)
                     plugin.frame:UnregisterAllEvents()
-                    if Orbit.OOCFadeMixin then
-                        Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame)
-                    end
+                    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame) end
                     plugin.frame:Hide()
                 end
                 if plugin.timer then
@@ -400,14 +373,10 @@ function Orbit:RefreshSpecLockedPlugins()
                     plugin.timer = nil
                 end
                 self.EventBus:OffContext(plugin)
-                if OrbitEngine.EditMode then
-                    OrbitEngine.EditMode:UnregisterCallbacks(plugin)
-                end
+                if OrbitEngine.EditMode then OrbitEngine.EditMode:UnregisterCallbacks(plugin) end
                 plugin._initialized = false
             elseif not locked and not plugin._initialized and not (self.db.DisabledPlugins and self.db.DisabledPlugins[name]) then
-                if plugin.frame then
-                    plugin.frame.orbitDisabled = false
-                end
+                if plugin.frame then plugin.frame.orbitDisabled = false end
                 if plugin.OnLoad then
                     self.ErrorHandler:Wrap(function() plugin:OnLoad() end, name .. ".OnLoad")()
                     plugin._initialized = true
