@@ -136,7 +136,8 @@ function Plugin:OnLoad()
         if event == "UNIT_PET" and unit == "player" then
             C_Timer.After(0.2, function()
                 if self.frame and UnitExists("pet") then
-                    self.frame:SetAlpha(1)
+                    local opacity = (self:GetSetting(PET_FRAME_INDEX, "Opacity") or 100) / 100
+                    self.frame:SetAlpha(opacity)
                     self.frame:UpdateAll()
                 end
             end)
@@ -159,7 +160,8 @@ function Plugin:UpdateVisibility()
         Orbit:SafeAction(function()
             self.frame:Show()
         end)
-        self.frame:SetAlpha(hasPet and 1 or 0.5)
+        local opacity = (self:GetSetting(PET_FRAME_INDEX, "Opacity") or 100) / 100
+        self.frame:SetAlpha(hasPet and opacity or 0.5)
         return
     end
 
@@ -228,6 +230,10 @@ function Plugin:ApplySettings(frame)
         OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
         if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
     end
+
+    -- Apply Opacity (hover fade enforcement)
+    local baseAlpha = (self:GetSetting(systemIndex, "Opacity") or 100) / 100
+    Orbit.Animation:ApplyHoverFade(frame, baseAlpha, 1, Orbit:IsEditMode())
 
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
     Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover)

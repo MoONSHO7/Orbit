@@ -246,10 +246,6 @@ function CDM:ProcessChildren(anchor)
             local anchorFrame = entry.anchor
             local scale = anchorFrame:GetEffectiveScale()
             local spacing = Pixel:Multiple(skinSettings.buffBarSpacing or 2, scale)
-            if (skinSettings.buffBarSpacing or 2) > 0 then
-                local borderOutset = Pixel:Multiple(Orbit.db.GlobalSettings.BorderSize or 1, scale)
-                spacing = spacing + 2 * borderOutset
-            end
             local barH = Pixel:Snap(skinSettings.buffBarHeight or 20, scale)
             local settingW = Pixel:Snap(math.max(skinSettings.buffBarWidth or 200, BUFFBAR_MIN_WIDTH), scale)
             -- When docked, anchor width is authoritative (syncDimensions from parent); when undocked, use setting width
@@ -301,14 +297,14 @@ function CDM:ProcessChildren(anchor)
         if isBuffBar then
             local anchorFrame = entry.anchor
             anchorFrame:SetAlpha(1)
+            anchorFrame.orbitRowHeight = blizzFrame.orbitRowHeight
+            anchorFrame.orbitColumnWidth = blizzFrame.orbitColumnWidth
             local w, h = blizzFrame:GetSize()
             if h and h > 0 then anchorFrame:SetHeight(h) end
             if not GetAnchorInfo(anchorFrame) then
                 local sW = OrbitEngine.Pixel:Snap(math.max(skinSettings.buffBarWidth or 200, BUFFBAR_MIN_WIDTH), anchorFrame:GetEffectiveScale())
                 if anchorFrame:GetWidth() < sW then anchorFrame:SetWidth(sW) end
             end
-            anchorFrame.orbitRowHeight = blizzFrame.orbitRowHeight
-            anchorFrame.orbitColumnWidth = blizzFrame.orbitColumnWidth
         end
 
         -- BuffIcons: size anchor to active icons (visual only — no combat gate)
@@ -318,6 +314,8 @@ function CDM:ProcessChildren(anchor)
             anchorFrame._isIconContainer = true
             local iconW = blizzFrame.orbitColumnWidth or 40
             local iconH = blizzFrame.orbitRowHeight or 40
+            anchorFrame.orbitRowHeight = iconH
+            anchorFrame.orbitColumnWidth = iconW
             local limit = math.max(tonumber(skinSettings.limit) or 10, 1)
             local pad = tonumber(skinSettings.padding) or 0
             local scale = anchorFrame:GetEffectiveScale()
@@ -327,8 +325,6 @@ function CDM:ProcessChildren(anchor)
             local w = (cols * iconW) + (math.max(cols - 1, 0) * pad)
             local h = (rows * iconH) + (math.max(rows - 1, 0) * pad)
             anchorFrame:SetSize(w, h)
-            anchorFrame.orbitRowHeight = iconH
-            anchorFrame.orbitColumnWidth = iconW
             local iconNineSlice = Orbit.Skin:GetActiveIconBorderStyle()
             if hideBorders then Orbit.Skin:ClearIconGroupBorder(anchorFrame)
             elseif pad == 0 then Orbit.Skin:ApplyIconGroupBorder(anchorFrame, iconNineSlice)
@@ -339,10 +335,10 @@ function CDM:ProcessChildren(anchor)
         -- Essential/Utility: anchor sizing (combat-gated — protected frame ops)
         if not InCombatLockdown() and not isBuffBar and systemIndex ~= BUFFICON_INDEX then
             local anchorFrame = entry.anchor
-            local w, h = blizzFrame:GetSize()
-            if w and h and w > 0 and h > 0 then anchorFrame:SetSize(w, h) end
             anchorFrame.orbitRowHeight = blizzFrame.orbitRowHeight
             anchorFrame.orbitColumnWidth = blizzFrame.orbitColumnWidth
+            local w, h = blizzFrame:GetSize()
+            if w and h and w > 0 and h > 0 then anchorFrame:SetSize(w, h) end
             anchorFrame._isIconContainer = true
             local iconNineSlice = Orbit.Skin:GetActiveIconBorderStyle()
             local pad = tonumber(skinSettings.padding) or 1

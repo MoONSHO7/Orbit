@@ -277,21 +277,26 @@ end
 function Plugin:UpdateVisibility()
     local shouldHide = (C_PetBattles and C_PetBattles.IsInBattle()) or (UnitHasVehicleUI and UnitHasVehicleUI("player"))
         or (Orbit.MountedVisibility:ShouldHide())
-    local alpha = shouldHide and 0 or 1
     for _, data in pairs(VIEWER_MAP) do
         if data.anchor then
+            local sysIdx = data.anchor.systemIndex
+            local alpha = shouldHide and 0 or ((self:GetSetting(sysIdx, "Opacity") or 100) / 100)
             data.anchor.orbitMountedSuppressed = shouldHide or nil
             data.anchor:SetAlpha(alpha)
         end
     end
     for _, childData in pairs(self.activeChildren or {}) do
         if childData.frame then
+            local csi = childData.frame.systemIndex
+            local alpha = shouldHide and 0 or ((self:GetSetting(csi, "Opacity") or 100) / 100)
             childData.frame.orbitMountedSuppressed = shouldHide or nil
             childData.frame:SetAlpha(alpha)
         end
     end
     for _, childData in pairs(self.activeChargeChildren or {}) do
         if childData.frame then
+            local csi = childData.frame.systemIndex
+            local alpha = shouldHide and 0 or ((self:GetSetting(csi, "Opacity") or 100) / 100)
             childData.frame.orbitMountedSuppressed = shouldHide or nil
             childData.frame:SetAlpha(alpha)
         end
@@ -404,8 +409,12 @@ function Plugin:ApplySettings(frame)
     end
 
     local isMountedHidden = Orbit.MountedVisibility:ShouldHide()
-    local alpha = self:GetSetting(systemIndex, "Opacity") or 100
-    OrbitEngine.NativeFrame:Modify(frame, { alpha = isMountedHidden and 0 or (alpha / 100) })
+    local alpha = (self:GetSetting(systemIndex, "Opacity") or 100) / 100
+    if isMountedHidden then
+        frame:SetAlpha(0)
+    else
+        Orbit.Animation:ApplyHoverFade(frame, alpha, 1, Orbit:IsEditMode())
+    end
     frame:Show()
     OrbitEngine.Frame:RestorePosition(frame, self, systemIndex)
     self:ProcessChildren(frame)

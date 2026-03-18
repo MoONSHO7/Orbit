@@ -29,7 +29,7 @@ function Plugin:OnLoad()
         vertical = true,
         syncScale = true,
         syncDimensions = true,
-        mergeBorders = true,
+        mergeBorders = { x = false, y = true },
     }
 
     self.CastBar = CastBar

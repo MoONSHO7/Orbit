@@ -78,6 +78,15 @@ function NativeFrame:Disable(nativeFrame)
     UnregisterStateDriver(nativeFrame, "visibility")
     RegisterStateDriver(nativeFrame, "visibility", "hide")
 
+    -- Hook Show to catch Blizzard secure code that bypasses the state driver
+    if not nativeFrame.orbitDisableShowHook then
+        local disabledRef = self.disabled
+        hooksecurefunc(nativeFrame, "Show", function(f)
+            if disabledRef[f] and not InCombatLockdown() then f:Hide() end
+        end)
+        nativeFrame.orbitDisableShowHook = true
+    end
+
     self.disabled[nativeFrame] = backup
     return true
 end

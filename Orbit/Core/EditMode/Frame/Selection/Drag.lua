@@ -553,7 +553,8 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
 
     local anchorParentOpts = Engine.FrameAnchor.GetFrameOptions(anchor.parent)
     local anchorChildOpts = Engine.FrameAnchor.GetFrameOptions(parent)
-    if anchorParentOpts.mergeBorders and anchorChildOpts.mergeBorders then
+    local ShouldMergeBorders = Engine.FrameAnchor.ShouldMergeBorders
+    if ShouldMergeBorders(anchorParentOpts, anchor.edge) and ShouldMergeBorders(anchorChildOpts, anchor.edge) then
         minPadding = 0
     end
 

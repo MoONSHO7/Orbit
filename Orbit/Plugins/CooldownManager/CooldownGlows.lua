@@ -183,6 +183,11 @@ local function CreatePandemicGlow(icon, glowType, ct, plugin)
         local cfg = GlowConfig.Button
         LibCustomGlow.ButtonGlow_Start(icon, ct, cfg.Frequency, cfg.FrameLevel)
     end
+    -- Clamp glow frame level so it never renders above border or text
+    local glowFrame = GetPandemicGlowFrame(icon, glowType)
+    if glowFrame and glowFrame.SetFrameLevel then
+        glowFrame:SetFrameLevel(icon:GetFrameLevel() + BLIZZARD_GLOW_LEVEL)
+    end
 end
 
 local function ShowPandemicGlow(icon, glowType)

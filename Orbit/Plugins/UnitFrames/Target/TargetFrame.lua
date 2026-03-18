@@ -101,6 +101,7 @@ end
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 -- Apply Mixins
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.StatusIconMixin)
+Plugin.supportsHealthText = true
 
 function Plugin:OnLoad()
     if TargetFrame then
@@ -168,7 +169,7 @@ function Plugin:OnLoad()
         end
     end)
 
-    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, useRowDimension = true, mergeBorders = true, independentHeight = true }
+    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, useRowDimension = true, mergeBorders = { x = false, y = true }, independentHeight = true }
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 10, maxH = 100 }
     self.frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = 200, y = -140 }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, TARGET_FRAME_INDEX)
@@ -237,10 +238,9 @@ function Plugin:ApplySettings(frame)
         return
     end
     local systemIndex = TARGET_FRAME_INDEX
-    local width = self:GetSetting(systemIndex, "Width")
+    local width = self:GetSetting(systemIndex, "Width") or self:GetPlayerSetting("Width")
 
     self:ApplyUnitFrameSettings(frame, systemIndex, {
-        inheritFromPlayer = true,
         width = width,
         height = self:GetPlayerSetting("Height"),
     })
@@ -248,7 +248,7 @@ function Plugin:ApplySettings(frame)
     -- Target Specifics
     local reactionColour = self:GetSetting(systemIndex, "ReactionColour")
     local showAuras = self:GetSetting(systemIndex, "ShowAuras")
-    local classColour = self:GetPlayerSetting("ClassColour") -- Inherit class colour
+    local classColour = true
 
     -- Logic
     frame.aurasEnabled = showAuras

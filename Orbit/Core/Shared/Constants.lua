@@ -273,7 +273,7 @@ C.PandemicGlow = {
     },
     Button = {
         Frequency = 0.125, -- Speed
-        FrameLevel = 8, -- Frame level offset
+        FrameLevel = 3, -- Match IconGlow level (below border and text)
     },
 }
 
