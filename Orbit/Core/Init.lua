@@ -149,7 +149,16 @@ function Orbit:InitializePlugins()
                     if self.frame then self.frame.orbitDisabled = true; self.frame:Hide() end
                     return
                 end
-                return original(self, ...)
+                local result = original(self, ...)
+                if self.ApplyStoredFrameLayers then
+                    local target = ...
+                    if type(target) == "table" and target.GetFrameLevel then
+                        self:ApplyStoredFrameLayers(target, target.systemIndex)
+                    else
+                        self:ApplyStoredFrameLayers()
+                    end
+                end
+                return result
             end
             plugin._applyWrapped = true
         end

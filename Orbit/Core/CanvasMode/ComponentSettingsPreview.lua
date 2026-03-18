@@ -189,6 +189,7 @@ function Settings:ApplyStyle(container, key, value)
 
     if not container or not container.visual then return end
     local visual = container.visual
+    local layerTarget = (visual.SetFrameStrata or visual.SetDrawLayer) and visual or container
 
     if key == "FontSize" and visual.SetFont then
         local font, _, flags = visual:GetFont()
@@ -263,6 +264,8 @@ function Settings:ApplyStyle(container, key, value)
         end
         local plugin = self.plugin
         if plugin and plugin.SchedulePreviewUpdate then plugin:SchedulePreviewUpdate() end
+    elseif key == "Strata" or key == "Level" then
+        OrbitEngine.OverrideUtils.ApplyLayerOverrides(layerTarget, self.currentOverrides or {})
     end
 end
 

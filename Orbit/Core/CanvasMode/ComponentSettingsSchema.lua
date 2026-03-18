@@ -31,22 +31,33 @@ local ICON_SIZE_CONTROL = {
     formatter = function(v) return v .. "px" end,
 }
 
+local STRATA_CONTROLS = {
+    { type = "dropdown", key = "Strata", label = "Strata", options = Orbit.Constants.Strata.FrameOptions, default = "MEDIUM" },
+    { type = "slider", key = "Level", label = "Level", min = Orbit.Constants.Strata.FrameLevel.Min, max = Orbit.Constants.Strata.FrameLevel.Max, step = Orbit.Constants.Strata.FrameLevel.Step },
+}
+
 -- [ PRESETS ]----------------------------------------------------------------------------------------
 local STATIC_TEXT = {
     { type = "font", key = "Font", label = "Font" },
     { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
     { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = true },
+    STRATA_CONTROLS[1],
+    STRATA_CONTROLS[2],
 }
 
 local DYNAMIC_TEXT = {
     { type = "font", key = "Font", label = "Font" },
     { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
     { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = false },
+    STRATA_CONTROLS[1],
+    STRATA_CONTROLS[2],
 }
 
 local TEXT_NO_COLOR = {
     { type = "font", key = "Font", label = "Font" },
     { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
+    STRATA_CONTROLS[1],
+    STRATA_CONTROLS[2],
 }
 
 local AURA_GRID = {
@@ -70,9 +81,9 @@ local PANDEMIC_GLOW = {
 -- [ COMPONENT TYPE SCHEMAS ]-------------------------------------------------------------------------
 Schema.TYPE_SCHEMAS = {
     FontString = Compose(DYNAMIC_TEXT),
-    Texture = { controls = { SCALE_CONTROL } },
-    IconFrame = { controls = { ICON_SIZE_CONTROL } },
-    CyclingAtlas = { controls = { ICON_SIZE_CONTROL } },
+    Texture = { controls = { SCALE_CONTROL, STRATA_CONTROLS[1], STRATA_CONTROLS[2] } },
+    IconFrame = { controls = { ICON_SIZE_CONTROL, STRATA_CONTROLS[1], STRATA_CONTROLS[2] } },
+    CyclingAtlas = { controls = { ICON_SIZE_CONTROL, STRATA_CONTROLS[1], STRATA_CONTROLS[2] } },
 }
 
 -- [ KEY SCHEMAS ]------------------------------------------------------------------------------------
@@ -200,4 +211,27 @@ function Schema.GetComponentFamily(container)
     if objType == "FontString" then return "FontString"
     elseif objType == "Texture" then return "Texture" end
     return nil
+end
+
+local function EnsureLayerControls(schema)
+    if not schema or not schema.controls then return end
+    local hasStrata, hasLevel = false, false
+    for _, control in ipairs(schema.controls) do
+        if control.key == "Strata" then hasStrata = true end
+        if control.key == "Level" then hasLevel = true end
+    end
+    if not hasStrata then
+        schema.controls[#schema.controls + 1] = STRATA_CONTROLS[1]
+    end
+    if not hasLevel then
+        schema.controls[#schema.controls + 1] = STRATA_CONTROLS[2]
+    end
+end
+
+for _, schema in pairs(Schema.TYPE_SCHEMAS) do
+    EnsureLayerControls(schema)
+end
+
+for _, schema in pairs(Schema.KEY_SCHEMAS) do
+    EnsureLayerControls(schema)
 end

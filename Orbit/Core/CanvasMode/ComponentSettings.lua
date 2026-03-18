@@ -130,6 +130,24 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             local r, g, b, a = visual:GetTextColor()
             return { r = r, g = g, b = b, a = a or 1 }
         elseif key == "Scale" then return 1.0 end
+        if key == "Strata" then
+            if visual.GetFrameStrata then
+                return visual:GetFrameStrata()
+            elseif visual.GetDrawLayer then
+                local layer = visual:GetDrawLayer()
+                for strata, drawLayer in pairs(Orbit.Constants.Strata.DrawLayerByStrata) do
+                    if drawLayer == layer then return strata end
+                end
+                return "MEDIUM"
+            end
+        elseif key == "Level" then
+            if visual.GetFrameLevel then
+                return visual:GetFrameLevel()
+            elseif visual.GetDrawLayer then
+                local _, sublevel = visual:GetDrawLayer()
+                return sublevel or 0
+            end
+        end
         return nil
     end
 

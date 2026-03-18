@@ -138,6 +138,30 @@ C.Settings = {
     Texture = { Default = "Melli" },
 }
 
+C.Strata = {
+    FrameOptions = {
+        { text = "Background", value = "BACKGROUND" },
+        { text = "Low", value = "LOW" },
+        { text = "Medium", value = "MEDIUM" },
+        { text = "High", value = "HIGH" },
+        { text = "Dialog", value = "DIALOG" },
+        { text = "Fullscreen", value = "FULLSCREEN" },
+        { text = "Fullscreen Dialog", value = "FULLSCREEN_DIALOG" },
+        { text = "Tooltip", value = "TOOLTIP" },
+    },
+    DrawLayerByStrata = {
+        BACKGROUND = "BACKGROUND",
+        LOW = "BORDER",
+        MEDIUM = "ARTWORK",
+        HIGH = "OVERLAY",
+        DIALOG = "OVERLAY",
+        FULLSCREEN = "HIGHLIGHT",
+        FULLSCREEN_DIALOG = "HIGHLIGHT",
+        TOOLTIP = "HIGHLIGHT",
+    },
+    FrameLevel = { Min = 0, Max = 500, Step = 1, Default = 0 },
+}
+
 -- [ BORDER STYLE ]---------------------------------------------------------------------------------
 C.BorderStyle = {
     Default = "flat",
