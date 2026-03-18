@@ -246,10 +246,6 @@ function CDM:ProcessChildren(anchor)
             local anchorFrame = entry.anchor
             local scale = anchorFrame:GetEffectiveScale()
             local spacing = Pixel:Multiple(skinSettings.buffBarSpacing or 2, scale)
-            if (skinSettings.buffBarSpacing or 2) > 0 then
-                local borderOutset = Pixel:Multiple(Orbit.db.GlobalSettings.BorderSize or 1, scale)
-                spacing = spacing + 2 * borderOutset
-            end
             local barH = Pixel:Snap(skinSettings.buffBarHeight or 20, scale)
             local settingW = Pixel:Snap(math.max(skinSettings.buffBarWidth or 200, BUFFBAR_MIN_WIDTH), scale)
             -- When docked, anchor width is authoritative (syncDimensions from parent); when undocked, use setting width

@@ -14,6 +14,7 @@ local optionsCache = setmetatable({}, { __mode = "k" })
 
 local ANCHOR_THRESHOLD = 5
 local DEFAULT_PADDING = 2
+local NINESLICE_DEFAULT_PADDING = 10
 local MIN_SYNC_HEIGHT = 5
 local MIN_SYNC_WIDTH = 10
 
@@ -275,7 +276,8 @@ end
 
 function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, suppressApplySettings)
     if padding == nil then
-        padding = DEFAULT_PADDING
+        local style = Orbit.Skin and Orbit.Skin:GetActiveBorderStyle()
+        padding = (style and style.edgeFile) and NINESLICE_DEFAULT_PADDING or DEFAULT_PADDING
     end
 
     -- Prevent circular anchoring (checks full chain, not just immediate parent)

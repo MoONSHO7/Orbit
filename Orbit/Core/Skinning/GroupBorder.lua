@@ -98,7 +98,6 @@ function Skin:UpdateGroupBorder(rootFrame)
 
     if not rootFrame._groupBorderOverlay then
         rootFrame._groupBorderOverlay = CreateFrame("Frame", nil, rootFrame, "BackdropTemplate")
-        rootFrame._groupBorderOverlay:SetFrameStrata("LOW")
         rootFrame._groupBorderOverlay:EnableMouse(false)
     end
     rootFrame._groupBorderOverlay:SetFrameLevel(overlayLevel)
@@ -158,10 +157,9 @@ function Skin:UpdateGroupBorder(rootFrame)
         local borderSize = isIconStyle and (gs and gs.IconBorderSize or 2) or (gs and gs.BorderSize or 2)
         if borderSize <= 0 then overlay:Hide(); return end
         local pixelSize = Engine.Pixel:Multiple(borderSize, scale)
-        local outset = pixelSize
         overlay:ClearAllPoints()
-        overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", -outset - offsetX, outset + offsetY)
-        overlay:SetSize(totalW + 2 * outset, totalH + 2 * outset)
+        overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", -offsetX, offsetY)
+        overlay:SetSize(totalW, totalH)
         overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
         local colorKey = isIconStyle and "IconBorderColor" or "BorderColor"
         local c = (gs and gs[colorKey]) or { r = 0, g = 0, b = 0, a = 1 }

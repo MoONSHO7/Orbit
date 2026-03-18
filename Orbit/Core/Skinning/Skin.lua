@@ -52,7 +52,6 @@ function Skin:ApplyNineSliceBorder(frame, styleEntry)
     if not styleEntry.edgeFile then return end
     if not frame._edgeBorderOverlay then
         frame._edgeBorderOverlay = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-        frame._edgeBorderOverlay:SetFrameStrata("LOW")
     end
     frame._edgeBorderOverlay:SetFrameLevel(frame:GetFrameLevel() + NINESLICE_LEVEL_OFFSET)
     local overlay = frame._edgeBorderOverlay
@@ -168,7 +167,6 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
     -- Create or reuse the border frame (sits above content at Border level)
     if not frame._borderFrame then
         frame._borderFrame = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-        frame._borderFrame:SetFrameStrata("LOW")
     end
     local bf = frame._borderFrame
     bf:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Border)
@@ -186,14 +184,11 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
     if not scale or scale < 0.01 then scale = 1 end
 
     local pixelSize = Engine.Pixel:Multiple(targetSize, scale)
-    frame.borderPixelSize = pixelSize
+    frame.borderPixelSize = 0
 
-    -- Outset border frame by FULL pixelSize so the BackdropTemplate edge
-    -- (which renders INSIDE the frame boundary) lands entirely outside the content.
-    local outset = pixelSize
+    -- Pixel borders render inside the frame boundary (inset).
     bf:ClearAllPoints()
-    bf:SetPoint("TOPLEFT", frame, "TOPLEFT", -outset, outset)
-    bf:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", outset, -outset)
+    bf:SetAllPoints(frame)
 
     -- Apply solid pixel border via BackdropTemplate
     bf:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
