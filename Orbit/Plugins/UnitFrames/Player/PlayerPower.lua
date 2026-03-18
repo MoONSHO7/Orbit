@@ -95,11 +95,12 @@ local Frame, PowerBar
 -- [ SHARED COMBAT-SAFE VISIBILITY ]-----------------------------------------------------------------
 local function SafeShow(frame)
     frame.orbitHiddenByAlpha = false
+    local opacity = (Plugin:GetSetting(SYSTEM_INDEX, "Opacity") or 100) / 100
     if InCombatLockdown() and frame:IsProtected() then
-        frame:SetAlpha(1)
+        frame:SetAlpha(opacity)
     else
         frame:Show()
-        frame:SetAlpha(1)
+        frame:SetAlpha(opacity)
     end
 end
 
@@ -468,6 +469,10 @@ function Plugin:ApplySettings()
     if OrbitEngine.Frame.ForceUpdateSelection then
         OrbitEngine.Frame:ForceUpdateSelection(Frame)
     end
+
+    -- Apply Opacity (hover fade enforcement)
+    local baseAlpha = (self:GetSetting(systemIndex, "Opacity") or 100) / 100
+    Orbit.Animation:ApplyHoverFade(Frame, baseAlpha, 1, Orbit:IsEditMode())
 
     -- Apply Out of Combat Fade (with hover detection based on setting)
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false

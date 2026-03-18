@@ -75,7 +75,7 @@ function Skin:UpdateGroupBorder(rootFrame)
     -- Determine border mode: NineSlice texture or pixel flat
     local isPixelMode = false
     local styleEntry
-    if isIconStyle then styleEntry = self:GetActiveIconBorderStyle()
+    if isIconStyle then styleEntry = self:GetActiveIconBorderStyle() or self:GetActiveBorderStyle()
     else styleEntry = self:GetActiveBorderStyle() end
     if not styleEntry or not styleEntry.edgeFile then
         isPixelMode = true

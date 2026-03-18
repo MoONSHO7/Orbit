@@ -816,3 +816,9 @@ Anchor.DEFAULT_OPTIONS = DEFAULT_OPTIONS
 
 -- Listen for border size changes to re-sync anchor distances
 Orbit.EventBus:On("ORBIT_BORDER_SIZE_CHANGED", function() Anchor:ResyncAll() end)
+
+-- Re-sync after zone transitions so chain widths settle after all plugins apply settings
+Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+    local delay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.RetryShort) or 0.5
+    C_Timer.After(delay, function() Anchor:ResyncAll() end)
+end)

@@ -200,8 +200,9 @@ function Orbit.PluginMixin:UpdateVisibility()
         return
     end
     if self.ApplySettings then self:ApplySettings() return end
-    if self.frame then self.frame:SetAlpha(1) end
+    local opacity = (self.frame and self.frame.systemIndex and self:GetSetting(self.frame.systemIndex, "Opacity") or 100) / 100
+    if self.frame then self.frame:SetAlpha(opacity) end
     if self.containers then
-        for _, container in pairs(self.containers) do container:SetAlpha(1) end
+        for _, container in pairs(self.containers) do container:SetAlpha(opacity) end
     end
 end

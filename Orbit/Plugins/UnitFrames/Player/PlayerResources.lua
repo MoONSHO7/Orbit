@@ -509,7 +509,11 @@ function Plugin:ApplySettings()
     -- 4. Update Power (Refresh Logic & Spacer Positions)
     self:UpdatePower()
 
-    -- 5. Apply Out of Combat Fade (with hover detection based on setting)
+    -- 5. Apply Opacity (hover fade enforcement)
+    local baseAlpha = (self:GetSetting(SYSTEM_INDEX, "Opacity") or 100) / 100
+    Orbit.Animation:ApplyHoverFade(Frame, baseAlpha, 1, Orbit:IsEditMode())
+
+    -- 6. Apply Out of Combat Fade (with hover detection based on setting)
     local enableHover = self:GetSetting(SYSTEM_INDEX, "ShowOnMouseover") ~= false
     Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, SYSTEM_INDEX, "OutOfCombatFade", enableHover)
 end
