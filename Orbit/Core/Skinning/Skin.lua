@@ -169,7 +169,8 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
         frame._borderFrame = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     end
     local bf = frame._borderFrame
-    bf:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Border)
+    local borderLevel = isIcon and Orbit.Constants.Levels.IconBorder or Orbit.Constants.Levels.Border
+    bf:SetFrameLevel(frame:GetFrameLevel() + borderLevel)
 
     -- For icons, use the icon-specific border size setting
     local gs = Orbit.db and Orbit.db.GlobalSettings
