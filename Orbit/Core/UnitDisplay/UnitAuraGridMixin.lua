@@ -274,7 +274,7 @@ function Mixin:CreateAuraGridPlugin(config)
 
     self.frame = Frame
     self._agFrame = Frame
-    if config.exposeMountedConfig then self.mountedConfig = { frame = Frame } end
+    if config.exposeMountedConfig then self.mountedConfig = { frame = Frame, hoverReveal = config.mountedHoverReveal or false } end
     Frame.unit = config.unit
     Frame:SetAttribute("unit", config.unit)
 
@@ -610,6 +610,17 @@ function Mixin:_updateBlizzardBuffs()
         if textElement.SetJustifyH then textElement:SetJustifyH(justifyH) end
     end
 
+    -- Build clean index→DurationObject map from untainted AuraUtil context
+    local durObjByIndex = {}
+    local durIdx = 0
+    AuraUtil.ForEachAura(cfg.unit, "HELPFUL", 40, function(aura)
+        durIdx = durIdx + 1
+        if aura.auraInstanceID then
+            local durObj = C_UnitAuras.GetAuraDuration(cfg.unit, aura.auraInstanceID)
+            if durObj then durObjByIndex[durIdx] = durObj end
+        end
+    end, true)
+
     local skinVersion = (Frame._orbitSkinVersion or 0)
     local activeIcons = {}
     for _, btn in ipairs(blizzFrame.auraFrames) do
@@ -684,14 +695,8 @@ function Mixin:_updateBlizzardBuffs()
                 btn:EnableMouse(true)
                 btn.Cooldown:Clear()
                 if btn.Cooldown.Text then btn.Cooldown.Text:SetText("") end
-                if bi and bi.expirationTime then
-                    if bi.duration then
-                        btn.Cooldown:SetCooldownFromExpirationTime(bi.expirationTime, bi.duration)
-                    elseif bi.auraType == "TempEnchant" then
-                        local timeLeft = bi.expirationTime - GetTime()
-                        if timeLeft > 0 then btn.Cooldown:SetCooldownFromExpirationTime(bi.expirationTime, timeLeft) end
-                    end
-                end
+                local durObj = bi and bi.index and durObjByIndex[bi.index]
+                if durObj then btn.Cooldown:SetCooldownFromDurationObject(durObj) end
                 btn:Show()
                 table.insert(activeIcons, btn)
             end
@@ -831,6 +836,7 @@ function Mixin:UpdateVisibility()
         OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
         return
     end
+    if self.mountedConfig and Orbit.MountedVisibility:ShouldHide() then return end
 
     local enabled = self:IsEnabled()
     local isEditMode = Orbit:IsEditMode()

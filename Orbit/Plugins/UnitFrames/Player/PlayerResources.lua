@@ -400,6 +400,7 @@ end
 -- [ SETTINGS APPLICATION ]-------------------------------------------------------------------------
 function Plugin:ApplySettings()
     if not Frame then return end
+    if Orbit.MountedVisibility:ShouldHide() then return end
 
     OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
 
@@ -527,6 +528,7 @@ function Plugin:UpdateVisibility()
     if not Frame then
         return
     end
+    if Orbit.MountedVisibility:ShouldHide() then return end
     OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
     self:UpdatePowerType()
 end

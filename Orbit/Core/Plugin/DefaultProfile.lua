@@ -1649,7 +1649,7 @@ Orbit.Profile.defaults = {
         },
     },
     GlobalSettings = {
-        OverlayTexture = "Orbit Gradient",
+        OverlayTexture = "None",
         BarColorCurve = {
             pins = {
                 {

@@ -129,9 +129,9 @@ end
 
 function Mixin:ApplyAuraCooldown(icon, aura, unit)
     if not icon or not icon.Cooldown then return end
-    if aura.expirationTime then
-        icon.Cooldown:SetCooldownFromExpirationTime(aura.expirationTime, aura.duration)
-        return
+    if aura.auraInstanceID and unit then
+        local durObj = C_UnitAuras.GetAuraDuration(unit, aura.auraInstanceID)
+        if durObj then icon.Cooldown:SetCooldownFromDurationObject(durObj); return end
     end
     icon.Cooldown:Clear()
 end

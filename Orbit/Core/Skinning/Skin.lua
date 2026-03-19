@@ -241,20 +241,10 @@ function Skin:SkinStatusBar(bar, textureName, color, isUnitFrame)
         bar:SetStatusBarColor(color.r, color.g, color.b, color.a or 1)
     end
 
-    -- Overlay logic: check OverlayAllFrames setting
-    local overlayAllFrames = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.OverlayAllFrames
-
-    -- If this is a unit frame, only add overlay if OverlayAllFrames is enabled
-    if isUnitFrame and not overlayAllFrames then
-        -- Hide overlay if it exists
-        if bar.Overlay then
-            bar.Overlay:Hide()
-        end
-        return
-    end
+    -- Overlay logic
 
     -- Get overlay texture from settings
-    local overlayTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.OverlayTexture or "Orbit Gradient"
+    local overlayTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.OverlayTexture or "None"
     if overlayTextureName == "None" then
         if bar.Overlay then bar.Overlay:Hide() end
         return

@@ -110,7 +110,7 @@ local function GetAnchorInfo(anchorFrame) return anchorFrame and OrbitEngine.Fra
 
 -- [ LIVE CANVAS PREVIEW ]----------------------------------------------------------------------------
 Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", function(changedPlugin)
-    if changedPlugin == CDM and CDM.buffBarAnchor then CDM:ProcessChildren(CDM.buffBarAnchor) end
+    if changedPlugin == CDM and CDM.buffBarAnchor and not CDM.buffBarAnchor.orbitMountedSuppressed then CDM:ProcessChildren(CDM.buffBarAnchor) end
 end)
 
 -- [ PROCESS CHILDREN ]-------------------------------------------------------------------------------
@@ -139,7 +139,9 @@ function CDM:ProcessChildren(anchor)
                         end
                     end
                     if anc and plugin.ProcessChildren then
-                        plugin:ProcessChildren(anc)
+                        Orbit.Async:Debounce("CDM_OnShow_" .. systemIndex, function()
+                            plugin:ProcessChildren(anc)
+                        end, 0)
                     end
                 end)
                 child.orbitOnShowHooked = true
@@ -250,6 +252,7 @@ function CDM:ProcessChildren(anchor)
             local settingW = Pixel:Snap(math.max(skinSettings.buffBarWidth or 200, BUFFBAR_MIN_WIDTH), scale)
             -- When docked, anchor width is authoritative (syncDimensions from parent); when undocked, use setting width
             local isDocked = GetAnchorInfo(anchorFrame) ~= nil
+            if not isDocked then anchorFrame:SetWidth(settingW) end
             local barW = isDocked and anchorFrame:GetWidth() or math.max(anchorFrame:GetWidth(), settingW)
             local vGrowth = self:GetGrowthDirection(anchorFrame)
             local totalH = (#activeChildren * barH) + (math.max(#activeChildren - 1, 0) * spacing)
@@ -296,7 +299,7 @@ function CDM:ProcessChildren(anchor)
         -- BuffBar: size anchor to active bars (visual only — no combat gate)
         if isBuffBar then
             local anchorFrame = entry.anchor
-            anchorFrame:SetAlpha(1)
+            if not anchorFrame.orbitMountedSuppressed then anchorFrame:SetAlpha(1) end
             anchorFrame.orbitRowHeight = blizzFrame.orbitRowHeight
             anchorFrame.orbitColumnWidth = blizzFrame.orbitColumnWidth
             local w, h = blizzFrame:GetSize()
@@ -310,7 +313,7 @@ function CDM:ProcessChildren(anchor)
         -- BuffIcons: size anchor to active icons (visual only — no combat gate)
         if systemIndex == BUFFICON_INDEX then
             local anchorFrame = entry.anchor
-            anchorFrame:SetAlpha(1)
+            if not anchorFrame.orbitMountedSuppressed then anchorFrame:SetAlpha(1) end
             anchorFrame._isIconContainer = true
             local iconW = blizzFrame.orbitColumnWidth or 40
             local iconH = blizzFrame.orbitRowHeight or 40

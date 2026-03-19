@@ -48,14 +48,16 @@ function CDM:SetupViewerHooks(viewer, anchor)
     end
 
     local LayoutHandler = function()
-        if viewer._orbitResizing then return end
-        self:ProcessChildren(anchor)
+        if viewer._orbitResizing or anchor.orbitMountedSuppressed then return end
+        Orbit.Async:Debounce("CDM_Layout_" .. anchor.systemIndex, function()
+            self:ProcessChildren(anchor)
+        end, 0)
     end
     if viewer.UpdateLayout then hooksecurefunc(viewer, "UpdateLayout", LayoutHandler) end
     if viewer.RefreshLayout then hooksecurefunc(viewer, "RefreshLayout", LayoutHandler) end
 
     local function RestoreViewer(v, parent)
-        if not v or not parent or not anchor:IsShown() then return end
+        if not v or not parent or not anchor:IsShown() or anchor.orbitMountedSuppressed then return end
         v:ClearAllPoints()
         local point = GetViewerAnchorPoint(self, anchor)
         v:SetPoint(point, parent, point, 0, 0)
@@ -66,7 +68,7 @@ function CDM:SetupViewerHooks(viewer, anchor)
 
     if not viewer.orbitAlphaHooked then
         hooksecurefunc(viewer, "SetAlpha", function(s, alpha)
-            if s._orbitSettingAlpha or (anchor and not anchor:IsShown()) then return end
+            if s._orbitSettingAlpha or (anchor and (not anchor:IsShown() or anchor.orbitMountedSuppressed)) then return end
             if alpha < 0.1 then s._orbitSettingAlpha = true; s:SetAlpha(1); s._orbitSettingAlpha = false end
         end)
         viewer.orbitAlphaHooked = true
@@ -88,10 +90,10 @@ function CDM:SetupViewerHooks(viewer, anchor)
 
     if not viewer.orbitHideHooked then
         hooksecurefunc(viewer, "Hide", function(s)
-            if s._orbitRestoringVis or (anchor and not anchor:IsShown()) then return end
+            if s._orbitRestoringVis or (anchor and (not anchor:IsShown() or anchor.orbitMountedSuppressed)) then return end
             -- Defer to break taint chain — synchronous Show() taints GetTotemInfo() returns
             C_Timer.After(0, function()
-                if not s or not anchor or not anchor:IsShown() then return end
+                if not s or not anchor or not anchor:IsShown() or anchor.orbitMountedSuppressed then return end
                 s._orbitRestoringVis = true; s:Show(); s:SetAlpha(1); s._orbitRestoringVis = false
             end)
         end)
@@ -110,6 +112,7 @@ end
 
 function CDM:EnforceViewerParentage(viewer, anchor)
     if not viewer or not anchor then return end
+    if anchor.orbitMountedSuppressed then return end
     if viewer:GetParent() ~= anchor then viewer:SetParent(anchor) end
     viewer:SetScale(1)
     viewer:ClearAllPoints()
@@ -197,7 +200,7 @@ function CDM:CheckViewer(viewer, anchor)
     if viewer:GetParent() ~= anchor then self:EnforceViewerParentage(viewer, anchor); return end
     local _, _, relativeTo = viewer:GetPoint(1)
     if relativeTo ~= anchor then self:EnforceViewerParentage(viewer, anchor); return end
-    if not viewer:IsShown() then viewer:Show(); viewer:SetAlpha(1) end
+    if not viewer:IsShown() and not anchor.orbitMountedSuppressed then viewer:Show(); viewer:SetAlpha(1) end
 
     local count = 0
     for _, child in ipairs(PackChildren(viewer:GetChildren())) do

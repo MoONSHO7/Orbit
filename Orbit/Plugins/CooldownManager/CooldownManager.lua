@@ -412,9 +412,10 @@ function Plugin:ApplySettings(frame)
     local alpha = (self:GetSetting(systemIndex, "Opacity") or 100) / 100
     if isMountedHidden then
         frame:SetAlpha(0)
-    else
-        Orbit.Animation:ApplyHoverFade(frame, alpha, 1, Orbit:IsEditMode())
+        frame:Show()
+        return
     end
+    Orbit.Animation:ApplyHoverFade(frame, alpha, 1, Orbit:IsEditMode())
     frame:Show()
     OrbitEngine.Frame:RestorePosition(frame, self, systemIndex)
     self:ProcessChildren(frame)

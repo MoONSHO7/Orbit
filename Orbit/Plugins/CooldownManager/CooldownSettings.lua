@@ -139,17 +139,17 @@ function CDM:AddSettings(dialog, systemFrame)
                 end
             end
             table.insert(schema.controls, {
-                type = "slider", key = "Height", label = "Bar Height", min = 12, max = 40, step = 1, default = 20,
+                type = "slider", key = "Height", label = "Height", min = 12, max = 40, step = 1, default = 20,
                 onChange = function(val) self:SetSetting(systemIndex, "Height", val); self:ProcessChildren(buffBarAnchor); ResizeCanvasPreview() end,
             })
             if not isDocked then
                 table.insert(schema.controls, {
-                    type = "slider", key = "Width", label = "Bar Width", min = 80, max = 400, step = 1, default = 200,
+                    type = "slider", key = "Width", label = "Width", min = 80, max = 400, step = 1, default = 200,
                     onChange = function(val) self:SetSetting(systemIndex, "Width", val); self:ProcessChildren(buffBarAnchor); ResizeCanvasPreview() end,
                 })
             end
             table.insert(schema.controls, {
-                type = "slider", key = "Spacing", label = "Spacing", min = -3, max = 20, step = 1, default = 2,
+                type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 30, step = 1, default = 2,
                 onChange = function(val) self:SetSetting(systemIndex, "Spacing", val); self:ProcessChildren(buffBarAnchor) end,
             })
         elseif currentTab == "Colors" then
