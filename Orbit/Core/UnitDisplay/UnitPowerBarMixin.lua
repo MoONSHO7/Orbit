@@ -45,7 +45,7 @@ function Mixin:CreatePowerBarPlugin(config)
     local Frame, PowerBar = OrbitEngine.FrameFactory:CreateWithBar(config.frameName, self, {
         width = 200, height = 15, y = config.yOffset or -180,
         systemIndex = 1, template = "BackdropTemplate",
-        anchorOptions = { horizontal = false, vertical = true, mergeBorders = true },
+        anchorOptions = { horizontal = false, vertical = true, mergeBorders = { x = false, y = true } },
     })
     Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 4, maxH = 25 }

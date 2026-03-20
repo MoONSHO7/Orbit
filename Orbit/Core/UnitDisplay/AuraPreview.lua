@@ -151,11 +151,10 @@ function AP:ShowPrivateAuras(frame, posData, baseIconSize)
     local paa = frame.PrivateAuraAnchor
     if not paa then return end
     local overrides = posData and posData.overrides
-    local paaScale = (overrides and overrides.Scale) or 1
-    paa:SetScale(paaScale)
-    local iconSize = baseIconSize
+    local iconSize = (overrides and overrides.IconSize) or baseIconSize
     local totalWidth = (PREVIEW_PAA_COUNT * iconSize) + ((PREVIEW_PAA_COUNT - 1) * PREVIEW_PAA_SPACING)
     local anchorX = (posData and posData.anchorX) or "CENTER"
+    local growDir = (posData and posData.justifyH) or anchorX
     local paaTexture = Orbit.StatusIconMixin:GetPrivateAuraTexture()
     paa.Icon:SetTexture(nil)
     paa:SetSize(totalWidth, iconSize)
@@ -178,8 +177,8 @@ function AP:ShowPrivateAuras(frame, posData, baseIconSize)
         sub:SetSize(iconSize, iconSize)
         sub.Icon:SetTexture(paaTexture)
         sub:ClearAllPoints()
-        if anchorX == "RIGHT" then sub:SetPoint("TOPRIGHT", paa, "TOPRIGHT", -((pi - 1) * (iconSize + PREVIEW_PAA_SPACING)), 0)
-        elseif anchorX == "LEFT" then sub:SetPoint("TOPLEFT", paa, "TOPLEFT", (pi - 1) * (iconSize + PREVIEW_PAA_SPACING), 0)
+        if growDir == "RIGHT" then sub:SetPoint("TOPRIGHT", paa, "TOPRIGHT", -((pi - 1) * (iconSize + PREVIEW_PAA_SPACING)), 0)
+        elseif growDir == "LEFT" then sub:SetPoint("TOPLEFT", paa, "TOPLEFT", (pi - 1) * (iconSize + PREVIEW_PAA_SPACING), 0)
         else
             local centeredStart = -(totalWidth - iconSize) / 2
             sub:SetPoint("CENTER", paa, "CENTER", centeredStart + (pi - 1) * (iconSize + PREVIEW_PAA_SPACING), 0)

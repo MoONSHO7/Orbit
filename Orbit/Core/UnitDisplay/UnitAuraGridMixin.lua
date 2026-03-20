@@ -290,9 +290,13 @@ function Mixin:CreateAuraGridPlugin(config)
     -- Default position: anchor to parent frame or fallback
     local parentFrame = _G[config.anchorParent]
     if parentFrame then
-        Frame:ClearAllPoints()
-        Frame:SetPoint("TOPLEFT", parentFrame, "BOTTOMLEFT", 0, config.anchorGap or -50)
-        OrbitEngine.Frame:CreateAnchor(Frame, parentFrame, "BOTTOM", config.anchorGap or 50, nil, "LEFT")
+        local hasSavedAnchor = self:GetSetting(1, "Anchor")
+        local hasSavedPosition = self:GetSetting(1, "Position")
+        if not hasSavedAnchor and not hasSavedPosition then
+            Frame:ClearAllPoints()
+            Frame:SetPoint("TOPLEFT", parentFrame, "BOTTOMLEFT", 0, config.anchorGap or -50)
+            OrbitEngine.Frame:CreateAnchor(Frame, parentFrame, "BOTTOM", config.anchorGap or 50, nil, "LEFT")
+        end
     else
         Frame:SetPoint("CENTER", UIParent, "CENTER", config.defaultX or 0, config.defaultY or -220)
     end

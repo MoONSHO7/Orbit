@@ -41,7 +41,7 @@ function Mixin:CreateSecondaryPlugin(config)
     self.frame:SetFrameLevel(math.max(1, self.frame:GetFrameLevel() - FRAME_LEVEL_DEMOTE))
     self.frame.editModeName = config.editModeName
     self.frame.systemIndex = config.frameIndex
-    self.frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false, mergeBorders = true }
+    self.frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false, mergeBorders = { x = false, y = true } }
     self.frame.orbitResizeBounds = { minW = 50, maxW = 200, minH = 10, maxH = 40 }
 
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, config.frameIndex)

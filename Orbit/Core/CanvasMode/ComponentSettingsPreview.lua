@@ -136,12 +136,7 @@ function Settings:ApplyHealthTextPreview()
 
     local function GetValue(key)
         if pending[key] ~= nil then return pending[key] end
-        if plugin then
-            if plugin.GetInheritedSetting then
-                return plugin:GetInheritedSetting(sysIdx, key, true)
-            end
-            return plugin:GetSetting(sysIdx, key)
-        end
+        if plugin then return plugin:GetSetting(sysIdx, key) end
         return nil
     end
 
@@ -350,8 +345,8 @@ function Settings:ApplyInitialPluginPreviews(plugin, systemIndex)
 
     self.currentOverrides = nil
 
-    local showValue = plugin.GetInheritedSetting and plugin:GetInheritedSetting(sysIdx, "ShowHealthValue", true) or plugin:GetSetting(sysIdx, "ShowHealthValue")
-    local textMode = plugin.GetInheritedSetting and plugin:GetInheritedSetting(sysIdx, "HealthTextMode", true) or plugin:GetSetting(sysIdx, "HealthTextMode")
+    local showValue = plugin:GetSetting(sysIdx, "ShowHealthValue")
+    local textMode = plugin:GetSetting(sysIdx, "HealthTextMode")
 
     self.currentOverrides = {
         ShowHealthValue = showValue,

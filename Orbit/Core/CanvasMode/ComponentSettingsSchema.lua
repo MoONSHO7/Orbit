@@ -99,7 +99,7 @@ Schema.KEY_SCHEMAS = {
         options = { { text = "Quest Portrait", value = "default" }, { text = "Faction Crest", value = "crest" } }, default = "default" } } },
     Buffs           = Compose(AURA_GRID),
     Debuffs         = Compose(AURA_GRID, PANDEMIC_GLOW),
-    PrivateAuraAnchor = { controls = { SCALE_CONTROL } },
+    PrivateAuraAnchor = { controls = { ICON_SIZE_CONTROL } },
     Portrait = {
         controls = {
             { type = "dropdown", key = "PortraitStyle", label = "Style", plugin = true, rebuildsPanel = true,

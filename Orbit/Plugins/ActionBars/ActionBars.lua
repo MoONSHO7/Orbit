@@ -478,10 +478,6 @@ function Plugin:LayoutButtons(index)
     local w = OrbitEngine.Pixel:Snap(BUTTON_SIZE, scale)
     local h = w
     local padding = OrbitEngine.Pixel:Multiple(rawPadding, scale)
-    if rawPadding > 0 then
-        local borderOutset = OrbitEngine.Pixel:Multiple(Orbit.db.GlobalSettings.IconBorderSize or 2, scale)
-        padding = padding + 2 * borderOutset
-    end
     local useMasque = MasqueBridge and MasqueBridge.enabled
     local masqueGroup = useMasque and (config and config.label or "Action Bar " .. index)
     local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, iconBorder = true, padding = rawPadding,

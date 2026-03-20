@@ -107,6 +107,7 @@ end
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 -- Apply Mixins
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.StatusIconMixin)
+Plugin.supportsHealthText = true
 
 function Plugin:OnLoad()
     if FocusFrame then
@@ -171,7 +172,7 @@ function Plugin:OnLoad()
         end
     end)
 
-    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, useRowDimension = true, mergeBorders = true, independentHeight = true }
+    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, useRowDimension = true, mergeBorders = { x = false, y = true }, independentHeight = true }
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 10, maxH = 100 }
     self.frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = Constants.UnitFrame.DefaultOffsetX, y = Constants.UnitFrame.DefaultOffsetY }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, FOCUS_FRAME_INDEX)
@@ -227,11 +228,11 @@ function Plugin:ApplySettings(frame)
     local systemIndex = FOCUS_FRAME_INDEX
 
     -- Use Mixin for base settings (Size, Texture, Border, Text Style, Absorbs)
-    self:ApplyUnitFrameSettings(frame, systemIndex, { inheritFromPlayer = true })
+    self:ApplyUnitFrameSettings(frame, systemIndex)
 
     -- Apply Focus Specific Visuals (Reaction Colour always enabled for Focus)
     local reactionColour = true
-    local classColour = self:GetPlayerSetting("ClassColour") -- Inherit class colour setting
+    local classColour = true
 
     -- Logic Props
     frame:SetClassColour(classColour)

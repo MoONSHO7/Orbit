@@ -96,6 +96,8 @@ function Orbit.PartyFrameFactoryMixin:CreateStatusIcons(frame)
     paa:SetPoint("CENTER", frame, "CENTER", 0, 0)
     paa:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     paa:EnableMouse(false)
+    if paa.SetPropagateMouseMotion then paa:SetPropagateMouseMotion(true) end
+    if paa.SetPropagateMouseClicks then paa:SetPropagateMouseClicks(true) end
     paa.Icon = paa:CreateTexture(nil, "ARTWORK")
     paa.Icon:SetAllPoints()
     paa.icon = paa.Icon

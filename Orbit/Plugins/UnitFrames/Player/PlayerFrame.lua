@@ -130,7 +130,7 @@ function Plugin:OnLoad()
         syncScale = true,
         syncDimensions = true,
         useRowDimension = true,
-        mergeBorders = true,
+        mergeBorders = { x = false, y = true },
         independentHeight = true,
     }
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 10, maxH = 100 }
