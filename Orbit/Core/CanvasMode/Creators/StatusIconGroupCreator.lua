@@ -24,6 +24,16 @@ local CYCLING_ATLASES = {
         { atlas = "UI-LFG-RoleIcon-Healer" },
         { atlas = "UI-LFG-RoleIcon-DPS" },
     },
+    -- Expansion landing page button — cycles through all known expansion icons
+    Missions = {
+        { atlas = "GarrLanding-MinimapIcon-Horde-Up" },           -- WoD (Horde)
+        { atlas = "GarrLanding-MinimapIcon-Alliance-Up" },        -- WoD (Alliance)
+        { atlas = "legionmission-landingbutton-warrior-up" },     -- Legion
+        { atlas = "BFAMission-LandingButton-Horde-Up" },          -- BfA
+        { atlas = "Shadowlands-landingbutton-venthyr-up" },       -- Shadowlands
+        { atlas = "dragonflight-landingbutton-up" },              -- Dragonflight
+        { atlas = "TWWLandingPage-ButtonIcon-Earthen" },          -- The War Within
+    },
 }
 
 local ROUND_ROLE_ATLASES = {

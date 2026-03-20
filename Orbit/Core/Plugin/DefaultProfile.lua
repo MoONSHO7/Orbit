@@ -1324,8 +1324,7 @@ Orbit.Profile.defaults = {
                         align = "CENTER",
                     },
                     Height = 10,
-                    DisabledComponents = {
-                    },
+                    DisabledComponents = {},
                     ComponentPositions = {
                         Text = {
                             offsetX = 4.923077103654316,
@@ -1609,6 +1608,33 @@ Orbit.Profile.defaults = {
                     },
                     ShowText = true,
                     Width = 200,
+                },
+            },
+            ["Orbit_Minimap"] = {
+                ["Orbit_Minimap"] = {
+                    Anchor = false,
+                    Scale = 100,
+                    Opacity = 100,
+                    Size = 200,
+                    ZoneTextSize = 12,
+                    ZoneTextColoring = false,
+                    DisabledComponents = {},
+                    ComponentPositions = {
+                        ZoneText = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 4, justifyH = "CENTER" },
+                        Clock = { anchorX = "LEFT", offsetX = 4, anchorY = "BOTTOM", offsetY = 4, justifyH = "LEFT" },
+                        Compartment = { anchorX = "RIGHT", offsetX = 2, anchorY = "BOTTOM", offsetY = 2 },
+                        Coords = { anchorX = "RIGHT", offsetX = 4, anchorY = "BOTTOM", offsetY = 4, justifyH = "RIGHT" },
+                        Zoom = { anchorX = "RIGHT", offsetX = -2, anchorY = "CENTER", offsetY = 0 },
+                        Difficulty = { anchorX = "LEFT", offsetX = 2, anchorY = "TOP", offsetY = -2 },
+                        Missions = { anchorX = "LEFT", offsetX = 2, anchorY = "BOTTOM", offsetY = 2 },
+                        Mail = { anchorX = "RIGHT", offsetX = -2, anchorY = "TOP", offsetY = -2 },
+                        CraftingOrder = { anchorX = "RIGHT", offsetX = -2, anchorY = "TOP", offsetY = -20 },
+                    },
+                    Position = {
+                        y = -20,
+                        x = -20,
+                        point = "TOPRIGHT",
+                    },
                 },
             },
             ["Orbit_Performance"] = {

@@ -143,6 +143,16 @@ Schema.KEY_SCHEMAS = {
             { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = false },
         },
     },
+    ZoneText = {
+        controls = {
+            { type = "font",       key = "Font",             label = "Font" },
+            { type = "slider",     key = "FontSize",         label = "Size",          min = 6,       max = 32,   step = 1 },
+            { type = "colorcurve", key = "CustomColorCurve", label = "Color",         singleColor = true },
+            { type = "checkbox",   key = "ZoneTextColoring", label = "Zone Coloring", plugin = true, default = false },
+        },
+    },
+    Clock  = Compose(STATIC_TEXT),
+    Coords = Compose(STATIC_TEXT),
 }
 
 -- Register healer aura + raid buff schemas dynamically
@@ -184,6 +194,10 @@ local COMPONENT_TITLES = {
     ["CastBar.Text"] = "Ability Text", ["CastBar.Timer"] = "Cast Timer",
     StatusIcons = "Status Icons",
     BuffBarName = "Buff Bar Name", BuffBarTimer = "Buff Bar Timer",
+    ZoneText = "Zone Text", Clock = "Clock", Coords = "Coordinates",
+    Zoom = "Zoom Buttons", Difficulty = "Instance Difficulty",
+    Missions = "Missions", Mail = "New Mail", CraftingOrder = "Crafting Order",
+    Compartment = "Addon Compartment",
 }
 
 function Schema.ResolveTitle(key)

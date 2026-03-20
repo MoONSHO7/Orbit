@@ -7,7 +7,13 @@ local Orbit = addonTable
 Orbit.LatestChangelogVersion = "@project-version@"
 
 Orbit.WHATS_NEW_ENTRIES = {
-    { title = "Message", body = "- This is an automated test of the new changelog system!\\n- Thanks for sticking with Orbit." },
-    { title = "Added", body = "- Automated `CHANGELOG.md` integration with in-game \\\"What's New\\\" prompt.\\n- Scripted update process for release workflows." },
-    { title = "Fixed", body = "- Syncing version information across multiple files." },
+    {
+        title = "Message",
+        body = "- The Minimap plugin is here! It's marked **Experimental** for now — expect rough edges, but it's fully functional and ready to try.\n- As always, feedback on the Discord is very welcome.",
+    },
+    {
+        title = "Added",
+        body = "- **Minimap plugin** — replaces the default Blizzard minimap with a fully Orbit-managed version.\n  - Drag and reposition the minimap anywhere on screen via Edit Mode.\n  - Choose between a **square** or **round** shape.\n  - Set any **size** from 100 to 400 pixels.\n  - **Opacity** control with optional mouse-over fade-in.\n  - **Rotate Minimap** option to keep north up or rotate with your character.\n  - **Middle-click** action: open the World Map or the Tracking menu.\n  - **Zone Text** — shows your current zone above the minimap. Click it to open the World Map. Optionally colour the text by PvP zone type (sanctuary, friendly, hostile, contested).\n  - **Clock** — displays the current time (local or realm). Left-click opens the Time Manager, right-click opens the Calendar. Glows when you have pending calendar invites.\n  - **Coordinates** — shows your current map position (X, Y) and updates in real time.\n  - **Zoom Buttons** — fade in on hover, fade out when you move away. Optional auto-zoom-out timer resets zoom after a configurable delay.\n  - **Addon Compartment** — consolidates addon buttons into a single Orbit-managed compartment button with a flyout list.\n  - **Instance Difficulty**, **Missions**, **Mail**, and **Crafting Order** indicators all carried over from the Blizzard minimap.\n  - All components are individually toggleable and repositionable in Canvas Mode.",
+    },
+    { title = "Fixed", body = "- Orbit Tour persisting across profiles" },
 }

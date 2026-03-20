@@ -89,7 +89,7 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
         if anchorY == "TOP" then finalY = -finalY end
         component:SetPoint(selfAnchor, componentParent, anchorPoint, finalX, finalY)
         if Engine.SelectionTooltip and Engine.SelectionTooltip.ShowComponentPosition then
-            Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH, selfAnchorY)
+            Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY,edgeOffX, edgeOffY, justifyH,selfAnchorY)
         end
     else
         component:SetPoint("CENTER", componentParent, "CENTER", centerRelX, centerRelY)
@@ -98,7 +98,7 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
             local compW, compH = SafeGetSize(component)
             local anchorX, anchorY, edgeOffX, edgeOffY, justifyH, selfAnchorY =
                 CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsComp, compW, compH, false)
-            Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH, selfAnchorY)
+            Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH,selfAnchorY)
         end
     end
 
@@ -122,13 +122,9 @@ function ComponentDrag:OnDragStop(component, parent, data)
         data.options.onPositionChange(component, anchorX, anchorY, offsetX, offsetY, justifyH, nil, selfAnchorY)
     end
 
-    if Engine.PositionManager then
-        Engine.PositionManager:MarkDirty(parent)
-    end
+    if Engine.PositionManager then Engine.PositionManager:MarkDirty(parent) end
 
-    if Engine.SmartGuides and data.guides then
-        Engine.SmartGuides:Hide(data.guides)
-    end
+    if Engine.SmartGuides and data.guides then Engine.SmartGuides:Hide(data.guides) end
 
     GameTooltip:Hide()
 end
@@ -149,9 +145,7 @@ function ComponentDrag:SelectComponent(component)
 
     local data = registeredComponents[component]
     if data and data.handle then
-        if data.handle.UpdateSize then
-            data.handle:UpdateSize()
-        end
+        if data.handle.UpdateSize then data.handle:UpdateSize() end
         data.handle:SetHandleColor(0.5, 0.9, 0.3, 0.1, 0.5)
     end
 end
@@ -175,31 +169,18 @@ function ComponentDrag:DeselectComponent()
 end
 
 nudgeFrame:SetScript("OnKeyDown", function(self, key)
-    if not selectedComponent then
-        return
-    end
-
+    if not selectedComponent then return end
     local data = registeredComponents[selectedComponent]
-    if not data then
-        return
-    end
+    if not data then return end
 
     local dx, dy = 0, 0
 
-    if key == "UP" then
-        dy = 1
-    elseif key == "DOWN" then
-        dy = -1
-    elseif key == "LEFT" then
-        dx = -1
-    elseif key == "RIGHT" then
-        dx = 1
-    elseif key == "ESCAPE" then
-        ComponentDrag:DeselectComponent()
-        return
-    else
-        self:SetPropagateKeyboardInput(true)
-        return
+    if key == "UP" then dy = 1
+    elseif key == "DOWN" then dy = -1
+    elseif key == "LEFT" then dx = -1
+    elseif key == "RIGHT" then dx = 1
+    elseif key == "ESCAPE" then ComponentDrag:DeselectComponent() return
+    else self:SetPropagateKeyboardInput(true) return
     end
 
     self:SetPropagateKeyboardInput(false)
@@ -220,9 +201,7 @@ end)
 
 function ComponentDrag:NudgeComponent(component, dx, dy)
     local data = registeredComponents[component]
-    if not data then
-        return
-    end
+    if not data then return end
 
     local componentParent = component:GetParent() or data.parent
     local parent = data.parent
@@ -257,9 +236,7 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
         data.options.onPositionChange(component, anchorX, anchorY, offsetX, offsetY, justifyH, nil, selfAnchorY)
     end
 
-    if Engine.PositionManager then
-        Engine.PositionManager:MarkDirty(data.parent)
-    end
+    if Engine.PositionManager then Engine.PositionManager:MarkDirty(data.parent) end
 
     if Engine.SelectionTooltip and Engine.SelectionTooltip.ShowComponentPosition then
         local anchorX, anchorY, edgeOffX, edgeOffY, justifyH, selfAnchorY = CalculateAnchor(newX, newY, halfW, halfH)
@@ -293,15 +270,16 @@ function ComponentDrag:MakeAuraPositionCallback(plugin, systemIndex, key)
         if compParent then
             local cx, cy = comp:GetCenter()
             local px, py = compParent:GetCenter()
-            if cx and px then posX = cx - px end
-            if cy and py then posY = cy - py end
+            if cx and px then
+                posX = cx - px
+            end
+            if cy and py then
+                posY = cy - py
+            end
         end
-        local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV, posX = posX, posY = posY, selfAnchorY = selfAnchorY }
+        local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV, posX = posX, posY = posY, selfAnchorY = selfAnchorY,}
         local Txn = GetTransaction()
-        if Txn and Txn:IsActive() and Txn:GetPlugin() == plugin then
-            Txn:SetPosition(key, posData)
-            return
-        end
+        if Txn and Txn:IsActive() and Txn:GetPlugin() == plugin then Txn:SetPosition(key, posData) return end
         local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
         positions[key] = posData
         plugin:SetSetting(systemIndex, "ComponentPositions", positions)
@@ -311,9 +289,7 @@ end
 -- [ PUBLIC API ]------------------------------------------------------------------------------------
 
 function ComponentDrag:Attach(component, parent, options)
-    if not component or not parent then
-        return
-    end
+    if not component or not parent then return end
 
     options = options or {}
 
@@ -324,8 +300,9 @@ function ComponentDrag:Attach(component, parent, options)
         currentX = 0,
         currentY = 0,
         currentAlignment = "LEFT",
-        isFontString = component.IsObjectType and component:IsObjectType("FontString") or false,
+        isFontString = options.isFontString or (component.IsObjectType and component:IsObjectType("FontString")) or false,
         isAuraContainer = options.isAuraContainer or false,
+        sourceOverride = options.sourceOverride or nil,
 
         guides = Engine.SmartGuides and Engine.SmartGuides:Create(parent) or nil,
         handle = nil,
@@ -350,9 +327,7 @@ end
 
 function ComponentDrag:Detach(component)
     local data = registeredComponents[component]
-    if not data then
-        return
-    end
+    if not data then return end
 
     if data.handle then
         HandleModule:Release(data.handle)
@@ -372,9 +347,7 @@ end
 
 function ComponentDrag:SetEnabled(component, enabled)
     local data = registeredComponents[component]
-    if not data or not data.handle then
-        return
-    end
+    if not data or not data.handle then return end
 
     local componentVisible = component.IsShown and component:IsShown() or true
     local shouldShow = enabled and componentVisible and Orbit:IsEditMode()
@@ -399,9 +372,7 @@ end
 
 function ComponentDrag:SetEnabledForFrame(parent, enabled)
     local components = frameComponents[parent]
-    if not components then
-        return
-    end
+    if not components then return end
 
     local editModeActive = Orbit:IsEditMode()
     local shouldEnable = enabled and editModeActive
@@ -439,9 +410,7 @@ end
 
 function ComponentDrag:RestoreFramePositions(parent, positions)
     local components = frameComponents[parent]
-    if not components or not positions then
-        return
-    end
+    if not components or not positions then return end
 
     for _, component in ipairs(components) do
         local data = registeredComponents[component]
@@ -465,18 +434,20 @@ function ComponentDrag:RestoreFramePositions(parent, positions)
                 local selfAnchor = BuildComponentSelfAnchor(data.isFontString, data.isAuraContainer, selfAnchorY, pos.justifyH)
                 local s = component:GetScale() or 1
                 component:SetPoint(selfAnchor, componentParent, anchorPoint, (s > 0) and (finalX / s) or finalX, (s > 0) and (finalY / s) or finalY)
-                data.anchorX, data.anchorY, data.selfAnchorY, data.offsetX, data.offsetY, data.justifyH = anchorX, anchorY, selfAnchorY, offsetX, offsetY, pos.justifyH
+                data.anchorX, data.anchorY, data.selfAnchorY, data.offsetX, data.offsetY, data.justifyH =
+                    anchorX, anchorY, selfAnchorY, offsetX, offsetY, pos.justifyH
             end
 
-            if data.handle then data.handle:ClearAllPoints(); data.handle:SetPoint("CENTER", component, "CENTER", 0, 0) end
+            if data.handle then
+                data.handle:ClearAllPoints()
+                data.handle:SetPoint("CENTER", component, "CENTER", 0, 0)
+            end
         end
     end
 end
 
 function ComponentDrag:GetComponentsForFrame(frame)
-    if not frame then
-        return {}
-    end
+    if not frame then return {} end
 
     local components = frameComponents[frame] or {}
     local result = {}
@@ -484,16 +455,7 @@ function ComponentDrag:GetComponentsForFrame(frame)
     for _, comp in ipairs(components) do
         local data = registeredComponents[comp]
         if data then
-            result[data.key] = {
-                text = data.key,
-                anchorX = data.anchorX,
-                anchorY = data.anchorY,
-                offsetX = data.offsetX,
-                offsetY = data.offsetY,
-                justifyH = data.justifyH,
-                component = data.sourceOverride or comp,
-                originalText = comp.GetText and comp:GetText() or nil,
-            }
+            result[data.key] = { text = data.key, anchorX = data.anchorX, anchorY = data.anchorY, offsetX = data.offsetX, offsetY = data.offsetY, justifyH = data.justifyH, component = data.sourceOverride or comp, originalText = comp.GetText and comp:GetText() or nil }
         end
     end
 
@@ -504,9 +466,7 @@ end
 
 function ComponentDrag:DisableAll()
     for component, data in pairs(registeredComponents) do
-        if data.handle then
-            data.handle:Hide()
-        end
+        if data.handle then data.handle:Hide() end
     end
     self:DeselectComponent()
 end

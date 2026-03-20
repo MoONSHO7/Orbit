@@ -70,7 +70,9 @@ local Plugin = Orbit:RegisterPlugin("Party Frames", SYSTEM_ID, {
         },
         DisabledComponents = (function()
             local d = { "DefensiveIcon", "CrowdControlIcon", "RoleIcon" }
-            for _, k in ipairs(Orbit.HealerAuraRegistry:AllSlotKeys()) do d[#d + 1] = k end
+            for _, k in ipairs(Orbit.HealerAuraRegistry:AllSlotKeys()) do
+                d[#d + 1] = k
+            end
             return d
         end)(),
         DisabledComponentsMigrated = true,
@@ -112,9 +114,7 @@ Plugin.supportsHealthText = true
 -- Migrate from legacy ShowXXX boolean settings to DisabledComponents array
 local function MigrateDisabledComponents(plugin)
     local migrated = plugin:GetSetting(1, "DisabledComponentsMigrated")
-    if migrated then
-        return
-    end
+    if migrated then return end
 
     local disabled = {}
 
@@ -152,9 +152,7 @@ local function GetPowerColor(powerType) return Orbit.Constants.Colors:GetPowerCo
 -- [ ROLE SORTING ]---------------------------------------------------------------------------------
 
 local function GetRolePriority(unit)
-    if not UnitExists(unit) then
-        return 99
-    end
+    if not UnitExists(unit) then return 99 end
     return ROLE_PRIORITY[UnitGroupRolesAssigned(unit)] or 4
 end
 
@@ -215,13 +213,9 @@ local function CreatePowerBar(parent, unit, plugin)
 end
 
 local function UpdatePowerBar(frame, plugin)
-    if not frame.Power then
-        return
-    end
+    if not frame.Power then return end
     local unit = frame.unit
-    if not UnitExists(unit) then
-        return
-    end
+    if not UnitExists(unit) then return end
 
     local showPower = plugin:GetSetting(1, "ShowPowerBar")
     local isHealer = UnitGroupRolesAssigned(unit) == "HEALER"
@@ -239,9 +233,7 @@ local function UpdatePowerBar(frame, plugin)
 end
 
 local function UpdateFrameLayout(frame, borderSize, plugin)
-    if not Helpers then
-        Helpers = Orbit.PartyFrameHelpers
-    end
+    if not Helpers then Helpers = Orbit.PartyFrameHelpers end
     local showPowerBar = plugin and plugin:GetSetting(1, "ShowPowerBar")
     if showPowerBar == nil then
         showPowerBar = true
@@ -262,16 +254,25 @@ local Helpers = Orbit.PartyFrameHelpers
 local PARTY_SKIN = Orbit.Constants.Aura.SkinWithTimer
 
 local PARTY_DEBUFF_CFG = {
-    componentKey = "Debuffs", fetchFilter = "HARMFUL", fetchMax = 40,
-    postFilter = PartyDebuffPostFilter, tooltipFilter = "HARMFUL",
-    skinSettings = PARTY_SKIN, defaultAnchorX = "RIGHT", defaultJustifyH = "LEFT",
+    componentKey = "Debuffs",
+    fetchFilter = "HARMFUL",
+    fetchMax = 40,
+    postFilter = PartyDebuffPostFilter,
+    tooltipFilter = "HARMFUL",
+    skinSettings = PARTY_SKIN,
+    defaultAnchorX = "RIGHT",
+    defaultJustifyH = "LEFT",
     helpers = function() return Orbit.PartyFrameHelpers end,
 }
-
 local PARTY_BUFF_CFG = {
-    componentKey = "Buffs", fetchFilter = "HELPFUL|PLAYER", fetchMax = 40,
-    postFilter = PartyBuffPostFilter, tooltipFilter = "HELPFUL",
-    skinSettings = PARTY_SKIN, defaultAnchorX = "LEFT", defaultJustifyH = "RIGHT",
+    componentKey = "Buffs",
+    fetchFilter = "HELPFUL|PLAYER",
+    fetchMax = 40,
+    postFilter = PartyBuffPostFilter,
+    tooltipFilter = "HELPFUL",
+    skinSettings = PARTY_SKIN,
+    defaultAnchorX = "LEFT",
+    defaultJustifyH = "RIGHT",
     helpers = function() return Orbit.PartyFrameHelpers end,
 }
 
@@ -313,7 +314,9 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
 
     -- Create base unit button
     local frame = OrbitEngine.UnitButton:Create(plugin.container, unit, frameName)
-    if frame.NameFrame then frame.NameFrame:SetIgnoreParentAlpha(true) end
+    if frame.NameFrame then
+        frame.NameFrame:SetIgnoreParentAlpha(true)
+    end
     frame.editModeName = unitOverride and "Party Player Frame" or ("Party Frame " .. partyIndex)
     frame.systemIndex = 1
     frame.partyIndex = partyIndex
@@ -349,10 +352,15 @@ local function CreatePartyFrame(partyIndex, plugin, unitOverride)
 
     -- Shared callbacks for event/show handlers
     local eventCallbacks = {
-        UpdatePowerBar = UpdatePowerBar, UpdateDebuffs = UpdateDebuffs, UpdateBuffs = UpdateBuffs,
-        UpdateDefensiveIcon = UpdateDefensiveIcon, UpdateCrowdControlIcon = UpdateCrowdControlIcon,
-        UpdatePrivateAuras = UpdatePrivateAuras, UpdateFrameLayout = UpdateFrameLayout,
-        UpdateHealerAuras = UpdateHealerAuras, UpdateMissingRaidBuffs = UpdateMissingRaidBuffs,
+        UpdatePowerBar = UpdatePowerBar,
+        UpdateDebuffs = UpdateDebuffs,
+        UpdateBuffs = UpdateBuffs,
+        UpdateDefensiveIcon = UpdateDefensiveIcon,
+        UpdateCrowdControlIcon = UpdateCrowdControlIcon,
+        UpdatePrivateAuras = UpdatePrivateAuras,
+        UpdateFrameLayout = UpdateFrameLayout,
+        UpdateHealerAuras = UpdateHealerAuras,
+        UpdateMissingRaidBuffs = UpdateMissingRaidBuffs,
     }
     local originalOnEvent = frame:GetScript("OnEvent")
     frame:SetScript("OnShow", Orbit.GroupFrameMixin.CreateOnShowHandler(plugin, eventCallbacks))
@@ -391,9 +399,7 @@ local function HideNativePartyFrames()
     end
 end
 
-function Plugin:AddSettings(dialog, systemFrame)
-    Orbit.PartyFrameSettings(self, dialog, systemFrame)
-end
+function Plugin:AddSettings(dialog, systemFrame) Orbit.PartyFrameSettings(self, dialog, systemFrame) end
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 
@@ -433,18 +439,18 @@ function Plugin:OnLoad()
     for _, k in ipairs(HealerReg:ActiveKeys()) do
         if k == "RaidBuff" then
             local raidBuffs = HealerReg:ActiveRaidBuffs()
-            if #raidBuffs > 0 then self:EnsureRaidBuffContainer(firstFrame, k, raidBuffs, GetComponentIconSize(self, k)) end
+            if #raidBuffs > 0 then
+                self:EnsureRaidBuffContainer(firstFrame, k, raidBuffs, GetComponentIconSize(self, k))
+            end
         else
             self:EnsureAuraIcon(firstFrame, k, GetComponentIconSize(self, k))
         end
     end
     local healerIconKeys = { "RoleIcon", "LeaderIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
-    for _, k in ipairs(HealerReg:ActiveKeys()) do healerIconKeys[#healerIconKeys + 1] = k end
-    Orbit.GroupCanvasRegistration:RegisterComponents(pluginRef, self.container, firstFrame,
-        { "Name", "HealthText" },
-        healerIconKeys,
-        AURA_BASE_ICON_SIZE
-    )
+    for _, k in ipairs(HealerReg:ActiveKeys()) do
+        healerIconKeys[#healerIconKeys + 1] = k
+    end
+    Orbit.GroupCanvasRegistration:RegisterComponents(pluginRef, self.container, firstFrame, { "Name", "HealthText" }, healerIconKeys, AURA_BASE_ICON_SIZE)
 
     -- Container is the selectable frame for Edit Mode
     self.frame = self.container
@@ -458,9 +464,7 @@ function Plugin:OnLoad()
 
     -- Set default container position (anchor matches growth direction)
     if not self.container:GetPoint() then
-        if not Helpers then
-            Helpers = Orbit.PartyFrameHelpers
-        end
+        if not Helpers then Helpers = Orbit.PartyFrameHelpers end
         local growDir = self:GetSetting(1, "GrowthDirection") or "Down"
         local anchor = Helpers:GetContainerAnchor(growDir)
         self.container:SetPoint(anchor, UIParent, "TOPLEFT", GF.DefaultPartyOffsetX, GF.DefaultPartyOffsetY)
@@ -469,7 +473,7 @@ function Plugin:OnLoad()
     -- Helper to update visibility driver based on IncludePlayer setting
     local PARTY_DRIVER_OPEN = "[petbattle] hide; [@raid1,exists] hide; [@party1,exists] show; hide"
     local PARTY_DRIVER_PVP = "[petbattle] hide; hide" -- always hide in BG (raid frames take over)
-    local PARTY_DRIVER_ARENA = "[petbattle] hide; show" -- always show in arena
+    local PARTY_DRIVER_ARENA = "[petbattle] hide; show" -- always show in arena main
     local function UpdateVisibilityDriver(plugin)
         if InCombatLockdown() or Orbit:IsEditMode() then return end
         local _, instanceType = IsInInstance()
@@ -503,20 +507,32 @@ function Plugin:OnLoad()
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
     eventFrame:SetScript("OnEvent", function(_, event)
-        if event == "PLAYER_ENTERING_WORLD" then C_Timer.After(0.5, function() UpdateVisibilityDriver(self); self:UpdateFrameUnits() end); return end
+        if event == "PLAYER_ENTERING_WORLD" then
+            C_Timer.After(0.5, function()
+                UpdateVisibilityDriver(self)
+                self:UpdateFrameUnits()
+            end)
+            return
+        end
         if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
             UpdateVisibilityDriver(self) -- Re-evaluate driver on roster changes
-            if not InCombatLockdown() then self:UpdateFrameUnits() end
+            if not InCombatLockdown() then
+                self:UpdateFrameUnits()
+            end
             for i, frame in ipairs(self.frames) do
                 if frame.unit then
                     UpdateInRange(frame)
-                    if frame.UpdateAll then frame:UpdateAll() end
+                    if frame.UpdateAll then
+                        frame:UpdateAll()
+                    end
                     UpdatePowerBar(frame, self)
                 end
             end
         end
 
-        if event == "PLAYER_REGEN_ENABLED" then UpdateVisibilityDriver(self) end
+        if event == "PLAYER_REGEN_ENABLED" then
+            UpdateVisibilityDriver(self)
+        end
         if not InCombatLockdown() then
             self:PositionFrames()
             self:UpdateContainerSize()
@@ -584,12 +600,8 @@ end
 -- [ FRAME POSITIONING ]-----------------------------------------------------------------------------
 
 function Plugin:PositionFrames()
-    if InCombatLockdown() then
-        return
-    end
-    if not Helpers then
-        Helpers = Orbit.PartyFrameHelpers
-    end
+    if InCombatLockdown() then return end
+    if not Helpers then Helpers = Orbit.PartyFrameHelpers end
 
     local spacing = self:GetSetting(1, "Spacing") or 0
     local orientation = self:GetSetting(1, "Orientation") or 0
@@ -611,17 +623,12 @@ function Plugin:PositionFrames()
         end
     end
 
-
     self:UpdateContainerSize()
 end
 
 function Plugin:UpdateContainerSize()
-    if InCombatLockdown() then
-        return
-    end
-    if not Helpers then
-        Helpers = Orbit.PartyFrameHelpers
-    end
+    if InCombatLockdown() then return end
+    if not Helpers then Helpers = Orbit.PartyFrameHelpers end
     local width = self:GetSetting(1, "Width") or 160
     local height = self:GetSetting(1, "Height") or 40
     local spacing, orientation = self:GetSetting(1, "Spacing") or 0, self:GetSetting(1, "Orientation") or 0
@@ -685,7 +692,9 @@ function Plugin:UpdateFrameUnits()
                 SafeUnregisterUnitWatch(frame)
                 SafeRegisterUnitWatch(frame)
                 frame:Show()
-                if frame.UpdateAll then frame:UpdateAll() end
+                if frame.UpdateAll then
+                    frame:UpdateAll()
+                end
             else
                 SafeUnregisterUnitWatch(frame)
                 frame:SetAttribute("unit", nil)
@@ -725,10 +734,14 @@ function Plugin:ApplyFrameStyle(frame, showPower)
 
     frame:SetSize(width, height)
     UpdateFrameLayout(frame, borderSize, self)
-    if frame.SetBorder then frame:SetBorder(borderSize) end
+    if frame.SetBorder then
+        frame:SetBorder(borderSize)
+    end
 
     -- Texture
-    if frame.Health then Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true) end
+    if frame.Health then
+        Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true)
+    end
     if frame.Power then
         local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
         frame.Power:SetStatusBarTexture(texturePath)
@@ -737,7 +750,11 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     -- Power bar visibility
     if showPower ~= nil then
         if frame.Power then
-            if showPower then frame.Power:Show() else frame.Power:Hide() end
+            if showPower then
+                frame.Power:Show()
+            else
+                frame.Power:Hide()
+            end
         end
     end
 
@@ -745,14 +762,30 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     self:ApplyTextStyling(frame)
 
     -- Component positions + style overrides (positions, font, color, scale)
-    if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
+    if frame.ApplyComponentPositions then
+        frame:ApplyComponentPositions()
+    end
 
     -- Icon positions (healer auras, status icons, etc.)
     local savedPositions = self:GetComponentPositions(1)
     if savedPositions then
-        local iconKeys = { "RoleIcon", "LeaderIcon", "StatusIcons", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+        local iconKeys = {
+            "RoleIcon",
+            "LeaderIcon",
+            "StatusIcons",
+            "PhaseIcon",
+            "ReadyCheckIcon",
+            "ResIcon",
+            "SummonIcon",
+            "MarkerIcon",
+            "DefensiveIcon",
+            "CrowdControlIcon",
+            "PrivateAuraAnchor",
+        }
         local activeKeys = HealerReg:ActiveKeys()
-        for _, k in ipairs(activeKeys) do iconKeys[#iconKeys + 1] = k end
+        for _, k in ipairs(activeKeys) do
+            iconKeys[#iconKeys + 1] = k
+        end
         -- Ensure healer aura icons exist with correct size
         for _, k in ipairs(activeKeys) do
             if savedPositions[k] then
@@ -789,13 +822,21 @@ function Plugin:ApplySettings()
 
             -- Live-only: real data updates
             local healthTextMode = self:GetSetting(1, "HealthTextMode") or "percent_short"
-            if frame.SetHealthTextMode then frame:SetHealthTextMode(healthTextMode) end
+            if frame.SetHealthTextMode then
+                frame:SetHealthTextMode(healthTextMode)
+            end
             local showHealthValue = self:GetSetting(1, "ShowHealthValue")
-            if showHealthValue == nil then showHealthValue = true end
+            if showHealthValue == nil then
+                showHealthValue = true
+            end
             frame.healthTextEnabled = showHealthValue
-            if frame.UpdateHealthText then frame:UpdateHealthText() end
+            if frame.UpdateHealthText then
+                frame:UpdateHealthText()
+            end
             StatusDispatch(frame, self, "UpdateStatusText")
-            if frame.SetClassColour then frame:SetClassColour(true) end
+            if frame.SetClassColour then
+                frame:SetClassColour(true)
+            end
             UpdatePowerBar(frame, self)
             UpdateDebuffs(frame, self)
             UpdateBuffs(frame, self)
@@ -804,7 +845,9 @@ function Plugin:ApplySettings()
             UpdateHealerAuras(frame, self)
             UpdateMissingRaidBuffs(frame, self)
             StatusDispatch(frame, self, "UpdateAllPartyStatusIcons")
-            if frame.UpdateAll then frame:UpdateAll() end
+            if frame.UpdateAll then
+                frame:UpdateAll()
+            end
         end
     end
 

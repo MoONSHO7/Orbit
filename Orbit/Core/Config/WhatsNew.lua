@@ -8,7 +8,7 @@ local Constants = Orbit.Constants
 
 -- [ CONSTANTS ]--------------------------------------------------------------------
 
-local WHATS_NEW_ENABLED = false -- set false for backend-only releases (skips auto-show)
+local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips auto-show)
 
 local DISCORD_URL = "https://discord.gg/2sZj63kBqy"
 local WINDOW_WIDTH = 600
@@ -125,7 +125,10 @@ ddEditBox:SetPoint("LEFT", DiscordDialog, "LEFT", CONTENT_PADDING * 2, 0)
 ddEditBox:SetPoint("RIGHT", DiscordDialog, "RIGHT", -CONTENT_PADDING * 2, 0)
 ddEditBox:SetPoint("TOP", ddDesc, "BOTTOM", 0, -10)
 ddEditBox:SetAutoFocus(false)
-ddEditBox:SetScript("OnChar", function(self) self:SetText(DISCORD_URL); self:HighlightText() end)
+ddEditBox:SetScript("OnChar", function(self)
+    self:SetText(DISCORD_URL)
+    self:HighlightText()
+end)
 ddEditBox:SetScript("OnEscapePressed", function(self) DiscordDialog:Hide() end)
 ddEditBox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
 
@@ -172,7 +175,9 @@ local ScrollFrame = CreateFrame("ScrollFrame", nil, Window, "ScrollFrameTemplate
 ScrollFrame:SetPoint("TOPLEFT", Window, "TOPLEFT", BG_LEFT + CONTENT_PADDING, -(BG_TOP + CONTENT_PADDING))
 ScrollFrame:SetPoint("BOTTOMRIGHT", Window, "BOTTOMRIGHT", -(BG_RIGHT + SCROLLBAR_WIDTH), FOOTER_TOTAL + CONTENT_PADDING)
 
-if ScrollFrame.ScrollBar then ScrollFrame.ScrollBar:SetAlpha(0) end
+if ScrollFrame.ScrollBar then
+    ScrollFrame.ScrollBar:SetAlpha(0)
+end
 
 local Content = CreateFrame("Frame", nil, ScrollFrame)
 ScrollFrame:SetScrollChild(Content)
@@ -182,10 +187,12 @@ ScrollFrame:SetScrollChild(Content)
 local renderedFontStrings = {}
 
 local function FormatMarkdown(text)
-    if not text then return "" end
+    if not text then
+        return ""
+    end
     -- Fix double-escaped newlines and quotes (common in generated Lua)
     text = text:gsub("\\n", "\n")
-    text = text:gsub("\\\"", "\"")
+    text = text:gsub('\\"', '"')
 
     -- Bold: **text** -> Gold
     text = text:gsub("%*%*(.-)%*%*", "|cFFFFD100%1|r")
@@ -201,14 +208,19 @@ local function FormatMarkdown(text)
 end
 
 local function RenderEntries()
-    for _, fs in ipairs(renderedFontStrings) do fs:Hide(); fs:SetText("") end
+    for _, fs in ipairs(renderedFontStrings) do
+        fs:Hide()
+        fs:SetText("")
+    end
     wipe(renderedFontStrings)
 
     local contentWidth = ScrollFrame:GetWidth()
     Content:SetWidth(contentWidth)
 
     local yOffset = 0
-    if not Orbit.WHATS_NEW_ENTRIES then return end
+    if not Orbit.WHATS_NEW_ENTRIES then
+        return
+    end
     for _, entry in ipairs(Orbit.WHATS_NEW_ENTRIES) do
         local titleText = Content:CreateFontString(nil, "ARTWORK", ENTRY_TITLE_FONT)
         titleText:SetPoint("TOPLEFT", Content, "TOPLEFT", 0, -yOffset)
@@ -247,11 +259,15 @@ table.insert(UISpecialFrames, "OrbitWhatsNewWindow")
 Window:SetPropagateKeyboardInput(true)
 Window:SetScript("OnKeyDown", function(self, key)
     if key == "ESCAPE" then
-        if InCombatLockdown() then return end
+        if InCombatLockdown() then
+            return
+        end
         self:SetPropagateKeyboardInput(false)
         self:Hide()
         C_Timer.After(ESC_RESTORE_DELAY, function()
-            if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
+            if not InCombatLockdown() then
+                self:SetPropagateKeyboardInput(true)
+            end
         end)
     end
 end)
@@ -260,20 +276,26 @@ end)
 
 Window:RegisterEvent("PLAYER_REGEN_DISABLED")
 Window:SetScript("OnEvent", function(self, event)
-    if event == "PLAYER_REGEN_DISABLED" and self:IsShown() then self:Hide() end
+    if event == "PLAYER_REGEN_DISABLED" and self:IsShown() then
+        self:Hide()
+    end
 end)
 
 -- [ HIDE HANDLER ]-----------------------------------------------------------------
 
 Window:SetScript("OnHide", function()
     PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE)
-    if Orbit.db then Orbit.db.WhatsNewRead = Orbit.LatestChangelogVersion end
+    if Orbit.db then
+        Orbit.db.WhatsNewRead = Orbit.LatestChangelogVersion
+    end
 end)
 
 -- [ PUBLIC API ]-------------------------------------------------------------------
 
 function Orbit:ShowWhatsNew()
-    if InCombatLockdown() then return end
+    if InCombatLockdown() then
+        return
+    end
     Window:Show()
 end
 
@@ -284,10 +306,18 @@ trigger:RegisterEvent("PLAYER_LOGIN")
 trigger:SetScript("OnEvent", function(self)
     self:UnregisterAllEvents()
     C_Timer.After(SHOW_DELAY, function()
-        if not WHATS_NEW_ENABLED then return end
-        if InCombatLockdown() then return end
-        if not Orbit.db then return end
-        if Orbit.db.WhatsNewRead == Orbit.LatestChangelogVersion then return end
+        if not WHATS_NEW_ENABLED then
+            return
+        end
+        if InCombatLockdown() then
+            return
+        end
+        if not Orbit.db then
+            return
+        end
+        if Orbit.db.WhatsNewRead == Orbit.LatestChangelogVersion then
+            return
+        end
         Orbit:ShowWhatsNew()
     end)
 end)

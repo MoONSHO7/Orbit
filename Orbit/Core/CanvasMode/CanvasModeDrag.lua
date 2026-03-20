@@ -28,6 +28,8 @@ local CLAMP_PADDING_Y = 200
 -- [ TYPE DETECTION ]--------------------------------------------------------------------------------
 
 local AURA_ICON_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true }
+local STANDARD_ICON_KEYS =
+    { MarkerIcon = true, LeaderIcon = true, MainTankIcon = true, Difficulty = true, Mail = true, CraftingOrder = true, Compartment = true, Zoom = true }
 
 local function DetectCreatorType(key, source)
     local isFontString = source and source.GetFont ~= nil
@@ -35,10 +37,10 @@ local function DetectCreatorType(key, source)
     local isIconFrame = source and source.Icon and source.Icon.GetTexture and key ~= "CastBar"
 
     if isFontString then return "FontString", true, false, false end
-    if key == "StatusIcons" or key == "RoleIcon" or key == "PvpIcon" then return "CyclingAtlas", false, false, false end
+    if key == "StatusIcons" or key == "RoleIcon" or key == "Missions" or key == "PvpIcon" then return "CyclingAtlas", false, false, false end
     if key == "Buffs" or key == "Debuffs" then return "Aura", false, true, false end
     -- Known aura icons + healer aura keys (dynamic keys not in standard icon sets)
-    local isAuraKey = AURA_ICON_KEYS[key] or (isIconFrame and not ({ MarkerIcon = 1, LeaderIcon = 1, MainTankIcon = 1 })[key])
+    local isAuraKey = AURA_ICON_KEYS[key] or (isIconFrame and not STANDARD_ICON_KEYS[key])
     if isTexture then return "Texture", false, false, false end
     if isIconFrame then return "IconFrame", false, isAuraKey or false, false end
     if key == "Portrait" then return "Portrait", false, false, false end
@@ -49,9 +51,10 @@ end
 -- [ FALLBACK VISUAL ]-------------------------------------------------------------------------------
 
 local function CreateFallbackVisual(container, key)
-    local visual = container:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    visual:SetPoint("CENTER", container, "CENTER", 0, 0)
-    visual:SetText(key or "?")
+    local visual = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    visual:SetAllPoints()
+    visual:SetWordWrap(false)
+    visual:SetText(key and key:sub(1, 4) or "?")
     container:SetSize(CC.FALLBACK_CONTAINER_WIDTH, CC.FALLBACK_CONTAINER_HEIGHT)
     return visual
 end
@@ -93,8 +96,8 @@ local function SetupContainerState(container, preview, key, isFontString, isAura
 
     local selfAnchorY = (data and data.selfAnchorY) or anchorY
     if not (data and data.selfAnchorY) and isAuraContainer and data and data.anchorX then
-        local needsComp = NeedsEdgeCompensation(isFontString, isAuraContainer)
-        _, _, _, _, _, selfAnchorY = CalculateAnchorWithWidthCompensation(startX, startY, halfW, halfH, needsComp, container:GetWidth(), container:GetHeight(), isAuraContainer)
+        local needsComp = NeedsEdgeCompensation(isFontString, isAuraContainer) _, _, _, _, _, selfAnchorY =
+            CalculateAnchorWithWidthCompensation(startX, startY, halfW, halfH, needsComp, container:GetWidth(), container:GetHeight(), isAuraContainer)
     end
     container.selfAnchorY = selfAnchorY
 
@@ -113,7 +116,7 @@ local function SetupDragHandlers(container, preview, key, data)
         self.wasDragged = true
         self.pendingDrag = false
         -- Snapshot pre-drag position for dock restore
-        self._preDragPos = { posX = self.posX, posY = self.posY, anchorX = self.anchorX, anchorY = self.anchorY, offsetX = self.offsetX, offsetY = self.offsetY, selfAnchorY = self.selfAnchorY, justifyH = self.justifyH }
+        self._preDragPos = { posX = self.posX, posY = self.posY, anchorX = self.anchorX, anchorY = self.anchorY, offsetX = self.offsetX, offsetY = self.offsetY, selfAnchorY = self.selfAnchorY, justifyH = self.justifyH, }
         local mX, mY = GetCursorPosition()
         local scale = UIParent:GetEffectiveScale()
         mX, mY = Orbit.Engine.Pixel:Snap(mX / scale, scale), Orbit.Engine.Pixel:Snap(mY / scale, scale)
@@ -146,12 +149,8 @@ local function SetupDragHandlers(container, preview, key, data)
             Dialog.DisabledDock.DropHighlight:Hide()
             -- Stage position into transaction for live preview updates
             if CanvasMode.Transaction and CanvasMode.Transaction:IsActive() and self.key then
-                CanvasMode.Transaction:SetPosition(self.key, {
-                    anchorX = self.anchorX, anchorY = self.anchorY,
-                    offsetX = self.offsetX, offsetY = self.offsetY,
-                    justifyH = self.justifyH, selfAnchorY = self.selfAnchorY,
-                    posX = self.posX, posY = self.posY,
-                })
+                local pos = { anchorX = self.anchorX, anchorY = self.anchorY, offsetX = self.offsetX, offsetY = self.offsetY, justifyH = self.justifyH, selfAnchorY = self.selfAnchorY, posX = self.posX, posY = self.posY, }
+                CanvasMode.Transaction:SetPosition(self.key, pos)
             end
         elseif not self.wasDragged and self.mouseDownTime then
             if (GetTime() - self.mouseDownTime) < CLICK_THRESHOLD then
@@ -177,7 +176,9 @@ local function SetupDragHandlers(container, preview, key, data)
             end
         end
 
-        if not self.isDragging then return end
+        if not self.isDragging then
+            return
+        end
 
         local halfW = preview.sourceWidth / 2
         local halfH = preview.sourceHeight / 2
@@ -211,8 +212,16 @@ local function SetupDragHandlers(container, preview, key, data)
 
         -- Compute anchors and offsets using inner bounds (content area inside borders)
         local needsWidthComp = NeedsEdgeCompensation(self.isFontString, self.isAuraContainer)
-        local anchorX, anchorY, edgeOffX, edgeOffY, justifyH, selfAnchorY =
-            CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, innerHalfW, innerHalfH, needsWidthComp, self:GetWidth(), self:GetHeight(), self.isAuraContainer)
+        local anchorX, anchorY, edgeOffX, edgeOffY, justifyH, selfAnchorY = CalculateAnchorWithWidthCompensation(
+            centerRelX,
+            centerRelY,
+            innerHalfW,
+            innerHalfH,
+            needsWidthComp,
+            self:GetWidth(),
+            self:GetHeight(),
+            self.isAuraContainer
+        )
 
         -- Snap edge offsets to grid (derived from already-snapped position, so minimal rounding)
         if doSnap then
@@ -222,17 +231,25 @@ local function SetupDragHandlers(container, preview, key, data)
             -- Edge/center guide detection using inner bounds
             local rightEdge = innerHalfW - compHalfW
             local leftEdge = -innerHalfW + compHalfW
-            if edgeOffX == 0 and anchorX ~= "CENTER" then snapX = (anchorX == "RIGHT") and "RIGHT" or "LEFT"
-            elseif centerRelX == 0 or math.abs(centerRelX) < SNAP_SIZE then snapX = "CENTER"; centerRelX = 0; edgeOffX = 0
-            elseif centerRelX > rightEdge then snapX = "RIGHT"
-            elseif centerRelX < leftEdge then snapX = "LEFT" end
+            if edgeOffX == 0 and anchorX ~= "CENTER" then
+                snapX = (anchorX == "RIGHT") and "RIGHT" or "LEFT"
+            elseif centerRelX == 0 or math.abs(centerRelX) < SNAP_SIZE then
+                snapX = "CENTER"
+                centerRelX = 0
+                edgeOffX = 0
+            elseif centerRelX > rightEdge then
+                snapX = "RIGHT"
+            elseif centerRelX < leftEdge then
+                snapX = "LEFT"
+            end
 
             local topEdge = innerHalfH - compHalfH
             local bottomEdge = -innerHalfH + compHalfH
             if edgeOffY == 0 and anchorY ~= "CENTER" then snapY = (anchorY == "TOP") and "TOP" or "BOTTOM"
-            elseif centerRelY == 0 or math.abs(centerRelY) < SNAP_SIZE then snapY = "CENTER"; centerRelY = 0; edgeOffY = 0
+            elseif centerRelY == 0 or math.abs(centerRelY) < SNAP_SIZE then snapY = "CENTER" centerRelY = 0 edgeOffY = 0
             elseif centerRelY > topEdge then snapY = "TOP"
-            elseif centerRelY < bottomEdge then snapY = "BOTTOM" end
+            elseif centerRelY < bottomEdge then snapY = "BOTTOM"
+            end
         end
 
         if SmartGuides and preview.guides then SmartGuides:Update(preview.guides, snapX, snapY, preview.sourceWidth, preview.sourceHeight) end
@@ -243,9 +260,11 @@ local function SetupDragHandlers(container, preview, key, data)
         local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
         local finalX, finalY
         if anchorX == "CENTER" then finalX = centerRelX
-        else finalX = edgeOffX; if anchorX == "RIGHT" then finalX = -finalX end end
+        else finalX = edgeOffX if anchorX == "RIGHT" then finalX = -finalX end
+        end
         if anchorY == "CENTER" then finalY = centerRelY
-        else finalY = edgeOffY; if anchorY == "TOP" then finalY = -finalY end end
+        else finalY = edgeOffY if anchorY == "TOP" then finalY = -finalY end
+        end
         self:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
         local prevAnchorX, prevAnchorY, prevJustifyH, prevSelfAnchorY = self.anchorX, self.anchorY, self.justifyH, self.selfAnchorY
@@ -258,7 +277,11 @@ local function SetupDragHandlers(container, preview, key, data)
         self.posX = centerRelX
         self.posY = centerRelY
 
-        if self.isAuraContainer and self.RefreshAuraIcons and (prevAnchorX ~= anchorX or prevAnchorY ~= anchorY or prevJustifyH ~= justifyH or prevSelfAnchorY ~= selfAnchorY) then
+        if
+            self.isAuraContainer
+            and self.RefreshAuraIcons
+            and (prevAnchorX ~= anchorX or prevAnchorY ~= anchorY or prevJustifyH ~= justifyH or prevSelfAnchorY ~= selfAnchorY)
+        then
             self:RefreshAuraIcons()
         end
 
@@ -272,7 +295,9 @@ local function SetupDragHandlers(container, preview, key, data)
         SetBorderColor(self.border, CC.BORDER_COLOR_IDLE)
         Dialog.DisabledDock.DropHighlight:Hide()
 
-        if SmartGuides and preview.guides then SmartGuides:Hide(preview.guides) end
+        if SmartGuides and preview.guides then
+            SmartGuides:Hide(preview.guides)
+        end
 
         if Dialog.DisabledDock:IsMouseOver() then
             local compKey = self.key
@@ -289,22 +314,35 @@ local function SetupDragHandlers(container, preview, key, data)
         local selfAnchor = BuildComponentSelfAnchor(self.isFontString, self.isAuraContainer, self.selfAnchorY, self.justifyH)
         local anchorPoint = BuildAnchorPoint(self.anchorX, self.anchorY)
         local fx, fy
-        if self.anchorX == "CENTER" then fx = self.posX or 0
-        else fx = self.offsetX or 0; if self.anchorX == "RIGHT" then fx = -fx end end
-        if self.anchorY == "CENTER" then fy = self.posY or 0
-        else fy = self.offsetY or 0; if self.anchorY == "TOP" then fy = -fy end end
+        if self.anchorX == "CENTER" then
+            fx = self.posX or 0
+        else
+            fx = self.offsetX or 0
+            if self.anchorX == "RIGHT" then fx = -fx end
+        end
+        if self.anchorY == "CENTER" then
+            fy = self.posY or 0
+        else
+            fy = self.offsetY or 0
+            if self.anchorY == "TOP" then fy = -fy end
+        end
         self:SetPoint(selfAnchor, preview, anchorPoint, fx, fy)
 
         if self.visual and self.isFontString then ApplyTextAlignment(self, self.visual, self.justifyH or "CENTER") end
 
         -- Stage position into transaction for live preview updates
         if CanvasMode.Transaction and CanvasMode.Transaction:IsActive() then
-            CanvasMode.Transaction:SetPosition(key, {
-                anchorX = self.anchorX, anchorY = self.anchorY,
-                offsetX = self.offsetX, offsetY = self.offsetY,
-                justifyH = self.justifyH, selfAnchorY = self.selfAnchorY,
-                posX = self.posX, posY = self.posY,
-            })
+            local pos = {
+                anchorX = self.anchorX,
+                anchorY = self.anchorY,
+                offsetX = self.offsetX,
+                offsetY = self.offsetY,
+                justifyH = self.justifyH,
+                selfAnchorY = self.selfAnchorY,
+                posX = self.posX,
+                posY = self.posY,
+            }
+            CanvasMode.Transaction:SetPosition(key, pos)
         end
     end)
 end
@@ -318,7 +356,9 @@ local function SetupHoverEffects(container)
     end)
     container:SetScript("OnLeave", function(self)
         SetBorderColor(self.border, CC.BORDER_COLOR_IDLE)
-        if Dialog.hoveredComponent == self then Dialog.hoveredComponent = nil end
+        if Dialog.hoveredComponent == self then
+            Dialog.hoveredComponent = nil
+        end
     end)
 end
 
@@ -342,9 +382,11 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     local creatorType, isFontString, isAuraContainer = DetectCreatorType(key, sourceComponent)
     local creator = creatorType and CanvasMode.ComponentCreators[creatorType]
 
-    local visual = creator
-        and creator(container, preview, key, sourceComponent, data)
-        or CreateFallbackVisual(container, key)
+    local visual = creator and creator(container, preview, key, sourceComponent, data) or CreateFallbackVisual(container, key)
+
+    if sourceComponent and sourceComponent.orbitOriginalWidth then
+        container:SetSize(sourceComponent.orbitOriginalWidth, sourceComponent.orbitOriginalHeight or sourceComponent.orbitOriginalWidth)
+    end
 
     container.visual = visual
     SetupContainerState(container, preview, key, isFontString, isAuraContainer, startX, startY, data)

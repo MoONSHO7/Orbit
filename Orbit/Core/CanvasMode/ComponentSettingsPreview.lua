@@ -159,6 +159,49 @@ function Settings:ApplyHealthTextPreview()
     visual:Show()
 end
 
+-- [ ZONE TEXT PREVIEW ]-----------------------------------------------------------------------------
+function Settings:ApplyZoneTextPreview()
+    local canvasDialog = OrbitEngine.CanvasModeDialog
+    if not canvasDialog or not canvasDialog.previewComponents then return end
+    local comp = canvasDialog.previewComponents.ZoneText
+    if not comp or not comp.visual then return end
+    local visual = comp.visual
+
+    local pending = self.pendingPluginSettings or {}
+    local coloring = pending.ZoneTextColoring
+    if coloring == nil then
+        local plugin = self.plugin
+        local sysIdx = self.systemIndex or 1
+        coloring = plugin and plugin:GetSetting(sysIdx, "ZoneTextColoring")
+    end
+
+    if coloring then
+        local ZONE_PVP_COLORS = {
+            sanctuary = { r = 0.41, g = 0.80, b = 0.94 },
+            friendly   = { r = 0.10, g = 1.00, b = 0.10 },
+            hostile    = { r = 1.00, g = 0.10, b = 0.10 },
+            contested  = { r = 1.00, g = 0.70, b = 0.00 },
+        }
+        local pvpType = GetZonePVPInfo()
+        local color = ZONE_PVP_COLORS[pvpType]
+        if color then
+            visual:SetTextColor(color.r, color.g, color.b, 1)
+        else
+            visual:SetTextColor(1, 1, 1, 1)
+        end
+    else
+        local overrides = self.currentOverrides or {}
+        if overrides.CustomColorCurve then
+            local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(overrides.CustomColorCurve)
+            if color then
+                visual:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
+            end
+        else
+            visual:SetTextColor(1, 1, 1, 1)
+        end
+    end
+end
+
 -- [ FLUSH PENDING ]---------------------------------------------------------------------------------
 function Settings:FlushPendingPluginSettings()
     if not self.pendingPluginSettings or not self.plugin then return end

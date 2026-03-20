@@ -4,7 +4,7 @@ import os
 # [ CONFIGURATION ] -----------------------------------------------------------------
 
 CHANGELOG_PATH = "CHANGELOG.md"
-OUTPUT_PATH = "Orbit/Orbit/Core/Config/ChangelogData.lua"
+OUTPUT_PATH = "Orbit/Core/Config/ChangelogData.lua"
 
 # [ PARSING ] ----------------------------------------------------------------------
 

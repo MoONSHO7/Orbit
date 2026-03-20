@@ -51,4 +51,5 @@ Plugins\BossFrames\BossFrames.xml
 Plugins\ActionBars\ActionBars.xml
 Plugins\CooldownManager\CooldownManager.xml
 Plugins\MenuItems\MenuItems.xml
+Plugins\Minimap\Minimap.xml
 Plugins\Misc\TalkingHead.lua
