@@ -292,6 +292,7 @@ function CDM:ProcessChildren(anchor)
                 for _, item in ipairs(activeChildren) do
                     if item.SetBorderHidden then item:SetBorderHidden(false) end
                 end
+                anchorFrame._activeBorderMode = nil
                 Orbit.Skin:ClearNineSliceBorder(anchorFrame)
                 if anchorFrame._borderFrame then anchorFrame._borderFrame:Hide() end
             end
@@ -354,8 +355,10 @@ function CDM:ProcessChildren(anchor)
             Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
         end
     else
-        -- No active children — clear stale borders and hide via alpha
-        anchor:SetAlpha(0)
+        -- No active children — hide via alpha (BuffBar/BuffIcon only; Essential/Utility always have configured spells)
+        if systemIndex == BUFFBAR_INDEX or systemIndex == BUFFICON_INDEX then
+            anchor:SetAlpha(0)
+        end
         Orbit.Skin:ClearIconGroupBorder(anchor)
         if anchor._borderFrame then anchor._borderFrame:Hide() end
         Orbit.Skin:ClearNineSliceBorder(anchor)

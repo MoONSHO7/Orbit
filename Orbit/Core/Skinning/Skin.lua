@@ -99,7 +99,7 @@ function Skin:ApplyIconGroupBorder(container, styleEntry)
         -- Pixel mode: flat border on container
         self:ClearNineSliceBorder(container)
         local gs = Orbit.db and Orbit.db.GlobalSettings
-        local borderSize = gs and gs.IconBorderSize or 4
+        local borderSize = gs and gs.IconBorderSize or 2
         self:SkinBorder(container, container, borderSize, nil, true, true)
         if container._borderFrame then
             container._borderFrame:SetFrameLevel(container:GetFrameLevel() + Constants.Levels.IconOverlay)
@@ -110,6 +110,8 @@ end
 function Skin:ClearIconGroupBorder(container)
     if not container then return end
     -- NOTE: _isIconContainer is NOT cleared here — it reflects frame type, not border style.
+    -- Clear _activeBorderMode so ClearGroupBorder → SetBorderHidden(false) won't re-show stale borders.
+    container._activeBorderMode = nil
     self:ClearNineSliceBorder(container)
     if container._borderFrame then container._borderFrame:Hide() end
 end
@@ -178,7 +180,7 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
 
     -- For icons, use the icon-specific border size setting
     local gs = Orbit.db and Orbit.db.GlobalSettings
-    local targetSize = isIcon and (gs and gs.IconBorderSize or 4) or (size or 1)
+    local targetSize = isIcon and (gs and gs.IconBorderSize or 2) or (size or 1)
     if targetSize <= 0 then
         frame.borderPixelSize = 0
         bf:Hide()
@@ -226,7 +228,7 @@ function Skin.DefaultSetBorderHidden(self, hidden)
         if self._edgeBorderOverlay then self._edgeBorderOverlay:Hide() end
     elseif self._activeBorderMode == "nineslice" then
         if self._edgeBorderOverlay then self._edgeBorderOverlay:Show() end
-    else
+    elseif self._activeBorderMode == "flat" then
         if self._borderFrame then self._borderFrame:Show() end
     end
 end

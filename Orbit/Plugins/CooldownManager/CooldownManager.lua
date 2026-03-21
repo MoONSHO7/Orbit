@@ -373,6 +373,8 @@ function Plugin:OnLoad()
     self:RegisterSpellCastWatcher()
     self:RestoreChargeBars()
 
+    SetCVar("cooldownViewerEnabled", "1")
+
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", self.OnPlayerEnteringWorld, self)
     self:RegisterVisibilityEvents()
 
