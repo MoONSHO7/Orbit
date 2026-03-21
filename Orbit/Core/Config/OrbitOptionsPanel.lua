@@ -163,6 +163,7 @@ local function GetGlobalSchema()
     return {
         hideNativeSettings = true,
         hideResetButton = false,
+        openPluginManager = true,
         controls = controls,
         onReset = function()
             local d = Orbit.db.GlobalSettings
@@ -269,6 +270,7 @@ local function GetColorsSchema()
     return {
         hideNativeSettings = true,
         hideResetButton = false,
+        openPluginManager = true,
         controls = controls,
         onReset = function()
             local d = Orbit.db.GlobalSettings
@@ -301,6 +303,7 @@ local function GetEditModeSchema()
     return {
         hideNativeSettings = true,
         hideResetButton = false,
+        openPluginManager = true,
         controls = {
             { type = "checkbox", key = "ShowBlizzardFrames", label = "Show Blizzard Frames", default = true, tooltip = "Show selection overlays for native Blizzard frames in Edit Mode." },
             { type = "checkbox", key = "ShowOrbitFrames", label = "Show Orbit Frames", default = true, tooltip = "Show selection overlays for Orbit-owned frames in Edit Mode." },
@@ -330,6 +333,63 @@ end
 
 local ICON_BUTTON_SIZE = 20
 local ICON_FONT_SIZE = 20
+
+-- Composite widget: dropdown + reset icon for active profile
+Layout:RegisterWidgetType("profileactive", function(container, def, getValue, callback)
+    local options = type(def.options) == "function" and def.options() or def.options or {}
+    local initialValue = getValue and getValue() or def.default or ""
+
+    local UpdateResetState
+
+    local frame = Layout:CreateDropdown(container, def.label, options, initialValue, function(value)
+        if callback then callback(value) end
+        C_Timer.After(0, function() if UpdateResetState then UpdateResetState() end end)
+    end)
+    frame.OrbitType = "ProfileActive"
+
+    UpdateResetState = function()
+        if not frame.resetBtn then return end
+        local isGlobal = frame.currentValue == "Global"
+        if isGlobal then
+            frame.resetBtn:Enable()
+            frame.resetBtn.Icon:SetDesaturated(false)
+            frame.resetBtn.Icon:SetAlpha(1)
+        else
+            frame.resetBtn:Disable()
+            frame.resetBtn.Icon:SetDesaturated(true)
+            frame.resetBtn.Icon:SetAlpha(0.4)
+        end
+    end
+
+    local resetBtn = CreateFrame("Button", nil, frame)
+    resetBtn:SetSize(ICON_BUTTON_SIZE / 2, ICON_BUTTON_SIZE / 2)
+    resetBtn:SetPoint("LEFT", frame.Dropdown, "RIGHT", (Constants.Widget.ValueWidth - ICON_BUTTON_SIZE / 2) / 2 + 10, 0)
+    frame.resetBtn = resetBtn
+    local icon = resetBtn:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints()
+    icon:SetAtlas("talents-button-undo")
+    resetBtn.Icon = icon
+    resetBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if self:IsEnabled() then
+            self.Icon:SetAlpha(0.8)
+            GameTooltip:SetText("Reset Global profile to defaults")
+        else
+            GameTooltip:SetText("Only the Global profile can be reset")
+        end
+        GameTooltip:Show()
+    end)
+    resetBtn:SetScript("OnLeave", function(self)
+        if self:IsEnabled() then self.Icon:SetAlpha(1) end
+        GameTooltip:Hide()
+    end)
+    resetBtn:SetScript("OnClick", function()
+        if def.onReset then def.onReset() end
+    end)
+
+    UpdateResetState(frame)
+    return frame
+end)
 
 -- Composite widget: dropdown + copy icon + X delete button
 Layout:RegisterWidgetType("profileselect", function(container, def, getValue, callback)
@@ -365,10 +425,12 @@ Layout:RegisterWidgetType("profileselect", function(container, def, getValue, ca
     end
 
 
-    -- Position copy and X buttons inside the value column (right 45px)
+    local gap = Constants.Widget.ValueWidth
+    local pairWidth = ICON_BUTTON_SIZE * 2 + 2
+    local pairOffset = (gap - pairWidth) / 2
     local copyBtn = CreateFrame("Button", nil, frame)
     copyBtn:SetSize(ICON_BUTTON_SIZE, ICON_BUTTON_SIZE)
-    copyBtn:SetPoint("RIGHT", frame, "RIGHT", -ICON_BUTTON_SIZE - 2, 0)
+    copyBtn:SetPoint("LEFT", frame.Dropdown, "RIGHT", pairOffset + 10, 0)
     frame.copyBtn = copyBtn
     local copyText = copyBtn:CreateFontString(nil, "ARTWORK")
     copyText:SetFont(STANDARD_TEXT_FONT, ICON_FONT_SIZE, "OUTLINE")
@@ -395,7 +457,7 @@ Layout:RegisterWidgetType("profileselect", function(container, def, getValue, ca
     -- X delete button
     local xBtn = CreateFrame("Button", nil, frame)
     xBtn:SetSize(ICON_BUTTON_SIZE, ICON_BUTTON_SIZE)
-    xBtn:SetPoint("RIGHT", frame, "RIGHT", -1, 0)
+    xBtn:SetPoint("LEFT", copyBtn, "RIGHT", 2, 0)
     frame.xBtn = xBtn
     local xText = xBtn:CreateFontString(nil, "ARTWORK")
     xText:SetFont(STANDARD_TEXT_FONT, ICON_FONT_SIZE, "OUTLINE")
@@ -707,13 +769,37 @@ local function GetProfilesSchema()
         }
     end
 
+    -- Reset Global sub-view
+    if profilesSubView == "resetglobal" then
+        return {
+            hideNativeSettings = true,
+            hideResetButton = true,
+            controls = {
+                { type = "header", text = "Reset Global Profile" },
+                { type = "description", text = "|cFFFF0000WARNING:|r You are about to reset the 'Global' profile back to its factory defaults.\n\nAll customizations on this profile will be lost. Your other profiles will not be affected.\n\nThis cannot be undone." },
+            },
+            extraButtons = {
+                { text = "\194\171 Back", callback = function() profilesSubView = nil; ReopenProfiles() end },
+                {
+                    text = "Reset to Defaults",
+                    callback = function()
+                        Orbit.API:ResetProfile("Global")
+                        profilesSubView = nil
+                        ReopenProfiles()
+                    end,
+                },
+            },
+        }
+    end
+
     -- Main profiles view
     local controls = {}
 
     controls[#controls + 1] = { type = "header", text = "Profile" }
     controls[#controls + 1] = {
-        type = "dropdown", key = "ActiveProfile", label = "Active",
+        type = "profileactive", key = "ActiveProfile", label = "Active",
         options = GetProfileOptions, default = "Global", width = DROPDOWN_WIDTH,
+        onReset = function() profilesSubView = "resetglobal"; ReopenProfiles() end,
     }
     controls[#controls + 1] = {
         type = "profileselect", key = "CreateProfile", label = "Manage",
@@ -887,30 +973,12 @@ end
 SLASH_ORBIT1 = "/orbit"
 SLASH_ORBIT2 = "/orb"
 
-StaticPopupDialogs["ORBIT_CONFIRM_RESET"] = {
-    text = "|cFFFF0000WARNING:|r You are about to reset the '%s' profile to defaults.\n\nThis cannot be undone.",
-    button1 = "Reset", button2 = "Cancel",
-    OnAccept = function(self) Orbit.API:ResetProfile(self.data) end,
-    timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = POPUP_PREFERRED_INDEX,
-}
-
 StaticPopupDialogs["ORBIT_CONFIRM_HARD_RESET"] = {
     text = "|cFFFF0000DANGER|r\n\nYou are about to FACTORY RESET Orbit.\n\nAll profiles, settings, and data will be wiped.\nThe UI will reload immediately.\n\nAre you sure?",
     button1 = "Factory Reset", button2 = "Cancel",
     OnAccept = function(self) Orbit.API:HardReset() end,
     timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = POPUP_PREFERRED_INDEX,
 }
-
-local function Help()
-    print("|cFFAA77FFOrbit Commands:|r")
-    print("  |cFFAA77FF/orbit|r |cFF00D4FF- Toggle Edit Mode / Options|r")
-    print("  |cFFAA77FF/orbit plugins|r |cFF00D4FF- Open Plugin Manager|r")
-    print("  |cFFAA77FF/orbit reset|r |cFF00D4FF- Reset CURRENT profile to defaults|r")
-    print("  |cFFAA77FF/orbit hardreset|r |cFF00D4FF- Factory Reset (Wipe All Data)|r")
-    print("  |cFFAA77FF/orbit portal|r |cFF00D4FF- Portal Dock commands|r")
-    print("  |cFFAA77FF/orbit refresh <plugin>|r |cFF00D4FF- Force refresh a plugin|r")
-    print("  |cFFAA77FF/orbit whatsnew|r |cFF00D4FF- Show the What's New window|r")
-end
 
 SlashCmdList["ORBIT"] = function(msg)
     local args = {}
@@ -934,16 +1002,12 @@ SlashCmdList["ORBIT"] = function(msg)
 
     if cmd == "whatsnew" then Orbit:ShowWhatsNew(); return end
 
-    if cmd == "help" then Help()
-    elseif cmd == "plugins" then
+    if cmd == "plugins" then
         if Orbit._pluginSettingsCategoryID then
             Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
         else
             Orbit:Print("Plugin Manager not yet loaded.")
         end
-    elseif cmd == "reset" then
-        local profile = Orbit.Profile:GetActiveProfileName()
-        StaticPopup_Show("ORBIT_CONFIRM_RESET", profile, nil, profile)
     elseif cmd == "hardreset" then StaticPopup_Show("ORBIT_CONFIRM_HARD_RESET")
     elseif cmd == "portal" or cmd == "p" then
         local subCmd = args[2] and args[2]:lower() or ""
@@ -969,6 +1033,5 @@ SlashCmdList["ORBIT"] = function(msg)
         end
     else
         Orbit:Print("Unknown command: " .. cmd)
-        Help()
     end
 end
