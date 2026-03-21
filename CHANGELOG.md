@@ -27,11 +27,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - **Profile Management** — A complete layout manager out of the box. You can configure, import/export, and map UI profiles per-specialization for automatic swaps!
 - **Raid Frame Performance** — Reduced a large amount of API calls and layout updates on raid frames, should bring down the performance hit in raids, more work on this next update.
+- **CastBar** — Added to canvas mode.
+
 
 ### Changed
 - **UI Consistency & Defaults** — Default fonts (now Barlow Condensed Bold) and underlying layout borders have been strictly aligned for fresh profile builds.
 
 ### Fixed
+- **RestingIcon** — Fixed issue with positioning the icon in canvas mode.
 - **Many minor bugfixes** — Multiple layout and sizing inaccuracies have been rectified alongside the profile defaults overhaul.
 
 ## [1.0.0] - 2026-03-10

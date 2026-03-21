@@ -34,12 +34,17 @@ function CastBar:Create(parent)
     local bg = Constants.Colors.Background
     parent.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
 
+    -- Text overlay frame (tracks inner bar — text coordinates are relative to content area after icon)
+    bar.TextFrame = CreateFrame("Frame", nil, parent)
+    bar.TextFrame:SetAllPoints(bar)
+    bar.TextFrame:SetFrameLevel(bar:GetFrameLevel() + Constants.Levels.Overlay)
+
     -- Spell Name Text
-    bar.Text = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    bar.Text = bar.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     bar.Text:SetPoint("LEFT", bar, "LEFT", TEXT_H_PADDING, 0)
 
     -- Timer Text
-    bar.Timer = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    bar.Timer = bar.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     bar.Timer:SetPoint("RIGHT", bar, "RIGHT", -TEXT_H_PADDING, 0)
 
     -- Spark (progress indicator pip)
@@ -174,25 +179,13 @@ function CastBar:Apply(bar, settings)
         parent.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.5)
     end
 
-    -- Skin Text
+    -- Skin Text (visibility controlled by Canvas Mode)
     if bar.Text then
-        if settings.showText then
-            bar.Text:Show()
-            bar.Text:ClearAllPoints()
-            bar.Text:SetPoint("LEFT", bar, "LEFT", TEXT_H_PADDING, 0)
-            Skin:SkinText(bar.Text, settings)
-        else
-            bar.Text:Hide()
-        end
+        Skin:SkinText(bar.Text, settings)
     end
 
-    -- Skin Timer
+    -- Skin Timer (visibility controlled by Canvas Mode)
     if bar.Timer then
-        if settings.showTimer then
-            bar.Timer:Show()
-            Skin:SkinText(bar.Timer, settings)
-        else
-            bar.Timer:Hide()
-        end
+        Skin:SkinText(bar.Timer, settings)
     end
 end

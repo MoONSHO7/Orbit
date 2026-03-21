@@ -43,7 +43,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
             LeaderIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 0 },
             MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 0 },
             GroupPositionText = { anchorX = "RIGHT", offsetX = 0, anchorY = "BOTTOM", offsetY = 6, justifyH = "LEFT" },
-            RestingIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 5, overrides = { Scale = 0.5 } },
+            RestingIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 5 },
             ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
             Portrait = { anchorX = "LEFT", offsetX = 4, anchorY = "CENTER", offsetY = 0 },
             PvpIcon = { anchorX = "RIGHT", offsetX = 10, anchorY = "BOTTOM", offsetY = 0 },
@@ -236,7 +236,7 @@ function Plugin:OnLoad()
 
     -- Create RestingIcon (animated FlipBook)
     if not self.frame.RestingIcon then
-        local restingIconSize = 30
+        local restingIconSize = 20
         self.frame.RestingIcon = CreateFrame("Frame", nil, self.frame.OverlayFrame)
         self.frame.RestingIcon:SetSize(restingIconSize, restingIconSize)
         self.frame.RestingIcon.orbitOriginalWidth = restingIconSize
@@ -256,6 +256,10 @@ function Plugin:OnLoad()
         local FLIPBOOK_COLS = 6
         local FLIPBOOK_FRAMES = 42
         local FLIPBOOK_DURATION = 1.5
+        self.frame.RestingIcon.flipbookRows = FLIPBOOK_ROWS
+        self.frame.RestingIcon.flipbookCols = FLIPBOOK_COLS
+        self.frame.RestingIcon.flipbookFrames = FLIPBOOK_FRAMES
+        self.frame.RestingIcon.flipbookDuration = FLIPBOOK_DURATION
         local frameTime = FLIPBOOK_DURATION / FLIPBOOK_FRAMES
         local frameWidth = 1 / FLIPBOOK_COLS
         local frameHeight = 1 / FLIPBOOK_ROWS
