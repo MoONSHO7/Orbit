@@ -494,11 +494,44 @@ end
 
 -- Centralized helper for setting frame disabled state
 function Anchor:SetFrameDisabled(frame, disabled)
+    if (not frame.orbitDisabled) == (not disabled) then return end
     frame.orbitDisabled = disabled
     if disabled then
         self:DestroyAnchor(frame)
+    else
+        -- Re-insert into chain using saved Anchor setting
         if frame.orbitPlugin and frame.systemIndex then
-            frame.orbitPlugin:SetSetting(frame.systemIndex, "Anchor", nil)
+            local saved
+            if Orbit.Engine.PositionManager then
+                saved = Orbit.Engine.PositionManager:GetAnchor(frame)
+            end
+            if not saved then
+                saved = frame.orbitPlugin:GetSetting(frame.systemIndex, "Anchor")
+            end
+
+            if saved and saved.target then
+                local parent = _G[saved.target]
+                if parent then
+                    -- Identify any child occupying the same edge (re-parented grandchild)
+                    local displaced
+                    if self.childrenOf[parent] then
+                        for child in pairs(self.childrenOf[parent]) do
+                            local a = self.anchors[child]
+                            if a and a.edge == saved.edge and child ~= frame then
+                                displaced = { frame = child, edge = a.edge, padding = a.padding, syncOptions = a.syncOptions, align = a.align }
+                                break
+                            end
+                        end
+                    end
+                    if displaced then
+                        self:BreakAnchor(displaced.frame, true)
+                    end
+                    self:CreateAnchor(frame, parent, saved.edge, saved.padding or 0, nil, saved.align, true)
+                    if displaced then
+                        self:CreateAnchor(displaced.frame, frame, displaced.edge, displaced.padding or 0, displaced.syncOptions, displaced.align, true)
+                    end
+                end
+            end
         end
     end
 end
@@ -793,6 +826,49 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited)
 
             self:SyncChildren(child, suppressApplySettings, visited)
         end
+    end
+end
+
+-- [ REPAIR CHAIN ]----------------------------------------------------------------------------------
+-- Walks a chain depth-first, re-parenting children of hidden/disabled frames to the
+-- nearest visible ancestor. Called after profile switches to skip over disabled frames.
+function Anchor:RepairChain(root)
+    if not root or InCombatLockdown() then return end
+    local visited = {}
+    local function Repair(parent)
+        if visited[parent] then return end
+        visited[parent] = true
+        local children = self:GetAnchoredChildren(parent)
+        for _, child in ipairs(children) do
+            if not visited[child] then
+                local shouldSkip = child.orbitDisabled or (not child:IsShown() and not Orbit:IsEditMode())
+                if shouldSkip then
+                    visited[child] = true
+                    local grandchildren = self:GetAnchoredChildren(child)
+                    for _, gc in ipairs(grandchildren) do
+                        local gcAnchor = self.anchors[gc]
+                        if gcAnchor then
+                            self:CreateAnchor(gc, parent, gcAnchor.edge, gcAnchor.padding, gcAnchor.syncOptions, gcAnchor.align, true)
+                        end
+                    end
+                else
+                    Repair(child)
+                end
+            end
+        end
+    end
+    Repair(root)
+end
+
+-- Repair all anchor chains across the entire system.
+function Anchor:RepairAllChains()
+    if InCombatLockdown() then return end
+    local roots = {}
+    for child in pairs(self.anchors) do
+        roots[self:GetRootParent(child)] = true
+    end
+    for root in pairs(roots) do
+        self:RepairChain(root)
     end
 end
 

@@ -38,6 +38,7 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
     frame.StatusOverlay = CreateFrame("Frame", nil, frame)
     frame.StatusOverlay:SetAllPoints()
     frame.StatusOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
+    if frame.StatusOverlay.SetIgnoreParentAlpha then frame.StatusOverlay:SetIgnoreParentAlpha(true) end
 
     frame.RoleIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
     frame.RoleIcon:SetSize(ICON_SIZE, ICON_SIZE)
@@ -108,8 +109,11 @@ end
 -- [ EVENT REGISTRATION ]----------------------------------------------------------------------------
 
 local FACTORY_UNIT_EVENTS = {
-    "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT",
+    "UNIT_HEALTH", "UNIT_MAXHEALTH",
+    "UNIT_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_PREDICTION",
+    "UNIT_POWER_UPDATE", "UNIT_MAXPOWER",
     "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS",
+    "UNIT_NAME_UPDATE", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "UNIT_OTHER_PARTY_CHANGED",
     "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
 }
 local FACTORY_GLOBAL_EVENTS = {

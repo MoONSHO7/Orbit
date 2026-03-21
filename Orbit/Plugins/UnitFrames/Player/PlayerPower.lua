@@ -5,7 +5,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
 local UPDATE_INTERVAL = 0.05
-local AUGMENTATION_SPEC_ID = 1473
+local AUGMENTATION_SPEC_ID = Orbit.ResourceBarMixin.AUGMENTATION_SPEC_ID
 local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
 local TICK_SIZE_MAX = OrbitEngine.TickMixin.TICK_SIZE_MAX
 local TICK_OVERSHOOT = OrbitEngine.TickMixin.TICK_OVERSHOOT
@@ -49,12 +49,8 @@ for _, cfg in ipairs(POWER_CURVE_CONFIG) do
 end
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
-local CanUseUnitPowerPercent = (type(UnitPowerPercent) == "function" and CurveConstants and CurveConstants.ScaleTo100)
-local function SafeUnitPowerPercent(unit, resource)
-    if not CanUseUnitPowerPercent then return nil end
-    local ok, pct = pcall(UnitPowerPercent, unit, resource, false, CurveConstants.ScaleTo100)
-    return (ok and pct) or nil
-end
+local CanUseUnitPowerPercent = Orbit.SecretValueUtils.CanUseUnitPowerPercent
+local SafeUnitPowerPercent = Orbit.SecretValueUtils.SafeUnitPowerPercent
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerPower"
@@ -304,7 +300,9 @@ function Plugin:OnLoad()
     end
 
     -- Text overlay
-    OrbitEngine.FrameFactory:AddText(Frame, { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = -2, useOverlay = true })
+    if not Frame.Text then
+        OrbitEngine.FrameFactory:AddText(Frame, { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = -2, useOverlay = true })
+    end
 
     -- Alias
     Frame.PowerBar = PowerBar

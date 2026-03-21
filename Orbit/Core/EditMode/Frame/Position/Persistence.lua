@@ -137,7 +137,6 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
     end
 
     Engine.FrameSelection:Attach(frame, function(f, point, x, y)
-        -- Save position or anchor state via PositionManager (ephemeral)
         if Engine.PositionManager then
             if point == "ANCHORED" then
                 -- Retrieve padding/align from anchor to pass to PositionManager

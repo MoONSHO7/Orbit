@@ -12,6 +12,9 @@ local MAX_CHILD_FRAMES = Constants.Cooldown.MaxChildFrames
 local TRACKED_ADD_ICON = "Interface\\PaperDollInfoFrame\\Character-Plus"
 local TRACKED_REMOVE_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
 local DEFAULT_TRACKED_OFFSET_X = -30
+local COLOR_TRACKED_SEED = { r = 0.2, g = 0.9, b = 0.2 }
+local SEED_GLOW_ALPHA = 0.6
+local SEED_PLUS_RATIO = 0.4
 
 -- [ TOOLTIP PARSER ALIASES ]------------------------------------------------------------------------
 local Parser = Orbit.TrackedTooltipParser
@@ -90,8 +93,9 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.editModeTooltipLines = { "Drag and drop items and spells that have cooldowns here." }
     frame:EnableMouse(false)
     frame.orbitClickThrough = true
-    frame.anchorOptions = { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true, mergeBorders = true }
+    frame.anchorOptions = { horizontal = false, vertical = false, syncScale = true, syncDimensions = false, useRowDimension = true, mergeBorders = true }
     frame.orbitChainSync = true
+    frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = DEFAULT_TRACKED_OFFSET_X, y = 0 }
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 
     frame.Selection = frame:CreateTexture(nil, "OVERLAY")
@@ -103,6 +107,33 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.DropHighlight:SetAllPoints()
     frame.DropHighlight:SetColorTexture(0, 0, 0, 0)
     frame.DropHighlight:Hide()
+
+    local seed = CreateFrame("Frame", nil, frame)
+    seed:SetAllPoints()
+    seed.Backdrop = seed:CreateTexture(nil, "BACKGROUND")
+    seed.Backdrop:SetAllPoints()
+    seed.Backdrop:SetColorTexture(0, 0, 0, 0.2)
+    seed.Glow = seed:CreateTexture(nil, "OVERLAY")
+    seed.Glow:SetAtlas("cyphersetupgrade-leftitem-slotinnerglow")
+    seed.Glow:SetBlendMode("ADD")
+    seed.Glow:SetAllPoints()
+    seed.Glow:SetDesaturated(true)
+    seed.Glow:SetVertexColor(COLOR_TRACKED_SEED.r, COLOR_TRACKED_SEED.g, COLOR_TRACKED_SEED.b)
+    seed.Plus = seed:CreateTexture(nil, "OVERLAY", nil, 2)
+    seed.Plus:SetPoint("CENTER")
+    seed.Plus:SetSize(12, 12)
+    seed.Plus:SetTexture(TRACKED_ADD_ICON)
+    seed.Plus:SetDesaturated(true)
+    seed.Plus:SetVertexColor(COLOR_TRACKED_SEED.r, COLOR_TRACKED_SEED.g, COLOR_TRACKED_SEED.b)
+    seed.PulseAnim = seed:CreateAnimationGroup()
+    seed.PulseAnim:SetLooping("BOUNCE")
+    local pulse = seed.PulseAnim:CreateAnimation("Alpha")
+    pulse:SetTarget(seed.Glow)
+    pulse:SetDuration(1)
+    pulse:SetFromAlpha(0.4)
+    pulse:SetToAlpha(1)
+    seed:Hide()
+    frame.SeedButton = seed
 
     if not frame:GetPoint() then
         frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_TRACKED_OFFSET_X, 0)
@@ -158,17 +189,19 @@ function Plugin:SetupEditModeHooks()
     if self.editModeHooksSetup then return end
     self.editModeHooksSetup = true
     local plugin = self
+    local function RefreshAll()
+        plugin:RefreshAllControlButtonVisibility()
+        plugin:RefreshAllChargeControlVisibility()
+        plugin:RefreshAllTrackedLayouts()
+        plugin:UpdateAllSeedVisibility()
+        plugin:ApplyChargeBarSettings(plugin.chargeBarAnchor)
+        for _, childData in pairs(plugin.activeChargeChildren or {}) do
+            if childData.frame then plugin:ApplyChargeBarSettings(childData.frame) end
+        end
+    end
     if EditModeManagerFrame then
-        EditModeManagerFrame:HookScript("OnShow", function()
-            plugin:RefreshAllControlButtonVisibility()
-            plugin:RefreshAllTrackedLayouts()
-            plugin:UpdateAllSeedVisibility()
-        end)
-        EditModeManagerFrame:HookScript("OnHide", function()
-            plugin:RefreshAllControlButtonVisibility()
-            plugin:RefreshAllTrackedLayouts()
-            plugin:UpdateAllSeedVisibility()
-        end)
+        EditModeManagerFrame:HookScript("OnShow", RefreshAll)
+        EditModeManagerFrame:HookScript("OnHide", RefreshAll)
     end
 end
 
@@ -233,7 +266,7 @@ function Plugin:DespawnChildFrame(frame)
     for _, icon in pairs(frame.activeIcons or {}) do icon:Hide() end
     for _, btn in pairs(frame.edgeButtons or {}) do btn:Hide() end
 
-    self:SetSetting(frame.systemIndex, self:GetSpecKey("TrackedItems"), nil)
+    self:SetSetting(frame.systemIndex, "TrackedItems", nil)
     self:SetSetting(frame.systemIndex, "Position", nil)
     self:SetSetting(frame.systemIndex, "Anchor", nil)
     self:SetSetting(frame.systemIndex, "Enabled", nil)
@@ -248,7 +281,7 @@ function Plugin:RestoreChildFrames()
     for slot = 1, MAX_CHILD_FRAMES do
         local systemIndex = TRACKED_CHILD_START + slot - 1
         local enabled = self:GetSetting(systemIndex, "Enabled")
-        local tracked = self:GetSetting(systemIndex, self:GetSpecKey("TrackedItems"))
+        local tracked = self:GetSetting(systemIndex, "TrackedItems")
         if enabled or (tracked and next(tracked)) then
             local key = "child:" .. slot
             local label = "Tracked Cooldowns " .. (slot + 1)
@@ -267,15 +300,18 @@ function Plugin:RestoreChildFrames()
 end
 
 function Plugin:ClearStaleTrackedSpatial(frame, sysIndex)
-    if not frame or (frame.gridItems and next(frame.gridItems)) then return end
+    if not frame or (frame.gridItems and next(frame.gridItems)) then
+        return
+    end
     self:SetSetting(sysIndex, "Anchor", nil)
     self:SetSetting(sysIndex, "Position", nil)
-    OrbitEngine.FrameAnchor:BreakAnchor(frame, true)
-    for _, child in ipairs(OrbitEngine.FrameAnchor:GetAnchoredChildren(frame)) do
-        OrbitEngine.FrameAnchor:BreakAnchor(child, true)
-        if child.orbitPlugin and child.systemIndex then
-            child.orbitPlugin:SetSetting(child.systemIndex, "Anchor", nil)
-        end
+    OrbitEngine.FrameAnchor:DestroyAnchor(frame)
+    frame:ClearAllPoints()
+    local dp = frame.defaultPosition
+    if dp then
+        frame:SetPoint(dp.point or "CENTER", dp.relativeTo or UIParent, dp.relativePoint or "CENTER", dp.x or 0, dp.y or 0)
+    else
+        frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     end
 end
 
@@ -315,7 +351,7 @@ function Plugin:ClearTrackedIcon(icon)
 end
 
 function Plugin:SaveTrackedItem(systemIndex, x, y, itemType, itemId)
-    local tracked = self:GetSetting(systemIndex, self:GetSpecKey("TrackedItems")) or {}
+    local tracked = self:GetSetting(systemIndex, "TrackedItems") or {}
     local key = Layout.GridKey(x, y)
     if itemType and itemId then
         local parseId = (itemType == "spell") and GetActiveSpellID(itemId) or itemId
@@ -326,11 +362,11 @@ function Plugin:SaveTrackedItem(systemIndex, x, y, itemType, itemId)
     else
         tracked[key] = nil
     end
-    self:SetSetting(systemIndex, self:GetSpecKey("TrackedItems"), tracked)
+    self:SetSetting(systemIndex, "TrackedItems", tracked)
 end
 
 function Plugin:LoadTrackedItems(anchor, systemIndex)
-    local tracked = self:GetSetting(systemIndex, self:GetSpecKey("TrackedItems")) or {}
+    local tracked = self:GetSetting(systemIndex, "TrackedItems") or {}
 
     local needsMigration = false
     for key, _ in pairs(tracked) do
@@ -346,7 +382,7 @@ function Plugin:LoadTrackedItems(anchor, systemIndex)
             end
         end
         tracked = migrated
-        self:SetSetting(systemIndex, self:GetSpecKey("TrackedItems"), tracked)
+        self:SetSetting(systemIndex, "TrackedItems", tracked)
     end
 
     local copy = {}

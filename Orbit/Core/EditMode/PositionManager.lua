@@ -51,15 +51,21 @@ function PositionManager:MarkDirty(frame)
 end
 
 function PositionManager:FlushToStorage()
+    local count = 0; for _ in pairs(PendingFrames) do count = count + 1 end
+    print(("[PM:Flush] called with %d pending frames"):format(count))
     for name, frame in pairs(PendingFrames) do
         if frame and frame.orbitPlugin and frame.orbitPlugin.SetSetting then
             local systemIndex = frame.systemIndex or 1
             if ActiveAnchors[name] then
+                print(("[PM:Flush] frame=%s sysIdx=%d -> ANCHOR target=%s edge=%s"):format(name, systemIndex, tostring(ActiveAnchors[name].target), tostring(ActiveAnchors[name].edge)))
                 frame.orbitPlugin:SetSetting(systemIndex, "Anchor", ActiveAnchors[name])
                 frame.orbitPlugin:SetSetting(systemIndex, "Position", nil)
             elseif ActivePositions[name] then
+                print(("[PM:Flush] frame=%s sysIdx=%d -> POSITION point=%s x=%s y=%s"):format(name, systemIndex, tostring(ActivePositions[name].point), tostring(ActivePositions[name].x), tostring(ActivePositions[name].y)))
                 frame.orbitPlugin:SetSetting(systemIndex, "Position", ActivePositions[name])
                 frame.orbitPlugin:SetSetting(systemIndex, "Anchor", false)
+            else
+                print(("[PM:Flush] frame=%s sysIdx=%d -> NO DATA"):format(name, systemIndex))
             end
         end
     end
@@ -84,4 +90,12 @@ function PositionManager:GetAnchor(frame)
         return nil
     end
     return ActiveAnchors[frame:GetName()] or nil
+end
+
+function PositionManager:ClearFrame(frame)
+    local name = frame and frame:GetName()
+    if not name then return end
+    ActivePositions[name] = nil
+    ActiveAnchors[name] = nil
+    PendingFrames[name] = nil
 end

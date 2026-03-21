@@ -13,6 +13,21 @@ local DEFAULT_AURA_COUNT = 40
 local TIMER_MIN_ICON_SIZE = 14
 local AURA_MIN_DISPLAY_COUNT = 2
 local AURA_MAX_DISPLAY_COUNT = 99
+local DEFAULT_FONT_PATH = "Fonts\\FRIZQT____.TTF"
+local AURA_COUNT_SIZE = 8
+local AURA_TIMER_SIZE = 8
+
+-- [ CACHED FONT ]-----------------------------------------------------------------------------------
+local cachedFontPath, cachedFontOutline
+local function GetAuraFont()
+    if cachedFontPath then return cachedFontPath, cachedFontOutline end
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
+    cachedFontPath = (LSM and fontName and LSM:Fetch("font", fontName)) or DEFAULT_FONT_PATH
+    cachedFontOutline = Orbit.Skin and Orbit.Skin.GetFontOutline and Orbit.Skin:GetFontOutline() or ""
+    return cachedFontPath, cachedFontOutline
+end
+function Mixin:InvalidateFontCache() cachedFontPath = nil; cachedFontOutline = nil end
 
 -- [ SKIN FACADE ]-----------------------------------------------------------------------------------
 function Mixin:ApplyAuraSkin(icon, settings)
@@ -25,6 +40,21 @@ function Mixin:CreateAuraPool(frame, template, parent)
     if frame.auraPool then return frame.auraPool end
     frame.auraPool = CreateFramePool("Button", parent or frame, template or "BackdropTemplate")
     return frame.auraPool
+end
+
+function Mixin:BuildAuraSnapshot(unit)
+    local harmful = C_UnitAuras.GetUnitAuras(unit, "HARMFUL") or {}
+    local helpful = C_UnitAuras.GetUnitAuras(unit, "HELPFUL") or {}
+    local helpfulBySpell = {}
+    local helpfulPlayerBySpell = {}
+    for _, aura in ipairs(helpful) do
+        local sid = aura.spellId
+        if not issecretvalue(sid) then
+            helpfulBySpell[sid] = aura
+            if aura.isFromPlayerOrPlayerPet then helpfulPlayerBySpell[sid] = aura end
+        end
+    end
+    return { harmful = harmful, helpful = helpful, helpfulBySpell = helpfulBySpell, helpfulPlayerBySpell = helpfulPlayerBySpell }
 end
 
 function Mixin:FetchAuras(unit, filter, maxCount)
@@ -66,12 +96,8 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
     if not icon.count then
         icon.count = icon.Overlay:CreateFontString(nil, "OVERLAY")
     end
-    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
-    local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
-    local fontPath = (LSM and fontName and LSM:Fetch("font", fontName)) or "Fonts\\FRIZQT__.TTF"
-    local fontOutline = Orbit.Skin and Orbit.Skin.GetFontOutline and Orbit.Skin:GetFontOutline() or ""
-    local countSize = 8
-    icon.count:SetFont(fontPath, countSize, fontOutline)
+    local fontPath, fontOutline = GetAuraFont()
+    icon.count:SetFont(fontPath, AURA_COUNT_SIZE, fontOutline)
     icon.count:SetShadowColor(0, 0, 0, 1)
     icon.count:SetShadowOffset(1, -1)
     icon.count:ClearAllPoints()
@@ -88,7 +114,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
         end
         if timerText and timerText.SetFont then
             timerText:SetParent(icon.Overlay)
-            timerText:SetFont(fontPath, 8, fontOutline)
+            timerText:SetFont(fontPath, AURA_TIMER_SIZE, fontOutline)
             timerText:ClearAllPoints()
             timerText:SetPoint("CENTER", icon, "CENTER", 0, 0)
             timerText:SetJustifyH("CENTER")
@@ -96,7 +122,6 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
         end
         icon.Cooldown:SetHideCountdownNumbers(size < TIMER_MIN_ICON_SIZE)
     end
-    if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons.regionCache[icon] = nil end
     if skinSettings then self:ApplyAuraSkin(icon, skinSettings) end
     self:ApplyAuraCooldown(icon, aura, unit)
     if skinSettings and skinSettings.swipeColor and icon.Cooldown then
@@ -113,12 +138,12 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
         if OverrideUtils then
             local stacksData = componentPositions.Stacks
             if stacksData then
-                OverrideUtils.ApplyOverrides(icon.count, stacksData.overrides or {}, { fontSize = countSize, fontPath = fontPath })
+                OverrideUtils.ApplyOverrides(icon.count, stacksData.overrides or {}, { fontSize = AURA_COUNT_SIZE, fontPath = fontPath })
                 if ApplyTextPosition then ApplyTextPosition(icon.count, icon, stacksData) end
             end
             local timerData = componentPositions.Timer
             if timerData and icon.Cooldown and icon.Cooldown.Text then
-                OverrideUtils.ApplyOverrides(icon.Cooldown.Text, timerData.overrides or {}, { fontSize = 8, fontPath = fontPath })
+                OverrideUtils.ApplyOverrides(icon.Cooldown.Text, timerData.overrides or {}, { fontSize = AURA_TIMER_SIZE, fontPath = fontPath })
                 if ApplyTextPosition then ApplyTextPosition(icon.Cooldown.Text, icon, timerData) end
             end
         end
@@ -129,9 +154,9 @@ end
 
 function Mixin:ApplyAuraCooldown(icon, aura, unit)
     if not icon or not icon.Cooldown then return end
-    if aura.expirationTime then
-        icon.Cooldown:SetCooldownFromExpirationTime(aura.expirationTime, aura.duration)
-        return
+    if aura.auraInstanceID and unit then
+        local durObj = C_UnitAuras.GetAuraDuration(unit, aura.auraInstanceID)
+        if durObj then icon.Cooldown:SetCooldownFromDurationObject(durObj); return end
     end
     icon.Cooldown:Clear()
 end
@@ -194,20 +219,32 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     local unit = frame.unit
     if not unit or not UnitExists(unit) then container:Hide(); return end
     if not frame[poolKey] then frame[poolKey] = CreateFramePool("Button", container, "BackdropTemplate") end
-    frame[poolKey]:ReleaseAll()
     local fetchFilter = cfg.fetchFilter
     local density = overrides.FilterDensity or 1
     if density <= 1 then fetchFilter = fetchFilter .. "|RAID_IN_COMBAT"
     elseif density >= 3 then fetchFilter = fetchFilter:gsub("|PLAYER", "") end
+    -- Force everything to use the secure snapshot architecture, building securely locally if the OnEvent missed it
+    local snap = frame._auraSnapshot or self:BuildAuraSnapshot(unit)
+    local rawAuras = fetchFilter:find("HARMFUL") and snap.harmful or snap.helpful
     local auras
-    local postFilterOverride = fetchFilter
     if cfg.postFilter then
-        local rawAuras = plugin:FetchAuras(unit, fetchFilter, cfg.fetchMax or 40)
-        auras = cfg.postFilter(plugin, unit, rawAuras, maxIcons, postFilterOverride)
+        auras = cfg.postFilter(plugin, unit, rawAuras, maxIcons, fetchFilter)
     else
-        auras = plugin:FetchAuras(unit, fetchFilter, maxIcons)
+        auras = {}
+        for _, a in ipairs(rawAuras) do
+            if a.auraInstanceID and not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, a.auraInstanceID, fetchFilter) then
+                auras[#auras + 1] = a
+                if #auras >= maxIcons then break end
+            end
+        end
     end
-    if #auras == 0 then container:Hide(); return end
+    if #auras == 0 then container._auraFingerprint = nil; frame[poolKey]:ReleaseAll(); container:Hide(); return end
+    -- Build fingerprint from instance IDs to skip rebuild when unchanged
+    local fp = #auras
+    for _, a in ipairs(auras) do fp = fp * 65599 + (a.auraInstanceID or 0) end
+    if container._auraFingerprint == fp then return end
+    container._auraFingerprint = fp
+    frame[poolKey]:ReleaseAll()
     local helpers = type(cfg.helpers) == "function" and cfg.helpers() or cfg.helpers
     local position = helpers:AnchorToPosition(auraData.posX, auraData.posY, frameW / 2, frameH / 2)
     local scale = frame:GetEffectiveScale() or 1
@@ -243,9 +280,22 @@ function Mixin:UpdateSingleAuraIcon(frame, plugin, iconKey, filter, iconSize)
     if plugin.IsComponentDisabled and plugin:IsComponentDisabled(iconKey) then icon:Hide(); return end
     local unit = frame.unit
     if not unit or not UnitExists(unit) or not UnitIsConnected(unit) then icon:Hide(); return end
-    local auras = plugin:FetchAuras(unit, filter, 1)
-    local aura = auras[1]
-    if not aura or not aura.auraInstanceID or not plugin:IsAuraIncluded(unit, aura.auraInstanceID, filter) then icon:Hide(); return end
+    -- Use snapshot when available, fall back to FetchAuras
+    local aura
+    local snap = frame._auraSnapshot
+    local snapAuras = snap and (filter:find("HARMFUL") and snap.harmful or snap.helpful)
+    if snapAuras then
+        for _, a in ipairs(snapAuras) do
+            if a.auraInstanceID and not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, a.auraInstanceID, filter) then
+                aura = a; break
+            end
+        end
+    else
+        local fetched = plugin:FetchAuras(unit, filter, 1)
+        aura = fetched[1]
+        if aura and (not aura.auraInstanceID or not plugin:IsAuraIncluded(unit, aura.auraInstanceID, filter)) then aura = nil end
+    end
+    if not aura then icon:Hide(); return end
     local skinSettings = Orbit.Constants.Aura.SkinNoTimer
     plugin:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
     plugin:SetupAuraTooltip(icon, aura, unit, filter:find("HARMFUL") and "HARMFUL" or "HELPFUL")
@@ -361,44 +411,41 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
         return
     end
     local overrides = GetComponentOverrides(plugin, iconKey)
-    for i = 1, SPELL_AURA_SCAN_MAX do
-        local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL|PLAYER")
-        if not aura then break end
-        local sid = aura.spellId
-        if not IsSecret(sid) and (sid == spellId or (altSpellId and sid == altSpellId)) then
-            local icon = self:EnsureAuraIcon(frame, iconKey, iconSize)
-            local remainingPercent = 1
-            if aura.duration and aura.duration > 0 and aura.expirationTime then
-                remainingPercent = math_max(0, (aura.expirationTime - GetTime()) / aura.duration)
-            end
-            local skinSettings = BuildSkinSettings(overrides, remainingPercent)
-            self:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
-            self:SetupAuraTooltip(icon, aura, unit, "HELPFUL")
-            if skinSettings.pandemicGlowType and skinSettings.pandemicGlowType > 0 then
-                Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings)
-                if icon.PandemicIcon then icon.PandemicIcon:SetAlpha(0) end
-            elseif icon.orbitPandemicGlowActive then
-                Orbit.PandemicGlow:Stop(icon)
-            end
-            local hasCurves = overrides and (overrides.SwipeColorCurve or overrides.TimerTextColorCurve)
-            if hasCurves then
-                icon._orbitCurveData = {
-                    duration = aura.duration or 0,
-                    expirationTime = aura.expirationTime,
-                    swipeCurve = overrides.SwipeColorCurve,
-                    timerCurve = overrides.TimerTextColorCurve,
-                }
-                if not icon._orbitCurveHooked then
-                    icon._orbitCurveHooked = true
-                    icon:HookScript("OnUpdate", function(self) HealerCurveOnUpdate(self) end)
-                end
-                HealerCurveOnUpdate(icon)
-            else
-                icon._orbitCurveData = nil
-            end
-            icon:Show()
-            return
+    local snap = frame._auraSnapshot or self:BuildAuraSnapshot(unit)
+    local aura = snap.helpfulPlayerBySpell[spellId] or (altSpellId and snap.helpfulPlayerBySpell[altSpellId])
+    if aura then
+        local icon = self:EnsureAuraIcon(frame, iconKey, iconSize)
+        local remainingPercent = 1
+        if aura.duration and aura.duration > 0 and aura.expirationTime then
+            remainingPercent = math_max(0, (aura.expirationTime - GetTime()) / aura.duration)
         end
+        local skinSettings = BuildSkinSettings(overrides, remainingPercent)
+        self:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
+        self:SetupAuraTooltip(icon, aura, unit, "HELPFUL")
+        if skinSettings.pandemicGlowType and skinSettings.pandemicGlowType > 0 then
+            Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings)
+            if icon.PandemicIcon then icon.PandemicIcon:SetAlpha(0) end
+        elseif icon.orbitPandemicGlowActive then
+            Orbit.PandemicGlow:Stop(icon)
+        end
+        local hasCurves = overrides and (overrides.SwipeColorCurve or overrides.TimerTextColorCurve)
+        if hasCurves then
+            icon._orbitCurveData = {
+                duration = aura.duration or 0,
+                expirationTime = aura.expirationTime,
+                swipeCurve = overrides.SwipeColorCurve,
+                timerCurve = overrides.TimerTextColorCurve,
+            }
+            if not icon._orbitCurveHooked then
+                icon._orbitCurveHooked = true
+                icon:HookScript("OnUpdate", function(self) HealerCurveOnUpdate(self) end)
+            end
+            HealerCurveOnUpdate(icon)
+        else
+            icon._orbitCurveData = nil
+        end
+        icon:Show()
+        return
     end
     if frame[iconKey] then
         frame[iconKey]._orbitCurveData = nil
@@ -457,14 +504,8 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
         return
     end
 
-    -- Scan auras once, build set of present buff spell IDs
-    local present = {}
-    for i = 1, SPELL_AURA_SCAN_MAX do
-        local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
-        if not aura then break end
-        local sid = aura.spellId
-        if not IsSecret(sid) then present[sid] = true end
-    end
+    local snap = frame._auraSnapshot or self:BuildAuraSnapshot(unit)
+    local present = snap.helpfulBySpell
     -- Collect missing buffs (only YOUR class's raid buff, from any caster)
     local missing = {}
     for _, buff in ipairs(raidBuffs) do

@@ -3,7 +3,7 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 
-local DIVIDER_SIZE_DEFAULT = 2
+local DIVIDER_SIZE_DEFAULT = Orbit.PlayerResourceConstants.DIVIDER_SIZE_DEFAULT
 local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
 local TICK_SIZE_MAX = OrbitEngine.TickMixin.TICK_SIZE_MAX
 local DEFAULTS = { Width = 200, Height = 12 }

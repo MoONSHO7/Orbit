@@ -1,4 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="PlayerResourceConstants.lua"/>
     <Script file="PlayerPower.lua"/>
     <Script file="PlayerCastBar.lua"/>
     <Script file="ContinuousBarRenderer.lua"/>

@@ -8,7 +8,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
 local FRAME_LEVEL_BOOST = Orbit.Constants.Levels.StatusBar
-local CanUseUnitPowerPercent = (type(UnitPowerPercent) == "function" and CurveConstants and CurveConstants.ScaleTo100)
+local SafeUnitPowerPercent = Orbit.SecretValueUtils.SafeUnitPowerPercent
 
 Orbit.UnitPowerBarMixin = {}
 local Mixin = Orbit.UnitPowerBarMixin
@@ -19,12 +19,7 @@ Mixin.sharedDefaults = {
     ComponentPositions = { Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" } },
 }
 
--- [ HELPERS ]----------------------------------------------------------------------------------------
-local function SafeUnitPowerPercent(unit, resource)
-    if not CanUseUnitPowerPercent then return nil end
-    local ok, pct = pcall(UnitPowerPercent, unit, resource, false, CurveConstants.ScaleTo100)
-    return (ok and pct) or nil
-end
+
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Mixin:AddPowerBarSettings(dialog, systemFrame)

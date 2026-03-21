@@ -71,7 +71,6 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
     icon.Cooldown:SetAllPoints()
     icon.Cooldown:SetDrawSwipe(true)
     icon.Cooldown:SetDrawBling(false)
-    icon.Cooldown:SetCooldown(0, 0)
     icon.Cooldown:Clear()
 
     icon.ActiveCooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
@@ -79,7 +78,6 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
     icon.ActiveCooldown:SetDrawSwipe(true)
     icon.ActiveCooldown:SetDrawBling(false)
     icon.ActiveCooldown:SetReverse(true)
-    icon.ActiveCooldown:SetCooldown(0, 0)
     icon.ActiveCooldown:Clear()
 
     local textOverlay = CreateFrame("Frame", nil, icon)
@@ -124,13 +122,9 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
     if not icon._cdHookSetup then
         icon._cdHookSetup = true
         hooksecurefunc(icon.Cooldown, "SetCooldown", OnSetCooldown)
-        if icon.Cooldown.SetCooldownFromDurationObject then
-            hooksecurefunc(icon.Cooldown, "SetCooldownFromDurationObject", OnSetCooldown)
-        end
+        hooksecurefunc(icon.Cooldown, "SetCooldownFromDurationObject", OnSetCooldown)
         hooksecurefunc(icon.ActiveCooldown, "SetCooldown", OnSetCooldown)
-        if icon.ActiveCooldown.SetCooldownFromDurationObject then
-            hooksecurefunc(icon.ActiveCooldown, "SetCooldownFromDurationObject", OnSetCooldown)
-        end
+        hooksecurefunc(icon.ActiveCooldown, "SetCooldownFromDurationObject", OnSetCooldown)
     end
 
     return icon

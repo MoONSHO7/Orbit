@@ -70,6 +70,7 @@ function Skin:UpdateGroupBorder(rootFrame)
             frame._borderFrame:Hide()
             frame._groupBorderHiddenPixels = true
         end
+        if frame._gridGroupBorder then frame._gridGroupBorder:Hide() end
     end
 
     -- Determine border mode: NineSlice texture or pixel flat
@@ -104,6 +105,8 @@ function Skin:UpdateGroupBorder(rootFrame)
 
     local overlay = rootFrame._groupBorderOverlay
     local gs = Orbit.db and Orbit.db.GlobalSettings
+
+
 
     -- Calculate bounding box from anchor edge data (deterministic, no screen coords needed).
     -- Each frame's position relative to rootFrame TOPLEFT is derived from its anchor edge.
@@ -150,6 +153,8 @@ function Skin:UpdateGroupBorder(rootFrame)
     local offsetX = -minX
     local offsetY = -minY
 
+
+
     if isPixelMode then
         -- Pixel-style group overlay: use WHITE8x8 with pixel-snapped sizing
         local scale = rootFrame:GetEffectiveScale()
@@ -177,11 +182,15 @@ function Skin:UpdateGroupBorder(rootFrame)
         end
         local grpScale = rootFrame:GetEffectiveScale()
         if not grpScale or grpScale < 0.01 then grpScale = 1 end
-        local outset = Engine.Pixel:Snap((edgeSize / 2) + borderOffset, grpScale)
+        local ownScale = rootFrame:GetScale() or 1
+        if ownScale < 0.01 then ownScale = 1 end
+        local adjEdge = edgeSize / ownScale
+        local adjOffset = borderOffset / ownScale
+        local outset = Engine.Pixel:Snap((adjEdge / 2) + adjOffset, grpScale)
         overlay:ClearAllPoints()
         overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", -outset - offsetX, outset + offsetY)
         overlay:SetSize(Engine.Pixel:Snap(totalW + 2 * outset, grpScale), Engine.Pixel:Snap(totalH + 2 * outset, grpScale))
-        overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = edgeSize })
+        overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = adjEdge })
         overlay:SetBackdropBorderColor(1, 1, 1, 1)
     end
     overlay:Show()

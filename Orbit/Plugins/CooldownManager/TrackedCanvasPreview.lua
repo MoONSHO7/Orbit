@@ -18,7 +18,7 @@ function Plugin:SetupTrackedCanvasPreview(anchor, systemIndex)
 
         -- Resolve icon texture from first tracked item
         local iconTexture = TRACKED_PLACEHOLDER_ICON
-        local tracked = plugin:GetSetting(systemIndex, plugin:GetSpecKey("TrackedItems")) or {}
+        local tracked = plugin:GetSetting(systemIndex, "TrackedItems") or {}
         for _, data in pairs(tracked) do
             if data and data.type and data.id then
                 if data.type == "spell" then iconTexture = C_Spell.GetSpellTexture(data.id) or iconTexture

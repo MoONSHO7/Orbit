@@ -123,19 +123,29 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.orbitName = "Orbit_CooldownViewer"
     frame:EnableMouse(false)
     frame.orbitClickThrough = true
-    frame.anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }
+    frame.anchorOptions = { horizontal = false, vertical = false, mergeBorders = true }
     frame.orbitChainSync = true
 
     frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = DEFAULT_CHARGE_OFFSET_X, y = 0 }
     frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_CHARGE_OFFSET_X, 0)
 
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
-    frame.buttons = {}
+    frame.Dividers = {}
+
+    -- Single continuous StatusBar
+    frame.StatusBar = CreateFrame("StatusBar", nil, frame)
+    frame.StatusBar:SetAllPoints()
+    frame.StatusBar:SetMinMaxValues(0, 2)
+    frame.StatusBar:SetValue(0)
+    frame.StatusBar:SetFrameLevel(frame:GetFrameLevel() + Constants.Levels.StatusBar)
+
+    if not frame.bg then
+        frame.bg = frame:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
+        frame.bg:SetAllPoints()
+    end
 
     frame.SetBorderHidden = function(self, hidden)
-        for _, btn in ipairs(self.buttons) do
-            Orbit.Skin.DefaultSetBorderHidden(btn, hidden)
-        end
+        Orbit.Skin.DefaultSetBorderHidden(self, hidden)
     end
 
     frame:HookScript("OnSizeChanged", function()
@@ -250,7 +260,7 @@ function Plugin:SaveChargeChildren()
     for _, childData in pairs(self.activeChargeChildren) do
         saved[childData.slot] = childData.systemIndex
     end
-    self:SetSetting(CHARGE_BAR_INDEX, self:GetSpecKey("ChargeChildren"), saved)
+    self:SetSetting(CHARGE_BAR_INDEX, "ChargeChildren", saved)
 end
 
 -- [ SPAWN / DESPAWN CHILDREN ]---------------------------------------------------------------------
@@ -288,9 +298,8 @@ function Plugin:SpawnChargeChild()
         frame.chargeSpellId = nil
         frame.cachedMaxCharges = nil
         frame._maxCharges = nil
-        for _, btn in ipairs(frame.buttons) do
-            btn:Hide()
-        end
+        if frame.Dividers then for _, div in ipairs(frame.Dividers) do div:Hide() end end
+        if frame.StatusBar then frame.StatusBar:SetValue(0) end
     end
 
     frame:ClearAllPoints()
@@ -333,9 +342,8 @@ function Plugin:DespawnChargeChild(frame)
     frame.chargeSpellId = nil
     frame.cachedMaxCharges = nil
     frame._maxCharges = nil
-    for _, btn in ipairs(frame.buttons) do
-        btn:Hide()
-    end
+    if frame.Dividers then for _, div in ipairs(frame.Dividers) do div:Hide() end end
+    if frame.StatusBar then frame.StatusBar:SetValue(0) end
 
     self:SetSetting(systemIndex, "Position", nil)
     self:SetSetting(systemIndex, "Anchor", nil)
@@ -373,6 +381,7 @@ function Plugin:OnChargeFrameDrop(frame)
 end
 
 function Plugin:AssignChargeSpell(frame, spellId, maxCharges)
+    frame:Show()
     frame.chargeSpellId = spellId
     frame.cachedMaxCharges = maxCharges
     frame._maxCharges = maxCharges
@@ -381,9 +390,9 @@ function Plugin:AssignChargeSpell(frame, spellId, maxCharges)
     frame._trackedCharges = ci and ci.currentCharges or maxCharges
     frame._knownRechargeDuration = ci and ci.cooldownDuration or nil
 
-    self:SetSetting(frame.systemIndex, self:GetSpecKey("ChargeSpell"), { id = spellId, maxCharges = maxCharges })
+    self:SetSetting(frame.systemIndex, "ChargeSpell", { id = spellId, maxCharges = maxCharges })
 
-    ChargeBarLayout:BuildChargeButtons(frame, maxCharges)
+    ChargeBarLayout:BuildDividers(frame, maxCharges)
     ChargeBarLayout:LayoutChargeBar(self, frame)
     self:UpdateChargeFrame(frame)
     self:UpdateSeedVisibility(frame)
@@ -396,15 +405,15 @@ function Plugin:ClearChargeFrame(frame)
     frame.cachedMaxCharges = nil
     frame._maxCharges = nil
     frame._trackedCharges = nil
-    for _, btn in ipairs(frame.buttons) do
-        btn:Hide()
-    end
+    if frame.Dividers then for _, div in ipairs(frame.Dividers) do div:Hide() end end
+    if frame.StatusBar then frame.StatusBar:SetValue(0) end
     if frame.RechargeSegment then frame.RechargeSegment:SetValue(0) end
     if frame.TickBar then frame.TickBar:SetValue(0) end
     frame.CountText:SetText("")
     frame.CountText:Hide()
 
-    self:SetSetting(frame.systemIndex, self:GetSpecKey("ChargeSpell"), nil)
+    self:SetSetting(frame.systemIndex, "ChargeSpell", nil)
+    frame:Hide()
     ChargeBarLayout:LayoutChargeBar(self, frame)
     self:ClearStaleChargeBarSpatial(frame, frame.systemIndex)
     self:UpdateSeedVisibility(frame)
@@ -428,10 +437,21 @@ end
 
 -- [ SETTINGS APPLICATION ]-------------------------------------------------------------------------
 function Plugin:ApplyChargeBarSettings(frame)
-    if not frame then
+    if not frame then return end
+    local sysIndex = frame.systemIndex
+    if not frame.chargeSpellId then
+        frame:SetSize(EMPTY_SEED_SIZE, EMPTY_SEED_SIZE)
+        frame:Show()
+        frame:SetAlpha(Orbit:IsEditMode() and 1 or 0)
+        if frame.StatusBar then frame.StatusBar:Hide() end
+        if frame.bg then frame.bg:Hide() end
+        if frame.SetBorderHidden then frame:SetBorderHidden(true) end
+        OrbitEngine.Frame:RestorePosition(frame, self, sysIndex)
         return
     end
-    local sysIndex = frame.systemIndex
+    if frame.StatusBar then frame.StatusBar:Show() end
+    if frame.bg then frame.bg:Show() end
+    if frame.SetBorderHidden then frame:SetBorderHidden(false) end
     ChargeBarLayout:LayoutChargeBar(self, frame)
     OrbitEngine.Frame:RestorePosition(frame, self, sysIndex)
 
@@ -455,9 +475,8 @@ function Plugin:UpdateChargeFrame(frame)
 
     local smoothing = self:GetSetting(frame.systemIndex, "SmoothAnimation") and SMOOTH_ANIM or nil
 
-    for _, btn in ipairs(frame.buttons) do
-        btn.Bar:SetValue(chargeInfo.currentCharges, smoothing)
-    end
+    frame.StatusBar:SetMinMaxValues(0, chargeInfo.maxCharges)
+    frame.StatusBar:SetValue(chargeInfo.currentCharges, smoothing)
     frame.CountText:SetText(chargeInfo.currentCharges)
     frame.CountText:Show()
 
@@ -558,11 +577,13 @@ function Plugin:UpdateSeedVisibility(frame)
 
     local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
     if isDraggingCharge or isEditMode then
+        frame:SetAlpha(1)
         local plusSize = OrbitEngine.Pixel:Snap(math.min(frame:GetWidth(), frame:GetHeight()) * SEED_PLUS_RATIO)
         frame.SeedButton.Plus:SetSize(plusSize, plusSize)
         frame.SeedButton:Show()
         if isDraggingCharge then frame.SeedButton.PulseAnim:Play() else frame.SeedButton.PulseAnim:Stop(); frame.SeedButton.Glow:SetAlpha(SEED_GLOW_ALPHA) end
     else
+        frame:SetAlpha(0)
         frame.SeedButton:Hide()
     end
 end
@@ -583,14 +604,17 @@ function Plugin:RegisterChargeCursorWatcher() end
 function Plugin:ReloadChargeBarsForSpec()
     local anchor = self.chargeBarAnchor
     if anchor then
+        anchor:Hide()
         anchor.chargeSpellId = nil
         anchor.cachedMaxCharges = nil
         anchor._maxCharges = nil
-        for _, btn in ipairs(anchor.buttons) do
-            btn:Hide()
-        end
+        anchor._trackedCharges = nil
+        if anchor.CountText then anchor.CountText:SetText(""); anchor.CountText:Hide() end
+        if anchor.Dividers then for _, div in ipairs(anchor.Dividers) do div:Hide() end end
+        if anchor.StatusBar then anchor.StatusBar:SetValue(0) end
         if anchor.RechargeSegment then anchor.RechargeSegment:SetValue(0) end
         if anchor.TickBar then anchor.TickBar:SetValue(0) end
+        UpdateChargeBarLabel(anchor)
     end
 
     for key, childData in pairs(self.activeChargeChildren) do
@@ -600,9 +624,8 @@ function Plugin:ReloadChargeBarsForSpec()
             childData.frame.chargeSpellId = nil
             childData.frame.cachedMaxCharges = nil
             childData.frame._maxCharges = nil
-            for _, btn in ipairs(childData.frame.buttons) do
-                btn:Hide()
-            end
+            if childData.frame.Dividers then for _, div in ipairs(childData.frame.Dividers) do div:Hide() end end
+            if childData.frame.StatusBar then childData.frame.StatusBar:SetValue(0) end
             if childData.frame.RechargeSegment then childData.frame.RechargeSegment:SetValue(0) end
             if childData.frame.TickBar then childData.frame.TickBar:SetValue(0) end
             table.insert(self.chargeChildPool, childData.frame)
@@ -610,41 +633,56 @@ function Plugin:ReloadChargeBarsForSpec()
     end
     self.activeChargeChildren = {}
 
+    OrbitEngine.FrameAnchor:BreakAnchor(anchor, true)
+    anchor:ClearAllPoints()
     self:RestoreChargeSpell(anchor, CHARGE_BAR_INDEX)
     self:ClearStaleChargeBarSpatial(anchor, CHARGE_BAR_INDEX)
+    if anchor and not anchor.chargeSpellId then anchor:Hide() end
+    if OrbitEngine.PositionManager then OrbitEngine.PositionManager:ClearFrame(anchor) end
+    OrbitEngine.Frame:RestorePosition(anchor, self, CHARGE_BAR_INDEX)
 
-    local savedChildren = self:GetSetting(CHARGE_BAR_INDEX, self:GetSpecKey("ChargeChildren")) or {}
+    local savedChildren = self:GetSetting(CHARGE_BAR_INDEX, "ChargeChildren") or {}
     for slot, sysIndex in pairs(savedChildren) do
         local frame = self:SpawnChargeChild()
         if frame then
             self:RestoreChargeSpell(frame, sysIndex)
             self:ClearStaleChargeBarSpatial(frame, sysIndex)
+            if not frame.chargeSpellId then frame:Hide() end
         end
     end
 
     ChargeBarLayout:LayoutChargeBars(self)
+    self:UpdateAllChargeBars()
+    if self:IsAnyChargeRecharging() then
+        self:StartRechargeAnimationTicker()
+    end
 end
 
 function Plugin:RestoreChargeSpell(frame, sysIndex)
     if not frame then
         return
     end
-    local data = self:GetSetting(sysIndex, self:GetSpecKey("ChargeSpell"))
+    local data = self:GetSetting(sysIndex, "ChargeSpell")
     if not data or not data.id then
+        return
+    end
+    if not IsPlayerSpell(data.id) and not IsSpellKnown(data.id) then
         return
     end
 
     local isCharge, ci = IsChargeSpell(data.id)
-    if isCharge then
-        data.maxCharges = math.max(data.maxCharges or 0, ci.maxCharges)
+    if not isCharge then
+        return
     end
+    data.maxCharges = math.max(data.maxCharges or 0, ci.maxCharges)
 
+    frame:Show()
     frame.chargeSpellId = data.id
     frame.cachedMaxCharges = data.maxCharges or 2
     frame._maxCharges = data.maxCharges or 2
     frame._trackedCharges = ci and ci.currentCharges or frame.cachedMaxCharges
     frame._knownRechargeDuration = ci and ci.cooldownDuration or nil
-    ChargeBarLayout:BuildChargeButtons(frame, frame.cachedMaxCharges)
+    ChargeBarLayout:BuildDividers(frame, frame.cachedMaxCharges)
     UpdateChargeBarLabel(frame)
 end
 
@@ -662,8 +700,8 @@ function Plugin:RefreshChargeMaxCharges()
         end
         frame.cachedMaxCharges = ci.maxCharges
         frame._maxCharges = ci.maxCharges
-        self:SetSetting(frame.systemIndex, self:GetSpecKey("ChargeSpell"), { id = frame.chargeSpellId, maxCharges = ci.maxCharges })
-        ChargeBarLayout:BuildChargeButtons(frame, ci.maxCharges)
+        self:SetSetting(frame.systemIndex, "ChargeSpell", { id = frame.chargeSpellId, maxCharges = ci.maxCharges })
+        ChargeBarLayout:BuildDividers(frame, ci.maxCharges)
         ChargeBarLayout:LayoutChargeBar(self, frame)
     end
     Refresh(self.chargeBarAnchor)
@@ -673,17 +711,16 @@ function Plugin:RefreshChargeMaxCharges()
 end
 
 function Plugin:ClearStaleChargeBarSpatial(frame, sysIndex)
-    if not frame or frame.chargeSpellId then
-        return
-    end
+    if not frame or frame.chargeSpellId then return end
     self:SetSetting(sysIndex, "Anchor", nil)
     self:SetSetting(sysIndex, "Position", nil)
-    OrbitEngine.FrameAnchor:BreakAnchor(frame, true)
-    for _, child in ipairs(OrbitEngine.FrameAnchor:GetAnchoredChildren(frame)) do
-        OrbitEngine.FrameAnchor:BreakAnchor(child, true)
-        if child.orbitPlugin and child.systemIndex then
-            child.orbitPlugin:SetSetting(child.systemIndex, "Anchor", nil)
-        end
+    OrbitEngine.FrameAnchor:DestroyAnchor(frame)
+    frame:ClearAllPoints()
+    local dp = frame.defaultPosition
+    if dp then
+        frame:SetPoint(dp.point or "CENTER", dp.relativeTo or UIParent, dp.relativePoint or "CENTER", dp.x or 0, dp.y or 0)
+    else
+        frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     end
 end
 
@@ -700,7 +737,7 @@ function Plugin:RestoreChargeBars()
     self:RestoreChargeSpell(anchor, CHARGE_BAR_INDEX)
     self:ClearStaleChargeBarSpatial(anchor, CHARGE_BAR_INDEX)
 
-    local savedChildren = self:GetSetting(CHARGE_BAR_INDEX, self:GetSpecKey("ChargeChildren")) or {}
+    local savedChildren = self:GetSetting(CHARGE_BAR_INDEX, "ChargeChildren") or {}
     for slot, sysIndex in pairs(savedChildren) do
         local frame = self:SpawnChargeChild()
         if frame then

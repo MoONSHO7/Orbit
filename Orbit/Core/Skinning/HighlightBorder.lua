@@ -21,10 +21,12 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
     end
     local gs = Orbit.db and Orbit.db.GlobalSettings
     local nineSliceStyle = self:GetActiveBorderStyle()
+    local ownScale = frame:GetScale() or 1
+    if ownScale < 0.01 then ownScale = 1 end
     local backdrop
     if nineSliceStyle and nineSliceStyle.edgeFile then
         local edgeSize = (gs and gs.BorderEdgeSize) or Constants.BorderStyle.EdgeSize
-        backdrop = { edgeFile = nineSliceStyle.edgeFile, edgeSize = edgeSize }
+        backdrop = { edgeFile = nineSliceStyle.edgeFile, edgeSize = edgeSize / ownScale }
     else
         local scale = frame:GetEffectiveScale()
         if not scale or scale < 0.01 then scale = 1 end
@@ -44,7 +46,7 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
             local hlScale = frame:GetEffectiveScale()
             if not hlScale or hlScale < 0.01 then hlScale = 1 end
             local borderOffset = (gs and gs.BorderOffset) or 0
-            local outset = Engine.Pixel:Snap((backdrop.edgeSize / 2) + borderOffset, hlScale)
+            local outset = Engine.Pixel:Snap((backdrop.edgeSize / 2) + (borderOffset / ownScale), hlScale)
             overlay:SetPoint("TOPLEFT", frame, "TOPLEFT", -outset, outset)
             overlay:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", outset, -outset)
         else

@@ -19,18 +19,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [@project-version@] - @project-date-iso@
 ### Message
-- Lots of border, opacity, and layering fixes this build. Things should feel much tighter now!
+- Sorry delay in updates, been a busy week with new raid out :)
+- Next update will be focussed on fleshing out Party/Raid frames.
+- This update focuses on uplifting profile which required a lot of backend work to make them work properly with how Orbit operates, please let me know any issues you find!
+- I'd recommened, if you're updating from a previous version, to Export your main Specialization string and do a `/Orbit HardReset` to start fresh with the new profile system.
+
+### Added
+- **Profile Management** — A complete layout manager out of the box. You can configure, import/export, and map UI profiles per-specialization for automatic swaps!
+- **Raid Frame Performance** — Reduced a large amount of API calls and layout updates on raid frames, should bring down the performance hit in raids, more work on this next update.
 
 ### Changed
-- **Borders now render inset** — pixel borders sit inside the frame instead of expanding outward, giving tighter, more accurate sizing across all frames.
-- **Merged borders** between stacked frames (e.g. health + power bars) can now merge per-axis, so horizontal and vertical edges are handled independently.
-- **Icon spacing** is now exact — aura and cooldown icon padding is no longer inflated by border thickness.
-- **Private Auras** respect per-icon size overrides and grow in the correct direction when anchored.
+- **UI Consistency & Defaults** — Default fonts (now Barlow Condensed Bold) and underlying layout borders have been strictly aligned for fresh profile builds.
 
 ### Fixed
-- **Opacity slider** now works correctly on the CDM, Power bar, Pet frame, and Resource bars.
-- **Cooldown icons** no longer render text behind borders or glows — draw order is now correct.
-- **Stale borders** after toggling merged-border settings are properly cleaned up.
+- **Many minor bugfixes** — Multiple layout and sizing inaccuracies have been rectified alongside the profile defaults overhaul.
 
 ## [1.0.0] - 2026-03-10
 ### Added

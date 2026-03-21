@@ -2,7 +2,7 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local Layout = Engine.Layout
 
-function Layout:CreateEditBox(parent, label, value, callback, width, height, isMultiLine)
+function Layout:CreateEditBox(parent, label, value, callback, width, height, isMultiLine, opts)
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame.OrbitType = "EditBox"
 
@@ -44,21 +44,44 @@ function Layout:CreateEditBox(parent, label, value, callback, width, height, isM
     editBox:SetMultiLine(isMultiLine)
     editBox:SetAutoFocus(false)
     editBox:SetTextInsets(5, 5, 5, 5)
+    inputContainer:EnableMouse(true)
+    inputContainer:SetScript("OnMouseDown", function() editBox:SetFocus() end)
 
     if isMultiLine then
-        -- ScrollFrame Wrapper for MultiLine
-        local scrollFrame = CreateFrame("ScrollFrame", nil, inputContainer, "UIPanelScrollFrameTemplate")
-        scrollFrame:SetPoint("TOPLEFT", 5, -5)
-        scrollFrame:SetPoint("BOTTOMRIGHT", -26, 5) -- Room for scrollbar
+        local scrollFrame
+        if opts and opts.hideScrollBar then
+            scrollFrame = CreateFrame("ScrollFrame", nil, inputContainer)
+            scrollFrame:SetPoint("TOPLEFT", 5, -5)
+            scrollFrame:SetPoint("BOTTOMRIGHT", -5, 5)
+            scrollFrame:EnableMouseWheel(true)
+            scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+                local cur = self:GetVerticalScroll()
+                local max = self:GetVerticalScrollRange()
+                self:SetVerticalScroll(math.max(0, math.min(max, cur - (delta * 20))))
+            end)
+        else
+            scrollFrame = CreateFrame("ScrollFrame", nil, inputContainer, "UIPanelScrollFrameTemplate")
+            scrollFrame:SetPoint("TOPLEFT", 5, -5)
+            scrollFrame:SetPoint("BOTTOMRIGHT", -26, 5)
+        end
 
         scrollFrame:SetScrollChild(editBox)
-        editBox:SetWidth(scrollFrame:GetWidth()) -- Initial width
-        editBox:SetHeight(scrollFrame:GetHeight()) -- Initial height? No, it grows.
+        editBox:SetWidth(scrollFrame:GetWidth())
+        editBox:SetHeight(scrollFrame:GetHeight())
 
         -- Hook Text Changed to resize editbox height
-        editBox:SetScript("OnTextChanged", function(self)
-            if callback then callback(self:GetText()) end
-        end)
+        if opts and opts.readOnly then
+            local frozenText = value or ""
+            editBox:SetScript("OnTextChanged", function(self)
+                if self:GetText() ~= frozenText then self:SetText(frozenText) end
+            end)
+            editBox:SetScript("OnChar", function() end)
+            editBox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+        else
+            editBox:SetScript("OnTextChanged", function(self)
+                if callback then callback(self:GetText()) end
+            end)
+        end
 
         -- Fix Scroll Child sizing
         scrollFrame:SetScript("OnSizeChanged", function(self, w, h)

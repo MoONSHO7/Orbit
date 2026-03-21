@@ -23,6 +23,7 @@ function Plugin:OnLoad()
         showTimer = true, enablePandemic = false,
         showIconLimit = true, defaultIconLimit = 16,
         showRows = true,
+        exposeMountedConfig = true, mountedHoverReveal = true,
     })
     if DebuffFrame then OrbitEngine.NativeFrame:Protect(DebuffFrame) end
 end
