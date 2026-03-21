@@ -261,6 +261,23 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
         table.insert(buttons, resetBtn)
     end
 
+    if schema.openPluginManager then
+        local pmBtn = Layout:CreateButton(footer, "Plugin Manager", function()
+            if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
+                HideUIPanel(EditModeManagerFrame)
+            end
+            if Orbit.OptionsPanel then Orbit.OptionsPanel:Hide() end
+            C_Timer.After(0.1, function()
+                if Orbit._pluginSettingsCategoryID then
+                    Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
+                else
+                    Orbit:Print("Plugin Manager not yet loaded.")
+                end
+            end)
+        end)
+        table.insert(buttons, pmBtn)
+    end
+
     -- Extra Buttons
     if schema.extraButtons then
         for _, btnDef in ipairs(schema.extraButtons) do
