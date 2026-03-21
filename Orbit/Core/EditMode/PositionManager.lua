@@ -51,7 +51,6 @@ function PositionManager:MarkDirty(frame)
 end
 
 function PositionManager:FlushToStorage()
-    local count = 0; for _ in pairs(PendingFrames) do count = count + 1 end
     for name, frame in pairs(PendingFrames) do
         if frame and frame.orbitPlugin and frame.orbitPlugin.SetSetting then
             local systemIndex = frame.systemIndex or 1
