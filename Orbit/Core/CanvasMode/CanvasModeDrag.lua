@@ -38,7 +38,7 @@ local function DetectCreatorType(key, source)
     if key == "StatusIcons" or key == "RoleIcon" or key == "PvpIcon" then return "CyclingAtlas", false, false, false end
     if key == "Buffs" or key == "Debuffs" then return "Aura", false, true, false end
     -- Known aura icons + healer aura keys (dynamic keys not in standard icon sets)
-    local isAuraKey = AURA_ICON_KEYS[key] or (isIconFrame and not ({ MarkerIcon = 1, LeaderIcon = 1, MainTankIcon = 1 })[key])
+    local isAuraKey = AURA_ICON_KEYS[key] or (isIconFrame and not ({ MarkerIcon = 1, LeaderIcon = 1, MainTankIcon = 1, RestingIcon = 1 })[key])
     if isTexture then return "Texture", false, false, false end
     if isIconFrame then return "IconFrame", false, isAuraKey or false, false end
     if key == "Portrait" then return "Portrait", false, false, false end

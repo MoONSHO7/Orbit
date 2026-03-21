@@ -10,9 +10,7 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
         CastBarColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
         NonInterruptibleColor = { r = 0.7, g = 0.7, b = 0.7 },
         NonInterruptibleColorCurve = { pins = { { position = 0, color = { r = 0.7, g = 0.7, b = 0.7, a = 1 } } } },
-        CastBarText = true,
         CastBarIcon = true,
-        CastBarTimer = true,
         CastBarHeight = 35,
         CastBarWidth = 300,
         CastBarTextSize = 10,
@@ -20,8 +18,14 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
         ShowLatency = true,
         SparkColor = { r = 1, g = 1, b = 1, a = 1 },
         SparkColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+        DisabledComponents = {},
+        ComponentPositions = {
+            Text = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
+            Timer = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
+        },
     },
 })
+Plugin.canvasMode = true
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local INTERRUPT_FLASH_DURATION = Orbit.Constants.Timing.FlashDuration
@@ -97,9 +101,7 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
                 min = 120, max = 350, step = 10, default = Orbit.Constants.PlayerCastBar.DefaultWidth,
             })
         end
-        table.insert(schema.controls, { type = "checkbox", key = "CastBarText", label = "Show Spell Name", default = true })
         table.insert(schema.controls, { type = "checkbox", key = "CastBarIcon", label = "Show Icon", default = true })
-        table.insert(schema.controls, { type = "checkbox", key = "CastBarTimer", label = "Show Timer", default = true })
         table.insert(schema.controls, { type = "checkbox", key = "ShowLatency", label = "Show Latency", default = true })
     elseif currentTab == "Colour" then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
@@ -168,6 +170,7 @@ function Plugin:OnLoad()
 
     self.CastBar = CastBar
     self.Frame = CastBar
+    self.frame = CastBar
 
     -- Initialize Skin & Alias Regions
     if Orbit.Skin.CastBar then
@@ -181,6 +184,57 @@ function Plugin:OnLoad()
         CastBar.InterruptOverlay = skinned.InterruptOverlay
         CastBar.InterruptAnim = skinned.InterruptAnim
         CastBar.SparkGlow = skinned.SparkGlow
+    end
+
+    -- Canvas Mode: register Text and Timer as draggable components
+    if OrbitEngine.ComponentDrag then
+        if CastBar.Text then
+            OrbitEngine.ComponentDrag:Attach(CastBar.Text, CastBar, {
+                key = "Text",
+                onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(self, 1, "Text"),
+            })
+        end
+        if CastBar.Timer then
+            OrbitEngine.ComponentDrag:Attach(CastBar.Timer, CastBar, {
+                key = "Timer",
+                onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(self, 1, "Timer"),
+            })
+        end
+    end
+
+    -- Canvas Mode: preview renderer
+    function CastBar:CreateCanvasPreview(options)
+        local scale = options.scale or 1
+        local borderSize = options.borderSize or OrbitEngine.Pixel:DefaultBorderSize(scale)
+        local showIcon = Plugin:GetSetting(1, "CastBarIcon")
+        local height = self:GetHeight()
+        local iconSize = showIcon and height or 0
+        local barWidth = self:GetWidth() - iconSize
+        local preview = OrbitEngine.Preview.Frame:CreateBasePreview(self, scale, options.parent, borderSize)
+        local previewScale = preview:GetEffectiveScale()
+        preview:SetWidth(OrbitEngine.Pixel:Snap(barWidth * scale, previewScale))
+        preview.sourceWidth = barWidth
+        if showIcon then
+            local icon = preview:CreateTexture(nil, "ARTWORK")
+            icon:SetSize(iconSize * scale, iconSize * scale)
+            icon:SetPoint("RIGHT", preview, "LEFT", 0, 0)
+            icon:SetTexture(PREVIEW_ICON_ID)
+            icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        end
+        local bar = CreateFrame("StatusBar", nil, preview)
+        bar:SetAllPoints()
+        bar:SetMinMaxValues(0, PREVIEW_CAST_DURATION)
+        bar:SetValue(PREVIEW_CAST_PROGRESS)
+        local textureName = Plugin:GetSetting(1, "Texture")
+        local texturePath = textureName and LSM:Fetch("statusbar", textureName)
+        if texturePath then bar:SetStatusBarTexture(texturePath) end
+        local cbColorCurve = Plugin:GetSetting(1, "CastBarColorCurve")
+        if cbColorCurve then
+            local c = OrbitEngine.ColorCurve:GetFirstColorFromCurve(cbColorCurve)
+            if c then bar:SetStatusBarColor(c.r, c.g, c.b) end
+        end
+        preview.CastBar = bar
+        return preview
     end
 
     -- Disable Blizzard's cast bar
@@ -601,10 +655,10 @@ function Plugin:ApplySettings(systemFrame)
     local height = self:GetSetting(systemIndex, "CastBarHeight")
     local borderSize = self:GetSetting(systemIndex, "BorderSize")
     local texture = self:GetSetting(systemIndex, "Texture")
-    local showText = self:GetSetting(systemIndex, "CastBarText")
     local showIcon = self:GetSetting(systemIndex, "CastBarIcon")
     local textSize = 10
-    local showTimer = self:GetSetting(systemIndex, "CastBarTimer")
+    local fontName = self:GetSetting(systemIndex, "Font")
+    local fontPath = fontName and LSM:Fetch("font", fontName)
 
     self.cachedHeight = height
 
@@ -620,7 +674,6 @@ function Plugin:ApplySettings(systemFrame)
     -- Pass everything to Skin
     if Orbit.Skin.CastBar and bar.orbitBar then
         local color = self:GetSetting(systemIndex, "CastBarColor")
-        local fontName = self:GetSetting(systemIndex, "Font")
         local backdropColor = self:GetSetting(systemIndex, "BackdropColour")
         local globalSettings = Orbit.db.GlobalSettings or {}
 
@@ -629,9 +682,7 @@ function Plugin:ApplySettings(systemFrame)
             color = color,
             borderSize = borderSize,
             textSize = textSize,
-            showText = showText,
             showIcon = showIcon,
-            showTimer = showTimer,
             font = fontName,
             textColor = { r = 1, g = 1, b = 1, a = 1 },
             backdropColor = backdropColor,
@@ -646,6 +697,32 @@ function Plugin:ApplySettings(systemFrame)
 
     if not isAnchored then
         bar:SetScale(scale / SCALE_DIVISOR)
+    end
+
+    -- Canvas Mode: visibility, overrides, and position restore
+    local savedPositions = self:GetComponentPositions(systemIndex)
+
+    if bar.Text then
+        if not OrbitEngine.ComponentDrag:IsDisabled(bar.Text) then
+            bar.Text:Show()
+            local overrides = savedPositions.Text and savedPositions.Text.overrides or {}
+            OrbitEngine.OverrideUtils.ApplyOverrides(bar.Text, overrides, { fontSize = textSize, fontPath = fontPath })
+        else
+            bar.Text:Hide()
+        end
+    end
+    if bar.Timer then
+        if not OrbitEngine.ComponentDrag:IsDisabled(bar.Timer) then
+            bar.Timer:Show()
+            local overrides = savedPositions.Timer and savedPositions.Timer.overrides or {}
+            OrbitEngine.OverrideUtils.ApplyOverrides(bar.Timer, overrides, { fontSize = textSize, fontPath = fontPath })
+        else
+            bar.Timer:Hide()
+        end
+    end
+
+    if savedPositions and OrbitEngine.ComponentDrag then
+        OrbitEngine.ComponentDrag:RestoreFramePositions(bar, savedPositions)
     end
 
     -- Restore Position (critical for profile switching)
