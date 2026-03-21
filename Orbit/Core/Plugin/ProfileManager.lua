@@ -15,11 +15,11 @@ local DEFAULT_PROFILE = "Global"
 local DELAYED_REFRESH = 0.1
 
 local GLOBAL_DEFAULTS = {
-    Font = "PT Sans Narrow",
+    Font = "Barlow Condensed Bold",
     BorderSize = 2,
-    TextScale = "Medium",
+    IconBorderSize = 4,
     FontOutline = "OUTLINE",
-    BackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
+    BackdropColour = { r = 0.145, g = 0.145, b = 0.145, a = 0.7 },
     BarColor = { r = 0.2, g = 0.8, b = 0.2, a = 1 },
     BarColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 }, type = "class" } } },
     ClassColorBackground = false,

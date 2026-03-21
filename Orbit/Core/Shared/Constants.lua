@@ -131,11 +131,11 @@ C.Settings = {
     Scale = { Min = 50, Max = 150, Step = 1, Default = 100 },
     Opacity = { Min = 0, Max = 100, Step = 1, Default = 100 },
     TextSize = { Min = 8, Max = 32, Step = 1, Default = 12 },
-    BorderSize = { Min = 1, Max = 5, Step = 1, Default = 1 },
+    BorderSize = { Min = 1, Max = 5, Step = 1, Default = 2 },
     Spacing = { Min = -5, Max = 50, Step = 1, Default = 2 },
     Padding = { Min = -5, Max = 15, Step = 1, Default = 0 },
-    Font = { Default = "PT Sans Narrow", FallbackPath = "Fonts\\FRIZQT__.TTF" },
-    Texture = { Default = "Melli" },
+    Font = { Default = "Barlow Condensed Bold", FallbackPath = "Fonts\\FRIZQT__.TTF" },
+    Texture = { Default = "Solid" },
 }
 
 -- [ BORDER STYLE ]---------------------------------------------------------------------------------

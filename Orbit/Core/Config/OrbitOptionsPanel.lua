@@ -84,14 +84,6 @@ local function GetGlobalSchema()
     local controls = {
         { type = "font", key = "Font", label = "Font", default = "PT Sans Narrow" },
         {
-            type = "dropdown", key = "TextScale", label = "Text Scale",
-            options = {
-                { label = "Small", value = "Small" }, { label = "Medium", value = "Medium" },
-                { label = "Large", value = "Large" }, { label = "Extra Large", value = "ExtraLarge" },
-            },
-            default = "Medium",
-        },
-        {
             type = "dropdown", key = "FontOutline", label = "Outline",
             options = {
                 { label = "None", value = "" }, { label = "Outline", value = "OUTLINE" },
@@ -176,7 +168,6 @@ local function GetGlobalSchema()
             local d = Orbit.db.GlobalSettings
             if d then
                 d.Font = "PT Sans Narrow"
-                d.TextScale = "Medium"
                 d.FontOutline = "OUTLINE"
                 d.BorderSize = 2
                 d.BorderStyle = Constants.BorderStyle.Default

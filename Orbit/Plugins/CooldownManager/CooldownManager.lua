@@ -194,8 +194,7 @@ function Plugin:GetGrowthDirection()
     return "DOWN"
 end
 function Plugin:GetBaseFontSize()
-    local s = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.TextScale or 1
-    return 12 * s
+    return 12
 end
 function Plugin:GetGlobalFont()
     local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font

@@ -29,10 +29,9 @@ local MAX_ERRORS = 50
 local INIT_TIMER_DELAY = 0.05
 
 local GLOBAL_DEFAULTS = {
-    Font = "PT Sans Narrow",
+    Font = "Barlow Condensed Bold",
     Texture = "Solid",
     BorderSize = 2,
-    TextScale = "Medium",
     FontOutline = "OUTLINE",
     BackdropColour = { r = 0.145, g = 0.145, b = 0.145, a = 0.7 },
 }

@@ -12,15 +12,12 @@ end
 local VIEWER_MAP = CDM.viewerMap
 local LSM = LibStub("LibSharedMedia-3.0", true)
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local TEXT_SCALE_SIZES = { Small = 10, Medium = 12, Large = 14, ExtraLarge = 16 }
 local FALLBACK_FONT = STANDARD_TEXT_FONT
 local FALLBACK_TEXTURE = "Interface\\Icons\\INV_Misc_QuestionMark"
 
 -- [ FONT HELPERS ]----------------------------------------------------------------------------------
 function CDM:GetBaseFontSize()
-    local scale = Orbit.db.GlobalSettings.TextScale
-    return TEXT_SCALE_SIZES[scale] or 12
+    return 12
 end
 
 function CDM:GetGlobalFont()

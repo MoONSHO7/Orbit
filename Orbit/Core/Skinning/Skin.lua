@@ -99,7 +99,7 @@ function Skin:ApplyIconGroupBorder(container, styleEntry)
         -- Pixel mode: flat border on container
         self:ClearNineSliceBorder(container)
         local gs = Orbit.db and Orbit.db.GlobalSettings
-        local borderSize = gs and gs.IconBorderSize or 2
+        local borderSize = gs and gs.IconBorderSize or 4
         self:SkinBorder(container, container, borderSize, nil, true, true)
         if container._borderFrame then
             container._borderFrame:SetFrameLevel(container:GetFrameLevel() + Constants.Levels.IconOverlay)
@@ -178,7 +178,7 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
 
     -- For icons, use the icon-specific border size setting
     local gs = Orbit.db and Orbit.db.GlobalSettings
-    local targetSize = isIcon and (gs and gs.IconBorderSize or 2) or (size or 1)
+    local targetSize = isIcon and (gs and gs.IconBorderSize or 4) or (size or 1)
     if targetSize <= 0 then
         frame.borderPixelSize = 0
         bf:Hide()
