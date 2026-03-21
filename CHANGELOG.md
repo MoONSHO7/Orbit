@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 - **UI Consistency & Defaults** — Default fonts (now Barlow Condensed Bold) and underlying layout borders have been strictly aligned for fresh profile builds.
+- **UI Consistency & Defaults** — Temporarily disabled anchoring on Tracked Cooldowns & Charges, working on a fix for these with new profiles & more blizzard addon restrictions coming in soon
 
 ### Fixed
 - **RestingIcon** — Fixed issue with positioning the icon in canvas mode.
