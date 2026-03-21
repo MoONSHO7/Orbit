@@ -10,26 +10,13 @@ local UpdateInRange = GroupFrameMixin.UpdateInRange
 -- [ AURA SNAPSHOT HELPERS ]------------------------------------------------------------------------
 local IsSecret = issecretvalue
 
-local function BuildAuraSnapshot(unit)
-    local harmful = C_UnitAuras.GetUnitAuras(unit, "HARMFUL") or {}
-    local helpful = C_UnitAuras.GetUnitAuras(unit, "HELPFUL") or {}
-    local helpfulBySpell = {}
-    local helpfulPlayerBySpell = {}
-    for _, aura in ipairs(helpful) do
-        local sid = aura.spellId
-        if not IsSecret(sid) then
-            helpfulBySpell[sid] = aura
-            if aura.isFromPlayerOrPlayerPet then helpfulPlayerBySpell[sid] = aura end
-        end
-    end
-    return { harmful = harmful, helpful = helpful, helpfulBySpell = helpfulBySpell, helpfulPlayerBySpell = helpfulPlayerBySpell }
-end
+-- Deleted local BuildAuraSnapshot (Moved to AuraMixin)
 
 -- [ AURA UPDATE DISPATCH ]------------------------------------------------------------------------
 local function ProcessAuraUpdate(f, plugin, callbacks)
     local unit = f.unit
     if not unit or not UnitExists(unit) then return end
-    local snapshot = BuildAuraSnapshot(unit)
+    local snapshot = Orbit.AuraMixin:BuildAuraSnapshot(unit)
     f._auraSnapshot = snapshot
     callbacks.UpdateDebuffs(f, plugin)
     callbacks.UpdateBuffs(f, plugin)

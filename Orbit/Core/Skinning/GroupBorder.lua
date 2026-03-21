@@ -106,12 +106,7 @@ function Skin:UpdateGroupBorder(rootFrame)
     local overlay = rootFrame._groupBorderOverlay
     local gs = Orbit.db and Orbit.db.GlobalSettings
 
-    -- Seam-fill: a low-level background behind all content to cover sub-pixel gaps at merge joints.
-    -- When a parent's edge doesn't fall on an exact pixel boundary, a 1-2px transparent seam
-    -- appears between merged frames. This background fills the combined bounding box to mask it.
-    if not rootFrame._groupSeamFill then
-        rootFrame._groupSeamFill = rootFrame:CreateTexture(nil, "BACKGROUND", nil, -8)
-    end
+
 
     -- Calculate bounding box from anchor edge data (deterministic, no screen coords needed).
     -- Each frame's position relative to rootFrame TOPLEFT is derived from its anchor edge.
@@ -158,21 +153,14 @@ function Skin:UpdateGroupBorder(rootFrame)
     local offsetX = -minX
     local offsetY = -minY
 
-    -- Position seam-fill behind content
-    local seamFill = rootFrame._groupSeamFill
-    local bgColor = Constants.Colors.Background
-    seamFill:ClearAllPoints()
-    seamFill:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", -offsetX, offsetY)
-    seamFill:SetSize(totalW, totalH)
-    seamFill:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
-    seamFill:Show()
+
 
     if isPixelMode then
         -- Pixel-style group overlay: use WHITE8x8 with pixel-snapped sizing
         local scale = rootFrame:GetEffectiveScale()
         if not scale or scale < 0.01 then scale = 1 end
         local borderSize = isIconStyle and (gs and gs.IconBorderSize or 2) or (gs and gs.BorderSize or 2)
-        if borderSize <= 0 then overlay:Hide(); seamFill:Hide(); return end
+        if borderSize <= 0 then overlay:Hide(); return end
         local pixelSize = Engine.Pixel:Multiple(borderSize, scale)
         overlay:ClearAllPoints()
         overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", -offsetX, offsetY)

@@ -42,6 +42,21 @@ function Mixin:CreateAuraPool(frame, template, parent)
     return frame.auraPool
 end
 
+function Mixin:BuildAuraSnapshot(unit)
+    local harmful = C_UnitAuras.GetUnitAuras(unit, "HARMFUL") or {}
+    local helpful = C_UnitAuras.GetUnitAuras(unit, "HELPFUL") or {}
+    local helpfulBySpell = {}
+    local helpfulPlayerBySpell = {}
+    for _, aura in ipairs(helpful) do
+        local sid = aura.spellId
+        if not issecretvalue(sid) then
+            helpfulBySpell[sid] = aura
+            if aura.isFromPlayerOrPlayerPet then helpfulPlayerBySpell[sid] = aura end
+        end
+    end
+    return { harmful = harmful, helpful = helpful, helpfulBySpell = helpfulBySpell, helpfulPlayerBySpell = helpfulPlayerBySpell }
+end
+
 function Mixin:FetchAuras(unit, filter, maxCount)
     local auras = {}
     if unit and UnitExists(unit) then
@@ -208,28 +223,19 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     local density = overrides.FilterDensity or 1
     if density <= 1 then fetchFilter = fetchFilter .. "|RAID_IN_COMBAT"
     elseif density >= 3 then fetchFilter = fetchFilter:gsub("|PLAYER", "") end
-    -- Use snapshot when available (UNIT_AURA path), fall back to FetchAuras (OnShow path)
+    -- Force everything to use the secure snapshot architecture, building securely locally if the OnEvent missed it
+    local snap = frame._auraSnapshot or self:BuildAuraSnapshot(unit)
+    local rawAuras = fetchFilter:find("HARMFUL") and snap.harmful or snap.helpful
     local auras
-    local postFilterOverride = fetchFilter
-    local snap = frame._auraSnapshot
-    local rawAuras
-    if snap then
-        rawAuras = fetchFilter:find("HARMFUL") and snap.harmful or snap.helpful
-    end
     if cfg.postFilter then
-        if not rawAuras then rawAuras = plugin:FetchAuras(unit, fetchFilter, cfg.fetchMax or 40) end
-        auras = cfg.postFilter(plugin, unit, rawAuras, maxIcons, postFilterOverride)
+        auras = cfg.postFilter(plugin, unit, rawAuras, maxIcons, fetchFilter)
     else
-        if rawAuras then
-            auras = {}
-            for _, a in ipairs(rawAuras) do
-                if a.auraInstanceID and not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, a.auraInstanceID, fetchFilter) then
-                    auras[#auras + 1] = a
-                    if #auras >= maxIcons then break end
-                end
+        auras = {}
+        for _, a in ipairs(rawAuras) do
+            if a.auraInstanceID and not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, a.auraInstanceID, fetchFilter) then
+                auras[#auras + 1] = a
+                if #auras >= maxIcons then break end
             end
-        else
-            auras = plugin:FetchAuras(unit, fetchFilter, maxIcons)
         end
     end
     if #auras == 0 then container._auraFingerprint = nil; frame[poolKey]:ReleaseAll(); container:Hide(); return end
@@ -405,22 +411,8 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
         return
     end
     local overrides = GetComponentOverrides(plugin, iconKey)
-    -- Use snapshot for O(1) lookup when available, otherwise fall back to linear scan
-    local aura
-    local snap = frame._auraSnapshot
-    if snap and snap.helpfulPlayerBySpell then
-        aura = snap.helpfulPlayerBySpell[spellId] or (altSpellId and snap.helpfulPlayerBySpell[altSpellId])
-    else
-        for i = 1, SPELL_AURA_SCAN_MAX do
-            local candidate = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL|PLAYER")
-            if not candidate then break end
-            local sid = candidate.spellId
-            if not IsSecret(sid) and (sid == spellId or (altSpellId and sid == altSpellId)) then
-                aura = candidate
-                break
-            end
-        end
-    end
+    local snap = frame._auraSnapshot or self:BuildAuraSnapshot(unit)
+    local aura = snap.helpfulPlayerBySpell[spellId] or (altSpellId and snap.helpfulPlayerBySpell[altSpellId])
     if aura then
         local icon = self:EnsureAuraIcon(frame, iconKey, iconSize)
         local remainingPercent = 1
@@ -512,20 +504,8 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
         return
     end
 
-    -- Use snapshot when available, otherwise scan auras
-    local present
-    local snap = frame._auraSnapshot
-    if snap and snap.helpfulBySpell then
-        present = snap.helpfulBySpell
-    else
-        present = {}
-        for i = 1, SPELL_AURA_SCAN_MAX do
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
-            if not aura then break end
-            local sid = aura.spellId
-            if not IsSecret(sid) then present[sid] = true end
-        end
-    end
+    local snap = frame._auraSnapshot or self:BuildAuraSnapshot(unit)
+    local present = snap.helpfulBySpell
     -- Collect missing buffs (only YOUR class's raid buff, from any caster)
     local missing = {}
     for _, buff in ipairs(raidBuffs) do
