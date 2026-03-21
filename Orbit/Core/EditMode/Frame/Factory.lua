@@ -34,6 +34,13 @@ function FrameFactory:Create(name, plugin, opts)
     local systemIndex = opts.systemIndex or DEFAULT_SYSTEM_INDEX
 
     local frameName = "Orbit" .. name
+    local existing = _G[frameName]
+    if existing then
+        existing.orbitPlugin = plugin
+        existing.systemIndex = systemIndex
+        return existing
+    end
+
     local frame = CreateFrame(frameType, frameName, parent, opts.template)
 
     frame:SetSize(width, height)

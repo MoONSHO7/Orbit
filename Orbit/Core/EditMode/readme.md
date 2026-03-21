@@ -35,7 +35,7 @@ EditMode/
     Guard.lua           -- frame protection (combat lockdown safety)
     NudgeRepeat.lua     -- keyboard nudge repeat timer
     Position/
-      Anchor.lua        -- anchor chain resolution, parent/child relationships, border merge state (per-axis via ShouldMergeBorders), ResyncAll on border size changes
+      Anchor.lua        -- anchor chain resolution, parent/child relationships, border merge state (per-axis via ShouldMergeBorders), ResyncAll on border size changes, RepairChain/RepairAllChains for profile-switch chain repair
       Persistence.lua   -- position save/restore to saved variables
       PositionUtils.lua -- position math helpers (offset calculation, bounds)
     Selection/

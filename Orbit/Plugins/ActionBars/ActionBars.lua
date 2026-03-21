@@ -8,7 +8,7 @@ local ABText = Orbit.ActionBarsText
 local ABPreview = Orbit.ActionBarsPreview
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local BUTTON_SIZE = 36
+local BUTTON_SIZE = 32
 local PET_BAR_INDEX = 9
 local STANCE_BAR_INDEX = 10
 local POSSESS_BAR_INDEX = 11
@@ -37,6 +37,8 @@ end
 
 local SPECIAL_BAR_INDICES = { [STANCE_BAR_INDEX] = true, [POSSESS_BAR_INDEX] = true }
 local DROPPABLE_CURSOR_TYPES = { spell = true, petaction = true, flyout = true, item = true, macro = true, mount = true }
+local rangeButtons = {}
+local cachedOORColor, cachedOOMColor, cachedUnusableColor
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local BAR_CONFIG = {
@@ -90,15 +92,18 @@ end
 
 local function IsDesaturated(curveData) return curveData and curveData.desaturated or false end
 
+local function InvalidateColorCache() cachedOORColor = nil; cachedOOMColor = nil; cachedUnusableColor = nil end
+
 local function RefreshIconColor(plugin, button)
     if not button or not button.icon or not button.action then return end
     if not C_ActionBar.HasAction(button.action) then return end
     local _, spellID = GetActionInfo(button.action)
     local isUsable, notEnoughMana = IsUsableAction(button.action)
     local outOfRange = spellID and C_Spell.SpellHasRange(spellID) and C_Spell.IsSpellInRange(spellID) == false
-    local oorData = plugin:GetSetting(1, "OORColor") or DEFAULT_OOR_COLOR
-    local oomData = plugin:GetSetting(1, "OOMColor") or DEFAULT_OOM_COLOR
-    local unusableData = plugin:GetSetting(1, "UnusableColor") or DEFAULT_UNUSABLE_COLOR
+    if not cachedOORColor then cachedOORColor = plugin:GetSetting(1, "OORColor") or DEFAULT_OOR_COLOR end
+    if not cachedOOMColor then cachedOOMColor = plugin:GetSetting(1, "OOMColor") or DEFAULT_OOM_COLOR end
+    if not cachedUnusableColor then cachedUnusableColor = plugin:GetSetting(1, "UnusableColor") or DEFAULT_UNUSABLE_COLOR end
+    local oorData, oomData, unusableData = cachedOORColor, cachedOOMColor, cachedUnusableColor
     if outOfRange then
         local c = ExtractColor(oorData)
         button.icon:SetVertexColor(c.r, c.g, c.b)
@@ -120,7 +125,11 @@ end
 local function HookButtonState(plugin, button)
     if button.__orbitStateHooked then return end
     if button.UpdateUsable then hooksecurefunc(button, "UpdateUsable", function(self) RefreshIconColor(plugin, self) end) end
-    if button.Update then hooksecurefunc(button, "Update", function(self) RefreshIconColor(plugin, self) end) end
+    if button.Update then hooksecurefunc(button, "Update", function(self)
+        RefreshIconColor(plugin, self)
+        local _, sid = GetActionInfo(self.action)
+        if sid and C_Spell.SpellHasRange(sid) then rangeButtons[self] = true else rangeButtons[self] = nil end
+    end) end
     button.__orbitStateHooked = true
 end
 
@@ -228,13 +237,13 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
         table.insert(schema.controls, { type = "colorcurve", key = "OORColor", label = "Out of Range", singleColor = true, hasDesaturation = true,
             default = DEFAULT_OOR_COLOR,
-            onChange = function(val) self:SetSetting(1, "OORColor", val); RefreshAllButtons() end })
+            onChange = function(val) self:SetSetting(1, "OORColor", val); InvalidateColorCache(); RefreshAllButtons() end })
         table.insert(schema.controls, { type = "colorcurve", key = "OOMColor", label = "Out of Mana", singleColor = true, hasDesaturation = true,
             default = DEFAULT_OOM_COLOR,
-            onChange = function(val) self:SetSetting(1, "OOMColor", val); RefreshAllButtons() end })
+            onChange = function(val) self:SetSetting(1, "OOMColor", val); InvalidateColorCache(); RefreshAllButtons() end })
         table.insert(schema.controls, { type = "colorcurve", key = "UnusableColor", label = "Not Usable", singleColor = true, hasDesaturation = true,
             default = DEFAULT_UNUSABLE_COLOR,
-            onChange = function(val) self:SetSetting(1, "UnusableColor", val); RefreshAllButtons() end })
+            onChange = function(val) self:SetSetting(1, "UnusableColor", val); InvalidateColorCache(); RefreshAllButtons() end })
         table.insert(schema.controls, { type = "colorcurve", key = "CooldownSwipeColor", label = "Cooldown Swipe", singleColor = true,
             default = DEFAULT_CD_SWIPE,
             onChange = function(val) self:SetSetting(1, "CooldownSwipeColor", val); self:ApplyAll() end })
@@ -369,14 +378,16 @@ function Plugin:OnLoad()
         local wasDragging = self.isDraggingDroppable
         if isDraggingDroppable then self.isDraggingDroppable = true
         elseif wasDragging then self.isDraggingDroppable = false end
+        if not isDraggingDroppable and not wasDragging then return end
         if self.cursorTimer then self.cursorTimer:Cancel() end
-        self.cursorTimer = C_Timer.NewTimer(0.05, function() if not InCombatLockdown() then self:ApplyAll() end end)
+        self.cursorTimer = C_Timer.NewTimer(0.05, function()
+            if InCombatLockdown() then return end
+            for index in pairs(self.containers) do self:LayoutButtons(index) end
+        end)
     end, self)
     -- [ SPELL STATE HOOKS ]--------------------------------------------------------------------------
     Orbit.EventBus:On("PLAYER_TARGET_CHANGED", function()
-        for _, buttons in pairs(self.buttons) do
-            for _, button in ipairs(buttons) do RefreshIconColor(self, button) end
-        end
+        for button in pairs(rangeButtons) do RefreshIconColor(self, button) end
     end, self)
     local plugin = self
     Orbit.EventBus:On("ACTION_RANGE_CHECK_UPDATE", function(slot)

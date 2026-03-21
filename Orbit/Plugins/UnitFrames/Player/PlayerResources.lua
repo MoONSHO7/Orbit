@@ -9,21 +9,22 @@ local DiscreteRenderer = Orbit.DiscreteBarRenderer
 local DEFAULTS = { Width = 200, Height = 12, Y = -200 }
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
 local UPDATE_INTERVAL = 0.05
-local MAX_SPACER_COUNT = 10
-local DIVIDER_SIZE_DEFAULT = 2
-local INACTIVE_DIM_FACTOR = 0.5
-local PARTIAL_DIM_FACTOR = 0.7
+local RC = Orbit.PlayerResourceConstants
+local MAX_SPACER_COUNT = RC.MAX_SPACER_COUNT
+local DIVIDER_SIZE_DEFAULT = RC.DIVIDER_SIZE_DEFAULT
+local INACTIVE_DIM_FACTOR = RC.INACTIVE_DIM_FACTOR
+local PARTIAL_DIM_FACTOR = RC.PARTIAL_DIM_FACTOR
 local OVERLAY_LEVEL_OFFSET = Orbit.Constants.Levels.Overlay
 local PREVIEW_BAR_FILL = 0.65
 local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
 local TICK_SIZE_MAX = OrbitEngine.TickMixin.TICK_SIZE_MAX
 local TICK_ALPHA_CURVE = OrbitEngine.TickMixin.TICK_ALPHA_CURVE
-local OVERLAY_BLEND_ALPHA = 0.3
-local OVERLAY_TEXTURE = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
-local DK_SPEC_BLOOD = 250
-local DK_SPEC_FROST = 251
-local DK_SPEC_UNHOLY = 252
-local WARLOCK_SPEC_DESTRUCTION = 267
+local OVERLAY_BLEND_ALPHA = RC.OVERLAY_BLEND_ALPHA
+local OVERLAY_TEXTURE = RC.OVERLAY_TEXTURE
+local DK_SPEC_BLOOD = RC.DK_SPEC_BLOOD
+local DK_SPEC_FROST = RC.DK_SPEC_FROST
+local DK_SPEC_UNHOLY = RC.DK_SPEC_UNHOLY
+local WARLOCK_SPEC_DESTRUCTION = RC.WARLOCK_SPEC_DESTRUCTION
 local _, PLAYER_CLASS = UnitClass("player")
 
 -- [ HELPERS ]--------------------------------------------------------------------------------------
@@ -265,9 +266,11 @@ function Plugin:OnLoad()
         Frame.Overlay:SetFrameLevel(Frame:GetFrameLevel() + OVERLAY_LEVEL_OFFSET)
     end
 
-    OrbitEngine.FrameFactory:AddText(Frame, { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = -2, useOverlay = true })
-    if Frame.Text then
-        Frame.Text:SetParent(Frame.Overlay)
+    if not Frame.Text then
+        OrbitEngine.FrameFactory:AddText(Frame, { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = -2, useOverlay = true })
+        if Frame.Text then
+            Frame.Text:SetParent(Frame.Overlay)
+        end
     end
 
     -- Create StatusBar container for continuous resources (Stagger, Soul Fragments, Ebon Might)
@@ -306,11 +309,14 @@ function Plugin:OnLoad()
         OrbitEngine.TickMixin:Create(Frame, Frame.StatusBar)
     end
 
-    Frame:HookScript("OnSizeChanged", function()
-        Orbit.Async:Debounce("PlayerResources_SpacerLayout", function()
-            if Frame.maxPower then Plugin:RepositionSpacers(Frame.maxPower) end
-        end, 0.05)
-    end)
+    if not Frame._orbitSizeHooked then
+        Frame._orbitSizeHooked = true
+        Frame:HookScript("OnSizeChanged", function()
+            Orbit.Async:Debounce("PlayerResources_SpacerLayout", function()
+                if Frame.maxPower then Plugin:RepositionSpacers(Frame.maxPower) end
+            end, 0.05)
+        end)
+    end
 
 
 

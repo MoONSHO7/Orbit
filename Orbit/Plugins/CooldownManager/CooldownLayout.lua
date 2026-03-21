@@ -127,34 +127,38 @@ function CDM:ProcessChildren(anchor)
 
     for _, child in ipairs(PackChildren(blizzFrame:GetChildren())) do
         if child.layoutIndex then
-            if not child.orbitOnShowHooked then
-                local plugin = self
-                child:HookScript("OnShow", function(c)
-                    local parent = c:GetParent()
-                    local anc = parent and parent:GetParent()
-                    if Orbit.Skin.Icons.frameSettings then
-                        local s = Orbit.Skin.Icons.frameSettings[parent]
-                        if s then
-                            Orbit.Skin.Icons:ApplyCustom(c, s)
+            -- Per-icon OnShow/RefreshData hooks only for BuffIcon/BuffBar.
+            -- Essential/Utility use viewer-level UpdateLayout/RefreshLayout hooks.
+            if systemIndex == BUFFICON_INDEX or systemIndex == BUFFBAR_INDEX then
+                if not child.orbitOnShowHooked then
+                    local plugin = self
+                    child:HookScript("OnShow", function(c)
+                        local parent = c:GetParent()
+                        local anc = parent and parent:GetParent()
+                        if anc and anc.systemIndex ~= BUFFBAR_INDEX and Orbit.Skin.Icons.frameSettings then
+                            local s = Orbit.Skin.Icons.frameSettings[parent]
+                            if s then
+                                Orbit.Skin.Icons:ApplyCustom(c, s)
+                            end
                         end
-                    end
-                    if anc and plugin.ProcessChildren then
-                        Orbit.Async:Debounce("CDM_OnShow_" .. systemIndex, function()
-                            plugin:ProcessChildren(anc)
-                        end, 0)
-                    end
-                end)
-                child.orbitOnShowHooked = true
-            end
+                        if anc and plugin.ProcessChildren then
+                            Orbit.Async:Debounce("CDM_OnShow_" .. systemIndex, function()
+                                plugin:ProcessChildren(anc)
+                            end, 0)
+                        end
+                    end)
+                    child.orbitOnShowHooked = true
+                end
 
-            if not child.orbitRefreshHooked and child.RefreshData then
-                local a = anchor
-                hooksecurefunc(child, "RefreshData", function()
-                    Orbit.Async:Debounce("CDM_Refresh_" .. systemIndex, function()
-                        CDM:ProcessChildren(a)
-                    end, Constants.Timing.KeyboardRestoreDelay)
-                end)
-                child.orbitRefreshHooked = true
+                if not child.orbitRefreshHooked and child.RefreshData then
+                    local a = anchor
+                    hooksecurefunc(child, "RefreshData", function()
+                        Orbit.Async:Debounce("CDM_Refresh_" .. systemIndex, function()
+                            CDM:ProcessChildren(a)
+                        end, Constants.Timing.KeyboardRestoreDelay)
+                    end)
+                    child.orbitRefreshHooked = true
+                end
             end
 
             if alwaysShow then

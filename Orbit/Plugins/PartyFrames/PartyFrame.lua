@@ -150,6 +150,7 @@ local SafeUnregisterUnitWatch = Orbit.GroupFrameMixin.SafeUnregisterUnitWatch
 local function GetPowerColor(powerType) return Orbit.Constants.Colors:GetPowerColor(powerType) end
 
 -- [ ROLE SORTING ]---------------------------------------------------------------------------------
+local PARTY_UNITS = { "party1", "party2", "party3", "party4" }
 
 local function GetRolePriority(unit)
     if not UnitExists(unit) then
@@ -163,11 +164,11 @@ end
 local function GetSortedPartyUnits(includePlayer)
     local units = {}
     if includePlayer then
-        table.insert(units, "player")
+        units[#units + 1] = "player"
     end
     for i = 1, 4 do
-        if UnitExists("party" .. i) then
-            table.insert(units, "party" .. i)
+        if UnitExists(PARTY_UNITS[i]) then
+            units[#units + 1] = PARTY_UNITS[i]
         end
     end
 
@@ -505,22 +506,11 @@ function Plugin:OnLoad()
     eventFrame:SetScript("OnEvent", function(_, event)
         if event == "PLAYER_ENTERING_WORLD" then C_Timer.After(0.5, function() UpdateVisibilityDriver(self); self:UpdateFrameUnits() end); return end
         if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
-            UpdateVisibilityDriver(self) -- Re-evaluate driver on roster changes
+            UpdateVisibilityDriver(self)
             if not InCombatLockdown() then self:UpdateFrameUnits() end
-            for i, frame in ipairs(self.frames) do
-                if frame.unit then
-                    UpdateInRange(frame)
-                    if frame.UpdateAll then frame:UpdateAll() end
-                    UpdatePowerBar(frame, self)
-                end
-            end
+            return
         end
-
         if event == "PLAYER_REGEN_ENABLED" then UpdateVisibilityDriver(self) end
-        if not InCombatLockdown() then
-            self:PositionFrames()
-            self:UpdateContainerSize()
-        end
     end)
 
     self.skipEditModeApply = true
@@ -647,7 +637,11 @@ function Plugin:UpdateFrameUnits()
     if self.frames and self.frames[1] and self.frames[1].preview then return end
 
     local includePlayer = self:GetSetting(1, "IncludePlayer")
-    local sortedUnits = GetSortedPartyUnits(includePlayer)
+    local sortedUnits = {}
+    -- Unregister party frames from events if in a raid with > 5 members
+    if not (IsInRaid() and GetNumGroupMembers() > 5) then
+        sortedUnits = GetSortedPartyUnits(includePlayer)
+    end
 
     for i = 1, MAX_PARTY_FRAMES do
         local frame = self.frames[i]

@@ -266,9 +266,25 @@ function Drag:OnDragStart(selectionOverlay)
             if savedL and savedB then
                 parent:ClearAllPoints()
                 parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(savedL, scale), Engine.Pixel:Snap(savedB, scale))
+            else
+                local l, b = parent:GetLeft(), parent:GetBottom()
+                if l and b then
+                    parent:ClearAllPoints()
+                    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l, scale), Engine.Pixel:Snap(b, scale))
+                else
+                    parent:ClearAllPoints()
+                end
             end
             parent:StartMoving()
         else
+            local scale = parent:GetEffectiveScale()
+            local l, b = parent:GetLeft(), parent:GetBottom()
+            if l and b then
+                parent:ClearAllPoints()
+                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l, scale), Engine.Pixel:Snap(b, scale))
+            else
+                parent:ClearAllPoints()
+            end
             parent:StartMoving()
         end
 
@@ -394,15 +410,16 @@ function Drag:OnDragStop(selectionOverlay)
             if not point then
                 point, _, _, x, y = parent:GetPoint(1)
             end
+
+            if Selection.dragCallbacks[parent] then
+                Selection.dragCallbacks[parent](parent, point, x, y)
+            end
+
             parent:ClearAllPoints()
             parent:SetPoint(point or "CENTER", x or 0, y or 0)
 
             if parent.orbitPlugin and parent.orbitPlugin.ApplySettings then
                 parent.orbitPlugin:ApplySettings(parent)
-            end
-
-            if Selection.dragCallbacks[parent] then
-                Selection.dragCallbacks[parent](parent, point, x, y)
             end
         end
     end

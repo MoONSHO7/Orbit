@@ -23,8 +23,11 @@ local OUT_OF_RANGE_ALPHA = GF.OutOfRangeAlpha
 local OFFLINE_ALPHA = GF.OfflineAlpha
 local OVERLAY_LEVEL_BOOST = Orbit.Constants.Levels.Tooltip
 local UNIT_REREGISTER_EVENTS = {
-    "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT",
+    "UNIT_HEALTH", "UNIT_MAXHEALTH",
+    "UNIT_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_PREDICTION",
+    "UNIT_POWER_UPDATE", "UNIT_MAXPOWER",
     "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS",
+    "UNIT_NAME_UPDATE", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "UNIT_OTHER_PARTY_CHANGED",
     "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
 }
 
@@ -50,6 +53,7 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
         ShowGroupLabels = true,
         ShowHealthValue = true,
         HealthTextMode = "percent_short",
+        UpdateRate = 0,
 
         ComponentPositions = {
             Name = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 10, justifyH = "CENTER", posX = 0, posY = 10 },
@@ -376,6 +380,7 @@ function Plugin:OnLoad()
     self.container:SetSize(self:GetSetting(1, "Width") or 90, 100)
 
     self:PositionFrames()
+    self.auraThrottleInterval = self:GetSetting(1, "UpdateRate") or 0
     self:ApplySettings()
     self:UpdateFrameUnits()
 
@@ -391,19 +396,9 @@ function Plugin:OnLoad()
         if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
             UpdateVisibilityDriver()
             if not InCombatLockdown() then self:UpdateFrameUnits() else SchedulePrivateAuraReanchor(self) end
-            for _, frame in ipairs(self.frames) do
-                if frame.unit then
-                    UpdateInRange(frame)
-                    if frame.UpdateAll then frame:UpdateAll() end
-                    UpdatePowerBar(frame, self)
-                end
-            end
+            return
         end
         if event == "PLAYER_REGEN_ENABLED" then UpdateVisibilityDriver(); self:UpdateFrameUnits() end
-        if not InCombatLockdown() then
-            self:PositionFrames()
-            self:UpdateContainerSize()
-        end
     end)
 
     self.skipEditModeApply = true
@@ -529,38 +524,46 @@ function Plugin:PositionFrames()
             groupedFrames[gIdx][#groupedFrames[gIdx] + 1] = frame
         end
     else
+        -- Pre-bucket frames by subgroup in O(n) to avoid O(groups*frames) scan
+        local frameBuckets = {}
+        for g = 1, MAX_RAID_GROUPS do frameBuckets[g] = {} end
+        for i = 1, MAX_RAID_FRAMES do
+            local frame = self.frames[i]
+            if frame then
+                if isPreview then
+                    local previewGroup = math.ceil(i / FRAMES_PER_GROUP)
+                    if frame.preview and previewGroup <= #groupOrder then
+                        local bucket = frameBuckets[previewGroup]
+                        bucket[#bucket + 1] = frame
+                    end
+                elseif frame.unit and UnitExists(frame.unit) then
+                    local raidIndex = tonumber(frame.unit:match("(%d+)"))
+                    local subgroup = raidIndex and select(3, GetRaidRosterInfo(raidIndex))
+                    if subgroup then
+                        local bucket = frameBuckets[subgroup]
+                        bucket[#bucket + 1] = frame
+                    end
+                end
+            end
+        end
+
         local groupIndex = 0
         for _, groupNum in ipairs(groupOrder) do
             groupIndex = groupIndex + 1
             local gx, gy = Helpers:CalculateGroupPosition(groupIndex, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing, groupsPerRow, isHorizontal)
+            local bucket = frameBuckets[groupNum] or {}
             local groupFrames = {}
-
-            local memberIndex = 0
-            for i = 1, MAX_RAID_FRAMES do
-                local frame = self.frames[i]
-                if frame then
-                    local belongsToGroup
-                    if isPreview then
-                        if frame.preview and math.ceil(i / FRAMES_PER_GROUP) == groupNum then belongsToGroup = true end
-                    elseif frame.unit and UnitExists(frame.unit) then
-                        local raidIndex = tonumber(frame.unit:match("(%d+)"))
-                        local subgroup = raidIndex and select(3, GetRaidRosterInfo(raidIndex))
-                        belongsToGroup = (subgroup == groupNum)
-                    end
-
-                    if belongsToGroup and memberIndex < FRAMES_PER_GROUP then
-                        memberIndex = memberIndex + 1
-                        local mx, my = Helpers:CalculateMemberPosition(memberIndex, width, height, memberSpacing,
-                            memberGrowth, isHorizontal)
-                        frame:ClearAllPoints()
-                        if growUp then
-                            frame:SetPoint("BOTTOMLEFT", self.container, "BOTTOMLEFT", gx + mx, -gy + my)
-                        else
-                            frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", gx + mx, gy + my)
-                        end
-                        groupFrames[#groupFrames + 1] = frame
-                    end
+            for memberIndex, frame in ipairs(bucket) do
+                if memberIndex > FRAMES_PER_GROUP then break end
+                local mx, my = Helpers:CalculateMemberPosition(memberIndex, width, height, memberSpacing,
+                    memberGrowth, isHorizontal)
+                frame:ClearAllPoints()
+                if growUp then
+                    frame:SetPoint("BOTTOMLEFT", self.container, "BOTTOMLEFT", gx + mx, -gy + my)
+                else
+                    frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", gx + mx, gy + my)
                 end
+                groupFrames[#groupFrames + 1] = frame
             end
             groupedFrames[#groupedFrames + 1] = groupFrames
         end
@@ -809,6 +812,7 @@ end
 
 function Plugin:ApplySettings()
     if not self.frames then return end
+    self.auraThrottleInterval = self:GetSetting(1, "UpdateRate") or 0
 
     for _, frame in ipairs(self.frames) do
         if not frame.preview and frame.unit then

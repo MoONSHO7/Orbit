@@ -7,27 +7,50 @@ local GroupFrameMixin = Orbit.GroupFrameMixin
 local StatusDispatch = GroupFrameMixin.StatusDispatch
 local UpdateInRange = GroupFrameMixin.UpdateInRange
 
+-- [ AURA UPDATE DISPATCH ]------------------------------------------------------------------------
+local function ProcessAuraUpdate(f, plugin, callbacks)
+    callbacks.UpdateDebuffs(f, plugin)
+    callbacks.UpdateBuffs(f, plugin)
+    callbacks.UpdateDefensiveIcon(f, plugin)
+    callbacks.UpdateCrowdControlIcon(f, plugin)
+    if callbacks.UpdatePrivateAuras then callbacks.UpdatePrivateAuras(f, plugin) end
+    if callbacks.UpdateHealerAuras then callbacks.UpdateHealerAuras(f, plugin) end
+    if callbacks.UpdateMissingRaidBuffs then callbacks.UpdateMissingRaidBuffs(f, plugin) end
+    if plugin.UpdateDispelIndicator then plugin:UpdateDispelIndicator(f, plugin) end
+end
+
 -- [ HANDLER FACTORY ]------------------------------------------------------------------------------
--- Creates a shared OnEvent handler for group frames.
--- callbacks: { UpdatePowerBar, UpdateDebuffs, UpdateBuffs, UpdateDefensiveIcon,
---              UpdateCrowdControlIcon, UpdatePrivateAuras }
 function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
     return function(f, event, eventUnit, ...)
         if f.preview then return end
+        if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
+            if eventUnit == f.unit then
+                if originalOnEvent then originalOnEvent(f, event, eventUnit, ...) end
+                StatusDispatch(f, plugin, "UpdateStatusText")
+            end
+            return
+        end
         if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
             if eventUnit == f.unit then callbacks.UpdatePowerBar(f, plugin) end
             return
         end
         if event == "UNIT_AURA" then
             if eventUnit == f.unit then
-                callbacks.UpdateDebuffs(f, plugin)
-                callbacks.UpdateBuffs(f, plugin)
-                callbacks.UpdateDefensiveIcon(f, plugin)
-                callbacks.UpdateCrowdControlIcon(f, plugin)
-                if callbacks.UpdatePrivateAuras then callbacks.UpdatePrivateAuras(f, plugin) end
-                if callbacks.UpdateHealerAuras then callbacks.UpdateHealerAuras(f, plugin) end
-                if callbacks.UpdateMissingRaidBuffs then callbacks.UpdateMissingRaidBuffs(f, plugin) end
-                if plugin.UpdateDispelIndicator then plugin:UpdateDispelIndicator(f, plugin) end
+                local interval = plugin.auraThrottleInterval
+                if interval and interval > 0 then
+                    f._auraDirty = true
+                    if not f._auraTimer then
+                        f._auraTimer = C_Timer.After(interval, function()
+                            f._auraTimer = nil
+                            if f._auraDirty and f.unit and f:IsShown() then
+                                f._auraDirty = false
+                                ProcessAuraUpdate(f, plugin, callbacks)
+                            end
+                        end)
+                    end
+                else
+                    ProcessAuraUpdate(f, plugin, callbacks)
+                end
             end
             return
         end
@@ -46,7 +69,22 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
             end
             return
         end
-        if event == "UNIT_PHASE" or event == "UNIT_FLAGS" then
+        if event == "UNIT_NAME_UPDATE" then
+            if eventUnit == f.unit then StatusDispatch(f, plugin, "UpdateName") end
+            return
+        end
+        if event == "UNIT_ENTERED_VEHICLE" or event == "UNIT_EXITED_VEHICLE" then
+            if eventUnit == f.unit then
+                if f.UpdateAll then f:UpdateAll() end
+                callbacks.UpdateDebuffs(f, plugin)
+                callbacks.UpdateBuffs(f, plugin)
+                callbacks.UpdateDefensiveIcon(f, plugin)
+                callbacks.UpdateCrowdControlIcon(f, plugin)
+                StatusDispatch(f, plugin, "UpdateName")
+            end
+            return
+        end
+        if event == "UNIT_PHASE" or event == "UNIT_FLAGS" or event == "UNIT_OTHER_PARTY_CHANGED" then
             if eventUnit == f.unit then
                 StatusDispatch(f, plugin, "UpdatePhaseIcon")
                 StatusDispatch(f, plugin, "UpdateLeaderIcon")
@@ -88,9 +126,6 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
             return
         end
         if originalOnEvent then originalOnEvent(f, event, eventUnit, ...) end
-        if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
-            StatusDispatch(f, plugin, "UpdateStatusText")
-        end
     end
 end
 

@@ -60,12 +60,16 @@ function Skin:ApplyNineSliceBorder(frame, styleEntry)
     local borderOffset = styleEntry.borderOffset or (gs and gs.BorderOffset) or 0
     local scale = frame:GetEffectiveScale()
     if not scale or scale < 0.01 then scale = 1 end
-    local outset = Engine.Pixel:Snap((edgeSize / 2) + borderOffset, scale)
+    local ownScale = frame:GetScale() or 1
+    if ownScale < 0.01 then ownScale = 1 end
+    local adjEdge = edgeSize / ownScale
+    local adjOffset = borderOffset / ownScale
+    local outset = Engine.Pixel:Snap((adjEdge / 2) + adjOffset, scale)
     frame.borderPixelSize = outset
     overlay:ClearAllPoints()
     overlay:SetPoint("TOPLEFT", frame, "TOPLEFT", -outset, outset)
     overlay:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", outset, -outset)
-    overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = edgeSize })
+    overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = adjEdge })
     local c = styleEntry.color
     if c then overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a or 1)
     else overlay:SetBackdropBorderColor(1, 1, 1, 1) end

@@ -42,6 +42,7 @@ function Orbit.RaidFrameSettings(plugin, dialog, systemFrame)
         end
         table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Healer Power Bars", default = true, onChange = MOC("ShowPowerBar") })
         table.insert(schema.controls, { type = "slider", key = "PowerBarHeight", label = "Powerbar Height", min = 5, max = 30, step = 1, default = 8, suffix = "%", onChange = MOC("PowerBarHeight") })
+        table.insert(schema.controls, { type = "slider", key = "UpdateRate", label = "Aura Update Throttle", min = 0, max = 0.2, step = 0.05, default = 0, suffix = "s", onChange = MOC("UpdateRate") })
     elseif currentTab == "Colors" then
         table.insert(schema.controls, { type = "color", key = "SelectionColor", label = "Selection Highlight", default = { r = 0.8, g = 0.9, b = 1.0, a = 1 }, onChange = MOC("SelectionColor") })
         table.insert(schema.controls, { type = "color", key = "AggroColor", label = "Aggro Highlight", default = { r = 1.0, g = 0.0, b = 0.0, a = 1 }, onChange = MOC("AggroColor") })

@@ -34,3 +34,4 @@ raid frames use a grid layout driven by group count and sort order. performance 
 - sort order changes must not trigger combat-unsafe operations
 - selection, aggro, and dispel highlights use `Skin:ApplyHighlightBorder` (not per-frame texture creation)
 - customizable `SelectionColor` and `DispelOnlyByMe` settings available in the colors sub-tab
+- `UpdateRate` setting throttles `UNIT_AURA` processing per-frame via dirty-flag + `C_Timer.After` coalescing (0 = instant, 0.05–0.2s = throttled)

@@ -39,8 +39,8 @@ function CDM:AddSettings(dialog, systemFrame)
                 onChange = function(val) self:SetSetting(systemIndex, "Height", val); RelayoutChargeBars(self) end,
             })
             table.insert(schema.controls, {
-                type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 50, step = 1, default = 0,
-                onChange = function(val) self:SetSetting(systemIndex, "Spacing", val); RelayoutChargeBars(self) end,
+                type = "slider", key = "DividerSize", label = "Divider Size", min = 0, max = 50, step = 1, default = 2,
+                onChange = function(val) self:SetSetting(systemIndex, "DividerSize", val); RelayoutChargeBars(self) end,
             })
             table.insert(schema.controls, {
                 type = "slider", key = "TickSize", label = "Tick", min = 0, max = 6, step = 2, default = 6,

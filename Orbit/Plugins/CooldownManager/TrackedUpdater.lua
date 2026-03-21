@@ -127,6 +127,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                 if icon.activeDuration and icon._activeGlowExpiry and GetTime() < icon._activeGlowExpiry then
                     icon.Cooldown:Clear()
                     local castTime = icon._activeGlowExpiry - icon.activeDuration
+                    -- Legacy :SetCooldown required: ActiveCooldown uses computed startTime/duration, no DurationObject API exists
                     icon.ActiveCooldown:SetCooldown(castTime, icon.activeDuration)
                     if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
                 else
@@ -147,6 +148,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     if icon.cdAlphaCurve then icon.Cooldown:SetAlpha(durObj:EvaluateRemainingPercent(icon.cdAlphaCurve)) end
                     local onRealCD = cdInfo and (issecretvalue(cdInfo.startTime) or cdInfo.startTime > 0)
                     if icon.activeDuration and onRealCD and not onGCD then
+                        -- Legacy :SetCooldown required: ActiveCooldown phase uses cdInfo.startTime, no DurationObject API exists
                         icon.ActiveCooldown:SetCooldown(cdInfo.startTime, icon.activeDuration)
                     else
                         icon.ActiveCooldown:Clear()
@@ -190,12 +192,14 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                 -- Prefer item cooldown (correct for trinkets). Fall back to spell cooldown (Healthstones in combat).
                 local start, duration = C_Container.GetItemCooldown(icon.trackedId)
                 if start and duration and duration > 1.5 then
+                    -- Legacy :SetCooldown required: C_Container.GetItemCooldown returns raw numbers, no DurationObject API exists
                     icon.Cooldown:SetCooldown(start, duration)
                     if icon.activeDuration and duration > icon.activeDuration then
                         local inActivePhase = (GetTime() - start) < icon.activeDuration
                         if inActivePhase then
                             icon.Icon:SetDesaturation(0)
                             icon.Cooldown:SetAlpha(0)
+                            -- Legacy :SetCooldown required: ActiveCooldown uses item start + activeDuration, no DurationObject API
                             icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
                             if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
                         else
@@ -228,12 +232,14 @@ function Updater:UpdateTrackedIcon(plugin, icon)
             else
                 local start, duration = C_Container.GetItemCooldown(icon.trackedId)
                 if start and duration and duration > 0 then
+                    -- Legacy :SetCooldown required: C_Container.GetItemCooldown returns raw numbers, no DurationObject API exists
                     icon.Cooldown:SetCooldown(start, duration)
                     if icon.activeDuration and duration > icon.activeDuration then
                         local inActivePhase = (GetTime() - start) < icon.activeDuration
                         if inActivePhase then
                             icon.Icon:SetDesaturation(0)
                             icon.Cooldown:SetAlpha(0)
+                            -- Legacy :SetCooldown required: ActiveCooldown uses item start + activeDuration, no DurationObject API
                             icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
                             if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
                         else
@@ -375,7 +381,7 @@ function Updater:ReparseActiveDurations(plugin)
     local viewerMap = plugin.viewerMap
     local function ReparseAnchor(anchor, systemIndex)
         if not anchor then return end
-        local tracked = plugin:GetSetting(systemIndex, plugin:GetSpecKey("TrackedItems")) or {}
+        local tracked = plugin:GetSetting(systemIndex, "TrackedItems") or {}
         local changed = false
         for key, data in pairs(tracked) do
             if data.id then
@@ -389,7 +395,7 @@ function Updater:ReparseActiveDurations(plugin)
                 end
             end
         end
-        if changed then plugin:SetSetting(systemIndex, plugin:GetSpecKey("TrackedItems"), tracked) end
+        if changed then plugin:SetSetting(systemIndex, "TrackedItems", tracked) end
         for _, icon in pairs(anchor.activeIcons or {}) do
             local key = icon.gridX .. "," .. icon.gridY
             local data = tracked[key]
@@ -419,15 +425,22 @@ end
 
 function Updater:ReloadTrackedForSpec(plugin)
     local viewerMap = plugin.viewerMap
+    local function ReloadAnchor(anchor, systemIndex)
+        if not anchor then return end
+        OrbitEngine.FrameAnchor:BreakAnchor(anchor, true)
+        anchor:ClearAllPoints()
+        plugin:LoadTrackedItems(anchor, systemIndex)
+        if OrbitEngine.PositionManager then OrbitEngine.PositionManager:ClearFrame(anchor) end
+        OrbitEngine.Frame:RestorePosition(anchor, plugin, systemIndex)
+        plugin:ClearStaleTrackedSpatial(anchor, systemIndex)
+    end
     local entry = viewerMap[TRACKED_INDEX]
     if entry and entry.anchor then
-        plugin:LoadTrackedItems(entry.anchor, TRACKED_INDEX)
-        plugin:ClearStaleTrackedSpatial(entry.anchor, TRACKED_INDEX)
+        ReloadAnchor(entry.anchor, TRACKED_INDEX)
     end
     for _, childData in pairs(plugin.activeChildren) do
         if childData.frame then
-            plugin:LoadTrackedItems(childData.frame, childData.frame.systemIndex)
-            plugin:ClearStaleTrackedSpatial(childData.frame, childData.frame.systemIndex)
+            ReloadAnchor(childData.frame, childData.frame.systemIndex)
         end
     end
     plugin:ReloadChargeBarsForSpec()

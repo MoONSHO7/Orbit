@@ -216,8 +216,7 @@ function Layout:CreateWidget(container, def, getValue, callback)
     local creator = self.creators[normalizedType]
 
     if not creator then
-        print("Orbit Layout: Unknown widget type:", def.type)
-        return nil
+        error("Orbit Layout: Unknown widget type: " .. tostring(def.type))
     end
 
     return creator(container, def, getValue, callback)

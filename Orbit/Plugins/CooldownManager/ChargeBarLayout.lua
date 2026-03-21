@@ -7,20 +7,17 @@ local Constants = Orbit.Constants
 local DEFAULT_WIDTH = 120
 local DEFAULT_HEIGHT = 12
 local EMPTY_SEED_SIZE = 40
-local DEFAULT_SPACING = 0
 local RECHARGE_DIM = 0.35
+local MAX_DIVIDERS = 10
 local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
 local function SnapToPixel(value, scale) return OrbitEngine.Pixel:Snap(value, scale) end
 local function PixelMultiple(count, scale) return OrbitEngine.Pixel:Multiple(count, scale) end
 
-local function GetBarColor(plugin, sysIndex, index, maxCharges)
+local function GetBarColor(plugin, sysIndex)
     local curveData = plugin:GetSetting(sysIndex, "BarColorCurve")
     if curveData then
-        if index and maxCharges and maxCharges > 1 and #curveData.pins > 1 then
-            return OrbitEngine.ColorCurve:SampleColorCurve(curveData, (index - 1) / (maxCharges - 1))
-        end
         local c = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
         if c then return c end
     end
@@ -38,25 +35,17 @@ end
 Orbit.ChargeBarLayout = {}
 local Layout = Orbit.ChargeBarLayout
 
--- [ BUTTON BUILDING ]------------------------------------------------------------------------------
-function Layout:BuildChargeButtons(frame, maxCharges)
-    for i = 1, maxCharges do
-        if not frame.buttons[i] then
-            local btn = CreateFrame("Frame", nil, frame)
-            OrbitEngine.Pixel:Enforce(btn)
-            btn.Bar = CreateFrame("StatusBar", nil, btn)
-            btn.Bar:SetAllPoints()
-            btn.Bar:SetMinMaxValues(i - 1, i)
-            btn.Bar:SetValue(0)
-            btn.Bar:SetFrameLevel(btn:GetFrameLevel() + Constants.Levels.StatusBar)
-            frame.buttons[i] = btn
+-- [ DIVIDER BUILDING ]-----------------------------------------------------------------------------
+function Layout:BuildDividers(frame, maxCharges)
+    frame.Dividers = frame.Dividers or {}
+    for i = 1, MAX_DIVIDERS do
+        if not frame.Dividers[i] then
+            frame.Dividers[i] = frame.StatusBar:CreateTexture(nil, "OVERLAY", nil, 7)
+            frame.Dividers[i]:SetColorTexture(0, 0, 0, 1)
+            frame.Dividers[i]:Hide()
         end
-        frame.buttons[i].Bar:SetMinMaxValues(i - 1, i)
-        frame.buttons[i]:Show()
     end
-    for i = maxCharges + 1, #frame.buttons do
-        frame.buttons[i]:Hide()
-    end
+    frame.StatusBar:SetMinMaxValues(0, maxCharges)
 end
 
 -- [ LAYOUT ]----------------------------------------------------------------------------------------
@@ -76,14 +65,13 @@ function Layout:LayoutChargeBar(plugin, frame)
         frame:SetHeight(height)
 
         local borderSize = plugin:GetSetting(sysIndex, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(frame:GetEffectiveScale() or 1)
-        local spacing = plugin:GetSetting(sysIndex, "Spacing") or DEFAULT_SPACING
-        local texture = plugin:GetSetting(sysIndex, "Texture")
+        local dividerSize = plugin:GetSetting(sysIndex, "DividerSize") or plugin:GetSetting(sysIndex, "Spacing") or 2
+        local texture = plugin:GetSetting(sysIndex, "Texture") or (Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Texture)
         local scale = frame:GetEffectiveScale()
         local maxCharges = frame.cachedMaxCharges or 2
-        local bgColor = GetBgColor()
 
-        self:SkinChargeButtons(plugin, frame, maxCharges, width, height, borderSize, spacing, texture, sysIndex, bgColor, scale)
-        frame.SeedButton:Hide()
+        self:SkinChargeBar(plugin, frame, maxCharges, width, height, borderSize, dividerSize, texture, sysIndex, scale)
+        if frame.SeedButton then frame.SeedButton:Hide() end
     else
         frame:SetSize(EMPTY_SEED_SIZE, EMPTY_SEED_SIZE)
     end
@@ -103,21 +91,31 @@ function Layout:LayoutChargeBars(plugin)
 end
 
 -- [ SKINNING ]--------------------------------------------------------------------------------------
-function Layout:SkinChargeButtons(plugin, frame, maxCharges, totalWidth, height, borderSize, spacing, texture, sysIndex, bgColor, scale)
-    local snappedGap = PixelMultiple(math.max(spacing - 1, spacing > 0 and 1 or 0), scale)
-    local snappedWidth = SnapToPixel(totalWidth, scale)
+function Layout:SkinChargeBar(plugin, frame, maxCharges, totalWidth, height, borderSize, dividerSize, texture, sysIndex, scale)
     local globalSettings = Orbit.db.GlobalSettings
+    local bgColor = GetBgColor()
+    local barColor = GetBarColor(plugin, sysIndex)
+    local rechargeColor = { r = barColor.r * RECHARGE_DIM, g = barColor.g * RECHARGE_DIM, b = barColor.b * RECHARGE_DIM }
 
-    local logicalGap = PixelMultiple(spacing, scale)
-    if spacing <= 1 then logicalGap = 0 end
-    local exactWidth = (totalWidth - (logicalGap * (maxCharges - 1))) / maxCharges
-    local segmentWidth = SnapToPixel(exactWidth, scale)
+    -- Skin the main StatusBar
+    Orbit.Skin:SkinStatusBar(frame.StatusBar, texture, barColor)
+    if frame.StatusBar.Overlay then frame.StatusBar.Overlay:Hide() end
 
-    local barColor1 = GetBarColor(plugin, sysIndex, 1, maxCharges)
-    local rechargeColor = { r = barColor1.r * RECHARGE_DIM, g = barColor1.g * RECHARGE_DIM, b = barColor1.b * RECHARGE_DIM }
+    -- Skin the recharge segment
     Orbit.Skin:SkinStatusBar(frame.RechargeSegment, texture, rechargeColor)
     if frame.RechargeSegment.Overlay then frame.RechargeSegment.Overlay:Hide() end
 
+    -- Background
+    Orbit.Skin:ApplyGradientBackground(frame, globalSettings.BackdropColourCurve, bgColor)
+
+    -- Border (single border around entire bar)
+    if frame.orbitBackdrop then frame.orbitBackdrop:Hide() end
+    Orbit.Skin:SkinBorder(frame, frame, borderSize)
+
+    -- Recharge positioner spans the full bar
+    local logicalGap = PixelMultiple(dividerSize, scale)
+    local exactSegWidth = (totalWidth - (logicalGap * (maxCharges - 1))) / maxCharges
+    local segmentWidth = SnapToPixel(exactSegWidth, scale)
     local stepWidth = segmentWidth + logicalGap
     local positionerWidth = math.max(1, stepWidth * maxCharges)
     frame.RechargePositioner:SetSize(positionerWidth, height)
@@ -125,40 +123,14 @@ function Layout:SkinChargeButtons(plugin, frame, maxCharges, totalWidth, height,
     frame.RechargeSegment:SetSize(math.max(1, segmentWidth), height)
     frame.TickBar:SetSize(math.max(1, segmentWidth), height)
 
-    local currentLeft = 0
+    -- Position dividers
+    self:RepositionDividers(frame, maxCharges, totalWidth, height, dividerSize, scale)
 
-    for i = 1, maxCharges do
-        local btn = frame.buttons[i]
-        if not btn then break end
-
-        local logicalLeft = SnapToPixel(currentLeft, scale)
-
-        btn:SetSize(segmentWidth, height)
-        btn:ClearAllPoints()
-        btn:SetPoint("LEFT", frame, "LEFT", logicalLeft, 0)
-
-        currentLeft = currentLeft + segmentWidth + logicalGap
-
-        if not btn.bg then
-            btn.bg = btn:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
-            btn.bg:SetAllPoints()
-        end
-        Orbit.Skin:ApplyGradientBackground(btn, globalSettings.BackdropColourCurve, bgColor)
-
-        local barColor = GetBarColor(plugin, sysIndex, i, maxCharges)
-        Orbit.Skin:SkinStatusBar(btn.Bar, texture, barColor)
-        if btn.Bar.Overlay then btn.Bar.Overlay:Hide() end
-
-        -- Hide stale orbitBackdrop if present
-        if btn.orbitBackdrop then btn.orbitBackdrop:Hide() end
-        Orbit.Skin:SkinBorder(btn, btn, borderSize)
-
-        OrbitEngine.Pixel:Enforce(btn)
-    end
-
-    local tickSize = plugin:GetSetting(frame.systemIndex, "TickSize") or TICK_SIZE_DEFAULT
+    -- Tick mark
+    local tickSize = plugin:GetSetting(sysIndex, "TickSize") or TICK_SIZE_DEFAULT
     OrbitEngine.TickMixin:Apply(frame, tickSize, height, frame.RechargeSegment)
 
+    -- Count text
     local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
     local positions = plugin:GetComponentPositions(sysIndex)
     local pos = positions["ChargeCount"] or {}
@@ -170,5 +142,33 @@ function Layout:SkinChargeButtons(plugin, frame, maxCharges, totalWidth, height,
     OrbitEngine.OverrideUtils.ApplyOverrides(frame.CountText, overrides, { fontSize = textSize, fontPath = fontPath })
     if ApplyTextPosition then
         ApplyTextPosition(frame.CountText, frame, pos)
+    end
+
+    OrbitEngine.Pixel:Enforce(frame)
+end
+
+-- [ DIVIDER POSITIONING ]--------------------------------------------------------------------------
+function Layout:RepositionDividers(frame, maxCharges, totalWidth, height, dividerSize, scale)
+    if not frame.Dividers then return end
+    local logicalGap = PixelMultiple(dividerSize, scale)
+    local exactSegWidth = (totalWidth - (logicalGap * (maxCharges - 1))) / maxCharges
+    local snappedWidth = SnapToPixel(exactSegWidth, scale)
+    local currentLeft = 0
+    for i = 1, MAX_DIVIDERS do
+        local div = frame.Dividers[i]
+        if div then
+            if i < maxCharges and dividerSize > 0 then
+                currentLeft = currentLeft + snappedWidth
+                local logicalLeft = SnapToPixel(currentLeft, scale)
+                div:ClearAllPoints()
+                div:SetSize(logicalGap, height)
+                div:SetPoint("LEFT", frame, "LEFT", logicalLeft, 0)
+                OrbitEngine.Pixel:Enforce(div)
+                div:Show()
+                currentLeft = currentLeft + logicalGap
+            else
+                div:Hide()
+            end
+        end
     end
 end

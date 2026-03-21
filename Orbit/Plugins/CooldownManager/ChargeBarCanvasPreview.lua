@@ -6,16 +6,12 @@ local Constants = Orbit.Constants
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local DEFAULT_WIDTH = 120
 local DEFAULT_HEIGHT = 12
-local DEFAULT_SPACING = 0
 local RECHARGE_DIM = 0.35
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
-local function GetBarColor(plugin, sysIndex, index, maxCharges)
+local function GetBarColor(plugin, sysIndex)
     local curveData = plugin:GetSetting(sysIndex, "BarColorCurve")
     if curveData then
-        if index and maxCharges and maxCharges > 1 and #curveData.pins > 1 then
-            return OrbitEngine.ColorCurve:SampleColorCurve(curveData, (index - 1) / (maxCharges - 1))
-        end
         local c = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
         if c then return c end
     end
@@ -40,7 +36,7 @@ function Preview:Setup(plugin, frame, sysIndex)
         local width = plugin:GetSetting(sysIndex, "Width") or DEFAULT_WIDTH
         local height = plugin:GetSetting(sysIndex, "Height") or DEFAULT_HEIGHT
         local borderSize = plugin:GetSetting(sysIndex, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(self:GetEffectiveScale() or 1)
-        local spacing = plugin:GetSetting(sysIndex, "Spacing") or DEFAULT_SPACING
+        local dividerSize = plugin:GetSetting(sysIndex, "DividerSize") or plugin:GetSetting(sysIndex, "Spacing") or 2
         local texture = plugin:GetSetting(sysIndex, "Texture")
         local bgColor = GetBgColor()
         local maxCharges = self.cachedMaxCharges or 3
@@ -48,7 +44,7 @@ function Preview:Setup(plugin, frame, sysIndex)
         local scale = self:GetEffectiveScale()
 
         local parent = options.parent
-        local preview = CreateFrame("Frame", nil, parent)
+        local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
         preview:SetSize(width, height)
         preview.sourceFrame = self
         preview.sourceWidth = width
@@ -56,40 +52,44 @@ function Preview:Setup(plugin, frame, sysIndex)
         preview.previewScale = 1
         preview.components = {}
 
-        local logicalGap = OrbitEngine.Pixel:Multiple(spacing, scale)
-        if spacing <= 1 then logicalGap = 0 end
-        local exactWidth = (width - (logicalGap * (maxCharges - 1))) / maxCharges
-        local snappedWidth = OrbitEngine.Pixel:Snap(exactWidth, scale)
+        -- Background
+        preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
+        preview.bg:SetAllPoints()
+        Orbit.Skin:ApplyGradientBackground(preview, Orbit.db.GlobalSettings.BackdropColourCurve, bgColor)
+
+        -- Single continuous StatusBar
+        local bar = CreateFrame("StatusBar", nil, preview)
+        bar:SetAllPoints()
+        bar:SetMinMaxValues(0, maxCharges)
+        bar:SetValue(previewCharges)
+        local barColor = GetBarColor(plugin, sysIndex)
+        Orbit.Skin:SkinStatusBar(bar, texture, barColor)
+        if bar.Overlay then bar.Overlay:Hide() end
+
+        -- Border around entire bar
+        local barBackdrop = Orbit.Skin:CreateBackdrop(preview, nil)
+        barBackdrop:SetFrameLevel(preview:GetFrameLevel() + Constants.Levels.Border)
+        barBackdrop:SetBackdrop(nil)
+        Orbit.Skin:SkinBorder(preview, barBackdrop, borderSize)
+
+        -- Dividers
+        local logicalGap = OrbitEngine.Pixel:Multiple(dividerSize, scale)
+        local exactSegWidth = (width - (logicalGap * (maxCharges - 1))) / maxCharges
+        local snappedWidth = OrbitEngine.Pixel:Snap(exactSegWidth, scale)
 
         local currentLeft = 0
-
-        for i = 1, maxCharges do
+        for i = 1, maxCharges - 1 do
+            currentLeft = currentLeft + snappedWidth
             local logicalLeft = OrbitEngine.Pixel:Snap(currentLeft, scale)
-
-            local seg = CreateFrame("StatusBar", nil, preview)
-            seg:SetSize(snappedWidth, height)
-            seg:SetPoint("LEFT", preview, "LEFT", logicalLeft, 0)
-            seg:SetMinMaxValues(0, 1)
-            seg:SetValue(1)
-
-            currentLeft = currentLeft + snappedWidth + logicalGap
-
-            seg.bg = seg:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
-            seg.bg:SetAllPoints()
-            Orbit.Skin:ApplyGradientBackground(seg, Orbit.db.GlobalSettings.BackdropColourCurve, bgColor)
-
-            local barColor = GetBarColor(plugin, sysIndex, i, maxCharges)
-            local segColor = (i <= previewCharges) and barColor
-                or { r = barColor.r * RECHARGE_DIM, g = barColor.g * RECHARGE_DIM, b = barColor.b * RECHARGE_DIM }
-            Orbit.Skin:SkinStatusBar(seg, texture, segColor)
-            if seg.Overlay then seg.Overlay:Hide() end
-
-            local segBackdrop = Orbit.Skin:CreateBackdrop(seg, nil)
-            segBackdrop:SetFrameLevel(seg:GetFrameLevel() + Constants.Levels.Border)
-            segBackdrop:SetBackdrop(nil)
-            Orbit.Skin:SkinBorder(seg, segBackdrop, borderSize)
+            local div = bar:CreateTexture(nil, "OVERLAY", nil, 7)
+            div:SetColorTexture(0, 0, 0, 1)
+            div:SetSize(logicalGap, height)
+            div:SetPoint("LEFT", preview, "LEFT", logicalLeft, 0)
+            OrbitEngine.Pixel:Enforce(div)
+            currentLeft = currentLeft + logicalGap
         end
 
+        -- Count text
         local savedPositions = plugin:GetSetting(sysIndex, "ComponentPositions") or {}
         local fontName = plugin:GetSetting(sysIndex, "Font")
         local fontPath = LSM and LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT

@@ -7,15 +7,16 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local ResourceMixin = Orbit.ResourceBarMixin
 
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
-local MAX_SPACER_COUNT = 10
-local INACTIVE_DIM_FACTOR = 0.5
-local PARTIAL_DIM_FACTOR = 0.7
-local OVERLAY_BLEND_ALPHA = 0.3
-local OVERLAY_TEXTURE = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
-local DK_SPEC_BLOOD = 250
-local DK_SPEC_FROST = 251
-local DK_SPEC_UNHOLY = 252
-local WARLOCK_SPEC_DESTRUCTION = 267
+local RC = Orbit.PlayerResourceConstants
+local MAX_SPACER_COUNT = RC.MAX_SPACER_COUNT
+local INACTIVE_DIM_FACTOR = RC.INACTIVE_DIM_FACTOR
+local PARTIAL_DIM_FACTOR = RC.PARTIAL_DIM_FACTOR
+local OVERLAY_BLEND_ALPHA = RC.OVERLAY_BLEND_ALPHA
+local OVERLAY_TEXTURE = RC.OVERLAY_TEXTURE
+local DK_SPEC_BLOOD = RC.DK_SPEC_BLOOD
+local DK_SPEC_FROST = RC.DK_SPEC_FROST
+local DK_SPEC_UNHOLY = RC.DK_SPEC_UNHOLY
+local WARLOCK_SPEC_DESTRUCTION = RC.WARLOCK_SPEC_DESTRUCTION
 local _, PLAYER_CLASS = UnitClass("player")
 
 local function SnapToPixel(value, scale) return OrbitEngine.Pixel:Snap(value, scale) end

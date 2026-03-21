@@ -109,6 +109,11 @@ end
 
 function Orbit.PartyFrameFactoryMixin:RegisterFrameEvents(frame, unit)
     local unitEvents = {
+        "UNIT_HEALTH",
+        "UNIT_MAXHEALTH",
+        "UNIT_ABSORB_AMOUNT_CHANGED",
+        "UNIT_HEAL_ABSORB_AMOUNT_CHANGED",
+        "UNIT_HEAL_PREDICTION",
         "UNIT_POWER_UPDATE",
         "UNIT_MAXPOWER",
         "UNIT_DISPLAYPOWER",
@@ -117,6 +122,10 @@ function Orbit.PartyFrameFactoryMixin:RegisterFrameEvents(frame, unit)
         "UNIT_THREAT_SITUATION_UPDATE",
         "UNIT_PHASE",
         "UNIT_FLAGS",
+        "UNIT_NAME_UPDATE",
+        "UNIT_ENTERED_VEHICLE",
+        "UNIT_EXITED_VEHICLE",
+        "UNIT_OTHER_PARTY_CHANGED",
         "INCOMING_RESURRECT_CHANGED",
         "UNIT_IN_RANGE_UPDATE",
         "UNIT_CONNECTION",

@@ -35,7 +35,7 @@ Mixin.playerDebuffDefaults = {
     },
 }
 
-local BASE_ICON_SIZE = 30
+local BASE_ICON_SIZE = 32
 local ASPECT_RATIOS = {
     { text = "Square (1:1)", value = "1:1" }, { text = "Landscape (16:9)", value = "16:9" },
     { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
@@ -149,11 +149,18 @@ local function CalculateIconSize(maxWidth, iconsPerRow, spacing)
     return math.max(1, math.floor((maxWidth - totalSpacing) / iconsPerRow))
 end
 
-local function CropIconTexture(icon, w, h)
-    if not icon or not icon.Icon then return end
-    if w == h then icon.Icon:SetTexCoord(0, 1, 0, 1); return end
-    local crop = (1 - h / w) / 2
-    icon.Icon:SetTexCoord(0, 1, crop, 1 - crop)
+local function CropIconTexture(iconFrame, w, h)
+    local tex = iconFrame and (iconFrame.Icon or iconFrame.icon)
+    if not tex then return end
+    local trim = Orbit.Constants and Orbit.Constants.Texture and Orbit.Constants.Texture.BlizzardIconBorderTrim or 0.07
+    if w == h then 
+        tex:SetTexCoord(trim, 1 - trim, trim, 1 - trim)
+        return 
+    end
+    -- Support for non-1:1 Aspect Ratios while respecting zoom/trim
+    local validW = 1 - (2 * trim)
+    local crop = (validW - validW * (h / w)) / 2
+    tex:SetTexCoord(trim, 1 - trim, trim + crop, 1 - trim - crop)
 end
 
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
@@ -533,7 +540,7 @@ function Mixin:UpdateAuras()
         size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
         anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
     })
-    if isPlayerGrid then self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings) end
+    if isPlayerGrid then skinSettings._maxPerRow = iconsPerRow; self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings) end
 
     if cancelable and not InCombatLockdown() then
         self:_syncCancelOverlays(Frame, auras, auraFilter, activeIcons)
@@ -647,6 +654,25 @@ function Mixin:_updateBlizzardBuffs()
                     Orbit.Skin.Icons:ApplyCustom(btn, skinSettings)
                     btn.Duration:Hide()
                     if btn.TempEnchantBorder then btn.TempEnchantBorder:Hide() end
+                    
+                    -- Permanently suppress Blizzard's native border textures
+                    local nt = btn.GetNormalTexture and btn:GetNormalTexture() or btn.NormalTexture
+                    if nt then
+                        nt:SetAlpha(0); nt:Hide()
+                        if not btn.orbitNormalTextureHooked then
+                            hooksecurefunc(nt, "Show", function(self) self:Hide(); self:SetAlpha(0) end)
+                            btn.orbitNormalTextureHooked = true
+                        end
+                    end
+                    local nativeBorder = btn.Border or btn.IconBorder
+                    if nativeBorder then
+                        nativeBorder:SetAlpha(0); nativeBorder:Hide()
+                        if not btn.orbitBorderHooked then
+                            hooksecurefunc(nativeBorder, "Show", function(self) self:Hide(); self:SetAlpha(0) end)
+                            btn.orbitBorderHooked = true
+                        end
+                    end
+                    
                     -- Resize Blizzard's DebuffBorder (already has dispel type color) to 1px larger all around
                     if btn.DebuffBorder then
                         btn.DebuffBorder:ClearAllPoints()
@@ -691,8 +717,10 @@ function Mixin:_updateBlizzardBuffs()
                     ApplyComponentPosition(btn.Count, btn, "Stacks", "RIGHT", "BOTTOM", 1, 1)
                     btn._orbitSkinned = skinVersion
                 end
-                -- Lightweight refresh: cooldown only
+                -- Lightweight refresh: enforce size (Blizzard may resize between skin cycles)
                 btn:EnableMouse(true)
+                btn:SetSize(iconW, iconH)
+                CropIconTexture(btn, iconW, iconH)
                 btn.Cooldown:Clear()
                 if btn.Cooldown.Text then btn.Cooldown.Text:SetText("") end
                 local durObj = bi and bi.index and durObjByIndex[bi.index]
@@ -711,29 +739,31 @@ function Mixin:_updateBlizzardBuffs()
         size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
         anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
     })
+    skinSettings._maxPerRow = iconsPerRow
     self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
 end
 
 -- [ GRID GROUP BORDER ]-----------------------------------------------------------------------------
 function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
-    if not skinSettings.iconBorder or spacing ~= 0 or #activeIcons == 0 then
+    if not skinSettings.iconBorder or spacing ~= 0 or #activeIcons == 0 or Frame._groupBorderActive then
         if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
         return
     end
-    -- Compute tight bounding box relative to Frame
-    local minX, maxX, minY, maxY
-    for _, icon in ipairs(activeIcons) do
-        local l, b, w, h = icon:GetLeft(), icon:GetBottom(), icon:GetWidth(), icon:GetHeight()
-        local fl, fb = Frame:GetLeft(), Frame:GetBottom()
-        if l and b and fl and fb then
-            local rx, ry = l - fl, b - fb
-            minX = minX and math.min(minX, rx) or rx
-            maxX = maxX and math.max(maxX, rx + w) or (rx + w)
-            minY = minY and math.min(minY, ry) or ry
-            maxY = maxY and math.max(maxY, ry + h) or (ry + h)
-        end
+    -- Deterministic bounding box from known grid geometry (avoids screen-coord rounding)
+    local iconW, iconH = activeIcons[1]:GetWidth(), activeIcons[1]:GetHeight()
+    local maxPerRow = skinSettings._maxPerRow or math.huge
+    local cols = math.min(#activeIcons, maxPerRow)
+    local rows = math.ceil(#activeIcons / maxPerRow)
+    local gridW, gridH = cols * iconW, rows * iconH
+    -- Locate first icon position relative to Frame
+    local firstIcon = activeIcons[1]
+    local fl, fb = Frame:GetLeft(), Frame:GetBottom()
+    local il, ib = firstIcon:GetLeft(), firstIcon:GetBottom()
+    if not fl or not fb or not il or not ib then
+        if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end; return
     end
-    if not minX then if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end; return end
+    local originX = il - fl
+    local originY = ib - fb
     if not Frame._gridGroupBorder then
         Frame._gridGroupBorder = CreateFrame("Frame", nil, Frame, "BackdropTemplate")
     end
@@ -750,23 +780,27 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
         local borderOffset = style.borderOffset or 0
         local outset = Orbit.Engine.Pixel:Snap((edgeSize / 2) + borderOffset, scale)
         overlay:ClearAllPoints()
-        overlay:SetPoint("TOPLEFT", Frame, "BOTTOMLEFT", minX - outset, maxY + outset)
-        overlay:SetSize(Orbit.Engine.Pixel:Snap((maxX - minX) + 2 * outset, scale), Orbit.Engine.Pixel:Snap((maxY - minY) + 2 * outset, scale))
+        overlay:SetPoint("TOPLEFT", Frame, "BOTTOMLEFT", originX - outset, originY + gridH + outset)
+        overlay:SetSize(Orbit.Engine.Pixel:Snap(gridW + 2 * outset, scale), Orbit.Engine.Pixel:Snap(gridH + 2 * outset, scale))
         overlay:SetBackdrop({ edgeFile = style.edgeFile, edgeSize = edgeSize })
         overlay:SetBackdropBorderColor(1, 1, 1, 1)
     else
         local borderSize = gs and gs.IconBorderSize or 2
         if borderSize <= 0 then overlay:Hide(); return end
         local pixelSize = Orbit.Engine.Pixel:Multiple(borderSize, scale)
-        local outset = pixelSize
         overlay:ClearAllPoints()
-        overlay:SetPoint("TOPLEFT", Frame, "BOTTOMLEFT", minX - outset, maxY + outset)
-        overlay:SetSize((maxX - minX) + 2 * outset, (maxY - minY) + 2 * outset)
+        overlay:SetPoint("TOPLEFT", Frame, "BOTTOMLEFT", originX, originY + gridH)
+        overlay:SetSize(gridW, gridH)
         overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
         local c = (gs and gs.IconBorderColor) or { r = 0, g = 0, b = 0, a = 1 }
         overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
     end
     overlay:Show()
+    -- Actively suppress per-icon borders (Blizzard may re-show them between full-skin cycles)
+    for _, icon in ipairs(activeIcons) do
+        if icon._borderFrame then icon._borderFrame:Hide() end
+        if icon._edgeBorderOverlay then icon._edgeBorderOverlay:Hide() end
+    end
 end
 
 function Mixin:_returnBlizzardButtons()

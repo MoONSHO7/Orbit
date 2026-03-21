@@ -109,33 +109,43 @@ function Helpers:UpdateFrameLayout(frame, borderSize, showPowerBar, powerBarRati
 end
 
 -- [ SORTING ]---------------------------------------------------------------------------------------
+local _sortedUnits = {}
+local _unitDataPool = {}
 
 function Helpers:GetSortedRaidUnits(sortMode)
-    local units = {}
+    for i = 1, #_sortedUnits do _sortedUnits[i] = nil end
     local numMembers = GetNumGroupMembers()
-    if numMembers == 0 then return units end
+    if numMembers == 0 then return _sortedUnits end
+    local poolIdx = 0
     for i = 1, numMembers do
         local name, _, subgroup, _, _, className, _, online, isDead, role = GetRaidRosterInfo(i)
         if name then
-            units[#units + 1] = { token = "raid" .. i, rosterIndex = i, name = name, subgroup = subgroup, className = className, online = online, isDead = isDead, role = role or UnitGroupRolesAssigned("raid" .. i) }
+            poolIdx = poolIdx + 1
+            local entry = _unitDataPool[poolIdx]
+            if not entry then entry = {}; _unitDataPool[poolIdx] = entry end
+            entry.token = "raid" .. i
+            entry.rosterIndex = i; entry.name = name; entry.subgroup = subgroup
+            entry.className = className; entry.online = online; entry.isDead = isDead
+            entry.role = role or UnitGroupRolesAssigned("raid" .. i)
+            _sortedUnits[#_sortedUnits + 1] = entry
         end
     end
     sortMode = sortMode or SORT_MODE.Group
     if sortMode == SORT_MODE.Role then
-        table.sort(units, function(a, b)
+        table.sort(_sortedUnits, function(a, b)
             local pa, pb = ROLE_PRIORITY[a.role] or 4, ROLE_PRIORITY[b.role] or 4
             if pa ~= pb then return pa < pb end
             return (a.name or "") < (b.name or "")
         end)
     elseif sortMode == SORT_MODE.Alphabetical then
-        table.sort(units, function(a, b) return (a.name or "") < (b.name or "") end)
+        table.sort(_sortedUnits, function(a, b) return (a.name or "") < (b.name or "") end)
     else
-        table.sort(units, function(a, b)
+        table.sort(_sortedUnits, function(a, b)
             if a.subgroup ~= b.subgroup then return (a.subgroup or 1) < (b.subgroup or 1) end
             return (a.rosterIndex or 0) < (b.rosterIndex or 0)
         end)
     end
-    return units
+    return _sortedUnits
 end
 
 function Helpers:GetActiveGroups()
