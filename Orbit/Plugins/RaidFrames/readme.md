@@ -34,4 +34,6 @@ raid frames use a grid layout driven by group count and sort order. performance 
 - sort order changes must not trigger combat-unsafe operations
 - selection, aggro, and dispel highlights use `Skin:ApplyHighlightBorder` (not per-frame texture creation)
 - customizable `SelectionColor` and `DispelOnlyByMe` settings available in the colors sub-tab
-- `UpdateRate` setting throttles `UNIT_AURA` processing per-frame via dirty-flag + `C_Timer.After` coalescing (0 = instant, 0.05–0.2s = throttled)
+- `UpdateRate` setting throttles `UNIT_AURA` processing per-frame via dirty-flag + `C_Timer.After` coalescing (0 = instant, 0.1–0.2s = throttled)
+- aura updates use a per-event snapshot (`_auraSnapshot`) to share harmful/helpful data across debuffs, buffs, healer auras, missing raid buffs, and dispel indicator — avoiding redundant C API fetches
+- aura containers use fingerprint-based dirty-checking (`_auraFingerprint`) to skip full icon release/rebuild when auras are unchanged

@@ -61,7 +61,7 @@ C.Selection = {
 }
 
 -- [ FRAME LAYER HIERARCHY ]-------------------------------------------------------------------------
--- Draw Layer Sublevels: background → border → icons → highlights → glows → text
+-- Draw Layer Sublevels: background → border → icons → highlights → borders → glows → text
 C.Layers = {
     BackdropDeep = -8,  -- Deep backgrounds (bar fills, status textures)
     Border = 1,         -- Frame borders
@@ -80,9 +80,9 @@ C.Levels = {
     Tooltip = 100,       -- Tooltip/flyout layer (different strata)
     IconContent = 1,     -- Icon backdrop
     IconSwipe = 2,       -- Cooldown swipe (border group, below glow)
-    IconGlow = 3,        -- Pandemic/proc glow (border group, above swipe, below border)
-    IconBorder = 4,      -- Per-icon pixel/NineSlice border
-    IconOverlay = 5,     -- Timer text, stacks, flash
+    IconBorder = 3,      -- Per-icon pixel/NineSlice border
+    IconGlow = 5,        -- Pandemic/proc glow (above border)
+    IconOverlay = 6,     -- Timer text, stacks, flash
     GroupContainer = 49, -- Group frame container base level
     GroupBase = 50,      -- Individual group frame base level (+ index)
 }
@@ -105,7 +105,7 @@ C.BossFrame = {
 }
 
 C.GroupFrames = {
-    OutOfRangeAlpha = 0.2,
+    OutOfRangeAlpha = 0.3,
     OfflineAlpha = 0.35,
     MaxPrivateAuraAnchors = 3,
     AuraBaseIconSize = 10,
@@ -273,7 +273,7 @@ C.PandemicGlow = {
     },
     Button = {
         Frequency = 0.125, -- Speed
-        FrameLevel = 3, -- Match IconGlow level (below border and text)
+        FrameLevel = 5, -- Match IconGlow level (above border)
     },
 }
 

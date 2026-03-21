@@ -37,7 +37,7 @@ local function GetOrCreateWrapper(icon)
     w = CreateFrame("Frame", nil, icon)
     w:SetPoint("CENTER", icon, "CENTER")
     w:SetSize(iw, ih)
-    w:SetFrameLevel(icon:GetFrameLevel() + 3)
+    w:SetFrameLevel(icon:GetFrameLevel() + (Orbit.Constants.Levels.IconGlow or 5))
     w:SetAlpha(0)
     icon.orbitPandemicWrapper = w
     return w

@@ -674,6 +674,7 @@ function Plugin:UpdateFrameUnits()
                     frame:RegisterUnitEvent("UNIT_FLAGS", unit)
                     frame:RegisterUnitEvent("INCOMING_RESURRECT_CHANGED", unit)
                     frame:RegisterUnitEvent("UNIT_IN_RANGE_UPDATE", unit)
+                    UpdatePrivateAuras(frame, self)
                 end
 
                 SafeUnregisterUnitWatch(frame)
@@ -797,6 +798,7 @@ function Plugin:ApplySettings()
             UpdateCrowdControlIcon(frame, self)
             UpdateHealerAuras(frame, self)
             UpdateMissingRaidBuffs(frame, self)
+            UpdatePrivateAuras(frame, self)
             StatusDispatch(frame, self, "UpdateAllPartyStatusIcons")
             if frame.UpdateAll then frame:UpdateAll() end
         end

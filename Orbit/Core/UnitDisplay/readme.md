@@ -27,12 +27,12 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 | AuraPreview.lua | aura preview generation for canvas mode. |
 | GroupAuraFilters.lua | aura filter rules for party/raid (dispellable, defensive, etc.). |
 | GroupFrameMixin.lua | shared group frame behavior (party/raid header management). |
-| GroupFrameEventHandler.lua | shared OnEvent/OnShow handler factory for group frames. |
+| GroupFrameEventHandler.lua | shared OnEvent/OnShow handler factory for group frames. builds per-event aura snapshot (`_auraSnapshot`) via 2 `GetUnitAuras` calls (HARMFUL + HELPFUL). all aura consumers (containers, single icons, healer auras, dispel) read from the snapshot with zero additional C API aura fetches. |
 | PrivateAuraMixin.lua | shared private aura anchor creation and management. |
 | GroupCanvasRegistration.lua | shared canvas mode component registration and icon position application. |
 | StatusIconMixin.lua | status indicators (defensive, crowd control, movement speed), selection/aggro highlight borders via `Skin:ApplyHighlightBorder`. |
 | AggroIndicatorMixin.lua | threat/aggro border coloring via `Skin:ApplyHighlightBorder`. |
-| DispelIndicatorMixin.lua | dispellable debuff type indication with `DispelOnlyByMe` filter support. |
+| DispelIndicatorMixin.lua | dispellable debuff type indication with `DispelOnlyByMe` filter support. caches the dispel color curve on plugin (`_dispelCurveCache`), invalidated via `InvalidateDispelCurve`. accepts pre-fetched harmful auras from snapshot. |
 | PandemicGlow.lua | hook-driven pandemic glow for dots/hots. queries CooldownViewer pandemic state instead of polling. |
 | UnitAuraGridMixin.lua | grid-based aura display with size categories (big/small). |
 | SecondaryUnitFrameMixin.lua | secondary frames (target-of-target, focus-target). |

@@ -53,7 +53,6 @@ local Plugin = Orbit:RegisterPlugin("Raid Frames", SYSTEM_ID, {
         ShowGroupLabels = true,
         ShowHealthValue = true,
         HealthTextMode = "percent_short",
-        UpdateRate = 0,
 
         ComponentPositions = {
             Name = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 10, justifyH = "CENTER", posX = 0, posY = 10 },
@@ -380,7 +379,6 @@ function Plugin:OnLoad()
     self.container:SetSize(self:GetSetting(1, "Width") or 90, 100)
 
     self:PositionFrames()
-    self.auraThrottleInterval = self:GetSetting(1, "UpdateRate") or 0
     self:ApplySettings()
     self:UpdateFrameUnits()
 
@@ -707,6 +705,7 @@ function Plugin:UpdateFrameUnits()
                     for _, event in ipairs(UNIT_REREGISTER_EVENTS) do
                         frame:RegisterUnitEvent(event, token)
                     end
+                    UpdatePrivateAuras(frame, self)
                 end
 
                 SafeUnregisterUnitWatch(frame)
@@ -812,7 +811,6 @@ end
 
 function Plugin:ApplySettings()
     if not self.frames then return end
-    self.auraThrottleInterval = self:GetSetting(1, "UpdateRate") or 0
 
     for _, frame in ipairs(self.frames) do
         if not frame.preview and frame.unit then

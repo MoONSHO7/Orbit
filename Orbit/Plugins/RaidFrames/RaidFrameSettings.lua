@@ -42,7 +42,6 @@ function Orbit.RaidFrameSettings(plugin, dialog, systemFrame)
         end
         table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Healer Power Bars", default = true, onChange = MOC("ShowPowerBar") })
         table.insert(schema.controls, { type = "slider", key = "PowerBarHeight", label = "Powerbar Height", min = 5, max = 30, step = 1, default = 8, suffix = "%", onChange = MOC("PowerBarHeight") })
-        table.insert(schema.controls, { type = "slider", key = "UpdateRate", label = "Aura Update Throttle", min = 0, max = 0.2, step = 0.05, default = 0, suffix = "s", onChange = MOC("UpdateRate") })
     elseif currentTab == "Colors" then
         table.insert(schema.controls, { type = "color", key = "SelectionColor", label = "Selection Highlight", default = { r = 0.8, g = 0.9, b = 1.0, a = 1 }, onChange = MOC("SelectionColor") })
         table.insert(schema.controls, { type = "color", key = "AggroColor", label = "Aggro Highlight", default = { r = 1.0, g = 0.0, b = 0.0, a = 1 }, onChange = MOC("AggroColor") })
@@ -50,7 +49,7 @@ function Orbit.RaidFrameSettings(plugin, dialog, systemFrame)
         if (plugin:GetSetting(1, "SortMode") or "Group") == "Group" then
             table.insert(schema.controls, { type = "checkbox", key = "ShowGroupLabels", label = "Show Groups", default = true, onChange = MOC("ShowGroupLabels") })
         end
-        local dispelRefresh = function() if plugin.UpdateAllDispelIndicators then plugin:UpdateAllDispelIndicators(plugin) end end
+        local dispelRefresh = function() Orbit.DispelIndicatorMixin:InvalidateDispelCurve(plugin); if plugin.UpdateAllDispelIndicators then plugin:UpdateAllDispelIndicators(plugin) end end
         table.insert(schema.controls, { type = "checkbox", key = "DispelIndicatorEnabled", label = "Enable Dispel Indicators", default = true, onChange = MOC("DispelIndicatorEnabled", dispelRefresh) })
         table.insert(schema.controls, { type = "checkbox", key = "DispelOnlyByMe", label = "Only Dispellable By Me", default = false, onChange = MOC("DispelOnlyByMe", dispelRefresh) })
         table.insert(schema.controls, { type = "slider", key = "DispelThickness", label = "Dispel Border Thickness", default = 2, min = 1, max = 5, step = 1, onChange = MOC("DispelThickness", dispelRefresh) })

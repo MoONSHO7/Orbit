@@ -7,16 +7,38 @@ local GroupFrameMixin = Orbit.GroupFrameMixin
 local StatusDispatch = GroupFrameMixin.StatusDispatch
 local UpdateInRange = GroupFrameMixin.UpdateInRange
 
+-- [ AURA SNAPSHOT HELPERS ]------------------------------------------------------------------------
+local IsSecret = issecretvalue
+
+local function BuildAuraSnapshot(unit)
+    local harmful = C_UnitAuras.GetUnitAuras(unit, "HARMFUL") or {}
+    local helpful = C_UnitAuras.GetUnitAuras(unit, "HELPFUL") or {}
+    local helpfulBySpell = {}
+    local helpfulPlayerBySpell = {}
+    for _, aura in ipairs(helpful) do
+        local sid = aura.spellId
+        if not IsSecret(sid) then
+            helpfulBySpell[sid] = aura
+            if aura.isFromPlayerOrPlayerPet then helpfulPlayerBySpell[sid] = aura end
+        end
+    end
+    return { harmful = harmful, helpful = helpful, helpfulBySpell = helpfulBySpell, helpfulPlayerBySpell = helpfulPlayerBySpell }
+end
+
 -- [ AURA UPDATE DISPATCH ]------------------------------------------------------------------------
 local function ProcessAuraUpdate(f, plugin, callbacks)
+    local unit = f.unit
+    if not unit or not UnitExists(unit) then return end
+    local snapshot = BuildAuraSnapshot(unit)
+    f._auraSnapshot = snapshot
     callbacks.UpdateDebuffs(f, plugin)
     callbacks.UpdateBuffs(f, plugin)
     callbacks.UpdateDefensiveIcon(f, plugin)
     callbacks.UpdateCrowdControlIcon(f, plugin)
-    if callbacks.UpdatePrivateAuras then callbacks.UpdatePrivateAuras(f, plugin) end
     if callbacks.UpdateHealerAuras then callbacks.UpdateHealerAuras(f, plugin) end
     if callbacks.UpdateMissingRaidBuffs then callbacks.UpdateMissingRaidBuffs(f, plugin) end
-    if plugin.UpdateDispelIndicator then plugin:UpdateDispelIndicator(f, plugin) end
+    if plugin.UpdateDispelIndicator then plugin:UpdateDispelIndicator(f, plugin, snapshot.harmful) end
+    f._auraSnapshot = nil
 end
 
 -- [ HANDLER FACTORY ]------------------------------------------------------------------------------
@@ -35,23 +57,7 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
             return
         end
         if event == "UNIT_AURA" then
-            if eventUnit == f.unit then
-                local interval = plugin.auraThrottleInterval
-                if interval and interval > 0 then
-                    f._auraDirty = true
-                    if not f._auraTimer then
-                        f._auraTimer = C_Timer.After(interval, function()
-                            f._auraTimer = nil
-                            if f._auraDirty and f.unit and f:IsShown() then
-                                f._auraDirty = false
-                                ProcessAuraUpdate(f, plugin, callbacks)
-                            end
-                        end)
-                    end
-                else
-                    ProcessAuraUpdate(f, plugin, callbacks)
-                end
-            end
+            if eventUnit == f.unit then ProcessAuraUpdate(f, plugin, callbacks) end
             return
         end
         if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
@@ -150,3 +156,4 @@ function GroupFrameMixin.CreateOnShowHandler(plugin, callbacks)
         UpdateInRange(self)
     end
 end
+

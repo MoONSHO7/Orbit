@@ -181,7 +181,7 @@ function ABS:Apply(button, settings)
     if not button.orbitKeypressFlash then
         local flashFrame = CreateFrame("Frame", nil, button)
         flashFrame:SetAllPoints(button)
-        flashFrame:SetFrameLevel(button:GetFrameLevel() + Constants.Levels.IconOverlay)
+        flashFrame:SetFrameLevel(button:GetFrameLevel() + Constants.Levels.IconSwipe)
         flashFrame:Hide()
         local flash = flashFrame:CreateTexture(nil, "OVERLAY", nil, 7)
         flash:SetAllPoints(flashFrame)

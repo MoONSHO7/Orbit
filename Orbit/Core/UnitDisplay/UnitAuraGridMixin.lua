@@ -540,7 +540,7 @@ function Mixin:UpdateAuras()
         size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
         anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
     })
-    if isPlayerGrid then skinSettings._maxPerRow = iconsPerRow; self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings) end
+    if isPlayerGrid then skinSettings._maxPerRow = iconsPerRow; skinSettings._growthX = growthX; skinSettings._growthY = growthY; self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings) end
 
     if cancelable and not InCombatLockdown() then
         self:_syncCancelOverlays(Frame, auras, auraFilter, activeIcons)
@@ -740,6 +740,8 @@ function Mixin:_updateBlizzardBuffs()
         anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
     })
     skinSettings._maxPerRow = iconsPerRow
+    skinSettings._growthX = growthX
+    skinSettings._growthY = growthY
     self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
 end
 
@@ -749,21 +751,14 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
         if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
         return
     end
-    -- Deterministic bounding box from known grid geometry (avoids screen-coord rounding)
-    local iconW, iconH = activeIcons[1]:GetWidth(), activeIcons[1]:GetHeight()
+    local firstIcon = activeIcons[1]
+    local iconW, iconH = firstIcon:GetWidth(), firstIcon:GetHeight()
     local maxPerRow = skinSettings._maxPerRow or math.huge
     local cols = math.min(#activeIcons, maxPerRow)
     local rows = math.ceil(#activeIcons / maxPerRow)
     local gridW, gridH = cols * iconW, rows * iconH
-    -- Locate first icon position relative to Frame
-    local firstIcon = activeIcons[1]
-    local fl, fb = Frame:GetLeft(), Frame:GetBottom()
-    local il, ib = firstIcon:GetLeft(), firstIcon:GetBottom()
-    if not fl or not fb or not il or not ib then
-        if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end; return
-    end
-    local originX = il - fl
-    local originY = ib - fb
+    local gx = skinSettings._growthX or "RIGHT"
+    local gy = skinSettings._growthY or "DOWN"
     if not Frame._gridGroupBorder then
         Frame._gridGroupBorder = CreateFrame("Frame", nil, Frame, "BackdropTemplate")
     end
@@ -774,29 +769,34 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
     local iconNineSlice = Skin:GetActiveIconBorderStyle()
     local scale = Frame:GetEffectiveScale()
     if not scale or scale < 0.01 then scale = 1 end
+    -- Compute directional offsets from first icon's origin corner
+    local extX = (gx == "LEFT") and -gridW or gridW
+    local extY = (gy == "UP") and gridH or -gridH
+    local iconAnchor = ((gy == "UP") and "BOTTOM" or "TOP") .. ((gx == "LEFT") and "RIGHT" or "LEFT")
+    local outset = 0
+    overlay:ClearAllPoints()
     if iconNineSlice and iconNineSlice.edgeFile then
         local style = Skin:BuildIconStyle(iconNineSlice)
         local edgeSize = style.edgeSize or 16
         local borderOffset = style.borderOffset or 0
-        local outset = Orbit.Engine.Pixel:Snap((edgeSize / 2) + borderOffset, scale)
-        overlay:ClearAllPoints()
-        overlay:SetPoint("TOPLEFT", Frame, "BOTTOMLEFT", originX - outset, originY + gridH + outset)
-        overlay:SetSize(Orbit.Engine.Pixel:Snap(gridW + 2 * outset, scale), Orbit.Engine.Pixel:Snap(gridH + 2 * outset, scale))
+        outset = Orbit.Engine.Pixel:Snap((edgeSize / 2) + borderOffset, scale)
+        local osX = (gx == "LEFT") and outset or -outset
+        local osY = (gy == "UP") and -outset or outset
+        overlay:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(osX, extX + osX), math.max(osY, extY + osY))
+        overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(osX, extX + osX), math.min(osY, extY + osY))
         overlay:SetBackdrop({ edgeFile = style.edgeFile, edgeSize = edgeSize })
         overlay:SetBackdropBorderColor(1, 1, 1, 1)
     else
         local borderSize = gs and gs.IconBorderSize or 2
         if borderSize <= 0 then overlay:Hide(); return end
+        overlay:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
+        overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
         local pixelSize = Orbit.Engine.Pixel:Multiple(borderSize, scale)
-        overlay:ClearAllPoints()
-        overlay:SetPoint("TOPLEFT", Frame, "BOTTOMLEFT", originX, originY + gridH)
-        overlay:SetSize(gridW, gridH)
         overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
         local c = (gs and gs.IconBorderColor) or { r = 0, g = 0, b = 0, a = 1 }
         overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
     end
     overlay:Show()
-    -- Actively suppress per-icon borders (Blizzard may re-show them between full-skin cycles)
     for _, icon in ipairs(activeIcons) do
         if icon._borderFrame then icon._borderFrame:Hide() end
         if icon._edgeBorderOverlay then icon._edgeBorderOverlay:Hide() end

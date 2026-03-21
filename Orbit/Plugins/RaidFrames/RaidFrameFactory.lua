@@ -38,6 +38,7 @@ function Orbit.RaidFrameFactoryMixin:CreateStatusIcons(frame)
     frame.StatusOverlay = CreateFrame("Frame", nil, frame)
     frame.StatusOverlay:SetAllPoints()
     frame.StatusOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
+    if frame.StatusOverlay.SetIgnoreParentAlpha then frame.StatusOverlay:SetIgnoreParentAlpha(true) end
 
     frame.RoleIcon = frame.StatusOverlay:CreateTexture(nil, "OVERLAY")
     frame.RoleIcon:SetSize(ICON_SIZE, ICON_SIZE)

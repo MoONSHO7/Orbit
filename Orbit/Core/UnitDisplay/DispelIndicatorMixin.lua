@@ -20,8 +20,32 @@ local DISPEL_TYPE_NAMES = { [1] = "Magic", [2] = "Curse", [3] = "Disease", [4] =
 local DISPEL_FILTER = "HARMFUL|RAID_PLAYER_DISPELLABLE"
 local IsAuraFilteredOut = C_UnitAuras and C_UnitAuras.IsAuraFilteredOutByInstanceID
 
+-- [ CACHED CURVE ]----------------------------------------------------------------------------------
+local function BuildDispelCurve(plugin)
+    if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end
+    local curve = C_CurveUtil.CreateColorCurve()
+    curve:SetType(Enum.LuaCurveType.Step)
+    for typeNum, typeName in pairs(DISPEL_TYPE_NAMES) do
+        local c = plugin:GetSetting(1, "DispelColor" .. typeName) or DEFAULT_COLORS[typeName]
+        if c then curve:AddPoint(typeNum, CreateColor(c.r, c.g, c.b, c.a or 1)) end
+    end
+    return curve
+end
+
+local function GetDispelCurve(plugin)
+    if plugin._dispelCurveCache then return plugin._dispelCurveCache end
+    local curve = BuildDispelCurve(plugin)
+    plugin._dispelCurveCache = curve
+    return curve
+end
+
+function Orbit.DispelIndicatorMixin:InvalidateDispelCurve(plugin)
+    plugin._dispelCurveCache = nil
+end
+
 -- [ UPDATE DISPEL INDICATOR ]----------------------------------------------------------------------
-function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin)
+-- harmfulAuras: optional pre-fetched table from snapshot to avoid duplicate GetUnitAuras call
+function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin, harmfulAuras)
     if not frame or not frame.unit then return end
     local unit = frame.unit
     local enabled = plugin:GetSetting(1, "DispelIndicatorEnabled")
@@ -29,10 +53,9 @@ function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin)
     if not UnitExists(unit) then LCG.PixelGlow_Stop(frame); return end
     if not C_UnitAuras or not C_UnitAuras.GetUnitAuras then return end
     local onlyByMe = plugin:GetSetting(1, "DispelOnlyByMe")
-    local auras = C_UnitAuras.GetUnitAuras(unit, "HARMFUL")
+    local auras = harmfulAuras or C_UnitAuras.GetUnitAuras(unit, "HARMFUL")
     if not auras or #auras == 0 then LCG.PixelGlow_Stop(frame); return end
 
-    -- Find first dispellable aura; when onlyByMe use IsAuraFilteredOutByInstanceID to check player-dispellability
     local bestAuraInstanceID = nil
     for _, aura in ipairs(auras) do
         if aura.dispelName then
@@ -44,15 +67,7 @@ function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin)
     end
 
     if bestAuraInstanceID then
-        local curve = nil
-        if C_CurveUtil and C_CurveUtil.CreateColorCurve then
-            curve = C_CurveUtil.CreateColorCurve()
-            curve:SetType(Enum.LuaCurveType.Step)
-            for typeNum, typeName in pairs(DISPEL_TYPE_NAMES) do
-                local c = plugin:GetSetting(1, "DispelColor" .. typeName) or DEFAULT_COLORS[typeName]
-                if c then curve:AddPoint(typeNum, CreateColor(c.r, c.g, c.b, c.a or 1)) end
-            end
-        end
+        local curve = GetDispelCurve(plugin)
         local color = curve and C_UnitAuras.GetAuraDispelTypeColor and C_UnitAuras.GetAuraDispelTypeColor(unit, bestAuraInstanceID, curve)
         if color then
             local thickness = plugin:GetSetting(1, "DispelThickness") or 2
