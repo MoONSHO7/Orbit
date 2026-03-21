@@ -399,15 +399,15 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
             end
         end
 
-        local pOpts = GetFrameOptions(oldAnchor.parent)
-        local cOpts = GetFrameOptions(child)
-        if ShouldMergeBorders(pOpts, oldAnchor.edge) and ShouldMergeBorders(cOpts, oldAnchor.edge) then
-            SetMergeBorderState(oldAnchor.parent, child, oldAnchor.edge, false)
-        end
-
         self.anchors[child] = nil
         if oldAnchor.parent and self.childrenOf[oldAnchor.parent] then
             self.childrenOf[oldAnchor.parent][child] = nil
+        end
+
+        local pOpts = GetFrameOptions(oldParent)
+        local cOpts = GetFrameOptions(child)
+        if ShouldMergeBorders(pOpts, oldAnchor.edge) and ShouldMergeBorders(cOpts, oldAnchor.edge) then
+            SetMergeBorderState(oldParent, child, oldAnchor.edge, false)
         end
 
         if not suppressApplySettings and child.orbitPlugin and child.orbitPlugin.ApplySettings then
