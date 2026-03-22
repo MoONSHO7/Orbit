@@ -105,6 +105,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
             local onGCD = cdInfo and cdInfo.isOnGCD
             local chargeInfo = icon.isChargeSpell and C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
             if chargeInfo then
+                -- TODO(API): maxCharges is non-secret after hotfix; simplify issecretvalue guard
                 if not issecretvalue(chargeInfo.currentCharges) then
                     icon._trackedCharges = chargeInfo.currentCharges
                     icon._knownRechargeDuration = chargeInfo.cooldownDuration
@@ -146,10 +147,11 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     local desatPct = onGCD and 0 or durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE)
                     icon.Icon:SetDesaturation(desatPct)
                     if icon.cdAlphaCurve then icon.Cooldown:SetAlpha(durObj:EvaluateRemainingPercent(icon.cdAlphaCurve)) end
-                    local onRealCD = cdInfo and (issecretvalue(cdInfo.startTime) or cdInfo.startTime > 0)
-                    if icon.activeDuration and onRealCD and not onGCD then
-                        -- Legacy :SetCooldown required: ActiveCooldown phase uses cdInfo.startTime, no DurationObject API exists
-                        icon.ActiveCooldown:SetCooldown(cdInfo.startTime, icon.activeDuration)
+                    -- TODO(API): replace fallback with cdInfo.isActive once hotfix is live
+                    local onRealCD = cdInfo and (cdInfo.isActive ~= nil and cdInfo.isActive or (issecretvalue(cdInfo.startTime) or cdInfo.startTime > 0))
+                    if icon.activeDuration and onRealCD and not onGCD and icon._activeGlowExpiry then
+                        local castTime = icon._activeGlowExpiry - icon.activeDuration
+                        icon.ActiveCooldown:SetCooldown(castTime, icon.activeDuration)
                     else
                         icon.ActiveCooldown:Clear()
                     end
@@ -451,8 +453,9 @@ function Updater:RegisterSpellCastWatcher(plugin)
 
     local viewerMap = plugin.viewerMap
     local frame = CreateFrame("Frame")
-    frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    frame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
     frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
+    frame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
     frame:SetScript("OnEvent", function(_, event, unit, _, spellId)
         if event == "TRAIT_CONFIG_UPDATED" then
             C_Timer.After(TALENT_REPARSE_DELAY, function()
@@ -461,6 +464,10 @@ function Updater:RegisterSpellCastWatcher(plugin)
                 plugin:RefreshChargeMaxCharges()
                 self:RefreshAllTrackedLayouts(plugin)
             end)
+            return
+        end
+        if event == "PLAYER_EQUIPMENT_CHANGED" then
+            self:OnTrackedEquipmentChanged(plugin)
             return
         end
         if unit ~= "player" then return end
@@ -489,6 +496,41 @@ function Updater:RegisterSpellCastWatcher(plugin)
             if childData.frame then CheckAnchor(childData.frame) end
         end
     end)
+end
+
+-- [ EQUIPMENT CHANGE HANDLER ]----------------------------------------------------------------------
+function Updater:OnTrackedEquipmentChanged(plugin)
+    local function UpdateAnchor(anchor, systemIndex)
+        if not anchor then return end
+        local tracked = plugin:GetSetting(systemIndex, "TrackedItems") or {}
+        local changed = false
+        for key, data in pairs(tracked) do
+            if data.slotId then
+                local newItemId = GetInventoryItemID("player", data.slotId)
+                if newItemId and newItemId ~= data.id then
+                    data.id = newItemId
+                    data.useSpellId = select(2, GetItemSpell(newItemId)) or nil
+                    local parseId = data.id
+                    data.activeDuration = Orbit.TrackedTooltipParser:ParseActiveDuration("item", parseId)
+                    data.cooldownDuration = Orbit.TrackedTooltipParser:ParseCooldownDuration("item", parseId)
+                    changed = true
+                elseif not newItemId then
+                    tracked[key] = nil
+                    changed = true
+                end
+            end
+        end
+        if changed then
+            plugin:SetSetting(systemIndex, "TrackedItems", tracked)
+            plugin:LoadTrackedItems(anchor, systemIndex)
+        end
+    end
+    local viewerMap = plugin.viewerMap
+    local entry = viewerMap[TRACKED_INDEX]
+    if entry and entry.anchor then UpdateAnchor(entry.anchor, TRACKED_INDEX) end
+    for _, childData in pairs(plugin.activeChildren) do
+        if childData.frame then UpdateAnchor(childData.frame, childData.frame.systemIndex) end
+    end
 end
 
 -- [ CURSOR WATCHER ]--------------------------------------------------------------------------------
@@ -539,6 +581,7 @@ function Updater:RegisterCursorWatcher(plugin)
         local isDroppable = plugin.IsDraggingCooldownAbility and plugin.IsDraggingCooldownAbility()
         self:SetTrackedClickEnabled(plugin, isDroppable or isShift or isEditMode)
         plugin:SetChargeClickEnabled(isDroppable or isShift or isEditMode)
+        if Orbit.ViewerInjection then Orbit.ViewerInjection:SetClickEnabled(isDroppable or isShift or isEditMode) end
         local entry = viewerMap[TRACKED_INDEX]
         if entry and entry.anchor then
             Layout:LayoutTrackedIcons(plugin, entry.anchor, TRACKED_INDEX, plugin.IsDraggingCooldownAbility)
