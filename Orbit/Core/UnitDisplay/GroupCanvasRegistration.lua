@@ -7,6 +7,42 @@ local OrbitEngine = Orbit.Engine
 Orbit.GroupCanvasRegistration = {}
 local Reg = Orbit.GroupCanvasRegistration
 
+-- [ TIER-AWARE CALLBACKS ]--------------------------------------------------------------------------
+local function MakeTierPositionCallback(plugin, key)
+    return function(_, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
+        local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+        if Txn and Txn:IsActive() and Txn:GetPlugin() == plugin then
+            Txn:SetPosition(key, { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV })
+            return
+        end
+        local positions = plugin:GetComponentPositions(1)
+        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV }
+        plugin:SetSetting(1, "ComponentPositions", positions)
+    end
+end
+
+local function MakeTierAuraPositionCallback(plugin, key)
+    return function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV, selfAnchorY)
+        local posX, posY
+        local compParent = comp:GetParent()
+        if compParent then
+            local cx, cy = comp:GetCenter()
+            local px, py = compParent:GetCenter()
+            if cx and px then posX = cx - px end
+            if cy and py then posY = cy - py end
+        end
+        local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV, posX = posX, posY = posY, selfAnchorY = selfAnchorY }
+        local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+        if Txn and Txn:IsActive() and Txn:GetPlugin() == plugin then
+            Txn:SetPosition(key, posData)
+            return
+        end
+        local positions = plugin:GetComponentPositions(1)
+        positions[key] = posData
+        plugin:SetSetting(1, "ComponentPositions", positions)
+    end
+end
+
 local function MakeStatusIconsPositionCallback(plugin)
     return function(_, anchorX, anchorY, offsetX, offsetY, justifyH)
         local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH }
@@ -14,10 +50,10 @@ local function MakeStatusIconsPositionCallback(plugin)
         if Txn and Txn:IsActive() then
             Txn:SetPosition("StatusIcons", posData)
         else
-            local positions = plugin:GetSetting(1, "ComponentPositions") or {}
+            local positions = GetTierPositions(plugin)
             positions.StatusIcons = posData
             Reg:FanOutStatusIcons(positions)
-            plugin:SetSetting(1, "ComponentPositions", positions)
+            SetTierPositions(plugin, positions)
         end
     end
 end
@@ -47,7 +83,7 @@ function Reg:RegisterComponents(plugin, container, firstFrame, textKeys, iconKey
         if element then
             OrbitEngine.ComponentDrag:Attach(element, container, {
                 key = key,
-                onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(plugin, 1, key),
+                onPositionChange = MakeTierPositionCallback(plugin, key),
             })
         end
     end
@@ -58,7 +94,7 @@ function Reg:RegisterComponents(plugin, container, firstFrame, textKeys, iconKey
             local isAura = AURA_ICON_KEYS[key]
             OrbitEngine.ComponentDrag:Attach(element, container, {
                 key = key, isAuraContainer = isAura or false,
-                onPositionChange = isAura and OrbitEngine.ComponentDrag:MakeAuraPositionCallback(plugin, 1, key) or OrbitEngine.ComponentDrag:MakePositionCallback(plugin, 1, key),
+                onPositionChange = isAura and MakeTierAuraPositionCallback(plugin, key) or MakeTierPositionCallback(plugin, key),
             })
         end
     end
@@ -79,7 +115,7 @@ function Reg:RegisterComponents(plugin, container, firstFrame, textKeys, iconKey
         end
         OrbitEngine.ComponentDrag:Attach(firstFrame[containerKey], container, {
             key = key, isAuraContainer = true,
-            onPositionChange = OrbitEngine.ComponentDrag:MakeAuraPositionCallback(plugin, 1, key),
+            onPositionChange = MakeTierAuraPositionCallback(plugin, key),
         })
     end
 end
@@ -151,14 +187,17 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
         frame.MarkerIcon.orbitSpriteCols = 4
         frame.MarkerIcon:Show()
     end
+    local auraSkin = Orbit.Constants.Aura.SkinNoTimer
     if frame.DefensiveIcon then
         frame.DefensiveIcon.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
         frame.DefensiveIcon:SetSize(cfg.defensiveSize, cfg.defensiveSize)
+        if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(frame.DefensiveIcon, auraSkin) end
         frame.DefensiveIcon:Show()
     end
     if frame.CrowdControlIcon then
         frame.CrowdControlIcon.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
         frame.CrowdControlIcon:SetSize(cfg.crowdControlSize, cfg.crowdControlSize)
+        if Orbit.Skin and Orbit.Skin.Icons then Orbit.Skin.Icons:ApplyCustom(frame.CrowdControlIcon, auraSkin) end
         frame.CrowdControlIcon:Show()
     end
     if frame.PrivateAuraAnchor then
@@ -183,7 +222,7 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
         })
     end
     local container = frame:GetParent()
-    local savedPositions = plugin:GetSetting(1, "ComponentPositions") or {}
+    local savedPositions = plugin:GetComponentPositions(1)
     for _, slot in ipairs(healerSlots) do
         local slotPos = savedPositions[slot.key]
         local slotSize = (slotPos and slotPos.overrides and slotPos.overrides.IconSize) or cfg.healerAuraSize
@@ -194,7 +233,7 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
         icon:Show()
         if OrbitEngine.ComponentDrag and not icon._canvasAttached then
             icon._canvasAttached = true
-            OrbitEngine.ComponentDrag:Attach(icon, container, { key = slot.key, isAuraContainer = true, onPositionChange = OrbitEngine.ComponentDrag:MakeAuraPositionCallback(plugin, 1, slot.key) })
+            OrbitEngine.ComponentDrag:Attach(icon, container, { key = slot.key, isAuraContainer = true, onPositionChange = MakeTierAuraPositionCallback(plugin, slot.key) })
         end
     end
     if raidBuffs and #raidBuffs > 0 then
@@ -204,7 +243,7 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
         rb:Show()
         if OrbitEngine.ComponentDrag and not rb._canvasAttached then
             rb._canvasAttached = true
-            OrbitEngine.ComponentDrag:Attach(rb, container, { key = "RaidBuff", isAuraContainer = true, onPositionChange = OrbitEngine.ComponentDrag:MakeAuraPositionCallback(plugin, 1, "RaidBuff") })
+            OrbitEngine.ComponentDrag:Attach(rb, container, { key = "RaidBuff", isAuraContainer = true, onPositionChange = MakeTierAuraPositionCallback(plugin, "RaidBuff") })
         end
     end
 end

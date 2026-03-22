@@ -30,7 +30,7 @@ local PLUGIN_GROUPS = {
         { label = "Target Frame", plugins = { "Target Frame", "Target Power", "Target Cast Bar", "Target Buffs", "Target Debuffs", "Target of Target" } },
         { label = "Focus Frame",  plugins = { "Focus Frame", "Focus Power", "Focus Cast Bar", "Focus Buffs", "Focus Debuffs", "Target of Focus" }, triState = true },
     }},
-    { header = "Group Frames", names = { "Party Frames", "Raid Frames", "Boss Frames" } },
+    { header = "Group Frames", names = { "Group Frames", "Boss Frames" } },
     { header = "Combat",       names = { "Action Bars", "Cooldown Manager" } },
     { header = "UI",           names = {
         { label = "Menu Bar", plugins = { "Menu Bar" }, triState = true },

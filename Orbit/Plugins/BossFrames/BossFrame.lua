@@ -142,7 +142,7 @@ local function CreateBossFrame(bossIndex, plugin)
     local originalOnEvent = frame:GetScript("OnEvent")
     frame:SetScript("OnEvent", function(f, event, eventUnit, ...)
         if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then if eventUnit == unit then UpdatePowerBar(f) end; return
-        elseif event == "UNIT_AURA" then if eventUnit == unit then UpdateDebuffs(f, plugin); UpdateBuffs(f, plugin) end; return
+        elseif event == "UNIT_AURA" then if eventUnit == unit then if f.debuffContainer then f.debuffContainer._auraFingerprint = nil end; if f.buffContainer then f.buffContainer._auraFingerprint = nil end; f._auraSnapshot = plugin:BuildAuraSnapshot(unit); UpdateDebuffs(f, plugin); UpdateBuffs(f, plugin); f._auraSnapshot = nil end; return
         elseif event == "RAID_TARGET_UPDATE" then plugin:UpdateMarkerIcon(f, plugin); return end
         if originalOnEvent then originalOnEvent(f, event, eventUnit, ...) end
     end)
@@ -275,7 +275,7 @@ function Plugin:OnLoad()
     eventFrame:RegisterEvent("UNIT_TARGETABLE_CHANGED")
     eventFrame:SetScript("OnEvent", function(_, event)
         if event == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" or event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" or event == "UNIT_TARGETABLE_CHANGED" then
-            for _, frame in ipairs(self.frames) do if frame.UpdateAll then frame:UpdateAll(); UpdatePowerBar(frame); UpdateDebuffs(frame, self) end end
+            for _, frame in ipairs(self.frames) do if frame.UpdateAll then frame:UpdateAll(); UpdatePowerBar(frame); frame._auraSnapshot = self:BuildAuraSnapshot(frame.unit); UpdateDebuffs(frame, self); UpdateBuffs(frame, self); frame._auraSnapshot = nil end end
         end
         if not InCombatLockdown() then self:UpdateContainerSize() end
     end)

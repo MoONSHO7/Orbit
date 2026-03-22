@@ -513,12 +513,22 @@ function Selection:ShowAnchorLine(selection, side, align)
     local c = (align and ANCHOR_ALIGN_COLORS[align]) or DEFAULT_ANCHOR_COLOR
     local orient = (side == "TOP" or side == "BOTTOM") and "HORIZONTAL" or "VERTICAL"
     local a1s, a1e, a2s, a2e
-    if START_SOLID[align] then
-        a1s, a1e, a2s, a2e = 1, 0.7, 0.7, 0.15
-    elseif END_SOLID[align] then
-        a1s, a1e, a2s, a2e = 0.15, 0.7, 0.7, 1
+    if orient == "HORIZONTAL" then
+        if align == "LEFT" then
+            a1s, a1e, a2s, a2e = 1, 0.7, 0.7, 0.15
+        elseif align == "RIGHT" then
+            a1s, a1e, a2s, a2e = 0.15, 0.7, 0.7, 1
+        else
+            a1s, a1e, a2s, a2e = 0.15, 1, 1, 0.15
+        end
     else
-        a1s, a1e, a2s, a2e = 0.15, 1, 1, 0.15
+        if align == "TOP" then
+            a1s, a1e, a2s, a2e = 0.7, 1, 0.15, 0.7
+        elseif align == "BOTTOM" then
+            a1s, a1e, a2s, a2e = 0.7, 0.15, 1, 0.7
+        else
+            a1s, a1e, a2s, a2e = 1, 0.15, 0.15, 1
+        end
     end
     pair[1]:SetGradient(orient, CreateColor(c[1], c[2], c[3], a1s), CreateColor(c[1], c[2], c[3], a1e))
     pair[2]:SetGradient(orient, CreateColor(c[1], c[2], c[3], a2s), CreateColor(c[1], c[2], c[3], a2e))

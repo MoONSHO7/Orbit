@@ -756,7 +756,8 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
     local maxPerRow = skinSettings._maxPerRow or math.huge
     local cols = math.min(#activeIcons, maxPerRow)
     local rows = math.ceil(#activeIcons / maxPerRow)
-    local gridW, gridH = cols * iconW, rows * iconH
+    local gridW = (cols * iconW) + (math.max(0, cols - 1) * spacing)
+    local gridH = (rows * iconH) + (math.max(0, rows - 1) * spacing)
     local gx = skinSettings._growthX or "RIGHT"
     local gy = skinSettings._growthY or "DOWN"
     if not Frame._gridGroupBorder then
@@ -782,8 +783,8 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
         outset = Orbit.Engine.Pixel:Snap((edgeSize / 2) + borderOffset, scale)
         local osX = (gx == "LEFT") and outset or -outset
         local osY = (gy == "UP") and -outset or outset
-        overlay:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(osX, extX + osX), math.max(osY, extY + osY))
-        overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(osX, extX + osX), math.min(osY, extY + osY))
+        overlay:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(osX, extX - osX), math.max(osY, extY - osY))
+        overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(osX, extX - osX), math.min(osY, extY - osY))
         overlay:SetBackdrop({ edgeFile = style.edgeFile, edgeSize = edgeSize })
         overlay:SetBackdropBorderColor(1, 1, 1, 1)
     else

@@ -226,6 +226,20 @@ function Config:RenderControl(container, systemFrame, plugin, systemIndex, def)
     end
 
     if control then
+        if def.disabled then
+            control:SetAlpha(0.4)
+            if not control._disabledOverlay then
+                local overlay = CreateFrame("Frame", nil, control)
+                overlay:SetAllPoints()
+                overlay:SetFrameLevel(control:GetFrameLevel() + 10)
+                overlay:EnableMouse(true)
+                control._disabledOverlay = overlay
+            end
+            control._disabledOverlay:Show()
+        elseif control._disabledOverlay then
+            control:SetAlpha(1.0)
+            control._disabledOverlay:Hide()
+        end
         Layout:AddControl(container, control)
     end
 end

@@ -362,8 +362,8 @@ Layout:RegisterWidgetType("profileactive", function(container, def, getValue, ca
     end
 
     local resetBtn = CreateFrame("Button", nil, frame)
-    resetBtn:SetSize(ICON_BUTTON_SIZE / 2, ICON_BUTTON_SIZE / 2)
-    resetBtn:SetPoint("LEFT", frame.Dropdown, "RIGHT", (Constants.Widget.ValueWidth - ICON_BUTTON_SIZE / 2) / 2 + 10, 0)
+    resetBtn:SetSize(ICON_BUTTON_SIZE, ICON_BUTTON_SIZE)
+    resetBtn:SetPoint("LEFT", frame.Dropdown, "RIGHT", 5, 0)
     frame.resetBtn = resetBtn
     local icon = resetBtn:CreateTexture(nil, "ARTWORK")
     icon:SetAllPoints()

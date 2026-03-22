@@ -13,9 +13,35 @@ local IsSecret = issecretvalue
 -- Deleted local BuildAuraSnapshot (Moved to AuraMixin)
 
 -- [ AURA UPDATE DISPATCH ]------------------------------------------------------------------------
+-- Aura component keys checked before building a snapshot
+local AURA_COMPONENT_KEYS = { "Debuffs", "Buffs", "DefensiveIcon", "CrowdControlIcon" }
+
+local function HasAnyAuraComponent(plugin)
+    local cache = plugin._auraComponentsActive
+    if cache ~= nil then return cache end
+    local disabled = plugin.IsComponentDisabled
+    if not disabled then plugin._auraComponentsActive = true; return true end
+    for _, key in ipairs(AURA_COMPONENT_KEYS) do
+        if not plugin:IsComponentDisabled(key) then plugin._auraComponentsActive = true; return true end
+    end
+    -- Check healer aura slots
+    local HealerReg = Orbit.HealerAuraRegistry
+    if HealerReg then
+        for _, slot in ipairs(HealerReg:ActiveSlots()) do
+            if not plugin:IsComponentDisabled(slot.key) then plugin._auraComponentsActive = true; return true end
+        end
+        if not plugin:IsComponentDisabled("RaidBuff") then plugin._auraComponentsActive = true; return true end
+    end
+    -- Check dispel indicator
+    if plugin.UpdateDispelIndicator then plugin._auraComponentsActive = true; return true end
+    plugin._auraComponentsActive = false
+    return false
+end
+
 local function ProcessAuraUpdate(f, plugin, callbacks)
     local unit = f.unit
     if not unit or not UnitExists(unit) then return end
+    if not HasAnyAuraComponent(plugin) then return end
     local snapshot = Orbit.AuraMixin:BuildAuraSnapshot(unit)
     f._auraSnapshot = snapshot
     callbacks.UpdateDebuffs(f, plugin)
@@ -35,7 +61,6 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
         if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
             if eventUnit == f.unit then
                 if originalOnEvent then originalOnEvent(f, event, eventUnit, ...) end
-                StatusDispatch(f, plugin, "UpdateStatusText")
             end
             return
         end

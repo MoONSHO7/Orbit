@@ -15,8 +15,7 @@ Plugins/
   CooldownManager/  -- cooldown viewers, tracked abilities, charge bars
   MenuItems/        -- micro menu, bag bar, performance, queue status, combat timer
   Misc/             -- miscellaneous (talking head)
-  PartyFrames/      -- party unit frames (1-4)
-  RaidFrames/       -- raid unit frames (1-40)
+  GroupFrames/      -- group unit frames (party + raid, tier-adaptive)
   UnitFrames/       -- player, target, focus frames and their sub-frames
 ```
 

@@ -14,6 +14,7 @@ local Mixin = Orbit.PrivateAuraMixin
 -- [ ANCHOR REMOVAL ]-------------------------------------------------------------------------------
 function Mixin:RemoveAnchors(frame)
     if not frame._privateAuraIDs then return end
+    if InCombatLockdown() then return end
     for _, id in ipairs(frame._privateAuraIDs) do C_UnitAuras.RemovePrivateAuraAnchor(id) end
     wipe(frame._privateAuraIDs)
 end
@@ -68,6 +69,7 @@ end
 function Mixin:Update(frame, plugin, iconSize)
     local anchor = frame.PrivateAuraAnchor
     if not anchor then return end
+    if InCombatLockdown() then return end
     if plugin.IsComponentDisabled and plugin:IsComponentDisabled("PrivateAuraAnchor") then
         anchor:Hide()
         return
