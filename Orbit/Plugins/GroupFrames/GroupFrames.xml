@@ -2,6 +2,7 @@
     <Script file="GroupFrameHelpers.lua"/>
     <Script file="GroupFramePreview.lua"/>
     <Script file="GroupFrameFactory.lua"/>
+    <Script file="GroupFrameLayout.lua"/>
     <Script file="GroupFrameSettings.lua"/>
     <Script file="GroupFrame.lua"/>
 </Ui>

@@ -15,7 +15,7 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
         CastBarWidth = 300,
         CastBarTextSize = 10,
         CastBarScale = 100,
-        ShowLatency = true,
+        ShowLatency = false,
         SparkColor = { r = 1, g = 1, b = 1, a = 1 },
         SparkColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
         DisabledComponents = {},

@@ -13,7 +13,6 @@ Engine.FrameSelection = Engine.FrameSelection or {}
 local Selection = Engine.FrameSelection
 
 -- [ STATE ]-----------------------------------------------------------------------------------------
-
 Selection.selections = Selection.selections or {}
 Selection.dragCallbacks = Selection.dragCallbacks or {}
 Selection.selectionCallbacks = Selection.selectionCallbacks or {}
@@ -27,8 +26,6 @@ Selection.editModeHooked = false
 Selection.combatDeferredCallback = nil
 
 -- [ VISIBILITY HELPERS ]--------------------------------------------------------------------------
--- DRY: Centralized visibility checks for Orbit and Blizzard frames
-
 local function ShouldShowOrbitFrames()
     return Orbit.db.GlobalSettings.ShowOrbitFrames ~= false
 end

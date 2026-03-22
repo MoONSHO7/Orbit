@@ -38,8 +38,6 @@ local UNIT_REREGISTER_EVENTS = {
     "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
 }
 
-local _pendingPrivateAuraReanchor = false
-
 -- [ TIER DEFAULTS ]---------------------------------------------------------------------------------
 local TIER_DEFAULTS = {
     Party = {
@@ -48,25 +46,28 @@ local TIER_DEFAULTS = {
         ShowPowerBar = true, PowerBarHeight = 10,
         HealthTextMode = "percent_short", ShowHealthValue = true,
         ComponentPositions = {
-            Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT", posX = -75, posY = 0 },
-            HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT", posX = 75, posY = 0 },
-            MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2, justifyH = "CENTER", posX = 0, posY = 18 },
-            RoleIcon = { anchorX = "RIGHT", offsetX = 10, anchorY = "TOP", offsetY = 3, justifyH = "RIGHT" },
-            LeaderIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", posX = -70, posY = 20 },
-            StatusIcons = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
-            SummonIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
-            PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
-            ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
-            ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
-            DefensiveIcon = { anchorX = "LEFT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
+            Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT", selfAnchorY = "CENTER", posX = -75, posY = 0 },
+            HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT", selfAnchorY = "CENTER", posX = 75, posY = 0 },
+            MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2, justifyH = "CENTER", selfAnchorY = "TOP", posX = 0, posY = 18 },
+            RoleIcon = { anchorX = "RIGHT", offsetX = 5, anchorY = "TOP", offsetY = 5, justifyH = "RIGHT", selfAnchorY = "TOP", posX = 75, posY = 15 },
+            LeaderIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", selfAnchorY = "TOP", posX = -70, posY = 20 },
+            StatusIcons = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", selfAnchorY = "BOTTOM", posX = 0, posY = -10, overrides = { IconSize = 15 } },
+            SummonIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", posX = 0, posY = -10 },
+            PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", posX = 0, posY = -10 },
+            ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", posX = 0, posY = -10 },
+            ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", posX = 0, posY = -10 },
+            DefensiveIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0, overrides = { IconSize = 32 } },
             CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
-            PrivateAuraAnchor = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 2 },
-            Buffs = { anchorX = "LEFT", anchorY = "CENTER", offsetX = -2, offsetY = 0, posX = -110, posY = 0, overrides = { MaxIcons = 3, IconSize = 18, MaxRows = 1 } },
-            Debuffs = { anchorX = "RIGHT", anchorY = "CENTER", offsetX = -2, offsetY = 0, posX = 110, posY = 0, overrides = { MaxIcons = 3, IconSize = 18, MaxRows = 1 } },
+            PrivateAuraAnchor = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0 },
+            Buffs = { anchorX = "LEFT", anchorY = "CENTER", offsetX = -2, offsetY = 0, justifyH = "RIGHT", selfAnchorY = "CENTER", posX = -110, posY = 0, overrides = { MaxIcons = 4, IconSize = 34, MaxRows = 2 } },
+            Debuffs = { anchorX = "RIGHT", anchorY = "CENTER", offsetX = -2, offsetY = 0, justifyH = "LEFT", selfAnchorY = "CENTER", posX = 110, posY = 0, overrides = { MaxIcons = 4, IconSize = 34, MaxRows = 2 } },
+            MainTankIcon = { anchorX = "LEFT", offsetX = 25, anchorY = "TOP", offsetY = 1, justifyH = "LEFT", selfAnchorY = "TOP", posX = -55, posY = 19, overrides = { Scale = 0.7 } },
         },
         DisabledComponents = (function()
-            local d = { "DefensiveIcon", "CrowdControlIcon", "RoleIcon" }
+            local d = { "CrowdControlIcon", "RoleIcon" }
             for _, k in ipairs(Orbit.HealerAuraRegistry:AllSlotKeys()) do d[#d + 1] = k end
+            d[#d + 1] = "RaidBuff"
+            d[#d + 1] = "Status"
             return d
         end)(),
         DisabledComponentsMigrated = true,
@@ -83,30 +84,31 @@ local TIER_DEFAULTS = {
         Width = 100, Height = 40, Scale = 100, MemberSpacing = 2, GroupSpacing = 2,
         GroupsPerRow = 6, GrowthDirection = "Down", SortMode = "Group",
         Orientation = "Horizontal", FlatRows = 1,
-        ShowPowerBar = true, PowerBarHeight = 8, ShowGroupLabels = true,
-        ShowHealthValue = true, HealthTextMode = "percent_short",
+        ShowPowerBar = true, PowerBarHeight = 16, ShowGroupLabels = true,
+        ShowHealthValue = false, HealthTextMode = "percent_short",
         ComponentPositions = {
-            Name = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 10, justifyH = "CENTER", posX = 0, posY = 10 },
-            HealthText = { anchorX = "RIGHT", offsetX = 3, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
-            Status = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
-            MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = -1, justifyH = "CENTER", posX = 0, posY = 21 },
-            RoleIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "TOP", offsetY = 2, justifyH = "RIGHT", posX = 48, posY = 18, overrides = { Scale = 0.7 } },
-            LeaderIcon = { anchorX = "LEFT", offsetX = 8, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", posX = -42, posY = 20, overrides = { Scale = 0.8 } },
-            MainTankIcon = { anchorX = "LEFT", offsetX = 20, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", posX = -30, posY = 20, overrides = { Scale = 0.8 } },
-            StatusIcons = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
+            Name = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 10, justifyH = "CENTER", selfAnchorY = "TOP", posX = 0, posY = 10 },
+            HealthText = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", selfAnchorY = "BOTTOM", posX = 0, posY = -10, overrides = { ShowHealthValue = false, FontSize = 10 } },
+            MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = -1, justifyH = "CENTER", selfAnchorY = "TOP", posX = 0, posY = 21 },
+            RoleIcon = { anchorX = "RIGHT", offsetX = 5, anchorY = "TOP", offsetY = 5, justifyH = "RIGHT", selfAnchorY = "TOP", posX = 45, posY = 15, overrides = { Scale = 0.7 } },
+            LeaderIcon = { anchorX = "LEFT", offsetX = 8, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", selfAnchorY = "TOP", posX = -42, posY = 20, overrides = { Scale = 0.8 } },
+            MainTankIcon = { anchorX = "LEFT", offsetX = 20, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", selfAnchorY = "TOP", posX = -30, posY = 20, overrides = { Scale = 0.6 } },
+            StatusIcons = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0 },
             SummonIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
             ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
-            DefensiveIcon = { anchorX = "LEFT", offsetX = 2, anchorY = "CENTER", offsetY = 0 },
+            DefensiveIcon = { anchorX = "LEFT", offsetX = 1, anchorY = "BOTTOM", offsetY = 1, justifyH = "LEFT", selfAnchorY = "BOTTOM", posX = -49, posY = -19, overrides = { IconSize = 22 } },
             CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
-            PrivateAuraAnchor = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 2 },
-            Buffs = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 2, offsetY = 1, posX = 30, posY = -15, overrides = { MaxIcons = 4, IconSize = 10, MaxRows = 1 } },
-            Debuffs = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 1, offsetY = 1, posX = -35, posY = -15, overrides = { MaxIcons = 2, IconSize = 10, MaxRows = 1 } },
+            PrivateAuraAnchor = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0, overrides = { IconSize = 20 } },
+            Buffs = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 1, justifyH = "RIGHT", selfAnchorY = "BOTTOM", posX = 48, posY = -18, overrides = { MaxIcons = 5, IconSize = 18, MaxRows = 2 } },
         },
         DisabledComponents = (function()
-            local d = { "DefensiveIcon", "CrowdControlIcon", "HealthText" }
+            local d = { "CrowdControlIcon" }
             for _, k in ipairs(Orbit.HealerAuraRegistry:AllSlotKeys()) do d[#d + 1] = k end
+            d[#d + 1] = "RaidBuff"
+            d[#d + 1] = "Status"
+            d[#d + 1] = "Debuffs"
             return d
         end)(),
         DisabledComponentsMigrated = true,
@@ -121,8 +123,34 @@ local TIER_DEFAULTS = {
     },
 }
 -- Heroic / World inherit from Mythic with size overrides
-TIER_DEFAULTS.Heroic = setmetatable({ Width = 80, Height = 32 }, { __index = TIER_DEFAULTS.Mythic })
-TIER_DEFAULTS.World = setmetatable({ Width = 72, Height = 28 }, { __index = TIER_DEFAULTS.Mythic })
+TIER_DEFAULTS.Heroic = setmetatable({ Width = 100, Height = 40, ShowPowerBar = false, PowerBarHeight = 8 }, { __index = TIER_DEFAULTS.Mythic })
+TIER_DEFAULTS.World = setmetatable({
+    Width = 65, Height = 30, GroupsPerRow = 4, ShowGroupLabels = false, ShowPowerBar = false, DispelOnlyByMe = true,
+    ComponentPositions = {
+        RoleIcon = { anchorX = "RIGHT", offsetX = 5, anchorY = "TOP", offsetY = 5, justifyH = "RIGHT", selfAnchorY = "TOP", posX = 31, posY = 9, overrides = { Scale = 0.7 } },
+        LeaderIcon = { anchorX = "LEFT", offsetX = 8, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", selfAnchorY = "TOP", posX = -28, posY = 14, overrides = { Scale = 0.8 } },
+        MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = -1, justifyH = "CENTER", selfAnchorY = "TOP", posX = 0, posY = 15, overrides = { Scale = 0.6 } },
+        SummonIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
+        StatusIcons = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0, overrides = { IconSize = 14 } },
+        PrivateAuraAnchor = { anchorX = "LEFT", offsetX = 1, anchorY = "BOTTOM", offsetY = 1, justifyH = "LEFT", selfAnchorY = "BOTTOM", posX = -35, posY = -13, overrides = { IconSize = 14 } },
+        Name = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 8, justifyH = "CENTER", selfAnchorY = "TOP", posX = 0, posY = 6 },
+        ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
+        PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
+        HealthText = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 7, justifyH = "CENTER", selfAnchorY = "BOTTOM", posX = 0, posY = -7, overrides = { ShowHealthValue = false, FontSize = 8 } },
+        ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
+        MainTankIcon = { anchorX = "LEFT", offsetX = 20, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", selfAnchorY = "TOP", posX = -16, posY = 14, overrides = { Scale = 0.6 } },
+    },
+    DisabledComponents = (function()
+        local d = { "CrowdControlIcon" }
+        for _, k in ipairs(Orbit.HealerAuraRegistry:AllSlotKeys()) do d[#d + 1] = k end
+        d[#d + 1] = "RaidBuff"
+        d[#d + 1] = "Status"
+        d[#d + 1] = "Debuffs"
+        d[#d + 1] = "DefensiveIcon"
+        d[#d + 1] = "Buffs"
+        return d
+    end)(),
+}, { __index = TIER_DEFAULTS.Mythic })
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_GroupFrames"
@@ -136,7 +164,7 @@ local Plugin = Orbit:RegisterPlugin("Group Frames", SYSTEM_ID, {
 
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.GroupFramePreviewMixin, Orbit.AuraMixin,
     Orbit.DispelIndicatorMixin, Orbit.AggroIndicatorMixin, Orbit.StatusIconMixin,
-    Orbit.GroupFrameFactoryMixin)
+    Orbit.GroupFrameFactoryMixin, Orbit.GroupFrameLayoutMixin)
 
 Plugin.canvasMode = true
 Plugin.supportsHealthText = true
@@ -319,10 +347,10 @@ local StatusDispatch = Orbit.GroupFrameMixin.StatusDispatch
 local UpdateInRange = Orbit.GroupFrameMixin.UpdateInRange
 
 local function SchedulePrivateAuraReanchor(plugin)
-    if _pendingPrivateAuraReanchor then return end
-    _pendingPrivateAuraReanchor = true
+    if plugin._pendingPrivateAuraReanchor then return end
+    plugin._pendingPrivateAuraReanchor = true
     C_Timer.After(0, function()
-        _pendingPrivateAuraReanchor = false
+        plugin._pendingPrivateAuraReanchor = false
         if not plugin.frames then return end
         for _, frame in ipairs(plugin.frames) do
             if frame.unit and frame:IsShown() then UpdatePrivateAuras(frame, plugin) end
@@ -682,281 +710,6 @@ function Plugin:PrepareIconsForCanvasMode()
     }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs())
 end
 
--- [ FRAME POSITIONING ]-----------------------------------------------------------------------------
-function Plugin:PositionFrames()
-    if InCombatLockdown() then return end
-
-    local isParty = self:IsPartyTier()
-
-    if isParty then
-        self:PositionPartyFrames()
-    else
-        self:PositionRaidFrames()
-    end
-    self:UpdateContainerSize()
-end
-
-function Plugin:PositionPartyFrames()
-    if self.groupLabels then
-        for i = 1, MAX_RAID_GROUPS do if self.groupLabels[i] then self.groupLabels[i]:Hide() end end
-    end
-    local spacing = self:GetTierSetting("Spacing") or 0
-    local orientation = self:GetTierSetting("Orientation") or 0
-    local width = self:GetTierSetting("Width") or 160
-    local height = self:GetTierSetting("Height") or 40
-    local growthDirection = self:GetTierSetting("GrowthDirection") or (orientation == 0 and "Down" or "Right")
-    self.container.orbitForceAnchorPoint = Helpers:GetContainerAnchor(growthDirection)
-
-    local visibleIndex = 0
-    local scale = self.container:GetEffectiveScale() or 1
-    for _, frame in ipairs(self.frames) do
-        frame:ClearAllPoints()
-        if frame:IsShown() or frame.preview then
-            visibleIndex = visibleIndex + 1
-            local xOffset, yOffset, frameAnchor, containerAnchor =
-                Helpers:CalculatePartyFramePosition(visibleIndex, width, height, spacing, orientation, growthDirection, scale)
-            frame:SetPoint(frameAnchor, self.container, containerAnchor, xOffset, yOffset)
-        end
-    end
-end
-
-function Plugin:PositionRaidFrames()
-    local width = self:GetTierSetting("Width") or 100
-    local height = self:GetTierSetting("Height") or 40
-    local memberSpacing = self:GetTierSetting("MemberSpacing") or 2
-    local groupSpacing = self:GetTierSetting("GroupSpacing") or 2
-    local groupsPerRow = self:GetTierSetting("GroupsPerRow") or 6
-    local memberGrowth = self:GetTierSetting("GrowthDirection") or "Down"
-    self.container.orbitForceAnchorPoint = Helpers:GetContainerAnchor(memberGrowth)
-    local isHorizontal = (self:GetTierSetting("Orientation") or "Vertical") == "Horizontal"
-
-    local activeGroups = Helpers:GetActiveGroups()
-    local sortMode = self:GetTierSetting("SortMode") or "Group"
-
-    local isPreview = self.frames[1] and self.frames[1].preview
-    local groupOrder = {}
-    if isPreview then
-        local tierMax = Helpers:GetTierMaxFrames(self:GetCurrentTier())
-        local previewGroups = math.ceil(tierMax / FRAMES_PER_GROUP)
-        for g = 1, previewGroups do groupOrder[g] = g end
-    else
-        for g = 1, MAX_RAID_GROUPS do
-            if activeGroups[g] then groupOrder[#groupOrder + 1] = g end
-        end
-    end
-
-    local growUp = (memberGrowth == "Up")
-    local scale = self.container:GetEffectiveScale() or 1
-
-    if sortMode ~= "Group" then
-        local flatRows = math.max(1, self:GetTierSetting("FlatRows") or 1)
-        local visibleFrames = {}
-        for i = 1, MAX_GROUP_FRAMES do
-            local frame = self.frames[i]
-            if frame and ((frame.preview) or (frame.unit and UnitExists(frame.unit))) then
-                visibleFrames[#visibleFrames + 1] = frame
-            end
-        end
-        local totalFrames = #visibleFrames
-        local framesPerCol = math.ceil(totalFrames / flatRows)
-        local msPx = Pixel:Multiple(memberSpacing, scale)
-        for idx, frame in ipairs(visibleFrames) do
-            local col = math.floor((idx - 1) / framesPerCol)
-            local row = (idx - 1) % framesPerCol
-            local fx = Pixel:Snap(col * (width + msPx), scale)
-            local fy = Pixel:Snap(row * (height + msPx), scale)
-            frame:ClearAllPoints()
-            if growUp then
-                frame:SetPoint("BOTTOMLEFT", self.container, "BOTTOMLEFT", fx, fy)
-            else
-                frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", fx, -fy)
-            end
-        end
-    else
-        local frameBuckets = {}
-        for g = 1, MAX_RAID_GROUPS do frameBuckets[g] = {} end
-        for i = 1, MAX_GROUP_FRAMES do
-            local frame = self.frames[i]
-            if frame then
-                if isPreview then
-                    local previewGroup = math.ceil(i / FRAMES_PER_GROUP)
-                    if frame.preview and previewGroup <= #groupOrder then
-                        local bucket = frameBuckets[previewGroup]
-                        bucket[#bucket + 1] = frame
-                    end
-                elseif frame.unit and UnitExists(frame.unit) then
-                    local raidIndex = tonumber(frame.unit:match("(%d+)"))
-                    local subgroup = raidIndex and select(3, GetRaidRosterInfo(raidIndex))
-                    if subgroup then
-                        local bucket = frameBuckets[subgroup]
-                        bucket[#bucket + 1] = frame
-                    end
-                end
-            end
-        end
-
-        for groupIdx, groupNum in ipairs(groupOrder) do
-            local gx, gy = Helpers:CalculateGroupPosition(groupIdx, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, scale)
-            local bucket = frameBuckets[groupNum] or {}
-            for memberIndex, frame in ipairs(bucket) do
-                if memberIndex > FRAMES_PER_GROUP then break end
-                local mx, my = Helpers:CalculateMemberPosition(memberIndex, width, height, memberSpacing, memberGrowth, isHorizontal, scale)
-                frame:ClearAllPoints()
-                if growUp then
-                    frame:SetPoint("BOTTOMLEFT", self.container, "BOTTOMLEFT", gx + mx, -gy + my)
-                else
-                    frame:SetPoint("TOPLEFT", self.container, "TOPLEFT", gx + mx, gy + my)
-                end
-            end
-        end
-    end
-
-    self:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, growUp, scale)
-end
-
--- [ GROUP LABELS ]----------------------------------------------------------------------------------
-local GROUP_LABEL_FONT_SIZE = 12
-local GROUP_LABEL_ALPHA = 0.65
-local GROUP_LABEL_PADDING = 5
-
-function Plugin:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, growUp, scale)
-    if not self.groupLabels then self.groupLabels = {} end
-    local showLabels = (sortMode == "Group") and self:GetTierSetting("ShowGroupLabels")
-
-    for i = 1, MAX_RAID_GROUPS do
-        if self.groupLabels[i] then self.groupLabels[i]:Hide() end
-    end
-    if not showLabels then return end
-
-    if not self.groupLabelOverlay then
-        self.groupLabelOverlay = CreateFrame("Frame", nil, self.container)
-        self.groupLabelOverlay:SetAllPoints()
-        self.groupLabelOverlay:SetFrameLevel(self.container:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
-    end
-
-    local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or STANDARD_TEXT_FONT
-    for idx, groupNum in ipairs(groupOrder) do
-        if not self.groupLabels[idx] then
-            self.groupLabels[idx] = self.groupLabelOverlay:CreateFontString(nil, "OVERLAY")
-            self.groupLabels[idx]:SetTextColor(1, 1, 1, GROUP_LABEL_ALPHA)
-        end
-        local label = self.groupLabels[idx]
-        label:SetFont(fontPath, GROUP_LABEL_FONT_SIZE, "OUTLINE")
-        label:SetText("G" .. groupNum)
-        label:ClearAllPoints()
-
-        local gx, gy = Helpers:CalculateGroupPosition(idx, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, scale)
-        if isHorizontal then
-            local rowCenter = height / 2
-            if growUp then
-                label:SetPoint("RIGHT", self.container, "BOTTOMLEFT", gx - GROUP_LABEL_PADDING, -gy + rowCenter)
-            else
-                label:SetPoint("RIGHT", self.container, "TOPLEFT", gx - GROUP_LABEL_PADDING, gy - rowCenter)
-            end
-        else
-            local colCenter = width / 2
-            if growUp then
-                label:SetPoint("BOTTOM", self.container, "BOTTOMLEFT", gx + colCenter, -gy + GROUP_LABEL_PADDING)
-            else
-                label:SetPoint("BOTTOM", self.container, "TOPLEFT", gx + colCenter, gy + GROUP_LABEL_PADDING)
-            end
-        end
-        label:Show()
-    end
-end
-
--- [ CONTAINER SIZE ]--------------------------------------------------------------------------------
-function Plugin:UpdateContainerSize()
-    if InCombatLockdown() then return end
-
-    local isParty = self:IsPartyTier()
-    local isPreview = self.frames[1] and self.frames[1].preview
-
-    if isParty then
-        local width = self:GetTierSetting("Width") or 160
-        local height = self:GetTierSetting("Height") or 40
-        local spacing = self:GetTierSetting("Spacing") or 0
-        local orientation = self:GetTierSetting("Orientation") or 0
-        local visibleCount = 0
-        for _, frame in ipairs(self.frames) do
-            if frame:IsShown() or frame.preview then visibleCount = visibleCount + 1 end
-        end
-        visibleCount = math.max(1, visibleCount)
-        local scale = self.container:GetEffectiveScale() or 1
-        local containerW, containerH = Helpers:CalculatePartyContainerSize(visibleCount, width, height, spacing, orientation, scale)
-        self.container:SetSize(containerW, containerH)
-    else
-        local width = self:GetTierSetting("Width") or 100
-        local height = self:GetTierSetting("Height") or 40
-        local memberSpacing = self:GetTierSetting("MemberSpacing") or 2
-        local groupSpacing = self:GetTierSetting("GroupSpacing") or 2
-        local groupsPerRow = self:GetTierSetting("GroupsPerRow") or 6
-        local sortMode = self:GetTierSetting("SortMode") or "Group"
-
-        if sortMode ~= "Group" then
-            local flatRows = math.max(1, self:GetTierSetting("FlatRows") or 1)
-            local totalFrames = 0
-            for _, frame in ipairs(self.frames) do
-                if frame:IsShown() or frame.preview then totalFrames = totalFrames + 1 end
-            end
-            totalFrames = math.max(1, totalFrames)
-            local framesPerCol = math.ceil(totalFrames / flatRows)
-            local scale = self.container:GetEffectiveScale() or 1
-            local msPx = Pixel:Multiple(memberSpacing, scale)
-            local containerW = (flatRows * width) + ((flatRows - 1) * msPx)
-            local containerH = (framesPerCol * height) + ((framesPerCol - 1) * msPx)
-            self.container:SetSize(containerW, containerH)
-        else
-            local numGroups = 0
-            if isPreview then
-                local tierMax = Helpers:GetTierMaxFrames(self:GetCurrentTier())
-                numGroups = math.ceil(tierMax / FRAMES_PER_GROUP)
-            else
-                local activeGroups = Helpers:GetActiveGroups()
-                for _ in pairs(activeGroups) do numGroups = numGroups + 1 end
-                numGroups = math.max(1, numGroups)
-            end
-            local isHorizontal = (self:GetTierSetting("Orientation") or "Vertical") == "Horizontal"
-            local scale = self.container:GetEffectiveScale() or 1
-            local containerW, containerH = Helpers:CalculateRaidContainerSize(numGroups, FRAMES_PER_GROUP, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, scale)
-            self.container:SetSize(containerW, containerH)
-        end
-    end
-
-    local spacing = self:GetTierSetting("Spacing") or 0
-    local memberSpacing = self:GetTierSetting("MemberSpacing") or 2
-    local groupSpacing = self:GetTierSetting("GroupSpacing") or 2
-    local isMerged = (isParty and spacing == 0) or (not isParty and memberSpacing == 0 and groupSpacing == 0)
-
-    if isMerged then
-        local borderSize = self:GetSetting(1, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(self.container:GetEffectiveScale() or 1)
-        Orbit.Skin:SkinBorder(self.container, self.container, borderSize, nil, false, false)
-        
-        local maxLevel = self.container:GetFrameLevel()
-        for _, frame in ipairs(self.frames) do
-            if frame:IsShown() or frame.preview then
-                local fl = frame:GetFrameLevel()
-                if fl > maxLevel then maxLevel = fl end
-            end
-        end
-        local borderLevel = maxLevel + Orbit.Constants.Levels.Border
-
-        if self.container._edgeBorderOverlay then 
-            self.container._edgeBorderOverlay:SetFrameLevel(borderLevel)
-            if self.container._activeBorderMode == "nineslice" then
-                self.container._edgeBorderOverlay:Show()
-            end
-        end
-        if self.container._borderFrame then 
-            self.container._borderFrame:SetFrameLevel(borderLevel)
-            if self.container._activeBorderMode == "flat" then
-                self.container._borderFrame:Show()
-            end
-        end
-    else
-        Orbit.Skin.DefaultSetBorderHidden(self.container, true)
-    end
-end
 
 -- [ DYNAMIC UNIT ASSIGNMENT ]----------------------------------------------------------------------
 function Plugin:UpdateFrameUnits()
@@ -1089,6 +842,16 @@ function Plugin:ApplyFrameStyle(frame, showPower)
 
     self:ApplyTextStyling(frame)
     if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
+
+    -- Reset icon base sizes to current tier (icons are created once at load; tier may change)
+    local iconSize = isParty and 16 or 12
+    local centerIconSize = isParty and 24 or 18
+    for _, k in ipairs({ "RoleIcon", "LeaderIcon", "MainTankIcon", "MarkerIcon" }) do
+        if frame[k] and frame[k].SetSize then frame[k]:SetSize(iconSize, iconSize); frame[k].orbitOriginalWidth, frame[k].orbitOriginalHeight = iconSize, iconSize end
+    end
+    for _, k in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }) do
+        if frame[k] and frame[k].SetSize then frame[k]:SetSize(centerIconSize, centerIconSize); frame[k].orbitOriginalWidth, frame[k].orbitOriginalHeight = centerIconSize, centerIconSize end
+    end
 
     local savedPositions = self:GetComponentPositions(1)
     if savedPositions then

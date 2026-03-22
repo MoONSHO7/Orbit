@@ -16,7 +16,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
     canvasMode = true,
     defaults = {
         Width = 160,
-        Height = 40,
+        Height = 30,
         ClassColour = true,
         HealthTextEnabled = true,
         ShowLevel = true,
@@ -35,18 +35,18 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         AggroThickness = 1,
         DisabledComponents = {},
         ComponentPositions = {
-            Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
-            HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
-            LevelText = { anchorX = "RIGHT", offsetX = 1, anchorY = "TOP", offsetY = 6, justifyH = "LEFT" },
-            CombatIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+            Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT", selfAnchorY = "CENTER", posX = -75, posY = 0 },
+            HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT", selfAnchorY = "CENTER", posX = 75, posY = 0 },
+            LevelText = { anchorX = "RIGHT", offsetX = 5, anchorY = "TOP", offsetY = 6, justifyH = "LEFT", selfAnchorY = "TOP", posX = 75, posY = 9 },
+            CombatIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0 },
             RoleIcon = { anchorX = "RIGHT", offsetX = 10, anchorY = "TOP", offsetY = 3 },
-            LeaderIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 0 },
-            MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 0 },
-            GroupPositionText = { anchorX = "RIGHT", offsetX = 0, anchorY = "BOTTOM", offsetY = 6, justifyH = "LEFT" },
-            RestingIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 5 },
-            ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+            LeaderIcon = { anchorX = "LEFT", offsetX = 10, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", selfAnchorY = "TOP", posX = -70, posY = 15 },
+            MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 0, justifyH = "CENTER", selfAnchorY = "TOP", posX = 0, posY = 15 },
+            GroupPositionText = { anchorX = "RIGHT", offsetX = 5, anchorY = "BOTTOM", offsetY = 6, justifyH = "LEFT", selfAnchorY = "BOTTOM", posX = 75, posY = -9 },
+            RestingIcon = { anchorX = "RIGHT", offsetX = -2, anchorY = "TOP", offsetY = -3, selfAnchorY = "TOP", posX = 81, posY = 17, overrides = { Scale = 0.6 } },
+            ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0 },
             Portrait = { anchorX = "LEFT", offsetX = 4, anchorY = "CENTER", offsetY = 0 },
-            PvpIcon = { anchorX = "RIGHT", offsetX = 10, anchorY = "BOTTOM", offsetY = 0 },
+            PvpIcon = { anchorX = "RIGHT", offsetX = 25, anchorY = "BOTTOM", offsetY = -5, justifyH = "RIGHT", selfAnchorY = "BOTTOM", posX = 55, posY = -20, overrides = { Scale = 1.5 } },
         },
     },
 })
@@ -74,7 +74,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         local sizeOnChange = function(key) return function(val) self:SetSetting(PLAYER_FRAME_INDEX, key, val); self:UpdateLayout(self.frame) end end
         table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160, onChange = sizeOnChange("Width") })
         if not isAnchored or anchorAxis ~= "y" then
-            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 40, onChange = sizeOnChange("Height") })
+            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 30, onChange = sizeOnChange("Height") })
         end
 
     elseif currentTab == "Visibility" then

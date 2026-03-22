@@ -26,7 +26,6 @@ local GF = Orbit.Constants.GroupFrames
 
 Helpers.GROWTH_DIRECTION = GF.GrowthDirection
 
-local CONTAINER_ANCHOR = GF.ContainerAnchor
 local SORT_MODE = { Group = "Group", Role = "Role", Alphabetical = "Alphabetical" }
 Helpers.SORT_MODE = SORT_MODE
 local ROLE_PRIORITY = GF.RolePriority

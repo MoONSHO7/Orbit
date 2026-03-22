@@ -62,7 +62,7 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
     defaults = {
         Hidden = false,
         Width = 200,
-        Height = 10,
+        Height = 12,
         ShowText = false,
         ManaColorCurve = { pins = { { position = 0, color = { r = 0, g = 0, b = 1, a = 1 } } } },
         RageColorCurve = { pins = { { position = 0, color = { r = 1, g = 0, b = 0, a = 1 } } } },
@@ -156,7 +156,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         if not isAnchored then
             SB:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
         end
-        SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 4, max = 25, default = 15 }, nil)
+        SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { min = 4, max = 25, default = 12 }, nil)
         table.insert(schema.controls, {
             type = "slider",
             key = "TickSize",
@@ -258,7 +258,7 @@ end
 function Plugin:OnLoad()
     Frame, PowerBar = OrbitEngine.FrameFactory:CreateWithBar("PlayerPower", self, {
         width = 200,
-        height = 15,
+        height = 12,
         y = -160,
         systemIndex = SYSTEM_INDEX,
         template = "BackdropTemplate",

@@ -7,7 +7,7 @@ local LCG = LibStub("LibCustomGlow-1.0")
 Orbit.GroupFramePreviewMixin = {}
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local Helpers = nil
+local Helpers = Orbit.GroupFrameHelpers
 local MAX_PARTY_PREVIEW = 5
 local PREVIEW_GROUPS = 4
 local DEBOUNCE_DELAY = Orbit.Constants.Timing.DefaultDebounce
@@ -151,7 +151,7 @@ end
 -- [ SHOW PREVIEW ]----------------------------------------------------------------------------------
 function Orbit.GroupFramePreviewMixin:ShowPreview()
     if InCombatLockdown() or not self.frames or not self.container then return end
-    if not Helpers then Helpers = Orbit.GroupFrameHelpers end
+
 
     UnregisterStateDriver(self.container, "visibility")
     self.container:Show()
@@ -205,7 +205,6 @@ end
 -- [ APPLY PREVIEW VISUALS ]-------------------------------------------------------------------------
 function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
     if not self.frames then return end
-    if not Helpers then Helpers = Orbit.GroupFrameHelpers end
 
     local isCanvasMode = IsCanvasModeActive(self)
     local isParty = self:IsPartyTier()
@@ -380,7 +379,6 @@ end
 -- [ HIDE PREVIEW ]----------------------------------------------------------------------------------
 function Orbit.GroupFramePreviewMixin:HidePreview()
     if InCombatLockdown() or not self.frames then return end
-    if not Helpers then Helpers = Orbit.GroupFrameHelpers end
 
     self._editTierOverride = nil
     self._previewRosterTier = nil
