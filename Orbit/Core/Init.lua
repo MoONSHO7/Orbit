@@ -197,7 +197,7 @@ function Orbit:OnLoad()
     self.db.AccountSettings = self.db.AccountSettings or {}
     self.db.SpecData = self.db.SpecData or {}
 
-    -- Migrate TourComplete from profile-synced GlobalSettings to account-wide AccountSettings
+    -- TODO(REMOVE): Migrate TourComplete from profile-synced GlobalSettings to account-wide AccountSettings
     if self.db.GlobalSettings.TourComplete ~= nil and self.db.AccountSettings.TourComplete == nil then
         self.db.AccountSettings.TourComplete = self.db.GlobalSettings.TourComplete
         self.db.GlobalSettings.TourComplete = nil
