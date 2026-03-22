@@ -55,30 +55,53 @@ local function SetFrameMouseEnabled(frame, enabled, includeChildren)
         end
     end
 end
+-- Directly hide/show the group border overlay on a frame or its ancestor's merge root
+local function SetGroupBorderOOCHidden(frame, hidden)
+    local target = frame
+    -- Walk up parents: the OOC-faded frame (e.g. viewer) may be a child of the anchor with the border
+    for _ = 1, 5 do
+        if target._groupBorderActive then break end
+        target = target:GetParent()
+        if not target then return end
+    end
+    if not target._groupBorderActive then return end
+    target._oocFadeHidden = hidden or nil
+    local root = target._groupBorderRoot or target
+    if root._groupBorderOverlay then
+        if hidden then root._groupBorderOverlay:Hide()
+        else root._groupBorderOverlay:Show() end
+    end
+end
 
 local function UpdateFrameVisibility(frame, fadeEnabled, data)
-    if not frame then
-        return
-    end
+    if not frame then return end
     if Orbit.MountedVisibility:ShouldHide() then return end
     local includeChildren = data and not data.enableHover
     if not fadeEnabled then
         SetFrameMouseEnabled(frame, true, includeChildren)
+        if frame._oocFadeHidden then
+            frame._oocFadeHidden = nil
+            SetGroupBorderOOCHidden(frame, false)
+        end
         return
     end
-    if ShouldShowFrame(frame) then
+    local shouldShow = ShouldShowFrame(frame)
+    if shouldShow then
         SetFrameMouseEnabled(frame, true, includeChildren)
-        -- Apply Opacity setting instead of forcing alpha=1 (new precedence: OOC → Opacity → MouseOver)
         if data and data.plugin then
             local opacity = data.plugin:GetSetting(data.systemIndex, "Opacity") or 100
-            local minAlpha = opacity / 100
-            local isEditMode = Orbit:IsEditMode()
-            Orbit.Animation:ApplyHoverFade(frame, minAlpha, 1, isEditMode)
+            Orbit.Animation:ApplyHoverFade(frame, opacity / 100, 1, Orbit:IsEditMode())
+        end
+        if frame._oocFadeHidden then
+            frame._oocFadeHidden = nil
+            SetGroupBorderOOCHidden(frame, false)
         end
     else
         frame:SetAlpha(0)
-        if includeChildren then
-            SetFrameMouseEnabled(frame, false, true)
+        if includeChildren then SetFrameMouseEnabled(frame, false, true) end
+        if not frame._oocFadeHidden then
+            frame._oocFadeHidden = true
+            SetGroupBorderOOCHidden(frame, true)
         end
     end
 end

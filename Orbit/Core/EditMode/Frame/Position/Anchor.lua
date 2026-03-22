@@ -164,7 +164,7 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions,
 
     local bothMerge = ShouldMergeBorders(parentOptions, edge) and ShouldMergeBorders(childOptions, edge)
     local shouldMerge = bothMerge and padding == 0
-    if shouldMerge and child:IsShown() and child:GetAlpha() > 0 then
+    if shouldMerge and child:IsShown() and (child:GetAlpha() > 0 or child._oocFadeHidden) then
         SetMergeBorderState(parent, child, edge, true)
     elseif bothMerge then
         SetMergeBorderState(parent, child, edge, false)
