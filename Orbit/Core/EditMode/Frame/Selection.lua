@@ -228,47 +228,32 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     selection:SetFrameLevel(frame:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
     selection.isOrbitSelection = true
 
-    -- Create anchor line textures
+    -- Create anchor line gradient textures (two halves per edge for center-out fade)
     local lineThickness = C.Selection.AnchorLineThickness
-
-    local anchorLineLevelOffset = 10
     local lineContainer = CreateFrame("Frame", nil, selection)
-    lineContainer:SetFrameStrata("DIALOG")
-    lineContainer:SetFrameLevel(selection:GetFrameLevel() + anchorLineLevelOffset)
+    lineContainer:SetFrameStrata("TOOLTIP")
+    lineContainer:SetFrameLevel(selection:GetFrameLevel() + 10)
     lineContainer:SetAllPoints(selection)
     selection.AnchorLineFrame = lineContainer
-
-    selection.AnchorLineTop = lineContainer:CreateTexture(nil, "OVERLAY")
-    selection.AnchorLineTop:SetColorTexture(0, 1, 0, 1)
-    selection.AnchorLineTop:SetPoint("TOPLEFT", selection, "TOPLEFT", 0, lineThickness)
-    selection.AnchorLineTop:SetPoint("TOPRIGHT", selection, "TOPRIGHT", 0, lineThickness)
-    selection.AnchorLineTop:SetHeight(lineThickness)
-    selection.AnchorLineTop.isAnchorLine = true
-    selection.AnchorLineTop:Hide()
-
-    selection.AnchorLineBottom = lineContainer:CreateTexture(nil, "OVERLAY")
-    selection.AnchorLineBottom:SetColorTexture(0, 1, 0, 1)
-    selection.AnchorLineBottom:SetPoint("BOTTOMLEFT", selection, "BOTTOMLEFT", 0, -lineThickness)
-    selection.AnchorLineBottom:SetPoint("BOTTOMRIGHT", selection, "BOTTOMRIGHT", 0, -lineThickness)
-    selection.AnchorLineBottom:SetHeight(lineThickness)
-    selection.AnchorLineBottom.isAnchorLine = true
-    selection.AnchorLineBottom:Hide()
-
-    selection.AnchorLineLeft = lineContainer:CreateTexture(nil, "OVERLAY")
-    selection.AnchorLineLeft:SetColorTexture(0, 1, 0, 1)
-    selection.AnchorLineLeft:SetPoint("TOPLEFT", selection, "TOPLEFT", -lineThickness, 0)
-    selection.AnchorLineLeft:SetPoint("BOTTOMLEFT", selection, "BOTTOMLEFT", -lineThickness, 0)
-    selection.AnchorLineLeft:SetWidth(lineThickness)
-    selection.AnchorLineLeft.isAnchorLine = true
-    selection.AnchorLineLeft:Hide()
-
-    selection.AnchorLineRight = lineContainer:CreateTexture(nil, "OVERLAY")
-    selection.AnchorLineRight:SetColorTexture(0, 1, 0, 1)
-    selection.AnchorLineRight:SetPoint("TOPRIGHT", selection, "TOPRIGHT", lineThickness, 0)
-    selection.AnchorLineRight:SetPoint("BOTTOMRIGHT", selection, "BOTTOMRIGHT", lineThickness, 0)
-    selection.AnchorLineRight:SetWidth(lineThickness)
-    selection.AnchorLineRight.isAnchorLine = true
-    selection.AnchorLineRight:Hide()
+    local function MakeHalf(p1, rp1, x1, y1, p2, rp2, x2, y2)
+        local t = lineContainer:CreateTexture(nil, "OVERLAY")
+        t:SetColorTexture(1, 1, 1, 1)
+        t:SetPoint(p1, selection, rp1, x1, y1)
+        t:SetPoint(p2, selection, rp2, x2, y2)
+        t.isAnchorLine = true
+        t:Hide()
+        return t
+    end
+    selection.AnchorLines = {
+        TOP    = { MakeHalf("TOPLEFT", "TOPLEFT", 0, lineThickness, "BOTTOMRIGHT", "TOP", 0, 0),
+                   MakeHalf("TOPLEFT", "TOP", 0, lineThickness, "BOTTOMRIGHT", "TOPRIGHT", 0, 0) },
+        BOTTOM = { MakeHalf("BOTTOMLEFT", "BOTTOMLEFT", 0, -lineThickness, "TOPRIGHT", "BOTTOM", 0, 0),
+                   MakeHalf("TOPLEFT", "BOTTOM", 0, 0, "BOTTOMRIGHT", "BOTTOMRIGHT", 0, -lineThickness) },
+        LEFT   = { MakeHalf("TOPLEFT", "TOPLEFT", -lineThickness, 0, "BOTTOMRIGHT", "LEFT", 0, 0),
+                   MakeHalf("TOPLEFT", "LEFT", -lineThickness, 0, "BOTTOMRIGHT", "BOTTOMLEFT", 0, 0) },
+        RIGHT  = { MakeHalf("TOPRIGHT", "TOPRIGHT", lineThickness, 0, "BOTTOMLEFT", "RIGHT", 0, 0),
+                   MakeHalf("TOPRIGHT", "RIGHT", lineThickness, 0, "BOTTOMLEFT", "BOTTOMRIGHT", 0, 0) },
+    }
 
     -- Wire up event handlers using extracted modules
     local Drag = Engine.SelectionDrag
@@ -510,43 +495,36 @@ function Selection:DisableKeyboardNudge()
 end
 
 -- [ ANCHOR LINE VISIBILITY ]----------------------------------------------------------------------
-
-local ANCHOR_LINE_KEY = { TOP = "AnchorLineTop", BOTTOM = "AnchorLineBottom", LEFT = "AnchorLineLeft", RIGHT = "AnchorLineRight" }
+local START_SOLID = { LEFT = true, TOP = true }
+local END_SOLID = { RIGHT = true, BOTTOM = true }
 
 function Selection:ShowAnchorLine(selection, side, align)
-    if not selection then
-        return
+    if not selection or not selection.AnchorLines then return end
+    for _, pair in pairs(selection.AnchorLines) do
+        pair[1]:Hide()
+        pair[2]:Hide()
     end
-
-    if selection.AnchorLineTop then
-        selection.AnchorLineTop:Hide()
-    end
-    if selection.AnchorLineBottom then
-        selection.AnchorLineBottom:Hide()
-    end
-    if selection.AnchorLineLeft then
-        selection.AnchorLineLeft:Hide()
-    end
-    if selection.AnchorLineRight then
-        selection.AnchorLineRight:Hide()
-    end
-
     if not side then
-        if selection.AnchorLineFrame then
-            selection.AnchorLineFrame:Hide()
-        end
+        if selection.AnchorLineFrame then selection.AnchorLineFrame:Hide() end
         return
     end
-
-    local line = selection[ANCHOR_LINE_KEY[side]]
-    if line then
-        local c = (align and ANCHOR_ALIGN_COLORS[align]) or DEFAULT_ANCHOR_COLOR
-        line:SetColorTexture(c[1], c[2], c[3], 1)
-        if selection.AnchorLineFrame then
-            selection.AnchorLineFrame:Show()
-        end
-        line:Show()
+    local pair = selection.AnchorLines[side]
+    if not pair then return end
+    local c = (align and ANCHOR_ALIGN_COLORS[align]) or DEFAULT_ANCHOR_COLOR
+    local orient = (side == "TOP" or side == "BOTTOM") and "HORIZONTAL" or "VERTICAL"
+    local a1s, a1e, a2s, a2e
+    if START_SOLID[align] then
+        a1s, a1e, a2s, a2e = 1, 0.7, 0.7, 0.15
+    elseif END_SOLID[align] then
+        a1s, a1e, a2s, a2e = 0.15, 0.7, 0.7, 1
+    else
+        a1s, a1e, a2s, a2e = 0.15, 1, 1, 0.15
     end
+    pair[1]:SetGradient(orient, CreateColor(c[1], c[2], c[3], a1s), CreateColor(c[1], c[2], c[3], a1e))
+    pair[2]:SetGradient(orient, CreateColor(c[1], c[2], c[3], a2s), CreateColor(c[1], c[2], c[3], a2e))
+    if selection.AnchorLineFrame then selection.AnchorLineFrame:Show() end
+    pair[1]:Show()
+    pair[2]:Show()
 end
 
 -- [ FORCE UPDATE ]----------------------------------------------------------------------------------

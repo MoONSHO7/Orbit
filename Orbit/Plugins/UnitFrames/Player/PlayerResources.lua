@@ -324,9 +324,9 @@ function Plugin:OnLoad()
 
     -- Event handling
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    Frame:RegisterEvent("UNIT_POWER_UPDATE")
-    Frame:RegisterEvent("UNIT_MAXPOWER")
-    Frame:RegisterEvent("UNIT_DISPLAYPOWER")
+    Frame:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
+    Frame:RegisterUnitEvent("UNIT_MAXPOWER", "player")
+    Frame:RegisterUnitEvent("UNIT_DISPLAYPOWER", "player")
     Frame:RegisterEvent("RUNE_POWER_UPDATE")
     Frame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
     Frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
