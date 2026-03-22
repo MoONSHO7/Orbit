@@ -110,7 +110,7 @@ local function GetAnchorInfo(anchorFrame) return anchorFrame and OrbitEngine.Fra
 
 -- [ LIVE CANVAS PREVIEW ]----------------------------------------------------------------------------
 Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", function(changedPlugin)
-    if changedPlugin == CDM and CDM.buffBarAnchor then CDM:ProcessChildren(CDM.buffBarAnchor) end
+    if changedPlugin == CDM and CDM.buffBarAnchor and not CDM.buffBarAnchor.orbitMountedSuppressed then CDM:ProcessChildren(CDM.buffBarAnchor) end
 end)
 
 -- [ PROCESS CHILDREN ]-------------------------------------------------------------------------------
@@ -127,32 +127,38 @@ function CDM:ProcessChildren(anchor)
 
     for _, child in ipairs(PackChildren(blizzFrame:GetChildren())) do
         if child.layoutIndex then
-            if not child.orbitOnShowHooked then
-                local plugin = self
-                child:HookScript("OnShow", function(c)
-                    local parent = c:GetParent()
-                    local anc = parent and parent:GetParent()
-                    if Orbit.Skin.Icons.frameSettings then
-                        local s = Orbit.Skin.Icons.frameSettings[parent]
-                        if s then
-                            Orbit.Skin.Icons:ApplyCustom(c, s)
+            -- Per-icon OnShow/RefreshData hooks only for BuffIcon/BuffBar.
+            -- Essential/Utility use viewer-level UpdateLayout/RefreshLayout hooks.
+            if systemIndex == BUFFICON_INDEX or systemIndex == BUFFBAR_INDEX then
+                if not child.orbitOnShowHooked then
+                    local plugin = self
+                    child:HookScript("OnShow", function(c)
+                        local parent = c:GetParent()
+                        local anc = parent and parent:GetParent()
+                        if anc and anc.systemIndex ~= BUFFBAR_INDEX and Orbit.Skin.Icons.frameSettings then
+                            local s = Orbit.Skin.Icons.frameSettings[parent]
+                            if s then
+                                Orbit.Skin.Icons:ApplyCustom(c, s)
+                            end
                         end
-                    end
-                    if anc and plugin.ProcessChildren then
-                        plugin:ProcessChildren(anc)
-                    end
-                end)
-                child.orbitOnShowHooked = true
-            end
+                        if anc and plugin.ProcessChildren then
+                            Orbit.Async:Debounce("CDM_OnShow_" .. systemIndex, function()
+                                plugin:ProcessChildren(anc)
+                            end, 0)
+                        end
+                    end)
+                    child.orbitOnShowHooked = true
+                end
 
-            if not child.orbitRefreshHooked and child.RefreshData then
-                local a = anchor
-                hooksecurefunc(child, "RefreshData", function()
-                    Orbit.Async:Debounce("CDM_Refresh_" .. systemIndex, function()
-                        CDM:ProcessChildren(a)
-                    end, Constants.Timing.KeyboardRestoreDelay)
-                end)
-                child.orbitRefreshHooked = true
+                if not child.orbitRefreshHooked and child.RefreshData then
+                    local a = anchor
+                    hooksecurefunc(child, "RefreshData", function()
+                        Orbit.Async:Debounce("CDM_Refresh_" .. systemIndex, function()
+                            CDM:ProcessChildren(a)
+                        end, Constants.Timing.KeyboardRestoreDelay)
+                    end)
+                    child.orbitRefreshHooked = true
+                end
             end
 
             if alwaysShow then
@@ -254,6 +260,7 @@ function CDM:ProcessChildren(anchor)
             local settingW = Pixel:Snap(math.max(skinSettings.buffBarWidth or 200, BUFFBAR_MIN_WIDTH), scale)
             -- When docked, anchor width is authoritative (syncDimensions from parent); when undocked, use setting width
             local isDocked = GetAnchorInfo(anchorFrame) ~= nil
+            if not isDocked then anchorFrame:SetWidth(settingW) end
             local barW = isDocked and anchorFrame:GetWidth() or math.max(anchorFrame:GetWidth(), settingW)
             local vGrowth = self:GetGrowthDirection(anchorFrame)
             local totalH = (#activeChildren * barH) + (math.max(#activeChildren - 1, 0) * spacing)
@@ -289,6 +296,7 @@ function CDM:ProcessChildren(anchor)
                 for _, item in ipairs(activeChildren) do
                     if item.SetBorderHidden then item:SetBorderHidden(false) end
                 end
+                anchorFrame._activeBorderMode = nil
                 Orbit.Skin:ClearNineSliceBorder(anchorFrame)
                 if anchorFrame._borderFrame then anchorFrame._borderFrame:Hide() end
             end
@@ -300,7 +308,9 @@ function CDM:ProcessChildren(anchor)
         -- BuffBar: size anchor to active bars (visual only — no combat gate)
         if isBuffBar then
             local anchorFrame = entry.anchor
-            anchorFrame:SetAlpha(1)
+            if not anchorFrame.orbitMountedSuppressed then anchorFrame:SetAlpha(1) end
+            anchorFrame.orbitRowHeight = blizzFrame.orbitRowHeight
+            anchorFrame.orbitColumnWidth = blizzFrame.orbitColumnWidth
             local w, h = blizzFrame:GetSize()
             if h and h > 0 then anchorFrame:SetHeight(h) end
             if not GetAnchorInfo(anchorFrame) then
@@ -314,7 +324,7 @@ function CDM:ProcessChildren(anchor)
         -- BuffIcons: size anchor to active icons (visual only — no combat gate)
         if systemIndex == BUFFICON_INDEX then
             local anchorFrame = entry.anchor
-            anchorFrame:SetAlpha(1)
+            if not anchorFrame.orbitMountedSuppressed then anchorFrame:SetAlpha(1) end
             anchorFrame._isIconContainer = true
             local iconW = blizzFrame.orbitColumnWidth or 40
             local iconH = blizzFrame.orbitRowHeight or 40
@@ -351,8 +361,10 @@ function CDM:ProcessChildren(anchor)
             Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
         end
     else
-        -- No active children — clear stale borders and hide via alpha
-        anchor:SetAlpha(0)
+        -- No active children — hide via alpha (BuffBar/BuffIcon only; Essential/Utility always have configured spells)
+        if systemIndex == BUFFBAR_INDEX or systemIndex == BUFFICON_INDEX then
+            anchor:SetAlpha(0)
+        end
         Orbit.Skin:ClearIconGroupBorder(anchor)
         if anchor._borderFrame then anchor._borderFrame:Hide() end
         Orbit.Skin:ClearNineSliceBorder(anchor)

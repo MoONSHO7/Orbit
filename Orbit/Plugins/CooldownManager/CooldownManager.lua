@@ -59,11 +59,117 @@ Plugin.indexDefaults = {
     [30] = { PandemicGlowType = 1 }, -- BuffBar
 }
 
--- Generates a spec-specific settings key, e.g. "TrackedItems_267"
-function Plugin:GetSpecKey(baseKey)
+-- [ SPEC-SCOPED STORAGE ]--------------------------------------------------------------------------
+-- Tracked Cooldowns and Charge Bars store data per-spec OUTSIDE of profiles.
+-- Data lives in OrbitDB.SpecData[specID][systemIndex][key].
+local TRACKED_CHILD_START = Constants.Cooldown.SystemIndex.Tracked_ChildStart
+local TRACKED_CHILD_END = TRACKED_CHILD_START + Constants.Cooldown.MaxChildFrames - 1
+local CHARGE_BAR_INDEX = Constants.Cooldown.SystemIndex.ChargeBar
+local CHARGE_CHILD_START = Constants.Cooldown.SystemIndex.ChargeBar_ChildStart
+local CHARGE_CHILD_END = CHARGE_CHILD_START + Constants.Cooldown.MaxChargeBarChildren - 1
+local SPEC_SCOPED_KEYS = { TrackedItems = true, ChargeSpell = true, ChargeChildren = true, Position = true, Anchor = true }
+
+local function IsSpecScopedIndex(sysIdx)
+    return (sysIdx >= TRACKED_INDEX and sysIdx <= TRACKED_CHILD_END) or (sysIdx >= CHARGE_BAR_INDEX and sysIdx <= CHARGE_CHILD_END)
+end
+
+function Plugin:GetCurrentSpecID()
     local specIndex = GetSpecialization()
-    local specID = specIndex and GetSpecializationInfo(specIndex)
+    return specIndex and GetSpecializationInfo(specIndex)
+end
+
+function Plugin:GetSpecData(systemIndex, key)
+    local specID = self:GetCurrentSpecID()
+    if not specID then return nil end
+    local specStore = Orbit.db.SpecData and Orbit.db.SpecData[specID]
+    if not specStore then return nil end
+    local node = specStore[systemIndex]
+    return node and node[key]
+end
+
+function Plugin:SetSpecData(systemIndex, key, value)
+    local specID = self:GetCurrentSpecID()
+    if not specID then return end
+    if not Orbit.db.SpecData then Orbit.db.SpecData = {} end
+    if not Orbit.db.SpecData[specID] then Orbit.db.SpecData[specID] = {} end
+    if not Orbit.db.SpecData[specID][systemIndex] then Orbit.db.SpecData[specID][systemIndex] = {} end
+    Orbit.db.SpecData[specID][systemIndex][key] = value
+end
+
+-- Override GetSetting/SetSetting to redirect spec-scoped keys for spec-scoped indices
+local OriginalGetSetting = Orbit.PluginMixin.GetSetting
+local OriginalSetSetting = Orbit.PluginMixin.SetSetting
+
+function Plugin:GetSetting(systemIndex, key)
+    if IsSpecScopedIndex(systemIndex) then
+        local val = self:GetSpecData(systemIndex, key)
+        return val
+    end
+    return OriginalGetSetting(self, systemIndex, key)
+end
+
+function Plugin:SetSetting(systemIndex, key, value)
+    if IsSpecScopedIndex(systemIndex) then
+        self:SetSpecData(systemIndex, key, value)
+        return
+    end
+    OriginalSetSetting(self, systemIndex, key, value)
+end
+
+-- Generates a spec-specific settings key, e.g. "TrackedItems_267" (legacy, used for migration)
+function Plugin:GetSpecKey(baseKey)
+    local specID = self:GetCurrentSpecID()
     return baseKey .. "_" .. (specID or 0)
+end
+
+-- One-time migration: move GetSpecKey data from profiles into SpecData
+function Plugin:MigrateSpecData()
+    if Orbit.db.SpecData._migrated then return end
+    local db = Orbit.runtime and Orbit.runtime.Layouts
+    if not db then return end
+    local layoutID = self:GetLayoutID()
+    local profileData = db[layoutID] and db[layoutID][self.system]
+    if not profileData then Orbit.db.SpecData._migrated = true; return end
+    local MIGRATE_BASES = { "TrackedItems", "ChargeSpell", "ChargeChildren", "Position", "Anchor" }
+    for sysIdx, node in pairs(profileData) do
+        if type(node) == "table" and IsSpecScopedIndex(sysIdx) then
+            for _, base in ipairs(MIGRATE_BASES) do
+                for nodeKey, val in pairs(node) do
+                    local specID = tostring(nodeKey):match("^" .. base .. "_(%d+)$")
+                    if specID then
+                        specID = tonumber(specID)
+                        if not Orbit.db.SpecData[specID] then Orbit.db.SpecData[specID] = {} end
+                        if not Orbit.db.SpecData[specID][sysIdx] then Orbit.db.SpecData[specID][sysIdx] = {} end
+                        if not Orbit.db.SpecData[specID][sysIdx][base] then
+                            Orbit.db.SpecData[specID][sysIdx][base] = val
+                        end
+                        node[nodeKey] = nil
+                    end
+                end
+            end
+        end
+    end
+    Orbit.db.SpecData._migrated = true
+end
+
+-- Ensure SpecData nodes exist for every class spec so spec-scoped reads never hit nil
+function Plugin:SeedAllSpecSpatialData()
+    local numSpecs = GetNumSpecializations()
+    if not numSpecs or numSpecs == 0 then return end
+    if not Orbit.db.SpecData then Orbit.db.SpecData = {} end
+    local indices = { TRACKED_INDEX }
+    for s = 0, Constants.Cooldown.MaxChildFrames - 1 do indices[#indices + 1] = TRACKED_CHILD_START + s end
+    indices[#indices + 1] = CHARGE_BAR_INDEX
+    for s = 0, Constants.Cooldown.MaxChargeBarChildren - 1 do indices[#indices + 1] = CHARGE_CHILD_START + s end
+    for i = 1, numSpecs do
+        local specID = GetSpecializationInfo(i)
+        if specID then
+            if not Orbit.db.SpecData[specID] then Orbit.db.SpecData[specID] = {} end
+            for _, sysIdx in ipairs(indices) do
+                if not Orbit.db.SpecData[specID][sysIdx] then Orbit.db.SpecData[specID][sysIdx] = {} end
+            end
+        end
+    end
 end
 
 -- [ STUBS - Overwritten by sub-modules ]------------------------------------------------------------
@@ -88,8 +194,7 @@ function Plugin:GetGrowthDirection()
     return "DOWN"
 end
 function Plugin:GetBaseFontSize()
-    local s = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.TextScale or 1
-    return 12 * s
+    return 12
 end
 function Plugin:GetGlobalFont()
     local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
@@ -102,6 +207,38 @@ function Plugin:GetTextOverlay() end
 function Plugin:CreateKeybindText() end
 function Plugin:ApplyTextSettings() end
 function Plugin:SetupCanvasPreview() end
+-- Flush tracked/charge bar spatial state from PositionManager to SpecData for a given specID.
+-- Called before spec reload so the OLD spec's ephemeral position data is persisted.
+function Plugin:FlushTrackedSpatial(specID)
+    if not specID or not OrbitEngine.PositionManager then return end
+    if not Orbit.db.SpecData then Orbit.db.SpecData = {} end
+    if not Orbit.db.SpecData[specID] then Orbit.db.SpecData[specID] = {} end
+    local function Flush(frame, systemIndex)
+        if not frame then return end
+        local pos = OrbitEngine.PositionManager:GetPosition(frame)
+        local anch = OrbitEngine.PositionManager:GetAnchor(frame)
+        if not Orbit.db.SpecData[specID][systemIndex] then Orbit.db.SpecData[specID][systemIndex] = {} end
+        if anch and anch.target then
+            Orbit.db.SpecData[specID][systemIndex]["Anchor"] = anch
+            Orbit.db.SpecData[specID][systemIndex]["Position"] = nil
+        elseif pos and pos.point then
+            Orbit.db.SpecData[specID][systemIndex]["Position"] = pos
+            Orbit.db.SpecData[specID][systemIndex]["Anchor"] = false
+        end
+    end
+    local viewerMap = self.viewerMap
+    if viewerMap then
+        local entry = viewerMap[TRACKED_INDEX]
+        if entry and entry.anchor then Flush(entry.anchor, TRACKED_INDEX) end
+    end
+    for _, childData in pairs(self.activeChildren or {}) do
+        if childData.frame then Flush(childData.frame, childData.frame.systemIndex) end
+    end
+    if self.chargeBarAnchor then Flush(self.chargeBarAnchor, CHARGE_BAR_INDEX) end
+    for _, childData in pairs(self.activeChargeChildren or {}) do
+        if childData.frame then Flush(childData.frame, childData.frame.systemIndex) end
+    end
+end
 
 Plugin.defaults = {
     ComponentPositions = {
@@ -112,6 +249,9 @@ Plugin.defaults = {
 
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 function Plugin:OnLoad()
+    self:MigrateSpecData()
+    self:SeedAllSpecSpatialData()
+    self._lastSpecID = self:GetCurrentSpecID()
     self.essentialAnchor = self:CreateAnchor("OrbitEssentialCooldowns", ESSENTIAL_INDEX, "Essential Cooldowns")
     self.utilityAnchor = self:CreateAnchor("OrbitUtilityCooldowns", UTILITY_INDEX, "Utility Cooldowns")
     self.buffIconAnchor = self:CreateAnchor("OrbitBuffIconCooldowns", BUFFICON_INDEX, "Buff Icons")
@@ -233,15 +373,44 @@ function Plugin:OnLoad()
     self:RegisterSpellCastWatcher()
     self:RestoreChargeBars()
 
+    SetCVar("cooldownViewerEnabled", "1")
+
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", self.OnPlayerEnteringWorld, self)
     self:RegisterVisibilityEvents()
 
     -- Reload tracked abilities and charge bars after a profile switch completes.
-    -- This replaces the old PLAYER_SPECIALIZATION_CHANGED handler which raced
-    -- against the ProfileManager's debounced profile switch.
     Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function()
+        local newSpec = self:GetCurrentSpecID()
+        if self._lastSpecID and self._lastSpecID ~= newSpec then
+            self:FlushTrackedSpatial(self._lastSpecID)
+        end
+        self._lastSpecID = newSpec
         self:ReloadTrackedForSpec()
         self:ReparseActiveDurations()
+        C_Timer.After(0.15, function()
+            if Orbit.Engine.FrameAnchor then
+                Orbit.Engine.FrameAnchor:RepairAllChains()
+            end
+        end)
+    end, self)
+
+    -- Reload spec-scoped data (tracked/charge bars) on spec change even without a profile mapping.
+    Orbit.EventBus:On("PLAYER_SPECIALIZATION_CHANGED", function()
+        local newSpec = self:GetCurrentSpecID()
+        if self._lastSpecID == newSpec then
+            return
+        end
+        self:FlushTrackedSpatial(self._lastSpecID)
+        self._lastSpecID = newSpec
+        C_Timer.After(0.15, function()
+            self:ReloadTrackedForSpec()
+            self:ReparseActiveDurations()
+            self:ReapplyParentage()
+            self:ApplyAll()
+            if Orbit.Engine.FrameAnchor then
+                Orbit.Engine.FrameAnchor:RepairAllChains()
+            end
+        end)
     end, self)
 
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
@@ -412,9 +581,10 @@ function Plugin:ApplySettings(frame)
     local alpha = (self:GetSetting(systemIndex, "Opacity") or 100) / 100
     if isMountedHidden then
         frame:SetAlpha(0)
-    else
-        Orbit.Animation:ApplyHoverFade(frame, alpha, 1, Orbit:IsEditMode())
+        frame:Show()
+        return
     end
+    Orbit.Animation:ApplyHoverFade(frame, alpha, 1, Orbit:IsEditMode())
     frame:Show()
     OrbitEngine.Frame:RestorePosition(frame, self, systemIndex)
     self:ProcessChildren(frame)

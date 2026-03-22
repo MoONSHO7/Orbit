@@ -22,8 +22,8 @@ provides four viewer types: essential cooldowns (class rotation), utility cooldo
 | TrackedIconFactory.lua | tracked icon creation, pooling, skinning, and text styling. |
 | TrackedLayout.lua | tracked grid layout engine, edge buttons, usability detection. |
 | TrackedUpdater.lua | tracked icon cooldown state, glow, timer color, ticker, cursor/talent watchers. |
-| TrackedCharges.lua | charge bar frame. tracks multi-charge spell recharge progress. |
-| ChargeBarLayout.lua | charge bar layout, button building, and skinning. |
+| TrackedCharges.lua | charge bar frame. tracks multi-charge spell recharge progress using a single continuous StatusBar with divider overlays. |
+| ChargeBarLayout.lua | charge bar layout engine. continuous bar skinning, divider positioning, recharge segment layout. |
 | ChargeBarCanvasPreview.lua | canvas mode preview for charge bars. |
 | TrackedCanvasPreview.lua | canvas mode preview for tracked ability grids. |
 | TrackedTooltipParser.lua | tooltip scanning for active duration and cooldown duration extraction. |
@@ -69,3 +69,4 @@ graph TD
 - glow types are defined in `Constants.PandemicGlow.Type`. do not hardcode glow type ids
 - tracked abilities use a 2d grid coordinate system (`x,y` keys). layout is driven by these coordinates
 - child frame management (spawn/despawn) must update control button colors and edit mode selections
+- tracked cooldown and charge bar data (TrackedItems, ChargeSpell, ChargeChildren, Position, Anchor) is stored per-spec in `OrbitDB.SpecData[specID]`, completely outside user-managed profiles. use `GetSpecData`/`SetSpecData` or plain keys via the overridden `GetSetting`/`SetSetting` — never use `GetSpecKey` for new code

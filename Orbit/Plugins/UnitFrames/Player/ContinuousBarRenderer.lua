@@ -4,11 +4,11 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local ResourceMixin = Orbit.ResourceBarMixin
-local CanUseUnitPowerPercent = Orbit.PlayerUtilShared.CanUseUnitPowerPercent
-local SafeUnitPowerPercent = Orbit.PlayerUtilShared.SafeUnitPowerPercent
+local CanUseUnitPowerPercent = Orbit.SecretValueUtils.CanUseUnitPowerPercent
+local SafeUnitPowerPercent = Orbit.SecretValueUtils.SafeUnitPowerPercent
 
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
-local MAX_SPACER_COUNT = 10
+local MAX_SPACER_COUNT = Orbit.PlayerResourceConstants.MAX_SPACER_COUNT
 local TICK_ALPHA_CURVE = OrbitEngine.TickMixin.TICK_ALPHA_CURVE
 
 local Renderer = {}

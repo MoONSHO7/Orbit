@@ -84,14 +84,6 @@ local function GetGlobalSchema()
     local controls = {
         { type = "font", key = "Font", label = "Font", default = "PT Sans Narrow" },
         {
-            type = "dropdown", key = "TextScale", label = "Text Scale",
-            options = {
-                { label = "Small", value = "Small" }, { label = "Medium", value = "Medium" },
-                { label = "Large", value = "Large" }, { label = "Extra Large", value = "ExtraLarge" },
-            },
-            default = "Medium",
-        },
-        {
             type = "dropdown", key = "FontOutline", label = "Outline",
             options = {
                 { label = "None", value = "" }, { label = "Outline", value = "OUTLINE" },
@@ -171,12 +163,12 @@ local function GetGlobalSchema()
     return {
         hideNativeSettings = true,
         hideResetButton = false,
+        openPluginManager = true,
         controls = controls,
         onReset = function()
             local d = Orbit.db.GlobalSettings
             if d then
                 d.Font = "PT Sans Narrow"
-                d.TextScale = "Medium"
                 d.FontOutline = "OUTLINE"
                 d.BorderSize = 2
                 d.BorderStyle = Constants.BorderStyle.Default
@@ -201,16 +193,8 @@ local ColorsPlugin = CreateGlobalSettingsPlugin("OrbitColors")
 local function GetColorsSchema()
     local controls = {
         { type = "texture", key = "Texture", label = "Texture", default = "Melli", previewColor = { r = 0.8, g = 0.8, b = 0.8 } },
-        { type = "texture", key = "OverlayTexture", label = "Overlay Texture", default = "Orbit Gradient", previewColor = { r = 0.5, g = 0.5, b = 0.5 } },
-        {
-            type = "checkbox", key = "OverlayAllFrames", label = "Unit Frame Overlay", default = false,
-            tooltip = "Apply overlay texture to unit frames as well. If unchecked, overlay only affects non-unit frames.",
-            onChange = function(val)
-                ColorsPlugin:SetSetting(nil, "OverlayAllFrames", val)
-                ColorsPlugin:ApplySettings()
-                RefreshAllPreviews()
-            end,
-        },
+        { type = "texture", key = "OverlayTexture", label = "Overlay Texture", default = "None", previewColor = { r = 0.5, g = 0.5, b = 0.5 } },
+
         {
             type = "colorcurve", key = "FontColorCurve", label = "Font Color",
             default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
@@ -286,13 +270,14 @@ local function GetColorsSchema()
     return {
         hideNativeSettings = true,
         hideResetButton = false,
+        openPluginManager = true,
         controls = controls,
         onReset = function()
             local d = Orbit.db.GlobalSettings
             if d then
                 d.Texture = "Melli"
-                d.OverlayAllFrames = false
-                d.OverlayTexture = "Orbit Gradient"
+
+                d.OverlayTexture = "None"
                 d.BarColorCurve = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.2, a = 1 } } } }
                 d.UnitFrameBackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
                 d.BackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
@@ -318,6 +303,7 @@ local function GetEditModeSchema()
     return {
         hideNativeSettings = true,
         hideResetButton = false,
+        openPluginManager = true,
         controls = {
             { type = "checkbox", key = "ShowBlizzardFrames", label = "Show Blizzard Frames", default = true, tooltip = "Show selection overlays for native Blizzard frames in Edit Mode." },
             { type = "checkbox", key = "ShowOrbitFrames", label = "Show Orbit Frames", default = true, tooltip = "Show selection overlays for Orbit-owned frames in Edit Mode." },
@@ -345,146 +331,540 @@ end
 
 -- [ PROFILES TAB ]----------------------------------------------------------------------------------
 
+local ICON_BUTTON_SIZE = 20
+local ICON_FONT_SIZE = 20
+
+-- Composite widget: dropdown + reset icon for active profile
+Layout:RegisterWidgetType("profileactive", function(container, def, getValue, callback)
+    local options = type(def.options) == "function" and def.options() or def.options or {}
+    local initialValue = getValue and getValue() or def.default or ""
+
+    local UpdateResetState
+
+    local frame = Layout:CreateDropdown(container, def.label, options, initialValue, function(value)
+        if callback then callback(value) end
+        C_Timer.After(0, function() if UpdateResetState then UpdateResetState() end end)
+    end)
+    frame.OrbitType = "ProfileActive"
+
+    UpdateResetState = function()
+        if not frame.resetBtn then return end
+        local isGlobal = frame.currentValue == "Global"
+        if isGlobal then
+            frame.resetBtn:Enable()
+            frame.resetBtn.Icon:SetDesaturated(false)
+            frame.resetBtn.Icon:SetAlpha(1)
+        else
+            frame.resetBtn:Disable()
+            frame.resetBtn.Icon:SetDesaturated(true)
+            frame.resetBtn.Icon:SetAlpha(0.4)
+        end
+    end
+
+    local resetBtn = CreateFrame("Button", nil, frame)
+    resetBtn:SetSize(ICON_BUTTON_SIZE / 2, ICON_BUTTON_SIZE / 2)
+    resetBtn:SetPoint("LEFT", frame.Dropdown, "RIGHT", (Constants.Widget.ValueWidth - ICON_BUTTON_SIZE / 2) / 2 + 10, 0)
+    frame.resetBtn = resetBtn
+    local icon = resetBtn:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints()
+    icon:SetAtlas("talents-button-undo")
+    resetBtn.Icon = icon
+    resetBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if self:IsEnabled() then
+            self.Icon:SetAlpha(0.8)
+            GameTooltip:SetText("Reset Global profile to defaults")
+        else
+            GameTooltip:SetText("Only the Global profile can be reset")
+        end
+        GameTooltip:Show()
+    end)
+    resetBtn:SetScript("OnLeave", function(self)
+        if self:IsEnabled() then self.Icon:SetAlpha(1) end
+        GameTooltip:Hide()
+    end)
+    resetBtn:SetScript("OnClick", function()
+        if def.onReset then def.onReset() end
+    end)
+
+    UpdateResetState(frame)
+    return frame
+end)
+
+-- Composite widget: dropdown + copy icon + X delete button
+Layout:RegisterWidgetType("profileselect", function(container, def, getValue, callback)
+    local options = type(def.options) == "function" and def.options() or def.options or {}
+    local initialValue = getValue and getValue() or def.default or ""
+
+    -- Forward-declare so the closure below can reference it
+    local UpdateDeleteState
+
+    -- Use the standard dropdown factory for proper rendering
+    local frame = Layout:CreateDropdown(container, def.label, options, initialValue, function(value)
+        if callback then callback(value) end
+        C_Timer.After(0, function() if UpdateDeleteState then UpdateDeleteState() end end)
+    end)
+    frame.OrbitType = "ProfileSelect"
+
+    -- Assign to the forward-declared upvalue
+    UpdateDeleteState = function()
+        if not frame.xBtn then return end
+        local val = frame.currentValue
+        local isActive = val == Orbit.Profile:GetActiveProfileName()
+        local isGlobal = val == "Global"
+        -- Copy is always allowed; delete is blocked for active/Global
+        frame.copyBtn:Enable()
+        frame.copyBtn.Text:SetTextColor(0.2, 0.8, 0.2, 1)
+        if isActive or isGlobal then
+            frame.xBtn:Disable()
+            frame.xBtn.Text:SetTextColor(0.4, 0.4, 0.4, 0.5)
+        else
+            frame.xBtn:Enable()
+            frame.xBtn.Text:SetTextColor(1, 0.27, 0.27, 1)
+        end
+    end
+
+
+    local gap = Constants.Widget.ValueWidth
+    local pairWidth = ICON_BUTTON_SIZE * 2 + 2
+    local pairOffset = (gap - pairWidth) / 2
+    local copyBtn = CreateFrame("Button", nil, frame)
+    copyBtn:SetSize(ICON_BUTTON_SIZE, ICON_BUTTON_SIZE)
+    copyBtn:SetPoint("LEFT", frame.Dropdown, "RIGHT", pairOffset + 10, 0)
+    frame.copyBtn = copyBtn
+    local copyText = copyBtn:CreateFontString(nil, "ARTWORK")
+    copyText:SetFont(STANDARD_TEXT_FONT, ICON_FONT_SIZE, "OUTLINE")
+    copyText:SetAllPoints()
+    copyText:SetText("+")
+    copyText:SetTextColor(0.2, 0.8, 0.2, 1)
+    copyBtn.Text = copyText
+    copyBtn:SetScript("OnEnter", function(self)
+        if self:IsEnabled() then
+            self.Text:SetTextColor(0.3, 1, 0.3, 1)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Copy selected profile")
+        end
+        GameTooltip:Show()
+    end)
+    copyBtn:SetScript("OnLeave", function(self)
+        if self:IsEnabled() then self.Text:SetTextColor(0.2, 0.8, 0.2, 1) end
+        GameTooltip:Hide()
+    end)
+    copyBtn:SetScript("OnClick", function()
+        if def.onCopy then def.onCopy(frame.currentValue) end
+    end)
+
+    -- X delete button
+    local xBtn = CreateFrame("Button", nil, frame)
+    xBtn:SetSize(ICON_BUTTON_SIZE, ICON_BUTTON_SIZE)
+    xBtn:SetPoint("LEFT", copyBtn, "RIGHT", 2, 0)
+    frame.xBtn = xBtn
+    local xText = xBtn:CreateFontString(nil, "ARTWORK")
+    xText:SetFont(STANDARD_TEXT_FONT, ICON_FONT_SIZE, "OUTLINE")
+    xText:SetAllPoints()
+    xText:SetText("\195\151")
+    xText:SetTextColor(1, 0.27, 0.27, 1)
+    xBtn.Text = xText
+    xBtn:SetScript("OnEnter", function(self)
+        if self:IsEnabled() then
+            self.Text:SetTextColor(1, 0.5, 0.5, 1)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Delete selected profile")
+        else
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Cannot delete active or Global profile")
+        end
+        GameTooltip:Show()
+    end)
+    xBtn:SetScript("OnLeave", function(self)
+        if self:IsEnabled() then self.Text:SetTextColor(1, 0.27, 0.27, 1) end
+        GameTooltip:Hide()
+    end)
+    xBtn:SetScript("OnClick", function()
+        if def.onDelete then def.onDelete(frame.currentValue) end
+    end)
+
+    UpdateDeleteState()
+    return frame
+end)
+
+-- Collapsible header: text + toggle arrow (far right)
+local ARROW_SIZE = 16
+local ARROW_DOWN = -math.pi / 2
+local ARROW_UP = math.pi / 2
+
+Layout:RegisterWidgetType("collapseheader", function(container, def)
+    local frame = CreateFrame("Button", nil, container)
+    frame:SetHeight(30)
+    frame.OrbitType = "CollapseHeader"
+
+    local text = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
+    text:SetPoint("LEFT", 0, 0)
+    text:SetText(def.text or "")
+
+    local arrow = frame:CreateTexture(nil, "ARTWORK")
+    arrow:SetSize(ARROW_SIZE, ARROW_SIZE)
+    arrow:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
+    arrow:SetAtlas("shop-header-arrow")
+    arrow:SetRotation(def.collapsed and ARROW_DOWN or ARROW_UP)
+
+    frame:SetScript("OnClick", function()
+        if def.onToggle then def.onToggle() end
+    end)
+    frame:SetScript("OnEnter", function()
+        arrow:SetAtlas("shop-header-arrow-hover")
+        arrow:SetRotation(def.collapsed and ARROW_DOWN or ARROW_UP)
+    end)
+    frame:SetScript("OnLeave", function()
+        arrow:SetAtlas("shop-header-arrow")
+        arrow:SetRotation(def.collapsed and ARROW_DOWN or ARROW_UP)
+    end)
+    frame:SetScript("OnMouseDown", function()
+        arrow:SetAtlas("shop-header-arrow-pressed")
+        arrow:SetRotation(def.collapsed and ARROW_DOWN or ARROW_UP)
+    end)
+    frame:SetScript("OnMouseUp", function()
+        arrow:SetAtlas("shop-header-arrow-hover")
+        arrow:SetRotation(def.collapsed and ARROW_DOWN or ARROW_UP)
+    end)
+
+    return frame
+end)
+
+local specProfilesExpanded = false
+local profilesSubView = nil -- nil, "export", "import", "clone", "delete"
+local exportSelectedProfile = nil
+local exportString = ""
+local importString = ""
+local importName = ""
+local cloneSource = nil
+local cloneName = ""
+local deleteTarget = nil
+
 local ProfilesPlugin = {
     name = "OrbitProfiles",
     settings = {},
     GetSetting = function(self, systemIndex, key)
-        if key == "CurrentProfile" or key == "ActiveProfile" then
-            return Orbit.Profile:GetActiveProfileName()
-        elseif key == "SpecBinding" then
-            local specIndex = GetSpecialization()
-            if not specIndex then return "None" end
-            local specID = GetSpecializationInfo(specIndex)
-            if not specID then return "None" end
-            return Orbit.Profile:GetProfileForSpec(specID) or "None"
-        elseif key == "ProfileNotes" then
-            local active = Orbit.Profile:GetActiveProfileName()
-            return Orbit.db.profiles[active] and Orbit.db.profiles[active].notes or ""
-        elseif key == "SpecSwitchingEnabled" then return Orbit.db.enableSpecSwitching
-        elseif key == "AutoSpecProfiles" then return Orbit.db.autoSpecProfiles
-        elseif key == "ProfileToDelete" then return Orbit.Profile._selectedToDelete or "Default"
+        if key == "ActiveProfile" then return Orbit.Profile:GetActiveProfileName()
+        elseif key == "CreateProfile" then return Orbit.Profile._selectedToCreate or "Global"
+        elseif key == "ExportProfile" then return exportSelectedProfile or "Global"
+        elseif key == "ExportString" then return exportString
+        elseif key == "ImportString" then return importString
+        elseif key == "ImportName" then return importName
+        elseif key == "CloneName" then return cloneName
         end
+        local specID = key:match("^SpecMapping_(%d+)$")
+        if specID then return Orbit.Profile:GetProfileForSpec(tonumber(specID)) or "Global" end
         return nil
     end,
     SetSetting = function(self, systemIndex, key, value)
-        if key == "ProfileToDelete" then
-            Orbit.Profile._selectedToDelete = value
-        elseif key == "ActiveProfile" then
+        if key == "ActiveProfile" then
             Orbit.Profile:SetActiveProfile(value)
-        elseif key == "SpecBinding" then
-            local specIndex = GetSpecialization()
-            if not specIndex then return end
-            local specID = GetSpecializationInfo(specIndex)
-            if not specID then return end
-            if value == "None" then value = nil end
-            Orbit.Profile:SetProfileForSpec(specID, value)
-            Orbit:Print("Bound current specialization to profile: " .. (value or "None"))
-            if Orbit.db.enableSpecSwitching then Orbit.Profile:CheckSpecProfile() end
-        elseif key == "ProfileNotes" then
-            local active = Orbit.Profile:GetActiveProfileName()
-            if Orbit.db.profiles[active] then Orbit.db.profiles[active].notes = value end
-        elseif key == "SpecSwitchingEnabled" then
-            Orbit.db.enableSpecSwitching = value
-            if value then Orbit.Profile:CheckSpecProfile() end
-        elseif key == "AutoSpecProfiles" then
-            Orbit.db.autoSpecProfiles = value
-            if value then Orbit.Profile:CheckSpecProfile() end
+            if Orbit.OptionsPanel then
+                Orbit.OptionsPanel.lastTab = nil
+                Orbit.OptionsPanel:Open("Profiles")
+            end
+        elseif key == "CreateProfile" then
+            Orbit.Profile._selectedToCreate = value
+        elseif key == "ExportProfile" then
+            exportSelectedProfile = value
+            local str = Orbit.Profile:ExportSingleProfile(value)
+            exportString = str or ""
+            if Orbit.OptionsPanel then Orbit.OptionsPanel.lastTab = nil; Orbit.OptionsPanel:Open("Profiles") end
+        elseif key == "ExportString" then
+            exportString = value or ""
+        elseif key == "ImportString" then
+            importString = value or ""
+        elseif key == "ImportName" then
+            importName = value or ""
+        elseif key == "CloneName" then
+            cloneName = value or ""
+        else
+            local specID = key:match("^SpecMapping_(%d+)$")
+            if specID then
+                specID = tonumber(specID)
+                local profileName = (value == "Global") and nil or value
+                Orbit.Profile:SetProfileForSpec(specID, profileName)
+                local _, specName = GetSpecializationInfoByID(specID)
+                Orbit:Print("Spec '" .. (specName or "?") .. "' → " .. (value or "Global"))
+                Orbit.Profile:CheckSpecProfile()
+            end
         end
     end,
     ApplySettings = function(self, systemFrame) end,
 }
 
-local function GetProfilesSchema()
-    local activeProfile = Orbit.Profile:GetActiveProfileName()
+local function GetProfileOptions()
+    local opts = {}
+    for _, n in ipairs(Orbit.Profile:GetProfiles()) do
+        table.insert(opts, { text = n, value = n })
+    end
+    return opts
+end
 
-    local function GetAllProfileOptions()
-        local opts = {}
-        for _, n in ipairs(Orbit.Profile:GetProfiles()) do
+local function GetProfileOptionsWithDefault()
+    local opts = { { text = "Global", value = "Global" } }
+    for _, n in ipairs(Orbit.Profile:GetProfiles()) do
+        if n ~= "Global" then
             table.insert(opts, { text = n, value = n })
         end
-        return opts
     end
+    return opts
+end
+
+
+local flashLabel
+Layout:RegisterWidgetType("statusmessage", function(container, def)
+    local frame = CreateFrame("Frame", nil, container)
+    frame:SetHeight(20)
+    frame.OrbitType = "StatusMessage"
+    local text = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    text:SetPoint("CENTER")
+    text:SetTextColor(1, 0.3, 0.3)
+    text:SetText("")
+    frame.Text = text
+    flashLabel = frame
+    return frame
+end)
+
+local flashActive = false
+local function ShowFlashMessage(msg)
+    if not flashLabel or flashActive then return end
+    flashActive = true
+    flashLabel.Text:SetText(msg)
+    flashLabel:SetAlpha(0)
+    flashLabel:Show()
+    UIFrameFadeIn(flashLabel, 0.2, 0, 1)
+    C_Timer.After(2, function()
+        if not flashLabel then flashActive = false; return end
+        UIFrameFadeOut(flashLabel, 0.5, 1, 0)
+        C_Timer.After(0.5, function() flashActive = false end)
+    end)
+end
+
+local function ReopenProfiles()
+    if Orbit.OptionsPanel then
+        Orbit.OptionsPanel.lastTab = nil
+        Orbit.OptionsPanel.currentTab = nil
+        Orbit.OptionsPanel:Open("Profiles")
+    end
+end
+
+local function GetProfilesSchema()
+    -- Export sub-view
+    if profilesSubView == "export" then
+        return {
+            hideNativeSettings = true,
+            hideResetButton = true,
+            controls = {
+                { type = "header", text = "Export Profile" },
+                { type = "dropdown", key = "ExportProfile", label = "Profile", options = GetProfileOptions, default = "Global", width = DROPDOWN_WIDTH },
+                { type = "spacer", height = SPACER_SMALL },
+                { type = "editbox", key = "ExportString", label = "Export String", height = 120, multiline = true, readOnly = true, hideScrollBar = true },
+                { type = "spacer", height = SPACER_SMALL },
+            },
+            extraButtons = {
+                {
+                    text = "\194\171 Back",
+                    callback = function() profilesSubView = nil; exportString = ""; exportSelectedProfile = nil; ReopenProfiles() end,
+                },
+            },
+        }
+    end
+
+    -- Import sub-view
+    if profilesSubView == "import" then
+        return {
+            hideNativeSettings = true,
+            hideResetButton = true,
+            controls = {
+                { type = "header", text = "Import Profile" },
+                { type = "editbox", key = "ImportString", label = "Paste String", height = 120, multiline = true, hideScrollBar = true },
+                { type = "statusmessage" },
+                { type = "editbox", key = "ImportName", label = "Profile Name", height = 50 },
+            },
+            extraButtons = {
+                {
+                    text = "\194\171 Back",
+                    callback = function() profilesSubView = nil; importString = ""; importName = ""; ReopenProfiles() end,
+                },
+                {
+                    text = "Apply",
+                    callback = function()
+                        if importString == "" then ShowFlashMessage("Please paste an import string."); return end
+                        if importName == "" then ShowFlashMessage("Please enter a profile name."); return end
+                        for _, n in ipairs(Orbit.Profile:GetProfiles()) do
+                            if n == importName then ShowFlashMessage("A profile named '" .. importName .. "' already exists."); return end
+                        end
+                        local ok, err = Orbit.Profile:ImportProfile(importString, importName)
+                        if ok then
+                            Orbit:Print("Import successful.")
+                            profilesSubView = nil
+                            importString = ""
+                            importName = ""
+                            ReopenProfiles()
+                        else
+                            ShowFlashMessage("Invalid Import String.")
+                        end
+                    end,
+                },
+            },
+        }
+    end
+
+    -- Clone sub-view
+    if profilesSubView == "clone" then
+        return {
+            hideNativeSettings = true,
+            hideResetButton = true,
+            controls = {
+                { type = "header", text = "Clone Profile" },
+                { type = "description", text = "Create a copy of '" .. (cloneSource or "?") .. "' with a new name." },
+                { type = "spacer", height = SPACER_SMALL },
+                { type = "editbox", key = "CloneName", label = "New Name", height = 50 },
+            },
+            extraButtons = {
+                { text = "\194\171 Back", callback = function() profilesSubView = nil; cloneName = ""; cloneSource = nil; ReopenProfiles() end },
+                {
+                    text = "Create",
+                    callback = function()
+                        if cloneName == "" then Orbit:Print("Please enter a profile name."); return end
+                        local created = Orbit.Profile:CreateProfile(cloneName, cloneSource)
+                        if created then
+                            Orbit:Print("Created profile '" .. cloneName .. "' (from '" .. (cloneSource or "?") .. "')")
+                            profilesSubView = nil; cloneName = ""; cloneSource = nil
+                            ReopenProfiles()
+                        else
+                            Orbit:Print("A profile named '" .. cloneName .. "' already exists.")
+                        end
+                    end,
+                },
+            },
+        }
+    end
+
+    -- Delete sub-view
+    if profilesSubView == "delete" then
+        return {
+            hideNativeSettings = true,
+            hideResetButton = true,
+            controls = {
+                { type = "header", text = "Delete Profile" },
+                { type = "description", text = "|cFFFF0000WARNING:|r You are about to delete '" .. (deleteTarget or "?") .. "'.\n\nThis cannot be undone." },
+            },
+            extraButtons = {
+                { text = "\194\171 Back", callback = function() profilesSubView = nil; deleteTarget = nil; ReopenProfiles() end },
+                {
+                    text = "Delete",
+                    callback = function()
+                        if deleteTarget then
+                            Orbit.Profile:DeleteProfile(deleteTarget)
+                            Orbit:Print("Deleted profile '" .. deleteTarget .. "'")
+                        end
+                        profilesSubView = nil; deleteTarget = nil
+                        ReopenProfiles()
+                    end,
+                },
+            },
+        }
+    end
+
+    -- Reset Global sub-view
+    if profilesSubView == "resetglobal" then
+        return {
+            hideNativeSettings = true,
+            hideResetButton = true,
+            controls = {
+                { type = "header", text = "Reset Global Profile" },
+                { type = "description", text = "|cFFFF0000WARNING:|r You are about to reset the 'Global' profile back to its factory defaults.\n\nAll customizations on this profile will be lost. Your other profiles will not be affected.\n\nThis cannot be undone." },
+            },
+            extraButtons = {
+                { text = "\194\171 Back", callback = function() profilesSubView = nil; ReopenProfiles() end },
+                {
+                    text = "Reset to Defaults",
+                    callback = function()
+                        Orbit.API:ResetProfile("Global")
+                        profilesSubView = nil
+                        ReopenProfiles()
+                    end,
+                },
+            },
+        }
+    end
+
+    -- Main profiles view
+    local controls = {}
+
+    controls[#controls + 1] = { type = "header", text = "Profile" }
+    controls[#controls + 1] = {
+        type = "profileactive", key = "ActiveProfile", label = "Active",
+        options = GetProfileOptions, default = "Global", width = DROPDOWN_WIDTH,
+        onReset = function() profilesSubView = "resetglobal"; ReopenProfiles() end,
+    }
+    controls[#controls + 1] = {
+        type = "profileselect", key = "CreateProfile", label = "Manage",
+        options = GetProfileOptions, default = "Global",
+        onCopy = function(selected)
+            cloneSource = selected
+            cloneName = ""
+            profilesSubView = "clone"
+            ReopenProfiles()
+        end,
+        onDelete = function(selected)
+            if selected == "Global" then Orbit:Print("Cannot delete the Global profile."); return end
+            if selected == Orbit.Profile:GetActiveProfileName() then Orbit:Print("Cannot delete the active profile."); return end
+            deleteTarget = selected
+            profilesSubView = "delete"
+            ReopenProfiles()
+        end,
+    }
+    controls[#controls + 1] = { type = "spacer", height = SPACER_LARGE }
+
+    -- Spec Profiles (collapsible)
+    local expanded = specProfilesExpanded
+    controls[#controls + 1] = {
+        type = "collapseheader", text = "Spec Profiles", collapsed = not expanded,
+        onToggle = function()
+            specProfilesExpanded = not specProfilesExpanded
+            ReopenProfiles()
+        end,
+    }
+    if expanded then
+        controls[#controls + 1] = {
+            type = "description",
+            text = "Assign a profile to each specialization. When you change spec, Orbit switches automatically.",
+        }
+        local numSpecs = GetNumSpecializations and GetNumSpecializations() or 0
+        for i = 1, numSpecs do
+            local specID, specName = GetSpecializationInfo(i)
+            if specID and specName then
+                controls[#controls + 1] = {
+                    type = "dropdown", key = "SpecMapping_" .. specID, label = specName,
+                    options = GetProfileOptionsWithDefault, default = "Global", width = DROPDOWN_WIDTH,
+                }
+            end
+        end
+    end
+    controls[#controls + 1] = { type = "spacer", height = SPACER_SMALL }
 
     return {
         hideNativeSettings = true,
         hideResetButton = true,
-        controls = {
-            { type = "header", text = "Active Profile" },
-            { type = "label", text = activeProfile, key = "ActiveProfileDisplay" },
-            { type = "spacer", height = SPACER_SMALL },
-            { type = "label", text = "Profiles are automatically managed per-specialization.", key = "AutoInfo" },
-            { type = "spacer", height = SPACER_LARGE },
-            { type = "header", text = "Manage Profiles" },
-            { type = "dropdown", key = "ProfileToDelete", label = "Select Profile", options = GetAllProfileOptions, default = "Default", width = DROPDOWN_WIDTH },
-            {
-                type = "button", text = "Copy From Above", width = BUTTON_WIDTH,
-                onClick = function()
-                    local selected = Orbit.Profile._selectedToDelete
-                    if not selected or selected == "" then Orbit:Print("Please select a profile first."); return end
-                    local currentActive = Orbit.Profile:GetActiveProfileName()
-                    if selected == currentActive then Orbit:Print("Cannot copy from the active profile."); return end
-                    local popup = StaticPopup_Show("ORBIT_CONFIRM_COPY_PROFILE", currentActive, selected)
-                    if popup then popup.data = { source = selected, target = currentActive } end
-                end,
-            },
-            {
-                type = "button", text = "Delete Selected Profile", width = BUTTON_WIDTH,
-                onClick = function()
-                    local selected = Orbit.Profile._selectedToDelete
-                    if not selected or selected == "" then Orbit:Print("Please select a profile first."); return end
-                    local currentActive = Orbit.Profile:GetActiveProfileName()
-                    if selected == "Default" then Orbit:Print("Cannot delete Default profile."); return end
-                    if selected == currentActive then Orbit:Print("Cannot delete active profile. Switch specs first."); return end
-                    Orbit.Profile:DeleteProfile(selected)
-                    Orbit:Print(selected .. " Profile Deleted.")
-                    Orbit.Profile._selectedToDelete = nil
-                    if Orbit.OptionsPanel then
-                        Orbit.OptionsPanel.lastTab = nil
-                        Orbit.OptionsPanel:Open("Profiles")
-                    end
-                end,
-            },
-            { type = "spacer", height = SPACER_LARGE },
-        },
+        controls = controls,
         extraButtons = {
-            {
-                text = "Export",
-                callback = function()
-                    local str = Orbit.Profile:ExportProfile()
-                    StaticPopupDialogs["ORBIT_EXPORT"] = {
-                        text = "Copy your backup string (All Profiles):",
-                        button1 = "Close", hasEditBox = true,
-                        OnShow = function(self) self.EditBox:SetText(str); self.EditBox:HighlightText(); self.EditBox:SetFocus() end,
-                        EditBoxOnEscapePressed = function(self) self:GetParent():Hide() end,
-                        timeout = 0, hideOnEscape = true, preferredIndex = POPUP_PREFERRED_INDEX,
-                    }
-                    StaticPopup_Show("ORBIT_EXPORT")
-                end,
-            },
-            {
-                text = "Import",
-                callback = function()
-                    StaticPopupDialogs["ORBIT_IMPORT"] = {
-                        text = "Paste profile string (Single or Backup):",
-                        button1 = "Import", button2 = "Cancel", hasEditBox = true,
-                        OnAccept = function(self)
-                            local str = self.EditBox:GetText()
-                            local success, err = Orbit.Profile:ImportProfile(str)
-                            if success then
-                                Orbit:Print("Import successful. Reloading UI is recommended.")
-                                if Orbit.OptionsPanel and Orbit.OptionsPanel.Refresh then Orbit.OptionsPanel:Refresh() end
-                            else
-                                print("Import Failed: " .. (err or "Unknown"))
-                            end
-                        end,
-                        timeout = 0, hideOnEscape = true, preferredIndex = POPUP_PREFERRED_INDEX,
-                    }
-                    StaticPopup_Show("ORBIT_IMPORT")
-                end,
-            },
+            { text = "Export", callback = function()
+                local active = Orbit.Profile:GetActiveProfileName()
+                exportSelectedProfile = active
+                exportString = Orbit.Profile:ExportSingleProfile(active) or ""
+                profilesSubView = "export"
+                ReopenProfiles()
+            end },
+            { text = "Import", callback = function() profilesSubView = "import"; ReopenProfiles() end },
         },
     }
 end
+
+
 
 -- [ MAIN LOGIC ]------------------------------------------------------------------------------------
 
@@ -593,44 +973,12 @@ end
 SLASH_ORBIT1 = "/orbit"
 SLASH_ORBIT2 = "/orb"
 
-StaticPopupDialogs["ORBIT_CONFIRM_RESET"] = {
-    text = "|cFFFF0000WARNING:|r You are about to reset the '%s' profile to defaults.\n\nThis cannot be undone.",
-    button1 = "Reset", button2 = "Cancel",
-    OnAccept = function(self) Orbit.API:ResetProfile(self.data) end,
-    timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = POPUP_PREFERRED_INDEX,
-}
-
 StaticPopupDialogs["ORBIT_CONFIRM_HARD_RESET"] = {
     text = "|cFFFF0000DANGER|r\n\nYou are about to FACTORY RESET Orbit.\n\nAll profiles, settings, and data will be wiped.\nThe UI will reload immediately.\n\nAre you sure?",
     button1 = "Factory Reset", button2 = "Cancel",
     OnAccept = function(self) Orbit.API:HardReset() end,
     timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = POPUP_PREFERRED_INDEX,
 }
-
-StaticPopupDialogs["ORBIT_CONFIRM_COPY_PROFILE"] = {
-    text = "|cFFFF0000WARNING:|r This will overwrite your '%s' settings with '%s' settings.\n\nThis cannot be undone.",
-    button1 = "Apply", button2 = "Decline",
-    OnAccept = function(self)
-        local success, err = Orbit.Profile:CopyProfileData(self.data.source)
-        if success then
-            ReloadUI()
-        else
-            Orbit:Print("Copy failed: " .. (err or "Unknown error"))
-        end
-    end,
-    timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = POPUP_PREFERRED_INDEX,
-}
-
-local function Help()
-    print("|cFFAA77FFOrbit Commands:|r")
-    print("  |cFFAA77FF/orbit|r |cFF00D4FF- Toggle Edit Mode / Options|r")
-    print("  |cFFAA77FF/orbit plugins|r |cFF00D4FF- Open Plugin Manager|r")
-    print("  |cFFAA77FF/orbit reset|r |cFF00D4FF- Reset CURRENT profile to defaults|r")
-    print("  |cFFAA77FF/orbit hardreset|r |cFF00D4FF- Factory Reset (Wipe All Data)|r")
-    print("  |cFFAA77FF/orbit portal|r |cFF00D4FF- Portal Dock commands|r")
-    print("  |cFFAA77FF/orbit refresh <plugin>|r |cFF00D4FF- Force refresh a plugin|r")
-    print("  |cFFAA77FF/orbit whatsnew|r |cFF00D4FF- Show the What's New window|r")
-end
 
 SlashCmdList["ORBIT"] = function(msg)
     local args = {}
@@ -654,16 +1002,12 @@ SlashCmdList["ORBIT"] = function(msg)
 
     if cmd == "whatsnew" then Orbit:ShowWhatsNew(); return end
 
-    if cmd == "help" then Help()
-    elseif cmd == "plugins" then
+    if cmd == "plugins" then
         if Orbit._pluginSettingsCategoryID then
             Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
         else
             Orbit:Print("Plugin Manager not yet loaded.")
         end
-    elseif cmd == "reset" then
-        local profile = Orbit.Profile:GetActiveProfileName()
-        StaticPopup_Show("ORBIT_CONFIRM_RESET", profile, nil, profile)
     elseif cmd == "hardreset" then StaticPopup_Show("ORBIT_CONFIRM_HARD_RESET")
     elseif cmd == "portal" or cmd == "p" then
         local subCmd = args[2] and args[2]:lower() or ""
@@ -689,6 +1033,5 @@ SlashCmdList["ORBIT"] = function(msg)
         end
     else
         Orbit:Print("Unknown command: " .. cmd)
-        Help()
     end
 end

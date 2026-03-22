@@ -91,13 +91,13 @@ local function SizeEdgeButton(btn, iconWidth, iconHeight, Pixel)
 end
 
 -- [ LAYOUT MAIN ]-----------------------------------------------------------------------------------
-local function GridFingerprint(gridItems, isDragging)
+local function GridFingerprint(gridItems, isDragging, isEditMode)
     local parts, n = {}, 0
     for key, data in pairs(gridItems) do
         if Layout.IsGridItemUsable(data) then n = n + 1; parts[n] = key end
     end
     table.sort(parts)
-    parts[n + 1] = isDragging and "D" or "N"
+    parts[n + 1] = isDragging and "D" or (isEditMode and "E" or "N")
     return table.concat(parts, "|")
 end
 
@@ -105,8 +105,9 @@ function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
     if not anchor then return end
 
     local isDragging = isDraggingFn and isDraggingFn() or false
+    local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
     local rawGridItems = anchor.gridItems or {}
-    local fp = GridFingerprint(rawGridItems, isDragging)
+    local fp = GridFingerprint(rawGridItems, isDragging, isEditMode)
     if fp == anchor._gridFingerprint then return end
     anchor._gridFingerprint = fp
 
@@ -125,8 +126,6 @@ function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
     local rawPadding = (overrides and overrides.padding) or plugin:GetSetting(systemIndex, "IconPadding") or Constants.Cooldown.DefaultPadding
     local Pixel = OrbitEngine.Pixel
     local padding = Pixel and Pixel:Snap(rawPadding) or rawPadding
-
-    local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
 
     local gridItems = {}
     local usableSnapshot = {}
@@ -157,9 +156,13 @@ function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
     end
     if not hasItems then minX, maxX, minY, maxY = 0, 0, 0, 0 end
 
-    -- Empty grid: show seed button or hide
+    -- Empty grid: release stale icons, show seed button or hide
     if not hasItems then
+        local IconFactory = Orbit.TrackedIconFactory
+        IconFactory:ReleaseTrackedIcons(anchor)
         for _, placeholder in ipairs(anchor.placeholders or {}) do placeholder:Hide() end
+        Orbit.Skin:ClearIconGroupBorder(anchor)
+        Orbit.Skin:DeferGroupBorderRefresh()
         if isDragging then
             anchor.edgeButtons = anchor.edgeButtons or {}
             local btn = anchor.edgeButtons[1] or CreateEdgeButton(anchor, 1)
@@ -170,12 +173,24 @@ function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
             btn:Show()
             if isDragging then btn.PulseAnim:Play() else btn.PulseAnim:Stop(); btn.Glow:SetAlpha(EDGE_GLOW_ALPHA) end
             anchor:SetSize(iconWidth, iconHeight)
+            if anchor.SeedButton then anchor.SeedButton:Hide() end
+        elseif isEditMode and anchor.SeedButton then
+            for _, b in pairs(anchor.edgeButtons or {}) do b:Hide() end
+            anchor:SetSize(iconWidth, iconHeight)
+            local plusSize = Pixel and Pixel:Snap(math.min(iconWidth, iconHeight) * 0.4) or (math.min(iconWidth, iconHeight) * 0.4)
+            anchor.SeedButton.Plus:SetSize(plusSize, plusSize)
+            anchor.SeedButton.PulseAnim:Stop()
+            anchor.SeedButton.Glow:SetAlpha(EDGE_GLOW_ALPHA)
+            anchor.SeedButton:Show()
         else
             for _, b in pairs(anchor.edgeButtons or {}) do b:Hide() end
+            if anchor.SeedButton then anchor.SeedButton:Hide() end
             anchor:SetSize(iconWidth, iconHeight)
         end
         return
     end
+
+    if anchor.SeedButton then anchor.SeedButton:Hide() end
 
     for _, placeholder in ipairs(anchor.placeholders or {}) do placeholder:Hide() end
     if not anchor.recyclePool then anchor.recyclePool = {} end

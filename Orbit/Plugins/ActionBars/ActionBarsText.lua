@@ -3,7 +3,7 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 
-local BUTTON_SIZE = 36
+local BUTTON_SIZE = 32
 
 Orbit.ActionBarsText = {}
 local ABText = Orbit.ActionBarsText

@@ -60,12 +60,16 @@ function Skin:ApplyNineSliceBorder(frame, styleEntry)
     local borderOffset = styleEntry.borderOffset or (gs and gs.BorderOffset) or 0
     local scale = frame:GetEffectiveScale()
     if not scale or scale < 0.01 then scale = 1 end
-    local outset = Engine.Pixel:Snap((edgeSize / 2) + borderOffset, scale)
+    local ownScale = frame:GetScale() or 1
+    if ownScale < 0.01 then ownScale = 1 end
+    local adjEdge = edgeSize / ownScale
+    local adjOffset = borderOffset / ownScale
+    local outset = Engine.Pixel:Snap((adjEdge / 2) + adjOffset, scale)
     frame.borderPixelSize = outset
     overlay:ClearAllPoints()
     overlay:SetPoint("TOPLEFT", frame, "TOPLEFT", -outset, outset)
     overlay:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", outset, -outset)
-    overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = edgeSize })
+    overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = adjEdge })
     local c = styleEntry.color
     if c then overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a or 1)
     else overlay:SetBackdropBorderColor(1, 1, 1, 1) end
@@ -106,6 +110,8 @@ end
 function Skin:ClearIconGroupBorder(container)
     if not container then return end
     -- NOTE: _isIconContainer is NOT cleared here — it reflects frame type, not border style.
+    -- Clear _activeBorderMode so ClearGroupBorder → SetBorderHidden(false) won't re-show stale borders.
+    container._activeBorderMode = nil
     self:ClearNineSliceBorder(container)
     if container._borderFrame then container._borderFrame:Hide() end
 end
@@ -222,7 +228,7 @@ function Skin.DefaultSetBorderHidden(self, hidden)
         if self._edgeBorderOverlay then self._edgeBorderOverlay:Hide() end
     elseif self._activeBorderMode == "nineslice" then
         if self._edgeBorderOverlay then self._edgeBorderOverlay:Show() end
-    else
+    elseif self._activeBorderMode == "flat" then
         if self._borderFrame then self._borderFrame:Show() end
     end
 end
@@ -241,20 +247,10 @@ function Skin:SkinStatusBar(bar, textureName, color, isUnitFrame)
         bar:SetStatusBarColor(color.r, color.g, color.b, color.a or 1)
     end
 
-    -- Overlay logic: check OverlayAllFrames setting
-    local overlayAllFrames = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.OverlayAllFrames
-
-    -- If this is a unit frame, only add overlay if OverlayAllFrames is enabled
-    if isUnitFrame and not overlayAllFrames then
-        -- Hide overlay if it exists
-        if bar.Overlay then
-            bar.Overlay:Hide()
-        end
-        return
-    end
+    -- Overlay logic
 
     -- Get overlay texture from settings
-    local overlayTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.OverlayTexture or "Orbit Gradient"
+    local overlayTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.OverlayTexture or "None"
     if overlayTextureName == "None" then
         if bar.Overlay then bar.Overlay:Hide() end
         return

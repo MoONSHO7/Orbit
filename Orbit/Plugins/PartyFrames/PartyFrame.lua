@@ -19,6 +19,14 @@ local AURA_BASE_ICON_SIZE = Orbit.PartyFrameHelpers.LAYOUT.AuraBaseIconSize
 local OUT_OF_RANGE_ALPHA = GF.OutOfRangeAlpha
 local OFFLINE_ALPHA = GF.OfflineAlpha
 local ROLE_PRIORITY = GF.RolePriority
+local UNIT_REREGISTER_EVENTS = {
+    "UNIT_HEALTH", "UNIT_MAXHEALTH",
+    "UNIT_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_PREDICTION",
+    "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT",
+    "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS",
+    "UNIT_NAME_UPDATE", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "UNIT_OTHER_PARTY_CHANGED",
+    "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
+}
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PartyFrames"
@@ -150,6 +158,7 @@ local SafeUnregisterUnitWatch = Orbit.GroupFrameMixin.SafeUnregisterUnitWatch
 local function GetPowerColor(powerType) return Orbit.Constants.Colors:GetPowerColor(powerType) end
 
 -- [ ROLE SORTING ]---------------------------------------------------------------------------------
+local PARTY_UNITS = { "party1", "party2", "party3", "party4" }
 
 local function GetRolePriority(unit)
     if not UnitExists(unit) then return 99 end
@@ -161,11 +170,11 @@ end
 local function GetSortedPartyUnits(includePlayer)
     local units = {}
     if includePlayer then
-        table.insert(units, "player")
+        units[#units + 1] = "player"
     end
     for i = 1, 4 do
-        if UnitExists("party" .. i) then
-            table.insert(units, "party" .. i)
+        if UnitExists(PARTY_UNITS[i]) then
+            units[#units + 1] = PARTY_UNITS[i]
         end
     end
 
@@ -515,28 +524,11 @@ function Plugin:OnLoad()
             return
         end
         if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
-            UpdateVisibilityDriver(self) -- Re-evaluate driver on roster changes
-            if not InCombatLockdown() then
-                self:UpdateFrameUnits()
-            end
-            for i, frame in ipairs(self.frames) do
-                if frame.unit then
-                    UpdateInRange(frame)
-                    if frame.UpdateAll then
-                        frame:UpdateAll()
-                    end
-                    UpdatePowerBar(frame, self)
-                end
-            end
-        end
-
-        if event == "PLAYER_REGEN_ENABLED" then
             UpdateVisibilityDriver(self)
+            if not InCombatLockdown() then self:UpdateFrameUnits() end
+            return
         end
-        if not InCombatLockdown() then
-            self:PositionFrames()
-            self:UpdateContainerSize()
-        end
+        if event == "PLAYER_REGEN_ENABLED" then UpdateVisibilityDriver(self) end
     end)
 
     self.skipEditModeApply = true
@@ -654,7 +646,11 @@ function Plugin:UpdateFrameUnits()
     if self.frames and self.frames[1] and self.frames[1].preview then return end
 
     local includePlayer = self:GetSetting(1, "IncludePlayer")
-    local sortedUnits = GetSortedPartyUnits(includePlayer)
+    local sortedUnits = {}
+    -- Unregister party frames from events if in a raid with > 5 members
+    if not (IsInRaid() and GetNumGroupMembers() > 5) then
+        sortedUnits = GetSortedPartyUnits(includePlayer)
+    end
 
     for i = 1, MAX_PARTY_FRAMES do
         local frame = self.frames[i]
@@ -666,27 +662,13 @@ function Plugin:UpdateFrameUnits()
                     frame:SetAttribute("unit", unit)
                     frame.unit = unit
 
-                    frame:UnregisterEvent("UNIT_POWER_UPDATE")
-                    frame:UnregisterEvent("UNIT_MAXPOWER")
-                    frame:UnregisterEvent("UNIT_DISPLAYPOWER")
-                    frame:UnregisterEvent("UNIT_POWER_FREQUENT")
-                    frame:UnregisterEvent("UNIT_AURA")
-                    frame:UnregisterEvent("UNIT_THREAT_SITUATION_UPDATE")
-                    frame:UnregisterEvent("UNIT_PHASE")
-                    frame:UnregisterEvent("UNIT_FLAGS")
-                    frame:UnregisterEvent("INCOMING_RESURRECT_CHANGED")
-                    frame:UnregisterEvent("UNIT_IN_RANGE_UPDATE")
-
-                    frame:RegisterUnitEvent("UNIT_POWER_UPDATE", unit)
-                    frame:RegisterUnitEvent("UNIT_MAXPOWER", unit)
-                    frame:RegisterUnitEvent("UNIT_DISPLAYPOWER", unit)
-                    frame:RegisterUnitEvent("UNIT_POWER_FREQUENT", unit)
-                    frame:RegisterUnitEvent("UNIT_AURA", unit)
-                    frame:RegisterUnitEvent("UNIT_THREAT_SITUATION_UPDATE", unit)
-                    frame:RegisterUnitEvent("UNIT_PHASE", unit)
-                    frame:RegisterUnitEvent("UNIT_FLAGS", unit)
-                    frame:RegisterUnitEvent("INCOMING_RESURRECT_CHANGED", unit)
-                    frame:RegisterUnitEvent("UNIT_IN_RANGE_UPDATE", unit)
+                    for _, event in ipairs(UNIT_REREGISTER_EVENTS) do
+                        frame:UnregisterEvent(event)
+                    end
+                    for _, event in ipairs(UNIT_REREGISTER_EVENTS) do
+                        frame:RegisterUnitEvent(event, unit)
+                    end
+                    UpdatePrivateAuras(frame, self)
                 end
 
                 SafeUnregisterUnitWatch(frame)
@@ -844,6 +826,7 @@ function Plugin:ApplySettings()
             UpdateCrowdControlIcon(frame, self)
             UpdateHealerAuras(frame, self)
             UpdateMissingRaidBuffs(frame, self)
+            UpdatePrivateAuras(frame, self)
             StatusDispatch(frame, self, "UpdateAllPartyStatusIcons")
             if frame.UpdateAll then
                 frame:UpdateAll()

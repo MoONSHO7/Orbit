@@ -29,7 +29,7 @@ local CLAMP_PADDING_Y = 200
 
 local AURA_ICON_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true }
 local STANDARD_ICON_KEYS =
-    { MarkerIcon = true, LeaderIcon = true, MainTankIcon = true, Difficulty = true, Mail = true, CraftingOrder = true, Compartment = true, Zoom = true }
+    { MarkerIcon = true, LeaderIcon = true, MainTankIcon = true, RestingIcon = true, Difficulty = true, Mail = true, CraftingOrder = true, Compartment = true, Zoom = true }
 
 local function DetectCreatorType(key, source)
     local isFontString = source and source.GetFont ~= nil

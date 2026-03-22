@@ -7,9 +7,14 @@ local CanvasMode = OrbitEngine.CanvasMode
 local CC = CanvasMode.CreatorConstants
 local GetSourceSize = CanvasMode.GetSourceSize
 
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
+
 local ZOOM_BUTTON_GAP = 2
 local ZOOM_IN_W, ZOOM_IN_H = 17, 17
 local ZOOM_OUT_W, ZOOM_OUT_H = 17, 9
+local FLIPBOOK_ROWS_DEFAULT = 7
+local FLIPBOOK_COLS_DEFAULT = 6
+local FLIPBOOK_DURATION_DEFAULT = 1.5
 
 -- [ CREATOR ]---------------------------------------------------------------------------------------
 local function Create(container, preview, key, source, data)
@@ -49,13 +54,26 @@ local function Create(container, preview, key, source, data)
         visual = container:CreateTexture(nil, "OVERLAY")
         visual:SetAllPoints(container)
         local atlasName = iconTexture.GetAtlas and iconTexture:GetAtlas()
-        if atlasName then
-            visual:SetAtlas(atlasName, false)
-        elseif iconTexture:GetTexture() then
-            visual:SetTexture(iconTexture:GetTexture())
-        end
-        local tc = iconTexture.orbitPreviewTexCoord
-        visual:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
+        if atlasName then visual:SetAtlas(atlasName, false)
+        elseif iconTexture:GetTexture() then visual:SetTexture(iconTexture:GetTexture()) end
+        -- Animate flipbook in canvas mode via child frame (avoids conflicting with drag OnUpdate)
+        local rows = source.flipbookRows or FLIPBOOK_ROWS_DEFAULT
+        local cols = source.flipbookCols or FLIPBOOK_COLS_DEFAULT
+        local total = source.flipbookFrames or (rows * cols)
+        local perFrame = (source.flipbookDuration or FLIPBOOK_DURATION_DEFAULT) / total
+        local fw, fh = 1 / cols, 1 / rows
+        local curFrame, elapsed = 0, 0
+        local ticker = CreateFrame("Frame", nil, container)
+        ticker:SetScript("OnUpdate", function(_, dt)
+            elapsed = elapsed + dt
+            if elapsed >= perFrame then
+                elapsed = elapsed - perFrame
+                curFrame = (curFrame + 1) % total
+                local col = curFrame % cols
+                local row = math.floor(curFrame / cols)
+                visual:SetTexCoord(col * fw, (col + 1) * fw, row * fh, (row + 1) * fh)
+            end
+        end)
     else
         local btn = CreateFrame("Button", nil, container, "BackdropTemplate")
         btn:SetAllPoints(container)

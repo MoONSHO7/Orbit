@@ -110,9 +110,7 @@ function Plugin:ApplySettings()
     if not frame then return end
     if not Orbit:IsPluginEnabled(self.name) then frame:Hide(); return end
     frame:SetScale((self:GetSetting(SYSTEM_ID, "Scale") or 100) / 100)
-    local s = Orbit.db.GlobalSettings.TextScale
-    local textMultiplier = s == "Small" and 0.85 or s == "Large" and 1.15 or s == "ExtraLarge" and 1.30 or 1
-    Orbit.Skin:SkinText(frame.Text, { font = Orbit.db.GlobalSettings.Font, textSize = 14 * textMultiplier })
+    Orbit.Skin:SkinText(frame.Text, { font = Orbit.db.GlobalSettings.Font, textSize = 14 })
     frame.Text:SetText("99:59")
     frame:SetSize(frame.Text:GetStringWidth() + 8, frame.Text:GetStringHeight() + 4)
     frame:Show()

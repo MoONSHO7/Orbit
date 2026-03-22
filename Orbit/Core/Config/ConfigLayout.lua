@@ -216,8 +216,7 @@ function Layout:CreateWidget(container, def, getValue, callback)
     local creator = self.creators[normalizedType]
 
     if not creator then
-        print("Orbit Layout: Unknown widget type:", def.type)
-        return nil
+        error("Orbit Layout: Unknown widget type: " .. tostring(def.type))
     end
 
     return creator(container, def, getValue, callback)
@@ -238,7 +237,9 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("slider", function(container, def, getValue, callback)
-        return self:CreateSlider(container, def.label, def.min, def.max, def.step, def.formatter, getValue(), callback, def)
+        local slider = self:CreateSlider(container, def.label, def.min, def.max, def.step, def.formatter, getValue(), callback, def)
+        if slider then slider.SettingKey = def.key end
+        return slider
     end)
 
     self:RegisterWidgetType("dropdown", function(container, def, getValue, callback)
@@ -275,7 +276,7 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("editbox", function(container, def, getValue, callback)
-        return self:CreateEditBox(container, def.label, getValue(), callback, def.width, def.height, def.multiline)
+        return self:CreateEditBox(container, def.label, getValue(), callback, def.width, def.height, def.multiline, def)
     end)
 
     self:RegisterWidgetType("header", function(container, def)

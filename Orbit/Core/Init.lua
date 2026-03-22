@@ -29,10 +29,9 @@ local MAX_ERRORS = 50
 local INIT_TIMER_DELAY = 0.05
 
 local GLOBAL_DEFAULTS = {
-    Font = "PT Sans Narrow",
+    Font = "Barlow Condensed Bold",
     Texture = "Solid",
     BorderSize = 2,
-    TextScale = "Medium",
     FontOutline = "OUTLINE",
     BackdropColour = { r = 0.145, g = 0.145, b = 0.145, a = 0.7 },
 }
@@ -157,8 +156,14 @@ function Orbit:InitializePlugins()
             local original = plugin.ApplySettings
             plugin.ApplySettings = function(self, ...)
                 if not Orbit:IsPluginEnabled(self.name) then
-                    if self.frame then self.frame.orbitDisabled = true; self.frame:Hide() end
+                    if self.frame then
+                        OrbitEngine.FrameAnchor:SetFrameDisabled(self.frame, true)
+                        self.frame:Hide()
+                    end
                     return
+                end
+                if self.frame and self.frame.orbitDisabled then
+                    OrbitEngine.FrameAnchor:SetFrameDisabled(self.frame, false)
                 end
                 return original(self, ...)
             end
@@ -205,6 +210,7 @@ function Orbit:OnLoad()
     self.db = OrbitDB
     self.db.GlobalSettings = self.db.GlobalSettings or {}
     self.db.AccountSettings = self.db.AccountSettings or {}
+    self.db.SpecData = self.db.SpecData or {}
 
     -- Migrate TourComplete from profile-synced GlobalSettings to account-wide AccountSettings
     if self.db.GlobalSettings.TourComplete ~= nil and self.db.AccountSettings.TourComplete == nil then
@@ -301,9 +307,8 @@ function Orbit:LiveTogglePlugin(name, enabled)
             self.ErrorHandler:Wrap(function() plugin:OnLoad() end, name .. ".OnLoad")()
             plugin._initialized = true
         end
-        if plugin.ApplySettings then
-            plugin:ApplySettings()
-        end
+        if plugin.frame then OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, false) end
+        if plugin.ApplySettings then plugin:ApplySettings() end
     else
         if plugin.OnDisable then
             self.ErrorHandler:Wrap(function() plugin:OnDisable() end, name .. ".OnDisable")()
@@ -348,6 +353,9 @@ eventFrame:SetScript("OnEvent", function(self, event)
         end
     elseif event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_SPECIALIZATION_CHANGED" then
         Orbit:RefreshSpecLockedPlugins()
+        if event == "PLAYER_SPECIALIZATION_CHANGED" and Orbit.EventBus then
+            Orbit.EventBus:Fire("PLAYER_SPECIALIZATION_CHANGED")
+        end
     elseif event == "PLAYER_LOGOUT" then
         if Orbit.Engine and Orbit.Engine.PositionManager then Orbit.Engine.PositionManager:FlushToStorage() end
         if Orbit.Profile then Orbit.Profile:FlushGlobalSettings() end
@@ -361,7 +369,7 @@ function Orbit:RefreshSpecLockedPlugins()
             local locked = self:IsPluginSpecLocked(name)
             if locked and plugin._initialized then
                 if plugin.frame then
-                    plugin.frame.orbitDisabled = true
+                    OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, true)
                     plugin.frame:SetScript("OnEvent", nil)
                     plugin.frame:SetScript("OnUpdate", nil)
                     plugin.frame:UnregisterAllEvents()
@@ -376,7 +384,9 @@ function Orbit:RefreshSpecLockedPlugins()
                 if OrbitEngine.EditMode then OrbitEngine.EditMode:UnregisterCallbacks(plugin) end
                 plugin._initialized = false
             elseif not locked and not plugin._initialized and not (self.db.DisabledPlugins and self.db.DisabledPlugins[name]) then
-                if plugin.frame then plugin.frame.orbitDisabled = false end
+                if plugin.frame then
+                    OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, false)
+                end
                 if plugin.OnLoad then
                     self.ErrorHandler:Wrap(function() plugin:OnLoad() end, name .. ".OnLoad")()
                     plugin._initialized = true

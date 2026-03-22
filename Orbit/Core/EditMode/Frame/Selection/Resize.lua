@@ -26,19 +26,21 @@ local SHIFT_DIVISOR_X = 6
 local SHIFT_DIVISOR_Y = 12
 
 -- [ SLIDER SYNC ]-----------------------------------------------------------------------------------
-local function RefreshDialogSliders(plugin, newW, newH)
+local function RefreshDialogSliders(plugin, newW, newH, wKey, hKey)
     local Layout = Engine.Layout
     if not Layout or not Layout.containerControls then return end
     for _, controls in pairs(Layout.containerControls) do
         for _, control in ipairs(controls) do
             if control.OrbitType == "Slider" and control:IsShown() and control.Label then
                 local label = control.Label:GetText()
+                local key = control.SettingKey or label
                 local inner = control.Slider and control.Slider.Slider
                 if not inner then break end
-                if label == "Width" or label == "Height" then
+                if key == wKey or key == hKey then
                     control._isInitializing = true
-                    inner:SetValue(label == "Width" and newW or newH)
-                    if control.Value and control.valueFormatter then control.Value:SetText(control.valueFormatter(label == "Width" and newW or newH)) end
+                    local isWidth = (key == wKey)
+                    inner:SetValue(isWidth and newW or newH)
+                    if control.Value and control.valueFormatter then control.Value:SetText(control.valueFormatter(isWidth and newW or newH)) end
                     control._isInitializing = false
                 end
             end
@@ -134,7 +136,7 @@ function Resize:Attach(selection, frame)
         self.parentFrame:SetSize(newW, newH)
         if self.plugin.ApplySettings then self.plugin:ApplySettings() end
 
-        RefreshDialogSliders(self.plugin, newW, newH)
+        RefreshDialogSliders(self.plugin, newW, newH, self.wKey, self.hKey)
         Engine.SelectionTooltip:ShowResizeInfo(self.parentFrame, newW, newH, true)
     end)
 

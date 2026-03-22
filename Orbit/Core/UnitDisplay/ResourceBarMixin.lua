@@ -24,6 +24,14 @@ local DEVOURER_SPEC_ID = 1480
 local AUGMENTATION_SPEC_ID = 1473
 local FROST_MAGE_SPEC_ID = 64
 local SURVIVAL_HUNTER_SPEC_ID = 255
+local BREWMASTER_SPEC_ID = 268
+local SHADOW_SPEC_ID = 258
+local ELEMENTAL_SPEC_ID = 262
+local ENHANCEMENT_SPEC_ID = 263
+local BALANCE_SPEC_ID = 102
+local ARCANE_SPEC_ID = 62
+local WINDWALKER_SPEC_ID = 269
+Mixin.AUGMENTATION_SPEC_ID = AUGMENTATION_SPEC_ID
 
 local CLASS_RESOURCES = {
     ROGUE = Enum.PowerType.ComboPoints,
@@ -33,10 +41,10 @@ local CLASS_RESOURCES = {
     EVOKER = Enum.PowerType.Essence,
     -- Spec-dependent classes
     MAGE = {
-        [62] = Enum.PowerType.ArcaneCharges, -- Arcane
+        [ARCANE_SPEC_ID] = Enum.PowerType.ArcaneCharges,
     },
     MONK = {
-        [269] = Enum.PowerType.Chi, -- Windwalker
+        [WINDWALKER_SPEC_ID] = Enum.PowerType.Chi,
     },
     DRUID = "SHAPESHIFT",
 }
@@ -102,9 +110,9 @@ function Mixin:GetSortedRuneOrder()
     return result
 end
 
-local essenceState = { nextTick = nil, lastEssence = 0 }
-
 function Mixin:GetEssenceState(essenceIndex, currentEssence, maxEssence)
+    if not self._essenceState then self._essenceState = { nextTick = nil, lastEssence = 0 } end
+    local essenceState = self._essenceState
     local now = GetTime()
     local regen = GetPowerRegenForPowerType(Enum.PowerType.Essence)
     if not regen or regen <= 0 then return "empty", 0, 0 end
@@ -141,19 +149,19 @@ function Mixin:GetContinuousResourceForPlayer()
     local _, class = UnitClass("player")
     local spec = GetSpecialization()
     local specID = spec and GetSpecializationInfo(spec)
-    if class == "MONK" and specID == 268 then
+    if class == "MONK" and specID == BREWMASTER_SPEC_ID then
         return "STAGGER"
     end
     if class == "DEMONHUNTER" and (specID == VENGEANCE_SPEC_ID or specID == DEVOURER_SPEC_ID) then
         return "SOUL_FRAGMENTS"
     end
-    if class == "PRIEST" and specID == 258 then
+    if class == "PRIEST" and specID == SHADOW_SPEC_ID then
         return "MANA"
     end
-    if class == "SHAMAN" and specID == 262 and UnitPowerType("player") ~= Enum.PowerType.Mana then
+    if class == "SHAMAN" and specID == ELEMENTAL_SPEC_ID and UnitPowerType("player") ~= Enum.PowerType.Mana then
         return "MANA"
     end
-    if class == "SHAMAN" and specID == 263 then
+    if class == "SHAMAN" and specID == ENHANCEMENT_SPEC_ID then
         return "MAELSTROM_WEAPON"
     end
     if class == "MAGE" and specID == FROST_MAGE_SPEC_ID then
@@ -162,7 +170,7 @@ function Mixin:GetContinuousResourceForPlayer()
     if class == "HUNTER" and specID == SURVIVAL_HUNTER_SPEC_ID then
         return "TIP_OF_THE_SPEAR"
     end
-    if class == "DRUID" and specID == 102 then
+    if class == "DRUID" and specID == BALANCE_SPEC_ID then
         local formID, primary = GetShapeshiftFormID(), UnitPowerType("player")
         if formID ~= SHAPESHIFT.CAT and formID ~= SHAPESHIFT.BEAR and primary ~= Enum.PowerType.Mana then
             return "MANA"

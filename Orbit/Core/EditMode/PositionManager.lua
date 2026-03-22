@@ -85,3 +85,11 @@ function PositionManager:GetAnchor(frame)
     end
     return ActiveAnchors[frame:GetName()] or nil
 end
+
+function PositionManager:ClearFrame(frame)
+    local name = frame and frame:GetName()
+    if not name then return end
+    ActivePositions[name] = nil
+    ActiveAnchors[name] = nil
+    PendingFrames[name] = nil
+end

@@ -20,7 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [@project-version@] - @project-date-iso@
 ### Message
 - The Minimap plugin is here! It's marked **Experimental** for now — expect rough edges, but it's fully functional and ready to try.
-- Lots of border, opacity, and layering fixes this build. Things should feel much tighter now!
+- Profile system overhaul this build — if updating from a previous version, Export your main Specialization string and do a `/Orbit HardReset` to start fresh.
+- Lots of border, opacity, and layering fixes. Things should feel much tighter now!
 - As always, feedback on the Discord is very welcome.
 
 ### Added
@@ -38,17 +39,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - **Addon Compartment** — consolidates addon buttons into a single Orbit-managed compartment button with a flyout list.
   - **Instance Difficulty**, **Missions**, **Mail**, and **Crafting Order** indicators all carried over from the Blizzard minimap.
   - All components are individually toggleable and repositionable in Canvas Mode.
+- **Profile Management** — A complete layout manager out of the box. You can configure, import/export, and map UI profiles per-specialization for automatic swaps!
+- **Raid Frame Performance** — Reduced a large amount of API calls and layout updates on raid frames, more work on this next update.
+- **CastBar** — Added to canvas mode.
 
 ### Changed
-- **Borders now render inset** — pixel borders sit inside the frame instead of expanding outward, giving tighter, more accurate sizing across all frames.
-- **Merged borders** between stacked frames (e.g. health + power bars) can now merge per-axis, so horizontal and vertical edges are handled independently.
-- **Icon spacing** is now exact — aura and cooldown icon padding is no longer inflated by border thickness.
-- **Private Auras** respect per-icon size overrides and grow in the correct direction when anchored.
+- **UI Consistency & Defaults** — Default fonts (now Barlow Condensed Bold) and underlying layout borders have been strictly aligned for fresh profile builds.
+- **UI Consistency & Defaults** — Temporarily disabled anchoring on Tracked Cooldowns & Charges, working on a fix for these with new profiles & more blizzard addon restrictions coming in soon
 
 ### Fixed
-- **Opacity slider** now works correctly on the CDM, Power bar, Pet frame, and Resource bars.
-- **Cooldown icons** no longer render text behind borders or glows — draw order is now correct.
-- **Stale borders** after toggling merged-border settings are properly cleaned up.
+- **RestingIcon** — Fixed issue with positioning the icon in canvas mode.
+- **Many minor bugfixes** — Multiple layout and sizing inaccuracies have been rectified alongside the profile defaults overhaul.
 
 ## [1.0.0] - 2026-03-10
 ### Added

@@ -34,4 +34,7 @@ plugins do not live here. they live in `Plugins/`. this domain only provides the
 - `DefaultProfile.lua` is the single source of truth for all default values
 - never add plugin-specific logic to PluginMixin. if only one plugin needs it, it belongs in that plugin
 - profile operations must fire `ORBIT_PROFILE_CHANGED` so consumers can react
+- profiles are user-created with semantic names (e.g., "Healer", "Tank M+"), not auto-generated from spec names
+- the "Global" profile is the global fallback — unmapped specs use Global
+- spec-to-profile mapping is stored in `Orbit.db.specMappings[specID] = profileName`
 - plugins can declare `disabledSpecs = { [specID] = true }` in their registration mixin to disable for specific specializations. the plugin manager will grey out the checkbox and `IsPluginEnabled` returns false for locked specs
