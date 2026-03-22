@@ -116,12 +116,14 @@ function Plugin:SetSetting(systemIndex, key, value)
     OriginalSetSetting(self, systemIndex, key, value)
 end
 
+-- TODO(REMOVE): Legacy helper, only used by MigrateSpecData — remove after migration period
 -- Generates a spec-specific settings key, e.g. "TrackedItems_267" (legacy, used for migration)
 function Plugin:GetSpecKey(baseKey)
     local specID = self:GetCurrentSpecID()
     return baseKey .. "_" .. (specID or 0)
 end
 
+-- TODO(REMOVE): One-time migration from profile-keyed spec data to SpecData store
 -- One-time migration: move GetSpecKey data from profiles into SpecData
 function Plugin:MigrateSpecData()
     if Orbit.db.SpecData._migrated then return end
@@ -407,6 +409,7 @@ function Plugin:OnLoad()
             self:ReparseActiveDurations()
             self:ReapplyParentage()
             self:ApplyAll()
+            if Orbit.ViewerInjection then Orbit.ViewerInjection:OnSpecChanged() end
             if Orbit.Engine.FrameAnchor then
                 Orbit.Engine.FrameAnchor:RepairAllChains()
             end
@@ -441,6 +444,8 @@ function Plugin:OnLoad()
         end
     end, self)
 
+    -- Initialize viewer injection (drag-and-drop items into Essential/Utility)
+    if Orbit.ViewerInjection then Orbit.ViewerInjection:Initialize() end
 end
 
 function Plugin:UpdateVisibility()

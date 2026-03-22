@@ -1031,6 +1031,13 @@ SlashCmdList["ORBIT"] = function(msg)
         else
             Orbit:Print("Plugin not found: " .. subCmd)
         end
+    elseif cmd == "flush" then
+        if Orbit.ViewerInjection then
+            Orbit.ViewerInjection:FlushAll()
+            Orbit:Print("Cleared all injected cooldown icons.")
+        else
+            Orbit:Print("ViewerInjection not loaded.")
+        end
     else
         Orbit:Print("Unknown command: " .. cmd)
     end

@@ -15,6 +15,7 @@ local DEFAULT_TRACKED_OFFSET_X = -30
 local COLOR_TRACKED_SEED = { r = 0.2, g = 0.9, b = 0.2 }
 local SEED_GLOW_ALPHA = 0.6
 local SEED_PLUS_RATIO = 0.4
+local EQUIPMENT_SLOTS = { 13, 14 }
 
 -- [ TOOLTIP PARSER ALIASES ]------------------------------------------------------------------------
 local Parser = Orbit.TrackedTooltipParser
@@ -45,9 +46,9 @@ local function HasCooldown(itemType, id)
     if itemType == "spell" then
         local activeId = GetActiveSpellID(id)
         local cd = GetSpellBaseCooldown(activeId)
-        if cd and cd > 0 then return true end
+        if cd and not issecretvalue(cd) and cd > 0 then return true end
         local ci = C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
-        if ci and ci.maxCharges and ci.maxCharges > 1 then return true end
+        if ci and ci.maxCharges and not issecretvalue(ci.maxCharges) and ci.maxCharges > 1 then return true end
         return ParseCooldownDuration("spell", activeId) ~= nil
     elseif itemType == "item" then
         if ParseCooldownDuration("item", id) ~= nil then return true end
@@ -74,7 +75,8 @@ end
 local function IsDraggingCooldownAbility()
     local itemType, actualId = ResolveCursorInfo()
     if not itemType then return false end
-    return HasCooldown(itemType, actualId)
+    local ok, result = pcall(HasCooldown, itemType, actualId)
+    return ok and result
 end
 
 -- Expose for sub-modules
@@ -358,7 +360,13 @@ function Plugin:SaveTrackedItem(systemIndex, x, y, itemType, itemId)
         local actDur = ParseActiveDuration(itemType, parseId)
         local cdDur = ParseCooldownDuration(itemType, parseId)
         local useSpellId = (itemType == "item") and select(2, GetItemSpell(itemId)) or nil
-        tracked[key] = { type = itemType, id = itemId, x = x, y = y, activeDuration = actDur, cooldownDuration = cdDur, useSpellId = useSpellId }
+        local slotId = nil
+        if itemType == "item" then
+            for _, sid in ipairs(EQUIPMENT_SLOTS) do
+                if GetInventoryItemID("player", sid) == itemId then slotId = sid; break end
+            end
+        end
+        tracked[key] = { type = itemType, id = itemId, x = x, y = y, activeDuration = actDur, cooldownDuration = cdDur, useSpellId = useSpellId, slotId = slotId }
     else
         tracked[key] = nil
     end
@@ -368,6 +376,7 @@ end
 function Plugin:LoadTrackedItems(anchor, systemIndex)
     local tracked = self:GetSetting(systemIndex, "TrackedItems") or {}
 
+    -- TODO(REMOVE): Migrates numeric-keyed tracked items to grid-key format
     local needsMigration = false
     for key, _ in pairs(tracked) do
         if type(key) == "number" then needsMigration = true; break end
@@ -387,7 +396,7 @@ function Plugin:LoadTrackedItems(anchor, systemIndex)
 
     local copy = {}
     for k, v in pairs(tracked) do
-        copy[k] = { type = v.type, id = v.id, x = v.x, y = v.y, activeDuration = v.activeDuration, cooldownDuration = v.cooldownDuration, useSpellId = v.useSpellId }
+        copy[k] = { type = v.type, id = v.id, x = v.x, y = v.y, activeDuration = v.activeDuration, cooldownDuration = v.cooldownDuration, useSpellId = v.useSpellId, slotId = v.slotId }
     end
     anchor.gridItems = copy
     anchor._gridFingerprint = nil

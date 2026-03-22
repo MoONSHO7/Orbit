@@ -767,7 +767,7 @@ function Plugin:RegisterChargeRechargeWatcher()
     self._chargeRechargeWatcherSetup = true
     local plugin = self
     local frame = CreateFrame("Frame")
-    frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    frame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
     frame:RegisterEvent("SPELLS_CHANGED")
     frame:SetScript("OnEvent", function(_, event, unit, _, spellId)
         if event == "SPELLS_CHANGED" then
