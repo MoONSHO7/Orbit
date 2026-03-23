@@ -59,6 +59,10 @@ function Plugin:OnLoad()
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Minimap"
 
+    self.frame.ClipFrame = CreateFrame("Frame", nil, self.frame)
+    self.frame.ClipFrame:SetAllPoints(self.frame)
+    self.frame.ClipFrame:SetClipsChildren(true)
+
     -- Anchor options for edit mode drag
     self.frame.anchorOptions = {
         horizontal = true,
@@ -171,32 +175,12 @@ function Plugin:OnLoad()
     self.frame.Coords.Text:SetJustifyH("RIGHT")
     self.frame.Coords.visual = self.frame.Coords.Text -- canvas override target
 
-    -- Mouse-wheel zoom on the container frame
+    -- Mouse-wheel zoom: propagate scroll to the Blizzard minimap zoom buttons.
     self.frame:EnableMouseWheel(true)
     self.frame:SetScript("OnMouseWheel", function(_, delta)
         local minimap = self:GetBlizzardMinimap()
         if not minimap then return end
         if delta > 0 then minimap.ZoomIn:Click() else minimap.ZoomOut:Click() end
-    end)
-
-    -- Middle-click action with round hit-test: ignore clicks in the corners when shape is round
-    self.frame:EnableMouse(true)
-    self.frame:RegisterForClicks("MiddleButtonUp")
-    self.frame:SetScript("OnMouseUp", function(f, btn)
-        if self:GetSetting(SYSTEM_ID, "Shape") == "round" then
-            local scale = f:GetEffectiveScale()
-            local cx, cy = f:GetCenter()
-            local mx, my = GetCursorPosition()
-            mx, my = mx / scale - cx, my / scale - cy
-            if math.sqrt(mx * mx + my * my) > f:GetWidth() / 2 then return end
-        end
-        if btn == "MiddleButton" then
-            local action = self:GetSetting(SYSTEM_ID, "MiddleClickAction") or "none"
-            if action == "worldmap" then ToggleWorldMap()
-            elseif action == "tracking" then MinimapCluster.Tracking.Button:OpenMenu()
-            elseif action == "missions" and ExpansionLandingPageMinimapButton then ExpansionLandingPageMinimapButton:Click()
-            end
-        end
     end)
 
     -- [ Compartment component ]
@@ -327,13 +311,15 @@ function Plugin:ApplySettings()
     SetCVar("rotateMinimap", rotate and "1" or "0")
 
     -- Keep the Minimap render surface in sync with the container.
-    -- When rotating in square mode the map turns inside the square: expand the surface to
-    -- size * sqrt(2) so the full rotated map always fills all four corners of the square.
     local minimapSurface = self:GetBlizzardMinimap()
-    if minimapSurface and minimapSurface:GetParent() == frame then
+    local clipFrame = frame.ClipFrame or frame
+    if minimapSurface then
         local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
-        local surfaceSize = (rotate and shape == "square") and math.ceil(size * 1.4143) or size
+        local surfaceSize = (rotate and shape == "square") and math.ceil(size * 1.5) or size
+        minimapSurface._orbitIntendedSize = surfaceSize
         minimapSurface:SetSize(surfaceSize, surfaceSize)
+        minimapSurface:ClearAllPoints()
+        minimapSurface:SetPoint("CENTER", clipFrame, "CENTER", 0, 0)
     end
 
     -- Shape + Border
