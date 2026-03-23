@@ -54,20 +54,21 @@ function Plugin:ApplyShape()
         end
     end
 
-    -- Square border vs. round ring
+    -- Square border vs. round ring.
+    -- For round: force-clear any NineSlice overlay and hide the border frame entirely,
+    -- regardless of the global border style setting. The round shape uses the ring atlas instead.
     local borderSize = Orbit.db.GlobalSettings.BorderSize or 2
     local bc = self:GetSetting(SYSTEM_ID, "BorderColor") or Orbit.MinimapConstants.BORDER_COLOR
     if isRound then
-        Orbit.Skin:SkinBorder(frame, frame, 0, bc)
+        Orbit.Skin:ClearNineSliceBorder(frame)
+        Orbit.Skin:SkinBorder(frame, frame, 0, bc, false, true)
         if frame.RoundBorder then
             frame.RoundBorder:SetVertexColor(bc.r, bc.g, bc.b, bc.a or 1)
             frame.RoundBorder:Show()
         end
     else
         Orbit.Skin:SkinBorder(frame, frame, borderSize, bc)
-        if frame.RoundBorder then
-            frame.RoundBorder:Hide()
-        end
+        if frame.RoundBorder then frame.RoundBorder:Hide() end
     end
 end
 

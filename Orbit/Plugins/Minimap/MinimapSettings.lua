@@ -46,17 +46,6 @@ function Plugin:AddSettings(dialog, systemFrame)
         default = DEFAULT_SIZE,
     })
 
-    -- Zone Text Size
-    table.insert(schema.controls, {
-        type = "slider",
-        key = "ZoneTextSize",
-        label = "Zone Text Size",
-        min = 8,
-        max = 24,
-        step = 1,
-        default = 12,
-    })
-
     -- Border Colour
     table.insert(schema.controls, {
         type = "colorcurve",

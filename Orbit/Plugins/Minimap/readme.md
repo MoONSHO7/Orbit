@@ -63,7 +63,6 @@ canvas overrides (font, size, color) are supported for ZoneText, Clock, and Coor
 | `Scale`            | slider  | 100     | overall minimap scale (%)                      |
 | `Opacity`          | slider  | 100     | out-of-hover opacity (%)                       |
 | `Size`             | slider  | 200     | minimap diameter in pixels                     |
-| `ZoneTextSize`     | slider  | 12      | font size for zone text                        |
 | `ZoneTextColoring` | boolean | false   | colour zone text by pvp type (canvas override) |
 
 ## data flow

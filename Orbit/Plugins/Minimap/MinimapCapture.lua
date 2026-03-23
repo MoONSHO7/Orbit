@@ -65,6 +65,14 @@ function Plugin:ReparentBlizzardComponents()
         difficulty:SetParent(overlay)
         difficulty:ClearAllPoints()
         difficulty:SetPoint("CENTER", self.frame, "TOPLEFT", 20, -20)
+        -- Hide the Blizzard guild-banner Background and Border art on every sub-frame;
+        -- we only want the difficulty icon texture, not the decorative chrome.
+        for _, sub in ipairs({ difficulty.Default, difficulty.Guild, difficulty.ChallengeMode }) do
+            if sub then
+                if sub.Background then sub.Background:Hide() end
+                if sub.Border then sub.Border:Hide() end
+            end
+        end
         if not difficulty.Icon then
             difficulty.Icon = difficulty:CreateTexture(nil, "ARTWORK")
             difficulty.Icon:SetSize(16, 16)

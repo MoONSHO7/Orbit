@@ -16,7 +16,6 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
         RotateMinimap = false,
         MiddleClickAction = "none",
         AutoZoomOutDelay = 5,
-        ZoneTextSize = 12,
         ZoneTextColoring = false,
         DisabledComponents = {},
         ComponentPositions = {
@@ -38,6 +37,7 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
 
 local C = Orbit.MinimapConstants
 local DEFAULT_SIZE = C.DEFAULT_SIZE
+local DEFAULT_TEXT_SIZE = C.DEFAULT_TEXT_SIZE
 local BORDER_COLOR = C.BORDER_COLOR
 local ZOOM_BUTTON_W = C.ZOOM_BUTTON_W
 local MISSIONS_BASE_SIZE = C.MISSIONS_BASE_SIZE
@@ -48,7 +48,7 @@ local BORDER_RING_ATLAS = C.BORDER_RING_ATLAS
 function Plugin:OnLoad()
     Orbit.IconPreviewAtlases = Orbit.IconPreviewAtlases or {}
     Orbit.IconPreviewAtlases.Zoom = "common-icon-zoomin"
-    Orbit.IconPreviewAtlases.Difficulty = "UI-HUD-UnitFrame-Player-PVP-FFAIcon"
+    Orbit.IconPreviewAtlases.Difficulty = "ui-hud-minimap-guildbanner-normal-large"
     Orbit.IconPreviewAtlases.Mail = "ui-hud-minimap-mail-up"
     Orbit.IconPreviewAtlases.CraftingOrder = "UI-HUD-Minimap-CraftingOrder-Up"
 
@@ -182,8 +182,8 @@ function Plugin:OnLoad()
 
     -- Register all canvas components for drag
     local MPC = function(key) return OrbitEngine.ComponentDrag:MakePositionCallback(self, SYSTEM_ID, key) end
-    OrbitEngine.ComponentDrag:Attach(self.frame.ZoneText, self.frame, { key = "ZoneText", onPositionChange = MPC("ZoneText") })
-    OrbitEngine.ComponentDrag:Attach(self.frame.Clock, self.frame, { key = "Clock", onPositionChange = MPC("Clock") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.ZoneText, self.frame, { key = "ZoneText", sourceOverride = self.frame.ZoneText.Text, isFontString = true, onPositionChange = MPC("ZoneText") })
+    OrbitEngine.ComponentDrag:Attach(self.frame.Clock, self.frame, { key = "Clock", sourceOverride = self.frame.Clock.Text, isFontString = true, onPositionChange = MPC("Clock") })
     OrbitEngine.ComponentDrag:Attach(self.frame.Coords, self.frame, {
         key = "Coords",
         sourceOverride = self.frame.Coords.Text,
@@ -213,7 +213,10 @@ function Plugin:OnLoad()
     Orbit.EventBus:On("ZONE_CHANGED_INDOORS", OnZoneChanged, self)
     Orbit.EventBus:On("ZONE_CHANGED_NEW_AREA", OnZoneChanged, self)
 
-    -- Canvas preview: clip to a circle when Shape = "round"
+    -- Canvas preview: renders a live snapshot of the minimap container for the canvas viewport.
+    -- The real live frames (ZoneText, Clock, Coords, icons) are already children of self.frame
+    -- and are registered as draggable components — so the canvas dialog picks them up directly.
+    -- We only need to provide the bg preview frame and seed live data into text components.
     self.frame.CreateCanvasPreview = function(frame, options)
         options = options or {}
         local parent = options.parent or UIParent
@@ -233,20 +236,23 @@ function Plugin:OnLoad()
         preview.previewScale = 1
         preview.components = {}
 
-        -- Dark bg texture — always visible as a square baseline
+        -- Dark bg texture matching the live minimap backdrop
         preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, 1)
         preview.bg:SetAllPoints()
         preview.bg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
 
         if shape == "round" then
-            -- Clip bg to circle
             local bgMask = preview:CreateMaskTexture(nil, "BACKGROUND", nil, 0)
             bgMask:SetTexture(MASK_ROUND, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
             bgMask:SetAllPoints(preview.bg)
             preview.bg:AddMaskTexture(bgMask)
-        else
-            Orbit.Skin:SkinBorder(preview, preview, borderSize, { r = 1, g = 1, b = 1, a = 1 })
         end
+
+        -- Seed live data into text components so they show real content in the canvas viewport
+        local positions = self:GetSetting(SYSTEM_ID, "ComponentPositions") or {}
+        self:UpdateZoneText(frame.ZoneText, self:GetSetting(SYSTEM_ID, "ZoneTextColoring"), (positions.ZoneText or {}).overrides or {})
+        self:UpdateClock()
+        self:UpdateCoords()
 
         return preview
     end
@@ -263,31 +269,35 @@ end
 
 function Plugin:ApplySettings()
     local frame = self.frame
-    if InCombatLockdown() then
-        Orbit.CombatManager:QueueUpdate(function() self:ApplySettings() end)
-        return
-    end
+    if InCombatLockdown() then Orbit.CombatManager:QueueUpdate(function() self:ApplySettings() end); return end
+    if self._applyingSettings then return end
+    self._applyingSettings = true
 
     local isEditMode = Orbit:IsEditMode()
     local size = self:GetSetting(SYSTEM_ID, "Size") or DEFAULT_SIZE
-    local zoneTextSize = self:GetSetting(SYSTEM_ID, "ZoneTextSize") or 12
     local borderSize = Orbit.db.GlobalSettings.BorderSize or 2
 
     -- Size (square minimap)
     frame:SetSize(size, size)
-
-    -- Keep the Minimap render surface in sync with the container.
-    local minimapSurface = self:GetBlizzardMinimap()
-    if minimapSurface and minimapSurface:GetParent() == frame then
-        minimapSurface:SetSize(size, size)
-    end
-
-    -- Shape + Border
-    self:ApplyShape()
+    -- Sync the edit mode selection overlay to the new size immediately
+    if isEditMode then OrbitEngine.FrameSelection:ForceUpdate(frame) end
 
     -- Rotate minimap
     local rotate = self:GetSetting(SYSTEM_ID, "RotateMinimap") and true or false
     SetCVar("rotateMinimap", rotate and "1" or "0")
+
+    -- Keep the Minimap render surface in sync with the container.
+    -- When rotating in square mode the map turns inside the square: expand the surface to
+    -- size * sqrt(2) so the full rotated map always fills all four corners of the square.
+    local minimapSurface = self:GetBlizzardMinimap()
+    if minimapSurface and minimapSurface:GetParent() == frame then
+        local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
+        local surfaceSize = (rotate and shape == "square") and math.ceil(size * 1.4143) or size
+        minimapSurface:SetSize(surfaceSize, surfaceSize)
+    end
+
+    -- Shape + Border
+    self:ApplyShape()
 
     -- Background
     local backdropColor = Orbit.db.GlobalSettings.BackdropColour or { r = 0.145, g = 0.145, b = 0.145, a = 0.7 }
@@ -304,10 +314,10 @@ function Plugin:ApplySettings()
         local zoneOverrides = (savedPositions.ZoneText or {}).overrides or {}
         Orbit.Skin:SkinText(frame.ZoneText.Text, {
             font = Orbit.db.GlobalSettings.Font,
-            textSize = zoneTextSize * textMultiplier,
+            textSize = DEFAULT_TEXT_SIZE * textMultiplier,
         })
         OrbitEngine.OverrideUtils.ApplyOverrides(frame.ZoneText.Text, zoneOverrides, {
-            fontSize = zoneTextSize * textMultiplier,
+            fontSize = DEFAULT_TEXT_SIZE * textMultiplier,
             fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font),
         })
         self:UpdateZoneText(frame.ZoneText, self:GetSetting(SYSTEM_ID, "ZoneTextColoring"), zoneOverrides)
@@ -321,10 +331,10 @@ function Plugin:ApplySettings()
         local clockOverrides = (savedPositions.Clock or {}).overrides or {}
         Orbit.Skin:SkinText(frame.Clock.Text, {
             font = Orbit.db.GlobalSettings.Font,
-            textSize = (zoneTextSize - 1) * textMultiplier,
+            textSize = (DEFAULT_TEXT_SIZE - 1) * textMultiplier,
         })
         OrbitEngine.OverrideUtils.ApplyOverrides(frame.Clock.Text, clockOverrides, {
-            fontSize = (zoneTextSize - 1) * textMultiplier,
+            fontSize = (DEFAULT_TEXT_SIZE - 1) * textMultiplier,
             fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font),
         })
         self:StartClockTicker()
@@ -341,10 +351,10 @@ function Plugin:ApplySettings()
         local coordsText = frame.Coords.Text
         Orbit.Skin:SkinText(coordsText, {
             font = Orbit.db.GlobalSettings.Font,
-            textSize = (zoneTextSize - 1) * textMultiplier,
+            textSize = (DEFAULT_TEXT_SIZE - 1) * textMultiplier,
         })
         OrbitEngine.OverrideUtils.ApplyOverrides(coordsText, coordsOverrides, {
-            fontSize = (zoneTextSize - 1) * textMultiplier,
+            fontSize = (DEFAULT_TEXT_SIZE - 1) * textMultiplier,
             fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font),
         })
         self:StartCoordsTicker()
@@ -436,6 +446,7 @@ function Plugin:ApplySettings()
 
     -- In edit mode, always full alpha
     if isEditMode then frame:SetAlpha(1) end
+    self._applyingSettings = nil
 end
 
 -- [ TEARDOWN ]--------------------------------------------------------------------------------------
