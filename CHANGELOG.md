@@ -19,10 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [@project-version@] - @project-date-iso@
 ### Message
-- The Minimap plugin is here! It's marked **Experimental** for now — expect rough edges, but it's fully functional and ready to try.
-- Profile system overhaul this build — if updating from a previous version, Export your main Specialization string and do a `/Orbit HardReset` to start fresh.
-- Lots of border, opacity, and layering fixes. Things should feel much tighter now!
-- As always, feedback on the Discord is very welcome.
+- This build introduces Orbit's first **Experimental** Minimap plugin. It's completely new and has not had broad user testing yet, so expect rough edges.
+- Created by a new Orbit developer who wants to contribute more moving forward.
+- Feedback on Discord is very appreciated - Lars-Martin.
 
 ### Added
 - **Minimap plugin** — replaces the default Blizzard minimap with a fully Orbit-managed version.
@@ -31,25 +30,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Set any **size** from 100 to 400 pixels.
   - **Opacity** control with optional mouse-over fade-in.
   - **Rotate Minimap** option to keep north up or rotate with your character.
-  - **Middle-click** action: open the World Map or the Tracking menu.
+   - **Configurable minimap click actions** let you bind the World Map, Tracking menu, Calendar, Time Manager, or Addon Compartment to mouse buttons.
   - **Zone Text** — shows your current zone above the minimap. Click it to open the World Map. Optionally colour the text by PvP zone type (sanctuary, friendly, hostile, contested).
   - **Clock** — displays the current time (local or realm). Left-click opens the Time Manager, right-click opens the Calendar. Glows when you have pending calendar invites.
   - **Coordinates** — shows your current map position (X, Y) and updates in real time.
   - **Zoom Buttons** — fade in on hover, fade out when you move away. Optional auto-zoom-out timer resets zoom after a configurable delay.
   - **Addon Compartment** — consolidates addon buttons into a single Orbit-managed compartment button with a flyout list.
-  - **Instance Difficulty**, **Missions**, **Mail**, and **Crafting Order** indicators all carried over from the Blizzard minimap.
+   - **Instance Difficulty** supports both icon and text display modes, each with independent positioning in Canvas Mode.
+   - **Missions**, **Mail**, and **Crafting Order** indicators are all carried over from the Blizzard minimap.
   - All components are individually toggleable and repositionable in Canvas Mode.
-- **Profile Management** — A complete layout manager out of the box. You can configure, import/export, and map UI profiles per-specialization for automatic swaps!
-- **Raid Frame Performance** — Reduced a large amount of API calls and layout updates on raid frames, more work on this next update.
-- **CastBar** — Added to canvas mode.
 
 ### Changed
-- **UI Consistency & Defaults** — Default fonts (now Barlow Condensed Bold) and underlying layout borders have been strictly aligned for fresh profile builds.
-- **UI Consistency & Defaults** — Temporarily disabled anchoring on Tracked Cooldowns & Charges, working on a fix for these with new profiles & more blizzard addon restrictions coming in soon
+- **Difficulty display handling** — Canvas Mode now treats difficulty icon and text modes as separate components with independent saved positions.
+- **Minimap defaults** — Updated the default minimap size, placement, component layout, and click-action settings for the first experimental release.
 
 ### Fixed
 - **RestingIcon** — Fixed issue with positioning the icon in canvas mode.
-- **Many minor bugfixes** — Multiple layout and sizing inaccuracies have been rectified alongside the profile defaults overhaul.
+- **Difficulty preview/apply flow** — Fixed icon/text mode switching, preview sizing drift, and live Apply mismatches.
+- **Minimap polish** — Fixed several component sizing, layering, opacity, and placeholder issues across the new minimap and canvas preview.
 
 ## [1.0.0] - 2026-03-10
 ### Added

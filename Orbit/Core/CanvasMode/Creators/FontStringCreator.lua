@@ -20,6 +20,8 @@ local PREVIEW_TEXT_VALUES = {
     PowerText = "100%",
     Text = "100",
     Keybind = "Q",
+    Coords = "45.1, 88.2",
+    ZoneText = "Stormwind City",
 }
 
 local PREVIEW_TEXT_COLORS = {

@@ -7,7 +7,7 @@ local SYSTEM_ID = "Orbit_Minimap"
 
 Orbit.MinimapConstants = {
     SYSTEM_ID = SYSTEM_ID,
-    DEFAULT_SIZE = 200,
+    DEFAULT_SIZE = 220,
     DEFAULT_TEXT_SIZE = 12,
     BORDER_COLOR = { r = 0, g = 0, b = 0, a = 1 },
 

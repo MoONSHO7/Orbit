@@ -10,24 +10,29 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
     canvasMode = true,
     defaults = {
         Opacity = 100,
-        Size = 200,
+        Size = 220,
         Shape = "square",
         BorderColor = { r = 0, g = 0, b = 0, a = 1 },
+        DifficultyDisplay = "icon",
+        LeftClickAction = "none",
         RotateMinimap = false,
         MiddleClickAction = "none",
+        RightClickAction = "tracking",
         AutoZoomOutDelay = 5,
-        ZoneTextColoring = false,
-        DisabledComponents = {},
+        ZoneTextColoring = true,
+        DifficultyShowBackground = false,
+        DisabledComponents = { "Status" },
         ComponentPositions = {
-            ZoneText = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 4, justifyH = "CENTER" },
-            Clock = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 4, justifyH = "CENTER" },
-            Compartment = { anchorX = "RIGHT", offsetX = 2, anchorY = "BOTTOM", offsetY = 2 },
-            Coords = { anchorX = "RIGHT", offsetX = 4, anchorY = "BOTTOM", offsetY = 4, justifyH = "RIGHT" },
-            Zoom = { anchorX = "RIGHT", offsetX = -2, anchorY = "CENTER", offsetY = 0 },
-            Difficulty = { anchorX = "LEFT", offsetX = 20, anchorY = "TOP", offsetY = 20 },
-            Missions = { anchorX = "LEFT", offsetX = 20, anchorY = "BOTTOM", offsetY = 20 },
-            Mail = { anchorX = "RIGHT", offsetX = 20, anchorY = "TOP", offsetY = 20 },
-            CraftingOrder = { anchorX = "RIGHT", offsetX = 20, anchorY = "TOP", offsetY = 38 },
+            Compartment = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 15, offsetY = -10, posX = 110.0000305175781, posY = -135.0000305175781, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
+            Zoom = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 15, offsetY = 35, posX = 110.0000305175781, posY = -90.00003051757812, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
+            Missions = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 20, offsetY = 20, posX = -105.0000305175781, posY = -105.0000305175781, justifyH = "CENTER", selfAnchorY = "BOTTOM" },
+            Coords = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 30, offsetY = 10, posX = 95.00003051757812, posY = -115.0000305175781, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
+            CraftingOrder = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 20, offsetY = 38, posX = 105.0000305175781, posY = 87.00003051757812, justifyH = "CENTER", selfAnchorY = "TOP" },
+            DifficultyIcon = { anchorX = "LEFT", anchorY = "TOP", offsetX = 20, offsetY = 20, posX = -105.0000305175781, posY = 105.0000305175781, justifyH = "LEFT", selfAnchorY = "TOP", overrides = { IconSize = 42 } },
+            Mail = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 20, offsetY = 20, posX = 105.0000305175781, posY = 105.0000305175781, justifyH = "CENTER", selfAnchorY = "TOP" },
+            DifficultyText = { anchorX = "LEFT", anchorY = "TOP", offsetX = 20, offsetY = 20, posX = -105.0000305175781, posY = 105.0000305175781, justifyH = "LEFT", selfAnchorY = "TOP" },
+            Clock = { anchorX = "CENTER", anchorY = "BOTTOM", offsetX = 0, offsetY = 10, posX = 0, posY = -115.0000305175781, justifyH = "CENTER", selfAnchorY = "BOTTOM" },
+            ZoneText = { anchorX = "CENTER", anchorY = "TOP", offsetX = 0, offsetY = 10, posX = 0, posY = 115.0000305175781, justifyH = "CENTER", selfAnchorY = "TOP", overrides = { FontSize = 18 } },
         },
     },
 })
@@ -43,14 +48,45 @@ local ZOOM_BUTTON_W = C.ZOOM_BUTTON_W
 local MISSIONS_BASE_SIZE = C.MISSIONS_BASE_SIZE
 local BORDER_RING_ATLAS = C.BORDER_RING_ATLAS
 
+local CLICK_ACTION_KEYS = {
+    LeftButton = "LeftClickAction",
+    MiddleButton = "MiddleClickAction",
+    RightButton = "RightClickAction",
+}
+local DIFFICULTY_ICON_KEY = "DifficultyIcon"
+local DIFFICULTY_TEXT_KEY = "DifficultyText"
+local DIFFICULTY_COLORS = {
+    M = "|cffff4d4dM|r",
+    H = "|cff4db8ffH|r",
+    N = "|cffffffffN|r",
+    LFR = "|cffffd24dLFR|r",
+}
+
+local function GetDifficultyTextBounds(fontString)
+    if not fontString then return 14, 14 end
+    local width = math.floor((fontString:GetStringWidth() or 12) + 2.5)
+    local _, fontSize = fontString:GetFont()
+    local height = math.floor(((fontSize or fontString:GetStringHeight() or 12)) + 2.5)
+    return math.max(width, 1), math.max(height, 1)
+end
+
+local function CopyTable(source)
+    if type(source) ~= "table" then return source end
+    local copy = {}
+    for key, value in pairs(source) do
+        copy[key] = CopyTable(value)
+    end
+    return copy
+end
+
 -- [ LIFECYCLE ]-------------------------------------------------------------------------------------
 
 function Plugin:OnLoad()
     Orbit.IconPreviewAtlases = Orbit.IconPreviewAtlases or {}
     Orbit.IconPreviewAtlases.Zoom = "common-icon-zoomin"
-    Orbit.IconPreviewAtlases.Difficulty = "ui-hud-minimap-guildbanner-normal-large"
+    Orbit.IconPreviewAtlases.Difficulty = nil
     Orbit.IconPreviewAtlases.Mail = "ui-hud-minimap-mail-up"
-    Orbit.IconPreviewAtlases.CraftingOrder = "UI-CraftingOrderIcon-Up"
+    Orbit.IconPreviewAtlases.CraftingOrder = "UI-HUD-Minimap-CraftingOrder-Over-2x"
 
     -- Create orbit container
     self.frame = CreateFrame("Frame", "OrbitMinimapContainer", UIParent)
@@ -58,6 +94,13 @@ function Plugin:OnLoad()
     self.frame:SetClampedToScreen(true)
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Minimap"
+    
+    self.frame:SetScript("OnSizeChanged", function(f, w, h)
+        local minimapSurface = self:GetBlizzardMinimap()
+        if minimapSurface and minimapSurface:GetParent() == f then
+            minimapSurface:SetSize(w, h)
+        end
+    end)
 
     -- Anchor options for edit mode drag
     self.frame.anchorOptions = {
@@ -67,8 +110,8 @@ function Plugin:OnLoad()
         syncDimensions = false,
     }
 
-    -- Default position (top right, similar to Blizzard default)
-    self.frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -20, -20)
+    -- Default position
+    self.frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -5, 0)
 
     -- Background
     self.frame.bg = self.frame:CreateTexture(nil, "BACKGROUND")
@@ -200,7 +243,15 @@ function Plugin:OnLoad()
     })
     OrbitEngine.ComponentDrag:Attach(self._compartmentButton, self.frame, { key = "Compartment", onPositionChange = MPC("Compartment") })
     OrbitEngine.ComponentDrag:Attach(self.frame.ZoomContainer, self.frame, { key = "Zoom", onPositionChange = MPC("Zoom") })
-    if self.frame.Difficulty then OrbitEngine.ComponentDrag:Attach(self.frame.Difficulty, self.frame, { key = "Difficulty", onPositionChange = MPC("Difficulty") }) end
+    if self.frame.DifficultyIcon then OrbitEngine.ComponentDrag:Attach(self.frame.DifficultyIcon, self.frame, { key = DIFFICULTY_ICON_KEY, onPositionChange = MPC(DIFFICULTY_ICON_KEY) }) end
+    if self.frame.DifficultyText then
+        OrbitEngine.ComponentDrag:Attach(self.frame.DifficultyText, self.frame, {
+            key = DIFFICULTY_TEXT_KEY,
+            sourceOverride = self.frame.DifficultyText.Text,
+            isFontString = true,
+            onPositionChange = MPC(DIFFICULTY_TEXT_KEY),
+        })
+    end
     if self.frame.Missions then OrbitEngine.ComponentDrag:Attach(self.frame.Missions, self.frame, { key = "Missions", onPositionChange = MPC("Missions") }) end
     if self.frame.Mail then OrbitEngine.ComponentDrag:Attach(self.frame.Mail, self.frame, { key = "Mail", onPositionChange = MPC("Mail") }) end
     if self.frame.CraftingOrder then OrbitEngine.ComponentDrag:Attach(self.frame.CraftingOrder, self.frame, { key = "CraftingOrder", onPositionChange = MPC("CraftingOrder") }) end
@@ -270,6 +321,28 @@ function Plugin:OnLoad()
 
     -- If Blizzard_HybridMinimap is already loaded, ApplyShape will handle it on PLAYER_ENTERING_WORLD.
     -- If it loads later (demand-loaded on first map open), reapply shape so CircleMask is correct.
+    -- Force a map tile update after login/reload to ensure the inner graphics scale correctly to the container
+    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+        C_Timer.After(0.5, function()
+            local minimap = self:GetBlizzardMinimap()
+            if minimap then
+                local w = self.frame:GetWidth()
+                minimap._orbitRestoringPoint = true
+                -- Force a micro-resize to trigger internal C++ redraw boundary allocation
+                minimap:SetSize(w - 1, w - 1)
+                minimap:SetSize(w, w)
+                minimap._orbitRestoringPoint = nil
+                
+                -- Force a mask refresh to flush texture vertices
+                local mask = self:GetSetting(C.SYSTEM_ID, "Shape") == "round" and C.MASK_ROUND or C.MASK_SQUARE
+                minimap:SetMaskTexture(mask)
+                
+                -- Global update if available
+                if Minimap_Update then Minimap_Update() end
+            end
+        end)
+    end, self)
+
     if not C_AddOns.IsAddOnLoaded("Blizzard_HybridMinimap") then
         self._hybridLoader = CreateFrame("Frame")
         self._hybridLoader:RegisterEvent("ADDON_LOADED")
@@ -285,6 +358,161 @@ local function ApplyIconScale(frame, overrides, baseW)
     if not frame then return end
     local size = overrides and overrides.IconSize
     frame:SetScale((size and baseW and baseW > 0) and (size / baseW) or 1)
+end
+
+function Plugin:UsesAddonClickAction()
+    for _, settingKey in pairs(CLICK_ACTION_KEYS) do
+        if self:GetSetting(SYSTEM_ID, settingKey) == "addons" then
+            return true
+        end
+    end
+    return false
+end
+
+function Plugin:IsCanvasComponentHidden(componentKey)
+    if componentKey == DIFFICULTY_ICON_KEY or componentKey == DIFFICULTY_TEXT_KEY then
+        return componentKey ~= self:GetActiveDifficultyCanvasKey()
+    end
+    return componentKey == "Compartment" and self:UsesAddonClickAction()
+end
+
+function Plugin:IsComponentDisabled(componentKey)
+    if componentKey == DIFFICULTY_ICON_KEY or componentKey == DIFFICULTY_TEXT_KEY then
+        componentKey = "Difficulty"
+    end
+    if self:IsCanvasComponentHidden(componentKey) then return true end
+    return Orbit.PluginMixin.IsComponentDisabled(self, componentKey)
+end
+
+function Plugin:GetMinimapClickAction(button)
+    local settingKey = CLICK_ACTION_KEYS[button]
+    return settingKey and self:GetSetting(SYSTEM_ID, settingKey) or "none"
+end
+
+function Plugin:GetComponentPositions(systemIndex)
+    local positions = Orbit.PluginMixin.GetComponentPositions(self, systemIndex) or {}
+    local normalized = CopyTable(positions)
+
+    if normalized[DIFFICULTY_ICON_KEY] == nil then
+        normalized[DIFFICULTY_ICON_KEY] = CopyTable(self.defaults.ComponentPositions[DIFFICULTY_ICON_KEY])
+    end
+    if normalized[DIFFICULTY_TEXT_KEY] == nil then
+        normalized[DIFFICULTY_TEXT_KEY] = CopyTable(self.defaults.ComponentPositions[DIFFICULTY_TEXT_KEY])
+    end
+
+    return normalized
+end
+
+function Plugin:GetActiveDifficultyCanvasKey()
+    return self:GetDifficultyDisplay() == "text" and DIFFICULTY_TEXT_KEY or DIFFICULTY_ICON_KEY
+end
+
+function Plugin:GetDifficultyDisplay()
+    local display = self:GetSetting(SYSTEM_ID, "DifficultyDisplay")
+    if display ~= nil then return display end
+    return "icon"
+end
+
+function Plugin:NormalizeCanvasComponentPositions(positions, systemIndex)
+    local normalized = self:GetComponentPositions(systemIndex)
+    for key, value in pairs(positions or {}) do
+        normalized[key] = CopyTable(value)
+    end
+    return normalized
+end
+
+function Plugin:NormalizeCanvasDisabledComponents(keys)
+    local normalized, seenDifficulty = {}, false
+    for _, key in ipairs(keys or {}) do
+        if key == DIFFICULTY_ICON_KEY or key == DIFFICULTY_TEXT_KEY then
+            if not seenDifficulty then
+                normalized[#normalized + 1] = "Difficulty"
+                seenDifficulty = true
+            end
+        else
+            normalized[#normalized + 1] = key
+        end
+    end
+    return normalized
+end
+
+function Plugin:GetDifficultyText()
+    local _, instanceType, difficultyID, difficultyName, maxPlayers = GetInstanceInfo()
+    local difficultyKey = difficultyName and difficultyName:lower() or ""
+    local label
+    if difficultyKey:find("follower") then
+        label = DIFFICULTY_COLORS.N
+    elseif difficultyID == 8 or difficultyKey:find("mythic") then
+        label = DIFFICULTY_COLORS.M
+    elseif difficultyKey:find("heroic") then
+        label = DIFFICULTY_COLORS.H
+    elseif difficultyKey:find("raid finder") or difficultyKey:find("looking for raid") or difficultyKey:find("lfr") then
+        label = DIFFICULTY_COLORS.LFR
+    elseif difficultyKey:find("normal") then
+        label = DIFFICULTY_COLORS.N
+    end
+    if label then
+        local size = type(maxPlayers) == "number" and maxPlayers > 0 and tostring(maxPlayers) or ""
+        if instanceType == "party" or instanceType == "raid" or size ~= "" then
+            return size .. label
+        end
+        return label
+    end
+    return difficultyName or ""
+end
+
+function Plugin:UpdateDifficultyVisuals(textMultiplier)
+    local difficulty = self.frame and self.frame.Difficulty
+    local iconFrame = self.frame and self.frame.DifficultyIcon
+    local textFrame = self.frame and self.frame.DifficultyText
+    if not (difficulty and iconFrame and textFrame) then return end
+    if textMultiplier == nil then
+        local scaleSetting = Orbit.db.GlobalSettings.TextScale
+        textMultiplier = scaleSetting == "Small" and 0.85 or scaleSetting == "Large" and 1.15 or scaleSetting == "ExtraLarge" and 1.30 or 1
+    end
+
+    local positions = self:GetComponentPositions(SYSTEM_ID)
+    local iconOverrides = (positions[DIFFICULTY_ICON_KEY] or {}).overrides or {}
+    local textOverrides = (positions[DIFFICULTY_TEXT_KEY] or {}).overrides or {}
+    local mode = self:GetDifficultyDisplay()
+    local showBg = self:GetSetting(SYSTEM_ID, "DifficultyShowBackground")
+    local keepVisible = Orbit:IsEditMode() or OrbitEngine.CanvasMode:IsActive(self.frame)
+
+    local text = self:GetDifficultyText()
+    if text == "" and keepVisible then text = "5" .. DIFFICULTY_COLORS.N end
+    textFrame.orbitDifficultyText = text
+
+    for _, sub in ipairs({ difficulty.Default, difficulty.Guild, difficulty.ChallengeMode }) do
+        if sub then
+            local alpha = mode == "icon" and 1 or 0
+            sub:SetAlpha(alpha)
+            if sub.Background then sub.Background:SetAlpha(alpha > 0 and showBg and 1 or 0) end
+            if sub.Border then sub.Border:SetAlpha(alpha > 0 and showBg and 1 or 0) end
+        end
+    end
+
+    iconFrame.orbitOriginalWidth = difficulty.orbitOriginalWidth or iconFrame.orbitOriginalWidth or 16
+    iconFrame.orbitOriginalHeight = difficulty.orbitOriginalHeight or iconFrame.orbitOriginalHeight or 16
+    iconFrame:SetScale(1)
+    iconFrame:SetSize(iconFrame.orbitOriginalWidth, iconFrame.orbitOriginalHeight)
+    ApplyIconScale(iconFrame, iconOverrides, iconFrame.orbitOriginalWidth)
+
+    Orbit.Skin:SkinText(textFrame.Text, {
+        font = Orbit.db.GlobalSettings.Font,
+        textSize = DEFAULT_TEXT_SIZE * (textMultiplier or 1),
+    })
+    OrbitEngine.OverrideUtils.ApplyOverrides(textFrame.Text, textOverrides, {
+        fontSize = DEFAULT_TEXT_SIZE * (textMultiplier or 1),
+        fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font),
+    })
+    textFrame.Text:SetText(text)
+    textFrame.Text:SetShown(text ~= "")
+    textFrame.orbitOriginalWidth, textFrame.orbitOriginalHeight = GetDifficultyTextBounds(textFrame.Text)
+    textFrame:SetSize(textFrame.orbitOriginalWidth, textFrame.orbitOriginalHeight)
+
+    iconFrame:SetShown(mode == "icon")
+    difficulty:SetShown(mode == "icon")
+    textFrame:SetShown(mode == "text")
 end
 
 function Plugin:ApplySettings()
@@ -312,9 +540,11 @@ function Plugin:ApplySettings()
     local minimapSurface = self:GetBlizzardMinimap()
     if minimapSurface then
         minimapSurface._orbitIntendedSize = size
+        -- Micro-size bounce for C++ redraw
+        minimapSurface:SetSize(size - 1, size - 1)
         minimapSurface:SetSize(size, size)
         minimapSurface:ClearAllPoints()
-        minimapSurface:SetAllPoints(frame)
+        minimapSurface:SetPoint("CENTER", frame, "CENTER", 0, 0)
     end
 
     -- Shape + Border
@@ -327,7 +557,7 @@ function Plugin:ApplySettings()
     local s = Orbit.db.GlobalSettings.TextScale
     local textMultiplier = s == "Small" and 0.85 or s == "Large" and 1.15 or s == "ExtraLarge" and 1.30 or 1
 
-    local savedPositions = self:GetSetting(SYSTEM_ID, "ComponentPositions") or {}
+    local savedPositions = self:GetComponentPositions(SYSTEM_ID) or {}
 
     -- Zone Text (disabled via Canvas Mode dock)
     if not self:IsComponentDisabled("ZoneText") then
@@ -396,13 +626,18 @@ function Plugin:ApplySettings()
         end
     end
 
-    -- Instance Difficulty indicator (disabled via Canvas Mode dock)
-    if frame.Difficulty then
+    -- Instance Difficulty components (disabled via Canvas Mode dock)
+    if frame.Difficulty and frame.DifficultyIcon and frame.DifficultyText then
         if not self:IsComponentDisabled("Difficulty") then
-            frame.Difficulty:Show()
-            ApplyIconScale(frame.Difficulty, (savedPositions.Difficulty or {}).overrides, frame.Difficulty:GetWidth())
+            self:UpdateDifficultyVisuals(textMultiplier)
+            OrbitEngine.ComponentDrag:RestoreFramePositions(frame, {
+                [DIFFICULTY_ICON_KEY] = savedPositions[DIFFICULTY_ICON_KEY],
+                [DIFFICULTY_TEXT_KEY] = savedPositions[DIFFICULTY_TEXT_KEY],
+            })
         else
             frame.Difficulty:Hide()
+            frame.DifficultyIcon:Hide()
+            frame.DifficultyText:Hide()
         end
     end
 
@@ -448,7 +683,9 @@ function Plugin:ApplySettings()
 
     -- Opacity / Mouse-over fade
     local baseAlpha = (self:GetSetting(SYSTEM_ID, "Opacity") or 100) / 100
-    Orbit.Animation:ApplyHoverFade(frame, baseAlpha, 1, Orbit:IsEditMode())
+    local isEditMode = Orbit:IsEditMode()
+    Orbit.Animation:ApplyHoverFade(frame, baseAlpha, 1, isEditMode)
+    if isEditMode then frame:SetAlpha(baseAlpha) end
 
     -- Restore position from saved variables
     OrbitEngine.Frame:RestorePosition(frame, self, SYSTEM_ID)
@@ -462,11 +699,12 @@ function Plugin:ApplySettings()
     -- Show the container
     frame:Show()
 
-    -- Addon compartment
-    self:ApplyAddonCompartment()
+    -- Addon compartment (debounced to avoid C stack overrides during sliders)
+    if self._compartmentTimer then self._compartmentTimer:Cancel() end
+    self._compartmentTimer = C_Timer.NewTimer(0.2, function()
+        self:ApplyAddonCompartment()
+    end)
 
-    -- In edit mode, always full alpha
-    if isEditMode then frame:SetAlpha(1) end
     self._applyingSettings = nil
 end
 

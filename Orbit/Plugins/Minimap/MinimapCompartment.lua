@@ -48,6 +48,12 @@ function Plugin:CreateCompartmentButton()
     btn.bg:SetAllPoints(btn)
     btn.bg:SetColorTexture(0.1, 0.1, 0.1, 0.8)
 
+    btn.highlight = btn:CreateTexture(nil, "HIGHLIGHT")
+    btn.highlight:SetAllPoints(btn)
+    btn.highlight:SetTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+    btn.highlight:SetAlpha(0.5)
+    btn.highlight:SetBlendMode("ADD")
+    
     -- Visible count label on the button itself
     btn.icon = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     btn.icon:SetPoint("CENTER", 0, 0)
@@ -131,6 +137,8 @@ end
 function Plugin:PopulateCompartmentFlyout()
     local flyout = self._compartmentFlyout
     if not flyout then return end
+    local btn = self._compartmentButton
+    local anchor = btn and btn:IsShown() and btn or self.frame
 
     -- Hide existing rows
     for _, row in ipairs(flyout.rows) do
@@ -141,7 +149,7 @@ function Plugin:PopulateCompartmentFlyout()
     if #collected == 0 then
         flyout:SetSize(140, 30)
         flyout:ClearAllPoints()
-        flyout:SetPoint("BOTTOMRIGHT", self._compartmentButton, "TOPRIGHT", 0, 2)
+        flyout:SetPoint("BOTTOMRIGHT", anchor, "TOPRIGHT", 0, 2)
         if not flyout._emptyText then
             flyout._emptyText = flyout:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
             flyout._emptyText:SetPoint("CENTER")
@@ -262,14 +270,13 @@ function Plugin:PopulateCompartmentFlyout()
     flyout:SetSize(width, height)
 
     -- Position the flyout intelligently based on available screen space
-    local btn = self._compartmentButton
-    local scale = btn:GetEffectiveScale()
+    local scale = anchor:GetEffectiveScale()
     local screenW = GetScreenWidth() * UIParent:GetEffectiveScale()
     local screenH = GetScreenHeight() * UIParent:GetEffectiveScale()
-    local btnLeft = btn:GetLeft() * scale
-    local btnRight = btn:GetRight() * scale
-    local btnTop = btn:GetTop() * scale
-    local btnBottom = btn:GetBottom() * scale
+    local btnLeft = anchor:GetLeft() * scale
+    local btnRight = anchor:GetRight() * scale
+    local btnTop = anchor:GetTop() * scale
+    local btnBottom = anchor:GetBottom() * scale
     local flyW = width * scale
     local flyH = height * scale
     local gap = 2
@@ -284,13 +291,13 @@ function Plugin:PopulateCompartmentFlyout()
 
     flyout:ClearAllPoints()
     if expandUp and not expandLeft then
-        flyout:SetPoint("BOTTOMRIGHT", btn, "TOPRIGHT", 0, gap)
+        flyout:SetPoint("BOTTOMRIGHT", anchor, "TOPRIGHT", 0, gap)
     elseif expandUp and expandLeft then
-        flyout:SetPoint("BOTTOMLEFT", btn, "TOPLEFT", 0, gap)
+        flyout:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, gap)
     elseif not expandUp and not expandLeft then
-        flyout:SetPoint("TOPRIGHT", btn, "BOTTOMRIGHT", 0, -gap)
+        flyout:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -gap)
     else
-        flyout:SetPoint("TOPLEFT", btn, "BOTTOMLEFT", 0, -gap)
+        flyout:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -gap)
     end
 end
 
@@ -415,8 +422,9 @@ end
 
 function Plugin:ApplyAddonCompartment()
     local frame = self.frame
+    local useClickAction = self:UsesAddonClickAction()
 
-    if not self:IsComponentDisabled("Compartment") then
+    if useClickAction or not self:IsComponentDisabled("Compartment") then
         self._compartmentActive = true
         -- Restore any previously-hooked buttons before re-collecting, so stale hooks
         -- (e.g. on frames that are no longer eligible) are cleaned up each cycle.
@@ -426,7 +434,7 @@ function Plugin:ApplyAddonCompartment()
 
         -- Setup hover reveal for the compartment button
         local btn = self._compartmentButton
-        btn:Show()
+    if useClickAction then btn:Hide() else btn:Show() end
 
         if not frame._compartmentHoverHooked then
             local minimap = Minimap

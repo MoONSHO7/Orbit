@@ -147,12 +147,30 @@ Schema.KEY_SCHEMAS = {
         controls = {
             { type = "font",       key = "Font",             label = "Font" },
             { type = "slider",     key = "FontSize",         label = "Size",          min = 6,       max = 32,   step = 1 },
-            { type = "colorcurve", key = "CustomColorCurve", label = "Color",         singleColor = true },
             { type = "checkbox",   key = "ZoneTextColoring", label = "Zone Coloring", plugin = true, default = false },
+            { type = "colorcurve", key = "CustomColorCurve", label = "Color",         singleColor = true, hideIf = "ZoneTextColoring" },
         },
     },
     Clock  = Compose(STATIC_TEXT),
     Coords = Compose(STATIC_TEXT),
+    DifficultyIcon = {
+        controls = {
+            { type = "dropdown", key = "DifficultyDisplay", label = "Display", plugin = true, default = "icon", rebuildsPanel = true,
+                options = { { value = "icon", label = "Icon" }, { value = "text", label = "Text" } } },
+            { type = "slider", key = "IconSize", label = "Size", min = 16, max = 80, step = 1, formatter = function(v) return v .. "px" end,
+            },
+            { type = "checkbox", key = "DifficultyShowBackground", label = "Show Background on Minimap", plugin = true, default = false },
+        },
+    },
+    DifficultyText = {
+        controls = {
+            { type = "dropdown", key = "DifficultyDisplay", label = "Display", plugin = true, default = "icon", rebuildsPanel = true,
+                options = { { value = "icon", label = "Icon" }, { value = "text", label = "Text" } } },
+            { type = "font", key = "Font", label = "Font" },
+            { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
+            { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = true },
+        },
+    },
 }
 
 -- Register healer aura + raid buff schemas dynamically
@@ -195,7 +213,7 @@ local COMPONENT_TITLES = {
     StatusIcons = "Status Icons",
     BuffBarName = "Buff Bar Name", BuffBarTimer = "Buff Bar Timer",
     ZoneText = "Zone Text", Clock = "Clock", Coords = "Coordinates",
-    Zoom = "Zoom Buttons", Difficulty = "Instance Difficulty",
+    Zoom = "Zoom Buttons", DifficultyIcon = "Instance Difficulty Icon", DifficultyText = "Instance Difficulty Text",
     Missions = "Missions", Mail = "New Mail", CraftingOrder = "Crafting Order",
     Compartment = "Addon Compartment",
 }

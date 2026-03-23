@@ -29,17 +29,17 @@ all components below are individually positionable via canvas mode and can be di
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | **ZoneText**      | zone name button. click opens world map. tooltip shows zone, subzone, pvp status. optional pvp zone colouring via canvas settings |
 | **Clock**         | game/local time, updates every second. left-click opens time manager, right-click opens calendar. pending invite glow             |
-| **Coords**        | player map coordinates (x, y), updates every 0.1s. supports canvas font/size/color overrides                                      |
-| **Compartment**   | collects all LibDBIcon + legacy minimap buttons into a hover-reveal drawer with icon, name, click/tooltip handlers                |
+| **Coords**        | player map coordinates (x, y), updates every 0.1s. hides when no player position is available. supports canvas font/size/color overrides |
+| **Compartment**   | collects all LibDBIcon + legacy minimap buttons into a hover-reveal drawer with icon, name, click/tooltip handlers. hidden if a minimap click is bound to `Addons` |
 | **Zoom**          | zoom in/out buttons, fade in on minimap hover, fade out on leave. dimmed/disabled at min/max zoom                                 |
-| **Difficulty**    | reparented blizzard instance difficulty indicator (normal/heroic/mythic/challenge mode)                                           |
+| **Difficulty**    | reparented blizzard instance difficulty indicator. icon mode and text mode now use separate internal canvas components, each with its own bounds and saved position |
 | **Missions**      | reparented blizzard expansion landing page button (garrison/covenant/etc.)                                                        |
 | **Mail**          | reparented blizzard new mail indicator                                                                                            |
 | **CraftingOrder** | reparented blizzard crafting order indicator                                                                                      |
 
-right-click on the minimap itself opens blizzard's native tracking context menu.
+the minimap supports configurable left-, middle-, and right-click actions via plugin settings.
 
-canvas overrides (font, size, color) are supported for ZoneText, Clock, and Coords via the canvas component settings panel.
+canvas overrides (font, size, color) are supported for ZoneText, Clock, Coords, and Difficulty text mode via the canvas component settings panel. canvas always shows the difficulty background to make placement easier in icon mode. `Difficulty` icon mode and text mode are handled as separate internal components, so preview sizing/alignment no longer depends on switching one component between two different geometries.
 
 ## blizzard frames affected
 
@@ -62,8 +62,12 @@ canvas overrides (font, size, color) are supported for ZoneText, Clock, and Coor
 | ------------------ | ------- | ------- | ---------------------------------------------- |
 | `Scale`            | slider  | 100     | overall minimap scale (%)                      |
 | `Opacity`          | slider  | 100     | out-of-hover opacity (%)                       |
-| `Size`             | slider  | 200     | minimap diameter in pixels                     |
-| `ZoneTextColoring` | boolean | false   | colour zone text by pvp type (canvas override) |
+| `Size`             | slider  | 220     | minimap diameter in pixels                     |
+| `ZoneTextColoring` | boolean | true    | colour zone text by pvp type (canvas override) |
+| `DifficultyShowBackground`| boolean | false   | show blizzard banner behind difficulty icon on the live minimap |
+| `LeftClickAction` | dropdown | `none` | left-click action for the minimap |
+| `MiddleClickAction` | dropdown | `none` | middle-click action for the minimap |
+| `RightClickAction` | dropdown | `tracking` | right-click action for the minimap |
 
 ## data flow
 

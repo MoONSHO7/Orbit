@@ -11,6 +11,15 @@ local DEFAULT_SIZE = Orbit.MinimapConstants.DEFAULT_SIZE
 
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
+local CLICK_ACTION_OPTIONS = {
+    { value = "none", label = "None" },
+    { value = "worldmap", label = "World Map" },
+    { value = "tracking", label = "Tracking Menu" },
+    { value = "calendar", label = "Calendar" },
+    { value = "time", label = "Time Manager" },
+    { value = "addons", label = "Addons" },
+}
+
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or SYSTEM_ID
     local SB = OrbitEngine.SchemaBuilder
@@ -33,6 +42,14 @@ function Plugin:AddSettings(dialog, systemFrame)
             { value = "round", label = "Round" },
         },
         default = "square",
+        onChange = function(val)
+            self:SetSetting(SYSTEM_ID, "Shape", val)
+            self:ApplySettings()
+            if dialog.OrbitPanel and dialog.OrbitPanel.Content then
+                dialog.OrbitPanel.Content.OrbitRendered = false
+                OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
+            end
+        end,
     })
 
     -- Size (diameter)
@@ -68,23 +85,39 @@ function Plugin:AddSettings(dialog, systemFrame)
         key = "RotateMinimap",
         label = "Rotate Minimap (Round Only)",
         default = false,
+        visibleIf = function()
+            local shape = self:GetSetting(SYSTEM_ID, "Shape")
+            return shape == "round"
+        end,
         onChange = function(val)
             self:SetSetting(SYSTEM_ID, "RotateMinimap", val)
             self:ApplySettings()
         end,
     })
 
-    -- Middle-click Action
+    -- Click Actions
+    table.insert(schema.controls, {
+        type = "dropdown",
+        key = "LeftClickAction",
+        label = "Left-click",
+        options = CLICK_ACTION_OPTIONS,
+        default = "none",
+    })
+
     table.insert(schema.controls, {
         type = "dropdown",
         key = "MiddleClickAction",
         label = "Middle-click",
-        options = {
-            { value = "none", label = "None" },
-            { value = "worldmap", label = "World Map" },
-            { value = "tracking", label = "Tracking Menu" },
-        },
+        options = CLICK_ACTION_OPTIONS,
         default = "none",
+    })
+
+    table.insert(schema.controls, {
+        type = "dropdown",
+        key = "RightClickAction",
+        label = "Right-click",
+        options = CLICK_ACTION_OPTIONS,
+        default = "tracking",
     })
 
     -- Auto Zoom-out Delay

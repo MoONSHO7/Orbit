@@ -16,6 +16,104 @@ local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 local function GetBlizzardMinimap() return Minimap end
 local function GetBlizzardCluster() return MinimapCluster end
 
+local function OpenTrackingMenu(frame)
+    local nativeButton = MinimapCluster and MinimapCluster.Tracking and MinimapCluster.Tracking.Button
+    if not (nativeButton and nativeButton.menuGenerator) then return end
+    local menuMixin = frame.menuMixin or MenuVariants.GetDefaultContextMenuMixin()
+    local description = MenuUtil.CreateRootMenuDescription(menuMixin)
+    Menu.PopulateDescription(nativeButton.menuGenerator, nativeButton, description)
+    Menu.GetManager():OpenMenu(frame, description, AnchorUtil.CreateAnchor("TOPLEFT", frame, "BOTTOMLEFT", 0, 0))
+end
+
+local function GetActiveDifficultyFrame(difficulty)
+    if difficulty.ChallengeMode and difficulty.ChallengeMode:IsShown() then return difficulty.ChallengeMode end
+    if difficulty.Guild and difficulty.Guild:IsShown() then return difficulty.Guild end
+    return difficulty.Default
+end
+
+local function UpdateDifficultyBounds(difficulty)
+    local activeFrame = GetActiveDifficultyFrame(difficulty)
+    local width = 0
+    local height = 0
+
+    local bg = activeFrame and activeFrame.Background
+    local border = activeFrame and activeFrame.Border
+    local icon = difficulty.Icon
+    if bg then
+        width = math.max(width, bg:GetWidth() or 0)
+        height = math.max(height, bg:GetHeight() or 0)
+    end
+    if border then
+        width = math.max(width, border:GetWidth() or 0)
+        height = math.max(height, border:GetHeight() or 0)
+    end
+    if icon then
+        width = math.max(width, icon:GetWidth() or 0)
+        height = math.max(height, icon:GetHeight() or 0)
+    end
+
+    difficulty.orbitOriginalWidth = width > 0 and width or 16
+    difficulty.orbitOriginalHeight = height > 0 and height or 16
+end
+
+local function GetDifficultyIconTexture(difficulty)
+    local activeFrame = GetActiveDifficultyFrame(difficulty)
+    if not activeFrame then return nil end
+
+    for _, region in ipairs({ activeFrame:GetRegions() }) do
+        if region and region:GetObjectType() == "Texture" and region:IsShown() and region ~= activeFrame.Background and region ~= activeFrame.Border then
+            local atlas = region.GetAtlas and region:GetAtlas()
+            local texturePath = region:GetTexture()
+            if atlas or texturePath then
+                return region
+            end
+        end
+    end
+
+    return nil
+end
+
+local function SyncDifficultyPreviewIcon(difficulty)
+    if not difficulty or not difficulty.Icon then return end
+
+    local sourceTexture = GetDifficultyIconTexture(difficulty)
+    if not sourceTexture then return end
+
+    local atlas = sourceTexture.GetAtlas and sourceTexture:GetAtlas()
+    if atlas then
+        local info = C_Texture.GetAtlasInfo(atlas)
+        if info and info.file then
+            difficulty.Icon:SetTexture(info.file)
+            difficulty.Icon:SetTexCoord(info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord)
+        else
+            difficulty.Icon:SetAtlas(atlas, false)
+        end
+    else
+        difficulty.Icon:SetTexture(sourceTexture:GetTexture())
+        difficulty.Icon:SetTexCoord(sourceTexture:GetTexCoord())
+    end
+
+    local width = sourceTexture:GetWidth()
+    local height = sourceTexture:GetHeight()
+    difficulty.Icon:SetSize(width and width > 0 and width or 16, height and height > 0 and height or 16)
+    difficulty.Icon:SetAlpha(0)
+end
+
+function Plugin:RunMinimapClickAction(action, frame)
+    if action == "worldmap" then
+        ToggleWorldMap()
+    elseif action == "tracking" then
+        OpenTrackingMenu(frame)
+    elseif action == "calendar" then
+        ToggleCalendar()
+    elseif action == "time" then
+        TimeManager_Toggle()
+    elseif action == "addons" then
+        self:ApplyAddonCompartment()
+        self:ToggleCompartmentFlyout()
+    end
+end
+
 -- Expose on plugin so other files can use them without re-declaring
 Plugin.GetBlizzardMinimap = GetBlizzardMinimap
 Plugin.GetBlizzardCluster = GetBlizzardCluster
@@ -62,9 +160,34 @@ function Plugin:ReparentBlizzardComponents()
     local difficulty = MinimapCluster and MinimapCluster.InstanceDifficulty
     if difficulty then
         self._origDifficultyParent = difficulty:GetParent()
-        difficulty:SetParent(overlay)
+        local iconFrame = self.frame.DifficultyIcon
+        if not iconFrame then
+            iconFrame = CreateFrame("Frame", nil, overlay)
+            iconFrame:SetPoint("CENTER", self.frame, "TOPLEFT", 20, -20)
+            iconFrame.orbitOriginalWidth = 16
+            iconFrame.orbitOriginalHeight = 16
+            self.frame.DifficultyIcon = iconFrame
+        end
+
+        local textFrame = self.frame.DifficultyText
+        if not textFrame then
+            textFrame = CreateFrame("Frame", nil, overlay)
+            textFrame:SetPoint("CENTER", self.frame, "TOPLEFT", 20, -20)
+            textFrame.Text = textFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            textFrame.Text:SetPoint("CENTER")
+            textFrame.Text:SetJustifyH("CENTER")
+            textFrame.visual = textFrame.Text
+            textFrame.orbitHandleMinWidth = 0
+            textFrame.orbitHandleMinHeight = 0
+            textFrame.orbitHideHandleHeader = true
+            textFrame.orbitHandleHeaderMinWidth = 0
+            self.frame.DifficultyText = textFrame
+        end
+
+        difficulty:SetParent(iconFrame)
         difficulty:ClearAllPoints()
-        difficulty:SetPoint("CENTER", self.frame, "TOPLEFT", 20, -20)
+        difficulty:SetPoint("CENTER", iconFrame, "CENTER", 0, 0)
+        
         -- Hide the Blizzard guild-banner Background and Border art on every sub-frame;
         -- we only want the difficulty icon texture, not the decorative chrome.
         for _, sub in ipairs({ difficulty.Default, difficulty.Guild, difficulty.ChallengeMode }) do
@@ -73,11 +196,43 @@ function Plugin:ReparentBlizzardComponents()
                 if sub.Border then sub.Border:SetAlpha(0) end
             end
         end
+
         if not difficulty.Icon then
             difficulty.Icon = difficulty:CreateTexture(nil, "ARTWORK")
             difficulty.Icon:SetSize(16, 16)
             difficulty.Icon:SetPoint("CENTER")
             difficulty.Icon:SetAlpha(0)
+        end
+        iconFrame.Default = difficulty.Default
+        iconFrame.Guild = difficulty.Guild
+        iconFrame.ChallengeMode = difficulty.ChallengeMode
+        iconFrame.Icon = difficulty.Icon
+        SyncDifficultyPreviewIcon(difficulty)
+        UpdateDifficultyBounds(difficulty)
+        iconFrame.orbitOriginalWidth = difficulty.orbitOriginalWidth or 16
+        iconFrame.orbitOriginalHeight = difficulty.orbitOriginalHeight or 16
+        iconFrame:SetSize(iconFrame.orbitOriginalWidth, iconFrame.orbitOriginalHeight)
+        if self.UpdateDifficultyVisuals then self:UpdateDifficultyVisuals() end
+
+        if not difficulty._orbitPreviewHooksInstalled then
+            local function RefreshDifficultyPreview()
+                SyncDifficultyPreviewIcon(difficulty)
+                UpdateDifficultyBounds(difficulty)
+                iconFrame.orbitOriginalWidth = difficulty.orbitOriginalWidth or 16
+                iconFrame.orbitOriginalHeight = difficulty.orbitOriginalHeight or 16
+                iconFrame:SetSize(iconFrame.orbitOriginalWidth, iconFrame.orbitOriginalHeight)
+                if self.UpdateDifficultyVisuals then self:UpdateDifficultyVisuals() end
+            end
+
+            for _, sub in ipairs({ difficulty.Default, difficulty.Guild, difficulty.ChallengeMode }) do
+                if sub then
+                    sub:HookScript("OnShow", RefreshDifficultyPreview)
+                    sub:HookScript("OnHide", RefreshDifficultyPreview)
+                end
+            end
+
+            difficulty:HookScript("OnShow", RefreshDifficultyPreview)
+            difficulty._orbitPreviewHooksInstalled = true
         end
         self.frame.Difficulty = difficulty
     end
@@ -139,7 +294,15 @@ function Plugin:ReparentBlizzardComponents()
             craftingOrder.Icon = craftingOrder:CreateTexture(nil, "ARTWORK")
             craftingOrder.Icon:SetSize(20, 20)
             craftingOrder.Icon:SetPoint("CENTER")
-            craftingOrder.Icon:SetAtlas("UI-CraftingOrderIcon-Up", true)
+            
+            local info = C_Texture.GetAtlasInfo("UI-HUD-Minimap-CraftingOrder-Over-2x")
+            if info and info.file then
+                craftingOrder.Icon:SetTexture(info.file)
+                craftingOrder.Icon:SetTexCoord(info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord)
+            else
+                craftingOrder.Icon:SetAtlas("UI-HUD-Minimap-CraftingOrder-Over-2x", true)
+            end
+            
             -- Ignore native scaling so the atlas stays crisp
             craftingOrder.Icon:SetScale(1)
         end
@@ -152,6 +315,16 @@ function Plugin:RestoreBlizzardComponents()
         self.frame.Difficulty:SetParent(self._origDifficultyParent)
         self.frame.Difficulty:ClearAllPoints()
         self.frame.Difficulty = nil
+    end
+    if self.frame.DifficultyIcon then
+        self.frame.DifficultyIcon:Hide()
+        self.frame.DifficultyIcon:SetParent(nil)
+        self.frame.DifficultyIcon = nil
+    end
+    if self.frame.DifficultyText then
+        self.frame.DifficultyText:Hide()
+        self.frame.DifficultyText:SetParent(nil)
+        self.frame.DifficultyText = nil
     end
 
     if self.frame.Missions and self._origMissionsParent then
@@ -186,7 +359,8 @@ function Plugin:CaptureBlizzardMinimap()
 
     minimap:SetParent(self.frame)
     minimap:ClearAllPoints()
-    minimap:SetAllPoints(self.frame)
+    minimap:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
+    minimap:SetSize(self.frame:GetWidth(), self.frame:GetHeight())
 
     minimap:EnableMouse(true)
     minimap:SetArchBlobRingScalar(0)
@@ -207,53 +381,33 @@ function Plugin:CaptureBlizzardMinimap()
             if f:GetParent() == self.frame then
                 local point = ...
                 local relFrame = select(2, ...)
-                if point ~= "TOPLEFT" or relFrame ~= self.frame then
+                if point ~= "CENTER" or relFrame ~= self.frame then
                     f._orbitRestoringPoint = true
                     f:ClearAllPoints()
-                    f:SetAllPoints(self.frame)
+                    f:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
+                    f:SetSize(self.frame:GetWidth(), self.frame:GetHeight())
                     f._orbitRestoringPoint = nil
                 end
             end
         end)
         hooksecurefunc(minimap, "SetSize", function(f, w, h)
             if f._orbitRestoringPoint then return end
-            local intended = f._orbitIntendedSize
-            if intended and (math.abs(w - intended) > 0.5 or math.abs(h - intended) > 0.5) then
-                f._orbitRestoringPoint = true
-                f:SetSize(intended, intended)
-                f._orbitRestoringPoint = nil
+            if f:GetParent() == self.frame then
+                local intended = self.frame:GetWidth()
+                if intended and (math.abs(w - intended) > 0.5 or math.abs(h - intended) > 0.5) then
+                    f._orbitRestoringPoint = true
+                    f:SetSize(intended, intended)
+                    f._orbitRestoringPoint = nil
+                end
             end
         end)
         minimap._orbitSetPointHooked = true
     end
 
-    -- Right-click on the minimap opens the tracking menu
+    -- Configurable minimap click actions
     if not minimap._orbitRightClickHooked then
         minimap:SetScript("OnMouseUp", function(f, button)
-            if button == "RightButton" then
-                local nativeButton = MinimapCluster and MinimapCluster.Tracking and MinimapCluster.Tracking.Button
-                if nativeButton and nativeButton.menuGenerator then
-                    local menuMixin = (f.menuMixin or MenuVariants.GetDefaultContextMenuMixin())
-                    local description = MenuUtil.CreateRootMenuDescription(menuMixin)
-                    Menu.PopulateDescription(nativeButton.menuGenerator, nativeButton, description)
-                    local anchor = AnchorUtil.CreateAnchor("TOPLEFT", f, "BOTTOMLEFT", 0, 0)
-                    Menu.GetManager():OpenMenu(f, description, anchor)
-                end
-            elseif button == "MiddleButton" then
-                local action = self:GetSetting(C.SYSTEM_ID, "MiddleClickAction") or "none"
-                if action == "worldmap" then
-                    ToggleWorldMap()
-                elseif action == "tracking" then
-                    local nativeButton = MinimapCluster and MinimapCluster.Tracking and MinimapCluster.Tracking.Button
-                    if nativeButton and nativeButton.menuGenerator then
-                        local menuMixin = (f.menuMixin or MenuVariants.GetDefaultContextMenuMixin())
-                        local description = MenuUtil.CreateRootMenuDescription(menuMixin)
-                        Menu.PopulateDescription(nativeButton.menuGenerator, nativeButton, description)
-                        local anchor = AnchorUtil.CreateAnchor("TOPLEFT", f, "BOTTOMLEFT", 0, 0)
-                        Menu.GetManager():OpenMenu(f, description, anchor)
-                    end
-                end
-            end
+            self:RunMinimapClickAction(self:GetMinimapClickAction(button), f)
         end)
         minimap._orbitRightClickHooked = true
     end

@@ -29,7 +29,7 @@ local CLAMP_PADDING_Y = 200
 
 local AURA_ICON_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true }
 local STANDARD_ICON_KEYS =
-    { MarkerIcon = true, LeaderIcon = true, MainTankIcon = true, RestingIcon = true, Difficulty = true, Mail = true, CraftingOrder = true, Compartment = true, Zoom = true }
+    { MarkerIcon = true, LeaderIcon = true, MainTankIcon = true, RestingIcon = true, Difficulty = true, DifficultyIcon = true, Mail = true, CraftingOrder = true, Compartment = true, Zoom = true }
 
 local function DetectCreatorType(key, source)
     local isFontString = source and source.GetFont ~= nil
@@ -383,8 +383,10 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     local creator = creatorType and CanvasMode.ComponentCreators[creatorType]
 
     local visual = creator and creator(container, preview, key, sourceComponent, data) or CreateFallbackVisual(container, key)
+    if container.isFontString ~= nil then isFontString = container.isFontString end
+    if container.isAuraContainer ~= nil then isAuraContainer = container.isAuraContainer end
 
-    if sourceComponent and sourceComponent.orbitOriginalWidth then
+    if not container.skipSourceSizeRestore and sourceComponent and sourceComponent.orbitOriginalWidth then
         container:SetSize(sourceComponent.orbitOriginalWidth, sourceComponent.orbitOriginalHeight or sourceComponent.orbitOriginalWidth)
     end
 

@@ -87,7 +87,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
 
     -- Unified override loading: overrides first, then plugin-level settings, then pending
     self.currentOverrides = {}
-    local savedPositions = plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+    local savedPositions = plugin and plugin.GetComponentPositions and plugin:GetComponentPositions(systemIndex) or plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
     local savedOverrides = (savedPositions[componentKey] or {}).overrides or {}
     for k, v in pairs(savedOverrides) do
         self.currentOverrides[k] = v
@@ -118,6 +118,9 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             self.currentOverrides[k] = v
         end
     end
+    if (componentKey == "DifficultyIcon" or componentKey == "DifficultyText") and self.currentOverrides.DifficultyDisplay == nil then
+        self.currentOverrides.DifficultyDisplay = plugin and plugin.GetDifficultyDisplay and plugin:GetDifficultyDisplay() or "icon"
+    end
 
     local function GetValueFromVisual(cont, key)
         if not cont or not cont.visual then
@@ -139,6 +142,8 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
         elseif key == "CustomColorValue" and visual.GetTextColor then
             local r, g, b, a = visual:GetTextColor()
             return { r = r, g = g, b = b, a = a or 1 }
+        elseif key == "IconSize" and cont.GetWidth then
+            return math.floor(cont:GetWidth() + 0.5)
         elseif key == "Scale" then
             return 1.0
         end
@@ -338,6 +343,23 @@ function Settings:OnValueChanged(key, value)
             if OrbitEngine.CanvasMode.Transaction and OrbitEngine.CanvasMode.Transaction:IsActive() then
                 OrbitEngine.CanvasMode.Transaction:Set(key, value)
             end
+        elseif OrbitEngine.CanvasMode.Transaction and OrbitEngine.CanvasMode.Transaction:IsActive() and self.componentKey then
+            OrbitEngine.CanvasMode.Transaction:SetPositionOverride(self.componentKey, key, value)
+        end
+        if key == "DifficultyDisplay" and (self.componentKey == "DifficultyIcon" or self.componentKey == "DifficultyText") then
+            local plugin = self.plugin
+            local systemIndex = self.systemIndex
+            local canvasDialog = OrbitEngine.CanvasModeDialog
+            C_Timer.After(0, function()
+                if not (canvasDialog and plugin and canvasDialog.targetFrame and canvasDialog:IsShown()) then return end
+                canvasDialog:Open(canvasDialog.targetFrame, canvasDialog.targetPlugin, canvasDialog.targetSystemIndex)
+                local activeKey = plugin.GetActiveDifficultyCanvasKey and plugin:GetActiveDifficultyCanvasKey()
+                local comp = activeKey and canvasDialog.previewComponents and canvasDialog.previewComponents[activeKey]
+                if comp then
+                    self:Open(activeKey, comp, plugin, systemIndex)
+                end
+            end)
+            return
         end
         self:Open(self.componentKey, self.container, self.plugin, self.systemIndex)
         if self.pendingPluginSettings then
@@ -357,6 +379,9 @@ function Settings:OnValueChanged(key, value)
                 needsHeightRecalc = true
             elseif widget.showIf and widget.showIf == key then
                 widget:SetShown(value == true)
+                needsHeightRecalc = true
+            elseif widget.showIfValue and widget.showIfValue.key == key then
+                widget:SetShown(value == widget.showIfValue.value)
                 needsHeightRecalc = true
             end
         end

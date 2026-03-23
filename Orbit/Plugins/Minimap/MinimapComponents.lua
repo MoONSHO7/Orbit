@@ -153,14 +153,27 @@ end
 -- [ COORDS ]----------------------------------------------------------------------------------------
 
 function Plugin:UpdateCoords()
-    local fs = self.frame.Coords.Text
+    local coordsFrame = self.frame.Coords
+    local fs = coordsFrame.Text
+    local inCanvasMode = OrbitEngine.CanvasMode:IsActive(self.frame)
+    local keepVisible = Orbit:IsEditMode() or inCanvasMode
+    local unavailableText = inCanvasMode and "00, 00" or "--, --"
     local map = C_Map.GetBestMapForUnit("player")
-    if not map then fs:SetText(""); return end
-    local pos = C_Map.GetPlayerMapPosition(map, "player")
-    if not pos then fs:SetText(""); return end
+    local pos = map and C_Map.GetPlayerMapPosition(map, "player")
+    if not pos then
+        if keepVisible then
+            coordsFrame:Show()
+            fs:SetText(unavailableText)
+            coordsFrame:SetSize(fs:GetStringWidth() + 2, fs:GetStringHeight() + 2)
+        else
+            coordsFrame:Hide()
+        end
+        return
+    end
+    coordsFrame:Show()
     local x, y = pos:GetXY()
     fs:SetFormattedText("%.1f, %.1f", x * 100, y * 100)
-    self.frame.Coords:SetSize(fs:GetStringWidth() + 2, fs:GetStringHeight() + 2)
+    coordsFrame:SetSize(fs:GetStringWidth() + 2, fs:GetStringHeight() + 2)
 end
 
 function Plugin:StartCoordsTicker()
@@ -205,6 +218,7 @@ function Plugin:CreateZoomButtons()
     zoomIn:SetNormalAtlas("ui-hud-minimap-zoom-in")
     zoomIn:SetPushedAtlas("ui-hud-minimap-zoom-in-down")
     zoomIn:SetHighlightAtlas("ui-hud-minimap-zoom-in-mouseover")
+    zoomIn:GetHighlightTexture():SetBlendMode("ADD")
     zoomIn:SetDisabledAtlas("ui-hud-minimap-zoom-in")
     zoomIn:GetDisabledTexture():SetDesaturated(true)
     zoomIn:SetScript("OnClick", function()
@@ -231,6 +245,7 @@ function Plugin:CreateZoomButtons()
     zoomOut:SetNormalAtlas("ui-hud-minimap-zoom-out")
     zoomOut:SetPushedAtlas("ui-hud-minimap-zoom-out-down")
     zoomOut:SetHighlightAtlas("ui-hud-minimap-zoom-out-mouseover")
+    zoomOut:GetHighlightTexture():SetBlendMode("ADD")
     zoomOut:SetDisabledAtlas("ui-hud-minimap-zoom-out")
     zoomOut:GetDisabledTexture():SetDesaturated(true)
     zoomOut:SetScript("OnClick", function()
