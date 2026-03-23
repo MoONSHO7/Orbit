@@ -69,8 +69,8 @@ function Plugin:ReparentBlizzardComponents()
         -- we only want the difficulty icon texture, not the decorative chrome.
         for _, sub in ipairs({ difficulty.Default, difficulty.Guild, difficulty.ChallengeMode }) do
             if sub then
-                if sub.Background then sub.Background:Hide() end
-                if sub.Border then sub.Border:Hide() end
+                if sub.Background then sub.Background:SetAlpha(0) end
+                if sub.Border then sub.Border:SetAlpha(0) end
             end
         end
         if not difficulty.Icon then
@@ -128,11 +128,20 @@ function Plugin:ReparentBlizzardComponents()
         craftingOrder:SetParent(overlay)
         craftingOrder:ClearAllPoints()
         craftingOrder:SetPoint("CENTER", self.frame, "TOPRIGHT", -20, -38)
+        
+        -- The native texture has a baked-in border and scales tightly, becoming low-res.
+        -- We hide it and use a borderless high-rez anvil atlas instead.
+        if MiniMapCraftingOrderIcon then
+            MiniMapCraftingOrderIcon:SetAlpha(0)
+        end
+        
         if not craftingOrder.Icon then
             craftingOrder.Icon = craftingOrder:CreateTexture(nil, "ARTWORK")
-            craftingOrder.Icon:SetSize(16, 16)
+            craftingOrder.Icon:SetSize(20, 20)
             craftingOrder.Icon:SetPoint("CENTER")
-            craftingOrder.Icon:SetAlpha(0)
+            craftingOrder.Icon:SetAtlas("UI-CraftingOrderIcon-Up", true)
+            -- Ignore native scaling so the atlas stays crisp
+            craftingOrder.Icon:SetScale(1)
         end
         self.frame.CraftingOrder = craftingOrder
     end

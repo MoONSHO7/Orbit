@@ -50,7 +50,7 @@ function Plugin:OnLoad()
     Orbit.IconPreviewAtlases.Zoom = "common-icon-zoomin"
     Orbit.IconPreviewAtlases.Difficulty = "ui-hud-minimap-guildbanner-normal-large"
     Orbit.IconPreviewAtlases.Mail = "ui-hud-minimap-mail-up"
-    Orbit.IconPreviewAtlases.CraftingOrder = "UI-HUD-Minimap-CraftingOrder-Up"
+    Orbit.IconPreviewAtlases.CraftingOrder = "UI-CraftingOrderIcon-Up"
 
     -- Create orbit container
     self.frame = CreateFrame("Frame", "OrbitMinimapContainer", UIParent)
