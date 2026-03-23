@@ -433,5 +433,5 @@ function Plugin:ApplyTrackedSettings(anchor)
     self:LoadTrackedItems(anchor, systemIndex)
     Layout:LayoutTrackedIcons(self, anchor, systemIndex, IsDraggingCooldownAbility)
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
-    Orbit.OOCFadeMixin:ApplyOOCFade(anchor, self, systemIndex, "OutOfCombatFade", enableHover)
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(anchor, self, systemIndex, "OutOfCombatFade", enableHover) end
 end

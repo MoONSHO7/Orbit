@@ -149,7 +149,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     local schema = { hideNativeSettings = true, controls = {} }
 
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Visibility", "Colour" }, "Layout")
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Behaviour", "Colour" }, "Layout")
 
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
@@ -171,33 +171,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 self:ApplySettings()
             end,
         })
-    elseif currentTab == "Visibility" then
-        SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
-        table.insert(schema.controls, {
-            type = "checkbox",
-            key = "OutOfCombatFade",
-            label = "Out of Combat Fade",
-            default = false,
-            tooltip = "Hide frame when out of combat with no target",
-            onChange = function(val)
-                self:SetSetting(systemIndex, "OutOfCombatFade", val)
-                Orbit.OOCFadeMixin:RefreshAll()
-                dialog.orbitTabCallback()
-            end,
-        })
-        if self:GetSetting(systemIndex, "OutOfCombatFade") then
-            table.insert(schema.controls, {
-                type = "checkbox",
-                key = "ShowOnMouseover",
-                label = "Show on Mouseover",
-                default = true,
-                tooltip = "Reveal frame when mousing over it",
-                onChange = function(val)
-                    self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                    self:ApplySettings()
-                end,
-            })
-        end
+    elseif currentTab == "Behaviour" then
         table.insert(schema.controls, {
             type = "checkbox",
             key = "SmoothAnimation",
@@ -474,7 +448,7 @@ function Plugin:ApplySettings()
 
     -- Apply Out of Combat Fade (with hover detection based on setting)
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
-    Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, systemIndex, "OutOfCombatFade", enableHover)
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, systemIndex, "OutOfCombatFade", enableHover) end
 
     self:UpdateVisibility()
 end

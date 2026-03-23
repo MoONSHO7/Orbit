@@ -522,7 +522,7 @@ function Plugin:ApplySettings()
 
     -- 6. Apply Out of Combat Fade (with hover detection based on setting)
     local enableHover = self:GetSetting(SYSTEM_INDEX, "ShowOnMouseover") ~= false
-    Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, SYSTEM_INDEX, "OutOfCombatFade", enableHover)
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, SYSTEM_INDEX, "OutOfCombatFade", enableHover) end
 end
 
 -- [ RESOURCE COLOR (DELEGATE) ]---------------------------------------------------------------------

@@ -65,44 +65,12 @@ function Plugin:AddSettings(dialog, systemFrame)
     local SB = OrbitEngine.SchemaBuilder
     local schema = { hideNativeSettings = true, controls = {} }
 
-    SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Visibility" }, "Layout")
-
-    if currentTab == "Layout" then
-        local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
-        local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
-        local sizeOnChange = function(key) return function(val) self:SetSetting(PLAYER_FRAME_INDEX, key, val); self:UpdateLayout(self.frame) end end
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160, onChange = sizeOnChange("Width") })
-        if not isAnchored or anchorAxis ~= "y" then
-            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 30, onChange = sizeOnChange("Height") })
-        end
-
-    elseif currentTab == "Visibility" then
-        table.insert(schema.controls, {
-            type = "checkbox",
-            key = "OutOfCombatFade",
-            label = "Out of Combat Fade",
-            default = false,
-            tooltip = "Hide frame when out of combat with no target",
-            onChange = function(val)
-                self:SetSetting(PLAYER_FRAME_INDEX, "OutOfCombatFade", val)
-                Orbit.OOCFadeMixin:RefreshAll()
-                dialog.orbitTabCallback()
-            end,
-        })
-        if self:GetSetting(PLAYER_FRAME_INDEX, "OutOfCombatFade") then
-            table.insert(schema.controls, {
-                type = "checkbox",
-                key = "ShowOnMouseover",
-                label = "Show on Mouseover",
-                default = true,
-                tooltip = "Reveal frame when mousing over it",
-                onChange = function(val)
-                    self:SetSetting(PLAYER_FRAME_INDEX, "ShowOnMouseover", val)
-                    self:ApplySettings()
-                end,
-            })
-        end
+    local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
+    local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
+    local sizeOnChange = function(key) return function(val) self:SetSetting(PLAYER_FRAME_INDEX, key, val); self:UpdateLayout(self.frame) end end
+    table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160, onChange = sizeOnChange("Width") })
+    if not isAnchored or anchorAxis ~= "y" then
+        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 30, onChange = sizeOnChange("Height") })
     end
 
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
@@ -439,7 +407,7 @@ function Plugin:ApplySettings(frame)
     frame:UpdatePortrait()
 
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
-    Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover)
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover) end
     Orbit.EventBus:Fire("PLAYER_SETTINGS_CHANGED")
 end
 

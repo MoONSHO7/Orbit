@@ -358,6 +358,15 @@ local function SchedulePrivateAuraReanchor(plugin)
     end)
 end
 
+-- [ SHARED EVENT CALLBACKS ]------------------------------------------------------------------------
+local SHARED_EVENT_CALLBACKS = {
+    UpdatePowerBar = UpdatePowerBar, UpdateDebuffs = UpdateDebuffs, UpdateBuffs = UpdateBuffs,
+    UpdateDefensiveIcon = UpdateDefensiveIcon, UpdateCrowdControlIcon = UpdateCrowdControlIcon,
+    UpdatePrivateAuras = UpdatePrivateAuras, UpdateFrameLayout = UpdateFrameLayout,
+    UpdateHealerAuras = UpdateHealerAuras, UpdateMissingRaidBuffs = UpdateMissingRaidBuffs,
+    UpdateMainTankIcon = true,
+}
+
 -- [ GROUP FRAME CREATION ]--------------------------------------------------------------------------
 local function CreateGroupFrame(index, plugin)
     local unit = "raid" .. index
@@ -385,16 +394,9 @@ local function CreateGroupFrame(index, plugin)
 
     plugin:CreateStatusIcons(frame, plugin:IsPartyTier())
 
-    local eventCallbacks = {
-        UpdatePowerBar = UpdatePowerBar, UpdateDebuffs = UpdateDebuffs, UpdateBuffs = UpdateBuffs,
-        UpdateDefensiveIcon = UpdateDefensiveIcon, UpdateCrowdControlIcon = UpdateCrowdControlIcon,
-        UpdatePrivateAuras = UpdatePrivateAuras, UpdateFrameLayout = UpdateFrameLayout,
-        UpdateHealerAuras = UpdateHealerAuras, UpdateMissingRaidBuffs = UpdateMissingRaidBuffs,
-        UpdateMainTankIcon = true,
-    }
     local originalOnEvent = frame:GetScript("OnEvent")
-    frame:SetScript("OnShow", Orbit.GroupFrameMixin.CreateOnShowHandler(plugin, eventCallbacks))
-    frame:SetScript("OnEvent", Orbit.GroupFrameMixin.CreateEventHandler(plugin, eventCallbacks, originalOnEvent))
+    frame:SetScript("OnShow", Orbit.GroupFrameMixin.CreateOnShowHandler(plugin, SHARED_EVENT_CALLBACKS))
+    frame:SetScript("OnEvent", Orbit.GroupFrameMixin.CreateEventHandler(plugin, SHARED_EVENT_CALLBACKS, originalOnEvent))
 
     plugin:ConfigureFrame(frame)
     frame:Hide()
@@ -509,6 +511,9 @@ function Plugin:OnLoad()
         self.frames[i].orbitPlugin = self
         self.frames[i]:Hide()
     end
+
+    -- Centralized global event handler (replaces per-frame registration)
+    self._globalEventFrame = Orbit.GroupFrameMixin.CreateGlobalEventHandler(self, SHARED_EVENT_CALLBACKS)
 
     -- Canvas Mode registration
     local firstFrame = self.frames[1]
@@ -748,7 +753,6 @@ function Plugin:AssignPartyUnits()
                     self:RegisterUnitEvents(frame, unit)
                     UpdatePrivateAuras(frame, self)
                 end
-                self:RegisterGlobalEvents(frame)
                 SafeUnregisterUnitWatch(frame)
                 SafeRegisterUnitWatch(frame)
                 frame:Show()
@@ -782,7 +786,6 @@ function Plugin:AssignRaidUnits()
                     self:RegisterUnitEvents(frame, token)
                     UpdatePrivateAuras(frame, self)
                 end
-                self:RegisterGlobalEvents(frame)
                 SafeUnregisterUnitWatch(frame)
                 SafeRegisterUnitWatch(frame)
                 frame:Show()
@@ -887,6 +890,8 @@ end
 function Plugin:ApplySettings()
     if not self.frames then return end
     self._auraComponentsActive = nil
+    self._dispelSettingsCache = nil
+    self._aggroSettingsCache = nil
 
     for _, frame in ipairs(self.frames) do
         if not frame.preview and frame.unit then

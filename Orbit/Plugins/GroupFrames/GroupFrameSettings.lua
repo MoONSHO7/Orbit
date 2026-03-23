@@ -211,7 +211,8 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
         end
     elseif currentTab == "Colors" then
         table.insert(schema.controls, { type = "color", key = "SelectionColor", label = "Selection Highlight", default = { r = 0.8, g = 0.9, b = 1.0, a = 1 }, onChange = TierMOC("SelectionColor") })
-        table.insert(schema.controls, { type = "color", key = "AggroColor", label = "Aggro Highlight", default = { r = 1.0, g = 0.0, b = 0.0, a = 1 }, onChange = TierMOC("AggroColor") })
+        local aggroRefresh = function() Orbit.AggroIndicatorMixin:InvalidateAggroSettings(plugin); if plugin.UpdateAllAggroIndicators then plugin:UpdateAllAggroIndicators(plugin) end end
+        table.insert(schema.controls, { type = "color", key = "AggroColor", label = "Aggro Highlight", default = { r = 1.0, g = 0.0, b = 0.0, a = 1 }, onChange = TierMOC("AggroColor", aggroRefresh) })
     elseif currentTab == "Indicators" then
         if not isParty and (plugin:GetTierSetting("SortMode", editTier) or "Group") == "Group" then
             table.insert(schema.controls, { type = "checkbox", key = "ShowGroupLabels", label = "Show Groups", default = true, onChange = TierMOC("ShowGroupLabels") })

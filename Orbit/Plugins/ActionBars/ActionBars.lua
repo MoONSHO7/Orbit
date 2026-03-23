@@ -162,7 +162,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local tabs = { "Layout", "Colors", "Visibility" }
+    local tabs = { "Layout", "Colors" }
     local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
     if currentTab == "Layout" then
         if systemIndex == 1 then
@@ -247,19 +247,6 @@ function Plugin:AddSettings(dialog, systemFrame)
         table.insert(schema.controls, { type = "colorcurve", key = "CooldownSwipeColor", label = "Cooldown Swipe", singleColor = true,
             default = DEFAULT_CD_SWIPE,
             onChange = function(val) self:SetSetting(1, "CooldownSwipeColor", val); self:ApplyAll() end })
-    elseif currentTab == "Visibility" then
-        SB:AddOpacitySettings(self, schema, systemIndex, systemFrame, {
-            onChange = function(val)
-                self:SetSetting(systemIndex, "Opacity", val)
-                self:ApplySettings(container)
-            end,
-        })
-        table.insert(schema.controls, { type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
-            onChange = function(val) self:SetSetting(systemIndex, "OutOfCombatFade", val); self:ApplySettings(container); if dialog.orbitTabCallback then dialog.orbitTabCallback() end end })
-        if self:GetSetting(systemIndex, "OutOfCombatFade") then
-            table.insert(schema.controls, { type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
-                onChange = function(val) self:SetSetting(systemIndex, "ShowOnMouseover", val); self:ApplySettings(container) end })
-        end
     end
     schema.extraButtons = { { text = "Quick Keybind", callback = function()
         if EditModeManagerFrame and EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
@@ -600,7 +587,7 @@ function Plugin:ApplySettings(frame)
     self:ApplyScale(actualFrame, index, "Scale")
     if index ~= PET_BAR_INDEX then
         local enableHover = self:GetSetting(index, "ShowOnMouseover") ~= false
-        Orbit.OOCFadeMixin:ApplyOOCFade(actualFrame, self, index, "OutOfCombatFade", enableHover)
+        if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(actualFrame, self, index, "OutOfCombatFade", enableHover) end
     end
     self:ApplyMouseOver(actualFrame, index)
     self:LayoutButtons(index)

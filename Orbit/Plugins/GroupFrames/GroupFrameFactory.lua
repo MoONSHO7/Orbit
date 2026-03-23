@@ -121,34 +121,21 @@ local UNIT_EVENTS = {
     "UNIT_NAME_UPDATE", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "UNIT_OTHER_PARTY_CHANGED",
     "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
 }
-local GLOBAL_EVENTS = {
-    "READY_CHECK", "READY_CHECK_CONFIRM", "READY_CHECK_FINISHED",
-    "INCOMING_SUMMON_CHANGED", "PLAYER_ROLES_ASSIGNED", "GROUP_ROSTER_UPDATE",
-    "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE", "PARTY_LEADER_CHANGED",
-    "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
-}
-
 function Orbit.GroupFrameFactoryMixin:RegisterUnitEvents(frame, unit)
     for _, event in ipairs(UNIT_EVENTS) do frame:RegisterUnitEvent(event, unit) end
 end
 
 function Orbit.GroupFrameFactoryMixin:RegisterGlobalEvents(frame)
-    if frame._globalEventsRegistered then return end
-    for _, event in ipairs(GLOBAL_EVENTS) do frame:RegisterEvent(event) end
-    frame._globalEventsRegistered = true
+    -- No-op: global events are now handled by a centralized event frame.
 end
 
 function Orbit.GroupFrameFactoryMixin:UnregisterFrameEvents(frame)
     for _, event in ipairs(UNIT_EVENTS) do frame:UnregisterEvent(event) end
-    if frame._globalEventsRegistered then
-        for _, event in ipairs(GLOBAL_EVENTS) do frame:UnregisterEvent(event) end
-        frame._globalEventsRegistered = nil
-    end
+    Orbit.AuraMixin:WipeCaches(frame)
 end
 
 function Orbit.GroupFrameFactoryMixin:RegisterFrameEvents(frame, unit)
     self:RegisterUnitEvents(frame, unit)
-    self:RegisterGlobalEvents(frame)
 end
 
 -- [ FRAME CONFIGURATION ]---------------------------------------------------------------------------

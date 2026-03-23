@@ -151,14 +151,6 @@ local function GetGlobalSchema()
         tinsert(controls, { type = "slider", key = "IconBorderOffset", label = "Icon Border Offset", default = 0, min = 0, max = 16, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderOffset", v) end })
     end
 
-    table.insert(controls, {
-        type = "checkbox", key = "HideWhenMounted", label = "Hide When Mounted", default = false,
-        onChange = function(val)
-            Orbit.db.GlobalSettings.HideWhenMounted = val
-            Orbit.MountedVisibility:Refresh()
-        end,
-    })
-
 
     return {
         hideNativeSettings = true,
@@ -178,9 +170,7 @@ local function GetGlobalSchema()
                 d.IconBorderSize = 2
                 d.IconBorderEdgeSize = 16
                 d.IconBorderOffset = 0
-                d.HideWhenMounted = false
             end
-            Orbit.MountedVisibility:Refresh()
             Orbit:Print("Global settings reset to defaults.")
         end,
     }
@@ -1001,6 +991,40 @@ SlashCmdList["ORBIT"] = function(msg)
     end
 
     if cmd == "whatsnew" then Orbit:ShowWhatsNew(); return end
+
+    if cmd == "ve" then
+        local sub = args[2] and args[2]:lower() or ""
+        if sub == "reset" then
+            if Orbit.db then Orbit.db.VisibilityEngine = {} end
+            -- Restore all Blizzard frames to full alpha
+            if Orbit.VisibilityEngine then
+                for _, entry in ipairs(Orbit.VisibilityEngine:GetBlizzardFrames()) do
+                    local f = _G[entry.blizzardFrame]
+                    if f then f:SetAlpha(1) end
+                end
+            end
+            -- Flush OOCFade managed frames back to visible
+            if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
+            -- Force MountedVisibility to re-evaluate
+            Orbit.MountedVisibility:Refresh(true)
+            -- Re-apply settings on every plugin so frames fully refresh
+            local systems = Orbit.Engine and Orbit.Engine.systems
+            if systems then
+                for _, plugin in pairs(systems) do
+                    if plugin.ApplySettings then plugin:ApplySettings() end
+                end
+            end
+            Orbit:Print("Visibility Engine reset to defaults.")
+        else
+            if Orbit._pluginSettingsCategoryID then
+                Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
+                if Orbit._openVETab then C_Timer.After(0.05, Orbit._openVETab) end
+            else
+                Orbit:Print("Plugin Manager not yet loaded.")
+            end
+        end
+        return
+    end
 
     if cmd == "plugins" then
         if Orbit._pluginSettingsCategoryID then

@@ -36,7 +36,7 @@ local dataObj = ldb:NewDataObject(BUTTON_NAME, {
         tooltip:AddLine("Orbit", 1, 1, 1)
         tooltip:AddLine(" ")
         tooltip:AddLine("|cFF00FF00Left-click|r Edit Mode + Orbit Options", 0.8, 0.8, 0.8)
-        tooltip:AddLine("|cFFFFFF00Right-click|r Plugin Manager", 0.8, 0.8, 0.8)
+        tooltip:AddLine("|cFFFFFF00Right-click|r Advanced Options", 0.8, 0.8, 0.8)
     end,
 })
 

@@ -10,7 +10,6 @@ local OPEN_WORLD_INSTANCE_TYPES = { ["none"] = true, ["scenario"] = true }
 local REAPPLY_DELAY = 0.5
 local OVERLAY_LEVEL_BOOST = 100
 local DRUID_TRAVEL_FORMS = { [DRUID_TRAVEL_FORM] = true, [DRUID_FLIGHT_FORM] = true }
-
 local BLIZZARD_HIDE_FRAMES = {
     "ObjectiveTrackerFrame", "BuffFrame", "DebuffFrame",
     "ZoneTextFrame", "SubZoneTextFrame", "DurabilityFrame", "VehicleSeatIndicator",
@@ -56,15 +55,37 @@ end
 local function IsInDruidTravelForm() return DRUID_TRAVEL_FORMS[GetShapeshiftFormID()] == true end
 
 local function IsMountedHideActive()
-    if not Orbit.db or not Orbit.db.GlobalSettings or not Orbit.db.GlobalSettings.HideWhenMounted then return false end
     if Orbit.IsEditMode and Orbit:IsEditMode() then return false end
     if OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame then return false end
     if not IsMounted() and not IsInDruidTravelForm() then return false end
+    -- Check if any frame actually has hideMounted enabled in VE
+    if Orbit.VisibilityEngine then
+        if not Orbit.VisibilityEngine:AnyFrameHasSetting("hideMounted") then return false end
+    else
+        -- Fallback to legacy global setting if VE not loaded yet
+        if not Orbit.db or not Orbit.db.GlobalSettings or not Orbit.db.GlobalSettings.HideWhenMounted then return false end
+    end
     local _, instanceType = IsInInstance()
     return OPEN_WORLD_INSTANCE_TYPES[instanceType] == true
 end
 
 function Manager:ShouldHide() return IsMountedHideActive() end
+
+-- Check per-frame VE hideMounted setting for a plugin
+local function ShouldHidePlugin(plugin)
+    if not Orbit.VisibilityEngine then return false end
+    local veKey = Orbit.VisibilityEngine:GetKeyForPlugin(plugin.name, (plugin.mountedConfig and plugin.mountedConfig.frame and plugin.mountedConfig.frame.systemIndex) or 1)
+    if not veKey then return false end
+    return Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
+end
+function Manager:ShouldHidePlugin(plugin) return ShouldHidePlugin(plugin) end
+
+-- Check per-frame VE hideMounted setting for a Blizzard frame key
+local function ShouldHideBlizzard(veKey)
+    if not Orbit.VisibilityEngine then return false end
+    return Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
+end
+function Manager:ShouldHideBlizzard(veKey) return ShouldHideBlizzard(veKey) end
 
 function Manager:GetMountedDriver(baseDriver, combatEssential)
     if not self:ShouldHide() then return baseDriver end

@@ -43,37 +43,6 @@ function Plugin:AddSettings(dialog, systemFrame)
         },
     }
 
-    -- Opacity (resting alpha when visible)
-    local SB = OrbitEngine.SchemaBuilder
-    SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
-
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "OutOfCombatFade",
-        label = "Out of Combat Fade",
-        default = false,
-        tooltip = "Hide frame when out of combat with no target",
-        onChange = function(val)
-            Plugin:SetSetting(systemIndex, "OutOfCombatFade", val)
-            Orbit.OOCFadeMixin:RefreshAll()
-            self:AddSettings(dialog, systemFrame)
-        end,
-    })
-
-    if self:GetSetting(PET_FRAME_INDEX, "OutOfCombatFade") then
-        table.insert(schema.controls, {
-            type = "checkbox",
-            key = "ShowOnMouseover",
-            label = "Show on Mouseover",
-            default = true,
-            tooltip = "Reveal frame when mousing over it",
-            onChange = function(val)
-                self:SetSetting(PET_FRAME_INDEX, "ShowOnMouseover", val)
-                self:ApplySettings()
-            end,
-        })
-    end
-
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
@@ -174,7 +143,7 @@ function Plugin:UpdateVisibility()
             end
         end)
     end
-    Orbit.OOCFadeMixin:RefreshAll()
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
 end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
@@ -236,7 +205,7 @@ function Plugin:ApplySettings(frame)
     Orbit.Animation:ApplyHoverFade(frame, baseAlpha, 1, Orbit:IsEditMode())
 
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
-    Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover)
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover) end
     -- Ensure visibility is correctly set (Edit Mode awareness)
     self:UpdateVisibility()
 end

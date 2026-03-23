@@ -7,11 +7,6 @@ local GroupFrameMixin = Orbit.GroupFrameMixin
 local StatusDispatch = GroupFrameMixin.StatusDispatch
 local UpdateInRange = GroupFrameMixin.UpdateInRange
 
--- [ AURA SNAPSHOT HELPERS ]------------------------------------------------------------------------
-local IsSecret = issecretvalue
-
--- Deleted local BuildAuraSnapshot (Moved to AuraMixin)
-
 -- [ AURA UPDATE DISPATCH ]------------------------------------------------------------------------
 -- Aura component keys checked before building a snapshot
 local AURA_COMPONENT_KEYS = { "Debuffs", "Buffs", "DefensiveIcon", "CrowdControlIcon" }
@@ -38,11 +33,13 @@ local function HasAnyAuraComponent(plugin)
     return false
 end
 
-local function ProcessAuraUpdate(f, plugin, callbacks)
-    local unit = f.unit
-    if not unit or not UnitExists(unit) then return end
-    if not HasAnyAuraComponent(plugin) then return end
-    local snapshot = Orbit.AuraMixin:BuildAuraSnapshot(unit)
+local AuraMixin
+local function GetAuraMixin()
+    if not AuraMixin then AuraMixin = Orbit.AuraMixin end
+    return AuraMixin
+end
+
+local function DispatchAuraConsumers(f, plugin, callbacks, snapshot)
     f._auraSnapshot = snapshot
     callbacks.UpdateDebuffs(f, plugin)
     callbacks.UpdateBuffs(f, plugin)
@@ -52,6 +49,26 @@ local function ProcessAuraUpdate(f, plugin, callbacks)
     if callbacks.UpdateMissingRaidBuffs then callbacks.UpdateMissingRaidBuffs(f, plugin) end
     if plugin.UpdateDispelIndicator then plugin:UpdateDispelIndicator(f, plugin, snapshot.harmful) end
     f._auraSnapshot = nil
+end
+
+local function ProcessAuraUpdate(f, plugin, callbacks, updateInfo)
+    local unit = f.unit
+    if not unit or not UnitExists(unit) then return end
+    if not HasAnyAuraComponent(plugin) then return end
+    local M = GetAuraMixin()
+    local isFullUpdate = not updateInfo or updateInfo.isFullUpdate
+    -- Incremental path: patch existing caches if available
+    if not isFullUpdate and f._harmfulAuraCache then
+        local changed = M:PatchCaches(f, unit, updateInfo)
+        if not changed then return end
+        local snapshot = M:BuildSnapshotFromCaches(f)
+        if snapshot then DispatchAuraConsumers(f, plugin, callbacks, snapshot) end
+        return
+    end
+    -- Full path: build from API, seed caches for future incremental updates
+    local snapshot = M:BuildAuraSnapshot(unit)
+    M:PopulateCaches(f, snapshot)
+    DispatchAuraConsumers(f, plugin, callbacks, snapshot)
 end
 
 -- [ HANDLER FACTORY ]------------------------------------------------------------------------------
@@ -69,16 +86,10 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
             return
         end
         if event == "UNIT_AURA" then
-            if eventUnit == f.unit then ProcessAuraUpdate(f, plugin, callbacks) end
-            return
-        end
-        if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
-            callbacks.UpdateDebuffs(f, plugin)
-            callbacks.UpdateBuffs(f, plugin)
-            return
-        end
-        if event == "PLAYER_TARGET_CHANGED" then
-            StatusDispatch(f, plugin, "UpdateSelectionHighlight")
+            if eventUnit == f.unit then
+                local updateInfo = ...
+                ProcessAuraUpdate(f, plugin, callbacks, updateInfo)
+            end
             return
         end
         if event == "UNIT_THREAT_SITUATION_UPDATE" then
@@ -93,11 +104,9 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
         end
         if event == "UNIT_ENTERED_VEHICLE" or event == "UNIT_EXITED_VEHICLE" then
             if eventUnit == f.unit then
+                GetAuraMixin():WipeCaches(f)
                 if f.UpdateAll then f:UpdateAll() end
-                callbacks.UpdateDebuffs(f, plugin)
-                callbacks.UpdateBuffs(f, plugin)
-                callbacks.UpdateDefensiveIcon(f, plugin)
-                callbacks.UpdateCrowdControlIcon(f, plugin)
+                ProcessAuraUpdate(f, plugin, callbacks, nil)
                 StatusDispatch(f, plugin, "UpdateName")
             end
             return
@@ -117,26 +126,8 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
             end
             return
         end
-        if event == "READY_CHECK" or event == "READY_CHECK_CONFIRM" or event == "READY_CHECK_FINISHED" then
-            StatusDispatch(f, plugin, "UpdateReadyCheck")
-            return
-        end
         if event == "INCOMING_RESURRECT_CHANGED" then
             if eventUnit == f.unit then StatusDispatch(f, plugin, "UpdateIncomingRes") end
-            return
-        end
-        if event == "INCOMING_SUMMON_CHANGED" then
-            StatusDispatch(f, plugin, "UpdateIncomingSummon")
-            return
-        end
-        if event == "PLAYER_ROLES_ASSIGNED" or event == "GROUP_ROSTER_UPDATE" or event == "PARTY_LEADER_CHANGED" then
-            StatusDispatch(f, plugin, "UpdateRoleIcon")
-            StatusDispatch(f, plugin, "UpdateLeaderIcon")
-            if callbacks.UpdateMainTankIcon then StatusDispatch(f, plugin, "UpdateMainTankIcon") end
-            return
-        end
-        if event == "RAID_TARGET_UPDATE" then
-            StatusDispatch(f, plugin, "UpdateMarkerIcon")
             return
         end
         if event == "UNIT_IN_RANGE_UPDATE" then
@@ -167,5 +158,75 @@ function GroupFrameMixin.CreateOnShowHandler(plugin, callbacks)
         StatusDispatch(self, plugin, "UpdateStatusText")
         UpdateInRange(self)
     end
+end
+
+-- [ CENTRALIZED GLOBAL EVENT HANDLER ]-------------------------------------------------------------
+-- Single event frame handles all global events and dispatches to visible frames.
+-- Eliminates N per-frame closures per global event (was O(40) closures, now O(1) + iteration).
+local GLOBAL_EVENTS = {
+    "READY_CHECK", "READY_CHECK_CONFIRM", "READY_CHECK_FINISHED",
+    "INCOMING_SUMMON_CHANGED", "PLAYER_ROLES_ASSIGNED", "GROUP_ROSTER_UPDATE",
+    "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE", "PARTY_LEADER_CHANGED",
+    "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+}
+
+function GroupFrameMixin.CreateGlobalEventHandler(plugin, callbacks)
+    local eventFrame = CreateFrame("Frame")
+    for _, ev in ipairs(GLOBAL_EVENTS) do eventFrame:RegisterEvent(ev) end
+    eventFrame:SetScript("OnEvent", function(_, event)
+        local frames = plugin.frames
+        if not frames then return end
+        if event == "PLAYER_TARGET_CHANGED" then
+            for _, f in ipairs(frames) do
+                if not f.preview and f.unit and f:IsShown() then StatusDispatch(f, plugin, "UpdateSelectionHighlight") end
+            end
+            return
+        end
+        if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+            local M = GetAuraMixin()
+            local snapshots = {}
+            for _, f in ipairs(frames) do
+                if not f.preview and f.unit and f:IsShown() then
+                    if not snapshots[f.unit] then snapshots[f.unit] = M:BuildAuraSnapshot(f.unit) end
+                    local snap = snapshots[f.unit]
+                    M:PopulateCaches(f, snap)
+                    f._auraSnapshot = snap
+                    callbacks.UpdateDebuffs(f, plugin)
+                    callbacks.UpdateBuffs(f, plugin)
+                    f._auraSnapshot = nil
+                end
+            end
+            return
+        end
+        if event == "RAID_TARGET_UPDATE" then
+            for _, f in ipairs(frames) do
+                if not f.preview and f.unit and f:IsShown() then StatusDispatch(f, plugin, "UpdateMarkerIcon") end
+            end
+            return
+        end
+        if event == "READY_CHECK" or event == "READY_CHECK_CONFIRM" or event == "READY_CHECK_FINISHED" then
+            for _, f in ipairs(frames) do
+                if not f.preview and f.unit and f:IsShown() then StatusDispatch(f, plugin, "UpdateReadyCheck") end
+            end
+            return
+        end
+        if event == "INCOMING_SUMMON_CHANGED" then
+            for _, f in ipairs(frames) do
+                if not f.preview and f.unit and f:IsShown() then StatusDispatch(f, plugin, "UpdateIncomingSummon") end
+            end
+            return
+        end
+        if event == "PLAYER_ROLES_ASSIGNED" or event == "GROUP_ROSTER_UPDATE" or event == "PARTY_LEADER_CHANGED" then
+            for _, f in ipairs(frames) do
+                if not f.preview and f.unit and f:IsShown() then
+                    StatusDispatch(f, plugin, "UpdateRoleIcon")
+                    StatusDispatch(f, plugin, "UpdateLeaderIcon")
+                    if callbacks.UpdateMainTankIcon then StatusDispatch(f, plugin, "UpdateMainTankIcon") end
+                end
+            end
+            return
+        end
+    end)
+    return eventFrame
 end
 

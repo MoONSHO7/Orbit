@@ -577,7 +577,7 @@ function Updater:RegisterCursorWatcher(plugin)
         lastCursor = cursorType
         lastEditMode = isEditMode
         lastShift = isShift
-        Orbit.OOCFadeMixin:RefreshAll()
+        if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
         local isDroppable = plugin.IsDraggingCooldownAbility and plugin.IsDraggingCooldownAbility()
         self:SetTrackedClickEnabled(plugin, isDroppable or isShift or isEditMode)
         plugin:SetChargeClickEnabled(isDroppable or isShift or isEditMode)

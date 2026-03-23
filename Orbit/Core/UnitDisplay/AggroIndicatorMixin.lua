@@ -6,11 +6,24 @@ local _, Orbit = ...
 Orbit.AggroIndicatorMixin = {}
 
 local AGGRO_STORAGE_KEY = "_aggroBorderOverlay"
+local DEFAULT_AGGRO_COLOR = { r = 1.0, g = 0.0, b = 0.0, a = 1.0 }
+
+local function GetAggroSettings(plugin)
+    local cache = plugin._aggroSettingsCache
+    if cache then return cache end
+    local get = plugin.GetTierSetting and function(k) return plugin:GetTierSetting(k) end or function(k) return plugin:GetSetting(1, k) end
+    cache = {
+        enabled = get("AggroIndicatorEnabled"),
+        color = get("AggroColor") or DEFAULT_AGGRO_COLOR,
+    }
+    plugin._aggroSettingsCache = cache
+    return cache
+end
 
 function Orbit.AggroIndicatorMixin:UpdateAggroIndicator(frame, plugin)
     if not frame or not frame.unit then return end
-    local enabled = plugin:GetSetting(1, "AggroIndicatorEnabled")
-    if not enabled then
+    local settings = GetAggroSettings(plugin)
+    if not settings.enabled then
         Orbit.Skin:ClearHighlightBorder(frame, AGGRO_STORAGE_KEY)
         return
     end
@@ -18,13 +31,15 @@ function Orbit.AggroIndicatorMixin:UpdateAggroIndicator(frame, plugin)
         Orbit.Skin:ClearHighlightBorder(frame, AGGRO_STORAGE_KEY)
         return
     end
-    local hasAggro = UnitThreatSituation(frame.unit) == 3
-    if hasAggro then
-        local color = plugin:GetSetting(1, "AggroColor") or { r = 1.0, g = 0.0, b = 0.0, a = 1.0 }
-        Orbit.Skin:ApplyHighlightBorder(frame, AGGRO_STORAGE_KEY, color)
+    if UnitThreatSituation(frame.unit) == 3 then
+        Orbit.Skin:ApplyHighlightBorder(frame, AGGRO_STORAGE_KEY, settings.color)
     else
         Orbit.Skin:ClearHighlightBorder(frame, AGGRO_STORAGE_KEY)
     end
+end
+
+function Orbit.AggroIndicatorMixin:InvalidateAggroSettings(plugin)
+    plugin._aggroSettingsCache = nil
 end
 
 function Orbit.AggroIndicatorMixin:UpdateAllAggroIndicators(plugin)

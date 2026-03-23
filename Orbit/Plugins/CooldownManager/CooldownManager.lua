@@ -420,16 +420,16 @@ function Plugin:OnLoad()
         for systemIndex, data in pairs(VIEWER_MAP) do
             local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
             if data.viewer then
-                Orbit.OOCFadeMixin:ApplyOOCFade(data.viewer, self, systemIndex, "OutOfCombatFade", enableHover)
+                if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(data.viewer, self, systemIndex, "OutOfCombatFade", enableHover) end
             end
             if (data.isTracked or data.isChargeBar) and data.anchor then
-                Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", enableHover)
+                if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", enableHover) end
             end
             for _, childData in pairs(self.activeChildren or {}) do
                 if childData.frame then
                     local csi = childData.frame.systemIndex
                     local hover = self:GetSetting(csi, "ShowOnMouseover") ~= false
-                    Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover)
+                    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover) end
                 end
             end
             -- Also apply to charge bar children
@@ -437,10 +437,10 @@ function Plugin:OnLoad()
                 if childData.frame then
                     local csi = childData.frame.systemIndex
                     local hover = self:GetSetting(csi, "ShowOnMouseover") ~= false
-                    Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover)
+                    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover) end
                 end
             end
-            Orbit.OOCFadeMixin:RefreshAll()
+            if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
         end
     end, self)
 
