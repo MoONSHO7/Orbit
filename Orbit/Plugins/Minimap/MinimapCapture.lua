@@ -363,6 +363,9 @@ function Plugin:CaptureBlizzardMinimap()
     minimap:SetSize(self.frame:GetWidth(), self.frame:GetHeight())
 
     minimap:EnableMouse(true)
+    if minimap.RegisterForClicks then
+        minimap:RegisterForClicks("AnyUp")
+    end
     minimap:SetArchBlobRingScalar(0)
     minimap:SetQuestBlobRingScalar(0)
 
