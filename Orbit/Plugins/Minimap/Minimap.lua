@@ -171,7 +171,8 @@ function Plugin:OnLoad()
     self.frame.Coords.Text:SetJustifyH("RIGHT")
     self.frame.Coords.visual = self.frame.Coords.Text -- canvas override target
 
-    -- Mouse-wheel zoom on the container frame
+    -- Mouse-wheel zoom: the container passes wheel events through to children but we also
+    -- want it on the container itself in case the cursor is over the bg texture.
     self.frame:EnableMouseWheel(true)
     self.frame:SetScript("OnMouseWheel", function(_, delta)
         local minimap = self:GetBlizzardMinimap()
@@ -179,10 +180,16 @@ function Plugin:OnLoad()
         if delta > 0 then minimap.ZoomIn:Click() else minimap.ZoomOut:Click() end
     end)
 
-    -- Middle-click action with round hit-test: ignore clicks in the corners when shape is round
-    self.frame:EnableMouse(true)
-    self.frame:RegisterForClicks("MiddleButtonUp")
-    self.frame:SetScript("OnMouseUp", function(f, btn)
+    -- Middle-click action with round hit-test.
+    -- Use a dedicated pass-through frame so left/right clicks still reach child frames
+    -- (edit mode selection, zoom buttons, compartment, etc.) unobstructed.
+    local clickFrame = CreateFrame("Frame", nil, self.frame)
+    clickFrame:SetAllPoints(self.frame)
+    clickFrame:SetFrameLevel(self.frame:GetFrameLevel() + 1)
+    clickFrame:EnableMouse(true)
+    clickFrame:SetPassThroughButtons("LeftButton", "RightButton")
+    clickFrame:RegisterForClicks("MiddleButtonUp")
+    clickFrame:SetScript("OnMouseUp", function(f, btn)
         if self:GetSetting(SYSTEM_ID, "Shape") == "round" then
             local scale = f:GetEffectiveScale()
             local cx, cy = f:GetCenter()
@@ -198,6 +205,7 @@ function Plugin:OnLoad()
             end
         end
     end)
+    self.frame._clickFrame = clickFrame
 
     -- [ Compartment component ]
     self:CreateCompartmentButton()
