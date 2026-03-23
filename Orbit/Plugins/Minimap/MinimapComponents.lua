@@ -9,7 +9,6 @@ local C = Orbit.MinimapConstants
 local SYSTEM_ID = C.SYSTEM_ID
 local MASK_SQUARE = C.MASK_SQUARE
 local MASK_ROUND = C.MASK_ROUND
-local CLOCK_UPDATE_INTERVAL = C.CLOCK_UPDATE_INTERVAL
 local COORDS_UPDATE_INTERVAL = C.COORDS_UPDATE_INTERVAL
 local ZOOM_BUTTON_W = C.ZOOM_BUTTON_W
 local ZOOM_BUTTON_IN_H = C.ZOOM_BUTTON_IN_H
@@ -27,13 +26,15 @@ function Plugin:ApplyShape()
     local minimap = self:GetBlizzardMinimap()
     local isRound = shape == "round"
 
-    -- Apply mask to the Blizzard minimap render surface
-    if minimap then
-        if isRound then
-            minimap:SetMaskTexture(MASK_ROUND)
-        else
-            minimap:SetMaskTexture(MASK_SQUARE)
-        end
+    -- Apply mask to the Blizzard minimap render surface and, if present, the HybridMinimap
+    -- vector tile canvas. HybridMinimap uses its own CircleMask texture that must be updated
+    -- independently; toggling SetUseMaskTexture off/on is required to flush the change.
+    local mask = isRound and MASK_ROUND or MASK_SQUARE
+    if minimap then minimap:SetMaskTexture(mask) end
+    if HybridMinimap then
+        HybridMinimap.MapCanvas:SetUseMaskTexture(false)
+        HybridMinimap.CircleMask:SetTexture(mask)
+        HybridMinimap.MapCanvas:SetUseMaskTexture(true)
     end
 
     -- Clip the background texture to the same shape.
@@ -75,10 +76,13 @@ end
 -- [ ZONE TEXT ]-------------------------------------------------------------------------------------
 
 local ZONE_PVP_COLORS = {
-    sanctuary = { r = 0.41, g = 0.80, b = 0.94 },
-    friendly = { r = 0.10, g = 1.00, b = 0.10 },
-    hostile = { r = 1.00, g = 0.10, b = 0.10 },
-    contested = { r = 1.00, g = 0.70, b = 0.00 },
+    sanctuary = { r = 0.41, g = 0.80, b = 0.94 }, -- blue/teal: Shattrath, Dalaran etc.
+    friendly   = { r = 0.10, g = 1.00, b = 0.10 }, -- green: friendly faction territory
+    hostile    = { r = 1.00, g = 0.10, b = 0.10 }, -- red: enemy faction territory
+    contested  = { r = 1.00, g = 0.70, b = 0.00 }, -- orange: contested zones
+    arena      = { r = 1.00, g = 0.10, b = 0.10 }, -- red: FFA / arena zones
+    combat     = { r = 1.00, g = 0.10, b = 0.10 }, -- red: active combat zones
+    pvp        = { r = 1.00, g = 0.70, b = 0.00 }, -- orange: opt-in PvP
 }
 Plugin.ZonePVPColors = ZONE_PVP_COLORS -- shared with Minimap.lua for tooltip colouring
 
@@ -117,14 +121,33 @@ end
 
 function Plugin:StartClockTicker()
     if self._clockTicker then return end
-    self._clockTicker = C_Timer.NewTicker(CLOCK_UPDATE_INTERVAL, function() self:UpdateClock() end)
+    -- Warmup: poll every 0.1s until the minute boundary flips, then lock to 60s intervals.
+    -- This ensures the clock is never more than ~0.1s stale regardless of when the addon loaded.
+    local lastMin = -1
+    local function onTick()
+        self:UpdateClock()
+        local _, min = GetGameTime()
+        if GetCVarBool("timeMgrUseLocalTime") then min = tonumber(date("%M")) end
+        if lastMin == -1 then
+            lastMin = min
+        elseif min ~= lastMin then
+            -- Minute boundary crossed: cancel warmup and start stable 60s ticker
+            if self._clockWarmup then self._clockWarmup:Cancel(); self._clockWarmup = nil end
+            self._clockTicker = C_Timer.NewTicker(60, function() self:UpdateClock() end)
+            return
+        end
+        -- Still same minute, keep fast-polling via warmup ticker (set below)
+    end
+    self._clockWarmup = C_Timer.NewTicker(0.1, onTick)
+    self._clockTicker = true -- sentinel so re-entry guard works
 end
 
 function Plugin:StopClockTicker()
-    if self._clockTicker then
+    if self._clockWarmup then self._clockWarmup:Cancel(); self._clockWarmup = nil end
+    if self._clockTicker and self._clockTicker ~= true then
         self._clockTicker:Cancel()
-        self._clockTicker = nil
     end
+    self._clockTicker = nil
 end
 
 -- [ COORDS ]----------------------------------------------------------------------------------------

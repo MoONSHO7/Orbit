@@ -171,6 +171,34 @@ function Plugin:OnLoad()
     self.frame.Coords.Text:SetJustifyH("RIGHT")
     self.frame.Coords.visual = self.frame.Coords.Text -- canvas override target
 
+    -- Mouse-wheel zoom on the container frame
+    self.frame:EnableMouseWheel(true)
+    self.frame:SetScript("OnMouseWheel", function(_, delta)
+        local minimap = self:GetBlizzardMinimap()
+        if not minimap then return end
+        if delta > 0 then minimap.ZoomIn:Click() else minimap.ZoomOut:Click() end
+    end)
+
+    -- Middle-click action with round hit-test: ignore clicks in the corners when shape is round
+    self.frame:EnableMouse(true)
+    self.frame:RegisterForClicks("MiddleButtonUp")
+    self.frame:SetScript("OnMouseUp", function(f, btn)
+        if self:GetSetting(SYSTEM_ID, "Shape") == "round" then
+            local scale = f:GetEffectiveScale()
+            local cx, cy = f:GetCenter()
+            local mx, my = GetCursorPosition()
+            mx, my = mx / scale - cx, my / scale - cy
+            if math.sqrt(mx * mx + my * my) > f:GetWidth() / 2 then return end
+        end
+        if btn == "MiddleButton" then
+            local action = self:GetSetting(SYSTEM_ID, "MiddleClickAction") or "none"
+            if action == "worldmap" then ToggleWorldMap()
+            elseif action == "tracking" then MinimapCluster.Tracking.Button:OpenMenu()
+            elseif action == "missions" and ExpansionLandingPageMinimapButton then ExpansionLandingPageMinimapButton:Click()
+            end
+        end
+    end)
+
     -- [ Compartment component ]
     self:CreateCompartmentButton()
 
@@ -259,6 +287,18 @@ function Plugin:OnLoad()
 
     self:CaptureBlizzardMinimap()
     self:UpdateCalendarInvites()
+
+    -- If Blizzard_HybridMinimap is already loaded, ApplyShape will handle it on PLAYER_ENTERING_WORLD.
+    -- If it loads later (demand-loaded on first map open), reapply shape so CircleMask is correct.
+    if not C_AddOns.IsAddOnLoaded("Blizzard_HybridMinimap") then
+        self._hybridLoader = CreateFrame("Frame")
+        self._hybridLoader:RegisterEvent("ADDON_LOADED")
+        self._hybridLoader:SetScript("OnEvent", function(f, _, addonName)
+            if addonName ~= "Blizzard_HybridMinimap" then return end
+            f:UnregisterEvent("ADDON_LOADED")
+            self:ApplyShape()
+        end)
+    end
 end
 
 local function ApplyIconScale(frame, overrides, baseW)
