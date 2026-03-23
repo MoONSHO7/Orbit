@@ -24,14 +24,12 @@ function Plugin:ApplyShape()
     local frame = self.frame
     local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
     local minimap = self:GetBlizzardMinimap()
-    local rotate = self:GetSetting(SYSTEM_ID, "RotateMinimap") and true or false
     local isRound = shape == "round"
 
     -- Apply mask to the Blizzard minimap render surface and, if present, the HybridMinimap
     -- vector tile canvas. HybridMinimap uses its own CircleMask texture that must be updated
     -- independently; toggling SetUseMaskTexture off/on is required to flush the change.
-    local useRoundMask = isRound or (shape == "square" and rotate)
-    local mask = useRoundMask and MASK_ROUND or MASK_SQUARE
+    local mask = isRound and MASK_ROUND or MASK_SQUARE
     if minimap then minimap:SetMaskTexture(mask) end
     if HybridMinimap then
         HybridMinimap.MapCanvas:SetUseMaskTexture(false)

@@ -66,7 +66,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "checkbox",
         key = "RotateMinimap",
-        label = "Rotate Minimap",
+        label = "Rotate Minimap (Round Only)",
         default = false,
         onChange = function(val)
             self:SetSetting(SYSTEM_ID, "RotateMinimap", val)

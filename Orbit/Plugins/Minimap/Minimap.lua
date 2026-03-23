@@ -59,10 +59,6 @@ function Plugin:OnLoad()
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Minimap"
 
-    self.frame.ClipFrame = CreateFrame("Frame", nil, self.frame)
-    self.frame.ClipFrame:SetAllPoints(self.frame)
-    self.frame.ClipFrame:SetClipsChildren(true)
-
     -- Anchor options for edit mode drag
     self.frame.anchorOptions = {
         horizontal = true,
@@ -307,19 +303,18 @@ function Plugin:ApplySettings()
     if isEditMode then OrbitEngine.FrameSelection:ForceUpdate(frame) end
 
     -- Rotate minimap
+    local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
     local rotate = self:GetSetting(SYSTEM_ID, "RotateMinimap") and true or false
+    if shape == "square" then rotate = false end -- Disable rotation for square maps
     SetCVar("rotateMinimap", rotate and "1" or "0")
 
     -- Keep the Minimap render surface in sync with the container.
     local minimapSurface = self:GetBlizzardMinimap()
-    local clipFrame = frame.ClipFrame or frame
     if minimapSurface then
-        local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
-        local surfaceSize = (rotate and shape == "square") and math.ceil(size * 1.5) or size
-        minimapSurface._orbitIntendedSize = surfaceSize
-        minimapSurface:SetSize(surfaceSize, surfaceSize)
+        minimapSurface._orbitIntendedSize = size
+        minimapSurface:SetSize(size, size)
         minimapSurface:ClearAllPoints()
-        minimapSurface:SetPoint("CENTER", clipFrame, "CENTER", 0, 0)
+        minimapSurface:SetAllPoints(frame)
     end
 
     -- Shape + Border

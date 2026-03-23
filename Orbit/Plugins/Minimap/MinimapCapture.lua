@@ -184,57 +184,34 @@ function Plugin:CaptureBlizzardMinimap()
 
     StripBlizzardArt()
 
-    -- Hooks
-    local clipFrame = self.frame.ClipFrame or self.frame
-    minimap:SetParent(clipFrame)
+    minimap:SetParent(self.frame)
     minimap:ClearAllPoints()
-    minimap:SetPoint("CENTER", clipFrame, "CENTER", 0, 0)
-    -- Disable clamping so if we expand the map for rotation, it doesn't bounce off the screen edge and offset the arrow
-    minimap:SetClampedToScreen(false)
+    minimap:SetAllPoints(self.frame)
 
     minimap:EnableMouse(true)
     minimap:SetArchBlobRingScalar(0)
     minimap:SetQuestBlobRingScalar(0)
 
     -- Apply the correct mask immediately at capture time.
-    -- ApplyShape (called from ApplySettings) will update it if the setting changes.
     local shape = self:GetSetting(C.SYSTEM_ID, "Shape") or "square"
     if shape == "round" then minimap:SetMaskTexture(C.MASK_ROUND) else minimap:SetMaskTexture(C.MASK_SQUARE) end
 
-    OrbitEngine.FrameGuard:Protect(minimap, clipFrame)
-    OrbitEngine.FrameGuard:UpdateProtection(minimap, clipFrame, function() self:ApplySettings() end, { enforceShow = true })
+    OrbitEngine.FrameGuard:Protect(minimap, self.frame)
+    OrbitEngine.FrameGuard:UpdateProtection(minimap, self.frame, function() self:ApplySettings() end, { enforceShow = true })
 
     -- Hook SetPoint and SetSize to prevent Blizzard from repositioning or resizing
     -- the minimap away from our intended values.
     if not minimap._orbitSetPointHooked then
         hooksecurefunc(minimap, "SetPoint", function(f, ...)
-            if f._orbitRestoringPoint then
-                return
-            end
-            if f:GetParent() == clipFrame then
-                local intended = f._orbitIntendedSize
-                local containerSize = clipFrame:GetWidth()
+            if f._orbitRestoringPoint then return end
+            if f:GetParent() == self.frame then
                 local point = ...
                 local relFrame = select(2, ...)
-                if intended and (intended - (containerSize or 0)) > 2 then
-                    -- Oversized (rotation) mode: keep centred
-                    local relPoint = select(3, ...) or point
-                    local x = select(4, ...) or 0
-                    local y = select(5, ...) or 0
-                    if point ~= "CENTER" or relFrame ~= clipFrame or relPoint ~= "CENTER" or x ~= 0 or y ~= 0 then
-                        f._orbitRestoringPoint = true
-                        f:ClearAllPoints()
-                        f:SetPoint("CENTER", clipFrame, "CENTER", 0, 0)
-                        f._orbitRestoringPoint = nil
-                    end
-                else
-                    if point ~= "CENTER" or relFrame ~= clipFrame then
-                        f._orbitRestoringPoint = true
-                        f:ClearAllPoints()
-                        f:SetPoint("CENTER", clipFrame, "CENTER", 0, 0)
-                        f:SetSize(containerSize, containerSize)
-                        f._orbitRestoringPoint = nil
-                    end
+                if point ~= "TOPLEFT" or relFrame ~= self.frame then
+                    f._orbitRestoringPoint = true
+                    f:ClearAllPoints()
+                    f:SetAllPoints(self.frame)
+                    f._orbitRestoringPoint = nil
                 end
             end
         end)
