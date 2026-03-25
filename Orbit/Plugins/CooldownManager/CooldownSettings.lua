@@ -25,7 +25,7 @@ function CDM:AddSettings(dialog, systemFrame)
     -- Charge Bars get their own dedicated dialog
     if frame and frame.isChargeBar then
         SB:SetTabRefreshCallback(dialog, self, systemFrame)
-        local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colors", "Visibility" }, "Layout")
+        local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colors", "Behaviour" }, "Layout")
 
         if currentTab == "Layout" then
             if not isAnchored then
@@ -55,31 +55,7 @@ function CDM:AddSettings(dialog, systemFrame)
                     RelayoutChargeBars(self)
                 end,
             })
-        elseif currentTab == "Visibility" then
-            SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
-            table.insert(schema.controls, {
-                type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
-                tooltip = "Hide frame when out of combat with no target",
-                onChange = function(val)
-                    self:SetSetting(systemIndex, "OutOfCombatFade", val)
-                    Orbit.OOCFadeMixin:RefreshAll()
-                    if dialog.orbitTabCallback then dialog.orbitTabCallback() end
-                end,
-            })
-            if self:GetSetting(systemIndex, "OutOfCombatFade") then
-                table.insert(schema.controls, {
-                    type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
-                    tooltip = "Reveal frame when mousing over it",
-                    onChange = function(val)
-                        self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                        local data = VIEWER_MAP[systemIndex]
-                        if data and data.anchor then
-                            Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", val)
-                            Orbit.OOCFadeMixin:RefreshAll()
-                        end
-                    end,
-                })
-            end
+        elseif currentTab == "Behaviour" then
             table.insert(schema.controls, {
                 type = "checkbox", key = "SmoothAnimation", label = "Smooth Animation", default = false,
                 tooltip = "Smoothly animate charge transitions",
@@ -95,20 +71,6 @@ function CDM:AddSettings(dialog, systemFrame)
                     self:RefreshChargeUpdateMethod()
                 end,
             })
-            if self:GetSetting(systemIndex, "OutOfCombatFade") then
-                table.insert(schema.controls, {
-                    type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
-                    tooltip = "Reveal frame when mousing over it",
-                    onChange = function(val)
-                        self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                        local data = VIEWER_MAP[systemIndex]
-                        if data and data.anchor then
-                            Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", val)
-                            Orbit.OOCFadeMixin:RefreshAll()
-                        end
-                    end,
-                })
-            end
         end
 
         OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
@@ -182,7 +144,11 @@ function CDM:AddSettings(dialog, systemFrame)
     end
 
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Glow", "Colors", "Visibility" }, "Layout")
+    local tabs = { "Layout", "Glow", "Colors" }
+    if systemIndex == Constants.Cooldown.SystemIndex.BuffIcon then
+        tabs = { "Layout", "Glow", "Colors", "Behaviour" }
+    end
+    local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
 
     if currentTab == "Layout" then
         if isInheriting then
@@ -274,55 +240,26 @@ function CDM:AddSettings(dialog, systemFrame)
                 default = { r = 1, g = 1, b = 1, a = 0 },
             })
         end
-    elseif currentTab == "Visibility" then
-        SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
+    elseif currentTab == "Behaviour" then
         table.insert(schema.controls, {
-            type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade", default = false,
-            tooltip = "Hide frame when out of combat with no target",
+            type = "checkbox", key = "AlwaysShow", label = "Always Show", default = false,
+            tooltip = "Keep inactive buff icons visible but desaturated",
             onChange = function(val)
-                self:SetSetting(systemIndex, "OutOfCombatFade", val)
-                Orbit.OOCFadeMixin:RefreshAll()
+                self:SetSetting(systemIndex, "AlwaysShow", val)
+                self:ApplyAll()
                 if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
-        if self:GetSetting(systemIndex, "OutOfCombatFade") then
+        if self:GetSetting(systemIndex, "AlwaysShow") then
             table.insert(schema.controls, {
-                type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover", default = true,
-                tooltip = "Reveal frame when mousing over it",
-                onChange = function(val)
-                    self:SetSetting(systemIndex, "ShowOnMouseover", val)
-                    local data = VIEWER_MAP[systemIndex]
-                    if data then
-                        local target = data.isTracked and data.anchor or data.viewer
-                        if target then
-                            Orbit.OOCFadeMixin:ApplyOOCFade(target, self, systemIndex, "OutOfCombatFade", val)
-                            Orbit.OOCFadeMixin:RefreshAll()
-                        end
-                    end
-                end,
+                type = "checkbox", key = "HideBorders", label = "Hide Borders", default = false,
+                tooltip = "Hide icon borders when inactive",
+                onChange = function(val) self:SetSetting(systemIndex, "HideBorders", val); self:ApplyAll() end,
             })
-        end
-        if systemIndex == Constants.Cooldown.SystemIndex.BuffIcon then
             table.insert(schema.controls, {
-                type = "checkbox", key = "AlwaysShow", label = "Always Show", default = false,
-                tooltip = "Keep inactive buff icons visible but desaturated",
-                onChange = function(val)
-                    self:SetSetting(systemIndex, "AlwaysShow", val)
-                    self:ApplyAll()
-                    if dialog.orbitTabCallback then dialog.orbitTabCallback() end
-                end,
+                type = "slider", key = "InactiveAlpha", label = "Inactive Alpha", min = 20, max = 100, step = 1, default = 60,
+                onChange = function(val) self:SetSetting(systemIndex, "InactiveAlpha", val); self:ApplyAll() end,
             })
-            if self:GetSetting(systemIndex, "AlwaysShow") then
-                table.insert(schema.controls, {
-                    type = "checkbox", key = "HideBorders", label = "Hide Borders", default = false,
-                    tooltip = "Hide icon borders when inactive",
-                    onChange = function(val) self:SetSetting(systemIndex, "HideBorders", val); self:ApplyAll() end,
-                })
-                table.insert(schema.controls, {
-                    type = "slider", key = "InactiveAlpha", label = "Inactive Alpha", min = 20, max = 100, step = 1, default = 60,
-                    onChange = function(val) self:SetSetting(systemIndex, "InactiveAlpha", val); self:ApplyAll() end,
-                })
-            end
         end
     end
 

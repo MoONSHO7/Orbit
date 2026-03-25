@@ -19,15 +19,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [@project-version@] - @project-date-iso@
 ### Message
-- Sorry delay in updates, been a busy week with new raid out :)
-- Next update will be focussed on fleshing out Party/Raid frames.
-- This update focuses on uplifting profile which required a lot of backend work to make them work properly with how Orbit operates, please let me know any issues you find!
-- I'd recommened, if you're updating from a previous version, to Export your main Specialization string and do a `/Orbit HardReset` to start fresh with the new profile system.
+- Sorry for delay in this one, been a busy week at work + wow season launch.
+- Goodluck with season 1 and hope them Vaults were noice ;)
 
 ### Added
 - **Profile Management** — A complete layout manager out of the box. You can configure, import/export, and map UI profiles per-specialization for automatic swaps!
 - **Raid Frame Performance** — Reduced a large amount of API calls and layout updates on raid frames, should bring down the performance hit in raids, more work on this next update.
 - **CastBar** — Added to canvas mode.
+- Enhanced RaidFrames for multiple Groups, its all managed in a single Edit Mode frame now. Select your tier to edit.
+- Removed all visibility settings from Edit mode, its now all handled in Orbits Visibility Engine. Type: /orbit ve or find it in the plugin manager.
 
 
 ### Changed
@@ -35,8 +35,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **UI Consistency & Defaults** — Temporarily disabled anchoring on Tracked Cooldowns & Charges, working on a fix for these with new profiles & more blizzard addon restrictions coming in soon
 
 ### Fixed
-- **RestingIcon** — Fixed issue with positioning the icon in canvas mode.
-- **Many minor bugfixes** — Multiple layout and sizing inaccuracies have been rectified alongside the profile defaults overhaul.
+- **BossFrames** — Fixed mulitple issues with bossframes that came up from previous performance parse on group frames.
+- **TrackedCooldowns+Charges** — These should now save position properly, anchored is still disabled as its buggy with new profiles and I  havent fixed it yet 
 
 ## [1.0.0] - 2026-03-10
 ### Added

@@ -72,6 +72,7 @@ local SPEC_SCOPED_KEYS = { TrackedItems = true, ChargeSpell = true, ChargeChildr
 local function IsSpecScopedIndex(sysIdx)
     return (sysIdx >= TRACKED_INDEX and sysIdx <= TRACKED_CHILD_END) or (sysIdx >= CHARGE_BAR_INDEX and sysIdx <= CHARGE_CHILD_END)
 end
+function Plugin:IsSpecScopedIndex(sysIdx) return IsSpecScopedIndex(sysIdx) end
 
 function Plugin:GetCurrentSpecID()
     local specIndex = GetSpecialization()
@@ -101,7 +102,7 @@ local OriginalGetSetting = Orbit.PluginMixin.GetSetting
 local OriginalSetSetting = Orbit.PluginMixin.SetSetting
 
 function Plugin:GetSetting(systemIndex, key)
-    if IsSpecScopedIndex(systemIndex) then
+    if IsSpecScopedIndex(systemIndex) and SPEC_SCOPED_KEYS[key] then
         local val = self:GetSpecData(systemIndex, key)
         return val
     end
@@ -109,19 +110,21 @@ function Plugin:GetSetting(systemIndex, key)
 end
 
 function Plugin:SetSetting(systemIndex, key, value)
-    if IsSpecScopedIndex(systemIndex) then
+    if IsSpecScopedIndex(systemIndex) and SPEC_SCOPED_KEYS[key] then
         self:SetSpecData(systemIndex, key, value)
         return
     end
     OriginalSetSetting(self, systemIndex, key, value)
 end
 
+-- TODO(REMOVE): Legacy helper, only used by MigrateSpecData — remove after migration period
 -- Generates a spec-specific settings key, e.g. "TrackedItems_267" (legacy, used for migration)
 function Plugin:GetSpecKey(baseKey)
     local specID = self:GetCurrentSpecID()
     return baseKey .. "_" .. (specID or 0)
 end
 
+-- TODO(REMOVE): One-time migration from profile-keyed spec data to SpecData store
 -- One-time migration: move GetSpecKey data from profiles into SpecData
 function Plugin:MigrateSpecData()
     if Orbit.db.SpecData._migrated then return end
@@ -225,6 +228,7 @@ function Plugin:FlushTrackedSpatial(specID)
             Orbit.db.SpecData[specID][systemIndex]["Position"] = pos
             Orbit.db.SpecData[specID][systemIndex]["Anchor"] = false
         end
+        OrbitEngine.PositionManager:ClearFrame(frame)
     end
     local viewerMap = self.viewerMap
     if viewerMap then
@@ -407,6 +411,7 @@ function Plugin:OnLoad()
             self:ReparseActiveDurations()
             self:ReapplyParentage()
             self:ApplyAll()
+            if Orbit.ViewerInjection then Orbit.ViewerInjection:OnSpecChanged() end
             if Orbit.Engine.FrameAnchor then
                 Orbit.Engine.FrameAnchor:RepairAllChains()
             end
@@ -416,17 +421,14 @@ function Plugin:OnLoad()
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
         for systemIndex, data in pairs(VIEWER_MAP) do
             local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
-            if data.viewer then
-                Orbit.OOCFadeMixin:ApplyOOCFade(data.viewer, self, systemIndex, "OutOfCombatFade", enableHover)
-            end
-            if (data.isTracked or data.isChargeBar) and data.anchor then
-                Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", enableHover)
+            if data.anchor then
+                if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", enableHover) end
             end
             for _, childData in pairs(self.activeChildren or {}) do
                 if childData.frame then
                     local csi = childData.frame.systemIndex
                     local hover = self:GetSetting(csi, "ShowOnMouseover") ~= false
-                    Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover)
+                    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover) end
                 end
             end
             -- Also apply to charge bar children
@@ -434,13 +436,15 @@ function Plugin:OnLoad()
                 if childData.frame then
                     local csi = childData.frame.systemIndex
                     local hover = self:GetSetting(csi, "ShowOnMouseover") ~= false
-                    Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover)
+                    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover) end
                 end
             end
-            Orbit.OOCFadeMixin:RefreshAll()
+            if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
         end
     end, self)
 
+    -- Initialize viewer injection (drag-and-drop items into Essential/Utility)
+    if Orbit.ViewerInjection then Orbit.ViewerInjection:Initialize() end
 end
 
 function Plugin:UpdateVisibility()

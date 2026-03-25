@@ -51,10 +51,84 @@ function Mixin:BuildAuraSnapshot(unit)
         local sid = aura.spellId
         if not issecretvalue(sid) then
             helpfulBySpell[sid] = aura
-            if aura.isFromPlayerOrPlayerPet then helpfulPlayerBySpell[sid] = aura end
+            local fromPlayer = aura.isFromPlayerOrPlayerPet
+            if not issecretvalue(fromPlayer) and fromPlayer then helpfulPlayerBySpell[sid] = aura end
         end
     end
     return { harmful = harmful, helpful = helpful, helpfulBySpell = helpfulBySpell, helpfulPlayerBySpell = helpfulPlayerBySpell }
+end
+
+-- [ INCREMENTAL AURA CACHE ]------------------------------------------------------------------------
+-- Per-frame caches keyed by auraInstanceID. Patched incrementally on partial UNIT_AURA events.
+-- addedAuras fields (isHarmful, isHelpful) are WoW 12.0 secret booleans — use IsAuraFilteredOutByInstanceID instead.
+local GetAuraDataByAuraInstanceID = C_UnitAuras.GetAuraDataByAuraInstanceID
+local IsFilteredOut = C_UnitAuras.IsAuraFilteredOutByInstanceID
+
+function Mixin:PopulateCaches(frame, snapshot)
+    local hc, bc = {}, {}
+    for _, a in ipairs(snapshot.harmful) do hc[a.auraInstanceID] = a end
+    for _, a in ipairs(snapshot.helpful) do bc[a.auraInstanceID] = a end
+    frame._harmfulAuraCache = hc
+    frame._helpfulAuraCache = bc
+end
+
+function Mixin:PatchCaches(frame, unit, updateInfo)
+    local hc = frame._harmfulAuraCache
+    local bc = frame._helpfulAuraCache
+    if not hc or not bc then return false end
+    local changed = false
+    if updateInfo.addedAuras then
+        for _, aura in ipairs(updateInfo.addedAuras) do
+            local id = aura.auraInstanceID
+            if id then
+                local fresh = GetAuraDataByAuraInstanceID(unit, id) or aura
+                if not IsFilteredOut(unit, id, "HARMFUL") then hc[id] = fresh; changed = true end
+                if not IsFilteredOut(unit, id, "HELPFUL") then bc[id] = fresh; changed = true end
+            end
+        end
+    end
+    if updateInfo.updatedAuraInstanceIDs then
+        for _, id in ipairs(updateInfo.updatedAuraInstanceIDs) do
+            local fresh = GetAuraDataByAuraInstanceID(unit, id)
+            if hc[id] then hc[id] = fresh or nil; changed = true
+            elseif bc[id] then bc[id] = fresh or nil; changed = true
+            elseif fresh then
+                if not IsFilteredOut(unit, id, "HARMFUL") then hc[id] = fresh; changed = true end
+                if not IsFilteredOut(unit, id, "HELPFUL") then bc[id] = fresh; changed = true end
+            end
+        end
+    end
+    if updateInfo.removedAuraInstanceIDs then
+        for _, id in ipairs(updateInfo.removedAuraInstanceIDs) do
+            if hc[id] then hc[id] = nil; changed = true end
+            if bc[id] then bc[id] = nil; changed = true end
+        end
+    end
+    return changed
+end
+
+function Mixin:BuildSnapshotFromCaches(frame)
+    local hc = frame._harmfulAuraCache
+    local bc = frame._helpfulAuraCache
+    if not hc or not bc then return nil end
+    local harmful, helpful = {}, {}
+    local helpfulBySpell, helpfulPlayerBySpell = {}, {}
+    for _, a in next, hc do harmful[#harmful + 1] = a end
+    for _, a in next, bc do
+        helpful[#helpful + 1] = a
+        local sid = a.spellId
+        if not issecretvalue(sid) then
+            helpfulBySpell[sid] = a
+            local fromPlayer = a.isFromPlayerOrPlayerPet
+            if not issecretvalue(fromPlayer) and fromPlayer then helpfulPlayerBySpell[sid] = a end
+        end
+    end
+    return { harmful = harmful, helpful = helpful, helpfulBySpell = helpfulBySpell, helpfulPlayerBySpell = helpfulPlayerBySpell }
+end
+
+function Mixin:WipeCaches(frame)
+    frame._harmfulAuraCache = nil
+    frame._helpfulAuraCache = nil
 end
 
 function Mixin:FetchAuras(unit, filter, maxCount)
@@ -366,6 +440,7 @@ local IsSecret = issecretvalue
 
 -- OnUpdate handler for continuous curve sampling on healer aura icons
 local function HealerCurveOnUpdate(icon)
+    if not icon:IsShown() then return end
     local d = icon._orbitCurveData
     if not d then return end
     local remainingPercent = 1

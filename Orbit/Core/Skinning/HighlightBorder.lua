@@ -14,13 +14,38 @@ local Constants = Orbit.Constants
 function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendMode)
     if not frame or not storageKey or not color then return end
     local overlay = frame[storageKey]
+
+    -- Fast path: overlay exists, backdrop unchanged, just update color
+    if overlay and overlay._hlCacheValid and overlay._hlBlendMode == (blendMode or "BLEND") then
+        local gbo = frame._groupBorderActive and (frame._groupBorderRoot or frame)._groupBorderOverlay
+        local anchorTarget = (gbo and gbo:IsShown()) and gbo or nil
+        if overlay._hlAnchorTarget == anchorTarget then
+            overlay:SetBackdropBorderColor(color.r, color.g, color.b, color.a or 1)
+            if anchorTarget then
+                local off = (levelOffset or (Constants.Levels.Border + 1)) - Constants.Levels.Border
+                overlay:SetFrameLevel(anchorTarget:GetFrameLevel() + off)
+            else
+                overlay:SetFrameLevel(frame:GetFrameLevel() + (levelOffset or (Constants.Levels.Border + 1)))
+            end
+            overlay:Show()
+            return
+        end
+    end
+
     if not overlay then
         overlay = CreateFrame("Frame", nil, frame, "BackdropTemplate")
         overlay:EnableMouse(false)
         frame[storageKey] = overlay
     end
+
     local gs = Orbit.db and Orbit.db.GlobalSettings
     local nineSliceStyle = self:GetActiveBorderStyle()
+
+    local gbo = frame._groupBorderActive and (frame._groupBorderRoot or frame)._groupBorderOverlay
+    if frame._groupBorderActive and (not gbo or not gbo:IsShown()) then
+        nineSliceStyle = nil
+    end
+
     local ownScale = frame:GetScale() or 1
     if ownScale < 0.01 then ownScale = 1 end
     local backdrop
@@ -33,12 +58,13 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
         local borderSize = math.max(1, (gs and gs.BorderSize) or 1)
         backdrop = { edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = Engine.Pixel:Multiple(borderSize, scale) }
     end
-    local gbo = frame._groupBorderActive and (frame._groupBorderRoot or frame)._groupBorderOverlay
-    if gbo and gbo:IsShown() then
+
+    local anchorTarget = (gbo and gbo:IsShown()) and gbo or nil
+    if anchorTarget then
         local off = (levelOffset or (Constants.Levels.Border + 1)) - Constants.Levels.Border
-        overlay:SetFrameLevel(gbo:GetFrameLevel() + off)
+        overlay:SetFrameLevel(anchorTarget:GetFrameLevel() + off)
         overlay:ClearAllPoints()
-        overlay:SetAllPoints(gbo)
+        overlay:SetAllPoints(anchorTarget)
     else
         overlay:SetFrameLevel(frame:GetFrameLevel() + (levelOffset or (Constants.Levels.Border + 1)))
         overlay:ClearAllPoints()
@@ -60,10 +86,24 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
         if region:IsObjectType("Texture") then region:SetBlendMode(mode) end
     end
     overlay:Show()
+
+    -- Cache state for fast path
+    overlay._hlCacheValid = true
+    overlay._hlBlendMode = mode
+    overlay._hlAnchorTarget = anchorTarget
 end
 
 function Skin:ClearHighlightBorder(frame, storageKey)
     if not frame or not storageKey then return end
     local overlay = frame[storageKey]
     if overlay then overlay:Hide() end
+end
+
+-- Invalidate highlight caches when border settings change
+function Skin:InvalidateHighlightCaches(frame)
+    if not frame then return end
+    for _, key in ipairs({ "_selectionBorderOverlay", "_aggroHighlightOverlay", "_aggroBorderOverlay" }) do
+        local overlay = frame[key]
+        if overlay then overlay._hlCacheValid = nil end
+    end
 end

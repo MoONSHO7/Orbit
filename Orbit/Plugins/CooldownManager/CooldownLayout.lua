@@ -10,6 +10,8 @@ if not CDM then return end
 local VIEWER_MAP = CDM.viewerMap
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local BUFFBAR_INDEX = Constants.Cooldown.SystemIndex.BuffBar
+local ESSENTIAL_INDEX = Constants.Cooldown.SystemIndex.Essential
+local UTILITY_INDEX = Constants.Cooldown.SystemIndex.Utility
 local INACTIVE_ALPHA_DEFAULT = 60
 local FLASH_DURATION = 0.15
 local BUFFBAR_MIN_WIDTH = 40
@@ -126,7 +128,7 @@ function CDM:ProcessChildren(anchor)
     local alwaysShow = (systemIndex == BUFFICON_INDEX) and self:GetSetting(systemIndex, "AlwaysShow")
 
     for _, child in ipairs(PackChildren(blizzFrame:GetChildren())) do
-        if child.layoutIndex then
+        if child.layoutIndex and not child.isInjectedIcon then
             -- Per-icon OnShow/RefreshData hooks only for BuffIcon/BuffBar.
             -- Essential/Utility use viewer-level UpdateLayout/RefreshLayout hooks.
             if systemIndex == BUFFICON_INDEX or systemIndex == BUFFBAR_INDEX then
@@ -174,6 +176,31 @@ function CDM:ProcessChildren(anchor)
     end
 
     table.sort(activeChildren, function(a, b) return (a.layoutIndex or 0) < (b.layoutIndex or 0) end)
+
+    -- Interleave user-injected items at their stored afterNativeIndex positions
+    if (systemIndex == ESSENTIAL_INDEX or systemIndex == UTILITY_INDEX) and Orbit.ViewerInjection then
+        local injected = Orbit.ViewerInjection:GetActiveFrames(systemIndex)
+        if injected then
+            local nativeCount = #activeChildren
+            -- Group injected frames by afterNativeIndex
+            local groups = {}
+            for _, frame in ipairs(injected) do
+                local pos = math.min(frame.afterNativeIndex or 0, nativeCount)
+                if not groups[pos] then groups[pos] = {} end
+                groups[pos][#groups[pos] + 1] = frame
+            end
+            -- Walk native positions in reverse to avoid shifting issues
+            local positions = {}
+            for pos, _ in pairs(groups) do positions[#positions + 1] = pos end
+            table.sort(positions, function(a, b) return a > b end)
+            for _, pos in ipairs(positions) do
+                local insertAt = pos + 1
+                for j = #groups[pos], 1, -1 do
+                    table.insert(activeChildren, insertAt, groups[pos][j])
+                end
+            end
+        end
+    end
 
     if #activeChildren > 0 then
         local hGrowth = (systemIndex == BUFFICON_INDEX or systemIndex == BUFFBAR_INDEX) and self:GetHorizontalGrowth(anchor) or nil
@@ -626,7 +653,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
     if not barColor then barColor = BUFFBAR_DEFAULT_COLORS[colorIdx] end
     SetBarColor(bar, barColor.r, barColor.g, barColor.b, barColor.a or 1)
 
-    -- Clean up stale inner-bar borders/backgrounds (migrated to parent)
+    -- TODO(REMOVE): Clean up stale inner-bar borders/backgrounds (migrated to parent)
     if bar.orbitBG then bar.orbitBG:Hide() end
     if bar.orbitBorder then bar.orbitBorder:Hide() end
     if bar._borderFrame then bar._borderFrame:Hide() end

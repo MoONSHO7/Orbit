@@ -21,7 +21,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     if dialog.Title then dialog.Title:SetText("Player Resources") end
     local schema = { hideNativeSettings = true, controls = {} }
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Visibility", "Colour" }, "Layout")
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Behaviour", "Colour" }, "Layout")
 
     if currentTab == "Layout" then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
@@ -47,27 +47,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 self:ApplySettings()
             end,
         })
-    elseif currentTab == "Visibility" then
-        SB:AddOpacitySettings(self, schema, SYSTEM_INDEX, systemFrame)
-        table.insert(schema.controls, {
-            type = "checkbox", key = "OutOfCombatFade", label = "Out of Combat Fade",
-            default = false, tooltip = "Hide frame when out of combat with no target",
-            onChange = function(val)
-                self:SetSetting(SYSTEM_INDEX, "OutOfCombatFade", val)
-                Orbit.OOCFadeMixin:RefreshAll()
-                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
-            end,
-        })
-        if self:GetSetting(SYSTEM_INDEX, "OutOfCombatFade") then
-            table.insert(schema.controls, {
-                type = "checkbox", key = "ShowOnMouseover", label = "Show on Mouseover",
-                default = true, tooltip = "Reveal frame when mousing over it",
-                onChange = function(val)
-                    self:SetSetting(SYSTEM_INDEX, "ShowOnMouseover", val)
-                    self:ApplySettings()
-                end,
-            })
-        end
+    elseif currentTab == "Behaviour" then
         table.insert(schema.controls, {
             type = "checkbox", key = "SmoothAnimation", label = "Smooth Animation",
             default = true, tooltip = "Smoothly animate bar value changes",

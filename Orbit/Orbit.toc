@@ -45,8 +45,7 @@ Core\Skinning\Skins.xml
 # PLUGINS
 # ==============================================================
 Plugins\UnitFrames\UnitFrames.xml
-Plugins\PartyFrames\PartyFrames.xml
-Plugins\RaidFrames\RaidFrames.xml
+Plugins\GroupFrames\GroupFrames.xml
 Plugins\BossFrames\BossFrames.xml
 Plugins\ActionBars\ActionBars.xml
 Plugins\CooldownManager\CooldownManager.xml
