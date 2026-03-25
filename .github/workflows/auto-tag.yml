@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - combine-group-frames-into-a-single-edit-mode-frame
 
 jobs:
   tag:
@@ -20,15 +19,9 @@ jobs:
 
       - name: Calculate version and create tag
         run: |
-          # Count all commits on branch
+          # Count all commits on main branch
           VERSION=$(git rev-list --count HEAD)
           echo "Calculated version: $VERSION"
-          
-          # Append -alpha suffix for non-main branches
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            VERSION="${VERSION}-alpha"
-          fi
-          echo "Final version: $VERSION"
           
           # Check if tag already exists
           if git rev-parse "$VERSION" >/dev/null 2>&1; then

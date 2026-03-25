@@ -281,7 +281,7 @@ function Mixin:CreateAuraGridPlugin(config)
 
     self.frame = Frame
     self._agFrame = Frame
-    if config.exposeMountedConfig then self.mountedConfig = { frame = Frame, hoverReveal = config.mountedHoverReveal or false } end
+    if config.exposeMountedConfig then self.mountedConfig = { frame = Frame } end
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, 1) end
     Frame.unit = config.unit
     Frame:SetAttribute("unit", config.unit)

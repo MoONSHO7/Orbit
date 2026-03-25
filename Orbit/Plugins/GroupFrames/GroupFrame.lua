@@ -358,6 +358,21 @@ local function SchedulePrivateAuraReanchor(plugin)
     end)
 end
 
+-- [ DEBOUNCED ROSTER UPDATE ]----------------------------------------------------------------------
+local function ScheduleDebouncedRosterUpdate(plugin, updateVisibility)
+    if updateVisibility then plugin._rosterNeedsVisibility = true end
+    if plugin._rosterUpdatePending then return end
+    plugin._rosterUpdatePending = true
+    C_Timer.After(0, function()
+        plugin._rosterUpdatePending = false
+        local needsVis = plugin._rosterNeedsVisibility
+        plugin._rosterNeedsVisibility = false
+        if needsVis and plugin.UpdateVisibilityDriver then plugin.UpdateVisibilityDriver() end
+        plugin:CheckTierChange()
+        if not InCombatLockdown() then plugin:UpdateFrameUnits() else SchedulePrivateAuraReanchor(plugin) end
+    end)
+end
+
 -- [ SHARED EVENT CALLBACKS ]------------------------------------------------------------------------
 local SHARED_EVENT_CALLBACKS = {
     UpdatePowerBar = UpdatePowerBar, UpdateDebuffs = UpdateDebuffs, UpdateBuffs = UpdateBuffs,
@@ -558,7 +573,8 @@ function Plugin:OnLoad()
     end
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver() end
     UpdateVisibilityDriver()
-    self.mountedConfig = { frame = self.container, hoverReveal = true, combatRestore = true }
+    self.mountedConfig = { frame = self.container }
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(self.container, self, 1) end
 
     self.container:Show()
     self.container:SetSize(self:GetTierSetting("Width") or 100, 100)
@@ -581,9 +597,7 @@ function Plugin:OnLoad()
             return
         end
         if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
-            UpdateVisibilityDriver()
-            self:CheckTierChange()
-            if not InCombatLockdown() then self:UpdateFrameUnits() else SchedulePrivateAuraReanchor(self) end
+            ScheduleDebouncedRosterUpdate(self, true)
             return
         end
         if event == "PLAYER_REGEN_ENABLED" then
@@ -691,7 +705,6 @@ function Plugin:CheckTierChange()
         self.container.orbitCanvasTitle = "Group Frame: " .. newTier
         if not InCombatLockdown() then
             self:SaveCurrentTierPosition(oldTier)
-            self:UpdateFrameUnits()
             self:ApplySettings()
             self:RestoreTierPosition(newTier)
         end
@@ -725,20 +738,24 @@ function Plugin:UpdateFrameUnits()
     if self.frames and self.frames[1] and self.frames[1].preview then return end
 
     local isParty = self:IsPartyTier()
+    local changed
 
     if isParty then
-        self:AssignPartyUnits()
+        changed = self:AssignPartyUnits()
     else
-        self:AssignRaidUnits()
+        changed = self:AssignRaidUnits()
     end
 
-    self:PositionFrames()
-    self:UpdateContainerSize()
+    if changed then
+        self:PositionFrames()
+        self:UpdateContainerSize()
+    end
 end
 
 function Plugin:AssignPartyUnits()
     local includePlayer = self:GetTierSetting("IncludePlayer")
     local sortedUnits = Helpers:GetSortedPartyUnits(includePlayer)
+    local changed = false
 
     for i = 1, MAX_GROUP_FRAMES do
         local frame = self.frames[i]
@@ -752,25 +769,30 @@ function Plugin:AssignPartyUnits()
                     self:UnregisterFrameEvents(frame)
                     self:RegisterUnitEvents(frame, unit)
                     UpdatePrivateAuras(frame, self)
+                    changed = true
                 end
                 SafeUnregisterUnitWatch(frame)
                 SafeRegisterUnitWatch(frame)
-                frame:Show()
+                if not frame:IsShown() then frame:Show(); changed = true end
                 if frame.UpdateAll then frame:UpdateAll() end
             else
+                local wasVisible = frame:IsShown() or frame.unit ~= nil
                 SafeUnregisterUnitWatch(frame)
                 self:UnregisterFrameEvents(frame)
                 frame:SetAttribute("unit", nil)
                 frame.unit = nil
                 frame:Hide()
+                if wasVisible then changed = true end
             end
         end
     end
+    return changed
 end
 
 function Plugin:AssignRaidUnits()
     local sortMode = self:GetTierSetting("SortMode") or "Group"
     local sortedUnits = Helpers:GetSortedRaidUnits(sortMode)
+    local changed = false
 
     for i = 1, MAX_GROUP_FRAMES do
         local frame = self.frames[i]
@@ -785,20 +807,24 @@ function Plugin:AssignRaidUnits()
                     self:UnregisterFrameEvents(frame)
                     self:RegisterUnitEvents(frame, token)
                     UpdatePrivateAuras(frame, self)
+                    changed = true
                 end
                 SafeUnregisterUnitWatch(frame)
                 SafeRegisterUnitWatch(frame)
-                frame:Show()
+                if not frame:IsShown() then frame:Show(); changed = true end
                 if frame.UpdateAll then frame:UpdateAll() end
             else
+                local wasVisible = frame:IsShown() or frame.unit ~= nil
                 SafeUnregisterUnitWatch(frame)
                 self:UnregisterFrameEvents(frame)
                 frame:SetAttribute("unit", nil)
                 frame.unit = nil
                 frame:Hide()
+                if wasVisible then changed = true end
             end
         end
     end
+    return changed
 end
 
 -- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
@@ -827,7 +853,6 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     local spacing = self:GetTierSetting("Spacing") or 0
     local mSpacing = self:GetTierSetting("MemberSpacing") or 2
     local gSpacing = self:GetTierSetting("GroupSpacing") or 2
-    frame._groupBorderActive = (isParty and spacing == 0) or (not isParty and mSpacing == 0 and gSpacing == 0)
 
     frame:SetSize(width, height)
     UpdateFrameLayout(frame, borderSize, self, showPower)
@@ -893,7 +918,14 @@ function Plugin:ApplySettings()
     self._dispelSettingsCache = nil
     self._aggroSettingsCache = nil
 
+    local tierWidth = self:GetTierSetting("Width") or 100
+    local tierHeight = self:GetTierSetting("Height") or 40
+    local borderSize = self:GetSetting(1, "BorderSize")
     for _, frame in ipairs(self.frames) do
+        if not frame.preview then
+            frame:SetSize(tierWidth, tierHeight)
+            UpdateFrameLayout(frame, borderSize, self)
+        end
         if not frame.preview and frame.unit then
             Orbit:SafeAction(function() self:ApplyFrameStyle(frame) end)
 

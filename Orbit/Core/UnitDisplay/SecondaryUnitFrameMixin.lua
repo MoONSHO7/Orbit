@@ -163,6 +163,9 @@ function Mixin:ApplySettings()
     end
     
     if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
+
+    local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover) end
 end
 
 function Mixin:UpdateVisuals(frame)

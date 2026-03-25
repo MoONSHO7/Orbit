@@ -252,37 +252,5 @@ function Orbit.GroupFrameLayoutMixin:UpdateContainerSize()
         end
     end
 
-    local spacing = self:GetTierSetting("Spacing") or 0
-    local memberSpacing = self:GetTierSetting("MemberSpacing") or 2
-    local groupSpacing = self:GetTierSetting("GroupSpacing") or 2
-    local isMerged = (isParty and spacing == 0) or (not isParty and memberSpacing == 0 and groupSpacing == 0)
-
-    if isMerged then
-        local borderSize = self:GetSetting(1, "BorderSize") or Orbit.Engine.Pixel:DefaultBorderSize(self.container:GetEffectiveScale() or 1)
-        Orbit.Skin:SkinBorder(self.container, self.container, borderSize, nil, false, false)
-
-        local maxLevel = self.container:GetFrameLevel()
-        for _, frame in ipairs(self.frames) do
-            if frame:IsShown() or frame.preview then
-                local fl = frame:GetFrameLevel()
-                if fl > maxLevel then maxLevel = fl end
-            end
-        end
-        local borderLevel = maxLevel + Orbit.Constants.Levels.Border
-
-        if self.container._edgeBorderOverlay then
-            self.container._edgeBorderOverlay:SetFrameLevel(borderLevel)
-            if self.container._activeBorderMode == "nineslice" then
-                self.container._edgeBorderOverlay:Show()
-            end
-        end
-        if self.container._borderFrame then
-            self.container._borderFrame:SetFrameLevel(borderLevel)
-            if self.container._activeBorderMode == "flat" then
-                self.container._borderFrame:Show()
-            end
-        end
-    else
-        Orbit.Skin.DefaultSetBorderHidden(self.container, true)
-    end
+    Orbit.Skin.DefaultSetBorderHidden(self.container, true)
 end

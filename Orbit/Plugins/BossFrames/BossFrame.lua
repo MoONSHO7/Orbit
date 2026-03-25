@@ -265,6 +265,7 @@ function Plugin:OnLoad()
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver() end
     UpdateVisibilityDriver()
     self.container:Show()
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(self.container, self, 1) end
     self.container:SetSize(self:GetSetting(1, "Width") or 150, 100)
     self:PositionFrames()
     self:ApplySettings()

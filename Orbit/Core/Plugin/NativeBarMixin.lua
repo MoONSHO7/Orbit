@@ -25,11 +25,15 @@ end
 -- [ MOUSE-OVER FADE ]-------------------------------------------------------------------------------
 
 function Mixin:ApplyMouseOver(frame, systemIndex)
-    if not frame then
-        return
+    if not frame then return end
+    local baseAlpha = 1
+    local VE = Orbit.VisibilityEngine
+    if VE then
+        local veKey = VE:GetKeyForPlugin(self.name, systemIndex)
+        if veKey then baseAlpha = (VE:GetFrameSetting(veKey, "opacity") or 100) / 100 end
+    else
+        baseAlpha = (self:GetSetting(systemIndex, "Opacity") or 100) / 100
     end
-    if Orbit.MountedVisibility:ShouldHide() then return end
-    local baseAlpha = (self:GetSetting(systemIndex, "Opacity") or 100) / 100
     Orbit.Animation:ApplyHoverFade(frame, baseAlpha, 1, Orbit:IsEditMode())
 end
 

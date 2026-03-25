@@ -60,10 +60,18 @@ end
 
 -- Alpha-only visibility: cast bar is protected when secure frames anchor to it.
 -- Fire BORDER_LAYOUT_CHANGED so merged borders update on show/hide.
+local VE_KEY = "PlayerCastBar"
+local function GetVEAlpha()
+    local VE = Orbit.VisibilityEngine
+    if not VE then return 1 end
+    local opacity = VE:GetFrameSetting(VE_KEY, "opacity")
+    return (opacity or 100) / 100
+end
 local function ShowBar(bar)
-    bar:SetAlpha(1)
-    if bar.orbitBar then bar.orbitBar:SetAlpha(1) end
-    if bar.Icon then bar.Icon:SetAlpha(1) end
+    local alpha = GetVEAlpha()
+    bar:SetAlpha(alpha)
+    if bar.orbitBar then bar.orbitBar:SetAlpha(alpha) end
+    if bar.Icon then bar.Icon:SetAlpha(alpha) end
     Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
 end
 local function HideBar(bar)

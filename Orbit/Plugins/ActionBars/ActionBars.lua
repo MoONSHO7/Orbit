@@ -585,10 +585,8 @@ function Plugin:ApplySettings(frame)
     else RegisterStateDriver(actualFrame, "visibility", BASE_VISIBILITY_DRIVER) end
     if not self.buttons[index] or #self.buttons[index] == 0 then self:ReparentButtons(index) end
     self:ApplyScale(actualFrame, index, "Scale")
-    if index ~= PET_BAR_INDEX then
-        local enableHover = self:GetSetting(index, "ShowOnMouseover") ~= false
-        if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(actualFrame, self, index, "OutOfCombatFade", enableHover) end
-    end
+    local enableHover = self:GetSetting(index, "ShowOnMouseover") ~= false
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(actualFrame, self, index, "OutOfCombatFade", enableHover) end
     self:ApplyMouseOver(actualFrame, index)
     self:LayoutButtons(index)
     OrbitEngine.Frame:RestorePosition(actualFrame, self, index)

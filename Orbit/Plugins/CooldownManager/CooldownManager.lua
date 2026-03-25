@@ -72,6 +72,7 @@ local SPEC_SCOPED_KEYS = { TrackedItems = true, ChargeSpell = true, ChargeChildr
 local function IsSpecScopedIndex(sysIdx)
     return (sysIdx >= TRACKED_INDEX and sysIdx <= TRACKED_CHILD_END) or (sysIdx >= CHARGE_BAR_INDEX and sysIdx <= CHARGE_CHILD_END)
 end
+function Plugin:IsSpecScopedIndex(sysIdx) return IsSpecScopedIndex(sysIdx) end
 
 function Plugin:GetCurrentSpecID()
     local specIndex = GetSpecialization()
@@ -101,7 +102,7 @@ local OriginalGetSetting = Orbit.PluginMixin.GetSetting
 local OriginalSetSetting = Orbit.PluginMixin.SetSetting
 
 function Plugin:GetSetting(systemIndex, key)
-    if IsSpecScopedIndex(systemIndex) then
+    if IsSpecScopedIndex(systemIndex) and SPEC_SCOPED_KEYS[key] then
         local val = self:GetSpecData(systemIndex, key)
         return val
     end
@@ -109,7 +110,7 @@ function Plugin:GetSetting(systemIndex, key)
 end
 
 function Plugin:SetSetting(systemIndex, key, value)
-    if IsSpecScopedIndex(systemIndex) then
+    if IsSpecScopedIndex(systemIndex) and SPEC_SCOPED_KEYS[key] then
         self:SetSpecData(systemIndex, key, value)
         return
     end
@@ -227,6 +228,7 @@ function Plugin:FlushTrackedSpatial(specID)
             Orbit.db.SpecData[specID][systemIndex]["Position"] = pos
             Orbit.db.SpecData[specID][systemIndex]["Anchor"] = false
         end
+        OrbitEngine.PositionManager:ClearFrame(frame)
     end
     local viewerMap = self.viewerMap
     if viewerMap then
@@ -419,10 +421,7 @@ function Plugin:OnLoad()
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
         for systemIndex, data in pairs(VIEWER_MAP) do
             local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
-            if data.viewer then
-                if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(data.viewer, self, systemIndex, "OutOfCombatFade", enableHover) end
-            end
-            if (data.isTracked or data.isChargeBar) and data.anchor then
+            if data.anchor then
                 if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", enableHover) end
             end
             for _, childData in pairs(self.activeChildren or {}) do

@@ -111,7 +111,7 @@ function Plugin:OnLoad()
     -- Note: TargetFrameToT is now managed by TargetOfTargetFrame.lua plugin
 
     self.container = self:CreateVisibilityContainer(UIParent, true)
-    self.mountedConfig = { frame = nil, hoverReveal = true, combatRestore = true, targetReveal = true }
+    self.mountedConfig = { frame = nil }
     self:UpdateVisibilityDriver()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "target", "OrbitTargetFrame")
     self.mountedConfig.frame = self.frame
@@ -273,6 +273,9 @@ function Plugin:ApplySettings(frame)
     frame:UpdateAll()
     frame:UpdatePortrait()
     self:UpdateMarkerIcon(frame, self)
+
+    local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover) end
 end
 
 function Plugin:UpdateVisuals(frame)

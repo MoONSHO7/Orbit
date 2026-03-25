@@ -51,7 +51,8 @@ function Mixin:BuildAuraSnapshot(unit)
         local sid = aura.spellId
         if not issecretvalue(sid) then
             helpfulBySpell[sid] = aura
-            if aura.isFromPlayerOrPlayerPet then helpfulPlayerBySpell[sid] = aura end
+            local fromPlayer = aura.isFromPlayerOrPlayerPet
+            if not issecretvalue(fromPlayer) and fromPlayer then helpfulPlayerBySpell[sid] = aura end
         end
     end
     return { harmful = harmful, helpful = helpful, helpfulBySpell = helpfulBySpell, helpfulPlayerBySpell = helpfulPlayerBySpell }
@@ -59,7 +60,9 @@ end
 
 -- [ INCREMENTAL AURA CACHE ]------------------------------------------------------------------------
 -- Per-frame caches keyed by auraInstanceID. Patched incrementally on partial UNIT_AURA events.
+-- addedAuras fields (isHarmful, isHelpful) are WoW 12.0 secret booleans — use IsAuraFilteredOutByInstanceID instead.
 local GetAuraDataByAuraInstanceID = C_UnitAuras.GetAuraDataByAuraInstanceID
+local IsFilteredOut = C_UnitAuras.IsAuraFilteredOutByInstanceID
 
 function Mixin:PopulateCaches(frame, snapshot)
     local hc, bc = {}, {}
@@ -76,8 +79,12 @@ function Mixin:PatchCaches(frame, unit, updateInfo)
     local changed = false
     if updateInfo.addedAuras then
         for _, aura in ipairs(updateInfo.addedAuras) do
-            if aura.isHarmful then hc[aura.auraInstanceID] = aura; changed = true end
-            if aura.isHelpful then bc[aura.auraInstanceID] = aura; changed = true end
+            local id = aura.auraInstanceID
+            if id then
+                local fresh = GetAuraDataByAuraInstanceID(unit, id) or aura
+                if not IsFilteredOut(unit, id, "HARMFUL") then hc[id] = fresh; changed = true end
+                if not IsFilteredOut(unit, id, "HELPFUL") then bc[id] = fresh; changed = true end
+            end
         end
     end
     if updateInfo.updatedAuraInstanceIDs then
@@ -86,8 +93,8 @@ function Mixin:PatchCaches(frame, unit, updateInfo)
             if hc[id] then hc[id] = fresh or nil; changed = true
             elseif bc[id] then bc[id] = fresh or nil; changed = true
             elseif fresh then
-                if fresh.isHarmful then hc[id] = fresh; changed = true end
-                if fresh.isHelpful then bc[id] = fresh; changed = true end
+                if not IsFilteredOut(unit, id, "HARMFUL") then hc[id] = fresh; changed = true end
+                if not IsFilteredOut(unit, id, "HELPFUL") then bc[id] = fresh; changed = true end
             end
         end
     end
@@ -112,7 +119,8 @@ function Mixin:BuildSnapshotFromCaches(frame)
         local sid = a.spellId
         if not issecretvalue(sid) then
             helpfulBySpell[sid] = a
-            if a.isFromPlayerOrPlayerPet then helpfulPlayerBySpell[sid] = a end
+            local fromPlayer = a.isFromPlayerOrPlayerPet
+            if not issecretvalue(fromPlayer) and fromPlayer then helpfulPlayerBySpell[sid] = a end
         end
     end
     return { harmful = harmful, helpful = helpful, helpfulBySpell = helpfulBySpell, helpfulPlayerBySpell = helpfulPlayerBySpell }

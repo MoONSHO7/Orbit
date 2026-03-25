@@ -305,16 +305,8 @@ function Plugin:ClearStaleTrackedSpatial(frame, sysIndex)
     if not frame or (frame.gridItems and next(frame.gridItems)) then
         return
     end
-    self:SetSetting(sysIndex, "Anchor", nil)
-    self:SetSetting(sysIndex, "Position", nil)
-    OrbitEngine.FrameAnchor:DestroyAnchor(frame)
-    frame:ClearAllPoints()
-    local dp = frame.defaultPosition
-    if dp then
-        frame:SetPoint(dp.point or "CENTER", dp.relativeTo or UIParent, dp.relativePoint or "CENTER", dp.x or 0, dp.y or 0)
-    else
-        frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-    end
+    -- Intentionally left blank:
+    -- Position clearing was removed so empty frames don't lose their user-positioned spots across reloads.
 end
 
 -- [ DRAG AND DROP ]----------------------------------------------------------------------------------

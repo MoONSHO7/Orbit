@@ -333,6 +333,7 @@ end
 
 function Orbit.Profile:CheckSpecProfile()
     if not Orbit.db or not Orbit.db.profiles then return end
+    if not Orbit.db.useSpecProfiles then return end
     if not Orbit.db.specMappings then return end
     local specIndex = GetSpecialization and GetSpecialization()
     if not specIndex then self:SetActiveProfile(Orbit.db.activeProfile or DEFAULT_PROFILE); return end

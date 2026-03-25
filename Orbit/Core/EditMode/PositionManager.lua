@@ -54,12 +54,25 @@ function PositionManager:FlushToStorage()
     for name, frame in pairs(PendingFrames) do
         if frame and frame.orbitPlugin and frame.orbitPlugin.SetSetting then
             local systemIndex = frame.systemIndex or 1
-            if ActiveAnchors[name] then
-                frame.orbitPlugin:SetSetting(systemIndex, "Anchor", ActiveAnchors[name])
-                frame.orbitPlugin:SetSetting(systemIndex, "Position", nil)
-            elseif ActivePositions[name] then
-                frame.orbitPlugin:SetSetting(systemIndex, "Position", ActivePositions[name])
-                frame.orbitPlugin:SetSetting(systemIndex, "Anchor", false)
+            local plugin = frame.orbitPlugin
+            -- Spec-scoped frames: call SetSpecData directly (SetSetting override chain breaks from here)
+            local isSpecScoped = plugin.SetSpecData and plugin.IsSpecScopedIndex and plugin:IsSpecScopedIndex(systemIndex)
+            if isSpecScoped then
+                if ActiveAnchors[name] then
+                    plugin:SetSpecData(systemIndex, "Anchor", ActiveAnchors[name])
+                    plugin:SetSpecData(systemIndex, "Position", nil)
+                elseif ActivePositions[name] then
+                    plugin:SetSpecData(systemIndex, "Position", ActivePositions[name])
+                    plugin:SetSpecData(systemIndex, "Anchor", false)
+                end
+            else
+                if ActiveAnchors[name] then
+                    plugin:SetSetting(systemIndex, "Anchor", ActiveAnchors[name])
+                    plugin:SetSetting(systemIndex, "Position", nil)
+                elseif ActivePositions[name] then
+                    plugin:SetSetting(systemIndex, "Position", ActivePositions[name])
+                    plugin:SetSetting(systemIndex, "Anchor", false)
+                end
             end
         end
     end

@@ -32,7 +32,8 @@ local VE_ROW_HEIGHT = 30
 local VE_LABEL_WIDTH = 160
 local VE_CHECK_WIDTH = 26
 local VE_COL_WIDTH = 90
-local VE_SLIDER_WIDTH = 80
+local VE_SLIDER_WIDTH = 60
+local VE_VALUE_WIDTH = 28
 local VE_HEADER_Y = -(HEADER_HEIGHT + 50)
 
 local PLUGIN_GROUPS = {
@@ -142,7 +143,7 @@ local function GetTriState(primaryPlugin, pluginNames)
 end
 
 -- [ VISIBILITY ENGINE CONTENT ]---------------------------------------------------------------------
-local VE_COLUMNS = { "Opacity", "OOC Fade", "Mounted", "MouseOver", "Target" }
+local VE_COLUMNS = { "Opacity", "Out Of Combat Fade", "Hide When Mounted", "Show on Mouse Over", "Show on Target" }
 local VE_SETTINGS = { "opacity",  "oocFade",  "hideMounted", "mouseOver", "showWithTarget" }
 
 local function CreateVEContent(parent)
@@ -159,8 +160,12 @@ local function CreateVEContent(parent)
     local stickyTop = VE_HEADER_Y - 30
     local headerRow = CreateFrame("Frame", nil, content)
     headerRow:SetHeight(VE_ROW_HEIGHT)
+    headerRow:SetFrameLevel(content:GetFrameLevel() + 10)
     headerRow:SetPoint("TOPLEFT", PADDING, stickyTop)
     headerRow:SetPoint("TOPRIGHT", -PADDING - 14, stickyTop)
+    local headerBG = headerRow:CreateTexture(nil, "BACKGROUND")
+    headerBG:SetAllPoints()
+    headerBG:SetColorTexture(0.08, 0.08, 0.08, 1)
     local colX = VE_LABEL_WIDTH
     for _, text in ipairs(VE_COLUMNS) do
         local label = headerRow:CreateFontString(nil, "OVERLAY", FONT_SMALL)
@@ -170,14 +175,14 @@ local function CreateVEContent(parent)
         label:SetJustifyH("CENTER")
         colX = colX + VE_COL_WIDTH
     end
-    -- Sticky Check All row (frozen below column headers)
     local checkAllRow = CreateFrame("Frame", nil, content)
     checkAllRow:SetHeight(VE_ROW_HEIGHT)
+    checkAllRow:SetFrameLevel(content:GetFrameLevel() + 10)
     checkAllRow:SetPoint("TOPLEFT", headerRow, "BOTTOMLEFT", 0, 0)
     checkAllRow:SetPoint("TOPRIGHT", headerRow, "BOTTOMRIGHT", 0, 0)
     local checkAllBG = checkAllRow:CreateTexture(nil, "BACKGROUND")
     checkAllBG:SetAllPoints()
-    checkAllBG:SetColorTexture(1, 0.82, 0, 0.06)
+    checkAllBG:SetColorTexture(0.12, 0.10, 0.06, 1)
     local checkAllLabel = checkAllRow:CreateFontString(nil, "OVERLAY", FONT_GROUP)
     checkAllLabel:SetPoint("LEFT", 4, 0)
     checkAllLabel:SetText("|cFFFFD100Check All|r")
@@ -205,33 +210,40 @@ local function CreateVEContent(parent)
         local caRow = self.checkAllRow
         for _, child in ipairs({ caRow:GetChildren() }) do child:Hide() end
         local caColPos = VE_LABEL_WIDTH
-        -- Global opacity slider (modern)
-        local gaWrapper = CreateFrame("Frame", nil, caRow, "EditModeSettingSliderTemplate")
+        -- Global opacity slider
+        local gaWrapper = CreateFrame("Frame", nil, caRow, "MinimalSliderWithSteppersTemplate")
         gaWrapper:SetPoint("LEFT", caColPos - 10, 0)
-        gaWrapper:SetSize(VE_COL_WIDTH + 10, VE_ROW_HEIGHT)
-        gaWrapper.OnSliderValueChanged = function() end
-        gaWrapper.OnSliderInteractStart = function() end
-        gaWrapper.OnSliderInteractEnd = function() end
-        if gaWrapper.Label then gaWrapper.Label:Hide() end
-        if gaWrapper.Slider then
-            gaWrapper.Slider:ClearAllPoints()
-            gaWrapper.Slider:SetPoint("LEFT", 4, 0)
-            gaWrapper.Slider:SetPoint("RIGHT", -4, 0)
-            gaWrapper._initGuard = true
-            gaWrapper.Slider:Init(100, 0, 100, 20, {})
-            gaWrapper._initGuard = false
-            gaWrapper.Slider:RegisterCallback("OnValueChanged", function(_, val)
-                if gaWrapper._initGuard then return end
-                val = math.floor(val)
-                for _, entry in ipairs(frames) do
-                    local plugin = VE:GetPlugin(entry)
-                    if plugin and Orbit:IsPluginEnabled(entry.plugin) then VE:SetFrameSetting(entry.key, "opacity", val) end
-                end
-                for _, entry in ipairs(blizzFrames) do VE:SetFrameSetting(entry.key, "opacity", val) end
-                VE:ApplyAll()
-                content:BuildTable()
-            end, gaWrapper)
-        end
+        gaWrapper:SetSize(VE_SLIDER_WIDTH + 10, VE_ROW_HEIGHT)
+        if gaWrapper.Back then gaWrapper.Back:Hide() end
+        if gaWrapper.Forward then gaWrapper.Forward:Hide() end
+        gaWrapper.Slider:ClearAllPoints()
+        gaWrapper.Slider:SetPoint("LEFT", 4, 0)
+        gaWrapper.Slider:SetPoint("RIGHT", -4, 0)
+        local gaValueText = caRow:CreateFontString(nil, "OVERLAY", FONT_SMALL)
+        gaValueText:SetPoint("LEFT", gaWrapper, "RIGHT", 2, 0)
+        gaValueText:SetWidth(VE_VALUE_WIDTH)
+        gaValueText:SetJustifyH("RIGHT")
+        gaValueText:SetText("|cFFCCCCCC100%|r")
+        gaWrapper._initGuard = true
+        gaWrapper:Init(100, 0, 100, 20, {})
+        gaWrapper._initGuard = false
+        gaWrapper:RegisterCallback("OnValueChanged", function(_, val)
+            if gaWrapper._initGuard then return end
+            val = math.floor(val)
+            gaValueText:SetText("|cFFCCCCCC" .. val .. "%%|r")
+            for _, entry in ipairs(frames) do
+                local plugin = VE:GetPlugin(entry)
+                if plugin and Orbit:IsPluginEnabled(entry.plugin) then VE:SetFrameSetting(entry.key, "opacity", val) end
+            end
+            for _, entry in ipairs(blizzFrames) do VE:SetFrameSetting(entry.key, "opacity", val) end
+            VE:ApplyAll()
+            for _, rs in ipairs(self.rowSliders or {}) do
+                rs._initGuard = true
+                rs:SetValue(val)
+                if rs._valueText then rs._valueText:SetText("|cFFCCCCCC" .. val .. "%%|r") end
+                rs._initGuard = false
+            end
+        end, gaWrapper)
         caColPos = caColPos + VE_COL_WIDTH
         -- Check-All toggles
         local checkAllKeys = { "oocFade", "hideMounted", "mouseOver", "showWithTarget" }
@@ -242,7 +254,7 @@ local function CreateVEContent(parent)
             local allOn = true
             for _, entry in ipairs(frames) do
                 local plugin = VE:GetPlugin(entry)
-                if plugin and Orbit:IsPluginEnabled(entry.plugin) then
+                if plugin and Orbit:IsPluginEnabled(entry.plugin) and not entry.opacityOnly then
                     if not VE:GetFrameSetting(entry.key, settingKey) then allOn = false; break end
                 end
             end
@@ -251,7 +263,7 @@ local function CreateVEContent(parent)
                 local newVal = self:GetChecked()
                 for _, entry in ipairs(frames) do
                     local plugin = VE:GetPlugin(entry)
-                    if plugin and Orbit:IsPluginEnabled(entry.plugin) then VE:SetFrameSetting(entry.key, settingKey, newVal) end
+                    if plugin and Orbit:IsPluginEnabled(entry.plugin) and not entry.opacityOnly then VE:SetFrameSetting(entry.key, settingKey, newVal) end
                 end
                 for _, entry in ipairs(blizzFrames) do VE:SetFrameSetting(entry.key, settingKey, newVal) end
                 VE:ApplyAll()
@@ -260,6 +272,7 @@ local function CreateVEContent(parent)
             caColPos = caColPos + VE_COL_WIDTH
         end
         -- Data rows
+        self.rowSliders = {}
         local rowIndex = 0
         local yOffset = 0
         local function CreateVERow(entry, isBlizzard)
@@ -279,30 +292,35 @@ local function CreateVEContent(parent)
             nameLabel:SetWidth(VE_LABEL_WIDTH - 8)
             nameLabel:SetJustifyH("LEFT")
             local colPos = VE_LABEL_WIDTH
-            -- 1. Opacity slider (modern)
-            local sliderWrapper = CreateFrame("Frame", nil, row, "EditModeSettingSliderTemplate")
+            -- 1. Opacity slider
+            local sliderWrapper = CreateFrame("Frame", nil, row, "MinimalSliderWithSteppersTemplate")
             sliderWrapper:SetPoint("LEFT", colPos - 10, 0)
-            sliderWrapper:SetSize(VE_COL_WIDTH + 10, VE_ROW_HEIGHT)
-            sliderWrapper.OnSliderValueChanged = function() end
-            sliderWrapper.OnSliderInteractStart = function() end
-            sliderWrapper.OnSliderInteractEnd = function() end
-            if sliderWrapper.Label then sliderWrapper.Label:Hide() end
-            if sliderWrapper.Slider then
-                sliderWrapper.Slider:ClearAllPoints()
-                sliderWrapper.Slider:SetPoint("LEFT", 4, 0)
-                sliderWrapper.Slider:SetPoint("RIGHT", -4, 0)
-                sliderWrapper._initGuard = true
-                local curOpacity = VE:GetFrameSetting(entry.key, "opacity")
-                sliderWrapper.Slider:Init(curOpacity, 0, 100, 20, {})
-                sliderWrapper._initGuard = false
-                sliderWrapper.Slider:RegisterCallback("OnValueChanged", function(_, val)
-                    if sliderWrapper._initGuard then return end
-                    val = math.floor(val)
-                    VE:SetFrameSetting(entry.key, "opacity", val)
-                    VE:ApplyFrame(entry.key)
-                end, sliderWrapper)
-            end
+            sliderWrapper:SetSize(VE_SLIDER_WIDTH + 10, VE_ROW_HEIGHT)
+            if sliderWrapper.Back then sliderWrapper.Back:Hide() end
+            if sliderWrapper.Forward then sliderWrapper.Forward:Hide() end
+            sliderWrapper.Slider:ClearAllPoints()
+            sliderWrapper.Slider:SetPoint("LEFT", 4, 0)
+            sliderWrapper.Slider:SetPoint("RIGHT", -4, 0)
+            local valueText = row:CreateFontString(nil, "OVERLAY", FONT_SMALL)
+            valueText:SetPoint("LEFT", sliderWrapper, "RIGHT", 2, 0)
+            valueText:SetWidth(VE_VALUE_WIDTH)
+            valueText:SetJustifyH("RIGHT")
+            sliderWrapper._valueText = valueText
+            sliderWrapper._initGuard = true
+            local curOpacity = VE:GetFrameSetting(entry.key, "opacity")
+            valueText:SetText("|cFFCCCCCC" .. curOpacity .. "%%|r")
+            sliderWrapper:Init(curOpacity, 0, 100, 20, {})
+            sliderWrapper._initGuard = false
+            sliderWrapper:RegisterCallback("OnValueChanged", function(_, val)
+                if sliderWrapper._initGuard then return end
+                val = math.floor(val)
+                valueText:SetText("|cFFCCCCCC" .. val .. "%%|r")
+                VE:SetFrameSetting(entry.key, "opacity", val)
+                VE:ApplyFrame(entry.key)
+            end, sliderWrapper)
+            table.insert(content.rowSliders, sliderWrapper)
             colPos = colPos + VE_COL_WIDTH
+            if not entry.opacityOnly then
             -- 2. OOC Fade checkbox
             local oocCB = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
             oocCB:SetSize(VE_CHECK_WIDTH, VE_CHECK_WIDTH)
@@ -330,6 +348,7 @@ local function CreateVEContent(parent)
             targetCB:SetPoint("LEFT", colPos + (VE_COL_WIDTH - VE_CHECK_WIDTH) / 2, 0)
             targetCB:SetChecked(VE:GetFrameSetting(entry.key, "showWithTarget"))
             targetCB:SetScript("OnClick", function(self) VE:SetFrameSetting(entry.key, "showWithTarget", self:GetChecked()); VE:ApplyFrame(entry.key) end)
+            end -- opacityOnly guard
             table.insert(self.rows, row)
             yOffset = yOffset - VE_ROW_HEIGHT
         end

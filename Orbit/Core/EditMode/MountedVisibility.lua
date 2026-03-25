@@ -10,13 +10,6 @@ local OPEN_WORLD_INSTANCE_TYPES = { ["none"] = true, ["scenario"] = true }
 local REAPPLY_DELAY = 0.5
 local OVERLAY_LEVEL_BOOST = 100
 local DRUID_TRAVEL_FORMS = { [DRUID_TRAVEL_FORM] = true, [DRUID_FLIGHT_FORM] = true }
-local BLIZZARD_HIDE_FRAMES = {
-    "ObjectiveTrackerFrame", "BuffFrame", "DebuffFrame",
-    "ZoneTextFrame", "SubZoneTextFrame", "DurabilityFrame", "VehicleSeatIndicator",
-    "GameTimeFrame", "StreamingIcon",
-    "TimeManagerClockButton", "AddonCompartmentFrame",
-    "DamageMeter",
-}
 
 ---@class MountedVisibilityManager
 local Manager = {}
@@ -24,13 +17,23 @@ Orbit.MountedVisibility = Manager
 
 local cachedShouldHide = false
 local suppressedPlugins = {}
-local combatRestoredPlugins = {}
 local isEditModeRestoring = false
 
--- [ CONFIG READER ]---------------------------------------------------------------------------------
--- The party's scout reads the mounted config scroll before engaging
-local function GetConfig(plugin) return plugin.mountedConfig end
-local function GetFrame(plugin) local cfg = GetConfig(plugin); return cfg and cfg.frame end
+-- [ FRAME HELPERS ]---------------------------------------------------------------------------------
+local function GetPluginFrame(plugin) return plugin.mountedConfig and plugin.mountedConfig.frame end
+
+-- [ VE HELPERS ]------------------------------------------------------------------------------------
+local function GetPluginVEKey(plugin)
+    if not Orbit.VisibilityEngine then return nil end
+    local frame = GetPluginFrame(plugin)
+    local sysIdx = (frame and frame.systemIndex) or 1
+    return Orbit.VisibilityEngine:GetKeyForPlugin(plugin.name, sysIdx)
+end
+
+local function GetPluginVESetting(plugin, setting)
+    local veKey = GetPluginVEKey(plugin)
+    return veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, setting) or false
+end
 
 -- [ FRAME SUPPRESS / REVEAL ]-----------------------------------------------------------------------
 local function SuppressFrame(frame)
@@ -58,29 +61,16 @@ local function IsMountedHideActive()
     if Orbit.IsEditMode and Orbit:IsEditMode() then return false end
     if OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame then return false end
     if not IsMounted() and not IsInDruidTravelForm() then return false end
-    -- Check if any frame actually has hideMounted enabled in VE
-    if Orbit.VisibilityEngine then
-        if not Orbit.VisibilityEngine:AnyFrameHasSetting("hideMounted") then return false end
-    else
-        -- Fallback to legacy global setting if VE not loaded yet
-        if not Orbit.db or not Orbit.db.GlobalSettings or not Orbit.db.GlobalSettings.HideWhenMounted then return false end
-    end
+    if not Orbit.VisibilityEngine or not Orbit.VisibilityEngine:AnyFrameHasSetting("hideMounted") then return false end
     local _, instanceType = IsInInstance()
     return OPEN_WORLD_INSTANCE_TYPES[instanceType] == true
 end
 
 function Manager:ShouldHide() return IsMountedHideActive() end
 
--- Check per-frame VE hideMounted setting for a plugin
-local function ShouldHidePlugin(plugin)
-    if not Orbit.VisibilityEngine then return false end
-    local veKey = Orbit.VisibilityEngine:GetKeyForPlugin(plugin.name, (plugin.mountedConfig and plugin.mountedConfig.frame and plugin.mountedConfig.frame.systemIndex) or 1)
-    if not veKey then return false end
-    return Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
-end
+local function ShouldHidePlugin(plugin) return GetPluginVESetting(plugin, "hideMounted") end
 function Manager:ShouldHidePlugin(plugin) return ShouldHidePlugin(plugin) end
 
--- Check per-frame VE hideMounted setting for a Blizzard frame key
 local function ShouldHideBlizzard(veKey)
     if not Orbit.VisibilityEngine then return false end
     return Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
@@ -123,43 +113,39 @@ end
 
 -- [ PLUGIN SUPPRESSION ]----------------------------------------------------------------------------
 local function SuppressPlugin(plugin)
-    local cfg = GetConfig(plugin)
-    if not cfg then return end
-    local frame = cfg.frame
+    local frame = GetPluginFrame(plugin)
     if not frame then return end
     suppressedPlugins[plugin] = true
+    -- VE showWithTarget = skip suppress if target exists
+    if GetPluginVESetting(plugin, "showWithTarget") and UnitExists("target") then
+        frame.orbitTargetRevealed = true
+        return
+    end
     SuppressFrame(frame)
-    if cfg.hoverReveal then
+    -- VE mouseOver = hover reveal overlay
+    if GetPluginVESetting(plugin, "mouseOver") then
         CreateHoverOverlay(frame, plugin)
         frame.orbitHoverOverlay:Show()
-        if cfg.targetReveal and UnitExists("target") then
-            frame.orbitTargetRevealed = true
-            RevealFrame(frame)
-            frame.orbitHoverOverlay:Hide()
-        end
     end
 end
 
 local function RestorePlugin(plugin)
     if not suppressedPlugins[plugin] then return end
     suppressedPlugins[plugin] = nil
-    combatRestoredPlugins[plugin] = nil
-    local frame = GetFrame(plugin)
+    local frame = GetPluginFrame(plugin)
     if frame then
         frame:SetScript("OnUpdate", nil)
         frame.orbitMountedSuppressed = nil
         frame.orbitTargetRevealed = nil
         frame.orbitLastVisibilityDriver = nil
-        local cfg = GetConfig(plugin)
-        if cfg.hoverReveal and Orbit.Animation then Orbit.Animation:StopHoverFade(frame) end
+        if GetPluginVESetting(plugin, "mouseOver") and Orbit.Animation then Orbit.Animation:StopHoverFade(frame) end
         frame:SetAlpha(1)
         if frame.orbitHoverOverlay then frame.orbitHoverOverlay:Hide() end
         RevealFrame(frame)
     end
     if not isEditModeRestoring and plugin.ApplySettings then
         plugin:ApplySettings()
-        local cfg = GetConfig(plugin)
-        if cfg.hoverReveal then C_Timer.After(0, function() plugin:ApplySettings() end) end
+        if GetPluginVESetting(plugin, "mouseOver") then C_Timer.After(0, function() plugin:ApplySettings() end) end
     end
 end
 
@@ -168,69 +154,48 @@ local function OnTargetChanged()
     if not cachedShouldHide then return end
     local hasTarget = UnitExists("target")
     for plugin in pairs(suppressedPlugins) do
-        local cfg = GetConfig(plugin)
-        if cfg and cfg.targetReveal and cfg.frame then
-            local frame = cfg.frame
-            if hasTarget then
-                frame.orbitTargetRevealed = true
-                RevealFrame(frame)
-                frame:SetScript("OnUpdate", nil)
-                if frame.orbitHoverOverlay then frame.orbitHoverOverlay:Hide() end
-            else
-                frame.orbitTargetRevealed = false
-                SuppressFrame(frame)
-                if frame.orbitHoverOverlay then frame.orbitHoverOverlay:Show() end
+        if GetPluginVESetting(plugin, "showWithTarget") then
+            local frame = GetPluginFrame(plugin)
+            if frame then
+                if hasTarget then
+                    frame.orbitTargetRevealed = true
+                    RevealFrame(frame)
+                    frame:SetScript("OnUpdate", nil)
+                    if frame.orbitHoverOverlay then frame.orbitHoverOverlay:Hide() end
+                else
+                    frame.orbitTargetRevealed = false
+                    SuppressFrame(frame)
+                    if frame.orbitHoverOverlay then frame.orbitHoverOverlay:Show() end
+                end
             end
         end
     end
 end
 
--- [ COMBAT-ESSENTIAL RESTORE ]----------------------------------------------------------------------
+-- [ COMBAT RESTORE ]--------------------------------------------------------------------------------
 local function RestoreCombatEssentials()
     for plugin in pairs(suppressedPlugins) do
-        local cfg = GetConfig(plugin)
-        if cfg and cfg.combatRestore and cfg.frame then
-            cfg.frame:SetAlpha(1)
-            combatRestoredPlugins[plugin] = true
+        -- VE oocFade = restore in combat
+        if GetPluginVESetting(plugin, "oocFade") then
+            local frame = GetPluginFrame(plugin)
+            if frame then frame:SetAlpha(1) end
         end
     end
 end
 
 local function SuppressCombatEssentials()
-    for plugin in pairs(combatRestoredPlugins) do
-        local frame = GetFrame(plugin)
-        if suppressedPlugins[plugin] and frame then
-            if not frame.orbitTargetRevealed then
+    for plugin in pairs(suppressedPlugins) do
+        if GetPluginVESetting(plugin, "oocFade") then
+            local frame = GetPluginFrame(plugin)
+            if frame and not frame.orbitTargetRevealed then
                 frame:SetScript("OnUpdate", nil)
                 frame:SetAlpha(0)
             end
         end
     end
-    wipe(combatRestoredPlugins)
 end
 
--- [ BLIZZARD FRAME CONTROL ]------------------------------------------------------------------------
-local function SetBlizzardFramesAlpha(alpha)
-    for _, frameName in ipairs(BLIZZARD_HIDE_FRAMES) do
-        local frame = _G[frameName]
-        if frame then frame:SetAlpha(alpha) end
-    end
-    local cluster = _G["MinimapCluster"]
-    if cluster then
-        if cluster.BorderTop then cluster.BorderTop:SetAlpha(alpha) end
-        if cluster.ZoneTextButton then cluster.ZoneTextButton:SetAlpha(alpha) end
-        if cluster.Tracking then cluster.Tracking:SetAlpha(alpha) end
-        if cluster.IndicatorFrame then cluster.IndicatorFrame:SetAlpha(alpha) end
-        if cluster.InstanceDifficulty then cluster.InstanceDifficulty:SetAlpha(alpha) end
-    end
-    local minimap = _G["Minimap"]
-    if minimap then
-        for _, child in ipairs({ minimap:GetChildren() }) do
-            if child.GetName and (child:GetName() or ""):find("LibDBIcon") then child:SetAlpha(alpha) end
-        end
-    end
-end
-
+-- [ BLIZZARD HOVER OVERLAYS ]-----------------------------------------------------------------------
 local function CreateSimpleHoverOverlay(frame, revealFn, suppressFn)
     if not frame or frame.orbitHoverOverlay then return end
     local overlay = CreateFrame("Frame", nil, frame)
@@ -256,12 +221,10 @@ local function ToggleOverlay(frame, shouldHide)
     if shouldHide then frame.orbitHoverOverlay:Show() else frame:SetScript("OnUpdate", nil); frame.orbitHoverOverlay:Hide() end
 end
 
-local HOVER_REVEAL_FRAMES = { "BuffFrame", "DebuffFrame" }
-
 local function SetupMinimapHoverOverlay()
     local cluster = _G["MinimapCluster"]
     if not cluster then return end
-    CreateSimpleHoverOverlay(cluster, function() SetBlizzardFramesAlpha(1) end, function() SetBlizzardFramesAlpha(0) end)
+    CreateSimpleHoverOverlay(cluster, function() cluster:SetAlpha(1) end, function() cluster:SetAlpha(0) end)
 end
 
 local function SetupObjectiveHoverOverlay()
@@ -276,28 +239,35 @@ function Manager:Refresh(force)
     if not force and shouldHide == cachedShouldHide then return end
     cachedShouldHide = shouldHide
 
-    SetBlizzardFramesAlpha(shouldHide and 0 or 1)
-    SetupMinimapHoverOverlay()
-    ToggleOverlay(_G["MinimapCluster"], shouldHide)
-
-    SetupObjectiveHoverOverlay()
-    ToggleOverlay(_G["ObjectiveTrackerFrame"], shouldHide)
-
-    for _, name in ipairs(HOVER_REVEAL_FRAMES) do
-        local frame = _G[name]
-        if frame then
-            CreateSimpleHoverOverlay(frame, function() frame:SetAlpha(1) end, function() frame:SetAlpha(0) end)
-            ToggleOverlay(frame, shouldHide)
+    -- Blizzard frames: only hide if their VE entry has hideMounted enabled
+    if Orbit.VisibilityEngine then
+        for _, entry in ipairs(Orbit.VisibilityEngine:GetBlizzardFrames()) do
+            local frame = _G[entry.blizzardFrame]
+            if frame then
+                local frameHide = shouldHide and Orbit.VisibilityEngine:GetFrameSetting(entry.key, "hideMounted")
+                frame:SetAlpha(frameHide and 0 or 1)
+                if entry.key == "Minimap" then
+                    SetupMinimapHoverOverlay()
+                    ToggleOverlay(_G["MinimapCluster"], frameHide)
+                elseif entry.blizzardFrame == "ObjectiveTrackerFrame" then
+                    SetupObjectiveHoverOverlay()
+                    ToggleOverlay(frame, frameHide)
+                elseif entry.blizzardFrame == "BuffFrame" or entry.blizzardFrame == "DebuffFrame" then
+                    CreateSimpleHoverOverlay(frame, function() frame:SetAlpha(1) end, function() frame:SetAlpha(0) end)
+                    ToggleOverlay(frame, frameHide)
+                end
+            end
         end
     end
 
     local systems = OrbitEngine.systems
     if not systems then return end
     for _, plugin in pairs(systems) do
-        local cfg = GetConfig(plugin)
-        if shouldHide and cfg and cfg.frame then
+        local frame = GetPluginFrame(plugin)
+        local pluginHide = shouldHide and frame and ShouldHidePlugin(plugin)
+        if pluginHide then
             SuppressPlugin(plugin)
-        elseif not shouldHide and suppressedPlugins[plugin] then
+        elseif suppressedPlugins[plugin] then
             RestorePlugin(plugin)
         else
             if plugin.UpdateVisibilityDriver then

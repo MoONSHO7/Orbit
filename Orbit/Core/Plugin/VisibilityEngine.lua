@@ -18,7 +18,7 @@ local DEFAULTS = { oocFade = false, opacity = 100, hideMounted = false, mouseOve
 local FRAME_REGISTRY = {
     { key = "PlayerFrame",          display = "Player Frame",          plugin = "Player Frame",       index = 1 },
     { key = "PlayerPower",          display = "Player Power",          plugin = "Player Power",       index = 1 },
-    { key = "PlayerCastBar",        display = "Player Cast Bar",       plugin = "Player Cast Bar",    index = 1 },
+    { key = "PlayerCastBar",        display = "Player Cast Bar",       plugin = "Player Cast Bar",    index = 1, opacityOnly = true },
     { key = "PlayerResources",      display = "Player Resources",      plugin = "Player Resources",   index = 1 },
     { key = "PetFrame",             display = "Pet Frame",             plugin = "Pet Frame",          index = 1 },
     { key = "PlayerBuffs",          display = "Player Buffs",          plugin = "Player Buffs",       index = 1 },
@@ -39,7 +39,7 @@ local FRAME_REGISTRY = {
     { key = "UtilityCooldowns",     display = "Utility Cooldowns",     plugin = "Cooldown Manager",   index = 2 },
     { key = "BuffIcons",            display = "Buff Icons",            plugin = "Cooldown Manager",   index = 3 },
     { key = "GroupFrames",          display = "Group Frames",          plugin = "Group Frames",       index = 1 },
-    { key = "BossFrames",           display = "Boss Frames",           plugin = "Boss Frames",        index = 1 },
+    { key = "BossFrames",           display = "Boss Frames",           plugin = "Boss Frames",        index = 1, opacityOnly = true },
     { key = "MenuBar",              display = "Menu Bar",              plugin = "Menu Bar",           index = 1 },
     { key = "BagBar",               display = "Bag Bar",               plugin = "Bag Bar",            index = 1 },
     { key = "QueueStatus",          display = "Queue Status",          plugin = "Queue Status",       index = 1 },
@@ -123,7 +123,15 @@ function VE:GetKeyForPlugin(pluginName, systemIndex)
     for _, entry in ipairs(FRAME_REGISTRY) do
         if entry.plugin == pluginName and entry.index == systemIndex then return entry.key end
     end
-    return nil
+    -- Fallback: single-entry plugin with non-matching index (string SYSTEM_IDs)
+    local singleMatch
+    for _, entry in ipairs(FRAME_REGISTRY) do
+        if entry.plugin == pluginName then
+            if singleMatch then return nil end
+            singleMatch = entry
+        end
+    end
+    return singleMatch and singleMatch.key or nil
 end
 
 -- Check if any frame in VE has a specific boolean setting enabled
@@ -168,11 +176,13 @@ function VE:ApplyBlizzardSettings()
     for _, entry in ipairs(BLIZZARD_REGISTRY) do
         local frame = _G[entry.blizzardFrame]
         if frame then
-            local opacity = self:GetFrameSetting(entry.key, "opacity")
-            if not self:GetFrameSetting(entry.key, "oocFade") then
-                frame:SetAlpha((opacity or 100) / 100)
-            end
+            if entry.key == "Minimap" then frame.orbitOpacityExternal = true end
             Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, entry.key)
+            -- Minimap: apply opacity to cluster children (including Minimap itself for engine-rendered POI pins)
+            if entry.key == "Minimap" then
+                local opacity = (self:GetFrameSetting(entry.key, "opacity") or 100) / 100
+                for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
+            end
         end
     end
 end
@@ -184,21 +194,19 @@ end
 
 function VE:ApplyFrame(key)
     if not Orbit.OOCFadeMixin then return end
-    -- Check if it's a Blizzard frame
     for _, entry in ipairs(BLIZZARD_REGISTRY) do
         if entry.key == key then
             local frame = _G[entry.blizzardFrame]
             if frame then
-                local opacity = self:GetFrameSetting(key, "opacity")
-                if not self:GetFrameSetting(key, "oocFade") then
-                    frame:SetAlpha((opacity or 100) / 100)
-                end
+                if key == "Minimap" then frame.orbitOpacityExternal = true end
                 Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, key)
+                if key == "Minimap" then
+                    local opacity = (self:GetFrameSetting(key, "opacity") or 100) / 100
+                    for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
+                end
             end
             return
         end
     end
-    -- Orbit frame: OOCFadeMixin RefreshAll is O(n), but we can just call it for now
-    -- A true O(1) Orbit frame update would require OOCFadeMixin to expose UpdateFrame(key)
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
 end

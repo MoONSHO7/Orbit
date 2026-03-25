@@ -64,7 +64,7 @@ function Plugin:OnLoad()
     self:RegisterStandardEvents()
     self:RegisterVisibilityEvents()
     Orbit.EventBus:On("PLAYER_REGEN_ENABLED", function() self:ApplySettings() end, self)
-    self.mountedConfig = { frame = self.frame, hoverReveal = true }
+    self.mountedConfig = { frame = self.frame }
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(self.frame, self, SYSTEM_ID) end
     NeutralizeNativeAnchoring()
     self:ReparentAll()
