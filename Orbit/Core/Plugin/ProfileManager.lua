@@ -29,6 +29,7 @@ local GLOBAL_DEFAULTS = {
     OverlayTexture = "None",
 }
 
+-- TODO(REMOVE): Only used by _MigrateLegacySpecProfiles
 -- Spec names that are shared across classes (used for legacy migration only)
 local DUPLICATE_SPEC_NAMES = {
     ["Protection"] = true,
@@ -72,7 +73,7 @@ function Orbit.Profile:Initialize()
     end
 
     if not Orbit.db.profiles[DEFAULT_PROFILE] then
-        -- Migrate legacy "Default" profile to "Global"
+        -- TODO(REMOVE): Migrate legacy "Default" profile to "Global"
         if Orbit.db.profiles["Default"] then
             Orbit.db.profiles[DEFAULT_PROFILE] = Orbit.db.profiles["Default"]
             Orbit.db.profiles["Default"] = nil
@@ -112,7 +113,7 @@ function Orbit.Profile:Initialize()
         end
     end
 
-    -- Migrate global DisabledPlugins into profiles (one-time migration)
+    -- TODO(REMOVE): Migrate global DisabledPlugins into profiles (one-time migration)
     if Orbit.db.DisabledPlugins then
         for _, profileData in pairs(Orbit.db.profiles) do
             if not profileData.DisabledPlugins then
@@ -156,6 +157,7 @@ function Orbit.Profile:SetProfileForSpec(specID, profileName)
     end
 end
 
+-- TODO(REMOVE): Legacy spec-named profile migration
 function Orbit.Profile:_MigrateLegacySpecProfiles()
     Orbit.db.specMappings = {}
     -- Attempt to map legacy spec-named profiles
@@ -331,6 +333,7 @@ end
 
 function Orbit.Profile:CheckSpecProfile()
     if not Orbit.db or not Orbit.db.profiles then return end
+    if not Orbit.db.useSpecProfiles then return end
     if not Orbit.db.specMappings then return end
     local specIndex = GetSpecialization and GetSpecialization()
     if not specIndex then self:SetActiveProfile(Orbit.db.activeProfile or DEFAULT_PROFILE); return end

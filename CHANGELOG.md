@@ -45,9 +45,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Minimap defaults** — Updated the default minimap size, placement, component layout, and click-action settings for the first experimental release.
 
 ### Fixed
+<<<<<<< HEAD
 - **RestingIcon** — Fixed issue with positioning the icon in canvas mode.
 - **Difficulty preview/apply flow** — Fixed icon/text mode switching, preview sizing drift, and live Apply mismatches.
 - **Minimap polish** — Fixed several component sizing, layering, opacity, and placeholder issues across the new minimap and canvas preview.
+=======
+- **BossFrames** — Fixed mulitple issues with bossframes that came up from previous performance parse on group frames.
+- **TrackedCooldowns+Charges** — These should now save position properly, anchored is still disabled as its buggy with new profiles and I  havent fixed it yet 
+>>>>>>> origin/main
 
 ## [1.0.0] - 2026-03-10
 ### Added

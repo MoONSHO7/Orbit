@@ -24,7 +24,7 @@ function Plugin:OnLoad()
         showIconLimit = true, defaultIconLimit = 20,
         showRows = true,
         useBlizzardButtons = true, blizzardFrame = BuffFrame,
-        exposeMountedConfig = true, mountedHoverReveal = true,
+        exposeMountedConfig = true,
     })
     if BuffFrame then OrbitEngine.NativeFrame:Protect(BuffFrame) end
     SetCVar("buffDurations", 0)

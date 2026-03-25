@@ -171,7 +171,7 @@ function CDM:MonitorViewers()
     end
 
     local frame = CreateFrame("Frame")
-    frame:RegisterEvent("UNIT_AURA")
+    frame:RegisterUnitEvent("UNIT_AURA", "player")
     frame:RegisterEvent("PLAYER_REGEN_DISABLED")
     frame:RegisterEvent("PLAYER_REGEN_ENABLED")
     frame:SetScript("OnEvent", function(_, event, unit)

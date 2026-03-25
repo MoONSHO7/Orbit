@@ -502,10 +502,12 @@ function Dialog:Open(frame, plugin, systemIndex)
     local showTabs = canvasFrame.showFilterTabs or false
     if not showTabs then
         for key, comp in pairs(self.previewComponents) do
-            if comp.isAuraContainer or AURA_COMPONENT_KEYS[key] then
-                showTabs = true
-                break
-            end
+            if comp.isAuraContainer or AURA_COMPONENT_KEYS[key] then showTabs = true; break end
+        end
+    end
+    if not showTabs and self.dockComponents then
+        for key, _ in pairs(self.dockComponents) do
+            if AURA_COMPONENT_KEYS[key] then showTabs = true; break end
         end
     end
     if self.filterTabButtons then

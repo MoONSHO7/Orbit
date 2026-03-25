@@ -74,7 +74,7 @@ end
 
 -- [ FACTORY ]---------------------------------------------------------------------------------------
 
-function UnitButton:Create(parent, unit, name)
+function UnitButton:Create(parent, unit, name, skipEventRegistration)
     local f = CreateFrame("Button", name, parent, "SecureUnitButtonTemplate,BackdropTemplate")
     if Engine.Pixel then Engine.Pixel:Enforce(f) end
     f:SetClampedToScreen(true)
@@ -197,7 +197,7 @@ function UnitButton:Create(parent, unit, name)
 
     Mixin(f, UnitButtonMixin)
     f:SetScript("OnEvent", f.OnEvent)
-    f:OnLoad()
+    f:OnLoad(skipEventRegistration)
 
     f:SetScript("OnEnter", function(self)
         self:SetMouseOver(true)

@@ -41,25 +41,40 @@ end
 
 function Orbit.DispelIndicatorMixin:InvalidateDispelCurve(plugin)
     plugin._dispelCurveCache = nil
+    plugin._dispelSettingsCache = nil
+end
+
+local function GetDispelSettings(plugin)
+    local cache = plugin._dispelSettingsCache
+    if cache then return cache end
+    local get = plugin.GetTierSetting and function(k) return plugin:GetTierSetting(k) end or function(k) return plugin:GetSetting(1, k) end
+    cache = {
+        enabled = get("DispelIndicatorEnabled"),
+        onlyByMe = get("DispelOnlyByMe"),
+        thickness = get("DispelThickness") or 2,
+        frequency = get("DispelFrequency") or 0.25,
+        numLines = get("DispelNumLines") or 8,
+    }
+    plugin._dispelSettingsCache = cache
+    return cache
 end
 
 -- [ UPDATE DISPEL INDICATOR ]----------------------------------------------------------------------
 -- harmfulAuras: optional pre-fetched table from snapshot to avoid duplicate GetUnitAuras call
 function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin, harmfulAuras)
     if not frame or not frame.unit then return end
+    local settings = GetDispelSettings(plugin)
+    if not settings.enabled then LCG.PixelGlow_Stop(frame); return end
     local unit = frame.unit
-    local enabled = plugin:GetSetting(1, "DispelIndicatorEnabled")
-    if not enabled then LCG.PixelGlow_Stop(frame); return end
     if not UnitExists(unit) then LCG.PixelGlow_Stop(frame); return end
     if not C_UnitAuras or not C_UnitAuras.GetUnitAuras then return end
-    local onlyByMe = plugin:GetSetting(1, "DispelOnlyByMe")
     local auras = harmfulAuras or C_UnitAuras.GetUnitAuras(unit, "HARMFUL")
     if not auras or #auras == 0 then LCG.PixelGlow_Stop(frame); return end
 
     local bestAuraInstanceID = nil
     for _, aura in ipairs(auras) do
         if aura.dispelName then
-            if not onlyByMe or (IsAuraFilteredOut and not IsAuraFilteredOut(unit, aura.auraInstanceID, DISPEL_FILTER)) then
+            if not settings.onlyByMe or (IsAuraFilteredOut and not IsAuraFilteredOut(unit, aura.auraInstanceID, DISPEL_FILTER)) then
                 bestAuraInstanceID = aura.auraInstanceID
                 break
             end
@@ -70,10 +85,7 @@ function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin, harmful
         local curve = GetDispelCurve(plugin)
         local color = curve and C_UnitAuras.GetAuraDispelTypeColor and C_UnitAuras.GetAuraDispelTypeColor(unit, bestAuraInstanceID, curve)
         if color then
-            local thickness = plugin:GetSetting(1, "DispelThickness") or 2
-            local frequency = plugin:GetSetting(1, "DispelFrequency") or 0.25
-            local numLines = plugin:GetSetting(1, "DispelNumLines") or 8
-            LCG.PixelGlow_Start(frame, color, numLines, frequency, nil, thickness, 0, 0, true, nil, Orbit.Constants.Levels.Border)
+            LCG.PixelGlow_Start(frame, color, settings.numLines, settings.frequency, nil, settings.thickness, 0, 0, true, nil, Orbit.Constants.Levels.Border)
         else
             LCG.PixelGlow_Stop(frame)
         end

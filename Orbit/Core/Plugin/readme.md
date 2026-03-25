@@ -14,7 +14,8 @@ defines how plugins register with orbit, how their settings are stored and retri
 | Registry.lua | plugin registration table. `RegisterPlugin` and `GetPlugin`. |
 | ProfileManager.lua | profile crud (create, copy, delete, switch). fires `ORBIT_PROFILE_CHANGED`. |
 | DefaultProfile.lua | default settings for every plugin and system index. |
-| OOCFadeMixin.lua | out-of-combat fade behavior. frames register and auto-fade when not in combat. |
+| OOCFadeMixin.lua | out-of-combat fade behavior. frames register and auto-fade when not in combat. reads settings from VisibilityEngine. |
+| VisibilityEngine.lua | centralized visibility settings for all orbit frames. stores oocFade, opacity, hideMounted, mouseOver, showWithTarget per-frame in `Orbit.db.VisibilityEngine`. fires `ORBIT_VISIBILITY_CHANGED`. |
 | NativeBarMixin.lua | shared scale/layout/interaction for native blizzard bar wrappers. |
 
 ## adding a new mixin

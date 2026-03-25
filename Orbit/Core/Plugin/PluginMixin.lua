@@ -114,6 +114,7 @@ function Orbit.PluginMixin:GetSetting(systemIndex, key)
     -- Global Inheritance
     if key == "Texture" or key == "Font" or key == "BorderSize" or key == "BackdropColour" then
         local val = Orbit.db.GlobalSettings[key]
+        -- TODO(REMOVE): Migrates BackdropColour from curve format to flat RGBA
         if key == "BackdropColour" and not Orbit._backdropMigrated then
             Orbit._backdropMigrated = true
             if val and val.pins then

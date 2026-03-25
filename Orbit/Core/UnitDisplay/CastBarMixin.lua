@@ -307,6 +307,9 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
         C_Timer.After(0, function() self._previewShownThisFrame = nil end)
         self:ShowPreview()
     end
+
+    local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(bar, self, systemIndex, "OutOfCombatFade", enableHover) end
 end
 
 -- [ MOUNTED VISIBILITY ]----------------------------------------------------------------------------

@@ -151,14 +151,6 @@ local function GetGlobalSchema()
         tinsert(controls, { type = "slider", key = "IconBorderOffset", label = "Icon Border Offset", default = 0, min = 0, max = 16, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderOffset", v) end })
     end
 
-    table.insert(controls, {
-        type = "checkbox", key = "HideWhenMounted", label = "Hide When Mounted", default = false,
-        onChange = function(val)
-            Orbit.db.GlobalSettings.HideWhenMounted = val
-            Orbit.MountedVisibility:Refresh()
-        end,
-    })
-
 
     return {
         hideNativeSettings = true,
@@ -178,9 +170,7 @@ local function GetGlobalSchema()
                 d.IconBorderSize = 2
                 d.IconBorderEdgeSize = 16
                 d.IconBorderOffset = 0
-                d.HideWhenMounted = false
             end
-            Orbit.MountedVisibility:Refresh()
             Orbit:Print("Global settings reset to defaults.")
         end,
     }
@@ -331,25 +321,53 @@ end
 
 -- [ PROFILES TAB ]----------------------------------------------------------------------------------
 
-local ICON_BUTTON_SIZE = 20
-local ICON_FONT_SIZE = 20
+local ICON_BUTTON_SIZE = 14
 
--- Composite widget: dropdown + reset icon for active profile
+-- Composite widget: dropdown for active profile (greyed out when spec profiles control it)
 Layout:RegisterWidgetType("profileactive", function(container, def, getValue, callback)
     local options = type(def.options) == "function" and def.options() or def.options or {}
     local initialValue = getValue and getValue() or def.default or ""
-
-    local UpdateResetState
-
     local frame = Layout:CreateDropdown(container, def.label, options, initialValue, function(value)
         if callback then callback(value) end
-        C_Timer.After(0, function() if UpdateResetState then UpdateResetState() end end)
     end)
     frame.OrbitType = "ProfileActive"
+    if Orbit.db.useSpecProfiles then
+        frame:SetAlpha(0.4)
+        if frame.Dropdown then
+            frame.Dropdown:SetEnabled(false)
+            frame.Dropdown:EnableMouse(false)
+        end
+        local overlay = CreateFrame("Frame", nil, frame)
+        overlay:SetAllPoints()
+        overlay:SetFrameLevel((frame.Dropdown and frame.Dropdown:GetFrameLevel() or frame:GetFrameLevel()) + 10)
+        overlay:EnableMouse(true)
+        overlay:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Active profile is controlled by Spec Profiles")
+            GameTooltip:Show()
+        end)
+        overlay:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
+    return frame
+end)
 
-    UpdateResetState = function()
+-- Composite widget: dropdown + reset/copy/delete icons
+Layout:RegisterWidgetType("profileselect", function(container, def, getValue, callback)
+    local options = type(def.options) == "function" and def.options() or def.options or {}
+    local initialValue = getValue and getValue() or def.default or ""
+    local UpdateButtonStates
+    local frame = Layout:CreateDropdown(container, def.label, options, initialValue, function(value)
+        if callback then callback(value) end
+        C_Timer.After(0, function() if UpdateButtonStates then UpdateButtonStates() end end)
+    end)
+    frame.OrbitType = "ProfileSelect"
+
+    UpdateButtonStates = function()
         if not frame.resetBtn then return end
-        local isGlobal = frame.currentValue == "Global"
+        local val = frame.currentValue
+        local isActive = val == Orbit.Profile:GetActiveProfileName()
+        local isGlobal = val == "Global"
+        -- Reset: only Global
         if isGlobal then
             frame.resetBtn:Enable()
             frame.resetBtn.Icon:SetDesaturated(false)
@@ -359,21 +377,40 @@ Layout:RegisterWidgetType("profileactive", function(container, def, getValue, ca
             frame.resetBtn.Icon:SetDesaturated(true)
             frame.resetBtn.Icon:SetAlpha(0.4)
         end
+        -- Copy: always allowed
+        frame.copyBtn:Enable()
+        frame.copyBtn.Icon:SetDesaturated(false)
+        frame.copyBtn.Icon:SetAlpha(1)
+        -- Delete: blocked for active/Global
+        if isActive or isGlobal then
+            frame.xBtn:Disable()
+            frame.xBtn.Icon:SetDesaturated(true)
+            frame.xBtn.Icon:SetAlpha(0.4)
+        else
+            frame.xBtn:Enable()
+            frame.xBtn.Icon:SetDesaturated(false)
+            frame.xBtn.Icon:SetAlpha(1)
+        end
     end
 
+    local gap = Constants.Widget.ValueWidth
+    local tripleWidth = ICON_BUTTON_SIZE * 3 + 4
+    local tripleOffset = (gap - tripleWidth) / 2
+
+    -- Reset button (undo icon)
     local resetBtn = CreateFrame("Button", nil, frame)
-    resetBtn:SetSize(ICON_BUTTON_SIZE / 2, ICON_BUTTON_SIZE / 2)
-    resetBtn:SetPoint("LEFT", frame.Dropdown, "RIGHT", (Constants.Widget.ValueWidth - ICON_BUTTON_SIZE / 2) / 2 + 10, 0)
+    resetBtn:SetSize(ICON_BUTTON_SIZE, ICON_BUTTON_SIZE)
+    resetBtn:SetPoint("LEFT", frame.Dropdown, "RIGHT", tripleOffset + 10, 0)
     frame.resetBtn = resetBtn
-    local icon = resetBtn:CreateTexture(nil, "ARTWORK")
-    icon:SetAllPoints()
-    icon:SetAtlas("talents-button-undo")
-    resetBtn.Icon = icon
+    local resetIcon = resetBtn:CreateTexture(nil, "ARTWORK")
+    resetIcon:SetAllPoints()
+    resetIcon:SetAtlas("talents-button-undo")
+    resetBtn.Icon = resetIcon
     resetBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if self:IsEnabled() then
             self.Icon:SetAlpha(0.8)
-            GameTooltip:SetText("Reset Global profile to defaults")
+            GameTooltip:SetText("Reset selected profile to defaults")
         else
             GameTooltip:SetText("Only the Global profile can be reset")
         end
@@ -384,107 +421,62 @@ Layout:RegisterWidgetType("profileactive", function(container, def, getValue, ca
         GameTooltip:Hide()
     end)
     resetBtn:SetScript("OnClick", function()
-        if def.onReset then def.onReset() end
+        if def.onReset then def.onReset(frame.currentValue) end
     end)
 
-    UpdateResetState(frame)
-    return frame
-end)
-
--- Composite widget: dropdown + copy icon + X delete button
-Layout:RegisterWidgetType("profileselect", function(container, def, getValue, callback)
-    local options = type(def.options) == "function" and def.options() or def.options or {}
-    local initialValue = getValue and getValue() or def.default or ""
-
-    -- Forward-declare so the closure below can reference it
-    local UpdateDeleteState
-
-    -- Use the standard dropdown factory for proper rendering
-    local frame = Layout:CreateDropdown(container, def.label, options, initialValue, function(value)
-        if callback then callback(value) end
-        C_Timer.After(0, function() if UpdateDeleteState then UpdateDeleteState() end end)
-    end)
-    frame.OrbitType = "ProfileSelect"
-
-    -- Assign to the forward-declared upvalue
-    UpdateDeleteState = function()
-        if not frame.xBtn then return end
-        local val = frame.currentValue
-        local isActive = val == Orbit.Profile:GetActiveProfileName()
-        local isGlobal = val == "Global"
-        -- Copy is always allowed; delete is blocked for active/Global
-        frame.copyBtn:Enable()
-        frame.copyBtn.Text:SetTextColor(0.2, 0.8, 0.2, 1)
-        if isActive or isGlobal then
-            frame.xBtn:Disable()
-            frame.xBtn.Text:SetTextColor(0.4, 0.4, 0.4, 0.5)
-        else
-            frame.xBtn:Enable()
-            frame.xBtn.Text:SetTextColor(1, 0.27, 0.27, 1)
-        end
-    end
-
-
-    local gap = Constants.Widget.ValueWidth
-    local pairWidth = ICON_BUTTON_SIZE * 2 + 2
-    local pairOffset = (gap - pairWidth) / 2
+    -- Copy button (+ icon)
     local copyBtn = CreateFrame("Button", nil, frame)
     copyBtn:SetSize(ICON_BUTTON_SIZE, ICON_BUTTON_SIZE)
-    copyBtn:SetPoint("LEFT", frame.Dropdown, "RIGHT", pairOffset + 10, 0)
+    copyBtn:SetPoint("LEFT", resetBtn, "RIGHT", 2, 0)
     frame.copyBtn = copyBtn
-    local copyText = copyBtn:CreateFontString(nil, "ARTWORK")
-    copyText:SetFont(STANDARD_TEXT_FONT, ICON_FONT_SIZE, "OUTLINE")
-    copyText:SetAllPoints()
-    copyText:SetText("+")
-    copyText:SetTextColor(0.2, 0.8, 0.2, 1)
-    copyBtn.Text = copyText
+    local copyIcon = copyBtn:CreateTexture(nil, "ARTWORK")
+    copyIcon:SetAllPoints()
+    copyIcon:SetAtlas("communities-chat-icon-plus")
+    copyBtn.Icon = copyIcon
     copyBtn:SetScript("OnEnter", function(self)
         if self:IsEnabled() then
-            self.Text:SetTextColor(0.3, 1, 0.3, 1)
+            self.Icon:SetAlpha(0.8)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText("Copy selected profile")
+            GameTooltip:Show()
         end
-        GameTooltip:Show()
     end)
     copyBtn:SetScript("OnLeave", function(self)
-        if self:IsEnabled() then self.Text:SetTextColor(0.2, 0.8, 0.2, 1) end
+        if self:IsEnabled() then self.Icon:SetAlpha(1) end
         GameTooltip:Hide()
     end)
     copyBtn:SetScript("OnClick", function()
         if def.onCopy then def.onCopy(frame.currentValue) end
     end)
 
-    -- X delete button
+    -- Delete button (X icon)
     local xBtn = CreateFrame("Button", nil, frame)
     xBtn:SetSize(ICON_BUTTON_SIZE, ICON_BUTTON_SIZE)
     xBtn:SetPoint("LEFT", copyBtn, "RIGHT", 2, 0)
     frame.xBtn = xBtn
-    local xText = xBtn:CreateFontString(nil, "ARTWORK")
-    xText:SetFont(STANDARD_TEXT_FONT, ICON_FONT_SIZE, "OUTLINE")
-    xText:SetAllPoints()
-    xText:SetText("\195\151")
-    xText:SetTextColor(1, 0.27, 0.27, 1)
-    xBtn.Text = xText
+    local xIcon = xBtn:CreateTexture(nil, "ARTWORK")
+    xIcon:SetAllPoints()
+    xIcon:SetAtlas("transmog-icon-remove")
+    xBtn.Icon = xIcon
     xBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if self:IsEnabled() then
-            self.Text:SetTextColor(1, 0.5, 0.5, 1)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            self.Icon:SetAlpha(0.8)
             GameTooltip:SetText("Delete selected profile")
         else
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText("Cannot delete active or Global profile")
         end
         GameTooltip:Show()
     end)
     xBtn:SetScript("OnLeave", function(self)
-        if self:IsEnabled() then self.Text:SetTextColor(1, 0.27, 0.27, 1) end
+        if self:IsEnabled() then self.Icon:SetAlpha(1) end
         GameTooltip:Hide()
     end)
     xBtn:SetScript("OnClick", function()
         if def.onDelete then def.onDelete(frame.currentValue) end
     end)
 
-    UpdateDeleteState()
+    UpdateButtonStates()
     return frame
 end)
 
@@ -531,7 +523,36 @@ Layout:RegisterWidgetType("collapseheader", function(container, def)
     return frame
 end)
 
-local specProfilesExpanded = false
+-- Header with checkbox toggle on the right (same visual as collapseheader)
+local CHECKBOX_SIZE = 20
+
+Layout:RegisterWidgetType("checkheader", function(container, def, getValue, callback)
+    local frame = CreateFrame("Frame", nil, container)
+    frame:SetHeight(30)
+    frame.OrbitType = "CheckHeader"
+    local text = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
+    text:SetPoint("LEFT", 0, 0)
+    text:SetText(def.text or "")
+    local cb = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+    cb:SetSize(CHECKBOX_SIZE, CHECKBOX_SIZE)
+    cb:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
+    local checked = getValue and getValue() or false
+    cb:SetChecked(checked)
+    cb:SetScript("OnClick", function(self)
+        if callback then callback(self:GetChecked()) end
+    end)
+    if def.tooltip then
+        cb:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(def.tooltip)
+            GameTooltip:Show()
+        end)
+        cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
+    return frame
+end)
+
+
 local profilesSubView = nil -- nil, "export", "import", "clone", "delete"
 local exportSelectedProfile = nil
 local exportString = ""
@@ -546,6 +567,7 @@ local ProfilesPlugin = {
     settings = {},
     GetSetting = function(self, systemIndex, key)
         if key == "ActiveProfile" then return Orbit.Profile:GetActiveProfileName()
+        elseif key == "UseSpecProfiles" then return Orbit.db.useSpecProfiles or false
         elseif key == "CreateProfile" then return Orbit.Profile._selectedToCreate or "Global"
         elseif key == "ExportProfile" then return exportSelectedProfile or "Global"
         elseif key == "ExportString" then return exportString
@@ -564,6 +586,14 @@ local ProfilesPlugin = {
                 Orbit.OptionsPanel.lastTab = nil
                 Orbit.OptionsPanel:Open("Profiles")
             end
+        elseif key == "UseSpecProfiles" then
+            Orbit.db.useSpecProfiles = value
+            if value then
+                Orbit.Profile:CheckSpecProfile()
+            else
+                if Orbit.db.specMappings then wipe(Orbit.db.specMappings) end
+            end
+            if Orbit.OptionsPanel then Orbit.OptionsPanel.lastTab = nil; Orbit.OptionsPanel.currentTab = nil; Orbit.OptionsPanel:Open("Profiles") end
         elseif key == "CreateProfile" then
             Orbit.Profile._selectedToCreate = value
         elseif key == "ExportProfile" then
@@ -799,11 +829,14 @@ local function GetProfilesSchema()
     controls[#controls + 1] = {
         type = "profileactive", key = "ActiveProfile", label = "Active",
         options = GetProfileOptions, default = "Global", width = DROPDOWN_WIDTH,
-        onReset = function() profilesSubView = "resetglobal"; ReopenProfiles() end,
     }
     controls[#controls + 1] = {
         type = "profileselect", key = "CreateProfile", label = "Manage",
         options = GetProfileOptions, default = "Global",
+        onReset = function(selected)
+            if selected == "Global" then profilesSubView = "resetglobal"; ReopenProfiles()
+            else Orbit:Print("Only the Global profile can be reset.") end
+        end,
         onCopy = function(selected)
             cloneSource = selected
             cloneName = ""
@@ -820,20 +853,12 @@ local function GetProfilesSchema()
     }
     controls[#controls + 1] = { type = "spacer", height = SPACER_LARGE }
 
-    -- Spec Profiles (collapsible)
-    local expanded = specProfilesExpanded
+    -- Spec Profiles (header with checkbox toggle)
     controls[#controls + 1] = {
-        type = "collapseheader", text = "Spec Profiles", collapsed = not expanded,
-        onToggle = function()
-            specProfilesExpanded = not specProfilesExpanded
-            ReopenProfiles()
-        end,
+        type = "checkheader", key = "UseSpecProfiles", text = "Spec Profiles", default = false,
+        tooltip = "Assign a profile to each specialization. When you change spec, Orbit switches automatically.",
     }
-    if expanded then
-        controls[#controls + 1] = {
-            type = "description",
-            text = "Assign a profile to each specialization. When you change spec, Orbit switches automatically.",
-        }
+    if Orbit.db.useSpecProfiles then
         local numSpecs = GetNumSpecializations and GetNumSpecializations() or 0
         for i = 1, numSpecs do
             local specID, specName = GetSpecializationInfo(i)
@@ -1002,6 +1027,40 @@ SlashCmdList["ORBIT"] = function(msg)
 
     if cmd == "whatsnew" then Orbit:ShowWhatsNew(); return end
 
+    if cmd == "ve" then
+        local sub = args[2] and args[2]:lower() or ""
+        if sub == "reset" then
+            if Orbit.db then Orbit.db.VisibilityEngine = {} end
+            -- Restore all Blizzard frames to full alpha
+            if Orbit.VisibilityEngine then
+                for _, entry in ipairs(Orbit.VisibilityEngine:GetBlizzardFrames()) do
+                    local f = _G[entry.blizzardFrame]
+                    if f then f:SetAlpha(1) end
+                end
+            end
+            -- Flush OOCFade managed frames back to visible
+            if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
+            -- Force MountedVisibility to re-evaluate
+            Orbit.MountedVisibility:Refresh(true)
+            -- Re-apply settings on every plugin so frames fully refresh
+            local systems = Orbit.Engine and Orbit.Engine.systems
+            if systems then
+                for _, plugin in pairs(systems) do
+                    if plugin.ApplySettings then plugin:ApplySettings() end
+                end
+            end
+            Orbit:Print("Visibility Engine reset to defaults.")
+        else
+            if Orbit._pluginSettingsCategoryID then
+                Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
+                if Orbit._openVETab then C_Timer.After(0.05, Orbit._openVETab) end
+            else
+                Orbit:Print("Plugin Manager not yet loaded.")
+            end
+        end
+        return
+    end
+
     if cmd == "plugins" then
         if Orbit._pluginSettingsCategoryID then
             Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
@@ -1030,6 +1089,13 @@ SlashCmdList["ORBIT"] = function(msg)
             Orbit:Print(subCmd .. " refreshed.")
         else
             Orbit:Print("Plugin not found: " .. subCmd)
+        end
+    elseif cmd == "flush" then
+        if Orbit.ViewerInjection then
+            Orbit.ViewerInjection:FlushAll()
+            Orbit:Print("Cleared all injected cooldown icons.")
+        else
+            Orbit:Print("ViewerInjection not loaded.")
         end
     else
         Orbit:Print("Unknown command: " .. cmd)

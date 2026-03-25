@@ -69,10 +69,8 @@ function ABC:Create(plugin, config)
         RegisterStateDriver(frame, "visibility", BAR1_BASE_DRIVER)
     end
     frame:Show()
-    if config.index ~= PET_BAR_INDEX then
-        local enableHover = plugin:GetSetting(config.index, "ShowOnMouseover") ~= false
-        Orbit.OOCFadeMixin:ApplyOOCFade(frame, plugin, config.index, "OutOfCombatFade", enableHover)
-    end
+    local enableHover = plugin:GetSetting(config.index, "ShowOnMouseover") ~= false
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, plugin, config.index, "OutOfCombatFade", enableHover) end
     return frame
 end
 

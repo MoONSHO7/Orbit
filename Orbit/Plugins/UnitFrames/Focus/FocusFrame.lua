@@ -256,6 +256,9 @@ function Plugin:ApplySettings(frame)
     frame:UpdateAll()
     frame:UpdatePortrait()
     self:UpdateMarkerIcon(frame, self)
+
+    local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover) end
 end
 
 function Plugin:UpdateVisuals(frame)

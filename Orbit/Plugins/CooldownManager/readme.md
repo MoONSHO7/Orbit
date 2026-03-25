@@ -17,6 +17,7 @@ provides four viewer types: essential cooldowns (class rotation), utility cooldo
 | CooldownSettings.lua | settings schema builder with sub-tabs (layout, text, glow, visibility). |
 | CooldownUtils.lua | shared utilities: icon dimension calculation, skin settings builder. `BuildSkinSettings` includes `iconBorder = true` to opt into `GlobalSettings.IconBorderStyle`. when `IconPadding = 0`, a single group border wraps the viewer anchor instead of per-icon borders. |
 | CooldownViewerHooks.lua | hooks into blizzard's cooldown viewer api (`C_CooldownViewer`). |
+| ViewerInjection.lua | drag-and-drop item/spell injection into essential/utility viewers. creates cdm-owned frames positioned relative to native icons via `afterNativeIndex`. per-spec persistence via `GetSpecData`/`SetSpecData`. shift-right-click removal. equipment slot tracking for trinkets (auto-updates on gear change). `/orbit flush` clears all injected icons. |
 | ControlButtonFactory.lua | +/- control buttons for adding/removing child frames in edit mode. |
 | TrackedAbilities.lua | user-tracked ability/item grid. anchor lifecycle, child frames, drag-and-drop, data persistence. |
 | TrackedIconFactory.lua | tracked icon creation, pooling, skinning, and text styling. |

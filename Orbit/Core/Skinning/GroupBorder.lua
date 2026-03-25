@@ -32,7 +32,7 @@ function Skin:UpdateGroupBorder(rootFrame)
                 local pOpts = GetFrameOptions(frame)
                 local cOpts = GetFrameOptions(child)
                 local merged = ShouldMergeBorders(pOpts, a.edge) and ShouldMergeBorders(cOpts, a.edge)
-                    and child:IsShown() and child:GetAlpha() > 0
+                    and child:IsShown() and (child:GetAlpha() > 0 or child._oocFadeHidden)
                 if merged then
                     hasMerge = true
                     allFrames[#allFrames + 1] = child
@@ -194,6 +194,10 @@ function Skin:UpdateGroupBorder(rootFrame)
         overlay:SetBackdropBorderColor(1, 1, 1, 1)
     end
     overlay:Show()
+    -- Re-hide if any merged frame is OOC-faded (prevents refresh from undoing OOCFadeMixin's hide)
+    for _, frame in ipairs(allFrames) do
+        if frame._oocFadeHidden then overlay:Hide(); break end
+    end
 
     -- Hook visibility changes so merges update immediately when frames show/hide
     -- (e.g. target frame via RegisterUnitWatch). Hooks are persistent and debounced.

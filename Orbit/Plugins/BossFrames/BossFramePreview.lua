@@ -35,10 +35,13 @@ function Orbit.BossFramePreviewMixin:ShowPreview()
 
     local isCanvasMode = false
     if OrbitEngine and OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame then
-        for _, frame in ipairs(self.frames) do
-            if OrbitEngine.CanvasMode.currentFrame == frame or OrbitEngine.CanvasMode.currentFrame == self.container then
-                isCanvasMode = true
-                break
+        local dl = OrbitEngine.CanvasModeDialog or (Orbit and Orbit.CanvasModeDialog)
+        if not dl or dl:IsShown() then
+            for _, frame in ipairs(self.frames) do
+                if OrbitEngine.CanvasMode.currentFrame == frame or OrbitEngine.CanvasMode.currentFrame == self.container then
+                    isCanvasMode = true
+                    break
+                end
             end
         end
     end

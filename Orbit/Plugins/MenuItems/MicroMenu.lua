@@ -118,9 +118,6 @@ function Plugin:AddSettings(dialog, systemFrame)
         default = 0,
     })
 
-    -- 4. Opacity
-    SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
-
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
@@ -150,7 +147,8 @@ function Plugin:OnLoad()
 
     self:RegisterStandardEvents()
     self:RegisterVisibilityEvents()
-    self.mountedConfig = { frame = self.frame, hoverReveal = true }
+    self.mountedConfig = { frame = self.frame }
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(self.frame, self, SYSTEM_ID) end
 
     -- Hook AddButton to catch late additions
     if MicroMenu and MicroMenu.AddButton then

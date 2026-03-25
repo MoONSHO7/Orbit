@@ -151,8 +151,21 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
                 Engine.PositionManager:SetPosition(f, point, x, y)
             end
             Engine.PositionManager:MarkDirty(f)
-        else
-            error("Orbit: PositionManager is nil — cannot save frame position")
+            -- Immediate write for spec-scoped frames (FlushToStorage's SetSetting chain is unreliable)
+            local p = f.orbitPlugin
+            local sysIdx = f.systemIndex
+            if p and sysIdx and p.SetSpecData and p.IsSpecScopedIndex and p:IsSpecScopedIndex(sysIdx) then
+                if point == "ANCHORED" then
+                    local anch = Engine.PositionManager:GetAnchor(f)
+                    if anch then
+                        p:SetSpecData(sysIdx, "Anchor", anch)
+                        p:SetSpecData(sysIdx, "Position", nil)
+                    end
+                else
+                    p:SetSpecData(sysIdx, "Position", { point = point, x = x, y = y })
+                    p:SetSpecData(sysIdx, "Anchor", false)
+                end
+            end
         end
 
         -- Refresh settings (e.g. show/hide width/height sliders based on anchor)

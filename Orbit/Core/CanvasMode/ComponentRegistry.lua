@@ -92,13 +92,20 @@ function ComponentDrag:OnDragUpdate(component, parent, data, handle)
             Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY,edgeOffX, edgeOffY, justifyH,selfAnchorY)
         end
     else
-        component:SetPoint("CENTER", componentParent, "CENTER", centerRelX, centerRelY)
+        local needsComp = NeedsEdgeCompensation(data.isFontString, data.isAuraContainer)
+        local compW, compH = SafeGetSize(component)
+        local anchorX, anchorY, edgeOffX, edgeOffY, justifyH, selfAnchorY =
+            CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsComp, compW, compH, false)
+        local selfAnchor = BuildComponentSelfAnchor(data.isFontString, false, selfAnchorY, justifyH)
+        local anchorPoint = Engine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
+        local finalX, finalY = edgeOffX, edgeOffY
+        if anchorX == "RIGHT" then finalX = -finalX end
+        if anchorY == "TOP" then finalY = -finalY end
+        component:SetPoint(selfAnchor, componentParent, anchorPoint, finalX, finalY)
+        if data.isFontString and justifyH and component.SetJustifyH then component:SetJustifyH(justifyH) end
+
         if Engine.SelectionTooltip and Engine.SelectionTooltip.ShowComponentPosition then
-            local needsComp = NeedsEdgeCompensation(data.isFontString, data.isAuraContainer)
-            local compW, compH = SafeGetSize(component)
-            local anchorX, anchorY, edgeOffX, edgeOffY, justifyH, selfAnchorY =
-                CalculateAnchorWithWidthCompensation(centerRelX, centerRelY, halfW, halfH, needsComp, compW, compH, false)
-            Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH,selfAnchorY)
+            Engine.SelectionTooltip:ShowComponentPosition(component, data.key, anchorX, anchorY, centerRelX, centerRelY, edgeOffX, edgeOffY, justifyH, selfAnchorY)
         end
     end
 
@@ -221,7 +228,17 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
     data.currentY = newY
 
     component:ClearAllPoints()
-    component:SetPoint("CENTER", componentParent, "CENTER", newX, newY)
+    local needsComp = NeedsEdgeCompensation(data.isFontString, data.isAuraContainer)
+    local compW, compH = SafeGetSize(component)
+    local anchorX, anchorY, edgeOffX, edgeOffY, justifyH, selfAnchorY =
+        CalculateAnchorWithWidthCompensation(newX, newY, halfW, halfH, needsComp, compW, compH, data.isAuraContainer)
+    local selfAnchor = BuildComponentSelfAnchor(data.isFontString, data.isAuraContainer, selfAnchorY, justifyH)
+    local anchorPoint = Engine.PositionUtils.BuildAnchorPoint(anchorX, anchorY)
+    local finalX, finalY = edgeOffX, edgeOffY
+    if anchorX == "RIGHT" then finalX = -finalX end
+    if anchorY == "TOP" then finalY = -finalY end
+    component:SetPoint(selfAnchor, componentParent, anchorPoint, finalX, finalY)
+    if data.isFontString and justifyH and component.SetJustifyH then component:SetJustifyH(justifyH) end
 
     if data.handle then
         data.handle:ClearAllPoints()

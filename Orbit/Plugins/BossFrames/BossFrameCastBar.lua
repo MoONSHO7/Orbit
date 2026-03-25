@@ -41,7 +41,16 @@ function CB:Create(parent, bossIndex, plugin)
     bar.SetBorder = function(self, size) Orbit.Skin:SkinBorder(self, self, size) end
     bar:SetBorder(1)
 
+    bar.protectedOverlay = CreateFrame("StatusBar", nil, bar)
+    bar.protectedOverlay:SetAllPoints(bar)
+    bar.protectedOverlay:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
+    bar.protectedOverlay:SetMinMaxValues(0, 1)
+    bar.protectedOverlay:SetValue(0)
+    bar.protectedOverlay:SetFrameLevel(bar:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
+    bar.protectedOverlay:SetAlpha(0)
+
     bar.Icon = bar:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
+
     bar.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
     bar.Icon:SetSize(CAST_BAR_ICON_SIZE, CAST_BAR_ICON_SIZE)
     bar.Icon:SetPoint("LEFT", bar, "LEFT", 0, 0)
@@ -113,6 +122,16 @@ function CB:SetupHooks(castBar, unit)
             statusBarTexture:SetPoint("TOPRIGHT", castBar, "TOPRIGHT", 0, 0)
             statusBarTexture:SetPoint("BOTTOMRIGHT", castBar, "BOTTOMRIGHT", 0, 0)
         end
+        if castBar.protectedOverlay then
+            local pTex = castBar.protectedOverlay:GetStatusBarTexture()
+            if pTex then
+                pTex:ClearAllPoints()
+                pTex:SetPoint("TOPLEFT", castBar.protectedOverlay, "TOPLEFT", iconOffset, 0)
+                pTex:SetPoint("BOTTOMLEFT", castBar.protectedOverlay, "BOTTOMLEFT", iconOffset, 0)
+                pTex:SetPoint("TOPRIGHT", castBar.protectedOverlay, "TOPRIGHT", 0, 0)
+                pTex:SetPoint("BOTTOMRIGHT", castBar.protectedOverlay, "BOTTOMRIGHT", 0, 0)
+            end
+        end
         if castBar.bg then
             castBar.bg:ClearAllPoints()
             castBar.bg:SetPoint("TOPLEFT", castBar, "TOPLEFT", iconOffset, 0)
@@ -133,9 +152,40 @@ function CB:SetupHooks(castBar, unit)
         local timerDisabled = plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar.Timer")
         if castBar.Timer then castBar.Timer:SetShown(showTimer and not timerDisabled) end
         local min, max = nativeBar:GetMinMaxValues()
-        if min and max then castBar:SetMinMaxValues(min, max); castBar:SetValue(nativeBar:GetValue() or 0) end
-        local color = nativeBar.notInterruptible and ResolveNonInterruptibleColor(plugin) or ResolveCastBarColor(plugin)
+        if min and max then
+            castBar:SetMinMaxValues(min, max); castBar:SetValue(nativeBar:GetValue() or 0)
+            if castBar.protectedOverlay then
+                castBar.protectedOverlay:SetMinMaxValues(min, max)
+                castBar.protectedOverlay:SetValue(nativeBar:GetValue() or 0)
+            end
+        end
+
+        local color = ResolveCastBarColor(plugin)
         castBar:SetStatusBarColor(color.r, color.g, color.b)
+
+        if castBar.protectedOverlay then
+            local pColor = ResolveNonInterruptibleColor(plugin)
+            castBar.protectedOverlay:SetStatusBarColor(pColor.r, pColor.g, pColor.b)
+            local textureName = plugin:GetSetting(1, "Texture") or plugin:GetPlayerSetting("Texture")
+            if textureName then
+                local texPath = LSM:Fetch("statusbar", textureName)
+                if texPath then castBar.protectedOverlay:SetStatusBarTexture(texPath) end
+            end
+
+            local name, _, _, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
+            if not name then _, _, _, _, _, _, notInterruptible = UnitChannelInfo(unit) end
+
+            if notInterruptible ~= nil then
+                if type(castBar.protectedOverlay.SetAlphaFromBoolean) == "function" then
+                    castBar.protectedOverlay:SetAlphaFromBoolean(notInterruptible, 1, 0)
+                else
+                    castBar.protectedOverlay:SetAlpha(notInterruptible and 1 or 0)
+                end
+            else
+                castBar.protectedOverlay:SetAlpha(0)
+            end
+        end
+
         if plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar") then return end
         castBar:Show()
     end)
@@ -150,6 +200,10 @@ function CB:SetupHooks(castBar, unit)
         if not progress or not max then return end
         castBar:SetMinMaxValues(min, max)
         castBar:SetValue(progress)
+        if castBar.protectedOverlay then
+            castBar.protectedOverlay:SetMinMaxValues(min, max)
+            castBar.protectedOverlay:SetValue(progress)
+        end
         timerThrottle = timerThrottle + elapsed
         if timerThrottle < TIMER_THROTTLE_INTERVAL then return end
         timerThrottle = 0
@@ -168,12 +222,43 @@ function CB:SetupHooks(castBar, unit)
         if eventUnit ~= unit or not castBar or not castBar:IsShown() then return end
         if event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
             castBar:SetStatusBarColor(1, 0, 0)
+            if castBar.protectedOverlay then castBar.protectedOverlay:SetAlpha(0) end
         elseif event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
-            local color = ResolveNonInterruptibleColor(plugin)
-            castBar:SetStatusBarColor(color.r, color.g, color.b)
-        elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" or event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
+            if castBar.protectedOverlay then
+                if type(castBar.protectedOverlay.SetAlphaFromBoolean) == "function" then
+                    local name, _, _, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
+                    if not name then _, _, _, _, _, _, notInterruptible = UnitChannelInfo(unit) end
+                    if notInterruptible ~= nil then castBar.protectedOverlay:SetAlphaFromBoolean(notInterruptible, 1, 0) end
+                else
+                    castBar.protectedOverlay:SetAlpha(1)
+                end
+            end
+        elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" then
+            if castBar.protectedOverlay then
+                if type(castBar.protectedOverlay.SetAlphaFromBoolean) == "function" then
+                    local name, _, _, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
+                    if not name then _, _, _, _, _, _, notInterruptible = UnitChannelInfo(unit) end
+                    if notInterruptible ~= nil then castBar.protectedOverlay:SetAlphaFromBoolean(notInterruptible, 1, 0) end
+                else
+                    castBar.protectedOverlay:SetAlpha(0)
+                end
+            end
+        elseif event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
             local color = ResolveCastBarColor(plugin)
             castBar:SetStatusBarColor(color.r, color.g, color.b)
+            if castBar.protectedOverlay then
+                local name, _, _, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
+                if not name then _, _, _, _, _, _, notInterruptible = UnitChannelInfo(unit) end
+                if notInterruptible ~= nil then
+                    if type(castBar.protectedOverlay.SetAlphaFromBoolean) == "function" then
+                        castBar.protectedOverlay:SetAlphaFromBoolean(notInterruptible, 1, 0)
+                    else
+                        castBar.protectedOverlay:SetAlpha(notInterruptible and 1 or 0)
+                    end
+                else
+                    castBar.protectedOverlay:SetAlpha(0)
+                end
+            end
         end
     end)
 end

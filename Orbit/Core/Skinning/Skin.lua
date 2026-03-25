@@ -116,6 +116,7 @@ function Skin:ClearIconGroupBorder(container)
     if container._borderFrame then container._borderFrame:Hide() end
 end
 
+
 -- Group border functions → GroupBorder.lua
 
 function Skin:ResolveStyle(settingsKey)

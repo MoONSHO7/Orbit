@@ -3,4 +3,5 @@
     <Script file="PluginMixin.lua"/>
     <Script file="NativeBarMixin.lua"/>
     <Script file="OOCFadeMixin.lua"/>
+    <Script file="VisibilityEngine.lua"/>
 </Ui>
