@@ -23,10 +23,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Goodluck with season 1 and hope them Vaults were noice ;)
 
 ### Added
-- Adjusted how profiles are handled slightly, please let me know if you have any issues!
+- **Profile Management** — A complete layout manager out of the box. You can configure, import/export, and map UI profiles per-specialization for automatic swaps!
+- **Raid Frame Performance** — Reduced a large amount of API calls and layout updates on raid frames, should bring down the performance hit in raids, more work on this next update.
+- **CastBar** — Added to canvas mode.
 - Enhanced RaidFrames for multiple Groups, its all managed in a single Edit Mode frame now. Select your tier to edit.
-- Performance Parse for RAid Frames, should see significant improvements in large group content.
 - Removed all visibility settings from Edit mode, its now all handled in Orbits Visibility Engine. Type: /orbit ve or find it in the plugin manager.
+
+
+### Changed
+- **UI Consistency & Defaults** — Default fonts (now Barlow Condensed Bold) and underlying layout borders have been strictly aligned for fresh profile builds.
+- **UI Consistency & Defaults** — Temporarily disabled anchoring on Tracked Cooldowns & Charges, working on a fix for these with new profiles & more blizzard addon restrictions coming in soon
 
 ### Fixed
 - **BossFrames** — Fixed mulitple issues with bossframes that came up from previous performance parse on group frames.

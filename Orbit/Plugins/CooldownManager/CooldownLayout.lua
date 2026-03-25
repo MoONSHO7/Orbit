@@ -382,6 +382,7 @@ function CDM:ProcessChildren(anchor)
             Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
         end
     else
+        -- No active children — hide via alpha (BuffBar/BuffIcon only; Essential/Utility always have configured spells)
         if systemIndex == BUFFBAR_INDEX or systemIndex == BUFFICON_INDEX then
             anchor:SetAlpha(0)
         end
