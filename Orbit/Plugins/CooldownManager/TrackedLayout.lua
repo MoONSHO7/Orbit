@@ -125,7 +125,7 @@ function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
     local iconWidth, iconHeight = CooldownUtils:CalculateIconDimensions(plugin, systemIndex, overrides)
     local rawPadding = (overrides and overrides.padding) or plugin:GetSetting(systemIndex, "IconPadding") or Constants.Cooldown.DefaultPadding
     local Pixel = OrbitEngine.Pixel
-    local padding = Pixel and Pixel:Snap(rawPadding) or rawPadding
+    local padding = Pixel and Pixel:Multiple(rawPadding) or rawPadding
 
     local gridItems = {}
     local usableSnapshot = {}

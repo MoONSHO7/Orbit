@@ -125,6 +125,7 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.orbitClickThrough = true
     frame.anchorOptions = { horizontal = false, vertical = false, mergeBorders = true }
     frame.orbitChainSync = true
+    frame.orbitCursorReveal = true
 
     frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = DEFAULT_CHARGE_OFFSET_X, y = 0 }
     frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_CHARGE_OFFSET_X, 0)
@@ -167,8 +168,9 @@ function Plugin:CreateChargeBarFrame(name, systemIndex, label)
     frame.DropHighlight:SetColorTexture(DROP_HIGHLIGHT_COLOR.r, DROP_HIGHLIGHT_COLOR.g, DROP_HIGHLIGHT_COLOR.b, DROP_HIGHLIGHT_COLOR.a)
     frame.DropHighlight:Hide()
 
-    local seed = CreateFrame("Frame", nil, frame)
-    seed:SetAllPoints()
+    local seed = CreateFrame("Frame", nil, UIParent)
+    seed:SetPoint("TOPLEFT", frame, "TOPLEFT")
+    seed:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT")
     seed.Backdrop = seed:CreateTexture(nil, "BACKGROUND")
     seed.Backdrop:SetAllPoints()
     seed.Backdrop:SetColorTexture(0, 0, 0, 0.2)

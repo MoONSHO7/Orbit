@@ -230,3 +230,18 @@ function NativeFrame:GetStatus()
         protected = TableCount(self.protected),
     }
 end
+
+-- [ EDIT MODE SUPPRESSION ]-------------------------------------------------------------------------
+function NativeFrame:SuppressEditModeSettings()
+    if not C_EditMode or not C_EditMode.SetAccountSetting then return end
+    local S = Enum.EditModeAccountSetting
+    if not S then return end
+    local settings = {
+        S.ShowTargetAndFocus, S.ShowCastBar, S.ShowBuffsAndDebuffs,
+        S.ShowPetFrame, S.ShowPartyFrames, S.ShowRaidFrames,
+        S.ShowBossFrames, S.ShowTalkingHeadFrame, S.ShowCooldownViewer,
+    }
+    for _, setting in ipairs(settings) do
+        C_EditMode.SetAccountSetting(setting, 0)
+    end
+end
