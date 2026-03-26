@@ -358,7 +358,7 @@ function CDM:ProcessChildren(anchor)
             local limit = math.max(tonumber(skinSettings.limit) or 10, 1)
             local pad = tonumber(skinSettings.padding) or 0
             local scale = anchorFrame:GetEffectiveScale()
-            pad = OrbitEngine.Pixel:Snap(pad, scale)
+            pad = OrbitEngine.Pixel:Multiple(pad, scale)
             local cols = math.min(#activeChildren, limit)
             local rows = math.ceil(#activeChildren / limit)
             local w = (cols * iconW) + (math.max(cols - 1, 0) * pad)
@@ -420,7 +420,7 @@ function CDM:PreSizeAnchors()
             local scale = anchor:GetEffectiveScale()
             local baseSize = skinSettings.baseIconSize or Constants.Skin.DefaultIconSize
             local iconW, iconH = CooldownUtils:CalculateIconDimensions(self, systemIndex, skinSettings)
-            local pad = OrbitEngine.Pixel:Snap(tonumber(skinSettings.padding) or 0, scale)
+            local pad = OrbitEngine.Pixel:Multiple(tonumber(skinSettings.padding) or 0, scale)
             local cols = math.min(totalConfigured, limit)
             local w = (cols * iconW) + ((cols - 1) * pad)
             if w > anchor:GetWidth() then anchor:SetSize(w, iconH) end

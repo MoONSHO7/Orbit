@@ -156,20 +156,7 @@ end
 local function HideNativeBossFrames()
     for i = 1, MAX_BOSS_FRAMES do
         local bossFrame = _G["Boss" .. i .. "TargetFrame"]
-        if bossFrame then
-            if not bossFrame.orbitSetPointHooked then
-                hooksecurefunc(bossFrame, "SetPoint", function(self)
-                    if InCombatLockdown() then return end
-                    if not self.isMovingOffscreen then
-                        self.isMovingOffscreen = true
-                        self:ClearAllPoints()
-                        self:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-                        self.isMovingOffscreen = false
-                    end
-                end)
-                bossFrame.orbitSetPointHooked = true
-            end
-        end
+        if bossFrame then OrbitEngine.NativeFrame:Disable(bossFrame) end
     end
 end
 
