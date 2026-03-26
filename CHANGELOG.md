@@ -29,15 +29,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Raid Frame** Enhanced RaidFrames for multiple Groups, its all managed in a single Edit Mode frame now. Select your tier to edit.
 - **Visibility Engine** Removed all visibility settings from Edit mode, its now all handled in Orbits Visibility Engine. Type: /orbit ve or find it in the plugin manager.
 
-### Changed
-- **UI Consistency & Defaults** — Default fonts (now Barlow Condensed Bold) and underlying layout borders have been strictly aligned for fresh profile builds.
-- **UI Consistency & Defaults** — Temporarily disabled anchoring on Tracked Cooldowns & Charges, working on a fix for these with new profiles & more blizzard addon restrictions coming in soon
-
 ### Fixed
 - **BossFrames** — Fixed mulitple issues with bossframes that came up from previous performance parse on group frames.
 - **TrackedCooldowns+Charges** — These should now save position properly, anchored is still disabled as its buggy with new profiles and I  havent fixed it yet.
 - **TrackedCooldowns+Charges** — Added to visibility engine
-- **Visibility Enging** — Mouseover on frames with opacity settings should now work.
+- **Visibility Engine** — Mouseover on frames with opacity settings should now work.
+- **Visibility Engine** — Mouseover on frames Tracked Cooldowns&Charges should now work.
 
 ## [1.0.0] - 2026-03-10
 ### Added
