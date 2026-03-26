@@ -58,7 +58,7 @@ function IL:ApplyManualLayout(frame, icons, settings)
     local scale = frame:GetEffectiveScale()
     w = Pixel:Snap(w, scale)
     h = Pixel:Snap(h, scale)
-    padding = Pixel:Snap(padding, scale)
+    padding = Pixel:Multiple(padding, scale)
 
     local numGroups = math.ceil(totalIcons / limit)
     local maxMajorSize = (math.min(totalIcons, limit) * (orientation == 0 and w or h)) + ((math.min(totalIcons, limit) - 1) * padding)

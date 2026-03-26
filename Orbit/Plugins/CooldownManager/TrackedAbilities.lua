@@ -97,6 +97,7 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.orbitClickThrough = true
     frame.anchorOptions = { horizontal = false, vertical = false, syncScale = true, syncDimensions = false, useRowDimension = true, mergeBorders = true }
     frame.orbitChainSync = true
+    frame.orbitCursorReveal = true
     frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = DEFAULT_TRACKED_OFFSET_X, y = 0 }
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 
@@ -110,8 +111,9 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.DropHighlight:SetColorTexture(0, 0, 0, 0)
     frame.DropHighlight:Hide()
 
-    local seed = CreateFrame("Frame", nil, frame)
-    seed:SetAllPoints()
+    local seed = CreateFrame("Frame", nil, UIParent)
+    seed:SetPoint("TOPLEFT", frame, "TOPLEFT")
+    seed:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT")
     seed.Backdrop = seed:CreateTexture(nil, "BACKGROUND")
     seed.Backdrop:SetAllPoints()
     seed.Backdrop:SetColorTexture(0, 0, 0, 0.2)

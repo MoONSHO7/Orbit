@@ -112,13 +112,9 @@ function Layout:SkinChargeBar(plugin, frame, maxCharges, totalWidth, height, bor
     if frame.orbitBackdrop then frame.orbitBackdrop:Hide() end
     Orbit.Skin:SkinBorder(frame, frame, borderSize)
 
-    -- Recharge positioner spans the full bar
-    local logicalGap = PixelMultiple(dividerSize, scale)
-    local exactSegWidth = (totalWidth - (logicalGap * (maxCharges - 1))) / maxCharges
-    local segmentWidth = SnapToPixel(exactSegWidth, scale)
-    local stepWidth = segmentWidth + logicalGap
-    local positionerWidth = math.max(1, stepWidth * maxCharges)
-    frame.RechargePositioner:SetSize(positionerWidth, height)
+    -- Recharge positioner spans the full bar (must match main StatusBar width for proportional alignment)
+    local segmentWidth = SnapToPixel(totalWidth / maxCharges, scale)
+    frame.RechargePositioner:SetSize(totalWidth, height)
     frame.RechargePositioner:SetPoint("LEFT", frame, "LEFT", 0, 0)
     frame.RechargeSegment:SetSize(math.max(1, segmentWidth), height)
     frame.TickBar:SetSize(math.max(1, segmentWidth), height)
@@ -148,24 +144,22 @@ function Layout:SkinChargeBar(plugin, frame, maxCharges, totalWidth, height, bor
 end
 
 -- [ DIVIDER POSITIONING ]--------------------------------------------------------------------------
+-- Dividers are centered on proportional charge boundaries ((i/maxCharges) * totalWidth)
+-- so they align exactly with the StatusBar fill edge at each integer charge value.
 function Layout:RepositionDividers(frame, maxCharges, totalWidth, height, dividerSize, scale)
     if not frame.Dividers then return end
     local logicalGap = PixelMultiple(dividerSize, scale)
-    local exactSegWidth = (totalWidth - (logicalGap * (maxCharges - 1))) / maxCharges
-    local snappedWidth = SnapToPixel(exactSegWidth, scale)
-    local currentLeft = 0
+    local halfGap = logicalGap / 2
     for i = 1, MAX_DIVIDERS do
         local div = frame.Dividers[i]
         if div then
             if i < maxCharges and dividerSize > 0 then
-                currentLeft = currentLeft + snappedWidth
-                local logicalLeft = SnapToPixel(currentLeft, scale)
+                local boundary = SnapToPixel((i / maxCharges) * totalWidth, scale)
                 div:ClearAllPoints()
                 div:SetSize(logicalGap, height)
-                div:SetPoint("LEFT", frame, "LEFT", logicalLeft, 0)
+                div:SetPoint("LEFT", frame, "LEFT", boundary - halfGap, 0)
                 OrbitEngine.Pixel:Enforce(div)
                 div:Show()
-                currentLeft = currentLeft + logicalGap
             else
                 div:Hide()
             end

@@ -31,6 +31,12 @@ local function IsInCombatContext(frame)
     return InCombatLockdown() or UnitAffectingCombat("player")
 end
 
+local function IsCursorRevealing(frame)
+    if not frame or not frame.orbitCursorReveal then return false end
+    local ct = GetCursorInfo()
+    return ct == "spell" or ct == "item"
+end
+
 -- Read all VE settings for a managed frame
 local function GetVESettings(data)
     local veKey = data and GetVEKey(data)
@@ -100,7 +106,7 @@ local function UpdateFrameVisibility(frame, _, data)
     if isMountedHidden and Orbit.MountedVisibility:ShouldHide() then
         -- Check reveal overrides before hiding
         local _, _, mouseOver, showWithTarget = GetVESettings(data)
-        local revealFull = (mouseOver and frame.orbitMouseOver) or (showWithTarget and UnitExists("target"))
+        local revealFull = (mouseOver and frame.orbitMouseOver) or (showWithTarget and UnitExists("target")) or IsCursorRevealing(frame)
         if not revealFull then
             frame:SetAlpha(0)
             if not frame._oocMouseDisabled and data and not data.enableHover then
@@ -116,7 +122,7 @@ local function UpdateFrameVisibility(frame, _, data)
     local opacity, oocFade, mouseOver, showWithTarget = GetVESettings(data)
     local baseAlpha = frame.orbitOpacityExternal and 1 or (opacity or 100) / 100
     -- Early out: no VE effects active — don't touch the frame at all
-    if not oocFade and baseAlpha >= 1 then
+    if not oocFade and baseAlpha >= 1 and not mouseOver then
         if frame._oocMouseDisabled then
             SetFrameMouseEnabled(frame, true, true)
             frame._oocMouseDisabled = nil
@@ -129,7 +135,7 @@ local function UpdateFrameVisibility(frame, _, data)
     -- Determine reveal overrides (only when opacity > 0 — don't override explicit hide)
     local isHovering = frame.orbitMouseOver
     local hasTarget = UnitExists("target")
-    local revealFull = baseAlpha > 0 and ((mouseOver and isHovering) or (showWithTarget and hasTarget))
+    local revealFull = (mouseOver and isHovering) or (showWithTarget and hasTarget) or IsCursorRevealing(frame)
     -- Determine OOC hide
     local shouldOOCHide = oocFade and not IsInCombatContext(frame) and not revealFull
     -- Calculate final alpha
@@ -248,18 +254,20 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
             if Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide() then
                 local isMH = (d.plugin and Orbit.MountedVisibility:ShouldHidePlugin(d.plugin)) or (d.veKey and Orbit.MountedVisibility:ShouldHideBlizzard(d.veKey))
                 if isMH then
-                    local revealFull = (showWithTarget and UnitExists("target")) or (mouseOver and self.orbitMouseOver)
+                    local revealFull = (showWithTarget and UnitExists("target")) or (mouseOver and self.orbitMouseOver) or IsCursorRevealing(self)
                     if not revealFull then isMountedHide = true end
                 end
             end
             if isMountedHide then return originalSetAlpha(self, 0) end
             -- Fast path: no VE effects active, pass through
-            if not oocFade and maxAlpha >= 1 then return originalSetAlpha(self, alpha) end
+            if not oocFade and maxAlpha >= 1 and not mouseOver then return originalSetAlpha(self, alpha) end
             -- OOC fade should hide: force 0
             if oocFade and not IsInCombatContext(self) and not self.orbitMouseOver and not (showWithTarget and UnitExists("target")) then
                 return originalSetAlpha(self, 0)
             end
-            -- Apply VE opacity as cap
+            -- Apply VE opacity as cap (bypass during hover reveal or cursor reveal)
+            if IsCursorRevealing(self) then return originalSetAlpha(self, 1) end
+            if mouseOver and self.orbitMouseOver then return originalSetAlpha(self, alpha) end
             return originalSetAlpha(self, math.min(alpha, maxAlpha))
         end
         frame.orbitOOCSetAlphaHooked = true

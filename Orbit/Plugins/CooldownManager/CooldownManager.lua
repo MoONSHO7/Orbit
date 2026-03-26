@@ -492,6 +492,7 @@ function Plugin:CreateAnchor(name, systemIndex, label, overrideOptions)
     frame:EnableMouse(false)
     frame.anchorOptions = overrideOptions or { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true, mergeBorders = true }
     frame.orbitChainSync = true
+    frame.orbitCursorReveal = true
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 
     frame.Selection = frame:CreateTexture(nil, "OVERLAY")

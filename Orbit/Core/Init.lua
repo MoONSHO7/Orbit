@@ -227,6 +227,8 @@ function Orbit:OnLoad()
         end)
     end
 
+    if OrbitEngine.NativeFrame then OrbitEngine.NativeFrame:SuppressEditModeSettings() end
+
     self:Print("loaded. Type /orbit for config")
 end
 

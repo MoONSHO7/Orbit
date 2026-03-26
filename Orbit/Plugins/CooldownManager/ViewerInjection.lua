@@ -532,12 +532,13 @@ end
 
 function Injection:CreateDropZone(anchor)
     if anchor._dropZone then return end
-    local zone = CreateFrame("Frame", nil, anchor)
-    zone:SetAllPoints()
+    local zone = CreateFrame("Frame", nil, UIParent)
+    zone:SetPoint("TOPLEFT", anchor, "TOPLEFT")
+    zone:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT")
     zone:SetFrameStrata("TOOLTIP")
     zone:SetFrameLevel(999)
     -- Glow container extending beyond frame edges, placed in background
-    local glow = CreateFrame("Frame", nil, anchor)
+    local glow = CreateFrame("Frame", nil, UIParent)
     glow:SetFrameStrata("BACKGROUND")
     glow:SetFrameLevel(0)
     glow:SetScript("OnShow", function(self)
