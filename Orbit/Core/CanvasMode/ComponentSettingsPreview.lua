@@ -5,11 +5,70 @@ local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
+local AnchorToCenter = OrbitEngine.PositionUtils.AnchorToCenter
+local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
+local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
+local ApplyTextAlignment = OrbitEngine.CanvasMode.ApplyTextAlignment
 
 local PORTRAIT_RING_OVERSHOOT = OrbitEngine.PORTRAIT_RING_OVERSHOOT
 local PORTRAIT_RING_DATA = OrbitEngine.PortraitRingData
 
 local Settings = Orbit.CanvasComponentSettings
+
+local function ReanchorContainer(container)
+    if not container or not container.GetParent or not container.anchorX or not container.anchorY then return end
+    local parent = container:GetParent()
+    if not parent then return end
+    local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, container.selfAnchorY, container.justifyH)
+    local anchorPoint = BuildAnchorPoint(container.anchorX, container.anchorY)
+    local finalX, finalY
+
+    if container.anchorX == "CENTER" then
+        finalX = container.posX or 0
+    else
+        finalX = container.offsetX or 0
+        if container.anchorX == "RIGHT" then finalX = -finalX end
+    end
+
+    if container.anchorY == "CENTER" then
+        finalY = container.posY or 0
+    else
+        finalY = container.offsetY or 0
+        if container.anchorY == "TOP" then finalY = -finalY end
+    end
+
+    container:ClearAllPoints()
+    container:SetPoint(selfAnchor, parent, anchorPoint, finalX, finalY)
+    if container.visual and container.isFontString then
+        ApplyTextAlignment(container, container.visual, container.justifyH or "CENTER")
+    end
+end
+
+local function ApplyDifficultySavedPosition(settings, container, display)
+    if not ((settings.componentKey == "DifficultyIcon") or (settings.componentKey == "DifficultyText")) or not settings.plugin or not settings.plugin.GetComponentPositions or not container then return end
+    local parent = container:GetParent()
+    if not parent then return end
+
+    local activeKey = display == "text" and "DifficultyText" or "DifficultyIcon"
+    local positions = settings.plugin:GetComponentPositions(settings.systemIndex) or {}
+    local pos = positions[activeKey]
+    if not pos or not pos.anchorX then return end
+
+    local borderInset = parent.borderInset or 0
+    local halfW = (parent.sourceWidth or parent:GetWidth() or 0) / 2 - borderInset
+    local halfH = (parent.sourceHeight or parent:GetHeight() or 0) / 2 - borderInset
+    local posX, posY = AnchorToCenter(pos.anchorX, pos.anchorY or "CENTER", pos.offsetX or 0, pos.offsetY or 0, halfW, halfH)
+
+    container.anchorX = pos.anchorX
+    container.anchorY = pos.anchorY or "CENTER"
+    container.offsetX = pos.offsetX or 0
+    container.offsetY = pos.offsetY or 0
+    container.justifyH = pos.justifyH or "CENTER"
+    container.selfAnchorY = pos.selfAnchorY or container.anchorY
+    container.posX = pos.posX or posX
+    container.posY = pos.posY or posY
+    ReanchorContainer(container)
+end
 
 -- [ PORTRAIT PREVIEW ]------------------------------------------------------------------------------
 function Settings:ApplyPortraitPreview()
@@ -158,6 +217,49 @@ function Settings:ApplyHealthTextPreview()
     visual:Show()
 end
 
+-- [ ZONE TEXT PREVIEW ]-----------------------------------------------------------------------------
+function Settings:ApplyZoneTextPreview()
+    local canvasDialog = OrbitEngine.CanvasModeDialog
+    if not canvasDialog or not canvasDialog.previewComponents then return end
+    local comp = canvasDialog.previewComponents.ZoneText
+    if not comp or not comp.visual then return end
+    local visual = comp.visual
+
+    local pending = self.pendingPluginSettings or {}
+    local coloring = pending.ZoneTextColoring
+    if coloring == nil then
+        local plugin = self.plugin
+        local sysIdx = self.systemIndex or 1
+        coloring = plugin and plugin:GetSetting(sysIdx, "ZoneTextColoring")
+    end
+
+    if coloring then
+        local ZONE_PVP_COLORS = {
+            sanctuary = { r = 0.41, g = 0.80, b = 0.94 },
+            friendly   = { r = 0.10, g = 1.00, b = 0.10 },
+            hostile    = { r = 1.00, g = 0.10, b = 0.10 },
+            contested  = { r = 1.00, g = 0.70, b = 0.00 },
+        }
+        local pvpType = GetZonePVPInfo()
+        local color = ZONE_PVP_COLORS[pvpType]
+        if color then
+            visual:SetTextColor(color.r, color.g, color.b, 1)
+        else
+            visual:SetTextColor(1, 1, 1, 1)
+        end
+    else
+        local overrides = self.currentOverrides or {}
+        if overrides.CustomColorCurve then
+            local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(overrides.CustomColorCurve)
+            if color then
+                visual:SetTextColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
+            end
+        else
+            visual:SetTextColor(1, 1, 1, 1)
+        end
+    end
+end
+
 -- [ FLUSH PENDING ]---------------------------------------------------------------------------------
 function Settings:FlushPendingPluginSettings()
     if not self.pendingPluginSettings or not self.plugin then return end
@@ -173,14 +275,26 @@ function Settings:ApplyStyle(container, key, value)
         if self.container and self.container.RefreshAuraIcons then self.container:RefreshAuraIcons() end
         return
     end
+    if key == "DifficultyDisplay" and self.container and self.container.SetDifficultyDisplay then
+        self.container:SetDifficultyDisplay(value)
+        ApplyDifficultySavedPosition(self, self.container, value)
+        ReanchorContainer(self.container)
+        return
+    end
     if key == "IconSize" then
         if self.container and self.container.RefreshAuraIcons then
             self.container:RefreshAuraIcons()
         elseif self.container then
-            self.container:SetSize(value, value)
-            if self.container.visual and self.container.visual.SetSize and not self.container._cyclingTicker then self.container.visual:SetSize(value, value) end
-            if self.container.visual and Orbit.Skin and Orbit.Skin.Icons and self.container.visual.GetRegions then
-                Orbit.Skin.Icons:ApplyCustom(self.container.visual, Orbit.Constants.Aura.SkinNoTimer)
+            if self.container.UpdateZoomSize then
+                self.container:UpdateZoomSize(value)
+            else
+                self.container:SetSize(value, value)
+                if self.container.visual and self.container.visual.SetSize and not self.container._cyclingTicker then self.container.visual:SetSize(value, value) end
+                if self.container.visual and Orbit.Skin and Orbit.Skin.Icons and self.container.visual.GetRegions then
+                    if not self.container.skipIconSkin then
+                        Orbit.Skin.Icons:ApplyCustom(self.container.visual, Orbit.Constants.Aura.SkinNoTimer)
+                    end
+                end
             end
         end
         return
@@ -196,6 +310,7 @@ function Settings:ApplyStyle(container, key, value)
         C_Timer.After(0.01, function()
             if container and visual and visual.GetStringWidth then
                 container:SetSize((visual:GetStringWidth() or (value * 3)) + 2, (visual:GetStringHeight() or value) + 2)
+                ReanchorContainer(container)
             end
         end)
     elseif key == "Font" and visual.SetFont then
@@ -207,6 +322,7 @@ function Settings:ApplyStyle(container, key, value)
             C_Timer.After(0.01, function()
                 if container and visual and visual.GetStringWidth then
                     container:SetSize((visual:GetStringWidth() or ((size or 12) * 3)) + 2, (visual:GetStringHeight() or (size or 12)) + 2)
+                    ReanchorContainer(container)
                 end
             end)
         end
@@ -270,7 +386,8 @@ function Settings:ApplyAll(container, overrides)
     if not container or not overrides then return end
     local previousOverrides = self.currentOverrides
     self.currentOverrides = overrides
-    for key, value in pairs(overrides) do self:ApplyStyle(container, key, value) end
+    if overrides.DifficultyDisplay then self:ApplyStyle(container, "DifficultyDisplay", overrides.DifficultyDisplay) end
+    for key, value in pairs(overrides) do if key ~= "DifficultyDisplay" then self:ApplyStyle(container, key, value) end end
     self.currentOverrides = previousOverrides
 end
 
@@ -278,6 +395,7 @@ end
 function Settings:ApplyInitialPluginPreviews(plugin, systemIndex)
     if not plugin then return end
     local sysIdx = systemIndex or 1
+    local pendingPluginSettings = self.pendingPluginSettings
     self.plugin = plugin
     self.systemIndex = sysIdx
 
@@ -296,7 +414,7 @@ function Settings:ApplyInitialPluginPreviews(plugin, systemIndex)
         CastBarWidth = plugin:GetSetting(sysIdx, "CastBarWidth") or 120,
         CastBarHeight = plugin:GetSetting(sysIdx, "CastBarHeight") or 18,
     }
-    self.pendingPluginSettings = nil
+    self.pendingPluginSettings = pendingPluginSettings
     self:ApplyCastBarPreview()
 
     self.currentOverrides = nil
@@ -312,4 +430,5 @@ function Settings:ApplyInitialPluginPreviews(plugin, systemIndex)
     self:ApplyHealthTextPreview()
 
     self.currentOverrides = nil
+    self.pendingPluginSettings = pendingPluginSettings
 end

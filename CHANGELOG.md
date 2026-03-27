@@ -18,27 +18,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
 ## [@project-version@] - @project-date-iso@
-### TLDR
-- Few more Raid Frame tweaks, and fixes
-- Also added some QoL stuff, check the QoL section for more info.
+### Message
+- This build introduces Orbit's first **Experimental** Minimap plugin. It's completely new and has not had broad user testing yet, so expect rough edges.
+- Created by a new Orbit developer who wants to contribute more moving forward.
+- Feedback on Discord is very appreciated - Lars-Martin.
 
 ### Added
-- **Profile Management** — A complete layout manager out of the box. You can configure, import/export, and map UI profiles per-specialization for automatic swaps!
-- **Raid Frame Performance** — Reduced a large amount of API calls and layout updates on raid frames, should bring down the performance hit in raids, more work on this next update.
-- **CastBar** — Added to canvas mode.
-- **Raid Frame** Enhanced RaidFrames for multiple Groups, its all managed in a single Edit Mode frame now. Select your tier to edit.
-- **Visibility Engine** Removed all visibility settings from Edit mode, its now all handled in Orbits Visibility Engine. Type: /orbit ve or find it in the plugin manager.
-- **Cooldown Manager** — You can now Drag and Drop Items/Spells directly into the Cooldown Manager (Essential and Utility) Shift right click to remove them.
-- **QoL** — Started building out the QoL frame, added two options (Move More, Cursor Highlight)
+- **Minimap plugin** — replaces the default Blizzard minimap with a fully Orbit-managed version.
+  - Drag and reposition the minimap anywhere on screen via Edit Mode.
+  - Choose between a **square** or **round** shape.
+  - Set any **size** from 100 to 400 pixels.
+  - **Opacity** control with optional mouse-over fade-in.
+  - **Rotate Minimap** option to keep north up or rotate with your character.
+   - **Configurable minimap click actions** let you bind the World Map, Tracking menu, Calendar, Time Manager, or Addon Compartment to mouse buttons.
+  - **Zone Text** — shows your current zone above the minimap. Click it to open the World Map. Optionally colour the text by PvP zone type (sanctuary, friendly, hostile, contested).
+  - **Clock** — displays the current time (local or realm). Left-click opens the Time Manager, right-click opens the Calendar. Glows when you have pending calendar invites.
+  - **Coordinates** — shows your current map position (X, Y) and updates in real time.
+  - **Zoom Buttons** — fade in on hover, fade out when you move away. Optional auto-zoom-out timer resets zoom after a configurable delay.
+  - **Addon Compartment** — consolidates addon buttons into a single Orbit-managed compartment button with a flyout list.
+   - **Instance Difficulty** supports both icon and text display modes, each with independent positioning in Canvas Mode.
+   - **Missions**, **Mail**, and **Crafting Order** indicators are all carried over from the Blizzard minimap.
+  - All components are individually toggleable and repositionable in Canvas Mode.
+
+### Changed
+- **Difficulty display handling** — Canvas Mode now treats difficulty icon and text modes as separate components with independent saved positions.
+- **Minimap defaults** — Updated the default minimap size, placement, component layout, and click-action settings for the first experimental release.
 
 ### Fixed
+<<<<<<< HEAD
+- **RestingIcon** — Fixed issue with positioning the icon in canvas mode.
+- **Difficulty preview/apply flow** — Fixed icon/text mode switching, preview sizing drift, and live Apply mismatches.
+- **Minimap polish** — Fixed several component sizing, layering, opacity, and placeholder issues across the new minimap and canvas preview.
+=======
 - **BossFrames** — Fixed mulitple issues with bossframes that came up from previous performance parse on group frames.
-- **TrackedCooldowns+Charges** — These should now save position properly, anchored is still disabled as its buggy with new profiles and I  havent fixed it yet.
-- **TrackedCooldowns+Charges** — Added to visibility engine
-- **Visibility Engine** — Mouseover on frames with opacity settings should now work.
-- **Visibility Engine** — Mouseover on frames Tracked Cooldowns&Charges should now work.
-- **Visibility Engine** — More tweaks to the VE Engine
-- **Group Frames** — More tweaks/bugfixes to the Group Frames
+- **TrackedCooldowns+Charges** — These should now save position properly, anchored is still disabled as its buggy with new profiles and I  havent fixed it yet 
+>>>>>>> origin/main
 
 ## [1.0.0] - 2026-03-10
 ### Added

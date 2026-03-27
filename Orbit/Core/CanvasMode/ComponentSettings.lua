@@ -87,12 +87,16 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
 
     -- Unified override loading: overrides first, then plugin-level settings, then pending
     self.currentOverrides = {}
-    local savedPositions = plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+    local savedPositions = plugin and plugin.GetComponentPositions and plugin:GetComponentPositions(systemIndex) or plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
     local savedOverrides = (savedPositions[componentKey] or {}).overrides or {}
-    for k, v in pairs(savedOverrides) do self.currentOverrides[k] = v end
+    for k, v in pairs(savedOverrides) do
+        self.currentOverrides[k] = v
+    end
     if container.existingOverrides then
         for k, v in pairs(container.existingOverrides) do
-            if self.currentOverrides[k] == nil then self.currentOverrides[k] = v end
+            if self.currentOverrides[k] == nil then
+                self.currentOverrides[k] = v
+            end
         end
     end
     if plugin then
@@ -104,23 +108,32 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
                 else
                     val = plugin:GetSetting(systemIndex, control.key)
                 end
-                
+
                 if val ~= nil then self.currentOverrides[control.key] = val end
             end
         end
     end
     if container.pendingOverrides then
-        for k, v in pairs(container.pendingOverrides) do self.currentOverrides[k] = v end
+        for k, v in pairs(container.pendingOverrides) do
+            self.currentOverrides[k] = v
+        end
+    end
+    if (componentKey == "DifficultyIcon" or componentKey == "DifficultyText") and self.currentOverrides.DifficultyDisplay == nil then
+        self.currentOverrides.DifficultyDisplay = plugin and plugin.GetDifficultyDisplay and plugin:GetDifficultyDisplay() or "icon"
     end
 
     local function GetValueFromVisual(cont, key)
-        if not cont or not cont.visual then return nil end
+        if not cont or not cont.visual then
+            return nil
+        end
         local visual = cont.visual
         if key == "Font" and visual.GetFont then
             local fontPath = visual:GetFont()
             if fontPath then
                 for name, path in pairs(LSM:HashTable("font")) do
-                    if path == fontPath then return name end
+                    if path == fontPath then
+                        return name
+                    end
                 end
             end
         elseif key == "FontSize" and visual.GetFont then
@@ -129,7 +142,11 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
         elseif key == "CustomColorValue" and visual.GetTextColor then
             local r, g, b, a = visual:GetTextColor()
             return { r = r, g = g, b = b, a = a or 1 }
-        elseif key == "Scale" then return 1.0 end
+        elseif key == "IconSize" and cont.GetWidth then
+            return math.floor(cont:GetWidth() + 0.5)
+        elseif key == "Scale" then
+            return 1.0
+        end
         return nil
     end
 
@@ -141,13 +158,17 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
 
         if currentValue == nil and plugin and plugin.defaults then
             local compDefaults = plugin.defaults.ComponentSettings and plugin.defaults.ComponentSettings[componentKey]
-            if compDefaults then currentValue = compDefaults[control.key] end
+            if compDefaults then
+                currentValue = compDefaults[control.key]
+            end
         end
 
-        if currentValue == nil then currentValue = GetValueFromVisual(container, control.key) end
+        if currentValue == nil then
+            currentValue = GetValueFromVisual(container, control.key)
+        end
 
         local callback = function(key, value) self:OnValueChanged(key, value) end
-        local widget = nil
+        local widget
 
         if control.type == "slider" then
             widget = Widgets.CreateSlider(overrideContainer, control, currentValue or control.min, callback)
@@ -155,9 +176,14 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             widget = Widgets.CreateCheckbox(overrideContainer, control, currentValue, callback)
         elseif control.type == "dropdown" then
             if Layout and Layout.CreateDropdown then
-                widget = Layout:CreateDropdown(overrideContainer, control.label, control.options, currentValue or control.default,
-                    function(value) if callback then callback(control.key, value) end end)
-                if widget then widget:SetHeight(32) end
+                widget = Layout:CreateDropdown(overrideContainer, control.label, control.options, currentValue or control.default, function(value)
+                    if callback then
+                        callback(control.key, value)
+                    end
+                end)
+                if widget then
+                    widget:SetHeight(32)
+                end
             end
         elseif control.type == "font" then
             widget = Widgets.CreateFontPicker(overrideContainer, control, currentValue, callback)
@@ -165,15 +191,25 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             widget = Widgets.CreateColorPicker(overrideContainer, control, currentValue, callback)
         elseif control.type == "colorcurve" then
             if Layout and Layout.CreateColorCurvePicker then
-                widget = Layout:CreateColorCurvePicker(overrideContainer, control.label, currentValue,
-                    function(curveData) if callback then callback(control.key, curveData) end end)
+                widget = Layout:CreateColorCurvePicker(overrideContainer, control.label, currentValue, function(curveData)
+                    if callback then
+                        callback(control.key, curveData)
+                    end
+                end)
                 if widget then
                     widget:SetHeight(32)
                     widget.singleColorMode = control.singleColor ~= false
-                    if self.componentKey == "Timer" and self.systemIndex ~= 3 then widget.singleColorMode = true end
+                    if self.componentKey == "Timer" and self.systemIndex ~= 3 then
+                        widget.singleColorMode = true
+                    end
                 end
             else
-                widget = Widgets.CreateColorPicker(overrideContainer, control, currentValue and OrbitEngine.ColorCurve:GetFirstColorFromCurve(currentValue), callback)
+                widget = Widgets.CreateColorPicker(
+                    overrideContainer,
+                    control,
+                    currentValue and OrbitEngine.ColorCurve:GetFirstColorFromCurve(currentValue),
+                    callback
+                )
             end
         end
 
@@ -199,10 +235,17 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             widget.showIf = control.showIf
 
             local shouldShow = true
-            if control.capability and not (self.plugin and self.plugin[control.capability]) then shouldShow = false end
-            if shouldShow and control.hideIf then shouldShow = not self.currentOverrides[control.hideIf]
-            elseif shouldShow and control.showIf then shouldShow = self.currentOverrides[control.showIf] == true end
-            if shouldShow and control.showIfValue then shouldShow = self.currentOverrides[control.showIfValue.key] == control.showIfValue.value end
+            if control.capability and not (self.plugin and self.plugin[control.capability]) then
+                shouldShow = false
+            end
+            if shouldShow and control.hideIf then
+                shouldShow = not self.currentOverrides[control.hideIf]
+            elseif shouldShow and control.showIf then
+                shouldShow = self.currentOverrides[control.showIf] == true
+            end
+            if shouldShow and control.showIfValue then
+                shouldShow = self.currentOverrides[control.showIfValue.key] == control.showIfValue.value
+            end
 
             self.widgets[widgetIndex] = widget
             self.widgetsByKey = self.widgetsByKey or {}
@@ -237,7 +280,9 @@ function Settings:Close()
 end
 
 function Settings:HideWidgets()
-    for _, widget in ipairs(self.widgets) do widget:Hide() end
+    for _, widget in ipairs(self.widgets) do
+        widget:Hide()
+    end
 end
 
 -- [ CONTROL LOOKUP ]--------------------------------------------------------------------------------
@@ -245,14 +290,24 @@ function Settings:GetControlDef(key)
     local schema = KEY_SCHEMAS[self.componentKey]
     if not schema then return nil end
     for _, ctrl in ipairs(schema.controls) do
-        if ctrl.key == key then return ctrl end
+        if ctrl.key == key then
+            return ctrl
+        end
     end
     return nil
 end
 
 function Settings:ApplyPluginPreview()
     local key = self.componentKey
-    if key == "CastBar" then self:ApplyCastBarPreview() elseif key == "Portrait" then self:ApplyPortraitPreview() elseif key == "HealthText" then self:ApplyHealthTextPreview() end
+    if key == "CastBar" then
+        self:ApplyCastBarPreview()
+    elseif key == "Portrait" then
+        self:ApplyPortraitPreview()
+    elseif key == "HealthText" then
+        self:ApplyHealthTextPreview()
+    elseif key == "ZoneText" then
+        self:ApplyZoneTextPreview()
+    end
 end
 
 -- [ VALUE CHANGE HANDLER ]--------------------------------------------------------------------------
@@ -266,14 +321,21 @@ function Settings:OnValueChanged(key, value)
     local rebuildsPanel = false
     if schema then
         for _, ctrl in ipairs(schema.controls) do
-            if ctrl.key == key and ctrl.rebuildsPanel then rebuildsPanel = true; break end
+            if ctrl.key == key and ctrl.rebuildsPanel then
+                rebuildsPanel = true
+                break
+            end
         end
     end
 
     if rebuildsPanel then
         local savedOverrides = {}
-        for k, v in pairs(self.currentOverrides) do savedOverrides[k] = v end
-        if self.container then self.container.pendingOverrides = savedOverrides end
+        for k, v in pairs(self.currentOverrides) do
+            savedOverrides[k] = v
+        end
+        if self.container then
+            self.container.pendingOverrides = savedOverrides
+        end
         local control = self:GetControlDef(key)
         if control and control.plugin then
             self.pendingPluginSettings = self.pendingPluginSettings or {}
@@ -281,10 +343,29 @@ function Settings:OnValueChanged(key, value)
             if OrbitEngine.CanvasMode.Transaction and OrbitEngine.CanvasMode.Transaction:IsActive() then
                 OrbitEngine.CanvasMode.Transaction:Set(key, value)
             end
+        elseif OrbitEngine.CanvasMode.Transaction and OrbitEngine.CanvasMode.Transaction:IsActive() and self.componentKey then
+            OrbitEngine.CanvasMode.Transaction:SetPositionOverride(self.componentKey, key, value)
+        end
+        if key == "DifficultyDisplay" and (self.componentKey == "DifficultyIcon" or self.componentKey == "DifficultyText") then
+            local plugin = self.plugin
+            local systemIndex = self.systemIndex
+            local canvasDialog = OrbitEngine.CanvasModeDialog
+            C_Timer.After(0, function()
+                if not (canvasDialog and plugin and canvasDialog.targetFrame and canvasDialog:IsShown()) then return end
+                canvasDialog:Open(canvasDialog.targetFrame, canvasDialog.targetPlugin, canvasDialog.targetSystemIndex)
+                local activeKey = plugin.GetActiveDifficultyCanvasKey and plugin:GetActiveDifficultyCanvasKey()
+                local comp = activeKey and canvasDialog.previewComponents and canvasDialog.previewComponents[activeKey]
+                if comp then
+                    self:Open(activeKey, comp, plugin, systemIndex)
+                end
+            end)
+            return
         end
         self:Open(self.componentKey, self.container, self.plugin, self.systemIndex)
         if self.pendingPluginSettings then
-            for k, v in pairs(self.pendingPluginSettings) do self.currentOverrides[k] = v end
+            for k, v in pairs(self.pendingPluginSettings) do
+                self.currentOverrides[k] = v
+            end
         end
         self:ApplyPluginPreview()
         return
@@ -299,10 +380,15 @@ function Settings:OnValueChanged(key, value)
             elseif widget.showIf and widget.showIf == key then
                 widget:SetShown(value == true)
                 needsHeightRecalc = true
+            elseif widget.showIfValue and widget.showIfValue.key == key then
+                widget:SetShown(value == widget.showIfValue.value)
+                needsHeightRecalc = true
             end
         end
 
-        if needsHeightRecalc then self:RelayoutWidgets() end
+        if needsHeightRecalc then
+            self:RelayoutWidgets()
+        end
     end
 
     if self.container then
@@ -361,7 +447,9 @@ function Settings:RelayoutWidgets()
             end
         end
     end
-    if col > 0 then rowY = rowY + rowHeight + WIDGET_SPACING end
+    if col > 0 then
+        rowY = rowY + rowHeight + WIDGET_SPACING
+    end
     local containerHeight = rowY + TITLE_HEIGHT + PADDING
     oc:SetHeight(containerHeight)
     if canvasDialog.RecalculateHeight then canvasDialog:RecalculateHeight() end

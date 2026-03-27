@@ -179,8 +179,12 @@ function HandleCore:PositionOverComponent(handle, component)
     end
 
     local width, height = self:SafeGetSize(component)
-    width = math.max(width, MIN_HANDLE_WIDTH)
-    height = math.max(height, MIN_HANDLE_HEIGHT)
+    local minWidth = component.orbitHandleMinWidth
+    local minHeight = component.orbitHandleMinHeight
+    if type(minWidth) ~= "number" then minWidth = MIN_HANDLE_WIDTH end
+    if type(minHeight) ~= "number" then minHeight = MIN_HANDLE_HEIGHT end
+    width = math.max(width, minWidth)
+    height = math.max(height, minHeight)
 
     handle:SetSize(width, height)
     handle:ClearAllPoints()

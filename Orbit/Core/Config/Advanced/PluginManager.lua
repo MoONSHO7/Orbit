@@ -36,6 +36,7 @@ local PLUGIN_GROUPS = {
         "Queue Status", "Performance Info", "Combat Timer",
         { label = "Talking Head", plugins = { "Talking Head" }, triState = true },
     }},
+    { header = "Experimental", names = { "Minimap" } },
 }
 
 -- [ TRI-STATE VISUALS ]-----------------------------------------------------------------------------
