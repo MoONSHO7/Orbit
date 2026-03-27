@@ -60,9 +60,6 @@ local BLIZZARD_REGISTRY = {
     { key = "StatusTrackingBar",    display = "XP / Rep Bar",          blizzardFrame = "StatusTrackingBarManager" },
     { key = "DurabilityFrame",      display = "Durability",            blizzardFrame = "DurabilityFrame" },
     { key = "VehicleSeatIndicator", display = "Vehicle Seat",          blizzardFrame = "VehicleSeatIndicator" },
-    { key = "ZoneText",             display = "Zone Text",             blizzardFrame = "ZoneTextFrame" },
-    { key = "GameTimeFrame",        display = "Game Time",             blizzardFrame = "GameTimeFrame" },
-    { key = "AddonCompartment",     display = "Addon Compartment",     blizzardFrame = "AddonCompartmentFrame" },
     { key = "DamageMeter",          display = "Damage Meter",          blizzardFrame = "DamageMeter" },
 }
 

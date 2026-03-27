@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **CastBar** — Added to canvas mode.
 - **Raid Frame** Enhanced RaidFrames for multiple Groups, its all managed in a single Edit Mode frame now. Select your tier to edit.
 - **Visibility Engine** Removed all visibility settings from Edit mode, its now all handled in Orbits Visibility Engine. Type: /orbit ve or find it in the plugin manager.
+- **Cooldown Manager** — You can now Drag and Drop Items/Spells directly into the Cooldown Manager (Essential and Utility) Shift right click to remove them.
 
 ### Fixed
 - **BossFrames** — Fixed mulitple issues with bossframes that came up from previous performance parse on group frames.
@@ -35,6 +36,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **TrackedCooldowns+Charges** — Added to visibility engine
 - **Visibility Engine** — Mouseover on frames with opacity settings should now work.
 - **Visibility Engine** — Mouseover on frames Tracked Cooldowns&Charges should now work.
+- **Visibility Engine** — More tweaks to the VE Engine
+- **Group Frames** — More tweaks/bugfixes to the Group Frames
+
 
 ## [1.0.0] - 2026-03-10
 ### Added

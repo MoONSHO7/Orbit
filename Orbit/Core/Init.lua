@@ -135,7 +135,9 @@ function Orbit:RegisterPlugin(name, system, mixin)
     return plugin
 end
 
-function Orbit:GetPlugin(system) return OrbitEngine:GetSystem(system) end
+function Orbit:GetPlugin(identifier)
+    return (self._pluginsByName and self._pluginsByName[identifier]) or OrbitEngine:GetSystem(identifier)
+end
 
 -- Wrap ApplySettings here, not in RegisterPlugin (plugins define methods after registration).
 function Orbit:InitializePlugins()

@@ -50,21 +50,7 @@ local function GetVESettings(data)
     return opacity, oocFade, true, true
 end
 
--- Enable/disable mouse on frame and optionally children (protected in combat)
-local function SetFrameMouseEnabled(frame, enabled, includeChildren)
-    if not frame then return end
-    if frame.orbitClickThrough then return end
-    if InCombatLockdown() then
-        Orbit.CombatManager:QueueUpdate(function() SetFrameMouseEnabled(frame, enabled, includeChildren) end)
-        return
-    end
-    if frame.EnableMouse then frame:EnableMouse(enabled) end
-    if includeChildren then
-        for _, child in ipairs({ frame:GetChildren() }) do
-            if child.EnableMouse then child:EnableMouse(enabled) end
-        end
-    end
-end
+
 
 -- Directly hide/show the group border overlay on a frame or its ancestor's merge root
 local function SetGroupBorderOOCHidden(frame, hidden)
@@ -99,20 +85,16 @@ local function UpdateFrameVisibility(frame, _, data)
     if not frame then return end
     -- Mounted: supreme override — completely hide
     local isMountedHidden = false
-    if data and Orbit.MountedVisibility then
-        if data.plugin then isMountedHidden = Orbit.MountedVisibility:ShouldHidePlugin(data.plugin)
-        elseif data.veKey then isMountedHidden = Orbit.MountedVisibility:ShouldHideBlizzard(data.veKey) end
+    if data and Orbit.MountedVisibility and Orbit.MountedVisibility:IsCachedHidden() then
+        local veKey = GetVEKey(data)
+        isMountedHidden = veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
     end
-    if isMountedHidden and Orbit.MountedVisibility:ShouldHide() then
+    if isMountedHidden then
         -- Check reveal overrides before hiding
         local _, _, mouseOver, showWithTarget = GetVESettings(data)
         local revealFull = (mouseOver and frame.orbitMouseOver) or (showWithTarget and UnitExists("target")) or IsCursorRevealing(frame)
         if not revealFull then
             frame:SetAlpha(0)
-            if not frame._oocMouseDisabled and data and not data.enableHover then
-                SetFrameMouseEnabled(frame, false, true)
-                frame._oocMouseDisabled = true
-            end
             if not frame._oocFadeHidden then frame._oocFadeHidden = true; SetGroupBorderOOCHidden(frame, true) end
             SyncMinimapWidget(frame, true)
             return
@@ -123,10 +105,6 @@ local function UpdateFrameVisibility(frame, _, data)
     local baseAlpha = frame.orbitOpacityExternal and 1 or (opacity or 100) / 100
     -- Early out: no VE effects active — don't touch the frame at all
     if not oocFade and baseAlpha >= 1 and not mouseOver then
-        if frame._oocMouseDisabled then
-            SetFrameMouseEnabled(frame, true, true)
-            frame._oocMouseDisabled = nil
-        end
         if frame._oocFadeHidden then frame._oocFadeHidden = nil; SetGroupBorderOOCHidden(frame, false) end
         frame:SetAlpha(1)
         SyncMinimapWidget(frame, false)
@@ -149,19 +127,11 @@ local function UpdateFrameVisibility(frame, _, data)
     end
     -- Apply alpha and mouse state
     if finalAlpha > 0 then
-        if frame._oocMouseDisabled then
-            SetFrameMouseEnabled(frame, true, true)
-            frame._oocMouseDisabled = nil
-        end
         Orbit.Animation:ApplyHoverFade(frame, finalAlpha, 1, Orbit:IsEditMode())
         if frame._oocFadeHidden then frame._oocFadeHidden = nil; SetGroupBorderOOCHidden(frame, false) end
         SyncMinimapWidget(frame, false)
     else
         frame:SetAlpha(0)
-        if data and not data.enableHover and not frame._oocMouseDisabled then
-            SetFrameMouseEnabled(frame, false, true)
-            frame._oocMouseDisabled = true
-        end
         if not frame._oocFadeHidden then frame._oocFadeHidden = true; SetGroupBorderOOCHidden(frame, true) end
         SyncMinimapWidget(frame, true)
     end
@@ -194,6 +164,11 @@ EventFrame:SetScript("OnEvent", function(self, event)
     else
         C_Timer.After(0.05, UpdateAllFrames)
     end
+end)
+
+-- Re-evaluate all managed frames after mount/dismount to restore mouse state
+C_Timer.After(0, function()
+    if Orbit.EventBus then Orbit.EventBus:On("MOUNTED_VISIBILITY_CHANGED", function() C_Timer.After(0.1, UpdateAllFrames) end) end
 end)
 
 -- Hook Edit Mode show/hide
@@ -251,8 +226,9 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
             local maxAlpha = self.orbitOpacityExternal and 1 or (opacity or 100) / 100
             -- Mounted hidden check (shared by all paths)
             local isMountedHide = false
-            if Orbit.MountedVisibility and Orbit.MountedVisibility:ShouldHide() then
-                local isMH = (d.plugin and Orbit.MountedVisibility:ShouldHidePlugin(d.plugin)) or (d.veKey and Orbit.MountedVisibility:ShouldHideBlizzard(d.veKey))
+            if Orbit.MountedVisibility and Orbit.MountedVisibility:IsCachedHidden() then
+                local veKey = GetVEKey(d)
+                local isMH = veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
                 if isMH then
                     local revealFull = (showWithTarget and UnitExists("target")) or (mouseOver and self.orbitMouseOver) or IsCursorRevealing(self)
                     if not revealFull then isMountedHide = true end
@@ -280,7 +256,6 @@ function Mixin:RemoveOOCFade(frame)
     if not frame then return end
     ManagedFrames[frame] = nil
     frame:SetAlpha(1)
-    SetFrameMouseEnabled(frame, true, true)
 end
 
 function Mixin:RefreshAll()

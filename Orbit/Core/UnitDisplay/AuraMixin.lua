@@ -107,12 +107,24 @@ function Mixin:PatchCaches(frame, unit, updateInfo)
     return changed
 end
 
+local _RecycledSnapshot = { harmful = {}, helpful = {}, helpfulBySpell = {}, helpfulPlayerBySpell = {} }
+
 function Mixin:BuildSnapshotFromCaches(frame)
     local hc = frame._harmfulAuraCache
     local bc = frame._helpfulAuraCache
     if not hc or not bc then return nil end
-    local harmful, helpful = {}, {}
-    local helpfulBySpell, helpfulPlayerBySpell = {}, {}
+    local snap = _RecycledSnapshot
+    local harmful = snap.harmful
+    local helpful = snap.helpful
+    local helpfulBySpell = snap.helpfulBySpell
+    local helpfulPlayerBySpell = snap.helpfulPlayerBySpell
+
+    -- Wipe reusable tables instead of churning memory
+    for i = 1, #harmful do harmful[i] = nil end
+    for i = 1, #helpful do helpful[i] = nil end
+    for k in pairs(helpfulBySpell) do helpfulBySpell[k] = nil end
+    for k in pairs(helpfulPlayerBySpell) do helpfulPlayerBySpell[k] = nil end
+
     for _, a in next, hc do harmful[#harmful + 1] = a end
     for _, a in next, bc do
         helpful[#helpful + 1] = a
@@ -123,7 +135,7 @@ function Mixin:BuildSnapshotFromCaches(frame)
             if not issecretvalue(fromPlayer) and fromPlayer then helpfulPlayerBySpell[sid] = a end
         end
     end
-    return { harmful = harmful, helpful = helpful, helpfulBySpell = helpfulBySpell, helpfulPlayerBySpell = helpfulPlayerBySpell }
+    return snap
 end
 
 function Mixin:WipeCaches(frame)
@@ -300,11 +312,15 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     -- Force everything to use the secure snapshot architecture, building securely locally if the OnEvent missed it
     local snap = frame._auraSnapshot or self:BuildAuraSnapshot(unit)
     local rawAuras = fetchFilter:find("HARMFUL") and snap.harmful or snap.helpful
+    local _RecycledAuraDisplayList = Mixin._RecycledAuraDisplayList or {}
+    Mixin._RecycledAuraDisplayList = _RecycledAuraDisplayList
+
     local auras
     if cfg.postFilter then
         auras = cfg.postFilter(plugin, unit, rawAuras, maxIcons, fetchFilter)
     else
-        auras = {}
+        auras = _RecycledAuraDisplayList
+        for i = 1, #auras do auras[i] = nil end
         for _, a in ipairs(rawAuras) do
             if a.auraInstanceID and not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, a.auraInstanceID, fetchFilter) then
                 auras[#auras + 1] = a

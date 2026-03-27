@@ -25,22 +25,41 @@ CB.ResolveCastBarColor = ResolveCastBarColor
 CB.ResolveNonInterruptibleColor = ResolveNonInterruptibleColor
 
 function CB:Create(parent, bossIndex, plugin)
-    local bar = CreateFrame("StatusBar", "OrbitBoss" .. bossIndex .. "CastBar", parent)
-    bar:SetSize(CAST_BAR_WIDTH, CAST_BAR_HEIGHT)
+    -- Container holds the icon + bar side by side
+    local container = CreateFrame("Frame", "OrbitBoss" .. bossIndex .. "CastBarContainer", parent)
+    container:SetSize(CAST_BAR_WIDTH + CAST_BAR_ICON_SIZE, CAST_BAR_HEIGHT)
+    container:Hide()
+
+    -- Icon: anchored to the left edge of the container
+    container.Icon = container:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
+    container.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
+    container.Icon:SetSize(CAST_BAR_ICON_SIZE, CAST_BAR_ICON_SIZE)
+    container.Icon:SetPoint("LEFT", container, "LEFT", 0, 0)
+    container.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
+
+    container.IconBorder = CreateFrame("Frame", nil, container, "BackdropTemplate")
+    container.IconBorder:SetAllPoints(container.Icon)
+    container.IconBorder:SetFrameLevel(container:GetFrameLevel() + Orbit.Constants.Levels.Border)
+    Orbit.Skin:SkinBorder(container.IconBorder, container.IconBorder, 1, nil, true)
+
+    -- StatusBar: fills the space to the right of the icon
+    local bar = CreateFrame("StatusBar", "OrbitBoss" .. bossIndex .. "CastBar", container)
+    bar:SetPoint("TOPLEFT", container.Icon, "TOPRIGHT", 0, 0)
+    bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0)
     bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
     bar:SetStatusBarColor(1, 0.7, 0)
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0)
-    bar:Hide()
 
     bar.bg = bar:CreateTexture(nil, "BACKGROUND")
     bar.bg:SetAllPoints()
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(bar, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
 
-    bar.SetBorder = function(self, size) Orbit.Skin:SkinBorder(self, self, size) end
-    bar:SetBorder(1)
+    container.SetBorder = function(self, size) Orbit.Skin:SkinBorder(self, bar, size) end
+    container:SetBorder(1)
 
+    -- Protected overlay: mirrors bar for non-interruptible color
     bar.protectedOverlay = CreateFrame("StatusBar", nil, bar)
     bar.protectedOverlay:SetAllPoints(bar)
     bar.protectedOverlay:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
@@ -49,217 +68,238 @@ function CB:Create(parent, bossIndex, plugin)
     bar.protectedOverlay:SetFrameLevel(bar:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
     bar.protectedOverlay:SetAlpha(0)
 
-    bar.Icon = bar:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
+    -- Text overlay
+    local textOverlay = CreateFrame("Frame", nil, bar)
+    textOverlay:SetAllPoints()
+    textOverlay:SetFrameLevel(bar:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
+    textOverlay:EnableMouse(false)
 
-    bar.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
-    bar.Icon:SetSize(CAST_BAR_ICON_SIZE, CAST_BAR_ICON_SIZE)
-    bar.Icon:SetPoint("LEFT", bar, "LEFT", 0, 0)
-    bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
-    bar.Icon:Hide()
+    container.Text = textOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    container.Text:SetPoint("LEFT", bar, "LEFT", 4, 0)
+    container.Text:SetJustifyH("LEFT")
+    container.Text:SetShadowColor(0, 0, 0, 1)
+    container.Text:SetShadowOffset(1, -1)
 
-    bar.IconBorder = CreateFrame("Frame", nil, bar, "BackdropTemplate")
-    bar.IconBorder:SetAllPoints(bar.Icon)
-    bar.IconBorder:SetFrameLevel(bar:GetFrameLevel() + Orbit.Constants.Levels.Border)
-    Orbit.Skin:SkinBorder(bar.IconBorder, bar.IconBorder, 1, nil, true)
-    bar.IconBorder:Hide()
+    container.Timer = textOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    container.Timer:SetPoint("RIGHT", bar, "RIGHT", -4, 0)
+    container.Timer:SetJustifyH("RIGHT")
+    container.Timer:SetShadowColor(0, 0, 0, 1)
+    container.Timer:SetShadowOffset(1, -1)
 
-    bar.TextOverlay = CreateFrame("Frame", nil, bar)
-    bar.TextOverlay:SetAllPoints()
-    bar.TextOverlay:SetFrameLevel(bar:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
-    bar.TextOverlay:EnableMouse(false)
+    -- Store references on container for external access
+    container.Bar = bar
+    container.protectedOverlay = bar.protectedOverlay
+    container.bossIndex = bossIndex
+    container.unit = "boss" .. bossIndex
+    container.plugin = plugin
+    return container
+end
 
-    bar.Text = bar.TextOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.Text:SetPoint("LEFT", bar, "LEFT", 4, 0)
-    bar.Text:SetJustifyH("LEFT")
-    bar.Text:SetShadowColor(0, 0, 0, 1)
-    bar.Text:SetShadowOffset(1, -1)
+-- [ STANDALONE EVENT-DRIVEN CAST BAR ]--------------------------------------------------------------
+local TIMER_THROTTLE_INTERVAL = 1 / 30
+local INTERRUPT_FLASH_DURATION = Orbit.Constants.Timing.FlashDuration
 
-    bar.Timer = bar.TextOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.Timer:SetPoint("RIGHT", bar, "RIGHT", -4, 0)
-    bar.Timer:SetJustifyH("RIGHT")
-    bar.Timer:SetShadowColor(0, 0, 0, 1)
-    bar.Timer:SetShadowOffset(1, -1)
-
-    bar.bossIndex = bossIndex
-    bar.unit = "boss" .. bossIndex
-    bar.plugin = plugin
-    return bar
+local function ApplyIconLayout(castBar, plugin)
+    local castBarHeight = plugin:GetSetting(castBar.bossIndex or 1, "CastBarHeight") or 18
+    if castBar.Icon then
+        castBar.Icon:SetSize(castBarHeight, castBarHeight)
+        castBar.Icon:Show()
+        if castBar.IconBorder then castBar.IconBorder:Show() end
+    end
+    -- Reanchor bar to start after the icon
+    if castBar.Bar then
+        castBar.Bar:ClearAllPoints()
+        castBar.Bar:SetPoint("TOPLEFT", castBar.Icon, "TOPRIGHT", 0, 0)
+        castBar.Bar:SetPoint("BOTTOMRIGHT", castBar, "BOTTOMRIGHT", 0, 0)
+    end
+    local showText = plugin:GetSetting(1, "CastBarText")
+    local textDisabled = plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar.Text")
+    if castBar.Text then
+        castBar.Text:ClearAllPoints()
+        if showText and not textDisabled then
+            castBar.Text:Show()
+            castBar.Text:SetPoint("LEFT", castBar.Bar, "LEFT", 4, 0)
+        else
+            castBar.Text:Hide()
+        end
+    end
+    local showTimer = plugin:GetSetting(1, "CastBarTimer")
+    local timerDisabled = plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar.Timer")
+    if castBar.Timer then castBar.Timer:SetShown(showTimer and not timerDisabled) end
 end
 
 function CB:SetupHooks(castBar, unit)
-    local nativeSpellbar = _G["Boss" .. castBar.bossIndex .. "TargetFrameSpellBar"]
-    if not nativeSpellbar then return end
     local plugin = castBar.plugin
-    local TIMER_THROTTLE_INTERVAL = 1 / 30
+    castBar.casting = false
+    castBar.channeling = false
+    castBar.durationObj = nil
+    castBar.timerThrottle = 0
+    castBar.castTimestamp = 0
 
-    nativeSpellbar:HookScript("OnShow", function(nativeBar)
-        if not castBar then return end
-        local showIcon = plugin:GetSetting(1, "CastBarIcon")
-        local castBarHeight = castBar:GetHeight()
-        local iconOffset = 0
-        local iconTexture
-        if nativeBar.Icon then iconTexture = nativeBar.Icon:GetTexture() end
-        if not iconTexture and C_Spell.GetSpellTexture and nativeBar.spellID then iconTexture = C_Spell.GetSpellTexture(nativeBar.spellID) end
-        if castBar.Icon then
-            if showIcon then
-                castBar.Icon:SetTexture(iconTexture or 136243)
-                castBar.Icon:SetSize(castBarHeight, castBarHeight)
-                castBar.Icon:Show()
-                iconOffset = castBarHeight
-                if castBar.IconBorder then castBar.IconBorder:Show() end
-                if castBar.Borders and castBar.Borders.Left then castBar.Borders.Left:Hide() end
+    -- Cast: query the unit directly for cast info, drive bar via SetTimerDuration
+    local function Cast()
+        if plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar") then return end
+        local name, text, texture, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
+        local isChanneled = false
+        if not name then
+            name, text, texture, _, _, _, notInterruptible = UnitChannelInfo(unit)
+            if name then isChanneled = true end
+        end
+        if not name then
+            castBar.casting = false
+            castBar.channeling = false
+            castBar.durationObj = nil
+            if castBar.protectedOverlay then castBar.protectedOverlay:SetAlpha(0) end
+            castBar:Hide()
+            return
+        end
+        local getDurationFn = isChanneled and UnitChannelDuration or UnitCastingDuration
+        local durationObj
+        if type(getDurationFn) == "function" then
+            local ok, dur = pcall(getDurationFn, unit)
+            if ok then durationObj = dur end
+        end
+        if not durationObj then
+            castBar.casting = false
+            castBar.channeling = false
+            castBar.durationObj = nil
+            castBar:Hide()
+            return
+        end
+        castBar.casting = not isChanneled
+        castBar.channeling = isChanneled
+        castBar.castTimestamp = GetTime()
+        castBar.durationObj = durationObj
+        castBar.timerThrottle = 0
+        local direction = isChanneled and 1 or 0
+        local bar = castBar.Bar
+        if bar and bar.SetTimerDuration then
+            pcall(bar.SetTimerDuration, bar, durationObj, 0, direction)
+        end
+        -- Protected overlay for non-interruptible casts
+        local overlay = castBar.protectedOverlay
+        if overlay then
+            if overlay.SetTimerDuration then
+                pcall(overlay.SetTimerDuration, overlay, durationObj, 0, direction)
+            end
+            if name then
+                if type(overlay.SetAlphaFromBoolean) == "function" then
+                    overlay:SetAlphaFromBoolean(notInterruptible, 1, 0)
+                else
+                    pcall(overlay.SetAlpha, overlay, 1)
+                end
             else
-                castBar.Icon:Hide()
-                if castBar.IconBorder then castBar.IconBorder:Hide() end
-                if castBar.Borders and castBar.Borders.Left then castBar.Borders.Left:Show() end
+                overlay:SetAlpha(0)
             end
         end
-        local statusBarTexture = castBar:GetStatusBarTexture()
-        if statusBarTexture then
-            statusBarTexture:ClearAllPoints()
-            statusBarTexture:SetPoint("TOPLEFT", castBar, "TOPLEFT", iconOffset, 0)
-            statusBarTexture:SetPoint("BOTTOMLEFT", castBar, "BOTTOMLEFT", iconOffset, 0)
-            statusBarTexture:SetPoint("TOPRIGHT", castBar, "TOPRIGHT", 0, 0)
-            statusBarTexture:SetPoint("BOTTOMRIGHT", castBar, "BOTTOMRIGHT", 0, 0)
-        end
-        if castBar.protectedOverlay then
-            local pTex = castBar.protectedOverlay:GetStatusBarTexture()
-            if pTex then
-                pTex:ClearAllPoints()
-                pTex:SetPoint("TOPLEFT", castBar.protectedOverlay, "TOPLEFT", iconOffset, 0)
-                pTex:SetPoint("BOTTOMLEFT", castBar.protectedOverlay, "BOTTOMLEFT", iconOffset, 0)
-                pTex:SetPoint("TOPRIGHT", castBar.protectedOverlay, "TOPRIGHT", 0, 0)
-                pTex:SetPoint("BOTTOMRIGHT", castBar.protectedOverlay, "BOTTOMRIGHT", 0, 0)
-            end
-        end
-        if castBar.bg then
-            castBar.bg:ClearAllPoints()
-            castBar.bg:SetPoint("TOPLEFT", castBar, "TOPLEFT", iconOffset, 0)
-            castBar.bg:SetPoint("BOTTOMRIGHT", castBar, "BOTTOMRIGHT", 0, 0)
-        end
-        local showText = plugin:GetSetting(1, "CastBarText")
-        local textDisabled = plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar.Text")
-        if castBar.Text then
-            castBar.Text:ClearAllPoints()
-            if showText and not textDisabled then
-                castBar.Text:Show()
-                if showIcon and castBar.Icon then castBar.Text:SetPoint("LEFT", castBar.Icon, "RIGHT", 4, 0)
-                else castBar.Text:SetPoint("LEFT", castBar, "LEFT", 4, 0) end
-                if nativeBar.Text then castBar.Text:SetText(nativeBar.Text:GetText() or "Casting...") end
-            else castBar.Text:Hide() end
-        end
-        local showTimer = plugin:GetSetting(1, "CastBarTimer")
-        local timerDisabled = plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar.Timer")
-        if castBar.Timer then castBar.Timer:SetShown(showTimer and not timerDisabled) end
-        local min, max = nativeBar:GetMinMaxValues()
-        if min and max then
-            castBar:SetMinMaxValues(min, max); castBar:SetValue(nativeBar:GetValue() or 0)
-            if castBar.protectedOverlay then
-                castBar.protectedOverlay:SetMinMaxValues(min, max)
-                castBar.protectedOverlay:SetValue(nativeBar:GetValue() or 0)
-            end
-        end
-
         local color = ResolveCastBarColor(plugin)
-        castBar:SetStatusBarColor(color.r, color.g, color.b)
-
-        if castBar.protectedOverlay then
+        castBar.Bar:SetStatusBarColor(color.r, color.g, color.b)
+        if overlay then
             local pColor = ResolveNonInterruptibleColor(plugin)
-            castBar.protectedOverlay:SetStatusBarColor(pColor.r, pColor.g, pColor.b)
+            overlay:SetStatusBarColor(pColor.r, pColor.g, pColor.b)
             local textureName = plugin:GetSetting(1, "Texture") or plugin:GetPlayerSetting("Texture")
             if textureName then
                 local texPath = LSM:Fetch("statusbar", textureName)
-                if texPath then castBar.protectedOverlay:SetStatusBarTexture(texPath) end
-            end
-
-            local name, _, _, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
-            if not name then _, _, _, _, _, _, notInterruptible = UnitChannelInfo(unit) end
-
-            if notInterruptible ~= nil then
-                if type(castBar.protectedOverlay.SetAlphaFromBoolean) == "function" then
-                    castBar.protectedOverlay:SetAlphaFromBoolean(notInterruptible, 1, 0)
-                else
-                    castBar.protectedOverlay:SetAlpha(notInterruptible and 1 or 0)
-                end
-            else
-                castBar.protectedOverlay:SetAlpha(0)
+                if texPath then overlay:SetStatusBarTexture(texPath) end
             end
         end
-
-        if plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar") then return end
+        -- Icon
+        ApplyIconLayout(castBar, plugin)
+        if castBar.Icon and castBar.Icon:IsShown() then
+            pcall(function() castBar.Icon:SetTexture(texture or 136116) end)
+        end
+        -- Text
+        if castBar.Text and castBar.Text:IsShown() then
+            pcall(function() castBar.Text:SetText(name) end)
+        end
         castBar:Show()
-    end)
+    end
 
-    nativeSpellbar:HookScript("OnHide", function() if castBar then castBar:Hide() end end)
+    local function StopCast()
+        castBar.casting = false
+        castBar.channeling = false
+        castBar.durationObj = nil
+        if castBar.protectedOverlay then castBar.protectedOverlay:SetAlpha(0) end
+        castBar:Hide()
+    end
 
-    local timerThrottle = 0
-    nativeSpellbar:HookScript("OnUpdate", function(nativeBar, elapsed)
-        if not castBar or not castBar:IsShown() then return end
-        local progress = nativeBar:GetValue()
-        local min, max = nativeBar:GetMinMaxValues()
-        if not progress or not max then return end
-        castBar:SetMinMaxValues(min, max)
-        castBar:SetValue(progress)
-        if castBar.protectedOverlay then
-            castBar.protectedOverlay:SetMinMaxValues(min, max)
-            castBar.protectedOverlay:SetValue(progress)
-        end
-        timerThrottle = timerThrottle + elapsed
-        if timerThrottle < TIMER_THROTTLE_INTERVAL then return end
-        timerThrottle = 0
-        if not castBar.Timer or not castBar.Timer:IsShown() then return end
-        local getDurationFn = nativeBar.channeling and UnitChannelDuration or UnitCastingDuration
-        if not getDurationFn then return end
-        local ok, dur = pcall(getDurationFn, unit)
-        if not ok or not dur then return end
-        local getter = dur.GetRemainingDuration or dur.GetRemaining
-        if not getter then return end
-        local okR, remaining = pcall(getter, dur)
-        if okR and remaining then castBar.Timer:SetFormattedText("%.1f", remaining) end
-    end)
+    -- Register cast events directly on the castBar frame
+    castBar:RegisterUnitEvent("UNIT_SPELLCAST_START", unit)
+    castBar:RegisterUnitEvent("UNIT_SPELLCAST_STOP", unit)
+    castBar:RegisterUnitEvent("UNIT_SPELLCAST_FAILED", unit)
+    castBar:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTED", unit)
+    castBar:RegisterUnitEvent("UNIT_SPELLCAST_DELAYED", unit)
+    castBar:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_START", unit)
+    castBar:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_STOP", unit)
+    castBar:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_UPDATE", unit)
+    castBar:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTIBLE", unit)
+    castBar:RegisterUnitEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE", unit)
 
-    nativeSpellbar:HookScript("OnEvent", function(nativeBar, event, eventUnit)
-        if eventUnit ~= unit or not castBar or not castBar:IsShown() then return end
-        if event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
-            castBar:SetStatusBarColor(1, 0, 0)
+    local dispatch = {
+        UNIT_SPELLCAST_START = Cast,
+        UNIT_SPELLCAST_CHANNEL_START = Cast,
+        UNIT_SPELLCAST_DELAYED = Cast,
+        UNIT_SPELLCAST_CHANNEL_UPDATE = Cast,
+        UNIT_SPELLCAST_STOP = StopCast,
+        UNIT_SPELLCAST_CHANNEL_STOP = StopCast,
+        UNIT_SPELLCAST_INTERRUPTED = StopCast,
+        UNIT_SPELLCAST_FAILED = function()
+            if UnitChannelInfo(unit) or UnitCastingInfo(unit) then return end
+            local failTimestamp = castBar.castTimestamp
+            castBar.casting = false
+            castBar.channeling = false
+            castBar.durationObj = nil
+            castBar.Bar:SetStatusBarColor(1, 0, 0)
             if castBar.protectedOverlay then castBar.protectedOverlay:SetAlpha(0) end
-        elseif event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
-            if castBar.protectedOverlay then
-                if type(castBar.protectedOverlay.SetAlphaFromBoolean) == "function" then
-                    local name, _, _, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
-                    if not name then _, _, _, _, _, _, notInterruptible = UnitChannelInfo(unit) end
-                    if notInterruptible ~= nil then castBar.protectedOverlay:SetAlphaFromBoolean(notInterruptible, 1, 0) end
-                else
-                    castBar.protectedOverlay:SetAlpha(1)
+            C_Timer.After(INTERRUPT_FLASH_DURATION, function()
+                if castBar.castTimestamp == failTimestamp and not castBar.casting and not castBar.channeling then
+                    StopCast()
                 end
-            end
-        elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" then
-            if castBar.protectedOverlay then
-                if type(castBar.protectedOverlay.SetAlphaFromBoolean) == "function" then
-                    local name, _, _, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
-                    if not name then _, _, _, _, _, _, notInterruptible = UnitChannelInfo(unit) end
-                    if notInterruptible ~= nil then castBar.protectedOverlay:SetAlphaFromBoolean(notInterruptible, 1, 0) end
-                else
-                    castBar.protectedOverlay:SetAlpha(0)
-                end
-            end
-        elseif event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
+            end)
+        end,
+        UNIT_SPELLCAST_INTERRUPTIBLE = function()
             local color = ResolveCastBarColor(plugin)
-            castBar:SetStatusBarColor(color.r, color.g, color.b)
+            castBar.Bar:SetStatusBarColor(color.r, color.g, color.b)
             if castBar.protectedOverlay then
-                local name, _, _, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
-                if not name then _, _, _, _, _, _, notInterruptible = UnitChannelInfo(unit) end
-                if notInterruptible ~= nil then
-                    if type(castBar.protectedOverlay.SetAlphaFromBoolean) == "function" then
-                        castBar.protectedOverlay:SetAlphaFromBoolean(notInterruptible, 1, 0)
-                    else
-                        castBar.protectedOverlay:SetAlpha(notInterruptible and 1 or 0)
-                    end
+                local n, _, _, _, _, _, _, ni = UnitCastingInfo(unit)
+                if not n then _, _, _, _, _, _, ni = UnitChannelInfo(unit) end
+                if n and type(castBar.protectedOverlay.SetAlphaFromBoolean) == "function" then
+                    castBar.protectedOverlay:SetAlphaFromBoolean(ni, 1, 0)
                 else
                     castBar.protectedOverlay:SetAlpha(0)
                 end
             end
-        end
+        end,
+        UNIT_SPELLCAST_NOT_INTERRUPTIBLE = function()
+            if castBar.protectedOverlay then
+                local n, _, _, _, _, _, _, ni = UnitCastingInfo(unit)
+                if not n then _, _, _, _, _, _, ni = UnitChannelInfo(unit) end
+                if n and type(castBar.protectedOverlay.SetAlphaFromBoolean) == "function" then
+                    castBar.protectedOverlay:SetAlphaFromBoolean(ni, 1, 0)
+                elseif n then
+                    pcall(castBar.protectedOverlay.SetAlpha, castBar.protectedOverlay, 1)
+                end
+            end
+        end,
+    }
+
+    castBar:SetScript("OnEvent", function(_, event)
+        local handler = dispatch[event]
+        if handler then handler() end
+    end)
+
+    -- OnUpdate: timer text only (bar progress is engine-driven via SetTimerDuration)
+    castBar:SetScript("OnUpdate", function(self, elapsed)
+        if not self:IsShown() or (not self.casting and not self.channeling) then return end
+        self.timerThrottle = (self.timerThrottle or 0) + elapsed
+        if self.timerThrottle < TIMER_THROTTLE_INTERVAL then return end
+        self.timerThrottle = 0
+        if not self.Timer or not self.Timer:IsShown() then return end
+        if not self.durationObj then return end
+        local getter = self.durationObj.GetRemainingDuration or self.durationObj.GetRemaining
+        if not getter then return end
+        local ok, remaining = pcall(getter, self.durationObj)
+        if ok then pcall(self.Timer.SetFormattedText, self.Timer, "%.1f", remaining) end
     end)
 end
 

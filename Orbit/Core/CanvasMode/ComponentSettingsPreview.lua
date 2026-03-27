@@ -118,8 +118,7 @@ function Settings:ApplyCastBarPreview()
     local sysIdx = self.systemIndex or 1
     local w = pending.CastBarWidth or (plugin and plugin:GetSetting(sysIdx, "CastBarWidth")) or 120
     local h = pending.CastBarHeight or (plugin and plugin:GetSetting(sysIdx, "CastBarHeight")) or 18
-    comp:SetSize(w, h)
-    if comp.visual and comp.visual.SetAllPoints then comp.visual:SetAllPoints() end
+    comp:SetSize(w + h, h)
 end
 
 -- [ HEALTH TEXT PREVIEW ]----------------------------------------------------------------------------

@@ -26,6 +26,7 @@ local ABC = Orbit.ActionBarsContainer
 
 function ABC:Create(plugin, config)
     local frame = CreateFrame("Frame", config.orbitName, UIParent, "SecureHandlerStateTemplate")
+    frame:SetAttribute("_onstate-visibility", [[ if newstate == "hide" then self:Hide() else self:Show() end ]])
     OrbitEngine.Pixel:Enforce(frame)
     frame:SetSize(INITIAL_FRAME_SIZE, INITIAL_FRAME_SIZE)
     frame.systemIndex = config.index

@@ -293,11 +293,17 @@ function Plugin:OnLoad()
     Frame:RegisterUnitEvent("UNIT_AURA", "player")
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
     Frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+    Frame:RegisterEvent("PET_BATTLE_OPENING_START")
+    Frame:RegisterEvent("PET_BATTLE_CLOSE")
 
     self:RefreshFrequentUpdates()
 
     Frame:SetScript("OnEvent", function(f, event)
-        if event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_SPECIALIZATION_CHANGED" then
+        if event == "PET_BATTLE_OPENING_START" or event == "PET_BATTLE_CLOSE" then
+            Orbit:SafeAction(function()
+                self:UpdateVisibility()
+            end)
+        elseif event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_SPECIALIZATION_CHANGED" then
             self:UpdateVisibility()
             self:RefreshOnUpdate()
         else
@@ -355,6 +361,12 @@ end
 function Plugin:UpdateVisibility()
     if not Frame then return end
     if not Orbit:IsPluginEnabled(self.name) then SafeHide(Frame); return end
+
+    if C_PetBattles and C_PetBattles.IsInBattle() then
+        SafeHide(Frame)
+        return
+    end
+
     local isEditMode = Orbit:IsEditMode()
     if isEditMode then
         OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)

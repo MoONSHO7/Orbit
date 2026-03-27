@@ -187,6 +187,8 @@ function Orbit.GroupAuraFilters:InvalidateCache() excludedCache = nil end
 -- Flush cache when component visibility changes affect the exclusion set.
 Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", function() excludedCache = nil end)
 
+local _RecycledFilterList = {}
+
 -- Creates a debuff post-filter function.
 -- cfg.raidFilterFn: function() returning the filter string (e.g. "HARMFUL" or combat-aware)
 function Orbit.GroupAuraFilters:CreateDebuffFilter(cfg)
@@ -194,7 +196,8 @@ function Orbit.GroupAuraFilters:CreateDebuffFilter(cfg)
         local raidFilter = filterOverride or (cfg.raidFilterFn and cfg.raidFilterFn() or "HARMFUL")
         local excludeCC = not (plugin.IsComponentDisabled and plugin:IsComponentDisabled("CrowdControlIcon"))
         local excluded = GetExcludedSpellIds(plugin)
-        local result = {}
+        local result = _RecycledFilterList
+        for i = 1, #result do result[i] = nil end
         for _, aura in ipairs(rawAuras) do
             if aura.auraInstanceID then
                 local sid = aura.spellId
@@ -221,7 +224,8 @@ function Orbit.GroupAuraFilters:CreateBuffFilter()
         local raidFilter = filterOverride or "HELPFUL|PLAYER"
         local excludeDefensives = not (plugin.IsComponentDisabled and plugin:IsComponentDisabled("DefensiveIcon"))
         local excluded = GetExcludedSpellIds(plugin)
-        local result = {}
+        local result = _RecycledFilterList
+        for i = 1, #result do result[i] = nil end
         for _, aura in ipairs(rawAuras) do
             if aura.auraInstanceID then
                 local sid = aura.spellId
