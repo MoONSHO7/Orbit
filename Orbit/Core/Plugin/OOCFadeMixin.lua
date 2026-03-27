@@ -110,9 +110,10 @@ local function UpdateFrameVisibility(frame, _, data)
     local opacity, oocFade, mouseOver, showWithTarget = GetVESettings(data)
     local baseAlpha = frame.orbitOpacityExternal and 1 or (opacity or 100) / 100
     local rawOpacity = (opacity or 100) / 100
-    -- Early out: no VE effects active — don't touch the frame at all
-    if not oocFade and baseAlpha >= 1 and rawOpacity >= 1 and not mouseOver then
+    -- Early out: no VE effects active — stop any stale fader and reset
+    if not oocFade and rawOpacity >= 1 and not mouseOver then
         if frame._oocFadeHidden then frame._oocFadeHidden = nil; SetGroupBorderOOCHidden(frame, false) end
+        Orbit.Animation:StopHoverFade(frame)
         frame:SetAlpha(1)
         SyncMinimapWidget(frame, false)
         SyncMinimapChildrenAlpha(frame, 1)
@@ -138,7 +139,7 @@ local function UpdateFrameVisibility(frame, _, data)
         Orbit.Animation:ApplyHoverFade(frame, finalAlpha, 1, Orbit:IsEditMode())
         if frame._oocFadeHidden then frame._oocFadeHidden = nil; SetGroupBorderOOCHidden(frame, false) end
         SyncMinimapWidget(frame, false)
-        local childAlpha = revealFull and 1 or (frame.orbitOpacityExternal and (opacity or 100) / 100 or baseAlpha)
+        local childAlpha = revealFull and 1 or (frame.orbitOpacityExternal and rawOpacity or baseAlpha)
         SyncMinimapChildrenAlpha(frame, childAlpha)
     else
         frame:SetAlpha(0)

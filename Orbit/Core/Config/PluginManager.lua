@@ -36,7 +36,8 @@ local VE_CHECK_COL_WIDTH = 90
 local VE_OPACITY_COL_WIDTH = 130
 local VE_SLIDER_WIDTH = 85
 local VE_VALUE_WIDTH = 36
-local VE_HEADER_Y = -(HEADER_HEIGHT + 50)
+local TITLE_Y = -(HEADER_HEIGHT + 30)
+local CONTENT_START_Y = -(HEADER_HEIGHT + 80)
 
 local PLUGIN_GROUPS = {
     { header = "Unit Frames", names = {
@@ -153,13 +154,13 @@ local function CreateVEContent(parent)
     content:SetAllPoints()
     content:Hide()
     local header = content:CreateFontString(nil, "OVERLAY", FONT_HEADER)
-    header:SetPoint("TOPLEFT", PADDING, -(HEADER_HEIGHT + 30))
+    header:SetPoint("TOPLEFT", PADDING, TITLE_Y)
     header:SetText("Visibility Engine")
     local desc = content:CreateFontString(nil, "OVERLAY", FONT_SMALL)
     desc:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -4)
     desc:SetText("|cFF888888Configure frame visibility, opacity, and fade behavior.|r")
     -- Sticky column headers (frozen above scroll)
-    local stickyTop = VE_HEADER_Y - 30
+    local stickyTop = CONTENT_START_Y
     local headerRow = CreateFrame("Frame", nil, content)
     headerRow:SetHeight(VE_ROW_HEIGHT)
     headerRow:SetFrameLevel(content:GetFrameLevel() + 10)
@@ -212,6 +213,7 @@ local function CreateVEContent(parent)
         -- Rebuild Check All controls
         local caRow = self.checkAllRow
         for _, child in ipairs({ caRow:GetChildren() }) do child:Hide() end
+        if self._gaValueText then self._gaValueText:Hide() end
         local caColPos = VE_LABEL_WIDTH
         -- Global opacity slider
         local gaWrapper = CreateFrame("Frame", nil, caRow, "MinimalSliderWithSteppersTemplate")
@@ -223,6 +225,7 @@ local function CreateVEContent(parent)
         gaWrapper.Slider:SetPoint("LEFT", 4, 0)
         gaWrapper.Slider:SetPoint("RIGHT", -4, 0)
         local gaValueText = caRow:CreateFontString(nil, "OVERLAY", FONT_TINY)
+        self._gaValueText = gaValueText
         gaValueText:SetPoint("LEFT", gaWrapper, "RIGHT", 2, 0)
         gaValueText:SetWidth(VE_VALUE_WIDTH)
         gaValueText:SetJustifyH("RIGHT")
@@ -427,7 +430,7 @@ local function CreatePluginPanel()
 
     -- Plugin Manager content (uses pluginContent as parent)
     local header = pluginContent:CreateFontString(nil, "OVERLAY", FONT_HEADER)
-    header:SetPoint("TOPLEFT", PADDING, -(HEADER_HEIGHT + 30))
+    header:SetPoint("TOPLEFT", PADDING, TITLE_Y)
     header:SetText("Plugin Manager")
     local desc = pluginContent:CreateFontString(nil, "OVERLAY", FONT_SMALL)
     desc:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -4)
@@ -593,7 +596,7 @@ local function CreatePluginPanel()
         cbIndex = 0
         headerIndex = 0
         local pluginMap = BuildPluginMap()
-        local yOffset = -(HEADER_HEIGHT + 50)
+        local yOffset = CONTENT_START_Y
         for _, group in ipairs(PLUGIN_GROUPS) do
             headerIndex = headerIndex + 1
             local groupHeader = headerPool[headerIndex]
