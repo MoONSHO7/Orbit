@@ -407,12 +407,23 @@ function Plugin:CaptureBlizzardMinimap()
         minimap._orbitSetPointHooked = true
     end
 
-    -- Configurable minimap click actions
-    if not minimap._orbitRightClickHooked then
-        minimap:SetScript("OnMouseUp", function(f, button)
-            self:RunMinimapClickAction(self:GetMinimapClickAction(button), f)
+    -- Configurable minimap click actions.
+    -- Handler on the Blizzard minimap covers the normal case.
+    -- Handler on our container catches clicks that are intercepted by addon overlays
+    -- (e.g. FarmHud) that sit above Minimap but below OrbitMinimapContainer.
+    if not minimap._orbitClickHooked then
+        minimap:HookScript("OnMouseUp", function(f, button)
+            local action = self:GetMinimapClickAction(button)
+            if action ~= "none" then self:RunMinimapClickAction(action, f) end
         end)
-        minimap._orbitRightClickHooked = true
+        minimap._orbitClickHooked = true
+    end
+    if not self.frame._orbitClickHooked then
+        self.frame:HookScript("OnMouseUp", function(f, button)
+            local action = self:GetMinimapClickAction(button)
+            if action ~= "none" then self:RunMinimapClickAction(action, f) end
+        end)
+        self.frame._orbitClickHooked = true
     end
 
     -- Update zoom button state after scroll-wheel zoom
