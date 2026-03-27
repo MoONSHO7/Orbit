@@ -417,48 +417,44 @@ function Plugin:CaptureBlizzardMinimap()
         minimap._orbitClickHooked = true
     end
     -- Generic overlay intercept: some addons (e.g. FarmHud) place a mouse-enabled
-    -- frame above Minimap that swallows clicks. We use EnumerateFrames() to find any
-    -- such frame and hook its OnMouseUp. Runs at login and when FarmHud is toggled.
+    -- frame above Minimap that swallows clicks. We hook FarmHud via its public API
+    -- and use GetMouseFoci() to find the topmost frame under the cursor at click time,
+    -- hooking it lazily. GetMouseFoci is taint-safe and requires no frame name guessing.
     if not self.frame._orbitOverlayHookSetup then
         self.frame._orbitOverlayHookSetup = true
-        local function ScanForOverlayFrames()
-            local mLeft   = minimap:GetLeft()
-            local mBottom = minimap:GetBottom()
-            local mRight  = minimap:GetRight()
-            local mTop    = minimap:GetTop()
-            if not mLeft then return end
-            local f = EnumerateFrames()
-            while f do
-                if f ~= minimap and f ~= self.frame and not f._orbitClickHooked
-                    and f:IsVisible() and f:IsMouseEnabled()
+        local hooked = {}
+        local function HookTopFociFrame()
+            if not GetMouseFoci then return end
+            for _, foci in ipairs({ GetMouseFoci() }) do
+                if foci and foci ~= minimap and foci ~= self.frame
+                    and not hooked[foci]
+                    and not foci._orbitClickHooked
                 then
-                    local fLeft = f:GetLeft()
-                    if fLeft then
-                        local fRight, fTop, fBottom = f:GetRight(), f:GetTop(), f:GetBottom()
-                        if fRight and fTop and fBottom
-                            and fRight > mLeft and fLeft < mRight
-                            and fTop   > mBottom and fBottom < mTop
-                        then
-                            f:HookScript("OnMouseUp", function(clicked, button)
-                                if not clicked:IsVisible() then return end
-                                local action = self:GetMinimapClickAction(button)
-                                if action ~= "none" then self:RunMinimapClickAction(action, clicked) end
-                            end)
-                            f._orbitClickHooked = true
-                        end
-                    end
+                    local ok = pcall(foci.HookScript, foci, "OnMouseUp", function(clicked, button)
+                        local ok2, vis = pcall(clicked.IsVisible, clicked)
+                        if not ok2 or not vis then return end
+                        local action = self:GetMinimapClickAction(button)
+                        if action ~= "none" then self:RunMinimapClickAction(action, clicked) end
+                    end)
+                    hooked[foci] = true
+                    if ok then foci._orbitClickHooked = true end
                 end
-                f = EnumerateFrames(f)
             end
         end
-        -- Defer so all addon frames exist; repeat after 5s for lazy-init addons
-        C_Timer.After(0, ScanForOverlayFrames)
-        C_Timer.After(5, ScanForOverlayFrames)
-        -- Hook FarmHud's Toggle so we re-scan when its overlay appears
+        -- Re-check whenever our container receives a mouse-down (fires even if Minimap
+        -- itself is covered, because OrbitMinimapContainer is the actual parent).
+        self.frame:EnableMouse(true)
+        self.frame:HookScript("OnMouseDown", HookTopFociFrame)
+        -- FarmHud-specific: hook Toggle so we catch its overlay the moment it appears
         C_Timer.After(0, function()
             if FarmHud and FarmHud.Toggle and not FarmHud._orbitToggleHooked then
-                hooksecurefunc(FarmHud, "Toggle", function() C_Timer.After(0, ScanForOverlayFrames) end)
+                hooksecurefunc(FarmHud, "Toggle", function()
+                    C_Timer.After(0, HookTopFociFrame)
+                end)
                 FarmHud._orbitToggleHooked = true
+            end
+            if FarmHud and FarmHud.RegisterForeignAddOnObject then
+                FarmHud:RegisterForeignAddOnObject(self.frame, "Orbit")
             end
         end)
     end
