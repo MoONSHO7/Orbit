@@ -408,9 +408,7 @@ function Plugin:CaptureBlizzardMinimap()
     end
 
     -- Configurable minimap click actions.
-    -- Handler on the Blizzard minimap covers the normal case.
-    -- Handler on our container catches clicks that are intercepted by addon overlays
-    -- (e.g. FarmHud) that sit above Minimap but below OrbitMinimapContainer.
+    -- HookScript on the Blizzard minimap covers the normal case.
     if not minimap._orbitClickHooked then
         minimap:HookScript("OnMouseUp", function(f, button)
             local action = self:GetMinimapClickAction(button)
@@ -418,12 +416,51 @@ function Plugin:CaptureBlizzardMinimap()
         end)
         minimap._orbitClickHooked = true
     end
-    if not self.frame._orbitClickHooked then
-        self.frame:HookScript("OnMouseUp", function(f, button)
-            local action = self:GetMinimapClickAction(button)
-            if action ~= "none" then self:RunMinimapClickAction(action, f) end
+    -- Generic overlay intercept: some addons (e.g. FarmHud) place a mouse-enabled
+    -- frame above Minimap that swallows clicks. We use EnumerateFrames() to find any
+    -- such frame and hook its OnMouseUp. Runs at login and when FarmHud is toggled.
+    if not self.frame._orbitOverlayHookSetup then
+        self.frame._orbitOverlayHookSetup = true
+        local function ScanForOverlayFrames()
+            local mLeft   = minimap:GetLeft()
+            local mBottom = minimap:GetBottom()
+            local mRight  = minimap:GetRight()
+            local mTop    = minimap:GetTop()
+            if not mLeft then return end
+            local f = EnumerateFrames()
+            while f do
+                if f ~= minimap and f ~= self.frame and not f._orbitClickHooked
+                    and f:IsVisible() and f:IsMouseEnabled()
+                then
+                    local fLeft = f:GetLeft()
+                    if fLeft then
+                        local fRight, fTop, fBottom = f:GetRight(), f:GetTop(), f:GetBottom()
+                        if fRight and fTop and fBottom
+                            and fRight > mLeft and fLeft < mRight
+                            and fTop   > mBottom and fBottom < mTop
+                        then
+                            f:HookScript("OnMouseUp", function(clicked, button)
+                                if not clicked:IsVisible() then return end
+                                local action = self:GetMinimapClickAction(button)
+                                if action ~= "none" then self:RunMinimapClickAction(action, clicked) end
+                            end)
+                            f._orbitClickHooked = true
+                        end
+                    end
+                end
+                f = EnumerateFrames(f)
+            end
+        end
+        -- Defer so all addon frames exist; repeat after 5s for lazy-init addons
+        C_Timer.After(0, ScanForOverlayFrames)
+        C_Timer.After(5, ScanForOverlayFrames)
+        -- Hook FarmHud's Toggle so we re-scan when its overlay appears
+        C_Timer.After(0, function()
+            if FarmHud and FarmHud.Toggle and not FarmHud._orbitToggleHooked then
+                hooksecurefunc(FarmHud, "Toggle", function() C_Timer.After(0, ScanForOverlayFrames) end)
+                FarmHud._orbitToggleHooked = true
+            end
         end)
-        self.frame._orbitClickHooked = true
     end
 
     -- Update zoom button state after scroll-wheel zoom
