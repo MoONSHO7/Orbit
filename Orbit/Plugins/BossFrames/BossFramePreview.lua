@@ -139,8 +139,20 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                 if castBarDisabled then
                     frame.CastBar:Hide()
                 else
-                    frame.CastBar:SetMinMaxValues(0, PREVIEW_DEFAULTS.CastDuration)
-                    frame.CastBar:SetValue(PREVIEW_DEFAULTS.CastProgress)
+                    if frame.CastBar.Bar then
+                        frame.CastBar.Bar:SetMinMaxValues(0, PREVIEW_DEFAULTS.CastDuration)
+                        frame.CastBar.Bar:SetValue(PREVIEW_DEFAULTS.CastProgress)
+                        local cbColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "CastBarColorCurve"))
+                            or self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
+                        frame.CastBar.Bar:SetStatusBarColor(cbColor.r, cbColor.g, cbColor.b)
+                    end
+                    if frame.CastBar.Icon then
+                        local castBarHeight = self:GetSetting(1, "CastBarHeight") or PREVIEW_DEFAULTS.CastBarHeight
+                        frame.CastBar.Icon:SetSize(castBarHeight, castBarHeight)
+                        frame.CastBar.Icon:SetTexture(136116)
+                        frame.CastBar.Icon:Show()
+                        if frame.CastBar.IconBorder then frame.CastBar.IconBorder:Show() end
+                    end
                     if frame.CastBar.Text then
                         local textDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar.Text")
                         frame.CastBar.Text:SetShown(not textDisabled)
@@ -151,9 +163,6 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                         frame.CastBar.Timer:SetShown(not timerDisabled)
                         if not timerDisabled then frame.CastBar.Timer:SetText(tostring(PREVIEW_DEFAULTS.CastProgress)) end
                     end
-                    local cbColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "CastBarColorCurve"))
-                        or self:GetSetting(1, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
-                    frame.CastBar:SetStatusBarColor(cbColor.r, cbColor.g, cbColor.b)
                     frame.CastBar:Show()
                 end
             end

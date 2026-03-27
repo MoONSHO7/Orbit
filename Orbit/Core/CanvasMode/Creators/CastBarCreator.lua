@@ -21,7 +21,7 @@ local DEFAULT_CB_HEIGHT = 18
 local DEFAULT_CB_COLOR = { r = 1, g = 0.7, b = 0 }
 local CB_CAST_VALUE = 1.2
 local CB_MAX_VALUE = 2.0
-local CB_ICON_TEXTURE = 136243
+local CB_ICON_TEXTURE = 136116
 local CB_ICON_TEXCOORD = 0.1
 local CB_ICON_TEXCOORD_MAX = 0.9
 local CB_TEXT_SIZE_MIN = 10
@@ -189,12 +189,27 @@ local function Create(container, preview, key, source, data)
     local sysIdx = Dialog.targetSystemIndex or 1
     local cbWidth = (plugin and plugin:GetSetting(sysIdx, "CastBarWidth")) or DEFAULT_CB_WIDTH
     local cbHeight = (plugin and plugin:GetSetting(sysIdx, "CastBarHeight")) or DEFAULT_CB_HEIGHT
-    local showIcon = plugin and plugin:GetSetting(sysIdx, "CastBarIcon")
 
-    container:SetSize(cbWidth, cbHeight)
+    container:SetSize(cbWidth + cbHeight, cbHeight)
+
+    local borderSize = plugin and (plugin:GetSetting(sysIdx, "BorderSize") or plugin:GetPlayerSetting("BorderSize"))
+        or Orbit.Engine.Pixel:DefaultBorderSize(UIParent:GetEffectiveScale() or 1)
+
+    container.IconFrame = CreateFrame("Frame", nil, container)
+    container.IconFrame:SetSize(cbHeight, cbHeight)
+    container.IconFrame:SetPoint("LEFT", container, "LEFT", 0, 0)
+
+    container.Icon = container.IconFrame:CreateTexture(nil, "ARTWORK")
+    container.Icon:SetAllPoints()
+    container.Icon:SetTexture(CB_ICON_TEXTURE)
+    container.Icon:SetTexCoord(CB_ICON_TEXCOORD, CB_ICON_TEXCOORD_MAX, CB_ICON_TEXCOORD, CB_ICON_TEXCOORD_MAX)
+    container.Icon:Show()
+
+    if Orbit.Skin and Orbit.Skin.SkinBorder then Orbit.Skin:SkinBorder(container.IconFrame, container.IconFrame, borderSize, nil, true) end
 
     local bar = CreateFrame("StatusBar", nil, container)
-    bar:SetAllPoints()
+    bar:SetPoint("TOPLEFT", container.IconFrame, "TOPRIGHT", 0, 0)
+    bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0)
     bar:SetMinMaxValues(0, CB_MAX_VALUE)
     bar:SetValue(CB_CAST_VALUE)
 
@@ -216,28 +231,7 @@ local function Create(container, preview, key, source, data)
     local gs = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(bar, gs.BackdropColourCurve, Orbit.Constants.Colors.Background)
 
-    local iconOffset = 0
-    if showIcon then
-        bar.Icon = bar:CreateTexture(nil, "ARTWORK")
-        bar.Icon:SetSize(cbHeight, cbHeight)
-        bar.Icon:SetPoint("LEFT", bar, "LEFT", 0, 0)
-        bar.Icon:SetTexture(CB_ICON_TEXTURE)
-        bar.Icon:SetTexCoord(CB_ICON_TEXCOORD, CB_ICON_TEXCOORD_MAX, CB_ICON_TEXCOORD, CB_ICON_TEXCOORD_MAX)
-        bar.Icon:Show()
-        iconOffset = cbHeight
-    end
 
-    local statusBarTex = bar:GetStatusBarTexture()
-    if statusBarTex then
-        statusBarTex:ClearAllPoints()
-        statusBarTex:SetPoint("TOPLEFT", bar, "TOPLEFT", iconOffset, 0)
-        statusBarTex:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", iconOffset, 0)
-        statusBarTex:SetPoint("TOPRIGHT", bar, "TOPRIGHT", 0, 0)
-        statusBarTex:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
-    end
-
-    local borderSize = plugin and (plugin:GetSetting(sysIdx, "BorderSize") or plugin:GetPlayerSetting("BorderSize"))
-        or Orbit.Engine.Pixel:DefaultBorderSize(UIParent:GetEffectiveScale() or 1)
     if Orbit.Skin and Orbit.Skin.SkinBorder then Orbit.Skin:SkinBorder(bar, bar, borderSize) end
 
     local fontName = plugin and (plugin:GetSetting(sysIdx, "Font") or plugin:GetPlayerSetting("Font"))
@@ -250,10 +244,8 @@ local function Create(container, preview, key, source, data)
     local subData = data and data.subComponents or {}
     local textData = subData.Text or { anchorX = "LEFT", anchorY = "CENTER", offsetX = DEFAULT_TEXT_OFFSET_X, offsetY = 0 }
     local timerData = subData.Timer or { anchorX = "RIGHT", anchorY = "CENTER", offsetX = DEFAULT_TEXT_OFFSET_X, offsetY = 0 }
-
-    local textIconOffset = showIcon and cbHeight or 0
     container.TextSub = CreateSubText(bar, container, "Text",
-        { anchorX = textData.anchorX, anchorY = textData.anchorY, offsetX = (textData.offsetX or DEFAULT_TEXT_OFFSET_X) + textIconOffset, offsetY = textData.offsetY },
+        { anchorX = textData.anchorX, anchorY = textData.anchorY, offsetX = textData.offsetX or DEFAULT_TEXT_OFFSET_X, offsetY = textData.offsetY },
         "Boss Ability", "LEFT", fontPath, cbTextSize, fontFlags)
     container.TimerSub = CreateSubText(bar, container, "Timer", timerData, "1.5", "RIGHT", fontPath, cbTextSize, fontFlags)
 

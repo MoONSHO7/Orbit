@@ -317,7 +317,7 @@ end
 function Mixin:UpdateVisibility()
     local bar = self.CastBar
     if not bar then return end
-    if not InCombatLockdown() and Orbit.MountedVisibility:ShouldHide() then
+    if not InCombatLockdown() and Orbit.MountedVisibility:IsCachedHidden() then
         if bar.StopCast then bar:StopCast() end
         return
     end
@@ -375,7 +375,7 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
     local plugin = self
 
     function bar:Cast()
-        if unit ~= "player" and not InCombatLockdown() and Orbit.MountedVisibility:ShouldHide() then return end
+        if unit ~= "player" and not InCombatLockdown() and Orbit.MountedVisibility:IsCachedHidden() then return end
         local targetBar = self.orbitBar or self
         local name, text, texture, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
         local isChanneled = false
@@ -560,8 +560,8 @@ function Mixin:SetupCastBarOnUpdate(bar)
         local getter = self.durationObj.GetRemainingDuration or self.durationObj.GetRemaining
         if getter then
             local ok, remaining = pcall(getter, self.durationObj)
-            if ok and remaining then
-                self.Timer:SetFormattedText("%.1f", remaining)
+            if ok then
+                pcall(self.Timer.SetFormattedText, self.Timer, "%.1f", remaining)
             end
         end
     end)

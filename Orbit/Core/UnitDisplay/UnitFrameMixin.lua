@@ -279,11 +279,20 @@ function Mixin:ApplySize(frame, width, height)
 end
 
 -- [ VISIBILITY CONTAINER ] -------------------------------------------------------------------
+local function PluginHasMountedHide(plugin)
+    local VE = Orbit.VisibilityEngine
+    if not VE then return false end
+    local veKey = VE:GetKeyForPlugin(plugin.name, 1)
+    return veKey and VE:GetFrameSetting(veKey, "hideMounted") or false
+end
+
 function Mixin:CreateVisibilityContainer(parent, combatEssential)
     local container = CreateFrame("Frame", nil, parent or UIParent, "SecureHandlerStateTemplate")
+    container:SetAttribute("_onstate-visibility", [[ if newstate == "hide" then self:Hide() else self:Show() end ]])
     container:SetAllPoints()
+    container:SetClampedToScreen(true)
     local baseDriver = "[petbattle] hide; show"
-    local driver = Orbit.MountedVisibility:GetMountedDriver(baseDriver, combatEssential) or baseDriver
+    local driver = PluginHasMountedHide(self) and (Orbit.MountedVisibility:GetMountedDriver(baseDriver, combatEssential) or baseDriver) or baseDriver
     RegisterStateDriver(container, "visibility", driver)
     container.orbitBaseDriver = baseDriver
     container.orbitCombatEssential = combatEssential
@@ -293,7 +302,7 @@ end
 function Mixin:UpdateVisibilityDriver()
     if not self.container or not self.container.orbitBaseDriver or InCombatLockdown() then return end
     local base = self.container.orbitBaseDriver
-    local skipMountedDriver = Orbit:IsEditMode() or (self.mountedConfig ~= nil)
+    local skipMountedDriver = Orbit:IsEditMode() or (self.mountedConfig ~= nil) or not PluginHasMountedHide(self)
     local driver = (skipMountedDriver and base) or (Orbit.MountedVisibility:GetMountedDriver(base, self.container.orbitCombatEssential) or base)
     RegisterStateDriver(self.container, "visibility", driver)
 end

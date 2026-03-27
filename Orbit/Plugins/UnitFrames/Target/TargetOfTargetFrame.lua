@@ -25,6 +25,7 @@ function Plugin:OnLoad()
         nativeFrame = TargetFrameToT, hiddenParentName = "OrbitHiddenToTParent",
         changeEvent = "PLAYER_TARGET_CHANGED",
         defaultX = 200, defaultY = -180,
+        vePluginName = "Target Frame",
     })
     Orbit.EventBus:On("TARGET_SETTINGS_CHANGED", function() self:UpdateVisibility() end, self)
 end

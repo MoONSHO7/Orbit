@@ -24,6 +24,7 @@ function Plugin:OnLoad()
         defaultX = 200, defaultY = -220, initialWidth = 200, initialHeight = 20,
         changeEvent = "PLAYER_TARGET_CHANGED", maxRowsMax = 4,
         showTimer = true, enablePandemic = true,
+        vePluginName = "Target Frame",
     })
     Orbit.EventBus:On("TARGET_SETTINGS_CHANGED", function() self:UpdateVisibility() end, self)
 end

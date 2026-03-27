@@ -277,12 +277,15 @@ function Mixin:CreateAuraGridPlugin(config)
     local Frame = CreateFrame("Frame", config.frameName, UIParent)
     Frame:SetSize(config.initialWidth or 200, config.initialHeight or 20)
     OrbitEngine.Pixel:Enforce(Frame)
+    Frame:SetClampedToScreen(true)
     RegisterUnitWatch(Frame)
 
     self.frame = Frame
     self._agFrame = Frame
     if config.exposeMountedConfig then self.mountedConfig = { frame = Frame } end
-    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, 1) end
+    local vePlugin = config.vePluginName and Orbit:GetPlugin(config.vePluginName) or self
+    local veIndex = config.veSystemIndex or 1
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(Frame, vePlugin, veIndex) end
     Frame.unit = config.unit
     Frame:SetAttribute("unit", config.unit)
 
@@ -872,7 +875,7 @@ function Mixin:UpdateVisibility()
         OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
         return
     end
-    if self.mountedConfig and Orbit.MountedVisibility:ShouldHide() then return end
+    if self.mountedConfig and Orbit.MountedVisibility:IsCachedHidden() then return end
 
     local enabled = self:IsEnabled()
     local isEditMode = Orbit:IsEditMode()

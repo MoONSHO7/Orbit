@@ -21,7 +21,7 @@ local SYSTEM_ID = "Orbit_BossFrames"
 local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
     defaults = {
         Width = 120, Height = 25, Scale = 100, Spacing = 40,
-        CastBarHeight = 18, CastBarWidth = 120, CastBarIcon = false,
+        CastBarHeight = 18, CastBarWidth = 120,
         ReactionColour = true,
         PandemicGlowType = Orbit.Constants.PandemicGlow.DefaultType,
         PandemicGlowColor = Orbit.Constants.PandemicGlow.DefaultColor,
@@ -178,6 +178,7 @@ end
 function Plugin:OnLoad()
     HideNativeBossFrames()
     self.container = CreateFrame("Frame", "OrbitBossContainer", UIParent, "SecureHandlerStateTemplate")
+    self.container:SetAttribute("_onstate-visibility", [[ if newstate == "hide" then self:Hide() else self:Show() end ]])
     self.container.editModeName, self.container.systemIndex = "Boss Frames", 1
     self.container:SetFrameStrata("MEDIUM")
     self.container:SetFrameLevel(Orbit.Constants.Levels.GroupContainer)
@@ -294,38 +295,29 @@ function Plugin:PrepareIconsForCanvasMode()
     if frame.CastBar then
         local castBarHeight = self:GetSetting(1, "CastBarHeight") or 18
         local castBarWidth = self:GetSetting(1, "CastBarWidth") or 120
-        local showIcon = self:GetSetting(1, "CastBarIcon")
-        local iconOffset = 0
-        frame.CastBar:SetSize(castBarWidth, castBarHeight)
-        local textureName = self:GetSetting(1, "Texture") or self:GetPlayerSetting("Texture")
-        local texturePath = textureName and LSM:Fetch("statusbar", textureName)
-        if texturePath then frame.CastBar:SetStatusBarTexture(texturePath) end
-        frame.CastBar:SetMinMaxValues(0, 2.0)
-        frame.CastBar:SetValue(1.2)
+        local iconOffset = castBarHeight
+        frame.CastBar:SetSize(castBarWidth + iconOffset, castBarHeight)
         frame.CastBar.unit = "preview"
         if frame.CastBar.Icon then
-            if showIcon then
-                frame.CastBar.Icon:SetTexture(136243); frame.CastBar.Icon:SetSize(castBarHeight, castBarHeight); frame.CastBar.Icon:Show(); iconOffset = castBarHeight
-                if frame.CastBar.IconBorder then frame.CastBar.IconBorder:Show() end
-            else frame.CastBar.Icon:Hide(); if frame.CastBar.IconBorder then frame.CastBar.IconBorder:Hide() end end
+            frame.CastBar.Icon:SetTexture(136116)
+            frame.CastBar.Icon:SetSize(castBarHeight, castBarHeight)
+            frame.CastBar.Icon:Show()
+            if frame.CastBar.IconBorder then frame.CastBar.IconBorder:Show() end
         end
-        local statusBarTexture = frame.CastBar:GetStatusBarTexture()
-        if statusBarTexture then
-            statusBarTexture:ClearAllPoints()
-            statusBarTexture:SetPoint("TOPLEFT", frame.CastBar, "TOPLEFT", iconOffset, 0)
-            statusBarTexture:SetPoint("BOTTOMLEFT", frame.CastBar, "BOTTOMLEFT", iconOffset, 0)
-            statusBarTexture:SetPoint("TOPRIGHT", frame.CastBar, "TOPRIGHT", 0, 0)
-            statusBarTexture:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
-        end
-        if frame.CastBar.bg then
-            frame.CastBar.bg:ClearAllPoints()
-            frame.CastBar.bg:SetPoint("TOPLEFT", frame.CastBar, "TOPLEFT", iconOffset, 0)
-            frame.CastBar.bg:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
+        local bar = frame.CastBar.Bar
+        if bar then
+            bar:ClearAllPoints()
+            bar:SetPoint("TOPLEFT", frame.CastBar.Icon, "TOPRIGHT", 0, 0)
+            bar:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
+            local textureName = self:GetSetting(1, "Texture") or self:GetPlayerSetting("Texture")
+            local texturePath = textureName and LSM:Fetch("statusbar", textureName)
+            if texturePath then bar:SetStatusBarTexture(texturePath) end
+            bar:SetMinMaxValues(0, 2.0)
+            bar:SetValue(1.2)
         end
         if frame.CastBar.Text then
             frame.CastBar.Text:ClearAllPoints()
-            if showIcon and frame.CastBar.Icon then frame.CastBar.Text:SetPoint("LEFT", frame.CastBar.Icon, "RIGHT", 4, 0)
-            else frame.CastBar.Text:SetPoint("LEFT", frame.CastBar, "LEFT", 4, 0) end
+            frame.CastBar.Text:SetPoint("LEFT", bar, "LEFT", 4, 0)
             frame.CastBar.Text:SetText("Boss Ability")
         end
         if frame.CastBar.Timer then frame.CastBar.Timer:SetText("1.5") end
@@ -355,7 +347,22 @@ function Plugin:UpdateContainerSize()
     else for _, frame in ipairs(self.frames) do if frame:IsShown() then visibleCount = visibleCount + 1 end end end
     if visibleCount == 0 then visibleCount = MAX_BOSS_FRAMES end
     local frameHeight = self:GetSetting(1, "Height") or 40
-    self.container:SetSize(width, visibleCount * frameHeight + (visibleCount - 1) * spacing)
+
+    local extraWidth = 0
+    local extraHeight = 0
+    local castBarDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar")
+    if not castBarDisabled then
+        local cbWidth = self:GetSetting(1, "CastBarWidth") or 120
+        local cbHeight = self:GetSetting(1, "CastBarHeight") or 18
+        local totalCbWidth = cbWidth + cbHeight
+        if totalCbWidth > width then extraWidth = totalCbWidth - width end
+        
+        local compPos = self:GetSetting(1, "ComponentPositions")
+        local cbY = (compPos and compPos.CastBar and compPos.CastBar.posY) or -15
+        if cbY < 0 then extraHeight = math.abs(cbY) + cbHeight / 2 end
+    end
+
+    self.container:SetSize(width + extraWidth, visibleCount * frameHeight + (visibleCount - 1) * spacing + extraHeight)
     self.container:SetScale(scale)
 end
 
@@ -405,10 +412,10 @@ function Plugin:ApplySettings()
             local castBarDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar")
             if castBarDisabled then frame.CastBar:Hide()
             else
-                frame.CastBar:SetSize(castBarWidth, castBarHeight)
+                frame.CastBar:SetSize(castBarWidth + castBarHeight, castBarHeight)
                 CB:Position(frame.CastBar, frame, self)
                 if frame.CastBar.SetBorder then frame.CastBar:SetBorder(borderSize) end
-                if textureName then Orbit.Skin:SkinStatusBar(frame.CastBar, textureName, nil, true) end
+                if frame.CastBar.Bar and textureName then Orbit.Skin:SkinStatusBar(frame.CastBar.Bar, textureName, nil, true) end
                 local cbTextSize = 10
                 local fontPath = LSM:Fetch("font", fontName)
                 if frame.CastBar.Text then frame.CastBar.Text:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline()) end
@@ -429,7 +436,7 @@ function Plugin:ApplySettings()
                     local fX, fY = oX, oY
                     if aX == "RIGHT" then fX = -fX end
                     if aY == "TOP" then fY = -fY end
-                    element:SetPoint(selfAnchor, frame.CastBar, anchor, fX, fY)
+                    element:SetPoint(selfAnchor, frame.CastBar.Bar or frame.CastBar, anchor, fX, fY)
                     element:SetJustifyH(jH)
                 end
                 ApplySubPos(frame.CastBar.Text, subComps.Text or { anchorX = "LEFT", anchorY = "CENTER", offsetX = 4, offsetY = 0, justifyH = "LEFT" }, "LEFT")

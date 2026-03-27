@@ -280,7 +280,7 @@ function Plugin:OnLoad()
         end
     end
     self.UpdateVisibilityDriver = function()
-        local shouldHide = Orbit.MountedVisibility:ShouldHide()
+        local shouldHide = Orbit.MountedVisibility:IsCachedHidden()
         local numBars = self:GetSetting(1, "NumActionBars") or 4
         for index, container in pairs(self.containers) do
             if index == VEHICLE_EXIT_INDEX then

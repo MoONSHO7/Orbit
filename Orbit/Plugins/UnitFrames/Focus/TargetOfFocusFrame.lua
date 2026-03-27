@@ -26,6 +26,7 @@ function Plugin:OnLoad()
         changeEvent = "PLAYER_FOCUS_CHANGED",
         defaultX = -200, defaultY = -180,
         exposeMountedConfig = true,
+        vePluginName = "Focus Frame",
     })
     Orbit.EventBus:On("FOCUS_SETTINGS_CHANGED", function() self:UpdateVisibility() end, self)
 end

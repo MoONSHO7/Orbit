@@ -118,7 +118,6 @@ Schema.KEY_SCHEMAS = {
               formatter = function(v) return v .. "px" end },
             { type = "slider", key = "CastBarWidth", label = "Width", plugin = true, min = 50, max = 400, step = 1,
               formatter = function(v) return v .. "px" end },
-            { type = "checkbox", key = "CastBarIcon", label = "Icon", plugin = true, default = true },
             { type = "colorcurve", key = "CastBarColorCurve", label = "Color", plugin = true, singleColor = true },
         },
     },

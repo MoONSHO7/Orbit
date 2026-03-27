@@ -307,7 +307,7 @@ end
 function Plugin:UpdateVisibility()
     local bar = self.CastBar
     if not bar then return end
-    if not InCombatLockdown() and Orbit.MountedVisibility:ShouldHide() then
+    if not InCombatLockdown() and Orbit.MountedVisibility:IsCachedHidden() then
         HideBar(bar)
         return
     end

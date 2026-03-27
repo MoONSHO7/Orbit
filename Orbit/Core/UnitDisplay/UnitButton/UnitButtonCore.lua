@@ -106,6 +106,9 @@ function CoreMixin:OnEvent(event, unit)
         if self.unit == "pet" then
             self:UpdateAll()
         end
+    elseif event == "UNIT_NAME_UPDATE" or event == "UNIT_CONNECTION" then
+        self:UpdateName()
+        self:UpdateHealth() -- Disconnect status affects health bar color/alpha
     end
 end
 

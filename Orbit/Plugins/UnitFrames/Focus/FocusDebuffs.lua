@@ -25,6 +25,7 @@ function Plugin:OnLoad()
         changeEvent = "PLAYER_FOCUS_CHANGED", maxRowsMax = 6,
         showTimer = true, enablePandemic = true,
         exposeMountedConfig = true,
+        vePluginName = "Focus Frame",
     })
     Orbit.EventBus:On("FOCUS_SETTINGS_CHANGED", function() self:UpdateVisibility() end, self)
 end

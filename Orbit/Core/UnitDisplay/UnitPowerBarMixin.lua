@@ -253,6 +253,12 @@ function Mixin:ApplySettings()
 
     if OrbitEngine.Frame.ForceUpdateSelection then OrbitEngine.Frame:ForceUpdateSelection(Frame) end
     self:UpdateVisibility()
+
+    local cfg = self._pbConfig
+    local enableHover = self:GetSetting(1, "ShowOnMouseover") ~= false
+    local vePlugin = cfg.vePluginName and Orbit:GetPlugin(cfg.vePluginName) or (cfg.parentPlugin and Orbit:GetPlugin(cfg.parentPlugin)) or self
+    local veIndex = cfg.veSystemIndex or cfg.parentIndex or 1
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(Frame, vePlugin, veIndex, "OutOfCombatFade", enableHover) end
 end
 
 -- [ POWER UPDATE ]----------------------------------------------------------------------------------
