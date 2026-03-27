@@ -193,6 +193,93 @@ function Layout:ComputeGridContainerSize(numItems, limitPerLine, orientation, wi
     return finalW, finalH
 end
 
+-- [ SECTION HEADER ]--------------------------------------------------------------------------------
+function Layout:CreateSectionHeader(parent, text)
+    local frame = CreateFrame("Frame", nil, parent)
+    frame:SetHeight(20)
+    frame.text = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    frame.text:SetPoint("TOPLEFT")
+    frame.text:SetPoint("TOPRIGHT")
+    frame.text:SetJustifyH("LEFT")
+    frame.text:SetText(text)
+    frame.OrbitType = "Header"
+    return frame
+end
+
+-- [ DESCRIPTION ]-----------------------------------------------------------------------------------
+function Layout:CreateDescription(parent, text, color)
+    local frame = CreateFrame("Frame", nil, parent)
+    frame:SetHeight(20)
+    frame.text = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    frame.text:SetPoint("TOPLEFT")
+    frame.text:SetPoint("TOPRIGHT")
+    frame.text:SetJustifyH("LEFT")
+    frame.text:SetWordWrap(true)
+    frame.text:SetNonSpaceWrap(true)
+    frame.text:SetText(text)
+    if color then
+        frame.text:SetTextColor(color.r, color.g, color.b, color.a or 1)
+    else
+        frame.text:SetTextColor(0.53, 0.53, 0.53, 1)
+    end
+    -- Defer text width until the frame resolves its anchor-based size
+    frame:SetScript("OnSizeChanged", function(self, w)
+        if w > 1 then
+            self.text:SetWidth(w)
+            self:SetHeight(math.max(16, self.text:GetStringHeight() + 4))
+        end
+    end)
+    frame.OrbitType = "Description"
+    return frame
+end
+
+-- [ ACCORDION ]-------------------------------------------------------------------------------------
+local ACCORDION_BAR_HEIGHT = 30
+function Layout:CreateAccordion(parent, name)
+    local section = CreateFrame("Frame", nil, parent)
+    section:SetHeight(ACCORDION_BAR_HEIGHT)
+    section._expanded = false
+    section._contentHeight = 1
+    -- Bar button
+    local bar = CreateFrame("Button", nil, section)
+    bar:SetHeight(ACCORDION_BAR_HEIGHT)
+    bar:SetPoint("TOPLEFT")
+    bar:SetPoint("TOPRIGHT", -20, 0)
+    -- 3-piece atlas background
+    local left = bar:CreateTexture(nil, "BACKGROUND")
+    left:SetAtlas("Options_ListExpand_Left", true)
+    left:SetPoint("TOPLEFT")
+    local right = bar:CreateTexture(nil, "BACKGROUND")
+    right:SetAtlas("Options_ListExpand_Right", true)
+    right:SetPoint("TOPRIGHT")
+    local mid = bar:CreateTexture(nil, "BACKGROUND")
+    mid:SetAtlas("_Options_ListExpand_Middle", true)
+    mid:SetPoint("TOPLEFT", left, "TOPRIGHT")
+    mid:SetPoint("TOPRIGHT", right, "TOPLEFT")
+    section._rightTex = right
+    -- Label
+    local label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    label:SetPoint("LEFT", 21, 2)
+    label:SetText(name)
+    -- Content container
+    local body = CreateFrame("Frame", nil, section)
+    body:SetPoint("TOPLEFT", bar, "BOTTOMLEFT", 0, -4)
+    body:SetPoint("TOPRIGHT", bar, "BOTTOMRIGHT", 0, -4)
+    body:SetHeight(1)
+    body:Hide()
+    section._body = body
+    -- Toggle
+    bar:SetScript("OnClick", function()
+        section._expanded = not section._expanded
+        right:SetAtlas(section._expanded and "Options_ListExpand_Right_Expanded" or "Options_ListExpand_Right", true)
+        body:SetShown(section._expanded)
+        section:SetHeight(section._expanded and (ACCORDION_BAR_HEIGHT + section._contentHeight + 4) or ACCORDION_BAR_HEIGHT)
+        if section._onToggle then section._onToggle() end
+    end)
+    section.OrbitType = "Accordion"
+    return section
+end
+
 -- [ WIDGET FACTORY ]--------------------------------------------------------------------------------
 
 Layout.creators = {}

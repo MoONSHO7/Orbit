@@ -18,9 +18,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
 ## [@project-version@] - @project-date-iso@
-### Message
-- Sorry for delay in this one, been a busy week at work + wow season launch.
-- Goodluck with season 1 and hope them Vaults were noice ;)
+### TLDR
+- Few more Raid Frame tweaks, and fixes
+- Also added some QoL stuff, check the QoL section for more info.
 
 ### Added
 - **Profile Management** — A complete layout manager out of the box. You can configure, import/export, and map UI profiles per-specialization for automatic swaps!
@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Raid Frame** Enhanced RaidFrames for multiple Groups, its all managed in a single Edit Mode frame now. Select your tier to edit.
 - **Visibility Engine** Removed all visibility settings from Edit mode, its now all handled in Orbits Visibility Engine. Type: /orbit ve or find it in the plugin manager.
 - **Cooldown Manager** — You can now Drag and Drop Items/Spells directly into the Cooldown Manager (Essential and Utility) Shift right click to remove them.
+- **QoL** — Started building out the QoL frame, added two options (Move More, Cursor Highlight)
 
 ### Fixed
 - **BossFrames** — Fixed mulitple issues with bossframes that came up from previous performance parse on group frames.
@@ -38,7 +39,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Visibility Engine** — Mouseover on frames Tracked Cooldowns&Charges should now work.
 - **Visibility Engine** — More tweaks to the VE Engine
 - **Group Frames** — More tweaks/bugfixes to the Group Frames
-
 
 ## [1.0.0] - 2026-03-10
 ### Added
