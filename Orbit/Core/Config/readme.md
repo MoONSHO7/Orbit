@@ -17,7 +17,10 @@ provides the entire settings interface for orbit. plugins declare their settings
 | OrbitSettingsDialog.lua | settings dialog frame. hosts the tab bar and content area. |
 | OrbitOptionsButton.lua | minimap/addon compartment button. |
 | MinimapButton.lua | LibDBIcon minimap button. left-click opens edit mode + options, right-click opens plugin manager. |
-| PluginManager.lua | plugin enable/disable ui (wow addons settings tab). |
+| OrbitAdvancedSettings.lua | orchestrator: tab bar, panel shell, settings registration for the addon settings panel. |
+| Advanced/PluginManager.lua | plugin enable/disable checkbox grid content builder. |
+| Advanced/VisibilityEngine.lua | visibility engine scrollable table content builder. |
+| Advanced/QoL.lua | quality-of-life expandable accordion sections content builder. |
 | Widgets/ | individual control widgets (slider, checkbox, dropdown, color picker, font/texture pickers, etc.). |
 
 ## adding a new widget type

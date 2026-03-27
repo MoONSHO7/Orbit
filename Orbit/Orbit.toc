@@ -51,3 +51,9 @@ Plugins\ActionBars\ActionBars.xml
 Plugins\CooldownManager\CooldownManager.xml
 Plugins\MenuItems\MenuItems.xml
 Plugins\Misc\TalkingHead.lua
+
+# ==============================================================
+# QUALITY OF LIFE
+# ==============================================================
+QoL\MoveMore.lua
+QoL\Mouse.lua

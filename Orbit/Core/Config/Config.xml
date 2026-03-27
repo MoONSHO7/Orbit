@@ -8,5 +8,8 @@
     <Script file="WhatsNew.lua"/>
     <Script file="OrbitOptionsButton.lua"/>
     <Script file="MinimapButton.lua"/>
-    <Script file="PluginManager.lua"/>
+    <Script file="OrbitAdvancedSettings.lua"/>
+    <Script file="Advanced/PluginManager.lua"/>
+    <Script file="Advanced/VisibilityEngine.lua"/>
+    <Script file="Advanced/QoL.lua"/>
 </Ui>

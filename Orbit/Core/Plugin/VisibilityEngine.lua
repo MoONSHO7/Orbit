@@ -210,3 +210,11 @@ function VE:ApplyFrame(key)
     end
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
 end
+
+-- [ STARTUP ]----------------------------------------------------------------------------------------
+local initFrame = CreateFrame("Frame")
+initFrame:RegisterEvent("PLAYER_LOGIN")
+initFrame:SetScript("OnEvent", function(self)
+    self:UnregisterAllEvents()
+    C_Timer.After(0.5, function() VE:ApplyBlizzardSettings() end)
+end)

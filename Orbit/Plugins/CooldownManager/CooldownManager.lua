@@ -602,7 +602,8 @@ function Plugin:ApplySettings(frame)
         return
     end
 
-    local isMountedHidden = Orbit.MountedVisibility:IsCachedHidden()
+    local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, systemIndex)
+    local isMountedHidden = Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
     local alpha = (self:GetSetting(systemIndex, "Opacity") or 100) / 100
     if isMountedHidden then
         frame:SetAlpha(0)
