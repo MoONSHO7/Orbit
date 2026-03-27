@@ -81,6 +81,12 @@ local function SyncMinimapWidget(frame, hidden)
     if hidden then minimap:Hide() elseif not minimap:IsShown() then minimap:Show() end
 end
 
+-- Sync Minimap cluster children alpha for mouseover reveal
+local function SyncMinimapChildrenAlpha(frame, alpha)
+    if not frame or not frame.orbitOpacityExternal then return end
+    for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(alpha) end
+end
+
 local function UpdateFrameVisibility(frame, _, data)
     if not frame then return end
     -- Mounted: supreme override — completely hide
@@ -103,11 +109,13 @@ local function UpdateFrameVisibility(frame, _, data)
     -- Read VE settings
     local opacity, oocFade, mouseOver, showWithTarget = GetVESettings(data)
     local baseAlpha = frame.orbitOpacityExternal and 1 or (opacity or 100) / 100
+    local rawOpacity = (opacity or 100) / 100
     -- Early out: no VE effects active — don't touch the frame at all
-    if not oocFade and baseAlpha >= 1 and not mouseOver then
+    if not oocFade and baseAlpha >= 1 and rawOpacity >= 1 and not mouseOver then
         if frame._oocFadeHidden then frame._oocFadeHidden = nil; SetGroupBorderOOCHidden(frame, false) end
         frame:SetAlpha(1)
         SyncMinimapWidget(frame, false)
+        SyncMinimapChildrenAlpha(frame, 1)
         return
     end
     -- Determine reveal overrides (only when opacity > 0 — don't override explicit hide)
@@ -130,10 +138,13 @@ local function UpdateFrameVisibility(frame, _, data)
         Orbit.Animation:ApplyHoverFade(frame, finalAlpha, 1, Orbit:IsEditMode())
         if frame._oocFadeHidden then frame._oocFadeHidden = nil; SetGroupBorderOOCHidden(frame, false) end
         SyncMinimapWidget(frame, false)
+        local childAlpha = revealFull and 1 or (frame.orbitOpacityExternal and (opacity or 100) / 100 or baseAlpha)
+        SyncMinimapChildrenAlpha(frame, childAlpha)
     else
         frame:SetAlpha(0)
         if not frame._oocFadeHidden then frame._oocFadeHidden = true; SetGroupBorderOOCHidden(frame, true) end
         SyncMinimapWidget(frame, true)
+        SyncMinimapChildrenAlpha(frame, 0)
     end
 end
 

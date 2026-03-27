@@ -419,7 +419,8 @@ function Plugin:ApplyTrackedSettings(anchor)
     if not anchor then return end
     if InCombatLockdown() then return end
     local systemIndex = anchor.systemIndex
-    local isMountedHidden = Orbit.MountedVisibility:IsCachedHidden()
+    local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, systemIndex)
+    local isMountedHidden = Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
     local alpha = isMountedHidden and 0 or ((self:GetSetting(systemIndex, "Opacity") or 100) / 100)
     OrbitEngine.NativeFrame:Modify(anchor, { alpha = alpha })
     if not anchor.orbitMountedSuppressed then anchor:Show() end
