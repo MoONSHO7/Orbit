@@ -331,7 +331,7 @@ Layout:RegisterWidgetType("profileactive", function(container, def, getValue, ca
         if callback then callback(value) end
     end)
     frame.OrbitType = "ProfileActive"
-    if Orbit.db.useSpecProfiles then
+    if Orbit.Profile:IsSpecProfilesEnabled() then
         frame:SetAlpha(0.4)
         if frame.Dropdown then
             frame.Dropdown:SetEnabled(false)
@@ -567,7 +567,7 @@ local ProfilesPlugin = {
     settings = {},
     GetSetting = function(self, systemIndex, key)
         if key == "ActiveProfile" then return Orbit.Profile:GetActiveProfileName()
-        elseif key == "UseSpecProfiles" then return Orbit.db.useSpecProfiles or false
+        elseif key == "UseSpecProfiles" then return Orbit.Profile:IsSpecProfilesEnabled()
         elseif key == "CreateProfile" then return Orbit.Profile._selectedToCreate or "Global"
         elseif key == "ExportProfile" then return exportSelectedProfile or "Global"
         elseif key == "ExportString" then return exportString
@@ -587,7 +587,7 @@ local ProfilesPlugin = {
                 Orbit.OptionsPanel:Open("Profiles")
             end
         elseif key == "UseSpecProfiles" then
-            Orbit.db.useSpecProfiles = value
+            Orbit.Profile:SetSpecProfilesEnabled(value)
             if value then
                 Orbit.Profile:CheckSpecProfile()
             else
@@ -858,7 +858,7 @@ local function GetProfilesSchema()
         type = "checkheader", key = "UseSpecProfiles", text = "Spec Profiles", default = false,
         tooltip = "Assign a profile to each specialization. When you change spec, Orbit switches automatically.",
     }
-    if Orbit.db.useSpecProfiles then
+    if Orbit.Profile:IsSpecProfilesEnabled() then
         local numSpecs = GetNumSpecializations and GetNumSpecializations() or 0
         for i = 1, numSpecs do
             local specID, specName = GetSpecializationInfo(i)

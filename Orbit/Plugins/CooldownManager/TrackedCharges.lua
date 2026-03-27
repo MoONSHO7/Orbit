@@ -457,7 +457,8 @@ function Plugin:ApplyChargeBarSettings(frame)
     ChargeBarLayout:LayoutChargeBar(self, frame)
     OrbitEngine.Frame:RestorePosition(frame, self, sysIndex)
 
-    local isMountedHidden = Orbit.MountedVisibility:IsCachedHidden()
+    local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, sysIndex)
+    local isMountedHidden = Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
     local alpha = isMountedHidden and 0 or ((self:GetSetting(sysIndex, "Opacity") or 100) / 100)
     frame:SetAlpha(alpha)
 

@@ -13,6 +13,7 @@ local DEBOUNCE_KEY = "ProfileManager_SpecCheck"
 local DEBOUNCE_DELAY = 0.1
 local DEFAULT_PROFILE = "Global"
 local DELAYED_REFRESH = 0.1
+local PLAYER_CLASS = select(2, UnitClass("player"))
 
 local GLOBAL_DEFAULTS = {
     Font = "Barlow Condensed Bold",
@@ -41,6 +42,19 @@ local DUPLICATE_SPEC_NAMES = {
 
 local isActivatingProfile = false
 
+-- [ CLASS-SCOPED SPEC PROFILES ]--------------------------------------------------------------------
+
+function Orbit.Profile:IsSpecProfilesEnabled()
+    local tbl = Orbit.db and Orbit.db.classSpecProfiles
+    return tbl and tbl[PLAYER_CLASS] or false
+end
+
+function Orbit.Profile:SetSpecProfilesEnabled(value)
+    if not Orbit.db then return end
+    if not Orbit.db.classSpecProfiles then Orbit.db.classSpecProfiles = {} end
+    Orbit.db.classSpecProfiles[PLAYER_CLASS] = value and true or nil
+end
+
 -- [ UTILITY ]---------------------------------------------------------------------------------------
 
 local function CopyTable(src, dest)
@@ -63,6 +77,15 @@ end
 function Orbit.Profile:Initialize()
     if not Orbit.db then Orbit.db = {} end
     if not Orbit.db.profiles then Orbit.db.profiles = {} end
+    if not Orbit.db.classSpecProfiles then Orbit.db.classSpecProfiles = {} end
+
+    -- TODO(REMOVE): Migrate legacy useSpecProfiles boolean into class-keyed table
+    if Orbit.db.useSpecProfiles ~= nil then
+        if Orbit.db.useSpecProfiles and not Orbit.db.classSpecProfiles[PLAYER_CLASS] then
+            Orbit.db.classSpecProfiles[PLAYER_CLASS] = true
+        end
+        Orbit.db.useSpecProfiles = nil
+    end
 
     if not Orbit.db.GlobalSettings then Orbit.db.GlobalSettings = {} end
     local gs = Orbit.db.GlobalSettings
@@ -333,7 +356,7 @@ end
 
 function Orbit.Profile:CheckSpecProfile()
     if not Orbit.db or not Orbit.db.profiles then return end
-    if not Orbit.db.useSpecProfiles then return end
+    if not self:IsSpecProfilesEnabled() then return end
     if not Orbit.db.specMappings then return end
     local specIndex = GetSpecialization and GetSpecialization()
     if not specIndex then self:SetActiveProfile(Orbit.db.activeProfile or DEFAULT_PROFILE); return end

@@ -834,8 +834,9 @@ function Plugin:AssignPartyUnits()
                     changed = true
                 end
                 SafeUnregisterUnitWatch(frame)
+                frame:SetSize(tierWidth, tierHeight)
                 SafeRegisterUnitWatch(frame)
-                if not frame:IsShown() then frame:SetSize(tierWidth, tierHeight); frame:Show(); changed = true end
+                if not frame:IsShown() then frame:Show(); changed = true end
                 if frame.UpdateAll then frame:UpdateAll() end
                 UpdateInRange(frame)
             else
@@ -883,8 +884,9 @@ function Plugin:AssignRaidUnits()
                     changed = true
                 end
                 SafeUnregisterUnitWatch(frame)
+                frame:SetSize(tierWidth, tierHeight)
                 SafeRegisterUnitWatch(frame)
-                if not frame:IsShown() then frame:SetSize(tierWidth, tierHeight); frame:Show(); changed = true end
+                if not frame:IsShown() then frame:Show(); changed = true end
                 if frame.UpdateAll then frame:UpdateAll() end
                 UpdateInRange(frame)
             else
