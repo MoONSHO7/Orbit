@@ -20,14 +20,7 @@ function Layout:CreateEditBox(parent, label, value, callback, width, height, isM
 
     -- Input Container (Backdrop)
     local inputContainer = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    inputContainer:SetBackdrop({
-        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile = true,
-        tileSize = 16,
-        edgeSize = 16,
-        insets = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
+    inputContainer:SetBackdrop(Layout.ORBIT_INPUT_BACKDROP)
     inputContainer:SetBackdropColor(0, 0, 0, 0.5)
     inputContainer:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 

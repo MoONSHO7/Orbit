@@ -275,7 +275,8 @@ function Renderer:UpdateChargedOverlays(plugin, frame, systemIndex, cur, max)
         local chargedPoints = GetUnitChargedPowerPoints("player")
         local chargedLookup = {}
         if chargedPoints then for _, idx in ipairs(chargedPoints) do chargedLookup[idx] = true end end
-        local chargedColor = plugin:GetSetting(systemIndex, "ChargedComboPointColor") or Orbit.Colors.PlayerResources.ChargedComboPoint
+        local rawCharged = plugin:GetSetting(systemIndex, "ChargedComboPointColor")
+        local chargedColor = (OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:GetFirstColorFromCurve(rawCharged) or rawCharged) or Orbit.Colors.PlayerResources.ChargedComboPoint
         local texture = plugin:GetSetting(systemIndex, "Texture")
         local texturePath = LSM:Fetch("statusbar", texture)
         local overlayScale = frame:GetEffectiveScale() or 1

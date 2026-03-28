@@ -8,9 +8,11 @@ local Layout = Engine.Layout
 -- 3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
 
 local SWATCH_HEIGHT = 20
+local COMPACT_SWATCH_SIZE = 21
+local COMPACT_ROW_HEIGHT = 26
 local WIDGET_SIZE = { width = 260, height = 32 }
 
-function Layout:CreateColorPicker(parent, label, initialColor, callback)
+function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
     if not self.colorPool then self.colorPool = {} end
     local frame = table.remove(self.colorPool)
 
@@ -37,10 +39,15 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
             local lib = LibStub and LibStub("LibOrbitColorPicker-1.0", true)
             if not lib then return end
             
+            if Orbit.db and not Orbit.db.RecentColors then
+                Orbit.db.RecentColors = {}
+            end
+
             lib:Open({
                 initialData = { r = frame.r, g = frame.g, b = frame.b, a = frame.a },
                 hasOpacity = true,
                 forceSingleColor = true,
+                recentColorsDb = Orbit.db and Orbit.db.RecentColors,
                 onOpen = function(picker)
                     local as = Orbit.db and Orbit.db.AccountSettings
                     if as and not as.ColorPickerTourComplete then
@@ -53,6 +60,10 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
                     local pin = result.pins and result.pins[1]
                     if pin and pin.color then
                         frame.UpdateColor(pin.color.r, pin.color.g, pin.color.b, pin.color.a)
+                    else
+                        if opts.allowClear then
+                            frame.ClearColor()
+                        end
                     end
                 end,
             })
@@ -72,18 +83,43 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback)
         if callback then callback({ r = r, g = g, b = b, a = a }) end
     end
 
+    frame.ClearColor = function()
+        if callback then callback(nil) end
+    end
+
+    frame.SetColorQuiet = function(_, r, g, b, a)
+        frame.r, frame.g, frame.b, frame.a = r, g, b, a
+        frame.Swatch.Color:SetVertexColor(r, g, b, a)
+    end
+
     local C = Constants
+    opts = opts or {}
+
     frame.Label:SetText(label)
-    frame.Label:SetWidth(C.Widget.LabelWidth)
     frame.Label:SetJustifyH("LEFT")
     frame.Label:ClearAllPoints()
-    frame.Label:SetPoint("LEFT", frame, "LEFT", 0, 0)
-
     frame.Swatch:ClearAllPoints()
-    frame.Swatch:SetPoint("LEFT", frame.Label, "RIGHT", C.Widget.LabelGap, 0)
-    frame.Swatch:SetPoint("RIGHT", frame, "RIGHT", -C.Widget.ValueWidth, 0)
-    frame.Swatch:SetHeight(SWATCH_HEIGHT)
 
-    frame:SetSize(WIDGET_SIZE.width, WIDGET_SIZE.height)
+    if opts.compact then
+        frame:SetHeight(COMPACT_ROW_HEIGHT)
+        frame.Swatch:SetSize(COMPACT_SWATCH_SIZE, COMPACT_SWATCH_SIZE)
+        frame.Swatch:SetPoint("LEFT", frame, "LEFT", 0, 0)
+
+        frame.Label:SetWidth(0)
+        frame.Label:SetPoint("LEFT", frame.Swatch, "RIGHT", 4, 0)
+
+        frame:SetSize(COMPACT_SWATCH_SIZE + 4 + frame.Label:GetStringWidth(), COMPACT_ROW_HEIGHT)
+    else
+        -- Standard 3-column layout
+        frame.Label:SetWidth(C.Widget.LabelWidth)
+        frame.Label:SetPoint("LEFT", frame, "LEFT", 0, 0)
+
+        frame.Swatch:SetPoint("LEFT", frame.Label, "RIGHT", C.Widget.LabelGap, 0)
+        frame.Swatch:SetPoint("RIGHT", frame, "RIGHT", -C.Widget.ValueWidth, 0)
+        frame.Swatch:SetHeight(SWATCH_HEIGHT)
+
+        frame:SetSize(WIDGET_SIZE.width, WIDGET_SIZE.height)
+    end
+
     return frame
 end

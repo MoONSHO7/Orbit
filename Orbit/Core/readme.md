@@ -51,6 +51,15 @@ graph TD
 
 dependencies flow **inward**. plugins depend on core. core never depends on plugins.
 
+## data architecture
+
+orbit uses strict boundaries for how data is saved and persisted across `/reload` and sessions:
+
+- `Orbit.db.AccountSettings`: **True Account-Wide Application Data**. Used for data that belongs to the human player at the keyboard, regardless of what character or spec they are playing (e.g., Color Picker History, Tutorial Flags, Minimap Icon visibility). This table is entirely immune to the ProfileManager.
+- `Orbit.db.GlobalSettings`: **The Aesthetic Theme for the Current Profile**. Used for UI styling that applies globally across *all* plugins for a specific layout configuration (e.g., universal border sizes, main fonts, status bar textures). 
+
+**Warning**: Do not put non-theme application data into `GlobalSettings`. The `ProfileManager` actively clones `profile.GlobalSettings` into the live `Orbit.db.GlobalSettings` memory block whenever a profile activates (which triggers dynamically on every login and `/reload`). This will permanently erase any un-flushed application data stored there!
+
 ## rules
 
 - no file in core may reference a plugin by name

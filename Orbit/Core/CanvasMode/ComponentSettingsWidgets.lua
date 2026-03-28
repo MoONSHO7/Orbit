@@ -43,11 +43,10 @@ function Widgets.CreateFontPicker(parent, control, currentValue, callback)
 end
 
 function Widgets.CreateColorPicker(parent, control, currentValue, callback)
-    if Layout and Layout.CreateColorPicker then
-        local initialColor = type(currentValue) == "table" and currentValue or { r = 1, g = 1, b = 1, a = 1 }
-        local widget = Layout:CreateColorPicker(parent, control.label, initialColor,
-            function(color) if callback then callback(control.key, color) end end)
-        if widget then widget:SetHeight(32) end
+    if Layout and Layout.CreateColorCurvePicker then
+        local widget = Layout:CreateColorCurvePicker(parent, control.label, currentValue,
+            function(curveData) if callback then callback(control.key, curveData) end end)
+        if widget then widget:SetHeight(32); widget.singleColorMode = true end
         return widget
     end
     local frame = CreateFrame("Frame", nil, parent)

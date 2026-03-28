@@ -363,7 +363,8 @@ function Mixin:UpdateSelectionHighlight(frame, plugin)
         return
     end
     if UnitIsUnit(unit, "target") then
-        local color = plugin and plugin.GetSetting and plugin:GetSetting(1, "SelectionColor") or SELECTION_COLOR_DEFAULT
+        local raw = plugin and plugin.GetSetting and plugin:GetSetting(1, "SelectionColor")
+        local color = (Orbit.Engine.ColorCurve and Orbit.Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw) or SELECTION_COLOR_DEFAULT
         Orbit.Skin:ApplyHighlightBorder(frame, SELECTION_STORAGE_KEY, color, Orbit.Constants.Levels.Border + 1, "ADD")
     else
         Orbit.Skin:ClearHighlightBorder(frame, SELECTION_STORAGE_KEY)
@@ -387,7 +388,8 @@ function Mixin:UpdateAggroHighlight(frame, plugin)
     end
     local threatStatus = UnitThreatSituation(unit)
     if threatStatus and threatStatus >= 1 then
-        local color = (threatStatus == 3) and (plugin and plugin.GetSetting and plugin:GetSetting(1, "AggroColor") or THREAT_COLORS[3]) or THREAT_COLORS[threatStatus]
+        local rawColor = (threatStatus == 3) and (plugin and plugin.GetSetting and plugin:GetSetting(1, "AggroColor")) or nil
+        local color = (rawColor and Orbit.Engine.ColorCurve and Orbit.Engine.ColorCurve:GetFirstColorFromCurve(rawColor) or rawColor) or THREAT_COLORS[threatStatus]
         Orbit.Skin:ApplyHighlightBorder(frame, AGGRO_HIGHLIGHT_KEY, color, Orbit.Constants.Levels.Border + 2)
     else
         Orbit.Skin:ClearHighlightBorder(frame, AGGRO_HIGHLIGHT_KEY)

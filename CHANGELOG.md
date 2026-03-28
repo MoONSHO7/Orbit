@@ -19,26 +19,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [@project-version@] - @project-date-iso@
 ### TLDR
-- Few more Raid Frame tweaks, and fixes
-- Also added some QoL stuff, check the QoL section for more info.
-
-### Added
-- **Profile Management** — A complete layout manager out of the box. You can configure, import/export, and map UI profiles per-specialization for automatic swaps!
-- **Raid Frame Performance** — Reduced a large amount of API calls and layout updates on raid frames, should bring down the performance hit in raids, more work on this next update.
-- **CastBar** — Added to canvas mode.
-- **Raid Frame** Enhanced RaidFrames for multiple Groups, its all managed in a single Edit Mode frame now. Select your tier to edit.
-- **Visibility Engine** Removed all visibility settings from Edit mode, its now all handled in Orbits Visibility Engine. Type: /orbit ve or find it in the plugin manager.
-- **Cooldown Manager** — You can now Drag and Drop Items/Spells directly into the Cooldown Manager (Essential and Utility) Shift right click to remove them.
-- **QoL** — Started building out the QoL frame, added two options (Move More, Cursor Highlight)
-
-### Fixed
-- **BossFrames** — Fixed mulitple issues with bossframes that came up from previous performance parse on group frames.
-- **TrackedCooldowns+Charges** — These should now save position properly, anchored is still disabled as its buggy with new profiles and I  havent fixed it yet.
-- **TrackedCooldowns+Charges** — Added to visibility engine
-- **Visibility Engine** — Mouseover on frames with opacity settings should now work.
-- **Visibility Engine** — Mouseover on frames Tracked Cooldowns&Charges should now work.
-- **Visibility Engine** — More tweaks to the VE Engine
-- **Group Frames** — More tweaks/bugfixes to the Group Frames
+- Hopefully some bugfixes from the new VE working now
+- Updated Color Picker
+- ActionBar backdrops should work with class pins now
+- Added 'Colors' to the QoL section to recolor blizzard frames
 
 ## [1.0.0] - 2026-03-10
 ### Added

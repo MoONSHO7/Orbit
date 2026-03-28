@@ -50,8 +50,8 @@ local function OnUpdateCursor(self)
         self._currentAtlasSize = size
     end
     
-    -- Hide when the hardware cursor changes (hovering units, AoE targeting, item drag).
-    local shouldHide = UnitExists("mouseover") or SpellIsTargeting() or GetCursorInfo()
+    -- Hide when the hardware cursor changes (hovering units, objects, AoE targeting, item drag).
+    local shouldHide = UnitExists("mouseover") or SpellIsTargeting() or GetCursorInfo() or GameTooltip:IsOwned(UIParent)
     self.tex:SetAlpha(shouldHide and 0 or 1)
     
     self:ClearAllPoints()

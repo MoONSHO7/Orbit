@@ -38,7 +38,8 @@ function CB:Create(parent, bossIndex, plugin)
     container.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
 
     container.IconBorder = CreateFrame("Frame", nil, container, "BackdropTemplate")
-    container.IconBorder:SetAllPoints(container.Icon)
+    container.IconBorder:SetSize(CAST_BAR_ICON_SIZE, CAST_BAR_ICON_SIZE)
+    container.IconBorder:SetPoint("LEFT", container, "LEFT", 0, 0)
     container.IconBorder:SetFrameLevel(container:GetFrameLevel() + Orbit.Constants.Levels.Border)
     Orbit.Skin:SkinBorder(container.IconBorder, container.IconBorder, 1, nil, true)
 
@@ -104,7 +105,12 @@ local function ApplyIconLayout(castBar, plugin)
     if castBar.Icon then
         castBar.Icon:SetSize(castBarHeight, castBarHeight)
         castBar.Icon:Show()
-        if castBar.IconBorder then castBar.IconBorder:Show() end
+        if castBar.IconBorder then 
+            castBar.IconBorder:SetSize(castBarHeight, castBarHeight)
+            castBar.IconBorder:ClearAllPoints()
+            castBar.IconBorder:SetPoint("LEFT", castBar, "LEFT", 0, 0)
+            castBar.IconBorder:Show() 
+        end
     end
     -- Reanchor bar to start after the icon
     if castBar.Bar then

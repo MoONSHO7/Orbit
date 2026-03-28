@@ -43,11 +43,16 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
             local lib = LibStub and LibStub("LibOrbitColorPicker-1.0", true)
             if not lib then return end
 
+            if Orbit.db and Orbit.db.AccountSettings and not Orbit.db.AccountSettings.RecentColors then
+                Orbit.db.AccountSettings.RecentColors = {}
+            end
+
             lib:Open({
                 initialData = self.curveData,
                 hasOpacity = true,
                 forceSingleColor = self.singleColorMode,
                 hasDesaturation = self.hasDesaturation,
+                recentColorsDb = Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.RecentColors,
                 onOpen = function(picker)
                     local as = Orbit.db and Orbit.db.AccountSettings
                     if as and not as.ColorPickerTourComplete then

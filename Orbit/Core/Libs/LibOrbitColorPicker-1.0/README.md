@@ -13,6 +13,7 @@ if not lib then return end
 lib:Open({
     initialData = self.curveData,
     forceSingleColor = self.singleColorMode,
+    recentColorsDb = mySavedVar.RecentColors,
     callback = function(result)
         if result and result.pins and #result.pins > 0 then
             self.curveData = result
@@ -31,6 +32,7 @@ lib:Open({
 lib:Open({
     initialData = { r = frame.r, g = frame.g, b = frame.b, a = frame.a },
     forceSingleColor = true,
+    recentColorsDb = mySavedVar.RecentColors,
     callback = function(result)
         if not result then return end
         local pin = result.pins and result.pins[1]
@@ -75,6 +77,7 @@ lib:IsOpen()
 | `initialData` | `table` or `nil` | curve table `{ pins = {...} }` or simple color `{ r, g, b, a }` |
 | `forceSingleColor` | `boolean` | restrict to one pin when `true` (default: `false`) |
 | `hasDesaturation` | `boolean` | show desaturation checkbox when `true` (default: `false`) |
+| `recentColorsDb` | `table` or `nil` | array reference to enable the persistent 8-slot color history row |
 | `callback` | `function(result)` | called on picker close with result or `nil` |
 | `onOpen` | `function(picker)` | called after picker is fully shown and initialized |
 
@@ -128,6 +131,7 @@ unlimited pins. drag colors onto the gradient bar to add stops. drag handles to 
 
 - drag from current swatch to gradient bar to add a pin
 - drag from class color swatch to add a class-tracking pin
+- drag from recent colors history (if `recentColorsDb` is provided) to reuse a picked color
 - drag pin handles to reposition (multi-color only)
 - arrow keys to nudge a focused pin, shift for fine precision
 - right-click a pin handle to remove it

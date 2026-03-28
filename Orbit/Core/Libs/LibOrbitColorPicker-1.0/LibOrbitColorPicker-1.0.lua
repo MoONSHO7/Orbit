@@ -7,10 +7,10 @@ if not lib then return end
 -- [ CONSTANTS ] ------------------------------------------------------------------------------------
 
 local PICKER_WIDTH = 350
-local PICKER_HEIGHT = 300
+local PICKER_HEIGHT = 356
 local WHEEL_SIZE = 128
 local WHEEL_PADDING_LEFT = 20
-local WHEEL_OFFSET_Y = -35
+local WHEEL_OFFSET_Y = -43
 local VALUE_BAR_WIDTH = 32
 local VALUE_BAR_HEIGHT = 128
 local VALUE_BAR_GAP = 20
@@ -26,7 +26,7 @@ local SWATCH_GAP = 8
 local HEX_BOX_WIDTH = 72
 local HEX_BOX_HEIGHT = 22
 local GRADIENT_BAR_HEIGHT = 24
-local GRADIENT_BAR_GAP = 8
+local GRADIENT_BAR_GAP = 16
 local GRADIENT_BAR_PADDING = 23
 local PIN_CIRCLE_SIZE = 12
 local PIN_STEM_WIDTH = 2
@@ -55,13 +55,14 @@ local INFO_BUTTON_SIZE = 32
 local PIN_NUDGE_STEP = 0.01
 local PIN_NUDGE_FINE = 0.001
 local WHITE_TEXTURE = "Interface\\Buttons\\WHITE8x8"
-local LIB_PATH = debugstack(1, 1, 0):match("(.+)LibOrbitColorPicker%-1%.0%.lua") or ""
-local CHECKERBOARD_TEXTURE = LIB_PATH .. "checkerboard"
+local LIB_PATH = debugstack(1, 1, 0):match("Interface.*LibOrbitColorPicker%-1%.0[\\/]")
+local CHECKERBOARD_TEXTURE = LIB_PATH .. "checkerboard.tga"
 local WHEEL_TEXTURE = "Interface\\Buttons\\UI-ColorPicker-Buttons"
 local DEFAULT_COLOR = { r = 1, g = 1, b = 1, a = 1 }
 
 -- [ MODULE STATE ] ---------------------------------------------------------------------------------
 
+lib.recentColors = lib.recentColors or {}
 lib.pins = lib.pins or {}
 lib.colorCurve = nil
 lib.callback = nil
@@ -566,6 +567,8 @@ function lib:AddPin(position, color, pinType)
     local pin = { position = ClampPosition(position), color = NormalizeColor(color) }
     if pinType then pin.type = pinType end
     self.pins[#self.pins + 1] = pin
+    self:AddRecentColor(pin)
+    self:UpdateRecentColors()
     self:UpdateCurve()
     if self.ui.gradientBar then self.ui.gradientBar:Refresh() end
 end
@@ -708,12 +711,124 @@ function lib:CreateGradientBar()
     return bar
 end
 
+-- [ RECENT COLORS ] --------------------------------------------------------------------------------
+
+function lib:AddRecentColor(pin)
+    if not pin or pin.type == "class" then return end
+    local color = pin.color
+    local hex = ColorToHex(color.r, color.g, color.b)
+    
+    -- Deduplicate
+    for i = #self.recentColors, 1, -1 do
+        local rc = self.recentColors[i]
+        if ColorToHex(rc.r, rc.g, rc.b) == hex and math.abs((rc.a or 1) - (color.a or 1)) < 0.05 then
+            table.remove(self.recentColors, i)
+        end
+    end
+    
+    table.insert(self.recentColors, 1, { r = color.r, g = color.g, b = color.b, a = color.a or 1 })
+    
+    -- Trim to 8
+    while #self.recentColors > 8 do
+        table.remove(self.recentColors)
+    end
+end
+
+function lib:UpdateRecentColors()
+    if not self.ui.recentColorsBar then return end
+    for i = 1, 8 do
+        local swatch = self.ui.recentColorsBar.swatches[i]
+        local c = self.recentColors[i]
+        if c then
+            swatch:SetBackdropBorderColor(0, 0, 0, 1)
+            swatch.Color:SetColorTexture(c.r, c.g, c.b, c.a or 1)
+            swatch.Checkerboard:SetAlpha(1)
+            swatch:EnableMouse(true)
+            swatch.TooltipText = "Recent Color\nDrag to use as a pin"
+            swatch.ColorModel = c
+        else
+            swatch:SetBackdropBorderColor(0, 0, 0, 0)
+            swatch.Color:SetColorTexture(0, 0, 0, 0)
+            swatch.Checkerboard:SetAlpha(0)
+            swatch:EnableMouse(false)
+            swatch.TooltipText = nil
+            swatch.ColorModel = nil
+        end
+    end
+end
+
+function lib:CreateRecentColorsBar()
+    if self.ui.recentColorsBar then return self.ui.recentColorsBar end
+
+    local container = CreateFrame("Frame", nil, self.ui.gradientBar)
+    container:SetPoint("BOTTOMLEFT", self.ui.gradientBar.PinsContainer, "TOPLEFT", 0, 2)
+    container:SetPoint("BOTTOMRIGHT", self.ui.gradientBar.PinsContainer, "TOPRIGHT", 0, 2)
+    container:SetHeight(31)
+    container:SetFrameStrata("FULLSCREEN_DIALOG")
+    container:SetFrameLevel(self.ui.frame:GetFrameLevel() + 50)
+    
+    container.swatches = {}
+    
+    -- Standard 304px width, 8 boxes of 31px with 8px gaps => exactly 304px.
+    local swatchSize = 31
+    local spacing = 8
+    
+    for i = 1, 8 do
+        local swatch = CreateFrame("Frame", nil, container, "BackdropTemplate")
+        swatch:SetSize(swatchSize, swatchSize)
+        if i == 1 then
+            swatch:SetPoint("LEFT", container, "LEFT", 0, 0)
+        else
+            swatch:SetPoint("LEFT", container.swatches[i - 1], "RIGHT", spacing, 0)
+        end
+        
+        swatch:SetBackdrop({ bgFile = WHITE_TEXTURE, edgeFile = WHITE_TEXTURE, edgeSize = SWATCH_BORDER })
+        swatch:SetBackdropBorderColor(0, 0, 0, 1)
+        swatch:SetBackdropColor(0, 0, 0, 0)
+        swatch:RegisterForDrag("LeftButton")
+        
+        swatch.Checkerboard = swatch:CreateTexture(nil, "BACKGROUND")
+        swatch.Checkerboard:SetPoint("TOPLEFT", SWATCH_BORDER, -SWATCH_BORDER)
+        swatch.Checkerboard:SetPoint("BOTTOMRIGHT", -SWATCH_BORDER, SWATCH_BORDER)
+        swatch.Checkerboard:SetTexture(CHECKERBOARD_TEXTURE, "REPEAT", "REPEAT")
+        swatch.Checkerboard:SetHorizTile(true)
+        swatch.Checkerboard:SetVertTile(true)
+
+        swatch.Color = swatch:CreateTexture(nil, "ARTWORK")
+        swatch.Color:SetPoint("TOPLEFT", SWATCH_BORDER, -SWATCH_BORDER)
+        swatch.Color:SetPoint("BOTTOMRIGHT", -SWATCH_BORDER, SWATCH_BORDER)
+
+        swatch:SetScript("OnEnter", function(self)
+            if self.TooltipText then
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                GameTooltip:ClearLines()
+                GameTooltip:AddLine(self.TooltipText)
+                GameTooltip:Show()
+            end
+        end)
+        swatch:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+        swatch:SetScript("OnDragStart", function(self)
+            if not lib.multiPinMode and #lib.pins > 0 then return end
+            if not self.ColorModel then return end
+            lib:StartDrag(self.ColorModel.r, self.ColorModel.g, self.ColorModel.b, self.ColorModel.a)
+        end)
+        swatch:SetScript("OnDragStop", function() lib:EndDrag() end)
+        
+        container.swatches[i] = swatch
+    end
+    
+    self.ui.recentColorsBar = container
+    return container
+end
+
+
 -- [ FRAME CREATION ] -------------------------------------------------------------------------------
 
 function lib:CreatePickerFrame()
     if self.ui.frame then return self.ui.frame end
 
-    local f = CreateFrame("Frame", "OrbitColorPickerFrame", UIParent)
+    local f = CreateFrame("Frame", nil, UIParent)
     f:SetSize(PICKER_WIDTH, PICKER_HEIGHT)
     f:SetPoint("CENTER")
     f:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -754,6 +869,13 @@ function lib:CreatePickerFrame()
             if lib.wasCancelled then
                 lib.callback(BuildResult(lib.snapshotPins), true)
             elseif lib.pins and #lib.pins > 0 then
+                -- In multi-color mode, colors are saved instantly during 'AddPin' (pin drop).
+                -- In single-color mode, there are no 'drops', so we save the final picked color upon 'Apply'.
+                if not lib.multiPinMode then
+                    lib:AddRecentColor(lib.pins[1])
+                    lib:UpdateRecentColors()
+                end
+                
                 lib.callback(BuildResult(lib.pins), false)
             else
                 lib.callback(nil, false)
@@ -899,17 +1021,28 @@ end
 -- [ HEX INPUT ] ------------------------------------------------------------------------------------
 
 function lib:CreateHexInput()
-    if self.ui.hexBox then return self.ui.hexBox end
+    if self.ui.hexBoxFrame then return self.ui.hexBoxFrame end
 
-    local box = CreateFrame("EditBox", nil, self.ui.frame, "InputBoxTemplate")
-    box:SetSize(HEX_BOX_WIDTH, HEX_BOX_HEIGHT)
+    local frame = CreateFrame("Frame", nil, self.ui.frame, "BackdropTemplate")
+    frame:SetHeight(HEX_BOX_HEIGHT)
+    frame:SetBackdrop({
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 16,
+        insets = { left = 3, right = 3, top = 3, bottom = 3 },
+    })
+    frame:SetBackdropColor(0, 0, 0, 0.5)
+    frame:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+
+    local box = CreateFrame("EditBox", nil, frame)
+    box:SetFontObject(ChatFontNormal)
+    box:SetAllPoints(frame)
     box:SetAutoFocus(false)
-    box:SetMaxLetters(7)
+    box:SetMaxLetters(6)
+    box:SetJustifyH("CENTER")
+    box:SetTextInsets(5, 5, 5, 5)
 
-    box.Label = box:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    box.Label:SetPoint("RIGHT", box, "LEFT", -4, 0)
-    box.Label:SetText("#")
-    box.Label:SetTextColor(0.7, 0.7, 0.7, 1)
+    frame:SetScript("OnMouseDown", function() box:SetFocus() end)
 
     box:SetScript("OnEnterPressed", function(self)
         local r, g, b = HexToColor(self:GetText())
@@ -919,8 +1052,9 @@ function lib:CreateHexInput()
 
     box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
 
+    self.ui.hexBoxFrame = frame
     self.ui.hexBox = box
-    return box
+    return frame
 end
 
 -- [ CLOSE BUTTON ] ---------------------------------------------------------------------------------
@@ -1008,8 +1142,13 @@ function lib:LayoutControls()
         else self.ui.desatCheckbox:Hide() end
     end
 
-    hexBox:ClearAllPoints()
-    hexBox:SetPoint("TOP", cs, "BOTTOMLEFT", WHEEL_SIZE / 2, -SWATCH_GAP)
+    local hexBoxFrame = self.ui.hexBoxFrame or self.ui.hexBox
+    if hexBoxFrame then
+        hexBoxFrame:ClearAllPoints()
+        hexBoxFrame:SetPoint("TOP", cs, "BOTTOM", 0, -SWATCH_GAP)
+        hexBoxFrame:SetPoint("LEFT", self.ui.frame, "LEFT", GRADIENT_BAR_PADDING, 0)
+        hexBoxFrame:SetPoint("RIGHT", self.ui.frame, "RIGHT", -GRADIENT_BAR_PADDING, 0)
+    end
 end
 
 -- [ INITIALIZE ] -----------------------------------------------------------------------------------
@@ -1439,6 +1578,7 @@ function lib:Open(options)
     local data = options.initialData or options.initialCurve or options.initialColor
     self.multiPinMode = not options.forceSingleColor
 
+    self.recentColors = options.recentColorsDb or self.recentColors or {}
     wipe(self.pins)
     if self.multiPinMode then
         self:LoadFromCurve(data)
@@ -1460,6 +1600,8 @@ function lib:Open(options)
     if self.ui.gradientBar then
         for _, handle in ipairs(self.ui.gradientBar.pinHandles) do handle:Hide() end
     end
+    self:CreateRecentColorsBar()
+    self:UpdateRecentColors()
 
     local initialColor = (self.pins[1] and self.pins[1].color) or DEFAULT_COLOR
     self.ui.colorSelect:SetColorRGB(initialColor.r, initialColor.g, initialColor.b)
