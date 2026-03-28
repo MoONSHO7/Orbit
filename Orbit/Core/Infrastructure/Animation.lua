@@ -74,9 +74,10 @@ function Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, editModeActiv
         return
     end
 
-    -- Create Fader if needed
+    -- Create Fader if needed (parented to UIParent to avoid corrupting LayoutFrame sizing)
     if not fader then
-        fader = CreateFrame("Frame", nil, frame)
+        fader = CreateFrame("Frame", nil, UIParent)
+        fader.orbitTarget = frame
         faders[frame] = fader
 
         fader:SetScript("OnUpdate", function(self, elapsed)
@@ -86,23 +87,23 @@ function Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, editModeActiv
             end
             self.timer = 0
 
-            local parent = self:GetParent()
-            if not parent:IsShown() or parent.orbitMountedSuppressed then
+            local target = self.orbitTarget
+            if not target:IsShown() or target.orbitMountedSuppressed then
                 return
             end
 
             -- Check Mouse (Geometry Check)
-            local isOver = MouseIsOver(parent)
+            local isOver = MouseIsOver(target)
 
             -- State Transition Logic
             if isOver and not self.isHovering then
                 self.isHovering = true
                 -- Fade In (combat-safe)
-                SafeFade(parent, self.maxAlpha, 0.1)
+                SafeFade(target, self.maxAlpha, 0.1)
             elseif not isOver and self.isHovering then
                 self.isHovering = false
                 -- Fade Out (combat-safe)
-                SafeFade(parent, self.minAlpha, 0.2)
+                SafeFade(target, self.minAlpha, 0.2)
             end
         end)
     end

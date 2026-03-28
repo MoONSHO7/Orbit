@@ -72,28 +72,8 @@ end
 -- Sync Minimap cluster children alpha for mouseover reveal
 local function SyncMinimapChildrenAlpha(frame, alpha)
     if not frame or not frame.orbitOpacityExternal then return end
-    local ticker = frame.orbitOOCHoverTicker
     for _, child in ipairs({ frame:GetChildren() }) do
-        if child ~= ticker then child:SetAlpha(alpha) end
-    end
-end
-
--- Hide/show Minimap widget to suppress engine-rendered POI pins that ignore alpha.
--- Locks MinimapCluster size before hiding to prevent LayoutFrame reflow.
-local function SyncMinimapWidget(frame, hidden)
-    if not frame or not frame.orbitOpacityExternal then return end
-    local minimap = _G["Minimap"]
-    local cluster = _G["MinimapCluster"]
-    if not minimap or not cluster then return end
-    if InCombatLockdown() then
-        Orbit.CombatManager:QueueUpdate(function() SyncMinimapWidget(frame, hidden) end)
-        return
-    end
-    if hidden then
-        cluster:SetSize(cluster:GetWidth(), cluster:GetHeight())
-        minimap:Hide()
-    elseif not minimap:IsShown() then
-        minimap:Show()
+        child:SetAlpha(alpha)
     end
 end
 
@@ -113,7 +93,6 @@ local function UpdateFrameVisibility(frame, _, data)
             frame:SetAlpha(0)
             if not frame._oocFadeHidden then frame._oocFadeHidden = true; SetGroupBorderOOCHidden(frame, true) end
             SyncMinimapChildrenAlpha(frame, 0)
-            SyncMinimapWidget(frame, true)
             return
         end
     end
@@ -127,7 +106,6 @@ local function UpdateFrameVisibility(frame, _, data)
         Orbit.Animation:StopHoverFade(frame)
         frame:SetAlpha(1)
         SyncMinimapChildrenAlpha(frame, 1)
-        SyncMinimapWidget(frame, false)
         return
     end
     -- Determine reveal overrides (only when opacity > 0 — don't override explicit hide)
@@ -151,12 +129,10 @@ local function UpdateFrameVisibility(frame, _, data)
         if frame._oocFadeHidden then frame._oocFadeHidden = nil; SetGroupBorderOOCHidden(frame, false) end
         local childAlpha = revealFull and 1 or (frame.orbitOpacityExternal and rawOpacity or baseAlpha)
         SyncMinimapChildrenAlpha(frame, childAlpha)
-        SyncMinimapWidget(frame, childAlpha < 1)
     else
         frame:SetAlpha(0)
         if not frame._oocFadeHidden then frame._oocFadeHidden = true; SetGroupBorderOOCHidden(frame, true) end
         SyncMinimapChildrenAlpha(frame, 0)
-        SyncMinimapWidget(frame, true)
     end
 end
 
@@ -182,6 +158,7 @@ EventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 EventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
 EventFrame:RegisterEvent("CINEMATIC_STOP")
 EventFrame:RegisterEvent("STOP_MOVIE")
+EventFrame:RegisterEvent("BARBER_SHOP_CLOSE")
 
 EventFrame:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_REGEN_DISABLED" then
@@ -219,22 +196,23 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
     end
     if veKey and Orbit.VisibilityEngine then enableHover = Orbit.VisibilityEngine:GetFrameSetting(veKey, "mouseOver") end
     ManagedFrames[frame] = { plugin = plugin, systemIndex = systemIndex, settingKey = settingKey, enableHover = enableHover or false, veKey = veKey }
-    -- Create hover ticker (MouseIsOver for child-inclusive detection)
+    -- Create hover ticker (parented to UIParent to avoid corrupting LayoutFrame sizing)
     if not frame.orbitOOCHoverTicker then
-        local hoverTicker = CreateFrame("Frame", nil, frame)
+        local hoverTicker = CreateFrame("Frame", nil, UIParent)
+        hoverTicker.orbitTarget = frame
         hoverTicker:SetScript("OnUpdate", function(self, elapsed)
             self.timer = (self.timer or 0) + elapsed
             if self.timer < Orbit.Constants.Timing.HoverCheckInterval then return end
             self.timer = 0
-            local parent = self:GetParent()
-            if not parent:IsShown() then return end
-            local isOver = MouseIsOver(parent)
-            if isOver and not parent.orbitMouseOver then
-                parent.orbitMouseOver = true
-                UpdateFrameVisibility(parent, nil, ManagedFrames[parent])
-            elseif not isOver and parent.orbitMouseOver then
-                parent.orbitMouseOver = nil
-                UpdateFrameVisibility(parent, nil, ManagedFrames[parent])
+            local target = self.orbitTarget
+            if not target:IsShown() then return end
+            local isOver = MouseIsOver(target)
+            if isOver and not target.orbitMouseOver then
+                target.orbitMouseOver = true
+                UpdateFrameVisibility(target, nil, ManagedFrames[target])
+            elseif not isOver and target.orbitMouseOver then
+                target.orbitMouseOver = nil
+                UpdateFrameVisibility(target, nil, ManagedFrames[target])
             end
         end)
         frame.orbitOOCHoverTicker = hoverTicker
