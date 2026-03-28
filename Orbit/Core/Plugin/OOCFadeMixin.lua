@@ -169,6 +169,8 @@ end
 EventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 EventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 EventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+EventFrame:RegisterEvent("CINEMATIC_STOP")
+EventFrame:RegisterEvent("STOP_MOVIE")
 
 EventFrame:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_REGEN_DISABLED" then

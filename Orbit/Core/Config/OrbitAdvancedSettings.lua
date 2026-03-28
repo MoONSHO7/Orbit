@@ -15,6 +15,7 @@ local PADDING = 16
 local HEADER_HEIGHT = 40
 local TAB_HEIGHT = 28
 local TAB_PADDING = 4
+local TAB_EXTRA_WIDTH = 16
 local TAB_FONT = "GameFontNormal"
 local TAB_ACTIVE_COLOR = { r = 1, g = 0.82, b = 0 }
 local TAB_INACTIVE_COLOR = { r = 0.6, g = 0.6, b = 0.6 }
@@ -34,7 +35,7 @@ local function CreateTabBar(parent, tabs, onTabSelected)
         btn.label:SetPoint("CENTER")
         btn.label:SetText(tabName)
         local textW = btn.label:GetStringWidth()
-        btn:SetWidth(textW + TAB_PADDING * 2 + 16)
+        btn:SetWidth(textW + TAB_PADDING * 2 + TAB_EXTRA_WIDTH)
         btn:SetPoint("TOPLEFT", xOffset, 0)
         xOffset = xOffset + btn:GetWidth() + 2
         btn.underline = btn:CreateTexture(nil, "ARTWORK")
