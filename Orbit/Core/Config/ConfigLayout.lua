@@ -18,6 +18,17 @@ Layout.fontPool = Layout.fontPool or {}
 Layout.texturePool = Layout.texturePool or {}
 Layout.containerControls = Layout.containerControls or {} -- Container -> List of controls
 
+-- [ ADVANCED PANEL CONSTANTS ]----------------------------------------------------------------------
+Layout.Advanced = {
+    PADDING = 16,
+    HEADER_HEIGHT = 40,
+    TITLE_Y = -70,
+    CONTENT_START_Y = -120,
+    SECTION_SPACING = 2,
+    MUTED = { r = 0.53, g = 0.53, b = 0.53 },
+    TAB_EXTRA_WIDTH = 16,
+}
+
 function Layout:Reset(container)
     -- Reset specific container
     local controls = self.containerControls[container]
@@ -256,7 +267,6 @@ function Layout:CreateAccordion(parent, name)
     mid:SetAtlas("_Options_ListExpand_Middle", true)
     mid:SetPoint("TOPLEFT", left, "TOPRIGHT")
     mid:SetPoint("TOPRIGHT", right, "TOPLEFT")
-    section._rightTex = right
     -- Label
     local label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("LEFT", 21, 2)
@@ -267,17 +277,56 @@ function Layout:CreateAccordion(parent, name)
     body:SetPoint("TOPRIGHT", bar, "BOTTOMRIGHT", 0, -4)
     body:SetHeight(1)
     body:Hide()
-    section._body = body
-    -- Toggle
-    bar:SetScript("OnClick", function()
-        section._expanded = not section._expanded
+    -- Internal updater
+    local function UpdateVisual()
         right:SetAtlas(section._expanded and "Options_ListExpand_Right_Expanded" or "Options_ListExpand_Right", true)
         body:SetShown(section._expanded)
         section:SetHeight(section._expanded and (ACCORDION_BAR_HEIGHT + section._contentHeight + 4) or ACCORDION_BAR_HEIGHT)
+    end
+    -- Toggle
+    bar:SetScript("OnClick", function()
+        section._expanded = not section._expanded
+        UpdateVisual()
         if section._onToggle then section._onToggle() end
     end)
+    -- Public API
+    function section:GetBody() return body end
+    function section:SetContentHeight(h)
+        self._contentHeight = h
+        body:SetHeight(h)
+        UpdateVisual()
+    end
+    function section:IsExpanded() return self._expanded end
+    function section:SetExpanded(state)
+        self._expanded = state
+        UpdateVisual()
+        if self._onToggle then self._onToggle() end
+    end
     section.OrbitType = "Accordion"
     return section
+end
+
+-- [ SCROLL AREA ]-----------------------------------------------------------------------------------
+function Layout:CreateScrollArea(parent, topY, bottomPad)
+    local A = self.Advanced
+    topY = topY or A.CONTENT_START_Y
+    bottomPad = bottomPad or A.PADDING
+    local scrollFrame = CreateFrame("ScrollFrame", nil, parent, "ScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", A.PADDING, topY)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -A.PADDING - 14, bottomPad)
+    if scrollFrame.ScrollBar then scrollFrame.ScrollBar:SetAlpha(0) end
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetWidth(scrollFrame:GetWidth())
+    scrollFrame:SetScrollChild(scrollChild)
+    scrollFrame:SetScript("OnSizeChanged", function(self, w) scrollChild:SetWidth(w) end)
+    -- Helper: update child height and toggle scrollbar
+    function scrollFrame:UpdateContentHeight(h)
+        scrollChild:SetHeight(h)
+        if self.ScrollBar then
+            self.ScrollBar:SetAlpha(h > self:GetHeight() and 1 or 0)
+        end
+    end
+    return scrollFrame, scrollChild
 end
 
 -- [ WIDGET FACTORY ]--------------------------------------------------------------------------------

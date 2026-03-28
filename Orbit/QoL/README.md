@@ -12,29 +12,31 @@ These modules differ from standard Orbit plugins because they are **Account-Wide
 ## 2. Setting Up the Configuration UI
 QoL settings are presented in the Orbit configuration panel under the "Quality of Life" tab. They are grouped into expandable accordion sections.
 
-To add settings to an existing section or a new section, update `Orbit/Core/Config/PluginManager.lua`:
+To add a new section, update `Orbit/Core/Config/Advanced/QoL.lua`:
 
-1. Locate the `QOL_SECTION_NAMES` table (or visually locate the `AddSection` function calls).
-2. Inside `CreateQoLContent()`, use `AddSection("Section Name", height, function(body) ... end)` to create the UI.
-3. Remove the initial placeholder text using:
+1. Create a builder function: `local function BuildMySection(body) ... end`
+2. The builder receives the accordion body frame. Use `Layout:AddControl()` and `Layout:Stack()` to lay out widgets.
+3. Return the computed content height from the builder.
+4. Add the section to `sectionDefs`:
    ```lua
-   for _, region in ipairs({ body:GetRegions() }) do region:Hide() end
+   local sectionDefs = {
+       { "My Section", BuildMySection },
+   }
    ```
-4. Build standard Blizzard-style widgets (e.g., `UICheckButtonTemplate` for checkboxes, `UIDropDownMenuTemplate` for dropdowns).
+5. The accordion and scroll infrastructure handle the rest.
 
 ## 3. Saving & Reading Settings
 All QoL settings **MUST** be Account-Wide. 
 
 **Do NOT** use `Orbit.db.profile` or generic `Orbit.db` keys, as this ties the setting to the currently active character profile or risks data wipes.
 
-**Always read and write to `Orbit.db.AccountSettings`:**
+**Use the helpers defined in QoL.lua:**
 ```lua
--- Correct:
-local settingValue = Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.MyCoolSetting or false
+-- Reading:
+local val = GetAccountSetting("MyCoolSetting", false)
 
 -- Saving:
-if not Orbit.db.AccountSettings then Orbit.db.AccountSettings = {} end
-Orbit.db.AccountSettings.MyCoolSetting = newValue
+SetAccountSetting("MyCoolSetting", newValue)
 ```
 
 ## 4. Initialization & Architecture
