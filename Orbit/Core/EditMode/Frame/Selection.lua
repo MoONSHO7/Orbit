@@ -4,7 +4,6 @@
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
-local Constants = Orbit.Constants
 local C = Orbit.Constants
 
 local OVERLAY_LEVEL_BOOST = 100
@@ -36,7 +35,7 @@ end
 
 local function GetOrbitEditModeColor()
     local curveData = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.EditModeColorCurve
-    return (Orbit.Engine.ColorCurve:GetFirstColorFromCurve(curveData)) or Constants.Frame.EditModeColor
+    return (Orbit.Engine.ColorCurve:GetFirstColorFromCurve(curveData)) or C.Frame.EditModeColor
 end
 
 -- [ SYMMETRIC PAIR REGISTRATION ]------------------------------------------------------------------

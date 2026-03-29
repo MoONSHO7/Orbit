@@ -142,11 +142,24 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
                 -- Retrieve padding/align from anchor to pass to PositionManager
                 local padding = 0
                 local align = nil
-                if Engine.FrameAnchor and Engine.FrameAnchor.anchors[f] then
-                    padding = Engine.FrameAnchor.anchors[f].padding or 0
-                    align = Engine.FrameAnchor.anchors[f].align
+                local fallback = nil
+                if Engine.FrameAnchor then
+                    if Engine.FrameAnchor.anchors[f] then
+                        padding = Engine.FrameAnchor.anchors[f].padding or 0
+                        align = Engine.FrameAnchor.anchors[f].align
+                    end
+                    local targetFrame = _G[x]
+                    if targetFrame then
+                        local rootParent = targetFrame
+                        if Engine.FrameAnchor.GetRootParent then
+                            rootParent = Engine.FrameAnchor:GetRootParent(targetFrame)
+                        end
+                        if rootParent and rootParent:GetName() then
+                            fallback = rootParent:GetName()
+                        end
+                    end
                 end
-                Engine.PositionManager:SetAnchor(f, x, y, padding, align)
+                Engine.PositionManager:SetAnchor(f, x, y, padding, align, fallback)
             else
                 Engine.PositionManager:SetPosition(f, point, x, y)
             end

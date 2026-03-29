@@ -40,8 +40,8 @@ EditMode/
       PositionUtils.lua -- position math helpers (offset calculation, bounds)
     Selection/
       Drag.lua          -- drag-to-move interaction
-      NativeHook.lua    -- hooks into blizzard's native selection system
       Nudge.lua         -- arrow-key pixel nudge
+      Resize.lua        -- drag-to-resize handle (width/height settings)
       Tooltip.lua       -- selection tooltip display
   Handle/
     HandleCore.lua      -- shared handle frame infrastructure (used by both edit mode and canvas mode)
