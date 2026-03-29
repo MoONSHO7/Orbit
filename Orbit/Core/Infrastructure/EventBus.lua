@@ -61,10 +61,15 @@ function EventBus:Fire(event, ...)
     if not listeners then
         return
     end
+    local profilerActive = Orbit.Profiler and Orbit.Profiler:IsActive()
     for i = #listeners, 1, -1 do
         local listener = listeners[i]
         if listener then
+            local start = profilerActive and debugprofilestop() or nil
             local ok, err = listener.context and pcall(listener.callback, listener.context, ...) or pcall(listener.callback, ...)
+            if start then
+                Orbit.Profiler:RecordContext(listener.context, event, debugprofilestop() - start)
+            end
             if not ok then
                 Orbit:Print("|cFFFF0000EventBus Error|r in", event, ":", tostring(err))
             end
