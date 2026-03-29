@@ -14,21 +14,7 @@ local DEBOUNCE_DELAY = 0.1
 local DEFAULT_PROFILE = "Global"
 local DELAYED_REFRESH = 0.1
 local PLAYER_CLASS = select(2, UnitClass("player"))
-
-local GLOBAL_DEFAULTS = {
-    Font = "Barlow Condensed Bold",
-    BorderSize = 2,
-    IconBorderSize = 4,
-    FontOutline = "OUTLINE",
-    BackdropColour = { r = 0.145, g = 0.145, b = 0.145, a = 0.7 },
-    BarColor = { r = 0.2, g = 0.8, b = 0.2, a = 1 },
-    BarColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 }, type = "class" } } },
-    ClassColorBackground = false,
-    UseClassColors = true,
-    OverlayAllFrames = false,
-    HideWhenMounted = false,
-    OverlayTexture = "None",
-}
+local CHAR_KEY = UnitName("player") .. "-" .. GetRealmName()
 
 -- TODO(REMOVE): Only used by _MigrateLegacySpecProfiles
 -- Spec names that are shared across classes (used for legacy migration only)
@@ -78,6 +64,7 @@ function Orbit.Profile:Initialize()
     if not Orbit.db then Orbit.db = {} end
     if not Orbit.db.profiles then Orbit.db.profiles = {} end
     if not Orbit.db.classSpecProfiles then Orbit.db.classSpecProfiles = {} end
+    if not Orbit.db.charActiveProfiles then Orbit.db.charActiveProfiles = {} end
 
     -- TODO(REMOVE): Migrate legacy useSpecProfiles boolean into class-keyed table
     if Orbit.db.useSpecProfiles ~= nil then
@@ -89,9 +76,12 @@ function Orbit.Profile:Initialize()
 
     if not Orbit.db.GlobalSettings then Orbit.db.GlobalSettings = {} end
     local gs = Orbit.db.GlobalSettings
-    for key, default in pairs(GLOBAL_DEFAULTS) do
-        if gs[key] == nil then
-            gs[key] = type(default) == "table" and CopyTable(default, {}) or default
+    local globalDefaults = self.defaults and self.defaults.GlobalSettings
+    if globalDefaults then
+        for key, default in pairs(globalDefaults) do
+            if gs[key] == nil then
+                gs[key] = type(default) == "table" and CopyTable(default, {}) or default
+            end
         end
     end
 
@@ -111,7 +101,14 @@ function Orbit.Profile:Initialize()
         end
     end
 
-    if not Orbit.db.activeProfile then Orbit.db.activeProfile = DEFAULT_PROFILE end
+    -- Resolve per-character active profile (new characters default to Global)
+    local charProfile = Orbit.db.charActiveProfiles[CHAR_KEY]
+    if charProfile and Orbit.db.profiles[charProfile] then
+        Orbit.db.activeProfile = charProfile
+    else
+        Orbit.db.activeProfile = DEFAULT_PROFILE
+        Orbit.db.charActiveProfiles[CHAR_KEY] = DEFAULT_PROFILE
+    end
 
     -- Initialize spec mapping system
     if not Orbit.db.specMappings then
@@ -262,6 +259,10 @@ end
 function Orbit.Profile:SetActiveProfile(name)
     if not Orbit.db.profiles[name] then return false end
     if isActivatingProfile then return false end
+    if InCombatLockdown() then
+        if Orbit.CombatManager then Orbit.CombatManager:QueueUpdate(function() self:SetActiveProfile(name) end) end
+        return false
+    end
 
     local profile = Orbit.db.profiles[name]
     if not profile.Layouts then profile.Layouts = {} end
@@ -288,6 +289,7 @@ function Orbit.Profile:SetActiveProfile(name)
     end
 
     Orbit.db.activeProfile = name
+    Orbit.db.charActiveProfiles[CHAR_KEY] = name
     Orbit.runtime = Orbit.runtime or {}
     Orbit.runtime.Layouts = profile.Layouts
 
@@ -359,12 +361,14 @@ function Orbit.Profile:CheckSpecProfile()
     if not self:IsSpecProfilesEnabled() then return end
     if not Orbit.db.specMappings then return end
     local specIndex = GetSpecialization and GetSpecialization()
-    if not specIndex then self:SetActiveProfile(Orbit.db.activeProfile or DEFAULT_PROFILE); return end
+    if not specIndex then return end
     local specID = GetSpecializationInfo(specIndex)
-    if not specID then self:SetActiveProfile(Orbit.db.activeProfile or DEFAULT_PROFILE); return end
+    if not specID then return end
     local mapped = Orbit.db.specMappings[specID]
     if mapped and Orbit.db.profiles[mapped] then
         self:SetActiveProfile(mapped)
+    else
+        self:SetActiveProfile(DEFAULT_PROFILE)
     end
 end
 
@@ -431,8 +435,14 @@ function Orbit.Profile:ImportProfile(str, name)
         if t.specMappings then
             Orbit.db.specMappings = CopyTable(t.specMappings, {})
         end
+        if not Orbit.db.profiles[Orbit.db.activeProfile] then
+            Orbit.db.activeProfile = DEFAULT_PROFILE
+        end
+        if not Orbit.db.profiles[DEFAULT_PROFILE] then
+            Orbit.db.profiles[DEFAULT_PROFILE] = CopyTable(self.defaults, {})
+        end
         Orbit:Print(string.format("Imported Collection (%d profiles). Existing profiles wiped.", count))
-        self:CheckSpecProfile()
+        self:SetActiveProfile(Orbit.db.activeProfile)
         return true
     end
 
