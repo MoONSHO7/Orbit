@@ -91,7 +91,11 @@ function CoreMixin:CreateCanvasPreview(options)
 end
 
 function CoreMixin:OnEvent(event, unit)
+    local profilerActive = Orbit.Profiler and Orbit.Profiler:IsActive()
+    local start = profilerActive and debugprofilestop() or nil
+
     if unit and unit ~= self.unit then
+        if start then Orbit.Profiler:RecordContext(self.orbitPlugin and (self.orbitPlugin.system or self.orbitPlugin.name) or self.system or "Orbit_UnitFrames", event, debugprofilestop() - start) end
         return
     end
 
@@ -109,6 +113,10 @@ function CoreMixin:OnEvent(event, unit)
     elseif event == "UNIT_NAME_UPDATE" or event == "UNIT_CONNECTION" then
         self:UpdateName()
         self:UpdateHealth() -- Disconnect status affects health bar color/alpha
+    end
+
+    if start then
+        Orbit.Profiler:RecordContext(self.orbitPlugin and (self.orbitPlugin.system or self.orbitPlugin.name) or self.system or "Orbit_UnitFrames", event, debugprofilestop() - start)
     end
 end
 

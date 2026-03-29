@@ -73,7 +73,7 @@ end
 
 -- [ HANDLER FACTORY ]------------------------------------------------------------------------------
 function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
-    return function(f, event, eventUnit, ...)
+    local handler = function(f, event, eventUnit, ...)
         if f.preview then return end
         if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
             if eventUnit == f.unit then
@@ -136,6 +136,14 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
         end
         if originalOnEvent then originalOnEvent(f, event, eventUnit, ...) end
     end
+    return function(f, event, eventUnit, ...)
+        local profilerActive = Orbit.Profiler and Orbit.Profiler:IsActive()
+        local start = profilerActive and debugprofilestop() or nil
+        handler(f, event, eventUnit, ...)
+        if start then
+            Orbit.Profiler:RecordContext(plugin.system or plugin.name or "Orbit_GroupFrames", event, debugprofilestop() - start)
+        end
+    end
 end
 
 -- [ ONSHOW FACTORY ]-------------------------------------------------------------------------------
@@ -173,7 +181,7 @@ local GLOBAL_EVENTS = {
 function GroupFrameMixin.CreateGlobalEventHandler(plugin, callbacks)
     local eventFrame = CreateFrame("Frame")
     for _, ev in ipairs(GLOBAL_EVENTS) do eventFrame:RegisterEvent(ev) end
-    eventFrame:SetScript("OnEvent", function(_, event)
+    local handler = function(_, event)
         local frames = plugin.frames
         if not frames then return end
         if event == "PLAYER_TARGET_CHANGED" then
@@ -225,6 +233,15 @@ function GroupFrameMixin.CreateGlobalEventHandler(plugin, callbacks)
                 end
             end
             return
+        end
+    end
+    
+    eventFrame:SetScript("OnEvent", function(self, event)
+        local profilerActive = Orbit.Profiler and Orbit.Profiler:IsActive()
+        local start = profilerActive and debugprofilestop() or nil
+        handler(self, event)
+        if start then
+            Orbit.Profiler:RecordContext(plugin.system or plugin.name or "Orbit_GroupFrames", event, debugprofilestop() - start)
         end
     end)
     return eventFrame
