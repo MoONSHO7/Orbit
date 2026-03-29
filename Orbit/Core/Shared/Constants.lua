@@ -225,13 +225,19 @@ C.Cooldown = {
         Essential = 1,
         Utility = 2,
         BuffIcon = 3,
-        Tracked = 4,
-        Tracked_ChildStart = 5,
-        ChargeBar = 20,
-        ChargeBar_ChildStart = 21,
         BuffBar = 30,
     },
-    MaxChargeBarChildren = 4,
+}
+
+C.Tracked = {
+    MaxChildFrames = 14,
+    MaxBarChildren = 4,
+    SystemIndex = {
+        Tracked = 4,
+        Tracked_ChildStart = 5,
+        TrackedBar = 20,
+        TrackedBar_ChildStart = 21,
+    },
 }
 
 -- Pandemic Glow configuration (LibCustomGlow)
