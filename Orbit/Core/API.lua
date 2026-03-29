@@ -15,7 +15,7 @@ function API:GetState()
     return {
         Version = Orbit.version,
         Profile = Orbit.Profile and Orbit.Profile:GetActiveProfileName() or "Unknown",
-        Spec = Orbit.Profile and Orbit.Profile:GetCurrentSpecName() or "None",
+        Spec = (GetSpecialization and select(2, GetSpecializationInfo(GetSpecialization() or 1))) or "None",
         InCombat = InCombatLockdown(),
         NumPlugins = Orbit.Engine and Orbit.Engine.systems and #Orbit.Engine.systems or 0,
     }
@@ -136,7 +136,7 @@ function API:DumpDebugInfo()
     -- System Info
     table.insert(parts, "Orbit " .. (Orbit.version or "?"))
     table.insert(parts, "Profile: " .. (Orbit.Profile and Orbit.Profile:GetActiveProfileName() or "?"))
-    table.insert(parts, "Spec: " .. (Orbit.Profile and Orbit.Profile:GetCurrentSpecName() or "None"))
+    table.insert(parts, "Spec: " .. ((GetSpecialization and select(2, GetSpecializationInfo(GetSpecialization() or 1))) or "None"))
     table.insert(parts, "Date: " .. date("%Y-%m-%d %H:%M:%S"))
     table.insert(parts, "")
 
