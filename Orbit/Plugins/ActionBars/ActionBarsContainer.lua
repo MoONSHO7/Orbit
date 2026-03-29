@@ -17,10 +17,6 @@ local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [nopet] hide; show"
 local BAR1_BASE_DRIVER = "[petbattle][overridebar] hide; show"
 local DEFAULT_BOTTOM_OFFSET_Y = 40
 
-local function GetVisibilityDriver(baseDriver)
-    return Orbit.MountedVisibility:GetMountedDriver(baseDriver)
-end
-
 Orbit.ActionBarsContainer = {}
 local ABC = Orbit.ActionBarsContainer
 

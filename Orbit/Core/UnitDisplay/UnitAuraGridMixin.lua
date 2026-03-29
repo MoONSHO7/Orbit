@@ -875,7 +875,13 @@ function Mixin:UpdateVisibility()
         OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
         return
     end
-    if self.mountedConfig and Orbit.MountedVisibility:IsCachedHidden() then return end
+    if self.mountedConfig and Orbit.MountedVisibility:IsCachedHidden() then
+        local cfg = self._agConfig
+        local vePlugin = cfg and cfg.vePluginName and Orbit:GetPlugin(cfg.vePluginName) or self
+        local veIndex = cfg and cfg.veSystemIndex or 1
+        local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(vePlugin.name, veIndex)
+        if veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") then return end
+    end
 
     local enabled = self:IsEnabled()
     local isEditMode = Orbit:IsEditMode()

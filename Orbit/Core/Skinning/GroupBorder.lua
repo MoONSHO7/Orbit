@@ -167,7 +167,8 @@ function Skin:UpdateGroupBorder(rootFrame)
         overlay:SetSize(totalW, totalH)
         overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
         local colorKey = isIconStyle and "IconBorderColor" or "BorderColor"
-        local c = (gs and gs[colorKey]) or { r = 0, g = 0, b = 0, a = 1 }
+        local raw = gs and gs[colorKey]
+        local c = (Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw) or { r = 0, g = 0, b = 0, a = 1 }
         overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
     else
         -- NineSlice-style group overlay

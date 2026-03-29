@@ -307,9 +307,12 @@ end
 function Plugin:UpdateVisibility()
     local bar = self.CastBar
     if not bar then return end
-    if not InCombatLockdown() and Orbit.MountedVisibility:IsCachedHidden() then
-        HideBar(bar)
-        return
+    if not InCombatLockdown() then
+        local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, bar.systemIndex or 1)
+        if Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") then
+            HideBar(bar)
+            return
+        end
     end
     if not bar.casting and not bar.channeling and not bar.empowering and not bar.preview then
         HideBar(bar)
@@ -758,10 +761,9 @@ function Plugin:ApplyColor()
         local curveData = self:GetSetting(systemIndex, "CastBarColorCurve")
         if curveData and curveData.pins and #curveData.pins > 0 then
             bar.colorCurve = curveData
-            -- Set initial color from first pin
-            local firstPin = curveData.pins[1]
-            if bar.orbitBar and firstPin and firstPin.color then
-                bar.orbitBar:SetStatusBarColor(firstPin.color.r, firstPin.color.g, firstPin.color.b)
+            local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
+            if bar.orbitBar and color then
+                bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
             end
         else
             -- The party has no curve map; consult the ancient CastBarColor scroll instead

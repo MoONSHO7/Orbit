@@ -18,6 +18,16 @@ Layout.fontPool = Layout.fontPool or {}
 Layout.texturePool = Layout.texturePool or {}
 Layout.containerControls = Layout.containerControls or {} -- Container -> List of controls
 
+-- [ SHARED BACKDROP ]-------------------------------------------------------------------------------
+Layout.ORBIT_INPUT_BACKDROP = {
+    bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true,
+    tileSize = 16,
+    edgeSize = 16,
+    insets = { left = 3, right = 3, top = 3, bottom = 3 },
+}
+
 -- [ ADVANCED PANEL CONSTANTS ]----------------------------------------------------------------------
 Layout.Advanced = {
     PADDING = 16,
@@ -387,7 +397,9 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("color", function(container, def, getValue, callback)
-        return self:CreateColorPicker(container, def.label, getValue(), callback)
+        local widget = self:CreateColorCurvePicker(container, def.label, getValue(), callback)
+        if widget then widget.singleColorMode = true; widget.hasDesaturation = def.hasDesaturation end
+        return widget
     end)
 
     self:RegisterWidgetType("colorcurve", function(container, def, getValue, callback)
@@ -397,6 +409,11 @@ function Layout:InitializeWidgetTypes()
             widget.hasDesaturation = def.hasDesaturation
         end
         return widget
+    end)
+
+    self:RegisterWidgetType("solidcolor", function(container, def, getValue, callback)
+        local opts = { compact = def.compact, allowClear = def.allowClear }
+        return self:CreateColorPicker(container, def.label, getValue(), callback, opts)
     end)
 
     self:RegisterWidgetType("button", function(container, def, getValue, callback)

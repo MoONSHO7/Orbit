@@ -406,7 +406,8 @@ end
 -- [ SETTINGS APPLICATION ]-------------------------------------------------------------------------
 function Plugin:ApplySettings()
     if not Frame then return end
-    if Orbit.MountedVisibility:IsCachedHidden() then return end
+    local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, SYSTEM_INDEX)
+    if Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") then return end
 
     OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
 
@@ -534,7 +535,8 @@ function Plugin:UpdateVisibility()
     if not Frame then
         return
     end
-    if Orbit.MountedVisibility:IsCachedHidden() then return end
+    local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, SYSTEM_INDEX)
+    if Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") then return end
     OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
     self:UpdatePowerType()
 end
@@ -614,27 +616,19 @@ function Plugin:RepositionSpacers(max)
     local totalWidth = Frame:GetWidth()
     if totalWidth < 10 then totalWidth = (Frame.settings and Frame.settings.width) or 200 end
 
+    local snappedTotalWidth = SnapToPixel(totalWidth, scale)
     local logicalGap = PixelMultiple(spacerWidth, scale)
-    local exactWidth = (totalWidth - (logicalGap * (max - 1))) / max
-    local snappedWidth = SnapToPixel(exactWidth, scale)
-
-    local currentLeft = 0
-    local edges = {}
-    for i = 1, max - 1 do
-        currentLeft = currentLeft + snappedWidth
-        edges[i] = SnapToPixel(currentLeft, scale)
-        currentLeft = currentLeft + logicalGap
-    end
+    local halfGap = logicalGap * 0.5
 
     for i = 1, MAX_SPACER_COUNT do
         local sp = Frame.Spacers[i]
         if sp then
-            if i < max and edges[i] then
+            if i < max then
+                local boundary = SnapToPixel(snappedTotalWidth * (i / max), scale)
                 sp:Show()
                 sp:ClearAllPoints()
                 sp:SetSize(logicalGap, Frame:GetHeight())
-                -- Draw the overlay exactly at the mathematically perfect left border map:
-                sp:SetPoint("LEFT", Frame, "LEFT", edges[i], 0)
+                sp:SetPoint("LEFT", Frame, "LEFT", boundary - halfGap, 0)
                 OrbitEngine.Pixel:Enforce(sp)
             else
                 sp:Hide()

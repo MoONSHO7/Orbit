@@ -203,7 +203,8 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
 
     if not color then
         local gs = Orbit.db and Orbit.db.GlobalSettings
-        color = isIcon and (gs and gs.IconBorderColor) or (gs and gs.BorderColor)
+        local raw = isIcon and (gs and gs.IconBorderColor) or (gs and gs.BorderColor)
+        color = Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw
     end
     local c = color or { r = 0, g = 0, b = 0, a = 1 }
     bf:SetBackdropBorderColor(c.r, c.g, c.b, c.a)

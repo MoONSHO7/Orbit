@@ -23,6 +23,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Created by a new Orbit developer who wants to contribute more moving forward.
 - Feedback on Discord is very appreciated - Lars-Martin.
 
+### TLDR
+- Hopefully some bugfixes from the new VE working now
+- Updated Color Picker
+- ActionBar backdrops should work with class pins now
+- Added 'Colors' to the QoL section to recolor blizzard frames
+
 ### Added
 - **Minimap plugin** — replaces the default Blizzard minimap with a fully Orbit-managed version.
   - Drag and reposition the minimap anywhere on screen via Edit Mode.
@@ -30,14 +36,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Set any **size** from 100 to 400 pixels.
   - **Opacity** control with optional mouse-over fade-in.
   - **Rotate Minimap** option to keep north up or rotate with your character.
-   - **Configurable minimap click actions** let you bind the World Map, Tracking menu, Calendar, Time Manager, or Addon Compartment to mouse buttons.
+  - **Configurable minimap click actions** let you bind the World Map, Tracking menu, Calendar, Time Manager, or Addon Compartment to mouse buttons.
   - **Zone Text** — shows your current zone above the minimap. Click it to open the World Map. Optionally colour the text by PvP zone type (sanctuary, friendly, hostile, contested).
   - **Clock** — displays the current time (local or realm). Left-click opens the Time Manager, right-click opens the Calendar. Glows when you have pending calendar invites.
   - **Coordinates** — shows your current map position (X, Y) and updates in real time.
   - **Zoom Buttons** — fade in on hover, fade out when you move away. Optional auto-zoom-out timer resets zoom after a configurable delay.
   - **Addon Compartment** — consolidates addon buttons into a single Orbit-managed compartment button with a flyout list.
-   - **Instance Difficulty** supports both icon and text display modes, each with independent positioning in Canvas Mode.
-   - **Missions**, **Mail**, and **Crafting Order** indicators are all carried over from the Blizzard minimap.
+  - **Instance Difficulty** supports both icon and text display modes, each with independent positioning in Canvas Mode.
+  - **Missions**, **Mail**, and **Crafting Order** indicators are all carried over from the Blizzard minimap.
   - All components are individually toggleable and repositionable in Canvas Mode.
 
 ### Changed
@@ -45,16 +51,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Minimap defaults** — Updated the default minimap size, placement, component layout, and click-action settings for the first experimental release.
 
 ### Fixed
-<<<<<<< HEAD
 - **RestingIcon** — Fixed issue with positioning the icon in canvas mode.
 - **Difficulty preview/apply flow** — Fixed icon/text mode switching, preview sizing drift, and live Apply mismatches.
 - **Minimap polish** — Fixed several component sizing, layering, opacity, and placeholder issues across the new minimap and canvas preview.
-=======
 - **BossFrames** — Fixed mulitple issues with bossframes that came up from previous performance parse on group frames.
-- **TrackedCooldowns+Charges** — These should now save position properly, anchored is still disabled as its buggy with new profiles and I  havent fixed it yet 
->>>>>>> origin/main
-
-## [1.0.0] - 2026-03-10
+- **TrackedCooldowns+Charges** — These should now save position properly, anchored is still disabled as its buggy with new profiles and I  havent fixed it yet## [1.0.0] - 2026-03-10
 ### Added
 - Initial release of Orbit.
 - Core engine and basic UI plugins. 

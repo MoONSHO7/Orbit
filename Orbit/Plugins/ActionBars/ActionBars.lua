@@ -15,7 +15,6 @@ local POSSESS_BAR_INDEX = 11
 local MIN_STANCE_ICONS = 2
 local VEHICLE_EXIT_INDEX = 13
 local VEHICLE_EXIT_VISIBILITY = "[canexitvehicle] show; hide"
-local MOUNTED_OVERLAY_LEVEL = 100
 local DEFAULT_OOR_COLOR = { pins = { { position = 0, color = { r = 0.8, g = 0.2, b = 0.2, a = 1 } } } }
 local DEFAULT_OOM_COLOR = { pins = { { position = 0, color = { r = 0.2, g = 0.2, b = 0.8, a = 1 } } } }
 local DEFAULT_UNUSABLE_COLOR = { pins = { { position = 0, color = { r = 0.4, g = 0.4, b = 0.4, a = 1 } } } }
@@ -30,10 +29,6 @@ local BAR_ART_ATLASES = {
     Horde = { left = "UI-HUD-ActionBar-Wyvern-Left", right = "UI-HUD-ActionBar-Wyvern-Right" },
 }
 local BAR_ART_FALLBACK = BAR_ART_ATLASES.Alliance
-
-local function GetVisibilityDriver(baseDriver)
-    return Orbit.MountedVisibility:GetMountedDriver(baseDriver)
-end
 
 local SPECIAL_BAR_INDICES = { [STANCE_BAR_INDEX] = true, [POSSESS_BAR_INDEX] = true }
 local DROPPABLE_CURSOR_TYPES = { spell = true, petaction = true, flyout = true, item = true, macro = true, mount = true }
@@ -69,8 +64,8 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
         },
         GlobalDisabledComponents = {},
         OutOfCombatFade = false, ShowOnMouseover = true,
-        KeypressColor = { r = 1, g = 1, b = 1, a = 0.6 },
-        BackdropColour = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
+        KeypressColor = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.6 } } } },
+        IconBackdropColor = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } },
         OORColor = DEFAULT_OOR_COLOR, OOMColor = DEFAULT_OOM_COLOR, UnusableColor = DEFAULT_UNUSABLE_COLOR,
         CooldownSwipeColor = DEFAULT_CD_SWIPE,
     },
@@ -86,8 +81,7 @@ Plugin.gridCache = {}
 
 -- [ SPELL STATE ]--------------------------------------------------------------------------------
 local function ExtractColor(curveData)
-    if curveData and curveData.pins and curveData.pins[1] then return curveData.pins[1].color end
-    return curveData
+    return OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or curveData
 end
 
 local function IsDesaturated(curveData) return curveData and curveData.desaturated or false end
@@ -212,24 +206,14 @@ function Plugin:AddSettings(dialog, systemFrame)
         local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
         if not isForcedHideEmpty then table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = "Hide Empty Buttons", default = false }) end
     elseif currentTab == "Colors" then
-        local DEFAULT_BACKDROP = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
-        local DEFAULT_KEYPRESS = { r = 1, g = 1, b = 1, a = 0.6 }
-        local function ColorToCurve(c) return { pins = { { position = 0, color = { r = c.r, g = c.g, b = c.b, a = c.a or 1 } } } } end
-        local function CurveToColor(curve)
-            if curve and curve.pins and curve.pins[1] then return curve.pins[1].color end
-        end
-        table.insert(schema.controls, { type = "colorcurve", key = "BackdropColour", label = "Backdrop Colour", singleColor = true,
-            default = ColorToCurve(DEFAULT_BACKDROP),
-            onChange = function(val)
-                Orbit.db.GlobalSettings.BackdropColour = CurveToColor(val) or DEFAULT_BACKDROP
-                self:ApplyAll()
-            end })
+        local DEFAULT_BACKDROP = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
+        local DEFAULT_KEYPRESS = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.6 } } } }
+        table.insert(schema.controls, { type = "colorcurve", key = "IconBackdropColor", label = "Backdrop Colour", singleColor = true,
+            default = DEFAULT_BACKDROP,
+            onChange = function(val) self:SetSetting(systemIndex, "IconBackdropColor", val); self:ApplyAll() end })
         table.insert(schema.controls, { type = "colorcurve", key = "KeypressColor", label = "Keypress Flash", singleColor = true,
-            default = ColorToCurve(DEFAULT_KEYPRESS),
-            onChange = function(val)
-                self:SetSetting(1, "KeypressColor", CurveToColor(val) or DEFAULT_KEYPRESS)
-                self:ApplyAll()
-            end })
+            default = DEFAULT_KEYPRESS,
+            onChange = function(val) self:SetSetting(systemIndex, "KeypressColor", val); self:ApplyAll() end })
         local function RefreshAllButtons()
             for _, buttons in pairs(self.buttons) do
                 for _, button in ipairs(buttons) do RefreshIconColor(self, button) end
@@ -246,7 +230,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = function(val) self:SetSetting(1, "UnusableColor", val); InvalidateColorCache(); RefreshAllButtons() end })
         table.insert(schema.controls, { type = "colorcurve", key = "CooldownSwipeColor", label = "Cooldown Swipe", singleColor = true,
             default = DEFAULT_CD_SWIPE,
-            onChange = function(val) self:SetSetting(1, "CooldownSwipeColor", val); self:ApplyAll() end })
+            onChange = function(val) self:SetSetting(systemIndex, "CooldownSwipeColor", val); self:ApplyAll() end })
     end
     schema.extraButtons = { { text = "Quick Keybind", callback = function()
         if EditModeManagerFrame and EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
@@ -280,7 +264,6 @@ function Plugin:OnLoad()
         end
     end
     self.UpdateVisibilityDriver = function()
-        local shouldHide = Orbit.MountedVisibility:IsCachedHidden()
         local numBars = self:GetSetting(1, "NumActionBars") or 4
         for index, container in pairs(self.containers) do
             if index == VEHICLE_EXIT_INDEX then
@@ -290,31 +273,6 @@ function Plugin:OnLoad()
                     if index == PET_BAR_INDEX then RegisterStateDriver(container, "visibility", PET_BAR_BASE_DRIVER)
                     elseif index == 1 then RegisterStateDriver(container, "visibility", BAR1_BASE_DRIVER)
                     else RegisterStateDriver(container, "visibility", BASE_VISIBILITY_DRIVER) end
-                end
-                if shouldHide then
-                    container.orbitMountedSuppressed = true
-                    container:SetAlpha(0)
-                    if not container.orbitMountedOverlay then
-                        local o = CreateFrame("Frame", nil, container)
-                        o:SetAllPoints(); o:SetFrameLevel(container:GetFrameLevel() + MOUNTED_OVERLAY_LEVEL)
-                        o:EnableMouse(true); o:SetMouseMotionEnabled(true); o:SetMouseClickEnabled(false)
-                        o:SetScript("OnEnter", function(ov)
-                            container:SetAlpha(1); ov:Hide()
-                            container:SetScript("OnUpdate", function()
-                                if not container:IsMouseOver() then
-                                    container:SetScript("OnUpdate", nil)
-                                    if Orbit.MountedVisibility:ShouldHide() then container:SetAlpha(0); ov:Show() end
-                                end
-                            end)
-                        end)
-                        container.orbitMountedOverlay = o
-                    end
-                    container.orbitMountedOverlay:Show()
-                elseif container.orbitMountedOverlay then
-                    container.orbitMountedSuppressed = nil
-                    container.orbitMountedOverlay:Hide(); container:SetScript("OnUpdate", nil)
-                    container:SetAlpha((self:GetSetting(index, "Opacity") or 100) / 100)
-                    self:ApplySettings(container)
                 end
             end
         end
@@ -344,7 +302,7 @@ function Plugin:OnLoad()
         if not flyout or not flyout:IsShown() then return end
         if InCombatLockdown() then self.flyoutSkinPending = true; return end
         self.flyoutSkinPending = false
-        local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, iconBorder = true, swipeColor = { r = 0, g = 0, b = 0, a = 0.8 }, showTimer = true, hideName = false, backdropColor = self:GetSetting(1, "BackdropColour"), keypressColor = self:GetSetting(1, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 } }
+        local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, iconBorder = true, swipeColor = { r = 0, g = 0, b = 0, a = 0.8 }, showTimer = true, hideName = false, backdropColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "IconBackdropColor")) or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }, keypressColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "KeypressColor")) or { r = 1, g = 1, b = 1, a = 0.6 } }
         local i = 1
         while true do
             local btn = _G["SpellFlyoutButton" .. i]
@@ -479,8 +437,8 @@ function Plugin:LayoutButtons(index)
     local useMasque = MasqueBridge and MasqueBridge.enabled
     local masqueGroup = useMasque and (config and config.label or "Action Bar " .. index)
     local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, iconBorder = true, padding = rawPadding,
-        cooldownSwipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "CooldownSwipeColor")) or { r = 0, g = 0, b = 0, a = 0.8 },
-        showTimer = true, hideName = false, backdropColor = self:GetSetting(1, "BackdropColour"), keypressColor = self:GetSetting(1, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0.6 } }
+        cooldownSwipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "CooldownSwipeColor")) or { r = 0, g = 0, b = 0, a = 0.8 },
+        showTimer = true, hideName = false, backdropColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "IconBackdropColor")) or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }, keypressColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "KeypressColor")) or { r = 1, g = 1, b = 1, a = 0.6 } }
     local totalEffective = math.min(#buttons, numIcons)
     local limitPerLine
     if orientation == 0 then limitPerLine = math.max(1, math.ceil(totalEffective / rows))

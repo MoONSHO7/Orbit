@@ -247,7 +247,9 @@ function Plugin:OnLoad()
     local function UpdateVisibilityDriver()
         if InCombatLockdown() or Orbit:IsEditMode() then return end
         local mv = Orbit.MountedVisibility
-        local driver = (mv and mv:ShouldHide() and not IsMounted()) and "hide" or (mv and mv:GetMountedDriver(BOSS_BASE_DRIVER) or BOSS_BASE_DRIVER)
+        local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, 1)
+        local hasMountedHide = veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
+        local driver = hasMountedHide and (mv and mv:GetMountedDriver(BOSS_BASE_DRIVER) or BOSS_BASE_DRIVER) or BOSS_BASE_DRIVER
         RegisterStateDriver(self.container, "visibility", driver)
     end
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver() end

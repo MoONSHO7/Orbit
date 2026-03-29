@@ -8,7 +8,6 @@ local MOUNTED_COMBAT_PREFIX = "[mounted,nocombat] hide; "
 local MOUNTED_ALWAYS_PREFIX = "[mounted] hide; "
 local OPEN_WORLD_INSTANCE_TYPES = { ["none"] = true, ["scenario"] = true }
 local REAPPLY_DELAY = 0.5
-local OVERLAY_LEVEL_BOOST = 100
 local DRUID_TRAVEL_FORMS = { [DRUID_TRAVEL_FORM] = true, [DRUID_FLIGHT_FORM] = true }
 
 ---@class MountedVisibilityManager
@@ -42,72 +41,11 @@ end
 
 
 
--- [ BLIZZARD HOVER OVERLAYS ]-----------------------------------------------------------------------
-local function CreateSimpleHoverOverlay(frame, revealFn, suppressFn)
-    if not frame or frame.orbitHoverOverlay then return end
-    local overlay = CreateFrame("Frame", nil, frame)
-    overlay:SetAllPoints()
-    overlay:SetFrameLevel(frame:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
-    overlay:EnableMouse(true); overlay:SetMouseMotionEnabled(true); overlay:SetMouseClickEnabled(false)
-    overlay:SetScript("OnEnter", function(self)
-        revealFn()
-        self:Hide()
-        frame:SetScript("OnUpdate", function()
-            if not frame:IsMouseOver() then
-                frame:SetScript("OnUpdate", nil)
-                if cachedShouldHide then suppressFn(); self:Show() end
-            end
-        end)
-    end)
-    frame.orbitHoverOverlay = overlay
-    overlay:Hide()
-end
 
-local function ToggleOverlay(frame, shouldHide)
-    if not frame or not frame.orbitHoverOverlay then return end
-    if shouldHide then frame.orbitHoverOverlay:Show() else frame:SetScript("OnUpdate", nil); frame.orbitHoverOverlay:Hide() end
-end
-
-local function SetupMinimapHoverOverlay()
-    local cluster = _G["MinimapCluster"]
-    if not cluster then return end
-    CreateSimpleHoverOverlay(cluster, function() cluster:SetAlpha(1) end, function() cluster:SetAlpha(0) end)
-end
-
-local function SetupObjectiveHoverOverlay()
-    local objective = _G["ObjectiveTrackerFrame"]
-    if not objective then return end
-    CreateSimpleHoverOverlay(objective, function() objective:SetAlpha(1) end, function() objective:SetAlpha(0) end)
-end
-
--- [ REFRESH ALL SYSTEMS ]---------------------------------------------------------------------------
 function Manager:Refresh(force)
     local shouldHide = self:ShouldHide()
     if not force and shouldHide == cachedShouldHide then return end
     cachedShouldHide = shouldHide
-
-    -- Blizzard frames: only hide if their VE entry has hideMounted enabled
-    if Orbit.VisibilityEngine then
-        for _, entry in ipairs(Orbit.VisibilityEngine:GetBlizzardFrames()) do
-            local frame = _G[entry.blizzardFrame]
-            if frame then
-                local frameHide = shouldHide and Orbit.VisibilityEngine:GetFrameSetting(entry.key, "hideMounted")
-                local allowHover = frameHide and Orbit.VisibilityEngine:GetFrameSetting(entry.key, "mouseOver")
-                frame:SetAlpha(frameHide and 0 or 1)
-                if entry.key == "Minimap" then
-                    SetupMinimapHoverOverlay()
-                    ToggleOverlay(_G["MinimapCluster"], allowHover)
-                elseif entry.blizzardFrame == "ObjectiveTrackerFrame" then
-                    SetupObjectiveHoverOverlay()
-                    ToggleOverlay(frame, allowHover)
-                elseif entry.blizzardFrame == "BuffFrame" or entry.blizzardFrame == "DebuffFrame" then
-                    CreateSimpleHoverOverlay(frame, function() frame:SetAlpha(1) end, function() frame:SetAlpha(0) end)
-                    ToggleOverlay(frame, allowHover)
-                end
-            end
-        end
-    end
-
 
     Orbit.EventBus:Fire("MOUNTED_VISIBILITY_CHANGED", shouldHide)
 end
