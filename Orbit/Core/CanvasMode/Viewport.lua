@@ -1,10 +1,8 @@
--- [ CANVAS MODE - VIEWPORT ]--------------------------------------------------------
+-- [ CANVAS MODE - VIEWPORT ]----------------------------------------------------------------
 -- Viewport with zoom/pan controls for Canvas Mode
 -- Row layout: Title > Viewport (Dock | Preview) > Override > Footer
---------------------------------------------------------------------------------
 
-local _, addonTable = ...
-local Orbit = addonTable
+local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
@@ -16,6 +14,7 @@ local INSET_TOP = -27
 local INSET_BOTTOM = 3
 local FILTER_TAB_INSET = 8
 local FILTER_TAB_SPACING = 12
+local SYNC_TOGGLE_SIZE = 26
 
 -- [ FILTER CONSTANTS ]------------------------------------------------------------------
 local FILTER_TABS = { "All", "Text", "Icons", "Auras" }
@@ -230,7 +229,7 @@ end)
 -- [ SYNC TOGGLE ]------------------------------------------------------------------------
 
 Dialog.SyncToggle = CreateFrame("CheckButton", nil, Dialog.BorderOverlay, "UICheckButtonTemplate")
-Dialog.SyncToggle:SetSize(26, 26)
+Dialog.SyncToggle:SetSize(SYNC_TOGGLE_SIZE, SYNC_TOGGLE_SIZE)
 Dialog.SyncToggle:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "TOPRIGHT", -8, -4)
 Dialog.SyncToggle:SetFrameLevel(Dialog.BorderOverlay:GetFrameLevel() + 1)
 Dialog.SyncToggle:Hide()

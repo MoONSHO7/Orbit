@@ -18,11 +18,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
 ## [@project-version@] - @project-date-iso@
-### TLDR
-- Hopefully some bugfixes from the new VE working now
-- Updated Color Picker
-- ActionBar backdrops should work with class pins now
-- Added 'Colors' to the QoL section to recolor blizzard frames
+### Updates
+- Updated Orbit backend Api's and slash commands, start with `/orbit help`
+- Profile adjustments to better handle logging out and changing to different characters.
 
 ## [1.0.0] - 2026-03-10
 ### Added

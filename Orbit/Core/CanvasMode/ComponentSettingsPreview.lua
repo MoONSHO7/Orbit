@@ -1,8 +1,7 @@
 -- [ CANVAS MODE - COMPONENT SETTINGS PREVIEW ]-----------------------------------------------------
 -- Preview renderers and style applicators for component override settings.
 -- Extends the Settings table created in ComponentSettings.lua.
-local _, addonTable = ...
-local Orbit = addonTable
+local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
@@ -13,7 +12,6 @@ local Settings = Orbit.CanvasComponentSettings
 
 -- [ PORTRAIT PREVIEW ]------------------------------------------------------------------------------
 function Settings:ApplyPortraitPreview()
-    local ok, err = pcall(function()
     local canvasDialog = OrbitEngine.CanvasModeDialog
     if not canvasDialog or not canvasDialog.previewComponents then return end
     local comp = canvasDialog.previewComponents.Portrait
@@ -102,8 +100,6 @@ function Settings:ApplyPortraitPreview()
             if comp._flipDriver then comp._flipDriver:Hide() end
         end
     end
-    end)
-    if not ok then print("|cffff0000ORBIT_PORTRAIT_PREVIEW ERROR:|r", err) end
 end
 
 -- [ CAST BAR PREVIEW ]------------------------------------------------------------------------------

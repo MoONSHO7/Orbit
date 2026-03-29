@@ -1,9 +1,7 @@
--- [ CANVAS MODE - DIALOG ]----------------------------------------------------------
+-- [ CANVAS MODE - DIALOG ]------------------------------------------------------------------
 -- Main dialog operations for Canvas Mode (Open, Apply, Cancel, Reset)
---------------------------------------------------------------------------------
 
-local _, addonTable = ...
-local Orbit = addonTable
+local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
@@ -18,9 +16,7 @@ local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnc
 local NeedsEdgeCompensation = OrbitEngine.PositionUtils.NeedsEdgeCompensation
 local AnchorToCenter = OrbitEngine.PositionUtils.AnchorToCenter
 
--- Use shared functions from other modules
-local CreateDraggableComponent = function(...) return CanvasMode.CreateDraggableComponent(...) end
-local ApplyTextAlignment = function(...) return CanvasMode.ApplyTextAlignment(...) end
+-- Forward-declared: resolved at runtime after CanvasModeDrag.lua loads
 
 -- [ FOOTER SETUP ]-----------------------------------------------------------------------
 
@@ -262,7 +258,6 @@ function Dialog:NudgeComponent(container, direction)
 end
 
 
-
 -- [ AURA COMPONENT KEYS ]----------------------------------------------------------------
 local AURA_COMPONENT_KEYS = { DefensiveIcon = true, PrivateAuraAnchor = true, CrowdControlIcon = true }
 do
@@ -466,9 +461,9 @@ function Dialog:Open(frame, plugin, systemIndex)
             if isDisabled(key) then
                 self:AddToDock(key, data.component)
             else
-                local comp = CreateDraggableComponent(self.previewFrame, key, data.component, data.x, data.y, data)
+                local comp = CanvasMode.CreateDraggableComponent(self.previewFrame, key, data.component, data.x, data.y, data)
                 if comp then
-                    comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + (key == "Portrait" and 5 or 10))
+                    comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
                 end
                 self.previewComponents[key] = comp
             end
@@ -652,4 +647,3 @@ end
 
 Orbit.CanvasModeDialog = Dialog
 OrbitEngine.CanvasModeDialog = Dialog
-

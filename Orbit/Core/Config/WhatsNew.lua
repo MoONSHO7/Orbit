@@ -2,8 +2,7 @@
 -- Shows a changelog popup once per account after each Orbit update.
 -- Update WHATS_NEW_ENTRIES each release.
 
-local _, addonTable = ...
-local Orbit = addonTable
+local _, Orbit = ...
 local Constants = Orbit.Constants
 
 -- [ CONSTANTS ]--------------------------------------------------------------------

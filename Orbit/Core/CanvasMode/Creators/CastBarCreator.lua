@@ -230,8 +230,6 @@ local function Create(container, preview, key, source, data)
     bar.bg:SetAllPoints()
     local gs = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(bar, gs.BackdropColourCurve, Orbit.Constants.Colors.Background)
-
-
     if Orbit.Skin and Orbit.Skin.SkinBorder then Orbit.Skin:SkinBorder(bar, bar, borderSize) end
 
     local fontName = plugin and (plugin:GetSetting(sysIdx, "Font") or plugin:GetPlayerSetting("Font"))

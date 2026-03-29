@@ -1,6 +1,5 @@
 -- [ CANVAS MODE - DIALOG ACTIONS ]------------------------------------------------------------------
-local _, addonTable = ...
-local Orbit = addonTable
+local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
@@ -11,8 +10,7 @@ local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
 local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
 local NeedsEdgeCompensation = OrbitEngine.PositionUtils.NeedsEdgeCompensation
 local AnchorToCenter = OrbitEngine.PositionUtils.AnchorToCenter
-local CreateDraggableComponent = function(...) return CanvasMode.CreateDraggableComponent(...) end
-local ApplyTextAlignment = function(...) return CanvasMode.ApplyTextAlignment(...) end
+
 
 -- [ APPLY ]------------------------------------------------------------------------------
 function Dialog:Apply()
@@ -103,13 +101,13 @@ function Dialog:ResetPositions()
             storedComp.selfAnchorY = defaultPos and defaultPos.selfAnchorY or storedComp.anchorY
             local selfAnchor = BuildComponentSelfAnchor(storedComp.isFontString, storedComp.isAuraContainer, storedComp.selfAnchorY, storedComp.justifyH)
             storedComp:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
-            if storedComp.visual and storedComp.isFontString then ApplyTextAlignment(storedComp, storedComp.visual, storedComp.justifyH) end
+            if storedComp.visual and storedComp.isFontString then CanvasMode.ApplyTextAlignment(storedComp, storedComp.visual, storedComp.justifyH) end
             self.previewComponents[key] = storedComp
         elseif dragComponents then
             local data = dragComponents[key]
             if data and data.component then
                 local compData = { component = data.component, x = centerX, y = centerY, anchorX = defaultPos and defaultPos.anchorX or "CENTER", anchorY = defaultPos and defaultPos.anchorY or "CENTER", offsetX = defaultPos and defaultPos.offsetX or 0, offsetY = defaultPos and defaultPos.offsetY or 0, justifyH = defaultPos and defaultPos.justifyH or "CENTER" }
-                local comp = CreateDraggableComponent(preview, key, data.component, centerX, centerY, compData)
+                local comp = CanvasMode.CreateDraggableComponent(preview, key, data.component, centerX, centerY, compData)
                 if comp then comp:SetFrameLevel(preview:GetFrameLevel() + 10) end
                 self.previewComponents[key] = comp
             end
@@ -160,7 +158,7 @@ function Dialog:ResetPositions()
             local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, container.selfAnchorY, container.justifyH)
             container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
             if container.visual and container.isFontString then
-                ApplyTextAlignment(container, container.visual, container.justifyH)
+                CanvasMode.ApplyTextAlignment(container, container.visual, container.justifyH)
                 local globalFontName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
                 local fontPath = globalFontName and LSM:Fetch("font", globalFontName)
                 if fontPath and container.visual.SetFont then

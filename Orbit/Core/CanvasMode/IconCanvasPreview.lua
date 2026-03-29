@@ -38,7 +38,7 @@ function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTextur
     return preview
 end
 
--- [ ATTACH TEXT COMPONENTS ]--------------------------------------------------------------------
+-- [ ATTACH TEXT COMPONENTS ]----------------------------------------------------------------
 -- Attaches FontStrings and CreateDraggableComponent wrappers onto a preview frame.
 function IconCanvasPreview:AttachTextComponents(preview, textComponents, savedPositions, fontPath)
     local CreateDraggableComponent = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.CreateDraggableComponent
