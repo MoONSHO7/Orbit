@@ -3,10 +3,9 @@ local Orbit = addonTable
 ---@class OrbitSkin
 Orbit.Skin = {}
 local Skin = Orbit.Skin
-local Engine = Orbit.Engine -- Added Engine reference
+local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local Constants = Orbit.Constants
-local math_max, math_min = math.max, math.min
 
 -- Register Orbit's overlay texture with LibSharedMedia
 local ORBIT_OVERLAY_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
@@ -24,9 +23,7 @@ function Skin:SkinIcon(icon, settings)
     if not icon then
         return
     end
-    if not icon.SetTexCoord then
-        return
-    end -- Safety check
+    if not icon.SetTexCoord then return end
 
     local zoom = settings.zoom or 0
     local trim = Constants.Texture.BlizzardIconBorderTrim
@@ -99,7 +96,7 @@ function Skin:ApplyIconGroupBorder(container, styleEntry)
         -- Pixel mode: flat border on container
         self:ClearNineSliceBorder(container)
         local gs = Orbit.db and Orbit.db.GlobalSettings
-        local borderSize = gs and gs.IconBorderSize or 2
+        local borderSize = gs and gs.IconBorderSize or Constants.Settings.BorderSize.Default
         self:SkinBorder(container, container, borderSize, nil, true, true)
         if container._borderFrame then
             container._borderFrame:SetFrameLevel(container:GetFrameLevel() + Constants.Levels.IconOverlay)
@@ -181,7 +178,7 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
 
     -- For icons, use the icon-specific border size setting
     local gs = Orbit.db and Orbit.db.GlobalSettings
-    local targetSize = isIcon and (gs and gs.IconBorderSize or 2) or (size or 1)
+    local targetSize = isIcon and (gs and gs.IconBorderSize or Constants.Settings.BorderSize.Default) or (size or 1)
     if targetSize <= 0 then
         frame.borderPixelSize = 0
         bf:Hide()
@@ -202,7 +199,6 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
     bf:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
 
     if not color then
-        local gs = Orbit.db and Orbit.db.GlobalSettings
         local raw = isIcon and (gs and gs.IconBorderColor) or (gs and gs.BorderColor)
         color = Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw
     end

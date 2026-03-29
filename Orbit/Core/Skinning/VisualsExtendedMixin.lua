@@ -5,6 +5,11 @@ local Orbit = addonTable
 
 Orbit.VisualsExtendedMixin = {}
 local Mixin = Orbit.VisualsExtendedMixin
+local LSM = LibStub("LibSharedMedia-3.0")
+
+local LEVEL_TEXT_SIZE = 10
+local RARE_ELITE_ICON_SIZE = 16
+local RARE_ELITE_ICON_OFFSET = 2
 
 function Mixin:GetComponentOverrides(systemIndex, key)
     if not self.GetSetting then return nil end
@@ -30,10 +35,10 @@ end
 
 function Mixin:StyleLevelText(frame, systemIndex)
     if not frame or not frame.LevelText then return end
-    local fontPath = LibStub("LibSharedMedia-3.0"):Fetch("font", Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
-    frame.LevelText:SetFont(fontPath, 10, Orbit.Skin:GetFontOutline())
+    local fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
+    frame.LevelText:SetFont(fontPath, LEVEL_TEXT_SIZE, Orbit.Skin:GetFontOutline())
     local overrides = self:GetComponentOverrides(systemIndex, "LevelText")
-    if overrides then Orbit.Engine.OverrideUtils.ApplyFontOverrides(frame.LevelText, overrides, 10, fontPath) end
+    if overrides then Orbit.Engine.OverrideUtils.ApplyFontOverrides(frame.LevelText, overrides, LEVEL_TEXT_SIZE, fontPath) end
 end
 
 function Mixin:UpdateClassificationVisuals(frame, systemIndex)
@@ -52,13 +57,13 @@ function Mixin:UpdateClassificationVisuals(frame, systemIndex)
     end
     if not frame.RareEliteIcon then
         frame.RareEliteIcon = frame:CreateTexture(nil, "OVERLAY")
-        frame.RareEliteIcon:SetSize(16, 16)
+        frame.RareEliteIcon:SetSize(RARE_ELITE_ICON_SIZE, RARE_ELITE_ICON_SIZE)
     end
     local icon = frame.RareEliteIcon
     local positions = self:GetSetting(systemIndex, "ComponentPositions")
     if not (positions and positions.RareEliteIcon) then
         icon:ClearAllPoints()
-        icon:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", 2, 0)
+        icon:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", RARE_ELITE_ICON_OFFSET, 0)
     end
     if isElite then
         if icon.SetAtlas then

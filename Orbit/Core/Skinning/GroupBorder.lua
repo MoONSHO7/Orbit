@@ -159,7 +159,7 @@ function Skin:UpdateGroupBorder(rootFrame)
         -- Pixel-style group overlay: use WHITE8x8 with pixel-snapped sizing
         local scale = rootFrame:GetEffectiveScale()
         if not scale or scale < 0.01 then scale = 1 end
-        local borderSize = isIconStyle and (gs and gs.IconBorderSize or 2) or (gs and gs.BorderSize or 2)
+        local borderSize = isIconStyle and (gs and gs.IconBorderSize or Constants.Settings.BorderSize.Default) or (gs and gs.BorderSize or Constants.Settings.BorderSize.Default)
         if borderSize <= 0 then overlay:Hide(); return end
         local pixelSize = Engine.Pixel:Multiple(borderSize, scale)
         overlay:ClearAllPoints()
