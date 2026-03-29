@@ -55,9 +55,6 @@ function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
         dialog.OrbitPanel = panel
     end
 
-
-
-
     local panel = dialog.OrbitPanel
     panel:Show()
 
@@ -101,8 +98,6 @@ function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
 
     targetContent:Show()
     panel.ScrollFrame:SetScrollChild(targetContent)
-
-
 
     local needsRender = true
     if tabKey and tabKey ~= "Profiles" and tabKey ~= "Colors" and targetContent.OrbitRendered then

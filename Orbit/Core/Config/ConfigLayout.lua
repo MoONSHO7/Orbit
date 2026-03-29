@@ -133,6 +133,12 @@ function Layout:AddControl(container, frame)
 end
 
 local LAYOUT_PADDING = 10
+local HEADER_WIDGET_HEIGHT = 30
+local SPACER_DEFAULT_HEIGHT = 20
+local LABEL_FALLBACK_WIDTH = 300
+local LABEL_WIDTH_INSET = 20
+local LABEL_MIN_HEIGHT = 20
+local LABEL_HEIGHT_PAD = 4
 
 function Layout:Stack(container, startY, spacing)
     local y = startY or -LAYOUT_PADDING
@@ -434,7 +440,7 @@ function Layout:InitializeWidgetTypes()
 
     self:RegisterWidgetType("header", function(container, def)
         local frame = CreateFrame("Frame", nil, container)
-        frame:SetHeight(30)
+        frame:SetHeight(HEADER_WIDGET_HEIGHT)
         frame.text = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
         frame.text:SetPoint("LEFT", 0, 0)
         frame.text:SetText(def.text or def.label)
@@ -444,23 +450,23 @@ function Layout:InitializeWidgetTypes()
 
     self:RegisterWidgetType("spacer", function(container, def)
         local frame = CreateFrame("Frame", nil, container)
-        frame:SetHeight(def.height or 20)
+        frame:SetHeight(def.height or SPACER_DEFAULT_HEIGHT)
         frame.OrbitType = "Spacer"
         return frame
     end)
 
     self:RegisterWidgetType("label", function(container, def)
         local frame = CreateFrame("Frame", nil, container)
-        frame.text = frame:CreateFontString(nil, "ARTWORK", Orbit.Constants.UI.LabelFont)
+        frame.text = frame:CreateFontString(nil, "ARTWORK", Constants.UI.LabelFont)
         frame.text:SetPoint("TOPLEFT", 0, 0)
         frame.text:SetJustifyH("LEFT")
         frame.text:SetWordWrap(true)
         frame.text:SetNonSpaceWrap(true)
-        local containerWidth = container:GetWidth() or 300
-        frame.text:SetWidth(containerWidth - 20)
+        local containerWidth = container:GetWidth() or LABEL_FALLBACK_WIDTH
+        frame.text:SetWidth(containerWidth - LABEL_WIDTH_INSET)
         frame.text:SetText(def.text or "")
         local textHeight = frame.text:GetStringHeight()
-        frame:SetHeight(math.max(20, textHeight + 4))
+        frame:SetHeight(math.max(LABEL_MIN_HEIGHT, textHeight + LABEL_HEIGHT_PAD))
         frame.OrbitType = "Label"
         return frame
     end)

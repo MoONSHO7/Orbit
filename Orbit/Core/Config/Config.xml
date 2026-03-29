@@ -5,6 +5,7 @@
     <Script file="ConfigRenderer.lua"/>
     <Script file="OrbitSettingsDialog.lua"/>
     <Script file="OrbitOptionsPanel.lua"/>
+    <Script file="SlashCommands.lua"/>
     <Script file="WhatsNew.lua"/>
     <Script file="OrbitOptionsButton.lua"/>
     <Script file="MinimapButton.lua"/>

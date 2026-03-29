@@ -83,36 +83,32 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
 
     -- Update preview based on curve data (only assign once, not on pooled reuse)
     if not frame.UpdatePreview then
-    frame.UpdatePreview = function(self)
-        local pins = self.curveData and self.curveData.pins
-        if not pins or #pins == 0 then
-            self.GradientTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
-            self.GradientTexture:SetGradient("HORIZONTAL", CreateColor(0.5, 0.5, 0.5, 1), CreateColor(0.5, 0.5, 0.5, 1))
-            return
-        end
-        
-        -- Resolve class color pins dynamically
-        local function ResolvePin(pin)
-            if pin.type == "class" then
-                local _, classFile = UnitClass("player")
-                local classColor = RAID_CLASS_COLORS[classFile]
-                if classColor then return { r = classColor.r, g = classColor.g, b = classColor.b, a = 1 } end
+        frame.UpdatePreview = function(self)
+            local pins = self.curveData and self.curveData.pins
+            if not pins or #pins == 0 then
+                self.GradientTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
+                self.GradientTexture:SetGradient("HORIZONTAL", CreateColor(0.5, 0.5, 0.5, 1), CreateColor(0.5, 0.5, 0.5, 1))
+                return
             end
-            return pin.color
+            -- Resolve class color pins dynamically
+            local function ResolvePin(pin)
+                if pin.type == "class" then
+                    local _, classFile = UnitClass("player")
+                    local classColor = RAID_CLASS_COLORS[classFile]
+                    if classColor then return { r = classColor.r, g = classColor.g, b = classColor.b, a = 1 } end
+                end
+                return pin.color
+            end
+            -- Sort pins by position (use copy to avoid mutating original)
+            local sortedPins = {}
+            for i, p in ipairs(pins) do sortedPins[i] = p end
+            table.sort(sortedPins, function(a, b) return a.position < b.position end)
+            local first = ResolvePin(sortedPins[1])
+            local last = ResolvePin(sortedPins[#sortedPins])
+            -- Always use SetTexture + SetGradient for consistent state reset
+            self.GradientTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
+            self.GradientTexture:SetGradient("HORIZONTAL", CreateColor(first.r, first.g, first.b, first.a or 1), CreateColor(last.r, last.g, last.b, last.a or 1))
         end
-
-        -- Sort pins by position (use copy to avoid mutating original)
-        local sortedPins = {}
-        for i, p in ipairs(pins) do sortedPins[i] = p end
-        table.sort(sortedPins, function(a, b) return a.position < b.position end)
-        
-        local first = ResolvePin(sortedPins[1])
-        local last = ResolvePin(sortedPins[#sortedPins])
-        
-        -- Always use SetTexture + SetGradient for consistent state reset
-        self.GradientTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
-        self.GradientTexture:SetGradient("HORIZONTAL", CreateColor(first.r, first.g, first.b, first.a or 1), CreateColor(last.r, last.g, last.b, last.a or 1))
-    end
     end
 
     frame:UpdatePreview()
