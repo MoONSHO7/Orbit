@@ -86,9 +86,17 @@ local ZONE_PVP_COLORS = {
 }
 Plugin.ZonePVPColors = ZONE_PVP_COLORS -- shared with Minimap.lua for tooltip colouring
 
+-- [ ZONE TEXT ]---------------------------------------------------------------------------
+
+local lastZoneText = nil
+
 function Plugin:UpdateZoneText(button, coloring, overrides)
     local fontString = button.Text or button
-    fontString:SetText(GetMinimapZoneText())
+    local newText = GetMinimapZoneText()
+    if newText ~= lastZoneText then
+        lastZoneText = newText
+        fontString:SetText(newText)
+    end
     if coloring then
         local pvpType = GetZonePVPInfo()
         local color = ZONE_PVP_COLORS[pvpType]
@@ -109,12 +117,29 @@ end
 
 -- [ CLOCK ]-----------------------------------------------------------------------------------------
 
+-- Cache clock CVars so we don't call GetCVarBool on every tick.
+local _clockUseLocal, _clockUseMilitary
+local function RefreshClockCVars()
+    _clockUseLocal    = GetCVarBool("timeMgrUseLocalTime")
+    _clockUseMilitary = GetCVarBool("timeMgrUseMilitaryTime")
+end
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("CVAR_UPDATE")
+    f:SetScript("OnEvent", function(_, _, cvarName)
+        if cvarName == "timeMgrUseLocalTime" or cvarName == "timeMgrUseMilitaryTime" then
+            RefreshClockCVars()
+        end
+    end)
+end
+
 function Plugin:UpdateClock()
+    if _clockUseLocal == nil then RefreshClockCVars() end
     local text = self.frame.Clock.Text
-    if GetCVarBool("timeMgrUseLocalTime") then
-        text:SetText(GameTime_GetLocalTime(GetCVarBool("timeMgrUseMilitaryTime")))
+    if _clockUseLocal then
+        text:SetText(GameTime_GetLocalTime(_clockUseMilitary))
     else
-        text:SetText(GameTime_GetGameTime(GetCVarBool("timeMgrUseMilitaryTime")))
+        text:SetText(GameTime_GetGameTime(_clockUseMilitary))
     end
     self.frame.Clock:SetSize(text:GetStringWidth() + 2, text:GetStringHeight() + 2)
 end
@@ -127,7 +152,7 @@ function Plugin:StartClockTicker()
     local function onTick()
         self:UpdateClock()
         local _, min = GetGameTime()
-        if GetCVarBool("timeMgrUseLocalTime") then min = tonumber(date("%M")) end
+        if _clockUseLocal then min = tonumber(date("%M")) end
         if lastMin == -1 then
             lastMin = min
         elseif min ~= lastMin then
@@ -293,6 +318,10 @@ end
 function Plugin:StartAutoZoomOut()
     local delay = self:GetSetting(SYSTEM_ID, "AutoZoomOutDelay") or 0
     if delay <= 0 then return end
+
+    -- No-op if already at minimum zoom
+    local minimap = self:GetBlizzardMinimap()
+    if minimap and minimap:GetZoom() == 0 then return end
 
     self:CancelAutoZoomOut()
 

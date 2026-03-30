@@ -53,12 +53,19 @@ function Plugin:CreateCompartmentButton()
     btn.highlight:SetTexture("Interface\\Buttons\\UI-Common-MouseHilight")
     btn.highlight:SetAlpha(0.5)
     btn.highlight:SetBlendMode("ADD")
-    
-    -- Visible count label on the button itself
-    btn.icon = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    btn.icon:SetPoint("CENTER", 0, 0)
-    btn.icon:SetText("+")
-    btn.icon:SetTextColor(0.8, 0.8, 0.8, 1)
+
+    -- Atlas icon: Blizzard's map-filter funnel (same as used by World Map filter button)
+    btn.icon = btn:CreateTexture(nil, "ARTWORK")
+    btn.icon:SetAllPoints(btn)
+    btn.icon:SetAtlas("Map-Filter-Button", false)
+
+    btn.iconPushed = btn:CreateTexture(nil, "ARTWORK")
+    btn.iconPushed:SetAllPoints(btn)
+    btn.iconPushed:SetAtlas("Map-Filter-Button-down", false)
+    btn.iconPushed:Hide()
+
+    btn:SetScript("OnMouseDown", function() btn.icon:Hide(); btn.iconPushed:Show() end)
+    btn:SetScript("OnMouseUp",   function() btn.iconPushed:Hide(); btn.icon:Show() end)
 
     -- Border
     Orbit.Skin:SkinBorder(btn, btn, 1, BORDER_COLOR)
@@ -68,14 +75,12 @@ function Plugin:CreateCompartmentButton()
 
     btn:SetScript("OnClick", function() self:ToggleCompartmentFlyout() end)
     btn:SetScript("OnEnter", function(b)
-        b.icon:SetTextColor(1, 1, 1, 1)
         GameTooltip:SetOwner(b, "ANCHOR_LEFT")
         GameTooltip:SetText("Addon Buttons", 1, 1, 1)
         GameTooltip:AddLine("Click to expand addon buttons", 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     btn:SetScript("OnLeave", function(b)
-        b.icon:SetTextColor(0.8, 0.8, 0.8, 1)
         GameTooltip:Hide()
     end)
 
