@@ -125,14 +125,41 @@ function Plugin:OnLoad()
     self.frame.RoundBorder:SetAllPoints(self.frame)
     self.frame.RoundBorder:Hide()
 
-    -- Overlay for canvas components (sits above the minimap render but below DIALOG strata)
+    -- Overlay for canvas components. Uses HIGH strata so our interactive children
+    -- (ZoneText, Clock, zoom buttons, etc.) always take priority over ClickCapture
+    -- (MEDIUM) and any external addon overlay that might sit over the minimap.
     self.frame.Overlay = CreateFrame("Frame", nil, self.frame)
     self.frame.Overlay:SetAllPoints()
+    self.frame.Overlay:SetFrameStrata("HIGH")
     self.frame.Overlay:SetFrameLevel(self.frame:GetFrameLevel() + 10)
     -- MiniMapMailFrameMixin and MiniMapCraftingOrderFrameMixin call self:GetParent():Layout()
     -- after UPDATE_PENDING_MAIL / CRAFTINGORDERS_UPDATED events. Since we reparent those
     -- frames here, we provide a no-op to prevent the error.
     self.frame.Overlay.Layout = function() end
+
+    -- Top-level click-capture button: sits above everything (including third-party addon
+    -- overlays) and intercepts all mouse clicks to dispatch our configured actions.
+    -- SetPropagateMouseClicks(true) ensures clicks also fall through to whatever is
+    -- underneath, so addon overlays (e.g. a "disable minimap" blackout) can still
+    -- receive the same click and dismiss themselves normally.
+    -- ClickCapture: a transparent MEDIUM-strata button that covers the whole minimap
+    -- area. It sits above the minimap render surface and most third-party addon overlays
+    -- (which are typically MEDIUM or LOW), but below our own HIGH-strata Overlay so
+    -- ZoneText, Clock, zoom buttons etc. always take priority.
+    -- SetPropagateMouseClicks(true) ensures the click also falls through to whatever is
+    -- underneath, so addon overlays can still receive and dismiss themselves.
+    local clickCapture = CreateFrame("Button", "OrbitMinimapClickCapture", self.frame)
+    clickCapture:SetAllPoints()
+    clickCapture:SetFrameStrata("MEDIUM")
+    clickCapture:SetFrameLevel(self.frame:GetFrameLevel() + 50)
+    clickCapture:EnableMouse(true)
+    clickCapture:RegisterForClicks("AnyUp")
+    clickCapture:SetPropagateMouseClicks(true)
+    clickCapture:SetScript("OnClick", function(_, button)
+        local action = self:GetMinimapClickAction(button)
+        if action ~= "none" then self:RunMinimapClickAction(action, clickCapture) end
+    end)
+    self.frame.ClickCapture = clickCapture
 
     -- [ Zone Text component ] — clickable: opens World Map, tooltip shows zone/subzone/PvP info
     self.frame.ZoneText = CreateFrame("Button", "OrbitMinimapZoneText", self.frame.Overlay)
