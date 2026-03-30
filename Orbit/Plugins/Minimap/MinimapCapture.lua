@@ -416,46 +416,77 @@ function Plugin:CaptureBlizzardMinimap()
         end)
         minimap._orbitClickHooked = true
     end
-    -- Generic overlay intercept: some addons (e.g. FarmHud) place a mouse-enabled
-    -- frame above Minimap that swallows clicks. We hook FarmHud via its public API
-    -- and use GetMouseFoci() to find the topmost frame under the cursor at click time,
-    -- hooking it lazily. GetMouseFoci is taint-safe and requires no frame name guessing.
+    -- Generic overlay intercept: some addons place a mouse-enabled frame above the
+    -- Minimap that swallows clicks before they reach us. We proactively scan all
+    -- mouse-foci frames that sit over our container (using GetMouseFoci on a short
+    -- periodic ticker) and hook their OnMouseUp so our click actions still fire.
+    -- We also hook whenever the cursor enters our container, and after any FarmHud
+    -- Toggle, to catch overlays that appear after load.
     if not self.frame._orbitOverlayHookSetup then
         self.frame._orbitOverlayHookSetup = true
         local hooked = {}
-        local function HookTopFociFrame()
+
+        local function IsOverOurContainer(f)
+            -- Walk up the parent chain to see if f is a descendant of our container,
+            -- OR check if the frame physically overlaps our container via cursor position.
+            local p = f
+            while p do
+                if p == self.frame then return true end
+                p = p:GetParent()
+            end
+            -- Also accept any frame currently returned by GetMouseFoci when the cursor
+            -- is inside our container bounds (checked by the caller).
+            return false
+        end
+
+        local function TryHookFrame(f)
+            if not f or f == minimap or f == self.frame then return end
+            if hooked[f] then return end
+            hooked[f] = true
+            local ok = pcall(f.HookScript, f, "OnMouseUp", function(clicked, button)
+                local ok2, vis = pcall(clicked.IsVisible, clicked)
+                if not ok2 or not vis then return end
+                local action = self:GetMinimapClickAction(button)
+                if action ~= "none" then self:RunMinimapClickAction(action, clicked) end
+            end)
+            if ok then f._orbitClickHooked = true end
+        end
+
+        local function ScanMouseFoci()
             if not GetMouseFoci then return end
             for _, foci in ipairs({ GetMouseFoci() }) do
-                if foci and foci ~= minimap and foci ~= self.frame
-                    and not hooked[foci]
-                    and not foci._orbitClickHooked
-                then
-                    local ok = pcall(foci.HookScript, foci, "OnMouseUp", function(clicked, button)
-                        local ok2, vis = pcall(clicked.IsVisible, clicked)
-                        if not ok2 or not vis then return end
-                        local action = self:GetMinimapClickAction(button)
-                        if action ~= "none" then self:RunMinimapClickAction(action, clicked) end
-                    end)
-                    hooked[foci] = true
-                    if ok then foci._orbitClickHooked = true end
-                end
+                TryHookFrame(foci)
             end
         end
-        -- Re-check whenever our container receives a mouse-down (fires even if Minimap
-        -- itself is covered, because OrbitMinimapContainer is the actual parent).
+
+        -- Hook whenever the cursor enters our container (catches overlays that are
+        -- already present at load and ensures we hook before the first click).
         self.frame:EnableMouse(true)
-        self.frame:HookScript("OnMouseDown", HookTopFociFrame)
-        -- FarmHud-specific: hook Toggle so we catch its overlay the moment it appears
+        self.frame:HookScript("OnEnter", ScanMouseFoci)
+        self.frame:HookScript("OnMouseDown", ScanMouseFoci)
+
+        -- Proactive ticker: scan every 2 s for the first 60 s after load so that
+        -- overlays added by slow-loading addons are caught without user interaction.
+        local tickCount = 0
+        C_Timer.NewTicker(2, function(ticker)
+            ScanMouseFoci()
+            tickCount = tickCount + 1
+            if tickCount >= 30 then ticker:Cancel() end
+        end)
+
+        -- FarmHud-specific: hook Toggle so we catch its overlay the moment it appears.
         C_Timer.After(0, function()
             if FarmHud and FarmHud.Toggle and not FarmHud._orbitToggleHooked then
                 hooksecurefunc(FarmHud, "Toggle", function()
-                    C_Timer.After(0, HookTopFociFrame)
+                    C_Timer.After(0, ScanMouseFoci)
                 end)
                 FarmHud._orbitToggleHooked = true
             end
             if FarmHud and FarmHud.RegisterForeignAddOnObject then
                 FarmHud:RegisterForeignAddOnObject(self.frame, "Orbit")
             end
+            -- Do an immediate scan once all addons have loaded.
+            ScanMouseFoci()
         end)
     end
 
