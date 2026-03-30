@@ -316,8 +316,7 @@ function Plugin:CancelAutoZoomOut()
 end
 
 function Plugin:StartAutoZoomOut()
-    local delay = self:GetSetting(SYSTEM_ID, "AutoZoomOutDelay") or 0
-    if delay <= 0 then return end
+    if not self:GetSetting(SYSTEM_ID, "AutoZoomOut") then return end
 
     -- No-op if already at minimum zoom
     local minimap = self:GetBlizzardMinimap()
@@ -325,7 +324,7 @@ function Plugin:StartAutoZoomOut()
 
     self:CancelAutoZoomOut()
 
-    self._autoZoomTimer = C_Timer.NewTimer(delay, function()
+    self._autoZoomTimer = C_Timer.NewTimer(5, function()
         self._autoZoomTimer = nil
         local minimap = self:GetBlizzardMinimap()
         if not minimap then return end

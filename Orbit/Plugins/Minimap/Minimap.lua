@@ -18,7 +18,7 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
         RotateMinimap = false,
         MiddleClickAction = "none",
         RightClickAction = "tracking",
-        AutoZoomOutDelay = 5,
+        AutoZoomOut = true,
         ZoneTextColoring = true,
         DifficultyShowBackground = false,
         DisabledComponents = { "Status" },
@@ -84,6 +84,7 @@ end
 function Plugin:OnLoad()
     Orbit.IconPreviewAtlases = Orbit.IconPreviewAtlases or {}
     Orbit.IconPreviewAtlases.Zoom = "common-icon-zoomin"
+    Orbit.IconPreviewAtlases.Compartment = "Map-Filter-Button"
     Orbit.IconPreviewAtlases.Difficulty = nil
     Orbit.IconPreviewAtlases.Mail = "ui-hud-minimap-mail-up"
     Orbit.IconPreviewAtlases.CraftingOrder = "UI-HUD-Minimap-CraftingOrder-Over-2x"

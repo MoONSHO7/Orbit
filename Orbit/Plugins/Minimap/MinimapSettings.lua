@@ -120,15 +120,13 @@ function Plugin:AddSettings(dialog, systemFrame)
         default = "tracking",
     })
 
-    -- Auto Zoom-out Delay
+    -- Auto Zoom-out
     table.insert(schema.controls, {
-        type = "slider",
-        key = "AutoZoomOutDelay",
-        label = "Auto Zoom-out Delay (0 = off)",
-        min = 0,
-        max = 30,
-        step = 1,
-        default = 5,
+        type = "checkbox",
+        key = "AutoZoomOut",
+        label = "Auto Zoom-out",
+        tooltip = "Automatically zoom back out 5 seconds after zooming in.",
+        default = true,
     })
 
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
