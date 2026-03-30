@@ -156,6 +156,7 @@ function Plugin:OnLoad()
     clickCapture:EnableMouse(true)
     clickCapture:RegisterForClicks("AnyUp")
     clickCapture:SetPropagateMouseClicks(true)
+    clickCapture:SetPropagateMouseMotion(true) -- pass OnEnter/OnLeave through so tooltips still work
     clickCapture:SetScript("OnClick", function(_, button)
         local action = self:GetMinimapClickAction(button)
         if action ~= "none" then self:RunMinimapClickAction(action, clickCapture) end
