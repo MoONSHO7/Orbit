@@ -162,6 +162,7 @@ local Plugin = Orbit:RegisterPlugin("Group Frames", SYSTEM_ID, {
     defaults = {
         Tiers = TIER_DEFAULTS,
         _EditTier = nil,
+        HideBlizzardRaidPanel = false,
     },
 })
 
@@ -469,9 +470,15 @@ local function HideNativeGroupFrames()
         if member then member:UnregisterAllEvents() end
     end
     OrbitEngine.NativeFrame:Disable(CompactRaidFrameContainer)
-    OrbitEngine.NativeFrame:Disable(CompactRaidFrameManager)
 end
 
+function Plugin:UpdateBlizzardRaidPanelVisibility()
+    if self:GetSetting(1, "HideBlizzardRaidPanel") then
+        OrbitEngine.NativeFrame:Disable(CompactRaidFrameManager)
+    else
+        OrbitEngine.NativeFrame:Enable(CompactRaidFrameManager)
+    end
+end
 function Plugin:AddSettings(dialog, systemFrame)
     Orbit.GroupFrameSettings(self, dialog, systemFrame)
 end
@@ -533,6 +540,7 @@ function Plugin:OnLoad()
     MigrateFromLegacy(self)
 
     HideNativeGroupFrames()
+    self:UpdateBlizzardRaidPanelVisibility()
 
     self._currentTier = self:GetCurrentTier()
 
