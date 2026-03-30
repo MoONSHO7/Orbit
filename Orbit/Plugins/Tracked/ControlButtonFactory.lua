@@ -1,4 +1,4 @@
--- [ CONTROL BUTTON FACTORY ]------------------------------------------------------------------------
+-- [ CONTROL BUTTON FACTORY ] --------------------------------------------------
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine

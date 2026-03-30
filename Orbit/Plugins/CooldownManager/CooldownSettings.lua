@@ -8,73 +8,16 @@ if not CDM then return end
 
 local VIEWER_MAP = CDM.viewerMap
 local CooldownUtils = OrbitEngine.CooldownUtils
-local function RelayoutChargeBars(plugin) Orbit.ChargeBarLayout:LayoutChargeBars(plugin) end
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function CDM:AddSettings(dialog, systemFrame)
-    local systemIndex = systemFrame.systemIndex or 1
+    local systemIndex = systemFrame.systemIndex
+    local schema = { controls = {}, extraButtons = {} }
     local SB = OrbitEngine.SchemaBuilder
+    local isInheriting = false
+    local frame = VIEWER_MAP[systemIndex] and VIEWER_MAP[systemIndex].anchor or systemFrame
 
-    local frame = self:GetFrameBySystemIndex(systemIndex)
-    local isAnchored = frame and OrbitEngine.Frame:GetAnchorParent(frame) ~= nil
-    local isTracked = frame and frame.isTrackedBar
-    local isInheriting = frame and CooldownUtils:IsInheritingLayout(self, frame, VIEWER_MAP)
-
-    local schema = { hideNativeSettings = true, controls = {}, extraButtons = {} }
-
-    -- Charge Bars get their own dedicated dialog
-    if frame and frame.isChargeBar then
-        SB:SetTabRefreshCallback(dialog, self, systemFrame)
-        local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colors", "Behaviour" }, "Layout")
-
-        if currentTab == "Layout" then
-            if not isAnchored then
-                table.insert(schema.controls, {
-                    type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 120,
-                    onChange = function(val) self:SetSetting(systemIndex, "Width", val); RelayoutChargeBars(self) end,
-                })
-            end
-            table.insert(schema.controls, {
-                type = "slider", key = "Height", label = "Height", min = 6, max = 40, step = 1, default = 12,
-                onChange = function(val) self:SetSetting(systemIndex, "Height", val); RelayoutChargeBars(self) end,
-            })
-            table.insert(schema.controls, {
-                type = "slider", key = "DividerSize", label = "Divider Size", min = 0, max = 50, step = 1, default = 2,
-                onChange = function(val) self:SetSetting(systemIndex, "DividerSize", val); RelayoutChargeBars(self) end,
-            })
-            table.insert(schema.controls, {
-                type = "slider", key = "TickSize", label = "Tick", min = 0, max = 6, step = 2, default = 6,
-                tooltip = "Width of the leading-edge tick mark (0 = hidden)",
-                onChange = function(val) self:SetSetting(systemIndex, "TickSize", val); RelayoutChargeBars(self) end,
-            })
-        elseif currentTab == "Colors" then
-            SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-                key = "BarColorCurve", label = "Bar Color",
-                onChange = function(curveData)
-                    self:SetSetting(systemIndex, "BarColorCurve", curveData)
-                    RelayoutChargeBars(self)
-                end,
-            })
-        elseif currentTab == "Behaviour" then
-            table.insert(schema.controls, {
-                type = "checkbox", key = "SmoothAnimation", label = "Smooth Animation", default = false,
-                tooltip = "Smoothly animate charge transitions",
-                onChange = function(val)
-                    self:SetSetting(systemIndex, "SmoothAnimation", val)
-                end,
-            })
-            table.insert(schema.controls, {
-                type = "checkbox", key = "FrequentUpdates", label = "Frequent Updates", default = true,
-                tooltip = "Updates the charge bar every frame instead of interval ticks",
-                onChange = function(val)
-                    self:SetSetting(systemIndex, "FrequentUpdates", val)
-                    self:RefreshChargeUpdateMethod()
-                end,
-            })
-        end
-
-        OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
-        return
+    if frame and frame.isChildFrame then
+        isInheriting = self:GetSetting(systemIndex, "InheritLayout")
     end
 
     -- Buff Bars get their own dedicated dialog
@@ -133,15 +76,13 @@ function CDM:AddSettings(dialog, systemFrame)
         return
     end
 
-    if not isTracked then
-        table.insert(schema.extraButtons, {
-            text = "Cooldown Settings",
-            callback = function()
-                if EditModeManagerFrame and EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
-                if CooldownViewerSettings then CooldownViewerSettings:Show() end
-            end,
-        })
-    end
+    table.insert(schema.extraButtons, {
+        text = "Cooldown Settings",
+        callback = function()
+            if EditModeManagerFrame and EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
+            if CooldownViewerSettings then CooldownViewerSettings:Show() end
+        end,
+    })
 
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
     local tabs = { "Layout", "Glow", "Colors" }
@@ -173,12 +114,7 @@ function CDM:AddSettings(dialog, systemFrame)
                 end,
             })
             table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = 0, max = 15, step = 1, default = Constants.Cooldown.DefaultPadding })
-        end
-        if not isTracked then
             table.insert(schema.controls, { type = "slider", key = "IconLimit", label = "# Columns", min = 1, max = 20, step = 1, default = Constants.Cooldown.DefaultLimit })
-        end
-        if isTracked then
-            table.insert(schema.controls, { type = "checkbox", key = "ShowActiveDuration", label = "Active Duration", default = true })
         end
     elseif currentTab == "Glow" then
         table.insert(schema.controls, { type = "checkbox", key = "ShowGCDSwipe", label = "Show GCD Swipe", default = true })
@@ -196,21 +132,14 @@ function CDM:AddSettings(dialog, systemFrame)
             { text = "Proc Glow", value = GlowType.Proc }, { text = "Autocast Shine", value = GlowType.Autocast },
             { text = "Button Glow", value = GlowType.Button }, { text = "Blizzard", value = GlowType.Blizzard },
         }
-        if not isTracked then
-            table.insert(schema.controls, {
-                type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
-                options = GLOW_OPTIONS, default = Constants.PandemicGlow.DefaultType,
-            })
-            table.insert(schema.controls, {
-                type = "dropdown", key = "ProcGlowType", label = "Proc Glow",
-                options = GLOW_OPTIONS, default = Constants.PandemicGlow.DefaultType,
-            })
-        else
-            table.insert(schema.controls, {
-                type = "dropdown", key = "ActiveGlowType", label = "Active Glow",
-                options = GLOW_OPTIONS, default = GlowType.None,
-            })
-        end
+        table.insert(schema.controls, {
+            type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
+            options = GLOW_OPTIONS, default = Constants.PandemicGlow.DefaultType,
+        })
+        table.insert(schema.controls, {
+            type = "dropdown", key = "ProcGlowType", label = "Proc Glow",
+            options = GLOW_OPTIONS, default = Constants.PandemicGlow.DefaultType,
+        })
     elseif currentTab == "Colors" then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "ActiveSwipeColorCurve", label = "Active Swipe",
@@ -222,18 +151,12 @@ function CDM:AddSettings(dialog, systemFrame)
             default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
             singleColor = true,
         })
-        if not isTracked then
-            SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
-                key = "PandemicGlowColor", label = "Pandemic Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },
-            })
-            SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
-                key = "ProcGlowColor", label = "Proc Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },
-            })
-        else
-            SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
-                key = "ActiveGlowColor", label = "Active Glow Color", default = { r = 0.3, g = 0.8, b = 1, a = 1 },
-            })
-        end
+        SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
+            key = "PandemicGlowColor", label = "Pandemic Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },
+        })
+        SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
+            key = "ProcGlowColor", label = "Proc Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },
+        })
         if systemIndex ~= Constants.Cooldown.SystemIndex.BuffIcon and systemIndex ~= Constants.Cooldown.SystemIndex.BuffBar then
             SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
                 key = "KeypressColor", label = "Keypress Flash",
@@ -266,7 +189,7 @@ function CDM:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ COMPONENT UTILITY ]-----------------------------------------------------------------------------
+-- [ COMPONENT UTILITY ] -------------------------------------------------------
 function CDM:IsComponentDisabled(componentKey, systemIndex)
     systemIndex = systemIndex or 1
     local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction

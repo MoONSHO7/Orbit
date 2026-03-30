@@ -24,7 +24,7 @@ local function GetViewerAnchorPoint(plugin, anchor)
     return vPoint
 end
 
--- [ BLIZZARD VIEWER HOOKING ]-----------------------------------------------------------------------
+-- [ BLIZZARD VIEWER HOOKING ] -------------------------------------------------
 function CDM:HookBlizzardViewers()
     for _, entry in pairs(VIEWER_MAP) do
         self:SetupViewerHooks(entry.viewer, entry.anchor)
@@ -39,7 +39,7 @@ function CDM:HookBlizzardViewers()
     self:HookEssentialUtilityMixins()
 end
 
--- [ ESSENTIAL/UTILITY MIXIN HOOKS ]-----------------------------------------------------------------
+-- [ ESSENTIAL/UTILITY MIXIN HOOKS ] -------------------------------------------
 function CDM:HookEssentialUtilityMixins()
     local function OnSpellUpdate(frame, systemIndex)
         local viewer = frame:GetParent()
@@ -66,7 +66,7 @@ function CDM:HookEssentialUtilityMixins()
     end
 end
 
--- [ VIEWER HOOKS ]----------------------------------------------------------------------------------
+-- [ VIEWER HOOKS ] ------------------------------------------------------------
 function CDM:SetupViewerHooks(viewer, anchor)
     if not viewer or not anchor then return end
 
@@ -125,7 +125,7 @@ function CDM:SetupViewerHooks(viewer, anchor)
     self:EnforceViewerParentage(viewer, anchor)
 end
 
--- [ PARENTAGE MANAGEMENT ]--------------------------------------------------------------------------
+-- [ PARENTAGE MANAGEMENT ] ----------------------------------------------------
 function CDM:ReapplyParentage()
     for _, entry in pairs(VIEWER_MAP) do
         self:EnforceViewerParentage(entry.viewer, entry.anchor)
@@ -145,7 +145,7 @@ function CDM:EnforceViewerParentage(viewer, anchor)
     self:ProcessChildren(anchor)
 end
 
--- [ EVENT-DRIVEN MONITOR ]--------------------------------------------------------------------------
+-- [ EVENT-DRIVEN MONITOR ] ----------------------------------------------------
 local OOC_THROTTLE_DELAY = 20
 local OOC_THROTTLE_INTERVAL = 0.5
 
@@ -225,7 +225,7 @@ function CDM:CheckViewer(viewer, anchor)
     if not viewer:IsShown() and not anchor.orbitMountedSuppressed then viewer:Show(); viewer:SetAlpha(1) end
 end
 
--- [ PLAYER ENTERING WORLD ]-------------------------------------------------------------------------
+-- [ PLAYER ENTERING WORLD ] ---------------------------------------------------
 function CDM:OnPlayerEnteringWorld()
     C_Timer.After(Constants.Timing.RetryShort, function() self:ReapplyParentage(); self:ApplyAll() end)
     C_Timer.After(Constants.Timing.RetryLong, function() self:ReapplyParentage(); self:PreSizeAnchors() end)

@@ -4,24 +4,24 @@ local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local TRACKED_INDEX = Constants.Cooldown.SystemIndex.Tracked
+-- [ CONSTANTS ] ---------------------------------------------------------------
+local TRACKED_INDEX = Constants.Tracked.SystemIndex.Tracked
 local MAX_GRID_SIZE = 10
 local TRACKED_ADD_ICON = "Interface\\PaperDollInfoFrame\\Character-Plus"
 local EDGE_GLOW_ALPHA = 0.6
 
--- [ MODULE ]----------------------------------------------------------------------------------------
+-- [ MODULE ] ------------------------------------------------------------------
 Orbit.TrackedLayout = {}
 local Layout = Orbit.TrackedLayout
 
--- [ GRID HELPERS ]----------------------------------------------------------------------------------
+-- [ GRID HELPERS ] ------------------------------------------------------------
 function Layout.GridKey(x, y) return x .. "," .. y end
 function Layout.ParseGridKey(key)
     local x, y = key:match("^(-?%d+),(-?%d+)$")
     return tonumber(x), tonumber(y)
 end
 
--- [ USABILITY HELPERS ]-----------------------------------------------------------------------------
+-- [ USABILITY HELPERS ] -------------------------------------------------------
 local function IsSpellUsable(spellId)
     if not spellId then return false end
     if IsSpellKnown(spellId) or IsPlayerSpell(spellId) then return true end
@@ -46,7 +46,7 @@ function Layout.IsGridItemUsable(data)
     return false
 end
 
--- [ USABILITY CHANGE DETECTION ]--------------------------------------------------------------------
+-- [ USABILITY CHANGE DETECTION ] ----------------------------------------------
 function Layout:HasUsabilityChanged(anchor)
     local rawGridItems = anchor.gridItems
     if not rawGridItems then return false end
@@ -59,7 +59,7 @@ function Layout:HasUsabilityChanged(anchor)
     return false
 end
 
--- [ EDGE BUTTON FACTORY ]---------------------------------------------------------------------------
+-- [ EDGE BUTTON FACTORY ] -----------------------------------------------------
 local function CreateEdgeButton(anchor, index)
     local btn = CreateFrame("Frame", nil, anchor)
     btn.Backdrop = btn:CreateTexture(nil, "BACKGROUND")
@@ -90,7 +90,7 @@ local function SizeEdgeButton(btn, iconWidth, iconHeight, Pixel)
     btn.Plus:SetSize(plusSize, plusSize)
 end
 
--- [ LAYOUT MAIN ]-----------------------------------------------------------------------------------
+-- [ LAYOUT MAIN ] -------------------------------------------------------------
 local function GridFingerprint(gridItems, isDragging, isEditMode)
     local parts, n = {}, 0
     for key, data in pairs(gridItems) do
@@ -198,7 +198,7 @@ function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
 
     IconFactory:ReleaseTrackedIcons(anchor)
 
-    local Parser = Orbit.TrackedTooltipParser
+    local Parser = Orbit.TooltipParser
     local BuildPhaseCurve = function(a, c) return Parser:BuildPhaseCurve(a, c) end
 
     for key, data in pairs(gridItems) do

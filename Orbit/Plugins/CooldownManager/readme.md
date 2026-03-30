@@ -1,34 +1,29 @@
 # cooldown manager
 
-tracks ability cooldowns, active durations, and charge-based spells with visual feedback.
+hooks into blizzard's native cooldown viewer system to provide skinned, repositionable cooldown displays.
 
 ## purpose
 
-provides four viewer types: essential cooldowns (class rotation), utility cooldowns (defensive/utility), buff icons (tracked buffs), and buff bars (tracked buff status bars). also provides user-tracked abilities/items and charge bar tracking for multi-charge spells.
+provides four viewer types: essential cooldowns (class rotation), utility cooldowns (defensive/utility), buff icons (tracked buffs), and buff bars (tracked buff status bars). also supports drag-and-drop injection of custom spells/items into essential/utility viewers.
 
 ## files
 
 | file | responsibility |
 |---|---|
-| CooldownManager.lua | main plugin. viewer creation, essential/utility icon grids, settings application. |
+| CooldownManager.lua | main plugin. anchor creation, settings application, viewer map, spec data helpers. |
 | CooldownLayout.lua | icon grid layout engine. handles row/column math for cooldown viewers. |
-| CooldownText.lua | timer text rendering and color curve sampling for cooldown timers. |
+| CooldownText.lua | timer/charges/stacks/keybind text rendering, font helpers, canvas preview setup. |
 | CooldownGlows.lua | pandemic window glow effects (pixel, proc, autocast, button glows). uses alpha-hiding: glows are created once and toggled via SetAlpha instead of LCG stop/start to prevent animation restarts. |
-| CooldownSettings.lua | settings schema builder with sub-tabs (layout, text, glow, visibility). |
-| CooldownUtils.lua | shared utilities: icon dimension calculation, skin settings builder. `BuildSkinSettings` includes `iconBorder = true` to opt into `GlobalSettings.IconBorderStyle`. when `IconPadding = 0`, a single group border wraps the viewer anchor instead of per-icon borders. |
+| CooldownSettings.lua | settings schema builder with sub-tabs (layout, glow, colours). |
 | CooldownViewerHooks.lua | hooks into blizzard's cooldown viewer api (`C_CooldownViewer`). |
 | ViewerInjection.lua | drag-and-drop item/spell injection into essential/utility viewers. creates cdm-owned frames positioned relative to native icons via `afterNativeIndex`. per-spec persistence via `GetSpecData`/`SetSpecData`. shift-right-click removal. equipment slot tracking for trinkets (auto-updates on gear change). `/orbit flush` clears all injected icons. |
-| ControlButtonFactory.lua | +/- control buttons for adding/removing child frames in edit mode. |
-| TrackedAbilities.lua | user-tracked ability/item grid. anchor lifecycle, child frames, drag-and-drop, data persistence. |
-| TrackedIconFactory.lua | tracked icon creation, pooling, skinning, and text styling. |
-| TrackedLayout.lua | tracked grid layout engine, edge buttons, usability detection. |
-| TrackedUpdater.lua | tracked icon cooldown state, glow, timer color, ticker, cursor/talent watchers. |
-| TrackedCharges.lua | charge bar frame. tracks multi-charge spell recharge progress using a single continuous StatusBar with divider overlays. |
-| ChargeBarLayout.lua | charge bar layout engine. continuous bar skinning, divider positioning, recharge segment layout. |
-| ChargeBarCanvasPreview.lua | canvas mode preview for charge bars. |
-| TrackedCanvasPreview.lua | canvas mode preview for tracked ability grids. |
-| TrackedTooltipParser.lua | tooltip scanning for active duration and cooldown duration extraction. |
-| KeybindSystem.lua | keybind text resolution for tracked ability icons. |
+
+## shared utilities (in Core/Shared/)
+
+| file | responsibility |
+|---|---|
+| CooldownUtils.lua | icon dimension calculation, skin settings builder. `BuildSkinSettings` includes `iconBorder = true` to opt into `GlobalSettings.IconBorderStyle`. |
+| TooltipParser.lua | tooltip scanning for active duration and cooldown duration extraction. |
 
 ## architecture
 
@@ -38,36 +33,20 @@ graph TD
     CDM --> Utility[utility viewers]
     CDM --> BuffIcon[buff icon viewers]
     CDM --> BuffBar[buff bar viewers]
-    CDM --> Tracked[TrackedAbilities]
-    CDM --> Charges[TrackedCharges]
-    Charges --> ChargeLayout[ChargeBarLayout]
-    Charges --> ChargePreview[ChargeBarCanvasPreview]
-    Tracked --> IconFactory[TrackedIconFactory]
-    Tracked --> TrackedLayoutMod[TrackedLayout]
-    Tracked --> TrackedUpdaterMod[TrackedUpdater]
-    Tracked --> TooltipParser[TrackedTooltipParser]
-    Tracked --> ControlButtons[ControlButtonFactory]
     CDM --> Layout[CooldownLayout]
     CDM --> Text[CooldownText]
     CDM --> Glows[CooldownGlows]
     CDM --> Settings[CooldownSettings]
-    CDM --> Utils[CooldownUtils]
     CDM --> Hooks[CooldownViewerHooks]
+    CDM --> Injection[ViewerInjection]
+    CDM -.-> SharedUtils[Core/Shared/CooldownUtils]
+    CDM -.-> SharedParser[Core/Shared/TooltipParser]
 ```
-
-## adding a new viewer type
-
-1. create the viewer logic in `CooldownManager.lua` or a new sub-file
-2. register a new system index in `Constants.Cooldown.SystemIndex`
-3. add default settings in `DefaultProfile.lua`
-4. add schema entries in `CooldownSettings.lua`
-5. create canvas preview support in `TrackedCanvasPreview.lua`
 
 ## rules
 
 - all sub-files access the parent plugin via `Orbit:GetPlugin("Orbit_CooldownViewer")` (intra-domain reference — acceptable)
 - cooldown update functions run on `OnUpdate` — they must be performant (no allocations, no string concat)
 - glow types are defined in `Constants.PandemicGlow.Type`. do not hardcode glow type ids
-- tracked abilities use a 2d grid coordinate system (`x,y` keys). layout is driven by these coordinates
-- child frame management (spawn/despawn) must update control button colors and edit mode selections
-- tracked cooldown and charge bar data (TrackedItems, ChargeSpell, ChargeChildren, Position, Anchor) is stored per-spec in `OrbitDB.SpecData[specID]`, completely outside user-managed profiles. use `GetSpecData`/`SetSpecData` or plain keys via the overridden `GetSetting`/`SetSetting` — never use `GetSpecKey` for new code
+- injected icon data is stored per-spec in `OrbitDB.SpecData[specID]` via `GetSpecData`/`SetSpecData`
+- this plugin has zero dependencies on the Tracked plugin (`Orbit_Tracked`). the two are fully decoupled

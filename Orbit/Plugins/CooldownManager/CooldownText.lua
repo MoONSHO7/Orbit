@@ -15,7 +15,7 @@ local LSM = LibStub("LibSharedMedia-3.0", true)
 local FALLBACK_FONT = STANDARD_TEXT_FONT
 local FALLBACK_TEXTURE = "Interface\\Icons\\INV_Misc_QuestionMark"
 
--- [ FONT HELPERS ]----------------------------------------------------------------------------------
+-- [ FONT HELPERS ] ------------------------------------------------------------
 function CDM:GetBaseFontSize()
     return 12
 end
@@ -25,7 +25,7 @@ function CDM:GetGlobalFont()
     return LSM and LSM:Fetch("font", fontName) or FALLBACK_FONT
 end
 
--- [ TEXT OVERLAY ]---------------------------------------------------------------------------------
+-- [ TEXT OVERLAY ] ------------------------------------------------------------
 function CDM:GetTextOverlay(icon)
     if icon.OrbitTextOverlay then
         return icon.OrbitTextOverlay
@@ -46,7 +46,7 @@ function CDM:CreateKeybindText(icon)
     return keybind
 end
 
--- [ APPLY TEXT SETTINGS ]---------------------------------------------------------------------------
+-- [ APPLY TEXT SETTINGS ] -----------------------------------------------------
 function CDM:ApplyTextSettings(icon, systemIndex)
     local fontPath = self:GetGlobalFont()
     local baseSize = self:GetBaseFontSize()
@@ -202,7 +202,7 @@ function CDM:ApplyTextSettings(icon, systemIndex)
     end
 end
 
--- [ CANVAS PREVIEW ]--------------------------------------------------------------------------------
+-- [ CANVAS PREVIEW ] ----------------------------------------------------------
 function CDM:SetupCanvasPreview(anchor, systemIndex)
     local plugin = self
     anchor.CreateCanvasPreview = function(self, options)
@@ -235,6 +235,7 @@ function CDM:SetupCanvasPreview(anchor, systemIndex)
         end
 
         local preview = OrbitEngine.IconCanvasPreview:Create(self, options.parent or UIParent, w, h, iconTexture)
+        preview.systemIndex = systemIndex
         local savedPositions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
         local fontPath = plugin:GetGlobalFont()
 

@@ -8,8 +8,8 @@ local ACTIVE_GLOW_KEY = "orbitActive"
 local GlowType = Constants.PandemicGlow.Type
 local GlowConfig = Constants.PandemicGlow
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local TRACKED_INDEX = Constants.Cooldown.SystemIndex.Tracked
+-- [ CONSTANTS ] ---------------------------------------------------------------
+local TRACKED_INDEX = Constants.Tracked.SystemIndex.Tracked
 local TRACKED_PLACEHOLDER_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local COOLDOWN_THROTTLE = 0.1
 local TALENT_REPARSE_DELAY = 0.5
@@ -20,20 +20,20 @@ DESAT_CURVE:AddPoint(0.0, 0)
 DESAT_CURVE:AddPoint(0.001, 1)
 DESAT_CURVE:AddPoint(1.0, 1)
 
--- [ SPELL OVERRIDE ALIAS ]--------------------------------------------------------------------------
+-- [ SPELL OVERRIDE ALIAS ] ----------------------------------------------------
 local function GetActiveSpellID(spellID) return FindSpellOverrideByID(spellID) end
 
--- [ TOOLTIP PARSER ALIASES ]------------------------------------------------------------------------
-local Parser = Orbit.TrackedTooltipParser
+-- [ TOOLTIP PARSER ALIASES ] --------------------------------------------------
+local Parser = Orbit.TooltipParser
 local ParseActiveDuration = function(t, id) return Parser:ParseActiveDuration(t, id) end
 local ParseCooldownDuration = function(t, id) return Parser:ParseCooldownDuration(t, id) end
 local BuildPhaseCurve = function(a, c) return Parser:BuildPhaseCurve(a, c) end
 
--- [ MODULE ]----------------------------------------------------------------------------------------
+-- [ MODULE ] ------------------------------------------------------------------
 Orbit.TrackedUpdater = {}
 local Updater = Orbit.TrackedUpdater
 
--- [ ACTIVE GLOW ]-----------------------------------------------------------------------------------
+-- [ ACTIVE GLOW ] -------------------------------------------------------------
 function Updater:StartActiveGlow(plugin, icon)
     if not LCG then return end
     local systemIndex = icon.systemIndex or TRACKED_INDEX
@@ -70,7 +70,7 @@ function Updater:StopActiveGlow(icon)
     icon._activeGlowType = nil
 end
 
--- [ ICON UPDATE ]-----------------------------------------------------------------------------------
+-- [ ICON UPDATE ] -------------------------------------------------------------
 function Updater:UpdateTrackedIcon(plugin, icon)
     if not icon.trackedId then icon:Hide(); return end
 
@@ -278,7 +278,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
     icon:Show()
 end
 
--- [ BATCH UPDATE ]----------------------------------------------------------------------------------
+-- [ BATCH UPDATE ] ------------------------------------------------------------
 function Updater:UpdateTrackedIconsDisplay(plugin, anchor)
     if not anchor or not anchor.activeIcons then return end
     for _, icon in pairs(anchor.activeIcons) do
@@ -286,21 +286,21 @@ function Updater:UpdateTrackedIconsDisplay(plugin, anchor)
     end
 end
 
--- [ EVENT-DRIVEN UPDATE ]----------------------------------------------------------------------------
+-- [ EVENT-DRIVEN UPDATE ] -----------------------------------------------------
 function Updater:StartTrackedUpdateTicker(plugin)
     if plugin._trackedEventSetup then return end
     plugin._trackedEventSetup = true
     local Layout = Orbit.TrackedLayout
-    local viewerMap = plugin.viewerMap
+    
     local nextUpdate = 0
     local function DoUpdate()
-        local entry = viewerMap[TRACKED_INDEX]
-        if entry and entry.anchor then
-            if Layout:HasUsabilityChanged(entry.anchor) then
-                Layout:LayoutTrackedIcons(plugin, entry.anchor, TRACKED_INDEX, plugin.IsDraggingCooldownAbility)
+        
+        if plugin.trackedAnchor then
+            if Layout:HasUsabilityChanged(plugin.trackedAnchor) then
+                Layout:LayoutTrackedIcons(plugin, plugin.trackedAnchor, TRACKED_INDEX, plugin.IsDraggingCooldownAbility)
             end
-            if entry.anchor.activeIcons then
-                for _, icon in pairs(entry.anchor.activeIcons) do
+            if plugin.trackedAnchor.activeIcons then
+                for _, icon in pairs(plugin.trackedAnchor.activeIcons) do
                     if icon.trackedId then self:UpdateTrackedIcon(plugin, icon) end
                 end
             end
@@ -361,8 +361,8 @@ function Updater:StartTrackedUpdateTicker(plugin)
                 end
             end
         end
-        local entry = viewerMap[TRACKED_INDEX]
-        if entry and entry.anchor then PollAnchor(entry.anchor) end
+        
+        if plugin.trackedAnchor then PollAnchor(plugin.trackedAnchor) end
         for _, childData in pairs(plugin.activeChildren) do
             if childData.frame then PollAnchor(childData.frame) end
         end
@@ -378,9 +378,9 @@ function Updater:StartTrackedUpdateTicker(plugin)
     plugin._trackedEventFrame = frame
 end
 
--- [ TALENT REPARSE ]--------------------------------------------------------------------------------
+-- [ TALENT REPARSE ] ----------------------------------------------------------
 function Updater:ReparseActiveDurations(plugin)
-    local viewerMap = plugin.viewerMap
+    
     local function ReparseAnchor(anchor, systemIndex)
         if not anchor then return end
         local tracked = plugin:GetSetting(systemIndex, "TrackedItems") or {}
@@ -407,8 +407,8 @@ function Updater:ReparseActiveDurations(plugin)
             icon.cdAlphaCurve = hasActive and BuildPhaseCurve(icon.activeDuration, icon.cooldownDuration) or nil
         end
     end
-    local entry = viewerMap[TRACKED_INDEX]
-    if entry and entry.anchor then ReparseAnchor(entry.anchor, TRACKED_INDEX) end
+    
+    if plugin.trackedAnchor then ReparseAnchor(plugin.trackedAnchor, TRACKED_INDEX) end
     for _, childData in pairs(plugin.activeChildren) do
         if childData.frame then ReparseAnchor(childData.frame, childData.systemIndex) end
     end
@@ -417,41 +417,37 @@ end
 -- RegisterTalentWatcher: talent events handled by RegisterSpellCastWatcher (TRAIT_CONFIG_UPDATED)
 
 function Updater:RefreshAllTrackedLayouts(plugin)
-    local viewerMap = plugin.viewerMap
-    local entry = viewerMap[TRACKED_INDEX]
-    if entry and entry.anchor then plugin:LoadTrackedItems(entry.anchor, TRACKED_INDEX) end
+    if plugin.trackedAnchor then plugin:LoadTrackedItems(plugin.trackedAnchor, TRACKED_INDEX) end
     for _, childData in pairs(plugin.activeChildren) do
         if childData.frame then plugin:LoadTrackedItems(childData.frame, childData.systemIndex) end
     end
 end
 
 function Updater:ReloadTrackedForSpec(plugin)
-    local viewerMap = plugin.viewerMap
     local function ReloadAnchor(anchor, systemIndex)
         if not anchor then return end
-        OrbitEngine.FrameAnchor:BreakAnchor(anchor, true)
         anchor:ClearAllPoints()
         plugin:LoadTrackedItems(anchor, systemIndex)
         if OrbitEngine.PositionManager then OrbitEngine.PositionManager:ClearFrame(anchor) end
         OrbitEngine.Frame:RestorePosition(anchor, plugin, systemIndex)
         plugin:ClearStaleTrackedSpatial(anchor, systemIndex)
+        plugin:RefreshTrackedAnchorState(anchor)
     end
-    local entry = viewerMap[TRACKED_INDEX]
-    if entry and entry.anchor then
-        ReloadAnchor(entry.anchor, TRACKED_INDEX)
+    if plugin.trackedAnchor then
+        ReloadAnchor(plugin.trackedAnchor, TRACKED_INDEX)
     end
     for _, childData in pairs(plugin.activeChildren) do
         if childData.frame then
             ReloadAnchor(childData.frame, childData.frame.systemIndex)
         end
     end
-    plugin:ReloadChargeBarsForSpec()
+    plugin:ReloadTrackedBarsForSpec()
 end
 function Updater:RegisterSpellCastWatcher(plugin)
     if plugin.spellCastWatcherSetup then return end
     plugin.spellCastWatcherSetup = true
 
-    local viewerMap = plugin.viewerMap
+    
     local frame = CreateFrame("Frame")
     frame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
     frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
@@ -461,7 +457,7 @@ function Updater:RegisterSpellCastWatcher(plugin)
             C_Timer.After(TALENT_REPARSE_DELAY, function()
                 if InCombatLockdown() then return end
                 self:ReparseActiveDurations(plugin)
-                plugin:RefreshChargeMaxCharges()
+                plugin:RefreshTrackedBarMaxCharges()
                 self:RefreshAllTrackedLayouts(plugin)
             end)
             return
@@ -490,15 +486,15 @@ function Updater:RegisterSpellCastWatcher(plugin)
                 end
             end
         end
-        local entry = viewerMap[TRACKED_INDEX]
-        if entry and entry.anchor then CheckAnchor(entry.anchor) end
+        
+        if plugin.trackedAnchor then CheckAnchor(plugin.trackedAnchor) end
         for _, childData in pairs(plugin.activeChildren) do
             if childData.frame then CheckAnchor(childData.frame) end
         end
     end)
 end
 
--- [ EQUIPMENT CHANGE HANDLER ]----------------------------------------------------------------------
+-- [ EQUIPMENT CHANGE HANDLER ] ------------------------------------------------
 function Updater:OnTrackedEquipmentChanged(plugin)
     local function UpdateAnchor(anchor, systemIndex)
         if not anchor then return end
@@ -511,8 +507,8 @@ function Updater:OnTrackedEquipmentChanged(plugin)
                     data.id = newItemId
                     data.useSpellId = select(2, GetItemSpell(newItemId)) or nil
                     local parseId = data.id
-                    data.activeDuration = Orbit.TrackedTooltipParser:ParseActiveDuration("item", parseId)
-                    data.cooldownDuration = Orbit.TrackedTooltipParser:ParseCooldownDuration("item", parseId)
+                    data.activeDuration = Orbit.TooltipParser:ParseActiveDuration("item", parseId)
+                    data.cooldownDuration = Orbit.TooltipParser:ParseCooldownDuration("item", parseId)
                     changed = true
                 elseif not newItemId then
                     tracked[key] = nil
@@ -525,22 +521,22 @@ function Updater:OnTrackedEquipmentChanged(plugin)
             plugin:LoadTrackedItems(anchor, systemIndex)
         end
     end
-    local viewerMap = plugin.viewerMap
-    local entry = viewerMap[TRACKED_INDEX]
-    if entry and entry.anchor then UpdateAnchor(entry.anchor, TRACKED_INDEX) end
+    
+    
+    if plugin.trackedAnchor then UpdateAnchor(plugin.trackedAnchor, TRACKED_INDEX) end
     for _, childData in pairs(plugin.activeChildren) do
         if childData.frame then UpdateAnchor(childData.frame, childData.frame.systemIndex) end
     end
 end
 
--- [ CURSOR WATCHER ]--------------------------------------------------------------------------------
+-- [ CURSOR WATCHER ] ----------------------------------------------------------
 function Updater:SetTrackedClickEnabled(plugin, enabled)
-    local viewerMap = plugin.viewerMap
-    local entry = viewerMap[TRACKED_INDEX]
-    if entry and entry.anchor then
-        entry.anchor.orbitClickThrough = not enabled
-        entry.anchor:EnableMouse(enabled)
-        for _, icon in pairs(entry.anchor.activeIcons or {}) do
+    
+    
+    if plugin.trackedAnchor then
+        plugin.trackedAnchor.orbitClickThrough = not enabled
+        plugin.trackedAnchor:EnableMouse(enabled)
+        for _, icon in pairs(plugin.trackedAnchor.activeIcons or {}) do
             icon.orbitClickThrough = not enabled
             icon:EnableMouse(enabled)
         end
@@ -561,7 +557,7 @@ function Updater:RegisterCursorWatcher(plugin)
     local lastCursor = nil
     local lastEditMode = nil
     local lastShift = nil
-    local viewerMap = plugin.viewerMap
+    
     local Layout = Orbit.TrackedLayout
     local accum = 0
     local frame = CreateFrame("Frame")
@@ -580,12 +576,12 @@ function Updater:RegisterCursorWatcher(plugin)
         if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
         local isDroppable = plugin.IsDraggingCooldownAbility and plugin.IsDraggingCooldownAbility()
         self:SetTrackedClickEnabled(plugin, isDroppable or isShift or isEditMode)
-        plugin:SetChargeClickEnabled(isDroppable or isShift or isEditMode)
+        plugin:SetTrackedBarClickEnabled(isDroppable or isShift or isEditMode)
         if Orbit.ViewerInjection then Orbit.ViewerInjection:SetClickEnabled(isDroppable or isShift or isEditMode) end
-        local entry = viewerMap[TRACKED_INDEX]
-        if entry and entry.anchor then
-            Layout:LayoutTrackedIcons(plugin, entry.anchor, TRACKED_INDEX, plugin.IsDraggingCooldownAbility)
-            if isDroppable then entry.anchor.DropHighlight:Show() else entry.anchor.DropHighlight:Hide() end
+        
+        if plugin.trackedAnchor then
+            Layout:LayoutTrackedIcons(plugin, plugin.trackedAnchor, TRACKED_INDEX, plugin.IsDraggingCooldownAbility)
+            if isDroppable then plugin.trackedAnchor.DropHighlight:Show() else plugin.trackedAnchor.DropHighlight:Hide() end
         end
         for _, childData in pairs(plugin.activeChildren) do
             if childData.frame then
@@ -593,8 +589,8 @@ function Updater:RegisterCursorWatcher(plugin)
                 if isDroppable then childData.frame.DropHighlight:Show() else childData.frame.DropHighlight:Hide() end
             end
         end
-        -- Charge bar cursor updates (merged from separate watcher)
+        -- Tracked bar cursor updates (merged from separate watcher)
         plugin:UpdateAllSeedVisibility()
-        plugin:RefreshAllChargeControlVisibility()
+        plugin:RefreshAllTrackedBarControlVisibility()
     end)
 end

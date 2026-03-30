@@ -3,11 +3,11 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 
--- [ COOLDOWN UTILS ]----------------------------------------------------------------------------------
+-- [ COOLDOWN UTILS ] ----------------------------------------------------------
 local CooldownUtils = {}
 local HORIZONTAL_EDGES = { LEFT = true, RIGHT = true }
 
--- [ INHERITED PARENT RESOLVER ]----------------------------------------------------------------------
+-- [ INHERITED PARENT RESOLVER ] -----------------------------------------------
 function CooldownUtils:GetInheritedParentIndex(anchorFrame, viewerMap)
     local anchors = OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors
     if not anchors then
@@ -34,7 +34,7 @@ function CooldownUtils:IsInheritingLayout(plugin, anchorFrame, viewerMap)
     return self:GetInheritedParentIndex(anchorFrame, viewerMap) ~= nil
 end
 
--- [ SKIN SETTINGS BUILDER ]---------------------------------------------------------------------------
+-- [ SKIN SETTINGS BUILDER ] ---------------------------------------------------
 function CooldownUtils:BuildSkinSettings(plugin, systemIndex, options)
     options = options or {}
     local inherited = options.inheritOverrides
@@ -64,7 +64,7 @@ function CooldownUtils:BuildSkinSettings(plugin, systemIndex, options)
     }
 end
 
--- [ TEXT COLOR APPLIER ]------------------------------------------------------------------------------
+-- [ TEXT COLOR APPLIER ] ------------------------------------------------------
 -- Delegates to OverrideUtils.ApplyTextColor (which handles overrides + global FontColorCurve fallback).
 -- remainingPercent: optional 0-1 value for progress-aware curve sampling (1=full, 0=expired)
 function CooldownUtils:ApplyTextColor(textElement, overrides, remainingPercent)
@@ -78,7 +78,7 @@ function CooldownUtils:ApplyTextColor(textElement, overrides, remainingPercent)
     end
 end
 
--- [ ICON DIMENSION CALCULATOR ]-----------------------------------------------------------------------
+-- [ ICON DIMENSION CALCULATOR ] -----------------------------------------------
 function CooldownUtils:CalculateIconDimensions(plugin, systemIndex, overrides)
     local iconSize = (overrides and overrides.size) or plugin:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
     local baseSize = Constants.Skin.DefaultIconSize or 40
@@ -103,7 +103,7 @@ function CooldownUtils:CalculateIconDimensions(plugin, systemIndex, overrides)
     return w, h, scaledSize
 end
 
--- [ SIMPLE TEXT APPLIER ]-----------------------------------------------------------------------------
+-- [ SIMPLE TEXT APPLIER ] -----------------------------------------------------
 function CooldownUtils:ApplySimpleTextStyle(plugin, systemIndex, textElement, componentKey, defaultAnchor, defaultOffsetX, defaultOffsetY)
     if not textElement then
         return
@@ -127,12 +127,12 @@ function CooldownUtils:ApplySimpleTextStyle(plugin, systemIndex, textElement, co
     end
 end
 
--- [ CHARGE COMPLETION TRACKING ]----------------------------------------------------------------------
+-- [ CHARGE COMPLETION TRACKING ] ----------------------------------------------
 function CooldownUtils:OnChargeCast(obj)
-    if not obj._trackedCharges or obj._trackedCharges <= 0 then
+    if not obj._charges or obj._charges <= 0 then
         return
     end
-    obj._trackedCharges = obj._trackedCharges - 1
+    obj._charges = obj._charges - 1
     if not obj._rechargeEndsAt and obj._knownRechargeDuration then
         obj._rechargeEndsAt = GetTime() + obj._knownRechargeDuration
     end
@@ -140,16 +140,16 @@ end
 
 function CooldownUtils:TrackChargeCompletion(obj)
     local duration = obj._knownRechargeDuration
-    if not obj._rechargeEndsAt or not obj._trackedCharges or not obj._maxCharges or not duration or duration <= 0 then
+    if not obj._rechargeEndsAt or not obj._charges or not obj._maxCharges or not duration or duration <= 0 then
         return
     end
-    if obj._trackedCharges >= obj._maxCharges then
+    if obj._charges >= obj._maxCharges then
         obj._rechargeEndsAt = nil
         return
     end
     while obj._rechargeEndsAt and GetTime() >= obj._rechargeEndsAt do
-        obj._trackedCharges = obj._trackedCharges + 1
-        if obj._trackedCharges < obj._maxCharges then
+        obj._charges = obj._charges + 1
+        if obj._charges < obj._maxCharges then
             obj._rechargeEndsAt = obj._rechargeEndsAt + duration
         else
             obj._rechargeEndsAt = nil
@@ -158,7 +158,7 @@ function CooldownUtils:TrackChargeCompletion(obj)
     end
 end
 
--- [ REUSABLE CHILD BUFFER ]--------------------------------------------------------------------------
+-- [ REUSABLE CHILD BUFFER ] ---------------------------------------------------
 local _sharedChildBuf = {}
 function CooldownUtils:PackChildren(...)
     wipe(_sharedChildBuf)

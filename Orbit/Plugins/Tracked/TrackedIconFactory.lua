@@ -4,15 +4,15 @@ local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ] ---------------------------------------------------------------
 local TRACKED_PLACEHOLDER_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local PLACEHOLDER_ALPHA = 0.5
 
--- [ MODULE ]----------------------------------------------------------------------------------------
+-- [ MODULE ] ------------------------------------------------------------------
 Orbit.TrackedIconFactory = {}
 local Factory = Orbit.TrackedIconFactory
 
--- [ PLACEHOLDER CREATION ]--------------------------------------------------------------------------
+-- [ PLACEHOLDER CREATION ] ----------------------------------------------------
 function Factory:CreateTrackedIcons(plugin, anchor, systemIndex)
     anchor.activeIcons = {}
     anchor.recyclePool = {}
@@ -35,7 +35,7 @@ function Factory:CreateTrackedIcons(plugin, anchor, systemIndex)
     end
 end
 
--- [ ICON POOLING ]----------------------------------------------------------------------------------
+-- [ ICON POOLING ] ------------------------------------------------------------
 function Factory:AcquireTrackedIcon(plugin, anchor, systemIndex)
     if #anchor.recyclePool > 0 then
         return table.remove(anchor.recyclePool)
@@ -52,7 +52,7 @@ function Factory:ReleaseTrackedIcons(anchor)
     anchor.activeIcons = {}
 end
 
--- [ ICON CREATION ]----------------------------------------------------------------------------------
+-- [ ICON CREATION ] -----------------------------------------------------------
 function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
     local factory = self
     local icon = CreateFrame("Frame", nil, anchor, "BackdropTemplate")
@@ -130,7 +130,7 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
     return icon
 end
 
--- [ ICON SKINNING ]---------------------------------------------------------------------------------
+-- [ ICON SKINNING ] -----------------------------------------------------------
 function Factory:ApplyTrackedIconSkin(plugin, icon, systemIndex, inheritOverrides)
     local skinSettings = CooldownUtils:BuildSkinSettings(plugin, systemIndex, { zoom = 8, inheritOverrides = inheritOverrides })
     if Orbit.Skin and Orbit.Skin.Icons then
@@ -148,7 +148,7 @@ function Factory:ApplyTrackedIconSkin(plugin, icon, systemIndex, inheritOverride
     self:ApplyTrackedTextSettings(plugin, icon, systemIndex)
 end
 
--- [ TEXT STYLING ]-----------------------------------------------------------------------------------
+-- [ TEXT STYLING ] ------------------------------------------------------------
 function Factory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
     CooldownUtils:ApplySimpleTextStyle(plugin, systemIndex, icon.CountText, "Stacks", "BOTTOMRIGHT", -2, 2)
 

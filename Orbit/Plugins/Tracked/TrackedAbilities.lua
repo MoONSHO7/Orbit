@@ -5,10 +5,10 @@ local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
 local ControlButtons = OrbitEngine.ControlButtonFactory
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local TRACKED_INDEX = Constants.Cooldown.SystemIndex.Tracked
-local TRACKED_CHILD_START = Constants.Cooldown.SystemIndex.Tracked_ChildStart
-local MAX_CHILD_FRAMES = Constants.Cooldown.MaxChildFrames
+-- [ CONSTANTS ] ---------------------------------------------------------------
+local TRACKED_INDEX = Constants.Tracked.SystemIndex.Tracked
+local TRACKED_CHILD_START = Constants.Tracked.SystemIndex.Tracked_ChildStart
+local MAX_CHILD_FRAMES = Constants.Tracked.MaxChildFrames
 local TRACKED_ADD_ICON = "Interface\\PaperDollInfoFrame\\Character-Plus"
 local TRACKED_REMOVE_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
 local DEFAULT_TRACKED_OFFSET_X = -30
@@ -17,31 +17,31 @@ local SEED_GLOW_ALPHA = 0.6
 local SEED_PLUS_RATIO = 0.4
 local EQUIPMENT_SLOTS = { 13, 14 }
 
--- [ TOOLTIP PARSER ALIASES ]------------------------------------------------------------------------
-local Parser = Orbit.TrackedTooltipParser
+-- [ TOOLTIP PARSER ALIASES ] --------------------------------------------------
+local Parser = Orbit.TooltipParser
 local ParseActiveDuration = function(t, id) return Parser:ParseActiveDuration(t, id) end
 local ParseCooldownDuration = function(t, id) return Parser:ParseCooldownDuration(t, id) end
 
--- [ SPELL OVERRIDE ALIAS ]--------------------------------------------------------------------------
+-- [ SPELL OVERRIDE ALIAS ] ----------------------------------------------------
 local function GetActiveSpellID(spellID) return FindSpellOverrideByID(spellID) end
 
--- [ PLUGIN REFERENCE ]------------------------------------------------------------------------------
-local Plugin = Orbit:GetPlugin("Orbit_CooldownViewer")
+-- [ PLUGIN REFERENCE ] --------------------------------------------------------
+local Plugin = Orbit:GetPlugin("Orbit_Tracked")
 if not Plugin then
-    error("TrackedAbilities.lua: Plugin 'Orbit_CooldownViewer' not found - ensure CooldownManager.lua loads first")
+    error("TrackedAbilities.lua: Plugin 'Orbit_Tracked' not found - ensure TrackedPlugin.lua loads first")
 end
 local function GetViewerMap() return Plugin.viewerMap end
 
--- [ SUB-MODULE REFERENCES ]-------------------------------------------------------------------------
+-- [ SUB-MODULE REFERENCES ] ---------------------------------------------------
 local IconFactory = Orbit.TrackedIconFactory
 local Layout = Orbit.TrackedLayout
 local Updater = Orbit.TrackedUpdater
 
--- [ CHILD FRAME MANAGEMENT ]------------------------------------------------------------------------
+-- [ CHILD FRAME MANAGEMENT ] --------------------------------------------------
 Plugin.childFramePool = Plugin.childFramePool or {}
 Plugin.activeChildren = Plugin.activeChildren or {}
 
--- [ COOLDOWN VALIDATION ]---------------------------------------------------------------------------
+-- [ COOLDOWN VALIDATION ] -----------------------------------------------------
 local function HasCooldown(itemType, id)
     if itemType == "spell" then
         local activeId = GetActiveSpellID(id)
@@ -82,7 +82,7 @@ end
 -- Expose for sub-modules
 Plugin.IsDraggingCooldownAbility = IsDraggingCooldownAbility
 
--- [ TRACKED ANCHOR ]--------------------------------------------------------------------------------
+-- [ TRACKED ANCHOR ] ----------------------------------------------------------
 function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     local plugin = self
     local frame = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
@@ -91,11 +91,11 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame:SetClampedToScreen(true)
     frame.systemIndex = systemIndex
     frame.editModeName = label
-    frame.isTrackedBar = true
+    frame.isTrackedIcon = true
     frame.editModeTooltipLines = { "Drag and drop items and spells that have cooldowns here." }
     frame:EnableMouse(false)
     frame.orbitClickThrough = true
-    frame.anchorOptions = { horizontal = false, vertical = false, syncScale = true, syncDimensions = false, useRowDimension = true, mergeBorders = true }
+    frame.anchorOptions = { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true, mergeBorders = true }
     frame.orbitChainSync = true
     frame.orbitCursorReveal = true
     frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = DEFAULT_TRACKED_OFFSET_X, y = 0 }
@@ -162,7 +162,17 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     return frame
 end
 
--- [ FRAME CONTROL BUTTONS ]-------------------------------------------------------------------------
+function Plugin:SetupTrackedFrame()
+    if self.trackedAnchor then return end
+    self.trackedAnchor = self:CreateTrackedAnchor("OrbitTrackedIcons", TRACKED_INDEX, "Tracked Icons")
+    GetViewerMap()[TRACKED_INDEX] = { anchor = self.trackedAnchor }
+    self:StartTrackedUpdateTicker()
+    self:RegisterSpellCastWatcher()
+    self:RegisterCursorWatcher()
+    self:RestoreChildFrames()
+end
+
+-- [ FRAME CONTROL BUTTONS ] ---------------------------------------------------
 function Plugin:CreateFrameControlButtons(anchor)
     local plugin = self
     ControlButtons:Create(anchor, {
@@ -195,12 +205,24 @@ function Plugin:SetupEditModeHooks()
     local plugin = self
     local function RefreshAll()
         plugin:RefreshAllControlButtonVisibility()
-        plugin:RefreshAllChargeControlVisibility()
+        plugin:RefreshAllTrackedBarControlVisibility()
         plugin:RefreshAllTrackedLayouts()
         plugin:UpdateAllSeedVisibility()
-        plugin:ApplyChargeBarSettings(plugin.chargeBarAnchor)
-        for _, childData in pairs(plugin.activeChargeChildren or {}) do
-            if childData.frame then plugin:ApplyChargeBarSettings(childData.frame) end
+        plugin:ApplyTrackedSettings(plugin.trackedAnchor)
+        OrbitEngine.Frame:UpdateSelectionVisuals(plugin.trackedAnchor)
+        for _, childData in pairs(plugin.activeChildren or {}) do
+            if childData.frame then 
+                plugin:ApplyTrackedSettings(childData.frame) 
+                OrbitEngine.Frame:UpdateSelectionVisuals(childData.frame)
+            end
+        end
+        plugin:ApplyTrackedBarSettings(plugin.TrackedBarAnchor)
+        OrbitEngine.Frame:UpdateSelectionVisuals(plugin.TrackedBarAnchor)
+        for _, childData in pairs(plugin.activeTrackedBarChildren or {}) do
+            if childData.frame then 
+                plugin:ApplyTrackedBarSettings(childData.frame) 
+                OrbitEngine.Frame:UpdateSelectionVisuals(childData.frame)
+            end
         end
     end
     if EditModeManagerFrame then
@@ -209,7 +231,7 @@ function Plugin:SetupEditModeHooks()
     end
 end
 
--- [ CHILD FRAME SPAWN/DESPAWN ]---------------------------------------------------------------------
+-- [ CHILD FRAME SPAWN/DESPAWN ] -----------------------------------------------
 function Plugin:SpawnChildFrame()
     local count = 0
     for _, _ in pairs(self.activeChildren) do count = count + 1 end
@@ -311,7 +333,7 @@ function Plugin:ClearStaleTrackedSpatial(frame, sysIndex)
     -- Position clearing was removed so empty frames don't lose their user-positioned spots across reloads.
 end
 
--- [ DRAG AND DROP ]----------------------------------------------------------------------------------
+-- [ DRAG AND DROP ] -----------------------------------------------------------
 function Plugin:OnEdgeAddButtonClick(anchor, x, y)
     local itemType, actualId = ResolveCursorInfo()
     if not itemType then return end
@@ -334,7 +356,7 @@ function Plugin:OnTrackedIconReceiveDrag(icon)
     self:LoadTrackedItems(icon:GetParent(), icon.systemIndex)
 end
 
--- [ DATA MANAGEMENT ]--------------------------------------------------------------------------------
+-- [ DATA MANAGEMENT ] ---------------------------------------------------------
 function Plugin:ClearTrackedIcon(icon)
     icon.trackedType = nil
     icon.trackedId = nil
@@ -399,7 +421,7 @@ end
 
 -- Canvas preview: see TrackedCanvasPreview.lua
 
--- [ DELEGATED METHODS ]------------------------------------------------------------------------------
+-- [ DELEGATED METHODS ] -------------------------------------------------------
 function Plugin:LayoutTrackedIcons(anchor, systemIndex) Layout:LayoutTrackedIcons(self, anchor, systemIndex, IsDraggingCooldownAbility) end
 function Plugin:ApplyTrackedIconSkin(icon, systemIndex, overrides) IconFactory:ApplyTrackedIconSkin(self, icon, systemIndex, overrides) end
 function Plugin:StartTrackedUpdateTicker() Updater:StartTrackedUpdateTicker(self) end
@@ -414,7 +436,17 @@ function Plugin:StopActiveGlow(icon) Updater:StopActiveGlow(icon) end
 function Plugin:SetTrackedClickEnabled(enabled) Updater:SetTrackedClickEnabled(self, enabled) end
 function Plugin:UpdateTrackedIconsDisplay(anchor) Updater:UpdateTrackedIconsDisplay(self, anchor) end
 
--- [ SETTINGS ]----------------------------------------------------------------------------------------
+-- [ ANCHOR STATE ] ------------------------------------------------------------
+function Plugin:RefreshTrackedAnchorState(anchor)
+    if not anchor then return end
+    local hasUsable = false
+    for _, data in pairs(anchor.gridItems or {}) do
+        if Layout.IsGridItemUsable(data) then hasUsable = true; break end
+    end
+    OrbitEngine.FrameAnchor:SetFrameDisabled(anchor, not hasUsable)
+end
+
+-- [ SETTINGS ] ----------------------------------------------------------------
 function Plugin:ApplyTrackedSettings(anchor)
     if not anchor then return end
     if InCombatLockdown() then return end
@@ -427,6 +459,7 @@ function Plugin:ApplyTrackedSettings(anchor)
     OrbitEngine.Frame:RestorePosition(anchor, self, systemIndex)
     self:LoadTrackedItems(anchor, systemIndex)
     Layout:LayoutTrackedIcons(self, anchor, systemIndex, IsDraggingCooldownAbility)
+    self:RefreshTrackedAnchorState(anchor)
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(anchor, self, systemIndex, "OutOfCombatFade", enableHover) end
 end

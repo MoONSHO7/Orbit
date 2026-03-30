@@ -3,12 +3,12 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ] ---------------------------------------------------------------
 local DEFAULT_WIDTH = 120
 local DEFAULT_HEIGHT = 12
 local RECHARGE_DIM = 0.35
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
+-- [ HELPERS ] -----------------------------------------------------------------
 local function GetBarColor(plugin, sysIndex)
     local curveData = plugin:GetSetting(sysIndex, "BarColorCurve")
     if curveData then
@@ -25,9 +25,9 @@ local function GetBgColor()
     return c or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
 end
 
--- [ MODULE ]----------------------------------------------------------------------------------------
-Orbit.ChargeBarCanvasPreview = {}
-local Preview = Orbit.ChargeBarCanvasPreview
+-- [ MODULE ] ------------------------------------------------------------------
+Orbit.TrackedBarCanvasPreview = {}
+local Preview = Orbit.TrackedBarCanvasPreview
 
 function Preview:Setup(plugin, frame, sysIndex)
     local LSM = LibStub("LibSharedMedia-3.0", true)
@@ -50,6 +50,8 @@ function Preview:Setup(plugin, frame, sysIndex)
         preview.sourceWidth = width
         preview.sourceHeight = height
         preview.previewScale = 1
+        preview.systemIndex = sysIndex
+        preview.isTrackedBarFrame = true
         preview.components = {}
 
         -- Background

@@ -1,4 +1,4 @@
--- [ TRACKED CANVAS PREVIEW ]------------------------------------------------------------------------
+-- [ TRACKED CANVAS PREVIEW ] --------------------------------------------------
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
@@ -6,7 +6,7 @@ local CooldownUtils = OrbitEngine.CooldownUtils
 
 local TRACKED_PLACEHOLDER_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 
-local Plugin = Orbit:GetPlugin("Orbit_CooldownViewer")
+local Plugin = Orbit:GetPlugin("Orbit_Tracked")
 if not Plugin then return end
 
 function Plugin:SetupTrackedCanvasPreview(anchor, systemIndex)
@@ -28,6 +28,8 @@ function Plugin:SetupTrackedCanvasPreview(anchor, systemIndex)
         end
 
         local preview = OrbitEngine.IconCanvasPreview:Create(self, options.parent or UIParent, w, h, iconTexture)
+        preview.systemIndex = systemIndex
+        preview.isTrackedIcon = true
         local savedPositions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
         local globalFontName = Orbit.db.GlobalSettings.Font
         local fontPath = LSM:Fetch("font", globalFontName) or "Fonts\\FRIZQT__.TTF"
