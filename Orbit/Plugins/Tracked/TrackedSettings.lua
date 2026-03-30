@@ -80,33 +80,51 @@ function Plugin:AddSettings(dialog, systemFrame)
     local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
 
     if currentTab == "Layout" then
-        if isAnchored then
-            table.insert(schema.controls, { type = "label", text = "Layout settings inherited from anchor parent." })
-        else
-            table.insert(schema.controls, {
-                type = "dropdown", key = "aspectRatio", label = "Icon Aspect Ratio",
-                options = {
-                    { text = "Square (1:1)", value = "1:1" }, { text = "Landscape (16:9)", value = "16:9" },
-                    { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
-                },
-                default = "1:1",
-            })
-            table.insert(schema.controls, {
-                type = "slider", key = "IconSize", label = "Scale",
-                min = 50, max = 200, step = 1,
-                formatter = function(v) return v .. "%" end,
-                default = Constants.Cooldown.DefaultIconSize,
-                onChange = function(val)
-                    self:SetSetting(systemIndex, "IconSize", val)
-                    self:ApplySettings(systemFrame)
-                end,
-            })
-            table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = 0, max = 15, step = 1, default = Constants.Cooldown.DefaultPadding })
-        end
-        table.insert(schema.controls, { type = "checkbox", key = "ShowActiveDuration", label = "Active Duration", default = true })
+        table.insert(schema.controls, {
+            type = "dropdown", key = "aspectRatio", label = "Icon Aspect Ratio",
+            options = {
+                { text = "Square (1:1)", value = "1:1" }, { text = "Landscape (16:9)", value = "16:9" },
+                { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
+            },
+            default = "1:1",
+            onChange = function(val)
+                self:SetSetting(systemIndex, "aspectRatio", val)
+                self:ApplySettings(frame)
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "slider", key = "IconSize", label = "Scale",
+            min = 50, max = 200, step = 1,
+            formatter = function(v) return v .. "%" end,
+            default = Constants.Cooldown.DefaultIconSize,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "IconSize", val)
+                self:ApplySettings(frame)
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "slider", key = "IconPadding", label = "Icon Padding", min = 0, max = 15, step = 1, default = Constants.Cooldown.DefaultPadding,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "IconPadding", val)
+                self:ApplySettings(frame)
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "ShowActiveDuration", label = "Active Duration", default = true,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "ShowActiveDuration", val)
+                self:ApplySettings(frame)
+            end,
+        })
 
     elseif currentTab == "Glow" then
-        table.insert(schema.controls, { type = "checkbox", key = "ShowGCDSwipe", label = "Show GCD Swipe", default = true })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "ShowGCDSwipe", label = "Show GCD Swipe", default = true,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "ShowGCDSwipe", val)
+                self:ApplySettings(frame)
+            end,
+        })
         table.insert(schema.controls, {
             type = "checkbox", key = "AssistedHighlight", label = "Assisted Highlight", default = false,
             onChange = function(val)
@@ -124,6 +142,10 @@ function Plugin:AddSettings(dialog, systemFrame)
         table.insert(schema.controls, {
             type = "dropdown", key = "ActiveGlowType", label = "Active Glow",
             options = GLOW_OPTIONS, default = GlowType.None,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "ActiveGlowType", val)
+                self:ApplySettings(frame)
+            end,
         })
         
     elseif currentTab == "Colors" then
@@ -131,14 +153,26 @@ function Plugin:AddSettings(dialog, systemFrame)
             key = "ActiveSwipeColorCurve", label = "Active Swipe",
             default = { pins = { { position = 0, color = { r = 1, g = 0.95, b = 0.57, a = 0.7 } } } },
             singleColor = true,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "ActiveSwipeColorCurve", val)
+                self:ApplySettings(frame)
+            end,
         })
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "CooldownSwipeColorCurve", label = "Cooldown Swipe",
             default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
             singleColor = true,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "CooldownSwipeColorCurve", val)
+                self:ApplySettings(frame)
+            end,
         })
         SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
             key = "ActiveGlowColor", label = "Active Glow Color", default = { r = 0.3, g = 0.8, b = 1, a = 1 },
+            onChange = function(val)
+                self:SetSetting(systemIndex, "ActiveGlowColor", val)
+                self:ApplySettings(frame)
+            end,
         })
     end
 

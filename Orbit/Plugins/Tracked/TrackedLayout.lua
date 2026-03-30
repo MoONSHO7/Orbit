@@ -114,16 +114,8 @@ function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
     local IconFactory = Orbit.TrackedIconFactory
     local Updater = Orbit.TrackedUpdater
     local viewerMap = plugin.viewerMap
-    local parentIndex = CooldownUtils:GetInheritedParentIndex(anchor, viewerMap)
-    local overrides = parentIndex
-            and {
-                aspectRatio = plugin:GetSetting(parentIndex, "aspectRatio"),
-                size = plugin:GetSetting(parentIndex, "IconSize"),
-                padding = plugin:GetSetting(parentIndex, "IconPadding"),
-            }
-        or nil
-    local iconWidth, iconHeight = CooldownUtils:CalculateIconDimensions(plugin, systemIndex, overrides)
-    local rawPadding = (overrides and overrides.padding) or plugin:GetSetting(systemIndex, "IconPadding") or Constants.Cooldown.DefaultPadding
+    local iconWidth, iconHeight = CooldownUtils:CalculateIconDimensions(plugin, systemIndex)
+    local rawPadding = plugin:GetSetting(systemIndex, "IconPadding") or Constants.Cooldown.DefaultPadding
     local Pixel = OrbitEngine.Pixel
     local padding = Pixel and Pixel:Multiple(rawPadding) or rawPadding
 
@@ -229,7 +221,7 @@ function Layout:LayoutTrackedIcons(plugin, anchor, systemIndex, isDraggingFn)
         end
 
         Updater:UpdateTrackedIcon(plugin, icon)
-        IconFactory:ApplyTrackedIconSkin(plugin, icon, systemIndex, overrides)
+        IconFactory:ApplyTrackedIconSkin(plugin, icon, systemIndex)
 
         icon:SetSize(iconWidth, iconHeight)
         icon.Icon:ClearAllPoints()

@@ -10,6 +10,7 @@ local CCE = Engine.ColorCurve
 
 local CC = Engine.ClassColor
 local nativeCurveCache = setmetatable({}, { __mode = "v" })
+local unitCurveCache = setmetatable({}, { __mode = "k" })
 
 -- [ SORTED PIN CACHE ]------------------------------------------------------------------------------
 local function GetSortedPins(curveData)
@@ -77,10 +78,19 @@ end
 function CCE:ToNativeColorCurveForUnit(curveData, unit)
     if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
     if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end
+    local _, classFile = UnitClass(unit)
+    if classFile then
+        local classCache = unitCurveCache[curveData]
+        if classCache and classCache[classFile] then return classCache[classFile] end
+    end
     local curve = C_CurveUtil.CreateColorCurve()
     for _, pin in ipairs(curveData.pins) do
         local color = CC:ResolveClassColorPinForUnit(pin, unit)
         curve:AddPoint(pin.position, CreateColor(color.r, color.g, color.b, color.a or 1))
+    end
+    if classFile then
+        if not unitCurveCache[curveData] then unitCurveCache[curveData] = {} end
+        unitCurveCache[curveData][classFile] = curve
     end
     return curve
 end
@@ -113,6 +123,7 @@ end
 function CCE:InvalidateNativeCurveCache(curveData)
     if curveData then
         nativeCurveCache[curveData] = nil
+        unitCurveCache[curveData] = nil
         curveData._sorted = nil
     end
 end

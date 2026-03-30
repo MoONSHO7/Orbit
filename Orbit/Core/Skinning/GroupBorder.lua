@@ -17,7 +17,6 @@ function Skin:UpdateGroupBorder(rootFrame)
     local FrameAnchor = Orbit.Engine.FrameAnchor
     local GetFrameOptions = FrameAnchor.GetFrameOptions
 
-    local topLeft, bottomRight = rootFrame, rootFrame
     local allFrames = { rootFrame }
     local hasMerge = false
 
@@ -36,8 +35,6 @@ function Skin:UpdateGroupBorder(rootFrame)
                 if merged then
                     hasMerge = true
                     allFrames[#allFrames + 1] = child
-                    if a.edge == "BOTTOM" or a.edge == "RIGHT" then bottomRight = child end
-                    if a.edge == "TOP" or a.edge == "LEFT" then topLeft = child end
                     walk(child)
                 end
             end
@@ -148,6 +145,22 @@ function Skin:UpdateGroupBorder(rootFrame)
             if b > maxY then maxY = b end
         end
     end
+
+    -- Identify true extremum frames for native layout anchoring (avoids SetSize desync during anims)
+    local tlFrame, brFrame
+    for i = 1, #allFrames do
+        local frame = allFrames[i]
+        local pos = positions[frame]
+        if pos then
+            local r = pos.x + frame:GetWidth()
+            local b = pos.y + frame:GetHeight()
+            if math.abs(pos.x - minX) < 0.5 and math.abs(pos.y - minY) < 0.5 then tlFrame = frame end
+            if math.abs(r - maxX) < 0.5 and math.abs(b - maxY) < 0.5 then brFrame = frame end
+        end
+    end
+    
+    local canNativeAnchor = (tlFrame ~= nil and brFrame ~= nil)
+
     local totalW = maxX - minX
     local totalH = maxY - minY
     local offsetX = -minX
@@ -163,8 +176,15 @@ function Skin:UpdateGroupBorder(rootFrame)
         if borderSize <= 0 then overlay:Hide(); return end
         local pixelSize = Engine.Pixel:Multiple(borderSize, scale)
         overlay:ClearAllPoints()
-        overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", -offsetX, offsetY)
-        overlay:SetSize(totalW, totalH)
+        
+        if canNativeAnchor then
+            overlay:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
+            overlay:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", 0, 0)
+        else
+            overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", -offsetX, offsetY)
+            overlay:SetSize(totalW, totalH)
+        end
+        
         overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
         local colorKey = isIconStyle and "IconBorderColor" or "BorderColor"
         local raw = gs and gs[colorKey]
@@ -188,9 +208,17 @@ function Skin:UpdateGroupBorder(rootFrame)
         local adjEdge = edgeSize / ownScale
         local adjOffset = borderOffset / ownScale
         local outset = Engine.Pixel:Snap((adjEdge / 2) + adjOffset, grpScale)
+        
         overlay:ClearAllPoints()
-        overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", -outset - offsetX, outset + offsetY)
-        overlay:SetSize(Engine.Pixel:Snap(totalW + 2 * outset, grpScale), Engine.Pixel:Snap(totalH + 2 * outset, grpScale))
+        
+        if canNativeAnchor then
+            overlay:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", -outset, outset)
+            overlay:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", outset, -outset)
+        else
+            overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", -outset - offsetX, outset + offsetY)
+            overlay:SetSize(Engine.Pixel:Snap(totalW + 2 * outset, grpScale), Engine.Pixel:Snap(totalH + 2 * outset, grpScale))
+        end
+        
         overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = adjEdge })
         overlay:SetBackdropBorderColor(1, 1, 1, 1)
     end

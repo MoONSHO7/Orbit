@@ -423,7 +423,7 @@ end
 
 -- [ DELEGATED METHODS ] -------------------------------------------------------
 function Plugin:LayoutTrackedIcons(anchor, systemIndex) Layout:LayoutTrackedIcons(self, anchor, systemIndex, IsDraggingCooldownAbility) end
-function Plugin:ApplyTrackedIconSkin(icon, systemIndex, overrides) IconFactory:ApplyTrackedIconSkin(self, icon, systemIndex, overrides) end
+function Plugin:ApplyTrackedIconSkin(icon, systemIndex) IconFactory:ApplyTrackedIconSkin(self, icon, systemIndex) end
 function Plugin:StartTrackedUpdateTicker() Updater:StartTrackedUpdateTicker(self) end
 function Plugin:RegisterSpellCastWatcher() Updater:RegisterSpellCastWatcher(self) end
 function Plugin:RegisterCursorWatcher() Updater:RegisterCursorWatcher(self) end

@@ -11,6 +11,49 @@ local Constants = Orbit.Constants
 local ORBIT_OVERLAY_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
 LSM:Register("statusbar", "Orbit Gradient", ORBIT_OVERLAY_PATH)
 
+-- [ LSM BORDER RECONCILIATION ]--------------------------------------------------------------------
+local lsmPendingRefresh
+local function RefreshBordersIfNeeded()
+    if lsmPendingRefresh then return end
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    if not gs then return end
+    local needsRefresh = false
+    if gs.BorderStyle and gs.BorderStyle ~= "flat" then
+        local style = Skin:ResolveStyle("BorderStyle")
+        if not style then needsRefresh = true end
+    end
+    if gs.IconBorderStyle and gs.IconBorderStyle ~= "flat" then
+        local style = Skin:ResolveStyle("IconBorderStyle")
+        if not style then needsRefresh = true end
+    end
+    if not needsRefresh then return end
+    lsmPendingRefresh = true
+    C_Timer.After(0.2, function()
+        lsmPendingRefresh = nil
+        for _, plugin in ipairs(Engine.systems) do
+            if plugin.ApplyAll then plugin:ApplyAll()
+            elseif plugin.ApplySettings then plugin:ApplySettings() end
+        end
+        Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
+    end)
+end
+
+LSM.RegisterCallback(Orbit, "LibSharedMedia_Registered", function(_, mediaType, key)
+    if mediaType ~= "border" then return end
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    if not gs then return end
+    if (gs.BorderStyle == "lsm:" .. key) or (gs.IconBorderStyle == "lsm:" .. key) then
+        RefreshBordersIfNeeded()
+    end
+end)
+
+-- Deferred one-shot: all addons are loaded by PLAYER_ENTERING_WORLD; reconcile if borders are stale.
+C_Timer.After(0, function()
+    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+        C_Timer.After(1, RefreshBordersIfNeeded)
+    end)
+end)
+
 -- [ UTILITIES ]-------------------------------------------------------------------------------------
 
 function Skin:GetPixelScale()

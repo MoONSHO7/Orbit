@@ -131,8 +131,8 @@ function Factory:CreateTrackedIcon(plugin, anchor, systemIndex, x, y)
 end
 
 -- [ ICON SKINNING ] -----------------------------------------------------------
-function Factory:ApplyTrackedIconSkin(plugin, icon, systemIndex, inheritOverrides)
-    local skinSettings = CooldownUtils:BuildSkinSettings(plugin, systemIndex, { zoom = 8, inheritOverrides = inheritOverrides })
+function Factory:ApplyTrackedIconSkin(plugin, icon, systemIndex)
+    local skinSettings = CooldownUtils:BuildSkinSettings(plugin, systemIndex, { zoom = 8 })
     if Orbit.Skin and Orbit.Skin.Icons then
         Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
     end
