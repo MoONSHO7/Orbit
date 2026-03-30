@@ -28,6 +28,29 @@ local BLIZZARD_MINIMAP_CHILDREN = {
     ["ExpansionLandingPageMinimapButton"] = true,
 }
 
+-- Name-prefix patterns for map pin/POI overlay frames that get parented to Minimap
+-- but are not addon buttons (HandyNotes, TomTom, Questie, GatherMate, etc.).
+local PIN_FRAME_PATTERNS = {
+    "^HandyNotes",
+    "^TomTom",
+    "^HereBeDragons",
+    "^Questie",
+    "^GatherMate",
+    "^pin",
+    "^Pin",
+}
+
+local function IsPinFrame(name)
+    if not name then return false end
+    for _, pat in ipairs(PIN_FRAME_PATTERNS) do
+        if name:match(pat) then return true end
+    end
+    return false
+end
+
+-- Minimum button width to be considered a real addon button (map pins are typically <20px).
+local MIN_BUTTON_SIZE = 20
+
 -- [ COMPARTMENT BUTTON ]----------------------------------------------------------------------------
 
 function Plugin:CreateCompartmentButton()
@@ -337,39 +360,53 @@ function Plugin:CollectAddonButtons()
         end
     end
 
-    -- 2) Buttons parented directly to Minimap that are NOT LibDBIcon (legacy addons)
+    -- 2) Children parented directly to Minimap that are NOT LibDBIcon (legacy addons).
+    --    Also handles the edge case where LibDBIcon uses a Frame instead of a Button.
     local minimap = Minimap
     if minimap then
         for _, child in ipairs({ minimap:GetChildren() }) do
-            if not seen[child] and child:IsObjectType("Button") then
+            if not seen[child] then
                 local frameName = child:GetName()
-                local isBlizzard = false
-                if frameName then
-                    isBlizzard = BLIZZARD_MINIMAP_CHILDREN[frameName] or frameName:find("^Minimap") or frameName:find("^OrbitMinimap")
-                end
-                if not isBlizzard and child:IsShown() then
-                    local icon = nil
-                    local btnIcon = child.icon or child.Icon
-                    if btnIcon and btnIcon.GetTexture then
-                        icon = btnIcon:GetTexture()
-                    elseif child.GetNormalTexture and child:GetNormalTexture() then
-                        icon = child:GetNormalTexture():GetTexture()
+                local isButton = child:IsObjectType("Button")
+                local isLibDBFrame = (not isButton) and frameName and frameName:match("^LibDBIcon10_")
+
+                if isButton or isLibDBFrame then
+                    -- Skip Blizzard structural frames
+                    local isBlizzard = false
+                    if frameName then
+                        isBlizzard = BLIZZARD_MINIMAP_CHILDREN[frameName]
+                            or frameName:find("^Minimap") ~= nil
+                            or frameName:find("^OrbitMinimap") ~= nil
                     end
-                    local displayName = frameName or tostring(child)
-                    displayName = displayName:gsub("^LibDBIcon10_", "")
-                    displayName = displayName:gsub("MinimapButton", "")
-                    displayName = displayName:gsub("Minimap", "")
-                    displayName = displayName:gsub("Button$", "")
-                    if displayName == "" then
-                        displayName = frameName or "Unknown"
+
+                    -- Skip map pin / POI overlay frames (HandyNotes, TomTom, Questie, etc.)
+                    local isPin = IsPinFrame(frameName)
+
+                    -- Skip frames smaller than a real button (map pins are typically <20px)
+                    local tooSmall = (child:GetWidth() or 0) < MIN_BUTTON_SIZE
+
+                    if not isBlizzard and not isPin and not tooSmall then
+                        local icon = nil
+                        local btnIcon = child.icon or child.Icon
+                        if btnIcon and btnIcon.GetTexture then
+                            icon = btnIcon:GetTexture()
+                        elseif child.GetNormalTexture and child:GetNormalTexture() then
+                            icon = child:GetNormalTexture():GetTexture()
+                        end
+                        local displayName = frameName or tostring(child)
+                        displayName = displayName:gsub("^LibDBIcon10_", "")
+                        displayName = displayName:gsub("MinimapButton", "")
+                        displayName = displayName:gsub("Minimap", "")
+                        displayName = displayName:gsub("Button$", "")
+                        if displayName == "" then displayName = frameName or "Unknown" end
+                        collected[#collected + 1] = {
+                            name = displayName,
+                            button = child,
+                            icon = icon,
+                            source = "minimap_child",
+                        }
+                        seen[child] = true
                     end
-                    collected[#collected + 1] = {
-                        name = displayName,
-                        button = child,
-                        icon = icon,
-                        source = "minimap_child",
-                    }
-                    seen[child] = true
                 end
             end
         end
@@ -465,9 +502,25 @@ function Plugin:ApplyAddonCompartment()
             frame._compartmentHoverHooked = true
         end
 
-        -- Update count text
-        local count = self._collectedButtons and #self._collectedButtons or 0
-        btn.icon:SetText(count > 0 and tostring(count) or "+")
+        -- Re-collect when new addons attach buttons after the initial scan.
+        if not self._addonLoadedHook then
+            local f = CreateFrame("Frame")
+            f:RegisterEvent("ADDON_LOADED")
+            local pending = false
+            f:SetScript("OnEvent", function()
+                if pending then return end
+                pending = true
+                C_Timer.After(0.1, function()
+                    pending = false
+                    if self._compartmentActive then
+                        self:RestoreCollectedButtons()
+                        self:CollectAddonButtons()
+                        self:HideCollectedButtons()
+                    end
+                end)
+            end)
+            self._addonLoadedHook = f
+        end
     else
         self._compartmentActive = false
         self:RestoreCollectedButtons()
