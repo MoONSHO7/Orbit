@@ -382,7 +382,12 @@ function Plugin:ApplyTextSettings(button, systemIndex) ABText:Apply(self, button
 
 function Plugin:IsComponentDisabled(componentKey, systemIndex)
     systemIndex = systemIndex or 1
-    local disabled = self:GetSetting(systemIndex, "DisabledComponents") or {}
+    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+    local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == self
+    local disabled
+    if txnActive then disabled = Txn:GetDisabledComponents()
+    elseif self:GetSetting(systemIndex, "UseGlobalTextStyle") ~= false then disabled = self:GetSetting(1, "GlobalDisabledComponents") or {}
+    else disabled = self:GetSetting(systemIndex, "DisabledComponents") or {} end
     for _, key in ipairs(disabled) do if key == componentKey then return true end end
     return false
 end
