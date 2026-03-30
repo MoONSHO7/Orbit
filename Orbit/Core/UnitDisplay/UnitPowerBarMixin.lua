@@ -189,11 +189,11 @@ function Mixin:UpdateVisibility()
     if enabled then
         Frame:SetAttribute("unit", unit)
         RegisterUnitWatch(Frame)
-        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
+        OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, false)
     else
         UnregisterUnitWatch(Frame)
         Orbit:SafeAction(function() Frame:Hide() end)
-        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
+        OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, true)
     end
 end
 

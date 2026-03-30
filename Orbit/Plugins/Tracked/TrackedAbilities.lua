@@ -443,7 +443,7 @@ function Plugin:RefreshTrackedAnchorState(anchor)
     for _, data in pairs(anchor.gridItems or {}) do
         if Layout.IsGridItemUsable(data) then hasUsable = true; break end
     end
-    OrbitEngine.FrameAnchor:SetFrameDisabled(anchor, not hasUsable)
+    OrbitEngine.FrameAnchor:SetFrameVirtual(anchor, not hasUsable)
 end
 
 -- [ SETTINGS ] ----------------------------------------------------------------

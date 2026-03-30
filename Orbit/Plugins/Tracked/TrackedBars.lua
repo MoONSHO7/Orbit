@@ -367,6 +367,7 @@ function Plugin:DespawnTrackedBarChild(frame)
     local systemIndex = frame.systemIndex
 
     OrbitEngine.FrameAnchor:BreakAnchor(frame, true)
+    -- TODO: Phase 3 — replace RepairAllChains with targeted ReconcileChain(root)
     OrbitEngine.FrameAnchor:RepairAllChains()
     ScrubTrackedBarFrame(frame)
     frame:Hide()
@@ -434,7 +435,6 @@ function Plugin:ClearTrackedBarFrame(frame)
     self:UpdateSeedVisibility(frame)
     self:UpdateAllTrackedBarControlColors()
     UpdateTrackedBarLabel(frame)
-    if OrbitEngine.FrameAnchor then OrbitEngine.FrameAnchor:RepairAllChains() end
 end
 
 -- [ CLICK-THROUGH TOGGLE ] ----------------------------------------------------
@@ -454,7 +454,7 @@ end
 -- [ ANCHOR STATE ] ------------------------------------------------------------
 function Plugin:RefreshTrackedBarAnchorState(frame)
     if not frame then return end
-    OrbitEngine.FrameAnchor:SetFrameDisabled(frame, not frame.TrackedBarSpellId)
+    OrbitEngine.FrameAnchor:SetFrameVirtual(frame, not frame.TrackedBarSpellId)
 end
 
 -- [ SETTINGS APPLICATION ] ----------------------------------------------------
@@ -641,7 +641,7 @@ function Plugin:ReloadTrackedBarsForSpec()
         if childData.frame then
             if self.viewerMap then self.viewerMap[childData.systemIndex] = nil end
             if OrbitEngine.FrameAnchor then OrbitEngine.FrameAnchor:BreakAnchor(childData.frame, true) end
-            OrbitEngine.FrameAnchor:SetFrameDisabled(childData.frame, true)
+            OrbitEngine.FrameAnchor:SetFrameVirtual(childData.frame, true)
             ScrubTrackedBarFrame(childData.frame)
             childData.frame:Hide()
             childData.frame:ClearAllPoints()

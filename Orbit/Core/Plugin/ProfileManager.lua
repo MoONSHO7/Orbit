@@ -328,6 +328,7 @@ function Orbit.Profile:SetActiveProfile(name)
             for _, plugin in ipairs(Orbit.Engine.systems) do
                 if plugin.ApplySettings then pcall(function() plugin:ApplySettings(nil) end) end
             end
+            -- TODO: Phase 3 — replace RepairAllChains with targeted ReconcileChain
             if Orbit.Engine.FrameAnchor then
                 Orbit.Engine.FrameAnchor:RepairAllChains()
             end

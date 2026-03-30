@@ -889,12 +889,12 @@ function Mixin:UpdateVisibility()
     if isEditMode then
         if not InCombatLockdown() then UnregisterUnitWatch(Frame) end
         if enabled then
-            OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
+            OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, false)
             if not UnitExists(cfg.unit) then Frame.unit = "player" end
             Orbit:SafeAction(function() Frame:Show(); Frame:SetAlpha(1) end)
             self:ShowPreviewAuras()
         else
-            OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
+            OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, true)
             Orbit:SafeAction(function() Frame:Hide() end)
         end
         return
@@ -910,11 +910,11 @@ function Mixin:UpdateVisibility()
         if not InCombatLockdown() then
             UnregisterUnitWatch(Frame)
             Frame:Hide()
-            OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
+            OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, true)
         end
     end
 
-    if enabled then OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false) end
+    if enabled then OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, false) end
 end
 
 -- [ PREVIEW ]---------------------------------------------------------------------------------------

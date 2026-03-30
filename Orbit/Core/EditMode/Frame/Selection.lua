@@ -418,6 +418,7 @@ function Selection:OnEditModeEnter()
             if Engine.EditModeTour then Engine.EditModeTour:StartTour() end
         end
 
+        -- TODO: Phase 3 — replace RepairAllChains with targeted ReconcileChain
         if Engine.FrameAnchor then
             Engine.FrameAnchor:RepairAllChains()
         end
@@ -454,6 +455,7 @@ function Selection:OnEditModeExit()
         end
         Selection:DisableKeyboardNudge()
 
+        -- TODO: Phase 3 — replace RepairAllChains with targeted ReconcileChain
         if Engine.FrameAnchor then
             Engine.FrameAnchor:RepairAllChains()
         end

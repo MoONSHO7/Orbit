@@ -35,7 +35,8 @@ EditMode/
     Guard.lua           -- frame protection (combat lockdown safety)
     NudgeRepeat.lua     -- keyboard nudge repeat timer
     Position/
-      Anchor.lua        -- anchor chain resolution, parent/child relationships, border merge state (per-axis via ShouldMergeBorders), ResyncAll on border size changes, RepairChain/RepairAllChains for profile-switch chain repair
+      AnchorGraph.lua   -- pure-data directed graph: virtual/disabled state, cycle detection, targeted chain reconciliation
+      Anchor.lua        -- anchor chain resolution, parent/child relationships, border merge state (per-axis via ShouldMergeBorders), ResyncAll on border size changes, SetFrameVirtual for content-empty bypass
       Persistence.lua   -- position save/restore to saved variables
       PositionUtils.lua -- position math helpers (offset calculation, bounds)
     Selection/
@@ -60,6 +61,15 @@ edit mode provides thin delegation methods to trigger canvas mode entry from sel
 
 edit mode selection and drag files also check `Engine.CanvasMode:IsActive()` as a guard clause to adjust behavior when canvas mode is open. this is a legitimate cross-domain read.
 
+## anchor graph
+
+`AnchorGraph.lua` is a pure-data companion to `Anchor.lua`. it tracks two distinct skip states:
+
+- **virtual** (`SetFrameVirtual`): content-empty frames (tracked bar with no spell, aura grid with no auras). the frame remains structurally registered in the graph but children are physically re-parented to the nearest non-skipped ancestor. use for content-scoped visibility.
+- **disabled** (`SetFrameDisabled`): profile-level disabled frames (user toggled plugin off, spec-locked). the anchor is severed and must be reconstructed from saved data when re-enabled.
+
+both states use targeted `ReconcileChain(root)` instead of the legacy `RepairAllChains()`, reducing reconciliation from O(all_anchors) to O(chain).
+
 ## rules
 
 - edit mode code must work without any specific plugin loaded
@@ -68,3 +78,6 @@ edit mode selection and drag files also check `Engine.CanvasMode:IsActive()` as 
 - all pixel offsets must be snapped via `Pixel:Snap()`
 - mounted visibility checks belong in `MountedVisibility.lua`, not in plugins
 - `PositionManager` is ephemeral — it buffers changes until edit mode closes, enabling cancel support
+- prefer `SetFrameVirtual` for content-empty frames, `SetFrameDisabled` for profile-level disable
+- cycle detection must use `AnchorGraph:WouldCreateCycle()` (pure-data, no `GetNumPoints`)
+

@@ -9,6 +9,10 @@ local Anchor = Engine.FrameAnchor
 Anchor.anchors = Anchor.anchors or {}
 Anchor.childrenOf = Anchor.childrenOf or setmetatable({}, { __mode = "k" })
 
+-- Initialize the graph companion with our authoritative tables
+local Graph = Engine.AnchorGraph
+Graph:Init(Anchor.anchors, Anchor.childrenOf)
+
 local hookedParents = setmetatable({}, { __mode = "k" })
 local optionsCache = setmetatable({}, { __mode = "k" })
 
@@ -248,31 +252,9 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions,
 end
 
 -- Check if anchoring child to parent would create a circular dependency
--- Walks Orbit anchor chain + native GetPoint relatives to catch orphaned SetPoint refs
+-- Delegates to AnchorGraph for pure-data traversal (no GetNumPoints calls)
 local function WouldCreateCycle(anchors, child, parent)
-    local visited = {}
-    local current = parent
-    while current do
-        if current == child then
-            return true
-        end
-        if visited[current] then
-            break
-        end
-        visited[current] = true
-        local anchor = anchors[current]
-        local nextFrame = anchor and anchor.parent or nil
-        if not nextFrame and current.GetNumPoints then
-            for i = 1, current:GetNumPoints() do
-                local _, relativeTo = current:GetPoint(i)
-                if relativeTo == child then
-                    return true
-                end
-            end
-        end
-        current = nextFrame
-    end
-    return false
+    return Graph:WouldCreateCycle(child, parent)
 end
 
 function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, suppressApplySettings)
@@ -459,64 +441,75 @@ function Anchor:RebalanceChainCenter(root, oldScreenCenterX)
     root:SetPoint(point, relativeTo, relativePoint, offsetX + shift / scale, offsetY)
 end
 
--- Centralized helper for setting frame disabled state
-function Anchor:SetFrameDisabled(frame, disabled)
-    if (not frame.orbitDisabled) == (not disabled) then return end
-    frame.orbitDisabled = disabled
-    
-    if disabled then
-        frame:ClearAllPoints()
-        local def = frame.defaultPosition
-        if def and def.point then
-            local x, y = def.x or 0, def.y or 0
-            if Orbit.Engine.Pixel then
-                x, y = Orbit.Engine.Pixel:SnapPosition(x, y, def.point, frame:GetWidth(), frame:GetHeight(), frame:GetEffectiveScale())
+-- Shared re-insert: reads saved anchor data and splices frame back into its chain
+local function ReInsertFromSaved(self, frame)
+    if not (frame.orbitPlugin and frame.systemIndex) then return end
+    local saved
+    if Orbit.Engine.PositionManager then
+        saved = Orbit.Engine.PositionManager:GetAnchor(frame)
+    end
+    if not saved then
+        saved = frame.orbitPlugin:GetSetting(frame.systemIndex, "Anchor")
+    end
+    if not (saved and saved.target) then return end
+    local parent = _G[saved.target]
+    if not parent then return end
+    local displaced
+    if self.childrenOf[parent] then
+        for child in pairs(self.childrenOf[parent]) do
+            local a = self.anchors[child]
+            if a and a.edge == saved.edge and child ~= frame then
+                displaced = { frame = child, edge = a.edge, padding = a.padding, syncOptions = a.syncOptions, align = a.align }
+                break
             end
-            frame:SetPoint(def.point, def.relativeTo, def.relativePoint, x, y)
-        end
-        -- Rely on RepairChain to bypass this disabled frame visually
-        if Anchor and Anchor.RepairAllChains then
-            Anchor:RepairAllChains()
-        end
-    else
-        -- Re-insert into chain using saved Anchor setting
-        if frame.orbitPlugin and frame.systemIndex then
-            local saved
-            if Orbit.Engine.PositionManager then
-                saved = Orbit.Engine.PositionManager:GetAnchor(frame)
-            end
-            if not saved then
-                saved = frame.orbitPlugin:GetSetting(frame.systemIndex, "Anchor")
-            end
-
-            if saved and saved.target then
-                local parent = _G[saved.target]
-                if parent then
-                    -- Identify any child occupying the same edge (re-parented grandchild)
-                    local displaced
-                    if self.childrenOf[parent] then
-                        for child in pairs(self.childrenOf[parent]) do
-                            local a = self.anchors[child]
-                            if a and a.edge == saved.edge and child ~= frame then
-                                displaced = { frame = child, edge = a.edge, padding = a.padding, syncOptions = a.syncOptions, align = a.align }
-                                break
-                            end
-                        end
-                    end
-                    if displaced then
-                        self:BreakAnchor(displaced.frame, true)
-                    end
-                    self:CreateAnchor(frame, parent, saved.edge, saved.padding or 0, nil, saved.align, true)
-                    if displaced then
-                        self:CreateAnchor(displaced.frame, frame, displaced.edge, displaced.padding or 0, displaced.syncOptions, displaced.align, true)
-                    end
-                end
-            end
-        end
-        if Anchor and Anchor.RepairAllChains then
-            Anchor:RepairAllChains()
         end
     end
+    if displaced then self:BreakAnchor(displaced.frame, true) end
+    self:CreateAnchor(frame, parent, saved.edge, saved.padding or 0, nil, saved.align, true)
+    if displaced then self:CreateAnchor(displaced.frame, frame, displaced.edge, displaced.padding or 0, displaced.syncOptions, displaced.align, true) end
+end
+
+-- Move frame to its default position (off-screen stash)
+local function ParkFrame(frame)
+    frame:ClearAllPoints()
+    local def = frame.defaultPosition
+    if not (def and def.point) then return end
+    local x, y = def.x or 0, def.y or 0
+    if Orbit.Engine.Pixel then
+        x, y = Orbit.Engine.Pixel:SnapPosition(x, y, def.point, frame:GetWidth(), frame:GetHeight(), frame:GetEffectiveScale())
+    end
+    frame:SetPoint(def.point, def.relativeTo, def.relativePoint, x, y)
+end
+
+-- Profile-level disable: severs the frame from the chain entirely.
+-- Re-enabling requires saved data to reconstruct the relationship.
+function Anchor:SetFrameDisabled(frame, disabled)
+    if not Graph:SetDisabled(frame, disabled) then return end
+    frame.orbitDisabled = Graph:IsSkipped(frame)
+
+    if disabled then
+        ParkFrame(frame)
+    else
+        ReInsertFromSaved(self, frame)
+    end
+    local root = self:GetRootParent(frame)
+    if root then Graph:ReconcileChain(root, self) end
+end
+
+-- Content-empty toggle: marks frames with no content (no spell, no auras)
+-- for layout bypass. Children are re-parented to the nearest non-skipped
+-- ancestor. Clearing virtual re-inserts from saved data.
+function Anchor:SetFrameVirtual(frame, virtual)
+    if not Graph:SetVirtual(frame, virtual) then return end
+    frame.orbitDisabled = Graph:IsSkipped(frame)
+
+    if virtual then
+        ParkFrame(frame)
+    else
+        ReInsertFromSaved(self, frame)
+    end
+    local root = self:GetRootParent(frame)
+    if root then Graph:ReconcileChain(root, self) end
 end
 
 function Anchor:GetAnchorParent(child)
@@ -821,79 +814,17 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited, depth)
 end
 
 -- [ REPAIR CHAIN ]----------------------------------------------------------------------------------
--- Walks a chain depth-first, re-parenting children of hidden/disabled frames to the
--- nearest visible ancestor. Called after profile switches to skip over disabled frames.
+-- Delegates to AnchorGraph:ReconcileChain for targeted chain reconciliation.
 function Anchor:RepairChain(root)
     if not root or InCombatLockdown() then return end
-    local visited = {}
-    local function Repair(parent)
-        if visited[parent] then return end
-        visited[parent] = true
-        
-        local childrenQueue = self:GetAnchoredChildren(parent)
-        local i = 1
-        while i <= #childrenQueue do
-            local child = childrenQueue[i]
-            if not visited[child] then
-                local shouldSkip = child.orbitDisabled and not Orbit:IsEditMode()
-                if shouldSkip then
-                    visited[child] = true
-                    local grandchildren = self:GetAnchoredChildren(child)
-                    for _, gc in ipairs(grandchildren) do
-                        local gcAnchor = self.anchors[gc]
-                        if gcAnchor then
-                            self:CreateAnchor(gc, parent, gcAnchor.edge, gcAnchor.padding, gcAnchor.syncOptions, gcAnchor.align, true)
-                            table.insert(childrenQueue, gc)
-                        end
-                    end
-                else
-                    Repair(child)
-                end
-            end
-            i = i + 1
-        end
-    end
-
-    local shouldSkipRoot = root.orbitDisabled and not Orbit:IsEditMode()
-    if shouldSkipRoot then
-        visited[root] = true
-        local children = self:GetAnchoredChildren(root)
-        for _, gc in ipairs(children) do
-            local fallback = nil
-            if Orbit.Engine.PositionManager then
-                local saved = Orbit.Engine.PositionManager:GetAnchor(gc)
-                if saved and saved.fallback then fallback = _G[saved.fallback] end
-            end
-            if not fallback and gc.orbitPlugin and gc.systemIndex then
-                local conf = gc.orbitPlugin:GetSetting(gc.systemIndex, "Anchor")
-                if conf and conf.fallback then fallback = _G[conf.fallback] end
-            end
-            
-            if fallback then
-                local gcAnchor = self.anchors[gc]
-                if gcAnchor then
-                    self:CreateAnchor(gc, fallback, gcAnchor.edge, gcAnchor.padding, gcAnchor.syncOptions, gcAnchor.align, true)
-                    self:RepairChain(fallback)
-                end
-            else
-                Repair(gc)
-            end
-        end
-    else
-        Repair(root)
-    end
+    Graph:ReconcileChain(root, self)
 end
 
 -- Repair all anchor chains across the entire system.
+-- Delegates to AnchorGraph:ReconcileAll.
 function Anchor:RepairAllChains()
     if InCombatLockdown() then return end
-    local roots = {}
-    for child in pairs(self.anchors) do
-        roots[self:GetRootParent(child)] = true
-    end
-    for root in pairs(roots) do
-        self:RepairChain(root)
-    end
+    Graph:ReconcileAll(self)
 end
 
 -- [ RESYNC ALL ]-------------------------------------------------------------------------------------
@@ -923,12 +854,11 @@ Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
     C_Timer.After(delay, function() Anchor:ResyncAll() end)
 end)
 
--- Re-repair chains after Edit Mode hooks to ensure plugins properly bypass empty seeds
+-- Re-reconcile chains after Edit Mode hooks to ensure plugins properly bypass empty seeds
 if EditModeManagerFrame then
     EditModeManagerFrame:HookScript("OnShow", function()
-        -- Wait a beat for all plugins to call RestorePosition()
         local delay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.RetryShort) or 0.1
-        C_Timer.After(delay, function() Anchor:RepairAllChains() end)
+        C_Timer.After(delay, function() Graph:ReconcileAll(Anchor) end)
     end)
 end
 

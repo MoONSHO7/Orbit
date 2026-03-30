@@ -65,9 +65,6 @@ local Plugin = Orbit:RegisterPlugin("Tracked Items", "Orbit_Tracked", {
             self:SetupTrackedBarFrame()
             self:ReloadTrackedForSpec()
             self:ApplyAll()
-            if Orbit.Engine.FrameAnchor then
-                Orbit.Engine.FrameAnchor:RepairAllChains()
-            end
         end, self)
 
         Orbit.EventBus:On("PLAYER_SPECIALIZATION_CHANGED", function()
@@ -81,9 +78,6 @@ local Plugin = Orbit:RegisterPlugin("Tracked Items", "Orbit_Tracked", {
             self:SetupTrackedBarFrame()
             self:ReloadTrackedForSpec()
             self:ApplyAll()
-            if Orbit.Engine.FrameAnchor then
-                Orbit.Engine.FrameAnchor:RepairAllChains()
-            end
         end, self)
     end,
     ApplyAll = function(self)
