@@ -60,6 +60,7 @@ local function HookParentSizeChange(parent, anchorModule)
     end
 
     parent:HookScript("OnSizeChanged", function(self)
+        if not anchorModule.childrenOf[self] or not next(anchorModule.childrenOf[self]) then return end
         anchorModule:SyncChildren(self)
         if not syncingChainRoot then
             local a = anchorModule.anchors[self]
@@ -458,46 +459,25 @@ function Anchor:RebalanceChainCenter(root, oldScreenCenterX)
     root:SetPoint(point, relativeTo, relativePoint, offsetX + shift / scale, offsetY)
 end
 
--- [ DESTROY ANCHOR ]--------------------------------------------------------------------------------
--- Removes a frame from the anchor chain, re-anchoring its children to its parent.
--- If the frame has no parent, children are restored to their default positions.
-function Anchor:DestroyAnchor(frame)
-    local parentAnchor = self.anchors[frame]
-    local children = self:GetAnchoredChildren(frame)
-
-    -- Break the destroyed frame's own anchor FIRST to free up the occupied edge
-    self:BreakAnchor(frame, true)
-
-    if parentAnchor and #children > 0 then
-        for _, child in ipairs(children) do
-            local childAnchor = self.anchors[child]
-            if childAnchor then
-                self:CreateAnchor(child, parentAnchor.parent, childAnchor.edge, childAnchor.padding, childAnchor.syncOptions, childAnchor.align, true)
-            end
-        end
-    else
-        for _, child in ipairs(children) do
-            self:BreakAnchor(child, false)
-            child:ClearAllPoints()
-            local dp = child.defaultPosition
-            if dp then
-                child:SetPoint(dp.point or "CENTER", dp.relativeTo or UIParent, dp.relativePoint or "CENTER", dp.x or 0, dp.y or 0)
-            else
-                child:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-            end
-            if child.orbitPlugin and child.systemIndex then
-                child.orbitPlugin:SetSetting(child.systemIndex, "Anchor", nil)
-            end
-        end
-    end
-end
-
 -- Centralized helper for setting frame disabled state
 function Anchor:SetFrameDisabled(frame, disabled)
     if (not frame.orbitDisabled) == (not disabled) then return end
     frame.orbitDisabled = disabled
+    
     if disabled then
-        self:DestroyAnchor(frame)
+        frame:ClearAllPoints()
+        local def = frame.defaultPosition
+        if def and def.point then
+            local x, y = def.x or 0, def.y or 0
+            if Orbit.Engine.Pixel then
+                x, y = Orbit.Engine.Pixel:SnapPosition(x, y, def.point, frame:GetWidth(), frame:GetHeight(), frame:GetEffectiveScale())
+            end
+            frame:SetPoint(def.point, def.relativeTo, def.relativePoint, x, y)
+        end
+        -- Rely on RepairChain to bypass this disabled frame visually
+        if Anchor and Anchor.RepairAllChains then
+            Anchor:RepairAllChains()
+        end
     else
         -- Re-insert into chain using saved Anchor setting
         if frame.orbitPlugin and frame.systemIndex then
@@ -532,6 +512,9 @@ function Anchor:SetFrameDisabled(frame, disabled)
                     end
                 end
             end
+        end
+        if Anchor and Anchor.RepairAllChains then
+            Anchor:RepairAllChains()
         end
     end
 end
@@ -780,11 +763,12 @@ local function SyncChild(child, parent, anchor, parentScale, parentWidth, parent
     return opts
 end
 
-function Anchor:SyncChildren(parent, suppressApplySettings, visited)
+function Anchor:SyncChildren(parent, suppressApplySettings, visited, depth)
     if not parent or not parent.GetScale or not parent.GetWidth then
         return
     end
 
+    depth = depth or 1
     visited = visited or {}
     if visited[parent] then
         return
@@ -813,6 +797,8 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited)
         local canSync = (isEditMode and not InCombatLockdown() and not child:IsForbidden())
             or (not child:IsForbidden() and (not InCombatLockdown() or not child:IsProtected()))
 
+        if child.orbitDisabled then canSync = false end
+
         if canSync then
             SyncChild(child, parent, anchor, parentScale, parentWidth, parentHeight)
 
@@ -820,11 +806,16 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited)
                 if child.orbitPlugin.UpdateLayout then
                     child.orbitPlugin:UpdateLayout(child)
                 elseif not isEditMode and not suppressApplySettings and child.orbitPlugin.ApplySettings then
-                    child.orbitPlugin:ApplySettings(child)
+                    if depth > 8 then
+                        local timerDelay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.RetryShort) or 0.1
+                        C_Timer.After(timerDelay, function() child.orbitPlugin:ApplySettings(child) end)
+                    else
+                        child.orbitPlugin:ApplySettings(child)
+                    end
                 end
             end
 
-            self:SyncChildren(child, suppressApplySettings, visited)
+            self:SyncChildren(child, suppressApplySettings, visited, depth + 1)
         end
     end
 end
@@ -838,10 +829,13 @@ function Anchor:RepairChain(root)
     local function Repair(parent)
         if visited[parent] then return end
         visited[parent] = true
-        local children = self:GetAnchoredChildren(parent)
-        for _, child in ipairs(children) do
+        
+        local childrenQueue = self:GetAnchoredChildren(parent)
+        local i = 1
+        while i <= #childrenQueue do
+            local child = childrenQueue[i]
             if not visited[child] then
-                local shouldSkip = child.orbitDisabled or (not child:IsShown() and not Orbit:IsEditMode())
+                local shouldSkip = child.orbitDisabled and not Orbit:IsEditMode()
                 if shouldSkip then
                     visited[child] = true
                     local grandchildren = self:GetAnchoredChildren(child)
@@ -849,15 +843,45 @@ function Anchor:RepairChain(root)
                         local gcAnchor = self.anchors[gc]
                         if gcAnchor then
                             self:CreateAnchor(gc, parent, gcAnchor.edge, gcAnchor.padding, gcAnchor.syncOptions, gcAnchor.align, true)
+                            table.insert(childrenQueue, gc)
                         end
                     end
                 else
                     Repair(child)
                 end
             end
+            i = i + 1
         end
     end
-    Repair(root)
+
+    local shouldSkipRoot = root.orbitDisabled and not Orbit:IsEditMode()
+    if shouldSkipRoot then
+        visited[root] = true
+        local children = self:GetAnchoredChildren(root)
+        for _, gc in ipairs(children) do
+            local fallback = nil
+            if Orbit.Engine.PositionManager then
+                local saved = Orbit.Engine.PositionManager:GetAnchor(gc)
+                if saved and saved.fallback then fallback = _G[saved.fallback] end
+            end
+            if not fallback and gc.orbitPlugin and gc.systemIndex then
+                local conf = gc.orbitPlugin:GetSetting(gc.systemIndex, "Anchor")
+                if conf and conf.fallback then fallback = _G[conf.fallback] end
+            end
+            
+            if fallback then
+                local gcAnchor = self.anchors[gc]
+                if gcAnchor then
+                    self:CreateAnchor(gc, fallback, gcAnchor.edge, gcAnchor.padding, gcAnchor.syncOptions, gcAnchor.align, true)
+                    self:RepairChain(fallback)
+                end
+            else
+                Repair(gc)
+            end
+        end
+    else
+        Repair(root)
+    end
 end
 
 -- Repair all anchor chains across the entire system.
@@ -898,3 +922,13 @@ Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
     local delay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.RetryShort) or 0.5
     C_Timer.After(delay, function() Anchor:ResyncAll() end)
 end)
+
+-- Re-repair chains after Edit Mode hooks to ensure plugins properly bypass empty seeds
+if EditModeManagerFrame then
+    EditModeManagerFrame:HookScript("OnShow", function()
+        -- Wait a beat for all plugins to call RestorePosition()
+        local delay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.RetryShort) or 0.1
+        C_Timer.After(delay, function() Anchor:RepairAllChains() end)
+    end)
+end
+

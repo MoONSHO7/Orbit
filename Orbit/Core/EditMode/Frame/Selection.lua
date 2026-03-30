@@ -417,6 +417,10 @@ function Selection:OnEditModeEnter()
         if Orbit.db and Orbit.db.AccountSettings and not Orbit.db.AccountSettings.TourComplete then
             if Engine.EditModeTour then Engine.EditModeTour:StartTour() end
         end
+
+        if Engine.FrameAnchor then
+            Engine.FrameAnchor:RepairAllChains()
+        end
     end)
 end
 
@@ -449,6 +453,10 @@ function Selection:OnEditModeExit()
             end
         end
         Selection:DisableKeyboardNudge()
+
+        if Engine.FrameAnchor then
+            Engine.FrameAnchor:RepairAllChains()
+        end
     end)
 end
 

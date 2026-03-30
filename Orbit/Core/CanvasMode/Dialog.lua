@@ -414,7 +414,11 @@ function Dialog:Open(frame, plugin, systemIndex)
     self:ClearDock()
 
     local hasDisabledFeature = plugin and plugin.IsComponentDisabled
-    local disabledComponents = hasDisabledFeature and plugin:GetSetting(systemIndex, "DisabledComponents") or {}
+    local disabledComponents
+    if hasDisabledFeature then
+        if isSynced then disabledComponents = plugin:GetSetting(1, "GlobalDisabledComponents") or {}
+        else disabledComponents = plugin:GetSetting(systemIndex, "DisabledComponents") or {} end
+    else disabledComponents = {} end
 
     local disabledSet = {}
     for _, key in ipairs(disabledComponents) do disabledSet[key] = true end
