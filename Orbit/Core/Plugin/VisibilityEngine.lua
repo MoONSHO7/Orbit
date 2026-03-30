@@ -40,6 +40,7 @@ local FRAME_REGISTRY = {
     { key = "UtilityCooldowns",     display = "Utility Cooldowns",     plugin = "Cooldown Manager",   index = 2 },
     { key = "BuffIcons",            display = "Buff Icons",            plugin = "Cooldown Manager",   index = 3 },
     { key = "TrackedIcons",         display = "Tracked Icons",         plugin = "Tracked Items",      index = 4 },
+    { key = "TrackedBars",          display = "Tracked Bars",          plugin = "Tracked Items",      index = 20 },
     { key = "ChargeBars",           display = "Charge Bars",           plugin = "Cooldown Manager",   index = 20 },
     { key = "BuffBars",             display = "Buff Bars",             plugin = "Cooldown Manager",   index = 30 },
     { key = "GroupFrames",          display = "Group Frames",          plugin = "Group Frames",       index = 1 },
