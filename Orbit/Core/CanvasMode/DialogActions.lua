@@ -72,7 +72,12 @@ end
 function Dialog:ResetPositions()
     if not self.targetPlugin or not self.previewFrame then return end
     local plugin = self.targetPlugin
+    
     local defaults = plugin.defaults and plugin.defaults.ComponentPositions
+    local isSynced = self.SyncToggle and self.SyncToggle:IsShown() and self.SyncToggle.isSynced
+    if (isSynced or not defaults or not next(defaults)) and plugin.defaults and plugin.defaults.GlobalComponentPositions then
+        defaults = plugin.defaults.GlobalComponentPositions
+    end
     if not defaults then return end
     local preview = self.previewFrame
     local borderInset = preview.borderInset or 0

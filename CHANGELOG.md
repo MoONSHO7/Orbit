@@ -18,14 +18,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
 ## [@project-version@] - @project-date-iso@
+### Message
+Mainly a performance parse this one, with lots of backend changes and a few bugfixes.
 
 ### Added
-- **Tracked Cooldowns:** Decoupled Tracked Bars into a standalone plugin, independent of the Cooldown Manager, for vastly improved customization.
+- **Tracked Cooldowns:** Decoupled Tracked Bars into a standalone plugin, independent of the Cooldown Manager. Anchoring these is still disabled I still havent been able to solve this issue with spec switching on a single profile.
 
 ### Changed
-- **Performance (Unit Frames):** Drastically improved Boss and Group frame efficiency by intelligently tracking resource updates only when required.
-- **Performance (Auras):** Enhanced internal Aura tracking and Color Gradient performance to reduce memory overhead during intense combat.
-- **Performance (Cooldowns):** Optimized the rendering computation of "pandemic glow" animations through robust background synchronization.
+- **Performance (Unit Frames):** Improved Boss and Group frame efficiency.
+- **Performance (Auras):** Enhanced internal Aura tracking and Color Gradient performance to reduce memory overhead during combat.
+- **Performance (Cooldowns):** Optimized the rendering computation of "pandemic glow" animations.
 - **Tracked Cooldowns:** Tracked components can no longer be used as general anchor points by other frames, enhancing their layout independence and reliability.
 - **Edit Mode (Anchoring):** Fully transitioned Orbit's anchoring system into a robust backend architecture, bringing highly stable padding algorithms and cleaner positional persistence.
 - **Color Curves:** Implemented internal caching to speed up how fast 'Smart Class Colors' load on dynamic components.
@@ -34,7 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - **MoveMore Plugin:** Fixed a bug where MoveMore incorrectly attempted to make protected Blizzard UI elements draggable (e.g., the Raid Browser).
-- **Tracked Frames:** Resolved various structural and visual bugs when nesting tracked frames.
+- **Keybinds:** Fixed an issue where keybinds were not being displayed correctly or disablable
 
 ## [1.0.0] - 2026-03-10
 ### Added

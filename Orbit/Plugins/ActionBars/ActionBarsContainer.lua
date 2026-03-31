@@ -123,6 +123,7 @@ function ABC:ReparentButtons(plugin, index, barConfig)
         if blizzBar.BorderArt and blizzBar.BorderArt.Hide then blizzBar.BorderArt:Hide() end
         if blizzBar.EndCaps and blizzBar.EndCaps.Hide then blizzBar.EndCaps:Hide() end
         if blizzBar.ActionBarPageNumber and blizzBar.ActionBarPageNumber.Hide then blizzBar.ActionBarPageNumber:Hide() end
+        if blizzBar.QuickKeybindHighlightTexture then blizzBar.QuickKeybindHighlightTexture:SetAlpha(0) end
     end
     if #buttons == 0 then return end
     plugin.buttons[index] = buttons

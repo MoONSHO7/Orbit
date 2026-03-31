@@ -60,9 +60,37 @@ function CCE:SampleColorCurve(curveData, position)
     }
 end
 
+function CCE:SampleColorCurveUnpacked(curveData, position)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    local pins = curveData.pins
+    if #pins == 1 then return CC:ResolveClassColorPinUnpacked(pins[1]) end
+    local sorted = GetSortedPins(curveData)
+    position = math_max(0, math_min(1, position))
+    local first, last = sorted[1], sorted[#sorted]
+    if position <= first.position then return CC:ResolveClassColorPinUnpacked(first) end
+    if position >= last.position then return CC:ResolveClassColorPinUnpacked(last) end
+    local left, right = first, last
+    for i = 1, #sorted - 1 do
+        if sorted[i].position <= position and sorted[i + 1].position >= position then
+            left, right = sorted[i], sorted[i + 1]
+            break
+        end
+    end
+    local lr, lg, lb, la = CC:ResolveClassColorPinUnpacked(left)
+    local rr, rg, rb, ra = CC:ResolveClassColorPinUnpacked(right)
+    local range = right.position - left.position
+    local t = (range > 0) and math_max(0, math_min(1, (position - left.position) / range)) or 0
+    return lr + (rr - lr) * t, lg + (rg - lg) * t, lb + (rb - lb) * t, la + (ra - la) * t
+end
+
 function CCE:GetFirstColorFromCurve(curveData)
     if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
     return CC:ResolveClassColorPin(GetSortedPins(curveData)[1])
+end
+
+function CCE:GetFirstColorFromCurveUnpacked(curveData)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    return CC:ResolveClassColorPinUnpacked(GetSortedPins(curveData)[1])
 end
 
 function CCE:GetFontColorForNonUnit(curveData)

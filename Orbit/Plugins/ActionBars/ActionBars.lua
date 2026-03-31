@@ -462,13 +462,23 @@ function Plugin:LayoutButtons(index)
     local cachedPositions = cache.positions
     for i, button in ipairs(buttons) do
         if i > numIcons then
-            if not InCombatLockdown() then button:SetParent(EnsureHiddenFrame()); button:Hide() end
+            if not InCombatLockdown() then 
+                button:SetParent(EnsureHiddenFrame())
+                button:ClearAllPoints()
+                button:SetPoint("CENTER", EnsureHiddenFrame(), "CENTER")
+                button:Hide() 
+            end
             button.orbitHidden = true
         else
             local hasAction = button.HasAction and button:HasAction() or false
             local shouldShow = not (hideEmpty and not hasAction)
             if not shouldShow then
-                if not InCombatLockdown() then button:SetParent(EnsureHiddenFrame()); button:Hide() end
+                if not InCombatLockdown() then 
+                    button:SetParent(EnsureHiddenFrame())
+                    button:ClearAllPoints()
+                    button:SetPoint("CENTER", EnsureHiddenFrame(), "CENTER")
+                    button:Hide() 
+                end
                 button.orbitHidden = true
                 if button.orbitBackdrop then button.orbitBackdrop:Hide() end
             else

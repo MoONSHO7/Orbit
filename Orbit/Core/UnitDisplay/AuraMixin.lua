@@ -468,27 +468,27 @@ local function HealerCurveOnUpdate(icon)
     end
     local CCE = OrbitEngine.ColorCurve
     if d.swipeCurve and icon.Cooldown then
-        local c = CCE:SampleColorCurve(d.swipeCurve, remainingPercent)
-        if c then
+        local r, g, b, a = CCE:SampleColorCurveUnpacked(d.swipeCurve, remainingPercent)
+        if r then
             local cd = icon.Cooldown
             local swipeTex = Orbit.Constants.Assets.SwipeCustom
             cd.orbitUpdating = true
             cd:SetSwipeTexture(swipeTex)
-            cd:SetSwipeColor(c.r, c.g, c.b, c.a or 0.8)
+            cd:SetSwipeColor(r, g, b, a or 0.8)
             cd.orbitUpdating = false
             cd.orbitDesiredSwipe = cd.orbitDesiredSwipe or {}
             cd.orbitDesiredSwipe.texture = swipeTex
-            cd.orbitDesiredSwipe.r = c.r
-            cd.orbitDesiredSwipe.g = c.g
-            cd.orbitDesiredSwipe.b = c.b
-            cd.orbitDesiredSwipe.a = c.a or 0.8
+            cd.orbitDesiredSwipe.r = r
+            cd.orbitDesiredSwipe.g = g
+            cd.orbitDesiredSwipe.b = b
+            cd.orbitDesiredSwipe.a = a or 0.8
         end
     end
     if d.timerCurve and icon.Cooldown then
         local text = icon.Cooldown.Text
         if text and text.SetTextColor then
-            local c = CCE:SampleColorCurve(d.timerCurve, remainingPercent)
-            if c then text:SetTextColor(c.r or 1, c.g or 1, c.b or 1) end
+            local cr, cg, cb = CCE:SampleColorCurveUnpacked(d.timerCurve, remainingPercent)
+            if cr then text:SetTextColor(cr or 1, cg or 1, cb or 1) end
         end
     end
 end

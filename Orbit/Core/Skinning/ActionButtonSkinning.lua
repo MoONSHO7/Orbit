@@ -94,6 +94,12 @@ function ABS:Apply(button, settings)
         button.SpellHighlightTexture:SetColorTexture(1, 1, 1, SPELL_HIGHLIGHT_ALPHA)
     end
 
+    if button.QuickKeybindHighlightTexture then
+        button.QuickKeybindHighlightTexture:ClearAllPoints()
+        button.QuickKeybindHighlightTexture:SetPoint("TOPLEFT", button, "TOPLEFT", -1, 1)
+        button.QuickKeybindHighlightTexture:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 1, -1)
+    end
+
     if button.NewActionTexture then
         button.NewActionTexture:ClearAllPoints()
         button.NewActionTexture:SetAllPoints(button)
