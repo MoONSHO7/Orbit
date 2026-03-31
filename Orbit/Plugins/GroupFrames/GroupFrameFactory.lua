@@ -115,11 +115,13 @@ end
 local UNIT_EVENTS = {
     "UNIT_HEALTH", "UNIT_MAXHEALTH",
     "UNIT_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_PREDICTION",
-    "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT",
     "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS",
     "UNIT_NAME_UPDATE", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "UNIT_OTHER_PARTY_CHANGED",
     "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
 }
+local POWER_EVENTS = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER" }
+Orbit.GroupFrameFactoryMixin.POWER_EVENTS = POWER_EVENTS
+
 function Orbit.GroupFrameFactoryMixin:RegisterUnitEvents(frame, unit)
     for _, event in ipairs(UNIT_EVENTS) do frame:RegisterUnitEvent(event, unit) end
 end
@@ -130,6 +132,8 @@ end
 
 function Orbit.GroupFrameFactoryMixin:UnregisterFrameEvents(frame)
     for _, event in ipairs(UNIT_EVENTS) do frame:UnregisterEvent(event) end
+    for _, event in ipairs(POWER_EVENTS) do frame:UnregisterEvent(event) end
+    frame._powerEventsRegistered = false
     Orbit.AuraMixin:WipeCaches(frame)
 end
 

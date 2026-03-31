@@ -99,7 +99,13 @@ local function UpdateBuffs(frame, plugin) plugin:UpdateAuraContainer(frame, plug
 -- [ BOSS FRAME CREATION ]----------------------------------------------------------------------------
 local function CreateBossFrame(bossIndex, plugin)
     local unit = "boss" .. bossIndex
-    local frame = OrbitEngine.UnitButton:Create(UIParent, unit, "OrbitBossFrame" .. bossIndex)
+    local frame = OrbitEngine.UnitButton:Create(UIParent, unit, "OrbitBossFrame" .. bossIndex, true)
+    frame:RegisterUnitEvent("UNIT_HEALTH", unit)
+    frame:RegisterUnitEvent("UNIT_MAXHEALTH", unit)
+    frame:RegisterUnitEvent("UNIT_ABSORB_AMOUNT_CHANGED", unit)
+    frame:RegisterUnitEvent("UNIT_HEAL_ABSORB_AMOUNT_CHANGED", unit)
+    frame:RegisterUnitEvent("UNIT_HEAL_PREDICTION", unit)
+    frame:RegisterEvent("PLAYER_ENTERING_WORLD")
     if frame.HealthDamageBar then
         frame.HealthDamageBar:Hide()
         frame.HealthDamageBar = nil

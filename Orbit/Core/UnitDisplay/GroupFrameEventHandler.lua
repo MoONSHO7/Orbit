@@ -81,7 +81,13 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
             end
             return
         end
-        if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
+        if event == "UNIT_ABSORB_AMOUNT_CHANGED" or event == "UNIT_HEAL_ABSORB_AMOUNT_CHANGED" or event == "UNIT_HEAL_PREDICTION" then
+            if eventUnit == f.unit then
+                if originalOnEvent then originalOnEvent(f, event, eventUnit, ...) end
+            end
+            return
+        end
+        if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" or event == "UNIT_DISPLAYPOWER" then
             if eventUnit == f.unit then callbacks.UpdatePowerBar(f, plugin) end
             return
         end
@@ -230,6 +236,7 @@ function GroupFrameMixin.CreateGlobalEventHandler(plugin, callbacks)
                     StatusDispatch(f, plugin, "UpdateRoleIcon")
                     StatusDispatch(f, plugin, "UpdateLeaderIcon")
                     if callbacks.UpdateMainTankIcon then StatusDispatch(f, plugin, "UpdateMainTankIcon") end
+                    callbacks.UpdatePowerBar(f, plugin)
                 end
             end
             return

@@ -275,22 +275,32 @@ local function GetComponentIconSize(plugin, key)
 end
 
 -- [ POWER BAR UPDATE ]------------------------------------------------------------------------------
+local POWER_EVENTS = Orbit.GroupFrameFactoryMixin.POWER_EVENTS
+
 local function UpdatePowerBar(frame, plugin)
     if not frame.Power or not frame.unit or not UnitExists(frame.unit) then return end
     local isParty = plugin:IsPartyTier()
     local showPower = plugin:GetTierSetting("ShowPowerBar")
     local isHealer = UnitGroupRolesAssigned(frame.unit) == "HEALER"
-    if isParty then
-        if showPower == false and not isHealer then frame.Power:Hide(); return end
+    local shouldShow = isParty and (showPower ~= false or isHealer) or (isHealer and showPower ~= false)
+    if shouldShow then
+        if not frame._powerEventsRegistered then
+            for _, ev in ipairs(POWER_EVENTS) do frame:RegisterUnitEvent(ev, frame.unit) end
+            frame._powerEventsRegistered = true
+        end
+        frame.Power:Show()
+        local power, maxPower, powerType = UnitPower(frame.unit), UnitPowerMax(frame.unit), UnitPowerType(frame.unit)
+        frame.Power:SetMinMaxValues(0, maxPower)
+        frame.Power:SetValue(power)
+        local color = GetPowerColor(powerType)
+        frame.Power:SetStatusBarColor(color.r, color.g, color.b)
     else
-        if not isHealer or showPower == false then frame.Power:Hide(); return end
+        if frame._powerEventsRegistered then
+            for _, ev in ipairs(POWER_EVENTS) do frame:UnregisterEvent(ev) end
+            frame._powerEventsRegistered = false
+        end
+        frame.Power:Hide()
     end
-    frame.Power:Show()
-    local power, maxPower, powerType = UnitPower(frame.unit), UnitPowerMax(frame.unit), UnitPowerType(frame.unit)
-    frame.Power:SetMinMaxValues(0, maxPower)
-    frame.Power:SetValue(power)
-    local color = GetPowerColor(powerType)
-    frame.Power:SetStatusBarColor(color.r, color.g, color.b)
 end
 
 local function UpdateFrameLayout(frame, borderSize, plugin, showPowerOverride)
