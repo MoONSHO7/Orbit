@@ -65,7 +65,10 @@ local GetAuraDataByAuraInstanceID = C_UnitAuras.GetAuraDataByAuraInstanceID
 local IsFilteredOut = C_UnitAuras.IsAuraFilteredOutByInstanceID
 
 function Mixin:PopulateCaches(frame, snapshot)
-    local hc, bc = {}, {}
+    local hc = frame._harmfulAuraCache or {}
+    local bc = frame._helpfulAuraCache or {}
+    wipe(hc)
+    wipe(bc)
     for _, a in ipairs(snapshot.harmful) do hc[a.auraInstanceID] = a end
     for _, a in ipairs(snapshot.helpful) do bc[a.auraInstanceID] = a end
     frame._harmfulAuraCache = hc
@@ -519,19 +522,41 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
         elseif icon.orbitPandemicGlowActive then
             Orbit.PandemicGlow:Stop(icon)
         end
-        local hasCurves = overrides and (overrides.SwipeColorCurve or overrides.TimerTextColorCurve)
-        if hasCurves then
+        local swipeCurve = overrides and overrides.SwipeColorCurve
+        local timerCurve = overrides and overrides.TimerTextColorCurve
+        local isDynamic = (swipeCurve and swipeCurve.pins and #swipeCurve.pins > 1) or (timerCurve and timerCurve.pins and #timerCurve.pins > 1)
+        if isDynamic then
             icon._orbitCurveData = {
                 duration = aura.duration or 0,
                 expirationTime = aura.expirationTime,
-                swipeCurve = overrides.SwipeColorCurve,
-                timerCurve = overrides.TimerTextColorCurve,
+                swipeCurve = swipeCurve,
+                timerCurve = timerCurve,
             }
             if not icon._orbitCurveHooked then
                 icon._orbitCurveHooked = true
                 icon:HookScript("OnUpdate", function(self) HealerCurveOnUpdate(self) end)
             end
             HealerCurveOnUpdate(icon)
+        elseif swipeCurve or timerCurve then
+            icon._orbitCurveData = nil
+            local CCE = OrbitEngine.ColorCurve
+            if swipeCurve and icon.Cooldown then
+                local c = CCE:SampleColorCurve(swipeCurve, 1)
+                if c then
+                    local cd = icon.Cooldown
+                    cd.orbitUpdating = true
+                    cd:SetSwipeTexture(Orbit.Constants.Assets.SwipeCustom)
+                    cd:SetSwipeColor(c.r, c.g, c.b, c.a or 0.8)
+                    cd.orbitUpdating = false
+                end
+            end
+            if timerCurve and icon.Cooldown then
+                local text = icon.Cooldown.Text
+                if text and text.SetTextColor then
+                    local c = CCE:SampleColorCurve(timerCurve, 1)
+                    if c then text:SetTextColor(c.r or 1, c.g or 1, c.b or 1) end
+                end
+            end
         else
             icon._orbitCurveData = nil
         end
