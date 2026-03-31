@@ -18,9 +18,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
 ## [@project-version@] - @project-date-iso@
-### Updates
-- Updated Orbit backend Api's and slash commands, start with `/orbit help`
+
+### Added
+- **Tracked Cooldowns:** Decoupled Tracked Bars into a standalone plugin, independent of the Cooldown Manager, for vastly improved customization.
+
+### Changed
+- **Performance (Unit Frames):** Drastically improved Boss and Group frame efficiency by intelligently tracking resource updates only when required.
+- **Performance (Auras):** Enhanced internal Aura tracking and Color Gradient performance to reduce memory overhead during intense combat.
+- **Performance (Cooldowns):** Optimized the rendering computation of "pandemic glow" animations through robust background synchronization.
+- **Tracked Cooldowns:** Tracked components can no longer be used as general anchor points by other frames, enhancing their layout independence and reliability.
+- **Edit Mode (Anchoring):** Fully transitioned Orbit's anchoring system into a robust backend architecture, bringing highly stable padding algorithms and cleaner positional persistence.
+- **Color Curves:** Implemented internal caching to speed up how fast 'Smart Class Colors' load on dynamic components.
+- Updated Orbit backend API's and slash commands—start with `/orbit help`.
 - Profile adjustments to better handle logging out and changing to different characters.
+
+### Fixed
+- **MoveMore Plugin:** Fixed a bug where MoveMore incorrectly attempted to make protected Blizzard UI elements draggable (e.g., the Raid Browser).
+- **Tracked Frames:** Resolved various structural and visual bugs when nesting tracked frames.
 
 ## [1.0.0] - 2026-03-10
 ### Added
