@@ -24,9 +24,11 @@ end
 
 function CCE:CurveHasClassPin(curveData)
     if not curveData or not curveData.pins then return false end
+    if curveData._hasClassPin ~= nil then return curveData._hasClassPin end
     for _, pin in ipairs(curveData.pins) do
-        if pin.type == "class" then return true end
+        if pin.type == "class" then curveData._hasClassPin = true; return true end
     end
+    curveData._hasClassPin = false
     return false
 end
 
@@ -125,5 +127,6 @@ function CCE:InvalidateNativeCurveCache(curveData)
         nativeCurveCache[curveData] = nil
         unitCurveCache[curveData] = nil
         curveData._sorted = nil
+        curveData._hasClassPin = nil
     end
 end
