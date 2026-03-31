@@ -441,33 +441,6 @@ function Anchor:RebalanceChainCenter(root, oldScreenCenterX)
     root:SetPoint(point, relativeTo, relativePoint, offsetX + shift / scale, offsetY)
 end
 
--- Shared re-insert: reads saved anchor data and splices frame back into its chain
-local function ReInsertFromSaved(self, frame)
-    if not (frame.orbitPlugin and frame.systemIndex) then return end
-    local saved
-    if Orbit.Engine.PositionManager then
-        saved = Orbit.Engine.PositionManager:GetAnchor(frame)
-    end
-    if not saved then
-        saved = frame.orbitPlugin:GetSetting(frame.systemIndex, "Anchor")
-    end
-    if not (saved and saved.target) then return end
-    local parent = _G[saved.target]
-    if not parent then return end
-    local displaced
-    if self.childrenOf[parent] then
-        for child in pairs(self.childrenOf[parent]) do
-            local a = self.anchors[child]
-            if a and a.edge == saved.edge and child ~= frame then
-                displaced = { frame = child, edge = a.edge, padding = a.padding, syncOptions = a.syncOptions, align = a.align }
-                break
-            end
-        end
-    end
-    if displaced then self:BreakAnchor(displaced.frame, true) end
-    self:CreateAnchor(frame, parent, saved.edge, saved.padding or 0, nil, saved.align, true)
-    if displaced then self:CreateAnchor(displaced.frame, frame, displaced.edge, displaced.padding or 0, displaced.syncOptions, displaced.align, true) end
-end
 
 -- Move frame to its default position (off-screen stash)
 local function ParkFrame(frame)
@@ -482,31 +455,27 @@ local function ParkFrame(frame)
 end
 
 -- Profile-level disable: severs the frame from the chain entirely.
--- Re-enabling requires saved data to reconstruct the relationship.
+-- Re-enabling triggers a full chain sync where ResolvePhysicalParent
+-- will restore its position in the WoW frame hierarchy.
 function Anchor:SetFrameDisabled(frame, disabled)
     if not Graph:SetDisabled(frame, disabled) then return end
     frame.orbitDisabled = Graph:IsSkipped(frame)
 
     if disabled then
         ParkFrame(frame)
-    else
-        ReInsertFromSaved(self, frame)
     end
     local root = self:GetRootParent(frame)
     if root then Graph:ReconcileChain(root, self) end
 end
 
 -- Content-empty toggle: marks frames with no content (no spell, no auras)
--- for layout bypass. Children are re-parented to the nearest non-skipped
--- ancestor. Clearing virtual re-inserts from saved data.
+-- for layout bypass. ResolvePhysicalParent handles shifting children.
 function Anchor:SetFrameVirtual(frame, virtual)
     if not Graph:SetVirtual(frame, virtual) then return end
     frame.orbitDisabled = Graph:IsSkipped(frame)
 
     if virtual then
         ParkFrame(frame)
-    else
-        ReInsertFromSaved(self, frame)
     end
     local root = self:GetRootParent(frame)
     if root then Graph:ReconcileChain(root, self) end
@@ -723,7 +692,7 @@ function Anchor:IsEdgeOccupied(parent, edge, excludeChild, incomingSyncDims, inc
     return true
 end
 
-local function SyncChild(child, parent, anchor, parentScale, parentWidth, parentHeight)
+local function SyncChild(child, parent, anchor, parentScale, parentWidth, parentHeight, resolvedPadding)
     local opts = anchor.syncOptions or GetFrameOptions(child)
     if opts.syncScale then
         child:SetScale(parentScale)
@@ -752,7 +721,7 @@ local function SyncChild(child, parent, anchor, parentScale, parentWidth, parent
             child:SetWidth(math.max(parent.orbitColumnWidth, MIN_SYNC_WIDTH))
         end
     end
-    ApplyAnchorPosition(child, parent, anchor.edge, anchor.padding, anchor.align, opts, chainOffsetX)
+    ApplyAnchorPosition(child, parent, anchor.edge, resolvedPadding or anchor.padding, anchor.align, opts, chainOffsetX)
     return opts
 end
 
