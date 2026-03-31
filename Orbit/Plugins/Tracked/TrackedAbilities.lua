@@ -95,7 +95,8 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.editModeTooltipLines = { "Drag and drop items and spells that have cooldowns here." }
     frame:EnableMouse(false)
     frame.orbitClickThrough = true
-    frame.anchorOptions = { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true, mergeBorders = true }
+    frame.orbitNoSnap = true
+    frame.orbitSnapExclude = true
     frame.orbitChainSync = true
     frame.orbitCursorReveal = true
     frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = DEFAULT_TRACKED_OFFSET_X, y = 0 }

@@ -154,7 +154,8 @@ function Plugin:CreateTrackedBarFrame(name, systemIndex, label)
     frame.orbitName = "Orbit_Tracked"
     frame:EnableMouse(false)
     frame.orbitClickThrough = true
-    frame.anchorOptions = { horizontal = true, vertical = true, mergeBorders = true }
+    frame.orbitNoSnap = true
+    frame.orbitSnapExclude = true
     frame.orbitChainSync = true
     frame.orbitCursorReveal = true
     frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 6, maxH = 40 }
