@@ -68,6 +68,7 @@ function Plugin:IsComponentDisabled()
 end
 function Plugin:HookProcGlow() end
 function Plugin:CheckPandemicFrames() end
+function Plugin:MarkPandemicDirty() end
 function Plugin:FixGlowTransparency() end
 function Plugin:HookBlizzardViewers() end
 function Plugin:SetupViewerHooks() end

@@ -156,6 +156,7 @@ function CDM:MonitorViewers()
     local oocThrottled = false
     local oocNextUpdate = 0
     local oocDirty = false
+    local pandemicDirty = true
 
     local function CheckAll()
         for _, entry in pairs(VIEWER_MAP) do
@@ -168,6 +169,16 @@ function CDM:MonitorViewers()
         for si, entry in pairs(VIEWER_MAP) do
             if entry.viewer then plugin:CheckPandemicFrames(entry.viewer, si) end
         end
+    end
+
+    local function CheckPandemicIfDirty()
+        if not pandemicDirty then return end
+        pandemicDirty = false
+        CheckPandemicAll()
+    end
+
+    function plugin:MarkPandemicDirty()
+        pandemicDirty = true
     end
 
     local frame = CreateFrame("Frame")
@@ -184,7 +195,7 @@ function CDM:MonitorViewers()
                     oocDirty = false
                 end
                 CheckAll()
-                CheckPandemicAll()
+                CheckPandemicIfDirty()
             end
             return
         end
@@ -200,7 +211,9 @@ function CDM:MonitorViewers()
                 plugin._oocThrottleTimer = nil
             end)
         end
+        pandemicDirty = true
         CheckAll()
+        CheckPandemicIfDirty()
         if not inCombat then plugin:PreSizeAnchors() end
     end)
     frame:SetScript("OnUpdate", function()
@@ -210,7 +223,7 @@ function CDM:MonitorViewers()
                 oocNextUpdate = now + OOC_THROTTLE_INTERVAL
                 oocDirty = false
                 CheckAll()
-                CheckPandemicAll()
+                CheckPandemicIfDirty()
             end
         end
     end)

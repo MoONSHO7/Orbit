@@ -135,6 +135,7 @@ function CDM:AddSettings(dialog, systemFrame)
         table.insert(schema.controls, {
             type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
             options = GLOW_OPTIONS, default = Constants.PandemicGlow.DefaultType,
+            onChange = function(val) self:SetSetting(systemIndex, "PandemicGlowType", val); self:MarkPandemicDirty() end,
         })
         table.insert(schema.controls, {
             type = "dropdown", key = "ProcGlowType", label = "Proc Glow",
@@ -153,6 +154,7 @@ function CDM:AddSettings(dialog, systemFrame)
         })
         SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
             key = "PandemicGlowColor", label = "Pandemic Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },
+            onChange = function() self:MarkPandemicDirty() end,
         })
         SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
             key = "ProcGlowColor", label = "Proc Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },

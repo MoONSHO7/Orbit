@@ -144,12 +144,14 @@ function CDM:ProcessChildren(anchor)
                             end
                         end
                         if anc and plugin.ProcessChildren then
+                            plugin:MarkPandemicDirty()
                             Orbit.Async:Debounce("CDM_OnShow_" .. systemIndex, function()
                                 plugin:ProcessChildren(anc)
                             end, 0)
                         end
                     end)
                     child.orbitOnShowHooked = true
+                    self:MarkPandemicDirty()
                 end
 
                 if not child.orbitRefreshHooked and child.RefreshData then
