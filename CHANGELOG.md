@@ -22,7 +22,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Mainly a performance parse this one, with lots of backend changes and a few bugfixes.
 
 ### Added
-- **Tracked Cooldowns:** Decoupled Tracked Bars into a standalone plugin, independent of the Cooldown Manager. Anchoring these is still disabled I still havent been able to solve this issue with spec switching on a single profile.
+- **Tracked Cooldowns:** Decoupled Tracked Icons/Bars into a standalone plugin, independent of the Cooldown Manager. Anchoring these is still disabled I still havent been able to solve this issue with spec switching on a single profile.
+- **CastBar Ticks:**  Added tick marks to the cast bar for channeled abilities.
+- **Raid Franme Panel** Enabled the standard blizzard raid frame (marker bars, readycheck, etc) by default, but added an option to disable it on each tier in the settings.
 
 ### Changed
 - **Performance (Unit Frames):** Improved Boss and Group frame efficiency.

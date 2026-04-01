@@ -12,7 +12,7 @@ externals:
     url: https://github.com/rossnichols/LibSerialize
     tag: v1.0.0
   Orbit/Core/Libs/LibCustomGlow-1.0: https://github.com/Stanzilla/LibCustomGlow
-  Orbit/Core/Libs/LibDBIcon-1.0: https://repos.curseforge.com/wow/libdbicon-1-0/trunk/LibDBIcon-1.0
+  Orbit/Core/Libs/LibDBIcon-1.0: https://repos.curseforge.com/wow/libdbicon-1-0/trunk
 
 ignore:
   - .agent
