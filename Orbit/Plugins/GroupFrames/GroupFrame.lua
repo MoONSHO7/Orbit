@@ -856,6 +856,7 @@ function Plugin:AssignPartyUnits()
                 SafeRegisterUnitWatch(frame)
                 if not frame:IsShown() then frame:Show(); changed = true end
                 if frame.UpdateAll then frame:UpdateAll() end
+                UpdatePowerBar(frame, self)
                 UpdateInRange(frame)
             else
                 local wasVisible = frame:IsShown() or frame.unit ~= nil
@@ -906,6 +907,7 @@ function Plugin:AssignRaidUnits()
                 SafeRegisterUnitWatch(frame)
                 if not frame:IsShown() then frame:Show(); changed = true end
                 if frame.UpdateAll then frame:UpdateAll() end
+                UpdatePowerBar(frame, self)
                 UpdateInRange(frame)
             else
                 local wasVisible = frame:IsShown() or frame.unit ~= nil

@@ -310,7 +310,7 @@ function Plugin:PrepareIconsForCanvasMode()
             frame.CastBar.Icon:SetTexture(136116)
             frame.CastBar.Icon:SetSize(castBarHeight, castBarHeight)
             frame.CastBar.Icon:Show()
-            if frame.CastBar.IconBorder then frame.CastBar.IconBorder:Show() end
+            if frame.CastBar.UpdateBarInsets then frame.CastBar:UpdateBarInsets() end
         end
         local bar = frame.CastBar.Bar
         if bar then

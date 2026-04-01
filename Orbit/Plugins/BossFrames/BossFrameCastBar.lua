@@ -7,6 +7,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 Orbit.BossFrameCastBar = {}
 local CB = Orbit.BossFrameCastBar
 
+local Pixel = Orbit.Engine.Pixel
 local CAST_BAR_WIDTH = 150
 local CAST_BAR_HEIGHT = 14
 local CAST_BAR_ICON_SIZE = 14
@@ -25,40 +26,59 @@ CB.ResolveCastBarColor = ResolveCastBarColor
 CB.ResolveNonInterruptibleColor = ResolveNonInterruptibleColor
 
 function CB:Create(parent, bossIndex, plugin)
-    -- Container holds the icon + bar side by side
+    -- Container holds the icon + bar with a single unified border (matches Skin.CastBar pattern)
     local container = CreateFrame("Frame", "OrbitBoss" .. bossIndex .. "CastBarContainer", parent)
     container:SetSize(CAST_BAR_WIDTH + CAST_BAR_ICON_SIZE, CAST_BAR_HEIGHT)
     container:Hide()
 
-    -- Icon: anchored to the left edge of the container
+    -- Background on container (fills behind border, icon, and bar)
+    container.bg = container:CreateTexture(nil, "BACKGROUND")
+    container.bg:SetAllPoints()
+    local bg = Orbit.Constants.Colors.Background
+    container.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
+
+    -- Icon: anchored to the left edge of the container (positioned by UpdateBarInsets)
     container.Icon = container:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
     container.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
     container.Icon:SetSize(CAST_BAR_ICON_SIZE, CAST_BAR_ICON_SIZE)
-    container.Icon:SetPoint("LEFT", container, "LEFT", 0, 0)
+    container.Icon:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0)
     container.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
 
-    container.IconBorder = CreateFrame("Frame", nil, container, "BackdropTemplate")
-    container.IconBorder:SetSize(CAST_BAR_ICON_SIZE, CAST_BAR_ICON_SIZE)
-    container.IconBorder:SetPoint("LEFT", container, "LEFT", 0, 0)
-    container.IconBorder:SetFrameLevel(container:GetFrameLevel() + Orbit.Constants.Levels.Border)
-    Orbit.Skin:SkinBorder(container.IconBorder, container.IconBorder, 1, nil, true)
-
-    -- StatusBar: fills the space to the right of the icon
+    -- StatusBar: fills the space to the right of the icon (positioned by UpdateBarInsets)
     local bar = CreateFrame("StatusBar", "OrbitBoss" .. bossIndex .. "CastBar", container)
-    bar:SetPoint("TOPLEFT", container.Icon, "TOPRIGHT", 0, 0)
+    bar:SetPoint("TOPLEFT", container, "TOPLEFT", CAST_BAR_ICON_SIZE, 0)
     bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0)
     bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
     bar:SetStatusBarColor(1, 0.7, 0)
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0)
+    bar:SetClipsChildren(true)
 
-    bar.bg = bar:CreateTexture(nil, "BACKGROUND")
-    bar.bg:SetAllPoints()
-    local globalSettings = Orbit.db.GlobalSettings or {}
-    Orbit.Skin:ApplyGradientBackground(bar, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
+    -- Single unified border on container (wraps icon + bar together)
+    container.SetBorder = function(self, size)
+        Orbit.Skin:SkinBorder(self, self, size)
+        self:UpdateBarInsets()
+    end
+    container.SetBorderHidden = Orbit.Skin.DefaultSetBorderHidden
 
-    container.SetBorder = function(self, size) Orbit.Skin:SkinBorder(self, bar, size) end
+    -- UpdateBarInsets: positions bar content to the right of the icon (matches Skin.CastBar pattern)
+    container.UpdateBarInsets = function(self)
+        local height = self:GetHeight()
+        local scale = self:GetEffectiveScale()
+        local showIcon = self.Icon and self.Icon:IsShown()
+        local iconSize = showIcon and Pixel:Snap(height, scale) or 0
+        if self.Icon then
+            self.Icon:ClearAllPoints()
+            self.Icon:SetSize(iconSize, iconSize)
+            self.Icon:SetPoint("TOPLEFT", self, "TOPLEFT", 0, 0)
+        end
+        bar:ClearAllPoints()
+        bar:SetPoint("TOPLEFT", self, "TOPLEFT", iconSize, 0)
+        bar:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
+    end
+
     container:SetBorder(1)
+    container:HookScript("OnSizeChanged", function(self) self:UpdateBarInsets() end)
 
     -- Protected overlay: mirrors bar for non-interruptible color
     bar.protectedOverlay = CreateFrame("StatusBar", nil, bar)
@@ -101,23 +121,8 @@ local TIMER_THROTTLE_INTERVAL = 1 / 30
 local INTERRUPT_FLASH_DURATION = Orbit.Constants.Timing.FlashDuration
 
 local function ApplyIconLayout(castBar, plugin)
-    local castBarHeight = plugin:GetSetting(castBar.bossIndex or 1, "CastBarHeight") or 18
-    if castBar.Icon then
-        castBar.Icon:SetSize(castBarHeight, castBarHeight)
-        castBar.Icon:Show()
-        if castBar.IconBorder then 
-            castBar.IconBorder:SetSize(castBarHeight, castBarHeight)
-            castBar.IconBorder:ClearAllPoints()
-            castBar.IconBorder:SetPoint("LEFT", castBar, "LEFT", 0, 0)
-            castBar.IconBorder:Show() 
-        end
-    end
-    -- Reanchor bar to start after the icon
-    if castBar.Bar then
-        castBar.Bar:ClearAllPoints()
-        castBar.Bar:SetPoint("TOPLEFT", castBar.Icon, "TOPRIGHT", 0, 0)
-        castBar.Bar:SetPoint("BOTTOMRIGHT", castBar, "BOTTOMRIGHT", 0, 0)
-    end
+    if castBar.Icon then castBar.Icon:Show() end
+    if castBar.UpdateBarInsets then castBar:UpdateBarInsets() end
     local showText = plugin:GetSetting(1, "CastBarText")
     local textDisabled = plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar.Text")
     if castBar.Text then
