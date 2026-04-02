@@ -2,7 +2,6 @@
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
-local LSM = LibStub("LibSharedMedia-3.0")
 
 Engine.Preview = Engine.Preview or {}
 local Preview = Engine.Preview

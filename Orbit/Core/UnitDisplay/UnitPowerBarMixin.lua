@@ -95,6 +95,7 @@ function Mixin:CreatePowerBarPlugin(config)
 
         local fs = textFrame:CreateFontString(nil, "OVERLAY", nil, 7)
         fs:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
+        Orbit.Skin:ApplyFontShadow(fs)
         fs:SetPoint("CENTER", textFrame, "CENTER", 0, 0)
         fs:SetJustifyH("CENTER")
         fs:SetText("100%")
@@ -189,11 +190,11 @@ function Mixin:UpdateVisibility()
     if enabled then
         Frame:SetAttribute("unit", unit)
         RegisterUnitWatch(Frame)
-        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
+        OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, false)
     else
         UnregisterUnitWatch(Frame)
         Orbit:SafeAction(function() Frame:Hide() end)
-        OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
+        OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, true)
     end
 end
 

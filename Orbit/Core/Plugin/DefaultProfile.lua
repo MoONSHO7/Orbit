@@ -562,6 +562,6 @@ Orbit.Profile.defaults = {
         BarColor = { a = 1, b = 0.2, g = 0.8, r = 0.2 },
         Font = "Barlow Condensed Bold", HideWhenMounted = false, BorderSize = 2,
         ClassColorBackground = false, IconBorderSize = 4, OverlayAllFrames = false,
-        FontOutline = "OUTLINE", UseClassColors = true, Texture = "Solid",
+        FontOutline = "OUTLINE", FontShadow = false, UseClassColors = true, Texture = "Solid",
     },
 }

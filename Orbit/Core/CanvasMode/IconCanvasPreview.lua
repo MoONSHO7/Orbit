@@ -38,7 +38,7 @@ function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTextur
     return preview
 end
 
--- [ ATTACH TEXT COMPONENTS ]--------------------------------------------------------------------
+-- [ ATTACH TEXT COMPONENTS ]----------------------------------------------------------------
 -- Attaches FontStrings and CreateDraggableComponent wrappers onto a preview frame.
 function IconCanvasPreview:AttachTextComponents(preview, textComponents, savedPositions, fontPath)
     local CreateDraggableComponent = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.CreateDraggableComponent
@@ -47,6 +47,7 @@ function IconCanvasPreview:AttachTextComponents(preview, textComponents, savedPo
     for _, def in ipairs(textComponents) do
         local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         fs:SetFont(fontPath, 12, Orbit.Skin:GetFontOutline())
+        Orbit.Skin:ApplyFontShadow(fs)
         fs:SetText(def.preview)
         fs:SetTextColor(1, 1, 1, 1)
         fs:SetPoint("CENTER", preview, "CENTER", 0, 0)

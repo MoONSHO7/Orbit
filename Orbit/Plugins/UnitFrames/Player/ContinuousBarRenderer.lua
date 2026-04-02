@@ -103,8 +103,8 @@ function Renderer:UpdateBar(plugin, frame, systemIndex, curveKey, current, max, 
     end
     if issecretvalue and (issecretvalue(current) or issecretvalue(max)) then return end
     local progress = (max > 0) and (current / max) or 0
-    local color = OrbitEngine.ColorCurve:SampleColorCurve(curveData, progress)
-    if color then frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
+    local r, g, b = OrbitEngine.ColorCurve:SampleColorCurveUnpacked(curveData, progress)
+    if r then frame.StatusBar:SetStatusBarColor(r, g, b) end
 end
 
 -- [ CONTINUOUS SPACERS ]--------------------------------------------------------------------------

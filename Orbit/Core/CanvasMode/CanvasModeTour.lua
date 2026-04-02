@@ -1,7 +1,6 @@
 -- [ CANVAS MODE - TOUR ]------------------------------------------------------------
 -- Sequential tour that cycles through help points with Next/Done
-local _, addonTable = ...
-local Orbit = addonTable
+local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog

@@ -52,15 +52,14 @@ function CM:OnCombatEnd()
     local queue = self.updateQueue
     self.updateQueue = {}
     for _, update in ipairs(queue) do
-        local ok, err = pcall(function()
-            if update.context then
-                update.callback(update.context)
-            else
-                update.callback()
-            end
-        end)
+        local ok, err
+        if update.context then
+            ok, err = pcall(update.callback, update.context)
+        else
+            ok, err = pcall(update.callback)
+        end
         if not ok then
-            print("Orbit: Error processing queued update:", err)
+            Orbit:Print("|cFFFF0000CombatManager Error|r:", tostring(err))
         end
     end
     if EventRegistry then

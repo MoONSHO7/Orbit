@@ -4,7 +4,6 @@
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
-local Constants = Orbit.Constants
 local C = Orbit.Constants
 
 local OVERLAY_LEVEL_BOOST = 100
@@ -36,7 +35,7 @@ end
 
 local function GetOrbitEditModeColor()
     local curveData = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.EditModeColorCurve
-    return (Orbit.Engine.ColorCurve:GetFirstColorFromCurve(curveData)) or Constants.Frame.EditModeColor
+    return (Orbit.Engine.ColorCurve:GetFirstColorFromCurve(curveData)) or C.Frame.EditModeColor
 end
 
 -- [ SYMMETRIC PAIR REGISTRATION ]------------------------------------------------------------------
@@ -418,6 +417,11 @@ function Selection:OnEditModeEnter()
         if Orbit.db and Orbit.db.AccountSettings and not Orbit.db.AccountSettings.TourComplete then
             if Engine.EditModeTour then Engine.EditModeTour:StartTour() end
         end
+
+        -- TODO: Phase 3 — replace RepairAllChains with targeted ReconcileChain
+        if Engine.FrameAnchor then
+            Engine.FrameAnchor:RepairAllChains()
+        end
     end)
 end
 
@@ -450,6 +454,11 @@ function Selection:OnEditModeExit()
             end
         end
         Selection:DisableKeyboardNudge()
+
+        -- TODO: Phase 3 — replace RepairAllChains with targeted ReconcileChain
+        if Engine.FrameAnchor then
+            Engine.FrameAnchor:RepairAllChains()
+        end
     end)
 end
 

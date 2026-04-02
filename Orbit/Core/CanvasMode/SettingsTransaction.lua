@@ -3,8 +3,7 @@
 -- Buffers all changes until Apply (commit) or Cancel (rollback).
 -- Fires CANVAS_SETTINGS_CHANGED so preview frames can live-update.
 
-local _, addonTable = ...
-local Orbit = addonTable
+local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 
@@ -13,10 +12,12 @@ local CanvasMode = OrbitEngine.CanvasMode
 local Transaction = {}
 CanvasMode.Transaction = Transaction
 local NIL_SENTINEL = {}
+local FIRE_DEBOUNCE = 0.05
 
 -- [ STATE ]--------------------------------------------------------------------------------------
 
 local active = false
+local fireTimer = nil
 local plugin = nil
 local systemIndex = nil
 local originalSettings = {}  -- snapshot of settings at Begin()
@@ -184,8 +185,6 @@ function Transaction:Clear()
     wipe(pendingPositions)
 end
 
-local fireTimer = nil
-local FIRE_DEBOUNCE = 0.05
 function Transaction:FireChanged()
     if fireTimer then return end
     local p = plugin

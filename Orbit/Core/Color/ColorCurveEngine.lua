@@ -10,6 +10,7 @@ local CCE = Engine.ColorCurve
 
 local CC = Engine.ClassColor
 local nativeCurveCache = setmetatable({}, { __mode = "v" })
+local unitCurveCache = setmetatable({}, { __mode = "k" })
 
 -- [ SORTED PIN CACHE ]------------------------------------------------------------------------------
 local function GetSortedPins(curveData)
@@ -23,9 +24,11 @@ end
 
 function CCE:CurveHasClassPin(curveData)
     if not curveData or not curveData.pins then return false end
+    if curveData._hasClassPin ~= nil then return curveData._hasClassPin end
     for _, pin in ipairs(curveData.pins) do
-        if pin.type == "class" then return true end
+        if pin.type == "class" then curveData._hasClassPin = true; return true end
     end
+    curveData._hasClassPin = false
     return false
 end
 
@@ -57,9 +60,37 @@ function CCE:SampleColorCurve(curveData, position)
     }
 end
 
+function CCE:SampleColorCurveUnpacked(curveData, position)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    local pins = curveData.pins
+    if #pins == 1 then return CC:ResolveClassColorPinUnpacked(pins[1]) end
+    local sorted = GetSortedPins(curveData)
+    position = math_max(0, math_min(1, position))
+    local first, last = sorted[1], sorted[#sorted]
+    if position <= first.position then return CC:ResolveClassColorPinUnpacked(first) end
+    if position >= last.position then return CC:ResolveClassColorPinUnpacked(last) end
+    local left, right = first, last
+    for i = 1, #sorted - 1 do
+        if sorted[i].position <= position and sorted[i + 1].position >= position then
+            left, right = sorted[i], sorted[i + 1]
+            break
+        end
+    end
+    local lr, lg, lb, la = CC:ResolveClassColorPinUnpacked(left)
+    local rr, rg, rb, ra = CC:ResolveClassColorPinUnpacked(right)
+    local range = right.position - left.position
+    local t = (range > 0) and math_max(0, math_min(1, (position - left.position) / range)) or 0
+    return lr + (rr - lr) * t, lg + (rg - lg) * t, lb + (rb - lb) * t, la + (ra - la) * t
+end
+
 function CCE:GetFirstColorFromCurve(curveData)
     if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
     return CC:ResolveClassColorPin(GetSortedPins(curveData)[1])
+end
+
+function CCE:GetFirstColorFromCurveUnpacked(curveData)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    return CC:ResolveClassColorPinUnpacked(GetSortedPins(curveData)[1])
 end
 
 function CCE:GetFontColorForNonUnit(curveData)
@@ -77,10 +108,19 @@ end
 function CCE:ToNativeColorCurveForUnit(curveData, unit)
     if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
     if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end
+    local _, classFile = UnitClass(unit)
+    if classFile then
+        local classCache = unitCurveCache[curveData]
+        if classCache and classCache[classFile] then return classCache[classFile] end
+    end
     local curve = C_CurveUtil.CreateColorCurve()
     for _, pin in ipairs(curveData.pins) do
         local color = CC:ResolveClassColorPinForUnit(pin, unit)
         curve:AddPoint(pin.position, CreateColor(color.r, color.g, color.b, color.a or 1))
+    end
+    if classFile then
+        if not unitCurveCache[curveData] then unitCurveCache[curveData] = {} end
+        unitCurveCache[curveData][classFile] = curve
     end
     return curve
 end
@@ -113,6 +153,8 @@ end
 function CCE:InvalidateNativeCurveCache(curveData)
     if curveData then
         nativeCurveCache[curveData] = nil
+        unitCurveCache[curveData] = nil
         curveData._sorted = nil
+        curveData._hasClassPin = nil
     end
 end

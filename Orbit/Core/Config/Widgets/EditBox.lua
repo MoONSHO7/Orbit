@@ -2,13 +2,19 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local Layout = Engine.Layout
 
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
+local DEFAULT_WIDTH = 200
+local DEFAULT_HEIGHT_SINGLE = 30
+local DEFAULT_HEIGHT_MULTI = 100
+local SCROLL_SPEED = 20
+
+-- [ EDITBOX WIDGET ]--------------------------------------------------------------------------------
 function Layout:CreateEditBox(parent, label, value, callback, width, height, isMultiLine, opts)
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame.OrbitType = "EditBox"
 
-    -- Default Size
-    local w = width or 200
-    local h = height or (isMultiLine and 100 or 30)
+    local w = width or DEFAULT_WIDTH
+    local h = height or (isMultiLine and DEFAULT_HEIGHT_MULTI or DEFAULT_HEIGHT_SINGLE)
     frame:SetSize(w, h)
 
     -- Label
@@ -50,7 +56,7 @@ function Layout:CreateEditBox(parent, label, value, callback, width, height, isM
             scrollFrame:SetScript("OnMouseWheel", function(self, delta)
                 local cur = self:GetVerticalScroll()
                 local max = self:GetVerticalScrollRange()
-                self:SetVerticalScroll(math.max(0, math.min(max, cur - (delta * 20))))
+                self:SetVerticalScroll(math.max(0, math.min(max, cur - (delta * SCROLL_SPEED))))
             end)
         else
             scrollFrame = CreateFrame("ScrollFrame", nil, inputContainer, "UIPanelScrollFrameTemplate")

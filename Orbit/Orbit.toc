@@ -49,6 +49,7 @@ Plugins\GroupFrames\GroupFrames.xml
 Plugins\BossFrames\BossFrames.xml
 Plugins\ActionBars\ActionBars.xml
 Plugins\CooldownManager\CooldownManager.xml
+Plugins\Tracked\Tracked.xml
 Plugins\MenuItems\MenuItems.xml
 Plugins\Misc\TalkingHead.lua
 

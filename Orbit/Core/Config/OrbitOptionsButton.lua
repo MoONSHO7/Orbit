@@ -1,12 +1,7 @@
-local _, addonTable = ...
-local Orbit = addonTable
+local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 
--------------------------------------------------
--- ORBIT OPTIONS BUTTON
--- A clickable field in the top-left corner during Edit Mode
--- Left click = Plugins, Right click = Profiles
--------------------------------------------------
+-- [ ORBIT OPTIONS BUTTON ]--------------------------------------------------------------------------
 
 local BUTTON_WIDTH = 200
 local BUTTON_HEIGHT = 40
@@ -74,9 +69,7 @@ Button:SetScript("OnClick", function(self, button)
     end
 end)
 
--------------------------------------------------
--- COMBAT INDICATOR
--------------------------------------------------
+-- [ COMBAT INDICATOR ]------------------------------------------------------------------------------
 
 local PULSE_SPEED = 3
 
@@ -122,9 +115,7 @@ if InCombatLockdown() then
     Button:SetScript("OnUpdate", OnUpdate_Pulse)
 end
 
--------------------------------------------------
--- EDIT MODE LIFECYCLE
--------------------------------------------------
+-- [ EDIT MODE LIFECYCLE ]---------------------------------------------------------------------------
 
 -- Show when Edit Mode enters
 if EditModeManagerFrame then

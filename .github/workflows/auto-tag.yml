@@ -19,8 +19,8 @@ jobs:
 
       - name: Calculate version and create tag
         run: |
-          # Count all commits on main branch
-          VERSION=$(git rev-list --count HEAD)
+          # Count all commits on branch
+          VERSION="$(git rev-list --count HEAD)"
           echo "Calculated version: $VERSION"
           
           # Check if tag already exists

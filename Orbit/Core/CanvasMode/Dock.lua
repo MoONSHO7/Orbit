@@ -1,6 +1,5 @@
--- [ CANVAS MODE - DOCK ]------------------------------------------------------------
-local _, addonTable = ...
-local Orbit = addonTable
+-- [ CANVAS MODE - DOCK ]--------------------------------------------------------------------
+local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog

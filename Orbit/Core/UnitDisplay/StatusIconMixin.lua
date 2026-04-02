@@ -415,6 +415,7 @@ function Mixin:UpdateGroupPosition(frame, plugin)
     -- Apply global font to GroupPositionText
     local fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
     frame.GroupPositionText:SetFont(fontPath, GROUP_POSITION_FONT_SIZE, Orbit.Skin:GetFontOutline())
+    Orbit.Skin:ApplyFontShadow(frame.GroupPositionText)
 
     if isInRaid and unit then
         local raidIndex = UnitInRaid(unit)

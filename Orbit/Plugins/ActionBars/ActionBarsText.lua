@@ -16,10 +16,10 @@ function ABText:Apply(plugin, button, systemIndex)
     local baseFontPath = (Orbit.Fonts and Orbit.Fonts[globalFontName]) or Orbit.Constants.Settings.Font.FallbackPath
     if LSM then baseFontPath = LSM:Fetch("font", globalFontName) or baseFontPath end
     local useGlobal = plugin:GetSetting(systemIndex, "UseGlobalTextStyle")
-    -- Transaction-aware: canvas staged positions first, then Global/per-bar SV
-    local txnPositions = plugin.GetComponentPositions and plugin:GetComponentPositions(systemIndex)
-    local positions
-    if txnPositions and next(txnPositions) then positions = txnPositions
+    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+    local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == plugin
+    local positions = {}
+    if txnActive then positions = Txn:GetPositions()
     elseif useGlobal ~= false then positions = plugin:GetSetting(1, "GlobalComponentPositions") or {}
     else positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {} end
     local w = button:GetWidth()
@@ -52,8 +52,24 @@ function ABText:Apply(plugin, button, systemIndex)
         else textPoint = "CENTER" end
         local finalOffsetX = anchorX == "LEFT" and offsetX or -offsetX
         local finalOffsetY = anchorY == "BOTTOM" and offsetY or -offsetY
+        
+        if not textElement.orbitPointHooked then
+            textElement.orbitSetPoint = textElement.SetPoint
+            textElement.orbitClearAllPoints = textElement.ClearAllPoints
+            textElement.SetPoint = function(self, ...)
+                if self.orbitIsSettingPoint then self:orbitSetPoint(...) end
+            end
+            textElement.ClearAllPoints = function(self)
+                if self.orbitIsSettingPoint then self:orbitClearAllPoints() end
+            end
+            textElement.orbitPointHooked = true
+        end
+
+        textElement.orbitIsSettingPoint = true
         textElement:ClearAllPoints()
         textElement:SetPoint(textPoint, button, anchorPoint, finalOffsetX, finalOffsetY)
+        textElement.orbitIsSettingPoint = false
+        
         if textElement.SetJustifyH then textElement:SetJustifyH(justifyH) end
     end
 

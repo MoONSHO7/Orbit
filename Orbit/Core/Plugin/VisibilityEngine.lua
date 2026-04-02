@@ -11,6 +11,7 @@ local VE = Orbit.VisibilityEngine
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local DEFAULTS = { oocFade = false, opacity = 100, hideMounted = false, mouseOver = true, showWithTarget = true }
+local STARTUP_DELAY = 0.5
 
 -- Ordered list of manageable frames: { key, displayName, pluginName, systemIndex }
 -- key = unique string used as DB key
@@ -38,7 +39,8 @@ local FRAME_REGISTRY = {
     { key = "EssentialCooldowns",   display = "Essential Cooldowns",   plugin = "Cooldown Manager",   index = 1 },
     { key = "UtilityCooldowns",     display = "Utility Cooldowns",     plugin = "Cooldown Manager",   index = 2 },
     { key = "BuffIcons",            display = "Buff Icons",            plugin = "Cooldown Manager",   index = 3 },
-    { key = "TrackedCooldowns",     display = "Tracked Cooldowns",     plugin = "Cooldown Manager",   index = 4 },
+    { key = "TrackedIcons",         display = "Tracked Icons",         plugin = "Tracked Items",      index = 4 },
+    { key = "TrackedBars",          display = "Tracked Bars",          plugin = "Tracked Items",      index = 20 },
     { key = "ChargeBars",           display = "Charge Bars",           plugin = "Cooldown Manager",   index = 20 },
     { key = "BuffBars",             display = "Buff Bars",             plugin = "Cooldown Manager",   index = 30 },
     { key = "GroupFrames",          display = "Group Frames",          plugin = "Group Frames",       index = 1 },
@@ -61,6 +63,25 @@ local BLIZZARD_REGISTRY = {
     { key = "DurabilityFrame",      display = "Durability",            blizzardFrame = "DurabilityFrame" },
     { key = "VehicleSeatIndicator", display = "Vehicle Seat",          blizzardFrame = "VehicleSeatIndicator" },
     { key = "DamageMeter",          display = "Damage Meter",          blizzardFrame = "DamageMeter" },
+}
+
+-- Custom third-party addon frames (resolved via _G[frame] when addon is loaded)
+local ADDON_REGISTRY = {
+    { key = "Details1",         display = "Details! (Window 1)", addon = "Details",         frame = "DetailsBaseFrame1" },
+    { key = "Details2",         display = "Details! (Window 2)", addon = "Details",         frame = "DetailsBaseFrame2" },
+    { key = "Details3",         display = "Details! (Window 3)", addon = "Details",         frame = "DetailsBaseFrame3" },
+    { key = "OmniCD",           display = "OmniCD",              addon = "OmniCD",          frame = "OmniCD" },
+    { key = "Plater",           display = "Plater Nameplates",   addon = "Plater",          frame = "PlaterMainFrame" },
+    { key = "Platynator",       display = "Platynator",          addon = "Platynator",      frame = "PlatynatorFrame" },
+    { key = "Chattynator",      display = "Chattynator",         addon = "Chattynator",     frame = "ChattynatorFrame" },
+    { key = "DandersFrames",    display = "DandersFrames",       addon = "DandersFrames",   frame = "DandersFramesMainFrame" },
+    { key = "Cell",             display = "Cell Raid Frames",    addon = "Cell",            frame = "CellMainFrame" },
+    { key = "BigWigs",          display = "BigWigs",             addon = "BigWigs",         frame = "BigWigsAnchor" },
+    { key = "LittleWigs",       display = "LittleWigs",          addon = "LittleWigs",      frame = "LittleWigsAnchor" },
+    { key = "DBM",              display = "Deadly Boss Mods",    addon = "DBM-Core",        frame = "DBMMinimapButton" },
+    { key = "Bartender1",       display = "Bartender4 (Bar 1)",  addon = "Bartender4",      frame = "BT4Bar1" },
+    { key = "Bartender2",       display = "Bartender4 (Bar 2)",  addon = "Bartender4",      frame = "BT4Bar2" },
+    { key = "Bartender3",       display = "Bartender4 (Bar 3)",  addon = "Bartender4",      frame = "BT4Bar3" },
 }
 
 -- [ DB ACCESS ]-------------------------------------------------------------------------------------
@@ -103,6 +124,17 @@ end
 
 function VE:GetBlizzardFrames()
     return BLIZZARD_REGISTRY
+end
+
+function VE:GetThirdPartyFrames()
+    local active = {}
+    local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
+    for _, entry in ipairs(ADDON_REGISTRY) do
+        if isLoaded(entry.addon) and _G[entry.frame] then
+            table.insert(active, entry)
+        end
+    end
+    return active
 end
 
 function VE:IsBlizzardEntry(entry)
@@ -190,6 +222,17 @@ end
 function VE:ApplyAll()
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
     self:ApplyBlizzardSettings()
+    self:ApplyAddonSettings()
+end
+
+function VE:ApplyAddonSettings()
+    if not Orbit.OOCFadeMixin then return end
+    for _, entry in ipairs(self:GetThirdPartyFrames()) do
+        local frame = _G[entry.frame]
+        if frame then
+            Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, entry.key)
+        end
+    end
 end
 
 function VE:ApplyFrame(key)
@@ -208,6 +251,15 @@ function VE:ApplyFrame(key)
             return
         end
     end
+    for _, entry in ipairs(ADDON_REGISTRY) do
+        if entry.key == key then
+            local frame = _G[entry.frame]
+            if frame then
+                Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, key)
+            end
+            return
+        end
+    end
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
 end
 
@@ -216,5 +268,8 @@ local initFrame = CreateFrame("Frame")
 initFrame:RegisterEvent("PLAYER_LOGIN")
 initFrame:SetScript("OnEvent", function(self)
     self:UnregisterAllEvents()
-    C_Timer.After(0.5, function() VE:ApplyBlizzardSettings() end)
+    C_Timer.After(STARTUP_DELAY, function()
+        VE:ApplyBlizzardSettings()
+        VE:ApplyAddonSettings()
+    end)
 end)

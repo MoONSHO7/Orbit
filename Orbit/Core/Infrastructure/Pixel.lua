@@ -5,6 +5,7 @@ Engine.Pixel = Engine.Pixel or {}
 local Pixel = Engine.Pixel
 
 -- [ STATE ]-----------------------------------------------------------------------------------------
+local WOW_REFERENCE_HEIGHT = 768
 local SCREEN_SCALE = 1
 
 -- [ MATH ]------------------------------------------------------------------------------------------
@@ -12,9 +13,9 @@ local SCREEN_SCALE = 1
 local function UpdateScreenScale()
     local physicalWidth, physicalHeight = GetPhysicalScreenSize()
     if not physicalHeight or physicalHeight == 0 then
-        SCREEN_SCALE = 768.0 / 1080.0
+        SCREEN_SCALE = WOW_REFERENCE_HEIGHT / 1080
     else
-        SCREEN_SCALE = 768.0 / physicalHeight
+        SCREEN_SCALE = WOW_REFERENCE_HEIGHT / physicalHeight
     end
 
     Orbit.EventBus:Fire("ORBIT_DISPLAY_SIZE_CHANGED", SCREEN_SCALE)
@@ -25,7 +26,6 @@ local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("DISPLAY_SIZE_CHANGED")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:SetScript("OnEvent", UpdateScreenScale)
--- Initialize immediately
 UpdateScreenScale()
 
 --- Get the number of Logical Units per Physical Pixel

@@ -46,6 +46,31 @@ function Renderer:GetResourceColor(plugin, systemIndex, index, maxResources, isC
     return firstColor or Orbit.Colors.PlayerResources[PLAYER_CLASS]
 end
 
+function Renderer:GetResourceColorUnpacked(plugin, systemIndex, index, maxResources, isCharged)
+    local curveData = plugin:GetSetting(systemIndex, "BarColorCurve")
+    if curveData and curveData.pins then
+        local numPins = #curveData.pins
+        if numPins > 1 and index and maxResources and maxResources > 0 then
+            local progress = (index - 1) / (maxResources - 1)
+            local r, g, b = OrbitEngine.ColorCurve:SampleColorCurveUnpacked(curveData, progress)
+            if r then return r, g, b end
+            return 1, 1, 1
+        end
+    end
+    local specID = GetSpecializationInfo(GetSpecialization() or 0)
+    if PLAYER_CLASS == "DEATHKNIGHT" then
+        local colors = Orbit.Colors.PlayerResources
+        if specID == DK_SPEC_BLOOD then return colors.RuneBlood.r, colors.RuneBlood.g, colors.RuneBlood.b end
+        if specID == DK_SPEC_FROST then return colors.RuneFrost.r, colors.RuneFrost.g, colors.RuneFrost.b end
+        if specID == DK_SPEC_UNHOLY then return colors.RuneUnholy.r, colors.RuneUnholy.g, colors.RuneUnholy.b end
+    end
+    local r, g, b
+    if curveData then r, g, b = OrbitEngine.ColorCurve:GetFirstColorFromCurveUnpacked(curveData) end
+    if r then return r, g, b end
+    local def = Orbit.Colors.PlayerResources[PLAYER_CLASS]
+    return def.r, def.g, def.b
+end
+
 -- [ BUTTON CREATION ]------------------------------------------------------------------------------
 function Renderer:UpdateMaxPower(plugin, frame, systemIndex)
     if not frame or not plugin.powerType then return end
@@ -140,9 +165,9 @@ function Renderer:ApplyButtonVisuals(plugin, frame, systemIndex)
                     columns = max, index = i, parentWidth = frame:GetWidth(),
                 })
             end
-            local color = self:GetResourceColor(plugin, systemIndex, i, max)
+            local r, g, b = self:GetResourceColorUnpacked(plugin, systemIndex, i, max)
             if btn.orbitBar then
-                btn.orbitBar:SetVertexColor(color.r, color.g, color.b)
+                btn.orbitBar:SetVertexColor(r, g, b)
                 btn.orbitBar:SetTexCoord((i - 1) / max, i / max, 0, 1)
             end
             if not btn.Overlay then
@@ -165,7 +190,7 @@ function Renderer:ApplyButtonVisuals(plugin, frame, systemIndex)
                 btn.progressBar:Hide()
                 local texturePath = LSM:Fetch("statusbar", texture)
                 if texturePath then btn.progressBar:SetStatusBarTexture(texturePath) end
-                local barColor = { r = color.r * INACTIVE_DIM_FACTOR, g = color.g * INACTIVE_DIM_FACTOR, b = color.b * INACTIVE_DIM_FACTOR }
+                local barColor = { r = r * INACTIVE_DIM_FACTOR, g = g * INACTIVE_DIM_FACTOR, b = b * INACTIVE_DIM_FACTOR }
                 Orbit.Skin:SkinStatusBar(btn.progressBar, texture, barColor)
             end
         end
@@ -186,14 +211,14 @@ function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
         for pos, runeData in ipairs(sortedRunes) do
             local btn = frame.buttons[pos]
             if btn then
-                local color = self:GetResourceColor(plugin, systemIndex, pos, maxRunes)
+                local r, g, b = self:GetResourceColorUnpacked(plugin, systemIndex, pos, maxRunes)
                 if runeData.ready then
                     readyCount = readyCount + 1
                     btn:SetActive(true); btn:SetFraction(0)
-                    if btn.orbitBar then btn.orbitBar:SetVertexColor(color.r, color.g, color.b) end
+                    if btn.orbitBar then btn.orbitBar:SetVertexColor(r, g, b) end
                 else
                     btn:SetActive(false); btn:SetFraction(runeData.fraction)
-                    if btn.progressBar then btn.progressBar:SetStatusBarColor(color.r * INACTIVE_DIM_FACTOR, color.g * INACTIVE_DIM_FACTOR, color.b * INACTIVE_DIM_FACTOR) end
+                    if btn.progressBar then btn.progressBar:SetStatusBarColor(r * INACTIVE_DIM_FACTOR, g * INACTIVE_DIM_FACTOR, b * INACTIVE_DIM_FACTOR) end
                 end
             end
         end
@@ -210,17 +235,17 @@ function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
         for i = 1, max do
             local btn = frame.buttons[i]
             if btn then
-                local color = self:GetResourceColor(plugin, systemIndex, i, max)
+                local r, g, b = self:GetResourceColorUnpacked(plugin, systemIndex, i, max)
                 local state, remaining, fraction = ResourceMixin:GetEssenceState(i, current, max)
                 if state == "full" then
-                    if btn.orbitBar then btn.orbitBar:Show(); btn.orbitBar:SetVertexColor(color.r, color.g, color.b) end
+                    if btn.orbitBar then btn.orbitBar:Show(); btn.orbitBar:SetVertexColor(r, g, b) end
                     if btn.Overlay then btn.Overlay:Show() end
                     if btn.progressBar then btn.progressBar:Hide() end
                 elseif state == "partial" then
-                    if btn.orbitBar then btn.orbitBar:Show(); btn.orbitBar:SetVertexColor(color.r * INACTIVE_DIM_FACTOR, color.g * INACTIVE_DIM_FACTOR, color.b * INACTIVE_DIM_FACTOR) end
+                    if btn.orbitBar then btn.orbitBar:Show(); btn.orbitBar:SetVertexColor(r * INACTIVE_DIM_FACTOR, g * INACTIVE_DIM_FACTOR, b * INACTIVE_DIM_FACTOR) end
                     if btn.Overlay then btn.Overlay:Hide() end
                     btn:SetFraction(fraction)
-                    if btn.progressBar then btn.progressBar:SetStatusBarColor(color.r * PARTIAL_DIM_FACTOR, color.g * PARTIAL_DIM_FACTOR, color.b * PARTIAL_DIM_FACTOR) end
+                    if btn.progressBar then btn.progressBar:SetStatusBarColor(r * PARTIAL_DIM_FACTOR, g * PARTIAL_DIM_FACTOR, b * PARTIAL_DIM_FACTOR) end
                 else
                     if btn.orbitBar then btn.orbitBar:Hide() end
                     if btn.Overlay then btn.Overlay:Hide() end
@@ -244,17 +269,17 @@ function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
     local isDestruction = PLAYER_CLASS == "WARLOCK" and specID == WARLOCK_SPEC_DESTRUCTION
     if not isDestruction then cur = math.floor(cur) end
     local curveData = plugin:GetSetting(systemIndex, "BarColorCurve")
-    local color
+    local r, g, b
     if curveData and #curveData.pins > 1 then
         local progress = (max > 0) and (cur / max) or 0
-        color = OrbitEngine.ColorCurve:SampleColorCurve(curveData, progress)
+        r, g, b = OrbitEngine.ColorCurve:SampleColorCurveUnpacked(curveData, progress)
     end
-    color = color or self:GetResourceColor(plugin, systemIndex, nil, nil, false)
+    if not r then r, g, b = self:GetResourceColorUnpacked(plugin, systemIndex, nil, nil, false) end
     if frame.StatusBar then
         frame.StatusBar:SetMinMaxValues(0, max)
         local smoothing = plugin:GetSetting(systemIndex, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
         frame.StatusBar:SetValue(cur, smoothing)
-        if color then frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b) end
+        if r then frame.StatusBar:SetStatusBarColor(r, g, b) end
     end
     plugin:RepositionSpacers(max)
     -- Charged combo point overlays (secret-safe: StatusBars handle fill in C++)

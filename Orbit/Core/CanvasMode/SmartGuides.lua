@@ -21,7 +21,7 @@ local GUIDE_THICKNESS = 1
 -- [ CREATE ]----------------------------------------------------------------------------------------
 
 function SmartGuides:Create(container)
-    local guideLevel = (Orbit.Constants and Orbit.Constants.Levels and Orbit.Constants.Levels.SmartGuides) or 90
+    local guideLevel = Orbit.Constants.Levels.SmartGuides
 
     local frame = CreateFrame("Frame", nil, container)
     frame:SetAllPoints(container)

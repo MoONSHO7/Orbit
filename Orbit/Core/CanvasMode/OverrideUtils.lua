@@ -10,6 +10,8 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local OverrideUtils = {}
 Engine.OverrideUtils = OverrideUtils
 
+local DEFAULT_TEXTURE_FALLBACK_SIZE = 18
+
 -- [ TEXT COLOR ]-------------------------------------------------------------------------------------
 -- Apply color to a text element.
 -- Priority: UseClassColour > CustomColorCurve > CustomColorValue > Global FontColorCurve > white
@@ -110,6 +112,7 @@ function OverrideUtils.ApplyFontOverrides(element, overrides, defaultSize, baseF
     if fontPath and fontSize then
         local flags = Orbit.Skin:GetFontOutline()
         element:SetFont(fontPath, fontSize, flags)
+        Orbit.Skin:ApplyFontShadow(element)
     end
 end
 
@@ -131,10 +134,10 @@ function OverrideUtils.ApplyScaleOverride(element, overrides)
             element.orbitOriginalWidth = element:GetWidth()
             element.orbitOriginalHeight = element:GetHeight()
             if element.orbitOriginalWidth <= 0 then
-                element.orbitOriginalWidth = 18
+                element.orbitOriginalWidth = DEFAULT_TEXTURE_FALLBACK_SIZE
             end
             if element.orbitOriginalHeight <= 0 then
-                element.orbitOriginalHeight = 18
+                element.orbitOriginalHeight = DEFAULT_TEXTURE_FALLBACK_SIZE
             end
         end
         local baseW = element.orbitOriginalWidth
@@ -145,8 +148,8 @@ function OverrideUtils.ApplyScaleOverride(element, overrides)
         if not element.orbitOriginalWidth then
             element.orbitOriginalWidth = element:GetWidth()
             element.orbitOriginalHeight = element:GetHeight()
-            if element.orbitOriginalWidth <= 0 then element.orbitOriginalWidth = 24 end
-            if element.orbitOriginalHeight <= 0 then element.orbitOriginalHeight = 24 end
+            if element.orbitOriginalWidth <= 0 then element.orbitOriginalWidth = DEFAULT_TEXTURE_FALLBACK_SIZE end
+            if element.orbitOriginalHeight <= 0 then element.orbitOriginalHeight = DEFAULT_TEXTURE_FALLBACK_SIZE end
         end
         local baseW = element.orbitOriginalWidth
         local baseH = element.orbitOriginalHeight

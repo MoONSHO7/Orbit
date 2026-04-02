@@ -355,6 +355,7 @@ function Mixin:CreateAuraGridPlugin(config)
             for _, def in ipairs(textComponents) do
                 local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
                 fs:SetFont(fontPath, 12, fontOutline)
+                Orbit.Skin:ApplyFontShadow(fs)
                 fs:SetText(def.preview)
                 fs:SetTextColor(1, 1, 1, 1)
                 fs:SetPoint("CENTER", preview, "CENTER", 0, 0)
@@ -715,8 +716,7 @@ function Mixin:_updateBlizzardBuffs()
                     -- Style stacks
                     btn.Count:SetParent(btn.orbitTextOverlay)
                     if OverrideUtils then OverrideUtils.ApplyOverrides(btn.Count, (componentPositions.Stacks or {}).overrides or {}, { fontSize = countFontSize, fontPath = fontPath }) end
-                    btn.Count:SetShadowColor(0, 0, 0, 1)
-                    btn.Count:SetShadowOffset(1, -1)
+                    Orbit.Skin:ApplyFontShadow(btn.Count)
                     btn.Count:SetDrawLayer("OVERLAY", 7)
                     ApplyComponentPosition(btn.Count, btn, "Stacks", "RIGHT", "BOTTOM", 1, 1)
                     btn._orbitSkinned = skinVersion
@@ -889,12 +889,12 @@ function Mixin:UpdateVisibility()
     if isEditMode then
         if not InCombatLockdown() then UnregisterUnitWatch(Frame) end
         if enabled then
-            OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
+            OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, false)
             if not UnitExists(cfg.unit) then Frame.unit = "player" end
             Orbit:SafeAction(function() Frame:Show(); Frame:SetAlpha(1) end)
             self:ShowPreviewAuras()
         else
-            OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
+            OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, true)
             Orbit:SafeAction(function() Frame:Hide() end)
         end
         return
@@ -910,11 +910,11 @@ function Mixin:UpdateVisibility()
         if not InCombatLockdown() then
             UnregisterUnitWatch(Frame)
             Frame:Hide()
-            OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, true)
+            OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, true)
         end
     end
 
-    if enabled then OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false) end
+    if enabled then OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, false) end
 end
 
 -- [ PREVIEW ]---------------------------------------------------------------------------------------
