@@ -253,7 +253,7 @@ function Drag:OnDragStart(selectionOverlay)
                 if root then oldScreenCenterX = GetChainScreenCenterX(root) end
             end
 
-            Engine.FrameAnchor:BreakAnchor(parent, true)
+            Engine.FrameAnchor:BreakAnchor(parent, true, true)
             Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
 
             if root then
@@ -261,30 +261,8 @@ function Drag:OnDragStart(selectionOverlay)
                 Engine.FrameAnchor:RebalanceChainCenter(root, oldScreenCenterX)
             end
 
-            -- Free frame to UIParent at its original screen position, then start moving
-            local scale = parent:GetEffectiveScale()
-            if savedL and savedB then
-                parent:ClearAllPoints()
-                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(savedL, scale), Engine.Pixel:Snap(savedB, scale))
-            else
-                local l, b = parent:GetLeft(), parent:GetBottom()
-                if l and b then
-                    parent:ClearAllPoints()
-                    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l, scale), Engine.Pixel:Snap(b, scale))
-                else
-                    parent:ClearAllPoints()
-                end
-            end
             parent:StartMoving()
         else
-            local scale = parent:GetEffectiveScale()
-            local l, b = parent:GetLeft(), parent:GetBottom()
-            if l and b then
-                parent:ClearAllPoints()
-                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l, scale), Engine.Pixel:Snap(b, scale))
-            else
-                parent:ClearAllPoints()
-            end
             parent:StartMoving()
         end
 
@@ -311,6 +289,8 @@ end
 -- [ DRAG STOP ]-------------------------------------------------------------------------------------
 
 function Drag:OnDragStop(selectionOverlay)
+    local parent = selectionOverlay.parent
+    
     if selectionOverlay.lastAnchorTarget then
         local Selection = Engine.FrameSelection
         local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]

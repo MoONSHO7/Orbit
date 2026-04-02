@@ -25,6 +25,7 @@ function ABPreview:Setup(plugin, container, systemIndex)
         end
 
         local preview = OrbitEngine.IconCanvasPreview:Create(self, options.parent or UIParent, BUTTON_SIZE, BUTTON_SIZE, iconTexture)
+        preview.systemIndex = systemIndex
 
         -- Resolve saved positions (global sync aware)
         local useGlobal = plugin:GetSetting(systemIndex, "UseGlobalTextStyle")

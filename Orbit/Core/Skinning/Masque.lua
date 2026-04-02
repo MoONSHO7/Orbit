@@ -97,5 +97,3 @@ function MasqueBridge:IsGroupEnabled(groupName)
     local group = self.groups[groupName]
     return group and group.db and not group.db.Disabled
 end
-
-

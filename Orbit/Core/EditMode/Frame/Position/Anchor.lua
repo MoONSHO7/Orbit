@@ -9,6 +9,10 @@ local Anchor = Engine.FrameAnchor
 Anchor.anchors = Anchor.anchors or {}
 Anchor.childrenOf = Anchor.childrenOf or setmetatable({}, { __mode = "k" })
 
+-- Initialize the graph companion with our authoritative tables
+local Graph = Engine.AnchorGraph
+Graph:Init(Anchor.anchors, Anchor.childrenOf)
+
 local hookedParents = setmetatable({}, { __mode = "k" })
 local optionsCache = setmetatable({}, { __mode = "k" })
 
@@ -60,6 +64,7 @@ local function HookParentSizeChange(parent, anchorModule)
     end
 
     parent:HookScript("OnSizeChanged", function(self)
+        if not anchorModule.childrenOf[self] or not next(anchorModule.childrenOf[self]) then return end
         anchorModule:SyncChildren(self)
         if not syncingChainRoot then
             local a = anchorModule.anchors[self]
@@ -77,20 +82,38 @@ local function HookParentSizeChange(parent, anchorModule)
     hookedParents[parent] = true
 end
 
-local function SetMergeBorderState(parent, child, edge, hidden)
-    if parent and parent.SetBorderHidden then
-        parent:SetBorderHidden(hidden)
+local function SetMergeBorderState(parent, child, edge, hidden, deferExecution)
+    local function execute()
+        if parent and parent.SetBorderHidden then
+            parent:SetBorderHidden(hidden)
+        end
+        if child.SetBorderHidden then
+            child:SetBorderHidden(hidden)
+        end
+        -- Clear group flag on the child only; parent may still be merged with other children
+        if not hidden then
+            child._groupBorderActive = nil
+        end
+        -- Update group border on the merge root directly — no deferral needed since
+        -- bounding box is computed from anchor data, not screen coordinates.
+        if Orbit.Skin and Orbit.Skin.UpdateGroupBorder then
+            local mergeRoot = parent or child
+            while true do
+                local pa = Anchor.anchors[mergeRoot]
+                if not pa or pa.padding ~= 0 then break end
+                local pO = GetFrameOptions(pa.parent)
+                local cO = GetFrameOptions(mergeRoot)
+                if not (ShouldMergeBorders(pO, pa.edge) and ShouldMergeBorders(cO, pa.edge)) then break end
+                mergeRoot = pa.parent
+            end
+            if mergeRoot and mergeRoot.GetFrameLevel then Orbit.Skin:UpdateGroupBorder(mergeRoot) end
+            -- Only clear stale group overlays on the child when UN-merging; during merge,
+            -- UpdateGroupBorder already handles hiding stale overlays on non-root frames.
+            if not hidden and child and child.GetFrameLevel then Orbit.Skin:ClearGroupBorder(child) end
+        end
     end
-    if child.SetBorderHidden then
-        child:SetBorderHidden(hidden)
-    end
-    -- Clear group flag on the child only; parent may still be merged with other children
-    if not hidden then
-        child._groupBorderActive = nil
-    end
-    -- Update group border on the merge root directly — no deferral needed since
-    -- bounding box is computed from anchor data, not screen coordinates.
-    if Orbit.Skin and Orbit.Skin.UpdateGroupBorder then
+
+    if deferExecution then
         local mergeRoot = parent or child
         while true do
             local pa = Anchor.anchors[mergeRoot]
@@ -100,10 +123,13 @@ local function SetMergeBorderState(parent, child, edge, hidden)
             if not (ShouldMergeBorders(pO, pa.edge) and ShouldMergeBorders(cO, pa.edge)) then break end
             mergeRoot = pa.parent
         end
-        if mergeRoot and mergeRoot.GetFrameLevel then Orbit.Skin:UpdateGroupBorder(mergeRoot) end
-        -- Only clear stale group overlays on the child when UN-merging; during merge,
-        -- UpdateGroupBorder already handles hiding stale overlays on non-root frames.
-        if not hidden and child and child.GetFrameLevel then Orbit.Skin:ClearGroupBorder(child) end
+        if mergeRoot and mergeRoot._groupBorderOverlay then
+            mergeRoot._groupBorderOverlay:ClearAllPoints()
+            mergeRoot._groupBorderOverlay:Hide()
+        end
+        Orbit.Async:Debounce("ApplyGroupBorder_"..tostring(child), execute, 0.05)
+    else
+        execute()
     end
 end
 
@@ -247,31 +273,9 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions,
 end
 
 -- Check if anchoring child to parent would create a circular dependency
--- Walks Orbit anchor chain + native GetPoint relatives to catch orphaned SetPoint refs
+-- Delegates to AnchorGraph for pure-data traversal (no GetNumPoints calls)
 local function WouldCreateCycle(anchors, child, parent)
-    local visited = {}
-    local current = parent
-    while current do
-        if current == child then
-            return true
-        end
-        if visited[current] then
-            break
-        end
-        visited[current] = true
-        local anchor = anchors[current]
-        local nextFrame = anchor and anchor.parent or nil
-        if not nextFrame and current.GetNumPoints then
-            for i = 1, current:GetNumPoints() do
-                local _, relativeTo = current:GetPoint(i)
-                if relativeTo == child then
-                    return true
-                end
-            end
-        end
-        current = nextFrame
-    end
-    return false
+    return Graph:WouldCreateCycle(child, parent)
 end
 
 function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, suppressApplySettings)
@@ -383,7 +387,7 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
     return true
 end
 
-function Anchor:BreakAnchor(child, suppressApplySettings)
+function Anchor:BreakAnchor(child, suppressApplySettings, deferMergeVisuals)
     if self.anchors[child] then
         local oldAnchor = self.anchors[child]
         local oldParent = oldAnchor.parent
@@ -407,7 +411,7 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
         local pOpts = GetFrameOptions(oldParent)
         local cOpts = GetFrameOptions(child)
         if ShouldMergeBorders(pOpts, oldAnchor.edge) and ShouldMergeBorders(cOpts, oldAnchor.edge) then
-            SetMergeBorderState(oldParent, child, oldAnchor.edge, false)
+            SetMergeBorderState(oldParent, child, oldAnchor.edge, false, deferMergeVisuals)
         end
 
         if not suppressApplySettings and child.orbitPlugin and child.orbitPlugin.ApplySettings then
@@ -458,82 +462,44 @@ function Anchor:RebalanceChainCenter(root, oldScreenCenterX)
     root:SetPoint(point, relativeTo, relativePoint, offsetX + shift / scale, offsetY)
 end
 
--- [ DESTROY ANCHOR ]--------------------------------------------------------------------------------
--- Removes a frame from the anchor chain, re-anchoring its children to its parent.
--- If the frame has no parent, children are restored to their default positions.
-function Anchor:DestroyAnchor(frame)
-    local parentAnchor = self.anchors[frame]
-    local children = self:GetAnchoredChildren(frame)
 
-    -- Break the destroyed frame's own anchor FIRST to free up the occupied edge
-    self:BreakAnchor(frame, true)
-
-    if parentAnchor and #children > 0 then
-        for _, child in ipairs(children) do
-            local childAnchor = self.anchors[child]
-            if childAnchor then
-                self:CreateAnchor(child, parentAnchor.parent, childAnchor.edge, childAnchor.padding, childAnchor.syncOptions, childAnchor.align, true)
-            end
-        end
-    else
-        for _, child in ipairs(children) do
-            self:BreakAnchor(child, false)
-            child:ClearAllPoints()
-            local dp = child.defaultPosition
-            if dp then
-                child:SetPoint(dp.point or "CENTER", dp.relativeTo or UIParent, dp.relativePoint or "CENTER", dp.x or 0, dp.y or 0)
-            else
-                child:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-            end
-            if child.orbitPlugin and child.systemIndex then
-                child.orbitPlugin:SetSetting(child.systemIndex, "Anchor", nil)
-            end
-        end
+-- Move frame to its default position (off-screen stash)
+local function ParkFrame(frame)
+    frame:ClearAllPoints()
+    local def = frame.defaultPosition
+    if not (def and def.point) then return end
+    local x, y = def.x or 0, def.y or 0
+    if Orbit.Engine.Pixel then
+        x, y = Orbit.Engine.Pixel:SnapPosition(x, y, def.point, frame:GetWidth(), frame:GetHeight(), frame:GetEffectiveScale())
     end
+    frame:SetPoint(def.point, def.relativeTo, def.relativePoint, x, y)
 end
 
--- Centralized helper for setting frame disabled state
+-- Profile-level disable: severs the frame from the chain entirely.
+-- Re-enabling triggers a full chain sync where ResolvePhysicalParent
+-- will restore its position in the WoW frame hierarchy.
 function Anchor:SetFrameDisabled(frame, disabled)
-    if (not frame.orbitDisabled) == (not disabled) then return end
-    frame.orbitDisabled = disabled
-    if disabled then
-        self:DestroyAnchor(frame)
-    else
-        -- Re-insert into chain using saved Anchor setting
-        if frame.orbitPlugin and frame.systemIndex then
-            local saved
-            if Orbit.Engine.PositionManager then
-                saved = Orbit.Engine.PositionManager:GetAnchor(frame)
-            end
-            if not saved then
-                saved = frame.orbitPlugin:GetSetting(frame.systemIndex, "Anchor")
-            end
+    if not Graph:SetDisabled(frame, disabled) then return end
+    frame.orbitDisabled = Graph:IsSkipped(frame)
 
-            if saved and saved.target then
-                local parent = _G[saved.target]
-                if parent then
-                    -- Identify any child occupying the same edge (re-parented grandchild)
-                    local displaced
-                    if self.childrenOf[parent] then
-                        for child in pairs(self.childrenOf[parent]) do
-                            local a = self.anchors[child]
-                            if a and a.edge == saved.edge and child ~= frame then
-                                displaced = { frame = child, edge = a.edge, padding = a.padding, syncOptions = a.syncOptions, align = a.align }
-                                break
-                            end
-                        end
-                    end
-                    if displaced then
-                        self:BreakAnchor(displaced.frame, true)
-                    end
-                    self:CreateAnchor(frame, parent, saved.edge, saved.padding or 0, nil, saved.align, true)
-                    if displaced then
-                        self:CreateAnchor(displaced.frame, frame, displaced.edge, displaced.padding or 0, displaced.syncOptions, displaced.align, true)
-                    end
-                end
-            end
-        end
+    if disabled then
+        ParkFrame(frame)
     end
+    local root = self:GetRootParent(frame)
+    if root then Graph:ReconcileChain(root, self) end
+end
+
+-- Content-empty toggle: marks frames with no content (no spell, no auras)
+-- for layout bypass. ResolvePhysicalParent handles shifting children.
+function Anchor:SetFrameVirtual(frame, virtual)
+    if not Graph:SetVirtual(frame, virtual) then return end
+    frame.orbitDisabled = Graph:IsSkipped(frame)
+
+    if virtual then
+        ParkFrame(frame)
+    end
+    local root = self:GetRootParent(frame)
+    if root then Graph:ReconcileChain(root, self) end
 end
 
 function Anchor:GetAnchorParent(child)
@@ -747,7 +713,7 @@ function Anchor:IsEdgeOccupied(parent, edge, excludeChild, incomingSyncDims, inc
     return true
 end
 
-local function SyncChild(child, parent, anchor, parentScale, parentWidth, parentHeight)
+local function SyncChild(child, parent, anchor, parentScale, parentWidth, parentHeight, resolvedPadding)
     local opts = anchor.syncOptions or GetFrameOptions(child)
     if opts.syncScale then
         child:SetScale(parentScale)
@@ -776,15 +742,16 @@ local function SyncChild(child, parent, anchor, parentScale, parentWidth, parent
             child:SetWidth(math.max(parent.orbitColumnWidth, MIN_SYNC_WIDTH))
         end
     end
-    ApplyAnchorPosition(child, parent, anchor.edge, anchor.padding, anchor.align, opts, chainOffsetX)
+    ApplyAnchorPosition(child, parent, anchor.edge, resolvedPadding or anchor.padding, anchor.align, opts, chainOffsetX)
     return opts
 end
 
-function Anchor:SyncChildren(parent, suppressApplySettings, visited)
+function Anchor:SyncChildren(parent, suppressApplySettings, visited, depth)
     if not parent or not parent.GetScale or not parent.GetWidth then
         return
     end
 
+    depth = depth or 1
     visited = visited or {}
     if visited[parent] then
         return
@@ -813,6 +780,8 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited)
         local canSync = (isEditMode and not InCombatLockdown() and not child:IsForbidden())
             or (not child:IsForbidden() and (not InCombatLockdown() or not child:IsProtected()))
 
+        if child.orbitDisabled then canSync = false end
+
         if canSync then
             SyncChild(child, parent, anchor, parentScale, parentWidth, parentHeight)
 
@@ -820,56 +789,32 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited)
                 if child.orbitPlugin.UpdateLayout then
                     child.orbitPlugin:UpdateLayout(child)
                 elseif not isEditMode and not suppressApplySettings and child.orbitPlugin.ApplySettings then
-                    child.orbitPlugin:ApplySettings(child)
+                    if depth > 8 then
+                        local timerDelay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.RetryShort) or 0.1
+                        C_Timer.After(timerDelay, function() child.orbitPlugin:ApplySettings(child) end)
+                    else
+                        child.orbitPlugin:ApplySettings(child)
+                    end
                 end
             end
 
-            self:SyncChildren(child, suppressApplySettings, visited)
+            self:SyncChildren(child, suppressApplySettings, visited, depth + 1)
         end
     end
 end
 
 -- [ REPAIR CHAIN ]----------------------------------------------------------------------------------
--- Walks a chain depth-first, re-parenting children of hidden/disabled frames to the
--- nearest visible ancestor. Called after profile switches to skip over disabled frames.
+-- Delegates to AnchorGraph:ReconcileChain for targeted chain reconciliation.
 function Anchor:RepairChain(root)
     if not root or InCombatLockdown() then return end
-    local visited = {}
-    local function Repair(parent)
-        if visited[parent] then return end
-        visited[parent] = true
-        local children = self:GetAnchoredChildren(parent)
-        for _, child in ipairs(children) do
-            if not visited[child] then
-                local shouldSkip = child.orbitDisabled or (not child:IsShown() and not Orbit:IsEditMode())
-                if shouldSkip then
-                    visited[child] = true
-                    local grandchildren = self:GetAnchoredChildren(child)
-                    for _, gc in ipairs(grandchildren) do
-                        local gcAnchor = self.anchors[gc]
-                        if gcAnchor then
-                            self:CreateAnchor(gc, parent, gcAnchor.edge, gcAnchor.padding, gcAnchor.syncOptions, gcAnchor.align, true)
-                        end
-                    end
-                else
-                    Repair(child)
-                end
-            end
-        end
-    end
-    Repair(root)
+    Graph:ReconcileChain(root, self)
 end
 
 -- Repair all anchor chains across the entire system.
+-- Delegates to AnchorGraph:ReconcileAll.
 function Anchor:RepairAllChains()
     if InCombatLockdown() then return end
-    local roots = {}
-    for child in pairs(self.anchors) do
-        roots[self:GetRootParent(child)] = true
-    end
-    for root in pairs(roots) do
-        self:RepairChain(root)
-    end
+    Graph:ReconcileAll(self)
 end
 
 -- [ RESYNC ALL ]-------------------------------------------------------------------------------------
@@ -898,3 +843,12 @@ Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
     local delay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.RetryShort) or 0.5
     C_Timer.After(delay, function() Anchor:ResyncAll() end)
 end)
+
+-- Re-reconcile chains after Edit Mode hooks to ensure plugins properly bypass empty seeds
+if EditModeManagerFrame then
+    EditModeManagerFrame:HookScript("OnShow", function()
+        local delay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.RetryShort) or 0.1
+        C_Timer.After(delay, function() Graph:ReconcileAll(Anchor) end)
+    end)
+end
+

@@ -65,22 +65,25 @@ function PredictionMixin:UpdateHealPrediction()
     end
 
     -- [ TOTAL ABSORBS ]------------------------------------------------------------------------------
-    local absorbAnchorTexture = self.OtherIncomingHealBar and self.OtherIncomingHealBar:GetStatusBarTexture() or healthTexture
-
     if self.TotalAbsorbBar then
         if not self.absorbsEnabled then
             self.TotalAbsorbBar:Hide()
-            if self.TotalAbsorbOverlay then self.TotalAbsorbOverlay:Hide() end
         else
             local totalAbsorb = UnitGetTotalAbsorbs(self.unit) or DEFAULT_HEAL_VALUE
             self.TotalAbsorbBar:SetMinMaxValues(0, maxHealth)
             self.TotalAbsorbBar:SetValue(totalAbsorb)
             self.TotalAbsorbBar:Show()
-            SafeSetHealBarPoints(self.TotalAbsorbBar, absorbAnchorTexture, totalWidth)
-
-            if self.TotalAbsorbOverlay then
-                self.TotalAbsorbOverlay:Show()
-                self.TotalAbsorbOverlay:SetAllPoints(self.TotalAbsorbBar:GetStatusBarTexture())
+            local gs = Orbit.db.GlobalSettings
+            if gs and gs.AlwaysShowAbsorb then
+                self.TotalAbsorbBar:SetReverseFill(true)
+                self.TotalAbsorbBar:ClearAllPoints()
+                self.TotalAbsorbBar:SetPoint("TOPLEFT", self.Health, "TOPLEFT", 0, 0)
+                self.TotalAbsorbBar:SetPoint("BOTTOMRIGHT", self.Health, "BOTTOMRIGHT", 0, 0)
+                self.TotalAbsorbBar.cachedAnchor = nil
+            else
+                self.TotalAbsorbBar:SetReverseFill(false)
+                local absorbAnchorTexture = self.OtherIncomingHealBar and self.OtherIncomingHealBar:GetStatusBarTexture() or healthTexture
+                SafeSetHealBarPoints(self.TotalAbsorbBar, absorbAnchorTexture, totalWidth)
             end
         end
     end

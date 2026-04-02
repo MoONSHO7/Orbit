@@ -18,6 +18,8 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
         ShowLatency = false,
         SparkColor = { r = 1, g = 1, b = 1, a = 1 },
         SparkColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+        TickWidth = 1,
+        TickColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.4 } } } },
         DisabledComponents = {},
         ComponentPositions = {
             Text = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
@@ -37,7 +39,39 @@ local PREVIEW_ICON_ID = 136243
 local PREVIEW_CAST_DURATION = 3
 local PREVIEW_CAST_PROGRESS = 1.5
 local CAST_COMPLETION_GRACE = 0.5
+local TICK_DRAW_SUBLEVEL = 7
 local CastBar
+
+local CHANNEL_SPELLS = {
+    -- Priest
+    [15407]  = 4, -- Mind Flay
+    [47758]  = 3, -- Penance
+    [64843]  = 4, -- Divine Hymn
+    [48045]  = 5, -- Mind Sear
+    [391109] = 4, -- Dark Ascension
+    [32375]  = 4, -- Mass Dispel
+    -- Warlock
+    [1120]   = 5, -- Drain Soul
+    [234153] = 5, -- Drain Life
+    [198590] = 5, -- Drain Soul (Legion)
+    -- Mage
+    [5143]   = 5, -- Arcane Missiles
+    [205021] = 5, -- Ray of Frost
+    [10]     = 8, -- Blizzard
+    -- Druid
+    [740]    = 4, -- Tranquility
+    [16914]  = 10,-- Hurricane
+    -- Monk
+    [115175] = 8, -- Soothing Mist
+    [117952] = 4, -- Crackling Jade Lightning
+    [113656] = 4, -- Fists of Fury
+    -- Hunter
+    [120360] = 9, -- Barrage
+    [321530] = 5, -- Bloodsweat
+    [257044] = 7, -- Rapid Fire
+    -- Evoker
+    [356995] = 4, -- Disintegrate
+}
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
 local function DisableBlizzardCastBar()
@@ -81,6 +115,53 @@ local function HideBar(bar)
     Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
 end
 
+local function HideChannelTicks(bar)
+    if not bar.channelTicks then return end
+    for _, tick in ipairs(bar.channelTicks) do
+        tick:Hide()
+    end
+end
+
+local function SetupChannelTicks(plugin, bar, safeSpellID)
+    HideChannelTicks(bar)
+    
+    local numTicks = CHANNEL_SPELLS[safeSpellID]
+    if not numTicks then return end
+
+    local targetBar = bar.orbitBar or bar
+    bar.channelTicks = bar.channelTicks or {}
+
+    local width = plugin:GetSetting(bar.systemIndex, "CastBarWidth")
+    local height = plugin:GetSetting(bar.systemIndex, "CastBarHeight")
+    local scale = bar:GetEffectiveScale()
+    
+    local tickWidth = plugin:GetSetting(bar.systemIndex, "TickWidth")
+    local snappedTickWidth = SnapToPixel(tickWidth, scale)
+
+    local tickCurve = plugin:GetSetting(bar.systemIndex, "TickColorCurve")
+    local c = tickCurve.pins[1].color
+
+    for i = 1, numTicks - 1 do
+        local tick = bar.channelTicks[i]
+        if not tick then
+            tick = targetBar:CreateTexture(nil, "OVERLAY", nil, TICK_DRAW_SUBLEVEL)
+            bar.channelTicks[i] = tick
+        end
+
+        tick:SetColorTexture(c.r, c.g, c.b, c.a)
+        tick:ClearAllPoints()
+        tick:SetSize(math.max(snappedTickWidth, 1 / scale), height)
+
+        local pct = i / numTicks
+        local pos = pct * width
+        pos = SnapToPixel(pos, scale)
+
+        -- Position relative to the left side
+        tick:SetPoint("CENTER", targetBar, "LEFT", pos, 0)
+        tick:Show()
+    end
+end
+
 -- [ SETTINGS UI ]-----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
     if not CastBar then
@@ -111,6 +192,10 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
         end
         table.insert(schema.controls, { type = "checkbox", key = "CastBarIcon", label = "Show Icon", default = true })
         table.insert(schema.controls, { type = "checkbox", key = "ShowLatency", label = "Show Latency", default = true })
+        table.insert(schema.controls, {
+            type = "slider", key = "TickWidth", label = "Tick Width",
+            min = 1, max = 5, step = 1, default = 1,
+        })
     elseif currentTab == "Colour" then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "CastBarColorCurve", label = "Normal",
@@ -124,6 +209,11 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "SparkColorCurve", label = "Spark / Glow",
             default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
+            singleColor = true,
+        })
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "TickColorCurve", label = "Ticks",
+            default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.4 } } } },
             singleColor = true,
         })
     end
@@ -370,9 +460,10 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             end
 
             ShowBar(bar)
+            HideChannelTicks(bar)
         end
     elseif event == "UNIT_SPELLCAST_CHANNEL_START" then
-        local name, text, texture, startTime, endTime, isTradeSkill, notInterruptible = UnitChannelInfo("player")
+        local name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, safeSpellID = UnitChannelInfo("player")
         if name then
             bar.casting = false
             bar.channeling = true
@@ -410,6 +501,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             end
 
             ShowBar(bar)
+            SetupChannelTicks(self, bar, safeSpellID)
         end
     elseif event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_CHANNEL_STOP" then
         bar.casting = false
@@ -418,10 +510,12 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             bar.Latency:Hide()
         end
         HideBar(bar)
+        HideChannelTicks(bar)
     elseif event == "UNIT_SPELLCAST_FAILED" then
         if bar.castGUID == castGUID then
             bar.casting = false
             bar.channeling = false
+            HideChannelTicks(bar)
             if bar.Latency then
                 bar.Latency:Hide()
             end
@@ -439,6 +533,7 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
     elseif event == "UNIT_SPELLCAST_INTERRUPTED" then
         bar.casting = false
         bar.channeling = false
+        HideChannelTicks(bar)
         if bar.Latency then
             bar.Latency:Hide()
         end

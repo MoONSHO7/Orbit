@@ -4,11 +4,28 @@ local Skin = Orbit.Skin
 local Icons = Skin.Icons
 local Constants = Orbit.Constants
 local Pixel = Orbit.Engine.Pixel
+local LSM = LibStub("LibSharedMedia-3.0")
 Skin.ActionButtonSkin = {}
 local ABS = Skin.ActionButtonSkin
 
 local STANDARD_ACTION_BUTTON_SIZE = 45
 local MASQUE_REGION_KEYS = { "Backdrop", "Normal_Custom", "Shadow", "Gloss" }
+local CHECKED_OFFSET_TL = { x = -2, y = 2 }
+local CHECKED_OFFSET_BR = { x = 3, y = -2 }
+local SPELL_HIGHLIGHT_ALPHA = 0.6
+local FLASH_COLOR = { r = 1, g = 1, b = 0.4, a = 0.2 }
+local AUTOCAST_OFFSET_TL = { x = 0, y = 1 }
+local AUTOCAST_OFFSET_BR = { x = 1, y = -1 }
+local HOTKEY_FONT_SCALE = 0.28
+local HOTKEY_MIN_SIZE = 8
+local HOTKEY_OFFSET = { x = -2, y = -2 }
+local NAME_FONT_SCALE = 0.22
+local NAME_MIN_SIZE = 7
+local NAME_OFFSET_Y = 2
+local NAME_TEXT_ALPHA = 0.9
+local HIGHLIGHT_ALPHA = 0.3
+local KEYPRESS_FADE_DURATION = 0.15
+local DEFAULT_KEYPRESS_COLOR = { r = 1, g = 1, b = 1, a = 0.6 }
 
 local function ResetRegion(region)
     if region then
@@ -43,10 +60,10 @@ function ABS:Apply(button, settings)
     if not checkedTexture and button.GetCheckedTexture then checkedTexture = button:GetCheckedTexture() end
     if checkedTexture then
         checkedTexture:ClearAllPoints()
-        checkedTexture:SetPoint("TOPLEFT", button, "TOPLEFT", -2, 2)
-        checkedTexture:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 3, -2)
+        checkedTexture:SetPoint("TOPLEFT", button, "TOPLEFT", CHECKED_OFFSET_TL.x, CHECKED_OFFSET_TL.y)
+        checkedTexture:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", CHECKED_OFFSET_BR.x, CHECKED_OFFSET_BR.y)
         checkedTexture:SetAlpha(1)
-        checkedTexture:SetDrawLayer("OVERLAY", 7)
+        checkedTexture:SetDrawLayer("OVERLAY", Constants.Layers.Text)
     end
 
     ResetRegion(button.FloatingBG)
@@ -74,7 +91,13 @@ function ABS:Apply(button, settings)
     if button.SpellHighlightTexture then
         button.SpellHighlightTexture:ClearAllPoints()
         button.SpellHighlightTexture:SetAllPoints(button)
-        button.SpellHighlightTexture:SetColorTexture(1, 1, 1, 0.6)
+        button.SpellHighlightTexture:SetColorTexture(1, 1, 1, SPELL_HIGHLIGHT_ALPHA)
+    end
+
+    if button.QuickKeybindHighlightTexture then
+        button.QuickKeybindHighlightTexture:ClearAllPoints()
+        button.QuickKeybindHighlightTexture:SetPoint("TOPLEFT", button, "TOPLEFT", -1, 1)
+        button.QuickKeybindHighlightTexture:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 1, -1)
     end
 
     if button.NewActionTexture then
@@ -86,15 +109,15 @@ function ABS:Apply(button, settings)
     if button.Flash then
         button.Flash:ClearAllPoints()
         button.Flash:SetAllPoints(button)
-        button.Flash:SetColorTexture(1, 1, 0.4, 0.2)
+        button.Flash:SetColorTexture(FLASH_COLOR.r, FLASH_COLOR.g, FLASH_COLOR.b, FLASH_COLOR.a)
     end
 
     local autoCast = button.AutoCastOverlay or button.AutoCastFrame or button.Shine
     if not autoCast and button:GetName() then autoCast = _G[button:GetName() .. "Shine"] end
     if autoCast then
         autoCast:ClearAllPoints()
-        autoCast:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 1)
-        autoCast:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 1, -1)
+        autoCast:SetPoint("TOPLEFT", button, "TOPLEFT", AUTOCAST_OFFSET_TL.x, AUTOCAST_OFFSET_TL.y)
+        autoCast:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", AUTOCAST_OFFSET_BR.x, AUTOCAST_OFFSET_BR.y)
         autoCast:SetFrameLevel(button:GetFrameLevel() + Constants.Levels.IconOverlay)
         if autoCast.Shine then autoCast.Shine:ClearAllPoints(); autoCast.Shine:SetAllPoints(autoCast) end
         if autoCast.Corners then autoCast.Corners:ClearAllPoints(); autoCast.Corners:SetAllPoints(autoCast) end
@@ -141,41 +164,41 @@ function ABS:Apply(button, settings)
 
     Icons:ApplyCustom(button, settings)
 
+    local fontName = Orbit.db.GlobalSettings.Font
+    local fontPath = LSM:Fetch("font", fontName) or Constants.Settings.Font.FallbackPath
     if button.HotKey then
-        local fontName = Orbit.db.GlobalSettings.Font
-        local fontPath = (Orbit.Fonts and Orbit.Fonts[fontName]) or Constants.Settings.Font.FallbackPath
-        local fontSize = math.max(8, w * 0.28)
+        local fontSize = math.max(HOTKEY_MIN_SIZE, w * HOTKEY_FONT_SCALE)
         button.HotKey:SetFont(fontPath, fontSize, Skin:GetFontOutline())
+        Skin:ApplyFontShadow(button.HotKey)
         button.HotKey:SetTextColor(1, 1, 1, 1)
         button.HotKey:ClearAllPoints()
-        button.HotKey:SetPoint("TOPRIGHT", button, "TOPRIGHT", -2, -2)
+        button.HotKey:SetPoint("TOPRIGHT", button, "TOPRIGHT", HOTKEY_OFFSET.x, HOTKEY_OFFSET.y)
     end
 
     if button.Name then
-        local fontName = Orbit.db.GlobalSettings.Font
-        local fontPath = (Orbit.Fonts and Orbit.Fonts[fontName]) or Constants.Settings.Font.FallbackPath
-        local fontSize = math.max(7, w * 0.22)
+        local fontSize = math.max(NAME_MIN_SIZE, w * NAME_FONT_SCALE)
         button.Name:SetFont(fontPath, fontSize, Skin:GetFontOutline())
+        Skin:ApplyFontShadow(button.Name)
         if settings.hideName then button.Name:Hide()
         else
             button.Name:Show()
-            button.Name:SetTextColor(1, 1, 1, 0.9)
+            button.Name:SetTextColor(1, 1, 1, NAME_TEXT_ALPHA)
             button.Name:ClearAllPoints()
-            button.Name:SetPoint("BOTTOM", button, "BOTTOM", 0, 2)
+            button.Name:SetPoint("BOTTOM", button, "BOTTOM", 0, NAME_OFFSET_Y)
         end
     end
 
     if not button.orbitHighlight then
         button.orbitHighlight = button:CreateTexture(nil, "OVERLAY")
         button.orbitHighlight:SetAllPoints(button)
-        button.orbitHighlight:SetColorTexture(1, 1, 1, 0.3)
+        button.orbitHighlight:SetColorTexture(1, 1, 1, HIGHLIGHT_ALPHA)
         button.orbitHighlight:Hide()
         button:HookScript("OnEnter", function(self) if self.orbitHighlight then self.orbitHighlight:Show() end end)
         button:HookScript("OnLeave", function(self) if self.orbitHighlight then self.orbitHighlight:Hide() end end)
     end
 
     -- [ KEYPRESS FLASH ]--------------------------------------------------------------------------------
-    local kpColor = settings.keypressColor or { r = 1, g = 1, b = 1, a = 0.6 }
+    local kpColor = settings.keypressColor or DEFAULT_KEYPRESS_COLOR
     button.orbitKpColor = kpColor
 
     if not button.orbitKeypressFlash then
@@ -193,7 +216,7 @@ function ABS:Apply(button, settings)
         local fadeOut = fadeGroup:CreateAnimation("Alpha")
         fadeOut:SetFromAlpha(1)
         fadeOut:SetToAlpha(0)
-        fadeOut:SetDuration(0.15)
+        fadeOut:SetDuration(KEYPRESS_FADE_DURATION)
         fadeOut:SetSmoothing("OUT")
         fadeGroup:SetScript("OnFinished", function() flashFrame:Hide() end)
         button.orbitKeypressFade = fadeGroup

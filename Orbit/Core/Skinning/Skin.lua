@@ -3,14 +3,58 @@ local Orbit = addonTable
 ---@class OrbitSkin
 Orbit.Skin = {}
 local Skin = Orbit.Skin
-local Engine = Orbit.Engine -- Added Engine reference
+local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local Constants = Orbit.Constants
-local math_max, math_min = math.max, math.min
 
 -- Register Orbit's overlay texture with LibSharedMedia
+local SHADOW_OFFSET_X = 2
+local SHADOW_OFFSET_Y = -2
 local ORBIT_OVERLAY_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
 LSM:Register("statusbar", "Orbit Gradient", ORBIT_OVERLAY_PATH)
+
+-- [ LSM BORDER RECONCILIATION ]--------------------------------------------------------------------
+local lsmPendingRefresh
+local function RefreshBordersIfNeeded()
+    if lsmPendingRefresh then return end
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    if not gs then return end
+    local needsRefresh = false
+    if gs.BorderStyle and gs.BorderStyle ~= "flat" then
+        local style = Skin:ResolveStyle("BorderStyle")
+        if not style then needsRefresh = true end
+    end
+    if gs.IconBorderStyle and gs.IconBorderStyle ~= "flat" then
+        local style = Skin:ResolveStyle("IconBorderStyle")
+        if not style then needsRefresh = true end
+    end
+    if not needsRefresh then return end
+    lsmPendingRefresh = true
+    C_Timer.After(0.2, function()
+        lsmPendingRefresh = nil
+        for _, plugin in ipairs(Engine.systems) do
+            if plugin.ApplyAll then plugin:ApplyAll()
+            elseif plugin.ApplySettings then plugin:ApplySettings() end
+        end
+        Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
+    end)
+end
+
+LSM.RegisterCallback(Orbit, "LibSharedMedia_Registered", function(_, mediaType, key)
+    if mediaType ~= "border" then return end
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    if not gs then return end
+    if (gs.BorderStyle == "lsm:" .. key) or (gs.IconBorderStyle == "lsm:" .. key) then
+        RefreshBordersIfNeeded()
+    end
+end)
+
+-- Deferred one-shot: all addons are loaded by PLAYER_ENTERING_WORLD; reconcile if borders are stale.
+C_Timer.After(0, function()
+    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+        C_Timer.After(1, RefreshBordersIfNeeded)
+    end)
+end)
 
 -- [ UTILITIES ]-------------------------------------------------------------------------------------
 
@@ -24,9 +68,7 @@ function Skin:SkinIcon(icon, settings)
     if not icon then
         return
     end
-    if not icon.SetTexCoord then
-        return
-    end -- Safety check
+    if not icon.SetTexCoord then return end
 
     local zoom = settings.zoom or 0
     local trim = Constants.Texture.BlizzardIconBorderTrim
@@ -99,7 +141,7 @@ function Skin:ApplyIconGroupBorder(container, styleEntry)
         -- Pixel mode: flat border on container
         self:ClearNineSliceBorder(container)
         local gs = Orbit.db and Orbit.db.GlobalSettings
-        local borderSize = gs and gs.IconBorderSize or 2
+        local borderSize = gs and gs.IconBorderSize or Constants.Settings.BorderSize.Default
         self:SkinBorder(container, container, borderSize, nil, true, true)
         if container._borderFrame then
             container._borderFrame:SetFrameLevel(container:GetFrameLevel() + Constants.Levels.IconOverlay)
@@ -181,7 +223,7 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
 
     -- For icons, use the icon-specific border size setting
     local gs = Orbit.db and Orbit.db.GlobalSettings
-    local targetSize = isIcon and (gs and gs.IconBorderSize or 2) or (size or 1)
+    local targetSize = isIcon and (gs and gs.IconBorderSize or Constants.Settings.BorderSize.Default) or (size or 1)
     if targetSize <= 0 then
         frame.borderPixelSize = 0
         bf:Hide()
@@ -202,7 +244,6 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
     bf:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
 
     if not color then
-        local gs = Orbit.db and Orbit.db.GlobalSettings
         local raw = isIcon and (gs and gs.IconBorderColor) or (gs and gs.BorderColor)
         color = Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw
     end
@@ -283,6 +324,20 @@ function Skin:GetFontOutline()
     return Orbit.db.GlobalSettings.FontOutline or "OUTLINE"
 end
 
+function Skin:GetFontShadow()
+    return Orbit.db.GlobalSettings.FontShadow or false
+end
+
+function Skin:ApplyFontShadow(fontString)
+    if not fontString then return end
+    if self:GetFontShadow() then
+        fontString:SetShadowColor(0, 0, 0, 1)
+        fontString:SetShadowOffset(SHADOW_OFFSET_X, SHADOW_OFFSET_Y)
+    else
+        fontString:SetShadowOffset(0, 0)
+    end
+end
+
 function Skin:SkinText(fontString, settings)
     if not fontString then
         return
@@ -296,6 +351,7 @@ function Skin:SkinText(fontString, settings)
     end
 
     fontString:SetFont(font, size, self:GetFontOutline())
+    self:ApplyFontShadow(fontString)
 
     if settings.textColor then
         local c = settings.textColor
@@ -318,7 +374,6 @@ function Skin:ApplyUnitFrameText(fontString, alignment, fontPath, textSize)
 
     textSize = textSize or Constants.UI.UnitFrameTextSize
     local padding = Constants.UnitFrame.TextPadding
-    local shadow = Constants.UnitFrame.ShadowOffset
 
     fontString:SetFont(fontPath, textSize, self:GetFontOutline())
     fontString:ClearAllPoints()
@@ -331,8 +386,7 @@ function Skin:ApplyUnitFrameText(fontString, alignment, fontPath, textSize)
         fontString:SetJustifyH("RIGHT")
     end
 
-    fontString:SetShadowColor(0, 0, 0, 1)
-    fontString:SetShadowOffset(shadow.x, shadow.y)
+    self:ApplyFontShadow(fontString)
 end
 
 -- [ GRADIENT BACKGROUND ]--------------------------------------------------------------------------

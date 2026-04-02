@@ -137,7 +137,7 @@ end
 
 -- [ UTILITY FUNCTIONS ]-------------------------------------------------------------------------
 
--- Safely get size, handling secret values
+-- Safely get size — pcall required: native Blizzard frames may return secret-tainted dimensions in 12.0+
 function HandleCore:SafeGetSize(frame)
     if not frame then
         return MIN_HANDLE_WIDTH, MIN_HANDLE_HEIGHT

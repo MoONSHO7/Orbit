@@ -99,7 +99,13 @@ local function UpdateBuffs(frame, plugin) plugin:UpdateAuraContainer(frame, plug
 -- [ BOSS FRAME CREATION ]----------------------------------------------------------------------------
 local function CreateBossFrame(bossIndex, plugin)
     local unit = "boss" .. bossIndex
-    local frame = OrbitEngine.UnitButton:Create(UIParent, unit, "OrbitBossFrame" .. bossIndex)
+    local frame = OrbitEngine.UnitButton:Create(UIParent, unit, "OrbitBossFrame" .. bossIndex, true)
+    frame:RegisterUnitEvent("UNIT_HEALTH", unit)
+    frame:RegisterUnitEvent("UNIT_MAXHEALTH", unit)
+    frame:RegisterUnitEvent("UNIT_ABSORB_AMOUNT_CHANGED", unit)
+    frame:RegisterUnitEvent("UNIT_HEAL_ABSORB_AMOUNT_CHANGED", unit)
+    frame:RegisterUnitEvent("UNIT_HEAL_PREDICTION", unit)
+    frame:RegisterEvent("PLAYER_ENTERING_WORLD")
     if frame.HealthDamageBar then
         frame.HealthDamageBar:Hide()
         frame.HealthDamageBar = nil
@@ -297,20 +303,15 @@ function Plugin:PrepareIconsForCanvasMode()
     if frame.CastBar then
         local castBarHeight = self:GetSetting(1, "CastBarHeight") or 18
         local castBarWidth = self:GetSetting(1, "CastBarWidth") or 120
-        local iconOffset = castBarHeight
-        frame.CastBar:SetSize(castBarWidth + iconOffset, castBarHeight)
+        frame.CastBar:SetSize(castBarWidth + castBarHeight, castBarHeight)
         frame.CastBar.unit = "preview"
         if frame.CastBar.Icon then
             frame.CastBar.Icon:SetTexture(136116)
-            frame.CastBar.Icon:SetSize(castBarHeight, castBarHeight)
             frame.CastBar.Icon:Show()
-            if frame.CastBar.IconBorder then frame.CastBar.IconBorder:Show() end
         end
+        if frame.CastBar.UpdateBarInsets then frame.CastBar:UpdateBarInsets() end
         local bar = frame.CastBar.Bar
         if bar then
-            bar:ClearAllPoints()
-            bar:SetPoint("TOPLEFT", frame.CastBar.Icon, "TOPRIGHT", 0, 0)
-            bar:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
             local textureName = self:GetSetting(1, "Texture") or self:GetPlayerSetting("Texture")
             local texturePath = textureName and LSM:Fetch("statusbar", textureName)
             if texturePath then bar:SetStatusBarTexture(texturePath) end

@@ -113,6 +113,7 @@ function Orbit._AC.CreateVEContent(parent)
         if not VE then return end
         local frames = VE:GetAllFrames()
         local blizzFrames = VE:GetBlizzardFrames() or {}
+        local thirdPartyFrames = VE.GetThirdPartyFrames and VE:GetThirdPartyFrames() or {}
         -- Rebuild Check All controls
         local caRow = self.checkAllRow
         for _, child in ipairs({ caRow:GetChildren() }) do child:Hide() end
@@ -221,6 +222,21 @@ function Orbit._AC.CreateVEContent(parent)
             table.insert(self.rows, sectionRow)
             yOffset = yOffset - VE_ROW_HEIGHT
             for _, entry in ipairs(blizzFrames) do CreateVERow(entry, true) end
+        end
+        -- Third-Party Addons section
+        if #thirdPartyFrames > 0 then
+            yOffset = yOffset - VE_SECTION_GAP
+            local tpaRow = CreateFrame("Frame", nil, scrollChild)
+            tpaRow:SetHeight(VE_ROW_HEIGHT)
+            tpaRow:SetPoint("TOPLEFT", 0, yOffset)
+            tpaRow:SetPoint("TOPRIGHT", 0, yOffset)
+            local tpaLabel = tpaRow:CreateFontString(nil, "OVERLAY", FONT_GROUP)
+            tpaLabel:SetPoint("LEFT", VE_LABEL_PAD, 0)
+            tpaLabel:SetTextColor(GROUP_HEADER_COLOR.r, GROUP_HEADER_COLOR.g, GROUP_HEADER_COLOR.b)
+            tpaLabel:SetText("Third-Party Addons")
+            table.insert(self.rows, tpaRow)
+            yOffset = yOffset - VE_ROW_HEIGHT
+            for _, entry in ipairs(thirdPartyFrames) do CreateVERow(entry, true) end
         end
         local totalHeight = math.abs(yOffset) + VE_ROW_HEIGHT
         scrollChild:SetHeight(totalHeight)

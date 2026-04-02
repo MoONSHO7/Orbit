@@ -15,8 +15,7 @@ local DAMAGE_BAR_DELAY = 0.2
 local DAMAGE_COLOR = { r = 0.8, g = 0.1, b = 0.1, a = 0.6 }
 local MY_HEAL_COLOR = { r = 0.66, g = 1, b = 0.66, a = 0.6 }
 local OTHER_HEAL_COLOR = { r = 0.66, g = 1, b = 0.66, a = 0.6 }
-local ABSORB_COLOR = { r = 0.5, g = 0.8, b = 1.0, a = 0.35 }
-local ABSORB_OVERLAY_COLOR = { r = 0.7, g = 0.9, b = 1.0, a = 1.0 }
+local ABSORB_COLOR = { r = 0.4, g = 0.75, b = 1.0, a = 0.85 }
 local HEAL_ABSORB_ALPHA = 0.15
 local HEAL_ABSORB_PATTERN_SIZE = 3200
 local HEAL_ABSORB_TEXCOORD = 100
@@ -122,20 +121,13 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.OtherIncomingHealBar = CreatePredictionBar(f, f.Health, OTHER_HEAL_COLOR)
 
     f.TotalAbsorbBar = CreateFrame("StatusBar", nil, f.Health)
-    f.TotalAbsorbBar:SetStatusBarTexture(WHITE_TEXTURE)
+    local absorbTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AbsorbTexture
+    f.TotalAbsorbBar:SetStatusBarTexture(absorbTextureName and LSM:Fetch("statusbar", absorbTextureName) or LSM:Fetch("statusbar", "Blizzard"))
     f.TotalAbsorbBar:SetStatusBarColor(ABSORB_COLOR.r, ABSORB_COLOR.g, ABSORB_COLOR.b, ABSORB_COLOR.a)
     f.TotalAbsorbBar:SetMinMaxValues(0, 1)
     f.TotalAbsorbBar:SetValue(0)
-    f.TotalAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel())
+    f.TotalAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel() + 1)
     f.TotalAbsorbBar:Hide()
-
-    f.TotalAbsorbOverlay = f.TotalAbsorbBar:CreateTexture(nil, "OVERLAY")
-    f.TotalAbsorbOverlay:SetTexture("Interface\\RaidFrame\\Shield-Overlay", "REPEAT", "REPEAT")
-    f.TotalAbsorbOverlay:SetAllPoints(f.TotalAbsorbBar)
-    f.TotalAbsorbOverlay:SetHorizTile(true)
-    f.TotalAbsorbOverlay:SetVertTile(true)
-    f.TotalAbsorbOverlay:SetBlendMode("ADD")
-    f.TotalAbsorbOverlay:SetVertexColor(ABSORB_OVERLAY_COLOR.r, ABSORB_OVERLAY_COLOR.g, ABSORB_OVERLAY_COLOR.b, ABSORB_OVERLAY_COLOR.a)
 
     f.HealAbsorbBar = CreateFrame("StatusBar", nil, f.Health)
     f.HealAbsorbBar:SetReverseFill(true)

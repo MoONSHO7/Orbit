@@ -5,18 +5,15 @@ local InCombatLockdown = InCombatLockdown
 
 Orbit.Animation = {}
 
--------------------------------------------------
--- ApplyHoverFade (Centralized Fading Logic)
--------------------------------------------------
--- Handles Alpha transitions based on Mouse Over.
--- @param frame: The frame to control.
--- @param minAlpha: number (0-1). Resting alpha.
--- @param maxAlpha: number (0-1). Hover alpha.
--- @param editModeActive: boolean.
--- Internal storage for faders (Weak keys)
+local ALPHA_EPSILON = 0.01
+local FADE_IN_DURATION = 0.1
+local FADE_OUT_DURATION = 0.2
+local HOVER_CHECK_INTERVAL = 0.1
+
+-- [ HOVER FADE ]------------------------------------------------------------------------------------
 local faders = setmetatable({}, { __mode = "k" })
 
--- Combat-safe fade helper (uses SetAlpha directly instead of UIFrameFade which calls Show())
+-- Combat-safe fade helper
 local function SafeFade(frame, targetAlpha, duration)
     -- During combat, just snap to target (UIFrameFadeIn/Out call Show() which is protected)
     if InCombatLockdown() then
@@ -24,17 +21,16 @@ local function SafeFade(frame, targetAlpha, duration)
         return
     end
 
-    -- Outside combat, use smooth fade
     local currentAlpha = frame:GetAlpha()
-    if math_abs(currentAlpha - targetAlpha) < 0.01 then
+    if math_abs(currentAlpha - targetAlpha) < ALPHA_EPSILON then
         frame:SetAlpha(targetAlpha)
         return
     end
 
     if targetAlpha > currentAlpha then
-        UIFrameFadeIn(frame, duration or 0.1, currentAlpha, targetAlpha)
+        UIFrameFadeIn(frame, duration or FADE_IN_DURATION, currentAlpha, targetAlpha)
     else
-        UIFrameFadeOut(frame, duration or 0.2, currentAlpha, targetAlpha)
+        UIFrameFadeOut(frame, duration or FADE_OUT_DURATION, currentAlpha, targetAlpha)
     end
 end
 
@@ -63,7 +59,7 @@ function Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, editModeActiv
     end
 
     -- Optimization: If min == max, disable fader and set static
-    if math_abs(minAlpha - maxAlpha) < 0.01 then
+    if math_abs(minAlpha - maxAlpha) < ALPHA_EPSILON then
         if fader then
             fader:Hide()
         end
@@ -82,7 +78,7 @@ function Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, editModeActiv
 
         fader:SetScript("OnUpdate", function(self, elapsed)
             self.timer = (self.timer or 0) + elapsed
-            if self.timer < 0.1 then
+            if self.timer < HOVER_CHECK_INTERVAL then
                 return
             end
             self.timer = 0
@@ -99,11 +95,11 @@ function Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, editModeActiv
             if isOver and not self.isHovering then
                 self.isHovering = true
                 -- Fade In (combat-safe)
-                SafeFade(target, self.maxAlpha, 0.1)
+                SafeFade(target, self.maxAlpha, FADE_IN_DURATION)
             elseif not isOver and self.isHovering then
                 self.isHovering = false
                 -- Fade Out (combat-safe)
-                SafeFade(target, self.minAlpha, 0.2)
+                SafeFade(target, self.minAlpha, FADE_OUT_DURATION)
             end
         end)
     end
@@ -118,7 +114,7 @@ function Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, editModeActiv
     fader.isHovering = isOver
 
     if isOver then
-        SafeFade(frame, maxAlpha, 0.1)
+        SafeFade(frame, maxAlpha, FADE_IN_DURATION)
     else
         -- Always apply minAlpha when not hovering (Opacity slider enforcement)
         frame:SetAlpha(minAlpha)

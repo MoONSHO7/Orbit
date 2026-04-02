@@ -1,7 +1,6 @@
 -- [ MOUNTED VISIBILITY MANAGER ]--------------------------------------------------------------------
-local _, addonTable = ...
-local Orbit = addonTable
-local OrbitEngine = Orbit.Engine
+local _, Orbit = ...
+local Engine = Orbit.Engine
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local MOUNTED_COMBAT_PREFIX = "[mounted,nocombat] hide; "
@@ -21,7 +20,7 @@ local function IsInDruidTravelForm() return DRUID_TRAVEL_FORMS[GetShapeshiftForm
 
 local function IsMountedHideActive()
     if Orbit.IsEditMode and Orbit:IsEditMode() then return false end
-    if OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame then return false end
+    if Engine.CanvasMode and Engine.CanvasMode.currentFrame then return false end
     if not IsMounted() and not IsInDruidTravelForm() then return false end
     if not Orbit.VisibilityEngine or not Orbit.VisibilityEngine:AnyFrameHasSetting("hideMounted") then return false end
     local _, instanceType = IsInInstance()
@@ -31,16 +30,11 @@ end
 function Manager:ShouldHide() return IsMountedHideActive() end
 function Manager:IsCachedHidden() return cachedShouldHide end
 
-
-
 function Manager:GetMountedDriver(baseDriver, combatEssential)
     if not self:ShouldHide() then return baseDriver end
     local prefix = combatEssential and MOUNTED_COMBAT_PREFIX or MOUNTED_ALWAYS_PREFIX
     return prefix .. baseDriver
 end
-
-
-
 
 function Manager:Refresh(force)
     local shouldHide = self:ShouldHide()

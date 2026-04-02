@@ -162,11 +162,10 @@ function Plugin:ApplySettings(frame)
     if frame.Name then
         local textSize = 12
         frame.Name:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
+        Orbit.Skin:ApplyFontShadow(frame.Name)
         frame.Name:ClearAllPoints()
         frame.Name:SetPoint("CENTER", 0, 0)
         frame.Name:SetJustifyH("CENTER")
-        frame.Name:SetShadowColor(0, 0, 0, 1)
-        frame.Name:SetShadowOffset(1, -1)
     end
 
     local healthTextDisabled = self:IsComponentDisabled("HealthText")

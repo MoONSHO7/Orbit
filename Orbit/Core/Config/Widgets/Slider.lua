@@ -144,7 +144,7 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
 
     if frame.Label then
         frame.Label:SetText(label)
-        frame.Label:SetFontObject(Orbit.Constants.UI.LabelFont)
+        frame.Label:SetFontObject(Constants.UI.LabelFont)
         frame.Label:SetWidth(C.Widget.LabelWidth)
         frame.Label:SetJustifyH("LEFT")
         frame.Label:ClearAllPoints()

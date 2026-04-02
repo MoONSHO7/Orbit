@@ -1,7 +1,6 @@
 -- [ CANVAS MODE - COMPONENT SETTINGS SCHEMA ]------------------------------------------------------
 -- Schema definitions, presets, titles, and type detection for component settings.
-local _, addonTable = ...
-local Orbit = addonTable
+local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 

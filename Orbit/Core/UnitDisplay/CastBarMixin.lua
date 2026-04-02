@@ -521,7 +521,12 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
     bar:SetScript("OnEvent", function(_, event)
         local handler = dispatch[event]
         if handler then
+            local profilerActive = Orbit.Profiler and Orbit.Profiler:IsActive()
+            local start = profilerActive and debugprofilestop() or nil
             handler()
+            if start then
+                Orbit.Profiler:RecordContext(plugin.system or plugin.name or "Orbit_CastBar", event, debugprofilestop() - start)
+            end
         end
     end)
 
@@ -545,10 +550,15 @@ end
 -- Setup OnUpdate handler for engine-driven cast bars (timer text only, no progress arithmetic)
 function Mixin:SetupCastBarOnUpdate(bar)
     bar:SetScript("OnUpdate", function(self, elapsed)
+        local profilerActive = Orbit.Profiler and Orbit.Profiler:IsActive()
+        local start = profilerActive and debugprofilestop() or nil
+
         if not self:IsShown() or self.preview then
+            if start then Orbit.Profiler:RecordContext(self.orbitPlugin and (self.orbitPlugin.system or self.orbitPlugin.name) or "Orbit_CastBar", "OnUpdate", debugprofilestop() - start) end
             return
         end
         if not self.casting and not self.channeling then
+            if start then Orbit.Profiler:RecordContext(self.orbitPlugin and (self.orbitPlugin.system or self.orbitPlugin.name) or "Orbit_CastBar", "OnUpdate", debugprofilestop() - start) end
             return
         end
         -- Timer text: read remaining from durationObj (SetText accepts secrets as a sink)
@@ -569,6 +579,10 @@ function Mixin:SetupCastBarOnUpdate(bar)
             if ok then
                 pcall(self.Timer.SetFormattedText, self.Timer, "%.1f", remaining)
             end
+        end
+        
+        if start then
+            Orbit.Profiler:RecordContext(self.orbitPlugin and (self.orbitPlugin.system or self.orbitPlugin.name) or "Orbit_CastBar", "OnUpdate", debugprofilestop() - start)
         end
     end)
 end

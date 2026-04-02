@@ -2,4 +2,6 @@
     <Script file="Constants.lua"/>
     <Script file="Media.lua"/>
     <Script file="SecretValueUtils.lua"/>
+    <Script file="TooltipParser.lua"/>
+    <Script file="CooldownUtils.lua"/>
 </Ui>

@@ -7,13 +7,9 @@ local PositionManager = Orbit.Engine.PositionManager
 local ActivePositions, ActiveAnchors, PendingFrames = {}, {}, {}
 
 function PositionManager:SetPosition(frame, point, x, y)
-    if not frame then
-        return
-    end
+    if not frame then return end
     local name = frame:GetName()
-    if not name then
-        return
-    end
+    if not name then return end
     if ActivePositions[name] then
         ActivePositions[name].point, ActivePositions[name].x, ActivePositions[name].y = point, x, y
     else
@@ -22,32 +18,25 @@ function PositionManager:SetPosition(frame, point, x, y)
     ActiveAnchors[name] = nil
 end
 
-function PositionManager:SetAnchor(frame, target, edge, padding, align)
-    if not frame then
-        return
-    end
+function PositionManager:SetAnchor(frame, target, edge, padding, align, fallback)
+    if not frame then return end
     local name = frame:GetName()
-    if not name then
-        return
-    end
+    if not name then return end
     local targetName = type(target) == "table" and target:GetName() or target
     if ActiveAnchors[name] then
         ActiveAnchors[name].target, ActiveAnchors[name].edge = targetName, edge
         ActiveAnchors[name].padding, ActiveAnchors[name].align = padding, align
+        ActiveAnchors[name].fallback = fallback
     else
-        ActiveAnchors[name] = { target = targetName, edge = edge, padding = padding, align = align }
+        ActiveAnchors[name] = { target = targetName, edge = edge, padding = padding, align = align, fallback = fallback }
     end
     ActivePositions[name] = nil
 end
 
 function PositionManager:MarkDirty(frame)
-    if not frame then
-        return
-    end
+    if not frame then return end
     local name = frame:GetName()
-    if name then
-        PendingFrames[name] = frame
-    end
+    if name then PendingFrames[name] = frame end
 end
 
 function PositionManager:FlushToStorage()
@@ -86,16 +75,12 @@ function PositionManager:DiscardChanges()
 end
 
 function PositionManager:GetPosition(frame)
-    if not frame then
-        return nil
-    end
+    if not frame then return nil end
     return ActivePositions[frame:GetName()] or nil
 end
 
 function PositionManager:GetAnchor(frame)
-    if not frame then
-        return nil
-    end
+    if not frame then return nil end
     return ActiveAnchors[frame:GetName()] or nil
 end
 

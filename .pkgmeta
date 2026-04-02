@@ -3,6 +3,17 @@ package-as: Orbit
 move-folders:
   Orbit/Orbit: Orbit
 
+externals:
+  Orbit/Core/Libs/LibStub: https://repos.curseforge.com/wow/libstub/trunk
+  Orbit/Core/Libs/CallbackHandler-1.0: https://repos.curseforge.com/wow/callbackhandler/trunk/CallbackHandler-1.0
+  Orbit/Core/Libs/LibSharedMedia-3.0: https://repos.curseforge.com/wow/libsharedmedia-3-0/trunk/LibSharedMedia-3.0
+  Orbit/Core/Libs/LibDeflate: https://github.com/SafeteeWoW/LibDeflate
+  Orbit/Core/Libs/LibSerialize:
+    url: https://github.com/rossnichols/LibSerialize
+    tag: v1.0.0
+  Orbit/Core/Libs/LibCustomGlow-1.0: https://github.com/Stanzilla/LibCustomGlow
+  Orbit/Core/Libs/LibDBIcon-1.0: https://repos.curseforge.com/wow/libdbicon-1-0/trunk
+
 ignore:
   - .agent
   - .env
@@ -17,3 +28,13 @@ ignore:
   - readme.md
   - Plugins
   - Docs
+  - CONTRIBUTE.md
+  - CHANGELOG.md
+  - LICENSE
+  - tmp
+
+enable-nolib-creation: no
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown

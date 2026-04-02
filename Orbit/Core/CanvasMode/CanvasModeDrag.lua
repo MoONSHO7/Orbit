@@ -1,7 +1,6 @@
 -- [ CANVAS MODE DRAG ]------------------------------------------------------------------------------
 
-local _, addonTable = ...
-local Orbit = addonTable
+local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
@@ -200,8 +199,8 @@ local function SetupDragHandlers(container, preview, key, data)
         centerRelY = math.max(-halfH - CLAMP_PADDING_Y, math.min(halfH + CLAMP_PADDING_Y, centerRelY))
 
         local snapX, snapY
-        local compHalfW = (self:GetWidth() or DEFAULT_COMP_WIDTH) / 2
-        local compHalfH = (self:GetHeight() or DEFAULT_COMP_HEIGHT) / 2
+        local compHalfW = self:GetWidth() / 2
+        local compHalfH = self:GetHeight() / 2
         local doSnap = not IsShiftKeyDown()
 
         -- Snap center-relative position first, then derive anchors/offsets from snapped values

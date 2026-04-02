@@ -1,6 +1,7 @@
 local _, addonTable = ...
 local Orbit = addonTable
 
+-- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local DEFAULT_LAYOUT_ID = "Default"
 
 -- Traverse nested tables safely, returning nil if any key is missing
@@ -12,6 +13,7 @@ local function SafeTablePath(tbl, ...)
     return tbl
 end
 
+-- [ PLUGIN MIXIN ]----------------------------------------------------------------------------------
 ---@class OrbitPluginMixin
 Orbit.PluginMixin = {}
 
@@ -24,7 +26,7 @@ function Orbit.PluginMixin:OnLoad() end
 -- @param systemFrame: The specific system frame being edited (e.g., MainMenuBar, PlayerFrame)
 function Orbit.PluginMixin:AddSettings(dialog, systemFrame) end
 
--- Standard event registration helper (registers world entry and Edit Mode callbacks)
+-- [ STANDARD EVENTS ]-------------------------------------------------------------------------------
 function Orbit.PluginMixin:RegisterStandardEvents()
     if not self.ApplySettings then
         return
@@ -61,7 +63,44 @@ function Orbit.PluginMixin:RegisterStandardEvents()
     end
 end
 
--- Returns the active Transaction if it belongs to this plugin, or nil.
+-- [ MANAGED UPDATES & TIMERS ]----------------------------------------------------------------------
+
+function Orbit.PluginMixin:RegisterUpdate(callback)
+    if not self._updateFrame then
+        self._updateFrame = CreateFrame("Frame")
+    end
+    self._updateFrame:SetScript("OnUpdate", function(_, elapsed)
+        local profilerActive = Orbit.Profiler and Orbit.Profiler:IsActive()
+        local start = profilerActive and debugprofilestop() or nil
+        
+        callback(self, elapsed)
+        
+        if start then
+            Orbit.Profiler:RecordContext(self, "OnUpdate", debugprofilestop() - start)
+        end
+    end)
+end
+
+function Orbit.PluginMixin:RemoveUpdate()
+    if self._updateFrame then
+        self._updateFrame:SetScript("OnUpdate", nil)
+    end
+end
+
+function Orbit.PluginMixin:NewTicker(interval, callback, iterations)
+    return C_Timer.NewTicker(interval, function()
+        local profilerActive = Orbit.Profiler and Orbit.Profiler:IsActive()
+        local start = profilerActive and debugprofilestop() or nil
+        
+        callback(self)
+        
+        if start then
+            Orbit.Profiler:RecordContext(self, "C_Timer.Ticker", debugprofilestop() - start)
+        end
+    end, iterations)
+end
+
+-- [ CANVAS MODE ]-----------------------------------------------------------------------------------
 function Orbit.PluginMixin:_ActiveTransaction()
     local Txn = Orbit.Engine.CanvasMode and Orbit.Engine.CanvasMode.Transaction
     if Txn and Txn:IsActive() and Txn:GetPlugin() == self then return Txn end
@@ -113,6 +152,7 @@ function Orbit:ReadPluginSetting(system, systemIndex, key)
     return node and node[key]
 end
 
+-- [ SETTINGS ]--------------------------------------------------------------------------------------
 function Orbit.PluginMixin:GetSetting(systemIndex, key)
     systemIndex = systemIndex or 1
     local layoutID = self:GetLayoutID()
@@ -170,7 +210,7 @@ function Orbit.PluginMixin:SetSetting(systemIndex, key, value)
     db[layoutID][self.system][systemIndex][key] = value
 end
 
--- For plugins with insecure frames that need Pet Battle / Vehicle visibility
+-- [ VISIBILITY ]------------------------------------------------------------------------------------
 local VISIBILITY_EVENTS = { "PET_BATTLE_OPENING_START", "PET_BATTLE_CLOSE", "PLAYER_MOUNT_DISPLAY_CHANGED", "ZONE_CHANGED_NEW_AREA", "MOUNTED_VISIBILITY_CHANGED" }
 local VISIBILITY_UNIT_EVENTS = { "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE" }
 

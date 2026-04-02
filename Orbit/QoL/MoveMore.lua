@@ -12,7 +12,7 @@ local FRAME_NAMES = {
     -- Social / guild
     "FriendsFrame", "CommunitiesFrame", "CommunitiesGuildLogFrame",
     "CommunitiesGuildTextEditFrame", "CommunitiesGuildNewsFiltersFrame",
-    "ClubFinderGuildRecruitmentDialog", "RaidParentFrame", "RaidBrowserFrame",
+    "ClubFinderGuildRecruitmentDialog", "RaidBrowserFrame",
     -- Collections / journal
     "CollectionsJournal", "EncounterJournal", "AchievementFrame",
     -- Map / quests
@@ -88,6 +88,7 @@ end
 
 local function HookFrame(frame)
     if frame._maHooked then return end
+    if frame.IsProtected and frame:IsProtected() then return end
     frame._maHooked = true
     
     local dragFrame = frame

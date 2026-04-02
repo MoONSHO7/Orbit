@@ -1,2 +1,12 @@
 .env
 .vscode/
+
+# Libraries fetched by BigWigs packager at build time.
+# Set as externals in .pkgmeta and ignored here.
+Orbit/Core/Libs/LibStub/
+Orbit/Core/Libs/CallbackHandler-1.0/
+Orbit/Core/Libs/LibSharedMedia-3.0/
+Orbit/Core/Libs/LibDeflate/
+Orbit/Core/Libs/LibSerialize/
+Orbit/Core/Libs/LibCustomGlow-1.0/
+Orbit/Core/Libs/LibDBIcon-1.0/

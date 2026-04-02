@@ -1,5 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
-    <Script file="CooldownUtils.lua"/>
+
     <Script file="CooldownManager.lua"/>
     <Script file="CooldownSettings.lua"/>
     <Script file="CooldownGlows.lua"/>
@@ -7,15 +7,5 @@
     <Script file="CooldownLayout.lua"/>
     <Script file="ViewerInjection.lua"/>
     <Script file="CooldownText.lua"/>
-    <Script file="TrackedTooltipParser.lua"/>
-    <Script file="ControlButtonFactory.lua"/>
-    <Script file="TrackedIconFactory.lua"/>
-    <Script file="TrackedLayout.lua"/>
-    <Script file="TrackedUpdater.lua"/>
-    <Script file="TrackedAbilities.lua"/>
-    <Script file="TrackedCanvasPreview.lua"/>
-    <Script file="ChargeBarLayout.lua"/>
-    <Script file="ChargeBarCanvasPreview.lua"/>
-    <Script file="TrackedCharges.lua"/>
-    <Script file="KeybindSystem.lua"/>
+
 </Ui>

@@ -167,8 +167,7 @@ function FrameFactory:AddText(frame, opts)
 
     local text = frame:CreateFontString(nil, layer, font)
     text:SetPoint(point, relativeTo, relativePoint, opts.x or 0, opts.y or 0)
-    text:SetShadowColor(0, 0, 0, 1)
-    text:SetShadowOffset(1, -1)
+    Orbit.Skin:ApplyFontShadow(text)
     frame.Text = text
     return text
 end

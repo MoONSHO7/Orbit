@@ -29,4 +29,5 @@ boss frames are created on demand when `INSTANCE_ENCOUNTER_ENGAGE_UNIT` fires. t
 
 - boss frames share layout merging with party/raid via `BossFrameHelpers`
 - cast bar logic must not duplicate `CastBarMixin` — extend the mixin if needed
+- boss cast bar uses the unified border pattern (single border wrapping icon + bar via `UpdateBarInsets`) matching the target/focus style from `Skin.CastBar`
 - boss frame count is dynamic (1-8), driven by encounter data

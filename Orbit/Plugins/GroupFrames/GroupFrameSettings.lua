@@ -144,6 +144,7 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
             end,
         })
 
+
         if isParty then
             -- Party-specific layout controls
             local orientation = plugin:GetTierSetting("Orientation", editTier) or 0
@@ -170,8 +171,15 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
                     if plugin.frames and plugin.frames[1] and plugin.frames[1].preview then plugin:ShowPreview() else plugin:UpdateFrameUnits() end
                 end),
             })
-            table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true, onChange = TierMOC("ShowPowerBar") })
-            table.insert(schema.controls, { type = "slider", key = "PowerBarHeight", label = "Powerbar Height", min = 5, max = 30, step = 1, default = 10, suffix = "%", onChange = TierMOC("PowerBarHeight") })
+            local showPower = plugin:GetTierSetting("ShowPowerBar", editTier)
+            if showPower == nil then showPower = true end
+            table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true, onChange = function(val)
+                TierMOC("ShowPowerBar")(val)
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+            end })
+            if showPower then
+                table.insert(schema.controls, { type = "slider", key = "PowerBarHeight", label = "Powerbar Height", min = 5, max = 30, step = 1, default = 10, suffix = "%", onChange = TierMOC("PowerBarHeight") })
+            end
         else
             -- Raid-specific layout controls
             local tierMax = Helpers:GetTierMaxFrames(editTier)
@@ -206,8 +214,24 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
                 local maxFlatRows = math.max(1, math.ceil(tierMax / 5))
                 table.insert(schema.controls, { type = "slider", key = "FlatRows", label = "Rows", min = 1, max = maxFlatRows, step = 1, default = 1, onChange = TierMOC("FlatRows") })
             end
-            table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Healer Power Bars", default = true, onChange = TierMOC("ShowPowerBar") })
-            table.insert(schema.controls, { type = "slider", key = "PowerBarHeight", label = "Powerbar Height", min = 5, max = 30, step = 1, default = 16, suffix = "%", onChange = TierMOC("PowerBarHeight") })
+            table.insert(schema.controls, {
+                type = "checkbox", key = "HideBlizzardRaidPanel", label = "Hide Blizzard Raid Panel", default = false,
+                onChange = function(val)
+                    plugin:SetSetting(1, "HideBlizzardRaidPanel", val)
+                    if plugin.UpdateBlizzardRaidPanelVisibility then
+                        plugin:UpdateBlizzardRaidPanelVisibility()
+                    end
+                end,
+            })
+            local showPower = plugin:GetTierSetting("ShowPowerBar", editTier)
+            if showPower == nil then showPower = true end
+            table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Healer Power Bars", default = true, onChange = function(val)
+                TierMOC("ShowPowerBar")(val)
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+            end })
+            if showPower then
+                table.insert(schema.controls, { type = "slider", key = "PowerBarHeight", label = "Powerbar Height", min = 5, max = 30, step = 1, default = 16, suffix = "%", onChange = TierMOC("PowerBarHeight") })
+            end
         end
     elseif currentTab == "Colors" then
         table.insert(schema.controls, { type = "color", key = "SelectionColor", label = "Selection Highlight", default = { r = 0.8, g = 0.9, b = 1.0, a = 1 }, onChange = TierMOC("SelectionColor") })

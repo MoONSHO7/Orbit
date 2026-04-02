@@ -28,14 +28,6 @@ local OrbitEngine = Orbit.Engine
 local MAX_ERRORS = 50
 local INIT_TIMER_DELAY = 0.05
 
-local GLOBAL_DEFAULTS = {
-    Font = "Barlow Condensed Bold",
-    Texture = "Solid",
-    BorderSize = 2,
-    FontOutline = "OUTLINE",
-    BackdropColour = { r = 0.145, g = 0.145, b = 0.145, a = 0.7 },
-}
-
 -- [ ERROR HANDLER ]---------------------------------------------------------------------------------
 
 Orbit.ErrorHandler = {}
@@ -220,9 +212,12 @@ function Orbit:OnLoad()
         self.db.GlobalSettings.TourComplete = nil
     end
 
-    for k, v in pairs(GLOBAL_DEFAULTS) do
-        if self.db.GlobalSettings[k] == nil then
-            self.db.GlobalSettings[k] = type(v) == "table" and Orbit.Profile and Orbit.Profile.CopyTable and Orbit.Profile.CopyTable(v, {}) or v
+    local globalDefaults = self.Profile and self.Profile.defaults and self.Profile.defaults.GlobalSettings
+    if globalDefaults then
+        for k, v in pairs(globalDefaults) do
+            if self.db.GlobalSettings[k] == nil then
+                self.db.GlobalSettings[k] = type(v) == "table" and CopyTable(v) or v
+            end
         end
     end
 

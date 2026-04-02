@@ -239,7 +239,7 @@ function NativeFrame:SuppressEditModeSettings()
     local settings = {
         S.ShowTargetAndFocus, S.ShowCastBar, S.ShowBuffsAndDebuffs,
         S.ShowPetFrame, S.ShowPartyFrames, S.ShowRaidFrames,
-        S.ShowBossFrames, S.ShowTalkingHeadFrame, S.ShowCooldownViewer,
+        S.ShowBossFrames, S.ShowTalkingHeadFrame,
     }
     for _, setting in ipairs(settings) do
         C_EditMode.SetAccountSetting(setting, 0)

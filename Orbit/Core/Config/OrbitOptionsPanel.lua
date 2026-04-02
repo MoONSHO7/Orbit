@@ -1,7 +1,6 @@
 -- [ ORBIT OPTIONS PANEL ]---------------------------------------------------------------------------
 
-local _, addonTable = ...
-local Orbit = addonTable
+local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local Layout = OrbitEngine.Layout
 local Config = OrbitEngine.Config
@@ -13,7 +12,6 @@ local BUTTON_WIDTH = 180
 local DROPDOWN_WIDTH = 200
 local SPACER_SMALL = 10
 local SPACER_LARGE = 20
-local POPUP_PREFERRED_INDEX = 3
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
 
@@ -90,6 +88,14 @@ local function GetGlobalSchema()
                 { label = "Thick Outline", value = "THICKOUTLINE" }, { label = "Monochrome", value = "MONOCHROME" },
             },
             default = "OUTLINE",
+            valueCheckbox = {
+                tooltip = "Text Shadow",
+                initialValue = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontShadow or false,
+                callback = function(checked)
+                    GlobalPlugin:SetSetting(nil, "FontShadow", checked)
+                    GlobalPlugin:ApplySettings()
+                end,
+            },
         },
         {
             type = "dropdown", key = "BorderStyle", label = "Border Style", options = GetBorderStyleOptions(), default = Constants.BorderStyle.Default,
@@ -162,6 +168,7 @@ local function GetGlobalSchema()
             if d then
                 d.Font = "PT Sans Narrow"
                 d.FontOutline = "OUTLINE"
+                d.FontShadow = false
                 d.BorderSize = 2
                 d.BorderStyle = Constants.BorderStyle.Default
                 d.BorderEdgeSize = 16
@@ -184,7 +191,18 @@ local function GetColorsSchema()
     local controls = {
         { type = "texture", key = "Texture", label = "Texture", default = "Melli", previewColor = { r = 0.8, g = 0.8, b = 0.8 } },
         { type = "texture", key = "OverlayTexture", label = "Overlay Texture", default = "None", previewColor = { r = 0.5, g = 0.5, b = 0.5 } },
-
+        {
+            type = "texture", key = "AbsorbTexture", label = "Absorb Texture", default = "Blizzard",
+            previewColor = { r = 0.5, g = 0.8, b = 1.0 },
+            valueCheckbox = {
+                tooltip = "Always Show Absorb",
+                initialValue = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AlwaysShowAbsorb or false,
+                callback = function(checked)
+                    ColorsPlugin:SetSetting(nil, "AlwaysShowAbsorb", checked)
+                    Orbit.EventBus:Fire("ORBIT_ABSORB_STYLE_CHANGED")
+                end,
+            },
+        },
         {
             type = "colorcurve", key = "FontColorCurve", label = "Font Color",
             default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
@@ -268,6 +286,8 @@ local function GetColorsSchema()
                 d.Texture = "Melli"
 
                 d.OverlayTexture = "None"
+                d.AbsorbTexture = "Blizzard"
+                d.AlwaysShowAbsorb = false
                 d.BarColorCurve = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.2, a = 1 } } } }
                 d.UnitFrameBackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
                 d.BackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
@@ -993,111 +1013,4 @@ function Panel:Refresh()
     end
 end
 
--- [ SLASH COMMANDS ]--------------------------------------------------------------------------------
 
-SLASH_ORBIT1 = "/orbit"
-SLASH_ORBIT2 = "/orb"
-
-StaticPopupDialogs["ORBIT_CONFIRM_HARD_RESET"] = {
-    text = "|cFFFF0000DANGER|r\n\nYou are about to FACTORY RESET Orbit.\n\nAll profiles, settings, and data will be wiped.\nThe UI will reload immediately.\n\nAre you sure?",
-    button1 = "Factory Reset", button2 = "Cancel",
-    OnAccept = function(self) Orbit.API:HardReset() end,
-    timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = POPUP_PREFERRED_INDEX,
-}
-
-SlashCmdList["ORBIT"] = function(msg)
-    local args = {}
-    for word in msg:gmatch("%S+") do table.insert(args, word) end
-    local cmd = args[1] and args[1]:lower() or ""
-
-    if cmd == "" then
-        if EditModeManagerFrame then
-            if EditModeManagerFrame:IsShown() then
-                HideUIPanel(EditModeManagerFrame)
-                Panel:Hide()
-            else
-                ShowUIPanel(EditModeManagerFrame)
-                Panel:Open("Global")
-            end
-        else
-            Orbit:Print("Edit Mode not available.")
-        end
-        return
-    end
-
-    if cmd == "whatsnew" then Orbit:ShowWhatsNew(); return end
-
-    if cmd == "ve" then
-        local sub = args[2] and args[2]:lower() or ""
-        if sub == "reset" then
-            if Orbit.db then Orbit.db.VisibilityEngine = {} end
-            -- Restore all Blizzard frames to full alpha
-            if Orbit.VisibilityEngine then
-                for _, entry in ipairs(Orbit.VisibilityEngine:GetBlizzardFrames()) do
-                    local f = _G[entry.blizzardFrame]
-                    if f then f:SetAlpha(1) end
-                end
-            end
-            -- Flush OOCFade managed frames back to visible
-            if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
-            -- Force MountedVisibility to re-evaluate
-            Orbit.MountedVisibility:Refresh(true)
-            -- Re-apply settings on every plugin so frames fully refresh
-            local systems = Orbit.Engine and Orbit.Engine.systems
-            if systems then
-                for _, plugin in pairs(systems) do
-                    if plugin.ApplySettings then plugin:ApplySettings() end
-                end
-            end
-            Orbit:Print("Visibility Engine reset to defaults.")
-        else
-            if Orbit._pluginSettingsCategoryID then
-                Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
-                if Orbit._openVETab then C_Timer.After(0.05, Orbit._openVETab) end
-            else
-                Orbit:Print("Plugin Manager not yet loaded.")
-            end
-        end
-        return
-    end
-
-    if cmd == "plugins" then
-        if Orbit._pluginSettingsCategoryID then
-            Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
-        else
-            Orbit:Print("Plugin Manager not yet loaded.")
-        end
-    elseif cmd == "hardreset" then StaticPopup_Show("ORBIT_CONFIRM_HARD_RESET")
-    elseif cmd == "portal" or cmd == "p" then
-        local subCmd = args[2] and args[2]:lower() or ""
-        Orbit.EventBus:Fire("ORBIT_PORTAL_COMMAND", subCmd)
-    elseif cmd == "refresh" then
-        local subCmd = args[2] or ""
-        if subCmd == "" then
-            Orbit:Print("Usage: /orbit refresh <plugin_system_id>")
-            Orbit:Print("Example: /orbit refresh Orbit_CooldownViewer")
-            return
-        end
-        if Orbit.Skin and Orbit.Skin.Icons then
-            Orbit.Skin.Icons.regionCache = setmetatable({}, { __mode = "k" })
-        end
-        local plugin = Orbit:GetPlugin(subCmd)
-        if plugin then
-            if plugin.ReapplyParentage then plugin:ReapplyParentage() end
-            if plugin.ApplyAll then plugin:ApplyAll()
-            elseif plugin.ApplySettings then plugin:ApplySettings() end
-            Orbit:Print(subCmd .. " refreshed.")
-        else
-            Orbit:Print("Plugin not found: " .. subCmd)
-        end
-    elseif cmd == "flush" then
-        if Orbit.ViewerInjection then
-            Orbit.ViewerInjection:FlushAll()
-            Orbit:Print("Cleared all injected cooldown icons.")
-        else
-            Orbit:Print("ViewerInjection not loaded.")
-        end
-    else
-        Orbit:Print("Unknown command: " .. cmd)
-    end
-end

@@ -288,6 +288,16 @@ function Plugin:OnLoad()
         }, self)
     end
     Orbit.EventBus:On("UPDATE_MULTI_CAST_ACTIONBAR", function() C_Timer.After(0.1, function() self:ApplyAll() end) end, self)
+    Orbit.EventBus:On("UNIT_PET", function(unit)
+        if unit ~= "player" then return end
+        if self.petDebounce then self.petDebounce:Cancel() end
+        self.petDebounce = C_Timer.NewTimer(0.3, function()
+            self.petDebounce = nil
+            local container = self.containers[PET_BAR_INDEX]
+            if not container then return end
+            self:ApplySettings(container)
+        end)
+    end, self)
     local function HideFlyoutBackground()
         local bg = SpellFlyoutBackgroundEnd
         if not bg then return end
@@ -382,7 +392,12 @@ function Plugin:ApplyTextSettings(button, systemIndex) ABText:Apply(self, button
 
 function Plugin:IsComponentDisabled(componentKey, systemIndex)
     systemIndex = systemIndex or 1
-    local disabled = self:GetSetting(systemIndex, "DisabledComponents") or {}
+    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+    local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == self
+    local disabled
+    if txnActive then disabled = Txn:GetDisabledComponents()
+    elseif self:GetSetting(systemIndex, "UseGlobalTextStyle") ~= false then disabled = self:GetSetting(1, "GlobalDisabledComponents") or {}
+    else disabled = self:GetSetting(systemIndex, "DisabledComponents") or {} end
     for _, key in ipairs(disabled) do if key == componentKey then return true end end
     return false
 end
@@ -457,13 +472,23 @@ function Plugin:LayoutButtons(index)
     local cachedPositions = cache.positions
     for i, button in ipairs(buttons) do
         if i > numIcons then
-            if not InCombatLockdown() then button:SetParent(EnsureHiddenFrame()); button:Hide() end
+            if not InCombatLockdown() then 
+                button:SetParent(EnsureHiddenFrame())
+                button:ClearAllPoints()
+                button:SetPoint("CENTER", EnsureHiddenFrame(), "CENTER")
+                button:Hide() 
+            end
             button.orbitHidden = true
         else
             local hasAction = button.HasAction and button:HasAction() or false
             local shouldShow = not (hideEmpty and not hasAction)
             if not shouldShow then
-                if not InCombatLockdown() then button:SetParent(EnsureHiddenFrame()); button:Hide() end
+                if not InCombatLockdown() then 
+                    button:SetParent(EnsureHiddenFrame())
+                    button:ClearAllPoints()
+                    button:SetPoint("CENTER", EnsureHiddenFrame(), "CENTER")
+                    button:Hide() 
+                end
                 button.orbitHidden = true
                 if button.orbitBackdrop then button.orbitBackdrop:Hide() end
             else

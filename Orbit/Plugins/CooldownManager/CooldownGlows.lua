@@ -17,7 +17,7 @@ local UTILITY_INDEX = Constants.Cooldown.SystemIndex.Utility
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local PANDEMIC_CLEAR_DEBOUNCE = 0.3
 
--- [ PROC GLOW HOOKS ]-------------------------------------------------------------------------------
+-- [ PROC GLOW HOOKS ] ---------------------------------------------------------
 local PROC_GLOW_KEY = "orbitProc"
 
 local function FindSystemIndexForButton(button)
@@ -100,7 +100,7 @@ function CDM:HookProcGlow()
     self.procGlowHooked = true
 end
 
--- [ GLOW TRANSPARENCY FIX ]-------------------------------------------------------------------------
+-- [ GLOW TRANSPARENCY FIX ] ---------------------------------------------------
 function CDM:FixGlowTransparency(glowFrame, alpha)
     if not glowFrame or not alpha then
         return
@@ -124,7 +124,7 @@ function CDM:FixGlowTransparency(glowFrame, alpha)
     end
 end
 
--- [ PANDEMIC GLOW ]----------------------------------------------------------------------------------
+-- [ PANDEMIC GLOW ] -----------------------------------------------------------
 local PANDEMIC_ATLAS = "UI-CooldownManager-PandemicBorder"
 local PANDEMIC_INSET = Constants.IconScale.PandemicPadding / 2
 local BLIZZARD_GLOW_LEVEL = Constants.Levels.IconGlow
@@ -145,7 +145,7 @@ end
 -- Forward declaration; defined after helpers
 local HookPandemicIcon
 
--- [ PANDEMIC GLOW FRAME HELPERS ]-------------------------------------------------------------------
+-- [ PANDEMIC GLOW FRAME HELPERS ] ---------------------------------------------
 local function GetPandemicGlowFrame(icon, glowType)
     local GlowType = Constants.PandemicGlow.Type
     if glowType == GlowType.Blizzard then return icon.orbitBlizzardGlow
@@ -221,7 +221,7 @@ local function StopPandemicGlowFull(icon)
     icon.orbitPandemicGlowActive = nil
 end
 
--- [ HOOK-DRIVEN PANDEMIC GLOW ]---------------------------------------------------------------------
+-- [ HOOK-DRIVEN PANDEMIC GLOW ] -----------------------------------------------
 HookPandemicIcon = function(icon, plugin, systemIndex)
     if icon.orbitPandemicHooked then return end
     if not icon.ShowPandemicStateFrame then return end
@@ -315,7 +315,7 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
     end
 end
 
--- [ CLEAR ALL PANDEMIC GLOWS ]----------------------------------------------------------------------
+-- [ CLEAR ALL PANDEMIC GLOWS ] ------------------------------------------------
 function CDM:ClearAllPandemicGlows()
     for _, entry in pairs(CDM.viewerMap) do
         if entry.viewer and entry.viewer.GetItemFrames then
