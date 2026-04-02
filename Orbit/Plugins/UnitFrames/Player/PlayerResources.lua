@@ -224,6 +224,7 @@ function Plugin:OnLoad()
         local fontSize = 18
         local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         fs:SetFont(fontPath, fontSize, Orbit.Skin:GetFontOutline())
+        Orbit.Skin:ApplyFontShadow(fs)
         if isContinuous then
             fs:SetText("65")
         else

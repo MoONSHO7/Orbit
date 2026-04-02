@@ -147,12 +147,10 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                         frame.CastBar.Bar:SetStatusBarColor(cbColor.r, cbColor.g, cbColor.b)
                     end
                     if frame.CastBar.Icon then
-                        local castBarHeight = self:GetSetting(1, "CastBarHeight") or PREVIEW_DEFAULTS.CastBarHeight
-                        frame.CastBar.Icon:SetSize(castBarHeight, castBarHeight)
                         frame.CastBar.Icon:SetTexture(136116)
                         frame.CastBar.Icon:Show()
-                        if frame.CastBar.UpdateBarInsets then frame.CastBar:UpdateBarInsets() end
                     end
+                    if frame.CastBar.UpdateBarInsets then frame.CastBar:UpdateBarInsets() end
                     if frame.CastBar.Text then
                         local textDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar.Text")
                         frame.CastBar.Text:SetShown(not textDisabled)

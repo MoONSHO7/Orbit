@@ -8,6 +8,8 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local Constants = Orbit.Constants
 
 -- Register Orbit's overlay texture with LibSharedMedia
+local SHADOW_OFFSET_X = 2
+local SHADOW_OFFSET_Y = -2
 local ORBIT_OVERLAY_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
 LSM:Register("statusbar", "Orbit Gradient", ORBIT_OVERLAY_PATH)
 
@@ -322,6 +324,20 @@ function Skin:GetFontOutline()
     return Orbit.db.GlobalSettings.FontOutline or "OUTLINE"
 end
 
+function Skin:GetFontShadow()
+    return Orbit.db.GlobalSettings.FontShadow or false
+end
+
+function Skin:ApplyFontShadow(fontString)
+    if not fontString then return end
+    if self:GetFontShadow() then
+        fontString:SetShadowColor(0, 0, 0, 1)
+        fontString:SetShadowOffset(SHADOW_OFFSET_X, SHADOW_OFFSET_Y)
+    else
+        fontString:SetShadowOffset(0, 0)
+    end
+end
+
 function Skin:SkinText(fontString, settings)
     if not fontString then
         return
@@ -335,6 +351,7 @@ function Skin:SkinText(fontString, settings)
     end
 
     fontString:SetFont(font, size, self:GetFontOutline())
+    self:ApplyFontShadow(fontString)
 
     if settings.textColor then
         local c = settings.textColor
@@ -357,7 +374,6 @@ function Skin:ApplyUnitFrameText(fontString, alignment, fontPath, textSize)
 
     textSize = textSize or Constants.UI.UnitFrameTextSize
     local padding = Constants.UnitFrame.TextPadding
-    local shadow = Constants.UnitFrame.ShadowOffset
 
     fontString:SetFont(fontPath, textSize, self:GetFontOutline())
     fontString:ClearAllPoints()
@@ -370,8 +386,7 @@ function Skin:ApplyUnitFrameText(fontString, alignment, fontPath, textSize)
         fontString:SetJustifyH("RIGHT")
     end
 
-    fontString:SetShadowColor(0, 0, 0, 1)
-    fontString:SetShadowOffset(shadow.x, shadow.y)
+    self:ApplyFontShadow(fontString)
 end
 
 -- [ GRADIENT BACKGROUND ]--------------------------------------------------------------------------

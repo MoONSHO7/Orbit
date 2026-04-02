@@ -29,6 +29,7 @@ function CoreMixin:OnLoad(skipEventRegistration)
     end
 
     Orbit.EventBus:On("ORBIT_NICKNAME_UPDATED", function() self:UpdateName() end)
+    Orbit.EventBus:On("ORBIT_ABSORB_STYLE_CHANGED", function() self:UpdateHealPrediction() end)
 
     self:UpdateAll()
 end

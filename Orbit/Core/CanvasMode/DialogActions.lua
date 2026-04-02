@@ -169,9 +169,9 @@ function Dialog:ResetPositions()
                 if fontPath and container.visual.SetFont then
                     local _, currentSize = container.visual:GetFont()
                     container.visual:SetFont(fontPath, currentSize or 12, Orbit.Skin:GetFontOutline())
+                    Orbit.Skin:ApplyFontShadow(container.visual)
                 end
                 if container.visual.SetTextColor and OrbitEngine.OverrideUtils then OrbitEngine.OverrideUtils.ApplyTextColor(container.visual, nil) end
-                if container.visual.SetShadowOffset then container.visual:SetShadowOffset(0, 0) end
             elseif container.visual and container.visual.GetObjectType and container.visual:GetObjectType() == "Texture" then
                 container.visual:ClearAllPoints(); container.visual:SetAllPoints(container)
                 container.originalVisualWidth, container.originalVisualHeight = nil, nil

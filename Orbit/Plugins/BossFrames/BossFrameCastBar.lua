@@ -31,11 +31,11 @@ function CB:Create(parent, bossIndex, plugin)
     container:SetSize(CAST_BAR_WIDTH + CAST_BAR_ICON_SIZE, CAST_BAR_HEIGHT)
     container:Hide()
 
-    -- Background on container (fills behind border, icon, and bar)
+    -- Background on container (fills behind both icon and bar uniformly, matching Skin.CastBar pattern)
     container.bg = container:CreateTexture(nil, "BACKGROUND")
     container.bg:SetAllPoints()
-    local bg = Orbit.Constants.Colors.Background
-    container.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
+    local globalSettings = Orbit.db.GlobalSettings or {}
+    Orbit.Skin:ApplyGradientBackground(container, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
 
     -- Icon: anchored to the left edge of the container (positioned by UpdateBarInsets)
     container.Icon = container:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
@@ -57,6 +57,9 @@ function CB:Create(parent, bossIndex, plugin)
     -- Single unified border on container (wraps icon + bar together)
     container.SetBorder = function(self, size)
         Orbit.Skin:SkinBorder(self, self, size)
+        -- BackdropTemplate has a default opaque background; clear it so the icon area stays transparent
+        if self._borderFrame then self._borderFrame:SetBackdropColor(0, 0, 0, 0) end
+        if self._edgeBorderOverlay then self._edgeBorderOverlay:SetBackdropColor(0, 0, 0, 0) end
         self:UpdateBarInsets()
     end
     container.SetBorderHidden = Orbit.Skin.DefaultSetBorderHidden
@@ -98,14 +101,12 @@ function CB:Create(parent, bossIndex, plugin)
     container.Text = textOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     container.Text:SetPoint("LEFT", bar, "LEFT", 4, 0)
     container.Text:SetJustifyH("LEFT")
-    container.Text:SetShadowColor(0, 0, 0, 1)
-    container.Text:SetShadowOffset(1, -1)
+    Orbit.Skin:ApplyFontShadow(container.Text)
 
     container.Timer = textOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     container.Timer:SetPoint("RIGHT", bar, "RIGHT", -4, 0)
     container.Timer:SetJustifyH("RIGHT")
-    container.Timer:SetShadowColor(0, 0, 0, 1)
-    container.Timer:SetShadowOffset(1, -1)
+    Orbit.Skin:ApplyFontShadow(container.Timer)
 
     -- Store references on container for external access
     container.Bar = bar

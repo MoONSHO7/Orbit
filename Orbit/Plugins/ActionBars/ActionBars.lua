@@ -288,6 +288,18 @@ function Plugin:OnLoad()
         }, self)
     end
     Orbit.EventBus:On("UPDATE_MULTI_CAST_ACTIONBAR", function() C_Timer.After(0.1, function() self:ApplyAll() end) end, self)
+    Orbit.EventBus:On("UNIT_PET", function(unit)
+        if unit ~= "player" then return end
+        if self.petDebounce then self.petDebounce:Cancel() end
+        self.petDebounce = C_Timer.NewTimer(0.3, function()
+            self.petDebounce = nil
+            if InCombatLockdown() then return end
+            local container = self.containers[PET_BAR_INDEX]
+            if not container then return end
+            self:ReparentButtons(PET_BAR_INDEX)
+            self:LayoutButtons(PET_BAR_INDEX)
+        end)
+    end, self)
     local function HideFlyoutBackground()
         local bg = SpellFlyoutBackgroundEnd
         if not bg then return end

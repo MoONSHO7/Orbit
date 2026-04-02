@@ -169,6 +169,7 @@ function ABS:Apply(button, settings)
     if button.HotKey then
         local fontSize = math.max(HOTKEY_MIN_SIZE, w * HOTKEY_FONT_SCALE)
         button.HotKey:SetFont(fontPath, fontSize, Skin:GetFontOutline())
+        Skin:ApplyFontShadow(button.HotKey)
         button.HotKey:SetTextColor(1, 1, 1, 1)
         button.HotKey:ClearAllPoints()
         button.HotKey:SetPoint("TOPRIGHT", button, "TOPRIGHT", HOTKEY_OFFSET.x, HOTKEY_OFFSET.y)
@@ -177,6 +178,7 @@ function ABS:Apply(button, settings)
     if button.Name then
         local fontSize = math.max(NAME_MIN_SIZE, w * NAME_FONT_SCALE)
         button.Name:SetFont(fontPath, fontSize, Skin:GetFontOutline())
+        Skin:ApplyFontShadow(button.Name)
         if settings.hideName then button.Name:Hide()
         else
             button.Name:Show()

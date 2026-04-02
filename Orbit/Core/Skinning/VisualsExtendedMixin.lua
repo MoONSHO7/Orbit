@@ -37,6 +37,7 @@ function Mixin:StyleLevelText(frame, systemIndex)
     if not frame or not frame.LevelText then return end
     local fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
     frame.LevelText:SetFont(fontPath, LEVEL_TEXT_SIZE, Orbit.Skin:GetFontOutline())
+    Orbit.Skin:ApplyFontShadow(frame.LevelText)
     local overrides = self:GetComponentOverrides(systemIndex, "LevelText")
     if overrides then Orbit.Engine.OverrideUtils.ApplyFontOverrides(frame.LevelText, overrides, LEVEL_TEXT_SIZE, fontPath) end
 end

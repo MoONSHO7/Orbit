@@ -42,6 +42,7 @@ graph LR
 ## rules
 
 - pet bar has special handling (index-based, no ooc fade)
+- pet bar listens for `UNIT_PET` with a 0.3s debounce to re-layout buttons after summon/dismiss (state driver shows the container, but buttons need explicit layout)
 - button reparenting must preserve secure frame references for combat
 - all grid math must use pixel-snapped values
 - bar visibility uses macro conditional drivers (`RegisterStateDriver`)

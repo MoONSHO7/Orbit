@@ -399,7 +399,7 @@ function Layout:InitializeWidgetTypes()
         if type(options) == "function" then
             options = options()
         end
-        return self:CreateDropdown(container, def.label, options, getValue(), callback)
+        return self:CreateDropdown(container, def.label, options, getValue(), callback, def.valueCheckbox)
     end)
 
     self:RegisterWidgetType("color", function(container, def, getValue, callback)
@@ -427,7 +427,7 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("texture", function(container, def, getValue, callback)
-        return self:CreateTexturePicker(container, def.label, getValue(), callback, def.previewColor)
+        return self:CreateTexturePicker(container, def.label, getValue(), callback, def.previewColor, def.valueCheckbox)
     end)
 
     self:RegisterWidgetType("font", function(container, def, getValue, callback)

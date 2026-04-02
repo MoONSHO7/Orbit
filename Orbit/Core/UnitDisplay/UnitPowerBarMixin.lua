@@ -95,6 +95,7 @@ function Mixin:CreatePowerBarPlugin(config)
 
         local fs = textFrame:CreateFontString(nil, "OVERLAY", nil, 7)
         fs:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
+        Orbit.Skin:ApplyFontShadow(fs)
         fs:SetPoint("CENTER", textFrame, "CENTER", 0, 0)
         fs:SetJustifyH("CENTER")
         fs:SetText("100%")

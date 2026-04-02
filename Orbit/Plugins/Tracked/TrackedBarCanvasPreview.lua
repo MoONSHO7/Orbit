@@ -98,6 +98,7 @@ function Preview:Setup(plugin, frame, sysIndex)
         local fontSize = 18
         local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         fs:SetFont(fontPath, fontSize, Orbit.Skin:GetFontOutline())
+        Orbit.Skin:ApplyFontShadow(fs)
         fs:SetText(tostring(previewCharges))
         fs:SetTextColor(1, 1, 1, 1)
         fs:SetPoint("CENTER", preview, "CENTER", 0, 0)

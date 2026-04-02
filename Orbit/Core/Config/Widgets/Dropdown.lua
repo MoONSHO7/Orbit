@@ -6,7 +6,7 @@ local Layout = Engine.Layout
 local MAX_TEXT_LENGTH = 22
 
 -- [ DROPDOWN WIDGET ]-------------------------------------------------------------------------------
-function Layout:CreateDropdown(parent, label, options, initialValue, callback)
+function Layout:CreateDropdown(parent, label, options, initialValue, callback, valueCheckboxCfg)
     -- Pool retrieval
     if not self.dropdownPool then
         self.dropdownPool = {}
@@ -96,7 +96,31 @@ function Layout:CreateDropdown(parent, label, options, initialValue, callback)
         frame.Dropdown:SetPoint("RIGHT", frame, "RIGHT", -C.Widget.ValueWidth, 0)
     end
 
-    -- Value column reserved (empty for dropdown)
+    -- Value column: optional inline checkbox
+    if valueCheckboxCfg then
+        if not frame.ValueCheckbox then
+            frame.ValueCheckbox = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+            frame.ValueCheckbox:SetSize(22, 22)
+        end
+        local vcb = frame.ValueCheckbox
+        vcb:ClearAllPoints()
+        vcb:SetPoint("CENTER", frame, "RIGHT", -C.Widget.ValueWidth / 2, 0)
+        vcb:SetChecked(valueCheckboxCfg.initialValue or false)
+        vcb:SetScript("OnClick", function(self)
+            if valueCheckboxCfg.callback then valueCheckboxCfg.callback(self:GetChecked()) end
+        end)
+        if valueCheckboxCfg.tooltip then
+            vcb:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(valueCheckboxCfg.tooltip, 1, 1, 1, 1, true)
+                GameTooltip:Show()
+            end)
+            vcb:SetScript("OnLeave", GameTooltip_Hide)
+        end
+        vcb:Show()
+    elseif frame.ValueCheckbox then
+        frame.ValueCheckbox:Hide()
+    end
 
     frame:SetHeight(32)
     return frame

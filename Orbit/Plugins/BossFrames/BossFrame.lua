@@ -303,20 +303,15 @@ function Plugin:PrepareIconsForCanvasMode()
     if frame.CastBar then
         local castBarHeight = self:GetSetting(1, "CastBarHeight") or 18
         local castBarWidth = self:GetSetting(1, "CastBarWidth") or 120
-        local iconOffset = castBarHeight
-        frame.CastBar:SetSize(castBarWidth + iconOffset, castBarHeight)
+        frame.CastBar:SetSize(castBarWidth + castBarHeight, castBarHeight)
         frame.CastBar.unit = "preview"
         if frame.CastBar.Icon then
             frame.CastBar.Icon:SetTexture(136116)
-            frame.CastBar.Icon:SetSize(castBarHeight, castBarHeight)
             frame.CastBar.Icon:Show()
-            if frame.CastBar.UpdateBarInsets then frame.CastBar:UpdateBarInsets() end
         end
+        if frame.CastBar.UpdateBarInsets then frame.CastBar:UpdateBarInsets() end
         local bar = frame.CastBar.Bar
         if bar then
-            bar:ClearAllPoints()
-            bar:SetPoint("TOPLEFT", frame.CastBar.Icon, "TOPRIGHT", 0, 0)
-            bar:SetPoint("BOTTOMRIGHT", frame.CastBar, "BOTTOMRIGHT", 0, 0)
             local textureName = self:GetSetting(1, "Texture") or self:GetPlayerSetting("Texture")
             local texturePath = textureName and LSM:Fetch("statusbar", textureName)
             if texturePath then bar:SetStatusBarTexture(texturePath) end

@@ -88,6 +88,14 @@ local function GetGlobalSchema()
                 { label = "Thick Outline", value = "THICKOUTLINE" }, { label = "Monochrome", value = "MONOCHROME" },
             },
             default = "OUTLINE",
+            valueCheckbox = {
+                tooltip = "Text Shadow",
+                initialValue = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontShadow or false,
+                callback = function(checked)
+                    GlobalPlugin:SetSetting(nil, "FontShadow", checked)
+                    GlobalPlugin:ApplySettings()
+                end,
+            },
         },
         {
             type = "dropdown", key = "BorderStyle", label = "Border Style", options = GetBorderStyleOptions(), default = Constants.BorderStyle.Default,
@@ -160,6 +168,7 @@ local function GetGlobalSchema()
             if d then
                 d.Font = "PT Sans Narrow"
                 d.FontOutline = "OUTLINE"
+                d.FontShadow = false
                 d.BorderSize = 2
                 d.BorderStyle = Constants.BorderStyle.Default
                 d.BorderEdgeSize = 16
@@ -182,7 +191,18 @@ local function GetColorsSchema()
     local controls = {
         { type = "texture", key = "Texture", label = "Texture", default = "Melli", previewColor = { r = 0.8, g = 0.8, b = 0.8 } },
         { type = "texture", key = "OverlayTexture", label = "Overlay Texture", default = "None", previewColor = { r = 0.5, g = 0.5, b = 0.5 } },
-
+        {
+            type = "texture", key = "AbsorbTexture", label = "Absorb Texture", default = "Blizzard",
+            previewColor = { r = 0.5, g = 0.8, b = 1.0 },
+            valueCheckbox = {
+                tooltip = "Always Show Absorb",
+                initialValue = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AlwaysShowAbsorb or false,
+                callback = function(checked)
+                    ColorsPlugin:SetSetting(nil, "AlwaysShowAbsorb", checked)
+                    Orbit.EventBus:Fire("ORBIT_ABSORB_STYLE_CHANGED")
+                end,
+            },
+        },
         {
             type = "colorcurve", key = "FontColorCurve", label = "Font Color",
             default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
@@ -266,6 +286,8 @@ local function GetColorsSchema()
                 d.Texture = "Melli"
 
                 d.OverlayTexture = "None"
+                d.AbsorbTexture = "Blizzard"
+                d.AlwaysShowAbsorb = false
                 d.BarColorCurve = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.2, a = 1 } } } }
                 d.UnitFrameBackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
                 d.BackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }

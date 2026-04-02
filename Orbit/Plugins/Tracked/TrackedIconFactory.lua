@@ -183,8 +183,9 @@ function Factory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
         end
         
         if not fs:GetFont() then
-            fs:SetFont(fontPath, math.max(6, baseSize + 2), "OUTLINE")
+            fs:SetFont(fontPath, math.max(6, baseSize + 2), Orbit.Skin:GetFontOutline())
         end
+        Orbit.Skin:ApplyFontShadow(fs)
 
         local pos = positions[posKey] or positions["Timer"] or {}
         local overrides = pos.overrides or {}

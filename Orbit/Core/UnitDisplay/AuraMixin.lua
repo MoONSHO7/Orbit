@@ -187,8 +187,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
     end
     local fontPath, fontOutline = GetAuraFont()
     icon.count:SetFont(fontPath, AURA_COUNT_SIZE, fontOutline)
-    icon.count:SetShadowColor(0, 0, 0, 1)
-    icon.count:SetShadowOffset(1, -1)
+    Orbit.Skin:ApplyFontShadow(icon.count)
     icon.count:ClearAllPoints()
     icon.count:SetPoint("BOTTOMRIGHT", icon.Overlay, "BOTTOMRIGHT", -1, 1)
     icon.count:SetJustifyH("RIGHT")
@@ -204,6 +203,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
         if timerText and timerText.SetFont then
             timerText:SetParent(icon.Overlay)
             timerText:SetFont(fontPath, AURA_TIMER_SIZE, fontOutline)
+            Orbit.Skin:ApplyFontShadow(timerText)
             timerText:ClearAllPoints()
             timerText:SetPoint("CENTER", icon, "CENTER", 0, 0)
             timerText:SetJustifyH("CENTER")
