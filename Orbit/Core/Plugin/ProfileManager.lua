@@ -304,8 +304,18 @@ function Orbit.Profile:SetActiveProfile(name)
     local needsReload = false
     if Orbit.Engine and Orbit.Engine.systems then
         for _, plugin in ipairs(Orbit.Engine.systems) do
-            local wasDisabled = oldDisabled[plugin.name] or false
-            local nowDisabled = Orbit.db.DisabledPlugins[plugin.name] or false
+            local wasDisabled = oldDisabled[plugin.name]
+            if wasDisabled == nil then
+                local defaults = self.defaults and self.defaults.DisabledPlugins
+                wasDisabled = defaults and defaults[plugin.name] or false
+            end
+
+            local nowDisabled = Orbit.db.DisabledPlugins[plugin.name]
+            if nowDisabled == nil then
+                local defaults = self.defaults and self.defaults.DisabledPlugins
+                nowDisabled = defaults and defaults[plugin.name] or false
+            end
+            
             local wasHidden = oldHidden[plugin.name] or false
             local nowHidden = Orbit.db.HideBlizzardFrames[plugin.name] or false
             local stateChanged = (wasDisabled ~= nowDisabled) or (wasHidden ~= nowHidden)

@@ -253,10 +253,12 @@ function Orbit:IsPluginEnabled(name)
     if self:IsPluginSpecLocked(name) then
         return false
     end
-    if not self.db or not self.db.DisabledPlugins then
-        return true
+    local isDisabled = self.db and self.db.DisabledPlugins and self.db.DisabledPlugins[name]
+    if isDisabled == nil then
+        local defaults = self.Profile and self.Profile.defaults and self.Profile.defaults.DisabledPlugins
+        isDisabled = defaults and defaults[name] or false
     end
-    return not self.db.DisabledPlugins[name]
+    return not isDisabled
 end
 
 function Orbit:IsPluginSpecLocked(name)
@@ -274,7 +276,7 @@ function Orbit:SetPluginEnabled(name, enabled)
     if not self.db.DisabledPlugins then
         self.db.DisabledPlugins = {}
     end
-    self.db.DisabledPlugins[name] = (not enabled) or nil
+    self.db.DisabledPlugins[name] = not enabled
 end
 
 function Orbit:IsBlizzardHidden(name)
@@ -382,7 +384,7 @@ function Orbit:RefreshSpecLockedPlugins()
                 self.EventBus:OffContext(plugin)
                 if OrbitEngine.EditMode then OrbitEngine.EditMode:UnregisterCallbacks(plugin) end
                 plugin._initialized = false
-            elseif not locked and not plugin._initialized and not (self.db.DisabledPlugins and self.db.DisabledPlugins[name]) then
+            elseif not locked and not plugin._initialized and self:IsPluginEnabled(name) then
                 if plugin.frame then
                     OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, false)
                 end

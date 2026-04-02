@@ -186,20 +186,27 @@ local function Create(container, preview, key, source, data)
         local texturePath = iconTexture and iconTexture:GetTexture()
         local StatusMixin = Orbit.StatusIconMixin
         local previewAtlases = Orbit.IconPreviewAtlases or {}
-        local targetAtlas = previewAtlases[key] or atlasName
         
-        if targetAtlas then
-            local info = C_Texture.GetAtlasInfo(targetAtlas)
+        if atlasName then
+            local info = C_Texture.GetAtlasInfo(atlasName)
             if info and info.file then
                 btn.Icon:SetTexture(info.file)
                 btn.Icon:SetTexCoord(info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord)
             else
-                btn.Icon:SetAtlas(targetAtlas, false)
+                btn.Icon:SetAtlas(atlasName, false)
             end
         elseif texturePath then btn.Icon:SetTexture(texturePath)
         elseif StatusMixin and key == "DefensiveIcon" then btn.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
         elseif StatusMixin and key == "CrowdControlIcon" then btn.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
         elseif StatusMixin and key == "PrivateAuraAnchor" then btn.Icon:SetTexture(StatusMixin:GetPrivateAuraTexture())
+        elseif previewAtlases[key] then
+            local info = C_Texture.GetAtlasInfo(previewAtlases[key])
+            if info and info.file then
+                btn.Icon:SetTexture(info.file)
+                btn.Icon:SetTexCoord(info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord)
+            else
+                btn.Icon:SetAtlas(previewAtlases[key], false)
+            end
         else btn.Icon:SetColorTexture(CC.FALLBACK_GRAY[1], CC.FALLBACK_GRAY[2], CC.FALLBACK_GRAY[3], CC.FALLBACK_GRAY[4]) end
 
         visual = btn
