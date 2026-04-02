@@ -19,11 +19,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [@project-version@] - @project-date-iso@
 ### Message
+<<<<<<< minimap
 - Mainly a performance parse this one, with lots of backend changes and a few bugfixes/minor features. - MoONSHO7 v289
 - This build introduces Orbit's first **Experimental** Minimap plugin. It's completely new and has not had broad user testing yet, so expect rough edges.
 - Created by a new Orbit developer who wants to contribute more moving forward.
 - Feedback on Discord is very appreciated - Lars-Martin. v290
 
+=======
+Mainly a performance parse this one, with lots of backend changes and a few bugfixes/minor features.
+>>>>>>> main
 
 ### Added
 - **Minimap Plugin:**: Enable it in the /orbit plugins menu under the "Experimental" tab.
