@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [@project-version@] - @project-date-iso@
 ### Message
-Mainly a performance parse this one, with lots of backend changes and a few bugfixes.
+Mainly a performance parse this one, with lots of backend changes and a few bugfixes/minor features.
 
 ### Added
 - **Tracked Cooldowns:** Decoupled Tracked Icons/Bars into a standalone plugin, independent of the Cooldown Manager. Anchoring these is still disabled I still havent been able to solve this issue with spec switching on a single profile.
@@ -31,9 +31,7 @@ Mainly a performance parse this one, with lots of backend changes and a few bugf
 ### Changed
 - **Performance (Unit Frames):** Improved Boss and Group frame efficiency.
 - **Performance (Auras):** Enhanced internal Aura tracking and Color Gradient performance to reduce memory overhead during combat.
-- **Performance (Cooldowns):** Optimized the rendering computation of "pandemic glow" animations.
-- **Tracked Cooldowns:** Tracked components can no longer be used as general anchor points by other frames, enhancing their layout independence and reliability.
-- **Edit Mode (Anchoring):** Fully transitioned Orbit's anchoring system into a robust backend architecture, bringing highly stable padding algorithms and cleaner positional persistence.
+- **Edit Mode (Anchoring):** Fully transitioned Orbit's anchoring system into a new architecture, for cleaner positional persistence.
 - **Color Curves:** Implemented internal caching to speed up how fast 'Smart Class Colors' load on dynamic components.
 - **Commands:** Updated Orbit backend API's and slash commands—start with `/orbit help`.
 - **Profiles:** Profile adjustments to better handle logging out and changing to different characters.
