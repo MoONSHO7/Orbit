@@ -279,18 +279,6 @@ local function WouldCreateCycle(anchors, child, parent)
 end
 
 function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, suppressApplySettings)
-    local isTarget = child and child.GetName and child:GetName() and child:GetName():match("PlayerResources")
-    if isTarget then
-        print("[Orbit Debug] CreateAnchor:", child:GetName(), "->", parent and parent.GetName and parent:GetName() or "Unknown", edge, "pad:", padding)
-        local p, rt, rp, x, y = child:GetPoint(1)
-        local cl, cb, cw, ch = child:GetRect()
-        local pl, pb, pw, ph = parent and parent:GetRect()
-        print("  - Pre Point:", p, "RelativeTo:", rt and rt.GetName and rt:GetName() or tostring(rt), rp, x, y)
-        print(string.format("  - Child Rect: L:%.1f B:%.1f W:%.1f H:%.1f", cl or -1, cb or -1, cw or -1, ch or -1))
-        if parent then
-            print(string.format("  - Parent Rect: L:%.1f B:%.1f W:%.1f H:%.1f", pl or -1, pb or -1, pw or -1, ph or -1))
-        end
-    end
     if padding == nil then
         local style = Orbit.Skin and Orbit.Skin:GetActiveBorderStyle()
         padding = (style and style.edgeFile) and NINESLICE_DEFAULT_PADDING or DEFAULT_PADDING
@@ -400,11 +388,6 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
 end
 
 function Anchor:BreakAnchor(child, suppressApplySettings, deferMergeVisuals)
-    local isTarget = child and child.GetName and child:GetName() and child:GetName():match("PlayerResources")
-    if isTarget then
-        local oldAnchor = self.anchors[child]
-        print("[Orbit Debug] BreakAnchor:", child:GetName(), "was anchored to:", oldAnchor and oldAnchor.parent and oldAnchor.parent.GetName and oldAnchor.parent:GetName() or "None")
-    end
     if self.anchors[child] then
         local oldAnchor = self.anchors[child]
         local oldParent = oldAnchor.parent

@@ -233,16 +233,6 @@ function Drag:OnDragStart(selectionOverlay)
         return
     end
     local parent = selectionOverlay.parent
-    local isTarget = parent and parent.GetName and parent:GetName() and parent:GetName():match("PlayerResources")
-    if isTarget then
-        local p, rt, rp, x, y = parent:GetPoint(1)
-        local l, b, w, h = parent:GetRect()
-        print("[Orbit Debug] OnDragStart:", parent:GetName())
-        print("  - Point:", p, "RelativeTo:", rt and rt.GetName and rt:GetName() or tostring(rt), rp, x, y)
-        print(string.format("  - Rect: L:%.1f B:%.1f W:%.1f H:%.1f", l or -1, b or -1, w or -1, h or -1))
-        local anchor = Engine.FrameAnchor and Engine.FrameAnchor.anchors and Engine.FrameAnchor.anchors[parent]
-        print("  - Pre-drag anchor:", anchor and anchor.parent and anchor.parent.GetName and anchor.parent:GetName() or "None", anchor and anchor.edge or "")
-    end
 
     if Engine.CanvasMode:IsActive(parent) then
         return
@@ -300,14 +290,6 @@ end
 
 function Drag:OnDragStop(selectionOverlay)
     local parent = selectionOverlay.parent
-    local isTarget = parent and parent.GetName and parent:GetName() and parent:GetName():match("PlayerResources")
-    if isTarget then
-        local p, rt, rp, x, y = parent:GetPoint(1)
-        local l, b, w, h = parent:GetRect()
-        print("[Orbit Debug] OnDragStop:", parent:GetName())
-        print("  - Last Point:", p, "RelativeTo:", rt and rt.GetName and rt:GetName() or tostring(rt), rp, x, y)
-        print(string.format("  - Last Rect: L:%.1f B:%.1f W:%.1f H:%.1f", l or -1, b or -1, w or -1, h or -1))
-    end
     
     if selectionOverlay.lastAnchorTarget then
         local Selection = Engine.FrameSelection
