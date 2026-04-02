@@ -19,43 +19,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [@project-version@] - @project-date-iso@
 ### Message
+- Mainly a performance parse this one, with lots of backend changes and a few bugfixes/minor features. - MoONSHO7 v289
 - This build introduces Orbit's first **Experimental** Minimap plugin. It's completely new and has not had broad user testing yet, so expect rough edges.
 - Created by a new Orbit developer who wants to contribute more moving forward.
-- Feedback on Discord is very appreciated - Lars-Martin.
+- Feedback on Discord is very appreciated - Lars-Martin. v290
 
-### TLDR
-- Hopefully some bugfixes from the new VE working now
-- Updated Color Picker
-- ActionBar backdrops should work with class pins now
-- Added 'Colors' to the QoL section to recolor blizzard frames
 
 ### Added
-- **Minimap plugin** — replaces the default Blizzard minimap with a fully Orbit-managed version.
-  - Drag and reposition the minimap anywhere on screen via Edit Mode.
-  - Choose between a **square** or **round** shape.
-  - Set any **size** from 100 to 400 pixels.
-  - **Opacity** control with optional mouse-over fade-in.
-  - **Rotate Minimap** option to keep north up or rotate with your character.
-  - **Configurable minimap click actions** let you bind the World Map, Tracking menu, Calendar, Time Manager, or Addon Compartment to mouse buttons.
-  - **Zone Text** — shows your current zone above the minimap. Click it to open the World Map. Optionally colour the text by PvP zone type (sanctuary, friendly, hostile, contested).
-  - **Clock** — displays the current time (local or realm). Left-click opens the Time Manager, right-click opens the Calendar. Glows when you have pending calendar invites.
-  - **Coordinates** — shows your current map position (X, Y) and updates in real time.
-  - **Zoom Buttons** — fade in on hover, fade out when you move away. Optional auto-zoom-out timer resets zoom after a configurable delay.
-  - **Addon Compartment** — consolidates addon buttons into a single Orbit-managed compartment button with a flyout list.
-  - **Instance Difficulty** supports both icon and text display modes, each with independent positioning in Canvas Mode.
-  - **Missions**, **Mail**, and **Crafting Order** indicators are all carried over from the Blizzard minimap.
-  - All components are individually toggleable and repositionable in Canvas Mode.
+- **Minimap Plugin:**: Enable it in the /orbit plugins menu under the "Experimental" tab.
+- **Tracked Cooldowns:** Decoupled Tracked Icons/Bars into a standalone plugin, independent of the Cooldown Manager. Anchoring these is still disabled I still havent been able to solve this issue with spec switching on a single profile.
+- **CastBar Ticks:** Added tick marks to the cast bar for channeled abilities.
+- **Raid Frame Panel:** Enabled the standard blizzard raid frame (marker bars, readycheck, etc) by default, but added an option to disable it on each tier in the settings.
+- **Absorb Texture:** Added option to pick your obsorb texture and have it always enabled.
+- **Shadowed Font:** Added a checkbox to enable font shadows on all text.
 
 ### Changed
-- **Difficulty display handling** — Canvas Mode now treats difficulty icon and text modes as separate components with independent saved positions.
-- **Minimap defaults** — Updated the default minimap size, placement, component layout, and click-action settings for the first experimental release.
+- **Performance (Unit Frames):** Improved Boss and Group frame efficiency.
+- **Performance (Auras):** Enhanced internal Aura tracking and Color Gradient performance to reduce memory overhead during combat.
+- **Edit Mode (Anchoring):** Fully transitioned Orbit's anchoring system into a new architecture, for cleaner positional persistence.
+- **Color Curves:** Implemented internal caching to speed up how fast 'Smart Class Colors' load on dynamic components.
+- **Commands:** Updated Orbit backend API's and slash commands—start with `/orbit help`.
+- **Profiles:** Profile adjustments to better handle logging out and changing to different characters.
 
 ### Fixed
-- **RestingIcon** — Fixed issue with positioning the icon in canvas mode.
-- **Difficulty preview/apply flow** — Fixed icon/text mode switching, preview sizing drift, and live Apply mismatches.
-- **Minimap polish** — Fixed several component sizing, layering, opacity, and placeholder issues across the new minimap and canvas preview.
-- **BossFrames** — Fixed mulitple issues with bossframes that came up from previous performance parse on group frames.
-- **TrackedCooldowns+Charges** — These should now save position properly, anchored is still disabled as its buggy with new profiles and I  havent fixed it yet## [1.0.0] - 2026-03-10
+- **MoveMore Plugin:** Fixed a bug where MoveMore incorrectly attempted to make protected Blizzard UI elements draggable (e.g., the Raid Browser).
+- **Keybinds:** Fixed an issue where keybinds were not being displayed correctly or disablable.
+
+## [1.0.0] - 2026-03-10
 ### Added
 - Initial release of Orbit.
 - Core engine and basic UI plugins. 
