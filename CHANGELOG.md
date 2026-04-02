@@ -44,4 +44,3 @@ Mainly a performance parse this one, with lots of backend changes and a few bugf
 ### Added
 - Initial release of Orbit.
 - Core engine and basic UI plugins. 
-
