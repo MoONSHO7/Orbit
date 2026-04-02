@@ -61,7 +61,6 @@ canvas overrides (font, size, color) are supported for ZoneText, Clock, Coords, 
 | key                | type    | default | description                                    |
 | ------------------ | ------- | ------- | ---------------------------------------------- |
 | `Scale`            | slider  | 100     | overall minimap scale (%)                      |
-| `Opacity`          | slider  | 100     | out-of-hover opacity (%)                       |
 | `Size`             | slider  | 220     | minimap diameter in pixels                     |
 | `ZoneTextColoring` | boolean | true    | colour zone text by pvp type (canvas override) |
 | `DifficultyShowBackground`| boolean | false   | show blizzard banner behind difficulty icon on the live minimap |
@@ -71,4 +70,4 @@ canvas overrides (font, size, color) are supported for ZoneText, Clock, Coords, 
 
 ## data flow
 
-savedvariables → `ApplySettings()` → sizes container, skins border, applies component visibility via `IsComponentDisabled()`, restores canvas positions via `ComponentDrag:RestoreFramePositions()`, applies canvas overrides via `OverrideUtils.ApplyOverrides()`, sets scale/opacity
+savedvariables → `ApplySettings()` → sizes container, skins border, applies component visibility via `IsComponentDisabled()`, restores canvas positions via `ComponentDrag:RestoreFramePositions()`, applies canvas overrides via `OverrideUtils.ApplyOverrides()`, sets scale

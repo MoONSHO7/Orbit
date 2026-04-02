@@ -9,7 +9,6 @@ local SYSTEM_ID = "Orbit_Minimap"
 local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
     canvasMode = true,
     defaults = {
-        Opacity = 100,
         Size = 220,
         Shape = "square",
         BorderColor = { r = 0, g = 0, b = 0, a = 1 },
@@ -290,6 +289,7 @@ function Plugin:OnLoad()
     OrbitEngine.Frame:RestorePosition(self.frame, self, SYSTEM_ID)
 
     self:RegisterStandardEvents()
+    self:RegisterVisibilityEvents()
 
     -- Zone text update events
     local function OnZoneChanged()
@@ -710,12 +710,6 @@ function Plugin:ApplySettings()
         if savedPositions then OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions) end
     end
 
-    -- Opacity / Mouse-over fade
-    local baseAlpha = (self:GetSetting(SYSTEM_ID, "Opacity") or 100) / 100
-    local isEditMode = Orbit:IsEditMode()
-    Orbit.Animation:ApplyHoverFade(frame, baseAlpha, 1, isEditMode)
-    if isEditMode then frame:SetAlpha(baseAlpha) end
-
     -- Restore position from saved variables
     OrbitEngine.Frame:RestorePosition(frame, self, SYSTEM_ID)
 
@@ -733,6 +727,9 @@ function Plugin:ApplySettings()
     self._compartmentTimer = C_Timer.NewTimer(0.2, function()
         self:ApplyAddonCompartment()
     end)
+
+    -- Visibility Engine integration (opacity, OOC fade, mounted, mouseover)
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, SYSTEM_ID) end
 
     self._applyingSettings = nil
 end

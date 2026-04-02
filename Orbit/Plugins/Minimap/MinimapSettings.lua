@@ -29,9 +29,6 @@ function Plugin:AddSettings(dialog, systemFrame)
         controls = {},
     }
 
-    -- Opacity
-    SB:AddOpacitySettings(self, schema, systemIndex, systemFrame)
-
     -- Shape
     table.insert(schema.controls, {
         type = "dropdown",

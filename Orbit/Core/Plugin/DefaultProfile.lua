@@ -562,7 +562,7 @@ Orbit.Profile.defaults = {
             },
         },
     },
-    DisabledPlugins = {},
+    DisabledPlugins = { Minimap = true },
     HideBlizzardFrames = {},
     GlobalSettings = {
         OverlayTexture = "None", TourComplete = false,
