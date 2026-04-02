@@ -82,20 +82,38 @@ local function HookParentSizeChange(parent, anchorModule)
     hookedParents[parent] = true
 end
 
-local function SetMergeBorderState(parent, child, edge, hidden)
-    if parent and parent.SetBorderHidden then
-        parent:SetBorderHidden(hidden)
+local function SetMergeBorderState(parent, child, edge, hidden, deferExecution)
+    local function execute()
+        if parent and parent.SetBorderHidden then
+            parent:SetBorderHidden(hidden)
+        end
+        if child.SetBorderHidden then
+            child:SetBorderHidden(hidden)
+        end
+        -- Clear group flag on the child only; parent may still be merged with other children
+        if not hidden then
+            child._groupBorderActive = nil
+        end
+        -- Update group border on the merge root directly — no deferral needed since
+        -- bounding box is computed from anchor data, not screen coordinates.
+        if Orbit.Skin and Orbit.Skin.UpdateGroupBorder then
+            local mergeRoot = parent or child
+            while true do
+                local pa = Anchor.anchors[mergeRoot]
+                if not pa or pa.padding ~= 0 then break end
+                local pO = GetFrameOptions(pa.parent)
+                local cO = GetFrameOptions(mergeRoot)
+                if not (ShouldMergeBorders(pO, pa.edge) and ShouldMergeBorders(cO, pa.edge)) then break end
+                mergeRoot = pa.parent
+            end
+            if mergeRoot and mergeRoot.GetFrameLevel then Orbit.Skin:UpdateGroupBorder(mergeRoot) end
+            -- Only clear stale group overlays on the child when UN-merging; during merge,
+            -- UpdateGroupBorder already handles hiding stale overlays on non-root frames.
+            if not hidden and child and child.GetFrameLevel then Orbit.Skin:ClearGroupBorder(child) end
+        end
     end
-    if child.SetBorderHidden then
-        child:SetBorderHidden(hidden)
-    end
-    -- Clear group flag on the child only; parent may still be merged with other children
-    if not hidden then
-        child._groupBorderActive = nil
-    end
-    -- Update group border on the merge root directly — no deferral needed since
-    -- bounding box is computed from anchor data, not screen coordinates.
-    if Orbit.Skin and Orbit.Skin.UpdateGroupBorder then
+
+    if deferExecution then
         local mergeRoot = parent or child
         while true do
             local pa = Anchor.anchors[mergeRoot]
@@ -105,10 +123,13 @@ local function SetMergeBorderState(parent, child, edge, hidden)
             if not (ShouldMergeBorders(pO, pa.edge) and ShouldMergeBorders(cO, pa.edge)) then break end
             mergeRoot = pa.parent
         end
-        if mergeRoot and mergeRoot.GetFrameLevel then Orbit.Skin:UpdateGroupBorder(mergeRoot) end
-        -- Only clear stale group overlays on the child when UN-merging; during merge,
-        -- UpdateGroupBorder already handles hiding stale overlays on non-root frames.
-        if not hidden and child and child.GetFrameLevel then Orbit.Skin:ClearGroupBorder(child) end
+        if mergeRoot and mergeRoot._groupBorderOverlay then
+            mergeRoot._groupBorderOverlay:ClearAllPoints()
+            mergeRoot._groupBorderOverlay:Hide()
+        end
+        Orbit.Async:Debounce("ApplyGroupBorder_"..tostring(child), execute, 0.05)
+    else
+        execute()
     end
 end
 
@@ -258,6 +279,18 @@ local function WouldCreateCycle(anchors, child, parent)
 end
 
 function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, suppressApplySettings)
+    local isTarget = child and child.GetName and child:GetName() and child:GetName():match("PlayerResources")
+    if isTarget then
+        print("[Orbit Debug] CreateAnchor:", child:GetName(), "->", parent and parent.GetName and parent:GetName() or "Unknown", edge, "pad:", padding)
+        local p, rt, rp, x, y = child:GetPoint(1)
+        local cl, cb, cw, ch = child:GetRect()
+        local pl, pb, pw, ph = parent and parent:GetRect()
+        print("  - Pre Point:", p, "RelativeTo:", rt and rt.GetName and rt:GetName() or tostring(rt), rp, x, y)
+        print(string.format("  - Child Rect: L:%.1f B:%.1f W:%.1f H:%.1f", cl or -1, cb or -1, cw or -1, ch or -1))
+        if parent then
+            print(string.format("  - Parent Rect: L:%.1f B:%.1f W:%.1f H:%.1f", pl or -1, pb or -1, pw or -1, ph or -1))
+        end
+    end
     if padding == nil then
         local style = Orbit.Skin and Orbit.Skin:GetActiveBorderStyle()
         padding = (style and style.edgeFile) and NINESLICE_DEFAULT_PADDING or DEFAULT_PADDING
@@ -366,7 +399,12 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
     return true
 end
 
-function Anchor:BreakAnchor(child, suppressApplySettings)
+function Anchor:BreakAnchor(child, suppressApplySettings, deferMergeVisuals)
+    local isTarget = child and child.GetName and child:GetName() and child:GetName():match("PlayerResources")
+    if isTarget then
+        local oldAnchor = self.anchors[child]
+        print("[Orbit Debug] BreakAnchor:", child:GetName(), "was anchored to:", oldAnchor and oldAnchor.parent and oldAnchor.parent.GetName and oldAnchor.parent:GetName() or "None")
+    end
     if self.anchors[child] then
         local oldAnchor = self.anchors[child]
         local oldParent = oldAnchor.parent
@@ -390,7 +428,7 @@ function Anchor:BreakAnchor(child, suppressApplySettings)
         local pOpts = GetFrameOptions(oldParent)
         local cOpts = GetFrameOptions(child)
         if ShouldMergeBorders(pOpts, oldAnchor.edge) and ShouldMergeBorders(cOpts, oldAnchor.edge) then
-            SetMergeBorderState(oldParent, child, oldAnchor.edge, false)
+            SetMergeBorderState(oldParent, child, oldAnchor.edge, false, deferMergeVisuals)
         end
 
         if not suppressApplySettings and child.orbitPlugin and child.orbitPlugin.ApplySettings then

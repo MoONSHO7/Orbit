@@ -233,6 +233,16 @@ function Drag:OnDragStart(selectionOverlay)
         return
     end
     local parent = selectionOverlay.parent
+    local isTarget = parent and parent.GetName and parent:GetName() and parent:GetName():match("PlayerResources")
+    if isTarget then
+        local p, rt, rp, x, y = parent:GetPoint(1)
+        local l, b, w, h = parent:GetRect()
+        print("[Orbit Debug] OnDragStart:", parent:GetName())
+        print("  - Point:", p, "RelativeTo:", rt and rt.GetName and rt:GetName() or tostring(rt), rp, x, y)
+        print(string.format("  - Rect: L:%.1f B:%.1f W:%.1f H:%.1f", l or -1, b or -1, w or -1, h or -1))
+        local anchor = Engine.FrameAnchor and Engine.FrameAnchor.anchors and Engine.FrameAnchor.anchors[parent]
+        print("  - Pre-drag anchor:", anchor and anchor.parent and anchor.parent.GetName and anchor.parent:GetName() or "None", anchor and anchor.edge or "")
+    end
 
     if Engine.CanvasMode:IsActive(parent) then
         return
@@ -253,7 +263,7 @@ function Drag:OnDragStart(selectionOverlay)
                 if root then oldScreenCenterX = GetChainScreenCenterX(root) end
             end
 
-            Engine.FrameAnchor:BreakAnchor(parent, true)
+            Engine.FrameAnchor:BreakAnchor(parent, true, true)
             Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
 
             if root then
@@ -261,30 +271,8 @@ function Drag:OnDragStart(selectionOverlay)
                 Engine.FrameAnchor:RebalanceChainCenter(root, oldScreenCenterX)
             end
 
-            -- Free frame to UIParent at its original screen position, then start moving
-            local scale = parent:GetEffectiveScale()
-            if savedL and savedB then
-                parent:ClearAllPoints()
-                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(savedL, scale), Engine.Pixel:Snap(savedB, scale))
-            else
-                local l, b = parent:GetLeft(), parent:GetBottom()
-                if l and b then
-                    parent:ClearAllPoints()
-                    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l, scale), Engine.Pixel:Snap(b, scale))
-                else
-                    parent:ClearAllPoints()
-                end
-            end
             parent:StartMoving()
         else
-            local scale = parent:GetEffectiveScale()
-            local l, b = parent:GetLeft(), parent:GetBottom()
-            if l and b then
-                parent:ClearAllPoints()
-                parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l, scale), Engine.Pixel:Snap(b, scale))
-            else
-                parent:ClearAllPoints()
-            end
             parent:StartMoving()
         end
 
@@ -311,6 +299,16 @@ end
 -- [ DRAG STOP ]-------------------------------------------------------------------------------------
 
 function Drag:OnDragStop(selectionOverlay)
+    local parent = selectionOverlay.parent
+    local isTarget = parent and parent.GetName and parent:GetName() and parent:GetName():match("PlayerResources")
+    if isTarget then
+        local p, rt, rp, x, y = parent:GetPoint(1)
+        local l, b, w, h = parent:GetRect()
+        print("[Orbit Debug] OnDragStop:", parent:GetName())
+        print("  - Last Point:", p, "RelativeTo:", rt and rt.GetName and rt:GetName() or tostring(rt), rp, x, y)
+        print(string.format("  - Last Rect: L:%.1f B:%.1f W:%.1f H:%.1f", l or -1, b or -1, w or -1, h or -1))
+    end
+    
     if selectionOverlay.lastAnchorTarget then
         local Selection = Engine.FrameSelection
         local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
