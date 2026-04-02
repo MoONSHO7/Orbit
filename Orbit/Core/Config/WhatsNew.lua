@@ -190,7 +190,7 @@ local function FormatMarkdown(text)
     text = text:gsub("%*%*(.-)%*%*", "|cFFFFD100%1|r")
 
     -- Code: `text` -> Cyan
-    text = text:gsub("`(.-)%`", "|cFF00D4FF%1|r")
+    text = text:gsub("`(.-)`", "|cFF00D4FF%1|r")
 
     -- Bullets: Replace leading "- " with dots
     text = text:gsub("^%- ", "• ")
