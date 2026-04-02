@@ -150,9 +150,22 @@ function Dialog:AddToDock(key, sourceComponent)
 
         local iconTex = sourceComponent.Icon
         local texturePath = iconTex and iconTex:GetTexture()
+        local atlasName = iconTex and iconTex.GetAtlas and iconTex:GetAtlas()
         local StatusMixin = Orbit.StatusIconMixin
-        if texturePath then
+        if atlasName then
+            icon.visual:SetAtlas(atlasName)
+        elseif texturePath then
             icon.visual:SetTexture(texturePath)
+            if iconTex.GetTexCoord then
+                local ULx, ULy, LLx, LLy, URx, URy, LRx, LRy = iconTex:GetTexCoord()
+                if ULx and ULy then
+                    if LRx then
+                        icon.visual:SetTexCoord(ULx, ULy, LLx, LLy, URx, URy, LRx, LRy)
+                    else
+                        icon.visual:SetTexCoord(ULx, ULy, LLx, LLy)
+                    end
+                end
+            end
         elseif StatusMixin and key == "DefensiveIcon" then
             icon.visual:SetTexture(StatusMixin:GetDefensiveTexture())
         elseif StatusMixin and key == "CrowdControlIcon" then

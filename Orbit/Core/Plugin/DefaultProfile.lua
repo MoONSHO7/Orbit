@@ -185,13 +185,6 @@ Orbit.Profile.defaults = {
                     Width = 100,
                 },
             },
-            ["Orbit_PlayerResources"] = {
-                [1] = {
-                    DividerSize = 2, ShowText = true, Spacing = 2, Height = 12,
-                    Anchor = { target = "OrbitEssentialCooldowns", padding = 2, edge = "TOP", align = "CENTER" },
-                    TextSize = 15, Width = 199,
-                },
-            },
             ["Orbit_CombatTimer"] = {
                 ["Orbit_CombatTimer"] = {
                     Anchor = { target = "OrbitActionBar3", padding = 15, edge = "LEFT", align = "CENTER" },
@@ -203,6 +196,25 @@ Orbit.Profile.defaults = {
                 [1] = {
                     Height = 7, Anchor = { target = "OrbitFocusFrame", padding = 0, edge = "BOTTOM", align = "CENTER" },
                     ShowText = true, Width = 200,
+                },
+            },
+            ["Orbit_Minimap"] = {
+                ["Orbit_Minimap"] = {
+                    Anchor = false, Scale = 100, Opacity = 100, Size = 220,
+                    DifficultyDisplay = "icon", DifficultyShowBackground = false, ZoneTextColoring = true, DisabledComponents = { "Status" },
+                    ComponentPositions = {
+                        Compartment = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 15, offsetY = -10, posX = 110.0000305175781, posY = -135.0000305175781, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
+                        Zoom = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 15, offsetY = 35, posX = 110.0000305175781, posY = -90.00003051757812, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
+                        Missions = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 20, offsetY = 20, posX = -105.0000305175781, posY = -105.0000305175781, justifyH = "CENTER", selfAnchorY = "BOTTOM" },
+                        Coords = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 30, offsetY = 10, posX = 95.00003051757812, posY = -115.0000305175781, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
+                        CraftingOrder = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 20, offsetY = 38, posX = 105.0000305175781, posY = 87.00003051757812, justifyH = "CENTER", selfAnchorY = "TOP" },
+                        DifficultyIcon = { anchorX = "LEFT", anchorY = "TOP", offsetX = 20, offsetY = 20, posX = -105.0000305175781, posY = 105.0000305175781, justifyH = "LEFT", selfAnchorY = "TOP", overrides = { IconSize = 42 } },
+                        Mail = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 20, offsetY = 20, posX = 105.0000305175781, posY = 105.0000305175781, justifyH = "CENTER", selfAnchorY = "TOP" },
+                        DifficultyText = { anchorX = "LEFT", anchorY = "TOP", offsetX = 20, offsetY = 20, posX = -105.0000305175781, posY = 105.0000305175781, justifyH = "LEFT", selfAnchorY = "TOP" },
+                        Clock = { anchorX = "CENTER", anchorY = "BOTTOM", offsetX = 0, offsetY = 10, posX = 0, posY = -115.0000305175781, justifyH = "CENTER", selfAnchorY = "BOTTOM" },
+                        ZoneText = { anchorX = "CENTER", anchorY = "TOP", offsetX = 0, offsetY = 10, posX = 0, posY = 115.0000305175781, justifyH = "CENTER", selfAnchorY = "TOP", overrides = { FontSize = 18 } },
+                    },
+                    Position = { y = 0, x = -5, point = "TOPRIGHT" },
                 },
             },
             ["Orbit_FocusFrame"] = {
@@ -550,7 +562,7 @@ Orbit.Profile.defaults = {
             },
         },
     },
-    DisabledPlugins = {},
+    DisabledPlugins = { Minimap = true },
     HideBlizzardFrames = {},
     GlobalSettings = {
         OverlayTexture = "None", TourComplete = false,

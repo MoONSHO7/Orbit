@@ -50,11 +50,12 @@ local FRAME_REGISTRY = {
     { key = "QueueStatus",          display = "Queue Status",          plugin = "Queue Status",       index = 1 },
     { key = "PerformanceInfo",      display = "Performance Info",      plugin = "Performance Info",   index = 1 },
     { key = "CombatTimer",          display = "Combat Timer",          plugin = "Combat Timer",       index = 1 },
+    { key = "Minimap",              display = "Minimap",               plugin = "Minimap",            index = 1 },
 }
 
 -- Blizzard frames (no Orbit plugin, resolved via _G[blizzardFrame])
 local BLIZZARD_REGISTRY = {
-    { key = "Minimap",              display = "Minimap",               blizzardFrame = "MinimapCluster" },
+    { key = "BlizzMinimap",         display = "Minimap",               blizzardFrame = "MinimapCluster" },
     { key = "ObjectiveTracker",     display = "Objective Tracker",     blizzardFrame = "ObjectiveTrackerFrame" },
     { key = "BuffFrame",            display = "Buff Frame",            blizzardFrame = "BuffFrame" },
     { key = "DebuffFrame",          display = "Debuff Frame",          blizzardFrame = "DebuffFrame" },
@@ -123,7 +124,15 @@ function VE:GetFrameDefaults()
 end
 
 function VE:GetBlizzardFrames()
-    return BLIZZARD_REGISTRY
+    local result = {}
+    for _, entry in ipairs(BLIZZARD_REGISTRY) do
+        if entry.key == "BlizzMinimap" and Orbit:IsPluginEnabled("Minimap") then
+            -- Orbit Minimap plugin owns this frame; skip the Blizzard entry
+        else
+            result[#result + 1] = entry
+        end
+    end
+    return result
 end
 
 function VE:GetThirdPartyFrames()
@@ -208,10 +217,10 @@ function VE:ApplyBlizzardSettings()
     for _, entry in ipairs(BLIZZARD_REGISTRY) do
         local frame = _G[entry.blizzardFrame]
         if frame then
-            if entry.key == "Minimap" then frame.orbitOpacityExternal = true end
+            if entry.key == "BlizzMinimap" then frame.orbitOpacityExternal = true end
             Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, entry.key)
             -- Minimap: apply opacity to cluster children (including Minimap itself for engine-rendered POI pins)
-            if entry.key == "Minimap" then
+            if entry.key == "BlizzMinimap" then
                 local opacity = (self:GetFrameSetting(entry.key, "opacity") or 100) / 100
                 for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
             end
@@ -241,9 +250,9 @@ function VE:ApplyFrame(key)
         if entry.key == key then
             local frame = _G[entry.blizzardFrame]
             if frame then
-                if key == "Minimap" then frame.orbitOpacityExternal = true end
+                if key == "BlizzMinimap" then frame.orbitOpacityExternal = true end
                 Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, key)
-                if key == "Minimap" then
+                if key == "BlizzMinimap" then
                     local opacity = (self:GetFrameSetting(key, "opacity") or 100) / 100
                     for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
                 end

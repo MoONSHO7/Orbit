@@ -1,0 +1,8 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="MinimapConstants.lua"/>
+    <Script file="Minimap.lua"/>
+    <Script file="MinimapCapture.lua"/>
+    <Script file="MinimapComponents.lua"/>
+    <Script file="MinimapCompartment.lua"/>
+    <Script file="MinimapSettings.lua"/>
+</Ui>

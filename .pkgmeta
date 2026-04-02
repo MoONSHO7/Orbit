@@ -26,13 +26,11 @@ ignore:
   - .scripts
   - README.md
   - readme.md
-  - Plugins
   - Docs
   - CONTRIBUTE.md
   - CHANGELOG.md
   - LICENSE
-  - tmp
-
+  
 enable-nolib-creation: no
 
 manual-changelog:

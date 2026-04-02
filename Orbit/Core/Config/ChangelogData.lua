@@ -6,7 +6,8 @@ local _, Orbit = ...
 Orbit.LatestChangelogVersion = "@project-version@"
 
 Orbit.WHATS_NEW_ENTRIES = {
-    { title = "Message", body = "- This is an automated test of the new changelog system!\\n- Thanks for sticking with Orbit." },
-    { title = "Added", body = "- Automated `CHANGELOG.md` integration with in-game \\\"What's New\\\" prompt.\\n- Scripted update process for release workflows." },
-    { title = "Fixed", body = "- Syncing version information across multiple files." },
+    { title = "Message", body = "DO NOT EDIT" },
+    { title = "Added", body = "DO NOT EDIT" },
+    { title = "Changed", body = "DO NOT EDIT" },
+    { title = "Fixed", body = "DO NOT EDIT" },
 }

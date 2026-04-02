@@ -19,13 +19,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [@project-version@] - @project-date-iso@
 ### Message
+<<<<<<< minimap
+- Mainly a performance parse this one, with lots of backend changes and a few bugfixes/minor features. - MoONSHO7 v289
+- This build introduces Orbit's first **Experimental** Minimap plugin. It's completely new and has not had broad user testing yet, so expect rough edges.
+- Created by a new Orbit developer who wants to contribute more moving forward.
+- Feedback on Discord is very appreciated - Lars-Martin. v290
+
+=======
 Mainly a performance parse this one, with lots of backend changes and a few bugfixes/minor features.
+>>>>>>> main
 
 ### Added
+- **Minimap Plugin:**: Enable it in the /orbit plugins menu under the "Experimental" tab.
 - **Tracked Cooldowns:** Decoupled Tracked Icons/Bars into a standalone plugin, independent of the Cooldown Manager. Anchoring these is still disabled I still havent been able to solve this issue with spec switching on a single profile.
-- **CastBar Ticks:**  Added tick marks to the cast bar for channeled abilities.
-- **Raid Franme Panel** Enabled the standard blizzard raid frame (marker bars, readycheck, etc) by default, but added an option to disable it on each tier in the settings.
-- **Absorb Texture::** Added option to pick your obsorb texture and have it always enabled.
+- **CastBar Ticks:** Added tick marks to the cast bar for channeled abilities.
+- **Raid Frame Panel:** Enabled the standard blizzard raid frame (marker bars, readycheck, etc) by default, but added an option to disable it on each tier in the settings.
+- **Absorb Texture:** Added option to pick your obsorb texture and have it always enabled.
 - **Shadowed Font:** Added a checkbox to enable font shadows on all text.
 
 ### Changed
@@ -38,7 +47,7 @@ Mainly a performance parse this one, with lots of backend changes and a few bugf
 
 ### Fixed
 - **MoveMore Plugin:** Fixed a bug where MoveMore incorrectly attempted to make protected Blizzard UI elements draggable (e.g., the Raid Browser).
-- **Keybinds:** Fixed an issue where keybinds were not being displayed correctly or disablable
+- **Keybinds:** Fixed an issue where keybinds were not being displayed correctly or disablable.
 
 ## [1.0.0] - 2026-03-10
 ### Added

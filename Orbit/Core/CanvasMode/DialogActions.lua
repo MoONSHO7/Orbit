@@ -41,9 +41,15 @@ function Dialog:Apply()
     local isSynced = self.SyncToggle and self.SyncToggle:IsShown() and self.SyncToggle.isSynced
     local disabledCopy = {}
     for _, key in ipairs(self.disabledComponentKeys) do table.insert(disabledCopy, key) end
+    if plugin.NormalizeCanvasDisabledComponents then
+        disabledCopy = plugin:NormalizeCanvasDisabledComponents(disabledCopy)
+    end
     -- Fan out StatusIcons grouped position to individual status icon keys
     if positions.StatusIcons then
         Orbit.GroupCanvasRegistration:FanOutStatusIcons(positions)
+    end
+    if plugin.NormalizeCanvasComponentPositions then
+        positions = plugin:NormalizeCanvasComponentPositions(positions, systemIndex) or positions
     end
     if isSynced and plugin.supportsGlobalSync then
         plugin:SetSetting(1, "GlobalComponentPositions", positions)

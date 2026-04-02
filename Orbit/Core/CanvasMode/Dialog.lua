@@ -351,7 +351,7 @@ function Dialog:Open(frame, plugin, systemIndex)
     if isSynced then
         savedPositions = plugin:GetSetting(1, "GlobalComponentPositions") or {}
     else
-        savedPositions = plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
+        savedPositions = plugin and plugin.GetComponentPositions and plugin:GetComponentPositions(systemIndex) or plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
     end
 
     local defaults = plugin and plugin.defaults and plugin.defaults.ComponentPositions
@@ -441,12 +441,18 @@ function Dialog:Open(frame, plugin, systemIndex)
         return disabledSet[key] == true
     end
 
+    local function isHidden(key)
+        return plugin and plugin.IsCanvasComponentHidden and plugin:IsCanvasComponentHidden(key)
+    end
+
     wipe(self.previewComponents)
 
     -- Adopt any components pre-built by CreateCanvasPreview
     if self.previewFrame.components then
         for key, comp in pairs(self.previewFrame.components) do
-            if isDisabled(key) then
+            if isHidden(key) then
+                comp:Hide()
+            elseif isDisabled(key) then
                 comp:Hide()
                 local sourceComponent = comp.sourceComponent or comp
                 self:AddToDock(key, sourceComponent)
@@ -461,7 +467,7 @@ function Dialog:Open(frame, plugin, systemIndex)
 
     -- Create remaining components from ComponentDrag registry
     for key, data in pairs(components) do
-        if not self.previewComponents[key] and not (self.dockComponents and self.dockComponents[key]) then
+        if not isHidden(key) and not self.previewComponents[key] and not (self.dockComponents and self.dockComponents[key]) then
             if isDisabled(key) then
                 self:AddToDock(key, data.component)
             else

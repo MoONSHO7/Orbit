@@ -59,10 +59,12 @@ function Handle:Create(component, parent, callbacks)
         handle.header.text:SetTextColor(1, 1, 1, 1)
     end
     local compWidth = component:GetWidth()
-    if issecretvalue and issecretvalue(compWidth) then compWidth = HEADER_MIN_WIDTH end
-    handle.header:SetWidth(math.max(compWidth or 0, HEADER_MIN_WIDTH))
+    local headerMinWidth = component.orbitHandleHeaderMinWidth
+    if type(headerMinWidth) ~= "number" then headerMinWidth = HEADER_MIN_WIDTH end
+    if issecretvalue and issecretvalue(compWidth) then compWidth = headerMinWidth end
+    handle.header:SetWidth(math.max(compWidth or 0, headerMinWidth))
     handle.header.text:SetText(callbacks.key or "Component")
-    handle.header:Hide()
+    handle.header:SetShown(not component.orbitHideHandleHeader)
     Handle:PositionHeader(handle, component, parent)
 
     -- Enable mouse
@@ -78,7 +80,7 @@ function Handle:Create(component, parent, callbacks)
         else
             self:ApplyColorPreset(colors.HOVER)
         end
-        if self.header then self.header:Show() end
+        if self.header and not component.orbitHideHandleHeader then self.header:Show() end
         if callbacks.onEnter then callbacks.onEnter(component) end
     end)
 
@@ -154,6 +156,14 @@ function Handle:Create(component, parent, callbacks)
     if component.SetText then
         hooksecurefunc(component, "SetText", function()
             C_Timer.After(0, UpdateHandleSize)
+            if handle.header then
+                local width = component:GetWidth()
+                local minWidth = component.orbitHandleHeaderMinWidth
+                if type(minWidth) ~= "number" then minWidth = HEADER_MIN_WIDTH end
+                if not (issecretvalue and issecretvalue(width)) then
+                    handle.header:SetWidth(math.max(width or 0, minWidth))
+                end
+            end
         end)
     end
 

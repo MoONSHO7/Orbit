@@ -67,6 +67,9 @@ CanvasMode.SetBorderColor = SetBorderColor
 -- [ TEXT ALIGNMENT ]--------------------------------------------------------------------------------
 
 local function ApplyTextAlignment(container, visual, justifyH)
+    if container and (container.orbitKeepTextCentered or container.key == "DifficultyText") then
+        justifyH = "CENTER"
+    end
     visual:ClearAllPoints()
     visual:SetPoint(justifyH, container, justifyH, 0, 0)
     visual:SetJustifyH(justifyH)
