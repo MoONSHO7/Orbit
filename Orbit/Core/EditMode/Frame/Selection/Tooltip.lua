@@ -189,8 +189,7 @@ function Tooltip:ShowPosition(frame, Selection, noFade, anchorLabel)
 
     local screenWidth = GetScreenWidth()
     local cursorX = GetCursorPosition() / uiScale
-    local anchor = (cursorX + tooltip:GetWidth() + 30 > screenWidth) and "LEFT" or "RIGHT"
-    PositionAtCursor(tooltip, anchor)
+    PositionAtCursor(tooltip, nil)
 
     ShowAndFade(self, noFade)
 end
