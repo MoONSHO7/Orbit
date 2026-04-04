@@ -3,7 +3,7 @@
 local _, Orbit = ...
 Orbit.PandemicGlow = {}
 local PG = Orbit.PandemicGlow
-local LibCustomGlow = LibStub and LibStub("LibCustomGlow-1.0", true)
+local LibCustomGlow = LibStub and LibStub("LibOrbitGlow-1.0", true)
 local GLOW_KEY = "orbitPandemic"
 local PANDEMIC_THRESHOLD = 0.3
 
@@ -12,14 +12,6 @@ local pandemicCurve = C_CurveUtil.CreateCurve()
 pandemicCurve:SetType(Enum.LuaCurveType.Step)
 pandemicCurve:AddPoint(0, 1)
 pandemicCurve:AddPoint(PANDEMIC_THRESHOLD, 0)
-
-local GlowType = { Pixel = 1, Proc = 2, AutoCast = 3, Button = 4, Blizzard = 5 }
-local GlowConfig = {
-    Pixel    = { Lines = 8, Frequency = 0.25, Length = 4, Thickness = 2, XOffset = 0, YOffset = 0, Border = false },
-    Proc     = { StartAnim = false, FrameLevel = nil },
-    AutoCast = { NumParticles = 4, Size = 2, Frequency = 0.12 },
-    Button   = { Frequency = 0.3, FrameLevel = nil },
-}
 
 -- [ WRAPPER FRAME ]--------------------------------------------------------------------------------
 local function GetOrCreateWrapper(icon)
@@ -43,27 +35,10 @@ local function GetOrCreateWrapper(icon)
     return w
 end
 
--- [ START GLOW ]-----------------------------------------------------------------------------------
-local function StartGlow(wrapper, glowType, colorTable)
-    if glowType == GlowType.Pixel then
-        local cfg = GlowConfig.Pixel
-        LibCustomGlow.PixelGlow_Start(wrapper, colorTable, cfg.Lines, cfg.Frequency, cfg.Length, cfg.Thickness, cfg.XOffset, cfg.YOffset, cfg.Border, GLOW_KEY)
-    elseif glowType == GlowType.Proc then
-        LibCustomGlow.ProcGlow_Start(wrapper, { color = colorTable, startAnim = GlowConfig.Proc.StartAnim, frameLevel = GlowConfig.Proc.FrameLevel, key = GLOW_KEY })
-    elseif glowType == GlowType.AutoCast then
-        local cfg = GlowConfig.AutoCast
-        LibCustomGlow.AutoCastGlow_Start(wrapper, colorTable, cfg.NumParticles, cfg.Frequency, cfg.Size, cfg.Size, GLOW_KEY)
-    elseif glowType == GlowType.Button then
-        LibCustomGlow.ButtonGlow_Start(wrapper, colorTable, GlowConfig.Button.Frequency, GlowConfig.Button.FrameLevel)
-    end
-end
-
 -- [ STOP GLOW ]------------------------------------------------------------------------------------
-local function StopGlow(wrapper, glowType)
-    if glowType == GlowType.Pixel then LibCustomGlow.PixelGlow_Stop(wrapper, GLOW_KEY)
-    elseif glowType == GlowType.Proc then LibCustomGlow.ProcGlow_Stop(wrapper, GLOW_KEY)
-    elseif glowType == GlowType.AutoCast then LibCustomGlow.AutoCastGlow_Stop(wrapper, GLOW_KEY)
-    elseif glowType == GlowType.Button then LibCustomGlow.ButtonGlow_Stop(wrapper) end
+local function StopGlow(wrapper, typeName)
+    if not typeName then return end
+    LibCustomGlow.Hide(wrapper, typeName, GLOW_KEY)
 end
 
 function PG:Stop(icon)
@@ -79,24 +54,51 @@ end
 -- [ APPLY ]----------------------------------------------------------------------------------------
 function PG:Apply(icon, aura, unit, skinSettings)
     if not icon or not aura or not LibCustomGlow then return end
-    local glowType = (skinSettings and skinSettings.pandemicGlowType) or GlowType.Pixel
-    if glowType == GlowType.Blizzard then
+    
+    local overrides = skinSettings and skinSettings.overrides or {}
+    local glowType = (skinSettings and skinSettings.pandemicGlowType) or Orbit.Constants.Glow.Type.Pixel
+    
+    if glowType == Orbit.Constants.Glow.Type.Blizzard then
         self:Stop(icon)
         return
     end
+
     -- Get DurationObject for this aura
     local durObj = C_UnitAuras.GetAuraDuration(unit, aura.auraInstanceID)
     if not durObj then
         self:Stop(icon)
         return
     end
+    
     local alpha = C_CurveUtil.EvaluateColorValueFromBoolean(durObj:IsZero(), 0, durObj:EvaluateRemainingPercent(pandemicCurve))
     local wrapper = GetOrCreateWrapper(icon)
     wrapper:SetAlpha(alpha)
+    
+    -- Fast path: already active
     if icon.orbitPandemicGlowType == glowType then return end
+
     if icon.orbitPandemicGlowType then StopGlow(wrapper, icon.orbitPandemicGlowType) end
-    local c = (skinSettings and skinSettings.pandemicGlowColor) or { r = 1, g = 0.8, b = 0 }
-    StartGlow(wrapper, glowType, { c.r, c.g, c.b, 1 })
-    icon.orbitPandemicGlowType = glowType
+    
+    local c = (skinSettings and skinSettings.pandemicColor) or Orbit.Constants.Glow.DefaultColor
+    
+    -- Create dummy function if overrides isn't bound, since we just map it into BuildOptionsFromLookup
+    local typeName, options = Orbit.Engine.GlowUtils:BuildOptionsFromLookup(overrides, "PandemicGlow", c, GLOW_KEY)
+    
+    -- If BuildOptionsFromLookup fails due to no 'PandemicGlowType' key inside `overrides`, manually construct default options based on glowType
+    if not typeName and glowType then
+        typeName = (glowType == 1 and "Pixel") or (glowType == 2 and "Medium") or (glowType == 3 and "Autocast") or (glowType == 4 and "Classic") or nil
+        if typeName then 
+            options = { color = { c.r, c.g, c.b, c.a or 1 }, key = GLOW_KEY }
+            local defs = Orbit.Constants.Glow.Defaults[typeName]
+            if defs then
+                for k, v in pairs(defs) do options[string.lower(string.sub(k,1,1))..string.sub(k,2)] = v end
+            end
+        end
+    end
+
+    if typeName and options then
+        LibCustomGlow.Show(wrapper, typeName, options)
+        icon.orbitPandemicGlowType = typeName
+    end
 end
 
