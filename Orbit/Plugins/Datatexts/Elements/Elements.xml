@@ -1,0 +1,24 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <!-- System -->
+    <Script file="Performance.lua"/>
+    <Script file="CombatTimer.lua"/>
+    <!-- Gameplay -->
+    <Script file="Gold.lua"/>
+    <Script file="Durability.lua"/>
+    <Script file="BagSpace.lua"/>
+    <Script file="Speed.lua"/>
+    <Script file="Haste.lua"/>
+    <Script file="Crit.lua"/>
+    <Script file="Versatility.lua"/>
+    <Script file="Mastery.lua"/>
+    <Script file="Location.lua"/>
+    <Script file="Time.lua"/>
+    <Script file="Volume.lua"/>
+    <Script file="Hearthstone.lua"/>
+    <Script file="Mail.lua"/>
+    <Script file="Friends.lua"/>
+    <Script file="Guild.lua"/>
+    <Script file="ItemLevel.lua"/>
+    <Script file="Spec.lua"/>
+    <Script file="Quest.lua"/>
+</Ui>

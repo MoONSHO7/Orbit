@@ -52,6 +52,7 @@ Plugins\CooldownManager\CooldownManager.xml
 Plugins\Tracked\Tracked.xml
 Plugins\MenuItems\MenuItems.xml
 Plugins\Minimap\Minimap.xml
+Plugins\Datatexts\Datatexts.xml
 Plugins\Misc\TalkingHead.lua
 
 # ==============================================================
