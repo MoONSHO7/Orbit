@@ -450,6 +450,8 @@ local function BuildSkinSettings(overrides, remainingPercent)
         local color = OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:GetFirstColorFromCurve(overrides.PandemicGlowColorCurve)
         if color then skin.pandemicColor = color end
     end
+    -- Pass the full overrides table so PandemicGlow can build dynamic options
+    skin.overrides = overrides
     return skin
 end
 
@@ -571,39 +573,32 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
 end
 
 -- [ MISSING BUFF ICON DISPLAY ]--------------------------------------------------------------------
-local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
+local LCG = LibStub and LibStub("LibOrbitGlow-1.0", true)
 local MISSING_GLOW_KEY = "orbitMissing"
-local GlowType = { Pixel = 1, Proc = 2, AutoCast = 3, Button = 4 }
 
 local function ApplyMissingGlow(icon, overrides)
     if not LCG or not overrides then return end
-    local glowType = overrides.ProcGlowType
-    if not glowType or glowType == 0 then return end
-    local color = { 1, 0.2, 0.2, 1 }
+
+    local color = { r = 1, g = 0.2, b = 0.2, a = 1 }
     if overrides.ProcGlowColorCurve and OrbitEngine.ColorCurve then
         local c = OrbitEngine.ColorCurve:SampleColorCurve(overrides.ProcGlowColorCurve, 1)
-        if c then color = { c.r, c.g, c.b, c.a or 1 } end
+        if c then color = { r = c.r, g = c.g, b = c.b, a = c.a or 1 } end
     end
-    if glowType == GlowType.Pixel then
-        LCG.PixelGlow_Start(icon, color, 8, 0.25, 4, 2, 0, 0, false, MISSING_GLOW_KEY)
-    elseif glowType == GlowType.Proc then
-        LCG.ProcGlow_Start(icon, { color = color, startAnim = false, key = MISSING_GLOW_KEY })
-    elseif glowType == GlowType.AutoCast then
-        LCG.AutoCastGlow_Start(icon, color, 4, 0.12, 2, 2, MISSING_GLOW_KEY)
-    elseif glowType == GlowType.Button then
-        LCG.ButtonGlow_Start(icon, color, 0.3)
+
+    local typeName, options = OrbitEngine.GlowUtils:BuildOptionsFromLookup(overrides, "ProcGlow", color, MISSING_GLOW_KEY)
+    if typeName and options then
+        LCG.Show(icon, typeName, options)
+        icon.orbitMissingGlowActive = typeName
     end
-    icon.orbitMissingGlowActive = glowType
 end
 
 local function StopMissingGlow(icon)
     if not LCG then return end
-    local active = icon.orbitMissingGlowActive
-    if active == GlowType.Pixel then LCG.PixelGlow_Stop(icon, MISSING_GLOW_KEY)
-    elseif active == GlowType.Proc then LCG.ProcGlow_Stop(icon, MISSING_GLOW_KEY)
-    elseif active == GlowType.AutoCast then LCG.AutoCastGlow_Stop(icon, MISSING_GLOW_KEY)
-    elseif active == GlowType.Button then LCG.ButtonGlow_Stop(icon) end
-    icon.orbitMissingGlowActive = nil
+    local typeName = icon.orbitMissingGlowActive
+    if typeName then
+        LCG.Hide(icon, typeName, MISSING_GLOW_KEY)
+        icon.orbitMissingGlowActive = nil
+    end
 end
 
 -- [ MISSING RAID BUFF CONTAINER ]------------------------------------------------------------------

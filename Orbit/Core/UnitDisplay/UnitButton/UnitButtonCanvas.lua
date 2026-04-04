@@ -22,6 +22,11 @@ local COMPONENT_POSITION_MAP = {
     { key = "Portrait",         parentKey = nil },
     { key = "MarkerIcon",       parentKey = nil },
     { key = "CastBar",          parentKey = nil },
+    { key = "PvpIcon",          parentKey = nil },
+    { key = "LeaderIcon",       parentKey = nil },
+    { key = "GroupPositionText",parentKey = nil },
+    { key = "ReadyCheckIcon",   parentKey = nil },
+    { key = "RestingIcon",      parentKey = nil },
     { key = "Buffs",             parentKey = nil, isAura = true },
     { key = "Debuffs",           parentKey = nil, isAura = true },
 }
@@ -78,11 +83,18 @@ function CanvasMixin:ApplyComponentPositions()
         for key, defaultPos in pairs(defaults) do
             if not positions[key] then
                 positions[key] = defaultPos
-            elseif not positions[key].anchorX then
-                -- Merge default position fields without overwriting existing overrides
+            else
+                -- Merge default fields and sub-tables (like 'overrides') without overwriting existing data
                 local existing = positions[key]
                 for k, v in pairs(defaultPos) do
-                    if existing[k] == nil then existing[k] = v end
+                    if type(v) == "table" then
+                        existing[k] = existing[k] or {}
+                        for subK, subV in pairs(v) do
+                            if existing[k][subK] == nil then existing[k][subK] = subV end
+                        end
+                    elseif existing[k] == nil then 
+                        existing[k] = v 
+                    end
                 end
             end
         end

@@ -69,7 +69,7 @@ function Mixin:CreatePowerBarPlugin(config)
 
         preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Orbit.Constants.Layers and Orbit.Constants.Layers.BackdropDeep or -8)
         preview.bg:SetAllPoints()
-        Orbit.Skin:ApplyGradientBackground(preview, gs.BackdropColourCurve, Orbit.Constants.Colors.Background)
+        Orbit.Skin:ApplyGradientBackground(preview, gs.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
         Orbit.Skin:SkinBorder(preview, preview, borderSize)
 
         local bar = CreateFrame("StatusBar", nil, preview)

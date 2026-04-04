@@ -3,7 +3,7 @@
 
 local _, addonTable = ...
 local Orbit = addonTable
-local LCG = LibStub("LibCustomGlow-1.0")
+local LCG = LibStub("LibOrbitGlow-1.0")
 
 Orbit.DispelIndicatorMixin = {}
 
@@ -64,12 +64,12 @@ end
 function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin, harmfulAuras)
     if not frame or not frame.unit then return end
     local settings = GetDispelSettings(plugin)
-    if not settings.enabled then LCG.PixelGlow_Stop(frame); return end
+    if not settings.enabled then LCG.Hide(frame, "Pixel"); return end
     local unit = frame.unit
-    if not UnitExists(unit) then LCG.PixelGlow_Stop(frame); return end
+    if not UnitExists(unit) then LCG.Hide(frame, "Pixel"); return end
     if not C_UnitAuras or not C_UnitAuras.GetUnitAuras then return end
     local auras = harmfulAuras or C_UnitAuras.GetUnitAuras(unit, "HARMFUL")
-    if not auras or #auras == 0 then LCG.PixelGlow_Stop(frame); return end
+    if not auras or #auras == 0 then LCG.Hide(frame, "Pixel"); return end
 
     local bestAuraInstanceID = nil
     for _, aura in ipairs(auras) do
@@ -85,12 +85,12 @@ function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin, harmful
         local curve = GetDispelCurve(plugin)
         local color = curve and C_UnitAuras.GetAuraDispelTypeColor and C_UnitAuras.GetAuraDispelTypeColor(unit, bestAuraInstanceID, curve)
         if color then
-            LCG.PixelGlow_Start(frame, color, settings.numLines, settings.frequency, nil, settings.thickness, 0, 0, true, nil, Orbit.Constants.Levels.Border)
+            LCG.Show(frame, "Pixel", { color = { color:GetRGBA() }, lines = settings.numLines, frequency = settings.frequency, thickness = settings.thickness, border = true, frameLevel = Orbit.Constants.Levels.Border })
         else
-            LCG.PixelGlow_Stop(frame)
+            LCG.Hide(frame, "Pixel")
         end
     else
-        LCG.PixelGlow_Stop(frame)
+        LCG.Hide(frame, "Pixel")
     end
 end
 

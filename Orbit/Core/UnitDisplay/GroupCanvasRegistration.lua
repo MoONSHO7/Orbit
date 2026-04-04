@@ -293,9 +293,7 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
                 if iconKey == "RoleIcon" and iconOverrides then
                     if iconOverrides.RoleIconStyle == "round" then atlas = "icons_64x64_damage" end
                     if iconOverrides.HideDPS then atlas = (iconOverrides.RoleIconStyle == "round") and "icons_64x64_heal" or "UI-LFG-RoleIcon-Healer" end
-                elseif iconKey == "PvpIcon" and iconOverrides and iconOverrides.PvpIconStyle then
-                    local PVP = { default = "QuestPortraitIcon-Alliance", crest = "glues-characterSelect-icon-faction-alliance-selected" }
-                    atlas = PVP[iconOverrides.PvpIconStyle] or PVP.default
+
                 elseif iconKey == "CombatIcon" and iconOverrides and iconOverrides.CombatIconStyle then
                     local COMBAT = { default = "UI-HUD-UnitFrame-Player-CombatIcon", pvp = "UI-EventPoi-pvp" }
                     atlas = COMBAT[iconOverrides.CombatIconStyle] or COMBAT.default

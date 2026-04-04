@@ -41,8 +41,33 @@ function HealthMixin:ApplyHealthColor()
     end
 
     -- The paladin casts Detect Magic to determine the bar's true color
+    local useGradientTexture = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UnitHealthUseGradient
     local hasClassPin = Engine.ColorCurve:CurveHasClassPin(globalBarCurve)
     local isGradient = #globalBarCurve.pins > 1
+    local tex = self.Health:GetStatusBarTexture()
+
+    if useGradientTexture and isGradient then
+        if tex then
+            local leftPin = globalBarCurve.pins[1]
+            local rightPin = globalBarCurve.pins[1]
+            for _, pin in ipairs(globalBarCurve.pins) do
+                if pin.position < leftPin.position then leftPin = pin end
+                if pin.position > rightPin.position then rightPin = pin end
+            end
+            
+            local leftColor = Engine.ClassColor:ResolveClassColorPinForUnit(leftPin, self.unit)
+            local rightColor = Engine.ClassColor:ResolveClassColorPinForUnit(rightPin, self.unit)
+            
+            tex:SetVertexColor(1, 1, 1, 1) -- Clear tint first
+            tex:SetGradient("HORIZONTAL", CreateColor(leftColor.r, leftColor.g, leftColor.b, leftColor.a or 1), CreateColor(rightColor.r, rightColor.g, rightColor.b, rightColor.a or 1))
+        end
+        return
+    end
+
+    -- Clear spatial gradient if reverting back
+    if tex and tex.SetGradient then
+        tex:SetGradient("HORIZONTAL", CreateColor(1, 1, 1, 1), CreateColor(1, 1, 1, 1))
+    end
 
     if isGradient then
         local nativeCurve = hasClassPin
@@ -50,7 +75,6 @@ function HealthMixin:ApplyHealthColor()
             or  Engine.ColorCurve:ToNativeColorCurve(globalBarCurve)
 
         if nativeCurve and UnitHealthPercent and self.unit and UnitExists(self.unit) then
-            local tex = self.Health:GetStatusBarTexture()
             if tex then
                 local ok, color = pcall(UnitHealthPercent, self.unit, true, nativeCurve)
                 if ok and color and color.GetRGBA then
@@ -66,7 +90,6 @@ function HealthMixin:ApplyHealthColor()
         or  Engine.ColorCurve:GetFirstColorFromCurve(globalBarCurve)
     
     if staticColor then
-        local tex = self.Health:GetStatusBarTexture()
         if tex then
             tex:SetVertexColor(staticColor.r, staticColor.g, staticColor.b, staticColor.a or 1)
         else
