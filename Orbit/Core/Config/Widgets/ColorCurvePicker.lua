@@ -10,7 +10,7 @@ local Layout = Engine.Layout
 local WIDGET_HEIGHT = 32
 local GRADIENT_BAR_HEIGHT = 20
 
-function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback)
+function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback, valueCheckboxCfg)
     -- Pool retrieval
     if not self.colorCurvePool then self.colorCurvePool = {} end
     local frame = table.remove(self.colorCurvePool)
@@ -126,6 +126,32 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
     frame.GradientBar:SetPoint("LEFT", frame.Label, "RIGHT", C.Widget.LabelGap, 0)
     frame.GradientBar:SetPoint("RIGHT", frame, "RIGHT", -C.Widget.ValueWidth, 0)
     frame.GradientBar:SetHeight(GRADIENT_BAR_HEIGHT)
+
+    -- Value column: optional inline checkbox
+    if valueCheckboxCfg then
+        if not frame.ValueCheckbox then
+            frame.ValueCheckbox = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+            frame.ValueCheckbox:SetSize(22, 22)
+        end
+        local vcb = frame.ValueCheckbox
+        vcb:ClearAllPoints()
+        vcb:SetPoint("CENTER", frame, "RIGHT", -C.Widget.ValueWidth / 2, 0)
+        vcb:SetChecked(valueCheckboxCfg.initialValue or false)
+        vcb:SetScript("OnClick", function(self)
+            if valueCheckboxCfg.callback then valueCheckboxCfg.callback(self:GetChecked()) end
+        end)
+        if valueCheckboxCfg.tooltip then
+            vcb:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(valueCheckboxCfg.tooltip, 1, 1, 1, 1, true)
+                GameTooltip:Show()
+            end)
+            vcb:SetScript("OnLeave", GameTooltip_Hide)
+        end
+        vcb:Show()
+    elseif frame.ValueCheckbox then
+        frame.ValueCheckbox:Hide()
+    end
 
     frame:SetSize(260, WIDGET_HEIGHT)
     return frame

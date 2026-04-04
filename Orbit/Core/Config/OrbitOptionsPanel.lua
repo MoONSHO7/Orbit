@@ -204,7 +204,7 @@ local function GetColorsSchema()
             },
         },
         {
-            type = "colorcurve", key = "FontColorCurve", label = "Font Color",
+            type = "colorcurve", key = "FontColorCurve", label = "Font",
             default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
             onChange = function(val)
                 ColorsPlugin:SetSetting(nil, "FontColorCurve", val)
@@ -212,9 +212,20 @@ local function GetColorsSchema()
             end,
         },
         {
-            type = "colorcurve", key = "BarColorCurve", label = "Unit Frame Health",
+            type = "colorcurve", key = "BarColorCurve", label = "Unit Health",
             default = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.2, a = 1 } } } },
             tooltip = "Health bar color. Use the color picker to select class color or create custom gradients.",
+            valueCheckbox = {
+                tooltip = "Standard Spatial Gradient\n\nApply the first and last pins as a fixed horizontal gradient instead of sampling the curve dynamically based on health progress.",
+                initialValue = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UnitHealthUseGradient or false,
+                callback = function(checked)
+                    ColorsPlugin:SetSetting(nil, "UnitHealthUseGradient", checked)
+                    Orbit.Async:Debounce("ColorsPanel_BarColor", function()
+                        ColorsPlugin:ApplySettings()
+                        RefreshAllPreviews()
+                    end, 0.15)
+                end,
+            },
             onChange = function(val)
                 ColorsPlugin:SetSetting(nil, "BarColorCurve", val)
                 Orbit.Async:Debounce("ColorsPanel_BarColor", function()
@@ -224,23 +235,11 @@ local function GetColorsSchema()
             end,
         },
         {
-            type = "colorcurve", key = "UnitFrameBackdropColourCurve", label = "Unit Frame Background",
+            type = "colorcurve", key = "UnitFrameBackdropColourCurve", label = "Background",
             default = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } },
             onChange = function(val)
                 ColorsPlugin:SetSetting(nil, "UnitFrameBackdropColourCurve", val)
                 Orbit.Async:Debounce("ColorsPanel_UnitFrameBg", function()
-                    ColorsPlugin:ApplySettings()
-                    RefreshAllPreviews()
-                end, 0.15)
-            end,
-        },
-        {
-            type = "colorcurve", key = "BackdropColourCurve", label = "Backdrop Color",
-            default = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } },
-            tooltip = "Background color for castbars, action bars, resource bars, and other non-unit frame elements.",
-            onChange = function(val)
-                ColorsPlugin:SetSetting(nil, "BackdropColourCurve", val)
-                Orbit.Async:Debounce("ColorsPanel_BackdropColour", function()
                     ColorsPlugin:ApplySettings()
                     RefreshAllPreviews()
                     Orbit.EventBus:Fire("ORBIT_GLOBAL_BACKDROP_CHANGED")
@@ -248,7 +247,8 @@ local function GetColorsSchema()
             end,
         },
         {
-            type = "color", key = "BorderColor", label = "Border Color",
+            type = "solidcolor", key = "BorderColor", label = "Frame Borders",
+            visibleIf = function() return (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderStyle or Constants.BorderStyle.Default) == "flat" end,
             default = { r = 0, g = 0, b = 0, a = 1 },
             tooltip = "Border color for unit frames, cast bars, and other non-icon frames.",
             onChange = function(val)
@@ -261,7 +261,8 @@ local function GetColorsSchema()
             end,
         },
         {
-            type = "color", key = "IconBorderColor", label = "Icon Border Color",
+            type = "solidcolor", key = "IconBorderColor", label = "Icon Borders",
+            visibleIf = function() return (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.IconBorderStyle or Constants.BorderStyle.Default) == "flat" end,
             default = { r = 0, g = 0, b = 0, a = 1 },
             tooltip = "Border color for aura icons, cooldown icons, and other icon frames.",
             onChange = function(val)
@@ -288,9 +289,9 @@ local function GetColorsSchema()
                 d.OverlayTexture = "None"
                 d.AbsorbTexture = "Blizzard"
                 d.AlwaysShowAbsorb = false
+                d.UnitHealthUseGradient = false
                 d.BarColorCurve = { pins = { { position = 0, color = { r = 0.2, g = 0.8, b = 0.2, a = 1 } } } }
                 d.UnitFrameBackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
-                d.BackdropColourCurve = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
                 d.FontColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
                 d.BorderColor = { r = 0, g = 0, b = 0, a = 1 }
                 d.IconBorderColor = { r = 0, g = 0, b = 0, a = 1 }

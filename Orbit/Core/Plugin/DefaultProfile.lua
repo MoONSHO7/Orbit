@@ -185,13 +185,7 @@ Orbit.Profile.defaults = {
                     Width = 100,
                 },
             },
-            ["Orbit_CombatTimer"] = {
-                ["Orbit_CombatTimer"] = {
-                    Anchor = { target = "OrbitActionBar3", padding = 15, edge = "LEFT", align = "CENTER" },
-                    Opacity = 100, Scale = 100,
-                    Position = { y = 0, relativeTo = "OrbitActionBar3", point = "RIGHT", relativePoint = "LEFT", x = -9 },
-                },
-            },
+
             ["Orbit_FocusPower"] = {
                 [1] = {
                     Height = 7, Anchor = { target = "OrbitFocusFrame", padding = 0, edge = "BOTTOM", align = "CENTER" },
@@ -454,7 +448,7 @@ Orbit.Profile.defaults = {
                         LevelText = { posY = 9.04, offsetX = 5, justifyH = "LEFT", posX = 74.86, selfAnchorY = "TOP", offsetY = 6, anchorX = "RIGHT", anchorY = "TOP" },
                         GroupPositionText = { posY = -9.04, offsetX = 5, justifyH = "LEFT", posX = 74.86, selfAnchorY = "BOTTOM", offsetY = 6, anchorX = "RIGHT", anchorY = "BOTTOM" },
                         LeaderIcon = { posY = 15.04, offsetX = 10, justifyH = "LEFT", posX = -69.86, selfAnchorY = "TOP", offsetY = 0, anchorX = "LEFT", anchorY = "TOP" },
-                        PvpIcon = { posY = -20.04, selfAnchorY = "BOTTOM", anchorX = "RIGHT", justifyH = "RIGHT", posX = 54.86, overrides = { Scale = 1.5 }, offsetY = -5, offsetX = 25, anchorY = "BOTTOM" },
+                        PvpIcon = { posY = -20.04, selfAnchorY = "BOTTOM", anchorX = "RIGHT", justifyH = "RIGHT", posX = 54.86, overrides = { IconSize = 18 }, offsetY = -5, offsetX = 25, anchorY = "BOTTOM" },
                         HealthText = { posY = 0, offsetX = 4.9, justifyH = "RIGHT", posX = 74.96, selfAnchorY = "CENTER", offsetY = 0, anchorX = "RIGHT", anchorY = "CENTER" },
                         RestingIcon = { posY = 16.95, selfAnchorY = "TOP", anchorX = "RIGHT", justifyH = "LEFT", posX = 80.77, overrides = { Scale = 0.6 }, offsetY = -3, offsetX = -2, anchorY = "TOP" },
                         Name = { posY = 0, offsetX = 5, justifyH = "LEFT", posX = -74.86, selfAnchorY = "CENTER", offsetY = 0, anchorX = "LEFT", anchorY = "CENTER" },
@@ -557,16 +551,17 @@ Orbit.Profile.defaults = {
                 },
             },
 
-            ["Orbit_Performance"] = {
-                ["Orbit_Performance"] = { Anchor = { target = "OrbitActionBar4", padding = 15, edge = "RIGHT", align = "CENTER" }, Opacity = 100 },
+            ["Orbit_Datatexts"] = {
+                ["Orbit_Datatexts"] = { datatextPositions = {} },
             },
         },
     },
-    DisabledPlugins = { Minimap = true },
+    DisabledPlugins = { Minimap = true, ["Datatexts"] = true },
     HideBlizzardFrames = {},
     GlobalSettings = {
         OverlayTexture = "None", TourComplete = false,
         BackdropColour = { a = 0.7, r = 0.145, g = 0.145, b = 0.145 },
+        UnitHealthUseGradient = false,
         BarColorCurve = {
             pins = { { color = { a = 1, b = 1, g = 1, r = 1 }, type = "class", position = 0 } },
             _sorted = { { color = { a = 1, b = 1, g = 1, r = 1 }, type = "class", position = 0 } },

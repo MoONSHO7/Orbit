@@ -51,6 +51,7 @@ local FRAME_REGISTRY = {
     { key = "PerformanceInfo",      display = "Performance Info",      plugin = "Performance Info",   index = 1 },
     { key = "CombatTimer",          display = "Combat Timer",          plugin = "Combat Timer",       index = 1 },
     { key = "Minimap",              display = "Minimap",               plugin = "Minimap",            index = 1 },
+    { key = "Datatexts",            display = "Datatexts",             plugin = "Datatexts",          index = 1 },
 }
 
 -- Blizzard frames (no Orbit plugin, resolved via _G[blizzardFrame])

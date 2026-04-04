@@ -274,7 +274,7 @@ end
 function SB:AddColorSettings(plugin, schema, systemIndex, systemFrame, colorParams, colorTarget)
     colorParams = colorParams or {}
     local key = colorParams.key or "Color"
-    tinsert(schema.controls, { type = "color", key = key, label = colorParams.label or "Color",
+    tinsert(schema.controls, { type = "solidcolor", key = key, label = colorParams.label or "Color",
         default = colorParams.default or { r = 1, g = 1, b = 1 },
         onChange = CreateColorOnChange(plugin, systemIndex, key, systemFrame, colorTarget) })
 end
@@ -298,6 +298,93 @@ function SB:AddOrientationSettings(plugin, schema, systemIndex, dialog, systemFr
     tinsert(schema.controls, { type = "dropdown", key = key, label = params.label or "Orientation",
         options = options, default = params.default or 0,
         onChange = params.onChange or CreateOrientationOnChange(plugin, systemIndex, key, systemFrame, dialog, params.refreshOnChange) })
+end
+
+local function CreateGlowTypeOnChange(plugin, systemIndex, key, dialog, systemFrame, onUpdate)
+    return function(val)
+        plugin:SetSetting(systemIndex, key, val)
+        if onUpdate then onUpdate(val) end
+        if dialog and plugin.AddSettings then 
+            Engine.Layout:Reset(dialog)
+            plugin:AddSettings(dialog, systemFrame)
+        end
+        if plugin.ApplySettings then plugin:ApplySettings(systemFrame) end
+    end
+end
+
+function SB:AddGlowSettings(plugin, schema, systemIndex, dialog, systemFrame, params)
+    params = params or {}
+    local prefix = params.prefix or "Glow"
+    local typeKey = params.key or (prefix .. "Type")
+    local colorKey = params.colorKey or (prefix .. "Color")
+    local label = params.label or "Glow Type"
+    local defaultType = params.default or Constants.Glow.DefaultType
+    
+    local GlowType = Constants.Glow.Type
+    local OPTIONS = {
+        { text = "None", value = GlowType.None },
+        { text = "Pixel", value = GlowType.Pixel },
+        { text = "Medium", value = GlowType.Medium },
+        { text = "Autocast", value = GlowType.Autocast },
+        { text = "Classic", value = GlowType.Classic },
+        { text = "Thin", value = GlowType.Thin },
+        { text = "Thick", value = GlowType.Thick },
+        { text = "Static", value = GlowType.Static },
+        { text = "Blizzard", value = GlowType.Blizzard },
+    }
+    
+    local currentColor = plugin:GetSetting(systemIndex, colorKey) or Constants.Glow.DefaultColor
+    
+    tinsert(schema.controls, { 
+        type = "dropdown", key = typeKey, label = label,
+        options = OPTIONS, default = defaultType,
+        valueColor = {
+            initialValue = currentColor,
+            tooltip = "Glow Color",
+            callback = function(val)
+                plugin:SetSetting(systemIndex, colorKey, val)
+                if params.onUpdate then params.onUpdate(val) end
+                if plugin.ApplySettings then plugin:ApplySettings(systemFrame) end
+            end
+        },
+        onChange = params.onChange or CreateGlowTypeOnChange(plugin, systemIndex, typeKey, dialog, systemFrame, params.onUpdate)
+    })
+    
+    local currentType = plugin:GetSetting(systemIndex, typeKey)
+    if currentType == nil then currentType = defaultType end
+
+    local function MakeOnChange(propKey)
+        return function(val)
+            plugin:SetSetting(systemIndex, propKey, val)
+            if params.onUpdate then params.onUpdate() end
+            if plugin.ApplySettings then plugin:ApplySettings(systemFrame) end
+        end
+    end
+    
+    if currentType == GlowType.Pixel then
+        local def = Constants.Glow.Defaults.Pixel
+        tinsert(schema.controls, { type = "slider", key = prefix .. "PixelLines", label = "  - Lines", min = 1, max = 20, step = 1, default = def.Lines, onChange = MakeOnChange(prefix .. "PixelLines") })
+        tinsert(schema.controls, { type = "slider", key = prefix .. "PixelFrequency", label = "  - Frequency", min = 0, max = 0.20, step = 0.02, default = def.Frequency, formatter = function(v) return string.format("%.2f", v) end, onChange = MakeOnChange(prefix .. "PixelFrequency") })
+        tinsert(schema.controls, { type = "slider", key = prefix .. "PixelLength", label = "  - Length", min = 1, max = 30, step = 1, default = def.Length, onChange = MakeOnChange(prefix .. "PixelLength") })
+        tinsert(schema.controls, { type = "slider", key = prefix .. "PixelThickness", label = "  - Thickness", min = 1, max = 10, step = 1, default = def.Thickness, onChange = MakeOnChange(prefix .. "PixelThickness") })
+        tinsert(schema.controls, { type = "checkbox", key = prefix .. "PixelBorder", label = "  - Use Border", default = def.Border, onChange = MakeOnChange(prefix .. "PixelBorder") })
+    elseif currentType == GlowType.Medium then
+        local def = Constants.Glow.Defaults.Medium
+        tinsert(schema.controls, { type = "slider", key = prefix .. "MediumSpeed", label = "  - Speed", min = 0.1, max = 5.0, step = 0.1, default = def.Speed, onChange = MakeOnChange(prefix .. "MediumSpeed") })
+    elseif currentType == GlowType.Autocast then
+        local def = Constants.Glow.Defaults.Autocast
+        tinsert(schema.controls, { type = "slider", key = prefix .. "AutocastParticles", label = "  - Particles", min = 1, max = 16, step = 1, default = def.Particles, onChange = MakeOnChange(prefix .. "AutocastParticles") })
+        tinsert(schema.controls, { type = "slider", key = prefix .. "AutocastFrequency", label = "  - Frequency", min = 0.05, max = 1.0, step = 0.05, default = def.Frequency, formatter = function(v) return string.format("%.2f", v) end, onChange = MakeOnChange(prefix .. "AutocastFrequency") })
+    elseif currentType == GlowType.Classic then
+        local def = Constants.Glow.Defaults.Classic
+        tinsert(schema.controls, { type = "slider", key = prefix .. "ClassicFrequency", label = "  - Frequency", min = 0.05, max = 1.0, step = 0.05, default = def.Frequency, formatter = function(v) return string.format("%.2f", v) end, onChange = MakeOnChange(prefix .. "ClassicFrequency") })
+    elseif currentType == GlowType.Thin or currentType == GlowType.Thick then
+        local defKey = (currentType == GlowType.Thin and "Thin") or "Thick"
+        local def = Constants.Glow.Defaults[defKey]
+        tinsert(schema.controls, { type = "slider", key = prefix .. defKey .. "Speed", label = "  - Speed", min = 0, max = 5.0, step = 0.1, default = def.Speed, onChange = MakeOnChange(prefix .. defKey .. "Speed") })
+    elseif currentType == GlowType.Static then
+        -- Static dimensions are intrinsically derived
+    end
 end
 
 -- [ VISIBILITY ]------------------------------------------------------------------------------------
