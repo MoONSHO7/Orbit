@@ -13,10 +13,12 @@ Plugins/
   ActionBars/       -- action bar containers, button layout, text overlays
   BossFrames/       -- boss unit frames (1-8)
   CooldownManager/  -- cooldown viewers, tracked abilities, charge bars
-  MenuItems/        -- micro menu, bag bar, performance, queue status, combat timer
+  MenuItems/        -- micro menu, bag bar, queue status
+  Minimap/          -- minimap replacement (experimental)
   Misc/             -- miscellaneous (talking head)
   GroupFrames/      -- group unit frames (party + raid, tier-adaptive)
   UnitFrames/       -- player, target, focus frames and their sub-frames
+  WidgetDrawer/     -- free-floating info widgets (experimental)
 ```
 
 ## lifecycle
