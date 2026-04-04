@@ -3,10 +3,9 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
-local LCG = LibStub("LibCustomGlow-1.0", true)
+local LCG = LibStub("LibOrbitGlow-1.0", true)
 local ACTIVE_GLOW_KEY = "orbitActive"
-local GlowType = Constants.PandemicGlow.Type
-local GlowConfig = Constants.PandemicGlow
+local GlowType = Constants.Glow.Type
 
 -- [ CONSTANTS ] ---------------------------------------------------------------
 local TRACKED_INDEX = Constants.Tracked.SystemIndex.Tracked
@@ -37,35 +36,21 @@ local Updater = Orbit.TrackedUpdater
 function Updater:StartActiveGlow(plugin, icon)
     if not LCG then return end
     local systemIndex = icon.systemIndex or TRACKED_INDEX
-    local glowTypeId = plugin:GetSetting(systemIndex, "ActiveGlowType")
-    if glowTypeId == nil then glowTypeId = GlowType.None end
-    if glowTypeId == GlowType.None then return end
-    local color = plugin:GetSetting(systemIndex, "ActiveGlowColor") or { r = 0.3, g = 0.8, b = 1, a = 1 }
-    local ct = { color.r, color.g, color.b, color.a or 1 }
-    if glowTypeId == GlowType.Pixel then
-        local cfg = GlowConfig.Pixel
-        LCG.PixelGlow_Start(icon, ct, cfg.Lines, cfg.Frequency, cfg.Length, cfg.Thickness, cfg.XOffset, cfg.YOffset, cfg.Border, ACTIVE_GLOW_KEY)
-    elseif glowTypeId == GlowType.Proc then
-        local cfg = GlowConfig.Proc
-        LCG.ProcGlow_Start(icon, { color = ct, startAnim = false, duration = cfg.Duration, key = ACTIVE_GLOW_KEY })
-    elseif glowTypeId == GlowType.Autocast then
-        local cfg = GlowConfig.Autocast
-        LCG.AutoCastGlow_Start(icon, ct, cfg.Particles, cfg.Frequency, cfg.Scale, cfg.XOffset, cfg.YOffset, ACTIVE_GLOW_KEY)
-    elseif glowTypeId == GlowType.Button then
-        local cfg = GlowConfig.Button
-        LCG.ButtonGlow_Start(icon, ct, cfg.Frequency, cfg.FrameLevel)
-    end
+    
+    local typeName, options = OrbitEngine.GlowUtils:BuildOptions(plugin, systemIndex, "ActiveGlow", { r = 0.3, g = 0.8, b = 1, a = 1 }, ACTIVE_GLOW_KEY)
+    if not typeName or not options then return end
+    
+    LCG.Show(icon, typeName, options)
     icon._activeGlowing = true
-    icon._activeGlowType = glowTypeId
+    icon._activeGlowType = typeName
 end
 
 function Updater:StopActiveGlow(icon)
     if not LCG or not icon._activeGlowing then return end
     local t = icon._activeGlowType
-    if t == GlowType.Pixel then LCG.PixelGlow_Stop(icon, ACTIVE_GLOW_KEY)
-    elseif t == GlowType.Proc then LCG.ProcGlow_Stop(icon, ACTIVE_GLOW_KEY)
-    elseif t == GlowType.Autocast then LCG.AutoCastGlow_Stop(icon, ACTIVE_GLOW_KEY)
-    elseif t == GlowType.Button then LCG.ButtonGlow_Stop(icon) end
+    if t then
+        LCG.Hide(icon, t, ACTIVE_GLOW_KEY)
+    end
     icon._activeGlowing = false
     icon._activeGlowType = nil
 end

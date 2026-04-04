@@ -26,7 +26,7 @@ local function GetBarColor(plugin, sysIndex)
 end
 
 local function GetBgColor()
-    local gc = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColourCurve
+    local gc = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UnitFrameBackdropColourCurve
     local c = gc and OrbitEngine.ColorCurve:GetFirstColorFromCurve(gc)
     return c or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
 end
@@ -106,7 +106,7 @@ function Layout:SkinTrackedBar(plugin, frame, maxCharges, totalWidth, height, bo
     if frame.RechargeSegment.Overlay then frame.RechargeSegment.Overlay:Hide() end
 
     -- Background
-    Orbit.Skin:ApplyGradientBackground(frame, globalSettings.BackdropColourCurve, bgColor)
+    Orbit.Skin:ApplyGradientBackground(frame, globalSettings.UnitFrameBackdropColourCurve, bgColor)
 
     -- Border (single border around entire bar)
     if frame.orbitBackdrop then frame.orbitBackdrop:Hide() end

@@ -3,7 +3,7 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 
-local LibCustomGlow = LibStub("LibCustomGlow-1.0", true)
+local LibCustomGlow = LibStub("LibOrbitGlow-1.0", true)
 
 local CDM = Orbit:GetPlugin("Orbit_CooldownViewer")
 if not CDM then return end

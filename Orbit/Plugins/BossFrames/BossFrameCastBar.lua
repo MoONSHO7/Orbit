@@ -35,7 +35,7 @@ function CB:Create(parent, bossIndex, plugin)
     container.bg = container:CreateTexture(nil, "BACKGROUND")
     container.bg:SetAllPoints()
     local globalSettings = Orbit.db.GlobalSettings or {}
-    Orbit.Skin:ApplyGradientBackground(container, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
+    Orbit.Skin:ApplyGradientBackground(container, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
 
     -- Icon: anchored to the left edge of the container (positioned by UpdateBarInsets)
     container.Icon = container:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)

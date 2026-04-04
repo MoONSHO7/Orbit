@@ -217,12 +217,10 @@ function CDM:SetupCanvasPreview(anchor, systemIndex)
         if not w or not h then
             local aspectRatio = plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
             local iconSize = plugin:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
-            local baseSize = Constants.Skin.DefaultIconSize or 40
-            local scaledSize = baseSize * (iconSize / 100)
-            w, h = scaledSize, scaledSize
-            if aspectRatio == "16:9" then h = scaledSize * (9 / 16)
-            elseif aspectRatio == "4:3" then h = scaledSize * (3 / 4)
-            elseif aspectRatio == "21:9" then h = scaledSize * (9 / 21) end
+            w, h = iconSize, iconSize
+            if aspectRatio == "16:9" then h = iconSize * (9 / 16)
+            elseif aspectRatio == "4:3" then h = iconSize * (3 / 4)
+            elseif aspectRatio == "21:9" then h = iconSize * (9 / 21) end
         end
 
         -- Resolve icon texture from first visible viewer child

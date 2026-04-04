@@ -98,6 +98,7 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.orbitNoSnap = true
     frame.orbitSnapExclude = true
     frame.orbitChainSync = true
+    frame.anchorOptions = { syncScale = false, syncDimensions = false }
     frame.orbitCursorReveal = true
     frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = DEFAULT_TRACKED_OFFSET_X, y = 0 }
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)

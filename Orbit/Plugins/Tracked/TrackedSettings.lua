@@ -93,9 +93,9 @@ function Plugin:AddSettings(dialog, systemFrame)
             end,
         })
         table.insert(schema.controls, {
-            type = "slider", key = "IconSize", label = "Scale",
-            min = 50, max = 200, step = 1,
-            formatter = function(v) return v .. "%" end,
+            type = "slider", key = "IconSize", label = "Icon Size",
+            min = 20, max = 80, step = 1,
+            formatter = function(v) return v .. "px" end,
             default = Constants.Cooldown.DefaultIconSize,
             onChange = function(val)
                 self:SetSetting(systemIndex, "IconSize", val)
@@ -133,19 +133,11 @@ function Plugin:AddSettings(dialog, systemFrame)
                 if self.UpdateAssistedHighlights then self:UpdateAssistedHighlights() end
             end,
         })
-        local GlowType = Constants.PandemicGlow.Type
-        local GLOW_OPTIONS = {
-            { text = "None", value = GlowType.None }, { text = "Pixel Glow", value = GlowType.Pixel },
-            { text = "Proc Glow", value = GlowType.Proc }, { text = "Autocast Shine", value = GlowType.Autocast },
-            { text = "Button Glow", value = GlowType.Button }, { text = "Blizzard", value = GlowType.Blizzard },
-        }
-        table.insert(schema.controls, {
-            type = "dropdown", key = "ActiveGlowType", label = "Active Glow",
-            options = GLOW_OPTIONS, default = GlowType.None,
-            onChange = function(val)
-                self:SetSetting(systemIndex, "ActiveGlowType", val)
-                self:ApplySettings(frame)
-            end,
+        SB:AddGlowSettings(self, schema, systemIndex, dialog, systemFrame, {
+            prefix = "ActiveGlow",
+            label = "Active Glow",
+            default = Constants.Glow.Type.None,
+            onUpdate = function() self:ApplySettings(frame) end
         })
         
     elseif currentTab == "Colors" then
@@ -164,13 +156,6 @@ function Plugin:AddSettings(dialog, systemFrame)
             singleColor = true,
             onChange = function(val)
                 self:SetSetting(systemIndex, "CooldownSwipeColorCurve", val)
-                self:ApplySettings(frame)
-            end,
-        })
-        SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
-            key = "ActiveGlowColor", label = "Active Glow Color", default = { r = 0.3, g = 0.8, b = 1, a = 1 },
-            onChange = function(val)
-                self:SetSetting(systemIndex, "ActiveGlowColor", val)
                 self:ApplySettings(frame)
             end,
         })

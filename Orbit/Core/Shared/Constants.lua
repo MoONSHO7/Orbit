@@ -81,8 +81,8 @@ C.Levels = {
     IconContent = 1,     -- Icon backdrop
     IconSwipe = 2,       -- Cooldown swipe (border group, below glow)
     IconBorder = 3,      -- Per-icon pixel/NineSlice border
-    IconGlow = 5,        -- Pandemic/proc glow (above border)
-    IconOverlay = 6,     -- Timer text, stacks, flash
+    IconGlow = 6,        -- Pandemic/proc glow (above border)
+    IconOverlay = 7,     -- Timer text, stacks, flash
     GroupContainer = 49, -- Group frame container base level
     GroupBase = 50,      -- Individual group frame base level (+ index)
 }
@@ -219,7 +219,7 @@ C.PlayerCastBar = {
 C.Cooldown = {
     DefaultLimit = 10,
     DefaultPadding = 2,
-    DefaultIconSize = 100,
+    DefaultIconSize = 32,
     MaxChildFrames = 14,
     SystemIndex = {
         Essential = 1,
@@ -240,46 +240,56 @@ C.Tracked = {
     },
 }
 
--- Pandemic Glow configuration (LibCustomGlow)
-C.PandemicGlow = {
-    -- Glow type enum
+-- Unified Glow configuration parameters (LibOrbitGlow)
+C.Glow = {
+    -- Glow type enum mapping to LibOrbitGlow standard
     Type = {
         None = 0,
         Pixel = 1,
-        Proc = 2,
+        Medium = 2,
         Autocast = 3,
-        Button = 4,
+        Classic = 4,
         Blizzard = 5,
+        Thin = 6,
+        Thick = 7,
+        Static = 8,
     },
 
-    -- Default glow type and color
-    DefaultType = 2, -- Proc Glow
+    DefaultType = 2, -- Medium (Proc)
     DefaultColor = { r = 1, g = 0.8, b = 0, a = 1 }, -- Gold/amber
 
-    -- Per-glow-type parameters (customize size, speed, etc.)
-    Pixel = {
-        Lines = 4, -- Number of lines
-        Frequency = 0.25, -- Speed
-        Length = 15, -- Line length
-        Thickness = 2, -- Line thickness
-        XOffset = 0,
-        YOffset = 0,
-        Border = false,
-    },
-    Proc = {
-        StartAnim = false,
-        Duration = 1,
-    },
-    Autocast = {
-        Particles = 4, -- Number of particles
-        Frequency = 0.125, -- Speed
-        Scale = 1,
-        XOffset = 0,
-        YOffset = 0,
-    },
-    Button = {
-        Frequency = 0.125, -- Speed
-        FrameLevel = 5, -- Match IconGlow level (above border)
+    -- Default fallback parameters per type
+    Defaults = {
+        Pixel = {
+            Lines = 4,
+            Frequency = 0.25,
+            Length = 15,
+            Thickness = 2,
+            XOffset = 0,
+            YOffset = 0,
+            Border = false,
+        },
+        Medium = {
+            Speed = 1.0,
+            -- Uses default icon scaling in LibOrbitGlow based on native properties
+        },
+        Autocast = {
+            Particles = 4,
+            Frequency = 0.125,
+        },
+        Classic = {
+            Frequency = 0.125,
+            FrameLevel = 5,
+        },
+        Thin = {
+            Speed = 1.0,
+        },
+        Thick = {
+            Speed = 1.0,
+        },
+        Static = {
+            -- Static does not animate, so it has no Speed property
+        },
     },
 }
 

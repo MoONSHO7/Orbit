@@ -792,7 +792,7 @@ function Plugin:ApplySettings(systemFrame)
             font = fontName,
             textColor = { r = 1, g = 1, b = 1, a = 1 },
             backdropColor = backdropColor,
-            backdropCurve = globalSettings.BackdropColourCurve,
+            backdropCurve = globalSettings.UnitFrameBackdropColourCurve,
             sparkColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(systemIndex, "SparkColorCurve")) or self:GetSetting(systemIndex, "SparkColor") or { r = 1, g = 1, b = 1, a = 1 },
         })
 

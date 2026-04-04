@@ -218,6 +218,8 @@ local function Create(container, preview, key, source, data)
     local w, h = GetSourceSize(source, CC.DEFAULT_ICON_SIZE, CC.DEFAULT_ICON_SIZE)
     if savedSize and savedSize > 0 and key ~= "PrivateAuraAnchor" then w, h = savedSize, savedSize end
     container:SetSize(w, h)
+    
+    if container.isIconFrame then container.skipSourceSizeRestore = true end
 
     local unskinnedKeys = { PrivateAuraAnchor = true, Zoom = true, CraftingOrder = true, Mail = true, Difficulty = true }
     if unskinnedKeys[key] then

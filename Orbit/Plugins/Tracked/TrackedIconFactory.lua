@@ -177,6 +177,7 @@ function Factory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
         
         fs:Show()
         fs:SetAlpha(1)
+        if icon.TextOverlay then fs:SetParent(icon.TextOverlay) end
         
         if cd and cd.SetHideCountdownNumbers then
             cd:SetHideCountdownNumbers(false)

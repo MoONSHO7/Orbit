@@ -23,8 +23,8 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
         Width = 120, Height = 25, Scale = 100, Spacing = 40,
         CastBarHeight = 18, CastBarWidth = 120,
         ReactionColour = true,
-        PandemicGlowType = Orbit.Constants.PandemicGlow.DefaultType,
-        PandemicGlowColor = Orbit.Constants.PandemicGlow.DefaultColor,
+        PandemicGlowType = Orbit.Constants.Glow.Type.Pixel,
+        PandemicGlowColor = Orbit.Constants.Glow.DefaultColor,
         PandemicGlowColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
         DisabledComponents = {},
         ComponentPositions = {
@@ -65,7 +65,7 @@ local function CreatePowerBar(parent, unit)
     power.bg = power:CreateTexture(nil, "BACKGROUND")
     power.bg:SetAllPoints()
     local globalSettings = Orbit.db.GlobalSettings or {}
-    Orbit.Skin:ApplyGradientBackground(power, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
+    Orbit.Skin:ApplyGradientBackground(power, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
     return power
 end
 
@@ -80,13 +80,18 @@ end
 
 -- [ AURA DISPLAY CONFIG ]---------------------------------------------------------------------------
 local function BossDebuffSkin(plugin)
-    local Constants = Orbit.Constants
-    return {
+    local skin = {
         zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true, enablePandemic = true,
-        pandemicGlowType = plugin:GetSetting(1, "PandemicGlowType") or Constants.PandemicGlow.DefaultType,
-        pandemicGlowColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(1, "PandemicGlowColorCurve"))
-            or plugin:GetSetting(1, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
+        pandemicGlowType = plugin:GetSetting(1, "PandemicGlowType") or Orbit.Constants.Glow.Type.Pixel,
+        pandemicColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(1, "PandemicGlowColorCurve"))
+            or plugin:GetSetting(1, "PandemicGlowColor") or Orbit.Constants.Glow.DefaultColor,
     }
+    -- Assemble a pseudo-overrides table so PandemicGlow can fetch dynamic properties correctly
+    skin.overrides = {
+        PandemicGlowType = skin.pandemicGlowType,
+        PandemicGlowColor = skin.pandemicColor
+    }
+    return skin
 end
 
 local BOSS_BUFF_SKIN = Orbit.Constants.Aura.SkinWithTimer
@@ -407,6 +412,10 @@ function Plugin:ApplySettings()
         frame:SetBorder(borderSize)
         UpdateFrameLayout(frame, borderSize)
         if frame.Health and textureName then Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true) end
+        if frame.TotalAbsorbBar then
+            local absorbTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AbsorbTexture
+            frame.TotalAbsorbBar:SetStatusBarTexture(LSM:Fetch("statusbar", absorbTextureName or "Blizzard"))
+        end
         if frame.Power and textureName then Orbit.Skin:SkinStatusBar(frame.Power, textureName, nil, true); if frame.Power.bg then frame.Power.bg:SetColorTexture(0, 0, 0, 0.5) end end
         Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)
         Orbit.Skin:ApplyUnitFrameText(frame.HealthText, "RIGHT", nil, textSize)

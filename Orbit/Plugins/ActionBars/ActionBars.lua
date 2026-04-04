@@ -8,7 +8,7 @@ local ABText = Orbit.ActionBarsText
 local ABPreview = Orbit.ActionBarsPreview
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local BUTTON_SIZE = 32
+local DEFAULT_ICON_SIZE = 32
 local PET_BAR_INDEX = 9
 local STANCE_BAR_INDEX = 10
 local POSSESS_BAR_INDEX = 11
@@ -52,7 +52,7 @@ local BAR_CONFIG = {
 
 local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     defaults = {
-        Scale = 90, IconPadding = 2, Rows = 1, NumIcons = 12,
+        IconSize = 32, IconPadding = 2, Rows = 1, NumIcons = 12,
         Opacity = 100, HideEmptyButtons = false, UseGlobalTextStyle = true,
         ShowBarArt = false,
         DisabledComponents = {},
@@ -150,8 +150,8 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
     end
     if systemIndex == VEHICLE_EXIT_INDEX then
-        table.insert(schema.controls, { type = "slider", key = "Scale", label = "Scale", min = 50, max = 150, step = 1, default = 90, formatter = function(v) return v .. "%" end,
-            onChange = function(val) self:SetSetting(systemIndex, "Scale", val); self:ApplySettings(container) end })
+        table.insert(schema.controls, { type = "slider", key = "IconSize", label = "Icon Size", min = 20, max = 64, step = 1, default = DEFAULT_ICON_SIZE, formatter = function(v) return v .. "px" end,
+            onChange = function(val) self:SetSetting(systemIndex, "IconSize", val); self:ApplySettings(container) end })
         OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
         return
     end
@@ -195,8 +195,8 @@ function Plugin:AddSettings(dialog, systemFrame)
                     end
                 end })
         end
-        table.insert(schema.controls, { type = "slider", key = "Scale", label = "Scale", min = 50, max = 150, step = 1, default = 90, formatter = function(v) return v .. "%" end,
-            onChange = function(val) self:SetSetting(systemIndex, "Scale", val); self:ApplySettings(container) end })
+        table.insert(schema.controls, { type = "slider", key = "IconSize", label = "Icon Size", min = 20, max = 64, step = 1, default = DEFAULT_ICON_SIZE, formatter = function(v) return v .. "px" end,
+            onChange = function(val) self:SetSetting(systemIndex, "IconSize", val); self:ApplySettings(container) end })
         table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = 0, max = 10, step = 1, default = 2,
             onChange = function(val) self:SetSetting(systemIndex, "IconPadding", val); self:ApplySettings(container) end })
         if systemIndex == 1 then
@@ -445,8 +445,9 @@ function Plugin:LayoutButtons(index)
     if cursorOverridesHide and not SPECIAL_BAR_INDICES[index] then hideEmpty = false end
     local config = BAR_CONFIG[index]
     local numIcons = self:GetSetting(index, "NumIcons") or (config and config.count or 12)
+    local iconSize = self:GetSetting(index, "IconSize") or DEFAULT_ICON_SIZE
     local scale = container:GetEffectiveScale() or 1
-    local w = OrbitEngine.Pixel:Snap(BUTTON_SIZE, scale)
+    local w = OrbitEngine.Pixel:Snap(iconSize, scale)
     local h = w
     local padding = OrbitEngine.Pixel:Multiple(rawPadding, scale)
     local useMasque = MasqueBridge and MasqueBridge.enabled
@@ -458,7 +459,7 @@ function Plugin:LayoutButtons(index)
     local limitPerLine
     if orientation == 0 then limitPerLine = math.max(1, math.ceil(totalEffective / rows))
     else limitPerLine = rows end
-    local cacheKey = string.format("%d_%d_%d_%d_%d_%d_%.4f", numIcons, limitPerLine, orientation, BUTTON_SIZE, rawPadding, Orbit.db.GlobalSettings.IconBorderSize or 2, scale)
+    local cacheKey = string.format("%d_%d_%d_%d_%d_%d_%.4f", numIcons, limitPerLine, orientation, iconSize, rawPadding, Orbit.db.GlobalSettings.IconBorderSize or 2, scale)
     local cache = self.gridCache[index]
     if not cache or cache.key ~= cacheKey then
         local positions = {}
@@ -536,7 +537,14 @@ function Plugin:ApplySettings(frame)
     if index == VEHICLE_EXIT_INDEX then
         if Orbit:IsEditMode() then UnregisterStateDriver(actualFrame, "visibility"); actualFrame:Show()
         else RegisterStateDriver(actualFrame, "visibility", VEHICLE_EXIT_VISIBILITY) end
-        self:ApplyScale(actualFrame, index, "Scale")
+        local veSize = self:GetSetting(index, "IconSize") or DEFAULT_ICON_SIZE
+        local veScale = actualFrame:GetEffectiveScale() or 1
+        veSize = OrbitEngine.Pixel:Snap(veSize, veScale)
+        actualFrame:SetSize(veSize, veSize)
+        if self.vehicleExitButton and self.vehicleExitButton == actualFrame then
+            local btn = _G["OrbitVehicleExitButton"]
+            if btn then btn:SetAllPoints(actualFrame) end
+        end
         OrbitEngine.Frame:RestorePosition(actualFrame, self, index)
         return
     end
@@ -567,7 +575,6 @@ function Plugin:ApplySettings(frame)
     elseif index == PET_BAR_INDEX then RegisterStateDriver(actualFrame, "visibility", PET_BAR_BASE_DRIVER)
     else RegisterStateDriver(actualFrame, "visibility", BASE_VISIBILITY_DRIVER) end
     if not self.buttons[index] or #self.buttons[index] == 0 then self:ReparentButtons(index) end
-    self:ApplyScale(actualFrame, index, "Scale")
     local enableHover = self:GetSetting(index, "ShowOnMouseover") ~= false
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(actualFrame, self, index, "OutOfCombatFade", enableHover) end
     self:ApplyMouseOver(actualFrame, index)

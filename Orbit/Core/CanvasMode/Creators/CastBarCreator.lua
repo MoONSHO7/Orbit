@@ -227,7 +227,7 @@ local function Create(container, preview, key, source, data)
     container.bg = container:CreateTexture(nil, "BACKGROUND")
     container.bg:SetAllPoints()
     local gs = Orbit.db.GlobalSettings or {}
-    Orbit.Skin:ApplyGradientBackground(container, gs.BackdropColourCurve, Orbit.Constants.Colors.Background)
+    Orbit.Skin:ApplyGradientBackground(container, gs.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
 
     -- Single unified border on container (wraps icon + bar together)
     if Orbit.Skin and Orbit.Skin.SkinBorder then

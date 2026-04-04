@@ -36,10 +36,10 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
             BuffBarName  = { anchorX = "LEFT",  anchorY = "CENTER", offsetX = 5, offsetY = 0, justifyH = "LEFT" },
             BuffBarTimer = { anchorX = "RIGHT", anchorY = "CENTER", offsetX = 5, offsetY = 0, justifyH = "RIGHT" },
         },
-        PandemicGlowType = Constants.PandemicGlow.DefaultType,
-        PandemicGlowColor = Constants.PandemicGlow.DefaultColor,
-        ProcGlowType = Constants.PandemicGlow.DefaultType,
-        ProcGlowColor = Constants.PandemicGlow.DefaultColor,
+        PandemicGlowType = Constants.Glow.Type.Pixel,
+        PandemicGlowColor = Constants.Glow.DefaultColor,
+        ProcGlowType = Constants.Glow.Type.Medium,
+        ProcGlowColor = Constants.Glow.DefaultColor,
         OutOfCombatFade = false,
         ShowOnMouseover = true,
         KeypressColor = { r = 1, g = 1, b = 1, a = 0 },
@@ -53,8 +53,8 @@ Plugin.viewerMap = VIEWER_MAP
 
 -- Per-system-index defaults (overrides shared defaults for specific viewers)
 Plugin.indexDefaults = {
-    [1] = { IconSize = 120, IconLimit = 12 }, -- Essential
-    [2] = { IconSize = 90, IconLimit = 8 }, -- Utility
+    [1] = { IconSize = 48, IconLimit = 12 }, -- Essential
+    [2] = { IconSize = 36, IconLimit = 8 }, -- Utility
     [3] = { PandemicGlowType = 1 }, -- BuffIcon
     [30] = { PandemicGlowType = 1 }, -- BuffBar
 }
@@ -106,7 +106,7 @@ function Plugin:OnLoad()
     self.utilityAnchor = self:CreateAnchor("OrbitUtilityCooldowns", UTILITY_INDEX, "Utility Cooldowns")
     self.buffIconAnchor = self:CreateAnchor("OrbitBuffIconCooldowns", BUFFICON_INDEX, "Buff Icons")
     self.buffBarAnchor = self:CreateAnchor("OrbitBuffBarCooldowns", BUFFBAR_INDEX, "Buff Bars",
-        { horizontal = false, vertical = true, syncScale = true, syncDimensions = true, mergeBorders = true })
+        { horizontal = false, vertical = true, syncScale = false, syncDimensions = true, mergeBorders = true })
     self.buffBarAnchor.orbitNoGroupSelect = true
     VIEWER_MAP[ESSENTIAL_INDEX] = { viewer = EssentialCooldownViewer, anchor = self.essentialAnchor }
     VIEWER_MAP[UTILITY_INDEX] = { viewer = UtilityCooldownViewer, anchor = self.utilityAnchor }
@@ -306,7 +306,7 @@ function Plugin:CreateAnchor(name, systemIndex, label, overrideOptions)
     frame.systemIndex = systemIndex
     frame.editModeName = label
     frame:EnableMouse(false)
-    frame.anchorOptions = overrideOptions or { horizontal = true, vertical = true, syncScale = true, syncDimensions = false, useRowDimension = true, mergeBorders = true }
+    frame.anchorOptions = overrideOptions or { horizontal = true, vertical = true, syncScale = false, syncDimensions = false, useRowDimension = true, mergeBorders = true }
     frame.orbitChainSync = true
     frame.orbitCursorReveal = true
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)

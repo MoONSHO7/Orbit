@@ -9,8 +9,10 @@ local IL = Skin.IconLayout
 function IL:CalculateGeometry(frame, settings)
     if not frame then return Constants.Skin.DefaultIconSize, Constants.Skin.DefaultIconSize end
     local w
-    if settings and settings.baseIconSize then
-        w = settings.baseIconSize * ((settings.size or 100) / 100)
+    if settings and settings.size then
+        w = settings.size
+    elseif settings and settings.baseIconSize then
+        w = settings.baseIconSize
     else
         w = frame:GetWidth()
         if w <= 0 then w = Constants.Skin.DefaultIconSize end
@@ -39,9 +41,7 @@ function IL:ApplyManualLayout(frame, icons, settings)
     local totalIcons = #icons
     if totalIcons == 0 then return end
 
-    local baseSize = settings.baseIconSize or Constants.Skin.DefaultIconSize
-    local sizeMultiplier = (settings.size or 100) / 100
-    local w, h = baseSize * sizeMultiplier, baseSize * sizeMultiplier
+    local w, h = settings.size or Constants.Skin.DefaultIconSize, settings.size or Constants.Skin.DefaultIconSize
 
     local aspectRatio = settings.aspectRatio or "1:1"
     if aspectRatio ~= "1:1" then

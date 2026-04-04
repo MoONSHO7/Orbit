@@ -645,7 +645,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
     item.orbitBG:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
 
     -- Global backdrop gradient on parent
-    local backdropCurve = globals.BackdropColourCurve
+    local backdropCurve = globals.UnitFrameBackdropColourCurve
     if backdropCurve then Orbit.Skin:ApplyGradientBackground(item, backdropCurve, bg) end
 
     -- StatusBar texture + overlay (global texture setting)
