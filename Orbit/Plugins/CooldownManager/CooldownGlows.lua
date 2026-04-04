@@ -182,7 +182,6 @@ end
 -- [ HOOK-DRIVEN PANDEMIC GLOW ] -----------------------------------------------
 HookPandemicIcon = function(icon, plugin, systemIndex)
     if icon.orbitPandemicHooked then return end
-    if not icon.ShowPandemicStateFrame then return end
     icon.orbitPandemicHooked = true
     
     local GlowType = Constants.Glow.Type
@@ -195,6 +194,7 @@ HookPandemicIcon = function(icon, plugin, systemIndex)
     local function OnPandemicShow(self)
         local glowType = plugin:GetSetting(systemIndex, "PandemicGlowType") or GlowType.None
         if glowType == GlowType.None then return end
+        
         local activeType = self.orbitPandemicGlowActive
         if activeType and activeType ~= glowType then StopPandemicGlowFull(self) end
         
@@ -208,20 +208,22 @@ HookPandemicIcon = function(icon, plugin, systemIndex)
         StopPandemicGlowFull(self)
     end
     
-    hooksecurefunc(icon, "ShowPandemicStateFrame", function(self)
-        SuppressPandemicIcon(self)
-        OnPandemicShow(self)
-    end)
-    
-    hooksecurefunc(icon, "HidePandemicStateFrame", function(self)
-        OnPandemicHide(self)
-    end)
-    
-    -- Crucial: when CooldownViewer natively pools the item, it Hides it. 
-    -- It does NOT always explicitly call HidePandemicStateFrame, causing "sticking".
     hooksecurefunc(icon, "Hide", function(self)
         OnPandemicHide(self)
     end)
+    
+    if icon.ShowPandemicStateFrame then
+        hooksecurefunc(icon, "ShowPandemicStateFrame", function(self)
+            SuppressPandemicIcon(self)
+            OnPandemicShow(self)
+        end)
+    end
+    
+    if icon.HidePandemicStateFrame then
+        hooksecurefunc(icon, "HidePandemicStateFrame", function(self)
+            OnPandemicHide(self)
+        end)
+    end
 end
 
 -- CheckPandemicFrames: initial hookup + settings-change sync (hooks handle live state)
@@ -234,26 +236,34 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
     for _, icon in ipairs(icons) do
         HookPandemicIcon(icon, self, systemIndex)
         
-        -- Full structural teardown uniquely reserved for settings changes
         local activeType = icon.orbitPandemicGlowActive
-        if activeType and activeType ~= glowType then
-            StopPandemicGlowFull(icon)
-            
-            -- Seamlessly re-hydrate the new permanent glow immediately if the icon is CURRENTLY in pandemic state!
-            local isPandemic = icon.PandemicIcon and icon.PandemicIcon:IsShown()
-            if isPandemic and glowType ~= GlowType.None then
-                CreatePandemicGlow(icon, self, systemIndex)
-                icon.orbitPandemicGlowActive = glowType
-            elseif icon.PandemicIcon then
-                icon.orbitSuppressPandemic = nil
-                icon.PandemicIcon:SetAlpha(1) -- Restore native behavior gracefully
-            end
-        end
         
         -- Native sync resolution incase the item is organically out of pandemic but our logic missed the exit window
         local isPandemic = icon.PandemicIcon and icon.PandemicIcon:IsShown()
-        if not isPandemic and icon.orbitPandemicGlowActive then
+        
+        -- Full structural teardown uniquely reserved for explicitly disabling the feature via settings
+        if glowType == GlowType.None and activeType then
             StopPandemicGlowFull(icon)
+            if icon.PandemicIcon then
+                icon.orbitSuppressPandemic = nil
+                icon.PandemicIcon:SetAlpha(1)
+            end
+        elseif activeType and activeType ~= glowType then
+            -- Live settings swap
+            StopPandemicGlowFull(icon)
+            if isPandemic and glowType ~= GlowType.None then
+                CreatePandemicGlow(icon, self, systemIndex)
+                icon.orbitPandemicGlowActive = glowType
+            end
+        elseif not isPandemic and activeType then
+            -- Fallback verification 
+            StopPandemicGlowFull(icon)
+        elseif isPandemic and not activeType and glowType ~= GlowType.None then
+            -- Re-hydration if missing
+            icon.orbitSuppressPandemic = true
+            if icon.PandemicIcon then icon.PandemicIcon:SetAlpha(0) end
+            CreatePandemicGlow(icon, self, systemIndex)
+            icon.orbitPandemicGlowActive = glowType
         end
     end
 end
