@@ -6,6 +6,7 @@ local MasqueBridge = Orbit.Skin and Orbit.Skin.Masque
 local ABC = Orbit.ActionBarsContainer
 local ABText = Orbit.ActionBarsText
 local ABPreview = Orbit.ActionBarsPreview
+local LCG = LibStub("LibOrbitGlow-1.0", true)
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local DEFAULT_ICON_SIZE = 32
@@ -50,6 +51,8 @@ local BAR_CONFIG = {
     { blizzName = "PossessBarFrame", orbitName = "OrbitPossessBar", label = "Possess Bar", index = 11, buttonPrefix = "PossessButton", count = 2, isSpecial = true },
 }
 
+local PROC_GLOW_KEY = "orbitABProc"
+
 local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     defaults = {
         IconSize = 32, IconPadding = 2, Rows = 1, NumIcons = 12,
@@ -68,6 +71,8 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
         IconBackdropColor = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } },
         OORColor = DEFAULT_OOR_COLOR, OOMColor = DEFAULT_OOM_COLOR, UnusableColor = DEFAULT_UNUSABLE_COLOR,
         CooldownSwipeColor = DEFAULT_CD_SWIPE,
+        ProcGlowType = Constants.Glow.Type.Medium,
+        ProcGlowColor = Constants.Glow.DefaultColor,
     },
 })
 
@@ -156,7 +161,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local tabs = { "Layout", "Colors" }
+    local tabs = { "Layout", "Glow", "Colors" }
     local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
     if currentTab == "Layout" then
         if systemIndex == 1 then
@@ -205,6 +210,12 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
         local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
         if not isForcedHideEmpty then table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = "Hide Empty Buttons", default = false }) end
+    elseif currentTab == "Glow" then
+        SB:AddGlowSettings(self, schema, 1, dialog, systemFrame, {
+            prefix = "ProcGlow",
+            label = "Proc Glow",
+            default = Constants.Glow.Type.Medium,
+        })
     elseif currentTab == "Colors" then
         local DEFAULT_BACKDROP = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
         local DEFAULT_KEYPRESS = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.6 } } } }
@@ -241,6 +252,10 @@ end
 
 -- [ LIFECYCLE ]----------------------------------------------------------------------------------
 function Plugin:OnLoad()
+    if LCG and LCG.PreLoad then
+        LCG.PreLoad("Medium", 20)
+        LCG.PreLoad("Classic", 20)
+    end
     self:InitializeContainers()
     ABC:CreateVehicleExit(self)
     for index, container in pairs(self.containers) do ABPreview:Setup(self, container, index) end
@@ -345,6 +360,31 @@ function Plugin:OnLoad()
         for button in pairs(rangeButtons) do RefreshIconColor(self, button) end
     end, self)
     local plugin = self
+    -- [ PROC GLOW HOOKS ]----------------------------------------------------------------------------
+    if LCG and ActionButtonSpellAlertManager then
+        local abPlugin = self
+        hooksecurefunc(ActionButtonSpellAlertManager, "ShowAlert", function(_, button)
+            if button.orbitABProcGlowActive then return end
+            local parent = button:GetParent()
+            if not parent or not abPlugin.containers then return end
+            local isOurs = false
+            for _, container in pairs(abPlugin.containers) do
+                if parent == container then isOurs = true; break end
+            end
+            if not isOurs then return end
+            if button.SpellActivationAlert then button.SpellActivationAlert:SetAlpha(0) end
+            local typeName, options = Orbit.Engine.GlowUtils:BuildOptions(abPlugin, 1, "ProcGlow", Constants.Glow.DefaultColor, PROC_GLOW_KEY)
+            if not typeName or not options then return end
+            options.frameLevel = Constants.Levels.IconGlow
+            LCG.Show(button, typeName, options)
+            button.orbitABProcGlowActive = typeName
+        end)
+        hooksecurefunc(ActionButtonSpellAlertManager, "HideAlert", function(_, button)
+            if not button.orbitABProcGlowActive then return end
+            LCG.Hide(button, button.orbitABProcGlowActive, PROC_GLOW_KEY)
+            button.orbitABProcGlowActive = nil
+        end)
+    end
     Orbit.EventBus:On("ACTION_RANGE_CHECK_UPDATE", function(slot)
         local buttons = ActionBarButtonRangeCheckFrame.actions[slot]
         if not buttons then return end

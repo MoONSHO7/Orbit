@@ -228,17 +228,26 @@ function Plugin:OnLoad()
             OrbitEngine.ComponentDrag:Attach(firstFrame.CastBar, self.container, {
                 key = "CastBar",
                 onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
-                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                    local existingSubs = positions.CastBar and positions.CastBar.subComponents
-                    positions.CastBar = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, subComponents = existingSubs }
                     local compParent = comp:GetParent()
+                    local posX, posY
                     if compParent then
                         local cx, cy = comp:GetCenter()
                         local px, py = compParent:GetCenter()
-                        if cx and px then positions.CastBar.posX = cx - px end
-                        if cy and py then positions.CastBar.posY = cy - py end
+                        if cx and px then posX = cx - px end
+                        if cy and py then posY = cy - py end
                     end
-                    pluginRef:SetSetting(1, "ComponentPositions", positions)
+                    local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, posX = posX, posY = posY }
+                    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+                    if Txn and Txn:IsActive() and Txn:GetPlugin() == pluginRef then
+                        local positions = Txn:GetPositions()
+                        posData.subComponents = positions.CastBar and positions.CastBar.subComponents
+                        Txn:SetPosition("CastBar", posData)
+                    else
+                        local positions = pluginRef:GetComponentPositions(1)
+                        posData.subComponents = positions.CastBar and positions.CastBar.subComponents
+                        positions.CastBar = posData
+                        pluginRef:SetSetting(1, "ComponentPositions", positions)
+                    end
                 end,
             })
         end
@@ -249,7 +258,9 @@ function Plugin:OnLoad()
         local originalOpen = dialog.Open
         dialog.Open = function(dlg, frame, plugin, systemIndex)
             if frame == self.container or frame == self.frames[1] then self:PrepareIconsForCanvasMode() end
-            return originalOpen(dlg, frame, plugin, systemIndex)
+            local result = originalOpen(dlg, frame, plugin, systemIndex)
+            if frame == self.container or frame == self.frames[1] then self:SchedulePreviewUpdate() end
+            return result
         end
     end
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, 1)

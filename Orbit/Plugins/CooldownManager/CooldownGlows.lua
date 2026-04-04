@@ -33,7 +33,7 @@ local function FindSystemIndexForButton(button)
             end
         end
     end
-    return ESSENTIAL_INDEX
+    return nil
 end
 
 local function StartProcGlow(button, plugin, systemIndex)
@@ -56,13 +56,14 @@ function CDM:HookProcGlow()
     end
 
     hooksecurefunc(ActionButtonSpellAlertManager, "ShowAlert", function(_, button)
-        if button.SpellActivationAlert then
-            button.SpellActivationAlert:SetAlpha(0)
-        end
         if button.orbitProcGlowActive then
             return
         end
         local si = FindSystemIndexForButton(button)
+        if not si then return end
+        if button.SpellActivationAlert then
+            button.SpellActivationAlert:SetAlpha(0)
+        end
         local typeName = Orbit.Engine.GlowUtils:BuildOptions(self, si, "ProcGlow", Constants.Glow.DefaultColor, PROC_GLOW_KEY)
         if not typeName then return end
         StartProcGlow(button, self, si)
@@ -105,22 +106,7 @@ function CDM:FixGlowTransparency(glowFrame, alpha)
 end
 
 -- [ PANDEMIC GLOW ] -----------------------------------------------------------
-local PANDEMIC_ATLAS = "UI-CooldownManager-PandemicBorder"
-local PANDEMIC_INSET = Constants.IconScale.PandemicPadding / 2
-local BLIZZARD_GLOW_LEVEL = Constants.Levels.IconGlow
-
-local function EnsureBlizzardGlowFrame(icon)
-    if icon.orbitBlizzardGlow then return icon.orbitBlizzardGlow end
-    local f = CreateFrame("Frame", nil, icon)
-    f:SetFrameLevel(icon:GetFrameLevel() + BLIZZARD_GLOW_LEVEL)
-    local tex = f:CreateTexture(nil, "OVERLAY")
-    tex:SetAtlas(PANDEMIC_ATLAS)
-    tex:SetAllPoints(f)
-    f.tex = tex
-    f:Hide()
-    icon.orbitBlizzardGlow = f
-    return f
-end
+local GLOW_LEVEL = Constants.Levels.IconGlow
 
 -- Forward declaration; defined after helpers
 local HookPandemicIcon
@@ -128,102 +114,113 @@ local HookPandemicIcon
 -- [ PANDEMIC GLOW FRAME HELPERS ] ---------------------------------------------
 local function GetPandemicGlowFrame(icon, glowType)
     local GlowType = Constants.Glow.Type
-    if glowType == GlowType.Blizzard then return icon.orbitBlizzardGlow
-    elseif glowType == GlowType.Pixel then return icon["_PixelGloworbitPandemic"]
-    elseif glowType == GlowType.Proc then return icon["_LibGlowFlipbookorbitPandemic"]
+    if glowType == GlowType.Pixel then return icon["_PixelGloworbitPandemic"]
+    elseif glowType == GlowType.Medium then return icon["_LibGlowFlipbookorbitPandemic"]
+    elseif glowType == GlowType.Thin then return icon["_LibGlowFlipbookorbitPandemic"]
+    elseif glowType == GlowType.Thick then return icon["_LibGlowFlipbookorbitPandemic"]
     elseif glowType == GlowType.Autocast then return icon["_LibGlowAutocastorbitPandemic"]
-    elseif glowType == GlowType.Button then return icon["_LibGlowButton"]
+    elseif glowType == GlowType.Classic then return icon["_LibGlowButtonorbitPandemic"]
     end
 end
 
 local function CreatePandemicGlow(icon, plugin, systemIndex)
     local typeName, options = Orbit.Engine.GlowUtils:BuildOptions(plugin, systemIndex, "PandemicGlow", Constants.Glow.DefaultColor, "orbitPandemic")
     if not typeName or not options then return end
-    
-    if options._glowTypeEnum == Constants.Glow.Type.Blizzard then
-        local glow = EnsureBlizzardGlowFrame(icon)
-        glow:ClearAllPoints()
-        glow:SetPoint("TOPLEFT", icon, "TOPLEFT", -PANDEMIC_INSET, PANDEMIC_INSET)
-        glow:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", PANDEMIC_INSET, -PANDEMIC_INSET)
-        glow:Show()
-    else
-        options.frameLevel = icon:GetFrameLevel() + BLIZZARD_GLOW_LEVEL
-        LCG.Show(icon, typeName, options)
-    end
+    options.frameLevel = icon:GetFrameLevel() + GLOW_LEVEL
+    LCG.Show(icon, typeName, options)
 end
 
 local function GetGlowTypeName(activeType)
     local GlowType = Constants.Glow.Type
     if activeType == GlowType.Pixel then return "Pixel"
-    elseif activeType == GlowType.Proc then return "Thin" -- Note: Proc uses Thin flipbook internally in LibOrbitGlow
+    elseif activeType == GlowType.Medium then return "Medium"
     elseif activeType == GlowType.Autocast then return "Autocast"
     elseif activeType == GlowType.Classic then return "Classic"
-    elseif activeType == GlowType.Medium then return "Medium"
+    elseif activeType == GlowType.Thin then return "Thin"
+    elseif activeType == GlowType.Thick then return "Thick"
     end
 end
 
--- Full teardown: actually destroy glow (settings changes / cleanup only)
+-- Alpha-toggle: show glow without pool churn
+local function ShowPandemicGlow(icon, glowType)
+    local glowFrame = GetPandemicGlowFrame(icon, glowType)
+    if not glowFrame then return end
+    glowFrame:SetAlpha(1)
+end
+
+-- Alpha-toggle: hide glow without pool churn
+local function HidePandemicGlow(icon, glowType)
+    local glowFrame = GetPandemicGlowFrame(icon, glowType)
+    if not glowFrame then return end
+    glowFrame:SetAlpha(0)
+end
+
+-- Full teardown: actually destroy glow (settings changes / icon pooling only)
 local function StopPandemicGlowFull(icon)
     local activeType = icon.orbitPandemicGlowActive
     if not activeType then return end
     icon.orbitSuppressPandemic = nil
     icon.orbitPandemicClearAt = nil
     icon.orbitPandemicGlowHidden = nil
-    
-    if activeType == Constants.Glow.Type.Blizzard then
-        if icon.orbitBlizzardGlow then icon.orbitBlizzardGlow:Hide() end
-    else
-        local typeName = GetGlowTypeName(activeType)
-        if typeName then LCG.Hide(icon, typeName, "orbitPandemic") end
-    end
+    local typeName = GetGlowTypeName(activeType)
+    if typeName then LCG.Hide(icon, typeName, "orbitPandemic") end
     icon.orbitPandemicGlowActive = nil
 end
 
 -- [ HOOK-DRIVEN PANDEMIC GLOW ] -----------------------------------------------
 HookPandemicIcon = function(icon, plugin, systemIndex)
     if icon.orbitPandemicHooked then return end
+    if not icon.ShowPandemicStateFrame then return end
     icon.orbitPandemicHooked = true
-    
     local GlowType = Constants.Glow.Type
-    
+    -- Suppress Blizzard's PandemicIcon alpha whenever it's shown
     local function SuppressPandemicIcon(self)
         local pi = self.PandemicIcon
         if pi and self.orbitSuppressPandemic then pi:SetAlpha(0) end
     end
-    
     local function OnPandemicShow(self)
         local glowType = plugin:GetSetting(systemIndex, "PandemicGlowType") or GlowType.None
         if glowType == GlowType.None then return end
-        
         local activeType = self.orbitPandemicGlowActive
-        if activeType and activeType ~= glowType then StopPandemicGlowFull(self) end
-        
-        self.orbitSuppressPandemic = true
-        SuppressPandemicIcon(self)
-        CreatePandemicGlow(self, plugin, systemIndex)
-        self.orbitPandemicGlowActive = glowType
+        if activeType and activeType ~= glowType then StopPandemicGlowFull(self); activeType = nil end
+        if not activeType then
+            -- First time: create the glow
+            self.orbitSuppressPandemic = true
+            SuppressPandemicIcon(self)
+            CreatePandemicGlow(self, plugin, systemIndex)
+            self.orbitPandemicGlowActive = glowType
+        elseif self.orbitPandemicGlowHidden then
+            -- Glow exists but was alpha-hidden: just show it
+            self.orbitSuppressPandemic = true
+            SuppressPandemicIcon(self)
+            ShowPandemicGlow(self, activeType)
+            self.orbitPandemicGlowHidden = nil
+        else
+            -- Glow exists and is visible: just suppress native icon
+            self.orbitSuppressPandemic = true
+            SuppressPandemicIcon(self)
+        end
     end
-    
     local function OnPandemicHide(self)
-        StopPandemicGlowFull(self)
+        -- Alpha-hide only, don't destroy the glow frame (avoids pool churn)
+        if self.orbitPandemicGlowActive and not self.orbitPandemicGlowHidden then
+            HidePandemicGlow(self, self.orbitPandemicGlowActive)
+            self.orbitPandemicGlowHidden = true
+            self.orbitSuppressPandemic = nil
+        end
     end
-    
-    hooksecurefunc(icon, "Hide", function(self)
+    -- Hook the ITEM's methods, not the PandemicIcon frame (which gets pooled/recreated)
+    hooksecurefunc(icon, "ShowPandemicStateFrame", function(self)
+        SuppressPandemicIcon(self)
+        OnPandemicShow(self)
+    end)
+    hooksecurefunc(icon, "HidePandemicStateFrame", function(self)
         OnPandemicHide(self)
     end)
-    
-    if icon.ShowPandemicStateFrame then
-        hooksecurefunc(icon, "ShowPandemicStateFrame", function(self)
-            SuppressPandemicIcon(self)
-            OnPandemicShow(self)
-        end)
-    end
-    
-    if icon.HidePandemicStateFrame then
-        hooksecurefunc(icon, "HidePandemicStateFrame", function(self)
-            OnPandemicHide(self)
-        end)
-    end
+    -- When the icon is fully hidden (pooled by CooldownViewer), do a full teardown
+    hooksecurefunc(icon, "Hide", function(self)
+        StopPandemicGlowFull(self)
+    end)
 end
 
 -- CheckPandemicFrames: initial hookup + settings-change sync (hooks handle live state)
@@ -235,33 +232,22 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
     local glowType = self:GetSetting(systemIndex, "PandemicGlowType") or GlowType.None
     for _, icon in ipairs(icons) do
         HookPandemicIcon(icon, self, systemIndex)
-        
+        -- Settings type change: teardown old glow, hooks will recreate on next Show
         local activeType = icon.orbitPandemicGlowActive
-        
-        -- Native sync resolution incase the item is organically out of pandemic but our logic missed the exit window
-        local isPandemic = icon.PandemicIcon and icon.PandemicIcon:IsShown()
-        
-        -- Full structural teardown uniquely reserved for explicitly disabling the feature via settings
-        if glowType == GlowType.None and activeType then
+        if activeType and activeType ~= glowType then
             StopPandemicGlowFull(icon)
-            if icon.PandemicIcon then
-                icon.orbitSuppressPandemic = nil
-                icon.PandemicIcon:SetAlpha(1)
-            end
-        elseif activeType and activeType ~= glowType then
-            -- Live settings swap
-            StopPandemicGlowFull(icon)
-            if isPandemic and glowType ~= GlowType.None then
+            -- If currently in pandemic, re-create with new type immediately
+            if glowType ~= GlowType.None and icon.PandemicIcon and icon.PandemicIcon:IsShown() then
+                icon.orbitSuppressPandemic = true
+                icon.PandemicIcon:SetAlpha(0)
                 CreatePandemicGlow(icon, self, systemIndex)
                 icon.orbitPandemicGlowActive = glowType
             end
-        elseif not isPandemic and activeType then
-            -- Fallback verification 
-            StopPandemicGlowFull(icon)
-        elseif isPandemic and not activeType and glowType ~= GlowType.None then
-            -- Re-hydration if missing
+        end
+        -- Initial state sync: if pandemic already active when first hooked
+        if not icon.orbitPandemicGlowActive and glowType ~= GlowType.None and icon.PandemicIcon and icon.PandemicIcon:IsShown() then
             icon.orbitSuppressPandemic = true
-            if icon.PandemicIcon then icon.PandemicIcon:SetAlpha(0) end
+            icon.PandemicIcon:SetAlpha(0)
             CreatePandemicGlow(icon, self, systemIndex)
             icon.orbitPandemicGlowActive = glowType
         end

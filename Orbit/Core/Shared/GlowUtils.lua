@@ -22,7 +22,7 @@ function Engine.GlowUtils:BuildOptionsFromLookup(optionsLookup, prefix, defaultC
     local activeType = GetValue(prefix .. "Type")
     if activeType == nil then activeType = Constants.Glow.DefaultType end
     
-    if activeType == GlowType.None or activeType == GlowType.Blizzard then return nil, nil end
+    if activeType == GlowType.None then return nil, nil end
 
     local color = GetValue(prefix .. "Color") or defaultColor
     if not color then color = Constants.Glow.DefaultColor end
@@ -67,15 +67,10 @@ function Engine.GlowUtils:BuildOptionsFromLookup(optionsLookup, prefix, defaultC
         typeName = defKey
         local def = Constants.Glow.Defaults[defKey]
         options.speed = Get(defKey .. "Speed", def.Speed)
-    elseif activeType == GlowType.Static then
-        typeName = "Static"
     end
 
     -- Pixel padding: 0 = glow matches icon exactly, positive = extend outward
     options.padding = 0
-
-    -- Preserve the raw active enum to be evaluated later (for blizzard check)
-    options._glowTypeEnum = activeType
 
     return typeName, options
 end

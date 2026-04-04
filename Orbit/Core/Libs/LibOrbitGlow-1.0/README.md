@@ -1,12 +1,14 @@
-# liborbitglow-1.0
+# LibOrbitGlow-1.0
 
-a high-performance utility library for creating and managing visual frame glows, animations, and particle effects. designed primarily for world of warcraft 12.0.0 and above. features unified resource pooling, combat safety, and native reverse playback mathematically.
+A high-performance utility library for creating and managing visual frame glows, animations, and particle effects. Designed for World of Warcraft 12.0.0 and above. Features unified resource pooling and native reverse playback computed mathematically.
 
-## usage
+> **Standalone library.** No external addon dependencies. Consumed exclusively via `LibStub("LibOrbitGlow-1.0")`.
 
-the library exposes a simplified facade that abstracts specific animation groups, textures, and geometry engines. consumers only need to ask for a specific glow type and pass an options table.
+## Usage
 
-### showing a glow
+The library exposes a simplified facade that abstracts specific animation groups, textures, and geometry engines. Consumers only need to ask for a specific glow type and pass an options table.
+
+### Showing a glow
 
 ```lua
 local lib = LibStub("LibOrbitGlow-1.0", true)
@@ -23,75 +25,75 @@ lib.Show(frame, "Pixel", {
 })
 ```
 
-### hiding a glow
+### Hiding a glow
 
-it's crucial to hide glows using the exact same type and key you used to show them, so the library can gracefully stop animations and recycle frames back into the global pool.
+It's crucial to hide glows using the exact same type and key you used to show them, so the library can gracefully stop animations and recycle frames back into the global pool.
 
 ```lua
 lib.Hide(frame, "Pixel", "myComponentGlow")
 ```
 
-### combat and secret safety (alpha hiding)
+### Combat and secret safety (alpha hiding)
 
-when tracking auras, cooldowns, or power states that return wow 12.0 'secret values', you **cannot** execute logic branches based on those values. this means you cannot conditionally call `lib.Hide()` in response to an aura dropping during combat.
+When tracking auras, cooldowns, or power states that return WoW 12.0 'secret values', you **cannot** execute logic branches based on those values. This means you cannot conditionally call `lib.Hide()` in response to an aura dropping during combat.
 
-to safely hide glows in these scenarios, you must rely on native alpha propagation or securely update the `options.color` alpha channel to `0` instead of calling `lib.Hide()`.
+To safely hide glows in these scenarios, rely on native alpha propagation or update the `options.color` alpha channel to `0` instead of calling `lib.Hide()`.
 
 ```lua
--- safe: pass dynamic alpha directly to the library without branching
+-- Safe: pass dynamic alpha directly to the library without branching
 local alpha = isAuraActive and 1 or 0
 lib.Show(frame, "Pixel", { color = { 1, 0, 0, alpha } })
 ```
 
-## glow types
+## Glow types
 
-consumers pass these exact string identifiers to `lib.Show` as the second argument. the engine automatically resolves the underlying math, animation groups, and atlases.
+Consumers pass these exact string identifiers to `lib.Show` as the second argument. The engine automatically resolves the underlying math, animation groups, and atlases. Passing an unknown type will `error()`.
 
-| type | description | engine |
+| Type | Description | Engine |
 |---|---|---|
-| `"Thin"` | thin swirling ants | flipbook |
-| `"Thick"` | thick proc loop | flipbook |
-| `"Medium"` | standard action bar proc | flipbook |
-| `"Static"` | static cooldown manager glow | static |
-| `"Classic"` | classic world of warcraft action button flash and ant swirl | manual stepper |
-| `"Pixel"` | modern pixel lines tracing the outer border | geometry |
-| `"Autocast"` | native pet bar autocast shine squares | geometry |
+| `"Thin"` | Thin swirling ants | Flipbook |
+| `"Thick"` | Thick proc loop | Flipbook |
+| `"Medium"` | Standard action bar proc | Flipbook |
+| `"Static"` | Static cooldown manager glow | Static |
+| `"Classic"` | Classic WoW action button flash and ant swirl | Manual stepper |
+| `"Pixel"` | Modern pixel lines tracing the outer border | Geometry |
+| `"Autocast"` | Native pet bar autocast shine squares | Geometry |
 
-## global options
+## Global options
 
-these options act globally across almost all glow engines. they are passed as the 3rd argument to `lib.Show(frame, glowType, options)`.
+These options act globally across almost all glow engines. They are passed as the 3rd argument to `lib.Show(frame, glowType, options)`.
 
-| field | type | description |
+| Field | Type | Description |
 |---|---|---|
-| `key` | `string` | unique identifier used for tracking and hiding. default: `"Default"` |
-| `color` | `table` | `{r,g,b,a}` array or a 12.0 `Color` object. default: white |
-| `frameLevel` | `number` | relative frame level above the parent frame. default: `8` |
-| `maskIcon` | `boolean` | applies native corner rounding specifically for `frame.icon`. prevents rendering out of bounds. |
-| `maskInset` | `number` | pixel distance to inset the mask from the edge. default: `1` |
-| `desaturated`| `boolean` | explicitly desaturates underlying atlases. default: `false` |
-| `reverse` | `boolean` | dynamically reverses the rotation or movement of the glow mathematically, avoiding mirrored atlases. |
+| `key` | `string` | Unique identifier used for tracking and hiding. Default: `"Default"` |
+| `color` | `table` | `{r,g,b,a}` array or a 12.0 `Color` object. Default: white |
+| `frameLevel` | `number` | Relative frame level above the parent frame. Default: `8` |
+| `maskIcon` | `boolean` | Applies native corner rounding specifically for `frame.icon`. Prevents rendering out of bounds. |
+| `maskInset` | `number` | Pixel distance to inset the mask from the edge. Default: `1` |
+| `desaturated`| `boolean` | Explicitly desaturates underlying atlases. Default: `false` |
+| `reverse` | `boolean` | Dynamically reverses the rotation or movement of the glow mathematically, avoiding mirrored atlases. |
 
-## engine-specific options
+## Engine-specific options
 
-specific glow engines support additional fine-tuning properties.
+Specific glow engines support additional fine-tuning properties.
 
-### flipbook engines (`Thin`, `Thick`, `Medium`)
-- `scale` (number): multiplier applied to width and height.
+### Flipbook engines (`Thin`, `Thick`, `Medium`)
+- `scale` (number): Multiplier applied to width and height.
 
-### pixel engine (`Pixel`)
-- `lines` (number): how many tracing particles are generated. default: `8`
-- `frequency` (number): speed scaler affecting the animation loop velocity. default: `0.25`
-- `thickness` (number): width of the tracing particles. default: `2`
-- `border` (boolean): renders a dark, translucent backdrop strictly inside the pixel bounds to obscure the parent frame slightly for contrast. default: `true`
-- `xOffset` / `yOffset` (number): margin expanding the trace tracking box away from the edges.
+### Pixel engine (`Pixel`)
+- `lines` (number): How many tracing particles are generated. Default: `8`
+- `frequency` (number): Speed scaler affecting the animation loop velocity. Default: `0.25`
+- `thickness` (number): Width of the tracing particles. Default: `2`
+- `border` (boolean): Renders a dark, translucent backdrop strictly inside the pixel bounds to obscure the parent frame slightly for contrast. Default: `true`
+- `xOffset` / `yOffset` (number): Margin expanding the trace tracking box away from the edges.
 
-### autocast engine (`Autocast`)
-- `particles` (number): number of points mapping the border. default: `4`
-- `frequency` (number): rotation speed multiplier. default: `0` (base)
-- `scale` (number): scaling scalar on each particle. default: `1`
+### Autocast engine (`Autocast`)
+- `particles` (number): Number of points mapping the border. Default: `4`
+- `frequency` (number): Rotation speed multiplier. Default: `0` (base)
+- `scale` (number): Scaling scalar on each particle. Default: `1`
 
-## best practices
+## Best practices
 
-- always provide a specific `key`. if your plugin renders multiple glows to the same frame (e.g. tracking multiple auras), failure to provide a key will overwrite the `"Default"` bucket.
-- always pair a single `lib.Show` explicitly with a single `lib.Hide` when out of combat. this returns frames to the garbage collector explicitly.
-- if passing `maskIcon = true`, ensure that `frame.icon` actually exists. the library utilizes `UI-Frame-IconMask` under the hood.
+- Always provide a specific `key`. If your addon renders multiple glows to the same frame (e.g. tracking multiple auras), failure to provide a key will overwrite the `"Default"` bucket.
+- Always pair a single `lib.Show` explicitly with a single `lib.Hide` when out of combat. This returns frames to the pool explicitly.
+- If passing `maskIcon = true`, ensure that `frame.icon` actually exists. The library utilizes `UI-Frame-IconMask` under the hood.

@@ -49,6 +49,7 @@ function PG:Stop(icon)
     if active then StopGlow(w, active) end
     w:SetAlpha(0)
     icon.orbitPandemicGlowType = nil
+    icon.orbitPandemicGlowEnum = nil
 end
 
 -- [ APPLY ]----------------------------------------------------------------------------------------
@@ -57,11 +58,6 @@ function PG:Apply(icon, aura, unit, skinSettings)
     
     local overrides = skinSettings and skinSettings.overrides or {}
     local glowType = (skinSettings and skinSettings.pandemicGlowType) or Orbit.Constants.Glow.Type.Pixel
-    
-    if glowType == Orbit.Constants.Glow.Type.Blizzard then
-        self:Stop(icon)
-        return
-    end
 
     -- Get DurationObject for this aura
     local durObj = C_UnitAuras.GetAuraDuration(unit, aura.auraInstanceID)
@@ -75,9 +71,10 @@ function PG:Apply(icon, aura, unit, skinSettings)
     wrapper:SetAlpha(alpha)
     
     -- Fast path: already active
-    if icon.orbitPandemicGlowType == glowType then return end
+    if icon.orbitPandemicGlowEnum == glowType then return end
 
     if icon.orbitPandemicGlowType then StopGlow(wrapper, icon.orbitPandemicGlowType) end
+    icon.orbitPandemicGlowEnum = nil
     
     local c = (skinSettings and skinSettings.pandemicColor) or Orbit.Constants.Glow.DefaultColor
     
@@ -99,6 +96,7 @@ function PG:Apply(icon, aura, unit, skinSettings)
     if typeName and options then
         LibCustomGlow.Show(wrapper, typeName, options)
         icon.orbitPandemicGlowType = typeName
+        icon.orbitPandemicGlowEnum = glowType
     end
 end
 

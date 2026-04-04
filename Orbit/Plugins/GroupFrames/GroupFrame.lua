@@ -973,7 +973,11 @@ function Plugin:ApplyFrameStyle(frame, showPower)
 
     -- Reset icon base sizes to current tier (icons are created once at load; tier may change)
     local iconSize = isParty and 16 or 12
-    local centerIconSize = isParty and 24 or 18
+    local savedPositions = self:GetComponentPositions(1)
+    local statusOverrides = savedPositions and savedPositions.StatusIcons and savedPositions.StatusIcons.overrides
+    local customStatusSize = statusOverrides and statusOverrides.IconSize
+
+    local centerIconSize = customStatusSize or (isParty and 24 or 18)
     for _, k in ipairs({ "RoleIcon", "LeaderIcon", "MainTankIcon", "MarkerIcon" }) do
         if frame[k] and frame[k].SetSize then frame[k]:SetSize(iconSize, iconSize); frame[k].orbitOriginalWidth, frame[k].orbitOriginalHeight = iconSize, iconSize end
     end
@@ -981,7 +985,6 @@ function Plugin:ApplyFrameStyle(frame, showPower)
         if frame[k] and frame[k].SetSize then frame[k]:SetSize(centerIconSize, centerIconSize); frame[k].orbitOriginalWidth, frame[k].orbitOriginalHeight = centerIconSize, centerIconSize end
     end
 
-    local savedPositions = self:GetComponentPositions(1)
     if savedPositions then
         local allIconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "StatusIcons", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
         local activeKeys = HealerReg:ActiveKeys()

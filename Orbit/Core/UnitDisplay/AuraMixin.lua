@@ -9,6 +9,11 @@ local tinsert = table.insert
 Orbit.AuraMixin = {}
 local Mixin = Orbit.AuraMixin
 
+Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+    local LCG = LibStub and LibStub("LibOrbitGlow-1.0", true)
+    if LCG and LCG.PreLoad then LCG.PreLoad("Pixel", 40) end
+end)
+
 local DEFAULT_AURA_COUNT = 40
 local TIMER_MIN_ICON_SIZE = 14
 local AURA_MIN_DISPLAY_COUNT = 2

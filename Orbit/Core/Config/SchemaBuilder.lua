@@ -329,8 +329,6 @@ function SB:AddGlowSettings(plugin, schema, systemIndex, dialog, systemFrame, pa
         { text = "Classic", value = GlowType.Classic },
         { text = "Thin", value = GlowType.Thin },
         { text = "Thick", value = GlowType.Thick },
-        { text = "Static", value = GlowType.Static },
-        { text = "Blizzard", value = GlowType.Blizzard },
     }
     
     local currentColor = plugin:GetSetting(systemIndex, colorKey) or Constants.Glow.DefaultColor

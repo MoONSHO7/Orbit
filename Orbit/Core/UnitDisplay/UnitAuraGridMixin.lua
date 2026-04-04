@@ -521,12 +521,12 @@ function Mixin:UpdateAuras()
         skinSettings.enablePandemic = true
         skinSettings.pandemicGlowType = self:GetSetting(1, "PandemicGlowType") or Constants.Glow.Type.Pixel
         skinSettings.pandemicColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "PandemicGlowColorCurve")) or self:GetSetting(1, "PandemicGlowColor") or Constants.Glow.DefaultColor
-        
-        -- Assemble overrides for PandemicGlow util lookup
-        skinSettings.overrides = {
+        -- Function-based lookup so BuildOptionsFromLookup reads all sub-settings (PixelLines, Frequency, etc.)
+        local plugin = self
+        skinSettings.overrides = setmetatable({
             PandemicGlowType = skinSettings.pandemicGlowType,
             PandemicGlowColor = skinSettings.pandemicColor,
-        }
+        }, { __index = function(_, k) return plugin:GetSetting(1, k) end })
     end
 
     local componentPositions = self:GetSetting(1, "ComponentPositions")
