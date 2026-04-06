@@ -307,7 +307,7 @@ local function HideStars() for _, s in ipairs(stars) do s.tex:Hide() end end
 
 -- [ OPTIONS BLOCKER ]------------------------------------------------------------------
 local optionsBlocker = CreateFrame("Frame", nil, UIParent)
-optionsBlocker:SetFrameStrata("TOOLTIP")
+optionsBlocker:SetFrameStrata(Orbit.Constants.Strata.Topmost)
 optionsBlocker:SetFrameLevel(BLOCKER_FRAME_LEVEL)
 optionsBlocker:EnableMouse(true)
 optionsBlocker:Hide()
@@ -388,7 +388,7 @@ local function MakeBorderEdge(parent, horiz, p1, r1, p2, r2)
 end
 
 local tip = CreateFrame("Frame", nil, UIParent)
-tip:SetFrameStrata("TOOLTIP")
+tip:SetFrameStrata(Orbit.Constants.Strata.Topmost)
 tip:SetFrameLevel(TOOLTIP_LEVEL)
 tip:Hide()
 
@@ -609,7 +609,7 @@ local resizePulses = {}
 
 local function CreateResizePulse()
     local f = CreateFrame("Frame", nil, UIParent)
-    f:SetFrameStrata("TOOLTIP")
+    f:SetFrameStrata(Orbit.Constants.Strata.Topmost)
     f:SetFrameLevel(TOOLTIP_LEVEL)
     f.tex = f:CreateTexture(nil, "OVERLAY")
     f.tex:SetAllPoints()
@@ -1073,7 +1073,7 @@ end
 
 -- [ CANVAS MODE HINT ]---------------------------------------------------------------
 local canvasTip = CreateFrame("Frame", nil, UIParent)
-canvasTip:SetFrameStrata("TOOLTIP")
+canvasTip:SetFrameStrata(Orbit.Constants.Strata.Topmost)
 canvasTip:SetFrameLevel(TOOLTIP_LEVEL)
 canvasTip:Hide()
 canvasTip.bg = canvasTip:CreateTexture(nil, "BACKGROUND")

@@ -23,8 +23,8 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
         Width = 120, Height = 25, Scale = 100, Spacing = 40,
         CastBarHeight = 18, CastBarWidth = 120,
         ReactionColour = true,
-        PandemicGlowType = Orbit.Constants.PandemicGlow.DefaultType,
-        PandemicGlowColor = Orbit.Constants.PandemicGlow.DefaultColor,
+        PandemicGlowType = Orbit.Constants.Glow.Type.Pixel,
+        PandemicGlowColor = Orbit.Constants.Glow.DefaultColor,
         PandemicGlowColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
         DisabledComponents = {},
         ComponentPositions = {
@@ -65,7 +65,7 @@ local function CreatePowerBar(parent, unit)
     power.bg = power:CreateTexture(nil, "BACKGROUND")
     power.bg:SetAllPoints()
     local globalSettings = Orbit.db.GlobalSettings or {}
-    Orbit.Skin:ApplyGradientBackground(power, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
+    Orbit.Skin:ApplyGradientBackground(power, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
     return power
 end
 
@@ -80,13 +80,18 @@ end
 
 -- [ AURA DISPLAY CONFIG ]---------------------------------------------------------------------------
 local function BossDebuffSkin(plugin)
-    local Constants = Orbit.Constants
-    return {
+    local skin = {
         zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true, enablePandemic = true,
-        pandemicGlowType = plugin:GetSetting(1, "PandemicGlowType") or Constants.PandemicGlow.DefaultType,
-        pandemicGlowColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(1, "PandemicGlowColorCurve"))
-            or plugin:GetSetting(1, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor,
+        pandemicGlowType = plugin:GetSetting(1, "PandemicGlowType") or Orbit.Constants.Glow.Type.Pixel,
+        pandemicColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(1, "PandemicGlowColorCurve"))
+            or plugin:GetSetting(1, "PandemicGlowColor") or Orbit.Constants.Glow.DefaultColor,
     }
+    -- Assemble a pseudo-overrides table so PandemicGlow can fetch dynamic properties correctly
+    skin.overrides = {
+        PandemicGlowType = skin.pandemicGlowType,
+        PandemicGlowColor = skin.pandemicColor
+    }
+    return skin
 end
 
 local BOSS_BUFF_SKIN = Orbit.Constants.Aura.SkinWithTimer
@@ -118,8 +123,8 @@ local function CreateBossFrame(bossIndex, plugin)
     frame.editModeName = "Boss Frame " .. bossIndex
     frame.systemIndex, frame.bossIndex = 1, bossIndex
     frame:SetSize(plugin:GetSetting(1, "Width") or 150, plugin:GetSetting(1, "Height") or 40)
-    frame:SetFrameStrata("MEDIUM")
-    frame:SetFrameLevel(Orbit.Constants.Levels.GroupBase + bossIndex)
+    frame:SetFrameStrata(Orbit.Constants.Strata.HUD)
+    frame:SetFrameLevel(Orbit.StrataEngine:GetFrameLevel("Global_HUD", "Orbit_BossFrames") + bossIndex)
     UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize)
     frame.Power = CreatePowerBar(frame, unit)
     frame:RegisterUnitEvent("UNIT_POWER_UPDATE", unit)
@@ -186,8 +191,8 @@ function Plugin:OnLoad()
     self.container = CreateFrame("Frame", "OrbitBossContainer", UIParent, "SecureHandlerStateTemplate")
     self.container:SetAttribute("_onstate-visibility", [[ if newstate == "hide" then self:Hide() else self:Show() end ]])
     self.container.editModeName, self.container.systemIndex = "Boss Frames", 1
-    self.container:SetFrameStrata("MEDIUM")
-    self.container:SetFrameLevel(Orbit.Constants.Levels.GroupContainer)
+    self.container:SetFrameStrata(Orbit.Constants.Strata.HUD)
+    self.container:SetFrameLevel(Orbit.StrataEngine:GetFrameLevel("Global_HUD", "Orbit_BossFrames") - 1)
     self.container:SetClampedToScreen(true)
     self.frames = {}
     for i = 1, MAX_BOSS_FRAMES do
@@ -223,17 +228,26 @@ function Plugin:OnLoad()
             OrbitEngine.ComponentDrag:Attach(firstFrame.CastBar, self.container, {
                 key = "CastBar",
                 onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
-                    local positions = pluginRef:GetSetting(1, "ComponentPositions") or {}
-                    local existingSubs = positions.CastBar and positions.CastBar.subComponents
-                    positions.CastBar = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, subComponents = existingSubs }
                     local compParent = comp:GetParent()
+                    local posX, posY
                     if compParent then
                         local cx, cy = comp:GetCenter()
                         local px, py = compParent:GetCenter()
-                        if cx and px then positions.CastBar.posX = cx - px end
-                        if cy and py then positions.CastBar.posY = cy - py end
+                        if cx and px then posX = cx - px end
+                        if cy and py then posY = cy - py end
                     end
-                    pluginRef:SetSetting(1, "ComponentPositions", positions)
+                    local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, posX = posX, posY = posY }
+                    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+                    if Txn and Txn:IsActive() and Txn:GetPlugin() == pluginRef then
+                        local positions = Txn:GetPositions()
+                        posData.subComponents = positions.CastBar and positions.CastBar.subComponents
+                        Txn:SetPosition("CastBar", posData)
+                    else
+                        local positions = pluginRef:GetComponentPositions(1)
+                        posData.subComponents = positions.CastBar and positions.CastBar.subComponents
+                        positions.CastBar = posData
+                        pluginRef:SetSetting(1, "ComponentPositions", positions)
+                    end
                 end,
             })
         end
@@ -244,7 +258,9 @@ function Plugin:OnLoad()
         local originalOpen = dialog.Open
         dialog.Open = function(dlg, frame, plugin, systemIndex)
             if frame == self.container or frame == self.frames[1] then self:PrepareIconsForCanvasMode() end
-            return originalOpen(dlg, frame, plugin, systemIndex)
+            local result = originalOpen(dlg, frame, plugin, systemIndex)
+            if frame == self.container or frame == self.frames[1] then self:SchedulePreviewUpdate() end
+            return result
         end
     end
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, 1)
@@ -407,6 +423,10 @@ function Plugin:ApplySettings()
         frame:SetBorder(borderSize)
         UpdateFrameLayout(frame, borderSize)
         if frame.Health and textureName then Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true) end
+        if frame.TotalAbsorbBar then
+            local absorbTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AbsorbTexture
+            frame.TotalAbsorbBar:SetStatusBarTexture(LSM:Fetch("statusbar", absorbTextureName or "Blizzard"))
+        end
         if frame.Power and textureName then Orbit.Skin:SkinStatusBar(frame.Power, textureName, nil, true); if frame.Power.bg then frame.Power.bg:SetColorTexture(0, 0, 0, 0.5) end end
         Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)
         Orbit.Skin:ApplyUnitFrameText(frame.HealthText, "RIGHT", nil, textSize)

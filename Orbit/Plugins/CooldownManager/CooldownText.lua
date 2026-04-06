@@ -62,46 +62,70 @@ function CDM:ApplyTextSettings(icon, systemIndex)
 
     -- Timer
     local cooldown = icon.Cooldown or (icon.GetCooldownFrame and icon:GetCooldownFrame())
-    if cooldown then
-        if self:IsComponentDisabled("Timer", systemIndex) then
-            if cooldown.SetHideCountdownNumbers then
-                cooldown:SetHideCountdownNumbers(true)
-            end
-        else
-            local timerOverrides, timerPos = GetComponentOverrides("Timer")
-            local timerText = cooldown.Text
-            if not timerText then
-                for _, region in ipairs({ cooldown:GetRegions() }) do
-                    if region:GetObjectType() == "FontString" then
-                        timerText = region
-                        cooldown.Text = timerText
-                        break
+    local activeCooldown = icon.ActiveCooldown
+    if cooldown or activeCooldown then
+        local disabled = self:IsComponentDisabled("Timer", systemIndex)
+        local timerOverrides, timerPos
+        if not disabled then
+            timerOverrides, timerPos = GetComponentOverrides("Timer")
+        end
+        local defaultSize = math.max(6, baseSize + 2)
+        local overlay = self:GetTextOverlay(icon)
+
+        for _, cd in ipairs({ cooldown, activeCooldown }) do
+            if cd then
+                if disabled then
+                    if cd.SetHideCountdownNumbers then
+                        cd:SetHideCountdownNumbers(true)
                     end
-                end
-                if not timerText then
-                    for _, child in ipairs({ cooldown:GetChildren() }) do
-                        for _, region in ipairs({ child:GetRegions() }) do
+                else
+                    if cd.SetHideCountdownNumbers then
+                        cd:SetHideCountdownNumbers(false)
+                    end
+                    local timerText = cd.Text
+                    if not timerText then
+                        for _, region in ipairs({ cd:GetRegions() }) do
                             if region:GetObjectType() == "FontString" then
                                 timerText = region
-                                cooldown.Text = timerText
+                                cd.Text = timerText
                                 break
                             end
                         end
-                        if timerText then break end
+                        if not timerText then
+                            for _, child in ipairs({ cd:GetChildren() }) do
+                                for _, region in ipairs({ child:GetRegions() }) do
+                                    if region:GetObjectType() == "FontString" then
+                                        timerText = region
+                                        cd.Text = timerText
+                                        break
+                                    end
+                                end
+                                if timerText then break end
+                            end
+                        end
                     end
-                end
-            end
-            if timerText then
-                local defaultSize = math.max(6, baseSize + 2)
-                
-                if not timerText:GetFont() then
-                    timerText:SetFont(fontPath, defaultSize, "OUTLINE")
-                end
-                
-                OverrideUtils.ApplyOverrides(timerText, timerOverrides, { fontSize = defaultSize, fontPath = fontPath })
-                timerText:SetDrawLayer("OVERLAY", 7)
-                if ApplyTextPosition then
-                    ApplyTextPosition(timerText, icon, timerPos, "CENTER", 0, 0)
+                    if timerText then
+                        if not timerText:GetFont() then
+                            timerText:SetFont(fontPath, defaultSize, "OUTLINE")
+                        end
+                        
+                        OverrideUtils.ApplyOverrides(timerText, timerOverrides, { fontSize = defaultSize, fontPath = fontPath })
+                        timerText:SetDrawLayer("OVERLAY", 7)
+                        
+                        if timerText:GetParent() ~= overlay then
+                            timerText:SetParent(overlay)
+                            if not cd.orbitTextSyncHooked then
+                                cd.orbitTextSyncHooked = true
+                                cd:HookScript("OnShow", function(c) if c.Text then c.Text:Show() end end)
+                                cd:HookScript("OnHide", function(c) if c.Text then c.Text:Hide() end end)
+                            end
+                            timerText:SetShown(cd:IsShown())
+                        end
+
+                        if ApplyTextPosition then
+                            ApplyTextPosition(timerText, icon, timerPos, "CENTER", 0, 0)
+                        end
+                    end
                 end
             end
         end
@@ -217,12 +241,10 @@ function CDM:SetupCanvasPreview(anchor, systemIndex)
         if not w or not h then
             local aspectRatio = plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
             local iconSize = plugin:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
-            local baseSize = Constants.Skin.DefaultIconSize or 40
-            local scaledSize = baseSize * (iconSize / 100)
-            w, h = scaledSize, scaledSize
-            if aspectRatio == "16:9" then h = scaledSize * (9 / 16)
-            elseif aspectRatio == "4:3" then h = scaledSize * (3 / 4)
-            elseif aspectRatio == "21:9" then h = scaledSize * (9 / 21) end
+            w, h = iconSize, iconSize
+            if aspectRatio == "16:9" then h = iconSize * (9 / 16)
+            elseif aspectRatio == "4:3" then h = iconSize * (3 / 4)
+            elseif aspectRatio == "21:9" then h = iconSize * (9 / 21) end
         end
 
         -- Resolve icon texture from first visible viewer child

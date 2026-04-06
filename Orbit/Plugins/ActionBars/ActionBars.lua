@@ -6,9 +6,10 @@ local MasqueBridge = Orbit.Skin and Orbit.Skin.Masque
 local ABC = Orbit.ActionBarsContainer
 local ABText = Orbit.ActionBarsText
 local ABPreview = Orbit.ActionBarsPreview
+local GC = Orbit.Engine.GlowController
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local BUTTON_SIZE = 32
+local DEFAULT_ICON_SIZE = 34
 local PET_BAR_INDEX = 9
 local STANCE_BAR_INDEX = 10
 local POSSESS_BAR_INDEX = 11
@@ -50,9 +51,11 @@ local BAR_CONFIG = {
     { blizzName = "PossessBarFrame", orbitName = "OrbitPossessBar", label = "Possess Bar", index = 11, buttonPrefix = "PossessButton", count = 2, isSpecial = true },
 }
 
+
+
 local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     defaults = {
-        Scale = 90, IconPadding = 2, Rows = 1, NumIcons = 12,
+        IconSize = 34, IconPadding = 2, Rows = 1, NumIcons = 12,
         Opacity = 100, HideEmptyButtons = false, UseGlobalTextStyle = true,
         ShowBarArt = false,
         DisabledComponents = {},
@@ -68,6 +71,8 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
         IconBackdropColor = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } },
         OORColor = DEFAULT_OOR_COLOR, OOMColor = DEFAULT_OOM_COLOR, UnusableColor = DEFAULT_UNUSABLE_COLOR,
         CooldownSwipeColor = DEFAULT_CD_SWIPE,
+        ProcGlowType = Constants.Glow.Type.Medium,
+        ProcGlowColor = Constants.Glow.DefaultColor,
     },
 })
 
@@ -150,13 +155,13 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
     end
     if systemIndex == VEHICLE_EXIT_INDEX then
-        table.insert(schema.controls, { type = "slider", key = "Scale", label = "Scale", min = 50, max = 150, step = 1, default = 90, formatter = function(v) return v .. "%" end,
-            onChange = function(val) self:SetSetting(systemIndex, "Scale", val); self:ApplySettings(container) end })
+        table.insert(schema.controls, { type = "slider", key = "IconSize", label = "Icon Size", min = 20, max = 64, step = 1, default = DEFAULT_ICON_SIZE, formatter = function(v) return v .. "px" end,
+            onChange = function(val) self:SetSetting(systemIndex, "IconSize", val); self:ApplySettings(container) end })
         OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
         return
     end
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local tabs = { "Layout", "Colors" }
+    local tabs = { "Layout", "Glow", "Colors" }
     local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
     if currentTab == "Layout" then
         if systemIndex == 1 then
@@ -195,8 +200,8 @@ function Plugin:AddSettings(dialog, systemFrame)
                     end
                 end })
         end
-        table.insert(schema.controls, { type = "slider", key = "Scale", label = "Scale", min = 50, max = 150, step = 1, default = 90, formatter = function(v) return v .. "%" end,
-            onChange = function(val) self:SetSetting(systemIndex, "Scale", val); self:ApplySettings(container) end })
+        table.insert(schema.controls, { type = "slider", key = "IconSize", label = "Icon Size", min = 20, max = 64, step = 1, default = DEFAULT_ICON_SIZE, formatter = function(v) return v .. "px" end,
+            onChange = function(val) self:SetSetting(systemIndex, "IconSize", val); self:ApplySettings(container) end })
         table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = 0, max = 10, step = 1, default = 2,
             onChange = function(val) self:SetSetting(systemIndex, "IconPadding", val); self:ApplySettings(container) end })
         if systemIndex == 1 then
@@ -205,6 +210,12 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
         local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
         if not isForcedHideEmpty then table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = "Hide Empty Buttons", default = false }) end
+    elseif currentTab == "Glow" then
+        SB:AddGlowSettings(self, schema, 1, dialog, systemFrame, {
+            prefix = "ProcGlow",
+            label = "Proc Glow",
+            default = Constants.Glow.Type.Medium,
+        })
     elseif currentTab == "Colors" then
         local DEFAULT_BACKDROP = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
         local DEFAULT_KEYPRESS = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.6 } } } }
@@ -241,6 +252,8 @@ end
 
 -- [ LIFECYCLE ]----------------------------------------------------------------------------------
 function Plugin:OnLoad()
+    GC:PreLoad("Medium", 20)
+    GC:PreLoad("Classic", 20)
     self:InitializeContainers()
     ABC:CreateVehicleExit(self)
     for index, container in pairs(self.containers) do ABPreview:Setup(self, container, index) end
@@ -288,16 +301,24 @@ function Plugin:OnLoad()
         }, self)
     end
     Orbit.EventBus:On("UPDATE_MULTI_CAST_ACTIONBAR", function() C_Timer.After(0.1, function() self:ApplyAll() end) end, self)
+    local function DebouncePetBarUpdate()
+        if InCombatLockdown() then
+            Orbit.CombatManager:QueueUpdate(DebouncePetBarUpdate)
+        else
+            if self.petDebounce then self.petDebounce:Cancel() end
+            self.petDebounce = C_Timer.NewTimer(0.1, function()
+                self.petDebounce = nil
+                local container = self.containers[PET_BAR_INDEX]
+                if container then self:ApplySettings(container) end
+            end)
+        end
+    end
+
     Orbit.EventBus:On("UNIT_PET", function(unit)
         if unit ~= "player" then return end
-        if self.petDebounce then self.petDebounce:Cancel() end
-        self.petDebounce = C_Timer.NewTimer(0.3, function()
-            self.petDebounce = nil
-            local container = self.containers[PET_BAR_INDEX]
-            if not container then return end
-            self:ApplySettings(container)
-        end)
+        DebouncePetBarUpdate()
     end, self)
+    Orbit.EventBus:On("PET_BAR_UPDATE", DebouncePetBarUpdate, self)
     local function HideFlyoutBackground()
         local bg = SpellFlyoutBackgroundEnd
         if not bg then return end
@@ -345,6 +366,32 @@ function Plugin:OnLoad()
         for button in pairs(rangeButtons) do RefreshIconColor(self, button) end
     end, self)
     local plugin = self
+    -- [ PROC GLOW HOOKS ]----------------------------------------------------------------------------
+    if ActionButtonSpellAlertManager then
+        local abPlugin = self
+        hooksecurefunc(ActionButtonSpellAlertManager, "ShowAlert", function(_, button)
+            local parent = button:GetParent()
+            if not parent or not abPlugin.containers then return end
+            local isOurs = false
+            for _, container in pairs(abPlugin.containers) do
+                if parent == container then isOurs = true; break end
+            end
+            if not isOurs then return end
+            
+            GC:ShowProc(button, function(k) return abPlugin:GetSetting(1, k) end, "ProcGlow", Constants.Glow.DefaultColor)
+        end)
+        hooksecurefunc(ActionButtonSpellAlertManager, "HideAlert", function(_, button)
+            local parent = button:GetParent()
+            if not parent or not abPlugin.containers then return end
+            local isOurs = false
+            for _, container in pairs(abPlugin.containers) do
+                if parent == container then isOurs = true; break end
+            end
+            if not isOurs then return end
+            
+            GC:HideProc(button)
+        end)
+    end
     Orbit.EventBus:On("ACTION_RANGE_CHECK_UPDATE", function(slot)
         local buttons = ActionBarButtonRangeCheckFrame.actions[slot]
         if not buttons then return end
@@ -445,8 +492,9 @@ function Plugin:LayoutButtons(index)
     if cursorOverridesHide and not SPECIAL_BAR_INDICES[index] then hideEmpty = false end
     local config = BAR_CONFIG[index]
     local numIcons = self:GetSetting(index, "NumIcons") or (config and config.count or 12)
+    local iconSize = self:GetSetting(index, "IconSize") or DEFAULT_ICON_SIZE
     local scale = container:GetEffectiveScale() or 1
-    local w = OrbitEngine.Pixel:Snap(BUTTON_SIZE, scale)
+    local w = OrbitEngine.Pixel:Snap(iconSize, scale)
     local h = w
     local padding = OrbitEngine.Pixel:Multiple(rawPadding, scale)
     local useMasque = MasqueBridge and MasqueBridge.enabled
@@ -458,7 +506,7 @@ function Plugin:LayoutButtons(index)
     local limitPerLine
     if orientation == 0 then limitPerLine = math.max(1, math.ceil(totalEffective / rows))
     else limitPerLine = rows end
-    local cacheKey = string.format("%d_%d_%d_%d_%d_%d_%.4f", numIcons, limitPerLine, orientation, BUTTON_SIZE, rawPadding, Orbit.db.GlobalSettings.IconBorderSize or 2, scale)
+    local cacheKey = string.format("%d_%d_%d_%d_%d_%d_%.4f", numIcons, limitPerLine, orientation, iconSize, rawPadding, Orbit.db.GlobalSettings.IconBorderSize or 2, scale)
     local cache = self.gridCache[index]
     if not cache or cache.key ~= cacheKey then
         local positions = {}
@@ -480,7 +528,17 @@ function Plugin:LayoutButtons(index)
             end
             button.orbitHidden = true
         else
-            local hasAction = button.HasAction and button:HasAction() or false
+            local hasAction = false
+            if button.HasAction then
+                hasAction = button:HasAction()
+            elseif index == PET_BAR_INDEX then
+                local petName, petTexture, petIsToken = GetPetActionInfo(button:GetID() or i)
+                if petName or petTexture or petIsToken then hasAction = true end
+            elseif index == STANCE_BAR_INDEX then
+                local stanceTexture, stanceName = GetShapeshiftFormInfo(button:GetID() or i)
+                if stanceTexture or stanceName then hasAction = true end
+            end
+
             local shouldShow = not (hideEmpty and not hasAction)
             if not shouldShow then
                 if not InCombatLockdown() then 
@@ -501,6 +559,10 @@ function Plugin:LayoutButtons(index)
                 button:ClearAllPoints()
                 local pos = cachedPositions[i]
                 button:SetPoint("TOPLEFT", container, "TOPLEFT", pos.x, pos.y)
+                
+                if GC:IsActive(button, "orbitProc") then
+                    GC:ShowProc(button, function(k) return self:GetSetting(1, k) end, "ProcGlow", Constants.Glow.DefaultColor)
+                end
             end
         end
     end
@@ -536,7 +598,14 @@ function Plugin:ApplySettings(frame)
     if index == VEHICLE_EXIT_INDEX then
         if Orbit:IsEditMode() then UnregisterStateDriver(actualFrame, "visibility"); actualFrame:Show()
         else RegisterStateDriver(actualFrame, "visibility", VEHICLE_EXIT_VISIBILITY) end
-        self:ApplyScale(actualFrame, index, "Scale")
+        local veSize = self:GetSetting(index, "IconSize") or DEFAULT_ICON_SIZE
+        local veScale = actualFrame:GetEffectiveScale() or 1
+        veSize = OrbitEngine.Pixel:Snap(veSize, veScale)
+        actualFrame:SetSize(veSize, veSize)
+        if self.vehicleExitButton and self.vehicleExitButton == actualFrame then
+            local btn = _G["OrbitVehicleExitButton"]
+            if btn then btn:SetAllPoints(actualFrame) end
+        end
         OrbitEngine.Frame:RestorePosition(actualFrame, self, index)
         return
     end
@@ -567,7 +636,6 @@ function Plugin:ApplySettings(frame)
     elseif index == PET_BAR_INDEX then RegisterStateDriver(actualFrame, "visibility", PET_BAR_BASE_DRIVER)
     else RegisterStateDriver(actualFrame, "visibility", BASE_VISIBILITY_DRIVER) end
     if not self.buttons[index] or #self.buttons[index] == 0 then self:ReparentButtons(index) end
-    self:ApplyScale(actualFrame, index, "Scale")
     local enableHover = self:GetSetting(index, "ShowOnMouseover") ~= false
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(actualFrame, self, index, "OutOfCombatFade", enableHover) end
     self:ApplyMouseOver(actualFrame, index)

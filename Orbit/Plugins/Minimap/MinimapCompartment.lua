@@ -116,7 +116,7 @@ function Plugin:CreateCompartmentFlyout()
     if self._compartmentFlyout then return end
 
     local flyout = CreateFrame("Frame", "OrbitMinimapCompartmentFlyout", self.frame)
-    flyout:SetFrameStrata("DIALOG")
+    flyout:SetFrameStrata(Orbit.Constants.Strata.Dialog)
     flyout:SetFrameLevel(self.frame:GetFrameLevel() + 20)
     flyout:SetClampedToScreen(true)
     flyout:Hide()
@@ -133,7 +133,7 @@ function Plugin:CreateCompartmentFlyout()
     -- Close on click-away via fullscreen overlay
     local overlay = CreateFrame("Button", nil, UIParent)
     overlay:SetAllPoints(UIParent)
-    overlay:SetFrameStrata("DIALOG")
+    overlay:SetFrameStrata(Orbit.Constants.Strata.Dialog)
     overlay:SetFrameLevel(flyout:GetFrameLevel() - 1)
     overlay:Hide()
     overlay:RegisterForClicks("AnyUp")

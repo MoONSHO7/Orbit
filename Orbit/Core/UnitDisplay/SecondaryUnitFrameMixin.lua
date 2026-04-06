@@ -6,7 +6,7 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
-local FRAME_LEVEL_DEMOTE = 5
+
 
 Orbit.SecondaryUnitFrameMixin = {}
 local Mixin = Orbit.SecondaryUnitFrameMixin
@@ -38,7 +38,7 @@ function Mixin:CreateSecondaryPlugin(config)
 
     self.frame = OrbitEngine.UnitButton:Create(UIParent, config.unit, config.frameName)
     if config.exposeMountedConfig then self.mountedConfig = { frame = self.frame } end
-    self.frame:SetFrameLevel(math.max(1, self.frame:GetFrameLevel() - FRAME_LEVEL_DEMOTE))
+    self.frame:SetFrameLevel(math.max(1, self.frame:GetFrameLevel() + Orbit.Constants.Levels.SecondaryDemote))
     self.frame.editModeName = config.editModeName
     self.frame.systemIndex = config.frameIndex
     self.frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false, mergeBorders = { x = false, y = true } }

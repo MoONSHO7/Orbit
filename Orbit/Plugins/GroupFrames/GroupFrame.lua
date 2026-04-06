@@ -59,7 +59,7 @@ local TIER_DEFAULTS = {
             PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", posX = 0, posY = -10 },
             ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", posX = 0, posY = -10 },
             ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", posX = 0, posY = -10 },
-            DefensiveIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0, overrides = { IconSize = 32 } },
+            DefensiveIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0, overrides = { IconSize = 34 } },
             CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
             PrivateAuraAnchor = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0 },
             Buffs = { anchorX = "LEFT", anchorY = "CENTER", offsetX = -2, offsetY = 0, justifyH = "RIGHT", selfAnchorY = "CENTER", posX = -110, posY = 0, overrides = { MaxIcons = 4, IconSize = 34, MaxRows = 2 } },
@@ -74,7 +74,7 @@ local TIER_DEFAULTS = {
             return d
         end)(),
         DisabledComponentsMigrated = true,
-        DispelIndicatorEnabled = true, DispelThickness = 2, DispelFrequency = 0.25, DispelNumLines = 8,
+        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.25, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
         DispelColorMagic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
@@ -118,7 +118,7 @@ local TIER_DEFAULTS = {
         AggroIndicatorEnabled = true, AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
         SelectionColor = { r = 0.8, g = 0.9, b = 1.0, a = 1 },
         AggroThickness = 1,
-        DispelIndicatorEnabled = true, DispelThickness = 2, DispelFrequency = 0.2, DispelNumLines = 8,
+        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.25, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
         DispelColorMagic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
@@ -431,8 +431,8 @@ local function CreateGroupFrame(index, plugin)
     local width = plugin:GetTierSetting("Width") or DEFAULT_WIDTH
     local height = plugin:GetTierSetting("Height") or DEFAULT_HEIGHT
     frame:SetSize(width, height)
-    frame:SetFrameStrata("MEDIUM")
-    frame:SetFrameLevel(Orbit.Constants.Levels.GroupBase + index)
+    frame:SetFrameStrata(Orbit.Constants.Strata.HUD)
+    frame:SetFrameLevel(Orbit.StrataEngine:GetFrameLevel("Global_HUD", "Orbit_GroupFrames") + index)
 
     UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize, plugin)
 
@@ -493,61 +493,9 @@ function Plugin:AddSettings(dialog, systemFrame)
     Orbit.GroupFrameSettings(self, dialog, systemFrame)
 end
 
--- TODO(REMOVE): Migrates legacy PartyFrames/RaidFrames settings into GroupFrames tiers
--- [ MIGRATION ]-------------------------------------------------------------------------------------
-local function MigrateFromLegacy(plugin)
-    local db = Orbit.db
-    if not db or not db.Layouts then return end
-    local layoutName = "Orbit"
-    if Orbit.Profile and Orbit.Profile.GetCurrentLayout then layoutName = Orbit.Profile:GetCurrentLayout() or layoutName end
-    local layout = db.Layouts[layoutName]
-    if not layout then return end
-
-    local partyData = layout["Orbit_PartyFrames"] and layout["Orbit_PartyFrames"][1]
-    local raidData = layout["Orbit_RaidFrames"] and layout["Orbit_RaidFrames"][1]
-    local groupData = layout["Orbit_GroupFrames"] and layout["Orbit_GroupFrames"][1]
-
-    -- Skip if already migrated or no legacy data
-    if groupData and groupData._migrated then return end
-    if not partyData and not raidData then return end
-
-    local tiers = plugin:GetSetting(1, "Tiers") or {}
-
-    -- Migrate party settings
-    if partyData then
-        tiers.Party = tiers.Party or {}
-        for k, v in pairs(partyData) do
-            if k ~= "Position" and k ~= "Anchor" then tiers.Party[k] = v end
-        end
-    end
-
-    -- Migrate raid settings to all raid tiers
-    if raidData then
-        local LEGACY_TIER_MAP = { SmallRaid = "Mythic", MediumRaid = "Mythic", LargeRaid = "Heroic", MassiveRaid = "World" }
-        for _, tierKey in ipairs({ "Mythic", "Heroic", "World" }) do
-            tiers[tierKey] = tiers[tierKey] or {}
-            for k, v in pairs(raidData) do
-                if k ~= "Position" and k ~= "Anchor" then tiers[tierKey][k] = v end
-            end
-        end
-        -- Migrate any saved old tier keys forward
-        for oldKey, newKey in pairs(LEGACY_TIER_MAP) do
-            if tiers[oldKey] then
-                for k, v in pairs(tiers[oldKey]) do
-                    if tiers[newKey][k] == nil then tiers[newKey][k] = v end
-                end
-                tiers[oldKey] = nil
-            end
-        end
-    end
-
-    plugin:SetSetting(1, "Tiers", tiers)
-    plugin:SetSetting(1, "_migrated", true)
-end
 
 -- [ ON LOAD ]---------------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    MigrateFromLegacy(self)
 
     HideNativeGroupFrames()
     self:UpdateBlizzardRaidPanelVisibility()
@@ -558,8 +506,8 @@ function Plugin:OnLoad()
     self.container:SetAttribute("_onstate-visibility", [[ if newstate == "hide" then self:Hide() else self:Show() end ]])
     self.container.editModeName = "Group Frames"
     self.container.systemIndex = 1
-    self.container:SetFrameStrata("MEDIUM")
-    self.container:SetFrameLevel(Orbit.Constants.Levels.GroupContainer)
+    self.container:SetFrameStrata(Orbit.Constants.Strata.HUD)
+    self.container:SetFrameLevel(Orbit.StrataEngine:GetFrameLevel("Global_HUD", "Orbit_GroupFrames") - 1)
     self.container:SetClampedToScreen(true)
 
     self.frames = {}
@@ -638,9 +586,10 @@ function Plugin:OnLoad()
             C_Timer.After(1, function()
                 if InCombatLockdown() then return end
                 UpdateVisibilityDriver()
-                self:CheckTierChange()
-                self:UpdateFrameUnits()
-                self:ApplySettings()
+                if not self:CheckTierChange() then
+                    self:UpdateFrameUnits()
+                    self:ApplySettings()
+                end
                 for _, frame in ipairs(self.frames) do
                     if not frame.preview and frame.unit and frame:IsShown() then
                         if frame.UpdateAll then frame:UpdateAll() end
@@ -664,16 +613,16 @@ function Plugin:OnLoad()
                 self:ApplySettings()
                 self:RestoreTierPosition(self._currentTier)
             else
-                self:CheckTierChange()
-                self:UpdateFrameUnits()
+                if not self:CheckTierChange() then
+                    self:UpdateFrameUnits()
+                end
             end
             return
         end
         if event == "ZONE_CHANGED_NEW_AREA" then
             C_Timer.After(0.5, function()
                 UpdateVisibilityDriver()
-                self:CheckTierChange()
-                if not InCombatLockdown() then
+                if not self:CheckTierChange() and not InCombatLockdown() then
                     self:UpdateFrameUnits()
                     self:ApplySettings()
                 end
@@ -778,7 +727,9 @@ function Plugin:CheckTierChange()
         else
             self._pendingTierApply = oldTier
         end
+        return true
     end
+    return false
 end
 
 -- [ PREPARE ICONS FOR CANVAS MODE ]-----------------------------------------------------------------
@@ -955,6 +906,10 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     if frame.SetBorder then frame:SetBorder(borderSize) end
 
     if frame.Health then Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true) end
+    if frame.TotalAbsorbBar then
+        local absorbTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AbsorbTexture
+        frame.TotalAbsorbBar:SetStatusBarTexture(LSM:Fetch("statusbar", absorbTextureName or "Blizzard"))
+    end
     if frame.Power then
         local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"
         frame.Power:SetStatusBarTexture(texturePath)
@@ -969,7 +924,11 @@ function Plugin:ApplyFrameStyle(frame, showPower)
 
     -- Reset icon base sizes to current tier (icons are created once at load; tier may change)
     local iconSize = isParty and 16 or 12
-    local centerIconSize = isParty and 24 or 18
+    local savedPositions = self:GetComponentPositions(1)
+    local statusOverrides = savedPositions and savedPositions.StatusIcons and savedPositions.StatusIcons.overrides
+    local customStatusSize = statusOverrides and statusOverrides.IconSize
+
+    local centerIconSize = customStatusSize or (isParty and 24 or 18)
     for _, k in ipairs({ "RoleIcon", "LeaderIcon", "MainTankIcon", "MarkerIcon" }) do
         if frame[k] and frame[k].SetSize then frame[k]:SetSize(iconSize, iconSize); frame[k].orbitOriginalWidth, frame[k].orbitOriginalHeight = iconSize, iconSize end
     end
@@ -977,7 +936,6 @@ function Plugin:ApplyFrameStyle(frame, showPower)
         if frame[k] and frame[k].SetSize then frame[k]:SetSize(centerIconSize, centerIconSize); frame[k].orbitOriginalWidth, frame[k].orbitOriginalHeight = centerIconSize, centerIconSize end
     end
 
-    local savedPositions = self:GetComponentPositions(1)
     if savedPositions then
         local allIconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "StatusIcons", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
         local activeKeys = HealerReg:ActiveKeys()

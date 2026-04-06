@@ -65,7 +65,7 @@ function Mixin:CreateCastBarFrame(name, config)
     local bar = CreateFrame("StatusBar", name, UIParent)
     bar:SetSize(config.width or Orbit.Constants.PlayerCastBar.DefaultWidth or 200, config.height or Orbit.Constants.PlayerCastBar.DefaultHeight or 18)
     bar:SetPoint("CENTER", 0, config.yOffset or Orbit.Constants.PlayerCastBar.DefaultY or -150)
-    bar:SetFrameStrata("MEDIUM")
+    bar:SetFrameStrata(Orbit.Constants.Strata.HUD)
     bar:SetStatusBarTexture("") -- Handled by Skin
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0)
@@ -135,11 +135,15 @@ function Mixin:RegisterEditModeCallbacks(bar)
     end
     bar.orbitEditModeCallbacksRegistered = true
     EventRegistry:RegisterCallback("EditMode.Exit", function()
-        bar.preview = false
-        if not bar.casting and not bar.channeling then
-            bar:Hide()
-        end
         self:ApplySettings()
+        -- Defer preview teardown to next frame so it runs AFTER Tour:EndTour()
+        -- restores all hidden frames (HookScript fires after EventRegistry).
+        C_Timer.After(0, function()
+            bar.preview = false
+            if not bar.casting and not bar.channeling then
+                bar:Hide()
+            end
+        end)
     end, self)
     EventRegistry:RegisterCallback("EditMode.Enter", function()
         self:ShowPreview()
@@ -540,8 +544,10 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
             self:SetAlpha(0)
             if self.orbitBar then self.orbitBar:SetAlpha(0) end
             self.orbitHiddenByAlpha = true
-        elseif event == "PLAYER_REGEN_ENABLED" and self.orbitHiddenByAlpha then
-            self:Hide()
+        elseif event == "PLAYER_REGEN_ENABLED" then
+            if not self.casting and not self.channeling and not self.preview then
+                self:Hide()
+            end
             self.orbitHiddenByAlpha = false
         end
     end)

@@ -242,10 +242,34 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
             table.insert(schema.controls, { type = "checkbox", key = "ShowGroupLabels", label = "Show Groups", default = true, onChange = TierMOC("ShowGroupLabels") })
         end
         local dispelRefresh = function() Orbit.DispelIndicatorMixin:InvalidateDispelCurve(plugin); if plugin.UpdateAllDispelIndicators then plugin:UpdateAllDispelIndicators(plugin) end end
-        table.insert(schema.controls, { type = "checkbox", key = "DispelIndicatorEnabled", label = "Enable Dispel Indicators", default = true, onChange = TierMOC("DispelIndicatorEnabled", dispelRefresh) })
-        table.insert(schema.controls, { type = "checkbox", key = "DispelOnlyByMe", label = "Only Dispellable By Me", default = false, onChange = TierMOC("DispelOnlyByMe", dispelRefresh) })
-        table.insert(schema.controls, { type = "slider", key = "DispelThickness", label = "Dispel Border Thickness", default = 2, min = 1, max = 5, step = 1, onChange = TierMOC("DispelThickness", dispelRefresh) })
-        table.insert(schema.controls, { type = "slider", key = "DispelFrequency", label = "Dispel Animation Speed", default = 0.25, min = 0.1, max = 1.0, step = 0.05, onChange = TierMOC("DispelFrequency", dispelRefresh) })
+        local dispelToggle = function() dispelRefresh(); if dialog.orbitTabCallback then dialog.orbitTabCallback() end end
+        
+        local dispelEnabled = plugin:GetTierSetting("DispelIndicatorEnabled", editTier)
+        if dispelEnabled == nil then dispelEnabled = true end
+
+        table.insert(schema.controls, { type = "checkbox", key = "DispelIndicatorEnabled", label = "Enable Dispel Indicators", default = true, onChange = TierMOC("DispelIndicatorEnabled", dispelToggle) })
+
+        if dispelEnabled then
+            table.insert(schema.controls, { type = "checkbox", key = "DispelOnlyByMe", label = "Only Dispellable By Me", default = false, onChange = TierMOC("DispelOnlyByMe", dispelRefresh) })
+            local glowType = plugin:GetTierSetting("DispelGlowType", editTier) or Orbit.Constants.Glow.Type.Pixel
+            table.insert(schema.controls, { type = "dropdown", key = "DispelGlowType", label = "Glow Type", default = Orbit.Constants.Glow.Type.Pixel, options = { { label = "Pixel Glow", value = Orbit.Constants.Glow.Type.Pixel }, { label = "Autocast Glow", value = Orbit.Constants.Glow.Type.Autocast } }, onChange = TierMOC("DispelGlowType", dispelToggle) })
+
+            local def = Orbit.Constants.Glow.Defaults.Pixel
+            if glowType == Orbit.Constants.Glow.Type.Autocast then
+                def = Orbit.Constants.Glow.Defaults.Autocast
+                table.insert(schema.controls, { type = "slider", key = "DispelNumLines", label = "Particles", min = 1, max = 20, step = 1, default = def.Particles, onChange = TierMOC("DispelNumLines", dispelRefresh) })
+            else
+                table.insert(schema.controls, { type = "slider", key = "DispelNumLines", label = "Lines", min = 1, max = 20, step = 1, default = def.Lines, onChange = TierMOC("DispelNumLines", dispelRefresh) })
+            end
+            
+            table.insert(schema.controls, { type = "slider", key = "DispelFrequency", label = "Frequency", min = -0.50, max = 0.50, step = 0.02, default = def.Frequency, formatter = function(v) return string.format("%.2f", v) end, onChange = TierMOC("DispelFrequency", dispelRefresh) })
+            
+            if glowType == Orbit.Constants.Glow.Type.Pixel then
+                table.insert(schema.controls, { type = "slider", key = "DispelLength", label = "Length", min = 1, max = 30, step = 1, default = def.Length, onChange = TierMOC("DispelLength", dispelRefresh) })
+                table.insert(schema.controls, { type = "slider", key = "DispelThickness", label = "Thickness", min = 1, max = 10, step = 1, default = def.Thickness, onChange = TierMOC("DispelThickness", dispelRefresh) })
+                table.insert(schema.controls, { type = "checkbox", key = "DispelBorder", label = "Use Border", default = def.Border, onChange = TierMOC("DispelBorder", dispelRefresh) })
+            end
+        end
     end
 
     OrbitEngine.Config:Render(dialog, systemFrame, plugin, schema)

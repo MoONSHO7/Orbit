@@ -156,7 +156,7 @@ function Renderer:ApplyButtonVisuals(plugin, frame, systemIndex)
     local borderSize = (frame.settings and frame.settings.borderSize) or Orbit.Engine.Pixel:DefaultBorderSize(frame:GetEffectiveScale() or 1)
     local texture = plugin:GetSetting(systemIndex, "Texture")
     local max = math.max(1, frame.maxPower or #frame.buttons)
-    local bgColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve) or Orbit.Constants.Colors.Background
+    local bgColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(Orbit.db.GlobalSettings.UnitFrameBackdropColourCurve) or Orbit.Constants.Colors.Background
     for i, btn in ipairs(frame.buttons) do
         if btn:IsShown() then
             if Orbit.Skin.ClassBar then

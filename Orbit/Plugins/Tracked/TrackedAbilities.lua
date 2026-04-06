@@ -98,6 +98,7 @@ function Plugin:CreateTrackedAnchor(name, systemIndex, label)
     frame.orbitNoSnap = true
     frame.orbitSnapExclude = true
     frame.orbitChainSync = true
+    frame.anchorOptions = { syncScale = false, syncDimensions = false }
     frame.orbitCursorReveal = true
     frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = DEFAULT_TRACKED_OFFSET_X, y = 0 }
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
@@ -393,23 +394,7 @@ end
 function Plugin:LoadTrackedItems(anchor, systemIndex)
     local tracked = self:GetSetting(systemIndex, "TrackedItems") or {}
 
-    -- TODO(REMOVE): Migrates numeric-keyed tracked items to grid-key format
-    local needsMigration = false
-    for key, _ in pairs(tracked) do
-        if type(key) == "number" then needsMigration = true; break end
-    end
-    if needsMigration then
-        local migrated = {}
-        local x, y = 0, 0
-        for slotIndex, data in pairs(tracked) do
-            if type(slotIndex) == "number" and data and data.type and data.id then
-                migrated[Layout.GridKey(x, y)] = { type = data.type, id = data.id, x = x, y = y }
-                x = x + 1
-            end
-        end
-        tracked = migrated
-        self:SetSetting(systemIndex, "TrackedItems", tracked)
-    end
+
 
     local copy = {}
     for k, v in pairs(tracked) do

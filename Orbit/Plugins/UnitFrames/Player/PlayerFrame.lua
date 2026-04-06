@@ -46,7 +46,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
             RestingIcon = { anchorX = "RIGHT", offsetX = -2, anchorY = "TOP", offsetY = -3, selfAnchorY = "TOP", posX = 81, posY = 17, overrides = { Scale = 0.6 } },
             ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0 },
             Portrait = { anchorX = "LEFT", offsetX = 4, anchorY = "CENTER", offsetY = 0 },
-            PvpIcon = { anchorX = "RIGHT", offsetX = 25, anchorY = "BOTTOM", offsetY = -5, justifyH = "RIGHT", selfAnchorY = "BOTTOM", posX = 55, posY = -20, overrides = { Scale = 1.5 } },
+            PvpIcon = { anchorX = "RIGHT", offsetX = 25, anchorY = "BOTTOM", offsetY = -5, justifyH = "RIGHT", selfAnchorY = "BOTTOM", posX = 55, posY = -20, overrides = { IconSize = 18 } },
         },
     },
 })
@@ -194,11 +194,14 @@ function Plugin:OnLoad()
     -- Create PvpIcon
     if not self.frame.PvpIcon then
         self.frame.PvpIcon = self.frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-        self.frame.PvpIcon:SetSize(iconSize, iconSize)
-        self.frame.PvpIcon.orbitOriginalWidth = iconSize
-        self.frame.PvpIcon.orbitOriginalHeight = iconSize
+        local atlas = previewAtlases.PvpIcon or "AllianceAssaultsMapBanner"
+        self.frame.PvpIcon:SetAtlas(atlas, true)
+        local nativeW, nativeH = self.frame.PvpIcon:GetWidth(), self.frame.PvpIcon:GetHeight()
+        self.frame.PvpIcon.orbitOriginalWidth = nativeW > 0 and nativeW or iconSize
+        self.frame.PvpIcon.orbitOriginalHeight = nativeH > 0 and nativeH or iconSize
+        local ratio = self.frame.PvpIcon.orbitOriginalHeight / self.frame.PvpIcon.orbitOriginalWidth
+        self.frame.PvpIcon:SetSize(iconSize, iconSize * ratio)
         self.frame.PvpIcon:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -2, 2)
-        self.frame.PvpIcon:SetAtlas(previewAtlases.PvpIcon)
         self.frame.PvpIcon:Hide()
     end
 

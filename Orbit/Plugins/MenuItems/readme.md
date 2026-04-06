@@ -1,6 +1,6 @@
 # menu items
 
-native blizzard ui bar plugins: micro menu, bag bar, performance display, queue status, and combat timer.
+native blizzard ui bar plugins: micro menu, bag bar, and queue status.
 
 ## purpose
 
@@ -12,9 +12,7 @@ captures and reskins blizzard's native utility bars. uses `NativeBarMixin` from 
 |---|---|
 | MicroMenu.lua | micro menu bar (character, spellbook, talents, etc.). captures native buttons. |
 | BagBar.lua | bag slot bar. captures native bag buttons. |
-| Performance.lua | fps/latency display widget. |
 | QueueStatus.lua | dungeon/battleground queue status indicator. |
-| CombatTimer.lua | in-combat duration timer. |
 
 ## adding a new menu item plugin
 
@@ -29,3 +27,7 @@ captures and reskins blizzard's native utility bars. uses `NativeBarMixin` from 
 - all native bar plugins must use `NativeBarMixin` for consistent behavior
 - button capture must null-check before reparenting (some buttons may not exist in all game modes)
 - hover fade uses the implicit hover pattern (geometry polling), not wow's native mouse events
+
+## migration note
+
+Performance and CombatTimer were moved to the Widget Drawer plugin in `Plugins/WidgetDrawer/` as richer, free-floating widgets with sparkline graphs and encounter tracking.

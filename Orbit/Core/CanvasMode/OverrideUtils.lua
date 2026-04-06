@@ -127,6 +127,8 @@ function OverrideUtils.ApplyScaleOverride(element, overrides)
     if not element or not overrides or not overrides.Scale then
         return
     end
+    -- IconSize is the authoritative sizing mechanism; skip legacy Scale when both exist
+    if overrides.IconSize then return end
 
     if element.GetObjectType and element:GetObjectType() == "Texture" then
         -- Store original size on first scale application
@@ -175,6 +177,13 @@ function OverrideUtils.ApplyIconSizeOverride(element, overrides)
         if Orbit.Skin and Orbit.Skin.Icons then
             local globalBorder = Orbit.db.GlobalSettings.BorderSize or Engine.Pixel:DefaultBorderSize(scale)
             Orbit.Skin.Icons:ApplyCustom(element, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
+        end
+    elseif objType == "Texture" then
+        if element.orbitOriginalWidth and element.orbitOriginalHeight and element.orbitOriginalWidth > 0 then
+            local ratio = element.orbitOriginalHeight / element.orbitOriginalWidth
+            element:SetSize(size, size * ratio)
+        else
+            element:SetSize(size, size)
         end
     else
         element:SetSize(size, size)

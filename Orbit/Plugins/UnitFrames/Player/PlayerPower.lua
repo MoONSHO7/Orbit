@@ -411,7 +411,7 @@ function Plugin:ApplySettings()
     Frame:SetBorder(borderSize)
 
     -- Backdrop Color (gradient-aware)
-    Orbit.Skin:ApplyGradientBackground(Frame, Orbit.db.GlobalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
+    Orbit.Skin:ApplyGradientBackground(Frame, Orbit.db.GlobalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
 
     -- Text (controlled via Canvas Mode)
     if OrbitEngine.ComponentDrag:IsDisabled(Frame.Text) then

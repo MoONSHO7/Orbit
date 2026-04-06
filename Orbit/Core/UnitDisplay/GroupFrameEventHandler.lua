@@ -201,9 +201,12 @@ function GroupFrameMixin.CreateGlobalEventHandler(plugin, callbacks)
             local snapshots = {}
             for _, f in ipairs(frames) do
                 if not f.preview and f.unit and f:IsShown() then
-                    if not snapshots[f.unit] then snapshots[f.unit] = M:BuildAuraSnapshot(f.unit) end
-                    local snap = snapshots[f.unit]
-                    M:PopulateCaches(f, snap)
+                    local snap = M:BuildSnapshotFromCaches(f)
+                    if not snap then
+                        if not snapshots[f.unit] then snapshots[f.unit] = M:BuildAuraSnapshot(f.unit) end
+                        snap = snapshots[f.unit]
+                        M:PopulateCaches(f, snap)
+                    end
                     f._auraSnapshot = snap
                     callbacks.UpdateDebuffs(f, plugin)
                     callbacks.UpdateBuffs(f, plugin)

@@ -18,36 +18,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
 ## [@project-version@] - @project-date-iso@
-### Message
-<<<<<<< minimap
-- Mainly a performance parse this one, with lots of backend changes and a few bugfixes/minor features. - MoONSHO7 v289
-- This build introduces Orbit's first **Experimental** Minimap plugin. It's completely new and has not had broad user testing yet, so expect rough edges.
-- Created by a new Orbit developer who wants to contribute more moving forward.
-- Feedback on Discord is very appreciated - Lars-Martin. v290
-
-=======
-Mainly a performance parse this one, with lots of backend changes and a few bugfixes/minor features.
->>>>>>> main
+### TLDR
+- Lots of backend changes in this one, some icon frames may need size changes, have moved away from Scale and towards Pixels instead.
+- Overhaul of Glows in Orbit, please revise all glows, added more customization options, better alignment and performance. No longer using LibCustomGlow so should resolve a lot of conflicts from other addons.
+- Enabled Minimap plugin by default. Remember can disable all plugins in the `Plugin Manager (/orbit plugins)`.
+- Added **Datatexts**, **just click one of the four corners of the screen** to open the datatext drawer and drag and drop them anywhere on-screen. Will continue to expand on these and you're welcome to suggest more/improve whats been built.
 
 ### Added
-- **Minimap Plugin:**: Enable it in the /orbit plugins menu under the "Experimental" tab.
-- **Tracked Cooldowns:** Decoupled Tracked Icons/Bars into a standalone plugin, independent of the Cooldown Manager. Anchoring these is still disabled I still havent been able to solve this issue with spec switching on a single profile.
-- **CastBar Ticks:** Added tick marks to the cast bar for channeled abilities.
-- **Raid Frame Panel:** Enabled the standard blizzard raid frame (marker bars, readycheck, etc) by default, but added an option to disable it on each tier in the settings.
-- **Absorb Texture:** Added option to pick your obsorb texture and have it always enabled.
-- **Shadowed Font:** Added a checkbox to enable font shadows on all text.
+- **Datatexts Plugin:** Brand-new standalone plugin with 20+ widgets (Gold, Friends, Guild, Durability, Performance, Hearthstone, Spec, Location, Mail, Quest, Combat Timer, and more). Replaces the old Performance and Combat Timer from Menu Items.
+- **Glows:** New custom glow library replacing `LibCustomGlow`. Supports **Pixel**, **Medium**, **Autocast**, **Classic**, **Thin**, **Thick** glow types with full per-type configuration (color, frequency, thickness, line count, particles, scale, and direction).
+- **StrataEngine:** Centralized Z-index layering engine for root-level UI containers. Supports `BumpUp`/`BumpDown` reordering persisted to profile, ensuring consistent frame stacking across Edit Mode and Canvas Mode. `This is for future implementation and not currently active, but all strata has been updated to use the new engine.`
+- **Group Frame Dispel Glow Type:** Added user-selectable glow types (**Pixel** vs **Autocast**) for dispel indicators on group frames, with per-type settings for thickness, line count, and length.
 
 ### Changed
-- **Performance (Unit Frames):** Improved Boss and Group frame efficiency.
-- **Performance (Auras):** Enhanced internal Aura tracking and Color Gradient performance to reduce memory overhead during combat.
-- **Edit Mode (Anchoring):** Fully transitioned Orbit's anchoring system into a new architecture, for cleaner positional persistence.
-- **Color Curves:** Implemented internal caching to speed up how fast 'Smart Class Colors' load on dynamic components.
-- **Commands:** Updated Orbit backend API's and slash commands—start with `/orbit help`.
-- **Profiles:** Profile adjustments to better handle logging out and changing to different characters.
+- **Glow System Overhaul:** Migrated all glow rendering (Pandemic, Cooldown Manager, Action Bars, Dispel Indicators) from `LibCustomGlow` to the new `LibOrbitGlow-1.0`.
+- **Strata Standardisation:** Replaced all hardcoded strata strings (`"MEDIUM"`, `"TOOLTIP"`, etc.) with `Constants.Strata.*` lookups managed by the StrataEngine.
+- **Glow Settings Schema:** Expanded glow configuration panel with per-type sliders (frequency, thickness, particles, scale, line count) that dynamically show/hide based on the selected glow type.
+- **Cast Bar Spark:** Player cast bar spark now uses `Pixel:Snap` for sub-pixel–accurate positioning.
+- **Unit Health:**: Unit Health now has a checkbox to enable gradient colors instead of colors based on value.
+- **UI Changes:** Various tweaks to UI elements and options. Bugfixes too.
 
 ### Fixed
-- **MoveMore Plugin:** Fixed a bug where MoveMore incorrectly attempted to make protected Blizzard UI elements draggable (e.g., the Raid Browser).
-- **Keybinds:** Fixed an issue where keybinds were not being displayed correctly or disablable.
+- **Cast Bar Preview (Sticky):** Fixed Target/Focus cast bar previews persisting on screen after exiting Edit Mode by clearing preview state before hiding and adding combat-exit guards. Hopefully combat stickiness too.
+- **Cast Bar Preview (Ticks):** Fixed channel tick marks failing to render in the configuration preview.
+- **Healer Aura Filtering:** Fixed healer-tracked auras not being excluded from the general Buffs frame on group frames when `HealerAuras` is enabled.Icon Canvas.
+- **CDM:**: Dropping items/spells on the Cooldown Manager frames should be a bit less buggy now.
+
+### Removed
+- **Menu Items (CombatTimer & Performance):** Removed standalone `CombatTimer.lua` and `Performance.lua` from Menu Items—functionality replaced by the Datatexts plugin.
+
+### Thanks for your support again! Next update will be focussed on fixing bugs. Hope everyone had a good easter. (Go Echo!)
 
 ## [1.0.0] - 2026-03-10
 ### Added

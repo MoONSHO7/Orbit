@@ -3,10 +3,9 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
-local LCG = LibStub("LibCustomGlow-1.0", true)
+local GC = Orbit.Engine.GlowController
+local GU = Orbit.Engine.GlowUtils
 local ACTIVE_GLOW_KEY = "orbitActive"
-local GlowType = Constants.PandemicGlow.Type
-local GlowConfig = Constants.PandemicGlow
 
 -- [ CONSTANTS ] ---------------------------------------------------------------
 local TRACKED_INDEX = Constants.Tracked.SystemIndex.Tracked
@@ -35,39 +34,14 @@ local Updater = Orbit.TrackedUpdater
 
 -- [ ACTIVE GLOW ] -------------------------------------------------------------
 function Updater:StartActiveGlow(plugin, icon)
-    if not LCG then return end
     local systemIndex = icon.systemIndex or TRACKED_INDEX
-    local glowTypeId = plugin:GetSetting(systemIndex, "ActiveGlowType")
-    if glowTypeId == nil then glowTypeId = GlowType.None end
-    if glowTypeId == GlowType.None then return end
-    local color = plugin:GetSetting(systemIndex, "ActiveGlowColor") or { r = 0.3, g = 0.8, b = 1, a = 1 }
-    local ct = { color.r, color.g, color.b, color.a or 1 }
-    if glowTypeId == GlowType.Pixel then
-        local cfg = GlowConfig.Pixel
-        LCG.PixelGlow_Start(icon, ct, cfg.Lines, cfg.Frequency, cfg.Length, cfg.Thickness, cfg.XOffset, cfg.YOffset, cfg.Border, ACTIVE_GLOW_KEY)
-    elseif glowTypeId == GlowType.Proc then
-        local cfg = GlowConfig.Proc
-        LCG.ProcGlow_Start(icon, { color = ct, startAnim = false, duration = cfg.Duration, key = ACTIVE_GLOW_KEY })
-    elseif glowTypeId == GlowType.Autocast then
-        local cfg = GlowConfig.Autocast
-        LCG.AutoCastGlow_Start(icon, ct, cfg.Particles, cfg.Frequency, cfg.Scale, cfg.XOffset, cfg.YOffset, ACTIVE_GLOW_KEY)
-    elseif glowTypeId == GlowType.Button then
-        local cfg = GlowConfig.Button
-        LCG.ButtonGlow_Start(icon, ct, cfg.Frequency, cfg.FrameLevel)
-    end
-    icon._activeGlowing = true
-    icon._activeGlowType = glowTypeId
+    local typeName, options = GU:BuildOptions(plugin, systemIndex, "ActiveGlow", { r = 0.3, g = 0.8, b = 1, a = 1 }, ACTIVE_GLOW_KEY)
+    if not typeName or not options then return end
+    GC:Show(icon, ACTIVE_GLOW_KEY, typeName, options)
 end
 
 function Updater:StopActiveGlow(icon)
-    if not LCG or not icon._activeGlowing then return end
-    local t = icon._activeGlowType
-    if t == GlowType.Pixel then LCG.PixelGlow_Stop(icon, ACTIVE_GLOW_KEY)
-    elseif t == GlowType.Proc then LCG.ProcGlow_Stop(icon, ACTIVE_GLOW_KEY)
-    elseif t == GlowType.Autocast then LCG.AutoCastGlow_Stop(icon, ACTIVE_GLOW_KEY)
-    elseif t == GlowType.Button then LCG.ButtonGlow_Stop(icon) end
-    icon._activeGlowing = false
-    icon._activeGlowType = nil
+    GC:Hide(icon, ACTIVE_GLOW_KEY)
 end
 
 -- [ ICON UPDATE ] -------------------------------------------------------------
@@ -105,14 +79,11 @@ function Updater:UpdateTrackedIcon(plugin, icon)
             local onGCD = cdInfo and cdInfo.isOnGCD
             local chargeInfo = icon.isChargeSpell and C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
             if chargeInfo then
-                -- TODO(API): maxCharges is non-secret after hotfix; simplify issecretvalue guard
-                if not issecretvalue(chargeInfo.currentCharges) then
-                    icon._trackedCharges = chargeInfo.currentCharges
-                    icon._knownRechargeDuration = chargeInfo.cooldownDuration
-                    icon._rechargeEndsAt = (chargeInfo.cooldownStartTime > 0 and chargeInfo.cooldownDuration > 0)
-                            and (chargeInfo.cooldownStartTime + chargeInfo.cooldownDuration)
-                        or nil
-                end
+                icon._trackedCharges = chargeInfo.currentCharges
+                icon._knownRechargeDuration = chargeInfo.cooldownDuration
+                icon._rechargeEndsAt = (chargeInfo.cooldownStartTime > 0 and chargeInfo.cooldownDuration > 0)
+                        and (chargeInfo.cooldownStartTime + chargeInfo.cooldownDuration)
+                    or nil
                 CooldownUtils:TrackChargeCompletion(icon)
                 local chargeDurObj = C_Spell.GetSpellChargeDuration and C_Spell.GetSpellChargeDuration(activeId)
                 if chargeDurObj then
@@ -130,7 +101,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     local castTime = icon._activeGlowExpiry - icon.activeDuration
                     -- Legacy :SetCooldown required: ActiveCooldown uses computed startTime/duration, no DurationObject API exists
                     icon.ActiveCooldown:SetCooldown(castTime, icon.activeDuration)
-                    if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
+                    self:StartActiveGlow(plugin, icon)
                 else
                     icon.ActiveCooldown:Clear()
                     if icon._activeGlowing then self:StopActiveGlow(icon) end
@@ -147,8 +118,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     local desatPct = onGCD and 0 or durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE)
                     icon.Icon:SetDesaturation(desatPct)
                     if icon.cdAlphaCurve then icon.Cooldown:SetAlpha(durObj:EvaluateRemainingPercent(icon.cdAlphaCurve)) end
-                    -- TODO(API): replace fallback with cdInfo.isActive once hotfix is live
-                    local onRealCD = cdInfo and (cdInfo.isActive ~= nil and cdInfo.isActive or (issecretvalue(cdInfo.startTime) or cdInfo.startTime > 0))
+                    local onRealCD = cdInfo and cdInfo.isActive
                     if icon.activeDuration and onRealCD and not onGCD and icon._activeGlowExpiry then
                         local castTime = icon._activeGlowExpiry - icon.activeDuration
                         icon.ActiveCooldown:SetCooldown(castTime, icon.activeDuration)
@@ -157,7 +127,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     end
                     if LCG and icon._activeGlowExpiry then
                         if GetTime() < icon._activeGlowExpiry then
-                            if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
+                            self:StartActiveGlow(plugin, icon)
                         else
                             self:StopActiveGlow(icon)
                             icon._activeGlowExpiry = nil
@@ -203,7 +173,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                             icon.Cooldown:SetAlpha(0)
                             -- Legacy :SetCooldown required: ActiveCooldown uses item start + activeDuration, no DurationObject API
                             icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
-                            if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
+                            self:StartActiveGlow(plugin, icon)
                         else
                             icon.Icon:SetDesaturation(1)
                             icon.Cooldown:SetAlpha(1)
@@ -243,7 +213,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                             icon.Cooldown:SetAlpha(0)
                             -- Legacy :SetCooldown required: ActiveCooldown uses item start + activeDuration, no DurationObject API
                             icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
-                            if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
+                            self:StartActiveGlow(plugin, icon)
                         else
                             icon.Icon:SetDesaturation(1)
                             icon.Cooldown:SetAlpha(1)
@@ -350,9 +320,9 @@ function Updater:StartTrackedUpdateTicker(plugin)
                         icon.ActiveCooldown:Clear()
                     end
                     if isActive then
-                        if not icon._activeGlowing then Updater:StartActiveGlow(plugin, icon) end
+                        self:StartActiveGlow(plugin, icon)
                     else
-                        if icon._activeGlowing then Updater:StopActiveGlow(icon) end
+                        if GC:IsActive(icon, ACTIVE_GLOW_KEY) then Updater:StopActiveGlow(icon) end
                         if icon._activeGlowExpiry then
                             icon._activeGlowExpiry = nil
                             icon.ActiveCooldown:Clear()

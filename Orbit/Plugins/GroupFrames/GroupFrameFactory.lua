@@ -26,7 +26,7 @@ function Orbit.GroupFrameFactoryMixin:CreatePowerBar(parent, unit)
     power.bg = power:CreateTexture(nil, "BACKGROUND")
     power.bg:SetAllPoints()
     local globalSettings = Orbit.db.GlobalSettings or {}
-    Orbit.Skin:ApplyGradientBackground(power, globalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
+    Orbit.Skin:ApplyGradientBackground(power, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
     return power
 end
 

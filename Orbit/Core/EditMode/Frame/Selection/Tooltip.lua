@@ -33,7 +33,7 @@ local function EnsureTooltip(self)
     end
 
     local tooltip = CreateFrame("Frame", "OrbitPositionTooltip", UIParent, "BackdropTemplate")
-    tooltip:SetFrameStrata("TOOLTIP")
+    tooltip:SetFrameStrata(Orbit.Constants.Strata.Topmost)
     tooltip:SetSize(C.Selection.PositionTooltip.Width, C.Selection.PositionTooltip.Height)
     tooltip:SetBackdrop({
         bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -189,8 +189,7 @@ function Tooltip:ShowPosition(frame, Selection, noFade, anchorLabel)
 
     local screenWidth = GetScreenWidth()
     local cursorX = GetCursorPosition() / uiScale
-    local anchor = (cursorX + tooltip:GetWidth() + 30 > screenWidth) and "LEFT" or "RIGHT"
-    PositionAtCursor(tooltip, anchor)
+    PositionAtCursor(tooltip, nil)
 
     ShowAndFade(self, noFade)
 end

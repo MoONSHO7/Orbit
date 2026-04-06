@@ -80,27 +80,15 @@ end
 
 -- [ ICON DIMENSION CALCULATOR ] -----------------------------------------------
 function CooldownUtils:CalculateIconDimensions(plugin, systemIndex, overrides)
-    local iconSize = (overrides and overrides.size) or plugin:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
-    local baseSize = Constants.Skin.DefaultIconSize or 40
-    local scaledSize = baseSize * (iconSize / 100)
+    local iconSize = (overrides and overrides.size) or plugin:GetSetting(systemIndex, "IconSize") or Constants.Skin.DefaultIconSize
     local aspectRatio = (overrides and overrides.aspectRatio) or plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
-    local w, h = scaledSize, scaledSize
-
-    if aspectRatio == "16:9" then
-        h = scaledSize * (9 / 16)
-    elseif aspectRatio == "4:3" then
-        h = scaledSize * (3 / 4)
-    elseif aspectRatio == "21:9" then
-        h = scaledSize * (9 / 21)
-    end
-
+    local w, h = iconSize, iconSize
+    if aspectRatio == "16:9" then h = iconSize * (9 / 16)
+    elseif aspectRatio == "4:3" then h = iconSize * (3 / 4)
+    elseif aspectRatio == "21:9" then h = iconSize * (9 / 21) end
     local Pixel = OrbitEngine.Pixel
-    if Pixel then
-        w = Pixel:Snap(w)
-        h = Pixel:Snap(h)
-        scaledSize = Pixel:Snap(scaledSize)
-    end
-    return w, h, scaledSize
+    if Pixel then w = Pixel:Snap(w); h = Pixel:Snap(h); iconSize = Pixel:Snap(iconSize) end
+    return w, h, iconSize
 end
 
 -- [ SIMPLE TEXT APPLIER ] -----------------------------------------------------

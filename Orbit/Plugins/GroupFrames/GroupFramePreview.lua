@@ -2,7 +2,7 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
-local LCG = LibStub("LibCustomGlow-1.0")
+local GC = Orbit.Engine.GlowController
 
 Orbit.GroupFramePreviewMixin = {}
 
@@ -332,9 +332,15 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
             end
 
             -- Selection/Aggro highlights
-            if i == 2 then Orbit.Skin:ApplyHighlightBorder(frame, "_selectionBorderOverlay", { r = 1, g = 1, b = 1, a = 0.5 })
+            if i == 2 then 
+                local rawSelection = self:GetTierSetting("SelectionColor") or { r = 0.8, g = 0.9, b = 1.0, a = 1 }
+                local selColor = (Orbit.Engine.ColorCurve and Orbit.Engine.ColorCurve:GetFirstColorFromCurve(rawSelection) or rawSelection)
+                Orbit.Skin:ApplyHighlightBorder(frame, "_selectionBorderOverlay", selColor, Orbit.Constants.Levels.Border + 1, "ADD")
             else Orbit.Skin:ClearHighlightBorder(frame, "_selectionBorderOverlay") end
-            if i == 2 then Orbit.Skin:ApplyHighlightBorder(frame, "_aggroHighlightOverlay", { r = 1.0, g = 0.6, b = 0.0, a = 0.6 })
+            if i == 2 then 
+                local rawAggro = self:GetTierSetting("AggroColor") or { r = 1.0, g = 0.0, b = 0.0, a = 1 }
+                local aggroColor = (Orbit.Engine.ColorCurve and Orbit.Engine.ColorCurve:GetFirstColorFromCurve(rawAggro) or rawAggro)
+                Orbit.Skin:ApplyHighlightBorder(frame, "_aggroHighlightOverlay", aggroColor, Orbit.Constants.Levels.Border + 2)
             else Orbit.Skin:ClearHighlightBorder(frame, "_aggroHighlightOverlay") end
 
             -- Canvas Mode icons
@@ -355,7 +361,7 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
             if isCanvasMode then self:ShowPreviewAuras(frame, i)
             else Orbit.AuraPreview:HideFrameAuras(frame) end
 
-            LCG.PixelGlow_Stop(frame, "preview")
+            GC:Hide(frame, "preview")
         end
     end
 end
@@ -416,7 +422,7 @@ function Orbit.GroupFramePreviewMixin:HidePreview()
                 if paa._previewIcons then for _, sub in ipairs(paa._previewIcons) do sub:Hide() end end
                 paa:Hide()
             end
-            LCG.PixelGlow_Stop(frame, "preview")
+            GC:Hide(frame, "preview")
             for _, key in ipairs(HealerReg:ActiveKeys()) do
                 if frame[key] then frame[key]:Hide() end
             end
@@ -512,6 +518,9 @@ function Orbit.GroupFramePreviewMixin:StartPreviewAnimation()
                 thickness = self:GetTierSetting("DispelThickness") or 2,
                 frequency = self:GetTierSetting("DispelFrequency") or 0.25,
                 numLines = self:GetTierSetting("DispelNumLines") or 8,
+                length = self:GetTierSetting("DispelLength") or 15,
+                border = self:GetTierSetting("DispelBorder") ~= false,
+                glowType = self:GetTierSetting("DispelGlowType") or Orbit.Constants.Glow.Type.Pixel,
                 colors = {
                     Magic = self:GetTierSetting("DispelColorMagic") or { r = 0.2, g = 0.6, b = 1.0, a = 1 },
                     Curse = self:GetTierSetting("DispelColorCurse") or { r = 0.6, g = 0.0, b = 1.0, a = 1 },

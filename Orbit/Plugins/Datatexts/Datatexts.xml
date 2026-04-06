@@ -1,0 +1,14 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <!-- Plugin entry point (creates namespace) -->
+    <Script file="Datatexts.lua"/>
+    <!-- Utilities -->
+    <Script file="Util\Formatting.lua"/>
+    <Script file="Util\Graph.lua"/>
+    <Script file="Util\Menu.lua"/>
+    <!-- Core infrastructure -->
+    <Script file="BaseDatatext.lua"/>
+    <Script file="DatatextManager.lua"/>
+    <Script file="DrawerUI.lua"/>
+    <!-- Datatexts -->
+    <Include file="Elements\Elements.xml"/>
+</Ui>

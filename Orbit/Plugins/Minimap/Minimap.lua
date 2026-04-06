@@ -130,7 +130,7 @@ function Plugin:OnLoad()
     -- (MEDIUM) and any external addon overlay that might sit over the minimap.
     self.frame.Overlay = CreateFrame("Frame", nil, self.frame)
     self.frame.Overlay:SetAllPoints()
-    self.frame.Overlay:SetFrameStrata("HIGH")
+    self.frame.Overlay:SetFrameStrata(Orbit.Constants.Strata.Overlay)
     self.frame.Overlay:SetFrameLevel(self.frame:GetFrameLevel() + 10)
     -- MiniMapMailFrameMixin and MiniMapCraftingOrderFrameMixin call self:GetParent():Layout()
     -- after UPDATE_PENDING_MAIL / CRAFTINGORDERS_UPDATED events. Since we reparent those
@@ -150,7 +150,7 @@ function Plugin:OnLoad()
     -- underneath, so addon overlays can still receive and dismiss themselves.
     local clickCapture = CreateFrame("Button", "OrbitMinimapClickCapture", self.frame)
     clickCapture:SetAllPoints()
-    clickCapture:SetFrameStrata("MEDIUM")
+    clickCapture:SetFrameStrata(Orbit.Constants.Strata.HUD)
     clickCapture:SetFrameLevel(self.frame:GetFrameLevel() + 50)
     clickCapture:EnableMouse(true)
     clickCapture:RegisterForClicks("AnyUp")

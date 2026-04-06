@@ -178,7 +178,7 @@ function Icons:ApplyCustom(icon, settings)
                 r.flash.Flipbook:SetSize(newWidth * Constants.IconScale.FlashScale, newHeight * Constants.IconScale.FlashScale)
             end
         end
-        if r.pandemic and not icon.orbitSuppressPandemic then
+        if r.pandemic and not (icon._orbitGlow and icon._orbitGlow.suppressPandemic) then
             r.pandemic:ClearAllPoints()
             r.pandemic:SetPoint("CENTER")
             r.pandemic:SetSize(newWidth + Constants.IconScale.PandemicPadding, newHeight + Constants.IconScale.PandemicPadding)

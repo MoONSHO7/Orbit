@@ -104,9 +104,9 @@ function CDM:AddSettings(dialog, systemFrame)
                 default = "1:1",
             })
             table.insert(schema.controls, {
-                type = "slider", key = "IconSize", label = "Scale",
-                min = 50, max = 200, step = 1,
-                formatter = function(v) return v .. "%" end,
+                type = "slider", key = "IconSize", label = "Icon Size",
+                min = 20, max = 80, step = 1,
+                formatter = function(v) return v .. "px" end,
                 default = Constants.Cooldown.DefaultIconSize,
                 onChange = function(val)
                     self:SetSetting(systemIndex, "IconSize", val)
@@ -126,20 +126,16 @@ function CDM:AddSettings(dialog, systemFrame)
                 if self.UpdateAssistedHighlights then self:UpdateAssistedHighlights() end
             end,
         })
-        local GlowType = Constants.PandemicGlow.Type
-        local GLOW_OPTIONS = {
-            { text = "None", value = GlowType.None }, { text = "Pixel Glow", value = GlowType.Pixel },
-            { text = "Proc Glow", value = GlowType.Proc }, { text = "Autocast Shine", value = GlowType.Autocast },
-            { text = "Button Glow", value = GlowType.Button }, { text = "Blizzard", value = GlowType.Blizzard },
-        }
-        table.insert(schema.controls, {
-            type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
-            options = GLOW_OPTIONS, default = Constants.PandemicGlow.DefaultType,
-            onChange = function(val) self:SetSetting(systemIndex, "PandemicGlowType", val); self:MarkPandemicDirty() end,
+        SB:AddGlowSettings(self, schema, systemIndex, dialog, systemFrame, {
+            prefix = "PandemicGlow",
+            label = "Pandemic Glow",
+            default = Constants.Glow.DefaultType,
+            onUpdate = function() self:MarkPandemicDirty() end
         })
-        table.insert(schema.controls, {
-            type = "dropdown", key = "ProcGlowType", label = "Proc Glow",
-            options = GLOW_OPTIONS, default = Constants.PandemicGlow.DefaultType,
+        SB:AddGlowSettings(self, schema, systemIndex, dialog, systemFrame, {
+            prefix = "ProcGlow",
+            label = "Proc Glow",
+            default = Constants.Glow.DefaultType
         })
     elseif currentTab == "Colors" then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
@@ -151,13 +147,6 @@ function CDM:AddSettings(dialog, systemFrame)
             key = "CooldownSwipeColorCurve", label = "Cooldown Swipe",
             default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
             singleColor = true,
-        })
-        SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
-            key = "PandemicGlowColor", label = "Pandemic Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },
-            onChange = function() self:MarkPandemicDirty() end,
-        })
-        SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
-            key = "ProcGlowColor", label = "Proc Glow Color", default = { r = 1, g = 0.8, b = 0, a = 1 },
         })
         if systemIndex ~= Constants.Cooldown.SystemIndex.BuffIcon and systemIndex ~= Constants.Cooldown.SystemIndex.BuffBar then
             SB:AddColorSettings(self, schema, systemIndex, systemFrame, {

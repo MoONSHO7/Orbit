@@ -255,7 +255,7 @@ local function MakeBorderEdge(parent, horiz, p1, r1, p2, r2)
 end
 
 local tip = CreateFrame("Frame", nil, UIParent)
-tip:SetFrameStrata("TOOLTIP")
+tip:SetFrameStrata(Orbit.Constants.Strata.Topmost)
 tip:SetFrameLevel(999)
 tip:Hide()
 
@@ -345,7 +345,7 @@ local activePulses = {}
 
 local function CreatePulse()
     local f = CreateFrame("Frame", nil, UIParent)
-    f:SetFrameStrata("TOOLTIP")
+    f:SetFrameStrata(Orbit.Constants.Strata.Topmost)
     f:SetFrameLevel(PULSE_LEVEL)
     f.tex = f:CreateTexture(nil, "OVERLAY")
     f.tex:SetAllPoints()

@@ -139,7 +139,7 @@ function Plugin:OnLoad()
         preview.previewScale = 1
         preview.components = {}
 
-        local bgColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(Orbit.db.GlobalSettings.BackdropColourCurve) or Orbit.Constants.Colors.Background
+        local bgColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(Orbit.db.GlobalSettings.UnitFrameBackdropColourCurve) or Orbit.Constants.Colors.Background
 
         local isContinuous = Plugin.continuousResource ~= nil
         if isContinuous then
@@ -497,7 +497,7 @@ function Plugin:ApplySettings()
     if Frame.StatusBarContainer and Frame.StatusBarContainer:IsShown() then
         Orbit.Skin:SkinStatusBar(Frame.StatusBar, texture, nil, true)
         Frame:SetBorder(borderSize)
-        Orbit.Skin:ApplyGradientBackground(Frame, Orbit.db.GlobalSettings.BackdropColourCurve, Orbit.Constants.Colors.Background)
+        Orbit.Skin:ApplyGradientBackground(Frame, Orbit.db.GlobalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
     end
 
     local tickSize = self:GetSetting(SYSTEM_INDEX, "TickSize") or TICK_SIZE_DEFAULT

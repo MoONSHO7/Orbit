@@ -10,7 +10,7 @@ suppresses native blizzard action bars and reparents their buttons into orbit co
 
 | file | responsibility |
 |---|---|
-| ActionBars.lua | main plugin. bar creation, button reparenting, visibility drivers, ooc fade, grid layout, spell state coloring (range/usable/mana). |
+| ActionBars.lua | main plugin. bar creation, button reparenting, visibility drivers, ooc fade, grid layout, spell state coloring (range/usable/mana), proc glow hooks (via GlowController, triggered by ActionButtonSpellAlertManager). |
 | ActionBarsContainer.lua | individual bar container frame. manages button grid within a single bar. |
 | ActionBarsPreview.lua | canvas mode preview generation. |
 | ActionBarsText.lua | text overlay settings (keybind, macro name, count) and canvas mode text styling. |

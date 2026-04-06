@@ -111,7 +111,7 @@ function ClassBar:SkinStatusBar(container, bar, settings)
     container.bg = container.orbitBg
     local globalSettings = Orbit.db.GlobalSettings or {}
     local fallback = settings.backColor or Orbit.Constants.Colors.Background
-    Skin:ApplyGradientBackground(container, globalSettings.BackdropColourCurve, fallback)
+    Skin:ApplyGradientBackground(container, globalSettings.UnitFrameBackdropColourCurve, fallback)
 
     -- Ensure Bar Fills Container (No Inset)
     bar:ClearAllPoints()

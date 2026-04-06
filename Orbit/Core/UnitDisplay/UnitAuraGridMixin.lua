@@ -9,18 +9,18 @@ Orbit.UnitAuraGridMixin = {}
 local Mixin = Orbit.UnitAuraGridMixin
 
 Mixin.sharedDebuffDefaults = {
-    IconsPerRow = 8, MaxRows = 2, Spacing = 2, Width = 200, Scale = 100,
-    PandemicGlowType = Constants.PandemicGlow.DefaultType,
-    PandemicGlowColor = Constants.PandemicGlow.DefaultColor,
+    IconsPerRow = 8, MaxRows = 2, Spacing = 2, Width = 200, IconSize = 34,
+    PandemicGlowType = Constants.Glow.Type.Pixel,
+    PandemicGlowColor = Constants.Glow.DefaultColor,
     PandemicGlowColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
 }
 
 Mixin.sharedBuffDefaults = {
-    IconsPerRow = 8, MaxRows = 2, Spacing = 2, Width = 200, Scale = 100,
+    IconsPerRow = 8, MaxRows = 2, Spacing = 2, Width = 200, IconSize = 34,
 }
 
 Mixin.playerBuffDefaults = {
-    IconLimit = 20, Rows = 1, Spacing = 2, Scale = 100, aspectRatio = "1:1",
+    IconLimit = 20, Rows = 1, Spacing = 2, IconSize = 34, aspectRatio = "1:1",
     ComponentPositions = {
         Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0 },
         Stacks = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 1 },
@@ -28,14 +28,14 @@ Mixin.playerBuffDefaults = {
 }
 
 Mixin.playerDebuffDefaults = {
-    IconLimit = 16, Rows = 1, Spacing = 2, Scale = 100, aspectRatio = "1:1",
+    IconLimit = 16, Rows = 1, Spacing = 2, IconSize = 34, aspectRatio = "1:1",
     ComponentPositions = {
         Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0 },
         Stacks = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 1 },
     },
 }
 
-local BASE_ICON_SIZE = 32
+local BASE_ICON_SIZE = 34
 local ASPECT_RATIOS = {
     { text = "Square (1:1)", value = "1:1" }, { text = "Landscape (16:9)", value = "16:9" },
     { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
@@ -177,7 +177,7 @@ function Mixin:AddAuraGridSettings(dialog, systemFrame)
         if currentTab == "Layout" then
             self:_addLayoutControls(schema)
         elseif currentTab == "Glows" then
-            self:_addGlowControls(schema, SB, systemFrame)
+            self:_addGlowControls(schema, SB, dialog, systemFrame)
         end
     else
         self:_addLayoutControls(schema)
@@ -219,10 +219,10 @@ function Mixin:_addLayoutControls(schema)
             })
         end
         table.insert(schema.controls, {
-            type = "slider", key = "Scale", label = "Scale",
-            min = 50, max = 200, step = 1, default = 100,
-            formatter = function(v) return v .. "%" end,
-            onChange = function(val) self:SetSetting(1, "Scale", val); self:ApplySettings() end,
+            type = "slider", key = "IconSize", label = "Icon Size",
+            min = 20, max = 80, step = 1, default = 34,
+            formatter = function(v) return v .. "px" end,
+            onChange = function(val) self:SetSetting(1, "IconSize", val); self:ApplySettings() end,
         })
     else
         table.insert(schema.controls, {
@@ -237,8 +237,10 @@ function Mixin:_addLayoutControls(schema)
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(self._agFrame) ~= nil
         if not isAnchored then
             table.insert(schema.controls, {
-                type = "slider", key = "Scale", label = "Scale",
-                min = 50, max = 200, step = 1, default = 100,
+                type = "slider", key = "IconSize", label = "Icon Size (Unanchored)",
+                min = 20, max = 80, step = 1, default = 34,
+                formatter = function(v) return v .. "px" end,
+                onChange = function(val) self:SetSetting(1, "IconSize", val); self:ApplySettings() end,
             })
         end
     end
@@ -250,24 +252,12 @@ function Mixin:_addLayoutControls(schema)
 
 end
 
-function Mixin:_addGlowControls(schema, SB, systemFrame)
-    local GlowType = Constants.PandemicGlow.Type
-    table.insert(schema.controls, {
-        type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow",
-        options = {
-            { text = "None", value = GlowType.None },
-            { text = "Pixel Glow", value = GlowType.Pixel },
-            { text = "Proc Glow", value = GlowType.Proc },
-            { text = "Autocast Shine", value = GlowType.Autocast },
-            { text = "Button Glow", value = GlowType.Button },
-            { text = "Blizzard", value = GlowType.Blizzard },
-        },
-        default = Constants.PandemicGlow.DefaultType,
-    })
-    SB:AddColorCurveSettings(self, schema, 1, systemFrame, {
-        key = "PandemicGlowColorCurve", label = "Pandemic Colour",
-        default = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
-        singleColor = true,
+function Mixin:_addGlowControls(schema, SB, dialog, systemFrame)
+    SB:AddGlowSettings(self, schema, 1, dialog, systemFrame, {
+        prefix = "PandemicGlow",
+        label = "Pandemic Glow",
+        default = Constants.Glow.Type.Pixel,
+        onUpdate = function() self:ApplySettings() end
     })
 end
 
@@ -475,7 +465,7 @@ function Mixin:_resolveGrid()
         local rows = self:GetSetting(1, "Rows") or 1
         iconsPerRow = math.max(1, math.ceil(iconLimit / rows))
         maxAuras = iconLimit
-        iconW = BASE_ICON_SIZE
+        iconW = self:GetSetting(1, "IconSize") or Orbit.Constants.Cooldown.DefaultIconSize or 34
         local ar = self:GetSetting(1, "aspectRatio") or "1:1"
         if ar == "16:9" then iconH = math.floor(iconW * 9 / 16)
         elseif ar == "4:3" then iconH = math.floor(iconW * 3 / 4)
@@ -485,8 +475,13 @@ function Mixin:_resolveGrid()
         iconsPerRow = self:GetSetting(1, "IconsPerRow") or 5
         local maxRows = self:GetSetting(1, "MaxRows") or 2
         maxAuras = iconsPerRow * maxRows
-        local maxWidth = self._agFrame:GetWidth()
-        iconH = CalculateIconSize(maxWidth, iconsPerRow, spacing)
+        local isAnchored = OrbitEngine.Frame:GetAnchorParent(self._agFrame) ~= nil
+        if not isAnchored then
+            iconH = self:GetSetting(1, "IconSize") or Orbit.Constants.Cooldown.DefaultIconSize or 34
+        else
+            local maxWidth = self._agFrame:GetWidth()
+            iconH = CalculateIconSize(maxWidth, iconsPerRow, spacing)
+        end
         iconW = iconH
     end
     return maxAuras, iconsPerRow, spacing, iconH, iconW
@@ -524,8 +519,14 @@ function Mixin:UpdateAuras()
     local skinSettings = { zoom = 0, borderStyle = 1, borderSize = skinBorderSize, showTimer = cfg.showTimer, iconBorder = isPlayerGrid or nil, padding = spacing, aspectRatio = self:GetSetting(1, "aspectRatio") or "1:1" }
     if cfg.enablePandemic then
         skinSettings.enablePandemic = true
-        skinSettings.pandemicGlowType = self:GetSetting(1, "PandemicGlowType") or Constants.PandemicGlow.DefaultType
-        skinSettings.pandemicGlowColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "PandemicGlowColorCurve")) or self:GetSetting(1, "PandemicGlowColor") or Constants.PandemicGlow.DefaultColor
+        skinSettings.pandemicGlowType = self:GetSetting(1, "PandemicGlowType") or Constants.Glow.Type.Pixel
+        skinSettings.pandemicColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "PandemicGlowColorCurve")) or self:GetSetting(1, "PandemicGlowColor") or Constants.Glow.DefaultColor
+        -- Function-based lookup so BuildOptionsFromLookup reads all sub-settings (PixelLines, Frequency, etc.)
+        local plugin = self
+        skinSettings.overrides = setmetatable({
+            PandemicGlowType = skinSettings.pandemicGlowType,
+            PandemicGlowColor = skinSettings.pandemicColor,
+        }, { __index = function(_, k) return plugin:GetSetting(1, k) end })
     end
 
     local componentPositions = self:GetSetting(1, "ComponentPositions")
@@ -838,7 +839,7 @@ function Mixin:_syncCancelOverlays(frame, auras, auraFilter, icons)
             btn:SetMouseMotionEnabled(false)
             btn:SetPassThroughButtons("LeftButton")
             btn:SetAlpha(0)
-            btn:SetFrameStrata("HIGH")
+            btn:SetFrameStrata(Orbit.Constants.Strata.Overlay)
             frame._cancelButtons[i] = btn
         end
         local idx = indexMap[aura.auraInstanceID]
@@ -997,20 +998,16 @@ function Mixin:ApplySettings()
     local _, iconsPerRow, spacing, iconH, iconW = self:_resolveGrid()
     Frame.iconSize = iconH
     local rows
+    Frame:SetScale(1)
     if cfg.showIconLimit then
-        local scale = self:GetSetting(1, "Scale") or 100
-        Frame:SetScale(scale / 100)
         rows = self:GetSetting(1, "Rows") or 1
         local width = (iconsPerRow * iconW) + ((iconsPerRow - 1) * spacing)
         Frame:SetWidth(math.max(1, width))
     elseif not isAnchored then
-        local scale = self:GetSetting(1, "Scale") or 100
-        Frame:SetScale(scale / 100)
         local width = self:GetSetting(1, "Width")
         if width then Frame:SetWidth(width) end
         rows = self:GetSetting(1, "MaxRows") or 2
     else
-        Frame:SetScale(1)
         local parent = OrbitEngine.Frame:GetAnchorParent(Frame)
         if parent then Frame:SetWidth(parent:GetWidth()) end
         rows = self:GetSetting(1, "MaxRows") or 2

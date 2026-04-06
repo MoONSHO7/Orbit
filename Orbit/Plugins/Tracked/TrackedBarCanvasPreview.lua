@@ -20,7 +20,7 @@ local function GetBarColor(plugin, sysIndex)
 end
 
 local function GetBgColor()
-    local gc = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BackdropColourCurve
+    local gc = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UnitFrameBackdropColourCurve
     local c = gc and OrbitEngine.ColorCurve:GetFirstColorFromCurve(gc)
     return c or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }
 end
@@ -57,7 +57,7 @@ function Preview:Setup(plugin, frame, sysIndex)
         -- Background
         preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
         preview.bg:SetAllPoints()
-        Orbit.Skin:ApplyGradientBackground(preview, Orbit.db.GlobalSettings.BackdropColourCurve, bgColor)
+        Orbit.Skin:ApplyGradientBackground(preview, Orbit.db.GlobalSettings.UnitFrameBackdropColourCurve, bgColor)
 
         -- Single continuous StatusBar
         local bar = CreateFrame("StatusBar", nil, preview)

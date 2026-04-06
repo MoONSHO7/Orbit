@@ -399,7 +399,7 @@ function Layout:InitializeWidgetTypes()
         if type(options) == "function" then
             options = options()
         end
-        return self:CreateDropdown(container, def.label, options, getValue(), callback, def.valueCheckbox)
+        return self:CreateDropdown(container, def.label, options, getValue(), callback, def.valueCheckbox, def.valueColor)
     end)
 
     self:RegisterWidgetType("color", function(container, def, getValue, callback)
@@ -409,7 +409,7 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("colorcurve", function(container, def, getValue, callback)
-        local widget = self:CreateColorCurvePicker(container, def.label, getValue(), callback)
+        local widget = self:CreateColorCurvePicker(container, def.label, getValue(), callback, def.valueCheckbox)
         if widget then
             widget.singleColorMode = def.singleColor
             widget.hasDesaturation = def.hasDesaturation

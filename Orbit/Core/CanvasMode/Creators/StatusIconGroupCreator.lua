@@ -24,6 +24,10 @@ local CYCLING_ATLASES = {
         { atlas = "UI-LFG-RoleIcon-Healer" },
         { atlas = "UI-LFG-RoleIcon-DPS" },
     },
+    PvpIcon = {
+        { atlas = "AllianceAssaultsMapBanner" },
+        { atlas = "HordeAssaultsMapBanner" },
+    },
     -- Expansion landing page button — cycles through all known expansion icons
     Missions = {
         { atlas = "GarrLanding-MinimapIcon-Horde-Up" },           -- WoD (Horde)
@@ -42,16 +46,6 @@ local ROUND_ROLE_ATLASES = {
     { atlas = "icons_64x64_damage" },
 }
 
-local PVP_ICON_ATLASES = {
-    default = {
-        { atlas = "QuestPortraitIcon-Alliance" },
-        { atlas = "QuestPortraitIcon-Horde" },
-    },
-    crest = {
-        { atlas = "glues-characterSelect-icon-faction-alliance-selected" },
-        { atlas = "glues-characterSelect-icon-faction-horde-selected" },
-    },
-}
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
 
@@ -72,10 +66,7 @@ local function Create(container, preview, key, source, data)
     local overrides = data and data.overrides
 
     -- Resolve atlas set from overrides for keys not in CYCLING_ATLASES or with style variants
-    if key == "PvpIcon" then
-        local style = (overrides and overrides.PvpIconStyle) or "default"
-        atlases = PVP_ICON_ATLASES[style] or PVP_ICON_ATLASES.default
-    elseif key == "RoleIcon" then
+    if key == "RoleIcon" then
         if overrides and overrides.RoleIconStyle == "round" then atlases = ROUND_ROLE_ATLASES end
         if overrides and overrides.HideDPS then
             local dpsAtlas = (atlases == ROUND_ROLE_ATLASES) and "icons_64x64_damage" or "UI-LFG-RoleIcon-DPS"
@@ -135,6 +126,7 @@ local function Create(container, preview, key, source, data)
         size = size * scale
     end
     container:SetSize(size, size)
+    container.skipSourceSizeRestore = true
 
     return texA
 end

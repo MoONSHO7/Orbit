@@ -16,13 +16,7 @@ local DELAYED_REFRESH = 0.1
 local PLAYER_CLASS = select(2, UnitClass("player"))
 local CHAR_KEY = UnitName("player") .. "-" .. GetRealmName()
 
--- TODO(REMOVE): Only used by _MigrateLegacySpecProfiles
--- Spec names that are shared across classes (used for legacy migration only)
-local DUPLICATE_SPEC_NAMES = {
-    ["Protection"] = true,
-    ["Restoration"] = true,
-    ["Holy"] = true,
-}
+
 
 -- [ STATE ]-----------------------------------------------------------------------------------------
 
@@ -66,13 +60,7 @@ function Orbit.Profile:Initialize()
     if not Orbit.db.classSpecProfiles then Orbit.db.classSpecProfiles = {} end
     if not Orbit.db.charActiveProfiles then Orbit.db.charActiveProfiles = {} end
 
-    -- TODO(REMOVE): Migrate legacy useSpecProfiles boolean into class-keyed table
-    if Orbit.db.useSpecProfiles ~= nil then
-        if Orbit.db.useSpecProfiles and not Orbit.db.classSpecProfiles[PLAYER_CLASS] then
-            Orbit.db.classSpecProfiles[PLAYER_CLASS] = true
-        end
-        Orbit.db.useSpecProfiles = nil
-    end
+
 
     if not Orbit.db.GlobalSettings then Orbit.db.GlobalSettings = {} end
     local gs = Orbit.db.GlobalSettings
@@ -86,19 +74,8 @@ function Orbit.Profile:Initialize()
     end
 
     if not Orbit.db.profiles[DEFAULT_PROFILE] then
-        -- TODO(REMOVE): Migrate legacy "Default" profile to "Global"
-        if Orbit.db.profiles["Default"] then
-            Orbit.db.profiles[DEFAULT_PROFILE] = Orbit.db.profiles["Default"]
-            Orbit.db.profiles["Default"] = nil
-            if Orbit.db.activeProfile == "Default" then Orbit.db.activeProfile = DEFAULT_PROFILE end
-            if Orbit.db.specMappings then
-                for specID, name in pairs(Orbit.db.specMappings) do
-                    if name == "Default" then Orbit.db.specMappings[specID] = nil end
-                end
-            end
-        else
-            Orbit.db.profiles[DEFAULT_PROFILE] = CopyTable(self.defaults, {})
-        end
+        -- Create Global profile if it doesn't exist
+        Orbit.db.profiles[DEFAULT_PROFILE] = CopyTable(self.defaults, {})
     end
 
     -- Resolve per-character active profile (new characters default to Global)
@@ -110,9 +87,9 @@ function Orbit.Profile:Initialize()
         Orbit.db.charActiveProfiles[CHAR_KEY] = DEFAULT_PROFILE
     end
 
-    -- Initialize spec mapping system
+    -- Ensure spec mappings system is initialized
     if not Orbit.db.specMappings then
-        self:_MigrateLegacySpecProfiles()
+        Orbit.db.specMappings = {}
     end
 
     Orbit.runtime = Orbit.runtime or {}
@@ -133,19 +110,7 @@ function Orbit.Profile:Initialize()
         end
     end
 
-    -- TODO(REMOVE): Migrate global DisabledPlugins into profiles (one-time migration)
-    if Orbit.db.DisabledPlugins then
-        for _, profileData in pairs(Orbit.db.profiles) do
-            if not profileData.DisabledPlugins then
-                profileData.DisabledPlugins = CopyTable(Orbit.db.DisabledPlugins, {})
-            end
-            if not profileData.HideBlizzardFrames then
-                profileData.HideBlizzardFrames = CopyTable(Orbit.db.HideBlizzardFrames or {}, {})
-            end
-        end
-        Orbit.db.DisabledPlugins = Orbit.db.profiles[Orbit.db.activeProfile] and CopyTable(Orbit.db.profiles[Orbit.db.activeProfile].DisabledPlugins or {}, {}) or {}
-        Orbit.db.HideBlizzardFrames = Orbit.db.profiles[Orbit.db.activeProfile] and CopyTable(Orbit.db.profiles[Orbit.db.activeProfile].HideBlizzardFrames or {}, {}) or {}
-    end
+
 
     self:InitializeSpecSwitching()
 end
@@ -177,28 +142,7 @@ function Orbit.Profile:SetProfileForSpec(specID, profileName)
     end
 end
 
--- TODO(REMOVE): Legacy spec-named profile migration
-function Orbit.Profile:_MigrateLegacySpecProfiles()
-    Orbit.db.specMappings = {}
-    -- Attempt to map legacy spec-named profiles
-    local numSpecs = GetNumSpecializations and GetNumSpecializations() or 0
-    for i = 1, numSpecs do
-        local specID, specName = GetSpecializationInfo(i)
-        if specID and specName then
-            -- Check for disambiguated names like "Protection (Warrior)"
-            local legacyName = specName
-            if DUPLICATE_SPEC_NAMES[specName] then
-                local _, className = UnitClass("player")
-                if className then
-                    legacyName = specName .. " (" .. className:sub(1, 1):upper() .. className:sub(2):lower() .. ")"
-                end
-            end
-            if Orbit.db.profiles[legacyName] and legacyName ~= DEFAULT_PROFILE then
-                Orbit.db.specMappings[specID] = legacyName
-            end
-        end
-    end
-end
+
 
 -- [ PROFILE CRUD ]----------------------------------------------------------------------------------
 
@@ -338,9 +282,9 @@ function Orbit.Profile:SetActiveProfile(name)
             for _, plugin in ipairs(Orbit.Engine.systems) do
                 if plugin.ApplySettings then pcall(function() plugin:ApplySettings(nil) end) end
             end
-            -- TODO: Phase 3 — replace RepairAllChains with targeted ReconcileChain
+            -- Phase 3 implementation
             if Orbit.Engine.FrameAnchor then
-                Orbit.Engine.FrameAnchor:RepairAllChains()
+                Orbit.Engine.FrameAnchor:ReconcileAll()
             end
         end)
     end

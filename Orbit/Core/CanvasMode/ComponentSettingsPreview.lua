@@ -343,7 +343,7 @@ function Settings:ApplyStyle(container, key, value)
         elseif visual.SetScale then
             visual:SetScale(value)
         end
-    elseif key == "HideDPS" or key == "RoleIconStyle" or key == "CombatIconStyle" or key == "PvpIconStyle" then
+    elseif key == "HideDPS" or key == "RoleIconStyle" or key == "CombatIconStyle" then
         local cont = self.container
         local overrides = self.currentOverrides or {}
         local compKey = self.componentKey
@@ -362,10 +362,6 @@ function Settings:ApplyStyle(container, key, value)
                     for _, e in ipairs(newAtlases) do if e.atlas ~= dpsAtlas then filtered[#filtered + 1] = e end end
                     newAtlases = filtered
                 end
-            elseif compKey == "PvpIcon" then
-                local PVP = { default = { { atlas = "QuestPortraitIcon-Alliance" }, { atlas = "QuestPortraitIcon-Horde" } },
-                    crest = { { atlas = "glues-characterSelect-icon-faction-alliance-selected" }, { atlas = "glues-characterSelect-icon-faction-horde-selected" } } }
-                newAtlases = PVP[overrides.PvpIconStyle or "default"] or PVP.default
             end
             if newAtlases and #newAtlases > 0 then
                 cont._cyclingAtlases = newAtlases

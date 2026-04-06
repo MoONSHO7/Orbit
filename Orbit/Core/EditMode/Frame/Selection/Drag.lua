@@ -7,6 +7,16 @@ local C = Orbit.Constants
 
 local Drag = {}
 Engine.SelectionDrag = Drag
+Drag.isDragging = false
+
+-- Suppress GameTooltip universally while ANY frame dragging is active
+if GameTooltip then
+    GameTooltip:HookScript("OnShow", function(self)
+        if Drag.isDragging then
+            self:Hide()
+        end
+    end)
+end
 
 local MAX_PADDING = 500
 local OPPOSITE_EDGES = { TOP = "BOTTOM", BOTTOM = "TOP", LEFT = "RIGHT", RIGHT = "LEFT" }
@@ -232,6 +242,9 @@ function Drag:OnDragStart(selectionOverlay)
     if InCombatLockdown() then
         return
     end
+    Drag.isDragging = true
+    if GameTooltip then GameTooltip:Hide() end
+    
     local parent = selectionOverlay.parent
 
     if Engine.CanvasMode:IsActive(parent) then
@@ -289,6 +302,7 @@ end
 -- [ DRAG STOP ]-------------------------------------------------------------------------------------
 
 function Drag:OnDragStop(selectionOverlay)
+    Drag.isDragging = false
     local parent = selectionOverlay.parent
     
     if selectionOverlay.lastAnchorTarget then

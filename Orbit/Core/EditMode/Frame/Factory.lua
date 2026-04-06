@@ -14,7 +14,7 @@ local DEFAULT_Y_OFFSET = -200
 local DEFAULT_STRATA = "MEDIUM"
 local DEFAULT_SYSTEM_INDEX = 1
 local RESTORE_DEBOUNCE = 0.1
-local TEXT_OVERLAY_LEVEL_BOOST = 20
+
 
 -- [ FRAME CREATION ]--------------------------------------------------------------------------------
 
@@ -156,7 +156,7 @@ function FrameFactory:AddText(frame, opts)
     if opts.useOverlay then
         local overlay = CreateFrame("Frame", nil, frame)
         overlay:SetAllPoints()
-        overlay:SetFrameLevel(frame:GetFrameLevel() + TEXT_OVERLAY_LEVEL_BOOST)
+        overlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.EditModeText)
         frame.Overlay = overlay
 
         local text = overlay:CreateFontString(nil, layer, font)

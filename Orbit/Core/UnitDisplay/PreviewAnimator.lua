@@ -519,11 +519,10 @@ function PA:StopHealerAuras(owner)
     healerSessions[owner] = nil
 end
 
--- [ DISPEL ANIMATION ]------------------------------------------------------------------------------
-local LCG = LibStub("LibCustomGlow-1.0", true)
+local GC = Orbit.Engine.GlowController
+local DISPEL_PREVIEW_KEY = "dispelPreview"
 
 local function DispelTick()
-    if not LCG then return end
     local now = GetTime()
     for _, session in pairs(dispelSessions) do
         local frames = session.frames
@@ -531,7 +530,7 @@ local function DispelTick()
         if numFrames == 0 then break end
         for _, slot in ipairs(session.slots) do
             if now >= slot.expiresAt then
-                if slot.frame then LCG.PixelGlow_Stop(slot.frame, "dispelPreview") end
+                if slot.frame then GC:Hide(slot.frame, DISPEL_PREVIEW_KEY) end
                 local alive = {}
                 for _, f in ipairs(frames) do if not f._previewDead then alive[#alive + 1] = f end end
                 if #alive == 0 then
@@ -542,7 +541,9 @@ local function DispelTick()
                     slot.frame = pick
                     slot.expiresAt = now + DISPEL_DURATION + math.random() * 4
                     local c = session.colors[slot.dispelType]
-                    LCG.PixelGlow_Start(slot.frame, { c.r, c.g, c.b, c.a }, session.numLines, session.frequency, nil, session.thickness, 0, 0, true, "dispelPreview", Orbit.Constants.Levels.Border)
+                    local glowType = session.glowType or Orbit.Constants.Glow.Type.Pixel
+                    local typeString = glowType == Orbit.Constants.Glow.Type.Autocast and "Autocast" or "Pixel"
+                    GC:Show(slot.frame, DISPEL_PREVIEW_KEY, typeString, { color = { c.r, c.g, c.b, c.a }, lines = session.numLines, particles = session.numLines, frequency = session.frequency, length = session.length, thickness = session.thickness, border = session.border, key = DISPEL_PREVIEW_KEY, frameLevel = Orbit.Constants.Levels.Border })
                 end
             end
         end
@@ -558,15 +559,15 @@ function PA:StartDispels(owner, frames, cfg)
     for i, dt in ipairs(DISPEL_TYPES) do
         slots[i] = { dispelType = dt, frame = nil, expiresAt = now + (i - 1) * 1.5 }
     end
-    dispelSessions[owner] = { frames = frames, slots = slots, colors = cfg.colors, thickness = cfg.thickness, frequency = cfg.frequency, numLines = cfg.numLines }
+    dispelSessions[owner] = { frames = frames, slots = slots, colors = cfg.colors, thickness = cfg.thickness, frequency = cfg.frequency, numLines = cfg.numLines, length = cfg.length, border = cfg.border, glowType = cfg.glowType }
     if not dispelTicker then dispelTicker = C_Timer.NewTicker(1, DispelTick) end
 end
 
 function PA:StopDispels(owner)
     local session = dispelSessions[owner]
-    if session and LCG then
+    if session then
         for _, slot in ipairs(session.slots) do
-            if slot.frame then LCG.PixelGlow_Stop(slot.frame, "dispelPreview") end
+            if slot.frame then GC:Hide(slot.frame, DISPEL_PREVIEW_KEY) end
         end
     end
     dispelSessions[owner] = nil

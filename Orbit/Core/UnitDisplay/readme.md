@@ -33,7 +33,7 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 | StatusIconMixin.lua | status indicators (defensive, crowd control, movement speed), selection/aggro highlight borders via `Skin:ApplyHighlightBorder`. |
 | AggroIndicatorMixin.lua | threat/aggro border coloring via `Skin:ApplyHighlightBorder`. |
 | DispelIndicatorMixin.lua | dispellable debuff type indication with `DispelOnlyByMe` filter support. caches the dispel color curve on plugin (`_dispelCurveCache`), invalidated via `InvalidateDispelCurve`. accepts pre-fetched harmful auras from snapshot. |
-| PandemicGlow.lua | hook-driven pandemic glow for dots/hots. queries CooldownViewer pandemic state instead of polling. |
+| PandemicGlow.lua | thin adapter for pandemic glow on UnitDisplay aura icons. evaluates pandemic curves and delegates rendering to `GlowController`. |
 | UnitAuraGridMixin.lua | grid-based aura display with size categories (big/small). |
 | SecondaryUnitFrameMixin.lua | secondary frames (target-of-target, focus-target). |
 

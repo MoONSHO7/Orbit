@@ -7,7 +7,7 @@ local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
 local C = CanvasMode.Constants
-local OVERLAY_LEVEL_BOOST = 100
+
 local INSET_LEFT = 10
 local INSET_RIGHT = -6
 local INSET_TOP = -27
@@ -58,7 +58,7 @@ Dialog.BorderFrame.TopDetail:SetPoint("TOP", 0, 1)
 
 Dialog.BorderOverlay = CreateFrame("Frame", nil, Dialog.PreviewContainer)
 Dialog.BorderOverlay:SetAllPoints()
-Dialog.BorderOverlay:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
+Dialog.BorderOverlay:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + Orbit.Constants.Levels.EditModeSelection)
 
 -- [ FILTER TAB LABELS (inside viewport overlay) ]---------------------------------------
 Dialog.FilterTabBar = CreateFrame("Frame", nil, Dialog.BorderOverlay)

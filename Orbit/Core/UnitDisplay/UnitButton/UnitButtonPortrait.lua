@@ -4,7 +4,7 @@ local Engine = Orbit.Engine
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local PORTRAIT_DEFAULT_SIZE = 32
-local PORTRAIT_LEVEL_OFFSET = Orbit.Constants.Levels.Overlay
+
 local PORTRAIT_RING_OVERSHOOT = Engine.PORTRAIT_RING_OVERSHOOT
 local PORTRAIT_3D_MIRROR_FACING = -1.05
 local PORTRAIT_3D_MIRROR_OFFSET = 0.3
@@ -26,7 +26,7 @@ function PortraitMixin:CreatePortrait()
     local container = CreateFrame("Frame", nil, self.OverlayFrame or self)
     container:SetSize(PORTRAIT_DEFAULT_SIZE, PORTRAIT_DEFAULT_SIZE)
     container:SetPoint("RIGHT", self, "LEFT", -4, 0)
-    container:SetFrameLevel(self:GetFrameLevel() + PORTRAIT_LEVEL_OFFSET)
+    container:SetFrameLevel(self:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
 
     container.StaticTexture = container:CreateTexture(nil, "ARTWORK")
     container.StaticTexture:SetAllPoints()

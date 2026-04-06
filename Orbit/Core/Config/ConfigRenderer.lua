@@ -309,7 +309,8 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
 
     local paddingH = Constants.Footer.SidePadding
     local spacingH = Constants.Footer.ButtonSpacing
-    local availableWidth = Constants.Panel.Width - (paddingH * 2)
+    local panelWidth = schema.width or (footer:GetParent() and footer:GetParent():GetWidth()) or Constants.Panel.Width
+    local availableWidth = panelWidth - (paddingH * 2)
 
     -- Vertical Metrics
     local topPadding = Constants.Footer.TopPadding

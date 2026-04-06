@@ -37,7 +37,7 @@ Mixin.ICON_PREVIEW_ATLASES = {
     CrowdControlIcon = "UI-LFG-PendingMark-Raid",
     PrivateAuraAnchor = "UI-LFG-PendingMark-Raid",
     Portrait = "adventureguide-campfire",
-    PvpIcon = "QuestPortraitIcon-Alliance",
+    PvpIcon = "AllianceAssaultsMapBanner",
 }
 Mixin.MARKER_ICON_TEXCOORD = { 0.75, 1, 0.25, 0.5 }
 
@@ -318,32 +318,30 @@ end
 -- PVP ICON
 
 local PVP_FACTION_ATLASES = {
-    default = { Alliance = "QuestPortraitIcon-Alliance", Horde = "QuestPortraitIcon-Horde" },
-    crest = { Alliance = "glues-characterSelect-icon-faction-alliance-selected", Horde = "glues-characterSelect-icon-faction-horde-selected" },
+    Alliance = "AllianceAssaultsMapBanner",
+    Horde = "HordeAssaultsMapBanner",
 }
-local PVP_FALLBACK = PVP_FACTION_ATLASES.default
+local PVP_ICON_DEFAULT_SIZE = 18
 
 function Mixin:UpdatePvpIcon(frame, plugin)
     local unit = GuardedUpdate(frame, plugin, "PvpIcon")
     if not unit then return end
 
-    -- Resolve style override
-    local atlases = PVP_FALLBACK
-    if plugin then
-        local positions = plugin:GetSetting(1, "ComponentPositions")
-        local overrides = positions and positions.PvpIcon and positions.PvpIcon.overrides
-        if overrides and overrides.PvpIconStyle then atlases = PVP_FACTION_ATLASES[overrides.PvpIconStyle] or PVP_FALLBACK end
-    end
-
     local isPlayer = UnitIsUnit(unit, "player")
     local isPvp = (isPlayer and C_PvP and C_PvP.IsWarModeDesired and C_PvP.IsWarModeDesired()) or (not isPlayer and UnitIsPVP(unit))
-    if isPvp then
-        local faction = UnitFactionGroup(unit)
-        frame.PvpIcon:SetAtlas(atlases[faction] or atlases.Alliance)
-        frame.PvpIcon:Show()
-    elseif Orbit:IsEditMode() then
-        local faction = UnitFactionGroup("player")
-        frame.PvpIcon:SetAtlas(atlases[faction] or atlases.Alliance)
+    local showIcon = isPvp or Orbit:IsEditMode()
+    if showIcon then
+        local faction = isPvp and UnitFactionGroup(unit) or UnitFactionGroup("player")
+        frame.PvpIcon:SetAtlas(PVP_FACTION_ATLASES[faction] or PVP_FACTION_ATLASES.Alliance, false)
+        -- Always enforce pixel sizing: saved IconSize > default
+        local size = PVP_ICON_DEFAULT_SIZE
+        if plugin and plugin.GetComponentPositions then
+            local positions = plugin:GetComponentPositions(1)
+            local saved = positions and positions.PvpIcon and positions.PvpIcon.overrides and positions.PvpIcon.overrides.IconSize
+            if saved and saved > 0 then size = saved end
+        end
+        local ratio = frame.PvpIcon.orbitOriginalHeight and frame.PvpIcon.orbitOriginalWidth and frame.PvpIcon.orbitOriginalWidth > 0 and (frame.PvpIcon.orbitOriginalHeight / frame.PvpIcon.orbitOriginalWidth) or 1
+        frame.PvpIcon:SetSize(size, size * ratio)
         frame.PvpIcon:Show()
     else
         frame.PvpIcon:Hide()

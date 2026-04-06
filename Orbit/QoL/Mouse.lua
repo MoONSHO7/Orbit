@@ -70,7 +70,7 @@ function Mouse:Enable()
         self._frame = CreateFrame("Frame", "OrbitQoLCursorFrame", UIParent)
         
         -- Make sure it sits above almost everything else but doesn't block clicks
-        self._frame:SetFrameStrata("TOOLTIP")
+        self._frame:SetFrameStrata(Orbit.Constants.Strata.Topmost)
         self._frame:EnableMouse(false)
         
         local tex = self._frame:CreateTexture(nil, "OVERLAY")
