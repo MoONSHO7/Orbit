@@ -6,7 +6,7 @@ local Orbit = addonTable
 local Skin = Orbit.Skin
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants
-local NINESLICE_LEVEL_OFFSET = Constants.Levels.Border
+
 
 -- [ GROUP BORDER ]-----------------------------------------------------------------------------------
 -- Creates a single wrapper border around all merged frames in an anchor chain.
@@ -91,7 +91,7 @@ function Skin:UpdateGroupBorder(rootFrame)
         end
         overlayLevel = maxLevel + Constants.Levels.IconOverlay
     else
-        overlayLevel = rootFrame:GetFrameLevel() + NINESLICE_LEVEL_OFFSET
+        overlayLevel = rootFrame:GetFrameLevel() + Constants.Levels.Border
     end
 
     if not rootFrame._groupBorderOverlay then

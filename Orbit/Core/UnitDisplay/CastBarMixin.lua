@@ -65,7 +65,7 @@ function Mixin:CreateCastBarFrame(name, config)
     local bar = CreateFrame("StatusBar", name, UIParent)
     bar:SetSize(config.width or Orbit.Constants.PlayerCastBar.DefaultWidth or 200, config.height or Orbit.Constants.PlayerCastBar.DefaultHeight or 18)
     bar:SetPoint("CENTER", 0, config.yOffset or Orbit.Constants.PlayerCastBar.DefaultY or -150)
-    bar:SetFrameStrata("MEDIUM")
+    bar:SetFrameStrata(Orbit.Constants.Strata.HUD)
     bar:SetStatusBarTexture("") -- Handled by Skin
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0)

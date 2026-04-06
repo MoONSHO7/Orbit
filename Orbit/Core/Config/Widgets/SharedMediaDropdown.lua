@@ -30,7 +30,7 @@ Engine.SharedMediaDropdown = SharedMediaDropdown
 -- @return dropdown    The created dropdown frame
 function SharedMediaDropdown:Create(owner, buttonHeight, maxHeight, createItem, renderItem, onSelect)
     local dropdown = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-    dropdown:SetFrameStrata("FULLSCREEN_DIALOG")
+    dropdown:SetFrameStrata(Orbit.Constants.Strata.FullscreenDialog)
     dropdown:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
         edgeFile = "Interface\\Buttons\\WHITE8x8",

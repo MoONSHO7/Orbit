@@ -33,7 +33,7 @@ local function EnsureTooltip(self)
     end
 
     local tooltip = CreateFrame("Frame", "OrbitPositionTooltip", UIParent, "BackdropTemplate")
-    tooltip:SetFrameStrata("TOOLTIP")
+    tooltip:SetFrameStrata(Orbit.Constants.Strata.Topmost)
     tooltip:SetSize(C.Selection.PositionTooltip.Width, C.Selection.PositionTooltip.Height)
     tooltip:SetBackdrop({
         bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",

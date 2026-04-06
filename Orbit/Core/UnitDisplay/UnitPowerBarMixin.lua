@@ -7,7 +7,7 @@ local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
-local FRAME_LEVEL_BOOST = Orbit.Constants.Levels.StatusBar
+
 local SafeUnitPowerPercent = Orbit.SecretValueUtils.SafeUnitPowerPercent
 
 Orbit.UnitPowerBarMixin = {}
@@ -42,7 +42,7 @@ function Mixin:CreatePowerBarPlugin(config)
         systemIndex = 1, template = "BackdropTemplate",
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = { x = false, y = true } },
     })
-    Frame:SetFrameLevel(Frame:GetFrameLevel() + FRAME_LEVEL_BOOST)
+    Frame:SetFrameLevel(Frame:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 4, maxH = 25 }
     self._pbFrame = Frame
     self._pbBar = PowerBar

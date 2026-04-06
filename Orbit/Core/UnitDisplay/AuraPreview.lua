@@ -30,7 +30,7 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
     if not frame[containerKey] then frame[containerKey] = CreateFrame("Frame", nil, frame) end
     local container = frame[containerKey]
     container:SetParent(frame)
-    container:SetFrameStrata("MEDIUM")
+    container:SetFrameStrata(Orbit.Constants.Strata.HUD)
     container:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Border)
     container:Show()
     local helpers = cfg.helpers()

@@ -11,7 +11,20 @@ Engine.GlowUtils = {}
 -- @param prefix The settings string prefix (e.g. "PandemicGlow")
 -- @param defaultColor Fallback color table if one is not configured (e.g. { r=1, g=1, b=1, a=1 })
 -- @param key The rendering key that LCG will use to group/identify the glow
--- @return typeName (string|nil), optionsTable (table|nil)
+-- @return typeName (string|nil), optionsTable (table|nil), optionsHash (string|nil), suppressNative (boolean)
+function Engine.GlowUtils:GetOptionsHash(options)
+    if not options then return "" end
+    local h = tostring(options.key or "")
+    h = h .. "_" .. tostring(options.lines or "") .. "_" .. tostring(options.frequency or "")
+    h = h .. "_" .. tostring(options.length or "") .. "_" .. tostring(options.thickness or "")
+    h = h .. "_" .. tostring(options.speed or "") .. "_" .. tostring(options.particles or "")
+    h = h .. "_" .. tostring(options.reverse) .. "_" .. tostring(options.padding)
+    if options.color then
+        h = h .. string.format("_%.2f_%.2f_%.2f_%.2f", options.color[1] or 1, options.color[2] or 1, options.color[3] or 1, options.color[4] or 1)
+    end
+    return h
+end
+
 function Engine.GlowUtils:BuildOptionsFromLookup(optionsLookup, prefix, defaultColor, key)
     local function GetValue(k)
         if type(optionsLookup) == "function" then return optionsLookup(k) end
@@ -22,7 +35,9 @@ function Engine.GlowUtils:BuildOptionsFromLookup(optionsLookup, prefix, defaultC
     local activeType = GetValue(prefix .. "Type")
     if activeType == nil then activeType = Constants.Glow.DefaultType end
     
-    if activeType == GlowType.None then return nil, nil end
+    local suppressNative = (activeType ~= GlowType.Blizzard)
+    
+    if activeType == GlowType.None then return nil, nil, nil, suppressNative end
 
     local color = GetValue(prefix .. "Color") or defaultColor
     if not color then color = Constants.Glow.DefaultColor end
@@ -30,7 +45,7 @@ function Engine.GlowUtils:BuildOptionsFromLookup(optionsLookup, prefix, defaultC
     -- Ensure color uses standard r,g,b,a fields or unpacks RGBA cleanly for the library
     local colorArr = { color.r, color.g, color.b, color.a or 1 }
     
-    local options = { color = colorArr, key = key }
+    local options = { color = colorArr, key = key, frameLevel = Constants.Levels.IconGlow }
     local typeName = ""
 
     local function Get(suffix, defVal)
@@ -69,12 +84,16 @@ function Engine.GlowUtils:BuildOptionsFromLookup(optionsLookup, prefix, defaultC
         options.speed = Get(defKey .. "Speed", def.Speed)
     end
 
+    -- Reverse: user setting inverts the default rotation direction
+    options.reverse = Get(prefix .. "Reverse", false) or false
+
     -- Pixel padding: 0 = glow matches icon exactly, positive = extend outward
     options.padding = 0
 
-    return typeName, options
+    return typeName, options, self:GetOptionsHash(options), suppressNative
 end
 
 function Engine.GlowUtils:BuildOptions(plugin, systemIndex, prefix, defaultColor, key)
     return self:BuildOptionsFromLookup(function(k) return plugin:GetSetting(systemIndex, k) end, prefix, defaultColor, key)
 end
+

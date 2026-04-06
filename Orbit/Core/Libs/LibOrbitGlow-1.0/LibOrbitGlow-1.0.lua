@@ -444,10 +444,14 @@ local function AnimIn_OnStop(group)
 end
 
 local function UpdateAlphaAnim(f, alpha)
-    for _, anim in ipairs(f.animIn.appear) do anim:SetToAlpha(alpha) end
-    for _, anim in ipairs(f.animIn.fade) do anim:SetFromAlpha(alpha) end
-    for _, anim in ipairs(f.animOut.appear) do anim:SetToAlpha(alpha) end
-    for _, anim in ipairs(f.animOut.fade) do anim:SetFromAlpha(alpha) end
+    if f.animIn then
+        for _, anim in ipairs(f.animIn.appear) do anim:SetToAlpha(alpha) end
+        for _, anim in ipairs(f.animIn.fade) do anim:SetFromAlpha(alpha) end
+    end
+    if f.animOut then
+        for _, anim in ipairs(f.animOut.appear) do anim:SetToAlpha(alpha) end
+        for _, anim in ipairs(f.animOut.fade) do anim:SetFromAlpha(alpha) end
+    end
 end
 
 local function ConfigureButtonGlow(f, alpha)
@@ -582,14 +586,14 @@ function lib.Button:Show(frame, options)
         f.throttle = throttle
         if options.reverse then f.reverseElapsed = 0; f.frameIndex = BUTTON_ANT_TOTAL_FRAMES end
         f:SetScript("OnUpdate", options.reverse and ButtonReverseOnUpdate or ButtonForwardOnUpdate)
-        f.animIn:Play()
+        if f.animIn then f.animIn:Play() end
     end
 end
 
 function lib.Button:Hide(frame, key)
     local nameKey = "_LibGlowButton" .. (key or "Default")
     if frame[nameKey] then
-        if frame[nameKey].animIn:IsPlaying() then
+        if frame[nameKey].animIn and frame[nameKey].animIn:IsPlaying() then
             frame[nameKey].animIn:Stop()
             ButtonGlowPool:Release(frame[nameKey])
         elseif frame:IsVisible() then
@@ -749,7 +753,7 @@ local HIDE_TYPE_MAP = {
     Medium = function(frame, key) lib.Flipbook:Hide(frame, key) end,
     Static = function(frame, key) lib.Static:Hide(frame, key) end,
     Autocast = function(frame, key) lib.Autocast:Hide(frame, key) end,
-    Classic = function(frame) lib.Button:Hide(frame) end,
+    Classic = function(frame, key) lib.Button:Hide(frame, key) end,
     Pixel = function(frame, key) lib.Pixel:Hide(frame, key) end,
 }
 

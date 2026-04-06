@@ -198,7 +198,7 @@ function CanvasMode:UpdateOrbitFrameVisual(frame)
     if self:IsActive(frame) then
         if not CanvasMode.backgroundFrame then
             CanvasMode.backgroundFrame = CreateFrame("Frame", "OrbitCanvasBackgroundFrame", UIParent)
-            CanvasMode.backgroundFrame:SetFrameStrata("BACKGROUND")
+            CanvasMode.backgroundFrame:SetFrameStrata(Orbit.Constants.Strata.Background)
             CanvasMode.backgroundFrame:SetFrameLevel(0)
             CanvasMode.backgroundTexture = CanvasMode.backgroundFrame:CreateTexture(nil, "BACKGROUND")
             CanvasMode.backgroundTexture:SetAllPoints()
@@ -208,7 +208,7 @@ function CanvasMode:UpdateOrbitFrameVisual(frame)
 
         if not CanvasMode.borderFrame then
             CanvasMode.borderFrame = CreateFrame("Frame", "OrbitCanvasBorderFrame", UIParent)
-            CanvasMode.borderFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+            CanvasMode.borderFrame:SetFrameStrata(Orbit.Constants.Strata.FullscreenDialog)
             CanvasMode.borderFrame:SetFrameLevel(BORDER_FRAME_LEVEL)
             CanvasMode.border = CreateCanvasBorder(CanvasMode.borderFrame)
         end

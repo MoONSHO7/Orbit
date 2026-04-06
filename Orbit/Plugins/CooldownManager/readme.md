@@ -13,7 +13,7 @@ provides four viewer types: essential cooldowns (class rotation), utility cooldo
 | CooldownManager.lua | main plugin. anchor creation, settings application, viewer map, spec data helpers. |
 | CooldownLayout.lua | icon grid layout engine. handles row/column math for cooldown viewers. |
 | CooldownText.lua | timer/charges/stacks/keybind text rendering, font helpers, canvas preview setup. |
-| CooldownGlows.lua | pandemic window glow effects (pixel, proc, autocast, button glows). uses alpha-toggling: glows are created once and shown/hidden via SetAlpha to prevent animation restarts and pool churn. full teardown only on icon Hide (pooling) or settings changes. |
+| CooldownGlows.lua | pandemic window glow hooks and proc glow hooks for CDM buttons. delegates all glow rendering and state management to `GlowController`. hooks `ShowPandemicStateFrame`/`HidePandemicStateFrame` for alpha-toggling and `ActionButtonSpellAlertManager` for proc glows. |
 | CooldownSettings.lua | settings schema builder with sub-tabs (layout, glow, colours). |
 | CooldownViewerHooks.lua | hooks into blizzard's cooldown viewer api (`C_CooldownViewer`). |
 | ViewerInjection.lua | drag-and-drop item/spell injection into essential/utility viewers. creates cdm-owned frames positioned relative to native icons via `afterNativeIndex`. per-spec persistence via `GetSpecData`/`SetSpecData`. shift-right-click removal. equipment slot tracking for trinkets (auto-updates on gear change). `/orbit flush` clears all injected icons. |

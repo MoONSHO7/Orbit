@@ -5,4 +5,5 @@
     <Script file="TooltipParser.lua"/>
     <Script file="CooldownUtils.lua"/>
     <Script file="GlowUtils.lua"/>
+    <Script file="GlowController.lua"/>
 </Ui>

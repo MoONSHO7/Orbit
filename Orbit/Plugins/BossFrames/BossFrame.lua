@@ -123,7 +123,7 @@ local function CreateBossFrame(bossIndex, plugin)
     frame.editModeName = "Boss Frame " .. bossIndex
     frame.systemIndex, frame.bossIndex = 1, bossIndex
     frame:SetSize(plugin:GetSetting(1, "Width") or 150, plugin:GetSetting(1, "Height") or 40)
-    frame:SetFrameStrata("MEDIUM")
+    frame:SetFrameStrata(Orbit.Constants.Strata.HUD)
     frame:SetFrameLevel(Orbit.Constants.Levels.GroupBase + bossIndex)
     UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize)
     frame.Power = CreatePowerBar(frame, unit)
@@ -191,7 +191,7 @@ function Plugin:OnLoad()
     self.container = CreateFrame("Frame", "OrbitBossContainer", UIParent, "SecureHandlerStateTemplate")
     self.container:SetAttribute("_onstate-visibility", [[ if newstate == "hide" then self:Hide() else self:Show() end ]])
     self.container.editModeName, self.container.systemIndex = "Boss Frames", 1
-    self.container:SetFrameStrata("MEDIUM")
+    self.container:SetFrameStrata(Orbit.Constants.Strata.HUD)
     self.container:SetFrameLevel(Orbit.Constants.Levels.GroupContainer)
     self.container:SetClampedToScreen(true)
     self.frames = {}

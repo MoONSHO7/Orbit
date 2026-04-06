@@ -21,7 +21,7 @@ local OPTIONS_BUTTON_OFFSET_Y = -10
 local Dialog = CreateFrame("Frame", "OrbitSettingsDialog", UIParent)
 Dialog:SetSize(DIALOG_WIDTH, DIALOG_MIN_HEIGHT)
 Dialog:SetPoint("TOPLEFT", UIParent, "TOPLEFT", INITIAL_X, INITIAL_Y)
-Dialog:SetFrameStrata("DIALOG")
+Dialog:SetFrameStrata(Orbit.Constants.Strata.Dialog)
 Dialog:SetFrameLevel(DIALOG_FRAME_LEVEL)
 Dialog:SetMovable(true)
 Dialog:SetClampedToScreen(true)

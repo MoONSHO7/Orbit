@@ -87,7 +87,7 @@ function DatatextManager:PlaceDatatext(id, point, x, y, skipSave)
     local f = datatext.frame
     f:ClearAllPoints()
     f:SetPoint(point or "CENTER", UIParent, point or "CENTER", x or 0, y or 0)
-    f:SetFrameStrata("MEDIUM")
+    f:SetFrameStrata(Orbit.Constants.Strata.HUD)
     f:SetFrameLevel(500)
     f:SetMovable(not isLocked)
     if f.resizeHandle then

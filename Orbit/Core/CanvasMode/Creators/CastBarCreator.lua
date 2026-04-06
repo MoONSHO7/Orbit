@@ -26,7 +26,7 @@ local CB_ICON_TEXCOORD = 0.1
 local CB_ICON_TEXCOORD_MAX = 0.9
 local CB_TEXT_SIZE_MIN = 10
 
-local SUB_LEVEL_BOOST = 5
+
 local SUB_TEXT_MIN_WIDTH = 20
 local SUB_TEXT_PADDING = 4
 local SUB_TEXT_HEIGHT_PADDING = 2
@@ -41,7 +41,7 @@ local DEFAULT_TEXT_OFFSET_X = 4
 
 local function CreateSubText(parent, parentContainer, subKey, subPos, text, justify, fontPath, cbTextSize, fontFlags)
     local subFrame = CreateFrame("Frame", nil, parent)
-    subFrame:SetFrameLevel(parent:GetFrameLevel() + SUB_LEVEL_BOOST)
+    subFrame:SetFrameLevel(parent:GetFrameLevel() + Orbit.Constants.Levels.CanvasComponent)
     subFrame:EnableMouse(true)
     subFrame:SetMovable(true)
     subFrame:RegisterForDrag("LeftButton")

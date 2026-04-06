@@ -228,7 +228,7 @@ function Plugin:OnLoad()
     CastBar:SetSize(Orbit.Constants.PlayerCastBar.DefaultWidth, Orbit.Constants.PlayerCastBar.DefaultHeight)
     CastBar:SetPoint("CENTER", 0, Orbit.Constants.PlayerCastBar.DefaultY)
     OrbitEngine.Pixel:Enforce(CastBar)
-    CastBar:SetFrameStrata("MEDIUM")
+    CastBar:SetFrameStrata(Orbit.Constants.Strata.HUD)
 
     CastBar:SetStatusBarTexture("")
     CastBar:SetMinMaxValues(0, 1)

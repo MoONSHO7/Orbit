@@ -3,7 +3,6 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 
-local LibCustomGlow = LibStub("LibOrbitGlow-1.0", true)
 
 local CDM = Orbit:GetPlugin("Orbit_CooldownViewer")
 if not CDM then return end
@@ -165,7 +164,7 @@ function CDM:MonitorViewers()
     end
 
     local function CheckPandemicAll()
-        if not LibCustomGlow then return end
+
         for si, entry in pairs(VIEWER_MAP) do
             if entry.viewer then plugin:CheckPandemicFrames(entry.viewer, si) end
         end

@@ -431,7 +431,7 @@ local function CreateGroupFrame(index, plugin)
     local width = plugin:GetTierSetting("Width") or DEFAULT_WIDTH
     local height = plugin:GetTierSetting("Height") or DEFAULT_HEIGHT
     frame:SetSize(width, height)
-    frame:SetFrameStrata("MEDIUM")
+    frame:SetFrameStrata(Orbit.Constants.Strata.HUD)
     frame:SetFrameLevel(Orbit.Constants.Levels.GroupBase + index)
 
     UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize, plugin)
@@ -558,7 +558,7 @@ function Plugin:OnLoad()
     self.container:SetAttribute("_onstate-visibility", [[ if newstate == "hide" then self:Hide() else self:Show() end ]])
     self.container.editModeName = "Group Frames"
     self.container.systemIndex = 1
-    self.container:SetFrameStrata("MEDIUM")
+    self.container:SetFrameStrata(Orbit.Constants.Strata.HUD)
     self.container:SetFrameLevel(Orbit.Constants.Levels.GroupContainer)
     self.container:SetClampedToScreen(true)
 

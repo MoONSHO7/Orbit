@@ -359,7 +359,7 @@ function BaseDatatext:OnDragStart()
     GameTooltip:Hide()
     self.isDragging = true
     if Orbit.Engine.SelectionDrag then Orbit.Engine.SelectionDrag.isDragging = true end
-    self.frame:SetFrameStrata("TOOLTIP")
+    self.frame:SetFrameStrata(Orbit.Constants.Strata.Topmost)
     
     local cX, cY = GetCursorPosition()
     local fCX, fCY = self.frame:GetCenter()
@@ -400,7 +400,7 @@ function BaseDatatext:OnDragStart()
 end
 
 function BaseDatatext:OnDragStop()
-    self.frame:SetFrameStrata("MEDIUM")
+    self.frame:SetFrameStrata(Orbit.Constants.Strata.HUD)
     self.frame:SetFrameLevel(500)
     
     local cx, cy = self.frame:GetCenter()

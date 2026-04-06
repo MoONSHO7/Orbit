@@ -323,12 +323,12 @@ function SB:AddGlowSettings(plugin, schema, systemIndex, dialog, systemFrame, pa
     local GlowType = Constants.Glow.Type
     local OPTIONS = {
         { text = "None", value = GlowType.None },
-        { text = "Pixel", value = GlowType.Pixel },
-        { text = "Medium", value = GlowType.Medium },
-        { text = "Autocast", value = GlowType.Autocast },
-        { text = "Classic", value = GlowType.Classic },
         { text = "Thin", value = GlowType.Thin },
+        { text = "Standard", value = GlowType.Medium },
         { text = "Thick", value = GlowType.Thick },
+        { text = "Classic", value = GlowType.Classic },
+        { text = "Autocast", value = GlowType.Autocast },
+        { text = "Pixel", value = GlowType.Pixel },
     }
     
     local currentColor = plugin:GetSetting(systemIndex, colorKey) or Constants.Glow.DefaultColor
@@ -365,7 +365,7 @@ function SB:AddGlowSettings(plugin, schema, systemIndex, dialog, systemFrame, pa
         tinsert(schema.controls, { type = "slider", key = prefix .. "PixelFrequency", label = "  - Frequency", min = 0, max = 0.20, step = 0.02, default = def.Frequency, formatter = function(v) return string.format("%.2f", v) end, onChange = MakeOnChange(prefix .. "PixelFrequency") })
         tinsert(schema.controls, { type = "slider", key = prefix .. "PixelLength", label = "  - Length", min = 1, max = 30, step = 1, default = def.Length, onChange = MakeOnChange(prefix .. "PixelLength") })
         tinsert(schema.controls, { type = "slider", key = prefix .. "PixelThickness", label = "  - Thickness", min = 1, max = 10, step = 1, default = def.Thickness, onChange = MakeOnChange(prefix .. "PixelThickness") })
-        tinsert(schema.controls, { type = "checkbox", key = prefix .. "PixelBorder", label = "  - Use Border", default = def.Border, onChange = MakeOnChange(prefix .. "PixelBorder") })
+        tinsert(schema.controls, { type = "checkbox", key = prefix .. "PixelBorder", label = "Use Border", default = def.Border, onChange = MakeOnChange(prefix .. "PixelBorder") })
     elseif currentType == GlowType.Medium then
         local def = Constants.Glow.Defaults.Medium
         tinsert(schema.controls, { type = "slider", key = prefix .. "MediumSpeed", label = "  - Speed", min = 0.1, max = 5.0, step = 0.1, default = def.Speed, onChange = MakeOnChange(prefix .. "MediumSpeed") })
@@ -380,8 +380,11 @@ function SB:AddGlowSettings(plugin, schema, systemIndex, dialog, systemFrame, pa
         local defKey = (currentType == GlowType.Thin and "Thin") or "Thick"
         local def = Constants.Glow.Defaults[defKey]
         tinsert(schema.controls, { type = "slider", key = prefix .. defKey .. "Speed", label = "  - Speed", min = 0, max = 5.0, step = 0.1, default = def.Speed, onChange = MakeOnChange(prefix .. defKey .. "Speed") })
-    elseif currentType == GlowType.Static then
-        -- Static dimensions are intrinsically derived
+    end
+
+    -- Reverse checkbox: available for all animated glow types
+    if currentType ~= GlowType.None and currentType ~= nil then
+        tinsert(schema.controls, { type = "checkbox", key = prefix .. "Reverse", label = "Reverse Direction", default = false, onChange = MakeOnChange(prefix .. "Reverse") })
     end
 end
 

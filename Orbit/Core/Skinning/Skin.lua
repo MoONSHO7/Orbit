@@ -87,7 +87,7 @@ function Skin:CreateBackdrop(frame, name)
 end
 
 -- [ NINESLICE BORDER ]------------------------------------------------------------------------------
-local NINESLICE_LEVEL_OFFSET = Constants.Levels.Border
+
 
 function Skin:ApplyNineSliceBorder(frame, styleEntry)
     if not frame or not styleEntry then return end
@@ -95,7 +95,7 @@ function Skin:ApplyNineSliceBorder(frame, styleEntry)
     if not frame._edgeBorderOverlay then
         frame._edgeBorderOverlay = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     end
-    frame._edgeBorderOverlay:SetFrameLevel(frame:GetFrameLevel() + NINESLICE_LEVEL_OFFSET)
+    frame._edgeBorderOverlay:SetFrameLevel(frame:GetFrameLevel() + Constants.Levels.Border)
     local overlay = frame._edgeBorderOverlay
     local gs = Orbit.db and Orbit.db.GlobalSettings
     local edgeSize = styleEntry.edgeSize or (gs and gs.BorderEdgeSize) or 16

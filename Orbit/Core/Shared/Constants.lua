@@ -73,18 +73,39 @@ C.Layers = {
 
 -- Frame Level Offsets (relative to parent)
 C.Levels = {
-    StatusBar = 1,       -- Health/power/damage/absorb bars, cooldown swipe
-    Border = 5,          -- Borders, highlights, glows, aggro, selection, dispel
-    Overlay = 7,         -- Text, icons, components, proc overlays, aura containers
-    SmartGuides = 90,    -- Canvas Mode snap guides (different strata)
-    Tooltip = 100,       -- Tooltip/flyout layer (different strata)
-    IconContent = 1,     -- Icon backdrop
-    IconSwipe = 2,       -- Cooldown swipe (border group, below glow)
-    IconBorder = 3,      -- Per-icon pixel/NineSlice border
-    IconGlow = 6,        -- Pandemic/proc glow (above border)
-    IconOverlay = 7,     -- Timer text, stacks, flash
-    GroupContainer = 49, -- Group frame container base level
-    GroupBase = 50,      -- Individual group frame base level (+ index)
+    StatusBar = 1,          -- Health/power/damage/absorb bars, cooldown swipe
+    Border = 5,             -- Borders, highlights, glows, aggro, selection, dispel
+    Overlay = 7,            -- Text, icons, components, proc overlays, aura containers
+    SmartGuides = 90,       -- Canvas Mode snap guides (different strata)
+    Tooltip = 100,          -- Tooltip/flyout layer (different strata)
+    
+    IconContent = 1,        -- Icon backdrop
+    IconSwipe = 2,          -- Cooldown swipe (border group, below glow)
+    IconBorder = 3,         -- Per-icon pixel/NineSlice border
+    IconGlow = 6,           -- Pandemic/proc glow (above border)
+    IconOverlay = 7,        -- Timer text, stacks, flash
+    
+    GroupContainer = 49,    -- Group frame container base level
+    GroupBase = 50,         -- Individual group frame base level (+ index)
+    
+    -- Editor & UI Overlays
+    EditModeText = 20,
+    EditModeSelection = 100,
+    CanvasComponent = 5,
+    SecondaryDemote = -5,
+    ColorPickerSwatch = 10,
+    WhatsNewDialog = 200,
+}
+
+-- Frame Strata (Semantic mapping to WoW stratas)
+C.Strata = {
+    Background = "BACKGROUND",    -- Behind everything (e.g., base backdrop bounds)
+    Base = "LOW",                 -- Bottom layer UI components
+    HUD = "MEDIUM",               -- Standard HUD frames (UnitFrames, ActionBars)
+    Overlay = "HIGH",             -- On top of HUD (Canvas Mode, Active Selections)
+    Dialog = "DIALOG",            -- Popups (Config panels, EditMode Tour)
+    FullscreenDialog = "FULLSCREEN_DIALOG", -- Enforced top popups (Color Picker dialog)
+    Topmost = "TOOLTIP",          -- Absolute top (Dropdowns, Cursors, Tooltips)
 }
 
 C.UnitFrame = {

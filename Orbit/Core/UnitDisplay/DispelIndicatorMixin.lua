@@ -3,7 +3,6 @@
 
 local _, addonTable = ...
 local Orbit = addonTable
-local LCG = LibStub("LibOrbitGlow-1.0")
 
 Orbit.DispelIndicatorMixin = {}
 
@@ -42,6 +41,9 @@ end
 function Orbit.DispelIndicatorMixin:InvalidateDispelCurve(plugin)
     plugin._dispelCurveCache = nil
     plugin._dispelSettingsCache = nil
+    if plugin.frames then
+        for _, frame in ipairs(plugin.frames) do frame.orbitActiveDispelAura = nil end
+    end
 end
 
 local function GetDispelSettings(plugin)
@@ -59,38 +61,42 @@ local function GetDispelSettings(plugin)
     return cache
 end
 
--- [ UPDATE DISPEL INDICATOR ]----------------------------------------------------------------------
--- harmfulAuras: optional pre-fetched table from snapshot to avoid duplicate GetUnitAuras call
+local DISPEL_GLOW_KEY = "orbitDispel"
+
 function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin, harmfulAuras)
     if not frame or not frame.unit then return end
+    local GC = Orbit.Engine.GlowController
     local settings = GetDispelSettings(plugin)
-    if not settings.enabled then LCG.Hide(frame, "Pixel"); return end
+    if not settings.enabled then GC:Hide(frame, DISPEL_GLOW_KEY); return end
     local unit = frame.unit
-    if not UnitExists(unit) then LCG.Hide(frame, "Pixel"); return end
+    if not UnitExists(unit) then GC:Hide(frame, DISPEL_GLOW_KEY); return end
     if not C_UnitAuras or not C_UnitAuras.GetUnitAuras then return end
     local auras = harmfulAuras or C_UnitAuras.GetUnitAuras(unit, "HARMFUL")
-    if not auras or #auras == 0 then LCG.Hide(frame, "Pixel"); return end
-
+    if not auras or #auras == 0 then GC:Hide(frame, DISPEL_GLOW_KEY); return end
     local bestAuraInstanceID = nil
     for _, aura in ipairs(auras) do
         if aura.dispelName then
             if not settings.onlyByMe or (IsAuraFilteredOut and not IsAuraFilteredOut(unit, aura.auraInstanceID, DISPEL_FILTER)) then
-                bestAuraInstanceID = aura.auraInstanceID
-                break
+                bestAuraInstanceID = aura.auraInstanceID; break
             end
         end
     end
-
     if bestAuraInstanceID then
         local curve = GetDispelCurve(plugin)
         local color = curve and C_UnitAuras.GetAuraDispelTypeColor and C_UnitAuras.GetAuraDispelTypeColor(unit, bestAuraInstanceID, curve)
         if color then
-            LCG.Show(frame, "Pixel", { color = { color:GetRGBA() }, lines = settings.numLines, frequency = settings.frequency, thickness = settings.thickness, border = true, frameLevel = Orbit.Constants.Levels.Border })
+            if frame.orbitActiveDispelAura ~= bestAuraInstanceID then
+                GC:Show(frame, DISPEL_GLOW_KEY, "Pixel", { color = { color:GetRGBA() }, lines = settings.numLines, frequency = settings.frequency, thickness = settings.thickness, border = true, frameLevel = Orbit.Constants.Levels.Border })
+                frame.orbitActiveDispelAura = bestAuraInstanceID
+            end
         else
-            LCG.Hide(frame, "Pixel")
+            if frame.orbitActiveDispelAura then GC:Hide(frame, DISPEL_GLOW_KEY); frame.orbitActiveDispelAura = nil end
         end
     else
-        LCG.Hide(frame, "Pixel")
+        if frame.orbitActiveDispelAura or frame.orbitActiveDispelAura == nil then
+            GC:Hide(frame, DISPEL_GLOW_KEY)
+            frame.orbitActiveDispelAura = false
+        end
     end
 end
 

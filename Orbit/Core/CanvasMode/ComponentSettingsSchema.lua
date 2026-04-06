@@ -59,9 +59,10 @@ local AURA_GRID = {
 local PANDEMIC_GLOW = {
     { type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow", plugin = true,
       options = {
-          { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
-          { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
-          { text = "Button Glow", value = 4 }, { text = "Blizzard", value = 5 },
+          { text = "None", value = 0 }, { text = "Thin", value = 6 },
+          { text = "Standard", value = 2 }, { text = "Thick", value = 7 },
+          { text = "Classic", value = 4 }, { text = "Autocast", value = 3 },
+          { text = "Pixel", value = 1 },
       }, default = 0 },
     { type = "colorcurve", key = "PandemicGlowColorCurve", label = "Pandemic Colour", plugin = true, singleColor = true },
 }
@@ -188,9 +189,10 @@ do
                 ICON_SIZE_CONTROL,
                 { type = "dropdown", key = "ProcGlowType", label = "Proc Glow",
                   options = {
-                      { text = "None", value = 0 }, { text = "Pixel Glow", value = 1 },
-                      { text = "Proc Glow", value = 2 }, { text = "Autocast Shine", value = 3 },
-                      { text = "Button Glow", value = 4 }, { text = "Blizzard", value = 5 },
+                      { text = "None", value = 0 }, { text = "Thin", value = 6 },
+                      { text = "Standard", value = 2 }, { text = "Thick", value = 7 },
+                      { text = "Classic", value = 4 }, { text = "Autocast", value = 3 },
+                      { text = "Pixel", value = 1 },
                   }, default = 0 },
                 { type = "colorcurve", key = "ProcGlowColorCurve", label = "Proc Colour", singleColor = true },
             },

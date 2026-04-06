@@ -115,6 +115,22 @@ function ABText:Apply(plugin, button, systemIndex)
                 local overrides, pos = GetComponentOverrides("Timer")
                 OverrideUtils.ApplyOverrides(timerText, overrides, { fontSize = defaultSize, fontPath = baseFontPath })
                 timerText:SetDrawLayer("OVERLAY", 7)
+                
+                if not button.orbitTextOverlay then
+                    button.orbitTextOverlay = CreateFrame("Frame", nil, button)
+                    button.orbitTextOverlay:SetAllPoints(button)
+                    button.orbitTextOverlay:SetFrameLevel(button:GetFrameLevel() + Orbit.Constants.Levels.IconOverlay)
+                end
+                if timerText:GetParent() ~= button.orbitTextOverlay then
+                    timerText:SetParent(button.orbitTextOverlay)
+                    if not cooldown.orbitTextSyncHooked then
+                        cooldown.orbitTextSyncHooked = true
+                        cooldown:HookScript("OnShow", function(c) if c.Text then c.Text:Show() end end)
+                        cooldown:HookScript("OnHide", function(c) if c.Text then c.Text:Hide() end end)
+                    end
+                    timerText:SetShown(cooldown:IsShown())
+                end
+
                 if pos.anchorX then ApplyComponentPosition(timerText, "Timer", "CENTER", "CENTER", 0, 0) end
             end
         end

@@ -10,8 +10,7 @@ Orbit.AuraMixin = {}
 local Mixin = Orbit.AuraMixin
 
 Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
-    local LCG = LibStub and LibStub("LibOrbitGlow-1.0", true)
-    if LCG and LCG.PreLoad then LCG.PreLoad("Pixel", 40) end
+    Orbit.Engine.GlowController:PreLoad("Pixel", 40)
 end)
 
 local DEFAULT_AURA_COUNT = 40
@@ -413,7 +412,7 @@ function Mixin:UpdateCrowdControlIcon(frame, plugin, iconSize)
 end
 
 -- [ LAZY ICON CREATION ]----------------------------------------------------------------------------
-local HEALER_ICON_FRAME_LEVEL_OFFSET = Orbit.Constants.Levels.Overlay
+
 local DEFAULT_HEALER_SKIN = Orbit.Constants.Aura.SkinNoTimer
 
 function Mixin:EnsureAuraIcon(frame, iconKey, iconSize)
@@ -422,7 +421,7 @@ function Mixin:EnsureAuraIcon(frame, iconKey, iconSize)
     btn:SetSize(iconSize, iconSize)
     btn.orbitOriginalWidth, btn.orbitOriginalHeight = iconSize, iconSize
     btn:SetPoint("CENTER", frame, "CENTER", 0, 0)
-    btn:SetFrameLevel(frame:GetFrameLevel() + HEALER_ICON_FRAME_LEVEL_OFFSET)
+    btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     btn.Icon = btn:CreateTexture(nil, "ARTWORK")
     btn.Icon:SetAllPoints()
     btn.icon = btn.Icon
@@ -526,7 +525,7 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
         if skinSettings.pandemicGlowType and skinSettings.pandemicGlowType > 0 then
             Orbit.PandemicGlow:Apply(icon, aura, unit, skinSettings)
             if icon.PandemicIcon then icon.PandemicIcon:SetAlpha(0) end
-        elseif icon.orbitPandemicGlowActive then
+        elseif Orbit.Engine.GlowController:IsActive(icon, "orbitPandemic") then
             Orbit.PandemicGlow:Stop(icon)
         end
         local swipeCurve = overrides and overrides.SwipeColorCurve
@@ -572,38 +571,29 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
     end
     if frame[iconKey] then
         frame[iconKey]._orbitCurveData = nil
-        if frame[iconKey].orbitPandemicGlowActive then Orbit.PandemicGlow:Stop(frame[iconKey]) end
+        if Orbit.Engine.GlowController:IsActive(frame[iconKey], "orbitPandemic") then Orbit.PandemicGlow:Stop(frame[iconKey]) end
         frame[iconKey]:Hide()
     end
 end
 
--- [ MISSING BUFF ICON DISPLAY ]--------------------------------------------------------------------
-local LCG = LibStub and LibStub("LibOrbitGlow-1.0", true)
 local MISSING_GLOW_KEY = "orbitMissing"
 
 local function ApplyMissingGlow(icon, overrides)
-    if not LCG or not overrides then return end
-
+    local GC = Orbit.Engine.GlowController
+    local GU = Orbit.Engine.GlowUtils
+    if not overrides then return end
     local color = { r = 1, g = 0.2, b = 0.2, a = 1 }
     if overrides.ProcGlowColorCurve and OrbitEngine.ColorCurve then
         local c = OrbitEngine.ColorCurve:SampleColorCurve(overrides.ProcGlowColorCurve, 1)
         if c then color = { r = c.r, g = c.g, b = c.b, a = c.a or 1 } end
     end
-
-    local typeName, options = OrbitEngine.GlowUtils:BuildOptionsFromLookup(overrides, "ProcGlow", color, MISSING_GLOW_KEY)
-    if typeName and options then
-        LCG.Show(icon, typeName, options)
-        icon.orbitMissingGlowActive = typeName
-    end
+    local typeName, options = GU:BuildOptionsFromLookup(overrides, "ProcGlow", color, MISSING_GLOW_KEY)
+    if not typeName or not options then GC:Hide(icon, MISSING_GLOW_KEY); return end
+    GC:Show(icon, MISSING_GLOW_KEY, typeName, options)
 end
 
 local function StopMissingGlow(icon)
-    if not LCG then return end
-    local typeName = icon.orbitMissingGlowActive
-    if typeName then
-        LCG.Hide(icon, typeName, MISSING_GLOW_KEY)
-        icon.orbitMissingGlowActive = nil
-    end
+    Orbit.Engine.GlowController:Hide(icon, MISSING_GLOW_KEY)
 end
 
 -- [ MISSING RAID BUFF CONTAINER ]------------------------------------------------------------------
@@ -632,7 +622,7 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
             local container = frame[containerKey]
             if container._raidIcons then
                 for _, icon in ipairs(container._raidIcons) do
-                    StopMissingGlow(icon); icon.orbitMissingGlowActive = nil; icon:Hide()
+                    StopMissingGlow(icon); icon:Hide()
                 end
             end
             container:Hide()
@@ -645,7 +635,7 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
         if container then container:Hide() end
         container = CreateFrame("Frame", nil, frame)
         container:SetPoint("CENTER", frame, "CENTER", 0, 0)
-        container:SetFrameLevel(frame:GetFrameLevel() + HEALER_ICON_FRAME_LEVEL_OFFSET)
+        container:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
         container._raidIcons = {}
         container:Hide()
         frame[containerKey] = container
@@ -666,7 +656,6 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
     -- Hide excess icons
     for idx = #missing + 1, #container._raidIcons do
         StopMissingGlow(container._raidIcons[idx])
-        container._raidIcons[idx].orbitMissingGlowActive = nil
         container._raidIcons[idx]:Hide()
     end
     -- Layout missing icons
@@ -687,7 +676,7 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
             GameTooltip:Show()
         end)
         icon:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        if not icon.orbitMissingGlowActive then ApplyMissingGlow(icon, overrides) end
+        ApplyMissingGlow(icon, overrides)
         icon:Show()
     end
     local totalW = #missing * iconSize + (#missing - 1) * RAID_BUFF_ICON_SPACING
@@ -704,7 +693,7 @@ function Mixin:EnsureRaidBuffContainer(frame, containerKey, raidBuffs, iconSize)
         if container then container:Hide() end
         container = CreateFrame("Frame", nil, frame)
         container:SetPoint("CENTER", frame, "CENTER", 0, 0)
-        container:SetFrameLevel(frame:GetFrameLevel() + HEALER_ICON_FRAME_LEVEL_OFFSET)
+        container:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
         container._raidIcons = {}
         frame[containerKey] = container
     end

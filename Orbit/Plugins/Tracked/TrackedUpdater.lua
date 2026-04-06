@@ -3,9 +3,9 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
-local LCG = LibStub("LibOrbitGlow-1.0", true)
+local GC = Orbit.Engine.GlowController
+local GU = Orbit.Engine.GlowUtils
 local ACTIVE_GLOW_KEY = "orbitActive"
-local GlowType = Constants.Glow.Type
 
 -- [ CONSTANTS ] ---------------------------------------------------------------
 local TRACKED_INDEX = Constants.Tracked.SystemIndex.Tracked
@@ -34,25 +34,14 @@ local Updater = Orbit.TrackedUpdater
 
 -- [ ACTIVE GLOW ] -------------------------------------------------------------
 function Updater:StartActiveGlow(plugin, icon)
-    if not LCG then return end
     local systemIndex = icon.systemIndex or TRACKED_INDEX
-    
-    local typeName, options = OrbitEngine.GlowUtils:BuildOptions(plugin, systemIndex, "ActiveGlow", { r = 0.3, g = 0.8, b = 1, a = 1 }, ACTIVE_GLOW_KEY)
+    local typeName, options = GU:BuildOptions(plugin, systemIndex, "ActiveGlow", { r = 0.3, g = 0.8, b = 1, a = 1 }, ACTIVE_GLOW_KEY)
     if not typeName or not options then return end
-    
-    LCG.Show(icon, typeName, options)
-    icon._activeGlowing = true
-    icon._activeGlowType = typeName
+    GC:Show(icon, ACTIVE_GLOW_KEY, typeName, options)
 end
 
 function Updater:StopActiveGlow(icon)
-    if not LCG or not icon._activeGlowing then return end
-    local t = icon._activeGlowType
-    if t then
-        LCG.Hide(icon, t, ACTIVE_GLOW_KEY)
-    end
-    icon._activeGlowing = false
-    icon._activeGlowType = nil
+    GC:Hide(icon, ACTIVE_GLOW_KEY)
 end
 
 -- [ ICON UPDATE ] -------------------------------------------------------------
@@ -115,7 +104,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     local castTime = icon._activeGlowExpiry - icon.activeDuration
                     -- Legacy :SetCooldown required: ActiveCooldown uses computed startTime/duration, no DurationObject API exists
                     icon.ActiveCooldown:SetCooldown(castTime, icon.activeDuration)
-                    if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
+                    self:StartActiveGlow(plugin, icon)
                 else
                     icon.ActiveCooldown:Clear()
                     if icon._activeGlowing then self:StopActiveGlow(icon) end
@@ -142,7 +131,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     end
                     if LCG and icon._activeGlowExpiry then
                         if GetTime() < icon._activeGlowExpiry then
-                            if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
+                            self:StartActiveGlow(plugin, icon)
                         else
                             self:StopActiveGlow(icon)
                             icon._activeGlowExpiry = nil
@@ -188,7 +177,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                             icon.Cooldown:SetAlpha(0)
                             -- Legacy :SetCooldown required: ActiveCooldown uses item start + activeDuration, no DurationObject API
                             icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
-                            if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
+                            self:StartActiveGlow(plugin, icon)
                         else
                             icon.Icon:SetDesaturation(1)
                             icon.Cooldown:SetAlpha(1)
@@ -228,7 +217,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                             icon.Cooldown:SetAlpha(0)
                             -- Legacy :SetCooldown required: ActiveCooldown uses item start + activeDuration, no DurationObject API
                             icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
-                            if not icon._activeGlowing then self:StartActiveGlow(plugin, icon) end
+                            self:StartActiveGlow(plugin, icon)
                         else
                             icon.Icon:SetDesaturation(1)
                             icon.Cooldown:SetAlpha(1)
@@ -335,9 +324,9 @@ function Updater:StartTrackedUpdateTicker(plugin)
                         icon.ActiveCooldown:Clear()
                     end
                     if isActive then
-                        if not icon._activeGlowing then Updater:StartActiveGlow(plugin, icon) end
+                        self:StartActiveGlow(plugin, icon)
                     else
-                        if icon._activeGlowing then Updater:StopActiveGlow(icon) end
+                        if GC:IsActive(icon, ACTIVE_GLOW_KEY) then Updater:StopActiveGlow(icon) end
                         if icon._activeGlowExpiry then
                             icon._activeGlowExpiry = nil
                             icon.ActiveCooldown:Clear()

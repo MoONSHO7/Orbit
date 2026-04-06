@@ -189,7 +189,7 @@ function DrawerUI:LayoutDrawer()
                 local wf = datatext.frame
                 if not wf then return end
                 datatext.isPlaced = true
-                wf:SetFrameStrata("TOOLTIP")
+                wf:SetFrameStrata(Orbit.Constants.Strata.Topmost)
                 wf:SetMovable(true)
                 wf:Show()
                 if wf.overlay then wf.overlay:Show() end
@@ -224,7 +224,7 @@ function DrawerUI:LayoutDrawer()
                 local wf = datatext.frame
                 if not wf then return end
                 cell.isDraggingFromDrawer = false
-                wf:SetFrameStrata("MEDIUM")
+                wf:SetFrameStrata(Orbit.Constants.Strata.HUD)
                 wf:SetFrameLevel(500)
                 
                 local cx, cy = GetCursorPosition()

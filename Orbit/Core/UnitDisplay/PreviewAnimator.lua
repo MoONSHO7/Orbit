@@ -519,11 +519,10 @@ function PA:StopHealerAuras(owner)
     healerSessions[owner] = nil
 end
 
--- [ DISPEL ANIMATION ]------------------------------------------------------------------------------
-local LCG = LibStub("LibOrbitGlow-1.0", true)
+local GC = Orbit.Engine.GlowController
+local DISPEL_PREVIEW_KEY = "dispelPreview"
 
 local function DispelTick()
-    if not LCG then return end
     local now = GetTime()
     for _, session in pairs(dispelSessions) do
         local frames = session.frames
@@ -531,7 +530,7 @@ local function DispelTick()
         if numFrames == 0 then break end
         for _, slot in ipairs(session.slots) do
             if now >= slot.expiresAt then
-                if slot.frame then LCG.Hide(slot.frame, "Pixel", "dispelPreview") end
+                if slot.frame then GC:Hide(slot.frame, DISPEL_PREVIEW_KEY) end
                 local alive = {}
                 for _, f in ipairs(frames) do if not f._previewDead then alive[#alive + 1] = f end end
                 if #alive == 0 then
@@ -542,7 +541,7 @@ local function DispelTick()
                     slot.frame = pick
                     slot.expiresAt = now + DISPEL_DURATION + math.random() * 4
                     local c = session.colors[slot.dispelType]
-                    LCG.Show(slot.frame, "Pixel", { color = { c.r, c.g, c.b, c.a }, lines = session.numLines, frequency = session.frequency, thickness = session.thickness, border = true, key = "dispelPreview", frameLevel = Orbit.Constants.Levels.Border })
+                    GC:Show(slot.frame, DISPEL_PREVIEW_KEY, "Pixel", { color = { c.r, c.g, c.b, c.a }, lines = session.numLines, frequency = session.frequency, thickness = session.thickness, border = true, key = DISPEL_PREVIEW_KEY, frameLevel = Orbit.Constants.Levels.Border })
                 end
             end
         end
@@ -564,9 +563,9 @@ end
 
 function PA:StopDispels(owner)
     local session = dispelSessions[owner]
-    if session and LCG then
+    if session then
         for _, slot in ipairs(session.slots) do
-            if slot.frame then LCG.Hide(slot.frame, "Pixel", "dispelPreview") end
+            if slot.frame then GC:Hide(slot.frame, DISPEL_PREVIEW_KEY) end
         end
     end
     dispelSessions[owner] = nil

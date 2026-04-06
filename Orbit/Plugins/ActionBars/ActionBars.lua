@@ -6,7 +6,7 @@ local MasqueBridge = Orbit.Skin and Orbit.Skin.Masque
 local ABC = Orbit.ActionBarsContainer
 local ABText = Orbit.ActionBarsText
 local ABPreview = Orbit.ActionBarsPreview
-local LCG = LibStub("LibOrbitGlow-1.0", true)
+local GC = Orbit.Engine.GlowController
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local DEFAULT_ICON_SIZE = 32
@@ -51,7 +51,7 @@ local BAR_CONFIG = {
     { blizzName = "PossessBarFrame", orbitName = "OrbitPossessBar", label = "Possess Bar", index = 11, buttonPrefix = "PossessButton", count = 2, isSpecial = true },
 }
 
-local PROC_GLOW_KEY = "orbitABProc"
+
 
 local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     defaults = {
@@ -252,10 +252,8 @@ end
 
 -- [ LIFECYCLE ]----------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    if LCG and LCG.PreLoad then
-        LCG.PreLoad("Medium", 20)
-        LCG.PreLoad("Classic", 20)
-    end
+    GC:PreLoad("Medium", 20)
+    GC:PreLoad("Classic", 20)
     self:InitializeContainers()
     ABC:CreateVehicleExit(self)
     for index, container in pairs(self.containers) do ABPreview:Setup(self, container, index) end
@@ -303,16 +301,24 @@ function Plugin:OnLoad()
         }, self)
     end
     Orbit.EventBus:On("UPDATE_MULTI_CAST_ACTIONBAR", function() C_Timer.After(0.1, function() self:ApplyAll() end) end, self)
+    local function DebouncePetBarUpdate()
+        if InCombatLockdown() then
+            Orbit.CombatManager:QueueUpdate(DebouncePetBarUpdate)
+        else
+            if self.petDebounce then self.petDebounce:Cancel() end
+            self.petDebounce = C_Timer.NewTimer(0.1, function()
+                self.petDebounce = nil
+                local container = self.containers[PET_BAR_INDEX]
+                if container then self:ApplySettings(container) end
+            end)
+        end
+    end
+
     Orbit.EventBus:On("UNIT_PET", function(unit)
         if unit ~= "player" then return end
-        if self.petDebounce then self.petDebounce:Cancel() end
-        self.petDebounce = C_Timer.NewTimer(0.3, function()
-            self.petDebounce = nil
-            local container = self.containers[PET_BAR_INDEX]
-            if not container then return end
-            self:ApplySettings(container)
-        end)
+        DebouncePetBarUpdate()
     end, self)
+    Orbit.EventBus:On("PET_BAR_UPDATE", DebouncePetBarUpdate, self)
     local function HideFlyoutBackground()
         local bg = SpellFlyoutBackgroundEnd
         if not bg then return end
@@ -361,10 +367,9 @@ function Plugin:OnLoad()
     end, self)
     local plugin = self
     -- [ PROC GLOW HOOKS ]----------------------------------------------------------------------------
-    if LCG and ActionButtonSpellAlertManager then
+    if ActionButtonSpellAlertManager then
         local abPlugin = self
         hooksecurefunc(ActionButtonSpellAlertManager, "ShowAlert", function(_, button)
-            if button.orbitABProcGlowActive then return end
             local parent = button:GetParent()
             if not parent or not abPlugin.containers then return end
             local isOurs = false
@@ -372,17 +377,19 @@ function Plugin:OnLoad()
                 if parent == container then isOurs = true; break end
             end
             if not isOurs then return end
-            if button.SpellActivationAlert then button.SpellActivationAlert:SetAlpha(0) end
-            local typeName, options = Orbit.Engine.GlowUtils:BuildOptions(abPlugin, 1, "ProcGlow", Constants.Glow.DefaultColor, PROC_GLOW_KEY)
-            if not typeName or not options then return end
-            options.frameLevel = Constants.Levels.IconGlow
-            LCG.Show(button, typeName, options)
-            button.orbitABProcGlowActive = typeName
+            
+            GC:ShowProc(button, function(k) return abPlugin:GetSetting(1, k) end, "ProcGlow", Constants.Glow.DefaultColor)
         end)
         hooksecurefunc(ActionButtonSpellAlertManager, "HideAlert", function(_, button)
-            if not button.orbitABProcGlowActive then return end
-            LCG.Hide(button, button.orbitABProcGlowActive, PROC_GLOW_KEY)
-            button.orbitABProcGlowActive = nil
+            local parent = button:GetParent()
+            if not parent or not abPlugin.containers then return end
+            local isOurs = false
+            for _, container in pairs(abPlugin.containers) do
+                if parent == container then isOurs = true; break end
+            end
+            if not isOurs then return end
+            
+            GC:HideProc(button)
         end)
     end
     Orbit.EventBus:On("ACTION_RANGE_CHECK_UPDATE", function(slot)
@@ -521,7 +528,17 @@ function Plugin:LayoutButtons(index)
             end
             button.orbitHidden = true
         else
-            local hasAction = button.HasAction and button:HasAction() or false
+            local hasAction = false
+            if button.HasAction then
+                hasAction = button:HasAction()
+            elseif index == PET_BAR_INDEX then
+                local petName, petTexture, petIsToken = GetPetActionInfo(button:GetID() or i)
+                if petName or petTexture or petIsToken then hasAction = true end
+            elseif index == STANCE_BAR_INDEX then
+                local stanceTexture, stanceName = GetShapeshiftFormInfo(button:GetID() or i)
+                if stanceTexture or stanceName then hasAction = true end
+            end
+
             local shouldShow = not (hideEmpty and not hasAction)
             if not shouldShow then
                 if not InCombatLockdown() then 
@@ -542,6 +559,10 @@ function Plugin:LayoutButtons(index)
                 button:ClearAllPoints()
                 local pos = cachedPositions[i]
                 button:SetPoint("TOPLEFT", container, "TOPLEFT", pos.x, pos.y)
+                
+                if GC:IsActive(button, "orbitProc") then
+                    GC:ShowProc(button, function(k) return self:GetSetting(1, k) end, "ProcGlow", Constants.Glow.DefaultColor)
+                end
             end
         end
     end

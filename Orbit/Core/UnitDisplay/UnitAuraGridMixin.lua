@@ -839,7 +839,7 @@ function Mixin:_syncCancelOverlays(frame, auras, auraFilter, icons)
             btn:SetMouseMotionEnabled(false)
             btn:SetPassThroughButtons("LeftButton")
             btn:SetAlpha(0)
-            btn:SetFrameStrata("HIGH")
+            btn:SetFrameStrata(Orbit.Constants.Strata.Overlay)
             frame._cancelButtons[i] = btn
         end
         local idx = indexMap[aura.auraInstanceID]

@@ -2,7 +2,7 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
-local LCG = LibStub("LibOrbitGlow-1.0")
+local GC = Orbit.Engine.GlowController
 
 Orbit.GroupFramePreviewMixin = {}
 
@@ -355,7 +355,7 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
             if isCanvasMode then self:ShowPreviewAuras(frame, i)
             else Orbit.AuraPreview:HideFrameAuras(frame) end
 
-            LCG.Hide(frame, "Pixel", "preview")
+            GC:Hide(frame, "preview")
         end
     end
 end
@@ -416,7 +416,7 @@ function Orbit.GroupFramePreviewMixin:HidePreview()
                 if paa._previewIcons then for _, sub in ipairs(paa._previewIcons) do sub:Hide() end end
                 paa:Hide()
             end
-            LCG.Hide(frame, "Pixel", "preview")
+            GC:Hide(frame, "preview")
             for _, key in ipairs(HealerReg:ActiveKeys()) do
                 if frame[key] then frame[key]:Hide() end
             end

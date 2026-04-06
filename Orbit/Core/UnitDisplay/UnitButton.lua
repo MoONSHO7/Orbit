@@ -19,9 +19,7 @@ local ABSORB_COLOR = { r = 0.4, g = 0.75, b = 1.0, a = 0.85 }
 local HEAL_ABSORB_ALPHA = 0.15
 local HEAL_ABSORB_PATTERN_SIZE = 3200
 local HEAL_ABSORB_TEXCOORD = 100
-local HEALTH_LEVEL_BOOST = Constants.Levels.StatusBar
-local HEAL_ABSORB_LEVEL_BOOST = Constants.Levels.StatusBar
-local TEXT_LEVEL_BOOST = Constants.Levels.Overlay
+
 local TEXT_INSET = 5
 local SHADOW_OFFSET_X = 1
 local SHADOW_OFFSET_Y = -1
@@ -106,7 +104,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.Health:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
     f.Health:SetStatusBarColor(0, 1, 0)
     f.Health:SetClipsChildren(true)
-    f.Health:SetFrameLevel(f:GetFrameLevel() + HEALTH_LEVEL_BOOST)
+    f.Health:SetFrameLevel(f:GetFrameLevel() + Constants.Levels.StatusBar)
 
     f.HealthDamageTexture = f.Health:CreateTexture(nil, "BACKGROUND")
     f.HealthDamageTexture:SetColorTexture(DAMAGE_COLOR.r, DAMAGE_COLOR.g, DAMAGE_COLOR.b, DAMAGE_COLOR.a)
@@ -138,7 +136,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.HealAbsorbBar:SetStatusBarColor(c.r, c.g, c.b, c.a)
     f.HealAbsorbBar:SetMinMaxValues(0, 1)
     f.HealAbsorbBar:SetValue(0)
-    f.HealAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel() + HEAL_ABSORB_LEVEL_BOOST)
+    f.HealAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel() + Constants.Levels.StatusBar)
     f.HealAbsorbBar:Hide()
 
     f.HealAbsorbMask = CreateFrame("Frame", nil, f.HealAbsorbBar)
@@ -162,7 +160,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
 
     f.TextFrame = CreateFrame("Frame", nil, f)
     f.TextFrame:SetAllPoints(f.Health)
-    f.TextFrame:SetFrameLevel(f.Health:GetFrameLevel() + TEXT_LEVEL_BOOST)
+    f.TextFrame:SetFrameLevel(f.Health:GetFrameLevel() + Constants.Levels.Overlay)
 
     f.NameFrame = CreateFrame("Frame", nil, f)
     f.NameFrame:SetAllPoints(f.Health)

@@ -9,7 +9,7 @@ local UnitButton = Engine.UnitButton
 
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
 local PREVIEW_HEALTH_VALUE = 0.75
-local HEALTH_BAR_LEVEL_OFFSET = 2
+
 local _, PLAYER_CLASS = UnitClass("player")
 
 -- [ CORE MIXIN ]------------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ function CoreMixin:CreateCanvasPreview(options)
     bar:SetPoint("BOTTOMRIGHT", 0, 0)
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(PREVIEW_HEALTH_VALUE)
-    bar:SetFrameLevel(preview:GetFrameLevel() + HEALTH_BAR_LEVEL_OFFSET)
+    bar:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
     Orbit.Skin:SkinStatusBar(bar, textureName, nil, true)
 
     -- The cleric inspects the health bar's aura for class-colored enchantments

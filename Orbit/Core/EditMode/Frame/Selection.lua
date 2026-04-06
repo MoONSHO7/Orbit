@@ -6,7 +6,7 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local C = Orbit.Constants
 
-local OVERLAY_LEVEL_BOOST = 100
+
 
 Engine.FrameSelection = Engine.FrameSelection or {}
 local Selection = Engine.FrameSelection
@@ -220,14 +220,14 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
 
     local selection = CreateFrame("Frame", nil, frame, "EditModeSystemSelectionTemplate")
     selection:SetAllPoints()
-    selection:SetFrameStrata("HIGH")
-    selection:SetFrameLevel(frame:GetFrameLevel() + OVERLAY_LEVEL_BOOST)
+    selection:SetFrameStrata(Orbit.Constants.Strata.Overlay)
+    selection:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.EditModeSelection)
     selection.isOrbitSelection = true
 
     -- Create anchor line gradient textures (two halves per edge for center-out fade)
     local lineThickness = C.Selection.AnchorLineThickness
     local lineContainer = CreateFrame("Frame", nil, selection)
-    lineContainer:SetFrameStrata("TOOLTIP")
+    lineContainer:SetFrameStrata(Orbit.Constants.Strata.Topmost)
     lineContainer:SetFrameLevel(selection:GetFrameLevel() + 10)
     lineContainer:SetAllPoints(selection)
     selection.AnchorLineFrame = lineContainer
@@ -609,7 +609,7 @@ function Selection:UpdateVisuals(frame, selection)
     if isComponentEdit then
         -- Show selection with green tint for Canvas Mode
         selection:Show()
-        selection:SetFrameStrata("HIGH")
+        selection:SetFrameStrata(Orbit.Constants.Strata.Overlay)
 
         -- Green tint for canvas mode
         ForEachRegion(selection, function(region)
@@ -639,7 +639,7 @@ function Selection:UpdateVisuals(frame, selection)
         end
 
         -- Restore strata and mouse interaction
-        selection:SetFrameStrata("HIGH")
+        selection:SetFrameStrata(Orbit.Constants.Strata.Overlay)
         selection:EnableMouse(true)
 
         ForEachRegion(selection, function(region)
@@ -683,7 +683,7 @@ function Selection:UpdateVisuals(frame, selection)
         end
 
         -- Restore strata and mouse interaction
-        selection:SetFrameStrata("HIGH")
+        selection:SetFrameStrata(Orbit.Constants.Strata.Overlay)
         selection:EnableMouse(true)
 
         ForEachRegion(selection, function(region)

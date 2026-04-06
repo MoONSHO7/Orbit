@@ -355,9 +355,14 @@ function Injection:RefreshFrames(systemIndex)
         self:UpdateIcon(frame)
     end
     Plugin.injectedFrames[systemIndex] = active
-    -- Trigger layout refresh
+    -- Trigger layout refresh (sync + deferred next-frame to guarantee layout/texture boundaries are flushed)
     if entry and entry.anchor and Plugin.ProcessChildren then
         Plugin:ProcessChildren(entry.anchor)
+        C_Timer.After(0, function()
+            if not InCombatLockdown() then
+                Plugin:ProcessChildren(entry.anchor)
+            end
+        end)
     end
 end
 
@@ -535,11 +540,11 @@ function Injection:CreateDropZone(anchor)
     local zone = CreateFrame("Frame", nil, UIParent)
     zone:SetPoint("TOPLEFT", anchor, "TOPLEFT")
     zone:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT")
-    zone:SetFrameStrata("TOOLTIP")
+    zone:SetFrameStrata(Orbit.Constants.Strata.Topmost)
     zone:SetFrameLevel(999)
     -- Glow container extending beyond frame edges, placed in background
     local glow = CreateFrame("Frame", nil, UIParent)
-    glow:SetFrameStrata("BACKGROUND")
+    glow:SetFrameStrata(Orbit.Constants.Strata.Background)
     glow:SetFrameLevel(0)
     glow:SetScript("OnShow", function(self)
         local borderSize = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize or 1

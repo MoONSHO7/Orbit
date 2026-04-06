@@ -11,7 +11,7 @@ local BUTTON_PADDING = 20
 local Button = CreateFrame("Button", "OrbitOptionsButton", UIParent, "BackdropTemplate")
 Button:SetSize(BUTTON_WIDTH, BUTTON_HEIGHT)
 Button:SetPoint("TOPLEFT", UIParent, "TOPLEFT", BUTTON_PADDING, -BUTTON_PADDING)
-Button:SetFrameStrata("TOOLTIP")
+Button:SetFrameStrata(Orbit.Constants.Strata.Topmost)
 Button:SetFrameLevel(500)
 Button:Hide()
 
