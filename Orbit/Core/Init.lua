@@ -206,11 +206,7 @@ function Orbit:OnLoad()
     self.db.AccountSettings = self.db.AccountSettings or {}
     self.db.SpecData = self.db.SpecData or {}
 
-    -- TODO(REMOVE): Migrate TourComplete from profile-synced GlobalSettings to account-wide AccountSettings
-    if self.db.GlobalSettings.TourComplete ~= nil and self.db.AccountSettings.TourComplete == nil then
-        self.db.AccountSettings.TourComplete = self.db.GlobalSettings.TourComplete
-        self.db.GlobalSettings.TourComplete = nil
-    end
+
 
     local globalDefaults = self.Profile and self.Profile.defaults and self.Profile.defaults.GlobalSettings
     if globalDefaults then

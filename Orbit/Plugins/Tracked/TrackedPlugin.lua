@@ -46,7 +46,7 @@ local Plugin = Orbit:RegisterPlugin("Tracked Items", "Orbit_Tracked", {
         }
     end,
     OnLoad = function(self)
-        self:MigrateLegacyProfileData()
+
         self:SeedAllSpecSpatialData()
         self._lastSpecID = self:GetCurrentSpecID()
         self:SetupTrackedFrame()
@@ -122,66 +122,7 @@ local Plugin = Orbit:RegisterPlugin("Tracked Items", "Orbit_Tracked", {
     UpdateVisuals = function(self, frame)
         if frame then self:ApplySettings(frame) end
     end,
-    MigrateLegacyProfileData = function(self)
-        local profiles = Orbit.db and Orbit.db.Profiles or {}
-        
-        -- Run migration ONCE globally via a flag
-        if Orbit.db.GlobalSettings.TrackedMigrationComplete then return end
-        Orbit.db.GlobalSettings.TrackedMigrationComplete = true
 
-        -- Migrate data strictly across ALL profiles safely
-        for pKey, pData in pairs(profiles) do
-            local oldData = pData["Orbit_CooldownViewer"]
-            if oldData then
-                local newData = pData["Orbit_Tracked"] or {}
-                local migratedAny = false
-                
-                -- Migrate Tracked System Indices
-                local indicesToMigrate = {}
-                indicesToMigrate[Constants.Tracked.SystemIndex.Tracked] = true
-                for i = 0, Constants.Tracked.MaxChildFrames - 1 do
-                    indicesToMigrate[Constants.Tracked.SystemIndex.Tracked_ChildStart + i] = true
-                end
-                indicesToMigrate[Constants.Tracked.SystemIndex.TrackedBar] = true
-                for i = 0, Constants.Tracked.MaxBarChildren - 1 do
-                    indicesToMigrate[Constants.Tracked.SystemIndex.TrackedBar_ChildStart + i] = true
-                end
-
-                for idx, _ in pairs(indicesToMigrate) do
-                    if oldData[idx] ~= nil then
-                        newData[idx] = Orbit.Engine.Utils:DeepCopy(oldData[idx])
-                        oldData[idx] = nil -- Clean up legacy node
-                        migratedAny = true
-                    end
-                end
-                
-                if migratedAny then
-                    pData["Orbit_Tracked"] = newData
-                end
-            end
-        end
-        
-        -- Migrate SpecData (Tracked Items / ChargeBars)
-        if Orbit.db.SpecData then
-            for specID, data in pairs(Orbit.db.SpecData) do
-                if type(data) == "table" then
-                    for systemIndex, v in pairs(data) do
-                        if type(v) == "table" then
-                            -- Migrate legacy ChargeBar keys
-                            if v.ChargeSpell then
-                                v.TrackedBarSpell = v.ChargeSpell
-                                v.ChargeSpell = nil
-                            end
-                            if v.ChargeChildren then
-                                v.TrackedBarChildren = v.ChargeChildren
-                                v.ChargeChildren = nil
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end,
 })
 
 function Plugin:GetGrowthDirection()

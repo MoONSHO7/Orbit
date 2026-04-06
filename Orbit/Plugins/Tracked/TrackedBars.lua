@@ -368,8 +368,8 @@ function Plugin:DespawnTrackedBarChild(frame)
     local systemIndex = frame.systemIndex
 
     OrbitEngine.FrameAnchor:BreakAnchor(frame, true)
-    -- TODO: Phase 3 — replace RepairAllChains with targeted ReconcileChain(root)
-    OrbitEngine.FrameAnchor:RepairAllChains()
+    -- Phase 3 implementation
+    if OrbitEngine.FrameAnchor then OrbitEngine.FrameAnchor:ReconcileAll() end
     ScrubTrackedBarFrame(frame)
     frame:Hide()
     frame:ClearAllPoints()

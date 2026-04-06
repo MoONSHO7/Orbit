@@ -803,16 +803,16 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited, depth)
     end
 end
 
--- [ REPAIR CHAIN ]----------------------------------------------------------------------------------
+-- [ RECONCILE CHAIN ]---------------------------------------------------------------------------------
 -- Delegates to AnchorGraph:ReconcileChain for targeted chain reconciliation.
-function Anchor:RepairChain(root)
+function Anchor:ReconcileChain(root)
     if not root or InCombatLockdown() then return end
     Graph:ReconcileChain(root, self)
 end
 
--- Repair all anchor chains across the entire system.
+-- Reconcile all anchor chains across the entire system.
 -- Delegates to AnchorGraph:ReconcileAll.
-function Anchor:RepairAllChains()
+function Anchor:ReconcileAll()
     if InCombatLockdown() then return end
     Graph:ReconcileAll(self)
 end

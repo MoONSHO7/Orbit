@@ -661,11 +661,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
     if not barColor then barColor = BUFFBAR_DEFAULT_COLORS[colorIdx] end
     SetBarColor(bar, barColor.r, barColor.g, barColor.b, barColor.a or 1)
 
-    -- TODO(REMOVE): Clean up stale inner-bar borders/backgrounds (migrated to parent)
-    if bar.orbitBG then bar.orbitBG:Hide() end
-    if bar.orbitBorder then bar.orbitBorder:Hide() end
-    if bar._borderFrame then bar._borderFrame:Hide() end
-    Orbit.Skin:ClearNineSliceBorder(bar)
+
 
     -- Hide Blizzard bar chrome
     if bar.BarBG then bar.BarBG:SetAlpha(0) end

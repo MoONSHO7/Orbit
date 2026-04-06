@@ -79,14 +79,11 @@ function Updater:UpdateTrackedIcon(plugin, icon)
             local onGCD = cdInfo and cdInfo.isOnGCD
             local chargeInfo = icon.isChargeSpell and C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
             if chargeInfo then
-                -- TODO(API): maxCharges is non-secret after hotfix; simplify issecretvalue guard
-                if not issecretvalue(chargeInfo.currentCharges) then
-                    icon._trackedCharges = chargeInfo.currentCharges
-                    icon._knownRechargeDuration = chargeInfo.cooldownDuration
-                    icon._rechargeEndsAt = (chargeInfo.cooldownStartTime > 0 and chargeInfo.cooldownDuration > 0)
-                            and (chargeInfo.cooldownStartTime + chargeInfo.cooldownDuration)
-                        or nil
-                end
+                icon._trackedCharges = chargeInfo.currentCharges
+                icon._knownRechargeDuration = chargeInfo.cooldownDuration
+                icon._rechargeEndsAt = (chargeInfo.cooldownStartTime > 0 and chargeInfo.cooldownDuration > 0)
+                        and (chargeInfo.cooldownStartTime + chargeInfo.cooldownDuration)
+                    or nil
                 CooldownUtils:TrackChargeCompletion(icon)
                 local chargeDurObj = C_Spell.GetSpellChargeDuration and C_Spell.GetSpellChargeDuration(activeId)
                 if chargeDurObj then
@@ -121,8 +118,7 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     local desatPct = onGCD and 0 or durObj:EvaluateRemainingPercent(icon.desatCurve or DESAT_CURVE)
                     icon.Icon:SetDesaturation(desatPct)
                     if icon.cdAlphaCurve then icon.Cooldown:SetAlpha(durObj:EvaluateRemainingPercent(icon.cdAlphaCurve)) end
-                    -- TODO(API): replace fallback with cdInfo.isActive once hotfix is live
-                    local onRealCD = cdInfo and (cdInfo.isActive ~= nil and cdInfo.isActive or (issecretvalue(cdInfo.startTime) or cdInfo.startTime > 0))
+                    local onRealCD = cdInfo and cdInfo.isActive
                     if icon.activeDuration and onRealCD and not onGCD and icon._activeGlowExpiry then
                         local castTime = icon._activeGlowExpiry - icon.activeDuration
                         icon.ActiveCooldown:SetCooldown(castTime, icon.activeDuration)

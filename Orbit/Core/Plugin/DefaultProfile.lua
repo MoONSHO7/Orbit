@@ -54,7 +54,7 @@ Orbit.Profile.defaults = {
                     aspectRatio = "4:3",
                     Anchor = false,
                     Position = { y = 274.6, x = 0.27, point = "BOTTOM" },
-                    IconSize = 100,
+                    IconSize = 34,
                     CooldownSwipeColorCurve = {
                         pins = { { color = { a = 0.821, r = 0, g = 0, b = 0 }, position = 0.5 } },
                         _sorted = { { color = { a = 0.821, r = 0, g = 0, b = 0 }, position = 0.5 } },
@@ -75,7 +75,7 @@ Orbit.Profile.defaults = {
                         _sorted = { { color = { a = 0.77, b = 0.569, g = 0.949, r = 1 }, position = 0.434 } },
                     },
                     aspectRatio = "4:3",
-                    IconSize = 100,
+                    IconSize = 34,
                     Position = { y = 213.88, x = 0, point = "BOTTOM" },
                     CooldownSwipeColorCurve = {
                         pins = { { color = { a = 0.8, b = 0, g = 0, r = 0 }, position = 0.465 } },
@@ -105,7 +105,7 @@ Orbit.Profile.defaults = {
                         _sorted = { { color = { a = 0.8, b = 0, g = 0, r = 0 }, position = 0.465 } },
                     },
                     Anchor = { target = "OrbitPlayerPower", padding = 20, edge = "TOP", align = "CENTER" },
-                    IconSize = 100,
+                    IconSize = 34,
                     ComponentPositions = {
                         Timer = { posY = 0, offsetX = 0, justifyH = "CENTER", posX = 0, selfAnchorY = "CENTER", offsetY = 0, anchorX = "CENTER", anchorY = "CENTER" },
                         Charges = { posY = -10, offsetX = 1, justifyH = "RIGHT", posX = 15, selfAnchorY = "BOTTOM", offsetY = 5, anchorX = "RIGHT", anchorY = "BOTTOM" },
@@ -195,20 +195,20 @@ Orbit.Profile.defaults = {
             ["Orbit_Minimap"] = {
                 ["Orbit_Minimap"] = {
                     Anchor = false, Scale = 100, Opacity = 100, Size = 220,
-                    DifficultyDisplay = "icon", DifficultyShowBackground = false, ZoneTextColoring = true, DisabledComponents = { "Status" },
+                    DifficultyDisplay = "icon", DifficultyShowBackground = false, ZoneTextColoring = true, DisabledComponents = { "Status", "Zoom", "Coords" },
                     ComponentPositions = {
-                        Compartment = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 15, offsetY = -10, posX = 110.0000305175781, posY = -135.0000305175781, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
-                        Zoom = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 15, offsetY = 35, posX = 110.0000305175781, posY = -90.00003051757812, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
-                        Missions = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 20, offsetY = 20, posX = -105.0000305175781, posY = -105.0000305175781, justifyH = "CENTER", selfAnchorY = "BOTTOM" },
-                        Coords = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 30, offsetY = 10, posX = 95.00003051757812, posY = -115.0000305175781, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
-                        CraftingOrder = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 20, offsetY = 38, posX = 105.0000305175781, posY = 87.00003051757812, justifyH = "CENTER", selfAnchorY = "TOP" },
-                        DifficultyIcon = { anchorX = "LEFT", anchorY = "TOP", offsetX = 20, offsetY = 20, posX = -105.0000305175781, posY = 105.0000305175781, justifyH = "LEFT", selfAnchorY = "TOP", overrides = { IconSize = 42 } },
-                        Mail = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 20, offsetY = 20, posX = 105.0000305175781, posY = 105.0000305175781, justifyH = "CENTER", selfAnchorY = "TOP" },
-                        DifficultyText = { anchorX = "LEFT", anchorY = "TOP", offsetX = 20, offsetY = 20, posX = -105.0000305175781, posY = 105.0000305175781, justifyH = "LEFT", selfAnchorY = "TOP" },
-                        Clock = { anchorX = "CENTER", anchorY = "BOTTOM", offsetX = 0, offsetY = 10, posX = 0, posY = -115.0000305175781, justifyH = "CENTER", selfAnchorY = "BOTTOM" },
-                        ZoneText = { anchorX = "CENTER", anchorY = "TOP", offsetX = 0, offsetY = 10, posX = 0, posY = 115.0000305175781, justifyH = "CENTER", selfAnchorY = "TOP", overrides = { FontSize = 18 } },
+                        Compartment = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 15, offsetY = 15, posX = 95, posY = -95, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
+                        Zoom = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 15, offsetY = 35, posX = 110, posY = -90, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
+                        Missions = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 20, offsetY = 20, posX = -90, posY = -90, justifyH = "CENTER", selfAnchorY = "BOTTOM" },
+                        Coords = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 30, offsetY = 10, posX = 95, posY = -115, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
+                        CraftingOrder = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 20, offsetY = 38, posX = 90, posY = 72, justifyH = "CENTER", selfAnchorY = "TOP" },
+                        DifficultyIcon = { anchorX = "LEFT", anchorY = "TOP", offsetX = 15, offsetY = 20, posX = -95, posY = 90, justifyH = "LEFT", selfAnchorY = "TOP", overrides = { IconSize = 42 } },
+                        Mail = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 20, offsetY = 20, posX = 90, posY = 90, justifyH = "CENTER", selfAnchorY = "TOP" },
+                        DifficultyText = { anchorX = "LEFT", anchorY = "TOP", offsetX = 20, offsetY = 20, posX = -105, posY = 105, justifyH = "LEFT", selfAnchorY = "TOP" },
+                        Clock = { anchorX = "CENTER", anchorY = "BOTTOM", offsetX = 0, offsetY = 10, posX = 0, posY = -100, justifyH = "CENTER", selfAnchorY = "BOTTOM" },
+                        ZoneText = { anchorX = "CENTER", anchorY = "TOP", offsetX = 0, offsetY = 10, posX = 0, posY = 100, justifyH = "CENTER", selfAnchorY = "TOP", overrides = { FontSize = 18 } },
                     },
-                    Position = { y = 0, x = -5, point = "TOPRIGHT" },
+                    Position = { y = -3, x = -3, point = "TOPRIGHT" },
                 },
             },
             ["Orbit_FocusFrame"] = {
@@ -279,7 +279,7 @@ Orbit.Profile.defaults = {
                             DispelColorPoison = { a = 1, r = 0, g = 0.6, b = 0 },
                             DispelNumLines = 8,
                             Width = 100,
-                            DispelThickness = 2,
+                            DispelThickness = 2, DispelBorder = true, DispelLength = 30,
                             Position = { y = -118.15, x = 97.91, point = "TOPLEFT" },
                             AggroThickness = 1,
                             PowerBarHeight = 16,
@@ -315,7 +315,7 @@ Orbit.Profile.defaults = {
                             ShowHealthValue = true,
                             Height = 40,
                             AggroFrequency = 0.25,
-                            DispelThickness = 2,
+                            DispelThickness = 2, DispelBorder = true, DispelLength = 30,
                             DispelIndicatorEnabled = true,
                             DispelNumLines = 8,
                             PowerBarHeight = 10,
@@ -365,7 +365,7 @@ Orbit.Profile.defaults = {
                             },
                             Position = { y = -118.15, x = 97.91, point = "TOPLEFT" },
                             GroupsPerRow = 6,
-                            DispelThickness = 2,
+                            DispelThickness = 2, DispelBorder = true, DispelLength = 30,
                             ShowGroupLabels = true,
                             Width = 100,
                             ShowPowerBar = false,
@@ -461,7 +461,7 @@ Orbit.Profile.defaults = {
                     PortraitMirror = false, ShowAbsorbs = true, ShowHealAbsorbs = true, DisabledComponents = { "Status", "Portrait", "RoleIcon" },
                     Width = 160, Is3D = true, PortraitBorder = true, PortraitShape = "square",
                     Anchor = { target = "OrbitEssentialCooldowns", padding = 100, edge = "LEFT", align = "BOTTOM" },
-                    Height = 30, PortraitScale = 155, TextSize = 12, ShowLevel = true,
+                    Height = 34, PortraitScale = 155, TextSize = 12, ShowLevel = true,
                 },
             },
             ["Orbit_PlayerDebuffs"] = {
@@ -469,10 +469,21 @@ Orbit.Profile.defaults = {
             },
             ["Orbit_PlayerPower"] = {
                 [1] = {
-                    ShowText = false, Height = 12, Anchor = { target = "OrbitPlayerResources", padding = 2, edge = "TOP", align = "CENTER" },
+                    ShowText = false, Height = 16, Anchor = { target = "OrbitPlayerResources", padding = 2, edge = "TOP", align = "CENTER" },
                     DisabledComponents = { "Status" },
-                    ComponentPositions = { Text = { justifyH = "RIGHT", posY = 0, offsetX = 4.92, posX = 134.84, selfAnchorY = "CENTER", offsetY = 0, anchorX = "RIGHT", anchorY = "CENTER" } },
-                    Width = 200,
+                    ComponentPositions = { Text = { justifyH = "RIGHT", posY = 0, offsetX = 5, posX = 135, selfAnchorY = "CENTER", offsetY = 0, anchorX = "RIGHT", anchorY = "CENTER" } },
+                    Width = 204,
+                },
+            },
+            ["Orbit_PlayerResources"] = {
+                [1] = {
+                    Height = 15,
+                    Anchor = { target = "OrbitEssentialCooldowns", padding = 2, edge = "TOP", align = "CENTER" },
+                    Width = 100,
+                    DisabledComponents = { "HealthText" },
+                    ComponentPositions = {
+                        HealthText = { justifyH = "CENTER", posY = 0, offsetX = 0, posX = 0, selfAnchorY = "CENTER", offsetY = 0, anchorX = "CENTER", anchorY = "CENTER" },
+                    },
                 },
             },
             ["Orbit_Portal"] = {
@@ -490,7 +501,7 @@ Orbit.Profile.defaults = {
             ["Orbit_TargetFrame"] = {
                 [2] = {
                     PortraitMirror = true, AuraSize = 20, Is3D = false, PortraitStyle = "2d", DisabledComponents = { "Portrait", "Status" },
-                    PortraitShape = "square", EnableTargetPower = true, PortraitBorder = true, MaxBuffs = 16, Height = 30,
+                    PortraitShape = "square", EnableTargetPower = true, PortraitBorder = true, MaxBuffs = 16, Height = 34,
                     Anchor = { target = "OrbitEssentialCooldowns", padding = 100, edge = "RIGHT", align = "BOTTOM" },
                     PortraitScale = 125,
                     ComponentPositions = {
@@ -506,9 +517,9 @@ Orbit.Profile.defaults = {
             },
             ["Orbit_BossFrames"] = {
                 [1] = {
-                    CastBarWidth = 116, CastBarPosition = "Below", MaxDebuffs = 4, Spacing = 24, Anchor = false,
+                    CastBarWidth = 102, DebuffSize = 32, CastBarPosition = "Below", MaxDebuffs = 4, Spacing = 24, Anchor = false,
                     ComponentPositions = {
-                        CastBar = { posY = -30.17, selfAnchorY = "BOTTOM", anchorX = "CENTER", offsetX = 0, justifyH = "CENTER", posX = 0, overrides = { CastBarWidth = 116, CastBarHeight = 18, CastBarIcon = false }, offsetY = -11.85, subComponents = { Timer = { offsetX = 4, justifyH = "RIGHT", offsetY = 0, anchorX = "RIGHT", anchorY = "CENTER" }, Text = { offsetX = 4, justifyH = "LEFT", offsetY = 0, anchorX = "LEFT", anchorY = "CENTER" } }, anchorY = "BOTTOM" },
+                        CastBar = { posY = -30.17, selfAnchorY = "BOTTOM", anchorX = "CENTER", offsetX = 0, justifyH = "CENTER", posX = 0, overrides = { CastBarWidth = 102, CastBarHeight = 18, CastBarIcon = false }, offsetY = -11.85, subComponents = { Timer = { offsetX = 4, justifyH = "RIGHT", offsetY = 0, anchorX = "RIGHT", anchorY = "CENTER" }, Text = { offsetX = 4, justifyH = "LEFT", offsetY = 0, anchorX = "LEFT", anchorY = "CENTER" } }, anchorY = "BOTTOM" },
                         Debuffs = { posY = 0, selfAnchorY = "CENTER", anchorX = "LEFT", justifyH = "RIGHT", posX = -57.89, overrides = { MaxIcons = 6, MaxRows = 2, FilterDensity = 2, IconSize = 34, PandemicGlowColorCurve = { pins = { { color = { a = 1, r = 1, g = 0.188, b = 0 }, position = 0.589 } } }, PandemicGlowType = 1 }, offsetY = 0, offsetX = -1, anchorY = "CENTER" },
                         Name = { posY = 0, offsetX = 5, justifyH = "LEFT", posX = -52.98, selfAnchorY = "CENTER", offsetY = 0, anchorX = "LEFT", anchorY = "CENTER" },
                         HealthText = { posY = 0, offsetX = 5, justifyH = "RIGHT", posX = 52.98, selfAnchorY = "CENTER", offsetY = 0, anchorX = "RIGHT", anchorY = "CENTER" },
@@ -552,7 +563,35 @@ Orbit.Profile.defaults = {
             },
 
             ["Orbit_Datatexts"] = {
-                ["Orbit_Datatexts"] = { datatextPositions = {} },
+                [1] = {
+                    datatextPositions = {
+                        Performance = { placed = true, x = -575, y = 61, point = "BOTTOMRIGHT", scale = 1 },
+                        Spec = { placed = true, x = 591, y = 56, point = "BOTTOMLEFT", scale = 1 },
+                        Hearthstone = { placed = true, x = -527, y = 45, point = "BOTTOMRIGHT", scale = 1.23 },
+                        CombatTimer = { placed = true, x = 377, y = 65, point = "BOTTOMLEFT", scale = 1.83 },
+                        Time = { placed = false }, Gold = { placed = false }, Speed = { placed = false },
+                        ItemLevel = { placed = false }, Crit = { placed = false }, Volume = { placed = false },
+                        Friends = { placed = false }, Mastery = { placed = false }, Versatility = { placed = false },
+                        Location = { placed = false }, Quests = { placed = false }, Mail = { placed = false },
+                        Durability = { placed = false }, Guild = { placed = false }, Haste = { placed = false },
+                        BagSpace = { placed = false },
+                    }
+                },
+            },
+            ["Orbit_StrataEngine"] = {
+                ["Global_HUD"] = {
+                    entities = {
+                        "Orbit_PlayerFrame", "Orbit_TargetFrame", "Orbit_PlayerPetFrame", "Orbit_GroupFrames",
+                        "Orbit_BossFrames", "Orbit_ActionBars", "Orbit_TrackedBars", "Orbit_CooldownViewer",
+                        "Orbit_Minimap", "Orbit_Datatexts",
+                    }
+                }
+            },
+            ["Orbit_Tracked"] = {
+                [20] = {
+                    Height = 6, Width = 113,
+                    BarColorCurve = { pins = { { color = { a = 1, r = 1, g = 1, b = 1 }, position = 0.5387429953485746 } } }
+                }
             },
         },
     },

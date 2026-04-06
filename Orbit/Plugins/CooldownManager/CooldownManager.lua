@@ -218,9 +218,9 @@ function Plugin:OnLoad()
     -- Reload items after a profile switch completes.
     Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function()
         C_Timer.After(0.15, function()
-            -- TODO: Phase 3 — replace RepairAllChains with targeted ReconcileChain
+            -- Phase 3 implementation
             if Orbit.Engine.FrameAnchor then
-                Orbit.Engine.FrameAnchor:RepairAllChains()
+                Orbit.Engine.FrameAnchor:ReconcileAll()
             end
         end)
     end, self)
@@ -230,9 +230,9 @@ function Plugin:OnLoad()
             self:ReapplyParentage()
             self:ApplyAll()
             if Orbit.ViewerInjection then Orbit.ViewerInjection:OnSpecChanged() end
-            -- TODO: Phase 3 — replace RepairAllChains with targeted ReconcileChain
+            -- Phase 3 implementation
             if Orbit.Engine.FrameAnchor then
-                Orbit.Engine.FrameAnchor:RepairAllChains()
+                Orbit.Engine.FrameAnchor:ReconcileAll()
             end
         end)
     end, self)

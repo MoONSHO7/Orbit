@@ -493,61 +493,9 @@ function Plugin:AddSettings(dialog, systemFrame)
     Orbit.GroupFrameSettings(self, dialog, systemFrame)
 end
 
--- TODO(REMOVE): Migrates legacy PartyFrames/RaidFrames settings into GroupFrames tiers
--- [ MIGRATION ]-------------------------------------------------------------------------------------
-local function MigrateFromLegacy(plugin)
-    local db = Orbit.db
-    if not db or not db.Layouts then return end
-    local layoutName = "Orbit"
-    if Orbit.Profile and Orbit.Profile.GetCurrentLayout then layoutName = Orbit.Profile:GetCurrentLayout() or layoutName end
-    local layout = db.Layouts[layoutName]
-    if not layout then return end
-
-    local partyData = layout["Orbit_PartyFrames"] and layout["Orbit_PartyFrames"][1]
-    local raidData = layout["Orbit_RaidFrames"] and layout["Orbit_RaidFrames"][1]
-    local groupData = layout["Orbit_GroupFrames"] and layout["Orbit_GroupFrames"][1]
-
-    -- Skip if already migrated or no legacy data
-    if groupData and groupData._migrated then return end
-    if not partyData and not raidData then return end
-
-    local tiers = plugin:GetSetting(1, "Tiers") or {}
-
-    -- Migrate party settings
-    if partyData then
-        tiers.Party = tiers.Party or {}
-        for k, v in pairs(partyData) do
-            if k ~= "Position" and k ~= "Anchor" then tiers.Party[k] = v end
-        end
-    end
-
-    -- Migrate raid settings to all raid tiers
-    if raidData then
-        local LEGACY_TIER_MAP = { SmallRaid = "Mythic", MediumRaid = "Mythic", LargeRaid = "Heroic", MassiveRaid = "World" }
-        for _, tierKey in ipairs({ "Mythic", "Heroic", "World" }) do
-            tiers[tierKey] = tiers[tierKey] or {}
-            for k, v in pairs(raidData) do
-                if k ~= "Position" and k ~= "Anchor" then tiers[tierKey][k] = v end
-            end
-        end
-        -- Migrate any saved old tier keys forward
-        for oldKey, newKey in pairs(LEGACY_TIER_MAP) do
-            if tiers[oldKey] then
-                for k, v in pairs(tiers[oldKey]) do
-                    if tiers[newKey][k] == nil then tiers[newKey][k] = v end
-                end
-                tiers[oldKey] = nil
-            end
-        end
-    end
-
-    plugin:SetSetting(1, "Tiers", tiers)
-    plugin:SetSetting(1, "_migrated", true)
-end
 
 -- [ ON LOAD ]---------------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    MigrateFromLegacy(self)
 
     HideNativeGroupFrames()
     self:UpdateBlizzardRaidPanelVisibility()
