@@ -39,13 +39,12 @@ Orbit.Profile.defaults = {
             },
             ["Orbit_CooldownViewer"] = {
                 [1] = {
-                    IconLimit = 12,
-                    ProcGlowColor = { a = 1, r = 1, g = 0.8, b = 0 },
-                    IconPadding = 0,
-                    ShowGCDSwipe = true,
+                    IconLimit = 20,
+                    ProcGlowColor = { a = 1, r = 1, g = 0.91, b = 0.078 },
+                    ProcGlowType = 4,
+                    IconPadding = 2,
                     KeypressColor = { a = 0.492, r = 1, g = 1, b = 1 },
-                    Opacity = 100,
-                    PandemicGlowType = 1,
+                    PandemicGlowType = 6,
                     DisabledComponents = { "Status", "Keybind" },
                     ActiveSwipeColorCurve = {
                         pins = { { color = { a = 0.77, r = 1, g = 0.91, b = 0.28 }, position = 0.5 } },
@@ -53,8 +52,9 @@ Orbit.Profile.defaults = {
                     },
                     aspectRatio = "4:3",
                     Anchor = false,
-                    Position = { y = 274.6, x = 0.27, point = "BOTTOM" },
-                    IconSize = 34,
+                    Position = { y = 275, x = 0, point = "BOTTOM" },
+                    Opacity = 100,
+                    IconSize = 50,
                     CooldownSwipeColorCurve = {
                         pins = { { color = { a = 0.821, r = 0, g = 0, b = 0 }, position = 0.5 } },
                         _sorted = { { color = { a = 0.821, r = 0, g = 0, b = 0 }, position = 0.5 } },
@@ -65,47 +65,52 @@ Orbit.Profile.defaults = {
                         Stacks = { offsetX = 1, justifyH = "LEFT", posY = -10, posX = -15, offsetY = 5, selfAnchorY = "BOTTOM", anchorX = "LEFT", anchorY = "BOTTOM" },
                     },
                     PandemicGlowColor = { a = 1, r = 1, g = 0.102, b = 0 },
+                    ShowGCDSwipe = true,
                 },
                 [2] = {
-                    IconLimit = 8,
+                    PandemicGlowColor = { a = 1, r = 1, g = 0.161, b = 0 },
+                    IconLimit = 20,
+                    PandemicGlowType = 6,
                     Opacity = 100,
-                    PandemicGlowType = 2,
+                    IconPadding = 2,
+                    ProcGlowType = 4,
                     ActiveSwipeColorCurve = {
                         pins = { { color = { a = 0.77, b = 0.569, g = 0.949, r = 1 }, position = 0.434 } },
                         _sorted = { { color = { a = 0.77, b = 0.569, g = 0.949, r = 1 }, position = 0.434 } },
                     },
                     aspectRatio = "4:3",
                     IconSize = 34,
-                    Position = { y = 213.88, x = 0, point = "BOTTOM" },
+                    Anchor = { target = "OrbitEssentialCooldowns", padding = 20, edge = "BOTTOM", align = "CENTER" },
                     CooldownSwipeColorCurve = {
                         pins = { { color = { a = 0.8, b = 0, g = 0, r = 0 }, position = 0.465 } },
                         _sorted = { { color = { a = 0.8, b = 0, g = 0, r = 0 }, position = 0.465 } },
                     },
-                    Anchor = false,
                     ComponentPositions = {
                         Timer = { posY = 0, offsetX = 0, posX = 0, justifyH = "CENTER", offsetY = 0, anchorX = "CENTER", anchorY = "CENTER" },
                         Charges = { posY = -10, offsetX = 1, posX = 15, justifyH = "RIGHT", offsetY = 5, anchorX = "RIGHT", anchorY = "BOTTOM" },
                         Stacks = { posY = -11, offsetX = 1, posX = -17, justifyH = "LEFT", offsetY = 6, anchorX = "LEFT", anchorY = "BOTTOM" },
                     },
-                    IconPadding = 0,
+                    ProcGlowColor = { a = 1, r = 1, g = 0.91, b = 0.078 },
                 },
                 [3] = {
-                    IconLimit = 10,
+                    ProcGlowColor = { a = 1, r = 1, g = 0.91, b = 0.078 },
+                    IconLimit = 20,
+                    ProcGlowType = 2,
                     PandemicGlowColor = { a = 1, b = 0, g = 0.22, r = 1 },
-                    IconPadding = 0,
+                    IconPadding = 2,
                     DisabledComponents = { "Status", "Keybind" },
                     ActiveSwipeColorCurve = {
                         pins = { { color = { a = 0.77, b = 0.569, g = 0.949, r = 1 }, position = 0.434 } },
                         _sorted = { { color = { a = 0.77, b = 0.569, g = 0.949, r = 1 }, position = 0.434 } },
                     },
                     aspectRatio = "4:3",
-                    PandemicGlowType = 1,
                     CooldownSwipeColorCurve = {
                         pins = { { color = { a = 0.8, b = 0, g = 0, r = 0 }, position = 0.465 } },
                         _sorted = { { color = { a = 0.8, b = 0, g = 0, r = 0 }, position = 0.465 } },
                     },
-                    Anchor = { target = "OrbitPlayerPower", padding = 20, edge = "TOP", align = "CENTER" },
+                    PandemicGlowType = 6,
                     IconSize = 34,
+                    Anchor = { target = "OrbitPlayerPower", padding = 20, edge = "TOP", align = "CENTER" },
                     ComponentPositions = {
                         Timer = { posY = 0, offsetX = 0, justifyH = "CENTER", posX = 0, selfAnchorY = "CENTER", offsetY = 0, anchorX = "CENTER", anchorY = "CENTER" },
                         Charges = { posY = -10, offsetX = 1, justifyH = "RIGHT", posX = 15, selfAnchorY = "BOTTOM", offsetY = 5, anchorX = "RIGHT", anchorY = "BOTTOM" },
@@ -115,11 +120,11 @@ Orbit.Profile.defaults = {
                 },
                 [4] = {
                     aspectRatio = "1:1",
-                    Position = { y = -0.273, x = -32, point = "CENTER" },
+                    Position = { y = 0, x = -32, point = "CENTER" },
                     Anchor = false,
                     ComponentPositions = {
                         Timer = { posY = 0, offsetX = 0, posX = 0, justifyH = "CENTER", offsetY = 0, anchorX = "CENTER", anchorY = "CENTER" },
-                        Stacks = { posY = -13.55, offsetX = 0, posX = 14.62, justifyH = "RIGHT", offsetY = 5, anchorX = "RIGHT", anchorY = "BOTTOM" },
+                        Stacks = { posY = -14, offsetX = 0, posX = 15, justifyH = "RIGHT", offsetY = 5, anchorX = "RIGHT", anchorY = "BOTTOM" },
                     },
                     DisabledComponents = { "Status", "Keybind" },
                 },
@@ -170,7 +175,7 @@ Orbit.Profile.defaults = {
                     },
                     Scale = 100,
                     Anchor = { target = "OrbitTargetCastBar", padding = 2, edge = "TOP", align = "LEFT" },
-                    PandemicGlowType = 1, IconsPerRow = 5,
+                    PandemicGlowType = 6, IconsPerRow = 5,
                 },
             },
             ["Orbit_Tour"] = {
@@ -230,7 +235,7 @@ Orbit.Profile.defaults = {
             ["Orbit_FocusDebuffs"] = {
                 [1] = {
                     MaxRows = 1, PandemicGlowColorCurve = { pins = { { color = { a = 1, r = 1, g = 0.165, b = 0 }, position = 0.5 } } },
-                    Spacing = 2, IconsPerRow = 5, Scale = 100, PandemicGlowType = 1,
+                    Spacing = 2, IconsPerRow = 5, Scale = 100, PandemicGlowType = 6,
                     Anchor = { target = "OrbitFocusCastBar", padding = 2, edge = "TOP", align = "LEFT" },
                 },
             },
@@ -460,8 +465,8 @@ Orbit.Profile.defaults = {
                     },
                     PortraitMirror = false, ShowAbsorbs = true, ShowHealAbsorbs = true, DisabledComponents = { "Status", "Portrait", "RoleIcon" },
                     Width = 160, Is3D = true, PortraitBorder = true, PortraitShape = "square",
-                    Anchor = { target = "OrbitEssentialCooldowns", padding = 100, edge = "LEFT", align = "BOTTOM" },
-                    Height = 34, PortraitScale = 155, TextSize = 12, ShowLevel = true,
+                    Anchor = { target = "OrbitEssentialCooldowns", padding = 150, edge = "LEFT", align = "BOTTOM" },
+                    Height = 38, PortraitScale = 155, TextSize = 12, ShowLevel = true,
                 },
             },
             ["Orbit_PlayerDebuffs"] = {
@@ -501,8 +506,8 @@ Orbit.Profile.defaults = {
             ["Orbit_TargetFrame"] = {
                 [2] = {
                     PortraitMirror = true, AuraSize = 20, Is3D = false, PortraitStyle = "2d", DisabledComponents = { "Portrait", "Status" },
-                    PortraitShape = "square", EnableTargetPower = true, PortraitBorder = true, MaxBuffs = 16, Height = 34,
-                    Anchor = { target = "OrbitEssentialCooldowns", padding = 100, edge = "RIGHT", align = "BOTTOM" },
+                    PortraitShape = "square", EnableTargetPower = true, PortraitBorder = true, MaxBuffs = 16, Height = 38,
+                    Anchor = { target = "OrbitEssentialCooldowns", padding = 150, edge = "RIGHT", align = "BOTTOM" },
                     PortraitScale = 125,
                     ComponentPositions = {
                         RareEliteIcon = { posY = -10.05, offsetX = 0, justifyH = "LEFT", posX = 79.86, selfAnchorY = "BOTTOM", offsetY = 8, anchorX = "RIGHT", anchorY = "BOTTOM" },
@@ -517,18 +522,18 @@ Orbit.Profile.defaults = {
             },
             ["Orbit_BossFrames"] = {
                 [1] = {
-                    CastBarWidth = 102, DebuffSize = 32, CastBarPosition = "Below", MaxDebuffs = 4, Spacing = 24, Anchor = false,
+                    CastBarWidth = 98, DebuffSize = 32, MaxDebuffs = 4, Spacing = 24, Anchor = false,
                     ComponentPositions = {
-                        CastBar = { posY = -30.17, selfAnchorY = "BOTTOM", anchorX = "CENTER", offsetX = 0, justifyH = "CENTER", posX = 0, overrides = { CastBarWidth = 102, CastBarHeight = 18, CastBarIcon = false }, offsetY = -11.85, subComponents = { Timer = { offsetX = 4, justifyH = "RIGHT", offsetY = 0, anchorX = "RIGHT", anchorY = "CENTER" }, Text = { offsetX = 4, justifyH = "LEFT", offsetY = 0, anchorX = "LEFT", anchorY = "CENTER" } }, anchorY = "BOTTOM" },
-                        Debuffs = { posY = 0, selfAnchorY = "CENTER", anchorX = "LEFT", justifyH = "RIGHT", posX = -57.89, overrides = { MaxIcons = 6, MaxRows = 2, FilterDensity = 2, IconSize = 34, PandemicGlowColorCurve = { pins = { { color = { a = 1, r = 1, g = 0.188, b = 0 }, position = 0.589 } } }, PandemicGlowType = 1 }, offsetY = 0, offsetX = -1, anchorY = "CENTER" },
-                        Name = { posY = 0, offsetX = 5, justifyH = "LEFT", posX = -52.98, selfAnchorY = "CENTER", offsetY = 0, anchorX = "LEFT", anchorY = "CENTER" },
-                        HealthText = { posY = 0, offsetX = 5, justifyH = "RIGHT", posX = 52.98, selfAnchorY = "CENTER", offsetY = 0, anchorX = "RIGHT", anchorY = "CENTER" },
+                        CastBar = { posY = -28, selfAnchorY = "BOTTOM", anchorX = "CENTER", offsetX = 0, justifyH = "CENTER", posX = 0, overrides = { CastBarWidth = 98, CastBarHeight = 18, CastBarIcon = false }, offsetY = -10, subComponents = { Timer = { offsetX = 4, justifyH = "RIGHT", offsetY = 0, anchorX = "RIGHT", anchorY = "CENTER" }, Text = { offsetX = 4, justifyH = "LEFT", offsetY = 0, anchorX = "LEFT", anchorY = "CENTER" } }, anchorY = "BOTTOM" },
+                        Debuffs = { posY = 0, selfAnchorY = "CENTER", anchorX = "LEFT", justifyH = "RIGHT", posX = -57.89, overrides = { MaxIcons = 5, MaxRows = 1, FilterDensity = 2, IconSize = 50, PandemicGlowColorCurve = { pins = { { color = { a = 1, r = 1, g = 0.188, b = 0 }, position = 0.589 } } }, PandemicGlowType = 6 }, offsetY = 0, offsetX = -1, anchorY = "CENTER" },
+                        Name = { posY = 0, offsetX = 5, justifyH = "LEFT", posX = -53, selfAnchorY = "CENTER", offsetY = 0, anchorX = "LEFT", anchorY = "CENTER" },
+                        HealthText = { posY = 0, offsetX = 5, justifyH = "RIGHT", posX = 53, selfAnchorY = "CENTER", offsetY = 0, anchorX = "RIGHT", anchorY = "CENTER" },
                         Buffs = { posY = 0, selfAnchorY = "CENTER", anchorX = "RIGHT", justifyH = "LEFT", posX = 57.89, overrides = { MaxIcons = 6, MaxRows = 2, FilterDensity = 2, IconSize = 34 }, offsetY = 0, offsetX = -1, anchorY = "CENTER" },
-                        MarkerIcon = { posY = 19.42, offsetX = 0, justifyH = "CENTER", posX = 0, selfAnchorY = "TOP", offsetY = 0, anchorX = "CENTER", anchorY = "TOP" },
+                        MarkerIcon = { posY = 19, offsetX = 0, justifyH = "CENTER", posX = 0, selfAnchorY = "TOP", offsetY = 0, anchorX = "CENTER", anchorY = "TOP" },
                     },
                     CastBarHeight = 18, PandemicGlowColorCurve = { pins = { { color = { a = 1, r = 1, g = 0.188, b = 0 }, position = 0.589 } }, _sorted = { { color = { a = 1, r = 1, g = 0.188, b = 0 }, position = 0.589 } } },
-                    DisabledComponents = { "Status" }, Width = 116, DebuffPosition = "Left", CastBarIcon = false, Height = 39,
-                    Position = { y = 62.74, x = -493.4, point = "RIGHT" }, ReactionColour = false, Scale = 100, DebuffSize = 32, PandemicGlowType = 1,
+                    DisabledComponents = { "Status" }, Width = 116, DebuffPosition = "Left", PandemicGlowType = 6, DebuffSize = 32,
+                    Position = { y = 63, x = -493, point = "RIGHT" }, Height = 39, ReactionColour = false, CastBarIcon = false, CastBarPosition = "Below", Scale = 100,
                 },
             },
             ["Orbit_TargetOfTargetFrame"] = {
@@ -607,7 +612,8 @@ Orbit.Profile.defaults = {
         },
         BarColor = { a = 1, b = 0.2, g = 0.8, r = 0.2 },
         Font = "Barlow Condensed Bold", HideWhenMounted = false, BorderSize = 2,
-        ClassColorBackground = false, IconBorderSize = 4, OverlayAllFrames = false,
+        ClassColorBackground = false, IconBorderSize = 2, OverlayAllFrames = false,
         FontOutline = "OUTLINE", FontShadow = false, UseClassColors = true, Texture = "Solid",
+        TrackedMigrationComplete = true,
     },
 }
