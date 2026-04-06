@@ -214,7 +214,7 @@ C.Assets = {
 
 -- [ SKINNING CONSTANTS ]----------------------------------------------------------------------------
 C.Skin = {
-    DefaultIconSize = 40,
+    DefaultIconSize = 34,
     BorderOffsetGeneric = 7,
     BorderOffsetPandemic = 6,
     OORAlpha = 0.5,
@@ -237,7 +237,7 @@ C.PlayerCastBar = {
 C.Cooldown = {
     DefaultLimit = 10,
     DefaultPadding = 2,
-    DefaultIconSize = 32,
+    DefaultIconSize = 34,
     MaxChildFrames = 14,
     SystemIndex = {
         Essential = 1,

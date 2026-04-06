@@ -9,7 +9,7 @@ local ABPreview = Orbit.ActionBarsPreview
 local GC = Orbit.Engine.GlowController
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local DEFAULT_ICON_SIZE = 32
+local DEFAULT_ICON_SIZE = 34
 local PET_BAR_INDEX = 9
 local STANCE_BAR_INDEX = 10
 local POSSESS_BAR_INDEX = 11
@@ -55,7 +55,7 @@ local BAR_CONFIG = {
 
 local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     defaults = {
-        IconSize = 32, IconPadding = 2, Rows = 1, NumIcons = 12,
+        IconSize = 34, IconPadding = 2, Rows = 1, NumIcons = 12,
         Opacity = 100, HideEmptyButtons = false, UseGlobalTextStyle = true,
         ShowBarArt = false,
         DisabledComponents = {},

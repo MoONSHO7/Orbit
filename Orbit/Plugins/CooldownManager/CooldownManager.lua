@@ -53,8 +53,8 @@ Plugin.viewerMap = VIEWER_MAP
 
 -- Per-system-index defaults (overrides shared defaults for specific viewers)
 Plugin.indexDefaults = {
-    [1] = { IconSize = 48, IconLimit = 12 }, -- Essential
-    [2] = { IconSize = 36, IconLimit = 8 }, -- Utility
+    [1] = { IconSize = 34, IconLimit = 12 }, -- Essential
+    [2] = { IconSize = 34, IconLimit = 8 }, -- Utility
     [3] = { PandemicGlowType = 1 }, -- BuffIcon
     [30] = { PandemicGlowType = 1 }, -- BuffBar
 }

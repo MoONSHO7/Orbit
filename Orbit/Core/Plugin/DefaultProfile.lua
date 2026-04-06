@@ -301,7 +301,7 @@ Orbit.Profile.defaults = {
                                 HealthText = { offsetX = 5, justifyH = "RIGHT", posY = 0, posX = 74.86, offsetY = 0, selfAnchorY = "CENTER", anchorX = "RIGHT", anchorY = "CENTER" },
                                 SummonIcon = { offsetX = 0, posY = -9.97, posX = 0, justifyH = "CENTER", offsetY = 10, anchorX = "CENTER", anchorY = "BOTTOM" },
                                 ResIcon = { offsetX = 0, posY = -9.97, posX = 0, justifyH = "CENTER", offsetY = 10, anchorX = "CENTER", anchorY = "BOTTOM" },
-                                DefensiveIcon = { posY = 0, selfAnchorY = "CENTER", anchorX = "CENTER", justifyH = "CENTER", posX = 0, overrides = { IconSize = 32 }, offsetY = 0, offsetX = 0, anchorY = "CENTER" },
+                                DefensiveIcon = { posY = 0, selfAnchorY = "CENTER", anchorX = "CENTER", justifyH = "CENTER", posX = 0, overrides = { IconSize = 34 }, offsetY = 0, offsetX = 0, anchorY = "CENTER" },
                                 StatusIcons = { posY = -9.97, selfAnchorY = "BOTTOM", anchorX = "CENTER", justifyH = "CENTER", posX = 0, overrides = { IconSize = 15 }, offsetY = 10, offsetX = 0, anchorY = "BOTTOM" },
                                 PrivateAuraAnchor = { offsetX = 0, justifyH = "CENTER", posY = 0, posX = 0, offsetY = 0, selfAnchorY = "CENTER", anchorX = "CENTER", anchorY = "CENTER" },
                                 Name = { offsetX = 5, justifyH = "LEFT", posY = 0, posX = -74.86, offsetY = 0, selfAnchorY = "CENTER", anchorX = "LEFT", anchorY = "CENTER" },
@@ -556,7 +556,7 @@ Orbit.Profile.defaults = {
             },
         },
     },
-    DisabledPlugins = { Minimap = true, ["Datatexts"] = true },
+    DisabledPlugins = {},
     HideBlizzardFrames = {},
     GlobalSettings = {
         OverlayTexture = "None", TourComplete = false,

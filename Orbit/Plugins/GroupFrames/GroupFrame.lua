@@ -59,7 +59,7 @@ local TIER_DEFAULTS = {
             PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", posX = 0, posY = -10 },
             ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", posX = 0, posY = -10 },
             ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", posX = 0, posY = -10 },
-            DefensiveIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0, overrides = { IconSize = 32 } },
+            DefensiveIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0, overrides = { IconSize = 34 } },
             CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
             PrivateAuraAnchor = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0 },
             Buffs = { anchorX = "LEFT", anchorY = "CENTER", offsetX = -2, offsetY = 0, justifyH = "RIGHT", selfAnchorY = "CENTER", posX = -110, posY = 0, overrides = { MaxIcons = 4, IconSize = 34, MaxRows = 2 } },

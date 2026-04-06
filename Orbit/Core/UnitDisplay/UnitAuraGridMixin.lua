@@ -9,18 +9,18 @@ Orbit.UnitAuraGridMixin = {}
 local Mixin = Orbit.UnitAuraGridMixin
 
 Mixin.sharedDebuffDefaults = {
-    IconsPerRow = 8, MaxRows = 2, Spacing = 2, Width = 200, IconSize = 32,
+    IconsPerRow = 8, MaxRows = 2, Spacing = 2, Width = 200, IconSize = 34,
     PandemicGlowType = Constants.Glow.Type.Pixel,
     PandemicGlowColor = Constants.Glow.DefaultColor,
     PandemicGlowColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
 }
 
 Mixin.sharedBuffDefaults = {
-    IconsPerRow = 8, MaxRows = 2, Spacing = 2, Width = 200, IconSize = 32,
+    IconsPerRow = 8, MaxRows = 2, Spacing = 2, Width = 200, IconSize = 34,
 }
 
 Mixin.playerBuffDefaults = {
-    IconLimit = 20, Rows = 1, Spacing = 2, IconSize = 32, aspectRatio = "1:1",
+    IconLimit = 20, Rows = 1, Spacing = 2, IconSize = 34, aspectRatio = "1:1",
     ComponentPositions = {
         Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0 },
         Stacks = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 1 },
@@ -28,14 +28,14 @@ Mixin.playerBuffDefaults = {
 }
 
 Mixin.playerDebuffDefaults = {
-    IconLimit = 16, Rows = 1, Spacing = 2, IconSize = 32, aspectRatio = "1:1",
+    IconLimit = 16, Rows = 1, Spacing = 2, IconSize = 34, aspectRatio = "1:1",
     ComponentPositions = {
         Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0 },
         Stacks = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 1 },
     },
 }
 
-local BASE_ICON_SIZE = 32
+local BASE_ICON_SIZE = 34
 local ASPECT_RATIOS = {
     { text = "Square (1:1)", value = "1:1" }, { text = "Landscape (16:9)", value = "16:9" },
     { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
@@ -220,7 +220,7 @@ function Mixin:_addLayoutControls(schema)
         end
         table.insert(schema.controls, {
             type = "slider", key = "IconSize", label = "Icon Size",
-            min = 20, max = 80, step = 1, default = 32,
+            min = 20, max = 80, step = 1, default = 34,
             formatter = function(v) return v .. "px" end,
             onChange = function(val) self:SetSetting(1, "IconSize", val); self:ApplySettings() end,
         })
@@ -238,7 +238,7 @@ function Mixin:_addLayoutControls(schema)
         if not isAnchored then
             table.insert(schema.controls, {
                 type = "slider", key = "IconSize", label = "Icon Size (Unanchored)",
-                min = 20, max = 80, step = 1, default = 32,
+                min = 20, max = 80, step = 1, default = 34,
                 formatter = function(v) return v .. "px" end,
                 onChange = function(val) self:SetSetting(1, "IconSize", val); self:ApplySettings() end,
             })
@@ -465,7 +465,7 @@ function Mixin:_resolveGrid()
         local rows = self:GetSetting(1, "Rows") or 1
         iconsPerRow = math.max(1, math.ceil(iconLimit / rows))
         maxAuras = iconLimit
-        iconW = self:GetSetting(1, "IconSize") or Orbit.Constants.Cooldown.DefaultIconSize or 32
+        iconW = self:GetSetting(1, "IconSize") or Orbit.Constants.Cooldown.DefaultIconSize or 34
         local ar = self:GetSetting(1, "aspectRatio") or "1:1"
         if ar == "16:9" then iconH = math.floor(iconW * 9 / 16)
         elseif ar == "4:3" then iconH = math.floor(iconW * 3 / 4)
@@ -477,7 +477,7 @@ function Mixin:_resolveGrid()
         maxAuras = iconsPerRow * maxRows
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(self._agFrame) ~= nil
         if not isAnchored then
-            iconH = self:GetSetting(1, "IconSize") or Orbit.Constants.Cooldown.DefaultIconSize or 32
+            iconH = self:GetSetting(1, "IconSize") or Orbit.Constants.Cooldown.DefaultIconSize or 34
         else
             local maxWidth = self._agFrame:GetWidth()
             iconH = CalculateIconSize(maxWidth, iconsPerRow, spacing)
