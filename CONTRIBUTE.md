@@ -81,10 +81,12 @@ Orbit/
     ActionBars/           -- action bar containers and button layout
     BossFrames/           -- boss encounter frames (1-8)
     CooldownManager/      -- cooldown viewers, tracked abilities, charge bars
+    Datatexts/            -- data text bars and drawer
+    GroupFrames/          -- unified party (1-5) and raid (1-40) frames with tiered layouts
     MenuItems/            -- micro menu, bag bar, performance, queue, combat timer
+    Minimap/              -- minimap and compartment
     Misc/                 -- standalone utilities (talking head)
-    PartyFrames/          -- party member frames (1-4)
-    RaidFrames/           -- raid member frames (1-40)
+    Tracked/              -- tracked ability bars and icons
     UnitFrames/           -- player, target, focus and sub-frames
 ```
 
@@ -231,6 +233,7 @@ mixins are **stateless**. state lives on the frame (`frame._mixinState`), never 
 | new color resolver | `Core/Color/` |
 | new canvas mode component creator | `Core/CanvasMode/Creators/` |
 | new constant | `Core/Shared/Constants.lua` |
+| z-index / layer ordering | `Core/Shared/StrataEngine.lua` |
 | new plugin | `Plugins/NewPlugin/` |
 | new mixin | `Core/Plugin/` |
 | edit mode frame behavior | `Core/EditMode/` |

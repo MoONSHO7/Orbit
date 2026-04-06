@@ -12,7 +12,24 @@ local Constants = Orbit.Constants
 -- When borders are merged, anchors to the group border overlay instead of the individual frame.
 
 function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendMode)
-    if not frame or not storageKey or not color then return end
+    if not frame or not storageKey or type(color) ~= "table" then return end
+
+    local r, g, b, a = 1, 1, 1, 1
+    if color.r then
+        r, g, b, a = color.r, color.g or 1, color.b or 1, color.a or 1
+    elseif color[1] then
+        r, g, b, a = color[1], color[2] or 1, color[3] or 1, color[4] or 1
+    elseif color.pins then
+        local firstPin = color._sorted and color._sorted[1] or color.pins[1]
+        if firstPin and firstPin.color then
+            local pColor = firstPin.color
+            r = pColor.r or pColor[1] or 1
+            g = pColor.g or pColor[2] or 1
+            b = pColor.b or pColor[3] or 1
+            a = pColor.a or pColor[4] or 1
+        end
+    end
+
     local overlay = frame[storageKey]
 
     -- Fast path: overlay exists, backdrop unchanged, just update color
@@ -20,7 +37,7 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
         local gbo = frame._groupBorderActive and (frame._groupBorderRoot or frame)._groupBorderOverlay
         local anchorTarget = (gbo and gbo:IsShown()) and gbo or nil
         if overlay._hlAnchorTarget == anchorTarget then
-            overlay:SetBackdropBorderColor(color.r, color.g, color.b, color.a or 1)
+            overlay:SetBackdropBorderColor(r, g, b, a)
             if anchorTarget then
                 local off = (levelOffset or (Constants.Levels.Border + 1)) - Constants.Levels.Border
                 overlay:SetFrameLevel(anchorTarget:GetFrameLevel() + off)
@@ -80,7 +97,7 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
         end
     end
     overlay:SetBackdrop(backdrop)
-    overlay:SetBackdropBorderColor(color.r, color.g, color.b, color.a or 1)
+    overlay:SetBackdropBorderColor(r, g, b, a)
     local mode = blendMode or "BLEND"
     for _, region in pairs({ overlay:GetRegions() }) do
         if region:IsObjectType("Texture") then region:SetBlendMode(mode) end

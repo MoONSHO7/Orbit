@@ -53,10 +53,14 @@ local function GetDispelSettings(plugin)
     cache = {
         enabled = get("DispelIndicatorEnabled"),
         onlyByMe = get("DispelOnlyByMe"),
+        glowType = get("DispelGlowType"),
         thickness = get("DispelThickness") or 2,
         frequency = get("DispelFrequency") or 0.25,
         numLines = get("DispelNumLines") or 8,
+        length = get("DispelLength") or 15,
+        border = get("DispelBorder")
     }
+    if cache.border == nil then cache.border = true end
     plugin._dispelSettingsCache = cache
     return cache
 end
@@ -86,7 +90,9 @@ function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin, harmful
         local color = curve and C_UnitAuras.GetAuraDispelTypeColor and C_UnitAuras.GetAuraDispelTypeColor(unit, bestAuraInstanceID, curve)
         if color then
             if frame.orbitActiveDispelAura ~= bestAuraInstanceID then
-                GC:Show(frame, DISPEL_GLOW_KEY, "Pixel", { color = { color:GetRGBA() }, lines = settings.numLines, frequency = settings.frequency, thickness = settings.thickness, border = true, frameLevel = Orbit.Constants.Levels.Border })
+                local glowType = settings.glowType or Orbit.Constants.Glow.Type.Pixel
+                local typeString = glowType == Orbit.Constants.Glow.Type.Autocast and "Autocast" or "Pixel"
+                GC:Show(frame, DISPEL_GLOW_KEY, typeString, { key = DISPEL_GLOW_KEY, color = { color:GetRGBA() }, lines = settings.numLines, particles = settings.numLines, frequency = settings.frequency, length = settings.length, thickness = settings.thickness, border = settings.border, frameLevel = Orbit.Constants.Levels.Border })
                 frame.orbitActiveDispelAura = bestAuraInstanceID
             end
         else

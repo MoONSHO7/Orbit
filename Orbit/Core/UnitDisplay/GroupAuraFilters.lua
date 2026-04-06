@@ -165,27 +165,23 @@ ALWAYS_EXCLUDED[445441] = true -- Path of the Warding Candles
 ALWAYS_EXCLUDED[445443] = true -- Path of the Fallen Stormriders
 
 -- Exclude active healer aura spellIds unless their slot is disabled.
--- Cached to avoid O(n) copy of 150+ entries on every aura update.
-local excludedCache = nil
-local function GetExcludedSpellIds(plugin)
-    if excludedCache then return excludedCache end
-    local excluded = {}
-    for id in pairs(ALWAYS_EXCLUDED) do excluded[id] = true end
+-- Evaluated dynamically to prevent cache invalidation bugs across plugins, tiers, and initializations.
+local function IsSpellExcluded(plugin, sid)
+    if ALWAYS_EXCLUDED[sid] then return true end
+
     local isDisabled = plugin and plugin.IsComponentDisabled
     for _, slot in ipairs(HealerReg:ActiveSlots()) do
-        if not (isDisabled and plugin:IsComponentDisabled(slot.key)) then
-            excluded[slot.spellId] = true
-            if slot.altSpellId then excluded[slot.altSpellId] = true end
+        if slot.spellId == sid or slot.altSpellId == sid then
+            local disabled = isDisabled and plugin:IsComponentDisabled(slot.key)
+            if not disabled then
+                return true
+            end
         end
     end
-    excludedCache = excluded
-    return excluded
+    return false
 end
 
-function Orbit.GroupAuraFilters:InvalidateCache() excludedCache = nil end
-
--- Flush cache when component visibility changes affect the exclusion set.
-Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", function() excludedCache = nil end)
+function Orbit.GroupAuraFilters:InvalidateCache() end
 
 local _RecycledFilterList = {}
 
@@ -195,13 +191,12 @@ function Orbit.GroupAuraFilters:CreateDebuffFilter(cfg)
     return function(plugin, unit, rawAuras, maxCount, filterOverride)
         local raidFilter = filterOverride or (cfg.raidFilterFn and cfg.raidFilterFn() or "HARMFUL")
         local excludeCC = not (plugin.IsComponentDisabled and plugin:IsComponentDisabled("CrowdControlIcon"))
-        local excluded = GetExcludedSpellIds(plugin)
         local result = _RecycledFilterList
         for i = 1, #result do result[i] = nil end
         for _, aura in ipairs(rawAuras) do
             if aura.auraInstanceID then
                 local sid = aura.spellId
-                if not IsSecret(sid) and excluded[sid] then
+                if not IsSecret(sid) and IsSpellExcluded(plugin, sid) then
                     -- skip: handled by dedicated SingleAura icon
                 else
                     local passesFilter = plugin:IsAuraIncluded(unit, aura.auraInstanceID, raidFilter)
@@ -223,13 +218,12 @@ function Orbit.GroupAuraFilters:CreateBuffFilter()
     return function(plugin, unit, rawAuras, maxCount, filterOverride)
         local raidFilter = filterOverride or "HELPFUL|PLAYER"
         local excludeDefensives = not (plugin.IsComponentDisabled and plugin:IsComponentDisabled("DefensiveIcon"))
-        local excluded = GetExcludedSpellIds(plugin)
         local result = _RecycledFilterList
         for i = 1, #result do result[i] = nil end
         for _, aura in ipairs(rawAuras) do
             if aura.auraInstanceID then
                 local sid = aura.spellId
-                if not IsSecret(sid) and excluded[sid] then
+                if not IsSecret(sid) and IsSpellExcluded(plugin, sid) then
                     -- skip: handled by dedicated SingleAura icon
                 else
                     local passesRaid = plugin:IsAuraIncluded(unit, aura.auraInstanceID, raidFilter)

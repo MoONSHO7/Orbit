@@ -541,7 +541,9 @@ local function DispelTick()
                     slot.frame = pick
                     slot.expiresAt = now + DISPEL_DURATION + math.random() * 4
                     local c = session.colors[slot.dispelType]
-                    GC:Show(slot.frame, DISPEL_PREVIEW_KEY, "Pixel", { color = { c.r, c.g, c.b, c.a }, lines = session.numLines, frequency = session.frequency, thickness = session.thickness, border = true, key = DISPEL_PREVIEW_KEY, frameLevel = Orbit.Constants.Levels.Border })
+                    local glowType = session.glowType or Orbit.Constants.Glow.Type.Pixel
+                    local typeString = glowType == Orbit.Constants.Glow.Type.Autocast and "Autocast" or "Pixel"
+                    GC:Show(slot.frame, DISPEL_PREVIEW_KEY, typeString, { color = { c.r, c.g, c.b, c.a }, lines = session.numLines, particles = session.numLines, frequency = session.frequency, length = session.length, thickness = session.thickness, border = session.border, key = DISPEL_PREVIEW_KEY, frameLevel = Orbit.Constants.Levels.Border })
                 end
             end
         end
@@ -557,7 +559,7 @@ function PA:StartDispels(owner, frames, cfg)
     for i, dt in ipairs(DISPEL_TYPES) do
         slots[i] = { dispelType = dt, frame = nil, expiresAt = now + (i - 1) * 1.5 }
     end
-    dispelSessions[owner] = { frames = frames, slots = slots, colors = cfg.colors, thickness = cfg.thickness, frequency = cfg.frequency, numLines = cfg.numLines }
+    dispelSessions[owner] = { frames = frames, slots = slots, colors = cfg.colors, thickness = cfg.thickness, frequency = cfg.frequency, numLines = cfg.numLines, length = cfg.length, border = cfg.border, glowType = cfg.glowType }
     if not dispelTicker then dispelTicker = C_Timer.NewTicker(1, DispelTick) end
 end
 

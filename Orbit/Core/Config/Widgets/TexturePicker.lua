@@ -92,7 +92,6 @@ function Layout:CreateTexturePicker(parent, label, initialTexture, callback, pre
         end
         local path = LSM:Fetch("statusbar", frame.selectedTexture)
         if path and path ~= "" then
-            frame.Control.Texture:SetColorTexture(1, 1, 1, 1)
             frame.Control.Texture:SetTexture(path)
             frame.Control.Texture:SetVertexColor(color.r or 0.8, color.g or 0.8, color.b or 0.8, 1)
             frame.Control.Texture:SetTexCoord(0, 1, 0, 1)

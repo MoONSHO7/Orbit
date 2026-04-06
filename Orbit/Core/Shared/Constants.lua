@@ -76,6 +76,7 @@ C.Levels = {
     StatusBar = 1,          -- Health/power/damage/absorb bars, cooldown swipe
     Border = 5,             -- Borders, highlights, glows, aggro, selection, dispel
     Overlay = 7,            -- Text, icons, components, proc overlays, aura containers
+    StrataBlockReserve = 50,-- Reserve size allocated per entity in StrataEngine
     SmartGuides = 90,       -- Canvas Mode snap guides (different strata)
     Tooltip = 100,          -- Tooltip/flyout layer (different strata)
     
@@ -84,10 +85,6 @@ C.Levels = {
     IconBorder = 3,         -- Per-icon pixel/NineSlice border
     IconGlow = 6,           -- Pandemic/proc glow (above border)
     IconOverlay = 7,        -- Timer text, stacks, flash
-    
-    GroupContainer = 49,    -- Group frame container base level
-    GroupBase = 50,         -- Individual group frame base level (+ index)
-    
     -- Editor & UI Overlays
     EditModeText = 20,
     EditModeSelection = 100,

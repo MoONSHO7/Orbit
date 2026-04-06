@@ -17,6 +17,7 @@ provides the single source of truth for numeric constants, layer indices, color 
 | CooldownUtils.lua | icon dimension calculation, skin settings builder. |
 | GlowUtils.lua | pure data utility for constructing LibOrbitGlow option tables from DB settings. no frame manipulation. |
 | GlowController.lua | single authoritative owner for all glow operations. all consumers call this module — no other file touches LibOrbitGlow directly. handles native blizzard overlay suppression, pandemic wrapper frames, proc glow lifecycle, and centralized state tracking via `frame._orbitGlow`. |
+| StrataEngine.lua | dynamic Z-index management for root-level containers. persists entity ordering to profiles. provides `GetFrameLevel()` for plugin containers and `BumpUp/BumpDown` for future UI controls. sub-component offsets and frame strata remain in Constants. |
 
 ## adding a new constant
 

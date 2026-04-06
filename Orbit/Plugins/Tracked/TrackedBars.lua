@@ -74,7 +74,7 @@ local function ScrubTrackedBarFrame(frame)
     if frame.Dividers then for _, div in ipairs(frame.Dividers) do div:Hide() end end
     if frame.StatusBar then frame.StatusBar:SetValue(0); frame.StatusBar:Hide() end
     if frame.RechargeSegment then frame.RechargeSegment:SetValue(0); frame.RechargeSegment:Hide() end
-    if frame.TickBar then frame.TickBar:SetValue(0); frame.TickBar:Hide() end
+    if frame.TickBar then frame.TickBar:SetValue(0); OrbitEngine.TickMixin:Hide(frame) end
     if frame.bg then frame.bg:Hide() end
     if frame.SetBorderHidden then frame:SetBorderHidden(true) end
 end
@@ -422,7 +422,7 @@ function Plugin:AssignTrackedBarSpell(frame, spellId, maxCharges)
     self:SetSetting(frame.systemIndex, "TrackedBarSpell", { id = spellId, maxCharges = maxCharges })
 
     TrackedBarLayout:BuildDividers(frame, maxCharges)
-    TrackedBarLayout:LayoutTrackedBar(self, frame)
+    self:ApplyTrackedBarSettings(frame)
     self:UpdateTrackedBarFrame(frame)
     self:UpdateSeedVisibility(frame)
     self:UpdateAllTrackedBarControlColors()
@@ -480,7 +480,7 @@ function Plugin:ApplyTrackedBarSettings(frame)
     frame:Show()
     if frame.StatusBar then frame.StatusBar:Show() end
     if frame.RechargeSegment then frame.RechargeSegment:Show() end
-    if frame.TickBar then frame.TickBar:Show() end
+    OrbitEngine.TickMixin:Show(frame)
     if frame.bg then frame.bg:Show() end
     if frame.SetBorderHidden then frame:SetBorderHidden(false) end
     TrackedBarLayout:LayoutTrackedBar(self, frame)
@@ -526,7 +526,7 @@ function Plugin:UpdateTrackedBarFrame(frame)
     frame.RechargeSegment:SetValue(progress)
     frame.TickBar:SetValue(progress)
     frame.RechargeSegment:SetAlpha(alphaVal)
-    frame.TickBar:SetAlpha(alphaVal)
+    if frame.TickMark then frame.TickMark:SetAlpha(alphaVal) end
 end
 
 -- [ EVENT-DRIVEN CHARGE UPDATES ] ---------------------------------------------
@@ -655,6 +655,7 @@ function Plugin:ReloadTrackedBarsForSpec()
     -- Reload the anchor from current spec data
     anchor:ClearAllPoints()
     if OrbitEngine.PositionManager then OrbitEngine.PositionManager:ClearFrame(anchor) end
+    ScrubTrackedBarFrame(anchor)
     self:RestoreTrackedBarSpell(anchor, TRACKED_BAR_INDEX)
     UpdateTrackedBarLabel(anchor)
     self:ApplyTrackedBarSettings(anchor)

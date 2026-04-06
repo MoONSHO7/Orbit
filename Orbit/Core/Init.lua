@@ -222,6 +222,7 @@ function Orbit:OnLoad()
     end
 
     if self.Profile then self.Profile:Initialize() end
+    if self.StrataEngine and self.StrataEngine.PopulateDefaults then self.StrataEngine:PopulateDefaults() end
     self:InitializePlugins()
 
     if NSAPI and NSAPI.RegisterCallback and self.EventBus then

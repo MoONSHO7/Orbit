@@ -499,6 +499,39 @@ local function HealerCurveOnUpdate(icon)
     end
 end
 
+-- [ CENTRALIZED CURVE TICKER ]----------------------------------------------------------------------
+local CURVE_TICK_INTERVAL = 0.05
+local _activeCurveIcons = {}
+local _curveTicker
+
+local function CurveTickerLoop()
+    local n = #_activeCurveIcons
+    local i = 1
+    while i <= n do
+        local icon = _activeCurveIcons[i]
+        if not icon._orbitCurveData or not icon:IsShown() then
+            _activeCurveIcons[i] = _activeCurveIcons[n]
+            _activeCurveIcons[n] = nil
+            n = n - 1
+        else
+            HealerCurveOnUpdate(icon)
+            i = i + 1
+        end
+    end
+    if n == 0 and _curveTicker then
+        _curveTicker:Cancel()
+        _curveTicker = nil
+    end
+end
+
+local function RegisterCurveIcon(icon)
+    for _, existing in ipairs(_activeCurveIcons) do
+        if existing == icon then return end
+    end
+    _activeCurveIcons[#_activeCurveIcons + 1] = icon
+    if not _curveTicker then _curveTicker = C_Timer.NewTicker(CURVE_TICK_INTERVAL, CurveTickerLoop) end
+end
+
 function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, altSpellId)
     if frame.preview or (OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame) then return end
     if plugin.IsComponentDisabled and plugin:IsComponentDisabled(iconKey) then
@@ -538,10 +571,7 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
                 swipeCurve = swipeCurve,
                 timerCurve = timerCurve,
             }
-            if not icon._orbitCurveHooked then
-                icon._orbitCurveHooked = true
-                icon:HookScript("OnUpdate", function(self) HealerCurveOnUpdate(self) end)
-            end
+            RegisterCurveIcon(icon)
             HealerCurveOnUpdate(icon)
         elseif swipeCurve or timerCurve then
             icon._orbitCurveData = nil

@@ -74,7 +74,7 @@ local TIER_DEFAULTS = {
             return d
         end)(),
         DisabledComponentsMigrated = true,
-        DispelIndicatorEnabled = true, DispelThickness = 2, DispelFrequency = 0.25, DispelNumLines = 8,
+        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.25, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
         DispelColorMagic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
@@ -118,7 +118,7 @@ local TIER_DEFAULTS = {
         AggroIndicatorEnabled = true, AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
         SelectionColor = { r = 0.8, g = 0.9, b = 1.0, a = 1 },
         AggroThickness = 1,
-        DispelIndicatorEnabled = true, DispelThickness = 2, DispelFrequency = 0.2, DispelNumLines = 8,
+        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.25, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
         DispelColorMagic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
@@ -432,7 +432,7 @@ local function CreateGroupFrame(index, plugin)
     local height = plugin:GetTierSetting("Height") or DEFAULT_HEIGHT
     frame:SetSize(width, height)
     frame:SetFrameStrata(Orbit.Constants.Strata.HUD)
-    frame:SetFrameLevel(Orbit.Constants.Levels.GroupBase + index)
+    frame:SetFrameLevel(Orbit.StrataEngine:GetFrameLevel("Global_HUD", "Orbit_GroupFrames") + index)
 
     UpdateFrameLayout(frame, Orbit.db.GlobalSettings.BorderSize, plugin)
 
@@ -559,7 +559,7 @@ function Plugin:OnLoad()
     self.container.editModeName = "Group Frames"
     self.container.systemIndex = 1
     self.container:SetFrameStrata(Orbit.Constants.Strata.HUD)
-    self.container:SetFrameLevel(Orbit.Constants.Levels.GroupContainer)
+    self.container:SetFrameLevel(Orbit.StrataEngine:GetFrameLevel("Global_HUD", "Orbit_GroupFrames") - 1)
     self.container:SetClampedToScreen(true)
 
     self.frames = {}
@@ -638,9 +638,10 @@ function Plugin:OnLoad()
             C_Timer.After(1, function()
                 if InCombatLockdown() then return end
                 UpdateVisibilityDriver()
-                self:CheckTierChange()
-                self:UpdateFrameUnits()
-                self:ApplySettings()
+                if not self:CheckTierChange() then
+                    self:UpdateFrameUnits()
+                    self:ApplySettings()
+                end
                 for _, frame in ipairs(self.frames) do
                     if not frame.preview and frame.unit and frame:IsShown() then
                         if frame.UpdateAll then frame:UpdateAll() end
@@ -664,16 +665,16 @@ function Plugin:OnLoad()
                 self:ApplySettings()
                 self:RestoreTierPosition(self._currentTier)
             else
-                self:CheckTierChange()
-                self:UpdateFrameUnits()
+                if not self:CheckTierChange() then
+                    self:UpdateFrameUnits()
+                end
             end
             return
         end
         if event == "ZONE_CHANGED_NEW_AREA" then
             C_Timer.After(0.5, function()
                 UpdateVisibilityDriver()
-                self:CheckTierChange()
-                if not InCombatLockdown() then
+                if not self:CheckTierChange() and not InCombatLockdown() then
                     self:UpdateFrameUnits()
                     self:ApplySettings()
                 end
@@ -778,7 +779,9 @@ function Plugin:CheckTierChange()
         else
             self._pendingTierApply = oldTier
         end
+        return true
     end
+    return false
 end
 
 -- [ PREPARE ICONS FOR CANVAS MODE ]-----------------------------------------------------------------

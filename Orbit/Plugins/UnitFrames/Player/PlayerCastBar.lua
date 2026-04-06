@@ -131,15 +131,22 @@ local function SetupChannelTicks(plugin, bar, safeSpellID)
     local targetBar = bar.orbitBar or bar
     bar.channelTicks = bar.channelTicks or {}
 
-    local width = plugin:GetSetting(bar.systemIndex, "CastBarWidth")
-    local height = plugin:GetSetting(bar.systemIndex, "CastBarHeight")
-    local scale = bar:GetEffectiveScale()
+    local width = targetBar:GetWidth()
+    local height = targetBar:GetHeight()
+    local scale = bar:GetEffectiveScale() or 1
     
-    local tickWidth = plugin:GetSetting(bar.systemIndex, "TickWidth")
+    if width <= 0 or height <= 0 then
+        local showIcon = plugin:GetSetting(bar.systemIndex, "CastBarIcon")
+        height = plugin:GetSetting(bar.systemIndex, "CastBarHeight") or 35
+        local iconSize = showIcon and SnapToPixel(height, scale) or 0
+        width = (plugin:GetSetting(bar.systemIndex, "CastBarWidth") or 300) - iconSize
+    end
+
+    local tickWidth = plugin:GetSetting(bar.systemIndex, "TickWidth") or 1
     local snappedTickWidth = SnapToPixel(tickWidth, scale)
 
     local tickCurve = plugin:GetSetting(bar.systemIndex, "TickColorCurve")
-    local c = tickCurve.pins[1].color
+    local c = tickCurve and OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:GetFirstColorFromCurve(tickCurve) or { r = 1, g = 1, b = 1, a = 0.4 }
 
     for i = 1, numTicks - 1 do
         local tick = bar.channelTicks[i]
@@ -371,6 +378,7 @@ function Plugin:OnLoad()
             CastBar.preview = false
             if not CastBar.casting and not CastBar.channeling and not CastBar.empowering then
                 HideBar(CastBar)
+                HideChannelTicks(CastBar)
             end
             self:ApplySettings()
         end, self)
@@ -834,8 +842,22 @@ function Plugin:ApplySettings(systemFrame)
     -- Restore Position (critical for profile switching)
     OrbitEngine.Frame:RestorePosition(bar, self, systemIndex)
 
+    self:ApplyColor()
+    if bar.channelTicks then
+        local tickWidth = self:GetSetting(systemIndex, "TickWidth") or 1
+        local scale = bar:GetEffectiveScale()
+        local snappedTickWidth = SnapToPixel(tickWidth, scale)
+        local height = self:GetSetting(systemIndex, "CastBarHeight")
+        local tickCurve = self:GetSetting(systemIndex, "TickColorCurve")
+        local c = tickCurve and OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:GetFirstColorFromCurve(tickCurve) or { r = 1, g = 1, b = 1, a = 0.4 }
+        for _, tick in ipairs(bar.channelTicks) do
+            tick:SetColorTexture(c.r, c.g, c.b, c.a)
+            tick:SetSize(math.max(snappedTickWidth, 1 / scale), height)
+        end
+    end
+
     -- Show preview in Edit Mode
-    if Orbit:IsEditMode() then
+    if bar.preview or Orbit:IsEditMode() then
         self:ShowPreview()
     end
 end
@@ -880,6 +902,7 @@ function Plugin:ShowPreview()
     bar.preview = true
     bar.casting = false
     bar.channeling = false
+    bar.notInterruptible = false
     local targetBar = bar.orbitBar or bar
     targetBar:SetMinMaxValues(0, PREVIEW_CAST_DURATION)
     targetBar:SetValue(PREVIEW_CAST_PROGRESS)
@@ -890,6 +913,18 @@ function Plugin:ShowPreview()
     if bar.Timer then
         bar.Timer:SetText("1.5")
     end
+
+    SetupChannelTicks(self, bar, 15407)
+
+    if bar.Spark then
+        local sparkPos = (PREVIEW_CAST_PROGRESS / PREVIEW_CAST_DURATION) * targetBar:GetWidth()
+        if OrbitEngine and OrbitEngine.Pixel then
+            sparkPos = OrbitEngine.Pixel:Snap(sparkPos, bar:GetEffectiveScale())
+        end
+        bar.Spark:SetPoint("CENTER", targetBar, "LEFT", sparkPos, 0)
+        bar.Spark:Show()
+    end
+
     ShowBar(bar)
 end
 

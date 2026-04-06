@@ -48,6 +48,13 @@ function Orbit.PluginMixin:RegisterStandardEvents()
         end, debounceDelay)
     end, self)
 
+    -- All plugins re-apply on strata bump; debounce makes this near-zero cost
+    Orbit.EventBus:On("STRATA_UPDATED", function()
+        Orbit.Async:Debounce(debounceKey, function()
+            self:ApplySettings()
+        end, debounceDelay)
+    end, self)
+
     if Orbit.Engine and Orbit.Engine.EditMode then
         Orbit.Engine.EditMode:RegisterCallbacks({
             Enter = function()
