@@ -269,7 +269,11 @@ function Plugin:OnLoad()
         isFontString = true,
         onPositionChange = MPC("Coords"),
     })
-    OrbitEngine.ComponentDrag:Attach(self._compartmentButton, self.frame, { key = "Compartment", onPositionChange = MPC("Compartment") })
+    OrbitEngine.ComponentDrag:Attach(self._compartmentButton, self.frame, {
+        key = "Compartment",
+        sourceOverride = self._compartmentButton.icon,
+        onPositionChange = MPC("Compartment"),
+    })
     OrbitEngine.ComponentDrag:Attach(self.frame.ZoomContainer, self.frame, { key = "Zoom", onPositionChange = MPC("Zoom") })
     if self.frame.DifficultyIcon then OrbitEngine.ComponentDrag:Attach(self.frame.DifficultyIcon, self.frame, { key = DIFFICULTY_ICON_KEY, onPositionChange = MPC(DIFFICULTY_ICON_KEY) }) end
     if self.frame.DifficultyText then
@@ -518,6 +522,42 @@ function Plugin:UpdateDifficultyVisuals(textMultiplier)
             if sub.Background then sub.Background:SetAlpha(alpha > 0 and showBg and 1 or 0) end
             if sub.Border then sub.Border:SetAlpha(alpha > 0 and showBg and 1 or 0) end
         end
+    end
+
+    if not iconFrame.PreviewIcon then
+        iconFrame.PreviewIcon = iconFrame:CreateTexture(nil, "OVERLAY")
+        -- Use the 25 player difficulty skull
+        iconFrame.PreviewIcon:SetTexture("Interface\\Minimap\\UI-DungeonDifficulty-Button")
+        iconFrame.PreviewIcon:SetTexCoord(0.5, 0.75, 0.0703125, 0.4140625)
+        iconFrame.PreviewIcon:SetSize(18, 18)
+        iconFrame.PreviewIcon:SetPoint("CENTER", iconFrame, "CENTER", 0.5, 0.5)
+    end
+    if not iconFrame.PreviewText then
+        iconFrame.PreviewText = iconFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        iconFrame.PreviewText:SetText("25")
+        iconFrame.PreviewText:SetPoint("TOP", iconFrame.PreviewIcon, "BOTTOM", -1, 4)
+    end
+
+    local realIconShown = false
+    if difficulty:IsShown() or mode == "icon" then
+        for _, sub in ipairs({ difficulty.Default, difficulty.Guild, difficulty.ChallengeMode }) do
+            if sub and sub:IsShown() then
+                for _, region in ipairs({ sub:GetRegions() }) do
+                    if region and region:GetObjectType() == "Texture" and region:IsShown() and region ~= sub.Background and region ~= sub.Border then
+                        realIconShown = true
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    if keepVisible and not realIconShown and mode == "icon" then
+        iconFrame.PreviewIcon:Show()
+        iconFrame.PreviewText:Show()
+    else
+        iconFrame.PreviewIcon:Hide()
+        iconFrame.PreviewText:Hide()
     end
 
     iconFrame.orbitOriginalWidth = difficulty.orbitOriginalWidth or iconFrame.orbitOriginalWidth or 16

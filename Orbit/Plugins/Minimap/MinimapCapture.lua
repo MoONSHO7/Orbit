@@ -294,14 +294,7 @@ function Plugin:ReparentBlizzardComponents()
             craftingOrder.Icon = craftingOrder:CreateTexture(nil, "ARTWORK")
             craftingOrder.Icon:SetSize(20, 20)
             craftingOrder.Icon:SetPoint("CENTER")
-            
-            local info = C_Texture.GetAtlasInfo("UI-HUD-Minimap-CraftingOrder-Over-2x")
-            if info and info.file then
-                craftingOrder.Icon:SetTexture(info.file)
-                craftingOrder.Icon:SetTexCoord(info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord)
-            else
-                craftingOrder.Icon:SetAtlas("UI-HUD-Minimap-CraftingOrder-Over-2x", true)
-            end
+            craftingOrder.Icon:SetAtlas("UI-HUD-Minimap-CraftingOrder-Over-2x", true)
             
             -- Ignore native scaling so the atlas stays crisp
             craftingOrder.Icon:SetScale(1)

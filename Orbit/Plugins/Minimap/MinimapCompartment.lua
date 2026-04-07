@@ -48,6 +48,23 @@ local function IsPinFrame(name)
     return false
 end
 
+local function NormalizeCompartmentDisplayName(name)
+    local displayName = name or "Unknown"
+    displayName = displayName:gsub("^LibDBIcon10_", "")
+    displayName = displayName:gsub("MinimapButton", "")
+    displayName = displayName:gsub("Minimap", "")
+    displayName = displayName:gsub("Button$", "")
+    if displayName == "" then
+        displayName = name or "Unknown"
+    end
+    return displayName
+end
+
+local function BuildCollectedButtonSignature(name, icon)
+    if type(icon) ~= "string" or icon == "" then return nil end
+    return string.lower((name or "unknown")) .. "|" .. icon
+end
+
 -- Minimum button width to be considered a real addon button (map pins are typically <20px).
 local MIN_BUTTON_SIZE = 20
 
@@ -66,11 +83,6 @@ function Plugin:CreateCompartmentButton()
     btn.orbitOriginalWidth = COMPARTMENT_BUTTON_SIZE
     btn.orbitOriginalHeight = COMPARTMENT_BUTTON_SIZE
 
-    -- Background
-    btn.bg = btn:CreateTexture(nil, "BACKGROUND")
-    btn.bg:SetAllPoints(btn)
-    btn.bg:SetColorTexture(0.1, 0.1, 0.1, 0.8)
-
     btn.highlight = btn:CreateTexture(nil, "HIGHLIGHT")
     btn.highlight:SetAllPoints(btn)
     btn.highlight:SetTexture("Interface\\Buttons\\UI-Common-MouseHilight")
@@ -81,6 +93,9 @@ function Plugin:CreateCompartmentButton()
     btn.icon = btn:CreateTexture(nil, "ARTWORK")
     btn.icon:SetAllPoints(btn)
     btn.icon:SetAtlas("Map-Filter-Button", false)
+    
+    -- Setup visual for canvas mode
+    btn.visual = btn.icon
 
     btn.iconPushed = btn:CreateTexture(nil, "ARTWORK")
     btn.iconPushed:SetAllPoints(btn)
@@ -89,9 +104,6 @@ function Plugin:CreateCompartmentButton()
 
     btn:SetScript("OnMouseDown", function() btn.icon:Hide(); btn.iconPushed:Show() end)
     btn:SetScript("OnMouseUp",   function() btn.iconPushed:Hide(); btn.icon:Show() end)
-
-    -- Border
-    Orbit.Skin:SkinBorder(btn, btn, 1, BORDER_COLOR)
 
     -- Start hidden; revealed on minimap hover
     btn:SetAlpha(0)
@@ -136,7 +148,7 @@ function Plugin:CreateCompartmentFlyout()
     overlay:SetFrameStrata(Orbit.Constants.Strata.Dialog)
     overlay:SetFrameLevel(flyout:GetFrameLevel() - 1)
     overlay:Hide()
-    overlay:RegisterForClicks("AnyUp")
+    overlay:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     overlay:SetScript("OnClick", function() flyout:Hide() end)
     flyout._clickOverlay = overlay
 
@@ -194,7 +206,7 @@ function Plugin:PopulateCompartmentFlyout()
         if not row then
             row = CreateFrame("Button", nil, flyout)
             row:SetHeight(COMPARTMENT_ROW_HEIGHT)
-            row:RegisterForClicks("AnyUp")
+            row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
             row:SetHighlightTexture(COMPARTMENT_HIGHLIGHT_TEXTURE, "ADD")
             row:GetHighlightTexture():SetAlpha(0.15)
 
@@ -234,12 +246,16 @@ function Plugin:PopulateCompartmentFlyout()
         end
 
         -- Click handler: trigger the original addon button's OnClick
-        -- RegisterForClicks("AnyUp") is set on row creation so right-clicks are received.
+        -- RegisterForClicks("LeftButtonUp", "RightButtonUp") is set on row creation so right-clicks are received.
         row:SetScript("OnClick", function(_, button)
             if not entry.button then return end
             local btn = entry.button
             local b = button or "LeftButton"
-            if btn.dataObject and btn.dataObject.OnClick then
+            if entry.source == "libdbicon" and btn.dataObject and btn.dataObject.OnClick then
+                btn.dataObject.OnClick(btn, b)
+            elseif btn.Click and btn.IsObjectType and btn:IsObjectType("Button") then
+                btn:Click(b)
+            elseif btn.dataObject and btn.dataObject.OnClick then
                 btn.dataObject.OnClick(btn, b)
             elseif btn:GetScript("OnClick") then
                 btn:GetScript("OnClick")(btn, b)
@@ -342,6 +358,7 @@ function Plugin:CollectAddonButtons()
 
     -- Track already-collected frame references so we don't double-collect
     local seen = {}
+    local seenSignatures = {}
 
     -- 1) LibDBIcon registered buttons
     local lib = LibStub and LibStub("LibDBIcon-1.0", true)
@@ -349,12 +366,18 @@ function Plugin:CollectAddonButtons()
         local ownButtonName = "Orbit"
         for name, button in pairs(lib.objects) do
             if name ~= ownButtonName then
+                local displayName = NormalizeCompartmentDisplayName(name)
+                local icon = button.dataObject and button.dataObject.icon or nil
+                local signature = BuildCollectedButtonSignature(displayName, icon)
+                if not signature or not seenSignatures[signature] then
                 collected[#collected + 1] = {
-                    name = name,
+                    name = displayName,
                     button = button,
-                    icon = button.dataObject and button.dataObject.icon or nil,
+                    icon = icon,
                     source = "libdbicon",
                 }
+                end
+                if signature then seenSignatures[signature] = true end
                 seen[button] = true
             end
         end
@@ -393,18 +416,17 @@ function Plugin:CollectAddonButtons()
                         elseif child.GetNormalTexture and child:GetNormalTexture() then
                             icon = child:GetNormalTexture():GetTexture()
                         end
-                        local displayName = frameName or tostring(child)
-                        displayName = displayName:gsub("^LibDBIcon10_", "")
-                        displayName = displayName:gsub("MinimapButton", "")
-                        displayName = displayName:gsub("Minimap", "")
-                        displayName = displayName:gsub("Button$", "")
-                        if displayName == "" then displayName = frameName or "Unknown" end
-                        collected[#collected + 1] = {
-                            name = displayName,
-                            button = child,
-                            icon = icon,
-                            source = "minimap_child",
-                        }
+                        local displayName = NormalizeCompartmentDisplayName(frameName or tostring(child))
+                        local signature = BuildCollectedButtonSignature(displayName, icon)
+                        if not signature or not seenSignatures[signature] then
+                            collected[#collected + 1] = {
+                                name = displayName,
+                                button = child,
+                                icon = icon,
+                                source = "minimap_child",
+                            }
+                        end
+                        if signature then seenSignatures[signature] = true end
                         seen[child] = true
                     end
                 end
@@ -419,26 +441,27 @@ function Plugin:HideCollectedButtons()
     if not self._collectedButtons then return end
     for _, entry in ipairs(self._collectedButtons) do
         if entry.button then
+            entry.button._orbitCompartmentManaged = true
             entry.button:Hide()
             -- Prevent re-showing by addons that call Show() periodically.
             -- hooksecurefunc is taint-safe; the hook fires after the original Show().
             -- We hide immediately afterwards when the compartment is active.
-            if not entry.button._orbitOnShowHooked then
+            if not entry.button._orbitOnShowHookInstalled then
                 hooksecurefunc(entry.button, "Show", function(b)
-                    if self._compartmentActive then
+                    if self._compartmentActive and b._orbitCompartmentManaged and not self._restoringCollectedButtons then
                         b:Hide()
                     end
                 end)
-                entry.button._orbitOnShowHooked = true
+                entry.button._orbitOnShowHookInstalled = true
             end
             -- For direct minimap children, also suppress SetShown
-            if entry.source == "minimap_child" and not entry.button._orbitSetShownHooked then
+            if entry.source == "minimap_child" and not entry.button._orbitSetShownHookInstalled then
                 hooksecurefunc(entry.button, "SetShown", function(b, shown)
-                    if shown and self._compartmentActive then
+                    if shown and self._compartmentActive and b._orbitCompartmentManaged and not self._restoringCollectedButtons then
                         b:Hide()
                     end
                 end)
-                entry.button._orbitSetShownHooked = true
+                entry.button._orbitSetShownHookInstalled = true
             end
         end
     end
@@ -446,17 +469,16 @@ end
 
 function Plugin:RestoreCollectedButtons()
     if not self._collectedButtons then return end
+    self._restoringCollectedButtons = true
     for _, entry in ipairs(self._collectedButtons) do
         if entry.button then
-            -- Hooks installed via hooksecurefunc cannot be removed; just clear the
-            -- flag so the hook body becomes a no-op after the compartment is inactive.
-            entry.button._orbitOnShowHooked = nil
-            entry.button._orbitSetShownHooked = nil
+            entry.button._orbitCompartmentManaged = nil
             if not (entry.button.db and entry.button.db.hide) then
                 entry.button:Show()
             end
         end
     end
+    self._restoringCollectedButtons = nil
     self._collectedButtons = nil
 end
 
@@ -467,10 +489,11 @@ function Plugin:ApplyAddonCompartment()
     local useClickAction = self:UsesAddonClickAction()
 
     if useClickAction or not self:IsComponentDisabled("Compartment") then
-        self._compartmentActive = true
         -- Restore any previously-hooked buttons before re-collecting, so stale hooks
         -- (e.g. on frames that are no longer eligible) are cleaned up each cycle.
+        self._compartmentActive = false
         self:RestoreCollectedButtons()
+        self._compartmentActive = true
         self:CollectAddonButtons()
         self:HideCollectedButtons()
 
