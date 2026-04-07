@@ -11,7 +11,7 @@ Orbit.OOCFadeMixin = {}
 local Mixin = Orbit.OOCFadeMixin
 
 local EventFrame = CreateFrame("Frame")
-local ManagedFrames = {}
+local ManagedFrames = setmetatable({}, { __mode = "k" })
 
 -- [ VISIBILITY LOGIC ]------------------------------------------------------------------------------
 -- Resolve the VE key for a managed frame's data
@@ -139,7 +139,7 @@ end
 local function UpdateAllFrames()
     for frame, data in pairs(ManagedFrames) do
         -- Re-sync hover ticker from VE mouseOver setting
-        local veKey = GetVEKey(data)
+        local veKey = data.veKey
         if veKey and Orbit.VisibilityEngine then
             local mouseOver = Orbit.VisibilityEngine:GetFrameSetting(veKey, "mouseOver")
             data.enableHover = mouseOver or false
@@ -232,8 +232,7 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
             -- Mounted hidden check (shared by all paths)
             local isMountedHide = false
             if Orbit.MountedVisibility and Orbit.MountedVisibility:IsCachedHidden() then
-                local veKey = GetVEKey(d)
-                local isMH = veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
+                local isMH = d.veKey and Orbit.VisibilityEngine:GetFrameSetting(d.veKey, "hideMounted")
                 if isMH then
                     local revealFull = (showWithTarget and UnitExists("target")) or (mouseOver and self.orbitMouseOver) or IsCursorRevealing(self)
                     if not revealFull then isMountedHide = true end

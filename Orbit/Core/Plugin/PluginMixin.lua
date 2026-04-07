@@ -119,14 +119,16 @@ function Orbit.PluginMixin:GetComponentPositions(systemIndex)
     return (txn and txn:GetPositions()) or self:GetSetting(systemIndex or 1, "ComponentPositions") or {}
 end
 
--- Check if a component is disabled via Canvas Mode drag-to-disable (linear scan, small N)
+-- Check if a component is disabled via Canvas Mode drag-to-disable (O(1) via lazy hash set)
 function Orbit.PluginMixin:IsComponentDisabled(componentKey)
     local txn = self:_ActiveTransaction()
     local disabled = txn and txn:GetDisabledComponents() or self:GetSetting(self.frame and self.frame.systemIndex or 1, "DisabledComponents") or {}
-    for _, key in ipairs(disabled) do
-        if key == componentKey then return true end
+    if not disabled._hash then
+        local hash = {}
+        for _, key in ipairs(disabled) do hash[key] = true end
+        disabled._hash = hash
     end
-    return false
+    return disabled._hash[componentKey] or false
 end
 
 -- Single entry point for Canvas Mode Apply — updates live frames + edit mode previews
@@ -237,12 +239,7 @@ function Orbit.PluginMixin:UpdateVisibility()
         if self.frame then self.frame:Hide() end
         return
     end
-    local isMounted = Orbit.MountedVisibility:IsCachedHidden()
-    local pluginMounted = false
-    if isMounted and Orbit.VisibilityEngine then
-        local veKey = Orbit.VisibilityEngine:GetKeyForPlugin(self.name, self.frame and self.frame.systemIndex or 1)
-        pluginMounted = veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") or false
-    end
+    local pluginMounted = Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(self.name, self.frame and self.frame.systemIndex or 1)
     local shouldHide = (C_PetBattles and C_PetBattles.IsInBattle()) or (UnitHasVehicleUI and UnitHasVehicleUI("player"))
         or pluginMounted
     if shouldHide then

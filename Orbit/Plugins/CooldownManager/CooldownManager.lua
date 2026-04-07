@@ -259,14 +259,12 @@ function Plugin:OnLoad()
 end
 
 function Plugin:UpdateVisibility()
-    local isMounted = Orbit.MountedVisibility:IsCachedHidden()
     local isPetBattle = (C_PetBattles and C_PetBattles.IsInBattle()) or (UnitHasVehicleUI and UnitHasVehicleUI("player"))
     local inCombat = InCombatLockdown()
     for _, data in pairs(VIEWER_MAP) do
         if data.anchor then
             local sysIdx = data.anchor.systemIndex
-            local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, sysIdx)
-            local isMountedHidden = (isMounted and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted"))
+            local isMountedHidden = Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(self.name, sysIdx)
             local frameHideAlpha = isMountedHidden and 0 or ((self:GetSetting(sysIdx, "Opacity") or 100) / 100)
             data.anchor.orbitMountedSuppressed = isMountedHidden or nil
             if not inCombat then
@@ -279,8 +277,7 @@ function Plugin:UpdateVisibility()
     for _, childData in pairs(self.activeChildren or {}) do
         if childData.frame then
             local csi = childData.frame.systemIndex
-            local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, csi)
-            local isMountedHidden = (isMounted and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted"))
+            local isMountedHidden = Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(self.name, csi)
             local frameHideAlpha = isMountedHidden and 0 or ((self:GetSetting(csi, "Opacity") or 100) / 100)
             childData.frame.orbitMountedSuppressed = isMountedHidden or nil
             if not inCombat then
@@ -378,8 +375,7 @@ function Plugin:ApplySettings(frame)
         return
     end
 
-    local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, systemIndex)
-    local isMountedHidden = Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
+    local isMountedHidden = Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(self.name, systemIndex)
     local alpha = (self:GetSetting(systemIndex, "Opacity") or 100) / 100
     if isMountedHidden then
         frame:SetAlpha(0)

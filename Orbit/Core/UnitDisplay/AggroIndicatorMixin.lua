@@ -12,9 +12,11 @@ local function GetAggroSettings(plugin)
     local cache = plugin._aggroSettingsCache
     if cache then return cache end
     local get = plugin.GetTierSetting and function(k) return plugin:GetTierSetting(k) end or function(k) return plugin:GetSetting(1, k) end
+    local raw = get("AggroColor")
+    local resolved = raw and Orbit.Engine.ColorCurve and Orbit.Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw
     cache = {
         enabled = get("AggroIndicatorEnabled"),
-        color = get("AggroColor") or DEFAULT_AGGRO_COLOR,
+        color = resolved or DEFAULT_AGGRO_COLOR,
     }
     plugin._aggroSettingsCache = cache
     return cache

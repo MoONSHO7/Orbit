@@ -178,8 +178,10 @@ function GC:StopPandemic(frame)
     local state = frame._orbitGlow
     if not state then return end
     local entry = state.active[PANDEMIC_KEY]
-    if entry and state.pandemicWrapper then
-        LCG.Hide(state.pandemicWrapper, entry.typeName, PANDEMIC_KEY)
+    if entry then
+        if state.pandemicWrapper then
+            LCG.Hide(state.pandemicWrapper, entry.typeName, PANDEMIC_KEY)
+        end
     end
     state.active[PANDEMIC_KEY] = nil
     if state.pandemicWrapper then state.pandemicWrapper:SetAlpha(0) end

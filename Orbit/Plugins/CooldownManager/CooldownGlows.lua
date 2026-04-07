@@ -12,6 +12,57 @@ local UTILITY_INDEX = Constants.Cooldown.SystemIndex.Utility
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local PANDEMIC_KEY = "orbitPandemic"
 
+-- [ DEFERRED HIDE BATCHING ] --------------------------------------------------
+-- Blizzard's ActionButtonSpellAlertManager does HideAll→Re-Show every refresh
+-- cycle (hundreds/sec in raids). We defer hides by 1 frame so the re-Show
+-- cancels the pending hide, eliminating flicker entirely.
+local pendingProcHides = {}
+local procHideScheduled = false
+local pendingPandemicHides = {}
+local pandemicHideScheduled = false
+
+local function FlushProcHides()
+    procHideScheduled = false
+    for button in pairs(pendingProcHides) do
+        GC:HideProc(button)
+    end
+    wipe(pendingProcHides)
+end
+
+local PANDEMIC_DEFER_INTERVAL = 0.2
+
+local function FlushPandemicHides()
+    pandemicHideScheduled = false
+    for icon in pairs(pendingPandemicHides) do
+        local pi = icon.PandemicIcon
+        if pi and pi:IsShown() then
+            -- Blizzard's ground truth says pandemic IS active — abort hide
+            pendingPandemicHides[icon] = nil
+        elseif GC:IsActive(icon, PANDEMIC_KEY) then
+            GC:HidePandemic(icon)
+            if not icon._orbitGlow then icon._orbitGlow = { active = {} } end
+            icon._orbitGlow.suppressPandemic = nil
+        end
+    end
+    wipe(pendingPandemicHides)
+end
+
+local function DeferProcHide(button)
+    pendingProcHides[button] = true
+    if not procHideScheduled then
+        procHideScheduled = true
+        C_Timer.After(0, FlushProcHides)
+    end
+end
+
+local function DeferPandemicHide(icon)
+    pendingPandemicHides[icon] = true
+    if not pandemicHideScheduled then
+        pandemicHideScheduled = true
+        C_Timer.After(PANDEMIC_DEFER_INTERVAL, FlushPandemicHides)
+    end
+end
+
 -- [ PROC GLOW HOOKS ] ---------------------------------------------------------
 local function FindSystemIndexForButton(button)
     if button.orbitCDMSystemIndex then return button.orbitCDMSystemIndex end
@@ -30,12 +81,13 @@ function CDM:HookProcGlow()
     hooksecurefunc(ActionButtonSpellAlertManager, "ShowAlert", function(_, button)
         local si = FindSystemIndexForButton(button)
         if not si then return end
+        pendingProcHides[button] = nil
         GC:ShowProc(button, function(k) return self:GetSetting(si, k) end, "ProcGlow", Constants.Glow.DefaultColor)
     end)
     hooksecurefunc(ActionButtonSpellAlertManager, "HideAlert", function(_, button)
         local si = FindSystemIndexForButton(button)
         if not si then return end
-        GC:HideProc(button)
+        DeferProcHide(button)
     end)
     self.procGlowHooked = true
 end
@@ -92,6 +144,7 @@ HookPandemicIcon = function(icon, plugin, systemIndex)
     if not icon.ShowPandemicStateFrame then return end
     icon._orbitPandemicHooked = true
     local function OnPandemicShow(self)
+        pendingPandemicHides[self] = nil
         local glowType = plugin:GetSetting(systemIndex, "PandemicGlowType") or GlowType.None
         SetPandemicSuppress(self, true)
         SuppressPandemicIcon(self)
@@ -111,8 +164,7 @@ HookPandemicIcon = function(icon, plugin, systemIndex)
     end
     local function OnPandemicHide(self)
         if GC:IsActive(self, PANDEMIC_KEY) then
-            GC:HidePandemic(self)
-            SetPandemicSuppress(self, nil)
+            DeferPandemicHide(self)
         end
     end
     hooksecurefunc(icon, "ShowPandemicStateFrame", function(self)
@@ -123,6 +175,7 @@ HookPandemicIcon = function(icon, plugin, systemIndex)
         OnPandemicHide(self)
     end)
     hooksecurefunc(icon, "Hide", function(self)
+        pendingPandemicHides[self] = nil
         GC:StopPandemic(self)
         SetPandemicSuppress(self, nil)
     end)
@@ -152,6 +205,7 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
 end
 
 function CDM:ClearAllPandemicGlows()
+    wipe(pendingPandemicHides)
     for _, entry in pairs(CDM.viewerMap) do
         if entry.viewer and entry.viewer.GetItemFrames then
             local icons = entry.viewer:GetItemFrames()

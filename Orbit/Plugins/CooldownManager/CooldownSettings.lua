@@ -185,8 +185,10 @@ function CDM:IsComponentDisabled(componentKey, systemIndex)
     systemIndex = systemIndex or 1
     local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
     local disabled = (Txn and Txn:IsActive() and Txn:GetPlugin() == self) and Txn:GetDisabledComponents() or self:GetSetting(systemIndex, "DisabledComponents") or {}
-    for _, key in ipairs(disabled) do
-        if key == componentKey then return true end
+    if not disabled._hash then
+        local hash = {}
+        for _, key in ipairs(disabled) do hash[key] = true end
+        disabled._hash = hash
     end
-    return false
+    return disabled._hash[componentKey] or false
 end

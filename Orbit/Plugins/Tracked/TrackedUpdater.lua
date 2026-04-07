@@ -79,11 +79,13 @@ function Updater:UpdateTrackedIcon(plugin, icon)
             local onGCD = cdInfo and cdInfo.isOnGCD
             local chargeInfo = icon.isChargeSpell and C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
             if chargeInfo then
-                icon._trackedCharges = chargeInfo.currentCharges
-                icon._knownRechargeDuration = chargeInfo.cooldownDuration
-                icon._rechargeEndsAt = (chargeInfo.cooldownStartTime > 0 and chargeInfo.cooldownDuration > 0)
-                        and (chargeInfo.cooldownStartTime + chargeInfo.cooldownDuration)
-                    or nil
+                if not issecretvalue(chargeInfo.currentCharges) then
+                    icon._trackedCharges = chargeInfo.currentCharges
+                    icon._knownRechargeDuration = chargeInfo.cooldownDuration
+                    icon._rechargeEndsAt = (chargeInfo.cooldownStartTime > 0 and chargeInfo.cooldownDuration > 0)
+                            and (chargeInfo.cooldownStartTime + chargeInfo.cooldownDuration)
+                        or nil
+                end
                 CooldownUtils:TrackChargeCompletion(icon)
                 local chargeDurObj = C_Spell.GetSpellChargeDuration and C_Spell.GetSpellChargeDuration(activeId)
                 if chargeDurObj then

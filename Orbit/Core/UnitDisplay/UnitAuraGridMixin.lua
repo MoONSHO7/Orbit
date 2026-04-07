@@ -880,8 +880,7 @@ function Mixin:UpdateVisibility()
         local cfg = self._agConfig
         local vePlugin = cfg and cfg.vePluginName and Orbit:GetPlugin(cfg.vePluginName) or self
         local veIndex = cfg and cfg.veSystemIndex or 1
-        local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(vePlugin.name, veIndex)
-        if veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") then return end
+        if Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(vePlugin.name, veIndex) then return end
     end
 
     local enabled = self:IsEnabled()

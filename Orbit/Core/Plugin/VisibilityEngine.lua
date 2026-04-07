@@ -54,6 +54,13 @@ local FRAME_REGISTRY = {
     { key = "Datatexts",            display = "Datatexts",             plugin = "Datatexts",          index = 1 },
 }
 
+-- O(1) reverse lookup: { [pluginName] = { [systemIndex] = key } }
+local REVERSE_LOOKUP = {}
+for _, entry in ipairs(FRAME_REGISTRY) do
+    REVERSE_LOOKUP[entry.plugin] = REVERSE_LOOKUP[entry.plugin] or {}
+    REVERSE_LOOKUP[entry.plugin][entry.index] = entry.key
+end
+
 -- Blizzard frames (no Orbit plugin, resolved via _G[blizzardFrame])
 local BLIZZARD_REGISTRY = {
     { key = "BlizzMinimap",         display = "Minimap",               blizzardFrame = "MinimapCluster" },
@@ -160,20 +167,26 @@ function VE:GetPlugin(entry)
     return Orbit._pluginsByName and Orbit._pluginsByName[entry.plugin]
 end
 
--- Look up the registry key for a given plugin name + system index
+-- Look up the registry key for a given plugin name + system index (O(1) via reverse lookup)
 function VE:GetKeyForPlugin(pluginName, systemIndex)
-    for _, entry in ipairs(FRAME_REGISTRY) do
-        if entry.plugin == pluginName and entry.index == systemIndex then return entry.key end
-    end
+    local byPlugin = REVERSE_LOOKUP[pluginName]
+    if not byPlugin then return nil end
+    local key = byPlugin[systemIndex]
+    if key then return key end
     -- Fallback: single-entry plugin with non-matching index (string SYSTEM_IDs)
-    local singleMatch
-    for _, entry in ipairs(FRAME_REGISTRY) do
-        if entry.plugin == pluginName then
-            if singleMatch then return nil end
-            singleMatch = entry
-        end
+    local singleKey
+    for _, k in pairs(byPlugin) do
+        if singleKey then return nil end
+        singleKey = k
     end
-    return singleMatch and singleMatch.key or nil
+    return singleKey
+end
+
+-- Check if a plugin frame should be hidden due to mounted state (unified helper)
+function VE:IsFrameMountedHidden(pluginName, systemIndex)
+    if not Orbit.MountedVisibility or not Orbit.MountedVisibility:IsCachedHidden() then return false end
+    local veKey = self:GetKeyForPlugin(pluginName, systemIndex)
+    return veKey and self:GetFrameSetting(veKey, "hideMounted") or false
 end
 
 -- Check if any frame in VE has a specific boolean setting enabled
