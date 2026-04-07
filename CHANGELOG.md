@@ -39,6 +39,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **UI Changes:** Various tweaks to UI elements and options. Bugfixes too.
 
 ### Fixed
+- **Minimap Compartment:** Rewrote addon button flyout to use proxy icon buttons instead of reparenting. Fixes dark rendering on LibDBIcon buttons and flyout overlay blocking clicks.
+- **Minimap Difficulty (Canvas):** Skull icon now renders without the background banner by default. A `Show Background` toggle controls it. Placeholder "25" label anchored directly beneath the skull.
+- **Minimap Difficulty Display Dropdown:** Switching between Icon/Text in canvas settings now reflects the correct state. The value was being lost when the dialog reopened.
 - **Cast Bar Preview (Sticky):** Fixed Target/Focus cast bar previews persisting on screen after exiting Edit Mode by clearing preview state before hiding and adding combat-exit guards. Hopefully combat stickiness too.
 - **Cast Bar Preview (Ticks):** Fixed channel tick marks failing to render in the configuration preview.
 - **Healer Aura Filtering:** Fixed healer-tracked auras not being excluded from the general Buffs frame on group frames when `HealerAuras` is enabled.Icon Canvas.

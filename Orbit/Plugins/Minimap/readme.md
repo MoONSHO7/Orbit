@@ -39,7 +39,7 @@ all components below are individually positionable via canvas mode and can be di
 
 the minimap supports configurable left-, middle-, and right-click actions via plugin settings.
 
-canvas overrides (font, size, color) are supported for ZoneText, Clock, Coords, and Difficulty text mode via the canvas component settings panel. canvas always shows the difficulty background to make placement easier in icon mode. `Difficulty` icon mode and text mode are handled as separate internal components, so preview sizing/alignment no longer depends on switching one component between two different geometries.
+canvas overrides (font, size, color) are supported for ZoneText, Clock, Coords, and Difficulty text mode via the canvas component settings panel. canvas respects the `DifficultyShowBackground` toggle in icon mode and shows a placeholder group-size number beneath the skull. `Difficulty` icon mode and text mode are handled as separate internal components, so preview sizing/alignment no longer depends on switching one component between two different geometries.
 
 ## blizzard frames affected
 
