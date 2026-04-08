@@ -19,20 +19,44 @@ jobs:
 
       - name: Calculate version and create tag
         run: |
-          # Count all commits on branch
-          VERSION="$(git rev-list --count HEAD)"
+          # Check if this is an automated data-only commit (meta talent updates, etc.)
+          LAST_MSG="$(git log -1 --pretty=%s)"
+          IS_DATA_COMMIT=false
+          if echo "$LAST_MSG" | grep -qE "^data:"; then
+            IS_DATA_COMMIT=true
+          fi
+
+          if [ "$IS_DATA_COMMIT" = "true" ]; then
+            # Data commit: produce a sub-version tag (e.g., 233-data.1, 233-data.2)
+            # Find the latest non-data tag (the base release version)
+            BASE_TAG=$(git tag --list --sort=-v:refname | grep -vE "\-data\." | head -n 1)
+            if [ -z "$BASE_TAG" ]; then
+              BASE_TAG="0"
+            fi
+            
+            # Count existing data tags on this base
+            DATA_SEQ=$(git tag --list "${BASE_TAG}-data.*" | wc -l)
+            DATA_SEQ=$((DATA_SEQ + 1))
+            VERSION="${BASE_TAG}-data.${DATA_SEQ}"
+            
+            echo "Data commit detected. Base: $BASE_TAG, Sequence: $DATA_SEQ"
+          else
+            # Normal commit: count all commits for the release version
+            VERSION="$(git rev-list --count HEAD)"
+          fi
+
           echo "Calculated version: $VERSION"
-          
+
           # Check if tag already exists
           if git rev-parse "$VERSION" >/dev/null 2>&1; then
             echo "Tag $VERSION already exists, skipping"
             exit 0
           fi
-          
+
           # Configure git for tagging
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           # Create and push tag
           git tag -a "$VERSION" -m "Release $VERSION"
           git push origin "$VERSION"

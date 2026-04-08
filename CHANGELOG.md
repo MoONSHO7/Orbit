@@ -19,35 +19,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [@project-version@] - @project-date-iso@
 ### TLDR
-- Lots of backend changes in this one, some icon frames may need size changes, have moved away from Scale and towards Pixels instead.
+- Lots of backend changes in this one, some icon frames may need size changes, have moved away from Scale and towards Pixels instead. (Will require you to resize them back to appropriate sizes)
 - Overhaul of Glows in Orbit, please revise all glows, added more customization options, better alignment and performance. No longer using LibCustomGlow so should resolve a lot of conflicts from other addons.
 - Enabled Minimap plugin by default. Remember can disable all plugins in the `Plugin Manager (/orbit plugins)`.
-- Added **Datatexts**, **just click one of the four corners of the screen** to open the datatext drawer and drag and drop them anywhere on-screen. Will continue to expand on these and you're welcome to suggest more/improve whats been built.
+- Added **Datatexts**, just click one of the four corners of the screen to open the datatext drawer.
+- The drawer is required to be open when editing datatexts. Drag and drop them anywhere on-screen. Drag them back into the drawer to disable. Drag the right hand corner to resize them. Will continue to expand on these and you're welcome to suggest more/improve whats been built.
 
-### Added
-- **Datatexts Plugin:** Brand-new standalone plugin with 20+ widgets (Gold, Friends, Guild, Durability, Performance, Hearthstone, Spec, Location, Mail, Quest, Combat Timer, and more). Replaces the old Performance and Combat Timer from Menu Items.
-- **Glows:** New custom glow library replacing `LibCustomGlow`. Supports **Pixel**, **Medium**, **Autocast**, **Classic**, **Thin**, **Thick** glow types with full per-type configuration (color, frequency, thickness, line count, particles, scale, and direction).
-- **StrataEngine:** Centralized Z-index layering engine for root-level UI containers. Supports `BumpUp`/`BumpDown` reordering persisted to profile, ensuring consistent frame stacking across Edit Mode and Canvas Mode. `This is for future implementation and not currently active, but all strata has been updated to use the new engine.`
-- **Group Frame Dispel Glow Type:** Added user-selectable glow types (**Pixel** vs **Autocast**) for dispel indicators on group frames, with per-type settings for thickness, line count, and length.
+### Bugfixes
+- TrackedIcons Lua Errors
+- Border Colors should work with Class Pins again (Will need to re-add class pins)
+- Fixed an issue where sometimes ActionBars/TrackedIcons would have static text on them
+- Glows in Canvas Mode now have all the new settings from previous update
+- Dispel Indicator Lua errors fix (please confirm on discord)
 
-### Changed
-- **Glow System Overhaul:** Migrated all glow rendering (Pandemic, Cooldown Manager, Action Bars, Dispel Indicators) from `LibCustomGlow` to the new `LibOrbitGlow-1.0`.
-- **Strata Standardisation:** Replaced all hardcoded strata strings (`"MEDIUM"`, `"TOOLTIP"`, etc.) with `Constants.Strata.*` lookups managed by the StrataEngine.
-- **Glow Settings Schema:** Expanded glow configuration panel with per-type sliders (frequency, thickness, particles, scale, line count) that dynamically show/hide based on the selected glow type.
-- **Cast Bar Spark:** Player cast bar spark now uses `Pixel:Snap` for sub-pixel–accurate positioning.
-- **Unit Health:**: Unit Health now has a checkbox to enable gradient colors instead of colors based on value.
-- **UI Changes:** Various tweaks to UI elements and options. Bugfixes too.
-
-### Fixed
-- **Cast Bar Preview (Sticky):** Fixed Target/Focus cast bar previews persisting on screen after exiting Edit Mode by clearing preview state before hiding and adding combat-exit guards. Hopefully combat stickiness too.
-- **Cast Bar Preview (Ticks):** Fixed channel tick marks failing to render in the configuration preview.
-- **Healer Aura Filtering:** Fixed healer-tracked auras not being excluded from the general Buffs frame on group frames when `HealerAuras` is enabled.Icon Canvas.
-- **CDM:**: Dropping items/spells on the Cooldown Manager frames should be a bit less buggy now.
-
-### Removed
-- **Menu Items (CombatTimer & Performance):** Removed standalone `CombatTimer.lua` and `Performance.lua` from Menu Items—functionality replaced by the Datatexts plugin.
-
-### Thanks for your support again! Next update will be focussed on fixing bugs. Hope everyone had a good easter. (Go Echo!)
+### Thanks for your support again! Next few updates will be focussed on fixing bugs. Hope everyone had a good easter!
 
 ## [1.0.0] - 2026-03-10
 ### Added

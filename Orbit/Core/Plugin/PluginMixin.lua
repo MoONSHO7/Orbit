@@ -119,16 +119,20 @@ function Orbit.PluginMixin:GetComponentPositions(systemIndex)
     return (txn and txn:GetPositions()) or self:GetSetting(systemIndex or 1, "ComponentPositions") or {}
 end
 
+-- O(1) disabled-component lookup via weak-keyed side cache (avoids SavedVariables pollution)
+local _disabledHashCache = setmetatable({}, { __mode = "k" })
+
 -- Check if a component is disabled via Canvas Mode drag-to-disable (O(1) via lazy hash set)
 function Orbit.PluginMixin:IsComponentDisabled(componentKey)
     local txn = self:_ActiveTransaction()
     local disabled = txn and txn:GetDisabledComponents() or self:GetSetting(self.frame and self.frame.systemIndex or 1, "DisabledComponents") or {}
-    if not disabled._hash then
-        local hash = {}
+    local hash = _disabledHashCache[disabled]
+    if not hash then
+        hash = {}
         for _, key in ipairs(disabled) do hash[key] = true end
-        disabled._hash = hash
+        _disabledHashCache[disabled] = hash
     end
-    return disabled._hash[componentKey] or false
+    return hash[componentKey] or false
 end
 
 -- Single entry point for Canvas Mode Apply — updates live frames + edit mode previews

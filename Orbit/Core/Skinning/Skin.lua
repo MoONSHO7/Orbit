@@ -245,7 +245,12 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
 
     if not color then
         local raw = isIcon and (gs and gs.IconBorderColor) or (gs and gs.BorderColor)
-        color = Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw
+        if raw and raw.type == "class" then
+            color = Engine.ClassColor:GetCurrentClassColor()
+            color.a = raw.a or 1
+        else
+            color = Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw
+        end
     end
     local c = color or { r = 0, g = 0, b = 0, a = 1 }
     bf:SetBackdropBorderColor(c.r, c.g, c.b, c.a)

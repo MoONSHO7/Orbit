@@ -189,6 +189,12 @@ function VE:IsFrameMountedHidden(pluginName, systemIndex)
     return veKey and self:GetFrameSetting(veKey, "hideMounted") or false
 end
 
+-- Check if a plugin has the hideMounted setting enabled (config check, ignores current mount state)
+function VE:HasMountedHideSetting(pluginName, systemIndex)
+    local veKey = self:GetKeyForPlugin(pluginName, systemIndex)
+    return veKey and self:GetFrameSetting(veKey, "hideMounted") or false
+end
+
 -- Check if any frame in VE has a specific boolean setting enabled
 function VE:AnyFrameHasSetting(settingKey)
     local db = GetDB()

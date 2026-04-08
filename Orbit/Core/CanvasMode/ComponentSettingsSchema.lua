@@ -56,16 +56,45 @@ local AURA_GRID = {
     ICON_SIZE_CONTROL,
 }
 
-local PANDEMIC_GLOW = {
-    { type = "dropdown", key = "PandemicGlowType", label = "Pandemic Glow", plugin = true,
-      options = {
-          { text = "None", value = 0 }, { text = "Thin", value = 6 },
-          { text = "Standard", value = 2 }, { text = "Thick", value = 7 },
-          { text = "Classic", value = 4 }, { text = "Autocast", value = 3 },
-          { text = "Pixel", value = 1 },
-      }, default = 0 },
-    { type = "colorcurve", key = "PandemicGlowColorCurve", label = "Pandemic Colour", plugin = true, singleColor = true },
+local GLOW_TYPE_OPTIONS = {
+    { text = "None", value = 0 }, { text = "Thin", value = 6 },
+    { text = "Standard", value = 2 }, { text = "Thick", value = 7 },
+    { text = "Classic", value = 4 }, { text = "Autocast", value = 3 },
+    { text = "Pixel", value = 1 },
 }
+local ALL_ANIMATED_TYPES = { 1, 2, 3, 4, 6, 7 }
+local GD = Orbit.Constants.Glow.Defaults
+local FMT2 = function(v) return string.format("%.2f", v) end
+-- Builds glow type dropdown + per-type fine-tuning sliders for Canvas Mode.
+-- Optional capability string gates the entire control set per-plugin.
+local function BuildGlowControls(prefix, label, colorKey, colorLabel, capability)
+    local typeKey = prefix .. "Type"
+    local cap = capability
+    return {
+        { type = "dropdown", key = typeKey, label = label, plugin = true, rebuildsPanel = true,
+          options = GLOW_TYPE_OPTIONS, default = 0, capability = cap },
+        { type = "colorcurve", key = colorKey, label = colorLabel, plugin = true, singleColor = true, capability = cap },
+        -- Pixel
+        { type = "slider", key = prefix .. "PixelLines", label = "Lines", plugin = true, min = 1, max = 20, step = 1, default = GD.Pixel.Lines, showIfValue = { key = typeKey, value = 1 }, capability = cap },
+        { type = "slider", key = prefix .. "PixelFrequency", label = "Frequency", plugin = true, min = 0, max = 0.20, step = 0.02, default = GD.Pixel.Frequency, formatter = FMT2, showIfValue = { key = typeKey, value = 1 }, capability = cap },
+        { type = "slider", key = prefix .. "PixelLength", label = "Length", plugin = true, min = 1, max = 30, step = 1, default = GD.Pixel.Length, showIfValue = { key = typeKey, value = 1 }, capability = cap },
+        { type = "slider", key = prefix .. "PixelThickness", label = "Thickness", plugin = true, min = 1, max = 10, step = 1, default = GD.Pixel.Thickness, showIfValue = { key = typeKey, value = 1 }, capability = cap },
+        { type = "checkbox", key = prefix .. "PixelBorder", label = "Use Border", plugin = true, default = false, showIfValue = { key = typeKey, value = 1 }, capability = cap },
+        -- Medium (Standard)
+        { type = "slider", key = prefix .. "MediumSpeed", label = "Speed", plugin = true, min = 0.1, max = 5.0, step = 0.1, default = GD.Medium.Speed, showIfValue = { key = typeKey, value = 2 }, capability = cap },
+        -- Autocast
+        { type = "slider", key = prefix .. "AutocastParticles", label = "Particles", plugin = true, min = 1, max = 16, step = 1, default = GD.Autocast.Particles, showIfValue = { key = typeKey, value = 3 }, capability = cap },
+        { type = "slider", key = prefix .. "AutocastFrequency", label = "Frequency", plugin = true, min = 0.05, max = 1.0, step = 0.05, default = GD.Autocast.Frequency, formatter = FMT2, showIfValue = { key = typeKey, value = 3 }, capability = cap },
+        -- Classic
+        { type = "slider", key = prefix .. "ClassicFrequency", label = "Frequency", plugin = true, min = 0.05, max = 1.0, step = 0.05, default = GD.Classic.Frequency, formatter = FMT2, showIfValue = { key = typeKey, value = 4 }, capability = cap },
+        -- Thin
+        { type = "slider", key = prefix .. "ThinSpeed", label = "Speed", plugin = true, min = 0, max = 5.0, step = 0.1, default = GD.Thin.Speed, showIfValue = { key = typeKey, value = 6 }, capability = cap },
+        -- Thick
+        { type = "slider", key = prefix .. "ThickSpeed", label = "Speed", plugin = true, min = 0, max = 5.0, step = 0.1, default = GD.Thick.Speed, showIfValue = { key = typeKey, value = 7 }, capability = cap },
+        -- Reverse (all animated types)
+        { type = "checkbox", key = prefix .. "Reverse", label = "Reverse", plugin = true, default = false, showIfValue = { key = typeKey, values = ALL_ANIMATED_TYPES }, capability = cap },
+    }
+end
 
 -- [ COMPONENT TYPE SCHEMAS ]-------------------------------------------------------------------------
 Schema.TYPE_SCHEMAS = {
@@ -96,8 +125,8 @@ Schema.KEY_SCHEMAS = {
     CombatIcon      = { controls = { SCALE_CONTROL, { type = "dropdown", key = "CombatIconStyle", label = "Style",
         options = { { text = "Crossed Swords", value = "default" }, { text = "PVP Marker", value = "pvp" } }, default = "default" } } },
     PvpIcon         = { controls = { ICON_SIZE_CONTROL } },
-    Buffs           = Compose(AURA_GRID),
-    Debuffs         = Compose(AURA_GRID, PANDEMIC_GLOW),
+    Buffs           = Compose(AURA_GRID, BuildGlowControls("PandemicGlow", "Pandemic Glow", "PandemicGlowColorCurve", "Pandemic Colour")),
+    Debuffs         = Compose(AURA_GRID, BuildGlowControls("PandemicGlow", "Pandemic Glow", "PandemicGlowColorCurve", "Pandemic Colour", "supportsPandemicGlow")),
     PrivateAuraAnchor = { controls = { ICON_SIZE_CONTROL } },
     Portrait = {
         controls = {
@@ -179,24 +208,14 @@ do
             Schema.KEY_SCHEMAS[key] = Compose({
                 { type = "checkbox", key = "ShowTimer", label = "Show Timer", default = false },
                 ICON_SIZE_CONTROL,
-            }, PANDEMIC_GLOW, {
+            }, BuildGlowControls("PandemicGlow", "Pandemic Glow", "PandemicGlowColorCurve", "Pandemic Colour"), {
                 { type = "colorcurve", key = "SwipeColorCurve", label = "Swipe Colour", singleColor = false },
                 { type = "colorcurve", key = "TimerTextColorCurve", label = "Timer Text Colour", singleColor = false },
             })
         end
-        Schema.KEY_SCHEMAS[HealerReg.RAID_BUFF_KEY] = {
-            controls = {
-                ICON_SIZE_CONTROL,
-                { type = "dropdown", key = "ProcGlowType", label = "Proc Glow",
-                  options = {
-                      { text = "None", value = 0 }, { text = "Thin", value = 6 },
-                      { text = "Standard", value = 2 }, { text = "Thick", value = 7 },
-                      { text = "Classic", value = 4 }, { text = "Autocast", value = 3 },
-                      { text = "Pixel", value = 1 },
-                  }, default = 0 },
-                { type = "colorcurve", key = "ProcGlowColorCurve", label = "Proc Colour", singleColor = true },
-            },
-        }
+        Schema.KEY_SCHEMAS[HealerReg.RAID_BUFF_KEY] = Compose({
+            ICON_SIZE_CONTROL,
+        }, BuildGlowControls("ProcGlow", "Proc Glow", "ProcGlowColorCurve", "Proc Colour"))
     end
 end
 

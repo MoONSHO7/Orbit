@@ -1585,7 +1585,8 @@ function lib:Open(options)
     elseif data then
         local colorSource = (data.pins and data.pins[1]) and data.pins[1].color or data
         local pinData = { position = 0.5, color = NormalizeColor(colorSource) }
-        if data.pins and data.pins[1] and data.pins[1].type then pinData.type = data.pins[1].type end
+        local pinType = (data.pins and data.pins[1] and data.pins[1].type) or data.type
+        if pinType then pinData.type = pinType end
         self.pins[#self.pins + 1] = pinData
     end
 

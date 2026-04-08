@@ -124,8 +124,12 @@ function Updater:UpdateTrackedIcon(plugin, icon)
                     if icon.activeDuration and onRealCD and not onGCD and icon._activeGlowExpiry then
                         local castTime = icon._activeGlowExpiry - icon.activeDuration
                         icon.ActiveCooldown:SetCooldown(castTime, icon.activeDuration)
+                        -- Suppress Cooldown text during active phase to prevent overlap
+                        if icon.Cooldown.SetHideCountdownNumbers then icon.Cooldown:SetHideCountdownNumbers(true) end
                     else
                         icon.ActiveCooldown:Clear()
+                        -- Restore Cooldown text after active phase
+                        if icon.Cooldown.SetHideCountdownNumbers then icon.Cooldown:SetHideCountdownNumbers(false) end
                     end
                     if LCG and icon._activeGlowExpiry then
                         if GetTime() < icon._activeGlowExpiry then
@@ -317,6 +321,7 @@ function Updater:StartTrackedUpdateTicker(plugin)
                         icon.Icon:SetDesaturation(desat)
                         if icon.cdAlphaCurve then icon.Cooldown:SetAlpha(durObj:EvaluateRemainingPercent(icon.cdAlphaCurve)) end
                     else
+                        icon.Cooldown:Clear()
                         icon.Icon:SetDesaturation(0)
                         icon.Cooldown:SetAlpha(1)
                         icon.ActiveCooldown:Clear()

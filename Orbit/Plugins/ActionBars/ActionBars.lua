@@ -443,6 +443,8 @@ function Plugin:ReparentButtons(index) ABC:ReparentButtons(self, index, BAR_CONF
 function Plugin:SetupCanvasPreview(container, systemIndex) ABPreview:Setup(self, container, systemIndex) end
 function Plugin:ApplyTextSettings(button, systemIndex) ABText:Apply(self, button, systemIndex) end
 
+local _abDisabledHashCache = setmetatable({}, { __mode = "k" })
+
 function Plugin:IsComponentDisabled(componentKey, systemIndex)
     systemIndex = systemIndex or 1
     local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
@@ -451,12 +453,13 @@ function Plugin:IsComponentDisabled(componentKey, systemIndex)
     if txnActive then disabled = Txn:GetDisabledComponents()
     elseif self:GetSetting(systemIndex, "UseGlobalTextStyle") ~= false then disabled = self:GetSetting(1, "GlobalDisabledComponents") or {}
     else disabled = self:GetSetting(systemIndex, "DisabledComponents") or {} end
-    if not disabled._hash then
-        local hash = {}
+    local hash = _abDisabledHashCache[disabled]
+    if not hash then
+        hash = {}
         for _, key in ipairs(disabled) do hash[key] = true end
-        disabled._hash = hash
+        _abDisabledHashCache[disabled] = hash
     end
-    return disabled._hash[componentKey] or false
+    return hash[componentKey] or false
 end
 
 function Plugin:OnCombatEnd() C_Timer.After(0.5, function() self:ApplyAll() end) end

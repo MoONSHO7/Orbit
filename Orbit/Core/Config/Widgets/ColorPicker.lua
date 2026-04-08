@@ -43,8 +43,10 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
                 Orbit.db.RecentColors = {}
             end
 
+            local initData = { r = frame.r, g = frame.g, b = frame.b, a = frame.a }
+            if frame.pinType then initData.type = frame.pinType end
             lib:Open({
-                initialData = { r = frame.r, g = frame.g, b = frame.b, a = frame.a },
+                initialData = initData,
                 hasOpacity = true,
                 forceSingleColor = true,
                 recentColorsDb = Orbit.db and Orbit.db.RecentColors,
@@ -59,7 +61,7 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
                     if wasCancelled or not result then return end
                     local pin = result.pins and result.pins[1]
                     if pin and pin.color then
-                        frame.UpdateColor(pin.color.r, pin.color.g, pin.color.b, pin.color.a)
+                        frame.UpdateColor(pin.color.r, pin.color.g, pin.color.b, pin.color.a, pin.type)
                     else
                         if opts.allowClear then
                             frame.ClearColor()
@@ -73,14 +75,23 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
     frame:SetParent(parent)
 
     local c = initialColor or { r = 1, g = 1, b = 1, a = 1 }
-    frame.r, frame.g, frame.b, frame.a = c.r or 1, c.g or 1, c.b or 1, c.a or 1
+    frame.pinType = c.type
+    if c.type == "class" and Engine.ClassColor then
+        local resolved = Engine.ClassColor:GetCurrentClassColor()
+        frame.r, frame.g, frame.b, frame.a = resolved.r, resolved.g, resolved.b, c.a or 1
+    else
+        frame.r, frame.g, frame.b, frame.a = c.r or 1, c.g or 1, c.b or 1, c.a or 1
+    end
     frame.oldR, frame.oldG, frame.oldB, frame.oldA = frame.r, frame.g, frame.b, frame.a
     frame.Swatch.Color:SetVertexColor(frame.r, frame.g, frame.b, frame.a)
 
-    frame.UpdateColor = function(r, g, b, a)
+    frame.UpdateColor = function(r, g, b, a, pinType)
         frame.r, frame.g, frame.b, frame.a = r, g, b, a
+        frame.pinType = pinType
         frame.Swatch.Color:SetVertexColor(r, g, b, a)
-        if callback then callback({ r = r, g = g, b = b, a = a }) end
+        local result = { r = r, g = g, b = b, a = a }
+        if pinType then result.type = pinType end
+        if callback then callback(result) end
     end
 
     frame.ClearColor = function()

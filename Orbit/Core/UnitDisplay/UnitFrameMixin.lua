@@ -286,7 +286,7 @@ end
 local function PluginHasMountedHide(plugin)
     local VE = Orbit.VisibilityEngine
     if not VE then return false end
-    return VE:IsFrameMountedHidden(plugin.name, 1)
+    return VE:HasMountedHideSetting(plugin.name, 1)
 end
 
 function Mixin:CreateVisibilityContainer(parent, combatEssential)
