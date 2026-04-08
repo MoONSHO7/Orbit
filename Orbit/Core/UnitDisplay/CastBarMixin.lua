@@ -322,8 +322,7 @@ function Mixin:UpdateVisibility()
     local bar = self.CastBar
     if not bar then return end
     if not InCombatLockdown() then
-        local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, 1)
-        if Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") then
+        if Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(self.name, 1) then
             if bar.StopCast then bar:StopCast() end
             return
         end
@@ -383,8 +382,7 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
 
     function bar:Cast()
         if unit ~= "player" and not InCombatLockdown() then
-            local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(plugin.name, 1)
-            if Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") then return end
+            if Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(plugin.name, 1) then return end
         end
         local targetBar = self.orbitBar or self
         local name, text, texture, _, _, _, _, notInterruptible = UnitCastingInfo(unit)

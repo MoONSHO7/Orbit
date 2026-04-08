@@ -245,7 +245,12 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
 
     if not color then
         local raw = isIcon and (gs and gs.IconBorderColor) or (gs and gs.BorderColor)
-        color = Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw
+        if raw and raw.type == "class" then
+            color = Engine.ClassColor:GetCurrentClassColor()
+            color.a = raw.a or 1
+        else
+            color = Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw
+        end
     end
     local c = color or { r = 0, g = 0, b = 0, a = 1 }
     bf:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
@@ -423,6 +428,8 @@ function Skin:ApplyGradientBackground(frame, curveData, fallbackColor)
     if sorted[#sorted].position < 1 then sorted[#sorted + 1] = { position = 1, color = ResolvePinColor(sorted[#sorted]), type = sorted[#sorted].type } end
 
     local segCount = #sorted - 1
+    local gradColorL = CreateColor(1, 1, 1, 1)
+    local gradColorR = CreateColor(1, 1, 1, 1)
     for i = 1, segCount do
         local seg = frame._gradientSegments[i]
         if not seg then
@@ -438,7 +445,9 @@ function Skin:ApplyGradientBackground(frame, curveData, fallbackColor)
         seg:SetPoint("TOPLEFT", frame, "TOPLEFT", Engine.Pixel:Snap(width * sorted[i].position, scale), 0)
         seg:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", Engine.Pixel:Snap(width * sorted[i + 1].position, scale), -frame:GetHeight())
         seg:SetTexture("Interface\\BUTTONS\\WHITE8x8")
-        seg:SetGradient("HORIZONTAL", CreateColor(lc.r, lc.g, lc.b, lc.a or 0.5), CreateColor(rc.r, rc.g, rc.b, rc.a or 0.5))
+        gradColorL:SetRGBA(lc.r, lc.g, lc.b, lc.a or 0.5)
+        gradColorR:SetRGBA(rc.r, rc.g, rc.b, rc.a or 0.5)
+        seg:SetGradient("HORIZONTAL", gradColorL, gradColorR)
         seg:Show()
     end
 

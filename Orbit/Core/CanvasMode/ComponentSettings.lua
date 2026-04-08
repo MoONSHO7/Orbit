@@ -232,6 +232,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             widget.controlKey = control.key
             widget.hideIf = control.hideIf
             widget.showIf = control.showIf
+            widget.showIfValue = control.showIfValue
 
             local shouldShow = true
             if control.capability and not (self.plugin and self.plugin[control.capability]) then
@@ -243,7 +244,13 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
                 shouldShow = self.currentOverrides[control.showIf] == true
             end
             if shouldShow and control.showIfValue then
-                shouldShow = self.currentOverrides[control.showIfValue.key] == control.showIfValue.value
+                local curVal = self.currentOverrides[control.showIfValue.key]
+                if control.showIfValue.values then
+                    shouldShow = false
+                    for _, v in ipairs(control.showIfValue.values) do if curVal == v then shouldShow = true; break end end
+                else
+                    shouldShow = curVal == control.showIfValue.value
+                end
             end
 
             self.widgets[widgetIndex] = widget
@@ -380,7 +387,13 @@ function Settings:OnValueChanged(key, value)
                 widget:SetShown(value == true)
                 needsHeightRecalc = true
             elseif widget.showIfValue and widget.showIfValue.key == key then
-                widget:SetShown(value == widget.showIfValue.value)
+                if widget.showIfValue.values then
+                    local match = false
+                    for _, v in ipairs(widget.showIfValue.values) do if value == v then match = true; break end end
+                    widget:SetShown(match)
+                else
+                    widget:SetShown(value == widget.showIfValue.value)
+                end
                 needsHeightRecalc = true
             end
         end

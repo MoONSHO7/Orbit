@@ -799,7 +799,14 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
         overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
         local pixelSize = Orbit.Engine.Pixel:Multiple(borderSize, scale)
         overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
-        local c = (gs and gs.IconBorderColor) or { r = 0, g = 0, b = 0, a = 1 }
+        local raw = (gs and gs.IconBorderColor) or { r = 0, g = 0, b = 0, a = 1 }
+        local c
+        if raw.type == "class" then
+            c = Orbit.Engine.ClassColor:GetCurrentClassColor()
+            c.a = raw.a or 1
+        else
+            c = raw
+        end
         overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
     end
     overlay:Show()
@@ -880,8 +887,7 @@ function Mixin:UpdateVisibility()
         local cfg = self._agConfig
         local vePlugin = cfg and cfg.vePluginName and Orbit:GetPlugin(cfg.vePluginName) or self
         local veIndex = cfg and cfg.veSystemIndex or 1
-        local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(vePlugin.name, veIndex)
-        if veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") then return end
+        if Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(vePlugin.name, veIndex) then return end
     end
 
     local enabled = self:IsEnabled()

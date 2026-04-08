@@ -486,8 +486,7 @@ function Plugin:ApplyTrackedBarSettings(frame)
     TrackedBarLayout:LayoutTrackedBar(self, frame)
     OrbitEngine.Frame:RestorePosition(frame, self, sysIndex)
 
-    local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, sysIndex)
-    local isMountedHidden = Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
+    local isMountedHidden = Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(self.name, sysIndex)
     local alpha = isMountedHidden and 0 or ((self:GetSetting(sysIndex, "Opacity") or 100) / 100)
     frame:SetAlpha(alpha)
 

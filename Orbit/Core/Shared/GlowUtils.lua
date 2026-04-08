@@ -20,7 +20,8 @@ function Engine.GlowUtils:GetOptionsHash(options)
     h = h .. "_" .. tostring(options.speed or "") .. "_" .. tostring(options.particles or "")
     h = h .. "_" .. tostring(options.reverse) .. "_" .. tostring(options.padding)
     if options.color then
-        h = h .. string.format("_%.2f_%.2f_%.2f_%.2f", options.color[1] or 1, options.color[2] or 1, options.color[3] or 1, options.color[4] or 1)
+        local c1, c2, c3, c4 = options.color[1] or 1, options.color[2] or 1, options.color[3] or 1, options.color[4] or 1
+        if issecretvalue(c1) then h = h .. "_secret" else h = h .. string.format("_%.2f_%.2f_%.2f_%.2f", c1, c2, c3, c4) end
     end
     return h
 end
@@ -58,7 +59,7 @@ function Engine.GlowUtils:BuildOptionsFromLookup(optionsLookup, prefix, defaultC
         typeName = "Pixel"
         local def = Constants.Glow.Defaults.Pixel
         options.lines = Get("PixelLines", def.Lines)
-        options.frequency = Get("PixelFrequency", def.Frequency)
+        options.frequency = math.min(Get("PixelFrequency", def.Frequency), 0.20)
         options.length = Get("PixelLength", def.Length)
         options.thickness = Get("PixelThickness", def.Thickness)
         options.xOffset = Get("PixelXOffset", def.XOffset)

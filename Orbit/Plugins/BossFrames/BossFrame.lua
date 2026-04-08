@@ -44,6 +44,7 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
 
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.BossFramePreviewMixin, Orbit.AuraMixin, Orbit.StatusIconMixin)
 Plugin.canvasMode = true
+Plugin.supportsPandemicGlow = true
 
 -- [ CAST BAR FACADE ]-------------------------------------------------------------------------------
 function Plugin:PositionCastBar(castBar, parent) CB:Position(castBar, parent, self) end
@@ -86,11 +87,10 @@ local function BossDebuffSkin(plugin)
         pandemicColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(1, "PandemicGlowColorCurve"))
             or plugin:GetSetting(1, "PandemicGlowColor") or Orbit.Constants.Glow.DefaultColor,
     }
-    -- Assemble a pseudo-overrides table so PandemicGlow can fetch dynamic properties correctly
-    skin.overrides = {
+    skin.overrides = setmetatable({
         PandemicGlowType = skin.pandemicGlowType,
-        PandemicGlowColor = skin.pandemicColor
-    }
+        PandemicGlowColor = skin.pandemicColor,
+    }, { __index = function(_, k) return plugin:GetSetting(1, k) end })
     return skin
 end
 
@@ -268,11 +268,7 @@ function Plugin:OnLoad()
     local BOSS_BASE_DRIVER = "[petbattle] hide; [@boss1,exists] show; [@boss2,exists] show; [@boss3,exists] show; [@boss4,exists] show; [@boss5,exists] show; hide"
     local function UpdateVisibilityDriver()
         if InCombatLockdown() or Orbit:IsEditMode() then return end
-        local mv = Orbit.MountedVisibility
-        local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, 1)
-        local hasMountedHide = veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
-        local driver = hasMountedHide and (mv and mv:GetMountedDriver(BOSS_BASE_DRIVER) or BOSS_BASE_DRIVER) or BOSS_BASE_DRIVER
-        RegisterStateDriver(self.container, "visibility", driver)
+        RegisterStateDriver(self.container, "visibility", BOSS_BASE_DRIVER)
     end
     self.UpdateVisibilityDriver = function() UpdateVisibilityDriver() end
     UpdateVisibilityDriver()
