@@ -2,7 +2,7 @@ package-as: Orbit
 
 move-folders:
   Orbit/Orbit: Orbit
-  OrbitData: OrbitData
+  Orbit/OrbitData: OrbitData
 
 externals:
   Orbit/Core/Libs/LibStub: https://repos.curseforge.com/wow/libstub/trunk
