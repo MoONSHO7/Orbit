@@ -540,6 +540,35 @@ local function HookTalentTree()
                     end
                 end
                 
+                -- CastingBarType values are secretwrap'd in 12.0. Our hooks taint the
+                -- execution context, making CastingBarTypeInfo a forbidden table whenever
+                -- Blizzard code calls pairs() on it or indexes it. Override every method
+                -- that touches CastingBarTypeInfo. Orbit reskins this bar entirely so
+                -- native visuals are irrelevant — safe to no-op or return static fallbacks.
+                local SAFE_TYPE_INFO = { filling = "", full = "", glow = "" }
+                bar.GetTypeInfo = function() return SAFE_TYPE_INFO end
+                bar.ShowSpark = function() end
+                bar.HideSpark = function() end
+                bar.PlayFinishAnim = function() end
+                bar.PlayFadeAnim = function(self)
+                    if self.FadeOutAnim and self:GetAlpha() > 0 and self:IsVisible() and not self.isInEditMode then
+                        self.FadeOutAnim:Play()
+                    end
+                end
+                bar.PlayInterruptAnims = function() end
+                bar.StopFinishAnims = function(self)
+                    if self.FlashAnim then self.FlashAnim:Stop() end
+                    if self.FadeOutAnim then self.FadeOutAnim:Stop() end
+                    if self.StandardFinish then self.StandardFinish:Stop() end
+                    if self.ChannelFinish then self.ChannelFinish:Stop() end
+                    if self.StageFinish then self.StageFinish:Stop() end
+                    if self.CraftingFinish then self.CraftingFinish:Stop() end
+                end
+                bar.StopAnims = function(self)
+                    self:StopInterruptAnims()
+                    self:StopFinishAnims()
+                end
+                
                 local host = PlayerSpellsFrame.TalentsFrame
                 
                 -- Move the native BottomBar up to BORDER so it can overhang our spark
@@ -1033,8 +1062,9 @@ local function HookTalentTree()
                 if lastMatchState == allMatch then return end
                 lastMatchState = allMatch
                 btn._isApplied = allMatch
-                btn._icon:SetDesaturated(allMatch)
-                btn._icon:SetAlpha(allMatch and 0.4 or 1.0)
+                local tex = btn:GetNormalTexture()
+                if tex then tex:SetDesaturated(allMatch) end
+                btn:SetAlpha(allMatch and 0.4 or 1.0)
             end
             MT.UpdateApplyButtonState = UpdateApplyButtonState
 
