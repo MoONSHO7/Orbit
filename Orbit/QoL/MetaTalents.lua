@@ -10,7 +10,7 @@ local _, Orbit = ...
 local LOD_ADDON = "OrbitData"
 local FONT_TEMPLATE = "GameFontHighlightSmallOutline"
 local TEXT_OFFSET_Y = 13
-local META_THRESHOLD = 50
+local MIN_PICK_RATE = 1 -- Ignore sub-1% noise from WCL data
 
 -- [ WCL PARSE COLORS ]----------------------------------------------------------------------
 -- Matches Warcraft Logs / Raider.IO percentile tiers
@@ -178,40 +178,149 @@ local function CreateBadge(button)
 end
 
 local metaSetCache = nil
+local metaEntriesCache = nil
 local lastMetaSetKey = nil
 
--- Builds the meta loadout set dynamically by walking tree nodes
--- For each node, picks the entryID with the highest pick rate
-local function GetMetaLoadoutSet()
-    local specData = UpdateActiveSpecData()
-    if not specData then return nil end
-    if metaSetCache and lastMetaSetKey == activeSpecDataKey then return metaSetCache end
-    -- Need tree data to resolve nodes
-    local configID = C_ClassTalents.GetActiveConfigID()
-    if not configID then return nil end
-    local configInfo = C_Traits.GetConfigInfo(configID)
-    if not configInfo or not configInfo.treeIDs or not configInfo.treeIDs[1] then return nil end
-    local treeNodes = C_Traits.GetTreeNodes(configInfo.treeIDs[1])
-    if not treeNodes then return nil end
-    metaSetCache = {}
+-- [ BUDGET-AWARE META BUILD ] -------------------------------------------------------
+-- Scores every visible node by WCL pick rate, sorts descending, then greedily
+-- fills within the point budget using C_Traits currency tracking.
+-- Free nodes (cost=0) are always included. Hero branch is auto-detected.
+-- Returns: importEntries[], metaSet{entryID=true}
+local function BuildOptimalEntries(configID, treeID, specData)
+    local treeNodes = C_Traits.GetTreeNodes(treeID)
+    if not treeNodes then return {}, {} end
+    -- Pre-pass: determine hero branch selection from SubTreeSelection nodes
+    local activeSubTreeID = nil
     for _, nodeID in ipairs(treeNodes) do
-        local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID)
-        if nodeInfo and nodeInfo.entryIDs then
+        local info = C_Traits.GetNodeInfo(configID, nodeID)
+        if info and info.type == Enum.TraitNodeType.SubTreeSelection and info.entryIDs then
             local bestEntry, bestRate = nil, 0
-            for _, eID in ipairs(nodeInfo.entryIDs) do
-                local rate = specData[eID]
-                if rate and rate > bestRate then
-                    bestEntry = eID
-                    bestRate = rate
-                end
+            for _, eID in ipairs(info.entryIDs) do
+                local rate = specData[eID] or 0
+                if rate > bestRate then bestEntry, bestRate = eID, rate end
             end
-            if bestEntry and bestRate >= META_THRESHOLD then
-                metaSetCache[bestEntry] = true
+            -- Fallback: if no WCL data, use the player's current selection
+            if not bestEntry and info.activeEntry then bestEntry = info.activeEntry.entryID end
+            if bestEntry then
+                local eInfo = C_Traits.GetEntryInfo(configID, bestEntry)
+                if eInfo and eInfo.subTreeID then activeSubTreeID = eInfo.subTreeID end
             end
         end
     end
+    -- Phase 1: Score all eligible nodes
+    local candidates = {}
+    for _, nodeID in ipairs(treeNodes) do
+        local info = C_Traits.GetNodeInfo(configID, nodeID)
+        if not info or not info.entryIDs or #info.entryIDs == 0 or not info.isVisible then
+            -- skip
+        elseif info.subTreeID and activeSubTreeID and info.subTreeID ~= activeSubTreeID then
+            -- skip inactive hero branch nodes
+        else
+            local bestEntry, bestRate = nil, 0
+            for _, eID in ipairs(info.entryIDs) do
+                local rate = specData[eID] or 0
+                if rate > bestRate then bestEntry, bestRate = eID, rate end
+            end
+            -- Fallback entry for nodes with no WCL data (hero nodes, free roots)
+            if not bestEntry then bestEntry = info.entryIDs[1] end
+            -- Detect free nodes: zero cost OR condition-granted in the live config
+            local isFree, costPerRank, currencyID = false, 0, nil
+            local nodeCosts = C_Traits.GetNodeCost(configID, nodeID)
+            if not nodeCosts or #nodeCosts == 0 or nodeCosts[1].amount == 0 then
+                isFree = true
+            elseif info.ranksPurchased == 0 and info.activeRank > 0 and (info.ranksIncreased or 0) == 0 then
+                -- Condition-granted node (e.g. class tree root, hero tree root)
+                isFree = true
+            else
+                costPerRank = nodeCosts[1].amount
+                currencyID = nodeCosts[1].ID
+            end
+            -- Is this a hero branch node?
+            local isHeroBranch = info.subTreeID and info.subTreeID == activeSubTreeID
+            candidates[#candidates + 1] = {
+                nodeID = nodeID, info = info,
+                bestEntry = bestEntry, bestRate = bestRate,
+                isFree = isFree, costPerRank = costPerRank, currencyID = currencyID,
+                isHeroBranch = isHeroBranch,
+            }
+        end
+    end
+    -- Phase 2: Sort by pick rate descending
+    table.sort(candidates, function(a, b) return a.bestRate > b.bestRate end)
+    -- Phase 3: Get point budgets per currency
+    local currencyInfo = C_Traits.GetTreeCurrencyInfo(configID, treeID, false)
+    local budgets = {}
+    for _, ci in ipairs(currencyInfo) do
+        budgets[ci.traitCurrencyID] = ci.maxQuantity or (ci.quantity + ci.spent)
+    end
+    -- Helper: add a single candidate to the import entries
+    local importEntries, metaSet = {}, {}
+    local function AddEntry(cand)
+        local info = cand.info
+        local isChoice = info.type == Enum.TraitNodeType.Selection or info.type == Enum.TraitNodeType.SubTreeSelection
+        local isTiered = info.type == Enum.TraitNodeType.Tiered
+        local maxRanks = info.maxRanks or 1
+        metaSet[cand.bestEntry] = true
+        if isTiered then
+            local remaining = maxRanks
+            for _, eID in ipairs(info.entryIDs) do
+                if remaining <= 0 then break end
+                local eInfo = C_Traits.GetEntryInfo(configID, eID)
+                local r = math.min(remaining, eInfo and eInfo.maxRanks or 1)
+                importEntries[#importEntries + 1] = { nodeID = cand.nodeID, ranksGranted = 0, ranksPurchased = r, selectionEntryID = eID }
+                metaSet[eID] = true
+                remaining = remaining - r
+            end
+        elseif isChoice then
+            importEntries[#importEntries + 1] = { nodeID = cand.nodeID, ranksGranted = 0, ranksPurchased = 1, selectionEntryID = cand.bestEntry }
+        else
+            importEntries[#importEntries + 1] = { nodeID = cand.nodeID, ranksGranted = 0, ranksPurchased = maxRanks, selectionEntryID = cand.bestEntry }
+        end
+    end
+    -- Phase 4: Iterate all candidates with priority logic
+    -- Free nodes → always include. Hero branch → always include. Paid → budget-gated.
+    for _, cand in ipairs(candidates) do
+        if not cand.bestEntry then
+            -- No entry available, skip
+        elseif cand.isFree then
+            AddEntry(cand)
+        elseif cand.isHeroBranch then
+            local purchaseRanks = (cand.info.type == Enum.TraitNodeType.Selection) and 1 or (cand.info.maxRanks or 1)
+            local totalCost = cand.costPerRank * purchaseRanks
+            local cID = cand.currencyID
+            if cID and budgets[cID] then budgets[cID] = budgets[cID] - totalCost end
+            AddEntry(cand)
+        elseif cand.bestRate >= MIN_PICK_RATE then
+            local isChoice = cand.info.type == Enum.TraitNodeType.Selection or cand.info.type == Enum.TraitNodeType.SubTreeSelection
+            local purchaseRanks = isChoice and 1 or (cand.info.maxRanks or 1)
+            local totalCost = cand.costPerRank * purchaseRanks
+            local cID = cand.currencyID
+            if cID and budgets[cID] and budgets[cID] >= totalCost then
+                budgets[cID] = budgets[cID] - totalCost
+                AddEntry(cand)
+            end
+        end
+    end
+    return importEntries, metaSet
+end
+
+-- Cached wrapper: computes once per spec/content/difficulty change
+local function ComputeMetaBuild()
+    local specData = UpdateActiveSpecData()
+    if not specData then return nil, nil end
+    if metaSetCache and lastMetaSetKey == activeSpecDataKey then return metaEntriesCache, metaSetCache end
+    local configID = C_ClassTalents.GetActiveConfigID()
+    if not configID then return nil, nil end
+    local configInfo = C_Traits.GetConfigInfo(configID)
+    if not configInfo or not configInfo.treeIDs or not configInfo.treeIDs[1] then return nil, nil end
+    metaEntriesCache, metaSetCache = BuildOptimalEntries(configID, configInfo.treeIDs[1], specData)
     lastMetaSetKey = activeSpecDataKey
-    return metaSetCache
+    return metaEntriesCache, metaSetCache
+end
+
+local function GetMetaLoadoutSet()
+    local _, metaSet = ComputeMetaBuild()
+    return metaSet
 end
 
 local function ApplyHeatmap(button)
@@ -402,6 +511,122 @@ local function HookTalentTree()
                     end
                 end)
             end
+            
+            -- Reskin Blizzard's Native Overlay Cast Bar (Used for "Applying Talents")
+            if OverlayPlayerCastingBarFrame and not OverlayPlayerCastingBarFrame._orbitSkinReskinned then
+                OverlayPlayerCastingBarFrame._orbitSkinReskinned = true
+                
+                local bar = OverlayPlayerCastingBarFrame
+                bar:SetStatusBarTexture("") -- Hide the fill texture
+                
+                -- Hide all native regions that make up the frame borders and glows
+                if bar.Border then bar.Border:SetAlpha(0) end
+                if bar.Background then bar.Background:SetAlpha(0) end
+                if bar.TextBorder then bar.TextBorder:SetAlpha(0) end
+                if bar.Flash then bar.Flash:SetAlpha(0) end
+                if bar.Spark then bar.Spark:SetAlpha(0) end
+                if bar.EnergyGlow then bar.EnergyGlow:SetAlpha(0) end
+                if bar.ChargeGlow then bar.ChargeGlow:SetAlpha(0) end
+                if bar.BorderShield then bar.BorderShield:SetAlpha(0) end
+                if bar.DropShadow then bar.DropShadow:SetAlpha(0) end
+                if bar.InterruptGlow then bar.InterruptGlow:SetAlpha(0) end
+                
+                -- Aggressively kill native animations attempting to flash or shake the bar (e.g. on interrupt)
+                local nativeAnims = { "InterruptGlowAnim", "InterruptShakeAnim", "InterruptSparkAnim", "FlashLoopingAnim", "FlashAnim" }
+                for _, animName in ipairs(nativeAnims) do
+                    if bar[animName] then
+                        hooksecurefunc(bar[animName], "Play", function(self) self:Stop() end)
+                        bar[animName]:Stop()
+                    end
+                end
+                
+                local host = PlayerSpellsFrame.TalentsFrame
+                
+                -- Move the native BottomBar up to BORDER so it can overhang our spark
+                if host.BottomBar then
+                    host.BottomBar:SetDrawLayer("BORDER", 7)
+                end
+                
+                -- 2px Gold Status Fill - BORDER sublevel 5, under BottomBar (BORDER,7)
+                local fill = host:CreateTexture(nil, "BORDER", nil, 5)
+                fill:SetColorTexture(1, 0.82, 0, 1)
+                fill:SetPoint("LEFT", host.BottomBar, "TOPLEFT", 0, 1)
+                fill:SetHeight(2)
+                fill:Hide()
+                bar._orbitFill = fill
+                
+                -- Rolling Star Spark - BORDER sublevel 6, under BottomBar (BORDER,7)
+                local spark = host:CreateTexture(nil, "BORDER", nil, 6)
+                spark:SetTexture("Interface\\Cooldown\\star4")
+                spark:SetBlendMode("ADD")
+                spark:SetSize(35, 35)
+                spark:SetVertexColor(1, 0.85, 0.2, 1)
+                spark:Hide()
+                
+                -- Animate the star to roll continuously
+                local animGroup = spark:CreateAnimationGroup()
+                local rot = animGroup:CreateAnimation("Rotation")
+                rot:SetDegrees(-360)
+                rot:SetDuration(1.5)
+                animGroup:SetLooping("REPEAT")
+                
+                bar._orbitSparkGlow = spark
+                bar._orbitAnimGroup = animGroup
+                
+                -- Engine visibility binding
+                bar:HookScript("OnShow", function(self)
+                    if self._orbitFill then self._orbitFill:Show() end
+                    if self._orbitSparkGlow then self._orbitSparkGlow:Show() end
+                    if self._orbitAnimGroup then self._orbitAnimGroup:Play() end
+                end)
+                
+                bar:HookScript("OnHide", function(self)
+                    if self._orbitFill then self._orbitFill:Hide() end
+                    if self._orbitSparkGlow then self._orbitSparkGlow:Hide() end
+                end)
+                
+                -- Keep text centered relative to the traveling spark but lowered by ~50px
+                if bar.Text then
+                    local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font or "Fonts\\FRIZQT__.TTF"
+                    bar.Text:SetFont(fontName, 12, "OUTLINE")
+                    bar.Text:ClearAllPoints()
+                    bar.Text:SetPoint("BOTTOM", spark, "TOP", 0, -46)
+                end
+                
+                hooksecurefunc(bar, "SetValue", function(self, value)
+                    local minV, maxV = self:GetMinMaxValues()
+                    if not minV or not maxV or maxV == 0 then return end
+                    
+                    -- Blizzard aggressively resets textures depending on the Cast Look. 
+                    -- Forcing alpha to 0 organically every frame obliterates any remnants.
+                    local tex = self:GetStatusBarTexture()
+                    if tex then tex:SetAlpha(0) end
+                    if self.Spark then self.Spark:SetAlpha(0) end
+                    if self.Flash then self.Flash:SetAlpha(0) end
+                    if self.Border then self.Border:SetAlpha(0) end
+                    
+                    local progress = (value - minV) / (maxV - minV)
+                    local width = host.BottomBar:GetWidth()
+                    local offset = progress * width
+                    
+                    self._orbitFill:SetWidth(math.max(0.001, offset))
+                    
+                    self._orbitSparkGlow:ClearAllPoints()
+                    -- Reanchor explicitly along the host BottomBar for accurate tracking since it belongs to TalentsFrame now
+                    self._orbitSparkGlow:SetPoint("CENTER", host.BottomBar, "TOPLEFT", offset, 1)
+                end)
+                
+                -- We no longer need to reposition or set strata of the native OverlayPlayerCastingBarFrame 
+                -- because our visuals are now completely decoupled and integrated directly into the TalentsFrame layers!
+                hooksecurefunc(PlayerSpellsFrame.TalentsFrame, "SetCommitCastBarActive", function(self, active)
+                    -- We just let the invisible native Cast Bar do its thing in DIALOG space
+                end)
+                
+                -- Suppress native spinning commit visuals on staged nodes
+                hooksecurefunc(PlayerSpellsFrame.TalentsFrame, "SetCommitVisualsActive", function(self, active)
+                    if self.FxModelScene then self.FxModelScene:ClearEffects() end
+                end)
+            end
         end)
         
         -- Custom SpendText formatting logic
@@ -480,6 +705,7 @@ local function HookTalentTree()
         local function RefreshMetaUI()
             spellCacheDirty = true
             metaSetCache = nil
+            metaEntriesCache = nil
             lastMetaSetKey = nil
             if PlayerSpellsFrame and PlayerSpellsFrame.TalentsFrame then
                 for talentButton in PlayerSpellsFrame.TalentsFrame:EnumerateAllTalentButtons() do
@@ -495,59 +721,7 @@ local function HookTalentTree()
         end
 
         -- [ IMPORT ENTRY BUILDER ] ----------------------------------------------------------
-        -- Builds ImportLoadoutEntryInfo[] from raw pick rate data.
-        -- Walks actual tree nodes and picks the highest-rated entry for each.
-        -- Tiered nodes (Apex capstone) get multiple entries per Blizzard's contract.
-        -- Struct: { nodeID, ranksGranted, ranksPurchased, selectionEntryID }
-
-        local function BuildImportEntries(configID, treeID, specData)
-            local entries = {}
-            local treeNodes = C_Traits.GetTreeNodes(treeID)
-            if not treeNodes then return entries end
-            for _, nodeID in ipairs(treeNodes) do
-                local nodeInfo = C_Traits.GetNodeInfo(configID, nodeID)
-                if nodeInfo and nodeInfo.entryIDs then
-                    -- Find the entry with the highest pick rate
-                    local bestEntry, bestRate = nil, 0
-                    for _, eID in ipairs(nodeInfo.entryIDs) do
-                        local rate = specData[eID] or 0
-                        if rate > bestRate then
-                            bestEntry = eID
-                            bestRate = rate
-                        end
-                    end
-                    if bestEntry and bestRate >= META_THRESHOLD then
-                        local isTiered = nodeInfo.type == Enum.TraitNodeType.Tiered
-                        local isChoice = nodeInfo.type == Enum.TraitNodeType.Selection or nodeInfo.type == Enum.TraitNodeType.SubTreeSelection
-                        if isTiered then
-                            -- Only allocate ranks for entries that meet the threshold
-                            local qualifiedRanks = 0
-                            for _, eID in ipairs(nodeInfo.entryIDs) do
-                                if (specData[eID] or 0) >= META_THRESHOLD then
-                                    local entryInfo = C_Traits.GetEntryInfo(configID, eID)
-                                    qualifiedRanks = qualifiedRanks + (entryInfo and entryInfo.maxRanks or 1)
-                                end
-                            end
-                            local remaining = math.min(qualifiedRanks, nodeInfo.maxRanks or 1)
-                            for _, eID in ipairs(nodeInfo.entryIDs) do
-                                if remaining <= 0 then break end
-                                local entryInfo = C_Traits.GetEntryInfo(configID, eID)
-                                if entryInfo then
-                                    local ranksForEntry = math.min(remaining, entryInfo.maxRanks or 1)
-                                    entries[#entries + 1] = { nodeID = nodeID, ranksGranted = 0, ranksPurchased = ranksForEntry, selectionEntryID = eID }
-                                    remaining = remaining - ranksForEntry
-                                end
-                            end
-                        elseif isChoice then
-                            entries[#entries + 1] = { nodeID = nodeID, ranksGranted = 0, ranksPurchased = 1, selectionEntryID = bestEntry }
-                        else
-                            entries[#entries + 1] = { nodeID = nodeID, ranksGranted = 0, ranksPurchased = nodeInfo.maxRanks or 1, selectionEntryID = bestEntry }
-                        end
-                    end
-                end
-            end
-            return entries
-        end
+        -- Uses the shared BuildOptimalEntries via ComputeMetaBuild cache.
 
         function MT:ApplyMetaBuild()
             if not TALENT_DATA then return end
@@ -566,7 +740,7 @@ local function HookTalentTree()
             local treeInfo = talentsFrame:GetTreeInfo()
             if not configID or not treeInfo then return end
 
-            local entries = BuildImportEntries(configID, treeInfo.ID, specData)
+            local entries = ComputeMetaBuild()
             if #entries == 0 then
                 print("|cffff0000[Orbit]|r MetaTalents: No matching nodes found for this build.")
                 return
@@ -599,6 +773,8 @@ local function HookTalentTree()
                         local cInfo = C_Traits.GetConfigInfo(id)
                         if cInfo and cInfo.name == "Orbit Loadout" and not oldMetaSet[id] then
                             C_ClassTalents.SetUsesSharedActionBars(id, true)
+                            -- Route through the UI framework rather than the raw C_API so the organic Cast Bar visually triggers!
+                            talentsFrame:SetSelectedSavedConfigID(id, true)
                             break
                         end
                     end
@@ -631,6 +807,24 @@ local function HookTalentTree()
             searchBox:ClearAllPoints()
             searchBox:SetPoint("LEFT", PlayerSpellsFrame.TalentsFrame.ApplyButton, "RIGHT", 150, 0)
 
+            -- Standardize LoadSystem (Native Profile Dropdown) position and width (including inner native child)
+            local loadSys = PlayerSpellsFrame.TalentsFrame.LoadSystem
+            hooksecurefunc(loadSys, "SetPoint", function(self)
+                if self._orbitOverriding then return end
+                self._orbitOverriding = true
+                self:ClearAllPoints()
+                self:SetPoint("LEFT", PlayerSpellsFrame.TalentsFrame.BottomBar, "LEFT", 33, 0)
+                self:SetWidth(150)
+                if self.Dropdown then self.Dropdown:SetWidth(150) end
+                self._orbitOverriding = false
+            end)
+            loadSys._orbitOverriding = true
+            loadSys:ClearAllPoints()
+            loadSys:SetPoint("LEFT", PlayerSpellsFrame.TalentsFrame.BottomBar, "LEFT", 33, 0)
+            loadSys:SetWidth(150)
+            if loadSys.Dropdown then loadSys.Dropdown:SetWidth(150) end
+            loadSys._orbitOverriding = false
+
             -- M+ Dungeon list (alphabetical)
             local MPLUS_DUNGEONS = {
                 "Algeth'ar Academy",
@@ -650,8 +844,8 @@ local function HookTalentTree()
 
             -- 1. Content Type Dropdown
             local contentDropdown = CreateFrame("DropdownButton", "OrbitMetaTalentContentDropdown", PlayerSpellsFrame.TalentsFrame, "WowStyle1DropdownTemplate")
-            contentDropdown:SetPoint("LEFT", PlayerSpellsFrame.TalentsFrame.LoadSystem, "RIGHT", 20, 0)
-            contentDropdown:SetWidth(170)
+            contentDropdown:SetPoint("LEFT", PlayerSpellsFrame.TalentsFrame.LoadSystem, "RIGHT", 15, 0)
+            contentDropdown:SetWidth(150)
             contentDropdown:SetMenuAnchor(AnchorUtil.CreateAnchor("BOTTOMLEFT", contentDropdown, "TOPLEFT", 0, 0))
             
             -- We need diffDropdown declared before we use it in the contentDropdown callback
@@ -701,8 +895,8 @@ local function HookTalentTree()
             end)
 
             -- 2. Difficulty Dropdown
-            diffDropdown:SetPoint("LEFT", contentDropdown, "RIGHT", 20, 0)
-            diffDropdown:SetWidth(170)
+            diffDropdown:SetPoint("LEFT", contentDropdown, "RIGHT", 15, 0)
+            diffDropdown:SetWidth(150)
             diffDropdown:SetupMenu(function(dropdown, rootDescription)
                 local options
                 if MPLUS_DUNGEON_SET[MT.SelectedContent] then
@@ -727,7 +921,10 @@ local function HookTalentTree()
             if not MT._toggleBtn then
                 local toggleBtn = CreateFrame("Button", nil, PlayerSpellsFrame.TalentsFrame)
                 toggleBtn:SetSize(28, 28)
-                toggleBtn:SetPoint("LEFT", diffDropdown, "RIGHT", 10, 0)
+                -- Push it cleanly above the ButtonsParent wall so it catches clicks!
+                toggleBtn:SetFrameLevel(9900)
+                -- Align flush with the left-edge of the loadout selector, but float it above the footer
+                toggleBtn:SetPoint("BOTTOMLEFT", PlayerSpellsFrame.TalentsFrame.BottomBar, "TOPLEFT", 33, 20)
                 
                 local function UpdateToggleIcon()
                     local enabled = Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.MetaTalentsTree
@@ -767,19 +964,19 @@ local function HookTalentTree()
 
             if not MT._applyBtn then
                 local applyMetaBtn = CreateFrame("Button", nil, PlayerSpellsFrame.TalentsFrame)
-                applyMetaBtn:SetSize(24, 24)
-                applyMetaBtn:SetPoint("LEFT", MT._toggleBtn, "RIGHT", 5, 0)
+                applyMetaBtn:SetSize(28, 28)
+                -- Conform to the exact 15px UI spacing interval
+                applyMetaBtn:SetPoint("LEFT", diffDropdown, "RIGHT", 15, 0)
                 
-                local tex = applyMetaBtn:CreateTexture(nil, "ARTWORK")
-                tex:SetAllPoints()
-                tex:SetAtlas("common-icon-checkmark-yellow")
-                applyMetaBtn._icon = tex
+                applyMetaBtn:SetNormalAtlas("128-RedButton-Plus")
+                applyMetaBtn:SetPushedAtlas("128-RedButton-Plus-Pressed")
+                applyMetaBtn:SetDisabledAtlas("128-RedButton-Plus-Disabled")
                 
                 local hl = applyMetaBtn:CreateTexture(nil, "HIGHLIGHT")
                 hl:SetAllPoints()
-                hl:SetAtlas("common-icon-checkmark-yellow")
+                hl:SetAtlas("128-RedButton-Plus")
                 hl:SetBlendMode("ADD")
-                hl:SetAlpha(0.3)
+                hl:SetAlpha(0.2)
                 
                 applyMetaBtn:SetScript("OnEnter", function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
