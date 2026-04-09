@@ -540,11 +540,6 @@ local function HookTalentTree()
                     end
                 end
                 
-                -- CastingBarType values are secretwrap'd in 12.0. Our hooks taint the
-                -- execution context, making CastingBarTypeInfo a forbidden table whenever
-                -- Blizzard code calls pairs() on it or indexes it. Override every method
-                -- that touches CastingBarTypeInfo. Orbit reskins this bar entirely so
-                -- native visuals are irrelevant — safe to no-op or return static fallbacks.
                 local SAFE_TYPE_INFO = { filling = "", full = "", glow = "" }
                 bar.GetTypeInfo = function() return SAFE_TYPE_INFO end
                 bar.ShowSpark = function() end
@@ -644,8 +639,6 @@ local function HookTalentTree()
                     self._orbitSparkGlow:SetPoint("CENTER", host.BottomBar, "TOPLEFT", offset, 1)
                 end)
                 
-                -- We no longer need to reposition or set strata of the native OverlayPlayerCastingBarFrame 
-                -- because our visuals are now completely decoupled and integrated directly into the TalentsFrame layers!
                 hooksecurefunc(PlayerSpellsFrame.TalentsFrame, "SetCommitCastBarActive", function(self, active)
                     -- We just let the invisible native Cast Bar do its thing in DIALOG space
                 end)
