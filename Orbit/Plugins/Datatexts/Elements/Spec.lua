@@ -58,7 +58,7 @@ function W:CreateSpecButtons(numSpecs)
         
         local btn = CreateFrame("Button", nil, self.frame)
         btn:SetSize(BUTTON_SIZE, BUTTON_SIZE)
-        btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        btn:RegisterForClicks("LeftButtonUp")
         
         if i == 1 then
             btn:SetPoint("LEFT", self.frame, "LEFT", 0, 0)
@@ -162,7 +162,7 @@ function W:CreateSpecButtons(numSpecs)
             if currentSpec == i and C_ClassTalents and C_ClassTalents.GetConfigIDsBySpecID then
                 local configIDs = C_ClassTalents.GetConfigIDsBySpecID(specId)
                 if configIDs and #configIDs > 0 then
-                    GameTooltip:AddLine("Right Click to load talents", 0.7, 0.7, 0.7)
+                    GameTooltip:AddLine("Left Click to load talents", 0.7, 0.7, 0.7)
                 end
             end
             
@@ -178,35 +178,28 @@ function W:CreateSpecButtons(numSpecs)
         end)
         
         btn:SetScript("OnClick", function(_, button)
+            if button ~= "LeftButton" then return end
             local currentSpec = GetSpecialization()
-            if button == "LeftButton" then
-                if currentSpec ~= i and not InCombatLockdown() then
-                    C_SpecializationInfo.SetSpecialization(i)
-                end
-            elseif button == "RightButton" and currentSpec == i then
-                if C_ClassTalents and C_ClassTalents.GetConfigIDsBySpecID then
-                    local configIDs = C_ClassTalents.GetConfigIDsBySpecID(specId)
-                    if configIDs and #configIDs > 0 then
-                        local items = {}
-                        for _, configID in ipairs(configIDs) do
-                            local configInfo = C_Traits.GetConfigInfo(configID)
-                            if configInfo then
-                                items[#items + 1] = {
-                                    text = configInfo.name,
-                                    func = function()
-                                        if not InCombatLockdown() then
-                                            C_ClassTalents.LoadConfig(configID, true)
-                                        end
-                                    end
-                                }
-                            end
+            if currentSpec ~= i then
+                if not InCombatLockdown() then C_SpecializationInfo.SetSpecialization(i) end
+                return
+            end
+            if not (C_ClassTalents and C_ClassTalents.GetConfigIDsBySpecID) then return end
+            local configIDs = C_ClassTalents.GetConfigIDsBySpecID(specId)
+            if not configIDs or #configIDs == 0 then return end
+            local items = {}
+            for _, configID in ipairs(configIDs) do
+                local configInfo = C_Traits.GetConfigInfo(configID)
+                if configInfo then
+                    items[#items + 1] = {
+                        text = configInfo.name,
+                        func = function()
+                            if not InCombatLockdown() then C_ClassTalents.LoadConfig(configID, true) end
                         end
-                        if #items > 0 then
-                            DT.Menu:Open(btn, items, name .. " Loadouts")
-                        end
-                    end
+                    }
                 end
             end
+            if #items > 0 then DT.Menu:Open(btn, items, name .. " Loadouts") end
         end)
         
         self.specButtons[i] = btn
