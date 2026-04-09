@@ -112,11 +112,18 @@ function CDM:ApplyTextSettings(icon, systemIndex)
                         OverrideUtils.ApplyOverrides(timerText, timerOverrides, { fontSize = defaultSize, fontPath = fontPath })
                         timerText:SetDrawLayer("OVERLAY", 7)
                         
+                        for _, r in ipairs({ overlay:GetRegions() }) do
+                            if r:GetObjectType() == "FontString" and r.orbitIsTimerText and r ~= timerText then
+                                r:Hide()
+                                r.orbitIsTimerText = false
+                            end
+                        end
+                        timerText.orbitIsTimerText = true
+
                         if timerText:GetParent() ~= overlay then
                             timerText:SetParent(overlay)
                             if not cd.orbitTextSyncHooked then
                                 cd.orbitTextSyncHooked = true
-                                cd:HookScript("OnShow", function(c) if c.Text then c.Text:Show() end end)
                                 cd:HookScript("OnHide", function(c) if c.Text then c.Text:Hide() end end)
                             end
                         end
