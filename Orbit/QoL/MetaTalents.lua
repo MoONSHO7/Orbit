@@ -568,7 +568,6 @@ local function HookTalentTree()
                     self:StopInterruptAnims()
                     self:StopFinishAnims()
                 end
-                
                 local host = PlayerSpellsFrame.TalentsFrame
                 
                 -- Move the native BottomBar up to BORDER so it can overhang our spark
