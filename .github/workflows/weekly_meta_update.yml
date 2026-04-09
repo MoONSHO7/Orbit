@@ -36,7 +36,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add Orbit_MetaTalents_Data/
+          git add OrbitData/
 
           # Only commit if the data actually changed
           git diff --quiet && git diff --staged --quiet || \

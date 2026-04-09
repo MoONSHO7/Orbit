@@ -121,11 +121,19 @@ function ABText:Apply(plugin, button, systemIndex)
                     button.orbitTextOverlay:SetAllPoints(button)
                     button.orbitTextOverlay:SetFrameLevel(button:GetFrameLevel() + Orbit.Constants.Levels.IconOverlay)
                 end
+                
+                for _, r in ipairs({ button.orbitTextOverlay:GetRegions() }) do
+                    if r:GetObjectType() == "FontString" and r.orbitIsTimerText and r ~= timerText then
+                        r:Hide()
+                        r.orbitIsTimerText = false
+                    end
+                end
+                timerText.orbitIsTimerText = true
+
                 if timerText:GetParent() ~= button.orbitTextOverlay then
                     timerText:SetParent(button.orbitTextOverlay)
                     if not cooldown.orbitTextSyncHooked then
                         cooldown.orbitTextSyncHooked = true
-                        cooldown:HookScript("OnShow", function(c) if c.Text then c.Text:Show() end end)
                         cooldown:HookScript("OnHide", function(c) if c.Text then c.Text:Hide() end end)
                     end
                 end

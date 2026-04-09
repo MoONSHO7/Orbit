@@ -25,9 +25,28 @@ TOKEN_URL = "https://www.warcraftlogs.com/oauth/token"
 GRAPHQL_URL = "https://www.warcraftlogs.com/api/v2/client"
 EXPANSION_ID = 7  # Midnight (WCL expansion numbering differs from Blizzard's)
 MIN_PICK_RATE = 1.0  # Filter out sub-1% noise
-REQUEST_DELAY = 0.5  # Seconds between batched queries (rate-limit courtesy)
-M_PLUS_DIFFICULTY = 10
-MYTHIC_RAID_DIFFICULTY = 5
+REQUEST_DELAY = 1.0  # Seconds between batched queries (rate-limit courtesy)
+
+RAID_DIFFICULTIES = [
+    ("Normal", 3, 0),
+    ("Heroic", 4, 0),
+    ("Mythic", 5, 0),
+]
+
+MPLUS_DIFFICULTY = 10  # WCL difficulty ID for Mythic+
+
+# Midnight Season 2 M+ Dungeon names (also used Lua-side for dropdown)
+# Names must match WCL exactly
+MPLUS_DUNGEONS = [
+    "Algeth'ar Academy",
+    "Magisters' Terrace",
+    "Maisara Caverns",
+    "Nexus-Point Xenas",
+    "Pit of Saron",
+    "Seat of the Triumvirate",
+    "Skyreach",
+    "Windrunner Spire",
+]
 
 HEALER_SPECS = frozenset({
     "restoration", "holy", "discipline",
@@ -42,7 +61,7 @@ TANK_SPECS = frozenset({
 # Repo-relative output path
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
-OUTPUT_DIR = REPO_ROOT / "Orbit_MetaTalents_Data"
+OUTPUT_DIR = REPO_ROOT / "OrbitData"
 OUTPUT_FILE = OUTPUT_DIR / "TalentMeta.lua"
 
 # [ AUTH ] ------------------------------------------------------------------------
@@ -122,46 +141,59 @@ def discover_metadata(token):
         }
 
     # Collect encounter IDs across all zones, filtering out Beta/PTR zones
-    encounters = []
+    raid_encounters = []
+    mplus_encounters = []
+
     zones = world["expansion"]["zones"] if world["expansion"] else []
     for zone in zones:
         zone_name = zone["name"]
-        if "beta" in zone_name.lower() or "ptr" in zone_name.lower():
+        zone_lower = zone_name.lower()
+        if "beta" in zone_lower or "ptr" in zone_lower:
             print(f"  Skipping beta zone: {zone_name}")
             continue
+        if "complete raids" in zone_lower:
+            print(f"  Skipping aggregate zone: {zone_name}")
+            continue
+        # M+ zone is "Mythic+ Season X" containing dungeon encounters
+        is_mplus_zone = "mythic+" in zone_lower
         for enc in zone.get("encounters", []):
-            encounters.append({
+            enc_data = {
                 "id": enc["id"],
-                "name": enc["name"],
+                "name": enc["name"].replace(' Heroic', ''),
                 "zone": zone_name,
-            })
+            }
+            if is_mplus_zone:
+                mplus_encounters.append(enc_data)
+            else:
+                raid_encounters.append(enc_data)
 
-    print(f"Discovered {len(class_specs)} classes, {len(encounters)} encounters")
-    for enc in encounters:
-        print(f"  {enc['zone']} > {enc['name']} (id: {enc['id']})")
-    return class_specs, encounters
+    print(f"Discovered {len(class_specs)} classes, {len(raid_encounters)} raid, {len(mplus_encounters)} M+ encounters")
+    return class_specs, raid_encounters, mplus_encounters
 
 # [ BATCH RANKINGS QUERY ] --------------------------------------------------------
 
-def build_batch_query(encounters):
+def build_batch_query(encounters, use_bracket=False):
     """Dynamically build a GraphQL query with aliased encounter rankings."""
+    bracket_param = ", bracket: $bracket" if use_bracket else ""
     fragments = []
     for i, enc in enumerate(encounters):
         alias = f"enc{i}"
         fragments.append(
             f'    {alias}: encounter(id: {enc["id"]}) {{\n'
             f'      characterRankings(className: $className, specName: $specName,'
-            f' metric: $metric, difficulty: $difficulty, page: 1,'
+            f' metric: $metric, difficulty: $difficulty{bracket_param}, page: 1,'
             f' includeCombatantInfo: true)\n'
             f'    }}'
         )
     body = "\n".join(fragments)
+    bracket_decl = "  $bracket: Int!,\n" if use_bracket else ""
     return (
         "query GetBatchRankings(\n"
         "  $className: String!,\n"
         "  $specName: String!,\n"
         "  $metric: CharacterRankingMetricType!,\n"
-        "  $difficulty: Int!\n"
+        "  $difficulty: Int!,\n"
+        f"{bracket_decl}"
         ") {\n"
         "  worldData {\n"
         f"{body}\n"
@@ -179,43 +211,72 @@ def get_metric(spec_lower):
 
 # [ AGGREGATION ] -----------------------------------------------------------------
 
-def aggregate_spec(token, batch_query, class_slug, spec_slug, encounters, difficulty):
-    """Fetch and tally talent pick-rates for one spec across all encounters."""
+def execute_combination_query(token, batch_query, class_slug, spec_slug, encounters, difficulty_info, is_mplus=False):
+    diff_name, diff_id, bracket_val = difficulty_info
     metric = get_metric(spec_slug.lower())
     variables = {
         "className": class_slug,
         "specName": spec_slug,
         "metric": metric,
-        "difficulty": difficulty,
+        "difficulty": diff_id,
     }
+    if bracket_val:
+        variables["bracket"] = bracket_val
 
-    data = graphql(batch_query, variables, token)
+    try:
+        data = graphql(batch_query, variables, token)
+    except Exception as e:
+        print(f"      [!] API Error on diff {diff_name}: {e}")
+        return {}, 0
+
     world = data.get("data", {}).get("worldData", {})
 
-    total_logs = 0
-    talent_tally = defaultdict(int)
+    tally_by_content = defaultdict(lambda: defaultdict(int))
+    logs_by_content = defaultdict(int)
 
-    for alias, enc_data in world.items():
-        if not enc_data:
-            continue
+    for i, enc in enumerate(encounters):
+        alias = f"enc{i}"
+        enc_data = world.get(alias)
+        if not enc_data: continue
         rankings_wrapper = enc_data.get("characterRankings")
-        if not rankings_wrapper:
-            continue
+        if not rankings_wrapper: continue
         rankings = rankings_wrapper.get("rankings", [])
-        for player in rankings:
-            total_logs += 1
-            for talent in player.get("talents", []):
-                talent_tally[talent["talentID"]] += 1
+        if not rankings: continue
 
-    # Convert counts to percentages, filter noise
-    result = {}
-    if total_logs > 0:
-        for spell_id, count in talent_tally.items():
+        content_key = enc["name"]
+
+        # Filter out players with incomplete talent allocation
+        # Find the modal (most common) talent count, then reject outliers
+        talent_counts = [len(p.get("talents", [])) for p in rankings]
+        if talent_counts:
+            mode_count = max(set(talent_counts), key=talent_counts.count)
+            min_allowed = mode_count - 2  # allow small variance
+        else:
+            min_allowed = 0
+
+        for player in rankings:
+            talents = player.get("talents", [])
+            if len(talents) < min_allowed:
+                continue
+            logs_by_content[content_key] += 1
+            for talent in talents:
+                if "talentID" in talent:
+                    tally_by_content[content_key][talent["talentID"]] += 1
+
+    # Convert to %
+    final_results = {}
+    for content_key, tally in tally_by_content.items():
+        total_logs = logs_by_content[content_key]
+        if total_logs == 0: continue
+        pct_map = {}
+        for entry_id, count in tally.items():
             pct = round((count / total_logs) * 100, 1)
             if pct >= MIN_PICK_RATE:
-                result[spell_id] = pct
+                pct_map[entry_id] = pct
+        final_results[content_key] = pct_map
 
-    return result, total_logs
+    total_logs_all = sum(logs_by_content.values())
+    return final_results, total_logs_all
 
 # [ LUA GENERATION ] --------------------------------------------------------------
 
@@ -237,17 +298,22 @@ def build_lua(meta_db):
         "Orbit.Data.TalentMeta = {",
     ]
 
-    for class_slug in sorted(meta_db.keys()):
-        specs = meta_db[class_slug]
-        wow_class = slug_to_wow(class_slug)
-        lines.append(f'    ["{wow_class}"] = {{')
-        for spec_slug in sorted(specs.keys()):
-            talents = specs[spec_slug]
-            wow_spec = slug_to_wow(spec_slug)
-            lines.append(f'        ["{wow_spec}"] = {{')
-            for spell_id in sorted(talents.keys()):
-                pct = talents[spell_id]
-                lines.append(f"            [{spell_id}] = {pct},")
+    # Structure: meta_db[content][difficulty][class][spec] = { spell: pct }
+    for content_name, content_data in sorted(meta_db.items()):
+        lines.append(f'    ["{content_name}"] = {{')
+        for diff_name, diff_data in sorted(content_data.items()):
+            lines.append(f'        ["{diff_name}"] = {{')
+            for class_slug, specs in sorted(diff_data.items()):
+                wow_class = slug_to_wow(class_slug)
+                lines.append(f'            ["{wow_class}"] = {{')
+                for spec_slug, talents in sorted(specs.items()):
+                    wow_spec = slug_to_wow(spec_slug)
+                    lines.append(f'                ["{wow_spec}"] = {{')
+                    
+                    for entry_id, pct in sorted(talents.items()):
+                        lines.append(f"                    [{entry_id}] = {pct},")
+                    lines.append("                },")
+                lines.append("            },")
             lines.append("        },")
         lines.append("    },")
 
@@ -262,13 +328,15 @@ def write_output(lua_content):
     print(f"Wrote {OUTPUT_FILE} ({len(lua_content)} bytes)")
 
     # Ensure the TOC exists
-    toc_path = OUTPUT_DIR / "Orbit_MetaTalents_Data.toc"
+    toc_path = OUTPUT_DIR / "OrbitData.toc"
     if not toc_path.exists():
         toc_content = "\n".join([
             "## Interface: 120001, 120000",
-            "## Title: Orbit - Meta Talents Data",
-            "## Notes: Auto-generated WCL talent pick-rate data for Orbit.",
+            "## Title: Data",
+            "## Notes: Auto-generated data modules for Orbit (talent meta, etc).",
             "## Author: github-actions[bot]",
+            "## IconTexture: Interface\\AddOns\\Orbit\\Core\\assets\\Orbit.png",
+            "## Category: Orbit UI",
             "## LoadOnDemand: 1",
             "## Dependencies: Orbit",
             "",
@@ -319,17 +387,18 @@ def main():
     print("Authenticated.")
 
     # 2. Discover classes, specs, encounters
-    class_specs, encounters = discover_metadata(token)
+    class_specs, raid_encounters, mplus_encounters = discover_metadata(token)
 
-    if not encounters:
+    if not raid_encounters:
         print("Error: No encounters found for expansion", EXPANSION_ID, file=sys.stderr)
         sys.exit(1)
 
-    # 3. Build the batched query template
-    batch_query = build_batch_query(encounters)
+    batch_query_raid = build_batch_query(raid_encounters, use_bracket=False)
 
-    # 4. Aggregate across all specs
-    meta_db = defaultdict(lambda: defaultdict(dict))
+    # 4. Aggregate across all combinations
+    # Structure: db[content][difficulty][class_slug][spec_slug] = {}
+    meta_db = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
+    
     total_specs = sum(len(cls_data["specs"]) for cls_data in class_specs.values())
     processed = 0
 
@@ -339,20 +408,29 @@ def main():
             spec_slug = spec_info["slug"]
             spec_name = spec_info["name"]
             processed += 1
-            print(f"[{processed}/{total_specs}] {class_name}/{spec_name}...", end=" ")
+            print(f"[{processed}/{total_specs}] {class_name}/{spec_name}...")
 
-            talents, log_count = aggregate_spec(
-                token, batch_query, class_slug, spec_slug,
-                encounters, M_PLUS_DIFFICULTY,
-            )
-
-            if talents:
-                meta_db[class_slug][spec_slug] = talents
-                print(f"{log_count} logs, {len(talents)} talents")
-            else:
-                print(f"{log_count} logs, skipped (no data)")
-
-            time.sleep(REQUEST_DELAY)
+            # --- RAID COMBINATIONS ---
+            for diff in RAID_DIFFICULTIES:
+                diff_name = diff[0]
+                results, logs = execute_combination_query(
+                    token, batch_query_raid, class_slug, spec_slug, raid_encounters, diff, is_mplus=False
+                )
+                for content_key, pct_map in results.items():
+                    meta_db[content_key][diff_name][class_slug][spec_slug] = pct_map
+                time.sleep(REQUEST_DELAY)
+                
+            # --- MYTHIC+ PER-DUNGEON ---
+            # Each dungeon is a single encounter in WCL's "Mythic+ Season X" zone
+            for enc in mplus_encounters:
+                single_query = build_batch_query([enc], use_bracket=False)
+                diff_info = (enc["name"], MPLUS_DIFFICULTY, 0)
+                results, logs = execute_combination_query(
+                    token, single_query, class_slug, spec_slug, [enc], diff_info, is_mplus=True
+                )
+                for content_key, pct_map in results.items():
+                    meta_db[content_key]["Mythic+"][class_slug][spec_slug] = pct_map
+                time.sleep(REQUEST_DELAY)
 
     # 5. Generate and write
     lua_content = build_lua(meta_db)
