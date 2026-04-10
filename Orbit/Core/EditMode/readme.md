@@ -65,8 +65,8 @@ edit mode selection and drag files also check `Engine.CanvasMode:IsActive()` as 
 
 `AnchorGraph.lua` is a pure-data companion to `Anchor.lua`. it tracks two distinct skip states:
 
-- **virtual** (`SetFrameVirtual`): content-empty frames (tracked bar with no spell, aura grid with no auras). the frame remains structurally registered in the graph but children are physically re-parented to the nearest non-skipped ancestor. use for content-scoped visibility.
-- **disabled** (`SetFrameDisabled`): profile-level disabled frames (user toggled plugin off, spec-locked). the anchor is severed and must be reconstructed from saved data when re-enabled.
+- **virtual** (`Anchor:SetFrameVirtual` → `AnchorGraph:SetVirtual`): content-empty frames (tracked bar with no spell, aura grid with no auras). the frame remains structurally registered in the graph but children are physically re-parented to the nearest non-skipped ancestor. use for content-scoped visibility.
+- **disabled** (`Anchor:SetFrameDisabled` → `AnchorGraph:SetDisabled`): profile-level disabled frames (user toggled plugin off, spec-locked). the anchor is severed and must be reconstructed from saved data when re-enabled.
 
 both states use targeted `ReconcileChain(root)` instead of the legacy `RepairAllChains()`, reducing reconciliation from O(all_anchors) to O(chain).
 

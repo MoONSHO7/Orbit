@@ -290,6 +290,12 @@ local function PluginHasMountedHide(plugin)
 end
 
 function Mixin:CreateVisibilityContainer(parent, combatEssential)
+    if InCombatLockdown() then
+        if Orbit.ErrorHandler then
+            Orbit.ErrorHandler:LogError("UnitFrameMixin", "CreateVisibilityContainer", "called in combat lockdown")
+        end
+        return nil
+    end
     local container = CreateFrame("Frame", nil, parent or UIParent, "SecureHandlerStateTemplate")
     container:SetAttribute("_onstate-visibility", [[ if newstate == "hide" then self:Hide() else self:Show() end ]])
     container:SetAllPoints()

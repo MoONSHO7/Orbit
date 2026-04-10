@@ -68,6 +68,18 @@ end
 Orbit.Visibility = {}
 
 function Orbit.Visibility:ApplyState(frame, visibilityMode)
+    -- RegisterStateDriver / UnregisterStateDriver / frame:Show are all
+    -- combat-locked. Defer the whole call until after combat so the driver
+    -- cache never drifts out of sync with the actual secure state.
+    if InCombatLockdown() then
+        if Orbit.CombatManager then
+            Orbit.CombatManager:QueueUpdate(function()
+                Orbit.Visibility:ApplyState(frame, visibilityMode)
+            end)
+        end
+        return
+    end
+
     if frame.isOrbitUpdating then return end
     frame.isOrbitUpdating = true
 
@@ -152,7 +164,14 @@ function Orbit:InitializePlugins()
                 if not Orbit:IsPluginEnabled(self.name) then
                     if self.frame then
                         OrbitEngine.FrameAnchor:SetFrameDisabled(self.frame, true)
-                        self.frame:Hide()
+                        if InCombatLockdown() then
+                            if Orbit.CombatManager then
+                                local f = self.frame
+                                Orbit.CombatManager:QueueUpdate(function() f:Hide() end)
+                            end
+                        else
+                            self.frame:Hide()
+                        end
                     end
                     return
                 end
@@ -313,11 +332,24 @@ function Orbit:LiveTogglePlugin(name, enabled)
         end
         if plugin.frame then
             OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, true)
-            plugin.frame:SetScript("OnEvent", nil)
-            plugin.frame:SetScript("OnUpdate", nil)
             plugin.frame:UnregisterAllEvents()
             if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame) end
-            plugin.frame:Hide()
+            -- SetScript and Hide are combat-locked for secure frames — defer the
+            -- whole tear-down block until combat ends so the frame ends in a
+            -- consistent (fully torn down) state.
+            local f = plugin.frame
+            local function TearDownFrame()
+                f:SetScript("OnEvent", nil)
+                f:SetScript("OnUpdate", nil)
+                f:Hide()
+            end
+            if InCombatLockdown() then
+                if Orbit.CombatManager then
+                    Orbit.CombatManager:QueueUpdate(TearDownFrame)
+                end
+            else
+                TearDownFrame()
+            end
         end
         if plugin.timer then
             plugin.timer:Cancel()

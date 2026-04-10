@@ -476,24 +476,25 @@ function Plugin:UpdateAll()
     local specID = spec and GetSpecializationInfo(spec)
 
     if class == "EVOKER" and specID == AUGMENTATION_SPEC_ID then
+        -- GetEbonMightState returns (number, EBON_MIGHT_MAX_DURATION) unconditionally
+        -- (0 when the buff is inactive). Aug Evoker always renders the ebon-might bar
+        -- in place of the normal power bar, so no gating check is needed.
         local current, max = Orbit.ResourceBarMixin:GetEbonMightState()
-        if current and max and max > 0 then
-            PowerBar:SetMinMaxValues(0, max)
-            local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
-            PowerBar:SetValue(current, smoothing)
-            OrbitEngine.TickMixin:Update(Frame, current, max, smoothing)
+        PowerBar:SetMinMaxValues(0, max)
+        local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
+        PowerBar:SetValue(current, smoothing)
+        OrbitEngine.TickMixin:Update(Frame, current, max, smoothing)
 
-            local curveData = self:GetSetting(SYSTEM_INDEX, "EbonMightColorCurve")
-            local color = curveData and OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
-            if color then
-                PowerBar:SetStatusBarColor(color.r, color.g, color.b)
-            end
-
-            if Frame.Text:IsShown() then
-                Frame.Text:SetFormattedText("%.1f", current)
-            end
-            return
+        local curveData = self:GetSetting(SYSTEM_INDEX, "EbonMightColorCurve")
+        local color = curveData and OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
+        if color then
+            PowerBar:SetStatusBarColor(color.r, color.g, color.b)
         end
+
+        if Frame.Text:IsShown() then
+            Frame.Text:SetFormattedText("%.1f", current)
+        end
+        return
     end
 
     local powerType, powerToken = UnitPowerType("player")
