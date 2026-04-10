@@ -125,6 +125,15 @@ function CDM:ApplyTextSettings(icon, systemIndex)
                             if not cd.orbitTextSyncHooked then
                                 cd.orbitTextSyncHooked = true
                                 cd:HookScript("OnHide", function(c) if c.Text then c.Text:Hide() end end)
+                                if cd.HasScript and cd:HasScript("OnCooldownDone") then
+                                    cd:HookScript("OnCooldownDone", function(c) if c.Text then c.Text:Hide() end end)
+                                end
+                                if cd.Clear then
+                                    hooksecurefunc(cd, "Clear", function(c) if c.Text then c.Text:Hide() end end)
+                                end
+                                if cd.SetCooldown then
+                                    hooksecurefunc(cd, "SetCooldown", function(c) if c.Text then c.Text:Hide() end end)
+                                end
                             end
                         end
 

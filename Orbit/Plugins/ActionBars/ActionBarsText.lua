@@ -135,6 +135,15 @@ function ABText:Apply(plugin, button, systemIndex)
                     if not cooldown.orbitTextSyncHooked then
                         cooldown.orbitTextSyncHooked = true
                         cooldown:HookScript("OnHide", function(c) if c.Text then c.Text:Hide() end end)
+                        if cooldown.HasScript and cooldown:HasScript("OnCooldownDone") then
+                            cooldown:HookScript("OnCooldownDone", function(c) if c.Text then c.Text:Hide() end end)
+                        end
+                        if cooldown.Clear then
+                            hooksecurefunc(cooldown, "Clear", function(c) if c.Text then c.Text:Hide() end end)
+                        end
+                        if cooldown.SetCooldown then
+                            hooksecurefunc(cooldown, "SetCooldown", function(c) if c.Text then c.Text:Hide() end end)
+                        end
                     end
                 end
 
