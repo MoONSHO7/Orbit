@@ -84,7 +84,7 @@ C.Levels = {
     IconSwipe = 2,          -- Cooldown swipe (border group, below glow)
     IconBorder = 3,         -- Per-icon pixel/NineSlice border
     IconGlow = 6,           -- Pandemic/proc glow (above border)
-    IconOverlay = 7,        -- Timer text, stacks, flash
+    IconOverlay = 7,        -- Text, stacks, flash
     -- Editor & UI Overlays
     EditModeText = 20,
     EditModeSelection = 100,

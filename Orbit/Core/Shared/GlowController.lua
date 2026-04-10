@@ -20,6 +20,11 @@ function GC:Show(frame, glowKey, typeName, options)
     if not frame or not LCG or not typeName then return end
     local state = GetState(frame)
     local entry = state.active[glowKey]
+    
+    if options and not options.frameLevel then 
+        options.frameLevel = Constants.Levels.IconOverlay + 2 
+    end
+    
     local hash = Engine.GlowUtils:GetOptionsHash(options)
     if entry and entry.typeName == typeName and entry.hash == hash then return end
     if entry then LCG.Hide(frame, entry.typeName, glowKey) end
@@ -151,6 +156,11 @@ function GC:ShowPandemic(frame, typeName, options, alpha)
     local wrapper = GetOrCreateWrapper(frame)
     wrapper:SetAlpha(alpha or 1)
     local state = GetState(frame)
+    
+    if options and not options.frameLevel then 
+        options.frameLevel = Constants.Levels.IconOverlay + 2 
+    end
+    
     local hash = Engine.GlowUtils:GetOptionsHash(options)
     local entry = state.active[PANDEMIC_KEY]
     if entry and entry.typeName == typeName and entry.hash == hash then return end

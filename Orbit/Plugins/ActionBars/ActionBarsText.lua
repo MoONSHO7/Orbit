@@ -115,37 +115,6 @@ function ABText:Apply(plugin, button, systemIndex)
                 local overrides, pos = GetComponentOverrides("Timer")
                 OverrideUtils.ApplyOverrides(timerText, overrides, { fontSize = defaultSize, fontPath = baseFontPath })
                 timerText:SetDrawLayer("OVERLAY", 7)
-                
-                if not button.orbitTextOverlay then
-                    button.orbitTextOverlay = CreateFrame("Frame", nil, button)
-                    button.orbitTextOverlay:SetAllPoints(button)
-                    button.orbitTextOverlay:SetFrameLevel(button:GetFrameLevel() + Orbit.Constants.Levels.IconOverlay)
-                end
-                
-                for _, r in ipairs({ button.orbitTextOverlay:GetRegions() }) do
-                    if r:GetObjectType() == "FontString" and r.orbitIsTimerText and r ~= timerText then
-                        r:Hide()
-                        r.orbitIsTimerText = false
-                    end
-                end
-                timerText.orbitIsTimerText = true
-
-                if timerText:GetParent() ~= button.orbitTextOverlay then
-                    timerText:SetParent(button.orbitTextOverlay)
-                    if not cooldown.orbitTextSyncHooked then
-                        cooldown.orbitTextSyncHooked = true
-                        cooldown:HookScript("OnHide", function(c) if c.Text then c.Text:Hide() end end)
-                        if cooldown.HasScript and cooldown:HasScript("OnCooldownDone") then
-                            cooldown:HookScript("OnCooldownDone", function(c) if c.Text then c.Text:Hide() end end)
-                        end
-                        if cooldown.Clear then
-                            hooksecurefunc(cooldown, "Clear", function(c) if c.Text then c.Text:Hide() end end)
-                        end
-                        if cooldown.SetCooldown then
-                            hooksecurefunc(cooldown, "SetCooldown", function(c) if c.Text then c.Text:Hide() end end)
-                        end
-                    end
-                end
 
                 if pos.anchorX then ApplyComponentPosition(timerText, "Timer", "CENTER", "CENTER", 0, 0) end
             end

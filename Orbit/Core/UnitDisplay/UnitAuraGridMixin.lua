@@ -731,53 +731,61 @@ function Mixin:_updateBlizzardBuffs()
                         end
                     end
                     
+                    -- Permanently suppress standard Blizzard default borders
+                    local nativeBorder = btn.Border or btn.IconBorder
+                    if nativeBorder then
+                        nativeBorder:SetAlpha(0); nativeBorder:Hide()
+                        if not btn.orbitBorderHooked then
+                            hooksecurefunc(nativeBorder, "Show", function(self) self:Hide(); self:SetAlpha(0) end)
+                            btn.orbitBorderHooked = true
+                        end
+                    end
+                    
                     -- Suppress and hook Colored Borders (TempEnchants, Debuffs) into Orbit's pixel-perfect Highlight system
-                    for _, b in ipairs({ {border=btn.TempEnchantBorder, key="_orbitTempEnchantBorder"}, {border=btn.DebuffBorder, key="_orbitDebuffBorder"}, {border=btn.Border or btn.IconBorder, key="_orbitIconBorder"} }) do
-                        local nativeBorder = b.border
-                        if nativeBorder then
-                            local wasShown = nativeBorder:IsShown()
+                    for _, b in ipairs({ {border=btn.TempEnchantBorder, key="_orbitTempEnchantBorder"}, {border=btn.DebuffBorder, key="_orbitDebuffBorder"} }) do
+                        local nb = b.border
+                        if nb then
+                            local wasShown = nb:IsShown()
                             -- Proactively force the border rendering on if the button metadata confirms it is a TempEnchant,
                             -- completely bypassing Blizzard's notoriously deferred `TempEnchantBorder:Show()` pool delay (which causes 3-5s visual pop-in on /load)
                             if b.key == "_orbitTempEnchantBorder" and btn.buttonInfo and btn.buttonInfo.isTempEnchant then
                                 wasShown = true
                             end
                             if not btn[b.key.."Hooked"] then
-                                hooksecurefunc(nativeBorder, "Show", function(self)
+                                hooksecurefunc(nb, "Show", function(self)
                                     self:Hide(); self:SetAlpha(0)
                                     local r, g, b_color, a = self:GetVertexColor()
-                                    if b.key == "_orbitTempEnchantBorder" and r == 1 and g == 1 and b_color == 1 then
+                                    if b.key == "_orbitTempEnchantBorder" then
                                         local q = btn.buttonInfo and (btn.buttonInfo.itemQuality or btn.buttonInfo.quality) or 4
                                         r, g, b_color = C_Item.GetItemQualityColor(q)
                                         a = 1
                                     end
-                                    if not (b.key == "_orbitIconBorder" and r == 1 and g == 1 and b_color == 1) then
-                                        Orbit.Skin:ApplyHighlightBorder(btn, b.key, {r=r, g=g, b=b_color, a=a}, Orbit.Constants.Levels.IconOverlay + 1)
-                                    end
+                                    Orbit.Skin:ApplyHighlightBorder(btn, b.key, {r=r, g=g, b=b_color, a=a}, Orbit.Constants.Levels.IconOverlay + 1)
                                 end)
-                                hooksecurefunc(nativeBorder, "Hide", function(self)
+                                hooksecurefunc(nb, "Hide", function(self)
                                     Orbit.Skin:ClearHighlightBorder(btn, b.key)
                                 end)
-                                hooksecurefunc(nativeBorder, "SetVertexColor", function(self, r, g, b_color, a)
-                                    if b.key == "_orbitIconBorder" and r == 1 and g == 1 and b_color == 1 then return end
-                                    if b.key == "_orbitTempEnchantBorder" and r == 1 and g == 1 and b_color == 1 then
+                                hooksecurefunc(nb, "SetVertexColor", function(self, r, g, b_color, a)
+                                    if b.key == "_orbitTempEnchantBorder" then
                                         local q = btn.buttonInfo and (btn.buttonInfo.itemQuality or btn.buttonInfo.quality) or 4
                                         r, g, b_color = C_Item.GetItemQualityColor(q)
+                                        a = 1
                                     end
                                     Orbit.Skin:ApplyHighlightBorder(btn, b.key, {r=r, g=g, b=b_color, a=a}, Orbit.Constants.Levels.IconOverlay + 1)
                                 end)
                                 btn[b.key.."Hooked"] = true
                             end
-                            nativeBorder:SetAlpha(0); nativeBorder:Hide()
+                            nb:SetAlpha(0); nb:Hide()
                             
                             -- Initial Sync
-                            local r, g, b_color, a = nativeBorder:GetVertexColor()
-                            if b.key == "_orbitTempEnchantBorder" and r == 1 and g == 1 and b_color == 1 then
+                            local r, g, b_color, a = nb:GetVertexColor()
+                            if b.key == "_orbitTempEnchantBorder" then
                                 local q = btn.buttonInfo and (btn.buttonInfo.itemQuality or btn.buttonInfo.quality) or 4
                                 r, g, b_color = C_Item.GetItemQualityColor(q)
                                 a = 1
                             end
                             
-                            if wasShown and not (b.key == "_orbitIconBorder" and r == 1 and g == 1 and b_color == 1) then
+                            if wasShown then
                                 Orbit.Skin:ApplyHighlightBorder(btn, b.key, {r=r, g=g, b=b_color, a=a}, Orbit.Constants.Levels.IconOverlay + 1)
                             else
                                 Orbit.Skin:ClearHighlightBorder(btn, b.key)
