@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
@@ -16,15 +17,15 @@ local _, PLAYER_CLASS = UnitClass("player")
 
 -- [ POWER TYPE CURVE CONFIG ]----------------------------------------------------------------------
 local POWER_CURVE_CONFIG = {
-    { key = "ManaColorCurve", label = "Mana Colour", powerType = Enum.PowerType.Mana },
-    { key = "RageColorCurve", label = "Rage Colour", powerType = Enum.PowerType.Rage },
-    { key = "FocusColorCurve", label = "Focus Colour", powerType = Enum.PowerType.Focus },
-    { key = "EnergyColorCurve", label = "Energy Colour", powerType = Enum.PowerType.Energy },
-    { key = "RunicPowerColorCurve", label = "Runic Power Colour", powerType = Enum.PowerType.RunicPower },
-    { key = "LunarPowerColorCurve", label = "Astral Power Colour", powerType = Enum.PowerType.LunarPower },
-    { key = "FuryColorCurve", label = "Fury Colour", powerType = Enum.PowerType.Fury },
-    { key = "InsanityColorCurve", label = "Insanity Colour", powerType = Enum.PowerType.Insanity },
-    { key = "MaelstromColorCurve", label = "Maelstrom Colour", powerType = Enum.PowerType.Maelstrom },
+    { key = "ManaColorCurve", label = L.PLU_PPOWER_MANA, powerType = Enum.PowerType.Mana },
+    { key = "RageColorCurve", label = L.PLU_PPOWER_RAGE, powerType = Enum.PowerType.Rage },
+    { key = "FocusColorCurve", label = L.PLU_PPOWER_FOCUS, powerType = Enum.PowerType.Focus },
+    { key = "EnergyColorCurve", label = L.PLU_PPOWER_ENERGY, powerType = Enum.PowerType.Energy },
+    { key = "RunicPowerColorCurve", label = L.PLU_PPOWER_RUNIC, powerType = Enum.PowerType.RunicPower },
+    { key = "LunarPowerColorCurve", label = L.PLU_PPOWER_ASTRAL, powerType = Enum.PowerType.LunarPower },
+    { key = "FuryColorCurve", label = L.PLU_PPOWER_FURY, powerType = Enum.PowerType.Fury },
+    { key = "InsanityColorCurve", label = L.PLU_PPOWER_INSANITY, powerType = Enum.PowerType.Insanity },
+    { key = "MaelstromColorCurve", label = L.PLU_PPOWER_MAELSTROM, powerType = Enum.PowerType.Maelstrom },
 }
 
 local CLASS_POWER_TYPES = {
@@ -143,15 +144,15 @@ function Plugin:AddSettings(dialog, systemFrame)
     local SB = OrbitEngine.SchemaBuilder
 
     if dialog.Title then
-        dialog.Title:SetText("Player Power")
+        dialog.Title:SetText(L.PLU_PPOWER_TITLE)
     end
 
     local schema = { hideNativeSettings = true, controls = {} }
 
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Behaviour", "Colour" }, "Layout")
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_PPOWER_TAB_LAYOUT, L.PLU_PPOWER_TAB_BEHAVIOUR, L.PLU_PPOWER_TAB_COLOUR }, L.PLU_PPOWER_TAB_LAYOUT)
 
-    if currentTab == "Layout" then
+    if currentTab == L.PLU_PPOWER_TAB_LAYOUT then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(Frame) ~= nil
         if not isAnchored then
             SB:AddSizeSettings(self, schema, systemIndex, systemFrame, { default = 200 }, nil, nil)
@@ -160,24 +161,24 @@ function Plugin:AddSettings(dialog, systemFrame)
         table.insert(schema.controls, {
             type = "slider",
             key = "TickSize",
-            label = "Tick",
+            label = L.PLU_PPOWER_TICK,
             min = 0,
             max = TICK_SIZE_MAX,
             step = 2,
             default = TICK_SIZE_DEFAULT,
-            tooltip = "Width of the leading-edge tick mark (0 = hidden)",
+            tooltip = L.PLU_PPOWER_TICK_TT,
             onChange = function(val)
                 self:SetSetting(systemIndex, "TickSize", val)
                 self:ApplySettings()
             end,
         })
-    elseif currentTab == "Behaviour" then
+    elseif currentTab == L.PLU_PPOWER_TAB_BEHAVIOUR then
         table.insert(schema.controls, {
             type = "checkbox",
             key = "SmoothAnimation",
-            label = "Smooth Animation",
+            label = L.PLU_PPOWER_SMOOTH,
             default = true,
-            tooltip = "Smoothly animate bar value changes",
+            tooltip = L.PLU_PPOWER_SMOOTH_TT,
             onChange = function(val)
                 self:SetSetting(systemIndex, "SmoothAnimation", val)
             end,
@@ -185,15 +186,15 @@ function Plugin:AddSettings(dialog, systemFrame)
         table.insert(schema.controls, {
             type = "checkbox",
             key = "FrequentUpdates",
-            label = "Frequent Updates",
+            label = L.PLU_PPOWER_FREQ_UPDATE,
             default = false,
-            tooltip = "Update power bar every frame instead of on server ticks (smoother energy/mana/rage bars)",
+            tooltip = L.PLU_PPOWER_FREQ_UPDATE_TT,
             onChange = function(val)
                 self:SetSetting(systemIndex, "FrequentUpdates", val)
                 self:RefreshFrequentUpdates()
             end,
         })
-    elseif currentTab == "Colour" then
+    elseif currentTab == L.PLU_PPOWER_TAB_COLOUR then
         local classPowerTypes = CLASS_POWER_TYPES[PLAYER_CLASS] or {}
         local classPowerLookup = {}
         for _, pt in ipairs(classPowerTypes) do
@@ -216,7 +217,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             table.insert(schema.controls, {
                 type = "colorcurve",
                 key = "EbonMightColorCurve",
-                label = "Ebon Might Colour",
+                label = L.PLU_PPOWER_EBON_MIGHT,
                 onChange = function(curveData)
                     self:SetSetting(systemIndex, "EbonMightColorCurve", curveData)
                     self:UpdateAll()
@@ -476,24 +477,25 @@ function Plugin:UpdateAll()
     local specID = spec and GetSpecializationInfo(spec)
 
     if class == "EVOKER" and specID == AUGMENTATION_SPEC_ID then
+        -- GetEbonMightState returns (number, EBON_MIGHT_MAX_DURATION) unconditionally
+        -- (0 when the buff is inactive). Aug Evoker always renders the ebon-might bar
+        -- in place of the normal power bar, so no gating check is needed.
         local current, max = Orbit.ResourceBarMixin:GetEbonMightState()
-        if current and max and max > 0 then
-            PowerBar:SetMinMaxValues(0, max)
-            local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
-            PowerBar:SetValue(current, smoothing)
-            OrbitEngine.TickMixin:Update(Frame, current, max, smoothing)
+        PowerBar:SetMinMaxValues(0, max)
+        local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
+        PowerBar:SetValue(current, smoothing)
+        OrbitEngine.TickMixin:Update(Frame, current, max, smoothing)
 
-            local curveData = self:GetSetting(SYSTEM_INDEX, "EbonMightColorCurve")
-            local color = curveData and OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
-            if color then
-                PowerBar:SetStatusBarColor(color.r, color.g, color.b)
-            end
-
-            if Frame.Text:IsShown() then
-                Frame.Text:SetFormattedText("%.1f", current)
-            end
-            return
+        local curveData = self:GetSetting(SYSTEM_INDEX, "EbonMightColorCurve")
+        local color = curveData and OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData)
+        if color then
+            PowerBar:SetStatusBarColor(color.r, color.g, color.b)
         end
+
+        if Frame.Text:IsShown() then
+            Frame.Text:SetFormattedText("%.1f", current)
+        end
+        return
     end
 
     local powerType, powerToken = UnitPowerType("player")

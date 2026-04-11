@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
@@ -41,7 +42,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     -- 1. Scale
     SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
         key = "Scale",
-        label = "Scale",
+        label = L.PLU_QUEUE_SCALE,
         default = 100,
         min = 50,
         max = 200,

@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
@@ -30,13 +31,13 @@ function Plugin:AddSettings(dialog, systemFrame)
     local dirOpts
     if currentOrientation == Enum.BagsOrientation.Horizontal then
         dirOpts = {
-            { text = "Expand Left", value = Enum.BagsDirection.Left },
-            { text = "Expand Right", value = Enum.BagsDirection.Right },
+            { text = L.PLU_BAG_DIR_LEFT, value = Enum.BagsDirection.Left },
+            { text = L.PLU_BAG_DIR_RIGHT, value = Enum.BagsDirection.Right },
         }
     else
         dirOpts = {
-            { text = "Expand Up", value = Enum.BagsDirection.Up },
-            { text = "Expand Down", value = Enum.BagsDirection.Down },
+            { text = L.PLU_BAG_DIR_UP, value = Enum.BagsDirection.Up },
+            { text = L.PLU_BAG_DIR_DOWN, value = Enum.BagsDirection.Down },
         }
     end
 
@@ -48,8 +49,8 @@ function Plugin:AddSettings(dialog, systemFrame)
     -- 1. Orientation
     SB:AddOrientationSettings(self, schema, systemIndex, dialog, systemFrame, {
         options = {
-            { text = "Horizontal", value = Enum.BagsOrientation.Horizontal },
-            { text = "Vertical", value = Enum.BagsOrientation.Vertical },
+            { text = L.PLU_BAG_HORIZONTAL, value = Enum.BagsOrientation.Horizontal },
+            { text = L.PLU_BAG_VERTICAL, value = Enum.BagsOrientation.Vertical },
         },
         default = Enum.BagsOrientation.Horizontal,
         onChange = function(val)
@@ -71,7 +72,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "dropdown",
         key = "Direction",
-        label = "Grow",
+        label = L.PLU_BAG_GROW,
         options = dirOpts,
         default = Enum.BagsDirection.Left,
     })
@@ -79,7 +80,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     -- 3. Scale
     SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
         key = "Scale",
-        label = "Scale",
+        label = L.PLU_BAG_SCALE,
         default = 100,
         min = 50,
         max = 150,

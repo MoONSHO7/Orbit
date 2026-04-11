@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
@@ -180,46 +181,46 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
     local schema = { hideNativeSettings = true, controls = {} }
 
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colour" }, "Layout")
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_CAST_TAB_LAYOUT, L.PLU_CAST_TAB_COLOUR }, L.PLU_CAST_TAB_LAYOUT)
 
-    if currentTab == "Layout" then
+    if currentTab == L.PLU_CAST_TAB_LAYOUT then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(CastBar) ~= nil
         local anchorAxis = isAnchored and GetAnchorAxis(CastBar) or nil
         if not (isAnchored and anchorAxis == "x") then
             SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, {
-                key = "CastBarHeight", label = "Height",
+                key = "CastBarHeight", label = L.PLU_CAST_HEIGHT,
                 min = 15, max = 35, default = Orbit.Constants.PlayerCastBar.DefaultHeight,
             })
         end
         if not (isAnchored and anchorAxis == "y") then
             table.insert(schema.controls, {
-                type = "slider", key = "CastBarWidth", label = "Width",
+                type = "slider", key = "CastBarWidth", label = L.PLU_CAST_WIDTH,
                 min = 120, max = 350, step = 10, default = Orbit.Constants.PlayerCastBar.DefaultWidth,
             })
         end
-        table.insert(schema.controls, { type = "checkbox", key = "CastBarIcon", label = "Show Icon", default = true })
-        table.insert(schema.controls, { type = "checkbox", key = "ShowLatency", label = "Show Latency", default = true })
+        table.insert(schema.controls, { type = "checkbox", key = "CastBarIcon", label = L.PLU_CAST_SHOW_ICON, default = true })
+        table.insert(schema.controls, { type = "checkbox", key = "ShowLatency", label = L.PLU_CAST_SHOW_LATENCY, default = true })
         table.insert(schema.controls, {
-            type = "slider", key = "TickWidth", label = "Tick Width",
+            type = "slider", key = "TickWidth", label = L.PLU_CAST_TICK_WIDTH,
             min = 1, max = 5, step = 1, default = 1,
         })
-    elseif currentTab == "Colour" then
+    elseif currentTab == L.PLU_CAST_TAB_COLOUR then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-            key = "CastBarColorCurve", label = "Normal",
+            key = "CastBarColorCurve", label = L.PLU_CAST_NORMAL,
             default = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
         })
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-            key = "NonInterruptibleColorCurve", label = "Protected",
+            key = "NonInterruptibleColorCurve", label = L.PLU_CAST_PROTECTED,
             default = { pins = { { position = 0, color = { r = 0.7, g = 0.7, b = 0.7, a = 1 } } } },
             singleColor = true,
         })
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-            key = "SparkColorCurve", label = "Spark / Glow",
+            key = "SparkColorCurve", label = L.PLU_CAST_SPARK_GLOW,
             default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } },
             singleColor = true,
         })
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-            key = "TickColorCurve", label = "Ticks",
+            key = "TickColorCurve", label = L.PLU_CAST_TICKS,
             default = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.4 } } } },
             singleColor = true,
         })
