@@ -18,41 +18,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
 ## [@project-version@] - @project-date-iso@
-### TLDR
-- Lots of backend changes in this one, some icon frames may need size changes, have moved away from Scale and towards Pixels instead.
-- Overhaul of Glows in Orbit, please revise all glows, added more customization options, better alignment and performance. No longer using LibCustomGlow so should resolve a lot of conflicts from other addons.
-- Enabled Minimap plugin by default. Remember can disable all plugins in the `Plugin Manager (/orbit plugins)`.
-- Added **Datatexts**, **just click one of the four corners of the screen** to open the datatext drawer and drag and drop them anywhere on-screen. Will continue to expand on these and you're welcome to suggest more/improve whats been built.
+### New Features
+- Datatext Drawer - Click one of the four corners of the screen to open the datatext drawer. Drag and drop them anywhere on-screen. Drag them back into the drawer to disable. Drag the right hand corner to resize them. Will continue to expand on these and you're welcome to suggest more/improve whats been built.
 
-### Added
-- **Datatexts Plugin:** Brand-new standalone plugin with 20+ widgets (Gold, Friends, Guild, Durability, Performance, Hearthstone, Spec, Location, Mail, Quest, Combat Timer, and more). Replaces the old Performance and Combat Timer from Menu Items.
-- **Glows:** New custom glow library replacing `LibCustomGlow`. Supports **Pixel**, **Medium**, **Autocast**, **Classic**, **Thin**, **Thick** glow types with full per-type configuration (color, frequency, thickness, line count, particles, scale, and direction).
-- **StrataEngine:** Centralized Z-index layering engine for root-level UI containers. Supports `BumpUp`/`BumpDown` reordering persisted to profile, ensuring consistent frame stacking across Edit Mode and Canvas Mode. `This is for future implementation and not currently active, but all strata has been updated to use the new engine.`
-- **Group Frame Dispel Glow Type:** Added user-selectable glow types (**Pixel** vs **Autocast**) for dispel indicators on group frames, with per-type settings for thickness, line count, and length.
+- Meta Talents - Added a new QoL feature to help you keep track of the most popular talents for each spec. Find it in the Quality of Life tab in `/orbit plugins`.
+    - Select bosses or dungeons to view the most popular talents for that specific encounter, data is fetched and averaged from Warcraft Logs top 100 parses. 
+    - Directly Apply the meta talents to your talent tree with a single click.
 
-### Changed
-- **Glow System Overhaul:** Migrated all glow rendering (Pandemic, Cooldown Manager, Action Bars, Dispel Indicators) from `LibCustomGlow` to the new `LibOrbitGlow-1.0`.
-- **Strata Standardisation:** Replaced all hardcoded strata strings (`"MEDIUM"`, `"TOOLTIP"`, etc.) with `Constants.Strata.*` lookups managed by the StrataEngine.
-- **Glow Settings Schema:** Expanded glow configuration panel with per-type sliders (frequency, thickness, particles, scale, line count) that dynamically show/hide based on the selected glow type.
-- **Cast Bar Spark:** Player cast bar spark now uses `Pixel:Snap` for sub-pixel–accurate positioning.
-- **Unit Health:**: Unit Health now has a checkbox to enable gradient colors instead of colors based on value.
-- **UI Changes:** Various tweaks to UI elements and options. Bugfixes too.
-
-### Fixed
-- **Minimap Compartment:** Rewrote addon button flyout to use proxy icon buttons instead of reparenting. Fixes dark rendering on LibDBIcon buttons and flyout overlay blocking clicks.
-- **Minimap Compartment Flyout:** Mouse-leave detection now checks the Orbit container instead of the raw `Minimap` surface, fixing premature flyout closure when third-party addons reparent the minimap.
-- **Minimap Difficulty (Canvas):** Skull icon now renders without the background banner by default. A `Show Background` toggle controls it. Placeholder "25" label anchored directly beneath the skull.
-- **Minimap Difficulty Display Dropdown:** Switching between Icon/Text in canvas settings now reflects the correct state. The value was being lost when the dialog reopened.
-- **FarmHud Compatibility:** Added `Guard:Suspend`/`Guard:Resume` to `FrameGuard` so cooperating addons can temporarily reparent the minimap surface. Orbit now hooks FarmHud's show/hide to suspend protection, skip surface re-sync in `ApplySettings`, and resume on close — preventing the mount/dismount/shapeshift resource-display loss reported by users.
-- **Cast Bar Preview (Sticky):** Fixed Target/Focus cast bar previews persisting on screen after exiting Edit Mode by clearing preview state before hiding and adding combat-exit guards. Hopefully combat stickiness too.
-- **Cast Bar Preview (Ticks):** Fixed channel tick marks failing to render in the configuration preview.
-- **Healer Aura Filtering:** Fixed healer-tracked auras not being excluded from the general Buffs frame on group frames when `HealerAuras` is enabled.Icon Canvas.
-- **CDM:**: Dropping items/spells on the Cooldown Manager frames should be a bit less buggy now.
-
-### Removed
-- **Menu Items (CombatTimer & Performance):** Removed standalone `CombatTimer.lua` and `Performance.lua` from Menu Items—functionality replaced by the Datatexts plugin.
-
-### Thanks for your support again! Next update will be focussed on fixing bugs. Hope everyone had a good easter. (Go Echo!)
+### Bugfixes
+- Static Cooldown Timer Texts
+- Player Buff Item Enhancements now draw a pixel border for item enhancements (weapon oils, etc)
+- Player Buffs/Debuffs swipe now start at low alpha and fill as their duration expires
+- Player Buffs/Debuffs now pulse in and out when expiring
+- Minimap compartment flyout now stays open correctly when used alongside FarmHud
+- FarmHud compatibility - Orbit no longer fights FarmHud's minimap takeover, resource nodes should now display correctly after mount/dismount/shapeshift
 
 ## [1.0.0] - 2026-03-10
 ### Added
