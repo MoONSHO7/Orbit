@@ -8,6 +8,7 @@ local SYSTEM_ID = "Orbit_Minimap"
 
 local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
     canvasMode = true,
+    canvasDefaultZoom = 1.0,
     defaults = {
         Size = 220,
         Shape = "square",
