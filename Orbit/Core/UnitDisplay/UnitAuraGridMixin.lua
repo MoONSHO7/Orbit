@@ -43,6 +43,65 @@ local ASPECT_RATIOS = {
 
 local GetPreviewIcon = function() return Orbit.AuraPreview.GetSpellbookIcon() end
 
+-- [ EXPIRATION PULSE ]------------------------------------------------------------------------------
+local EXPIRATION_THRESHOLD = 0.30
+local EXPIRATION_ALPHA_MIN = 0.10
+local EXPIRATION_PULSE_SPEED = 3
+local EXPIRATION_TICK_INTERVAL = 0.065
+local math_sin = math.sin
+local math_abs = math.abs
+local GetTime = GetTime
+
+local swipeCurve = C_CurveUtil.CreateCurve()
+swipeCurve:SetType(Enum.LuaCurveType.Linear)
+swipeCurve:AddPoint(0, 1) -- At 0% remaining (end), 100% alpha
+swipeCurve:AddPoint(1, 0) -- At 100% remaining (start), 0% alpha
+
+local _pulseIcons = {}
+local _pulseTicker
+local function ExpirationPulseTick()
+    local n = #_pulseIcons
+    if n == 0 then
+        if _pulseTicker then _pulseTicker:Cancel(); _pulseTicker = nil end
+        return
+    end
+
+    -- Rebuild the target curve per-tick. C_CurveUtil handles secret evaluation natively.
+    local wave = 1 - (1 - EXPIRATION_ALPHA_MIN) * math_abs(math_sin(GetTime() * EXPIRATION_PULSE_SPEED))
+    local expirationCurve = C_CurveUtil.CreateCurve()
+    expirationCurve:SetType(Enum.LuaCurveType.Step)
+    expirationCurve:AddPoint(0, wave)
+    expirationCurve:AddPoint(EXPIRATION_THRESHOLD, 1)
+
+    local i = 1
+    while i <= n do
+        local icon = _pulseIcons[i]
+        local durObj = icon._orbitExpireDurObj
+        if not durObj or not icon:IsShown() then
+            icon._orbitPulseRegistered = nil
+            icon:SetAlpha(1)
+            _pulseIcons[i] = _pulseIcons[n]
+            _pulseIcons[n] = nil
+            n = n - 1
+        else
+            local alpha = C_CurveUtil.EvaluateColorValueFromBoolean(durObj:IsZero(), 1, durObj:EvaluateRemainingPercent(expirationCurve))
+            icon:SetAlpha(alpha)
+            if icon.Cooldown then
+                local cdAlpha = C_CurveUtil.EvaluateColorValueFromBoolean(durObj:IsZero(), 1, durObj:EvaluateRemainingPercent(swipeCurve))
+                icon.Cooldown:SetAlpha(cdAlpha)
+            end
+            i = i + 1
+        end
+    end
+end
+local function RegisterExpirationPulse(icon, durObj)
+    icon._orbitExpireDurObj = durObj
+    if icon._orbitPulseRegistered then return end
+    icon._orbitPulseRegistered = true
+    _pulseIcons[#_pulseIcons + 1] = icon
+    if not _pulseTicker then _pulseTicker = C_Timer.NewTicker(EXPIRATION_TICK_INTERVAL, ExpirationPulseTick) end
+end
+
 -- [ COLLAPSE ARROW ]--------------------------------------------------------------------------------
 local ARROW_SIZE = 15
 local ARROW_TEX_SIZE = { w = 10, h = 16 }
@@ -539,6 +598,9 @@ function Mixin:UpdateAuras()
         icon:SetSize(iconW, iconH)
         CropIconTexture(icon, iconW, iconH)
         self:SetupAuraTooltip(icon, aura, cfg.unit, tooltipFilter)
+        -- Expiration pulse: stash DurationObject for the pulse ticker
+        local durObj = aura.auraInstanceID and C_UnitAuras.GetAuraDuration(cfg.unit, aura.auraInstanceID)
+        if durObj then RegisterExpirationPulse(icon, durObj) else icon._orbitExpireDurObj = nil; icon:SetAlpha(1) end
         table.insert(activeIcons, icon)
     end
 
@@ -659,8 +721,6 @@ function Mixin:_updateBlizzardBuffs()
                     CropIconTexture(btn, iconW, iconH)
                     Orbit.Skin.Icons:ApplyCustom(btn, skinSettings)
                     btn.Duration:Hide()
-                    if btn.TempEnchantBorder then btn.TempEnchantBorder:Hide() end
-                    
                     -- Permanently suppress Blizzard's native border textures
                     local nt = btn.GetNormalTexture and btn:GetNormalTexture() or btn.NormalTexture
                     if nt then
@@ -670,6 +730,8 @@ function Mixin:_updateBlizzardBuffs()
                             btn.orbitNormalTextureHooked = true
                         end
                     end
+                    
+                    -- Permanently suppress standard Blizzard default borders
                     local nativeBorder = btn.Border or btn.IconBorder
                     if nativeBorder then
                         nativeBorder:SetAlpha(0); nativeBorder:Hide()
@@ -679,12 +741,56 @@ function Mixin:_updateBlizzardBuffs()
                         end
                     end
                     
-                    -- Resize Blizzard's DebuffBorder (already has dispel type color) to 1px larger all around
-                    if btn.DebuffBorder then
-                        btn.DebuffBorder:ClearAllPoints()
-                        btn.DebuffBorder:SetPoint("CENTER", btn, "CENTER", 0, 0)
-                        btn.DebuffBorder:SetSize(iconW + 2, iconH + 2)
-                        btn.DebuffBorder:SetDrawLayer("OVERLAY", 6)
+                    -- Suppress and hook Colored Borders (TempEnchants, Debuffs) into Orbit's pixel-perfect Highlight system
+                    for _, b in ipairs({ {border=btn.TempEnchantBorder, key="_orbitTempEnchantBorder"}, {border=btn.DebuffBorder, key="_orbitDebuffBorder"} }) do
+                        local nb = b.border
+                        if nb then
+                            local wasShown = nb:IsShown()
+                            -- Proactively force the border rendering on if the button metadata confirms it is a TempEnchant,
+                            -- completely bypassing Blizzard's notoriously deferred `TempEnchantBorder:Show()` pool delay (which causes 3-5s visual pop-in on /load)
+                            if b.key == "_orbitTempEnchantBorder" and btn.buttonInfo and btn.buttonInfo.isTempEnchant then
+                                wasShown = true
+                            end
+                            if not btn[b.key.."Hooked"] then
+                                hooksecurefunc(nb, "Show", function(self)
+                                    self:Hide(); self:SetAlpha(0)
+                                    local r, g, b_color, a = self:GetVertexColor()
+                                    if b.key == "_orbitTempEnchantBorder" then
+                                        local q = btn.buttonInfo and (btn.buttonInfo.itemQuality or btn.buttonInfo.quality) or 4
+                                        r, g, b_color = C_Item.GetItemQualityColor(q)
+                                        a = 1
+                                    end
+                                    Orbit.Skin:ApplyHighlightBorder(btn, b.key, {r=r, g=g, b=b_color, a=a}, Orbit.Constants.Levels.IconOverlay + 1)
+                                end)
+                                hooksecurefunc(nb, "Hide", function(self)
+                                    Orbit.Skin:ClearHighlightBorder(btn, b.key)
+                                end)
+                                hooksecurefunc(nb, "SetVertexColor", function(self, r, g, b_color, a)
+                                    if b.key == "_orbitTempEnchantBorder" then
+                                        local q = btn.buttonInfo and (btn.buttonInfo.itemQuality or btn.buttonInfo.quality) or 4
+                                        r, g, b_color = C_Item.GetItemQualityColor(q)
+                                        a = 1
+                                    end
+                                    Orbit.Skin:ApplyHighlightBorder(btn, b.key, {r=r, g=g, b=b_color, a=a}, Orbit.Constants.Levels.IconOverlay + 1)
+                                end)
+                                btn[b.key.."Hooked"] = true
+                            end
+                            nb:SetAlpha(0); nb:Hide()
+                            
+                            -- Initial Sync
+                            local r, g, b_color, a = nb:GetVertexColor()
+                            if b.key == "_orbitTempEnchantBorder" then
+                                local q = btn.buttonInfo and (btn.buttonInfo.itemQuality or btn.buttonInfo.quality) or 4
+                                r, g, b_color = C_Item.GetItemQualityColor(q)
+                                a = 1
+                            end
+                            
+                            if wasShown then
+                                Orbit.Skin:ApplyHighlightBorder(btn, b.key, {r=r, g=g, b=b_color, a=a}, Orbit.Constants.Levels.IconOverlay + 1)
+                            else
+                                Orbit.Skin:ClearHighlightBorder(btn, b.key)
+                            end
+                        end
                     end
                     -- Cooldown frame for timer
                     if not btn.Cooldown then
@@ -730,6 +836,8 @@ function Mixin:_updateBlizzardBuffs()
                 if btn.Cooldown.Text then btn.Cooldown.Text:SetText("") end
                 local durObj = bi and bi.index and durObjByIndex[bi.index]
                 if durObj then btn.Cooldown:SetCooldownFromDurationObject(durObj) end
+                -- Expiration pulse: stash DurationObject for the pulse ticker
+                if durObj then RegisterExpirationPulse(btn, durObj) else btn._orbitExpireDurObj = nil; btn:SetAlpha(1) end
                 btn:Show()
                 table.insert(activeIcons, btn)
             end
@@ -799,7 +907,14 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
         overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
         local pixelSize = Orbit.Engine.Pixel:Multiple(borderSize, scale)
         overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
-        local c = (gs and gs.IconBorderColor) or { r = 0, g = 0, b = 0, a = 1 }
+        local raw = (gs and gs.IconBorderColor) or { r = 0, g = 0, b = 0, a = 1 }
+        local c
+        if raw.type == "class" then
+            c = Orbit.Engine.ClassColor:GetCurrentClassColor()
+            c.a = raw.a or 1
+        else
+            c = raw
+        end
         overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
     end
     overlay:Show()
@@ -880,8 +995,7 @@ function Mixin:UpdateVisibility()
         local cfg = self._agConfig
         local vePlugin = cfg and cfg.vePluginName and Orbit:GetPlugin(cfg.vePluginName) or self
         local veIndex = cfg and cfg.veSystemIndex or 1
-        local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(vePlugin.name, veIndex)
-        if veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") then return end
+        if Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(vePlugin.name, veIndex) then return end
     end
 
     local enabled = self:IsEnabled()

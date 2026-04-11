@@ -160,14 +160,14 @@ function Factory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
 
     local function StyleCooldownText(cd, posKey)
         if not cd then return end
-        local fs = cd.Text
-        if not fs then
-            for _, region in ipairs({ cd:GetRegions() }) do
-                if region:GetObjectType() == "FontString" then
-                    fs = region
-                    cd.Text = fs
-                    break
-                end
+        -- Invalidate cache: C++ may recreate the FontString after Clear/Set cycles
+        cd.Text = nil
+        local fs
+        for _, region in ipairs({ cd:GetRegions() }) do
+            if region:GetObjectType() == "FontString" then
+                fs = region
+                cd.Text = fs
+                break
             end
         end
         if not fs then
@@ -175,8 +175,6 @@ function Factory:ApplyTrackedTextSettings(plugin, icon, systemIndex)
             return
         end
         
-        fs:Show()
-        fs:SetAlpha(1)
         if icon.TextOverlay then fs:SetParent(icon.TextOverlay) end
         
         if cd and cd.SetHideCountdownNumbers then

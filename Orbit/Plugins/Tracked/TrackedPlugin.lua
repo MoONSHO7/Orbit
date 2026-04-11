@@ -145,14 +145,19 @@ function Plugin:GetComponentPositions(systemIndex)
     return self:GetSetting(systemIndex, "ComponentPositions") or {}
 end
 
+local _trackedDisabledHashCache = setmetatable({}, { __mode = "k" })
+
 function Plugin:IsComponentDisabled(componentKey, systemIndex)
     systemIndex = systemIndex or 1
     local Txn = Orbit.Engine.CanvasMode and Orbit.Engine.CanvasMode.Transaction
     local disabled = (Txn and Txn:IsActive() and Txn:GetPlugin() == self) and Txn:GetDisabledComponents() or self:GetSetting(systemIndex, "DisabledComponents") or {}
-    for _, key in ipairs(disabled) do
-        if key == componentKey then return true end
+    local hash = _trackedDisabledHashCache[disabled]
+    if not hash then
+        hash = {}
+        for _, key in ipairs(disabled) do hash[key] = true end
+        _trackedDisabledHashCache[disabled] = hash
     end
-    return false
+    return hash[componentKey] or false
 end
 
 function Plugin:GetCurrentSpecID()

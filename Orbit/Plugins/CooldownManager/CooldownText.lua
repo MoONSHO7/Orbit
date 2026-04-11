@@ -82,26 +82,26 @@ function CDM:ApplyTextSettings(icon, systemIndex)
                     if cd.SetHideCountdownNumbers then
                         cd:SetHideCountdownNumbers(false)
                     end
-                    local timerText = cd.Text
-                    if not timerText then
-                        for _, region in ipairs({ cd:GetRegions() }) do
-                            if region:GetObjectType() == "FontString" then
-                                timerText = region
-                                cd.Text = timerText
-                                break
-                            end
+                    -- Invalidate cache: C++ may recreate the FontString after Clear/Set cycles
+                    cd.Text = nil
+                    local timerText
+                    for _, region in ipairs({ cd:GetRegions() }) do
+                        if region:GetObjectType() == "FontString" then
+                            timerText = region
+                            cd.Text = timerText
+                            break
                         end
-                        if not timerText then
-                            for _, child in ipairs({ cd:GetChildren() }) do
-                                for _, region in ipairs({ child:GetRegions() }) do
-                                    if region:GetObjectType() == "FontString" then
-                                        timerText = region
-                                        cd.Text = timerText
-                                        break
-                                    end
+                    end
+                    if not timerText then
+                        for _, child in ipairs({ cd:GetChildren() }) do
+                            for _, region in ipairs({ child:GetRegions() }) do
+                                if region:GetObjectType() == "FontString" then
+                                    timerText = region
+                                    cd.Text = timerText
+                                    break
                                 end
-                                if timerText then break end
                             end
+                            if timerText then break end
                         end
                     end
                     if timerText then
@@ -112,15 +112,7 @@ function CDM:ApplyTextSettings(icon, systemIndex)
                         OverrideUtils.ApplyOverrides(timerText, timerOverrides, { fontSize = defaultSize, fontPath = fontPath })
                         timerText:SetDrawLayer("OVERLAY", 7)
                         
-                        if timerText:GetParent() ~= overlay then
-                            timerText:SetParent(overlay)
-                            if not cd.orbitTextSyncHooked then
-                                cd.orbitTextSyncHooked = true
-                                cd:HookScript("OnShow", function(c) if c.Text then c.Text:Show() end end)
-                                cd:HookScript("OnHide", function(c) if c.Text then c.Text:Hide() end end)
-                            end
-                            timerText:SetShown(cd:IsShown())
-                        end
+
 
                         if ApplyTextPosition then
                             ApplyTextPosition(timerText, icon, timerPos, "CENTER", 0, 0)

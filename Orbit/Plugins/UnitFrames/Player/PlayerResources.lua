@@ -407,8 +407,7 @@ end
 -- [ SETTINGS APPLICATION ]-------------------------------------------------------------------------
 function Plugin:ApplySettings()
     if not Frame then return end
-    local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, SYSTEM_INDEX)
-    if Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") then return end
+    if Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(self.name, SYSTEM_INDEX) then return end
 
     OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
 
@@ -536,8 +535,7 @@ function Plugin:UpdateVisibility()
     if not Frame then
         return
     end
-    local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, SYSTEM_INDEX)
-    if Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") then return end
+    if Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(self.name, SYSTEM_INDEX) then return end
     OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
     self:UpdatePowerType()
 end

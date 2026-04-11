@@ -6,6 +6,9 @@ Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 
 local DEFAULT_BAR_COLOR = { r = 0, g = 1, b = 0 }
+-- Pre-allocated reusable ColorMixin objects to avoid GC churn in hot path
+local REUSE_COLOR_L = CreateColor(1, 1, 1, 1)
+local REUSE_COLOR_R = CreateColor(1, 1, 1, 1)
 
 -- [ HEALTH MIXIN ]----------------------------------------------------------------------------------
 local HealthMixin = {}
@@ -59,14 +62,17 @@ function HealthMixin:ApplyHealthColor()
             local rightColor = Engine.ClassColor:ResolveClassColorPinForUnit(rightPin, self.unit)
             
             tex:SetVertexColor(1, 1, 1, 1) -- Clear tint first
-            tex:SetGradient("HORIZONTAL", CreateColor(leftColor.r, leftColor.g, leftColor.b, leftColor.a or 1), CreateColor(rightColor.r, rightColor.g, rightColor.b, rightColor.a or 1))
+            REUSE_COLOR_L:SetRGBA(leftColor.r, leftColor.g, leftColor.b, leftColor.a or 1)
+            REUSE_COLOR_R:SetRGBA(rightColor.r, rightColor.g, rightColor.b, rightColor.a or 1)
+            tex:SetGradient("HORIZONTAL", REUSE_COLOR_L, REUSE_COLOR_R)
         end
         return
     end
 
     -- Clear spatial gradient if reverting back
     if tex and tex.SetGradient then
-        tex:SetGradient("HORIZONTAL", CreateColor(1, 1, 1, 1), CreateColor(1, 1, 1, 1))
+        REUSE_COLOR_L:SetRGBA(1, 1, 1, 1)
+        tex:SetGradient("HORIZONTAL", REUSE_COLOR_L, REUSE_COLOR_L)
     end
 
     if isGradient then

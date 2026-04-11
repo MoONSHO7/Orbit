@@ -369,27 +369,33 @@ function Plugin:OnLoad()
     -- [ PROC GLOW HOOKS ]----------------------------------------------------------------------------
     if ActionButtonSpellAlertManager then
         local abPlugin = self
-        hooksecurefunc(ActionButtonSpellAlertManager, "ShowAlert", function(_, button)
+        local pendingHides = {}
+        local hideScheduled = false
+        local function FlushHides()
+            hideScheduled = false
+            for btn in pairs(pendingHides) do GC:HideProc(btn) end
+            wipe(pendingHides)
+        end
+        local function IsOurButton(button)
             local parent = button:GetParent()
-            if not parent or not abPlugin.containers then return end
-            local isOurs = false
+            if not parent or not abPlugin.containers then return false end
             for _, container in pairs(abPlugin.containers) do
-                if parent == container then isOurs = true; break end
+                if parent == container then return true end
             end
-            if not isOurs then return end
-            
+            return false
+        end
+        hooksecurefunc(ActionButtonSpellAlertManager, "ShowAlert", function(_, button)
+            if not IsOurButton(button) then return end
+            pendingHides[button] = nil
             GC:ShowProc(button, function(k) return abPlugin:GetSetting(1, k) end, "ProcGlow", Constants.Glow.DefaultColor)
         end)
         hooksecurefunc(ActionButtonSpellAlertManager, "HideAlert", function(_, button)
-            local parent = button:GetParent()
-            if not parent or not abPlugin.containers then return end
-            local isOurs = false
-            for _, container in pairs(abPlugin.containers) do
-                if parent == container then isOurs = true; break end
+            if not IsOurButton(button) then return end
+            pendingHides[button] = true
+            if not hideScheduled then
+                hideScheduled = true
+                C_Timer.After(0, FlushHides)
             end
-            if not isOurs then return end
-            
-            GC:HideProc(button)
         end)
     end
     Orbit.EventBus:On("ACTION_RANGE_CHECK_UPDATE", function(slot)
@@ -437,6 +443,8 @@ function Plugin:ReparentButtons(index) ABC:ReparentButtons(self, index, BAR_CONF
 function Plugin:SetupCanvasPreview(container, systemIndex) ABPreview:Setup(self, container, systemIndex) end
 function Plugin:ApplyTextSettings(button, systemIndex) ABText:Apply(self, button, systemIndex) end
 
+local _abDisabledHashCache = setmetatable({}, { __mode = "k" })
+
 function Plugin:IsComponentDisabled(componentKey, systemIndex)
     systemIndex = systemIndex or 1
     local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
@@ -445,8 +453,13 @@ function Plugin:IsComponentDisabled(componentKey, systemIndex)
     if txnActive then disabled = Txn:GetDisabledComponents()
     elseif self:GetSetting(systemIndex, "UseGlobalTextStyle") ~= false then disabled = self:GetSetting(1, "GlobalDisabledComponents") or {}
     else disabled = self:GetSetting(systemIndex, "DisabledComponents") or {} end
-    for _, key in ipairs(disabled) do if key == componentKey then return true end end
-    return false
+    local hash = _abDisabledHashCache[disabled]
+    if not hash then
+        hash = {}
+        for _, key in ipairs(disabled) do hash[key] = true end
+        _abDisabledHashCache[disabled] = hash
+    end
+    return hash[componentKey] or false
 end
 
 function Plugin:OnCombatEnd() C_Timer.After(0.5, function() self:ApplyAll() end) end

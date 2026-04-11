@@ -267,26 +267,37 @@ function Mixin:ApplyAuraCount(icon, aura, unit)
 end
 
 -- [ AURA TOOLTIP ]-----------------------------------------------------------------------------------
+-- Shared tooltip handlers to avoid closure creation per-icon
+local function AuraIcon_OnEnter(self)
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+    if self._auraInstanceID and self._auraUnit and self._auraFilter then
+        if self._auraFilter:find("HARMFUL") then
+            GameTooltip:SetUnitDebuffByAuraInstanceID(self._auraUnit, self._auraInstanceID)
+        else
+            GameTooltip:SetUnitBuffByAuraInstanceID(self._auraUnit, self._auraInstanceID)
+        end
+    elseif self._auraSpellId then
+        GameTooltip:SetSpellByID(self._auraSpellId)
+    end
+    GameTooltip:Show()
+end
+local function AuraIcon_OnLeave() GameTooltip:Hide() end
+
 function Mixin:SetupAuraTooltip(icon, aura, unit, filter)
     icon:EnableMouse(true)
     if not icon._orbitPassThrough and not InCombatLockdown() then
         icon:SetPassThroughButtons("LeftButton", "RightButton")
         icon._orbitPassThrough = true
     end
-    icon:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
-        if aura.auraInstanceID and unit and filter then
-            if filter:find("HARMFUL") then
-                GameTooltip:SetUnitDebuffByAuraInstanceID(unit, aura.auraInstanceID)
-            else
-                GameTooltip:SetUnitBuffByAuraInstanceID(unit, aura.auraInstanceID)
-            end
-        elseif aura.spellId then
-            GameTooltip:SetSpellByID(aura.spellId)
-        end
-        GameTooltip:Show()
-    end)
-    icon:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    icon._auraInstanceID = aura.auraInstanceID
+    icon._auraUnit = unit
+    icon._auraFilter = filter
+    icon._auraSpellId = aura.spellId
+    if not icon._orbitTooltipHooked then
+        icon:SetScript("OnEnter", AuraIcon_OnEnter)
+        icon:SetScript("OnLeave", AuraIcon_OnLeave)
+        icon._orbitTooltipHooked = true
+    end
 end
 
 -- [ AURA FILTER ]-----------------------------------------------------------------------------------
@@ -510,6 +521,7 @@ local function CurveTickerLoop()
     while i <= n do
         local icon = _activeCurveIcons[i]
         if not icon._orbitCurveData or not icon:IsShown() then
+            icon._orbitCurveRegistered = nil
             _activeCurveIcons[i] = _activeCurveIcons[n]
             _activeCurveIcons[n] = nil
             n = n - 1
@@ -525,9 +537,8 @@ local function CurveTickerLoop()
 end
 
 local function RegisterCurveIcon(icon)
-    for _, existing in ipairs(_activeCurveIcons) do
-        if existing == icon then return end
-    end
+    if icon._orbitCurveRegistered then return end
+    icon._orbitCurveRegistered = true
     _activeCurveIcons[#_activeCurveIcons + 1] = icon
     if not _curveTicker then _curveTicker = C_Timer.NewTicker(CURVE_TICK_INTERVAL, CurveTickerLoop) end
 end
@@ -698,14 +709,17 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
         self:ApplyAuraSkin(icon, DEFAULT_HEALER_SKIN)
         icon:ClearAllPoints()
         icon:SetPoint("LEFT", container, "LEFT", (idx - 1) * (iconSize + RAID_BUFF_ICON_SPACING), 0)
-        local sid = buff.spellId
-        icon:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
-            GameTooltip:SetSpellByID(sid)
-            GameTooltip:AddLine("|cffff4444Missing|r", 1, 0, 0)
-            GameTooltip:Show()
-        end)
-        icon:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        icon._missingSpellId = buff.spellId
+        if not icon._orbitMissingTooltipHooked then
+            icon:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+                GameTooltip:SetSpellByID(self._missingSpellId)
+                GameTooltip:AddLine("|cffff4444Missing|r", 1, 0, 0)
+                GameTooltip:Show()
+            end)
+            icon:SetScript("OnLeave", AuraIcon_OnLeave)
+            icon._orbitMissingTooltipHooked = true
+        end
         ApplyMissingGlow(icon, overrides)
         icon:Show()
     end

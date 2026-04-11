@@ -84,7 +84,7 @@ C.Levels = {
     IconSwipe = 2,          -- Cooldown swipe (border group, below glow)
     IconBorder = 3,         -- Per-icon pixel/NineSlice border
     IconGlow = 6,           -- Pandemic/proc glow (above border)
-    IconOverlay = 7,        -- Timer text, stacks, flash
+    IconOverlay = 7,        -- Text, stacks, flash
     -- Editor & UI Overlays
     EditModeText = 20,
     EditModeSelection = 100,
@@ -280,7 +280,7 @@ C.Glow = {
     Defaults = {
         Pixel = {
             Lines = 4,
-            Frequency = 0.25,
+            Frequency = 0.20,
             Length = 15,
             Thickness = 2,
             XOffset = 0,

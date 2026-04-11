@@ -169,6 +169,33 @@ local function BuildColors(body)
     return math.abs(yPos)
 end
 
+local function BuildMetaTalents(body)
+    local desc = Layout:CreateDescription(body, "Displays Warcraft Logs Top 100 talent pick-rates on spell tooltips and the talent tree. Data updates weekly via CI.", A.MUTED)
+    Layout:AddControl(body, desc)
+    local initialState = GetAccountSetting("MetaTalentsTooltip", false) or GetAccountSetting("MetaTalentsTree", false)
+    local currentState = initialState
+    local reloadBtn
+    local function UpdateReloadButton()
+        if not reloadBtn then return end
+        local dirty = currentState ~= initialState
+        reloadBtn:SetEnabled(dirty)
+        reloadBtn:GetFontString():SetTextColor(dirty and 1 or 0.4, dirty and 0.82 or 0.4, dirty and 0 or 0.4)
+        reloadBtn:SetAlpha(dirty and 1 or 0.5)
+    end
+    local cb = Layout:CreateCheckbox(body, "Enable Meta Talents", nil, initialState, function(checked)
+        currentState = checked
+        SetAccountSetting("MetaTalentsTooltip", checked)
+        SetAccountSetting("MetaTalentsTree", checked)
+        if checked then C_AddOns.EnableAddOn("OrbitData") else C_AddOns.DisableAddOn("OrbitData") end
+        UpdateReloadButton()
+    end)
+    Layout:AddControl(body, cb)
+    reloadBtn = Layout:CreateButton(body, "Requires Reload", function() ReloadUI() end, 140)
+    Layout:AddControl(body, reloadBtn)
+    UpdateReloadButton()
+    return Layout:Stack(body, 0, STACK_GAP)
+end
+
 -- [ BUILD ]-----------------------------------------------------------------------------------------
 function Orbit._AC.CreateQoLContent(parent)
     local content = CreateFrame("Frame", nil, parent)
@@ -204,6 +231,7 @@ function Orbit._AC.CreateQoLContent(parent)
     -- Section definitions: { name, builderFn }
     local sectionDefs = {
         { "Colors", BuildColors },
+        { "Meta Talents", BuildMetaTalents },
         { "Move More", BuildMoveMore },
         { "Mouse", BuildMouse },
         { "Keys", nil },

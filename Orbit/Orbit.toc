@@ -60,3 +60,4 @@ Plugins\Misc\TalkingHead.lua
 # ==============================================================
 QoL\MoveMore.lua
 QoL\Mouse.lua
+QoL\MetaTalents.lua

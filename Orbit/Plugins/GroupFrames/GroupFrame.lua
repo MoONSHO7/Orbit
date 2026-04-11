@@ -387,7 +387,10 @@ local function ScheduleDebouncedRosterUpdate(plugin, updateVisibility)
         if needsVis and plugin.UpdateVisibilityDriver then plugin.UpdateVisibilityDriver() end
         local oldTier = plugin._currentTier
         plugin:CheckTierChange()
-        if plugin._currentTier ~= oldTier then return end
+        if plugin._currentTier ~= oldTier then
+            Orbit.EventBus:Fire("GROUP_ROSTER_SETTLED")
+            return
+        end
         if not InCombatLockdown() then 
             plugin:UpdateFrameUnits() 
         else 
@@ -406,6 +409,7 @@ local function ScheduleDebouncedRosterUpdate(plugin, updateVisibility)
             end
             SchedulePrivateAuraReanchor(plugin) 
         end
+        Orbit.EventBus:Fire("GROUP_ROSTER_SETTLED")
     end)
 end
 

@@ -25,7 +25,7 @@ a first-login-only anchoring playground that fires on Edit Mode entry:
 
 ## rules
 
-- **all onboarding UI must share the same strata.** overlay, playground frames, selection overlays, settings dialog, and tooltips must all be at `FULLSCREEN_DIALOG` strata during the tour. this ensures everything is clickable and draggable above the darkened background.
+- **all onboarding UI must share the same strata.** overlay, playground frames, selection overlays, settings dialog, and tooltips must all be at `TOOLTIP` strata during the tour. this ensures everything is clickable and draggable above the darkened background.
 - **save and restore strata.** any frame elevated for the tour must have its original strata/level saved on tour start and restored on tour end.
 - **use the OnUpdate poller to enforce strata.** other systems (DeselectAll, UpdateVisuals, dialog open/close) continuously reset strata. the poller re-elevates every frame on each tick.
 - **no custom settings UI.** playground frames are a real plugin. clicking them opens `OrbitSettingsDialog` with standard `SchemaBuilder` controls. do not create custom sliders or panels.

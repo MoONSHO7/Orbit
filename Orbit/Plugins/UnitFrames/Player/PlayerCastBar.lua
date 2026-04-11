@@ -406,8 +406,7 @@ function Plugin:UpdateVisibility()
     local bar = self.CastBar
     if not bar then return end
     if not InCombatLockdown() then
-        local veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(self.name, bar.systemIndex or 1)
-        if Orbit.MountedVisibility:IsCachedHidden() and veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted") then
+        if Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(self.name, bar.systemIndex or 1) then
             HideBar(bar)
             return
         end

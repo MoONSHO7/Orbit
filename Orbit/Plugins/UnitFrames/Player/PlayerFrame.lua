@@ -320,7 +320,6 @@ function Plugin:OnLoad()
             self:UpdateRoleIcon(f, self)
             self:UpdateLeaderIcon(f, self)
             self:UpdateGroupPosition(f, self)
-            C_Timer.After(0.2, function() self:UpdateGroupPosition(f, self) end)
             return
         elseif event == "PARTY_LEADER_CHANGED" then
             self:UpdateLeaderIcon(f, self)
@@ -355,6 +354,10 @@ function Plugin:OnLoad()
     end)
 
     self:ApplySettings(self.frame)
+
+    Orbit.EventBus:On("GROUP_ROSTER_SETTLED", function()
+        self:UpdateGroupPosition(self.frame, self)
+    end, self)
 
     if not self.frame:GetPoint() then
         self.frame:SetPoint("CENTER", UIParent, "CENTER", Constants.UnitFrame.DefaultOffsetX, Constants.UnitFrame.DefaultOffsetY)

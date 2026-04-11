@@ -4,11 +4,11 @@ local Orbit = Orbit
 local Engine = Orbit.Engine
 
 -- [ CONSTANTS ]----------------------------------------------------------------------
-local OVERLAY_ALPHA = 0.98
-local OVERLAY_STRATA = "MEDIUM"
-local OVERLAY_LEVEL = 900
-local FRAME_STRATA = "HIGH"
-local FRAME_LEVEL = 500
+local OVERLAY_ALPHA = 0.90
+local OVERLAY_STRATA = "TOOLTIP"
+local OVERLAY_LEVEL = 100
+local FRAME_STRATA = "TOOLTIP"
+local FRAME_LEVEL = 300
 local FRAME_W = 150
 local FRAME_H = 50
 local FRAME_OFFSET_X = 150
@@ -28,16 +28,16 @@ local STAR_HOLD_MIN = 2.0
 local STAR_HOLD_MAX = 7.0
 local STAR_ALPHA_MIN = 0.08
 local STAR_ALPHA_MAX = 0.60
-local DIALOG_STRATA = "DIALOG"
-local DIALOG_LEVEL = 100
-local BLOCKER_FRAME_LEVEL = 990
+local DIALOG_STRATA = "TOOLTIP"
+local DIALOG_LEVEL = 500
+local BLOCKER_FRAME_LEVEL = 700
 local ACCENT = { r = 0.3, g = 0.8, b = 0.3 }
 local BG = { r = 0.08, g = 0.08, b = 0.08, a = 0.95 }
 local BORDER_CLR = { r = 0.25, g = 0.25, b = 0.25, a = 0.9 }
 local TEXT_CLR = { r = 0.85, g = 0.85, b = 0.85 }
 local TITLE_CLR = ACCENT
 local ACCENT_WIDTH = 2
-local TOOLTIP_LEVEL = 999
+local TOOLTIP_LEVEL = 9500
 local FONT = "GameFontNormalSmall"
 
 -- [ LOCALIZATION ]-------------------------------------------------------------------
@@ -501,14 +501,47 @@ local checkElapsed = 0
 local stopElapsed = 0
 tip:SetScript("OnUpdate", function(self, elapsed)
     if not Tour.active then return end
+    
+    local frameA, frameB = GetFrameA(), GetFrameB()
+    
+    -- Continuously enforce strata per visual frame to prevent flickering
+    if frameA and frameB then
+        for _, tf in ipairs({ frameA, frameB }) do
+            tf:SetFrameStrata(FRAME_STRATA)
+            tf:SetFrameLevel(FRAME_LEVEL)
+        end
+        local Selection = Engine.FrameSelection
+        if Selection then
+            for _, tf in ipairs({ frameA, frameB }) do
+                local s = Selection.selections[tf]
+                if s then
+                    s:SetFrameStrata(FRAME_STRATA)
+                    s:SetFrameLevel(FRAME_LEVEL + 5)
+                    if s.resizeHandle then
+                        s.resizeHandle:SetFrameStrata(FRAME_STRATA)
+                        s.resizeHandle:SetFrameLevel(FRAME_LEVEL + 10)
+                    end
+                end
+            end
+        end
+    end
+    local dialog = Orbit.SettingsDialog
+    if dialog and dialog:IsShown() then
+        dialog:SetFrameStrata(DIALOG_STRATA)
+        dialog:SetFrameLevel(DIALOG_LEVEL)
+    end
+    self:SetFrameStrata("TOOLTIP")
+    self:SetFrameLevel(TOOLTIP_LEVEL)
+
     checkElapsed = checkElapsed + elapsed
     stopElapsed = stopElapsed + elapsed
     if checkElapsed < CHECK_INTERVAL then return end
     checkElapsed = 0
+
     local stop = TOUR_STOPS[Tour.index]
     if not stop then return end
-    local frameA, frameB = GetFrameA(), GetFrameB()
     if not frameA or not frameB then return end
+
     -- Poll anchor state
     local Anchor = Engine.FrameAnchor
     if Anchor then
@@ -539,12 +572,7 @@ tip:SetScript("OnUpdate", function(self, elapsed)
             end
         end
     end
-    -- Keep settings dialog elevated
-    local dialog = Orbit.SettingsDialog
-    if dialog and dialog:IsShown() then
-        dialog:SetFrameStrata(DIALOG_STRATA)
-        dialog:SetFrameLevel(DIALOG_LEVEL)
-    end
+    
     -- Enable Next button when check passes or fallback timer expires
     if (stop.check and stop.check()) or stopElapsed >= NEXT_ENABLE_TIMER then tip.nextBtn:Enable() end
 end)
