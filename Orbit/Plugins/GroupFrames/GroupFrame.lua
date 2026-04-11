@@ -45,7 +45,7 @@ local UNIT_REREGISTER_EVENTS = {
 local TIER_DEFAULTS = {
     Party = {
         Width = 160, Height = 40, Scale = 100, Spacing = 3, Orientation = 0,
-        GrowthDirection = "Down", IncludePlayer = true,
+        GrowthDirection = "down", IncludePlayer = true,
         ShowPowerBar = true, PowerBarHeight = 10,
         HealthTextMode = "percent_short", ShowHealthValue = true,
         ComponentPositions = {
@@ -85,8 +85,8 @@ local TIER_DEFAULTS = {
     },
     Mythic = {
         Width = 100, Height = 40, Scale = 100, MemberSpacing = 2, GroupSpacing = 2,
-        GroupsPerRow = 6, GrowthDirection = "Down", SortMode = "Group",
-        Orientation = "Horizontal", FlatRows = 1,
+        GroupsPerRow = 6, GrowthDirection = "down", SortMode = "group",
+        Orientation = "horizontal", FlatRows = 1,
         ShowPowerBar = true, PowerBarHeight = 16, ShowGroupLabels = true,
         ShowHealthValue = false, HealthTextMode = "percent_short",
         ComponentPositions = {
@@ -498,8 +498,43 @@ function Plugin:AddSettings(dialog, systemFrame)
 end
 
 
+-- [ PHASE 0 MIGRATION: lowercase dropdown values ]--------------------------------------------------
+-- GrowthDirection / SortMode / Orientation (raid) used to store their English display
+-- text as the saved value. Phase 0 split text/value so the stored value is a stable
+-- lowercase key and the display text can be localized without breaking saved settings.
+-- Runs once per SavedVariables file, gated on a flag.
+local P0_LEGACY_VALUES = {
+    ["Down"] = "down", ["Up"] = "up", ["Left"] = "left", ["Right"] = "right", ["Center"] = "center",
+    ["Vertical"] = "vertical", ["Horizontal"] = "horizontal",
+    ["Group"] = "group", ["Role"] = "role", ["Alphabetical"] = "alphabetical",
+}
+local function MigrateP0DropdownValues(plugin)
+    if plugin:GetSetting(1, "_P0DropdownMigrated") then return end
+    local tiers = plugin:GetSetting(1, "Tiers")
+    if tiers then
+        for _, settings in pairs(tiers) do
+            if type(settings) == "table" then
+                if type(settings.GrowthDirection) == "string" and P0_LEGACY_VALUES[settings.GrowthDirection] then
+                    settings.GrowthDirection = P0_LEGACY_VALUES[settings.GrowthDirection]
+                end
+                if type(settings.SortMode) == "string" and P0_LEGACY_VALUES[settings.SortMode] then
+                    settings.SortMode = P0_LEGACY_VALUES[settings.SortMode]
+                end
+                -- Orientation is numeric (0/1) for Party tier, string for raid tiers.
+                -- Only rewrite the string form.
+                if type(settings.Orientation) == "string" and P0_LEGACY_VALUES[settings.Orientation] then
+                    settings.Orientation = P0_LEGACY_VALUES[settings.Orientation]
+                end
+            end
+        end
+        plugin:SetSetting(1, "Tiers", tiers)
+    end
+    plugin:SetSetting(1, "_P0DropdownMigrated", true)
+end
+
 -- [ ON LOAD ]---------------------------------------------------------------------------------------
 function Plugin:OnLoad()
+    MigrateP0DropdownValues(self)
 
     HideNativeGroupFrames()
     self:UpdateBlizzardRaidPanelVisibility()
@@ -790,10 +825,10 @@ function Plugin:AssignPartyUnits()
             local unit = sortedUnits[i]
             if unit then
                 local currentUnit = frame:GetAttribute("unit")
-                local newGuid = unit and UnitGUID(unit) or nil
-                
-                -- Check for secret values (WoW 12.0)
-                if newGuid and issecretvalue and issecretvalue(newGuid) then newGuid = nil end
+                -- UnitGUID can return a secret in combat. Check issecretvalue BEFORE any `or nil`
+                -- or boolean test — those would throw.
+                local newGuid = UnitGUID(unit)
+                if issecretvalue(newGuid) then newGuid = nil end
 
                 local guidChanged = newGuid and frame._guidCache ~= newGuid
 
@@ -828,7 +863,7 @@ function Plugin:AssignPartyUnits()
 end
 
 function Plugin:AssignRaidUnits()
-    local sortMode = self:GetTierSetting("SortMode") or "Group"
+    local sortMode = self:GetTierSetting("SortMode") or "group"
     local sortedUnits = Helpers:GetSortedRaidUnits(sortMode)
     local tierWidth = self:GetTierSetting("Width") or DEFAULT_WIDTH
     local tierHeight = self:GetTierSetting("Height") or DEFAULT_HEIGHT
@@ -841,10 +876,10 @@ function Plugin:AssignRaidUnits()
             if unitData then
                 local token = unitData.token
                 local currentUnit = frame:GetAttribute("unit")
-                local newGuid = token and UnitGUID(token) or nil
-
-                -- Check for secret values (WoW 12.0)
-                if newGuid and issecretvalue and issecretvalue(newGuid) then newGuid = nil end
+                -- UnitGUID can return a secret in combat. Check issecretvalue BEFORE any `or nil`
+                -- or boolean test — those would throw.
+                local newGuid = token and UnitGUID(token)
+                if issecretvalue(newGuid) then newGuid = nil end
 
                 local guidChanged = newGuid and frame._guidCache ~= newGuid
 

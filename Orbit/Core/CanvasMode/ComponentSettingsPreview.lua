@@ -343,7 +343,7 @@ function Settings:ApplyStyle(container, key, value)
         elseif visual.SetScale then
             visual:SetScale(value)
         end
-    elseif key == "HideDPS" or key == "RoleIconStyle" or key == "CombatIconStyle" then
+    elseif key == "HideDPS" or key == "RoleIconStyle" or key == "CombatIconStyle" or key == "LeaderIconStyle" then
         local cont = self.container
         local overrides = self.currentOverrides or {}
         local compKey = self.componentKey
@@ -355,13 +355,20 @@ function Settings:ApplyStyle(container, key, value)
             if compKey == "RoleIcon" then
                 local ROLE_DEFAULT = { { atlas = "UI-LFG-RoleIcon-Tank" }, { atlas = "UI-LFG-RoleIcon-Healer" }, { atlas = "UI-LFG-RoleIcon-DPS" } }
                 local ROLE_ROUND = { { atlas = "icons_64x64_tank" }, { atlas = "icons_64x64_heal" }, { atlas = "icons_64x64_damage" } }
-                newAtlases = (overrides.RoleIconStyle == "round") and ROLE_ROUND or ROLE_DEFAULT
+                local ROLE_HEADER = { { atlas = "GO-icon-role-Header-Tank" }, { atlas = "GO-icon-role-Header-Healer" }, { atlas = "GO-icon-role-Header-DPS" }, { atlas = "GO-icon-role-Header-DPS-Ranged" } }
+                local style = overrides.RoleIconStyle or "default"
+                newAtlases = (style == "round") and ROLE_ROUND or (style == "header") and ROLE_HEADER or ROLE_DEFAULT
                 if overrides.HideDPS then
-                    local dpsAtlas = (newAtlases == ROLE_ROUND) and "icons_64x64_damage" or "UI-LFG-RoleIcon-DPS"
+                    local dpsAtlas = (style == "round") and "icons_64x64_damage" or (style == "header") and "GO-icon-role-Header-DPS" or "UI-LFG-RoleIcon-DPS"
+                    local rangedAtlas = (style == "header") and "GO-icon-role-Header-DPS-Ranged" or nil
                     local filtered = {}
-                    for _, e in ipairs(newAtlases) do if e.atlas ~= dpsAtlas then filtered[#filtered + 1] = e end end
+                    for _, e in ipairs(newAtlases) do if e.atlas ~= dpsAtlas and e.atlas ~= rangedAtlas then filtered[#filtered + 1] = e end end
                     newAtlases = filtered
                 end
+            elseif compKey == "LeaderIcon" then
+                local LEADER_DEFAULT = { { atlas = "UI-HUD-UnitFrame-Player-Group-LeaderIcon" } }
+                local LEADER_HEADER = { { atlas = "GO-icon-Header-Assist-Applied" }, { atlas = "GO-icon-Header-Assist-Available" } }
+                newAtlases = (overrides.LeaderIconStyle == "header") and LEADER_HEADER or LEADER_DEFAULT
             end
             if newAtlases and #newAtlases > 0 then
                 cont._cyclingAtlases = newAtlases

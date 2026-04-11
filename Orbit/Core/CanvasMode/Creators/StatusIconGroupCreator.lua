@@ -24,6 +24,9 @@ local CYCLING_ATLASES = {
         { atlas = "UI-LFG-RoleIcon-Healer" },
         { atlas = "UI-LFG-RoleIcon-DPS" },
     },
+    LeaderIcon = {
+        { atlas = "UI-HUD-UnitFrame-Player-Group-LeaderIcon" },
+    },
     PvpIcon = {
         { atlas = "AllianceAssaultsMapBanner" },
         { atlas = "HordeAssaultsMapBanner" },
@@ -46,6 +49,17 @@ local ROUND_ROLE_ATLASES = {
     { atlas = "icons_64x64_damage" },
 }
 
+local HEADER_ROLE_ATLASES = {
+    { atlas = "GO-icon-role-Header-Tank" },
+    { atlas = "GO-icon-role-Header-Healer" },
+    { atlas = "GO-icon-role-Header-DPS" },
+    { atlas = "GO-icon-role-Header-DPS-Ranged" },
+}
+
+local HEADER_LEADER_ATLASES = {
+    { atlas = "GO-icon-Header-Assist-Applied" },
+    { atlas = "GO-icon-Header-Assist-Available" },
+}
 
 -- [ HELPERS ]---------------------------------------------------------------------------------------
 
@@ -67,15 +81,19 @@ local function Create(container, preview, key, source, data)
 
     -- Resolve atlas set from overrides for keys not in CYCLING_ATLASES or with style variants
     if key == "RoleIcon" then
-        if overrides and overrides.RoleIconStyle == "round" then atlases = ROUND_ROLE_ATLASES end
+        if overrides and overrides.RoleIconStyle == "round" then atlases = ROUND_ROLE_ATLASES
+        elseif overrides and overrides.RoleIconStyle == "header" then atlases = HEADER_ROLE_ATLASES end
         if overrides and overrides.HideDPS then
-            local dpsAtlas = (atlases == ROUND_ROLE_ATLASES) and "icons_64x64_damage" or "UI-LFG-RoleIcon-DPS"
+            local dpsAtlas = (atlases == ROUND_ROLE_ATLASES) and "icons_64x64_damage" or (atlases == HEADER_ROLE_ATLASES) and "GO-icon-role-Header-DPS" or "UI-LFG-RoleIcon-DPS"
+            local rangedAtlas = (atlases == HEADER_ROLE_ATLASES) and "GO-icon-role-Header-DPS-Ranged" or nil
             local filtered = {}
             for _, entry in ipairs(atlases or {}) do
-                if entry.atlas ~= dpsAtlas then filtered[#filtered + 1] = entry end
+                if entry.atlas ~= dpsAtlas and entry.atlas ~= rangedAtlas then filtered[#filtered + 1] = entry end
             end
             atlases = filtered
         end
+    elseif key == "LeaderIcon" then
+        if overrides and overrides.LeaderIconStyle == "header" then atlases = HEADER_LEADER_ATLASES end
     end
 
     if not atlases or #atlases == 0 then return nil end
