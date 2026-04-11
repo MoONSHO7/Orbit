@@ -8,6 +8,7 @@ These modules differ from standard Orbit plugins because they are **Account-Wide
 - **Module Name:** Should be descriptive and concisely reflect the functionality (e.g., `MoveMore`, `FastLoot`, `EasyDelete`).
 - **File Name:** PascalCase matching the module name (e.g., `MoveMore.lua`).
 - **Namespace:** Register the module under `Orbit.ModuleName` (e.g., `Orbit.MoveMore = {}`).
+- **Decomposed modules:** Larger QoL features may live in a folder (`QoL/ModuleName/`) with one file per bounded responsibility and a module-local `readme.md`. See `QoL/MetaTalents/` for an example — its files are loaded in dependency order via the `.toc` and share the `Orbit.ModuleName` namespace through sub-tables (`Orbit.MetaTalents.Constants`, `Orbit.MetaTalents.Data`, etc.).
 
 ## 2. Setting Up the Configuration UI
 QoL settings are presented in the Orbit configuration panel under the "Quality of Life" tab. They are grouped into expandable accordion sections.
