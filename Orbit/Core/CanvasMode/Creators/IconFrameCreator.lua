@@ -116,12 +116,25 @@ local function Create(container, preview, key, source, data)
         end
 
         local attached = 0
+        local skullTexture  -- icon texture reference used to anchor the preview label
+        -- Respect DifficultyShowBackground: skip Background/Border art when disabled.
+        local savedOverrides = data and data.overrides or {}
+        local showBg = savedOverrides.DifficultyShowBackground
+        if showBg == nil then
+            local plugin = Orbit:GetPlugin("Orbit_Minimap")
+            showBg = plugin and plugin:GetSetting("Orbit_Minimap", "DifficultyShowBackground")
+        end
+
         if activeFrame then
-            if Attach(activeFrame.Background, 1) then attached = attached + 1 end
-            if Attach(activeFrame.Border, 1) then attached = attached + 1 end
+            if showBg then
+                Attach(activeFrame.Background, 1)
+                Attach(activeFrame.Border, 1)
+            end
             for _, region in ipairs({ activeFrame:GetRegions() }) do
                 if region ~= activeFrame.Background and region ~= activeFrame.Border and region:IsShown() and Attach(region) then
                     attached = attached + 1
+                    local regions = { container.iconVisual:GetRegions() }  -- skull anchor: last-created texture
+                    skullTexture = regions[#regions]
                     break
                 end
             end
@@ -131,7 +144,13 @@ local function Create(container, preview, key, source, data)
             texture:SetSize(source.Icon:GetWidth(), source.Icon:GetHeight())
             texture:SetPoint("CENTER", container.iconVisual, "CENTER")
             CopyDifficultyTexture(texture, source.Icon, 1)
+            skullTexture = texture
         end
+
+        local labelAnchor = skullTexture or container.iconVisual  -- placeholder "25" beneath skull
+        local previewLabel = container.iconVisual:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        previewLabel:SetText("25")
+        previewLabel:SetPoint("TOP", labelAnchor, "BOTTOM", 0, 2)
 
         local function UpdateDifficultySize(self, size)
             local targetWidth = (size and size > 0) and size or baseWidth

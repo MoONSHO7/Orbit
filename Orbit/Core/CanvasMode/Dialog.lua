@@ -296,15 +296,16 @@ function Dialog:Open(frame, plugin, systemIndex)
         for _, label in ipairs(self.filterTabButtons) do label:Hide(); if label.hitButton then label.hitButton:Hide() end end
     end
 
-    -- Reset zoom/pan state
-    self.zoomLevel = C.DEFAULT_ZOOM
+    -- Reset zoom/pan state. Plugins can set canvasDefaultZoom to override the default.
+    local initialZoom = (plugin and plugin.canvasDefaultZoom) or C.DEFAULT_ZOOM
+    self.zoomLevel = initialZoom
     self.panOffsetX = 0
     self.panOffsetY = 0
-    self.TransformLayer:SetScale(C.DEFAULT_ZOOM)
+    self.TransformLayer:SetScale(initialZoom)
     self.TransformLayer:ClearAllPoints()
     self.TransformLayer:SetPoint("CENTER", self.Viewport, "CENTER", 0, C.DOCK_Y_OFFSET)
     if self.ZoomIndicator then
-        self.ZoomIndicator:SetText(string.format("%.0f%%", C.DEFAULT_ZOOM * 100))
+        self.ZoomIndicator:SetText(string.format("%.0f%%", initialZoom * 100))
     end
 
     -- Sync toggle: Show only for Action Bars plugin (or other plugins with GlobalComponentPositions)

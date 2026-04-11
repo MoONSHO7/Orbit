@@ -8,6 +8,7 @@ local SYSTEM_ID = "Orbit_Minimap"
 
 local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
     canvasMode = true,
+    canvasDefaultZoom = 1.0,
     defaults = {
         Size = 220,
         Shape = "square",
@@ -269,7 +270,11 @@ function Plugin:OnLoad()
         isFontString = true,
         onPositionChange = MPC("Coords"),
     })
-    OrbitEngine.ComponentDrag:Attach(self._compartmentButton, self.frame, { key = "Compartment", onPositionChange = MPC("Compartment") })
+    OrbitEngine.ComponentDrag:Attach(self._compartmentButton, self.frame, {
+        key = "Compartment",
+        sourceOverride = self._compartmentButton.icon,
+        onPositionChange = MPC("Compartment"),
+    })
     OrbitEngine.ComponentDrag:Attach(self.frame.ZoomContainer, self.frame, { key = "Zoom", onPositionChange = MPC("Zoom") })
     if self.frame.DifficultyIcon then OrbitEngine.ComponentDrag:Attach(self.frame.DifficultyIcon, self.frame, { key = DIFFICULTY_ICON_KEY, onPositionChange = MPC(DIFFICULTY_ICON_KEY) }) end
     if self.frame.DifficultyText then
@@ -520,6 +525,42 @@ function Plugin:UpdateDifficultyVisuals(textMultiplier)
         end
     end
 
+    if not iconFrame.PreviewIcon then
+        iconFrame.PreviewIcon = iconFrame:CreateTexture(nil, "OVERLAY")
+        -- Use the 25 player difficulty skull
+        iconFrame.PreviewIcon:SetTexture("Interface\\Minimap\\UI-DungeonDifficulty-Button")
+        iconFrame.PreviewIcon:SetTexCoord(0.5, 0.75, 0.0703125, 0.4140625)
+        iconFrame.PreviewIcon:SetSize(18, 18)
+        iconFrame.PreviewIcon:SetPoint("CENTER", iconFrame, "CENTER", 0.5, 0.5)
+    end
+    if not iconFrame.PreviewText then
+        iconFrame.PreviewText = iconFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        iconFrame.PreviewText:SetText("25")
+        iconFrame.PreviewText:SetPoint("TOP", iconFrame.PreviewIcon, "BOTTOM", -1, 4)
+    end
+
+    local realIconShown = false
+    if difficulty:IsShown() or mode == "icon" then
+        for _, sub in ipairs({ difficulty.Default, difficulty.Guild, difficulty.ChallengeMode }) do
+            if sub and sub:IsShown() then
+                for _, region in ipairs({ sub:GetRegions() }) do
+                    if region and region:GetObjectType() == "Texture" and region:IsShown() and region ~= sub.Background and region ~= sub.Border then
+                        realIconShown = true
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    if keepVisible and not realIconShown and mode == "icon" then
+        iconFrame.PreviewIcon:Show()
+        iconFrame.PreviewText:Show()
+    else
+        iconFrame.PreviewIcon:Hide()
+        iconFrame.PreviewText:Hide()
+    end
+
     iconFrame.orbitOriginalWidth = difficulty.orbitOriginalWidth or iconFrame.orbitOriginalWidth or 16
     iconFrame.orbitOriginalHeight = difficulty.orbitOriginalHeight or iconFrame.orbitOriginalHeight or 16
     iconFrame:SetScale(1)
@@ -566,8 +607,9 @@ function Plugin:ApplySettings()
     SetCVar("rotateMinimap", rotate and "1" or "0")
 
     -- Keep the Minimap render surface in sync with the container.
+    -- Skip when FarmHud is active — it owns the surface position/size while its HUD is open.
     local minimapSurface = self:GetBlizzardMinimap()
-    if minimapSurface then
+    if minimapSurface and not self._farmHudActive then
         minimapSurface._orbitIntendedSize = size
         -- Micro-size bounce for C++ redraw
         minimapSurface:SetSize(size - 1, size - 1)
@@ -714,8 +756,9 @@ function Plugin:ApplySettings()
     OrbitEngine.Frame:RestorePosition(frame, self, SYSTEM_ID)
 
     -- Ensure minimap is captured (e.g. after reload).
+    -- Skip when FarmHud is active — it legitimately reparented the minimap for its HUD overlay.
     local minimap = self:GetBlizzardMinimap()
-    if minimap and minimap:GetParent() ~= frame then
+    if minimap and minimap:GetParent() ~= frame and not self._farmHudActive then
         self:CaptureBlizzardMinimap()
     end
 

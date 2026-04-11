@@ -1,5 +1,4 @@
--- Minimap Addon Compartment
--- Collects all LibDBIcon minimap buttons + legacy minimap children into a hover-reveal drawer.
+-- Minimap Addon Compartment — proxy-icon flyout for LibDBIcon + legacy minimap buttons.
 
 ---@type Orbit
 local Orbit = Orbit
@@ -10,26 +9,32 @@ local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
 local BORDER_COLOR = Orbit.MinimapConstants.BORDER_COLOR
 local COMPARTMENT_BUTTON_SIZE = 24
-local COMPARTMENT_ICON_SIZE = 20
-local COMPARTMENT_ROW_HEIGHT = 22
 local COMPARTMENT_PADDING = 6
-local COMPARTMENT_ICON_PADDING = 4
-local COMPARTMENT_MAX_WIDTH = 220
-local COMPARTMENT_HIGHLIGHT_TEXTURE = 136810 -- Blizzard white highlight (Interface\BUTTONS\WHITE8x8)
+local FLYOUT_BUTTON_SIZE = 28       -- Size for each proxy button in the flyout grid
+local FLYOUT_BUTTON_SPACING = 2     -- Spacing between buttons in the grid
+local FLYOUT_COLUMNS = 6            -- Number of columns in the flyout grid
+local FLYOUT_GAP = 4                -- Pixel gap between flyout and minimap edge
+local FLYOUT_CLOSE_DELAY = 0.35     -- Seconds of mouse-outside before auto-closing
+local FADE_IN_DURATION = 0.15
+local FADE_OUT_DURATION = 0.3
+local HOLDER_OFFSCREEN = -500       -- Offscreen position for hidden button holder
+local EMPTY_FLYOUT_W = 140
+local EMPTY_FLYOUT_H = 30
 
--- Blizzard-owned children of Minimap that must never be collected into the compartment.
--- Includes reparented Blizzard frames (Missions, Difficulty, etc.) so they are never
--- accidentally swept up even if timing or parent-chain quirks expose them as Minimap children.
+-- No-op function used to block addons from repositioning their buttons
+local function doNothing() end
+
+-- Blizzard-owned Minimap children that must never be collected into the compartment.
 local BLIZZARD_MINIMAP_CHILDREN = {
     ["MinimapBackdrop"] = true,
     ["MinimapCompassTexture"] = true,
     ["OrbitMinimapCompartmentButton"] = true,
     ["OrbitMinimapCompartmentFlyout"] = true,
+    ["OrbitMinimapButtonHolder"] = true,
     ["ExpansionLandingPageMinimapButton"] = true,
 }
 
--- Name-prefix patterns for map pin/POI overlay frames that get parented to Minimap
--- but are not addon buttons (HandyNotes, TomTom, Questie, GatherMate, etc.).
+-- Name-prefix patterns for map pin/POI frames (not addon buttons).
 local PIN_FRAME_PATTERNS = {
     "^HandyNotes",
     "^TomTom",
@@ -48,8 +53,28 @@ local function IsPinFrame(name)
     return false
 end
 
+local function NormalizeCompartmentDisplayName(name)
+    local displayName = name or "Unknown"
+    displayName = displayName:gsub("^LibDBIcon10_", "")
+    displayName = displayName:gsub("MinimapButton", "")
+    displayName = displayName:gsub("Minimap", "")
+    displayName = displayName:gsub("Button$", "")
+    if displayName == "" then
+        displayName = name or "Unknown"
+    end
+    return displayName
+end
+
+local function BuildCollectedButtonSignature(name, icon)
+    if type(icon) ~= "string" or icon == "" then return nil end
+    return string.lower((name or "unknown")) .. "|" .. icon
+end
+
 -- Minimum button width to be considered a real addon button (map pins are typically <20px).
 local MIN_BUTTON_SIZE = 20
+
+-- Store reference to the real SetParent method before we override it on collected buttons
+local FrameSetParent = UIParent.SetParent
 
 -- [ COMPARTMENT BUTTON ]----------------------------------------------------------------------------
 
@@ -57,8 +82,7 @@ function Plugin:CreateCompartmentButton()
     if self._compartmentButton then return end
     local frame = self.frame
 
-    -- Drawer toggle button (bottom-right corner of minimap, hidden until hover)
-    -- Parented to Overlay so it renders above the Minimap render surface
+    -- Drawer toggle — parented to Overlay so it renders above the Minimap surface
     local btn = CreateFrame("Button", "OrbitMinimapCompartmentButton", frame.Overlay or frame)
     btn:SetSize(COMPARTMENT_BUTTON_SIZE, COMPARTMENT_BUTTON_SIZE)
     btn:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
@@ -66,32 +90,22 @@ function Plugin:CreateCompartmentButton()
     btn.orbitOriginalWidth = COMPARTMENT_BUTTON_SIZE
     btn.orbitOriginalHeight = COMPARTMENT_BUTTON_SIZE
 
-    -- Background
-    btn.bg = btn:CreateTexture(nil, "BACKGROUND")
-    btn.bg:SetAllPoints(btn)
-    btn.bg:SetColorTexture(0.1, 0.1, 0.1, 0.8)
-
     btn.highlight = btn:CreateTexture(nil, "HIGHLIGHT")
     btn.highlight:SetAllPoints(btn)
     btn.highlight:SetTexture("Interface\\Buttons\\UI-Common-MouseHilight")
     btn.highlight:SetAlpha(0.5)
     btn.highlight:SetBlendMode("ADD")
 
-    -- Atlas icon: Blizzard's map-filter funnel (same as used by World Map filter button)
+    -- Atlas icon: Blizzard's map-filter funnel
     btn.icon = btn:CreateTexture(nil, "ARTWORK")
     btn.icon:SetAllPoints(btn)
     btn.icon:SetAtlas("Map-Filter-Button", false)
 
-    btn.iconPushed = btn:CreateTexture(nil, "ARTWORK")
-    btn.iconPushed:SetAllPoints(btn)
-    btn.iconPushed:SetAtlas("Map-Filter-Button-down", false)
-    btn.iconPushed:Hide()
+    -- Setup visual for canvas mode
+    btn.visual = btn.icon
 
-    btn:SetScript("OnMouseDown", function() btn.icon:Hide(); btn.iconPushed:Show() end)
-    btn:SetScript("OnMouseUp",   function() btn.iconPushed:Hide(); btn.icon:Show() end)
-
-    -- Border
-    Orbit.Skin:SkinBorder(btn, btn, 1, BORDER_COLOR)
+    btn:SetScript("OnMouseDown", function() btn.icon:SetAlpha(0.6) end)
+    btn:SetScript("OnMouseUp",   function() btn.icon:SetAlpha(1) end)
 
     -- Start hidden; revealed on minimap hover
     btn:SetAlpha(0)
@@ -108,6 +122,20 @@ function Plugin:CreateCompartmentButton()
     end)
 
     self._compartmentButton = btn
+end
+
+-- [ HIDDEN BUTTON HOLDER ]--------------------------------------------------------------------------
+
+function Plugin:GetOrCreateButtonHolder()
+    if self._buttonHolder then return self._buttonHolder end
+
+    local holder = CreateFrame("Frame", "OrbitMinimapButtonHolder", UIParent)
+    holder:SetSize(1, 1)
+    holder:SetPoint("TOPLEFT", UIParent, "TOPLEFT", HOLDER_OFFSCREEN, -HOLDER_OFFSCREEN)
+    holder:Hide()
+
+    self._buttonHolder = holder
+    return holder
 end
 
 -- [ COMPARTMENT FLYOUT ]----------------------------------------------------------------------------
@@ -130,20 +158,33 @@ function Plugin:CreateCompartmentFlyout()
     -- Border
     Orbit.Skin:SkinBorder(flyout, flyout, Orbit.db.GlobalSettings.BorderSize or 2, BORDER_COLOR)
 
-    -- Close on click-away via fullscreen overlay
-    local overlay = CreateFrame("Button", nil, UIParent)
-    overlay:SetAllPoints(UIParent)
-    overlay:SetFrameStrata(Orbit.Constants.Strata.Dialog)
-    overlay:SetFrameLevel(flyout:GetFrameLevel() - 1)
-    overlay:Hide()
-    overlay:RegisterForClicks("AnyUp")
-    overlay:SetScript("OnClick", function() flyout:Hide() end)
-    flyout._clickOverlay = overlay
+    -- Auto-close via OnUpdate polling when mouse leaves the flyout + minimap area.
+    local outsideTimer = 0
 
-    flyout:SetScript("OnShow", function(f) f._clickOverlay:Show() end)
-    flyout:SetScript("OnHide", function(f) f._clickOverlay:Hide() end)
+    flyout:SetScript("OnUpdate", function(f, elapsed)
+        if not f:IsShown() then return end
 
-    flyout.rows = {}
+        local mouseOverFlyout = f:IsMouseOver()
+        local mouseOverBtn = self._compartmentButton and self._compartmentButton:IsMouseOver()
+        -- Use our container (not Minimap surface) — FarmHud reparents Minimap away from our frame.
+        local mouseOverMinimap = self.frame:IsMouseOver()
+
+        local tooltipShown = GameTooltip:IsShown() and GameTooltip:GetOwner() and GameTooltip:GetOwner():GetParent() == f  -- proxy tooltip open
+
+        if mouseOverFlyout or mouseOverBtn or mouseOverMinimap or tooltipShown then
+            outsideTimer = 0
+        else
+            outsideTimer = outsideTimer + elapsed
+            if outsideTimer >= FLYOUT_CLOSE_DELAY then
+                outsideTimer = 0
+                self:HideCompartmentFlyout()
+            end
+        end
+    end)
+
+    flyout:SetScript("OnShow", function() outsideTimer = 0 end)
+    flyout:SetScript("OnHide", function() outsideTimer = 0 end)
+
     self._compartmentFlyout = flyout
 end
 
@@ -154,30 +195,185 @@ function Plugin:ToggleCompartmentFlyout()
     local flyout = self._compartmentFlyout
 
     if flyout:IsShown() then
-        flyout:Hide()
+        self:HideCompartmentFlyout()
         return
     end
 
-    self:PopulateCompartmentFlyout()
+    self:ShowCompartmentFlyout()
+end
+
+function Plugin:HideCompartmentFlyout()
+    if self._compartmentFlyout then
+        self._compartmentFlyout:Hide()
+    end
+end
+
+function Plugin:ShowCompartmentFlyout()
+    if not self._compartmentFlyout then
+        self:CreateCompartmentFlyout()
+    end
+    local flyout = self._compartmentFlyout
+
+    self:LayoutButtonsInFlyout()
     flyout:Show()
 end
 
-function Plugin:PopulateCompartmentFlyout()
-    local flyout = self._compartmentFlyout
-    if not flyout then return end
-    local btn = self._compartmentButton
-    local anchor = btn and btn:IsShown() and btn or self.frame
+-- [ FLYOUT LAYOUT ]---------------------------------------------------------------------------------
 
-    -- Hide existing rows
-    for _, row in ipairs(flyout.rows) do
-        row:Hide()
+local proxyButtonPool = {}  -- Reusable pool of proxy buttons keyed by original button
+
+local function GetProxyIcon(originalBtn)
+    -- Extract the icon texture from the original button
+    local tex = nil
+    -- Try .icon first (LibDBIcon standard field)
+    pcall(function()
+        if originalBtn.icon and originalBtn.icon.GetTexture then
+            tex = originalBtn.icon:GetTexture()
+        end
+    end)
+    -- Fallback: dataObject.icon
+    if not tex then
+        pcall(function()
+            if originalBtn.dataObject and originalBtn.dataObject.icon then
+                tex = originalBtn.dataObject.icon
+            end
+        end)
+    end
+    -- Fallback: scan regions for a texture with content
+    if not tex then
+        pcall(function()
+            for _, region in ipairs({ originalBtn:GetRegions() }) do
+                if region and region:IsObjectType("Texture") then
+                    local t = region:GetTexture()
+                    if t and region ~= originalBtn.background and region ~= originalBtn.border then
+                        tex = t
+                        break
+                    end
+                end
+            end
+        end)
+    end
+    -- Fallback: GetNormalTexture
+    if not tex then
+        pcall(function()
+            if originalBtn.GetNormalTexture and originalBtn:GetNormalTexture() then
+                tex = originalBtn:GetNormalTexture():GetTexture()
+            end
+        end)
+    end
+    return tex
+end
+
+local function GetOrCreateProxyButton(originalBtn, parent, plugin)
+    if proxyButtonPool[originalBtn] then
+        local proxy = proxyButtonPool[originalBtn]
+        proxy:SetParent(parent)
+        proxy:SetSize(FLYOUT_BUTTON_SIZE, FLYOUT_BUTTON_SIZE)
+        -- Refresh icon in case the addon changed it
+        local tex = GetProxyIcon(originalBtn)
+        if tex then proxy._icon:SetTexture(tex) end
+        return proxy
     end
 
+    local proxy = CreateFrame("Button", nil, parent)
+    proxy:SetSize(FLYOUT_BUTTON_SIZE, FLYOUT_BUTTON_SIZE)
+    proxy._originalBtn = originalBtn
+
+    -- Create a clean icon texture
+    local icon = proxy:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints()
+    proxy._icon = icon
+
+    local tex = GetProxyIcon(originalBtn)
+    if tex then
+        icon:SetTexture(tex)
+    else
+        icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+    end
+    -- Copy texcoords from original if available
+    pcall(function()
+        if originalBtn.icon and originalBtn.icon.GetTexCoord then
+            icon:SetTexCoord(originalBtn.icon:GetTexCoord())
+        end
+    end)
+    icon:SetDesaturated(false)
+    icon:SetAlpha(1)
+    icon:SetVertexColor(1, 1, 1, 1)
+
+    -- Highlight on hover
+    local highlight = proxy:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetAllPoints()
+    highlight:SetColorTexture(1, 1, 1, 0.15)
+
+    -- Forward clicks via dataObject.OnClick; AnyUp only to avoid double-fire.
+    proxy:RegisterForClicks("AnyUp")
+    proxy:SetScript("OnClick", function(_, button)
+        local btn = originalBtn
+        local b = button or "LeftButton"
+        if btn.dataObject and btn.dataObject.OnClick then
+            btn.dataObject.OnClick(btn, b)
+        elseif btn:GetScript("OnClick") then
+            pcall(function() btn:GetScript("OnClick")(btn, b) end)
+        else
+            pcall(function() btn:Click(b) end)
+        end
+    end)
+
+    -- Forward tooltip
+    proxy:SetScript("OnEnter", function(self)
+        if originalBtn.dataObject then
+            local dObj = originalBtn.dataObject
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            if dObj.OnTooltipShow then
+                dObj.OnTooltipShow(GameTooltip)
+            elseif dObj.text then
+                GameTooltip:SetText(dObj.text)
+            end
+            GameTooltip:Show()
+        else
+            pcall(function()
+                local script = originalBtn:GetScript("OnEnter")
+                if script then script(originalBtn) end
+            end)
+        end
+    end)
+    proxy:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+        pcall(function()
+            local script = originalBtn:GetScript("OnLeave")
+            if script then script(originalBtn) end
+        end)
+    end)
+
+    proxyButtonPool[originalBtn] = proxy
+    return proxy
+end
+
+function Plugin:LayoutButtonsInFlyout()
+    local flyout = self._compartmentFlyout
+    if not flyout then return end
+
     local collected = self._collectedButtons or {}
-    if #collected == 0 then
-        flyout:SetSize(140, 30)
+    -- Count visible buttons (respect LibDBIcon .db.hide)
+    local visibleEntries = {}
+    for _, entry in ipairs(collected) do
+        if entry.button then
+            local hidden = entry.button.db and entry.button.db.hide
+            if not hidden then
+                visibleEntries[#visibleEntries + 1] = entry
+            end
+        end
+    end
+
+    -- Hide all existing proxy buttons first
+    for _, proxy in pairs(proxyButtonPool) do
+        proxy:Hide()
+    end
+
+    if #visibleEntries == 0 then
+        flyout:SetSize(EMPTY_FLYOUT_W, EMPTY_FLYOUT_H)
         flyout:ClearAllPoints()
-        flyout:SetPoint("BOTTOMRIGHT", anchor, "TOPRIGHT", 0, 2)
+        flyout:SetPoint("TOPRIGHT", self.frame, "BOTTOMRIGHT", 0, -FLYOUT_GAP)
         if not flyout._emptyText then
             flyout._emptyText = flyout:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
             flyout._emptyText:SetPoint("CENTER")
@@ -188,144 +384,62 @@ function Plugin:PopulateCompartmentFlyout()
     end
     if flyout._emptyText then flyout._emptyText:Hide() end
 
-    local maxTextWidth = 0
-    for i, entry in ipairs(collected) do
-        local row = flyout.rows[i]
-        if not row then
-            row = CreateFrame("Button", nil, flyout)
-            row:SetHeight(COMPARTMENT_ROW_HEIGHT)
-            row:RegisterForClicks("AnyUp")
-            row:SetHighlightTexture(COMPARTMENT_HIGHLIGHT_TEXTURE, "ADD")
-            row:GetHighlightTexture():SetAlpha(0.15)
+    local cols = math.min(FLYOUT_COLUMNS, #visibleEntries)
+    local rows = math.ceil(#visibleEntries / cols)
+    local cellSize = FLYOUT_BUTTON_SIZE + FLYOUT_BUTTON_SPACING
 
-            row.icon = row:CreateTexture(nil, "ARTWORK")
-            row.icon:SetSize(COMPARTMENT_ICON_SIZE, COMPARTMENT_ICON_SIZE)
-            row.icon:SetPoint("LEFT", COMPARTMENT_PADDING, 0)
+    local flyoutWidth = (cols * cellSize) + FLYOUT_BUTTON_SPACING + (COMPARTMENT_PADDING * 2)
+    local flyoutHeight = (rows * cellSize) + FLYOUT_BUTTON_SPACING + (COMPARTMENT_PADDING * 2)
+    flyout:SetSize(flyoutWidth, flyoutHeight)
 
-            row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            row.label:SetPoint("LEFT", row.icon, "RIGHT", COMPARTMENT_ICON_PADDING, 0)
-            row.label:SetJustifyH("LEFT")
+    -- Create/reuse proxy buttons and position them in a grid
+    for i, entry in ipairs(visibleEntries) do
+        local originalBtn = entry.button
+        if originalBtn then
+            local proxy = GetOrCreateProxyButton(originalBtn, flyout, self)
+            proxy:SetFrameLevel(flyout:GetFrameLevel() + 5)
 
-            flyout.rows[i] = row
+            local col = (i - 1) % cols
+            local row = math.floor((i - 1) / cols)
+            local xOff = COMPARTMENT_PADDING + FLYOUT_BUTTON_SPACING + (col * cellSize)
+            local yOff = -(COMPARTMENT_PADDING + FLYOUT_BUTTON_SPACING + (row * cellSize))
+
+            proxy:ClearAllPoints()
+            proxy:SetPoint("TOPLEFT", flyout, "TOPLEFT", xOff, yOff)
+            proxy:Show()
         end
-
-        -- Icon
-        local iconTexture = entry.icon
-        if iconTexture then
-            if type(iconTexture) == "string" and C_Texture.GetAtlasInfo(iconTexture) then
-                row.icon:SetAtlas(iconTexture)
-            else
-                row.icon:SetTexture(iconTexture)
-            end
-            row.icon:SetTexCoord(0, 1, 0, 1)
-            row.icon:Show()
-        else
-            row.icon:Hide()
-        end
-
-        -- Label
-        local displayName = entry.name or "Unknown"
-        row.label:SetText(displayName)
-        Orbit.Skin:SkinText(row.label, { font = Orbit.db.GlobalSettings.Font, textSize = 11 })
-
-        local textWidth = row.label:GetStringWidth()
-        if textWidth > maxTextWidth then
-            maxTextWidth = textWidth
-        end
-
-        -- Click handler: trigger the original addon button's OnClick
-        -- RegisterForClicks("AnyUp") is set on row creation so right-clicks are received.
-        row:SetScript("OnClick", function(_, button)
-            if not entry.button then return end
-            local btn = entry.button
-            local b = button or "LeftButton"
-            if btn.dataObject and btn.dataObject.OnClick then
-                btn.dataObject.OnClick(btn, b)
-            elseif btn:GetScript("OnClick") then
-                btn:GetScript("OnClick")(btn, b)
-            end
-            -- Close flyout on left-click; leave open on right-click so context
-            -- menus (which open over the flyout) can appear without losing context.
-            if b ~= "RightButton" then
-                flyout:Hide()
-            end
-        end)
-
-        -- Tooltip passthrough
-        row:SetScript("OnEnter", function(r)
-            if not entry.button then return end
-            local btn = entry.button
-            local obj = btn.dataObject
-            if obj and obj.OnTooltipShow then
-                GameTooltip:SetOwner(r, "ANCHOR_RIGHT")
-                obj.OnTooltipShow(GameTooltip)
-                GameTooltip:Show()
-            elseif obj and obj.OnEnter then
-                obj.OnEnter(btn)
-            elseif btn:GetScript("OnEnter") then
-                btn:GetScript("OnEnter")(btn)
-            end
-        end)
-        row:SetScript("OnLeave", function()
-            GameTooltip:Hide()
-            local btn = entry.button
-            if btn then
-                local obj = btn.dataObject
-                if obj and obj.OnLeave then
-                    obj.OnLeave(btn)
-                elseif btn:GetScript("OnLeave") then
-                    btn:GetScript("OnLeave")(btn)
-                end
-            end
-        end)
-
-        -- Position
-        row:ClearAllPoints()
-        if i == 1 then
-            row:SetPoint("TOPLEFT", flyout, "TOPLEFT", 0, -COMPARTMENT_PADDING)
-            row:SetPoint("TOPRIGHT", flyout, "TOPRIGHT", 0, -COMPARTMENT_PADDING)
-        else
-            row:SetPoint("TOPLEFT", flyout.rows[i - 1], "BOTTOMLEFT", 0, 0)
-            row:SetPoint("TOPRIGHT", flyout.rows[i - 1], "BOTTOMRIGHT", 0, 0)
-        end
-        row:Show()
     end
 
-    -- Size flyout to fit content
-    local rowWidth = COMPARTMENT_PADDING + COMPARTMENT_ICON_SIZE + COMPARTMENT_ICON_PADDING + maxTextWidth + COMPARTMENT_PADDING + 10
-    local width = math.min(math.max(rowWidth, 120), COMPARTMENT_MAX_WIDTH)
-    local height = (#collected * COMPARTMENT_ROW_HEIGHT) + (COMPARTMENT_PADDING * 2)
-    flyout:SetSize(width, height)
+    -- Position flyout outside the minimap, choosing the side with most space.
+    local mmFrame = self.frame
+    local scale = mmFrame:GetEffectiveScale()
+    local uiScale = UIParent:GetEffectiveScale()
+    local screenW = GetScreenWidth() * uiScale
+    local screenH = GetScreenHeight() * uiScale
 
-    -- Position the flyout intelligently based on available screen space
-    local scale = anchor:GetEffectiveScale()
-    local screenW = GetScreenWidth() * UIParent:GetEffectiveScale()
-    local screenH = GetScreenHeight() * UIParent:GetEffectiveScale()
-    local btnLeft = anchor:GetLeft() * scale
-    local btnRight = anchor:GetRight() * scale
-    local btnTop = anchor:GetTop() * scale
-    local btnBottom = anchor:GetBottom() * scale
-    local flyW = width * scale
-    local flyH = height * scale
-    local gap = 2
+    local mmLeft = (mmFrame:GetLeft() or 0) * scale
+    local mmRight = (mmFrame:GetRight() or screenW) * scale
+    local mmTop = (mmFrame:GetTop() or screenH) * scale
+    local mmBottom = (mmFrame:GetBottom() or 0) * scale
 
-    -- Vertical: prefer expanding upward; fall back to downward if not enough room above
-    local spaceAbove = screenH - btnTop
-    local spaceBelow = btnBottom
-    local expandUp = (spaceAbove >= flyH + gap) or (spaceAbove >= spaceBelow)
-
-    -- Horizontal: prefer aligning to the right edge; fall back to left alignment if it would clip
-    local expandLeft = (btnRight + flyW) > screenW
+    local flyW = flyoutWidth * scale
+    local flyH = flyoutHeight * scale
+    local spaceLeft = mmLeft
+    local spaceRight = screenW - mmRight
+    local spaceAbove = screenH - mmTop
+    local spaceBelow = mmBottom
 
     flyout:ClearAllPoints()
-    if expandUp and not expandLeft then
-        flyout:SetPoint("BOTTOMRIGHT", anchor, "TOPRIGHT", 0, gap)
-    elseif expandUp and expandLeft then
-        flyout:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, gap)
-    elseif not expandUp and not expandLeft then
-        flyout:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -gap)
+    if spaceBelow >= flyH + FLYOUT_GAP then
+        flyout:SetPoint("TOPRIGHT", mmFrame, "BOTTOMRIGHT", 0, -FLYOUT_GAP)
+    elseif spaceAbove >= flyH + FLYOUT_GAP then
+        flyout:SetPoint("BOTTOMRIGHT", mmFrame, "TOPRIGHT", 0, FLYOUT_GAP)
+    elseif spaceLeft >= flyW + FLYOUT_GAP then
+        flyout:SetPoint("TOPRIGHT", mmFrame, "TOPLEFT", -FLYOUT_GAP, 0)
+    elseif spaceRight >= flyW + FLYOUT_GAP then
+        flyout:SetPoint("TOPLEFT", mmFrame, "TOPRIGHT", FLYOUT_GAP, 0)
     else
-        flyout:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -gap)
+        flyout:SetPoint("TOPRIGHT", mmFrame, "BOTTOMRIGHT", 0, -FLYOUT_GAP)
     end
 end
 
@@ -342,6 +456,7 @@ function Plugin:CollectAddonButtons()
 
     -- Track already-collected frame references so we don't double-collect
     local seen = {}
+    local seenSignatures = {}
 
     -- 1) LibDBIcon registered buttons
     local lib = LibStub and LibStub("LibDBIcon-1.0", true)
@@ -349,12 +464,18 @@ function Plugin:CollectAddonButtons()
         local ownButtonName = "Orbit"
         for name, button in pairs(lib.objects) do
             if name ~= ownButtonName then
-                collected[#collected + 1] = {
-                    name = name,
-                    button = button,
-                    icon = button.dataObject and button.dataObject.icon or nil,
-                    source = "libdbicon",
-                }
+                local displayName = NormalizeCompartmentDisplayName(name)
+                local icon = button.dataObject and button.dataObject.icon or nil
+                local signature = BuildCollectedButtonSignature(displayName, icon)
+                if not signature or not seenSignatures[signature] then
+                    collected[#collected + 1] = {
+                        name = displayName,
+                        button = button,
+                        icon = icon,
+                        source = "libdbicon",
+                    }
+                end
+                if signature then seenSignatures[signature] = true end
                 seen[button] = true
             end
         end
@@ -393,18 +514,17 @@ function Plugin:CollectAddonButtons()
                         elseif child.GetNormalTexture and child:GetNormalTexture() then
                             icon = child:GetNormalTexture():GetTexture()
                         end
-                        local displayName = frameName or tostring(child)
-                        displayName = displayName:gsub("^LibDBIcon10_", "")
-                        displayName = displayName:gsub("MinimapButton", "")
-                        displayName = displayName:gsub("Minimap", "")
-                        displayName = displayName:gsub("Button$", "")
-                        if displayName == "" then displayName = frameName or "Unknown" end
-                        collected[#collected + 1] = {
-                            name = displayName,
-                            button = child,
-                            icon = icon,
-                            source = "minimap_child",
-                        }
+                        local displayName = NormalizeCompartmentDisplayName(frameName or tostring(child))
+                        local signature = BuildCollectedButtonSignature(displayName, icon)
+                        if not signature or not seenSignatures[signature] then
+                            collected[#collected + 1] = {
+                                name = displayName,
+                                button = child,
+                                icon = icon,
+                                source = "minimap_child",
+                            }
+                        end
+                        if signature then seenSignatures[signature] = true end
                         seen[child] = true
                     end
                 end
@@ -415,48 +535,97 @@ function Plugin:CollectAddonButtons()
     table.sort(collected, function(a, b) return (a.name or "") < (b.name or "") end)
 end
 
-function Plugin:HideCollectedButtons()
+-- [ GRAB / RELEASE BUTTONS ]------------------------------------------------------------------------
+
+function Plugin:GrabCollectedButtons()
     if not self._collectedButtons then return end
+    local holder = self:GetOrCreateButtonHolder()
+
     for _, entry in ipairs(self._collectedButtons) do
-        if entry.button then
-            entry.button:Hide()
-            -- Prevent re-showing by addons that call Show() periodically.
-            -- hooksecurefunc is taint-safe; the hook fires after the original Show().
-            -- We hide immediately afterwards when the compartment is active.
-            if not entry.button._orbitOnShowHooked then
-                hooksecurefunc(entry.button, "Show", function(b)
-                    if self._compartmentActive then
-                        b:Hide()
+        local button = entry.button
+        if button then
+            -- Save original parent and position so we can restore later
+            if not button._orbitOrigParent then
+                button._orbitOrigParent = button:GetParent()
+                local n = button:GetNumPoints()
+                if n > 0 then
+                    button._orbitOrigPoints = {}
+                    for i = 1, n do
+                        button._orbitOrigPoints[i] = { button:GetPoint(i) }
                     end
-                end)
-                entry.button._orbitOnShowHooked = true
+                end
+                button._orbitOrigWidth = button:GetWidth()
+                button._orbitOrigHeight = button:GetHeight()
+                button._orbitOrigScale = button:GetScale()
             end
-            -- For direct minimap children, also suppress SetShown
-            if entry.source == "minimap_child" and not entry.button._orbitSetShownHooked then
-                hooksecurefunc(entry.button, "SetShown", function(b, shown)
-                    if shown and self._compartmentActive then
-                        b:Hide()
-                    end
-                end)
-                entry.button._orbitSetShownHooked = true
+
+            -- Reparent to hidden holder via raw SetParent (ours is overridden with doNothing)
+            FrameSetParent(button, holder)
+            button:SetFrameStrata(holder:GetFrameStrata())
+
+            -- Block addons from repositioning their buttons back.
+            if not button._orbitMethodsOverridden then
+                button.ClearAllPoints = doNothing
+                button.SetPoint = doNothing
+                button.SetParent = doNothing
+                button._orbitMethodsOverridden = true
             end
+
+            -- Disable drag scripts
+            button:SetScript("OnDragStart", nil)
+            button:SetScript("OnDragStop", nil)
+            button:SetIgnoreParentScale(false)
         end
     end
 end
 
-function Plugin:RestoreCollectedButtons()
+function Plugin:ReleaseCollectedButtons()
     if not self._collectedButtons then return end
+
     for _, entry in ipairs(self._collectedButtons) do
-        if entry.button then
-            -- Hooks installed via hooksecurefunc cannot be removed; just clear the
-            -- flag so the hook body becomes a no-op after the compartment is inactive.
-            entry.button._orbitOnShowHooked = nil
-            entry.button._orbitSetShownHooked = nil
-            if not (entry.button.db and entry.button.db.hide) then
-                entry.button:Show()
+        local button = entry.button
+        if button then
+            -- Restore original frame methods
+            if button._orbitMethodsOverridden then
+                button.ClearAllPoints = nil  -- removes override, restores metatable method
+                button.SetPoint = nil
+                button.SetParent = nil
+                button._orbitMethodsOverridden = nil
+            end
+
+            -- Restore original parent and position
+            local origParent = button._orbitOrigParent
+            if origParent then
+                button:SetParent(origParent)
+
+                if button._orbitOrigPoints then
+                    button:ClearAllPoints()
+                    for _, pt in ipairs(button._orbitOrigPoints) do
+                        button:SetPoint(unpack(pt))
+                    end
+                end
+                if button._orbitOrigWidth and button._orbitOrigHeight then
+                    button:SetSize(button._orbitOrigWidth, button._orbitOrigHeight)
+                end
+                if button._orbitOrigScale then
+                    button:SetScale(button._orbitOrigScale)
+                end
+            end
+
+            -- Clean up saved state
+            button._orbitOrigParent = nil
+            button._orbitOrigPoints = nil
+            button._orbitOrigWidth = nil
+            button._orbitOrigHeight = nil
+            button._orbitOrigScale = nil
+
+            -- Show the button if it wasn't explicitly hidden by the addon
+            if not (button.db and button.db.hide) then
+                button:Show()
             end
         end
     end
+
     self._collectedButtons = nil
 end
 
@@ -467,29 +636,29 @@ function Plugin:ApplyAddonCompartment()
     local useClickAction = self:UsesAddonClickAction()
 
     if useClickAction or not self:IsComponentDisabled("Compartment") then
+        -- Release then re-collect to purge stale state each cycle.
+        self._compartmentActive = false
+        self:ReleaseCollectedButtons()
         self._compartmentActive = true
-        -- Restore any previously-hooked buttons before re-collecting, so stale hooks
-        -- (e.g. on frames that are no longer eligible) are cleaned up each cycle.
-        self:RestoreCollectedButtons()
         self:CollectAddonButtons()
-        self:HideCollectedButtons()
+        self:GrabCollectedButtons()
 
         -- Setup hover reveal for the compartment button
         local btn = self._compartmentButton
-    if useClickAction then btn:Hide() else btn:Show() end
+        if useClickAction then btn:Hide() else btn:Show() end
 
         if not frame._compartmentHoverHooked then
             local minimap = Minimap
             local function ShowCompartmentButton()
                 if not btn:IsShown() then return end
-                UIFrameFadeIn(btn, 0.15, btn:GetAlpha(), 1)
+                UIFrameFadeIn(btn, FADE_IN_DURATION, btn:GetAlpha(), 1)
             end
             local function HideCompartmentButton()
                 if not btn:IsShown() then return end
                 if btn:IsMouseOver() then return end
                 if minimap and minimap:IsMouseOver() then return end
                 if self._compartmentFlyout and self._compartmentFlyout:IsShown() then return end
-                UIFrameFadeOut(btn, 0.3, btn:GetAlpha(), 0)
+                UIFrameFadeOut(btn, FADE_OUT_DURATION, btn:GetAlpha(), 0)
             end
             frame:HookScript("OnEnter", ShowCompartmentButton)
             frame:HookScript("OnLeave", HideCompartmentButton)
@@ -513,9 +682,9 @@ function Plugin:ApplyAddonCompartment()
                 C_Timer.After(0.1, function()
                     pending = false
                     if self._compartmentActive then
-                        self:RestoreCollectedButtons()
+                        self:ReleaseCollectedButtons()
                         self:CollectAddonButtons()
-                        self:HideCollectedButtons()
+                        self:GrabCollectedButtons()
                     end
                 end)
             end)
@@ -523,8 +692,8 @@ function Plugin:ApplyAddonCompartment()
         end
     else
         self._compartmentActive = false
-        self:RestoreCollectedButtons()
-        if self._compartmentButton then self._compartmentButton:Hide() end
         if self._compartmentFlyout then self._compartmentFlyout:Hide() end
+        self:ReleaseCollectedButtons()
+        if self._compartmentButton then self._compartmentButton:Hide() end
     end
 end
