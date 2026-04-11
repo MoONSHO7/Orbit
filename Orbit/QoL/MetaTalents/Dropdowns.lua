@@ -80,6 +80,49 @@ local function IsMPlusDungeon(name)
     return false
 end
 
+-- [ SELECTION PERSISTENCE ]--------------------------------------------------------------
+-- AccountSettings.MetaTalentsContent / MetaTalentsDifficulty round-trip the dropdown
+-- choice across /reload. RestoreSelection validates the stored value against the live
+-- catalog so a removed dungeon (post-data update) degrades to mplus[1] instead of
+-- silently feeding a stale name into Data.UpdateActiveSpecData.
+local function PersistSelection()
+    local db = Orbit.db and Orbit.db.AccountSettings
+    if not db then return end
+    db.MetaTalentsContent = MT.SelectedContent
+    db.MetaTalentsDifficulty = MT.SelectedDifficulty
+end
+
+local function RestoreSelection()
+    local db = Orbit.db and Orbit.db.AccountSettings
+    local savedContent = db and db.MetaTalentsContent
+    local savedDifficulty = db and db.MetaTalentsDifficulty
+    if savedContent then
+        if IsMPlusDungeon(savedContent) then
+            MT.SelectedContent = savedContent
+            MT.SelectedDifficulty = "Mythic+"
+            return
+        end
+        for _, boss in ipairs(GetRaidBosses()) do
+            if boss == savedContent then
+                MT.SelectedContent = savedContent
+                for _, d in ipairs(GetRaidDifficulties()) do
+                    if d == savedDifficulty then MT.SelectedDifficulty = d; return end
+                end
+                MT.SelectedDifficulty = "Heroic"
+                return
+            end
+        end
+    end
+    local mplus = GetMPlusDungeons()
+    if #mplus > 0 then
+        MT.SelectedContent = mplus[1]
+        MT.SelectedDifficulty = "Mythic+"
+    else
+        MT.SelectedContent = C.DEFAULT_CONTENT
+        MT.SelectedDifficulty = C.DEFAULT_DIFFICULTY
+    end
+end
+
 -- [ REFRESH FUNNEL ]---------------------------------------------------------------------
 function Dropdowns.RefreshMetaUI()
     Data.MarkSpellCacheDirty()
@@ -142,6 +185,7 @@ local function BuildContentDropdown(contentDropdown, diffDropdown)
                     function()
                         MT.SelectedContent = dungeon
                         MT.SelectedDifficulty = "Mythic+"
+                        PersistSelection()
                         if diffDropdown.GenerateMenu then diffDropdown:GenerateMenu() end
                         Dropdowns.RefreshMetaUI()
                     end
@@ -158,6 +202,7 @@ local function BuildContentDropdown(contentDropdown, diffDropdown)
                     function()
                         MT.SelectedContent = boss
                         MT.SelectedDifficulty = "Heroic"
+                        PersistSelection()
                         if diffDropdown.GenerateMenu then diffDropdown:GenerateMenu() end
                         Dropdowns.RefreshMetaUI()
                     end
@@ -180,6 +225,7 @@ local function BuildDifficultyDropdown(diffDropdown)
                 function() return MT.SelectedDifficulty == opt end,
                 function()
                     MT.SelectedDifficulty = opt
+                    PersistSelection()
                     Dropdowns.RefreshMetaUI()
                 end
             )
@@ -270,22 +316,11 @@ function Dropdowns.Setup()
     PinSearchBox()
     PinLoadSystem()
 
-    -- Default to the first item in the catalog if one exists — this way a new
-    -- tier/season doesn't leave users pointed at stale content. Falls back to
-    -- the Constants defaults if the catalog is empty.
-    if not MT.SelectedContent then
-        local mplus = GetMPlusDungeons()
-        if #mplus > 0 then
-            MT.SelectedContent = mplus[1]
-            MT.SelectedDifficulty = "Mythic+"
-        else
-            MT.SelectedContent = C.DEFAULT_CONTENT
-            MT.SelectedDifficulty = C.DEFAULT_DIFFICULTY
-        end
-    end
-    if not MT.SelectedDifficulty then
-        MT.SelectedDifficulty = C.DEFAULT_DIFFICULTY
-    end
+    -- Restore the player's last choice from saved variables; falls back to the first
+    -- catalog entry (or Constants defaults if the catalog is empty) so a new tier/season
+    -- never leaves users pointed at stale content.
+    if not MT.SelectedContent then RestoreSelection() end
+    if not MT.SelectedDifficulty then MT.SelectedDifficulty = C.DEFAULT_DIFFICULTY end
 
     local contentDropdown = CreateFrame("DropdownButton", "OrbitMetaTalentContentDropdown", PlayerSpellsFrame.TalentsFrame, "WowStyle1DropdownTemplate")
     contentDropdown:SetPoint("LEFT", PlayerSpellsFrame.TalentsFrame.LoadSystem, "RIGHT", 15, 0)

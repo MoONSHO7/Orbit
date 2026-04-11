@@ -166,6 +166,8 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             currentValue = GetValueFromVisual(container, control.key)
         end
 
+        if currentValue == nil then currentValue = control.default end
+
         local callback = function(key, value) self:OnValueChanged(key, value) end
         local widget
 

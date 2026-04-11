@@ -1,6 +1,6 @@
 -- [ TRACKED BAR ] -------------------------------------------------------------
--- Single-payload horizontal bar. Each bar holds one ability or item and renders
--- it in one of three modes determined by what was dropped:
+-- Single-payload bar (horizontal or vertical). Each bar holds one ability or
+-- item and renders it in one of three modes determined by what was dropped:
 --
 --   * charges    — spell with maxCharges > 1. Bar split into N segments by
 --                  dividers; main StatusBar value = currentCharges (sink-style,
@@ -22,6 +22,14 @@
 --
 --   * cd-only    — spell or item with no active duration. Bar fills empty→full
 --                  as the cooldown progresses.
+--
+-- Layout: per-bar setting "Horizontal" (default) or "Vertical". Width and
+-- Height stored as long-axis / short-axis (Width = long, Height = short),
+-- so the slider ranges (80-400 long, 12-40 short) are valid in both
+-- orientations and the same record can flip orientations without resizing.
+-- Vertical bars use StatusBar:SetOrientation("VERTICAL") which fills bottom
+-- → top, naturally giving "active drains downward" (value decreases) and
+-- "cd fills upward" (value increases) — the active+cd math doesn't change.
 --
 -- Spells use `C_Spell.GetSpellCooldownDuration` (DurationObject) +
 -- `EvaluateRemainingPercent(IDENTITY_CURVE)` to get a numeric remainingPercent
@@ -250,34 +258,45 @@ function Bar:Build(plugin, record)
 
     -- Canvas Mode: preview renderer. The bar's text FontStrings are children
     -- of the inner StatusBar, so the preview must be sized to the StatusBar's
-    -- inner width (frame width minus icon area), NOT the full frame width —
-    -- otherwise drag offsets calibrated against a too-wide preview map back to
-    -- the wrong live coordinates. The decorative icon is parented OUTSIDE the
-    -- preview to the LEFT so it visually represents the iconBg without
-    -- inflating the draggable canvas area.
+    -- inner area (frame minus icon), NOT the full frame — otherwise drag
+    -- offsets calibrated against a too-large preview map back to the wrong
+    -- live coordinates. The decorative icon is parented OUTSIDE the preview
+    -- (LEFT in horizontal, TOP in vertical) so it visually represents the
+    -- iconBg without inflating the draggable canvas area.
     function frame:CreateCanvasPreview(options)
         local scale = options.scale or 1
         local borderSize = options.borderSize or OrbitEngine.Pixel:DefaultBorderSize(scale)
         local rec = plugin:GetContainerRecord(self.recordId)
         local hasPayload = rec and rec.payload and rec.payload.id
         local showIcon = plugin:GetSetting(self.recordId, "ShowIcon") ~= false
-        local height = self:GetHeight()
-        local iconSize = (showIcon and hasPayload) and height or 0
-        local barWidth = self:GetWidth() - iconSize
+        local isVertical = self._isVertical
+        local fW, fH = self:GetWidth(), self:GetHeight()
+        local iconSize = (showIcon and hasPayload) and (isVertical and fW or fH) or 0
+        local innerW = isVertical and fW or (fW - iconSize)
+        local innerH = isVertical and (fH - iconSize) or fH
         local preview = OrbitEngine.Preview.Frame:CreateBasePreview(self, scale, options.parent, borderSize)
         local previewScale = preview:GetEffectiveScale()
-        preview:SetWidth(OrbitEngine.Pixel:Snap(barWidth * scale, previewScale))
-        preview.sourceWidth = barWidth
+        preview:SetSize(
+            OrbitEngine.Pixel:Snap(innerW * scale, previewScale),
+            OrbitEngine.Pixel:Snap(innerH * scale, previewScale)
+        )
+        preview.sourceWidth = innerW
+        preview.sourceHeight = innerH
         if iconSize > 0 then
             local iconTex = preview:CreateTexture(nil, "ARTWORK")
             iconTex:SetSize(iconSize * scale, iconSize * scale)
-            iconTex:SetPoint("RIGHT", preview, "LEFT", 0, 0)
+            if isVertical then
+                iconTex:SetPoint("BOTTOM", preview, "TOP", 0, 0)
+            else
+                iconTex:SetPoint("RIGHT", preview, "LEFT", 0, 0)
+            end
             iconTex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
             local liveTex = self.Icon and self.Icon:GetTexture()
             if liveTex then iconTex:SetTexture(liveTex) end
         end
         local bar = CreateFrame("StatusBar", nil, preview)
         bar:SetAllPoints()
+        bar:SetOrientation(isVertical and "VERTICAL" or "HORIZONTAL")
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(0.6)
         local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
@@ -365,15 +384,33 @@ function Bar:Apply(plugin, frame, record)
     local payload = record.payload
     local hasPayload = payload and payload.id
 
-    local width = plugin:GetSetting(record.id, "Width") or DEFAULT_WIDTH
-    local height = plugin:GetSetting(record.id, "Height") or DEFAULT_HEIGHT
+    -- Width = long axis, Height = short axis. Slider ranges (80-400 / 12-40)
+    -- are interpreted as long/short rather than X/Y so the same record can
+    -- flip orientation without resizing.
+    local longDim = plugin:GetSetting(record.id, "Width") or DEFAULT_WIDTH
+    local shortDim = plugin:GetSetting(record.id, "Height") or DEFAULT_HEIGHT
     local Pixel = OrbitEngine.Pixel
-    if Pixel then width = Pixel:Snap(width); height = Pixel:Snap(height) end
+    if Pixel then longDim = Pixel:Snap(longDim); shortDim = Pixel:Snap(shortDim) end
+    local isVertical = plugin:GetSetting(record.id, "Layout") == "Vertical"
+    frame._isVertical = isVertical
+    -- Resize bounds map long/short axis to W/H. In vertical, drag-W writes
+    -- the short-axis "Height" setting and drag-H writes the long-axis "Width"
+    -- setting, so the resize handle's pixel deltas land on the slider that
+    -- controls that screen axis in either orientation.
+    if isVertical then
+        frame.orbitResizeBounds = {
+            minW = 12, maxW = 40, minH = 80, maxH = 400,
+            widthKey = "Height", heightKey = "Width",
+        }
+    else
+        frame.orbitResizeBounds = { minW = 80, maxW = 400, minH = 12, maxH = 40 }
+    end
+    local frameW = isVertical and shortDim or longDim
+    local frameH = isVertical and longDim or shortDim
 
-    -- Empty bars collapse to a single drop-hint square (height x height) so
-    -- they read as a dropzone, not a bar. The frame is already _isVirtual via
-    -- RefreshContainerVirtualState, so chain reconciliation skips it and the
-    -- saved Width is restored on payload drop.
+    -- Empty bars collapse to a single drop-hint square. The frame is already
+    -- _isVirtual via RefreshContainerVirtualState, so chain reconciliation
+    -- skips it and the saved Width/Height are restored on payload drop.
     -- When docked, anchor width is authoritative — SyncChild sets us to the
     -- parent's width via syncDimensions. Setting our own width here would
     -- clobber the synced value and leave dividers / charge geometry stuck at
@@ -382,18 +419,21 @@ function Bar:Apply(plugin, frame, record)
     local isDocked = FrameAnchor and FrameAnchor.anchors[frame] ~= nil
     if not hasPayload then
         frame:SetSize(DROP_ZONE_SIZE, DROP_ZONE_SIZE)
-        width = DROP_ZONE_SIZE
+        frameW, frameH = DROP_ZONE_SIZE, DROP_ZONE_SIZE
     elseif isDocked then
-        frame:SetHeight(height)
-        width = frame:GetWidth()
+        frame:SetHeight(frameH)
+        frameW = frame:GetWidth()
     else
-        frame:SetSize(width, height)
+        frame:SetSize(frameW, frameH)
     end
 
     Orbit.Skin:SkinBorder(frame, frame, Orbit.db.GlobalSettings.BorderSize or 1)
 
     local showIcon = plugin:GetSetting(record.id, "ShowIcon") ~= false
-    local iconSize = (showIcon and hasPayload) and height or 0
+    -- Icon is always a square sized to the bar's perpendicular dimension —
+    -- the bar's height in horizontal, the bar's width in vertical — so it
+    -- mirrors the bar across orientation flips without an aspect-ratio shift.
+    local iconSize = (showIcon and hasPayload) and (isVertical and frameW or frameH) or 0
 
     if iconSize > 0 then
         frame.IconBg:Show()
@@ -410,12 +450,27 @@ function Bar:Apply(plugin, frame, record)
     end
 
     frame.StatusBar:ClearAllPoints()
-    if iconSize > 0 then
-        frame.StatusBar:SetPoint("TOPLEFT", frame.IconBg, "TOPRIGHT", 0, 0)
+    if isVertical then
+        frame.StatusBar:SetOrientation("VERTICAL")
+        frame.RechargePositioner:SetOrientation("VERTICAL")
+        frame.RechargeSegment:SetOrientation("VERTICAL")
+        if iconSize > 0 then
+            frame.StatusBar:SetPoint("TOPLEFT", frame.IconBg, "BOTTOMLEFT", 0, 0)
+        else
+            frame.StatusBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+        end
+        frame.StatusBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
     else
-        frame.StatusBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+        frame.StatusBar:SetOrientation("HORIZONTAL")
+        frame.RechargePositioner:SetOrientation("HORIZONTAL")
+        frame.RechargeSegment:SetOrientation("HORIZONTAL")
+        if iconSize > 0 then
+            frame.StatusBar:SetPoint("TOPLEFT", frame.IconBg, "TOPRIGHT", 0, 0)
+        else
+            frame.StatusBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+        end
+        frame.StatusBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
     end
-    frame.StatusBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
 
     -- Drop hint fills the collapsed empty-bar frame (DROP_ZONE_SIZE x DROP_ZONE_SIZE).
     -- Anchored TOPLEFT for consistency with the bar's icon position; with the
@@ -449,10 +504,13 @@ function Bar:Apply(plugin, frame, record)
 
     -- Mode-specific layout. The mode is recomputed on every Apply (cheap) and
     -- cached on the frame so the update ticker can branch without re-reading
-    -- the payload structure.
+    -- the payload structure. perpDim is the bar's perpendicular dimension —
+    -- frameH for horizontal, frameW for vertical — and TickMixin uses it to
+    -- size the cross-axis of the tick mark.
     local mode = DetermineMode(payload)
     frame._barMode = mode
-    self:LayoutForMode(plugin, frame, record, payload, height, mode)
+    local perpDim = isVertical and frameW or frameH
+    self:LayoutForMode(plugin, frame, record, payload, perpDim, mode)
 
     self:ApplyFont(plugin, frame)
     self:ApplyCanvasComponents(plugin, frame, record)
@@ -527,16 +585,18 @@ end
 -- chain SyncChild, parent dock growth, edit mode width drag). Continuous
 -- modes (active+cd / cd-only) anchor a single tick to the main bar and
 -- compute the active+cd phase breakpoint.
-function Bar:LayoutForMode(plugin, frame, record, payload, height, mode)
+function Bar:LayoutForMode(plugin, frame, record, payload, perpDim, mode)
     local tickSize = plugin:GetSetting(record.id, "TickSize") or TICK_SIZE_DEFAULT
+    local orientation = frame._isVertical and "VERTICAL" or "HORIZONTAL"
 
     if mode == "charges" then
         local maxCharges = payload.maxCharges
         frame._chargesMax = maxCharges
         frame._chargesTickSize = tickSize
 
-        -- Recharge positioner spans the full StatusBar so its texture's RIGHT
-        -- edge maps proportionally to currentCharges/maxCharges.
+        -- Recharge positioner spans the full StatusBar so its texture's
+        -- leading edge (RIGHT in horizontal, TOP in vertical) maps
+        -- proportionally to currentCharges/maxCharges.
         frame.RechargePositioner:ClearAllPoints()
         frame.RechargePositioner:SetAllPoints(frame.StatusBar)
         frame.RechargePositioner:SetMinMaxValues(0, maxCharges)
@@ -559,7 +619,7 @@ function Bar:LayoutForMode(plugin, frame, record, payload, height, mode)
         -- edge of the fill (driven in the update path).
         frame.TickBar:ClearAllPoints()
         frame.TickBar:SetAllPoints(frame.StatusBar)
-        TickMixin:Apply(frame, tickSize, height, frame.StatusBar)
+        TickMixin:Apply(frame, tickSize, perpDim, frame.StatusBar, orientation)
 
         if mode == "active_cd" then
             -- Phase breakpoint = remainingPercent at which the active phase
@@ -574,56 +634,83 @@ end
 
 -- [ CHARGES GEOMETRY ] --------------------------------------------------------
 -- Re-derives every charges-mode element whose size depends on the StatusBar's
--- resolved width: the RechargeSegment, the TickBar, and the dividers. Reads
--- frame.StatusBar:GetWidth() as the single source of truth so the values stay
--- consistent. No-op when not in charges mode (frame._chargesMax nil) or when
--- the StatusBar hasn't been sized yet. Called from LayoutForMode AND from the
--- StatusBar OnSizeChanged hook so external resizes (anchor chain SyncChild,
--- edit-mode parent growth) keep the geometry in sync without an Apply pass.
+-- resolved size: the RechargeSegment, the TickBar, and the dividers. Reads
+-- frame.StatusBar:GetWidth/GetHeight() as the single source of truth so the
+-- values stay consistent. No-op when not in charges mode (frame._chargesMax
+-- nil) or when the StatusBar hasn't been sized yet. Called from LayoutForMode
+-- AND from the StatusBar OnSizeChanged hook so external resizes (anchor chain
+-- SyncChild, edit-mode parent growth) keep the geometry in sync without an
+-- Apply pass.
+--
+-- In horizontal: long axis = width, perpDim = height. RechargeSegment anchors
+-- LEFT to RechargePositioner texture's RIGHT (next-charge slot is to the
+-- right of the current fill). In vertical: long axis = height, perpDim =
+-- width. The bar fills BOTTOM→TOP, so the next-charge slot is ABOVE the
+-- current fill — RechargeSegment anchors BOTTOM to RechargePositioner
+-- texture's TOP.
 function Bar:LayoutChargesGeometry(frame)
     local maxCharges = frame._chargesMax
     if not maxCharges then return end
     local barWidth = frame.StatusBar:GetWidth()
-    local height = frame.StatusBar:GetHeight()
-    if barWidth <= 1 or height <= 0 then return end
+    local barHeight = frame.StatusBar:GetHeight()
+    if barWidth <= 1 or barHeight <= 0 then return end
 
-    local chargeWidth = math.max(1, barWidth / maxCharges)
+    local isVertical = frame._isVertical
+    local longAxis = isVertical and barHeight or barWidth
+    local perpDim = isVertical and barWidth or barHeight
+
+    local chargeLength = math.max(1, longAxis / maxCharges)
     local Pixel = OrbitEngine.Pixel
-    if Pixel then chargeWidth = Pixel:Snap(chargeWidth) end
+    if Pixel then chargeLength = Pixel:Snap(chargeLength) end
 
     frame.RechargeSegment:ClearAllPoints()
-    frame.RechargeSegment:SetPoint("LEFT", frame.RechargePositioner:GetStatusBarTexture(), "RIGHT", 0, 0)
-    frame.RechargeSegment:SetSize(chargeWidth, height)
+    frame.TickBar:ClearAllPoints()
+    if isVertical then
+        frame.RechargeSegment:SetPoint("BOTTOM", frame.RechargePositioner:GetStatusBarTexture(), "TOP", 0, 0)
+        frame.RechargeSegment:SetSize(perpDim, chargeLength)
+        frame.TickBar:SetPoint("BOTTOM", frame.RechargePositioner:GetStatusBarTexture(), "TOP", 0, 0)
+        frame.TickBar:SetSize(perpDim, chargeLength)
+    else
+        frame.RechargeSegment:SetPoint("LEFT", frame.RechargePositioner:GetStatusBarTexture(), "RIGHT", 0, 0)
+        frame.RechargeSegment:SetSize(chargeLength, perpDim)
+        frame.TickBar:SetPoint("LEFT", frame.RechargePositioner:GetStatusBarTexture(), "RIGHT", 0, 0)
+        frame.TickBar:SetSize(chargeLength, perpDim)
+    end
 
     -- Tick floats with the recharging segment. TickClip is anchored to
     -- RechargeSegment so the tick mark is clipped within the recharging
     -- region (TickMixin:Apply handles the clip anchoring).
     local tickSize = frame._chargesTickSize or TICK_SIZE_DEFAULT
-    frame.TickBar:ClearAllPoints()
-    frame.TickBar:SetPoint("LEFT", frame.RechargePositioner:GetStatusBarTexture(), "RIGHT", 0, 0)
-    frame.TickBar:SetSize(chargeWidth, height)
-    TickMixin:Apply(frame, tickSize, height, frame.RechargeSegment)
+    local orientation = isVertical and "VERTICAL" or "HORIZONTAL"
+    TickMixin:Apply(frame, tickSize, perpDim, frame.RechargeSegment, orientation)
 
-    self:LayoutDividers(frame, maxCharges, height, barWidth)
+    self:LayoutDividers(frame, maxCharges, perpDim, longAxis)
 end
 
 -- [ DIVIDER POSITIONING ] -----------------------------------------------------
 -- Dividers are centered on proportional charge boundaries ((i/maxCharges) *
--- statusBarWidth) so they align exactly with the StatusBar fill edge at each
--- integer charge value. barWidth is passed in by LayoutChargesGeometry so the
--- divider boundaries and the RechargeSegment width come from the same read.
-function Bar:LayoutDividers(frame, maxCharges, height, barWidth)
-    barWidth = barWidth or frame.StatusBar:GetWidth()
+-- longAxis) so they align exactly with the StatusBar fill edge at each
+-- integer charge value. longAxis and perpDim are passed in by
+-- LayoutChargesGeometry so the divider boundaries and the RechargeSegment
+-- size come from the same read. In horizontal each divider is a vertical
+-- line; in vertical each divider is a horizontal line.
+function Bar:LayoutDividers(frame, maxCharges, perpDim, longAxis)
     local Pixel = OrbitEngine.Pixel
     local halfGap = DIVIDER_SIZE / 2
+    local isVertical = frame._isVertical
     for i = 1, MAX_DIVIDERS do
         local div = frame.Dividers[i]
         if i < maxCharges then
-            local boundary = (i / maxCharges) * barWidth
+            local boundary = (i / maxCharges) * longAxis
             if Pixel then boundary = Pixel:Snap(boundary) end
             div:ClearAllPoints()
-            div:SetSize(DIVIDER_SIZE, height)
-            div:SetPoint("LEFT", frame.StatusBar, "LEFT", boundary - halfGap, 0)
+            if isVertical then
+                div:SetSize(perpDim, DIVIDER_SIZE)
+                div:SetPoint("BOTTOM", frame.StatusBar, "BOTTOM", 0, boundary - halfGap)
+            else
+                div:SetSize(DIVIDER_SIZE, perpDim)
+                div:SetPoint("LEFT", frame.StatusBar, "LEFT", boundary - halfGap, 0)
+            end
             div:Show()
         else
             div:Hide()

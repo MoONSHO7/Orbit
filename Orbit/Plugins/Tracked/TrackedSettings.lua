@@ -114,6 +114,18 @@ function Plugin:_BuildBarSettings(dialog, systemFrame, record)
 
     if currentTab == L.PLU_TRK_TAB_LAYOUT then
         table.insert(schema.controls, {
+            type = "dropdown", key = "Layout", label = L.PLU_TRK_LAYOUT,
+            options = {
+                { text = L.PLU_TRK_HORIZONTAL, value = "Horizontal" },
+                { text = L.PLU_TRK_VERTICAL, value = "Vertical" },
+            },
+            default = "Horizontal",
+            onChange = function(val)
+                self:SetSetting(systemIndex, "Layout", val)
+                self:ApplySettings(systemFrame)
+            end,
+        })
+        table.insert(schema.controls, {
             type = "slider", key = "Width", label = L.PLU_TRK_WIDTH,
             min = 80, max = 400, step = 1, default = 200,
             onChange = function(val)

@@ -199,10 +199,30 @@ the render mode is determined by the dropped payload (see `DetermineMode` in `Tr
 
 the `TickMixin` is built once against the main `StatusBar` in `Build`, and `LayoutForMode` re-anchors it per mode:
 
-- **charges**: `TickBar` is sized to one charge-width and anchored `LEFT` to the `RechargePositioner` texture's `RIGHT` edge, so the tick floats at the leading edge of the recharging segment. `TickMixin:Apply(frame, tickSize, height, RechargeSegment)` clips the tick to the recharging segment's bounds.
-- **active_cd / cd_only**: `TickBar:SetAllPoints(StatusBar)` and `TickMixin:Apply(frame, tickSize, height, StatusBar)` — tick tracks the leading edge of the main bar fill.
+- **charges**: `TickBar` is sized to one charge-length and anchored to the `RechargePositioner` texture's leading edge (`LEFT→RIGHT` in horizontal, `BOTTOM→TOP` in vertical), so the tick floats at the leading edge of the recharging segment. `TickMixin:Apply(frame, tickSize, perpDim, RechargeSegment, orientation)` clips the tick to the recharging segment's bounds.
+- **active_cd / cd_only**: `TickBar:SetAllPoints(StatusBar)` and `TickMixin:Apply(frame, tickSize, perpDim, StatusBar, orientation)` — tick tracks the leading edge of the main bar fill.
 
-`TickSize` is a per-bar setting (slider in the Layout tab; `0` hides it, default `2`, max `6`). it shares the same constants as `PlayerPower` (`OrbitEngine.TickMixin.TICK_SIZE_DEFAULT` / `TICK_SIZE_MAX`).
+`TickSize` is a per-bar setting (slider in the Layout tab; `0` hides it, default `2`, max `6`). it shares the same constants as `PlayerPower` (`OrbitEngine.TickMixin.TICK_SIZE_DEFAULT` / `TICK_SIZE_MAX`). `TickMixin:Apply` takes a 5th `orientation` arg ("HORIZONTAL" default / "VERTICAL"); existing horizontal callers (`PlayerPower`, `PlayerResources`) need no change.
+
+### layout (horizontal / vertical)
+
+`Layout` dropdown (Layout tab, default `Horizontal`) flips the bar's fill direction. `Width` and `Height` sliders are interpreted as **long axis / short axis** rather than literal X/Y, so the same record can flip orientations without resizing — the slider ranges (80-400 long, 12-40 short) stay valid in both. internally `Bar:Apply` derives `frameW, frameH` from the orientation:
+
+| layout | frame W | frame H | icon position | StatusBar fill |
+|---|---|---|---|---|
+| `Horizontal` | `Width` (long) | `Height` (short) | `TOPLEFT`, square sized to `Height` | `LEFT → RIGHT` |
+| `Vertical`   | `Height` (short) | `Width` (long)  | `TOPLEFT`, square sized to `Width`  | `BOTTOM → TOP` |
+
+vertical bars set `StatusBar:SetOrientation("VERTICAL")` plus the same on `RechargePositioner` and `RechargeSegment`. WoW's vertical fill is `BOTTOM→TOP`, which naturally gives the requested behavior in both continuous modes:
+
+- **active_cd**: value drains from 1 → 0 during the active phase, so the texture's TOP edge moves downward → "active drains downward". value then refills from 0 → 1 during the cd phase, texture's TOP edge moves upward → "cd fills upward".
+- **cd_only**: value goes from 0 → 1, texture's TOP edge moves upward → "cd fills upward".
+
+the per-tick math in `UpdateActiveCdMode` / `UpdateCdOnlyMode` is unchanged — the same `barValue` works in both orientations because StatusBar handles the rendering flip.
+
+`charges` mode also works in vertical. `LayoutChargesGeometry` reads the long-axis dimension (`barHeight` in vertical, `barWidth` in horizontal), splits it into `chargeLength = longAxis / maxCharges`, and anchors `RechargeSegment`/`TickBar` to the next-charge slot above the current fill (`BOTTOM → TOP of RechargePositioner texture` in vertical, `LEFT → RIGHT` in horizontal). `LayoutDividers` draws horizontal lines at proportional Y positions (vertical) or vertical lines at proportional X positions (horizontal). first charge is at the bottom of the bar, max charges fills the entire bar.
+
+`orbitResizeBounds` flips its `widthKey`/`heightKey` to `Height`/`Width` in vertical, so dragging the resize handle horizontally writes the short-axis slider and dragging vertically writes the long-axis slider — the screen-axis to slider mapping stays consistent regardless of orientation. `anchorOptions` is unchanged: vertical bars chained via dock still extend top/bottom and inherit parent width via `syncDimensions`, which works best when chaining vertical bars with other vertical bars.
 
 ### show icon
 
