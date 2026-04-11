@@ -38,10 +38,7 @@ function Guard:Protect(frame, parent)
 end
 
 -- [ SUSPEND / RESUME ]------------------------------------------------------------------------------
--- Temporarily disables guard enforcement (SetParent snap-back and enforce-show)
--- without removing the hooks. Used when a cooperating addon (e.g. FarmHud) needs
--- to reparent the minimap surface for its own overlay.
-
+-- Disables guard enforcement without removing hooks (e.g. FarmHud owns the surface temporarily).
 function Guard:Suspend(frame)
     if not frame then return end
     frame._orbitGuardSuspended = true

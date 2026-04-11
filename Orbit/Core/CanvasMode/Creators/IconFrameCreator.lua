@@ -116,13 +116,13 @@ local function Create(container, preview, key, source, data)
         end
 
         local attached = 0
-        local skullTexture  -- reference to the actual icon texture for label anchoring
-        -- Respect the "Show Background" toggle: skip Background/Border when disabled.
+        local skullTexture  -- icon texture reference used to anchor the preview label
+        -- Respect DifficultyShowBackground: skip Background/Border art when disabled.
         local savedOverrides = data and data.overrides or {}
         local showBg = savedOverrides.DifficultyShowBackground
         if showBg == nil then
             local plugin = Orbit:GetPlugin("Orbit_Minimap")
-            showBg = plugin and plugin.GetSetting and plugin:GetSetting("Orbit_Minimap", "DifficultyShowBackground")
+            showBg = plugin and plugin:GetSetting("Orbit_Minimap", "DifficultyShowBackground")
         end
 
         if activeFrame then
@@ -133,8 +133,7 @@ local function Create(container, preview, key, source, data)
             for _, region in ipairs({ activeFrame:GetRegions() }) do
                 if region ~= activeFrame.Background and region ~= activeFrame.Border and region:IsShown() and Attach(region) then
                     attached = attached + 1
-                    -- Capture the last-created texture on iconVisual as our skull anchor
-                    local regions = { container.iconVisual:GetRegions() }
+                    local regions = { container.iconVisual:GetRegions() }  -- skull anchor: last-created texture
                     skullTexture = regions[#regions]
                     break
                 end
@@ -148,8 +147,7 @@ local function Create(container, preview, key, source, data)
             skullTexture = texture
         end
 
-        -- Placeholder group-size number beneath the skull icon for layout preview.
-        local labelAnchor = skullTexture or container.iconVisual
+        local labelAnchor = skullTexture or container.iconVisual  -- placeholder "25" beneath skull
         local previewLabel = container.iconVisual:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         previewLabel:SetText("25")
         previewLabel:SetPoint("TOP", labelAnchor, "BOTTOM", 0, 2)

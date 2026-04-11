@@ -166,13 +166,10 @@ function Plugin:CreateCompartmentFlyout()
 
         local mouseOverFlyout = f:IsMouseOver()
         local mouseOverBtn = self._compartmentButton and self._compartmentButton:IsMouseOver()
-        -- When FarmHud is active the Minimap surface is reparented to the HUD frame,
-        -- so IsMouseOver would check the wrong screen region. Fall back to our container.
-        local mouseOverMinimap = self.frame and self.frame:IsMouseOver()
+        -- Use our container (not Minimap surface) — FarmHud reparents Minimap away from our frame.
+        local mouseOverMinimap = self.frame:IsMouseOver()
 
-        -- Also check if any child button has a tooltip/menu open (GameTooltip anchored inside)
-        local tooltipShown = GameTooltip:IsShown() and GameTooltip:GetOwner()
-            and GameTooltip:GetOwner():GetParent() == f
+        local tooltipShown = GameTooltip:IsShown() and GameTooltip:GetOwner() and GameTooltip:GetOwner():GetParent() == f  -- proxy tooltip open
 
         if mouseOverFlyout or mouseOverBtn or mouseOverMinimap or tooltipShown then
             outsideTimer = 0
@@ -185,12 +182,8 @@ function Plugin:CreateCompartmentFlyout()
         end
     end)
 
-    flyout:SetScript("OnShow", function(f)
-        outsideTimer = 0
-    end)
-    flyout:SetScript("OnHide", function(f)
-        outsideTimer = 0
-    end)
+    flyout:SetScript("OnShow", function() outsideTimer = 0 end)
+    flyout:SetScript("OnHide", function() outsideTimer = 0 end)
 
     self._compartmentFlyout = flyout
 end

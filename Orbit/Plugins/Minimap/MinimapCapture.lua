@@ -421,16 +421,7 @@ function Plugin:CaptureBlizzardMinimap()
 end
 
 -- [ FARMHUD COMPATIBILITY ]-------------------------------------------------------------------------
--- FarmHud reparents the Minimap surface to its own full-screen HUD frame when
--- toggled on, and restores it when toggled off. Our FrameGuard (SetParent hook
--- + enforce-show) and the SetPoint/SetSize protection hooks would fight this,
--- causing the minimap to snap back immediately. We cooperate by:
---   1. Registering our container via FarmHud:RegisterForeignAddOnObject so
---      FarmHud knows to move our children to its dummy placeholder.
---   2. Hooking FarmHud's OnShow/OnHide to suspend and resume FrameGuard and
---      hide/show our Overlay and ClickCapture (they would float over the HUD).
--- The _farmHudActive flag is also checked in ApplySettings() to skip minimap
--- surface re-sync and recapture while FarmHud owns the surface.
+-- Suspend FrameGuard and surface-sync while FarmHud owns the Minimap. See readme for details.
 
 function Plugin:HookFarmHud()
     if self._farmHudHooked then return end
@@ -439,10 +430,7 @@ function Plugin:HookFarmHud()
     C_Timer.After(0, function()
         if not FarmHud then return end
 
-        -- Let FarmHud move our container's children to its dummy placeholder.
-        if FarmHud.RegisterForeignAddOnObject then
-            FarmHud:RegisterForeignAddOnObject(self.frame, "Orbit")
-        end
+        FarmHud:RegisterForeignAddOnObject(self.frame, "Orbit")
 
         -- Hook OnShow/OnHide only once.
         if not self._farmHudHooked then
