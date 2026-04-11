@@ -13,7 +13,7 @@ function Guard:Protect(frame, parent)
 
     if not frame._orbitGuardHooked then
         hooksecurefunc(frame, "SetParent", function(s, p)
-            if s._orbitRestoring then return end
+            if s._orbitRestoring or s._orbitGuardSuspended then return end
             local intended = s._orbitGuardParent
             if intended and p ~= intended then
                 s._orbitRestoring = true
@@ -24,7 +24,7 @@ function Guard:Protect(frame, parent)
         end)
 
         frame:HookScript("OnHide", function(s)
-            if s._orbitRestoring then return end
+            if s._orbitRestoring or s._orbitGuardSuspended then return end
             if s._orbitGuardEnforceShow then
                 s._orbitRestoring = true
                 s:Show()
@@ -35,6 +35,18 @@ function Guard:Protect(frame, parent)
 
         frame._orbitGuardHooked = true
     end
+end
+
+-- [ SUSPEND / RESUME ]------------------------------------------------------------------------------
+-- Disables guard enforcement without removing hooks (e.g. FarmHud owns the surface temporarily).
+function Guard:Suspend(frame)
+    if not frame then return end
+    frame._orbitGuardSuspended = true
+end
+
+function Guard:Resume(frame)
+    if not frame then return end
+    frame._orbitGuardSuspended = nil
 end
 
 -- [ UPDATE ]----------------------------------------------------------------------------------------

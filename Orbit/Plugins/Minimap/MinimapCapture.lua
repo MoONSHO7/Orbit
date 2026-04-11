@@ -294,14 +294,7 @@ function Plugin:ReparentBlizzardComponents()
             craftingOrder.Icon = craftingOrder:CreateTexture(nil, "ARTWORK")
             craftingOrder.Icon:SetSize(20, 20)
             craftingOrder.Icon:SetPoint("CENTER")
-            
-            local info = C_Texture.GetAtlasInfo("UI-HUD-Minimap-CraftingOrder-Over-2x")
-            if info and info.file then
-                craftingOrder.Icon:SetTexture(info.file)
-                craftingOrder.Icon:SetTexCoord(info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord)
-            else
-                craftingOrder.Icon:SetAtlas("UI-HUD-Minimap-CraftingOrder-Over-2x", true)
-            end
+            craftingOrder.Icon:SetAtlas("UI-HUD-Minimap-CraftingOrder-Over-2x", true)
             
             -- Ignore native scaling so the atlas stays crisp
             craftingOrder.Icon:SetScale(1)
@@ -380,7 +373,7 @@ function Plugin:CaptureBlizzardMinimap()
     -- the minimap away from our intended values.
     if not minimap._orbitSetPointHooked then
         hooksecurefunc(minimap, "SetPoint", function(f, ...)
-            if f._orbitRestoringPoint then return end
+            if f._orbitRestoringPoint or f._orbitGuardSuspended then return end
             if f:GetParent() == self.frame then
                 local point = ...
                 local relFrame = select(2, ...)
@@ -394,7 +387,7 @@ function Plugin:CaptureBlizzardMinimap()
             end
         end)
         hooksecurefunc(minimap, "SetSize", function(f, w, h)
-            if f._orbitRestoringPoint then return end
+            if f._orbitRestoringPoint or f._orbitGuardSuspended then return end
             if f:GetParent() == self.frame then
                 local intended = self.frame:GetWidth()
                 if intended and (math.abs(w - intended) > 0.5 or math.abs(h - intended) > 0.5) then
@@ -411,12 +404,9 @@ function Plugin:CaptureBlizzardMinimap()
     -- a MEDIUM-strata Button with SetPropagateMouseClicks(true) that covers the whole
     -- minimap area and sits above most third-party overlays. No per-frame hook needed.
 
-    -- FarmHud integration: register our container so FarmHud knows about it.
-    C_Timer.After(0, function()
-        if FarmHud and FarmHud.RegisterForeignAddOnObject then
-            FarmHud:RegisterForeignAddOnObject(self.frame, "Orbit")
-        end
-    end)
+    -- FarmHud integration: register our container and hook show/hide to suspend
+    -- FrameGuard protection so FarmHud can reparent the minimap surface freely.
+    self:HookFarmHud()
 
     -- Update zoom button state after scroll-wheel zoom
     if not minimap._orbitScrollHooked then
@@ -429,3 +419,46 @@ function Plugin:CaptureBlizzardMinimap()
 
     self._captured = true
 end
+
+-- [ FARMHUD COMPATIBILITY ]-------------------------------------------------------------------------
+-- Suspend FrameGuard and surface-sync while FarmHud owns the Minimap. See readme for details.
+
+function Plugin:HookFarmHud()
+    if self._farmHudHooked then return end
+
+    -- Deferred: FarmHud may load after Orbit.
+    C_Timer.After(0, function()
+        if not FarmHud then return end
+
+        FarmHud:RegisterForeignAddOnObject(self.frame, "Orbit")
+
+        -- Hook OnShow/OnHide only once.
+        if not self._farmHudHooked then
+            FarmHud:HookScript("OnShow", function() self:OnFarmHudShow() end)
+            FarmHud:HookScript("OnHide", function() self:OnFarmHudHide() end)
+            self._farmHudHooked = true
+        end
+    end)
+end
+
+function Plugin:OnFarmHudShow()
+    self._farmHudActive = true
+
+    local minimap = self:GetBlizzardMinimap()
+    if minimap then
+        OrbitEngine.FrameGuard:Suspend(minimap)
+    end
+end
+
+function Plugin:OnFarmHudHide()
+    self._farmHudActive = nil
+
+    local minimap = self:GetBlizzardMinimap()
+    if minimap then
+        OrbitEngine.FrameGuard:Resume(minimap)
+    end
+
+    -- Re-apply settings to recapture the minimap surface and restore our layout.
+    self:ApplySettings()
+end
+

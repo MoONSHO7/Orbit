@@ -356,6 +356,8 @@ function Settings:OnValueChanged(key, value)
             local plugin = self.plugin
             local systemIndex = self.systemIndex
             local canvasDialog = OrbitEngine.CanvasModeDialog
+            -- Persist display choice before canvasDialog:Open() restarts the Transaction.
+            plugin:SetSetting(systemIndex, "DifficultyDisplay", value)
             C_Timer.After(0, function()
                 if not (canvasDialog and plugin and canvasDialog.targetFrame and canvasDialog:IsShown()) then return end
                 canvasDialog:Open(canvasDialog.targetFrame, canvasDialog.targetPlugin, canvasDialog.targetSystemIndex)

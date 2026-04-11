@@ -39,7 +39,7 @@ all components below are individually positionable via canvas mode and can be di
 
 the minimap supports configurable left-, middle-, and right-click actions via plugin settings.
 
-canvas overrides (font, size, color) are supported for ZoneText, Clock, Coords, and Difficulty text mode via the canvas component settings panel. canvas always shows the difficulty background to make placement easier in icon mode. `Difficulty` icon mode and text mode are handled as separate internal components, so preview sizing/alignment no longer depends on switching one component between two different geometries.
+canvas overrides (font, size, color) are supported for ZoneText, Clock, Coords, and Difficulty text mode via the canvas component settings panel. canvas respects the `DifficultyShowBackground` toggle in icon mode and shows a placeholder group-size number beneath the skull. `Difficulty` icon mode and text mode are handled as separate internal components, so preview sizing/alignment no longer depends on switching one component between two different geometries.
 
 ## blizzard frames affected
 
@@ -71,3 +71,15 @@ canvas overrides (font, size, color) are supported for ZoneText, Clock, Coords, 
 ## data flow
 
 savedvariables → `ApplySettings()` → sizes container, skins border, applies component visibility via `IsComponentDisabled()`, restores canvas positions via `ComponentDrag:RestoreFramePositions()`, applies canvas overrides via `OverrideUtils.ApplyOverrides()`, sets scale
+
+## third-party addon compatibility
+
+### FarmHud
+
+FarmHud reparents the `Minimap` surface to its own full-screen HUD frame while active, then restores it on hide. orbit cooperates via:
+
+1. **`RegisterForeignAddOnObject`** — tells FarmHud about our container so it can move child frames to its dummy placeholder.
+2. **`Guard:Suspend` / `Guard:Resume`** — on FarmHud show, FrameGuard protection (SetParent snap-back + enforce-show) is suspended so FarmHud can freely reparent and resize the surface. on hide, protection is resumed.
+3. **SetPoint / SetSize hooks** — also check the suspension flag and yield while FarmHud is active.
+4. **`ApplySettings()` guards** — minimap surface sync (size bounce, re-anchor) and the recapture check are skipped when `_farmHudActive` is set, so visibility events (mount/dismount/shapeshift) don't fight FarmHud's layout.
+5. **No UI hiding needed** — FarmHud's HUD is a separate full-screen frame, not layered under our container. Our Overlay, ClickCapture, and compartment all remain functional on the minimap slot while FarmHud is open.

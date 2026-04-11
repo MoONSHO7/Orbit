@@ -11,6 +11,8 @@
 - Player Buff Item Enhancements now draw a pixel border for item enhancements (weapon oils, etc)
 - Player Buffs/Debuffs swipe now start at low alpha and fill as their duration expires
 - Player Buffs/Debuffs now pulse in and out when expiring
+- Minimap compartment flyout now stays open correctly when used alongside FarmHud
+- FarmHud compatibility - Orbit no longer fights FarmHud's minimap takeover, resource nodes should now display correctly after mount/dismount/shapeshift
 
 ## [1.0.0] - 2026-03-10
 ### Added
