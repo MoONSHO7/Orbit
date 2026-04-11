@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
@@ -27,8 +28,8 @@ function Plugin:AddSettings(dialog, systemFrame)
             {
                 type = "checkbox",
                 key = "DisableTalkingHead",
-                label = "Disable",
-                tooltip = "Completely hides the Talking Head frame.",
+                label = L.PLU_TH_DISABLE,
+                tooltip = L.PLU_TH_DISABLE_TT,
                 default = false,
             },
         },
@@ -37,7 +38,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     -- Scale setting
     SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
         key = "Scale",
-        label = "Scale",
+        label = L.PLU_TH_SCALE,
         default = 60,
     })
 

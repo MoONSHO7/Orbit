@@ -130,7 +130,6 @@ function Engine:PopulateDefaults()
         "Orbit_GroupFrames",
         "Orbit_BossFrames",
         "Orbit_ActionBars",
-        "Orbit_TrackedBars",
         "Orbit_CooldownViewer",
         "Orbit_Minimap",
         "Orbit_Datatexts",

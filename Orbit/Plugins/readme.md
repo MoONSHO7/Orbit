@@ -13,12 +13,13 @@ Plugins/
   ActionBars/       -- action bar containers, button layout, text overlays
   BossFrames/       -- boss unit frames (1-8)
   CooldownManager/  -- cooldown viewers, tracked abilities, charge bars
+  Datatexts/        -- data text bars and drawer UI
+  GroupFrames/      -- group unit frames (party + raid, tier-adaptive)
   MenuItems/        -- micro menu, bag bar, queue status
   Minimap/          -- minimap replacement (experimental)
-  Misc/             -- miscellaneous (talking head)
-  GroupFrames/      -- group unit frames (party + raid, tier-adaptive)
+  Extras/           -- small standalone plugins that don't fit a larger bounded context (talking head)
+  Tracked/          -- tracked ability bars and icons
   UnitFrames/       -- player, target, focus frames and their sub-frames
-  WidgetDrawer/     -- free-floating info widgets (experimental)
 ```
 
 ## lifecycle
@@ -53,6 +54,6 @@ sequenceDiagram
 - plugins may depend on core. they must never depend on other plugins.
 - inter-plugin communication must go through the eventbus, never direct calls
 - each plugin manages its own frames, events, and settings
-- plugin files must not exceed ~1000 loc. decompose into sub-files when approaching this limit.
+- plugin files decompose when they hold multiple responsibilities, not because they cross a line count. LOC is a smell, not a rule.
 - all constants at file top. no magic numbers.
 - follow the existing patterns: `PluginMixin` for settings, `Frame:AttachSettingsListener` for canvas, `Skin` for visuals

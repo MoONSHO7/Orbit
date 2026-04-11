@@ -1,16 +1,17 @@
 -- DatatextManager.lua
 -- Central registry, position persistence, and update scheduler for Datatexts
 local _, Orbit = ...
+local L = Orbit.L
 local DT = Orbit.Datatexts
 
 -- [ CONSTANTS ] -------------------------------------------------------------------
 local DATATEXT_CATEGORIES = {
-    SYSTEM    = { order = 1, label = "System" },
-    CHARACTER = { order = 2, label = "Character" },
-    SOCIAL    = { order = 3, label = "Social" },
-    GAMEPLAY  = { order = 4, label = "Gameplay" },
-    WORLD     = { order = 5, label = "World" },
-    UTILITY   = { order = 6, label = "Utility" },
+    SYSTEM    = { order = 1, label = L.PLU_DT_SYSTEM },
+    CHARACTER = { order = 2, label = L.PLU_DT_CHARACTER },
+    SOCIAL    = { order = 3, label = L.PLU_DT_SOCIAL },
+    GAMEPLAY  = { order = 4, label = L.PLU_DT_GAMEPLAY },
+    WORLD     = { order = 5, label = L.PLU_DT_WORLD },
+    UTILITY   = { order = 6, label = L.PLU_DT_UTILITY },
 }
 DT.DATATEXT_CATEGORIES = DATATEXT_CATEGORIES
 
