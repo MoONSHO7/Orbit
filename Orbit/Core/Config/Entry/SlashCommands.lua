@@ -1,6 +1,7 @@
 -- [ ORBIT SLASH COMMANDS ]--------------------------------------------------------------------------
 
 local _, Orbit = ...
+local L = Orbit.L
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
@@ -11,26 +12,26 @@ local MAX_INSPECT_ITEMS = 20
 -- [ CONFIRMATION POPUPS ]---------------------------------------------------------------------------
 
 StaticPopupDialogs["ORBIT_CONFIRM_HARD_RESET"] = {
-    text = "|cFFFF0000DANGER|r\n\nYou are about to FACTORY RESET Orbit.\n\nAll profiles, settings, and data will be wiped.\nThe UI will reload immediately.\n\nAre you sure?",
-    button1 = "Factory Reset", button2 = "Cancel",
+    text = L.CMD_HARD_RESET_WARNING,
+    button1 = L.CMN_FACTORY_RESET, button2 = L.CMN_CANCEL,
     OnAccept = function(self) Orbit.API:HardReset() end,
     timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = POPUP_PREFERRED_INDEX,
 }
 
 StaticPopupDialogs["ORBIT_CONFIRM_RESET_ACCOUNT"] = {
-    text = "|cFFFF0000WARNING|r\n\nYou are about to reset all Account Settings to defaults.\n\nThis includes class colors, reaction colors, recent colors, QoL toggles, and spec profile mappings.\n\nThe UI will reload immediately.\n\nAre you sure?",
-    button1 = "Reset Account Settings", button2 = "Cancel",
+    text = L.CMD_RESET_ACCOUNT_WARNING,
+    button1 = L.CMN_RESET_ACCOUNT_SETTINGS, button2 = L.CMN_CANCEL,
     OnAccept = function(self)
         if Orbit.db then Orbit.db.AccountSettings = {} end
-        Orbit:Print("|cFFFF0000Account Settings reset.|r Reloading UI...")
+        Orbit:Print(L.MSG_ACCOUNT_RESET)
         ReloadUI()
     end,
     timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = POPUP_PREFERRED_INDEX,
 }
 
 StaticPopupDialogs["ORBIT_CONFIRM_RESET_PLUGIN"] = {
-    text = "|cFFFF0000WARNING|r\n\nYou are about to reset '%s' to default settings and position.\n\nThis cannot be undone.\n\nAre you sure?",
-    button1 = "Reset Plugin", button2 = "Cancel",
+    text = L.CMD_RESET_PLUGIN_WARNING_F,
+    button1 = L.CMN_RESET_PLUGIN, button2 = L.CMN_CANCEL,
     OnAccept = function(self, pluginName)
         local plugin = Orbit:GetPlugin(pluginName)
         if not plugin or not plugin.system then return end
@@ -45,7 +46,7 @@ StaticPopupDialogs["ORBIT_CONFIRM_RESET_PLUGIN"] = {
             plugin.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
         end
         if plugin.ApplySettings then plugin:ApplySettings() end
-        Orbit:Print("'" .. pluginName .. "' reset to defaults.")
+        Orbit:Print(L.MSG_PLUGIN_RESET_F:format(pluginName))
     end,
     timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = POPUP_PREFERRED_INDEX,
 }
@@ -70,66 +71,67 @@ local function FormatValue(v, depth)
 end
 
 local function PrintHelp()
-    Orbit:Print("Commands:")
-    print("  |cFF00FFFF/orbit|r — Toggle Edit Mode + Settings")
-    print("  |cFF00FFFF/orbit help|r — This list")
-    print("  |cFF00FFFF/orbit version|r — Version, profile, and system info")
-    print("  |cFF00FFFF/orbit list|r — List all plugins with ON/OFF status")
-    print("  |cFF00FFFF/orbit plugins|r — Open Plugin Manager")
-    print("  |cFF00FFFF/orbit profile|r — Show current profile")
-    print("  |cFF00FFFF/orbit profile <name>|r — Switch to profile")
-    print("  |cFF00FFFF/orbit frames <name>|r — Show frame position/visibility")
-    print("  |cFF00FFFF/orbit inspect <name>|r — Dump plugin settings")
-    print("  |cFF00FFFF/orbit refresh <name>|r — Force re-apply plugin")
-    print("  |cFF00FFFF/orbit reset|r — Reset Account Settings")
-    print("  |cFF00FFFF/orbit reset <name>|r — Reset a plugin to defaults")
-    print("  |cFF00FFFF/orbit ve|r — Open Visibility Engine")
-    print("  |cFF00FFFF/orbit ve reset|r — Reset VE to defaults")
-    print("  |cFF00FFFF/orbit whatsnew|r — Show changelog")
-    print("  |cFF00FFFF/orbit hardreset|r — Factory reset (wipes everything)")
+    Orbit:Print(L.CMD_HELP_HEADER)
+    print("  " .. L.CMD_HELP_ORBIT)
+    print("  " .. L.CMD_HELP_HELP)
+    print("  " .. L.CMD_HELP_VERSION)
+    print("  " .. L.CMD_HELP_LIST)
+    print("  " .. L.CMD_HELP_PLUGINS)
+    print("  " .. L.CMD_HELP_PROFILE_SHOW)
+    print("  " .. L.CMD_HELP_PROFILE_SWITCH)
+    print("  " .. L.CMD_HELP_FRAMES)
+    print("  " .. L.CMD_HELP_INSPECT)
+    print("  " .. L.CMD_HELP_REFRESH)
+    print("  " .. L.CMD_HELP_RESET)
+    print("  " .. L.CMD_HELP_RESET_PLUGIN)
+    print("  " .. L.CMD_HELP_VE)
+    print("  " .. L.CMD_HELP_VE_RESET)
+    print("  " .. L.CMD_HELP_TRACKED_FLUSH)
+    print("  " .. L.CMD_HELP_WHATSNEW)
+    print("  " .. L.CMD_HELP_HARDRESET)
 end
 
 local function PrintVersion()
     local state = Orbit.API and Orbit.API:GetState() or {}
     local _, build = GetBuildInfo()
-    Orbit:Print("|cFFFFD100Version:|r " .. (state.Version or "?"))
-    print("  |cFFAAAAAA Profile:|r " .. (state.Profile or "?"))
-    print("  |cFFAAAAAA Spec:|r " .. (state.Spec or "?"))
-    print("  |cFFAAAAAA Plugins:|r " .. (state.NumPlugins or 0))
-    print("  |cFFAAAAAA Combat:|r " .. (state.InCombat and "Yes" or "No"))
-    print("  |cFFAAAAAA WoW Build:|r " .. (build or "?"))
+    Orbit:Print("|cFFFFD100" .. L.CMD_VERSION_LABEL .. "|r " .. (state.Version or "?"))
+    print("  |cFFAAAAAA " .. L.CMD_PROFILE_LABEL .. "|r " .. (state.Profile or "?"))
+    print("  |cFFAAAAAA " .. L.CMD_SPEC_LABEL .. "|r " .. (state.Spec or "?"))
+    print("  |cFFAAAAAA " .. L.CMD_PLUGINS_LABEL .. "|r " .. (state.NumPlugins or 0))
+    print("  |cFFAAAAAA " .. L.CMD_COMBAT_LABEL .. "|r " .. (state.InCombat and "Yes" or "No"))
+    print("  |cFFAAAAAA " .. L.CMD_WOW_BUILD_LABEL .. "|r " .. (build or "?"))
 end
 
 local function PrintProfile(targetName)
     local pm = Orbit.Profile
-    if not pm then Orbit:Print("ProfileManager not loaded."); return end
+    if not pm then Orbit:Print(L.MSG_PROFILE_MGR_NOT_LOADED); return end
     if not targetName or targetName == "" then
-        Orbit:Print("Active profile: |cFFFFD100" .. pm:GetActiveProfileName() .. "|r")
+        Orbit:Print(L.MSG_ACTIVE_PROFILE_F:format("|cFFFFD100" .. pm:GetActiveProfileName() .. "|r"))
         local profiles = pm:GetProfiles()
-        if #profiles > 1 then print("  Available: " .. table.concat(profiles, ", ")) end
+        if #profiles > 1 then print("  " .. L.MSG_AVAILABLE_PROFILES_F:format(table.concat(profiles, ", "))) end
         return
     end
     if not Orbit.db.profiles[targetName] then
-        Orbit:Print("Profile not found: " .. targetName); return
+        Orbit:Print(L.MSG_PROFILE_NOT_FOUND_F:format(targetName)); return
     end
     pm:SetActiveProfile(targetName)
 end
 
 local function PrintFrameInfo(pluginName)
     if not pluginName or pluginName == "" then
-        Orbit:Print("Usage: /orbit frames <plugin_name>")
-        Orbit:Print("Use |cFF00FFFF/orbit list|r to see plugin names.")
+        Orbit:Print(L.CMD_FRAMES_USAGE)
+        Orbit:Print(L.CMD_SEE_LIST)
         return
     end
     local plugin = Orbit:GetPlugin(pluginName)
-    if not plugin then Orbit:Print("Plugin not found: " .. pluginName); return end
-    Orbit:Print("Frame info for |cFFFFD100" .. (plugin.name or pluginName) .. "|r:")
+    if not plugin then Orbit:Print(L.MSG_PLUGIN_NOT_FOUND_F:format(pluginName)); return end
+    Orbit:Print(L.MSG_FRAME_INFO_F:format(plugin.name or pluginName))
     local frames = {}
     if plugin.frame then frames[#frames + 1] = { name = "frame", f = plugin.frame } end
     if plugin.essentialAnchor then frames[#frames + 1] = { name = "essentialAnchor", f = plugin.essentialAnchor } end
     if plugin.utilityAnchor then frames[#frames + 1] = { name = "utilityAnchor", f = plugin.utilityAnchor } end
     if plugin.buffIconAnchor then frames[#frames + 1] = { name = "buffIconAnchor", f = plugin.buffIconAnchor } end
-    if #frames == 0 then print("  (no frames registered)"); return end
+    if #frames == 0 then print("  " .. L.MSG_NO_FRAMES_REGISTERED); return end
     for _, entry in ipairs(frames) do
         local f = entry.f
         local shown = f:IsShown() and "|cFF00FF00shown|r" or "|cFFFF0000hidden|r"
@@ -148,19 +150,19 @@ end
 
 local function PrintInspect(pluginName)
     if not pluginName or pluginName == "" then
-        Orbit:Print("Usage: /orbit inspect <plugin_name>")
-        Orbit:Print("Use |cFF00FFFF/orbit list|r to see plugin names.")
+        Orbit:Print(L.CMD_INSPECT_USAGE)
+        Orbit:Print(L.CMD_SEE_LIST)
         return
     end
     local plugin = Orbit:GetPlugin(pluginName)
-    if not plugin or not plugin.system then Orbit:Print("Plugin not found: " .. pluginName); return end
+    if not plugin or not plugin.system then Orbit:Print(L.MSG_PLUGIN_NOT_FOUND_F:format(pluginName)); return end
     local layouts = Orbit.runtime and Orbit.runtime.Layouts
     local settings = layouts and layouts["Orbit"] and layouts["Orbit"][plugin.system]
-    if not settings then Orbit:Print("No saved settings for " .. pluginName); return end
-    Orbit:Print("Settings for |cFFFFD100" .. plugin.name .. "|r (" .. plugin.system .. "):")
+    if not settings then Orbit:Print(L.MSG_NO_SAVED_SETTINGS_F:format(pluginName)); return end
+    Orbit:Print(L.MSG_INSPECT_HEADER_F:format(plugin.name, tostring(plugin.system)))
     local count = 0
     for key, value in pairs(settings) do
-        if count >= MAX_INSPECT_ITEMS then print("  |cFFAAAAAA...(truncated)|r"); break end
+        if count >= MAX_INSPECT_ITEMS then print("  " .. L.MSG_INSPECT_TRUNCATED); break end
         print("  |cFFFFD100" .. tostring(key) .. "|r = " .. FormatValue(value, 0))
         count = count + 1
     end
@@ -188,7 +190,7 @@ SlashCmdList["ORBIT"] = function(msg)
                 Panel:Open("Global")
             end
         else
-            Orbit:Print("Edit Mode not available.")
+            Orbit:Print(L.MSG_EDIT_MODE_UNAVAILABLE)
         end
         return
     end
@@ -215,13 +217,13 @@ SlashCmdList["ORBIT"] = function(msg)
                     if plugin.ApplySettings then plugin:ApplySettings() end
                 end
             end
-            Orbit:Print("Visibility Engine reset to defaults.")
+            Orbit:Print(L.MSG_VE_RESET)
         else
             if Orbit._pluginSettingsCategoryID then
                 Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
                 if Orbit._openVETab then C_Timer.After(0.05, Orbit._openVETab) end
             else
-                Orbit:Print("Plugin Manager not yet loaded.")
+                Orbit:Print(L.MSG_PLUGIN_MGR_NOT_LOADED)
             end
         end
         return
@@ -231,12 +233,12 @@ SlashCmdList["ORBIT"] = function(msg)
         if Orbit._pluginSettingsCategoryID then
             Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
         else
-            Orbit:Print("Plugin Manager not yet loaded.")
+            Orbit:Print(L.MSG_PLUGIN_MGR_NOT_LOADED)
         end
     elseif cmd == "list" then
         local systems = Orbit.Engine and Orbit.Engine.systems
-        if not systems or #systems == 0 then Orbit:Print("No plugins registered."); return end
-        Orbit:Print("Registered plugins (use name with other commands):")
+        if not systems or #systems == 0 then Orbit:Print(L.MSG_NO_PLUGINS); return end
+        Orbit:Print(L.MSG_PLUGINS_LIST_HEADER)
         for _, plugin in ipairs(systems) do
             local status = Orbit:IsPluginEnabled(plugin.name) and "|cFF00FF00ON|r" or "|cFFFF0000OFF|r"
             print("  " .. status .. "  |cFFFFD100" .. (plugin.name or "?") .. "|r")
@@ -253,7 +255,7 @@ SlashCmdList["ORBIT"] = function(msg)
             StaticPopup_Show("ORBIT_CONFIRM_RESET_ACCOUNT")
         else
             local plugin = Orbit:GetPlugin(target)
-            if not plugin then Orbit:Print("Plugin not found: " .. target); return end
+            if not plugin then Orbit:Print(L.MSG_PLUGIN_NOT_FOUND_F:format(target)); return end
             local dialog = StaticPopup_Show("ORBIT_CONFIRM_RESET_PLUGIN", plugin.name)
             if dialog then dialog.data = plugin.name end
         end
@@ -264,7 +266,7 @@ SlashCmdList["ORBIT"] = function(msg)
     elseif cmd == "refresh" then
         local target = RestArgs() or ""
         if target == "" then
-            Orbit:Print("Usage: /orbit refresh <plugin_name>")
+            Orbit:Print(L.CMD_REFRESH_USAGE)
             return
         end
         if Orbit.Skin and Orbit.Skin.Icons then
@@ -275,18 +277,30 @@ SlashCmdList["ORBIT"] = function(msg)
             if plugin.ReapplyParentage then plugin:ReapplyParentage() end
             if plugin.ApplyAll then plugin:ApplyAll()
             elseif plugin.ApplySettings then plugin:ApplySettings() end
-            Orbit:Print(target .. " refreshed.")
+            Orbit:Print(L.MSG_PLUGIN_REFRESHED_F:format(target))
         else
-            Orbit:Print("Plugin not found: " .. target)
+            Orbit:Print(L.MSG_PLUGIN_NOT_FOUND_F:format(target))
         end
     elseif cmd == "flush" then
         if Orbit.ViewerInjection then
             Orbit.ViewerInjection:FlushAll()
-            Orbit:Print("Cleared all injected cooldown icons.")
+            Orbit:Print(L.MSG_COOLDOWNS_CLEARED)
         else
-            Orbit:Print("ViewerInjection not loaded.")
+            Orbit:Print(L.MSG_VIEWER_INJECTION_MISSING)
+        end
+    elseif cmd == "tracked" then
+        local sub = args[2] and args[2]:lower() or ""
+        if sub == "flush" then
+            local plugin = Orbit:GetPlugin("Orbit_Tracked")
+            if plugin and plugin.FlushCurrentSpec then
+                plugin:FlushCurrentSpec()
+            else
+                Orbit:Print(L.MSG_TRACKED_NOT_LOADED)
+            end
+        else
+            Orbit:Print(L.CMD_TRACKED_USAGE)
         end
     else
-        Orbit:Print("Unknown command: " .. cmd .. ". Type |cFF00FFFF/orbit help|r for a list.")
+        Orbit:Print(L.CMD_UNKNOWN_COMMAND_F:format(cmd))
     end
 end

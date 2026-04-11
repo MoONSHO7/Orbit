@@ -1,6 +1,7 @@
 -- [ MINIMAP BUTTON ]--------------------------------------------------------------------------------
 
 local _, Orbit = ...
+local L = Orbit.L
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
@@ -34,8 +35,8 @@ local dataObj = ldb:NewDataObject(BUTTON_NAME, {
     OnTooltipShow = function(tooltip)
         tooltip:AddLine("Orbit", 1, 1, 1)
         tooltip:AddLine(" ")
-        tooltip:AddLine("|cFF00FF00Left-click|r Edit Mode + Orbit Options", 0.8, 0.8, 0.8)
-        tooltip:AddLine("|cFFFFFF00Right-click|r Advanced Options", 0.8, 0.8, 0.8)
+        tooltip:AddLine(L.CMD_MINIMAP_LEFT_CLICK, 0.8, 0.8, 0.8)
+        tooltip:AddLine(L.CMD_MINIMAP_RIGHT_CLICK, 0.8, 0.8, 0.8)
     end,
 })
 

@@ -1,6 +1,7 @@
 -- [ VISIBILITY ENGINE CONTENT ]---------------------------------------------------------------------
 -- Scrollable table for frame visibility, opacity, and fade behavior.
 local _, Orbit = ...
+local L = Orbit.L
 local Layout = Orbit.Engine.Layout
 local A = Layout.Advanced
 
@@ -20,7 +21,7 @@ local VE_VALUE_WIDTH = 36
 local VE_LABEL_PAD = 4
 local VE_SECTION_GAP = 6
 local VE_SLIDER_INSET = 10
-local VE_COLUMNS = { "Opacity", "Out Of Combat Fade", "Hide When Mounted", "Show on Mouse Over", "Show on Target" }
+local VE_COLUMNS = { L.CFG_OPACITY, L.CFG_OOC_FADE, L.CFG_HIDE_MOUNTED, L.CFG_SHOW_MOUSEOVER, L.CFG_SHOW_TARGET }
 local CHECK_SETTING_KEYS = { "oocFade", "hideMounted", "mouseOver", "showWithTarget" }
 
 -- [ BUILD ]-----------------------------------------------------------------------------------------
@@ -28,10 +29,10 @@ function Orbit._AC.CreateVEContent(parent)
     local content = CreateFrame("Frame", nil, parent)
     content:SetAllPoints()
     content:Hide()
-    local header = Layout:CreateSectionHeader(content, "Visibility Engine")
+    local header = Layout:CreateSectionHeader(content, L.CFG_VISIBILITY_ENGINE)
     header:SetPoint("TOPLEFT", A.PADDING, A.TITLE_Y)
     header:SetPoint("TOPRIGHT", -A.PADDING, A.TITLE_Y)
-    local desc = Layout:CreateDescription(content, "Configure frame visibility, opacity, and fade behavior.", A.MUTED)
+    local desc = Layout:CreateDescription(content, L.CFG_VISIBILITY_ENGINE_DESC, A.MUTED)
     desc:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -4)
     desc:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", 0, -4)
     -- Sticky column headers (frozen above scroll)
@@ -64,7 +65,7 @@ function Orbit._AC.CreateVEContent(parent)
     checkAllBG:SetColorTexture(0.12, 0.10, 0.06, 1)
     local checkAllLabel = checkAllRow:CreateFontString(nil, "OVERLAY", FONT_GROUP)
     checkAllLabel:SetPoint("LEFT", VE_LABEL_PAD, 0)
-    checkAllLabel:SetText("|cFFFFD100Check All|r")
+    checkAllLabel:SetText("|cFFFFD100" .. L.CFG_CHECK_ALL .. "|r")
     content.checkAllRow = checkAllRow
     -- Modern scrollable data area (below sticky rows)
     local scrollFrame = CreateFrame("ScrollFrame", nil, content, "ScrollFrameTemplate")
@@ -218,7 +219,7 @@ function Orbit._AC.CreateVEContent(parent)
             local sectionLabel = sectionRow:CreateFontString(nil, "OVERLAY", FONT_GROUP)
             sectionLabel:SetPoint("LEFT", VE_LABEL_PAD, 0)
             sectionLabel:SetTextColor(GROUP_HEADER_COLOR.r, GROUP_HEADER_COLOR.g, GROUP_HEADER_COLOR.b)
-            sectionLabel:SetText("Blizzard Frames")
+            sectionLabel:SetText(L.CFG_BLIZZARD_FRAMES)
             table.insert(self.rows, sectionRow)
             yOffset = yOffset - VE_ROW_HEIGHT
             for _, entry in ipairs(blizzFrames) do CreateVERow(entry, true) end
@@ -233,7 +234,7 @@ function Orbit._AC.CreateVEContent(parent)
             local tpaLabel = tpaRow:CreateFontString(nil, "OVERLAY", FONT_GROUP)
             tpaLabel:SetPoint("LEFT", VE_LABEL_PAD, 0)
             tpaLabel:SetTextColor(GROUP_HEADER_COLOR.r, GROUP_HEADER_COLOR.g, GROUP_HEADER_COLOR.b)
-            tpaLabel:SetText("Third-Party Addons")
+            tpaLabel:SetText(L.CFG_THIRD_PARTY_ADDONS)
             table.insert(self.rows, tpaRow)
             yOffset = yOffset - VE_ROW_HEIGHT
             for _, entry in ipairs(thirdPartyFrames) do CreateVERow(entry, true) end
