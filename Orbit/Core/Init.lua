@@ -68,6 +68,18 @@ end
 Orbit.Visibility = {}
 
 function Orbit.Visibility:ApplyState(frame, visibilityMode)
+    -- RegisterStateDriver / UnregisterStateDriver / frame:Show are all
+    -- combat-locked. Defer the whole call until after combat so the driver
+    -- cache never drifts out of sync with the actual secure state.
+    if InCombatLockdown() then
+        if Orbit.CombatManager then
+            Orbit.CombatManager:QueueUpdate(function()
+                Orbit.Visibility:ApplyState(frame, visibilityMode)
+            end)
+        end
+        return
+    end
+
     if frame.isOrbitUpdating then return end
     frame.isOrbitUpdating = true
 
@@ -152,7 +164,14 @@ function Orbit:InitializePlugins()
                 if not Orbit:IsPluginEnabled(self.name) then
                     if self.frame then
                         OrbitEngine.FrameAnchor:SetFrameDisabled(self.frame, true)
-                        self.frame:Hide()
+                        if InCombatLockdown() then
+                            if Orbit.CombatManager then
+                                local f = self.frame
+                                Orbit.CombatManager:QueueUpdate(function() f:Hide() end)
+                            end
+                        else
+                            self.frame:Hide()
+                        end
                     end
                     return
                 end
@@ -193,9 +212,9 @@ Orbit.addonName = addonName
 Orbit.version = "@project-version@"
 Orbit.title = "Orbit"
 
--- Dev Fallback for version token
+-- Dev Fallback for version token (when not built by BigWigsMods/packager)
 if Orbit.version == "@" .. "project-version" .. "@" then
-    Orbit.version = "1.0.1"
+    Orbit.version = "0.0.0-dev"
 end
 _G["Orbit"] = Orbit
 OrbitDB = OrbitDB or {}
@@ -204,7 +223,31 @@ function Orbit:OnLoad()
     self.db = OrbitDB
     self.db.GlobalSettings = self.db.GlobalSettings or {}
     self.db.AccountSettings = self.db.AccountSettings or {}
+    self.CHAR_KEY = UnitName("player") .. "-" .. GetRealmName()
+
+    -- SpecData is character-scoped: { [charKey] = { [specID] = { [sysIdx] = { key = value } } } }
+    -- Migrate legacy account-wide layout ({ [specID] = ... }) under the current character key.
     self.db.SpecData = self.db.SpecData or {}
+    local legacySpecData = false
+    for k in pairs(self.db.SpecData) do
+        if type(k) == "number" then legacySpecData = true; break end
+    end
+    if legacySpecData then
+        local legacy = self.db.SpecData
+        self.db.SpecData = { [self.CHAR_KEY] = legacy }
+    end
+    self.db.SpecData[self.CHAR_KEY] = self.db.SpecData[self.CHAR_KEY] or {}
+
+    -- Detect class change (character services, PTR copies, realm merges that rename
+    -- characters onto an existing key). SpecIDs are class-bound, so any surviving
+    -- data would be stale — wipe and reseed rather than leave orphan frames.
+    local _, playerClass = UnitClass("player")
+    self.db.SpecDataMeta = self.db.SpecDataMeta or {}
+    local meta = self.db.SpecDataMeta[self.CHAR_KEY]
+    if meta and meta.class and meta.class ~= playerClass then
+        self.db.SpecData[self.CHAR_KEY] = {}
+    end
+    self.db.SpecDataMeta[self.CHAR_KEY] = { class = playerClass }
 
 
 
@@ -241,7 +284,7 @@ function Orbit:OnLoad()
 
     if OrbitEngine.NativeFrame then OrbitEngine.NativeFrame:SuppressEditModeSettings() end
 
-    self:Print("loaded. Type /orbit for config")
+    self:Print(self.L.MSG_LOADED)
 end
 
 function Orbit:Print(...) print("|cFF00FFFF" .. self.title .. ":|r", ...) end
@@ -313,11 +356,24 @@ function Orbit:LiveTogglePlugin(name, enabled)
         end
         if plugin.frame then
             OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, true)
-            plugin.frame:SetScript("OnEvent", nil)
-            plugin.frame:SetScript("OnUpdate", nil)
             plugin.frame:UnregisterAllEvents()
             if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame) end
-            plugin.frame:Hide()
+            -- SetScript and Hide are combat-locked for secure frames — defer the
+            -- whole tear-down block until combat ends so the frame ends in a
+            -- consistent (fully torn down) state.
+            local f = plugin.frame
+            local function TearDownFrame()
+                f:SetScript("OnEvent", nil)
+                f:SetScript("OnUpdate", nil)
+                f:Hide()
+            end
+            if InCombatLockdown() then
+                if Orbit.CombatManager then
+                    Orbit.CombatManager:QueueUpdate(TearDownFrame)
+                end
+            else
+                TearDownFrame()
+            end
         end
         if plugin.timer then
             plugin.timer:Cancel()

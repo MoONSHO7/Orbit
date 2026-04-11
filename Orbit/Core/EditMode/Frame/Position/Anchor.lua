@@ -6,12 +6,22 @@ local Engine = Orbit.Engine
 Engine.FrameAnchor = Engine.FrameAnchor or {}
 local Anchor = Engine.FrameAnchor
 
+-- [ PHYSICAL GRAPH ] --------------------------------------------------------------------------
+-- Anchor.anchors / Anchor.childrenOf reflect where frames are ACTUALLY attached right now.
+-- ReconcileChain rewrites this when virtual/disabled frames shift children to an ancestor.
 Anchor.anchors = Anchor.anchors or {}
 Anchor.childrenOf = Anchor.childrenOf or setmetatable({}, { __mode = "k" })
 
+-- [ LOGICAL GRAPH ] ---------------------------------------------------------------------------
+-- Anchor.logicalAnchors / Anchor.logicalChildrenOf capture USER-INTENDED anchoring — the anchor
+-- the plugin or Edit Mode originally asked for. Untouched by physical re-parenting, so we can
+-- restore a child back to its "home" parent when that parent stops being skipped.
+Anchor.logicalAnchors = Anchor.logicalAnchors or {}
+Anchor.logicalChildrenOf = Anchor.logicalChildrenOf or setmetatable({}, { __mode = "k" })
+
 -- Initialize the graph companion with our authoritative tables
 local Graph = Engine.AnchorGraph
-Graph:Init(Anchor.anchors, Anchor.childrenOf)
+Graph:Init(Anchor.anchors, Anchor.childrenOf, Anchor.logicalAnchors, Anchor.logicalChildrenOf)
 
 local hookedParents = setmetatable({}, { __mode = "k" })
 local optionsCache = setmetatable({}, { __mode = "k" })
@@ -278,7 +288,49 @@ local function WouldCreateCycle(anchors, child, parent)
     return Graph:WouldCreateCycle(child, parent)
 end
 
-function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, suppressApplySettings)
+-- Update the logical graph (user-intended anchor). Called by CreateAnchor on
+-- non-physical-repair paths. Never touches self.anchors / self.childrenOf.
+function Anchor:SetLogicalAnchor(child, parent, edge, padding, syncOptions, align)
+    local prev = self.logicalAnchors[child]
+    if prev and self.logicalChildrenOf[prev.parent] then
+        self.logicalChildrenOf[prev.parent][child] = nil
+    end
+    self.logicalAnchors[child] = {
+        parent = parent,
+        edge = edge,
+        padding = padding,
+        syncOptions = syncOptions,
+        align = align,
+    }
+    if not self.logicalChildrenOf[parent] then
+        self.logicalChildrenOf[parent] = {}
+    end
+    self.logicalChildrenOf[parent][child] = true
+end
+
+function Anchor:ClearLogicalAnchor(child)
+    local prev = self.logicalAnchors[child]
+    if prev and self.logicalChildrenOf[prev.parent] then
+        self.logicalChildrenOf[prev.parent][child] = nil
+    end
+    self.logicalAnchors[child] = nil
+end
+
+function Anchor:GetLogicalAnchor(child)
+    return self.logicalAnchors[child]
+end
+
+function Anchor:GetLogicalChildren(parent)
+    local result = {}
+    if self.logicalChildrenOf[parent] then
+        for child in pairs(self.logicalChildrenOf[parent]) do
+            result[#result + 1] = child
+        end
+    end
+    return result
+end
+
+function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, suppressApplySettings, skipLogical)
     if padding == nil then
         local style = Orbit.Skin and Orbit.Skin:GetActiveBorderStyle()
         padding = (style and style.edgeFile) and NINESLICE_DEFAULT_PADDING or DEFAULT_PADDING
@@ -295,7 +347,7 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
         return false
     end
 
-    self:BreakAnchor(child, true)
+    self:BreakAnchor(child, true, false, skipLogical)
     self.anchors[child] = {
         parent = parent,
         edge = edge,
@@ -307,6 +359,10 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
         self.childrenOf[parent] = {}
     end
     self.childrenOf[parent][child] = true
+
+    if not skipLogical then
+        self:SetLogicalAnchor(child, parent, edge, padding, opts, align)
+    end
 
     HookParentSizeChange(parent, self)
 
@@ -387,7 +443,7 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
     return true
 end
 
-function Anchor:BreakAnchor(child, suppressApplySettings, deferMergeVisuals)
+function Anchor:BreakAnchor(child, suppressApplySettings, deferMergeVisuals, skipLogical)
     if self.anchors[child] then
         local oldAnchor = self.anchors[child]
         local oldParent = oldAnchor.parent
@@ -406,6 +462,12 @@ function Anchor:BreakAnchor(child, suppressApplySettings, deferMergeVisuals)
         self.anchors[child] = nil
         if oldAnchor.parent and self.childrenOf[oldAnchor.parent] then
             self.childrenOf[oldAnchor.parent][child] = nil
+        end
+        -- Only clear the logical anchor when the caller explicitly intends a
+        -- user-driven break. Physical repairs (ReconcileChain) pass skipLogical=true
+        -- so the user-intended parent reference survives across virtual/disabled toggles.
+        if not skipLogical then
+            self:ClearLogicalAnchor(child)
         end
 
         local pOpts = GetFrameOptions(oldParent)
@@ -463,8 +525,10 @@ function Anchor:RebalanceChainCenter(root, oldScreenCenterX)
 end
 
 
--- Move frame to its default position (off-screen stash)
-local function ParkFrame(frame)
+-- Move frame to its default position (off-screen stash). Exposed as a method
+-- so AnchorGraph:ReconcileChain can re-park skipped grandchildren whose
+-- physical SetPoint was overwritten by a promotion-time CreateAnchor.
+function Anchor:ParkFrame(frame)
     frame:ClearAllPoints()
     local def = frame.defaultPosition
     if not (def and def.point) then return end
@@ -474,32 +538,65 @@ local function ParkFrame(frame)
     end
     frame:SetPoint(def.point, def.relativeTo, def.relativePoint, x, y)
 end
+local function ParkFrame(frame) Anchor:ParkFrame(frame) end
 
--- Profile-level disable: severs the frame from the chain entirely.
--- Re-enabling triggers a full chain sync where ResolvePhysicalParent
--- will restore its position in the WoW frame hierarchy.
+-- A frame is "rescued" when its intended (logical) parent is skipped but its
+-- current (physical) parent is not — RouteAroundSkipped (Persistence) or
+-- PromoteGrandchild (ReconcileChain) has already placed it at an ancestor's
+-- edge. Re-parking such a frame would undo that placement, which is the
+-- whole reason the readme states promoted children should "visually stack
+-- under the grandparent's content." Used by SetFrameVirtual/SetFrameDisabled
+-- to leave rescued placements alone.
+local function IsRescued(frame)
+    local logical = Anchor.logicalAnchors[frame]
+    local physical = Anchor.anchors[frame]
+    if not (logical and physical) then return false end
+    if logical.parent == physical.parent then return false end
+    return Graph:IsSkipped(logical.parent) and not Graph:IsSkipped(physical.parent)
+end
+
+-- Profile-level disable: marks the frame skipped so ReconcileChain promotes
+-- its children to the nearest non-skipped ancestor. Parks the frame at its
+-- default position so it leaves the layout until re-enabled.
+-- Reconciliation is batched: bulk disable/enable during profile or spec
+-- switches collapses into a single next-frame flush per affected chain.
+-- Idempotent on the "on" path: even if the graph state did not change, we
+-- re-park and re-schedule reconcile because a prior CreateAnchor (e.g.
+-- RestorePosition during spec reload) may have unparked the frame and
+-- re-attached its children physically while the skip flag was still set.
+-- Rescued frames (logical parent skipped, physical parent live) are left at
+-- their routed position — re-parking them would undo RouteAroundSkipped.
 function Anchor:SetFrameDisabled(frame, disabled)
-    if not Graph:SetDisabled(frame, disabled) then return end
+    local changed = Graph:SetDisabled(frame, disabled)
     frame.orbitDisabled = Graph:IsSkipped(frame)
 
     if disabled then
-        ParkFrame(frame)
+        if not IsRescued(frame) then ParkFrame(frame) end
+    elseif not changed then
+        return
     end
     local root = self:GetRootParent(frame)
-    if root then Graph:ReconcileChain(root, self) end
+    if root then Graph:ScheduleReconcileChain(root, self) end
 end
 
 -- Content-empty toggle: marks frames with no content (no spell, no auras)
--- for layout bypass. ResolvePhysicalParent handles shifting children.
+-- so ReconcileChain shifts their children to an ancestor. Parks the frame
+-- at its default position so it steps out of the layout until re-filled.
+-- Batched for the same reason as SetFrameDisabled: bulk content-toggle paths
+-- can flip dozens of frames virtual in a tight loop.
+-- Idempotent on "on" for the same reason as SetFrameDisabled.
+-- Rescued frames skip the park for the same reason.
 function Anchor:SetFrameVirtual(frame, virtual)
-    if not Graph:SetVirtual(frame, virtual) then return end
+    local changed = Graph:SetVirtual(frame, virtual)
     frame.orbitDisabled = Graph:IsSkipped(frame)
 
     if virtual then
-        ParkFrame(frame)
+        if not IsRescued(frame) then ParkFrame(frame) end
+    elseif not changed then
+        return
     end
     local root = self:GetRootParent(frame)
-    if root then Graph:ReconcileChain(root, self) end
+    if root then Graph:ScheduleReconcileChain(root, self) end
 end
 
 function Anchor:GetAnchorParent(child)
@@ -817,6 +914,19 @@ function Anchor:ReconcileAll()
     Graph:ReconcileAll(self)
 end
 
+-- [ BATCHED RECONCILIATION ] -------------------------------------------------------------------
+-- Schedule a reconcile for the next frame. Multiple Schedule calls with the
+-- same root within the same frame collapse to a single ReconcileChain. Use
+-- this during bulk state changes (profile switch, spec reload, content load
+-- fan-out) where many frames toggle virtual/disabled in a tight loop.
+function Anchor:ScheduleReconcileChain(root)
+    Graph:ScheduleReconcileChain(root, self)
+end
+
+function Anchor:ScheduleReconcileAll()
+    Graph:ScheduleReconcileAll(self)
+end
+
 -- [ RESYNC ALL ]-------------------------------------------------------------------------------------
 -- Re-syncs all anchored frames (e.g. after border size changes affect spacing).
 function Anchor:ResyncAll()
@@ -844,11 +954,13 @@ Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
     C_Timer.After(delay, function() Anchor:ResyncAll() end)
 end)
 
--- Re-reconcile chains after Edit Mode hooks to ensure plugins properly bypass empty seeds
+-- Re-reconcile chains after Edit Mode hooks to ensure plugins properly bypass empty seeds.
+-- Scheduled so it collapses with any in-flight chain reconciles queued by the plugins
+-- that also react to the Edit Mode OnShow hook.
 if EditModeManagerFrame then
     EditModeManagerFrame:HookScript("OnShow", function()
         local delay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.RetryShort) or 0.1
-        C_Timer.After(delay, function() Graph:ReconcileAll(Anchor) end)
+        C_Timer.After(delay, function() Graph:ScheduleReconcileAll(Anchor) end)
     end)
 end
 

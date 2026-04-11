@@ -587,15 +587,9 @@ Orbit.Profile.defaults = {
                 ["Global_HUD"] = {
                     entities = {
                         "Orbit_PlayerFrame", "Orbit_TargetFrame", "Orbit_PlayerPetFrame", "Orbit_GroupFrames",
-                        "Orbit_BossFrames", "Orbit_ActionBars", "Orbit_TrackedBars", "Orbit_CooldownViewer",
+                        "Orbit_BossFrames", "Orbit_ActionBars", "Orbit_CooldownViewer",
                         "Orbit_Minimap", "Orbit_Datatexts",
                     }
-                }
-            },
-            ["Orbit_Tracked"] = {
-                [20] = {
-                    Height = 6, Width = 113,
-                    BarColorCurve = { pins = { { color = { a = 1, r = 1, g = 1, b = 1 }, position = 0.5387429953485746 } } }
                 }
             },
         },

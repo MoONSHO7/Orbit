@@ -215,6 +215,46 @@ function Orbit.PluginMixin:SetSetting(systemIndex, key, value)
     db[layoutID][self.system][systemIndex][key] = value
 end
 
+-- [ SPEC-SCOPED STORAGE ]--------------------------------------------------------------------------
+-- Per-character, per-spec storage layered under Orbit.db.SpecData[charKey][specID][systemIndex][key].
+-- Used by plugins whose settings must differ between specs (Tracked's items/positions,
+-- CooldownManager's injected icons). Plugins that override GetSetting/SetSetting to redirect
+-- individual keys into this store (e.g. TrackedPlugin.SPEC_SCOPED_KEYS) get spec scoping for free;
+-- callers that only need a handful of keys can hit these methods directly.
+function Orbit.PluginMixin:GetCurrentSpecID()
+    local specIndex = GetSpecialization()
+    return specIndex and GetSpecializationInfo(specIndex)
+end
+
+function Orbit.PluginMixin:GetCharSpecStore()
+    local root = Orbit.db.SpecData
+    if not root then Orbit.db.SpecData = {}; root = Orbit.db.SpecData end
+    local store = root[Orbit.CHAR_KEY]
+    if not store then
+        store = {}
+        root[Orbit.CHAR_KEY] = store
+    end
+    return store
+end
+
+function Orbit.PluginMixin:GetSpecData(systemIndex, key)
+    local specID = self:GetCurrentSpecID()
+    if not specID then return nil end
+    local store = self:GetCharSpecStore()
+    local specNode = store[specID]
+    local sysNode = specNode and specNode[systemIndex]
+    return sysNode and sysNode[key]
+end
+
+function Orbit.PluginMixin:SetSpecData(systemIndex, key, value)
+    local specID = self:GetCurrentSpecID()
+    if not specID then return end
+    local store = self:GetCharSpecStore()
+    if not store[specID] then store[specID] = {} end
+    if not store[specID][systemIndex] then store[specID][systemIndex] = {} end
+    store[specID][systemIndex][key] = value
+end
+
 -- [ VISIBILITY ]------------------------------------------------------------------------------------
 local VISIBILITY_EVENTS = { "PET_BATTLE_OPENING_START", "PET_BATTLE_CLOSE", "PLAYER_MOUNT_DISPLAY_CHANGED", "ZONE_CHANGED_NEW_AREA", "MOUNTED_VISIBILITY_CHANGED" }
 local VISIBILITY_UNIT_EVENTS = { "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE" }
