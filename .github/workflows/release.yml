@@ -3,8 +3,10 @@ name: Release AddOn
 on:
   push:
     tags:
-      - "[0-9]*"
-      - "!*.*"
+      # MAJOR.MINOR.PATCH created by auto-tag.yml (e.g. 0.248.0, 0.248.1).
+      # Both regular commits and weekly data commits now produce this format,
+      # so both paths trigger a release.
+      - "[0-9]*.[0-9]*.[0-9]*"
 
 env:
   CF_API_KEY: ${{ secrets.CURSE_API_KEY }}

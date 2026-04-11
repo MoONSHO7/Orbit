@@ -1,0 +1,27 @@
+root = true
+
+# Default for every text file
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Lua source — WoW requires UTF-8 without BOM. Editors must not prepend one.
+[*.lua]
+charset = utf-8
+indent_size = 4
+
+# XML manifests
+[*.xml]
+indent_size = 4
+
+# Markdown preserves trailing whitespace (hard line breaks)
+[*.md]
+trim_trailing_whitespace = false
+
+# Shell scripts use LF even on Windows checkouts
+[*.sh]
+end_of_line = lf
