@@ -166,7 +166,9 @@ function Plugin:CreateCompartmentFlyout()
 
         local mouseOverFlyout = f:IsMouseOver()
         local mouseOverBtn = self._compartmentButton and self._compartmentButton:IsMouseOver()
-        local mouseOverMinimap = Minimap and Minimap:IsMouseOver()
+        -- When FarmHud is active the Minimap surface is reparented to the HUD frame,
+        -- so IsMouseOver would check the wrong screen region. Fall back to our container.
+        local mouseOverMinimap = self.frame and self.frame:IsMouseOver()
 
         -- Also check if any child button has a tooltip/menu open (GameTooltip anchored inside)
         local tooltipShown = GameTooltip:IsShown() and GameTooltip:GetOwner()

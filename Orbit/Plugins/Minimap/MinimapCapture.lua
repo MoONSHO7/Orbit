@@ -373,7 +373,7 @@ function Plugin:CaptureBlizzardMinimap()
     -- the minimap away from our intended values.
     if not minimap._orbitSetPointHooked then
         hooksecurefunc(minimap, "SetPoint", function(f, ...)
-            if f._orbitRestoringPoint then return end
+            if f._orbitRestoringPoint or f._orbitGuardSuspended then return end
             if f:GetParent() == self.frame then
                 local point = ...
                 local relFrame = select(2, ...)
@@ -387,7 +387,7 @@ function Plugin:CaptureBlizzardMinimap()
             end
         end)
         hooksecurefunc(minimap, "SetSize", function(f, w, h)
-            if f._orbitRestoringPoint then return end
+            if f._orbitRestoringPoint or f._orbitGuardSuspended then return end
             if f:GetParent() == self.frame then
                 local intended = self.frame:GetWidth()
                 if intended and (math.abs(w - intended) > 0.5 or math.abs(h - intended) > 0.5) then
@@ -404,12 +404,9 @@ function Plugin:CaptureBlizzardMinimap()
     -- a MEDIUM-strata Button with SetPropagateMouseClicks(true) that covers the whole
     -- minimap area and sits above most third-party overlays. No per-frame hook needed.
 
-    -- FarmHud integration: register our container so FarmHud knows about it.
-    C_Timer.After(0, function()
-        if FarmHud and FarmHud.RegisterForeignAddOnObject then
-            FarmHud:RegisterForeignAddOnObject(self.frame, "Orbit")
-        end
-    end)
+    -- FarmHud integration: register our container and hook show/hide to suspend
+    -- FrameGuard protection so FarmHud can reparent the minimap surface freely.
+    self:HookFarmHud()
 
     -- Update zoom button state after scroll-wheel zoom
     if not minimap._orbitScrollHooked then
@@ -422,3 +419,58 @@ function Plugin:CaptureBlizzardMinimap()
 
     self._captured = true
 end
+
+-- [ FARMHUD COMPATIBILITY ]-------------------------------------------------------------------------
+-- FarmHud reparents the Minimap surface to its own full-screen HUD frame when
+-- toggled on, and restores it when toggled off. Our FrameGuard (SetParent hook
+-- + enforce-show) and the SetPoint/SetSize protection hooks would fight this,
+-- causing the minimap to snap back immediately. We cooperate by:
+--   1. Registering our container via FarmHud:RegisterForeignAddOnObject so
+--      FarmHud knows to move our children to its dummy placeholder.
+--   2. Hooking FarmHud's OnShow/OnHide to suspend and resume FrameGuard and
+--      hide/show our Overlay and ClickCapture (they would float over the HUD).
+-- The _farmHudActive flag is also checked in ApplySettings() to skip minimap
+-- surface re-sync and recapture while FarmHud owns the surface.
+
+function Plugin:HookFarmHud()
+    if self._farmHudHooked then return end
+
+    -- Deferred: FarmHud may load after Orbit.
+    C_Timer.After(0, function()
+        if not FarmHud then return end
+
+        -- Let FarmHud move our container's children to its dummy placeholder.
+        if FarmHud.RegisterForeignAddOnObject then
+            FarmHud:RegisterForeignAddOnObject(self.frame, "Orbit")
+        end
+
+        -- Hook OnShow/OnHide only once.
+        if not self._farmHudHooked then
+            FarmHud:HookScript("OnShow", function() self:OnFarmHudShow() end)
+            FarmHud:HookScript("OnHide", function() self:OnFarmHudHide() end)
+            self._farmHudHooked = true
+        end
+    end)
+end
+
+function Plugin:OnFarmHudShow()
+    self._farmHudActive = true
+
+    local minimap = self:GetBlizzardMinimap()
+    if minimap then
+        OrbitEngine.FrameGuard:Suspend(minimap)
+    end
+end
+
+function Plugin:OnFarmHudHide()
+    self._farmHudActive = nil
+
+    local minimap = self:GetBlizzardMinimap()
+    if minimap then
+        OrbitEngine.FrameGuard:Resume(minimap)
+    end
+
+    -- Re-apply settings to recapture the minimap surface and restore our layout.
+    self:ApplySettings()
+end
+

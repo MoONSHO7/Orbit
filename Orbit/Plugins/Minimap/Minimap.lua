@@ -606,8 +606,9 @@ function Plugin:ApplySettings()
     SetCVar("rotateMinimap", rotate and "1" or "0")
 
     -- Keep the Minimap render surface in sync with the container.
+    -- Skip when FarmHud is active — it owns the surface position/size while its HUD is open.
     local minimapSurface = self:GetBlizzardMinimap()
-    if minimapSurface then
+    if minimapSurface and not self._farmHudActive then
         minimapSurface._orbitIntendedSize = size
         -- Micro-size bounce for C++ redraw
         minimapSurface:SetSize(size - 1, size - 1)
@@ -754,8 +755,9 @@ function Plugin:ApplySettings()
     OrbitEngine.Frame:RestorePosition(frame, self, SYSTEM_ID)
 
     -- Ensure minimap is captured (e.g. after reload).
+    -- Skip when FarmHud is active — it legitimately reparented the minimap for its HUD overlay.
     local minimap = self:GetBlizzardMinimap()
-    if minimap and minimap:GetParent() ~= frame then
+    if minimap and minimap:GetParent() ~= frame and not self._farmHudActive then
         self:CaptureBlizzardMinimap()
     end
 

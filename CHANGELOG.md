@@ -40,8 +40,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - **Minimap Compartment:** Rewrote addon button flyout to use proxy icon buttons instead of reparenting. Fixes dark rendering on LibDBIcon buttons and flyout overlay blocking clicks.
+- **Minimap Compartment Flyout:** Mouse-leave detection now checks the Orbit container instead of the raw `Minimap` surface, fixing premature flyout closure when third-party addons reparent the minimap.
 - **Minimap Difficulty (Canvas):** Skull icon now renders without the background banner by default. A `Show Background` toggle controls it. Placeholder "25" label anchored directly beneath the skull.
 - **Minimap Difficulty Display Dropdown:** Switching between Icon/Text in canvas settings now reflects the correct state. The value was being lost when the dialog reopened.
+- **FarmHud Compatibility:** Added `Guard:Suspend`/`Guard:Resume` to `FrameGuard` so cooperating addons can temporarily reparent the minimap surface. Orbit now hooks FarmHud's show/hide to suspend protection, skip surface re-sync in `ApplySettings`, and resume on close — preventing the mount/dismount/shapeshift resource-display loss reported by users.
 - **Cast Bar Preview (Sticky):** Fixed Target/Focus cast bar previews persisting on screen after exiting Edit Mode by clearing preview state before hiding and adding combat-exit guards. Hopefully combat stickiness too.
 - **Cast Bar Preview (Ticks):** Fixed channel tick marks failing to render in the configuration preview.
 - **Healer Aura Filtering:** Fixed healer-tracked auras not being excluded from the general Buffs frame on group frames when `HealerAuras` is enabled.Icon Canvas.
