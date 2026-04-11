@@ -116,7 +116,10 @@ function CooldownUtils:ApplySimpleTextStyle(plugin, systemIndex, textElement, co
 end
 
 -- [ CHARGE COMPLETION TRACKING ] ----------------------------------------------
+-- All `_charges`/`_maxCharges`/`_knownRechargeDuration` storage sites guard against secret values,
+-- but we defend the arithmetic here too: if any field is secret we skip the tick entirely.
 function CooldownUtils:OnChargeCast(obj)
+    if issecretvalue(obj._charges) or issecretvalue(obj._knownRechargeDuration) then return end
     if not obj._charges or obj._charges <= 0 then
         return
     end
@@ -127,6 +130,7 @@ function CooldownUtils:OnChargeCast(obj)
 end
 
 function CooldownUtils:TrackChargeCompletion(obj)
+    if issecretvalue(obj._charges) or issecretvalue(obj._maxCharges) or issecretvalue(obj._knownRechargeDuration) then return end
     local duration = obj._knownRechargeDuration
     if not obj._rechargeEndsAt or not obj._charges or not obj._maxCharges or not duration or duration <= 0 then
         return

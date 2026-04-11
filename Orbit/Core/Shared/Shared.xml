@@ -5,6 +5,7 @@
     <Script file="SecretValueUtils.lua"/>
     <Script file="TooltipParser.lua"/>
     <Script file="CooldownUtils.lua"/>
+    <Script file="CooldownDragDrop.lua"/>
     <Script file="GlowUtils.lua"/>
     <Script file="GlowController.lua"/>
 </Ui>

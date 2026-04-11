@@ -61,6 +61,18 @@ Plugin.indexDefaults = {
 
 
 
+-- [ KEYBIND METHOD ATTACHMENT ] -----------------------------------------------
+-- Delegates to OrbitEngine.KeybindSystem so CooldownText can resolve bindings
+-- via self:GetSpellKeybind / self:GetItemKeybind without knowing the
+-- infrastructure module exists.
+function Plugin:GetSpellKeybind(spellID)
+    return OrbitEngine.KeybindSystem and OrbitEngine.KeybindSystem:GetForSpell(spellID)
+end
+
+function Plugin:GetItemKeybind(itemID)
+    return OrbitEngine.KeybindSystem and OrbitEngine.KeybindSystem:GetForItem(itemID)
+end
+
 -- [ STUBS - Overwritten by sub-modules ] --------------------------------------
 function Plugin:AddSettings() end
 function Plugin:IsComponentDisabled()
@@ -218,9 +230,10 @@ function Plugin:OnLoad()
     -- Reload items after a profile switch completes.
     Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function()
         C_Timer.After(0.15, function()
-            -- Phase 3 implementation
+            -- Batched: collapses with ProfileManager's scheduled reconcile so a
+            -- profile switch triggers a single flush instead of N.
             if Orbit.Engine.FrameAnchor then
-                Orbit.Engine.FrameAnchor:ReconcileAll()
+                Orbit.Engine.FrameAnchor:ScheduleReconcileAll()
             end
         end)
     end, self)
@@ -230,9 +243,8 @@ function Plugin:OnLoad()
             self:ReapplyParentage()
             self:ApplyAll()
             if Orbit.ViewerInjection then Orbit.ViewerInjection:OnSpecChanged() end
-            -- Phase 3 implementation
             if Orbit.Engine.FrameAnchor then
-                Orbit.Engine.FrameAnchor:ReconcileAll()
+                Orbit.Engine.FrameAnchor:ScheduleReconcileAll()
             end
         end)
     end, self)
@@ -407,29 +419,10 @@ function Plugin:GetFrameBySystemIndex(systemIndex)
     return entry and entry.anchor or nil
 end
 
--- [ SPEC DATA HELPER ] --------------------------------------------------------
-function Plugin:GetCurrentSpecID()
-    local specIndex = GetSpecialization()
-    return specIndex and GetSpecializationInfo(specIndex)
-end
-
-function Plugin:GetSpecData(systemIndex, key)
-    local specID = self:GetCurrentSpecID()
-    if not specID then return nil end
-    if not Orbit.db.SpecData then Orbit.db.SpecData = {} end
-    if not Orbit.db.SpecData[specID] then Orbit.db.SpecData[specID] = {} end
-    if not Orbit.db.SpecData[specID][systemIndex] then Orbit.db.SpecData[specID][systemIndex] = {} end
-    return Orbit.db.SpecData[specID][systemIndex][key]
-end
-
-function Plugin:SetSpecData(systemIndex, key, value)
-    local specID = self:GetCurrentSpecID()
-    if not specID then return end
-    if not Orbit.db.SpecData then Orbit.db.SpecData = {} end
-    if not Orbit.db.SpecData[specID] then Orbit.db.SpecData[specID] = {} end
-    if not Orbit.db.SpecData[specID][systemIndex] then Orbit.db.SpecData[specID][systemIndex] = {} end
-    Orbit.db.SpecData[specID][systemIndex][key] = value
-end
+-- Spec-scoped storage (GetCurrentSpecID / GetSpecData / SetSpecData) is inherited
+-- from Orbit.PluginMixin. Only InjectedItems (ViewerInjection) flows through it;
+-- Position/Anchor on native viewers are intentionally global because the underlying
+-- Blizzard cooldown viewer is shared across specs.
 
 -- [ CLEANUP ] -----------------------------------------------------------------
 function Plugin:OnDisable()
