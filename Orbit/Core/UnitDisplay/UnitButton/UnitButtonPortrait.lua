@@ -46,7 +46,20 @@ function PortraitMixin:CreatePortrait()
 
     local parentFrame = self
     local ALPHA_THRESHOLD = 0.01
+    -- parentFrame:SetAlpha() may be called with a secret alpha (e.g. curve mapping
+    -- UnitInRange->alpha). Check issecretvalue BEFORE the `< ALPHA_THRESHOLD` compare,
+    -- or the hook throws every time an out-of-range curve hits the frame.
+    -- In the secret case we can't determine the threshold — fall through and let
+    -- alpha inheritance handle the visual, and forward the secret to the C++ sink.
     hooksecurefunc(parentFrame, "SetAlpha", function(_, alpha)
+        if issecretvalue(alpha) then
+            if container.orbitAlphaHidden then
+                container.orbitAlphaHidden = nil
+                container:Show()
+            end
+            if container:IsShown() then container:SetAlpha(alpha) end
+            return
+        end
         if alpha and alpha < ALPHA_THRESHOLD then
             if container:IsShown() then
                 container.orbitAlphaHidden = true
@@ -87,8 +100,11 @@ function PortraitMixin:UpdatePortrait()
         return
     end
 
+    -- GetAlpha returns secret when alpha was set via a secret-derived curve. The
+    -- `< 0.01` comparison would throw, so skip the fast-hide path when secret —
+    -- inherited alpha will still propagate visually through the portrait child chain.
     local parentAlpha = self:GetAlpha()
-    if parentAlpha < 0.01 then
+    if not issecretvalue(parentAlpha) and parentAlpha < 0.01 then
         portrait:Hide()
         return
     end

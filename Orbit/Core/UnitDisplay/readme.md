@@ -34,7 +34,9 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 | AggroIndicatorMixin.lua | threat/aggro border coloring via `Skin:ApplyHighlightBorder`. |
 | DispelIndicatorMixin.lua | dispellable debuff type indication with `DispelOnlyByMe` filter support. caches the dispel color curve on plugin (`_dispelCurveCache`), invalidated via `InvalidateDispelCurve`. accepts pre-fetched harmful auras from snapshot. |
 | PandemicGlow.lua | thin adapter for pandemic glow on UnitDisplay aura icons. evaluates pandemic curves and delegates rendering to `GlowController`. |
-| UnitAuraGridMixin.lua | grid-based aura display with size categories (big/small). |
+| UnitAuraGridMixin.lua | grid-based aura display with size categories (big/small). owns the mixin surface and the file-local helpers (`ResolveGrowthDirection`, `UpdateCollapseArrow`, `CropIconTexture`) which are re-exposed on `Mixin._Internal` for the split files below. |
+| UnitAuraGridExpirationPulse.lua | shared expiration pulse ticker. attaches `Mixin._RegisterExpirationPulse(icon, durObj)`. owns the pulse list and lazy `C_Timer.NewTicker` that cancels when the list drains. lives outside the mixin file because mixins must be stateless. |
+| UnitAuraGridReparenting.lua | attaches `Mixin:_updateBlizzardBuffs()`. reparents Blizzard's native `BuffFrame.auraFrames` into an Orbit grid, suppresses stock borders/textures, and wires timer + stacks into Orbit's font/override system. reaches file-locals via `Mixin._Internal` and registers expirations via `Mixin._RegisterExpirationPulse`. |
 | SecondaryUnitFrameMixin.lua | secondary frames (target-of-target, focus-target). |
 
 ## adding a new mixin

@@ -30,8 +30,14 @@ function Skin:UpdateGroupBorder(rootFrame)
             if a and a.padding == 0 then
                 local pOpts = GetFrameOptions(frame)
                 local cOpts = GetFrameOptions(child)
+                -- GetAlpha may return a secret when alpha is driven by a range curve;
+                -- `> 0` would throw. Treat secret alpha as "visible" — OOC-hidden
+                -- state is tracked explicitly via _oocFadeHidden, so the other branch
+                -- of the OR still catches the intentional-hide case.
+                local childAlpha = child:GetAlpha()
+                local alphaVisible = issecretvalue(childAlpha) or (childAlpha > 0)
                 local merged = ShouldMergeBorders(pOpts, a.edge) and ShouldMergeBorders(cOpts, a.edge)
-                    and child:IsShown() and (child:GetAlpha() > 0 or child._oocFadeHidden)
+                    and child:IsShown() and (alphaVisible or child._oocFadeHidden)
                 if merged then
                     hasMerge = true
                     allFrames[#allFrames + 1] = child

@@ -21,6 +21,15 @@ local DEFAULT_FONT_PATH = "Fonts\\FRIZQT____.TTF"
 local AURA_COUNT_SIZE = 8
 local AURA_TIMER_SIZE = 8
 
+-- Identity curve maps remaining percent [0,1] to itself, letting us read a raw remaining percent
+-- from a DurationObject without Lua-side arithmetic on secret expiration/duration fields.
+local IDENTITY_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
+    local c = C_CurveUtil.CreateCurve()
+    c:AddPoint(0.0, 0.0)
+    c:AddPoint(1.0, 1.0)
+    return c
+end)()
+
 -- [ CACHED FONT ]-----------------------------------------------------------------------------------
 local cachedFontPath, cachedFontOutline
 local function GetAuraFont()
@@ -292,7 +301,8 @@ function Mixin:SetupAuraTooltip(icon, aura, unit, filter)
     icon._auraInstanceID = aura.auraInstanceID
     icon._auraUnit = unit
     icon._auraFilter = filter
-    icon._auraSpellId = aura.spellId
+    -- Only cache spellId when non-secret; the tooltip fallback does a boolean test on this field.
+    icon._auraSpellId = (not issecretvalue(aura.spellId)) and aura.spellId or nil
     if not icon._orbitTooltipHooked then
         icon:SetScript("OnEnter", AuraIcon_OnEnter)
         icon:SetScript("OnLeave", AuraIcon_OnLeave)
@@ -474,14 +484,21 @@ end
 local SPELL_AURA_SCAN_MAX = 40
 local IsSecret = issecretvalue
 
--- OnUpdate handler for continuous curve sampling on healer aura icons
+-- OnUpdate handler for continuous curve sampling on healer aura icons.
+-- Reads remaining percent via DurationObject + IDENTITY_CURVE so we never do Lua arithmetic
+-- on secret expirationTime/duration. If the evaluated value is secret (combat), skip the tick.
 local function HealerCurveOnUpdate(icon)
     if not icon:IsShown() then return end
     local d = icon._orbitCurveData
     if not d then return end
     local remainingPercent = 1
-    if d.duration > 0 and d.expirationTime then
-        remainingPercent = math_max(0, (d.expirationTime - GetTime()) / d.duration)
+    if d.auraInstanceID and d.unit and IDENTITY_CURVE then
+        local durObj = C_UnitAuras.GetAuraDuration(d.unit, d.auraInstanceID)
+        if durObj then
+            local p = durObj:EvaluateRemainingPercent(IDENTITY_CURVE)
+            if issecretvalue(p) then return end
+            if p then remainingPercent = math_max(0, p) end
+        end
     end
     local CCE = OrbitEngine.ColorCurve
     if d.swipeCurve and icon.Cooldown then
@@ -560,8 +577,12 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
     if aura then
         local icon = self:EnsureAuraIcon(frame, iconKey, iconSize)
         local remainingPercent = 1
-        if aura.duration and aura.duration > 0 and aura.expirationTime then
-            remainingPercent = math_max(0, (aura.expirationTime - GetTime()) / aura.duration)
+        if aura.auraInstanceID and IDENTITY_CURVE then
+            local durObj = C_UnitAuras.GetAuraDuration(unit, aura.auraInstanceID)
+            if durObj then
+                local p = durObj:EvaluateRemainingPercent(IDENTITY_CURVE)
+                if p and not issecretvalue(p) then remainingPercent = math_max(0, p) end
+            end
         end
         local skinSettings = BuildSkinSettings(overrides, remainingPercent)
         self:SetupAuraIcon(icon, aura, iconSize, unit, skinSettings)
@@ -577,8 +598,8 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
         local isDynamic = (swipeCurve and swipeCurve.pins and #swipeCurve.pins > 1) or (timerCurve and timerCurve.pins and #timerCurve.pins > 1)
         if isDynamic then
             icon._orbitCurveData = {
-                duration = aura.duration or 0,
-                expirationTime = aura.expirationTime,
+                auraInstanceID = aura.auraInstanceID,
+                unit = unit,
                 swipeCurve = swipeCurve,
                 timerCurve = timerCurve,
             }

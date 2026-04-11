@@ -65,10 +65,12 @@ local function FormatHealthPercent(unit)
     return string.format("%.0f%%", percent)
 end
 
+-- UnitHealth returns a secret value in combat; any `if health` / `type(health)` here would
+-- throw. Pass it straight through to the formatter via pcall (which tolerates secret args at
+-- the call site), and fall back cleanly when the C function rejects it.
 local function FormatShortHealth(unit)
     local health = UnitHealth(unit)
-
-    if AbbreviateLargeNumbers and health then
+    if AbbreviateLargeNumbers then
         local ok, result = pcall(AbbreviateLargeNumbers, health)
         if ok and result then
             return result
@@ -79,16 +81,14 @@ end
 
 local function FormatRawHealth(unit)
     local health = UnitHealth(unit)
-    if health and type(health) == "number" then
-        if BreakUpLargeNumbers then
-            local ok, result = pcall(BreakUpLargeNumbers, health)
-            if ok and result then
-                return result
-            end
+    if BreakUpLargeNumbers then
+        local ok, result = pcall(BreakUpLargeNumbers, health)
+        if ok and result then
+            return result
         end
-        return tostring(health)
     end
-    return nil
+    local ok, s = pcall(tostring, health)
+    return ok and s or nil
 end
 
 local function GetHealthTextForFormat(unit, format)
@@ -191,13 +191,10 @@ function TextMixin:UpdateName()
     end
 
     local name = UnitName(self.unit)
-    if name == nil then
-        self.Name:SetText("")
-        return
-    end
 
     -- Nat 1 on Identify: the DM sealed the name scroll with arcane warding
-    if issecretvalue and issecretvalue(name) then
+    -- Check secrecy BEFORE any nil/type test — `name == nil` would throw on a secret.
+    if issecretvalue(name) then
         self.Name:SetText(name)
         local available = self:GetNameAvailableWidth()
         if available then self.Name:SetWidth(math.max(available, MIN_NAME_WIDTH)) end
