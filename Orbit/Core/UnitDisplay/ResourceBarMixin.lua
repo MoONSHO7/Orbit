@@ -179,50 +179,57 @@ function Mixin:GetContinuousResourceForPlayer()
     return nil
 end
 
+-- Curve mapping remaining-percent [0,1] -> seconds [0, EBON_MIGHT_MAX_DURATION].
+-- Evaluated via DurationObject so we never do Lua arithmetic on secret expiration times.
+local EBON_MIGHT_SECONDS_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
+    local c = C_CurveUtil.CreateCurve()
+    c:AddPoint(0.0, 0)
+    c:AddPoint(1.0, EBON_MIGHT_MAX_DURATION)
+    return c
+end)()
+
 function Mixin:GetStaggerState()
-    local stagger, maxHealth = UnitStagger("player") or 0, UnitHealthMax("player") or 1
     local level = C_UnitAuras.GetPlayerAuraBySpellID(124273) and "HEAVY" or C_UnitAuras.GetPlayerAuraBySpellID(124274) and "MEDIUM" or "LOW"
-    return stagger, maxHealth, level
+    return UnitStagger("player"), UnitHealthMax("player"), level
 end
 
 function Mixin:GetSoulFragmentsState()
     local spec = GetSpecialization()
     local specID = spec and GetSpecializationInfo(spec)
-    if specID == VENGEANCE_SPEC_ID then
-        local current = C_Spell.GetSpellCastCount(SOUL_CLEAVE_ID) or 0
-        return current, 6, false
-    end
-    local aura = C_UnitAuras.GetPlayerAuraBySpellID(SOUL_FRAGMENTS_AURA_ID) or C_UnitAuras.GetPlayerAuraBySpellID(COLLAPSING_STAR_AURA_ID)
-    local current = aura and aura.applications or 0
     local max = C_SpellBook.IsSpellKnown(SOUL_GLUTTON_TALENT_ID) and 35 or 50
-    local isVoidMeta = aura and aura.spellId == COLLAPSING_STAR_AURA_ID
-    return current, max, isVoidMeta
+    if specID == VENGEANCE_SPEC_ID then
+        return C_Spell.GetSpellCastCount(SOUL_CLEAVE_ID) or 0, 6, false
+    end
+    -- Check void metamorphosis first so we can distinguish without reading secret aura.spellId.
+    local voidAura = C_UnitAuras.GetPlayerAuraBySpellID(COLLAPSING_STAR_AURA_ID)
+    local aura = voidAura or C_UnitAuras.GetPlayerAuraBySpellID(SOUL_FRAGMENTS_AURA_ID)
+    if not aura then return 0, max, false end
+    return aura.applications, max, voidAura ~= nil
 end
 
 function Mixin:GetEbonMightState()
     local aura = C_UnitAuras.GetPlayerAuraBySpellID(EBON_MIGHT_AURA_ID)
-    if not aura then
-        return 0, EBON_MIGHT_MAX_DURATION
-    end
-    local remaining = math_max(0, aura.expirationTime - GetTime())
-    return remaining, EBON_MIGHT_MAX_DURATION
+    if not aura then return 0, EBON_MIGHT_MAX_DURATION end
+    local durObj = aura.auraInstanceID and C_UnitAuras.GetAuraDuration("player", aura.auraInstanceID)
+    if not durObj or not EBON_MIGHT_SECONDS_CURVE then return 0, EBON_MIGHT_MAX_DURATION end
+    return durObj:EvaluateRemainingPercent(EBON_MIGHT_SECONDS_CURVE), EBON_MIGHT_MAX_DURATION
 end
 
 local MAELSTROM_WEAPON_ID = 344179
 function Mixin:GetMaelstromWeaponState()
     local aura = C_UnitAuras.GetPlayerAuraBySpellID(MAELSTROM_WEAPON_ID)
-    if not aura then
-        return 0, 10, false, nil
-    end
-    return aura.applications or 0, 10, true, aura.auraInstanceID
+    if not aura then return 0, 10, false, nil end
+    return aura.applications, 10, true, aura.auraInstanceID
 end
 
 function Mixin:GetIciclesState()
     local aura = C_UnitAuras.GetPlayerAuraBySpellID(ICICLES_AURA_ID)
-    return aura and aura.applications or 0, ICICLES_MAX
+    if not aura then return 0, ICICLES_MAX end
+    return aura.applications, ICICLES_MAX
 end
 
 function Mixin:GetTipOfTheSpearState()
     local aura = C_UnitAuras.GetPlayerAuraBySpellID(TIP_OF_THE_SPEAR_AURA_ID)
-    return aura and aura.applications or 0, TIP_OF_THE_SPEAR_MAX
+    if not aura then return 0, TIP_OF_THE_SPEAR_MAX end
+    return aura.applications, TIP_OF_THE_SPEAR_MAX
 end
