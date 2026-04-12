@@ -6,7 +6,7 @@ Four workflows, one release pipeline, one lint gate, one weekly data refresh.
 
 | File | Trigger | Purpose |
 |------|---------|---------|
-| [`lint.yml`](lint.yml) | pull request, push to `main` | Runs `check-localization.sh` as a status check |
+| [`lint.yml`](lint.yml) | pull request, push to `main` | Runs `check-localization.py` as a status check |
 | [`auto-tag.yml`](auto-tag.yml) | push to `main` | Calculates next version and creates a tag |
 | [`release.yml`](release.yml) | tag push matching `X.Y.Z` | Builds and packages the addon, publishes to CurseForge |
 | [`weekly_meta_update.yml`](weekly_meta_update.yml) | cron (Wed 12:00 UTC) + manual | Refreshes WCL talent meta data, commits, triggers a release |
@@ -96,7 +96,7 @@ This preserves history continuity — the new middle number picks up where the o
 
 ## Lint status check
 
-`lint.yml` runs `.scripts/check-localization.sh` on every pull request targeting `main`. It catches:
+`lint.yml` runs `.scripts/check-localization.py` on every pull request targeting `main`. It catches:
 
 - **Orphan references** — `L.KEY` used in code but not defined in any domain file
 - **Cross-domain collisions** — same key defined in two domain files

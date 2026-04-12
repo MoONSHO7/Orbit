@@ -81,7 +81,7 @@ Orbit:Print(L.MSG_PLUGIN_RESET_F:format(pluginName))
 2. Add the key to that domain file's `enUS` table.
 3. Use `L.NEW_KEY` at the call site.
 4. Other locales fall back to enUS automatically until translated.
-5. Run `.scripts/check-localization.sh` to catch typos before commit.
+5. Run `.scripts/check-localization.py` to catch typos before commit.
 
 ## Adding a translation
 
@@ -111,7 +111,7 @@ Any `L.KEY` access that resolves to a nil value (typo, missing definition) logs 
 
 ## Lint script
 
-`.scripts/check-localization.sh` validates the system without launching the game:
+`.scripts/check-localization.py` validates the system without launching the game:
 
 - Every `L.KEY` reference in the codebase resolves to a defined key.
 - Prefix isolation — each domain prefix lives in exactly one file.
@@ -121,8 +121,8 @@ Any `L.KEY` access that resolves to a nil value (typo, missing definition) logs 
 Run before every localization-touching commit. Exit 0 on success, non-zero on any hard failure. Safe to run in CI.
 
 ```bash
-.scripts/check-localization.sh           # normal run
-VERBOSE=1 .scripts/check-localization.sh  # list unused keys too
+python .scripts/check-localization.py           # normal run
+VERBOSE=1 python .scripts/check-localization.py  # list unused keys too
 ```
 
 ## What is NOT in this system
