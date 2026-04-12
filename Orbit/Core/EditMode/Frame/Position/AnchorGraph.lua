@@ -80,7 +80,10 @@ end
 -- [ CHAIN ROOT ] -------------------------------------------------------------------------------
 function Graph:GetChainRoot(frame)
     local current = frame
+    local visited = {}
     while true do
+        if visited[current] then return current end
+        visited[current] = true
         local anchor = self.anchors[current]
         if not anchor or not anchor.parent then return current end
         current = anchor.parent
@@ -91,7 +94,10 @@ end
 function Graph:GetHorizontalChainRoot(frame)
     if not frame.orbitChainSync then return frame end
     local root = frame
+    local visited = {}
     while true do
+        if visited[root] then break end
+        visited[root] = true
         local a = self.anchors[root]
         if not a or not HORIZONTAL_EDGES[a.edge] then break end
         if not a.parent.orbitChainSync then break end
@@ -173,8 +179,12 @@ function Graph:RestoreLogicalChildren(parent, anchorModule)
     end
 end
 
+Graph._reconcilingChains = Graph._reconcilingChains or {}
+
 function Graph:ReconcileChain(root, anchorModule)
     if InCombatLockdown() then return end
+    if self._reconcilingChains[root] then return end
+    self._reconcilingChains[root] = true
     local visited = {}
 
     -- Promote a grandchild of a skipped frame up to the nearest non-skipped
@@ -238,6 +248,7 @@ function Graph:ReconcileChain(root, anchorModule)
     else
         Reconcile(root)
     end
+    self._reconcilingChains[root] = nil
 end
 
 -- [ RECONCILE ALL ] ----------------------------------------------------------------------------

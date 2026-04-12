@@ -606,8 +606,11 @@ end
 
 function Anchor:GetRootParent(frame)
     local current = frame
+    local visited = {}
     local parent = self:GetAnchorParent(current)
     while parent do
+        if visited[parent] then return current end
+        visited[parent] = true
         current = parent
         parent = self:GetAnchorParent(current)
     end
