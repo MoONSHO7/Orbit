@@ -677,7 +677,13 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
     -- Collect missing buffs (only YOUR class's raid buff, from any caster)
     local missing = {}
     for _, buff in ipairs(raidBuffs) do
-        if not present[buff.spellId] then missing[#missing + 1] = buff end
+        local found = present[buff.spellId]
+        if not found and buff.variants then
+            for _, vid in ipairs(buff.variants) do
+                if present[vid] then found = true; break end
+            end
+        end
+        if not found then missing[#missing + 1] = buff end
     end
     if #missing == 0 then
         if frame[containerKey] then

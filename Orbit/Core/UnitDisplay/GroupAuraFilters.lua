@@ -12,16 +12,20 @@ local IsSecret = issecretvalue
 
 -- Raid buffs always excluded from buff containers (long-term, low-value clutter).
 local ALWAYS_EXCLUDED = {}
-for _, entry in ipairs(HealerReg.RaidBuffs) do ALWAYS_EXCLUDED[entry.spellId] = true end
+for _, entry in ipairs(HealerReg.RaidBuffs) do
+    ALWAYS_EXCLUDED[entry.spellId] = true
+    if entry.variants then for _, vid in ipairs(entry.variants) do ALWAYS_EXCLUDED[vid] = true end end
+end
 Orbit.GroupAuraFilters.AlwaysExcluded = ALWAYS_EXCLUDED
 -- Raid buffs (explicit, all classes)
 ALWAYS_EXCLUDED[1126] = true   -- Mark of the Wild
 ALWAYS_EXCLUDED[1459] = true   -- Arcane Intellect
 ALWAYS_EXCLUDED[6673] = true   -- Battle Shout
 ALWAYS_EXCLUDED[21562] = true  -- Power Word: Fortitude
+ALWAYS_EXCLUDED[364342] = true -- Blessing of the Bronze
 ALWAYS_EXCLUDED[369459] = true -- Source of Magic
 ALWAYS_EXCLUDED[462854] = true -- Skyfury
-ALWAYS_EXCLUDED[474754] = true -- Symbiotic Relationship
+ALWAYS_EXCLUDED[369459] = true -- Source of Magic
 
 -- Class mechanics
 ALWAYS_EXCLUDED[395152] = true -- Ebon Might
