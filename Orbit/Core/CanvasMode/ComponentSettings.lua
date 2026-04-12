@@ -1,6 +1,5 @@
 -- [ CANVAS MODE COMPONENT SETTINGS ]------------------------------------------------------------
--- Core module: Open/Close, value routing, layout. Schema, widgets, and
--- preview renderers live in their own files loaded via CanvasMode.xml.
+-- Core module: Open/Close, value routing, layout. Schema/widgets/renderers loaded via CanvasMode.xml.
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local Layout = OrbitEngine.Layout

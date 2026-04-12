@@ -21,8 +21,7 @@ local DEFAULT_FONT_PATH = "Fonts\\FRIZQT____.TTF"
 local AURA_COUNT_SIZE = 8
 local AURA_TIMER_SIZE = 8
 
--- Identity curve maps remaining percent [0,1] to itself, letting us read a raw remaining percent
--- from a DurationObject without Lua-side arithmetic on secret expiration/duration fields.
+-- IDENTITY_CURVE: remaining-percent (secret) → numeric for safe Lua-side reads.
 local IDENTITY_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     local c = C_CurveUtil.CreateCurve()
     c:AddPoint(0.0, 0.0)
@@ -72,8 +71,7 @@ function Mixin:BuildAuraSnapshot(unit)
 end
 
 -- [ INCREMENTAL AURA CACHE ]------------------------------------------------------------------------
--- Per-frame caches keyed by auraInstanceID. Patched incrementally on partial UNIT_AURA events.
--- addedAuras fields (isHarmful, isHelpful) are WoW 12.0 secret booleans — use IsAuraFilteredOutByInstanceID instead.
+-- Per-frame caches keyed by auraInstanceID; patched incrementally on partial UNIT_AURA events.
 local GetAuraDataByAuraInstanceID = C_UnitAuras.GetAuraDataByAuraInstanceID
 local IsFilteredOut = C_UnitAuras.IsAuraFilteredOutByInstanceID
 
@@ -276,7 +274,6 @@ function Mixin:ApplyAuraCount(icon, aura, unit)
 end
 
 -- [ AURA TOOLTIP ]-----------------------------------------------------------------------------------
--- Shared tooltip handlers to avoid closure creation per-icon
 local function AuraIcon_OnEnter(self)
     GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
     if self._auraInstanceID and self._auraUnit and self._auraFilter then
@@ -484,9 +481,7 @@ end
 local SPELL_AURA_SCAN_MAX = 40
 local IsSecret = issecretvalue
 
--- OnUpdate handler for continuous curve sampling on healer aura icons.
--- Reads remaining percent via DurationObject + IDENTITY_CURVE so we never do Lua arithmetic
--- on secret expirationTime/duration. If the evaluated value is secret (combat), skip the tick.
+-- OnUpdate: samples remaining-percent via IDENTITY_CURVE for healer aura curve-driven visuals.
 local function HealerCurveOnUpdate(icon)
     if not icon:IsShown() then return end
     local d = icon._orbitCurveData

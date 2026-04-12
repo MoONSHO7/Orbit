@@ -9,11 +9,7 @@ Engine.FramePersistence = {}
 local Persistence = Engine.FramePersistence
 
 -- [ PENDING ANCHOR QUEUE ] -------------------------------------------------------------------------
--- When a frame's saved anchor target doesn't exist yet (cross-plugin load-order
--- race: child plugin loaded before its parent), we stash the intent keyed by
--- target name. When the target frame later registers itself via
--- AttachSettingsListener, DrainPendingFor re-attempts the anchor so the chain
--- resolves as soon as both ends exist instead of waiting for the PEW re-apply.
+-- Stash anchors whose target doesn't exist yet; drained when the target registers via AttachSettingsListener.
 Persistence.pendingByTarget = Persistence.pendingByTarget or {}
 
 function Persistence:QueuePendingAnchor(childFrame, targetName, edge, padding, align)
@@ -56,10 +52,7 @@ function Persistence:DrainAllPending()
 end
 
 -- [ SPEC-SCOPED STORAGE HELPERS ]-------------------------------------------------------------------
--- Plugins with `IsSpecScopedIndex` (e.g. CooldownManager) store Anchor/Position
--- per-spec via SetSpecData. All other plugins use global storage via SetSetting.
--- Plugins with `settingsArePerSpec = true` (e.g. Tracked) already handle spec
--- scoping at the record level, so we skip spec data entirely for those.
+-- Spec-scoped plugins use SetSpecData; settingsArePerSpec plugins skip spec routing entirely.
 local function HasGetSpecData(plugin)
     if not plugin then return false end
     if plugin.settingsArePerSpec then return false end
@@ -70,9 +63,7 @@ local function IsBuiltinSpecScoped(plugin, systemIndex)
     return plugin.IsSpecScopedIndex and plugin:IsSpecScopedIndex(systemIndex)
 end
 
--- Only clear an existing spec-data slot — never write nil into a slot that's
--- already nil, since SetSpecData lazily creates parent tables and would leave
--- empty {} entries behind for plugins that have GetSpecData but never use it.
+-- Only clear existing spec-data slots to avoid creating empty {} entries.
 local function ClearSpecDataIfPresent(plugin, systemIndex, key)
     if plugin:GetSpecData(systemIndex, key) ~= nil then
         plugin:SetSpecData(systemIndex, key, nil)
@@ -115,10 +106,7 @@ function Persistence:WritePosition(plugin, systemIndex, pos)
     end
 end
 
--- ReadAnchor distinguishes nil from false: nil = "no spec override, fall back
--- to global", false = "this spec is intentionally using a Position, don't
--- consult global". The caller (`if anchor and anchor.target`) skips the anchor
--- branch on false and reads ReadPosition, which returns the spec position.
+-- nil = no spec override (fall back to global); false = spec uses Position instead of Anchor.
 function Persistence:ReadAnchor(plugin, systemIndex)
     if not plugin or not systemIndex then return nil end
     if HasGetSpecData(plugin) then
@@ -284,9 +272,7 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
 end
 
 -- [ ATTACHED FRAME REGISTRY ] ---------------------------------------------------------------------
--- Tracks every frame wired through AttachSettingsListener so the spec-change
--- handler can re-run RestorePosition. Weak-keyed so dropped frames don't pin
--- garbage.
+-- Weak-keyed registry of frames for spec-change re-restore.
 Persistence._attachedFrames = Persistence._attachedFrames or setmetatable({}, { __mode = "k" })
 
 -- Attach listener for standard Orbit position/anchor saving
@@ -420,9 +406,7 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
 end
 
 -- [ SPEC-CHANGE RE-RESTORE ] ----------------------------------------------------------------------
--- On spec swap, re-run RestorePosition for frames whose plugins support spec
--- data (via GetSpecData). Plugins with `settingsArePerSpec = true` (Tracked)
--- are skipped — they handle their own toggling via RefreshForCurrentSpec.
+-- Re-restore positions on spec swap for spec-data plugins; settingsArePerSpec plugins skipped.
 function Persistence:RestoreAffectedBySpecChange()
     for frame, info in pairs(self._attachedFrames) do
         if HasGetSpecData(info.plugin) then
@@ -431,21 +415,13 @@ function Persistence:RestoreAffectedBySpecChange()
     end
 end
 
--- Safety net: after all plugins have been loaded by PLAYER_ENTERING_WORLD, make
--- a final pass over anything still queued. Entries whose target never materialized
--- (profile references a deleted plugin) remain stashed; DrainPendingFor is a no-op
--- for them so they don't leak CPU on future lookups.
+-- Safety net: drain all pending anchors after PLAYER_ENTERING_WORLD.
 if Orbit.EventBus then
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
         Persistence:DrainAllPending()
     end)
 
-    -- Two-frame defer: PLAYER_SPECIALIZATION_CHANGED dispatches to all EventBus
-    -- listeners synchronously, including Tracked's RefreshForCurrentSpec which
-    -- toggles per-spec containers and schedules ReconcileChain via
-    -- C_Timer.After(0). The chain flush runs at frame+1; we run at frame+2 so
-    -- promotions and SetContainerActive's own RestorePosition calls have all
-    -- settled before we re-anchor consumers to their new-spec targets.
+    -- Two-frame defer so ReconcileChain and SetContainerActive settle before re-anchoring.
     Orbit.EventBus:On("PLAYER_SPECIALIZATION_CHANGED", function()
         C_Timer.After(0, function()
             C_Timer.After(0, function()

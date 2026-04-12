@@ -7,15 +7,12 @@ Engine.FrameAnchor = Engine.FrameAnchor or {}
 local Anchor = Engine.FrameAnchor
 
 -- [ PHYSICAL GRAPH ] --------------------------------------------------------------------------
--- Anchor.anchors / Anchor.childrenOf reflect where frames are ACTUALLY attached right now.
--- ReconcileChain rewrites this when virtual/disabled frames shift children to an ancestor.
+-- Current physical attachments; rewritten by ReconcileChain when virtual/disabled frames shift.
 Anchor.anchors = Anchor.anchors or {}
 Anchor.childrenOf = Anchor.childrenOf or setmetatable({}, { __mode = "k" })
 
 -- [ LOGICAL GRAPH ] ---------------------------------------------------------------------------
--- Anchor.logicalAnchors / Anchor.logicalChildrenOf capture USER-INTENDED anchoring — the anchor
--- the plugin or Edit Mode originally asked for. Untouched by physical re-parenting, so we can
--- restore a child back to its "home" parent when that parent stops being skipped.
+-- User-intended anchoring; untouched by physical re-parenting so children can restore home.
 Anchor.logicalAnchors = Anchor.logicalAnchors or {}
 Anchor.logicalChildrenOf = Anchor.logicalChildrenOf or setmetatable({}, { __mode = "k" })
 
@@ -282,14 +279,12 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions,
     return true
 end
 
--- Check if anchoring child to parent would create a circular dependency
--- Delegates to AnchorGraph for pure-data traversal (no GetNumPoints calls)
+-- Check if anchoring child to parent would create a cycle; delegates to AnchorGraph.
 local function WouldCreateCycle(anchors, child, parent)
     return Graph:WouldCreateCycle(child, parent)
 end
 
--- Update the logical graph (user-intended anchor). Called by CreateAnchor on
--- non-physical-repair paths. Never touches self.anchors / self.childrenOf.
+-- Update the logical graph (user-intended anchor); never touches physical graph.
 function Anchor:SetLogicalAnchor(child, parent, edge, padding, syncOptions, align)
     local prev = self.logicalAnchors[child]
     if prev and self.logicalChildrenOf[prev.parent] then
@@ -525,9 +520,7 @@ function Anchor:RebalanceChainCenter(root, oldScreenCenterX)
 end
 
 
--- Move frame to its default position (off-screen stash). Exposed as a method
--- so AnchorGraph:ReconcileChain can re-park skipped grandchildren whose
--- physical SetPoint was overwritten by a promotion-time CreateAnchor.
+-- Park frame at its default position; also called by ReconcileChain for skipped grandchildren.
 function Anchor:ParkFrame(frame)
     frame:ClearAllPoints()
     local def = frame.defaultPosition
@@ -540,13 +533,7 @@ function Anchor:ParkFrame(frame)
 end
 local function ParkFrame(frame) Anchor:ParkFrame(frame) end
 
--- A frame is "rescued" when its intended (logical) parent is skipped but its
--- current (physical) parent is not — RouteAroundSkipped (Persistence) or
--- PromoteGrandchild (ReconcileChain) has already placed it at an ancestor's
--- edge. Re-parking such a frame would undo that placement, which is the
--- whole reason the readme states promoted children should "visually stack
--- under the grandparent's content." Used by SetFrameVirtual/SetFrameDisabled
--- to leave rescued placements alone.
+-- A rescued frame's logical parent is skipped but it's physically at a live ancestor; don't re-park.
 local function IsRescued(frame)
     local logical = Anchor.logicalAnchors[frame]
     local physical = Anchor.anchors[frame]
@@ -555,17 +542,7 @@ local function IsRescued(frame)
     return Graph:IsSkipped(logical.parent) and not Graph:IsSkipped(physical.parent)
 end
 
--- Profile-level disable: marks the frame skipped so ReconcileChain promotes
--- its children to the nearest non-skipped ancestor. Parks the frame at its
--- default position so it leaves the layout until re-enabled.
--- Reconciliation is batched: bulk disable/enable during profile or spec
--- switches collapses into a single next-frame flush per affected chain.
--- Idempotent on the "on" path: even if the graph state did not change, we
--- re-park and re-schedule reconcile because a prior CreateAnchor (e.g.
--- RestorePosition during spec reload) may have unparked the frame and
--- re-attached its children physically while the skip flag was still set.
--- Rescued frames (logical parent skipped, physical parent live) are left at
--- their routed position — re-parking them would undo RouteAroundSkipped.
+-- Profile-level disable: skip frame in graph, park it, and batch-reconcile children. Idempotent.
 function Anchor:SetFrameDisabled(frame, disabled)
     local changed = Graph:SetDisabled(frame, disabled)
     frame.orbitDisabled = Graph:IsSkipped(frame)
@@ -579,13 +556,7 @@ function Anchor:SetFrameDisabled(frame, disabled)
     if root then Graph:ScheduleReconcileChain(root, self) end
 end
 
--- Content-empty toggle: marks frames with no content (no spell, no auras)
--- so ReconcileChain shifts their children to an ancestor. Parks the frame
--- at its default position so it steps out of the layout until re-filled.
--- Batched for the same reason as SetFrameDisabled: bulk content-toggle paths
--- can flip dozens of frames virtual in a tight loop.
--- Idempotent on "on" for the same reason as SetFrameDisabled.
--- Rescued frames skip the park for the same reason.
+-- Content-empty toggle: skip frame in graph and park it; batched and idempotent like SetFrameDisabled.
 function Anchor:SetFrameVirtual(frame, virtual)
     local changed = Graph:SetVirtual(frame, virtual)
     frame.orbitDisabled = Graph:IsSkipped(frame)
@@ -762,11 +733,7 @@ function Anchor:GetHorizontalChainScreenBounds(frame)
     return minLeft, maxRight, maxTop, minBottom, root
 end
 
--- Check if a specific edge of a parent frame is already occupied by an anchored child
--- @param parent The parent frame to check
--- @param edge The edge to check ("TOP", "BOTTOM", "LEFT", "RIGHT")
--- @param excludeChild Optional child to exclude from check (for re-anchoring same child)
--- @return true if edge is occupied, false otherwise
+-- Check if a specific edge of a parent frame is already occupied by an anchored child.
 local EDGE_ALIGN_SLOTS = {
     TOP = { "LEFT", "CENTER", "RIGHT" },
     BOTTOM = { "LEFT", "CENTER", "RIGHT" },
@@ -904,24 +871,19 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited, depth)
 end
 
 -- [ RECONCILE CHAIN ]---------------------------------------------------------------------------------
--- Delegates to AnchorGraph:ReconcileChain for targeted chain reconciliation.
 function Anchor:ReconcileChain(root)
     if not root or InCombatLockdown() then return end
     Graph:ReconcileChain(root, self)
 end
 
--- Reconcile all anchor chains across the entire system.
--- Delegates to AnchorGraph:ReconcileAll.
+-- Reconcile all chains; delegates to AnchorGraph:ReconcileAll.
 function Anchor:ReconcileAll()
     if InCombatLockdown() then return end
     Graph:ReconcileAll(self)
 end
 
 -- [ BATCHED RECONCILIATION ] -------------------------------------------------------------------
--- Schedule a reconcile for the next frame. Multiple Schedule calls with the
--- same root within the same frame collapse to a single ReconcileChain. Use
--- this during bulk state changes (profile switch, spec reload, content load
--- fan-out) where many frames toggle virtual/disabled in a tight loop.
+-- Schedule reconcile for next frame; multiple calls with same root collapse to one.
 function Anchor:ScheduleReconcileChain(root)
     Graph:ScheduleReconcileChain(root, self)
 end
@@ -957,9 +919,7 @@ Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
     C_Timer.After(delay, function() Anchor:ResyncAll() end)
 end)
 
--- Re-reconcile chains after Edit Mode hooks to ensure plugins properly bypass empty seeds.
--- Scheduled so it collapses with any in-flight chain reconciles queued by the plugins
--- that also react to the Edit Mode OnShow hook.
+-- Re-reconcile chains after Edit Mode hooks; scheduled to collapse with in-flight reconciles.
 if EditModeManagerFrame then
     EditModeManagerFrame:HookScript("OnShow", function()
         local delay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.RetryShort) or 0.1

@@ -1,7 +1,5 @@
 -- [ ORBIT ANCHOR GRAPH ]------------------------------------------------------------------------
--- Pure-data directed graph companion to Anchor.lua.
--- Tracks virtual/disabled state and provides graph traversal
--- without screen-coordinate dependencies.
+-- Pure-data graph companion to Anchor.lua; virtual/disabled state and traversal without coordinates.
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -13,9 +11,7 @@ local Graph = Engine.AnchorGraph
 local HORIZONTAL_EDGES = { LEFT = true, RIGHT = true }
 
 -- [ STATE ] ------------------------------------------------------------------------------------
--- Additive tracking layered over Anchor.anchors/childrenOf.
--- virtualNodes: content-empty frames that remain structurally registered
--- disabledNodes: profile-level disabled frames severed from layout
+-- Additive tracking: virtualNodes = content-empty, disabledNodes = profile-level disabled.
 Graph.virtualNodes = {}
 Graph.disabledNodes = {}
 
@@ -63,7 +59,6 @@ function Graph:IsSkipped(frame)
 end
 
 -- [ CYCLE DETECTION ] --------------------------------------------------------------------------
--- Pure-data walk. No GetNumPoints() calls.
 function Graph:WouldCreateCycle(child, parent)
     local visited = {}
     local current = parent
@@ -158,14 +153,7 @@ function Graph:GetChildrenOnEdge(frame, edge)
 end
 
 -- [ TARGETED RECONCILIATION ] ------------------------------------------------------------------
--- Walks a single chain, re-parenting children of skipped (virtual/disabled)
--- frames to the nearest non-skipped ancestor. Replaces RepairAllChains()
--- with O(chain) instead of O(all_anchors) complexity.
---
--- Physical repairs here pass skipLogical=true to CreateAnchor/BreakAnchor so the
--- user-intended parent (logicalAnchors) is never overwritten. When a previously
--- skipped frame becomes visible again, RestoreLogicalChildren re-attaches any
--- children whose "home" parent this frame is.
+-- Walk one chain, promote children past skipped frames; O(chain). skipLogical preserves intent.
 function Graph:RestoreLogicalChildren(parent, anchorModule)
     if not self.logicalChildrenOf or not self.logicalChildrenOf[parent] then return end
     for child in pairs(self.logicalChildrenOf[parent]) do
@@ -252,8 +240,7 @@ function Graph:ReconcileChain(root, anchorModule)
 end
 
 -- [ RECONCILE ALL ] ----------------------------------------------------------------------------
--- Targeted replacement for RepairAllChains. Collects unique roots
--- then reconciles each. Same result, explicit about what it does.
+-- Collects unique roots then reconciles each chain.
 function Graph:ReconcileAll(anchorModule)
     if InCombatLockdown() then return end
     local roots = {}
@@ -266,11 +253,7 @@ function Graph:ReconcileAll(anchorModule)
 end
 
 -- [ BATCH RECONCILIATION ] ---------------------------------------------------------------------
--- Collects unique roots during rapid state changes (bulk SetFrameVirtual,
--- spec swaps, profile reloads) and coalesces them into a single flush on the
--- next frame. N Schedule calls with the same root resolve to one ReconcileChain.
--- If ScheduleReconcileAll is called while per-root work is pending, the "all"
--- flag supersedes and the pending root set is dropped.
+-- Coalesces per-root reconciles into a single next-frame flush; ScheduleAll supersedes per-root.
 Graph.pendingRoots = {}
 Graph.pendingModule = nil
 Graph.pendingAll = false

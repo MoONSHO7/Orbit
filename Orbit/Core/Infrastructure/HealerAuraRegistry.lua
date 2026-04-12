@@ -1,6 +1,5 @@
 -- [ HEALER AURA REGISTRY ]-------------------------------------------------------------------------
--- Slot-based spell-ID mapping for healer buffs/HoTs and raid buffs.
--- 7 shared slots (HealerAura1-7) + RaidBuff. Each slot maps to a different spell per spec.
+-- Slot-based spell-ID mapping for healer buffs/HoTs and raid buffs (7 slots + RaidBuff per spec).
 local _, Orbit = ...
 
 Orbit.HealerAuraRegistry = {}

@@ -1,9 +1,5 @@
 -- [ LOCALIZATION - PLUGINS ]---------------------------------------------------------
--- PLU_ keys. Per-plugin settings schema labels and tooltips.
--- Grouped by plugin (ActionBars, CooldownManager, Tracked, Minimap, UnitFrames,
--- GroupFrames, BossFrames, MenuItems, Datatexts, Extras).
--- To translate: uncomment your locale block and mirror the keys from enUS.
--- Missing keys fall back to enUS automatically.
+-- PLU_ keys: per-plugin settings schema labels and tooltips grouped by plugin.
 local _, Orbit = ...
 
 local LOCALE_STRINGS = {
