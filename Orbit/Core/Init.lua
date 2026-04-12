@@ -407,8 +407,12 @@ eventFrame:SetScript("OnEvent", function(self, event)
         end
     elseif event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_SPECIALIZATION_CHANGED" then
         Orbit:RefreshSpecLockedPlugins()
-        if event == "PLAYER_SPECIALIZATION_CHANGED" and Orbit.EventBus then
-            Orbit.EventBus:Fire("PLAYER_SPECIALIZATION_CHANGED")
+        if Orbit.EventBus then
+            if event == "PLAYER_ENTERING_WORLD" then
+                Orbit.EventBus:Fire("PLAYER_ENTERING_WORLD")
+            elseif event == "PLAYER_SPECIALIZATION_CHANGED" then
+                Orbit.EventBus:Fire("PLAYER_SPECIALIZATION_CHANGED")
+            end
         end
     elseif event == "PLAYER_LOGOUT" then
         if Orbit.Engine and Orbit.Engine.PositionManager then Orbit.Engine.PositionManager:FlushToStorage() end

@@ -39,7 +39,7 @@ function Plugin:_BuildIconSettings(dialog, systemFrame, record)
     local SB = OrbitEngine.SchemaBuilder
 
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_TRK_TAB_LAYOUT, L.PLU_TRK_TAB_GLOW, L.PLU_TRK_TAB_COLORS }, L.PLU_TRK_TAB_LAYOUT)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_TRK_TAB_LAYOUT, L.PLU_TRK_TAB_GLOW, L.PLU_TRK_TAB_VISIBILITY, L.PLU_TRK_TAB_COLORS }, L.PLU_TRK_TAB_LAYOUT)
 
     if currentTab == L.PLU_TRK_TAB_LAYOUT then
         table.insert(schema.controls, {
@@ -74,14 +74,26 @@ function Plugin:_BuildIconSettings(dialog, systemFrame, record)
     elseif currentTab == L.PLU_TRK_TAB_GLOW then
         table.insert(schema.controls, { type = "checkbox", key = "ShowGCDSwipe", label = L.PLU_TRK_SHOW_GCD_SWIPE, default = true })
         SB:AddGlowSettings(self, schema, systemIndex, dialog, systemFrame, {
-            prefix = "PandemicGlow",
-            label = L.PLU_TRK_PANDEMIC_GLOW,
+            prefix = "ActiveGlow",
+            label = L.PLU_TRK_ACTIVE_GLOW,
             default = Constants.Glow.DefaultType,
         })
-        SB:AddGlowSettings(self, schema, systemIndex, dialog, systemFrame, {
-            prefix = "ProcGlow",
-            label = L.PLU_TRK_PROC_GLOW,
-            default = Constants.Glow.DefaultType,
+    elseif currentTab == L.PLU_TRK_TAB_VISIBILITY then
+        table.insert(schema.controls, {
+            type = "checkbox", key = "HideOnCooldown", label = L.PLU_TRK_HIDE_ON_CD,
+            tooltip = L.PLU_TRK_HIDE_ON_CD_TT, default = false,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "HideOnCooldown", val)
+                self:ApplySettings(systemFrame)
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "HideOnAvailable", label = L.PLU_TRK_HIDE_ON_READY,
+            tooltip = L.PLU_TRK_HIDE_ON_READY_TT, default = false,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "HideOnAvailable", val)
+                self:ApplySettings(systemFrame)
+            end,
         })
     elseif currentTab == L.PLU_TRK_TAB_COLORS then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {

@@ -10,7 +10,6 @@ local DEFAULT_OFFSET_Y = -100
 local Plugin = Orbit:RegisterPlugin("Talking Head", SYSTEM_ID, {
     defaults = {
         Scale = 60,
-        DisableTalkingHead = false,
     },
 })
 
@@ -24,15 +23,7 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     local schema = {
         hideNativeSettings = true,
-        controls = {
-            {
-                type = "checkbox",
-                key = "DisableTalkingHead",
-                label = L.PLU_TH_DISABLE,
-                tooltip = L.PLU_TH_DISABLE_TT,
-                default = false,
-            },
-        },
+        controls = {},
     }
 
     -- Scale setting
@@ -138,7 +129,7 @@ function Plugin:ReparentAll()
     OrbitEngine.FrameGuard:Protect(TalkingHeadFrame, self.frame)
     OrbitEngine.FrameGuard:UpdateProtection(TalkingHeadFrame, self.frame, function()
         self:ApplySettings()
-    end, { enforceShow = false }) -- Don't enforce show for TalkingHead (it may be disabled)
+    end, { enforceShow = false })
 
     -- Hook SetPoint to prevent position jumping during Edit Mode transitions
     if not TalkingHeadFrame._orbitSetPointHooked then
@@ -175,32 +166,19 @@ function Plugin:ApplySettings()
 
     local isEditMode = Orbit:IsEditMode()
     local scale = self:GetSetting(SYSTEM_ID, "Scale") or 100
-    local disable = self:GetSetting(SYSTEM_ID, "DisableTalkingHead")
     self:ReparentAll()
     frame:SetScale(scale / 100)
+    frame:Show()
 
-    -- Handle disable logic (don't disable during Edit Mode to allow configuration)
-    if disable and not isEditMode then
-        frame:Hide()
-        if TalkingHeadFrame then
-            OrbitEngine.NativeFrame:Disable(TalkingHeadFrame)
+    if TalkingHeadFrame then
+        -- Resize container to match TalkingHead content
+        local w, h = TalkingHeadFrame:GetSize()
+        if w and h and w > 0 and h > 0 then
+            frame:SetSize(w, h)
         end
-    else
-        frame:Show()
-        if TalkingHeadFrame then
-            if OrbitEngine.NativeFrame:IsDisabled(TalkingHeadFrame) then
-                OrbitEngine.NativeFrame:Enable(TalkingHeadFrame)
-            end
 
-            -- Resize container to match TalkingHead content
-            local w, h = TalkingHeadFrame:GetSize()
-            if w and h and w > 0 and h > 0 then
-                frame:SetSize(w, h)
-            end
-
-            if isEditMode then
-                TalkingHeadFrame:Show()
-            end
+        if isEditMode then
+            TalkingHeadFrame:Show()
         end
     end
 

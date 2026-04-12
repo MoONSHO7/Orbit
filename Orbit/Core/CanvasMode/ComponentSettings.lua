@@ -101,13 +101,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     if plugin then
         for _, control in ipairs(schema.controls) do
             if control.plugin then
-                local val
-                if plugin.GetInheritedSetting then
-                    val = plugin:GetInheritedSetting(systemIndex, control.key, true)
-                else
-                    val = plugin:GetSetting(systemIndex, control.key)
-                end
-
+                local val = plugin:GetSetting(systemIndex, control.key)
                 if val ~= nil then self.currentOverrides[control.key] = val end
             end
         end
@@ -166,7 +160,6 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             currentValue = GetValueFromVisual(container, control.key)
         end
 
-        if currentValue == nil then currentValue = control.default end
 
         local callback = function(key, value) self:OnValueChanged(key, value) end
         local widget

@@ -148,15 +148,31 @@ function Container:Apply(plugin, frame, record)
         if not grid[key] then icon:Hide() end
     end
 
+    -- Cache per-container settings once for all icons.
+    local hideOnCd = plugin:GetSetting(record.id, "HideOnCooldown") or false
+    local hideOnReady = plugin:GetSetting(record.id, "HideOnAvailable") or false
+    local showGCDSwipe = plugin:GetSetting(record.id, "ShowGCDSwipe") ~= false
+    local GU = OrbitEngine.GlowUtils
+    local glowTypeName, glowOptions
+    if GU then glowTypeName, glowOptions = GU:BuildOptions(plugin, record.id, "ActiveGlow", Constants.Glow.DefaultColor, "orbitActive") end
+
     for key, data in pairs(grid) do
         local icon = frame.iconItems[key] or self:AcquireIcon(plugin, frame, key)
         icon.trackedType = data.type
         icon.trackedId = data.id
+        icon._activeDuration = data.activeDuration
+        icon._cooldownDuration = data.cooldownDuration
+        icon._showGCDSwipe = showGCDSwipe
+        icon._hideOnCooldown = hideOnCd
+        icon._hideOnAvailable = hideOnReady
+        icon._activeGlowTypeName = glowTypeName
+        icon._activeGlowOptions = glowOptions
         icon:SetSize(iconW, iconH)
         if Orbit.Skin and Orbit.Skin.Icons then
             Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
         end
         Orbit.TrackedIconItem:ApplyFont(plugin, icon)
+        Orbit.TrackedIconItem:ApplySwipeColor(plugin, icon, record.id)
         Orbit.TrackedIconItem:ApplyCanvasComponents(plugin, icon, record.id)
         Orbit.TrackedIconItem:Update(icon)
     end

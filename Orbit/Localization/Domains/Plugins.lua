@@ -88,8 +88,12 @@ local LOCALE_STRINGS = {
         PLU_TRK_LAYOUT          = "Layout",
         PLU_TRK_HORIZONTAL      = "Horizontal",
         PLU_TRK_VERTICAL        = "Vertical",
-        PLU_TRK_PANDEMIC_GLOW   = "Pandemic Glow",
-        PLU_TRK_PROC_GLOW       = "Proc Glow",
+        PLU_TRK_ACTIVE_GLOW     = "Active Glow",
+        PLU_TRK_TAB_VISIBILITY  = "Visibility",
+        PLU_TRK_HIDE_ON_CD      = "Hide on Cooldown",
+        PLU_TRK_HIDE_ON_CD_TT   = "Hide the icon when the spell is on cooldown (alpha 0); show when ready or active (alpha 1)",
+        PLU_TRK_HIDE_ON_READY   = "Hide on Available",
+        PLU_TRK_HIDE_ON_READY_TT = "Hide the icon when the spell is ready (alpha 0); show when on cooldown or active (alpha 1)",
         PLU_MINIMAP_ACT_NONE    = "None",
         PLU_MINIMAP_ACT_MAP     = "World Map",
         PLU_MINIMAP_ACT_TRACK   = "Tracking Menu",
@@ -211,8 +215,6 @@ local LOCALE_STRINGS = {
         PLU_DT_GAMEPLAY         = "Gameplay",
         PLU_DT_WORLD            = "World",
         PLU_DT_UTILITY          = "Utility",
-        PLU_TH_DISABLE          = "Disable",
-        PLU_TH_DISABLE_TT       = "Completely hides the Talking Head frame.",
         PLU_TH_SCALE            = "Scale",
     },
     deDE = {
@@ -365,7 +367,6 @@ local LOCALE_STRINGS = {
         PLU_DT_GAMEPLAY = "Spielmechanik",
         PLU_DT_WORLD = "Welt",
         PLU_DT_UTILITY = "Werkzeuge",
-        PLU_TH_DISABLE = "Deaktivieren",
         PLU_TH_SCALE = "Skalierung",
     },
     frFR = {
@@ -518,7 +519,6 @@ local LOCALE_STRINGS = {
         PLU_DT_GAMEPLAY = "Gameplay",
         PLU_DT_WORLD = "Monde",
         PLU_DT_UTILITY = "Utilitaire",
-        PLU_TH_DISABLE = "Désactiver",
         PLU_TH_SCALE = "Échelle",
     },
     esES = {
@@ -671,7 +671,6 @@ local LOCALE_STRINGS = {
         PLU_DT_GAMEPLAY = "Jugabilidad",
         PLU_DT_WORLD = "Mundo",
         PLU_DT_UTILITY = "Utilidad",
-        PLU_TH_DISABLE = "Desactivar",
         PLU_TH_SCALE = "Escala",
     },
     ptBR = {
@@ -824,7 +823,6 @@ local LOCALE_STRINGS = {
         PLU_DT_GAMEPLAY = "Jogabilidade",
         PLU_DT_WORLD = "Mundo",
         PLU_DT_UTILITY = "Utilidade",
-        PLU_TH_DISABLE = "Desativar",
         PLU_TH_SCALE = "Escala",
     },
     ruRU = {
@@ -977,7 +975,6 @@ local LOCALE_STRINGS = {
         PLU_DT_GAMEPLAY = "Геймплей",
         PLU_DT_WORLD = "Мир",
         PLU_DT_UTILITY = "Утилиты",
-        PLU_TH_DISABLE = "Отключить",
         PLU_TH_SCALE = "Масштаб",
     },
     koKR = {
@@ -1130,7 +1127,6 @@ local LOCALE_STRINGS = {
         PLU_DT_GAMEPLAY = "게임플레이",
         PLU_DT_WORLD = "월드",
         PLU_DT_UTILITY = "유틸리티",
-        PLU_TH_DISABLE = "비활성화",
         PLU_TH_SCALE = "크기 비율",
     },
     zhCN = {
@@ -1283,7 +1279,6 @@ local LOCALE_STRINGS = {
         PLU_DT_GAMEPLAY = "游戏性",
         PLU_DT_WORLD = "世界",
         PLU_DT_UTILITY = "实用工具",
-        PLU_TH_DISABLE = "禁用",
         PLU_TH_SCALE = "缩放",
     },
     zhTW = {
@@ -1436,7 +1431,6 @@ local LOCALE_STRINGS = {
         PLU_DT_GAMEPLAY = "遊戲性",
         PLU_DT_WORLD = "世界",
         PLU_DT_UTILITY = "實用工具",
-        PLU_TH_DISABLE = "停用",
         PLU_TH_SCALE = "縮放",
     }
 }

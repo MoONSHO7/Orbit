@@ -82,6 +82,8 @@ local RECHARGE_DIM = 0.35
 local DEFAULT_BAR_COLOR_R, DEFAULT_BAR_COLOR_G, DEFAULT_BAR_COLOR_B = 0.3, 0.7, 1
 local TICK_SIZE_DEFAULT = TickMixin.TICK_SIZE_DEFAULT
 local WHITE_TEXTURE = "Interface\\Buttons\\WHITE8x8"
+local SECONDS_PER_MINUTE = 60
+local SECONDS_PER_HOUR = 3600
 
 -- [ CURVES ] ------------------------------------------------------------------
 -- IDENTITY_CURVE maps remaining-percent (secret) to itself (numeric). Required
@@ -130,6 +132,14 @@ end)()
 -- [ MODULE ] ------------------------------------------------------------------
 Orbit.TrackedBar = {}
 local Bar = Orbit.TrackedBar
+
+-- [ TIME FORMATTER ] ----------------------------------------------------------
+local function FormatTime(seconds)
+    if not seconds or seconds <= 0 then return "" end
+    if seconds < SECONDS_PER_MINUTE then return string.format("%d", math.floor(seconds)) end
+    if seconds < SECONDS_PER_HOUR then return string.format("%d:%02d", math.floor(seconds / SECONDS_PER_MINUTE), math.floor(seconds % SECONDS_PER_MINUTE)) end
+    return string.format("%d:%02d:%02d", math.floor(seconds / SECONDS_PER_HOUR), math.floor((seconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE), math.floor(seconds % SECONDS_PER_MINUTE))
+end
 
 -- [ DROP HINT ALPHA ] ---------------------------------------------------------
 -- DropHintFrame hosts all drop hint textures, so a single SetAlpha cascades
@@ -241,6 +251,11 @@ function Bar:Build(plugin, record)
     frame.CountText:SetPoint("CENTER", frame.StatusBar, "CENTER")
     frame.CountText:Hide()
 
+    frame.TimeText = frame.TextFrame:CreateFontString(nil, "OVERLAY")
+    frame.TimeText:SetFont(STANDARD_TEXT_FONT, FONT_SIZE_DEFAULT, "OUTLINE")
+    frame.TimeText:SetPoint("RIGHT", frame.StatusBar, "RIGHT", -TEXT_PADDING, 0)
+    frame.TimeText:Hide()
+
     -- Canvas Mode: register text components as draggable. Each bar uses its
     -- own record.id as the systemIndex so the position callback persists into
     -- record.settings via the GetSetting redirect (one ComponentPositions per
@@ -253,6 +268,10 @@ function Bar:Build(plugin, record)
         OrbitEngine.ComponentDrag:Attach(frame.CountText, frame, {
             key = "CountText",
             onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(plugin, record.id, "CountText"),
+        })
+        OrbitEngine.ComponentDrag:Attach(frame.TimeText, frame, {
+            key = "TimeText",
+            onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(plugin, record.id, "TimeText"),
         })
     end
 
@@ -354,7 +373,9 @@ function Bar:Build(plugin, record)
         end
     end)
 
-    frame.OnAnchorChanged = function(self) Bar:Apply(plugin, self, plugin:GetContainerRecord(self.recordId)) end
+    frame.OnAnchorChanged = function(self, parent, edge, padding)
+        Bar:Apply(plugin, self, plugin:GetContainerRecord(self.recordId))
+    end
     frame.SetBorderHidden = Orbit.Skin.DefaultSetBorderHidden
 
     -- StatusBar resize hook: charges-mode geometry (RechargeSegment width,
@@ -556,6 +577,14 @@ function Bar:ApplyCanvasComponents(plugin, frame, record)
         OverrideUtils.ApplyOverrides(frame.CountText, overrides, { fontSize = FONT_SIZE_DEFAULT, fontPath = fontPath })
     end
 
+    frame._timeTextDisabled = disabledSet.TimeText or false
+    if disabledSet.TimeText then
+        frame.TimeText:Hide()
+    elseif OverrideUtils then
+        local overrides = savedPositions.TimeText and savedPositions.TimeText.overrides or {}
+        OverrideUtils.ApplyOverrides(frame.TimeText, overrides, { fontSize = FONT_SIZE_DEFAULT, fontPath = fontPath })
+    end
+
     OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
 end
 
@@ -728,6 +757,7 @@ function Bar:ApplyFont(plugin, frame)
     local outline = Orbit.Skin and Orbit.Skin:GetFontOutline() or "OUTLINE"
     frame.NameText:SetFont(font, FONT_SIZE_DEFAULT, outline)
     frame.CountText:SetFont(font, FONT_SIZE_DEFAULT, outline)
+    frame.TimeText:SetFont(font, FONT_SIZE_DEFAULT, outline)
 end
 
 -- [ SPELL STATE ] -------------------------------------------------------------
@@ -740,6 +770,7 @@ function Bar:RefreshSpellState(plugin, frame, record)
         frame.Icon:SetTexture(nil)
         frame.NameText:SetText("")
         frame.CountText:SetText("")
+        frame.TimeText:Hide()
         frame.StatusBar:SetValue(0)
         frame.RechargeSegment:Hide()
         TickMixin:Hide(frame)
@@ -818,6 +849,7 @@ function Bar:UpdateChargesMode(frame, payload)
         frame.RechargeSegment:SetAlpha(0)
         if frame.TickMark then frame.TickMark:SetAlpha(0) end
     end
+    frame.TimeText:Hide()
 end
 
 -- [ CD-ONLY MODE UPDATE ] -----------------------------------------------------
@@ -839,6 +871,13 @@ function Bar:UpdateCdOnlyMode(frame, payload)
         frame.StatusBar:SetValue(barValue)
         frame.TickBar:SetValue(barValue)
         if frame.TickMark then frame.TickMark:SetAlpha(barValue >= 1 and 0 or 1) end
+        if not frame._timeTextDisabled and barValue < 1 and payload.cooldownDuration then
+            local remaining = (1 - barValue) * payload.cooldownDuration
+            frame.TimeText:SetText(FormatTime(remaining))
+            frame.TimeText:Show()
+        else
+            frame.TimeText:Hide()
+        end
     else
         local start, duration = C_Container.GetItemCooldown(payload.id)
         if not start or not duration or duration == 0 then
@@ -856,6 +895,13 @@ function Bar:UpdateCdOnlyMode(frame, payload)
         frame.StatusBar:SetValue(barValue)
         frame.TickBar:SetValue(barValue)
         if frame.TickMark then frame.TickMark:SetAlpha(1) end
+        if not frame._timeTextDisabled then
+            local remaining = duration - elapsed
+            frame.TimeText:SetText(FormatTime(remaining))
+            frame.TimeText:Show()
+        else
+            frame.TimeText:Hide()
+        end
     end
 end
 
@@ -892,6 +938,13 @@ function Bar:UpdateActiveCdMode(frame, payload)
         frame.StatusBar:SetValue(barValue)
         frame.TickBar:SetValue(barValue)
         if frame.TickMark then frame.TickMark:SetAlpha(inCdPhase and 1 or 0) end
+        if not frame._timeTextDisabled and pct > 0 and payload.cooldownDuration then
+            local remaining = pct * payload.cooldownDuration
+            frame.TimeText:SetText(FormatTime(remaining))
+            frame.TimeText:Show()
+        else
+            frame.TimeText:Hide()
+        end
     else
         local start, duration = C_Container.GetItemCooldown(payload.id)
         if not start or not duration or duration == 0 then
@@ -917,6 +970,13 @@ function Bar:UpdateActiveCdMode(frame, payload)
         frame.StatusBar:SetValue(barValue)
         frame.TickBar:SetValue(barValue)
         if frame.TickMark then frame.TickMark:SetAlpha(inCdPhase and 1 or 0) end
+        if not frame._timeTextDisabled then
+            local remaining = duration - elapsed
+            frame.TimeText:SetText(FormatTime(remaining))
+            frame.TimeText:Show()
+        else
+            frame.TimeText:Hide()
+        end
     end
 end
 
@@ -927,6 +987,7 @@ function Bar:SetBarFull(frame)
     frame.StatusBar:SetValue(1)
     if frame.TickBar then frame.TickBar:SetValue(1) end
     if frame.TickMark then frame.TickMark:SetAlpha(0) end
+    frame.TimeText:Hide()
 end
 
 -- [ DROP HANDLING ] -----------------------------------------------------------

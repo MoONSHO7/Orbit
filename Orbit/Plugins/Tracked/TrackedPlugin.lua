@@ -386,12 +386,6 @@ function Plugin:RefreshContainerVirtualState(frame)
     frame.orbitNoSnap = isEmpty
     Orbit.Engine.FrameAnchor:SetFrameVirtual(frame, isEmpty)
     self:_SyncOrbitDisabledFlag(frame)
-    -- Restore position regardless of direction. On the True transition,
-    -- this undoes the ParkFrame side effect so the empty container stays
-    -- where the user put it. On the False transition it's a no-op-ish
-    -- re-anchor that ensures the frame is correctly attached before the
-    -- scheduled ReconcileChain runs RestoreLogicalChildren to pull
-    -- promoted children back home.
     Orbit.Engine.Frame:RestorePosition(frame, self, frame.recordId)
 end
 
