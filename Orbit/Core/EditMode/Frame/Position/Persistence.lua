@@ -55,45 +55,11 @@ function Persistence:DrainAllPending()
     end
 end
 
--- [ SPEC-SCOPED ANCHOR ROUTING ]---------------------------------------------------------------------
--- A plugin's saved Anchor/Position normally lives in the global layout DB
--- (one value across all specs). That works fine when both ends of the chain
--- are stable across specs, but breaks when the TARGET frame is per-spec — e.g.
--- a Tracked container, where SpecA owns OrbitTrackedContainer1042 and SpecB
--- owns OrbitTrackedContainer1043. A non-spec-scoped consumer like the Player
--- frame can name only ONE of those targets in its global Anchor field, so the
--- chain renders on one spec and silently routes around the other.
---
--- Solution: when the target frame opts in via `orbitAnchorTargetPerSpec = true`,
--- the consumer's anchor is partitioned per-spec via `PluginMixin:SetSpecData`
--- regardless of whether the consumer plugin itself is spec-scoped. The consumer
--- doesn't have to know the target is per-spec — the routing is target-driven.
--- Reads always try spec data first and fall back to global, so plugins that
--- never wrote spec data are unaffected.
---
--- Save rules:
---   * Built-in spec-scoped consumer (`IsSpecScopedIndex` true) → spec data,
---     never touch global. Existing CooldownManager behavior preserved.
---   * Anchor target has `orbitAnchorTargetPerSpec` → spec data for current
---     spec. Global is left intact so OTHER specs that have no override fall
---     back to it (e.g. user wires the chain on SpecA only and SpecB keeps
---     whatever the global was before).
---   * Otherwise → global. Clear current spec's override so the new global
---     takes effect on this spec.
---
--- Position writes (no target, free positioning) follow the same shape but
--- decide via "stickiness": if the consumer already has spec data for the
--- current spec, the new free position stays per-spec for this spec. Without
--- this, dragging a per-spec-anchored frame off into open space on SpecA
--- would silently overwrite the chain on every spec.
---
--- Plugin opt-out: a plugin whose own SetSetting/GetSetting already partition
--- per-spec at the record level (Tracked, where each record carries `spec`)
--- sets `plugin.settingsArePerSpec = true`. For those plugins we never route
--- to spec data — the per-record settings ARE the spec store, and adding a
--- second per-spec layer would silently desync the two on subsequent edits
--- and lose the data on profile export (spec data is per-character, record
--- settings are in the profile).
+-- [ SPEC-SCOPED STORAGE HELPERS ]-------------------------------------------------------------------
+-- Plugins with `IsSpecScopedIndex` (e.g. CooldownManager) store Anchor/Position
+-- per-spec via SetSpecData. All other plugins use global storage via SetSetting.
+-- Plugins with `settingsArePerSpec = true` (e.g. Tracked) already handle spec
+-- scoping at the record level, so we skip spec data entirely for those.
 local function HasGetSpecData(plugin)
     if not plugin then return false end
     if plugin.settingsArePerSpec then return false end
@@ -102,18 +68,6 @@ end
 
 local function IsBuiltinSpecScoped(plugin, systemIndex)
     return plugin.IsSpecScopedIndex and plugin:IsSpecScopedIndex(systemIndex)
-end
-
-local function TargetIsPerSpec(anchor)
-    if not anchor or not anchor.target then return false end
-    local targetFrame = _G[anchor.target]
-    return targetFrame and targetFrame.orbitAnchorTargetPerSpec == true
-end
-
-local function HasCurrentSpecData(plugin, systemIndex)
-    if not HasGetSpecData(plugin) then return false end
-    return plugin:GetSpecData(systemIndex, "Anchor") ~= nil
-        or plugin:GetSpecData(systemIndex, "Position") ~= nil
 end
 
 -- Only clear an existing spec-data slot — never write nil into a slot that's
@@ -127,7 +81,7 @@ end
 
 function Persistence:WriteAnchor(plugin, systemIndex, anchor)
     if not plugin or not systemIndex or not anchor then return end
-    local useSpec = HasGetSpecData(plugin) and (IsBuiltinSpecScoped(plugin, systemIndex) or TargetIsPerSpec(anchor))
+    local useSpec = HasGetSpecData(plugin) and IsBuiltinSpecScoped(plugin, systemIndex)
     if useSpec then
         plugin:SetSpecData(systemIndex, "Anchor", anchor)
         plugin:SetSpecData(systemIndex, "Position", nil)
@@ -145,7 +99,7 @@ end
 
 function Persistence:WritePosition(plugin, systemIndex, pos)
     if not plugin or not systemIndex or not pos then return end
-    local useSpec = HasGetSpecData(plugin) and (IsBuiltinSpecScoped(plugin, systemIndex) or HasCurrentSpecData(plugin, systemIndex))
+    local useSpec = HasGetSpecData(plugin) and IsBuiltinSpecScoped(plugin, systemIndex)
     if useSpec then
         plugin:SetSpecData(systemIndex, "Position", pos)
         plugin:SetSpecData(systemIndex, "Anchor", false)
@@ -269,7 +223,16 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
                 if RouteAroundSkipped(targetFrame, anchor.edge, padding, anchor.align) then
                     return true
                 end
-                -- Fall through: no non-skipped ancestor, use defaultPosition
+                -- RouteAroundSkipped set logical anchor but couldn't create physical
+                -- anchor (no non-skipped ancestor). If DrainPendingFor already wired a
+                -- valid physical anchor to this target, preserve it — falling through
+                -- to Position/defaultPosition would break the anchor that DrainPending
+                -- established during the cross-plugin load-order race.
+                local existingAnchor = Engine.FrameAnchor.anchors[frame]
+                if existingAnchor and existingAnchor.parent == targetFrame then
+                    return true
+                end
+                -- Fall through: no non-skipped ancestor and no existing anchor
             else
                 Engine.FrameAnchor:CreateAnchor(frame, targetFrame, anchor.edge, padding, nil, anchor.align, true)
                 return true
@@ -321,18 +284,9 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
 end
 
 -- [ ATTACHED FRAME REGISTRY ] ---------------------------------------------------------------------
--- Tracks every frame that's been wired through AttachSettingsListener so the
--- spec-change handler (below) can re-run RestorePosition on consumers whose
--- saved anchor was routed to per-spec storage by TargetIsPerSpec. Without this
--- pass, a non-spec-scoped consumer (e.g. PlayerPower) anchored to a per-spec
--- target (e.g. an OrbitTrackedContainer) keeps its previous-spec graph anchor
--- after the spec swap — width sync still works through the promoted chain, but
--- the visual position lands on whichever ancestor PromoteGrandchild routed it
--- to instead of the new spec's intended target. Re-restoring picks up the new
--- spec's saved anchor entry.
---
--- Weak-keyed so dropped frames (Tracked container deletion, plugin teardown)
--- don't pin garbage.
+-- Tracks every frame wired through AttachSettingsListener so the spec-change
+-- handler can re-run RestorePosition. Weak-keyed so dropped frames don't pin
+-- garbage.
 Persistence._attachedFrames = Persistence._attachedFrames or setmetatable({}, { __mode = "k" })
 
 -- Attach listener for standard Orbit position/anchor saving
@@ -401,7 +355,7 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
                         padding = Engine.FrameAnchor.anchors[f].padding or 0
                         align = Engine.FrameAnchor.anchors[f].align
                     end
-                    local targetFrame = _G[x]
+                    local targetFrame = type(x) == "table" and x or _G[x]
                     if targetFrame then
                         local rootParent = targetFrame
                         if Engine.FrameAnchor.GetRootParent then
@@ -417,27 +371,17 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
                 Engine.PositionManager:SetPosition(f, point, x, y)
             end
             Engine.PositionManager:MarkDirty(f)
-            -- Immediate write for any consumer that routes into per-spec
-            -- storage (built-in spec-scoped plugin OR target frame with
-            -- orbitAnchorTargetPerSpec OR consumer that already has current-
-            -- spec data). FlushToStorage runs on edit-mode close, but a
-            -- /reload between drag-stop and flush would lose spec-scoped
-            -- writes — pure global writes are still left to FlushToStorage
-            -- since they're well-handled by SetSetting.
+            -- Immediate write for spec-scoped plugins. FlushToStorage runs on
+            -- edit-mode close, but a /reload between drag-stop and flush would
+            -- lose spec-scoped writes. Global writes are left to FlushToStorage.
             local p = f.orbitPlugin
             local sysIdx = f.systemIndex
-            if p and sysIdx and HasGetSpecData(p) then
-                local needsSpecImmediate = IsBuiltinSpecScoped(p, sysIdx) or HasCurrentSpecData(p, sysIdx)
-                if not needsSpecImmediate and point == "ANCHORED" then
-                    needsSpecImmediate = TargetIsPerSpec({ target = x })
-                end
-                if needsSpecImmediate then
-                    if point == "ANCHORED" then
-                        local anch = Engine.PositionManager:GetAnchor(f)
-                        if anch then Persistence:WriteAnchor(p, sysIdx, anch) end
-                    else
-                        Persistence:WritePosition(p, sysIdx, { point = point, x = x, y = y })
-                    end
+            if p and sysIdx and HasGetSpecData(p) and IsBuiltinSpecScoped(p, sysIdx) then
+                if point == "ANCHORED" then
+                    local anch = Engine.PositionManager:GetAnchor(f)
+                    if anch then Persistence:WriteAnchor(p, sysIdx, anch) end
+                else
+                    Persistence:WritePosition(p, sysIdx, { point = point, x = x, y = y })
                 end
             end
         end
@@ -476,17 +420,9 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
 end
 
 -- [ SPEC-CHANGE RE-RESTORE ] ----------------------------------------------------------------------
--- On spec swap, walk every attached frame and re-run RestorePosition for any
--- consumer whose plugin opts into spec-scoped storage. This is what makes the
--- TargetIsPerSpec routing actually visible: WriteAnchor saved the consumer's
--- anchor to spec data when it was dragged onto a per-spec target, and now the
--- new spec needs that data applied to the live AnchorGraph. Plugins with
--- `settingsArePerSpec = true` (Tracked) are skipped — they handle their own
--- container toggling via RefreshForCurrentSpec / SetContainerActive.
---
--- A frame whose plugin has GetSpecData but no entry for the new spec falls
--- through to global inside RestorePosition (no-op for plain global anchors;
--- correct fallback for cross-spec consumers that never wrote new-spec data).
+-- On spec swap, re-run RestorePosition for frames whose plugins support spec
+-- data (via GetSpecData). Plugins with `settingsArePerSpec = true` (Tracked)
+-- are skipped — they handle their own toggling via RefreshForCurrentSpec.
 function Persistence:RestoreAffectedBySpecChange()
     for frame, info in pairs(self._attachedFrames) do
         if HasGetSpecData(info.plugin) then
