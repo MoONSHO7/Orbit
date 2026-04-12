@@ -1,17 +1,5 @@
 -- [ TRACKED CONTAINER ] -------------------------------------------------------
--- Builds and manages a single icons-mode tracked container. Each container is
--- a top-level frame holding a sparse 2D grid of TrackedIconItem children. The
--- grid grows by neighbor-expansion: dropping a spell on an edge drop zone
--- spawns a new slot at that x,y. The container itself owns drop zones, the
--- input pipeline (drop receive + shift-rclick to delete), and a per-container
--- ticker that refreshes its icons in bulk.
---
--- Visuals:
---   * drop zone backdrop: cdm-empty (deepest, matches cooldown viewer slots)
---   * drop zone tint: talents-node-choiceflyout-square-green (over backdrop)
---   * drop zone plus: bags-icon-addslots, centered
---   * whole zone alpha 0.4 idle / 1.0 hover (frame-level, cascades to children)
---   * shift-right-click empty container deletes the container itself
+-- Icons-mode sparse 2D grid with neighbor-expansion drop zones and per-container update ticker.
 local _, Orbit = ...
 
 local OrbitEngine = Orbit.Engine
@@ -28,6 +16,19 @@ local DROP_ZONE_ALPHA_HOVER = 1.0
 local DROP_ZONE_PLUS_INSET_RATIO = 0.28
 local MAX_GRID_REACH = 10
 local UPDATE_INTERVAL = 0.1
+local VISUAL_POLL_INTERVAL = 0.3
+local COOLDOWN_THROTTLE = 0.1
+local TALENT_REPARSE_DELAY = 0.5
+local EQUIPMENT_SLOTS = { 13, 14 }
+
+-- [ TOOLTIP PARSER ALIASES ] --------------------------------------------------
+local Parser = Orbit.TooltipParser
+local ParseActiveDuration = function(t, id) return Parser:ParseActiveDuration(t, id) end
+local ParseCooldownDuration = function(t, id) return Parser:ParseCooldownDuration(t, id) end
+local BuildPhaseCurve = function(a, c) return Parser:BuildPhaseCurve(a, c) end
+
+-- [ SPELL OVERRIDE ALIAS ] ----------------------------------------------------
+local function GetActiveSpellID(spellID) return FindSpellOverrideByID(spellID) end
 
 -- [ MODULE ] ------------------------------------------------------------------
 Orbit.TrackedContainer = {}
@@ -84,11 +85,7 @@ function Container:Build(plugin, record)
         return next(rec.grid) == nil
     end
 
-    -- Canvas Mode: render a single representative icon with the draggable
-    -- ChargeText component. Mirrors CooldownText:SetupCanvasPreview — pick the
-    -- first live icon's texture as the sample, fall back to a placeholder if
-    -- the grid is empty. Saved positions live on the container record so all
-    -- icons in this container share the same ChargeText layout.
+    -- Canvas Mode: representative icon preview with draggable ChargeText component.
     function frame:CreateCanvasPreview(options)
         local rec = plugin:GetContainerRecord(self.recordId)
         if not rec then return nil end
@@ -119,13 +116,12 @@ function Container:Build(plugin, record)
 
     Container:StartCursorWatcher(plugin, frame)
     Container:StartUpdateTicker(plugin, frame)
+    Container:StartSpellCastWatcher(plugin, frame)
     return frame
 end
 
 -- [ APPLY / LAYOUT ] ----------------------------------------------------------
--- Recompute the layout: place every grid item, build drop zones during a drag,
--- and resize the container to fit. Called whenever a setting changes, the grid
--- mutates, the cursor enters/exits drag state, or the spec switches.
+-- Recompute grid layout, drop zones, and container size on any state change.
 function Container:Apply(plugin, frame, record)
     if not frame or not record then return end
     plugin:RefreshContainerVirtualState(frame)
@@ -162,11 +158,25 @@ function Container:Apply(plugin, frame, record)
         icon.trackedId = data.id
         icon._activeDuration = data.activeDuration
         icon._cooldownDuration = data.cooldownDuration
+        icon._useSpellId = data.useSpellId
         icon._showGCDSwipe = showGCDSwipe
         icon._hideOnCooldown = hideOnCd
         icon._hideOnAvailable = hideOnReady
         icon._activeGlowTypeName = glowTypeName
         icon._activeGlowOptions = glowOptions
+        -- Charge spell detection
+        if data.type == "spell" then
+            local isCharge, ci = DragDrop:IsChargeSpell(data.id)
+            icon._isChargeSpell = isCharge
+            icon._maxCharges = ci and ci.maxCharges or nil
+        else
+            icon._isChargeSpell = false
+            icon._maxCharges = nil
+        end
+        -- Phase-aware curves for active-duration spells
+        local hasActive = data.activeDuration and data.cooldownDuration
+        icon._desatCurve = hasActive and BuildPhaseCurve(data.activeDuration, data.cooldownDuration) or nil
+        icon._cdAlphaCurve = hasActive and BuildPhaseCurve(data.activeDuration, data.cooldownDuration) or nil
         icon:SetSize(iconW, iconH)
         if Orbit.Skin and Orbit.Skin.Icons then
             Orbit.Skin.Icons:ApplyCustom(icon, skinSettings)
@@ -231,10 +241,7 @@ function Container:Apply(plugin, frame, record)
     local totalH = rows * iconH + (rows - 1) * padding
     frame:SetSize(math.max(totalW, iconW), math.max(totalH, iconH))
 
-    -- At padding 0, Icons:ApplyCustom hides every per-icon border (mergeIconBorders
-    -- branch). The container is then responsible for drawing one wrapper border
-    -- around all icons via ApplyIconGroupBorder, matching CooldownManager's
-    -- essential/utility behavior. Otherwise clear any stale wrapper.
+    -- At padding 0, draw a single wrapper border around merged icons; otherwise clear it.
     if rawPadding == 0 and hasItems then
         local iconNineSlice = Orbit.Skin:GetActiveIconBorderStyle()
         Orbit.Skin:ApplyIconGroupBorder(frame, iconNineSlice)
@@ -265,10 +272,7 @@ function Container:ComputeBounds(grid)
 end
 
 -- [ DROP ZONE EDGE EXPANSION ] ------------------------------------------------
--- Walk every existing grid item, find each empty cardinal neighbor, and emit a
--- drop position. The blockedDirections table prevents growth on edges where the
--- container is anchored to a parent or has docked children, so the drag preview
--- can't push the grid into another orbit frame.
+-- Find empty cardinal neighbors of grid items; blocked directions prevent growth into anchored edges.
 function Container:ComputeEdgePositions(frame, grid, minX, maxX, minY, maxY, hasItems)
     local positions = {}
     if not hasItems then
@@ -353,9 +357,6 @@ function Container:RemoveIconAt(plugin, frame, icon)
 end
 
 -- [ DROP ZONES ] --------------------------------------------------------------
--- Each zone is a square frame layered backdrop → tint → plus. Whole-frame alpha
--- is 0.4 idle, 1.0 hover — SetAlpha cascades to all child textures so we don't
--- have to bookkeep per-texture alphas.
 function Container:AcquireDropZone(plugin, frame, index, gridX, gridY, iconW, iconH)
     local zone = frame.dropZones[index]
     if not zone then
@@ -376,10 +377,7 @@ function Container:AcquireDropZone(plugin, frame, index, gridX, gridY, iconW, ic
     end
     zone.gridX = gridX
     zone.gridY = gridY
-    -- Drop zones cover the container body when empty/discoverable, so they
-    -- intercept the shift-right-click that would otherwise reach the container's
-    -- delete handler. Route shift-right-click to delete when the grid is empty,
-    -- mirroring the container's own OnMouseDown rule.
+    -- Route shift-right-click through to delete when grid is empty.
     zone:SetScript("OnMouseDown", function(self, button)
         if button == "RightButton" and IsShiftKeyDown() then
             if frame:IsGridEmpty() then plugin:DeleteContainer(frame.recordId) end
@@ -405,8 +403,7 @@ function Container:OnReceiveDrag(plugin, frame)
     if not DragDrop:IsDraggingCooldownAbility() then return end
     local record = plugin:GetContainerRecord(frame.recordId)
     if not record then return end
-    -- Drop on the container body (not a specific zone) lands at the next free
-    -- right-edge slot, or 0,0 for an empty grid.
+    -- Body drop lands at the next free right-edge slot, or 0,0 if empty.
     local minX, maxX, minY, _, hasItems = self:ComputeBounds(record.grid or {})
     local x, y = 0, 0
     if hasItems then x = maxX + 1; y = minY end
@@ -434,13 +431,7 @@ function Container:CommitDrop(plugin, frame, gridX, gridY)
 end
 
 -- [ CURSOR WATCHER ] ----------------------------------------------------------
--- Each container owns its own poll. Per the readme rule, no cross-domain cursor
--- watcher — Tracked containers, ViewerInjection, and any future drop consumer
--- all run independent polls so removing one doesn't break the others. The
--- watcher tracks ShouldShowDropHints (drag OR settings panel open OR
--- edit-mode-while-empty) so the drop zones appear/disappear automatically when
--- any of those signals flips. Emptiness is recomputed each tick because items
--- can be added/removed without going through the apply path.
+-- Independent per-container poll; triggers Apply when ShouldShowDropHints flips.
 function Container:StartCursorWatcher(plugin, frame)
     if frame._cursorWatcher then return end
     local watcher = CreateFrame("Frame")
@@ -458,16 +449,134 @@ function Container:StartCursorWatcher(plugin, frame)
     frame._cursorWatcher = watcher
 end
 
--- [ UPDATE TICKER ] -----------------------------------------------------------
--- Single ticker per container refreshes all icon items. Cooldown swipe is
--- driven natively by Cooldown:SetCooldownFromDurationObject; this ticker only
--- needs to repaint charge text and desat state which can change between events.
+-- [ EVENT-DRIVEN UPDATE ] -----------------------------------------------------
+-- Listens for cooldown/bag/spell events and updates all icons; throttled.
 function Container:StartUpdateTicker(plugin, frame)
-    if frame._updateTicker then return end
-    frame._updateTicker = C_Timer.NewTicker(UPDATE_INTERVAL, function()
+    if frame._eventFrame then return end
+    local IconItem = Orbit.TrackedIconItem
+    local nextUpdate = 0
+    local evtFrame = CreateFrame("Frame")
+    evtFrame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+    evtFrame:RegisterEvent("BAG_UPDATE_COOLDOWN")
+    evtFrame:RegisterEvent("BAG_UPDATE")
+    evtFrame:RegisterEvent("SPELLS_CHANGED")
+    evtFrame:SetScript("OnEvent", function()
+        local now = GetTime()
+        if now < nextUpdate then return end
+        nextUpdate = now + COOLDOWN_THROTTLE
         if not frame:IsShown() then return end
         for _, icon in pairs(frame.iconItems) do
-            if icon:IsShown() then Orbit.TrackedIconItem:Update(icon) end
+            if icon:IsShown() then IconItem:Update(icon) end
         end
     end)
+    -- Visual-state poll: re-evaluate desat/alpha/glow between event bursts.
+    local pollAccum = 0
+    evtFrame:SetScript("OnUpdate", function(_, elapsed)
+        pollAccum = pollAccum + elapsed
+        if pollAccum < VISUAL_POLL_INTERVAL then return end
+        pollAccum = 0
+        if not frame:IsShown() then return end
+        for _, icon in pairs(frame.iconItems) do
+            if icon:IsShown() and icon.trackedId then IconItem:Update(icon) end
+        end
+    end)
+    frame._eventFrame = evtFrame
+end
+
+-- [ SPELL CAST WATCHER ] ------------------------------------------------------
+-- Sets _activeGlowExpiry on cast and handles charge bookkeeping via OnChargeCast.
+function Container:StartSpellCastWatcher(plugin, frame)
+    if frame._castWatcher then return end
+    local watcher = CreateFrame("Frame")
+    watcher:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+    watcher:RegisterEvent("TRAIT_CONFIG_UPDATED")
+    watcher:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+    watcher:SetScript("OnEvent", function(_, event, unit, _, spellId)
+        if event == "TRAIT_CONFIG_UPDATED" then
+            C_Timer.After(TALENT_REPARSE_DELAY, function()
+                if InCombatLockdown() then return end
+                Container:ReparseActiveDurations(plugin, frame)
+                local record = plugin:GetContainerRecord(frame.recordId)
+                if record then Container:Apply(plugin, frame, record) end
+            end)
+            return
+        end
+        if event == "PLAYER_EQUIPMENT_CHANGED" then
+            Container:OnEquipmentChanged(plugin, frame)
+            return
+        end
+        if unit ~= "player" then return end
+        for _, icon in pairs(frame.iconItems) do
+            local isMatch = (icon.trackedType == "spell" and icon.trackedId == spellId) or (icon.trackedType == "item" and icon._useSpellId == spellId)
+            if isMatch then
+                if icon._activeDuration then
+                    icon._activeGlowExpiry = GetTime() + icon._activeDuration
+                    local expectedId = icon.trackedId
+                    C_Timer.After(icon._activeDuration, function()
+                        if icon.trackedId ~= expectedId then return end
+                        local GC = OrbitEngine.GlowController
+                        if GC:IsActive(icon, "orbitActive") then GC:Hide(icon, "orbitActive") end
+                        icon._activeGlowExpiry = nil
+                    end)
+                end
+                if icon._isChargeSpell then CooldownUtils:OnChargeCast(icon) end
+            end
+        end
+    end)
+    frame._castWatcher = watcher
+end
+
+-- [ ACTIVE DURATION REPARSE ] -------------------------------------------------
+-- Re-reads tooltip durations after talent changes and rebuilds phase curves.
+function Container:ReparseActiveDurations(plugin, frame)
+    local record = plugin:GetContainerRecord(frame.recordId)
+    if not record or not record.grid then return end
+    local changed = false
+    for key, data in pairs(record.grid) do
+        if data.id then
+            local parseId = (data.type == "spell") and GetActiveSpellID(data.id) or data.id
+            local newActDur = ParseActiveDuration(data.type, parseId)
+            local newCdDur = ParseCooldownDuration(data.type, parseId)
+            if newActDur ~= data.activeDuration or newCdDur ~= data.cooldownDuration then
+                data.activeDuration = newActDur
+                data.cooldownDuration = newCdDur
+                changed = true
+            end
+        end
+    end
+    if not changed then return end
+    for key, icon in pairs(frame.iconItems) do
+        local data = record.grid[key]
+        if data then
+            icon._activeDuration = data.activeDuration
+            icon._cooldownDuration = data.cooldownDuration
+            local hasActive = data.activeDuration and data.cooldownDuration
+            icon._desatCurve = hasActive and BuildPhaseCurve(data.activeDuration, data.cooldownDuration) or nil
+            icon._cdAlphaCurve = hasActive and BuildPhaseCurve(data.activeDuration, data.cooldownDuration) or nil
+        end
+    end
+end
+
+-- [ EQUIPMENT CHANGE HANDLER ] ------------------------------------------------
+-- Updates item IDs in the grid when equipped trinkets change.
+function Container:OnEquipmentChanged(plugin, frame)
+    local record = plugin:GetContainerRecord(frame.recordId)
+    if not record or not record.grid then return end
+    local changed = false
+    for key, data in pairs(record.grid) do
+        if data.slotId then
+            local newItemId = GetInventoryItemID("player", data.slotId)
+            if newItemId and newItemId ~= data.id then
+                data.id = newItemId
+                data.useSpellId = select(2, GetItemSpell(newItemId)) or nil
+                data.activeDuration = ParseActiveDuration("item", newItemId)
+                data.cooldownDuration = ParseCooldownDuration("item", newItemId)
+                changed = true
+            elseif not newItemId then
+                record.grid[key] = nil
+                changed = true
+            end
+        end
+    end
+    if changed then Container:Apply(plugin, frame, record) end
 end

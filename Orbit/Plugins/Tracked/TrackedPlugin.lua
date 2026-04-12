@@ -1,19 +1,5 @@
 -- [ ORBIT TRACKED PLUGIN ] ----------------------------------------------------
--- Spawns user-authored cooldown containers (icon grids) and single-spell bars
--- from tabs added to Blizzard's CooldownViewerSettings frame. Each container is
--- a flat record under OrbitDB.GlobalSettings.TrackedContainers, keyed by a
--- monotonic counter id that doubles as the system index. Records carry their
--- own spec field; only records matching the current spec get a live frame.
---
--- Architecture:
---   * Container records live in a flat global table → globally-unique ids
---   * Counter ensures ids are sparse and never reused
---   * mode = "icons" or "bar" — distinct frame types, never transformed
---   * Per-spec caps (MaxIconContainers / MaxBars) enforced at create time
---   * Settings are stored on the record itself, not in the layout DB, so
---     GetSetting/SetSetting are overridden to redirect by systemIndex → record
---   * Tab buttons are click-to-spawn (not panel switchers); registered with
---     Orbit_CooldownViewerExtensions which owns the Blizzard ADDON_LOADED hook
+-- User-authored cooldown containers (icon grids + bars) as flat records in GlobalSettings.TrackedContainers.
 local _, Orbit = ...
 
 local Constants = Orbit.Constants
@@ -26,8 +12,7 @@ local SYSTEM_ID_BASE = Constants.Tracked.SystemIndexBase
 local TAB_ATLAS = "communities-chat-icon-plus"
 local TAB_ID_ICONS = "Orbit_Tracked.Icons"
 local TAB_ID_BARS = "Orbit_Tracked.Bars"
--- Tab tints match each plugin's empty-state dropzone color so the create
--- buttons read as "drop a new green/yellow square here".
+-- Tab tints match empty-state dropzone colors (green = icons, yellow = bars).
 local TAB_TINT_ICONS = { r = 0.40, g = 0.85, b = 0.40 }
 local TAB_TINT_BARS = { r = 1.00, g = 0.82, b = 0.00 }
 local DEFAULT_ICON_OFFSET_Y = 0
@@ -35,18 +20,7 @@ local DEFAULT_BAR_OFFSET_X = 250
 local TALENT_REFRESH_DEBOUNCE = 0.1
 
 -- [ PLUGIN REGISTRATION ] -----------------------------------------------------
--- settingsArePerSpec: opts Tracked OUT of Persistence's spec-data routing for
--- saved Anchor/Position. Each Tracked record carries its own `spec` field and
--- record.settings is already per-spec at the storage layer, so a second per-
--- spec partition (PluginMixin.SpecData) would silently desync from
--- record.settings on subsequent edits and would not survive a profile export.
---
--- canvasMode: opts the bar/icon frames into the right-click → Canvas Mode flow
--- so users can move/disable NameText/CountText (bars) and ChargeText (icons).
--- ComponentPositions defaults are per-component because each Tracked record has
--- one shared schema; per-record overrides land in record.settings via the
--- GetSetting redirect below, so the canvas dialog persists positions per bar
--- without needing a separate ComponentPositions store on each record.
+-- settingsArePerSpec: records own their spec field, so Persistence's spec-data routing is skipped.
 local Plugin = Orbit:RegisterPlugin("Tracked Items", "Orbit_Tracked", {
     liveToggle = true,
     settingsArePerSpec = true,
@@ -119,9 +93,7 @@ function Plugin:CountForSpec(specID, mode)
 end
 
 -- [ SETTINGS REDIRECT ] -------------------------------------------------------
--- Container records own their settings inline; redirect by systemIndex → record.
--- Anything that isn't a container falls through to the standard layout DB so
--- shared keys (Texture, Font, etc) keep flowing through global inheritance.
+-- Container records own settings inline; non-container keys fall through to standard layout DB.
 local OriginalGetSetting = Orbit.PluginMixin.GetSetting
 local OriginalSetSetting = Orbit.PluginMixin.SetSetting
 
@@ -147,14 +119,7 @@ function Plugin:SetSetting(systemIndex, key, value)
 end
 
 -- [ COMPONENT DISABLED OVERRIDE ] ---------------------------------------------
--- PluginMixin's default IsComponentDisabled falls back to self.frame.systemIndex,
--- which is wrong for Tracked: there's no single "current frame" because every
--- record has its own systemIndex. The active Canvas Mode transaction is the
--- only reliable source — when canvas mode is editing a Tracked frame, the
--- transaction's systemIndex tells us which record's DisabledComponents to
--- read. ComponentDrag:IsDisabled (called by the dialog and overlay) routes
--- through this method, so getting it right is what makes drag-to-disable work
--- per-bar instead of always reading record id 1.
+-- Reads DisabledComponents from the active Canvas Mode transaction's systemIndex, not self.frame.
 function Plugin:IsComponentDisabled(componentKey)
     local txn = self:_ActiveTransaction()
     if txn then
@@ -171,9 +136,7 @@ function Plugin:IsComponentDisabled(componentKey)
 end
 
 -- [ GLOBAL FONT ] -------------------------------------------------------------
--- Returns the resolved path for GlobalSettings.Font (LSM-fetched). Tracked
--- icons and bars call this on every Apply pass so changing the global font in
--- the settings panel propagates without needing a full rebuild.
+-- Returns the LSM-resolved path for GlobalSettings.Font.
 function Plugin:GetGlobalFont()
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
     local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
@@ -184,13 +147,7 @@ function Plugin:GetGlobalFont()
 end
 
 -- [ DROP HINT VISIBILITY ] ----------------------------------------------------
--- Drop hints (icons-mode neighbor zones, bars-mode empty bar hint) are shown
--- whenever the user could plausibly want to see where their tracked frames are:
--- (1) actively dragging a cooldown ability, (2) the cooldown viewer settings
--- panel is open, or (3) edit mode is active AND the frame is empty. Cases (2)
--- and (3) make empty containers discoverable — without them, an empty container
--- is invisible and there's no way to find or delete it. The `isEmpty` argument
--- gates the edit-mode case so populated frames don't sprout hints in edit mode.
+-- Show drop hints when dragging, settings panel open, or edit-mode with empty frame.
 function Plugin:ShouldShowDropHints(isEmpty)
     if DragDrop and DragDrop:IsDraggingCooldownAbility() then return true end
     if CooldownViewerSettings and CooldownViewerSettings:IsShown() then return true end
@@ -265,21 +222,7 @@ function Plugin:CreateBar()
     return record
 end
 
--- Builds a frame for the record, restores its anchor/position into the
--- AnchorGraph, and applies its settings. Does NOT toggle enabled/disabled
--- state — RefreshForCurrentSpec / SetContainerActive own that. Frames are
--- built once for EVERY record across all specs (not just the current one)
--- so that the anchor graph has a node for each frame; chain reconciliation
--- relies on disabled frames remaining in the graph as skipped nodes so it
--- can promote their children up to the nearest non-skipped ancestor.
---
--- RefreshContainerVirtualState is called BEFORE any explicit RestorePosition
--- so that the first SetFrameVirtual flip happens against a frame that's never
--- yet been positioned. RefreshContainerVirtualState calls RestorePosition
--- internally as part of its undo-the-park step, so the frame ends up at its
--- saved Anchor/Position with the virtual flag already correct. ApplySettings
--- then runs Apply → RefreshContainerVirtualState again, which is short-
--- circuited by the `_isVirtual == isEmpty` guard. One restore, one reconcile.
+-- Builds a frame for the record across all specs; virtual state set before RestorePosition.
 function Plugin:BuildContainer(record)
     local frame
     local defX, defY = 0, 0
@@ -299,17 +242,7 @@ function Plugin:BuildContainer(record)
 end
 
 -- [ ENABLE / DISABLE ] --------------------------------------------------------
--- Toggles a container's participation in the layout via the AnchorGraph's
--- skipped-frame mechanism (Anchor:SetFrameDisabled). Disabling parks the
--- frame at its defaultPosition, marks it skipped in the graph, and schedules
--- ReconcileChain which promotes any anchored children up to the nearest
--- non-skipped ancestor (their logical parent pointer is preserved via
--- skipLogical=true on the physical re-anchor). Re-enabling clears the skip
--- flag and re-applies the saved Anchor via RestorePosition (because
--- ParkFrame only changed the visual SetPoint, not the graph entry); the
--- next ReconcileChain pulls promoted children back home via
--- RestoreLogicalChildren. This is the same pattern PlayerResources /
--- PlayerPower use for plugin enable/disable.
+-- Toggles container via AnchorGraph skip mechanism; mirrors PlayerResources enable/disable pattern.
 function Plugin:SetContainerActive(frame, active)
     if not frame then return end
     if active then
@@ -324,53 +257,13 @@ function Plugin:SetContainerActive(frame, active)
 end
 
 -- [ ORBIT-DISABLED FLAG SYNC ] ------------------------------------------------
--- Anchor:SetFrameVirtual / SetFrameDisabled both write
---     frame.orbitDisabled = Graph:IsSkipped(frame)
--- which conflates the virtual axis (content-empty) and the disabled axis
--- (off-spec / plugin off) into a single flag. The Selection module reads
--- frame.orbitDisabled to decide whether to render the edit-mode selection
--- highlight — virtual-flagged frames get hidden from selection, which would
--- pin empty Tracked containers as un-clickable in edit mode.
---
--- We override the flag to reflect ONLY the disabled axis, so virtual-but-
--- on-spec frames stay selectable. Disabled frames (off-spec, plugin off)
--- still get the flag because IsDisabled returns true for them.
+-- Override orbitDisabled to reflect only the disabled axis, keeping virtual-but-on-spec frames selectable.
 function Plugin:_SyncOrbitDisabledFlag(frame)
     frame.orbitDisabled = Orbit.Engine.AnchorGraph:IsDisabled(frame)
 end
 
 -- [ VIRTUAL STATE ] -----------------------------------------------------------
--- An empty tracked container (no grid items / no spell) must not be a valid
--- anchor TARGET. If FrameA > TrackedIcons (empty) > FrameC, FrameC needs to
--- promote up to FrameA so it doesn't end up anchored to a frame with no
--- content. We mark empty frames "virtual" in the AnchorGraph; ReconcileChain
--- treats virtual frames the same as disabled ones — promotes their children to
--- the nearest non-skipped ancestor and snaps them back when the frame becomes
--- non-virtual again.
---
--- BUT: the empty frame must still be selectable/movable in edit mode so the
--- user can position it BEFORE adding content. Three things are needed:
---   (1) Position: SetFrameVirtual(true) parks the frame at defaultPosition.
---       We immediately call RestorePosition to put it back at its saved
---       Anchor/Position. The graph keeps the skip flag (children still
---       promote past), but the frame's physical SetPoint is restored.
---   (2) Selection visibility: SetFrameVirtual sets frame.orbitDisabled = true,
---       which the Selection module uses to hide the edit-mode highlight.
---       _SyncOrbitDisabledFlag overrides it to reflect only the disabled
---       axis so the frame stays clickable.
---   (3) No-snap as CHILD: an empty container must also not become an anchored
---       child of another frame (the user can drag it, but it shouldn't snap
---       and create an anchor — just freeposition it). frame.orbitNoSnap = true
---       puts the Drag module into precision-mode for this frame (Drag.lua:143
---       skips snap detection, Drag.lua:344 saves a raw point/x/y instead of
---       creating an anchor). Cleared when the frame becomes non-empty so it
---       can re-join the chain.
---
--- Hooked into Container:Apply and Bar:Apply (which both run on every content
--- mutation: drop, item removal, spell clear, spec swap). The plugin-level
--- _isVirtual guard avoids redundant SetFrameVirtual calls — important because
--- Apply runs on every settings change too, and SetFrameVirtual(true) re-parks
--- unconditionally per the engine's idempotency rule.
+-- Empty containers are marked virtual (children promote past) but stay selectable and movable.
 function Plugin:RefreshContainerVirtualState(frame)
     if not frame or not frame.recordId then return end
     local record = self:GetContainerRecord(frame.recordId)
@@ -390,11 +283,7 @@ function Plugin:RefreshContainerVirtualState(frame)
 end
 
 -- [ FLUSH CURRENT SPEC ] ------------------------------------------------------
--- Walks the store and removes every record matching the current spec, tearing
--- down live frames as it goes. Used to recover from a desync where the store
--- holds dormant records the user can't see (e.g. records seeded by an earlier
--- dev iteration that never got built into frames). Records for OTHER specs are
--- left untouched. Returns the number of records removed.
+-- Removes all records for the current spec; recovery tool for desync states.
 function Plugin:FlushCurrentSpec()
     local specID = self:GetCurrentSpecID()
     if not specID then return 0 end
@@ -408,25 +297,7 @@ function Plugin:FlushCurrentSpec()
 end
 
 -- [ CONTAINER DELETION ] ------------------------------------------------------
--- Detach physical and logical descendants before tearing down the frame.
--- Frames in WoW can't be destroyed (Lua reference + name persist), so without
--- this cleanup any frame that was anchored to (or logically routed past) the
--- deleted Tracked container would still resolve `_G[oldName]` on the next
--- /reload and re-attach to a hidden, no-longer-in-store ghost frame.
---
--- Physical children: BreakAnchor removes the graph entry and clears their
--- logical anchor. We then wipe their saved `Anchor` setting so /reload doesn't
--- replay the broken reference. Both the global plugin setting AND the current
--- spec's spec-data slot need to be checked, because Tracked containers carry
--- `orbitAnchorTargetPerSpec` and may have routed the consumer's saved anchor
--- to either store. Only clear an entry if its `target` actually names the
--- deleted frame — a child may have been re-anchored elsewhere since the live
--- graph entry was made, and we don't want to nuke an unrelated anchor.
---
--- Logical children: frames whose logical parent was this container but who are
--- currently physically routed past it (because the container was virtual).
--- Their physical anchor is fine; we only need to drop the dangling logical
--- intent so RestoreLogicalChildren never tries to pull them home.
+-- Detach physical and logical descendants and clear saved anchors before teardown.
 local function ClearChildSavedAnchorIfTargets(child, deletedName)
     local p = child.orbitPlugin
     if not p or not child.systemIndex or not deletedName then return end
@@ -469,39 +340,19 @@ function Plugin:DeleteContainer(id)
 end
 
 -- [ SPEC REFRESH ] ------------------------------------------------------------
--- Old behavior tore down frames whose record didn't match the current spec and
--- rebuilt them on swap-back. That severed any anchor chain that ran THROUGH a
--- tracked frame: a child of the destroyed frame got orphaned at its old
--- position and never re-attached when the frame came back, because the
--- AnchorGraph entry for the destroyed frame was gone too.
---
--- New behavior keeps a live frame in the graph for every record across all
--- specs and uses Anchor:SetFrameDisabled to flip off-spec frames into the
--- "skipped" state. Skipped frames stay in the graph as routing nodes:
--- ReconcileChain promotes their children to the nearest non-skipped ancestor
--- (e.g. FrameA > TrackedIcon > FrameC collapses to FrameA > FrameC when the
--- TrackedIcon's spec doesn't match), and snaps them back when the swap brings
--- the frame home (RestoreLogicalChildren walks the original logical anchor).
+-- All-spec frames stay in the graph; off-spec frames are skipped so chains route past them.
 function Plugin:RefreshForCurrentSpec()
     local specID = self:GetCurrentSpecID()
     if not specID then return end
 
-    -- Build a live frame for any record that doesn't have one yet. This is
-    -- the first-load path AND the path for records discovered mid-session
-    -- (e.g. created on another character with a shared profile).
+    -- Build frames for any record not yet live (first-load and mid-session discovery).
     for _, record in pairs(self:GetStore()) do
         if not self.containers[record.id] then
             self:BuildContainer(record)
         end
     end
 
-    -- Two-pass toggle: disable off-spec frames FIRST, then enable on-spec
-    -- frames. Without the split there's a window where two frames at the
-    -- "same logical slot" (one per spec) are both live anchor targets — any
-    -- intermediate ReconcileChain or saved-anchor lookup that runs in that
-    -- window could route a child to the wrong target. Records whose store
-    -- entry vanished are torn down in the first pass too (treated like
-    -- disabled-and-then-removed).
+    -- Two-pass: disable off-spec first, then enable on-spec to avoid dual-live anchor races.
     for id, frame in pairs(self.containers) do
         local record = self:GetStore()[id]
         if not record then
@@ -523,20 +374,7 @@ function Plugin:RefreshForCurrentSpec()
 end
 
 -- [ TALENT REFRESH ] ----------------------------------------------------------
--- Talents can change a spell's maxCharges and the active override target, but
--- the bar payload caches maxCharges plus the tooltip-parsed durations at drop
--- time so DetermineMode and the charges-mode layout never see the new values.
--- Walks every bar record, rebuilds the payload via BuildTrackedBarPayload
--- (which re-resolves GetActiveSpellID and re-parses the tooltip), then re-
--- applies the bar so dividers, SetMinMaxValues, and the recharge segment width
--- pick up the new max. Items are refreshed too — cheap and consistent — even
--- though their durations don't depend on talents. Bars without a payload are
--- skipped (nothing to refresh). Icon containers don't cache maxCharges so they
--- don't need this pass.
---
--- TRAIT_CONFIG_UPDATED can fire several times per talent commit, so the public
--- entry point is debounced via _ScheduleBarPayloadRefresh — same pattern as
--- MetaTalents/ApplyBuild's state watcher.
+-- Rebuild bar payloads on talent change (maxCharges/overrides may shift); debounced.
 function Plugin:_ScheduleBarPayloadRefresh()
     if self._talentRefreshPending then return end
     self._talentRefreshPending = true
@@ -566,10 +404,7 @@ function Plugin:GetFrameBySystemIndex(systemIndex)
 end
 
 -- [ APPLY SETTINGS ] ----------------------------------------------------------
--- Dispatch to the per-mode renderer. Each mode is independently responsible for
--- its own apply path; this plugin just routes by record.mode. The settings
--- dialog passes a wrapper object ({systemFrame, systemIndex, system}) instead
--- of the live container frame, so we always resolve via GetFrameBySystemIndex.
+-- Dispatch to per-mode renderer; resolves wrapper objects via GetFrameBySystemIndex.
 function Plugin:ApplySettings(frame)
     if not frame then
         for _, f in pairs(self.containers) do self:ApplySettings(f) end

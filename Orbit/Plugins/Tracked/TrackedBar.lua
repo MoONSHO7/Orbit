@@ -1,57 +1,5 @@
 -- [ TRACKED BAR ] -------------------------------------------------------------
--- Single-payload bar (horizontal or vertical). Each bar holds one ability or
--- item and renders it in one of three modes determined by what was dropped:
---
---   * charges    — spell with maxCharges > 1. Bar split into N segments by
---                  dividers; main StatusBar value = currentCharges (sink-style,
---                  passes secret values straight to SetValue/SetText). A
---                  RechargePositioner (invisible StatusBar) drives a visible
---                  RechargeSegment that fills the next segment as the
---                  cooldown progresses. CountText centered shows charges.
---                  Charges mode is spell-only (per product decision — items
---                  always render as continuous bars).
---
---   * active+cd  — spell or item with both an active duration AND a cooldown
---                  duration (e.g. trinkets, Avenging Wrath). Bar drains
---                  full→empty during the active phase, then refills empty→full
---                  during the cooldown phase. The active/cd boundary is
---                  derived from the payload's tooltip-parsed durations and
---                  stored as `_phaseBreakpoint` (a remainingPercent value;
---                  pct >= breakpoint = active phase, pct < breakpoint = cd
---                  phase).
---
---   * cd-only    — spell or item with no active duration. Bar fills empty→full
---                  as the cooldown progresses.
---
--- Layout: per-bar setting "Horizontal" (default) or "Vertical". Width and
--- Height stored as long-axis / short-axis (Width = long, Height = short),
--- so the slider ranges (80-400 long, 12-40 short) are valid in both
--- orientations and the same record can flip orientations without resizing.
--- Vertical bars use StatusBar:SetOrientation("VERTICAL") which fills bottom
--- → top, naturally giving "active drains downward" (value decreases) and
--- "cd fills upward" (value increases) — the active+cd math doesn't change.
---
--- Spells use `C_Spell.GetSpellCooldownDuration` (DurationObject) +
--- `EvaluateRemainingPercent(IDENTITY_CURVE)` to get a numeric remainingPercent
--- without crossing a secret-value boundary. Items use `C_Container.GetItemCooldown`
--- which returns numeric (start, duration) directly — no curve needed.
---
--- Two-step replacement: bars hold ONE payload only. Replacement requires the
--- user to explicitly clear the existing payload first (shift-right-click)
--- before dropping a new one. Shift-right-click on an empty bar deletes the
--- bar entirely.
---
--- Visuals:
---   * empty bars collapse to a single drop-hint square (height x height) so
---     they read as a dropzone, not a bar. BarBg + border stay hidden until a
---     payload is dropped, mirroring the icon container's empty state.
---   * drop hint backdrop: cdm-empty (deepest, matches cooldown viewer slots)
---   * drop hint square: talents-node-choiceflyout-square-yellow, native color
---   * drop hint plus: bags-icon-addslots (natively green), desaturated and
---     vertex-tinted golden yellow so it pops against the yellow square
---   * whole hint alpha 0.4 idle / 1.0 hover (per-texture; bar StatusBar stays full)
---   * shift-right-click with payload → clear payload (bar stays, becomes empty)
---   * shift-right-click without payload → delete bar
+-- Single-payload bar: charges (segmented), active+cd (drain/fill), or cd-only (fill). H or V layout.
 local _, Orbit = ...
 
 local OrbitEngine = Orbit.Engine
@@ -68,8 +16,7 @@ local DROP_ZONE_SIZE = 34
 local DROP_ZONE_ALPHA_IDLE = 0.4
 local DROP_ZONE_ALPHA_HOVER = 1.0
 local DROP_ZONE_PLUS_INSET_RATIO = 0.28
--- Plus glyph is vertex-tinted golden yellow so it stays legible against the
--- native yellow square background.
+-- Plus glyph vertex-tinted golden yellow for legibility on yellow background.
 local DROP_ZONE_PLUS_TINT_R, DROP_ZONE_PLUS_TINT_G, DROP_ZONE_PLUS_TINT_B = 1.0, 0.82, 0.0
 local DEFAULT_WIDTH = 200
 local DEFAULT_HEIGHT = 20
@@ -86,10 +33,7 @@ local SECONDS_PER_MINUTE = 60
 local SECONDS_PER_HOUR = 3600
 
 -- [ CURVES ] ------------------------------------------------------------------
--- IDENTITY_CURVE maps remaining-percent (secret) to itself (numeric). Required
--- because EvaluateRemainingPercent without a curve returns a secret value, but
--- WITH a numeric curve it returns a numeric result that can be used for
--- arithmetic / SetValue without throwing in combat.
+-- IDENTITY_CURVE: remaining-percent (secret) → numeric; used only for time text.
 local IDENTITY_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     local c = C_CurveUtil.CreateCurve()
     c:AddPoint(0.0, 0.0)
@@ -97,9 +41,7 @@ local IDENTITY_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     return c
 end)()
 
--- INVERSE_CURVE maps remaining-percent → bar fill (1 - pct). cd-only mode bars
--- fill from 0→1 as the cooldown elapses, so we use this directly with SetValue
--- and avoid the Lua-side `1 - pct` arithmetic.
+-- INVERSE_CURVE: remaining-percent → bar fill (1 - pct) for cd-only mode.
 local INVERSE_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     local c = C_CurveUtil.CreateCurve()
     c:AddPoint(0.0, 1.0)
@@ -107,9 +49,39 @@ local INVERSE_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     return c
 end)()
 
--- RECHARGE_PROGRESS_CURVE: charges-mode recharge segment fill. Input is the
--- recharge cooldown's remainingPercent (1 = just started, 0 = done). Output is
--- the segment fill (0 = empty, 1 = full). Matches the original tracked bar.
+-- ONCD_CURVE: remaining-percent → 0/1 "is on cooldown" flag; 0.001 step stabilizes exact-zero.
+local ONCD_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
+    local c = C_CurveUtil.CreateCurve()
+    c:AddPoint(0.0, 0)
+    c:AddPoint(0.001, 1)
+    c:AddPoint(1.0, 1)
+    return c
+end)()
+
+-- [ TOOLTIP PARSER ALIASES ] --------------------------------------------------
+local Parser = Orbit.TooltipParser
+local BuildPhaseCurve = function(a, cd) return Parser:BuildPhaseCurve(a, cd) end
+
+-- [ ACTIVE+CD FILL CURVE CACHE ] ----------------------------------------------
+-- V-shaped curve: remaining% → bar value. Active phase drains 1→0, cd phase fills 0→1.
+-- Cached per (activeDuration, cooldownDuration) pair.
+local _barFillCurveCache = setmetatable({}, { __mode = "v" })
+local function BuildBarFillCurve(activeDuration, cooldownDuration)
+    if not activeDuration or not cooldownDuration or cooldownDuration <= 0 or activeDuration >= cooldownDuration then
+        return INVERSE_CURVE
+    end
+    local key = activeDuration .. ":" .. cooldownDuration
+    if _barFillCurveCache[key] then return _barFillCurveCache[key] end
+    local breakpoint = 1.0 - (activeDuration / cooldownDuration)
+    local curve = C_CurveUtil.CreateCurve()
+    curve:AddPoint(0.0, 1.0)
+    curve:AddPoint(math.max(breakpoint, 0.001), 0.0)
+    curve:AddPoint(1.0, 1.0)
+    _barFillCurveCache[key] = curve
+    return curve
+end
+
+-- RECHARGE_PROGRESS_CURVE: recharge remainingPercent → segment fill (inverted).
 local RECHARGE_PROGRESS_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     local c = C_CurveUtil.CreateCurve()
     c:AddPoint(0.0, 1.0)
@@ -117,10 +89,7 @@ local RECHARGE_PROGRESS_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (fun
     return c
 end)()
 
--- RECHARGE_ALPHA_CURVE: charges-mode recharge segment visibility. Hides the
--- segment instantly when a recharge completes (remainingPct 0 → alpha 0) and
--- shows it the moment one starts. The 0.001 step is so the curve doesn't
--- linearly fade in over the first 0.1% of the recharge.
+-- RECHARGE_ALPHA_CURVE: instant show/hide for recharge segment; 0.001 step prevents linear fade-in.
 local RECHARGE_ALPHA_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     local c = C_CurveUtil.CreateCurve()
     c:AddPoint(0.0, 0.0)
@@ -142,16 +111,12 @@ local function FormatTime(seconds)
 end
 
 -- [ DROP HINT ALPHA ] ---------------------------------------------------------
--- DropHintFrame hosts all drop hint textures, so a single SetAlpha cascades
--- to every child texture without touching the StatusBar.
 local function SetDropHintAlpha(frame, a)
     frame.DropHintFrame:SetAlpha(a)
 end
 
 -- [ MODE DETERMINATION ] ------------------------------------------------------
--- Charges mode is spell-only (items always render as continuous). active+cd
--- requires both durations from the tooltip parser (positive). Everything else
--- is cd-only.
+-- Charges = spell with maxCharges > 1; active+cd = both durations positive; else cd-only.
 local function DetermineMode(payload)
     if not payload or not payload.id then return nil end
     if payload.type == "spell" and payload.maxCharges and payload.maxCharges > 1 then
@@ -199,26 +164,20 @@ function Bar:Build(plugin, record)
     frame.BarBg:SetAllPoints(frame.StatusBar)
     frame.BarBg:SetColorTexture(0, 0, 0, 0.5)
 
-    -- RechargePositioner: invisible StatusBar whose texture's RIGHT edge tracks
-    -- currentCharges. The visible RechargeSegment anchors LEFT to the
-    -- positioner's texture RIGHT, so it always sits at the next-charge slot
-    -- without any Lua arithmetic on secret currentCharges. Used in charges
-    -- mode only; left in place but its value is never set in other modes.
+    -- Invisible positioner whose fill edge tracks currentCharges; RechargeSegment anchors to it.
     frame.RechargePositioner = CreateFrame("StatusBar", nil, frame)
     frame.RechargePositioner:SetStatusBarTexture(WHITE_TEXTURE)
     frame.RechargePositioner:GetStatusBarTexture():SetAlpha(0)
     frame.RechargePositioner:SetMinMaxValues(0, 1)
     frame.RechargePositioner:SetValue(0)
 
-    -- RechargeSegment: the visible segment that fills as a charge recharges.
-    -- Sized to one charge-width, anchored LEFT to the positioner texture RIGHT.
+    -- Visible segment filling as a charge recharges; sized to one charge-width.
     frame.RechargeSegment = CreateFrame("StatusBar", nil, frame)
     frame.RechargeSegment:SetMinMaxValues(0, 1)
     frame.RechargeSegment:SetValue(0)
     frame.RechargeSegment:Hide()
 
-    -- Dividers: charges-mode segment separators. Pre-allocated up to MAX_DIVIDERS;
-    -- only the first (maxCharges - 1) are shown when in charges mode.
+    -- Charges-mode segment separators; pre-allocated, only first (maxCharges - 1) shown.
     frame.Dividers = {}
     for i = 1, MAX_DIVIDERS do
         local div = frame.StatusBar:CreateTexture(nil, "OVERLAY", nil, 7)
@@ -227,17 +186,11 @@ function Bar:Build(plugin, record)
         frame.Dividers[i] = div
     end
 
-    -- TickMixin: created against the main StatusBar by default. In charges
-    -- mode, the TickBar is re-anchored to the recharge positioner's texture
-    -- RIGHT (and resized to one charge width) so the tick floats with the
-    -- recharging segment. In other modes the tick stays anchored to the main
-    -- StatusBar and tracks its leading edge as the bar fills.
+    -- TickMixin: re-anchored to recharge positioner in charges mode, main StatusBar otherwise.
     TickMixin:Create(frame, frame.StatusBar, nil)
     TickMixin:Hide(frame)
 
-    -- Text overlay frame: parent for NameText/CountText. Sits at frame level
-    -- StatusBar + Overlay so the text renders above the border (which lives at
-    -- frame level Border = 5). Mirrors the CastBar.TextFrame pattern.
+    -- Text overlay at Overlay level so NameText/CountText render above the border.
     frame.TextFrame = CreateFrame("Frame", nil, frame)
     frame.TextFrame:SetAllPoints(frame.StatusBar)
     frame.TextFrame:SetFrameLevel(frame.StatusBar:GetFrameLevel() + Constants.Levels.Overlay)
@@ -256,10 +209,7 @@ function Bar:Build(plugin, record)
     frame.TimeText:SetPoint("RIGHT", frame.StatusBar, "RIGHT", -TEXT_PADDING, 0)
     frame.TimeText:Hide()
 
-    -- Canvas Mode: register text components as draggable. Each bar uses its
-    -- own record.id as the systemIndex so the position callback persists into
-    -- record.settings via the GetSetting redirect (one ComponentPositions per
-    -- bar, not one shared across all bars).
+    -- Canvas Mode: register text components as draggable with per-bar systemIndex.
     if OrbitEngine.ComponentDrag then
         OrbitEngine.ComponentDrag:Attach(frame.NameText, frame, {
             key = "NameText",
@@ -275,13 +225,7 @@ function Bar:Build(plugin, record)
         })
     end
 
-    -- Canvas Mode: preview renderer. The bar's text FontStrings are children
-    -- of the inner StatusBar, so the preview must be sized to the StatusBar's
-    -- inner area (frame minus icon), NOT the full frame — otherwise drag
-    -- offsets calibrated against a too-large preview map back to the wrong
-    -- live coordinates. The decorative icon is parented OUTSIDE the preview
-    -- (LEFT in horizontal, TOP in vertical) so it visually represents the
-    -- iconBg without inflating the draggable canvas area.
+    -- Canvas Mode: preview sized to inner StatusBar area (excludes icon) for correct drag offsets.
     function frame:CreateCanvasPreview(options)
         local scale = options.scale or 1
         local borderSize = options.borderSize or OrbitEngine.Pixel:DefaultBorderSize(scale)
@@ -326,13 +270,7 @@ function Bar:Build(plugin, record)
         return preview
     end
 
-    -- Drop hint shown only when the bar is empty AND ShouldShowDropHints is true
-    -- (cursor dragging a cooldown OR cooldown viewer settings panel is open).
-    -- Hosted on its own child frame at Overlay level so the textures draw
-    -- ABOVE the StatusBar / BarBg / border, mirroring the TextFrame pattern
-    -- below. Without this, BarBg (a child texture of StatusBar) would cover
-    -- the drop hint square. Mouse stays disabled so the bar's own click
-    -- handlers still receive drag/drop events.
+    -- Drop hint at Overlay level so it draws above StatusBar/BarBg; mouse disabled for passthrough.
     frame.DropHintFrame = CreateFrame("Frame", nil, frame)
     frame.DropHintFrame:SetAllPoints(frame)
     frame.DropHintFrame:SetFrameLevel(frame:GetFrameLevel() + Constants.Levels.Overlay)
@@ -344,8 +282,7 @@ function Bar:Build(plugin, record)
     frame.DropHintBg:SetAtlas(DROP_ZONE_BG_ATLAS)
     frame.DropHintPlus = frame.DropHintFrame:CreateTexture(nil, "OVERLAY")
     frame.DropHintPlus:SetAtlas(DROP_ZONE_PLUS_ATLAS)
-    -- bags-icon-addslots is natively green; desaturate flattens it to grayscale
-    -- so the vertex tint can recolor it golden yellow.
+    -- Desaturate then vertex-tint to recolor natively-green atlas golden yellow.
     frame.DropHintPlus:SetDesaturated(true)
     frame.DropHintPlus:SetVertexColor(DROP_ZONE_PLUS_TINT_R, DROP_ZONE_PLUS_TINT_G, DROP_ZONE_PLUS_TINT_B)
     frame.DropHintPlus:SetPoint("CENTER", frame.DropHintBg, "CENTER")
@@ -378,18 +315,12 @@ function Bar:Build(plugin, record)
     end
     frame.SetBorderHidden = Orbit.Skin.DefaultSetBorderHidden
 
-    -- StatusBar resize hook: charges-mode geometry (RechargeSegment width,
-    -- TickBar width, divider boundaries) is derived from the StatusBar's
-    -- resolved width. That width changes for reasons OUTSIDE of Apply: anchor
-    -- chain SyncChild resizes the bar when the docked parent grows/shrinks,
-    -- and edit-mode SyncChildren skips ApplySettings entirely. Hook
-    -- OnSizeChanged so the geometry tracks the bar regardless of how the
-    -- resize was triggered. No-op when not in charges mode (frame._chargesMax
-    -- is nil).
+    -- Resize hook: re-derive charges-mode geometry when StatusBar resizes externally.
     frame.StatusBar:HookScript("OnSizeChanged", function() Bar:LayoutChargesGeometry(frame) end)
 
     Bar:StartCursorWatcher(plugin, frame)
     Bar:StartUpdateTicker(plugin, frame)
+    Bar:StartChargeEventWatcher(plugin, frame)
     return frame
 end
 
@@ -397,27 +328,20 @@ end
 function Bar:Apply(plugin, frame, record)
     if not frame or not record then return end
     plugin:RefreshContainerVirtualState(frame)
-    -- Visibility Engine: every bar shares the "TrackedBars" entry (sentinel
-    -- index 2). Real record IDs are >= 1000 so the sentinel can't collide.
-    -- ApplyOOCFade is idempotent — safe to call from the layout pass.
+    -- Visibility Engine: all bars share sentinel index 2 for OOCFade.
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, plugin, 2, "OutOfCombatFade", false) end
 
     local payload = record.payload
     local hasPayload = payload and payload.id
 
-    -- Width = long axis, Height = short axis. Slider ranges (80-400 / 12-40)
-    -- are interpreted as long/short rather than X/Y so the same record can
-    -- flip orientation without resizing.
+    -- Width = long axis, Height = short axis; same record can flip orientation.
     local longDim = plugin:GetSetting(record.id, "Width") or DEFAULT_WIDTH
     local shortDim = plugin:GetSetting(record.id, "Height") or DEFAULT_HEIGHT
     local Pixel = OrbitEngine.Pixel
     if Pixel then longDim = Pixel:Snap(longDim); shortDim = Pixel:Snap(shortDim) end
     local isVertical = plugin:GetSetting(record.id, "Layout") == "Vertical"
     frame._isVertical = isVertical
-    -- Resize bounds map long/short axis to W/H. In vertical, drag-W writes
-    -- the short-axis "Height" setting and drag-H writes the long-axis "Width"
-    -- setting, so the resize handle's pixel deltas land on the slider that
-    -- controls that screen axis in either orientation.
+    -- Resize bounds map long/short axis to W/H; vertical swaps key mapping.
     if isVertical then
         frame.orbitResizeBounds = {
             minW = 12, maxW = 40, minH = 80, maxH = 400,
@@ -429,13 +353,7 @@ function Bar:Apply(plugin, frame, record)
     local frameW = isVertical and shortDim or longDim
     local frameH = isVertical and longDim or shortDim
 
-    -- Empty bars collapse to a single drop-hint square. The frame is already
-    -- _isVirtual via RefreshContainerVirtualState, so chain reconciliation
-    -- skips it and the saved Width/Height are restored on payload drop.
-    -- When docked, anchor width is authoritative — SyncChild sets us to the
-    -- parent's width via syncDimensions. Setting our own width here would
-    -- clobber the synced value and leave dividers / charge geometry stuck at
-    -- the saved size while the bar visually grows. Mirrors BuffBar.
+    -- Empty bars collapse to drop-hint square; docked bars defer width to SyncChild.
     local FrameAnchor = OrbitEngine.FrameAnchor
     local isDocked = FrameAnchor and FrameAnchor.anchors[frame] ~= nil
     if not hasPayload then
@@ -451,9 +369,7 @@ function Bar:Apply(plugin, frame, record)
     Orbit.Skin:SkinBorder(frame, frame, Orbit.db.GlobalSettings.BorderSize or 1)
 
     local showIcon = plugin:GetSetting(record.id, "ShowIcon") ~= false
-    -- Icon is always a square sized to the bar's perpendicular dimension —
-    -- the bar's height in horizontal, the bar's width in vertical — so it
-    -- mirrors the bar across orientation flips without an aspect-ratio shift.
+    -- Icon is a square sized to the bar's perpendicular dimension.
     local iconSize = (showIcon and hasPayload) and (isVertical and frameW or frameH) or 0
 
     if iconSize > 0 then
@@ -493,9 +409,7 @@ function Bar:Apply(plugin, frame, record)
         frame.StatusBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
     end
 
-    -- Drop hint fills the collapsed empty-bar frame (DROP_ZONE_SIZE x DROP_ZONE_SIZE).
-    -- Anchored TOPLEFT for consistency with the bar's icon position; with the
-    -- frame collapsed to a square, TOPLEFT and CENTER are equivalent.
+    -- Drop hint fills the collapsed empty-bar frame.
     frame.DropHintBackdrop:ClearAllPoints()
     frame.DropHintBackdrop:SetPoint("TOPLEFT", frame, "TOPLEFT")
     frame.DropHintBackdrop:SetSize(DROP_ZONE_SIZE, DROP_ZONE_SIZE)
@@ -505,8 +419,7 @@ function Bar:Apply(plugin, frame, record)
     local plusSize = DROP_ZONE_SIZE * (1 - DROP_ZONE_PLUS_INSET_RATIO * 2)
     frame.DropHintPlus:SetSize(plusSize, plusSize)
 
-    -- Bar texture / color (read on every Apply pass so global Texture and the
-    -- per-bar BarColor curve propagate without rebuilding the frame).
+    -- Bar texture / color from global Texture and per-bar BarColor curve.
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
     local texPath = LSM and LSM:Fetch("statusbar", Orbit.db.GlobalSettings.Texture or "Solid") or nil
     if texPath then
@@ -523,11 +436,7 @@ function Bar:Apply(plugin, frame, record)
     self:SetBarColorState(frame, false)
     frame.RechargeSegment:GetStatusBarTexture():SetVertexColor(r * RECHARGE_DIM, g * RECHARGE_DIM, b * RECHARGE_DIM, a)
 
-    -- Mode-specific layout. The mode is recomputed on every Apply (cheap) and
-    -- cached on the frame so the update ticker can branch without re-reading
-    -- the payload structure. perpDim is the bar's perpendicular dimension —
-    -- frameH for horizontal, frameW for vertical — and TickMixin uses it to
-    -- size the cross-axis of the tick mark.
+    -- Mode-specific layout; perpDim = bar's perpendicular dimension for tick sizing.
     local mode = DetermineMode(payload)
     frame._barMode = mode
     local perpDim = isVertical and frameW or frameH
@@ -539,17 +448,7 @@ function Bar:Apply(plugin, frame, record)
 end
 
 -- [ CANVAS COMPONENTS ] -------------------------------------------------------
--- Reads ComponentPositions and DisabledComponents for THIS bar's record,
--- applies font overrides via OverrideUtils, and restores saved drag positions
--- via ComponentDrag. Disabled components are force-hidden — for CountText this
--- layers ON TOP of the mode-dependent visibility (charges mode only).
--- frame._countTextDisabled is cached so LayoutForMode doesn't re-show it.
---
--- DisabledComponents is read directly via GetSetting(record.id, ...) instead
--- of ComponentDrag:IsDisabled because the latter calls plugin:IsComponentDisabled
--- with no systemIndex hint, and the plugin fallback (self.frame.systemIndex)
--- is wrong for Tracked: there's no single "current" systemIndex — each bar
--- has its own. Reading directly with the explicit record.id is correct.
+-- Applies per-bar ComponentPositions/DisabledComponents; reads record.id directly to avoid fallback.
 function Bar:ApplyCanvasComponents(plugin, frame, record)
     if not OrbitEngine.ComponentDrag then return end
     local savedPositions = plugin:GetSetting(record.id, "ComponentPositions") or {}
@@ -589,12 +488,7 @@ function Bar:ApplyCanvasComponents(plugin, frame, record)
 end
 
 -- [ BAR COLOR STATE ] ---------------------------------------------------------
--- The main StatusBar fills two visual roles depending on mode/phase:
---   * "bright" — actively counted state (charges, active+cd's active phase, ready)
---   * "dim"    — recharging state (cd_only filling, active+cd's cd phase)
--- Mirrors the RechargeSegment dim used in charges mode so that whichever shape
--- of bar is on screen, "filling toward ready" reads with the same darker tint.
--- State is cached so the per-tick update path is a no-op when nothing changed.
+-- Bright = active/ready; dim = recharging/cd phase. Cached to avoid redundant SetVertexColor.
 function Bar:SetBarColorState(frame, dim)
     if frame._barColorIsDim == dim then return end
     frame._barColorIsDim = dim
@@ -607,13 +501,7 @@ function Bar:SetBarColorState(frame, dim)
 end
 
 -- [ LAYOUT FOR MODE ] ---------------------------------------------------------
--- Sets up the mode-specific regions. Charges mode stores the size-dependent
--- inputs (maxCharges, tickSize) on the frame and delegates the actual sizing
--- to LayoutChargesGeometry — which is also the function the StatusBar's
--- OnSizeChanged hook calls when the bar gets resized externally (anchor
--- chain SyncChild, parent dock growth, edit mode width drag). Continuous
--- modes (active+cd / cd-only) anchor a single tick to the main bar and
--- compute the active+cd phase breakpoint.
+-- Charges: delegates sizing to LayoutChargesGeometry. Continuous: tick on main bar + phase breakpoint.
 function Bar:LayoutForMode(plugin, frame, record, payload, perpDim, mode)
     local tickSize = plugin:GetSetting(record.id, "TickSize") or TICK_SIZE_DEFAULT
     local orientation = frame._isVertical and "VERTICAL" or "HORIZONTAL"
@@ -623,9 +511,7 @@ function Bar:LayoutForMode(plugin, frame, record, payload, perpDim, mode)
         frame._chargesMax = maxCharges
         frame._chargesTickSize = tickSize
 
-        -- Recharge positioner spans the full StatusBar so its texture's
-        -- leading edge (RIGHT in horizontal, TOP in vertical) maps
-        -- proportionally to currentCharges/maxCharges.
+        -- Recharge positioner spans full StatusBar; leading edge maps to currentCharges/maxCharges.
         frame.RechargePositioner:ClearAllPoints()
         frame.RechargePositioner:SetAllPoints(frame.StatusBar)
         frame.RechargePositioner:SetMinMaxValues(0, maxCharges)
@@ -635,48 +521,32 @@ function Bar:LayoutForMode(plugin, frame, record, payload, perpDim, mode)
         self:LayoutChargesGeometry(frame)
         if not frame._countTextDisabled then frame.CountText:Show() end
     else
-        -- Continuous mode (active+cd or cd-only). Hide charges-only regions
-        -- and clear the cached charges inputs so the OnSizeChanged hook
-        -- becomes a no-op.
+        -- Continuous mode: hide charges-only regions, clear cached charges inputs.
         frame._chargesMax = nil
         frame._chargesTickSize = nil
         frame.RechargeSegment:Hide()
         frame.CountText:Hide()
         for _, div in ipairs(frame.Dividers) do div:Hide() end
 
-        -- TickBar overlays the main StatusBar; its value tracks the leading
-        -- edge of the fill (driven in the update path).
+        -- TickBar overlays main StatusBar; value tracks the leading fill edge.
         frame.TickBar:ClearAllPoints()
         frame.TickBar:SetAllPoints(frame.StatusBar)
         TickMixin:Apply(frame, tickSize, perpDim, frame.StatusBar, orientation)
 
         if mode == "active_cd" then
-            -- Phase breakpoint = remainingPercent at which the active phase
-            -- ends. Stored as a frame field so the update path doesn't have
-            -- to recompute it on every tick.
             frame._phaseBreakpoint = 1 - (payload.activeDuration / payload.cooldownDuration)
+            frame._barFillCurve = BuildBarFillCurve(payload.activeDuration, payload.cooldownDuration)
+            frame._phaseCurve = BuildPhaseCurve(payload.activeDuration, payload.cooldownDuration)
         else
             frame._phaseBreakpoint = nil
+            frame._barFillCurve = nil
+            frame._phaseCurve = nil
         end
     end
 end
 
 -- [ CHARGES GEOMETRY ] --------------------------------------------------------
--- Re-derives every charges-mode element whose size depends on the StatusBar's
--- resolved size: the RechargeSegment, the TickBar, and the dividers. Reads
--- frame.StatusBar:GetWidth/GetHeight() as the single source of truth so the
--- values stay consistent. No-op when not in charges mode (frame._chargesMax
--- nil) or when the StatusBar hasn't been sized yet. Called from LayoutForMode
--- AND from the StatusBar OnSizeChanged hook so external resizes (anchor chain
--- SyncChild, edit-mode parent growth) keep the geometry in sync without an
--- Apply pass.
---
--- In horizontal: long axis = width, perpDim = height. RechargeSegment anchors
--- LEFT to RechargePositioner texture's RIGHT (next-charge slot is to the
--- right of the current fill). In vertical: long axis = height, perpDim =
--- width. The bar fills BOTTOM→TOP, so the next-charge slot is ABOVE the
--- current fill — RechargeSegment anchors BOTTOM to RechargePositioner
--- texture's TOP.
+-- Re-derives RechargeSegment, TickBar, and dividers from StatusBar's resolved size; also called on resize.
 function Bar:LayoutChargesGeometry(frame)
     local maxCharges = frame._chargesMax
     if not maxCharges then return end
@@ -706,9 +576,7 @@ function Bar:LayoutChargesGeometry(frame)
         frame.TickBar:SetSize(chargeLength, perpDim)
     end
 
-    -- Tick floats with the recharging segment. TickClip is anchored to
-    -- RechargeSegment so the tick mark is clipped within the recharging
-    -- region (TickMixin:Apply handles the clip anchoring).
+    -- Tick floats with the recharging segment, clipped within it.
     local tickSize = frame._chargesTickSize or TICK_SIZE_DEFAULT
     local orientation = isVertical and "VERTICAL" or "HORIZONTAL"
     TickMixin:Apply(frame, tickSize, perpDim, frame.RechargeSegment, orientation)
@@ -717,12 +585,7 @@ function Bar:LayoutChargesGeometry(frame)
 end
 
 -- [ DIVIDER POSITIONING ] -----------------------------------------------------
--- Dividers are centered on proportional charge boundaries ((i/maxCharges) *
--- longAxis) so they align exactly with the StatusBar fill edge at each
--- integer charge value. longAxis and perpDim are passed in by
--- LayoutChargesGeometry so the divider boundaries and the RechargeSegment
--- size come from the same read. In horizontal each divider is a vertical
--- line; in vertical each divider is a horizontal line.
+-- Centered on proportional charge boundaries; H = vertical lines, V = horizontal lines.
 function Bar:LayoutDividers(frame, maxCharges, perpDim, longAxis)
     local Pixel = OrbitEngine.Pixel
     local halfGap = DIVIDER_SIZE / 2
@@ -748,10 +611,7 @@ function Bar:LayoutDividers(frame, maxCharges, perpDim, longAxis)
 end
 
 -- [ FONT APPLIER ] ------------------------------------------------------------
--- Reads GlobalSettings.Font (via plugin:GetGlobalFont) and FontOutline (via
--- Orbit.Skin:GetFontOutline) and applies to NameText/CountText. Called from
--- Apply on every layout pass so global font/outline changes propagate without
--- rebuilding the bar.
+-- Applies global font/outline to NameText/CountText/TimeText.
 function Bar:ApplyFont(plugin, frame)
     local font = plugin:GetGlobalFont() or STANDARD_TEXT_FONT
     local outline = Orbit.Skin and Orbit.Skin:GetFontOutline() or "OUTLINE"
@@ -778,10 +638,7 @@ function Bar:RefreshSpellState(plugin, frame, record)
         frame.BarBg:Hide()
         frame:SetBorderHidden(true)
         if showHints then
-            -- Seed IDLE alpha only on the hidden → shown transition; the per-tick
-            -- update ticker also calls into RefreshSpellState, and resetting
-            -- alpha on every tick would clobber the OnEnter hover state and
-            -- cause the dropzone to flicker as the mouse stays over it.
+            -- Seed IDLE alpha only on hidden → shown transition to avoid clobbering hover.
             if not frame.DropHintFrame:IsShown() then
                 frame.DropHintFrame:Show()
                 SetDropHintAlpha(frame, DROP_ZONE_ALPHA_IDLE)
@@ -822,9 +679,7 @@ function Bar:RefreshSpellState(plugin, frame, record)
 end
 
 -- [ CHARGES MODE UPDATE ] -----------------------------------------------------
--- Pure sink pattern. payload.maxCharges is the cached non-secret value from
--- drop time so SetMinMaxValues never receives a secret. currentCharges is
--- secret in combat but pipes straight into SetValue / SetText.
+-- Pure sink: currentCharges (secret) piped directly into SetValue/SetText.
 function Bar:UpdateChargesMode(frame, payload)
     local ci = C_Spell.GetSpellCharges(payload.id)
     if not ci then return end
@@ -853,28 +708,36 @@ function Bar:UpdateChargesMode(frame, payload)
 end
 
 -- [ CD-ONLY MODE UPDATE ] -----------------------------------------------------
--- Bar fills 0→1 as the cooldown elapses. Tick is visible across the whole
--- cooldown. Spell path uses INVERSE_CURVE to get a numeric bar value directly;
--- item path uses C_Container.GetItemCooldown which is already numeric.
+-- Bar fills 0→1 as cooldown elapses. Spell path uses curves piped to C++ sinks;
+-- item path uses C_Container.GetItemCooldown (already numeric).
 function Bar:UpdateCdOnlyMode(frame, payload)
     if payload.type == "spell" then
         local activeId = FindSpellOverrideByID(payload.id) or payload.id
         local durObj = C_Spell.GetSpellCooldownDuration(activeId)
-        if not durObj or not INVERSE_CURVE then
+        if not durObj then
             self:SetBarFull(frame)
             return
         end
-        local barValue = durObj:EvaluateRemainingPercent(INVERSE_CURVE)
-        if issecretvalue(barValue) then return end
-        self:SetBarColorState(frame, barValue < 1)
+        -- Bar fill via INVERSE_CURVE → SetValue (C++ sink, secret-safe).
+        local barFill = durObj:EvaluateRemainingPercent(INVERSE_CURVE)
         frame.StatusBar:SetMinMaxValues(0, 1)
-        frame.StatusBar:SetValue(barValue)
-        frame.TickBar:SetValue(barValue)
-        if frame.TickMark then frame.TickMark:SetAlpha(barValue >= 1 and 0 or 1) end
-        if not frame._timeTextDisabled and barValue < 1 and payload.cooldownDuration then
-            local remaining = (1 - barValue) * payload.cooldownDuration
-            frame.TimeText:SetText(FormatTime(remaining))
-            frame.TimeText:Show()
+        frame.StatusBar:SetValue(barFill)
+        frame.TickBar:SetValue(barFill)
+        -- Phase detection via ONCD_CURVE → numeric 0/1 for color state + tick alpha.
+        local onCd = durObj:EvaluateRemainingPercent(ONCD_CURVE)
+        if not issecretvalue(onCd) then
+            self:SetBarColorState(frame, onCd > 0.5)
+            if frame.TickMark then frame.TickMark:SetAlpha(onCd > 0.5 and 1 or 0) end
+        end
+        -- Time text: IDENTITY_CURVE for numeric pct; hide if secret.
+        if not frame._timeTextDisabled and payload.cooldownDuration then
+            local pct = durObj:EvaluateRemainingPercent(IDENTITY_CURVE)
+            if not issecretvalue(pct) and pct > 0 then
+                frame.TimeText:SetText(FormatTime(pct * payload.cooldownDuration))
+                frame.TimeText:Show()
+            else
+                frame.TimeText:Hide()
+            end
         else
             frame.TimeText:Hide()
         end
@@ -906,11 +769,8 @@ function Bar:UpdateCdOnlyMode(frame, payload)
 end
 
 -- [ ACTIVE+CD MODE UPDATE ] ---------------------------------------------------
--- Two phases driven off the same remainingPercent (or numeric elapsed for items):
---   * active phase: pct >= breakpoint, bar drains 1→0, tick hidden
---   * cd phase:     pct <  breakpoint, bar fills 0→1, tick visible on leading edge
--- Spell path uses IDENTITY_CURVE to get a numeric pct, then computes the bar
--- value with arithmetic (cheaper and cleaner than building per-payload curves).
+-- Active phase drains 1→0; cd phase fills 0→1. Spell path uses V-shaped fill
+-- curve and phase curve piped to C++ sinks; item path uses numeric GetItemCooldown.
 function Bar:UpdateActiveCdMode(frame, payload)
     local breakpoint = frame._phaseBreakpoint
     if not breakpoint then return end
@@ -918,30 +778,36 @@ function Bar:UpdateActiveCdMode(frame, payload)
     if payload.type == "spell" then
         local activeId = FindSpellOverrideByID(payload.id) or payload.id
         local durObj = C_Spell.GetSpellCooldownDuration(activeId)
-        if not durObj or not IDENTITY_CURVE then
+        if not durObj then
             self:SetBarFull(frame)
             return
         end
-        local pct = durObj:EvaluateRemainingPercent(IDENTITY_CURVE)
-        if issecretvalue(pct) then return end
-        local barValue, inCdPhase
-        if pct >= breakpoint then
-            local activeRange = 1 - breakpoint
-            barValue = activeRange > 0 and ((pct - breakpoint) / activeRange) or 0
-            inCdPhase = false
-        else
-            barValue = breakpoint > 0 and (1 - pct / breakpoint) or 1
-            inCdPhase = true
-        end
-        self:SetBarColorState(frame, inCdPhase)
+        -- Bar fill via V-curve → SetValue (C++ sink, secret-safe).
+        local fillCurve = frame._barFillCurve
+        if not fillCurve then self:SetBarFull(frame); return end
+        local barFill = durObj:EvaluateRemainingPercent(fillCurve)
         frame.StatusBar:SetMinMaxValues(0, 1)
-        frame.StatusBar:SetValue(barValue)
-        frame.TickBar:SetValue(barValue)
-        if frame.TickMark then frame.TickMark:SetAlpha(inCdPhase and 1 or 0) end
-        if not frame._timeTextDisabled and pct > 0 and payload.cooldownDuration then
-            local remaining = pct * payload.cooldownDuration
-            frame.TimeText:SetText(FormatTime(remaining))
-            frame.TimeText:Show()
+        frame.StatusBar:SetValue(barFill)
+        frame.TickBar:SetValue(barFill)
+        -- Phase detection via BuildPhaseCurve → numeric 0 (active) / 1 (cd).
+        local phaseCurve = frame._phaseCurve
+        if phaseCurve then
+            local phaseVal = durObj:EvaluateRemainingPercent(phaseCurve)
+            if not issecretvalue(phaseVal) then
+                local inCdPhase = phaseVal > 0.5
+                self:SetBarColorState(frame, inCdPhase)
+                if frame.TickMark then frame.TickMark:SetAlpha(inCdPhase and 1 or 0) end
+            end
+        end
+        -- Time text: IDENTITY_CURVE for numeric pct; hide if secret.
+        if not frame._timeTextDisabled and payload.cooldownDuration then
+            local pct = durObj:EvaluateRemainingPercent(IDENTITY_CURVE)
+            if not issecretvalue(pct) and pct > 0 then
+                frame.TimeText:SetText(FormatTime(pct * payload.cooldownDuration))
+                frame.TimeText:Show()
+            else
+                frame.TimeText:Hide()
+            end
         else
             frame.TimeText:Hide()
         end
@@ -996,8 +862,7 @@ function Bar:OnReceiveDrag(plugin, frame)
     local record = plugin:GetContainerRecord(frame.recordId)
     if not record then return end
 
-    -- Two-step gate: bars hold one payload only. The user must explicitly clear
-    -- the existing payload with shift-right-click before assigning a new one.
+    -- Two-step gate: clear existing payload first before assigning a new one.
     if record.payload and record.payload.id then
         Orbit:Print("Tracked: clear the current payload first (shift-right-click) before assigning a new one")
         return
@@ -1014,8 +879,7 @@ function Bar:OnReceiveDrag(plugin, frame)
 end
 
 -- [ SHIFT-RIGHT-CLICK LADDER ] ------------------------------------------------
--- Empty bar → delete bar. Bar with payload → clear payload (bar stays, becomes
--- empty). Two clicks to remove a populated bar; one click for an empty one.
+-- With payload → clear; without → delete bar.
 function Bar:HandleShiftRightClick(plugin, frame)
     local record = plugin:GetContainerRecord(frame.recordId)
     if not record then return end
@@ -1028,10 +892,7 @@ function Bar:HandleShiftRightClick(plugin, frame)
 end
 
 -- [ CURSOR WATCHER ] ----------------------------------------------------------
--- Polls ShouldShowDropHints with the bar's current emptiness so the hint
--- appears/disappears as drag/settings/edit-mode signals flip. Emptiness is
--- recomputed each tick because the payload can be assigned/cleared without
--- going through Apply.
+-- Polls ShouldShowDropHints; triggers RefreshSpellState when hint visibility flips.
 function Bar:StartCursorWatcher(plugin, frame)
     if frame._cursorWatcher then return end
     local watcher = CreateFrame("Frame")
@@ -1057,4 +918,18 @@ function Bar:StartUpdateTicker(plugin, frame)
         local record = plugin:GetContainerRecord(frame.recordId)
         if record then Bar:RefreshSpellState(plugin, frame, record) end
     end)
+end
+
+-- [ CHARGE EVENT WATCHER ] ----------------------------------------------------
+-- Immediate update on SPELL_UPDATE_CHARGES for instant visual feedback on cast.
+function Bar:StartChargeEventWatcher(plugin, frame)
+    if frame._chargeEventFrame then return end
+    local evtFrame = CreateFrame("Frame")
+    evtFrame:RegisterEvent("SPELL_UPDATE_CHARGES")
+    evtFrame:SetScript("OnEvent", function()
+        if not frame:IsShown() then return end
+        local record = plugin:GetContainerRecord(frame.recordId)
+        if record then Bar:RefreshSpellState(plugin, frame, record) end
+    end)
+    frame._chargeEventFrame = evtFrame
 end

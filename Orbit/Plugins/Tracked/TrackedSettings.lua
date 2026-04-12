@@ -1,12 +1,5 @@
 -- [ TRACKED SETTINGS ] --------------------------------------------------------
--- Two distinct settings schemas dispatched on record.mode. Icons mode mirrors
--- the Essential/Utility cooldown shape (Layout/Glow/Colors) minus IconLimit and
--- growth direction (the grid is free-form 2D). Bars mode mirrors the BuffBar
--- shape (Layout/Colors) but only a single bar color since each bar is one spell.
---
--- POC scope: standalone schemas, no shared schema refactor with CooldownManager.
--- Future cleanup will fold the icon-cooldown schema into a reusable builder once
--- the plugin's surface area stabilizes.
+-- Per-mode schemas (icons vs bars) dispatched on record.mode; standalone until surface area stabilizes.
 local _, Orbit = ...
 local L = Orbit.L
 
