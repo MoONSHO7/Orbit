@@ -1,4 +1,4 @@
-## Interface: 120005
+## Interface: 120005, 120001
 ## Title: Orbit
 ## Notes: Smart UI Overhaul
 ## Author: MoONSHO7
