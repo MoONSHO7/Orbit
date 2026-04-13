@@ -229,6 +229,7 @@ function Plugin:CreateZoomButtons()
     container:SetSize(ZOOM_BUTTON_W, ZOOM_BUTTON_IN_H + 2 + ZOOM_BUTTON_OUT_H)
     container:SetPoint("RIGHT", self.frame, "RIGHT", -2, 0)
     self.frame.ZoomContainer = container
+    container:SetFrameLevel(self.frame.ClickCapture:GetFrameLevel() + 1)
 
     -- Hidden icon for canvas mode dock preview (sized to match ZoomIn button)
     container.Icon = container:CreateTexture(nil, "ARTWORK")
