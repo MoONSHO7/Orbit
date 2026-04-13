@@ -73,8 +73,10 @@ end
 -- Minimum button width to be considered a real addon button (map pins are typically <20px).
 local MIN_BUTTON_SIZE = 20
 
--- Store reference to the real SetParent method before we override it on collected buttons
-local FrameSetParent = UIParent.SetParent
+-- Store references to raw frame methods before they are overridden on individual collected buttons.
+local FrameSetParent      = UIParent.SetParent
+local FrameClearAllPoints = UIParent.ClearAllPoints
+local FrameSetPoint       = UIParent.SetPoint
 
 -- [ COMPARTMENT BUTTON ]----------------------------------------------------------------------------
 
@@ -86,7 +88,7 @@ function Plugin:CreateCompartmentButton()
     local btn = CreateFrame("Button", "OrbitMinimapCompartmentButton", frame.Overlay or frame)
     btn:SetSize(COMPARTMENT_BUTTON_SIZE, COMPARTMENT_BUTTON_SIZE)
     btn:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
-    btn:SetFrameLevel(frame:GetFrameLevel() + 10)
+    btn:SetFrameLevel(self.frame.ClickCapture:GetFrameLevel() + 2)
     btn.orbitOriginalWidth = COMPARTMENT_BUTTON_SIZE
     btn.orbitOriginalHeight = COMPARTMENT_BUTTON_SIZE
 
@@ -223,15 +225,12 @@ end
 local proxyButtonPool = {}  -- Reusable pool of proxy buttons keyed by original button
 
 local function GetProxyIcon(originalBtn)
-    -- Extract the icon texture from the original button
     local tex = nil
-    -- Try .icon first (LibDBIcon standard field)
     pcall(function()
         if originalBtn.icon and originalBtn.icon.GetTexture then
             tex = originalBtn.icon:GetTexture()
         end
     end)
-    -- Fallback: dataObject.icon
     if not tex then
         pcall(function()
             if originalBtn.dataObject and originalBtn.dataObject.icon then
@@ -239,7 +238,6 @@ local function GetProxyIcon(originalBtn)
             end
         end)
     end
-    -- Fallback: scan regions for a texture with content
     if not tex then
         pcall(function()
             for _, region in ipairs({ originalBtn:GetRegions() }) do
@@ -253,7 +251,6 @@ local function GetProxyIcon(originalBtn)
             end
         end)
     end
-    -- Fallback: GetNormalTexture
     if not tex then
         pcall(function()
             if originalBtn.GetNormalTexture and originalBtn:GetNormalTexture() then
@@ -264,12 +261,12 @@ local function GetProxyIcon(originalBtn)
     return tex
 end
 
-local function GetOrCreateProxyButton(originalBtn, parent, plugin)
+local function GetOrCreateProxyButton(originalBtn, parent)
     if proxyButtonPool[originalBtn] then
         local proxy = proxyButtonPool[originalBtn]
         proxy:SetParent(parent)
         proxy:SetSize(FLYOUT_BUTTON_SIZE, FLYOUT_BUTTON_SIZE)
-        -- Refresh icon in case the addon changed it
+        -- Refresh icon in case the addon updated it
         local tex = GetProxyIcon(originalBtn)
         if tex then proxy._icon:SetTexture(tex) end
         return proxy
@@ -277,9 +274,10 @@ local function GetOrCreateProxyButton(originalBtn, parent, plugin)
 
     local proxy = CreateFrame("Button", nil, parent)
     proxy:SetSize(FLYOUT_BUTTON_SIZE, FLYOUT_BUTTON_SIZE)
+    -- Explicit strata so proxy renders above the flyout backdrop regardless of the original's strata.
+    proxy:SetFrameStrata(parent:GetFrameStrata())
     proxy._originalBtn = originalBtn
 
-    -- Create a clean icon texture
     local icon = proxy:CreateTexture(nil, "ARTWORK")
     icon:SetAllPoints()
     proxy._icon = icon
@@ -290,7 +288,6 @@ local function GetOrCreateProxyButton(originalBtn, parent, plugin)
     else
         icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
     end
-    -- Copy texcoords from original if available
     pcall(function()
         if originalBtn.icon and originalBtn.icon.GetTexCoord then
             icon:SetTexCoord(originalBtn.icon:GetTexCoord())
@@ -300,26 +297,24 @@ local function GetOrCreateProxyButton(originalBtn, parent, plugin)
     icon:SetAlpha(1)
     icon:SetVertexColor(1, 1, 1, 1)
 
-    -- Highlight on hover
     local highlight = proxy:CreateTexture(nil, "HIGHLIGHT")
     highlight:SetAllPoints()
     highlight:SetColorTexture(1, 1, 1, 0.15)
 
-    -- Forward clicks via dataObject.OnClick; AnyUp only to avoid double-fire.
     proxy:RegisterForClicks("AnyUp")
-    proxy:SetScript("OnClick", function(_, button)
-        local btn = originalBtn
+    proxy:SetScript("OnClick", function(self, button)
+        -- Pass proxy (self) not originalBtn so any dropdown/menu anchors to the visible button.
         local b = button or "LeftButton"
+        local btn = originalBtn
         if btn.dataObject and btn.dataObject.OnClick then
-            btn.dataObject.OnClick(btn, b)
+            btn.dataObject.OnClick(self, b)
         elseif btn:GetScript("OnClick") then
-            pcall(function() btn:GetScript("OnClick")(btn, b) end)
+            pcall(function() btn:GetScript("OnClick")(self, b) end)
         else
             pcall(function() btn:Click(b) end)
         end
     end)
 
-    -- Forward tooltip
     proxy:SetScript("OnEnter", function(self)
         if originalBtn.dataObject then
             local dObj = originalBtn.dataObject
@@ -365,15 +360,12 @@ function Plugin:LayoutButtonsInFlyout()
         end
     end
 
-    -- Hide all existing proxy buttons first
+    -- Hide stale proxies from a previous layout pass.
     for _, proxy in pairs(proxyButtonPool) do
         proxy:Hide()
     end
 
     if #visibleEntries == 0 then
-        flyout:SetSize(EMPTY_FLYOUT_W, EMPTY_FLYOUT_H)
-        flyout:ClearAllPoints()
-        flyout:SetPoint("TOPRIGHT", self.frame, "BOTTOMRIGHT", 0, -FLYOUT_GAP)
         if not flyout._emptyText then
             flyout._emptyText = flyout:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
             flyout._emptyText:SetPoint("CENTER")
@@ -392,11 +384,11 @@ function Plugin:LayoutButtonsInFlyout()
     local flyoutHeight = (rows * cellSize) + FLYOUT_BUTTON_SPACING + (COMPARTMENT_PADDING * 2)
     flyout:SetSize(flyoutWidth, flyoutHeight)
 
-    -- Create/reuse proxy buttons and position them in a grid
+    -- Create/reuse proxy buttons with explicit strata so rendering is independent of the original button.
     for i, entry in ipairs(visibleEntries) do
         local originalBtn = entry.button
         if originalBtn then
-            local proxy = GetOrCreateProxyButton(originalBtn, flyout, self)
+            local proxy = GetOrCreateProxyButton(originalBtn, flyout)
             proxy:SetFrameLevel(flyout:GetFrameLevel() + 5)
 
             local col = (i - 1) % cols
@@ -457,6 +449,7 @@ function Plugin:CollectAddonButtons()
     -- Track already-collected frame references so we don't double-collect
     local seen = {}
     local seenSignatures = {}
+    local seenNames = {}  -- tracks displayNames; catches duplicates even when icon is nil
 
     -- 1) LibDBIcon registered buttons
     local lib = LibStub and LibStub("LibDBIcon-1.0", true)
@@ -476,6 +469,7 @@ function Plugin:CollectAddonButtons()
                     }
                 end
                 if signature then seenSignatures[signature] = true end
+                seenNames[displayName] = true
                 seen[button] = true
             end
         end
@@ -506,7 +500,14 @@ function Plugin:CollectAddonButtons()
                     -- Skip frames smaller than a real button (map pins are typically <20px)
                     local tooSmall = (child:GetWidth() or 0) < MIN_BUTTON_SIZE
 
-                    if not isBlizzard and not isPin and not tooSmall then
+                    -- Skip protected frames (e.g. SecureActionButton overlays like Plumber's MinimapMouseover)
+                    local isProtected = child:IsProtected()
+
+                    -- Skip hidden buttons — if an addon hides its direct button because it's
+                    -- also registered with LibDBIcon, we don't want both in the compartment.
+                    local isHidden = not child:IsShown()
+
+                    if not isBlizzard and not isPin and not tooSmall and not isProtected and not isHidden then
                         local icon = nil
                         local btnIcon = child.icon or child.Icon
                         if btnIcon and btnIcon.GetTexture then
@@ -516,7 +517,7 @@ function Plugin:CollectAddonButtons()
                         end
                         local displayName = NormalizeCompartmentDisplayName(frameName or tostring(child))
                         local signature = BuildCollectedButtonSignature(displayName, icon)
-                        if not signature or not seenSignatures[signature] then
+                        if (not signature or not seenSignatures[signature]) and not seenNames[displayName] then
                             collected[#collected + 1] = {
                                 name = displayName,
                                 button = child,
@@ -525,6 +526,7 @@ function Plugin:CollectAddonButtons()
                             }
                         end
                         if signature then seenSignatures[signature] = true end
+                        seenNames[displayName] = true
                         seen[child] = true
                     end
                 end
@@ -559,17 +561,18 @@ function Plugin:GrabCollectedButtons()
                 button._orbitOrigScale = button:GetScale()
             end
 
-            -- Reparent to hidden holder via raw SetParent (ours is overridden with doNothing)
-            FrameSetParent(button, holder)
-            button:SetFrameStrata(holder:GetFrameStrata())
-
-            -- Block addons from repositioning their buttons back.
+            -- Block addon repositioning before reparenting so OnParentChanged hooks cannot interfere.
             if not button._orbitMethodsOverridden then
                 button.ClearAllPoints = doNothing
                 button.SetPoint = doNothing
                 button.SetParent = doNothing
                 button._orbitMethodsOverridden = true
             end
+
+            -- Reparent to hidden holder via raw SetParent (bypasses the doNothing override above)
+            FrameSetParent(button, holder)
+            button:SetFrameStrata(holder:GetFrameStrata())
+            button:Hide()
 
             -- Disable drag scripts
             button:SetScript("OnDragStart", nil)
