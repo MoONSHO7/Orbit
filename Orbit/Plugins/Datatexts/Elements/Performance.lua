@@ -133,17 +133,13 @@ function W:PopulateTooltip(tip)
     tip:AddDoubleLine("Memory:", string.format("%.2f MB %s", mem, MemoryTrend(self.history.memory)), 1, 1, 1, 1, 1, 1)
     if C_AddOnProfiler and C_AddOnProfiler.IsEnabled() then
         local M = Enum.AddOnProfilerMetric
-        local appCur = C_AddOnProfiler.GetApplicationMetric(M.LastTime)
-        local appAvg = C_AddOnProfiler.GetApplicationMetric(M.RecentAverageTime)
-        local appPeak = C_AddOnProfiler.GetApplicationMetric(M.PeakTime)
-        local oCur = C_AddOnProfiler.GetAddOnMetric(ORBIT_ADDON, M.LastTime)
-        local oAvg = C_AddOnProfiler.GetAddOnMetric(ORBIT_ADDON, M.RecentAverageTime)
-        local oPeak = C_AddOnProfiler.GetAddOnMetric(ORBIT_ADDON, M.PeakTime)
-        local pctCur = appCur > 0 and (oCur / appCur * 100) or 0
-        local pctAvg = appAvg > 0 and (oAvg / appAvg * 100) or 0
-        local pctPeak = appPeak > 0 and (oPeak / appPeak * 100) or 0
-        tip:AddDoubleLine("Orbit CPU (current):", string.format("%.1f%%", pctCur), 1, 1, 1, 1, 1, 1)
-        tip:AddDoubleLine("Orbit CPU (average):", string.format("%.1f%%", pctAvg), 1, 1, 1, 1, 1, 1)
+        local recent = C_AddOnProfiler.GetApplicationMetric(M.RecentAverageTime)
+        local peak = C_AddOnProfiler.GetApplicationMetric(M.PeakTime)
+        local orbitRecent = C_AddOnProfiler.GetAddOnMetric(ORBIT_ADDON, M.RecentAverageTime)
+        local orbitPeak = C_AddOnProfiler.GetAddOnMetric(ORBIT_ADDON, M.PeakTime)
+        local pctAvg = recent > 0 and (orbitRecent / recent * 100) or 0
+        local pctPeak = peak > 0 and (orbitPeak / peak * 100) or 0
+        tip:AddDoubleLine("Orbit CPU (avg):", string.format("%.1f%%", pctAvg), 1, 1, 1, 1, 1, 1)
         tip:AddDoubleLine("Orbit CPU (peak):", string.format("%.1f%%", pctPeak), 1, 1, 1, 1, 1, 1)
     else
         tip:AddDoubleLine("Orbit CPU:", "|cff888888Enable AddOn Profiler in Game Menu|r", 1, 1, 1, 0.7, 0.7, 0.7)
