@@ -8,7 +8,7 @@ local Engine = Orbit.Engine
 Engine.FramePersistence = {}
 local Persistence = Engine.FramePersistence
 
--- [ PENDING ANCHOR QUEUE ] -------------------------------------------------------------------------
+-- [ PENDING ANCHOR QUEUE ] --------------------------------------------------------------------------
 -- Stash anchors whose target doesn't exist yet; drained when the target registers via AttachSettingsListener.
 Persistence.pendingByTarget = Persistence.pendingByTarget or {}
 
@@ -271,7 +271,7 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
     return false
 end
 
--- [ ATTACHED FRAME REGISTRY ] ---------------------------------------------------------------------
+-- [ ATTACHED FRAME REGISTRY ] -----------------------------------------------------------------------
 -- Weak-keyed registry of frames for spec-change re-restore.
 Persistence._attachedFrames = Persistence._attachedFrames or setmetatable({}, { __mode = "k" })
 
@@ -405,7 +405,7 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
     end)
 end
 
--- [ SPEC-CHANGE RE-RESTORE ] ----------------------------------------------------------------------
+-- [ SPEC-CHANGE RE-RESTORE ] ------------------------------------------------------------------------
 -- Re-restore positions on spec swap for spec-data plugins; settingsArePerSpec plugins skipped.
 function Persistence:RestoreAffectedBySpecChange()
     for frame, info in pairs(self._attachedFrames) do

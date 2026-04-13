@@ -1,4 +1,4 @@
--- [ TRACKED SETTINGS ] --------------------------------------------------------
+-- [ TRACKED SETTINGS ] ------------------------------------------------------------------------------
 -- Per-mode schemas (icons vs bars) dispatched on record.mode; standalone until surface area stabilizes.
 local _, Orbit = ...
 local L = Orbit.L
@@ -8,11 +8,12 @@ local Constants = Orbit.Constants
 
 local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
 local TICK_SIZE_MAX = OrbitEngine.TickMixin.TICK_SIZE_MAX
+local DEFAULT_SWIPE_COLOR = { r = 1, g = 0.95, b = 0.57, a = 0.7 }
 
 local Plugin = Orbit:GetPlugin("Orbit_Tracked")
 if not Plugin then return end
 
--- [ ADDSETTINGS DISPATCH ] ----------------------------------------------------
+-- [ ADDSETTINGS DISPATCH ] --------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex
     local record = self:GetContainerRecord(systemIndex)
@@ -25,7 +26,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     end
 end
 
--- [ ICON SETTINGS ] -----------------------------------------------------------
+-- [ ICON SETTINGS ] ---------------------------------------------------------------------------------
 function Plugin:_BuildIconSettings(dialog, systemFrame, record)
     local systemIndex = record.id
     local schema = { controls = {}, extraButtons = {} }
@@ -91,7 +92,7 @@ function Plugin:_BuildIconSettings(dialog, systemFrame, record)
     elseif currentTab == L.PLU_TRK_TAB_COLORS then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "ActiveSwipeColorCurve", label = L.PLU_TRK_ACTIVE_SWIPE,
-            default = { pins = { { position = 0, color = { r = 1, g = 0.95, b = 0.57, a = 0.7 } } } },
+            default = { pins = { { position = 0, color = DEFAULT_SWIPE_COLOR } } },
             singleColor = true,
         })
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
@@ -108,7 +109,7 @@ function Plugin:_BuildIconSettings(dialog, systemFrame, record)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ BAR SETTINGS ] ------------------------------------------------------------
+-- [ BAR SETTINGS ] ----------------------------------------------------------------------------------
 function Plugin:_BuildBarSettings(dialog, systemFrame, record)
     local systemIndex = record.id
     local schema = { controls = {}, extraButtons = {} }

@@ -3,7 +3,7 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 
--- [ CONSTANTS ] ---------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local ESSENTIAL_INDEX = Constants.Cooldown.SystemIndex.Essential
 local UTILITY_INDEX = Constants.Cooldown.SystemIndex.Utility
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
@@ -15,7 +15,7 @@ local DEFAULT_BUFFICON_Y = -200
 local DEFAULT_BUFFBAR_X = 200
 local DEFAULT_BUFFBAR_Y = -100
 
--- [ PLUGIN REGISTRATION ] -----------------------------------------------------
+-- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", {
     defaults = {
         aspectRatio = "4:3",
@@ -61,7 +61,7 @@ Plugin.indexDefaults = {
 
 
 
--- [ KEYBIND METHOD ATTACHMENT ] -----------------------------------------------
+-- [ KEYBIND METHOD ATTACHMENT ] ---------------------------------------------------------------------
 -- Delegates to OrbitEngine.KeybindSystem so CooldownText can resolve bindings
 -- via self:GetSpellKeybind / self:GetItemKeybind without knowing the
 -- infrastructure module exists.
@@ -73,7 +73,7 @@ function Plugin:GetItemKeybind(itemID)
     return OrbitEngine.KeybindSystem and OrbitEngine.KeybindSystem:GetForItem(itemID)
 end
 
--- [ STUBS - Overwritten by sub-modules ] --------------------------------------
+-- [ STUBS - Overwritten by sub-modules ] ------------------------------------------------------------
 function Plugin:AddSettings() end
 function Plugin:IsComponentDisabled()
     return false
@@ -112,7 +112,7 @@ function Plugin:SetupCanvasPreview() end
 
 
 
--- [ LIFECYCLE ] ---------------------------------------------------------------
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     self.essentialAnchor = self:CreateAnchor("OrbitEssentialCooldowns", ESSENTIAL_INDEX, "Essential Cooldowns")
     self.utilityAnchor = self:CreateAnchor("OrbitUtilityCooldowns", UTILITY_INDEX, "Utility Cooldowns")
@@ -306,7 +306,7 @@ function Plugin:UpdateVisibility()
     end
 end
 
--- [ ANCHOR CREATION ] ---------------------------------------------------------
+-- [ ANCHOR CREATION ] -------------------------------------------------------------------------------
 function Plugin:CreateAnchor(name, systemIndex, label, overrideOptions)
     local frame = CreateFrame("Frame", name, UIParent)
     OrbitEngine.Pixel:Enforce(frame)
@@ -344,7 +344,7 @@ function Plugin:CreateAnchor(name, systemIndex, label, overrideOptions)
     return frame
 end
 
--- [ SETTINGS APPLICATION ] ----------------------------------------------------
+-- [ SETTINGS APPLICATION ] --------------------------------------------------------------------------
 function Plugin:ApplyAll()
     self:ReapplyParentage()
     if self.essentialAnchor then
@@ -424,7 +424,7 @@ end
 -- Position/Anchor on native viewers are intentionally global because the underlying
 -- Blizzard cooldown viewer is shared across specs.
 
--- [ CLEANUP ] -----------------------------------------------------------------
+-- [ CLEANUP ] ---------------------------------------------------------------------------------------
 function Plugin:OnDisable()
     if self._monitorEventFrame then
         self._monitorEventFrame:UnregisterAllEvents()

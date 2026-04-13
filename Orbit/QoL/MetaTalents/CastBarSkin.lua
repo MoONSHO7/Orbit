@@ -13,6 +13,8 @@ local CastBarSkin = {}
 MT.CastBarSkin = CastBarSkin
 
 local SAFE_TYPE_INFO = { filling = "", full = "", glow = "" }
+local FILL_COLOR_R, FILL_COLOR_G, FILL_COLOR_B = 1, 0.82, 0
+local SPARK_COLOR_R, SPARK_COLOR_G, SPARK_COLOR_B, SPARK_COLOR_A = 1, 0.85, 0.2, 1
 
 local function HideNativeRegions(bar)
     local regions = { "Border", "Background", "TextBorder", "Flash", "Spark", "EnergyGlow",
@@ -63,7 +65,7 @@ local function CreateFillAndSpark(bar, host)
     end
 
     local fill = host:CreateTexture(nil, "BORDER", nil, 5)
-    fill:SetColorTexture(1, 0.82, 0, 1)
+    fill:SetColorTexture(FILL_COLOR_R, FILL_COLOR_G, FILL_COLOR_B, 1)
     fill:SetPoint("LEFT", host.BottomBar, "TOPLEFT", 0, 1)
     fill:SetHeight(2)
     fill:Hide()
@@ -73,7 +75,7 @@ local function CreateFillAndSpark(bar, host)
     spark:SetTexture("Interface\\Cooldown\\star4")
     spark:SetBlendMode("ADD")
     spark:SetSize(35, 35)
-    spark:SetVertexColor(1, 0.85, 0.2, 1)
+    spark:SetVertexColor(SPARK_COLOR_R, SPARK_COLOR_G, SPARK_COLOR_B, SPARK_COLOR_A)
     spark:Hide()
 
     local animGroup = spark:CreateAnimationGroup()

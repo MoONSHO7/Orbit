@@ -181,7 +181,7 @@ function CDM:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ COMPONENT UTILITY ] -------------------------------------------------------
+-- [ COMPONENT UTILITY ] -----------------------------------------------------------------------------
 local _cdmDisabledHashCache = setmetatable({}, { __mode = "k" })
 
 function CDM:IsComponentDisabled(componentKey, systemIndex)

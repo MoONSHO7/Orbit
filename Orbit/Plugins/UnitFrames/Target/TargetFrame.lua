@@ -129,11 +129,11 @@ function Plugin:OnLoad()
 
     self.frame:RegisterEvent("PLAYER_TARGET_CHANGED")
 
-    self.frame:RegisterEvent("UNIT_FACTION")
-    self.frame:RegisterEvent("UNIT_LEVEL")
-    self.frame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
+    self.frame:RegisterUnitEvent("UNIT_FACTION", "target")
+    self.frame:RegisterUnitEvent("UNIT_LEVEL", "target")
+    self.frame:RegisterUnitEvent("UNIT_CLASSIFICATION_CHANGED", "target")
     self.frame:RegisterEvent("PLAYER_LEVEL_UP")
-    self.frame:RegisterEvent("UNIT_PORTRAIT_UPDATE")
+    self.frame:RegisterUnitEvent("UNIT_PORTRAIT_UPDATE", "target")
     self.frame:RegisterEvent("PORTRAITS_UPDATED")
     self.frame:RegisterEvent("RAID_TARGET_UPDATE")
 

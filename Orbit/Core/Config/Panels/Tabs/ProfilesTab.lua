@@ -25,6 +25,8 @@ local ARROW_SIZE = 16
 local ARROW_DOWN = -math.pi / 2
 local ARROW_UP = math.pi / 2
 local CHECKBOX_SIZE = 20
+local DISABLED_ALPHA = 0.4
+local HOVER_ALPHA = 0.8
 
 -- [ WIDGET: PROFILE ACTIVE ]------------------------------------------------------------------------
 -- Composite widget: dropdown for active profile (greyed out when spec profiles control it)
@@ -36,7 +38,7 @@ Layout:RegisterWidgetType("profileactive", function(container, def, getValue, ca
     end)
     frame.OrbitType = "ProfileActive"
     if Orbit.Profile:IsSpecProfilesEnabled() then
-        frame:SetAlpha(0.4)
+        frame:SetAlpha(DISABLED_ALPHA)
         if frame.Dropdown then
             frame.Dropdown:SetEnabled(false)
             frame.Dropdown:EnableMouse(false)
@@ -80,7 +82,7 @@ Layout:RegisterWidgetType("profileselect", function(container, def, getValue, ca
         else
             frame.resetBtn:Disable()
             frame.resetBtn.Icon:SetDesaturated(true)
-            frame.resetBtn.Icon:SetAlpha(0.4)
+            frame.resetBtn.Icon:SetAlpha(DISABLED_ALPHA)
         end
         -- Copy: always allowed
         frame.copyBtn:Enable()
@@ -90,7 +92,7 @@ Layout:RegisterWidgetType("profileselect", function(container, def, getValue, ca
         if isActive or isGlobal then
             frame.xBtn:Disable()
             frame.xBtn.Icon:SetDesaturated(true)
-            frame.xBtn.Icon:SetAlpha(0.4)
+            frame.xBtn.Icon:SetAlpha(DISABLED_ALPHA)
         else
             frame.xBtn:Enable()
             frame.xBtn.Icon:SetDesaturated(false)
@@ -114,7 +116,7 @@ Layout:RegisterWidgetType("profileselect", function(container, def, getValue, ca
     resetBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if self:IsEnabled() then
-            self.Icon:SetAlpha(0.8)
+            self.Icon:SetAlpha(HOVER_ALPHA)
             GameTooltip:SetText(L.CMN_RESET_PROFILE_TOOLTIP)
         else
             GameTooltip:SetText(L.CMN_ONLY_GLOBAL_RESET)
@@ -140,7 +142,7 @@ Layout:RegisterWidgetType("profileselect", function(container, def, getValue, ca
     copyBtn.Icon = copyIcon
     copyBtn:SetScript("OnEnter", function(self)
         if self:IsEnabled() then
-            self.Icon:SetAlpha(0.8)
+            self.Icon:SetAlpha(HOVER_ALPHA)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(L.CMN_COPY_PROFILE_TOOLTIP)
             GameTooltip:Show()
@@ -165,7 +167,7 @@ Layout:RegisterWidgetType("profileselect", function(container, def, getValue, ca
     xBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if self:IsEnabled() then
-            self.Icon:SetAlpha(0.8)
+            self.Icon:SetAlpha(HOVER_ALPHA)
             GameTooltip:SetText(L.CMN_DELETE_PROFILE_TOOLTIP)
         else
             GameTooltip:SetText(L.CMN_CANNOT_DELETE_ACTIVE)

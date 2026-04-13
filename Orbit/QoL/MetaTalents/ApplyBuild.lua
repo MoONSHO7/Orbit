@@ -17,6 +17,8 @@ local C = MT.Constants
 local Data = MT.Data
 local Build = MT.Build
 
+local DISABLED_ALPHA = 0.4
+
 local Apply = {}
 MT.Apply = Apply
 
@@ -119,7 +121,7 @@ function Apply.UpdateApplyButtonState()
         lastMatchState = nil
         local tex = btn:GetNormalTexture()
         if tex then tex:SetDesaturated(true) end
-        btn:SetAlpha(0.4)
+        btn:SetAlpha(DISABLED_ALPHA)
         return
     end
     if btn._belowLevel then

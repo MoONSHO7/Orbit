@@ -6,12 +6,12 @@ local Engine = Orbit.Engine
 Engine.FrameAnchor = Engine.FrameAnchor or {}
 local Anchor = Engine.FrameAnchor
 
--- [ PHYSICAL GRAPH ] --------------------------------------------------------------------------
+-- [ PHYSICAL GRAPH ] --------------------------------------------------------------------------------
 -- Current physical attachments; rewritten by ReconcileChain when virtual/disabled frames shift.
 Anchor.anchors = Anchor.anchors or {}
 Anchor.childrenOf = Anchor.childrenOf or setmetatable({}, { __mode = "k" })
 
--- [ LOGICAL GRAPH ] ---------------------------------------------------------------------------
+-- [ LOGICAL GRAPH ] ---------------------------------------------------------------------------------
 -- User-intended anchoring; untouched by physical re-parenting so children can restore home.
 Anchor.logicalAnchors = Anchor.logicalAnchors or {}
 Anchor.logicalChildrenOf = Anchor.logicalChildrenOf or setmetatable({}, { __mode = "k" })
@@ -882,7 +882,7 @@ function Anchor:ReconcileAll()
     Graph:ReconcileAll(self)
 end
 
--- [ BATCHED RECONCILIATION ] -------------------------------------------------------------------
+-- [ BATCHED RECONCILIATION ] ------------------------------------------------------------------------
 -- Schedule reconcile for next frame; multiple calls with same root collapse to one.
 function Anchor:ScheduleReconcileChain(root)
     Graph:ScheduleReconcileChain(root, self)

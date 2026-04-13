@@ -51,6 +51,8 @@ local LOCALE_STRINGS = {
         MSG_META_NO_NODES            = "MetaTalents: No matching nodes found for this build.",
         MSG_META_IMPORT_FAILED_F     = "MetaTalents: Import failed: %s",
         MSG_META_APPLIED             = "Orbit Loadout applied.",
+        MSG_SETTINGS_UNAVAILABLE     = "Orbit Settings dialog not available",
+        MSG_NO_ADDON_BUTTONS         = "No addon buttons found",
     },
     deDE = {
         MSG_LOADED                   = "geladen. Tippe /orbit für Einstellungen",

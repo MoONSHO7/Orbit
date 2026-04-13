@@ -1,4 +1,4 @@
--- [ TRACKED BAR ] -------------------------------------------------------------
+-- [ TRACKED BAR ] -----------------------------------------------------------------------------------
 -- Single-payload bar: charges (segmented), active+cd (drain/fill), or cd-only (fill). H or V layout.
 local _, Orbit = ...
 
@@ -8,7 +8,7 @@ local DragDrop = Orbit.CooldownDragDrop
 local CooldownUtils = OrbitEngine.CooldownUtils
 local TickMixin = OrbitEngine.TickMixin
 
--- [ CONSTANTS ] ---------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local DROP_ZONE_BACKDROP_ATLAS = "cdm-empty"
 local DROP_ZONE_BG_ATLAS = "talents-node-choiceflyout-square-yellow"
 local DROP_ZONE_PLUS_ATLAS = "bags-icon-addslots"
@@ -31,8 +31,10 @@ local TICK_SIZE_DEFAULT = TickMixin.TICK_SIZE_DEFAULT
 local WHITE_TEXTURE = "Interface\\Buttons\\WHITE8x8"
 local SECONDS_PER_MINUTE = 60
 local SECONDS_PER_HOUR = 3600
+local ICON_TEXCOORD_MIN = 0.07
+local ICON_TEXCOORD_MAX = 0.93
 
--- [ CURVES ] ------------------------------------------------------------------
+-- [ CURVES ] ----------------------------------------------------------------------------------------
 -- IDENTITY_CURVE: remaining-percent (secret) → numeric; used only for time text.
 local IDENTITY_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     local c = C_CurveUtil.CreateCurve()
@@ -58,11 +60,11 @@ local ONCD_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     return c
 end)()
 
--- [ TOOLTIP PARSER ALIASES ] --------------------------------------------------
+-- [ TOOLTIP PARSER ALIASES ] ------------------------------------------------------------------------
 local Parser = Orbit.TooltipParser
 local BuildPhaseCurve = function(a, cd) return Parser:BuildPhaseCurve(a, cd) end
 
--- [ ACTIVE+CD FILL CURVE CACHE ] ----------------------------------------------
+-- [ ACTIVE+CD FILL CURVE CACHE ] --------------------------------------------------------------------
 -- V-shaped curve: remaining% → bar value. Active phase drains 1→0, cd phase fills 0→1.
 -- Cached per (activeDuration, cooldownDuration) pair.
 local _barFillCurveCache = setmetatable({}, { __mode = "v" })
@@ -98,11 +100,11 @@ local RECHARGE_ALPHA_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (functi
     return c
 end)()
 
--- [ MODULE ] ------------------------------------------------------------------
+-- [ MODULE ] ----------------------------------------------------------------------------------------
 Orbit.TrackedBar = {}
 local Bar = Orbit.TrackedBar
 
--- [ TIME FORMATTER ] ----------------------------------------------------------
+-- [ TIME FORMATTER ] --------------------------------------------------------------------------------
 local function FormatTime(seconds)
     if not seconds or seconds <= 0 then return "" end
     if seconds < SECONDS_PER_MINUTE then return string.format("%d", math.floor(seconds)) end
@@ -110,12 +112,12 @@ local function FormatTime(seconds)
     return string.format("%d:%02d:%02d", math.floor(seconds / SECONDS_PER_HOUR), math.floor((seconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE), math.floor(seconds % SECONDS_PER_MINUTE))
 end
 
--- [ DROP HINT ALPHA ] ---------------------------------------------------------
+-- [ DROP HINT ALPHA ] -------------------------------------------------------------------------------
 local function SetDropHintAlpha(frame, a)
     frame.DropHintFrame:SetAlpha(a)
 end
 
--- [ MODE DETERMINATION ] ------------------------------------------------------
+-- [ MODE DETERMINATION ] ----------------------------------------------------------------------------
 -- Charges = spell with maxCharges > 1; active+cd = both durations positive; else cd-only.
 local function DetermineMode(payload)
     if not payload or not payload.id then return nil end
@@ -128,7 +130,7 @@ local function DetermineMode(payload)
     return "cd_only"
 end
 
--- [ FRAME FACTORY ] -----------------------------------------------------------
+-- [ FRAME FACTORY ] ---------------------------------------------------------------------------------
 function Bar:Build(plugin, record)
     local frame = CreateFrame("Frame", "OrbitTrackedBar" .. record.id, UIParent)
     OrbitEngine.Pixel:Enforce(frame)
@@ -154,7 +156,7 @@ function Bar:Build(plugin, record)
     frame.IconBg:SetColorTexture(0, 0, 0, 0.5)
 
     frame.Icon = frame:CreateTexture(nil, "ARTWORK")
-    frame.Icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    frame.Icon:SetTexCoord(ICON_TEXCOORD_MIN, ICON_TEXCOORD_MAX, ICON_TEXCOORD_MIN, ICON_TEXCOORD_MAX)
 
     frame.StatusBar = CreateFrame("StatusBar", nil, frame)
     frame.StatusBar:SetMinMaxValues(0, 1)
@@ -253,7 +255,7 @@ function Bar:Build(plugin, record)
             else
                 iconTex:SetPoint("RIGHT", preview, "LEFT", 0, 0)
             end
-            iconTex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+            iconTex:SetTexCoord(ICON_TEXCOORD_MIN, ICON_TEXCOORD_MAX, ICON_TEXCOORD_MIN, ICON_TEXCOORD_MAX)
             local liveTex = self.Icon and self.Icon:GetTexture()
             if liveTex then iconTex:SetTexture(liveTex) end
         end
@@ -324,7 +326,7 @@ function Bar:Build(plugin, record)
     return frame
 end
 
--- [ APPLY / LAYOUT ] ----------------------------------------------------------
+-- [ APPLY / LAYOUT ] --------------------------------------------------------------------------------
 function Bar:Apply(plugin, frame, record)
     if not frame or not record then return end
     plugin:RefreshContainerVirtualState(frame)
@@ -447,7 +449,7 @@ function Bar:Apply(plugin, frame, record)
     self:RefreshSpellState(plugin, frame, record)
 end
 
--- [ CANVAS COMPONENTS ] -------------------------------------------------------
+-- [ CANVAS COMPONENTS ] -----------------------------------------------------------------------------
 -- Applies per-bar ComponentPositions/DisabledComponents; reads record.id directly to avoid fallback.
 function Bar:ApplyCanvasComponents(plugin, frame, record)
     if not OrbitEngine.ComponentDrag then return end
@@ -487,7 +489,7 @@ function Bar:ApplyCanvasComponents(plugin, frame, record)
     OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
 end
 
--- [ BAR COLOR STATE ] ---------------------------------------------------------
+-- [ BAR COLOR STATE ] -------------------------------------------------------------------------------
 -- Bright = active/ready; dim = recharging/cd phase. Cached to avoid redundant SetVertexColor.
 function Bar:SetBarColorState(frame, dim)
     if frame._barColorIsDim == dim then return end
@@ -500,7 +502,7 @@ function Bar:SetBarColorState(frame, dim)
     end
 end
 
--- [ LAYOUT FOR MODE ] ---------------------------------------------------------
+-- [ LAYOUT FOR MODE ] -------------------------------------------------------------------------------
 -- Charges: delegates sizing to LayoutChargesGeometry. Continuous: tick on main bar + phase breakpoint.
 function Bar:LayoutForMode(plugin, frame, record, payload, perpDim, mode)
     local tickSize = plugin:GetSetting(record.id, "TickSize") or TICK_SIZE_DEFAULT
@@ -545,7 +547,7 @@ function Bar:LayoutForMode(plugin, frame, record, payload, perpDim, mode)
     end
 end
 
--- [ CHARGES GEOMETRY ] --------------------------------------------------------
+-- [ CHARGES GEOMETRY ] ------------------------------------------------------------------------------
 -- Re-derives RechargeSegment, TickBar, and dividers from StatusBar's resolved size; also called on resize.
 function Bar:LayoutChargesGeometry(frame)
     local maxCharges = frame._chargesMax
@@ -584,7 +586,7 @@ function Bar:LayoutChargesGeometry(frame)
     self:LayoutDividers(frame, maxCharges, perpDim, longAxis)
 end
 
--- [ DIVIDER POSITIONING ] -----------------------------------------------------
+-- [ DIVIDER POSITIONING ] ---------------------------------------------------------------------------
 -- Centered on proportional charge boundaries; H = vertical lines, V = horizontal lines.
 function Bar:LayoutDividers(frame, maxCharges, perpDim, longAxis)
     local Pixel = OrbitEngine.Pixel
@@ -610,7 +612,7 @@ function Bar:LayoutDividers(frame, maxCharges, perpDim, longAxis)
     end
 end
 
--- [ FONT APPLIER ] ------------------------------------------------------------
+-- [ FONT APPLIER ] ----------------------------------------------------------------------------------
 -- Applies global font/outline to NameText/CountText/TimeText.
 function Bar:ApplyFont(plugin, frame)
     local font = plugin:GetGlobalFont() or STANDARD_TEXT_FONT
@@ -620,7 +622,7 @@ function Bar:ApplyFont(plugin, frame)
     frame.TimeText:SetFont(font, FONT_SIZE_DEFAULT, outline)
 end
 
--- [ SPELL STATE ] -------------------------------------------------------------
+-- [ SPELL STATE ] -----------------------------------------------------------------------------------
 function Bar:RefreshSpellState(plugin, frame, record)
     local payload = record.payload
     local isEmpty = not payload or not payload.id
@@ -678,7 +680,7 @@ function Bar:RefreshSpellState(plugin, frame, record)
     end
 end
 
--- [ CHARGES MODE UPDATE ] -----------------------------------------------------
+-- [ CHARGES MODE UPDATE ] ---------------------------------------------------------------------------
 -- Pure sink: currentCharges (secret) piped directly into SetValue/SetText.
 function Bar:UpdateChargesMode(frame, payload)
     local ci = C_Spell.GetSpellCharges(payload.id)
@@ -707,7 +709,7 @@ function Bar:UpdateChargesMode(frame, payload)
     frame.TimeText:Hide()
 end
 
--- [ CD-ONLY MODE UPDATE ] -----------------------------------------------------
+-- [ CD-ONLY MODE UPDATE ] ---------------------------------------------------------------------------
 -- Bar fills 0→1 as cooldown elapses. Spell path uses curves piped to C++ sinks;
 -- item path uses C_Container.GetItemCooldown (already numeric).
 function Bar:UpdateCdOnlyMode(frame, payload)
@@ -768,7 +770,7 @@ function Bar:UpdateCdOnlyMode(frame, payload)
     end
 end
 
--- [ ACTIVE+CD MODE UPDATE ] ---------------------------------------------------
+-- [ ACTIVE+CD MODE UPDATE ] -------------------------------------------------------------------------
 -- Active phase drains 1→0; cd phase fills 0→1. Spell path uses V-shaped fill
 -- curve and phase curve piped to C++ sinks; item path uses numeric GetItemCooldown.
 function Bar:UpdateActiveCdMode(frame, payload)
@@ -846,7 +848,7 @@ function Bar:UpdateActiveCdMode(frame, payload)
     end
 end
 
--- [ HELPERS ] -----------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 function Bar:SetBarFull(frame)
     self:SetBarColorState(frame, false)
     frame.StatusBar:SetMinMaxValues(0, 1)
@@ -856,7 +858,7 @@ function Bar:SetBarFull(frame)
     frame.TimeText:Hide()
 end
 
--- [ DROP HANDLING ] -----------------------------------------------------------
+-- [ DROP HANDLING ] ---------------------------------------------------------------------------------
 function Bar:OnReceiveDrag(plugin, frame)
     if not DragDrop:IsDraggingCooldownAbility() then return end
     local record = plugin:GetContainerRecord(frame.recordId)
@@ -878,7 +880,7 @@ function Bar:OnReceiveDrag(plugin, frame)
     Bar:Apply(plugin, frame, record)
 end
 
--- [ SHIFT-RIGHT-CLICK LADDER ] ------------------------------------------------
+-- [ SHIFT-RIGHT-CLICK LADDER ] ----------------------------------------------------------------------
 -- With payload → clear; without → delete bar.
 function Bar:HandleShiftRightClick(plugin, frame)
     local record = plugin:GetContainerRecord(frame.recordId)
@@ -891,7 +893,7 @@ function Bar:HandleShiftRightClick(plugin, frame)
     plugin:DeleteContainer(frame.recordId)
 end
 
--- [ CURSOR WATCHER ] ----------------------------------------------------------
+-- [ CURSOR WATCHER ] --------------------------------------------------------------------------------
 -- Polls ShouldShowDropHints; triggers RefreshSpellState when hint visibility flips.
 function Bar:StartCursorWatcher(plugin, frame)
     if frame._cursorWatcher then return end
@@ -910,7 +912,7 @@ function Bar:StartCursorWatcher(plugin, frame)
     frame._cursorWatcher = watcher
 end
 
--- [ UPDATE TICKER ] -----------------------------------------------------------
+-- [ UPDATE TICKER ] ---------------------------------------------------------------------------------
 function Bar:StartUpdateTicker(plugin, frame)
     if frame._updateTicker then return end
     frame._updateTicker = C_Timer.NewTicker(UPDATE_INTERVAL, function()
@@ -920,7 +922,7 @@ function Bar:StartUpdateTicker(plugin, frame)
     end)
 end
 
--- [ CHARGE EVENT WATCHER ] ----------------------------------------------------
+-- [ CHARGE EVENT WATCHER ] --------------------------------------------------------------------------
 -- Immediate update on SPELL_UPDATE_CHARGES for instant visual feedback on cast.
 function Bar:StartChargeEventWatcher(plugin, frame)
     if frame._chargeEventFrame then return end

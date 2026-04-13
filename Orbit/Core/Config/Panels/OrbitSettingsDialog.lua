@@ -2,6 +2,7 @@
 
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
+local L = Orbit.L
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 
@@ -52,7 +53,7 @@ end)
 
 Dialog.Title = Dialog:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
 Dialog.Title:SetPoint("TOP", Dialog, "TOP", 0, -15)
-Dialog.Title:SetText("Orbit Settings")
+Dialog.Title:SetText(L.CFG_ORBIT_SETTINGS)
 
 -- [ CLOSE BUTTON ]----------------------------------------------------------------------------------
 
@@ -136,7 +137,7 @@ function Dialog:UpdateGroupDialog(plugin, selectedFrames)
     self.attachedToSystem = nil
     self.attachedSystemIndex = nil
     self.attachedGroupFrames = selectedFrames
-    self.Title:SetText((plugin.name or "Settings") .. " (Group)")
+    self.Title:SetText(L.CFG_SETTINGS_GROUP_F:format(plugin.name or L.CFG_SETTINGS_FALLBACK))
     -- Collect sorted frames
     local frames = {}
     for frame in pairs(selectedFrames) do

@@ -1,4 +1,4 @@
--- [ STRATA ENGINE ] -------------------------------------------------------------
+-- [ STRATA ENGINE ] ---------------------------------------------------------------------------------
 -- Manages the dynamic visual layering (Z-index) of root-level UI containers.
 -- Persists entity ordering to the active Profile via Orbit.runtime.Layouts,
 -- enabling future "Bump Up / Bump Down" controls in Edit Mode and Canvas Mode.
@@ -25,7 +25,7 @@ local Engine = Orbit.StrataEngine
 -- Volatile storage for dynamic session offsets, never persisted to SavedVariables
 Engine._volatileBase = {}
 
--- [ SCOPE DATA ] --------------------------------------------------------------
+-- [ SCOPE DATA ] ------------------------------------------------------------------------------------
 function Engine:GetScopeData(scopeID)
     local layouts = Orbit.runtime and Orbit.runtime.Layouts
     assert(layouts, "StrataEngine: Profile Layouts not yet initialized!")
@@ -35,7 +35,7 @@ function Engine:GetScopeData(scopeID)
     return layouts.Orbit.Orbit_StrataEngine[scopeID]
 end
 
--- [ INITIALIZATION ] ----------------------------------------------------------
+-- [ INITIALIZATION ] --------------------------------------------------------------------------------
 function Engine:InitializeScope(scopeID, baseFrameLevel)
     self._volatileBase[scopeID] = baseFrameLevel or 1
     self:GetScopeData(scopeID)
@@ -54,7 +54,7 @@ function Engine:Register(scopeID, entityID, defaultIndex)
     end
 end
 
--- [ QUERY ] -------------------------------------------------------------------
+-- [ QUERY ] -----------------------------------------------------------------------------------------
 -- Returns the absolute frame level for a registered entity.
 -- Formula: baseFrameLevel + (entityIndex * StrataBlockReserve)
 function Engine:GetFrameLevel(scopeID, entityID)
@@ -68,7 +68,7 @@ function Engine:GetFrameLevel(scopeID, entityID)
     error("StrataEngine: Unregistered entity: " .. tostring(entityID) .. " in scope: " .. tostring(scopeID))
 end
 
--- [ BUMPING ] -----------------------------------------------------------------
+-- [ BUMPING ] ---------------------------------------------------------------------------------------
 -- Swap entity with its neighbor. Fires STRATA_UPDATED so plugins re-apply.
 function Engine:BumpUp(scopeID, entityID)
     local scope = self:GetScopeData(scopeID)
@@ -118,7 +118,7 @@ function Engine:_NotifyScope(scopeID)
     Orbit.EventBus:Fire("STRATA_UPDATED", scopeID)
 end
 
--- [ STARTUP POPULATION ] ------------------------------------------------------
+-- [ STARTUP POPULATION ] ----------------------------------------------------------------------------
 -- Seeds the Global_HUD scope with all root-level containers in default order.
 -- Called once during Orbit:OnLoad(), before any plugin initializes.
 function Engine:PopulateDefaults()

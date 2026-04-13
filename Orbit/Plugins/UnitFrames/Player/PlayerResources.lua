@@ -617,7 +617,7 @@ function Plugin:RepositionSpacers(max)
 
     local snappedTotalWidth = SnapToPixel(totalWidth, scale)
     local logicalGap = PixelMultiple(spacerWidth, scale)
-    local halfGap = logicalGap * 0.5
+    local halfGap = PixelMultiple(spacerWidth * 0.5, scale)
 
     for i = 1, MAX_SPACER_COUNT do
         local sp = Frame.Spacers[i]

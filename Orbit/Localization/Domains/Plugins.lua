@@ -212,6 +212,10 @@ local LOCALE_STRINGS = {
         PLU_DT_WORLD            = "World",
         PLU_DT_UTILITY          = "Utility",
         PLU_TH_SCALE            = "Scale",
+        PLU_MT_TOGGLE_HEATMAP   = "Toggle Meta Heatmap",
+        PLU_MT_LOADOUT_LEVEL_F  = "Orbit Loadout (Level %d+)",
+        PLU_MT_LOADOUT_ACTIVE   = "Orbit Loadout Already Active",
+        PLU_MT_APPLY_LOADOUT    = "Apply Orbit Loadout",
     },
     deDE = {
         PLU_ACTION_BAR_1 = "Aktionsleiste 1",

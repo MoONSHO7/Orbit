@@ -6,6 +6,7 @@
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local Config = OrbitEngine.Config
+local L = Orbit.L
 
 -- [ TAB ORDER ]-------------------------------------------------------------------------------------
 
@@ -84,7 +85,7 @@ function Panel:Open(tabName)
     dialog.attachedPlugin = nil
     dialog:Show()
 
-    if dialog.Title then dialog.Title:SetText("Orbit Options") end
+    if dialog.Title then dialog.Title:SetText(L.CFG_ORBIT_OPTIONS) end
 
     local schema = tabDef.schema()
     table.insert(schema.controls, 1, {
@@ -109,7 +110,7 @@ end
 
 function Panel:Toggle(tab)
     local dialog = Orbit.SettingsDialog
-    if not dialog then Orbit:Print("Orbit Settings dialog not available"); return end
+    if not dialog then Orbit:Print(L.MSG_SETTINGS_UNAVAILABLE); return end
 
     if dialog:IsShown() and self.currentTab == tab then
         dialog:Hide()
@@ -128,7 +129,7 @@ function Panel:Toggle(tab)
     systemFrame.system = "Orbit_" .. tab
 
     if tab == "Profiles" and dialog.Title then
-        dialog.Title:SetText("Profiles - " .. Orbit.Profile:GetActiveProfileName())
+        dialog.Title:SetText(L.CFG_PROFILES_TITLE_F:format(Orbit.Profile:GetActiveProfileName()))
     end
 
     local tabDef = self.Tabs[tab]

@@ -1,4 +1,4 @@
--- [ ORBIT COOLDOWN VIEWER EXTENSIONS ] ----------------------------------------
+-- [ ORBIT COOLDOWN VIEWER EXTENSIONS ] --------------------------------------------------------------
 -- Lightweight plugin that adds extra side tabs to Blizzard's CooldownViewerSettings
 -- frame. Other plugins (Tracked, future plugins) call RegisterTab to add a tab —
 -- this plugin owns the ADDON_LOADED hook, the anchor chain below AurasTab, and
@@ -7,7 +7,7 @@
 -- whatever the registering plugin asked for (e.g. spawn a new container).
 local _, Orbit = ...
 
--- [ CONSTANTS ] ---------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local TAB_TEMPLATE = "CooldownViewerSettingsTabTemplate"
 local TAB_GAP_Y = -3
 local TARGET_ADDON = "Blizzard_CooldownViewer"
@@ -17,7 +17,7 @@ local TARGET_ADDON = "Blizzard_CooldownViewer"
 -- reapply on every SetChecked via hooksecurefunc.
 local TAB_ICON_SIZE = 28
 
--- [ PLUGIN REGISTRATION ] -----------------------------------------------------
+-- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Cooldown Viewer Extensions", "Orbit_CooldownViewerExtensions", {
     liveToggle = false,
     pendingTabs = {},
@@ -27,7 +27,7 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Viewer Extensions", "Orbit_Cooldow
     end,
 })
 
--- [ HOOK BLIZZARD COOLDOWN VIEWER ] -------------------------------------------
+-- [ HOOK BLIZZARD COOLDOWN VIEWER ] -----------------------------------------------------------------
 function Plugin:HookCooldownViewer()
     if self:IsSettingsFrameReady() then
         self:BuildPendingTabs()
@@ -49,7 +49,7 @@ function Plugin:IsSettingsFrameReady()
     return CooldownViewerSettings ~= nil and CooldownViewerSettings.AurasTab ~= nil
 end
 
--- [ PUBLIC API ] --------------------------------------------------------------
+-- [ PUBLIC API ] ------------------------------------------------------------------------------------
 -- spec = {
 --     id          = string  (unique key, e.g. "Orbit_Tracked.Icons")
 --     atlas       = string  (atlas name shown on the tab face)
@@ -71,7 +71,7 @@ function Plugin:RegisterTab(spec)
     end
 end
 
--- [ TAB BUILDING ] ------------------------------------------------------------
+-- [ TAB BUILDING ] ----------------------------------------------------------------------------------
 -- Each new extension tab anchors below the previously built one (or AurasTab
 -- for the first). `_lastBuiltTab` is the running tail of the chain so a second
 -- RegisterTab call after the first batch already flushed still anchors below
@@ -135,7 +135,7 @@ function Plugin:CreateTab(parent, spec, anchorTo)
     return tab
 end
 
--- [ TAB LOOKUP ] --------------------------------------------------------------
+-- [ TAB LOOKUP ] ------------------------------------------------------------------------------------
 function Plugin:GetTab(id)
     return self.builtTabs[id]
 end

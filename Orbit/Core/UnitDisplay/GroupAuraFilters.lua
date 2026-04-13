@@ -135,15 +135,24 @@ function Orbit.GroupAuraFilters:CreateDebuffFilter(cfg)
         local result = _RecycledFilterList
         for i = 1, #result do result[i] = nil end
         for _, aura in ipairs(rawAuras) do
-            if aura.auraInstanceID then
+            local instanceID = aura.auraInstanceID
+            if instanceID then
                 local sid = aura.spellId
                 if not IsSecret(sid) and IsSpellExcluded(plugin, sid) then
                     -- skip: handled by dedicated SingleAura icon
                 else
-                    local passesFilter = plugin:IsAuraIncluded(unit, aura.auraInstanceID, raidFilter)
-                    local passesCC = not excludeCC and plugin:IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
-                    local dominated = excludeCC and plugin:IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
-                    if (passesFilter or passesCC) and not dominated then
+                    local passesFilter = plugin:IsAuraIncluded(unit, instanceID, raidFilter)
+                    local included = false
+                    if excludeCC then
+                        -- excludeCC=true: only pass raid filter AND not be CC-dominated.
+                        -- Short-circuit: skip the CC call entirely if raid filter already failed.
+                        included = passesFilter and not plugin:IsAuraIncluded(unit, instanceID, "HARMFUL|CROWD_CONTROL")
+                    else
+                        -- excludeCC=false: pass if raid filter matches OR aura is a CC we want to keep.
+                        -- Short-circuit: skip the CC call if raid filter already passed.
+                        included = passesFilter or plugin:IsAuraIncluded(unit, instanceID, "HARMFUL|CROWD_CONTROL")
+                    end
+                    if included then
                         result[#result + 1] = aura
                         if #result >= maxCount then break end
                     end
@@ -162,16 +171,32 @@ function Orbit.GroupAuraFilters:CreateBuffFilter()
         local result = _RecycledFilterList
         for i = 1, #result do result[i] = nil end
         for _, aura in ipairs(rawAuras) do
-            if aura.auraInstanceID then
+            local instanceID = aura.auraInstanceID
+            if instanceID then
                 local sid = aura.spellId
                 if not IsSecret(sid) and IsSpellExcluded(plugin, sid) then
                     -- skip: handled by dedicated SingleAura icon
                 else
-                    local passesRaid = plugin:IsAuraIncluded(unit, aura.auraInstanceID, raidFilter)
-                    local passesDef = not excludeDefensives and (plugin:IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|BIG_DEFENSIVE") or plugin:IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|EXTERNAL_DEFENSIVE"))
-                    local isBigDef = excludeDefensives and plugin:IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|BIG_DEFENSIVE")
-                    local isExtDef = excludeDefensives and plugin:IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|EXTERNAL_DEFENSIVE")
-                    if (passesRaid or passesDef) and not isBigDef and not isExtDef then
+                    local passesRaid = plugin:IsAuraIncluded(unit, instanceID, raidFilter)
+                    local included = false
+                    if excludeDefensives then
+                        -- excludeDefensives=true: pass raid filter AND not be a routed defensive.
+                        -- Short-circuit: if raid filter failed, skip both defensive checks.
+                        -- If already flagged as BigDef, skip ExtDef check.
+                        if passesRaid then
+                            if not plugin:IsAuraIncluded(unit, instanceID, "HELPFUL|BIG_DEFENSIVE")
+                                and not plugin:IsAuraIncluded(unit, instanceID, "HELPFUL|EXTERNAL_DEFENSIVE") then
+                                included = true
+                            end
+                        end
+                    else
+                        -- excludeDefensives=false: pass if raid filter matches OR aura is a defensive we want.
+                        -- Short-circuit: skip defensive checks entirely if raid filter already passed.
+                        included = passesRaid
+                            or plugin:IsAuraIncluded(unit, instanceID, "HELPFUL|BIG_DEFENSIVE")
+                            or plugin:IsAuraIncluded(unit, instanceID, "HELPFUL|EXTERNAL_DEFENSIVE")
+                    end
+                    if included then
                         result[#result + 1] = aura
                         if #result >= maxCount then break end
                     end

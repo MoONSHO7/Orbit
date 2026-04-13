@@ -2,6 +2,7 @@
 
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local SYSTEM_ID = "Orbit_Minimap"
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
@@ -20,6 +21,7 @@ local FADE_OUT_DURATION = 0.3
 local HOLDER_OFFSCREEN = -500       -- Offscreen position for hidden button holder
 local EMPTY_FLYOUT_W = 140
 local EMPTY_FLYOUT_H = 30
+local PRESSED_ALPHA = 0.6
 
 -- No-op function used to block addons from repositioning their buttons
 local function doNothing() end
@@ -104,7 +106,7 @@ function Plugin:CreateCompartmentButton()
     -- Setup visual for canvas mode
     btn.visual = btn.icon
 
-    btn:SetScript("OnMouseDown", function() btn.icon:SetAlpha(0.6) end)
+    btn:SetScript("OnMouseDown", function() btn.icon:SetAlpha(PRESSED_ALPHA) end)
     btn:SetScript("OnMouseUp",   function() btn.icon:SetAlpha(1) end)
 
     -- Start hidden; revealed on minimap hover
@@ -377,7 +379,7 @@ function Plugin:LayoutButtonsInFlyout()
         if not flyout._emptyText then
             flyout._emptyText = flyout:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
             flyout._emptyText:SetPoint("CENTER")
-            flyout._emptyText:SetText("No addon buttons found")
+            flyout._emptyText:SetText(L.MSG_NO_ADDON_BUTTONS)
         end
         flyout._emptyText:Show()
         return

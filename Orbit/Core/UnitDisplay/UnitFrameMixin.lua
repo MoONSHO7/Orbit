@@ -10,7 +10,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 Orbit.UnitFrameMixin = {}
 local Mixin = Orbit.UnitFrameMixin
 
--- [ SETTINGS INHERITANCE ] ------------------------------------------------------------------
+-- [ SETTINGS INHERITANCE ] --------------------------------------------------------------------------
 local INHERIT_PLUGIN = Orbit.Constants.UnitFrame.InheritPlugin
 local INHERIT_INDEX = Orbit.Constants.UnitFrame.InheritIndex
 
@@ -25,7 +25,7 @@ function Mixin:GetInheritedSetting(systemIndex, key, inheritFromPlayer)
     return self:GetSetting(systemIndex, key)
 end
 
--- [ NATIVE FRAME HIDING ] ----------------------------------------------------------------------
+-- [ NATIVE FRAME HIDING ] ---------------------------------------------------------------------------
 function Mixin:HideNativeUnitFrame(nativeFrame, hiddenParentName)
     local hiddenParent = CreateFrame("Frame", hiddenParentName, UIParent)
     hiddenParent:Hide()
@@ -41,7 +41,7 @@ function Mixin:HideNativeUnitFrame(nativeFrame, hiddenParentName)
     return hiddenParent
 end
 
--- [ BACKGROUND CREATION ] ---------------------------------------------------------------------
+-- [ BACKGROUND CREATION ] ---------------------------------------------------------------------------
 function Mixin:CreateBackground(frame)
     if not frame then
         return
@@ -56,7 +56,7 @@ function Mixin:CreateBackground(frame)
     return frame.bg
 end
 
--- [ TEXTURE APPLICATION ] -------------------------------------------------------------------
+-- [ TEXTURE APPLICATION ] ---------------------------------------------------------------------------
 function Mixin:ApplyTexture(frame, textureName)
     if not frame or not frame.Health then
         return
@@ -69,7 +69,7 @@ function Mixin:ApplyTexture(frame, textureName)
     self:CreateBackground(frame)
 end
 
--- [ TEXT STYLING ] -------------------------------------------------------------------------
+-- [ TEXT STYLING ] ----------------------------------------------------------------------------------
 function Mixin:ApplyTextStyling(frame, textSize)
     if not frame then
         return
@@ -108,8 +108,7 @@ function Mixin:UpdateTextSize(frame, textSize)
     if frame.HealthText then frame.HealthText:SetFont(fontPath, textSize, outline) end
 end
 
--- [ PREVIEW COLOR HELPERS ] -------------------------------------------------------------------
-
+-- [ PREVIEW COLOR HELPERS ] -------------------------------------------------------------------------
 function Mixin:GetPreviewHealthColor(isPlayer, className, reaction)
     local globalSettings = Orbit.db.GlobalSettings or {}
     local barCurve = globalSettings.BarColorCurve
@@ -172,7 +171,7 @@ function Mixin:UpdateBackdropColor(frame, systemIndex, inheritFromPlayer)
     Orbit.Skin:ApplyGradientBackground(frame, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
 end
 
--- [ BASE VISUALS APPLICATION ] ----------------------------------------------------------------
+-- [ BASE VISUALS APPLICATION ] ----------------------------------------------------------------------
 function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
     if not frame then
         return
@@ -214,7 +213,7 @@ function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
     end
 end
 
--- [ FRAME LAYOUT ] -----------------------------------------------------------------------
+-- [ FRAME LAYOUT ] ----------------------------------------------------------------------------------
 local DEFAULT_POWER_BAR_RATIO = 0.2
 
 
@@ -265,7 +264,7 @@ function Mixin:UpdateFrameLayout(frame, borderSize, options)
     end
 end
 
--- [ COMBAT-SAFE SIZE APPLICATION ] -----------------------------------------------------------
+-- [ COMBAT-SAFE SIZE APPLICATION ] ------------------------------------------------------------------
 function Mixin:ApplySize(frame, width, height)
     if not frame then
         return
@@ -282,7 +281,7 @@ function Mixin:ApplySize(frame, width, height)
     end)
 end
 
--- [ VISIBILITY CONTAINER ] -------------------------------------------------------------------
+-- [ VISIBILITY CONTAINER ] --------------------------------------------------------------------------
 local function PluginHasMountedHide(plugin)
     local VE = Orbit.VisibilityEngine
     if not VE then return false end
@@ -316,7 +315,7 @@ function Mixin:UpdateVisibilityDriver()
     RegisterStateDriver(self.container, "visibility", driver)
 end
 
--- [ STANDARD RESTORE POSITION ] ---------------------------------------------------------------
+-- [ STANDARD RESTORE POSITION ] ---------------------------------------------------------------------
 function Mixin:RestoreFramePosition(frame, systemIndex)
     if not frame then
         return
@@ -324,7 +323,7 @@ function Mixin:RestoreFramePosition(frame, systemIndex)
     OrbitEngine.Frame:RestorePosition(frame, self, systemIndex)
 end
 
--- [ COMPLETE APPLY SETTINGS HELPER ] -----------------------------------------------------------
+-- [ COMPLETE APPLY SETTINGS HELPER ] ----------------------------------------------------------------
 function Mixin:ApplyUnitFrameSettings(frame, systemIndex, options)
     if not frame then
         return
@@ -358,7 +357,7 @@ function Mixin:ApplyUnitFrameSettings(frame, systemIndex, options)
     self:RestoreFramePosition(frame, systemIndex)
 end
 
--- [ OVERLAY ICON BUILDER ] -------------------------------------------------------------------
+-- [ OVERLAY ICON BUILDER ] --------------------------------------------------------------------------
 -- Creates OverlayFrame, LevelText, RareEliteIcon, MarkerIcon, Portrait + ComponentDrag registration
 function Mixin:CreateOverlayIcons(frame, systemIndex)
     local Constants = Orbit.Constants

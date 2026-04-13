@@ -7,10 +7,10 @@ local Engine = Orbit.Engine
 Engine.AnchorGraph = {}
 local Graph = Engine.AnchorGraph
 
--- [ CONSTANTS ] --------------------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local HORIZONTAL_EDGES = { LEFT = true, RIGHT = true }
 
--- [ STATE ] ------------------------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 -- Additive tracking: virtualNodes = content-empty, disabledNodes = profile-level disabled.
 Graph.virtualNodes = {}
 Graph.disabledNodes = {}
@@ -21,7 +21,7 @@ Graph.childrenOf = nil
 Graph.logicalAnchors = nil
 Graph.logicalChildrenOf = nil
 
--- [ INITIALIZATION ] ---------------------------------------------------------------------------
+-- [ INITIALIZATION ] --------------------------------------------------------------------------------
 function Graph:Init(anchors, childrenOf, logicalAnchors, logicalChildrenOf)
     self.anchors = anchors
     self.childrenOf = childrenOf
@@ -29,7 +29,7 @@ function Graph:Init(anchors, childrenOf, logicalAnchors, logicalChildrenOf)
     self.logicalChildrenOf = logicalChildrenOf
 end
 
--- [ VIRTUAL STATE ] ----------------------------------------------------------------------------
+-- [ VIRTUAL STATE ] ---------------------------------------------------------------------------------
 function Graph:SetVirtual(frame, virtual)
     local was = self.virtualNodes[frame]
     if (not not was) == (not not virtual) then return false end
@@ -41,7 +41,7 @@ function Graph:IsVirtual(frame)
     return self.virtualNodes[frame] == true
 end
 
--- [ DISABLED STATE ] ---------------------------------------------------------------------------
+-- [ DISABLED STATE ] --------------------------------------------------------------------------------
 function Graph:SetDisabled(frame, disabled)
     local was = self.disabledNodes[frame]
     if (not not was) == (not not disabled) then return false end
@@ -53,12 +53,12 @@ function Graph:IsDisabled(frame)
     return self.disabledNodes[frame] == true
 end
 
--- [ COMBINED SKIP CHECK ] ----------------------------------------------------------------------
+-- [ COMBINED SKIP CHECK ] ---------------------------------------------------------------------------
 function Graph:IsSkipped(frame)
     return self.virtualNodes[frame] or self.disabledNodes[frame] or false
 end
 
--- [ CYCLE DETECTION ] --------------------------------------------------------------------------
+-- [ CYCLE DETECTION ] -------------------------------------------------------------------------------
 function Graph:WouldCreateCycle(child, parent)
     local visited = {}
     local current = parent
@@ -72,7 +72,7 @@ function Graph:WouldCreateCycle(child, parent)
     return false
 end
 
--- [ CHAIN ROOT ] -------------------------------------------------------------------------------
+-- [ CHAIN ROOT ] ------------------------------------------------------------------------------------
 function Graph:GetChainRoot(frame)
     local current = frame
     local visited = {}
@@ -85,7 +85,7 @@ function Graph:GetChainRoot(frame)
     end
 end
 
--- [ HORIZONTAL CHAIN ROOT ] --------------------------------------------------------------------
+-- [ HORIZONTAL CHAIN ROOT ] -------------------------------------------------------------------------
 function Graph:GetHorizontalChainRoot(frame)
     if not frame.orbitChainSync then return frame end
     local root = frame
@@ -101,7 +101,7 @@ function Graph:GetHorizontalChainRoot(frame)
     return root
 end
 
--- [ HORIZONTAL CHAIN NODES ] -------------------------------------------------------------------
+-- [ HORIZONTAL CHAIN NODES ] ------------------------------------------------------------------------
 function Graph:GetHorizontalChainNodes(frame)
     if not frame.orbitChainSync then return nil end
     local root = self:GetHorizontalChainRoot(frame)
@@ -121,7 +121,7 @@ function Graph:GetHorizontalChainNodes(frame)
     return frames
 end
 
--- [ DEPENDENTS ] -------------------------------------------------------------------------------
+-- [ DEPENDENTS ] ------------------------------------------------------------------------------------
 function Graph:GetDependents(frame, chainSyncOnly)
     local result = {}
     local function walk(parent)
@@ -138,7 +138,7 @@ function Graph:GetDependents(frame, chainSyncOnly)
     return result
 end
 
--- [ CHILDREN ON EDGE ] -------------------------------------------------------------------------
+-- [ CHILDREN ON EDGE ] ------------------------------------------------------------------------------
 function Graph:GetChildrenOnEdge(frame, edge)
     local result = {}
     local children = self.childrenOf[frame]
@@ -152,7 +152,7 @@ function Graph:GetChildrenOnEdge(frame, edge)
     return result
 end
 
--- [ TARGETED RECONCILIATION ] ------------------------------------------------------------------
+-- [ TARGETED RECONCILIATION ] -----------------------------------------------------------------------
 -- Walk one chain, promote children past skipped frames; O(chain). skipLogical preserves intent.
 function Graph:RestoreLogicalChildren(parent, anchorModule)
     if not self.logicalChildrenOf or not self.logicalChildrenOf[parent] then return end
@@ -239,7 +239,7 @@ function Graph:ReconcileChain(root, anchorModule)
     self._reconcilingChains[root] = nil
 end
 
--- [ RECONCILE ALL ] ----------------------------------------------------------------------------
+-- [ RECONCILE ALL ] ---------------------------------------------------------------------------------
 -- Collects unique roots then reconciles each chain.
 function Graph:ReconcileAll(anchorModule)
     if InCombatLockdown() then return end
@@ -252,7 +252,7 @@ function Graph:ReconcileAll(anchorModule)
     end
 end
 
--- [ BATCH RECONCILIATION ] ---------------------------------------------------------------------
+-- [ BATCH RECONCILIATION ] --------------------------------------------------------------------------
 -- Coalesces per-root reconciles into a single next-frame flush; ScheduleAll supersedes per-root.
 Graph.pendingRoots = {}
 Graph.pendingModule = nil

@@ -1,4 +1,4 @@
--- [ TRACKED ICON ITEM ] -------------------------------------------------------
+-- [ TRACKED ICON ITEM ] -----------------------------------------------------------------------------
 -- Stateless factory for icons-mode icon buttons; container owns events and calls Update in bulk.
 local _, Orbit = ...
 
@@ -6,10 +6,12 @@ local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
 
--- [ CONSTANTS ] ---------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local PLACEHOLDER_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local FONT_SIZE_DEFAULT = 12
 local ACTIVE_GLOW_KEY = "orbitActive"
+local ICON_TEXCOORD_MIN = 0.07
+local ICON_TEXCOORD_MAX = 0.93
 
 -- DESAT_CURVE: remaining-percent → 0/1 desaturation flag; 0.001 step stabilizes exact-zero.
 local DESAT_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
@@ -23,11 +25,11 @@ end)()
 local GC = OrbitEngine.GlowController
 local Parser = Orbit.TooltipParser
 
--- [ MODULE ] ------------------------------------------------------------------
+-- [ MODULE ] ----------------------------------------------------------------------------------------
 Orbit.TrackedIconItem = {}
 local IconItem = Orbit.TrackedIconItem
 
--- [ FONT APPLIER ] ------------------------------------------------------------
+-- [ FONT APPLIER ] ----------------------------------------------------------------------------------
 -- Applies global font/outline to ChargeText and Cooldown timer text.
 function IconItem:ApplyFont(plugin, icon)
     local font = plugin:GetGlobalFont() or STANDARD_TEXT_FONT
@@ -37,7 +39,7 @@ function IconItem:ApplyFont(plugin, icon)
     self:StyleCooldownText(icon.ActiveCooldown, font, outline)
 end
 
--- [ COOLDOWN TEXT STYLE ] -----------------------------------------------------
+-- [ COOLDOWN TEXT STYLE ] ---------------------------------------------------------------------------
 -- Finds and styles the CooldownFrameTemplate's built-in countdown FontString.
 function IconItem:StyleCooldownText(cd, font, outline)
     if not cd then return end
@@ -58,7 +60,7 @@ function IconItem:StyleCooldownText(cd, font, outline)
     if Orbit.Skin and Orbit.Skin.ApplyFontShadow then Orbit.Skin:ApplyFontShadow(fs) end
 end
 
--- [ SWIPE COLOR APPLIER ] -----------------------------------------------------
+-- [ SWIPE COLOR APPLIER ] ---------------------------------------------------------------------------
 function IconItem:ApplySwipeColor(plugin, icon, systemIndex)
     local colorCurve = plugin:GetSetting(systemIndex, "CooldownSwipeColorCurve")
     if colorCurve and colorCurve.pins and colorCurve.pins[1] then
@@ -77,7 +79,7 @@ function IconItem:ApplySwipeColor(plugin, icon, systemIndex)
     end
 end
 
--- [ CANVAS COMPONENT APPLY ] --------------------------------------------------
+-- [ CANVAS COMPONENT APPLY ] ------------------------------------------------------------------------
 function IconItem:ApplyCanvasComponents(plugin, icon, systemIndex)
     local positions = plugin:GetSetting(systemIndex, "ComponentPositions") or {}
     local disabledList = plugin:GetSetting(systemIndex, "DisabledComponents") or {}
@@ -104,7 +106,7 @@ function IconItem:ApplyCanvasComponents(plugin, icon, systemIndex)
     end
 end
 
--- [ FACTORY ] -----------------------------------------------------------------
+-- [ FACTORY ] ---------------------------------------------------------------------------------------
 function IconItem:Build(container, removeCallback)
     local icon = CreateFrame("Frame", nil, container, "BackdropTemplate")
     OrbitEngine.Pixel:Enforce(icon)
@@ -114,7 +116,7 @@ function IconItem:Build(container, removeCallback)
 
     icon.Icon = icon:CreateTexture(nil, "ARTWORK")
     icon.Icon:SetAllPoints()
-    icon.Icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    icon.Icon:SetTexCoord(ICON_TEXCOORD_MIN, ICON_TEXCOORD_MAX, ICON_TEXCOORD_MIN, ICON_TEXCOORD_MAX)
 
     icon.Cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
     icon.Cooldown:SetAllPoints()
@@ -154,7 +156,7 @@ function IconItem:Build(container, removeCallback)
     return icon
 end
 
--- [ UPDATE ] ------------------------------------------------------------------
+-- [ UPDATE ] ----------------------------------------------------------------------------------------
 -- Refresh texture, cooldown state, and visibility; matches old event-driven behaviour.
 function IconItem:Update(icon)
     if not icon.trackedId then icon:Hide(); return end
@@ -179,7 +181,7 @@ function IconItem:Update(icon)
     icon:Show()
 end
 
--- [ SPELL UPDATE ] ------------------------------------------------------------
+-- [ SPELL UPDATE ] ----------------------------------------------------------------------------------
 function IconItem:UpdateSpell(icon)
     if not IsSpellKnown(icon.trackedId) and not IsPlayerSpell(icon.trackedId) then
         local activeId = FindSpellOverrideByID(icon.trackedId)
@@ -217,7 +219,7 @@ function IconItem:UpdateSpell(icon)
     return texture
 end
 
--- [ NON-CHARGE SPELL ] --------------------------------------------------------
+-- [ NON-CHARGE SPELL ] ------------------------------------------------------------------------------
 -- Phase-aware desat/swipe/glow via desatCurve/cdAlphaCurve and ActiveCooldown reverse swipe.
 function IconItem:UpdateNonChargeSpell(icon, activeId, cdInfo, onGCD)
     local durObj = C_Spell.GetSpellCooldownDuration(activeId)
@@ -258,7 +260,7 @@ function IconItem:UpdateNonChargeSpell(icon, activeId, cdInfo, onGCD)
     end
 end
 
--- [ CHARGE SPELL ] ------------------------------------------------------------
+-- [ CHARGE SPELL ] ----------------------------------------------------------------------------------
 -- Caches charges out of combat via issecretvalue; desaturates only when all charges consumed.
 function IconItem:UpdateChargeSpell(icon, activeId, chargeInfo, onGCD)
     -- Cache charge state out of combat
@@ -297,7 +299,7 @@ function IconItem:UpdateChargeSpell(icon, activeId, chargeInfo, onGCD)
     end
 end
 
--- [ ITEM UPDATE ] -------------------------------------------------------------
+-- [ ITEM UPDATE ] -----------------------------------------------------------------------------------
 function IconItem:UpdateItem(icon)
     local usable, noMana = C_Item.IsUsableItem(icon.trackedId)
     local isUsable = usable or noMana or C_Item.GetItemCount(icon.trackedId, false, true) > 0
@@ -336,7 +338,7 @@ function IconItem:UpdateItem(icon)
     return texture
 end
 
--- [ ITEM WITH SPELL ID ] ------------------------------------------------------
+-- [ ITEM WITH SPELL ID ] ----------------------------------------------------------------------------
 -- Prefers GetItemCooldown; falls back to GetSpellCooldownDuration for in-combat access.
 function IconItem:UpdateItemWithSpellId(icon)
     local start, duration = C_Container.GetItemCooldown(icon.trackedId)
@@ -378,7 +380,7 @@ function IconItem:UpdateItemWithSpellId(icon)
     end
 end
 
--- [ ITEM WITHOUT SPELL ID ] ---------------------------------------------------
+-- [ ITEM WITHOUT SPELL ID ] -------------------------------------------------------------------------
 function IconItem:UpdateItemDirect(icon)
     local start, duration = C_Container.GetItemCooldown(icon.trackedId)
     if start and duration and duration > 0 then
@@ -412,7 +414,7 @@ function IconItem:UpdateItemDirect(icon)
     end
 end
 
--- [ CHARGE TEXT ] -------------------------------------------------------------
+-- [ CHARGE TEXT ] -----------------------------------------------------------------------------------
 -- chargeInfo.currentCharges is secret in combat — pipe it straight into SetText.
 function IconItem:UpdateSpellChargeText(icon, spellId, chargeInfo)
     if icon._chargeTextDisabled then icon.ChargeText:Hide(); return end
@@ -425,7 +427,7 @@ function IconItem:UpdateSpellChargeText(icon, spellId, chargeInfo)
     end
 end
 
--- [ VISIBILITY ALPHA ] --------------------------------------------------------
+-- [ VISIBILITY ALPHA ] ------------------------------------------------------------------------------
 function IconItem:ApplyVisibilityAlpha(icon)
     local isReady = not icon._activeGlowExpiry and not self:IsOnCooldown(icon)
     local isActive = icon._activeGlowExpiry and GetTime() < icon._activeGlowExpiry
@@ -439,7 +441,7 @@ function IconItem:ApplyVisibilityAlpha(icon)
     end
 end
 
--- [ COOLDOWN STATE CHECK ] ----------------------------------------------------
+-- [ COOLDOWN STATE CHECK ] --------------------------------------------------------------------------
 function IconItem:IsOnCooldown(icon)
     if icon.trackedType == "spell" then
         local activeId = FindSpellOverrideByID(icon.trackedId) or icon.trackedId
@@ -452,7 +454,7 @@ function IconItem:IsOnCooldown(icon)
     return false
 end
 
--- [ DROP HIGHLIGHT ] ----------------------------------------------------------
+-- [ DROP HIGHLIGHT ] --------------------------------------------------------------------------------
 function IconItem:SetDropHighlight(icon, shown)
     if shown then icon.DropHighlight:Show() else icon.DropHighlight:Hide() end
 end

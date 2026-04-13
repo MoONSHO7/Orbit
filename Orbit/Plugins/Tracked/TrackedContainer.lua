@@ -1,4 +1,4 @@
--- [ TRACKED CONTAINER ] -------------------------------------------------------
+-- [ TRACKED CONTAINER ] -----------------------------------------------------------------------------
 -- Icons-mode sparse 2D grid with neighbor-expansion drop zones and per-container update ticker.
 local _, Orbit = ...
 
@@ -7,7 +7,7 @@ local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
 local DragDrop = Orbit.CooldownDragDrop
 
--- [ CONSTANTS ] ---------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local DROP_ZONE_BACKDROP_ATLAS = "cdm-empty"
 local DROP_ZONE_BG_ATLAS = "talents-node-choiceflyout-square-green"
 local DROP_ZONE_PLUS_ATLAS = "bags-icon-addslots"
@@ -21,27 +21,27 @@ local COOLDOWN_THROTTLE = 0.1
 local TALENT_REPARSE_DELAY = 0.5
 local EQUIPMENT_SLOTS = { 13, 14 }
 
--- [ TOOLTIP PARSER ALIASES ] --------------------------------------------------
+-- [ TOOLTIP PARSER ALIASES ] ------------------------------------------------------------------------
 local Parser = Orbit.TooltipParser
 local ParseActiveDuration = function(t, id) return Parser:ParseActiveDuration(t, id) end
 local ParseCooldownDuration = function(t, id) return Parser:ParseCooldownDuration(t, id) end
 local BuildPhaseCurve = function(a, c) return Parser:BuildPhaseCurve(a, c) end
 
--- [ SPELL OVERRIDE ALIAS ] ----------------------------------------------------
+-- [ SPELL OVERRIDE ALIAS ] --------------------------------------------------------------------------
 local function GetActiveSpellID(spellID) return FindSpellOverrideByID(spellID) end
 
--- [ MODULE ] ------------------------------------------------------------------
+-- [ MODULE ] ----------------------------------------------------------------------------------------
 Orbit.TrackedContainer = {}
 local Container = Orbit.TrackedContainer
 
--- [ GRID HELPERS ] ------------------------------------------------------------
+-- [ GRID HELPERS ] ----------------------------------------------------------------------------------
 local function GridKey(x, y) return x .. "," .. y end
 local function ParseGridKey(key)
     local x, y = key:match("^(-?%d+),(-?%d+)$")
     return tonumber(x), tonumber(y)
 end
 
--- [ FRAME FACTORY ] -----------------------------------------------------------
+-- [ FRAME FACTORY ] ---------------------------------------------------------------------------------
 function Container:Build(plugin, record)
     local frame = CreateFrame("Frame", "OrbitTrackedContainer" .. record.id, UIParent)
     OrbitEngine.Pixel:Enforce(frame)
@@ -120,7 +120,7 @@ function Container:Build(plugin, record)
     return frame
 end
 
--- [ APPLY / LAYOUT ] ----------------------------------------------------------
+-- [ APPLY / LAYOUT ] --------------------------------------------------------------------------------
 -- Recompute grid layout, drop zones, and container size on any state change.
 function Container:Apply(plugin, frame, record)
     if not frame or not record then return end
@@ -271,7 +271,7 @@ function Container:ComputeBounds(grid)
     return minX, maxX, minY, maxY, hasItems
 end
 
--- [ DROP ZONE EDGE EXPANSION ] ------------------------------------------------
+-- [ DROP ZONE EDGE EXPANSION ] ----------------------------------------------------------------------
 -- Find empty cardinal neighbors of grid items; blocked directions prevent growth into anchored edges.
 function Container:ComputeEdgePositions(frame, grid, minX, maxX, minY, maxY, hasItems)
     local positions = {}
@@ -333,7 +333,7 @@ function Container:GetBlockedDirections(frame)
     return blocked
 end
 
--- [ ICON ITEM POOLING ] -------------------------------------------------------
+-- [ ICON ITEM POOLING ] -----------------------------------------------------------------------------
 function Container:AcquireIcon(plugin, frame, key)
     local icon = Orbit.TrackedIconItem:Build(frame, function(removedIcon)
         Container:RemoveIconAt(plugin, frame, removedIcon)
@@ -356,7 +356,7 @@ function Container:RemoveIconAt(plugin, frame, icon)
     Container:Apply(plugin, frame, record)
 end
 
--- [ DROP ZONES ] --------------------------------------------------------------
+-- [ DROP ZONES ] ------------------------------------------------------------------------------------
 function Container:AcquireDropZone(plugin, frame, index, gridX, gridY, iconW, iconH)
     local zone = frame.dropZones[index]
     if not zone then
@@ -398,7 +398,7 @@ function Container:ClearDropZones(frame)
     end
 end
 
--- [ DROP HANDLING ] -----------------------------------------------------------
+-- [ DROP HANDLING ] ---------------------------------------------------------------------------------
 function Container:OnReceiveDrag(plugin, frame)
     if not DragDrop:IsDraggingCooldownAbility() then return end
     local record = plugin:GetContainerRecord(frame.recordId)
@@ -430,7 +430,7 @@ function Container:CommitDrop(plugin, frame, gridX, gridY)
     Container:Apply(plugin, frame, record)
 end
 
--- [ CURSOR WATCHER ] ----------------------------------------------------------
+-- [ CURSOR WATCHER ] --------------------------------------------------------------------------------
 -- Independent per-container poll; triggers Apply when ShouldShowDropHints flips.
 function Container:StartCursorWatcher(plugin, frame)
     if frame._cursorWatcher then return end
@@ -449,7 +449,7 @@ function Container:StartCursorWatcher(plugin, frame)
     frame._cursorWatcher = watcher
 end
 
--- [ EVENT-DRIVEN UPDATE ] -----------------------------------------------------
+-- [ EVENT-DRIVEN UPDATE ] ---------------------------------------------------------------------------
 -- Listens for cooldown/bag/spell events and updates all icons; throttled.
 function Container:StartUpdateTicker(plugin, frame)
     if frame._eventFrame then return end
@@ -483,7 +483,7 @@ function Container:StartUpdateTicker(plugin, frame)
     frame._eventFrame = evtFrame
 end
 
--- [ SPELL CAST WATCHER ] ------------------------------------------------------
+-- [ SPELL CAST WATCHER ] ----------------------------------------------------------------------------
 -- Sets _activeGlowExpiry on cast and handles charge bookkeeping via OnChargeCast.
 function Container:StartSpellCastWatcher(plugin, frame)
     if frame._castWatcher then return end
@@ -526,7 +526,7 @@ function Container:StartSpellCastWatcher(plugin, frame)
     frame._castWatcher = watcher
 end
 
--- [ ACTIVE DURATION REPARSE ] -------------------------------------------------
+-- [ ACTIVE DURATION REPARSE ] -----------------------------------------------------------------------
 -- Re-reads tooltip durations after talent changes and rebuilds phase curves.
 function Container:ReparseActiveDurations(plugin, frame)
     local record = plugin:GetContainerRecord(frame.recordId)
@@ -557,7 +557,7 @@ function Container:ReparseActiveDurations(plugin, frame)
     end
 end
 
--- [ EQUIPMENT CHANGE HANDLER ] ------------------------------------------------
+-- [ EQUIPMENT CHANGE HANDLER ] ----------------------------------------------------------------------
 -- Updates item IDs in the grid when equipped trinkets change.
 function Container:OnEquipmentChanged(plugin, frame)
     local record = plugin:GetContainerRecord(frame.recordId)

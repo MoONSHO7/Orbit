@@ -1,11 +1,11 @@
--- [ ORBIT TRACKED PLUGIN ] ----------------------------------------------------
+-- [ ORBIT TRACKED PLUGIN ] --------------------------------------------------------------------------
 -- User-authored cooldown containers (icon grids + bars) as flat records in GlobalSettings.TrackedContainers.
 local _, Orbit = ...
 
 local Constants = Orbit.Constants
 local DragDrop = Orbit.CooldownDragDrop
 
--- [ CONSTANTS ] ---------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local MAX_ICON_CONTAINERS = Constants.Tracked.MaxIconContainers
 local MAX_BARS = Constants.Tracked.MaxBars
 local SYSTEM_ID_BASE = Constants.Tracked.SystemIndexBase
@@ -19,7 +19,7 @@ local DEFAULT_ICON_OFFSET_Y = 0
 local DEFAULT_BAR_OFFSET_X = 250
 local TALENT_REFRESH_DEBOUNCE = 0.1
 
--- [ PLUGIN REGISTRATION ] -----------------------------------------------------
+-- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 -- settingsArePerSpec: records own their spec field, so Persistence's spec-data routing is skipped.
 local Plugin = Orbit:RegisterPlugin("Tracked Items", "Orbit_Tracked", {
     liveToggle = true,
@@ -51,7 +51,7 @@ local Plugin = Orbit:RegisterPlugin("Tracked Items", "Orbit_Tracked", {
 })
 Plugin.canvasMode = true
 
--- [ STORE BOOTSTRAP ] ---------------------------------------------------------
+-- [ STORE BOOTSTRAP ] -------------------------------------------------------------------------------
 function Plugin:EnsureStore()
     local gs = Orbit.db.GlobalSettings
     if not gs.TrackedContainers then gs.TrackedContainers = {} end
@@ -69,7 +69,7 @@ function Plugin:AllocateId()
     return id
 end
 
--- [ RECORD QUERIES ] ----------------------------------------------------------
+-- [ RECORD QUERIES ] --------------------------------------------------------------------------------
 function Plugin:GetContainerRecord(id)
     return self:GetStore()[id]
 end
@@ -92,7 +92,7 @@ function Plugin:CountForSpec(specID, mode)
     return n
 end
 
--- [ SETTINGS REDIRECT ] -------------------------------------------------------
+-- [ SETTINGS REDIRECT ] -----------------------------------------------------------------------------
 -- Container records own settings inline; non-container keys fall through to standard layout DB.
 local OriginalGetSetting = Orbit.PluginMixin.GetSetting
 local OriginalSetSetting = Orbit.PluginMixin.SetSetting
@@ -118,7 +118,7 @@ function Plugin:SetSetting(systemIndex, key, value)
     OriginalSetSetting(self, systemIndex, key, value)
 end
 
--- [ COMPONENT DISABLED OVERRIDE ] ---------------------------------------------
+-- [ COMPONENT DISABLED OVERRIDE ] -------------------------------------------------------------------
 -- Reads DisabledComponents from the active Canvas Mode transaction's systemIndex, not self.frame.
 function Plugin:IsComponentDisabled(componentKey)
     local txn = self:_ActiveTransaction()
@@ -135,7 +135,7 @@ function Plugin:IsComponentDisabled(componentKey)
     return false
 end
 
--- [ GLOBAL FONT ] -------------------------------------------------------------
+-- [ GLOBAL FONT ] -----------------------------------------------------------------------------------
 -- Returns the LSM-resolved path for GlobalSettings.Font.
 function Plugin:GetGlobalFont()
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
@@ -146,7 +146,7 @@ function Plugin:GetGlobalFont()
     return STANDARD_TEXT_FONT
 end
 
--- [ DROP HINT VISIBILITY ] ----------------------------------------------------
+-- [ DROP HINT VISIBILITY ] --------------------------------------------------------------------------
 -- Show drop hints when dragging, settings panel open, or edit-mode with empty frame.
 function Plugin:ShouldShowDropHints(isEmpty)
     if DragDrop and DragDrop:IsDraggingCooldownAbility() then return true end
@@ -155,7 +155,7 @@ function Plugin:ShouldShowDropHints(isEmpty)
     return false
 end
 
--- [ TAB REGISTRATION ] --------------------------------------------------------
+-- [ TAB REGISTRATION ] ------------------------------------------------------------------------------
 function Plugin:RegisterTabs()
     local CVE = Orbit:GetPlugin("Orbit_CooldownViewerExtensions")
     if not CVE then return end
@@ -177,7 +177,7 @@ function Plugin:RegisterTabs()
     })
 end
 
--- [ CONTAINER CREATION ] ------------------------------------------------------
+-- [ CONTAINER CREATION ] ----------------------------------------------------------------------------
 function Plugin:CreateIconContainer()
     local specID = self:GetCurrentSpecID()
     if not specID then return end
@@ -241,7 +241,7 @@ function Plugin:BuildContainer(record)
     return frame
 end
 
--- [ ENABLE / DISABLE ] --------------------------------------------------------
+-- [ ENABLE / DISABLE ] ------------------------------------------------------------------------------
 -- Toggles container via AnchorGraph skip mechanism; mirrors PlayerResources enable/disable pattern.
 function Plugin:SetContainerActive(frame, active)
     if not frame then return end
@@ -256,13 +256,13 @@ function Plugin:SetContainerActive(frame, active)
     end
 end
 
--- [ ORBIT-DISABLED FLAG SYNC ] ------------------------------------------------
+-- [ ORBIT-DISABLED FLAG SYNC ] ----------------------------------------------------------------------
 -- Override orbitDisabled to reflect only the disabled axis, keeping virtual-but-on-spec frames selectable.
 function Plugin:_SyncOrbitDisabledFlag(frame)
     frame.orbitDisabled = Orbit.Engine.AnchorGraph:IsDisabled(frame)
 end
 
--- [ VIRTUAL STATE ] -----------------------------------------------------------
+-- [ VIRTUAL STATE ] ---------------------------------------------------------------------------------
 -- Empty containers are marked virtual (children promote past) but stay selectable and movable.
 function Plugin:RefreshContainerVirtualState(frame)
     if not frame or not frame.recordId then return end
@@ -282,7 +282,7 @@ function Plugin:RefreshContainerVirtualState(frame)
     Orbit.Engine.Frame:RestorePosition(frame, self, frame.recordId)
 end
 
--- [ FLUSH CURRENT SPEC ] ------------------------------------------------------
+-- [ FLUSH CURRENT SPEC ] ----------------------------------------------------------------------------
 -- Removes all records for the current spec; recovery tool for desync states.
 function Plugin:FlushCurrentSpec()
     local specID = self:GetCurrentSpecID()
@@ -296,7 +296,7 @@ function Plugin:FlushCurrentSpec()
     return #toRemove
 end
 
--- [ CONTAINER DELETION ] ------------------------------------------------------
+-- [ CONTAINER DELETION ] ----------------------------------------------------------------------------
 -- Detach physical and logical descendants and clear saved anchors before teardown.
 local function ClearChildSavedAnchorIfTargets(child, deletedName)
     local p = child.orbitPlugin
@@ -339,7 +339,7 @@ function Plugin:DeleteContainer(id)
     self:GetStore()[id] = nil
 end
 
--- [ SPEC REFRESH ] ------------------------------------------------------------
+-- [ SPEC REFRESH ] ----------------------------------------------------------------------------------
 -- All-spec frames stay in the graph; off-spec frames are skipped so chains route past them.
 function Plugin:RefreshForCurrentSpec()
     local specID = self:GetCurrentSpecID()
@@ -373,7 +373,7 @@ function Plugin:RefreshForCurrentSpec()
     end
 end
 
--- [ TALENT REFRESH ] ----------------------------------------------------------
+-- [ TALENT REFRESH ] --------------------------------------------------------------------------------
 -- Rebuild bar payloads on talent change (maxCharges/overrides may shift); debounced.
 function Plugin:_ScheduleBarPayloadRefresh()
     if self._talentRefreshPending then return end
@@ -403,7 +403,7 @@ function Plugin:GetFrameBySystemIndex(systemIndex)
     return self.containers[systemIndex]
 end
 
--- [ APPLY SETTINGS ] ----------------------------------------------------------
+-- [ APPLY SETTINGS ] --------------------------------------------------------------------------------
 -- Dispatch to per-mode renderer; resolves wrapper objects via GetFrameBySystemIndex.
 function Plugin:ApplySettings(frame)
     if not frame then

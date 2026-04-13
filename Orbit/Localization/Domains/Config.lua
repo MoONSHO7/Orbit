@@ -72,6 +72,11 @@ local LOCALE_STRINGS = {
         CFG_SHOW_MOUSEOVER          = "Show on Mouse Over",
         CFG_SHOW_TARGET             = "Show on Target",
         CFG_BLIZZARD_FRAMES         = "Blizzard Frames",
+        CFG_ORBIT_OPTIONS           = "Orbit Options",
+        CFG_ORBIT_SETTINGS          = "Orbit Settings",
+        CFG_PROFILES_TITLE_F        = "Profiles - %s",
+        CFG_SETTINGS_GROUP_F        = "%s (Group)",
+        CFG_SETTINGS_FALLBACK       = "Settings",
     },
     deDE = {
         CFG_FONT                    = "Schriftart",

@@ -5,7 +5,7 @@ local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
 local DragDrop = Orbit.CooldownDragDrop
 
--- [ CONSTANTS ] ---------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local ESSENTIAL_INDEX = Constants.Cooldown.SystemIndex.Essential
 local UTILITY_INDEX = Constants.Cooldown.SystemIndex.Utility
 local COOLDOWN_THROTTLE = 0.1
@@ -21,30 +21,30 @@ local GLOW_ATLAS = "GenericWidgetBar-Spell-Glow"
 local PREVIEW_ALPHA = 0.5
 local CURSOR_POLL_INTERVAL = 0.1
 
--- [ SPELL OVERRIDE ALIAS ] ----------------------------------------------------
+-- [ SPELL OVERRIDE ALIAS ] --------------------------------------------------------------------------
 local function GetActiveSpellID(spellID) return FindSpellOverrideByID(spellID) end
 
--- [ MODULE ] ------------------------------------------------------------------
+-- [ MODULE ] ----------------------------------------------------------------------------------------
 Orbit.ViewerInjection = {}
 local Injection = Orbit.ViewerInjection
 
--- [ PLUGIN REFERENCE ] --------------------------------------------------------
+-- [ PLUGIN REFERENCE ] ------------------------------------------------------------------------------
 local Plugin = Orbit:GetPlugin("Orbit_CooldownViewer")
 if not Plugin then
     error("ViewerInjection.lua: Plugin 'Orbit_CooldownViewer' not found - ensure CooldownManager.lua loads first")
 end
 
--- [ STATE ] -------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 Plugin.injectedFrames = Plugin.injectedFrames or {}
 Plugin.injectedRecyclePools = Plugin.injectedRecyclePools or {}
 
--- [ DESAT CURVE ] -------------------------------------------------------------
+-- [ DESAT CURVE ] -----------------------------------------------------------------------------------
 local DESAT_CURVE = C_CurveUtil.CreateCurve()
 DESAT_CURVE:AddPoint(0.0, 0)
 DESAT_CURVE:AddPoint(0.001, 1)
 DESAT_CURVE:AddPoint(1.0, 1)
 
--- [ FRAME CREATION ] ----------------------------------------------------------
+-- [ FRAME CREATION ] --------------------------------------------------------------------------------
 local function CreateInjectedIcon(parent, systemIndex)
     local icon = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     OrbitEngine.Pixel:Enforce(icon)
@@ -99,7 +99,7 @@ local function CreateInjectedIcon(parent, systemIndex)
     return icon
 end
 
--- [ ICON UPDATE ] -------------------------------------------------------------
+-- [ ICON UPDATE ] -----------------------------------------------------------------------------------
 function Injection:UpdateIcon(icon)
     if not icon.trackedId then icon:Hide(); return end
 
@@ -220,7 +220,7 @@ function Injection:UpdateIcon(icon)
     icon:Show()
 end
 
--- [ DATA MANAGEMENT ] ---------------------------------------------------------
+-- [ DATA MANAGEMENT ] -------------------------------------------------------------------------------
 function Injection:GetInjectedItems(systemIndex)
     return Plugin:GetSpecData(systemIndex, "InjectedItems") or {}
 end
@@ -254,7 +254,7 @@ function Injection:RemoveItemAtIndex(systemIndex, removeIdx)
     self:RefreshFrames(systemIndex)
 end
 
--- [ FRAME MANAGEMENT ] --------------------------------------------------------
+-- [ FRAME MANAGEMENT ] ------------------------------------------------------------------------------
 function Injection:GetRecyclePool(systemIndex)
     if not Plugin.injectedRecyclePools[systemIndex] then Plugin.injectedRecyclePools[systemIndex] = {} end
     return Plugin.injectedRecyclePools[systemIndex]
@@ -328,14 +328,14 @@ function Injection:RefreshFrames(systemIndex)
     end
 end
 
--- [ PUBLIC API ] --------------------------------------------------------------
+-- [ PUBLIC API ] ------------------------------------------------------------------------------------
 function Injection:GetActiveFrames(systemIndex)
     local frames = Plugin.injectedFrames[systemIndex]
     if not frames or #frames == 0 then return nil end
     return frames
 end
 
--- [ DRAG AND DROP ] -----------------------------------------------------------
+-- [ DRAG AND DROP ] ---------------------------------------------------------------------------------
 function Injection:OnViewerReceiveDrag(anchor)
     local itemType, actualId = DragDrop:ResolveCursorInfo()
     if not itemType then return end
@@ -375,7 +375,7 @@ function Injection:FlushAll()
     end
 end
 
--- [ UPDATE TICKER ] -----------------------------------------------------------
+-- [ UPDATE TICKER ] ---------------------------------------------------------------------------------
 function Injection:StartUpdateTicker()
     if Plugin._injectedTickerSetup then return end
     Plugin._injectedTickerSetup = true
@@ -409,7 +409,7 @@ function Injection:StartUpdateTicker()
     end)
 end
 
--- [ SPELL CAST HANDLER ] ------------------------------------------------------
+-- [ SPELL CAST HANDLER ] ----------------------------------------------------------------------------
 function Injection:OnSpellCast(spellId)
     if not spellId then return end
     for _, sysIdx in ipairs({ ESSENTIAL_INDEX, UTILITY_INDEX }) do
@@ -431,7 +431,7 @@ function Injection:OnSpellCast(spellId)
     end
 end
 
--- [ EQUIPMENT CHANGE HANDLER ] ------------------------------------------------
+-- [ EQUIPMENT CHANGE HANDLER ] ----------------------------------------------------------------------
 function Injection:OnEquipmentChanged()
     for _, sysIdx in ipairs({ ESSENTIAL_INDEX, UTILITY_INDEX }) do
         local items = self:GetInjectedItems(sysIdx)
@@ -457,7 +457,7 @@ function Injection:OnEquipmentChanged()
     end
 end
 
--- [ DROP ZONE OVERLAYS ] ------------------------------------------------------
+-- [ DROP ZONE OVERLAYS ] ----------------------------------------------------------------------------
 local function CreateGlowCorner(parent, point, l, r, t, b)
     local tex = parent:CreateTexture(nil, "OVERLAY")
     tex:SetAtlas(GLOW_ATLAS)
@@ -521,7 +521,7 @@ function Injection:CreateDropZone(anchor)
     anchor._dropZone = zone
 end
 
--- [ PHANTOM PREVIEW ] ---------------------------------------------------------
+-- [ PHANTOM PREVIEW ] -------------------------------------------------------------------------------
 function Injection:GetOrCreatePhantom(sysIdx)
     if self._phantom then return self._phantom end
     local entry = Plugin.viewerMap[sysIdx]
@@ -566,8 +566,9 @@ function Injection:GetVisiblePositions(anchor, nativeOnly)
     local blizzFrame = entry.viewer
     local scale = blizzFrame:GetEffectiveScale()
     local positions = {}
-    for i = 1, select("#", blizzFrame:GetChildren()) do
-        local child = select(i, blizzFrame:GetChildren())
+    local children = { blizzFrame:GetChildren() }
+    for i = 1, #children do
+        local child = children[i]
         if child and child:IsShown() and child:GetLeft() and not child.isPhantom and (not nativeOnly or not child.isInjectedIcon) then
             positions[#positions + 1] = {
                 frame = child,
@@ -746,7 +747,7 @@ function Injection:HideDropZones()
     end
 end
 
--- [ CURSOR WATCHER INTEGRATION ] ----------------------------------------------
+-- [ CURSOR WATCHER INTEGRATION ] --------------------------------------------------------------------
 function Injection:SetClickEnabled(enabled)
     local isDroppable = enabled and self:IsDraggingCooldownAbility()
     for _, sysIdx in ipairs({ ESSENTIAL_INDEX, UTILITY_INDEX }) do
@@ -781,7 +782,7 @@ function Injection:IsDraggingCooldownAbility()
     return true
 end
 
--- [ CURSOR WATCHER ] ----------------------------------------------------------
+-- [ CURSOR WATCHER ] --------------------------------------------------------------------------------
 -- Polls the cursor, shift-key, and edit-mode state at a fixed interval and
 -- pushes the current droppable state into SetClickEnabled. Also refreshes
 -- OOCFadeMixin so frames with `orbitCursorReveal` reveal while a cooldown
@@ -809,7 +810,7 @@ function Injection:StartCursorWatcher()
     Plugin._injectedCursorWatcher = watcher
 end
 
--- [ LIFECYCLE ] ---------------------------------------------------------------
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Injection:Initialize()
     for _, sysIdx in ipairs({ ESSENTIAL_INDEX, UTILITY_INDEX }) do
         self:RefreshFrames(sysIdx)
@@ -833,7 +834,7 @@ function Injection:Initialize()
     self:StartCursorWatcher()
 end
 
--- [ SPEC CHANGE ] -------------------------------------------------------------
+-- [ SPEC CHANGE ] -----------------------------------------------------------------------------------
 function Injection:OnSpecChanged()
     for _, sysIdx in ipairs({ ESSENTIAL_INDEX, UTILITY_INDEX }) do
         self:RefreshFrames(sysIdx)

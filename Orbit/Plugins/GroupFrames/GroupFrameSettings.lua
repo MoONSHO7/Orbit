@@ -12,6 +12,9 @@ local Helpers = Orbit.GroupFrameHelpers
 
 -- [ ADD SETTINGS ]----------------------------------------------------------------------------------
 local ICON_BUTTON_SIZE = 20
+local DISPEL_FREQ_MIN = -0.50
+local DISPEL_FREQ_MAX = 0.50
+local DISPEL_FREQ_STEP = 0.02
 
 if not OrbitEngine.Layout:HasWidgetType("quickcopyundo") then
     OrbitEngine.Layout:RegisterWidgetType("quickcopyundo", function(container, def, getValue, callback)
@@ -267,7 +270,7 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
                 table.insert(schema.controls, { type = "slider", key = "DispelNumLines", label = L.PLU_GRP_DISPEL_LINES, min = 1, max = 20, step = 1, default = def.Lines, onChange = TierMOC("DispelNumLines", dispelRefresh) })
             end
 
-            table.insert(schema.controls, { type = "slider", key = "DispelFrequency", label = L.PLU_GRP_DISPEL_FREQ, min = -0.50, max = 0.50, step = 0.02, default = def.Frequency, formatter = function(v) return string.format("%.2f", v) end, onChange = TierMOC("DispelFrequency", dispelRefresh) })
+            table.insert(schema.controls, { type = "slider", key = "DispelFrequency", label = L.PLU_GRP_DISPEL_FREQ, min = DISPEL_FREQ_MIN, max = DISPEL_FREQ_MAX, step = DISPEL_FREQ_STEP, default = def.Frequency, formatter = function(v) return string.format("%.2f", v) end, onChange = TierMOC("DispelFrequency", dispelRefresh) })
 
             if glowType == Orbit.Constants.Glow.Type.Pixel then
                 table.insert(schema.controls, { type = "slider", key = "DispelLength", label = L.PLU_GRP_DISPEL_LENGTH, min = 1, max = 30, step = 1, default = def.Length, onChange = TierMOC("DispelLength", dispelRefresh) })

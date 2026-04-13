@@ -1,4 +1,4 @@
--- [ COOLDOWN DRAG DROP ] ------------------------------------------------------
+-- [ COOLDOWN DRAG DROP ] ----------------------------------------------------------------------------
 -- Pure helpers for resolving a cursor payload (spell/item) into a validated
 -- cooldown ability. Consumed by any plugin that accepts drag-and-drop of
 -- cooldown-bearing spells or items — currently CooldownManager/ViewerInjection
@@ -12,10 +12,10 @@ local _, Orbit = ...
 Orbit.CooldownDragDrop = {}
 local DragDrop = Orbit.CooldownDragDrop
 
--- [ CONSTANTS ] ---------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local EQUIPMENT_SLOTS = { 13, 14 }
 
--- [ TOOLTIP PARSER ALIASES ] --------------------------------------------------
+-- [ TOOLTIP PARSER ALIASES ] ------------------------------------------------------------------------
 local function ParseActiveDuration(itemType, id)
     return Orbit.TooltipParser and Orbit.TooltipParser:ParseActiveDuration(itemType, id)
 end
@@ -24,12 +24,12 @@ local function ParseCooldownDuration(itemType, id)
     return Orbit.TooltipParser and Orbit.TooltipParser:ParseCooldownDuration(itemType, id)
 end
 
--- [ SPELL OVERRIDE ALIAS ] ----------------------------------------------------
+-- [ SPELL OVERRIDE ALIAS ] --------------------------------------------------------------------------
 local function GetActiveSpellID(spellID)
     return FindSpellOverrideByID(spellID)
 end
 
--- [ COOLDOWN VALIDATION ] -----------------------------------------------------
+-- [ COOLDOWN VALIDATION ] ---------------------------------------------------------------------------
 -- True when the given spell/item has any form of cooldown, charge system, or
 -- tooltip-declared duration. Guards secret-value boundaries on
 -- GetSpellBaseCooldown and C_Spell.GetSpellCharges so the comparison/boolean
@@ -49,7 +49,7 @@ function DragDrop:HasCooldown(itemType, id)
     return false
 end
 
--- [ CURSOR RESOLUTION ] -------------------------------------------------------
+-- [ CURSOR RESOLUTION ] -----------------------------------------------------------------------------
 -- Cursor → (itemType, actualId). Unwraps spellbook subType for book-slot spells
 -- so the caller always gets a real spellID, never a book-slot index.
 function DragDrop:ResolveCursorInfo()
@@ -89,7 +89,7 @@ function DragDrop:IsDraggingCooldownAbility()
     return ok and result
 end
 
--- [ CHARGE SPELL VALIDATION ] -------------------------------------------------
+-- [ CHARGE SPELL VALIDATION ] -----------------------------------------------------------------------
 -- Returns (isChargeSpell, chargeInfo). ci.maxCharges is secret in combat so the
 -- check must be guarded or the boolean test itself would throw.
 function DragDrop:IsChargeSpell(spellId)
@@ -99,7 +99,7 @@ function DragDrop:IsChargeSpell(spellId)
     return ci.maxCharges and ci.maxCharges > 1, ci
 end
 
--- [ EQUIPMENT SLOT RESOLUTION ] -----------------------------------------------
+-- [ EQUIPMENT SLOT RESOLUTION ] ---------------------------------------------------------------------
 -- Returns the inventory slot id (13 or 14) if the item is currently equipped
 -- in a trinket slot, otherwise nil. Used by ViewerInjection to track trinkets
 -- by slot so the injected icon follows gear swaps automatically.
@@ -111,7 +111,7 @@ function DragDrop:ResolveEquipmentSlot(itemId)
     return nil
 end
 
--- [ CURSOR TEXTURE ] ----------------------------------------------------------
+-- [ CURSOR TEXTURE ] --------------------------------------------------------------------------------
 -- Resolves the cursor's current payload to an icon textureID. Returns nil when
 -- the cursor is empty or holding a non-spell/item payload.
 function DragDrop:GetCursorTexture()
@@ -126,7 +126,7 @@ function DragDrop:GetCursorTexture()
     return nil
 end
 
--- [ SAVED-DATA BUILDERS ] -----------------------------------------------------
+-- [ SAVED-DATA BUILDERS ] ---------------------------------------------------------------------------
 -- Build the per-slot entry stored under a `TrackedItems[key]` table. Captures
 -- active duration, cooldown duration, useSpellId (items only), and equipment
 -- slotId so a consumer can render the icon and timer without a second API

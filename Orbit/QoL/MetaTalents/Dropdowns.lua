@@ -8,12 +8,15 @@
 -- so a low-level character sees "Level 81+" explicitly rather than a silent no-op click.
 
 local _, Orbit = ...
+local L = Orbit.L
 local MT = Orbit.MetaTalents
 local C = MT.Constants
 local Data = MT.Data
 local Build = MT.Build
 local Overlay = MT.Overlay
 local Apply = MT.Apply
+
+local HIGHLIGHT_ALPHA = 0.2
 
 local Dropdowns = {}
 MT.Dropdowns = Dropdowns
@@ -252,11 +255,11 @@ local function CreateToggleButton()
     thl:SetAllPoints()
     thl:SetAtlas("common-icon-visual")
     thl:SetBlendMode("ADD")
-    thl:SetAlpha(0.2)
+    thl:SetAlpha(HIGHLIGHT_ALPHA)
 
     toggleBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Toggle Meta Heatmap", 1, 1, 1)
+        GameTooltip:SetText(L.PLU_MT_TOGGLE_HEATMAP, 1, 1, 1)
         GameTooltip:Show()
     end)
     toggleBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -286,16 +289,16 @@ local function CreateApplyButton(diffDropdown)
     hl:SetAllPoints()
     hl:SetAtlas("128-RedButton-Plus")
     hl:SetBlendMode("ADD")
-    hl:SetAlpha(0.2)
+    hl:SetAlpha(HIGHLIGHT_ALPHA)
 
     applyMetaBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if self._belowLevel then
-            GameTooltip:SetText("Orbit Loadout (Level " .. C.MIN_APPLY_LEVEL .. "+)", 0.5, 0.5, 0.5)
+            GameTooltip:SetText(L.PLU_MT_LOADOUT_LEVEL_F:format(C.MIN_APPLY_LEVEL), 0.5, 0.5, 0.5)
         elseif self._isApplied then
-            GameTooltip:SetText("Orbit Loadout Already Active", 0.5, 0.5, 0.5)
+            GameTooltip:SetText(L.PLU_MT_LOADOUT_ACTIVE, 0.5, 0.5, 0.5)
         else
-            GameTooltip:SetText("Apply Orbit Loadout", 1, 1, 1)
+            GameTooltip:SetText(L.PLU_MT_APPLY_LOADOUT, 1, 1, 1)
         end
         GameTooltip:Show()
     end)
