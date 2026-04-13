@@ -220,6 +220,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
 
     local selection = CreateFrame("Frame", nil, frame, "EditModeSystemSelectionTemplate")
     selection:SetAllPoints()
+    selection:SetToplevel(false) -- template has toplevel=true; disable to prevent auto-Raise on Show()
     selection:SetFrameStrata(Orbit.Constants.Strata.Overlay)
     selection:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.EditModeSelection)
     selection.isOrbitSelection = true
