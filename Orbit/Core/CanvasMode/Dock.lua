@@ -12,6 +12,7 @@ local DOCK_OFFSET_X = 14
 local DOCK_OFFSET_Y = 8
 local EXCLUSIVE_PAIRS = { HealthText = "Status", Status = "HealthText" }
 local DOCK_ICON_ALPHA = 0.7
+local DOCK_TEXT_KEYS = { Missions = true } -- keys that have no reliable dock icon; show text label instead
 local DOCK_BG_COLOR = { 0.2, 0.2, 0.2, 0.6 }
 local DOCK_BG_HOVER = { 0.3, 0.5, 0.3, 0.8 }
 local HealerReg = Orbit.HealerAuraRegistry
@@ -102,7 +103,14 @@ function Dialog:AddToDock(key, sourceComponent)
     local isFontString = sourceComponent and sourceComponent.GetFont ~= nil
     local isIconFrame = sourceComponent and sourceComponent.Icon and sourceComponent.Icon.GetTexture
 
-    if isTexture and not isFontString then
+    if DOCK_TEXT_KEYS[key] then
+        icon.visual = icon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        icon.visual:SetPoint("CENTER")
+        icon.visual:SetText(DisplayName(key))
+        icon.visual:SetTextColor(0.9, 0.9, 0.9, 1)
+        icon.visual:SetWordWrap(true)
+        icon.visual:SetWidth(C.DOCK_ICON_SIZE - 4)
+    elseif isTexture and not isFontString then
         icon.visual = icon:CreateTexture(nil, "OVERLAY")
         icon.visual:SetPoint("CENTER")
         icon.visual:SetSize(C.DOCK_ICON_SIZE - 4, C.DOCK_ICON_SIZE - 4)
@@ -188,7 +196,7 @@ function Dialog:AddToDock(key, sourceComponent)
         icon.visual = icon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         icon.visual:SetPoint("CENTER")
         icon.visual:SetText(DisplayName(key):sub(1, 4))
-        icon.visual:SetTextColor(0.7, 0.7, 0.7, 1)
+        icon.visual:SetTextColor(0.9, 0.9, 0.9, 1)
     end
 
     icon:SetScript("OnEnter", function(self)

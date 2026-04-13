@@ -402,7 +402,7 @@ function Plugin:CaptureBlizzardMinimap()
 
     -- Click actions are handled by OrbitMinimapClickCapture (created in OnLoad),
     -- a MEDIUM-strata Button with SetPropagateMouseClicks(true) that covers the whole
-    -- minimap area and sits above most third-party overlays. No per-frame hook needed.
+    -- minimap area, sitting above the Minimap surface but below HIGH-strata plugin frames. No per-frame hook needed.
 
     -- FarmHud integration: register our container and hook show/hide to suspend
     -- FrameGuard protection so FarmHud can reparent the minimap surface freely.
