@@ -385,7 +385,11 @@ end
 -- Initialize default widget creators
 function Layout:InitializeWidgetTypes()
     self:RegisterWidgetType("checkbox", function(container, def, getValue, callback)
-        return self:CreateCheckbox(container, def.label, def.tooltip, getValue(), callback)
+        local opts
+        if def.valueText ~= nil then
+            opts = { valueText = type(def.valueText) == "function" and def.valueText() or def.valueText }
+        end
+        return self:CreateCheckbox(container, def.label, def.tooltip, getValue(), callback, opts)
     end)
 
     self:RegisterWidgetType("slider", function(container, def, getValue, callback)

@@ -63,7 +63,23 @@ function Layout:CreateCheckbox(parent, label, tooltip, initialValue, callback, o
             frame.Label:SetJustifyH("LEFT")
             frame.Label:ClearAllPoints()
             frame.Label:SetPoint("LEFT", frame, "LEFT", C.Widget.LabelWidth + C.Widget.LabelGap, 0)
-            frame.Label:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
+            -- Reserve space on the right for the optional value column.
+            local rightInset = opts.valueText ~= nil and C.Widget.ValueWidth or 0
+            frame.Label:SetPoint("RIGHT", frame, "RIGHT", -rightInset, 0)
+        end
+        -- Value column: optional right-aligned static text (e.g. a count badge).
+        if opts.valueText ~= nil then
+            if not frame.ValueText then
+                frame.ValueText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            end
+            frame.ValueText:ClearAllPoints()
+            frame.ValueText:SetPoint("RIGHT", frame, "RIGHT", -4, 0)
+            frame.ValueText:SetWidth(C.Widget.ValueWidth - 8)
+            frame.ValueText:SetJustifyH("RIGHT")
+            frame.ValueText:SetText(tostring(opts.valueText))
+            frame.ValueText:Show()
+        elseif frame.ValueText then
+            frame.ValueText:Hide()
         end
         -- Map standard accessors to template children
         frame._cb = frame.Button
