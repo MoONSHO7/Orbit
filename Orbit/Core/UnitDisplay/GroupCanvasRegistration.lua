@@ -280,13 +280,22 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
 			if key == "RoleIcon" then
 				local roleOverrides = savedPositions.RoleIcon and savedPositions.RoleIcon.overrides
 				if roleOverrides then
-					if roleOverrides.RoleIconStyle == "round" then
+					local style = roleOverrides.RoleIconStyle
+					if style == "round" then
 						atlas = "icons_64x64_damage"
+					elseif style == "header" then
+						atlas = "GO-icon-role-Header-DPS"
 					end
 					if roleOverrides.HideDPS then
-						atlas = (roleOverrides.RoleIconStyle == "round") and "icons_64x64_heal"
-							or "UI-LFG-RoleIcon-Healer"
+						if style == "round" then atlas = "icons_64x64_heal"
+						elseif style == "header" then atlas = "GO-icon-role-Header-Healer"
+						else atlas = "UI-LFG-RoleIcon-Healer" end
 					end
+				end
+			elseif key == "LeaderIcon" then
+				local leaderOverrides = savedPositions.LeaderIcon and savedPositions.LeaderIcon.overrides
+				if leaderOverrides and leaderOverrides.LeaderIconStyle == "header" then
+					atlas = "GO-icon-Header-Assist-Applied"
 				end
 			end
 			if not frame[key]:GetAtlas() then
@@ -431,13 +440,19 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
 				local atlas = previewAtlases[iconKey]
 				local iconOverrides = savedPositions[iconKey] and savedPositions[iconKey].overrides
 				if iconKey == "RoleIcon" and iconOverrides then
-					if iconOverrides.RoleIconStyle == "round" then
+					local style = iconOverrides.RoleIconStyle
+					if style == "round" then
 						atlas = "icons_64x64_damage"
+					elseif style == "header" then
+						atlas = "GO-icon-role-Header-DPS"
 					end
 					if iconOverrides.HideDPS then
-						atlas = (iconOverrides.RoleIconStyle == "round") and "icons_64x64_heal"
-							or "UI-LFG-RoleIcon-Healer"
+						if style == "round" then atlas = "icons_64x64_heal"
+						elseif style == "header" then atlas = "GO-icon-role-Header-Healer"
+						else atlas = "UI-LFG-RoleIcon-Healer" end
 					end
+				elseif iconKey == "LeaderIcon" and iconOverrides and iconOverrides.LeaderIconStyle == "header" then
+					atlas = "GO-icon-Header-Assist-Applied"
 				elseif iconKey == "CombatIcon" and iconOverrides and iconOverrides.CombatIconStyle then
 					local COMBAT = { default = "UI-HUD-UnitFrame-Player-CombatIcon", pvp = "UI-EventPoi-pvp" }
 					atlas = COMBAT[iconOverrides.CombatIconStyle] or COMBAT.default
@@ -541,6 +556,7 @@ function Reg:OnCanvasApply(plugin)
 	if StatusMixin then
 		for _, frame in ipairs(plugin.frames) do
 			StatusMixin:UpdateRoleIcon(frame, plugin)
+			StatusMixin:UpdateLeaderIcon(frame, plugin)
 		end
 	end
 	if plugin.frames[1] and plugin.frames[1].preview then

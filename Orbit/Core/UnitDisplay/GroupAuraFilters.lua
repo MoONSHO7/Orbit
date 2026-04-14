@@ -3,96 +3,39 @@
 local Orbit = Orbit
 
 -- Shared post-filter factories for Party and Raid frames.
--- Eliminates duplication between PartyFrame.lua and RaidFrame.lua aura filtering.
 
 Orbit.GroupAuraFilters = {}
 
 local HealerReg = Orbit.HealerAuraRegistry
+local W = Orbit.WhitelistedSpells
 local IsSecret = issecretvalue
 
 -- Raid buffs always excluded from buff containers (long-term, low-value clutter).
 local ALWAYS_EXCLUDED = {}
-for _, entry in ipairs(HealerReg.RaidBuffs) do ALWAYS_EXCLUDED[entry.spellId] = true end
+for _, entry in ipairs(HealerReg.RaidBuffs) do
+    ALWAYS_EXCLUDED[entry.spellId] = true
+    if entry.variants then for _, vid in ipairs(entry.variants) do ALWAYS_EXCLUDED[vid] = true end end
+end
 Orbit.GroupAuraFilters.AlwaysExcluded = ALWAYS_EXCLUDED
--- Raid buffs (explicit, all classes)
-ALWAYS_EXCLUDED[1126] = true   -- Mark of the Wild
-ALWAYS_EXCLUDED[1459] = true   -- Arcane Intellect
-ALWAYS_EXCLUDED[6673] = true   -- Battle Shout
-ALWAYS_EXCLUDED[21562] = true  -- Power Word: Fortitude
-ALWAYS_EXCLUDED[369459] = true -- Source of Magic
-ALWAYS_EXCLUDED[462854] = true -- Skyfury
-ALWAYS_EXCLUDED[474754] = true -- Symbiotic Relationship
-
--- Class mechanics
-ALWAYS_EXCLUDED[395152] = true -- Ebon Might
-ALWAYS_EXCLUDED[395296] = true -- Ebon Might (alt)
-ALWAYS_EXCLUDED[1217607] = true -- Void Metamorphosis
-ALWAYS_EXCLUDED[260286] = true -- Tip of the Spear
-ALWAYS_EXCLUDED[205473] = true -- Icicles
-ALWAYS_EXCLUDED[124255] = true -- Stagger
-ALWAYS_EXCLUDED[344179] = true -- Maelstrom Weapon
-ALWAYS_EXCLUDED[95809] = true -- Insanity
-ALWAYS_EXCLUDED[425782] = true -- Second Wind
--- Poisons
-ALWAYS_EXCLUDED[381637] = true -- Atrophic Poison
-ALWAYS_EXCLUDED[5761] = true -- Numbing Poison
-ALWAYS_EXCLUDED[8679] = true -- Wound Poison
-ALWAYS_EXCLUDED[2823] = true -- Deadly Poison
-ALWAYS_EXCLUDED[3408] = true -- Crippling Poison
-ALWAYS_EXCLUDED[315584] = true -- Instant Poison
-ALWAYS_EXCLUDED[381664] = true -- Amplifying Poison
--- Exhaustion / Sated
-ALWAYS_EXCLUDED[57724] = true -- Sated
-ALWAYS_EXCLUDED[57723] = true -- Exhaustion
-ALWAYS_EXCLUDED[390435] = true -- Exhaustion (alt)
-ALWAYS_EXCLUDED[80354] = true -- Temporal Displacement
-ALWAYS_EXCLUDED[264689] = true -- Fatigued
--- Deserter
-ALWAYS_EXCLUDED[71041] = true -- Dungeon Deserter
-ALWAYS_EXCLUDED[26013] = true -- Deserter
--- Flight / Dragonriding
+-- [ WHITELISTED CATEGORIES ]------------------------------------------------------------------------
+-- Merge WhitelistedSpells categories that are low-value clutter on group frames.
+local function MergeInto(dest, source) for id in pairs(source) do dest[id] = true end end
+MergeInto(ALWAYS_EXCLUDED, W.RAID_BUFFS)
+MergeInto(ALWAYS_EXCLUDED, W.CLASS_RESOURCES)
+MergeInto(ALWAYS_EXCLUDED, W.BRONZE_VARIANTS)
+MergeInto(ALWAYS_EXCLUDED, W.ROGUE_POISONS)
+MergeInto(ALWAYS_EXCLUDED, W.SHAMAN_IMBUEMENTS)
+MergeInto(ALWAYS_EXCLUDED, W.EXHAUSTION)
+MergeInto(ALWAYS_EXCLUDED, W.SKYRIDING)
+MergeInto(ALWAYS_EXCLUDED, W.UTILITY)
+MergeInto(ALWAYS_EXCLUDED, W.SYSTEM)
+-- [ NON-WHITELISTED EXCLUSIONS ]--------------------------------------------------------------------
+-- Flight style auras and ride-along not in WhitelistedSpells (not secret-relevant).
 ALWAYS_EXCLUDED[404468] = true -- Flight Style: Steady
 ALWAYS_EXCLUDED[404464] = true -- Flight Style: Skyriding
-ALWAYS_EXCLUDED[460002] = true -- Switch Flight Style
 ALWAYS_EXCLUDED[460003] = true -- Switch Flight Style (alt)
-ALWAYS_EXCLUDED[377234] = true -- Thrill of the Skies
-ALWAYS_EXCLUDED[361584] = true -- Whirling Surge
-ALWAYS_EXCLUDED[372608] = true -- Surge Forward
-ALWAYS_EXCLUDED[372610] = true -- Skyward Ascent
-ALWAYS_EXCLUDED[403092] = true -- Aerial Halt
-ALWAYS_EXCLUDED[388367] = true -- Ohn'ahra's Gusts
--- Ride Along
 ALWAYS_EXCLUDED[447959] = true -- Ride Along - Enabled
 ALWAYS_EXCLUDED[447960] = true -- Ride Along - Inactive
--- Misc utility
-ALWAYS_EXCLUDED[8690] = true -- Hearthstone
-ALWAYS_EXCLUDED[20608] = true -- Reincarnation
--- Long-term self buffs
-ALWAYS_EXCLUDED[433568] = true -- Rite of Sanctification
-ALWAYS_EXCLUDED[433583] = true -- Rite of Adjuration
--- Shaman imbuements
-ALWAYS_EXCLUDED[319773] = true -- Windfury Weapon
-ALWAYS_EXCLUDED[319778] = true -- Flametongue Weapon
-ALWAYS_EXCLUDED[382021] = true -- Earthliving Weapon
-ALWAYS_EXCLUDED[382022] = true -- Earthliving Weapon (alt)
-ALWAYS_EXCLUDED[457496] = true -- Tidecaller's Guard
-ALWAYS_EXCLUDED[457481] = true -- Tidecaller's Guard (alt)
-ALWAYS_EXCLUDED[462757] = true -- Thunderstrike Ward
-ALWAYS_EXCLUDED[462742] = true -- Thunderstrike Ward (alt)
--- Blessing of the Bronze
-ALWAYS_EXCLUDED[381732] = true -- Death Knight
-ALWAYS_EXCLUDED[381741] = true -- Demon Hunter
-ALWAYS_EXCLUDED[381746] = true -- Druid
-ALWAYS_EXCLUDED[381748] = true -- Evoker
-ALWAYS_EXCLUDED[381749] = true -- Hunter
-ALWAYS_EXCLUDED[381750] = true -- Mage
-ALWAYS_EXCLUDED[381751] = true -- Monk
-ALWAYS_EXCLUDED[381752] = true -- Paladin
-ALWAYS_EXCLUDED[381753] = true -- Priest
-ALWAYS_EXCLUDED[381754] = true -- Rogue
-ALWAYS_EXCLUDED[381756] = true -- Shaman
-ALWAYS_EXCLUDED[381757] = true -- Warlock
-ALWAYS_EXCLUDED[381758] = true -- Warrior
 -- Dungeon paths
 ALWAYS_EXCLUDED[131206] = true -- Path of the Shado-Pan
 ALWAYS_EXCLUDED[131222] = true -- Path of the Mogu King
@@ -164,8 +107,7 @@ ALWAYS_EXCLUDED[1254572] = true -- Path of Devoted Magistry
 ALWAYS_EXCLUDED[445441] = true -- Path of the Warding Candles
 ALWAYS_EXCLUDED[445443] = true -- Path of the Fallen Stormriders
 
--- Exclude active healer aura spellIds unless their slot is disabled.
--- Evaluated dynamically to prevent cache invalidation bugs across plugins, tiers, and initializations.
+-- Exclude active healer aura spellIds unless their slot is disabled; evaluated dynamically.
 local function IsSpellExcluded(plugin, sid)
     if ALWAYS_EXCLUDED[sid] then return true end
 
@@ -185,8 +127,7 @@ function Orbit.GroupAuraFilters:InvalidateCache() end
 
 local _RecycledFilterList = {}
 
--- Creates a debuff post-filter function.
--- cfg.raidFilterFn: function() returning the filter string (e.g. "HARMFUL" or combat-aware)
+-- Creates a debuff post-filter; cfg.raidFilterFn returns the filter string.
 function Orbit.GroupAuraFilters:CreateDebuffFilter(cfg)
     return function(plugin, unit, rawAuras, maxCount, filterOverride)
         local raidFilter = filterOverride or (cfg.raidFilterFn and cfg.raidFilterFn() or "HARMFUL")
@@ -194,15 +135,24 @@ function Orbit.GroupAuraFilters:CreateDebuffFilter(cfg)
         local result = _RecycledFilterList
         for i = 1, #result do result[i] = nil end
         for _, aura in ipairs(rawAuras) do
-            if aura.auraInstanceID then
+            local instanceID = aura.auraInstanceID
+            if instanceID then
                 local sid = aura.spellId
                 if not IsSecret(sid) and IsSpellExcluded(plugin, sid) then
                     -- skip: handled by dedicated SingleAura icon
                 else
-                    local passesFilter = plugin:IsAuraIncluded(unit, aura.auraInstanceID, raidFilter)
-                    local passesCC = not excludeCC and plugin:IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
-                    local dominated = excludeCC and plugin:IsAuraIncluded(unit, aura.auraInstanceID, "HARMFUL|CROWD_CONTROL")
-                    if (passesFilter or passesCC) and not dominated then
+                    local passesFilter = plugin:IsAuraIncluded(unit, instanceID, raidFilter)
+                    local included = false
+                    if excludeCC then
+                        -- excludeCC=true: only pass raid filter AND not be CC-dominated.
+                        -- Short-circuit: skip the CC call entirely if raid filter already failed.
+                        included = passesFilter and not plugin:IsAuraIncluded(unit, instanceID, "HARMFUL|CROWD_CONTROL")
+                    else
+                        -- excludeCC=false: pass if raid filter matches OR aura is a CC we want to keep.
+                        -- Short-circuit: skip the CC call if raid filter already passed.
+                        included = passesFilter or plugin:IsAuraIncluded(unit, instanceID, "HARMFUL|CROWD_CONTROL")
+                    end
+                    if included then
                         result[#result + 1] = aura
                         if #result >= maxCount then break end
                     end
@@ -221,16 +171,32 @@ function Orbit.GroupAuraFilters:CreateBuffFilter()
         local result = _RecycledFilterList
         for i = 1, #result do result[i] = nil end
         for _, aura in ipairs(rawAuras) do
-            if aura.auraInstanceID then
+            local instanceID = aura.auraInstanceID
+            if instanceID then
                 local sid = aura.spellId
                 if not IsSecret(sid) and IsSpellExcluded(plugin, sid) then
                     -- skip: handled by dedicated SingleAura icon
                 else
-                    local passesRaid = plugin:IsAuraIncluded(unit, aura.auraInstanceID, raidFilter)
-                    local passesDef = not excludeDefensives and (plugin:IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|BIG_DEFENSIVE") or plugin:IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|EXTERNAL_DEFENSIVE"))
-                    local isBigDef = excludeDefensives and plugin:IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|BIG_DEFENSIVE")
-                    local isExtDef = excludeDefensives and plugin:IsAuraIncluded(unit, aura.auraInstanceID, "HELPFUL|EXTERNAL_DEFENSIVE")
-                    if (passesRaid or passesDef) and not isBigDef and not isExtDef then
+                    local passesRaid = plugin:IsAuraIncluded(unit, instanceID, raidFilter)
+                    local included = false
+                    if excludeDefensives then
+                        -- excludeDefensives=true: pass raid filter AND not be a routed defensive.
+                        -- Short-circuit: if raid filter failed, skip both defensive checks.
+                        -- If already flagged as BigDef, skip ExtDef check.
+                        if passesRaid then
+                            if not plugin:IsAuraIncluded(unit, instanceID, "HELPFUL|BIG_DEFENSIVE")
+                                and not plugin:IsAuraIncluded(unit, instanceID, "HELPFUL|EXTERNAL_DEFENSIVE") then
+                                included = true
+                            end
+                        end
+                    else
+                        -- excludeDefensives=false: pass if raid filter matches OR aura is a defensive we want.
+                        -- Short-circuit: skip defensive checks entirely if raid filter already passed.
+                        included = passesRaid
+                            or plugin:IsAuraIncluded(unit, instanceID, "HELPFUL|BIG_DEFENSIVE")
+                            or plugin:IsAuraIncluded(unit, instanceID, "HELPFUL|EXTERNAL_DEFENSIVE")
+                    end
+                    if included then
                         result[#result + 1] = aura
                         if #result >= maxCount then break end
                     end

@@ -1,6 +1,7 @@
 -- [ PLUGIN MANAGER CONTENT ]------------------------------------------------------------------------
 -- Plugin enable/disable checkbox grid for the Orbit Advanced Settings panel.
 local _, Orbit = ...
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Layout = OrbitEngine.Layout
 local A = Layout.Advanced
@@ -13,15 +14,15 @@ local RELOAD_BUTTON_HEIGHT = 32
 local BODY_PADDING = 8
 
 local PLUGIN_GROUPS = {
-    { header = "Unit Frames", names = {
+    { header = L.PLG_UNIT_FRAMES, names = {
         "Player Frame", "Player Power", "Player Cast Bar", "Player Resources", "Pet Frame",
         "Player Buffs", "Player Debuffs",
         { label = "Target Frame", plugins = { "Target Frame", "Target Power", "Target Cast Bar", "Target Buffs", "Target Debuffs", "Target of Target" } },
         { label = "Focus Frame",  plugins = { "Focus Frame", "Focus Power", "Focus Cast Bar", "Focus Buffs", "Focus Debuffs", "Target of Focus" }, triState = true },
     }},
-    { header = "Group Frames", names = { "Group Frames", "Boss Frames" } },
-    { header = "Combat",       names = { "Action Bars", "Cooldown Manager", { label = "Tracked Cooldowns", plugins = { "Tracked Items" } } } },
-    { header = "UI",           names = {
+    { header = L.PLG_GROUP_FRAMES, names = { "Group Frames", "Boss Frames" } },
+    { header = L.PLG_COMBAT,       names = { "Action Bars", "Cooldown Manager", { label = "Tracked Cooldowns", plugins = { "Tracked Items" } } } },
+    { header = L.PLG_UI,           names = {
         { label = "Menu Bar", plugins = { "Menu Bar" }, triState = true },
         { label = "Bag Bar",  plugins = { "Bag Bar" },  triState = true },
         "Queue Status",
@@ -32,9 +33,9 @@ local PLUGIN_GROUPS = {
 
 -- [ TRI-STATE HELPERS ]-----------------------------------------------------------------------------
 local TRI_TOOLTIPS = {
-    [0] = "Blizzard default frame will show.",
-    [1] = "Orbit replaces Blizzard frame.",
-    [2] = "Both Orbit and Blizzard frames disabled.",
+    [0] = L.PLG_TRI_BLIZZARD,
+    [1] = L.PLG_TRI_ORBIT,
+    [2] = L.PLG_TRI_BOTH_DISABLED,
 }
 
 local function GetTriState(primaryPlugin, pluginNames)
@@ -47,10 +48,10 @@ end
 
 -- [ BUILD ]-----------------------------------------------------------------------------------------
 function Orbit._AC.BuildPluginContent(pluginContent, frame)
-    local header = Layout:CreateSectionHeader(pluginContent, "Plugin Manager")
+    local header = Layout:CreateSectionHeader(pluginContent, L.CFG_PLUGIN_MANAGER)
     header:SetPoint("TOPLEFT", A.PADDING, A.TITLE_Y)
     header:SetPoint("TOPRIGHT", -A.PADDING, A.TITLE_Y)
-    local desc = Layout:CreateDescription(pluginContent, "Toggle plugins on or off. Some changes require a UI reload.", A.MUTED)
+    local desc = Layout:CreateDescription(pluginContent, L.CFG_PLUGIN_MANAGER_DESC, A.MUTED)
     desc:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -4)
     desc:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", 0, -4)
 
@@ -61,7 +62,7 @@ function Orbit._AC.BuildPluginContent(pluginContent, frame)
     local function UpdateReloadButton()
         if not reloadButton then return end
         reloadButton:SetEnabled(pendingChanges)
-        reloadButton:SetText(pendingChanges and "|cFFFF8800Reload UI to Apply|r" or "Reload UI")
+        reloadButton:SetText(pendingChanges and ("|cFFFF8800" .. L.PLG_RELOAD_UI_APPLY .. "|r") or L.PLG_RELOAD_UI)
     end
 
     local function CheckPendingChanges()
@@ -139,7 +140,7 @@ function Orbit._AC.BuildPluginContent(pluginContent, frame)
             w:SetTooltip(function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 GameTooltip:SetText(displayName, 0.4, 0.4, 0.4)
-                GameTooltip:AddLine("Not available for your current specialization.", 0.6, 0.6, 0.6, true)
+                GameTooltip:AddLine(L.PLG_SPEC_LOCKED, 0.6, 0.6, 0.6, true)
                 GameTooltip:Show()
             end)
         end
@@ -150,7 +151,7 @@ function Orbit._AC.BuildPluginContent(pluginContent, frame)
                 w:SetTooltip(function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                     GameTooltip:SetText(displayName, 1, 0.27, 0.27)
-                    GameTooltip:AddLine("Conflicting addon detected. Another addon is managing this element.", 0.8, 0.8, 0.8, true)
+                    GameTooltip:AddLine(L.PLG_CONFLICT_DESC, 0.8, 0.8, 0.8, true)
                     GameTooltip:Show()
                 end)
             end
@@ -225,7 +226,7 @@ function Orbit._AC.BuildPluginContent(pluginContent, frame)
         reloadButton:ClearAllPoints()
         reloadButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -A.PADDING, A.PADDING)
         reloadButton:SetEnabled(false)
-        reloadButton:SetText("Reload UI")
+        reloadButton:SetText(L.PLG_RELOAD_UI)
         reloadButton:Show()
     end
 

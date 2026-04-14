@@ -26,7 +26,7 @@ local GF = Orbit.Constants.GroupFrames
 
 Helpers.GROWTH_DIRECTION = GF.GrowthDirection
 
-local SORT_MODE = { Group = "Group", Role = "Role", Alphabetical = "Alphabetical" }
+local SORT_MODE = { Group = "group", Role = "role", Alphabetical = "alphabetical" }
 Helpers.SORT_MODE = SORT_MODE
 local ROLE_PRIORITY = GF.RolePriority
 
@@ -68,16 +68,17 @@ function Helpers:GetTierMaxFrames(tier) return TIER_MAX_FRAMES[tier] or MAX_GROU
 
 -- [ ANCHOR ]----------------------------------------------------------------------------------------
 local CONTAINER_ANCHOR = {
-    ["Down"] = "TOPLEFT",
-    ["Up"] = "BOTTOMLEFT",
-    ["Right"] = "TOPLEFT",
-    ["Left"] = "TOPRIGHT",
-    ["Center"] = "CENTER",
+    ["down"] = "TOPLEFT",
+    ["up"] = "BOTTOMLEFT",
+    ["right"] = "TOPLEFT",
+    ["left"] = "TOPRIGHT",
+    ["center"] = "CENTER",
 }
 
 function Helpers:GetContainerAnchor(growthDirection) return CONTAINER_ANCHOR[growthDirection] or "TOPLEFT" end
 
 -- [ AURA ANCHOR HELPER ]----------------------------------------------------------------------------
+-- "Right" here is a PositionUtils anchor token, NOT a GrowthDirection value. Keep capitalized.
 function Helpers:AnchorToPosition(posX, posY, halfW, halfH)
     return Orbit.Engine.PositionUtils.AnchorToPosition(posX, posY, halfW, halfH, "Right")
 end
@@ -96,14 +97,14 @@ end
 function Helpers:CalculatePartyFramePosition(index, frameWidth, frameHeight, spacing, orientation, growthDirection, scale)
     spacing = scale and Pixel:Multiple(spacing or 0, scale) or (spacing or 0)
     orientation = orientation or 0
-    growthDirection = growthDirection or (orientation == 0 and "Down" or "Right")
+    growthDirection = growthDirection or (orientation == 0 and "down" or "right")
     local step = orientation == 0 and (frameHeight + spacing) or (frameWidth + spacing)
     local offset = scale and Pixel:Snap((index - 1) * step, scale) or ((index - 1) * step)
-    if growthDirection == "Down" then return 0, -offset, "TOPLEFT", "TOPLEFT" end
-    if growthDirection == "Up" then return 0, offset, "BOTTOMLEFT", "BOTTOMLEFT" end
-    if growthDirection == "Right" then return offset, 0, "TOPLEFT", "TOPLEFT" end
-    if growthDirection == "Left" then return -offset, 0, "TOPRIGHT", "TOPRIGHT" end
-    if growthDirection == "Center" then
+    if growthDirection == "down" then return 0, -offset, "TOPLEFT", "TOPLEFT" end
+    if growthDirection == "up" then return 0, offset, "BOTTOMLEFT", "BOTTOMLEFT" end
+    if growthDirection == "right" then return offset, 0, "TOPLEFT", "TOPLEFT" end
+    if growthDirection == "left" then return -offset, 0, "TOPRIGHT", "TOPRIGHT" end
+    if growthDirection == "center" then
         if orientation == 0 then return 0, -offset, "TOPLEFT", "TOPLEFT" end
         return offset, 0, "TOPLEFT", "TOPLEFT"
     end
@@ -156,7 +157,7 @@ function Helpers:CalculateMemberPosition(memberIndex, frameWidth, frameHeight, m
         return mx, 0
     end
     local offset = scale and Pixel:Snap((memberIndex - 1) * (frameHeight + memberSpacing), scale) or ((memberIndex - 1) * (frameHeight + memberSpacing))
-    if memberGrowth == "Up" then return 0, offset end
+    if memberGrowth == "up" then return 0, offset end
     return 0, -offset
 end
 
@@ -233,9 +234,11 @@ function Helpers:GetSortedPartyUnits(includePlayer)
         table.sort(units, function(a, b)
             local priorityA, priorityB = GetRolePriority(a), GetRolePriority(b)
             if priorityA == priorityB then
-                local nameA, nameB = UnitName(a) or "", UnitName(b) or ""
-                if issecretvalue and (issecretvalue(nameA) or issecretvalue(nameB)) then return false end
-                return nameA < nameB
+                -- UnitName can return a secret in combat. Check issecretvalue BEFORE `or ""`
+                -- or the `<` comparison — both would throw on a secret.
+                local nameA, nameB = UnitName(a), UnitName(b)
+                if issecretvalue(nameA) or issecretvalue(nameB) then return false end
+                return (nameA or "") < (nameB or "")
             end
             return priorityA < priorityB
         end)

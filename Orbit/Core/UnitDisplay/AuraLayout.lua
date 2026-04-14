@@ -69,7 +69,7 @@ function AL:LayoutLinear(container, icons, config)
         else icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, 0) end
         xOffset = xOffset + size + spacing
     end
-    container:SetSize(xOffset > 0 and xOffset or 1, size)
+    container:SetSize(math_max(xOffset, 1), size)
 end
 
 function AL:CalculateSmartLayout(frameW, frameH, position, maxIcons, numIcons, overrides, scale)

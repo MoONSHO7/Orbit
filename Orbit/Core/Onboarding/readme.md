@@ -9,7 +9,7 @@ Onboarding/
   TourPlugin.lua      -- Orbit plugin (RegisterPlugin) for playground frames
   EditModeTour.lua     -- tour flow: dark overlay, tour stops, snap isolation
   Onboarding.xml       -- xml script bundle
-  readme.md
+  README.md
 ```
 
 ## edit mode tour

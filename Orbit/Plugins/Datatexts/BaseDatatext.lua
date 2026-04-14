@@ -21,6 +21,7 @@ function BaseDatatext:New(name)
     return setmetatable({
         name = name,
         events = {},
+        unitEvents = {},
         isEnabled = false,
         frame = nil,
         text = nil,
@@ -226,8 +227,15 @@ function BaseDatatext:RegisterEvent(event, handler)
     if self.isEnabled and self.eventFrame then self.eventFrame:RegisterEvent(event) end
 end
 
+function BaseDatatext:RegisterUnitEvent(event, unit, handler)
+    self.events[event] = handler or self.updateFunc
+    self.unitEvents[event] = unit
+    if self.isEnabled and self.eventFrame then self.eventFrame:RegisterUnitEvent(event, unit) end
+end
+
 function BaseDatatext:UnregisterEvent(event)
     self.events[event] = nil
+    self.unitEvents[event] = nil
     if self.eventFrame then self.eventFrame:UnregisterEvent(event) end
 end
 
@@ -248,7 +256,14 @@ function BaseDatatext:Enable()
         end)
     end
     self.eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-    for event in pairs(self.events) do self.eventFrame:RegisterEvent(event) end
+    for event in pairs(self.events) do
+        local unit = self.unitEvents[event]
+        if unit then
+            self.eventFrame:RegisterUnitEvent(event, unit)
+        else
+            self.eventFrame:RegisterEvent(event)
+        end
+    end
     if self.updateTier then DT.DatatextManager:RegisterForScheduler(self.name, self.updateTier, self.updateFunc) end
     if self.updateFunc then self.updateFunc(self) end
     if self.OnEnable then self:OnEnable() end

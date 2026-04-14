@@ -43,11 +43,12 @@ local function GetVESettings(data)
     local VE = Orbit.VisibilityEngine
     if veKey and VE then
         return VE:GetFrameSetting(veKey, "opacity"), VE:GetFrameSetting(veKey, "oocFade"),
-               VE:GetFrameSetting(veKey, "mouseOver"), VE:GetFrameSetting(veKey, "showWithTarget")
+               VE:GetFrameSetting(veKey, "mouseOver"), VE:GetFrameSetting(veKey, "showWithTarget"),
+               VE:GetFrameSetting(veKey, "alphaLock")
     end
     local opacity = data and data.plugin and data.plugin:GetSetting(data.systemIndex, "Opacity") or 100
     local oocFade = data and data.plugin and data.plugin.GetSetting and data.plugin:GetSetting(data.systemIndex, data.settingKey or "OutOfCombatFade") or false
-    return opacity, oocFade, true, true
+    return opacity, oocFade, true, true, false
 end
 
 
@@ -97,7 +98,7 @@ local function UpdateFrameVisibility(frame, _, data)
         end
     end
     -- Read VE settings
-    local opacity, oocFade, mouseOver, showWithTarget = GetVESettings(data)
+    local opacity, oocFade, mouseOver, showWithTarget, alphaLock = GetVESettings(data)
     local baseAlpha = frame.orbitOpacityExternal and 1 or (opacity or 100) / 100
     local rawOpacity = (opacity or 100) / 100
     -- Early out: no VE effects active — stop any stale fader and reset
@@ -114,12 +115,13 @@ local function UpdateFrameVisibility(frame, _, data)
     local revealFull = (mouseOver and isHovering) or (showWithTarget and hasTarget) or IsCursorRevealing(frame)
     -- Determine OOC hide
     local shouldOOCHide = oocFade and not IsInCombatContext(frame) and not revealFull
-    -- Calculate final alpha
+    -- Calculate final alpha. Alpha Lock caps reveal at the frame's base opacity
+    -- instead of pushing to full 1.0 when mouseOver/target triggers fire.
     local finalAlpha
     if shouldOOCHide then
         finalAlpha = 0
     elseif revealFull then
-        finalAlpha = 1
+        finalAlpha = alphaLock and baseAlpha or 1
     else
         finalAlpha = baseAlpha
     end
@@ -127,7 +129,8 @@ local function UpdateFrameVisibility(frame, _, data)
     if finalAlpha > 0 then
         Orbit.Animation:ApplyHoverFade(frame, finalAlpha, 1, Orbit:IsEditMode())
         if frame._oocFadeHidden then frame._oocFadeHidden = nil; SetGroupBorderOOCHidden(frame, false) end
-        local childAlpha = revealFull and 1 or (frame.orbitOpacityExternal and rawOpacity or baseAlpha)
+        local revealChildAlpha = alphaLock and (frame.orbitOpacityExternal and rawOpacity or baseAlpha) or 1
+        local childAlpha = revealFull and revealChildAlpha or (frame.orbitOpacityExternal and rawOpacity or baseAlpha)
         SyncMinimapChildrenAlpha(frame, childAlpha)
     else
         frame:SetAlpha(0)
@@ -226,7 +229,7 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
             local d = ManagedFrames[self]
             if not d then return end
             
-            local opacity, oocFade, mouseOver, showWithTarget = GetVESettings(d)
+            local opacity, oocFade, mouseOver, showWithTarget, alphaLock = GetVESettings(d)
             local maxAlpha = self.orbitOpacityExternal and 1 or (opacity or 100) / 100
             
             -- Mounted hidden check (shared by all paths)
@@ -249,11 +252,11 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
                 -- OOC fade should hide: force 0
                 finalAlpha = 0
             elseif IsCursorRevealing(self) then
-                -- Cursor override
-                finalAlpha = math.max(alpha, 1)
+                -- Cursor override (respect Alpha Lock if enabled)
+                finalAlpha = alphaLock and math.min(alpha, maxAlpha) or math.max(alpha, 1)
             elseif mouseOver and self.orbitMouseOver then
-                -- MouseOver bypasses maxAlpha cap
-                finalAlpha = alpha
+                -- MouseOver bypasses maxAlpha cap unless Alpha Lock is set
+                finalAlpha = alphaLock and math.min(alpha, maxAlpha) or alpha
             else
                 -- Apply VE opacity as cap
                 finalAlpha = math.min(alpha, maxAlpha)

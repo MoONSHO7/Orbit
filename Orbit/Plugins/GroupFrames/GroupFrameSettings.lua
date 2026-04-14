@@ -1,12 +1,20 @@
 -- [ GROUP FRAME SETTINGS ]--------------------------------------------------------------------------
+-- Dropdown values for GrowthDirection / SortMode / Orientation (raid) are stable lowercase
+-- keys ("down", "group", "vertical"). The display `text` is the English label which is safe
+-- to localize. A one-shot SavedVariables migration in GroupFrame.lua:MigrateP0DropdownValues
+-- upgrades legacy capitalized values on first load.
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local SB = OrbitEngine.SchemaBuilder
 local Helpers = Orbit.GroupFrameHelpers
 
 -- [ ADD SETTINGS ]----------------------------------------------------------------------------------
 local ICON_BUTTON_SIZE = 20
+local DISPEL_FREQ_MIN = -0.50
+local DISPEL_FREQ_MAX = 0.50
+local DISPEL_FREQ_STEP = 0.02
 
 if not OrbitEngine.Layout:HasWidgetType("quickcopyundo") then
     OrbitEngine.Layout:RegisterWidgetType("quickcopyundo", function(container, def, getValue, callback)
@@ -52,9 +60,9 @@ if not OrbitEngine.Layout:HasWidgetType("quickcopyundo") then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             if self:IsEnabled() then
                 self.Icon:SetAlpha(0.8)
-                GameTooltip:SetText("Undo Quick Copy")
+                GameTooltip:SetText(L.PLU_GRP_UNDO_QUICK_COPY)
             else
-                GameTooltip:SetText("Nothing to undo")
+                GameTooltip:SetText(L.PLU_GRP_NOTHING_UNDO)
             end
             GameTooltip:Show()
         end)
@@ -90,7 +98,7 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
         tierOptions[#tierOptions + 1] = { text = Helpers.TIER_LABELS[tier], value = tier }
     end
     table.insert(schema.controls, {
-        type = "dropdown", key = "_EditTier", label = "Editing Tier",
+        type = "dropdown", key = "_EditTier", label = L.PLU_GRP_EDIT_TIER,
         default = plugin:GetCurrentTier(),
         options = tierOptions,
         onChange = function(val)
@@ -109,18 +117,18 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
     plugin._editTierOverride = editTier
     local isParty = Helpers:IsPartyTier(editTier)
 
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colors", "Indicators" }, "Layout", plugin)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_GRP_TAB_LAYOUT, L.PLU_GRP_TAB_COLORS, L.PLU_GRP_TAB_INDICATORS }, L.PLU_GRP_TAB_LAYOUT, plugin)
 
-    if currentTab == "Layout" then
+    if currentTab == L.PLU_GRP_TAB_LAYOUT then
         -- Copy controls
-        local copyOptions = { { text = "Select Tier...", value = "" } }
+        local copyOptions = { { text = L.PLU_GRP_SELECT_TIER, value = "" } }
         for _, tier in ipairs(Helpers.TIERS) do
             if tier ~= editTier then
-                copyOptions[#copyOptions + 1] = { text = "Copy from " .. Helpers.TIER_LABELS[tier], value = tier }
+                copyOptions[#copyOptions + 1] = { text = L.PLU_GRP_COPY_FROM_F:format(Helpers.TIER_LABELS[tier]), value = tier }
             end
         end
         table.insert(schema.controls, {
-            type = "quickcopyundo", key = "_CopyFrom", label = "Quick Copy", default = "",
+            type = "quickcopyundo", key = "_CopyFrom", label = L.PLU_GRP_QUICK_COPY, default = "",
             options = copyOptions,
             plugin = plugin,
             onChange = function(val)
@@ -149,53 +157,53 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
             -- Party-specific layout controls
             local orientation = plugin:GetTierSetting("Orientation", editTier) or 0
             table.insert(schema.controls, {
-                type = "dropdown", key = "Orientation", label = "Orientation", default = 0,
-                options = { { text = "Vertical", value = 0 }, { text = "Horizontal", value = 1 } },
+                type = "dropdown", key = "Orientation", label = L.PLU_GRP_ORIENTATION, default = 0,
+                options = { { text = L.PLU_GRP_ORIENT_VERTICAL, value = 0 }, { text = L.PLU_GRP_ORIENT_HORIZONTAL, value = 1 } },
                 onChange = function(val)
                     plugin:SetTierSetting("Orientation", val, editTier)
-                    plugin:SetTierSetting("GrowthDirection", val == 0 and "Down" or "Right", editTier)
+                    plugin:SetTierSetting("GrowthDirection", val == 0 and "down" or "right", editTier)
                     plugin:ApplySettings()
                     if plugin.frames and plugin.frames[1] and plugin.frames[1].preview then plugin:SchedulePreviewUpdate() end
                     if dialog.orbitTabCallback then dialog.orbitTabCallback() end
                 end,
             })
-            local growthOptions = orientation == 0 and { { text = "Down", value = "Down" }, { text = "Up", value = "Up" }, { text = "Center", value = "Center" } }
-                or { { text = "Right", value = "Right" }, { text = "Left", value = "Left" }, { text = "Center", value = "Center" } }
-            table.insert(schema.controls, { type = "dropdown", key = "GrowthDirection", label = "Growth Direction", default = orientation == 0 and "Down" or "Right", options = growthOptions, onChange = TierMOC("GrowthDirection") })
-            table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160, onChange = TierMOC("Width") })
-            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 40, onChange = TierMOC("Height") })
-            table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 50, step = 1, default = 0, onChange = TierMOC("Spacing") })
+            local growthOptions = orientation == 0 and { { text = L.PLU_GRP_GROW_DOWN, value = "down" }, { text = L.PLU_GRP_GROW_UP, value = "up" }, { text = L.PLU_GRP_GROW_CENTER, value = "center" } }
+                or { { text = L.PLU_GRP_GROW_RIGHT, value = "right" }, { text = L.PLU_GRP_GROW_LEFT, value = "left" }, { text = L.PLU_GRP_GROW_CENTER, value = "center" } }
+            table.insert(schema.controls, { type = "dropdown", key = "GrowthDirection", label = L.PLU_GRP_GROWTH, default = orientation == 0 and "down" or "right", options = growthOptions, onChange = TierMOC("GrowthDirection") })
+            table.insert(schema.controls, { type = "slider", key = "Width", label = L.PLU_GRP_WIDTH, min = 50, max = 400, step = 1, default = 160, onChange = TierMOC("Width") })
+            table.insert(schema.controls, { type = "slider", key = "Height", label = L.PLU_GRP_HEIGHT, min = 20, max = 100, step = 1, default = 40, onChange = TierMOC("Height") })
+            table.insert(schema.controls, { type = "slider", key = "Spacing", label = L.PLU_GRP_SPACING, min = 0, max = 50, step = 1, default = 0, onChange = TierMOC("Spacing") })
             table.insert(schema.controls, {
-                type = "checkbox", key = "IncludePlayer", label = "Include Player", default = false,
+                type = "checkbox", key = "IncludePlayer", label = L.PLU_GRP_INCLUDE_PLAYER, default = false,
                 onChange = TierMOC("IncludePlayer", function()
                     if plugin.frames and plugin.frames[1] and plugin.frames[1].preview then plugin:ShowPreview() else plugin:UpdateFrameUnits() end
                 end),
             })
             local showPower = plugin:GetTierSetting("ShowPowerBar", editTier)
             if showPower == nil then showPower = true end
-            table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Power Bar", default = true, onChange = function(val)
+            table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = L.PLU_GRP_SHOW_POWER_BAR, default = true, onChange = function(val)
                 TierMOC("ShowPowerBar")(val)
                 if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end })
             if showPower then
-                table.insert(schema.controls, { type = "slider", key = "PowerBarHeight", label = "Powerbar Height", min = 5, max = 30, step = 1, default = 10, suffix = "%", onChange = TierMOC("PowerBarHeight") })
+                table.insert(schema.controls, { type = "slider", key = "PowerBarHeight", label = L.PLU_GRP_POWER_BAR_HEIGHT, min = 5, max = 30, step = 1, default = 10, suffix = "%", onChange = TierMOC("PowerBarHeight") })
             end
         else
             -- Raid-specific layout controls
             local tierMax = Helpers:GetTierMaxFrames(editTier)
             local maxGroups = math.ceil(tierMax / 5)
-            local sortMode = plugin:GetTierSetting("SortMode", editTier) or "Group"
-            if sortMode == "Group" then
+            local sortMode = plugin:GetTierSetting("SortMode", editTier) or "group"
+            if sortMode == "group" then
                 table.insert(schema.controls, {
-                    type = "dropdown", key = "Orientation", label = "Orientation", default = "Vertical",
-                    options = { { text = "Vertical", value = "Vertical" }, { text = "Horizontal", value = "Horizontal" } },
+                    type = "dropdown", key = "Orientation", label = L.PLU_GRP_ORIENTATION, default = "vertical",
+                    options = { { text = L.PLU_GRP_ORIENT_VERTICAL, value = "vertical" }, { text = L.PLU_GRP_ORIENT_HORIZONTAL, value = "horizontal" } },
                     onChange = TierMOC("Orientation"),
                 })
             end
-            table.insert(schema.controls, { type = "dropdown", key = "GrowthDirection", label = "Growth Direction", default = "Down", options = { { text = "Down", value = "Down" }, { text = "Up", value = "Up" }, { text = "Center", value = "Center" } }, onChange = TierMOC("GrowthDirection") })
+            table.insert(schema.controls, { type = "dropdown", key = "GrowthDirection", label = L.PLU_GRP_GROWTH, default = "down", options = { { text = L.PLU_GRP_GROW_DOWN, value = "down" }, { text = L.PLU_GRP_GROW_UP, value = "up" }, { text = L.PLU_GRP_GROW_CENTER, value = "center" } }, onChange = TierMOC("GrowthDirection") })
             table.insert(schema.controls, {
-                type = "dropdown", key = "SortMode", label = "Sort Mode", default = "Group",
-                options = { { text = "Group", value = "Group" }, { text = "Role", value = "Role" }, { text = "Alphabetical", value = "Alphabetical" } },
+                type = "dropdown", key = "SortMode", label = L.PLU_GRP_SORT_MODE, default = "group",
+                options = { { text = L.PLU_GRP_SORT_GROUP, value = "group" }, { text = L.PLU_GRP_SORT_ROLE, value = "role" }, { text = L.PLU_GRP_SORT_ALPHABETICAL, value = "alphabetical" } },
                 onChange = function(val)
                     plugin:SetTierSetting("SortMode", val, editTier)
                     if not InCombatLockdown() then plugin:UpdateFrameUnits(); plugin:PositionFrames() end
@@ -203,19 +211,19 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
                     C_Timer.After(0, function() OrbitEngine.Layout:Reset(dialog); Orbit.GroupFrameSettings(plugin, dialog, systemFrame) end)
                 end,
             })
-            table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 200, step = 1, default = 100, onChange = TierMOC("Width") })
-            table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 80, step = 1, default = 40, onChange = TierMOC("Height") })
-            table.insert(schema.controls, { type = "slider", key = "MemberSpacing", label = "Member Spacing", min = 0, max = 50, step = 1, default = 2, onChange = TierMOC("MemberSpacing") })
-            if sortMode == "Group" then
+            table.insert(schema.controls, { type = "slider", key = "Width", label = L.PLU_GRP_WIDTH, min = 50, max = 200, step = 1, default = 100, onChange = TierMOC("Width") })
+            table.insert(schema.controls, { type = "slider", key = "Height", label = L.PLU_GRP_HEIGHT, min = 20, max = 80, step = 1, default = 40, onChange = TierMOC("Height") })
+            table.insert(schema.controls, { type = "slider", key = "MemberSpacing", label = L.PLU_GRP_MEMBER_SPACING, min = 0, max = 50, step = 1, default = 2, onChange = TierMOC("MemberSpacing") })
+            if sortMode == "group" then
                 local gprDefault = math.min(maxGroups, 6)
-                table.insert(schema.controls, { type = "slider", key = "GroupsPerRow", label = "Groups Per Row", min = 1, max = maxGroups, step = 1, default = gprDefault, onChange = TierMOC("GroupsPerRow") })
-                table.insert(schema.controls, { type = "slider", key = "GroupSpacing", label = "Group Spacing", min = 0, max = 50, step = 1, default = 4, onChange = TierMOC("GroupSpacing") })
+                table.insert(schema.controls, { type = "slider", key = "GroupsPerRow", label = L.PLU_GRP_GROUPS_PER_ROW, min = 1, max = maxGroups, step = 1, default = gprDefault, onChange = TierMOC("GroupsPerRow") })
+                table.insert(schema.controls, { type = "slider", key = "GroupSpacing", label = L.PLU_GRP_GROUP_SPACING, min = 0, max = 50, step = 1, default = 4, onChange = TierMOC("GroupSpacing") })
             else
                 local maxFlatRows = math.max(1, math.ceil(tierMax / 5))
-                table.insert(schema.controls, { type = "slider", key = "FlatRows", label = "Rows", min = 1, max = maxFlatRows, step = 1, default = 1, onChange = TierMOC("FlatRows") })
+                table.insert(schema.controls, { type = "slider", key = "FlatRows", label = L.PLU_GRP_ROWS, min = 1, max = maxFlatRows, step = 1, default = 1, onChange = TierMOC("FlatRows") })
             end
             table.insert(schema.controls, {
-                type = "checkbox", key = "HideBlizzardRaidPanel", label = "Hide Blizzard Raid Panel", default = false,
+                type = "checkbox", key = "HideBlizzardRaidPanel", label = L.PLU_GRP_HIDE_BLIZZ_RAID, default = false,
                 onChange = function(val)
                     plugin:SetSetting(1, "HideBlizzardRaidPanel", val)
                     if plugin.UpdateBlizzardRaidPanelVisibility then
@@ -225,21 +233,21 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
             })
             local showPower = plugin:GetTierSetting("ShowPowerBar", editTier)
             if showPower == nil then showPower = true end
-            table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = "Show Healer Power Bars", default = true, onChange = function(val)
+            table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = L.PLU_GRP_HEALER_POWER, default = true, onChange = function(val)
                 TierMOC("ShowPowerBar")(val)
                 if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end })
             if showPower then
-                table.insert(schema.controls, { type = "slider", key = "PowerBarHeight", label = "Powerbar Height", min = 5, max = 30, step = 1, default = 16, suffix = "%", onChange = TierMOC("PowerBarHeight") })
+                table.insert(schema.controls, { type = "slider", key = "PowerBarHeight", label = L.PLU_GRP_POWER_BAR_HEIGHT, min = 5, max = 30, step = 1, default = 16, suffix = "%", onChange = TierMOC("PowerBarHeight") })
             end
         end
-    elseif currentTab == "Colors" then
-        table.insert(schema.controls, { type = "color", key = "SelectionColor", label = "Selection Highlight", default = { r = 0.8, g = 0.9, b = 1.0, a = 1 }, onChange = TierMOC("SelectionColor") })
+    elseif currentTab == L.PLU_GRP_TAB_COLORS then
+        table.insert(schema.controls, { type = "color", key = "SelectionColor", label = L.PLU_GRP_SELECT_HIGHLIGHT, default = { r = 0.8, g = 0.9, b = 1.0, a = 1 }, onChange = TierMOC("SelectionColor") })
         local aggroRefresh = function() Orbit.AggroIndicatorMixin:InvalidateAggroSettings(plugin); if plugin.UpdateAllAggroIndicators then plugin:UpdateAllAggroIndicators(plugin) end end
-        table.insert(schema.controls, { type = "color", key = "AggroColor", label = "Aggro Highlight", default = { r = 1.0, g = 0.0, b = 0.0, a = 1 }, onChange = TierMOC("AggroColor", aggroRefresh) })
-    elseif currentTab == "Indicators" then
-        if not isParty and (plugin:GetTierSetting("SortMode", editTier) or "Group") == "Group" then
-            table.insert(schema.controls, { type = "checkbox", key = "ShowGroupLabels", label = "Show Groups", default = true, onChange = TierMOC("ShowGroupLabels") })
+        table.insert(schema.controls, { type = "color", key = "AggroColor", label = L.PLU_GRP_AGGRO_HIGHLIGHT, default = { r = 1.0, g = 0.0, b = 0.0, a = 1 }, onChange = TierMOC("AggroColor", aggroRefresh) })
+    elseif currentTab == L.PLU_GRP_TAB_INDICATORS then
+        if not isParty and (plugin:GetTierSetting("SortMode", editTier) or "group") == "group" then
+            table.insert(schema.controls, { type = "checkbox", key = "ShowGroupLabels", label = L.PLU_GRP_SHOW_GROUPS, default = true, onChange = TierMOC("ShowGroupLabels") })
         end
         local dispelRefresh = function() Orbit.DispelIndicatorMixin:InvalidateDispelCurve(plugin); if plugin.UpdateAllDispelIndicators then plugin:UpdateAllDispelIndicators(plugin) end end
         local dispelToggle = function() dispelRefresh(); if dialog.orbitTabCallback then dialog.orbitTabCallback() end end
@@ -247,27 +255,27 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
         local dispelEnabled = plugin:GetTierSetting("DispelIndicatorEnabled", editTier)
         if dispelEnabled == nil then dispelEnabled = true end
 
-        table.insert(schema.controls, { type = "checkbox", key = "DispelIndicatorEnabled", label = "Enable Dispel Indicators", default = true, onChange = TierMOC("DispelIndicatorEnabled", dispelToggle) })
+        table.insert(schema.controls, { type = "checkbox", key = "DispelIndicatorEnabled", label = L.PLU_GRP_DISPEL_ENABLE, default = true, onChange = TierMOC("DispelIndicatorEnabled", dispelToggle) })
 
         if dispelEnabled then
-            table.insert(schema.controls, { type = "checkbox", key = "DispelOnlyByMe", label = "Only Dispellable By Me", default = false, onChange = TierMOC("DispelOnlyByMe", dispelRefresh) })
+            table.insert(schema.controls, { type = "checkbox", key = "DispelOnlyByMe", label = L.PLU_GRP_DISPEL_ME, default = false, onChange = TierMOC("DispelOnlyByMe", dispelRefresh) })
             local glowType = plugin:GetTierSetting("DispelGlowType", editTier) or Orbit.Constants.Glow.Type.Pixel
-            table.insert(schema.controls, { type = "dropdown", key = "DispelGlowType", label = "Glow Type", default = Orbit.Constants.Glow.Type.Pixel, options = { { label = "Pixel Glow", value = Orbit.Constants.Glow.Type.Pixel }, { label = "Autocast Glow", value = Orbit.Constants.Glow.Type.Autocast } }, onChange = TierMOC("DispelGlowType", dispelToggle) })
+            table.insert(schema.controls, { type = "dropdown", key = "DispelGlowType", label = L.PLU_GRP_DISPEL_GLOW, default = Orbit.Constants.Glow.Type.Pixel, options = { { label = L.PLU_GRP_DISPEL_PIXEL, value = Orbit.Constants.Glow.Type.Pixel }, { label = L.PLU_GRP_DISPEL_AUTOCAST, value = Orbit.Constants.Glow.Type.Autocast } }, onChange = TierMOC("DispelGlowType", dispelToggle) })
 
             local def = Orbit.Constants.Glow.Defaults.Pixel
             if glowType == Orbit.Constants.Glow.Type.Autocast then
                 def = Orbit.Constants.Glow.Defaults.Autocast
-                table.insert(schema.controls, { type = "slider", key = "DispelNumLines", label = "Particles", min = 1, max = 20, step = 1, default = def.Particles, onChange = TierMOC("DispelNumLines", dispelRefresh) })
+                table.insert(schema.controls, { type = "slider", key = "DispelNumLines", label = L.PLU_GRP_DISPEL_PARTICLES, min = 1, max = 20, step = 1, default = def.Particles, onChange = TierMOC("DispelNumLines", dispelRefresh) })
             else
-                table.insert(schema.controls, { type = "slider", key = "DispelNumLines", label = "Lines", min = 1, max = 20, step = 1, default = def.Lines, onChange = TierMOC("DispelNumLines", dispelRefresh) })
+                table.insert(schema.controls, { type = "slider", key = "DispelNumLines", label = L.PLU_GRP_DISPEL_LINES, min = 1, max = 20, step = 1, default = def.Lines, onChange = TierMOC("DispelNumLines", dispelRefresh) })
             end
-            
-            table.insert(schema.controls, { type = "slider", key = "DispelFrequency", label = "Frequency", min = -0.50, max = 0.50, step = 0.02, default = def.Frequency, formatter = function(v) return string.format("%.2f", v) end, onChange = TierMOC("DispelFrequency", dispelRefresh) })
-            
+
+            table.insert(schema.controls, { type = "slider", key = "DispelFrequency", label = L.PLU_GRP_DISPEL_FREQ, min = DISPEL_FREQ_MIN, max = DISPEL_FREQ_MAX, step = DISPEL_FREQ_STEP, default = def.Frequency, formatter = function(v) return string.format("%.2f", v) end, onChange = TierMOC("DispelFrequency", dispelRefresh) })
+
             if glowType == Orbit.Constants.Glow.Type.Pixel then
-                table.insert(schema.controls, { type = "slider", key = "DispelLength", label = "Length", min = 1, max = 30, step = 1, default = def.Length, onChange = TierMOC("DispelLength", dispelRefresh) })
-                table.insert(schema.controls, { type = "slider", key = "DispelThickness", label = "Thickness", min = 1, max = 10, step = 1, default = def.Thickness, onChange = TierMOC("DispelThickness", dispelRefresh) })
-                table.insert(schema.controls, { type = "checkbox", key = "DispelBorder", label = "Use Border", default = def.Border, onChange = TierMOC("DispelBorder", dispelRefresh) })
+                table.insert(schema.controls, { type = "slider", key = "DispelLength", label = L.PLU_GRP_DISPEL_LENGTH, min = 1, max = 30, step = 1, default = def.Length, onChange = TierMOC("DispelLength", dispelRefresh) })
+                table.insert(schema.controls, { type = "slider", key = "DispelThickness", label = L.PLU_GRP_DISPEL_THICKNESS, min = 1, max = 10, step = 1, default = def.Thickness, onChange = TierMOC("DispelThickness", dispelRefresh) })
+                table.insert(schema.controls, { type = "checkbox", key = "DispelBorder", label = L.PLU_GRP_DISPEL_BORDER, default = def.Border, onChange = TierMOC("DispelBorder", dispelRefresh) })
             end
         end
     end

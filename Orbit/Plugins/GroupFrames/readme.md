@@ -46,6 +46,10 @@ graph TD
 
 on group roster change or zone transition, the plugin evaluates the current tier using member count and instance constraints (e.g. mythic raids lock at 20 players via `GetInstanceInfo()` maxPlayers). if the tier changed, it saves the old tier's position, reads settings for the new tier, restores its position, and re-applies layout. party tier uses simple vertical/horizontal stacking. raid tiers use group-based grid layout with sort modes.
 
+## position persistence
+
+container position is stored **per tier** under `Tiers[tier].Position` (via `SaveCurrentTierPosition` / `RestoreTierPosition`). the plugin deliberately does not implement `IsSpecScopedIndex`, so it is excluded from Persistence's spec-change bulk restore ([`Core/EditMode` README](../../Core/EditMode/README.md)) — the container is authoritative over its own anchor, and the only callers that move it are initial load (`OnLoad`, to apply the saved position for the current tier on /reload), tier transitions (`CheckTierChange`), combat-end replay (`PLAYER_REGEN_ENABLED`), Edit Mode exit, and the tier dropdown in settings. `ApplySettings` must never call `RestoreTierPosition` — that call path was what caused the "snap back to default on group join" regression.
+
 ## adding a new group frame feature
 
 1. if shared with boss frames, add to core/unitdisplay as a mixin

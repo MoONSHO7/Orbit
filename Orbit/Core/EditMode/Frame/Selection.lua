@@ -191,8 +191,16 @@ function Selection:GetSnapTargets(excludeFrame)
         return false
     end
 
+    -- Skip frames that are skipped in the AnchorGraph (virtual = content-empty,
+    -- or disabled = off-spec / plugin off). Snapping to a skipped frame would
+    -- create an anchor that ReconcileChain immediately promotes away, which
+    -- is confusing UX (the visual drop point isn't where the frame ends up).
+    -- Empty Tracked containers are the canonical case: they stay visible and
+    -- selectable in edit mode but must not be valid anchor targets until they
+    -- have content.
+    local Graph = Engine.AnchorGraph
     for f in pairs(self.selections) do
-        if f ~= excludeFrame and not f:IsForbidden() and f:IsVisible() then
+        if f ~= excludeFrame and not f:IsForbidden() and f:IsVisible() and not Graph:IsSkipped(f) then
             -- Skip children/descendants of the dragged frame
             if not IsDependent(f, excludeFrame) then
                 table.insert(targets, f)
@@ -202,7 +210,7 @@ function Selection:GetSnapTargets(excludeFrame)
 
     if EditModeManagerFrame and EditModeManagerFrame.registeredSystemFrames then
         for _, systemFrame in ipairs(EditModeManagerFrame.registeredSystemFrames) do
-            if systemFrame ~= excludeFrame and systemFrame:IsVisible() and not systemFrame:IsForbidden() and not systemFrame.orbitSnapExclude then
+            if systemFrame ~= excludeFrame and systemFrame:IsVisible() and not systemFrame:IsForbidden() and not systemFrame.orbitSnapExclude and not Graph:IsSkipped(systemFrame) then
                 if not IsDependent(systemFrame, excludeFrame) then
                     table.insert(targets, systemFrame)
                 end
@@ -220,6 +228,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
 
     local selection = CreateFrame("Frame", nil, frame, "EditModeSystemSelectionTemplate")
     selection:SetAllPoints()
+    selection:SetToplevel(false) -- template has toplevel=true; disable to prevent auto-Raise on Show()
     selection:SetFrameStrata(Orbit.Constants.Strata.Overlay)
     selection:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.EditModeSelection)
     selection.isOrbitSelection = true

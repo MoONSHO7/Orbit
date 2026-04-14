@@ -45,7 +45,7 @@ local UNIT_REREGISTER_EVENTS = {
 local TIER_DEFAULTS = {
     Party = {
         Width = 160, Height = 40, Scale = 100, Spacing = 3, Orientation = 0,
-        GrowthDirection = "Down", IncludePlayer = true,
+        GrowthDirection = "down", IncludePlayer = true,
         ShowPowerBar = true, PowerBarHeight = 10,
         HealthTextMode = "percent_short", ShowHealthValue = true,
         ComponentPositions = {
@@ -85,8 +85,8 @@ local TIER_DEFAULTS = {
     },
     Mythic = {
         Width = 100, Height = 40, Scale = 100, MemberSpacing = 2, GroupSpacing = 2,
-        GroupsPerRow = 6, GrowthDirection = "Down", SortMode = "Group",
-        Orientation = "Horizontal", FlatRows = 1,
+        GroupsPerRow = 6, GrowthDirection = "down", SortMode = "group",
+        Orientation = "horizontal", FlatRows = 1,
         ShowPowerBar = true, PowerBarHeight = 16, ShowGroupLabels = true,
         ShowHealthValue = false, HealthTextMode = "percent_short",
         ComponentPositions = {
@@ -498,8 +498,43 @@ function Plugin:AddSettings(dialog, systemFrame)
 end
 
 
+-- [ PHASE 0 MIGRATION: lowercase dropdown values ]--------------------------------------------------
+-- GrowthDirection / SortMode / Orientation (raid) used to store their English display
+-- text as the saved value. Phase 0 split text/value so the stored value is a stable
+-- lowercase key and the display text can be localized without breaking saved settings.
+-- Runs once per SavedVariables file, gated on a flag.
+local P0_LEGACY_VALUES = {
+    ["Down"] = "down", ["Up"] = "up", ["Left"] = "left", ["Right"] = "right", ["Center"] = "center",
+    ["Vertical"] = "vertical", ["Horizontal"] = "horizontal",
+    ["Group"] = "group", ["Role"] = "role", ["Alphabetical"] = "alphabetical",
+}
+local function MigrateP0DropdownValues(plugin)
+    if plugin:GetSetting(1, "_P0DropdownMigrated") then return end
+    local tiers = plugin:GetSetting(1, "Tiers")
+    if tiers then
+        for _, settings in pairs(tiers) do
+            if type(settings) == "table" then
+                if type(settings.GrowthDirection) == "string" and P0_LEGACY_VALUES[settings.GrowthDirection] then
+                    settings.GrowthDirection = P0_LEGACY_VALUES[settings.GrowthDirection]
+                end
+                if type(settings.SortMode) == "string" and P0_LEGACY_VALUES[settings.SortMode] then
+                    settings.SortMode = P0_LEGACY_VALUES[settings.SortMode]
+                end
+                -- Orientation is numeric (0/1) for Party tier, string for raid tiers.
+                -- Only rewrite the string form.
+                if type(settings.Orientation) == "string" and P0_LEGACY_VALUES[settings.Orientation] then
+                    settings.Orientation = P0_LEGACY_VALUES[settings.Orientation]
+                end
+            end
+        end
+        plugin:SetSetting(1, "Tiers", tiers)
+    end
+    plugin:SetSetting(1, "_P0DropdownMigrated", true)
+end
+
 -- [ ON LOAD ]---------------------------------------------------------------------------------------
 function Plugin:OnLoad()
+    MigrateP0DropdownValues(self)
 
     HideNativeGroupFrames()
     self:UpdateBlizzardRaidPanelVisibility()
@@ -548,9 +583,7 @@ function Plugin:OnLoad()
     self.container.orbitCanvasFrame = self.frames[1]
     self.container.orbitCanvasTitle = "Group Frame: " .. self:GetCurrentTier()
 
-    if not self.container:GetPoint() then
-        self.container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", GF.DefaultPartyOffsetX or 100, GF.DefaultPartyOffsetY or -120)
-    end
+    self:RestoreTierPosition(self._currentTier)
 
     -- Visibility driver: unified — show when in any group
     local function UpdateVisibilityDriver()
@@ -592,7 +625,6 @@ function Plugin:OnLoad()
                 UpdateVisibilityDriver()
                 if not self:CheckTierChange() then
                     self:UpdateFrameUnits()
-                    self:ApplySettings()
                 end
                 for _, frame in ipairs(self.frames) do
                     if not frame.preview and frame.unit and frame:IsShown() then
@@ -688,30 +720,50 @@ end
 function Plugin:SaveCurrentTierPosition(tier)
     tier = tier or self:GetCurrentTier()
     if not self.container or not tier then return end
-    local point, _, _, x, y = self.container:GetPoint()
+    local point, relativeTo, relativePoint, x, y = self.container:GetPoint()
     if not point then return end
+    local relName = relativeTo and relativeTo.GetName and relativeTo:GetName() or "UIParent"
     local pm = OrbitEngine.PositionManager
     if pm then
         local eph = pm:GetPosition(self.container)
-        if eph and eph.point then point, x, y = eph.point, eph.x, eph.y end
+        if eph and eph.point then
+            point, x, y = eph.point, eph.x, eph.y
+            relName = eph.relativeTo or relName
+            relativePoint = eph.relativePoint or relativePoint
+        end
     end
-    self:SetTierSetting("Position", { point = point, x = x, y = y }, tier)
+    self:SetTierSetting("Position", { point = point, relativeTo = relName, relativePoint = relativePoint or point, x = x, y = y }, tier)
 end
+
+local TIER_DEFAULT_POSITIONS = {
+    Party  = { point = "TOPLEFT", relativeTo = "UIParent", relativePoint = "TOPLEFT", x = 100,  y = -120 },
+    Mythic = { point = "TOPLEFT", relativeTo = "UIParent", relativePoint = "TOPLEFT", x = 100,  y = -260 },
+    Heroic = { point = "TOPLEFT", relativeTo = "UIParent", relativePoint = "TOPLEFT", x = 260,  y = -260 },
+    World  = { point = "TOPLEFT", relativeTo = "UIParent", relativePoint = "TOPLEFT", x = 420,  y = -260 },
+}
 
 function Plugin:RestoreTierPosition(tier)
     tier = tier or self:GetCurrentTier()
     if not self.container or InCombatLockdown() then return end
     local pos = self:GetTierSetting("Position", tier)
     if not pos or not pos.point then
-        pos = self:GetSetting(1, "Position")
+        local legacy = self:GetSetting(1, "Position")
+        if legacy and legacy.point then
+            pos = legacy
+            self:SetTierSetting("Position", pos, tier)
+        end
     end
-    if not pos or not pos.point then return end
+    if not pos or not pos.point then
+        pos = TIER_DEFAULT_POSITIONS[tier] or TIER_DEFAULT_POSITIONS.Party
+        self:SetTierSetting("Position", pos, tier)
+    end
     local x, y = pos.x, pos.y
     if OrbitEngine.Pixel then
         x, y = OrbitEngine.Pixel:SnapPosition(x, y, pos.point, self.container:GetWidth(), self.container:GetHeight(), self.container:GetEffectiveScale())
     end
+    local relativeTo = (pos.relativeTo and _G[pos.relativeTo]) or UIParent
     self.container:ClearAllPoints()
-    self.container:SetPoint(pos.point, x, y)
+    self.container:SetPoint(pos.point, relativeTo, pos.relativePoint or pos.point, x, y)
     if OrbitEngine.PositionManager then OrbitEngine.PositionManager:ClearFrame(self.container) end
 end
 
@@ -790,25 +842,25 @@ function Plugin:AssignPartyUnits()
             local unit = sortedUnits[i]
             if unit then
                 local currentUnit = frame:GetAttribute("unit")
-                local newGuid = unit and UnitGUID(unit) or nil
-                
-                -- Check for secret values (WoW 12.0)
-                if newGuid and issecretvalue and issecretvalue(newGuid) then newGuid = nil end
+                -- UnitGUID can return a secret in combat. Check issecretvalue BEFORE any `or nil`
+                -- or boolean test — those would throw.
+                local newGuid = UnitGUID(unit)
+                if issecretvalue(newGuid) then newGuid = nil end
 
                 local guidChanged = newGuid and frame._guidCache ~= newGuid
 
                 if currentUnit ~= unit or guidChanged then
+                    SafeUnregisterUnitWatch(frame)
                     frame:SetAttribute("unit", unit)
                     frame.unit = unit
                     frame._guidCache = newGuid
                     self:UnregisterFrameEvents(frame)
                     self:RegisterUnitEvents(frame, unit)
                     UpdatePrivateAuras(frame, self)
+                    frame:SetSize(tierWidth, tierHeight)
+                    SafeRegisterUnitWatch(frame)
                     changed = true
                 end
-                SafeUnregisterUnitWatch(frame)
-                frame:SetSize(tierWidth, tierHeight)
-                SafeRegisterUnitWatch(frame)
                 if not frame:IsShown() then frame:Show(); changed = true end
                 if frame.UpdateAll then frame:UpdateAll() end
                 UpdatePowerBar(frame, self)
@@ -828,7 +880,7 @@ function Plugin:AssignPartyUnits()
 end
 
 function Plugin:AssignRaidUnits()
-    local sortMode = self:GetTierSetting("SortMode") or "Group"
+    local sortMode = self:GetTierSetting("SortMode") or "group"
     local sortedUnits = Helpers:GetSortedRaidUnits(sortMode)
     local tierWidth = self:GetTierSetting("Width") or DEFAULT_WIDTH
     local tierHeight = self:GetTierSetting("Height") or DEFAULT_HEIGHT
@@ -841,25 +893,25 @@ function Plugin:AssignRaidUnits()
             if unitData then
                 local token = unitData.token
                 local currentUnit = frame:GetAttribute("unit")
-                local newGuid = token and UnitGUID(token) or nil
-
-                -- Check for secret values (WoW 12.0)
-                if newGuid and issecretvalue and issecretvalue(newGuid) then newGuid = nil end
+                -- UnitGUID can return a secret in combat. Check issecretvalue BEFORE any `or nil`
+                -- or boolean test — those would throw.
+                local newGuid = token and UnitGUID(token)
+                if issecretvalue(newGuid) then newGuid = nil end
 
                 local guidChanged = newGuid and frame._guidCache ~= newGuid
 
                 if currentUnit ~= token or guidChanged then
+                    SafeUnregisterUnitWatch(frame)
                     frame:SetAttribute("unit", token)
                     frame.unit = token
                     frame._guidCache = newGuid
                     self:UnregisterFrameEvents(frame)
                     self:RegisterUnitEvents(frame, token)
                     UpdatePrivateAuras(frame, self)
+                    frame:SetSize(tierWidth, tierHeight)
+                    SafeRegisterUnitWatch(frame)
                     changed = true
                 end
-                SafeUnregisterUnitWatch(frame)
-                frame:SetSize(tierWidth, tierHeight)
-                SafeRegisterUnitWatch(frame)
                 if not frame:IsShown() then frame:Show(); changed = true end
                 if frame.UpdateAll then frame:UpdateAll() end
                 UpdatePowerBar(frame, self)
@@ -1011,9 +1063,6 @@ function Plugin:ApplySettings()
     end
 
     self:PositionFrames()
-    if not Orbit:IsEditMode() then
-        self:RestoreTierPosition()
-    end
 
     if self.frames[1] and self.frames[1].preview then
         self:SchedulePreviewUpdate()

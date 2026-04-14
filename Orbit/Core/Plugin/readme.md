@@ -10,7 +10,7 @@ defines how plugins register with orbit, how their settings are stored and retri
 
 | file | responsibility |
 |---|---|
-| PluginMixin.lua | base mixin applied to all plugins. provides `GetSetting`, `SetSetting`, `IsComponentDisabled`, `ReadPluginSetting`. auto-subscribes to `SETTINGS_CHANGED`, `COLORS_CHANGED`, and `STRATA_UPDATED` via debounced `ApplySettings`. |
+| PluginMixin.lua | base mixin applied to all plugins. provides `GetSetting`, `SetSetting`, `IsComponentDisabled`, `ReadPluginSetting`, and spec-scoped storage (`GetCurrentSpecID`, `GetCharSpecStore`, `GetSpecData`, `SetSpecData`) layered under `Orbit.db.SpecData[charKey][specID][systemIndex][key]`. auto-subscribes to `SETTINGS_CHANGED`, `COLORS_CHANGED`, and `STRATA_UPDATED` via debounced `ApplySettings`. |
 | Registry.lua | plugin registration table. `RegisterPlugin` and `GetPlugin`. |
 | ProfileManager.lua | profile crud (create, copy, delete, switch). fires `ORBIT_PROFILE_CHANGED`. |
 | DefaultProfile.lua | default settings for every plugin and system index. |

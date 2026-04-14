@@ -100,7 +100,7 @@ function Plugin:OnLoad()
     end
 
     -- Force refresh on pet change (mount/dismount/summon/dismiss)
-    self.frame:RegisterEvent("UNIT_PET")
+    self.frame:RegisterUnitEvent("UNIT_PET", "player")
     self.frame:HookScript("OnEvent", function(_, event, unit)
         if event == "UNIT_PET" and unit == "player" then
             C_Timer.After(0.2, function()

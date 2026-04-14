@@ -385,10 +385,10 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
             if Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(plugin.name, 1) then return end
         end
         local targetBar = self.orbitBar or self
-        local name, text, texture, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
+        local name, text, texture, startMs, endMs, _, _, notInterruptible = UnitCastingInfo(unit)
         local isChanneled = false
         if not name then
-            name, text, texture, _, _, _, notInterruptible = UnitChannelInfo(unit)
+            name, text, texture, startMs, endMs, _, notInterruptible = UnitChannelInfo(unit)
             if name then
                 isChanneled = true
             end
@@ -415,6 +415,21 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
         self.castTimestamp = GetTime()
         self.durationObj = durationObj
         self.timerThrottle = 0
+        -- Build a curve mapping remaining-percent [0,1] -> remaining-seconds [0, totalSec]
+        -- so OnUpdate can read a formatted timer via durObj:EvaluateRemainingPercent without
+        -- Lua arithmetic. startMs/endMs can be secret for enemy units in combat; when they
+        -- are, we skip the curve and the timer text simply stays blank for that cast.
+        self.timerSecondsCurve = nil
+        if C_CurveUtil and C_CurveUtil.CreateCurve and startMs and endMs
+            and not issecretvalue(startMs) and not issecretvalue(endMs) then
+            local totalSec = (endMs - startMs) / 1000
+            if totalSec > 0 then
+                local curve = C_CurveUtil.CreateCurve()
+                curve:AddPoint(0, 0)
+                curve:AddPoint(1, totalSec)
+                self.timerSecondsCurve = curve
+            end
+        end
         -- Engine-driven: let SetTimerDuration animate the bar (direction: 0=fill, 1=drain)
         local direction = isChanneled and 1 or 0
         if targetBar.SetTimerDuration then
@@ -451,6 +466,8 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
         self.casting = false
         self.channeling = false
         self.durationObj = nil
+        self.timerSecondsCurve = nil
+        if self.Timer then self.Timer:SetText("") end
         if self.protectedOverlay then self.protectedOverlay:SetAlpha(0) end
         if not self.preview then
             if InCombatLockdown() and self:IsProtected() then
@@ -574,15 +591,17 @@ function Mixin:SetupCastBarOnUpdate(bar)
         if not self.Timer or not self.Timer:IsShown() then
             return
         end
-        if not self.durationObj then
+        if not self.durationObj or not self.timerSecondsCurve then
             return
         end
-        local getter = self.durationObj.GetRemainingDuration or self.durationObj.GetRemaining
-        if getter then
-            local ok, remaining = pcall(getter, self.durationObj)
-            if ok then
-                pcall(self.Timer.SetFormattedText, self.Timer, "%.1f", remaining)
-            end
+        -- Evaluate remaining seconds via curve (no Lua arithmetic). EvaluateRemainingPercent
+        -- can return a secret when the cast source is secret; string.format would throw, so
+        -- only format in the non-secret path. Omitting the update leaves the previous value
+        -- visible, which is acceptable since the bar itself is engine-driven.
+        local remaining = self.durationObj:EvaluateRemainingPercent(self.timerSecondsCurve)
+        if not issecretvalue(remaining) and type(remaining) == "number" then
+            if remaining < 0 then remaining = 0 end
+            self.Timer:SetFormattedText("%.1f", remaining)
         end
         
         if start then

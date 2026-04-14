@@ -1,10 +1,12 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <Script file="Constants.lua"/>
     <Script file="Media.lua"/>
+    <Script file="WhitelistedSpells.lua"/>
     <Script file="StrataEngine.lua"/>
     <Script file="SecretValueUtils.lua"/>
     <Script file="TooltipParser.lua"/>
     <Script file="CooldownUtils.lua"/>
+    <Script file="CooldownDragDrop.lua"/>
     <Script file="GlowUtils.lua"/>
     <Script file="GlowController.lua"/>
 </Ui>

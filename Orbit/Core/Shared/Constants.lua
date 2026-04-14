@@ -133,8 +133,8 @@ C.GroupFrames = {
     DefaultRaidOffsetX = 20,
     DefaultRaidOffsetY = -300,
     RolePriority = { TANK = 1, HEALER = 2, DAMAGER = 3, NONE = 4 },
-    GrowthDirection = { Down = "Down", Up = "Up", Left = "Left", Right = "Right" },
-    ContainerAnchor = { Down = "TOPLEFT", Up = "BOTTOMLEFT", Right = "TOPLEFT", Left = "TOPRIGHT" },
+    GrowthDirection = { Down = "down", Up = "up", Left = "left", Right = "right", Center = "center" },
+    ContainerAnchor = { down = "TOPLEFT", up = "BOTTOMLEFT", right = "TOPLEFT", left = "TOPRIGHT", center = "CENTER" },
 }
 
 C.Stagger = {
@@ -247,15 +247,12 @@ C.Cooldown = {
     },
 }
 
+-- Tracked plugin uses globally-unique counter ids for system indices.
+-- Container records live in a flat global table; ids are sparse and never reused.
 C.Tracked = {
-    MaxChildFrames = 14,
-    MaxBarChildren = 4,
-    SystemIndex = {
-        Tracked = 4,
-        Tracked_ChildStart = 5,
-        TrackedBar = 20,
-        TrackedBar_ChildStart = 21,
-    },
+    MaxIconContainers = 10, -- Per-spec cap on icon containers
+    MaxBars = 10, -- Per-spec cap on single-spell bars
+    SystemIndexBase = 1000, -- Counter starts here to avoid colliding with native cooldown system indices
 }
 
 -- Unified Glow configuration parameters (LibOrbitGlow)

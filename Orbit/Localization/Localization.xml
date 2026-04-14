@@ -1,0 +1,10 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="Boot.lua"/>
+    <Script file="Domains\Common.lua"/>
+    <Script file="Domains\Config.lua"/>
+    <Script file="Domains\PluginManager.lua"/>
+    <Script file="Domains\Plugins.lua"/>
+    <Script file="Domains\SlashCmds.lua"/>
+    <Script file="Domains\Messages.lua"/>
+    <Script file="Domains\Tours.lua"/>
+</Ui>

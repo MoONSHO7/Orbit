@@ -25,7 +25,6 @@ ignore:
   - .vscode
   - .scripts
   - README.md
-  - readme.md
   - Docs
   - CONTRIBUTE.md
   - CHANGELOG.md

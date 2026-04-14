@@ -207,7 +207,6 @@ function Orbit.Profile:SetActiveProfile(name)
         if Orbit.CombatManager then Orbit.CombatManager:QueueUpdate(function() self:SetActiveProfile(name) end) end
         return false
     end
-
     local profile = Orbit.db.profiles[name]
     if not profile.Layouts then profile.Layouts = {} end
 
@@ -282,9 +281,10 @@ function Orbit.Profile:SetActiveProfile(name)
             for _, plugin in ipairs(Orbit.Engine.systems) do
                 if plugin.ApplySettings then pcall(function() plugin:ApplySettings(nil) end) end
             end
-            -- Phase 3 implementation
+            -- Batched so duplicate "reconcile everything" requests from other
+            -- systems reacting to the same profile switch coalesce into one pass.
             if Orbit.Engine.FrameAnchor then
-                Orbit.Engine.FrameAnchor:ReconcileAll()
+                Orbit.Engine.FrameAnchor:ScheduleReconcileAll()
             end
         end)
     end

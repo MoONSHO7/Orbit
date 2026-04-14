@@ -6,23 +6,51 @@ the schema-driven configuration ui. renders settings panels from declarative sch
 
 provides the entire settings interface for orbit. plugins declare their settings as schemas (using schemabuilder), and config renders them as tabs with controls (sliders, checkboxes, dropdowns, color pickers).
 
+## layout
+
+```
+Config/
+  Schema/    -- schema declaration + rendering pipeline
+  Panels/    -- the Orbit Options dialog shell + tab content
+    Tabs/    -- one file per tab (Global, Colors, Edit Mode, Profiles)
+  Entry/     -- user entry points (slash command, minimap button, addon compartment button)
+  Advanced/  -- addon-settings-panel content builders (plugin manager, visibility, QoL)
+  Widgets/   -- individual control widgets
+  WhatsNew.lua / ChangelogData.lua
+```
+
 ## files
 
 | file | responsibility |
 |---|---|
-| SchemaBuilder.lua | schema declaration api: `AddTab`, `AddSlider`, `AddCheckbox`, `AddDropdown`, `AddColorCurve`, etc. |
-| ConfigRenderer.lua | renders a schema into ui frames. walks the schema tree and creates widgets. |
-| ConfigLayout.lua | layout engine for settings panels (3-column grid, spacing, tab bar). |
-| OrbitOptionsPanel.lua | main orbit settings panel. tab navigation. Global tab exposes font, border (size, style, edge size, offset), and `IconBorderStyle` (action bars/cooldown icons only). Colors tab exposes textures, color curves, and `BorderColor`. Border Edge Size and Border Offset are conditionally hidden when Border Style is "Orbit Pixel" (flat). |
-| SlashCommands.lua | `/orbit` slash command handler, confirmation popups, and debug utilities (help, version, profile, frames, inspect). |
-| OrbitSettingsDialog.lua | settings dialog frame. hosts the tab bar and content area. |
-| OrbitOptionsButton.lua | minimap/addon compartment button. |
-| MinimapButton.lua | LibDBIcon minimap button. left-click opens edit mode + options, right-click opens plugin manager. |
-| OrbitAdvancedSettings.lua | orchestrator: tab bar, panel shell, settings registration for the addon settings panel. |
+| Schema/SchemaBuilder.lua | schema declaration api: `AddTab`, `AddSlider`, `AddCheckbox`, `AddDropdown`, `AddColorCurve`, etc. |
+| Schema/ConfigRenderer.lua | renders a schema into ui frames. walks the schema tree and creates widgets. |
+| Schema/ConfigLayout.lua | layout engine for settings panels (3-column grid, spacing, tab bar). |
+| Panels/OrbitOptionsPanel.lua | dialog shell only: tab registry, open/hide/toggle/refresh lifecycle, and `Panel._helpers` (shared `CreateGlobalSettingsPlugin` / `RefreshAllPreviews` used by tab files). |
+| Panels/OrbitSettingsDialog.lua | settings dialog frame. hosts the tab bar and content area. |
+| Panels/OrbitAdvancedSettings.lua | orchestrator: tab bar, panel shell, settings registration for the addon settings panel. |
+| Panels/Tabs/GlobalTab.lua | Global tab schema: font, border (size, style, edge size, offset), `IconBorderStyle`. Border Edge Size and Border Offset are conditionally hidden when Border Style is "Orbit Pixel". |
+| Panels/Tabs/ColorsTab.lua | Colors tab schema: textures, color curves (font/bar/backdrop), `BorderColor`, `IconBorderColor`. |
+| Panels/Tabs/EditModeTab.lua | Edit Mode tab schema: show/hide blizzard frames, anchoring, edit mode color curve. |
+| Panels/Tabs/ProfilesTab.lua | Profiles tab schema + sub-views (export/import/clone/delete/reset). owns widget registrations only used here (`profileactive`, `profileselect`, `collapseheader`, `checkheader`, `statusmessage`). |
+| Entry/SlashCommands.lua | `/orbit` slash command handler, confirmation popups, and debug utilities (help, version, profile, frames, inspect). |
+| Entry/OrbitOptionsButton.lua | addon compartment button. |
+| Entry/MinimapButton.lua | LibDBIcon minimap button. left-click opens edit mode + options, right-click opens plugin manager. |
 | Advanced/PluginManager.lua | plugin enable/disable checkbox grid content builder. |
 | Advanced/VisibilityEngine.lua | visibility engine scrollable table content builder. |
 | Advanced/QoL.lua | quality-of-life expandable accordion sections content builder. |
 | Widgets/ | individual control widgets (slider, checkbox, dropdown, color picker, font/texture pickers, etc.). |
+| WhatsNew.lua / ChangelogData.lua | post-update changelog popup. |
+
+## adding a new tab
+
+1. create `Panels/Tabs/MyTab.lua`
+2. pull `local Panel = Orbit.OptionsPanel` and `local helpers = Panel._helpers`
+3. build a plugin via `helpers.CreateGlobalSettingsPlugin("OrbitMyTab")` (or a custom table if you need bespoke GetSetting/SetSetting)
+4. declare a `schema()` function returning the schema tree
+5. register with `Panel.Tabs["My Tab"] = { plugin = ..., schema = ... }`
+6. add `"My Tab"` to `TAB_ORDER` in `OrbitOptionsPanel.lua`
+7. add `<Script file="Panels\Tabs\MyTab.lua"/>` to `Config.xml` **after** `OrbitOptionsPanel.lua` (tab files reference `Panel._helpers` at load time)
 
 ## adding a new widget type
 

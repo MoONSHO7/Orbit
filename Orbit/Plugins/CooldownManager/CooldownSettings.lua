@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 
@@ -23,9 +24,9 @@ function CDM:AddSettings(dialog, systemFrame)
     -- Buff Bars get their own dedicated dialog
     if systemIndex == Constants.Cooldown.SystemIndex.BuffBar then
         SB:SetTabRefreshCallback(dialog, self, systemFrame)
-        local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colors" }, "Layout")
+        local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_CDM_TAB_LAYOUT, L.PLU_CDM_TAB_COLORS }, L.PLU_CDM_TAB_LAYOUT)
 
-        if currentTab == "Layout" then
+        if currentTab == L.PLU_CDM_TAB_LAYOUT then
             local buffBarAnchor = self.buffBarAnchor
             local isDocked = OrbitEngine.Frame:GetAnchorParent(buffBarAnchor) ~= nil
             local function ResizeCanvasPreview()
@@ -44,26 +45,26 @@ function CDM:AddSettings(dialog, systemFrame)
                 end
             end
             table.insert(schema.controls, {
-                type = "slider", key = "Height", label = "Height", min = 12, max = 40, step = 1, default = 20,
+                type = "slider", key = "Height", label = L.PLU_CDM_HEIGHT, min = 12, max = 40, step = 1, default = 20,
                 onChange = function(val) self:SetSetting(systemIndex, "Height", val); self:ProcessChildren(buffBarAnchor); ResizeCanvasPreview() end,
             })
             if not isDocked then
                 table.insert(schema.controls, {
-                    type = "slider", key = "Width", label = "Width", min = 80, max = 400, step = 1, default = 200,
+                    type = "slider", key = "Width", label = L.PLU_CDM_WIDTH, min = 80, max = 400, step = 1, default = 200,
                     onChange = function(val) self:SetSetting(systemIndex, "Width", val); self:ProcessChildren(buffBarAnchor); ResizeCanvasPreview() end,
                 })
             end
             table.insert(schema.controls, {
-                type = "slider", key = "Spacing", label = "Spacing", min = 0, max = 30, step = 1, default = 2,
+                type = "slider", key = "Spacing", label = L.PLU_CDM_SPACING, min = 0, max = 30, step = 1, default = 2,
                 onChange = function(val) self:SetSetting(systemIndex, "Spacing", val); self:ProcessChildren(buffBarAnchor) end,
             })
-        elseif currentTab == "Colors" then
+        elseif currentTab == L.PLU_CDM_TAB_COLORS then
             local barColors = {
-                { key = "BarColor1", label = "Bar 1", default = { pins = { { position = 0, color = { r = 0.3, g = 0.7, b = 1, a = 1 } } } } },
-                { key = "BarColor2", label = "Bar 2", default = { pins = { { position = 0, color = { r = 0.4, g = 0.9, b = 0.4, a = 1 } } } } },
-                { key = "BarColor3", label = "Bar 3", default = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0.3, a = 1 } } } } },
-                { key = "BarColor4", label = "Bar 4", default = { pins = { { position = 0, color = { r = 0.9, g = 0.4, b = 0.9, a = 1 } } } } },
-                { key = "BarColor5", label = "Bar 5", default = { pins = { { position = 0, color = { r = 1, g = 0.4, b = 0.4, a = 1 } } } } },
+                { key = "BarColor1", label = L.PLU_CDM_BAR_1, default = { pins = { { position = 0, color = { r = 0.3, g = 0.7, b = 1, a = 1 } } } } },
+                { key = "BarColor2", label = L.PLU_CDM_BAR_2, default = { pins = { { position = 0, color = { r = 0.4, g = 0.9, b = 0.4, a = 1 } } } } },
+                { key = "BarColor3", label = L.PLU_CDM_BAR_3, default = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0.3, a = 1 } } } } },
+                { key = "BarColor4", label = L.PLU_CDM_BAR_4, default = { pins = { { position = 0, color = { r = 0.9, g = 0.4, b = 0.9, a = 1 } } } } },
+                { key = "BarColor5", label = L.PLU_CDM_BAR_5, default = { pins = { { position = 0, color = { r = 1, g = 0.4, b = 0.4, a = 1 } } } } },
             }
             for _, def in ipairs(barColors) do
                 SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
@@ -77,7 +78,7 @@ function CDM:AddSettings(dialog, systemFrame)
     end
 
     table.insert(schema.extraButtons, {
-        text = "Cooldown Settings",
+        text = L.PLU_CDM_OPEN_CD_SETTINGS,
         callback = function()
             if EditModeManagerFrame and EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
             if CooldownViewerSettings then CooldownViewerSettings:Show() end
@@ -85,26 +86,26 @@ function CDM:AddSettings(dialog, systemFrame)
     })
 
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local tabs = { "Layout", "Glow", "Colors" }
+    local tabs = { L.PLU_CDM_TAB_LAYOUT, L.PLU_CDM_TAB_GLOW, L.PLU_CDM_TAB_COLORS }
     if systemIndex == Constants.Cooldown.SystemIndex.BuffIcon then
-        tabs = { "Layout", "Glow", "Colors", "Behaviour" }
+        tabs = { L.PLU_CDM_TAB_LAYOUT, L.PLU_CDM_TAB_GLOW, L.PLU_CDM_TAB_COLORS, L.PLU_CDM_TAB_BEHAVIOUR }
     end
-    local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
+    local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, L.PLU_CDM_TAB_LAYOUT)
 
-    if currentTab == "Layout" then
+    if currentTab == L.PLU_CDM_TAB_LAYOUT then
         if isInheriting then
-            table.insert(schema.controls, { type = "label", text = "Layout settings inherited from anchor parent." })
+            table.insert(schema.controls, { type = "label", text = L.PLU_CDM_INHERITED })
         else
             table.insert(schema.controls, {
-                type = "dropdown", key = "aspectRatio", label = "Icon Aspect Ratio",
+                type = "dropdown", key = "aspectRatio", label = L.PLU_CDM_ICON_ASPECT,
                 options = {
-                    { text = "Square (1:1)", value = "1:1" }, { text = "Landscape (16:9)", value = "16:9" },
-                    { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
+                    { text = L.PLU_CDM_ASPECT_1_1, value = "1:1" }, { text = L.PLU_CDM_ASPECT_16_9, value = "16:9" },
+                    { text = L.PLU_CDM_ASPECT_4_3, value = "4:3" }, { text = L.PLU_CDM_ASPECT_21_9, value = "21:9" },
                 },
                 default = "1:1",
             })
             table.insert(schema.controls, {
-                type = "slider", key = "IconSize", label = "Icon Size",
+                type = "slider", key = "IconSize", label = L.PLU_CDM_ICON_SIZE,
                 min = 20, max = 80, step = 1,
                 formatter = function(v) return v .. "px" end,
                 default = Constants.Cooldown.DefaultIconSize,
@@ -113,13 +114,13 @@ function CDM:AddSettings(dialog, systemFrame)
                     self:ApplySettings(systemFrame)
                 end,
             })
-            table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = 0, max = 15, step = 1, default = Constants.Cooldown.DefaultPadding })
-            table.insert(schema.controls, { type = "slider", key = "IconLimit", label = "# Columns", min = 1, max = 20, step = 1, default = Constants.Cooldown.DefaultLimit })
+            table.insert(schema.controls, { type = "slider", key = "IconPadding", label = L.PLU_CDM_ICON_PADDING, min = 0, max = 15, step = 1, default = Constants.Cooldown.DefaultPadding })
+            table.insert(schema.controls, { type = "slider", key = "IconLimit", label = L.PLU_CDM_NUM_COLUMNS, min = 1, max = 20, step = 1, default = Constants.Cooldown.DefaultLimit })
         end
-    elseif currentTab == "Glow" then
-        table.insert(schema.controls, { type = "checkbox", key = "ShowGCDSwipe", label = "Show GCD Swipe", default = true })
+    elseif currentTab == L.PLU_CDM_TAB_GLOW then
+        table.insert(schema.controls, { type = "checkbox", key = "ShowGCDSwipe", label = L.PLU_CDM_SHOW_GCD_SWIPE, default = true })
         table.insert(schema.controls, {
-            type = "checkbox", key = "AssistedHighlight", label = "Assisted Highlight", default = false,
+            type = "checkbox", key = "AssistedHighlight", label = L.PLU_CDM_ASSISTED_GLOW, default = false,
             onChange = function(val)
                 self:SetSetting(systemIndex, "AssistedHighlight", val)
                 SetCVar("assistedCombatHighlight", val and "1" or "0")
@@ -128,36 +129,36 @@ function CDM:AddSettings(dialog, systemFrame)
         })
         SB:AddGlowSettings(self, schema, systemIndex, dialog, systemFrame, {
             prefix = "PandemicGlow",
-            label = "Pandemic Glow",
+            label = L.PLU_CDM_PANDEMIC_GLOW,
             default = Constants.Glow.DefaultType,
             onUpdate = function() self:MarkPandemicDirty() end
         })
         SB:AddGlowSettings(self, schema, systemIndex, dialog, systemFrame, {
             prefix = "ProcGlow",
-            label = "Proc Glow",
+            label = L.PLU_CDM_PROC_GLOW,
             default = Constants.Glow.DefaultType
         })
-    elseif currentTab == "Colors" then
+    elseif currentTab == L.PLU_CDM_TAB_COLORS then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-            key = "ActiveSwipeColorCurve", label = "Active Swipe",
+            key = "ActiveSwipeColorCurve", label = L.PLU_CDM_ACTIVE_SWIPE,
             default = { pins = { { position = 0, color = { r = 1, g = 0.95, b = 0.57, a = 0.7 } } } },
             singleColor = true,
         })
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-            key = "CooldownSwipeColorCurve", label = "Cooldown Swipe",
+            key = "CooldownSwipeColorCurve", label = L.PLU_CDM_COOLDOWN_SWIPE,
             default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
             singleColor = true,
         })
         if systemIndex ~= Constants.Cooldown.SystemIndex.BuffIcon and systemIndex ~= Constants.Cooldown.SystemIndex.BuffBar then
             SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
-                key = "KeypressColor", label = "Keypress Flash",
+                key = "KeypressColor", label = L.PLU_CDM_KEYPRESS_FLASH,
                 default = { r = 1, g = 1, b = 1, a = 0 },
             })
         end
-    elseif currentTab == "Behaviour" then
+    elseif currentTab == L.PLU_CDM_TAB_BEHAVIOUR then
         table.insert(schema.controls, {
-            type = "checkbox", key = "AlwaysShow", label = "Always Show", default = false,
-            tooltip = "Keep inactive buff icons visible but desaturated",
+            type = "checkbox", key = "AlwaysShow", label = L.PLU_CDM_ALWAYS_SHOW, default = false,
+            tooltip = L.PLU_CDM_ALWAYS_SHOW_TT,
             onChange = function(val)
                 self:SetSetting(systemIndex, "AlwaysShow", val)
                 self:ApplyAll()
@@ -166,12 +167,12 @@ function CDM:AddSettings(dialog, systemFrame)
         })
         if self:GetSetting(systemIndex, "AlwaysShow") then
             table.insert(schema.controls, {
-                type = "checkbox", key = "HideBorders", label = "Hide Borders", default = false,
-                tooltip = "Hide icon borders when inactive",
+                type = "checkbox", key = "HideBorders", label = L.PLU_CDM_HIDE_BORDERS, default = false,
+                tooltip = L.PLU_CDM_HIDE_BORDERS_TT,
                 onChange = function(val) self:SetSetting(systemIndex, "HideBorders", val); self:ApplyAll() end,
             })
             table.insert(schema.controls, {
-                type = "slider", key = "InactiveAlpha", label = "Inactive Alpha", min = 20, max = 100, step = 1, default = 60,
+                type = "slider", key = "InactiveAlpha", label = L.PLU_CDM_INACTIVE_ALPHA, min = 20, max = 100, step = 1, default = 60,
                 onChange = function(val) self:SetSetting(systemIndex, "InactiveAlpha", val); self:ApplyAll() end,
             })
         end
@@ -180,7 +181,7 @@ function CDM:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ COMPONENT UTILITY ] -------------------------------------------------------
+-- [ COMPONENT UTILITY ] -----------------------------------------------------------------------------
 local _cdmDisabledHashCache = setmetatable({}, { __mode = "k" })
 
 function CDM:IsComponentDisabled(componentKey, systemIndex)

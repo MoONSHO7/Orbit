@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
@@ -48,7 +49,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             {
                 type = "checkbox",
                 key = "EnableTargetTarget",
-                label = "Enable Target Target",
+                label = L.PLU_TARGET_ENABLE_TOT,
                 default = false,
                 onChange = function(val)
                     self:SetSetting(TARGET_FRAME_INDEX, "EnableTargetTarget", val)
@@ -58,7 +59,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             {
                 type = "checkbox",
                 key = "EnableTargetPower",
-                label = "Enable Target Power",
+                label = L.PLU_TARGET_ENABLE_POWER,
                 default = false,
                 onChange = function(val)
                     self:SetSetting(TARGET_FRAME_INDEX, "EnableTargetPower", val)
@@ -76,7 +77,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "checkbox",
         key = "EnableBuffs",
-        label = "Enable Buffs",
+        label = L.PLU_TARGET_ENABLE_BUFFS,
         default = true,
         onChange = function(val)
             self:SetSetting(TARGET_FRAME_INDEX, "EnableBuffs", val)
@@ -87,7 +88,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "checkbox",
         key = "EnableDebuffs",
-        label = "Enable Debuffs",
+        label = L.PLU_TARGET_ENABLE_DEBUF,
         default = true,
         onChange = function(val)
             self:SetSetting(TARGET_FRAME_INDEX, "EnableDebuffs", val)
@@ -128,11 +129,11 @@ function Plugin:OnLoad()
 
     self.frame:RegisterEvent("PLAYER_TARGET_CHANGED")
 
-    self.frame:RegisterEvent("UNIT_FACTION")
-    self.frame:RegisterEvent("UNIT_LEVEL")
-    self.frame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
+    self.frame:RegisterUnitEvent("UNIT_FACTION", "target")
+    self.frame:RegisterUnitEvent("UNIT_LEVEL", "target")
+    self.frame:RegisterUnitEvent("UNIT_CLASSIFICATION_CHANGED", "target")
     self.frame:RegisterEvent("PLAYER_LEVEL_UP")
-    self.frame:RegisterEvent("UNIT_PORTRAIT_UPDATE")
+    self.frame:RegisterUnitEvent("UNIT_PORTRAIT_UPDATE", "target")
     self.frame:RegisterEvent("PORTRAITS_UPDATED")
     self.frame:RegisterEvent("RAID_TARGET_UPDATE")
 

@@ -1,15 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <Script file="TrackedPlugin.lua"/>
+    <Script file="TrackedIconItem.lua"/>
+    <Script file="TrackedContainer.lua"/>
+    <Script file="TrackedBar.lua"/>
     <Script file="TrackedSettings.lua"/>
-
-    <Script file="ControlButtonFactory.lua"/>
-    <Script file="TrackedIconFactory.lua"/>
-    <Script file="TrackedLayout.lua"/>
-    <Script file="TrackedUpdater.lua"/>
-    <Script file="TrackedAbilities.lua"/>
-    <Script file="TrackedCanvasPreview.lua"/>
-    <Script file="TrackedBarLayout.lua"/>
-    <Script file="TrackedBarCanvasPreview.lua"/>
-    <Script file="TrackedBars.lua"/>
-    <Script file="KeybindSystem.lua"/>
 </Ui>

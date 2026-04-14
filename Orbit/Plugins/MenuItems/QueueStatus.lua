@@ -1,11 +1,13 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_QueueStatus"
 local DEFAULT_POSITION_X = -250
 local DEFAULT_POSITION_Y = 40
+local EDIT_MODE_FRAME_LEVEL = 50 -- selection = level+100; must beat minimap (~2+100=102)
 
 local Plugin = Orbit:RegisterPlugin("Queue Status", SYSTEM_ID, {
     defaults = {
@@ -41,7 +43,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     -- 1. Scale
     SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
         key = "Scale",
-        label = "Scale",
+        label = L.PLU_QUEUE_SCALE,
         default = 100,
         min = 50,
         max = 200,
@@ -53,6 +55,8 @@ end
 function Plugin:OnLoad()
     self.frame = CreateFrame("Frame", "OrbitQueueStatusContainer", UIParent)
     self.frame:SetSize(45, 45)
+    self.frame:SetFrameStrata(Orbit.Constants.Strata.HUD)
+    self.frame:SetFrameLevel(EDIT_MODE_FRAME_LEVEL)
     self.frame:SetClampedToScreen(true)
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Queue Status"

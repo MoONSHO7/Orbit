@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
@@ -178,9 +179,9 @@ function Plugin:AddSettings(dialog, systemFrame)
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
     local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout" }, "Layout", self)
     if currentTab == "Layout" then
-        table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 150 })
-        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 40 })
-        table.insert(schema.controls, { type = "slider", key = "Spacing", label = "Spacing", min = 20, max = 100, step = 1, default = 40, formatter = function(v) return v .. "px" end })
+        table.insert(schema.controls, { type = "slider", key = "Width", label = L.PLU_BOSS_WIDTH, min = 50, max = 400, step = 1, default = 150 })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = L.PLU_BOSS_HEIGHT, min = 20, max = 100, step = 1, default = 40 })
+        table.insert(schema.controls, { type = "slider", key = "Spacing", label = L.PLU_BOSS_SPACING, min = 20, max = 100, step = 1, default = 40, formatter = function(v) return v .. "px" end })
     end
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end

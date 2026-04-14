@@ -90,7 +90,7 @@ Orbit/
     UnitFrames/           -- player, target, focus and sub-frames
 ```
 
-each directory has its own `readme.md`. read it before editing code in that directory.
+each directory has its own `README.md`. read it before editing code in that directory.
 
 ## code standards
 

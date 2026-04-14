@@ -10,7 +10,7 @@ Orbit.VisibilityEngine = {}
 local VE = Orbit.VisibilityEngine
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local DEFAULTS = { oocFade = false, opacity = 100, hideMounted = false, mouseOver = true, showWithTarget = true }
+local DEFAULTS = { oocFade = false, opacity = 100, hideMounted = false, mouseOver = true, showWithTarget = true, alphaLock = false }
 local STARTUP_DELAY = 0.5
 
 -- Ordered list of manageable frames: { key, displayName, pluginName, systemIndex }
@@ -39,10 +39,14 @@ local FRAME_REGISTRY = {
     { key = "EssentialCooldowns",   display = "Essential Cooldowns",   plugin = "Cooldown Manager",   index = 1 },
     { key = "UtilityCooldowns",     display = "Utility Cooldowns",     plugin = "Cooldown Manager",   index = 2 },
     { key = "BuffIcons",            display = "Buff Icons",            plugin = "Cooldown Manager",   index = 3 },
-    { key = "TrackedIcons",         display = "Tracked Icons",         plugin = "Tracked Items",      index = 4 },
-    { key = "TrackedBars",          display = "Tracked Bars",          plugin = "Tracked Items",      index = 20 },
     { key = "ChargeBars",           display = "Charge Bars",           plugin = "Cooldown Manager",   index = 20 },
     { key = "BuffBars",             display = "Buff Bars",             plugin = "Cooldown Manager",   index = 30 },
+    -- Tracked Items: real record IDs are >= Constants.Tracked.SystemIndexBase (1000),
+    -- so sentinel indices 1/2 never collide with a live record. The Tracked plugin
+    -- passes these sentinels to ApplyOOCFade so every icon container shares the
+    -- "TrackedIcons" settings and every bar shares the "TrackedBars" settings.
+    { key = "TrackedIcons",         display = "Tracked Icons",         plugin = "Tracked Items",      index = 1 },
+    { key = "TrackedBars",          display = "Tracked Bars",          plugin = "Tracked Items",      index = 2 },
     { key = "GroupFrames",          display = "Group Frames",          plugin = "Group Frames",       index = 1 },
     { key = "BossFrames",           display = "Boss Frames",           plugin = "Boss Frames",        index = 1, opacityOnly = true },
     { key = "MenuBar",              display = "Menu Bar",              plugin = "Menu Bar",           index = 1 },
@@ -52,6 +56,7 @@ local FRAME_REGISTRY = {
     { key = "CombatTimer",          display = "Combat Timer",          plugin = "Combat Timer",       index = 1 },
     { key = "Minimap",              display = "Minimap",               plugin = "Minimap",            index = 1 },
     { key = "Datatexts",            display = "Datatexts",             plugin = "Datatexts",          index = 1 },
+    { key = "PortalDock",           display = "Portal Dock",           plugin = "Portal Dock",        index = 1 },
 }
 
 -- O(1) reverse lookup: { [pluginName] = { [systemIndex] = key } }

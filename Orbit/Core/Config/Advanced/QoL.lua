@@ -26,13 +26,22 @@ end
 -- [ SECTION BUILDERS ]------------------------------------------------------------------------------
 -- Each builder receives the body frame and returns the computed content height.
 
+local MOVEMORE_DESC_RESET = "Drag Blizzard frames freely. Positions reset when closed."
+local MOVEMORE_DESC_SAVE = "Drag Blizzard frames freely. Positions save when closed."
+
 local function BuildMoveMore(body)
     local cb = Layout:CreateCheckbox(body, "Enable Move More", nil, GetAccountSetting("MoveMore", false), function(checked)
         SetAccountSetting("MoveMore", checked)
         if checked then Orbit.MoveMore:Enable() else Orbit.MoveMore:Disable() end
     end)
     Layout:AddControl(body, cb)
-    local desc = Layout:CreateDescription(body, "Drag Blizzard frames freely. Positions reset when closed.", A.MUTED)
+    SetAccountSetting("MoveMoreSavePositions", false)
+    if Orbit.MoveMore and Orbit.MoveMore.ClearSavedPositions then Orbit.MoveMore:ClearSavedPositions() end
+    local desc
+    local saveCb = Layout:CreateCheckbox(body, "Save Positions (Requires More Testing)", nil, false, function() end)
+    if saveCb.SetEnabled then saveCb:SetEnabled(false) end
+    Layout:AddControl(body, saveCb)
+    desc = Layout:CreateDescription(body, MOVEMORE_DESC_RESET, A.MUTED)
     Layout:AddControl(body, desc)
     return Layout:Stack(body, 0, STACK_GAP)
 end
