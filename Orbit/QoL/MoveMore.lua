@@ -1,6 +1,7 @@
 -- [ MOVE MORE ]-------------------------------------------------------------------------------------
 -- QoL feature: makes Blizzard UI frames freely draggable.
--- Positions are NOT persisted — closing a frame resets it to its default position.
+-- Positions reset on close unless "Save Positions" is enabled, in which case drag-stop writes the
+-- frame's current points to Orbit.db.AccountSettings.MoveMorePositions and OnShow re-applies them.
 -- Toggle via Quality of Life > Move More in the Orbit settings panel.
 
 local _, Orbit = ...
@@ -45,6 +46,18 @@ local FRAME_NAMES = {
     -- Housing
     "HousingDashboardFrame", "HouseFinderFrame", "HousingCornerstoneFrame",
     "HousingBulletinBoardFrame",
+    -- Renown / trading post / traits
+    "MajorFactionRenownFrame", "PerksProgramFrame", "GenericTraitFrame",
+    -- Storage
+    "VoidStorageFrame", "GuildBankFrame",
+    -- Warband
+    "WarbandSceneEditor",
+    -- Travel
+    "FlightMapFrame", "TaxiFrame",
+    -- Misc interactions
+    "HelpFrame", "ScrappingMachineFrame", "ItemSocketingFrame", "MacroPopupFrame",
+    -- Popups
+    "ReadyCheckFrame", "RolePollPopup",
 }
 
 local FRAME_NAMES_HASH = {}
@@ -81,14 +94,61 @@ local function OnDragStart(frame)
     frame:StartMoving()
 end
 
+local function SavePositionIfEnabled(frame)
+    if not (Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.MoveMoreSavePositions) then return end
+    local name = frame:GetName()
+    if not name then return end
+    local points = {}
+    for i = 1, frame:GetNumPoints() do
+        points[i] = { frame:GetPoint(i) }
+    end
+    Orbit.db.AccountSettings.MoveMorePositions = Orbit.db.AccountSettings.MoveMorePositions or {}
+    Orbit.db.AccountSettings.MoveMorePositions[name] = points
+end
+
+local function ApplySavedPosition(frame)
+    if not (Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.MoveMoreSavePositions) then return end
+    local name = frame:GetName()
+    if not name then return end
+    local store = Orbit.db.AccountSettings.MoveMorePositions
+    local saved = store and store[name]
+    if not saved or InCombatLockdown() then return end
+    frame:ClearAllPoints()
+    for _, pt in ipairs(saved) do
+        frame:SetPoint(unpack(pt))
+    end
+end
+
+local function IsSavingPositions()
+    return Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.MoveMoreSavePositions
+end
+
 local function OnDragStop(frame)
     frame:StopMovingOrSizing()
-    frame:SetUserPlaced(false)
+    frame:SetUserPlaced(IsSavingPositions() and true or false)
+    SavePositionIfEnabled(frame)
+end
+
+function MM:ClearSavedPositions()
+    if Orbit.db and Orbit.db.AccountSettings then
+        Orbit.db.AccountSettings.MoveMorePositions = nil
+    end
+end
+
+function MM:OnSavePositionsChanged(enabled)
+    if InCombatLockdown() then return end
+    for name in pairs(FRAME_NAMES_HASH) do
+        local f = _G[name]
+        if f and f._maHooked then
+            f:SetUserPlaced(enabled and true or false)
+            if enabled and f:IsShown() then ApplySavedPosition(f) end
+        end
+    end
 end
 
 local function HookFrame(frame)
     if frame._maHooked then return end
-    if frame.IsProtected and frame:IsProtected() then return end
+    if InCombatLockdown() and frame.IsProtected and frame:IsProtected() then return end
     frame._maHooked = true
     
     local dragFrame = frame
@@ -112,11 +172,25 @@ local function HookFrame(frame)
     frame:HookScript("OnShow", function(f)
         if not MM._active then return end
         SaveDefaultPoints(f)
+        if IsSavingPositions() then
+            f:SetUserPlaced(true)
+            ApplySavedPosition(f)
+        end
     end)
     frame:HookScript("OnHide", function(f)
+        if IsSavingPositions() then
+            SavePositionIfEnabled(f)
+            return
+        end
         RestoreDefaultPoints(f)
     end)
-    if frame:IsShown() then SaveDefaultPoints(frame) end
+    if frame:IsShown() then
+        SaveDefaultPoints(frame)
+        if IsSavingPositions() then
+            ApplySavedPosition(frame)
+            frame:SetUserPlaced(true)
+        end
+    end
 end
 
 local function UnhookFrame(frame)
@@ -139,6 +213,20 @@ hooksecurefunc("ShowUIPanel", function(frame)
     local name = frame:GetName()
     if name and FRAME_NAMES_HASH[name] then
         HookFrame(frame)
+        if IsSavingPositions() then
+            frame:SetUserPlaced(true)
+            ApplySavedPosition(frame)
+        end
+    end
+end)
+
+hooksecurefunc("UpdateUIPanelPositions", function()
+    if not MM._active or not IsSavingPositions() then return end
+    for name in pairs(FRAME_NAMES_HASH) do
+        local f = _G[name]
+        if f and f._maHooked and f:IsShown() then
+            ApplySavedPosition(f)
+        end
     end
 end)
 
@@ -167,11 +255,18 @@ end
 -- [ AUTO-ENABLE ON LOGIN ]--------------------------------------------------------------------------
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
-loader:SetScript("OnEvent", function()
-    C_Timer.After(0.5, function()
-        if Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.MoveMore then
-            MM:Enable()
+loader:RegisterEvent("ADDON_LOADED")
+loader:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_LOGIN" then
+        C_Timer.After(0.5, function()
+            if Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.MoveMore then
+                MM:Enable()
+            end
+        end)
+    elseif event == "ADDON_LOADED" and MM._active then
+        for name in pairs(FRAME_NAMES_HASH) do
+            local f = _G[name]
+            if f and not f._maHooked then HookFrame(f) end
         end
-    end)
-    loader:UnregisterAllEvents()
+    end
 end)
