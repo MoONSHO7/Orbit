@@ -1,16 +1,17 @@
 -- DatatextManager.lua
 -- Central registry, position persistence, and update scheduler for Datatexts
 local _, Orbit = ...
+local L = Orbit.L
 local DT = Orbit.Datatexts
 
--- [ CONSTANTS ] -------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local DATATEXT_CATEGORIES = {
-    SYSTEM    = { order = 1, label = "System" },
-    CHARACTER = { order = 2, label = "Character" },
-    SOCIAL    = { order = 3, label = "Social" },
-    GAMEPLAY  = { order = 4, label = "Gameplay" },
-    WORLD     = { order = 5, label = "World" },
-    UTILITY   = { order = 6, label = "Utility" },
+    SYSTEM    = { order = 1, label = L.PLU_DT_SYSTEM },
+    CHARACTER = { order = 2, label = L.PLU_DT_CHARACTER },
+    SOCIAL    = { order = 3, label = L.PLU_DT_SOCIAL },
+    GAMEPLAY  = { order = 4, label = L.PLU_DT_GAMEPLAY },
+    WORLD     = { order = 5, label = L.PLU_DT_WORLD },
+    UTILITY   = { order = 6, label = L.PLU_DT_UTILITY },
 }
 DT.DATATEXT_CATEGORIES = DATATEXT_CATEGORIES
 
@@ -24,18 +25,18 @@ local UPDATE_INTERVALS = {
 local SYSTEM_ID = "Orbit_Datatexts"
 local DEFAULT_TEXT_SIZE = 12
 
--- [ STATE ] -----------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 local datatexts = {}
 local datatextOrder = {}
 local schedulerTickers = {}
 local schedulerCallbacks = {}
 local isLocked = true
 
--- [ DATATEXT MANAGER ] --------------------------------------------------------------
+-- [ DATATEXT MANAGER ] ------------------------------------------------------------------------------
 local DatatextManager = {}
 DT.DatatextManager = DatatextManager
 
--- [ REGISTRATION ] ----------------------------------------------------------------
+-- [ REGISTRATION ] ----------------------------------------------------------------------------------
 function DatatextManager:Register(id, datatextData)
     if datatexts[id] then return end
     datatexts[id] = {
@@ -57,7 +58,7 @@ function DatatextManager:GetAllDatatexts() return datatexts end
 function DatatextManager:GetDatatextCount() return #datatextOrder end
 function DatatextManager:GetDatatextOrder() return datatextOrder end
 
--- [ LOCK / UNLOCK ] ---------------------------------------------------------------
+-- [ LOCK / UNLOCK ] ---------------------------------------------------------------------------------
 function DatatextManager:CanDrag() return not isLocked end
 
 function DatatextManager:SetLocked(locked)
@@ -75,7 +76,7 @@ function DatatextManager:SetLocked(locked)
     end
 end
 
--- [ PLACEMENT ] -------------------------------------------------------------------
+-- [ PLACEMENT ] -------------------------------------------------------------------------------------
 function DatatextManager:PlaceDatatext(id, point, x, y, skipSave)
     if InCombatLockdown() then
         Orbit.CombatManager:QueueUpdate(function() self:PlaceDatatext(id, point, x, y, skipSave) end)
@@ -154,7 +155,7 @@ function DatatextManager:ResetToDefaults()
     end
 end
 
--- [ ENABLE / DISABLE ] ------------------------------------------------------------
+-- [ ENABLE / DISABLE ] ------------------------------------------------------------------------------
 function DatatextManager:EnableDatatext(id)
     local datatext = datatexts[id]
     if not datatext or datatext.isEnabled then return end
@@ -169,7 +170,7 @@ function DatatextManager:DisableDatatext(id)
     if datatext.onDisable then datatext.onDisable() end
 end
 
--- [ DRAG STOP ] -------------------------------------------------------------------
+-- [ DRAG STOP ] -------------------------------------------------------------------------------------
 function DatatextManager:OnDatatextDragStop(datatextId)
     local drawerFrame = DT.DrawerUI and DT.DrawerUI:GetPanel()
     local wasHovering = false
@@ -205,7 +206,7 @@ function DatatextManager:IsCursorOverFrame(frame)
     return cx >= left and cx <= left + width and cy >= bottom and cy <= bottom + height
 end
 
--- [ PERSISTENCE ] -----------------------------------------------------------------
+-- [ PERSISTENCE ] -----------------------------------------------------------------------------------
 function DatatextManager:GetPositionData()
     local plugin = Orbit:GetPlugin("Datatexts")
     if not plugin then return nil end
@@ -243,7 +244,7 @@ function DatatextManager:RestorePositions()
     end
 end
 
--- [ ENABLE/DISABLE ALL DRAWER DATATEXTS ] -------------------------------------------
+-- [ ENABLE/DISABLE ALL DRAWER DATATEXTS ] -----------------------------------------------------------
 function DatatextManager:EnableDrawerDatatexts()
     for _, datatext in pairs(datatexts) do
         if not datatext.isPlaced then self:EnableDatatext(datatext.id) end
@@ -256,7 +257,7 @@ function DatatextManager:DisableDrawerDatatexts()
     end
 end
 
--- [ CATEGORIES ] ------------------------------------------------------------------
+-- [ CATEGORIES ] ------------------------------------------------------------------------------------
 function DatatextManager:GetDatatextsByCategory()
     local categorized = {}
     for key, cat in pairs(DATATEXT_CATEGORIES) do categorized[key] = { label = cat.label, order = cat.order, datatexts = {} } end
@@ -268,7 +269,7 @@ function DatatextManager:GetDatatextsByCategory()
     return categorized
 end
 
--- [ UPDATE SCHEDULER ] ------------------------------------------------------------
+-- [ UPDATE SCHEDULER ] ------------------------------------------------------------------------------
 function DatatextManager:RegisterForScheduler(datatextId, tier, callback)
     if not UPDATE_INTERVALS[tier] then return end
     if not schedulerCallbacks[tier] then schedulerCallbacks[tier] = {} end
@@ -289,7 +290,7 @@ function DatatextManager:UnregisterFromScheduler(datatextId, tier)
     end
 end
 
--- [ TEARDOWN ] --------------------------------------------------------------------
+-- [ TEARDOWN ] --------------------------------------------------------------------------------------
 function DatatextManager:DisableAll()
     for _, datatext in pairs(datatexts) do
         self:DisableDatatext(datatext.id)
@@ -302,7 +303,7 @@ function DatatextManager:DisableAll()
     schedulerCallbacks = {}
 end
 
--- [ UPDATE ALL ] ------------------------------------------------------------------
+-- [ UPDATE ALL ] ------------------------------------------------------------------------------------
 function DatatextManager:UpdateAllDatatexts()
     local font = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
     for _, datatext in pairs(datatexts) do

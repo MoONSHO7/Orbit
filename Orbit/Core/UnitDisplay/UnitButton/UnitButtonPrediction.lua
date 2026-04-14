@@ -6,6 +6,14 @@ Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 local DEFAULT_HEAL_VALUE = 0
 
+-- UnitGetIncomingHeals / UnitGetTotalAbsorbs / UnitGetTotalHealAbsorbs are secret in combat;
+-- `v or 0` would throw. Forward the value as-is (StatusBar:SetValue is a C++ sink that accepts
+-- secret numerics) and only substitute DEFAULT_HEAL_VALUE when we can prove v is plainly nil.
+local function SafeHealValue(v)
+    if issecretvalue(v) then return v end
+    return v or DEFAULT_HEAL_VALUE
+end
+
 -- [ LOCAL HELPERS ]---------------------------------------------------------------------------------
 -- The healer shouts "I'M TRACKING YOUR INCOMING HEALS" every combat round
 local function SafeSetHealBarPoints(bar, anchorTexture, width)
@@ -48,7 +56,7 @@ function PredictionMixin:UpdateHealPrediction()
 
     -- [ MY INCOMING HEALS ]--------------------------------------------------------------------------
     if self.MyIncomingHealBar then
-        local myIncomingHeal = UnitGetIncomingHeals(self.unit, "player") or DEFAULT_HEAL_VALUE
+        local myIncomingHeal = SafeHealValue(UnitGetIncomingHeals(self.unit, "player"))
         self.MyIncomingHealBar:SetMinMaxValues(0, maxHealth)
         self.MyIncomingHealBar:SetValue(myIncomingHeal)
         self.MyIncomingHealBar:Show()
@@ -57,7 +65,7 @@ function PredictionMixin:UpdateHealPrediction()
 
     -- [ ALL INCOMING HEALS ]-------------------------------------------------------------------------
     if self.OtherIncomingHealBar then
-        local allIncomingHeal = UnitGetIncomingHeals(self.unit) or DEFAULT_HEAL_VALUE
+        local allIncomingHeal = SafeHealValue(UnitGetIncomingHeals(self.unit))
         self.OtherIncomingHealBar:SetMinMaxValues(0, maxHealth)
         self.OtherIncomingHealBar:SetValue(allIncomingHeal)
         self.OtherIncomingHealBar:Show()
@@ -69,7 +77,7 @@ function PredictionMixin:UpdateHealPrediction()
         if not self.absorbsEnabled then
             self.TotalAbsorbBar:Hide()
         else
-            local totalAbsorb = UnitGetTotalAbsorbs(self.unit) or DEFAULT_HEAL_VALUE
+            local totalAbsorb = SafeHealValue(UnitGetTotalAbsorbs(self.unit))
             self.TotalAbsorbBar:SetMinMaxValues(0, maxHealth)
             self.TotalAbsorbBar:SetValue(totalAbsorb)
             self.TotalAbsorbBar:Show()
@@ -93,7 +101,7 @@ function PredictionMixin:UpdateHealPrediction()
         if not self.healAbsorbsEnabled then
             self.HealAbsorbBar:Hide()
         else
-            local healAbsorbAmount = UnitGetTotalHealAbsorbs(self.unit) or DEFAULT_HEAL_VALUE
+            local healAbsorbAmount = SafeHealValue(UnitGetTotalHealAbsorbs(self.unit))
             self.HealAbsorbBar:SetMinMaxValues(0, maxHealth)
             self.HealAbsorbBar:SetValue(healAbsorbAmount)
             self.HealAbsorbBar:Show()

@@ -1,0 +1,41 @@
+root = true
+
+# Default for every text file. `charset = utf-8` is BOM-less per the
+# editorconfig spec — never change this to `utf-8-bom` for the WoW source.
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Lua source. Inherits everything from [*]; the rule that matters is the
+# global UTF-8 (no BOM) — WoW's loader will silently fall the file back to
+# enUS (or refuse to load it) if a BOM is prepended. Editors must not add one.
+[*.lua]
+
+# WoW addon manifest (.toc). Same UTF-8-no-BOM rule as Lua: a BOM makes the
+# first `## Interface:` tag unparseable and breaks the entire addon load.
+# Load order is defined here, so accidental whitespace damage is high-blast.
+[*.toc]
+
+# Markdown preserves trailing whitespace (hard line breaks)
+[*.md]
+trim_trailing_whitespace = false
+
+# YAML (GitHub Actions workflows, issue templates) — 2-space is the universal
+# convention and GitHub Actions parsers reject mixed indentation.
+[*.{yml,yaml}]
+indent_size = 2
+
+# PowerShell helpers under .scripts/ — keep LF for cross-platform consistency
+# with the rest of the repo (PowerShell 7+ is happy with LF).
+[*.ps1]
+
+# Bundled third-party libraries — mirror .styluaignore so format-on-save
+# never drifts them from upstream. CLAUDE.md forbids editing Libraries;
+# this enforces it at the editor layer too.
+[Orbit/Core/Libs/**]
+trim_trailing_whitespace = false
+insert_final_newline = false

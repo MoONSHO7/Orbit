@@ -16,7 +16,7 @@ provides four viewer types: essential cooldowns (class rotation), utility cooldo
 | CooldownGlows.lua | pandemic window glow hooks and proc glow hooks for CDM buttons. delegates all glow rendering and state management to `GlowController`. hooks `ShowPandemicStateFrame`/`HidePandemicStateFrame` for alpha-toggling and `ActionButtonSpellAlertManager` for proc glows. |
 | CooldownSettings.lua | settings schema builder with sub-tabs (layout, glow, colours). |
 | CooldownViewerHooks.lua | hooks into blizzard's cooldown viewer api (`C_CooldownViewer`). |
-| ViewerInjection.lua | drag-and-drop item/spell injection into essential/utility viewers. creates cdm-owned frames positioned relative to native icons via `afterNativeIndex`. per-spec persistence via `GetSpecData`/`SetSpecData`. shift-right-click removal. equipment slot tracking for trinkets (auto-updates on gear change). `/orbit flush` clears all injected icons. |
+| ViewerInjection.lua | drag-and-drop item/spell injection into essential/utility viewers. creates cdm-owned frames positioned relative to native icons via `afterNativeIndex`. per-spec persistence via `GetSpecData`/`SetSpecData`. shift-right-click removal. equipment slot tracking for trinkets (auto-updates on gear change). `/orbit flush` clears all injected icons. owns its own cursor poll (`StartCursorWatcher`) so the click-enable/drop-zone flow is self-contained — previously this was driven by a shared cursor watcher in the (now deleted) Tracked plugin's `TrackedUpdater.lua`, and the hidden coupling silently broke drop handling the moment that file was removed. delegates cursor → spell/item resolution and the `BuildInjectedItemEntry` shape to `Orbit.CooldownDragDrop` (`Core/Shared/CooldownDragDrop.lua`). |
 
 ## shared utilities (in Core/Shared/)
 
@@ -24,6 +24,7 @@ provides four viewer types: essential cooldowns (class rotation), utility cooldo
 |---|---|
 | CooldownUtils.lua | icon dimension calculation, skin settings builder. `BuildSkinSettings` includes `iconBorder = true` to opt into `GlobalSettings.IconBorderStyle`. |
 | TooltipParser.lua | tooltip scanning for active duration and cooldown duration extraction. |
+| CooldownDragDrop.lua | `Orbit.CooldownDragDrop` — cursor → cooldown ability resolver, `HasCooldown`/`IsDraggingCooldownAbility`, equipment-slot lookup, cursor texture, and saved-data entry builders. ViewerInjection uses this for every drag-drop decision; previously duplicated inline. |
 
 ## architecture
 
@@ -48,5 +49,5 @@ graph TD
 - all sub-files access the parent plugin via `Orbit:GetPlugin("Orbit_CooldownViewer")` (intra-domain reference — acceptable)
 - cooldown update functions run on `OnUpdate` — they must be performant (no allocations, no string concat)
 - glow types are defined in `Constants.PandemicGlow.Type`. do not hardcode glow type ids
-- injected icon data is stored per-spec in `OrbitDB.SpecData[specID]` via `GetSpecData`/`SetSpecData`
+- injected icon data is stored per-character and per-spec in `OrbitDB.SpecData[charKey][specID]` via `GetSpecData`/`SetSpecData`
 - this plugin has zero dependencies on the Tracked plugin (`Orbit_Tracked`). the two are fully decoupled

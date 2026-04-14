@@ -1,6 +1,5 @@
 -- [ HEALER AURA REGISTRY ]-------------------------------------------------------------------------
--- Slot-based spell-ID mapping for healer buffs/HoTs and raid buffs.
--- 7 shared slots (HealerAura1-7) + RaidBuff. Each slot maps to a different spell per spec.
+-- Slot-based spell-ID mapping for healer buffs/HoTs and raid buffs (7 slots + RaidBuff per spec).
 local _, Orbit = ...
 
 Orbit.HealerAuraRegistry = {}
@@ -70,14 +69,17 @@ local RAID_BUFFS = {
     { spellId = 1459,   label = "Arcane Intellect",       classFilter = "MAGE" },
     { spellId = 6673,   label = "Battle Shout",           classFilter = "WARRIOR" },
     { spellId = 21562,  label = "Power Word: Fortitude",  classFilter = "PRIEST" },
-    { spellId = 369459, label = "Source of Magic",        classFilter = "EVOKER" },
+    { spellId = 364342, label = "Blessing of the Bronze",  classFilter = "EVOKER", variants = {381732, 381741, 381746, 381748, 381749, 381750, 381751, 381752, 381753, 381754, 381756, 381757, 381758} },
     { spellId = 462854, label = "Skyfury",                classFilter = "SHAMAN" },
-    { spellId = 474754, label = "Symbiotic Relationship", classFilter = "EVOKER" },
+    { spellId = 369459, label = "Source of Magic",        classFilter = "EVOKER" },
 }
 
 -- Lookup of ALL raid buff spell IDs (all classes) for presence checking
 local ALL_RAID_BUFF_IDS = {}
-for _, buff in ipairs(RAID_BUFFS) do ALL_RAID_BUFF_IDS[buff.spellId] = true end
+for _, buff in ipairs(RAID_BUFFS) do
+    ALL_RAID_BUFF_IDS[buff.spellId] = true
+    if buff.variants then for _, vid in ipairs(buff.variants) do ALL_RAID_BUFF_IDS[vid] = true end end
+end
 
 -- [ SLOT KEY GENERATION ]---------------------------------------------------------------------------
 local SLOT_KEYS = {}
@@ -112,7 +114,7 @@ local function BuildCaches()
     end
     for _, buff in ipairs(RAID_BUFFS) do
         if buff.classFilter == playerClass then
-            _activeRaidBuffs[#_activeRaidBuffs + 1] = { spellId = buff.spellId, label = buff.label }
+            _activeRaidBuffs[#_activeRaidBuffs + 1] = { spellId = buff.spellId, label = buff.label, variants = buff.variants }
         end
     end
     if #_activeRaidBuffs > 0 then _activeKeys[#_activeKeys + 1] = RAID_BUFF_KEY end

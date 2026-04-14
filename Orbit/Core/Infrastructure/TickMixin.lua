@@ -63,18 +63,32 @@ function TickMixin:Create(parent, statusBar, anchorRegion)
 end
 
 -- [ APPLY ]-----------------------------------------------------------------------------------------
-
-function TickMixin:Apply(frame, tickSize, height, anchorBar)
+-- `perpDim` is the dimension perpendicular to the bar's fill axis (the bar's
+-- height for HORIZONTAL, the bar's width for VERTICAL). The tick mark is a
+-- thin line that crosses the bar perpendicular to fill direction; tickSize is
+-- its thickness along the fill axis. orientation defaults to HORIZONTAL so
+-- existing horizontal callers (PlayerPower, PlayerResources) need no changes.
+function TickMixin:Apply(frame, tickSize, perpDim, anchorBar, orientation)
     local rounded = 2 * math.floor((tickSize + 1) / 2)
     if rounded > 0 and frame.TickBar then
         local scale = frame:GetEffectiveScale()
         local overshoot = Engine.Pixel:Multiple(TICK_OVERSHOOT, scale)
-        local tickWidth = math.max(Engine.Pixel:Multiple(rounded, scale), Engine.Pixel:DefaultBorderSize(scale))
-        frame.TickMark:SetSize(tickWidth, Engine.Pixel:Snap(height + overshoot * 2, scale))
-        frame.TickClip:ClearAllPoints()
+        local tickThickness = math.max(Engine.Pixel:Multiple(rounded, scale), Engine.Pixel:DefaultBorderSize(scale))
+        local crossSize = Engine.Pixel:Snap(perpDim + overshoot * 2, scale)
         local ref = anchorBar or frame.TickBar
-        frame.TickClip:SetPoint("TOPLEFT", ref, "TOPLEFT", tickWidth, -overshoot)
-        frame.TickClip:SetPoint("BOTTOMRIGHT", ref, "BOTTOMRIGHT", -tickWidth, overshoot)
+        frame.TickClip:ClearAllPoints()
+        frame.TickMark:ClearAllPoints()
+        if orientation == "VERTICAL" then
+            frame.TickMark:SetSize(crossSize, tickThickness)
+            frame.TickMark:SetPoint("TOP", frame.TickBar:GetStatusBarTexture(), "TOP", 0, 0)
+            frame.TickClip:SetPoint("TOPLEFT", ref, "TOPLEFT", overshoot, -tickThickness)
+            frame.TickClip:SetPoint("BOTTOMRIGHT", ref, "BOTTOMRIGHT", -overshoot, tickThickness)
+        else
+            frame.TickMark:SetSize(tickThickness, crossSize)
+            frame.TickMark:SetPoint("RIGHT", frame.TickBar:GetStatusBarTexture(), "RIGHT", 0, 0)
+            frame.TickClip:SetPoint("TOPLEFT", ref, "TOPLEFT", tickThickness, -overshoot)
+            frame.TickClip:SetPoint("BOTTOMRIGHT", ref, "BOTTOMRIGHT", -tickThickness, overshoot)
+        end
         frame.TickBar:Show()
         frame.TickClip:Show()
     elseif frame.TickBar then

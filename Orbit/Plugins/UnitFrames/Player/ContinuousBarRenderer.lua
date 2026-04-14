@@ -126,15 +126,14 @@ function Renderer:UpdateSpacers(plugin, frame, cfg, max)
 end
 
 -- [ UPDATE POWER (CONTINUOUS PATH) ]---------------------------------------------------------------
+-- All `getState` implementations are guaranteed to return numeric `current`/`max`
+-- (never nil), so we skip the legacy `if current and max then` gate which would
+-- otherwise perform a boolean test on a secret value in combat.
 function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
     local cfg = self.CONFIG[plugin.continuousResource]
     if not cfg then return end
     local current, max, extra1, extra2 = cfg.getState()
-    if current and max then
-        self:UpdateBar(plugin, frame, systemIndex, cfg.curveKey, current, max, plugin.continuousResource)
-        self:UpdateSpacers(plugin, frame, cfg, max)
-        if frame.Text and textEnabled then cfg.updateText(frame.Text, current, max, extra1, extra2) end
-    elseif frame.StatusBar then
-        frame.StatusBar:SetValue(0)
-    end
+    self:UpdateBar(plugin, frame, systemIndex, cfg.curveKey, current, max, plugin.continuousResource)
+    self:UpdateSpacers(plugin, frame, cfg, max)
+    if frame.Text and textEnabled then cfg.updateText(frame.Text, current, max, extra1, extra2) end
 end

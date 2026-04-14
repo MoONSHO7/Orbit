@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local MasqueBridge = Orbit.Skin and Orbit.Skin.Masque
@@ -38,17 +39,17 @@ local cachedOORColor, cachedOOMColor, cachedUnusableColor
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
 local BAR_CONFIG = {
-    { blizzName = "MainActionBar", orbitName = "OrbitActionBar1", label = "Action Bar 1", index = 1, buttonPrefix = "ActionButton", count = 12 },
-    { blizzName = "MultiBarBottomLeft", orbitName = "OrbitActionBar2", label = "Action Bar 2", index = 2, buttonPrefix = "MultiBarBottomLeftButton", count = 12 },
-    { blizzName = "MultiBarBottomRight", orbitName = "OrbitActionBar3", label = "Action Bar 3", index = 3, buttonPrefix = "MultiBarBottomRightButton", count = 12 },
-    { blizzName = "MultiBarRight", orbitName = "OrbitActionBar4", label = "Action Bar 4", index = 4, buttonPrefix = "MultiBarRightButton", count = 12 },
-    { blizzName = "MultiBarLeft", orbitName = "OrbitActionBar5", label = "Action Bar 5", index = 5, buttonPrefix = "MultiBarLeftButton", count = 12 },
-    { blizzName = "MultiBar5", orbitName = "OrbitActionBar6", label = "Action Bar 6", index = 6, buttonPrefix = "MultiBar5Button", count = 12 },
-    { blizzName = "MultiBar6", orbitName = "OrbitActionBar7", label = "Action Bar 7", index = 7, buttonPrefix = "MultiBar6Button", count = 12 },
-    { blizzName = "MultiBar7", orbitName = "OrbitActionBar8", label = "Action Bar 8", index = 8, buttonPrefix = "MultiBar7Button", count = 12 },
-    { blizzName = "PetActionBar", orbitName = "OrbitPetBar", label = "Pet Bar", index = 9, buttonPrefix = "PetActionButton", count = 10 },
-    { blizzName = "StanceBar", orbitName = "OrbitStanceBar", label = "Stance Bar", index = 10, buttonPrefix = "StanceButton", count = 10, isSpecial = true },
-    { blizzName = "PossessBarFrame", orbitName = "OrbitPossessBar", label = "Possess Bar", index = 11, buttonPrefix = "PossessButton", count = 2, isSpecial = true },
+    { blizzName = "MainActionBar", orbitName = "OrbitActionBar1", label = L.PLU_ACTION_BAR_1, index = 1, buttonPrefix = "ActionButton", count = 12 },
+    { blizzName = "MultiBarBottomLeft", orbitName = "OrbitActionBar2", label = L.PLU_ACTION_BAR_2, index = 2, buttonPrefix = "MultiBarBottomLeftButton", count = 12 },
+    { blizzName = "MultiBarBottomRight", orbitName = "OrbitActionBar3", label = L.PLU_ACTION_BAR_3, index = 3, buttonPrefix = "MultiBarBottomRightButton", count = 12 },
+    { blizzName = "MultiBarRight", orbitName = "OrbitActionBar4", label = L.PLU_ACTION_BAR_4, index = 4, buttonPrefix = "MultiBarRightButton", count = 12 },
+    { blizzName = "MultiBarLeft", orbitName = "OrbitActionBar5", label = L.PLU_ACTION_BAR_5, index = 5, buttonPrefix = "MultiBarLeftButton", count = 12 },
+    { blizzName = "MultiBar5", orbitName = "OrbitActionBar6", label = L.PLU_ACTION_BAR_6, index = 6, buttonPrefix = "MultiBar5Button", count = 12 },
+    { blizzName = "MultiBar6", orbitName = "OrbitActionBar7", label = L.PLU_ACTION_BAR_7, index = 7, buttonPrefix = "MultiBar6Button", count = 12 },
+    { blizzName = "MultiBar7", orbitName = "OrbitActionBar8", label = L.PLU_ACTION_BAR_8, index = 8, buttonPrefix = "MultiBar7Button", count = 12 },
+    { blizzName = "PetActionBar", orbitName = "OrbitPetBar", label = L.PLU_PET_BAR, index = 9, buttonPrefix = "PetActionButton", count = 10 },
+    { blizzName = "StanceBar", orbitName = "OrbitStanceBar", label = L.PLU_STANCE_BAR, index = 10, buttonPrefix = "StanceButton", count = 10, isSpecial = true },
+    { blizzName = "PossessBarFrame", orbitName = "OrbitPossessBar", label = L.PLU_POSSESS_BAR, index = 11, buttonPrefix = "PossessButton", count = 2, isSpecial = true },
 }
 
 
@@ -155,7 +156,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
     end
     if systemIndex == VEHICLE_EXIT_INDEX then
-        table.insert(schema.controls, { type = "slider", key = "IconSize", label = "Icon Size", min = 20, max = 64, step = 1, default = DEFAULT_ICON_SIZE, formatter = function(v) return v .. "px" end,
+        table.insert(schema.controls, { type = "slider", key = "IconSize", label = L.PLU_AB_ICON_SIZE, min = 20, max = 64, step = 1, default = DEFAULT_ICON_SIZE, formatter = function(v) return v .. "px" end,
             onChange = function(val) self:SetSetting(systemIndex, "IconSize", val); self:ApplySettings(container) end })
         OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
         return
@@ -165,7 +166,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
     if currentTab == "Layout" then
         if systemIndex == 1 then
-            table.insert(schema.controls, { type = "slider", key = "NumActionBars", label = "|cFFFFD100# Action Bars|r", min = 1, max = 8, step = 1, default = 4, isGlobal = true,
+            table.insert(schema.controls, { type = "slider", key = "NumActionBars", label = "|cFFFFD100" .. L.PLU_AB_NUM_BARS .. "|r", min = 1, max = 8, step = 1, default = 4, isGlobal = true,
                 onChange = function(val)
                     self:SetSetting(1, "NumActionBars", val)
                     for index, cont in pairs(self.containers) do
@@ -176,7 +177,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         local config = BAR_CONFIG[systemIndex]
         local isSpecialBar = (config and config.isSpecial) or SPECIAL_BAR_INDICES[systemIndex]
         if config and config.count > 1 and not isSpecialBar then
-            table.insert(schema.controls, { type = "slider", key = "NumIcons", label = "# Icons", min = 1, max = config.count, step = 1, default = config.count,
+            table.insert(schema.controls, { type = "slider", key = "NumIcons", label = L.PLU_AB_NUM_ICONS, min = 1, max = config.count, step = 1, default = config.count,
                 onChange = function(val)
                     self:SetSetting(systemIndex, "NumIcons", val)
                     self:ApplySettings(container)
@@ -190,7 +191,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         local currentIndex = 1
         for i, v in ipairs(factors) do if v == currentRows then currentIndex = i; break end end
         if #factors > 1 then
-            table.insert(schema.controls, { type = "slider", key = "_RowsSlider", label = "Rows", min = 1, max = #factors, step = 1, default = currentIndex,
+            table.insert(schema.controls, { type = "slider", key = "_RowsSlider", label = L.PLU_AB_ROWS, min = 1, max = #factors, step = 1, default = currentIndex,
                 formatter = function(v) return tostring(factors[math.floor(v)] or 1) end,
                 onChange = function(val)
                     local newRows = factors[math.floor(val)] or 1
@@ -200,29 +201,29 @@ function Plugin:AddSettings(dialog, systemFrame)
                     end
                 end })
         end
-        table.insert(schema.controls, { type = "slider", key = "IconSize", label = "Icon Size", min = 20, max = 64, step = 1, default = DEFAULT_ICON_SIZE, formatter = function(v) return v .. "px" end,
+        table.insert(schema.controls, { type = "slider", key = "IconSize", label = L.PLU_AB_ICON_SIZE, min = 20, max = 64, step = 1, default = DEFAULT_ICON_SIZE, formatter = function(v) return v .. "px" end,
             onChange = function(val) self:SetSetting(systemIndex, "IconSize", val); self:ApplySettings(container) end })
-        table.insert(schema.controls, { type = "slider", key = "IconPadding", label = "Icon Padding", min = 0, max = 10, step = 1, default = 2,
+        table.insert(schema.controls, { type = "slider", key = "IconPadding", label = L.PLU_AB_ICON_PADDING, min = 0, max = 10, step = 1, default = 2,
             onChange = function(val) self:SetSetting(systemIndex, "IconPadding", val); self:ApplySettings(container) end })
         if systemIndex == 1 then
-            table.insert(schema.controls, { type = "checkbox", key = "ShowBarArt", label = "Show Bar Art", default = false,
+            table.insert(schema.controls, { type = "checkbox", key = "ShowBarArt", label = L.PLU_AB_SHOW_BAR_ART, default = false,
                 onChange = function(val) self:SetSetting(1, "ShowBarArt", val); self:ApplySettings(container) end })
         end
         local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
-        if not isForcedHideEmpty then table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = "Hide Empty Buttons", default = false }) end
+        if not isForcedHideEmpty then table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = L.PLU_AB_HIDE_EMPTY, default = false }) end
     elseif currentTab == "Glow" then
         SB:AddGlowSettings(self, schema, 1, dialog, systemFrame, {
             prefix = "ProcGlow",
-            label = "Proc Glow",
+            label = L.PLU_AB_PROC_GLOW,
             default = Constants.Glow.Type.Medium,
         })
     elseif currentTab == "Colors" then
         local DEFAULT_BACKDROP = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
         local DEFAULT_KEYPRESS = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.6 } } } }
-        table.insert(schema.controls, { type = "colorcurve", key = "IconBackdropColor", label = "Backdrop Colour", singleColor = true,
+        table.insert(schema.controls, { type = "colorcurve", key = "IconBackdropColor", label = L.PLU_AB_BACKDROP_COLOR, singleColor = true,
             default = DEFAULT_BACKDROP,
             onChange = function(val) self:SetSetting(systemIndex, "IconBackdropColor", val); self:ApplyAll() end })
-        table.insert(schema.controls, { type = "colorcurve", key = "KeypressColor", label = "Keypress Flash", singleColor = true,
+        table.insert(schema.controls, { type = "colorcurve", key = "KeypressColor", label = L.PLU_AB_KEYPRESS_FLASH, singleColor = true,
             default = DEFAULT_KEYPRESS,
             onChange = function(val) self:SetSetting(systemIndex, "KeypressColor", val); self:ApplyAll() end })
         local function RefreshAllButtons()
@@ -230,20 +231,20 @@ function Plugin:AddSettings(dialog, systemFrame)
                 for _, button in ipairs(buttons) do RefreshIconColor(self, button) end
             end
         end
-        table.insert(schema.controls, { type = "colorcurve", key = "OORColor", label = "Out of Range", singleColor = true, hasDesaturation = true,
+        table.insert(schema.controls, { type = "colorcurve", key = "OORColor", label = L.PLU_AB_OUT_OF_RANGE, singleColor = true, hasDesaturation = true,
             default = DEFAULT_OOR_COLOR,
             onChange = function(val) self:SetSetting(1, "OORColor", val); InvalidateColorCache(); RefreshAllButtons() end })
-        table.insert(schema.controls, { type = "colorcurve", key = "OOMColor", label = "Out of Mana", singleColor = true, hasDesaturation = true,
+        table.insert(schema.controls, { type = "colorcurve", key = "OOMColor", label = L.PLU_AB_OUT_OF_MANA, singleColor = true, hasDesaturation = true,
             default = DEFAULT_OOM_COLOR,
             onChange = function(val) self:SetSetting(1, "OOMColor", val); InvalidateColorCache(); RefreshAllButtons() end })
-        table.insert(schema.controls, { type = "colorcurve", key = "UnusableColor", label = "Not Usable", singleColor = true, hasDesaturation = true,
+        table.insert(schema.controls, { type = "colorcurve", key = "UnusableColor", label = L.PLU_AB_NOT_USABLE, singleColor = true, hasDesaturation = true,
             default = DEFAULT_UNUSABLE_COLOR,
             onChange = function(val) self:SetSetting(1, "UnusableColor", val); InvalidateColorCache(); RefreshAllButtons() end })
-        table.insert(schema.controls, { type = "colorcurve", key = "CooldownSwipeColor", label = "Cooldown Swipe", singleColor = true,
+        table.insert(schema.controls, { type = "colorcurve", key = "CooldownSwipeColor", label = L.PLU_AB_COOLDOWN_SWIPE, singleColor = true,
             default = DEFAULT_CD_SWIPE,
             onChange = function(val) self:SetSetting(systemIndex, "CooldownSwipeColor", val); self:ApplyAll() end })
     end
-    schema.extraButtons = { { text = "Quick Keybind", callback = function()
+    schema.extraButtons = { { text = L.PLU_AB_QUICK_KEYBIND, callback = function()
         if EditModeManagerFrame and EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
         if QuickKeybindFrame then QuickKeybindFrame:Show() end
     end } }

@@ -19,7 +19,7 @@ local FLASH_TOTAL = 4
 local FLASH_RED = { 1, 0.2, 0.2, 0.8 }
 local FLASH_NEUTRAL = { 1, 1, 1, 1 }
 local BORDER_FRAME_LEVEL = 150
-local DIM_ALPHA = 0.3
+local DIM_ALPHA = 0.3 -- alpha applied to non-canvas frames while canvas mode is active
 
 -- [ STATE ]-----------------------------------------------------------------------------------------
 

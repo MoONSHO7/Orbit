@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
@@ -12,12 +13,12 @@ local DEFAULT_SIZE = Orbit.MinimapConstants.DEFAULT_SIZE
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
 local CLICK_ACTION_OPTIONS = {
-    { value = "none", label = "None" },
-    { value = "worldmap", label = "World Map" },
-    { value = "tracking", label = "Tracking Menu" },
-    { value = "calendar", label = "Calendar" },
-    { value = "time", label = "Time Manager" },
-    { value = "addons", label = "Addons" },
+    { value = "none", label = L.PLU_MINIMAP_ACT_NONE },
+    { value = "worldmap", label = L.PLU_MINIMAP_ACT_MAP },
+    { value = "tracking", label = L.PLU_MINIMAP_ACT_TRACK },
+    { value = "calendar", label = L.PLU_MINIMAP_ACT_CAL },
+    { value = "time", label = L.PLU_MINIMAP_ACT_TIME },
+    { value = "addons", label = L.PLU_MINIMAP_ACT_ADDONS },
 }
 
 function Plugin:AddSettings(dialog, systemFrame)
@@ -33,10 +34,10 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "dropdown",
         key = "Shape",
-        label = "Shape",
+        label = L.PLU_MINIMAP_SHAPE,
         options = {
-            { value = "square", label = "Square" },
-            { value = "round", label = "Round" },
+            { value = "square", label = L.PLU_MINIMAP_SQUARE },
+            { value = "round", label = L.PLU_MINIMAP_ROUND },
         },
         default = "square",
         onChange = function(val)
@@ -53,7 +54,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "slider",
         key = "Size",
-        label = "Size",
+        label = L.PLU_MINIMAP_SIZE,
         min = 100,
         max = 400,
         step = 1,
@@ -64,7 +65,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "colorcurve",
         key = "BorderColor",
-        label = "Border Colour",
+        label = L.PLU_MINIMAP_BORDER,
         singleColor = true,
         default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 1 } } } },
         onChange = function(val)
@@ -80,7 +81,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "checkbox",
         key = "RotateMinimap",
-        label = "Rotate Minimap (Round Only)",
+        label = L.PLU_MINIMAP_ROTATE,
         default = false,
         visibleIf = function()
             local shape = self:GetSetting(SYSTEM_ID, "Shape")
@@ -96,7 +97,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "dropdown",
         key = "LeftClickAction",
-        label = "Left-click",
+        label = L.PLU_MINIMAP_LEFT_CLICK,
         options = CLICK_ACTION_OPTIONS,
         default = "none",
     })
@@ -104,7 +105,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "dropdown",
         key = "MiddleClickAction",
-        label = "Middle-click",
+        label = L.PLU_MINIMAP_MID_CLICK,
         options = CLICK_ACTION_OPTIONS,
         default = "none",
     })
@@ -112,7 +113,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "dropdown",
         key = "RightClickAction",
-        label = "Right-click",
+        label = L.PLU_MINIMAP_RIGHT_CLICK,
         options = CLICK_ACTION_OPTIONS,
         default = "tracking",
     })
@@ -121,8 +122,8 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "checkbox",
         key = "AutoZoomOut",
-        label = "Auto Zoom-out",
-        tooltip = "Automatically zoom back out 5 seconds after zooming in.",
+        label = L.PLU_MINIMAP_AUTO_ZOOM,
+        tooltip = L.PLU_MINIMAP_AUTO_ZOOM_TT,
         default = true,
     })
 

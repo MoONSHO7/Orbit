@@ -28,7 +28,7 @@ local CLAMP_PADDING_Y = 200
 
 local AURA_ICON_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true }
 local STANDARD_ICON_KEYS =
-    { MarkerIcon = true, LeaderIcon = true, MainTankIcon = true, RestingIcon = true, Difficulty = true, DifficultyIcon = true, Mail = true, CraftingOrder = true, Compartment = true, Zoom = true }
+    { MarkerIcon = true, MainTankIcon = true, RestingIcon = true, Difficulty = true, DifficultyIcon = true, Mail = true, CraftingOrder = true, Compartment = true, Zoom = true }
 
 local function DetectCreatorType(key, source)
     local isFontString = source and source.GetFont ~= nil
@@ -36,7 +36,7 @@ local function DetectCreatorType(key, source)
     local isIconFrame = source and source.Icon and source.Icon.GetTexture and key ~= "CastBar"
 
     if isFontString then return "FontString", true, false, false end
-    if key == "StatusIcons" or key == "RoleIcon" or key == "Missions" or key == "PvpIcon" then return "CyclingAtlas", false, false, false end
+    if key == "StatusIcons" or key == "RoleIcon" or key == "LeaderIcon" or key == "Missions" or key == "PvpIcon" then return "CyclingAtlas", false, false, false end
     if key == "Buffs" or key == "Debuffs" then return "Aura", false, true, false end
     -- Known aura icons + healer aura keys (dynamic keys not in standard icon sets)
     local isAuraKey = AURA_ICON_KEYS[key] or (isIconFrame and not STANDARD_ICON_KEYS[key])

@@ -37,7 +37,7 @@ function Orbit.GroupFrameLayoutMixin:PositionPartyFrames()
     local orientation = self:GetTierSetting("Orientation") or 0
     local width = self:GetTierSetting("Width") or 160
     local height = self:GetTierSetting("Height") or 40
-    local growthDirection = self:GetTierSetting("GrowthDirection") or (orientation == 0 and "Down" or "Right")
+    local growthDirection = self:GetTierSetting("GrowthDirection") or (orientation == 0 and "down" or "right")
     self.container.orbitForceAnchorPoint = Helpers:GetContainerAnchor(growthDirection)
 
     local visibleIndex = 0
@@ -59,12 +59,12 @@ function Orbit.GroupFrameLayoutMixin:PositionRaidFrames()
     local memberSpacing = self:GetTierSetting("MemberSpacing") or 2
     local groupSpacing = self:GetTierSetting("GroupSpacing") or 2
     local groupsPerRow = self:GetTierSetting("GroupsPerRow") or 6
-    local memberGrowth = self:GetTierSetting("GrowthDirection") or "Down"
+    local memberGrowth = self:GetTierSetting("GrowthDirection") or "down"
     self.container.orbitForceAnchorPoint = Helpers:GetContainerAnchor(memberGrowth)
-    local isHorizontal = (self:GetTierSetting("Orientation") or "Vertical") == "Horizontal"
+    local isHorizontal = (self:GetTierSetting("Orientation") or "vertical") == "horizontal"
 
     local activeGroups = Helpers:GetActiveGroups()
-    local sortMode = self:GetTierSetting("SortMode") or "Group"
+    local sortMode = self:GetTierSetting("SortMode") or "group"
 
     local isPreview = self.frames[1] and self.frames[1].preview
     local groupOrder = {}
@@ -78,10 +78,10 @@ function Orbit.GroupFrameLayoutMixin:PositionRaidFrames()
         end
     end
 
-    local growUp = (memberGrowth == "Up")
+    local growUp = (memberGrowth == "up")
     local scale = self.container:GetEffectiveScale() or 1
 
-    if sortMode ~= "Group" then
+    if sortMode ~= "group" then
         local flatRows = math.max(1, self:GetTierSetting("FlatRows") or 1)
         local visibleFrames = {}
         for i = 1, MAX_GROUP_FRAMES do
@@ -150,7 +150,7 @@ end
 -- [ GROUP LABELS ]----------------------------------------------------------------------------------
 function Orbit.GroupFrameLayoutMixin:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, growUp, scale)
     if not self.groupLabels then self.groupLabels = {} end
-    local showLabels = (sortMode == "Group") and self:GetTierSetting("ShowGroupLabels")
+    local showLabels = (sortMode == "group") and self:GetTierSetting("ShowGroupLabels")
 
     for i = 1, MAX_RAID_GROUPS do
         if self.groupLabels[i] then self.groupLabels[i]:Hide() end
@@ -220,9 +220,9 @@ function Orbit.GroupFrameLayoutMixin:UpdateContainerSize()
         local memberSpacing = self:GetTierSetting("MemberSpacing") or 2
         local groupSpacing = self:GetTierSetting("GroupSpacing") or 2
         local groupsPerRow = self:GetTierSetting("GroupsPerRow") or 6
-        local sortMode = self:GetTierSetting("SortMode") or "Group"
+        local sortMode = self:GetTierSetting("SortMode") or "group"
 
-        if sortMode ~= "Group" then
+        if sortMode ~= "group" then
             local flatRows = math.max(1, self:GetTierSetting("FlatRows") or 1)
             local totalFrames = 0
             for _, frame in ipairs(self.frames) do
@@ -245,7 +245,7 @@ function Orbit.GroupFrameLayoutMixin:UpdateContainerSize()
                 for _ in pairs(activeGroups) do numGroups = numGroups + 1 end
                 numGroups = math.max(1, numGroups)
             end
-            local isHorizontal = (self:GetTierSetting("Orientation") or "Vertical") == "Horizontal"
+            local isHorizontal = (self:GetTierSetting("Orientation") or "vertical") == "horizontal"
             local scale = self.container:GetEffectiveScale() or 1
             local containerW, containerH = Helpers:CalculateRaidContainerSize(numGroups, FRAMES_PER_GROUP, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, scale)
             self.container:SetSize(containerW, containerH)

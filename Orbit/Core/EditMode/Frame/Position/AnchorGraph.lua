@@ -1,7 +1,5 @@
 -- [ ORBIT ANCHOR GRAPH ]------------------------------------------------------------------------
--- Pure-data directed graph companion to Anchor.lua.
--- Tracks virtual/disabled state and provides graph traversal
--- without screen-coordinate dependencies.
+-- Pure-data graph companion to Anchor.lua; virtual/disabled state and traversal without coordinates.
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -9,27 +7,29 @@ local Engine = Orbit.Engine
 Engine.AnchorGraph = {}
 local Graph = Engine.AnchorGraph
 
--- [ CONSTANTS ] --------------------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local HORIZONTAL_EDGES = { LEFT = true, RIGHT = true }
 
--- [ STATE ] ------------------------------------------------------------------------------------
--- Additive tracking layered over Anchor.anchors/childrenOf.
--- virtualNodes: content-empty frames that remain structurally registered
--- disabledNodes: profile-level disabled frames severed from layout
+-- [ STATE ] -----------------------------------------------------------------------------------------
+-- Additive tracking: virtualNodes = content-empty, disabledNodes = profile-level disabled.
 Graph.virtualNodes = {}
 Graph.disabledNodes = {}
 
 -- References set by Anchor.lua via Graph:Init()
 Graph.anchors = nil
 Graph.childrenOf = nil
+Graph.logicalAnchors = nil
+Graph.logicalChildrenOf = nil
 
--- [ INITIALIZATION ] ---------------------------------------------------------------------------
-function Graph:Init(anchors, childrenOf)
+-- [ INITIALIZATION ] --------------------------------------------------------------------------------
+function Graph:Init(anchors, childrenOf, logicalAnchors, logicalChildrenOf)
     self.anchors = anchors
     self.childrenOf = childrenOf
+    self.logicalAnchors = logicalAnchors
+    self.logicalChildrenOf = logicalChildrenOf
 end
 
--- [ VIRTUAL STATE ] ----------------------------------------------------------------------------
+-- [ VIRTUAL STATE ] ---------------------------------------------------------------------------------
 function Graph:SetVirtual(frame, virtual)
     local was = self.virtualNodes[frame]
     if (not not was) == (not not virtual) then return false end
@@ -41,7 +41,7 @@ function Graph:IsVirtual(frame)
     return self.virtualNodes[frame] == true
 end
 
--- [ DISABLED STATE ] ---------------------------------------------------------------------------
+-- [ DISABLED STATE ] --------------------------------------------------------------------------------
 function Graph:SetDisabled(frame, disabled)
     local was = self.disabledNodes[frame]
     if (not not was) == (not not disabled) then return false end
@@ -53,13 +53,12 @@ function Graph:IsDisabled(frame)
     return self.disabledNodes[frame] == true
 end
 
--- [ COMBINED SKIP CHECK ] ----------------------------------------------------------------------
+-- [ COMBINED SKIP CHECK ] ---------------------------------------------------------------------------
 function Graph:IsSkipped(frame)
     return self.virtualNodes[frame] or self.disabledNodes[frame] or false
 end
 
--- [ CYCLE DETECTION ] --------------------------------------------------------------------------
--- Pure-data walk. No GetNumPoints() calls.
+-- [ CYCLE DETECTION ] -------------------------------------------------------------------------------
 function Graph:WouldCreateCycle(child, parent)
     local visited = {}
     local current = parent
@@ -73,21 +72,27 @@ function Graph:WouldCreateCycle(child, parent)
     return false
 end
 
--- [ CHAIN ROOT ] -------------------------------------------------------------------------------
+-- [ CHAIN ROOT ] ------------------------------------------------------------------------------------
 function Graph:GetChainRoot(frame)
     local current = frame
+    local visited = {}
     while true do
+        if visited[current] then return current end
+        visited[current] = true
         local anchor = self.anchors[current]
         if not anchor or not anchor.parent then return current end
         current = anchor.parent
     end
 end
 
--- [ HORIZONTAL CHAIN ROOT ] --------------------------------------------------------------------
+-- [ HORIZONTAL CHAIN ROOT ] -------------------------------------------------------------------------
 function Graph:GetHorizontalChainRoot(frame)
     if not frame.orbitChainSync then return frame end
     local root = frame
+    local visited = {}
     while true do
+        if visited[root] then break end
+        visited[root] = true
         local a = self.anchors[root]
         if not a or not HORIZONTAL_EDGES[a.edge] then break end
         if not a.parent.orbitChainSync then break end
@@ -96,7 +101,7 @@ function Graph:GetHorizontalChainRoot(frame)
     return root
 end
 
--- [ HORIZONTAL CHAIN NODES ] -------------------------------------------------------------------
+-- [ HORIZONTAL CHAIN NODES ] ------------------------------------------------------------------------
 function Graph:GetHorizontalChainNodes(frame)
     if not frame.orbitChainSync then return nil end
     local root = self:GetHorizontalChainRoot(frame)
@@ -116,7 +121,7 @@ function Graph:GetHorizontalChainNodes(frame)
     return frames
 end
 
--- [ DEPENDENTS ] -------------------------------------------------------------------------------
+-- [ DEPENDENTS ] ------------------------------------------------------------------------------------
 function Graph:GetDependents(frame, chainSyncOnly)
     local result = {}
     local function walk(parent)
@@ -133,7 +138,7 @@ function Graph:GetDependents(frame, chainSyncOnly)
     return result
 end
 
--- [ CHILDREN ON EDGE ] -------------------------------------------------------------------------
+-- [ CHILDREN ON EDGE ] ------------------------------------------------------------------------------
 function Graph:GetChildrenOnEdge(frame, edge)
     local result = {}
     local children = self.childrenOf[frame]
@@ -147,31 +152,55 @@ function Graph:GetChildrenOnEdge(frame, edge)
     return result
 end
 
--- [ TARGETED RECONCILIATION ] ------------------------------------------------------------------
--- Walks a single chain, re-parenting children of skipped (virtual/disabled)
--- frames to the nearest non-skipped ancestor. Replaces RepairAllChains()
--- with O(chain) instead of O(all_anchors) complexity.
+-- [ TARGETED RECONCILIATION ] -----------------------------------------------------------------------
+-- Walk one chain, promote children past skipped frames; O(chain). skipLogical preserves intent.
+function Graph:RestoreLogicalChildren(parent, anchorModule)
+    if not self.logicalChildrenOf or not self.logicalChildrenOf[parent] then return end
+    for child in pairs(self.logicalChildrenOf[parent]) do
+        local physical = self.anchors[child]
+        if physical and physical.parent ~= parent then
+            local logical = self.logicalAnchors[child]
+            if logical then
+                anchorModule:CreateAnchor(child, parent, logical.edge, logical.padding, logical.syncOptions, logical.align, true, true)
+            end
+        end
+    end
+end
+
+Graph._reconcilingChains = Graph._reconcilingChains or {}
+
 function Graph:ReconcileChain(root, anchorModule)
     if InCombatLockdown() then return end
+    if self._reconcilingChains[root] then return end
+    self._reconcilingChains[root] = true
     local visited = {}
-    local isEditMode = Orbit:IsEditMode()
+
+    -- Promote a grandchild of a skipped frame up to the nearest non-skipped
+    -- ancestor. CreateAnchor's SetPoint places the grandchild on the promoted
+    -- parent's edge, which is exactly what we want: empty children should
+    -- stack under the grandparent's content in edit mode instead of following
+    -- the skipped parent to its parked position.
+    local function PromoteGrandchild(gc, parent)
+        local gcAnchor = self.anchors[gc]
+        if not gcAnchor then return false end
+        return anchorModule:CreateAnchor(gc, parent, gcAnchor.edge, gcAnchor.padding, gcAnchor.syncOptions, gcAnchor.align, true, true)
+    end
 
     local function Reconcile(parent)
         if visited[parent] then return end
         visited[parent] = true
+        -- Before walking, pull any logically-owned children back home.
+        self:RestoreLogicalChildren(parent, anchorModule)
         local children = anchorModule:GetAnchoredChildren(parent)
         local i = 1
         while i <= #children do
             local child = children[i]
             if not visited[child] then
-                local shouldSkip = self:IsSkipped(child) and not isEditMode
-                if shouldSkip then
+                if self:IsSkipped(child) then
                     visited[child] = true
                     local grandchildren = anchorModule:GetAnchoredChildren(child)
                     for _, gc in ipairs(grandchildren) do
-                        local gcAnchor = self.anchors[gc]
-                        if gcAnchor then
-                            anchorModule:CreateAnchor(gc, parent, gcAnchor.edge, gcAnchor.padding, gcAnchor.syncOptions, gcAnchor.align, true)
+                        if PromoteGrandchild(gc, parent) then
                             children[#children + 1] = gc
                         end
                     end
@@ -183,8 +212,7 @@ function Graph:ReconcileChain(root, anchorModule)
         end
     end
 
-    local shouldSkipRoot = self:IsSkipped(root) and not isEditMode
-    if shouldSkipRoot then
+    if self:IsSkipped(root) then
         visited[root] = true
         local children = anchorModule:GetAnchoredChildren(root)
         for _, gc in ipairs(children) do
@@ -198,9 +226,7 @@ function Graph:ReconcileChain(root, anchorModule)
                 if conf and conf.fallback then fallback = _G[conf.fallback] end
             end
             if fallback then
-                local gcAnchor = self.anchors[gc]
-                if gcAnchor then
-                    anchorModule:CreateAnchor(gc, fallback, gcAnchor.edge, gcAnchor.padding, gcAnchor.syncOptions, gcAnchor.align, true)
+                if PromoteGrandchild(gc, fallback) then
                     self:ReconcileChain(fallback, anchorModule)
                 end
             else
@@ -210,11 +236,11 @@ function Graph:ReconcileChain(root, anchorModule)
     else
         Reconcile(root)
     end
+    self._reconcilingChains[root] = nil
 end
 
--- [ RECONCILE ALL ] ----------------------------------------------------------------------------
--- Targeted replacement for RepairAllChains. Collects unique roots
--- then reconciles each. Same result, explicit about what it does.
+-- [ RECONCILE ALL ] ---------------------------------------------------------------------------------
+-- Collects unique roots then reconciles each chain.
 function Graph:ReconcileAll(anchorModule)
     if InCombatLockdown() then return end
     local roots = {}
@@ -222,6 +248,66 @@ function Graph:ReconcileAll(anchorModule)
         roots[self:GetChainRoot(child)] = true
     end
     for root in pairs(roots) do
+        self:ReconcileChain(root, anchorModule)
+    end
+end
+
+-- [ BATCH RECONCILIATION ] --------------------------------------------------------------------------
+-- Coalesces per-root reconciles into a single next-frame flush; ScheduleAll supersedes per-root.
+Graph.pendingRoots = {}
+Graph.pendingModule = nil
+Graph.pendingAll = false
+Graph.flushScheduled = false
+
+function Graph:EnsureFlushScheduled()
+    if self.flushScheduled then return end
+    self.flushScheduled = true
+    C_Timer.After(0, function() self:FlushPendingReconciles() end)
+end
+
+function Graph:ScheduleReconcileChain(root, anchorModule)
+    if not root then return end
+    if self.pendingAll then return end
+    self.pendingRoots[root] = true
+    self.pendingModule = anchorModule or self.pendingModule
+    self:EnsureFlushScheduled()
+end
+
+function Graph:ScheduleReconcileAll(anchorModule)
+    self.pendingAll = true
+    self.pendingModule = anchorModule or self.pendingModule
+    self:EnsureFlushScheduled()
+end
+
+function Graph:FlushPendingReconciles()
+    self.flushScheduled = false
+    if InCombatLockdown() then
+        -- Drop pending work into CombatManager for deferred replay after combat ends.
+        if Orbit.CombatManager and Orbit.CombatManager.QueueUpdate then
+            Orbit.CombatManager:QueueUpdate(function() self:FlushPendingReconciles() end)
+        end
+        return
+    end
+    local anchorModule = self.pendingModule
+    self.pendingModule = nil
+    if self.pendingAll then
+        self.pendingAll = false
+        self.pendingRoots = {}
+        if anchorModule then self:ReconcileAll(anchorModule) end
+        return
+    end
+    local roots = self.pendingRoots
+    self.pendingRoots = {}
+    if not anchorModule then return end
+    -- Root may have shifted (GetChainRoot chases parents) if another scheduled
+    -- change reparented it. Resolve at flush time, then dedupe resolved roots
+    -- so we never walk the same chain twice.
+    local resolved = {}
+    for root in pairs(roots) do
+        local current = self:GetChainRoot(root)
+        if current then resolved[current] = true end
+    end
+    for root in pairs(resolved) do
         self:ReconcileChain(root, anchorModule)
     end
 end

@@ -14,7 +14,12 @@ local Mixin = Orbit.StatusIconMixin
 
 local ROLE_ATLASES = { TANK = "UI-LFG-RoleIcon-Tank", HEALER = "UI-LFG-RoleIcon-Healer", DAMAGER = "UI-LFG-RoleIcon-DPS" }
 local ROUND_ROLE_ATLASES = { TANK = "icons_64x64_tank", HEALER = "icons_64x64_heal", DAMAGER = "icons_64x64_damage" }
+local HEADER_ROLE_ATLASES = { TANK = "GO-icon-role-Header-Tank", HEALER = "GO-icon-role-Header-Healer", DAMAGER = "GO-icon-role-Header-DPS", DAMAGER_RANGED = "GO-icon-role-Header-DPS-Ranged" }
 local ASSISTANT_ICON_TEXTURE = "Interface\\GroupFrame\\UI-Group-AssistantIcon"
+local LEADER_ATLASES = {
+    default = { leader = "UI-HUD-UnitFrame-Player-Group-LeaderIcon", assistTexture = ASSISTANT_ICON_TEXTURE },
+    header  = { leader = "GO-icon-Header-Assist-Applied", assist = "GO-icon-Header-Assist-Available" },
+}
 local THREAT_COLORS = {
     [0] = nil,
     [1] = { r = 1.0, g = 1.0, b = 0.0, a = 0.7 },
@@ -148,6 +153,37 @@ local function GuardedUpdate(frame, plugin, iconKey)
     return unit
 end
 
+-- [ RANGED DPS SPEC DETECTION ]--------------------------------------------------------------------
+local RANGED_DPS_SPECS = {
+    [102]  = true, -- Balance Druid
+    [253]  = true, -- Beast Mastery Hunter
+    [254]  = true, -- Marksmanship Hunter
+    [62]   = true, -- Arcane Mage
+    [63]   = true, -- Fire Mage
+    [64]   = true, -- Frost Mage
+    [258]  = true, -- Shadow Priest
+    [262]  = true, -- Elemental Shaman
+    [265]  = true, -- Affliction Warlock
+    [266]  = true, -- Demonology Warlock
+    [267]  = true, -- Destruction Warlock
+    [1467] = true, -- Devastation Evoker
+    [1473] = true, -- Augmentation Evoker
+}
+
+local function IsRangedDPS(unit)
+    if UnitIsUnit(unit, "player") then
+        local specIndex = GetSpecialization()
+        if specIndex then
+            local specID = GetSpecializationInfo(specIndex)
+            return RANGED_DPS_SPECS[specID] or false
+        end
+        return false
+    end
+    local specID = GetInspectSpecialization and GetInspectSpecialization(unit)
+    return specID and RANGED_DPS_SPECS[specID] or false
+end
+Mixin.IsRangedDPS = IsRangedDPS
+
 -- ROLE ICON (Tank/Healer/DPS)
 
 function Mixin:UpdateRoleIcon(frame, plugin)
@@ -171,12 +207,17 @@ function Mixin:UpdateRoleIcon(frame, plugin)
         local positions = plugin:GetSetting(1, "ComponentPositions")
         local roleOverrides = positions and positions.RoleIcon and positions.RoleIcon.overrides
         if roleOverrides then
-            if roleOverrides.RoleIconStyle == "round" then atlases = ROUND_ROLE_ATLASES end
+            local style = roleOverrides.RoleIconStyle
+            if style == "round" then atlases = ROUND_ROLE_ATLASES
+            elseif style == "header" then atlases = HEADER_ROLE_ATLASES end
             hideDPS = roleOverrides.HideDPS
         end
     end
 
     local roleAtlas = atlases[role]
+    if role == "DAMAGER" and atlases.DAMAGER_RANGED and IsRangedDPS(unit) then
+        roleAtlas = atlases.DAMAGER_RANGED
+    end
     if role == "DAMAGER" and hideDPS then
         frame.RoleIcon:Hide()
     elseif roleAtlas then
@@ -201,18 +242,35 @@ function Mixin:UpdateLeaderIcon(frame, plugin)
 
     local inEditMode = Orbit:IsEditMode()
 
+    -- Resolve LeaderIconStyle override
+    local style = "default"
+    if plugin then
+        local positions = plugin:GetSetting(1, "ComponentPositions")
+        local overrides = positions and positions.LeaderIcon and positions.LeaderIcon.overrides
+        if overrides and overrides.LeaderIconStyle then style = overrides.LeaderIconStyle end
+    end
+    local la = LEADER_ATLASES[style] or LEADER_ATLASES.default
+
     if UnitIsGroupLeader(unit) then
         frame.LeaderIcon:SetTexture(nil)
-        frame.LeaderIcon:SetAtlas("UI-HUD-UnitFrame-Player-Group-LeaderIcon")
+        frame.LeaderIcon:SetTexCoord(0, 1, 0, 1)
+        frame.LeaderIcon:SetAtlas(la.leader)
         frame.LeaderIcon:Show()
     elseif UnitIsGroupAssistant(unit) then
-        frame.LeaderIcon:SetAtlas(nil)
-        frame.LeaderIcon:SetTexCoord(0, 1, 0, 1)
-        frame.LeaderIcon:SetTexture(ASSISTANT_ICON_TEXTURE)
+        if la.assist then
+            frame.LeaderIcon:SetTexture(nil)
+            frame.LeaderIcon:SetTexCoord(0, 1, 0, 1)
+            frame.LeaderIcon:SetAtlas(la.assist)
+        else
+            frame.LeaderIcon:SetAtlas(nil)
+            frame.LeaderIcon:SetTexCoord(0, 1, 0, 1)
+            frame.LeaderIcon:SetTexture(la.assistTexture or ASSISTANT_ICON_TEXTURE)
+        end
         frame.LeaderIcon:Show()
     elseif inEditMode then
         frame.LeaderIcon:SetTexture(nil)
-        frame.LeaderIcon:SetAtlas("UI-HUD-UnitFrame-Player-Group-LeaderIcon")
+        frame.LeaderIcon:SetTexCoord(0, 1, 0, 1)
+        frame.LeaderIcon:SetAtlas(la.leader)
         frame.LeaderIcon:Show()
     else
         frame.LeaderIcon:Hide()

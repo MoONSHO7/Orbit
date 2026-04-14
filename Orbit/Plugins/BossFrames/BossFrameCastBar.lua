@@ -151,16 +151,17 @@ function CB:SetupHooks(castBar, unit)
     -- Cast: query the unit directly for cast info, drive bar via SetTimerDuration
     local function Cast()
         if plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar") then return end
-        local name, text, texture, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
+        local name, text, texture, startMs, endMs, _, _, notInterruptible = UnitCastingInfo(unit)
         local isChanneled = false
         if not name then
-            name, text, texture, _, _, _, notInterruptible = UnitChannelInfo(unit)
+            name, text, texture, startMs, endMs, _, notInterruptible = UnitChannelInfo(unit)
             if name then isChanneled = true end
         end
         if not name then
             castBar.casting = false
             castBar.channeling = false
             castBar.durationObj = nil
+            castBar.timerSecondsCurve = nil
             if castBar.protectedOverlay then castBar.protectedOverlay:SetAlpha(0) end
             castBar:Hide()
             return
@@ -175,6 +176,7 @@ function CB:SetupHooks(castBar, unit)
             castBar.casting = false
             castBar.channeling = false
             castBar.durationObj = nil
+            castBar.timerSecondsCurve = nil
             castBar:Hide()
             return
         end
@@ -183,6 +185,21 @@ function CB:SetupHooks(castBar, unit)
         castBar.castTimestamp = GetTime()
         castBar.durationObj = durationObj
         castBar.timerThrottle = 0
+        -- Build a curve mapping remaining-percent [0,1] -> remaining-seconds [0, totalSec]
+        -- so OnUpdate can read a formatted timer via EvaluateRemainingPercent without Lua
+        -- arithmetic on secret durations. startMs/endMs are secret for enemy units in combat;
+        -- skip the curve when either is secret and the timer text will simply remain blank.
+        castBar.timerSecondsCurve = nil
+        if C_CurveUtil and C_CurveUtil.CreateCurve and startMs and endMs
+            and not issecretvalue(startMs) and not issecretvalue(endMs) then
+            local totalSec = (endMs - startMs) / 1000
+            if totalSec > 0 then
+                local curve = C_CurveUtil.CreateCurve()
+                curve:AddPoint(0, 0)
+                curve:AddPoint(1, totalSec)
+                castBar.timerSecondsCurve = curve
+            end
+        end
         local direction = isChanneled and 1 or 0
         local bar = castBar.Bar
         if bar and bar.SetTimerDuration then
@@ -231,6 +248,8 @@ function CB:SetupHooks(castBar, unit)
         castBar.casting = false
         castBar.channeling = false
         castBar.durationObj = nil
+        castBar.timerSecondsCurve = nil
+        if castBar.Timer then castBar.Timer:SetText("") end
         if castBar.protectedOverlay then castBar.protectedOverlay:SetAlpha(0) end
         castBar:Hide()
     end
@@ -300,18 +319,22 @@ function CB:SetupHooks(castBar, unit)
         if handler then handler() end
     end)
 
-    -- OnUpdate: timer text only (bar progress is engine-driven via SetTimerDuration)
+    -- OnUpdate: timer text only (bar progress is engine-driven via SetTimerDuration).
+    -- Uses EvaluateRemainingPercent with the per-cast seconds curve built in Cast(),
+    -- and only formats when the evaluated value is not secret. When secret (enemy cast
+    -- in combat), we skip the update and the bar's engine-driven animation stays correct.
     castBar:SetScript("OnUpdate", function(self, elapsed)
         if not self:IsShown() or (not self.casting and not self.channeling) then return end
         self.timerThrottle = (self.timerThrottle or 0) + elapsed
         if self.timerThrottle < TIMER_THROTTLE_INTERVAL then return end
         self.timerThrottle = 0
         if not self.Timer or not self.Timer:IsShown() then return end
-        if not self.durationObj then return end
-        local getter = self.durationObj.GetRemainingDuration or self.durationObj.GetRemaining
-        if not getter then return end
-        local ok, remaining = pcall(getter, self.durationObj)
-        if ok then pcall(self.Timer.SetFormattedText, self.Timer, "%.1f", remaining) end
+        if not self.durationObj or not self.timerSecondsCurve then return end
+        local remaining = self.durationObj:EvaluateRemainingPercent(self.timerSecondsCurve)
+        if not issecretvalue(remaining) and type(remaining) == "number" then
+            if remaining < 0 then remaining = 0 end
+            self.Timer:SetFormattedText("%.1f", remaining)
+        end
     end)
 end
 

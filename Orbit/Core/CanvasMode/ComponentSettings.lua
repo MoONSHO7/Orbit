@@ -1,6 +1,5 @@
 -- [ CANVAS MODE COMPONENT SETTINGS ]------------------------------------------------------------
--- Core module: Open/Close, value routing, layout. Schema, widgets, and
--- preview renderers live in their own files loaded via CanvasMode.xml.
+-- Core module: Open/Close, value routing, layout. Schema/widgets/renderers loaded via CanvasMode.xml.
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local Layout = OrbitEngine.Layout
@@ -101,13 +100,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     if plugin then
         for _, control in ipairs(schema.controls) do
             if control.plugin then
-                local val
-                if plugin.GetInheritedSetting then
-                    val = plugin:GetInheritedSetting(systemIndex, control.key, true)
-                else
-                    val = plugin:GetSetting(systemIndex, control.key)
-                end
-
+                local val = plugin:GetSetting(systemIndex, control.key)
                 if val ~= nil then self.currentOverrides[control.key] = val end
             end
         end
@@ -165,6 +158,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
         if currentValue == nil then
             currentValue = GetValueFromVisual(container, control.key)
         end
+
 
         local callback = function(key, value) self:OnValueChanged(key, value) end
         local widget

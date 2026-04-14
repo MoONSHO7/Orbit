@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
@@ -50,7 +51,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     -- 1. Scale
     SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
         key = "Scale",
-        label = "Menu Size",
+        label = L.PLU_MENU_SIZE,
         default = 100,
         min = 50,
         max = 150,
@@ -82,7 +83,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         table.insert(schema.controls, {
             type = "slider",
             key = "Layout_Slider",
-            label = "Layout",
+            label = L.PLU_MENU_LAYOUT,
             min = 1,
             max = #factors,
             step = 1,
@@ -111,7 +112,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     table.insert(schema.controls, {
         type = "slider",
         key = "Padding",
-        label = "Nav Padding",
+        label = L.PLU_MENU_NAV_PADDING,
         min = 0,
         max = 15,
         step = 1,

@@ -13,6 +13,7 @@ local DISCORD_URL = "https://discord.gg/2sZj63kBqy"
 local WINDOW_WIDTH = 600
 local MAX_HEIGHT = 800
 local CONTENT_PADDING = 10
+local TEXT_PADDING_X = 16
 local ENTRY_TITLE_FONT = "GameFontNormalLarge"
 local ENTRY_BODY_FONT = "GameFontHighlight"
 local ENTRY_SPACING = 16
@@ -35,7 +36,7 @@ local FOOTER_TOTAL = FOOTER_HEIGHT + FOOTER_TEXT_HEIGHT
 
 -- [ FRAME ]------------------------------------------------------------------------
 
-local Window = CreateFrame("Frame", "OrbitWhatsNewWindow", UIParent, "DefaultPanelTemplate")
+local Window = CreateFrame("Frame", "OrbitWhatsNewWindow", UIParent)
 Window:SetSize(WINDOW_WIDTH, MAX_HEIGHT)
 Window:SetPoint("CENTER")
 Window:SetFrameStrata(FRAME_STRATA)
@@ -45,6 +46,17 @@ Window:SetClampedToScreen(true)
 Window:EnableMouse(true)
 Window:RegisterForDrag("LeftButton")
 Window:Hide()
+
+Window.NineSlice = CreateFrame("Frame", nil, Window, "NineSlicePanelTemplate")
+Window.NineSlice.layoutType = "ButtonFrameTemplateNoPortrait"
+NineSliceUtil.ApplyLayoutByName(Window.NineSlice, "ButtonFrameTemplateNoPortrait")
+
+Window.Bg = Window:CreateTexture(nil, "BACKGROUND", nil, -6)
+Window.Bg:SetTexture("Interface\\FrameGeneral\\UI-Background-Rock")
+Window.Bg:SetHorizTile(true)
+Window.Bg:SetVertTile(true)
+Window.Bg:SetPoint("TOPLEFT", 6, -21)
+Window.Bg:SetPoint("BOTTOMRIGHT", -2, 2)
 
 Window:SetScript("OnDragStart", function(self) self:StartMoving() end)
 Window:SetScript("OnDragStop", function(self)
@@ -56,13 +68,21 @@ end)
 
 -- [ TITLE ]------------------------------------------------------------------------
 
+Window.TitleContainer = CreateFrame("Frame", nil, Window)
+Window.TitleContainer:SetFrameLevel(FRAME_LEVEL + 10)
+Window.TitleContainer:SetPoint("TOPLEFT", 30, -1)
+Window.TitleContainer:SetPoint("TOPRIGHT", -24, -1)
+Window.TitleContainer:SetHeight(20)
+
+Window.TitleContainer.TitleText = Window.TitleContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+Window.TitleContainer.TitleText:SetPoint("TOP", Window.TitleContainer, "TOP", 0, -5)
 Window.TitleContainer.TitleText:SetText("|cFFFFD100Orbit: What's New|r")
 
 -- [ CLOSE BUTTON ]-----------------------------------------------------------------
 
-Window.CloseButton = CreateFrame("Button", nil, Window.NineSlice, "UIPanelCloseButton")
-Window.CloseButton:SetPoint("TOPRIGHT", Window, "TOPRIGHT", CLOSE_BUTTON_OFFSET, CLOSE_BUTTON_OFFSET)
-Window.CloseButton:SetFrameLevel(520)
+Window.CloseButton = CreateFrame("Button", nil, Window, "UIPanelCloseButton")
+Window.CloseButton:SetPoint("TOPRIGHT", Window, "TOPRIGHT", 0, -1)
+Window.CloseButton:SetFrameLevel(FRAME_LEVEL + 10)
 Window.CloseButton:SetScript("OnClick", function() Window:Hide() end)
 
 -- [ FOOTER ]-----------------------------------------------------------------------
@@ -199,10 +219,7 @@ local function FormatMarkdown(text)
     -- Code: `text` -> Cyan
     text = text:gsub("`(.-)`", "|cFF00D4FF%1|r")
 
-    -- Bullets: Replace leading "- " with dots
-    text = text:gsub("^%- ", "• ")
-    text = text:gsub("\n%- ", "\n• ")
-
+    -- Bullets handling is now done by the layout engine
     return text
 end
 
@@ -213,8 +230,8 @@ local function RenderEntries()
     end
     wipe(renderedFontStrings)
 
-    local contentWidth = ScrollFrame:GetWidth()
-    Content:SetWidth(contentWidth)
+    local contentWidth = ScrollFrame:GetWidth() - (TEXT_PADDING_X * 2)
+    Content:SetWidth(ScrollFrame:GetWidth())
 
     local yOffset = 0
     if not Orbit.WHATS_NEW_ENTRIES then
@@ -222,20 +239,51 @@ local function RenderEntries()
     end
     for _, entry in ipairs(Orbit.WHATS_NEW_ENTRIES) do
         local titleText = Content:CreateFontString(nil, "ARTWORK", ENTRY_TITLE_FONT)
-        titleText:SetPoint("TOPLEFT", Content, "TOPLEFT", 0, -yOffset)
+        titleText:SetPoint("TOPLEFT", Content, "TOPLEFT", TEXT_PADDING_X, -yOffset)
         titleText:SetWidth(contentWidth)
         titleText:SetJustifyH("LEFT")
         titleText:SetText("|cFFFFD100" .. FormatMarkdown(entry.title) .. "|r")
         tinsert(renderedFontStrings, titleText)
         yOffset = yOffset + titleText:GetStringHeight() + ENTRY_TITLE_BODY_GAP
 
-        local bodyText = Content:CreateFontString(nil, "ARTWORK", ENTRY_BODY_FONT)
-        bodyText:SetPoint("TOPLEFT", Content, "TOPLEFT", 0, -yOffset)
-        bodyText:SetWidth(contentWidth)
-        bodyText:SetJustifyH("LEFT")
-        bodyText:SetText(FormatMarkdown(entry.body))
-        tinsert(renderedFontStrings, bodyText)
-        yOffset = yOffset + bodyText:GetStringHeight() + ENTRY_SPACING
+        local lines = {strsplit("\n", entry.body)}
+        for _, rawLine in ipairs(lines) do
+            if not rawLine or strtrim(rawLine) == "" then
+                yOffset = yOffset + 8
+            else
+                local leadingSpaces = rawLine:match("^(%s*)")
+                local baseIndent = 0
+                if leadingSpaces then
+                    baseIndent = math.floor(#leadingSpaces / 4) * 16
+                end
+
+                local lineText = strtrim(rawLine)
+                local isBullet = lineText:match("^%- ")
+                local indentX = baseIndent
+
+                if isBullet then
+                    local bulletFS = Content:CreateFontString(nil, "ARTWORK", ENTRY_BODY_FONT)
+                    bulletFS:SetPoint("TOPLEFT", Content, "TOPLEFT", TEXT_PADDING_X + baseIndent, -yOffset)
+                    local marker = baseIndent > 0 and "-" or "•"
+                    bulletFS:SetText("|cFFFFD100" .. marker .. "|r")
+                    bulletFS:SetJustifyH("LEFT")
+                    tinsert(renderedFontStrings, bulletFS)
+                    
+                    indentX = baseIndent + 14
+                    lineText = lineText:sub(3)
+                end
+
+                local lineFS = Content:CreateFontString(nil, "ARTWORK", ENTRY_BODY_FONT)
+                lineFS:SetPoint("TOPLEFT", Content, "TOPLEFT", TEXT_PADDING_X + indentX, -yOffset)
+                lineFS:SetWidth(contentWidth - indentX)
+                lineFS:SetJustifyH("LEFT")
+                lineFS:SetText(FormatMarkdown(lineText))
+                tinsert(renderedFontStrings, lineFS)
+
+                yOffset = yOffset + lineFS:GetStringHeight() + 6
+            end
+        end
+        yOffset = yOffset + (ENTRY_SPACING - 6)
     end
     Content:SetHeight(yOffset)
 

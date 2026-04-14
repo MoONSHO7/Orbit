@@ -1,4 +1,6 @@
 -- [ EDIT MODE - GUIDED TOUR (PLAYGROUND) ]-------------------------------------------
+-- Strings live in Orbit/Localization/Domains/Tours.lua under the TOUR_EM_* prefix.
+-- When adding or renaming tour steps here, update the matching keys there.
 ---@type Orbit
 local Orbit = Orbit
 local Engine = Orbit.Engine
@@ -41,219 +43,10 @@ local TOOLTIP_LEVEL = 9500
 local FONT = "GameFontNormalSmall"
 
 -- [ LOCALIZATION ]-------------------------------------------------------------------
-local LOCALE_STRINGS = {
-    enUS = {
-        NEXT = "Next", DONE = "Done",
-        STEP1_TITLE = "Your Frames",
-        STEP1_TEXT = "These are two Orbit frames.\nClick one to select it, then drag\nto reposition.",
-        STEP2_TITLE = "Frame Settings",
-        STEP2_TEXT = "A settings dialog opened!\nTry adjusting the width and height\nof the selected frame.",
-        STEP3_TITLE = "Anchoring",
-        STEP3_TEXT = "Drag the frames together around\nthe edges. Colored guidelines will\nappear showing where the frame\nwill anchor. The anchor direction\ncontrols how frames grow and\nresize together. Drop to anchor,\nor hold Shift for a precision\ndrop without anchoring.",
-        STEP4_TITLE = "Parent & Child",
-        STEP4_TEXT = "When frames are anchored, one\nbecomes the parent and the other\nthe child. Drag the parent - the\nchild follows! Dragging the child\nwill break the anchor.",
-        STEP5_TITLE = "Adjust Distance",
-        STEP5_TEXT = "Select the child frame, then scroll\nthe mouse wheel to change the gap\nbetween it and its parent.\nHold Shift for larger steps.\n\n|cFF66BB66Hint:|r Set Distance to 0 with\nSpacing at 0 and borders will merge\ninto a single shared edge!",
-        STEP6_TITLE = "Arrow Nudge",
-        STEP6_TEXT = "Select the parent frame and use\narrow keys to nudge it 1 pixel\nat a time. Both frames move\ntogether. Shift for 10px jumps.",
-        STEP7_TITLE = "Drag Resize",
-        STEP7_TEXT = "Grab the resize handle in the\nbottom-right corner of a selected\nframe. Drag to resize it within\nthe min/max bounds.\n\n|cFF66BB66Hint:|r Resize is based off your\nanchor position!",
-        STEP8_TITLE = "Orbit Options",
-        STEP8_TEXT = "This is the Orbit Options panel.\nChange your font, textures, colors,\nborders and more. All changes\napply globally across every frame.",
-        STEP9_TITLE = "Explore!",
-        STEP9_TEXT = "To get the most out of Orbit,\njust play around! Drag, drop,\nanchor and resize frames in\nEdit Mode. Every frame is yours\nto customize.",
-        CANVAS_TITLE = "Canvas Mode",
-        CANVAS_TEXT = "Right-click any frame to open\nCanvas Mode. This unlocks deeper\ncustomization per frame.",
-    },
-    deDE = {
-        NEXT = "Weiter", DONE = "Fertig",
-        STEP1_TITLE = "Deine Frames",
-        STEP1_TEXT = "Das sind zwei Orbit-Frames.\nKlicke einen an, um ihn auszuwählen,\ndann ziehe ihn, um ihn zu verschieben.",
-        STEP2_TITLE = "Frame-Einstellungen",
-        STEP2_TEXT = "Ein Einstellungsdialog hat sich geöffnet!\nPasse die Breite und Höhe\ndes ausgewählten Frames an.",
-        STEP3_TITLE = "Verankerung",
-        STEP3_TEXT = "Ziehe die Frames an den\nRändern zusammen. Farbige Hilfslinien\nzeigen, wo der Frame verankert wird.\nDie Verankerungsrichtung bestimmt,\nwie Frames zusammen wachsen\nund sich vergrößern. Loslassen\nzum Verankern, Umschalttaste\nfür Präzision ohne Verankerung.",
-        STEP4_TITLE = "Eltern & Kind",
-        STEP4_TEXT = "Verankerte Frames bilden eine\nEltern-Kind-Beziehung. Ziehe den\nEltern-Frame – das Kind folgt!\nDas Kind zu ziehen löst die Verankerung.",
-        STEP5_TITLE = "Abstand anpassen",
-        STEP5_TEXT = "Wähle den Kind-Frame, dann scrolle\nmit dem Mausrad, um den Abstand\nzum Eltern-Frame zu ändern.\nUmschalttaste für größere Schritte.\n\n|cFF66BB66Tipp:|r Abstand 0 und\nAbstand 0 verschmelzen Ränder\nzu einer gemeinsamen Kante!",
-        STEP6_TITLE = "Pfeilverschiebung",
-        STEP6_TEXT = "Wähle den Eltern-Frame und nutze\ndie Pfeiltasten, um ihn pixelweise\nzu verschieben. Beide Frames bewegen\nsich zusammen. Umschalttaste für 10px.",
-        STEP7_TITLE = "Größenänderung",
-        STEP7_TEXT = "Greife den Griff unten rechts\nam ausgewählten Frame.\nZiehe ihn, um die Größe innerhalb\nder min/max Grenzen zu ändern.\n\n|cFF66BB66Tipp:|r Die Größenänderung\nbasiert auf der Verankerungsposition!",
-        STEP8_TITLE = "Orbit-Optionen",
-        STEP8_TEXT = "Das ist das Orbit-Optionsfenster.\nÄndere Schrift, Texturen, Farben,\nRahmen und mehr. Alle Änderungen\ngelten global für jeden Frame.",
-        STEP9_TITLE = "Erkunden!",
-        STEP9_TEXT = "Um Orbit optimal zu nutzen,\nprobiere einfach herum! Ziehe,\nverankere und ändere die Größe\nvon Frames im Bearbeitungsmodus.\nJeder Frame gehört dir.",
-        CANVAS_TITLE = "Canvas-Modus",
-        CANVAS_TEXT = "Rechtsklick auf einen Frame öffnet\nden Canvas-Modus. Dort lassen sich\nKomponenten detailliert anpassen.",
-    },
-    frFR = {
-        NEXT = "Suivant", DONE = "Terminé",
-        STEP1_TITLE = "Vos cadres",
-        STEP1_TEXT = "Voici deux cadres Orbit.\nCliquez pour sélectionner, puis\nfaites glisser pour repositionner.",
-        STEP2_TITLE = "Paramètres du cadre",
-        STEP2_TEXT = "Un dialogue de paramètres s'est ouvert !\nEssayez d'ajuster la largeur et la\nhauteur du cadre sélectionné.",
-        STEP3_TITLE = "Ancrage",
-        STEP3_TEXT = "Rapprochez les cadres par les bords.\nDes guides colorés apparaissent pour\nmontrer l'ancrage. La direction d'ancrage\ncontrôle la croissance des cadres.\nRelâchez pour ancrer, ou maintenez\nMaj pour une pose de précision\nsans ancrage.",
-        STEP4_TITLE = "Parent & Enfant",
-        STEP4_TEXT = "Quand les cadres sont ancrés, l'un\ndevient le parent et l'autre l'enfant.\nDéplacez le parent – l'enfant suit !\nDéplacer l'enfant rompt l'ancrage.",
-        STEP5_TITLE = "Ajuster la distance",
-        STEP5_TEXT = "Sélectionnez le cadre enfant, puis\nutilisez la molette pour changer\nl'écart avec le parent.\nMaj pour de plus grands pas.\n\n|cFF66BB66Astuce :|r Distance à 0 avec\nespacement à 0 fusionne les bordures\nen un bord partagé !",
-        STEP6_TITLE = "Touches directionnelles",
-        STEP6_TEXT = "Sélectionnez le cadre parent et\nutilisez les flèches pour le déplacer\nde 1 pixel. Les deux cadres bougent\nensemble. Maj pour 10px.",
-        STEP7_TITLE = "Redimensionner",
-        STEP7_TEXT = "Saisissez la poignée en bas à\ndroite du cadre sélectionné.\nFaites glisser pour redimensionner\ndans les limites min/max.\n\n|cFF66BB66Astuce :|r Le redimensionnement\ndépend de la position d'ancrage !",
-        STEP8_TITLE = "Options d'Orbit",
-        STEP8_TEXT = "Voici le panneau d'options d'Orbit.\nModifiez la police, les textures, les\ncouleurs, les bordures et plus.\nTout s'applique globalement.",
-        STEP9_TITLE = "Explorez !",
-        STEP9_TEXT = "Pour profiter pleinement d'Orbit,\nexpérimentez ! Glissez, déposez,\nancrez et redimensionnez les cadres\nen mode Édition. Chaque cadre\nest personnalisable.",
-        CANVAS_TITLE = "Mode Canevas",
-        CANVAS_TEXT = "Clic droit sur un cadre pour ouvrir\nle mode Canevas. Personnalisation\nplus approfondie par cadre.",
-    },
-    esES = {
-        NEXT = "Siguiente", DONE = "Hecho",
-        STEP1_TITLE = "Tus marcos",
-        STEP1_TEXT = "Estos son dos marcos de Orbit.\nHaz clic en uno para seleccionarlo\ny arrástralo para reposicionarlo.",
-        STEP2_TITLE = "Ajustes del marco",
-        STEP2_TEXT = "¡Se abrió un diálogo de ajustes!\nPrueba a ajustar el ancho y alto\ndel marco seleccionado.",
-        STEP3_TITLE = "Anclaje",
-        STEP3_TEXT = "Arrastra los marcos juntos por\nlos bordes. Aparecerán guías de\ncolor mostrando dónde se anclará.\nLa dirección de anclaje controla\ncómo crecen los marcos. Suelta\npara anclar o mantén Mayús para\nuna colocación precisa sin anclaje.",
-        STEP4_TITLE = "Padre e Hijo",
-        STEP4_TEXT = "Cuando los marcos están anclados,\nuno es el padre y el otro el hijo.\n¡Arrastra el padre y el hijo lo sigue!\nArrastrar el hijo rompe el anclaje.",
-        STEP5_TITLE = "Ajustar distancia",
-        STEP5_TEXT = "Selecciona el marco hijo, luego usa\nla rueda del ratón para cambiar\nla separación con el padre.\nMayús para pasos más grandes.\n\n|cFF66BB66Pista:|r Distancia 0 con\nespaciado 0 fusiona los bordes\nen un solo borde compartido.",
-        STEP6_TITLE = "Desplazar con flechas",
-        STEP6_TEXT = "Selecciona el marco padre y\nusa las flechas para moverlo\n1 píxel. Ambos marcos se mueven\njuntos. Mayús para 10px.",
-        STEP7_TITLE = "Redimensionar",
-        STEP7_TEXT = "Agarra el tirador en la esquina\ninferior derecha del marco\nseleccionado. Arrastra para\nredimensionar dentro de los\nlímites min/max.\n\n|cFF66BB66Pista:|r ¡El redimensionado\ndepende de la posición de anclaje!",
-        STEP8_TITLE = "Opciones de Orbit",
-        STEP8_TEXT = "Este es el panel de opciones de Orbit.\nCambia fuente, texturas, colores,\nbordes y más. Todos los cambios\nse aplican globalmente.",
-        STEP9_TITLE = "¡Explora!",
-        STEP9_TEXT = "Para sacar el máximo de Orbit,\n¡experimenta! Arrastra, suelta,\nancla y redimensiona marcos en\nel Modo de Edición. Cada marco\nes personalizable.",
-        CANVAS_TITLE = "Modo Lienzo",
-        CANVAS_TEXT = "Clic derecho en cualquier marco\npara abrir el Modo Lienzo.\nPersonalización más profunda por marco.",
-    },
-    ptBR = {
-        NEXT = "Próximo", DONE = "Concluído",
-        STEP1_TITLE = "Seus Quadros",
-        STEP1_TEXT = "Estes são dois quadros do Orbit.\nClique para selecionar e arraste\npara reposicionar.",
-        STEP2_TITLE = "Configurações do Quadro",
-        STEP2_TEXT = "Um diálogo de configurações abriu!\nTente ajustar a largura e a altura\ndo quadro selecionado.",
-        STEP3_TITLE = "Ancoragem",
-        STEP3_TEXT = "Arraste os quadros pelas bordas.\nGuias coloridos aparecerão mostrando\nonde o quadro será ancorado.\nA direção da ancoragem controla\ncomo os quadros crescem juntos.\nSolte para ancorar ou segure Shift\npara posicionamento preciso\nsem ancoragem.",
-        STEP4_TITLE = "Pai & Filho",
-        STEP4_TEXT = "Quando os quadros estão ancorados,\num é o pai e o outro o filho.\nArraste o pai – o filho segue!\nArrastar o filho rompe a ancoragem.",
-        STEP5_TITLE = "Ajustar Distância",
-        STEP5_TEXT = "Selecione o quadro filho, depois\nuse a roda do mouse para mudar\no espaço entre ele e o pai.\nShift para passos maiores.\n\n|cFF66BB66Dica:|r Distância 0 com\nespaçamento 0 funde as bordas\nem uma única borda compartilhada!",
-        STEP6_TITLE = "Mover com Setas",
-        STEP6_TEXT = "Selecione o quadro pai e use as\nsetas para movê-lo 1 pixel por\nvez. Ambos os quadros se movem\njuntos. Shift para 10px.",
-        STEP7_TITLE = "Redimensionar",
-        STEP7_TEXT = "Pegue a alça no canto inferior\ndireito do quadro selecionado.\nArraste para redimensionar\ndentro dos limites min/max.\n\n|cFF66BB66Dica:|r O redimensionamento\ndepende da posição de ancoragem!",
-        STEP8_TITLE = "Opções do Orbit",
-        STEP8_TEXT = "Este é o painel de opções do Orbit.\nAltere fonte, texturas, cores,\nbordas e mais. Todas as alterações\nse aplicam globalmente.",
-        STEP9_TITLE = "Explore!",
-        STEP9_TEXT = "Para aproveitar o máximo do Orbit,\nexperimente! Arraste, solte, ancore\ne redimensione quadros no Modo\nde Edição. Cada quadro é seu\npara personalizar.",
-        CANVAS_TITLE = "Modo Canvas",
-        CANVAS_TEXT = "Clique direito em qualquer quadro\npara abrir o Modo Canvas.\nPersonalização mais profunda por quadro.",
-    },
-    ruRU = {
-        NEXT = "Далее", DONE = "Готово",
-        STEP1_TITLE = "Ваши фреймы",
-        STEP1_TEXT = "Это два фрейма Orbit.\nНажмите на один, чтобы выбрать,\nзатем перетащите для перемещения.",
-        STEP2_TITLE = "Настройки фрейма",
-        STEP2_TEXT = "Открылось окно настроек!\nПопробуйте изменить ширину и высоту\nвыбранного фрейма.",
-        STEP3_TITLE = "Привязка",
-        STEP3_TEXT = "Перетащите фреймы к краям друг\nдруга. Цветные направляющие покажут,\nгде фрейм будет привязан.\nНаправление привязки определяет,\nкак фреймы растут вместе.\nОтпустите для привязки или\nудерживайте Shift для точного\nразмещения без привязки.",
-        STEP4_TITLE = "Родитель и потомок",
-        STEP4_TEXT = "При привязке один фрейм становится\nродителем, другой — потомком.\nПеретащите родителя — потомок\nследует! Перетаскивание потомка\nразрывает привязку.",
-        STEP5_TITLE = "Изменить расстояние",
-        STEP5_TEXT = "Выберите дочерний фрейм, затем\nпрокрутите колёсико мыши для\nизменения расстояния до родителя.\nShift для больших шагов.\n\n|cFF66BB66Подсказка:|r Расстояние 0 при\nотступе 0 объединяет границы\nв одну общую грань!",
-        STEP6_TITLE = "Сдвиг стрелками",
-        STEP6_TEXT = "Выберите родительский фрейм\nи стрелками сдвигайте на 1 пиксель.\nОба фрейма двигаются вместе.\nShift для 10px.",
-        STEP7_TITLE = "Изменение размера",
-        STEP7_TEXT = "Возьмите ручку в правом нижнем\nуглу выбранного фрейма.\nПеретащите для изменения размера\nв пределах мин/макс.\n\n|cFF66BB66Подсказка:|r Размер зависит\nот позиции привязки!",
-        STEP8_TITLE = "Настройки Orbit",
-        STEP8_TEXT = "Это панель настроек Orbit.\nИзмените шрифт, текстуры, цвета,\nрамки и многое другое. Все изменения\nприменяются глобально.",
-        STEP9_TITLE = "Исследуйте!",
-        STEP9_TEXT = "Чтобы получить максимум от Orbit,\nпросто экспериментируйте! Тащите,\nбросайте, привязывайте и изменяйте\nразмер фреймов в режиме редактирования.",
-        CANVAS_TITLE = "Режим холста",
-        CANVAS_TEXT = "Правый клик по фрейму откроет\nрежим холста. Глубокая настройка\nкаждого фрейма.",
-    },
-    koKR = {
-        NEXT = "다음", DONE = "완료",
-        STEP1_TITLE = "프레임 소개",
-        STEP1_TEXT = "Orbit 프레임 두 개입니다.\n하나를 클릭하여 선택한 후\n드래그하여 위치를 변경하세요.",
-        STEP2_TITLE = "프레임 설정",
-        STEP2_TEXT = "설정 대화 상자가 열렸습니다!\n선택한 프레임의 너비와 높이를\n조정해 보세요.",
-        STEP3_TITLE = "앵커링",
-        STEP3_TEXT = "프레임을 가장자리 근처로\n드래그하세요. 색상 가이드가\n앵커 위치를 표시합니다.\n앵커 방향은 프레임의 성장\n방향을 결정합니다. 놓으면\n앵커, Shift를 누르면 앵커 없이\n정밀 배치됩니다.",
-        STEP4_TITLE = "부모 & 자식",
-        STEP4_TEXT = "프레임이 앵커되면 하나가 부모,\n다른 하나가 자식이 됩니다.\n부모를 드래그하면 자식이 따라옵니다!\n자식을 드래그하면 앵커가 해제됩니다.",
-        STEP5_TITLE = "거리 조정",
-        STEP5_TEXT = "자식 프레임을 선택한 후 마우스\n휠을 스크롤하여 부모와의 간격을\n변경합니다. Shift로 큰 단위 이동.\n\n|cFF66BB66힌트:|r 거리 0과 간격 0이면\n테두리가 하나의 공유 가장자리로\n병합됩니다!",
-        STEP6_TITLE = "화살표 이동",
-        STEP6_TEXT = "부모 프레임을 선택하고 화살표\n키로 1픽셀씩 이동합니다.\n두 프레임이 함께 움직입니다.\nShift로 10px 이동.",
-        STEP7_TITLE = "드래그 크기 조절",
-        STEP7_TEXT = "선택한 프레임의 오른쪽 하단\n핸들을 잡으세요. 드래그하여\n최소/최대 범위 내에서 크기를\n조절합니다.\n\n|cFF66BB66힌트:|r 크기 조절은 앵커\n위치에 기반합니다!",
-        STEP8_TITLE = "Orbit 옵션",
-        STEP8_TEXT = "Orbit 옵션 패널입니다.\n글꼴, 텍스처, 색상, 테두리 등을\n변경할 수 있습니다. 모든 변경사항이\n전역으로 적용됩니다.",
-        STEP9_TITLE = "탐험하세요!",
-        STEP9_TEXT = "Orbit을 최대한 활용하려면\n자유롭게 플레이하세요! 편집\n모드에서 프레임을 드래그,\n앵커, 크기 조절할 수 있습니다.",
-        CANVAS_TITLE = "캔버스 모드",
-        CANVAS_TEXT = "프레임을 우클릭하면 캔버스\n모드가 열립니다. 프레임별 세부\n사용자 설정을 할 수 있습니다.",
-    },
-    zhCN = {
-        NEXT = "下一步", DONE = "完成",
-        STEP1_TITLE = "您的框体",
-        STEP1_TEXT = "这是两个 Orbit 框体。\n点击选择一个，然后拖动\n来重新定位。",
-        STEP2_TITLE = "框体设置",
-        STEP2_TEXT = "设置对话框已打开！\n尝试调整所选框体的\n宽度和高度。",
-        STEP3_TITLE = "锚定",
-        STEP3_TEXT = "将框体拖向彼此的边缘。\n彩色引导线将显示锚定位置。\n锚定方向控制框体如何共同\n增长和调整大小。松开以锚定，\n或按住 Shift 精确放置\n而不锚定。",
-        STEP4_TITLE = "父级与子级",
-        STEP4_TEXT = "框体锚定后，一个成为父级，\n另一个成为子级。拖动父级 ——\n子级跟随！拖动子级将\n断开锚定。",
-        STEP5_TITLE = "调整距离",
-        STEP5_TEXT = "选择子框体，然后滚动鼠标\n滚轮来改变与父级的间距。\n按住 Shift 以更大步进。\n\n|cFF66BB66提示:|r 距离为 0 且\n间距为 0 时，边框将合并\n为单一共享边缘！",
-        STEP6_TITLE = "方向键微调",
-        STEP6_TEXT = "选择父框体，使用方向键\n每次移动 1 像素。两个框体\n一起移动。Shift 跳 10 像素。",
-        STEP7_TITLE = "拖动调整大小",
-        STEP7_TEXT = "抓住所选框体右下角的\n调整手柄。拖动以在\n最小/最大范围内调整大小。\n\n|cFF66BB66提示:|r 大小调整基于\n锚定位置！",
-        STEP8_TITLE = "Orbit 选项",
-        STEP8_TEXT = "这是 Orbit 选项面板。\n更改字体、纹理、颜色、\n边框等。所有更改将全局\n应用于每个框体。",
-        STEP9_TITLE = "探索！",
-        STEP9_TEXT = "要充分利用 Orbit，\n尽情尝试！在编辑模式中\n拖动、放置、锚定和调整\n框体大小。每个框体都可\n自定义。",
-        CANVAS_TITLE = "画布模式",
-        CANVAS_TEXT = "右键点击任何框体以打开\n画布模式。为每个框体解锁\n更深层的自定义。",
-    },
-    zhTW = {
-        NEXT = "下一步", DONE = "完成",
-        STEP1_TITLE = "您的框架",
-        STEP1_TEXT = "這是兩個 Orbit 框架。\n點擊選擇一個，然後拖動\n來重新定位。",
-        STEP2_TITLE = "框架設定",
-        STEP2_TEXT = "設定對話框已開啟！\n嘗試調整所選框架的\n寬度和高度。",
-        STEP3_TITLE = "錨定",
-        STEP3_TEXT = "將框架拖向彼此的邊緣。\n彩色引導線將顯示錨定位置。\n錨定方向控制框架如何共同\n增長和調整大小。放開以錨定，\n或按住 Shift 精確放置\n而不錨定。",
-        STEP4_TITLE = "父級與子級",
-        STEP4_TEXT = "框架錨定後，一個成為父級，\n另一個成為子級。拖動父級 ——\n子級跟隨！拖動子級將\n斷開錨定。",
-        STEP5_TITLE = "調整距離",
-        STEP5_TEXT = "選擇子框架，然後捲動滑鼠\n滾輪來改變與父級的間距。\n按住 Shift 以更大步進。\n\n|cFF66BB66提示:|r 距離為 0 且\n間距為 0 時，邊框將合併\n為單一共享邊緣！",
-        STEP6_TITLE = "方向鍵微調",
-        STEP6_TEXT = "選擇父框架，使用方向鍵\n每次移動 1 像素。兩個框架\n一起移動。Shift 跳 10 像素。",
-        STEP7_TITLE = "拖動調整大小",
-        STEP7_TEXT = "抓住所選框架右下角的\n調整控制點。拖動以在\n最小/最大範圍內調整大小。\n\n|cFF66BB66提示:|r 大小調整基於\n錨定位置！",
-        STEP8_TITLE = "Orbit 選項",
-        STEP8_TEXT = "這是 Orbit 選項面板。\n變更字型、紋理、顏色、\n邊框等。所有變更將全域\n套用於每個框架。",
-        STEP9_TITLE = "探索！",
-        STEP9_TEXT = "要充分利用 Orbit，\n盡情嘗試！在編輯模式中\n拖動、放置、錨定和調整\n框架大小。每個框架都可\n自訂。",
-        CANVAS_TITLE = "畫布模式",
-        CANVAS_TEXT = "右鍵點擊任何框架以開啟\n畫布模式。為每個框架解鎖\n更深層的自訂。",
-    },
-}
-LOCALE_STRINGS.enGB = LOCALE_STRINGS.enUS
-LOCALE_STRINGS.esMX = LOCALE_STRINGS.esES
-local L = LOCALE_STRINGS[GetLocale()] or LOCALE_STRINGS.enUS
-
+-- Strings live in Localization/Domains/Tours.lua (TOUR_EM_* keys) and Common.lua
+-- (CMN_NEXT / CMN_DONE). Everything below this block up to `local isCJK = ...` was
+-- removed in the central localization migration.
+local L = Orbit.L
 local isCJK = ({ koKR = true, zhCN = true, zhTW = true })[GetLocale()]
 if isCJK then TOOLTIP_MAX_WIDTH = 280 end
 
@@ -594,7 +387,7 @@ local function LayoutTooltip(anchorFrame, stop, idx, total)
     tip.title:SetText(stop.title)
     tip.text:SetText(stop.text)
     local isLast = idx == total
-    tip.nextBtn:SetText(isLast and L.DONE or L.NEXT)
+    tip.nextBtn:SetText(isLast and L.CMN_DONE or L.CMN_NEXT)
     tip.nextBtn:Show()
     if stop.check and stop.check() then tip.nextBtn:Enable() else tip.nextBtn:Disable() end
     local textH = tip.counter:GetStringHeight() + 2 + tip.title:GetStringHeight() + 3 + tip.text:GetStringHeight()
@@ -686,7 +479,7 @@ end
 -- [ TOUR STOPS (deferred init — needs frame refs) ]----------------------------------
 TOUR_STOPS = {
     { anchorKey = "A",
-      title = L.STEP1_TITLE, text = L.STEP1_TEXT,
+      title = L.TOUR_EM_STEP1_TITLE, text = L.TOUR_EM_STEP1_TEXT,
       check = function() return taskState.dragged end,
       onLeave = function()
           -- Ensure frameA is selected so the settings dialog is open for step 2
@@ -705,13 +498,13 @@ TOUR_STOPS = {
           end
       end },
     { anchorKey = "dialog", tooltipPoint = "LEFT", tooltipRel = "RIGHT", tpX = 8, tpY = 0,
-      title = L.STEP2_TITLE, text = L.STEP2_TEXT,
+      title = L.TOUR_EM_STEP2_TITLE, text = L.TOUR_EM_STEP2_TEXT,
       check = function() return taskState.settingsChanged end },
     { anchorKey = "B",
-      title = L.STEP3_TITLE, text = L.STEP3_TEXT,
+      title = L.TOUR_EM_STEP3_TITLE, text = L.TOUR_EM_STEP3_TEXT,
       check = function() return taskState.anchored end },
     { anchorKey = "parent",
-      title = L.STEP4_TITLE, text = L.STEP4_TEXT,
+      title = L.TOUR_EM_STEP4_TITLE, text = L.TOUR_EM_STEP4_TEXT,
       check = function() return taskState.parentDragged or taskState.anchorBroken end,
       onEnter = function()
           taskState.parentDragged = false
@@ -739,18 +532,18 @@ TOUR_STOPS = {
           taskState.savedAnchor = nil
       end },
     { anchorKey = "child",
-      title = L.STEP5_TITLE, text = L.STEP5_TEXT,
+      title = L.TOUR_EM_STEP5_TITLE, text = L.TOUR_EM_STEP5_TEXT,
       check = function() return taskState.distanceChanged end },
     { anchorKey = "parent",
-      title = L.STEP6_TITLE, text = L.STEP6_TEXT,
+      title = L.TOUR_EM_STEP6_TITLE, text = L.TOUR_EM_STEP6_TEXT,
       check = function() return taskState.nudged end },
     { anchorKey = "A",
-      title = L.STEP7_TITLE, text = L.STEP7_TEXT,
+      title = L.TOUR_EM_STEP7_TITLE, text = L.TOUR_EM_STEP7_TEXT,
       check = function() return taskState.resized end,
       onEnter = function() taskState.resized = false; ShowResizePulse() end,
       onLeave = function() HideResizePulse() end },
     { anchorKey = "options", tooltipPoint = "LEFT", tooltipRel = "RIGHT", tpX = 8, tpY = 0,
-      title = L.STEP8_TITLE, text = L.STEP8_TEXT,
+      title = L.TOUR_EM_STEP8_TITLE, text = L.TOUR_EM_STEP8_TEXT,
       check = function() return true end,
       onEnter = function()
           if Orbit.OptionsPanel then
@@ -763,7 +556,7 @@ TOUR_STOPS = {
           if Orbit.OptionsPanel then Orbit.OptionsPanel:Hide() end
       end },
     { anchorKey = "center", tooltipPoint = "CENTER", tooltipRel = "CENTER", tpX = 0, tpY = 0,
-      title = L.STEP9_TITLE, text = L.STEP9_TEXT,
+      title = L.TOUR_EM_STEP9_TITLE, text = L.TOUR_EM_STEP9_TEXT,
       check = function() return true end,
       onEnter = function()
           if Orbit.OptionsPanel then
@@ -1158,8 +951,8 @@ end
 function Tour:ShowCanvasHint()
     local playerFrame = GetPlayerFrame()
     if not playerFrame then return end
-    canvasTip.title:SetText(L.CANVAS_TITLE)
-    canvasTip.text:SetText(L.CANVAS_TEXT)
+    canvasTip.title:SetText(L.TOUR_EM_CANVAS_TITLE)
+    canvasTip.text:SetText(L.TOUR_EM_CANVAS_TEXT)
     local textH = canvasTip.title:GetStringHeight() + 3 + canvasTip.text:GetStringHeight()
     canvasTip:SetSize(TOOLTIP_MAX_WIDTH, textH + TOOLTIP_PAD * 2)
     canvasTip:ClearAllPoints()

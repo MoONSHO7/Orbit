@@ -20,12 +20,12 @@ function CoreMixin:OnLoad(skipEventRegistration)
     self:RegisterForClicks("AnyUp")
     if not skipEventRegistration then
         self:RegisterEvent("PLAYER_ENTERING_WORLD")
-        self:RegisterEvent("UNIT_MAXHEALTH")
-        self:RegisterEvent("UNIT_HEALTH")
-        self:RegisterEvent("UNIT_ABSORB_AMOUNT_CHANGED")
-        self:RegisterEvent("UNIT_HEAL_ABSORB_AMOUNT_CHANGED")
-        self:RegisterEvent("UNIT_HEAL_PREDICTION")
-        self:RegisterEvent("UNIT_PET")
+        self:RegisterUnitEvent("UNIT_MAXHEALTH", self.unit)
+        self:RegisterUnitEvent("UNIT_HEALTH", self.unit)
+        self:RegisterUnitEvent("UNIT_ABSORB_AMOUNT_CHANGED", self.unit)
+        self:RegisterUnitEvent("UNIT_HEAL_ABSORB_AMOUNT_CHANGED", self.unit)
+        self:RegisterUnitEvent("UNIT_HEAL_PREDICTION", self.unit)
+        self:RegisterUnitEvent("UNIT_PET", "player")
     end
 
     Orbit.EventBus:On("ORBIT_NICKNAME_UPDATED", function() self:UpdateName() end)

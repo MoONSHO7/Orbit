@@ -135,14 +135,14 @@ local function GetPreviewSortOrder(plugin)
     for i = 1, comp.healers do order[#order + 1] = plugin._previewRosterHealers[i] end
     for i = 1, comp.dps do order[#order + 1] = plugin._previewRosterDPS[i] end
     
-    local sortMode = plugin:GetTierSetting("SortMode") or "Group"
-    if sortMode == "Role" then
+    local sortMode = plugin:GetTierSetting("SortMode") or "group"
+    if sortMode == "role" then
         table.sort(order, function(a, b)
             local pa, pb = ROLE_PRIORITY[RAID_PREVIEW.Roles[a]] or 4, ROLE_PRIORITY[RAID_PREVIEW.Roles[b]] or 4
             if pa ~= pb then return pa < pb end
             return (RAID_PREVIEW.Names[a] or "") < (RAID_PREVIEW.Names[b] or "")
         end)
-    elseif sortMode == "Alphabetical" then
+    elseif sortMode == "alphabetical" then
         table.sort(order, function(a, b) return (RAID_PREVIEW.Names[a] or "") < (RAID_PREVIEW.Names[b] or "") end)
     end
     return order
@@ -299,12 +299,21 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
                     local roleOverrides = componentPositions.RoleIcon and componentPositions.RoleIcon.overrides
                     local hideDPS = roleOverrides and roleOverrides.HideDPS
                     local activeAtlases = roleAtlases
-                    if roleOverrides and roleOverrides.RoleIconStyle == "round" then
+                    local style = roleOverrides and roleOverrides.RoleIconStyle
+                    if style == "round" then
                         activeAtlases = { TANK = "icons_64x64_tank", HEALER = "icons_64x64_heal", DAMAGER = "icons_64x64_damage" }
+                    elseif style == "header" then
+                        activeAtlases = { TANK = "GO-icon-role-Header-Tank", HEALER = "GO-icon-role-Header-Healer", DAMAGER = "GO-icon-role-Header-DPS", DAMAGER_RANGED = "GO-icon-role-Header-DPS-Ranged" }
+                    end
+                    -- Resolve ranged DPS for header style preview (pure ranged DPS classes)
+                    local resolvedRole = role
+                    if role == "DAMAGER" and activeAtlases.DAMAGER_RANGED then
+                        local cls = previewData.Classes[dataIdx]
+                        if cls == "HUNTER" or cls == "MAGE" or cls == "WARLOCK" or cls == "EVOKER" then resolvedRole = "DAMAGER_RANGED" end
                     end
                     if role == "DAMAGER" and hideDPS then frame.RoleIcon:Hide()
-                    elseif activeAtlases[role] then
-                        frame.RoleIcon:SetAtlas(activeAtlases[role])
+                    elseif activeAtlases[resolvedRole] then
+                        frame.RoleIcon:SetAtlas(activeAtlases[resolvedRole])
                         frame.RoleIcon:Show()
                         if componentPositions.RoleIcon then ApplyIconPosition(frame.RoleIcon, frame, componentPositions.RoleIcon) end
                     else frame.RoleIcon:Hide() end
@@ -315,7 +324,13 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
             if frame.LeaderIcon then
                 if isDisabled("LeaderIcon") then frame.LeaderIcon:Hide()
                 elseif i == 1 then
-                    frame.LeaderIcon:SetAtlas(Orbit.IconPreviewAtlases and Orbit.IconPreviewAtlases.LeaderIcon or "UI-HUD-UnitFrame-Player-Group-LeaderIcon")
+                    local leaderOverrides = componentPositions.LeaderIcon and componentPositions.LeaderIcon.overrides
+                    local leaderAtlas = (leaderOverrides and leaderOverrides.LeaderIconStyle == "header")
+                        and "GO-icon-Header-Assist-Applied"
+                        or (Orbit.IconPreviewAtlases and Orbit.IconPreviewAtlases.LeaderIcon or "UI-HUD-UnitFrame-Player-Group-LeaderIcon")
+                    frame.LeaderIcon:SetTexture(nil)
+                    frame.LeaderIcon:SetTexCoord(0, 1, 0, 1)
+                    frame.LeaderIcon:SetAtlas(leaderAtlas)
                     frame.LeaderIcon:Show()
                     if componentPositions.LeaderIcon then ApplyIconPosition(frame.LeaderIcon, frame, componentPositions.LeaderIcon) end
                 else frame.LeaderIcon:Hide() end

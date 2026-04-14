@@ -3,13 +3,13 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
+local DragDrop = Orbit.CooldownDragDrop
 
--- [ CONSTANTS ] ---------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local ESSENTIAL_INDEX = Constants.Cooldown.SystemIndex.Essential
 local UTILITY_INDEX = Constants.Cooldown.SystemIndex.Utility
 local COOLDOWN_THROTTLE = 0.1
 local PLACEHOLDER_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
-local EQUIPMENT_SLOTS = { 13, 14 }
 local BOUNDS_PADDING = 30
 local HIT_RECT_INSET = -40
 local GLOW_OUTSET_BASE = 4
@@ -19,75 +19,32 @@ local GLOW_SLICE_START = 0.33
 local GLOW_SLICE_END = 0.67
 local GLOW_ATLAS = "GenericWidgetBar-Spell-Glow"
 local PREVIEW_ALPHA = 0.5
--- [ SPELL OVERRIDE ALIAS ] ----------------------------------------------------
+local CURSOR_POLL_INTERVAL = 0.1
+
+-- [ SPELL OVERRIDE ALIAS ] --------------------------------------------------------------------------
 local function GetActiveSpellID(spellID) return FindSpellOverrideByID(spellID) end
 
--- [ TOOLTIP PARSER ALIASES ] --------------------------------------------------
-local function GetParser() return Orbit.TooltipParser end
-local ParseActiveDuration = function(t, id) return GetParser():ParseActiveDuration(t, id) end
-local ParseCooldownDuration = function(t, id) return GetParser():ParseCooldownDuration(t, id) end
-
--- [ MODULE ] ------------------------------------------------------------------
+-- [ MODULE ] ----------------------------------------------------------------------------------------
 Orbit.ViewerInjection = {}
 local Injection = Orbit.ViewerInjection
 
--- [ PLUGIN REFERENCE ] --------------------------------------------------------
+-- [ PLUGIN REFERENCE ] ------------------------------------------------------------------------------
 local Plugin = Orbit:GetPlugin("Orbit_CooldownViewer")
 if not Plugin then
     error("ViewerInjection.lua: Plugin 'Orbit_CooldownViewer' not found - ensure CooldownManager.lua loads first")
 end
 
--- [ STATE ] -------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 Plugin.injectedFrames = Plugin.injectedFrames or {}
 Plugin.injectedRecyclePools = Plugin.injectedRecyclePools or {}
 
--- [ DESAT CURVE ] -------------------------------------------------------------
+-- [ DESAT CURVE ] -----------------------------------------------------------------------------------
 local DESAT_CURVE = C_CurveUtil.CreateCurve()
 DESAT_CURVE:AddPoint(0.0, 0)
 DESAT_CURVE:AddPoint(0.001, 1)
 DESAT_CURVE:AddPoint(1.0, 1)
 
--- [ CURSOR RESOLUTION ] -------------------------------------------------------
-local function ResolveCursorInfo()
-    local cursorType, id, subType, spellID = GetCursorInfo()
-    if cursorType == "spell" then
-        local actualId = spellID or id
-        if not spellID and subType and subType ~= "" then
-            local bookInfo = C_SpellBook.GetSpellBookItemInfo(id, Enum.SpellBookSpellBank[subType] or Enum.SpellBookSpellBank.Player)
-            if bookInfo and bookInfo.spellID then actualId = bookInfo.spellID end
-        end
-        return "spell", actualId
-    elseif cursorType == "item" then
-        return "item", id
-    end
-    return nil, nil
-end
-
-local function ResolveEquipmentSlot(itemId)
-    for _, slotId in ipairs(EQUIPMENT_SLOTS) do
-        local equippedId = GetInventoryItemID("player", slotId)
-        if equippedId and equippedId == itemId then return slotId end
-    end
-    return nil
-end
-
--- [ VALIDATION ] --------------------------------------------------------------
-local function HasCooldown(itemType, id)
-    if itemType == "spell" then
-        local activeId = GetActiveSpellID(id)
-        local cd = GetSpellBaseCooldown(activeId)
-        if cd and not issecretvalue(cd) and cd > 0 then return true end
-        local ci = C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
-        if ci and ci.maxCharges and not issecretvalue(ci.maxCharges) and ci.maxCharges > 1 then return true end
-        return GetParser() and ParseCooldownDuration("spell", activeId) ~= nil
-    elseif itemType == "item" then
-        if GetParser() and ParseCooldownDuration("item", id) ~= nil then return true end
-        return GetItemSpell(id) ~= nil
-    end
-    return false
-end
-
--- [ FRAME CREATION ] ----------------------------------------------------------
+-- [ FRAME CREATION ] --------------------------------------------------------------------------------
 local function CreateInjectedIcon(parent, systemIndex)
     local icon = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     OrbitEngine.Pixel:Enforce(icon)
@@ -142,7 +99,7 @@ local function CreateInjectedIcon(parent, systemIndex)
     return icon
 end
 
--- [ ICON UPDATE ] -------------------------------------------------------------
+-- [ ICON UPDATE ] -----------------------------------------------------------------------------------
 function Injection:UpdateIcon(icon)
     if not icon.trackedId then icon:Hide(); return end
 
@@ -182,10 +139,17 @@ function Injection:UpdateIcon(icon)
                 icon.ActiveCooldown:Clear()
                 icon.Icon:SetDesaturation(0)
             end
+            -- chargeInfo.currentCharges is secret in combat; route it straight into SetText
+            -- rather than boolean-testing it to build a fallback.
             local chargeInfo = C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
-            local displayCount = chargeInfo and chargeInfo.currentCharges or C_Spell.GetSpellDisplayCount(activeId)
-            if displayCount then icon.ChargeCount.Current:SetText(displayCount); icon.ChargeCount:Show()
-            else icon.ChargeCount:Hide() end
+            if chargeInfo then
+                icon.ChargeCount.Current:SetText(chargeInfo.currentCharges)
+                icon.ChargeCount:Show()
+            else
+                local displayCount = C_Spell.GetSpellDisplayCount(activeId)
+                if displayCount then icon.ChargeCount.Current:SetText(displayCount); icon.ChargeCount:Show()
+                else icon.ChargeCount:Hide() end
+            end
         end
     elseif icon.trackedType == "item" then
         local usable, noMana = C_Item.IsUsableItem(icon.trackedId)
@@ -256,7 +220,7 @@ function Injection:UpdateIcon(icon)
     icon:Show()
 end
 
--- [ DATA MANAGEMENT ] ---------------------------------------------------------
+-- [ DATA MANAGEMENT ] -------------------------------------------------------------------------------
 function Injection:GetInjectedItems(systemIndex)
     return Plugin:GetSpecData(systemIndex, "InjectedItems") or {}
 end
@@ -267,15 +231,13 @@ end
 
 function Injection:AddItem(systemIndex, itemType, itemId, afterNativeIndex, arrayIndex)
     local items = self:GetInjectedItems(systemIndex)
-    local slotId = (itemType == "item") and ResolveEquipmentSlot(itemId) or nil
+    local slotId = (itemType == "item") and DragDrop:ResolveEquipmentSlot(itemId) or nil
     for _, entry in ipairs(items) do
         if slotId and entry.slotId == slotId then return end
         if not slotId and entry.type == itemType and entry.id == itemId then return end
     end
-    local useSpellId = (itemType == "item") and select(2, GetItemSpell(itemId)) or nil
-    local parseId = (itemType == "spell") and GetActiveSpellID(itemId) or itemId
-    local activeDuration = GetParser() and ParseActiveDuration(itemType, parseId) or nil
-    local entry = { type = itemType, id = itemId, useSpellId = useSpellId, slotId = slotId, activeDuration = activeDuration, afterNativeIndex = afterNativeIndex or 0 }
+    local entry = DragDrop:BuildInjectedItemEntry(itemType, itemId, afterNativeIndex)
+    if not entry then return end
     if arrayIndex and arrayIndex <= #items then
         table.insert(items, arrayIndex, entry)
     else
@@ -292,7 +254,7 @@ function Injection:RemoveItemAtIndex(systemIndex, removeIdx)
     self:RefreshFrames(systemIndex)
 end
 
--- [ FRAME MANAGEMENT ] --------------------------------------------------------
+-- [ FRAME MANAGEMENT ] ------------------------------------------------------------------------------
 function Injection:GetRecyclePool(systemIndex)
     if not Plugin.injectedRecyclePools[systemIndex] then Plugin.injectedRecyclePools[systemIndex] = {} end
     return Plugin.injectedRecyclePools[systemIndex]
@@ -366,18 +328,18 @@ function Injection:RefreshFrames(systemIndex)
     end
 end
 
--- [ PUBLIC API ] --------------------------------------------------------------
+-- [ PUBLIC API ] ------------------------------------------------------------------------------------
 function Injection:GetActiveFrames(systemIndex)
     local frames = Plugin.injectedFrames[systemIndex]
     if not frames or #frames == 0 then return nil end
     return frames
 end
 
--- [ DRAG AND DROP ] -----------------------------------------------------------
+-- [ DRAG AND DROP ] ---------------------------------------------------------------------------------
 function Injection:OnViewerReceiveDrag(anchor)
-    local itemType, actualId = ResolveCursorInfo()
+    local itemType, actualId = DragDrop:ResolveCursorInfo()
     if not itemType then return end
-    if not HasCooldown(itemType, actualId) then return end
+    if not DragDrop:HasCooldown(itemType, actualId) then return end
     local targetAfterNativeIndex, arrayIndex = self:GetDropInsertionInfo(anchor)
     self:RemovePhantom()
     ClearCursor()
@@ -413,7 +375,7 @@ function Injection:FlushAll()
     end
 end
 
--- [ UPDATE TICKER ] -----------------------------------------------------------
+-- [ UPDATE TICKER ] ---------------------------------------------------------------------------------
 function Injection:StartUpdateTicker()
     if Plugin._injectedTickerSetup then return end
     Plugin._injectedTickerSetup = true
@@ -447,7 +409,7 @@ function Injection:StartUpdateTicker()
     end)
 end
 
--- [ SPELL CAST HANDLER ] ------------------------------------------------------
+-- [ SPELL CAST HANDLER ] ----------------------------------------------------------------------------
 function Injection:OnSpellCast(spellId)
     if not spellId then return end
     for _, sysIdx in ipairs({ ESSENTIAL_INDEX, UTILITY_INDEX }) do
@@ -469,7 +431,7 @@ function Injection:OnSpellCast(spellId)
     end
 end
 
--- [ EQUIPMENT CHANGE HANDLER ] ------------------------------------------------
+-- [ EQUIPMENT CHANGE HANDLER ] ----------------------------------------------------------------------
 function Injection:OnEquipmentChanged()
     for _, sysIdx in ipairs({ ESSENTIAL_INDEX, UTILITY_INDEX }) do
         local items = self:GetInjectedItems(sysIdx)
@@ -495,7 +457,7 @@ function Injection:OnEquipmentChanged()
     end
 end
 
--- [ DROP ZONE OVERLAYS ] ------------------------------------------------------
+-- [ DROP ZONE OVERLAYS ] ----------------------------------------------------------------------------
 local function CreateGlowCorner(parent, point, l, r, t, b)
     local tex = parent:CreateTexture(nil, "OVERLAY")
     tex:SetAtlas(GLOW_ATLAS)
@@ -521,18 +483,6 @@ local function CreateGlowEdge(parent, point1, point2, isVertical, l, r, t, b)
         tex:SetPoint("BOTTOMRIGHT", parent, point2, -GLOW_SIZE, point2 == "BOTTOMRIGHT" and 0 or -GLOW_SIZE)
     end
     return tex
-end
-
-local function GetCursorTexture()
-    local itemType, id = ResolveCursorInfo()
-    if not itemType then return nil end
-    if itemType == "spell" then
-        local info = C_Spell.GetSpellInfo(GetActiveSpellID(id))
-        return info and info.iconID
-    elseif itemType == "item" then
-        return C_Item.GetItemIconByID(id)
-    end
-    return nil
 end
 
 function Injection:CreateDropZone(anchor)
@@ -571,7 +521,7 @@ function Injection:CreateDropZone(anchor)
     anchor._dropZone = zone
 end
 
--- [ PHANTOM PREVIEW ] ---------------------------------------------------------
+-- [ PHANTOM PREVIEW ] -------------------------------------------------------------------------------
 function Injection:GetOrCreatePhantom(sysIdx)
     if self._phantom then return self._phantom end
     local entry = Plugin.viewerMap[sysIdx]
@@ -616,8 +566,9 @@ function Injection:GetVisiblePositions(anchor, nativeOnly)
     local blizzFrame = entry.viewer
     local scale = blizzFrame:GetEffectiveScale()
     local positions = {}
-    for i = 1, select("#", blizzFrame:GetChildren()) do
-        local child = select(i, blizzFrame:GetChildren())
+    local children = { blizzFrame:GetChildren() }
+    for i = 1, #children do
+        local child = children[i]
         if child and child:IsShown() and child:GetLeft() and not child.isPhantom and (not nativeOnly or not child.isInjectedIcon) then
             positions[#positions + 1] = {
                 frame = child,
@@ -695,7 +646,7 @@ function Injection:UpdateDropZoneHighlight(anchor)
         return
     end
     
-    local tex = GetCursorTexture()
+    local tex = DragDrop:GetCursorTexture()
     if not tex then
         if self._phantomSysIdx == sysIdx then self:RemovePhantom() end
         return
@@ -796,7 +747,7 @@ function Injection:HideDropZones()
     end
 end
 
--- [ CURSOR WATCHER INTEGRATION ] ----------------------------------------------
+-- [ CURSOR WATCHER INTEGRATION ] --------------------------------------------------------------------
 function Injection:SetClickEnabled(enabled)
     local isDroppable = enabled and self:IsDraggingCooldownAbility()
     for _, sysIdx in ipairs({ ESSENTIAL_INDEX, UTILITY_INDEX }) do
@@ -815,12 +766,11 @@ function Injection:SetClickEnabled(enabled)
 end
 
 function Injection:IsDraggingCooldownAbility()
-    local itemType, actualId = ResolveCursorInfo()
+    local itemType, actualId = DragDrop:ResolveCursorInfo()
     if not itemType then return false end
-    local ok, result = pcall(HasCooldown, itemType, actualId)
-    if not (ok and result) then return false end
-    
-    local slotId = (itemType == "item") and ResolveEquipmentSlot(actualId) or nil
+    if not DragDrop:IsDraggingCooldownAbility() then return false end
+
+    local slotId = (itemType == "item") and DragDrop:ResolveEquipmentSlot(actualId) or nil
     for _, sysIdx in ipairs({ ESSENTIAL_INDEX, UTILITY_INDEX }) do
         local items = self:GetInjectedItems(sysIdx)
         for _, entry in ipairs(items) do
@@ -828,11 +778,39 @@ function Injection:IsDraggingCooldownAbility()
             if not slotId and entry.type == itemType and entry.id == actualId then return false end
         end
     end
-    
+
     return true
 end
 
--- [ LIFECYCLE ] ---------------------------------------------------------------
+-- [ CURSOR WATCHER ] --------------------------------------------------------------------------------
+-- Polls the cursor, shift-key, and edit-mode state at a fixed interval and
+-- pushes the current droppable state into SetClickEnabled. Also refreshes
+-- OOCFadeMixin so frames with `orbitCursorReveal` reveal while a cooldown
+-- ability is on the cursor. Self-contained — no dependency on the Tracked
+-- plugin or any deleted module.
+function Injection:StartCursorWatcher()
+    if Plugin._injectedCursorWatcher then return end
+    local accum = 0
+    local lastCursor, lastEditMode, lastShift = nil, nil, nil
+    local watcher = CreateFrame("Frame")
+    watcher:SetScript("OnUpdate", function(_, elapsed)
+        accum = accum + elapsed
+        if accum < CURSOR_POLL_INTERVAL then return end
+        accum = 0
+        if InCombatLockdown() then return end
+        local cursorType = GetCursorInfo()
+        local isEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown() or false
+        local isShift = IsShiftKeyDown() and true or false
+        if cursorType == lastCursor and isEditMode == lastEditMode and isShift == lastShift then return end
+        lastCursor, lastEditMode, lastShift = cursorType, isEditMode, isShift
+        if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
+        local isDroppable = Injection:IsDraggingCooldownAbility()
+        Injection:SetClickEnabled(isDroppable or isShift or isEditMode)
+    end)
+    Plugin._injectedCursorWatcher = watcher
+end
+
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Injection:Initialize()
     for _, sysIdx in ipairs({ ESSENTIAL_INDEX, UTILITY_INDEX }) do
         self:RefreshFrames(sysIdx)
@@ -853,9 +831,10 @@ function Injection:Initialize()
         end
     end
     self:StartUpdateTicker()
+    self:StartCursorWatcher()
 end
 
--- [ SPEC CHANGE ] -------------------------------------------------------------
+-- [ SPEC CHANGE ] -----------------------------------------------------------------------------------
 function Injection:OnSpecChanged()
     for _, sysIdx in ipairs({ ESSENTIAL_INDEX, UTILITY_INDEX }) do
         self:RefreshFrames(sysIdx)

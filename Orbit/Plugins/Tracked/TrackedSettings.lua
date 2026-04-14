@@ -1,163 +1,175 @@
----@type Orbit
-local Orbit = Orbit
+-- [ TRACKED SETTINGS ] ------------------------------------------------------------------------------
+-- Per-mode schemas (icons vs bars) dispatched on record.mode; standalone until surface area stabilizes.
+local _, Orbit = ...
+local L = Orbit.L
+
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
+
+local TICK_SIZE_DEFAULT = OrbitEngine.TickMixin.TICK_SIZE_DEFAULT
+local TICK_SIZE_MAX = OrbitEngine.TickMixin.TICK_SIZE_MAX
+local DEFAULT_SWIPE_COLOR = { r = 1, g = 0.95, b = 0.57, a = 0.7 }
 
 local Plugin = Orbit:GetPlugin("Orbit_Tracked")
 if not Plugin then return end
 
-local function RelayoutTrackedBars(plugin) Orbit.TrackedBarLayout:LayoutTrackedBars(plugin) end
-
--- [ SETTINGS UI ] -------------------------------------------------------------
+-- [ ADDSETTINGS DISPATCH ] --------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
-    local systemIndex = systemFrame.systemIndex or 1
+    local systemIndex = systemFrame.systemIndex
+    local record = self:GetContainerRecord(systemIndex)
+    if not record then return end
+
+    if record.mode == "icons" then
+        self:_BuildIconSettings(dialog, systemFrame, record)
+    elseif record.mode == "bar" then
+        self:_BuildBarSettings(dialog, systemFrame, record)
+    end
+end
+
+-- [ ICON SETTINGS ] ---------------------------------------------------------------------------------
+function Plugin:_BuildIconSettings(dialog, systemFrame, record)
+    local systemIndex = record.id
+    local schema = { controls = {}, extraButtons = {} }
     local SB = OrbitEngine.SchemaBuilder
 
-    local frame = systemFrame.systemFrame or systemFrame
-    local isAnchored = frame and OrbitEngine.Frame:GetAnchorParent(frame) ~= nil
-
-    local schema = { hideNativeSettings = true, controls = {}, extraButtons = {} }
-
-    -- [ TRACKED BARS SETTINGS ] ----------------------------------------------------------------
-    if frame and (frame.isChargeBar or frame.isTrackedBarFrame) then
-        SB:SetTabRefreshCallback(dialog, self, systemFrame)
-        local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Behaviour", "Colour" }, "Layout")
-
-        if currentTab == "Layout" then
-            if not isAnchored then
-                SB:AddSizeSettings(self, schema, systemIndex, systemFrame, { 
-                    min = 50, max = 400, default = 120, 
-                    onChange = function(val) self:SetSetting(systemIndex, "Width", val); RelayoutTrackedBars(self) end 
-                })
-            end
-            SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, { 
-                min = 6, max = 40, default = 12,
-                onChange = function(val) self:SetSetting(systemIndex, "Height", val); RelayoutTrackedBars(self) end 
-            })
-            
-            table.insert(schema.controls, {
-                type = "slider", key = "TickSize", label = "Tick", min = 0, max = 6, step = 2, default = 6,
-                tooltip = "Width of the leading-edge tick mark (0 = hidden)",
-                onChange = function(val) self:SetSetting(systemIndex, "TickSize", val); RelayoutTrackedBars(self) end,
-            })
-            table.insert(schema.controls, {
-                type = "slider", key = "DividerSize", label = "Divider Size", min = 0, max = 50, step = 1, default = 2,
-                onChange = function(val) self:SetSetting(systemIndex, "DividerSize", val); RelayoutTrackedBars(self) end,
-            })
-        elseif currentTab == "Colour" then
-            SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-                key = "BarColorCurve", label = "Bar Colour",
-                onChange = function(curveData)
-                    self:SetSetting(systemIndex, "BarColorCurve", curveData)
-                    RelayoutTrackedBars(self)
-                end,
-            })
-        elseif currentTab == "Behaviour" then
-            table.insert(schema.controls, {
-                type = "checkbox", key = "SmoothAnimation", label = "Smooth Animation", default = false,
-                tooltip = "Smoothly animate charge transitions",
-                onChange = function(val)
-                    self:SetSetting(systemIndex, "SmoothAnimation", val)
-                end,
-            })
-            table.insert(schema.controls, {
-                type = "checkbox", key = "FrequentUpdates", label = "Frequent Updates", default = true,
-                tooltip = "Updates the charge bar every frame instead of interval ticks",
-                onChange = function(val)
-                    self:SetSetting(systemIndex, "FrequentUpdates", val)
-                    self:RefreshChargeUpdateMethod()
-                end,
-            })
-        end
-
-        OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
-        return
-    end
-
-    -- [ TRACKED ICONS SETTINGS ] ---------------------------------------------------------------
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local tabs = { "Layout", "Glow", "Colors" }
-    local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_TRK_TAB_LAYOUT, L.PLU_TRK_TAB_GLOW, L.PLU_TRK_TAB_VISIBILITY, L.PLU_TRK_TAB_COLORS }, L.PLU_TRK_TAB_LAYOUT)
 
-    if currentTab == "Layout" then
+    if currentTab == L.PLU_TRK_TAB_LAYOUT then
         table.insert(schema.controls, {
-            type = "dropdown", key = "aspectRatio", label = "Icon Aspect Ratio",
+            type = "dropdown", key = "aspectRatio", label = L.PLU_TRK_ICON_ASPECT,
             options = {
-                { text = "Square (1:1)", value = "1:1" }, { text = "Landscape (16:9)", value = "16:9" },
-                { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
+                { text = L.PLU_CDM_ASPECT_1_1, value = "1:1" },
+                { text = L.PLU_CDM_ASPECT_16_9, value = "16:9" },
+                { text = L.PLU_CDM_ASPECT_4_3, value = "4:3" },
+                { text = L.PLU_CDM_ASPECT_21_9, value = "21:9" },
             },
             default = "1:1",
-            onChange = function(val)
-                self:SetSetting(systemIndex, "aspectRatio", val)
-                self:ApplySettings(frame)
-            end,
         })
         table.insert(schema.controls, {
-            type = "slider", key = "IconSize", label = "Icon Size",
+            type = "slider", key = "IconSize", label = L.PLU_TRK_ICON_SIZE,
             min = 20, max = 80, step = 1,
             formatter = function(v) return v .. "px" end,
             default = Constants.Cooldown.DefaultIconSize,
             onChange = function(val)
                 self:SetSetting(systemIndex, "IconSize", val)
-                self:ApplySettings(frame)
+                self:ApplySettings(systemFrame)
             end,
         })
         table.insert(schema.controls, {
-            type = "slider", key = "IconPadding", label = "Icon Padding", min = 0, max = 15, step = 1, default = Constants.Cooldown.DefaultPadding,
+            type = "slider", key = "IconPadding", label = L.PLU_TRK_ICON_PADDING,
+            min = 0, max = 15, step = 1,
+            default = Constants.Cooldown.DefaultPadding,
             onChange = function(val)
                 self:SetSetting(systemIndex, "IconPadding", val)
-                self:ApplySettings(frame)
+                self:ApplySettings(systemFrame)
             end,
         })
-        table.insert(schema.controls, {
-            type = "checkbox", key = "ShowActiveDuration", label = "Active Duration", default = true,
-            onChange = function(val)
-                self:SetSetting(systemIndex, "ShowActiveDuration", val)
-                self:ApplySettings(frame)
-            end,
-        })
-
-    elseif currentTab == "Glow" then
-        table.insert(schema.controls, {
-            type = "checkbox", key = "ShowGCDSwipe", label = "Show GCD Swipe", default = true,
-            onChange = function(val)
-                self:SetSetting(systemIndex, "ShowGCDSwipe", val)
-                self:ApplySettings(frame)
-            end,
-        })
-        table.insert(schema.controls, {
-            type = "checkbox", key = "AssistedHighlight", label = "Assisted Highlight", default = false,
-            onChange = function(val)
-                self:SetSetting(systemIndex, "AssistedHighlight", val)
-                SetCVar("assistedCombatHighlight", val and "1" or "0")
-                if self.UpdateAssistedHighlights then self:UpdateAssistedHighlights() end
-            end,
-        })
+    elseif currentTab == L.PLU_TRK_TAB_GLOW then
+        table.insert(schema.controls, { type = "checkbox", key = "ShowGCDSwipe", label = L.PLU_TRK_SHOW_GCD_SWIPE, default = true })
         SB:AddGlowSettings(self, schema, systemIndex, dialog, systemFrame, {
             prefix = "ActiveGlow",
-            label = "Active Glow",
-            default = Constants.Glow.Type.None,
-            onUpdate = function() self:ApplySettings(frame) end
+            label = L.PLU_TRK_ACTIVE_GLOW,
+            default = Constants.Glow.DefaultType,
         })
-        
-    elseif currentTab == "Colors" then
-        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-            key = "ActiveSwipeColorCurve", label = "Active Swipe",
-            default = { pins = { { position = 0, color = { r = 1, g = 0.95, b = 0.57, a = 0.7 } } } },
-            singleColor = true,
+    elseif currentTab == L.PLU_TRK_TAB_VISIBILITY then
+        table.insert(schema.controls, {
+            type = "checkbox", key = "HideOnCooldown", label = L.PLU_TRK_HIDE_ON_CD,
+            tooltip = L.PLU_TRK_HIDE_ON_CD_TT, default = false,
             onChange = function(val)
-                self:SetSetting(systemIndex, "ActiveSwipeColorCurve", val)
-                self:ApplySettings(frame)
+                self:SetSetting(systemIndex, "HideOnCooldown", val)
+                self:ApplySettings(systemFrame)
             end,
         })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "HideOnAvailable", label = L.PLU_TRK_HIDE_ON_READY,
+            tooltip = L.PLU_TRK_HIDE_ON_READY_TT, default = false,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "HideOnAvailable", val)
+                self:ApplySettings(systemFrame)
+            end,
+        })
+    elseif currentTab == L.PLU_TRK_TAB_COLORS then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-            key = "CooldownSwipeColorCurve", label = "Cooldown Swipe",
+            key = "ActiveSwipeColorCurve", label = L.PLU_TRK_ACTIVE_SWIPE,
+            default = { pins = { { position = 0, color = DEFAULT_SWIPE_COLOR } } },
+            singleColor = true,
+        })
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "CooldownSwipeColorCurve", label = L.PLU_TRK_COOLDOWN_SWIPE,
             default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
             singleColor = true,
+        })
+        SB:AddColorSettings(self, schema, systemIndex, systemFrame, {
+            key = "KeypressColor", label = L.PLU_TRK_KEYPRESS_FLASH,
+            default = { r = 1, g = 1, b = 1, a = 0 },
+        })
+    end
+
+    OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
+end
+
+-- [ BAR SETTINGS ] ----------------------------------------------------------------------------------
+function Plugin:_BuildBarSettings(dialog, systemFrame, record)
+    local systemIndex = record.id
+    local schema = { controls = {}, extraButtons = {} }
+    local SB = OrbitEngine.SchemaBuilder
+
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_TRK_TAB_LAYOUT, L.PLU_TRK_TAB_COLORS }, L.PLU_TRK_TAB_LAYOUT)
+
+    if currentTab == L.PLU_TRK_TAB_LAYOUT then
+        table.insert(schema.controls, {
+            type = "dropdown", key = "Layout", label = L.PLU_TRK_LAYOUT,
+            options = {
+                { text = L.PLU_TRK_HORIZONTAL, value = "Horizontal" },
+                { text = L.PLU_TRK_VERTICAL, value = "Vertical" },
+            },
+            default = "Horizontal",
             onChange = function(val)
-                self:SetSetting(systemIndex, "CooldownSwipeColorCurve", val)
-                self:ApplySettings(frame)
+                self:SetSetting(systemIndex, "Layout", val)
+                self:ApplySettings(systemFrame)
             end,
+        })
+        table.insert(schema.controls, {
+            type = "slider", key = "Width", label = L.PLU_TRK_WIDTH,
+            min = 80, max = 400, step = 1, default = 200,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "Width", val)
+                self:ApplySettings(systemFrame)
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "slider", key = "Height", label = L.PLU_TRK_HEIGHT,
+            min = 12, max = 40, step = 1, default = 20,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "Height", val)
+                self:ApplySettings(systemFrame)
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "ShowIcon", label = L.PLU_TRK_SHOW_ICON,
+            default = true,
+            tooltip = L.PLU_TRK_SHOW_ICON_TT,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "ShowIcon", val)
+                self:ApplySettings(systemFrame)
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "slider", key = "TickSize", label = L.PLU_TRK_TICK,
+            min = 0, max = TICK_SIZE_MAX, step = 2, default = TICK_SIZE_DEFAULT,
+            tooltip = L.PLU_TRK_TICK_TT,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "TickSize", val)
+                self:ApplySettings(systemFrame)
+            end,
+        })
+    elseif currentTab == L.PLU_TRK_TAB_COLORS then
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "BarColor", label = L.PLU_TRK_BAR_COLOR,
+            default = { pins = { { position = 0, color = { r = 0.3, g = 0.7, b = 1, a = 1 } } } },
+            singleColor = true,
         })
     end
 
