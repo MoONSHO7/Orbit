@@ -307,13 +307,14 @@ local function GetOrCreateProxyButton(originalBtn, parent, plugin)
 
     -- Forward clicks via dataObject.OnClick; AnyUp only to avoid double-fire.
     proxy:RegisterForClicks("AnyUp")
-    proxy:SetScript("OnClick", function(_, button)
-        local btn = originalBtn
+    proxy:SetScript("OnClick", function(self, button)
+        -- Pass proxy (self) not originalBtn so any dropdown/menu anchors to the visible button.
         local b = button or "LeftButton"
+        local btn = originalBtn
         if btn.dataObject and btn.dataObject.OnClick then
-            btn.dataObject.OnClick(btn, b)
+            btn.dataObject.OnClick(self, b)
         elseif btn:GetScript("OnClick") then
-            pcall(function() btn:GetScript("OnClick")(btn, b) end)
+            pcall(function() btn:GetScript("OnClick")(self, b) end)
         else
             pcall(function() btn:Click(b) end)
         end
@@ -457,6 +458,7 @@ function Plugin:CollectAddonButtons()
     -- Track already-collected frame references so we don't double-collect
     local seen = {}
     local seenSignatures = {}
+    local seenNames = {}  -- catches duplicates even when icon is nil
 
     -- 1) LibDBIcon registered buttons
     local lib = LibStub and LibStub("LibDBIcon-1.0", true)
@@ -476,6 +478,7 @@ function Plugin:CollectAddonButtons()
                     }
                 end
                 if signature then seenSignatures[signature] = true end
+                seenNames[displayName] = true
                 seen[button] = true
             end
         end
@@ -506,7 +509,14 @@ function Plugin:CollectAddonButtons()
                     -- Skip frames smaller than a real button (map pins are typically <20px)
                     local tooSmall = (child:GetWidth() or 0) < MIN_BUTTON_SIZE
 
-                    if not isBlizzard and not isPin and not tooSmall then
+                    -- Skip protected frames (e.g. SecureActionButton overlays like Plumber's MinimapMouseover)
+                    local isProtected = child:IsProtected()
+
+                    -- Skip hidden buttons — if an addon hides its direct button because it's
+                    -- also registered with LibDBIcon, we don't want both in the compartment.
+                    local isHidden = not child:IsShown()
+
+                    if not isBlizzard and not isPin and not tooSmall and not isProtected and not isHidden then
                         local icon = nil
                         local btnIcon = child.icon or child.Icon
                         if btnIcon and btnIcon.GetTexture then
@@ -516,7 +526,7 @@ function Plugin:CollectAddonButtons()
                         end
                         local displayName = NormalizeCompartmentDisplayName(frameName or tostring(child))
                         local signature = BuildCollectedButtonSignature(displayName, icon)
-                        if not signature or not seenSignatures[signature] then
+                        if (not signature or not seenSignatures[signature]) and not seenNames[displayName] then
                             collected[#collected + 1] = {
                                 name = displayName,
                                 button = child,
@@ -525,6 +535,7 @@ function Plugin:CollectAddonButtons()
                             }
                         end
                         if signature then seenSignatures[signature] = true end
+                        seenNames[displayName] = true
                         seen[child] = true
                     end
                 end
