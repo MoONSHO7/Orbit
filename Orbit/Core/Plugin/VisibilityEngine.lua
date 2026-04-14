@@ -10,7 +10,7 @@ Orbit.VisibilityEngine = {}
 local VE = Orbit.VisibilityEngine
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
-local DEFAULTS = { oocFade = false, opacity = 100, hideMounted = false, mouseOver = true, showWithTarget = true }
+local DEFAULTS = { oocFade = false, opacity = 100, hideMounted = false, mouseOver = true, showWithTarget = true, alphaLock = false }
 local STARTUP_DELAY = 0.5
 
 -- Ordered list of manageable frames: { key, displayName, pluginName, systemIndex }
@@ -56,6 +56,7 @@ local FRAME_REGISTRY = {
     { key = "CombatTimer",          display = "Combat Timer",          plugin = "Combat Timer",       index = 1 },
     { key = "Minimap",              display = "Minimap",               plugin = "Minimap",            index = 1 },
     { key = "Datatexts",            display = "Datatexts",             plugin = "Datatexts",          index = 1 },
+    { key = "PortalDock",           display = "Portal Dock",           plugin = "Portal Dock",        index = 1 },
 }
 
 -- O(1) reverse lookup: { [pluginName] = { [systemIndex] = key } }
