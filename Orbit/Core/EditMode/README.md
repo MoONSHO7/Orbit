@@ -121,7 +121,9 @@ plugins whose `SetSetting`/`GetSetting` already partition per-spec at the record
 
 ### spec-change re-restore
 
-`Persistence._attachedFrames` is a weak-keyed registry populated by `AttachSettingsListener`. on `PLAYER_SPECIALIZATION_CHANGED`, `RestoreAffectedBySpecChange` walks the registry (deferred two frames so Tracked's `RefreshForCurrentSpec` and the subsequent `ReconcileChain` flush both settle first) and re-runs `RestorePosition` for any frame whose plugin has spec-scoped storage. this is what makes per-spec anchor routing visible to the live `AnchorGraph`: without it, the consumer's previous-spec anchor entry persists and width sync still works through `PromoteGrandchild`'s ancestor route, but the visual position lands on the ancestor instead of the new spec's intended target.
+`Persistence._attachedFrames` is a weak-keyed registry populated by `AttachSettingsListener`. on `PLAYER_SPECIALIZATION_CHANGED`, `RestoreAffectedBySpecChange` walks the registry (deferred two frames so Tracked's `RefreshForCurrentSpec` and the subsequent `ReconcileChain` flush both settle first) and re-runs `RestorePosition` — but **only** for frames whose plugin is built-in spec-scoped via `IsSpecScopedIndex(systemIndex)`. this is what makes per-spec anchor routing visible to the live `AnchorGraph`: without it, the consumer's previous-spec anchor entry persists and width sync still works through `PromoteGrandchild`'s ancestor route, but the visual position lands on the ancestor instead of the new spec's intended target.
+
+the `IsSpecScopedIndex` gate is intentional opt-in, not auto-opt-in by mixin presence. `PluginMixin` hands `GetSpecData`/`SetSpecData` to every plugin so per-character per-spec storage is available to anyone who wants it, but walking **every** attached frame on every spec change (which Blizzard fires on role assignment during group joins, instance transitions, and talent loadouts) causes a visible stall once enough plugins are registered. plugins that own their own positioning logic — GroupFrames stores positions per-group-size-tier, for example — simply don't implement `IsSpecScopedIndex` and are skipped.
 
 ## rules
 

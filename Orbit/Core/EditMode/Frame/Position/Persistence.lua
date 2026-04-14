@@ -407,9 +407,15 @@ end
 
 -- [ SPEC-CHANGE RE-RESTORE ] ------------------------------------------------------------------------
 -- Re-restore positions on spec swap for spec-data plugins; settingsArePerSpec plugins skipped.
+-- Only re-restore frames whose plugin has OPTED IN to spec-scoped positions via
+-- `IsSpecScopedIndex`. Plugins that merely inherit GetSpecData/SetSpecData from
+-- PluginMixin (i.e. everyone) are not automatically eligible — walking every
+-- attached frame on every spec change is the pattern that caused the group-join
+-- stall. Subscribers that own their own positioning (e.g. GroupFrames' per-tier
+-- storage) simply never opt in.
 function Persistence:RestoreAffectedBySpecChange()
     for frame, info in pairs(self._attachedFrames) do
-        if HasGetSpecData(info.plugin) then
+        if HasGetSpecData(info.plugin) and IsBuiltinSpecScoped(info.plugin, info.systemIndex) then
             self:RestorePosition(frame, info.plugin, info.systemIndex)
         end
     end
