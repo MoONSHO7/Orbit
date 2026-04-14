@@ -627,7 +627,6 @@ function Plugin:OnLoad()
                 UpdateVisibilityDriver()
                 if not self:CheckTierChange() then
                     self:UpdateFrameUnits()
-                    self:ApplySettings()
                 end
                 for _, frame in ipairs(self.frames) do
                     if not frame.preview and frame.unit and frame:IsShown() then
@@ -723,14 +722,19 @@ end
 function Plugin:SaveCurrentTierPosition(tier)
     tier = tier or self:GetCurrentTier()
     if not self.container or not tier then return end
-    local point, _, _, x, y = self.container:GetPoint()
+    local point, relativeTo, relativePoint, x, y = self.container:GetPoint()
     if not point then return end
+    local relName = relativeTo and relativeTo.GetName and relativeTo:GetName() or "UIParent"
     local pm = OrbitEngine.PositionManager
     if pm then
         local eph = pm:GetPosition(self.container)
-        if eph and eph.point then point, x, y = eph.point, eph.x, eph.y end
+        if eph and eph.point then
+            point, x, y = eph.point, eph.x, eph.y
+            relName = eph.relativeTo or relName
+            relativePoint = eph.relativePoint or relativePoint
+        end
     end
-    self:SetTierSetting("Position", { point = point, x = x, y = y }, tier)
+    self:SetTierSetting("Position", { point = point, relativeTo = relName, relativePoint = relativePoint or point, x = x, y = y }, tier)
 end
 
 function Plugin:RestoreTierPosition(tier)
@@ -738,15 +742,20 @@ function Plugin:RestoreTierPosition(tier)
     if not self.container or InCombatLockdown() then return end
     local pos = self:GetTierSetting("Position", tier)
     if not pos or not pos.point then
-        pos = self:GetSetting(1, "Position")
+        local legacy = self:GetSetting(1, "Position")
+        if legacy and legacy.point then
+            pos = legacy
+            self:SetTierSetting("Position", pos, tier)
+        end
     end
     if not pos or not pos.point then return end
     local x, y = pos.x, pos.y
     if OrbitEngine.Pixel then
         x, y = OrbitEngine.Pixel:SnapPosition(x, y, pos.point, self.container:GetWidth(), self.container:GetHeight(), self.container:GetEffectiveScale())
     end
+    local relativeTo = (pos.relativeTo and _G[pos.relativeTo]) or UIParent
     self.container:ClearAllPoints()
-    self.container:SetPoint(pos.point, x, y)
+    self.container:SetPoint(pos.point, relativeTo, pos.relativePoint or pos.point, x, y)
     if OrbitEngine.PositionManager then OrbitEngine.PositionManager:ClearFrame(self.container) end
 end
 
@@ -833,17 +842,17 @@ function Plugin:AssignPartyUnits()
                 local guidChanged = newGuid and frame._guidCache ~= newGuid
 
                 if currentUnit ~= unit or guidChanged then
+                    SafeUnregisterUnitWatch(frame)
                     frame:SetAttribute("unit", unit)
                     frame.unit = unit
                     frame._guidCache = newGuid
                     self:UnregisterFrameEvents(frame)
                     self:RegisterUnitEvents(frame, unit)
                     UpdatePrivateAuras(frame, self)
+                    frame:SetSize(tierWidth, tierHeight)
+                    SafeRegisterUnitWatch(frame)
                     changed = true
                 end
-                SafeUnregisterUnitWatch(frame)
-                frame:SetSize(tierWidth, tierHeight)
-                SafeRegisterUnitWatch(frame)
                 if not frame:IsShown() then frame:Show(); changed = true end
                 if frame.UpdateAll then frame:UpdateAll() end
                 UpdatePowerBar(frame, self)
@@ -884,17 +893,17 @@ function Plugin:AssignRaidUnits()
                 local guidChanged = newGuid and frame._guidCache ~= newGuid
 
                 if currentUnit ~= token or guidChanged then
+                    SafeUnregisterUnitWatch(frame)
                     frame:SetAttribute("unit", token)
                     frame.unit = token
                     frame._guidCache = newGuid
                     self:UnregisterFrameEvents(frame)
                     self:RegisterUnitEvents(frame, token)
                     UpdatePrivateAuras(frame, self)
+                    frame:SetSize(tierWidth, tierHeight)
+                    SafeRegisterUnitWatch(frame)
                     changed = true
                 end
-                SafeUnregisterUnitWatch(frame)
-                frame:SetSize(tierWidth, tierHeight)
-                SafeRegisterUnitWatch(frame)
                 if not frame:IsShown() then frame:Show(); changed = true end
                 if frame.UpdateAll then frame:UpdateAll() end
                 UpdatePowerBar(frame, self)
@@ -1046,9 +1055,6 @@ function Plugin:ApplySettings()
     end
 
     self:PositionFrames()
-    if not Orbit:IsEditMode() then
-        self:RestoreTierPosition()
-    end
 
     if self.frames[1] and self.frames[1].preview then
         self:SchedulePreviewUpdate()
