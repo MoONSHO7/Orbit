@@ -282,8 +282,6 @@ function Orbit:OnLoad()
         end)
     end
 
-    if OrbitEngine.NativeFrame then OrbitEngine.NativeFrame:SuppressEditModeSettings() end
-
     self:Print(self.L.MSG_LOADED)
 end
 

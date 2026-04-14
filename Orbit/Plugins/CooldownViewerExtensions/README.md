@@ -11,7 +11,6 @@ the tabs are not specific to the tracked plugin. anything that needs to spawn ed
 | file | responsibility |
 |---|---|
 | CooldownViewerExtensionsPlugin.lua | plugin registration (`Orbit_CooldownViewerExtensions`), `RegisterTab` api, `ADDON_LOADED` hook for `Blizzard_CooldownViewer`, deferred build queue, anchor chain below `AurasTab` |
-| CooldownViewerExtensions.xml | loads the lua file |
 
 ## public api
 

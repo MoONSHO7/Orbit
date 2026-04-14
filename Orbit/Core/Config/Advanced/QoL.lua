@@ -35,16 +35,13 @@ local function BuildMoveMore(body)
         if checked then Orbit.MoveMore:Enable() else Orbit.MoveMore:Disable() end
     end)
     Layout:AddControl(body, cb)
-    local saveInitial = GetAccountSetting("MoveMoreSavePositions", false)
+    SetAccountSetting("MoveMoreSavePositions", false)
+    if Orbit.MoveMore and Orbit.MoveMore.ClearSavedPositions then Orbit.MoveMore:ClearSavedPositions() end
     local desc
-    local saveCb = Layout:CreateCheckbox(body, "Save Positions", nil, saveInitial, function(checked)
-        SetAccountSetting("MoveMoreSavePositions", checked)
-        desc.text:SetText(checked and MOVEMORE_DESC_SAVE or MOVEMORE_DESC_RESET)
-        if not checked then Orbit.MoveMore:ClearSavedPositions() end
-        Orbit.MoveMore:OnSavePositionsChanged(checked)
-    end)
+    local saveCb = Layout:CreateCheckbox(body, "Save Positions (Requires More Testing)", nil, false, function() end)
+    if saveCb.SetEnabled then saveCb:SetEnabled(false) end
     Layout:AddControl(body, saveCb)
-    desc = Layout:CreateDescription(body, saveInitial and MOVEMORE_DESC_SAVE or MOVEMORE_DESC_RESET, A.MUTED)
+    desc = Layout:CreateDescription(body, MOVEMORE_DESC_RESET, A.MUTED)
     Layout:AddControl(body, desc)
     return Layout:Stack(body, 0, STACK_GAP)
 end

@@ -69,6 +69,7 @@ function Container:Build(plugin, record)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnReceiveDrag", function(self) Container:OnReceiveDrag(plugin, self) end)
+    frame.OnCooldownSettingsDrop = function(self, cooldownID) Container:OnCooldownSettingsDrop(plugin, self, cooldownID) end
     frame:SetScript("OnMouseDown", function(self, button)
         if button == "RightButton" and IsShiftKeyDown() and self:IsGridEmpty() then
             plugin:DeleteContainer(self.recordId)
@@ -408,6 +409,26 @@ function Container:OnReceiveDrag(plugin, frame)
     local x, y = 0, 0
     if hasItems then x = maxX + 1; y = minY end
     self:CommitDrop(plugin, frame, x, y)
+end
+
+-- Dispatched by Orbit.CooldownSettingsDragBridge when a CooldownViewerSettings
+-- icon is dropped onto this container. Mirrors OnReceiveDrag's "next free
+-- right-edge slot" policy since the bridge drop has no specific grid target.
+function Container:OnCooldownSettingsDrop(plugin, frame, cooldownID)
+    local itemType, itemId = DragDrop:ResolveCooldownIDPayload(cooldownID)
+    if not itemType or not DragDrop:HasCooldown(itemType, itemId) then return end
+    local record = plugin:GetContainerRecord(frame.recordId)
+    if not record then return end
+    record.grid = record.grid or {}
+    local minX, maxX, minY, _, hasItems = self:ComputeBounds(record.grid)
+    local x, y = 0, 0
+    if hasItems then x = maxX + 1; y = minY end
+    local key = GridKey(x, y)
+    if record.grid[key] then return end
+    local entry = DragDrop:BuildTrackedItemEntry(itemType, itemId, x, y)
+    if not entry then return end
+    record.grid[key] = entry
+    Container:Apply(plugin, frame, record)
 end
 
 function Container:CommitDrop(plugin, frame, gridX, gridY)

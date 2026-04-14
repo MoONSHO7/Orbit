@@ -19,7 +19,7 @@ local FRAME_NAMES = {
     -- Map / quests
     "WorldMapFrame", "QuestFrame", "QuestLogPopupDetailFrame", "QuestMapFrame",
     -- Group finder / PvP
-    "PVEFrame", "PVPUIFrame", "GroupFinderFrame", "LFGListApplicationDialog",
+    "PVEFrame", "PVPUIFrame", "LFGListApplicationDialog",
     -- NPC interaction
     "GossipFrame", "MerchantFrame", "TradeFrame", "QuestFrame",
     "GuildRegistrarFrame", "PetitionFrame", "ItemTextFrame", "TabardFrame",
@@ -37,7 +37,7 @@ local FRAME_NAMES = {
     "GarrisonLandingPage", "ExpansionLandingPage",
     -- Misc panels
     "AddonList", "AlliedRacesFrame", "GuildControlUI",
-    "ChatConfigFrame", "SettingsPanel", "GameMenuFrame",
+    "ChatConfigFrame", "GameMenuFrame",
     "WeeklyRewardsFrame", "InspectRecipeFrame",
     "ProfessionsCustomerOrdersFrame", "ChallengesKeystoneFrame", "MacroFrame",
     -- Delves
@@ -100,7 +100,9 @@ local function SavePositionIfEnabled(frame)
     if not name then return end
     local points = {}
     for i = 1, frame:GetNumPoints() do
-        points[i] = { frame:GetPoint(i) }
+        local point, relativeTo, relativePoint, x, y = frame:GetPoint(i)
+        local relName = (relativeTo and relativeTo.GetName and relativeTo:GetName()) or "UIParent"
+        points[i] = { point, relName, relativePoint, x, y }
     end
     Orbit.db.AccountSettings.MoveMorePositions = Orbit.db.AccountSettings.MoveMorePositions or {}
     Orbit.db.AccountSettings.MoveMorePositions[name] = points
@@ -115,7 +117,9 @@ local function ApplySavedPosition(frame)
     if not saved or InCombatLockdown() then return end
     frame:ClearAllPoints()
     for _, pt in ipairs(saved) do
-        frame:SetPoint(unpack(pt))
+        local point, relName, relativePoint, x, y = pt[1], pt[2], pt[3], pt[4], pt[5]
+        local relFrame = (type(relName) == "string" and _G[relName]) or UIParent
+        frame:SetPoint(point, relFrame, relativePoint, x, y)
     end
 end
 
@@ -171,8 +175,9 @@ local function HookFrame(frame)
     
     frame:HookScript("OnShow", function(f)
         if not MM._active then return end
+        if InCombatLockdown() then return end
         SaveDefaultPoints(f)
-        if IsSavingPositions() then
+        if IsSavingPositions() and f:IsMovable() then
             f:SetUserPlaced(true)
             ApplySavedPosition(f)
         end
@@ -210,10 +215,11 @@ end
 hooksecurefunc("ShowUIPanel", function(frame)
     if not MM._active then return end
     if not frame then return end
+    if InCombatLockdown() then return end
     local name = frame:GetName()
     if name and FRAME_NAMES_HASH[name] then
         HookFrame(frame)
-        if IsSavingPositions() then
+        if frame._maHooked and frame:IsMovable() and IsSavingPositions() then
             frame:SetUserPlaced(true)
             ApplySavedPosition(frame)
         end

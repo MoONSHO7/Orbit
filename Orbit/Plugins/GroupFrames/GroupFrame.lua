@@ -583,9 +583,7 @@ function Plugin:OnLoad()
     self.container.orbitCanvasFrame = self.frames[1]
     self.container.orbitCanvasTitle = "Group Frame: " .. self:GetCurrentTier()
 
-    if not self.container:GetPoint() then
-        self.container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", GF.DefaultPartyOffsetX or 100, GF.DefaultPartyOffsetY or -120)
-    end
+    self:RestoreTierPosition(self._currentTier)
 
     -- Visibility driver: unified — show when in any group
     local function UpdateVisibilityDriver()
@@ -737,6 +735,13 @@ function Plugin:SaveCurrentTierPosition(tier)
     self:SetTierSetting("Position", { point = point, relativeTo = relName, relativePoint = relativePoint or point, x = x, y = y }, tier)
 end
 
+local TIER_DEFAULT_POSITIONS = {
+    Party  = { point = "TOPLEFT", relativeTo = "UIParent", relativePoint = "TOPLEFT", x = 100,  y = -120 },
+    Mythic = { point = "TOPLEFT", relativeTo = "UIParent", relativePoint = "TOPLEFT", x = 100,  y = -260 },
+    Heroic = { point = "TOPLEFT", relativeTo = "UIParent", relativePoint = "TOPLEFT", x = 260,  y = -260 },
+    World  = { point = "TOPLEFT", relativeTo = "UIParent", relativePoint = "TOPLEFT", x = 420,  y = -260 },
+}
+
 function Plugin:RestoreTierPosition(tier)
     tier = tier or self:GetCurrentTier()
     if not self.container or InCombatLockdown() then return end
@@ -748,7 +753,10 @@ function Plugin:RestoreTierPosition(tier)
             self:SetTierSetting("Position", pos, tier)
         end
     end
-    if not pos or not pos.point then return end
+    if not pos or not pos.point then
+        pos = TIER_DEFAULT_POSITIONS[tier] or TIER_DEFAULT_POSITIONS.Party
+        self:SetTierSetting("Position", pos, tier)
+    end
     local x, y = pos.x, pos.y
     if OrbitEngine.Pixel then
         x, y = OrbitEngine.Pixel:SnapPosition(x, y, pos.point, self.container:GetWidth(), self.container:GetHeight(), self.container:GetEffectiveScale())

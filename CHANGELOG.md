@@ -22,7 +22,8 @@
 - Performance datatext now shows Orbit CPU and can be pinned.
 
 ### Bugfixes
-- Many Minor Bugfixes
+- Group Frames not saving position
+- Disabled 'Save Positions' in Move More, needs more testing.
 
 ## [1.0.0] - 2026-03-10
 ### Added
