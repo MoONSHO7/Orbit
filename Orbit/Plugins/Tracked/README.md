@@ -265,7 +265,7 @@ note: when the cooldown viewer settings panel is open, an empty icon container's
 
 ## spec switching
 
-`PLAYER_ENTERING_WORLD`, `ACTIVE_TALENT_GROUP_CHANGED`, and `PLAYER_SPECIALIZATION_CHANGED` all trigger `RefreshForCurrentSpec`:
+`PLAYER_ENTERING_WORLD`, `ACTIVE_TALENT_GROUP_CHANGED`, `PLAYER_SPECIALIZATION_CHANGED`, and `ORBIT_PROFILE_CHANGED` all trigger `RefreshForCurrentSpec`. the profile-changed hook matters for the cross-login case: swapping to another character on ProfileB and back to ProfileA activates ProfileA *after* `PLAYER_ENTERING_WORLD` has already fired against ProfileB's store, so without the profile hook the spec-scoped frames stay dormant until `/reload`. `RefreshForCurrentSpec`:
 
 1. build a live frame for every record in the store that doesn't have one yet (across all specs, not just the current one)
 2. **first pass**: disable every frame whose record's spec doesn't match the current spec, and tear down frames whose store entry vanished

@@ -46,6 +46,7 @@ local Plugin = Orbit:RegisterPlugin("Tracked Items", "Orbit_Tracked", {
         Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function() self:RefreshForCurrentSpec() end, self)
         Orbit.EventBus:On("ACTIVE_TALENT_GROUP_CHANGED", function() self:RefreshForCurrentSpec() end, self)
         Orbit.EventBus:On("PLAYER_SPECIALIZATION_CHANGED", function() self:RefreshForCurrentSpec() end, self)
+        Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function() self:RefreshForCurrentSpec() end, self)
         Orbit.EventBus:On("TRAIT_CONFIG_UPDATED", function() self:_ScheduleBarPayloadRefresh() end, self)
     end,
 })

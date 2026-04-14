@@ -207,13 +207,6 @@ function Orbit.Profile:SetActiveProfile(name)
         if Orbit.CombatManager then Orbit.CombatManager:QueueUpdate(function() self:SetActiveProfile(name) end) end
         return false
     end
-    -- Refuse profile switch while Edit Mode is active: DiscardChanges would nuke
-    -- pending ephemeral positions the user could still cancel via Edit Mode.
-    if Orbit.db.activeProfile ~= name and Orbit:IsEditMode() then
-        Orbit:Print("Cannot switch profiles while Edit Mode is active. Save or cancel your changes first.")
-        return false
-    end
-
     local profile = Orbit.db.profiles[name]
     if not profile.Layouts then profile.Layouts = {} end
 
