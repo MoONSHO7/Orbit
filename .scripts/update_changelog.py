@@ -5,6 +5,9 @@ import os
 
 CHANGELOG_PATH = "CHANGELOG.md"
 OUTPUT_PATH = "Orbit/Core/Config/ChangelogData.lua"
+START_MARKER = "[start]"
+END_MARKER = "[end]"
+VERSION_TOKEN = "@project-version@"
 
 # [ PARSING ] ----------------------------------------------------------------------
 
@@ -16,20 +19,14 @@ def parse_changelog():
     with open(CHANGELOG_PATH, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # Find the latest version section (excluding Unreleased)
-    # Matches ## [v.v.v] - YYYY-MM-DD or ## [@project-version@] - @project-date-iso@
-    version_matches = list(re.finditer(r'## \[(.*?)\] - (\d{4}-\d{2}-\d{2}|@project-date-iso@)', content))
-    if not version_matches:
-        print("Error: No version entries found in CHANGELOG.md.")
+    start_match = re.search(r'^\s*\[start\]\s*$', content, re.MULTILINE | re.IGNORECASE)
+    end_match = re.search(r'^\s*\[end\]\s*$', content, re.MULTILINE | re.IGNORECASE)
+    if not start_match or not end_match or end_match.start() <= start_match.end():
+        print(f"Error: {START_MARKER} / {END_MARKER} markers not found or out of order in CHANGELOG.md.")
         return None
 
-    latest_match = version_matches[0]
-    version = latest_match.group(1)
-    
-    # Get content between this version and the next version (or end of file)
-    start_pos = latest_match.end()
-    end_pos = version_matches[1].start() if len(version_matches) > 1 else len(content)
-    section_content = content[start_pos:end_pos].strip()
+    section_content = content[start_match.end():end_match.start()].strip()
+    version = VERSION_TOKEN
 
     entries = []
     

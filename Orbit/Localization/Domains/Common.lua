@@ -23,6 +23,10 @@ local LOCALE_STRINGS = {
         CMN_ONLY_GLOBAL_RESET      = "Only the Global profile can be reset",
         CMN_DELETE_PROFILE_TOOLTIP = "Delete selected profile",
         CMN_CANNOT_DELETE_ACTIVE   = "Cannot delete active or Global profile",
+        CMN_ICON_POSITION          = "Icon Position",
+        CMN_ICON_LEFT              = "Left",
+        CMN_ICON_RIGHT             = "Right",
+        CMN_ICON_OFF               = "Off",
     },
     deDE = {
         CMN_NEXT                   = "Weiter",

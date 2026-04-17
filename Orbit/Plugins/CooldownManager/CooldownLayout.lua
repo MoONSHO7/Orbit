@@ -250,7 +250,7 @@ function CDM:ProcessChildren(anchor)
             local cd = icon.Cooldown or (icon.GetCooldownFrame and icon:GetCooldownFrame())
             if cd then
                 local ac, cc = skinSettings.activeSwipeColor, skinSettings.cooldownSwipeColor
-                local isAura = icon.wasSetFromAura == true
+                local isAura = not issecretvalue(icon.wasSetFromAura) and icon.wasSetFromAura == true
                 local c = isAura and ac or cc
                 local ds = cd.orbitDesiredSwipe or {}; cd.orbitDesiredSwipe = ds
                 ds.activeR, ds.activeG, ds.activeB, ds.activeA = ac.r, ac.g, ac.b, ac.a
@@ -441,6 +441,7 @@ function CDM:HookGCDSwipe(icon, systemIndex)
         if not plugin or not sysIdx then return end
         local cooldown = self:GetCooldownFrame()
         if cooldown then
+            if issecretvalue(self.wasSetFromAura) then return end
             local isAura = self.wasSetFromAura == true
             cooldown:SetReverse(isAura)
             local ds = cooldown.orbitDesiredSwipe

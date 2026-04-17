@@ -31,11 +31,6 @@ local ApplyIconPosition = function(icon, parentFrame, pos)
 end
 
 -- [ PREVIEW DATA ]-----------------------------------------------------------------------------------
--- Pool layout: indices 1-5 = Tanks, 6-15 = Healers, 16-45 = DPS
-local TANK_START, TANK_END = 1, 5
-local HEALER_START, HEALER_END = 6, 15
-local DPS_START, DPS_END = 16, 45
-
 local TIER_COMP = {
     Party  = { tanks = 1, healers = 1, dps = 3  },
     Mythic = { tanks = 2, healers = 4, dps = 14 },
@@ -43,56 +38,13 @@ local TIER_COMP = {
     World  = { tanks = 4, healers = 8, dps = 28 },
 }
 
-local RAID_PREVIEW = {
-    Names = {
-        -- Tanks (1-5)
-        "Bolvar", "Garrosh", "Illidan", "Chen", "Saurfang",
-        -- Healers (6-15)
-        "Anduin", "Tyrande", "Velen", "Aggra", "Moira",
-        "Calia", "Liadrin", "Talanji", "Rehgar", "Nobundo",
-        -- DPS (16-45)
-        "Arthas", "Jaina", "Thrall", "Sylvanas", "Khadgar",
-        "Gul'dan", "Malfurion", "Genn", "Rexxar", "Alleria",
-        "Vol'jin", "Maiev", "Rokhan", "Lor'themar", "Wrathion",
-        "Wilfred", "Broxigar", "Chromie", "Taran Zhu", "Magni",
-        "Nazgrim", "Halduron", "Yrel", "Alexstrasza", "Turalyon",
-        "Baine", "Muradin", "Kael'thas", "Darion", "Drek'thar",
-    },
-    Classes = {
-        -- Tanks
-        "PALADIN", "WARRIOR", "DEMONHUNTER", "MONK", "WARRIOR",
-        -- Healers
-        "PALADIN", "DRUID", "PRIEST", "SHAMAN", "PRIEST",
-        "PRIEST", "PALADIN", "PRIEST", "SHAMAN", "SHAMAN",
-        -- DPS
-        "DEATHKNIGHT", "MAGE", "SHAMAN", "HUNTER", "MAGE",
-        "WARLOCK", "DRUID", "WARRIOR", "HUNTER", "HUNTER",
-        "ROGUE", "ROGUE", "ROGUE", "HUNTER", "EVOKER",
-        "WARLOCK", "WARRIOR", "MAGE", "MONK", "SHAMAN",
-        "DEATHKNIGHT", "HUNTER", "PALADIN", "EVOKER", "PALADIN",
-        "WARRIOR", "WARRIOR", "MAGE", "DEATHKNIGHT", "SHAMAN",
-    },
-    HealthPcts = {
-        100, 85, 60, 40, 95, 75, 90, 50, 80, 70,
-        65, 100, 88, 55, 72, 92, 78, 83, 95, 100,
-        68, 91, 45, 82, 77, 53, 99, 62, 86, 74,
-        58, 93, 71, 48, 87, 96, 64, 79, 100, 85,
-        73, 66, 89, 42, 97,
-    },
-    Roles = {
-        -- Tanks
-        "TANK", "TANK", "TANK", "TANK", "TANK",
-        -- Healers
-        "HEALER", "HEALER", "HEALER", "HEALER", "HEALER",
-        "HEALER", "HEALER", "HEALER", "HEALER", "HEALER",
-        -- DPS
-        "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER",
-        "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER",
-        "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER",
-        "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER",
-        "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER",
-        "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER",
-    },
+-- Parallel-indexed with Orbit.PlayerDummies; kept local because health% is GroupFrames-specific.
+local HEALTH_PCTS = {
+    100, 85, 60, 40, 95, 75, 90, 50, 80, 70,
+    65, 100, 88, 55, 72, 92, 78, 83, 95, 100,
+    68, 91, 45, 82, 77, 53, 99, 62, 86, 74,
+    58, 93, 71, 48, 87, 96, 64, 79, 100, 85,
+    73, 66, 89, 42, 97,
 }
 
 -- [ CANVAS MODE DETECTION ]-------------------------------------------------------------------------
@@ -109,41 +61,35 @@ local function IsCanvasModeActive(plugin)
 end
 
 -- [ PREVIEW SORT ORDER ]----------------------------------------------------------------------------
-local function ShuffleRange(startIdx, endIdx)
-    local pool = {}
-    for i = startIdx, endIdx do pool[#pool + 1] = i end
-    for i = #pool, 2, -1 do
-        local j = math.random(1, i)
-        pool[i], pool[j] = pool[j], pool[i]
-    end
-    return pool
-end
-
 local function GetPreviewSortOrder(plugin)
     local tier = plugin:GetCurrentTier()
     local comp = TIER_COMP[tier] or TIER_COMP.Mythic
-    
+    local roster = Orbit.PlayerDummies
+
     if not plugin._previewRosterTier or plugin._previewRosterTier ~= tier then
-        plugin._previewRosterTanks = ShuffleRange(TANK_START, TANK_END)
-        plugin._previewRosterHealers = ShuffleRange(HEALER_START, HEALER_END)
-        plugin._previewRosterDPS = ShuffleRange(DPS_START, DPS_END)
-        plugin._previewRosterTier = tier
+        plugin._previewRosterTanks   = roster:ShuffleIndices("TANK")
+        plugin._previewRosterHealers = roster:ShuffleIndices("HEALER")
+        plugin._previewRosterDPS     = roster:ShuffleIndices("DAMAGER")
+        plugin._previewRosterTier    = tier
     end
 
     local order = {}
     for i = 1, comp.tanks do order[#order + 1] = plugin._previewRosterTanks[i] end
     for i = 1, comp.healers do order[#order + 1] = plugin._previewRosterHealers[i] end
     for i = 1, comp.dps do order[#order + 1] = plugin._previewRosterDPS[i] end
-    
+
     local sortMode = plugin:GetTierSetting("SortMode") or "group"
     if sortMode == "role" then
         table.sort(order, function(a, b)
-            local pa, pb = ROLE_PRIORITY[RAID_PREVIEW.Roles[a]] or 4, ROLE_PRIORITY[RAID_PREVIEW.Roles[b]] or 4
+            local pa = ROLE_PRIORITY[roster[a] and roster[a].role] or 4
+            local pb = ROLE_PRIORITY[roster[b] and roster[b].role] or 4
             if pa ~= pb then return pa < pb end
-            return (RAID_PREVIEW.Names[a] or "") < (RAID_PREVIEW.Names[b] or "")
+            return ((roster[a] and roster[a].name) or "") < ((roster[b] and roster[b].name) or "")
         end)
     elseif sortMode == "alphabetical" then
-        table.sort(order, function(a, b) return (RAID_PREVIEW.Names[a] or "") < (RAID_PREVIEW.Names[b] or "") end)
+        table.sort(order, function(a, b)
+            return ((roster[a] and roster[a].name) or "") < ((roster[b] and roster[b].name) or "")
+        end)
     end
     return order
 end
@@ -208,7 +154,7 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
 
     local isCanvasMode = IsCanvasModeActive(self)
     local isParty = self:IsPartyTier()
-    local previewData = RAID_PREVIEW
+    local roster = Orbit.PlayerDummies
     local sortOrder = GetPreviewSortOrder(self)
     local componentPositions = self:GetComponentPositions(1)
     local isDisabled = self.IsComponentDisabled and function(key) return self:IsComponentDisabled(key) end or function() return false end
@@ -232,7 +178,8 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
         local frame = self.frames[i]
         if frame and frame.preview then
             local dataIdx = sortOrder and sortOrder[i] or i
-            local role = previewData.Roles[dataIdx]
+            local entry = roster[dataIdx] or {}
+            local role = entry.role
             local isHealer = role == "HEALER"
             local showThisPower = isParty and (showPower or isHealer) or (showPower and isHealer)
 
@@ -251,9 +198,7 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
             if frame.Health then
                 frame.Health:SetMinMaxValues(0, 100)
                 frame.Health:SetValue(100)
-                local classFile = previewData.Classes[dataIdx]
-                local classColor = C_ClassColor and C_ClassColor.GetClassColor(classFile) or RAID_CLASS_COLORS[classFile]
-                if classColor then frame.Health:SetStatusBarColor(classColor.r, classColor.g, classColor.b) end
+                frame:ApplyPreviewHealthColor(entry.classFilename)
                 frame.Health:Show()
                 if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
                 if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
@@ -270,8 +215,8 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
             if frame.Name then
                 if isDisabled("Name") then frame.Name:Hide()
                 else
-                    frame._fullName = previewData.Names[dataIdx]
-                    frame.Name:SetText(previewData.Names[dataIdx])
+                    frame._fullName = entry.name
+                    frame.Name:SetText(entry.name)
                     frame.Name:SetTextColor(1, 1, 1, 1)
                     frame.Name:Show()
                 end
@@ -290,7 +235,7 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
             end
 
             frame:SetAlpha(1)
-            frame.previewClassFile = previewData.Classes[dataIdx]
+            frame.previewClassFile = entry.classFilename
 
             -- Role icon
             if frame.RoleIcon then
@@ -308,7 +253,7 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
                     -- Resolve ranged DPS for header style preview (pure ranged DPS classes)
                     local resolvedRole = role
                     if role == "DAMAGER" and activeAtlases.DAMAGER_RANGED then
-                        local cls = previewData.Classes[dataIdx]
+                        local cls = entry.classFilename
                         if cls == "HUNTER" or cls == "MAGE" or cls == "WARLOCK" or cls == "EVOKER" then resolvedRole = "DAMAGER_RANGED" end
                     end
                     if role == "DAMAGER" and hideDPS then frame.RoleIcon:Hide()
@@ -481,7 +426,6 @@ function Orbit.GroupFramePreviewMixin:StartPreviewAnimation()
     local isCanvasMode = IsCanvasModeActive(self)
     local currentTier = self:GetCurrentTier()
     local comp = TIER_COMP[currentTier] or TIER_COMP.Mythic
-    local previewData = RAID_PREVIEW
     local sortOrder = GetPreviewSortOrder(self)
     local healerSlots = HealerReg:ActiveSlots()
     local isDisabled = self.IsComponentDisabled and function(k) return self:IsComponentDisabled(k) end or function() return false end
@@ -511,16 +455,9 @@ function Orbit.GroupFramePreviewMixin:StartPreviewAnimation()
         getHelpers = function() return Orbit.GroupFrameHelpers end,
         getHealth = function(i)
             local idx = sortOrder and sortOrder[i] or i
-            return (previewData.HealthPcts[idx] or 75) / 100
+            return (HEALTH_PCTS[idx] or 75) / 100
         end,
-        getDead = function(i)
-            if isParty then
-                local idx = sortOrder and sortOrder[i] or i
-                local s = previewData.Status and previewData.Status[idx]
-                return s == "Dead" or s == "Offline"
-            end
-            return false
-        end,
+        getDead = function() return false end,
         healerSlots = enabledSlots,
         raidBuffKey = not isDisabled("RaidBuff") and "RaidBuff" or nil,
     }

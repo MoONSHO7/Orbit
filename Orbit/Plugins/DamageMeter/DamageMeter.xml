@@ -1,0 +1,12 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+
+    <Script file="DamageMeterConstants.lua"/>
+    <Script file="DamageMeter.lua"/>
+    <Script file="DamageMeterData.lua"/>
+    <Script file="DamageMeterEventBridge.lua"/>
+    <Script file="DamageMeterDisable.lua"/>
+    <Script file="DamageMeterUI.lua"/>
+    <Script file="DamageMeterComparison.lua"/>
+    <Script file="DamageMeterSettings.lua"/>
+
+</Ui>

@@ -8,3 +8,4 @@
 ## Dependencies: Orbit
 
 TalentMeta.lua
+DamageMeterBenchmarks.lua

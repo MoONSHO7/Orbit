@@ -97,10 +97,8 @@ function ABC:CreateVehicleExit(plugin)
     btn:GetPushedTexture():SetTexCoord(unpack(VEHICLE_EXIT_TEXCOORDS))
     btn:SetHighlightTexture(VEHICLE_EXIT_HIGHLIGHT, "ADD")
     btn:GetHighlightTexture():SetTexCoord(unpack(VEHICLE_EXIT_TEXCOORDS))
-    local bar1 = plugin.containers[1]
     local vScale = container:GetEffectiveScale() or 1
-    if bar1 then container:SetPoint("LEFT", bar1, "RIGHT", OrbitEngine.Pixel:Multiple(4, vScale), 0)
-    else container:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, OrbitEngine.Pixel:Multiple(DEFAULT_BOTTOM_OFFSET_Y, vScale)) end
+    container:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, OrbitEngine.Pixel:Multiple(DEFAULT_BOTTOM_OFFSET_Y, vScale))
     RegisterStateDriver(container, "visibility", VEHICLE_EXIT_VISIBILITY)
     plugin.containers[VEHICLE_EXIT_INDEX] = container
     plugin.vehicleExitButton = container

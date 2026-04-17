@@ -181,7 +181,7 @@ end
 local function BuildMetaTalents(body)
     local desc = Layout:CreateDescription(body, "Displays Warcraft Logs Top 100 talent pick-rates on spell tooltips and the talent tree. Data updates weekly via CI.", A.MUTED)
     Layout:AddControl(body, desc)
-    local initialState = GetAccountSetting("MetaTalentsTooltip", false) or GetAccountSetting("MetaTalentsTree", false)
+    local initialState = GetAccountSetting("MetaTalentsTooltip", true) or GetAccountSetting("MetaTalentsTree", true)
     local currentState = initialState
     local reloadBtn
     local function UpdateReloadButton()

@@ -468,10 +468,16 @@ function Mixin:UpdateGroupPosition(frame, plugin)
     local isInRaid = IsInRaid()
     local inEditMode = Orbit:IsEditMode()
 
-    -- Apply global font to GroupPositionText
+    -- Apply global font to GroupPositionText, then re-apply Canvas Mode overrides
     local fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
     frame.GroupPositionText:SetFont(fontPath, GROUP_POSITION_FONT_SIZE, Orbit.Skin:GetFontOutline())
     Orbit.Skin:ApplyFontShadow(frame.GroupPositionText)
+    local positions = plugin and plugin.GetSetting and plugin:GetSetting(1, "ComponentPositions")
+    local overrides = positions and positions.GroupPositionText and positions.GroupPositionText.overrides
+    if overrides then
+        Orbit.Engine.OverrideUtils.ApplyFontOverrides(frame.GroupPositionText, overrides, GROUP_POSITION_FONT_SIZE, fontPath)
+        Orbit.Engine.OverrideUtils.ApplyTextColor(frame.GroupPositionText, overrides, nil, unit)
+    end
 
     if isInRaid and unit then
         local raidIndex = UnitInRaid(unit)

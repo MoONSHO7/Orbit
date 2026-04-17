@@ -27,8 +27,14 @@ end
 function Mixin.UpdateInRange(frame)
     if not frame or not frame.unit then return end
     if not UnitExists(frame.unit) then frame:SetAlpha(0); return end
-    if frame.isPlayerFrame or frame.preview then frame:SetAlpha(1); return end
-    if not UnitIsConnected(frame.unit) then frame:SetAlpha(GF.OfflineAlpha); return end
-    if UnitPhaseReason(frame.unit) then frame:SetAlpha(GF.OutOfRangeAlpha); return end
-    frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(UnitInRange(frame.unit), 1, GF.OutOfRangeAlpha))
+    if frame.isPlayerFrame or frame.preview then
+        frame:SetAlpha(1)
+    elseif not UnitIsConnected(frame.unit) then
+        frame:SetAlpha(GF.OfflineAlpha)
+    elseif UnitPhaseReason(frame.unit) then
+        frame:SetAlpha(GF.OutOfRangeAlpha)
+    else
+        frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(UnitInRange(frame.unit), 1, GF.OutOfRangeAlpha))
+    end
+    if frame.ApplyHealthColor then frame:ApplyHealthColor() end
 end

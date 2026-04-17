@@ -18,13 +18,15 @@ local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
         MaxBuffs = 16,
         ShowLevel = true,
         ShowElite = true,
+        ShowHealthValue = true,
+        HealthTextMode = "percent_short",
         EnableTargetTarget = true,
         EnableTargetPower = true,
         -- Disabled components (Canvas Mode drag-to-disable)
-        DisabledComponents = {},
+        DisabledComponents = { "Portrait" },
         -- Default component positions (Canvas Mode is single source of truth)
         ComponentPositions = {
-            Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT" },
+            Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT", overrides = { FontSize = 14 } },
             HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
             LevelText = { anchorX = "RIGHT", offsetX = -3, anchorY = "TOP", offsetY = 6, justifyH = "LEFT" },
             RareEliteIcon = { anchorX = "RIGHT", offsetX = -8, anchorY = "BOTTOM", offsetY = 10, justifyH = "LEFT" },

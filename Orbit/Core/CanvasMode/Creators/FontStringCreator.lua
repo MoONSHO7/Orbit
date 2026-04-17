@@ -19,6 +19,7 @@ local PREVIEW_TEXT_VALUES = {
     GroupPositionText = "G1",
     PowerText = "100%",
     Text = "100",
+    CountText = "2",
     Keybind = "Q",
     Coords = "45.1, 88.2",
     ZoneText = "Stormwind City",

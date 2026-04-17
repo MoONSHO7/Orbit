@@ -136,3 +136,16 @@ the `IsSpecScopedIndex` gate is intentional opt-in, not auto-opt-in by mixin pre
 - prefer `SetFrameVirtual` for content-empty frames, `SetFrameDisabled` for profile-level disable
 - cycle detection must use `AnchorGraph:WouldCreateCycle()` (pure-data, no `GetNumPoints`)
 
+## blizzard grid + snap preview tap-in
+
+`EditModeManagerFrame.Grid` (the blue grid) and `MagnetismPreviewLinesContainer` (the red snap preview lines) are Blizzard-owned frames that render automatically while Blizzard's edit mode dialog is shown. Orbit edit mode rides that dialog's lifecycle (see `EditMode.lua`) so the grid visual is free — the user toggles it via Blizzard's "Show Grid" / "Enable Snap" checkboxes and the spacing slider, all persisted in `Enum.EditModeAccountSetting`.
+
+To make the red preview lines appear for a dragged Orbit frame (against UIParent edges and registered grid lines), `Frame/Selection/Drag.lua` does two things:
+
+1. Installs three `EditModeSystemMixin` methods on the parent frame the first time it is dragged: `GetScaledSelectionSides`, `GetScaledSelectionCenter`, and `GetFrameMagneticEligibility`. The first two convert the frame's rect to UIParent-local coordinates (the space Blizzard's magnetism math operates in) using `effectiveScale / UIParent:GetEffectiveScale()` so frames parented below UIParent compute correctly. The eligibility shim always returns `nil` — Orbit frames decline frame-to-frame magnetism with Blizzard systems because Orbit's own `FrameSnap` handles that with richer edge/chain semantics.
+2. Calls `EditModeManagerFrame:SetSnapPreviewFrame(parent)` on drag start and `ClearSnapPreviewFrame` on drag stop. Shift-drag (precision mode) and `orbitNoSnap` both suppress the preview; the `AnchoringEnabled` global also gates it.
+
+Because the preview lines signal where the frame WILL snap on drop, `Frame/Snap.lua:DetectSnap` also appends UIParent-edge and grid-line offsets as synthetic alignment candidates (read from `EditModeMagnetismManager.magneticGridLines`, which the Blizzard grid populates in `EditModeGridLineMixin:SetupLine`). These use Blizzard's own `magnetismRange` (8 screen pixels, matches the red-line tolerance) and are only consulted for an axis with no frame-to-frame winner — Orbit's tighter 5px frame snap always wins when both are candidates. This keeps the visual promise (red line) and the drop behavior (actual snap) in lockstep.
+
+The tap-in is one-way: Orbit never calls `EditModeMagnetismManager:RegisterFrame` on its own frames, so Blizzard systems cannot snap to Orbit frames. None of `SetSnapPreviewFrame`, `ClearSnapPreviewFrame`, or reading `magneticGridLines` crosses any secure boundary, so the tap-in is taint-free.
+

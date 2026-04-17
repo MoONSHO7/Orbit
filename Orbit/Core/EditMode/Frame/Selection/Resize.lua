@@ -25,6 +25,20 @@ local DRAG_DIVISOR_Y = 4
 local SHIFT_DIVISOR_X = 6
 local SHIFT_DIVISOR_Y = 12
 
+-- Returns which axes are locked because the frame's anchor syncs that dimension from its parent.
+-- TOP/BOTTOM anchors sync WIDTH; LEFT/RIGHT sync HEIGHT (matches SyncChild in Anchor.lua).
+local function GetSyncLocks(frame)
+    if not frame then return false, false end
+    local anchor = Engine.FrameAnchor and Engine.FrameAnchor.anchors and Engine.FrameAnchor.anchors[frame]
+    if not anchor or not anchor.syncOptions or not anchor.syncOptions.syncDimensions then
+        return false, false
+    end
+    if anchor.edge == "LEFT" or anchor.edge == "RIGHT" then
+        return false, true
+    end
+    return true, false
+end
+
 -- [ SLIDER SYNC ]-----------------------------------------------------------------------------------
 local function RefreshDialogSliders(plugin, newW, newH, wKey, hKey)
     local Layout = Engine.Layout
@@ -88,17 +102,37 @@ function Resize:Attach(selection, frame)
         self.maxW = b.maxW or DEFAULT_MAX_W
         self.minH = b.minH or DEFAULT_MIN_H
         self.maxH = b.maxH or DEFAULT_MAX_H
+        self.widthLocked, self.heightLocked = GetSyncLocks(self.parentFrame)
         local mx, my = GetCursorPosition()
         local scale = UIParent:GetEffectiveScale()
         self.startMouseX = mx / scale
         self.startMouseY = my / scale
         self.startWidth = self.plugin:GetSetting(self.sysIdx, self.wKey) or 100
         self.startHeight = self.plugin:GetSetting(self.sysIdx, self.hKey) or 40
+        -- If both axes are anchor-synced, drag would do nothing — short-circuit cleanly.
+        if self.widthLocked and self.heightLocked then
+            self.isDragging = false
+            return
+        end
         self.isDragging = true
     end)
 
     handle:SetScript("OnDragStop", function(self)
         self.isDragging = false
+        -- Snapshot the live anchor-synced dimension into stored settings so a future unanchor
+        -- doesn't snap the frame back to the pre-anchor width/height (which was stale).
+        if self.widthLocked then
+            local liveW = self.parentFrame:GetWidth()
+            if liveW and liveW > 0 then
+                self.plugin:SetSetting(self.sysIdx, self.wKey, math.floor(liveW + 0.5))
+            end
+        end
+        if self.heightLocked then
+            local liveH = self.parentFrame:GetHeight()
+            if liveH and liveH > 0 then
+                self.plugin:SetSetting(self.sysIdx, self.hKey, math.floor(liveH + 0.5))
+            end
+        end
         if self.plugin.ApplySettings then self.plugin:ApplySettings() end
         Engine.SelectionTooltip:ShowResizeInfo(self.parentFrame, self.plugin:GetSetting(self.sysIdx, self.wKey) or 100, self.plugin:GetSetting(self.sysIdx, self.hKey) or 40)
     end)
@@ -120,8 +154,9 @@ function Resize:Attach(selection, frame)
 
         local dx = (mx - self.startMouseX) / (shift and SHIFT_DIVISOR_X or DRAG_DIVISOR_X)
         local dy = (self.startMouseY - my) / (shift and SHIFT_DIVISOR_Y or DRAG_DIVISOR_Y)
-        local rawW = self.startWidth + dx
-        local rawH = self.startHeight + dy
+        -- Anchor-synced axes are pinned: the user's drag delta is discarded.
+        local rawW = self.widthLocked  and self.startWidth  or (self.startWidth + dx)
+        local rawH = self.heightLocked and self.startHeight or (self.startHeight + dy)
         local newW = math.max(self.minW, math.min(self.maxW, math.floor(rawW + 0.5)))
         local newH = math.max(self.minH, math.min(self.maxH, math.floor(rawH + 0.5)))
 
@@ -129,11 +164,16 @@ function Resize:Attach(selection, frame)
         local curH = self.plugin:GetSetting(self.sysIdx, self.hKey)
         if curW == newW and curH == newH then return end
 
-        self.plugin:SetSetting(self.sysIdx, self.wKey, newW)
-        self.plugin:SetSetting(self.sysIdx, self.hKey, newH)
-
-        -- Instant visual resize
-        self.parentFrame:SetSize(newW, newH)
+        -- Per-axis writes: locked axes never touch SetSetting OR the frame's live dimension,
+        -- so the anchor-sync value stays authoritative — no visual jump from stored-vs-synced mismatch.
+        if not self.widthLocked then
+            self.plugin:SetSetting(self.sysIdx, self.wKey, newW)
+            self.parentFrame:SetWidth(newW)
+        end
+        if not self.heightLocked then
+            self.plugin:SetSetting(self.sysIdx, self.hKey, newH)
+            self.parentFrame:SetHeight(newH)
+        end
         if self.plugin.ApplySettings then self.plugin:ApplySettings() end
 
         RefreshDialogSliders(self.plugin, newW, newH, self.wKey, self.hKey)

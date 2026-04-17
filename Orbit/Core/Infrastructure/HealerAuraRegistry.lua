@@ -1,5 +1,5 @@
 -- [ HEALER AURA REGISTRY ]-------------------------------------------------------------------------
--- Slot-based spell-ID mapping for healer buffs/HoTs and raid buffs (7 slots + RaidBuff per spec).
+-- Slot-based spell-ID mapping for healer buffs/HoTs and raid buffs (10 slots + RaidBuff per spec).
 local _, Orbit = ...
 
 Orbit.HealerAuraRegistry = {}
@@ -7,10 +7,13 @@ local Registry = Orbit.HealerAuraRegistry
 local _, playerClass = UnitClass("player")
 
 -- [ MAX SLOTS ]-------------------------------------------------------------------------------------
-local MAX_HEALER_SLOTS = 7
+local MAX_HEALER_SLOTS = 10
 
 -- [ SPEC SPELL DATA ]-------------------------------------------------------------------------------
 local SPEC_SPELLS = {
+    [1467] = { -- Devastation Evoker
+        { spellId = 369459, label = "Source of Magic" },
+    },
     [1468] = { -- Preservation Evoker
         { spellId = 364343, label = "Echo" },
         { spellId = 355941, label = "Dream Breath" },
@@ -19,6 +22,7 @@ local SPEC_SPELLS = {
         { spellId = 367364, label = "Echo Reversion" },
         { spellId = 373267, label = "Lifebind" },
         { spellId = 363502, label = "Dream Flight" },
+        { spellId = 369459, label = "Source of Magic" },
     },
     [1473] = { -- Augmentation Evoker
         { spellId = 360827, label = "Blistering Scales" },
@@ -27,6 +31,7 @@ local SPEC_SPELLS = {
         { spellId = 410263, label = "Inferno's Blessing" },
         { spellId = 410686, label = "Symbiotic Bloom" },
         { spellId = 413984, label = "Shifting Sands" },
+        { spellId = 369459, label = "Source of Magic" },
     },
     [105]  = { -- Resto Druid
         { spellId = 33763,  label = "Lifebloom" },
@@ -71,7 +76,6 @@ local RAID_BUFFS = {
     { spellId = 21562,  label = "Power Word: Fortitude",  classFilter = "PRIEST" },
     { spellId = 364342, label = "Blessing of the Bronze",  classFilter = "EVOKER", variants = {381732, 381741, 381746, 381748, 381749, 381750, 381751, 381752, 381753, 381754, 381756, 381757, 381758} },
     { spellId = 462854, label = "Skyfury",                classFilter = "SHAMAN" },
-    { spellId = 369459, label = "Source of Magic",        classFilter = "EVOKER" },
 }
 
 -- Lookup of ALL raid buff spell IDs (all classes) for presence checking

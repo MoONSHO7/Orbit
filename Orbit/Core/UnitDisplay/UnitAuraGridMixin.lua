@@ -28,7 +28,7 @@ Mixin.playerBuffDefaults = {
 }
 
 Mixin.playerDebuffDefaults = {
-    IconLimit = 16, Rows = 1, Spacing = 2, IconSize = 34, aspectRatio = "1:1",
+    IconLimit = 10, Rows = 1, Spacing = 0, IconSize = 34, aspectRatio = "1:1",
     ComponentPositions = {
         Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0 },
         Stacks = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 1 },
