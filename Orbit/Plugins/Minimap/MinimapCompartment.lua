@@ -451,7 +451,7 @@ function Plugin:CollectAddonButtons()
     -- Track already-collected frame references so we don't double-collect
     local seen = {}
     local seenSignatures = {}
-    local seenNames = {}  -- tracks displayNames; catches duplicates even when icon is nil
+    local seenNames = {}  -- catches duplicates even when icon is nil
 
     -- 1) LibDBIcon registered buttons
     local lib = LibStub and LibStub("LibDBIcon-1.0", true)
@@ -563,18 +563,17 @@ function Plugin:GrabCollectedButtons()
                 button._orbitOrigScale = button:GetScale()
             end
 
-            -- Block addon repositioning before reparenting so OnParentChanged hooks cannot interfere.
+            -- Reparent to hidden holder via raw SetParent (ours is overridden with doNothing)
+            FrameSetParent(button, holder)
+            button:SetFrameStrata(holder:GetFrameStrata())
+
+            -- Block addons from repositioning their buttons back.
             if not button._orbitMethodsOverridden then
                 button.ClearAllPoints = doNothing
                 button.SetPoint = doNothing
                 button.SetParent = doNothing
                 button._orbitMethodsOverridden = true
             end
-
-            -- Reparent to hidden holder via raw SetParent (bypasses the doNothing override above)
-            FrameSetParent(button, holder)
-            button:SetFrameStrata(holder:GetFrameStrata())
-            button:Hide()
 
             -- Disable drag scripts
             button:SetScript("OnDragStart", nil)

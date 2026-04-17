@@ -24,6 +24,8 @@
 ### Bugfixes
 - Group Frames not saving position
 - Disabled 'Save Positions' in Move More, needs more testing.
+- Minimap compartment flyout: Plumber addon no longer appears twice in the flyout
+- Minimap compartment flyout: empty flyout no longer intercepts mouse clicks on the minimap
 
 ## [1.0.0] - 2026-03-10
 ### Added
