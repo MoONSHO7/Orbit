@@ -25,6 +25,16 @@ local PRESSED_ALPHA = 0.6
 -- No-op function used to block addons from repositioning their buttons
 local function doNothing() end
 
+-- True while any context/dropdown menu is open — covers both the modern Menu system and legacy UIDropDownMenu.
+-- Used by the flyout auto-close timer to keep the flyout alive while the user is interacting with a menu
+-- that was spawned from a proxy (e.g. right-click context menu); closing the flyout would orphan the menu's anchor.
+local function IsAnyMenuOpen()
+    if Menu and Menu.GetManager and Menu.GetManager():IsAnyMenuOpen() then return true end
+    if DropDownList1 and DropDownList1:IsShown() then return true end
+    if DropDownList2 and DropDownList2:IsShown() then return true end
+    return false
+end
+
 -- Blizzard-owned Minimap children that must never be collected into the compartment.
 -- Names without a "Minimap"/"MiniMap" prefix won't be caught by the generic prefix filter
 -- below, so we enumerate them explicitly here.
@@ -180,7 +190,7 @@ function Plugin:CreateCompartmentFlyout()
 
         local tooltipShown = GameTooltip:IsShown() and GameTooltip:GetOwner() and GameTooltip:GetOwner():GetParent() == f  -- proxy tooltip open
 
-        if mouseOverFlyout or mouseOverBtn or mouseOverMinimap or tooltipShown or f._tooltipForwardActive then
+        if mouseOverFlyout or mouseOverBtn or mouseOverMinimap or tooltipShown or f._tooltipForwardActive or IsAnyMenuOpen() then
             outsideTimer = 0
         else
             outsideTimer = outsideTimer + elapsed
@@ -500,26 +510,24 @@ function Plugin:ScanParentChildren(parent, collected, seen, seenSignatures, seen
                 local isHidden = not child:IsShown()
 
                 if not isBlizzard and not isPin and not tooSmall and not isProtected and not isHidden then
-                    local icon = nil
-                    local btnIcon = child.icon or child.Icon
-                    if btnIcon and btnIcon.GetTexture then
-                        icon = btnIcon:GetTexture()
-                    elseif child.GetNormalTexture and child:GetNormalTexture() then
-                        icon = child:GetNormalTexture():GetTexture()
+                    -- Require a discoverable icon on the button itself (icon/Icon field, direct region, dataObject, or NormalTexture).
+                    -- Addons that nest their icon on a child frame don't follow the standard pattern and are intentionally skipped.
+                    local icon = GetProxyIcon(child)
+                    if icon then
+                        local displayName = NormalizeCompartmentDisplayName(frameName or tostring(child))
+                        local signature = BuildCollectedButtonSignature(displayName, icon)
+                        if (not signature or not seenSignatures[signature]) and not seenNames[displayName] then
+                            collected[#collected + 1] = {
+                                name = displayName,
+                                button = child,
+                                icon = icon,
+                                source = "legacy_child",
+                            }
+                        end
+                        if signature then seenSignatures[signature] = true end
+                        seenNames[displayName] = true
+                        seen[child] = true
                     end
-                    local displayName = NormalizeCompartmentDisplayName(frameName or tostring(child))
-                    local signature = BuildCollectedButtonSignature(displayName, icon)
-                    if (not signature or not seenSignatures[signature]) and not seenNames[displayName] then
-                        collected[#collected + 1] = {
-                            name = displayName,
-                            button = child,
-                            icon = icon,
-                            source = "legacy_child",
-                        }
-                    end
-                    if signature then seenSignatures[signature] = true end
-                    seenNames[displayName] = true
-                    seen[child] = true
                 end
             end
         end
@@ -541,11 +549,13 @@ function Plugin:CollectAddonButtons()
     local seenNames = {}  -- catches duplicates even when icon is nil
 
     -- 1) LibDBIcon registered buttons
+    --    Hidden entries are skipped so addons that register *both* an LDB button and a custom Minimap button
+    --    (toggling between the two via LibDBIcon:Hide) aren't collected twice.
     local lib = LibStub and LibStub("LibDBIcon-1.0", true)
     if lib then
         local ownButtonName = "Orbit"
         for name, button in pairs(lib.objects) do
-            if name ~= ownButtonName then
+            if name ~= ownButtonName and button:IsShown() then
                 local displayName = NormalizeCompartmentDisplayName(name)
                 local icon = button.dataObject and button.dataObject.icon or nil
                 local signature = BuildCollectedButtonSignature(displayName, icon)

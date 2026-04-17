@@ -93,6 +93,8 @@ function Plugin:OnLoad()
     self.frame = CreateFrame("Frame", "OrbitMinimapContainer", UIParent)
     self.frame:SetSize(DEFAULT_SIZE, DEFAULT_SIZE)
     self.frame:SetClampedToScreen(true)
+    -- Match Blizzard's MinimapCluster strata so third-party buttons parented to Minimap land where they expect.
+    self.frame:SetFrameStrata(Orbit.Constants.Strata.Base)
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Minimap"
     
@@ -126,20 +128,20 @@ function Plugin:OnLoad()
     self.frame.RoundBorder:SetAllPoints(self.frame)
     self.frame.RoundBorder:Hide()
 
-    -- Overlay at MEDIUM strata; interactive children raised above ClickCapture via explicit frame levels.
+    -- Overlay shares the container's LOW strata; interactive children raised above ClickCapture via explicit frame levels.
     self.frame.Overlay = CreateFrame("Frame", nil, self.frame)
     self.frame.Overlay:SetAllPoints()
-    self.frame.Overlay:SetFrameStrata(Orbit.Constants.Strata.HUD)
+    self.frame.Overlay:SetFrameStrata(Orbit.Constants.Strata.Base)
     self.frame.Overlay:SetFrameLevel(self.frame:GetFrameLevel() + 10)
     -- MiniMapMailFrameMixin and MiniMapCraftingOrderFrameMixin call self:GetParent():Layout()
     -- after UPDATE_PENDING_MAIL / CRAFTINGORDERS_UPDATED events. Since we reparent those
     -- frames here, we provide a no-op to prevent the error.
     self.frame.Overlay.Layout = function() end
 
-    -- ClickCapture: transparent MEDIUM button covering the minimap; dispatches configured click actions.
+    -- ClickCapture: transparent button covering the minimap at LOW strata; dispatches configured click actions.
     local clickCapture = CreateFrame("Button", "OrbitMinimapClickCapture", self.frame)
     clickCapture:SetAllPoints()
-    clickCapture:SetFrameStrata(Orbit.Constants.Strata.HUD)
+    clickCapture:SetFrameStrata(Orbit.Constants.Strata.Base)
     clickCapture:SetFrameLevel(self.frame:GetFrameLevel() + 50)
     clickCapture:EnableMouse(true)
     clickCapture:RegisterForClicks("AnyUp")

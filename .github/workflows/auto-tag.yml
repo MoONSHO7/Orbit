@@ -53,9 +53,8 @@ jobs:
             PATCH=$((PATCH + 1))
             echo "Data commit detected - bumping patch"
           else
-            # Feature/fix commit: bump minor, reset patch.
+            # Feature/fix commit: bump minor, keep patch (meta-data snapshot sticks).
             MINOR=$((MINOR + 1))
-            PATCH=0
             echo "Regular commit - bumping minor"
           fi
 
