@@ -9,6 +9,7 @@
     <Script file="NudgeRepeat.lua"/>
     <Script file="Selection\Tooltip.lua"/>
     <Script file="Selection\Nudge.lua"/>
+    <Script file="Selection\PeekHide.lua"/>
     <Script file="Selection\Drag.lua"/>
     <Script file="Selection\Resize.lua"/>
     <Script file="Orientation.lua"/>

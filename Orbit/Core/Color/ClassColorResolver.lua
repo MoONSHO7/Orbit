@@ -127,3 +127,15 @@ function CC:ResolveClassColorPinForUnitUnpacked(pin, unit)
     if pin.type == "class" then return self:GetClassColorForUnitUnpacked(unit) end
     return pin.color.r, pin.color.g, pin.color.b, pin.color.a or 1
 end
+
+function CC:ResolveClassColorPinForClass(pin, classFile)
+    if pin.type == "class" then return self:GetOverrides(classFile) end
+    return pin.color
+end
+
+function CC:ResolveClassColorPinForPreview(pin, classFile, reaction)
+    if pin.type ~= "class" then return pin.color end
+    if classFile then return self:GetOverrides(classFile) end
+    if reaction then return Engine.ReactionColor:GetReactionColor(reaction) end
+    return { r = 1, g = 1, b = 1, a = 1 }
+end

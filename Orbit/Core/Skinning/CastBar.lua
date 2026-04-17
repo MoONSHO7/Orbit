@@ -121,16 +121,22 @@ function CastBar:Create(parent)
         local scale = self:GetEffectiveScale()
         local showIcon = b.Icon and b.Icon:IsShown()
         local iconSize = showIcon and Pixel:Snap(height, scale) or 0
+        local iconAtEnd = b._iconAtEnd
         if b.Icon then
             b.Icon:ClearAllPoints()
             b.Icon:SetSize(iconSize, iconSize)
-            b.Icon:SetPoint("TOPLEFT", self, "TOPLEFT", 0, 0)
+            b.Icon:SetPoint(iconAtEnd and "TOPRIGHT" or "TOPLEFT", self, iconAtEnd and "TOPRIGHT" or "TOPLEFT", 0, 0)
         end
 
         b.iconOffset = iconSize
         b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", self, "TOPLEFT", iconSize, 0)
-        b:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
+        if iconAtEnd then
+            b:SetPoint("TOPLEFT", self, "TOPLEFT", 0, 0)
+            b:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -iconSize, 0)
+        else
+            b:SetPoint("TOPLEFT", self, "TOPLEFT", iconSize, 0)
+            b:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
+        end
     end
 
     parent:HookScript("OnSizeChanged", function(self) self:UpdateBarInsets() end)
@@ -145,7 +151,8 @@ function CastBar:Apply(bar, settings)
     -- Skin StatusBar (Texture & Color)
     Skin:SkinStatusBar(bar, settings.texture, settings.color)
 
-    -- Icon visibility (must be set before UpdateBarInsets since it affects layout)
+    -- Icon visibility and side (must be set before UpdateBarInsets since it affects layout)
+    bar._iconAtEnd = settings.iconAtEnd and true or false
     if bar.Icon then
         if settings.showIcon then
             bar.Icon:Show()

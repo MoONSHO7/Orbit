@@ -151,9 +151,13 @@ function Orbit._AC.CreateVEContent(parent)
         wipe(self.rows)
         local VE = Orbit.VisibilityEngine
         if not VE then return end
-        local frames = VE:GetAllFrames()
+        local frames = { unpack(VE:GetAllFrames()) }
         local blizzFrames = VE:GetBlizzardFrames() or {}
         local thirdPartyFrames = VE.GetThirdPartyFrames and VE:GetThirdPartyFrames() or {}
+        local function byDisplay(a, b) return (a.display or ""):lower() < (b.display or ""):lower() end
+        table.sort(frames, byDisplay)
+        table.sort(blizzFrames, byDisplay)
+        table.sort(thirdPartyFrames, byDisplay)
         -- Rebuild Check All controls
         local caRow = self.checkAllRow
         for _, child in ipairs({ caRow:GetChildren() }) do child:Hide() end

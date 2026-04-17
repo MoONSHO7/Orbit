@@ -43,6 +43,9 @@ local LOCALE_STRINGS = {
         CMD_UNKNOWN_COMMAND_F    = "Unknown command: %s. Type |cFF00FFFF/orbit help|r for a list.",
         CMD_MINIMAP_LEFT_CLICK   = "|cFF00FF00Left-click|r Edit Mode + Orbit Options",
         CMD_MINIMAP_RIGHT_CLICK  = "|cFFFFFF00Right-click|r Advanced Options",
+        CMD_PORTAL_SCAN_DONE     = "Portal: M+ cache cleared and dock refreshed!",
+        CMD_PORTAL_HEADER        = "|cFF00FFFFOrbit Portal Commands:|r",
+        CMD_PORTAL_HELP_SCAN     = "  |cFF00FFFF/orbit portal scan|r \226\128\148 Clear M+ cache and refresh dock",
     },
     deDE = {
         CMD_HARD_RESET_WARNING   = "|cFFFF0000GEFAHR|r\n\nDu bist dabei, Orbit auf WERKSEINSTELLUNGEN zurückzusetzen.\n\nAlle Profile, Einstellungen und Daten werden gelöscht.\nDas UI wird sofort neu geladen.\n\nBist du sicher?",

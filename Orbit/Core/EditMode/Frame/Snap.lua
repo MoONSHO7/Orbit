@@ -173,6 +173,63 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
         end
     end
 
+    -- Per-axis fallback to Blizzard grid + UIParent edges; frame-to-frame winners (tighter tolerance) take priority.
+    if EditModeManagerFrame and EditModeManagerFrame:IsShown()
+        and EditModeManagerFrame.IsSnapEnabled and EditModeManagerFrame:IsSnapEnabled() then
+        local blizRange = (EditModeMagnetismManager and EditModeMagnetismManager.magnetismRange) or 8
+        local uiScale = UIParent:GetEffectiveScale()
+        local uiL = UIParent:GetLeft() * uiScale
+        local uiR = (UIParent:GetLeft() + UIParent:GetWidth()) * uiScale
+        local uiB = UIParent:GetBottom() * uiScale
+        local uiT = (UIParent:GetBottom() + UIParent:GetHeight()) * uiScale
+        local uiCX, uiCY = (uiL + uiR) / 2, (uiB + uiT) / 2
+        local gridLines = EditModeMagnetismManager and EditModeMagnetismManager.magneticGridLines
+
+        if not closestX then
+            local minX = blizRange
+            local function offerX(diff)
+                local abs = math.abs(diff)
+                if abs <= minX then
+                    minX = abs
+                    closestX = diff
+                end
+            end
+            offerX(uiL - parentLeft)
+            offerX(uiR - parentRight)
+            offerX(uiCX - parentCenterX)
+            if gridLines and gridLines.vertical then
+                for _, offset in pairs(gridLines.vertical) do
+                    local screenX = offset * uiScale
+                    offerX(screenX - parentLeft)
+                    offerX(screenX - parentRight)
+                    offerX(screenX - parentCenterX)
+                end
+            end
+        end
+
+        if not closestY then
+            local minY = blizRange
+            local function offerY(diff)
+                local abs = math.abs(diff)
+                if abs <= minY then
+                    minY = abs
+                    closestY = diff
+                end
+            end
+            offerY(uiB - parentBottom)
+            offerY(uiT - parentTop)
+            offerY(uiCY - parentCenterY)
+            if gridLines and gridLines.horizontal then
+                for _, offset in pairs(gridLines.horizontal) do
+                    local screenY = offset * uiScale
+                    offerY(screenY - parentBottom)
+                    offerY(screenY - parentTop)
+                    offerY(screenY - parentCenterY)
+                end
+            end
+        end
+    end
+
     -- Resolve final anchor (pick closest)
     local anchorTarget, anchorEdge, anchorAlign = nil, nil, nil
 

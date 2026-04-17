@@ -75,6 +75,10 @@ loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", function()
     C_Timer.After(C.LOGIN_DELAY, function()
         local db = Orbit.db and Orbit.db.AccountSettings
+        if db then
+            if db.MetaTalentsTooltip == nil then db.MetaTalentsTooltip = true end
+            if db.MetaTalentsTree == nil then db.MetaTalentsTree = true end
+        end
         if db and (db.MetaTalentsTooltip or db.MetaTalentsTree) then
             MT:Enable()
         else

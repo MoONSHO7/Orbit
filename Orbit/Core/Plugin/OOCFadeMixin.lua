@@ -42,7 +42,9 @@ local function GetVESettings(data)
     local veKey = data and GetVEKey(data)
     local VE = Orbit.VisibilityEngine
     if veKey and VE then
-        return VE:GetFrameSetting(veKey, "opacity"), VE:GetFrameSetting(veKey, "oocFade"),
+        local opacity = VE:GetFrameSetting(veKey, "opacity")
+        if VE:IsOpacityOnly(veKey) then return opacity, false, false, false, false end
+        return opacity, VE:GetFrameSetting(veKey, "oocFade"),
                VE:GetFrameSetting(veKey, "mouseOver"), VE:GetFrameSetting(veKey, "showWithTarget"),
                VE:GetFrameSetting(veKey, "alphaLock")
     end
@@ -84,7 +86,9 @@ local function UpdateFrameVisibility(frame, _, data)
     local isMountedHidden = false
     if data and Orbit.MountedVisibility and Orbit.MountedVisibility:IsCachedHidden() then
         local veKey = GetVEKey(data)
-        isMountedHidden = veKey and Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
+        if veKey and not Orbit.VisibilityEngine:IsOpacityOnly(veKey) then
+            isMountedHidden = Orbit.VisibilityEngine:GetFrameSetting(veKey, "hideMounted")
+        end
     end
     if isMountedHidden then
         -- Check reveal overrides before hiding
@@ -162,6 +166,11 @@ EventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
 EventFrame:RegisterEvent("CINEMATIC_STOP")
 EventFrame:RegisterEvent("STOP_MOVIE")
 EventFrame:RegisterEvent("BARBER_SHOP_CLOSE")
+EventFrame:RegisterEvent("ACTIONBAR_PAGE_CHANGED")
+EventFrame:RegisterEvent("UPDATE_BONUS_ACTIONBAR")
+EventFrame:RegisterEvent("UPDATE_VEHICLE_ACTIONBAR")
+EventFrame:RegisterEvent("UPDATE_OVERRIDE_ACTIONBAR")
+EventFrame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
 
 EventFrame:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_REGEN_DISABLED" then

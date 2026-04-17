@@ -24,6 +24,59 @@ local function GetOppositeEdge(edge)
     return OPPOSITE_EDGES[edge]
 end
 
+-- [ BLIZZARD EDIT MODE TAP-IN ]----------------------------------------------------------------------
+local function GetUIParentSpaceRatio(frame)
+    local uiScale = UIParent:GetEffectiveScale()
+    if uiScale == 0 then return 1 end
+    return frame:GetEffectiveScale() / uiScale
+end
+
+local function OrbitGetScaledSelectionSides(self)
+    local left, bottom, width, height = self:GetRect()
+    if not left then return 0, 0, 0, 0 end
+    local r = GetUIParentSpaceRatio(self)
+    return left * r, (left + width) * r, bottom * r, (bottom + height) * r
+end
+
+local function OrbitGetScaledSelectionCenter(self)
+    local cx, cy = self:GetCenter()
+    if not cx then return 0, 0 end
+    local r = GetUIParentSpaceRatio(self)
+    return cx * r, cy * r
+end
+
+-- nil excludes from magnetic pool; UIParent is hardcoded by EditModeMagnetismManager so edges still render.
+local function OrbitGetFrameMagneticEligibility(self, other)
+    return nil, nil
+end
+
+local function InstallBlizzardMagnetismShims(frame)
+    if frame.orbitMagnetismShimsInstalled then return end
+    frame.orbitMagnetismShimsInstalled = true
+    frame.GetScaledSelectionSides = OrbitGetScaledSelectionSides
+    frame.GetScaledSelectionCenter = OrbitGetScaledSelectionCenter
+    frame.GetFrameMagneticEligibility = OrbitGetFrameMagneticEligibility
+end
+
+local function ShouldUseBlizzardPreview(parent)
+    if not EditModeManagerFrame or not EditModeManagerFrame.SetSnapPreviewFrame then return false end
+    if not EditModeManagerFrame:IsShown() then return false end
+    if parent.orbitNoSnap then return false end
+    local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
+    return anchoringEnabled
+end
+
+local function SetBlizzardSnapPreview(parent, active)
+    if not EditModeManagerFrame or not EditModeManagerFrame.SetSnapPreviewFrame then return end
+    if active then
+        if not EditModeManagerFrame:IsShown() then return end
+        InstallBlizzardMagnetismShims(parent)
+        EditModeManagerFrame:SetSnapPreviewFrame(parent)
+    else
+        EditModeManagerFrame:ClearSnapPreviewFrame()
+    end
+end
+
 local function GetChainScreenCenterX(root)
     local minL, maxR = Engine.FrameAnchor:GetHorizontalChainScreenBounds(root)
     if minL then return (minL + maxR) / 2 end
@@ -133,9 +186,13 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     local shiftHeld = IsShiftKeyDown()
     if shiftHeld and not selectionOverlay.precisionMode then
         SetNonSelectedOverlaysVisible(selectionOverlay, false)
+        SetBlizzardSnapPreview(parent, false)
     elseif not shiftHeld and selectionOverlay.precisionMode then
         SetNonSelectedOverlaysVisible(selectionOverlay, true)
         Selection:RefreshVisuals()
+        if ShouldUseBlizzardPreview(parent) then
+            SetBlizzardSnapPreview(parent, true)
+        end
     end
 
     local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
@@ -268,6 +325,8 @@ function Drag:OnDragStart(selectionOverlay)
 
         if IsShiftKeyDown() then
             SetNonSelectedOverlaysVisible(selectionOverlay, false)
+        elseif ShouldUseBlizzardPreview(parent) then
+            SetBlizzardSnapPreview(parent, true)
         end
 
         selectionOverlay:SetScript("OnUpdate", OnDragUpdate)
@@ -293,6 +352,7 @@ function Drag:OnDragStop(selectionOverlay)
     RestorePreviewSize(selectionOverlay)
     Engine.FrameSelection:ShowAnchorLine(selectionOverlay, nil)
     selectionOverlay:SetScript("OnUpdate", nil)
+    SetBlizzardSnapPreview(parent, false)
 
     -- Restore overlays if precision mode was active
     if selectionOverlay.precisionMode then

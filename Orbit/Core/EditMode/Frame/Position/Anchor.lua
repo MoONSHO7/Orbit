@@ -273,7 +273,7 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions,
     end)
 
     if not ok then
-        Orbit.ErrorHandler:Warn("Anchor", "SetPoint rejected: " .. tostring(err))
+        Orbit.ErrorHandler:LogError("Anchor", "SetPoint", tostring(err))
         return false
     end
     return true

@@ -233,7 +233,10 @@ function Bar:Build(plugin, record)
         local borderSize = options.borderSize or OrbitEngine.Pixel:DefaultBorderSize(scale)
         local rec = plugin:GetContainerRecord(self.recordId)
         local hasPayload = rec and rec.payload and rec.payload.id
-        local showIcon = plugin:GetSetting(self.recordId, "ShowIcon") ~= false
+        local iconPos = plugin:GetSetting(self.recordId, "IconPosition") or 1
+        if type(iconPos) ~= "number" then iconPos = ({ Left = 1, Off = 2, Right = 3 })[iconPos] or 1 end
+        local showIcon = iconPos ~= 2
+        local iconAtEnd = iconPos == 3
         local isVertical = self._isVertical
         local fW, fH = self:GetWidth(), self:GetHeight()
         local iconSize = (showIcon and hasPayload) and (isVertical and fW or fH) or 0
@@ -251,9 +254,11 @@ function Bar:Build(plugin, record)
             local iconTex = preview:CreateTexture(nil, "ARTWORK")
             iconTex:SetSize(iconSize * scale, iconSize * scale)
             if isVertical then
-                iconTex:SetPoint("BOTTOM", preview, "TOP", 0, 0)
+                if iconAtEnd then iconTex:SetPoint("TOP", preview, "BOTTOM", 0, 0)
+                else iconTex:SetPoint("BOTTOM", preview, "TOP", 0, 0) end
             else
-                iconTex:SetPoint("RIGHT", preview, "LEFT", 0, 0)
+                if iconAtEnd then iconTex:SetPoint("LEFT", preview, "RIGHT", 0, 0)
+                else iconTex:SetPoint("RIGHT", preview, "LEFT", 0, 0) end
             end
             iconTex:SetTexCoord(ICON_TEXCOORD_MIN, ICON_TEXCOORD_MAX, ICON_TEXCOORD_MIN, ICON_TEXCOORD_MAX)
             local liveTex = self.Icon and self.Icon:GetTexture()
@@ -324,7 +329,24 @@ function Bar:Build(plugin, record)
     Bar:StartCursorWatcher(plugin, frame)
     Bar:StartUpdateTicker(plugin, frame)
     Bar:StartChargeEventWatcher(plugin, frame)
+    Bar:StartCastWatcher(plugin, frame)
     return frame
+end
+
+-- [ CAST WATCHER ] ----------------------------------------------------------------------------------
+-- API cooldown often covers only the cd-phase portion; stamp cast time for reliable active-phase timing.
+function Bar:StartCastWatcher(plugin, frame)
+    if frame._castEventFrame then return end
+    local evtFrame = CreateFrame("Frame")
+    evtFrame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+    evtFrame:SetScript("OnEvent", function(_, _, _, _, spellId)
+        local record = plugin:GetContainerRecord(frame.recordId)
+        if not record or not record.payload or record.payload.type ~= "spell" then return end
+        local trackedId = record.payload.id
+        if spellId ~= trackedId and spellId ~= FindSpellOverrideByID(trackedId) then return end
+        frame._castTime = GetTime()
+    end)
+    frame._castEventFrame = evtFrame
 end
 
 -- [ APPLY / LAYOUT ] --------------------------------------------------------------------------------
@@ -371,7 +393,14 @@ function Bar:Apply(plugin, frame, record)
 
     Orbit.Skin:SkinBorder(frame, frame, Orbit.db.GlobalSettings.BorderSize or 1)
 
-    local showIcon = plugin:GetSetting(record.id, "ShowIcon") ~= false
+    frame._hideOnCooldown = plugin:GetSetting(record.id, "HideOnCooldown") or false
+    frame._hideOnAvailable = plugin:GetSetting(record.id, "HideOnAvailable") or false
+
+    -- IconPosition: 1=Left/Top (start), 2=Off, 3=Right/Bottom (end of long axis).
+    local iconPos = plugin:GetSetting(record.id, "IconPosition") or 1
+    if type(iconPos) ~= "number" then iconPos = ({ Left = 1, Off = 2, Right = 3 })[iconPos] or 1 end
+    local showIcon = iconPos ~= 2
+    local iconAtEnd = iconPos == 3
     -- Icon is a square sized to the bar's perpendicular dimension.
     local iconSize = (showIcon and hasPayload) and (isVertical and frameW or frameH) or 0
 
@@ -379,7 +408,11 @@ function Bar:Apply(plugin, frame, record)
         frame.IconBg:Show()
         frame.Icon:Show()
         frame.IconBg:ClearAllPoints()
-        frame.IconBg:SetPoint("TOPLEFT")
+        if isVertical then
+            frame.IconBg:SetPoint(iconAtEnd and "BOTTOMLEFT" or "TOPLEFT")
+        else
+            frame.IconBg:SetPoint(iconAtEnd and "TOPRIGHT" or "TOPLEFT")
+        end
         frame.IconBg:SetSize(iconSize, iconSize)
         frame.Icon:ClearAllPoints()
         frame.Icon:SetPoint("TOPLEFT", frame.IconBg, "TOPLEFT")
@@ -395,21 +428,33 @@ function Bar:Apply(plugin, frame, record)
         frame.RechargePositioner:SetOrientation("VERTICAL")
         frame.RechargeSegment:SetOrientation("VERTICAL")
         if iconSize > 0 then
-            frame.StatusBar:SetPoint("TOPLEFT", frame.IconBg, "BOTTOMLEFT", 0, 0)
+            if iconAtEnd then
+                frame.StatusBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+                frame.StatusBar:SetPoint("BOTTOMRIGHT", frame.IconBg, "TOPRIGHT", 0, 0)
+            else
+                frame.StatusBar:SetPoint("TOPLEFT", frame.IconBg, "BOTTOMLEFT", 0, 0)
+                frame.StatusBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+            end
         else
             frame.StatusBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+            frame.StatusBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
         end
-        frame.StatusBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
     else
         frame.StatusBar:SetOrientation("HORIZONTAL")
         frame.RechargePositioner:SetOrientation("HORIZONTAL")
         frame.RechargeSegment:SetOrientation("HORIZONTAL")
         if iconSize > 0 then
-            frame.StatusBar:SetPoint("TOPLEFT", frame.IconBg, "TOPRIGHT", 0, 0)
+            if iconAtEnd then
+                frame.StatusBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+                frame.StatusBar:SetPoint("BOTTOMRIGHT", frame.IconBg, "BOTTOMLEFT", 0, 0)
+            else
+                frame.StatusBar:SetPoint("TOPLEFT", frame.IconBg, "TOPRIGHT", 0, 0)
+                frame.StatusBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+            end
         else
             frame.StatusBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+            frame.StatusBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
         end
-        frame.StatusBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
     end
 
     -- Drop hint fills the collapsed empty-bar frame.
@@ -422,22 +467,25 @@ function Bar:Apply(plugin, frame, record)
     local plusSize = DROP_ZONE_SIZE * (1 - DROP_ZONE_PLUS_INSET_RATIO * 2)
     frame.DropHintPlus:SetSize(plusSize, plusSize)
 
-    -- Bar texture / color from global Texture and per-bar BarColor curve.
+    -- Bar texture / color from global Texture and per-bar phase color curves.
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
     local texPath = LSM and LSM:Fetch("statusbar", Orbit.db.GlobalSettings.Texture or "Solid") or nil
     if texPath then
         frame.StatusBar:SetStatusBarTexture(texPath)
         frame.RechargeSegment:SetStatusBarTexture(texPath)
     end
-    local barColor = OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:GetFirstColorFromCurve(plugin:GetSetting(record.id, "BarColor"))
-    local r = (barColor and barColor.r) or DEFAULT_BAR_COLOR_R
-    local g = (barColor and barColor.g) or DEFAULT_BAR_COLOR_G
-    local b = (barColor and barColor.b) or DEFAULT_BAR_COLOR_B
-    local a = (barColor and barColor.a) or 1
-    frame._barColorR, frame._barColorG, frame._barColorB, frame._barColorA = r, g, b, a
-    frame._barColorIsDim = nil
-    self:SetBarColorState(frame, false)
-    frame.RechargeSegment:GetStatusBarTexture():SetVertexColor(r * RECHARGE_DIM, g * RECHARGE_DIM, b * RECHARGE_DIM, a)
+    local CC = OrbitEngine.ColorCurve
+    local function readColor(key, dr, dg, db)
+        local c = CC and CC:GetFirstColorFromCurve(plugin:GetSetting(record.id, key))
+        return { r = (c and c.r) or dr, g = (c and c.g) or dg, b = (c and c.b) or db, a = (c and c.a) or 1 }
+    end
+    frame._readyColor  = readColor("ReadyColor",    DEFAULT_BAR_COLOR_R, DEFAULT_BAR_COLOR_G, DEFAULT_BAR_COLOR_B)
+    frame._activeColor = readColor("ActiveColor",   0.4, 1.0, 0.4)
+    frame._cdColor     = readColor("CooldownColor", 0.5, 0.5, 0.5)
+    frame._barColorState = nil
+    self:SetBarColor(frame, "ready")
+    local cc = frame._cdColor
+    frame.RechargeSegment:GetStatusBarTexture():SetVertexColor(cc.r, cc.g, cc.b, cc.a)
 
     -- Mode-specific layout; perpDim = bar's perpendicular dimension for tick sizing.
     local mode = DetermineMode(payload)
@@ -491,16 +539,14 @@ function Bar:ApplyCanvasComponents(plugin, frame, record)
 end
 
 -- [ BAR COLOR STATE ] -------------------------------------------------------------------------------
--- Bright = active/ready; dim = recharging/cd phase. Cached to avoid redundant SetVertexColor.
-function Bar:SetBarColorState(frame, dim)
-    if frame._barColorIsDim == dim then return end
-    frame._barColorIsDim = dim
-    local r, g, b, a = frame._barColorR, frame._barColorG, frame._barColorB, frame._barColorA
-    if dim then
-        frame.StatusBar:GetStatusBarTexture():SetVertexColor(r * RECHARGE_DIM, g * RECHARGE_DIM, b * RECHARGE_DIM, a)
-    else
-        frame.StatusBar:GetStatusBarTexture():SetVertexColor(r, g, b, a)
-    end
+-- state ∈ "ready" | "active" | "cooldown". Cached to avoid redundant SetVertexColor.
+function Bar:SetBarColor(frame, state)
+    if frame._barColorState == state then return end
+    frame._barColorState = state
+    local c = state == "active" and frame._activeColor
+        or state == "cooldown" and frame._cdColor
+        or frame._readyColor
+    frame.StatusBar:GetStatusBarTexture():SetVertexColor(c.r, c.g, c.b, c.a)
 end
 
 -- [ LAYOUT FOR MODE ] -------------------------------------------------------------------------------
@@ -630,6 +676,7 @@ function Bar:RefreshSpellState(plugin, frame, record)
     local showHints = plugin:ShouldShowDropHints(isEmpty)
 
     if isEmpty then
+        if frame._visShown == false then frame._visShown = true; frame:Show() end
         frame.Icon:SetTexture(nil)
         frame.NameText:SetText("")
         frame.CountText:SetText("")
@@ -687,7 +734,7 @@ function Bar:UpdateChargesMode(frame, payload)
     local ci = C_Spell.GetSpellCharges(payload.id)
     if not ci then return end
 
-    self:SetBarColorState(frame, false)
+    self:SetBarColor(frame, "ready")
     frame.StatusBar:SetMinMaxValues(0, payload.maxCharges)
     frame.StatusBar:SetValue(ci.currentCharges)
     frame.CountText:SetText(ci.currentCharges)
@@ -708,6 +755,7 @@ function Bar:UpdateChargesMode(frame, payload)
         if frame.TickMark then frame.TickMark:SetAlpha(0) end
     end
     frame.TimeText:Hide()
+    self:ApplyBarVisibilityAlpha(frame, chargeDurObj and "cooldown" or "ready")
 end
 
 -- [ CD-ONLY MODE UPDATE ] ---------------------------------------------------------------------------
@@ -716,9 +764,17 @@ end
 function Bar:UpdateCdOnlyMode(frame, payload)
     if payload.type == "spell" then
         local activeId = FindSpellOverrideByID(payload.id) or payload.id
+        local cdInfo = C_Spell.GetSpellCooldown(activeId)
+        -- All three checks needed; GetSpellCooldownDuration otherwise returns the GCD durObj and flashes "cooldown".
+        if not cdInfo or not cdInfo.isActive or cdInfo.isOnGCD or not payload.cooldownDuration then
+            self:SetBarFull(frame)
+            self:ApplyBarVisibilityAlpha(frame, "ready")
+            return
+        end
         local durObj = C_Spell.GetSpellCooldownDuration(activeId)
         if not durObj then
             self:SetBarFull(frame)
+            self:ApplyBarVisibilityAlpha(frame, "ready")
             return
         end
         -- Bar fill via INVERSE_CURVE → SetValue (C++ sink, secret-safe).
@@ -729,9 +785,9 @@ function Bar:UpdateCdOnlyMode(frame, payload)
         -- Phase detection via ONCD_CURVE → numeric 0/1 for color state + tick alpha.
         local onCd = durObj:EvaluateRemainingPercent(ONCD_CURVE)
         if not issecretvalue(onCd) then
-            self:SetBarColorState(frame, onCd > 0.5)
-            if frame.TickMark then frame.TickMark:SetAlpha(onCd > 0.5 and 1 or 0) end
+            self:SetBarColor(frame, onCd > 0.5 and "cooldown" or "ready")
         end
+        if frame.TickMark then frame.TickMark:SetAlpha(1) end
         -- Time text: IDENTITY_CURVE for numeric pct; hide if secret.
         if not frame._timeTextDisabled and payload.cooldownDuration then
             local pct = durObj:EvaluateRemainingPercent(IDENTITY_CURVE)
@@ -744,19 +800,22 @@ function Bar:UpdateCdOnlyMode(frame, payload)
         else
             frame.TimeText:Hide()
         end
+        self:ApplyBarVisibilityAlpha(frame, "cooldown")
     else
         local start, duration = C_Container.GetItemCooldown(payload.id)
         if not start or not duration or duration == 0 then
             self:SetBarFull(frame)
+            self:ApplyBarVisibilityAlpha(frame, "ready")
             return
         end
         local elapsed = GetTime() - start
         if elapsed >= duration then
             self:SetBarFull(frame)
+            self:ApplyBarVisibilityAlpha(frame, "ready")
             return
         end
         local barValue = elapsed / duration
-        self:SetBarColorState(frame, true)
+        self:SetBarColor(frame, "cooldown")
         frame.StatusBar:SetMinMaxValues(0, 1)
         frame.StatusBar:SetValue(barValue)
         frame.TickBar:SetValue(barValue)
@@ -768,6 +827,7 @@ function Bar:UpdateCdOnlyMode(frame, payload)
         else
             frame.TimeText:Hide()
         end
+        self:ApplyBarVisibilityAlpha(frame, "cooldown")
     end
 end
 
@@ -780,82 +840,122 @@ function Bar:UpdateActiveCdMode(frame, payload)
 
     if payload.type == "spell" then
         local activeId = FindSpellOverrideByID(payload.id) or payload.id
+        local cdInfo = C_Spell.GetSpellCooldown(activeId)
+        -- Real cd for active+cd spells is longer than GCD, so isOnGCD stays false during the legitimate cycle.
+        if not cdInfo or not cdInfo.isActive or cdInfo.isOnGCD then
+            self:SetBarFull(frame)
+            self:ApplyBarVisibilityAlpha(frame, "ready")
+            return
+        end
         local durObj = C_Spell.GetSpellCooldownDuration(activeId)
         if not durObj then
             self:SetBarFull(frame)
+            self:ApplyBarVisibilityAlpha(frame, "ready")
             return
         end
         -- Bar fill via V-curve → SetValue (C++ sink, secret-safe).
         local fillCurve = frame._barFillCurve
-        if not fillCurve then self:SetBarFull(frame); return end
+        if not fillCurve then self:SetBarFull(frame); self:ApplyBarVisibilityAlpha(frame, "ready"); return end
         local barFill = durObj:EvaluateRemainingPercent(fillCurve)
         frame.StatusBar:SetMinMaxValues(0, 1)
         frame.StatusBar:SetValue(barFill)
         frame.TickBar:SetValue(barFill)
-        -- Phase detection via BuildPhaseCurve → numeric 0 (active) / 1 (cd).
-        local phaseCurve = frame._phaseCurve
-        if phaseCurve then
-            local phaseVal = durObj:EvaluateRemainingPercent(phaseCurve)
-            if not issecretvalue(phaseVal) then
-                local inCdPhase = phaseVal > 0.5
-                self:SetBarColorState(frame, inCdPhase)
-                if frame.TickMark then frame.TickMark:SetAlpha(inCdPhase and 1 or 0) end
+        if frame.TickMark then frame.TickMark:SetAlpha(1) end
+        local castTime = frame._castTime
+        local activeDur = payload.activeDuration
+        local cdDur = payload.cooldownDuration
+        local state = "cooldown"
+        if castTime and activeDur and cdDur then
+            local elapsed = GetTime() - castTime
+            local phaseRem
+            if elapsed < activeDur then
+                phaseRem = activeDur - elapsed
+                state = "active"
+            elseif elapsed < cdDur then
+                phaseRem = cdDur - elapsed
+                state = "cooldown"
+            else
+                state = "ready"
+                frame._castTime = nil
             end
-        end
-        -- Time text: IDENTITY_CURVE for numeric pct; hide if secret.
-        if not frame._timeTextDisabled and payload.cooldownDuration then
-            local pct = durObj:EvaluateRemainingPercent(IDENTITY_CURVE)
-            if not issecretvalue(pct) and pct > 0 then
-                frame.TimeText:SetText(FormatTime(pct * payload.cooldownDuration))
+            self:SetBarColor(frame, state)
+            if not frame._timeTextDisabled and phaseRem and phaseRem > 0 then
+                frame.TimeText:SetText(FormatTime(phaseRem))
                 frame.TimeText:Show()
             else
                 frame.TimeText:Hide()
             end
         else
+            -- No cast tracked (e.g. post-/reload mid-cycle): use phase curve for color only.
+            local phaseCurve = frame._phaseCurve
+            if phaseCurve then
+                local phaseVal = durObj:EvaluateRemainingPercent(phaseCurve)
+                if not issecretvalue(phaseVal) then
+                    state = phaseVal > 0.5 and "cooldown" or "active"
+                    self:SetBarColor(frame, state)
+                end
+            end
             frame.TimeText:Hide()
         end
+        self:ApplyBarVisibilityAlpha(frame, state)
     else
         local start, duration = C_Container.GetItemCooldown(payload.id)
         if not start or not duration or duration == 0 then
             self:SetBarFull(frame)
+            self:ApplyBarVisibilityAlpha(frame, "ready")
             return
         end
         local elapsed = GetTime() - start
         if elapsed >= duration then
             self:SetBarFull(frame)
+            self:ApplyBarVisibilityAlpha(frame, "ready")
             return
         end
         local active = payload.activeDuration
-        local barValue, inCdPhase
+        local barValue, inCdPhase, phaseRem
         if elapsed < active then
             barValue = 1 - elapsed / active
             inCdPhase = false
+            phaseRem = active - elapsed
         else
             barValue = (elapsed - active) / (duration - active)
             inCdPhase = true
+            phaseRem = duration - elapsed
         end
-        self:SetBarColorState(frame, inCdPhase)
+        self:SetBarColor(frame, inCdPhase and "cooldown" or "active")
         frame.StatusBar:SetMinMaxValues(0, 1)
         frame.StatusBar:SetValue(barValue)
         frame.TickBar:SetValue(barValue)
-        if frame.TickMark then frame.TickMark:SetAlpha(inCdPhase and 1 or 0) end
+        if frame.TickMark then frame.TickMark:SetAlpha(1) end
         if not frame._timeTextDisabled then
-            local remaining = duration - elapsed
-            frame.TimeText:SetText(FormatTime(remaining))
+            frame.TimeText:SetText(FormatTime(phaseRem))
             frame.TimeText:Show()
         else
             frame.TimeText:Hide()
         end
+        self:ApplyBarVisibilityAlpha(frame, inCdPhase and "cooldown" or "active")
     end
+end
+
+-- [ VISIBILITY ] ------------------------------------------------------------------------------------
+-- SetShown not SetAlpha — alpha conflicts with OOCFadeMixin's mouseover reveal and flickers.
+function Bar:ApplyBarVisibilityAlpha(frame, state)
+    local hide = (frame._hideOnCooldown and state == "cooldown")
+              or (frame._hideOnAvailable and state == "ready")
+    if hide and (Orbit:IsEditMode() or GetCursorInfo()) then hide = false end
+    local target = not hide
+    if frame._visShown == target then return end
+    frame._visShown = target
+    frame:SetShown(target)
 end
 
 -- [ HELPERS ] ---------------------------------------------------------------------------------------
 function Bar:SetBarFull(frame)
-    self:SetBarColorState(frame, false)
+    self:SetBarColor(frame, "ready")
     frame.StatusBar:SetMinMaxValues(0, 1)
     frame.StatusBar:SetValue(1)
     if frame.TickBar then frame.TickBar:SetValue(1) end
-    if frame.TickMark then frame.TickMark:SetAlpha(0) end
+    if frame.TickMark then frame.TickMark:SetAlpha(1) end
     frame.TimeText:Hide()
 end
 
@@ -934,7 +1034,6 @@ end
 function Bar:StartUpdateTicker(plugin, frame)
     if frame._updateTicker then return end
     frame._updateTicker = C_Timer.NewTicker(UPDATE_INTERVAL, function()
-        if not frame:IsShown() then return end
         local record = plugin:GetContainerRecord(frame.recordId)
         if record then Bar:RefreshSpellState(plugin, frame, record) end
     end)
@@ -947,7 +1046,6 @@ function Bar:StartChargeEventWatcher(plugin, frame)
     local evtFrame = CreateFrame("Frame")
     evtFrame:RegisterEvent("SPELL_UPDATE_CHARGES")
     evtFrame:SetScript("OnEvent", function()
-        if not frame:IsShown() then return end
         local record = plugin:GetContainerRecord(frame.recordId)
         if record then Bar:RefreshSpellState(plugin, frame, record) end
     end)

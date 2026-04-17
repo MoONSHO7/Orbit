@@ -70,6 +70,18 @@ function Mixin:ApplyTexture(frame, textureName)
 end
 
 -- [ TEXT STYLING ] ----------------------------------------------------------------------------------
+local function ReapplyTextOverride(self, frame, key, textSize, fontPath)
+    if not frame[key] then return end
+    local systemIndex = frame.systemIndex or 1
+    local positions = self.GetComponentPositions and self:GetComponentPositions(systemIndex)
+        or (self.GetSetting and self:GetSetting(systemIndex, "ComponentPositions"))
+    local overrides = positions and positions[key] and positions[key].overrides
+    if overrides then
+        OrbitEngine.OverrideUtils.ApplyFontOverrides(frame[key], overrides, textSize, fontPath)
+        OrbitEngine.OverrideUtils.ApplyTextColor(frame[key], overrides, nil, frame.unit)
+    end
+end
+
 function Mixin:ApplyTextStyling(frame, textSize)
     if not frame then
         return
@@ -85,6 +97,10 @@ function Mixin:ApplyTextStyling(frame, textSize)
         frame.HealthText:SetAlpha(1)
         frame.HealthText:SetTextColor(1, 1, 1, 1)
     end
+    local globalFontName = Orbit.db.GlobalSettings.Font
+    local fontPath = LSM:Fetch("font", globalFontName)
+    ReapplyTextOverride(self, frame, "Name", textSize, fontPath)
+    ReapplyTextOverride(self, frame, "HealthText", textSize, fontPath)
 end
 
 -- Updates only font size without repositioning (preserves Canvas Mode custom positions)
@@ -106,6 +122,8 @@ function Mixin:UpdateTextSize(frame, textSize)
         end
     end
     if frame.HealthText then frame.HealthText:SetFont(fontPath, textSize, outline) end
+    ReapplyTextOverride(self, frame, "Name", textSize, fontPath)
+    ReapplyTextOverride(self, frame, "HealthText", textSize, fontPath)
 end
 
 -- [ PREVIEW COLOR HELPERS ] -------------------------------------------------------------------------

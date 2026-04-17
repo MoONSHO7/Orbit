@@ -378,6 +378,10 @@ end
 -- [ DEBOUNCED ROSTER UPDATE ]----------------------------------------------------------------------
 local function ScheduleDebouncedRosterUpdate(plugin, updateVisibility)
     if updateVisibility then plugin._rosterNeedsVisibility = true end
+    -- First event of a burst resizes synchronously so tier flips don't show a 1-frame stale layout.
+    if not plugin._rosterUpdatePending and not InCombatLockdown() then
+        plugin:CheckTierChange()
+    end
     if plugin._rosterUpdatePending then return end
     plugin._rosterUpdatePending = true
     C_Timer.After(0, function()

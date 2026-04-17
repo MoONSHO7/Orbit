@@ -110,13 +110,19 @@ function Plugin:_BuildIconSettings(dialog, systemFrame, record)
 end
 
 -- [ BAR SETTINGS ] ----------------------------------------------------------------------------------
+local ICON_POS_MIGRATION = { Left = 1, Off = 2, Right = 3 }
 function Plugin:_BuildBarSettings(dialog, systemFrame, record)
     local systemIndex = record.id
+    -- Migrate legacy string values from the short-lived dropdown variant.
+    local storedIconPos = self:GetSetting(systemIndex, "IconPosition")
+    if type(storedIconPos) == "string" then
+        self:SetSetting(systemIndex, "IconPosition", ICON_POS_MIGRATION[storedIconPos] or 1)
+    end
     local schema = { controls = {}, extraButtons = {} }
     local SB = OrbitEngine.SchemaBuilder
 
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_TRK_TAB_LAYOUT, L.PLU_TRK_TAB_COLORS }, L.PLU_TRK_TAB_LAYOUT)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_TRK_TAB_LAYOUT, L.PLU_TRK_TAB_VISIBILITY, L.PLU_TRK_TAB_COLORS }, L.PLU_TRK_TAB_LAYOUT)
 
     if currentTab == L.PLU_TRK_TAB_LAYOUT then
         table.insert(schema.controls, {
@@ -148,11 +154,15 @@ function Plugin:_BuildBarSettings(dialog, systemFrame, record)
             end,
         })
         table.insert(schema.controls, {
-            type = "checkbox", key = "ShowIcon", label = L.PLU_TRK_SHOW_ICON,
-            default = true,
-            tooltip = L.PLU_TRK_SHOW_ICON_TT,
+            type = "slider", key = "IconPosition", label = L.CMN_ICON_POSITION,
+            min = 1, max = 3, step = 1, default = 1,
+            formatter = function(v)
+                if v == 1 then return L.CMN_ICON_LEFT end
+                if v == 3 then return L.CMN_ICON_RIGHT end
+                return L.CMN_ICON_OFF
+            end,
             onChange = function(val)
-                self:SetSetting(systemIndex, "ShowIcon", val)
+                self:SetSetting(systemIndex, "IconPosition", val)
                 self:ApplySettings(systemFrame)
             end,
         })
@@ -165,10 +175,37 @@ function Plugin:_BuildBarSettings(dialog, systemFrame, record)
                 self:ApplySettings(systemFrame)
             end,
         })
+    elseif currentTab == L.PLU_TRK_TAB_VISIBILITY then
+        table.insert(schema.controls, {
+            type = "checkbox", key = "HideOnCooldown", label = L.PLU_TRK_HIDE_ON_CD,
+            tooltip = L.PLU_TRK_HIDE_ON_CD_TT, default = false,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "HideOnCooldown", val)
+                self:ApplySettings(systemFrame)
+            end,
+        })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "HideOnAvailable", label = L.PLU_TRK_HIDE_ON_READY,
+            tooltip = L.PLU_TRK_HIDE_ON_READY_TT, default = false,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "HideOnAvailable", val)
+                self:ApplySettings(systemFrame)
+            end,
+        })
     elseif currentTab == L.PLU_TRK_TAB_COLORS then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
-            key = "BarColor", label = L.PLU_TRK_BAR_COLOR,
+            key = "ReadyColor", label = L.PLU_TRK_READY_COLOR,
             default = { pins = { { position = 0, color = { r = 0.3, g = 0.7, b = 1, a = 1 } } } },
+            singleColor = true,
+        })
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "ActiveColor", label = L.PLU_TRK_ACTIVE_COLOR,
+            default = { pins = { { position = 0, color = { r = 0.4, g = 1, b = 0.4, a = 1 } } } },
+            singleColor = true,
+        })
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
+            key = "CooldownColor", label = L.PLU_TRK_CD_COLOR,
+            default = { pins = { { position = 0, color = { r = 0.5, g = 0.5, b = 0.5, a = 1 } } } },
             singleColor = true,
         })
     end

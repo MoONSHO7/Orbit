@@ -21,7 +21,7 @@ local PLUGIN_GROUPS = {
         { label = "Focus Frame",  plugins = { "Focus Frame", "Focus Power", "Focus Cast Bar", "Focus Buffs", "Focus Debuffs", "Target of Focus" }, triState = true },
     }},
     { header = L.PLG_GROUP_FRAMES, names = { "Group Frames", "Boss Frames" } },
-    { header = L.PLG_COMBAT,       names = { "Action Bars", "Cooldown Manager", { label = "Tracked Cooldowns", plugins = { "Tracked Items" } } } },
+    { header = L.PLG_COMBAT,       names = { "Action Bars", "Cooldown Manager", { label = "Tracked Cooldowns", plugins = { "Tracked Items" } }, "Damage Meter" } },
     { header = L.PLG_UI,           names = {
         { label = "Menu Bar", plugins = { "Menu Bar" }, triState = true },
         { label = "Bag Bar",  plugins = { "Bag Bar" },  triState = true },
@@ -62,7 +62,7 @@ function Orbit._AC.BuildPluginContent(pluginContent, frame)
     local function UpdateReloadButton()
         if not reloadButton then return end
         reloadButton:SetEnabled(pendingChanges)
-        reloadButton:SetText(pendingChanges and ("|cFFFF8800" .. L.PLG_RELOAD_UI_APPLY .. "|r") or L.PLG_RELOAD_UI)
+        if reloadButton._label then reloadButton._label:SetText(L.PLG_RELOAD_UI) end
     end
 
     local function CheckPendingChanges()
@@ -219,14 +219,29 @@ function Orbit._AC.BuildPluginContent(pluginContent, frame)
         end
         LayoutSections()
         if not reloadButton then
-            reloadButton = CreateFrame("Button", "OrbitPluginReloadButton", pluginContent, "UIPanelButtonTemplate")
+            reloadButton = CreateFrame("Button", "OrbitPluginReloadButton", pluginContent)
             reloadButton:SetSize(RELOAD_BUTTON_WIDTH, RELOAD_BUTTON_HEIGHT)
+            reloadButton:SetNormalAtlas("128-RedButton-UP")
+            reloadButton:SetPushedAtlas("128-RedButton-Pressed")
+            reloadButton:SetDisabledAtlas("128-RedButton-Disable")
+            local hl = reloadButton:CreateTexture(nil, "HIGHLIGHT")
+            hl:SetAllPoints()
+            hl:SetAtlas("128-RedButton-UP")
+            hl:SetBlendMode("ADD")
+            hl:SetAlpha(0.25)
+            reloadButton:SetNormalFontObject("GameFontNormal")
+            reloadButton:SetHighlightFontObject("GameFontHighlight")
+            reloadButton:SetDisabledFontObject("GameFontDisable")
+            local label = reloadButton:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            label:SetPoint("CENTER")
+            label:SetTextColor(1, 0.82, 0, 1)
+            reloadButton._label = label
             reloadButton:SetScript("OnClick", function() ReloadUI() end)
         end
         reloadButton:ClearAllPoints()
         reloadButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -A.PADDING, A.PADDING)
         reloadButton:SetEnabled(false)
-        reloadButton:SetText(L.PLG_RELOAD_UI)
+        if reloadButton._label then reloadButton._label:SetText(L.PLG_RELOAD_UI) end
         reloadButton:Show()
     end
 

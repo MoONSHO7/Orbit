@@ -66,7 +66,6 @@ local function PositionAtCursor(tooltip, anchor)
     local tooltipWidth = tooltip:GetWidth()
     local tooltipHeight = tooltip:GetHeight()
     local screenWidth = GetScreenWidth()
-    local screenHeight = GetScreenHeight()
 
     tooltip:ClearAllPoints()
 
@@ -75,19 +74,10 @@ local function PositionAtCursor(tooltip, anchor)
     elseif anchor == "RIGHT" then
         tooltip:SetPoint("LEFT", UIParent, "BOTTOMLEFT", cursorX + 20, cursorY)
     else
-        -- Default: BOTTOMRIGHT of cursor
-        local offsetX = 15
-        local offsetY = -15
-
-        -- Adjust if would go off screen
-        if cursorX + offsetX + tooltipWidth > screenWidth then
-            offsetX = -tooltipWidth - 5
-        end
-        if cursorY + offsetY - tooltipHeight < 0 then
-            offsetY = 15
-        end
-
-        tooltip:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", cursorX + offsetX, cursorY + offsetY)
+        local pad = 24 / uiScale
+        local targetX = math.min(cursorX + pad, screenWidth - tooltipWidth - 2)
+        local targetY = math.max(cursorY - pad, tooltipHeight + 2)
+        tooltip:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", targetX, targetY)
     end
 end
 
@@ -187,8 +177,6 @@ function Tooltip:ShowPosition(frame, Selection, noFade, anchorLabel)
     local textHeight = tooltip.text:GetStringHeight()
     tooltip:SetSize(textWidth + 16, textHeight + 12)
 
-    local screenWidth = GetScreenWidth()
-    local cursorX = GetCursorPosition() / uiScale
     PositionAtCursor(tooltip, nil)
 
     ShowAndFade(self, noFade)

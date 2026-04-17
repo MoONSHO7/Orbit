@@ -3,6 +3,7 @@
 
 local _, addonTable = ...
 local Orbit = addonTable
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
 ---@class OrbitCastBarMixin
@@ -20,7 +21,7 @@ Mixin.sharedDefaults = {
     NonInterruptibleColor = { r = 0.7, g = 0.7, b = 0.7 },
     NonInterruptibleColorCurve = { pins = { { position = 0, color = { r = 0.7, g = 0.7, b = 0.7, a = 1 } } } },
     CastBarText = true,
-    CastBarIcon = true,
+    CastBarIcon = 1,
     CastBarTimer = true,
     CastBarHeight = 18,
     CastBarWidth = 200,
@@ -208,7 +209,24 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
             })
         end
         table.insert(schema.controls, { type = "checkbox", key = "CastBarText", label = "Show Spell Name", default = true })
-        table.insert(schema.controls, { type = "checkbox", key = "CastBarIcon", label = "Show Icon", default = true })
+        -- Migrate legacy boolean CastBarIcon (true = Left/1, false = Off/2) to numeric slider value.
+        local storedIconPos = self:GetSetting(systemIndex, "CastBarIcon")
+        if type(storedIconPos) == "boolean" then
+            self:SetSetting(systemIndex, "CastBarIcon", storedIconPos and 1 or 2)
+        end
+        table.insert(schema.controls, {
+            type = "slider", key = "CastBarIcon", label = L.CMN_ICON_POSITION,
+            min = 1, max = 3, step = 1, default = 1,
+            formatter = function(v)
+                if v == 1 then return L.CMN_ICON_LEFT end
+                if v == 3 then return L.CMN_ICON_RIGHT end
+                return L.CMN_ICON_OFF
+            end,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "CastBarIcon", val)
+                self:ApplySettings(systemFrame)
+            end,
+        })
         table.insert(schema.controls, { type = "checkbox", key = "CastBarTimer", label = "Show Timer", default = true })
     elseif currentTab == "Colour" then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
@@ -244,7 +262,11 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     local borderSize = self:GetSetting(systemIndex, "BorderSize")
     local texture = self:GetSetting(systemIndex, "Texture")
     local showText = self:GetSetting(systemIndex, "CastBarText")
-    local showIcon = self:GetSetting(systemIndex, "CastBarIcon")
+    local iconPos = self:GetSetting(systemIndex, "CastBarIcon")
+    -- Back-compat: legacy boolean, nil → Left default.
+    if type(iconPos) == "boolean" then iconPos = iconPos and 1 or 2 end
+    if type(iconPos) ~= "number" then iconPos = 1 end
+    local showIcon = iconPos ~= 2
     local textSize = 10
     local showTimer = self:GetSetting(systemIndex, "CastBarTimer")
     local curveData = self:GetSetting(systemIndex, "CastBarColorCurve")
@@ -288,6 +310,7 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
             textSize = textSize,
             showText = showText,
             showIcon = showIcon,
+            iconAtEnd = iconPos == 3,
             showTimer = showTimer,
             font = fontName,
             textColor = { r = 1, g = 1, b = 1, a = 1 },
@@ -367,6 +390,8 @@ function Mixin:RegisterUnitCastEvents(bar, unit)
     bar:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_UPDATE", unit)
     bar:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTIBLE", unit)
     bar:RegisterUnitEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE", unit)
+    -- WoW does not fire UNIT_SPELLCAST_STOP when the caster dies; use UNIT_HEALTH to detect death.
+    bar:RegisterUnitEvent("UNIT_HEALTH", unit)
     if unit == "target" then
         bar:RegisterEvent("PLAYER_TARGET_CHANGED")
     elseif unit == "focus" then
@@ -534,6 +559,11 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
         UNIT_SPELLCAST_NOT_INTERRUPTIBLE = function()
             bar.notInterruptible = true
             plugin:ApplyCastColor(bar, "NON_INTERRUPTIBLE")
+        end,
+        UNIT_HEALTH = function()
+            if (bar.casting or bar.channeling) and UnitIsDeadOrGhost(unit) then
+                bar:StopCast()
+            end
         end,
     }
 

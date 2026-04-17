@@ -1,6 +1,7 @@
 -- [ UNIT BUTTON - HEALTH MODULE ]-------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local GF = Orbit.Constants.GroupFrames
 
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
@@ -95,6 +96,64 @@ function HealthMixin:ApplyHealthColor()
         and Engine.ColorCurve:GetFirstColorFromCurveForUnit(globalBarCurve, self.unit)
         or  Engine.ColorCurve:GetFirstColorFromCurve(globalBarCurve)
     
+    if staticColor then
+        local r, g, b, a = staticColor.r, staticColor.g, staticColor.b, staticColor.a or 1
+        if tex then
+            local unit = self.unit
+            if self.groupIndex and unit and UnitExists(unit) and not self.preview then
+                -- Dim RGB alongside frame alpha so white class colors (priest) do not bleach through.
+                local dim = GF.OutOfRangeAlpha
+                local dr, dg, db = r * dim, g * dim, b * dim
+                if not UnitIsConnected(unit) or UnitPhaseReason(unit) then
+                    tex:SetVertexColor(dr, dg, db, a)
+                else
+                    REUSE_COLOR_L:SetRGBA(r, g, b, a)
+                    REUSE_COLOR_R:SetRGBA(dr, dg, db, a)
+                    tex:SetVertexColorFromBoolean(UnitInRange(unit), REUSE_COLOR_L, REUSE_COLOR_R)
+                end
+            else
+                tex:SetVertexColor(r, g, b, a)
+            end
+        else
+            self.Health:SetStatusBarColor(r, g, b, a)
+        end
+    end
+end
+
+function HealthMixin:ApplyPreviewHealthColor(classFile, reaction)
+    if not self.Health then return end
+
+    local globalBarCurve = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BarColorCurve
+    if not globalBarCurve or not globalBarCurve.pins or #globalBarCurve.pins == 0 then
+        self.Health:SetStatusBarColor(DEFAULT_BAR_COLOR.r, DEFAULT_BAR_COLOR.g, DEFAULT_BAR_COLOR.b)
+        return
+    end
+
+    local useGradientTexture = Orbit.db.GlobalSettings.UnitHealthUseGradient
+    local isGradient = #globalBarCurve.pins > 1
+    local tex = self.Health:GetStatusBarTexture()
+
+    if useGradientTexture and isGradient and tex then
+        local leftPin, rightPin = globalBarCurve.pins[1], globalBarCurve.pins[1]
+        for _, pin in ipairs(globalBarCurve.pins) do
+            if pin.position < leftPin.position then leftPin = pin end
+            if pin.position > rightPin.position then rightPin = pin end
+        end
+        local leftColor = Engine.ClassColor:ResolveClassColorPinForPreview(leftPin, classFile, reaction)
+        local rightColor = Engine.ClassColor:ResolveClassColorPinForPreview(rightPin, classFile, reaction)
+        tex:SetVertexColor(1, 1, 1, 1)
+        REUSE_COLOR_L:SetRGBA(leftColor.r, leftColor.g, leftColor.b, leftColor.a or 1)
+        REUSE_COLOR_R:SetRGBA(rightColor.r, rightColor.g, rightColor.b, rightColor.a or 1)
+        tex:SetGradient("HORIZONTAL", REUSE_COLOR_L, REUSE_COLOR_R)
+        return
+    end
+
+    if tex and tex.SetGradient then
+        REUSE_COLOR_L:SetRGBA(1, 1, 1, 1)
+        tex:SetGradient("HORIZONTAL", REUSE_COLOR_L, REUSE_COLOR_L)
+    end
+
+    local staticColor = Engine.ColorCurve:GetFirstColorFromCurveForPreview(globalBarCurve, classFile, reaction)
     if staticColor then
         if tex then
             tex:SetVertexColor(staticColor.r, staticColor.g, staticColor.b, staticColor.a or 1)

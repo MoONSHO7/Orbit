@@ -15,10 +15,13 @@ local TYPE_SCHEMAS = Schema.TYPE_SCHEMAS
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local WIDGET_SPACING = 4
 local PADDING = 12
-local COMPACT_LABEL_WIDTH = 50
+local COMPACT_LABEL_MIN_WIDTH = 50
+local COMPACT_LABEL_PAD = 4
 local COMPACT_VALUE_WIDTH = 36
 local COMPACT_LABEL_GAP = 4
 local TITLE_HEIGHT = 20
+local CJK_LOCALES = { koKR = true, zhCN = true, zhTW = true }
+local CJK_FONT_SIZE_OFFSET = CJK_LOCALES[GetLocale()] and -1 or 0
 
 -- [ MODULE ]-------------------------------------------------------------------------------------
 local Settings = {}
@@ -207,7 +210,16 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
         end
 
         if widget then
-            if widget.Label and control.type ~= "checkbox" then widget.Label:SetWidth(COMPACT_LABEL_WIDTH) end
+            if widget.Label and CJK_FONT_SIZE_OFFSET ~= 0 then
+                local f, s, flags = widget.Label:GetFont()
+                widget.Label:SetFont(f, s + CJK_FONT_SIZE_OFFSET, flags)
+            end
+            local labelWidth = COMPACT_LABEL_MIN_WIDTH
+            if widget.Label and control.type ~= "checkbox" then
+                local measured = math.ceil(widget.Label:GetStringWidth()) + COMPACT_LABEL_PAD
+                if measured > labelWidth then labelWidth = measured end
+                widget.Label:SetWidth(labelWidth)
+            end
             local controlChild = widget.Slider or widget.Control or widget.GradientBar
             if controlChild then
                 controlChild:ClearAllPoints()
@@ -217,7 +229,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             if widget.Value then widget.Value:SetWidth(COMPACT_VALUE_WIDTH) end
             if control.type == "checkbox" and widget.Label then
                 widget.Label:ClearAllPoints()
-                widget.Label:SetPoint("LEFT", widget, "LEFT", COMPACT_LABEL_WIDTH + COMPACT_LABEL_GAP, 0)
+                widget.Label:SetPoint("LEFT", widget, "LEFT", COMPACT_LABEL_MIN_WIDTH + COMPACT_LABEL_GAP, 0)
                 widget.Label:SetPoint("RIGHT", widget, "RIGHT", 0, 0)
             end
         end

@@ -47,6 +47,7 @@ local FRAME_REGISTRY = {
     -- "TrackedIcons" settings and every bar shares the "TrackedBars" settings.
     { key = "TrackedIcons",         display = "Tracked Icons",         plugin = "Tracked Items",      index = 1 },
     { key = "TrackedBars",          display = "Tracked Bars",          plugin = "Tracked Items",      index = 2 },
+    { key = "DamageMeters",         display = "Damage Meters",         plugin = "Damage Meter",       index = 1 },
     { key = "GroupFrames",          display = "Group Frames",          plugin = "Group Frames",       index = 1 },
     { key = "BossFrames",           display = "Boss Frames",           plugin = "Boss Frames",        index = 1, opacityOnly = true },
     { key = "MenuBar",              display = "Menu Bar",              plugin = "Menu Bar",           index = 1 },
@@ -68,15 +69,48 @@ end
 
 -- Blizzard frames (no Orbit plugin, resolved via _G[blizzardFrame])
 local BLIZZARD_REGISTRY = {
-    { key = "BlizzMinimap",         display = "Minimap",               blizzardFrame = "MinimapCluster" },
-    { key = "ObjectiveTracker",     display = "Objective Tracker",     blizzardFrame = "ObjectiveTrackerFrame" },
-    { key = "BuffFrame",            display = "Buff Frame",            blizzardFrame = "BuffFrame" },
-    { key = "DebuffFrame",          display = "Debuff Frame",          blizzardFrame = "DebuffFrame" },
-    { key = "ChatFrame",            display = "Chat Frame",            blizzardFrame = "ChatFrame1" },
-    { key = "StatusTrackingBar",    display = "XP / Rep Bar",          blizzardFrame = "StatusTrackingBarManager" },
-    { key = "DurabilityFrame",      display = "Durability",            blizzardFrame = "DurabilityFrame" },
-    { key = "VehicleSeatIndicator", display = "Vehicle Seat",          blizzardFrame = "VehicleSeatIndicator" },
-    { key = "DamageMeter",          display = "Damage Meter",          blizzardFrame = "DamageMeter" },
+    -- Insecure (full feature set: opacity, oocFade, hideMounted, mouseOver, showWithTarget)
+    { key = "BlizzMinimap",          display = "Minimap",               blizzardFrame = "MinimapCluster",            ownedBy = "Minimap" },
+    { key = "ObjectiveTracker",      display = "Objective Tracker",     blizzardFrame = "ObjectiveTrackerFrame" },
+    { key = "BuffFrame",             display = "Buff Frame",            blizzardFrame = "BuffFrame",                 ownedBy = "Player Buffs" },
+    { key = "DebuffFrame",           display = "Debuff Frame",          blizzardFrame = "DebuffFrame",               ownedBy = "Player Debuffs" },
+    { key = "ChatFrame",             display = "Chat Frame",            blizzardFrame = "ChatFrame1" },
+    { key = "StatusTrackingBar",     display = "XP / Rep Bar",          blizzardFrame = "StatusTrackingBarManager" },
+    { key = "DurabilityFrame",       display = "Durability",            blizzardFrame = "DurabilityFrame" },
+    { key = "VehicleSeatIndicator",  display = "Vehicle Seat",          blizzardFrame = "VehicleSeatIndicator" },
+    { key = "DamageMeter",           display = "Damage Meter",          blizzardFrame = "DamageMeter",               ownedBy = "Damage Meter" },
+    { key = "BlizzPlayerCastBar",    display = "Player Cast Bar",       blizzardFrame = "PlayerCastingBarFrame",     ownedBy = "Player Cast Bar", opacityOnly = true },
+    { key = "TalkingHead",           display = "Talking Head",          blizzardFrame = "TalkingHeadFrame" },
+    { key = "EncounterBar",          display = "Encounter Bar",         blizzardFrame = "EncounterBar" },
+    { key = "LossOfControl",         display = "Loss of Control",       blizzardFrame = "LossOfControlFrame",        opacityOnly = true },
+    { key = "MirrorTimers",          display = "Mirror Timers",         blizzardFrame = "MirrorTimerContainer" },
+    { key = "AlertFrame",            display = "Alert Pop-ups",         blizzardFrame = "AlertFrame",                opacityOnly = true },
+    -- Secure (opacity + oocFade + hideMounted + showWithTarget; no mouseOver reveal)
+    { key = "BlizzPlayerFrame",      display = "Player Frame",          blizzardFrame = "PlayerFrame",               ownedBy = "Player Frame",     secure = true },
+    { key = "BlizzPetFrame",         display = "Pet Frame",             blizzardFrame = "PetFrame",                  ownedBy = "Pet Frame",        secure = true },
+    { key = "BlizzTargetFrame",      display = "Target Frame",          blizzardFrame = "TargetFrame",               ownedBy = "Target Frame",     secure = true },
+    { key = "BlizzTargetOfTarget",   display = "Target of Target",      blizzardFrame = "TargetFrameToT",            ownedBy = "Target Frame",     secure = true },
+    { key = "BlizzFocusFrame",       display = "Focus Frame",           blizzardFrame = "FocusFrame",                ownedBy = "Focus Frame",      secure = true },
+    { key = "BlizzPartyFrame",       display = "Party Frame",           blizzardFrame = "PartyFrame",                ownedBy = "Group Frames",     secure = true },
+    { key = "BlizzRaidFrame",        display = "Raid Frames",           blizzardFrame = "CompactRaidFrameContainer", ownedBy = "Group Frames",     secure = true },
+    { key = "BlizzMainMenuBar",      display = "Action Bar 1",          blizzardFrame = "MainMenuBar",               ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
+    { key = "BlizzMultiBarBL",       display = "Action Bar 2",          blizzardFrame = "MultiBarBottomLeft",        ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
+    { key = "BlizzMultiBarBR",       display = "Action Bar 3",          blizzardFrame = "MultiBarBottomRight",       ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
+    { key = "BlizzMultiBarRight",    display = "Action Bar 4",          blizzardFrame = "MultiBarRight",             ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
+    { key = "BlizzMultiBarLeft",     display = "Action Bar 5",          blizzardFrame = "MultiBarLeft",              ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
+    { key = "BlizzMultiBar5",        display = "Action Bar 6",          blizzardFrame = "MultiBar5",                 ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
+    { key = "BlizzMultiBar6",        display = "Action Bar 7",          blizzardFrame = "MultiBar6",                 ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
+    { key = "BlizzMultiBar7",        display = "Action Bar 8",          blizzardFrame = "MultiBar7",                 ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
+    { key = "BlizzStanceBar",        display = "Stance Bar",            blizzardFrame = "StanceBar",                 ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
+    { key = "BlizzPetActionBar",     display = "Pet Action Bar",        blizzardFrame = "PetActionBar",              ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
+    { key = "BlizzPossessBar",       display = "Possess Bar",           blizzardFrame = "PossessActionBar",          secure = true, propagateAlpha = true },
+    { key = "BlizzMicroMenu",        display = "Micro Menu",            blizzardFrame = "MicroMenuContainer",        ownedBy = "Menu Bar",         secure = true, propagateAlpha = true },
+    { key = "BlizzBagsBar",          display = "Bags Bar",              blizzardFrame = "BagsBar",                   ownedBy = "Bag Bar",          secure = true, propagateAlpha = true },
+    { key = "BlizzEssentialCDs",     display = "Essential Cooldowns",   blizzardFrame = "EssentialCooldownViewer",   ownedBy = "Cooldown Manager", secure = true },
+    { key = "BlizzUtilityCDs",       display = "Utility Cooldowns",     blizzardFrame = "UtilityCooldownViewer",     ownedBy = "Cooldown Manager", secure = true },
+    { key = "BlizzBuffIconCDs",      display = "Buff Icon Cooldowns",   blizzardFrame = "BuffIconCooldownViewer",    ownedBy = "Cooldown Manager", secure = true },
+    { key = "ExtraActionBar",        display = "Extra Action Button",   blizzardFrame = "ExtraActionBarFrame",       secure = true },
+    { key = "ZoneAbility",           display = "Zone Ability",          blizzardFrame = "ZoneAbilityFrame",          secure = true },
 }
 
 -- Custom third-party addon frames (resolved via _G[frame] when addon is loaded)
@@ -132,6 +166,13 @@ function VE:GetAllFrames()
     return FRAME_REGISTRY
 end
 
+-- Returns true if the entry (Orbit or Blizzard) is opacity-only. O(n) but rarely called.
+function VE:IsOpacityOnly(key)
+    for _, e in ipairs(FRAME_REGISTRY) do if e.key == key then return e.opacityOnly == true end end
+    for _, e in ipairs(BLIZZARD_REGISTRY) do if e.key == key then return e.opacityOnly == true end end
+    return false
+end
+
 function VE:GetFrameDefaults()
     return DEFAULTS
 end
@@ -139,9 +180,7 @@ end
 function VE:GetBlizzardFrames()
     local result = {}
     for _, entry in ipairs(BLIZZARD_REGISTRY) do
-        if entry.key == "BlizzMinimap" and Orbit:IsPluginEnabled("Minimap") then
-            -- Orbit Minimap plugin owns this frame; skip the Blizzard entry
-        else
+        if not (entry.ownedBy and Orbit:IsPluginEnabled(entry.ownedBy)) then
             result[#result + 1] = entry
         end
     end
@@ -237,21 +276,74 @@ function VE:Migrate()
 end
 
 -- [ APPLY ]------------------------------------------------------------------------------------------
+-- No hooksecurefunc on secure frames (would taint); direct SetAlpha is allowed, combat-deferred.
+local SECURE_FRAMES = {}
+function VE:ApplySecureBlizzardFrame(entry)
+    if entry.ownedBy and Orbit:IsPluginEnabled(entry.ownedBy) then return end
+    local frame = _G[entry.blizzardFrame]
+    if not frame then return end
+    SECURE_FRAMES[entry.key] = entry
+    local opacity = (self:GetFrameSetting(entry.key, "opacity") or 100) / 100
+    local oocFade = not entry.opacityOnly and self:GetFrameSetting(entry.key, "oocFade")
+    local showWithTarget = not entry.opacityOnly and self:GetFrameSetting(entry.key, "showWithTarget")
+    local hideMounted = not entry.opacityOnly and self:GetFrameSetting(entry.key, "hideMounted")
+    local mounted = Orbit.MountedVisibility and Orbit.MountedVisibility:IsCachedHidden() and hideMounted
+    local revealedByTarget = showWithTarget and UnitExists("target")
+    local inCombat = InCombatLockdown() or UnitAffectingCombat("player")
+    local oocHide = oocFade and not inCombat and not revealedByTarget and not Orbit:IsEditMode()
+    local alpha = (mounted or oocHide) and 0 or (revealedByTarget and 1 or opacity)
+    local function apply()
+        frame:SetAlpha(alpha)
+        if entry.propagateAlpha then
+            for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(alpha) end
+        end
+    end
+    if InCombatLockdown() then
+        if Orbit.CombatManager then Orbit.CombatManager:QueueUpdate(apply) end
+    else
+        apply()
+    end
+end
+
+function VE:ApplyAllSecureBlizzardFrames()
+    for _, entry in ipairs(BLIZZARD_REGISTRY) do
+        if entry.secure then self:ApplySecureBlizzardFrame(entry) end
+    end
+end
+
 function VE:ApplyBlizzardSettings()
     if not Orbit.OOCFadeMixin then return end
     for _, entry in ipairs(BLIZZARD_REGISTRY) do
         local frame = _G[entry.blizzardFrame]
         if frame then
-            if entry.key == "BlizzMinimap" then frame.orbitOpacityExternal = true end
-            Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, entry.key)
-            -- Minimap: apply opacity to cluster children (including Minimap itself for engine-rendered POI pins)
-            if entry.key == "BlizzMinimap" then
-                local opacity = (self:GetFrameSetting(entry.key, "opacity") or 100) / 100
-                for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
+            if entry.secure then
+                self:ApplySecureBlizzardFrame(entry)
+            else
+                if entry.key == "BlizzMinimap" then frame.orbitOpacityExternal = true end
+                Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, entry.key)
+                -- Minimap: apply opacity to cluster children (including Minimap itself for engine-rendered POI pins)
+                if entry.key == "BlizzMinimap" then
+                    local opacity = (self:GetFrameSetting(entry.key, "opacity") or 100) / 100
+                    for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
+                end
             end
         end
     end
 end
+
+-- Re-apply secure frames on combat exit and target/mount changes
+local secureEvents = CreateFrame("Frame")
+secureEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
+secureEvents:RegisterEvent("PLAYER_TARGET_CHANGED")
+secureEvents:RegisterEvent("ACTIONBAR_PAGE_CHANGED")
+secureEvents:RegisterEvent("UPDATE_BONUS_ACTIONBAR")
+secureEvents:RegisterEvent("UPDATE_VEHICLE_ACTIONBAR")
+secureEvents:RegisterEvent("UPDATE_OVERRIDE_ACTIONBAR")
+secureEvents:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
+secureEvents:SetScript("OnEvent", function() VE:ApplyAllSecureBlizzardFrames() end)
+C_Timer.After(0, function()
+    if Orbit.EventBus then Orbit.EventBus:On("MOUNTED_VISIBILITY_CHANGED", function() VE:ApplyAllSecureBlizzardFrames() end) end
+end)
 
 function VE:ApplyAll()
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
@@ -275,11 +367,15 @@ function VE:ApplyFrame(key)
         if entry.key == key then
             local frame = _G[entry.blizzardFrame]
             if frame then
-                if key == "BlizzMinimap" then frame.orbitOpacityExternal = true end
-                Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, key)
-                if key == "BlizzMinimap" then
-                    local opacity = (self:GetFrameSetting(key, "opacity") or 100) / 100
-                    for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
+                if entry.secure then
+                    self:ApplySecureBlizzardFrame(entry)
+                else
+                    if key == "BlizzMinimap" then frame.orbitOpacityExternal = true end
+                    Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, key)
+                    if key == "BlizzMinimap" then
+                        local opacity = (self:GetFrameSetting(key, "opacity") or 100) / 100
+                        for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
+                    end
                 end
             end
             return

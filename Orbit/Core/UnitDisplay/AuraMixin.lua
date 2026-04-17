@@ -300,11 +300,8 @@ function Mixin:SetupAuraTooltip(icon, aura, unit, filter)
     icon._auraFilter = filter
     -- Only cache spellId when non-secret; the tooltip fallback does a boolean test on this field.
     icon._auraSpellId = (not issecretvalue(aura.spellId)) and aura.spellId or nil
-    if not icon._orbitTooltipHooked then
-        icon:SetScript("OnEnter", AuraIcon_OnEnter)
-        icon:SetScript("OnLeave", AuraIcon_OnLeave)
-        icon._orbitTooltipHooked = true
-    end
+    icon:SetScript("OnEnter", AuraIcon_OnEnter)
+    icon:SetScript("OnLeave", AuraIcon_OnLeave)
 end
 
 -- [ AURA FILTER ]-----------------------------------------------------------------------------------

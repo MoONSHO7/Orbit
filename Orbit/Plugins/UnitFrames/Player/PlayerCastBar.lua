@@ -11,7 +11,7 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
         CastBarColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
         NonInterruptibleColor = { r = 0.7, g = 0.7, b = 0.7 },
         NonInterruptibleColorCurve = { pins = { { position = 0, color = { r = 0.7, g = 0.7, b = 0.7, a = 1 } } } },
-        CastBarIcon = true,
+        CastBarIcon = 1,
         CastBarHeight = 35,
         CastBarWidth = 300,
         CastBarTextSize = 10,
@@ -137,9 +137,10 @@ local function SetupChannelTicks(plugin, bar, safeSpellID)
     local scale = bar:GetEffectiveScale() or 1
     
     if width <= 0 or height <= 0 then
-        local showIcon = plugin:GetSetting(bar.systemIndex, "CastBarIcon")
+        local iconPos = plugin:GetSetting(bar.systemIndex, "CastBarIcon")
+        if type(iconPos) == "boolean" then iconPos = iconPos and 1 or 2 end
         height = plugin:GetSetting(bar.systemIndex, "CastBarHeight") or 35
-        local iconSize = showIcon and SnapToPixel(height, scale) or 0
+        local iconSize = (iconPos ~= 2) and SnapToPixel(height, scale) or 0
         width = (plugin:GetSetting(bar.systemIndex, "CastBarWidth") or 300) - iconSize
     end
 
@@ -198,7 +199,24 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
                 min = 120, max = 350, step = 10, default = Orbit.Constants.PlayerCastBar.DefaultWidth,
             })
         end
-        table.insert(schema.controls, { type = "checkbox", key = "CastBarIcon", label = L.PLU_CAST_SHOW_ICON, default = true })
+        -- Migrate legacy boolean CastBarIcon (true = Left/1, false = Off/2) to numeric slider value.
+        local storedIconPos = self:GetSetting(systemIndex, "CastBarIcon")
+        if type(storedIconPos) == "boolean" then
+            self:SetSetting(systemIndex, "CastBarIcon", storedIconPos and 1 or 2)
+        end
+        table.insert(schema.controls, {
+            type = "slider", key = "CastBarIcon", label = L.CMN_ICON_POSITION,
+            min = 1, max = 3, step = 1, default = 1,
+            formatter = function(v)
+                if v == 1 then return L.CMN_ICON_LEFT end
+                if v == 3 then return L.CMN_ICON_RIGHT end
+                return L.CMN_ICON_OFF
+            end,
+            onChange = function(val)
+                self:SetSetting(systemIndex, "CastBarIcon", val)
+                self:ApplySettings(systemFrame)
+            end,
+        })
         table.insert(schema.controls, { type = "checkbox", key = "ShowLatency", label = L.PLU_CAST_SHOW_LATENCY, default = true })
         table.insert(schema.controls, {
             type = "slider", key = "TickWidth", label = L.PLU_CAST_TICK_WIDTH,
@@ -312,7 +330,10 @@ function Plugin:OnLoad()
     function CastBar:CreateCanvasPreview(options)
         local scale = options.scale or 1
         local borderSize = options.borderSize or OrbitEngine.Pixel:DefaultBorderSize(scale)
-        local showIcon = Plugin:GetSetting(1, "CastBarIcon")
+        local iconPos = Plugin:GetSetting(1, "CastBarIcon")
+        if type(iconPos) == "boolean" then iconPos = iconPos and 1 or 2 end
+        local showIcon = iconPos ~= 2
+        local iconAtEnd = iconPos == 3
         local height = self:GetHeight()
         local iconSize = showIcon and height or 0
         local barWidth = self:GetWidth() - iconSize
@@ -323,7 +344,8 @@ function Plugin:OnLoad()
         if showIcon then
             local icon = preview:CreateTexture(nil, "ARTWORK")
             icon:SetSize(iconSize * scale, iconSize * scale)
-            icon:SetPoint("RIGHT", preview, "LEFT", 0, 0)
+            if iconAtEnd then icon:SetPoint("LEFT", preview, "RIGHT", 0, 0)
+            else icon:SetPoint("RIGHT", preview, "LEFT", 0, 0) end
             icon:SetTexture(PREVIEW_ICON_ID)
             icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         end
@@ -769,7 +791,10 @@ function Plugin:ApplySettings(systemFrame)
     local height = self:GetSetting(systemIndex, "CastBarHeight")
     local borderSize = self:GetSetting(systemIndex, "BorderSize")
     local texture = self:GetSetting(systemIndex, "Texture")
-    local showIcon = self:GetSetting(systemIndex, "CastBarIcon")
+    local iconPos = self:GetSetting(systemIndex, "CastBarIcon")
+    if type(iconPos) == "boolean" then iconPos = iconPos and 1 or 2 end
+    if type(iconPos) ~= "number" then iconPos = 1 end
+    local showIcon = iconPos ~= 2
     local textSize = 10
     local fontName = self:GetSetting(systemIndex, "Font")
     local fontPath = fontName and LSM:Fetch("font", fontName)
@@ -797,6 +822,7 @@ function Plugin:ApplySettings(systemFrame)
             borderSize = borderSize,
             textSize = textSize,
             showIcon = showIcon,
+            iconAtEnd = iconPos == 3,
             font = fontName,
             textColor = { r = 1, g = 1, b = 1, a = 1 },
             backdropColor = backdropColor,

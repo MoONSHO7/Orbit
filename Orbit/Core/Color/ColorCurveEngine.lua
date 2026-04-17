@@ -105,6 +105,16 @@ function CCE:GetFirstColorFromCurveForUnit(curveData, unit)
     return CC:ResolveClassColorPinForUnit(GetSortedPins(curveData)[1], unit)
 end
 
+function CCE:GetFirstColorFromCurveForClass(curveData, classFile)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    return CC:ResolveClassColorPinForClass(GetSortedPins(curveData)[1], classFile)
+end
+
+function CCE:GetFirstColorFromCurveForPreview(curveData, classFile, reaction)
+    if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
+    return CC:ResolveClassColorPinForPreview(GetSortedPins(curveData)[1], classFile, reaction)
+end
+
 function CCE:ToNativeColorCurveForUnit(curveData, unit)
     if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
     if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end

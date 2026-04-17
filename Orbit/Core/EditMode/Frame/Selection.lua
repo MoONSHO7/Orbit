@@ -392,6 +392,7 @@ end
 -- [ EDIT MODE HANDLERS ]----------------------------------------------------------------------------
 
 function Selection:OnEditModeEnter()
+    Engine.SelectionPeekHide:Enable(self)
     DeferUntilOutOfCombat(function()
         if not (EditModeManagerFrame and EditModeManagerFrame:IsShown()) then
             return
@@ -435,6 +436,7 @@ function Selection:OnEditModeEnter()
 end
 
 function Selection:OnEditModeExit()
+    Engine.SelectionPeekHide:Disable(self)
     -- End tour if active
     if Engine.EditModeTour then Engine.EditModeTour:EndTour() end
     -- Immediate Visual Cleanup (Safe in Combat)

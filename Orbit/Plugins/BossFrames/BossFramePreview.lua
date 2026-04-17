@@ -98,7 +98,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                 Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true)
                 frame.Health:SetMinMaxValues(0, 100)
                 frame.Health:SetValue(100)
-                frame.Health:SetStatusBarColor(1, 0.1, 0.1)
+                frame:ApplyPreviewHealthColor(nil, 2)
                 frame.Health:Show()
                 if frame.HealthDamageBar then frame.HealthDamageBar:Hide() end
                 if frame.HealthDamageTexture then frame.HealthDamageTexture:Hide() end
