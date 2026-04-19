@@ -129,40 +129,9 @@ function CDM:ProcessChildren(anchor)
 
     for _, child in ipairs(PackChildren(blizzFrame:GetChildren())) do
         if child.layoutIndex and not child.isInjectedIcon then
-            -- Per-icon OnShow/RefreshData hooks only for BuffIcon/BuffBar.
-            -- Essential/Utility use viewer-level UpdateLayout/RefreshLayout hooks.
+            -- Never install per-item hooks on Blizzard cooldown viewer children: they taint Blizzard's secret writes (isActive, previousCooldownChargesCount, hasTotem). Refresh is driven by viewer:RefreshLayout + MonitorViewers events.
             if systemIndex == BUFFICON_INDEX or systemIndex == BUFFBAR_INDEX then
-                if not child.orbitOnShowHooked then
-                    local plugin = self
-                    child:HookScript("OnShow", function(c)
-                        local parent = c:GetParent()
-                        local anc = parent and parent:GetParent()
-                        if anc and anc.systemIndex ~= BUFFBAR_INDEX and Orbit.Skin.Icons.frameSettings then
-                            local s = Orbit.Skin.Icons.frameSettings[parent]
-                            if s then
-                                Orbit.Skin.Icons:ApplyCustom(c, s)
-                            end
-                        end
-                        if anc and plugin.ProcessChildren then
-                            plugin:MarkPandemicDirty()
-                            Orbit.Async:Debounce("CDM_OnShow_" .. systemIndex, function()
-                                plugin:ProcessChildren(anc)
-                            end, 0)
-                        end
-                    end)
-                    child.orbitOnShowHooked = true
-                    self:MarkPandemicDirty()
-                end
-
-                if not child.orbitRefreshHooked and child.RefreshData then
-                    local a = anchor
-                    hooksecurefunc(child, "RefreshData", function()
-                        Orbit.Async:Debounce("CDM_Refresh_" .. systemIndex, function()
-                            CDM:ProcessChildren(a)
-                        end, Constants.Timing.KeyboardRestoreDelay)
-                    end)
-                    child.orbitRefreshHooked = true
-                end
+                self:MarkPandemicDirty()
             end
 
             if alwaysShow then
@@ -244,7 +213,6 @@ function CDM:ProcessChildren(anchor)
                 if icon._borderFrame then icon._borderFrame:Hide() end
                 Orbit.Skin:ClearNineSliceBorder(icon)
             end
-            self:HookGCDSwipe(icon, systemIndex)
             if not isBuffBar then self:ApplyTextSettings(icon, systemIndex) end
             icon.orbitCDMSystemIndex = systemIndex
             local cd = icon.Cooldown or (icon.GetCooldownFrame and icon:GetCooldownFrame())
@@ -430,56 +398,30 @@ function CDM:PreSizeAnchors()
     end
 end
 
--- [ GCD SWIPE HOOK ] ----------------------------------------------------------
-function CDM:HookGCDSwipe(icon, systemIndex)
-    if icon.orbitGCDHooked or not icon.RefreshSpellCooldownInfo then return end
-    icon.orbitSystemIndex = systemIndex
-    icon.orbitPlugin = self
-
-    hooksecurefunc(icon, "RefreshSpellCooldownInfo", function(self)
-        local plugin, sysIdx = self.orbitPlugin, self.orbitSystemIndex
-        if not plugin or not sysIdx then return end
-        local cooldown = self:GetCooldownFrame()
-        if cooldown then
-            if issecretvalue(self.wasSetFromAura) then return end
-            local isAura = self.wasSetFromAura == true
-            cooldown:SetReverse(isAura)
-            local ds = cooldown.orbitDesiredSwipe
-            if ds then
-                local r = isAura and ds.activeR or ds.cooldownR
-                if r then
-                    local g, b, a = isAura and ds.activeG or ds.cooldownG, isAura and ds.activeB or ds.cooldownB, isAura and ds.activeA or ds.cooldownA
-                    ds.r, ds.g, ds.b, ds.a = r, g, b, a
-                    cooldown.orbitUpdating = true; cooldown:SetSwipeColor(r, g, b, a); cooldown.orbitUpdating = false
-                end
+-- [ ALWAYS SHOW (BUFF ICONS) ] ------------------------------------------------
+-- Throttled OnUpdate ticker re-shows hidden BuffIcon children. No per-item hooks.
+local ALWAYS_SHOW_TICK = 0.05
+local alwaysShowTickerStarted = false
+function CDM:HookAlwaysShow(icon)
+    if alwaysShowTickerStarted then return end
+    alwaysShowTickerStarted = true
+    local plugin = self
+    local accum = 0
+    local ticker = CreateFrame("Frame")
+    ticker:SetScript("OnUpdate", function(_, elapsed)
+        accum = accum + elapsed
+        if accum < ALWAYS_SHOW_TICK then return end
+        accum = 0
+        if not plugin:GetSetting(BUFFICON_INDEX, "AlwaysShow") then return end
+        local viewer = _G["BuffIconCooldownViewer"]
+        if not viewer then return end
+        for _, child in ipairs({ viewer:GetChildren() }) do
+            if child and child.GetCooldownID and child:GetCooldownID() and not child:IsShown() then
+                child:Show()
             end
-            if not plugin:GetSetting(sysIdx, "ShowGCDSwipe") and self.isOnGCD and not isAura then cooldown:SetDrawSwipe(false) end
         end
     end)
-    icon.orbitGCDHooked = true
-end
-
--- [ ALWAYS SHOW (BUFF ICONS) ] ------------------------------------------------
-function CDM:HookAlwaysShow(icon)
-    if icon.orbitAlwaysShowHooked then return end
-    local plugin = self
-    local function onStateChange(self)
-        if not plugin:GetSetting(BUFFICON_INDEX, "AlwaysShow") then
-            if self.Icon then
-                self.Icon:SetDesaturation(0)
-                self.Icon:SetAlpha(1)
-            end
-            return
-        end
-        if not self:GetCooldownID() then
-            return
-        end
-        self:Show()
-    end
-    hooksecurefunc(icon, "UpdateShownState", onStateChange)
-    hooksecurefunc(icon, "RefreshData", onStateChange)
-    hooksecurefunc(icon, "RefreshSpellTexture", onStateChange)
-    icon.orbitAlwaysShowHooked = true
+    self._alwaysShowTicker = ticker
 end
 
 -- [ TIMER COLOR CURVE ] -------------------------------------------------------

@@ -148,10 +148,9 @@ function Plugin:GetGlobalFont()
 end
 
 -- [ DROP HINT VISIBILITY ] --------------------------------------------------------------------------
--- Show drop hints when dragging, settings panel open, or edit-mode with empty frame.
+-- Show drop hints when dragging or in edit-mode with an empty frame.
 function Plugin:ShouldShowDropHints(isEmpty)
     if DragDrop and DragDrop:IsDraggingCooldownAbility() then return true end
-    if CooldownViewerSettings and CooldownViewerSettings:IsShown() then return true end
     if isEmpty and Orbit:IsEditMode() then return true end
     return false
 end

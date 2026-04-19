@@ -24,6 +24,7 @@ local function GetViewerAnchorPoint(plugin, anchor)
 end
 
 -- [ BLIZZARD VIEWER HOOKING ] -------------------------------------------------
+-- Never hook per-item Essential/Utility mixin methods — they enter the SetIsActive(secretBool) chain and taint isActive as Orbit-owned. Refresh comes from MonitorViewers events + viewer:RefreshLayout.
 function CDM:HookBlizzardViewers()
     for _, entry in pairs(VIEWER_MAP) do
         self:SetupViewerHooks(entry.viewer, entry.anchor)
@@ -33,36 +34,23 @@ function CDM:HookBlizzardViewers()
         EventRegistry:RegisterCallback("EditMode.Exit", function() self:ReapplyParentage() end, self)
     end
 
+    -- Top-level refresh on settings-panel layout changes. Settings-frame level, never enters per-item chains.
+    if CooldownViewerSettings and CooldownViewerSettings.RefreshLayout then
+        local plugin = self
+        hooksecurefunc(CooldownViewerSettings, "RefreshLayout", function()
+            if InCombatLockdown() then return end
+            for sysIdx, entry in pairs(VIEWER_MAP) do
+                if entry.anchor then
+                    Orbit.Async:Debounce("CDM_Refresh_" .. sysIdx .. "_settings", function()
+                        plugin:ProcessChildren(entry.anchor)
+                    end, Constants.Timing.KeyboardRestoreDelay)
+                end
+            end
+        end)
+    end
+
     self:HookProcGlow()
     self:MonitorViewers()
-    self:HookEssentialUtilityMixins()
-end
-
--- [ ESSENTIAL/UTILITY MIXIN HOOKS ] -------------------------------------------
-function CDM:HookEssentialUtilityMixins()
-    local function OnSpellUpdate(frame, systemIndex)
-        local viewer = frame:GetParent()
-        local anchor = viewer and viewer:GetParent()
-        if anchor and anchor.systemIndex == systemIndex then self:ProcessChildren(anchor) end
-    end
-    if CooldownViewerEssentialItemMixin then
-        local ess = Constants.Cooldown.SystemIndex.Essential
-        if CooldownViewerEssentialItemMixin.OnCooldownIDSet then
-            hooksecurefunc(CooldownViewerEssentialItemMixin, "OnCooldownIDSet", function(f) OnSpellUpdate(f, ess) end)
-        end
-        if CooldownViewerEssentialItemMixin.OnActiveStateChanged then
-            hooksecurefunc(CooldownViewerEssentialItemMixin, "OnActiveStateChanged", function(f) OnSpellUpdate(f, ess) end)
-        end
-    end
-    if CooldownViewerUtilityItemMixin then
-        local util = Constants.Cooldown.SystemIndex.Utility
-        if CooldownViewerUtilityItemMixin.OnCooldownIDSet then
-            hooksecurefunc(CooldownViewerUtilityItemMixin, "OnCooldownIDSet", function(f) OnSpellUpdate(f, util) end)
-        end
-        if CooldownViewerUtilityItemMixin.OnActiveStateChanged then
-            hooksecurefunc(CooldownViewerUtilityItemMixin, "OnActiveStateChanged", function(f) OnSpellUpdate(f, util) end)
-        end
-    end
 end
 
 -- [ VIEWER HOOKS ] ------------------------------------------------------------
@@ -74,11 +62,14 @@ function CDM:SetupViewerHooks(viewer, anchor)
         viewer.Selection:SetScript("OnShow", function(s) s:Hide() end)
     end
 
+    -- Never hook viewer:UpdateLayout — it runs per-item RefreshData → SetCachedChargeValues, tainting previousCooldownChargesCount. RefreshLayout is safe; we still defer ProcessChildren into a clean timer context.
+    local sysIdx = anchor.systemIndex
     local LayoutHandler = function()
         if viewer._orbitResizing or anchor.orbitMountedSuppressed then return end
-        self:ProcessChildren(anchor)
+        Orbit.Async:Debounce("CDM_Layout_" .. sysIdx, function()
+            self:ProcessChildren(anchor)
+        end, 0)
     end
-    if viewer.UpdateLayout then hooksecurefunc(viewer, "UpdateLayout", LayoutHandler) end
     if viewer.RefreshLayout then hooksecurefunc(viewer, "RefreshLayout", LayoutHandler) end
 
     local function RestoreViewer(v, parent)
@@ -141,7 +132,12 @@ function CDM:EnforceViewerParentage(viewer, anchor)
     viewer:SetPoint(point, anchor, point, 0, 0)
     viewer:SetAlpha(1)
     viewer:Show()
-    self:ProcessChildren(anchor)
+    -- Defer ProcessChildren — EnforceViewerParentage is called from mixed (some tainted) contexts; deferring makes all callers safe.
+    local sysIdx = anchor.systemIndex
+    local plugin = self
+    Orbit.Async:Debounce("CDM_Parentage_" .. sysIdx, function()
+        plugin:ProcessChildren(anchor)
+    end, 0)
 end
 
 -- [ EVENT-DRIVEN MONITOR ] ----------------------------------------------------
@@ -160,6 +156,18 @@ function CDM:MonitorViewers()
     local function CheckAll()
         for _, entry in pairs(VIEWER_MAP) do
             plugin:CheckViewer(entry.viewer, entry.anchor)
+        end
+    end
+
+    -- Debounced per-anchor ProcessChildren — coalesces event bursts.
+    local function ProcessAllDebounced(reason)
+        for sysIdx, entry in pairs(VIEWER_MAP) do
+            local anchor = entry.anchor
+            if anchor then
+                Orbit.Async:Debounce("CDM_Refresh_" .. sysIdx .. "_" .. reason, function()
+                    plugin:ProcessChildren(anchor)
+                end, Constants.Timing.KeyboardRestoreDelay)
+            end
         end
     end
 
@@ -184,6 +192,8 @@ function CDM:MonitorViewers()
     frame:RegisterUnitEvent("UNIT_AURA", "player")
     frame:RegisterEvent("PLAYER_REGEN_DISABLED")
     frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    frame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+    frame:RegisterEvent("BAG_UPDATE_COOLDOWN")
     frame:SetScript("OnEvent", function(_, event, unit)
         if event == "UNIT_AURA" then
             if unit == "player" then
@@ -194,8 +204,17 @@ function CDM:MonitorViewers()
                     oocDirty = false
                 end
                 CheckAll()
+                ProcessAllDebounced("aura")
                 CheckPandemicIfDirty()
             end
+            return
+        end
+        if event == "SPELL_UPDATE_COOLDOWN" then
+            ProcessAllDebounced("spellcd")
+            return
+        end
+        if event == "BAG_UPDATE_COOLDOWN" then
+            ProcessAllDebounced("bagcd")
             return
         end
         local inCombat = (event == "PLAYER_REGEN_DISABLED")
@@ -212,6 +231,7 @@ function CDM:MonitorViewers()
         end
         pandemicDirty = true
         CheckAll()
+        ProcessAllDebounced("regen")
         CheckPandemicIfDirty()
         if not inCombat then plugin:PreSizeAnchors() end
     end)
