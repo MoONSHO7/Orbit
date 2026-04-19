@@ -338,7 +338,96 @@ function Plugin:StartAutoZoomOut()
     end)
 end
 
--- [ CALENDAR PENDING INVITES ]-----------------------------------------------------------------------
+-- [ TRACKING BUTTON ]-------------------------------------------------------------------------------
+
+local TRACKING_BUTTON_SIZE = 24
+local TRACKING_FADE_IN = 0.15
+local TRACKING_FADE_OUT = 0.3
+
+function Plugin:CreateTrackingButton()
+    if self._trackingButton then return end
+    local frame = self.frame
+
+    -- Toggle button — parented to Overlay so it renders above the Minimap surface.
+    local btn = CreateFrame("Button", "OrbitMinimapTrackingButton", frame.Overlay or frame)
+    btn:SetSize(TRACKING_BUTTON_SIZE, TRACKING_BUTTON_SIZE)
+    btn:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 2, 2)
+    btn:SetFrameLevel(frame.ClickCapture:GetFrameLevel() + 2)
+    btn.orbitOriginalWidth  = TRACKING_BUTTON_SIZE
+    btn.orbitOriginalHeight = TRACKING_BUTTON_SIZE
+
+    btn.highlight = btn:CreateTexture(nil, "HIGHLIGHT")
+    btn.highlight:SetAllPoints(btn)
+    btn.highlight:SetTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+    btn.highlight:SetAlpha(0.5)
+    btn.highlight:SetBlendMode("ADD")
+
+    -- Atlas icon: Blizzard's tracking binoculars
+    btn.icon = btn:CreateTexture(nil, "ARTWORK")
+    btn.icon:SetAllPoints(btn)
+    btn.icon:SetAtlas("ui-hud-minimap-tracking-up", false)
+
+    -- Visual used by canvas mode dock preview
+    btn.visual = btn.icon
+
+    btn:SetScript("OnMouseDown", function() btn.icon:SetAlpha(0.6) end)
+    btn:SetScript("OnMouseUp",   function() btn.icon:SetAlpha(1) end)
+
+    -- Start hidden; revealed on minimap hover.
+    btn:SetAlpha(0)
+
+    btn:SetScript("OnClick", function(b) self:RunMinimapClickAction("tracking", b) end)
+    btn:SetScript("OnEnter", function(b)
+        GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
+        GameTooltip:SetText(Orbit.L.PLU_MINIMAP_ACT_TRACK, 1, 1, 1)
+        GameTooltip:AddLine("Click to open tracking menu", 0.7, 0.7, 0.7)
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    self._trackingButton = btn
+end
+
+function Plugin:ApplyTrackingButton()
+    local frame = self.frame
+    local btn = self._trackingButton
+    if not btn then return end
+
+    local useClickAction = self:UsesTrackingClickAction()
+
+    if not useClickAction and not self:IsComponentDisabled("Tracking") then
+        btn:Show()
+
+        if not frame._trackingHoverHooked then
+            local minimap = Minimap
+            local function ShowTrackingButton()
+                if not btn:IsShown() then return end
+                UIFrameFadeIn(btn, TRACKING_FADE_IN, btn:GetAlpha(), 1)
+            end
+            local function HideTrackingButton()
+                if not btn:IsShown() then return end
+                if btn:IsMouseOver() then return end
+                if minimap and minimap:IsMouseOver() then return end
+                UIFrameFadeOut(btn, TRACKING_FADE_OUT, btn:GetAlpha(), 0)
+            end
+            frame:HookScript("OnEnter", ShowTrackingButton)
+            frame:HookScript("OnLeave", HideTrackingButton)
+            if minimap then
+                minimap:HookScript("OnEnter", ShowTrackingButton)
+                minimap:HookScript("OnLeave", HideTrackingButton)
+            end
+            btn:HookScript("OnEnter", ShowTrackingButton)
+            btn:HookScript("OnLeave", HideTrackingButton)
+            frame._trackingHoverHooked = true
+        end
+    else
+        btn:SetAlpha(0)
+        btn:Hide()
+    end
+end
+
+-- [ CALENDAR PENDING INVITES ]----------------------------------------------------------------------
+
 function Plugin:UpdateCalendarInvites()
     local glow = self.frame.Clock.InviteGlow
     local pending = C_Calendar.GetNumPendingInvites and C_Calendar.GetNumPendingInvites() or 0

@@ -24,6 +24,7 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
         DisabledComponents = { "Status" },
         ComponentPositions = {
             Compartment = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 15, offsetY = -10, posX = 110.0000305175781, posY = -135.0000305175781, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
+            Tracking    = { anchorX = "LEFT",  anchorY = "BOTTOM", offsetX = -15, offsetY = -10, posX = -110.0000305175781, posY = -135.0000305175781, justifyH = "LEFT",  selfAnchorY = "BOTTOM" },
             Zoom = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 15, offsetY = 35, posX = 110.0000305175781, posY = -90.00003051757812, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
             Missions = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 20, offsetY = 20, posX = -105.0000305175781, posY = -105.0000305175781, justifyH = "CENTER", selfAnchorY = "BOTTOM" },
             Coords = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 30, offsetY = 10, posX = 95.00003051757812, posY = -115.0000305175781, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
@@ -84,6 +85,7 @@ function Plugin:OnLoad()
     Orbit.IconPreviewAtlases = Orbit.IconPreviewAtlases or {}
     Orbit.IconPreviewAtlases.Zoom = "common-icon-zoomin"
     Orbit.IconPreviewAtlases.Compartment = "Map-Filter-Button"
+    Orbit.IconPreviewAtlases.Tracking = "ui-hud-minimap-tracking-up"
     Orbit.IconPreviewAtlases.Difficulty = nil
     Orbit.IconPreviewAtlases.Mail = "ui-hud-minimap-mail-up"
     Orbit.IconPreviewAtlases.CraftingOrder = "UI-HUD-Minimap-CraftingOrder-Over-2x"
@@ -243,6 +245,9 @@ function Plugin:OnLoad()
     -- [ Compartment component ]
     self:CreateCompartmentButton()
 
+    -- [ Tracking component ]
+    self:CreateTrackingButton()
+
     -- [ Zoom component ] — two stacked buttons, shown on minimap hover
     self:CreateZoomButtons()
 
@@ -263,6 +268,11 @@ function Plugin:OnLoad()
         key = "Compartment",
         sourceOverride = self._compartmentButton.icon,
         onPositionChange = MPC("Compartment"),
+    })
+    OrbitEngine.ComponentDrag:Attach(self._trackingButton, self.frame, {
+        key = "Tracking",
+        sourceOverride = self._trackingButton.icon,
+        onPositionChange = MPC("Tracking"),
     })
     OrbitEngine.ComponentDrag:Attach(self.frame.ZoomContainer, self.frame, { key = "Zoom", onPositionChange = MPC("Zoom") })
     if self.frame.DifficultyIcon then OrbitEngine.ComponentDrag:Attach(self.frame.DifficultyIcon, self.frame, { key = DIFFICULTY_ICON_KEY, onPositionChange = MPC(DIFFICULTY_ICON_KEY) }) end
@@ -392,11 +402,31 @@ function Plugin:UsesAddonClickAction()
     return false
 end
 
+function Plugin:HasAnyClickAction()
+    for _, settingKey in pairs(CLICK_ACTION_KEYS) do
+        if self:GetSetting(SYSTEM_ID, settingKey) ~= "none" then
+            return true
+        end
+    end
+    return false
+end
+
+function Plugin:UsesTrackingClickAction()
+    for _, settingKey in pairs(CLICK_ACTION_KEYS) do
+        if self:GetSetting(SYSTEM_ID, settingKey) == "tracking" then
+            return true
+        end
+    end
+    return false
+end
+
 function Plugin:IsCanvasComponentHidden(componentKey)
     if componentKey == DIFFICULTY_ICON_KEY or componentKey == DIFFICULTY_TEXT_KEY then
         return componentKey ~= self:GetActiveDifficultyCanvasKey()
     end
-    return componentKey == "Compartment" and self:UsesAddonClickAction()
+    if componentKey == "Compartment" then return self:UsesAddonClickAction() end
+    if componentKey == "Tracking"    then return self:UsesTrackingClickAction() end
+    return false
 end
 
 function Plugin:IsComponentDisabled(componentKey)
@@ -756,10 +786,16 @@ function Plugin:ApplySettings()
     -- Show the container
     frame:Show()
 
+    -- ClickCapture: only intercept mouse clicks when at least one action is configured.
+    if frame.ClickCapture then
+        frame.ClickCapture:EnableMouse(self:HasAnyClickAction())
+    end
+
     -- Addon compartment (debounced to avoid C stack overrides during sliders)
     if self._compartmentTimer then self._compartmentTimer:Cancel() end
     self._compartmentTimer = C_Timer.NewTimer(0.2, function()
         self:ApplyAddonCompartment()
+        self:ApplyTrackingButton()
     end)
 
     -- Visibility Engine integration (opacity, OOC fade, mounted, mouseover)

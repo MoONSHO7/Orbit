@@ -43,6 +43,7 @@ local BLIZZARD_MINIMAP_CHILDREN = {
     ["OrbitMinimapCompartmentButton"] = true,
     ["OrbitMinimapCompartmentFlyout"] = true,
     ["OrbitMinimapButtonHolder"] = true,
+    ["OrbitMinimapTrackingButton"] = true,
     ["ExpansionLandingPageMinimapButton"] = true,
     ["TimeManagerClockButton"] = true,
     ["GameTimeFrame"] = true,
@@ -92,6 +93,14 @@ end
 
 -- Minimum button width to be considered a real addon button (map pins are typically <20px).
 local MIN_BUTTON_SIZE = 20
+
+-- Returns true if any classic DropDownMenu list is currently visible.
+-- Used to prevent the compartment flyout from auto-closing while an addon's
+-- dropdown menu (opened from a proxy button click) is still shown.
+local function IsDropdownMenuVisible()
+    return (DropDownList1 and DropDownList1:IsShown()) or
+           (DropDownList2 and DropDownList2:IsShown())
+end
 
 -- Store references to raw frame methods before they are overridden on individual collected buttons.
 local FrameSetParent      = UIParent.SetParent
@@ -186,7 +195,13 @@ function Plugin:CreateCompartmentFlyout()
 
         local tooltipShown = GameTooltip:IsShown() and GameTooltip:GetOwner() and GameTooltip:GetOwner():GetParent() == f  -- proxy tooltip open
 
-        if mouseOverFlyout or mouseOverBtn or mouseOverMinimap or tooltipShown or f._tooltipForwardActive or IsAnyMenuOpen() then
+        -- If a proxy button was recently clicked, check whether a dropdown menu is still
+        -- open. Clear the flag once no dropdown is visible so normal close logic resumes.
+        if f._menuActive and not IsDropdownMenuVisible() then
+            f._menuActive = false
+        end
+
+        if mouseOverFlyout or mouseOverBtn or mouseOverMinimap or tooltipShown or f._tooltipForwardActive or f._menuActive then
             outsideTimer = 0
         else
             outsideTimer = outsideTimer + elapsed
@@ -197,8 +212,8 @@ function Plugin:CreateCompartmentFlyout()
         end
     end)
 
-    flyout:SetScript("OnShow", function(f) outsideTimer = 0; f._tooltipForwardActive = false end)
-    flyout:SetScript("OnHide", function(f) outsideTimer = 0; f._tooltipForwardActive = false end)
+    flyout:SetScript("OnShow", function(f) outsideTimer = 0; f._tooltipForwardActive = false; f._menuActive = false end)
+    flyout:SetScript("OnHide", function(f) outsideTimer = 0; f._tooltipForwardActive = false; f._menuActive = false end)
 
     self._compartmentFlyout = flyout
 end
@@ -311,6 +326,9 @@ local function GetOrCreateProxyButton(originalBtn, parent)
     proxy:RegisterForClicks("AnyUp")
     proxy:SetScript("OnClick", function(self, button, down)
         -- Pass proxy (self) not originalBtn so any dropdown/menu anchors to the visible button.
+        -- Mark the flyout so it won't auto-close while the addon's menu is opening.
+        local flyout = self:GetParent()
+        if flyout then flyout._menuActive = true end
         local b = button or "LeftButton"
         local btn = originalBtn
         if btn.dataObject and btn.dataObject.OnClick then
