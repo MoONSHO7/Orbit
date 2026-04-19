@@ -31,7 +31,7 @@ function ABC:Create(plugin, config)
     frame.isSpecial = config.isSpecial
     frame:EnableMouse(true)
     frame:SetClampedToScreen(true)
-    frame.anchorOptions = { x = true, y = true, syncScale = false, syncDimensions = false, mergeBorders = true }
+    frame.anchorOptions = { x = true, y = true, mergeBorders = true }
     if config.index == PET_BAR_INDEX then RegisterStateDriver(frame, "visibility", PET_BAR_BASE_DRIVER)
     elseif config.index ~= 1 then RegisterStateDriver(frame, "visibility", BASE_VISIBILITY_DRIVER) end
     OrbitEngine.Frame:AttachSettingsListener(frame, plugin, config.index)
@@ -79,7 +79,7 @@ function ABC:CreateVehicleExit(plugin)
     container.editModeName = "Vehicle Exit"
     container:EnableMouse(true)
     container:SetClampedToScreen(true)
-    container.anchorOptions = { x = true, y = true, syncScale = false, syncDimensions = false }
+    container.anchorOptions = { x = true, y = true }
     container.disableCanvasMode = true
     OrbitEngine.Pixel:Enforce(container)
     container.Selection = container:CreateTexture(nil, "OVERLAY")

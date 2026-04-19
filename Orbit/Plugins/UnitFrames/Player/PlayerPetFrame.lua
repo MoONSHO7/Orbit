@@ -58,7 +58,7 @@ function Plugin:OnLoad()
     self.frame:SetFrameLevel(math.max(1, self.frame:GetFrameLevel() - FRAME_LEVEL_DEMOTE))
     self.frame.editModeName = "Pet Frame"
     self.frame.systemIndex = PET_FRAME_INDEX
-    self.frame.anchorOptions = { horizontal = false, vertical = true, syncScale = false, syncDimensions = false }
+    self.frame.anchorOptions = { horizontal = false, vertical = true }
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 20, maxH = 100 }
 
     -- Register Edit Mode callbacks for visibility updates

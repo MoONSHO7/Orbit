@@ -95,12 +95,12 @@ function Plugin:OnLoad()
     self.frame.anchorOptions = {
         horizontal = true,
         vertical = true,
-        syncScale = true,
-        syncDimensions = true,
         useRowDimension = true,
         mergeBorders = { x = false, y = true },
         independentHeight = true,
     }
+    self.frame.orbitWidthSync = true
+    self.frame.orbitHeightSync = true
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 10, maxH = 100 }
 
     self.frame:HookScript("OnSizeChanged", function()

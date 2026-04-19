@@ -117,6 +117,7 @@ function Plugin:OnLoad()
         systemIndex = SYSTEM_INDEX,
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = { x = false, y = true } }, -- Vertical stacking only
     })
+    Frame.orbitWidthSync = true
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 5, maxH = 40 }
     self.frame = Frame -- Expose for PluginMixin compatibility
     self.mountedConfig = { frame = Frame }

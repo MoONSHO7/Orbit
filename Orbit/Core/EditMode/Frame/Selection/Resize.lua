@@ -26,17 +26,22 @@ local SHIFT_DIVISOR_X = 6
 local SHIFT_DIVISOR_Y = 12
 
 -- Returns which axes are locked because the frame's anchor syncs that dimension from its parent.
--- TOP/BOTTOM anchors sync WIDTH; LEFT/RIGHT sync HEIGHT (matches SyncChild in Anchor.lua).
+-- TOP/BOTTOM anchors sync WIDTH (gated by orbitWidthSync); LEFT/RIGHT sync HEIGHT (gated by orbitHeightSync).
 local function GetSyncLocks(frame)
     if not frame then return false, false end
-    local anchor = Engine.FrameAnchor and Engine.FrameAnchor.anchors and Engine.FrameAnchor.anchors[frame]
-    if not anchor or not anchor.syncOptions or not anchor.syncOptions.syncDimensions then
+    local anchors = Engine.FrameAnchor and Engine.FrameAnchor.anchors
+    local anchor = anchors and anchors[frame]
+    if not anchor then return false, false end
+    local edgeAxis = Engine.Axis.ForEdge(anchor.edge)
+    if not edgeAxis then return false, false end
+    local crossAxis = edgeAxis.perpendicular
+    if not Engine.Axis.SyncEnabled(frame, crossAxis) then
         return false, false
     end
-    if anchor.edge == "LEFT" or anchor.edge == "RIGHT" then
-        return false, true
+    if crossAxis == Engine.Axis.vertical then
+        return false, true   -- height locked
     end
-    return true, false
+    return true, false       -- width locked
 end
 
 -- [ SLIDER SYNC ]-----------------------------------------------------------------------------------

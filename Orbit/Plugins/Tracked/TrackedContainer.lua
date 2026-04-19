@@ -53,8 +53,8 @@ function Container:Build(plugin, record)
     frame.recordId = record.id
     frame.iconItems = {} -- key -> icon item frame
     frame.dropZones = {} -- index -> drop zone frame
-    frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false, mergeBorders = true }
-    frame.orbitChainSync = true
+    frame.anchorOptions = { horizontal = true, vertical = true, mergeBorders = true }
+    frame.orbitWidthSync = true
     frame.orbitCursorReveal = true
     frame.orbitAnchorTargetPerSpec = true
     frame._isIconContainer = true
@@ -69,9 +69,9 @@ function Container:Build(plugin, record)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnReceiveDrag", function(self) Container:OnReceiveDrag(plugin, self) end)
-    frame.OnCooldownSettingsDrop = function(self, cooldownID) Container:OnCooldownSettingsDrop(plugin, self, cooldownID) end
     frame:SetScript("OnMouseDown", function(self, button)
         if button == "RightButton" and IsShiftKeyDown() and self:IsGridEmpty() then
+            if InCombatLockdown() then return end
             plugin:DeleteContainer(self.recordId)
             return
         end
@@ -381,6 +381,7 @@ function Container:AcquireDropZone(plugin, frame, index, gridX, gridY, iconW, ic
     -- Route shift-right-click through to delete when grid is empty.
     zone:SetScript("OnMouseDown", function(self, button)
         if button == "RightButton" and IsShiftKeyDown() then
+            if InCombatLockdown() then return end
             if frame:IsGridEmpty() then plugin:DeleteContainer(frame.recordId) end
             return
         end
@@ -409,26 +410,6 @@ function Container:OnReceiveDrag(plugin, frame)
     local x, y = 0, 0
     if hasItems then x = maxX + 1; y = minY end
     self:CommitDrop(plugin, frame, x, y)
-end
-
--- Dispatched by Orbit.CooldownSettingsDragBridge when a CooldownViewerSettings
--- icon is dropped onto this container. Mirrors OnReceiveDrag's "next free
--- right-edge slot" policy since the bridge drop has no specific grid target.
-function Container:OnCooldownSettingsDrop(plugin, frame, cooldownID)
-    local itemType, itemId = DragDrop:ResolveCooldownIDPayload(cooldownID)
-    if not itemType or not DragDrop:HasCooldown(itemType, itemId) then return end
-    local record = plugin:GetContainerRecord(frame.recordId)
-    if not record then return end
-    record.grid = record.grid or {}
-    local minX, maxX, minY, _, hasItems = self:ComputeBounds(record.grid)
-    local x, y = 0, 0
-    if hasItems then x = maxX + 1; y = minY end
-    local key = GridKey(x, y)
-    if record.grid[key] then return end
-    local entry = DragDrop:BuildTrackedItemEntry(itemType, itemId, x, y)
-    if not entry then return end
-    record.grid[key] = entry
-    Container:Apply(plugin, frame, record)
 end
 
 function Container:CommitDrop(plugin, frame, gridX, gridY)
@@ -487,10 +468,12 @@ function Container:StartUpdateTicker(plugin, frame)
         nextUpdate = now + COOLDOWN_THROTTLE
         if not frame:IsShown() then return end
         for _, icon in pairs(frame.iconItems) do
-            if icon:IsShown() then IconItem:Update(icon) end
+            if icon.trackedId then IconItem:Update(icon) end
         end
     end)
     -- Visual-state poll: re-evaluate desat/alpha/glow between event bursts.
+    -- IsShown gate removed — hideOnCooldown/hideOnAvailable may have SetShown(false) on icons, and
+    -- Update is the only path that can flip the visibility back when state changes.
     local pollAccum = 0
     evtFrame:SetScript("OnUpdate", function(_, elapsed)
         pollAccum = pollAccum + elapsed
@@ -498,7 +481,7 @@ function Container:StartUpdateTicker(plugin, frame)
         pollAccum = 0
         if not frame:IsShown() then return end
         for _, icon in pairs(frame.iconItems) do
-            if icon:IsShown() and icon.trackedId then IconItem:Update(icon) end
+            if icon.trackedId then IconItem:Update(icon) end
         end
     end)
     frame._eventFrame = evtFrame

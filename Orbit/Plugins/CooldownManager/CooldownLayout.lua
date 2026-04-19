@@ -287,7 +287,7 @@ function CDM:ProcessChildren(anchor)
             end
             local barH = Pixel:Snap(skinSettings.buffBarHeight or 20, scale)
             local settingW = Pixel:Snap(math.max(skinSettings.buffBarWidth or 200, BUFFBAR_MIN_WIDTH), scale)
-            -- When docked, anchor width is authoritative (syncDimensions from parent); when undocked, use setting width
+            -- When docked, anchor width is authoritative (orbitWidthSync from parent); when undocked, use setting width
             local isDocked = GetAnchorInfo(anchorFrame) ~= nil
             if not isDocked then anchorFrame:SetWidth(settingW) end
             local barW = isDocked and anchorFrame:GetWidth() or math.max(anchorFrame:GetWidth(), settingW)

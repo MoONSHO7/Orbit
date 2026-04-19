@@ -109,8 +109,6 @@ function Plugin:OnLoad()
     self.frame.anchorOptions = {
         horizontal = true,
         vertical = true,
-        syncScale = false,
-        syncDimensions = false,
     }
 
     -- Default position

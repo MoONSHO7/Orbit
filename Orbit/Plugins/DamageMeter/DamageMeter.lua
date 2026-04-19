@@ -367,6 +367,7 @@ function Plugin:SnapAllMetersToCurrent()
            or def.breakdownGUID ~= nil or def.scrollOffset ~= 0 then
             def.sessionType         = DM.SessionType.Current
             def.sessionID           = nil
+            def.sessionName         = nil
             def.viewMode            = "chart"
             def.breakdownGUID       = nil
             def.breakdownCreatureID = nil

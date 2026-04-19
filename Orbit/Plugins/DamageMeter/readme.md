@@ -50,7 +50,7 @@ frames are built eagerly at `OnLoad` (not deferred to `PLAYER_ENTERING_WORLD`) b
 
 | input | action |
 |---|---|
-| left-drag | move frame; on drop, store absolute pixel offset from UIParent TOPLEFT. |
+| left-drag | move frame; participates in the standard orbit anchor/snap system. |
 | left-click on bar | chart view → drill into that source's spell breakdown. history view → jump the meter to that session. |
 | right-click | chart view → enter history picker. any other view → return to chart. |
 | shift + right-click | context menu: metric selector (checkbox of 8 types), new meter, delete meter (hidden on master). |
@@ -62,4 +62,16 @@ frames are built eagerly at `OnLoad` (not deferred to `PLAYER_ENTERING_WORLD`) b
 - layout dialog has two tabs: **Layout** for per-meter styling, **Behaviour** for plugin-global toggles (auto-switch on combat, auto-reset-on-instance CVar proxy). metric + create/delete still live in the right-click menu.
 - skin inherits `Orbit.db.GlobalSettings` — font, bar texture, border size/style. no per-meter override.
 - `Plugin:ApplySettings` only re-renders / relayouts; it NEVER calls into blizzard's DamageMeter mutators (that taints the entry data provider — see DamageMeterDisable.lua comment).
-- frames always anchor TOPLEFT; bars always stack top-to-bottom (rank 1 at the top); fill always grows left-to-right. no auto-mirror based on screen position.
+- bars always stack top-to-bottom (rank 1 at the top); fill always grows left-to-right.
+
+## anchoring
+
+meters support anchoring to any edge (TOP, BOTTOM, LEFT, RIGHT) via the standard orbit snap/anchor system. only `orbitWidthSync` is set — T/B stacking propagates root width down the stack; L/R placement is a plain anchor with no cross-axis sync (height is owned by the DM, not the parent).
+
+**vertical stacking (T/B anchor).** DPS → HPS → Interrupts stacked:
+- `orbitWidthSync` propagates the root meter's width down the chain — change the top meter's BarWidth and all stacked meters follow.
+- engine treats the stack as one rectangle — other orbit frames snap against the full stack's outer edges, not individual members.
+
+**lateral placement (L/R anchor, no sync).** dropping a DM onto the LEFT or RIGHT edge of another orbit frame (UnitFrames, Tracked, another DM, etc.) parks the DM beside it. No height sync runs: DM height is derived from `barCount × barHeight + gaps` and stays under the plugin's control. Users resize via the stretch tab / TotalHeight, bar height, or bar gap — a parent frame's height never overrides these.
+
+drag uses the standard orbit anchor/snap flow; there is no quadrant-flip or auto-mirror on drop.

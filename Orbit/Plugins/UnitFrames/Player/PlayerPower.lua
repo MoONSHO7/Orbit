@@ -239,6 +239,7 @@ function Plugin:OnLoad()
         template = "BackdropTemplate",
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = { x = false, y = true } },
     })
+    Frame.orbitWidthSync = true
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 4, maxH = 25 }
     self.frame = Frame
     self.mountedConfig = { frame = Frame }

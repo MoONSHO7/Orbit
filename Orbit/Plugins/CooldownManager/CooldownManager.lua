@@ -118,7 +118,8 @@ function Plugin:OnLoad()
     self.utilityAnchor = self:CreateAnchor("OrbitUtilityCooldowns", UTILITY_INDEX, "Utility Cooldowns")
     self.buffIconAnchor = self:CreateAnchor("OrbitBuffIconCooldowns", BUFFICON_INDEX, "Buff Icons")
     self.buffBarAnchor = self:CreateAnchor("OrbitBuffBarCooldowns", BUFFBAR_INDEX, "Buff Bars",
-        { horizontal = false, vertical = true, syncScale = false, syncDimensions = true, mergeBorders = true })
+        { horizontal = false, vertical = true, mergeBorders = true })
+    self.buffBarAnchor.orbitWidthSync = true
     self.buffBarAnchor.orbitNoGroupSelect = true
     VIEWER_MAP[ESSENTIAL_INDEX] = { viewer = EssentialCooldownViewer, anchor = self.essentialAnchor }
     VIEWER_MAP[UTILITY_INDEX] = { viewer = UtilityCooldownViewer, anchor = self.utilityAnchor }
@@ -315,8 +316,8 @@ function Plugin:CreateAnchor(name, systemIndex, label, overrideOptions)
     frame.systemIndex = systemIndex
     frame.editModeName = label
     frame:EnableMouse(false)
-    frame.anchorOptions = overrideOptions or { horizontal = true, vertical = true, syncScale = false, syncDimensions = false, useRowDimension = true, mergeBorders = true }
-    frame.orbitChainSync = true
+    frame.anchorOptions = overrideOptions or { horizontal = true, vertical = true, useRowDimension = true, mergeBorders = true }
+    frame.orbitWidthSync = true
     frame.orbitCursorReveal = true
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 

@@ -60,7 +60,7 @@ function Plugin:OnLoad()
     self.frame:SetClampedToScreen(true)
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Queue Status"
-    self.frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
+    self.frame.anchorOptions = { horizontal = true, vertical = true }
     self.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)
     OrbitEngine.Frame:RestorePosition(self.frame, self, SYSTEM_ID)

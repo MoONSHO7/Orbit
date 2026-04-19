@@ -49,8 +49,6 @@ function Plugin:OnLoad()
     self.frame.anchorOptions = {
         horizontal = false,
         vertical = false,
-        syncScale = false,
-        syncDimensions = false,
     }
 
     -- Default Position (top center, like native)

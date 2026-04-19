@@ -295,8 +295,9 @@ function Mixin:CreateAuraGridPlugin(config)
     Frame.systemIndex = 1
     if config.anchorParent then
         Frame.anchorOptions = { horizontal = false, vertical = true }
+        Frame.orbitWidthSync = true
     else
-        Frame.anchorOptions = { syncScale = false, syncDimensions = false }
+        Frame.anchorOptions = {}
     end
     OrbitEngine.Frame:AttachSettingsListener(Frame, self, 1)
 

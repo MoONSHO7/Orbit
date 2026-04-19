@@ -295,10 +295,9 @@ function Injection:RefreshFrames(systemIndex)
         self:ReleaseFrame(systemIndex, active[i])
         active[i] = nil
     end
-    -- Acquire/update frames — parent to blizzFrame (viewer) so ApplyManualLayout positions them correctly
     local viewerMap = Plugin.viewerMap
     local entry = viewerMap[systemIndex]
-    local parent = entry and entry.viewer or UIParent
+    local parent = entry and entry.anchor or UIParent
     for i, data in ipairs(items) do
         local frame = active[i]
         if not frame then

@@ -7,8 +7,9 @@ local Engine = Orbit.Engine
 Engine.AnchorGraph = {}
 local Graph = Engine.AnchorGraph
 
--- [ CONSTANTS ] -------------------------------------------------------------------------------------
-local HORIZONTAL_EDGES = { LEFT = true, RIGHT = true }
+-- [ AXIS REFS ] -------------------------------------------------------------------------------------
+local Axis = Engine.Axis
+local SyncEnabled = Axis.SyncEnabled
 
 -- [ STATE ] -----------------------------------------------------------------------------------------
 -- Additive tracking: virtualNodes = content-empty, disabledNodes = profile-level disabled.
@@ -72,8 +73,9 @@ function Graph:WouldCreateCycle(child, parent)
     return false
 end
 
--- [ CHAIN ROOT ] ------------------------------------------------------------------------------------
-function Graph:GetChainRoot(frame)
+-- [ ANCHOR ROOT ] -----------------------------------------------------------------------------------
+-- Walks up anchor parents to the ultimate root (no chain semantics). Used for batch reconciliation.
+function Graph:GetAnchorRoot(frame)
     local current = frame
     local visited = {}
     while true do
@@ -85,50 +87,15 @@ function Graph:GetChainRoot(frame)
     end
 end
 
--- [ HORIZONTAL CHAIN ROOT ] -------------------------------------------------------------------------
-function Graph:GetHorizontalChainRoot(frame)
-    if not frame.orbitChainSync then return frame end
-    local root = frame
-    local visited = {}
-    while true do
-        if visited[root] then break end
-        visited[root] = true
-        local a = self.anchors[root]
-        if not a or not HORIZONTAL_EDGES[a.edge] then break end
-        if not a.parent.orbitChainSync then break end
-        root = a.parent
-    end
-    return root
-end
-
--- [ HORIZONTAL CHAIN NODES ] ------------------------------------------------------------------------
-function Graph:GetHorizontalChainNodes(frame)
-    if not frame.orbitChainSync then return nil end
-    local root = self:GetHorizontalChainRoot(frame)
-    local frames = { root }
-    local function walk(parent)
-        local children = self.childrenOf[parent]
-        if not children then return end
-        for child in pairs(children) do
-            local a = self.anchors[child]
-            if a and HORIZONTAL_EDGES[a.edge] and child.orbitChainSync then
-                frames[#frames + 1] = child
-                walk(child)
-            end
-        end
-    end
-    walk(root)
-    return frames
-end
-
 -- [ DEPENDENTS ] ------------------------------------------------------------------------------------
-function Graph:GetDependents(frame, chainSyncOnly)
+-- syncAxis: if provided, only include descendants that sync on that axis.
+function Graph:GetDependents(frame, syncAxis)
     local result = {}
     local function walk(parent)
         local children = self.childrenOf[parent]
         if not children then return end
         for child in pairs(children) do
-            if not chainSyncOnly or child.orbitChainSync then
+            if not syncAxis or SyncEnabled(child, syncAxis) then
                 result[#result + 1] = child
                 walk(child)
             end
@@ -245,7 +212,7 @@ function Graph:ReconcileAll(anchorModule)
     if InCombatLockdown() then return end
     local roots = {}
     for child in pairs(self.anchors) do
-        roots[self:GetChainRoot(child)] = true
+        roots[self:GetAnchorRoot(child)] = true
     end
     for root in pairs(roots) do
         self:ReconcileChain(root, anchorModule)
@@ -299,12 +266,12 @@ function Graph:FlushPendingReconciles()
     local roots = self.pendingRoots
     self.pendingRoots = {}
     if not anchorModule then return end
-    -- Root may have shifted (GetChainRoot chases parents) if another scheduled
+    -- Root may have shifted (GetAnchorRoot chases parents) if another scheduled
     -- change reparented it. Resolve at flush time, then dedupe resolved roots
     -- so we never walk the same chain twice.
     local resolved = {}
     for root in pairs(roots) do
-        local current = self:GetChainRoot(root)
+        local current = self:GetAnchorRoot(root)
         if current then resolved[current] = true end
     end
     for root in pairs(resolved) do

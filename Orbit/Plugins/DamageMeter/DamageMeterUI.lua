@@ -504,6 +504,16 @@ local METER_TYPE_LABEL_KEY = {
     [DM.MeterType.Deaths]                = "PLU_DM_METRIC_DEATHS",
 }
 
+-- sessionName is captured drop-time with issecretvalue guard; type-based labels are localized constants.
+local function ResolveSessionLabel(def)
+    if def.sessionID then
+        if def.sessionName and def.sessionName ~= "" then return def.sessionName end
+        return "#" .. tostring(def.sessionID)
+    end
+    if def.sessionType == DM.SessionType.Overall then return L.PLU_DM_SESSION_OVERALL end
+    return L.PLU_DM_SESSION_CURRENT
+end
+
 local function BuildTitleText(def)
     if not def then return "" end
     local labelKey = METER_TYPE_LABEL_KEY[def.meterType] or "PLU_DM_METRIC_DAMAGE"
@@ -520,8 +530,9 @@ local function BuildTitleText(def)
         if name and name ~= "" then
             return metricLabel .. ": " .. name
         end
+        return metricLabel
     end
-    return metricLabel
+    return metricLabel .. ": " .. ResolveSessionLabel(def)
 end
 
 local function RefreshTitle(frame, def)
@@ -534,15 +545,24 @@ local function RefreshTitle(frame, def)
         return
     end
     title:SetText(BuildTitleText(def))
+    title:SetWordWrap(false)
+    title:SetNonSpaceWrap(false)
+    -- Cap width to the visible rect so overflowing titles render as "Damage: Curren..." instead of spilling past the frame.
+    local rectWidth = rect:GetWidth()
+    if rectWidth and rectWidth > 0 then title:SetWidth(rectWidth) end
     title:ClearAllPoints()
     if mode == TITLE_TOP_LEFT then
         title:SetPoint("BOTTOMLEFT",  rect, "TOPLEFT",    0,  TITLE_GAP)
+        title:SetJustifyH("LEFT")
     elseif mode == TITLE_TOP_RIGHT then
         title:SetPoint("BOTTOMRIGHT", rect, "TOPRIGHT",   0,  TITLE_GAP)
+        title:SetJustifyH("RIGHT")
     elseif mode == TITLE_BOTTOM_LEFT then
         title:SetPoint("TOPLEFT",     rect, "BOTTOMLEFT", 0, -TITLE_GAP)
+        title:SetJustifyH("LEFT")
     else -- TITLE_BOTTOM_RIGHT
         title:SetPoint("TOPRIGHT",    rect, "BOTTOMRIGHT",0, -TITLE_GAP)
+        title:SetJustifyH("RIGHT")
     end
     title:Show()
 end
@@ -752,7 +772,15 @@ local function BuildMeterFrame(id, def)
     local meterTag = (id == DM.MasterID) and L.PLU_DM_MASTER_LABEL or ("#" .. id)
     frame.editModeName = "Damage Meter " .. meterTag
     frame.orbitPlugin = Plugin
-    frame.anchorOptions = { horizontal = false, vertical = true, syncScale = false, syncDimensions = true, mergeBorders = true }
+    -- Any-edge anchoring: DM stack can snap T/B (width propagates via orbitWidthSync) or L/R
+    -- (plain anchor, no cross-axis sync). Height is intentionally NOT synced — DM's height
+    -- derives from barCount × barHeight + gaps and must not be overwritten by a parent.
+    frame.anchorOptions = {
+        horizontal   = true,
+        vertical     = true,
+        mergeBorders = true,
+    }
+    frame.orbitWidthSync = true
     -- Master barCount is pinned to 1, so vertical drag writes BarHeight instead of TotalHeight.
     if def.isMaster then
         frame.orbitResizeBounds = {
@@ -791,9 +819,16 @@ local function BuildMeterFrame(id, def)
             -- Plugin.CLEAR erases def.sessionID explicitly: nil in a patch table is invisible to pairs().
             if def2.viewMode == "history" and bar._historyEntry then
                 local entry = bar._historyEntry
+                -- Drop-time capture: session names from C_DamageMeter can be secret in combat; skip if so.
+                local capturedName
+                if entry.kind == "id" and entry.name
+                   and (not issecretvalue or not issecretvalue(entry.name)) then
+                    capturedName = entry.name
+                end
                 Plugin:UpdateMeterDef(id, {
                     sessionType  = entry.sessionType or DM.SessionType.Current,
                     sessionID    = entry.sessionID or Plugin.CLEAR,
+                    sessionName  = capturedName or Plugin.CLEAR,
                     viewMode     = "chart",
                     scrollOffset = 0,
                 })

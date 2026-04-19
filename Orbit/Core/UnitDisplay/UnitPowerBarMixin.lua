@@ -43,6 +43,7 @@ function Mixin:CreatePowerBarPlugin(config)
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = { x = false, y = true } },
     })
     Frame:SetFrameLevel(Frame:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
+    Frame.orbitWidthSync = true
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 4, maxH = 25 }
     self._pbFrame = Frame
     self._pbBar = PowerBar

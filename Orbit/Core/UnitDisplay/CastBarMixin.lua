@@ -91,7 +91,8 @@ function Mixin:CreateCastBarFrame(name, config)
     bar.preview = false
 
     -- Frame options
-    bar.anchorOptions = config.anchorOptions or { horizontal = false, vertical = true, syncScale = true, syncDimensions = true }
+    bar.anchorOptions = config.anchorOptions or { horizontal = false, vertical = true }
+    bar.orbitWidthSync = true
     bar.orbitResizeBounds = { minW = 100, maxW = 600, minH = 5, maxH = 40, widthKey = "CastBarWidth", heightKey = "CastBarHeight" }
 
     -- Attach to Frame system

@@ -581,6 +581,7 @@ function Plugin:OnLoad()
 
     self.frame = self.container
     self.frame.anchorOptions = { horizontal = true, vertical = false }
+    self.frame.orbitHeightSync = true
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 20, maxH = 100 }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, 1)
 

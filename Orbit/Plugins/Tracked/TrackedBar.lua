@@ -140,8 +140,8 @@ function Bar:Build(plugin, record)
     frame.editModeName = "Tracked Bar"
     frame.orbitPlugin = plugin
     frame.recordId = record.id
-    frame.anchorOptions = { horizontal = false, vertical = true, syncScale = false, syncDimensions = true, mergeBorders = true }
-    frame.orbitChainSync = true
+    frame.anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }
+    frame.orbitWidthSync = true
     frame.orbitAnchorTargetPerSpec = true
     frame.orbitResizeBounds = { minW = 80, maxW = 400, minH = 12, maxH = 40 }
 
@@ -297,9 +297,9 @@ function Bar:Build(plugin, record)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnReceiveDrag", function(self) Bar:OnReceiveDrag(plugin, self) end)
-    frame.OnCooldownSettingsDrop = function(self, cooldownID) Bar:OnCooldownSettingsDrop(plugin, self, cooldownID) end
     frame:SetScript("OnMouseDown", function(self, button)
         if button == "RightButton" and IsShiftKeyDown() then
+            if InCombatLockdown() then return end
             Bar:HandleShiftRightClick(plugin, self)
             return
         end
@@ -978,23 +978,6 @@ function Bar:OnReceiveDrag(plugin, frame)
     if not record.payload then return end
 
     ClearCursor()
-    Bar:Apply(plugin, frame, record)
-end
-
--- Dispatched by Orbit.CooldownSettingsDragBridge when a CooldownViewerSettings
--- icon is dropped onto this bar. Uses the same two-step gate as OnReceiveDrag:
--- an existing payload must be cleared first.
-function Bar:OnCooldownSettingsDrop(plugin, frame, cooldownID)
-    local itemType, id = DragDrop:ResolveCooldownIDPayload(cooldownID)
-    if not itemType or not DragDrop:HasCooldown(itemType, id) then return end
-    local record = plugin:GetContainerRecord(frame.recordId)
-    if not record then return end
-    if record.payload and record.payload.id then
-        Orbit:Print("Tracked: clear the current payload first (shift-right-click) before assigning a new one")
-        return
-    end
-    record.payload = DragDrop:BuildTrackedBarPayload(itemType, id)
-    if not record.payload then return end
     Bar:Apply(plugin, frame, record)
 end
 

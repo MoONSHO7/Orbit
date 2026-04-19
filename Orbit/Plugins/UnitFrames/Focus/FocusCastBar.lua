@@ -27,10 +27,9 @@ function Plugin:OnLoad()
     CastBar.anchorOptions = {
         horizontal = false,
         vertical = true,
-        syncScale = true,
-        syncDimensions = true,
         mergeBorders = { x = false, y = true },
     }
+    CastBar.orbitWidthSync = true
 
     self.CastBar = CastBar
     self.Frame = CastBar
