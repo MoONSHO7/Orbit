@@ -236,8 +236,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     -- Create anchor line gradient textures (two halves per edge for center-out fade)
     local lineThickness = C.Selection.AnchorLineThickness
     local lineContainer = CreateFrame("Frame", nil, selection)
-    lineContainer:SetFrameStrata(Orbit.Constants.Strata.Topmost)
-    lineContainer:SetFrameLevel(10)
+    lineContainer:SetFrameLevel(selection:GetFrameLevel() + 10)
     lineContainer:SetAllPoints(selection)
     selection.AnchorLineFrame = lineContainer
     local function MakeHalf(p1, rp1, x1, y1, p2, rp2, x2, y2)
