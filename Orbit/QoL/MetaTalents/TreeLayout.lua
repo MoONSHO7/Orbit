@@ -1,4 +1,4 @@
--- [ METATALENTS / TREE LAYOUT ]-----------------------------------------------------------
+-- [ METATALENTS / TREE LAYOUT ] ---------------------------------------------------------------------
 -- Blizzard talent-tree layout tweaks that belong to the MetaTalents feature: rewriting the
 -- SpendText on every button so capstone pips/masters and standard nodes each get their
 -- own formatting, pulling apex (capstone) buttons underneath the hero talent container so
@@ -17,7 +17,7 @@ local STANDARD_TEXT_DELTA = -2
 local CAPSTONE_TEXT_DELTA = 2
 local MIN_FONT_SIZE = 6
 
--- [ SPEND TEXT HOOK ]-------------------------------------------------------------------
+-- [ SPEND TEXT HOOK ] -------------------------------------------------------------------------------
 -- Three cases: capstone pip children (suppressed entirely), capstone master nodes
 -- (aggregate counter to the right), and standard nodes (scaled-down TOPRIGHT badge).
 local function HandleCapstonePip(button)
@@ -76,7 +76,7 @@ function Layout.HookSpendText()
     end)
 end
 
--- [ APEX RELOCATION ]-------------------------------------------------------------------
+-- [ APEX RELOCATION ] -------------------------------------------------------------------------------
 -- Apex/capstone buttons live inside a scrolled container that clips them near the edge of
 -- the tree. Reparent to the hero container (escaping the scroll clip) and anchor to the
 -- bottom of its expanded box. Wrapped in C_Timer.After(0) so the reparent lands after the
@@ -101,7 +101,7 @@ function Layout.HookApplyPosition(setupDropdownsFn)
     end)
 end
 
--- [ CAPSTONE PIP FLATTENING ]-----------------------------------------------------------
+-- [ CAPSTONE PIP FLATTENING ] -----------------------------------------------------------------------
 -- Straightens the three-pip array Blizzard curves along the native progress track so the
 -- Orbit pick-rate badges below each pip don't overlap. The native progress bar itself is
 -- alpha'd out to hide the leftover arc.

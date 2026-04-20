@@ -4,12 +4,12 @@ local _, Orbit = ...
 local DT = Orbit.Datatexts
 local RingBuffer = DT.Formatting.RingBuffer
 
--- [ CONSTANTS ] -------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local LINE_THICKNESS = 1
 local BG_ALPHA = 0.5
 local MIN_POINTS = 2
 
--- [ GRAPH ] -----------------------------------------------------------------------
+-- [ GRAPH ] -----------------------------------------------------------------------------------------
 local Graph = {}
 DT.Graph = Graph
 

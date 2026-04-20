@@ -1,4 +1,4 @@
--- [ PLAYER RESOURCE SETTINGS UI ]------------------------------------------------------------------
+-- [ PLAYER RESOURCE SETTINGS UI ] -------------------------------------------------------------------
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine

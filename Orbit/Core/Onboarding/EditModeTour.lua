@@ -1,11 +1,11 @@
--- [ EDIT MODE - GUIDED TOUR (PLAYGROUND) ]-------------------------------------------
+-- [ EDIT MODE - GUIDED TOUR (PLAYGROUND) ] ----------------------------------------------------------
 -- Strings live in Orbit/Localization/Domains/Tours.lua under the TOUR_EM_* prefix.
 -- When adding or renaming tour steps here, update the matching keys there.
 ---@type Orbit
 local Orbit = Orbit
 local Engine = Orbit.Engine
 
--- [ CONSTANTS ]----------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local OVERLAY_ALPHA = 0.90
 local OVERLAY_STRATA = "TOOLTIP"
 local OVERLAY_LEVEL = 100
@@ -42,7 +42,7 @@ local ACCENT_WIDTH = 2
 local TOOLTIP_LEVEL = 9500
 local FONT = "GameFontNormalSmall"
 
--- [ LOCALIZATION ]-------------------------------------------------------------------
+-- [ LOCALIZATION ] ----------------------------------------------------------------------------------
 -- Strings live in Localization/Domains/Tours.lua (TOUR_EM_* keys) and Common.lua
 -- (CMN_NEXT / CMN_DONE). Everything below this block up to `local isCJK = ...` was
 -- removed in the central localization migration.
@@ -50,18 +50,18 @@ local L = Orbit.L
 local isCJK = ({ koKR = true, zhCN = true, zhTW = true })[GetLocale()]
 if isCJK then TOOLTIP_MAX_WIDTH = 280 end
 
--- [ MODULE ]-------------------------------------------------------------------------
+-- [ MODULE ] ----------------------------------------------------------------------------------------
 Engine.EditModeTour = Engine.EditModeTour or {}
 local Tour = Engine.EditModeTour
 Tour.active = false
 Tour.index = 0
 
--- [ PLUGIN REFERENCE ]---------------------------------------------------------------
+-- [ PLUGIN REFERENCE ] ------------------------------------------------------------------------------
 local function GetPlugin() return Orbit:GetPlugin("Orbit_Tour") end
 local function GetFrameA() local p = GetPlugin(); return p and p.frameA end
 local function GetFrameB() local p = GetPlugin(); return p and p.frameB end
 
--- [ DARK OVERLAY ]-------------------------------------------------------------------
+-- [ DARK OVERLAY ] ----------------------------------------------------------------------------------
 local overlay = CreateFrame("Frame", "OrbitEditModeTourOverlay", UIParent)
 overlay:SetFrameStrata(OVERLAY_STRATA)
 overlay:SetFrameLevel(OVERLAY_LEVEL)
@@ -73,7 +73,7 @@ overlay.bg = overlay:CreateTexture(nil, "BACKGROUND")
 overlay.bg:SetAllPoints()
 overlay.bg:SetColorTexture(0, 0, 0, OVERLAY_ALPHA)
 
--- [ STAR FIELD ]----------------------------------------------------------------------
+-- [ STAR FIELD ] ------------------------------------------------------------------------------------
 local stars = {}
 local function BuildStars()
     if #stars > 0 then return end
@@ -98,7 +98,7 @@ end
 local function ShowStars() BuildStars(); for _, s in ipairs(stars) do s.tex:Show() end end
 local function HideStars() for _, s in ipairs(stars) do s.tex:Hide() end end
 
--- [ OPTIONS BLOCKER ]------------------------------------------------------------------
+-- [ OPTIONS BLOCKER ] -------------------------------------------------------------------------------
 local optionsBlocker = CreateFrame("Frame", nil, UIParent)
 optionsBlocker:SetFrameStrata(Orbit.Constants.Strata.Topmost)
 optionsBlocker:SetFrameLevel(BLOCKER_FRAME_LEVEL)
@@ -131,7 +131,7 @@ overlay:SetScript("OnUpdate", function(self, elapsed)
     end
 end)
 
--- [ WELCOME TITLE ]------------------------------------------------------------------
+-- [ WELCOME TITLE ] ---------------------------------------------------------------------------------
 
 local BARLOW_BLACK = "Interface\\AddOns\\Orbit\\Core\\assets\\Fonts\\BarlowCondensed-Black.ttf"
 overlay.welcomeTitle = overlay:CreateFontString(nil, "OVERLAY")
@@ -147,7 +147,7 @@ overlay.welcomeSub:SetTextColor(0.75, 0.75, 0.75)
 overlay.welcomeSub:SetText("Things are done differently here")
 overlay.welcomeSub:SetAlpha(0)
 
--- [ TASK COMPLETION STATE ]----------------------------------------------------------
+-- [ TASK COMPLETION STATE ] -------------------------------------------------------------------------
 local taskState = {}
 local savedDialogStrata = nil
 local savedDialogLevel = nil
@@ -165,12 +165,12 @@ local function ResetTaskState()
     taskState.initialPadding = nil
 end
 
--- [ TOUR STOPS ]---------------------------------------------------------------------
+-- [ TOUR STOPS ] ------------------------------------------------------------------------------------
 local TOUR_STOPS -- forward declaration, initialized after tooltip
 local UpdateHierarchyLabels, ResetHierarchyLabels
 local ShowResizePulse, HideResizePulse
 
--- [ CUSTOM TOOLTIP ]-----------------------------------------------------------------
+-- [ CUSTOM TOOLTIP ] --------------------------------------------------------------------------------
 local function MakeBorderEdge(parent, horiz, p1, r1, p2, r2)
     local t = parent:CreateTexture(nil, "BORDER")
     t:SetColorTexture(BORDER_CLR.r, BORDER_CLR.g, BORDER_CLR.b, BORDER_CLR.a)
@@ -258,7 +258,7 @@ tip.nextBtn:SetScript("OnClick", function()
     end
 end)
 
--- [ SETTINGS CHANGE TRACKING ]------------------------------------------------------
+-- [ SETTINGS CHANGE TRACKING ] ----------------------------------------------------------------------
 local originalSetSetting = nil
 
 local function TrackingSetSetting(self, systemIndex, key, value)
@@ -269,7 +269,7 @@ local function TrackingSetSetting(self, systemIndex, key, value)
     end
 end
 
--- [ PARENT / CHILD HELPERS ]---------------------------------------------------------
+-- [ PARENT / CHILD HELPERS ] ------------------------------------------------------------------------
 local function GetParentFrame()
     local frameA, frameB = GetFrameA(), GetFrameB()
     local Anchor = Engine.FrameAnchor
@@ -288,7 +288,7 @@ local function GetChildFrame()
     return frameB
 end
 
--- [ TASK STATE POLLER ]---------------------------------------------------------------
+-- [ TASK STATE POLLER ] -----------------------------------------------------------------------------
 local CHECK_INTERVAL = 0.1
 local checkElapsed = 0
 local stopElapsed = 0
@@ -370,7 +370,7 @@ tip:SetScript("OnUpdate", function(self, elapsed)
     if (stop.check and stop.check()) or stopElapsed >= NEXT_ENABLE_TIMER then tip.nextBtn:Enable() end
 end)
 
--- [ LAYOUT TOOLTIP ]-----------------------------------------------------------------
+-- [ LAYOUT TOOLTIP ] --------------------------------------------------------------------------------
 local TOOLTIP_OFFSET = 50
 
 local function ComputeFrameAnchor(anchorFrame)
@@ -405,7 +405,7 @@ local function LayoutTooltip(anchorFrame, stop, idx, total)
     tip:Show()
 end
 
--- [ SNAP ISOLATION ]------------------------------------------------------------------
+-- [ SNAP ISOLATION ] --------------------------------------------------------------------------------
 local originalGetSnapTargets = nil
 
 local function IsolatedGetSnapTargets(self, excludeFrame)
@@ -416,7 +416,7 @@ local function IsolatedGetSnapTargets(self, excludeFrame)
     return targets
 end
 
--- [ NUDGE TRACKING ]-----------------------------------------------------------------
+-- [ NUDGE TRACKING ] --------------------------------------------------------------------------------
 local originalNudgeFrame = nil
 
 local function TrackingNudgeFrame(self, frame, direction, ...)
@@ -425,7 +425,7 @@ local function TrackingNudgeFrame(self, frame, direction, ...)
     return originalNudgeFrame(self, frame, direction, ...)
 end
 
--- [ RESIZE PULSE ]-------------------------------------------------------------------
+-- [ RESIZE PULSE ] ----------------------------------------------------------------------------------
 local resizePulses = {}
 
 local function CreateResizePulse()
@@ -476,7 +476,7 @@ ShowResizePulse = function()
     end
 end
 
--- [ TOUR STOPS (deferred init — needs frame refs) ]----------------------------------
+-- [ TOUR STOPS (deferred init — needs frame refs) ] -------------------------------------------------
 TOUR_STOPS = {
     { anchorKey = "A",
       title = L.TOUR_EM_STEP1_TITLE, text = L.TOUR_EM_STEP1_TEXT,
@@ -581,7 +581,7 @@ local function ResolveAnchor(stop)
     elseif stop.anchorKey == "options" then return Orbit.SettingsDialog end
 end
 
--- [ HIERARCHY LABELS ]---------------------------------------------------------------
+-- [ HIERARCHY LABELS ] ------------------------------------------------------------------------------
 UpdateHierarchyLabels = function()
     local frameA, frameB = GetFrameA(), GetFrameB()
     if not frameA or not frameB then return end
@@ -601,7 +601,7 @@ ResetHierarchyLabels = function()
     if frameB then frameB.label:SetText("B") end
 end
 
--- [ ANCHOR TRACKING ]----------------------------------------------------------------
+-- [ ANCHOR TRACKING ] -------------------------------------------------------------------------------
 local originalBreakAnchor = nil
 
 local function TrackingBreakAnchor(self, child, ...)
@@ -618,7 +618,7 @@ local function TrackingBreakAnchor(self, child, ...)
     return result
 end
 
--- [ TOOLTIP ANIMATION ]--------------------------------------------------------------
+-- [ TOOLTIP ANIMATION ] -----------------------------------------------------------------------------
 local SHRINK_SCALE = 0.7
 local GROW_START = 0.85
 local animFrame = CreateFrame("Frame")
@@ -638,7 +638,7 @@ local function AnimateTooltip(fromScale, toScale, fromAlpha, toAlpha, duration, 
     end)
 end
 
--- [ TOUR CONTROL ]-------------------------------------------------------------------
+-- [ TOUR CONTROL ] ----------------------------------------------------------------------------------
 function Tour:ShowTourStop(idx)
     -- Clean up previous stop
     if self.index > 0 then
@@ -892,7 +892,7 @@ function Tour:EndTour()
     if Selection then Selection:RefreshVisuals() end
 end
 
--- [ CANVAS MODE HINT ]---------------------------------------------------------------
+-- [ CANVAS MODE HINT ] ------------------------------------------------------------------------------
 local canvasTip = CreateFrame("Frame", nil, UIParent)
 canvasTip:SetFrameStrata(Orbit.Constants.Strata.Topmost)
 canvasTip:SetFrameLevel(TOOLTIP_LEVEL)
@@ -1017,7 +1017,7 @@ function Tour:HideCanvasHint()
     end
 end
 
--- [ SLASH COMMAND (testing) ]--------------------------------------------------------
+-- [ SLASH COMMAND (testing) ] -----------------------------------------------------------------------
 SLASH_ORBITTOUR1 = "/orbittour"
 SlashCmdList["ORBITTOUR"] = function()
     if not EditModeManagerFrame or not EditModeManagerFrame:IsShown() then

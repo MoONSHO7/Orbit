@@ -1,20 +1,16 @@
--- [ ORBIT HANDLE CORE ]--------------------------------------------------------------------------
--- Shared infrastructure for drag handles. Used by ComponentHandle and PreviewHandle.
--- Provides frame pooling, border textures, and visual state helpers.
-
+-- [ ORBIT HANDLE CORE ] -----------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
 Engine.HandleCore = {}
 local HandleCore = Engine.HandleCore
 
--- [ CONFIGURATION ]-----------------------------------------------------------------------------
+-- [ CONFIGURATION ] ---------------------------------------------------------------------------------
 
 local DEFAULT_BORDER_SIZE = 1
 local MIN_HANDLE_WIDTH = 50
 local MIN_HANDLE_HEIGHT = 20
 
--- Default colors (green theme)
 local COLOR_IDLE = { r = 0.3, g = 0.8, b = 0.3, bgA = 0, borderA = 0 }
 local COLOR_HOVER = { r = 0.3, g = 0.8, b = 0.3, bgA = 0.1, borderA = 0.4 }
 local COLOR_SELECTED = { r = 0.5, g = 0.9, b = 0.3, bgA = 0.1, borderA = 0.5 }
@@ -30,7 +26,7 @@ HandleCore.Colors = {
 HandleCore.MIN_WIDTH = MIN_HANDLE_WIDTH
 HandleCore.MIN_HEIGHT = MIN_HANDLE_HEIGHT
 
--- [ FRAME POOL ]--------------------------------------------------------------------------------
+-- [ FRAME POOL ] ------------------------------------------------------------------------------------
 
 local handlePool = {}
 
@@ -43,7 +39,6 @@ function HandleCore:ReturnToPool(handle)
         return
     end
 
-    -- Clear scripts
     handle:SetScript("OnEnter", nil)
     handle:SetScript("OnLeave", nil)
     handle:SetScript("OnMouseDown", nil)
@@ -52,7 +47,6 @@ function HandleCore:ReturnToPool(handle)
     handle:SetScript("OnDragStop", nil)
     handle:SetScript("OnUpdate", nil)
 
-    -- Reset state
     handle:Hide()
     handle:ClearAllPoints()
     handle.component = nil
@@ -70,11 +64,7 @@ function HandleCore:ClearPool()
     wipe(handlePool)
 end
 
--- [ CREATE HANDLE FRAME ]-----------------------------------------------------------------------
-
--- Create a new handle frame with borders and color helper
--- @param options: { strata, level, borderSize }
--- @return handle frame
+-- [ CREATE HANDLE FRAME ] ---------------------------------------------------------------------------
 function HandleCore:CreateFrame(options)
     options = options or {}
     local strata = options.strata or "FULLSCREEN_DIALOG"
@@ -85,12 +75,10 @@ function HandleCore:CreateFrame(options)
     handle:SetFrameStrata(strata)
     handle:SetFrameLevel(level)
 
-    -- Background texture
     handle.bg = handle:CreateTexture(nil, "BACKGROUND")
     handle.bg:SetAllPoints()
     handle.bg:SetColorTexture(COLOR_IDLE.r, COLOR_IDLE.g, COLOR_IDLE.b, COLOR_IDLE.bgA)
 
-    -- Border textures
     handle.borderTop = handle:CreateTexture(nil, "BORDER")
     handle.borderTop:SetColorTexture(COLOR_IDLE.r, COLOR_IDLE.g, COLOR_IDLE.b, COLOR_IDLE.borderA)
     handle.borderTop:SetPoint("TOPLEFT", 0, 0)
@@ -115,10 +103,8 @@ function HandleCore:CreateFrame(options)
     handle.borderRight:SetPoint("BOTTOMRIGHT", 0, 0)
     handle.borderRight:SetWidth(borderSize)
 
-    -- Store reference to border size for UpdateSize
     handle.borderSize = borderSize
 
-    -- Color helper method
     function handle:SetHandleColor(r, g, b, bgAlpha, borderAlpha)
         self.bg:SetColorTexture(r, g, b, bgAlpha)
         self.borderTop:SetColorTexture(r, g, b, borderAlpha)
@@ -127,7 +113,6 @@ function HandleCore:CreateFrame(options)
         self.borderRight:SetColorTexture(r, g, b, borderAlpha)
     end
 
-    -- Apply color preset
     function handle:ApplyColorPreset(preset)
         self:SetHandleColor(preset.r, preset.g, preset.b, preset.bgA, preset.borderA)
     end
@@ -135,7 +120,7 @@ function HandleCore:CreateFrame(options)
     return handle
 end
 
--- [ UTILITY FUNCTIONS ]-------------------------------------------------------------------------
+-- [ UTILITY FUNCTIONS ] -----------------------------------------------------------------------------
 
 -- Safely get size — pcall required: native Blizzard frames may return secret-tainted dimensions in 12.0+
 function HandleCore:SafeGetSize(frame)

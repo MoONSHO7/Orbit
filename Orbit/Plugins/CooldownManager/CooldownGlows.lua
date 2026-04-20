@@ -78,15 +78,11 @@ end
 
 function CDM:HookProcGlow()
     if self.procGlowHooked or not ActionButtonSpellAlertManager then return end
-    -- C_Timer.After(0) defers work out of Blizzard's call stack so writes don't taint upstream secrets.
     hooksecurefunc(ActionButtonSpellAlertManager, "ShowAlert", function(_, button)
         local si = FindSystemIndexForButton(button)
         if not si then return end
         pendingProcHides[button] = nil
-        C_Timer.After(0, function()
-            if not button or pendingProcHides[button] then return end
-            GC:ShowProc(button, function(k) return self:GetSetting(si, k) end, "ProcGlow", Constants.Glow.DefaultColor)
-        end)
+        GC:ShowProc(button, function(k) return self:GetSetting(si, k) end, "ProcGlow", Constants.Glow.DefaultColor)
     end)
     hooksecurefunc(ActionButtonSpellAlertManager, "HideAlert", function(_, button)
         local si = FindSystemIndexForButton(button)
@@ -171,27 +167,17 @@ HookPandemicIcon = function(icon, plugin, systemIndex)
             DeferPandemicHide(self)
         end
     end
-    -- Defer glow work via C_Timer.After(0) to escape Blizzard's call stack. SuppressPandemicIcon stays inline — child-only write, must beat first paint.
     hooksecurefunc(icon, "ShowPandemicStateFrame", function(self)
         SuppressPandemicIcon(self)
-        C_Timer.After(0, function()
-            if not self then return end
-            OnPandemicShow(self)
-        end)
+        OnPandemicShow(self)
     end)
     hooksecurefunc(icon, "HidePandemicStateFrame", function(self)
-        C_Timer.After(0, function()
-            if not self then return end
-            OnPandemicHide(self)
-        end)
+        OnPandemicHide(self)
     end)
     hooksecurefunc(icon, "Hide", function(self)
         pendingPandemicHides[self] = nil
-        C_Timer.After(0, function()
-            if not self then return end
-            GC:StopPandemic(self)
-            SetPandemicSuppress(self, nil)
-        end)
+        GC:StopPandemic(self)
+        SetPandemicSuppress(self, nil)
     end)
 end
 

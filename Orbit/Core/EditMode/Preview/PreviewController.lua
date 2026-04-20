@@ -1,4 +1,4 @@
--- [ ORBIT PREVIEW CONTROLLER ]---------------------------------------------------------------------
+-- [ ORBIT PREVIEW CONTROLLER ] ----------------------------------------------------------------------
 -- Session management for preview editing.
 -- Coordinates callbacks and state between preview frames and the dialog.
 
@@ -11,7 +11,7 @@ local Preview = Engine.Preview
 local PreviewController = {}
 Preview.Controller = PreviewController
 
--- [ STATE ]--------------------------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 
 local activeSession = nil
 
@@ -19,7 +19,7 @@ local function CopyPosition(pos)
     return { anchorX = pos.anchorX, anchorY = pos.anchorY, offsetX = pos.offsetX, offsetY = pos.offsetY, justifyH = pos.justifyH }
 end
 
--- [ SESSION API ]--------------------------------------------------------------------------------
+-- [ SESSION API ] -----------------------------------------------------------------------------------
 
 -- Start a new preview session
 -- @param frame: The source frame being edited
@@ -92,7 +92,7 @@ function PreviewController:IsActive()
     return activeSession ~= nil
 end
 
--- [ POSITION MANAGEMENT ]------------------------------------------------------------------------
+-- [ POSITION MANAGEMENT ] ---------------------------------------------------------------------------
 
 -- Update a component's position in the session
 -- @param session: The session

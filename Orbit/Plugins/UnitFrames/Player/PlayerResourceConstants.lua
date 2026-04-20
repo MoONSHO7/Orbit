@@ -1,4 +1,4 @@
--- [ PLAYER RESOURCE CONSTANTS ]--------------------------------------------------------------------
+-- [ PLAYER RESOURCE CONSTANTS ] ---------------------------------------------------------------------
 local Orbit = Orbit
 Orbit.PlayerResourceConstants = {
     MAX_SPACER_COUNT = 10,

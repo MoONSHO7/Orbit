@@ -1,4 +1,4 @@
--- [ METATALENTS / ORCHESTRATOR ]----------------------------------------------------------------
+-- [ METATALENTS / ORCHESTRATOR ] --------------------------------------------------------------------
 -- Public entry point for the MetaTalents feature. Loads the LoD data addon, binds it into the
 -- Data module, then chains the Blizzard_SharedTalentUI and Blizzard_PlayerSpells load hooks
 -- in the same order as the original monolith. All feature logic lives in sibling modules —
@@ -15,7 +15,7 @@ local Dropdowns = MT.Dropdowns
 local CastBarSkin = MT.CastBarSkin
 local Layout = MT.TreeLayout
 
--- [ TALENT TREE HOOK PIPELINE ]----------------------------------------------------------------
+-- [ TALENT TREE HOOK PIPELINE ] ---------------------------------------------------------------------
 local function HookTalentTree()
     if MT._hooked then return end
     EventUtil.ContinueOnAddOnLoaded("Blizzard_SharedTalentUI", function()
@@ -43,7 +43,7 @@ local function HookTalentTree()
     end)
 end
 
--- [ LIFECYCLE ]--------------------------------------------------------------------------------
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function MT:Enable()
     if self._active then return end
     C_AddOns.EnableAddOn(C.LOD_ADDON)
@@ -69,7 +69,7 @@ function MT:Disable()
     C_AddOns.DisableAddOn(C.LOD_ADDON)
 end
 
--- [ AUTO-ENABLE ON LOGIN ]---------------------------------------------------------------------
+-- [ AUTO-ENABLE ON LOGIN ] --------------------------------------------------------------------------
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", function()

@@ -103,7 +103,7 @@ W.BRONZE_VARIANTS = {
     [381758] = "Warrior",
 }
 
--- [ ROGUE POISONS ]----------------------------------------------------------------------------------
+-- [ ROGUE POISONS ] ---------------------------------------------------------------------------------
 W.ROGUE_POISONS = {
     [2823]   = "Deadly Poison",
     [8679]   = "Wound Poison",
@@ -150,7 +150,7 @@ W.SKYRIDING = {
     [369968] = "Skyriding Racing",
 }
 
--- [ COMBAT RESURRECTION ]--------------------------------------------------------------------------
+-- [ COMBAT RESURRECTION ] ---------------------------------------------------------------------------
 -- Cooldowns AND charge counts are non-secret for battle res spells.
 W.COMBAT_RES = {
     [20484]  = "Rebirth",              -- Druid

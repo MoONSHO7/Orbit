@@ -1,4 +1,4 @@
--- [ CANVAS MODE COMPONENT SETTINGS ]------------------------------------------------------------
+-- [ CANVAS MODE COMPONENT SETTINGS ] ----------------------------------------------------------------
 -- Core module: Open/Close, value routing, layout. Schema/widgets/renderers loaded via CanvasMode.xml.
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
@@ -6,7 +6,7 @@ local Layout = OrbitEngine.Layout
 local C = OrbitEngine.CanvasMode.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ IMPORTS ]--------------------------------------------------------------------------------------
+-- [ IMPORTS ] ---------------------------------------------------------------------------------------
 local Schema = OrbitEngine.CanvasMode.SettingsSchema
 local Widgets = OrbitEngine.CanvasMode.SettingsWidgets
 local KEY_SCHEMAS = Schema.KEY_SCHEMAS
@@ -23,7 +23,7 @@ local TITLE_HEIGHT = 20
 local CJK_LOCALES = { koKR = true, zhCN = true, zhTW = true }
 local CJK_FONT_SIZE_OFFSET = CJK_LOCALES[GetLocale()] and -1 or 0
 
--- [ MODULE ]-------------------------------------------------------------------------------------
+-- [ MODULE ] ----------------------------------------------------------------------------------------
 local Settings = {}
 Settings.widgets = {}
 Settings.componentKey = nil

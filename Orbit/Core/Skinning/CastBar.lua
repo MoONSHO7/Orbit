@@ -28,51 +28,42 @@ function CastBar:Create(parent)
     bar:SetIgnoreParentAlpha(true)
     bar:SetClipsChildren(true)
 
-    -- Background on parent (fills behind borders, icon, and bar)
     parent.bg = parent:CreateTexture(nil, "BACKGROUND")
     parent.bg:SetAllPoints()
     local bg = Constants.Colors.Background
     parent.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
 
-    -- Text overlay frame (tracks inner bar — text coordinates are relative to content area after icon)
     bar.TextFrame = CreateFrame("Frame", nil, parent)
     bar.TextFrame:SetAllPoints(bar)
     bar.TextFrame:SetFrameLevel(bar:GetFrameLevel() + Constants.Levels.Overlay)
 
-    -- Spell Name Text
     bar.Text = bar.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     bar.Text:SetPoint("LEFT", bar, "LEFT", TEXT_H_PADDING, 0)
 
-    -- Timer Text
     bar.Timer = bar.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     bar.Timer:SetPoint("RIGHT", bar, "RIGHT", -TEXT_H_PADDING, 0)
 
-    -- Spark (progress indicator pip)
     bar.Spark = bar:CreateTexture(nil, "OVERLAY", nil, 2)
     bar.Spark:SetAtlas("ui-castingbar-pip")
     bar.Spark:SetSize(8, 20)
     bar.Spark:SetAlpha(0)
 
-    -- SparkGlow (Blizzard-style pip glow)
     bar.SparkGlow = bar:CreateTexture(nil, "OVERLAY", nil, 1)
     bar.SparkGlow:SetAtlas("cast_standard_pipglow")
     bar.SparkGlow:SetBlendMode("ADD")
     bar.SparkGlow:SetAlpha(SPARK_GLOW_ALPHA)
     bar.SparkGlow:SetPoint("RIGHT", bar.Spark, "CENTER", 0, 0)
 
-    -- Latency
     bar.Latency = bar:CreateTexture(nil, "ARTWORK")
     bar.Latency:SetColorTexture(1, 0, 0, LATENCY_ALPHA)
     bar.Latency:Hide()
 
-    -- Interrupt Overlay (White Flash)
     bar.InterruptOverlay = bar:CreateTexture(nil, "OVERLAY")
     bar.InterruptOverlay:SetAllPoints()
     bar.InterruptOverlay:SetColorTexture(1, 1, 1, INTERRUPT_FLASH_ALPHA)
     bar.InterruptOverlay:SetBlendMode("ADD")
     bar.InterruptOverlay:SetAlpha(0)
 
-    -- Interrupt Animation
     local animGroup = bar.InterruptOverlay:CreateAnimationGroup()
     local alpha = animGroup:CreateAnimation("Alpha")
     alpha:SetFromAlpha(1)
@@ -81,16 +72,12 @@ function CastBar:Create(parent)
     alpha:SetSmoothing("OUT")
     bar.InterruptAnim = animGroup
 
-    -- Icon (on parent, positioned by UpdateBarInsets)
     bar.Icon = parent:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
     bar.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
     bar.Icon:SetSize(ICON_DEFAULT_SIZE, ICON_DEFAULT_SIZE)
     bar.Icon:SetPoint("LEFT", parent, "LEFT", 0, 0)
     bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
 
-
-
-    -- Empower Stage Markers
     bar.stageMarkers = {}
     for i = 1, 4 do
         local marker = bar:CreateTexture(nil, "OVERLAY", nil, 1)
@@ -106,7 +93,7 @@ function CastBar:Create(parent)
     parent.InterruptAnim = bar.InterruptAnim
     parent.Icon = bar.Icon
 
-    -- [ BORDER MANAGEMENT (matches UnitButtonCanvas pattern) ]---------------------------------------
+    -- [ BORDER MANAGEMENT ]------------------------------------------------------------------------
     parent.SetBorder = function(self, size)
         Orbit.Skin:SkinBorder(self, self, size)
         self:UpdateBarInsets()
@@ -148,10 +135,9 @@ function CastBar:Apply(bar, settings)
     if not bar then return end
     local parent = bar:GetParent()
 
-    -- Skin StatusBar (Texture & Color)
     Skin:SkinStatusBar(bar, settings.texture, settings.color)
 
-    -- Icon visibility and side (must be set before UpdateBarInsets since it affects layout)
+    -- iconAtEnd must be set before UpdateBarInsets — drives bar/icon anchor side.
     bar._iconAtEnd = settings.iconAtEnd and true or false
     if bar.Icon then
         if settings.showIcon then
@@ -162,10 +148,8 @@ function CastBar:Apply(bar, settings)
         end
     end
 
-    -- Apply borders on parent frame and inset content
     parent:SetBorder(settings.borderSize or 0)
 
-    -- SparkGlow sizing (based on inner bar height after insets)
     if bar.SparkGlow then
         local barHeight = bar:GetHeight()
         local scale = parent:GetEffectiveScale()
@@ -178,7 +162,6 @@ function CastBar:Apply(bar, settings)
         end
     end
 
-    -- Skin Background
     if settings.backdropCurve then
         Skin:ApplyGradientBackground(parent, settings.backdropCurve, settings.backdropColor or Constants.Colors.Background)
     elseif parent.bg then
@@ -186,12 +169,10 @@ function CastBar:Apply(bar, settings)
         parent.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.5)
     end
 
-    -- Skin Text (visibility controlled by Canvas Mode)
     if bar.Text then
         Skin:SkinText(bar.Text, settings)
     end
 
-    -- Skin Timer (visibility controlled by Canvas Mode)
     if bar.Timer then
         Skin:SkinText(bar.Timer, settings)
     end

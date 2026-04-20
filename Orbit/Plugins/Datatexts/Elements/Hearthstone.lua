@@ -3,7 +3,7 @@
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 
--- [ CONSTANTS ] -------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 -- UI Constants
 local HEARTHSTONE_ID = 6948
 local SECONDS_PER_MINUTE = 60
@@ -70,7 +70,7 @@ local function GetAvailableHearthstones()
     return available
 end
 
--- [ datatext ] ----------------------------------------------------------------------
+-- [ DATATEXT ] --------------------------------------------------------------------------------------
 local W = DT.BaseDatatext:New("Hearthstone")
 W.availableCache = nil
 

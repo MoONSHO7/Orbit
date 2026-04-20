@@ -141,7 +141,7 @@ function NativeFrame:RestoreModified(nativeFrame)
     return true
 end
 
--- [ SCENARIO 4: PROTECT ]--------------------------------------------------------------------------
+-- [ SCENARIO 4: PROTECT ] ---------------------------------------------------------------------------
 
 function NativeFrame:Protect(nativeFrame)
     if not nativeFrame then return false end
@@ -187,7 +187,7 @@ function NativeFrame:Protect(nativeFrame)
     return true
 end
 
--- [ SCENARIO 5: SECURE HIDE ]----------------------------------------------------------------------
+-- [ SCENARIO 5: SECURE HIDE ] -----------------------------------------------------------------------
 
 function NativeFrame:SecureHide(nativeFrame)
     if not nativeFrame then return false end

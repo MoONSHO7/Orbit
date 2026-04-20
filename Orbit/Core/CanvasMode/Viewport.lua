@@ -1,4 +1,4 @@
--- [ CANVAS MODE - VIEWPORT ]----------------------------------------------------------------
+-- [ CANVAS MODE - VIEWPORT ] ------------------------------------------------------------------------
 -- Viewport with zoom/pan controls for Canvas Mode
 -- Row layout: Title > Viewport (Dock | Preview) > Override > Footer
 
@@ -16,7 +16,7 @@ local FILTER_TAB_INSET = 8
 local FILTER_TAB_SPACING = 12
 local SYNC_TOGGLE_SIZE = 26
 
--- [ FILTER CONSTANTS ]------------------------------------------------------------------
+-- [ FILTER CONSTANTS ] ------------------------------------------------------------------------------
 local FILTER_TABS = { "All", "Text", "Icons", "Auras" }
 local FILTER_TAB_ACTIVE_COLOR = { r = 1.0, g = 0.82, b = 0.0 }
 local FILTER_TAB_INACTIVE_COLOR = { r = 0.6, g = 0.6, b = 0.6 }
@@ -26,7 +26,7 @@ local function ApplyFilterTabState(btn, isActive)
     btn:SetTextColor(c.r, c.g, c.b)
 end
 
--- [ VIEWPORT AREA ]---------------------------------------------------------------------
+-- [ VIEWPORT AREA ] ---------------------------------------------------------------------------------
 -- Architecture: PreviewContainer > Viewport (clips) > TransformLayer > PreviewFrame
 
 Dialog.PreviewContainer = CreateFrame("Frame", nil, Dialog)
@@ -60,7 +60,7 @@ Dialog.BorderOverlay = CreateFrame("Frame", nil, Dialog.PreviewContainer)
 Dialog.BorderOverlay:SetAllPoints()
 Dialog.BorderOverlay:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + Orbit.Constants.Levels.EditModeSelection)
 
--- [ FILTER TAB LABELS (inside viewport overlay) ]---------------------------------------
+-- [ FILTER TAB LABELS (inside viewport overlay) ] ---------------------------------------------------
 Dialog.FilterTabBar = CreateFrame("Frame", nil, Dialog.BorderOverlay)
 Dialog.FilterTabBar:SetPoint("TOPLEFT", Dialog.BorderOverlay, "TOPLEFT", 0, 0)
 Dialog.FilterTabBar:SetPoint("RIGHT", Dialog.BorderOverlay, "RIGHT", 0, 0)
@@ -106,10 +106,10 @@ Dialog.TransformLayer = CreateFrame("Frame", nil, Dialog.Viewport)
 Dialog.TransformLayer:SetSize(1, 1)
 Dialog.TransformLayer:SetPoint("CENTER", Dialog.Viewport, "CENTER", 0, C.DOCK_Y_OFFSET)
 
--- [ ROW 4: OVERRIDE SETTINGS CONTAINER ]-------------------------------------------------
+-- [ ROW 4: OVERRIDE SETTINGS CONTAINER ] ------------------------------------------------------------
 -- (Created in Dock.lua after DisabledDock is available)
 
--- [ DYNAMIC HEIGHT ]---------------------------------------------------------------------
+-- [ DYNAMIC HEIGHT ] --------------------------------------------------------------------------------
 
 function Dialog:GetViewportTopOffset()
     return -INSET_TOP
@@ -145,7 +145,7 @@ function Dialog:RecalculateHeight()
     self:LayoutFooterButtons()
 end
 
--- [ ZOOM/PAN HELPERS ]-------------------------------------------------------------------
+-- [ ZOOM/PAN HELPERS ] ------------------------------------------------------------------------------
 
 local function GetPanBounds(transformLayer, viewport, zoomLevel)
     local baseWidth = transformLayer.baseWidth or 200
@@ -188,14 +188,14 @@ end
 CanvasMode.ApplyZoom = ApplyZoom
 CanvasMode.ApplyPanOffset = ApplyPanOffset
 
--- [ ZOOM HANDLER ]-----------------------------------------------------------------------
+-- [ ZOOM HANDLER ] ----------------------------------------------------------------------------------
 
 Dialog.Viewport:SetScript("OnMouseWheel", function(self, delta)
     local newZoom = Dialog.zoomLevel + (delta * C.ZOOM_STEP)
     ApplyZoom(Dialog, newZoom)
 end)
 
--- [ PAN HANDLERS ]-----------------------------------------------------------------------
+-- [ PAN HANDLERS ] ----------------------------------------------------------------------------------
 
 Dialog.Viewport:SetScript("OnDragStart", function(self)
     self.isPanning = true
@@ -226,7 +226,7 @@ Dialog.Viewport:SetScript("OnUpdate", function(self)
     end
 end)
 
--- [ SYNC TOGGLE ]------------------------------------------------------------------------
+-- [ SYNC TOGGLE ] -----------------------------------------------------------------------------------
 
 Dialog.SyncToggle = CreateFrame("CheckButton", nil, Dialog.BorderOverlay, "UICheckButtonTemplate")
 Dialog.SyncToggle:SetSize(SYNC_TOGGLE_SIZE, SYNC_TOGGLE_SIZE)
@@ -277,7 +277,7 @@ end)
 
 Dialog.SyncToggle:UpdateVisual()
 
--- [ ZOOM INDICATOR ]---------------------------------------------------------------------
+-- [ ZOOM INDICATOR ] --------------------------------------------------------------------------------
 
 Dialog.ZoomIndicator = Dialog.BorderOverlay:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 Dialog.ZoomIndicator:SetPoint("BOTTOMRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -10, 8)

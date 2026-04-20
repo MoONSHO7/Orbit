@@ -1,4 +1,4 @@
--- [ CANVAS MODE - INIT ]------------------------------------------------------------
+-- [ CANVAS MODE - INIT ] ----------------------------------------------------------------------------
 -- Initialize Canvas Mode module with constants and shared state
 -- This is loaded first, other modules extend the Dialog and CanvasMode namespace
 --------------------------------------------------------------------------------
@@ -7,12 +7,12 @@ local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
 
--- [ MODULE NAMESPACE ]-------------------------------------------------------------------
+-- [ MODULE NAMESPACE ] ------------------------------------------------------------------------------
 
 OrbitEngine.CanvasMode = OrbitEngine.CanvasMode or {}
 local CanvasMode = OrbitEngine.CanvasMode
 
--- [ CONSTANTS ]--------------------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 
 CanvasMode.Constants = {
     -- Dialog dimensions
@@ -74,7 +74,7 @@ CanvasMode.Constants = {
 
 local C = CanvasMode.Constants
 
--- [ CREATE DIALOG FRAME ]------------------------------------------------------------------------
+-- [ CREATE DIALOG FRAME ] ---------------------------------------------------------------------------
 
 local Dialog = CreateFrame("Frame", "OrbitCanvasModeDialog", UIParent)
 Dialog:SetSize(C.DIALOG_WIDTH, C.DIALOG_MIN_HEIGHT)
@@ -116,7 +116,7 @@ Dialog:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
 end)
 
--- [ RESIZE HANDLE ]--------------------------------------------------------------------------
+-- [ RESIZE HANDLE ] ---------------------------------------------------------------------------------
 Dialog.ResizeHandle = CreateFrame("Button", nil, Dialog)
 Dialog.ResizeHandle:SetSize(C.RESIZE_HANDLE_SIZE, C.RESIZE_HANDLE_SIZE)
 Dialog.ResizeHandle:SetPoint("BOTTOMRIGHT", Dialog, "BOTTOMRIGHT", C.RESIZE_OFFSET_X, -C.RESIZE_OFFSET_Y)
@@ -154,7 +154,7 @@ Dialog:SetScript("OnEvent", function(self, event)
     end
 end)
 
--- [ TITLE ]--------------------------------------------------------------------------------------
+-- [ TITLE ] -----------------------------------------------------------------------------------------
 Dialog.TitleContainer = CreateFrame("Frame", nil, Dialog)
 Dialog.TitleContainer:SetFrameLevel(510)
 Dialog.TitleContainer:SetPoint("TOPLEFT", C.TITLE_INSET_LEFT, -C.TITLE_OFFSET_TOP)
@@ -163,7 +163,7 @@ Dialog.TitleContainer:SetHeight(20)
 Dialog.Title = Dialog.TitleContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 Dialog.Title:SetPoint("TOP", Dialog.TitleContainer, "TOP", 0, -C.TITLE_TEXT_OFFSET)
 
--- [ CLOSE BUTTON ]------------------------------------------------------------------------------
+-- [ CLOSE BUTTON ] ----------------------------------------------------------------------------------
 Dialog.CloseButton = CreateFrame("Button", nil, Dialog, "UIPanelCloseButton")
 Dialog.CloseButton:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", 0, -C.CLOSE_BTN_OFFSET_TOP)
 Dialog.CloseButton:SetFrameLevel(510)
@@ -171,7 +171,7 @@ Dialog.CloseButton:SetScript("OnClick", function()
     Dialog:Cancel()
 end)
 
--- [ STATE ]--------------------------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 -- Zoom/Pan state
 Dialog.zoomLevel = C.DEFAULT_ZOOM
 Dialog.panOffsetX = 0
@@ -188,6 +188,6 @@ Dialog.previewComponents = {}
 -- Filter tab state
 Dialog.activeFilter = "All"
 
--- [ EXPORT ]-------------------------------------------------------------------------------------
+-- [ EXPORT ] ----------------------------------------------------------------------------------------
 
 CanvasMode.Dialog = Dialog

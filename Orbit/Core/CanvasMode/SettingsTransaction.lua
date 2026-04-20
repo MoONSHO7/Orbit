@@ -7,14 +7,14 @@ local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 
--- [ MODULE ]-------------------------------------------------------------------------------------
+-- [ MODULE ] ----------------------------------------------------------------------------------------
 
 local Transaction = {}
 CanvasMode.Transaction = Transaction
 local NIL_SENTINEL = {}
 local FIRE_DEBOUNCE = 0.05
 
--- [ STATE ]--------------------------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 
 local active = false
 local fireTimer = nil
@@ -25,7 +25,7 @@ local pendingSettings = {}   -- staged changes
 local originalPositions = {} -- snapshot of ComponentPositions at Begin()
 local pendingPositions = {}  -- staged position changes
 
--- [ DEEP COPY ]---------------------------------------------------------------------------------
+-- [ DEEP COPY ] -------------------------------------------------------------------------------------
 
 local function DeepCopy(src)
     if type(src) ~= "table" then return src end
@@ -34,7 +34,7 @@ local function DeepCopy(src)
     return copy
 end
 
--- [ SESSION API ]--------------------------------------------------------------------------------
+-- [ SESSION API ] -----------------------------------------------------------------------------------
 
 function Transaction:Begin(targetPlugin, targetSystemIndex)
     self:Rollback() -- clean any stale state
@@ -65,7 +65,7 @@ function Transaction:GetSystemIndex()
     return systemIndex
 end
 
--- [ SETTINGS ]-----------------------------------------------------------------------------------
+-- [ SETTINGS ] --------------------------------------------------------------------------------------
 
 function Transaction:Set(key, value)
     if not active then return end
@@ -93,7 +93,7 @@ function Transaction:GetPending(key)
     return pending
 end
 
--- [ POSITIONS ]----------------------------------------------------------------------------------
+-- [ POSITIONS ] -------------------------------------------------------------------------------------
 
 function Transaction:SetPosition(compKey, posData)
     if not active then return end
@@ -123,7 +123,7 @@ function Transaction:SetPositionOverride(compKey, overrideKey, value)
     self:FireChanged()
 end
 
--- [ DISABLED COMPONENTS ]------------------------------------------------------------------------
+-- [ DISABLED COMPONENTS ] ---------------------------------------------------------------------------
 
 function Transaction:SetDisabledComponents(keys)
     if not active then return end
@@ -161,7 +161,7 @@ function Transaction:Commit()
     if savedPlugin.OnCanvasApply then savedPlugin:OnCanvasApply() end
 end
 
--- [ ROLLBACK ]-----------------------------------------------------------------------------------
+-- [ ROLLBACK ] --------------------------------------------------------------------------------------
 
 function Transaction:Rollback()
     if not active then return end
@@ -172,7 +172,7 @@ function Transaction:Rollback()
     if savedPlugin and savedPlugin.SchedulePreviewUpdate then savedPlugin:SchedulePreviewUpdate() end
 end
 
--- [ INTERNAL ]-----------------------------------------------------------------------------------
+-- [ INTERNAL ] --------------------------------------------------------------------------------------
 
 function Transaction:Clear()
     active = false

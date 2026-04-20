@@ -1,4 +1,4 @@
--- [ BOSS FRAME CAST BAR ]--------------------------------------------------------------------------
+-- [ BOSS FRAME CAST BAR ] ---------------------------------------------------------------------------
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
@@ -26,25 +26,21 @@ CB.ResolveCastBarColor = ResolveCastBarColor
 CB.ResolveNonInterruptibleColor = ResolveNonInterruptibleColor
 
 function CB:Create(parent, bossIndex, plugin)
-    -- Container holds the icon + bar with a single unified border (matches Skin.CastBar pattern)
     local container = CreateFrame("Frame", "OrbitBoss" .. bossIndex .. "CastBarContainer", parent)
     container:SetSize(CAST_BAR_WIDTH + CAST_BAR_ICON_SIZE, CAST_BAR_HEIGHT)
     container:Hide()
 
-    -- Background on container (fills behind both icon and bar uniformly, matching Skin.CastBar pattern)
     container.bg = container:CreateTexture(nil, "BACKGROUND")
     container.bg:SetAllPoints()
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(container, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
 
-    -- Icon: anchored to the left edge of the container (positioned by UpdateBarInsets)
     container.Icon = container:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
     container.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
     container.Icon:SetSize(CAST_BAR_ICON_SIZE, CAST_BAR_ICON_SIZE)
     container.Icon:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0)
     container.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
 
-    -- StatusBar: fills the space to the right of the icon (positioned by UpdateBarInsets)
     local bar = CreateFrame("StatusBar", "OrbitBoss" .. bossIndex .. "CastBar", container)
     bar:SetPoint("TOPLEFT", container, "TOPLEFT", CAST_BAR_ICON_SIZE, 0)
     bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0)
@@ -54,17 +50,15 @@ function CB:Create(parent, bossIndex, plugin)
     bar:SetValue(0)
     bar:SetClipsChildren(true)
 
-    -- Single unified border on container (wraps icon + bar together)
     container.SetBorder = function(self, size)
         Orbit.Skin:SkinBorder(self, self, size)
-        -- BackdropTemplate has a default opaque background; clear it so the icon area stays transparent
+        -- BackdropTemplate is opaque by default; clear so the icon area stays transparent.
         if self._borderFrame then self._borderFrame:SetBackdropColor(0, 0, 0, 0) end
         if self._edgeBorderOverlay then self._edgeBorderOverlay:SetBackdropColor(0, 0, 0, 0) end
         self:UpdateBarInsets()
     end
     container.SetBorderHidden = Orbit.Skin.DefaultSetBorderHidden
 
-    -- UpdateBarInsets: positions bar content to the right of the icon (matches Skin.CastBar pattern)
     container.UpdateBarInsets = function(self)
         local height = self:GetHeight()
         local scale = self:GetEffectiveScale()
@@ -83,7 +77,6 @@ function CB:Create(parent, bossIndex, plugin)
     container:SetBorder(1)
     container:HookScript("OnSizeChanged", function(self) self:UpdateBarInsets() end)
 
-    -- Protected overlay: mirrors bar for non-interruptible color
     bar.protectedOverlay = CreateFrame("StatusBar", nil, bar)
     bar.protectedOverlay:SetAllPoints(bar)
     bar.protectedOverlay:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
@@ -92,7 +85,6 @@ function CB:Create(parent, bossIndex, plugin)
     bar.protectedOverlay:SetFrameLevel(bar:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
     bar.protectedOverlay:SetAlpha(0)
 
-    -- Text overlay
     local textOverlay = CreateFrame("Frame", nil, bar)
     textOverlay:SetAllPoints()
     textOverlay:SetFrameLevel(bar:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
@@ -108,7 +100,6 @@ function CB:Create(parent, bossIndex, plugin)
     container.Timer:SetJustifyH("RIGHT")
     Orbit.Skin:ApplyFontShadow(container.Timer)
 
-    -- Store references on container for external access
     container.Bar = bar
     container.protectedOverlay = bar.protectedOverlay
     container.bossIndex = bossIndex
@@ -148,7 +139,6 @@ function CB:SetupHooks(castBar, unit)
     castBar.timerThrottle = 0
     castBar.castTimestamp = 0
 
-    -- Cast: query the unit directly for cast info, drive bar via SetTimerDuration
     local function Cast()
         if plugin.IsComponentDisabled and plugin:IsComponentDisabled("CastBar") then return end
         local name, text, texture, startMs, endMs, _, _, notInterruptible = UnitCastingInfo(unit)
@@ -185,10 +175,7 @@ function CB:SetupHooks(castBar, unit)
         castBar.castTimestamp = GetTime()
         castBar.durationObj = durationObj
         castBar.timerThrottle = 0
-        -- Build a curve mapping remaining-percent [0,1] -> remaining-seconds [0, totalSec]
-        -- so OnUpdate can read a formatted timer via EvaluateRemainingPercent without Lua
-        -- arithmetic on secret durations. startMs/endMs are secret for enemy units in combat;
-        -- skip the curve when either is secret and the timer text will simply remain blank.
+        -- Per-cast curve maps remaining% → remaining-seconds so the OnUpdate timer text avoids Lua arithmetic on secret startMs/endMs.
         castBar.timerSecondsCurve = nil
         if C_CurveUtil and C_CurveUtil.CreateCurve and startMs and endMs
             and not issecretvalue(startMs) and not issecretvalue(endMs) then
@@ -232,12 +219,10 @@ function CB:SetupHooks(castBar, unit)
                 if texPath then overlay:SetStatusBarTexture(texPath) end
             end
         end
-        -- Icon
         ApplyIconLayout(castBar, plugin)
         if castBar.Icon and castBar.Icon:IsShown() then
             pcall(function() castBar.Icon:SetTexture(texture or 136116) end)
         end
-        -- Text
         if castBar.Text and castBar.Text:IsShown() then
             pcall(function() castBar.Text:SetText(name) end)
         end
@@ -254,7 +239,6 @@ function CB:SetupHooks(castBar, unit)
         castBar:Hide()
     end
 
-    -- Register cast events directly on the castBar frame
     castBar:RegisterUnitEvent("UNIT_SPELLCAST_START", unit)
     castBar:RegisterUnitEvent("UNIT_SPELLCAST_STOP", unit)
     castBar:RegisterUnitEvent("UNIT_SPELLCAST_FAILED", unit)
@@ -319,10 +303,7 @@ function CB:SetupHooks(castBar, unit)
         if handler then handler() end
     end)
 
-    -- OnUpdate: timer text only (bar progress is engine-driven via SetTimerDuration).
-    -- Uses EvaluateRemainingPercent with the per-cast seconds curve built in Cast(),
-    -- and only formats when the evaluated value is not secret. When secret (enemy cast
-    -- in combat), we skip the update and the bar's engine-driven animation stays correct.
+    -- Timer text only (bar fill is engine-driven via SetTimerDuration); skip when the curve eval comes back secret.
     castBar:SetScript("OnUpdate", function(self, elapsed)
         if not self:IsShown() or (not self.casting and not self.channeling) then return end
         self.timerThrottle = (self.timerThrottle or 0) + elapsed

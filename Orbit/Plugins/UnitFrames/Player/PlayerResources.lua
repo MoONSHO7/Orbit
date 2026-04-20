@@ -27,13 +27,13 @@ local DK_SPEC_UNHOLY = RC.DK_SPEC_UNHOLY
 local WARLOCK_SPEC_DESTRUCTION = RC.WARLOCK_SPEC_DESTRUCTION
 local _, PLAYER_CLASS = UnitClass("player")
 
--- [ HELPERS ]--------------------------------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 local function SnapToPixel(value, scale) return OrbitEngine.Pixel:Snap(value, scale) end
 local function PixelMultiple(count, scale) return OrbitEngine.Pixel:Multiple(count, scale) end
 
 local CONTINUOUS_RESOURCE_CONFIG = ContinuousRenderer.CONFIG
 
--- [ PLUGIN REGISTRATION ]--------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerResources"
 local SYSTEM_INDEX = 1
 
@@ -100,7 +100,7 @@ local Frame
 
 -- Settings UI: see PlayerResourceSettings.lua
 
--- [ LIFECYCLE ]------------------------------------------------------------------------------------
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     -- Register standard events (Handle PEW, EditMode -> ApplySettings)
     self:RegisterStandardEvents()
@@ -404,7 +404,7 @@ function Plugin:RefreshFrequentUpdates()
     end
 end
 
--- [ SETTINGS APPLICATION ]-------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ] --------------------------------------------------------------------------
 function Plugin:ApplySettings()
     if not Frame then return end
     if Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(self.name, SYSTEM_INDEX) then return end
@@ -599,7 +599,7 @@ function Plugin:UpdatePowerType()
     end
 end
 
--- [ SPACER REPOSITIONING ]-------------------------------------------------------------------------
+-- [ SPACER REPOSITIONING ] --------------------------------------------------------------------------
 function Plugin:RepositionSpacers(max)
     if not Frame or not Frame.Spacers then return end
 

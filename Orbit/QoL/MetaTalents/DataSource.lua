@@ -1,4 +1,4 @@
--- [ METATALENTS / DATA SOURCE ]---------------------------------------------------------------
+-- [ METATALENTS / DATA SOURCE ] ---------------------------------------------------------------------
 -- Owns the WCL dataset binding, class/spec key cache, per-content/difficulty spec data
 -- routing, and the spell-id reverse cache for the tooltip hook. All cross-file access
 -- to the LoD dataset goes through this module.
@@ -10,14 +10,14 @@ local C = MT.Constants
 local Data = {}
 MT.Data = Data
 
--- [ INTERNAL STATE ]--------------------------------------------------------------------------
+-- [ INTERNAL STATE ] --------------------------------------------------------------------------------
 local talentData = nil
 local cachedClassKey, cachedSpecKey = nil, nil
 local activeSpecData, activeSpecDataKey = nil, nil
 local spellToPickRate = {}
 local spellCacheDirty = true
 
--- [ SOURCE BINDING ]--------------------------------------------------------------------------
+-- [ SOURCE BINDING ] --------------------------------------------------------------------------------
 function Data.SetSource(src)
     talentData = src
     activeSpecData = nil
@@ -29,7 +29,7 @@ function Data.HasSource()
     return talentData ~= nil
 end
 
--- [ PLAYER KEYS ]-----------------------------------------------------------------------------
+-- [ PLAYER KEYS ] -----------------------------------------------------------------------------------
 function Data.RefreshPlayerKeys()
     local _, classFile = UnitClass("player")
     local specIndex = GetSpecialization()
@@ -49,7 +49,7 @@ end
 function Data.GetClassKey() return cachedClassKey end
 function Data.GetSpecKey() return cachedSpecKey end
 
--- [ ACTIVE SPEC DATA ]------------------------------------------------------------------------
+-- [ ACTIVE SPEC DATA ] ------------------------------------------------------------------------------
 function Data.UpdateActiveSpecData()
     if not talentData or not cachedClassKey or not cachedSpecKey then
         if activeSpecData then
@@ -81,7 +81,7 @@ function Data.LookupPickRate(entryID)
     return specData[entryID] or 0
 end
 
--- [ SPELL ID REVERSE CACHE ]------------------------------------------------------------------
+-- [ SPELL ID REVERSE CACHE ] ------------------------------------------------------------------------
 function Data.MarkSpellCacheDirty()
     spellCacheDirty = true
 end
@@ -121,7 +121,7 @@ function Data.GetSpellPickRate(spellID)
     return spellToPickRate[spellID]
 end
 
--- [ SPEC WATCHER ]----------------------------------------------------------------------------
+-- [ SPEC WATCHER ] ----------------------------------------------------------------------------------
 -- Fixed: PLAYER_ENTERING_WORLD's first arg is isInitialLogin (boolean), not a unit token.
 -- The previous unified handler checked `unit == "player" or unit == nil` which never
 -- matched for PLAYER_ENTERING_WORLD. Now we dispatch on the event name.

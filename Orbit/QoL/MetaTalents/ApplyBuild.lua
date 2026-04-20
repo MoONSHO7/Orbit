@@ -1,15 +1,6 @@
--- [ METATALENTS / APPLY BUILD ]----------------------------------------------------------------
--- Owns the "Apply Orbit Loadout" button: the import action itself, the match-state evaluator
--- that drives the pressed/desaturated look, and the debounced event watcher that keeps it in
--- sync with config changes. Two non-obvious fixes live here:
---  1. Level gate (MIN_APPLY_LEVEL): importing a full loadout under level 81 is meaningless —
---     hero trees aren't unlocked, the capstone row isn't available, and the greedy fill would
---     overshoot the real point budget. Below 81 the button reads "Level 81+" and is disabled.
---  2. Tiered-node match check: we iterate Build.GetMetaNodes() (one descriptor per nodeID)
---     instead of walking metaSet by entryID. Tiered nodes put *every* tier entryID in metaSet
---     but only one entryID is ever the live activeEntry, so the old entry-walker would always
---     report "not matched" for any tiered node and leave the button perpetually enabled.
-
+-- [ METATALENTS / APPLY BUILD ] ---------------------------------------------------------------------
+-- MIN_APPLY_LEVEL gate: hero trees aren't unlocked below 81, so the greedy fill would overshoot the real point budget.
+-- Match check iterates Build.GetMetaNodes() (one per nodeID) — walking metaSet by entryID falsely "not matched" tiered nodes.
 local _, Orbit = ...
 local L = Orbit.L
 local MT = Orbit.MetaTalents
@@ -24,7 +15,7 @@ MT.Apply = Apply
 
 local STATE_DEBOUNCE = C.STATE_DEBOUNCE
 
--- [ APPLY META BUILD ]-------------------------------------------------------------------------
+-- [ APPLY META BUILD ] ------------------------------------------------------------------------------
 function Apply.ApplyMetaBuild()
     if UnitLevel("player") < C.MIN_APPLY_LEVEL then
         print("|cffff0000[Orbit]|r " .. L.MSG_META_APPLY_LEVEL_F:format(C.MIN_APPLY_LEVEL))
@@ -89,7 +80,7 @@ function Apply.ApplyMetaBuild()
     print("|cff00ff00[Orbit]|r " .. L.MSG_META_APPLIED)
 end
 
--- [ APPLY BUTTON MATCH STATE ]-----------------------------------------------------------------
+-- [ APPLY BUTTON MATCH STATE ] ----------------------------------------------------------------------
 -- Iterates Build.GetMetaNodes() keyed by nodeID — one descriptor per node — so tiered nodes
 -- get exactly one match check instead of one per tier entry. The live config is "matched"
 -- only when every meta node's activeEntry/activeRank agrees with the descriptor.
@@ -152,7 +143,7 @@ end
 -- Compatibility alias — Dropdowns.RefreshMetaUI and legacy callers use this entry point.
 MT.UpdateApplyButtonState = Apply.UpdateApplyButtonState
 
--- [ STATE WATCHER ]----------------------------------------------------------------------------
+-- [ STATE WATCHER ] ---------------------------------------------------------------------------------
 -- Debounced so that a burst of TRAIT_CONFIG_* events coalesces into a single state pass.
 -- PLAYER_LEVEL_UP is registered so the below-level branch flips to enabled the moment the
 -- player dings 81, without requiring a talent frame reopen.

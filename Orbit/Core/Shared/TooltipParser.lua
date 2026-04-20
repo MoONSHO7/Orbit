@@ -1,17 +1,17 @@
--- [ TRACKED TOOLTIP PARSER ] --------------------------------------------------
+-- [ TRACKED TOOLTIP PARSER ] ------------------------------------------------------------------------
 ---@type Orbit
 local Orbit = Orbit
 Orbit.TooltipParser = {}
 local Parser = Orbit.TooltipParser
 
--- [ CONSTANTS ] ---------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local ACTIVE_DURATION_OVERRIDES = {
     [1122] = 30, -- Summon Infernal: first match is 2s stun, pet lasts 30s
     [633] = 0, -- Lay on Hands: instant, Forbearance is not active phase
     [48743] = 0, -- Death Pact: instant heal, absorb debuff is not active phase
 }
 
--- [ LOCALE PATTERNS ] ---------------------------------------------------------
+-- [ LOCALE PATTERNS ] -------------------------------------------------------------------------------
 local LOCALE_DATA = {
     enUS = {
         active = { "for (%d+%.?%d*) sec", "lasts (%d+%.?%d*) sec", "over (%d+%.?%d*) sec" },
@@ -69,14 +69,14 @@ local COOLDOWN_KEYWORDS = L.cdKeywords
 local SEC_UNIT = L.sec
 local MIN_UNIT = L.min
 
--- [ HELPERS ] -----------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 local function StripEscapes(text)
     text = text:gsub("|4([^:]+):([^;]+);", "%2")
     text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
     return text
 end
 
--- [ PARSE ACTIVE DURATION ] ---------------------------------------------------
+-- [ PARSE ACTIVE DURATION ] -------------------------------------------------------------------------
 function Parser:ParseActiveDuration(itemType, id)
     if itemType == "spell" and ACTIVE_DURATION_OVERRIDES[id] then
         return ACTIVE_DURATION_OVERRIDES[id]
@@ -101,7 +101,7 @@ function Parser:ParseActiveDuration(itemType, id)
     return nil
 end
 
--- [ PARSE COOLDOWN DURATION ] -------------------------------------------------
+-- [ PARSE COOLDOWN DURATION ] -----------------------------------------------------------------------
 function Parser:ParseCooldownDuration(itemType, id)
     local tooltipData
     if itemType == "spell" then
@@ -135,7 +135,7 @@ function Parser:ParseCooldownDuration(itemType, id)
     return best
 end
 
--- [ BUILD PHASE CURVE ] -------------------------------------------------------
+-- [ BUILD PHASE CURVE ] -----------------------------------------------------------------------------
 local _phaseCurveCache = setmetatable({}, { __mode = "v" })
 function Parser:BuildPhaseCurve(activeDuration, cooldownDuration)
     if not activeDuration or not cooldownDuration or cooldownDuration <= 0 or activeDuration >= cooldownDuration then

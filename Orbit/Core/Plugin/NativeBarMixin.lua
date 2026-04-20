@@ -1,6 +1,4 @@
 -- [ ORBIT NATIVE BAR MIXIN ]------------------------------------------------------------------------
--- Shared functionality for native Blizzard bar customization (scale, orientation, hover fade)
-
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine

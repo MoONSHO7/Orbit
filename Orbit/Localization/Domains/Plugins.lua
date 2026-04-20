@@ -1,4 +1,4 @@
--- [ LOCALIZATION - PLUGINS ]---------------------------------------------------------
+-- [ LOCALIZATION - PLUGINS ] ------------------------------------------------------------------------
 -- PLU_ keys: per-plugin settings schema labels and tooltips grouped by plugin.
 local _, Orbit = ...
 

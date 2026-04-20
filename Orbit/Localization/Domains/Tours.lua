@@ -1,4 +1,4 @@
--- [ LOCALIZATION - TOURS ]-----------------------------------------------------------
+-- [ LOCALIZATION - TOURS ] --------------------------------------------------------------------------
 -- TOUR_ keys. Onboarding and help tour strings migrated from file-local tables in
 -- Core/CanvasMode/CanvasModeTour.lua and Core/Onboarding/EditModeTour.lua.
 --

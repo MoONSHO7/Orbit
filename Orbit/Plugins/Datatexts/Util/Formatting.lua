@@ -3,7 +3,7 @@
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 
--- [ CONSTANTS ] -------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local THRESHOLD_K = 1000
 local THRESHOLD_M = 1000000
 local COPPER_PER_SILVER = 100
@@ -12,7 +12,7 @@ local SECONDS_PER_MINUTE = 60
 local SECONDS_PER_HOUR = 3600
 local MEM_DISPLAY_THRESHOLD_KB = 1000
 
--- [ FORMATTING ] ------------------------------------------------------------------
+-- [ FORMATTING ] ------------------------------------------------------------------------------------
 local Formatting = {}
 DT.Formatting = Formatting
 
@@ -64,7 +64,7 @@ function Formatting:FormatMemory(kb)
     return string.format("%.0f KB", kb)
 end
 
--- [ RING BUFFER ] -----------------------------------------------------------------
+-- [ RING BUFFER ] -----------------------------------------------------------------------------------
 local RingBuffer = {}
 RingBuffer.__index = RingBuffer
 Formatting.RingBuffer = RingBuffer

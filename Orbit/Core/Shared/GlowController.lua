@@ -1,6 +1,5 @@
--- [ GLOW CONTROLLER ]-----------------------------------------------------------------------------
--- Single authoritative owner for all glow operations across Orbit.
--- All consumers call this module. No other file should touch LCG directly.
+-- [ GLOW CONTROLLER ] -------------------------------------------------------------------------------
+-- Single owner for all glow ops — no consumer touches LCG directly.
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants
@@ -9,13 +8,13 @@ local LCG = LibStub("LibOrbitGlow-1.0", true)
 Engine.GlowController = {}
 local GC = Engine.GlowController
 
--- [ STATE HELPERS ]----------------------------------------------------------------
+-- [ STATE HELPERS ] ---------------------------------------------------------------------------------
 local function GetState(frame)
     if not frame._orbitGlow then frame._orbitGlow = { active = {} } end
     return frame._orbitGlow
 end
 
--- [ CORE SHOW / HIDE ]-------------------------------------------------------------
+-- [ CORE SHOW / HIDE ] ------------------------------------------------------------------------------
 function GC:Show(frame, glowKey, typeName, options)
     if not frame or not LCG or not typeName then return end
     local state = GetState(frame)
@@ -66,7 +65,7 @@ function GC:GetActiveType(frame, glowKey)
     return entry and entry.typeName
 end
 
--- [ NATIVE SUPPRESSION ]-----------------------------------------------------------
+-- [ NATIVE SUPPRESSION ] ----------------------------------------------------------------------------
 local function KillNativeAnimations(overlay)
     if overlay.animIn and overlay.animIn:IsPlaying() then overlay.animIn:Stop() end
     if overlay.animOut and overlay.animOut:IsPlaying() then overlay.animOut:Stop() end
@@ -106,7 +105,7 @@ function GC:SuppressNative(button, suppress)
     if suppress then SuppressOverlay(overlay) end
 end
 
--- [ PROC GLOW ]--------------------------------------------------------------------
+-- [ PROC GLOW ] -------------------------------------------------------------------------------------
 local PROC_KEY = "orbitProc"
 
 function GC:ShowProc(button, optionsLookup, prefix, defaultColor)
@@ -123,7 +122,7 @@ function GC:HideProc(button)
     self:Hide(button, PROC_KEY)
 end
 
--- [ PANDEMIC GLOW ]----------------------------------------------------------------
+-- [ PANDEMIC GLOW ] ---------------------------------------------------------------------------------
 local PANDEMIC_KEY = "orbitPandemic"
 
 local function GetOrCreateWrapper(icon)
@@ -197,7 +196,7 @@ function GC:StopPandemic(frame)
     if state.pandemicWrapper then state.pandemicWrapper:SetAlpha(0) end
 end
 
--- [ PRELOAD ]----------------------------------------------------------------------
+-- [ PRELOAD ] ---------------------------------------------------------------------------------------
 function GC:PreLoad(typeName, count)
     if LCG and LCG.PreLoad then LCG.PreLoad(typeName, count) end
 end

@@ -1,9 +1,7 @@
--- BaseDatatext.lua
--- Foundation class for all Datatexts datatexts. Free-position, no grid/zone docking.
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 
--- [ CONSTANTS ] -------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local DEFAULT_WIDTH = 100
 local DEFAULT_HEIGHT = 20
 local DEFAULT_TEXT_SIZE = 12
@@ -12,7 +10,7 @@ local ICON_SIZE = 14
 local ICON_PADDING = 4
 local DRAG_TICKER_INTERVAL = 0.05
 
--- [ BASE datatext ] -----------------------------------------------------------------
+-- [ BASE DATATEXT ] ---------------------------------------------------------------------------------
 local BaseDatatext = {}
 BaseDatatext.__index = BaseDatatext
 DT.BaseDatatext = BaseDatatext
@@ -39,7 +37,7 @@ function BaseDatatext:New(name)
     }, BaseDatatext)
 end
 
--- [ FRAME CREATION ] --------------------------------------------------------------
+-- [ FRAME CREATION ] --------------------------------------------------------------------------------
 function BaseDatatext:CreateFrame(width, height)
     if self.frame then return self.frame end
     local frameType = self.isSecure and "Button" or "Frame"
@@ -65,7 +63,6 @@ function BaseDatatext:CreateFrame(width, height)
         f:SetScript("OnMouseUp", function(_, button) self:OnClick(button) end)
     end
     
-    -- [ OVERLAY PATTERN (EDIT MODE) ]
     f.overlay = CreateFrame("Button", nil, f)
     f.overlay:SetAllPoints(f)
     f.overlay:SetFrameLevel(f:GetFrameLevel() + 20)
@@ -184,7 +181,7 @@ function BaseDatatext:SetScale(scale)
     if self.frame then self.frame:SetScale(scale) end
 end
 
--- [ REGISTRATION ] ----------------------------------------------------------------
+-- [ REGISTRATION ] ----------------------------------------------------------------------------------
 function BaseDatatext:Register()
     if not self.frame then self:CreateFrame() end
     DT.DatatextManager:Register(self.name, {
@@ -197,7 +194,7 @@ function BaseDatatext:Register()
     })
 end
 
--- [ SETTERS ] ---------------------------------------------------------------------
+-- [ SETTERS ] ---------------------------------------------------------------------------------------
 function BaseDatatext:SetCategory(category) self.category = category end
 function BaseDatatext:SetUpdateFunc(func) self.updateFunc = func end
 function BaseDatatext:SetTooltipFunc(func) self.tooltipFunc = func end
@@ -209,7 +206,7 @@ function BaseDatatext:SetUpdateTier(tier)
     DT.DatatextManager:RegisterForScheduler(self.name, tier, self.updateFunc)
 end
 
--- [ ICON ] ------------------------------------------------------------------------
+-- [ ICON ] ------------------------------------------------------------------------------------------
 function BaseDatatext:SetIcon(texturePath)
     if not self.icon then
         self.icon = self.frame:CreateTexture(nil, "ARTWORK")
@@ -221,7 +218,7 @@ function BaseDatatext:SetIcon(texturePath)
     self.icon:Show()
 end
 
--- [ EVENTS ] ----------------------------------------------------------------------
+-- [ EVENTS ] ----------------------------------------------------------------------------------------
 function BaseDatatext:RegisterEvent(event, handler)
     self.events[event] = handler or self.updateFunc
     if self.isEnabled and self.eventFrame then self.eventFrame:RegisterEvent(event) end
@@ -239,7 +236,7 @@ function BaseDatatext:UnregisterEvent(event)
     if self.eventFrame then self.eventFrame:UnregisterEvent(event) end
 end
 
--- [ LIFECYCLE ] -------------------------------------------------------------------
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function BaseDatatext:Enable()
     if self.isEnabled then return end
     self.isEnabled = true
@@ -277,7 +274,7 @@ function BaseDatatext:Disable()
     if self.OnDisable then self:OnDisable() end
 end
 
--- [ TEXT ] -------------------------------------------------------------------------
+-- [ TEXT ] ------------------------------------------------------------------------------------------
 function BaseDatatext:SetText(text)
     self.text:SetText(text)
     local width = self.text:GetStringWidth()
@@ -287,7 +284,7 @@ function BaseDatatext:SetText(text)
     self.frame:SetSize(width + TEXT_PADDING + iconOffset, height)
 end
 
--- [ TOOLTIP ] ---------------------------------------------------------------------
+-- [ TOOLTIP ] ---------------------------------------------------------------------------------------
 function BaseDatatext:BuildTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
@@ -302,7 +299,7 @@ end
 
 function BaseDatatext:PopulateTooltip(tooltip) tooltip:AddLine(self.name, 1, 0.82, 0) end
 
--- [ INTERACTION ] -----------------------------------------------------------------
+-- [ INTERACTION ] -----------------------------------------------------------------------------------
 function BaseDatatext:UpdateTooltip()
     if self.tooltipFunc then self.tooltipFunc(self)
     else self:BuildTooltip() end
@@ -352,7 +349,7 @@ function BaseDatatext:OnClick(button)
     if self.clickFunc then self.clickFunc(self, button) end
 end
 
--- [ CONTEXT MENU ] ----------------------------------------------------------------
+-- [ CONTEXT MENU ] ----------------------------------------------------------------------------------
 function BaseDatatext:ShowContextMenu()
     local items = self:BuildContextMenuItems()
     if #items > 0 then
@@ -368,7 +365,7 @@ function BaseDatatext:BuildContextMenuItems()
     return items
 end
 
--- [ DRAGGING ] --------------------------------------------------------------------
+-- [ DRAGGING ] --------------------------------------------------------------------------------------
 function BaseDatatext:OnDragStart()
     if not DT.DatatextManager:CanDrag() then return end
     GameTooltip:Hide()

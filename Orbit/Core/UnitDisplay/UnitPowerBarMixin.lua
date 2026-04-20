@@ -157,7 +157,7 @@ function Mixin:CreatePowerBarPlugin(config)
     self:UpdateVisibility()
 end
 
--- [ VISIBILITY ]-------------------------------------------------------------------------------------
+-- [ VISIBILITY ] ------------------------------------------------------------------------------------
 function Mixin:IsEnabled()
     local cfg = self._pbConfig
     return Orbit:ReadPluginSetting(cfg.parentPlugin, cfg.parentIndex, cfg.enableKey) == true

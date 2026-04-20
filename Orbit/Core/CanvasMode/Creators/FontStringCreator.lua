@@ -29,7 +29,7 @@ local PREVIEW_TEXT_COLORS = {
     LevelText = { 1.0, 0.82, 0.0 },
 }
 
--- [ CREATOR ]--------------------------------------------------------------------------------------
+-- [ CREATOR ] ---------------------------------------------------------------------------------------
 
 local function Create(container, preview, key, source, data)
     local visual = container:CreateFontString(nil, "OVERLAY")

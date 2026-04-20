@@ -1,8 +1,4 @@
--- [ MOUSE CURSOR HIGHLIGHT ]--------------------------------------------------------------------------
--- QoL feature: Renders a specific texture directly under the hardware mouse cursor.
--- Helps track the cursor during chaotic combat.
--- Toggle via Quality of Life > Mouse in the Orbit settings panel.
-
+-- [ MOUSE CURSOR HIGHLIGHT ] ------------------------------------------------------------------------
 local _, Orbit = ...
 
 -- [ MODULE ]----------------------------------------------------------------------------------------
@@ -12,7 +8,6 @@ local Mouse = Orbit.Mouse
 Mouse._active = false
 Mouse._frame = nil
 
--- The desired Atlas or Texture for the cursor
 local function GetCurrentCursorSize()
     local cvar = C_CVar.GetCVar("cursorSizePreferred")
     if cvar == "0" then return 32
@@ -21,7 +16,6 @@ local function GetCurrentCursorSize()
     elseif cvar == "3" then return 96
     elseif cvar == "4" then return 128
     end
-    -- Default or "-1"
     return 32
 end
 
@@ -37,8 +31,7 @@ local function OnUpdateCursor(self)
     local customY = db.CustomCursorY or 1.40
     
     if self._currentSize ~= size or self._currentCustomScale ~= customScale then
-        -- The atlas fills its full bounding box while the hardware pointer is narrow.
-        -- customScale (default 0.55) shrinks the gauntlet to visually match the pointer.
+        -- Atlas fills its full bounding box but the hardware pointer is narrow; customScale shrinks the gauntlet to match.
         local shrunkSize = size * customScale
         self:SetSize(shrunkSize, shrunkSize)
         self._currentSize = size
@@ -50,13 +43,13 @@ local function OnUpdateCursor(self)
         self._currentAtlasSize = size
     end
     
-    -- Hide when the hardware cursor changes (hovering units, objects, AoE targeting, item drag).
+    -- Hide while the hardware cursor changes shape (mouseover unit, AoE targeting, item drag, tooltip owner).
     local shouldHide = UnitExists("mouseover") or SpellIsTargeting() or GetCursorInfo() or GameTooltip:IsOwned(UIParent)
     self.tex:SetAlpha(shouldHide and 0 or 1)
-    
+
     self:ClearAllPoints()
-    
-    -- Apply the physical user offsets before UI scale division
+
+    -- Physical pixel offsets applied before UI scale division so they're stable across scale changes.
     x = x + customX
     y = y + customY
     self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale, y / scale)
@@ -68,11 +61,9 @@ function Mouse:Enable()
 
     if not self._frame then
         self._frame = CreateFrame("Frame", "OrbitQoLCursorFrame", UIParent)
-        
-        -- Make sure it sits above almost everything else but doesn't block clicks
         self._frame:SetFrameStrata(Orbit.Constants.Strata.Topmost)
         self._frame:EnableMouse(false)
-        
+
         local tex = self._frame:CreateTexture(nil, "OVERLAY")
         tex:SetAllPoints()
         self._frame.tex = tex

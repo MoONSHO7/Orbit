@@ -1,6 +1,4 @@
 -- [ OUT OF COMBAT FADE MIXIN ]----------------------------------------------------------------------
--- Hide frames OOC without target. Usage: call ApplyOOCFade(frame, plugin, systemIndex) in ApplySettings
-
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
@@ -14,14 +12,12 @@ local EventFrame = CreateFrame("Frame")
 local ManagedFrames = setmetatable({}, { __mode = "k" })
 
 -- [ VISIBILITY LOGIC ]------------------------------------------------------------------------------
--- Resolve the VE key for a managed frame's data
 local function GetVEKey(data)
     if data.veKey then return data.veKey end
     if not Orbit.VisibilityEngine then return nil end
     return Orbit.VisibilityEngine:GetKeyForPlugin(data.plugin and data.plugin.name, data.systemIndex)
 end
 
--- Check if frame should be revealed for OOC fade (combat, edit mode, cursor)
 local function IsInCombatContext(frame)
     if frame and not frame:IsShown() then return false end
     if Orbit:IsEditMode() then return true end
@@ -37,7 +33,6 @@ local function IsCursorRevealing(frame)
     return ct == "spell" or ct == "item"
 end
 
--- Read all VE settings for a managed frame
 local function GetVESettings(data)
     local veKey = data and GetVEKey(data)
     local VE = Orbit.VisibilityEngine
@@ -55,7 +50,6 @@ end
 
 
 
--- Directly hide/show the group border overlay on a frame or its ancestor's merge root
 local function SetGroupBorderOOCHidden(frame, hidden)
     local target = frame
     for _ = 1, 5 do
@@ -72,7 +66,6 @@ local function SetGroupBorderOOCHidden(frame, hidden)
     end
 end
 
--- Sync Minimap cluster children alpha for mouseover reveal
 local function SyncMinimapChildrenAlpha(frame, alpha)
     if not frame or not frame.orbitOpacityExternal then return end
     for _, child in ipairs({ frame:GetChildren() }) do
@@ -91,7 +84,6 @@ local function UpdateFrameVisibility(frame, _, data)
         end
     end
     if isMountedHidden then
-        -- Check reveal overrides before hiding
         local _, _, mouseOver, showWithTarget = GetVESettings(data)
         local revealFull = (mouseOver and frame.orbitMouseOver) or (showWithTarget and UnitExists("target")) or IsCursorRevealing(frame)
         if not revealFull then
@@ -101,11 +93,9 @@ local function UpdateFrameVisibility(frame, _, data)
             return
         end
     end
-    -- Read VE settings
     local opacity, oocFade, mouseOver, showWithTarget, alphaLock = GetVESettings(data)
     local baseAlpha = frame.orbitOpacityExternal and 1 or (opacity or 100) / 100
     local rawOpacity = (opacity or 100) / 100
-    -- Early out: no VE effects active — stop any stale fader and reset
     if not oocFade and rawOpacity >= 1 and not mouseOver then
         if frame._oocFadeHidden then frame._oocFadeHidden = nil; SetGroupBorderOOCHidden(frame, false) end
         Orbit.Animation:StopHoverFade(frame)
@@ -113,14 +103,11 @@ local function UpdateFrameVisibility(frame, _, data)
         SyncMinimapChildrenAlpha(frame, 1)
         return
     end
-    -- Determine reveal overrides (only when opacity > 0 — don't override explicit hide)
     local isHovering = frame.orbitMouseOver
     local hasTarget = UnitExists("target")
     local revealFull = (mouseOver and isHovering) or (showWithTarget and hasTarget) or IsCursorRevealing(frame)
-    -- Determine OOC hide
     local shouldOOCHide = oocFade and not IsInCombatContext(frame) and not revealFull
-    -- Calculate final alpha. Alpha Lock caps reveal at the frame's base opacity
-    -- instead of pushing to full 1.0 when mouseOver/target triggers fire.
+    -- Alpha Lock caps reveal at base opacity instead of pushing to 1.0 on mouseOver/target.
     local finalAlpha
     if shouldOOCHide then
         finalAlpha = 0
@@ -283,7 +270,7 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
     UpdateFrameVisibility(frame, nil, ManagedFrames[frame])
 end
 
---- Remove OOC Fade behavior from a frame
+-- Remove OOC Fade behavior from a frame
 function Mixin:RemoveOOCFade(frame)
     if not frame then return end
     ManagedFrames[frame] = nil

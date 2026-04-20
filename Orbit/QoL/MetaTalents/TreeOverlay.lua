@@ -1,9 +1,5 @@
--- [ METATALENTS / TREE OVERLAY ]--------------------------------------------------------------
--- Per-button heatmap pipeline: pick-rate badge under each talent button, red/green shape
--- glow indicating meta pick alignment, and the tooltip hook that appends the WCL pick-rate
--- line to spell tooltips. UpdateShapeGlow lives at file scope now — it used to be lazily
--- defined inside the first truthy-pickrate call to ApplyHeatmap, which was fragile.
-
+-- [ METATALENTS / TREE OVERLAY ] --------------------------------------------------------------------
+-- UpdateShapeGlow stays at file scope — lazy-defining it inside ApplyHeatmap's truthy-pickrate branch was fragile.
 local _, Orbit = ...
 local MT = Orbit.MetaTalents
 local C = MT.Constants
@@ -18,7 +14,7 @@ local GLOW_CIRCLE_ATLAS = "talents-node-circle-greenglow"
 local GLOW_CHOICE_ATLAS = "talents-node-choice-greenglow"
 local GLOW_SQUARE_ATLAS = "talents-node-square-greenglow"
 
--- [ BADGE CREATION ]--------------------------------------------------------------------------
+-- [ BADGE CREATION ] --------------------------------------------------------------------------------
 local function CreateBadge(button)
     local badge = CreateFrame("Frame", nil, button)
     badge:SetFrameLevel(math.max(1, button:GetFrameLevel() + C.BADGE_LEVEL_OFFSET))
@@ -37,7 +33,7 @@ local function CreateBadge(button)
     return badge
 end
 
--- [ SHAPE GLOW ]------------------------------------------------------------------------------
+-- [ SHAPE GLOW ] ------------------------------------------------------------------------------------
 local function UpdateShapeGlow(button, glowType)
     if not glowType then
         if button._orbitShapeGlow then button._orbitShapeGlow:Hide() end
@@ -70,13 +66,13 @@ local function UpdateShapeGlow(button, glowType)
     glow:Show()
 end
 
--- [ PURCHASABILITY ]--------------------------------------------------------------------------
+-- [ PURCHASABILITY ] --------------------------------------------------------------------------------
 local function IsLegallyPurchasable(cfg, nid, eid, itype, avail)
     if itype == Enum.TraitNodeType.Tiered then return avail end
     return C_Traits.CanPurchaseRank(cfg, nid, eid)
 end
 
--- [ PICK RATE LOOKUP FOR BUTTON ]-------------------------------------------------------------
+-- [ PICK RATE LOOKUP FOR BUTTON ] -------------------------------------------------------------------
 local function ResolvePickRate(button, info, isSelected, isChoiceNode)
     if isSelected and isChoiceNode then
         local pickedEntryID = (info and info.activeEntry and info.activeEntry.entryID) or (button.GetEntryID and button:GetEntryID())
@@ -94,7 +90,7 @@ local function ResolvePickRate(button, info, isSelected, isChoiceNode)
     return bestPickRate or (entryID and Data.LookupPickRate(entryID))
 end
 
--- [ GLOW DECISION ]---------------------------------------------------------------------------
+-- [ GLOW DECISION ] ---------------------------------------------------------------------------------
 local function DecideGlow(button, info, metaSet, isSelected, isChoiceNode, activeRank, metaConfigID, nID)
     if not (metaSet and info) then return nil end
     local pickedEntryID = (info.activeEntry and info.activeEntry.entryID) or (button.GetEntryID and button:GetEntryID())
@@ -129,7 +125,7 @@ local function DecideGlow(button, info, metaSet, isSelected, isChoiceNode, activ
     return nil
 end
 
--- [ HEATMAP APPLICATION ]---------------------------------------------------------------------
+-- [ HEATMAP APPLICATION ] ---------------------------------------------------------------------------
 function Overlay.ApplyHeatmap(button)
     if button.Divider then button.Divider:SetAlpha(0) end
     local db = Orbit.db and Orbit.db.AccountSettings
@@ -174,7 +170,7 @@ function Overlay.ApplyHeatmap(button)
     UpdateShapeGlow(button, glowReq)
 end
 
--- [ TOOLTIP HOOK ]----------------------------------------------------------------------------
+-- [ TOOLTIP HOOK ] ----------------------------------------------------------------------------------
 function Overlay.HookTooltips()
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Spell, function(tooltip, data)
         local db = Orbit.db and Orbit.db.AccountSettings

@@ -1,4 +1,4 @@
--- [ ORBIT PANDEMIC GLOW ]--------------------------------------------------------------------------
+-- [ ORBIT PANDEMIC GLOW ] ---------------------------------------------------------------------------
 -- Curve-driven pandemic glow for UnitDisplay aura icons.
 -- Thin adapter: curve evaluation → GlowController call.
 local _, Orbit = ...
@@ -15,13 +15,13 @@ pandemicCurve:SetType(Enum.LuaCurveType.Step)
 pandemicCurve:AddPoint(0, 1)
 pandemicCurve:AddPoint(PANDEMIC_THRESHOLD, 0)
 
--- [ STOP GLOW ]------------------------------------------------------------------------------------
+-- [ STOP GLOW ] -------------------------------------------------------------------------------------
 function PG:Stop(icon)
     if not icon then return end
     GC:StopPandemic(icon)
 end
 
--- [ APPLY ]----------------------------------------------------------------------------------------
+-- [ APPLY ] -----------------------------------------------------------------------------------------
 function PG:Apply(icon, aura, unit, skinSettings)
     if not icon or not aura then return end
 

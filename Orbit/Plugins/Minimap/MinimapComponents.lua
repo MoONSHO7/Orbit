@@ -18,7 +18,7 @@ local ZOOM_FADE_OUT = C.ZOOM_FADE_OUT
 
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
--- [ SHAPE ]----------------------------------------------------------------------------------------
+-- [ SHAPE ] -----------------------------------------------------------------------------------------
 
 function Plugin:ApplyShape()
     local frame = self.frame
@@ -86,7 +86,7 @@ local ZONE_PVP_COLORS = {
 }
 Plugin.ZonePVPColors = ZONE_PVP_COLORS -- shared with Minimap.lua for tooltip colouring
 
--- [ ZONE TEXT ]---------------------------------------------------------------------------
+-- [ ZONE TEXT ] -------------------------------------------------------------------------------------
 
 local lastZoneText = nil
 

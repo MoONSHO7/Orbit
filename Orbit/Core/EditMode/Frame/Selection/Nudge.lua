@@ -1,16 +1,11 @@
--- [ ORBIT SELECTION - KEYBOARD NUDGE ]-------------------------------------------------------------
--- Handles keyboard arrow key nudging for both Orbit and native frames
-
+-- [ ORBIT SELECTION - KEYBOARD NUDGE ] --------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
 local Nudge = {}
 Engine.SelectionNudge = Nudge
 
--------------------------------------------------
--- KEYBOARD HANDLER
--------------------------------------------------
-
+-- [ KEYBOARD HANDLER ]------------------------------------------------------------------------------
 function Nudge:Enable(Selection)
     if InCombatLockdown() then
         return
@@ -34,14 +29,12 @@ function Nudge:Enable(Selection)
             if key == "UP" or key == "DOWN" or key == "LEFT" or key == "RIGHT" then
                 Selection.keyboardHandler:SetPropagateKeyboardInput(false)
 
-                -- Execute nudge
                 if Selection.isNativeFrame then
                     Nudge:NudgeNativeFrame(Selection.selectedFrame, key, Selection)
                 else
                     Nudge:NudgeFrame(Selection.selectedFrame, key, Selection)
                 end
 
-                -- Start repeat using shared module
                 local direction = key
                 Engine.NudgeRepeat:Start(function()
                     if Selection.isNativeFrame then
@@ -77,26 +70,21 @@ function Nudge:Disable(Selection)
     Engine.NudgeRepeat:Stop()
 end
 
--------------------------------------------------
--- ORBIT FRAME NUDGE
--------------------------------------------------
-
+-- [ ORBIT FRAME NUDGE ] -----------------------------------------------------------------------------
 function Nudge:NudgeFrame(frame, direction, Selection)
     if not frame then
         return
     end
 
-    -- Block nudging frames in Component Edit mode
     if Engine.CanvasMode and Engine.CanvasMode:IsActive(frame) then
         return
     end
 
-    -- Block nudging anchored frames (they follow their parent)
+    -- Anchored frames follow their parent — nudging them would desync the chain.
     if Engine.FrameAnchor and Engine.FrameAnchor:GetAnchorParent(frame) then
         return
     end
 
-    -- Get current position
     local point, relativeTo, relativePoint, xOfs, yOfs = frame:GetPoint(1)
     if not point then
         point, xOfs, yOfs = "CENTER", 0, 0
@@ -123,42 +111,32 @@ function Nudge:NudgeFrame(frame, direction, Selection)
     frame:ClearAllPoints()
     frame:SetPoint(point, relativeTo, relativePoint, xOfs, yOfs)
 
-    -- Trigger drag callback to persist position
     if Selection.dragCallbacks[frame] then
         Selection.dragCallbacks[frame](frame, point, xOfs, yOfs)
     end
 
     Selection:UpdateVisuals(frame)
-
-    -- Show position tooltip
     Engine.SelectionTooltip:ShowPosition(frame, Selection)
 end
 
--------------------------------------------------
--- NATIVE FRAME NUDGE
--------------------------------------------------
-
+-- [ NATIVE FRAME NUDGE ] ----------------------------------------------------------------------------
 function Nudge:NudgeNativeFrame(frame, direction, Selection)
     if not frame then
         return
     end
 
-    -- Must have systemInfo to be a native Edit Mode frame
     if not frame.systemInfo then
         return
     end
 
-    -- Block nudging frames in Component Edit mode
     if Engine.CanvasMode and Engine.CanvasMode:IsActive(frame) then
         return
     end
 
-    -- Get anchor info from native Edit Mode system
     local anchor = frame.systemInfo.anchorInfo or {}
     local xOffset = anchor.offsetX or 0
     local yOffset = anchor.offsetY or 0
 
-    -- Apply 1 pixel nudge
     if direction == "UP" then
         yOffset = yOffset + 1
     elseif direction == "DOWN" then

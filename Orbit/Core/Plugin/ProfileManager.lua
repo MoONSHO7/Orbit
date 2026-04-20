@@ -74,11 +74,9 @@ function Orbit.Profile:Initialize()
     end
 
     if not Orbit.db.profiles[DEFAULT_PROFILE] then
-        -- Create Global profile if it doesn't exist
         Orbit.db.profiles[DEFAULT_PROFILE] = CopyTable(self.defaults, {})
     end
 
-    -- Resolve per-character active profile (new characters default to Global)
     local charProfile = Orbit.db.charActiveProfiles[CHAR_KEY]
     if charProfile and Orbit.db.profiles[charProfile] then
         Orbit.db.activeProfile = charProfile
@@ -87,7 +85,6 @@ function Orbit.Profile:Initialize()
         Orbit.db.charActiveProfiles[CHAR_KEY] = DEFAULT_PROFILE
     end
 
-    -- Ensure spec mappings system is initialized
     if not Orbit.db.specMappings then
         Orbit.db.specMappings = {}
     end
@@ -101,7 +98,6 @@ function Orbit.Profile:Initialize()
         end
     end
 
-    -- Activate the correct profile for the current spec
     self:CheckSpecProfile()
 
     for _, profileData in pairs(Orbit.db.profiles) do
@@ -126,7 +122,7 @@ function Orbit.Profile:GetProfiles()
     return names
 end
 
--- [ SPEC MAPPING ]---------------------------------------------------------------------------------
+-- [ SPEC MAPPING ] ----------------------------------------------------------------------------------
 
 function Orbit.Profile:GetProfileForSpec(specID)
     if not Orbit.db.specMappings then return nil end
@@ -174,7 +170,6 @@ function Orbit.Profile:DeleteProfile(name)
     if name == DEFAULT_PROFILE then return false end
     if name == self:GetActiveProfileName() then return false end
     Orbit.db.profiles[name] = nil
-    -- Clean up spec mappings referencing deleted profile
     if Orbit.db.specMappings then
         for specID, mapped in pairs(Orbit.db.specMappings) do
             if mapped == name then Orbit.db.specMappings[specID] = nil end
@@ -191,7 +186,6 @@ function Orbit.Profile:RenameProfile(oldName, newName)
     Orbit.db.profiles[newName] = Orbit.db.profiles[oldName]
     Orbit.db.profiles[oldName] = nil
     if Orbit.db.activeProfile == oldName then Orbit.db.activeProfile = newName end
-    -- Update spec mappings
     if Orbit.db.specMappings then
         for specID, mapped in pairs(Orbit.db.specMappings) do
             if mapped == oldName then Orbit.db.specMappings[specID] = newName end

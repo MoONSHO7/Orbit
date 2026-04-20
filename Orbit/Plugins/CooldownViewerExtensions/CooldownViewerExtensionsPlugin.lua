@@ -1,20 +1,11 @@
 -- [ ORBIT COOLDOWN VIEWER EXTENSIONS ] --------------------------------------------------------------
--- Lightweight plugin that adds extra side tabs to Blizzard's CooldownViewerSettings
--- frame. Other plugins (Tracked, future plugins) call RegisterTab to add a tab —
--- this plugin owns the ADDON_LOADED hook, the anchor chain below AurasTab, and
--- the click dispatch. Tabs here are click buttons; they do NOT switch the panel's
--- displayMode (the parent frame's content stays as-is). Their click handler runs
--- whatever the registering plugin asked for (e.g. spawn a new container).
 local _, Orbit = ...
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local TAB_TEMPLATE = "CooldownViewerSettingsTabTemplate"
 local TAB_GAP_Y = -3
 local TARGET_ADDON = "Blizzard_CooldownViewer"
--- The mixin's SetChecked re-applies the atlas with UseAtlasSize=true, so any
--- atlas larger than the native cooldown viewer icons (icon_cooldownmanager,
--- icon_trackedbuffs) overflows the 43x55 tab. We force a fixed icon size and
--- reapply on every SetChecked via hooksecurefunc.
+-- Fixed icon size + SetChecked re-apply: the mixin's SetChecked re-applies the atlas with UseAtlasSize=true, overflowing the 43x55 tab for atlases larger than the native cooldown viewer icons.
 local TAB_ICON_SIZE = 28
 
 -- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
@@ -31,6 +22,7 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Viewer Extensions", "Orbit_Cooldow
 function Plugin:HookCooldownViewer()
     if self:IsSettingsFrameReady() then
         self:BuildPendingTabs()
+        if Orbit.CooldownSettingsDragBridge then Orbit.CooldownSettingsDragBridge:Install() end
         return
     end
     if self._hookFrame then return end
@@ -40,6 +32,7 @@ function Plugin:HookCooldownViewer()
         if addonName ~= TARGET_ADDON then return end
         if not self:IsSettingsFrameReady() then return end
         self:BuildPendingTabs()
+        if Orbit.CooldownSettingsDragBridge then Orbit.CooldownSettingsDragBridge:Install() end
         f:UnregisterEvent("ADDON_LOADED")
     end)
     self._hookFrame = f
@@ -83,6 +76,15 @@ function Plugin:BuildPendingTabs()
     local parent = CooldownViewerSettings
     if not parent then return end
     local anchorTo = self._lastBuiltTab or CooldownViewerSettings.AurasTab
+
+    -- HookScript (script callback, not a method hook) — doesn't taint the panel's attribute chain.
+    if not self._panelVisHooked then
+        self._panelVisHooked = true
+        local plugin = self
+        parent:HookScript("OnShow", function() for _, t in pairs(plugin.builtTabs) do t:Show() end end)
+        parent:HookScript("OnHide", function() for _, t in pairs(plugin.builtTabs) do t:Hide() end end)
+    end
+
     for _, spec in ipairs(self.pendingTabs) do
         if not self.builtTabs[spec.id] then
             local tab = self:CreateTab(parent, spec, anchorTo)
@@ -109,7 +111,10 @@ local function NormalizeOrbitTabIcon(tab)
 end
 
 function Plugin:CreateTab(parent, spec, anchorTo)
-    local tab = CreateFrame("CheckButton", nil, parent, TAB_TEMPLATE)
+    -- Parented to UIParent so per-tab hooks can't cascade taint into the settings panel.
+    local tab = CreateFrame("CheckButton", nil, UIParent, TAB_TEMPLATE)
+    tab:SetFrameStrata(parent:GetFrameStrata())
+    tab:SetFrameLevel(parent:GetFrameLevel() + 10)
     tab.activeAtlas = spec.atlas
     tab.inactiveAtlas = spec.atlas
     tab.vertexColor = spec.vertexColor
@@ -123,15 +128,16 @@ function Plugin:CreateTab(parent, spec, anchorTo)
     -- Hook it to renormalize back to a fixed size after every state change.
     hooksecurefunc(tab, "SetChecked", NormalizeOrbitTabIcon)
 
+    -- Defer onClick out of Blizzard's secure click dispatch so the spawn chain can't propagate taint.
     tab:SetCustomOnMouseUpHandler(function(_, button, upInside)
         if button == "LeftButton" and upInside and spec.onClick then
-            spec.onClick(tab)
+            C_Timer.After(0, function() spec.onClick(tab) end)
         end
         tab:SetChecked(false)
     end)
 
     tab:SetChecked(false)
-    tab:Show()
+    if parent:IsShown() then tab:Show() else tab:Hide() end
     return tab
 end
 

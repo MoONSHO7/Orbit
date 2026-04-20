@@ -3,7 +3,7 @@
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 
--- [ CONSTANTS ] -------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local PVP_COLORS = {
     sanctuary = { 0.41, 0.80, 0.94 },
     friendly  = { 0.0, 1.0, 0.0 },
@@ -12,13 +12,13 @@ local PVP_COLORS = {
 }
 local DEFAULT_COLOR = { 1, 0.82, 0 }
 
--- [ HELPERS ] ---------------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 local function GetPvPColor()
     local pvpType = C_PvP.GetZonePVPInfo()
     return PVP_COLORS[pvpType] or DEFAULT_COLOR
 end
 
--- [ datatext ] ----------------------------------------------------------------------
+-- [ DATATEXT ] --------------------------------------------------------------------------------------
 local W = DT.BaseDatatext:New("Location")
 
 function W:Update()

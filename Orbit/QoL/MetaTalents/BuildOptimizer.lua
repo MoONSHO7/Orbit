@@ -1,12 +1,5 @@
--- [ METATALENTS / BUILD OPTIMIZER ]-----------------------------------------------------------
--- Budget-aware greedy loadout algorithm. Scores every visible node by WCL pick rate,
--- sorts descending, then greedily fills within the per-currency point budget.
--- Produces three parallel results: the import entries array (fed to ImportLoadout), a
--- per-entryID "meta set" flag table (consumed by the tree overlay's red/green glow), and
--- a per-nodeID descriptor table used by the Apply button match check — the latter fixes
--- a tiered-node false-negative where all tier entryIDs ended up in metaSet but activeEntry
--- only ever holds one entry.
-
+-- [ METATALENTS / BUILD OPTIMIZER ] -----------------------------------------------------------------
+-- Greedy fill by WCL pick-rate within per-currency budget. Emits both per-entryID metaSet (overlay glow) and per-nodeID descriptors (Apply match check) — the nodeID side fixes tiered-node false negatives.
 local _, Orbit = ...
 local MT = Orbit.MetaTalents
 local C = MT.Constants
@@ -15,7 +8,7 @@ local Data = MT.Data
 local Build = {}
 MT.Build = Build
 
--- [ INTERNAL CACHE ]--------------------------------------------------------------------------
+-- [ INTERNAL CACHE ] --------------------------------------------------------------------------------
 local metaEntriesCache = nil
 local metaSetCache = nil
 local metaNodesCache = nil
@@ -28,7 +21,7 @@ function Build.Invalidate()
     lastCacheKey = nil
 end
 
--- [ HERO BRANCH DETECTION ]-------------------------------------------------------------------
+-- [ HERO BRANCH DETECTION ] -------------------------------------------------------------------------
 -- Only considers visible SubTreeSelection nodes so a sub-70 character never gets a
 -- phantom activeSubTreeID set from WCL data for a hero tree they cannot access.
 local function DetectActiveSubTreeID(configID, treeNodes, specData)
@@ -50,7 +43,7 @@ local function DetectActiveSubTreeID(configID, treeNodes, specData)
     return nil
 end
 
--- [ CANDIDATE SCORING ]-----------------------------------------------------------------------
+-- [ CANDIDATE SCORING ] -----------------------------------------------------------------------------
 local function ScoreCandidates(configID, treeNodes, specData, activeSubTreeID)
     local candidates = {}
     for _, nodeID in ipairs(treeNodes) do
@@ -85,7 +78,7 @@ local function ScoreCandidates(configID, treeNodes, specData, activeSubTreeID)
     return candidates
 end
 
--- [ BUDGET SNAPSHOT ]-------------------------------------------------------------------------
+-- [ BUDGET SNAPSHOT ] -------------------------------------------------------------------------------
 -- Fixed: treat maxQuantity == 0 as a legitimate budget (e.g. hero currency pre-level-70).
 -- The previous `ci.maxQuantity or (ci.quantity + ci.spent)` would substitute the fallback
 -- on a falsy zero, which could disagree with the real max.
@@ -100,7 +93,7 @@ local function ReadBudgets(configID, treeID)
     return budgets
 end
 
--- [ IMPORT ENTRY BUILDER ]--------------------------------------------------------------------
+-- [ IMPORT ENTRY BUILDER ] --------------------------------------------------------------------------
 -- metaNodes is keyed by nodeID with { entryID, ranks, tiered, choice } — one entry per
 -- node. This is what UpdateApplyButtonState iterates, avoiding the tiered false-negative.
 local function AddEntry(cand, configID, importEntries, metaSet, metaNodes)
@@ -127,7 +120,7 @@ local function AddEntry(cand, configID, importEntries, metaSet, metaNodes)
     end
 end
 
--- [ GREEDY FILL ]-----------------------------------------------------------------------------
+-- [ GREEDY FILL ] -----------------------------------------------------------------------------------
 -- Fixed: hero branch nodes now share the budget-sufficiency gate used by paid nodes, so a
 -- future data shape where hero and class trees share a currency can't overspend. Hero
 -- nodes still bypass the MIN_PICK_RATE floor (they are prioritized) and still fall through
@@ -167,7 +160,7 @@ local function BuildOptimalEntries(configID, treeID, specData)
     return importEntries, metaSet, metaNodes
 end
 
--- [ CACHED COMPUTE ]--------------------------------------------------------------------------
+-- [ CACHED COMPUTE ] --------------------------------------------------------------------------------
 function Build.Compute()
     local specData = Data.UpdateActiveSpecData()
     if not specData then return nil, nil, nil end

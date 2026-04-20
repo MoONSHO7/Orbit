@@ -1,4 +1,4 @@
--- [ ORBIT PREVIEW HANDLE ]-------------------------------------------------------------------------
+-- [ ORBIT PREVIEW HANDLE ] --------------------------------------------------------------------------
 -- Drag handles for preview components in Canvas Mode.
 -- Uses HandleCore for shared infrastructure.
 
@@ -14,7 +14,7 @@ Preview.Handle = PreviewHandle
 -- Import shared infrastructure
 local HandleCore = Engine.HandleCore
 
--- [ CREATE HANDLE ]-----------------------------------------------------------------------------
+-- [ CREATE HANDLE ] ---------------------------------------------------------------------------------
 
 -- Create or acquire a drag handle for a preview component
 -- @param container: The component container

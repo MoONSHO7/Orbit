@@ -1,4 +1,4 @@
--- [ METATALENTS / CONSTANTS ]----------------------------------------------------------------
+-- [ METATALENTS / CONSTANTS ] -----------------------------------------------------------------------
 -- Shared constants, WCL tier colors, and the HeatmapColor function for the MetaTalents module.
 -- This file is loaded first; it seeds the Orbit.MetaTalents namespace for every sibling file.
 
@@ -11,7 +11,7 @@ Orbit.MetaTalents._dropdownsSetup = false
 local C = {}
 Orbit.MetaTalents.Constants = C
 
--- [ GENERAL ]---------------------------------------------------------------------------------
+-- [ GENERAL ] ---------------------------------------------------------------------------------------
 C.LOD_ADDON = "OrbitData"
 C.FONT_TEMPLATE = "GameFontHighlightSmallOutline"
 C.MIN_PICK_RATE = 1
@@ -22,7 +22,7 @@ C.CONFIG_NAME = "Orbit Loadout"
 C.LOGIN_DELAY = 0.5
 C.STATE_DEBOUNCE = 0.1
 
--- [ BADGE LAYOUT ]----------------------------------------------------------------------------
+-- [ BADGE LAYOUT ] ----------------------------------------------------------------------------------
 C.BADGE_WIDTH = 42
 C.BADGE_HEIGHT = 16
 C.BADGE_FONT_SIZE = 13
@@ -33,7 +33,7 @@ C.BADGE_SHADOW_WIDTH = 73
 C.BADGE_SHADOW_HEIGHT = 42
 C.BADGE_SHADOW_ALPHA = 0.95
 
--- [ WCL TIER COLORS ]-------------------------------------------------------------------------
+-- [ WCL TIER COLORS ] -------------------------------------------------------------------------------
 local COLOR_PINK   = { 0.886, 0.408, 0.659 }
 local COLOR_PURPLE = { 0.639, 0.208, 0.933 }
 local COLOR_BLUE   = { 0.000, 0.439, 0.867 }
@@ -45,7 +45,7 @@ local PURPLE_THRESHOLD = 75
 local BLUE_THRESHOLD = 50
 local GREEN_THRESHOLD = 25
 
--- [ HEATMAP COLOR ]---------------------------------------------------------------------------
+-- [ HEATMAP COLOR ] ---------------------------------------------------------------------------------
 function C.HeatmapColor(pct)
     if pct >= PINK_THRESHOLD then return COLOR_PINK[1], COLOR_PINK[2], COLOR_PINK[3] end
     if pct >= PURPLE_THRESHOLD then return COLOR_PURPLE[1], COLOR_PURPLE[2], COLOR_PURPLE[3] end

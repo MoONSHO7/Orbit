@@ -6,57 +6,48 @@ local math_floor = math.floor
 
 -- [ SLIDER WIDGET ]---------------------------------------------------------------------------------
 function Layout:CreateSlider(parent, label, min, max, step, formatter, initialValue, callback, options)
-    -- Pool retrieval
     if not self.sliderPool then
         self.sliderPool = {}
     end
     local frame = table.remove(self.sliderPool)
 
-    -- Frame creation
     if not frame then
         frame = CreateFrame("Frame", nil, parent, "EditModeSettingSliderTemplate")
         frame.OrbitType = "Slider"
 
-        -- Neutralize native handlers
         frame.OnSliderValueChanged = function() end
         frame.OnSliderInteractStart = function() end
         frame.OnSliderInteractEnd = function() end
 
-        -- Create Value display (yellow text like Blizzard)
         frame.Value = frame:CreateFontString(nil, "OVERLAY", Orbit.Constants.UI.ValueFont)
-        frame.Value:SetTextColor(1, 0.82, 0, 1) -- Blizzard gold
+        frame.Value:SetTextColor(1, 0.82, 0, 1)
     end
 
-    -- Set parent
     frame:SetParent(parent)
 
-    -- Configure control logic
     frame.valueFormatter = formatter or function(value)
         return math_floor(value * 10 or 0) / 10
     end
     frame.OnOrbitChange = callback
 
     if frame.Slider then
-        -- CRITICAL FIX: Unregister existing callback before registering to prevent accumulation
+        -- Unregister before re-registering — pool reuse would otherwise stack callbacks each acquire.
         if frame._callbackRegistered then
             frame.Slider:UnregisterCallback("OnValueChanged", frame)
         end
 
-        -- Use initialization guard to prevent onChange firing during Slider:Init()
+        -- Slider:Init fires OnValueChanged synchronously; guard prevents that fire from reaching onChange.
         frame._isInitializing = true
 
-        -- Register value change listener
         frame.Slider:RegisterCallback("OnValueChanged", function(_, value)
             if frame.Value and frame.valueFormatter then
                 frame.Value:SetText(frame.valueFormatter(value))
             end
 
-            -- CRITICAL: Skip callback during initialization (Init fires OnValueChanged)
             if frame._isInitializing then
                 return
             end
 
-            -- If updateOnRelease is enabled, skip callback here
             if options and options.updateOnRelease then
                 return
             end
@@ -67,12 +58,10 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
         end, frame)
         frame._callbackRegistered = true
 
-        -- Initialize slider (this fires OnValueChanged, but guard prevents onChange)
         local steps = (max - min) / step
         local startValue = initialValue or min
         frame.Slider:Init(startValue, min, max, steps, {})
 
-        -- Clear initialization guard AFTER Init completes
         frame._isInitializing = false
 
         -- Handle Release for deferred updates

@@ -1,4 +1,4 @@
--- [ ACTION BARS - CONTAINER FACTORY ]--------------------------------------------------------------
+-- [ ACTION BARS - CONTAINER FACTORY ] ---------------------------------------------------------------
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine

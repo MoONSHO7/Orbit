@@ -3,7 +3,7 @@
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 
--- [ datatext ] ----------------------------------------------------------------------
+-- [ DATATEXT ] --------------------------------------------------------------------------------------
 local W = DT.BaseDatatext:New("Guild")
 
 function W:Update()

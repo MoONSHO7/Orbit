@@ -1,4 +1,4 @@
--- [ CANVAS MODE - TOUR ]------------------------------------------------------------
+-- [ CANVAS MODE - TOUR ] ----------------------------------------------------------------------------
 -- Sequential tour that cycles through help points with Next/Done.
 -- Strings live in Orbit/Localization/Domains/Tours.lua under the TOUR_CM_* prefix.
 -- When adding or renaming tour stops here, update the matching keys there.
@@ -7,7 +7,7 @@ local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
 
--- [ CONSTANTS ]----------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local BUTTON_SIZE = 36
 local PULSE_LEVEL = 512
 local TOOLTIP_PAD = 8
@@ -23,7 +23,7 @@ local TEXT_CLR = { r = 0.85, g = 0.85, b = 0.85 }
 local TITLE_CLR = { r = ACCENT.r, g = ACCENT.g, b = ACCENT.b }
 local FONT = "GameFontNormalSmall"
 
--- [ LOCALIZATION ]-------------------------------------------------------------------
+-- [ LOCALIZATION ] ----------------------------------------------------------------------------------
 -- Strings live in Localization/Domains/Tours.lua (TOUR_CM_* keys) and Common.lua
 -- (CMN_NEXT / CMN_DONE).
 local L = Orbit.L
@@ -32,7 +32,7 @@ local L = Orbit.L
 local isCJK = ({ koKR = true, zhCN = true, zhTW = true })[GetLocale()]
 if isCJK then TOOLTIP_MAX_WIDTH = 240 end
 
--- [ TOUR STOPS ]---------------------------------------------------------------------
+-- [ TOUR STOPS ] ------------------------------------------------------------------------------------
 local TOUR_STOPS = {
     { anchor = function() return Dialog.DisabledDock end,
       tooltipPoint = "BOTTOM", tooltipRel = "TOP", tpX = 0, tpY = 8,
@@ -96,11 +96,11 @@ local TOUR_STOPS = {
       title = L.TOUR_CM_RESIZE_TITLE, text = L.TOUR_CM_RESIZE_TEXT },
 }
 
--- [ STATE ]--------------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 Dialog.tourActive = false
 Dialog.tourIndex = 0
 
--- [ CUSTOM TOOLTIP ]-----------------------------------------------------------------
+-- [ CUSTOM TOOLTIP ] --------------------------------------------------------------------------------
 local function MakeBorderEdge(parent, horiz, p1, r1, p2, r2)
     local t = parent:CreateTexture(nil, "BORDER")
     t:SetColorTexture(BORDER_CLR.r, BORDER_CLR.g, BORDER_CLR.b, BORDER_CLR.a)
@@ -266,7 +266,7 @@ local function LayoutTooltip(anchor, stop, idx, total)
     end
 end
 
--- [ TOUR CONTROL ]-------------------------------------------------------------------
+-- [ TOUR CONTROL ] ----------------------------------------------------------------------------------
 function Dialog:ShowTourStop(idx)
     -- Clean up previous stop
     if self.tourIndex > 0 then
@@ -318,7 +318,7 @@ function Dialog:ToggleTour()
     end
 end
 
--- [ TOUR BUTTON (in dialog header, hard left) ]--------------------------------------
+-- [ TOUR BUTTON (in dialog header, hard left) ] -----------------------------------------------------
 local btn = CreateFrame("Button", nil, Dialog.TitleContainer)
 btn:SetSize(BUTTON_SIZE, BUTTON_SIZE)
 btn:SetPoint("TOPLEFT", Dialog, "TOPLEFT", 0, 5)

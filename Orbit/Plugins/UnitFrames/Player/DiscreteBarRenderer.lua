@@ -1,5 +1,4 @@
--- [ DISCRETE BAR RENDERER ]------------------------------------------------------------------------
--- Handles Combo Points, Runes, Essence, Chi, Arcane Charges, Holy Power, Soul Shards
+-- [ DISCRETE BAR RENDERER ] -------------------------------------------------------------------------
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
@@ -25,7 +24,7 @@ local function PixelMultiple(count, scale) return OrbitEngine.Pixel:Multiple(cou
 local Renderer = {}
 Orbit.DiscreteBarRenderer = Renderer
 
--- [ RESOURCE COLOR ]-------------------------------------------------------------------------------
+-- [ RESOURCE COLOR ] --------------------------------------------------------------------------------
 function Renderer:GetResourceColor(plugin, systemIndex, index, maxResources, isCharged)
     local curveData = plugin:GetSetting(systemIndex, "BarColorCurve")
     if curveData and curveData.pins then
@@ -71,7 +70,7 @@ function Renderer:GetResourceColorUnpacked(plugin, systemIndex, index, maxResour
     return def.r, def.g, def.b
 end
 
--- [ BUTTON CREATION ]------------------------------------------------------------------------------
+-- [ BUTTON CREATION ] -------------------------------------------------------------------------------
 function Renderer:UpdateMaxPower(plugin, frame, systemIndex)
     if not frame or not plugin.powerType then return end
     local max = plugin.powerType == Enum.PowerType.Runes and 6 or UnitPowerMax("player", plugin.powerType)
@@ -118,7 +117,7 @@ function Renderer:UpdateMaxPower(plugin, frame, systemIndex)
     plugin:ApplySettings()
 end
 
--- [ LAYOUT ]--------------------------------------------------------------------------------------
+-- [ LAYOUT ] ----------------------------------------------------------------------------------------
 function Renderer:UpdateLayout(frame)
     if not frame then return end
     local buttons = frame.buttons or {}
@@ -150,7 +149,7 @@ function Renderer:UpdateLayout(frame)
     if frame.Dividers then for _, d in pairs(frame.Dividers) do d:Hide() end end
 end
 
--- [ BUTTON VISUALS ]------------------------------------------------------------------------------
+-- [ BUTTON VISUALS ] --------------------------------------------------------------------------------
 function Renderer:ApplyButtonVisuals(plugin, frame, systemIndex)
     if not frame or not frame.buttons then return end
     local borderSize = (frame.settings and frame.settings.borderSize) or Orbit.Engine.Pixel:DefaultBorderSize(frame:GetEffectiveScale() or 1)
@@ -197,7 +196,7 @@ function Renderer:ApplyButtonVisuals(plugin, frame, systemIndex)
     end
 end
 
--- [ UPDATE POWER (DISCRETE PATH) ]-----------------------------------------------------------------
+-- [ UPDATE POWER (DISCRETE PATH) ] ------------------------------------------------------------------
 function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
     if not plugin.powerType then return end
 
@@ -293,7 +292,7 @@ function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
     end
 end
 
--- [ CHARGED COMBO OVERLAYS ]----------------------------------------------------------------------
+-- [ CHARGED COMBO OVERLAYS ] ------------------------------------------------------------------------
 function Renderer:UpdateChargedOverlays(plugin, frame, systemIndex, cur, max)
     frame.ChargedOverlays = frame.ChargedOverlays or {}
     if plugin.powerType == Enum.PowerType.ComboPoints then

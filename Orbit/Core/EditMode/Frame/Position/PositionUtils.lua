@@ -151,7 +151,7 @@ function PositionUtils.CalculateAnchorWithWidthCompensation(posX, posY, halfW, h
     return anchorX, anchorY, offsetX, offsetY, justifyH, selfAnchorY
 end
 
--- [ APPLY TEXT POSITION ]--------------------------------------------------------------------------
+-- [ APPLY TEXT POSITION ] ---------------------------------------------------------------------------
 
 -- Apply saved position data to a text element (FontString or Frame)
 -- Handles anchor-based positioning with justifyH support for text alignment

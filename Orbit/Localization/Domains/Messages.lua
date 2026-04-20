@@ -1,4 +1,4 @@
--- [ LOCALIZATION - MESSAGES ]--------------------------------------------------------
+-- [ LOCALIZATION - MESSAGES ] -----------------------------------------------------------------------
 -- MSG_ keys. Strings printed to chat via Orbit:Print() or print(): status updates,
 -- error messages, flash messages in config panels, reset confirmations.
 -- Keys ending in _F are format strings passed to :format() at the call site.

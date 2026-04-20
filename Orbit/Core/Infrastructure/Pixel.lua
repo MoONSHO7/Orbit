@@ -21,31 +21,24 @@ local function UpdateScreenScale()
     Orbit.EventBus:Fire("ORBIT_DISPLAY_SIZE_CHANGED", SCREEN_SCALE)
 end
 
--- Hook event frame to update scale when resolution changes
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("DISPLAY_SIZE_CHANGED")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:SetScript("OnEvent", UpdateScreenScale)
 UpdateScreenScale()
 
---- Get the number of Logical Units per Physical Pixel
--- @return number: Scale factor (cached)
 function Pixel:GetScale()
     return SCREEN_SCALE
 end
 
---- Snap a value to the nearest Physical Pixel
--- @param value number: The logical size to snap
--- @param scale number: (Optional) Frame Effective Scale. Defaults to 1.
--- @return number: The snapped value
 function Pixel:Snap(value, scale)
     if not value then
         return 0
     end
 
-    -- optimization: cache access
     local pixelScale = SCREEN_SCALE
     local frameScale = scale or 1
+    -- Clamp non-positive scales to 1; division-by-near-zero would explode the snap.
     if frameScale < 0.01 then
         frameScale = 1
     end
@@ -54,10 +47,7 @@ function Pixel:Snap(value, scale)
     return math.floor(value / step + 0.5) * step
 end
 
---- Convert a Physical Pixel count to Logical Units
--- @param count number: Physical pixels (e.g. BorderSize=2 means 2 screen pixels)
--- @param scale number: (Optional) Frame Effective Scale. Defaults to 1.
--- @return number: Logical size that renders as exactly `count` physical pixels
+-- Logical size that renders as exactly `count` physical pixels.
 function Pixel:Multiple(count, scale)
     local n = count or 0
     if n == 0 then return 0 end
@@ -69,31 +59,17 @@ function Pixel:Multiple(count, scale)
     return sign * math.max(math.floor(abs + 0.5), 1) * step
 end
 
---- Resolve the pixel-snapped border inset for a frame
--- Returns cached borderPixelSize from SkinBorder when available, otherwise computes via Multiple.
--- @param frame Frame: The frame to query
--- @param fallbackSize number: (Optional) Border size in physical pixels if cache miss. Defaults to 0.
--- @return number: Logical size for the border inset
+-- Prefer SkinBorder's cached borderPixelSize over recomputing — keeps inset stable across re-skins.
 function Pixel:BorderInset(frame, fallbackSize)
     if frame and frame.borderPixelSize then return frame.borderPixelSize end
     return self:Multiple(fallbackSize or 0, frame:GetEffectiveScale())
 end
 
---- Compute the default 1-pixel border size in logical units for a given scale
--- @param scale number: Frame effective scale
--- @return number: Logical size for 1 physical pixel border
 function Pixel:DefaultBorderSize(scale)
     return self:Multiple(1, scale)
 end
 
---- Snap X/Y for a given anchor point, accounting for center alignment
--- @param x number: Raw X position
--- @param y number: Raw Y position
--- @param point string: Anchor point (e.g. "TOPLEFT", "CENTER")
--- @param width number: Frame width
--- @param height number: Frame height
--- @param scale number: Frame effective scale
--- @return number, number: Snapped x, y
+-- Center-anchored points snap relative to the center, not the edge — otherwise width/height drift after Snap.
 function Pixel:SnapPosition(x, y, point, width, height, scale)
     if point:find("LEFT", 1, true) or point:find("RIGHT", 1, true) then
         x = self:Snap(x, scale)
@@ -109,10 +85,7 @@ function Pixel:SnapPosition(x, y, point, width, height, scale)
 end
 
 -- [ ENFORCEMENT ]-----------------------------------------------------------------------------------
-
---- Enforce pixel-perfect sizing on a frame
--- Hooks SetWidth, SetHeight, SetSize to auto-snap inputs
--- @param frame Frame: The frame to enforce
+-- Hooks SetWidth/SetHeight/SetSize on a frame so all caller inputs auto-snap to physical pixels.
 function Pixel:Enforce(frame)
     if not frame then
         return
@@ -144,7 +117,6 @@ function Pixel:Enforce(frame)
         end
     end
 
-    -- Initial Snap (if dimensions exist)
     local w, h = frame:GetSize()
     if w and h then
         frame:SetSize(w, h)

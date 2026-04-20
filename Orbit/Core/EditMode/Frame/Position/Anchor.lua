@@ -63,6 +63,7 @@ local function GetFrameOptions(frame)
     return opts
 end
 
+-- Re-entrancy guard: cascading horizontal-chain resyncs would recursively re-enter OnSizeChanged.
 local syncingChainRoot = false
 
 local function HookParentSizeChange(parent, anchorModule)
@@ -647,7 +648,7 @@ function Anchor:GetHorizontalChainFrames(frame)
     return frames
 end
 
--- [ HORIZONTAL CHAIN EXTENT ]------------------------------------------------------------------------
+-- [ HORIZONTAL CHAIN EXTENT ] -----------------------------------------------------------------------
 function Anchor:GetHorizontalChainExtent(frame)
     if not frame.orbitChainSync then
         return nil, nil
@@ -870,7 +871,7 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited, depth)
     end
 end
 
--- [ RECONCILE CHAIN ]---------------------------------------------------------------------------------
+-- [ RECONCILE CHAIN ] -------------------------------------------------------------------------------
 function Anchor:ReconcileChain(root)
     if not root or InCombatLockdown() then return end
     Graph:ReconcileChain(root, self)
@@ -892,7 +893,7 @@ function Anchor:ScheduleReconcileAll()
     Graph:ScheduleReconcileAll(self)
 end
 
--- [ RESYNC ALL ]-------------------------------------------------------------------------------------
+-- [ RESYNC ALL ] ------------------------------------------------------------------------------------
 -- Re-syncs all anchored frames (e.g. after border size changes affect spacing).
 function Anchor:ResyncAll()
     if InCombatLockdown() then return end

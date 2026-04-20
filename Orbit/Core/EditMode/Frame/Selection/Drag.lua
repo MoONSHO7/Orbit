@@ -1,4 +1,4 @@
--- [ ORBIT SELECTION - DRAG HANDLERS ]--------------------------------------------------------------
+-- [ ORBIT SELECTION - DRAG HANDLERS ] ---------------------------------------------------------------
 -- Handles drag start, stop, mouse wheel padding, and mouse down selection
 
 local _, Orbit = ...
@@ -24,7 +24,7 @@ local function GetOppositeEdge(edge)
     return OPPOSITE_EDGES[edge]
 end
 
--- [ BLIZZARD EDIT MODE TAP-IN ]----------------------------------------------------------------------
+-- [ BLIZZARD EDIT MODE TAP-IN ] ---------------------------------------------------------------------
 local function GetUIParentSpaceRatio(frame)
     local uiScale = UIParent:GetEffectiveScale()
     if uiScale == 0 then return 1 end
@@ -86,7 +86,7 @@ local function GetChainScreenCenterX(root)
     return nil
 end
 
--- [ PRECISION MODE (SHIFT-DRAG OVERLAY SUPPRESSION) ]----------------------------------------------
+-- [ PRECISION MODE (SHIFT-DRAG OVERLAY SUPPRESSION) ] -----------------------------------------------
 
 local function SetNonSelectedOverlaysVisible(selectionOverlay, visible)
     local Selection = Engine.FrameSelection
@@ -260,7 +260,7 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     Engine.SelectionTooltip:ShowPosition(parent, Selection, true, anchorLabel)
 end
 
--- [ DRAG START (FUNCTION) ]------------------------------------------------------------------------
+-- [ DRAG START (FUNCTION) ] -------------------------------------------------------------------------
 
 function Drag:OnDragStart(selectionOverlay)
     if InCombatLockdown() then
@@ -560,7 +560,7 @@ function Drag:OnMouseDown(selectionOverlay)
     end
 end
 
--- [ MOUSE WHEEL (PADDING ADJUSTMENT) ]-------------------------------------------------------------
+-- [ MOUSE WHEEL (PADDING ADJUSTMENT) ] --------------------------------------------------------------
 
 function Drag:OnMouseWheel(selectionOverlay, delta)
     if selectionOverlay.wheelDebounce then

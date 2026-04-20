@@ -3,7 +3,7 @@
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 
--- [ CONSTANTS ] -------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local CORNER_SIZE = 4
 local DRAWER_WIDTH = 420
 local DRAWER_HEADER_HEIGHT = 40
@@ -19,7 +19,7 @@ local DRAWER_STRATA = "DIALOG"
 local DRAWER_FRAME_LEVEL = 100
 local HIGHLIGHT_R, HIGHLIGHT_G, HIGHLIGHT_B, HIGHLIGHT_A = 0, 0.8, 1, 0.15
 
--- [ STATE ] -----------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 local drawerPanel = nil
 local cornerButtons = {}
 local isOpen = false
@@ -28,11 +28,11 @@ local headerPool = {}
 local activeCells = {}
 local activeHeaders = {}
 
--- [ DRAWER UI ] -------------------------------------------------------------------
+-- [ DRAWER UI ] -------------------------------------------------------------------------------------
 local DrawerUI = {}
 DT.DrawerUI = DrawerUI
 
--- [ CORNER TRIGGERS ] -------------------------------------------------------------
+-- [ CORNER TRIGGERS ] -------------------------------------------------------------------------------
 function DrawerUI:CreateCornerTriggers()
     local anchors = { "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }
     for _, anchor in ipairs(anchors) do
@@ -57,7 +57,7 @@ function DrawerUI:DestroyCornerTriggers()
     cornerButtons = {}
 end
 
--- [ PANEL CREATION ] --------------------------------------------------------------
+-- [ PANEL CREATION ] --------------------------------------------------------------------------------
 function DrawerUI:CreatePanel()
     if drawerPanel then return end
     drawerPanel = CreateFrame("Frame", "OrbitDatatexts", UIParent)
@@ -126,7 +126,7 @@ end
 
 function DrawerUI:GetPanel() return drawerPanel end
 
--- [ LAYOUT ] ----------------------------------------------------------------------
+-- [ LAYOUT ] ----------------------------------------------------------------------------------------
 function DrawerUI:LayoutDrawer()
     if not drawerPanel then return end
     
@@ -264,7 +264,7 @@ function DrawerUI:LayoutDrawer()
     end
 end
 
--- [ ANIMATION ] -------------------------------------------------------------------
+-- [ ANIMATION ] -------------------------------------------------------------------------------------
 function DrawerUI:Toggle(anchor)
     if isOpen then self:Close() else self:Open(anchor) end
 end
@@ -307,7 +307,7 @@ end
 
 function DrawerUI:IsOpen() return isOpen end
 
--- [ DRAG UPDATE ] -----------------------------------------------------------------
+-- [ DRAG UPDATE ] -----------------------------------------------------------------------------------
 function DrawerUI:OnDatatextDragUpdate(datatextId)
     -- Highlight drawer if cursor is over it during drag
     if not drawerPanel or not drawerPanel:IsShown() then return end
@@ -318,7 +318,7 @@ function DrawerUI:OnDatatextDragUpdate(datatextId)
     end
 end
 
--- [ TEARDOWN ] --------------------------------------------------------------------
+-- [ TEARDOWN ] --------------------------------------------------------------------------------------
 function DrawerUI:Destroy()
     self:DestroyCornerTriggers()
     if drawerPanel then drawerPanel:Hide(); drawerPanel = nil end

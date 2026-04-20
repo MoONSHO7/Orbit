@@ -1,11 +1,5 @@
--- [ METATALENTS / CAST BAR SKIN ]---------------------------------------------------------
--- Replaces the native OverlayPlayerCastingBarFrame (used by "Applying Talents") with a flat
--- 2px gold fill plus a rotating star-spark locked to the TalentsFrame.BottomBar. Blizzard's
--- cast bar asset aggressively resets its own textures on every SetValue, so we re-hide them
--- inside a SetValue hook rather than fighting them once at init. Native interrupt/flash/
--- shake animations are stubbed out via hooksecurefunc(...Play → Stop) because they'd still
--- fire on commit errors and yank the invisible frame on screen.
-
+-- [ METATALENTS / CAST BAR SKIN ] -------------------------------------------------------------------
+-- Re-hide native textures in the SetValue hook (Blizzard resets them on every value change). Stub interrupt/flash/shake Play() → Stop() to keep the invisible frame off-screen on commit errors.
 local _, Orbit = ...
 local MT = Orbit.MetaTalents
 

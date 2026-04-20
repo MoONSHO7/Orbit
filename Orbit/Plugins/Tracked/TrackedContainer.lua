@@ -69,9 +69,10 @@ function Container:Build(plugin, record)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnReceiveDrag", function(self) Container:OnReceiveDrag(plugin, self) end)
+    frame.OnCooldownSettingsDrop = function(self, spellID) Container:OnCooldownSettingsDrop(plugin, self, spellID) end
     frame:SetScript("OnMouseDown", function(self, button)
         if button == "RightButton" and IsShiftKeyDown() and self:IsGridEmpty() then
-            plugin:DeleteContainer(self.recordId)
+            if not InCombatLockdown() then plugin:DeleteContainer(self.recordId) end
             return
         end
         if GetCursorInfo() then
@@ -377,10 +378,13 @@ function Container:AcquireDropZone(plugin, frame, index, gridX, gridY, iconW, ic
     end
     zone.gridX = gridX
     zone.gridY = gridY
+    zone.OnCooldownSettingsDrop = function(self, spellID)
+        Container:CommitSpellDrop(plugin, frame, spellID, self.gridX, self.gridY)
+    end
     -- Route shift-right-click through to delete when grid is empty.
     zone:SetScript("OnMouseDown", function(self, button)
         if button == "RightButton" and IsShiftKeyDown() then
-            if frame:IsGridEmpty() then plugin:DeleteContainer(frame.recordId) end
+            if frame:IsGridEmpty() and not InCombatLockdown() then plugin:DeleteContainer(frame.recordId) end
             return
         end
         Container:CommitDrop(plugin, frame, self.gridX, self.gridY)
@@ -408,6 +412,28 @@ function Container:OnReceiveDrag(plugin, frame)
     local x, y = 0, 0
     if hasItems then x = maxX + 1; y = minY end
     self:CommitDrop(plugin, frame, x, y)
+end
+
+function Container:CommitSpellDrop(plugin, frame, spellID, x, y)
+    if not spellID or not DragDrop:HasCooldown("spell", spellID) then return end
+    local record = plugin:GetContainerRecord(frame.recordId)
+    if not record then return end
+    record.grid = record.grid or {}
+    local key = GridKey(x, y)
+    if record.grid[key] then return end
+    local entry = DragDrop:BuildTrackedItemEntry("spell", spellID, x, y)
+    if not entry then return end
+    record.grid[key] = entry
+    Container:Apply(plugin, frame, record)
+end
+
+function Container:OnCooldownSettingsDrop(plugin, frame, spellID)
+    local record = plugin:GetContainerRecord(frame.recordId)
+    if not record then return end
+    local _, maxX, minY, _, hasItems = self:ComputeBounds(record.grid or {})
+    local x, y = 0, 0
+    if hasItems then x = maxX + 1; y = minY end
+    Container:CommitSpellDrop(plugin, frame, spellID, x, y)
 end
 
 function Container:CommitDrop(plugin, frame, gridX, gridY)

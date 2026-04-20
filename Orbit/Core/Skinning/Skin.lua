@@ -13,7 +13,7 @@ local SHADOW_OFFSET_Y = -2
 local ORBIT_OVERLAY_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
 LSM:Register("statusbar", "Orbit Gradient", ORBIT_OVERLAY_PATH)
 
--- [ LSM BORDER RECONCILIATION ]--------------------------------------------------------------------
+-- [ LSM BORDER RECONCILIATION ] ---------------------------------------------------------------------
 local lsmPendingRefresh
 local function RefreshBordersIfNeeded()
     if lsmPendingRefresh then return end
@@ -125,7 +125,7 @@ end
 
 -- Highlight border functions → HighlightBorder.lua
 
--- [ ICON GROUP BORDER ]------------------------------------------------------------------------------
+-- [ ICON GROUP BORDER ] -----------------------------------------------------------------------------
 -- Wraps an icon container in a single NineSlice/edge border when Icon Padding = 0.
 function Skin:ApplyIconGroupBorder(container, styleEntry)
     if not container then return end
@@ -394,7 +394,7 @@ function Skin:ApplyUnitFrameText(fontString, alignment, fontPath, textSize)
     self:ApplyFontShadow(fontString)
 end
 
--- [ GRADIENT BACKGROUND ]--------------------------------------------------------------------------
+-- [ GRADIENT BACKGROUND ] ---------------------------------------------------------------------------
 local function ResolvePinColor(pin)
     if pin.type == "class" then
         local _, classFile = UnitClass("player")

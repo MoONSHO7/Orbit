@@ -85,7 +85,7 @@ Plugin.buttons = {}
 Plugin.blizzBars = {}
 Plugin.gridCache = {}
 
--- [ SPELL STATE ]--------------------------------------------------------------------------------
+-- [ SPELL STATE ] -----------------------------------------------------------------------------------
 local function ExtractColor(curveData)
     return OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or curveData
 end
@@ -133,7 +133,7 @@ local function HookButtonState(plugin, button)
     button.__orbitStateHooked = true
 end
 
--- [ HELPERS ]------------------------------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 local function EnsureHiddenFrame()
     if not Orbit.ButtonHideFrame then
         Orbit.ButtonHideFrame = CreateFrame("Frame")
@@ -143,7 +143,7 @@ local function EnsureHiddenFrame()
     return Orbit.ButtonHideFrame
 end
 
--- [ SETTINGS UI ]--------------------------------------------------------------------------------
+-- [ SETTINGS UI ] -----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or 1
     local SB = OrbitEngine.SchemaBuilder
@@ -251,7 +251,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]----------------------------------------------------------------------------------
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     GC:PreLoad("Medium", 20)
     GC:PreLoad("Classic", 20)
@@ -406,7 +406,7 @@ function Plugin:OnLoad()
     end)
 end
 
--- [ EDIT MODE NUM ICONS PATCH ]------------------------------------------------------------------
+-- [ EDIT MODE NUM ICONS PATCH ] ---------------------------------------------------------------------
 StaticPopupDialogs["ORBIT_ACTIONBARS_RELOAD"] = { text = "Action bar icon count changed. A reload is required.", button1 = "Reload", button2 = "Later", OnAccept = function() ReloadUI() end, timeout = 0, whileDead = true, hideOnEscape = true }
 
 Orbit.EventBus:On("EDIT_MODE_LAYOUTS_UPDATED", function()
@@ -428,7 +428,7 @@ Orbit.EventBus:On("EDIT_MODE_LAYOUTS_UPDATED", function()
     StaticPopup_Show("ORBIT_ACTIONBARS_RELOAD")
 end, Plugin)
 
--- [ FACADE DELEGATES ]--------------------------------------------------------------------------
+-- [ FACADE DELEGATES ] ------------------------------------------------------------------------------
 function Plugin:InitializeContainers()
     for _, config in ipairs(BAR_CONFIG) do
         if not self.containers[config.index] then self.containers[config.index] = ABC:Create(self, config) end
@@ -465,7 +465,7 @@ end
 
 function Plugin:OnCombatEnd() C_Timer.After(0.5, function() self:ApplyAll() end) end
 
--- [ BAR ART ]------------------------------------------------------------------------------------
+-- [ BAR ART ] ---------------------------------------------------------------------------------------
 local function UpdateBarArt(plugin, container)
     local show = plugin:GetSetting(1, "ShowBarArt")
     if not show then
@@ -489,7 +489,7 @@ local function UpdateBarArt(plugin, container)
     container.barArtRight:Show()
 end
 
--- [ BUTTON LAYOUT AND SKINNING ]-----------------------------------------------------------------
+-- [ BUTTON LAYOUT AND SKINNING ] --------------------------------------------------------------------
 function Plugin:LayoutButtons(index)
     if InCombatLockdown() then return end
     local container = self.containers[index]
@@ -598,7 +598,7 @@ function Plugin:LayoutButtons(index)
     if index == 1 then UpdateBarArt(self, container) end
 end
 
--- [ SETTINGS APPLICATION ]-----------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ] --------------------------------------------------------------------------
 function Plugin:ApplyAll()
     for index, container in pairs(self.containers) do self:ApplySettings(container) end
 end

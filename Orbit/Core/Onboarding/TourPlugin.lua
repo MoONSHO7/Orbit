@@ -1,10 +1,10 @@
--- [ TOUR PLUGIN ]--------------------------------------------------------------------
+-- [ TOUR PLUGIN ] -----------------------------------------------------------------------------------
 -- Proper Orbit plugin for the onboarding playground frames.
 ---@type Orbit
 local Orbit = Orbit
 local Engine = Orbit.Engine
 
--- [ CONSTANTS ]----------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_Tour"
 local MIN_W, MAX_W = 50, 200
 local MIN_H, MAX_H = 10, 50
@@ -16,7 +16,7 @@ local FRAME_BORDER = { r = 0.4, g = 0.8, b = 0.4, a = 0.9 }
 local INDEX_A = "A"
 local INDEX_B = "B"
 
--- [ REGISTRATION ]-------------------------------------------------------------------
+-- [ REGISTRATION ] ----------------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Tour", SYSTEM_ID, {
     defaults = {
         Width = FRAME_W,
@@ -24,7 +24,7 @@ local Plugin = Orbit:RegisterPlugin("Tour", SYSTEM_ID, {
     },
 })
 
--- [ FRAME CREATION ]-----------------------------------------------------------------
+-- [ FRAME CREATION ] --------------------------------------------------------------------------------
 local function CreateTourFrame(name, label, systemIndex, offsetX)
     local frame = Engine.FrameFactory:Create(name, Plugin, {
         width = FRAME_W,
@@ -65,7 +65,7 @@ local function CreateTourFrame(name, label, systemIndex, offsetX)
     return frame
 end
 
--- [ LIFECYCLE ]----------------------------------------------------------------------
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     self.frameA = CreateTourFrame("TourFrameA", "A", INDEX_A, -FRAME_OFFSET_X)
     self.frameB = CreateTourFrame("TourFrameB", "B", INDEX_B, FRAME_OFFSET_X)
@@ -82,7 +82,7 @@ function Plugin:ApplySettings()
     end
 end
 
--- [ SETTINGS UI ]--------------------------------------------------------------------
+-- [ SETTINGS UI ] -----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame and systemFrame.systemIndex or INDEX_A
     local SB = Engine.SchemaBuilder

@@ -297,9 +297,10 @@ function Bar:Build(plugin, record)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnReceiveDrag", function(self) Bar:OnReceiveDrag(plugin, self) end)
+    frame.OnCooldownSettingsDrop = function(self, spellID) Bar:OnCooldownSettingsDrop(plugin, self, spellID) end
     frame:SetScript("OnMouseDown", function(self, button)
         if button == "RightButton" and IsShiftKeyDown() then
-            Bar:HandleShiftRightClick(plugin, self)
+            if not InCombatLockdown() then Bar:HandleShiftRightClick(plugin, self) end
             return
         end
         if GetCursorInfo() then
@@ -977,6 +978,19 @@ function Bar:OnReceiveDrag(plugin, frame)
     if not record.payload then return end
 
     ClearCursor()
+    Bar:Apply(plugin, frame, record)
+end
+
+function Bar:OnCooldownSettingsDrop(plugin, frame, spellID)
+    if not spellID or not DragDrop:HasCooldown("spell", spellID) then return end
+    local record = plugin:GetContainerRecord(frame.recordId)
+    if not record then return end
+    if record.payload and record.payload.id then
+        Orbit:Print("Tracked: clear the current payload first (shift-right-click) before assigning a new one")
+        return
+    end
+    record.payload = DragDrop:BuildTrackedBarPayload("spell", spellID)
+    if not record.payload then return end
     Bar:Apply(plugin, frame, record)
 end
 
