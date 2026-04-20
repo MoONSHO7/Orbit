@@ -19,58 +19,35 @@ jobs:
 
       - name: Calculate version and create tag
         run: |
-          LAST_MSG="$(git log -1 --pretty=%s)"
-          echo "Last commit: $LAST_MSG"
-
           # Version scheme: MAJOR.MINOR.PATCH
           #   MAJOR  - manual only (we are pre-1.0)
-          #   MINOR  - auto-bumped on every non-data commit to main
-          #   PATCH  - auto-bumped on `data:` commits (OrbitData weekly refresh)
-          #
-          # Find the latest semver-style tag the auto-tagger has produced.
+          #   MINOR  - auto-bumped on every commit to main
+          #   PATCH  - reserved for manual hotfixes
           LATEST_TAG=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
 
           if [ -z "$LATEST_TAG" ]; then
-            # No X.Y.Z tag yet. Bootstrap by treating the highest legacy
-            # integer tag (the old single-number version) as if it were
-            # the previous 0.N.0 — preserves history continuity so the
-            # next regular commit becomes 0.(legacy+1).0 and a data commit
-            # becomes 0.legacy.1.
+            # Bootstrap from the highest legacy integer tag so continuity is preserved.
             LEGACY_INT=$(git tag --list | grep -E '^[0-9]+$' | sort -n | tail -n 1)
             MAJOR=0
             MINOR=${LEGACY_INT:-0}
             PATCH=0
             echo "No X.Y.Z tag yet. Bootstrapping from legacy integer: ${LEGACY_INT:-(none)}"
           else
-            echo "Latest tag: $LATEST_TAG"
             MAJOR=$(echo "$LATEST_TAG" | cut -d. -f1)
             MINOR=$(echo "$LATEST_TAG" | cut -d. -f2)
             PATCH=$(echo "$LATEST_TAG" | cut -d. -f3)
           fi
 
-          if echo "$LAST_MSG" | grep -qE "^data:"; then
-            # Data commit: bump patch, keep major/minor.
-            PATCH=$((PATCH + 1))
-            echo "Data commit detected - bumping patch"
-          else
-            # Feature/fix commit: bump minor, keep patch (meta-data snapshot sticks).
-            MINOR=$((MINOR + 1))
-            echo "Regular commit - bumping minor"
-          fi
-
+          MINOR=$((MINOR + 1))
           VERSION="${MAJOR}.${MINOR}.${PATCH}"
           echo "Calculated version: $VERSION"
 
-          # Race-condition guard: if somehow the tag already exists, skip.
           if git rev-parse "$VERSION" >/dev/null 2>&1; then
             echo "Tag $VERSION already exists, skipping"
             exit 0
           fi
 
-          # Configure git for tagging.
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Create and push the tag. The tag push triggers release.yml.
           git tag -a "$VERSION" -m "Release $VERSION"
           git push origin "$VERSION"
