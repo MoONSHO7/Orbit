@@ -18,6 +18,7 @@ local DROP_ZONE_ALPHA_HOVER = 1.0
 local DROP_ZONE_PLUS_INSET_RATIO = 0.28
 -- Plus glyph vertex-tinted golden yellow for legibility on yellow background.
 local DROP_ZONE_PLUS_TINT_R, DROP_ZONE_PLUS_TINT_G, DROP_ZONE_PLUS_TINT_B = 1.0, 0.82, 0.0
+local DROP_ZONE_GLOW_R, DROP_ZONE_GLOW_G, DROP_ZONE_GLOW_B = 1.0, 0.82, 0.0
 local DEFAULT_WIDTH = 200
 local DEFAULT_HEIGHT = 20
 local UPDATE_INTERVAL = 0.05
@@ -293,6 +294,7 @@ function Bar:Build(plugin, record)
     frame.DropHintPlus:SetDesaturated(true)
     frame.DropHintPlus:SetVertexColor(DROP_ZONE_PLUS_TINT_R, DROP_ZONE_PLUS_TINT_G, DROP_ZONE_PLUS_TINT_B)
     frame.DropHintPlus:SetPoint("CENTER", frame.DropHintBg, "CENTER")
+    Orbit.DropZoneGlow:Attach(frame.DropHintFrame, DROP_ZONE_GLOW_R, DROP_ZONE_GLOW_G, DROP_ZONE_GLOW_B)
 
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")

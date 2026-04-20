@@ -10,4 +10,5 @@
     <Script file="CooldownDragDrop.lua"/>
     <Script file="GlowUtils.lua"/>
     <Script file="GlowController.lua"/>
+    <Script file="DropZoneGlow.lua"/>
 </Ui>

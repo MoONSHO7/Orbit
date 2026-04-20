@@ -12,12 +12,9 @@ local COOLDOWN_THROTTLE = 0.1
 local PLACEHOLDER_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local BOUNDS_PADDING = 30
 local HIT_RECT_INSET = -40
-local GLOW_OUTSET_BASE = 4
+local GLOW_OUTSET = 8
 local DROP_ZONE_TICK_RATE = 0.05
-local GLOW_SIZE = 12
-local GLOW_SLICE_START = 0.33
-local GLOW_SLICE_END = 0.67
-local GLOW_ATLAS = "GenericWidgetBar-Spell-Glow"
+local GLOW_COLOR_R, GLOW_COLOR_G, GLOW_COLOR_B = 0, 1, 0
 local PREVIEW_ALPHA = 0.5
 local CURSOR_POLL_INTERVAL = 0.1
 
@@ -458,33 +455,6 @@ function Injection:OnEquipmentChanged()
 end
 
 -- [ DROP ZONE OVERLAYS ] ----------------------------------------------------------------------------
-local function CreateGlowCorner(parent, point, l, r, t, b)
-    local tex = parent:CreateTexture(nil, "OVERLAY")
-    tex:SetAtlas(GLOW_ATLAS)
-    tex:SetTexCoord(l, r, t, b)
-    tex:SetSize(GLOW_SIZE, GLOW_SIZE)
-    tex:SetPoint(point, parent, point)
-    tex:SetBlendMode("ADD")
-    return tex
-end
-
-local function CreateGlowEdge(parent, point1, point2, isVertical, l, r, t, b)
-    local tex = parent:CreateTexture(nil, "OVERLAY")
-    tex:SetAtlas(GLOW_ATLAS)
-    tex:SetTexCoord(l, r, t, b)
-    tex:SetBlendMode("ADD")
-    if isVertical then
-        tex:SetWidth(GLOW_SIZE)
-        tex:SetPoint("TOPLEFT", parent, point1, point1 == "TOPLEFT" and 0 or -GLOW_SIZE, -GLOW_SIZE)
-        tex:SetPoint("BOTTOMRIGHT", parent, point2, point2 == "BOTTOMRIGHT" and 0 or GLOW_SIZE, GLOW_SIZE)
-    else
-        tex:SetHeight(GLOW_SIZE)
-        tex:SetPoint("TOPLEFT", parent, point1, GLOW_SIZE, point1 == "TOPLEFT" and 0 or GLOW_SIZE)
-        tex:SetPoint("BOTTOMRIGHT", parent, point2, -GLOW_SIZE, point2 == "BOTTOMRIGHT" and 0 or -GLOW_SIZE)
-    end
-    return tex
-end
-
 function Injection:CreateDropZone(anchor)
     if anchor._dropZone then return end
     local zone = CreateFrame("Frame", nil, UIParent)
@@ -492,32 +462,13 @@ function Injection:CreateDropZone(anchor)
     zone:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT")
     zone:SetFrameStrata(Orbit.Constants.Strata.Topmost)
     zone:SetFrameLevel(999)
-    -- Glow container extending beyond frame edges, placed in background
-    local glow = CreateFrame("Frame", nil, UIParent)
-    glow:SetFrameStrata(Orbit.Constants.Strata.Background)
-    glow:SetFrameLevel(0)
-    glow:SetScript("OnShow", function(self)
-        local borderSize = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize or 1
-        local outset = (borderSize + GLOW_OUTSET_BASE)
-        self:SetPoint("TOPLEFT", anchor, "TOPLEFT", -outset, outset)
-        self:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", outset, -outset)
-    end)
-    CreateGlowCorner(glow, "TOPLEFT", 0, GLOW_SLICE_START, 0, GLOW_SLICE_START)
-    CreateGlowCorner(glow, "TOPRIGHT", GLOW_SLICE_END, 1, 0, GLOW_SLICE_START)
-    CreateGlowCorner(glow, "BOTTOMLEFT", 0, GLOW_SLICE_START, GLOW_SLICE_END, 1)
-    CreateGlowCorner(glow, "BOTTOMRIGHT", GLOW_SLICE_END, 1, GLOW_SLICE_END, 1)
-    CreateGlowEdge(glow, "TOPLEFT", "TOPRIGHT", false, GLOW_SLICE_START, GLOW_SLICE_END, 0, GLOW_SLICE_START)
-    CreateGlowEdge(glow, "BOTTOMLEFT", "BOTTOMRIGHT", false, GLOW_SLICE_START, GLOW_SLICE_END, GLOW_SLICE_END, 1)
-    CreateGlowEdge(glow, "TOPLEFT", "BOTTOMLEFT", true, 0, GLOW_SLICE_START, GLOW_SLICE_START, GLOW_SLICE_END)
-    CreateGlowEdge(glow, "TOPRIGHT", "BOTTOMRIGHT", true, GLOW_SLICE_END, 1, GLOW_SLICE_START, GLOW_SLICE_END)
-    glow:Hide()
-    zone.Glow = glow
     zone:Hide()
-    zone:SetScript("OnShow", function() glow:Show() end)
-    zone:SetScript("OnHide", function()
-        glow:Hide()
-        Injection:RemovePhantom()
-    end)
+    local outset = function()
+        local borderSize = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize or 1
+        return borderSize + GLOW_OUTSET
+    end
+    Orbit.DropZoneGlow:Attach(zone, GLOW_COLOR_R, GLOW_COLOR_G, GLOW_COLOR_B, outset)
+    zone:SetScript("OnHide", function() Injection:RemovePhantom() end)
     anchor._dropZone = zone
 end
 

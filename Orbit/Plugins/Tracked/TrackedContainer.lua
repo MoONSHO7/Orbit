@@ -14,6 +14,7 @@ local DROP_ZONE_PLUS_ATLAS = "bags-icon-addslots"
 local DROP_ZONE_ALPHA_IDLE = 0.4
 local DROP_ZONE_ALPHA_HOVER = 1.0
 local DROP_ZONE_PLUS_INSET_RATIO = 0.28
+local DROP_ZONE_GLOW_R, DROP_ZONE_GLOW_G, DROP_ZONE_GLOW_B = 0, 1, 0
 local MAX_GRID_REACH = 10
 local UPDATE_INTERVAL = 0.1
 local VISUAL_POLL_INTERVAL = 0.3
@@ -374,6 +375,7 @@ function Container:AcquireDropZone(plugin, frame, index, gridX, gridY, iconW, ic
         zone:EnableMouse(true)
         zone:SetScript("OnEnter", function(self) self:SetAlpha(DROP_ZONE_ALPHA_HOVER) end)
         zone:SetScript("OnLeave", function(self) self:SetAlpha(DROP_ZONE_ALPHA_IDLE) end)
+        Orbit.DropZoneGlow:Attach(zone, DROP_ZONE_GLOW_R, DROP_ZONE_GLOW_G, DROP_ZONE_GLOW_B)
         frame.dropZones[index] = zone
     end
     zone.gridX = gridX
