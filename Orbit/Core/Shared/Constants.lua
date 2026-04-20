@@ -1,8 +1,4 @@
--- [ ORBIT CONSTANTS - Unified Constants Module ]----------------------------------------------------
--- All constants consolidated here for easy access and maintenance.
--- Access via: Orbit.Constants
--- This file loads FIRST, before Init.lua
-
+-- [ ORBIT CONSTANTS ]-------------------------------------------------------------------------------
 local _, Orbit = ...
 
 ---@class OrbitConstants
@@ -156,7 +152,7 @@ C.Settings = {
     Texture = { Default = "Solid" },
 }
 
--- [ BORDER STYLE ]---------------------------------------------------------------------------------
+-- [ BORDER STYLE ] ----------------------------------------------------------------------------------
 C.BorderStyle = {
     Default = "flat",
     Offset = 6,
@@ -412,6 +408,6 @@ function C.Colors:GetPowerColor(powerType)
     return self.PowerType[powerType] or { r = 0.5, g = 0.5, b = 0.5 }
 end
 
--- [ BACKWARDS COMPATIBILITY ALIAS ]---------------------------------------------------------------
+-- [ BACKWARDS COMPATIBILITY ALIAS ] -----------------------------------------------------------------
 -- Orbit.Colors points to C.Colors for existing code
 Orbit.Colors = C.Colors

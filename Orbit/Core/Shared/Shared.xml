@@ -11,4 +11,5 @@
     <Script file="GlowUtils.lua"/>
     <Script file="GlowController.lua"/>
     <Script file="TooltipStrata.lua"/>
+    <Script file="DropZoneGlow.lua"/>
 </Ui>

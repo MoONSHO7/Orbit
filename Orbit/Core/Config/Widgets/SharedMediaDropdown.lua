@@ -15,7 +15,7 @@ local CONTENT_PADDING = 4
 local SEARCH_HEIGHT = 22
 local SEARCH_INSET = 6
 
--- [ FACTORY ]-----------------------------------------------------------------------------------
+-- [ FACTORY ] ---------------------------------------------------------------------------------------
 local SharedMediaDropdown = {}
 SharedMediaDropdown.CONTENT_WIDTH = CONTENT_WIDTH
 Engine.SharedMediaDropdown = SharedMediaDropdown

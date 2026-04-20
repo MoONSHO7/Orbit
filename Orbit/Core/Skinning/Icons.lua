@@ -1,4 +1,4 @@
--- [ ORBIT ICON SKINNING ]--------------------------------------------------------------------------
+-- [ ORBIT ICON SKINNING ] ---------------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local Skin = Orbit.Skin

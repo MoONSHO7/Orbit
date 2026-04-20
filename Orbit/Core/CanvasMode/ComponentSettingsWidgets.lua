@@ -1,4 +1,4 @@
--- [ CANVAS MODE - COMPONENT SETTINGS WIDGETS ]-----------------------------------------------------
+-- [ CANVAS MODE - COMPONENT SETTINGS WIDGETS ] ------------------------------------------------------
 -- Widget creation helpers for component override settings.
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine

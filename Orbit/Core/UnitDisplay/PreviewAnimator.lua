@@ -1,10 +1,8 @@
 -- [ PREVIEW ANIMATOR ]------------------------------------------------------------------------------
--- Drives animated bars, death/OOR transitions, and healer aura randomization on preview frames.
 local _, Orbit = ...
 
 Orbit.PreviewAnimator = {}
 local PA = Orbit.PreviewAnimator
--- Per-owner enable table: animations only run for explicitly enabled plugins.
 local enabledOwners = {}
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
@@ -71,7 +69,6 @@ local EXIT_ALPHA_RATE = 0.03
 local EXIT_MIN_HEALTH = 0.01
 
 -- [ SESSION REGISTRY ]------------------------------------------------------------------------------
--- Keyed by owner (plugin self), so Party/Raid/Boss can animate concurrently.
 local sessions = {}
 local ticker
 local phase = 0
@@ -458,7 +455,7 @@ function PA:IsRunning() return ticker ~= nil end
 function PA:SetEnabled(owner, enabled) enabledOwners[owner] = enabled or nil end
 function PA:IsEnabled(owner) return enabledOwners[owner] == true end
 
--- [ AURA ANIMATION API ]---------------------------------------------------------------------------
+-- [ AURA ANIMATION API ] ----------------------------------------------------------------------------
 function PA:StartAuras(owner, frames, cfgList)
     if not enabledOwners[owner] then return end
     self:StopAuras(owner)

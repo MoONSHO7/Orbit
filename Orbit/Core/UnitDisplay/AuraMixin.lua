@@ -273,7 +273,7 @@ function Mixin:ApplyAuraCount(icon, aura, unit)
     icon.count:Hide()
 end
 
--- [ AURA TOOLTIP ]-----------------------------------------------------------------------------------
+-- [ AURA TOOLTIP ] ----------------------------------------------------------------------------------
 local function AuraIcon_OnEnter(self)
     GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
     if self._auraInstanceID and self._auraUnit and self._auraFilter then
@@ -474,7 +474,7 @@ local function BuildSkinSettings(overrides, remainingPercent)
     return skin
 end
 
--- [ SPELL-ID AURA ICON DISPLAY ]-------------------------------------------------------------------
+-- [ SPELL-ID AURA ICON DISPLAY ] --------------------------------------------------------------------
 local SPELL_AURA_SCAN_MAX = 40
 local IsSecret = issecretvalue
 
@@ -650,7 +650,7 @@ local function StopMissingGlow(icon)
     Orbit.Engine.GlowController:Hide(icon, MISSING_GLOW_KEY)
 end
 
--- [ MISSING RAID BUFF CONTAINER ]------------------------------------------------------------------
+-- [ MISSING RAID BUFF CONTAINER ] -------------------------------------------------------------------
 local RAID_BUFF_ICON_SPACING = 1
 function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, iconSize)
     if frame.preview or (OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame) then return end
@@ -749,7 +749,7 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
     container:SetAlphaFromBoolean(UnitInRange(unit), 1, 0)
 end
 
--- [ RAID BUFF CONTAINER FACTORY ]------------------------------------------------------------------
+-- [ RAID BUFF CONTAINER FACTORY ] -------------------------------------------------------------------
 function Mixin:EnsureRaidBuffContainer(frame, containerKey, raidBuffs, iconSize)
     local container = frame[containerKey]
     if not container or not container._raidIcons then

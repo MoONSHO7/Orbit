@@ -1,4 +1,4 @@
--- [ GLOW UTILS ]--------------------------------------------------------------------------------------
+-- [ GLOW UTILS ] ------------------------------------------------------------------------------------
 -- Utility for dynamically constructing LibOrbitGlow option tables from DB settings
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -6,7 +6,7 @@ local Constants = Orbit.Constants
 
 Engine.GlowUtils = {}
 
---- Combines the active glow type with its dynamic parameters to produce a ready-to-use LibOrbitGlow arguments payload.
+-- Combines the active glow type with its dynamic parameters to produce a ready-to-use LibOrbitGlow arguments payload.
 -- @param optionsLookup A table or function(key) that returns the requested setting value
 -- @param prefix The settings string prefix (e.g. "PandemicGlow")
 -- @param defaultColor Fallback color table if one is not configured (e.g. { r=1, g=1, b=1, a=1 })

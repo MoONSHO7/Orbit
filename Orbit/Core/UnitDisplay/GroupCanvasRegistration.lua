@@ -1,4 +1,4 @@
--- [ GROUP CANVAS REGISTRATION ]--------------------------------------------------------------------
+-- [ GROUP CANVAS REGISTRATION ] ---------------------------------------------------------------------
 -- Shared canvas mode component registration and icon position application for group frames
 
 local _, Orbit = ...
@@ -140,7 +140,7 @@ function Reg:FanOutStatusIcons(positions)
 	end
 end
 
--- [ REGISTER COMPONENTS ]--------------------------------------------------------------------------
+-- [ REGISTER COMPONENTS ] ---------------------------------------------------------------------------
 -- Registers text, icon, and aura container components on a group frame container for Canvas Mode.
 local AURA_ICON_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true, RaidBuff = true }
 do
@@ -201,7 +201,7 @@ function Reg:RegisterComponents(plugin, container, firstFrame, textKeys, iconKey
 	end
 end
 
--- [ APPLY ICON POSITIONS ]-------------------------------------------------------------------------
+-- [ APPLY ICON POSITIONS ] --------------------------------------------------------------------------
 -- Applies saved component positions to all icon elements on each frame.
 local AURA_POSITION_KEYS = {
 	DefensiveIcon = true,

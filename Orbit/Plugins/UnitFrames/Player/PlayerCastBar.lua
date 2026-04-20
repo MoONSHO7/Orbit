@@ -440,7 +440,7 @@ function Plugin:UpdateVisibility()
     end
 end
 
--- [ SKINNING LOGIC ]---------------------------------------------------------------------------------
+-- [ SKINNING LOGIC ] --------------------------------------------------------------------------------
 
 function Plugin:OnCastEvent(event, unit, castGUID, spellID)
     if unit ~= "player" then

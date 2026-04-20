@@ -157,8 +157,7 @@ function IconItem:Build(container, removeCallback)
     icon:EnableMouse(true)
     icon:RegisterForDrag("LeftButton")
     icon:SetScript("OnMouseDown", function(self, button)
-        if button == "RightButton" and IsShiftKeyDown() then
-            if InCombatLockdown() then return end
+        if button == "RightButton" and IsShiftKeyDown() and not InCombatLockdown() then
             if removeCallback then removeCallback(self) end
         end
     end)

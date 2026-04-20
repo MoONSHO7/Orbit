@@ -1,4 +1,4 @@
--- [ CANVAS MODE - DOCK ]--------------------------------------------------------------------
+-- [ CANVAS MODE - DOCK ] ----------------------------------------------------------------------------
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
@@ -17,7 +17,7 @@ local DOCK_BG_COLOR = { 0.2, 0.2, 0.2, 0.6 }
 local DOCK_BG_HOVER = { 0.3, 0.5, 0.3, 0.8 }
 local HealerReg = Orbit.HealerAuraRegistry
 local function DisplayName(key) return HealerReg and HealerReg:GetSlotLabel(key) or key end
--- [ DOCK FRAME ]-------------------------------------------------------------------------
+-- [ DOCK FRAME ] ------------------------------------------------------------------------------------
 
 Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog)
 Dialog.DisabledDock:SetPoint("TOPLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", DOCK_OFFSET_X, DOCK_OFFSET_Y)
@@ -42,14 +42,14 @@ Dialog.DisabledDock.DropHighlight:SetAllPoints()
 Dialog.DisabledDock.DropHighlight:SetColorTexture(0.3, 0.8, 0.3, 0.2)
 Dialog.DisabledDock.DropHighlight:Hide()
 
--- [ DIVIDER (between dock and override settings, shown on component selection) ]-----
+-- [ DIVIDER (between dock and override settings, shown on component selection) ] --------------------
 Dialog.ViewportDivider = Dialog:CreateTexture(nil, "ARTWORK")
 Dialog.ViewportDivider:SetAtlas("ui-journeys-renown-divider", true)
 Dialog.ViewportDivider:SetPoint("TOPLEFT", Dialog.DisabledDock, "BOTTOMLEFT", 0, 0)
 Dialog.ViewportDivider:SetPoint("TOPRIGHT", Dialog.DisabledDock, "BOTTOMRIGHT", 0, 0)
 Dialog.ViewportDivider:Hide()
 
--- [ OVERRIDE SETTINGS CONTAINER (below divider) ]----------------------------------------
+-- [ OVERRIDE SETTINGS CONTAINER (below divider) ] ---------------------------------------------------
 Dialog.OverrideContainer = CreateFrame("Frame", nil, Dialog)
 Dialog.OverrideContainer:SetPoint("TOPLEFT", Dialog.ViewportDivider, "BOTTOMLEFT", 0, -C.OVERRIDE_SECTION_PADDING)
 Dialog.OverrideContainer:SetPoint("TOPRIGHT", Dialog.ViewportDivider, "BOTTOMRIGHT", 0, -C.OVERRIDE_SECTION_PADDING)
@@ -60,7 +60,7 @@ Dialog.OverrideContainer:Hide()
 Dialog.OverrideContainer.Title = Dialog.OverrideContainer:CreateFontString(nil, "ARTWORK", "GameFontNormal")
 Dialog.OverrideContainer.Title:SetPoint("TOPLEFT", Dialog.OverrideContainer, "TOPLEFT", C.DIALOG_INSET, 0)
 
--- [ DOCK LAYOUT ]------------------------------------------------------------------------
+-- [ DOCK LAYOUT ] -----------------------------------------------------------------------------------
 
 function Dialog:LayoutDockIcons()
     local x = 0
@@ -77,7 +77,7 @@ function Dialog:LayoutDockIcons()
 
 end
 
--- [ ADD TO DOCK ]------------------------------------------------------------------------
+-- [ ADD TO DOCK ] -----------------------------------------------------------------------------------
 
 function Dialog:AddToDock(key, sourceComponent)
     if self.dockComponents[key] then return end
@@ -241,7 +241,7 @@ function Dialog:AddToDock(key, sourceComponent)
     end
 end
 
--- [ REMOVE FROM DOCK ]-------------------------------------------------------------------
+-- [ REMOVE FROM DOCK ] ------------------------------------------------------------------------------
 
 function Dialog:RemoveFromDock(key)
     local icon = self.dockComponents[key]
@@ -262,7 +262,7 @@ function Dialog:RemoveFromDock(key)
     self:LayoutDockIcons()
 end
 
--- [ RESTORE FROM DOCK ]------------------------------------------------------------------
+-- [ RESTORE FROM DOCK ] -----------------------------------------------------------------------------
 
 function Dialog:RestoreFromDock(key)
     local dockIcon = self.dockComponents[key]
@@ -371,7 +371,7 @@ function Dialog:RestoreFromDock(key)
     end
 end
 
--- [ CLEAR DOCK ]-------------------------------------------------------------------------
+-- [ CLEAR DOCK ] ------------------------------------------------------------------------------------
 
 function Dialog:ClearDock()
     for key, icon in pairs(self.dockComponents) do

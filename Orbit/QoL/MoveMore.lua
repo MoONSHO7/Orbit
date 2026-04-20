@@ -1,62 +1,36 @@
 -- [ MOVE MORE ]-------------------------------------------------------------------------------------
--- QoL feature: makes Blizzard UI frames freely draggable.
--- Positions reset on close unless "Save Positions" is enabled, in which case drag-stop writes the
--- frame's current points to Orbit.db.AccountSettings.MoveMorePositions and OnShow re-applies them.
--- Toggle via Quality of Life > Move More in the Orbit settings panel.
-
 local _, Orbit = ...
 
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local FRAME_NAMES = {
-    -- Core character panels
     "CharacterFrame", "PlayerSpellsFrame", "ProfessionsBookFrame", "ProfessionsFrame",
-    -- Social / guild
     "FriendsFrame", "CommunitiesFrame", "CommunitiesGuildLogFrame",
     "CommunitiesGuildTextEditFrame", "CommunitiesGuildNewsFiltersFrame",
     "ClubFinderGuildRecruitmentDialog", "RaidBrowserFrame",
-    -- Collections / journal
     "CollectionsJournal", "EncounterJournal", "AchievementFrame",
-    -- Map / quests
     "WorldMapFrame", "QuestFrame", "QuestLogPopupDetailFrame", "QuestMapFrame",
-    -- Group finder / PvP
     "PVEFrame", "PVPUIFrame", "LFGListApplicationDialog",
-    -- NPC interaction
-    "GossipFrame", "MerchantFrame", "TradeFrame", "QuestFrame",
+    "GossipFrame", "MerchantFrame", "TradeFrame",
     "GuildRegistrarFrame", "PetitionFrame", "ItemTextFrame", "TabardFrame",
-    -- Mail / auction / bank
     "MailFrame", "AuctionHouseFrame", "BankFrame", "AccountBankPanel",
-    -- Inspect / dressing
     "InspectFrame", "DressUpFrame", "TransmogFrame",
-    -- Talents / upgrades
     "ClassTalentFrame", "ItemUpgradeFrame", "OrderHallTalentFrame",
-    -- Loot
     "LootFrame",
-    -- PvP results
     "PVPMatchScoreboard", "PVPMatchResults", "DeathRecapFrame",
-    -- Garrison / mission tables
     "GarrisonLandingPage", "ExpansionLandingPage",
-    -- Misc panels
     "AddonList", "AlliedRacesFrame", "GuildControlUI",
     "ChatConfigFrame", "GameMenuFrame",
     "WeeklyRewardsFrame", "InspectRecipeFrame",
     "ProfessionsCustomerOrdersFrame", "ChallengesKeystoneFrame", "MacroFrame",
-    -- Delves
     "DelvesCompanionConfigurationFrame", "DelvesCompanionAbilityListFrame",
     "DelvesDifficultyPickerFrame",
-    -- Housing
     "HousingDashboardFrame", "HouseFinderFrame", "HousingCornerstoneFrame",
     "HousingBulletinBoardFrame",
-    -- Renown / trading post / traits
     "MajorFactionRenownFrame", "PerksProgramFrame", "GenericTraitFrame",
-    -- Storage
     "VoidStorageFrame", "GuildBankFrame",
-    -- Warband
     "WarbandSceneEditor",
-    -- Travel
     "FlightMapFrame", "TaxiFrame",
-    -- Misc interactions
     "HelpFrame", "ScrappingMachineFrame", "ItemSocketingFrame", "MacroPopupFrame",
-    -- Popups
     "ReadyCheckFrame", "RolePollPopup",
 }
 

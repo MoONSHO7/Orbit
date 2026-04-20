@@ -4,7 +4,7 @@ local _, Orbit = ...
 local DT = Orbit.Datatexts
 local RingBuffer = DT.Formatting.RingBuffer
 
--- [ CONSTANTS ] -------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local UPDATE_INTERVAL_SEC = 0.5
 local IDLE_TIMEOUT_SEC = 5
 local SECONDS_PER_MINUTE = 60
@@ -15,15 +15,15 @@ local COLOR_IDLE = "|cff888888"
 local COLOR_DONE = "|cff00ff00"
 local COMBAT_HISTORY_SIZE = 5
 
--- [ HELPERS ] ---------------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 local function FormatDuration(seconds)
     return string.format("%02d:%02d", math.floor(seconds / SECONDS_PER_MINUTE), math.floor(seconds % SECONDS_PER_MINUTE))
 end
 
--- [ datatext ] ----------------------------------------------------------------------
+-- [ DATATEXT ] --------------------------------------------------------------------------------------
 local W = DT.BaseDatatext:New("CombatTimer")
 
--- [ STATE ] -----------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 W.startTime = 0
 W.inCombat = false
 W.ticker = nil
@@ -32,7 +32,7 @@ W.encounterStart = 0
 W.sessionDeaths = 0
 W.combatHistory = RingBuffer:New(COMBAT_HISTORY_SIZE)
 
--- [ HELPERS ] ---------------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 function W:GetAverageCombatDuration()
     if self.combatHistory:Count() == 0 then return 0 end
     local sum = 0
@@ -40,7 +40,7 @@ function W:GetAverageCombatDuration()
     return sum / self.combatHistory:Count()
 end
 
--- [ UPDATE ] ----------------------------------------------------------------------
+-- [ UPDATE ] ----------------------------------------------------------------------------------------
 function W:Update()
     if not self.inCombat then
         self:SetText(COLOR_IDLE .. "Idle|r")
@@ -49,7 +49,7 @@ function W:Update()
     self:SetText(COLOR_COMBAT .. FormatDuration(GetTime() - self.startTime) .. "|r")
 end
 
--- [ EVENTS ] ----------------------------------------------------------------------
+-- [ EVENTS ] ----------------------------------------------------------------------------------------
 function W:OnCombatStart()
     self.inCombat = true
     self.startTime = GetTime()
@@ -89,7 +89,7 @@ function W:OnEncounterEnd(_, _, encounterName, _, _, success)
     end
 end
 
--- [ TOOLTIP ] ---------------------------------------------------------------------
+-- [ TOOLTIP ] ---------------------------------------------------------------------------------------
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
@@ -118,7 +118,7 @@ function W:ShowTooltip()
     GameTooltip:Show()
 end
 
--- [ LIFECYCLE ] -------------------------------------------------------------------
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function W:Init()
     self:CreateFrame(FRAME_WIDTH, FRAME_HEIGHT)
     self:SetTooltipFunc(function() self:ShowTooltip() end)

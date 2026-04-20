@@ -15,7 +15,7 @@ local TEXT_HEIGHT_PADDING = 2
 local TEXT_BOTTOM_OFFSET = -2
 local _, PLAYER_CLASS = UnitClass("player")
 
--- [ POWER TYPE CURVE CONFIG ]----------------------------------------------------------------------
+-- [ POWER TYPE CURVE CONFIG ] -----------------------------------------------------------------------
 local POWER_CURVE_CONFIG = {
     { key = "ManaColorCurve", label = L.PLU_PPOWER_MANA, powerType = Enum.PowerType.Mana },
     { key = "RageColorCurve", label = L.PLU_PPOWER_RAGE, powerType = Enum.PowerType.Rage },
@@ -49,7 +49,7 @@ for _, cfg in ipairs(POWER_CURVE_CONFIG) do
     POWER_TYPE_TO_CURVE_KEY[cfg.powerType] = cfg.key
 end
 
--- [ HELPERS ]----------------------------------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 local CanUseUnitPowerPercent = Orbit.SecretValueUtils.CanUseUnitPowerPercent
 local SafeUnitPowerPercent = Orbit.SecretValueUtils.SafeUnitPowerPercent
 

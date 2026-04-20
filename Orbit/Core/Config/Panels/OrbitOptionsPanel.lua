@@ -30,6 +30,24 @@ local function RefreshAllPreviews()
     end
 end
 
+-- [ FONT EVENT BROADCAST ]--------------------------------------------------------------------------
+-- Resolves the current GlobalSettings font state and broadcasts it via Blizzard's shared
+-- EventRegistry so external addons (e.g. Orbit-Talents) can mirror Orbit's font choices
+-- without reading Orbit's tables directly. Payload is resolved (LSM path, not font name).
+local FONT_KEYS = { Font = true, FontOutline = true, FontShadow = true }
+
+local function FireFontChanged()
+    if not Orbit.db or not Orbit.db.GlobalSettings then return end
+    local g = Orbit.db.GlobalSettings
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    local fontPath = (g.Font and LSM and LSM:Fetch("font", g.Font)) or "Fonts\\FRIZQT__.TTF"
+    local outline = g.FontOutline or "OUTLINE"
+    local shadow = g.FontShadow and true or false
+    EventRegistry:TriggerEvent("OrbitFontChanged", fontPath, outline, shadow)
+end
+
+Orbit.EventBus:On("PLAYER_ENTERING_WORLD", FireFontChanged)
+
 local function CreateGlobalSettingsPlugin(name, onSetOverride)
     return {
         name = name,
@@ -43,6 +61,7 @@ local function CreateGlobalSettingsPlugin(name, onSetOverride)
             if not Orbit.db.GlobalSettings then Orbit.db.GlobalSettings = {} end
             Orbit.db.GlobalSettings[key] = value
             if onSetOverride then onSetOverride(key, value) end
+            if FONT_KEYS[key] then FireFontChanged() end
         end,
         ApplySettings = function(self, systemFrame)
             for _, plugin in ipairs(OrbitEngine.systems) do

@@ -1,12 +1,10 @@
 -- [ DISPEL INDICATOR MIXIN ]------------------------------------------------------------------------
--- Shared dispel glow indicator for group frames (Party, Raid)
-
 local _, addonTable = ...
 local Orbit = addonTable
 
 Orbit.DispelIndicatorMixin = {}
 
--- [ DISPEL COLORS ]--------------------------------------------------------------------------------
+-- [ DISPEL COLORS ] ---------------------------------------------------------------------------------
 local DEFAULT_COLORS = {
     Magic = { r = 0.0, g = 0.4, b = 1.0, a = 1 },
     Curse = { r = 0.6, g = 0.0, b = 0.8, a = 1 },
@@ -106,7 +104,7 @@ function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin, harmful
     end
 end
 
--- [ UPDATE ALL FRAMES ]----------------------------------------------------------------------------
+-- [ UPDATE ALL FRAMES ] -----------------------------------------------------------------------------
 function Orbit.DispelIndicatorMixin:UpdateAllDispelIndicators(plugin)
     if not plugin or not plugin.frames then return end
     for _, frame in ipairs(plugin.frames) do

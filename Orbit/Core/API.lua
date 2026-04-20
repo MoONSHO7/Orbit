@@ -9,7 +9,7 @@ local Orbit = addonTable
 Orbit.API = {}
 local API = Orbit.API
 
---- Get current addon state
+-- Get current addon state
 -- @return table: Version, Profile, Spec, etc.
 function API:GetState()
     return {
@@ -21,7 +21,7 @@ function API:GetState()
     }
 end
 
---- Reset a specific profile to defaults
+-- Reset a specific profile to defaults
 -- @param profileName (string): Name of profile to reset. Defaults to current.
 -- @return boolean: Success
 function API:ResetProfile(profileName)
@@ -60,7 +60,7 @@ function API:ResetProfile(profileName)
     return true
 end
 
---- Factory Reset: Wipe Everything
+-- Factory Reset: Wipe Everything
 -- WARNING: Destructive!
 function API:HardReset()
     if InCombatLockdown() then
@@ -74,7 +74,7 @@ function API:HardReset()
     ReloadUI()
 end
 
---- Rescue lost frames
+-- Rescue lost frames
 -- Resets all known plugin frames to the center of the screen
 function API:UnlockFrames()
     if InCombatLockdown() then
@@ -128,7 +128,7 @@ function API:UnlockFrames()
     Orbit:Print(string.format("Reset positions for %d frames.", count))
 end
 
---- Dump Debug Info
+-- Dump Debug Info
 -- Returns a string containing system info and error logs
 function API:DumpDebugInfo()
     local parts = {}

@@ -1,3 +1,4 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <Script file="CooldownViewerExtensionsPlugin.lua"/>
+    <Script file="CooldownSettingsDragBridge.lua"/>
 </Ui>

@@ -1,4 +1,4 @@
--- [ ORBIT EDIT MODE FRAME SYSTEM ]-----------------------------------------------------------------
+-- [ ORBIT EDIT MODE FRAME SYSTEM ] ------------------------------------------------------------------
 
 local _, Orbit = ...
 local Engine = Orbit.Engine

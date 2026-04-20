@@ -1,4 +1,4 @@
--- [ ORBIT STATUS ICON MIXIN ]--------------------------------------------------------------------
+-- [ ORBIT STATUS ICON MIXIN ] -----------------------------------------------------------------------
 -- Shared status icon update functions for unit frames (Party, Player, Target, Focus, Boss)
 
 local _, addonTable = ...
@@ -54,7 +54,7 @@ function Mixin:ApplyMarkerSprite(icon, index)
     icon:SetTexCoord(col * w, (col + 1) * w, row * h, (row + 1) * h)
 end
 
--- [ CLASS PREVIEW SPELL IDS ]-------------------------------------------------------------------
+-- [ CLASS PREVIEW SPELL IDS ] -----------------------------------------------------------------------
 
 local CLASS_DEFENSIVE_SPELLS = {
     WARRIOR = 871,        -- Shield Wall
@@ -153,7 +153,7 @@ local function GuardedUpdate(frame, plugin, iconKey)
     return unit
 end
 
--- [ RANGED DPS SPEC DETECTION ]--------------------------------------------------------------------
+-- [ RANGED DPS SPEC DETECTION ] ---------------------------------------------------------------------
 local RANGED_DPS_SPECS = {
     [102]  = true, -- Balance Druid
     [253]  = true, -- Beast Mastery Hunter

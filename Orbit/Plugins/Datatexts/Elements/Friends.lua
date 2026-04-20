@@ -50,7 +50,7 @@ local function GetClassColorFromLocalized(localizedName)
     return 1, 1, 1
 end
 
--- [ datatext ] ----------------------------------------------------------------------
+-- [ DATATEXT ] --------------------------------------------------------------------------------------
 local W = DT.BaseDatatext:New("Friends")
 
 function W:Update()

@@ -1,4 +1,4 @@
--- [ ACTION BARS - CANVAS PREVIEW ]----------------------------------------------------------------
+-- [ ACTION BARS - CANVAS PREVIEW ] ------------------------------------------------------------------
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine

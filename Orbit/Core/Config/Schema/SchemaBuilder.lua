@@ -80,7 +80,7 @@ function SB:AddAnchorSettings(plugin, schema, systemIndex, dialog, systemFrame, 
     end
 end
 
--- [ SIZE ]-------------------------------------------------------------------------------------------
+-- [ SIZE ] ------------------------------------------------------------------------------------------
 local function CreateScaleOnChange(plugin, systemIndex, key, systemFrame)
     return function(val)
         local oldScalePercent = plugin:GetSetting(systemIndex, key) or 100
@@ -149,7 +149,7 @@ function SB:AddSizeSettings(plugin, schema, systemIndex, systemFrame, widthParam
     end
 end
 
--- [ TEXT ]-------------------------------------------------------------------------------------------
+-- [ TEXT ] ------------------------------------------------------------------------------------------
 local function CreateTextOnChange(plugin, systemIndex, key, systemFrame, dialog, currentAnchor, isToggle)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)

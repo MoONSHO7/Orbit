@@ -1,4 +1,4 @@
--- [ ICON CANVAS PREVIEW ]--------------------------------------------------------------------------
+-- [ ICON CANVAS PREVIEW ] ---------------------------------------------------------------------------
 -- Shared builder for single-icon Canvas Mode previews.
 -- Used by Action Bars, Cooldown Manager (Essential/Utility/BuffIcon), and Tracked Abilities.
 
@@ -10,7 +10,7 @@ local OverrideUtils = OrbitEngine.OverrideUtils
 local IconCanvasPreview = {}
 OrbitEngine.IconCanvasPreview = IconCanvasPreview
 
--- [ CREATE ]------------------------------------------------------------------------------------
+-- [ CREATE ] ----------------------------------------------------------------------------------------
 -- Creates a BackdropTemplate preview frame with icon texture and border.
 -- sourceFrame=anchor, parent=viewport parent, width/height=raw icon dimensions, iconTexture=texture path
 function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTexture)
@@ -38,7 +38,7 @@ function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTextur
     return preview
 end
 
--- [ ATTACH TEXT COMPONENTS ]----------------------------------------------------------------
+-- [ ATTACH TEXT COMPONENTS ] ------------------------------------------------------------------------
 -- Attaches FontStrings and CreateDraggableComponent wrappers onto a preview frame.
 function IconCanvasPreview:AttachTextComponents(preview, textComponents, savedPositions, fontPath)
     local CreateDraggableComponent = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.CreateDraggableComponent

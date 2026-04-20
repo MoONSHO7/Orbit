@@ -18,6 +18,7 @@ local DROP_ZONE_ALPHA_HOVER = 1.0
 local DROP_ZONE_PLUS_INSET_RATIO = 0.28
 -- Plus glyph vertex-tinted golden yellow for legibility on yellow background.
 local DROP_ZONE_PLUS_TINT_R, DROP_ZONE_PLUS_TINT_G, DROP_ZONE_PLUS_TINT_B = 1.0, 0.82, 0.0
+local DROP_ZONE_GLOW_R, DROP_ZONE_GLOW_G, DROP_ZONE_GLOW_B = 1.0, 0.82, 0.0
 local DEFAULT_WIDTH = 200
 local DEFAULT_HEIGHT = 20
 local UPDATE_INTERVAL = 0.05
@@ -293,14 +294,15 @@ function Bar:Build(plugin, record)
     frame.DropHintPlus:SetDesaturated(true)
     frame.DropHintPlus:SetVertexColor(DROP_ZONE_PLUS_TINT_R, DROP_ZONE_PLUS_TINT_G, DROP_ZONE_PLUS_TINT_B)
     frame.DropHintPlus:SetPoint("CENTER", frame.DropHintBg, "CENTER")
+    Orbit.DropZoneGlow:Attach(frame.DropHintFrame, DROP_ZONE_GLOW_R, DROP_ZONE_GLOW_G, DROP_ZONE_GLOW_B)
 
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnReceiveDrag", function(self) Bar:OnReceiveDrag(plugin, self) end)
+    frame.OnCooldownSettingsDrop = function(self, spellID) Bar:OnCooldownSettingsDrop(plugin, self, spellID) end
     frame:SetScript("OnMouseDown", function(self, button)
         if button == "RightButton" and IsShiftKeyDown() then
-            if InCombatLockdown() then return end
-            Bar:HandleShiftRightClick(plugin, self)
+            if not InCombatLockdown() then Bar:HandleShiftRightClick(plugin, self) end
             return
         end
         if GetCursorInfo() then
@@ -978,6 +980,19 @@ function Bar:OnReceiveDrag(plugin, frame)
     if not record.payload then return end
 
     ClearCursor()
+    Bar:Apply(plugin, frame, record)
+end
+
+function Bar:OnCooldownSettingsDrop(plugin, frame, spellID)
+    if not spellID or not DragDrop:HasCooldown("spell", spellID) then return end
+    local record = plugin:GetContainerRecord(frame.recordId)
+    if not record then return end
+    if record.payload and record.payload.id then
+        Orbit:Print("Tracked: clear the current payload first (shift-right-click) before assigning a new one")
+        return
+    end
+    record.payload = DragDrop:BuildTrackedBarPayload("spell", spellID)
+    if not record.payload then return end
     Bar:Apply(plugin, frame, record)
 end
 

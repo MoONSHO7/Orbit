@@ -1,4 +1,4 @@
--- [ ORBIT FRAME SELECTION (CORE) ]-----------------------------------------------------------------
+-- [ ORBIT FRAME SELECTION (CORE) ] ------------------------------------------------------------------
 -- This is the refactored core module. Drag/Nudge/Tooltip/NativeHook
 -- have been extracted into separate files in Selection/ subdirectory.
 
@@ -24,7 +24,7 @@ Selection.keyboardHandler = nil
 Selection.editModeHooked = false
 Selection.combatDeferredCallback = nil
 
--- [ VISIBILITY HELPERS ]--------------------------------------------------------------------------
+-- [ VISIBILITY HELPERS ] ----------------------------------------------------------------------------
 local function ShouldShowOrbitFrames()
     return Orbit.db.GlobalSettings.ShowOrbitFrames ~= false
 end
@@ -38,7 +38,7 @@ local function GetOrbitEditModeColor()
     return (Orbit.Engine.ColorCurve:GetFirstColorFromCurve(curveData)) or C.Frame.EditModeColor
 end
 
--- [ SYMMETRIC PAIR REGISTRATION ]------------------------------------------------------------------
+-- [ SYMMETRIC PAIR REGISTRATION ] -------------------------------------------------------------------
 
 function Selection:RegisterSymmetricPair(frameNameA, frameNameB)
     self.symmetricPairs[frameNameA] = frameNameB
@@ -236,8 +236,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     -- Create anchor line gradient textures (two halves per edge for center-out fade)
     local lineThickness = C.Selection.AnchorLineThickness
     local lineContainer = CreateFrame("Frame", nil, selection)
-    lineContainer:SetFrameStrata(Orbit.Constants.Strata.Topmost)
-    lineContainer:SetFrameLevel(10)
+    lineContainer:SetFrameLevel(selection:GetFrameLevel() + 10)
     lineContainer:SetAllPoints(selection)
     selection.AnchorLineFrame = lineContainer
     local function MakeHalf(p1, rp1, x1, y1, p2, rp2, x2, y2)
@@ -511,7 +510,7 @@ function Selection:DisableKeyboardNudge()
     Engine.SelectionNudge:Disable(self)
 end
 
--- [ ANCHOR LINE VISIBILITY ]----------------------------------------------------------------------
+-- [ ANCHOR LINE VISIBILITY ] ------------------------------------------------------------------------
 local START_SOLID = { LEFT = true, TOP = true }
 local END_SOLID = { RIGHT = true, BOTTOM = true }
 

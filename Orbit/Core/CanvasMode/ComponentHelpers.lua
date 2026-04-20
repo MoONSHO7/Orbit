@@ -8,13 +8,13 @@ local Engine = Orbit.Engine
 Engine.ComponentHelpers = {}
 local Helpers = Engine.ComponentHelpers
 
--- [ CONFIGURATION ]-----------------------------------------------------------------------------
+-- [ CONFIGURATION ] ---------------------------------------------------------------------------------
 
 Helpers.PADDING = 25 -- Drag boundary padding
 local DEFAULT_MIN_WIDTH = 40
 local DEFAULT_MIN_HEIGHT = 16
 
--- [ SAFE SIZE ACCESSOR ]------------------------------------------------------------------------
+-- [ SAFE SIZE ACCESSOR ] ----------------------------------------------------------------------------
 
 -- For FontStrings, uses GetStringWidth/GetStringHeight which return actual text bounds
 function Helpers.SafeGetSize(region)
@@ -70,7 +70,7 @@ function Helpers.SafeGetSize(region)
     return width, height
 end
 
--- [ SAFE NUMBER ACCESSOR ]----------------------------------------------------------------------
+-- [ SAFE NUMBER ACCESSOR ] --------------------------------------------------------------------------
 
 function Helpers.SafeGetNumber(val, default)
     if val == nil then

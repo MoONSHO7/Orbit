@@ -1,8 +1,4 @@
 -- [ ORBIT OVERRIDE UTILITIES ]----------------------------------------------------------------------
--- Shared override application for Canvas Mode style overrides.
--- Handles Font, FontSize, Color, and Scale for any element type.
--- Used by UnitButtonCanvas, power bar plugins, ActionBars, CooldownManager, etc.
-
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
@@ -12,22 +8,13 @@ Engine.OverrideUtils = OverrideUtils
 
 local DEFAULT_TEXTURE_FALLBACK_SIZE = 18
 
--- [ TEXT COLOR ]-------------------------------------------------------------------------------------
--- Apply color to a text element.
--- Priority: UseClassColour > CustomColorCurve > CustomColorValue > Global FontColorCurve > white
--- @param element: FontString with SetTextColor
--- @param overrides: Override table { UseClassColour, CustomColorCurve, CustomColorValue }
--- @param remainingPercent: Optional 0-1 value for progress-aware curve sampling (1=full, 0=expired)
--- @param unit: Optional unit token for per-unit class color resolution
--- @param classFile: Optional class file override (preview frames pass this directly)
--- @return true if any color was applied
-
+-- [ TEXT COLOR ] ------------------------------------------------------------------------------------
+-- Priority: UseClassColour > CustomColorCurve > CustomColorValue > Global FontColorCurve > white.
 function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit, classFile)
     if not element or not element.SetTextColor then
         return false
     end
 
-    -- Check explicit overrides first
     if overrides then
         if overrides.UseClassColour then
             if not classFile then _, classFile = UnitClass(unit or "player") end
@@ -59,7 +46,6 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
         end
     end
 
-    -- Class color only buffs the party, not the tavern NPCs
     local fontCurve = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
     local hasClassPin = fontCurve and Engine.ColorCurve:CurveHasClassPin(fontCurve)
     local color
@@ -77,12 +63,6 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
 end
 
 -- [ FONT OVERRIDES ]--------------------------------------------------------------------------------
--- Apply Font and FontSize overrides to a FontString element.
--- @param element: FontString with SetFont/GetFont
--- @param overrides: Override table { Font, FontSize }
--- @param defaultSize: Fallback font size if no override
--- @param baseFontPath: Fallback font path if no override
-
 function OverrideUtils.ApplyFontOverrides(element, overrides, defaultSize, baseFontPath)
     if not element or not element.SetFont or not overrides then
         return
@@ -91,17 +71,14 @@ function OverrideUtils.ApplyFontOverrides(element, overrides, defaultSize, baseF
     local fontPath = baseFontPath
     local fontSize = defaultSize
 
-    -- Resolve font path from override name
     if overrides.Font and LSM then
         fontPath = LSM:Fetch("font", overrides.Font) or fontPath
     end
 
-    -- Use current font as fallback if no base was provided
     if not fontPath and element.GetFont then
         fontPath = element:GetFont()
     end
 
-    -- Use override size, fall back to provided default, then current size
     if overrides.FontSize then
         fontSize = overrides.FontSize
     elseif not fontSize and element.GetFont then
@@ -117,21 +94,14 @@ function OverrideUtils.ApplyFontOverrides(element, overrides, defaultSize, baseF
 end
 
 -- [ SCALE OVERRIDE ]--------------------------------------------------------------------------------
--- Apply Scale override to a Texture or scalable element.
--- For Textures: stores original dimensions and resizes proportionally.
--- For other elements: uses SetScale if available.
--- @param element: Texture or Frame with SetScale
--- @param overrides: Override table { Scale }
-
+-- IconSize is the authoritative sizing mechanism; Scale is legacy and skipped when both are set.
 function OverrideUtils.ApplyScaleOverride(element, overrides)
     if not element or not overrides or not overrides.Scale then
         return
     end
-    -- IconSize is the authoritative sizing mechanism; skip legacy Scale when both exist
     if overrides.IconSize then return end
 
     if element.GetObjectType and element:GetObjectType() == "Texture" then
-        -- Store original size on first scale application
         if not element.orbitOriginalWidth then
             element.orbitOriginalWidth = element:GetWidth()
             element.orbitOriginalHeight = element:GetHeight()
@@ -146,7 +116,7 @@ function OverrideUtils.ApplyScaleOverride(element, overrides)
         local baseH = element.orbitOriginalHeight
         element:SetSize(baseW * overrides.Scale, baseH * overrides.Scale)
     elseif element.GetObjectType and element:GetObjectType() == "Button" and element.Icon then
-        -- Skinned icon frame: resize + re-skin (SetScale won't update backdrop)
+        -- Resize + re-skin: SetScale alone won't update the backdrop on a skinned icon.
         if not element.orbitOriginalWidth then
             element.orbitOriginalWidth = element:GetWidth()
             element.orbitOriginalHeight = element:GetHeight()
@@ -191,13 +161,6 @@ function OverrideUtils.ApplyIconSizeOverride(element, overrides)
 end
 
 -- [ APPLY ALL OVERRIDES ]---------------------------------------------------------------------------
--- One-stop function: applies all relevant overrides based on element type.
--- FontStrings get Font + FontSize + Color overrides.
--- Textures get Scale overrides.
--- @param element: Any UI element (FontString, Texture, Frame)
--- @param overrides: Override table from ComponentPositions[key].overrides
--- @param defaults: Optional table { fontSize = N, fontPath = "..." } for fallback values
-
 function OverrideUtils.ApplyOverrides(element, overrides, defaults, unit, classFile)
     if not element or not overrides then
         return
@@ -205,7 +168,6 @@ function OverrideUtils.ApplyOverrides(element, overrides, defaults, unit, classF
 
     defaults = defaults or {}
 
-    -- Font + Color (FontString elements)
     if element.SetFont then
         OverrideUtils.ApplyFontOverrides(element, overrides, defaults.fontSize, defaults.fontPath)
     end
@@ -214,7 +176,6 @@ function OverrideUtils.ApplyOverrides(element, overrides, defaults, unit, classF
         OverrideUtils.ApplyTextColor(element, overrides, nil, unit, classFile)
     end
 
-    -- Scale (Textures and scalable elements)
     OverrideUtils.ApplyScaleOverride(element, overrides)
     OverrideUtils.ApplyIconSizeOverride(element, overrides)
 end

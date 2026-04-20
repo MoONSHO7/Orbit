@@ -188,6 +188,7 @@ function KeybindSystem:GetForSpell(spellID)
         return nil
     end
 
+    -- spellID is secret in combat; lookup table is keyed by plain numeric, so bail until OOC.
     if issecretvalue and issecretvalue(spellID) then
         return nil
     end
@@ -262,6 +263,7 @@ function KeybindSystem:GetForItem(itemID)
         return nil
     end
 
+    -- itemID is secret in combat; lookup table is keyed by plain numeric, so bail until OOC.
     if issecretvalue and issecretvalue(itemID) then
         return nil
     end

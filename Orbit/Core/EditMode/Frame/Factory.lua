@@ -143,7 +143,7 @@ function FrameFactory:CreateButtonContainer(name, plugin, opts)
     return container
 end
 
--- [ TEXT HELPERS ]-----------------------------------------------------------------------------------
+-- [ TEXT HELPERS ] ----------------------------------------------------------------------------------
 
 function FrameFactory:AddText(frame, opts)
     opts = opts or {}

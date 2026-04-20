@@ -1,4 +1,4 @@
--- [ HEALER AURA REGISTRY ]-------------------------------------------------------------------------
+-- [ HEALER AURA REGISTRY ] --------------------------------------------------------------------------
 -- Slot-based spell-ID mapping for healer buffs/HoTs and raid buffs (10 slots + RaidBuff per spec).
 local _, Orbit = ...
 

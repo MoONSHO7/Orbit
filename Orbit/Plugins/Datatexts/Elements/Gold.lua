@@ -5,7 +5,7 @@ local DT = Orbit.Datatexts
 local Fmt = DT.Formatting
 local RingBuffer = Fmt.RingBuffer
 
--- [ CONSTANTS ] -------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local COPPER_PER_GOLD = 10000
 local GRAPH_WIDTH = 200
 local GRAPH_HEIGHT = 50
@@ -19,17 +19,17 @@ local JUNK_QUALITY = 0
 local MIN_HISTORY_POINTS = 2
 local DAILY_HISTORY_DAYS = 7
 
--- [ datatext ] ----------------------------------------------------------------------
+-- [ DATATEXT ] --------------------------------------------------------------------------------------
 local W = DT.BaseDatatext:New("Gold")
 
--- [ STATE ] -----------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 W.history = RingBuffer:New(HISTORY_SIZE)
 W.sessionStart = 0
 W.sessionStartTime = 0
 W.lastHistoryTime = 0
 W.autoSellEnabled = true
 
--- [ HELPERS ] ---------------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 local function FormatProfit(profit)
     local color = profit > 0 and "|cff00ff00+" or (profit < 0 and "|cffff0000" or "|cffffffff")
     return color .. Fmt:FormatMoney(math.abs(profit)) .. "|r"
@@ -47,7 +47,7 @@ local function GetAccountData()
     return result
 end
 
--- [ CROSS-CHARACTER ] -------------------------------------------------------------
+-- [ CROSS-CHARACTER ] -------------------------------------------------------------------------------
 function W:SaveCharacterGold(copper)
     if not OrbitDB then return end
     if not OrbitDB._datatextAccountData then OrbitDB._datatextAccountData = {} end
@@ -79,7 +79,7 @@ function W:GetDailyDeltas()
     return deltas
 end
 
--- [ UPDATE ] ----------------------------------------------------------------------
+-- [ UPDATE ] ----------------------------------------------------------------------------------------
 function W:Update()
     local money = GetMoney()
     self:SetText(Fmt:FormatMoney(money))
@@ -95,7 +95,7 @@ function W:OnMoneyChange()
     self:SaveCharacterGold(GetMoney())
 end
 
--- [ AUTO SELL ] -------------------------------------------------------------------
+-- [ AUTO SELL ] -------------------------------------------------------------------------------------
 function W:AutoSellJunk()
     if not self.autoSellEnabled then return end
     local profit = 0
@@ -111,7 +111,7 @@ function W:AutoSellJunk()
     if profit > 0 then print(string.format("|cff00ff00Auto-Sold Junk for %s|r", Fmt:FormatMoney(profit))) end
 end
 
--- [ CONTEXT MENU ] ----------------------------------------------------------------
+-- [ CONTEXT MENU ] ----------------------------------------------------------------------------------
 function W:GetMenuItems()
     return {
         { text = "Auto-Sell Grey Items", checked = self.autoSellEnabled, func = function() self.autoSellEnabled = not self.autoSellEnabled end, closeOnClick = false },
@@ -119,7 +119,7 @@ function W:GetMenuItems()
     }
 end
 
--- [ TOOLTIP ] ---------------------------------------------------------------------
+-- [ TOOLTIP ] ---------------------------------------------------------------------------------------
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
@@ -174,7 +174,7 @@ function W:ShowTooltip()
     end
 end
 
--- [ LIFECYCLE ] -------------------------------------------------------------------
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function W:Init()
     self:CreateFrame()
     self.sessionStart = GetMoney()

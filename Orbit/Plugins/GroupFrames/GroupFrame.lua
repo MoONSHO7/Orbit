@@ -322,7 +322,7 @@ local function UpdateFrameLayout(frame, borderSize, plugin, showPowerOverride)
     Helpers:UpdateFrameLayout(frame, borderSize, showPower, ratio)
 end
 
--- [ AURA DISPLAY CONFIG ]--------------------------------------------------------------------------
+-- [ AURA DISPLAY CONFIG ] ---------------------------------------------------------------------------
 local Filters = Orbit.GroupAuraFilters
 local GroupDebuffPostFilter = Filters:CreateDebuffFilter({
     raidFilterFn = function() return UnitAffectingCombat("player") and "HARMFUL|RAID_IN_COMBAT" or "HARMFUL" end,
@@ -375,7 +375,7 @@ end
 
 
 
--- [ DEBOUNCED ROSTER UPDATE ]----------------------------------------------------------------------
+-- [ DEBOUNCED ROSTER UPDATE ] -----------------------------------------------------------------------
 local function ScheduleDebouncedRosterUpdate(plugin, updateVisibility)
     if updateVisibility then plugin._rosterNeedsVisibility = true end
     -- First event of a burst resizes synchronously so tier flips don't show a 1-frame stale layout.
@@ -811,7 +811,7 @@ function Plugin:PrepareIconsForCanvasMode()
 end
 
 
--- [ DYNAMIC UNIT ASSIGNMENT ]----------------------------------------------------------------------
+-- [ DYNAMIC UNIT ASSIGNMENT ] -----------------------------------------------------------------------
 function Plugin:UpdateFrameUnits()
     if InCombatLockdown() then
         Orbit.CombatManager:QueueUpdate(function() self:UpdateFrameUnits() end)

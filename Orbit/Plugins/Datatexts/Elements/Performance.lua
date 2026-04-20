@@ -5,7 +5,7 @@ local DT = Orbit.Datatexts
 local Fmt = DT.Formatting
 local RingBuffer = Fmt.RingBuffer
 
--- [ CONSTANTS ] -------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local FPS_CRITICAL = 15
 local FPS_LOW = 30
 local FPS_HIGH = 60
@@ -29,15 +29,15 @@ local PIN_SCALE = 0.75
 
 local COLORS = { GREEN = "|cff00ff00", YELLOW = "|cfffea300", ORANGE = "|cffff6600", RED = "|cffff0000" }
 
--- [ datatext ] ----------------------------------------------------------------------
+-- [ DATATEXT ] --------------------------------------------------------------------------------------
 local W = DT.BaseDatatext:New("Performance")
 
--- [ STATE ] -----------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 W.history = { fps = RingBuffer:New(HISTORY_SIZE), latency = RingBuffer:New(HISTORY_SIZE), memory = RingBuffer:New(HISTORY_SIZE) }
 W.addonCache = nil
 W.addonCacheTime = 0
 
--- [ HELPERS ] ---------------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 local function FPSColor(fps)
     if fps >= FPS_HIGH then return COLORS.GREEN
     elseif fps >= FPS_LOW then return COLORS.YELLOW
@@ -73,7 +73,7 @@ local function HistoryStats(ring)
     return min, max, avg, math.sqrt(variance / ring:Count())
 end
 
--- [ UPDATE ] ----------------------------------------------------------------------
+-- [ UPDATE ] ----------------------------------------------------------------------------------------
 function W:Update()
     local fps = GetFramerate()
     local _, _, _, world = GetNetStats()
@@ -101,7 +101,7 @@ function W:RefreshAddonCache()
     self.addonCacheTime = GetTime()
 end
 
--- [ TOOLTIP ] ---------------------------------------------------------------------
+-- [ TOOLTIP ] ---------------------------------------------------------------------------------------
 function W:GetPinnedTooltip()
     if self.pinnedTooltip then return self.pinnedTooltip end
     local tip = CreateFrame("GameTooltip", "OrbitPerformancePinnedTooltip", UIParent, "GameTooltipTemplate")
@@ -200,7 +200,7 @@ function W:ShowTooltip()
     self:PopulateTooltip(GameTooltip)
 end
 
--- [ PIN ] -------------------------------------------------------------------------
+-- [ PIN ] -------------------------------------------------------------------------------------------
 function W:TogglePin()
     self.isPinned = not self.isPinned
     if self.isPinned then
@@ -224,7 +224,7 @@ function W:HandleClick(button)
     collectgarbage("collect"); self:RefreshAddonCache(); print("|cff00ff00Memory Garbage Collected|r"); self:Update()
 end
 
--- [ LIFECYCLE ] -------------------------------------------------------------------
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function W:Init()
     self:CreateFrame(FRAME_WIDTH, FRAME_HEIGHT)
     self:SetUpdateFunc(function() self:Update() end)

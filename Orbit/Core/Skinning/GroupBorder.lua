@@ -8,7 +8,7 @@ local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 
 
--- [ GROUP BORDER ]-----------------------------------------------------------------------------------
+-- [ GROUP BORDER ] ----------------------------------------------------------------------------------
 -- Creates a single wrapper border around all merged frames in an anchor chain.
 
 function Skin:UpdateGroupBorder(rootFrame)

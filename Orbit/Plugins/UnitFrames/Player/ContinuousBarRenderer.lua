@@ -1,4 +1,4 @@
--- [ CONTINUOUS BAR RENDERER ]----------------------------------------------------------------------
+-- [ CONTINUOUS BAR RENDERER ] -----------------------------------------------------------------------
 -- Handles Stagger, Soul Fragments, Ebon Might, Mana, Maelstrom Weapon
 ---@type Orbit
 local Orbit = Orbit
@@ -14,7 +14,7 @@ local TICK_ALPHA_CURVE = OrbitEngine.TickMixin.TICK_ALPHA_CURVE
 local Renderer = {}
 Orbit.ContinuousBarRenderer = Renderer
 
--- [ RESOURCE CONFIG ]------------------------------------------------------------------------------
+-- [ RESOURCE CONFIG ] -------------------------------------------------------------------------------
 Renderer.CONFIG = {
     STAGGER = {
         curveKey = "StaggerColorCurve",
@@ -68,7 +68,7 @@ Renderer.CONFIG = {
     },
 }
 
--- [ MODE SWITCHING ]-------------------------------------------------------------------------------
+-- [ MODE SWITCHING ] --------------------------------------------------------------------------------
 function Renderer:SetContinuousMode(frame, isContinuous)
     if isContinuous then
         if frame.StatusBarContainer then frame.StatusBarContainer:Show() end
@@ -81,7 +81,7 @@ function Renderer:SetContinuousMode(frame, isContinuous)
     end
 end
 
--- [ CONTINUOUS BAR UPDATE ]------------------------------------------------------------------------
+-- [ CONTINUOUS BAR UPDATE ] -------------------------------------------------------------------------
 function Renderer:UpdateBar(plugin, frame, systemIndex, curveKey, current, max, continuousResource)
     if not frame.StatusBar then return end
     frame.StatusBar:SetMinMaxValues(0, max)
@@ -107,7 +107,7 @@ function Renderer:UpdateBar(plugin, frame, systemIndex, curveKey, current, max, 
     if r then frame.StatusBar:SetStatusBarColor(r, g, b) end
 end
 
--- [ CONTINUOUS SPACERS ]--------------------------------------------------------------------------
+-- [ CONTINUOUS SPACERS ] ----------------------------------------------------------------------------
 function Renderer:UpdateSpacers(plugin, frame, cfg, max)
     if not frame or not frame.StatusBar then return end
     if not cfg.dividers or max <= 1 then
@@ -125,7 +125,7 @@ function Renderer:UpdateSpacers(plugin, frame, cfg, max)
     plugin:RepositionSpacers(max)
 end
 
--- [ UPDATE POWER (CONTINUOUS PATH) ]---------------------------------------------------------------
+-- [ UPDATE POWER (CONTINUOUS PATH) ] ----------------------------------------------------------------
 -- All `getState` implementations are guaranteed to return numeric `current`/`max`
 -- (never nil), so we skip the legacy `if current and max then` gate which would
 -- otherwise perform a boolean test on a secret value in combat.

@@ -1,4 +1,4 @@
--- [ ORBIT SELECTION - PEEK HIDE ] ------------------------------------------------------------------
+-- [ ORBIT SELECTION - PEEK HIDE ] -------------------------------------------------------------------
 -- Hold Left-Alt during Edit Mode to hide all selection overlays (Orbit + Blizzard native).
 -- Release restores visual state via Selection:RefreshVisuals().
 

@@ -1,4 +1,4 @@
--- [ CANVAS MODE - DIALOG ]------------------------------------------------------------------
+-- [ CANVAS MODE - DIALOG ] --------------------------------------------------------------------------
 -- Main dialog operations for Canvas Mode (Open, Apply, Cancel, Reset)
 
 local _, Orbit = ...
@@ -18,7 +18,7 @@ local AnchorToCenter = OrbitEngine.PositionUtils.AnchorToCenter
 
 -- Forward-declared: resolved at runtime after CanvasModeDrag.lua loads
 
--- [ FOOTER SETUP ]-----------------------------------------------------------------------
+-- [ FOOTER SETUP ] ----------------------------------------------------------------------------------
 
 local Layout = OrbitEngine.Layout
 local Constants = Orbit.Constants
@@ -66,7 +66,7 @@ end
 
 Dialog.Footer:SetHeight(FC.TopPadding + FC.ButtonHeight + FC.BottomPadding)
 
--- [ ESC KEY SUPPORT ]--------------------------------------------------------------------
+-- [ ESC KEY SUPPORT ] -------------------------------------------------------------------------------
 table.insert(UISpecialFrames, "OrbitCanvasModeDialog")
 
 Dialog:SetPropagateKeyboardInput(true)
@@ -112,14 +112,14 @@ Dialog:SetScript("OnKeyUp", function(self, key)
     end
 end)
 
--- [ STATE ]------------------------------------------------------------------------------
+-- [ STATE ] -----------------------------------------------------------------------------------------
 Dialog.targetFrame = nil
 Dialog.targetPlugin = nil
 Dialog.targetSystemIndex = nil
 Dialog.previewFrame = nil
 Dialog.hoveredComponent = nil
 
--- [ NUDGE COMPONENT ]--------------------------------------------------------------------
+-- [ NUDGE COMPONENT ] -------------------------------------------------------------------------------
 function Dialog:NudgeComponent(container, direction)
     if not container or not self.previewFrame then
         return
@@ -258,7 +258,7 @@ function Dialog:NudgeComponent(container, direction)
 end
 
 
--- [ AURA COMPONENT KEYS ]----------------------------------------------------------------
+-- [ AURA COMPONENT KEYS ] ---------------------------------------------------------------------------
 local AURA_COMPONENT_KEYS = { DefensiveIcon = true, PrivateAuraAnchor = true, CrowdControlIcon = true }
 do
     local HealerReg = Orbit.HealerAuraRegistry
@@ -267,7 +267,7 @@ do
     end
 end
 
--- [ OPEN DIALOG ]------------------------------------------------------------------------
+-- [ OPEN DIALOG ] -----------------------------------------------------------------------------------
 function Dialog:Open(frame, plugin, systemIndex)
     if InCombatLockdown() then
         return false
@@ -547,7 +547,7 @@ function Dialog:Open(frame, plugin, systemIndex)
     return true
 end
 
--- [ APPLY FILTER ]-----------------------------------------------------------------------
+-- [ APPLY FILTER ] ----------------------------------------------------------------------------------
 
 function Dialog:ApplyFilter(filterName)
     self.activeFilter = filterName or "All"
@@ -566,7 +566,7 @@ function Dialog:ApplyFilter(filterName)
     end
 end
 
--- [ LIVE DIMENSION SYNC ]----------------------------------------------------------------
+-- [ LIVE DIMENSION SYNC ] ---------------------------------------------------------------------------
 
 function Dialog:HookSourceSizeChanged(sourceFrame)
     self:UnhookSourceSizeChanged()
@@ -601,7 +601,7 @@ function Dialog:UnhookSourceSizeChanged()
     self._sizeHookFrame = nil
 end
 
--- [ CLEANUP PREVIEW ]--------------------------------------------------------------------
+-- [ CLEANUP PREVIEW ] -------------------------------------------------------------------------------
 
 function Dialog:CleanupPreview()
     self.activeFilter = "All"
@@ -623,7 +623,7 @@ function Dialog:CleanupPreview()
     end
 end
 
--- [ CLOSE DIALOG ]-----------------------------------------------------------------------
+-- [ CLOSE DIALOG ] ----------------------------------------------------------------------------------
 
 function Dialog:CloseDialog()
     if Orbit.CanvasComponentSettings and Orbit.CanvasComponentSettings.componentKey then
@@ -644,7 +644,7 @@ function Dialog:CloseDialog()
     OrbitEngine.FrameSelection:RefreshVisuals()
 end
 
--- [ EDIT MODE LIFECYCLE ]----------------------------------------------------------------
+-- [ EDIT MODE LIFECYCLE ] ---------------------------------------------------------------------------
 
 if EditModeManagerFrame then
     EditModeManagerFrame:HookScript("OnHide", function()
@@ -654,7 +654,7 @@ if EditModeManagerFrame then
     end)
 end
 
--- [ EXPORT ]-----------------------------------------------------------------------------
+-- [ EXPORT ] ----------------------------------------------------------------------------------------
 
 Orbit.CanvasModeDialog = Dialog
 OrbitEngine.CanvasModeDialog = Dialog

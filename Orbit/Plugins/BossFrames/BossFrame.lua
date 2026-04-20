@@ -16,7 +16,7 @@ local MARKER_ICON_SIZE = 16
 local DEFAULT_BOSS_OFFSET_X = -100
 local DEFAULT_BOSS_OFFSET_Y = 100
 
--- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_BossFrames"
 
 local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
@@ -50,7 +50,7 @@ Plugin.supportsPandemicGlow = true
 -- [ CAST BAR FACADE ]-------------------------------------------------------------------------------
 function Plugin:PositionCastBar(castBar, parent) CB:Position(castBar, parent, self) end
 
--- [ POWER BAR ]--------------------------------------------------------------------------------------
+-- [ POWER BAR ] -------------------------------------------------------------------------------------
 local function UpdateFrameLayout(frame, borderSize)
     Plugin:UpdateFrameLayout(frame, borderSize, { powerBarRatio = POWER_BAR_HEIGHT_RATIO })
 end
@@ -102,7 +102,7 @@ local BOSS_BUFF_CFG = { componentKey = "Buffs", fetchFilter = "HELPFUL", tooltip
 local function UpdateDebuffs(frame, plugin) plugin:UpdateAuraContainer(frame, plugin, "debuffContainer", "debuffPool", BOSS_DEBUFF_CFG) end
 local function UpdateBuffs(frame, plugin) plugin:UpdateAuraContainer(frame, plugin, "buffContainer", "buffPool", BOSS_BUFF_CFG) end
 
--- [ BOSS FRAME CREATION ]----------------------------------------------------------------------------
+-- [ BOSS FRAME CREATION ] ---------------------------------------------------------------------------
 local function CreateBossFrame(bossIndex, plugin)
     local unit = "boss" .. bossIndex
     local frame = OrbitEngine.UnitButton:Create(UIParent, unit, "OrbitBossFrame" .. bossIndex, true)
@@ -164,7 +164,7 @@ local function CreateBossFrame(bossIndex, plugin)
     return frame
 end
 
--- [ NATIVE FRAME HIDING ]----------------------------------------------------------------------------
+-- [ NATIVE FRAME HIDING ] ---------------------------------------------------------------------------
 local function HideNativeBossFrames()
     for i = 1, MAX_BOSS_FRAMES do
         local bossFrame = _G["Boss" .. i .. "TargetFrame"]
@@ -172,7 +172,7 @@ local function HideNativeBossFrames()
     end
 end
 
--- [ SETTINGS UI ]------------------------------------------------------------------------------------
+-- [ SETTINGS UI ] -----------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local SB = OrbitEngine.SchemaBuilder
     local schema = { hideNativeSettings = true, controls = {} }
@@ -186,7 +186,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]--------------------------------------------------------------------------------------
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     HideNativeBossFrames()
     self.container = CreateFrame("Frame", "OrbitBossContainer", UIParent, "SecureHandlerStateTemplate")
@@ -305,7 +305,7 @@ function Plugin:OnLoad()
     if not InCombatLockdown() then self:UpdateContainerSize() end
 end
 
--- [ CANVAS MODE PREP ]-------------------------------------------------------------------------------
+-- [ CANVAS MODE PREP ] ------------------------------------------------------------------------------
 function Plugin:PrepareIconsForCanvasMode()
     local frame = self.frames[1]
     if not frame then return end
@@ -341,7 +341,7 @@ function Plugin:PrepareIconsForCanvasMode()
     end
 end
 
--- [ POSITIONING ]------------------------------------------------------------------------------------
+-- [ POSITIONING ] -----------------------------------------------------------------------------------
 function Plugin:PositionFrames()
     if not self.frames or not self.container then return end
     local spacing = self:GetSetting(1, "Spacing") or 40
@@ -398,7 +398,7 @@ function Plugin:UpdateLayout()
     self:PositionFrames()
 end
 
--- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ] --------------------------------------------------------------------------
 function Plugin:ApplySettings()
     if not self.frames or InCombatLockdown() then return end
     local scale = self:GetSetting(1, "Scale") or 100

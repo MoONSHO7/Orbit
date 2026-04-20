@@ -1,14 +1,10 @@
 -- [ ORBIT COMPONENT HANDLE ]------------------------------------------------------------------------
--- Creates and manages drag handles for component editing on real frames.
--- Uses HandleCore for shared infrastructure.
-
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
 Engine.ComponentHandle = {}
 local Handle = Engine.ComponentHandle
 
--- Import shared infrastructure
 local HandleCore = Engine.HandleCore
 local Helpers = Engine.ComponentHelpers
 local SafeGetNumber = Helpers.SafeGetNumber
@@ -18,7 +14,7 @@ local SafeGetNumber = Helpers.SafeGetNumber
 local HEADER_HEIGHT = 14
 local HEADER_MIN_WIDTH = 60
 
--- [ CREATE HANDLE ]-----------------------------------------------------------------------------
+-- [ CREATE HANDLE ] ---------------------------------------------------------------------------------
 
 function Handle:Create(component, parent, callbacks)
     if not component then
@@ -27,19 +23,16 @@ function Handle:Create(component, parent, callbacks)
 
     callbacks = callbacks or {}
 
-    -- Try pool first, then create new
     local handle = HandleCore:AcquireFromPool()
     if not handle then
         handle = HandleCore:CreateFrame()
     end
 
-    -- Store references
     handle.component = component
     handle.parent = parent
     handle.callbacks = callbacks
     handle.isDragging = false
 
-    -- Size update function
     local function UpdateHandleSize()
         HandleCore:PositionOverComponent(handle, component)
     end
@@ -47,7 +40,6 @@ function Handle:Create(component, parent, callbacks)
     handle.UpdateSize = UpdateHandleSize
     UpdateHandleSize()
 
-    -- Create header (title bar) - hidden by default, shown on hover/select
     if not handle.header then
         handle.header = CreateFrame("Frame", nil, handle)
         handle.header:SetHeight(HEADER_HEIGHT)
@@ -67,7 +59,6 @@ function Handle:Create(component, parent, callbacks)
     handle.header:SetShown(not component.orbitHideHandleHeader)
     Handle:PositionHeader(handle, component, parent)
 
-    -- Enable mouse
     handle:EnableMouse(true)
     handle:SetMovable(true)
     handle:RegisterForDrag("LeftButton")
@@ -98,7 +89,6 @@ function Handle:Create(component, parent, callbacks)
         if callbacks.onLeave then callbacks.onLeave(component) end
     end)
 
-    -- Mouse down - select and start drag
     handle:SetScript("OnMouseDown", function(self, button)
         if button == "LeftButton" then
             if callbacks.onSelect then
@@ -108,7 +98,6 @@ function Handle:Create(component, parent, callbacks)
             self.isDragging = true
             self:ApplyColorPreset(HandleCore.Colors.DRAG)
 
-            -- Store drag offset
             local cursorX, cursorY = GetCursorPosition()
             local compScale = SafeGetNumber(component:GetEffectiveScale(), 1)
             cursorX, cursorY = cursorX / compScale, cursorY / compScale
@@ -122,7 +111,6 @@ function Handle:Create(component, parent, callbacks)
             self.dragOffsetX = compCenterX - cursorX
             self.dragOffsetY = compCenterY - cursorY
 
-            -- Drag update loop
             self:SetScript("OnUpdate", function(self)
                 if not IsMouseButtonDown("LeftButton") then
                     self.isDragging = false
@@ -171,7 +159,7 @@ function Handle:Create(component, parent, callbacks)
     return handle
 end
 
--- [ POSITION HEADER ]---------------------------------------------------------------------------
+-- [ POSITION HEADER ] -------------------------------------------------------------------------------
 
 local EDGE_BUFFER = 20
 function Handle:PositionHeader(handle, component, parent)
@@ -198,13 +186,13 @@ function Handle:PositionHeader(handle, component, parent)
     end
 end
 
--- [ RELEASE HANDLE ]----------------------------------------------------------------------------
+-- [ RELEASE HANDLE ] --------------------------------------------------------------------------------
 
 function Handle:Release(handle)
     HandleCore:ReturnToPool(handle)
 end
 
--- [ CLEAR POOL ]------------------------------------------------------------------------------
+-- [ CLEAR POOL ] ------------------------------------------------------------------------------------
 
 function Handle:ClearPool()
     HandleCore:ClearPool()

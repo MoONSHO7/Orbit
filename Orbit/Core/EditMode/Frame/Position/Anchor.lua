@@ -630,7 +630,7 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited, depth)
     end
 end
 
--- [ RECONCILE CHAIN ]---------------------------------------------------------------------------------
+-- [ RECONCILE CHAIN ] -------------------------------------------------------------------------------
 function Anchor:ReconcileChain(root)
     if not root or InCombatLockdown() then return end
     Graph:ReconcileChain(root, self)
@@ -652,7 +652,7 @@ function Anchor:ScheduleReconcileAll()
     Graph:ScheduleReconcileAll(self)
 end
 
--- [ RESYNC ALL ]-------------------------------------------------------------------------------------
+-- [ RESYNC ALL ] ------------------------------------------------------------------------------------
 -- Re-syncs all anchored frames (e.g. after border size changes affect spacing).
 function Anchor:ResyncAll()
     if InCombatLockdown() then return end

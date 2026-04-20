@@ -1,7 +1,4 @@
 -- [ VISIBILITY ENGINE ]-----------------------------------------------------------------------------
--- Centralized visibility settings for all Orbit frames.
--- Stores per-frame: oocFade, opacity, hideMounted, mouseOver, showWithTarget.
-
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 
@@ -13,9 +10,6 @@ local VE = Orbit.VisibilityEngine
 local DEFAULTS = { oocFade = false, opacity = 100, hideMounted = false, mouseOver = true, showWithTarget = true, alphaLock = false }
 local STARTUP_DELAY = 0.5
 
--- Ordered list of manageable frames: { key, displayName, pluginName, systemIndex }
--- key = unique string used as DB key
--- Orbit plugin frames (plugin + index)
 local FRAME_REGISTRY = {
     { key = "PlayerFrame",          display = "Player Frame",          plugin = "Player Frame",       index = 1 },
     { key = "PlayerPower",          display = "Player Power",          plugin = "Player Power",       index = 1 },
@@ -41,10 +35,7 @@ local FRAME_REGISTRY = {
     { key = "BuffIcons",            display = "Buff Icons",            plugin = "Cooldown Manager",   index = 3 },
     { key = "ChargeBars",           display = "Charge Bars",           plugin = "Cooldown Manager",   index = 20 },
     { key = "BuffBars",             display = "Buff Bars",             plugin = "Cooldown Manager",   index = 30 },
-    -- Tracked Items: real record IDs are >= Constants.Tracked.SystemIndexBase (1000),
-    -- so sentinel indices 1/2 never collide with a live record. The Tracked plugin
-    -- passes these sentinels to ApplyOOCFade so every icon container shares the
-    -- "TrackedIcons" settings and every bar shares the "TrackedBars" settings.
+    -- Sentinel indices 1/2 — real Tracked record IDs are >= SystemIndexBase (1000) so they can't collide.
     { key = "TrackedIcons",         display = "Tracked Icons",         plugin = "Tracked Items",      index = 1 },
     { key = "TrackedBars",          display = "Tracked Bars",          plugin = "Tracked Items",      index = 2 },
     { key = "DamageMeters",         display = "Damage Meters",         plugin = "Damage Meter",       index = 1 },
@@ -275,7 +266,7 @@ function VE:Migrate()
     db._migrated = true
 end
 
--- [ APPLY ]------------------------------------------------------------------------------------------
+-- [ APPLY ] -----------------------------------------------------------------------------------------
 -- No hooksecurefunc on secure frames (would taint); direct SetAlpha is allowed, combat-deferred.
 local SECURE_FRAMES = {}
 function VE:ApplySecureBlizzardFrame(entry)
@@ -393,7 +384,7 @@ function VE:ApplyFrame(key)
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
 end
 
--- [ STARTUP ]----------------------------------------------------------------------------------------
+-- [ STARTUP ] ---------------------------------------------------------------------------------------
 local initFrame = CreateFrame("Frame")
 initFrame:RegisterEvent("PLAYER_LOGIN")
 initFrame:SetScript("OnEvent", function(self)

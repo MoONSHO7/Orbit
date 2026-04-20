@@ -1,5 +1,4 @@
 -- [ UNIT AURA GRID MIXIN ]--------------------------------------------------------------------------
--- Shared mixin for Target/Focus/Player buff and debuff grid plugins.
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
@@ -43,10 +42,7 @@ local ASPECT_RATIOS = {
 
 local GetPreviewIcon = function() return Orbit.AuraPreview.GetSpellbookIcon() end
 
--- Expiration pulse ticker lives in UnitAuraGridExpirationPulse.lua and attaches
--- `Mixin._RegisterExpirationPulse` at load time. Blizzard button reparenting lives in
--- UnitAuraGridReparenting.lua and reads the file-local helpers below via Mixin._Internal,
--- which is populated at the bottom of the HELPERS section.
+-- Pulse + reparenting hook in via UnitAuraGridExpirationPulse.lua / UnitAuraGridReparenting.lua, attached through Mixin._Internal.
 
 -- [ COLLAPSE ARROW ]--------------------------------------------------------------------------------
 local ARROW_SIZE = 15
@@ -104,7 +100,7 @@ local function UpdateCollapseArrow(btn, collapsed, iconH, growthX, growthY)
     end
 end
 
--- [ HELPERS ]----------------------------------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 local function ResolveGrowthDirection(frame, noCenterGrowth)
     local anchors = OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors
     local a = anchors and anchors[frame]
@@ -694,7 +690,7 @@ function Mixin:_hideCancelOverlays(frame)
     for _, btn in ipairs(frame._cancelButtons) do btn:Hide() end
 end
 
--- [ VISIBILITY ]-------------------------------------------------------------------------------------
+-- [ VISIBILITY ] ------------------------------------------------------------------------------------
 function Mixin:UpdateVisibility()
     local Frame = self._agFrame
     local cfg = self._agConfig

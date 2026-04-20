@@ -148,7 +148,7 @@ function Plugin:GetGlobalFont()
 end
 
 -- [ DROP HINT VISIBILITY ] --------------------------------------------------------------------------
--- Show drop hints when dragging from spellbook/bags, when the cooldown viewer settings panel is
+-- Show drop hints when dragging, settings panel open (visual discoverability only — dropping from the panel is not supported, requires a bridge), or in edit-mode with an empty frame.
 function Plugin:ShouldShowDropHints(isEmpty)
     if DragDrop and DragDrop:IsDraggingCooldownAbility() then return true end
     if CooldownViewerSettings and CooldownViewerSettings:IsShown() then return true end

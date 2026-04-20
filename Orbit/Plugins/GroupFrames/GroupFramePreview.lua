@@ -30,7 +30,7 @@ local ApplyIconPosition = function(icon, parentFrame, pos)
     OrbitEngine.PositionUtils.ApplyIconPosition(icon, parentFrame, pos)
 end
 
--- [ PREVIEW DATA ]-----------------------------------------------------------------------------------
+-- [ PREVIEW DATA ] ----------------------------------------------------------------------------------
 local TIER_COMP = {
     Party  = { tanks = 1, healers = 1, dps = 3  },
     Mythic = { tanks = 2, healers = 4, dps = 14 },

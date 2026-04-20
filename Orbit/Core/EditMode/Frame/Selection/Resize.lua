@@ -1,4 +1,4 @@
--- [ ORBIT SELECTION - RESIZE HANDLE ]--------------------------------------------------------------
+-- [ ORBIT SELECTION - RESIZE HANDLE ] ---------------------------------------------------------------
 -- Attaches a bottom-right resize handle to selection overlays for frames
 -- whose orbitPlugin exposes size settings. Reads per-plugin config from
 -- frame.orbitResizeBounds = { minW, maxW, minH, maxH, widthKey, heightKey }.

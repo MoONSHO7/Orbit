@@ -3,10 +3,10 @@
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 
--- [ NAMESPACE ] -------------------------------------------------------------------
+-- [ NAMESPACE ] -------------------------------------------------------------------------------------
 Orbit.Datatexts = Orbit.Datatexts or {}
 
--- [ PLUGIN REGISTRATION ] ---------------------------------------------------------
+-- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_Datatexts"
 
 local Plugin = Orbit:RegisterPlugin("Datatexts", SYSTEM_ID, {
@@ -16,7 +16,7 @@ local Plugin = Orbit:RegisterPlugin("Datatexts", SYSTEM_ID, {
     },
 })
 
--- [ LIFECYCLE ] -------------------------------------------------------------------
+-- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     local DT = Orbit.Datatexts
     DT.DrawerUI:CreateCornerTriggers()

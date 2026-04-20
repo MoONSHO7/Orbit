@@ -103,7 +103,6 @@ function AL:PositionIcon(icon, container, justifyH, anchorY, col, row, iconSize,
     local spacing = Pixel:Multiple(SMART_AURA_SPACING, scale)
     local xOff = Pixel:Snap(col * (iconSize + spacing), scale)
     local yOff = Pixel:Snap(row * (iconSize + spacing), scale)
-    -- Vertical centering for partial columns on side positions
     if iconsPerCol and anchorY ~= "TOP" and anchorY ~= "BOTTOM" and totalIcons then
         local iconsInCol = math.min(iconsPerCol, totalIcons - (col * iconsPerCol))
         local colHeight = (iconsInCol * iconSize) + ((iconsInCol - 1) * spacing)

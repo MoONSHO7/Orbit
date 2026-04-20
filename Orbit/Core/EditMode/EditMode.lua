@@ -1,4 +1,4 @@
--- [ ORBIT EDIT MODE ENGINE ]-----------------------------------------------------------------------
+-- [ ORBIT EDIT MODE ENGINE ] ------------------------------------------------------------------------
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -35,7 +35,7 @@ function EditMode:UnregisterCallbacks(owner)
     EventRegistry:UnregisterCallback("EditMode.Exit", owner)
 end
 
--- [ COMBAT SAFETY: AUTO-EXIT EDIT MODE ]-----------------------------------------------------------
+-- [ COMBAT SAFETY: AUTO-EXIT EDIT MODE ] ------------------------------------------------------------
 
 if EditModeManagerFrame then
     local combatExitFrame = CreateFrame("Frame")

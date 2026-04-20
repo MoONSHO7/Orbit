@@ -67,12 +67,3 @@ Plugins\Extras\TalkingHead.lua
 # ==============================================================
 QoL\MoveMore.lua
 QoL\Mouse.lua
-QoL\MetaTalents\Constants.lua
-QoL\MetaTalents\DataSource.lua
-QoL\MetaTalents\BuildOptimizer.lua
-QoL\MetaTalents\TreeOverlay.lua
-QoL\MetaTalents\ApplyBuild.lua
-QoL\MetaTalents\Dropdowns.lua
-QoL\MetaTalents\CastBarSkin.lua
-QoL\MetaTalents\TreeLayout.lua
-QoL\MetaTalents\MetaTalents.lua

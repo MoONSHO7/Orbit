@@ -1,6 +1,4 @@
 -- [ ORBIT HIGHLIGHT BORDER ]------------------------------------------------------------------------
--- Extracted from Skin.lua — tinted border overlay for aggro/selection/dispel.
--- Methods remain on Orbit.Skin for call-site compatibility.
 local _, addonTable = ...
 local Orbit = addonTable
 local Skin = Orbit.Skin
@@ -8,9 +6,7 @@ local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 
 -- [ HIGHLIGHT BORDER ]------------------------------------------------------------------------------
--- Tinted border overlay for aggro/selection. Optional ADD blend for glow effect.
--- When borders are merged, anchors to the group border overlay instead of the individual frame.
-
+-- When borders are merged, anchors to the group border overlay instead of the per-frame border.
 function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendMode)
     if not frame or not storageKey or type(color) ~= "table" then return end
 

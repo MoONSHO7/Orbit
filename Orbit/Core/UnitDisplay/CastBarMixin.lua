@@ -1,6 +1,4 @@
 -- [ ORBIT CAST BAR MIXIN ]--------------------------------------------------------------------------
--- Shared functionality for PlayerCastBar, TargetCastBar, FocusCastBar
-
 local _, addonTable = ...
 local Orbit = addonTable
 local L = Orbit.L
@@ -129,7 +127,7 @@ function Mixin:InitializeSkin(bar)
     return skinned
 end
 
--- [ EDIT MODE & EVENTS ]---------------------------------------------------------------------------
+-- [ EDIT MODE & EVENTS ] ----------------------------------------------------------------------------
 
 function Mixin:RegisterEditModeCallbacks(bar)
     if not EventRegistry or bar.orbitEditModeCallbacksRegistered then
@@ -171,7 +169,7 @@ function Mixin:RestorePositionDebounced(bar, debounceKey)
     end, 0.1)
 end
 
--- [ SETTINGS UI (SHARED SCHEMA BUILDER) ]----------------------------------------------------------
+-- [ SETTINGS UI (SHARED SCHEMA BUILDER) ] -----------------------------------------------------------
 
 function Mixin:AddCastBarSettings(dialog, systemFrame)
     local bar = self.CastBar
@@ -247,7 +245,7 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ APPLY SETTINGS (SHARED) ]----------------------------------------------------------------------
+-- [ APPLY SETTINGS (SHARED) ] -----------------------------------------------------------------------
 
 function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     if not bar then
@@ -374,7 +372,7 @@ function Mixin:ShowPreview()
     bar:Show()
 end
 
--- [ STANDALONE EVENT-DRIVEN CAST BAR (Target/Focus) ]----------------------------------------------
+-- [ STANDALONE EVENT-DRIVEN CAST BAR (Target/Focus) ] -----------------------------------------------
 
 local TIMER_THROTTLE_INTERVAL = 0.1
 local INTERRUPT_FLASH_DURATION = Orbit.Constants.Timing.FlashDuration

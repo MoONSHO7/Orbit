@@ -125,8 +125,7 @@ function DatatextManager:UnplaceDatatext(id, skipLayout)
         end
     end
     
-    -- Disable the datatext, but re-enable it immediately if the drawer is open 
-    -- so it continues running logic while residing visually inside the drawer.
+    -- Drawer keeps the datatext running its logic while visually demoted — re-enable immediately if open.
     self:DisableDatatext(id)
     if DT.DrawerUI and DT.DrawerUI:IsOpen() then
         self:EnableDatatext(id)

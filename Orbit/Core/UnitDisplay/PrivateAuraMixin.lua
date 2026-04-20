@@ -1,4 +1,4 @@
--- [ PRIVATE AURA MIXIN ]---------------------------------------------------------------------------
+-- [ PRIVATE AURA MIXIN ] ----------------------------------------------------------------------------
 -- Shared private aura anchor creation and management for group frames (Party, Raid)
 
 local _, Orbit = ...
@@ -11,7 +11,7 @@ local BORDER_SCALE_DIVISOR = 16
 Orbit.PrivateAuraMixin = {}
 local Mixin = Orbit.PrivateAuraMixin
 
--- [ ANCHOR REMOVAL ]-------------------------------------------------------------------------------
+-- [ ANCHOR REMOVAL ] --------------------------------------------------------------------------------
 function Mixin:RemoveAnchors(frame)
     if not frame._privateAuraIDs then return end
     if InCombatLockdown() then return end
@@ -19,7 +19,7 @@ function Mixin:RemoveAnchors(frame)
     wipe(frame._privateAuraIDs)
 end
 
--- [ ANCHOR CREATION ]------------------------------------------------------------------------------
+-- [ ANCHOR CREATION ] -------------------------------------------------------------------------------
 function Mixin:CreateAnchors(frame, plugin, iconSize)
     local anchor = frame.PrivateAuraAnchor
     local unit = frame.unit
@@ -65,7 +65,7 @@ function Mixin:CreateAnchors(frame, plugin, iconSize)
     end
 end
 
--- [ UPDATE ]--------------------------------------------------------------------------------------
+-- [ UPDATE ] ----------------------------------------------------------------------------------------
 function Mixin:Update(frame, plugin, iconSize)
     local anchor = frame.PrivateAuraAnchor
     if not anchor then return end

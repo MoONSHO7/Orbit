@@ -1,4 +1,4 @@
--- [ SECRET VALUE UTILS ]---------------------------------------------------------------------------
+-- [ SECRET VALUE UTILS ] ----------------------------------------------------------------------------
 -- Centralised helpers for WoW 12.0 secret-value APIs (UnitHealthPercent, UnitPowerPercent, etc.).
 -- pcall required per coding-rules.md §pcall Policy.
 local Orbit = Orbit

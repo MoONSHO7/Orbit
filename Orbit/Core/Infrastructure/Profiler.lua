@@ -1,7 +1,7 @@
 local _, addonTable = ...
 local Orbit = addonTable
 
--- [ TITLE ] -----------------------------------------------------------------
+-- [ TITLE ] -----------------------------------------------------------------------------------------
 -- Orbit Opt-In CPU Profiler
 -- Measures millisecond-precision execution time of framework events.
 -- Zero overhead when disabled.
@@ -77,7 +77,7 @@ function Profiler:Stop()
     end
 end
 
--- [ SLASH COMMAND ] ---------------------------------------------------------
+-- [ SLASH COMMAND ] ---------------------------------------------------------------------------------
 _G.SLASH_ORBITPERF1 = "/orbitperf"
 SlashCmdList["ORBITPERF"] = function(msg)
     local cmd = string.lower(strtrim(msg))

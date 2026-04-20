@@ -1,4 +1,4 @@
--- [ ORBIT ANCHOR GRAPH ]------------------------------------------------------------------------
+-- [ ORBIT ANCHOR GRAPH ] ----------------------------------------------------------------------------
 -- Pure-data graph companion to Anchor.lua; virtual/disabled state and traversal without coordinates.
 
 local _, Orbit = ...

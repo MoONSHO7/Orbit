@@ -1,4 +1,4 @@
--- [ ORBIT FRAME ORIENTATION ]----------------------------------------------------------------------
+-- [ ORBIT FRAME ORIENTATION ] -----------------------------------------------------------------------
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -11,7 +11,7 @@ Orientation.callbacks = {} -- frame -> callback function
 Orientation.lastOrientation = {} -- frame -> last detected orientation
 Orientation.trackedFrames = {} -- frames currently being tracked during drag
 
--- [ ORIENTATION DETECTION ]------------------------------------------------------------------------
+-- [ ORIENTATION DETECTION ] -------------------------------------------------------------------------
 function Orientation:DetectOrientation(frame)
     if not frame or not frame.GetLeft then return "LEFT" end
 
@@ -36,7 +36,7 @@ function Orientation:DetectOrientation(frame)
     else return "BOTTOM" end
 end
 
--- [ CALLBACK REGISTRATION ]------------------------------------------------------------------------
+-- [ CALLBACK REGISTRATION ] -------------------------------------------------------------------------
 function Orientation:RegisterCallback(frame, callback)
     if not frame or not callback then return end
     self.callbacks[frame] = callback
@@ -48,7 +48,7 @@ function Orientation:UnregisterCallback(frame)
     self.lastOrientation[frame] = nil
 end
 
--- [ DRAG TRACKING ]--------------------------------------------------------------------------------
+-- [ DRAG TRACKING ] ---------------------------------------------------------------------------------
 
 local function OnDragUpdate(self, elapsed)
     local Orientation = Engine.FrameOrientation
@@ -97,7 +97,7 @@ function Orientation:StopTracking(frame)
     end
 end
 
--- [ HELPERS ]--------------------------------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 function Orientation:IsHorizontal(orientation)
     return orientation == "TOP" or orientation == "BOTTOM"
 end

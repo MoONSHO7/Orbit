@@ -1,4 +1,4 @@
--- [ CANVAS MODE - COMPONENT SETTINGS PREVIEW ]-----------------------------------------------------
+-- [ CANVAS MODE - COMPONENT SETTINGS PREVIEW ] ------------------------------------------------------
 -- Preview renderers and style applicators for component override settings.
 -- Extends the Settings table created in ComponentSettings.lua.
 local _, Orbit = ...
@@ -176,7 +176,7 @@ function Settings:ApplyCastBarPreview()
     comp:SetSize(w + h, h)
 end
 
--- [ HEALTH TEXT PREVIEW ]----------------------------------------------------------------------------
+-- [ HEALTH TEXT PREVIEW ] ---------------------------------------------------------------------------
 function Settings:ApplyHealthTextPreview()
     local canvasDialog = OrbitEngine.CanvasModeDialog
     if not canvasDialog or not canvasDialog.previewComponents then return end

@@ -1,4 +1,4 @@
--- [ CANVAS MODE - COMPONENT SETTINGS SCHEMA ]------------------------------------------------------
+-- [ CANVAS MODE - COMPONENT SETTINGS SCHEMA ] -------------------------------------------------------
 -- Schema definitions, presets, titles, and type detection for component settings.
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
@@ -9,7 +9,7 @@ CanvasMode.SettingsSchema = Schema
 
 local PORTRAIT_RING_OPTIONS = OrbitEngine.PortraitRingOptions
 
--- [ SCHEMA HELPERS ]---------------------------------------------------------------------------------
+-- [ SCHEMA HELPERS ] --------------------------------------------------------------------------------
 local function Compose(...)
     local controls = {}
     for i = 1, select("#", ...) do
@@ -18,7 +18,7 @@ local function Compose(...)
     return { controls = controls }
 end
 
--- [ REUSABLE CONTROLS ]------------------------------------------------------------------------------
+-- [ REUSABLE CONTROLS ] -----------------------------------------------------------------------------
 local SCALE_CONTROL = {
     type = "slider", key = "Scale", label = "Scale",
     min = 0.5, max = 2.0, step = 0.1,
@@ -30,7 +30,7 @@ local ICON_SIZE_CONTROL = {
     formatter = function(v) return v .. "px" end,
 }
 
--- [ PRESETS ]----------------------------------------------------------------------------------------
+-- [ PRESETS ] ---------------------------------------------------------------------------------------
 local STATIC_TEXT = {
     { type = "font", key = "Font", label = "Font" },
     { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
@@ -96,7 +96,7 @@ local function BuildGlowControls(prefix, label, colorKey, colorLabel, capability
     }
 end
 
--- [ COMPONENT TYPE SCHEMAS ]-------------------------------------------------------------------------
+-- [ COMPONENT TYPE SCHEMAS ] ------------------------------------------------------------------------
 Schema.TYPE_SCHEMAS = {
     FontString = Compose(DYNAMIC_TEXT),
     Texture = { controls = { SCALE_CONTROL } },
@@ -104,7 +104,7 @@ Schema.TYPE_SCHEMAS = {
     CyclingAtlas = { controls = { ICON_SIZE_CONTROL } },
 }
 
--- [ KEY SCHEMAS ]------------------------------------------------------------------------------------
+-- [ KEY SCHEMAS ] -----------------------------------------------------------------------------------
 Schema.KEY_SCHEMAS = {
     Name            = Compose(STATIC_TEXT),
     Timer           = Compose(DYNAMIC_TEXT),
@@ -224,7 +224,7 @@ do
     end
 end
 
--- [ TITLES ]-----------------------------------------------------------------------------------------
+-- [ TITLES ] ----------------------------------------------------------------------------------------
 local COMPONENT_TITLES = {
     Name = "Name Text", HealthText = "Health Text", LevelText = "Level Text",
     CombatIcon = "Combat Icon", RareEliteIcon = "Classification Icon",

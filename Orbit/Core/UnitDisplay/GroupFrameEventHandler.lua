@@ -1,4 +1,4 @@
--- [ GROUP FRAME EVENT HANDLER ]--------------------------------------------------------------------
+-- [ GROUP FRAME EVENT HANDLER ] ---------------------------------------------------------------------
 -- Shared OnEvent dispatch for group frame types (Party, Raid)
 
 local _, Orbit = ...
@@ -7,7 +7,7 @@ local GroupFrameMixin = Orbit.GroupFrameMixin
 local StatusDispatch = GroupFrameMixin.StatusDispatch
 local UpdateInRange = GroupFrameMixin.UpdateInRange
 
--- [ AURA UPDATE DISPATCH ]------------------------------------------------------------------------
+-- [ AURA UPDATE DISPATCH ] --------------------------------------------------------------------------
 -- Aura component keys checked before building a snapshot
 local AURA_COMPONENT_KEYS = { "Debuffs", "Buffs", "DefensiveIcon", "CrowdControlIcon" }
 
@@ -71,7 +71,7 @@ local function ProcessAuraUpdate(f, plugin, callbacks, updateInfo)
     DispatchAuraConsumers(f, plugin, callbacks, snapshot)
 end
 
--- [ HANDLER FACTORY ]------------------------------------------------------------------------------
+-- [ HANDLER FACTORY ] -------------------------------------------------------------------------------
 function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
     local handler = function(f, event, eventUnit, ...)
         if f.preview then return end
@@ -152,7 +152,7 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
     end
 end
 
--- [ ONSHOW FACTORY ]-------------------------------------------------------------------------------
+-- [ ONSHOW FACTORY ] --------------------------------------------------------------------------------
 -- Creates a shared OnShow handler for group frames.
 function GroupFrameMixin.CreateOnShowHandler(plugin, callbacks)
     return function(self)
@@ -174,7 +174,7 @@ function GroupFrameMixin.CreateOnShowHandler(plugin, callbacks)
     end
 end
 
--- [ CENTRALIZED GLOBAL EVENT HANDLER ]-------------------------------------------------------------
+-- [ CENTRALIZED GLOBAL EVENT HANDLER ] --------------------------------------------------------------
 -- Single event frame handles all global events and dispatches to visible frames.
 -- Eliminates N per-frame closures per global event (was O(40) closures, now O(1) + iteration).
 local GLOBAL_EVENTS = {

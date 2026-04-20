@@ -89,7 +89,6 @@ function Plugin:OnLoad()
     Orbit.IconPreviewAtlases.Mail = "ui-hud-minimap-mail-up"
     Orbit.IconPreviewAtlases.CraftingOrder = "UI-HUD-Minimap-CraftingOrder-Over-2x"
 
-    -- Create orbit container
     self.frame = CreateFrame("Frame", "OrbitMinimapContainer", UIParent)
     self.frame:SetSize(DEFAULT_SIZE, DEFAULT_SIZE)
     self.frame:SetClampedToScreen(true)
@@ -105,22 +104,18 @@ function Plugin:OnLoad()
         end
     end)
 
-    -- Anchor options for edit mode drag
     self.frame.anchorOptions = {
         horizontal = true,
         vertical = true,
     }
 
-    -- Default position
     self.frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -5, 0)
 
-    -- Background
     self.frame.bg = self.frame:CreateTexture(nil, "BACKGROUND")
     self.frame.bg:SetAllPoints(self.frame)
     self.frame.bg:SetColorTexture(0, 0, 0, 1)
 
-    -- Round border ring (visible only when Shape = "round").
-    -- Drawn on the OVERLAY layer so it sits above the minimap render surface.
+    -- OVERLAY layer keeps the round-shape border above the minimap render surface; visible only when Shape = "round".
     self.frame.RoundBorder = self.frame:CreateTexture(nil, "OVERLAY", nil, 7)
     self.frame.RoundBorder:SetAtlas(BORDER_RING_ATLAS, true)
     self.frame.RoundBorder:SetAllPoints(self.frame)
@@ -131,9 +126,7 @@ function Plugin:OnLoad()
     self.frame.Overlay:SetAllPoints()
     self.frame.Overlay:SetFrameStrata(Orbit.Constants.Strata.Base)
     self.frame.Overlay:SetFrameLevel(self.frame:GetFrameLevel() + 10)
-    -- MiniMapMailFrameMixin and MiniMapCraftingOrderFrameMixin call self:GetParent():Layout()
-    -- after UPDATE_PENDING_MAIL / CRAFTINGORDERS_UPDATED events. Since we reparent those
-    -- frames here, we provide a no-op to prevent the error.
+    -- No-op shim: reparented MiniMapMailFrameMixin/MiniMapCraftingOrderFrameMixin call self:GetParent():Layout() after their events.
     self.frame.Overlay.Layout = function() end
 
     -- ClickCapture: transparent button covering the minimap at LOW strata; dispatches configured click actions.

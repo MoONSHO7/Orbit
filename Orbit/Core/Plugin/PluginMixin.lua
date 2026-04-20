@@ -4,7 +4,6 @@ local Orbit = addonTable
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local DEFAULT_LAYOUT_ID = "Default"
 
--- Traverse nested tables safely, returning nil if any key is missing
 local function SafeTablePath(tbl, ...)
     for i = 1, select("#", ...) do
         if type(tbl) ~= "table" then return nil end
@@ -21,9 +20,6 @@ function Orbit.PluginMixin:Init() end
 
 function Orbit.PluginMixin:OnLoad() end
 
--- Called when the Edit Mode Settings Dialog is opening for a system this plugin manages
--- @param dialog: The actual Edit Mode Settings Dialog frame (EditModeSystemSettingsDialog)
--- @param systemFrame: The specific system frame being edited (e.g., MainMenuBar, PlayerFrame)
 function Orbit.PluginMixin:AddSettings(dialog, systemFrame) end
 
 -- [ STANDARD EVENTS ]-------------------------------------------------------------------------------
@@ -41,14 +37,12 @@ function Orbit.PluginMixin:RegisterStandardEvents()
         end, debounceDelay)
     end, self)
 
-    -- All plugins re-apply on color change; debounce makes this near-zero cost
     Orbit.EventBus:On("COLORS_CHANGED", function()
         Orbit.Async:Debounce(debounceKey, function()
             self:ApplySettings()
         end, debounceDelay)
     end, self)
 
-    -- All plugins re-apply on strata bump; debounce makes this near-zero cost
     Orbit.EventBus:On("STRATA_UPDATED", function()
         Orbit.Async:Debounce(debounceKey, function()
             self:ApplySettings()
@@ -63,9 +57,10 @@ function Orbit.PluginMixin:RegisterStandardEvents()
                     self:ApplySettings()
                 end, debounceDelay)
             end,
+            -- Exit must run before combat lockdown — no debounce.
             Exit = function()
                 self:ApplySettings()
-            end, -- No debounce: must run before combat lockdown
+            end,
         }, self)
     end
 end
@@ -113,16 +108,15 @@ function Orbit.PluginMixin:_ActiveTransaction()
     if Txn and Txn:IsActive() and Txn:GetPlugin() == self then return Txn end
 end
 
--- Returns ComponentPositions, preferring any active Transaction's staged positions.
+-- Prefers any active Transaction's staged positions over saved settings.
 function Orbit.PluginMixin:GetComponentPositions(systemIndex)
     local txn = self:_ActiveTransaction()
     return (txn and txn:GetPositions()) or self:GetSetting(systemIndex or 1, "ComponentPositions") or {}
 end
 
--- O(1) disabled-component lookup via weak-keyed side cache (avoids SavedVariables pollution)
+-- Weak-keyed side cache so we never pollute SavedVariables with the lazy hash set.
 local _disabledHashCache = setmetatable({}, { __mode = "k" })
 
--- Check if a component is disabled via Canvas Mode drag-to-disable (O(1) via lazy hash set)
 function Orbit.PluginMixin:IsComponentDisabled(componentKey)
     local txn = self:_ActiveTransaction()
     local disabled = txn and txn:GetDisabledComponents() or self:GetSetting(self.frame and self.frame.systemIndex or 1, "DisabledComponents") or {}
@@ -215,7 +209,7 @@ function Orbit.PluginMixin:SetSetting(systemIndex, key, value)
     db[layoutID][self.system][systemIndex][key] = value
 end
 
--- [ SPEC-SCOPED STORAGE ]--------------------------------------------------------------------------
+-- [ SPEC-SCOPED STORAGE ] ---------------------------------------------------------------------------
 -- Per-character, per-spec storage layered under Orbit.db.SpecData[charKey][specID][systemIndex][key].
 -- Used by plugins whose settings must differ between specs (Tracked's items/positions,
 -- CooldownManager's injected icons). Plugins that override GetSetting/SetSetting to redirect

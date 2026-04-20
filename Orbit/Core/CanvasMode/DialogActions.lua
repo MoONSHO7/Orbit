@@ -12,7 +12,7 @@ local NeedsEdgeCompensation = OrbitEngine.PositionUtils.NeedsEdgeCompensation
 local AnchorToCenter = OrbitEngine.PositionUtils.AnchorToCenter
 
 
--- [ APPLY ]------------------------------------------------------------------------------
+-- [ APPLY ] -----------------------------------------------------------------------------------------
 function Dialog:Apply()
     if not self.targetPlugin or not self.previewFrame then self:CloseDialog(); return end
     local positions = {}
@@ -68,13 +68,13 @@ function Dialog:Apply()
     if isSynced and plugin.ApplyAll then plugin:ApplyAll() end
 end
 
--- [ CANCEL ]-----------------------------------------------------------------------------
+-- [ CANCEL ] ----------------------------------------------------------------------------------------
 function Dialog:Cancel()
     CanvasMode.Transaction:Rollback()
     self:CloseDialog()
 end
 
--- [ RESET POSITIONS ]--------------------------------------------------------------------
+-- [ RESET POSITIONS ] -------------------------------------------------------------------------------
 function Dialog:ResetPositions()
     if not self.targetPlugin or not self.previewFrame then return end
     local plugin = self.targetPlugin

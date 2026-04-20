@@ -1,4 +1,4 @@
--- [ ORBIT SELECTION - POSITION TOOLTIP ]-----------------------------------------------------------
+-- [ ORBIT SELECTION - POSITION TOOLTIP ] ------------------------------------------------------------
 -- Handles the position tooltip shown during keyboard nudging and component editing
 
 local _, Orbit = ...
@@ -24,7 +24,7 @@ function Tooltip:BuildAnchorLabel(align)
     return "|cFF" .. hex .. "Anchor: " .. align .. "|r"
 end
 
--- [ HELPERS ]-----------------------------------------------------------------------------------
+-- [ HELPERS ] ---------------------------------------------------------------------------------------
 
 -- Ensure tooltip frame exists (lazy initialization)
 local function EnsureTooltip(self)
@@ -105,7 +105,7 @@ local function ShowAndFade(self, noFade)
     end)
 end
 
--- [ SHOW FRAME POSITION TOOLTIP ]---------------------------------------------------------------
+-- [ SHOW FRAME POSITION TOOLTIP ] -------------------------------------------------------------------
 
 function Tooltip:ShowPosition(frame, Selection, noFade, anchorLabel)
     if not frame then
@@ -157,7 +157,7 @@ function Tooltip:ShowPosition(frame, Selection, noFade, anchorLabel)
     ShowAndFade(self, noFade)
 end
 
--- [ SHOW COMPONENT POSITION TOOLTIP ]-----------------------------------------------------------
+-- [ SHOW COMPONENT POSITION TOOLTIP ] ---------------------------------------------------------------
 
 function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, posY, offsetX, offsetY, justifyH, justifyV)
     if not component then
@@ -204,7 +204,7 @@ function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, p
     ShowAndFade(self)
 end
 
--- [ SHOW RESIZE INFO TOOLTIP ]------------------------------------------------------------------
+-- [ SHOW RESIZE INFO TOOLTIP ] ----------------------------------------------------------------------
 
 function Tooltip:ShowResizeInfo(frame, width, height, noFade)
     if not frame then return end

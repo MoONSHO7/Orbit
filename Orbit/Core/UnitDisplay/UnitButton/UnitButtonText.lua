@@ -326,7 +326,7 @@ function TextMixin:ConstrainNameWidth()
     self.Name:SetText(string.sub(name, 1, lo) .. TRUNCATION_SUFFIX)
 end
 
--- [ TEXT COLOR ]-------------------------------------------------------------------------------------
+-- [ TEXT COLOR ] ------------------------------------------------------------------------------------
 -- The wizard cast Chromatic Orb but forgot which color they picked
 
 local function GetComponentOverrides(self, componentKey)

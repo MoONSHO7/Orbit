@@ -1,5 +1,4 @@
 -- [ ORBIT PROC GLOW MIXIN ]-------------------------------------------------------------------------
--- Provides a standardized way to apply Proc Glows (LCG) to buttons across the framework.
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants
@@ -33,9 +32,9 @@ function Orbit.ProcGlowMixin:ApplyProcGlow(button, optionsLookup, prefix, defaul
         return 
     end
     
-    -- Fast exit if we are already showing this exact config
-    if button.orbitProcGlowActive == typeName and button.orbitProcGlowHash == hash then 
-        return 
+    -- Hash check (not just type name): re-fire even on same glow type when option payload (color, size) changed.
+    if button.orbitProcGlowActive == typeName and button.orbitProcGlowHash == hash then
+        return
     end
     
     if button.orbitProcGlowActive then

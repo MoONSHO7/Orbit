@@ -1,11 +1,11 @@
--- [ WHATS NEW ]--------------------------------------------------------------------
+-- [ WHATS NEW ] -------------------------------------------------------------------------------------
 -- Shows a changelog popup once per account after each Orbit update.
 -- Update WHATS_NEW_ENTRIES each release.
 
 local _, Orbit = ...
 local Constants = Orbit.Constants
 
--- [ CONSTANTS ]--------------------------------------------------------------------
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 
 local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips auto-show)
 
@@ -34,7 +34,7 @@ local FOOTER_TEXT_HEIGHT = 16
 local FOOTER_HEIGHT = FOOTER_TOP_PADDING + FOOTER_BUTTON_HEIGHT + FOOTER_BOTTOM_PADDING
 local FOOTER_TOTAL = FOOTER_HEIGHT + FOOTER_TEXT_HEIGHT
 
--- [ FRAME ]------------------------------------------------------------------------
+-- [ FRAME ] -----------------------------------------------------------------------------------------
 
 local Window = CreateFrame("Frame", "OrbitWhatsNewWindow", UIParent)
 Window:SetSize(WINDOW_WIDTH, MAX_HEIGHT)
@@ -66,7 +66,7 @@ Window:SetScript("OnDragStop", function(self)
     self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
 end)
 
--- [ TITLE ]------------------------------------------------------------------------
+-- [ TITLE ] -----------------------------------------------------------------------------------------
 
 Window.TitleContainer = CreateFrame("Frame", nil, Window)
 Window.TitleContainer:SetFrameLevel(FRAME_LEVEL + 10)
@@ -78,14 +78,14 @@ Window.TitleContainer.TitleText = Window.TitleContainer:CreateFontString(nil, "O
 Window.TitleContainer.TitleText:SetPoint("TOP", Window.TitleContainer, "TOP", 0, -5)
 Window.TitleContainer.TitleText:SetText("|cFFFFD100Orbit: What's New|r")
 
--- [ CLOSE BUTTON ]-----------------------------------------------------------------
+-- [ CLOSE BUTTON ] ----------------------------------------------------------------------------------
 
 Window.CloseButton = CreateFrame("Button", nil, Window, "UIPanelCloseButton")
 Window.CloseButton:SetPoint("TOPRIGHT", Window, "TOPRIGHT", 0, -1)
 Window.CloseButton:SetFrameLevel(FRAME_LEVEL + 10)
 Window.CloseButton:SetScript("OnClick", function() Window:Hide() end)
 
--- [ FOOTER ]-----------------------------------------------------------------------
+-- [ FOOTER ] ----------------------------------------------------------------------------------------
 
 local Footer = CreateFrame("Frame", nil, Window)
 Footer:SetHeight(FOOTER_HEIGHT)
@@ -108,7 +108,7 @@ DiscordButton:SetText("Discord")
 DiscordButton:SetHeight(FOOTER_BUTTON_HEIGHT)
 DiscordButton:SetPoint("TOPLEFT", Footer, "TOPLEFT", FOOTER_SIDE_PADDING, btnTop)
 DiscordButton:SetPoint("RIGHT", Footer, "CENTER", -FOOTER_BUTTON_SPACING / 2, 0)
--- [ DISCORD DIALOG ]---------------------------------------------------------------
+-- [ DISCORD DIALOG ] --------------------------------------------------------------------------------
 
 local DISCORD_DIALOG_WIDTH = 380
 local DISCORD_DIALOG_HEIGHT = 155
@@ -183,7 +183,7 @@ CloseButton:SetPoint("LEFT", Footer, "CENTER", FOOTER_BUTTON_SPACING / 2, 0)
 CloseButton:SetPoint("TOPRIGHT", Footer, "TOPRIGHT", -FOOTER_SIDE_PADDING, btnTop)
 CloseButton:SetScript("OnClick", function() Window:Hide() end)
 
--- [ SCROLL FRAME ]-----------------------------------------------------------------
+-- [ SCROLL FRAME ] ----------------------------------------------------------------------------------
 -- DefaultPanelTemplate Bg insets: left=6 right=2 top=21 | border | 10px | content | 10px | slider | 2px | border |
 
 local BG_LEFT = 6
@@ -201,7 +201,7 @@ end
 local Content = CreateFrame("Frame", nil, ScrollFrame)
 ScrollFrame:SetScrollChild(Content)
 
--- [ RENDER ENTRIES ]----------------------------------------------------------------
+-- [ RENDER ENTRIES ] --------------------------------------------------------------------------------
 
 local renderedFontStrings = {}
 
@@ -299,7 +299,7 @@ Window:SetScript("OnShow", function(self)
     RunNextFrame(function() RenderEntries() end)
 end)
 
--- [ ESC KEY ]----------------------------------------------------------------------
+-- [ ESC KEY ] ---------------------------------------------------------------------------------------
 
 table.insert(UISpecialFrames, "OrbitWhatsNewWindow")
 
@@ -319,7 +319,7 @@ Window:SetScript("OnKeyDown", function(self, key)
     end
 end)
 
--- [ COMBAT HIDE ]------------------------------------------------------------------
+-- [ COMBAT HIDE ] -----------------------------------------------------------------------------------
 
 Window:RegisterEvent("PLAYER_REGEN_DISABLED")
 Window:SetScript("OnEvent", function(self, event)
@@ -328,7 +328,7 @@ Window:SetScript("OnEvent", function(self, event)
     end
 end)
 
--- [ HIDE HANDLER ]-----------------------------------------------------------------
+-- [ HIDE HANDLER ] ----------------------------------------------------------------------------------
 
 Window:SetScript("OnHide", function()
     PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE)
@@ -337,7 +337,7 @@ Window:SetScript("OnHide", function()
     end
 end)
 
--- [ PUBLIC API ]-------------------------------------------------------------------
+-- [ PUBLIC API ] ------------------------------------------------------------------------------------
 
 function Orbit:ShowWhatsNew()
     if InCombatLockdown() then
@@ -346,7 +346,7 @@ function Orbit:ShowWhatsNew()
     Window:Show()
 end
 
--- [ AUTO-SHOW ON LOGIN ]-----------------------------------------------------------
+-- [ AUTO-SHOW ON LOGIN ] ----------------------------------------------------------------------------
 
 local trigger = CreateFrame("Frame")
 trigger:RegisterEvent("PLAYER_LOGIN")
