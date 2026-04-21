@@ -8,11 +8,11 @@ Constants.DamageMeter = {
     DisplayName = "Damage Meter",
     SystemIndex = 1,
 
-    -- Negative sentinel so the master meter id cannot collide with user meter ids (positive ints).
-    MasterID = -1,
+    -- The id=1 meter is auto-seeded on load and can never be deleted.
+    SeedID = 1,
 
-    -- Total cap INCLUDING master (1 master + 5 user meters at default).
-    MaxMeters = 6,
+    -- Hard cap on total meters, including the seed.
+    MaxMeters = 5,
 
     MeterType = {
         DamageDone           = 0,

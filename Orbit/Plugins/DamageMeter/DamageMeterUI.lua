@@ -132,7 +132,7 @@ local function ShowContextMenu(owner, id)
     if not def then return end
     if not MenuUtil or not MenuUtil.CreateContextMenu then return end
 
-    local meterTag = (id == DM.MasterID) and L.PLU_DM_MASTER_LABEL or ("#" .. id)
+    local meterTag = "#" .. id
     MenuUtil.CreateContextMenu(owner, function(_, root)
         -- [ METRIC ] ----------------------------------------------------------
         root:CreateTitle(L.PLU_DM_METRIC .. "   |cff808080" .. meterTag .. "|r")
@@ -166,21 +166,8 @@ local function ShowContextMenu(owner, id)
         end)
 
         -- [ ACTIONS ] ---------------------------------------------------------
-        root:CreateDivider()
-        local count = Plugin:GetMeterCount()
-        local atLimit = count >= DM.MaxMeters
-        local newLabel = L.PLU_DM_MENU_NEW
-        if atLimit then
-            newLabel = newLabel .. (" (%d/%d)"):format(count, DM.MaxMeters)
-        end
-        local newButton = root:CreateButton(newLabel, function()
-            local d = Plugin:GetMeterDef(id)
-            Plugin:CreateMeter(d and d.meterType or DM.MeterType.Dps)
-        end)
-        if atLimit and newButton and newButton.SetEnabled then
-            newButton:SetEnabled(false)
-        end
-        if not def.isMaster then
+        if id ~= DM.SeedID then
+            root:CreateDivider()
             root:CreateButton(L.PLU_DM_MENU_DELETE, function()
                 Plugin:DeleteMeter(id)
             end)
@@ -729,16 +716,10 @@ local function WriteNumberField(fs, value, overrides)
     end
 end
 
-local MASTER_FRAME_LEVEL = 500
-
 local function BuildMeterFrame(id, def)
     local frame = CreateFrame("Frame", FRAME_PREFIX .. id, UIParent)
     frame:SetFrameStrata("MEDIUM")
-    if def.isMaster then
-        frame:SetFrameLevel(MASTER_FRAME_LEVEL)
-    else
-        frame:SetFrameLevel(FRAME_LEVEL_BASE + math.max(0, id) * FRAME_LEVEL_STRIDE)
-    end
+    frame:SetFrameLevel(FRAME_LEVEL_BASE + math.max(0, id) * FRAME_LEVEL_STRIDE)
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -749,26 +730,15 @@ local function BuildMeterFrame(id, def)
     -- [ EDIT MODE SELECTION PROTOCOL ] ----------------------------------------
     frame.systemIndex = id
     frame.recordId = id
-    local meterTag = (id == DM.MasterID) and L.PLU_DM_MASTER_LABEL or ("#" .. id)
-    frame.editModeName = "Damage Meter " .. meterTag
+    frame.editModeName = "Damage Meter #" .. id
     frame.orbitPlugin = Plugin
     frame.anchorOptions = { horizontal = false, vertical = true, syncScale = false, syncDimensions = true, mergeBorders = true }
-    -- Master barCount is pinned to 1, so vertical drag writes BarHeight instead of TotalHeight.
-    if def.isMaster then
-        frame.orbitResizeBounds = {
-            minW = 100, maxW = 600,
-            minH = 14, maxH = 60,
-            widthKey = "BarWidth",
-            heightKey = "BarHeight",
-        }
-    else
-        frame.orbitResizeBounds = {
-            minW = 100, maxW = 600,
-            minH = 18, maxH = 18 * 40,
-            widthKey = "BarWidth",
-            heightKey = "TotalHeight",
-        }
-    end
+    frame.orbitResizeBounds = {
+        minW = 100, maxW = 600,
+        minH = 18, maxH = 18 * 40,
+        widthKey = "BarWidth",
+        heightKey = "TotalHeight",
+    }
 
     OrbitEngine.Frame:AttachSettingsListener(frame, Plugin, id)
 
@@ -873,7 +843,7 @@ local function BuildMeterFrame(id, def)
     frame._title:SetTextColor(1, 1, 1)
     frame._title:Hide()
 
-    if not def.isMaster then
+    do
         local tabW, tabH = GetStretchTabSize()
         local tab = CreateFrame("Button", nil, frame)
         tab:SetSize(tabW, tabH)
@@ -1136,25 +1106,6 @@ local NPC_DUMMY_SOURCES = {
     { name = "Bone Horror",       specIconID = "Interface\\Icons\\INV_Misc_Bone_HumanSkull_02",    totalAmount = 300000,  amountPerSecond = 1666  },
 }
 
-local function BuildMasterDummy(fillAmount)
-    local name = UnitName("player") or "You"
-    local _, classFilename = UnitClass("player")
-    local specIconID
-    local specIndex = GetSpecialization and GetSpecialization()
-    if specIndex then
-        local _, _, _, icon = GetSpecializationInfo(specIndex)
-        specIconID = icon
-    end
-    return {
-        name            = name,
-        classFilename   = classFilename or "WARRIOR",
-        specIconID      = specIconID,
-        totalAmount     = fillAmount or 0,
-        amountPerSecond = fillAmount or 0,
-        isLocalPlayer   = true,
-    }
-end
-
 -- Frame size is static (full barCount); only _visibleRect is elastic so hit area stays stable.
 local function SetFrameHeightForVisible(frame, def, visibleCount)
     local width = GetEffectiveWidth(frame, def)
@@ -1279,20 +1230,14 @@ function RenderFrame(id)
     end
 
     if inEditMode then
-        if def.isMaster then
-            local bar = frame.bars[1]
-            if bar then Paint(bar, 1, BuildMasterDummy(DUMMY_MAX * 0.6), DUMMY_MAX) end
-            for i = 2, #frame.bars do frame.bars[i]:Hide() end
-        else
-            local dummies = HOSTILE_SOURCE_METRICS[meterType] and NPC_DUMMY_SOURCES or GetPreviewRoster()
-            for i = 1, count do
-                local bar = frame.bars[i]
-                if not bar then break end
-                local source = dummies[((i - 1) % #dummies) + 1]
-                Paint(bar, i, source, DUMMY_MAX)
-            end
-            for i = count + 1, #frame.bars do frame.bars[i]:Hide() end
+        local dummies = HOSTILE_SOURCE_METRICS[meterType] and NPC_DUMMY_SOURCES or GetPreviewRoster()
+        for i = 1, count do
+            local bar = frame.bars[i]
+            if not bar then break end
+            local source = dummies[((i - 1) % #dummies) + 1]
+            Paint(bar, i, source, DUMMY_MAX)
         end
+        for i = count + 1, #frame.bars do frame.bars[i]:Hide() end
         SetFrameHeightForVisible(frame, def, count)
         return
     end
@@ -1301,28 +1246,6 @@ function RenderFrame(id)
     local session = nil
     if Data and Data:IsAvailable() then
         session = Data:ResolveSession(def.sessionID, def.sessionType, def.meterType)
-    end
-
-    if def.isMaster then
-        local bar = frame.bars[1]
-        if bar then
-            if session and session.combatSources then
-                for i, source in ipairs(session.combatSources) do
-                    if source.isLocalPlayer then
-                        Paint(bar, i, source, session.maxAmount)
-                        for j = 2, #frame.bars do frame.bars[j]:Hide() end
-                        SetFrameHeightForVisible(frame, def, 1)
-                        return
-                    end
-                end
-            end
-            local idle = BuildMasterDummy(1)
-            idle.displayValue = "—"
-            Paint(bar, 1, idle, 1)
-            for j = 2, #frame.bars do frame.bars[j]:Hide() end
-        end
-        SetFrameHeightForVisible(frame, def, 1)
-        return
     end
 
     if def.viewMode == "history" then
@@ -1458,7 +1381,10 @@ end
 -- [ PUBLIC API ] ------------------------------------------------------------------------------------
 -- Reuse frames by id: re-creating a named frame orphans the old one in _G with undefined render state.
 function Plugin:RebuildAllMeters()
-    if self.EnsureMasterMeter then self:EnsureMasterMeter() end
+    if self.EnsureSeedMeter then self:EnsureSeedMeter() end
+    -- Child self-heal: any def whose anchor.target no longer resolves to a live meter
+    -- has its anchor cleared (and visual position snapshotted) BEFORE frames are laid out.
+    if self.ScrubStaleAnchors then self:ScrubStaleAnchors() end
 
     local defs = self:GetMeterDefs()
 
@@ -1490,19 +1416,25 @@ function Plugin:RebuildAllMeters()
             frame:SetPoint(pos.point or "TOPLEFT", UIParent, pos.point or "TOPLEFT", pos.x or 0, pos.y or 0)
         end
         frame:Show()
-        -- Visibility Engine: all meters (master + user) share the "DamageMeters" entry via sentinel index 1.
+        -- Visibility Engine: all meters share the "DamageMeters" entry via sentinel index 1.
         if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, 1, "OutOfCombatFade", false) end
     end
 
     self:RenderAllMeters()
+
+    -- Frames created mid-Edit-Mode have a Selection overlay (from Attach) but it hasn't been
+    -- Shown yet — OnEditModeEnter runs a single pass on Edit Mode enter, and our new frame missed it.
+    -- Re-fire it so the new meter becomes selectable without requiring an exit/re-enter.
+    if Orbit.IsEditMode and Orbit:IsEditMode() and OrbitEngine.Frame and OrbitEngine.Frame.OnEditModeEnter then
+        OrbitEngine.Frame:OnEditModeEnter()
+    end
 end
 
 function Plugin:CheckViewTimeouts()
     local now = GetTime()
     for id, frame in pairs(meters) do
         local def = self:GetMeterDef(id)
-        if def and not def.isMaster
-           and (def.viewMode == "breakdown" or def.viewMode == "history") then
+        if def and (def.viewMode == "breakdown" or def.viewMode == "history") then
             local last = frame._lastInteraction or now
             if now - last > VIEW_TIMEOUT_SECONDS then
                 self:UpdateMeterDef(id, {

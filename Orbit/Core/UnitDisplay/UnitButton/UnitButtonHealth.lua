@@ -99,21 +99,7 @@ function HealthMixin:ApplyHealthColor()
     if staticColor then
         local r, g, b, a = staticColor.r, staticColor.g, staticColor.b, staticColor.a or 1
         if tex then
-            local unit = self.unit
-            if self.groupIndex and unit and UnitExists(unit) and not self.preview then
-                -- Dim RGB alongside frame alpha so white class colors (priest) do not bleach through.
-                local dim = GF.OutOfRangeAlpha
-                local dr, dg, db = r * dim, g * dim, b * dim
-                if not UnitIsConnected(unit) or UnitPhaseReason(unit) then
-                    tex:SetVertexColor(dr, dg, db, a)
-                else
-                    REUSE_COLOR_L:SetRGBA(r, g, b, a)
-                    REUSE_COLOR_R:SetRGBA(dr, dg, db, a)
-                    tex:SetVertexColorFromBoolean(UnitInRange(unit), REUSE_COLOR_L, REUSE_COLOR_R)
-                end
-            else
-                tex:SetVertexColor(r, g, b, a)
-            end
+            tex:SetVertexColor(r, g, b, a)
         else
             self.Health:SetStatusBarColor(r, g, b, a)
         end

@@ -222,7 +222,8 @@ end
 -- [ NON-CHARGE SPELL ] ------------------------------------------------------------------------------
 -- Phase-aware desat/swipe/glow via desatCurve/cdAlphaCurve and ActiveCooldown reverse swipe.
 function IconItem:UpdateNonChargeSpell(icon, activeId, cdInfo, onGCD)
-    local durObj = C_Spell.GetSpellCooldownDuration(activeId)
+    -- ignoreGCD excludes the GCD contribution from durObj; ignored on older clients.
+    local durObj = C_Spell.GetSpellCooldownDuration(activeId, not icon._showGCDSwipe)
     if durObj then
         icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
         local desatPct = onGCD and 0 or durObj:EvaluateRemainingPercent(icon._desatCurve or DESAT_CURVE)
