@@ -10,9 +10,6 @@ local DEFAULT_METER_TYPE = DM.MeterType.Dps
 local DEFAULT_BAR_COUNT = 10
 local DEFAULT_BAR_WIDTH = 219
 local DEFAULT_BAR_HEIGHT = 20
-local MASTER_BAR_WIDTH = 220
-local MASTER_BAR_HEIGHT = 28
-local NEW_METER_STAGGER_PX = 30
 
 -- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 -- ComponentPositions MUST match Default*Pos fallbacks in DamageMeterUI or Reset Positions drifts.
@@ -66,7 +63,7 @@ local DEF_KEY_MAP = {
 -- Migration: legacy string-form iconPosition normalized on read so the int slider doesn't crash.
 local ICON_STRING_TO_INT = { LEFT = 1, OFF = 2, RIGHT = 3 }
 
--- Meter id 1 collides with SYSTEM_INDEX=1; defs-membership (not value-equality) is the only safe test.
+-- Meter id 1 (the seed) collides with SYSTEM_INDEX=1; defs-membership (not value-equality) is the only safe test.
 local function ResolveMeterDef(plugin, systemIndex)
     if systemIndex == nil then return nil end
     local defs = BaseGetSetting(plugin, SYSTEM_INDEX, "MeterDefs") or {}
@@ -105,8 +102,6 @@ function Plugin:SetSetting(systemIndex, key, value)
             return
         end
         if key == "TotalHeight" then
-            -- Master paints only the local player, so it stays single-bar regardless of resize.
-            if def.isMaster then return end
             local barHeight = def.barHeight or DEFAULT_BAR_HEIGHT
             local gap = def.barGap or 0
             local stride = barHeight + gap
@@ -221,14 +216,9 @@ end
 function Plugin:CreateMeter(meterType)
     if not self:CanCreateMeter() then return nil end
     local defs = self:GetMeterDefs()
-    -- Lowest unused positive id so delete-create recycles slots; master's -1 never collides.
+    -- Lowest unused positive id so delete-create recycles slots.
     local nextID = 1
     while defs[nextID] do nextID = nextID + 1 end
-    -- Master is excluded from the stagger count so the first user meter starts at the base offset.
-    local existingCount = 0
-    for id in pairs(defs) do
-        if id ~= DM.MasterID then existingCount = existingCount + 1 end
-    end
     defs[nextID] = {
         id           = nextID,
         meterType    = meterType or DEFAULT_METER_TYPE,
@@ -242,10 +232,10 @@ function Plugin:CreateMeter(meterType)
         style        = 100,
         border       = 3,
         background   = 3,
-        title        = 1,
+        title        = 2,
         titleSize    = 14,
-        -- Spawn below master's default y=-200 so the first new meter never overlaps the master strip.
-        position     = { point = "TOPLEFT", x = 40 + existingCount * NEW_METER_STAGGER_PX, y = -250 + existingCount * -NEW_METER_STAGGER_PX },
+        -- Spawn centered so the user can immediately see it and drag it where they want.
+        position     = { point = "CENTER", x = 0, y = 0 },
         scrollOffset = 0,
     }
     self:_SaveMeterDefs(defs)
@@ -302,10 +292,25 @@ function Plugin:RestoreMeterSnapshot(id, snapshot)
 end
 
 function Plugin:DeleteMeter(id)
-    -- Master is tied to plugin lifetime; only disabling the plugin removes it.
-    if id == DM.MasterID then return end
+    -- Seed is tied to plugin lifetime; only disabling the plugin removes it.
+    if id == DM.SeedID then return end
     local defs = self:GetMeterDefs()
     if not defs[id] then return end
+
+    -- Wipe ephemeral edit-mode state and runtime anchor graph entries for this frame,
+    -- so if the id is recycled by a future CreateMeter, the new meter starts clean.
+    local frame = self.GetFrameBySystemIndex and self:GetFrameBySystemIndex(id)
+    if frame then
+        if Orbit.Engine and Orbit.Engine.PositionManager and Orbit.Engine.PositionManager.ClearFrame then
+            Orbit.Engine.PositionManager:ClearFrame(frame)
+        end
+        if Orbit.Engine and Orbit.Engine.FrameAnchor and Orbit.Engine.FrameAnchor.BreakAnchor then
+            Orbit.Engine.FrameAnchor:BreakAnchor(frame, true)
+        end
+    end
+
+    -- Dropping the def wipes every per-meter setting (style, icon, position, anchor,
+    -- componentPositions, disabledComponents, etc.) since they all live inside the def table.
     defs[id] = nil
     self:_SaveMeterDefs(defs)
     self:RebuildAllMeters()
@@ -383,26 +388,61 @@ function Plugin:SnapAllMetersToCurrent()
     end
 end
 
-function Plugin:EnsureMasterMeter()
+-- Legacy master entry from pre-5.x profiles; drop it so it doesn't render as a phantom bar list.
+function Plugin:MigrateLegacyMaster()
     local defs = self:GetMeterDefs()
-    if defs[DM.MasterID] then return end
-    defs[DM.MasterID] = {
-        id           = DM.MasterID,
-        isMaster     = true,
+    if defs[-1] == nil then return end
+    defs[-1] = nil
+    self:_SaveMeterDefs(defs)
+end
+
+-- Self-heal orphan anchors: for each def whose anchor.target is not a live meter,
+-- snapshot the child's current visual position into def.position and drop the anchor.
+-- Runs on every rebuild so parent-delete never has to walk children — the child's
+-- def detects the stale target on its own and reverts to a free position.
+function Plugin:ScrubStaleAnchors()
+    local defs = self:GetMeterDefs()
+    local FRAME_PREFIX = "OrbitDamageMeter"
+    local uiTop = UIParent and UIParent:GetTop()
+    local changed = false
+    for id, def in pairs(defs) do
+        if type(def.anchor) == "table" and def.anchor.target then
+            local targetID = def.anchor.target:match("^" .. FRAME_PREFIX .. "(%-?%d+)$")
+            local n = targetID and tonumber(targetID)
+            if n and defs[n] == nil then
+                local frame = self:GetFrameBySystemIndex(id)
+                if frame and uiTop then
+                    local left, top = frame:GetLeft(), frame:GetTop()
+                    if left and top then
+                        def.position = { point = "TOPLEFT", x = left, y = top - uiTop }
+                    end
+                end
+                def.anchor = nil
+                changed = true
+            end
+        end
+    end
+    if changed then self:_SaveMeterDefs(defs) end
+end
+
+function Plugin:EnsureSeedMeter()
+    local defs = self:GetMeterDefs()
+    if defs[DM.SeedID] then return end
+    defs[DM.SeedID] = {
+        id           = DM.SeedID,
         meterType    = DEFAULT_METER_TYPE,
         sessionType  = DM.SessionType.Current,
         sessionID    = nil,
-        barCount     = 1,
-        barWidth     = MASTER_BAR_WIDTH,
-        barHeight    = MASTER_BAR_HEIGHT,
+        barCount     = DEFAULT_BAR_COUNT,
+        barWidth     = DEFAULT_BAR_WIDTH,
+        barHeight    = DEFAULT_BAR_HEIGHT,
         barGap       = 1,
+        iconPosition = 1,
         style        = 100,
-        border       = 2,
-        background   = 2,
-        title        = 1,
-        titleSize    = 12,
-        iconPosition = 2,
-        disabledComponents = { "Status", "Rank", "DamageDone" },
+        border       = 3,
+        background   = 3,
+        title        = 2,
+        titleSize    = 14,
         position     = { point = "TOPLEFT", x = 40, y = -200 },
         scrollOffset = 0,
     }
@@ -417,8 +457,10 @@ function Plugin:OnLoad()
     if self.InitEventBridge then self:InitEventBridge() end
     if self.InitUI then self:InitUI() end
 
+    self:MigrateLegacyMaster()
+
     -- Eager build so mid-session enables draw immediately instead of waiting on the next zone change.
-    self:EnsureMasterMeter()
+    -- RebuildAllMeters internally runs EnsureSeedMeter + ScrubStaleAnchors before laying out frames.
     self:RebuildAllMeters()
 
     self:RegisterStandardEvents()
@@ -431,7 +473,7 @@ function Plugin:OnLoad()
 
     Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function()
         C_Timer.After(0.15, function()
-            self:EnsureMasterMeter()
+            self:MigrateLegacyMaster()
             self:RebuildAllMeters()
         end)
     end, self)
@@ -460,7 +502,7 @@ end
 
 function Plugin:ApplySettings()
     -- `/orbit reset` wipes defs without tearing frames; detect drift so we recover without /reload.
-    self:EnsureMasterMeter()
+    self:EnsureSeedMeter()
     local frames = self.GetMeterFrames and self:GetMeterFrames() or {}
     local defs = self:GetMeterDefs()
     local drift = false

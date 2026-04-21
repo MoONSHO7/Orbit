@@ -182,6 +182,8 @@ local GLOBAL_EVENTS = {
     "INCOMING_SUMMON_CHANGED", "PLAYER_ROLES_ASSIGNED", "GROUP_ROSTER_UPDATE",
     "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE", "PARTY_LEADER_CHANGED",
     "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+    -- aura instance IDs re-randomize on these transitions; caches must be rebuilt from scratch.
+    "ENCOUNTER_START", "CHALLENGE_MODE_START", "PLAYER_ENTERING_WORLD",
 }
 
 function GroupFrameMixin.CreateGlobalEventHandler(plugin, callbacks)
@@ -230,6 +232,19 @@ function GroupFrameMixin.CreateGlobalEventHandler(plugin, callbacks)
         if event == "INCOMING_SUMMON_CHANGED" then
             for _, f in ipairs(frames) do
                 if not f.preview and f.unit and f:IsShown() then StatusDispatch(f, plugin, "UpdateIncomingSummon") end
+            end
+            return
+        end
+        if event == "ENCOUNTER_START" or event == "CHALLENGE_MODE_START" or event == "PLAYER_ENTERING_WORLD" then
+            local M = GetAuraMixin()
+            for _, f in ipairs(frames) do
+                if not f.preview and f.unit then
+                    M:WipeCaches(f)
+                    f.orbitActiveDispelAura = nil
+                    if f:IsShown() and UnitExists(f.unit) then
+                        ProcessAuraUpdate(f, plugin, callbacks, nil)
+                    end
+                end
             end
             return
         end

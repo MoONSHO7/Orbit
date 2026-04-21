@@ -111,10 +111,11 @@ function Injection:UpdateIcon(icon)
         texture = C_Spell.GetSpellTexture(activeId)
         if texture then
             icon.Icon:SetTexture(texture)
-            local durObj = C_Spell.GetSpellCooldownDuration(activeId)
             local cdInfo = C_Spell.GetSpellCooldown(activeId)
             local onGCD = cdInfo and cdInfo.isOnGCD
             local showGCDSwipe = Plugin:GetSetting(icon.systemIndex, "ShowGCDSwipe") ~= false
+            -- ignoreGCD excludes the GCD contribution from durObj; ignored on older clients.
+            local durObj = C_Spell.GetSpellCooldownDuration(activeId, not showGCDSwipe)
             if onGCD and not showGCDSwipe then
                 icon.Cooldown:Clear()
                 icon.ActiveCooldown:Clear()

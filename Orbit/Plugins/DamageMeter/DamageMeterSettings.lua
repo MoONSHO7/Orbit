@@ -73,6 +73,24 @@ function Plugin:AddSettings(dialog, systemFrame)
     local tabs = { L.PLU_DM_TAB_LAYOUT, L.PLU_DM_TAB_BEHAVIOUR }
     local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, L.PLU_DM_TAB_LAYOUT)
 
+    -- Create button lives in the footer on both tabs; callback is self-guarded so label-at-cap is cosmetic.
+    local canCreate = self:CanCreateMeter()
+    local createLabel = L.PLU_DM_MENU_NEW
+    if not canCreate then
+        createLabel = createLabel .. (" (%d/%d)"):format(self:GetMeterCount(), DM.MaxMeters)
+    end
+    table.insert(schema.extraButtons, {
+        text = createLabel,
+        callback = function()
+            if not self:CanCreateMeter() then return end
+            self:CreateMeter(DM.MeterType.Dps)
+            C_Timer.After(0, function()
+                OrbitEngine.Layout:Reset(dialog)
+                self:AddSettings(dialog, systemFrame)
+            end)
+        end,
+    })
+
     if currentTab == L.PLU_DM_TAB_BEHAVIOUR then
         -- Plugin-global; stored on SYSTEM_INDEX so all meters share the toggle.
         table.insert(schema.controls, {
@@ -103,11 +121,8 @@ function Plugin:AddSettings(dialog, systemFrame)
     -- [ QUICK COPY ] ----------------------------------------------------------
     local copyOptions = { { text = L.PLU_DM_SELECT_METER, value = "" } }
     local defs = self:GetMeterDefs()
-    -- Master excluded as copy source: single-bar identity frame with distinct render rules.
     local userIDs = {}
-    for id in pairs(defs) do
-        if id ~= DM.MasterID then userIDs[#userIDs + 1] = id end
-    end
+    for id in pairs(defs) do userIDs[#userIDs + 1] = id end
     table.sort(userIDs)
     local METER_TYPE_LABEL_KEY = {
         [DM.MeterType.DamageDone]            = "PLU_DM_METRIC_DAMAGE",
@@ -163,7 +178,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         key = "Title",
         label = L.PLU_DM_TITLE,
         min = TITLE_OFF, max = TITLE_BOTTOM_RIGHT, step = 1,
-        default = TITLE_OFF,
+        default = TITLE_TOP_LEFT,
         formatter = function(v) return TITLE_LABELS[v] or "" end,
         onChange = function(v)
             self:SetSetting(systemIndex, "Title", v)

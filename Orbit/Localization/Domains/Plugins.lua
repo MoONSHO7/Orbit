@@ -99,7 +99,6 @@ local LOCALE_STRINGS = {
         PLU_DM_QUICK_COPY         = "Quick Copy",
         PLU_DM_SELECT_METER       = "Select a meter...",
         PLU_DM_COPY_FROM_F        = "Copy from %s",
-        PLU_DM_MASTER_LABEL       = "Master",
         PLU_DM_METER_LABEL_F      = "#%d (%s)",
         PLU_DM_MENU_NEW           = "New Meter",
         PLU_DM_MENU_DELETE        = "Delete Meter",
