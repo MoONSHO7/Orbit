@@ -24,17 +24,29 @@ function Mixin.StatusDispatch(frame, plugin, method)
 end
 
 -- [ RANGE CHECKING ]--------------------------------------------------------------------------------
+function Mixin.SetBackgroundAlpha(frame, alpha)
+    if frame.bg then frame.bg:SetAlpha(alpha) end
+    if frame._gradientSegments then
+        for _, seg in ipairs(frame._gradientSegments) do seg:SetAlpha(alpha) end
+    end
+end
+
 function Mixin.UpdateInRange(frame)
     if not frame or not frame.unit then return end
     if not UnitExists(frame.unit) then frame:SetAlpha(0); return end
     if frame.isPlayerFrame or frame.preview then
         frame:SetAlpha(1)
+        Mixin.SetBackgroundAlpha(frame, 1)
     elseif not UnitIsConnected(frame.unit) then
         frame:SetAlpha(GF.OfflineAlpha)
+        Mixin.SetBackgroundAlpha(frame, 1)
     elseif UnitPhaseReason(frame.unit) then
         frame:SetAlpha(GF.OutOfRangeAlpha)
+        Mixin.SetBackgroundAlpha(frame, 1)
     else
-        frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(UnitInRange(frame.unit), 1, GF.OutOfRangeAlpha))
+        local inRangeValue = UnitInRange(frame.unit)
+        frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(inRangeValue, 1, GF.OutOfRangeAlpha))
+        Mixin.SetBackgroundAlpha(frame, C_CurveUtil.EvaluateColorValueFromBoolean(inRangeValue, 1, 0))
     end
     if frame.ApplyHealthColor then frame:ApplyHealthColor() end
 end

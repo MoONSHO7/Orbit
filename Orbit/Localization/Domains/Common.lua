@@ -27,6 +27,7 @@ local LOCALE_STRINGS = {
         CMN_ICON_LEFT              = "Left",
         CMN_ICON_RIGHT             = "Right",
         CMN_ICON_OFF               = "Off",
+        CMN_HIDDEN_VALUE           = "—",
     },
     deDE = {
         CMN_NEXT                   = "Weiter",

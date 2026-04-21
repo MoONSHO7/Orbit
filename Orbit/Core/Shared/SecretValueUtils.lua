@@ -9,4 +9,14 @@ local function SafeUnitPowerPercent(unit, resource)
     local ok, pct = pcall(UnitPowerPercent, unit, resource, false, CurveConstants.ScaleTo100)
     return (ok and pct) or nil
 end
-Orbit.SecretValueUtils = { CanUseUnitPowerPercent = CanUseUnitPowerPercent, SafeUnitPowerPercent = SafeUnitPowerPercent }
+-- `or 0` does not catch a secret (secrets are truthy); string.format on a secret throws.
+local function NumericOrNil(value)
+    if value == nil then return nil end
+    if issecretvalue(value) then return nil end
+    return value
+end
+Orbit.SecretValueUtils = {
+    CanUseUnitPowerPercent = CanUseUnitPowerPercent,
+    SafeUnitPowerPercent = SafeUnitPowerPercent,
+    NumericOrNil = NumericOrNil,
+}

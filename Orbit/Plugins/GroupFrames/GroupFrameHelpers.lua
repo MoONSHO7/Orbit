@@ -234,8 +234,7 @@ function Helpers:GetSortedPartyUnits(includePlayer)
         table.sort(units, function(a, b)
             local priorityA, priorityB = GetRolePriority(a), GetRolePriority(b)
             if priorityA == priorityB then
-                -- UnitName can return a secret in combat. Check issecretvalue BEFORE `or ""`
-                -- or the `<` comparison — both would throw on a secret.
+                -- issecretvalue guards the legacy path; `or ""` handles nil from newer clients.
                 local nameA, nameB = UnitName(a), UnitName(b)
                 if issecretvalue(nameA) or issecretvalue(nameB) then return false end
                 return (nameA or "") < (nameB or "")

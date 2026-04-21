@@ -17,6 +17,7 @@ local TAB_TINT_ICONS = { r = 0.40, g = 0.85, b = 0.40 }
 local TAB_TINT_BARS = { r = 1.00, g = 0.82, b = 0.00 }
 local DEFAULT_ICON_OFFSET_Y = 0
 local DEFAULT_BAR_OFFSET_X = 250
+local SPAWN_STAGGER = 20
 local TALENT_REFRESH_DEBOUNCE = 0.1
 
 -- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
@@ -223,6 +224,17 @@ function Plugin:CreateBar()
     return record
 end
 
+-- Stagger index by id ordering within the same spec+mode so newly-spawned containers don't stack on top of each other.
+function Plugin:SpawnStaggerIndex(record)
+    local n = 0
+    for id, other in pairs(self:GetStore()) do
+        if other.spec == record.spec and other.mode == record.mode and id < record.id then
+            n = n + 1
+        end
+    end
+    return n
+end
+
 -- Builds a frame for the record across all specs; virtual state set before RestorePosition.
 function Plugin:BuildContainer(record)
     local frame
@@ -235,6 +247,8 @@ function Plugin:BuildContainer(record)
         defX, defY = DEFAULT_BAR_OFFSET_X, 0
     end
     if not frame then return end
+    local stagger = self:SpawnStaggerIndex(record) * SPAWN_STAGGER
+    defX, defY = defX + stagger, defY - stagger
     frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = defX, y = defY }
     self.containers[record.id] = frame
     self:RefreshContainerVirtualState(frame)

@@ -2,17 +2,21 @@
 -- Mastery datatext: shows current Mastery percentage or rating
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local NumericOrNil = Orbit.SecretValueUtils.NumericOrNil
+local L = Orbit.L
 
 local W = DT.BaseDatatext:New("Mastery")
 W.showPercentage = true
 
 function W:Update()
-    local pct = GetMasteryEffect and GetMasteryEffect() or 0
-    local rating = GetCombatRating(26 --[[CR_MASTERY]]) or 0
+    local pct = NumericOrNil(GetMasteryEffect and GetMasteryEffect())
+    local rating = NumericOrNil(GetCombatRating(26 --[[CR_MASTERY]]))
     if self.showPercentage then
-        self:SetText(string.format("Mastery: |cffffffff%.2f%%|r", pct))
+        if pct then self:SetText(string.format("Mastery: |cffffffff%.2f%%|r", pct))
+        else self:SetText("Mastery: |cffffffff" .. L.CMN_HIDDEN_VALUE .. "|r") end
     else
-        self:SetText(string.format("Mastery: |cffffffff%d|r", rating))
+        if rating then self:SetText(string.format("Mastery: |cffffffff%d|r", rating))
+        else self:SetText("Mastery: |cffffffff" .. L.CMN_HIDDEN_VALUE .. "|r") end
     end
 end
 
@@ -20,17 +24,17 @@ function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
     GameTooltip:AddLine("Mastery", 1, 0.82, 0)
-    
-    local pct = GetMasteryEffect and GetMasteryEffect() or 0
-    local rating = GetCombatRating(26 --[[CR_MASTERY]]) or 0
-    GameTooltip:AddDoubleLine("Rating:", string.format("%d", rating), 1, 1, 1, 1, 1, 1)
-    GameTooltip:AddDoubleLine("Percentage:", string.format("%.2f%%", pct), 1, 1, 1, 1, 1, 1)
+
+    local pct = NumericOrNil(GetMasteryEffect and GetMasteryEffect())
+    local rating = NumericOrNil(GetCombatRating(26 --[[CR_MASTERY]]))
+    GameTooltip:AddDoubleLine("Rating:", rating and string.format("%d", rating) or L.CMN_HIDDEN_VALUE, 1, 1, 1, 1, 1, 1)
+    GameTooltip:AddDoubleLine("Percentage:", pct and string.format("%.2f%%", pct) or L.CMN_HIDDEN_VALUE, 1, 1, 1, 1, 1, 1)
     GameTooltip:Show()
 end
 
 function W:Init()
     self:CreateFrame()
-    
+
     self:SetClickFunc(function(datatext, button)
         if button == "LeftButton" then
             datatext.showPercentage = not datatext.showPercentage
@@ -38,7 +42,7 @@ function W:Init()
             if datatext.isHovered then datatext:UpdateTooltip() end
         end
     end)
-    
+
     self:SetUpdateFunc(function() self:Update() end)
     self:RegisterUnitEvent("UNIT_STATS", "player")
     self:RegisterUnitEvent("UNIT_AURA", "player")
