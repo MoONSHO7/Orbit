@@ -1,0 +1,5 @@
+<Bindings>
+    <Binding name="ORBIT_SPOTLIGHT_TOGGLE" header="ORBIT" category="BINDING_HEADER_ORBIT">
+        Orbit.Spotlight:Toggle()
+    </Binding>
+</Bindings>

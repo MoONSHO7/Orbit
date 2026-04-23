@@ -28,6 +28,9 @@ local LOCALE_STRINGS = {
         CMN_ICON_RIGHT             = "Right",
         CMN_ICON_OFF               = "Off",
         CMN_HIDDEN_VALUE           = "—",
+        CMN_FONT                   = "Font",
+        CMN_SIZE                   = "Size",
+        CMN_COLOR                  = "Color",
     },
     deDE = {
         CMN_NEXT                   = "Weiter",

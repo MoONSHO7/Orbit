@@ -3,23 +3,25 @@ local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
-local LSM = LibStub("LibSharedMedia-3.0", true)
+local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local DM = Constants.DamageMeter
 local SYSTEM_INDEX = DM.SystemIndex
 local SIGNAL = DM.Events
+local BORDER = DM.Border
+local BG = DM.Background
+local TITLE = DM.Title
+local ICON = DM.IconPos
 local FRAME_PREFIX = "OrbitDamageMeter"
-local FRAME_LEVEL_STRIDE = 10
-local FRAME_LEVEL_BASE = 10
-local BAR_FONT_SIZE = 10
-local ICON_PAD = 0
-local TEXT_PAD_INNER = 4
-local VIEW_TIMEOUT_SECONDS = 20
-local NAME_AFTER_RANK_PAD = 22
-local DPS_AFTER_TOTAL_PAD = 48
-local BACKDROP_ALPHA = 0.4
-local ICON_POS_LEFT, ICON_POS_OFF, ICON_POS_RIGHT = 1, 2, 3
+local FRAME_LEVEL_BASE = DM.FrameLevelBase
+local FRAME_LEVEL_STRIDE = DM.FrameLevelStride
+local BAR_FONT_SIZE = DM.BarFontSize
+local TEXT_PAD_INNER = DM.TextPadInner
+local VIEW_TIMEOUT_SECONDS = DM.ViewTimeoutSeconds
+local NAME_AFTER_RANK_PAD = DM.NameAfterRankPad
+local DPS_AFTER_TOTAL_PAD = DM.DpsAfterTotalPad
+local BACKDROP_ALPHA = DM.BackdropAlpha
 
 local Plugin = Orbit:GetPlugin(DM.SystemID)
 if not Plugin then return end
@@ -27,37 +29,32 @@ if not Plugin then return end
 -- [ METER REGISTRY ] --------------------------------------------------------------------------------
 local meters = {}
 
+-- [ EDIT-MODE HELPER ] ------------------------------------------------------------------------------
+local function InEditMode() return Orbit:IsEditMode() end
+
 -- [ MEDIA ] -----------------------------------------------------------------------------------------
 local function GetBarTexture()
-    if not LSM then return "Interface\\TargetingFrame\\UI-StatusBar" end
-    local name = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Texture
-    return (name and LSM:Fetch("statusbar", name)) or "Interface\\TargetingFrame\\UI-StatusBar"
+    local name = Orbit.db.GlobalSettings.Texture
+    return name and LSM:Fetch("statusbar", name) or "Interface\\TargetingFrame\\UI-StatusBar"
 end
 
 local function GetFont()
-    if not LSM then return STANDARD_TEXT_FONT end
-    local name = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
-    return (name and LSM:Fetch("font", name)) or STANDARD_TEXT_FONT
+    local name = Orbit.db.GlobalSettings.Font
+    return name and LSM:Fetch("font", name) or STANDARD_TEXT_FONT
 end
 
-local function GetFontOutline()
-    return (Orbit.Skin and Orbit.Skin:GetFontOutline()) or "OUTLINE"
-end
-
-local function GetBorderSize()
-    return (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize) or 2
-end
+local function GetFontOutline() return Orbit.Skin:GetFontOutline() end
+local function GetBorderSize()  return Orbit.db.GlobalSettings.BorderSize end
 
 local function GetClassColorRGBA(classFilename)
     if not classFilename or classFilename == "" then return 0.5, 0.5, 0.5, 1 end
-    local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFilename]
+    local c = RAID_CLASS_COLORS[classFilename]
     if not c then return 0.5, 0.5, 0.5, 1 end
     return c.r, c.g, c.b, 1
 end
 
 local function IsPlayerClass(classFilename)
-    if not classFilename or classFilename == "" then return false end
-    return RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFilename] and true or false
+    return classFilename and classFilename ~= "" and RAID_CLASS_COLORS[classFilename] ~= nil
 end
 
 -- Metrics whose sources ARE the enemies, not the players — NPC rows fall back to HOSTILE reaction color.
@@ -69,22 +66,15 @@ local HOSTILE_SOURCE_METRICS = {
 
 local function ResolveNPCReaction(meterType)
     local RC = OrbitEngine.ReactionColor
-    if not RC then return { r = 0.5, g = 0.5, b = 0.5, a = 1 } end
-    if HOSTILE_SOURCE_METRICS[meterType] then
-        return RC:GetOverride("HOSTILE")
-    end
-    return RC:GetOverride("FRIENDLY")
+    return RC:GetOverride(HOSTILE_SOURCE_METRICS[meterType] and "HOSTILE" or "FRIENDLY")
 end
 
 -- Gradient sample is flat (first pin) because totalAmount/maxAmount arithmetic is secret-in-combat.
 local function ResolveBarColor(classFilename, meterType)
-    local curve = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BarColorCurve
+    local curve = Orbit.db.GlobalSettings.BarColorCurve
     local CCE = OrbitEngine.ColorCurve
     if not curve or not curve.pins or #curve.pins == 0 then
-        if IsPlayerClass(classFilename) then
-            local r, g, b, a = GetClassColorRGBA(classFilename)
-            return r, g, b, a
-        end
+        if IsPlayerClass(classFilename) then return GetClassColorRGBA(classFilename) end
         local c = ResolveNPCReaction(meterType)
         return c.r, c.g, c.b, c.a or 1
     end
@@ -98,8 +88,7 @@ local function ResolveBarColor(classFilename, meterType)
     end
     local c = CCE:GetFirstColorFromCurve(curve)
     if c then return c.r, c.g, c.b, c.a or 1 end
-    local r, g, b, a = GetClassColorRGBA(classFilename)
-    return r, g, b, a
+    return GetClassColorRGBA(classFilename)
 end
 
 local function ApplyClassIcon(iconTexture, classFilename)
@@ -120,6 +109,8 @@ local METRIC_ENTRIES = {
     { value = DM.MeterType.Deaths,                labelKey = "PLU_DM_METRIC_DEATHS" },
 }
 
+-- Guard on entry: seconds is a C_DamageMeter-owned number and is secret-in-combat. Caller must
+-- check issecretvalue() before handing it in, so we never arithmetic on a tainted value here.
 local function FormatDuration(seconds)
     if not seconds or seconds <= 0 then return "" end
     seconds = math.floor(seconds + 0.5)
@@ -127,10 +118,14 @@ local function FormatDuration(seconds)
     return ("%dm %02ds"):format(math.floor(seconds / 60), seconds % 60)
 end
 
+local function SafeFormatDuration(seconds)
+    if not seconds or issecretvalue(seconds) then return "" end
+    return FormatDuration(seconds)
+end
+
 local function ShowContextMenu(owner, id)
     local def = Plugin:GetMeterDef(id)
     if not def then return end
-    if not MenuUtil or not MenuUtil.CreateContextMenu then return end
 
     local meterTag = "#" .. id
     MenuUtil.CreateContextMenu(owner, function(_, root)
@@ -188,20 +183,20 @@ local function BuildHistoryEntries()
         { kind = "type", sessionType = DM.SessionType.Current, name = L.PLU_DM_SESSION_CURRENT, durationSeconds = nil },
         { kind = "type", sessionType = DM.SessionType.Overall, name = L.PLU_DM_SESSION_OVERALL, durationSeconds = nil },
     }
-    if C_DamageMeter and C_DamageMeter.GetAvailableCombatSessions then
-        local sessions = {}
-        for _, s in ipairs(C_DamageMeter.GetAvailableCombatSessions() or {}) do
-            sessions[#sessions + 1] = s
-        end
-        table.sort(sessions, function(a, b) return (a.sessionID or 0) > (b.sessionID or 0) end)
-        for _, s in ipairs(sessions) do
-            entries[#entries + 1] = {
-                kind            = "id",
-                sessionID       = s.sessionID,
-                name            = s.name or ("#" .. tostring(s.sessionID)),
-                durationSeconds = s.durationSeconds,
-            }
-        end
+    -- Data adapter gates on C_DamageMeter availability; Blizzard_DamageMeter can be lazily loaded.
+    -- sessionID is an integer assigned by Blizzard's combat session registry; not secret.
+    local sessions = OrbitEngine.DamageMeterData:GetAvailableSessions()
+    local sorted = {}
+    for i = 1, #sessions do sorted[i] = sessions[i] end
+    table.sort(sorted, function(a, b) return a.sessionID > b.sessionID end)
+    for i = 1, #sorted do
+        local s = sorted[i]
+        entries[#entries + 1] = {
+            kind            = "id",
+            sessionID       = s.sessionID,
+            name            = s.name or ("#" .. tostring(s.sessionID)),
+            durationSeconds = s.durationSeconds,
+        }
     end
     return entries
 end
@@ -229,27 +224,28 @@ local function PickHistoryAtlas(entry)
     return HISTORY_ATLAS_NORMAL
 end
 
+-- entry.durationSeconds is a C_DamageMeter return (secret-in-combat). Route through SetMinMaxValues
+-- + SetValue sinks (which accept secret numbers) and skip Lua-side formatting when tainted.
 local function PaintHistoryBar(bar, rank, entry, maxDuration, isSelected, playerClass)
     bar._source = nil
     bar._historyEntry = entry
     bar.Icon:SetTexture(nil)
     bar.Icon:SetTexCoord(0, 1, 0, 1)
     bar.Icon:SetAtlas(PickHistoryAtlas(entry))
-    local denom = (maxDuration and maxDuration > 0) and maxDuration or 1
-    bar.StatusBar:SetMinMaxValues(0, denom)
-    bar.StatusBar:SetValue(entry.durationSeconds or denom)
+    -- maxDuration may be secret or nil; pass straight to SetMinMaxValues (a sink) with a safe min.
+    bar.StatusBar:SetMinMaxValues(0, maxDuration or 1)
+    bar.StatusBar:SetValue(entry.durationSeconds or maxDuration or 1)
     local r, g, b, a
     if isSelected then
         r, g, b, a = ResolveBarColor(playerClass or "")
     else
         r, g, b, a = 0.3, 0.3, 0.3, 1
     end
-    local tex = bar.StatusBar:GetStatusBarTexture()
-    if tex and tex.SetVertexColor then tex:SetVertexColor(r, g, b, a) end
+    bar.StatusBar:GetStatusBarTexture():SetVertexColor(r, g, b, a)
     bar.Rank:SetFormattedText("%d.", rank)
     bar.Name:SetText(entry.name or "?")
     bar.DPS:SetText("")
-    bar.DamageDone:SetText(FormatDuration(entry.durationSeconds))
+    bar.DamageDone:SetText(SafeFormatDuration(entry.durationSeconds))
     bar:Show()
 end
 
@@ -299,9 +295,7 @@ end
 
 -- Prefer live width when an anchor parent has SetWidth-synced us, to avoid clobbering the sync.
 local function GetEffectiveWidth(frame, def)
-    local FA = Orbit.Engine and Orbit.Engine.FrameAnchor
-    local parent = FA and FA.GetAnchorParent and FA:GetAnchorParent(frame)
-    if parent then
+    if Orbit.Engine.Frame:GetAnchorParent(frame) then
         local w = frame:GetWidth()
         if w and w > 1 then return w end
     end
@@ -310,8 +304,7 @@ end
 
 local function FrameHeightFor(def, count)
     if count <= 0 then return 0 end
-    local gap = def.barGap or 0
-    return count * def.barHeight + (count - 1) * gap
+    return count * def.barHeight + (count - 1) * def.barGap
 end
 
 local function DefaultRankPos()
@@ -332,56 +325,51 @@ end
 
 local TEXT_COMPONENT_KEYS = { "Rank", "Name", "DPS", "DamageDone" }
 
--- Canvas transactions are singleton; only read when target matches or other meters leak staged state.
-local function GetCanvasStateForMeter(def, meterId)
-    local positions = def.componentPositions or {}
-    local disabledList = def.disabledComponents
-    local txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
-    if txn and txn.IsActive and txn:IsActive()
-       and txn.GetSystemIndex and txn:GetSystemIndex() == meterId then
-        if txn.GetPositions then positions = txn:GetPositions() or positions end
-        if txn.GetDisabledComponents then disabledList = txn:GetDisabledComponents() or disabledList end
-    end
-    return positions, disabledList
-end
-
--- Supports both array form (canvas writes) and map form (manual edits / older saves).
-local function BuildDisabledHash(list)
+-- Canvas Dock writes disabledComponents as an array; NormalizeMeterDefs rewrites persisted form to a
+-- hash. Normalize txn-staged arrays to hash at read time so consumers always see { [key] = true }.
+local function AsHashSet(list)
+    if type(list) ~= "table" then return {} end
+    if list[1] == nil then return list end
     local hash = {}
-    if type(list) ~= "table" then return hash end
     for _, v in ipairs(list) do hash[v] = true end
-    for k, v in pairs(list) do
-        if type(k) == "string" and v then hash[k] = true end
-    end
     return hash
 end
 
-local function ApplyCanvasState(bar, positions, disabledList)
-    local disabled = BuildDisabledHash(disabledList)
+-- Canvas transactions are singleton; only read when target matches or other meters leak staged state.
+local function GetCanvasStateForMeter(def, meterId)
+    local positions = def.componentPositions or {}
+    local disabled = def.disabledComponents or {}
+    local txn = OrbitEngine.CanvasMode.Transaction
+    if txn:IsActive() and txn:GetSystemIndex() == meterId then
+        positions = txn:GetPositions() or positions
+        disabled = txn:GetDisabledComponents() or disabled
+    end
+    return positions, AsHashSet(disabled)
+end
+
+local function ApplyCanvasState(bar, positions, disabled)
     local fontPath = GetFont()
     for _, key in ipairs(TEXT_COMPONENT_KEYS) do
         local fs = bar[key]
-        if fs then
-            if disabled[key] then
-                fs:Hide()
-            else
-                fs:Show()
-                local overrides = positions[key] and positions[key].overrides or {}
-                OrbitEngine.OverrideUtils.ApplyOverrides(fs, overrides, { fontSize = BAR_FONT_SIZE, fontPath = fontPath })
-            end
+        if disabled[key] then
+            fs:Hide()
+        else
+            fs:Show()
+            local overrides = positions[key] and positions[key].overrides or {}
+            OrbitEngine.OverrideUtils.ApplyOverrides(fs, overrides, { fontSize = BAR_FONT_SIZE, fontPath = fontPath })
         end
     end
 end
 
 local function LayoutBarInternals(bar, def)
-    local iconSide = def.iconPosition or ICON_POS_LEFT
-    local showIcon = iconSide ~= ICON_POS_OFF
+    local iconSide = def.iconPosition
+    local showIcon = iconSide ~= ICON.Off
     local iconSize = showIcon and def.barHeight or 0
 
     bar.Icon:ClearAllPoints()
     if showIcon then
         bar.Icon:SetSize(iconSize, iconSize)
-        if iconSide == ICON_POS_RIGHT then
+        if iconSide == ICON.Right then
             bar.Icon:SetPoint("TOPRIGHT", bar, "TOPRIGHT", 0, 0)
         else
             bar.Icon:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
@@ -391,11 +379,9 @@ local function LayoutBarInternals(bar, def)
         bar.Icon:Hide()
     end
 
-    local stylePct = def.style
-    if stylePct == nil then stylePct = 100 end
-    local fillHeight = def.barHeight * stylePct / 100
+    local fillHeight = def.barHeight * def.style / 100
     bar.StatusBar:ClearAllPoints()
-    if iconSide == ICON_POS_RIGHT then
+    if iconSide == ICON.Right then
         bar.StatusBar:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT",   0,         0)
         bar.StatusBar:SetPoint("TOPRIGHT",   bar, "BOTTOMRIGHT", -iconSize,  fillHeight)
     else
@@ -404,7 +390,7 @@ local function LayoutBarInternals(bar, def)
     end
 
     bar.TextFrame:ClearAllPoints()
-    if iconSide == ICON_POS_RIGHT then
+    if iconSide == ICON.Right then
         bar.TextFrame:SetPoint("TOPLEFT",     bar, "TOPLEFT",      0,         0)
         bar.TextFrame:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -iconSize,  0)
     else
@@ -412,12 +398,12 @@ local function LayoutBarInternals(bar, def)
         bar.TextFrame:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT",  0,         0)
     end
 
-    if bar.StatusBar.SetReverseFill then bar.StatusBar:SetReverseFill(false) end
+    bar.StatusBar:SetReverseFill(false)
 
-    local positions, disabledList = GetCanvasStateForMeter(def, def.id)
+    local positions, disabled = GetCanvasStateForMeter(def, def.id)
 
     -- Overrides before positions: ApplyOverrides may change font size which affects measured text.
-    ApplyCanvasState(bar, positions, disabledList)
+    ApplyCanvasState(bar, positions, disabled)
 
     local ApplyTextPosition = OrbitEngine.PositionUtils.ApplyTextPosition
     ApplyTextPosition(bar.Rank,       bar.TextFrame, positions.Rank       or DefaultRankPos())
@@ -428,45 +414,21 @@ end
 
 local function AttachCanvasComponents(frame)
     if frame._canvasComponentsAttached then return end
-    if not OrbitEngine.ComponentDrag then return end
     local bar = frame.bars[1]
-    if not bar or not bar.Rank or not bar.Name or not bar.DPS or not bar.DamageDone then return end
+    if not bar then return end
     frame.Rank       = bar.Rank
     frame.Name       = bar.Name
     frame.DPS        = bar.DPS
     frame.DamageDone = bar.DamageDone
     local id = frame._id
-    OrbitEngine.ComponentDrag:Attach(frame.Rank, frame, {
-        key = "Rank",
-        onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(Plugin, id, "Rank"),
-    })
-    OrbitEngine.ComponentDrag:Attach(frame.Name, frame, {
-        key = "Name",
-        onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(Plugin, id, "Name"),
-    })
-    OrbitEngine.ComponentDrag:Attach(frame.DPS, frame, {
-        key = "DPS",
-        onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(Plugin, id, "DPS"),
-    })
-    OrbitEngine.ComponentDrag:Attach(frame.DamageDone, frame, {
-        key = "DamageDone",
-        onPositionChange = OrbitEngine.ComponentDrag:MakePositionCallback(Plugin, id, "DamageDone"),
-    })
+    local CD = OrbitEngine.ComponentDrag
+    for _, key in ipairs(TEXT_COMPONENT_KEYS) do
+        CD:Attach(frame[key], frame, { key = key, onPositionChange = CD:MakePositionCallback(Plugin, id, key) })
+    end
     frame._canvasComponentsAttached = true
 end
 
-local BORDER_NONE    = 1
-local BORDER_PER_BAR = 2
-local BORDER_FRAME   = 3
-local BG_NONE        = 1
-local BG_PER_BAR     = 2
-local BG_FRAME       = 3
-local TITLE_OFF          = 1
-local TITLE_TOP_LEFT     = 2
-local TITLE_TOP_RIGHT    = 3
-local TITLE_BOTTOM_LEFT  = 4
-local TITLE_BOTTOM_RIGHT = 5
-local TITLE_GAP = 2
+local TITLE_GAP                = 2
 local STRETCH_TAB_ATLAS_LEFT   = "glues-characterSelect-TopHUD-selected-left"
 local STRETCH_TAB_ATLAS_RIGHT  = "glues-characterSelect-TopHUD-selected-right"
 local STRETCH_TAB_WIDTH        = 60
@@ -474,32 +436,18 @@ local STRETCH_TAB_HEIGHT       = 12
 local STRETCH_TAB_INSET        = 0
 local STRETCH_TAB_IDLE_ALPHA   = 0
 local STRETCH_TAB_HOVER_ALPHA  = 1
-local STRETCH_MAX_BARS         = 40
+local STRETCH_MAX_BARS         = DM.MaxBarsStretch
 
 -- Forward-declared: stretch-tab OnUpdate closure captures this upvalue before RenderFrame is defined.
 local RenderFrame
-local METER_TYPE_LABEL_KEY = {
-    [DM.MeterType.DamageDone]            = "PLU_DM_METRIC_DAMAGE",
-    [DM.MeterType.Dps]                   = "PLU_DM_METRIC_DAMAGE",
-    [DM.MeterType.HealingDone]           = "PLU_DM_METRIC_HEALING",
-    [DM.MeterType.Hps]                   = "PLU_DM_METRIC_HEALING",
-    [DM.MeterType.DamageTaken]           = "PLU_DM_METRIC_DAMAGETAKEN",
-    [DM.MeterType.AvoidableDamageTaken]  = "PLU_DM_METRIC_AVOIDABLEDAMAGE",
-    [DM.MeterType.EnemyDamageTaken]      = "PLU_DM_METRIC_ENEMYDAMAGETAKEN",
-    [DM.MeterType.Interrupts]            = "PLU_DM_METRIC_INTERRUPTS",
-    [DM.MeterType.Dispels]               = "PLU_DM_METRIC_DISPELS",
-    [DM.MeterType.Deaths]                = "PLU_DM_METRIC_DEATHS",
-}
 
 local function BuildTitleText(def)
     if not def then return "" end
-    local labelKey = METER_TYPE_LABEL_KEY[def.meterType] or "PLU_DM_METRIC_DAMAGE"
-    local metricLabel = L[labelKey] or ""
+    local metricLabel = L[DM.MetricLabelKeys[def.meterType] or "PLU_DM_METRIC_DAMAGE"] or ""
     if def.viewMode == "breakdown" then
         local name
         -- Skip API call on secret GUID: returned name would be secret and concat/equality would throw.
-        local guidOk = def.breakdownGUID and (not issecretvalue or not issecretvalue(def.breakdownGUID))
-        if guidOk and GetPlayerInfoByGUID then
+        if def.breakdownGUID and not issecretvalue(def.breakdownGUID) then
             local _, _, _, _, _, apiName = GetPlayerInfoByGUID(def.breakdownGUID)
             if apiName and apiName ~= "" then name = apiName end
         end
@@ -513,43 +461,38 @@ end
 
 local function RefreshTitle(frame, def)
     local title = frame._title
-    if not title then return end
-    local mode = def.title or TITLE_OFF
+    local mode = def.title
     local rect = frame._visibleRect
-    if mode == TITLE_OFF or not rect or not rect:IsShown() then
+    if mode == TITLE.Off or not rect:IsShown() then
         title:Hide()
         return
     end
     title:SetText(BuildTitleText(def))
     title:ClearAllPoints()
-    if mode == TITLE_TOP_LEFT then
+    if mode == TITLE.TopLeft then
         title:SetPoint("BOTTOMLEFT",  rect, "TOPLEFT",    0,  TITLE_GAP)
-    elseif mode == TITLE_TOP_RIGHT then
+    elseif mode == TITLE.TopRight then
         title:SetPoint("BOTTOMRIGHT", rect, "TOPRIGHT",   0,  TITLE_GAP)
-    elseif mode == TITLE_BOTTOM_LEFT then
+    elseif mode == TITLE.BottomLeft then
         title:SetPoint("TOPLEFT",     rect, "BOTTOMLEFT", 0, -TITLE_GAP)
-    else -- TITLE_BOTTOM_RIGHT
+    else
         title:SetPoint("TOPRIGHT",    rect, "BOTTOMRIGHT",0, -TITLE_GAP)
     end
     title:Show()
 end
 
-local function GetStretchTabSize()
-    return STRETCH_TAB_WIDTH, STRETCH_TAB_HEIGHT
-end
-
 -- Flip within atlas region UVs (plain SetTexCoord after SetAtlas would expose the whole sheet).
 local function ApplyStretchAtlas(tex, atlasName, flipV)
-    local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlasName)
+    local info = C_Texture.GetAtlasInfo(atlasName)
     if not info or not info.file then
         tex:SetAtlas(atlasName)
         return
     end
     tex:SetTexture(info.file)
-    local left   = info.leftTexCoord   or 0
-    local right  = info.rightTexCoord  or 1
-    local top    = info.topTexCoord    or 0
-    local bottom = info.bottomTexCoord or 1
+    local left   = info.leftTexCoord
+    local right  = info.rightTexCoord
+    local top    = info.topTexCoord
+    local bottom = info.bottomTexCoord
     if flipV then
         top, bottom = bottom, top
     end
@@ -558,22 +501,19 @@ end
 
 local function RefreshStretchTab(frame, def)
     local tab = frame._stretchTab
-    if not tab then return end
     -- Freeze position mid-drag: SetClampedToScreen can flip isOnTop and invert stretchPx.
     if tab._dragging then return end
     -- Hide in Edit Mode so the selection overlay receives clicks (alpha 0 still captures mouse).
-    if Orbit and Orbit.IsEditMode and Orbit:IsEditMode() then
+    if InEditMode() then
         tab:Hide()
         return
     end
     tab:Show()
 
     local topY = frame:GetTop()
-    local screenH = GetScreenHeight() or 800
-    local isOnTop = topY and (topY <= screenH / 2) or false
+    local isOnTop = topY and (topY <= GetScreenHeight() / 2) or false
 
-    local titleMode = def.title or TITLE_OFF
-    local titleOnRight = (titleMode == TITLE_TOP_RIGHT or titleMode == TITLE_BOTTOM_RIGHT)
+    local titleOnRight = (def.title == TITLE.TopRight or def.title == TITLE.BottomRight)
     local tabOnLeft = titleOnRight
 
     tab._isOnTop = isOnTop
@@ -595,17 +535,14 @@ local function GetAvailableRowCount(def)
     if not def then return 0 end
     local Data = OrbitEngine.DamageMeterData
     if def.viewMode == "breakdown" and (def.breakdownGUID or def.breakdownCreatureID) then
-        local sd = Data and Data:ResolveSessionSource(
+        local sd = Data:ResolveSessionSource(
             def.sessionID, def.sessionType, def.meterType,
             def.breakdownGUID, def.breakdownCreatureID
         )
-        return (sd and sd.combatSpells and #sd.combatSpells) or 0
+        return sd and sd.combatSpells and #sd.combatSpells or 0
     end
-    if def.viewMode == "history" then
-        local entries = BuildHistoryEntries()
-        return #entries
-    end
-    if Data and Data:IsAvailable() then
+    if def.viewMode == "history" then return #BuildHistoryEntries() end
+    if Data:IsAvailable() then
         local session = Data:ResolveSession(def.sessionID, def.sessionType, def.meterType)
         if session and session.combatSources then return #session.combatSources end
     end
@@ -614,20 +551,17 @@ end
 
 -- SkinBorder(f, f, 0) leaks into _edgeBorderOverlay for nine-slice — hide both overlays explicitly.
 local function HideBorder(frame)
-    if not frame then return end
     if frame._borderFrame       then frame._borderFrame:Hide()       end
     if frame._edgeBorderOverlay then frame._edgeBorderOverlay:Hide() end
 end
 
 local function UpdateVisibleRect(frame, def, visibleCount)
     local rect = frame._visibleRect
-    if not rect then return end
     if not visibleCount or visibleCount <= 0 then
         rect:Hide()
         return
     end
-    local gap = def.barGap or 0
-    local rectHeight = visibleCount * def.barHeight + math.max(0, visibleCount - 1) * gap
+    local rectHeight = visibleCount * def.barHeight + math.max(0, visibleCount - 1) * def.barGap
     rect:ClearAllPoints()
     rect:SetPoint("TOPLEFT",     frame, "TOPLEFT",   0,  0)
     rect:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT",  0, -rectHeight)
@@ -635,19 +569,19 @@ local function UpdateVisibleRect(frame, def, visibleCount)
 end
 
 local function RefreshBorders(frame, def)
-    local mode = def.border or BORDER_FRAME
+    local mode = def.border
     local borderSize = GetBorderSize()
 
     HideBorder(frame)
-    if mode == BORDER_FRAME then
+    if mode == BORDER.Frame then
         Orbit.Skin:SkinBorder(frame._visibleRect, frame._visibleRect, borderSize)
     else
         HideBorder(frame._visibleRect)
     end
 
-    for _, bar in ipairs(frame.bars or {}) do
+    for _, bar in ipairs(frame.bars) do
         HideBorder(bar)
-        if mode == BORDER_PER_BAR then
+        if mode == BORDER.PerBar then
             Orbit.Skin:SkinBorder(bar.StatusBar, bar.StatusBar, borderSize)
         else
             HideBorder(bar.StatusBar)
@@ -656,14 +590,10 @@ local function RefreshBorders(frame, def)
 end
 
 local function RefreshBackgrounds(frame, def)
-    local mode = def.background or BG_PER_BAR
-    if frame._backdrop then
-        frame._backdrop:SetShown(mode == BG_FRAME)
-    end
-    for _, bar in ipairs(frame.bars or {}) do
-        if bar.bg then
-            bar.bg:SetShown(mode == BG_PER_BAR)
-        end
+    local mode = def.background
+    frame._backdrop:SetShown(mode == BG.Frame)
+    for _, bar in ipairs(frame.bars) do
+        bar.bg:SetShown(mode == BG.PerBar)
     end
 end
 
@@ -671,13 +601,11 @@ local function LayoutBars(frame, def)
     frame.bars = frame.bars or {}
     local count = def.barCount
     local width = GetEffectiveWidth(frame, def)
-    local height = def.barHeight
-    local gap = def.barGap or 1
-    local stride = height + gap
+    local stride = def.barHeight + def.barGap
     for i = 1, count do
         local bar = frame.bars[i] or CreateBar(frame)
         frame.bars[i] = bar
-        bar:SetSize(width, height)
+        bar:SetSize(width, def.barHeight)
         bar:ClearAllPoints()
         bar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -((i - 1) * stride))
         bar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, -((i - 1) * stride))
@@ -691,9 +619,7 @@ local function LayoutBars(frame, def)
     frame:SetSize(width, FrameHeightFor(def, count))
     RefreshBorders(frame, def)
     RefreshBackgrounds(frame, def)
-    if frame._title then
-        frame._title:SetFont(GetFont(), def.titleSize or 12, GetFontOutline())
-    end
+    frame._title:SetFont(GetFont(), def.titleSize, GetFontOutline())
     AttachCanvasComponents(frame)
 end
 
@@ -719,7 +645,7 @@ end
 local function BuildMeterFrame(id, def)
     local frame = CreateFrame("Frame", FRAME_PREFIX .. id, UIParent)
     frame:SetFrameStrata("MEDIUM")
-    frame:SetFrameLevel(FRAME_LEVEL_BASE + math.max(0, id) * FRAME_LEVEL_STRIDE)
+    frame:SetFrameLevel(FRAME_LEVEL_BASE + id * FRAME_LEVEL_STRIDE)
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -730,12 +656,12 @@ local function BuildMeterFrame(id, def)
     -- [ EDIT MODE SELECTION PROTOCOL ] ----------------------------------------
     frame.systemIndex = id
     frame.recordId = id
-    frame.editModeName = "Damage Meter #" .. id
+    frame.editModeName = L.PLU_DM_EDIT_MODE_NAME_F:format(id)
     frame.orbitPlugin = Plugin
     frame.anchorOptions = { horizontal = false, vertical = true, syncScale = false, syncDimensions = true, mergeBorders = true }
     frame.orbitResizeBounds = {
-        minW = 100, maxW = 600,
-        minH = 18, maxH = 18 * 40,
+        minW = DM.ResizeBounds.minW, maxW = DM.ResizeBounds.maxW,
+        minH = DM.ResizeBounds.minH, maxH = DM.MinBarHeightPx * DM.MaxBarsStretch,
         widthKey = "BarWidth",
         heightKey = "TotalHeight",
     }
@@ -775,14 +701,13 @@ local function BuildMeterFrame(id, def)
             if not bar._source then return end
             if InCombatLockdown() then return end
             local src = bar._source
-            if IsShiftKeyDown() and src.sourceGUID and src.classFilename
-               and src.classFilename ~= "" and Plugin.OpenSpecComparison then
+            if IsShiftKeyDown() and src.sourceGUID and src.classFilename and src.classFilename ~= "" then
                 Plugin:OpenSpecComparison(id, src)
                 return
             end
             if src.sourceGUID or src.sourceCreatureID then
                 local displayName = src.name
-                if src.sourceGUID and GetPlayerInfoByGUID then
+                if src.sourceGUID then
                     local _, _, _, _, _, apiName = GetPlayerInfoByGUID(src.sourceGUID)
                     if apiName and apiName ~= "" then displayName = apiName end
                 end
@@ -812,12 +737,12 @@ local function BuildMeterFrame(id, def)
         if def2.viewMode == "history" then
             totalRows = #BuildHistoryEntries()
         elseif def2.viewMode == "breakdown" and (def2.breakdownGUID or def2.breakdownCreatureID) then
-            local sd = Data and Data:ResolveSessionSource(
+            local sd = Data:ResolveSessionSource(
                 def2.sessionID, def2.sessionType, def2.meterType,
                 def2.breakdownGUID, def2.breakdownCreatureID
             )
             if sd and sd.combatSpells then totalRows = #sd.combatSpells end
-        elseif Data and Data:IsAvailable() then
+        elseif Data:IsAvailable() then
             local session = Data:ResolveSession(def2.sessionID, def2.sessionType, def2.meterType)
             if session and session.combatSources then totalRows = #session.combatSources end
         end
@@ -839,15 +764,14 @@ local function BuildMeterFrame(id, def)
 
     -- Parented to outer frame so it can render outside _visibleRect bounds; anchors track the rect.
     frame._title = frame:CreateFontString(nil, "OVERLAY")
-    frame._title:SetFont(GetFont(), def.titleSize or 12, GetFontOutline())
+    frame._title:SetFont(GetFont(), def.titleSize, GetFontOutline())
     frame._title:SetTextColor(1, 1, 1)
     frame._title:Hide()
 
     do
-        local tabW, tabH = GetStretchTabSize()
         local tab = CreateFrame("Button", nil, frame)
-        tab:SetSize(tabW, tabH)
-        tab:SetFrameLevel(frame:GetFrameLevel() + 20)
+        tab:SetSize(STRETCH_TAB_WIDTH, STRETCH_TAB_HEIGHT)
+        tab:SetFrameLevel(frame:GetFrameLevel() + DM.StretchTabLevelBump)
         tab:SetAlpha(STRETCH_TAB_IDLE_ALPHA)
         tab:EnableMouse(true)
         tab:RegisterForClicks("LeftButtonDown", "LeftButtonUp")
@@ -866,7 +790,7 @@ local function BuildMeterFrame(id, def)
         tab._meterID = id
 
         tab:SetScript("OnEnter", function(self)
-            if Orbit and Orbit.IsEditMode and Orbit:IsEditMode() then return end
+            if InEditMode() then return end
             self:SetAlpha(STRETCH_TAB_HOVER_ALPHA)
         end)
         tab:SetScript("OnLeave", function(self)
@@ -918,7 +842,7 @@ local function BuildMeterFrame(id, def)
 
         tab:SetScript("OnMouseDown", function(self, button)
             if button ~= "LeftButton" then return end
-            if Orbit and Orbit.IsEditMode and Orbit:IsEditMode() then return end
+            if InEditMode() then return end
             local d = Plugin:GetMeterDef(self._meterID)
             if not d then return end
             local _, startY = GetCursorPosition()
@@ -926,7 +850,7 @@ local function BuildMeterFrame(id, def)
             self._startCursorY = startY
             local maxRows = math.max(self._origBarCount, GetAvailableRowCount(d))
             maxRows = math.min(maxRows, STRETCH_MAX_BARS)
-            local stride = (d.barHeight or 18) + (d.barGap or 0)
+            local stride = d.barHeight + d.barGap
             self._stride       = stride
             self._maxBars      = maxRows
             self._maxStretchPx = math.max(0, (maxRows - self._origBarCount) * stride)
@@ -948,13 +872,12 @@ local function BuildMeterFrame(id, def)
 
     frame.CreateCanvasPreview = function(_, options)
         local currentDef = Plugin:GetMeterDef(id) or def
-        local scale = (options and options.scale) or 1
-        local parent = (options and options.parent) or UIParent
-        local borderSize = (options and options.borderSize)
-            or (OrbitEngine.Pixel and OrbitEngine.Pixel:DefaultBorderSize(scale))
+        local scale = options and options.scale or 1
+        local parent = options and options.parent or UIParent
+        local borderSize = options and options.borderSize or OrbitEngine.Pixel:DefaultBorderSize(scale)
 
-        local iconSide = currentDef.iconPosition or ICON_POS_LEFT
-        local showIcon = iconSide ~= ICON_POS_OFF
+        local iconSide = currentDef.iconPosition
+        local showIcon = iconSide ~= ICON.Off
         local iconSize = showIcon and currentDef.barHeight or 0
         local fillWidth = currentDef.barWidth - iconSize
 
@@ -969,7 +892,7 @@ local function BuildMeterFrame(id, def)
         if showIcon then
             local icon = preview:CreateTexture(nil, "ARTWORK")
             icon:SetSize(iconSize * scale, iconSize * scale)
-            if iconSide == ICON_POS_RIGHT then
+            if iconSide == ICON.Right then
                 icon:SetPoint("LEFT", preview, "RIGHT", 0, 0)
             else
                 icon:SetPoint("RIGHT", preview, "LEFT", 0, 0)
@@ -977,9 +900,7 @@ local function BuildMeterFrame(id, def)
             ApplyClassIcon(icon, "WARRIOR")
         end
 
-        local previewStylePct = currentDef.style
-        if previewStylePct == nil then previewStylePct = 100 end
-        local previewFillHeight = currentDef.barHeight * previewStylePct / 100 * scale
+        local previewFillHeight = currentDef.barHeight * currentDef.style / 100 * scale
 
         local bar = CreateFrame("StatusBar", nil, preview)
         bar:SetPoint("BOTTOMLEFT",  preview, "BOTTOMLEFT",  0, 0)
@@ -987,12 +908,11 @@ local function BuildMeterFrame(id, def)
         bar:SetStatusBarTexture(GetBarTexture())
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(0.7)
-        local tex = bar:GetStatusBarTexture()
-        if tex and tex.SetVertexColor then tex:SetVertexColor(ResolveBarColor("WARRIOR")) end
+        bar:GetStatusBarTexture():SetVertexColor(ResolveBarColor("WARRIOR"))
 
         local bg = bar:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints(bar)
-        bg:SetColorTexture(0, 0, 0, 0.4)
+        bg:SetColorTexture(0, 0, 0, BACKDROP_ALPHA)
 
         local rank = preview:CreateFontString(nil, "OVERLAY")
         rank:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
@@ -1030,18 +950,16 @@ local function BuildMeterFrame(id, def)
         local dpsStartX,        dpsStartY        = AnchorToCenter(dpsPos.anchorX,        dpsPos.anchorY,        dpsPos.offsetX,        dpsPos.offsetY,        halfW, halfH)
         local damageDoneStartX, damageDoneStartY = AnchorToCenter(damageDonePos.anchorX, damageDonePos.anchorY, damageDonePos.offsetX, damageDonePos.offsetY, halfW, halfH)
 
-        local CDC = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.CreateDraggableComponent
-        if CDC then
-            local rankComp       = CDC(preview, "Rank",       rank,       rankStartX,       rankStartY,       rankPos)
-            local nameComp       = CDC(preview, "Name",       name,       nameStartX,       nameStartY,       namePos)
-            local dpsComp        = CDC(preview, "DPS",        dps,        dpsStartX,        dpsStartY,        dpsPos)
-            local damageDoneComp = CDC(preview, "DamageDone", damageDone, damageDoneStartX, damageDoneStartY, damageDonePos)
-            local fl = preview:GetFrameLevel() + 10
-            if rankComp       then rankComp:SetFrameLevel(fl);       preview.components.Rank       = rankComp;       rank:Hide()       end
-            if nameComp       then nameComp:SetFrameLevel(fl);       preview.components.Name       = nameComp;       name:Hide()       end
-            if dpsComp        then dpsComp:SetFrameLevel(fl);        preview.components.DPS        = dpsComp;        dps:Hide()        end
-            if damageDoneComp then damageDoneComp:SetFrameLevel(fl); preview.components.DamageDone = damageDoneComp; damageDone:Hide() end
-        end
+        local CDC = OrbitEngine.CanvasMode.CreateDraggableComponent
+        local rankComp       = CDC(preview, "Rank",       rank,       rankStartX,       rankStartY,       rankPos)
+        local nameComp       = CDC(preview, "Name",       name,       nameStartX,       nameStartY,       namePos)
+        local dpsComp        = CDC(preview, "DPS",        dps,        dpsStartX,        dpsStartY,        dpsPos)
+        local damageDoneComp = CDC(preview, "DamageDone", damageDone, damageDoneStartX, damageDoneStartY, damageDonePos)
+        local fl = preview:GetFrameLevel() + DM.PreviewLevelBump
+        if rankComp       then rankComp:SetFrameLevel(fl);       preview.components.Rank       = rankComp;       rank:Hide()       end
+        if nameComp       then nameComp:SetFrameLevel(fl);       preview.components.Name       = nameComp;       name:Hide()       end
+        if dpsComp        then dpsComp:SetFrameLevel(fl);        preview.components.DPS        = dpsComp;        dps:Hide()        end
+        if damageDoneComp then damageDoneComp:SetFrameLevel(fl); preview.components.DamageDone = damageDoneComp; damageDone:Hide() end
 
         return preview
     end
@@ -1137,21 +1055,21 @@ local DISCRETE_METRICS = {
     [DM.MeterType.Deaths]     = "time",
 }
 
-local function PostProcessDiscrete(bar, source, meterType, positions, disabledHash)
+local function PostProcessDiscrete(bar, source, meterType, positions, disabled)
     local kind = DISCRETE_METRICS[meterType]
     if not kind then return end
     if source.displayValue then return end
 
-    local damageDoneDisabled = disabledHash and disabledHash.DamageDone
     local targetFS, otherFS, targetKey
-    if damageDoneDisabled then
+    if disabled.DamageDone then
         targetFS, otherFS, targetKey = bar.DPS, bar.DamageDone, "DPS"
     else
         targetFS, otherFS, targetKey = bar.DamageDone, bar.DPS, "DamageDone"
     end
     otherFS:SetText("")
     if kind == "time" then
-        targetFS:SetText(FormatDuration(source.deathTimeSeconds))
+        -- deathTimeSeconds is combat-secret; SafeFormatDuration guards the Lua-side arithmetic.
+        targetFS:SetText(SafeFormatDuration(source.deathTimeSeconds))
     else
         local overrides = positions and positions[targetKey] and positions[targetKey].overrides or nil
         WriteNumberField(targetFS, source.totalAmount, overrides)
@@ -1162,7 +1080,7 @@ local function PaintBar(bar, rank, source, maxAmount, iconPosition, positions, m
     bar._source = source
     bar.StatusBar:SetMinMaxValues(0, maxAmount)
     bar.StatusBar:SetValue(source.totalAmount)
-    if iconPosition == ICON_POS_OFF then
+    if iconPosition == ICON.Off then
         bar.Icon:SetTexture(nil)
     elseif source.specIconID and source.specIconID ~= 0 then
         bar.Icon:SetTexture(source.specIconID)
@@ -1174,19 +1092,16 @@ local function PaintBar(bar, rank, source, maxAmount, iconPosition, positions, m
         bar.Icon:SetTexture(nil)
         bar.Icon:Hide()
     end
-    local r, g, b, a = ResolveBarColor(source.classFilename, meterType)
-    local tex = bar.StatusBar:GetStatusBarTexture()
-    if tex and tex.SetVertexColor then tex:SetVertexColor(r, g, b, a) end
+    bar.StatusBar:GetStatusBarTexture():SetVertexColor(ResolveBarColor(source.classFilename, meterType))
     bar.Rank:SetFormattedText("%d.", rank)
     -- GetPlayerInfoByGUID is AllowedWhenTainted and returns name/realmName separately (combat-safe).
+    -- No == "" check: returned name may be secret, truthy check is the only legal inspection.
     local displayName
-    if source.sourceGUID and GetPlayerInfoByGUID then
-        -- No == "" check: returned name may be secret, truthy check is the only legal inspection.
+    if source.sourceGUID then
         local _, _, _, _, _, name = GetPlayerInfoByGUID(source.sourceGUID)
         if name then displayName = name end
     end
     bar.Name:SetText(displayName or source.name or "?")
-    positions = positions or {}
     local rankOverrides  = positions.Rank       and positions.Rank.overrides       or nil
     local nameOverrides  = positions.Name       and positions.Name.overrides       or nil
     local dpsOverrides   = positions.DPS        and positions.DPS.overrides        or nil
@@ -1217,19 +1132,17 @@ function RenderFrame(id)
 
     local count = def.barCount
     local offset = def.scrollOffset or 0
-    local inEditMode = Orbit.IsEditMode and Orbit:IsEditMode()
 
-    local iconPosition = def.iconPosition or ICON_POS_LEFT
-    local positions, disabledList = GetCanvasStateForMeter(def, def.id)
-    local disabledHash = BuildDisabledHash(disabledList)
+    local iconPosition = def.iconPosition
+    local positions, disabled = GetCanvasStateForMeter(def, def.id)
     local meterType = def.meterType
     -- metricOverride flips the color-resolution perspective (breakdown rows represent friendly casters).
     local function Paint(bar, rank, source, maxAmount, metricOverride)
         PaintBar(bar, rank, source, maxAmount, iconPosition, positions, metricOverride or meterType)
-        PostProcessDiscrete(bar, source, meterType, positions, disabledHash)
+        PostProcessDiscrete(bar, source, meterType, positions, disabled)
     end
 
-    if inEditMode then
+    if InEditMode() then
         local dummies = HOSTILE_SOURCE_METRICS[meterType] and NPC_DUMMY_SOURCES or GetPreviewRoster()
         for i = 1, count do
             local bar = frame.bars[i]
@@ -1243,19 +1156,21 @@ function RenderFrame(id)
     end
 
     local Data = OrbitEngine.DamageMeterData
-    local session = nil
-    if Data and Data:IsAvailable() then
-        session = Data:ResolveSession(def.sessionID, def.sessionType, def.meterType)
-    end
+    local session = Data:IsAvailable() and Data:ResolveSession(def.sessionID, def.sessionType, def.meterType) or nil
 
     if def.viewMode == "history" then
         local entries = BuildHistoryEntries()
+        -- Comparing durationSeconds in Lua would throw on secret values in combat. Skip the scan
+        -- when any entry is tainted; bars render at full width (1.0 denom) until combat ends.
         local maxDuration = 0
+        local anySecret = false
         for _, e in ipairs(entries) do
-            if e.durationSeconds and e.durationSeconds > maxDuration then
-                maxDuration = e.durationSeconds
+            if e.durationSeconds then
+                if issecretvalue(e.durationSeconds) then anySecret = true; break end
+                if e.durationSeconds > maxDuration then maxDuration = e.durationSeconds end
             end
         end
+        if anySecret then maxDuration = nil end
         local _, playerClass = UnitClass("player")
         local visibleCount = 0
         for i = 1, count do
@@ -1275,16 +1190,13 @@ function RenderFrame(id)
 
     if def.viewMode == "breakdown" and (def.breakdownGUID or def.breakdownCreatureID) then
         -- Legacy recovery: secret breakdown IDs from pre-guard saves auto-exit (secrets never un-secret).
-        if issecretvalue and (
-            (def.breakdownGUID and issecretvalue(def.breakdownGUID))
-            or (def.breakdownCreatureID and issecretvalue(def.breakdownCreatureID))
-        ) then
+        if (def.breakdownGUID and issecretvalue(def.breakdownGUID))
+           or (def.breakdownCreatureID and issecretvalue(def.breakdownCreatureID)) then
             C_Timer.After(0, function() Plugin:ExitBreakdown(id) end)
             RenderEmpty(frame, def)
             return
         end
-        local Data = OrbitEngine.DamageMeterData
-        local sourceData = Data and Data:ResolveSessionSource(
+        local sourceData = OrbitEngine.DamageMeterData:ResolveSessionSource(
             def.sessionID, def.sessionType, def.meterType,
             def.breakdownGUID, def.breakdownCreatureID
         )
@@ -1310,33 +1222,16 @@ function RenderFrame(id)
                     -- Explicit blank check: details.unitName carries "" rather than nil sometimes.
                     rowName = details and details.unitName
                     if not rowName or rowName == "" then rowName = "?" end
-                    rowClass = (details and details.unitClassFilename) or ""
+                    rowClass = details and details.unitClassFilename or ""
                     if rowClass == "" then rowClass = fallbackClass end
                     iconID = details and details.specIconID
-                    if not iconID or iconID == 0 then
-                        if spell.spellID then
-                            if C_Spell and C_Spell.GetSpellTexture then
-                                iconID = C_Spell.GetSpellTexture(spell.spellID)
-                            end
-                            if not iconID and _G.GetSpellTexture then
-                                iconID = _G.GetSpellTexture(spell.spellID)
-                            end
-                        end
+                    if (not iconID or iconID == 0) and spell.spellID then
+                        iconID = C_Spell.GetSpellTexture(spell.spellID)
                     end
                 else
                     if spell.spellID then
-                        if C_Spell and C_Spell.GetSpellName then
-                            rowName = C_Spell.GetSpellName(spell.spellID)
-                        end
-                        if (not rowName or rowName == "") and _G.GetSpellInfo then
-                            rowName = _G.GetSpellInfo(spell.spellID)
-                        end
-                        if C_Spell and C_Spell.GetSpellTexture then
-                            iconID = C_Spell.GetSpellTexture(spell.spellID)
-                        end
-                        if not iconID and _G.GetSpellTexture then
-                            iconID = _G.GetSpellTexture(spell.spellID)
-                        end
+                        rowName = C_Spell.GetSpellName(spell.spellID)
+                        iconID  = C_Spell.GetSpellTexture(spell.spellID)
                     end
                     if not rowName or rowName == "" then rowName = "?" end
                     rowClass = fallbackClass
@@ -1381,10 +1276,12 @@ end
 -- [ PUBLIC API ] ------------------------------------------------------------------------------------
 -- Reuse frames by id: re-creating a named frame orphans the old one in _G with undefined render state.
 function Plugin:RebuildAllMeters()
-    if self.EnsureSeedMeter then self:EnsureSeedMeter() end
+    self:EnsureSeedMeter()
+    -- Partial-def self-heal: fill in any missing styling fields BEFORE LayoutBars reads them.
+    self:NormalizeMeterDefs()
     -- Child self-heal: any def whose anchor.target no longer resolves to a live meter
     -- has its anchor cleared (and visual position snapshotted) BEFORE frames are laid out.
-    if self.ScrubStaleAnchors then self:ScrubStaleAnchors() end
+    self:ScrubStaleAnchors()
 
     local defs = self:GetMeterDefs()
 
@@ -1407,17 +1304,13 @@ function Plugin:RebuildAllMeters()
         end
         LayoutBars(frame, def)
         frame:ClearAllPoints()
-        local restored = false
-        if OrbitEngine.Frame and OrbitEngine.Frame.RestorePosition then
-            restored = OrbitEngine.Frame:RestorePosition(frame, self, id) and true or false
-        end
-        if not restored then
-            local pos = def.position or { point = "TOPLEFT", x = 200, y = -200 }
-            frame:SetPoint(pos.point or "TOPLEFT", UIParent, pos.point or "TOPLEFT", pos.x or 0, pos.y or 0)
+        if not OrbitEngine.Frame:RestorePosition(frame, self, id) then
+            local pos = def.position or DM.DefaultPosition
+            frame:SetPoint(pos.point, UIParent, pos.point, pos.x, pos.y)
         end
         frame:Show()
         -- Visibility Engine: all meters share the "DamageMeters" entry via sentinel index 1.
-        if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, 1, "OutOfCombatFade", false) end
+        Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, 1, "OutOfCombatFade", false)
     end
 
     self:RenderAllMeters()
@@ -1425,9 +1318,7 @@ function Plugin:RebuildAllMeters()
     -- Frames created mid-Edit-Mode have a Selection overlay (from Attach) but it hasn't been
     -- Shown yet — OnEditModeEnter runs a single pass on Edit Mode enter, and our new frame missed it.
     -- Re-fire it so the new meter becomes selectable without requiring an exit/re-enter.
-    if Orbit.IsEditMode and Orbit:IsEditMode() and OrbitEngine.Frame and OrbitEngine.Frame.OnEditModeEnter then
-        OrbitEngine.Frame:OnEditModeEnter()
-    end
+    if InEditMode() then OrbitEngine.Frame:OnEditModeEnter() end
 end
 
 function Plugin:CheckViewTimeouts()
@@ -1471,8 +1362,7 @@ function Plugin:GetFrameBySystemIndex(systemIndex)
 end
 
 local function RegisterComponentSchemas()
-    local Schema = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.SettingsSchema
-    if not Schema or not Schema.KEY_SCHEMAS then return end
+    local Schema = OrbitEngine.CanvasMode.SettingsSchema
     local FORMAT_DROPDOWN = {
         type = "dropdown", key = "Format", label = L.PLU_DM_FORMAT, default = "Short",
         options = {
@@ -1482,9 +1372,9 @@ local function RegisterComponentSchemas()
     }
     local NUMBER_TEXT = {
         controls = {
-            { type = "font",        key = "Font",             label = "Font" },
-            { type = "slider",      key = "FontSize",         label = "Size", min = 6, max = 32, step = 1 },
-            { type = "colorcurve",  key = "CustomColorCurve", label = "Color", singleColor = true },
+            { type = "font",        key = "Font",             label = L.CMN_FONT },
+            { type = "slider",      key = "FontSize",         label = L.CMN_SIZE, min = 6, max = 32, step = 1 },
+            { type = "colorcurve",  key = "CustomColorCurve", label = L.CMN_COLOR, singleColor = true },
             FORMAT_DROPDOWN,
         },
     }
@@ -1502,16 +1392,14 @@ function Plugin:InitUI()
         for id, frame in pairs(meters) do RenderEmpty(frame, self:GetMeterDef(id)) end
     end, self)
 
-    if Orbit.Engine and Orbit.Engine.EditMode then
-        Orbit.Engine.EditMode:RegisterCallbacks({
-            Exit = function()
-                self:RelayoutAllMeters()
-            end,
-        }, self)
-    end
+    Orbit.Engine.EditMode:RegisterCallbacks({
+        Exit = function() self:RelayoutAllMeters() end,
+    }, self)
 
     if self._uiTicker then self._uiTicker:Cancel() end
-    self._uiTicker = C_Timer.NewTicker(0.5, function()
+    -- Render on tick alongside the view-timeout check: event-driven renders miss ticker-driven
+    -- state changes (view-mode auto-exit) that must repaint even when the data pipeline is quiet.
+    self._uiTicker = C_Timer.NewTicker(DM.UITickerSeconds, function()
         self:CheckViewTimeouts()
         self:RenderAllMeters()
     end)
