@@ -134,7 +134,7 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
             onChange = function(val)
                 if val and val ~= "" then
                     local tiers = plugin:GetSetting(1, "Tiers") or {}
-                    plugin._undoSnapshot = Orbit.Engine.DeepCopy and Orbit.Engine.DeepCopy(tiers[editTier] or {}) or CopyTable(tiers[editTier] or {})
+                    plugin._undoSnapshot = CopyTable(tiers[editTier] or {})
                     plugin:CopyTierSettings(val, editTier)
                     plugin:ApplySettings()
                     C_Timer.After(0, function() OrbitEngine.Layout:Reset(dialog); Orbit.GroupFrameSettings(plugin, dialog, systemFrame) end)

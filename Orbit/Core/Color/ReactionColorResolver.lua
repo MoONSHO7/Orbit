@@ -11,6 +11,9 @@ RC.COLORS = {
     HOSTILE = { r = 1, g = 0.1, b = 0.1, a = 1 },
     NEUTRAL = { r = 1, g = 0.8, b = 0, a = 1 },
     FRIENDLY = { r = 0.1, g = 1, b = 0.1, a = 1 },
+    RENOWN = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
+    PARAGON = { r = 1.0, g = 0.5, b = 0, a = 1 },
+    PARAGON_REWARD = { r = 1.0, g = 0.8, b = 0, a = 1 },
 }
 
 local function GetAccountSetting(key)

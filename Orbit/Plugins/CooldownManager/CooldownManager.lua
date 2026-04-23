@@ -317,7 +317,6 @@ function Plugin:CreateAnchor(name, systemIndex, label, overrideOptions)
     frame.editModeName = label
     frame:EnableMouse(false)
     frame.anchorOptions = overrideOptions or { horizontal = true, vertical = true, useRowDimension = true, mergeBorders = true }
-    frame.orbitWidthSync = true
     frame.orbitCursorReveal = true
     OrbitEngine.Frame:AttachSettingsListener(frame, self, systemIndex)
 

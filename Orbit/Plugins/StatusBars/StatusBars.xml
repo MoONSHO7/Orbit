@@ -1,0 +1,9 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="TextTemplate.lua"/>
+    <Script file="PendingXP.lua"/>
+    <Script file="SessionTracker.lua"/>
+    <Script file="Tooltip.lua"/>
+    <Script file="StatusBarBase.lua"/>
+    <Script file="ExperienceBar.lua"/>
+    <Script file="HonorBar.lua"/>
+</Ui>

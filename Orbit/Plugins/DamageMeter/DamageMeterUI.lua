@@ -644,10 +644,14 @@ local function LayoutBars(frame, def)
 end
 
 -- [ FRAME FACTORY ] ---------------------------------------------------------------------------------
+-- Divisor pair multiplies to the order of magnitude (e.g. 10 * 100 = 1000 for "K"); fractionDivisor=100 gives 2 decimals.
+-- Breakpoint=0 is the catch-all so sub-1 floats can't fall through to raw tostring.
 local SHORT_BREAKPOINTS = {
-    { breakpoint = 1000000000, abbreviation = "B", significandDivisor = 100000000, fractionDivisor = 10, abbreviationIsGlobal = false },
-    { breakpoint = 1000000,    abbreviation = "M", significandDivisor = 100000,    fractionDivisor = 10, abbreviationIsGlobal = false },
-    { breakpoint = 1000,       abbreviation = "K", significandDivisor = 100,       fractionDivisor = 10, abbreviationIsGlobal = false },
+    { breakpoint = 1000000000000, abbreviation = "T", significandDivisor = 10000000000, fractionDivisor = 100, abbreviationIsGlobal = false },
+    { breakpoint = 1000000000,    abbreviation = "B", significandDivisor = 10000000,    fractionDivisor = 100, abbreviationIsGlobal = false },
+    { breakpoint = 1000000,       abbreviation = "M", significandDivisor = 10000,       fractionDivisor = 100, abbreviationIsGlobal = false },
+    { breakpoint = 1000,          abbreviation = "K", significandDivisor = 10,          fractionDivisor = 100, abbreviationIsGlobal = false },
+    { breakpoint = 0,             abbreviation = "",  significandDivisor = 0.01,        fractionDivisor = 100, abbreviationIsGlobal = false },
 }
 local SHORT_OPTIONS = { breakpointData = SHORT_BREAKPOINTS }
 

@@ -28,9 +28,7 @@ function Toys:Build()
                     name = toyName,
                     lowerName = Tokenize:Fold(toyName),
                     icon = iconID,
-                    -- Macrotext instead of type="toy" because programmatic :Click() from our Enter-key
-                    -- handler trips UseToy's protected-function guard. "/use item:<id>" routes through
-                    -- the secure item handler and works for both hardware clicks and keyboard activation.
+                    favorite = C_ToyBox.GetIsFavorite(itemID) or false,
                     secure = { type = "macro", macrotext = "/use item:" .. itemID },
                 }
             end

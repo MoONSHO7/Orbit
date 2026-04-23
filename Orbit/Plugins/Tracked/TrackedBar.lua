@@ -361,24 +361,28 @@ function Bar:Apply(plugin, frame, record)
     local payload = record.payload
     local hasPayload = payload and payload.id
 
-    -- Width = long axis, Height = short axis; same record can flip orientation.
-    local longDim = plugin:GetSetting(record.id, "Width") or DEFAULT_WIDTH
-    local shortDim = plugin:GetSetting(record.id, "Height") or DEFAULT_HEIGHT
-    local Pixel = OrbitEngine.Pixel
-    if Pixel then longDim = Pixel:Snap(longDim); shortDim = Pixel:Snap(shortDim) end
+    -- Width/Height are literal screen X/Y. Older vertical records stored long/short axis; one-time swap.
     local isVertical = plugin:GetSetting(record.id, "Layout") == "Vertical"
     frame._isVertical = isVertical
-    -- Resize bounds map long/short axis to W/H; vertical swaps key mapping.
+    local settings = record.settings
+    if isVertical and settings and not settings.DimensionsLiteral then
+        local w = plugin:GetSetting(record.id, "Width")
+        local h = plugin:GetSetting(record.id, "Height")
+        if w and h and w > h then
+            plugin:SetSetting(record.id, "Width", h)
+            plugin:SetSetting(record.id, "Height", w)
+        end
+    end
+    if settings then settings.DimensionsLiteral = true end
+    local frameW = plugin:GetSetting(record.id, "Width") or (isVertical and DEFAULT_HEIGHT or DEFAULT_WIDTH)
+    local frameH = plugin:GetSetting(record.id, "Height") or (isVertical and DEFAULT_WIDTH or DEFAULT_HEIGHT)
+    local Pixel = OrbitEngine.Pixel
+    if Pixel then frameW = Pixel:Snap(frameW); frameH = Pixel:Snap(frameH) end
     if isVertical then
-        frame.orbitResizeBounds = {
-            minW = 12, maxW = 40, minH = 80, maxH = 400,
-            widthKey = "Height", heightKey = "Width",
-        }
+        frame.orbitResizeBounds = { minW = 12, maxW = 40, minH = 80, maxH = 400 }
     else
         frame.orbitResizeBounds = { minW = 80, maxW = 400, minH = 12, maxH = 40 }
     end
-    local frameW = isVertical and shortDim or longDim
-    local frameH = isVertical and longDim or shortDim
 
     -- Empty bars collapse to drop-hint square; docked bars defer width to SyncChild.
     local FrameAnchor = OrbitEngine.FrameAnchor

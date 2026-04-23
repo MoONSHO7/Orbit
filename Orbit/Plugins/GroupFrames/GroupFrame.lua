@@ -212,12 +212,12 @@ function Plugin:CopyTierSettings(sourceTier, destTier)
     local source = tiers[sourceTier] or TIER_DEFAULTS[sourceTier] or {}
     
     local existingDest = tiers[destTier] or {}
-    local preservedPos = Orbit.Engine.DeepCopy and Orbit.Engine.DeepCopy(existingDest.Position) or existingDest.Position
+    local preservedPos = existingDest.Position and CopyTable(existingDest.Position) or nil
 
     tiers[destTier] = {}
     for k, v in pairs(source) do
         if type(v) == "table" then
-            tiers[destTier][k] = Orbit.Engine.DeepCopy and Orbit.Engine.DeepCopy(v) or v
+            tiers[destTier][k] = CopyTable(v)
         else
             tiers[destTier][k] = v
         end

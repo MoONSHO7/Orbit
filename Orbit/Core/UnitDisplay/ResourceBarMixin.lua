@@ -111,12 +111,18 @@ function Mixin:GetSortedRuneOrder()
 end
 
 function Mixin:GetEssenceState(essenceIndex, currentEssence, maxEssence)
-    if not self._essenceState then self._essenceState = { nextTick = nil, lastEssence = 0 } end
+    if not self._essenceState then self._essenceState = { nextTick = nil, lastEssence = 0, tickDuration = nil } end
     local essenceState = self._essenceState
-    local now = GetTime()
     local regen = GetPowerRegenForPowerType(Enum.PowerType.Essence)
-    if not regen or regen <= 0 then return "empty", 0, 0 end
-    local tickDuration = 1 / regen
+    if regen ~= nil and not issecretvalue(regen) and regen > 0 then
+        essenceState.tickDuration = 1 / regen
+    end
+    local tickDuration = essenceState.tickDuration
+    if not tickDuration then
+        if essenceIndex <= currentEssence then return "full", 0, 1 end
+        return "empty", 0, 0
+    end
+    local now = GetTime()
     if currentEssence ~= essenceState.lastEssence then
         essenceState.nextTick = currentEssence < maxEssence and (now + tickDuration) or nil
     end

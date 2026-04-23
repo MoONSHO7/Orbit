@@ -37,6 +37,34 @@ Orbit.Profile.defaults = {
                     Position = { y = -123, x = 0, point = "TOP" },
                 },
             },
+            ["Orbit_ExperienceBar"] = {
+                ["Orbit_ExperienceBar"] = {
+                    Anchor = false,
+                    Width = 500, Height = 14, ValueMode = "percent",
+                    XPColor = { pins = { { position = 0, color = { r = 0.58, g = 0.0, b = 0.55, a = 1 } } } },
+                    ComponentPositions = {
+                        Name     = { anchorX = "LEFT",   anchorY = "CENTER", offsetX = 5,  offsetY = 0, posX = -240, posY = 0, justifyH = "LEFT",   selfAnchorY = "CENTER" },
+                        BarLevel = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0,  offsetY = 0, posX = 0,    posY = 0, justifyH = "CENTER", selfAnchorY = "CENTER" },
+                        BarValue = { anchorX = "RIGHT",  anchorY = "CENTER", offsetX = -5, offsetY = 0, posX = 240,  posY = 0, justifyH = "RIGHT",  selfAnchorY = "CENTER" },
+                    },
+                    DisabledComponents = {},
+                    Position = { y = 28, x = 0, point = "BOTTOM" },
+                },
+            },
+            ["Orbit_HonorBar"] = {
+                ["Orbit_HonorBar"] = {
+                    Anchor = false,
+                    Width = 500, Height = 14, ValueMode = "percent", OnlyInPvP = false,
+                    BarColor = { pins = { { position = 0, color = { r = 0.95, g = 0.45, b = 0.15, a = 1 } } } },
+                    ComponentPositions = {
+                        Name     = { anchorX = "LEFT",   anchorY = "CENTER", offsetX = 5,  offsetY = 0, posX = -240, posY = 0, justifyH = "LEFT",   selfAnchorY = "CENTER" },
+                        BarLevel = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0,  offsetY = 0, posX = 0,    posY = 0, justifyH = "CENTER", selfAnchorY = "CENTER" },
+                        BarValue = { anchorX = "RIGHT",  anchorY = "CENTER", offsetX = -5, offsetY = 0, posX = 240,  posY = 0, justifyH = "RIGHT",  selfAnchorY = "CENTER" },
+                    },
+                    DisabledComponents = {},
+                    Position = { y = 10, x = 0, point = "BOTTOM" },
+                },
+            },
             ["Orbit_DamageMeter"] = {
                 [1] = {
                     MeterDefs = {

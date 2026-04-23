@@ -210,12 +210,16 @@ the `TickMixin` is built once against the main `StatusBar` in `Build`, and `Layo
 
 ### layout (horizontal / vertical)
 
-`Layout` dropdown (Layout tab, default `Horizontal`) flips the bar's fill direction. `Width` and `Height` sliders are interpreted as **long axis / short axis** rather than literal X/Y, so the same record can flip orientations without resizing — the slider ranges (80-400 long, 12-40 short) stay valid in both. internally `Bar:Apply` derives `frameW, frameH` from the orientation:
+`Layout` dropdown (Layout tab, default `Horizontal`) flips the bar's fill direction. `Width` and `Height` sliders are **literal screen X/Y dimensions** — their labels match what they control, so the user's mental model never inverts. The slider ranges flip with the orientation: horizontal uses Width 80-400 / Height 12-40, vertical uses Width 12-40 / Height 80-400. When the user toggles Layout, `TrackedSettings` swaps the stored Width/Height values (so the bar's visual shape is preserved — a 200x20 horizontal bar becomes a 20x200 vertical bar) and re-renders the tab so the sliders pick up the new ranges. `Bar:Apply` passes the stored values straight through as `frameW, frameH`:
 
 | layout | frame W | frame H | icon position | StatusBar fill |
 |---|---|---|---|---|
-| `Horizontal` | `Width` (long) | `Height` (short) | `TOPLEFT`, square sized to `Height` | `LEFT → RIGHT` |
-| `Vertical`   | `Height` (short) | `Width` (long)  | `TOPLEFT`, square sized to `Width`  | `BOTTOM → TOP` |
+| `Horizontal` | `Width` (80-400) | `Height` (12-40) | `TOPLEFT`, square sized to `Height` | `LEFT → RIGHT` |
+| `Vertical`   | `Width` (12-40)  | `Height` (80-400) | `TOPLEFT` or `BOTTOMLEFT`, square sized to `Width` | `BOTTOM → TOP` |
+
+`IconPosition` slider values 1/2/3 map to `Left/Off/Right` when horizontal and `Top/Off/Bottom` when vertical — the formatter branches on the current `Layout`. The stored value is the same integer either way; only the displayed labels and the eventual frame anchor differ.
+
+**migration**: pre-rename records used Width = long axis / Height = short axis, so a vertical bar's stored Width could exceed 40. `Bar:Apply` does a one-shot swap when it encounters a vertical record with `Width > Height` (stamped with `settings.DimensionsLiteral = true` so it runs once per record) — this preserves the visual shape of any bars that existed before the rename.
 
 vertical bars set `StatusBar:SetOrientation("VERTICAL")` plus the same on `RechargePositioner` and `RechargeSegment`. WoW's vertical fill is `BOTTOM→TOP`, which naturally gives the requested behavior in both continuous modes:
 
@@ -226,7 +230,7 @@ the per-tick math in `UpdateActiveCdMode` / `UpdateCdOnlyMode` is unchanged — 
 
 `charges` mode also works in vertical. `LayoutChargesGeometry` reads the long-axis dimension (`barHeight` in vertical, `barWidth` in horizontal), splits it into `chargeLength = longAxis / maxCharges`, and anchors `RechargeSegment`/`TickBar` to the next-charge slot above the current fill (`BOTTOM → TOP of RechargePositioner texture` in vertical, `LEFT → RIGHT` in horizontal). `LayoutDividers` draws horizontal lines at proportional Y positions (vertical) or vertical lines at proportional X positions (horizontal). first charge is at the bottom of the bar, max charges fills the entire bar.
 
-`orbitResizeBounds` flips its `widthKey`/`heightKey` to `Height`/`Width` in vertical, so dragging the resize handle horizontally writes the short-axis slider and dragging vertically writes the long-axis slider — the screen-axis to slider mapping stays consistent regardless of orientation. `anchorOptions` is unchanged: vertical bars chained via dock still extend top/bottom and inherit parent width via `orbitWidthSync`, which works best when chaining vertical bars with other vertical bars.
+`orbitResizeBounds` flips its min/max per orientation (horizontal: 80-400 W × 12-40 H; vertical: 12-40 W × 80-400 H). Since `Width`/`Height` are literal screen dimensions, the resize handle writes directly to them — no `widthKey`/`heightKey` remap needed. `anchorOptions` is unchanged: vertical bars chained via dock still extend top/bottom and inherit parent width via `orbitWidthSync`, which works best when chaining vertical bars with other vertical bars.
 
 ### show icon
 

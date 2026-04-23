@@ -125,6 +125,9 @@ function Plugin:_BuildBarSettings(dialog, systemFrame, record)
     local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_TRK_TAB_LAYOUT, L.PLU_TRK_TAB_VISIBILITY, L.PLU_TRK_TAB_COLORS }, L.PLU_TRK_TAB_LAYOUT)
 
     if currentTab == L.PLU_TRK_TAB_LAYOUT then
+        local isVertical = self:GetSetting(systemIndex, "Layout") == "Vertical"
+        local longMin, longMax, longDefault = 80, 400, 200
+        local shortMin, shortMax, shortDefault = 12, 40, 20
         table.insert(schema.controls, {
             type = "dropdown", key = "Layout", label = L.PLU_TRK_LAYOUT,
             options = {
@@ -133,13 +136,24 @@ function Plugin:_BuildBarSettings(dialog, systemFrame, record)
             },
             default = "Horizontal",
             onChange = function(val)
+                local prev = self:GetSetting(systemIndex, "Layout") or "Horizontal"
                 self:SetSetting(systemIndex, "Layout", val)
+                -- Width/Height are literal screen X/Y — swap stored values so the user's bar keeps its shape.
+                if prev ~= val then
+                    local w = self:GetSetting(systemIndex, "Width") or longDefault
+                    local h = self:GetSetting(systemIndex, "Height") or shortDefault
+                    self:SetSetting(systemIndex, "Width", h)
+                    self:SetSetting(systemIndex, "Height", w)
+                end
                 self:ApplySettings(systemFrame)
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
         table.insert(schema.controls, {
             type = "slider", key = "Width", label = L.PLU_TRK_WIDTH,
-            min = 80, max = 400, step = 1, default = 200,
+            min = isVertical and shortMin or longMin,
+            max = isVertical and shortMax or longMax,
+            step = 1, default = isVertical and shortDefault or longDefault,
             onChange = function(val)
                 self:SetSetting(systemIndex, "Width", val)
                 self:ApplySettings(systemFrame)
@@ -147,7 +161,9 @@ function Plugin:_BuildBarSettings(dialog, systemFrame, record)
         })
         table.insert(schema.controls, {
             type = "slider", key = "Height", label = L.PLU_TRK_HEIGHT,
-            min = 12, max = 40, step = 1, default = 20,
+            min = isVertical and longMin or shortMin,
+            max = isVertical and longMax or shortMax,
+            step = 1, default = isVertical and longDefault or shortDefault,
             onChange = function(val)
                 self:SetSetting(systemIndex, "Height", val)
                 self:ApplySettings(systemFrame)
@@ -157,8 +173,8 @@ function Plugin:_BuildBarSettings(dialog, systemFrame, record)
             type = "slider", key = "IconPosition", label = L.CMN_ICON_POSITION,
             min = 1, max = 3, step = 1, default = 1,
             formatter = function(v)
-                if v == 1 then return L.CMN_ICON_LEFT end
-                if v == 3 then return L.CMN_ICON_RIGHT end
+                if v == 1 then return isVertical and L.CMN_ICON_TOP or L.CMN_ICON_LEFT end
+                if v == 3 then return isVertical and L.CMN_ICON_BOTTOM or L.CMN_ICON_RIGHT end
                 return L.CMN_ICON_OFF
             end,
             onChange = function(val)

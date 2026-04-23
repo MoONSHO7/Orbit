@@ -356,12 +356,42 @@ local function BuildColors(body)
     local _, gridH2 = Layout:ComputeGridContainerSize(#reactions, limitsPerLine, 0, colWidth, rowHeight, padding)
     yPos = yPos - gridH2 - 15
 
+    -- [ REPUTATION BAR COLORS ]
+    local headerRep = Layout:CreateSectionHeader(body, "Reputation Bar Colors")
+    Layout:AddControl(body, headerRep)
+    headerRep:SetPoint("TOPLEFT", body, "TOPLEFT", 10, yPos)
+    headerRep:SetPoint("TOPRIGHT", body, "TOPRIGHT", -10, yPos)
+    yPos = yPos - 30
+
+    local repEntries = { "RENOWN", "PARAGON", "PARAGON_REWARD" }
+    local repLabels = { RENOWN = "Renown", PARAGON = "Paragon", PARAGON_REWARD = "Paragon Reward" }
+    for i, key in ipairs(repEntries) do
+        local colorData = RC:GetOverride(key)
+        local picker
+        picker = Layout:CreateColorPicker(body, repLabels[key], colorData, function(c)
+            RC:SetOverride(key, c)
+            if not c then
+                local res = RC:GetOverride(key)
+                picker:SetColorQuiet(res.r, res.g, res.b, res.a)
+            end
+        end, { compact = true, allowClear = true })
+
+        local dx, dy = Layout:ComputeGridPosition(i, limitsPerLine, 0, colWidth, rowHeight, padding)
+        Layout:AddControl(body, picker)
+        picker:SetPoint("TOPLEFT", body, "TOPLEFT", startX + dx, yPos + dy)
+        allPickers[#allPickers + 1] = { type = "reaction", key = key, picker = picker }
+    end
+
+    local _, gridH3 = Layout:ComputeGridContainerSize(#repEntries, limitsPerLine, 0, colWidth, rowHeight, padding)
+    yPos = yPos - gridH3 - 15
+
     -- Reset to Defaults button
     local resetBtn = Layout:CreateButton(body, "Reset to Defaults", function()
         local acct = Orbit.db and Orbit.db.AccountSettings
         if acct then
             for _, classFile in ipairs(classes) do acct["ClassColor_" .. classFile] = nil end
             for _, reaction in ipairs(reactions) do acct["ReactionColor_" .. reaction] = nil end
+            for _, key in ipairs(repEntries) do acct["ReactionColor_" .. key] = nil end
         end
         for _, entry in ipairs(allPickers) do
             local c = entry.type == "class" and CC:GetOverrides(entry.key) or RC:GetOverride(entry.key)

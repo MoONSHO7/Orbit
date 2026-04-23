@@ -147,7 +147,7 @@ local function EnsureSessionWindowShown()
     if not frame or InCombatLockdown() then return end
     Orbit.db.AccountSettings = Orbit.db.AccountSettings or {}
     if Orbit.db.AccountSettings.DamageMeterFirstShown then return end
-    if frame:CanShowNewSessionWindow() then frame:ShowNewSessionWindow() end
+    if frame:CanShowNewSecondarySessionWindow() then frame:ShowNewSecondarySessionWindow() end
     Orbit.db.AccountSettings.DamageMeterFirstShown = true
 end
 
@@ -239,14 +239,13 @@ function Plugin:CopyMeterSettings(sourceID, destID)
     local defs = self:GetMeterDefs()
     local source, dest = defs[sourceID], defs[destID]
     if not source or not dest then return nil end
-    local DeepCopy = Orbit.Engine.DeepCopy
-    local snapshot = DeepCopy(dest)
+    local snapshot = CopyTable(dest)
     for k in pairs(COPYABLE_FIELDS) do
         local v = source[k]
         if v == nil then
             dest[k] = nil
         elseif type(v) == "table" then
-            dest[k] = DeepCopy(v)
+            dest[k] = CopyTable(v)
         else
             dest[k] = v
         end

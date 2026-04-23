@@ -16,9 +16,6 @@ local KIND_LABEL_GAP = 8
 local LABEL_FONT_SIZE = 12
 local KIND_FONT_SIZE = 10
 local COUNT_FONT_SIZE = 11
--- Favourite star atlases mirror Orbit-Dock-Portal (Core/View/PortalIcon.lua) so both surfaces share
--- the same visual vocabulary for favourites. Shadow sits behind the star to keep it legible on
--- bright icons like gold coins or white/healing spells.
 local STAR_ATLAS = "transmog-icon-favorite"
 local STAR_SHADOW_ATLAS = "PetJournal-BattleSlot-Shadow"
 local STAR_SIZE = 12
@@ -33,7 +30,6 @@ local KIND_LABEL_COLOR = { r = 0.6, g = 0.6, b = 0.6, a = 1 }
 local COUNT_COLOR = { r = 1, g = 1, b = 1, a = 1 }
 local SECURE_ATTR_KEYS = { "type", "item", "spell", "toy", "macro", "macrotext", "battlepet", "mount", "unit" }
 
--- Shortens large counts for the icon overlay so "12345" doesn't overflow the icon square.
 local function FormatCount(n)
     if not n or n <= 1 then return nil end
     if n >= 1000000 then return string.format("%.1fm", n / 1000000):gsub("%.0m", "m")
@@ -48,10 +44,6 @@ local KIND_LABEL = {}
 for _, k in ipairs(Orbit.Spotlight.Kinds) do KIND_LABEL[k.kind] = L[k.labelKey] end
 
 -- [ PICKUP DISPATCH ]-------------------------------------------------------------------------------
--- Puts the entry on the cursor via the appropriate WoW Pickup API so the user can drop it onto:
---   * native action bars (all cursor types accepted)
---   * Orbit Tracked icons/bars and CooldownManager (accept "spell" and "item" cursors via DragDrop:ResolveCursorInfo)
--- After pickup, the caller should close Spotlight so the drop target is visible.
 local function PickupEntry(entry)
     local k = entry.kind
     if k == "spellbook" or k == "professions" then
@@ -72,8 +64,6 @@ local function PickupEntry(entry)
 end
 
 -- [ TOOLTIP DISPATCH ]------------------------------------------------------------------------------
--- One case per kind. Adding a new source means adding a case here; the alternative (closures on every
--- entry) costs more memory for little architectural win at this scale.
 local function ShowTooltip(row)
     local entry = row._entry
     if not entry then return end
@@ -109,7 +99,8 @@ end
 function ResultRow:Create(parent, width)
     local row = CreateFrame("Button", nil, parent, "SecureActionButtonTemplate")
     row:SetSize(width, ROW_HEIGHT)
-    row:RegisterForClicks("AnyUp", "AnyDown")
+    -- AnyUp only: AnyDown would dispatch and close on mouse-down, pre-empting OnDragStart.
+    row:RegisterForClicks("AnyUp")
     row:RegisterForDrag("LeftButton")
     row:EnableMouse(true)
 
@@ -121,9 +112,7 @@ function ResultRow:Create(parent, width)
     end
     row:SetScript("OnDragStart", OnDragStart)
 
-    -- Icon button is a nested action button so we can apply the Orbit skin to it independently of the row background.
-    -- Mouse is enabled so the icon raises the tooltip on hover; clicks + motion propagate to the row so the secure
-    -- action fires when users click the icon (which is the intuitive target).
+    -- Clicks and motion propagate so clicking the icon fires the row's secure dispatch.
     local iconBtn = CreateFrame("CheckButton", nil, row)
     iconBtn:SetSize(ICON_SIZE, ICON_SIZE)
     iconBtn:SetPoint("LEFT", row, "LEFT", 2, 0)
@@ -142,7 +131,6 @@ function ResultRow:Create(parent, width)
 
     AButtonSkin:Apply(iconBtn, { hideName = true })
 
-    -- Stack / quantity count drawn over the icon's bottom-right corner. Hidden for rows without a count.
     local countText = iconBtn:CreateFontString(nil, "OVERLAY")
     Skin:SkinText(countText, { font = GetGlobalFontName(), textSize = COUNT_FONT_SIZE, textColor = COUNT_COLOR })
     countText:SetPoint("BOTTOMRIGHT", iconBtn, "BOTTOMRIGHT", -1, 1)
@@ -150,7 +138,6 @@ function ResultRow:Create(parent, width)
     countText:Hide()
     iconBtn.countText = countText
 
-    -- Favourite indicator: shadow pad on draw-sublayer 5, star on sublayer 7 so the star sits on top.
     local starShadow = iconBtn:CreateTexture(nil, "OVERLAY", nil, 5)
     starShadow:SetAtlas(STAR_SHADOW_ATLAS)
     starShadow:SetSize(STAR_SHADOW_SIZE, STAR_SHADOW_SIZE)
@@ -187,25 +174,19 @@ function ResultRow:Create(parent, width)
     row.selectedBg = selectedBg
 
     row:SetScript("OnEnter", function(self) self.selectedBg:Show(); ShowTooltip(self) end)
-    row:SetScript("OnLeave", function(self)
-        if not self._selected then self.selectedBg:Hide() end
-        GameTooltip:Hide()
-    end)
+    row:SetScript("OnLeave", function(self) self.selectedBg:Hide(); GameTooltip:Hide() end)
 
     return row
 end
 
 -- [ BIND ]------------------------------------------------------------------------------------------
--- Writes secure attributes (forbidden in combat — Spotlight itself is closed during combat so this is safe).
--- Non-secure entries use PostClick to fire the entry's onClick after the button is released.
+-- SetAttribute is combat-forbidden; the caller relies on Spotlight being closed during combat.
 local function ClearSecureAttrs(row)
     for _, key in ipairs(SECURE_ATTR_KEYS) do
         if row:GetAttribute(key) ~= nil then row:SetAttribute(key, nil) end
     end
 end
 
--- Records the entry into the Recents MRU list. Fires from PostClick so both secure (type="spell"/"item"
--- etc.) and non-secure (onClick fallback, e.g. currencies) rows feed the recency index.
 local function RecordActivation(row)
     local entry = row._entry
     if not entry then return end
@@ -217,8 +198,6 @@ function ResultRow:Bind(row, entry)
     row._entry = entry
     row.iconBtn.icon:SetTexture(entry.icon)
     row.label:SetText(entry.name)
-    -- Colour the name label by item quality when the entry has one (bags / equipped / heirlooms);
-    -- spells, mounts, etc. fall back to the default white so they don't appear desaturated.
     if entry.quality and C_Item and C_Item.GetItemQualityColor then
         local r, g, b = C_Item.GetItemQualityColor(entry.quality)
         row.label:SetTextColor(r, g, b, 1)
@@ -239,16 +218,15 @@ function ResultRow:Bind(row, entry)
     ClearSecureAttrs(row)
     if entry.secure then
         for k, v in pairs(entry.secure) do row:SetAttribute(k, v) end
-        row:SetScript("PostClick", function(self) RecordActivation(self) end)
+        row:SetScript("PostClick", function(self)
+            RecordActivation(self)
+            Orbit.Spotlight.UI.SpotlightFrame:Close()
+        end)
     else
         row:SetScript("PostClick", function(self)
             RecordActivation(self)
             if self._entry and self._entry.onClick then self._entry.onClick(self._entry) end
+            Orbit.Spotlight.UI.SpotlightFrame:Close()
         end)
     end
-end
-
-function ResultRow:SetSelected(row, selected)
-    row._selected = selected
-    if selected then row.selectedBg:Show() else row.selectedBg:Hide() end
 end

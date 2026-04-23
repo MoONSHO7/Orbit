@@ -71,6 +71,7 @@ end
 function TickMixin:Apply(frame, tickSize, perpDim, anchorBar, orientation)
     local rounded = 2 * math.floor((tickSize + 1) / 2)
     if rounded > 0 and frame.TickBar then
+        frame.TickBar:SetOrientation(orientation or "HORIZONTAL")
         local scale = frame:GetEffectiveScale()
         local overshoot = Engine.Pixel:Multiple(TICK_OVERSHOOT, scale)
         local tickThickness = math.max(Engine.Pixel:Multiple(rounded, scale), Engine.Pixel:DefaultBorderSize(scale))

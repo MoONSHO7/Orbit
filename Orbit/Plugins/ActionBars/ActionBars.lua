@@ -282,6 +282,8 @@ function Plugin:OnLoad()
         for index, container in pairs(self.containers) do
             if index == VEHICLE_EXIT_INDEX then
                 if not InCombatLockdown() and Orbit:IsEditMode() then UnregisterStateDriver(container, "visibility"); container:Show() end
+            elseif index == PET_BAR_INDEX and Orbit:IsEditMode() then
+                if not InCombatLockdown() then UnregisterStateDriver(container, "visibility"); container:Show() end
             elseif not (index <= 8 and index > numBars) then
                 if not InCombatLockdown() then
                     if index == PET_BAR_INDEX then RegisterStateDriver(container, "visibility", PET_BAR_BASE_DRIVER)

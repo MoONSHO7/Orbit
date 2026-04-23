@@ -17,8 +17,6 @@ local SCORE_SUBSTRING   = 100
 local SCORE_CATEGORY    = 100
 local FUZZY_MAX_GAPS    = 3
 local FUZZY_SCORE_BASE  = 50
--- Favourite and recency bonuses sit on top of the name-match score so they influence ordering within a
--- score tier without overpowering strong name matches. Recency scales by MRU position (index 1 = biggest).
 local SCORE_FAVORITE    = 15
 local SCORE_RECENT_BASE = 40
 local KIND_PRIORITY     = {
@@ -28,8 +26,7 @@ local KIND_PRIORITY     = {
 }
 
 -- [ CATEGORY TOKEN MAP ]----------------------------------------------------------------------------
--- Maps user-typed category labels (folded) to internal kind keys. Built lazily from localization so the
--- map stays in sync with the PLU_SPT_SRC_* strings that label checkboxes and result rows.
+-- Built lazily so localization is loaded before we fold label strings.
 local categoryTokens
 local function EnsureCategoryTokens()
     if categoryTokens then return categoryTokens end
@@ -43,35 +40,47 @@ local function EnsureCategoryTokens()
     return categoryTokens
 end
 
--- Pulls a category prefix off the query. Matches exact category tokens AND prefixes (min 3 chars) as long as
--- the prefix uniquely resolves to one category — so "mount"/"mou" both hit "mounts", but "m" (ambiguous with
--- macros) falls through to normal search. Two-word labels like "quest items" take priority over one-word prefixes.
+-- Longest-common-prefix match on category labels. Tolerates plurals ("spells"→"spellbook") and
+-- short typos; ambiguous ties fall through to name search.
 local CATEGORY_MIN_PREFIX = 3
 
-local function MatchToken(word)
+local function LongestCommonPrefix(a, b)
+    local n = math.min(#a, #b)
+    for i = 1, n do
+        if a:byte(i) ~= b:byte(i) then return i - 1 end
+    end
+    return n
+end
+
+local function MatchToken(word, requireMultiWordToken)
     local tokens = EnsureCategoryTokens()
     if tokens[word] then return tokens[word] end
     if #word < CATEGORY_MIN_PREFIX then return nil end
-    local only
+    local winner, bestLCP, ambiguous = nil, 0, false
     for tok, kind in pairs(tokens) do
-        if tok:sub(1, #word) == word then
-            if only and only ~= kind then return nil end
-            only = kind
+        if not requireMultiWordToken or tok:find(" ", 1, true) then
+            local lcp = LongestCommonPrefix(word, tok)
+            if lcp >= CATEGORY_MIN_PREFIX then
+                if lcp > bestLCP then
+                    winner, bestLCP, ambiguous = kind, lcp, false
+                elseif lcp == bestLCP and winner ~= kind then
+                    ambiguous = true
+                end
+            end
         end
     end
-    return only
+    if ambiguous then return nil end
+    return winner
 end
 
--- Word order is irrelevant: "pets human" and "human pets" both filter to pets + name "human". We scan
--- every word (and pair of adjacent words for the multi-word "quest items" label), consume the first
--- word that resolves to a category, and join the remainder as the name query.
+-- Scans word pairs first so multi-word labels ("quest items") beat single-word prefixes.
 local function ExtractCategoryPrefix(query)
     local words = {}
     for word in query:gmatch("%S+") do words[#words + 1] = word end
 
     for i = 1, #words - 1 do
         local pair = words[i] .. " " .. words[i + 1]
-        local kind = MatchToken(pair)
+        local kind = MatchToken(pair, true)
         if kind then
             local rest = {}
             for j = 1, #words do
@@ -96,7 +105,6 @@ local function ExtractCategoryPrefix(query)
 end
 
 -- [ SCORING ]---------------------------------------------------------------------------------------
--- Cheap pass: exact > prefix > word-boundary > substring. Fuzzy only runs when fuzzy=true and no substring hit.
 local function ScoreEntry(query, qlen, entry, fuzzy)
     local name = entry.lowerName
     if not name or name == "" then return 0 end
@@ -136,11 +144,6 @@ local function ScoreEntry(query, qlen, entry, fuzzy)
 end
 
 -- [ PUBLIC ]----------------------------------------------------------------------------------------
--- Query can be either a name substring or a category-prefix + optional name filter ("mounts", "mounts swift").
--- When the user types a bare category name with no drill-down, every entry of that kind is returned, sorted
--- alphabetically so the list behaves like browsing the category rather than searching it.
--- Applies favourite + recency bonuses on top of the base match score. Kept out of ScoreEntry so the
--- core substring/fuzzy grading stays query-shape-agnostic.
 local function ApplyBoosts(score, entry, recentBoost)
     if entry.favorite then score = score + SCORE_FAVORITE end
     if recentBoost then
@@ -166,12 +169,20 @@ function Matcher:Query(entries, query, enabledKinds, maxResults, fuzzy, hidePass
         end
     else
         local effectiveQuery = nameQuery ~= "" and nameQuery or query
-        local qlen = string_len(effectiveQuery)
+        local queryWords = {}
+        for w in effectiveQuery:gmatch("%S+") do queryWords[#queryWords + 1] = w end
+        if #queryWords == 0 then return {} end
         for i = 1, #entries do
             local entry = entries[i]
             local passKind = kindFilter and (entry.kind == kindFilter) or (not kindFilter and enabledKinds[entry.kind])
             if passKind and enabledKinds[entry.kind] and not (hidePassives and entry.passive) then
-                local score = ScoreEntry(effectiveQuery, qlen, entry, fuzzy)
+                -- Every word must hit (AND semantics); sum scores so strong matches on multiple words rank higher.
+                local score = 0
+                for _, w in ipairs(queryWords) do
+                    local s = ScoreEntry(w, #w, entry, fuzzy)
+                    if s == 0 then score = 0; break end
+                    score = score + s
+                end
                 if score > 0 then
                     table_insert(results, { entry = entry, score = ApplyBoosts(score, entry, recentBoost) })
                 end

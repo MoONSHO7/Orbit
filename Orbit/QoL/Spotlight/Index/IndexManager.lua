@@ -9,14 +9,8 @@ local Async = Orbit.Async
 -- [ CONSTANTS ]-------------------------------------------------------------------------------------
 local DEBOUNCE_KEY = "Spotlight.IndexInvalidate"
 local DEBOUNCE_DELAY = 0.5
--- Bump whenever the schema of cached entries changes so stale serialised entries don't shadow new fields.
--- v3 — mount capability tags reworked: "flying" is now the default tag, with explicit overrides only for
--- ground / aquatic / ridealong. Dragonriding-capable mounts get an additional "skyriding" sub-tag.
--- v4 — heirlooms no longer carry the `passive` flag (Hide Passives filter is now spellbook-only); the
--- passive toggle shouldn't retroactively hide heirlooms that were tagged under the old schema.
--- v5 — mounts/pets now carry `favorite` and heirlooms carry `quality`; previously-serialised entries
--- missing those fields would silently deprioritise favourites and lose quality-tinted labels.
-local CACHE_VERSION = 5
+-- Bump when the cached entry schema changes so stale serialised entries are discarded.
+local CACHE_VERSION = 6
 
 -- [ STATE ]-----------------------------------------------------------------------------------------
 IndexManager._master = {}
@@ -84,7 +78,6 @@ function IndexManager:UnregisterEvents()
 end
 
 -- [ BUILD ]-----------------------------------------------------------------------------------------
--- Persistent sources only write to cache when their signature changes; volatile ones always rebuild.
 function IndexManager:EnsureBuilt(enabledKinds)
     if self._built and not next(self._sourceDirty) then return end
     self:Rebuild(enabledKinds)

@@ -28,6 +28,8 @@ local PLUGIN_GROUPS = {
         "Queue Status",
         { label = "Talking Head", plugins = { "Talking Head" }, triState = true },
         "Minimap", "Datatexts",
+        { label = "Experience Bar", plugins = { "Experience Bar" }, triState = true },
+        { label = "Honor Bar",      plugins = { "Honor Bar" },      triState = true },
     }},
 }
 
