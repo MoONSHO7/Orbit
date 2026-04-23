@@ -1,9 +1,5 @@
 [start]
 
-### Message
-- Dev work will be a bit slower next few weeks, family is deciding to end life support for my younger brother who had a tragic brain injury. </3
-- Orbit nearly ready for a 1.0 release <3
-
 ### New Feature
 - Spotlight!
 - Turn on in Quality of Life tab (/orbit plugins -> QoL)
@@ -19,10 +15,15 @@ Damage Meters
 - Master damage meter removed due to feedback
 - Some bugfixes
 
+### Bugfixes
+- Evoker Resource Bar Lua Error due to 12.0.5
+- Damage Meter Lua error bugfix
+
 ### Hints
 You can always open this window again by typing `/orbit whatsnew`
 You can always disable a plugin in `/orbit plugins`
 Visibility settings are found in the VE Engine `/orbit ve`
+Click in four corners of the screen to open the Datatext Drawer
 
 stay safe
 

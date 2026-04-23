@@ -235,7 +235,7 @@ function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
             local btn = frame.buttons[i]
             if btn then
                 local r, g, b = self:GetResourceColorUnpacked(plugin, systemIndex, i, max)
-                local state, remaining, fraction = ResourceMixin:GetEssenceState(i, current, max)
+                local state = ResourceMixin:GetEssenceState(i, current, max)
                 if state == "full" then
                     if btn.orbitBar then btn.orbitBar:Show(); btn.orbitBar:SetVertexColor(r, g, b) end
                     if btn.Overlay then btn.Overlay:Show() end
@@ -243,8 +243,12 @@ function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
                 elseif state == "partial" then
                     if btn.orbitBar then btn.orbitBar:Show(); btn.orbitBar:SetVertexColor(r * INACTIVE_DIM_FACTOR, g * INACTIVE_DIM_FACTOR, b * INACTIVE_DIM_FACTOR) end
                     if btn.Overlay then btn.Overlay:Hide() end
-                    btn:SetFraction(fraction)
-                    if btn.progressBar then btn.progressBar:SetStatusBarColor(r * PARTIAL_DIM_FACTOR, g * PARTIAL_DIM_FACTOR, b * PARTIAL_DIM_FACTOR) end
+                    if btn.progressBar then
+                        btn.progressBar:SetMinMaxValues(0, 1000)
+                        btn.progressBar:SetValue(UnitPartialPower("player", Enum.PowerType.Essence))
+                        btn.progressBar:SetStatusBarColor(r * PARTIAL_DIM_FACTOR, g * PARTIAL_DIM_FACTOR, b * PARTIAL_DIM_FACTOR)
+                        btn.progressBar:Show()
+                    end
                 else
                     if btn.orbitBar then btn.orbitBar:Hide() end
                     if btn.Overlay then btn.Overlay:Hide() end

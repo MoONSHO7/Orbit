@@ -110,6 +110,9 @@ function Mixin:GetSortedRuneOrder()
     return result
 end
 
+-- Progress for the filling essence is rendered by piping UnitPartialPower (0-1000) into the
+-- StatusBar C++ sink in DiscreteBarRenderer; never compute a fraction in Lua — GetPowerRegenForPowerType
+-- returns secret under SecretWhenUnitStatsRestricted and SetFraction's comparisons would throw.
 function Mixin:GetEssenceState(essenceIndex, currentEssence, maxEssence)
     if not self._essenceState then self._essenceState = { nextTick = nil, lastEssence = 0, tickDuration = nil } end
     local essenceState = self._essenceState
