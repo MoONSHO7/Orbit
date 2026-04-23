@@ -110,31 +110,13 @@ function Mixin:GetSortedRuneOrder()
     return result
 end
 
+-- Progress for the filling essence is rendered by piping UnitPartialPower (0-1000) into the
+-- StatusBar C++ sink in DiscreteBarRenderer; never compute a fraction in Lua — GetPowerRegenForPowerType
+-- returns secret under SecretWhenUnitStatsRestricted and SetFraction's comparisons would throw.
 function Mixin:GetEssenceState(essenceIndex, currentEssence, maxEssence)
-    if not self._essenceState then self._essenceState = { nextTick = nil, lastEssence = 0 } end
-    local essenceState = self._essenceState
-    local now = GetTime()
-    local regen = GetPowerRegenForPowerType(Enum.PowerType.Essence)
-    if not regen or regen <= 0 then return "empty", 0, 0 end
-    local tickDuration = 1 / regen
-    if currentEssence ~= essenceState.lastEssence then
-        essenceState.nextTick = currentEssence < maxEssence and (now + tickDuration) or nil
-    end
-    if currentEssence < maxEssence and not essenceState.nextTick then
-        essenceState.nextTick = now + tickDuration
-    end
-    if currentEssence >= maxEssence then
-        essenceState.nextTick = nil
-    end
-    essenceState.lastEssence = currentEssence
-    if essenceIndex <= currentEssence then
-        return "full", 0, 1
-    elseif essenceIndex == currentEssence + 1 and essenceState.nextTick then
-        local remaining = math_max(0, essenceState.nextTick - now)
-        return "partial", remaining, 1 - (remaining / tickDuration)
-    else
-        return "empty", 0, 0
-    end
+    if essenceIndex <= currentEssence then return "full" end
+    if essenceIndex == currentEssence + 1 and currentEssence < maxEssence then return "partial" end
+    return "empty"
 end
 
 function Mixin:GetChargedPoints()

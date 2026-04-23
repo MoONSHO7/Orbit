@@ -66,9 +66,9 @@ function Plugin:DisableBlizzardMeter()
     NeutralizeRoot(frame)
     InstallShowGuard(frame)
     NeutralizeAllSessionWindows()
-    -- Session windows are created lazily on first ShowNewSessionWindow — hook to neutralize new ones.
+    -- Secondary session windows are created lazily on first ShowNewSecondarySessionWindow — hook to neutralize new ones.
     if not frame._orbitShowHooked then
-        hooksecurefunc(frame, "ShowNewSessionWindow", NeutralizeAllSessionWindows)
+        hooksecurefunc(frame, "ShowNewSecondarySessionWindow", NeutralizeAllSessionWindows)
         frame._orbitShowHooked = true
     end
 end
