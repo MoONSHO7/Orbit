@@ -11,6 +11,7 @@ local W = DT.BaseDatatext:New("Speed")
 
 function W:Update()
     local speed = GetUnitSpeed("player")
+    if issecretvalue(speed) then return end
     local pct = (speed / BASE_SPEED) * 100
     if pct > 0 then
         self:SetText(string.format("|cff00ff00%.0f%%|r", pct))
@@ -24,6 +25,10 @@ function W:ShowTooltip()
     GameTooltip:ClearLines()
     GameTooltip:AddLine("Movement Speed", 1, 0.82, 0)
     local speed = GetUnitSpeed("player")
+    if issecretvalue(speed) then
+        GameTooltip:Show()
+        return
+    end
     local pct = (speed / BASE_SPEED) * 100
     GameTooltip:AddDoubleLine("Current:", string.format("%.0f%%", pct), 1, 1, 1, 1, 1, 1)
     GameTooltip:AddDoubleLine("Yards/sec:", string.format("%.1f", speed), 1, 1, 1, 0.7, 0.7, 0.7)

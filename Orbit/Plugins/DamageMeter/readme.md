@@ -10,7 +10,7 @@ blizzard ships the data, we ship the UI. users create up to `MaxMeters` meters (
 
 | file | responsibility |
 |---|---|
-| DamageMeterConstants.lua | plugin constants (system id, meter/session enum values, event signal names, seed id, meter cap). |
+| DamageMeterConstants.lua | plugin constants (system id, meter/session enum values, event signal names, seed id, meter cap, border/background/title/icon-position enums, default def baseline, position templates, frame-level stride, stretch bounds, metric→label-key map, session-window count). every magic number used outside this file goes here first. |
 | DamageMeter.lua | plugin registration, lifecycle, meter-def factory (`CreateMeter`, `DeleteMeter`, `UpdateMeterDef`, `EnsureSeedMeter`), one-time legacy-master migration (`MigrateLegacyMaster`), view-mode transitions (`EnterBreakdown`/`ExitBreakdown`/`EnterHistory`/`ReturnToChart`), combat-start snap (`SnapAllMetersToCurrent`), blizzard addon bootstrap, session-window priming, per-meter Get/Set routing through `MeterDefs[id]`. |
 | DamageMeterData.lua | thin adapter over `C_DamageMeter.*`. sink-only; never arithmetic on returned numbers. |
 | DamageMeterEventBridge.lua | forwards `DAMAGE_METER_*` to `ORBIT_DAMAGEMETER_*` on `Orbit.EventBus`. |
@@ -22,13 +22,15 @@ removed vs the earlier draft: phases, session archive, compare window, chat repo
 
 ## secret value discipline
 
-`source.totalAmount`, `amountPerSecond`, `maxAmount`, `durationSeconds` are potentially secret in combat. the render path only writes them to sinks:
+`source.totalAmount`, `amountPerSecond`, `maxAmount`, `durationSeconds`, `deathTimeSeconds` are potentially secret in combat. the render path only writes them to sinks:
 
 - `StatusBar:SetMinMaxValues(0, maxAmount)` / `SetValue(totalAmount)` — status bar is a sink.
 - `FontString:SetFormattedText("%s", AbbreviateLargeNumbers(totalAmount))` — `AbbreviateLargeNumbers` is the C-side formatter blizzard's own entry mixin uses on the same values.
 - `FontString:SetFormattedText("%d. %s", rank, source.name)` — `source.name` is ConditionalSecret, safe for SetText sinks.
 
 never compared, never arithmetic-ed. `combatSources` is already server-ranked so no lua sort needed.
+
+**duration formatting** — `SafeFormatDuration(seconds)` is the only legal way to turn a `durationSeconds`/`deathTimeSeconds` into a rendered string. it guards with `issecretvalue()` before the `math.floor`/`%`/division inside `FormatDuration`; tainted values render as `""` until combat ends. history-view bar scaling skips the max-duration scan entirely when any entry is secret — bars fall back to 1.0 denominator (full width) rather than arithmeticing on tainted numbers.
 
 ## lifecycle
 
@@ -41,8 +43,13 @@ PLAYER_ENTERING_WORLD   → EnsureBlizzardAddonLoaded / cvar
                         → (0.5s) EnsureSessionWindowShown → DisableBlizzardMeter
 ORBIT_PROFILE_CHANGED   → (0.15s) MigrateLegacyMaster → RebuildAllMeters
 
-RebuildAllMeters (internal) → EnsureSeedMeter → ScrubStaleAnchors → stale-frame teardown → layout all defs
+RebuildAllMeters (internal) → EnsureSeedMeter → NormalizeMeterDefs → ScrubStaleAnchors → stale-frame teardown → layout all defs
 ```
+
+NormalizeMeterDefs is the field-level self-heal: every def is backfilled from `DM.DefaultDef`
+(barCount/Width/Height/Gap, iconPosition, style, border, background, title, titleSize) so partial
+defs from legacy profiles can't hit the render path with nil styling fields. it also rewrites any
+array-form `disabledComponents` into hash form so `IsComponentDisabled` stays O(1).
 
 ScrubStaleAnchors is the child-side self-heal: every def whose `anchor.target` no longer
 resolves to a live meter has its current visual position snapshotted into `def.position`

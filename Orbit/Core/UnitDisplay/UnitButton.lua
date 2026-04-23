@@ -189,17 +189,26 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f:SetScript("OnEvent", f.OnEvent)
     f:OnLoad(skipEventRegistration)
 
+    -- Helper function based on the Blizzard UnitFrame_UpdateTooltip method
+    -- without the Right-Click instruction line
+    local function OrbitUnitFrame_UpdateTooltip(frame)
+        GameTooltip_SetDefaultAnchor(GameTooltip, frame)
+        if GameTooltip:SetUnit(frame.unit) then
+            GameTooltip:Show()
+
+            frame.UpdateTooltip = OrbitUnitFrame_UpdateTooltip
+        else
+            frame.UpdateTooltip = nil
+        end
+    end
+
     f:SetScript("OnEnter", function(self)
         self:SetMouseOver(true)
-        if self.unit and UnitExists(self.unit) then
-            GameTooltip_SetDefaultAnchor(GameTooltip, self)
-            GameTooltip:SetUnit(self.unit)
-            GameTooltip:Show()
-        end
+        OrbitUnitFrame_UpdateTooltip(self)
     end)
     f:SetScript("OnLeave", function(self)
         self:SetMouseOver(false)
-        GameTooltip:Hide()
+        GameTooltip:FadeOut()
     end)
 
     f:HookScript("OnSizeChanged", function(self)

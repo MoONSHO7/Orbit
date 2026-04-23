@@ -54,7 +54,7 @@ function Mixin:CreateAnchors(frame, plugin, iconSize)
             point, relPoint = "CENTER", "CENTER"
         end
         local anchorID = C_UnitAuras.AddPrivateAuraAnchor({
-            unitToken = unit, auraIndex = i, parent = anchor,
+            unitToken = unit, auraIndex = i, parent = anchor, isContainer = false,
             showCountdownFrame = true, showCountdownNumbers = true,
             iconInfo = {
                 iconWidth = size, iconHeight = size, borderScale = size / BORDER_SCALE_DIVISOR,

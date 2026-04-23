@@ -67,3 +67,4 @@ Plugins\Extras\TalkingHead.lua
 # ==============================================================
 QoL\MoveMore.lua
 QoL\Mouse.lua
+QoL\Spotlight\Spotlight.xml

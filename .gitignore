@@ -1,5 +1,6 @@
 .env
 .vscode/
+.idea
 
 # Libraries fetched by BigWigs packager at build time.
 # Set as externals in .pkgmeta and ignored here.

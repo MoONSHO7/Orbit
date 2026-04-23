@@ -1,0 +1,24 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="Spotlight.lua"/>
+    <Script file="Search\Tokenize.lua"/>
+    <Script file="Search\Matcher.lua"/>
+    <Script file="Index\MountTypeTags.lua"/>
+    <Script file="Index\Recents.lua"/>
+    <Script file="Index\Sources\Bags.lua"/>
+    <Script file="Index\Sources\Equipped.lua"/>
+    <Script file="Index\Sources\Spellbook.lua"/>
+    <Script file="Index\Sources\Toys.lua"/>
+    <Script file="Index\Sources\Mounts.lua"/>
+    <Script file="Index\Sources\Pets.lua"/>
+    <Script file="Index\Sources\Heirlooms.lua"/>
+    <Script file="Index\Sources\Professions.lua"/>
+    <Script file="Index\Sources\Currencies.lua"/>
+    <Script file="Index\Sources\Macros.lua"/>
+    <Script file="Index\Sources\QuestItems.lua"/>
+    <Script file="Index\IndexManager.lua"/>
+    <Script file="UI\ResultRow.lua"/>
+    <Script file="UI\RowPool.lua"/>
+    <Script file="UI\KeyNav.lua"/>
+    <Script file="UI\ClickOutsideCatcher.lua"/>
+    <Script file="UI\SpotlightFrame.lua"/>
+</Ui>
