@@ -12,7 +12,7 @@ local Widgets = OrbitEngine.CanvasMode.SettingsWidgets
 local KEY_SCHEMAS = Schema.KEY_SCHEMAS
 local TYPE_SCHEMAS = Schema.TYPE_SCHEMAS
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local WIDGET_SPACING = 4
 local PADDING = 12
 local COMPACT_LABEL_MIN_WIDTH = 50
@@ -39,7 +39,7 @@ function Settings:GetColumnCount()
     return w >= C.THREE_COL_THRESHOLD and 3 or 2
 end
 
--- [ OPEN (INLINE) ]---------------------------------------------------------------------------------
+-- [ OPEN (INLINE) ]----------------------------------------------------------------------------------
 function Settings:Open(componentKey, container, plugin, systemIndex)
     if InCombatLockdown() then return end
 
@@ -273,7 +273,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     end
 end
 
--- [ CLOSE (INLINE) ]--------------------------------------------------------------------------------
+-- [ CLOSE (INLINE) ]---------------------------------------------------------------------------------
 function Settings:Close()
     self:HideWidgets()
     self.componentKey = nil
@@ -297,7 +297,7 @@ function Settings:HideWidgets()
     end
 end
 
--- [ CONTROL LOOKUP ]--------------------------------------------------------------------------------
+-- [ CONTROL LOOKUP ]---------------------------------------------------------------------------------
 function Settings:GetControlDef(key)
     local schema = KEY_SCHEMAS[self.componentKey]
     if not schema then return nil end
@@ -322,7 +322,7 @@ function Settings:ApplyPluginPreview()
     end
 end
 
--- [ VALUE CHANGE HANDLER ]--------------------------------------------------------------------------
+-- [ VALUE CHANGE HANDLER ]---------------------------------------------------------------------------
 function Settings:OnValueChanged(key, value)
     if not self.componentKey then return end
 
@@ -436,7 +436,7 @@ function Settings:OnValueChanged(key, value)
     end
 end
 
--- [ RELAYOUT ]--------------------------------------------------------------------------------------
+-- [ RELAYOUT ]---------------------------------------------------------------------------------------
 function Settings:RelayoutWidgets()
     if not self.componentKey or not self.widgets then return end
     local canvasDialog = OrbitEngine.CanvasModeDialog
@@ -475,6 +475,6 @@ function Settings:RelayoutWidgets()
     if canvasDialog.RecalculateHeight then canvasDialog:RecalculateHeight() end
 end
 
--- [ EXPORT ]----------------------------------------------------------------------------------------
+-- [ EXPORT ]-----------------------------------------------------------------------------------------
 Orbit.CanvasComponentSettings = Settings
 OrbitEngine.CanvasComponentSettings = Settings

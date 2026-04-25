@@ -1,4 +1,4 @@
--- [ MOUNT TYPE TAGS ]-------------------------------------------------------------------------------
+-- [ MOUNT TYPE TAGS ]--------------------------------------------------------------------------------
 -- Maps the creature mountTypeID (returned by C_MountJournal.GetMountInfoExtraByID) to capability tag
 -- words that the matcher folds into lowerName so queries like "mounts flying" / "mounts aquatic" work.
 --

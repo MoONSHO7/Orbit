@@ -3,7 +3,7 @@ local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_HonorBar"
 local FRAME_NAME = "OrbitHonorBar"
 local DEFAULT_WIDTH = 500
@@ -16,7 +16,7 @@ local DEFAULT_TICK_WIDTH = 2
 
 local WOW_EVENTS = { "HONOR_XP_UPDATE", "HONOR_LEVEL_UPDATE", "ZONE_CHANGED_NEW_AREA" }
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Honor Bar", SYSTEM_ID, {
     liveToggle = true,
     canvasMode = true,
@@ -38,7 +38,7 @@ local Plugin = Orbit:RegisterPlugin("Honor Bar", SYSTEM_ID, {
     },
 })
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     Orbit.StatusBarBase:HideBlizzardTrackingBars()
 
@@ -90,7 +90,7 @@ function Plugin:OnEvent(event)
     end)
 end
 
--- [ UPDATE ]----------------------------------------------------------------------------------------
+-- [ UPDATE ]-----------------------------------------------------------------------------------------
 function Plugin:UpdateBar()
     local frame = self.frame
     if not frame or not frame:IsShown() then return end
@@ -134,7 +134,7 @@ function Plugin:GetBarColor()
     return c or HONOR_COLOR
 end
 
--- [ TOOLTIP + CLICK ]-------------------------------------------------------------------------------
+-- [ TOOLTIP + CLICK ]--------------------------------------------------------------------------------
 function Plugin:SetupTooltipAndClicks()
     local frame = self.frame
     frame:HookScript("OnEnter", function() Plugin:ShowTooltip() end)
@@ -172,7 +172,7 @@ function Plugin:OnShiftClick()
         UnitHonorLevel("player") or 0, cur, max, (cur / max) * 100))
 end
 
--- [ APPLY SETTINGS ]--------------------------------------------------------------------------------
+-- [ APPLY SETTINGS ]---------------------------------------------------------------------------------
 function Plugin:ApplySettings()
     local frame = self.frame
     if not frame then return end
@@ -205,7 +205,7 @@ function Plugin:ShouldShow()
     return instanceType == "pvp" or instanceType == "arena" or (C_PvP and C_PvP.IsWarModeActive and C_PvP.IsWarModeActive())
 end
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or SYSTEM_ID
     local SB = OrbitEngine.SchemaBuilder
@@ -240,7 +240,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ BLIZZARD HIDER ]--------------------------------------------------------------------------------
+-- [ BLIZZARD HIDER ]---------------------------------------------------------------------------------
 Orbit:RegisterBlizzardHider("Honor Bar", function()
     Orbit.StatusBarBase:HideBlizzardTrackingBars()
 end)

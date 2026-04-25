@@ -3,12 +3,12 @@ local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 local Layout = Engine.Layout
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local CHECK_TEX = "Interface\\Buttons\\UI-CheckBox-Check"
 local CROSS_TEX = "Interface\\RAIDFRAME\\ReadyCheck-NotReady"
 local TRISTATE_YELLOW = { r = 1, g = 0.82, b = 0 }
 
--- [ CHECKBOX WIDGET ]-------------------------------------------------------------------------------
+-- [ CHECKBOX WIDGET ]--------------------------------------------------------------------------------
 -- Supports two layout modes:
 --   Standard (default): 3-column settings layout via EditModeSettingCheckboxTemplate.
 --   Compact (opts.compact=true): Grid-friendly [icon][label] via UICheckButtonTemplate.

@@ -1,8 +1,8 @@
--- [ MOUNTED VISIBILITY MANAGER ]--------------------------------------------------------------------
+-- [ MOUNTED VISIBILITY MANAGER ]---------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local MOUNTED_COMBAT_PREFIX = "[mounted,nocombat] hide; "
 local MOUNTED_ALWAYS_PREFIX = "[mounted] hide; "
 local OPEN_WORLD_INSTANCE_TYPES = { ["none"] = true, ["scenario"] = true }
@@ -15,7 +15,7 @@ Orbit.MountedVisibility = Manager
 
 local cachedShouldHide = false
 
--- [ CORE LOGIC ]------------------------------------------------------------------------------------
+-- [ CORE LOGIC ]-------------------------------------------------------------------------------------
 local function IsInDruidTravelForm() return DRUID_TRAVEL_FORMS[GetShapeshiftFormID()] == true end
 
 local function IsMountedHideActive()
@@ -44,7 +44,7 @@ function Manager:Refresh(force)
     Orbit.EventBus:Fire("MOUNTED_VISIBILITY_CHANGED", shouldHide)
 end
 
--- [ EVENT REGISTRATION ]----------------------------------------------------------------------------
+-- [ EVENT REGISTRATION ]-----------------------------------------------------------------------------
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_MOUNT_DISPLAY_CHANGED")
 eventFrame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")

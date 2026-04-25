@@ -1,13 +1,11 @@
--- [ CANVAS MODE ENGINE ]----------------------------------------------------------------------------
-
+-- [ CANVAS MODE ENGINE ]-----------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
 Engine.CanvasMode = Engine.CanvasMode or {}
 local CanvasMode = Engine.CanvasMode
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local CANVAS_BORDER_COLOR = { r = 0.3, g = 0.8, b = 0.3, a = 1.0 }
 local CANVAS_BORDER_SIZE = 3
 local CANVAS_BACKGROUND_COLOR = { r = 0, g = 0, b = 0, a = 0.4 }
@@ -21,12 +19,10 @@ local FLASH_NEUTRAL = { 1, 1, 1, 1 }
 local BORDER_FRAME_LEVEL = 150
 local DIM_ALPHA = 0.3 -- alpha applied to non-canvas frames while canvas mode is active
 
--- [ STATE ]-----------------------------------------------------------------------------------------
-
+-- [ STATE ]------------------------------------------------------------------------------------------
 CanvasMode.currentFrame = nil
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function GetFrameKey(frame)
     if not frame then return nil end
     if frame.editModeName then return frame.editModeName end
@@ -61,8 +57,7 @@ local function CreateBorderEdge(parent, c, isVertical, point1, rel1, point2, rel
     return tex
 end
 
--- [ DENIED FEEDBACK ]-------------------------------------------------------------------------------
-
+-- [ DENIED FEEDBACK ]--------------------------------------------------------------------------------
 local flashPool = nil
 
 local function PlayDeniedFeedback(frame)
@@ -115,8 +110,7 @@ local function PlayDeniedFeedback(frame)
     end)
 end
 
--- [ CORE API ]--------------------------------------------------------------------------------------
-
+-- [ CORE API ]---------------------------------------------------------------------------------------
 function CanvasMode:Enter(frame, updateVisualsCallback)
     if not frame then return end
     if InCombatLockdown() then return end
@@ -174,8 +168,7 @@ end
 
 function CanvasMode:GetCurrentFrame() return self.currentFrame end
 
--- [ VISUAL UPDATES ]--------------------------------------------------------------------------------
-
+-- [ VISUAL UPDATES ]---------------------------------------------------------------------------------
 local function CreateCanvasBorder(parent)
     return {
         top = CreateBorderEdge(parent, CANVAS_BORDER_COLOR, false, "TOPLEFT", "TOPLEFT", "TOPRIGHT", "TOPRIGHT"),
@@ -288,8 +281,7 @@ function CanvasMode:UpdateNativeFrameVisual(systemFrame)
     end
 end
 
--- [ INITIALIZATION ]--------------------------------------------------------------------------------
-
+-- [ INITIALIZATION ]---------------------------------------------------------------------------------
 function CanvasMode:Initialize()
     if not EditModeManagerFrame then return end
     EditModeManagerFrame:HookScript("OnHide", function() CanvasMode:ExitAll() end)

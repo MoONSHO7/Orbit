@@ -1,4 +1,4 @@
--- [ SPOTLIGHT FRAME ]-------------------------------------------------------------------------------
+-- [ SPOTLIGHT FRAME ]--------------------------------------------------------------------------------
 local _, Orbit = ...
 local L = Orbit.L
 local Constants = Orbit.Constants
@@ -12,7 +12,7 @@ local Catcher = Orbit.Spotlight.UI.ClickOutsideCatcher
 local SpotlightFrame = {}
 Orbit.Spotlight.UI.SpotlightFrame = SpotlightFrame
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local INPUT_WIDTH = 260
 local INPUT_HEIGHT = 28
 local CENTER_Y_OFFSET = 120
@@ -45,7 +45,7 @@ end
 
 local function GetGlobalFontName() return Orbit.db.GlobalSettings.Font end
 
--- [ STATE ]-----------------------------------------------------------------------------------------
+-- [ STATE ]------------------------------------------------------------------------------------------
 SpotlightFrame._frame = nil
 SpotlightFrame._input = nil
 SpotlightFrame._list = nil
@@ -54,7 +54,7 @@ SpotlightFrame._scrollChild = nil
 SpotlightFrame._catcher = nil
 SpotlightFrame._results = {}
 
--- [ SETTINGS ACCESS ]-------------------------------------------------------------------------------
+-- [ SETTINGS ACCESS ]--------------------------------------------------------------------------------
 local function GetAcct() return Orbit.db.AccountSettings end
 
 local function GetEnabledKinds()
@@ -70,7 +70,7 @@ local function GetMaxResults() return GetAcct().Spotlight_MaxResults or DEFAULT_
 local function GetFuzzy() return GetAcct().Spotlight_Fuzzy ~= false end
 local function GetHidePassives() return GetAcct().Spotlight_HidePassives ~= false end
 
--- [ HINT SAMPLE ]-----------------------------------------------------------------------------------
+-- [ HINT SAMPLE ]------------------------------------------------------------------------------------
 local function PickHintSamples()
     local enabled = GetEnabledKinds()
     local labels = {}
@@ -89,7 +89,7 @@ local function PickHintSamples()
     return table.concat(out, ", ") .. "..."
 end
 
--- [ FRAME BUILD ]-----------------------------------------------------------------------------------
+-- [ FRAME BUILD ]------------------------------------------------------------------------------------
 local function BuildFrame(self)
     local root = CreateFrame("Frame", "OrbitSpotlightFrame", UIParent)
     root:SetFrameStrata(Constants.Strata.Dialog)
@@ -179,13 +179,13 @@ local function BuildFrame(self)
     end)
 end
 
--- [ ANCHORING ]-------------------------------------------------------------------------------------
+-- [ ANCHORING ]--------------------------------------------------------------------------------------
 local function AnchorCenter(root)
     root:ClearAllPoints()
     root:SetPoint("CENTER", UIParent, "CENTER", 0, CENTER_Y_OFFSET)
 end
 
--- [ RESULTS RENDER ]--------------------------------------------------------------------------------
+-- [ RESULTS RENDER ]---------------------------------------------------------------------------------
 local function LayoutList(self)
     local count = #self._results
     RowPool:HideAll()
@@ -224,7 +224,7 @@ local function LayoutList(self)
     self._list:Show()
 end
 
--- [ EVENTS ]----------------------------------------------------------------------------------------
+-- [ EVENTS ]-----------------------------------------------------------------------------------------
 function SpotlightFrame:OnQueryChanged()
     local text = self._input:GetText() or ""
     Async:Debounce(DEBOUNCE_KEY, function()
@@ -237,7 +237,7 @@ function SpotlightFrame:OnQueryChanged()
     end, DEBOUNCE_DELAY)
 end
 
--- [ OPEN / CLOSE ]----------------------------------------------------------------------------------
+-- [ OPEN / CLOSE ]-----------------------------------------------------------------------------------
 function SpotlightFrame:Toggle()
     if self._frame and self._frame:IsShown() then self:Close() else self:Open() end
 end

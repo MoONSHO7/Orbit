@@ -19,7 +19,6 @@ local AnchorToCenter = OrbitEngine.PositionUtils.AnchorToCenter
 -- Forward-declared: resolved at runtime after CanvasModeDrag.lua loads
 
 -- [ FOOTER SETUP ] ----------------------------------------------------------------------------------
-
 local Layout = OrbitEngine.Layout
 local Constants = Orbit.Constants
 local FC = Constants.Footer
@@ -548,7 +547,6 @@ function Dialog:Open(frame, plugin, systemIndex)
 end
 
 -- [ APPLY FILTER ] ----------------------------------------------------------------------------------
-
 function Dialog:ApplyFilter(filterName)
     self.activeFilter = filterName or "All"
     for key, comp in pairs(self.previewComponents) do
@@ -567,7 +565,6 @@ function Dialog:ApplyFilter(filterName)
 end
 
 -- [ LIVE DIMENSION SYNC ] ---------------------------------------------------------------------------
-
 function Dialog:HookSourceSizeChanged(sourceFrame)
     self:UnhookSourceSizeChanged()
     if not sourceFrame then return end
@@ -602,7 +599,6 @@ function Dialog:UnhookSourceSizeChanged()
 end
 
 -- [ CLEANUP PREVIEW ] -------------------------------------------------------------------------------
-
 function Dialog:CleanupPreview()
     self.activeFilter = "All"
     self:UnhookSourceSizeChanged()
@@ -624,7 +620,6 @@ function Dialog:CleanupPreview()
 end
 
 -- [ CLOSE DIALOG ] ----------------------------------------------------------------------------------
-
 function Dialog:CloseDialog()
     if Orbit.CanvasComponentSettings and Orbit.CanvasComponentSettings.componentKey then
         Orbit.CanvasComponentSettings:Close()
@@ -645,7 +640,6 @@ function Dialog:CloseDialog()
 end
 
 -- [ EDIT MODE LIFECYCLE ] ---------------------------------------------------------------------------
-
 if EditModeManagerFrame then
     EditModeManagerFrame:HookScript("OnHide", function()
         if Dialog:IsShown() then
@@ -655,6 +649,5 @@ if EditModeManagerFrame then
 end
 
 -- [ EXPORT ] ----------------------------------------------------------------------------------------
-
 Orbit.CanvasModeDialog = Dialog
 OrbitEngine.CanvasModeDialog = Dialog

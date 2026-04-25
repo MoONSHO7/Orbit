@@ -1,4 +1,4 @@
--- [ COMPONENT REGISTRY ]----------------------------------------------------------------------------
+-- [ COMPONENT REGISTRY ]-----------------------------------------------------------------------------
 -- Registers internal frame components (Name, HealthText, Level, etc.)
 -- and restores their positions from saved ComponentPositions data.
 -- Component positioning is managed exclusively through Canvas Mode.
@@ -25,20 +25,17 @@ local BuildComponentSelfAnchor = Engine.PositionUtils.BuildComponentSelfAnchor
 local NeedsEdgeCompensation = Engine.PositionUtils.NeedsEdgeCompensation
 local HandleModule = Engine.ComponentHandle
 
--- [ STATE ]-----------------------------------------------------------------------------------------
-
+-- [ STATE ]------------------------------------------------------------------------------------------
 local registeredComponents = {} -- { [component] = { parent, key, options, handle } }
 local frameComponents = {} -- { [parentFrame] = { component1, component2, ... } }
 local selectedComponent = nil -- Currently selected component for nudge
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local SnapEngine = Engine.CanvasMode.SnapEngine
 local SNAP_OPTIONS = { edgeThreshold = SnapEngine.EDGE_THRESHOLD, gridSize = SnapEngine.SNAP_SIZE }
 local PRECISION_OPTIONS = { precisionMode = true }
 
--- [ DRAG MECHANICS ]--------------------------------------------------------------------------------
-
+-- [ DRAG MECHANICS ]---------------------------------------------------------------------------------
 function ComponentDrag:OnDragUpdate(component, parent, data, handle)
     local cursorX, cursorY = GetCursorPosition()
     local compScale = SafeGetNumber(component:GetEffectiveScale(), 1)
@@ -136,8 +133,7 @@ function ComponentDrag:OnDragStop(component, parent, data)
     GameTooltip:Hide()
 end
 
--- [ KEYBOARD NUDGE ]--------------------------------------------------------------------------------
-
+-- [ KEYBOARD NUDGE ]---------------------------------------------------------------------------------
 local nudgeFrame = CreateFrame("Frame", "OrbitComponentNudgeFrame", UIParent)
 nudgeFrame:EnableKeyboard(false)
 nudgeFrame:SetPropagateKeyboardInput(true)
@@ -261,7 +257,7 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
     end
 end
 
--- [ POSITION CALLBACK FACTORY ]---------------------------------------------------------------------
+-- [ POSITION CALLBACK FACTORY ]----------------------------------------------------------------------
 local function GetTransaction()
     local CM = Engine.CanvasMode
     return CM and CM.Transaction
@@ -303,8 +299,7 @@ function ComponentDrag:MakeAuraPositionCallback(plugin, systemIndex, key)
     end
 end
 
--- [ PUBLIC API ]------------------------------------------------------------------------------------
-
+-- [ PUBLIC API ]-------------------------------------------------------------------------------------
 function ComponentDrag:Attach(component, parent, options)
     if not component or not parent then return end
 
@@ -479,8 +474,7 @@ function ComponentDrag:GetComponentsForFrame(frame)
     return result
 end
 
--- [ EDIT MODE HOOKS ]-------------------------------------------------------------------------------
-
+-- [ EDIT MODE HOOKS ]--------------------------------------------------------------------------------
 function ComponentDrag:DisableAll()
     for component, data in pairs(registeredComponents) do
         if data.handle then data.handle:Hide() end

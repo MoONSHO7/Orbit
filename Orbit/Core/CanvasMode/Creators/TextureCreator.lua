@@ -1,5 +1,4 @@
--- [ CANVAS MODE - TEXTURE CREATOR ]-----------------------------------------------------------------
-
+-- [ CANVAS MODE - TEXTURE CREATOR ]------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
@@ -7,14 +6,12 @@ local CanvasMode = OrbitEngine.CanvasMode
 local CC = CanvasMode.CreatorConstants
 local GetSourceSize = CanvasMode.GetSourceSize
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local SPRITE_ROWS_DEFAULT = 4
 local SPRITE_COLS_DEFAULT = 4
 local SPRITE_FALLBACK_INDEX = 8
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function ApplySpriteSheetCell(texture, index, rows, cols)
     if not texture or not index then return end
     if issecretvalue and issecretvalue(index) then index = SPRITE_FALLBACK_INDEX end
@@ -29,8 +26,7 @@ end
 
 CanvasMode.ApplySpriteSheetCell = ApplySpriteSheetCell
 
--- [ CREATOR ]---------------------------------------------------------------------------------------
-
+-- [ CREATOR ]----------------------------------------------------------------------------------------
 local function Create(container, preview, key, source, data)
     local visual = container:CreateTexture(nil, "OVERLAY")
     visual:SetAllPoints(container)

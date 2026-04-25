@@ -1,4 +1,4 @@
--- [ GROUP FRAME MIXIN ]-----------------------------------------------------------------------------
+-- [ GROUP FRAME MIXIN ]------------------------------------------------------------------------------
 -- Shared utilities for group frame domains (Party, Raid, Boss)
 
 local _, Orbit = ...
@@ -7,7 +7,7 @@ local GF = Orbit.Constants.GroupFrames
 Orbit.GroupFrameMixin = {}
 local Mixin = Orbit.GroupFrameMixin
 
--- [ SAFE UNIT WATCH ]-------------------------------------------------------------------------------
+-- [ SAFE UNIT WATCH ]--------------------------------------------------------------------------------
 function Mixin.SafeRegisterUnitWatch(frame)
     if not frame then return end
     Orbit:SafeAction(function() RegisterUnitWatch(frame) end)
@@ -18,12 +18,12 @@ function Mixin.SafeUnregisterUnitWatch(frame)
     Orbit:SafeAction(function() UnregisterUnitWatch(frame) end)
 end
 
--- [ STATUS DISPATCH ]-------------------------------------------------------------------------------
+-- [ STATUS DISPATCH ]--------------------------------------------------------------------------------
 function Mixin.StatusDispatch(frame, plugin, method)
     plugin[method](plugin, frame, plugin)
 end
 
--- [ RANGE CHECKING ]--------------------------------------------------------------------------------
+-- [ RANGE CHECKING ]---------------------------------------------------------------------------------
 function Mixin.SetBackgroundAlpha(frame, alpha)
     if frame.bg then frame.bg:SetAlpha(alpha) end
     if frame._gradientSegments then

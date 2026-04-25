@@ -1,11 +1,9 @@
--- [ ORBIT SETTINGS DIALOG ]-------------------------------------------------------------------------
-
+-- [ ORBIT SETTINGS DIALOG ]--------------------------------------------------------------------------
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local L = Orbit.L
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DIALOG_WIDTH = 350
 local DIALOG_MIN_HEIGHT = 150
 local TITLE_PADDING = 40
@@ -17,8 +15,7 @@ local ESC_RESTORE_DELAY = 0.05
 local OPTIONS_BUTTON_OFFSET_X = -2
 local OPTIONS_BUTTON_OFFSET_Y = -10
 
--- [ CREATE DIALOG FRAME ]---------------------------------------------------------------------------
-
+-- [ CREATE DIALOG FRAME ]----------------------------------------------------------------------------
 local Dialog = CreateFrame("Frame", "OrbitSettingsDialog", UIParent)
 Dialog:SetSize(DIALOG_WIDTH, DIALOG_MIN_HEIGHT)
 Dialog:SetPoint("TOPLEFT", UIParent, "TOPLEFT", INITIAL_X, INITIAL_Y)
@@ -49,20 +46,17 @@ Dialog:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_REGEN_DISABLED" and self:IsShown() then self:Hide() end
 end)
 
--- [ TITLE ]-----------------------------------------------------------------------------------------
-
+-- [ TITLE ]------------------------------------------------------------------------------------------
 Dialog.Title = Dialog:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
 Dialog.Title:SetPoint("TOP", Dialog, "TOP", 0, -15)
 Dialog.Title:SetText(L.CFG_ORBIT_SETTINGS)
 
--- [ CLOSE BUTTON ]----------------------------------------------------------------------------------
-
+-- [ CLOSE BUTTON ]-----------------------------------------------------------------------------------
 Dialog.CloseButton = CreateFrame("Button", nil, Dialog, "UIPanelCloseButton")
 Dialog.CloseButton:SetPoint("TOPRIGHT", Dialog, "TOPRIGHT", CLOSE_BUTTON_OFFSET, CLOSE_BUTTON_OFFSET)
 Dialog.CloseButton:SetScript("OnClick", function() Dialog:Hide() end)
 
--- [ ESC KEY SUPPORT ]-------------------------------------------------------------------------------
-
+-- [ ESC KEY SUPPORT ]--------------------------------------------------------------------------------
 table.insert(UISpecialFrames, "OrbitSettingsDialog")
 
 Dialog:SetPropagateKeyboardInput(true)
@@ -77,15 +71,13 @@ Dialog:SetScript("OnKeyDown", function(self, key)
     end
 end)
 
--- [ ATTACHED SYSTEM TRACKING ]----------------------------------------------------------------------
-
+-- [ ATTACHED SYSTEM TRACKING ]-----------------------------------------------------------------------
 Dialog.attachedToSystem = nil
 Dialog.attachedPlugin = nil
 Dialog.attachedSystemIndex = nil
 Dialog.hasAutoPositionedNearButton = false
 
--- [ CORE API: UpdateDialog ]------------------------------------------------------------------------
-
+-- [ CORE API: UpdateDialog ]-------------------------------------------------------------------------
 function Dialog:UpdateDialog(context)
     if InCombatLockdown() then return end
     if not context then return end
@@ -234,8 +226,7 @@ function Dialog:UpdateGroupDialog(plugin, selectedFrames)
     Config:Render(self, { systemIndex = frames[1].systemIndex, systemFrame = frames[1] }, plugin, merged)
 end
 
--- [ SHOW/HIDE HANDLERS ]----------------------------------------------------------------------------
-
+-- [ SHOW/HIDE HANDLERS ]-----------------------------------------------------------------------------
 Dialog:SetScript("OnShow", function(self)
     PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
     if EditModeSystemSettingsDialog and EditModeSystemSettingsDialog:IsShown() then
@@ -257,8 +248,7 @@ Dialog:SetScript("OnHide", function(self)
     OrbitEngine.FrameSelection:DeselectAll()
 end)
 
--- [ POSITION HELPER ]-------------------------------------------------------------------------------
-
+-- [ POSITION HELPER ]--------------------------------------------------------------------------------
 function Dialog:PositionNearButton()
     if not self.hasAutoPositionedNearButton and Orbit.OptionsButton then
         self:ClearAllPoints()
@@ -267,12 +257,10 @@ function Dialog:PositionNearButton()
     end
 end
 
--- [ INTEGRATION ]-----------------------------------------------------------------------------------
-
+-- [ INTEGRATION ]------------------------------------------------------------------------------------
 function Dialog:OnNativeFrameSelected() self:Hide() end
 
--- [ EDIT MODE LIFECYCLE ]---------------------------------------------------------------------------
-
+-- [ EDIT MODE LIFECYCLE ]----------------------------------------------------------------------------
 if EditModeManagerFrame then
     EditModeManagerFrame:HookScript("OnHide", function()
         Dialog.hasAutoPositionedNearButton = false
@@ -280,6 +268,5 @@ if EditModeManagerFrame then
     end)
 end
 
--- [ EXPORT ]----------------------------------------------------------------------------------------
-
+-- [ EXPORT ]-----------------------------------------------------------------------------------------
 Orbit.SettingsDialog = Dialog

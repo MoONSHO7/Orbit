@@ -108,7 +108,7 @@ function CB:Create(parent, bossIndex, plugin)
     return container
 end
 
--- [ STANDALONE EVENT-DRIVEN CAST BAR ]--------------------------------------------------------------
+-- [ STANDALONE EVENT-DRIVEN CAST BAR ]---------------------------------------------------------------
 local TIMER_THROTTLE_INTERVAL = 1 / 30
 local INTERRUPT_FLASH_DURATION = Orbit.Constants.Timing.FlashDuration
 

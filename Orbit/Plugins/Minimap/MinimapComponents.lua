@@ -1,4 +1,4 @@
--- [ MINIMAP COMPONENTS ]----------------------------------------------------------------------------
+-- [ MINIMAP COMPONENTS ]-----------------------------------------------------------------------------
 -- Per-component updaters and creators: Clock, Coords, ZoomButtons, ZoneText, CalendarInvites.
 
 ---@type Orbit
@@ -19,7 +19,6 @@ local ZOOM_FADE_OUT = C.ZOOM_FADE_OUT
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
 -- [ SHAPE ] -----------------------------------------------------------------------------------------
-
 function Plugin:ApplyShape()
     local frame = self.frame
     local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
@@ -73,8 +72,7 @@ function Plugin:ApplyShape()
     end
 end
 
--- [ ZONE TEXT ]-------------------------------------------------------------------------------------
-
+-- [ ZONE TEXT ]--------------------------------------------------------------------------------------
 local ZONE_PVP_COLORS = {
     sanctuary = { r = 0.41, g = 0.80, b = 0.94 }, -- blue/teal: Shattrath, Dalaran etc.
     friendly   = { r = 0.10, g = 1.00, b = 0.10 }, -- green: friendly faction territory
@@ -87,7 +85,6 @@ local ZONE_PVP_COLORS = {
 Plugin.ZonePVPColors = ZONE_PVP_COLORS -- shared with Minimap.lua for tooltip colouring
 
 -- [ ZONE TEXT ] -------------------------------------------------------------------------------------
-
 local lastZoneText = nil
 
 function Plugin:UpdateZoneText(button, coloring, overrides)
@@ -115,8 +112,7 @@ function Plugin:UpdateZoneText(button, coloring, overrides)
     end
 end
 
--- [ CLOCK ]-----------------------------------------------------------------------------------------
-
+-- [ CLOCK ]------------------------------------------------------------------------------------------
 -- Cache clock CVars so we don't call GetCVarBool on every tick.
 local _clockUseLocal, _clockUseMilitary
 local function RefreshClockCVars()
@@ -175,8 +171,7 @@ function Plugin:StopClockTicker()
     self._clockTicker = nil
 end
 
--- [ COORDS ]----------------------------------------------------------------------------------------
-
+-- [ COORDS ]-----------------------------------------------------------------------------------------
 function Plugin:UpdateCoords()
     local coordsFrame = self.frame.Coords
     local fs = coordsFrame.Text
@@ -213,8 +208,7 @@ function Plugin:StopCoordsTicker()
     end
 end
 
--- [ ZOOM BUTTONS ]----------------------------------------------------------------------------------
-
+-- [ ZOOM BUTTONS ]-----------------------------------------------------------------------------------
 function Plugin:UpdateZoomState()
     local container = self.frame.ZoomContainer
     local minimap = self:GetBlizzardMinimap()
@@ -310,8 +304,7 @@ function Plugin:CreateZoomButtons()
     minimap:HookScript("OnLeave", FadeOut)
 end
 
--- [ AUTO ZOOM-OUT TIMER ]---------------------------------------------------------------------------
-
+-- [ AUTO ZOOM-OUT TIMER ]----------------------------------------------------------------------------
 function Plugin:CancelAutoZoomOut()
     if self._autoZoomTimer then self._autoZoomTimer:Cancel(); self._autoZoomTimer = nil end
 end
@@ -344,8 +337,7 @@ function Plugin:StartAutoZoomOut()
     end)
 end
 
--- [ CALENDAR PENDING INVITES ]----------------------------------------------------------------------
-
+-- [ CALENDAR PENDING INVITES ]-----------------------------------------------------------------------
 function Plugin:UpdateCalendarInvites()
     local glow = self.frame.Clock.InviteGlow
     local pending = C_Calendar.GetNumPendingInvites and C_Calendar.GetNumPendingInvites() or 0

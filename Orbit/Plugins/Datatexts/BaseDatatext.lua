@@ -1,5 +1,6 @@
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local DEFAULT_WIDTH = 100
@@ -72,9 +73,9 @@ function BaseDatatext:CreateFrame(width, height)
     f.overlay:SetScript("OnEnter", function()
         GameTooltip:SetOwner(f, "ANCHOR_TOP")
         GameTooltip:ClearLines()
-        GameTooltip:AddLine(self.name .. " (Edit Mode)", 1, 0.82, 0)
-        GameTooltip:AddLine("Left Click: Drag", 0.7, 0.7, 0.7)
-        GameTooltip:AddLine("Right Click: Return to Drawer", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(self.name .. " (" .. L.PLU_DT_EDIT_MODE .. ")", 1, 0.82, 0)
+        GameTooltip:AddLine(L.PLU_DT_HINT_DRAG, 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L.PLU_DT_HINT_RETURN_DRAWER, 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     f.overlay:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -97,6 +98,7 @@ function BaseDatatext:CreateFrame(width, height)
     f.resizeHandle:Hide()
     
     f.resizeHandle:SetScript("OnMouseDown", function()
+        if InCombatLockdown() then return end
         -- Force center anchor to ensure scale radiates evenly and prevents position drift
         local cx, cy = f:GetCenter()
         if cx and cy then

@@ -1,4 +1,4 @@
--- [ SECONDARY UNIT FRAME MIXIN ]--------------------------------------------------------------------
+-- [ SECONDARY UNIT FRAME MIXIN ]---------------------------------------------------------------------
 -- Shared mixin for TargetOfTarget and TargetOfFocus plugins.
 -- Consumer files Mixin(Plugin, UnitFrameMixin) first, then Mixin(Plugin, SecondaryUnitFrameMixin).
 ---@type Orbit
@@ -17,7 +17,7 @@ Mixin.sharedDefaults = {
     ComponentPositions = { Name = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" } },
 }
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Mixin:AddSecondarySettings(dialog, systemFrame)
     local cfg = self._sufConfig
     if systemFrame.systemIndex ~= cfg.frameIndex then return end
@@ -30,7 +30,7 @@ function Mixin:AddSecondarySettings(dialog, systemFrame)
     })
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Mixin:CreateSecondaryPlugin(config)
     self._sufConfig = config
     self:RegisterStandardEvents()
@@ -88,7 +88,7 @@ function Mixin:CreateSecondaryPlugin(config)
     end
 end
 
--- [ EVENTS ]----------------------------------------------------------------------------------------
+-- [ EVENTS ]-----------------------------------------------------------------------------------------
 function Mixin:RegisterSecondaryEvents(enabled)
     local frame = self.frame
     local cfg = self._sufConfig
@@ -102,7 +102,7 @@ end
 
 function Mixin:UpdateVisibility() self:ApplySettings() end
 
--- [ APPLY SETTINGS ]--------------------------------------------------------------------------------
+-- [ APPLY SETTINGS ]---------------------------------------------------------------------------------
 function Mixin:ApplySettings()
     local frame = self.frame
     local cfg = self._sufConfig

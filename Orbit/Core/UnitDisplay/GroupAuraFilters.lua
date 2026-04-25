@@ -1,4 +1,4 @@
--- [ GROUP AURA FILTERS ]----------------------------------------------------------------------------
+-- [ GROUP AURA FILTERS ]-----------------------------------------------------------------------------
 ---@type Orbit
 local Orbit = Orbit
 
@@ -17,7 +17,7 @@ for _, entry in ipairs(HealerReg.RaidBuffs) do
     if entry.variants then for _, vid in ipairs(entry.variants) do ALWAYS_EXCLUDED[vid] = true end end
 end
 Orbit.GroupAuraFilters.AlwaysExcluded = ALWAYS_EXCLUDED
--- [ WHITELISTED CATEGORIES ]------------------------------------------------------------------------
+-- [ WHITELISTED CATEGORIES ]-------------------------------------------------------------------------
 -- Merge WhitelistedSpells categories that are low-value clutter on group frames.
 local function MergeInto(dest, source) for id in pairs(source) do dest[id] = true end end
 MergeInto(ALWAYS_EXCLUDED, W.RAID_BUFFS)
@@ -29,7 +29,7 @@ MergeInto(ALWAYS_EXCLUDED, W.EXHAUSTION)
 MergeInto(ALWAYS_EXCLUDED, W.SKYRIDING)
 MergeInto(ALWAYS_EXCLUDED, W.UTILITY)
 MergeInto(ALWAYS_EXCLUDED, W.SYSTEM)
--- [ NON-WHITELISTED EXCLUSIONS ]--------------------------------------------------------------------
+-- [ NON-WHITELISTED EXCLUSIONS ]---------------------------------------------------------------------
 -- Flight style auras and ride-along not in WhitelistedSpells (not secret-relevant).
 ALWAYS_EXCLUDED[404468] = true -- Flight Style: Steady
 ALWAYS_EXCLUDED[404464] = true -- Flight Style: Skyriding

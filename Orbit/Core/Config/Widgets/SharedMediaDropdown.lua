@@ -1,4 +1,4 @@
--- [ SHARED MEDIA DROPDOWN ]-------------------------------------------------------------------------
+-- [ SHARED MEDIA DROPDOWN ]--------------------------------------------------------------------------
 -- Reusable dropdown infrastructure for LSM media pickers (Texture, Font, etc.)
 -- Handles: frame creation, virtualized scroll, search filter, ESC key, auto-close, button pooling.
 -- Each consumer provides createItem/renderItem callbacks for domain-specific visuals.

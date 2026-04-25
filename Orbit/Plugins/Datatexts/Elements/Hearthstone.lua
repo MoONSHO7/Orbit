@@ -2,6 +2,7 @@
 -- Hearthstone datatext: shows hearthstone location and cooldown
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 -- UI Constants
@@ -93,7 +94,7 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Hearthstone", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_HEARTH_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     local bindLoc = GetBindLocation()
     GameTooltip:AddDoubleLine("Location:", bindLoc or "Unknown", 1, 1, 1, 1, 1, 1)

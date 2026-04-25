@@ -3,13 +3,11 @@ local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_Minimap"
 local DEFAULT_SIZE = Orbit.MinimapConstants.DEFAULT_SIZE
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
-
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
 local CLICK_ACTION_OPTIONS = {

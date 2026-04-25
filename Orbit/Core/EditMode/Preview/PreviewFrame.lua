@@ -1,5 +1,4 @@
 -- [ ORBIT PREVIEW FRAME ] ---------------------------------------------------------------------------
-
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
@@ -8,16 +7,14 @@ local Preview = Engine.Preview
 local PreviewFrame = {}
 Preview.Frame = PreviewFrame
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULT_SCALE = 1.0
 local DEFAULT_BORDER_SIZE = 2
 local DEFAULT_BAR_COLOR = { r = 0.2, g = 0.6, b = 0.2 }
 local DEFAULT_COMPONENT_WIDTH = 60
 local DEFAULT_COMPONENT_HEIGHT = 20
 
--- [ CREATE BASE PREVIEW ]---------------------------------------------------------------------------
-
+-- [ CREATE BASE PREVIEW ]----------------------------------------------------------------------------
 function PreviewFrame:CreateBasePreview(sourceFrame, scale, parent, borderSize)
     if not sourceFrame then return nil end
 
@@ -54,8 +51,7 @@ function PreviewFrame:CreateBasePreview(sourceFrame, scale, parent, borderSize)
     return preview
 end
 
--- [ CREATE PREVIEW ]--------------------------------------------------------------------------------
-
+-- [ CREATE PREVIEW ]---------------------------------------------------------------------------------
 function PreviewFrame:Create(sourceFrame, options)
     if not sourceFrame then return nil end
     options = options or {}
@@ -83,8 +79,7 @@ function PreviewFrame:Create(sourceFrame, options)
     return self:CreateBasePreview(sourceFrame, scale, parent, options.borderSize or DEFAULT_BORDER_SIZE)
 end
 
--- [ DESTROY PREVIEW ]-------------------------------------------------------------------------------
-
+-- [ DESTROY PREVIEW ]--------------------------------------------------------------------------------
 function PreviewFrame:Destroy(preview)
     if not preview then return end
 
@@ -103,8 +98,7 @@ function PreviewFrame:Destroy(preview)
     preview.sourceFrame = nil
 end
 
--- [ ADD COMPONENT ]---------------------------------------------------------------------------------
-
+-- [ ADD COMPONENT ]----------------------------------------------------------------------------------
 function PreviewFrame:AddComponent(preview, key, options)
     if not preview or not key then return nil end
     options = options or {}
@@ -141,8 +135,7 @@ function PreviewFrame:AddComponent(preview, key, options)
     return container
 end
 
--- [ POSITION COMPONENT ]----------------------------------------------------------------------------
-
+-- [ POSITION COMPONENT ]-----------------------------------------------------------------------------
 function PreviewFrame:PositionComponent(container, scale)
     if not container or not container.preview then return end
 

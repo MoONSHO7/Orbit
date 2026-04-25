@@ -1,4 +1,4 @@
--- [ ORBIT OVERRIDE UTILITIES ]----------------------------------------------------------------------
+-- [ ORBIT OVERRIDE UTILITIES ]-----------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
@@ -62,7 +62,7 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
     return true
 end
 
--- [ FONT OVERRIDES ]--------------------------------------------------------------------------------
+-- [ FONT OVERRIDES ]---------------------------------------------------------------------------------
 function OverrideUtils.ApplyFontOverrides(element, overrides, defaultSize, baseFontPath)
     if not element or not element.SetFont or not overrides then
         return
@@ -93,7 +93,7 @@ function OverrideUtils.ApplyFontOverrides(element, overrides, defaultSize, baseF
     end
 end
 
--- [ SCALE OVERRIDE ]--------------------------------------------------------------------------------
+-- [ SCALE OVERRIDE ]---------------------------------------------------------------------------------
 -- IconSize is the authoritative sizing mechanism; Scale is legacy and skipped when both are set.
 function OverrideUtils.ApplyScaleOverride(element, overrides)
     if not element or not overrides or not overrides.Scale then
@@ -136,7 +136,7 @@ function OverrideUtils.ApplyScaleOverride(element, overrides)
     end
 end
 
--- [ APPLY ICON SIZE OVERRIDE ]----------------------------------------------------------------------
+-- [ APPLY ICON SIZE OVERRIDE ]-----------------------------------------------------------------------
 function OverrideUtils.ApplyIconSizeOverride(element, overrides)
     if not element or not overrides or not overrides.IconSize then return end
     local size = overrides.IconSize
@@ -160,7 +160,7 @@ function OverrideUtils.ApplyIconSizeOverride(element, overrides)
     end
 end
 
--- [ APPLY ALL OVERRIDES ]---------------------------------------------------------------------------
+-- [ APPLY ALL OVERRIDES ]----------------------------------------------------------------------------
 function OverrideUtils.ApplyOverrides(element, overrides, defaults, unit, classFile)
     if not element or not overrides then
         return

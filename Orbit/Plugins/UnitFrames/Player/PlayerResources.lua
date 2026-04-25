@@ -527,7 +527,7 @@ function Plugin:ApplySettings()
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, SYSTEM_INDEX, "OutOfCombatFade", enableHover) end
 end
 
--- [ RESOURCE COLOR (DELEGATE) ]---------------------------------------------------------------------
+-- [ RESOURCE COLOR (DELEGATE) ]----------------------------------------------------------------------
 function Plugin:GetResourceColor(index, maxResources, isCharged)
     return DiscreteRenderer:GetResourceColor(self, SYSTEM_INDEX, index, maxResources, isCharged)
 end

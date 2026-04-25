@@ -1,7 +1,7 @@
 ---@type Orbit
 local Orbit = Orbit
 
--- [ TOOLTIP BUILDER ]-------------------------------------------------------------------------------
+-- [ TOOLTIP BUILDER ]--------------------------------------------------------------------------------
 -- Centralised hover-tooltip content for the three bars. Each `Show*` function adopts GameTooltip
 -- at the owner anchor and writes several lines of progression + session stats.
 
@@ -35,7 +35,7 @@ local function AddSession(trackerKey, unit, unitColor)
     return gained, rate
 end
 
--- [ XP TOOLTIP ]------------------------------------------------------------------------------------
+-- [ XP TOOLTIP ]-------------------------------------------------------------------------------------
 function Tooltip:ShowXP(owner, level, currentXP, maxXP)
     GameTooltip:SetOwner(owner, "ANCHOR_TOP")
     GameTooltip:SetText(string.format("Experience — Level %d", level or UnitLevel("player")), 1, 1, 1)
@@ -76,7 +76,7 @@ function Tooltip:ShowXP(owner, level, currentXP, maxXP)
     GameTooltip:Show()
 end
 
--- [ REPUTATION TOOLTIP ]----------------------------------------------------------------------------
+-- [ REPUTATION TOOLTIP ]-----------------------------------------------------------------------------
 function Tooltip:ShowRep(owner, record, isAccountWide, paragonCycles)
     GameTooltip:SetOwner(owner, "ANCHOR_TOP")
     GameTooltip:SetText(record.name or "Reputation", 1, 1, 1)
@@ -110,7 +110,7 @@ function Tooltip:ShowRep(owner, record, isAccountWide, paragonCycles)
     GameTooltip:Show()
 end
 
--- [ HONOR TOOLTIP ]---------------------------------------------------------------------------------
+-- [ HONOR TOOLTIP ]----------------------------------------------------------------------------------
 function Tooltip:ShowHonor(owner, level, current, max)
     GameTooltip:SetOwner(owner, "ANCHOR_TOP")
     GameTooltip:SetText(string.format("Honor — Level %d", level or 0), 1, 1, 1)

@@ -1,4 +1,4 @@
--- [ UNIT BUTTON - PREDICTION MODULE ]---------------------------------------------------------------
+-- [ UNIT BUTTON - PREDICTION MODULE ]----------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
@@ -14,7 +14,7 @@ local function SafeHealValue(v)
     return v or DEFAULT_HEAL_VALUE
 end
 
--- [ LOCAL HELPERS ]---------------------------------------------------------------------------------
+-- [ LOCAL HELPERS ]----------------------------------------------------------------------------------
 -- The healer shouts "I'M TRACKING YOUR INCOMING HEALS" every combat round
 local function SafeSetHealBarPoints(bar, anchorTexture, width)
     -- The ranger only updates camp if the trail marker has actually moved
@@ -41,8 +41,7 @@ local function SafeSetHealAbsorbPoints(bar, healthBar, width)
     end
 end
 
--- [ PREDICTION MIXIN ]------------------------------------------------------------------------------
-
+-- [ PREDICTION MIXIN ]-------------------------------------------------------------------------------
 local PredictionMixin = {}
 
 function PredictionMixin:UpdateHealPrediction()

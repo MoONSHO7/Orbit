@@ -1,5 +1,4 @@
--- [ CANVAS MODE - CAST BAR CREATOR ]----------------------------------------------------------------
-
+-- [ CANVAS MODE - CAST BAR CREATOR ]-----------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
@@ -14,8 +13,7 @@ local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnc
 local SmartGuides = OrbitEngine.SmartGuides
 local ApplyTextAlignment = CanvasMode.ApplyTextAlignment
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULT_CB_WIDTH = 120
 local DEFAULT_CB_HEIGHT = 18
 local DEFAULT_CB_COLOR = { r = 1, g = 0.7, b = 0 }
@@ -37,8 +35,7 @@ local SUB_SNAP_OPTIONS = { edgeThreshold = SnapEngine.EDGE_THRESHOLD }
 local CLICK_THRESHOLD = 0.3
 local DEFAULT_TEXT_OFFSET_X = 4
 
--- [ SUB-COMPONENT DRAG ]----------------------------------------------------------------------------
-
+-- [ SUB-COMPONENT DRAG ]-----------------------------------------------------------------------------
 local function CreateSubText(parent, parentContainer, subKey, subPos, text, justify, fontPath, cbTextSize, fontFlags)
     local subFrame = CreateFrame("Frame", nil, parent)
     subFrame:SetFrameLevel(parent:GetFrameLevel() + Orbit.Constants.Levels.CanvasComponent)
@@ -181,8 +178,7 @@ local function CreateSubText(parent, parentContainer, subKey, subPos, text, just
     return subFrame
 end
 
--- [ CREATOR ]---------------------------------------------------------------------------------------
-
+-- [ CREATOR ]----------------------------------------------------------------------------------------
 local function Create(container, preview, key, source, data)
     local plugin = Dialog.targetPlugin
     local sysIdx = Dialog.targetSystemIndex or 1

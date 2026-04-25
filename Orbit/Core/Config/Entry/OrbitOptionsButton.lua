@@ -1,8 +1,8 @@
 local _, Orbit = ...
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
--- [ ORBIT OPTIONS BUTTON ]--------------------------------------------------------------------------
-
+-- [ ORBIT OPTIONS BUTTON ]---------------------------------------------------------------------------
 local BUTTON_WIDTH = 200
 local BUTTON_HEIGHT = 40
 local BUTTON_PADDING = 20
@@ -36,13 +36,13 @@ Button.highlight:SetColorTexture(0.2, 0.4, 0.6, 0.3)
 -- Label
 Button.label = Button:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 Button.label:SetPoint("CENTER", Button, "CENTER", 0, 0)
-Button.label:SetText("Orbit Options")
+Button.label:SetText(L.CMD_OPTIONS_BUTTON_LABEL)
 Button.label:SetTextColor(0.9, 0.9, 0.95)
 
 -- Tooltip
 Button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT")
-    GameTooltip:AddLine("Orbit Options", 1, 1, 1)
+    GameTooltip:AddLine(L.CMD_OPTIONS_BUTTON_LABEL, 1, 1, 1)
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("|cFF00FF00Left-click|r: Toggle plugins on/off", 0.8, 0.8, 0.8)
     GameTooltip:AddLine("|cFFFFFF00Right-click|r: Colors & textures", 0.8, 0.8, 0.8)
@@ -69,8 +69,7 @@ Button:SetScript("OnClick", function(self, button)
     end
 end)
 
--- [ COMBAT INDICATOR ]------------------------------------------------------------------------------
-
+-- [ COMBAT INDICATOR ]-------------------------------------------------------------------------------
 local PULSE_SPEED = 3
 
 local function OnUpdate_Pulse(self, elapsed)
@@ -87,7 +86,7 @@ Button:RegisterEvent("PLAYER_REGEN_ENABLED")
 Button:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_REGEN_DISABLED" then
         -- Enter Combat State
-        self.label:SetText("In Combat")
+        self.label:SetText(L.CMN_IN_COMBAT)
         self.label:SetTextColor(1, 0.2, 0.2)
 
         self:Disable() -- Disable clicks
@@ -96,7 +95,7 @@ Button:SetScript("OnEvent", function(self, event)
         self:SetScript("OnUpdate", OnUpdate_Pulse)
     elseif event == "PLAYER_REGEN_ENABLED" then
         -- Exit Combat State
-        self.label:SetText("Orbit Options")
+        self.label:SetText(L.CMD_OPTIONS_BUTTON_LABEL)
         self.label:SetTextColor(0.9, 0.9, 0.95)
 
         self:Enable() -- Re-enable clicks
@@ -108,15 +107,14 @@ end)
 
 -- Initial check
 if InCombatLockdown() then
-    Button.label:SetText("In Combat")
+    Button.label:SetText(L.CMN_IN_COMBAT)
     Button.label:SetTextColor(1, 0.2, 0.2)
     Button:Disable()
     Button.pulseTimer = 0
     Button:SetScript("OnUpdate", OnUpdate_Pulse)
 end
 
--- [ EDIT MODE LIFECYCLE ]---------------------------------------------------------------------------
-
+-- [ EDIT MODE LIFECYCLE ]----------------------------------------------------------------------------
 -- Show when Edit Mode enters
 if EditModeManagerFrame then
     EditModeManagerFrame:HookScript("OnShow", function()

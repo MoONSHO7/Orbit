@@ -1,7 +1,7 @@
 ---@type Orbit
 local Orbit = Orbit
 
--- [ PENDING XP SCANNER ]----------------------------------------------------------------------------
+-- [ PENDING XP SCANNER ]-----------------------------------------------------------------------------
 -- Scans the quest log and sums XP rewards for quests that are ready to hand in (objectives complete).
 -- Rendered as a secondary fill on the XP bar so users see how close they are to "can ding now".
 

@@ -1,4 +1,4 @@
--- [ WHITELISTED SPELLS ]----------------------------------------------------------------------------
+-- [ WHITELISTED SPELLS ]-----------------------------------------------------------------------------
 -- Blizzard-whitelisted spell IDs where aura/cooldown fields are NON-SECRET even in combat.
 -- Update this file when Blizzard patches add new whitelisted spells.
 -- See UNSECRETED.md in project root for full Blizzard whitelist documentation.
@@ -9,7 +9,7 @@ local _, Orbit = ...
 Orbit.WhitelistedSpells = {}
 local W = Orbit.WhitelistedSpells
 
--- [ CLASS RESOURCE AURAS ]--------------------------------------------------------------------------
+-- [ CLASS RESOURCE AURAS ]---------------------------------------------------------------------------
 -- aura.applications is safe for these spell IDs (used by ResourceBarMixin)
 W.CLASS_RESOURCES = {
     [344179]  = "Maelstrom Weapon",       -- Enhancement Shaman
@@ -24,7 +24,7 @@ W.CLASS_RESOURCES = {
     [95809]   = "Insanity",               -- Shadow Priest
 }
 
--- [ HEALER HOTS & SHIELDS ]-------------------------------------------------------------------------
+-- [ HEALER HOTS & SHIELDS ]--------------------------------------------------------------------------
 -- Full aura data (name, spellId, applications, duration, expirationTime) is non-secret.
 -- HealerAuraRegistry.lua also references these; keep in sync.
 W.HEALER_AURAS = {
@@ -73,7 +73,7 @@ W.HEALER_AURAS = {
     [1244893] = "Beacon of the Savior",
 }
 
--- [ RAID BUFFS ]------------------------------------------------------------------------------------
+-- [ RAID BUFFS ]-------------------------------------------------------------------------------------
 -- Long-term buffs with non-secret aura data.
 W.RAID_BUFFS = {
     [1126]   = "Mark of the Wild",
@@ -86,7 +86,7 @@ W.RAID_BUFFS = {
     [364342] = "Blessing of the Bronze",
 }
 
--- [ BLESSING OF THE BRONZE VARIANTS ]---------------------------------------------------------------
+-- [ BLESSING OF THE BRONZE VARIANTS ]----------------------------------------------------------------
 W.BRONZE_VARIANTS = {
     [381732] = "Death Knight",
     [381741] = "Demon Hunter",
@@ -114,7 +114,7 @@ W.ROGUE_POISONS = {
     [381664] = "Amplifying Poison",
 }
 
--- [ SHAMAN IMBUEMENTS ]-----------------------------------------------------------------------------
+-- [ SHAMAN IMBUEMENTS ]------------------------------------------------------------------------------
 W.SHAMAN_IMBUEMENTS = {
     [319773] = "Windfury Weapon",
     [319778] = "Flametongue Weapon",
@@ -126,7 +126,7 @@ W.SHAMAN_IMBUEMENTS = {
     [462742] = "Thunderstrike Ward (alt)",
 }
 
--- [ EXHAUSTION / SATED ]----------------------------------------------------------------------------
+-- [ EXHAUSTION / SATED ]-----------------------------------------------------------------------------
 W.EXHAUSTION = {
     [57724]  = "Sated",
     [57723]  = "Exhaustion",
@@ -135,7 +135,7 @@ W.EXHAUSTION = {
     [264689] = "Fatigued",
 }
 
--- [ SKYRIDING ]-------------------------------------------------------------------------------------
+-- [ SKYRIDING ]--------------------------------------------------------------------------------------
 W.SKYRIDING = {
     [425782] = "Second Wind",
     [372608] = "Surge Forward",
@@ -162,14 +162,14 @@ W.COMBAT_RES = {
     [221955] = "Convincingly Realistic Jumper Cables", -- TWW Engineering
 }
 
--- [ SYSTEM SPELLS ]---------------------------------------------------------------------------------
+-- [ SYSTEM SPELLS ]----------------------------------------------------------------------------------
 W.SYSTEM = {
     [61304] = "GCD Dummy Spell",
     [8690]  = "Hearthstone",
     [20608] = "Reincarnation",
 }
 
--- [ UTILITY / LONG-TERM BUFFS ]---------------------------------------------------------------------
+-- [ UTILITY / LONG-TERM BUFFS ]----------------------------------------------------------------------
 W.UTILITY = {
     [433568] = "Rite of Sanctification",
     [433583] = "Rite of Adjuration",
@@ -177,7 +177,7 @@ W.UTILITY = {
     [26013]  = "Deserter",
 }
 
--- [ QUICK LOOKUP TABLE ]----------------------------------------------------------------------------
+-- [ QUICK LOOKUP TABLE ]-----------------------------------------------------------------------------
 -- Merged lookup for fast O(1) checks: W.IsWhitelisted[spellId] == true
 W.IsWhitelisted = {}
 
@@ -197,7 +197,7 @@ MergeInto(W.IsWhitelisted, W.COMBAT_RES)
 MergeInto(W.IsWhitelisted, W.SYSTEM)
 MergeInto(W.IsWhitelisted, W.UTILITY)
 
--- [ API ]-------------------------------------------------------------------------------------------
+-- [ API ]--------------------------------------------------------------------------------------------
 function W:IsSpellWhitelisted(spellId)
     return self.IsWhitelisted[spellId] == true
 end

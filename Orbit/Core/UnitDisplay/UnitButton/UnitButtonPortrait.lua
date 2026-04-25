@@ -1,8 +1,8 @@
--- [ UNIT BUTTON - PORTRAIT MODULE ]-----------------------------------------------------------------
+-- [ UNIT BUTTON - PORTRAIT MODULE ]------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local PORTRAIT_DEFAULT_SIZE = 32
 
 local PORTRAIT_RING_OVERSHOOT = Engine.PORTRAIT_RING_OVERSHOOT
@@ -16,8 +16,7 @@ local PORTRAIT_RING_OPTIONS = Engine.PortraitRingOptions
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 
--- [ PORTRAIT MIXIN ]--------------------------------------------------------------------------------
-
+-- [ PORTRAIT MIXIN ]---------------------------------------------------------------------------------
 local PortraitMixin = {}
 
 function PortraitMixin:CreatePortrait()

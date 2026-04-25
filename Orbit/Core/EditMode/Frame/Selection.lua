@@ -11,7 +11,7 @@ local C = Orbit.Constants
 Engine.FrameSelection = Engine.FrameSelection or {}
 local Selection = Engine.FrameSelection
 
--- [ STATE ]-----------------------------------------------------------------------------------------
+-- [ STATE ]------------------------------------------------------------------------------------------
 Selection.selections = Selection.selections or {}
 Selection.dragCallbacks = Selection.dragCallbacks or {}
 Selection.selectionCallbacks = Selection.selectionCallbacks or {}
@@ -39,7 +39,6 @@ local function GetOrbitEditModeColor()
 end
 
 -- [ SYMMETRIC PAIR REGISTRATION ] -------------------------------------------------------------------
-
 function Selection:RegisterSymmetricPair(frameNameA, frameNameB)
     self.symmetricPairs[frameNameA] = frameNameB
     self.symmetricPairs[frameNameB] = frameNameA
@@ -49,8 +48,7 @@ function Selection:GetSymmetricPartner(frameName)
     return self.symmetricPairs[frameName]
 end
 
--- [ STATE MANAGEMENT ]------------------------------------------------------------------------------
-
+-- [ STATE MANAGEMENT ]-------------------------------------------------------------------------------
 function Selection:SetSelectedFrame(frame, isNative)
     self.selectedFrame = frame
     self.selectedFrames = {}
@@ -93,8 +91,7 @@ function Selection:IsMultiSelected()
     return false
 end
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function TintSelection(selection, r, g, b, desaturate)
     if not selection then
         return
@@ -146,8 +143,7 @@ local function DeferUntilOutOfCombat(callback)
     end)
 end
 
--- [ MAIN API ]--------------------------------------------------------------------------------------
-
+-- [ MAIN API ]---------------------------------------------------------------------------------------
 function Selection:GetSnapTargets(excludeFrame)
     local targets = {}
 
@@ -388,8 +384,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     end
 end
 
--- [ EDIT MODE HANDLERS ]----------------------------------------------------------------------------
-
+-- [ EDIT MODE HANDLERS ]-----------------------------------------------------------------------------
 function Selection:OnEditModeEnter()
     Engine.SelectionPeekHide:Enable(self)
     DeferUntilOutOfCombat(function()
@@ -500,8 +495,7 @@ function Selection:DeselectAll()
     end
 end
 
--- [ KEYBOARD NUDGE (DELEGATES TO MODULE) ]----------------------------------------------------------
-
+-- [ KEYBOARD NUDGE (DELEGATES TO MODULE) ]-----------------------------------------------------------
 function Selection:EnableKeyboardNudge()
     Engine.SelectionNudge:Enable(self)
 end
@@ -553,8 +547,7 @@ function Selection:ShowAnchorLine(selection, side, align)
     pair[2]:Show()
 end
 
--- [ FORCE UPDATE ]----------------------------------------------------------------------------------
-
+-- [ FORCE UPDATE ]-----------------------------------------------------------------------------------
 function Selection:ForceUpdate(frame)
     local selection = self.selections[frame]
     if selection and selection:IsShown() then
@@ -601,8 +594,7 @@ function Selection:RefreshVisuals()
     end
 end
 
--- [ UPDATE VISUALS ]--------------------------------------------------------------------------------
-
+-- [ UPDATE VISUALS ]---------------------------------------------------------------------------------
 function Selection:UpdateVisuals(frame, selection)
     if not selection then
         if not frame then

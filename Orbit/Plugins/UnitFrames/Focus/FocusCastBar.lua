@@ -2,7 +2,7 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Focus Cast Bar", "Orbit_FocusCastBar", {
     liveToggle = true,
     defaults = Orbit.CastBarMixin.sharedDefaults,
@@ -12,12 +12,12 @@ Mixin(Plugin, Orbit.CastBarMixin)
 
 Plugin.previewText = "Focus Cast"
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     self:AddCastBarSettings(dialog, systemFrame)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     local CastBar = self:CreateCastBarFrame("OrbitFocusCastBar", {
         editModeName = "Focus Cast Bar",
@@ -47,7 +47,7 @@ function Plugin:OnLoad()
     self:RegisterWorldEvent(CastBar, "FocusCastBar")
 end
 
--- [ APPLY SETTINGS ]--------------------------------------------------------------------------------
+-- [ APPLY SETTINGS ]---------------------------------------------------------------------------------
 function Plugin:ApplySettings(systemFrame)
     local bar = self.CastBar
     if not bar then return end

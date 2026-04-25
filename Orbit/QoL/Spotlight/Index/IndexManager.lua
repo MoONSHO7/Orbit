@@ -1,4 +1,4 @@
--- [ INDEX MANAGER ]---------------------------------------------------------------------------------
+-- [ INDEX MANAGER ]----------------------------------------------------------------------------------
 local _, Orbit = ...
 local IndexManager = {}
 Orbit.Spotlight.Index.IndexManager = IndexManager
@@ -6,20 +6,20 @@ Orbit.Spotlight.Index.IndexManager = IndexManager
 local Sources = Orbit.Spotlight.Index.Sources
 local Async = Orbit.Async
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEBOUNCE_KEY = "Spotlight.IndexInvalidate"
 local DEBOUNCE_DELAY = 0.5
 -- Bump when the cached entry schema changes so stale serialised entries are discarded.
 local CACHE_VERSION = 6
 
--- [ STATE ]-----------------------------------------------------------------------------------------
+-- [ STATE ]------------------------------------------------------------------------------------------
 IndexManager._master = {}
 IndexManager._sourceDirty = {}
 IndexManager._eventFrame = nil
 IndexManager._registered = false
 IndexManager._built = false
 
--- [ CACHE ]-----------------------------------------------------------------------------------------
+-- [ CACHE ]------------------------------------------------------------------------------------------
 local function GetCacheStore()
     local acct = Orbit.db.AccountSettings
     acct.SpotlightIndex = acct.SpotlightIndex or { version = CACHE_VERSION, sources = {} }
@@ -37,7 +37,7 @@ local function SaveCachedSource(name, entries, signature)
     GetCacheStore()[name] = { entries = entries, signature = signature }
 end
 
--- [ EVENTS ]----------------------------------------------------------------------------------------
+-- [ EVENTS ]-----------------------------------------------------------------------------------------
 local function OnEvent(_, event)
     local names = {}
     for name, source in pairs(Sources) do
@@ -77,7 +77,7 @@ function IndexManager:UnregisterEvents()
     if self._eventFrame then self._eventFrame:UnregisterAllEvents() end
 end
 
--- [ BUILD ]-----------------------------------------------------------------------------------------
+-- [ BUILD ]------------------------------------------------------------------------------------------
 function IndexManager:EnsureBuilt(enabledKinds)
     if self._built and not next(self._sourceDirty) then return end
     self:Rebuild(enabledKinds)

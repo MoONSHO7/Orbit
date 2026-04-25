@@ -259,6 +259,7 @@ function Injection:GetRecyclePool(systemIndex)
 end
 
 function Injection:AcquireFrame(systemIndex, parent)
+    if InCombatLockdown() then return nil end
     local pool = self:GetRecyclePool(systemIndex)
     local frame = table.remove(pool)
     if frame then
@@ -286,6 +287,7 @@ function Injection:ReleaseFrame(systemIndex, frame)
 end
 
 function Injection:RefreshFrames(systemIndex)
+    if InCombatLockdown() then return end
     local items = self:GetInjectedItems(systemIndex)
     local active = Plugin.injectedFrames[systemIndex] or {}
     -- Release excess frames
@@ -300,6 +302,7 @@ function Injection:RefreshFrames(systemIndex)
         local frame = active[i]
         if not frame then
             frame = self:AcquireFrame(systemIndex, parent)
+            if not frame then return end
             active[i] = frame
         else
             frame:SetParent(parent)

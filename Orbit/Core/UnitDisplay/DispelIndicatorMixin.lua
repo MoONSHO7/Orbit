@@ -1,4 +1,4 @@
--- [ DISPEL INDICATOR MIXIN ]------------------------------------------------------------------------
+-- [ DISPEL INDICATOR MIXIN ]-------------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 
@@ -17,7 +17,7 @@ local DISPEL_TYPE_NAMES = { [1] = "Magic", [2] = "Curse", [3] = "Disease", [4] =
 local DISPEL_FILTER = "HARMFUL|RAID_PLAYER_DISPELLABLE"
 local IsAuraFilteredOut = C_UnitAuras and C_UnitAuras.IsAuraFilteredOutByInstanceID
 
--- [ CACHED CURVE ]----------------------------------------------------------------------------------
+-- [ CACHED CURVE ]-----------------------------------------------------------------------------------
 local function BuildDispelCurve(plugin)
     if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end
     local curve = C_CurveUtil.CreateColorCurve()

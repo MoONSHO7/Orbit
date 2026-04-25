@@ -1,4 +1,4 @@
--- [ ORBIT PROC GLOW MIXIN ]-------------------------------------------------------------------------
+-- [ ORBIT PROC GLOW MIXIN ]--------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants

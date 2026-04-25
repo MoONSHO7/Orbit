@@ -1,4 +1,4 @@
--- [ RESULT ROW ]------------------------------------------------------------------------------------
+-- [ RESULT ROW ]-------------------------------------------------------------------------------------
 local _, Orbit = ...
 local L = Orbit.L
 local Skin = Orbit.Skin
@@ -7,7 +7,7 @@ local Constants = Orbit.Constants
 local ResultRow = {}
 Orbit.Spotlight.UI.ResultRow = ResultRow
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local ICON_SIZE = 28
 local ROW_HEIGHT = 32
 local LABEL_PAD_LEFT = 8
@@ -43,7 +43,7 @@ local function GetGlobalFontName() return Orbit.db.GlobalSettings.Font end
 local KIND_LABEL = {}
 for _, k in ipairs(Orbit.Spotlight.Kinds) do KIND_LABEL[k.kind] = L[k.labelKey] end
 
--- [ PICKUP DISPATCH ]-------------------------------------------------------------------------------
+-- [ PICKUP DISPATCH ]--------------------------------------------------------------------------------
 local function PickupEntry(entry)
     local k = entry.kind
     if k == "spellbook" or k == "professions" then
@@ -63,7 +63,7 @@ local function PickupEntry(entry)
     end
 end
 
--- [ TOOLTIP DISPATCH ]------------------------------------------------------------------------------
+-- [ TOOLTIP DISPATCH ]-------------------------------------------------------------------------------
 local function ShowTooltip(row)
     local entry = row._entry
     if not entry then return end
@@ -95,7 +95,7 @@ local function ShowTooltip(row)
     GameTooltip:Show()
 end
 
--- [ FACTORY ]---------------------------------------------------------------------------------------
+-- [ FACTORY ]----------------------------------------------------------------------------------------
 function ResultRow:Create(parent, width)
     local row = CreateFrame("Button", nil, parent, "SecureActionButtonTemplate")
     row:SetSize(width, ROW_HEIGHT)
@@ -179,7 +179,7 @@ function ResultRow:Create(parent, width)
     return row
 end
 
--- [ BIND ]------------------------------------------------------------------------------------------
+-- [ BIND ]-------------------------------------------------------------------------------------------
 -- SetAttribute is combat-forbidden; the caller relies on Spotlight being closed during combat.
 local function ClearSecureAttrs(row)
     for _, key in ipairs(SECURE_ATTR_KEYS) do

@@ -1,12 +1,11 @@
 -- [ ORBIT FRAME ORIENTATION ] -----------------------------------------------------------------------
-
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
 Engine.FrameOrientation = {}
 local Orientation = Engine.FrameOrientation
 
--- [ STATE ]-----------------------------------------------------------------------------------------
+-- [ STATE ]------------------------------------------------------------------------------------------
 Orientation.callbacks = {} -- frame -> callback function
 Orientation.lastOrientation = {} -- frame -> last detected orientation
 Orientation.trackedFrames = {} -- frames currently being tracked during drag
@@ -49,7 +48,6 @@ function Orientation:UnregisterCallback(frame)
 end
 
 -- [ DRAG TRACKING ] ---------------------------------------------------------------------------------
-
 local function OnDragUpdate(self, elapsed)
     local Orientation = Engine.FrameOrientation
 

@@ -1,4 +1,4 @@
--- [ ORBIT ADVANCED SETTINGS ]-----------------------------------------------------------------------
+-- [ ORBIT ADVANCED SETTINGS ]------------------------------------------------------------------------
 -- Orchestrator for the Orbit AddOns settings panel. Hosts three tabs:
 -- 1. Plugin Manager — enable/disable Orbit plugins
 -- 2. Visibility Engine — centralized frame visibility settings
@@ -10,7 +10,7 @@
 local _, Orbit = ...
 Orbit._AC = Orbit._AC or {}
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local PADDING = 16
 local HEADER_HEIGHT = 40
 local TAB_HEIGHT = 28
@@ -20,7 +20,7 @@ local TAB_FONT = "GameFontNormal"
 local TAB_ACTIVE_COLOR = { r = 1, g = 0.82, b = 0 }
 local TAB_INACTIVE_COLOR = { r = 0.6, g = 0.6, b = 0.6 }
 
--- [ TAB BAR FACTORY ]-------------------------------------------------------------------------------
+-- [ TAB BAR FACTORY ]--------------------------------------------------------------------------------
 local function CreateTabBar(parent, tabs, onTabSelected)
     local bar = CreateFrame("Frame", nil, parent)
     bar:SetHeight(TAB_HEIGHT)
@@ -66,7 +66,7 @@ local function CreateTabBar(parent, tabs, onTabSelected)
     return bar
 end
 
--- [ PANEL CREATION ]--------------------------------------------------------------------------------
+-- [ PANEL CREATION ]---------------------------------------------------------------------------------
 local function CreatePluginPanel()
     local frame = CreateFrame("Frame", "OrbitPluginManagerPanel")
     frame:Hide()
@@ -103,7 +103,7 @@ local function CreatePluginPanel()
     return frame
 end
 
--- [ SETTINGS REGISTRATION ]-------------------------------------------------------------------------
+-- [ SETTINGS REGISTRATION ]--------------------------------------------------------------------------
 local function RegisterSettingsPanel()
     local panel = CreatePluginPanel()
     local category = Settings.RegisterCanvasLayoutCategory(panel, "Orbit")

@@ -1,4 +1,4 @@
--- [ OUT OF COMBAT FADE MIXIN ]----------------------------------------------------------------------
+-- [ OUT OF COMBAT FADE MIXIN ]-----------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
@@ -11,7 +11,7 @@ local Mixin = Orbit.OOCFadeMixin
 local EventFrame = CreateFrame("Frame")
 local ManagedFrames = setmetatable({}, { __mode = "k" })
 
--- [ VISIBILITY LOGIC ]------------------------------------------------------------------------------
+-- [ VISIBILITY LOGIC ]-------------------------------------------------------------------------------
 local function GetVEKey(data)
     if data.veKey then return data.veKey end
     if not Orbit.VisibilityEngine then return nil end
@@ -146,7 +146,7 @@ local function UpdateAllFrames()
     end
 end
 
--- [ EVENT HANDLING ]--------------------------------------------------------------------------------
+-- [ EVENT HANDLING ]---------------------------------------------------------------------------------
 EventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 EventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 EventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -186,7 +186,7 @@ C_Timer.After(2, function()
     end
 end)
 
--- [ MIXIN FUNCTIONS ]-------------------------------------------------------------------------------
+-- [ MIXIN FUNCTIONS ]--------------------------------------------------------------------------------
 function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover, veKey)
     if not frame then return end
     if plugin then

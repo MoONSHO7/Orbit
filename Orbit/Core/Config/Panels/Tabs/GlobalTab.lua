@@ -1,4 +1,4 @@
--- [ GLOBAL TAB ]------------------------------------------------------------------------------------
+-- [ GLOBAL TAB ]-------------------------------------------------------------------------------------
 -- Font, border, and icon border settings for the Orbit Options dialog.
 
 local _, Orbit = ...
@@ -10,8 +10,7 @@ local Constants = Orbit.Constants
 local Panel = Orbit.OptionsPanel
 local CreateGlobalSettingsPlugin = Panel._helpers.CreateGlobalSettingsPlugin
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local GlobalPlugin = CreateGlobalSettingsPlugin("OrbitGlobal")
 
 local function GetBorderStyleOptions()
@@ -40,8 +39,7 @@ local function GetBorderStyleOptions()
     return opts
 end
 
--- [ SCHEMA ]----------------------------------------------------------------------------------------
-
+-- [ SCHEMA ]-----------------------------------------------------------------------------------------
 local function GetGlobalSchema()
     local controls = {
         { type = "font", key = "Font", label = L.CFG_FONT, default = "PT Sans Narrow" },
@@ -147,6 +145,5 @@ local function GetGlobalSchema()
     }
 end
 
--- [ REGISTRATION ]----------------------------------------------------------------------------------
-
+-- [ REGISTRATION ]-----------------------------------------------------------------------------------
 Panel.Tabs["Global"] = { plugin = GlobalPlugin, schema = GetGlobalSchema }

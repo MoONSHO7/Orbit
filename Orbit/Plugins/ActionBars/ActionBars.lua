@@ -9,7 +9,7 @@ local ABText = Orbit.ActionBarsText
 local ABPreview = Orbit.ActionBarsPreview
 local GC = Orbit.Engine.GlowController
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULT_ICON_SIZE = 34
 local PET_BAR_INDEX = 9
 local STANCE_BAR_INDEX = 10
@@ -37,7 +37,7 @@ local DROPPABLE_CURSOR_TYPES = { spell = true, petaction = true, flyout = true, 
 local rangeButtons = {}
 local cachedOORColor, cachedOOMColor, cachedUnusableColor
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local BAR_CONFIG = {
     { blizzName = "MainActionBar", orbitName = "OrbitActionBar1", label = L.PLU_ACTION_BAR_1, index = 1, buttonPrefix = "ActionButton", count = 12 },
     { blizzName = "MultiBarBottomLeft", orbitName = "OrbitActionBar2", label = L.PLU_ACTION_BAR_2, index = 2, buttonPrefix = "MultiBarBottomLeftButton", count = 12 },
@@ -409,7 +409,7 @@ function Plugin:OnLoad()
 end
 
 -- [ EDIT MODE NUM ICONS PATCH ] ---------------------------------------------------------------------
-StaticPopupDialogs["ORBIT_ACTIONBARS_RELOAD"] = { text = "Action bar icon count changed. A reload is required.", button1 = "Reload", button2 = "Later", OnAccept = function() ReloadUI() end, timeout = 0, whileDead = true, hideOnEscape = true }
+StaticPopupDialogs["ORBIT_ACTIONBARS_RELOAD"] = { text = L.MSG_AB_ICON_COUNT_RELOAD, button1 = L.CMN_RELOAD, button2 = L.CMN_LATER, OnAccept = function() ReloadUI() end, timeout = 0, whileDead = true, hideOnEscape = true }
 
 Orbit.EventBus:On("EDIT_MODE_LAYOUTS_UPDATED", function()
     local layoutInfo = C_EditMode.GetLayouts()

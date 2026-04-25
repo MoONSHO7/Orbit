@@ -1,4 +1,4 @@
--- [ ORBIT POSITION UTILITIES ]----------------------------------------------------------------------
+-- [ ORBIT POSITION UTILITIES ]-----------------------------------------------------------------------
 -- Shared position calculation functions for anchor, offset, and alignment calculations.
 -- Used by CanvasModeDialog, ComponentDrag, and UnitButton.
 
@@ -110,7 +110,7 @@ end
 -- Whether a component needs edge-relative offset compensation (width and optionally height)
 function PositionUtils.NeedsEdgeCompensation(isFontString, isAuraContainer) return isFontString or isAuraContainer end
 
--- [ EDGE COMPENSATION ]-----------------------------------------------------------------------------
+-- [ EDGE COMPENSATION ]------------------------------------------------------------------------------
 function PositionUtils.CalculateAnchorWithWidthCompensation(posX, posY, halfW, halfH, needsWidthComp, compWidth, compHeight, isAuraContainer)
     local anchorX, anchorY, offsetX, offsetY, justifyH = PositionUtils.CalculateAnchor(posX, posY, halfW, halfH)
     local selfAnchorY = anchorY
@@ -152,7 +152,6 @@ function PositionUtils.CalculateAnchorWithWidthCompensation(posX, posY, halfW, h
 end
 
 -- [ APPLY TEXT POSITION ] ---------------------------------------------------------------------------
-
 -- Apply saved position data to a text element (FontString or Frame)
 -- Handles anchor-based positioning with justifyH support for text alignment
 -- @param element: The FontString or Frame to position
@@ -218,8 +217,7 @@ function PositionUtils.ApplyTextPosition(element, parent, pos, defaultAnchor, de
     return false
 end
 
--- [ ANCHOR TO POSITION ]----------------------------------------------------------------------------
-
+-- [ ANCHOR TO POSITION ]-----------------------------------------------------------------------------
 function PositionUtils.AnchorToPosition(posX, posY, halfW, halfH, defaultPosition)
     if posX and posY and halfW and halfH then
         local beyondX = math.max(0, math.abs(posX) - halfW)
@@ -232,8 +230,7 @@ function PositionUtils.AnchorToPosition(posX, posY, halfW, halfH, defaultPositio
     return defaultPosition or "Right"
 end
 
--- [ APPLY ICON POSITION ]---------------------------------------------------------------------------
-
+-- [ APPLY ICON POSITION ]----------------------------------------------------------------------------
 function PositionUtils.ApplyIconPosition(icon, parentFrame, pos)
     if not pos or not pos.anchorX then return end
     local anchorPoint = PositionUtils.BuildAnchorPoint(pos.anchorX, pos.anchorY or "CENTER")

@@ -1,7 +1,7 @@
 -- [ MOUSE CURSOR HIGHLIGHT ] ------------------------------------------------------------------------
 local _, Orbit = ...
 
--- [ MODULE ]----------------------------------------------------------------------------------------
+-- [ MODULE ]-----------------------------------------------------------------------------------------
 Orbit.Mouse = {}
 local Mouse = Orbit.Mouse
 
@@ -83,7 +83,7 @@ function Mouse:Disable()
     end
 end
 
--- [ AUTO-ENABLE ON LOGIN ]--------------------------------------------------------------------------
+-- [ AUTO-ENABLE ON LOGIN ]---------------------------------------------------------------------------
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", function()

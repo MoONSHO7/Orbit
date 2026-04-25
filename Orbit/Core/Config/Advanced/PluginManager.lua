@@ -1,4 +1,4 @@
--- [ PLUGIN MANAGER CONTENT ]------------------------------------------------------------------------
+-- [ PLUGIN MANAGER CONTENT ]-------------------------------------------------------------------------
 -- Plugin enable/disable checkbox grid for the Orbit Advanced Settings panel.
 local _, Orbit = ...
 local L = Orbit.L
@@ -6,7 +6,7 @@ local OrbitEngine = Orbit.Engine
 local Layout = OrbitEngine.Layout
 local A = Layout.Advanced
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local CHECKBOX_HEIGHT = 26
 local COLUMNS = 3
 local RELOAD_BUTTON_WIDTH = 160
@@ -33,7 +33,7 @@ local PLUGIN_GROUPS = {
     }},
 }
 
--- [ TRI-STATE HELPERS ]-----------------------------------------------------------------------------
+-- [ TRI-STATE HELPERS ]------------------------------------------------------------------------------
 local TRI_TOOLTIPS = {
     [0] = L.PLG_TRI_BLIZZARD,
     [1] = L.PLG_TRI_ORBIT,
@@ -48,7 +48,7 @@ local function GetTriState(primaryPlugin, pluginNames)
     return 1
 end
 
--- [ BUILD ]-----------------------------------------------------------------------------------------
+-- [ BUILD ]------------------------------------------------------------------------------------------
 function Orbit._AC.BuildPluginContent(pluginContent, frame)
     local header = Layout:CreateSectionHeader(pluginContent, L.CFG_PLUGIN_MANAGER)
     header:SetPoint("TOPLEFT", A.PADDING, A.TITLE_Y)

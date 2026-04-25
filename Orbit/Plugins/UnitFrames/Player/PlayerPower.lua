@@ -53,7 +53,7 @@ end
 local CanUseUnitPowerPercent = Orbit.SecretValueUtils.CanUseUnitPowerPercent
 local SafeUnitPowerPercent = Orbit.SecretValueUtils.SafeUnitPowerPercent
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerPower"
 local SYSTEM_INDEX = 1
 
@@ -89,7 +89,7 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
 
 local Frame, PowerBar
 
--- [ SHARED COMBAT-SAFE VISIBILITY ]-----------------------------------------------------------------
+-- [ SHARED COMBAT-SAFE VISIBILITY ]------------------------------------------------------------------
 local function SafeShow(frame)
     frame.orbitHiddenByAlpha = false
     local opacity = (Plugin:GetSetting(SYSTEM_INDEX, "Opacity") or 100) / 100
@@ -134,7 +134,7 @@ Orbit.PlayerUtilShared = {
     SafeUnitPowerPercent = SafeUnitPowerPercent,
 }
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     if not Frame then
         return
@@ -229,7 +229,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     Frame, PowerBar = OrbitEngine.FrameFactory:CreateWithBar("PlayerPower", self, {
         width = 200,
@@ -380,7 +380,7 @@ function Plugin:UpdateVisibility()
     OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:ApplySettings()
     if not Frame then
         return

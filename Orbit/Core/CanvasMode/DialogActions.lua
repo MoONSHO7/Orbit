@@ -1,4 +1,4 @@
--- [ CANVAS MODE - DIALOG ACTIONS ]------------------------------------------------------------------
+-- [ CANVAS MODE - DIALOG ACTIONS ]-------------------------------------------------------------------
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode

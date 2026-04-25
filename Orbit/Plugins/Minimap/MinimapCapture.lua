@@ -1,4 +1,4 @@
--- [ MINIMAP CAPTURE ]-------------------------------------------------------------------------------
+-- [ MINIMAP CAPTURE ]--------------------------------------------------------------------------------
 -- Blizzard minimap capture, art stripping, frame guard, and Blizzard component reparenting.
 
 ---@type Orbit
@@ -11,8 +11,7 @@ local MISSIONS_BASE_SIZE = C.MISSIONS_BASE_SIZE
 
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
--- [ BLIZZARD REFERENCES ]---------------------------------------------------------------------------
-
+-- [ BLIZZARD REFERENCES ]----------------------------------------------------------------------------
 local function GetBlizzardMinimap() return Minimap end
 local function GetBlizzardCluster() return MinimapCluster end
 
@@ -118,8 +117,7 @@ end
 Plugin.GetBlizzardMinimap = GetBlizzardMinimap
 Plugin.GetBlizzardCluster = GetBlizzardCluster
 
--- [ BLIZZARD ART STRIPPING ]------------------------------------------------------------------------
-
+-- [ BLIZZARD ART STRIPPING ]-------------------------------------------------------------------------
 local function StripBlizzardArt()
     local cluster = GetBlizzardCluster()
     if not cluster then return end
@@ -151,8 +149,7 @@ local function StripBlizzardArt()
     end
 end
 
--- [ BLIZZARD COMPONENT REPARENTING ]----------------------------------------------------------------
-
+-- [ BLIZZARD COMPONENT REPARENTING ]-----------------------------------------------------------------
 function Plugin:ReparentBlizzardComponents()
     local overlay = self.frame.Overlay
 
@@ -343,8 +340,7 @@ function Plugin:RestoreBlizzardComponents()
     end
 end
 
--- [ CAPTURE ]---------------------------------------------------------------------------------------
-
+-- [ CAPTURE ]----------------------------------------------------------------------------------------
 function Plugin:CaptureBlizzardMinimap()
     local minimap = GetBlizzardMinimap()
 
@@ -420,7 +416,7 @@ function Plugin:CaptureBlizzardMinimap()
     self._captured = true
 end
 
--- [ FARMHUD COMPATIBILITY ]-------------------------------------------------------------------------
+-- [ FARMHUD COMPATIBILITY ]--------------------------------------------------------------------------
 -- Suspend FrameGuard and surface-sync while FarmHud owns the Minimap. See readme for details.
 
 function Plugin:HookFarmHud()

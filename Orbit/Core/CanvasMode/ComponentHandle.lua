@@ -1,4 +1,4 @@
--- [ ORBIT COMPONENT HANDLE ]------------------------------------------------------------------------
+-- [ ORBIT COMPONENT HANDLE ]-------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
@@ -9,13 +9,11 @@ local HandleCore = Engine.HandleCore
 local Helpers = Engine.ComponentHelpers
 local SafeGetNumber = Helpers.SafeGetNumber
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local HEADER_HEIGHT = 14
 local HEADER_MIN_WIDTH = 60
 
 -- [ CREATE HANDLE ] ---------------------------------------------------------------------------------
-
 function Handle:Create(component, parent, callbacks)
     if not component then
         return nil
@@ -160,7 +158,6 @@ function Handle:Create(component, parent, callbacks)
 end
 
 -- [ POSITION HEADER ] -------------------------------------------------------------------------------
-
 local EDGE_BUFFER = 20
 function Handle:PositionHeader(handle, component, parent)
     if not handle.header then return end
@@ -187,13 +184,11 @@ function Handle:PositionHeader(handle, component, parent)
 end
 
 -- [ RELEASE HANDLE ] --------------------------------------------------------------------------------
-
 function Handle:Release(handle)
     HandleCore:ReturnToPool(handle)
 end
 
 -- [ CLEAR POOL ] ------------------------------------------------------------------------------------
-
 function Handle:ClearPool()
     HandleCore:ClearPool()
 end

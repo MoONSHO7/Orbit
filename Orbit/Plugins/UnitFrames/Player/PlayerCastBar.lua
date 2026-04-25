@@ -4,7 +4,7 @@ local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
     defaults = {
         CastBarColor = { r = 1, g = 0.7, b = 0 },
@@ -30,7 +30,7 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
 })
 Plugin.canvasMode = true
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local INTERRUPT_FLASH_DURATION = Orbit.Constants.Timing.FlashDuration
 local EMPOWER_STAGE_COLORS = Orbit.Colors.EmpowerStage
 local CAST_CANCEL_THRESHOLD = 0.15
@@ -74,7 +74,7 @@ local CHANNEL_SPELLS = {
     [356995] = 4, -- Disintegrate
 }
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function DisableBlizzardCastBar()
     if not PlayerCastingBarFrame then return end
     OrbitEngine.NativeFrame:Disable(PlayerCastingBarFrame)
@@ -171,7 +171,7 @@ local function SetupChannelTicks(plugin, bar, safeSpellID)
     end
 end
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
     if not CastBar then
         return
@@ -247,7 +247,7 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     -- Create frame ONLY when plugin is enabled (OnLoad is only called for enabled plugins)
     CastBar = CreateFrame("StatusBar", "OrbitCastBar", UIParent)
@@ -425,7 +425,7 @@ function Plugin:OnLoad()
     Orbit.EventBus:On("MOUNTED_VISIBILITY_CHANGED", function() self:UpdateVisibility() end, self)
 end
 
--- [ MOUNTED VISIBILITY ]----------------------------------------------------------------------------
+-- [ MOUNTED VISIBILITY ]-----------------------------------------------------------------------------
 function Plugin:UpdateVisibility()
     local bar = self.CastBar
     if not bar then return end
@@ -441,7 +441,6 @@ function Plugin:UpdateVisibility()
 end
 
 -- [ SKINNING LOGIC ] --------------------------------------------------------------------------------
-
 function Plugin:OnCastEvent(event, unit, castGUID, spellID)
     if unit ~= "player" then
         return

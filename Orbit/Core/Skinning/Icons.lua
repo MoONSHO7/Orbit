@@ -14,7 +14,7 @@ Icons.borderCache = setmetatable({}, { __mode = "k" })
 local IM = Skin.IconMonitor
 local IL = Skin.IconLayout
 
--- [ APPLY & MONITORING ]----------------------------------------------------------------------------
+-- [ APPLY & MONITORING ]-----------------------------------------------------------------------------
 function Icons:Apply(frame, settings)
     if not frame then return end
     local CM = Orbit and Orbit.CombatManager
@@ -43,7 +43,7 @@ function Icons:SkinIcons(frame)
     if not InCombatLockdown() and s.padding then IL:ApplyManualLayout(frame, icons, s) end
 end
 
--- [ REGION DISCOVERY ]------------------------------------------------------------------------------
+-- [ REGION DISCOVERY ]-------------------------------------------------------------------------------
 function Icons:FindRegions(icon)
     if self.regionCache[icon] then return self.regionCache[icon] end
     local regions = {
@@ -88,7 +88,7 @@ function Icons:FindRegions(icon)
     return regions
 end
 
--- [ ICON SKINNING ]---------------------------------------------------------------------------------
+-- [ ICON SKINNING ]----------------------------------------------------------------------------------
 function Icons:ApplyCustom(icon, settings)
     if icon.SetScale then icon:SetScale(1) end
     local r = self:FindRegions(icon)

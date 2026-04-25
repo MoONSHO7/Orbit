@@ -1,4 +1,4 @@
--- [ ORBIT AURA MIXIN ]------------------------------------------------------------------------------
+-- [ ORBIT AURA MIXIN ]-------------------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local pcall, type, ipairs = pcall, type, ipairs
@@ -29,7 +29,7 @@ local IDENTITY_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     return c
 end)()
 
--- [ CACHED FONT ]-----------------------------------------------------------------------------------
+-- [ CACHED FONT ]------------------------------------------------------------------------------------
 local cachedFontPath, cachedFontOutline
 local function GetAuraFont()
     if cachedFontPath then return cachedFontPath, cachedFontOutline end
@@ -41,13 +41,13 @@ local function GetAuraFont()
 end
 function Mixin:InvalidateFontCache() cachedFontPath = nil; cachedFontOutline = nil end
 
--- [ SKIN FACADE ]-----------------------------------------------------------------------------------
+-- [ SKIN FACADE ]------------------------------------------------------------------------------------
 function Mixin:ApplyAuraSkin(icon, settings)
     if not icon or not Orbit.Skin or not Orbit.Skin.Icons then return end
     Orbit.Skin.Icons:ApplyCustom(icon, settings or Orbit.Constants.Aura.SkinWithTimer)
 end
 
--- [ AURA POOL CREATION ]----------------------------------------------------------------------------
+-- [ AURA POOL CREATION ]-----------------------------------------------------------------------------
 function Mixin:CreateAuraPool(frame, template, parent)
     if frame.auraPool then return frame.auraPool end
     frame.auraPool = CreateFramePool("Button", parent or frame, template or "BackdropTemplate")
@@ -70,7 +70,7 @@ function Mixin:BuildAuraSnapshot(unit)
     return { harmful = harmful, helpful = helpful, helpfulBySpell = helpfulBySpell, helpfulPlayerBySpell = helpfulPlayerBySpell }
 end
 
--- [ INCREMENTAL AURA CACHE ]------------------------------------------------------------------------
+-- [ INCREMENTAL AURA CACHE ]-------------------------------------------------------------------------
 -- Per-frame caches keyed by auraInstanceID; patched incrementally on partial UNIT_AURA events.
 local GetAuraDataByAuraInstanceID = C_UnitAuras.GetAuraDataByAuraInstanceID
 local IsFilteredOut = C_UnitAuras.IsAuraFilteredOutByInstanceID
@@ -122,6 +122,7 @@ function Mixin:PatchCaches(frame, unit, updateInfo)
 end
 
 local _RecycledSnapshot = { harmful = {}, helpful = {}, helpfulBySpell = {}, helpfulPlayerBySpell = {} }
+local _RecycledAuraDisplayList = {}
 
 function Mixin:BuildSnapshotFromCaches(frame)
     local hc = frame._harmfulAuraCache
@@ -170,7 +171,7 @@ function Mixin:FetchAuras(unit, filter, maxCount)
     return auras
 end
 
--- [ ICON SETUP ]------------------------------------------------------------------------------------
+-- [ ICON SETUP ]-------------------------------------------------------------------------------------
 function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPositions)
     if not icon or not aura then return end
     icon:SetSize(size, size)
@@ -304,12 +305,12 @@ function Mixin:SetupAuraTooltip(icon, aura, unit, filter)
     icon:SetScript("OnLeave", AuraIcon_OnLeave)
 end
 
--- [ AURA FILTER ]-----------------------------------------------------------------------------------
+-- [ AURA FILTER ]------------------------------------------------------------------------------------
 function Mixin:IsAuraIncluded(unit, auraInstanceID, filter)
     return not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, auraInstanceID, filter)
 end
 
--- [ AURA CONTAINER DISPLAY ]------------------------------------------------------------------------
+-- [ AURA CONTAINER DISPLAY ]-------------------------------------------------------------------------
 local OrbitEngine = Orbit.Engine
 local AL = Orbit.AuraLayout
 local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
@@ -334,8 +335,6 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     -- Force everything to use the secure snapshot architecture, building securely locally if the OnEvent missed it
     local snap = frame._auraSnapshot or self:BuildAuraSnapshot(unit)
     local rawAuras = fetchFilter:find("HARMFUL") and snap.harmful or snap.helpful
-    local _RecycledAuraDisplayList = Mixin._RecycledAuraDisplayList or {}
-    Mixin._RecycledAuraDisplayList = _RecycledAuraDisplayList
 
     local auras
     if cfg.postFilter then
@@ -385,7 +384,7 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     container:Show()
 end
 
--- [ SINGLE AURA ICON DISPLAY ]----------------------------------------------------------------------
+-- [ SINGLE AURA ICON DISPLAY ]-----------------------------------------------------------------------
 function Mixin:UpdateSingleAuraIcon(frame, plugin, iconKey, filter, iconSize)
     local icon = frame[iconKey]
     if not icon then return end
@@ -414,7 +413,7 @@ function Mixin:UpdateSingleAuraIcon(frame, plugin, iconKey, filter, iconSize)
     icon:Show()
 end
 
--- [ DEFENSIVE & CC ICON DISPLAY ]-------------------------------------------------------------------
+-- [ DEFENSIVE & CC ICON DISPLAY ]--------------------------------------------------------------------
 function Mixin:UpdateDefensiveIcon(frame, plugin, iconSize)
     self:UpdateSingleAuraIcon(frame, plugin, "DefensiveIcon", "HELPFUL|BIG_DEFENSIVE", iconSize)
     if frame.DefensiveIcon and not frame.DefensiveIcon:IsShown() then
@@ -426,8 +425,7 @@ function Mixin:UpdateCrowdControlIcon(frame, plugin, iconSize)
     self:UpdateSingleAuraIcon(frame, plugin, "CrowdControlIcon", "HARMFUL|CROWD_CONTROL", iconSize)
 end
 
--- [ LAZY ICON CREATION ]----------------------------------------------------------------------------
-
+-- [ LAZY ICON CREATION ]-----------------------------------------------------------------------------
 local DEFAULT_HEALER_SKIN = Orbit.Constants.Aura.SkinNoTimer
 
 function Mixin:EnsureAuraIcon(frame, iconKey, iconSize)
@@ -519,7 +517,7 @@ local function HealerCurveOnUpdate(icon)
     end
 end
 
--- [ CENTRALIZED CURVE TICKER ]----------------------------------------------------------------------
+-- [ CENTRALIZED CURVE TICKER ]-----------------------------------------------------------------------
 local CURVE_TICK_INTERVAL = 0.05
 local _activeCurveIcons = {}
 local _curveTicker

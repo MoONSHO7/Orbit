@@ -1,4 +1,4 @@
--- [ AGGRO INDICATOR MIXIN ]-------------------------------------------------------------------------
+-- [ AGGRO INDICATOR MIXIN ]--------------------------------------------------------------------------
 -- Shows tinted border overlay when unit has threat/aggro (PlayerFrame, PartyFrames, etc.)
 
 local _, Orbit = ...

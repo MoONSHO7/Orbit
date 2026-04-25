@@ -1,7 +1,7 @@
 ---@type Orbit
 local Orbit = Orbit
 
--- [ SESSION TRACKER ]-------------------------------------------------------------------------------
+-- [ SESSION TRACKER ]--------------------------------------------------------------------------------
 -- Tracks per-session gain and rate for each bar. Persists across /reload via AccountSettings.
 -- A reload preserves the session; logout starts a new one after a configurable stale window.
 

@@ -7,7 +7,7 @@ local OrbitEngine = Orbit.Engine
 Orbit.GroupCanvasRegistration = {}
 local Reg = Orbit.GroupCanvasRegistration
 
--- [ TIER-AWARE CALLBACKS ]--------------------------------------------------------------------------
+-- [ TIER-AWARE CALLBACKS ]---------------------------------------------------------------------------
 local function MakeTierPositionCallback(plugin, key)
 	return function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
 		local posX, posY
@@ -117,8 +117,7 @@ local function MakeStatusIconsPositionCallback(plugin)
 	end
 end
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local STATUS_GROUP_KEYS = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }
 
 -- Propagates the StatusIcons grouped position to each individual status icon key.
@@ -260,7 +259,7 @@ function Reg:ApplyIconPositions(frames, savedPositions, iconKeys)
 	end
 end
 
--- [ PREPARE ICONS ]---------------------------------------------------------------------------------
+-- [ PREPARE ICONS ]----------------------------------------------------------------------------------
 -- Sets placeholder textures/atlases and sizes on frame icons so Canvas Mode can clone them.
 -- healerSlots = HealerReg:ActiveSlots(), raidBuffs = HealerReg:ActiveRaidBuffs()
 function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
@@ -389,7 +388,7 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
 	end
 end
 
--- [ SHOW CANVAS MODE ICONS ]------------------------------------------------------------------------
+-- [ SHOW CANVAS MODE ICONS ]-------------------------------------------------------------------------
 -- Shows/hides canvas-mode preview icons during ApplyPreviewVisuals.
 -- healerSlots = HealerReg:ActiveSlots(), raidBuffs = HealerReg:ActiveRaidBuffs()
 -- healerKeys = HealerReg:ActiveKeys() (for hide path)
@@ -547,7 +546,7 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
 	end
 end
 
--- [ ON CANVAS APPLY ]-------------------------------------------------------------------------------
+-- [ ON CANVAS APPLY ]--------------------------------------------------------------------------------
 function Reg:OnCanvasApply(plugin)
 	if not plugin.frames then
 		return

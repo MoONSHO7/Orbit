@@ -4,7 +4,7 @@ local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_FocusFrame"
 local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus or 3
 
@@ -34,7 +34,7 @@ local Plugin = Orbit:RegisterPlugin("Focus Frame", SYSTEM_ID, {
     },
 })
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex
     if systemIndex ~= FOCUS_FRAME_INDEX then
@@ -106,7 +106,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 -- Apply Mixins
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.StatusIconMixin)
 Plugin.supportsHealthText = true
@@ -222,7 +222,7 @@ function Plugin:OnLoad()
     Orbit.EventBus:On("PLAYER_SETTINGS_CHANGED", function() self:ApplySettings(self.frame) end, self)
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:ApplySettings(frame)
     frame = self.frame
     if not frame then
@@ -271,7 +271,7 @@ function Plugin:UpdateVisuals(frame)
     end
 end
 
--- [ BLIZZARD HIDER ]--------------------------------------------------------------------------------
+-- [ BLIZZARD HIDER ]---------------------------------------------------------------------------------
 Orbit:RegisterBlizzardHider("Focus Frame", function()
     if FocusFrame then OrbitEngine.NativeFrame:Disable(FocusFrame) end
 end)

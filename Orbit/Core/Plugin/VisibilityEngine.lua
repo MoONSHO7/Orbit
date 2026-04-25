@@ -1,12 +1,12 @@
--- [ VISIBILITY ENGINE ]-----------------------------------------------------------------------------
+-- [ VISIBILITY ENGINE ]------------------------------------------------------------------------------
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 
--- [ MODULE ]----------------------------------------------------------------------------------------
+-- [ MODULE ]-----------------------------------------------------------------------------------------
 Orbit.VisibilityEngine = {}
 local VE = Orbit.VisibilityEngine
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULTS = { oocFade = false, opacity = 100, hideMounted = false, mouseOver = true, showWithTarget = true, alphaLock = false }
 local STARTUP_DELAY = 0.5
 
@@ -123,7 +123,7 @@ local ADDON_REGISTRY = {
     { key = "Bartender3",       display = "Bartender4 (Bar 3)",  addon = "Bartender4",      frame = "BT4Bar3" },
 }
 
--- [ DB ACCESS ]-------------------------------------------------------------------------------------
+-- [ DB ACCESS ]--------------------------------------------------------------------------------------
 local function GetDB()
     if not Orbit.db then return nil end
     if not Orbit.db.VisibilityEngine then Orbit.db.VisibilityEngine = {} end
@@ -137,7 +137,7 @@ local function GetFrameDB(key)
     return db[key]
 end
 
--- [ API ]-------------------------------------------------------------------------------------------
+-- [ API ]--------------------------------------------------------------------------------------------
 function VE:GetFrameSetting(key, settingKey)
     local frameDB = GetFrameDB(key)
     if not frameDB then return DEFAULTS[settingKey] end
@@ -240,7 +240,7 @@ function VE:AnyFrameHasSetting(settingKey)
     return false
 end
 
--- [ MIGRATION ]-------------------------------------------------------------------------------------
+-- [ MIGRATION ]--------------------------------------------------------------------------------------
 -- One-time migration from per-plugin settings to centralized VisibilityEngine DB
 function VE:Migrate()
     local db = GetDB()

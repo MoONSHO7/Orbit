@@ -4,7 +4,7 @@ local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local FALLBACK_TEXTURE = "Interface\\Buttons\\WHITE8x8"
 local DEFAULT_BG_COLOR = { r = 0.05, g = 0.05, b = 0.05, a = 0.85 }
 local OVERLAY_FRAME_OFFSET = 1
@@ -15,7 +15,7 @@ local COMP_KEY_NAME = "Name"
 local COMP_KEY_LEVEL = "BarLevel"
 local COMP_KEY_VALUE = "BarValue"
 
--- [ CANVAS MODE COMPONENT SCHEMAS ]-----------------------------------------------------------------
+-- [ CANVAS MODE COMPONENT SCHEMAS ]------------------------------------------------------------------
 -- `Name` already exists in the shared KEY_SCHEMAS (STATIC_TEXT: font/size/color). `BarLevel` and
 -- `BarValue` are status-bar specific — register them so each component's Canvas Mode dock shows
 -- font/size/color, and `BarValue` exposes the ValueMode dropdown (current/max/percent) that drives
@@ -45,7 +45,7 @@ do
     end
 end
 
--- [ STATUS BAR BASE ]-------------------------------------------------------------------------------
+-- [ STATUS BAR BASE ]--------------------------------------------------------------------------------
 -- Shared factory for StatusBars plugins. Each bar is a container Frame holding:
 --   .Bar       : StatusBar — primary fill (XP/Rep/Honor)
 --   .Overlay   : StatusBar — secondary fill beneath Bar (rested XP, paragon bonus)
@@ -133,7 +133,7 @@ function StatusBarBase:Create(globalName, parent)
     return container
 end
 
--- [ TEXT COMPONENTS ]-------------------------------------------------------------------------------
+-- [ TEXT COMPONENTS ]--------------------------------------------------------------------------------
 -- Creates three canvas-positionable text frames (Name, Level, Value) parented to the text frame.
 -- Each is a Frame with a single OVERLAY FontString child so Canvas Mode can drag the frame and
 -- OverrideUtils can apply font/size/color to the FontString via frame.visual.
@@ -233,7 +233,7 @@ function StatusBarBase:SyncPreviewText(plugin, container)
     sync(COMP_KEY_VALUE, container.Value)
 end
 
--- [ THEME ]-----------------------------------------------------------------------------------------
+-- [ THEME ]------------------------------------------------------------------------------------------
 function StatusBarBase:ApplyTheme(container, options)
     options = options or {}
     local gs = Orbit.db.GlobalSettings
@@ -270,7 +270,7 @@ function StatusBarBase:ApplyTextComponent(component, overrides, defaultSize)
     })
 end
 
--- [ FILL HELPERS ]----------------------------------------------------------------------------------
+-- [ FILL HELPERS ]-----------------------------------------------------------------------------------
 -- Guard secret inputs so widget internal state never holds secret values (taint risk during edit
 -- mode traversal); the bar keeps its last non-secret fill during encounters instead.
 
@@ -291,7 +291,7 @@ function StatusBarBase:HideOverlay(container)
     container.Overlay:Hide()
 end
 
--- [ PENDING-XP SUB-FILL ]---------------------------------------------------------------------------
+-- [ PENDING-XP SUB-FILL ]----------------------------------------------------------------------------
 -- Draws a secondary green fill from 0 to (current + pending), clamped to max. Rendered under the
 -- main bar so the visible slice between current and current+pending appears green — signalling
 -- "XP waiting in completed quests." Guarded for secret inputs.
@@ -312,7 +312,7 @@ end
 
 function StatusBarBase:HidePending(container) container.Pending:Hide() end
 
--- [ LEADING-EDGE TICK ]-----------------------------------------------------------------------------
+-- [ LEADING-EDGE TICK ]------------------------------------------------------------------------------
 -- Width in pixels. 0 (or nil) hides the tick entirely.
 function StatusBarBase:SetTickWidth(container, width)
     width = tonumber(width) or 0
@@ -321,7 +321,7 @@ function StatusBarBase:SetTickWidth(container, width)
     container.Tick:Show()
 end
 
--- [ FILL ANIMATION ]--------------------------------------------------------------------------------
+-- [ FILL ANIMATION ]---------------------------------------------------------------------------------
 -- SmoothStatusBarMixin self-registers an OnUpdate script on the bar, which leaves the frame
 -- running Orbit-tainted Lua every frame and keeps the execution context flagged for as long as
 -- the bar exists. That flag propagates into Blizzard's secure edit-mode iteration and trips
@@ -335,7 +335,7 @@ function StatusBarBase:SetSmoothFill(container, current, max)
     self:SetFill(container, current, max)
 end
 
--- [ PARAGON TICK MARKS ]----------------------------------------------------------------------------
+-- [ PARAGON TICK MARKS ]-----------------------------------------------------------------------------
 -- Draws N vertical tick marks across the bar width. Used to show paragon cycle thresholds on
 -- the bar. Reuses textures across calls — keeps the pool on container._ticks.
 function StatusBarBase:SetTickMarks(container, count, color)
@@ -360,7 +360,7 @@ function StatusBarBase:SetTickMarks(container, count, color)
     for i = count + 1, #pool do pool[i]:Hide() end
 end
 
--- [ CLICK DISPATCH ]--------------------------------------------------------------------------------
+-- [ CLICK DISPATCH ]---------------------------------------------------------------------------------
 -- Wires left / shift-left / shift-right-click behaviors to the container. Each plugin supplies the
 -- concrete handlers via an options table so we don't hard-code XP-specific logic here.
 --   onLeftClick        : open the relevant native panel
@@ -385,7 +385,7 @@ function StatusBarBase:SetupClickDispatch(container, options)
     end
 end
 
--- [ BLIZZARD NATIVE HIDE ]--------------------------------------------------------------------------
+-- [ BLIZZARD NATIVE HIDE ]---------------------------------------------------------------------------
 function StatusBarBase:HideBlizzardTrackingBars()
     if InCombatLockdown() then return end
     if not StatusTrackingBarManager then return end

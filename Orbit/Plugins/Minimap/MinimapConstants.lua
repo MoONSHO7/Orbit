@@ -1,4 +1,4 @@
--- [ MINIMAP CONSTANTS ]-----------------------------------------------------------------------------
+-- [ MINIMAP CONSTANTS ]------------------------------------------------------------------------------
 -- Single source of truth for constants shared across Minimap*.lua files.
 
 ---@type Orbit

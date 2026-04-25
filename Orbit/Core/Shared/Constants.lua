@@ -1,11 +1,11 @@
--- [ ORBIT CONSTANTS ]-------------------------------------------------------------------------------
+-- [ ORBIT CONSTANTS ]--------------------------------------------------------------------------------
 local _, Orbit = ...
 
 ---@class OrbitConstants
 Orbit.Constants = {}
 local C = Orbit.Constants
 
--- [ UI PANEL LAYOUT ]-------------------------------------------------------------------------------
+-- [ UI PANEL LAYOUT ]--------------------------------------------------------------------------------
 C.Panel = {
     Width = 320,
     DialogWidth = 350,
@@ -30,7 +30,7 @@ C.Footer = {
     DividerOffset = 6,
 }
 
--- [ WIDGET LAYOUT ]---------------------------------------------------------------------------------
+-- [ WIDGET LAYOUT ]----------------------------------------------------------------------------------
 -- All widgets follow: [Fixed Label, Left] [Dynamic Control, Fill] [Fixed Value, Right]
 C.Widget = {
     Width = 240,
@@ -42,7 +42,7 @@ C.Widget = {
     CheckboxIconGap = 4,
 }
 
--- [ FRAME CONSTANTS ]-------------------------------------------------------------------------------
+-- [ FRAME CONSTANTS ]--------------------------------------------------------------------------------
 C.Frame = {
     EditModeColor = { r = 0.7, g = 0.6, b = 1.0 }, -- Light Purple
 }
@@ -56,7 +56,7 @@ C.Selection = {
     OverlayLevelOffset = 100, -- Frame level offset for selection overlay
 }
 
--- [ FRAME LAYER HIERARCHY ]-------------------------------------------------------------------------
+-- [ FRAME LAYER HIERARCHY ]--------------------------------------------------------------------------
 -- Draw Layer Sublevels: background → border → icons → highlights → borders → glows → text
 C.Layers = {
     BackdropDeep = -8,  -- Deep backgrounds (bar fills, status textures)
@@ -138,7 +138,7 @@ C.Stagger = {
     MediumThreshold = 60, -- 30-60% = medium stagger, above = heavy
 }
 
--- [ SETTINGS RANGES (Default min/max/step for sliders) ]--------------------------------------------
+-- [ SETTINGS RANGES (Default min/max/step for sliders) ]---------------------------------------------
 C.Settings = {
     Width = { Min = 50, Max = 400, Step = 1, Default = 200 },
     Height = { Min = 10, Max = 50, Step = 1, Default = 20 },
@@ -168,7 +168,7 @@ for _, entry in ipairs(C.BorderStyle.Styles) do
     C.BorderStyle.Lookup[entry.value] = entry
 end
 
--- [ TIMING CONSTANTS ]------------------------------------------------------------------------------
+-- [ TIMING CONSTANTS ]-------------------------------------------------------------------------------
 C.Timing = {
     DefaultDebounce = 0.1,
     LayoutThrottle = 0.15,
@@ -184,7 +184,7 @@ C.Timing = {
     HoverCheckInterval = 0.1, -- OOC fade mouseover polling interval
 }
 
--- [ ICON & TEXTURE CONSTANTS ]----------------------------------------------------------------------
+-- [ ICON & TEXTURE CONSTANTS ]-----------------------------------------------------------------------
 C.IconScale = {
     MaskOversize = 4, -- Ensure mask doesn't clip non-square icons
     FlashScale = 1.2, -- Flash animation slightly larger than icon
@@ -208,7 +208,7 @@ C.Assets = {
     SwipeDefault = "Interface\\HUD\\UI-HUD-CoolDownManager-Icon-Swipe",
 }
 
--- [ SKINNING CONSTANTS ]----------------------------------------------------------------------------
+-- [ SKINNING CONSTANTS ]-----------------------------------------------------------------------------
 C.Skin = {
     DefaultIconSize = 34,
     BorderOffsetGeneric = 7,
@@ -222,7 +222,7 @@ C.Aura = {
     SkinNoTimer = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false },
 }
 
--- [ COMPONENT DEFAULTS ]----------------------------------------------------------------------------
+-- [ COMPONENT DEFAULTS ]-----------------------------------------------------------------------------
 -- Note: PlayerCastBar is shared by PlayerCastBar, TargetCastBar, FocusCastBar, and CastBarMixin
 C.PlayerCastBar = {
     DefaultWidth = 200,
@@ -304,14 +304,14 @@ C.Glow = {
     },
 }
 
--- [ UI FONTS (Template Names) ]---------------------------------------------------------------------
+-- [ UI FONTS (Template Names) ]----------------------------------------------------------------------
 C.UI = {
     LabelFont = "GameFontHighlight", -- White font for widget labels
     ValueFont = "GameFontHighlightSmall", -- Yellow font for value displays
     UnitFrameTextSize = 12, -- Standard text size for UnitFrames (Name, Health)
 }
 
--- [ COLORS ]----------------------------------------------------------------------------------------
+-- [ COLORS ]-----------------------------------------------------------------------------------------
 C.PowerTypeIds = {
     Mana = 0,
     Rage = 1,

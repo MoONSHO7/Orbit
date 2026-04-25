@@ -1,4 +1,4 @@
--- [ PROFILES TAB ]----------------------------------------------------------------------------------
+-- [ PROFILES TAB ]-----------------------------------------------------------------------------------
 -- Profile management for the Orbit Options dialog. Active profile, spec profiles, create/clone/
 -- delete/import/export. Registers tab-local widget types (profileactive, profileselect,
 -- collapseheader, checkheader, statusmessage).
@@ -15,8 +15,7 @@ local Constants = Orbit.Constants
 
 local Panel = Orbit.OptionsPanel
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DROPDOWN_WIDTH = 200
 local SPACER_SMALL = 10
 local SPACER_LARGE = 20
@@ -28,7 +27,7 @@ local CHECKBOX_SIZE = 20
 local DISABLED_ALPHA = 0.4
 local HOVER_ALPHA = 0.8
 
--- [ WIDGET: PROFILE ACTIVE ]------------------------------------------------------------------------
+-- [ WIDGET: PROFILE ACTIVE ]-------------------------------------------------------------------------
 -- Composite widget: dropdown for active profile (greyed out when spec profiles control it)
 Layout:RegisterWidgetType("profileactive", function(container, def, getValue, callback)
     local options = type(def.options) == "function" and def.options() or def.options or {}
@@ -57,7 +56,7 @@ Layout:RegisterWidgetType("profileactive", function(container, def, getValue, ca
     return frame
 end)
 
--- [ WIDGET: PROFILE SELECT ]------------------------------------------------------------------------
+-- [ WIDGET: PROFILE SELECT ]-------------------------------------------------------------------------
 -- Composite widget: dropdown + reset/copy/delete icons
 Layout:RegisterWidgetType("profileselect", function(container, def, getValue, callback)
     local options = type(def.options) == "function" and def.options() or def.options or {}
@@ -187,7 +186,7 @@ Layout:RegisterWidgetType("profileselect", function(container, def, getValue, ca
     return frame
 end)
 
--- [ WIDGET: COLLAPSE HEADER ]-----------------------------------------------------------------------
+-- [ WIDGET: COLLAPSE HEADER ]------------------------------------------------------------------------
 -- Collapsible header: text + toggle arrow (far right)
 Layout:RegisterWidgetType("collapseheader", function(container, def)
     local frame = CreateFrame("Button", nil, container)
@@ -227,7 +226,7 @@ Layout:RegisterWidgetType("collapseheader", function(container, def)
     return frame
 end)
 
--- [ WIDGET: CHECK HEADER ]--------------------------------------------------------------------------
+-- [ WIDGET: CHECK HEADER ]---------------------------------------------------------------------------
 -- Header with checkbox toggle on the right (same visual as collapseheader)
 Layout:RegisterWidgetType("checkheader", function(container, def, getValue, callback)
     local frame = CreateFrame("Frame", nil, container)
@@ -255,8 +254,7 @@ Layout:RegisterWidgetType("checkheader", function(container, def, getValue, call
     return frame
 end)
 
--- [ STATE ]-----------------------------------------------------------------------------------------
-
+-- [ STATE ]------------------------------------------------------------------------------------------
 local profilesSubView = nil -- nil, "export", "import", "clone", "delete"
 local exportSelectedProfile = nil
 local exportString = ""
@@ -266,8 +264,7 @@ local cloneSource = nil
 local cloneName = ""
 local deleteTarget = nil
 
--- [ PLUGIN ]----------------------------------------------------------------------------------------
-
+-- [ PLUGIN ]-----------------------------------------------------------------------------------------
 local ProfilesPlugin = {
     name = "OrbitProfiles",
     settings = {},
@@ -330,8 +327,7 @@ local ProfilesPlugin = {
     ApplySettings = function(self, systemFrame) end,
 }
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function GetProfileOptions()
     local opts = {}
     for _, n in ipairs(Orbit.Profile:GetProfiles()) do
@@ -350,8 +346,7 @@ local function GetProfileOptionsWithDefault()
     return opts
 end
 
--- [ WIDGET: STATUS MESSAGE ]------------------------------------------------------------------------
-
+-- [ WIDGET: STATUS MESSAGE ]-------------------------------------------------------------------------
 local flashLabel
 Layout:RegisterWidgetType("statusmessage", function(container, def)
     local frame = CreateFrame("Frame", nil, container)
@@ -389,8 +384,7 @@ local function ReopenProfiles()
     end
 end
 
--- [ SCHEMA ]----------------------------------------------------------------------------------------
-
+-- [ SCHEMA ]-----------------------------------------------------------------------------------------
 local function GetProfilesSchema()
     -- Export sub-view
     if profilesSubView == "export" then
@@ -600,6 +594,5 @@ local function GetProfilesSchema()
     }
 end
 
--- [ REGISTRATION ]----------------------------------------------------------------------------------
-
+-- [ REGISTRATION ]-----------------------------------------------------------------------------------
 Panel.Tabs["Profiles"] = { plugin = ProfilesPlugin, schema = GetProfilesSchema }

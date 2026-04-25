@@ -1,13 +1,11 @@
--- [ ORBIT FRAME FACTORY ]---------------------------------------------------------------------------
-
+-- [ ORBIT FRAME FACTORY ]----------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
 Engine.FrameFactory = Engine.FrameFactory or {}
 local FrameFactory = Engine.FrameFactory
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULT_WIDTH = 200
 local DEFAULT_HEIGHT = 40
 local DEFAULT_Y_OFFSET = -200
@@ -16,8 +14,7 @@ local DEFAULT_SYSTEM_INDEX = 1
 local RESTORE_DEBOUNCE = 0.1
 
 
--- [ FRAME CREATION ]--------------------------------------------------------------------------------
-
+-- [ FRAME CREATION ]---------------------------------------------------------------------------------
 function FrameFactory:Create(name, plugin, opts)
     if not name then error("FrameFactory:Create requires a name") end
     if not plugin then error("FrameFactory:Create requires a plugin") end
@@ -81,8 +78,7 @@ function FrameFactory:Create(name, plugin, opts)
     return frame
 end
 
--- [ STATUS BAR CREATION ]---------------------------------------------------------------------------
-
+-- [ STATUS BAR CREATION ]----------------------------------------------------------------------------
 function FrameFactory:CreateStatusBar(name, plugin, opts)
     opts = opts or {}
     opts.frameType = "StatusBar"
@@ -94,8 +90,7 @@ function FrameFactory:CreateStatusBar(name, plugin, opts)
     return frame
 end
 
--- [ CONTAINER WITH BAR ]----------------------------------------------------------------------------
-
+-- [ CONTAINER WITH BAR ]-----------------------------------------------------------------------------
 function FrameFactory:CreateWithBar(name, plugin, opts)
     opts = opts or {}
     opts.template = opts.template or "BackdropTemplate"
@@ -123,8 +118,7 @@ function FrameFactory:CreateWithBar(name, plugin, opts)
     return container, bar
 end
 
--- [ BUTTON CONTAINER ]------------------------------------------------------------------------------
-
+-- [ BUTTON CONTAINER ]-------------------------------------------------------------------------------
 function FrameFactory:CreateButtonContainer(name, plugin, opts)
     opts = opts or {}
 
@@ -144,7 +138,6 @@ function FrameFactory:CreateButtonContainer(name, plugin, opts)
 end
 
 -- [ TEXT HELPERS ] ----------------------------------------------------------------------------------
-
 function FrameFactory:AddText(frame, opts)
     opts = opts or {}
     local point = opts.point or "CENTER"

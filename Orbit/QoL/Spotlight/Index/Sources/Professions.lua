@@ -1,4 +1,4 @@
--- [ PROFESSIONS SOURCE ]----------------------------------------------------------------------------
+-- [ PROFESSIONS SOURCE ]-----------------------------------------------------------------------------
 local _, Orbit = ...
 local Tokenize = Orbit.Spotlight.Search.Tokenize
 local Sources = Orbit.Spotlight.Index.Sources

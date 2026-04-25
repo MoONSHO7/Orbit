@@ -1,4 +1,4 @@
--- [ CANVAS MODE - SETTINGS TRANSACTION ]------------------------------------------------------------
+-- [ CANVAS MODE - SETTINGS TRANSACTION ]-------------------------------------------------------------
 -- Transactional cache for Canvas Mode edits.
 -- Buffers all changes until Apply (commit) or Cancel (rollback).
 -- Fires CANVAS_SETTINGS_CHANGED so preview frames can live-update.
@@ -8,14 +8,12 @@ local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 
 -- [ MODULE ] ----------------------------------------------------------------------------------------
-
 local Transaction = {}
 CanvasMode.Transaction = Transaction
 local NIL_SENTINEL = {}
 local FIRE_DEBOUNCE = 0.05
 
 -- [ STATE ] -----------------------------------------------------------------------------------------
-
 local active = false
 local fireTimer = nil
 local plugin = nil
@@ -26,7 +24,6 @@ local originalPositions = {} -- snapshot of ComponentPositions at Begin()
 local pendingPositions = {}  -- staged position changes
 
 -- [ DEEP COPY ] -------------------------------------------------------------------------------------
-
 local function DeepCopy(src)
     if type(src) ~= "table" then return src end
     local copy = {}
@@ -35,7 +32,6 @@ local function DeepCopy(src)
 end
 
 -- [ SESSION API ] -----------------------------------------------------------------------------------
-
 function Transaction:Begin(targetPlugin, targetSystemIndex)
     self:Rollback() -- clean any stale state
     if not targetPlugin then return end
@@ -66,7 +62,6 @@ function Transaction:GetSystemIndex()
 end
 
 -- [ SETTINGS ] --------------------------------------------------------------------------------------
-
 function Transaction:Set(key, value)
     if not active then return end
     -- Snapshot original if first time touching this key
@@ -94,7 +89,6 @@ function Transaction:GetPending(key)
 end
 
 -- [ POSITIONS ] -------------------------------------------------------------------------------------
-
 function Transaction:SetPosition(compKey, posData)
     if not active then return end
     -- Merge into existing pending (or snapshot from original) to preserve overrides
@@ -124,7 +118,6 @@ function Transaction:SetPositionOverride(compKey, overrideKey, value)
 end
 
 -- [ DISABLED COMPONENTS ] ---------------------------------------------------------------------------
-
 function Transaction:SetDisabledComponents(keys)
     if not active then return end
     self:Set("DisabledComponents", keys)
@@ -162,7 +155,6 @@ function Transaction:Commit()
 end
 
 -- [ ROLLBACK ] --------------------------------------------------------------------------------------
-
 function Transaction:Rollback()
     if not active then return end
     local savedPlugin = plugin
@@ -173,7 +165,6 @@ function Transaction:Rollback()
 end
 
 -- [ INTERNAL ] --------------------------------------------------------------------------------------
-
 function Transaction:Clear()
     active = false
     fireTimer = nil

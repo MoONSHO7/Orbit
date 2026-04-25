@@ -69,7 +69,7 @@ local function ApplyDifficultySavedPosition(settings, container, display)
     ReanchorContainer(container)
 end
 
--- [ PORTRAIT PREVIEW ]------------------------------------------------------------------------------
+-- [ PORTRAIT PREVIEW ]-------------------------------------------------------------------------------
 function Settings:ApplyPortraitPreview()
     local canvasDialog = OrbitEngine.CanvasModeDialog
     if not canvasDialog or not canvasDialog.previewComponents then return end
@@ -161,7 +161,7 @@ function Settings:ApplyPortraitPreview()
     end
 end
 
--- [ CAST BAR PREVIEW ]------------------------------------------------------------------------------
+-- [ CAST BAR PREVIEW ]-------------------------------------------------------------------------------
 function Settings:ApplyCastBarPreview()
     local canvasDialog = OrbitEngine.CanvasModeDialog
     if not canvasDialog or not canvasDialog.previewComponents then return end
@@ -213,7 +213,7 @@ function Settings:ApplyHealthTextPreview()
     visual:Show()
 end
 
--- [ ZONE TEXT PREVIEW ]-----------------------------------------------------------------------------
+-- [ ZONE TEXT PREVIEW ]------------------------------------------------------------------------------
 function Settings:ApplyZoneTextPreview()
     local canvasDialog = OrbitEngine.CanvasModeDialog
     if not canvasDialog or not canvasDialog.previewComponents then return end
@@ -256,7 +256,7 @@ function Settings:ApplyZoneTextPreview()
     end
 end
 
--- [ FLUSH PENDING ]---------------------------------------------------------------------------------
+-- [ FLUSH PENDING ]----------------------------------------------------------------------------------
 function Settings:FlushPendingPluginSettings()
     if not self.pendingPluginSettings or not self.plugin then return end
     for k, v in pairs(self.pendingPluginSettings) do
@@ -265,7 +265,7 @@ function Settings:FlushPendingPluginSettings()
     self.pendingPluginSettings = nil
 end
 
--- [ APPLY STYLE ]-----------------------------------------------------------------------------------
+-- [ APPLY STYLE ]------------------------------------------------------------------------------------
 function Settings:ApplyStyle(container, key, value)
     if key == "MaxIcons" or key == "MaxRows" or key == "FilterDensity" then
         if self.container and self.container.RefreshAuraIcons then self.container:RefreshAuraIcons() end
@@ -382,7 +382,7 @@ function Settings:ApplyStyle(container, key, value)
     end
 end
 
--- [ APPLY ALL ]-------------------------------------------------------------------------------------
+-- [ APPLY ALL ]--------------------------------------------------------------------------------------
 function Settings:ApplyAll(container, overrides)
     if not container or not overrides then return end
     local previousOverrides = self.currentOverrides
@@ -392,7 +392,7 @@ function Settings:ApplyAll(container, overrides)
     self.currentOverrides = previousOverrides
 end
 
--- [ INITIAL PLUGIN PREVIEWS ]-----------------------------------------------------------------------
+-- [ INITIAL PLUGIN PREVIEWS ]------------------------------------------------------------------------
 function Settings:ApplyInitialPluginPreviews(plugin, systemIndex)
     if not plugin then return end
     local sysIdx = systemIndex or 1

@@ -4,7 +4,7 @@ local Constants = Orbit.Constants
 local Layout = Engine.Layout
 local math_floor = math.floor
 
--- [ SLIDER WIDGET ]---------------------------------------------------------------------------------
+-- [ SLIDER WIDGET ]----------------------------------------------------------------------------------
 function Layout:CreateSlider(parent, label, min, max, step, formatter, initialValue, callback, options)
     if not self.sliderPool then
         self.sliderPool = {}

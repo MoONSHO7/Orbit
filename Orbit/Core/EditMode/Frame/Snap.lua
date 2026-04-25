@@ -1,4 +1,4 @@
--- [ ORBIT FRAME SNAP ]------------------------------------------------------------------------------
+-- [ ORBIT FRAME SNAP ]-------------------------------------------------------------------------------
 -- Handles snap-to-grid and snap-to-frame during drag operations
 
 local _, Orbit = ...

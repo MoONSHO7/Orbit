@@ -6,7 +6,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local Helpers = Orbit.GroupFrameHelpers
 local Pixel = Orbit.Engine.Pixel
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local GF = Orbit.Constants.GroupFrames
 local MAX_GROUP_FRAMES = Helpers.LAYOUT.MaxGroupFrames
 local MAX_RAID_GROUPS = Helpers.LAYOUT.MaxRaidGroups
@@ -41,7 +41,7 @@ local UNIT_REREGISTER_EVENTS = {
     "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
 }
 
--- [ TIER DEFAULTS ]---------------------------------------------------------------------------------
+-- [ TIER DEFAULTS ]----------------------------------------------------------------------------------
 local TIER_DEFAULTS = {
     Party = {
         Width = 160, Height = 40, Scale = 100, Spacing = 3, Orientation = 0,
@@ -155,7 +155,7 @@ TIER_DEFAULTS.World = setmetatable({
     end)(),
 }, { __index = TIER_DEFAULTS.Mythic })
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_GroupFrames"
 
 local Plugin = Orbit:RegisterPlugin("Group Frames", SYSTEM_ID, {
@@ -173,7 +173,7 @@ Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.GroupFramePreviewMixin, Orbit.AuraMixi
 Plugin.canvasMode = true
 Plugin.supportsHealthText = true
 
--- [ TIER API ]--------------------------------------------------------------------------------------
+-- [ TIER API ]---------------------------------------------------------------------------------------
 function Plugin:GetCurrentTier()
     if self._editTierOverride then return self._editTierOverride end
     return self:GetRealTier()
@@ -259,7 +259,7 @@ function Plugin:SetSetting(systemIndex, key, val)
     PluginMixin_SetSetting(self, systemIndex, key, val)
 end
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local SafeRegisterUnitWatch = Orbit.GroupFrameMixin.SafeRegisterUnitWatch
 local SafeUnregisterUnitWatch = Orbit.GroupFrameMixin.SafeUnregisterUnitWatch
 local function GetPowerColor(powerType) return Orbit.Constants.Colors:GetPowerColor(powerType) end
@@ -274,7 +274,7 @@ local function GetComponentIconSize(plugin, key)
     return (overrides and overrides.IconSize) or GetHealerAuraSize(plugin)
 end
 
--- [ POWER BAR UPDATE ]------------------------------------------------------------------------------
+-- [ POWER BAR UPDATE ]-------------------------------------------------------------------------------
 local POWER_EVENTS = Orbit.GroupFrameFactoryMixin.POWER_EVENTS
 
 local function UpdatePowerBar(frame, plugin)
@@ -417,7 +417,7 @@ local function ScheduleDebouncedRosterUpdate(plugin, updateVisibility)
     end)
 end
 
--- [ SHARED EVENT CALLBACKS ]------------------------------------------------------------------------
+-- [ SHARED EVENT CALLBACKS ]-------------------------------------------------------------------------
 local SHARED_EVENT_CALLBACKS = {
     UpdatePowerBar = UpdatePowerBar, UpdateDebuffs = UpdateDebuffs, UpdateBuffs = UpdateBuffs,
     UpdateDefensiveIcon = UpdateDefensiveIcon, UpdateCrowdControlIcon = UpdateCrowdControlIcon,
@@ -426,7 +426,7 @@ local SHARED_EVENT_CALLBACKS = {
     UpdateMainTankIcon = true,
 }
 
--- [ GROUP FRAME CREATION ]--------------------------------------------------------------------------
+-- [ GROUP FRAME CREATION ]---------------------------------------------------------------------------
 local function CreateGroupFrame(index, plugin)
     local unit = "raid" .. index
     local frameName = "OrbitGroupFrame" .. index
@@ -461,7 +461,7 @@ local function CreateGroupFrame(index, plugin)
     return frame
 end
 
--- [ HIDE NATIVE FRAMES ]----------------------------------------------------------------------------
+-- [ HIDE NATIVE FRAMES ]-----------------------------------------------------------------------------
 local function HideNativeGroupFrames()
     for i = 1, 4 do
         local partyFrame = _G["PartyMemberFrame" .. i]
@@ -502,7 +502,7 @@ function Plugin:AddSettings(dialog, systemFrame)
 end
 
 
--- [ PHASE 0 MIGRATION: lowercase dropdown values ]--------------------------------------------------
+-- [ PHASE 0 MIGRATION: lowercase dropdown values ]---------------------------------------------------
 -- GrowthDirection / SortMode / Orientation (raid) used to store their English display
 -- text as the saved value. Phase 0 split text/value so the stored value is a stable
 -- lowercase key and the display text can be localized without breaking saved settings.
@@ -536,7 +536,7 @@ local function MigrateP0DropdownValues(plugin)
     plugin:SetSetting(1, "_P0DropdownMigrated", true)
 end
 
--- [ ON LOAD ]---------------------------------------------------------------------------------------
+-- [ ON LOAD ]----------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     MigrateP0DropdownValues(self)
 
@@ -721,7 +721,7 @@ function Plugin:OnLoad()
     end
 end
 
--- [ PER-TIER POSITION ]-----------------------------------------------------------------------------
+-- [ PER-TIER POSITION ]------------------------------------------------------------------------------
 function Plugin:SaveCurrentTierPosition(tier)
     tier = tier or self:GetCurrentTier()
     if not self.container or not tier then return end
@@ -772,7 +772,7 @@ function Plugin:RestoreTierPosition(tier)
     if OrbitEngine.PositionManager then OrbitEngine.PositionManager:ClearFrame(self.container) end
 end
 
--- [ TIER CHANGE DETECTION ]-------------------------------------------------------------------------
+-- [ TIER CHANGE DETECTION ]--------------------------------------------------------------------------
 function Plugin:CheckTierChange()
     local newTier = self:GetCurrentTier()
     if newTier ~= self._currentTier then
@@ -793,7 +793,7 @@ function Plugin:CheckTierChange()
     return false
 end
 
--- [ PREPARE ICONS FOR CANVAS MODE ]-----------------------------------------------------------------
+-- [ PREPARE ICONS FOR CANVAS MODE ]------------------------------------------------------------------
 function Plugin:PrepareIconsForCanvasMode()
     local frame = self.frames[1]
     if not frame then return end
@@ -935,7 +935,7 @@ function Plugin:AssignRaidUnits()
     return changed
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:UpdateLayout(frame)
     if not frame or InCombatLockdown() then return end
     local width = self:GetTierSetting("Width") or DEFAULT_WIDTH
@@ -1083,7 +1083,7 @@ function Plugin:UpdateVisuals()
     end
 end
 
--- [ DISPEL EVENT BUS ]------------------------------------------------------------------------------
+-- [ DISPEL EVENT BUS ]-------------------------------------------------------------------------------
 Orbit.EventBus:On("DISPEL_STATE_CHANGED", function(unit)
     if not Plugin.frames then return end
     for _, frame in ipairs(Plugin.frames) do

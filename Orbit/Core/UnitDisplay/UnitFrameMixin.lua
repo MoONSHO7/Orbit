@@ -1,4 +1,4 @@
--- [ ORBIT UNIT FRAME MIXIN ]------------------------------------------------------------------------
+-- [ ORBIT UNIT FRAME MIXIN ]-------------------------------------------------------------------------
 -- Shared functionality for unit frame plugins (Player, Target, Focus, Pet)
 
 local _, addonTable = ...

@@ -3,7 +3,7 @@ local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_ExperienceBar"
 local FRAME_NAME = "OrbitExperienceBar"
 local DEFAULT_WIDTH = 500
@@ -32,7 +32,7 @@ local WOW_EVENTS = {
     "QUEST_TURNED_IN", "QUEST_LOG_UPDATE",
 }
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Experience Bar", SYSTEM_ID, {
     liveToggle = true,
     canvasMode = true,
@@ -60,7 +60,7 @@ local Plugin = Orbit:RegisterPlugin("Experience Bar", SYSTEM_ID, {
 -- Previous-rep tracker for auto-watch detection (no UI cycling).
 local lastReputationByFaction = {}
 
--- [ MODE RESOLUTION ]-------------------------------------------------------------------------------
+-- [ MODE RESOLUTION ]--------------------------------------------------------------------------------
 local function ParagonCycles(currentValue, threshold, hasReward)
     if not currentValue or not threshold or threshold <= 0 then return 0 end
     local n = math.floor(currentValue / threshold)
@@ -140,7 +140,7 @@ function Plugin:BuildActiveRecord()
     return nil
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     Orbit.StatusBarBase:HideBlizzardTrackingBars()
 
@@ -176,7 +176,7 @@ function Plugin:OnLoad()
     self:RegisterVisibilityEvents()
 end
 
--- [ EVENT ROUTER ]----------------------------------------------------------------------------------
+-- [ EVENT ROUTER ]-----------------------------------------------------------------------------------
 -- UpdateBar is always deferred one tick so secret-adjacent reads (UnitXP, C_Reputation.*, etc.)
 -- never run inside Blizzard's synchronous edit-mode callback chain. Side-effect work that must
 -- observe the pre-deferral state (session boundary on level up, auto-watched faction scan) stays
@@ -215,7 +215,7 @@ function Plugin:OnFactionUpdate()
     end
 end
 
--- [ UPDATE ]----------------------------------------------------------------------------------------
+-- [ UPDATE ]-----------------------------------------------------------------------------------------
 function Plugin:UpdateBar()
     local frame = self.frame
     if not frame then return end
@@ -335,7 +335,7 @@ function Plugin:GetXPColor()
     return c or XP_COLOR
 end
 
--- [ TOOLTIP + CLICK ]-------------------------------------------------------------------------------
+-- [ TOOLTIP + CLICK ]--------------------------------------------------------------------------------
 function Plugin:SetupTooltipAndClicks()
     local frame = self.frame
     frame:HookScript("OnEnter", function(self) Plugin:ShowTooltip() end)
@@ -398,7 +398,7 @@ function Plugin:OnShiftClick()
     if text then editBox:Insert(text) end
 end
 
--- [ APPLY SETTINGS ]--------------------------------------------------------------------------------
+-- [ APPLY SETTINGS ]---------------------------------------------------------------------------------
 function Plugin:ApplySettings()
     local frame = self.frame
     if not frame then return end
@@ -422,7 +422,7 @@ function Plugin:ApplySettings()
     end)
 end
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or SYSTEM_ID
     local SB = OrbitEngine.SchemaBuilder
@@ -463,7 +463,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ BLIZZARD HIDER ]--------------------------------------------------------------------------------
+-- [ BLIZZARD HIDER ]---------------------------------------------------------------------------------
 Orbit:RegisterBlizzardHider("Experience Bar", function()
     Orbit.StatusBarBase:HideBlizzardTrackingBars()
 end)

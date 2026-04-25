@@ -3,7 +3,7 @@ local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_TalkingHead"
 local DEFAULT_OFFSET_Y = -100
 
@@ -16,7 +16,7 @@ local Plugin = Orbit:RegisterPlugin("Talking Head", SYSTEM_ID, {
 -- Apply NativeBarMixin for mouseOver helpers
 Mixin(Plugin, Orbit.NativeBarMixin)
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or SYSTEM_ID
     local SB = OrbitEngine.SchemaBuilder
@@ -36,7 +36,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     -- Create Container
     self.frame = CreateFrame("Frame", "OrbitTalkingHeadContainer", UIParent)
@@ -89,7 +89,7 @@ function Plugin:OnLoad()
     end
 end
 
--- [ LOGIC ]-----------------------------------------------------------------------------------------
+-- [ LOGIC ]------------------------------------------------------------------------------------------
 function Plugin:ReparentAll()
     if not TalkingHeadFrame then
         return
@@ -184,7 +184,7 @@ function Plugin:ApplySettings()
     self:ApplyMouseOver(frame, SYSTEM_ID)
 end
 
--- [ BLIZZARD HIDER ]--------------------------------------------------------------------------------
+-- [ BLIZZARD HIDER ]---------------------------------------------------------------------------------
 Orbit:RegisterBlizzardHider("Talking Head", function()
     if TalkingHeadFrame then OrbitEngine.NativeFrame:SecureHide(TalkingHeadFrame) end
 end)

@@ -1,4 +1,4 @@
--- [ ORBIT SCHEMA BUILDER ]--------------------------------------------------------------------------
+-- [ ORBIT SCHEMA BUILDER ]---------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants
@@ -7,7 +7,7 @@ local InCombatLockdown = InCombatLockdown
 Engine.SchemaBuilder = {}
 local SB = Engine.SchemaBuilder
 
--- [ SHARED HELPERS ]--------------------------------------------------------------------------------
+-- [ SHARED HELPERS ]---------------------------------------------------------------------------------
 local function Get(plugin, index, key, default)
     local val = plugin:GetSetting(index, key)
     if val == nil then return default end
@@ -45,7 +45,7 @@ local function CreateDefaultOnChange(plugin, systemIndex, key, systemFrame)
     end
 end
 
--- [ ANCHOR ]----------------------------------------------------------------------------------------
+-- [ ANCHOR ]-----------------------------------------------------------------------------------------
 local function CreateAnchorOnChange(plugin, systemIndex, key, systemFrame, dialog)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
@@ -173,7 +173,7 @@ function SB:AddTextSettings(plugin, schema, systemIndex, dialog, systemFrame, cu
     end
 end
 
--- [ APPEARANCE ]------------------------------------------------------------------------------------
+-- [ APPEARANCE ]-------------------------------------------------------------------------------------
 local function CreateBorderOnChange(plugin, systemIndex, key, systemFrame)
     return function(val) plugin:SetSetting(systemIndex, key, val); ApplyAndSync(plugin, systemFrame) end
 end
@@ -388,7 +388,7 @@ function SB:AddGlowSettings(plugin, schema, systemIndex, dialog, systemFrame, pa
     end
 end
 
--- [ VISIBILITY ]------------------------------------------------------------------------------------
+-- [ VISIBILITY ]-------------------------------------------------------------------------------------
 local function CreateOpacityOnChange(plugin, systemIndex, key, systemFrame)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
@@ -435,7 +435,7 @@ function SB:AddVisibilitySettings(plugin, schema, systemIndex, systemFrame, para
         onChange = params.onChange or CreateVisibilityOnChange(plugin, systemIndex, key, systemFrame) })
 end
 
--- [ COOLDOWN-SPECIFIC ]-----------------------------------------------------------------------------
+-- [ COOLDOWN-SPECIFIC ]------------------------------------------------------------------------------
 function SB:AddAspectRatioSettings(plugin, schema, systemIndex, systemFrame, params)
     params = params or {}
     local key = params.key or "aspectRatio"
@@ -498,7 +498,7 @@ function SB:AddCooldownDisplaySettings(plugin, schema, systemIndex, systemFrame,
     end
 end
 
--- [ SETTINGS TABS ]---------------------------------------------------------------------------------
+-- [ SETTINGS TABS ]----------------------------------------------------------------------------------
 function SB:SetTabRefreshCallback(dialog, plugin, systemFrame)
     dialog.orbitTabCallback = function() Engine.Layout:Reset(dialog); plugin:AddSettings(dialog, systemFrame) end
 end
@@ -512,7 +512,7 @@ function SB:AddSettingsTabs(schema, dialog, tabsList, defaultTab, plugin)
     return dialog.orbitCurrentTab
 end
 
--- [ PLUGIN ON-CHANGE ]------------------------------------------------------------------------------
+-- [ PLUGIN ON-CHANGE ]-------------------------------------------------------------------------------
 function SB:MakePluginOnChange(plugin, systemIndex, key, preApply)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)

@@ -1,5 +1,4 @@
 -- [ ORBIT EDIT MODE FRAME SYSTEM ] ------------------------------------------------------------------
-
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
@@ -7,8 +6,7 @@ local Engine = Orbit.Engine
 Engine.Frame = {}
 local Frame = Engine.Frame
 
--- [ MODULE REFERENCES ]-----------------------------------------------------------------------------
-
+-- [ MODULE REFERENCES ]------------------------------------------------------------------------------
 local Anchor, Snap, Selection, Persistence, Guard
 
 local function EnsureModules()
@@ -19,8 +17,7 @@ local function EnsureModules()
     Guard = Guard or Engine.FrameGuard
 end
 
--- [ ANCHOR API ]------------------------------------------------------------------------------------
-
+-- [ ANCHOR API ]-------------------------------------------------------------------------------------
 function Frame:CreateAnchor(child, parent, edge, padding, syncOptions)
     EnsureModules()
     local success = Anchor:CreateAnchor(child, parent, edge, padding, syncOptions)
@@ -68,16 +65,14 @@ function Frame:GetAnchorAxis(frame)
     return "x"
 end
 
--- [ SNAP API ]--------------------------------------------------------------------------------------
-
+-- [ SNAP API ]---------------------------------------------------------------------------------------
 function Frame:Snap(frame, showGuides)
     EnsureModules()
     local targets = Selection:GetSnapTargets(frame)
     return Snap:DetectSnap(frame, showGuides, targets, nil)
 end
 
--- [ SELECTION API ]---------------------------------------------------------------------------------
-
+-- [ SELECTION API ]----------------------------------------------------------------------------------
 Frame.selections = {}
 
 function Frame:Attach(frame, dragCallback, selectionCallback)
@@ -121,7 +116,7 @@ function Frame:GetSelectedFrame()
     return Selection:GetSelectedFrame()
 end
 
--- [ CANVAS MODE DELEGATION ]------------------------------------------------------------------------
+-- [ CANVAS MODE DELEGATION ]-------------------------------------------------------------------------
 -- These methods delegate to Engine.CanvasMode (cross-domain call).
 -- Edit Mode needs to trigger Canvas Mode entry from selection double-click.
 
@@ -153,15 +148,13 @@ Frame.ExitComponentEdit = Frame.ExitCanvasMode
 Frame.IsComponentEditActive = Frame.IsCanvasModeActive
 Frame.ToggleComponentEdit = Frame.ToggleCanvasMode
 
--- [ PERSISTENCE API ]-------------------------------------------------------------------------------
-
+-- [ PERSISTENCE API ]--------------------------------------------------------------------------------
 function Frame:RestorePosition(frame, plugin, systemIndex)
     EnsureModules()
     return Persistence:RestorePosition(frame, plugin, systemIndex)
 end
 
--- [ GUARD API ]-------------------------------------------------------------------------------------
-
+-- [ GUARD API ]--------------------------------------------------------------------------------------
 function Frame:Protect(frame, parent, onRestoreFunc, options)
     EnsureModules()
     Guard:Protect(frame, parent)
@@ -173,8 +166,7 @@ function Frame:AttachSettingsListener(frame, plugin, systemIndex)
     Persistence:AttachSettingsListener(frame, plugin, systemIndex)
 end
 
--- [ ORIENTATION API ]-------------------------------------------------------------------------------
-
+-- [ ORIENTATION API ]--------------------------------------------------------------------------------
 function Frame:GetOrientation(frame)
     EnsureModules()
     if Engine.FrameOrientation then return Engine.FrameOrientation:DetectOrientation(frame) end
@@ -191,15 +183,13 @@ function Frame:UnregisterOrientationCallback(frame)
     if Engine.FrameOrientation then Engine.FrameOrientation:UnregisterCallback(frame) end
 end
 
--- [ NATIVE FRAME INTEGRATION ]----------------------------------------------------------------------
-
+-- [ NATIVE FRAME INTEGRATION ]-----------------------------------------------------------------------
 function Frame:UpdateNativeFrameVisual(systemFrame)
     local CM = Engine.CanvasMode
     if CM and CM.UpdateNativeFrameVisual then CM:UpdateNativeFrameVisual(systemFrame) end
 end
 
--- [ CLICK-THROUGH ]---------------------------------------------------------------------------------
-
+-- [ CLICK-THROUGH ]----------------------------------------------------------------------------------
 function Frame:DisableMouseRecursive(frame)
     if not frame then return end
     frame:EnableMouse(false)
@@ -209,8 +199,7 @@ function Frame:DisableMouseRecursive(frame)
     end
 end
 
--- [ INITIALIZATION ]--------------------------------------------------------------------------------
-
+-- [ INITIALIZATION ]---------------------------------------------------------------------------------
 if EditModeManagerFrame then
     hooksecurefunc(EditModeManagerFrame, "SelectSystem", function(_, systemFrame)
         local Selection = Engine.FrameSelection
@@ -248,8 +237,7 @@ if EditModeManagerFrame then
     if Engine.CanvasMode then Engine.CanvasMode:Initialize() end
 end
 
--- [ PROPERTY ALIASES ]------------------------------------------------------------------------------
-
+-- [ PROPERTY ALIASES ]-------------------------------------------------------------------------------
 setmetatable(Frame, {
     __index = function(t, k)
         if k == "anchors" then

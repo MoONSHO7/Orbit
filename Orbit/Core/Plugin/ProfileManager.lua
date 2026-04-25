@@ -1,13 +1,11 @@
--- [ PROFILE MANAGER ]-------------------------------------------------------------------------------
-
+-- [ PROFILE MANAGER ]--------------------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 
 ---@class OrbitProfileManager
 Orbit.Profile = Orbit.Profile or {}
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local CLEAN_PROFILE_SOURCE = ":CLEAN:"
 local DEBOUNCE_KEY = "ProfileManager_SpecCheck"
 local DEBOUNCE_DELAY = 0.1
@@ -18,12 +16,10 @@ local CHAR_KEY = UnitName("player") .. "-" .. GetRealmName()
 
 
 
--- [ STATE ]-----------------------------------------------------------------------------------------
-
+-- [ STATE ]------------------------------------------------------------------------------------------
 local isActivatingProfile = false
 
--- [ CLASS-SCOPED SPEC PROFILES ]--------------------------------------------------------------------
-
+-- [ CLASS-SCOPED SPEC PROFILES ]---------------------------------------------------------------------
 function Orbit.Profile:IsSpecProfilesEnabled()
     local tbl = Orbit.db and Orbit.db.classSpecProfiles
     return tbl and tbl[PLAYER_CLASS] or false
@@ -35,8 +31,7 @@ function Orbit.Profile:SetSpecProfilesEnabled(value)
     Orbit.db.classSpecProfiles[PLAYER_CLASS] = value and true or nil
 end
 
--- [ UTILITY ]---------------------------------------------------------------------------------------
-
+-- [ UTILITY ]----------------------------------------------------------------------------------------
 local function CopyTable(src, dest)
     if type(dest) ~= "table" then dest = {} end
     for k, v in pairs(src) do
@@ -52,8 +47,7 @@ local function SafeApplyPlugin(plugin)
     end
 end
 
--- [ INITIALIZATION ]--------------------------------------------------------------------------------
-
+-- [ INITIALIZATION ]---------------------------------------------------------------------------------
 function Orbit.Profile:Initialize()
     if not Orbit.db then Orbit.db = {} end
     if not Orbit.db.profiles then Orbit.db.profiles = {} end
@@ -111,8 +105,7 @@ function Orbit.Profile:Initialize()
     self:InitializeSpecSwitching()
 end
 
--- [ PROFILE GETTERS ]-------------------------------------------------------------------------------
-
+-- [ PROFILE GETTERS ]--------------------------------------------------------------------------------
 function Orbit.Profile:GetActiveProfileName() return Orbit.db.activeProfile or DEFAULT_PROFILE end
 
 function Orbit.Profile:GetProfiles()
@@ -123,7 +116,6 @@ function Orbit.Profile:GetProfiles()
 end
 
 -- [ SPEC MAPPING ] ----------------------------------------------------------------------------------
-
 function Orbit.Profile:GetProfileForSpec(specID)
     if not Orbit.db.specMappings then return nil end
     return Orbit.db.specMappings[specID]
@@ -140,8 +132,7 @@ end
 
 
 
--- [ PROFILE CRUD ]----------------------------------------------------------------------------------
-
+-- [ PROFILE CRUD ]-----------------------------------------------------------------------------------
 function Orbit.Profile:CreateProfile(name, copyFrom)
     if Orbit.db.profiles[name] then return false end
 
@@ -303,8 +294,7 @@ function Orbit.Profile:SetActiveProfile(name)
     return true
 end
 
--- [ SPEC MANAGEMENT ]-------------------------------------------------------------------------------
-
+-- [ SPEC MANAGEMENT ]--------------------------------------------------------------------------------
 function Orbit.Profile:CheckSpecProfile()
     if not Orbit.db or not Orbit.db.profiles then return end
     if not self:IsSpecProfilesEnabled() then return end
@@ -338,8 +328,7 @@ function Orbit.Profile:FlushGlobalSettings()
     end
 end
 
--- [ IMPORT / EXPORT ]-------------------------------------------------------------------------------
-
+-- [ IMPORT / EXPORT ]--------------------------------------------------------------------------------
 local LibSerialize = LibStub("LibSerialize")
 local LibDeflate = LibStub("LibDeflate")
 

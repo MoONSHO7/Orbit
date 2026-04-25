@@ -5,7 +5,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 Orbit.BossFramePreviewMixin = {}
 local Helpers = nil
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local MAX_BOSS_FRAMES = 5
 local POWER_BAR_HEIGHT_RATIO = 0.2
 local DEBOUNCE_DELAY = Orbit.Constants.Timing.DefaultDebounce
@@ -25,7 +25,7 @@ local PREVIEW_DEFAULTS = {
     FakeCooldownDuration = 60,
 }
 
--- [ PREVIEW LOGIC ]---------------------------------------------------------------------------------
+-- [ PREVIEW LOGIC ]----------------------------------------------------------------------------------
 function Orbit.BossFramePreviewMixin:ShowPreview()
     if InCombatLockdown() or not self.frames or not self.container then return end
     self.isPreviewActive = true
@@ -180,8 +180,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
     end
 end
 
--- [ PREVIEW AURAS ]---------------------------------------------------------------------------------
-
+-- [ PREVIEW AURAS ]----------------------------------------------------------------------------------
 local BOSS_PREVIEW_DEBUFF_CFG = {
     helpers = function() return Orbit.BossFrameHelpers end,
     defaultAnchorX = "LEFT", defaultJustifyH = "LEFT",
@@ -197,7 +196,7 @@ function Orbit.BossFramePreviewMixin:ShowPreviewAuras(frame)
     Orbit.AuraPreview:ShowFrameAuras(self, frame, BOSS_PREVIEW_DEBUFF_CFG, BOSS_PREVIEW_BUFF_CFG)
 end
 
--- [ HIDE PREVIEW ]----------------------------------------------------------------------------------
+-- [ HIDE PREVIEW ]-----------------------------------------------------------------------------------
 function Orbit.BossFramePreviewMixin:HidePreview()
     if InCombatLockdown() or not self.frames then return end
     self.isPreviewActive = false

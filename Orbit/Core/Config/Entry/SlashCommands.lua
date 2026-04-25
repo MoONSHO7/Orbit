@@ -1,16 +1,13 @@
--- [ ORBIT SLASH COMMANDS ]--------------------------------------------------------------------------
-
+-- [ ORBIT SLASH COMMANDS ]---------------------------------------------------------------------------
 local _, Orbit = ...
 local L = Orbit.L
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local POPUP_PREFERRED_INDEX = 3
 local MAX_INSPECT_DEPTH = 2
 local MAX_INSPECT_ITEMS = 20
 
--- [ CONFIRMATION POPUPS ]---------------------------------------------------------------------------
-
+-- [ CONFIRMATION POPUPS ]----------------------------------------------------------------------------
 StaticPopupDialogs["ORBIT_CONFIRM_HARD_RESET"] = {
     text = L.CMD_HARD_RESET_WARNING,
     button1 = L.CMN_FACTORY_RESET, button2 = L.CMN_CANCEL,
@@ -51,8 +48,7 @@ StaticPopupDialogs["ORBIT_CONFIRM_RESET_PLUGIN"] = {
     timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = POPUP_PREFERRED_INDEX,
 }
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function FormatValue(v, depth)
     if type(v) == "table" then
         if depth >= MAX_INSPECT_DEPTH then return "{...}" end
@@ -168,8 +164,7 @@ local function PrintInspect(pluginName)
     end
 end
 
--- [ SLASH HANDLER ]---------------------------------------------------------------------------------
-
+-- [ SLASH HANDLER ]----------------------------------------------------------------------------------
 SLASH_ORBIT1 = "/orbit"
 SLASH_ORBIT2 = "/orb"
 

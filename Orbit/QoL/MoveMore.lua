@@ -1,7 +1,7 @@
--- [ MOVE MORE ]-------------------------------------------------------------------------------------
+-- [ MOVE MORE ]--------------------------------------------------------------------------------------
 local _, Orbit = ...
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local FRAME_NAMES = {
     "CharacterFrame", "PlayerSpellsFrame", "ProfessionsBookFrame", "ProfessionsFrame",
     "FriendsFrame", "CommunitiesFrame", "CommunitiesGuildLogFrame",
@@ -39,7 +39,7 @@ for _, name in ipairs(FRAME_NAMES) do
     FRAME_NAMES_HASH[name] = true
 end
 
--- [ MODULE ]----------------------------------------------------------------------------------------
+-- [ MODULE ]-----------------------------------------------------------------------------------------
 Orbit.MoveMore = {}
 local MM = Orbit.MoveMore
 MM._hooked = {}
@@ -232,7 +232,7 @@ function MM:Disable()
     end
 end
 
--- [ AUTO-ENABLE ON LOGIN ]--------------------------------------------------------------------------
+-- [ AUTO-ENABLE ON LOGIN ]---------------------------------------------------------------------------
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:RegisterEvent("ADDON_LOADED")

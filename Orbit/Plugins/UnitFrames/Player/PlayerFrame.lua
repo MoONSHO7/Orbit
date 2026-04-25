@@ -4,7 +4,7 @@ local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerFrame"
 local PLAYER_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Player
 
@@ -55,7 +55,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.AggroIndicatorMixin, Orbit.StatusIconMixin)
 Plugin.supportsHealthText = true
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex
     if systemIndex ~= PLAYER_FRAME_INDEX then
@@ -76,7 +76,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     self:RegisterStandardEvents()
     if PlayerFrame then
@@ -364,7 +364,7 @@ function Plugin:OnLoad()
     end
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:UpdateLayout(frame)
     if not frame or InCombatLockdown() then
         return

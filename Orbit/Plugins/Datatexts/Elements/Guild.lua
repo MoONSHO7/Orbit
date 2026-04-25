@@ -2,6 +2,7 @@
 -- Guild datatext: online guild members count
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
 local W = DT.BaseDatatext:New("Guild")
@@ -21,9 +22,9 @@ function W:ShowTooltip()
     C_GuildInfo.GuildRoster() 
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    if not IsInGuild() then GameTooltip:AddLine("Not in a Guild", 0.5, 0.5, 0.5); GameTooltip:Show(); return end
+    if not IsInGuild() then GameTooltip:AddLine(L.PLU_DT_GUILD_NONE, 0.5, 0.5, 0.5); GameTooltip:Show(); return end
     local guildName = GetGuildInfo("player")
-    GameTooltip:AddLine(guildName or "Guild", 0, 0.82, 0)
+    GameTooltip:AddLine(guildName or L.PLU_DT_GUILD_TITLE, 0, 0.82, 0)
     GameTooltip:AddLine(" ")
     
     local total = GetNumGuildMembers() or 0

@@ -1,12 +1,10 @@
--- [ FRAME GUARD ]-----------------------------------------------------------------------------------
-
+-- [ FRAME GUARD ]------------------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local Guard = {}
 Engine.FrameGuard = Guard
 
--- [ PROTECT ]---------------------------------------------------------------------------------------
-
+-- [ PROTECT ]----------------------------------------------------------------------------------------
 function Guard:Protect(frame, parent)
     if not frame or not parent then return end
     frame._orbitGuardParent = parent
@@ -37,7 +35,7 @@ function Guard:Protect(frame, parent)
     end
 end
 
--- [ SUSPEND / RESUME ]------------------------------------------------------------------------------
+-- [ SUSPEND / RESUME ]-------------------------------------------------------------------------------
 -- Disables guard enforcement without removing hooks (e.g. FarmHud owns the surface temporarily).
 function Guard:Suspend(frame)
     if not frame then return end
@@ -49,8 +47,7 @@ function Guard:Resume(frame)
     frame._orbitGuardSuspended = nil
 end
 
--- [ UPDATE ]----------------------------------------------------------------------------------------
-
+-- [ UPDATE ]-----------------------------------------------------------------------------------------
 function Guard:UpdateProtection(frame, parent, onRestoreFunc, options)
     if not frame then return end
     frame._orbitGuardParent = parent

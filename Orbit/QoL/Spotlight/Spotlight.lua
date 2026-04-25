@@ -1,8 +1,8 @@
--- [ SPOTLIGHT ENTRY ]-------------------------------------------------------------------------------
+-- [ SPOTLIGHT ENTRY ]--------------------------------------------------------------------------------
 local _, Orbit = ...
 local L = Orbit.L
 
--- [ NAMESPACE ]-------------------------------------------------------------------------------------
+-- [ NAMESPACE ]--------------------------------------------------------------------------------------
 Orbit.Spotlight = {}
 local Spotlight = Orbit.Spotlight
 Spotlight.Search = {}
@@ -10,7 +10,7 @@ Spotlight.Index = { Sources = {} }
 Spotlight.UI = {}
 Spotlight._active = false
 
--- [ KINDS ]-----------------------------------------------------------------------------------------
+-- [ KINDS ]------------------------------------------------------------------------------------------
 -- Canonical list of searchable source kinds. Every consumer (config panel, result row kind label,
 -- enabled-kinds resolver, category token matcher) iterates this list so adding a new source only
 -- requires adding one row here (and the matching Index/Sources/<Name>.lua).
@@ -28,11 +28,11 @@ Spotlight.Kinds = {
     { kind = "questitems",  settingKey = "QuestItems",  labelKey = "PLU_SPT_SRC_QUESTITEMS" },
 }
 
--- [ BINDING GLOBALS ]-------------------------------------------------------------------------------
+-- [ BINDING GLOBALS ]--------------------------------------------------------------------------------
 _G.BINDING_HEADER_ORBIT = _G.BINDING_HEADER_ORBIT or "Orbit"
 _G.BINDING_NAME_ORBIT_SPOTLIGHT_TOGGLE = L.PLU_SPT_BINDING_NAME
 
--- [ PUBLIC API ]------------------------------------------------------------------------------------
+-- [ PUBLIC API ]-------------------------------------------------------------------------------------
 function Spotlight:Toggle()
     if InCombatLockdown() then
         Orbit:Print(L.PLU_SPT_MSG_COMBAT)
@@ -57,7 +57,7 @@ function Spotlight:Disable()
     end
 end
 
--- [ DIAGNOSTIC ]------------------------------------------------------------------------------------
+-- [ DIAGNOSTIC ]-------------------------------------------------------------------------------------
 -- /run Orbit.Spotlight:Debug()        — counts per source
 -- /run Orbit.Spotlight:Dump("currencies")  — first 20 entries' lowerName so you can see what tags were folded in
 function Spotlight:Debug()
@@ -86,7 +86,7 @@ function Spotlight:Dump(kind, limit)
     if shown == 0 then Orbit:Print("  (no entries)") end
 end
 
--- [ AUTO-ENABLE ON LOGIN ]--------------------------------------------------------------------------
+-- [ AUTO-ENABLE ON LOGIN ]---------------------------------------------------------------------------
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", function()

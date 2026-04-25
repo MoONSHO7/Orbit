@@ -1,13 +1,11 @@
--- [ CANVAS MODE - AURA CREATOR ]--------------------------------------------------------------------
-
+-- [ CANVAS MODE - AURA CREATOR ]---------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Pixel = OrbitEngine.Pixel
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local AURA_SPACING_RAW = Orbit.Constants.GroupFrames.AuraSpacing
 local AURA_MIN_ICON_SIZE = 10
 local DEFAULT_MAX_ICONS = 3
@@ -16,8 +14,7 @@ local DEFAULT_PARENT_WIDTH = 200
 local DEFAULT_PARENT_HEIGHT = 40
 local GetSpellbookIcon = function(auraType) return Orbit.AuraPreview.GetSpellbookIcon(auraType) end
 
--- [ REFRESH LOGIC ]---------------------------------------------------------------------------------
-
+-- [ REFRESH LOGIC ]----------------------------------------------------------------------------------
 local function RefreshAuraIcons(self)
     local AURA_BASE_ICON_SIZE = (Orbit.Constants.GroupFrames and Orbit.Constants.GroupFrames.AuraBaseIconSize) or AURA_MIN_ICON_SIZE
     local overrides = self.pendingOverrides or self.existingOverrides or {}
@@ -115,8 +112,7 @@ local function RefreshAuraIcons(self)
     end
 end
 
--- [ CREATOR ]---------------------------------------------------------------------------------------
-
+-- [ CREATOR ]----------------------------------------------------------------------------------------
 local function Create(container, preview, key, source, data)
     container.auraIconPool = {}
     container.RefreshAuraIcons = RefreshAuraIcons

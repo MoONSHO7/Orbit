@@ -8,12 +8,10 @@ local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
 
 -- [ MODULE NAMESPACE ] ------------------------------------------------------------------------------
-
 OrbitEngine.CanvasMode = OrbitEngine.CanvasMode or {}
 local CanvasMode = OrbitEngine.CanvasMode
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
-
 CanvasMode.Constants = {
     -- Dialog dimensions
     DIALOG_CENTER_OFFSET_Y = 50,
@@ -75,7 +73,6 @@ CanvasMode.Constants = {
 local C = CanvasMode.Constants
 
 -- [ CREATE DIALOG FRAME ] ---------------------------------------------------------------------------
-
 local Dialog = CreateFrame("Frame", "OrbitCanvasModeDialog", UIParent)
 Dialog:SetSize(C.DIALOG_WIDTH, C.DIALOG_MIN_HEIGHT)
 Dialog:SetPoint("CENTER", UIParent, "CENTER", 0, C.DIALOG_CENTER_OFFSET_Y)
@@ -189,5 +186,4 @@ Dialog.previewComponents = {}
 Dialog.activeFilter = "All"
 
 -- [ EXPORT ] ----------------------------------------------------------------------------------------
-
 CanvasMode.Dialog = Dialog

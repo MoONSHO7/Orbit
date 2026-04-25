@@ -1,5 +1,6 @@
 -- [ CANVAS MODE - DOCK ] ----------------------------------------------------------------------------
 local _, Orbit = ...
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
@@ -18,7 +19,6 @@ local DOCK_BG_HOVER = { 0.3, 0.5, 0.3, 0.8 }
 local HealerReg = Orbit.HealerAuraRegistry
 local function DisplayName(key) return HealerReg and HealerReg:GetSlotLabel(key) or key end
 -- [ DOCK FRAME ] ------------------------------------------------------------------------------------
-
 Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog)
 Dialog.DisabledDock:SetPoint("TOPLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", DOCK_OFFSET_X, DOCK_OFFSET_Y)
 Dialog.DisabledDock:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -DOCK_OFFSET_X, DOCK_OFFSET_Y)
@@ -28,7 +28,7 @@ Dialog.DisabledDock:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + 50)
 -- Dock hint text (shown when empty)
 Dialog.DisabledDock.EmptyHint = Dialog.DisabledDock:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 Dialog.DisabledDock.EmptyHint:SetPoint("CENTER", Dialog.DisabledDock, "CENTER", 0, 0)
-Dialog.DisabledDock.EmptyHint:SetText("drag here to disable")
+Dialog.DisabledDock.EmptyHint:SetText(L.TOUR_CM_DOCK_HINT)
 Dialog.DisabledDock.EmptyHint:SetTextColor(1, 1, 1, 0.3)
 
 -- Container for dock component icons (horizontal row)
@@ -61,7 +61,6 @@ Dialog.OverrideContainer.Title = Dialog.OverrideContainer:CreateFontString(nil, 
 Dialog.OverrideContainer.Title:SetPoint("TOPLEFT", Dialog.OverrideContainer, "TOPLEFT", C.DIALOG_INSET, 0)
 
 -- [ DOCK LAYOUT ] -----------------------------------------------------------------------------------
-
 function Dialog:LayoutDockIcons()
     local x = 0
     local iconCount = 0
@@ -78,7 +77,6 @@ function Dialog:LayoutDockIcons()
 end
 
 -- [ ADD TO DOCK ] -----------------------------------------------------------------------------------
-
 function Dialog:AddToDock(key, sourceComponent)
     if self.dockComponents[key] then return end
 
@@ -242,7 +240,6 @@ function Dialog:AddToDock(key, sourceComponent)
 end
 
 -- [ REMOVE FROM DOCK ] ------------------------------------------------------------------------------
-
 function Dialog:RemoveFromDock(key)
     local icon = self.dockComponents[key]
     if icon then
@@ -263,7 +260,6 @@ function Dialog:RemoveFromDock(key)
 end
 
 -- [ RESTORE FROM DOCK ] -----------------------------------------------------------------------------
-
 function Dialog:RestoreFromDock(key)
     local dockIcon = self.dockComponents[key]
 
@@ -372,7 +368,6 @@ function Dialog:RestoreFromDock(key)
 end
 
 -- [ CLEAR DOCK ] ------------------------------------------------------------------------------------
-
 function Dialog:ClearDock()
     for key, icon in pairs(self.dockComponents) do
         icon:Hide()

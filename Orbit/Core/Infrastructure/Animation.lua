@@ -10,7 +10,7 @@ local FADE_IN_DURATION = 0.1
 local FADE_OUT_DURATION = 0.2
 local HOVER_CHECK_INTERVAL = 0.1
 
--- [ HOVER FADE ]------------------------------------------------------------------------------------
+-- [ HOVER FADE ]-------------------------------------------------------------------------------------
 local faders = setmetatable({}, { __mode = "k" })
 
 -- Combat-safe fade helper

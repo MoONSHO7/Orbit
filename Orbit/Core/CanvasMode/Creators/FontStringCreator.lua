@@ -1,13 +1,11 @@
--- [ CANVAS MODE - FONT STRING CREATOR ]-------------------------------------------------------------
-
+-- [ CANVAS MODE - FONT STRING CREATOR ]--------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local TEXT_WIDTH_FACTOR = 0.55
 local TEXT_WIDTH_MAX_FACTOR = 0.8
 local TEXT_WIDTH_MAX_MULTIPLIER = 2
@@ -30,7 +28,6 @@ local PREVIEW_TEXT_COLORS = {
 }
 
 -- [ CREATOR ] ---------------------------------------------------------------------------------------
-
 local function Create(container, preview, key, source, data)
     local visual = container:CreateFontString(nil, "OVERLAY")
 

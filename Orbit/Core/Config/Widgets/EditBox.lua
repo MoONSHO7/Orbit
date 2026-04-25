@@ -2,13 +2,13 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local Layout = Engine.Layout
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULT_WIDTH = 200
 local DEFAULT_HEIGHT_SINGLE = 30
 local DEFAULT_HEIGHT_MULTI = 100
 local SCROLL_SPEED = 20
 
--- [ EDITBOX WIDGET ]--------------------------------------------------------------------------------
+-- [ EDITBOX WIDGET ]---------------------------------------------------------------------------------
 function Layout:CreateEditBox(parent, label, value, callback, width, height, isMultiLine, opts)
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame.OrbitType = "EditBox"

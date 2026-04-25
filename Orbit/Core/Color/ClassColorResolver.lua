@@ -1,4 +1,4 @@
--- [ ORBIT CLASS COLOR RESOLVER ]--------------------------------------------------------------------
+-- [ ORBIT CLASS COLOR RESOLVER ]---------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 Engine.ClassColor = {}

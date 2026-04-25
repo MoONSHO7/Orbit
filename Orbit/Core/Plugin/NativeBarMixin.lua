@@ -1,4 +1,4 @@
--- [ ORBIT NATIVE BAR MIXIN ]------------------------------------------------------------------------
+-- [ ORBIT NATIVE BAR MIXIN ]-------------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
@@ -7,8 +7,7 @@ local math_max = math.max
 Orbit.NativeBarMixin = {}
 local Mixin = Orbit.NativeBarMixin
 
--- [ SCALE APPLICATION ]-----------------------------------------------------------------------------
-
+-- [ SCALE APPLICATION ]------------------------------------------------------------------------------
 function Mixin:ApplyScale(frame, systemIndex, sizeKey)
     if not frame then
         return
@@ -20,8 +19,7 @@ function Mixin:ApplyScale(frame, systemIndex, sizeKey)
     end
 end
 
--- [ MOUSE-OVER FADE ]-------------------------------------------------------------------------------
-
+-- [ MOUSE-OVER FADE ]--------------------------------------------------------------------------------
 function Mixin:ApplyMouseOver(frame, systemIndex)
     if not frame then return end
     local baseAlpha = 1
@@ -35,8 +33,7 @@ function Mixin:ApplyMouseOver(frame, systemIndex)
     Orbit.Animation:ApplyHoverFade(frame, baseAlpha, 1, Orbit:IsEditMode())
 end
 
--- [ ORIENTATION ]-----------------------------------------------------------------------------------
-
+-- [ ORIENTATION ]------------------------------------------------------------------------------------
 function Mixin:ApplyOrientation(frame, orientation, horizontalValue)
     if not frame then
         return
@@ -44,16 +41,14 @@ function Mixin:ApplyOrientation(frame, orientation, horizontalValue)
     frame.isHorizontal = (orientation == (horizontalValue or 0))
 end
 
--- [ LAYOUT TRIGGER ]--------------------------------------------------------------------------------
-
+-- [ LAYOUT TRIGGER ]---------------------------------------------------------------------------------
 function Mixin:TriggerLayout(frame)
     if frame and frame.Layout then
         frame:Layout()
     end
 end
 
--- [ COMPLETE APPLY SETTINGS HELPER ]----------------------------------------------------------------
-
+-- [ COMPLETE APPLY SETTINGS HELPER ]-----------------------------------------------------------------
 function Mixin:ApplyNativeBarSettings(frame, systemIndex, options)
     if not frame then
         return
@@ -67,8 +62,7 @@ function Mixin:ApplyNativeBarSettings(frame, systemIndex, options)
     self:TriggerLayout(frame)
 end
 
--- [ SMART ALIGNMENT ]-------------------------------------------------------------------------------
-
+-- [ SMART ALIGNMENT ]--------------------------------------------------------------------------------
 function Mixin:EnableSmartAlignment(frame, textElement, paddingH)
     if not frame or not textElement then
         return

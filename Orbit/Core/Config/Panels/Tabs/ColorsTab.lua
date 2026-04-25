@@ -1,4 +1,4 @@
--- [ COLORS TAB ]------------------------------------------------------------------------------------
+-- [ COLORS TAB ]-------------------------------------------------------------------------------------
 -- Textures, color curves, and border colors for the Orbit Options dialog.
 
 local _, Orbit = ...
@@ -9,12 +9,10 @@ local Panel = Orbit.OptionsPanel
 local CreateGlobalSettingsPlugin = Panel._helpers.CreateGlobalSettingsPlugin
 local RefreshAllPreviews = Panel._helpers.RefreshAllPreviews
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local ColorsPlugin = CreateGlobalSettingsPlugin("OrbitColors")
 
--- [ SCHEMA ]----------------------------------------------------------------------------------------
-
+-- [ SCHEMA ]-----------------------------------------------------------------------------------------
 local function GetColorsSchema()
     local controls = {
         { type = "texture", key = "Texture", label = L.CFG_TEXTURE, default = "Melli", previewColor = { r = 0.8, g = 0.8, b = 0.8 } },
@@ -130,6 +128,5 @@ local function GetColorsSchema()
     }
 end
 
--- [ REGISTRATION ]----------------------------------------------------------------------------------
-
+-- [ REGISTRATION ]-----------------------------------------------------------------------------------
 Panel.Tabs["Colors"] = { plugin = ColorsPlugin, schema = GetColorsSchema }

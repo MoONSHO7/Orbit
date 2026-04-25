@@ -2,6 +2,7 @@
 -- Spec datatext: shows all specialization icons with the gold talent ring. Click to change.
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local BUTTON_SIZE = 25
@@ -149,20 +150,20 @@ function W:CreateSpecButtons(numSpecs)
             GameTooltip:AddLine(name, 1, 0.82, 0)
             
             local displayRole = role == "DAMAGER" and "DAMAGE" or role
-            GameTooltip:AddLine("Role: " .. (displayRole or "Unknown"), 1, 1, 1)
+            GameTooltip:AddLine(L.PLU_DT_SPEC_ROLE .. " " .. (displayRole or L.PLU_DT_SPEC_UNKNOWN), 1, 1, 1)
             GameTooltip:AddLine(" ")
-            
+
             local currentSpec = GetSpecialization()
             if currentSpec ~= i then
-                GameTooltip:AddLine("Left Click to activate spec", 0, 1, 0)
+                GameTooltip:AddLine(L.PLU_DT_SPEC_HINT_ACTIVATE, 0, 1, 0)
             else
-                GameTooltip:AddLine("Active Spec", 0, 1, 0)
+                GameTooltip:AddLine(L.PLU_DT_SPEC_ACTIVE, 0, 1, 0)
             end
-            
+
             if currentSpec == i and C_ClassTalents and C_ClassTalents.GetConfigIDsBySpecID then
                 local configIDs = C_ClassTalents.GetConfigIDsBySpecID(specId)
                 if configIDs and #configIDs > 0 then
-                    GameTooltip:AddLine("Left Click to load talents", 0.7, 0.7, 0.7)
+                    GameTooltip:AddLine(L.PLU_DT_SPEC_HINT_LOAD_TALENTS, 0.7, 0.7, 0.7)
                 end
             end
             

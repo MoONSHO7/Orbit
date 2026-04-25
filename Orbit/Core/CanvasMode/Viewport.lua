@@ -110,7 +110,6 @@ Dialog.TransformLayer:SetPoint("CENTER", Dialog.Viewport, "CENTER", 0, C.DOCK_Y_
 -- (Created in Dock.lua after DisabledDock is available)
 
 -- [ DYNAMIC HEIGHT ] --------------------------------------------------------------------------------
-
 function Dialog:GetViewportTopOffset()
     return -INSET_TOP
 end
@@ -146,7 +145,6 @@ function Dialog:RecalculateHeight()
 end
 
 -- [ ZOOM/PAN HELPERS ] ------------------------------------------------------------------------------
-
 local function GetPanBounds(transformLayer, viewport, zoomLevel)
     local baseWidth = transformLayer.baseWidth or 200
     local baseHeight = transformLayer.baseHeight or 60
@@ -189,14 +187,12 @@ CanvasMode.ApplyZoom = ApplyZoom
 CanvasMode.ApplyPanOffset = ApplyPanOffset
 
 -- [ ZOOM HANDLER ] ----------------------------------------------------------------------------------
-
 Dialog.Viewport:SetScript("OnMouseWheel", function(self, delta)
     local newZoom = Dialog.zoomLevel + (delta * C.ZOOM_STEP)
     ApplyZoom(Dialog, newZoom)
 end)
 
 -- [ PAN HANDLERS ] ----------------------------------------------------------------------------------
-
 Dialog.Viewport:SetScript("OnDragStart", function(self)
     self.isPanning = true
     local mx, my = GetCursorPosition()
@@ -227,7 +223,6 @@ Dialog.Viewport:SetScript("OnUpdate", function(self)
 end)
 
 -- [ SYNC TOGGLE ] -----------------------------------------------------------------------------------
-
 Dialog.SyncToggle = CreateFrame("CheckButton", nil, Dialog.BorderOverlay, "UICheckButtonTemplate")
 Dialog.SyncToggle:SetSize(SYNC_TOGGLE_SIZE, SYNC_TOGGLE_SIZE)
 Dialog.SyncToggle:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "TOPRIGHT", -8, -4)
@@ -278,7 +273,6 @@ end)
 Dialog.SyncToggle:UpdateVisual()
 
 -- [ ZOOM INDICATOR ] --------------------------------------------------------------------------------
-
 Dialog.ZoomIndicator = Dialog.BorderOverlay:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 Dialog.ZoomIndicator:SetPoint("BOTTOMRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -10, 8)
 Dialog.ZoomIndicator:SetText(string.format("%.0f%%", C.DEFAULT_ZOOM * 100))

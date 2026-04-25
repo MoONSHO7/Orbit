@@ -1,4 +1,4 @@
--- [ ORBIT ICON LAYOUT ENGINE ]----------------------------------------------------------------------
+-- [ ORBIT ICON LAYOUT ENGINE ]-----------------------------------------------------------------------
 local _, Orbit = ...
 local Skin = Orbit.Skin
 local Constants = Orbit.Constants

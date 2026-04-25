@@ -1,5 +1,4 @@
--- [ CANVAS MODE DRAG ]------------------------------------------------------------------------------
-
+-- [ CANVAS MODE DRAG ]-------------------------------------------------------------------------------
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
@@ -16,16 +15,14 @@ local SmartGuides = OrbitEngine.SmartGuides
 local ApplyTextAlignment = CanvasMode.ApplyTextAlignment
 local SetBorderColor = CanvasMode.SetBorderColor
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local SNAP_SIZE = OrbitEngine.CanvasMode.SnapEngine.SNAP_SIZE
 local DRAG_THRESHOLD = 3
 local CLICK_THRESHOLD = 0.3
 local CLAMP_PADDING_X = 200
 local CLAMP_PADDING_Y = 200
 
--- [ TYPE DETECTION ]--------------------------------------------------------------------------------
-
+-- [ TYPE DETECTION ]---------------------------------------------------------------------------------
 local AURA_ICON_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true }
 local STANDARD_ICON_KEYS =
     { MarkerIcon = true, MainTankIcon = true, RestingIcon = true, Difficulty = true, DifficultyIcon = true, Mail = true, CraftingOrder = true, Compartment = true, Zoom = true }
@@ -47,8 +44,7 @@ local function DetectCreatorType(key, source)
     return nil, false, false, false
 end
 
--- [ FALLBACK VISUAL ]-------------------------------------------------------------------------------
-
+-- [ FALLBACK VISUAL ]--------------------------------------------------------------------------------
 local function CreateFallbackVisual(container, key)
     local visual = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     visual:SetAllPoints()
@@ -58,8 +54,7 @@ local function CreateFallbackVisual(container, key)
     return visual
 end
 
--- [ CONTAINER STATE ]-------------------------------------------------------------------------------
-
+-- [ CONTAINER STATE ]--------------------------------------------------------------------------------
 local function SetupContainerState(container, preview, key, isFontString, isAuraContainer, startX, startY, data)
     container.border = container:CreateTexture(nil, "BACKGROUND")
     container.border:SetAllPoints()
@@ -107,8 +102,7 @@ local function SetupContainerState(container, preview, key, isFontString, isAura
     if isFontString and container.visual then ApplyTextAlignment(container, container.visual, justifyH) end
 end
 
--- [ DRAG HANDLERS ]---------------------------------------------------------------------------------
-
+-- [ DRAG HANDLERS ]----------------------------------------------------------------------------------
 local function SetupDragHandlers(container, preview, key, data)
     local function StartDrag(self)
         if InCombatLockdown() then return end
@@ -346,8 +340,7 @@ local function SetupDragHandlers(container, preview, key, data)
     end)
 end
 
--- [ HOVER ]-----------------------------------------------------------------------------------------
-
+-- [ HOVER ]------------------------------------------------------------------------------------------
 local function SetupHoverEffects(container)
     container:SetScript("OnEnter", function(self)
         SetBorderColor(self.border, CC.BORDER_COLOR_HOVER)
@@ -361,16 +354,14 @@ local function SetupHoverEffects(container)
     end)
 end
 
--- [ OVERRIDES ]-------------------------------------------------------------------------------------
-
+-- [ OVERRIDES ]--------------------------------------------------------------------------------------
 local function ApplyExistingOverrides(container)
     if container.existingOverrides and OrbitEngine.CanvasComponentSettings and OrbitEngine.CanvasComponentSettings.ApplyAll then
         OrbitEngine.CanvasComponentSettings:ApplyAll(container, container.existingOverrides)
     end
 end
 
--- [ DISPATCHER ]------------------------------------------------------------------------------------
-
+-- [ DISPATCHER ]-------------------------------------------------------------------------------------
 local function CreateDraggableComponent(preview, key, sourceComponent, startX, startY, data)
     local container = CreateFrame("Frame", nil, preview)
     container:SetSize(100, 20)

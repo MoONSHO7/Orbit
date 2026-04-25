@@ -4,12 +4,11 @@ local Engine = Orbit.Engine
 Engine.Pixel = Engine.Pixel or {}
 local Pixel = Engine.Pixel
 
--- [ STATE ]-----------------------------------------------------------------------------------------
+-- [ STATE ]------------------------------------------------------------------------------------------
 local WOW_REFERENCE_HEIGHT = 768
 local SCREEN_SCALE = 1
 
--- [ MATH ]------------------------------------------------------------------------------------------
-
+-- [ MATH ]-------------------------------------------------------------------------------------------
 local function UpdateScreenScale()
     local physicalWidth, physicalHeight = GetPhysicalScreenSize()
     if not physicalHeight or physicalHeight == 0 then
@@ -84,7 +83,7 @@ function Pixel:SnapPosition(x, y, point, width, height, scale)
     return x, y
 end
 
--- [ ENFORCEMENT ]-----------------------------------------------------------------------------------
+-- [ ENFORCEMENT ]------------------------------------------------------------------------------------
 -- Hooks SetWidth/SetHeight/SetSize on a frame so all caller inputs auto-snap to physical pixels.
 function Pixel:Enforce(frame)
     if not frame then

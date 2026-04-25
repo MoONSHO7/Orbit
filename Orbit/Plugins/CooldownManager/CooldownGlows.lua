@@ -12,7 +12,7 @@ local UTILITY_INDEX = Constants.Cooldown.SystemIndex.Utility
 local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local PANDEMIC_KEY = "orbitPandemic"
 
--- [ DEFERRED HIDE BATCHING ] --------------------------------------------------
+-- [ DEFERRED HIDE BATCHING ] ------------------------------------------------------------------------
 -- Blizzard's ActionButtonSpellAlertManager does HideAll→Re-Show every refresh
 -- cycle (hundreds/sec in raids). We defer hides by 1 frame so the re-Show
 -- cancels the pending hide, eliminating flicker entirely.
@@ -63,7 +63,7 @@ local function DeferPandemicHide(icon)
     end
 end
 
--- [ PROC GLOW HOOKS ] ---------------------------------------------------------
+-- [ PROC GLOW HOOKS ] -------------------------------------------------------------------------------
 local function FindSystemIndexForButton(button)
     if button.orbitCDMSystemIndex then return button.orbitCDMSystemIndex end
     for systemIndex, data in pairs(CDM.viewerMap) do
@@ -92,7 +92,7 @@ function CDM:HookProcGlow()
     self.procGlowHooked = true
 end
 
--- [ GLOW TRANSPARENCY FIX ] ---------------------------------------------------
+-- [ GLOW TRANSPARENCY FIX ] -------------------------------------------------------------------------
 function CDM:FixGlowTransparency(glowFrame, alpha)
     if not glowFrame or not alpha then return end
     if glowFrame.ProcLoopAnim and glowFrame.ProcLoopAnim.alphaRepeat then
@@ -110,7 +110,7 @@ function CDM:FixGlowTransparency(glowFrame, alpha)
     end
 end
 
--- [ PANDEMIC GLOW ] -----------------------------------------------------------
+-- [ PANDEMIC GLOW ] ---------------------------------------------------------------------------------
 local GlowType = Constants.Glow.Type
 
 local function SuppressPandemicIcon(icon)

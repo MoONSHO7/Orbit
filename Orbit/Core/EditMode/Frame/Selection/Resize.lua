@@ -10,7 +10,7 @@ local Engine = Orbit.Engine
 Engine.SelectionResize = {}
 local Resize = Engine.SelectionResize
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local HANDLE_SIZE = 30
 local HANDLE_OFFSET_X = 5
 local HANDLE_OFFSET_Y = -5
@@ -44,7 +44,7 @@ local function GetSyncLocks(frame)
     return true, false       -- width locked
 end
 
--- [ SLIDER SYNC ]-----------------------------------------------------------------------------------
+-- [ SLIDER SYNC ]------------------------------------------------------------------------------------
 local function RefreshDialogSliders(plugin, newW, newH, wKey, hKey)
     local Layout = Engine.Layout
     if not Layout or not Layout.containerControls then return end
@@ -67,7 +67,7 @@ local function RefreshDialogSliders(plugin, newW, newH, wKey, hKey)
     end
 end
 
--- [ ATTACH ]----------------------------------------------------------------------------------------
+-- [ ATTACH ]-----------------------------------------------------------------------------------------
 function Resize:Attach(selection, frame)
     if not selection or not frame then return end
     local plugin = frame.orbitPlugin
@@ -194,7 +194,7 @@ function Resize:Attach(selection, frame)
     end)
 end
 
--- [ SHOW / HIDE ]-----------------------------------------------------------------------------------
+-- [ SHOW / HIDE ]------------------------------------------------------------------------------------
 function Resize:Show(selection)
     if selection and selection.resizeHandle then selection.resizeHandle:Show() end
 end

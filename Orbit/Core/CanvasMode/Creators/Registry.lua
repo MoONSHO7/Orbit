@@ -1,20 +1,17 @@
--- [ CANVAS MODE - CREATOR REGISTRY ]----------------------------------------------------------------
-
+-- [ CANVAS MODE - CREATOR REGISTRY ]-----------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 
--- [ REGISTRY ]--------------------------------------------------------------------------------------
-
+-- [ REGISTRY ]---------------------------------------------------------------------------------------
 CanvasMode.ComponentCreators = {}
 
 function CanvasMode:RegisterCreator(creatorType, createFn)
     self.ComponentCreators[creatorType] = createFn
 end
 
--- [ SHARED CONSTANTS ]------------------------------------------------------------------------------
-
+-- [ SHARED CONSTANTS ]-------------------------------------------------------------------------------
 local BORDER_COLOR_IDLE = { 0.3, 0.8, 0.3, 0 }
 local BORDER_COLOR_HOVER = { 0.3, 0.8, 0.3, 0.2 }
 local BORDER_COLOR_DRAG = { 0.3, 0.8, 0.3, 0.3 }
@@ -37,8 +34,7 @@ CanvasMode.CreatorConstants = {
     FALLBACK_GRAY = FALLBACK_GRAY,
 }
 
--- [ SHARED HELPERS ]--------------------------------------------------------------------------------
-
+-- [ SHARED HELPERS ]---------------------------------------------------------------------------------
 local function GetSourceSize(source, defaultW, defaultH)
     local w, h = defaultW, defaultH
     if source.orbitOriginalWidth and source.orbitOriginalWidth > 0 then
@@ -64,8 +60,7 @@ end
 
 CanvasMode.SetBorderColor = SetBorderColor
 
--- [ TEXT ALIGNMENT ]--------------------------------------------------------------------------------
-
+-- [ TEXT ALIGNMENT ]---------------------------------------------------------------------------------
 local function ApplyTextAlignment(container, visual, justifyH)
     if container and (container.orbitKeepTextCentered or container.key == "DifficultyText") then
         justifyH = "CENTER"

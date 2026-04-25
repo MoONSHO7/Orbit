@@ -1,4 +1,4 @@
--- [ MATCHER ]---------------------------------------------------------------------------------------
+-- [ MATCHER ]----------------------------------------------------------------------------------------
 local _, Orbit = ...
 local Tokenize = Orbit.Spotlight.Search.Tokenize
 local Matcher = {}
@@ -9,7 +9,7 @@ local string_len = string.len
 local table_sort = table.sort
 local table_insert = table.insert
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local SCORE_EXACT       = 1000
 local SCORE_PREFIX      = 500
 local SCORE_WORD_START  = 250
@@ -25,7 +25,7 @@ local KIND_PRIORITY     = {
     currencies = 2,
 }
 
--- [ CATEGORY TOKEN MAP ]----------------------------------------------------------------------------
+-- [ CATEGORY TOKEN MAP ]-----------------------------------------------------------------------------
 -- Built lazily so localization is loaded before we fold label strings.
 local categoryTokens
 local function EnsureCategoryTokens()
@@ -104,7 +104,7 @@ local function ExtractCategoryPrefix(query)
     return nil, query
 end
 
--- [ SCORING ]---------------------------------------------------------------------------------------
+-- [ SCORING ]----------------------------------------------------------------------------------------
 local function ScoreEntry(query, qlen, entry, fuzzy)
     local name = entry.lowerName
     if not name or name == "" then return 0 end
@@ -143,7 +143,7 @@ local function ScoreEntry(query, qlen, entry, fuzzy)
     return 0
 end
 
--- [ PUBLIC ]----------------------------------------------------------------------------------------
+-- [ PUBLIC ]-----------------------------------------------------------------------------------------
 local function ApplyBoosts(score, entry, recentBoost)
     if entry.favorite then score = score + SCORE_FAVORITE end
     if recentBoost then

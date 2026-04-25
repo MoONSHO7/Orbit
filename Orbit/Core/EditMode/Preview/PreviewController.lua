@@ -12,7 +12,6 @@ local PreviewController = {}
 Preview.Controller = PreviewController
 
 -- [ STATE ] -----------------------------------------------------------------------------------------
-
 local activeSession = nil
 
 local function CopyPosition(pos)
@@ -20,7 +19,6 @@ local function CopyPosition(pos)
 end
 
 -- [ SESSION API ] -----------------------------------------------------------------------------------
-
 -- Start a new preview session
 -- @param frame: The source frame being edited
 -- @param plugin: The plugin owning the frame
@@ -93,7 +91,6 @@ function PreviewController:IsActive()
 end
 
 -- [ POSITION MANAGEMENT ] ---------------------------------------------------------------------------
-
 -- Update a component's position in the session
 -- @param session: The session
 -- @param key: Component key

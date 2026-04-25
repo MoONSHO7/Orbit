@@ -1,11 +1,11 @@
--- [ ORBIT HIGHLIGHT BORDER ]------------------------------------------------------------------------
+-- [ ORBIT HIGHLIGHT BORDER ]-------------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local Skin = Orbit.Skin
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 
--- [ HIGHLIGHT BORDER ]------------------------------------------------------------------------------
+-- [ HIGHLIGHT BORDER ]-------------------------------------------------------------------------------
 -- When borders are merged, anchors to the group border overlay instead of the per-frame border.
 function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendMode)
     if not frame or not storageKey or type(color) ~= "table" then return end

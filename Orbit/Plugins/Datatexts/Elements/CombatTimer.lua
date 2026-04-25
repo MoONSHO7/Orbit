@@ -3,6 +3,7 @@
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local RingBuffer = DT.Formatting.RingBuffer
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local UPDATE_INTERVAL_SEC = 0.5
@@ -93,7 +94,7 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Combat Timer", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_COMBAT_TIMER_TITLE, 1, 0.82, 0)
     if self.inCombat then
         GameTooltip:AddDoubleLine("Duration:", string.format("%.1fs", GetTime() - self.startTime), 1, 1, 1, 1, 1, 1)
         if self.encounterName then GameTooltip:AddDoubleLine("Encounter:", self.encounterName, 1, 1, 1, 1, 0.82, 0) end
@@ -114,7 +115,7 @@ function W:ShowTooltip()
         end
     end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Click", "Reset Session", 0.7, 0.7, 0.7, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_HINT_CLICK, L.PLU_DT_GOLD_RESET_SESSION, 0.7, 0.7, 0.7, 1, 1, 1)
     GameTooltip:Show()
 end
 
@@ -122,8 +123,8 @@ end
 function W:Init()
     self:CreateFrame(FRAME_WIDTH, FRAME_HEIGHT)
     self:SetTooltipFunc(function() self:ShowTooltip() end)
-    self:SetClickFunc(function() self.sessionDeaths = 0; self.combatHistory = RingBuffer:New(COMBAT_HISTORY_SIZE); print("|cff00ff00Combat Timer session reset.|r") end)
-    self.leftClickHint = "Reset Session"
+    self:SetClickFunc(function() self.sessionDeaths = 0; self.combatHistory = RingBuffer:New(COMBAT_HISTORY_SIZE); print("|cff00ff00" .. L.MSG_DT_COMBAT_TIMER_RESET .. "|r") end)
+    self.leftClickHint = L.PLU_DT_GOLD_RESET_SESSION
     self:RegisterEvent("PLAYER_REGEN_DISABLED", function() self:OnCombatStart() end)
     self:RegisterEvent("PLAYER_REGEN_ENABLED", function() self:OnCombatEnd() end)
     self:RegisterEvent("ENCOUNTER_START", function(_, ...) self:OnEncounterStart(_, ...) end)

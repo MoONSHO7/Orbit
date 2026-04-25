@@ -2,6 +2,7 @@
 -- Bag space datatext: shows free/total slots
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local BAG_COUNT = 4
@@ -26,17 +27,17 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Bag Space", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_BAG_SPACE_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     for bag = 0, BAG_COUNT do
         local slots = C_Container.GetContainerNumSlots(bag)
         local freeSlots = C_Container.GetContainerNumFreeSlots(bag)
         if slots > 0 then
-            GameTooltip:AddDoubleLine(bag == 0 and "Backpack" or "Bag " .. bag, string.format("%d / %d", freeSlots, slots), 1, 1, 1, 0.7, 0.7, 0.7)
+            GameTooltip:AddDoubleLine(bag == 0 and L.PLU_DT_BAG_BACKPACK or L.PLU_DT_BAG_N_F:format(bag), string.format("%d / %d", freeSlots, slots), 1, 1, 1, 0.7, 0.7, 0.7)
         end
     end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Click", "Open Bags", 0.7, 0.7, 0.7, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_HINT_CLICK, L.PLU_DT_BAG_OPEN_BAGS, 0.7, 0.7, 0.7, 1, 1, 1)
     GameTooltip:Show()
 end
 
@@ -45,7 +46,7 @@ function W:Init()
     self:SetUpdateFunc(function() self:Update() end)
     self:SetTooltipFunc(function() self:ShowTooltip() end)
     self:SetClickFunc(function() ToggleAllBags() end)
-    self.leftClickHint = "Open Bags"
+    self.leftClickHint = L.PLU_DT_BAG_OPEN_BAGS
     self:RegisterEvent("BAG_UPDATE")
     self:SetCategory("CHARACTER")
     self:Register()

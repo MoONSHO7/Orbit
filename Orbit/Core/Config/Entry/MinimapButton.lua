@@ -1,15 +1,12 @@
--- [ MINIMAP BUTTON ]--------------------------------------------------------------------------------
-
+-- [ MINIMAP BUTTON ]---------------------------------------------------------------------------------
 local _, Orbit = ...
 local L = Orbit.L
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local ICON_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Orbit.png"
 local BUTTON_NAME = "Orbit"
 
--- [ DATA BROKER ]-----------------------------------------------------------------------------------
-
+-- [ DATA BROKER ]------------------------------------------------------------------------------------
 local ldb = LibStub("LibDataBroker-1.1")
 local dataObj = ldb:NewDataObject(BUTTON_NAME, {
     type = "launcher",
@@ -40,8 +37,7 @@ local dataObj = ldb:NewDataObject(BUTTON_NAME, {
     end,
 })
 
--- [ REGISTER ]--------------------------------------------------------------------------------------
-
+-- [ REGISTER ]---------------------------------------------------------------------------------------
 local icon = LibStub("LibDBIcon-1.0")
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_LOGIN")

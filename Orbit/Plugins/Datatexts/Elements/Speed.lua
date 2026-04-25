@@ -2,6 +2,7 @@
 -- Movement speed datatext: shows current speed percentage
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local BASE_SPEED = 7
@@ -23,7 +24,7 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Movement Speed", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_SPEED_TITLE, 1, 0.82, 0)
     local speed = GetUnitSpeed("player")
     if issecretvalue(speed) then
         GameTooltip:Show()

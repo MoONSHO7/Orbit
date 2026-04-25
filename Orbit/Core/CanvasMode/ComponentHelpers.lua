@@ -1,4 +1,4 @@
--- [ ORBIT COMPONENT HELPERS ]-----------------------------------------------------------------------
+-- [ ORBIT COMPONENT HELPERS ]------------------------------------------------------------------------
 -- Shared utility functions for component positioning and sizing.
 -- Handles WoW 12.0+ secret values safely.
 
@@ -9,14 +9,15 @@ Engine.ComponentHelpers = {}
 local Helpers = Engine.ComponentHelpers
 
 -- [ CONFIGURATION ] ---------------------------------------------------------------------------------
-
 Helpers.PADDING = 25 -- Drag boundary padding
 local DEFAULT_MIN_WIDTH = 40
 local DEFAULT_MIN_HEIGHT = 16
 
 -- [ SAFE SIZE ACCESSOR ] ----------------------------------------------------------------------------
-
--- For FontStrings, uses GetStringWidth/GetStringHeight which return actual text bounds
+-- For FontStrings, uses GetStringWidth/GetStringHeight which return actual text bounds.
+-- pcall here is the CLAUDE.md-permitted variant: region is often a tainted Blizzard frame
+-- whose property accessors can throw on invalid curve shapes or during certain combat states.
+-- The issecretvalue() guard inside filters secret returns; pcall shields the call itself.
 function Helpers.SafeGetSize(region)
     if not region then
         return DEFAULT_MIN_WIDTH, DEFAULT_MIN_HEIGHT
@@ -71,7 +72,6 @@ function Helpers.SafeGetSize(region)
 end
 
 -- [ SAFE NUMBER ACCESSOR ] --------------------------------------------------------------------------
-
 function Helpers.SafeGetNumber(val, default)
     if val == nil then
         return default

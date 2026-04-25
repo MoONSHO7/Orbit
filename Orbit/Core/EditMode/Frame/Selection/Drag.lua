@@ -77,8 +77,7 @@ local function SetBlizzardSnapPreview(parent, active)
     end
 end
 
--- [ PRECISION MODE (SHIFT-DRAG OVERLAY SUPPRESSION) ]----------------------------------------------
-
+-- [ PRECISION MODE (SHIFT-DRAG OVERLAY SUPPRESSION) ]------------------------------------------------
 local function SetNonSelectedOverlaysVisible(selectionOverlay, visible)
     local Selection = Engine.FrameSelection
     for frame, sel in pairs(Selection.selections) do
@@ -95,8 +94,7 @@ local function SetNonSelectedOverlaysVisible(selectionOverlay, visible)
     selectionOverlay.precisionMode = not visible
 end
 
--- [ DRAG UPDATE (VISUALS) ]-------------------------------------------------------------------------
-
+-- [ DRAG UPDATE (VISUALS) ]--------------------------------------------------------------------------
 local function RestorePreviewSize(selectionOverlay, isDragging)
     local parent = selectionOverlay.parent
     local needsReposition = selectionOverlay.previewOrigWidth or selectionOverlay.previewOrigHeight
@@ -186,7 +184,6 @@ local function OnDragUpdate(selectionOverlay, elapsed)
 end
 
 -- [ DRAG START (FUNCTION) ] -------------------------------------------------------------------------
-
 function Drag:OnDragStart(selectionOverlay)
     if InCombatLockdown() then
         return
@@ -249,8 +246,7 @@ function Drag:OnDragStart(selectionOverlay)
     end
 end
 
--- [ DRAG STOP ]-------------------------------------------------------------------------------------
-
+-- [ DRAG STOP ]--------------------------------------------------------------------------------------
 function Drag:OnDragStop(selectionOverlay)
     Drag.isDragging = false
     local parent = selectionOverlay.parent
@@ -371,8 +367,7 @@ function Drag:OnDragStop(selectionOverlay)
     end
 end
 
--- [ MOUSE DOWN (SELECTION) ]------------------------------------------------------------------------
-
+-- [ MOUSE DOWN (SELECTION) ]-------------------------------------------------------------------------
 function Drag:OnMouseDown(selectionOverlay)
     if InCombatLockdown() then
         return
@@ -462,7 +457,6 @@ function Drag:OnMouseDown(selectionOverlay)
 end
 
 -- [ MOUSE WHEEL (PADDING ADJUSTMENT) ] --------------------------------------------------------------
-
 function Drag:OnMouseWheel(selectionOverlay, delta)
     if selectionOverlay.wheelDebounce then
         return

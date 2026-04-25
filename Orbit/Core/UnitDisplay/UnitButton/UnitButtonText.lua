@@ -1,18 +1,18 @@
--- [ UNIT BUTTON - TEXT MODULE ]---------------------------------------------------------------------
+-- [ UNIT BUTTON - TEXT MODULE ]----------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local MAX_NAME_CHARS = 30
 local EDGE_PADDING = 1
 local MIN_NAME_WIDTH = 20
 local VERTICAL_OVERLAP_TOLERANCE = 2
 local TRUNCATION_SUFFIX = ".."
 
--- [ HEALTH TEXT MODES ]-----------------------------------------------------------------------------
+-- [ HEALTH TEXT MODES ]------------------------------------------------------------------------------
 local HEALTH_TEXT_MODES = {
     PERCENT = "percent",
     SHORT = "short",
@@ -40,7 +40,7 @@ local FORMAT_MAP = {
 }
 local DEFAULT_FORMAT = { "percent", "short" }
 
--- [ LOCAL FORMATTERS ]------------------------------------------------------------------------------
+-- [ LOCAL FORMATTERS ]-------------------------------------------------------------------------------
 -- The party rolled Investigation and found the health formatter's lair
 
 local function SafeHealthPercent(unit)
@@ -102,8 +102,7 @@ local function GetHealthTextForFormat(unit, format)
     return "???"
 end
 
--- [ TEXT MIXIN ]------------------------------------------------------------------------------------
-
+-- [ TEXT MIXIN ]-------------------------------------------------------------------------------------
 local TextMixin = {}
 
 function TextMixin:GetHealthTextFormats()
@@ -221,8 +220,7 @@ function TextMixin:UpdateName()
     self:ConstrainNameWidth()
 end
 
--- [ NAME WIDTH CONSTRAINT ]-------------------------------------------------------------------------
-
+-- [ NAME WIDTH CONSTRAINT ]--------------------------------------------------------------------------
 local FALLBACK_FONT_HEIGHT = 12
 local HEALTH_CHAR_WIDTH_RATIO = 0.6
 local HEALTH_MODE_CHAR_COUNTS = {

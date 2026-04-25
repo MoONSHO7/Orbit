@@ -1,4 +1,4 @@
--- [ ORBIT ICON MONITOR ]----------------------------------------------------------------------------
+-- [ ORBIT ICON MONITOR ]-----------------------------------------------------------------------------
 local _, Orbit = ...
 local Skin = Orbit.Skin
 local Constants = Orbit.Constants

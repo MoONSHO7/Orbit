@@ -1,4 +1,4 @@
--- [ ORBIT REACTION COLOR RESOLVER ]-----------------------------------------------------------------
+-- [ ORBIT REACTION COLOR RESOLVER ]------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 Engine.ReactionColor = {}

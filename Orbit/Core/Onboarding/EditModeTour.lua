@@ -132,19 +132,18 @@ overlay:SetScript("OnUpdate", function(self, elapsed)
 end)
 
 -- [ WELCOME TITLE ] ---------------------------------------------------------------------------------
-
 local BARLOW_BLACK = "Interface\\AddOns\\Orbit\\Core\\assets\\Fonts\\BarlowCondensed-Black.ttf"
 overlay.welcomeTitle = overlay:CreateFontString(nil, "OVERLAY")
 overlay.welcomeTitle:SetFont(BARLOW_BLACK, 42, "OUTLINE")
 overlay.welcomeTitle:SetPoint("CENTER", overlay, "TOP", 0, -UIParent:GetHeight() * 0.25)
-overlay.welcomeTitle:SetText("|cFFFFFFFFWelcome to |cFFAA77FFOrbit|r")
+overlay.welcomeTitle:SetText(L.TOUR_EM_WELCOME)
 overlay.welcomeTitle:SetAlpha(0)
 local BARLOW_BOLD = "Interface\\AddOns\\Orbit\\Core\\assets\\Fonts\\BarlowCondensed-Bold.ttf"
 overlay.welcomeSub = overlay:CreateFontString(nil, "OVERLAY")
 overlay.welcomeSub:SetFont(BARLOW_BOLD, 16)
 overlay.welcomeSub:SetPoint("TOP", overlay.welcomeTitle, "BOTTOM", 0, -6)
 overlay.welcomeSub:SetTextColor(0.75, 0.75, 0.75)
-overlay.welcomeSub:SetText("Things are done differently here")
+overlay.welcomeSub:SetText(L.TOUR_EM_WELCOME_SUBTITLE)
 overlay.welcomeSub:SetAlpha(0)
 
 -- [ TASK COMPLETION STATE ] -------------------------------------------------------------------------

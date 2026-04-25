@@ -1,4 +1,4 @@
--- [ UNIT AURA GRID REPARENTING ]--------------------------------------------------------------------
+-- [ UNIT AURA GRID REPARENTING ]---------------------------------------------------------------------
 -- Reparents Blizzard's native BuffFrame auraFrames into an Orbit grid container, suppresses the
 -- stock textures/borders, wires timer + stacks text into Orbit's font/override system, and feeds
 -- DurationObjects to the shared expiration pulse ticker.
@@ -15,14 +15,12 @@ local ResolveGrowthDirection = Mixin._Internal.ResolveGrowthDirection
 local UpdateCollapseArrow = Mixin._Internal.UpdateCollapseArrow
 local CropIconTexture = Mixin._Internal.CropIconTexture
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local TIMER_FONT_SIZE = 8
 local COUNT_FONT_SIZE = 8
 local MAX_AURA_SCAN = 40
 
--- [ UPDATE BLIZZARD BUFFS ]-------------------------------------------------------------------------
-
+-- [ UPDATE BLIZZARD BUFFS ]--------------------------------------------------------------------------
 function Mixin:_updateBlizzardBuffs()
     local Frame = self._agFrame
     local cfg = self._agConfig

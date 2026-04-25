@@ -3,7 +3,7 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_Minimap"
 
 local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
@@ -37,7 +37,7 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
     },
 })
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 -- All values sourced from MinimapConstants.lua via Orbit.MinimapConstants.
 
 local C = Orbit.MinimapConstants
@@ -79,8 +79,7 @@ local function CopyTable(source)
     return copy
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
-
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     Orbit.IconPreviewAtlases = Orbit.IconPreviewAtlases or {}
     Orbit.IconPreviewAtlases.Zoom = "common-icon-zoomin"
@@ -762,8 +761,7 @@ function Plugin:ApplySettings()
     self._applyingSettings = nil
 end
 
--- [ TEARDOWN ]--------------------------------------------------------------------------------------
-
+-- [ TEARDOWN ]---------------------------------------------------------------------------------------
 function Plugin:OnDisable()
     -- Toggling the Minimap plugin requires a UI reload (Blizzard hooks cannot be cleanly undone).
     -- The reload button in the Plugin Manager handles this; nothing to do at runtime.

@@ -1,5 +1,4 @@
--- [ CANVAS MODE - ICON FRAME CREATOR ]--------------------------------------------------------------
-
+-- [ CANVAS MODE - ICON FRAME CREATOR ]---------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
@@ -7,8 +6,7 @@ local CanvasMode = OrbitEngine.CanvasMode
 local CC = CanvasMode.CreatorConstants
 local GetSourceSize = CanvasMode.GetSourceSize
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local ZOOM_BUTTON_GAP = 2
 local ZOOM_IN_W, ZOOM_IN_H = 17, 17
 local ZOOM_OUT_W, ZOOM_OUT_H = 17, 9
@@ -42,7 +40,7 @@ local function CopyDifficultyTexture(texture, source, alphaOverride)
     if texture.SetDesaturated and source.IsDesaturated then texture:SetDesaturated(source:IsDesaturated()) end
 end
 
--- [ CREATOR ]---------------------------------------------------------------------------------------
+-- [ CREATOR ]----------------------------------------------------------------------------------------
 local function Create(container, preview, key, source, data)
     local iconTexture = source.Icon
     local hasFlipbook = iconTexture and iconTexture.orbitPreviewTexCoord

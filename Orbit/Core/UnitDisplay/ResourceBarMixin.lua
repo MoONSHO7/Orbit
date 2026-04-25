@@ -8,7 +8,7 @@ local Mixin = Orbit.ResourceBarMixin
 
 local SHAPESHIFT = { CAT = DRUID_CAT_FORM, BEAR = DRUID_BEAR_FORM, MOONKIN_1 = DRUID_MOONKIN_FORM_1, MOONKIN_2 = DRUID_MOONKIN_FORM_2 }
 
--- [ SPELL IDS ]-------------------------------------------------------------------------------------
+-- [ SPELL IDS ]--------------------------------------------------------------------------------------
 local SOUL_CLEAVE_ID = 228477
 local SOUL_FRAGMENTS_AURA_ID = 1225789
 local COLLAPSING_STAR_AURA_ID = 1227702

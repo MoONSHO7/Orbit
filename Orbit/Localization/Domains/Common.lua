@@ -33,6 +33,11 @@ local LOCALE_STRINGS = {
         CMN_FONT                   = "Font",
         CMN_SIZE                   = "Size",
         CMN_COLOR                  = "Color",
+        CMN_CLOSE                  = "Close",
+        CMN_RELOAD                 = "Reload",
+        CMN_LATER                  = "Later",
+        CMN_DISCORD                = "Discord",
+        CMN_IN_COMBAT              = "In Combat",
     },
     deDE = {
         CMN_NEXT                   = "Weiter",

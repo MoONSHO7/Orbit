@@ -5,7 +5,7 @@ local Engine = Orbit.Engine
 local Nudge = {}
 Engine.SelectionNudge = Nudge
 
--- [ KEYBOARD HANDLER ]------------------------------------------------------------------------------
+-- [ KEYBOARD HANDLER ]-------------------------------------------------------------------------------
 function Nudge:Enable(Selection)
     if InCombatLockdown() then
         return

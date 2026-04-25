@@ -1,6 +1,6 @@
 local _, Orbit = ...
 
--- [ DEFAULT PROFILE ]-------------------------------------------------------------------------------
+-- [ DEFAULT PROFILE ]--------------------------------------------------------------------------------
 Orbit.Profile = Orbit.Profile or {}
 Orbit.Profile.defaults = {
     Layouts = {

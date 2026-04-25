@@ -3,7 +3,7 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerPetFrame"
 local PET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Pet
 local FRAME_LEVEL_DEMOTE = 5
@@ -28,7 +28,7 @@ local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
 -- Apply Mixin
 Mixin(Plugin, Orbit.UnitFrameMixin)
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex
     if systemIndex ~= PET_FRAME_INDEX then
@@ -46,7 +46,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     self:RegisterStandardEvents()
     if PetFrame then
@@ -114,7 +114,7 @@ function Plugin:OnLoad()
     end)
 end
 
--- [ VISIBILITY ]------------------------------------------------------------------------------------
+-- [ VISIBILITY ]-------------------------------------------------------------------------------------
 function Plugin:UpdateVisibility()
     if not self.frame then
         return
@@ -146,7 +146,7 @@ function Plugin:UpdateVisibility()
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:ApplySettings(frame)
     frame = self.frame
     if not frame or InCombatLockdown() then

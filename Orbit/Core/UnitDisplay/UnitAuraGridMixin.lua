@@ -1,4 +1,4 @@
--- [ UNIT AURA GRID MIXIN ]--------------------------------------------------------------------------
+-- [ UNIT AURA GRID MIXIN ]---------------------------------------------------------------------------
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
@@ -44,7 +44,7 @@ local GetPreviewIcon = function() return Orbit.AuraPreview.GetSpellbookIcon() en
 
 -- Pulse + reparenting hook in via UnitAuraGridExpirationPulse.lua / UnitAuraGridReparenting.lua, attached through Mixin._Internal.
 
--- [ COLLAPSE ARROW ]--------------------------------------------------------------------------------
+-- [ COLLAPSE ARROW ]---------------------------------------------------------------------------------
 local ARROW_SIZE = 15
 local ARROW_TEX_SIZE = { w = 10, h = 16 }
 local COLLAPSED_AURA_COUNT = 3
@@ -171,7 +171,7 @@ Mixin._Internal = {
     CropIconTexture = CropIconTexture,
 }
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Mixin:AddAuraGridSettings(dialog, systemFrame)
     local Frame = self._agFrame
     if not Frame then return end
@@ -269,7 +269,7 @@ function Mixin:_addGlowControls(schema, SB, dialog, systemFrame)
     })
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Mixin:CreateAuraGridPlugin(config)
     self._agConfig = config
     local Frame = CreateFrame("Frame", config.frameName, UIParent)
@@ -464,7 +464,7 @@ function Mixin:CreateAuraGridPlugin(config)
     self:UpdateVisibility()
 end
 
--- [ UPDATE AURAS ]----------------------------------------------------------------------------------
+-- [ UPDATE AURAS ]-----------------------------------------------------------------------------------
 function Mixin:_resolveGrid()
     local cfg = self._agConfig
     local spacing = self:GetSetting(1, "Spacing") or 2
@@ -567,7 +567,7 @@ end
 
 -- Mixin:_updateBlizzardBuffs() lives in UnitAuraGridReparenting.lua
 
--- [ GRID GROUP BORDER ]-----------------------------------------------------------------------------
+-- [ GRID GROUP BORDER ]------------------------------------------------------------------------------
 function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
     if not skinSettings.iconBorder or spacing ~= 0 or #activeIcons == 0 or Frame._groupBorderActive then
         if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
@@ -643,7 +643,7 @@ function Mixin:_returnBlizzardButtons()
     end
 end
 
--- [ CANCEL OVERLAYS ]-------------------------------------------------------------------------------
+-- [ CANCEL OVERLAYS ]--------------------------------------------------------------------------------
 function Mixin:_syncCancelOverlays(frame, auras, auraFilter, icons)
     if not frame._cancelButtons then frame._cancelButtons = {} end
     local indexMap = {}
@@ -741,9 +741,7 @@ function Mixin:UpdateVisibility()
     if enabled then OrbitEngine.FrameAnchor:SetFrameVirtual(Frame, false) end
 end
 
--- [ PREVIEW ]---------------------------------------------------------------------------------------
-
-
+-- [ PREVIEW ]----------------------------------------------------------------------------------------
 function Mixin:ShowPreviewAuras()
     if InCombatLockdown() then return end
     local Frame = self._agFrame
@@ -810,7 +808,7 @@ function Mixin:ResizePreviewAuras()
     })
 end
 
--- [ APPLY SETTINGS ]--------------------------------------------------------------------------------
+-- [ APPLY SETTINGS ]---------------------------------------------------------------------------------
 function Mixin:ApplySettings()
     local Frame = self._agFrame
     if not Frame or InCombatLockdown() then return end
@@ -842,7 +840,7 @@ function Mixin:ApplySettings()
     self:UpdateVisibility()
 end
 
--- [ UPDATE LAYOUT ]---------------------------------------------------------------------------------
+-- [ UPDATE LAYOUT ]----------------------------------------------------------------------------------
 function Mixin:UpdateLayout()
     local Frame = self._agFrame
     if not Frame then return end

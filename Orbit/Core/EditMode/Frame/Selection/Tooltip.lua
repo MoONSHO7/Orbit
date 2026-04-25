@@ -25,7 +25,6 @@ function Tooltip:BuildAnchorLabel(align)
 end
 
 -- [ HELPERS ] ---------------------------------------------------------------------------------------
-
 -- Ensure tooltip frame exists (lazy initialization)
 local function EnsureTooltip(self)
     if self.positionTooltip then
@@ -106,7 +105,6 @@ local function ShowAndFade(self, noFade)
 end
 
 -- [ SHOW FRAME POSITION TOOLTIP ] -------------------------------------------------------------------
-
 function Tooltip:ShowPosition(frame, Selection, noFade, anchorLabel)
     if not frame then
         return
@@ -158,7 +156,6 @@ function Tooltip:ShowPosition(frame, Selection, noFade, anchorLabel)
 end
 
 -- [ SHOW COMPONENT POSITION TOOLTIP ] ---------------------------------------------------------------
-
 function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, posY, offsetX, offsetY, justifyH, justifyV)
     if not component then
         return
@@ -205,7 +202,6 @@ function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, p
 end
 
 -- [ SHOW RESIZE INFO TOOLTIP ] ----------------------------------------------------------------------
-
 function Tooltip:ShowResizeInfo(frame, width, height, noFade)
     if not frame then return end
     local tooltip = EnsureTooltip(self)

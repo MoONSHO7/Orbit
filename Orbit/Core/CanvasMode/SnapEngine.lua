@@ -1,4 +1,4 @@
--- [ CANVAS MODE - SNAP ENGINE ]---------------------------------------------------------------------
+-- [ CANVAS MODE - SNAP ENGINE ]----------------------------------------------------------------------
 -- Unified edge-magnet and grid-round logic for component positioning.
 -- Used by ComponentRegistry, CanvasModeDrag, and CastBarCreator.
 
@@ -12,7 +12,7 @@ local Snap = CanvasMode.SnapEngine
 local SNAP_SIZE = 5
 local EDGE_THRESHOLD = SNAP_SIZE
 
--- [ EDGE MAGNET ]-----------------------------------------------------------------------------------
+-- [ EDGE MAGNET ]------------------------------------------------------------------------------------
 -- Snap component edge flush to parent edge when within threshold.
 -- Returns snapped position and guide hint, or nil if no magnet.
 local function EdgeMagnet(relPos, halfParent, compHalf, threshold)
@@ -24,10 +24,10 @@ local function EdgeMagnet(relPos, halfParent, compHalf, threshold)
     return relPos, false
 end
 
--- [ GRID ROUND ]------------------------------------------------------------------------------------
+-- [ GRID ROUND ]-------------------------------------------------------------------------------------
 local function GridRound(value, gridSize) return math.floor(value / gridSize + 0.5) * gridSize end
 
--- [ SNAP AXIS ]-------------------------------------------------------------------------------------
+-- [ SNAP AXIS ]--------------------------------------------------------------------------------------
 -- Performs edge-magnet then grid-round on a single axis.
 -- Returns: snappedValue, guideHint ("LEFT"/"RIGHT"/"CENTER"/"TOP"/"BOTTOM" or nil)
 local GUIDE_X = { [true] = { pos = "RIGHT", neg = "LEFT", center = "CENTER" } }
@@ -49,7 +49,7 @@ function Snap:SnapAxis(relPos, halfParent, compHalf, guideMap, options)
     return snapped, nil
 end
 
--- [ SNAP POSITION ]---------------------------------------------------------------------------------
+-- [ SNAP POSITION ]----------------------------------------------------------------------------------
 -- Full 2-axis snap: edge-magnet + grid-round.
 -- @param relX, relY: center-relative position
 -- @param halfW, halfH: half parent dimensions
@@ -62,6 +62,6 @@ function Snap:Calculate(relX, relY, halfW, halfH, compHalfW, compHalfH, options)
     return snapX, snapY, guideX, guideY
 end
 
--- [ CONSTANTS ACCESS ]------------------------------------------------------------------------------
+-- [ CONSTANTS ACCESS ]-------------------------------------------------------------------------------
 Snap.EDGE_THRESHOLD = EDGE_THRESHOLD
 Snap.SNAP_SIZE = SNAP_SIZE
