@@ -73,18 +73,15 @@ function NativeFrame:Disable(nativeFrame)
     UnregisterStateDriver(nativeFrame, "visibility")
     RegisterStateDriver(nativeFrame, "visibility", "hide")
 
-    -- Hook Show only on non-protected frames. hooksecurefunc on a secure frame creates
-    -- persistent taint that propagates through Blizzard's secureexecuterange iteration of
-    -- EditModeManagerFrame.systems, breaking HideSystemSelections, ResetRaidFrames, and
-    -- the CooldownViewer cleanup on edit-mode exit. For protected frames the state driver
-    -- alone is sufficient (Blizzard never bypasses it for CompactPartyFrame / Container /
-    -- Manager). For non-protected frames the hook still catches stray :Show() calls.
-    if not nativeFrame.orbitDisableShowHook and not nativeFrame:IsProtected() then
-        local disabledRef = self.disabled
-        hooksecurefunc(nativeFrame, "Show", function(f)
-            if disabledRef[f] and not InCombatLockdown() then f:Hide() end
-        end)
-        nativeFrame.orbitDisableShowHook = true
+    -- Re-hide on Show via a SECURE OnShow wrapper. hooksecurefunc(Show) taints
+    -- execution when Blizzard's EditMode flow shows the frame (12.0.5 secret-value rules).
+    -- The wrapped body runs in the restricted environment, so it doesn't taint.
+    if not nativeFrame.orbitSecureHidden then
+        if not self._secureHider then
+            self._secureHider = CreateFrame("Frame", "OrbitNativeFrameSecureHider", UIParent, "SecureHandlerBaseTemplate")
+        end
+        SecureHandlerWrapScript(nativeFrame, "OnShow", self._secureHider, "", [[ self:Hide() ]])
+        nativeFrame.orbitSecureHidden = true
     end
 
     self.disabled[nativeFrame] = backup
@@ -98,6 +95,10 @@ function NativeFrame:Enable(nativeFrame)
     if not backup then return false end
 
     UnregisterStateDriver(nativeFrame, "visibility")
+    if nativeFrame.orbitSecureHidden then
+        SecureHandlerUnwrapScript(nativeFrame, "OnShow")
+        nativeFrame.orbitSecureHidden = nil
+    end
     if backup.onShow then nativeFrame:SetScript("OnShow", backup.onShow) end
     if backup.shown then nativeFrame:Show() end
     self.disabled[nativeFrame] = nil
