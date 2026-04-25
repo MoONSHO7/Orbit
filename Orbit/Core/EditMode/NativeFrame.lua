@@ -78,13 +78,15 @@ function NativeFrame:Disable(nativeFrame)
     UnregisterStateDriver(nativeFrame, "visibility")
     RegisterStateDriver(nativeFrame, "visibility", "hide")
 
-    -- Hook Show to catch Blizzard secure code that bypasses the state driver
-    if not nativeFrame.orbitDisableShowHook then
-        local disabledRef = self.disabled
-        hooksecurefunc(nativeFrame, "Show", function(f)
-            if disabledRef[f] and not InCombatLockdown() then f:Hide() end
-        end)
-        nativeFrame.orbitDisableShowHook = true
+    -- Re-hide on Show via a SECURE OnShow wrapper. hooksecurefunc(Show) taints
+    -- execution when Blizzard's EditMode flow shows the frame (12.0.5 secret-value rules).
+    -- The wrapped body runs in the restricted environment, so it doesn't taint.
+    if not nativeFrame.orbitSecureHidden then
+        if not self._secureHider then
+            self._secureHider = CreateFrame("Frame", "OrbitNativeFrameSecureHider", UIParent, "SecureHandlerBaseTemplate")
+        end
+        SecureHandlerWrapScript(nativeFrame, "OnShow", self._secureHider, "", [[ self:Hide() ]])
+        nativeFrame.orbitSecureHidden = true
     end
 
     self.disabled[nativeFrame] = backup
@@ -98,6 +100,10 @@ function NativeFrame:Enable(nativeFrame)
     if not backup then return false end
 
     UnregisterStateDriver(nativeFrame, "visibility")
+    if nativeFrame.orbitSecureHidden then
+        SecureHandlerUnwrapScript(nativeFrame, "OnShow")
+        nativeFrame.orbitSecureHidden = nil
+    end
     if backup.onShow then nativeFrame:SetScript("OnShow", backup.onShow) end
     if backup.shown then nativeFrame:Show() end
     self.disabled[nativeFrame] = nil

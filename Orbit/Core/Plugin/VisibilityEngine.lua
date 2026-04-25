@@ -267,12 +267,26 @@ function VE:Migrate()
 end
 
 -- [ APPLY ] -----------------------------------------------------------------------------------------
--- No hooksecurefunc on secure frames (would taint); direct SetAlpha is allowed, combat-deferred.
+-- 12.0.5+ note: direct SetAlpha on a Blizzard secure frame from insecure context taints it. The
+-- taint then surfaces in Blizzard's own UnitFrame_Update path on the next event (e.g. PLAYER_TARGET_CHANGED
+-- → TargetFrame:OnEvent → UnitFrameHealthBar_Update fails on secret UnitHealthMax). To avoid tainting
+-- frames the user has not actually configured, skip the SetAlpha entirely when all settings are at
+-- defaults. SECURE_FRAMES tracks frames we've ever applied to so resets back to defaults still flow.
 local SECURE_FRAMES = {}
+local function HasNonDefaultSecureSettings(self, entry)
+    local op = self:GetFrameSetting(entry.key, "opacity") or 100
+    if op ~= 100 then return true end
+    if entry.opacityOnly then return false end
+    if self:GetFrameSetting(entry.key, "oocFade") then return true end
+    if self:GetFrameSetting(entry.key, "showWithTarget") then return true end
+    if self:GetFrameSetting(entry.key, "hideMounted") then return true end
+    return false
+end
 function VE:ApplySecureBlizzardFrame(entry)
     if entry.ownedBy and Orbit:IsPluginEnabled(entry.ownedBy) then return end
     local frame = _G[entry.blizzardFrame]
     if not frame then return end
+    if not SECURE_FRAMES[entry.key] and not HasNonDefaultSecureSettings(self, entry) then return end
     SECURE_FRAMES[entry.key] = entry
     local opacity = (self:GetFrameSetting(entry.key, "opacity") or 100) / 100
     local oocFade = not entry.opacityOnly and self:GetFrameSetting(entry.key, "oocFade")

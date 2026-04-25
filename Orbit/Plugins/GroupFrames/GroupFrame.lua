@@ -462,23 +462,38 @@ local function CreateGroupFrame(index, plugin)
 end
 
 -- [ HIDE NATIVE FRAMES ]----------------------------------------------------------------------------
+-- Native raid groups & members are created lazily by Blizzard as the player enters raids of growing
+-- size. SilenceNativeRaidFrames re-walks every known global by pattern and unregisters their events
+-- so they consume zero CPU even when our group frames are active. Safe to call repeatedly.
+local function SilenceNativeRaidFrames()
+    for i = 1, 8 do
+        local group = _G["CompactRaidGroup" .. i]
+        if group then
+            group:UnregisterAllEvents()
+            for j = 1, 5 do
+                local m = _G["CompactRaidGroup" .. i .. "Member" .. j]
+                if m then m:UnregisterAllEvents() end
+            end
+        end
+    end
+    for i = 1, 40 do
+        local rf = _G["CompactRaidFrame" .. i]
+        if rf then rf:UnregisterAllEvents() end
+    end
+    if CompactArenaFrame then
+        CompactArenaFrame:UnregisterAllEvents()
+        for i = 1, 5 do
+            local m = _G["CompactArenaFrameMember" .. i]
+            if m then m:UnregisterAllEvents() end
+        end
+    end
+end
+
 local function HideNativeGroupFrames()
     for i = 1, 4 do
         local partyFrame = _G["PartyMemberFrame" .. i]
         if partyFrame then
             OrbitEngine.NativeFrame:Disable(partyFrame)
-            if not partyFrame.orbitSetPointHooked then
-                hooksecurefunc(partyFrame, "SetPoint", function(self)
-                    if InCombatLockdown() then return end
-                    if not self.isMovingOffscreen then
-                        self.isMovingOffscreen = true
-                        self:ClearAllPoints()
-                        self:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-                        self.isMovingOffscreen = false
-                    end
-                end)
-                partyFrame.orbitSetPointHooked = true
-            end
         end
     end
     OrbitEngine.NativeFrame:Disable(PartyFrame)
@@ -488,6 +503,7 @@ local function HideNativeGroupFrames()
         if member then member:UnregisterAllEvents() end
     end
     OrbitEngine.NativeFrame:Disable(CompactRaidFrameContainer)
+    SilenceNativeRaidFrames()
 end
 
 function Plugin:UpdateBlizzardRaidPanelVisibility()
@@ -621,6 +637,7 @@ function Plugin:OnLoad()
 
     eventFrame:SetScript("OnEvent", function(_, event)
         if event == "PLAYER_ENTERING_WORLD" then
+            SilenceNativeRaidFrames()
             -- Nuclear option: wipe GUID cache on reload/zone to force full re-validate
             for _, f in ipairs(self.frames) do f._guidCache = nil end
 
@@ -640,6 +657,7 @@ function Plugin:OnLoad()
             return
         end
         if event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
+            SilenceNativeRaidFrames()
             ScheduleDebouncedRosterUpdate(self, true)
             return
         end

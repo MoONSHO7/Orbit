@@ -24,7 +24,9 @@ local Plugin = Orbit:RegisterPlugin("Damage Meter", SYSTEM_ID, {
     },
 })
 
-Plugin.liveToggle = true
+-- DamageMeter's disable path mutates the Blizzard frame (NeutralizeRoot, InstallShowGuard hooks);
+-- toggling at runtime cannot cleanly reverse those mutations, so require a reload.
+Plugin.liveToggle = false
 Plugin.canvasMode = true
 
 -- [ SETTING OVERRIDES ] -----------------------------------------------------------------------------
