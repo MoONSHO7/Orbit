@@ -273,7 +273,7 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
     if schema.openPluginManager then
         local pmBtn = Layout:CreateButton(footer, "Plugin Manager", function()
             if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
-                HideUIPanel(EditModeManagerFrame)
+                securecall("HideUIPanel", EditModeManagerFrame)
             end
             if Orbit.OptionsPanel then Orbit.OptionsPanel:Hide() end
             C_Timer.After(0.1, function()
