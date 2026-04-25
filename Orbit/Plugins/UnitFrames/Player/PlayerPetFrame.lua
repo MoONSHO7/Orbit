@@ -50,7 +50,7 @@ end
 function Plugin:OnLoad()
     self:RegisterStandardEvents()
     if PetFrame then
-        self:HideNativeUnitFrame(PetFrame, "OrbitHiddenPetParent")
+        self:HideNativeUnitFrame(PetFrame)
     end
 
     self.container = self:CreateVisibilityContainer(UIParent)

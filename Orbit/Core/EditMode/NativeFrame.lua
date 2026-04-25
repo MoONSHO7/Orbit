@@ -63,25 +63,36 @@ function NativeFrame:HideMany(frames, options)
 end
 
 -- [ SCENARIO 2: DISABLE ONLY ]-----------------------------------------------------------------------
+-- Offscreen + alpha 0 + mouse-off. UnregisterAllEvents/Hide/SetParent all leave taint that breaks
+-- Blizzard's CompactUnitFrame_UpdateHealthColor secret comparison under 12.0.5+.
 function NativeFrame:Disable(nativeFrame)
     if not nativeFrame then return false end
     if InCombatLockdown() then return false end
 
-    local backup = { onShow = nativeFrame:GetScript("OnShow"), shown = nativeFrame:IsShown() }
+    local backup = {
+        alpha = nativeFrame:GetAlpha(),
+        mouse = nativeFrame:IsMouseEnabled(),
+        clamped = nativeFrame:IsClampedToScreen(),
+    }
 
-    nativeFrame:UnregisterAllEvents()
-    UnregisterStateDriver(nativeFrame, "visibility")
-    RegisterStateDriver(nativeFrame, "visibility", "hide")
+    nativeFrame:SetClampedToScreen(false)
+    nativeFrame:ClearAllPoints()
+    nativeFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
+    nativeFrame:SetAlpha(0)
+    nativeFrame:EnableMouse(false)
 
-    -- Re-hide on Show via a SECURE OnShow wrapper. hooksecurefunc(Show) taints
-    -- execution when Blizzard's EditMode flow shows the frame (12.0.5 secret-value rules).
-    -- The wrapped body runs in the restricted environment, so it doesn't taint.
-    if not nativeFrame.orbitSecureHidden then
-        if not self._secureHider then
-            self._secureHider = CreateFrame("Frame", "OrbitNativeFrameSecureHider", UIParent, "SecureHandlerBaseTemplate")
-        end
-        SecureHandlerWrapScript(nativeFrame, "OnShow", self._secureHider, "", [[ self:Hide() ]])
-        nativeFrame.orbitSecureHidden = true
+    if not nativeFrame.orbitDisableSetPointHooked then
+        local disabledRef = self.disabled
+        hooksecurefunc(nativeFrame, "SetPoint", function(f)
+            if not disabledRef[f] then return end
+            if f._orbitParking then return end
+            if InCombatLockdown() then return end
+            f._orbitParking = true
+            f:ClearAllPoints()
+            f:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
+            f._orbitParking = false
+        end)
+        nativeFrame.orbitDisableSetPointHooked = true
     end
 
     self.disabled[nativeFrame] = backup
@@ -94,14 +105,10 @@ function NativeFrame:Enable(nativeFrame)
     local backup = self.disabled[nativeFrame]
     if not backup then return false end
 
-    UnregisterStateDriver(nativeFrame, "visibility")
-    if nativeFrame.orbitSecureHidden then
-        SecureHandlerUnwrapScript(nativeFrame, "OnShow")
-        nativeFrame.orbitSecureHidden = nil
-    end
-    if backup.onShow then nativeFrame:SetScript("OnShow", backup.onShow) end
-    if backup.shown then nativeFrame:Show() end
     self.disabled[nativeFrame] = nil
+    nativeFrame:SetClampedToScreen(backup.clamped)
+    if backup.alpha then nativeFrame:SetAlpha(backup.alpha) end
+    nativeFrame:EnableMouse(backup.mouse ~= false)
     return true
 end
 
@@ -189,12 +196,7 @@ end
 
 -- [ SCENARIO 5: SECURE HIDE ] -----------------------------------------------------------------------
 function NativeFrame:SecureHide(nativeFrame)
-    if not nativeFrame then return false end
-    if InCombatLockdown() then return false end
-
-    UnregisterStateDriver(nativeFrame, "visibility")
-    RegisterStateDriver(nativeFrame, "visibility", "hide")
-    return true
+    return self:Disable(nativeFrame)
 end
 
 -- [ QUERIES ]----------------------------------------------------------------------------------------

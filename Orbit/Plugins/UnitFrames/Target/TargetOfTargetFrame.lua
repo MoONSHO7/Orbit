@@ -22,7 +22,7 @@ function Plugin:OnLoad()
         unit = "targettarget", parentUnit = "target",
         frameName = "OrbitTargetOfTargetFrame", editModeName = "Target of Target",
         frameIndex = TOT_FRAME_INDEX,
-        nativeFrame = TargetFrameToT, hiddenParentName = "OrbitHiddenToTParent",
+        nativeFrame = TargetFrameToT,
         changeEvent = "PLAYER_TARGET_CHANGED",
         defaultX = 200, defaultY = -180,
         vePluginName = "Target Frame",

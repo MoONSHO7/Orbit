@@ -22,7 +22,7 @@ function Plugin:OnLoad()
         unit = "focustarget", parentUnit = "focus",
         frameName = "OrbitTargetOfFocusFrame", editModeName = "Target of Focus",
         frameIndex = TOF_FRAME_INDEX,
-        nativeFrame = FocusFrameToT, hiddenParentName = "OrbitHiddenToFParent",
+        nativeFrame = FocusFrameToT,
         changeEvent = "PLAYER_FOCUS_CHANGED",
         defaultX = -200, defaultY = -180,
         exposeMountedConfig = true,

@@ -34,7 +34,7 @@ end
 function Mixin:CreateSecondaryPlugin(config)
     self._sufConfig = config
     self:RegisterStandardEvents()
-    self:HideNativeUnitFrame(config.nativeFrame, config.hiddenParentName)
+    self:HideNativeUnitFrame(config.nativeFrame)
 
     self.frame = OrbitEngine.UnitButton:Create(UIParent, config.unit, config.frameName)
     if config.exposeMountedConfig then self.mountedConfig = { frame = self.frame } end
