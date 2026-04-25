@@ -41,7 +41,7 @@ if EditModeManagerFrame then
     local combatExitFrame = CreateFrame("Frame")
     combatExitFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
     combatExitFrame:SetScript("OnEvent", function()
-        if EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
+        if EditModeManagerFrame:IsShown() then securecall("HideUIPanel", EditModeManagerFrame) end
     end)
 end
 

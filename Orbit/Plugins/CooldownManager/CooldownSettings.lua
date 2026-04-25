@@ -80,7 +80,7 @@ function CDM:AddSettings(dialog, systemFrame)
     table.insert(schema.extraButtons, {
         text = L.PLU_CDM_OPEN_CD_SETTINGS,
         callback = function()
-            if EditModeManagerFrame and EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
+            if EditModeManagerFrame and EditModeManagerFrame:IsShown() then securecall("HideUIPanel", EditModeManagerFrame) end
             if CooldownViewerSettings then CooldownViewerSettings:Show() end
         end,
     })

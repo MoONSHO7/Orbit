@@ -19,10 +19,13 @@ local dataObj = ldb:NewDataObject(BUTTON_NAME, {
         if button == "LeftButton" then
             if EditModeManagerFrame then
                 if EditModeManagerFrame:IsShown() then
-                    HideUIPanel(EditModeManagerFrame)
+                    -- securecall launders the click's Orbit taint; without it, Blizzard's ExitEditMode
+                    -- chain (ResetRaidFrames -> CompactUnitFrame_UpdateHealthColor) trips on
+                    -- secret-value comparisons under 12.0.5+.
+                    securecall("HideUIPanel", EditModeManagerFrame)
                     if Orbit.OptionsPanel then Orbit.OptionsPanel:Hide() end
                 else
-                    ShowUIPanel(EditModeManagerFrame)
+                    securecall("ShowUIPanel", EditModeManagerFrame)
                     if Orbit.OptionsPanel then Orbit.OptionsPanel:Open("Global") end
                 end
             end

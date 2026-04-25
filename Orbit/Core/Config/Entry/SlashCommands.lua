@@ -183,10 +183,10 @@ SlashCmdList["ORBIT"] = function(msg)
     if cmd == "" then
         if EditModeManagerFrame then
             if EditModeManagerFrame:IsShown() then
-                HideUIPanel(EditModeManagerFrame)
+                securecall("HideUIPanel", EditModeManagerFrame)
                 Panel:Hide()
             else
-                ShowUIPanel(EditModeManagerFrame)
+                securecall("ShowUIPanel", EditModeManagerFrame)
                 Panel:Open("Global")
             end
         else

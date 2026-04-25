@@ -245,7 +245,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = function(val) self:SetSetting(systemIndex, "CooldownSwipeColor", val); self:ApplyAll() end })
     end
     schema.extraButtons = { { text = L.PLU_AB_QUICK_KEYBIND, callback = function()
-        if EditModeManagerFrame and EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
+        if EditModeManagerFrame and EditModeManagerFrame:IsShown() then securecall("HideUIPanel", EditModeManagerFrame) end
         if QuickKeybindFrame then QuickKeybindFrame:Show() end
     end } }
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
