@@ -1,4 +1,4 @@
--- [ UNIT BUTTON - HEALTH MODULE ]-------------------------------------------------------------------
+-- [ UNIT BUTTON - HEALTH MODULE ]--------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local GF = Orbit.Constants.GroupFrames
@@ -11,7 +11,7 @@ local DEFAULT_BAR_COLOR = { r = 0, g = 1, b = 0 }
 local REUSE_COLOR_L = CreateColor(1, 1, 1, 1)
 local REUSE_COLOR_R = CreateColor(1, 1, 1, 1)
 
--- [ HEALTH MIXIN ]----------------------------------------------------------------------------------
+-- [ HEALTH MIXIN ]-----------------------------------------------------------------------------------
 local HealthMixin = {}
 
 function HealthMixin:UpdateHealth()
@@ -81,13 +81,11 @@ function HealthMixin:ApplyHealthColor()
             and Engine.ColorCurve:ToNativeColorCurveForUnit(globalBarCurve, self.unit)
             or  Engine.ColorCurve:ToNativeColorCurve(globalBarCurve)
 
-        if nativeCurve and UnitHealthPercent and self.unit and UnitExists(self.unit) then
-            if tex then
-                local ok, color = pcall(UnitHealthPercent, self.unit, true, nativeCurve)
-                if ok and color and color.GetRGBA then
-                    tex:SetVertexColor(color:GetRGBA())
-                    return
-                end
+        if nativeCurve and tex and self.unit and UnitExists(self.unit) then
+            local ok, color = pcall(UnitHealthPercent, self.unit, true, nativeCurve)
+            if ok and color then
+                tex:SetVertexColor(color:GetRGBA())
+                return
             end
         end
     end

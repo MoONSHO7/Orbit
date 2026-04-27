@@ -2,12 +2,12 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local Layout = Engine.Layout
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local MIN_BUTTON_WIDTH = 100
 local BUTTON_TEXT_PADDING = 30
 local DEFAULT_BUTTON_WIDTH = 120
 
--- [ BUTTON WIDGET ]---------------------------------------------------------------------------------
+-- [ BUTTON WIDGET ]----------------------------------------------------------------------------------
 function Layout:CreateButton(parent, text, callback, width)
     if not self.buttonPool then self.buttonPool = {} end
     local frame = table.remove(self.buttonPool)

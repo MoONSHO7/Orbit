@@ -1,12 +1,15 @@
 -- [ CANVAS MODE - DOCK ] ----------------------------------------------------------------------------
 local _, Orbit = ...
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
 local C = CanvasMode.Constants
 local Layout = OrbitEngine.Layout
+local Levels = Orbit.Constants.Levels
 local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
 local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
+local AnchorOffsetsToFinal = OrbitEngine.PositionUtils.AnchorOffsetsToFinal
 
 local DOCK_OFFSET_X = 14
 local DOCK_OFFSET_Y = 8
@@ -18,7 +21,6 @@ local DOCK_BG_HOVER = { 0.3, 0.5, 0.3, 0.8 }
 local HealerReg = Orbit.HealerAuraRegistry
 local function DisplayName(key) return HealerReg and HealerReg:GetSlotLabel(key) or key end
 -- [ DOCK FRAME ] ------------------------------------------------------------------------------------
-
 Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog)
 Dialog.DisabledDock:SetPoint("TOPLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", DOCK_OFFSET_X, DOCK_OFFSET_Y)
 Dialog.DisabledDock:SetPoint("TOPRIGHT", Dialog.PreviewContainer, "BOTTOMRIGHT", -DOCK_OFFSET_X, DOCK_OFFSET_Y)
@@ -28,7 +30,7 @@ Dialog.DisabledDock:SetFrameLevel(Dialog.PreviewContainer:GetFrameLevel() + 50)
 -- Dock hint text (shown when empty)
 Dialog.DisabledDock.EmptyHint = Dialog.DisabledDock:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 Dialog.DisabledDock.EmptyHint:SetPoint("CENTER", Dialog.DisabledDock, "CENTER", 0, 0)
-Dialog.DisabledDock.EmptyHint:SetText("drag here to disable")
+Dialog.DisabledDock.EmptyHint:SetText(L.TOUR_CM_DOCK_HINT)
 Dialog.DisabledDock.EmptyHint:SetTextColor(1, 1, 1, 0.3)
 
 -- Container for dock component icons (horizontal row)
@@ -54,14 +56,13 @@ Dialog.OverrideContainer = CreateFrame("Frame", nil, Dialog)
 Dialog.OverrideContainer:SetPoint("TOPLEFT", Dialog.ViewportDivider, "BOTTOMLEFT", 0, -C.OVERRIDE_SECTION_PADDING)
 Dialog.OverrideContainer:SetPoint("TOPRIGHT", Dialog.ViewportDivider, "BOTTOMRIGHT", 0, -C.OVERRIDE_SECTION_PADDING)
 Dialog.OverrideContainer:SetHeight(1)
-Dialog.OverrideContainer:SetFrameLevel(Dialog.NineSlice:GetFrameLevel() + 10)
+Dialog.OverrideContainer:SetFrameLevel(Dialog.NineSlice:GetFrameLevel() + Levels.CanvasOverlay)
 Dialog.OverrideContainer:Hide()
 
 Dialog.OverrideContainer.Title = Dialog.OverrideContainer:CreateFontString(nil, "ARTWORK", "GameFontNormal")
 Dialog.OverrideContainer.Title:SetPoint("TOPLEFT", Dialog.OverrideContainer, "TOPLEFT", C.DIALOG_INSET, 0)
 
 -- [ DOCK LAYOUT ] -----------------------------------------------------------------------------------
-
 function Dialog:LayoutDockIcons()
     local x = 0
     local iconCount = 0
@@ -78,7 +79,6 @@ function Dialog:LayoutDockIcons()
 end
 
 -- [ ADD TO DOCK ] -----------------------------------------------------------------------------------
-
 function Dialog:AddToDock(key, sourceComponent)
     if self.dockComponents[key] then return end
 
@@ -203,7 +203,7 @@ function Dialog:AddToDock(key, sourceComponent)
         self.bg:SetColorTexture(unpack(DOCK_BG_HOVER))
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(DisplayName(key), 1, 1, 1)
-        GameTooltip:AddLine("Click to enable", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L.CFG_CM_DOCK_CLICK_TT, 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
 
@@ -242,7 +242,6 @@ function Dialog:AddToDock(key, sourceComponent)
 end
 
 -- [ REMOVE FROM DOCK ] ------------------------------------------------------------------------------
-
 function Dialog:RemoveFromDock(key)
     local icon = self.dockComponents[key]
     if icon then
@@ -263,7 +262,6 @@ function Dialog:RemoveFromDock(key)
 end
 
 -- [ RESTORE FROM DOCK ] -----------------------------------------------------------------------------
-
 function Dialog:RestoreFromDock(key)
     local dockIcon = self.dockComponents[key]
 
@@ -302,8 +300,7 @@ function Dialog:RestoreFromDock(key)
             local selfAnchor = BuildComponentSelfAnchor(storedComp.isFontString, storedComp.isAuraContainer, storedComp.selfAnchorY, storedComp.justifyH)
             local ax = storedComp.anchorX or "CENTER"
             local ay = storedComp.anchorY or "CENTER"
-            local fx = ax == "CENTER" and (storedComp.posX or 0) or (ax == "RIGHT" and -(storedComp.offsetX or 0) or (storedComp.offsetX or 0))
-            local fy = ay == "CENTER" and (storedComp.posY or 0) or (ay == "TOP" and -(storedComp.offsetY or 0) or (storedComp.offsetY or 0))
+            local fx, fy = AnchorOffsetsToFinal(ax, ay, storedComp.offsetX, storedComp.offsetY, storedComp.posX, storedComp.posY)
             storedComp:SetPoint(selfAnchor, preview, anchorPoint, fx, fy)
         end
         if Dialog.activeFilter and Dialog.activeFilter ~= "All" then Dialog:ApplyFilter(Dialog.activeFilter) end
@@ -345,7 +342,7 @@ function Dialog:RestoreFromDock(key)
 
         if CanvasMode.CreateDraggableComponent then
             local comp = CanvasMode.CreateDraggableComponent(Dialog.previewFrame, key, data.component, centerX, centerY, compData)
-            if comp then comp:SetFrameLevel(Dialog.previewFrame:GetFrameLevel() + 10) end
+            if comp then comp:SetFrameLevel(Dialog.previewFrame:GetFrameLevel() + Levels.CanvasOverlay) end
             Dialog.previewComponents[key] = comp
         end
     end
@@ -372,7 +369,6 @@ function Dialog:RestoreFromDock(key)
 end
 
 -- [ CLEAR DOCK ] ------------------------------------------------------------------------------------
-
 function Dialog:ClearDock()
     for key, icon in pairs(self.dockComponents) do
         icon:Hide()

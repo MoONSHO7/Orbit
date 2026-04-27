@@ -5,20 +5,22 @@ local DT = Orbit.Datatexts
 local NumericOrNil = Orbit.SecretValueUtils.NumericOrNil
 local L = Orbit.L
 
+local CR_VERSATILITY_DAMAGE_DONE = 29
+
 local W = DT.BaseDatatext:New("Versatility")
 W.showPercentage = true
 
 -- Each operand needs NumericOrNil before the add; one secret operand poisons the sum.
 local function VersatilityPercent()
-    local bonus = NumericOrNil(GetCombatRatingBonus(29 --[[CR_VERSATILITY_DAMAGE_DONE]]))
-    local flat = NumericOrNil(GetVersatilityBonus and GetVersatilityBonus(29))
+    local bonus = NumericOrNil(GetCombatRatingBonus(CR_VERSATILITY_DAMAGE_DONE))
+    local flat = NumericOrNil(GetVersatilityBonus and GetVersatilityBonus(CR_VERSATILITY_DAMAGE_DONE))
     if not bonus and not flat then return nil end
     return (bonus or 0) + (flat or 0)
 end
 
 function W:Update()
     local pct = VersatilityPercent()
-    local rating = NumericOrNil(GetCombatRating(29 --[[CR_VERSATILITY_DAMAGE_DONE]]))
+    local rating = NumericOrNil(GetCombatRating(CR_VERSATILITY_DAMAGE_DONE))
     if self.showPercentage then
         if pct then self:SetText(string.format("Versatility: |cffffffff%.2f%%|r", pct))
         else self:SetText("Versatility: |cffffffff" .. L.CMN_HIDDEN_VALUE .. "|r") end
@@ -31,10 +33,10 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Versatility", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_VERSATILITY_TITLE, 1, 0.82, 0)
 
     local pct = VersatilityPercent()
-    local rating = NumericOrNil(GetCombatRating(29))
+    local rating = NumericOrNil(GetCombatRating(CR_VERSATILITY_DAMAGE_DONE))
     GameTooltip:AddDoubleLine("Rating:", rating and string.format("%d", rating) or L.CMN_HIDDEN_VALUE, 1, 1, 1, 1, 1, 1)
     GameTooltip:AddDoubleLine("Percentage:", pct and string.format("%.2f%%", pct) or L.CMN_HIDDEN_VALUE, 1, 1, 1, 1, 1, 1)
     GameTooltip:Show()

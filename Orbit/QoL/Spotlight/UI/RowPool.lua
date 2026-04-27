@@ -1,11 +1,10 @@
--- [ ROW POOL ]--------------------------------------------------------------------------------------
+-- [ ROW POOL ]---------------------------------------------------------------------------------------
 local _, Orbit = ...
 local ResultRow = Orbit.Spotlight.UI.ResultRow
 local RowPool = {}
 Orbit.Spotlight.UI.RowPool = RowPool
 
--- [ STATE ]-----------------------------------------------------------------------------------------
--- Single shared pool across the lifetime of the addon: rows are created lazily on first use and reused.
+-- [ STATE ]------------------------------------------------------------------------------------------
 RowPool._rows = {}
 RowPool._parent = nil
 RowPool._width = 0
@@ -25,14 +24,7 @@ function RowPool:Acquire(index)
 end
 
 function RowPool:HideAll()
-    for _, row in ipairs(self._rows) do
-        row:Hide()
-        ResultRow:SetSelected(row, false)
-    end
-end
-
-function RowPool:ForEach(cb)
-    for i, row in ipairs(self._rows) do cb(row, i) end
+    for _, row in ipairs(self._rows) do row:Hide() end
 end
 
 function RowPool:SetWidth(width)

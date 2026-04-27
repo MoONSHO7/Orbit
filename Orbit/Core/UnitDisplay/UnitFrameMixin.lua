@@ -1,4 +1,4 @@
--- [ ORBIT UNIT FRAME MIXIN ]------------------------------------------------------------------------
+-- [ ORBIT UNIT FRAME MIXIN ]-------------------------------------------------------------------------
 -- Shared functionality for unit frame plugins (Player, Target, Focus, Pet)
 
 local _, addonTable = ...
@@ -26,19 +26,8 @@ function Mixin:GetInheritedSetting(systemIndex, key, inheritFromPlayer)
 end
 
 -- [ NATIVE FRAME HIDING ] ---------------------------------------------------------------------------
-function Mixin:HideNativeUnitFrame(nativeFrame, hiddenParentName)
-    local hiddenParent = CreateFrame("Frame", hiddenParentName, UIParent)
-    hiddenParent:Hide()
-    if nativeFrame then
-        nativeFrame:SetParent(hiddenParent)
-        nativeFrame:UnregisterAllEvents()
-        nativeFrame:ClearAllPoints()
-        nativeFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-        nativeFrame:SetAlpha(0)
-        nativeFrame:SetScale(0.001)
-        nativeFrame:EnableMouse(false)
-    end
-    return hiddenParent
+function Mixin:HideNativeUnitFrame(nativeFrame)
+    if nativeFrame then OrbitEngine.NativeFrame:Disable(nativeFrame) end
 end
 
 -- [ BACKGROUND CREATION ] ---------------------------------------------------------------------------

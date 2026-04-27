@@ -1,4 +1,4 @@
--- [ RECENTS ]---------------------------------------------------------------------------------------
+-- [ RECENTS ]----------------------------------------------------------------------------------------
 -- Tracks the last N activated entries as an MRU (most-recently-used) list persisted to AccountSettings.
 -- The matcher reads GetBoostIndex() to bonus-score matching entries so users' recent choices bubble up
 -- when they re-search the same term.
@@ -8,7 +8,7 @@ Orbit.Spotlight.Index.Recents = Recents
 
 local MAX_ENTRIES = 5
 
--- [ STORE ]-----------------------------------------------------------------------------------------
+-- [ STORE ]------------------------------------------------------------------------------------------
 local function GetList()
     local acct = Orbit.db.AccountSettings
     acct.SpotlightRecents = acct.SpotlightRecents or {}
@@ -17,7 +17,7 @@ end
 
 local function MakeKey(kind, id) return kind .. ":" .. tostring(id) end
 
--- [ PUBLIC ]----------------------------------------------------------------------------------------
+-- [ PUBLIC ]-----------------------------------------------------------------------------------------
 -- Pushes an entry to the front. Removes a prior occurrence so the list stays deduped at MAX_ENTRIES.
 function Recents:Record(entry)
     if not entry or not entry.kind or entry.id == nil then return end

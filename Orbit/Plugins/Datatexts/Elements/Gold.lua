@@ -4,6 +4,7 @@ local _, Orbit = ...
 local DT = Orbit.Datatexts
 local Fmt = DT.Formatting
 local RingBuffer = Fmt.RingBuffer
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local COPPER_PER_GOLD = 10000
@@ -35,10 +36,17 @@ local function FormatProfit(profit)
     return color .. Fmt:FormatMoney(math.abs(profit)) .. "|r"
 end
 
+local function GetAcctStore()
+    local acct = Orbit.db.AccountSettings
+    acct.GoldAccountData = acct.GoldAccountData or {}
+    acct.GoldDailyHistory = acct.GoldDailyHistory or {}
+    return acct
+end
+
 local function GetAccountData()
-    if not OrbitDB or not OrbitDB._datatextAccountData then return {} end
+    local acct = GetAcctStore()
     local result = {}
-    for realm, chars in pairs(OrbitDB._datatextAccountData) do
+    for realm, chars in pairs(acct.GoldAccountData) do
         for name, data in pairs(chars) do
             result[#result + 1] = { name = name, realm = realm, class = data.class, level = data.level, gold = data.gold }
         end
@@ -49,20 +57,19 @@ end
 
 -- [ CROSS-CHARACTER ] -------------------------------------------------------------------------------
 function W:SaveCharacterGold(copper)
-    if not OrbitDB then return end
-    if not OrbitDB._datatextAccountData then OrbitDB._datatextAccountData = {} end
+    local acct = GetAcctStore()
     local realm = GetRealmName()
-    if not OrbitDB._datatextAccountData[realm] then OrbitDB._datatextAccountData[realm] = {} end
+    acct.GoldAccountData[realm] = acct.GoldAccountData[realm] or {}
     local name = UnitName("player")
     local _, class = UnitClass("player")
-    OrbitDB._datatextAccountData[realm][name] = { gold = copper, class = class, level = UnitLevel("player") }
+    acct.GoldAccountData[realm][name] = { gold = copper, class = class, level = UnitLevel("player") }
     self:UpdateDailyHistory(copper)
 end
 
 function W:UpdateDailyHistory(copper)
-    if not OrbitDB._datatextDailyGold then OrbitDB._datatextDailyGold = {} end
+    local acct = GetAcctStore()
     local today = math.floor(time() / SECONDS_PER_DAY)
-    local hist = OrbitDB._datatextDailyGold
+    local hist = acct.GoldDailyHistory
     if #hist == 0 or hist[#hist].day ~= today then
         hist[#hist + 1] = { day = today, gold = copper }
         if #hist > DAILY_HISTORY_DAYS then table.remove(hist, 1) end
@@ -72,8 +79,7 @@ function W:UpdateDailyHistory(copper)
 end
 
 function W:GetDailyDeltas()
-    if not OrbitDB or not OrbitDB._datatextDailyGold then return {} end
-    local hist = OrbitDB._datatextDailyGold
+    local hist = GetAcctStore().GoldDailyHistory
     local deltas = {}
     for i = 2, #hist do deltas[#deltas + 1] = { day = hist[i].day, delta = hist[i].gold - hist[i - 1].gold } end
     return deltas
@@ -114,8 +120,8 @@ end
 -- [ CONTEXT MENU ] ----------------------------------------------------------------------------------
 function W:GetMenuItems()
     return {
-        { text = "Auto-Sell Grey Items", checked = self.autoSellEnabled, func = function() self.autoSellEnabled = not self.autoSellEnabled end, closeOnClick = false },
-        { text = "Reset Session", func = function() self.sessionStart = GetMoney(); self.sessionStartTime = GetTime(); self.history:Clear(); self:Update() end },
+        { text = L.PLU_DT_GOLD_AUTOSELL, checked = self.autoSellEnabled, func = function() self.autoSellEnabled = not self.autoSellEnabled end, closeOnClick = false },
+        { text = L.PLU_DT_GOLD_RESET_SESSION, func = function() self.sessionStart = GetMoney(); self.sessionStartTime = GetTime(); self.history:Clear(); self:Update() end },
     }
 end
 
@@ -123,7 +129,7 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Wealth", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_GOLD_WEALTH_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     local current = GetMoney()
     GameTooltip:AddDoubleLine("Current:", Fmt:FormatMoney(current), 1, 1, 1, 1, 1, 1)
@@ -135,7 +141,7 @@ function W:ShowTooltip()
     local deltas = self:GetDailyDeltas()
     if #deltas > 0 then
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("Daily History", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L.PLU_DT_GOLD_DAILY_HISTORY, 0.7, 0.7, 0.7)
         for _, d in ipairs(deltas) do GameTooltip:AddDoubleLine(date("%m/%d", d.day * SECONDS_PER_DAY), FormatProfit(d.delta), 1, 1, 1, 1, 1, 1) end
     end
     local chars = GetAccountData()
@@ -183,7 +189,7 @@ function W:Init()
     self:SetUpdateFunc(function() self:Update() end)
     self:SetTooltipFunc(function() self:ShowTooltip() end)
     self:SetClickFunc(function(_, btn) if btn == "RightButton" then self:ShowContextMenu() else ToggleAllBags() end end)
-    self.leftClickHint = "Open Bags"
+    self.leftClickHint = L.PLU_DT_BAG_OPEN_BAGS
     self.rightClickHint = "Settings"
     self:RegisterEvent("PLAYER_MONEY", function() self:OnMoneyChange() end)
     self:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:OnMoneyChange() end)

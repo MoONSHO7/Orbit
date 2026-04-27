@@ -24,7 +24,9 @@ local Plugin = Orbit:RegisterPlugin("Damage Meter", SYSTEM_ID, {
     },
 })
 
-Plugin.liveToggle = true
+-- DamageMeter's disable path mutates the Blizzard frame (NeutralizeRoot, InstallShowGuard hooks);
+-- toggling at runtime cannot cleanly reverse those mutations, so require a reload.
+Plugin.liveToggle = false
 Plugin.canvasMode = true
 
 -- [ SETTING OVERRIDES ] -----------------------------------------------------------------------------
@@ -136,19 +138,9 @@ local function EnsureBlizzardAddonLoaded()
     C_AddOns.LoadAddOn("Blizzard_DamageMeter")
 end
 
-local function EnsureCvarEnabled()
+local function EnsureCvarDisabled()
     if InCombatLockdown() then return end
-    if GetCVar("damageMeterEnabled") ~= "1" then SetCVar("damageMeterEnabled", "1") end
-end
-
--- Blizzard's data pipeline stays inert until a session window is opened once; the hidden one suffices.
-local function EnsureSessionWindowShown()
-    local frame = _G.DamageMeter
-    if not frame or InCombatLockdown() then return end
-    Orbit.db.AccountSettings = Orbit.db.AccountSettings or {}
-    if Orbit.db.AccountSettings.DamageMeterFirstShown then return end
-    if frame:CanShowNewSessionWindow() then frame:ShowNewSessionWindow() end
-    Orbit.db.AccountSettings.DamageMeterFirstShown = true
+    if GetCVar("damageMeterEnabled") ~= "0" then SetCVar("damageMeterEnabled", "0") end
 end
 
 -- [ METER DEF FACTORY ] -----------------------------------------------------------------------------
@@ -239,14 +231,13 @@ function Plugin:CopyMeterSettings(sourceID, destID)
     local defs = self:GetMeterDefs()
     local source, dest = defs[sourceID], defs[destID]
     if not source or not dest then return nil end
-    local DeepCopy = Orbit.Engine.DeepCopy
-    local snapshot = DeepCopy(dest)
+    local snapshot = CopyTable(dest)
     for k in pairs(COPYABLE_FIELDS) do
         local v = source[k]
         if v == nil then
             dest[k] = nil
         elseif type(v) == "table" then
-            dest[k] = DeepCopy(v)
+            dest[k] = CopyTable(v)
         else
             dest[k] = v
         end
@@ -343,6 +334,7 @@ function Plugin:SnapAllMetersToCurrent()
            or def.breakdownGUID ~= nil or def.scrollOffset ~= 0 then
             def.sessionType         = DM.SessionType.Current
             def.sessionID           = nil
+            def.sessionName         = nil
             def.viewMode            = "chart"
             def.breakdownGUID       = nil
             def.breakdownCreatureID = nil
@@ -438,7 +430,7 @@ end
 -- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     EnsureBlizzardAddonLoaded()
-    EnsureCvarEnabled()
+    EnsureCvarDisabled()
 
     self:InitEventBridge()
     self:InitUI()
@@ -472,11 +464,8 @@ function Plugin:OnLoad()
     -- Blizzard_DamageMeter can load after our OnLoad, so re-prime the pipeline on each world entry.
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
         EnsureBlizzardAddonLoaded()
-        EnsureCvarEnabled()
-        C_Timer.After(0.5, function()
-            EnsureSessionWindowShown()
-            self:DisableBlizzardMeter()
-        end)
+        EnsureCvarDisabled()
+        C_Timer.After(0.5, function() self:DisableBlizzardMeter() end)
     end, self)
 
     self:RegisterVisibilityEvents()

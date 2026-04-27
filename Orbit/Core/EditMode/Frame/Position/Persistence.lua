@@ -1,4 +1,4 @@
--- [ ORBIT FRAME PERSISTENCE ]-----------------------------------------------------------------------
+-- [ ORBIT FRAME PERSISTENCE ]------------------------------------------------------------------------
 -- Handles saving and restoring frame positions and anchors
 
 local _, Orbit = ...
@@ -51,7 +51,7 @@ function Persistence:DrainAllPending()
     end
 end
 
--- [ SPEC-SCOPED STORAGE HELPERS ]-------------------------------------------------------------------
+-- [ SPEC-SCOPED STORAGE HELPERS ]--------------------------------------------------------------------
 -- Spec-scoped plugins use SetSpecData; settingsArePerSpec plugins skip spec routing entirely.
 local function HasGetSpecData(plugin)
     if not plugin then return false end

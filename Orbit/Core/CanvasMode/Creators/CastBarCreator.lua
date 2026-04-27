@@ -1,5 +1,4 @@
--- [ CANVAS MODE - CAST BAR CREATOR ]----------------------------------------------------------------
-
+-- [ CANVAS MODE - CAST BAR CREATOR ]-----------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
@@ -14,8 +13,7 @@ local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnc
 local SmartGuides = OrbitEngine.SmartGuides
 local ApplyTextAlignment = CanvasMode.ApplyTextAlignment
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULT_CB_WIDTH = 120
 local DEFAULT_CB_HEIGHT = 18
 local DEFAULT_CB_COLOR = { r = 1, g = 0.7, b = 0 }
@@ -28,8 +26,6 @@ local CB_TEXT_SIZE_MIN = 10
 
 
 local SUB_TEXT_MIN_WIDTH = 20
-local SUB_TEXT_PADDING = 4
-local SUB_TEXT_HEIGHT_PADDING = 2
 local SUB_PAD_X = 20
 local SUB_PAD_Y = 10
 local SnapEngine = OrbitEngine.CanvasMode.SnapEngine
@@ -37,8 +33,7 @@ local SUB_SNAP_OPTIONS = { edgeThreshold = SnapEngine.EDGE_THRESHOLD }
 local CLICK_THRESHOLD = 0.3
 local DEFAULT_TEXT_OFFSET_X = 4
 
--- [ SUB-COMPONENT DRAG ]----------------------------------------------------------------------------
-
+-- [ SUB-COMPONENT DRAG ]-----------------------------------------------------------------------------
 local function CreateSubText(parent, parentContainer, subKey, subPos, text, justify, fontPath, cbTextSize, fontFlags)
     local subFrame = CreateFrame("Frame", nil, parent)
     subFrame:SetFrameLevel(parent:GetFrameLevel() + Orbit.Constants.Levels.CanvasComponent)
@@ -51,10 +46,18 @@ local function CreateSubText(parent, parentContainer, subKey, subPos, text, just
     Orbit.Skin:ApplyFontShadow(fs)
     fs:SetText(text)
     fs:SetJustifyH(justify)
-    fs:SetPoint(justify, subFrame, justify, 0, 0)
+    local pad = CC.TEXT_PADDING
+    if justify == "LEFT" then
+        fs:SetPoint("LEFT", subFrame, "LEFT", pad, 0)
+    elseif justify == "RIGHT" then
+        fs:SetPoint("RIGHT", subFrame, "RIGHT", -pad, 0)
+    else
+        fs:SetPoint("CENTER", subFrame, "CENTER", 0, 0)
+    end
 
-    local textWidth = math.max(SUB_TEXT_MIN_WIDTH, (fs:GetStringWidth() or SUB_TEXT_MIN_WIDTH) + SUB_TEXT_PADDING)
-    subFrame:SetSize(textWidth, cbTextSize + SUB_TEXT_HEIGHT_PADDING)
+    local stringWidth = fs:GetStringWidth() or SUB_TEXT_MIN_WIDTH
+    local textWidth = math.max(SUB_TEXT_MIN_WIDTH, stringWidth + 2 * pad)
+    subFrame:SetSize(textWidth, cbTextSize + 2 * pad)
 
     subFrame.visual = fs
     subFrame.key = subKey
@@ -181,8 +184,7 @@ local function CreateSubText(parent, parentContainer, subKey, subPos, text, just
     return subFrame
 end
 
--- [ CREATOR ]---------------------------------------------------------------------------------------
-
+-- [ CREATOR ]----------------------------------------------------------------------------------------
 local function Create(container, preview, key, source, data)
     local plugin = Dialog.targetPlugin
     local sysIdx = Dialog.targetSystemIndex or 1

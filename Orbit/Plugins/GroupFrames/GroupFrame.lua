@@ -6,7 +6,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local Helpers = Orbit.GroupFrameHelpers
 local Pixel = Orbit.Engine.Pixel
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local GF = Orbit.Constants.GroupFrames
 local MAX_GROUP_FRAMES = Helpers.LAYOUT.MaxGroupFrames
 local MAX_RAID_GROUPS = Helpers.LAYOUT.MaxRaidGroups
@@ -41,13 +41,14 @@ local UNIT_REREGISTER_EVENTS = {
     "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
 }
 
--- [ TIER DEFAULTS ]---------------------------------------------------------------------------------
+-- [ TIER DEFAULTS ]----------------------------------------------------------------------------------
 local TIER_DEFAULTS = {
     Party = {
         Width = 160, Height = 40, Scale = 100, Spacing = 3, Orientation = 0,
         GrowthDirection = "down", IncludePlayer = true,
         ShowPowerBar = true, PowerBarHeight = 10,
         HealthTextMode = "percent_short", ShowHealthValue = true,
+        OutOfRangeOpacity = 30,
         ComponentPositions = {
             Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT", selfAnchorY = "CENTER", posX = -75, posY = 0 },
             HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT", selfAnchorY = "CENTER", posX = 75, posY = 0 },
@@ -74,7 +75,7 @@ local TIER_DEFAULTS = {
             return d
         end)(),
         DisabledComponentsMigrated = true,
-        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.25, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
+        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.0, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
         DispelColorMagic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
@@ -89,6 +90,7 @@ local TIER_DEFAULTS = {
         Orientation = "horizontal", FlatRows = 1,
         ShowPowerBar = true, PowerBarHeight = 16, ShowGroupLabels = true,
         ShowHealthValue = false, HealthTextMode = "percent_short",
+        OutOfRangeOpacity = 30,
         ComponentPositions = {
             Name = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 10, justifyH = "CENTER", selfAnchorY = "TOP", posX = 0, posY = 10 },
             HealthText = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", selfAnchorY = "BOTTOM", posX = 0, posY = -10, overrides = { ShowHealthValue = false, FontSize = 10 } },
@@ -118,7 +120,7 @@ local TIER_DEFAULTS = {
         AggroIndicatorEnabled = true, AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
         SelectionColor = { r = 0.8, g = 0.9, b = 1.0, a = 1 },
         AggroThickness = 1,
-        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.25, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
+        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.0, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
         DispelColorMagic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
@@ -155,7 +157,7 @@ TIER_DEFAULTS.World = setmetatable({
     end)(),
 }, { __index = TIER_DEFAULTS.Mythic })
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_GroupFrames"
 
 local Plugin = Orbit:RegisterPlugin("Group Frames", SYSTEM_ID, {
@@ -173,7 +175,7 @@ Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.GroupFramePreviewMixin, Orbit.AuraMixi
 Plugin.canvasMode = true
 Plugin.supportsHealthText = true
 
--- [ TIER API ]--------------------------------------------------------------------------------------
+-- [ TIER API ]---------------------------------------------------------------------------------------
 function Plugin:GetCurrentTier()
     if self._editTierOverride then return self._editTierOverride end
     return self:GetRealTier()
@@ -212,12 +214,12 @@ function Plugin:CopyTierSettings(sourceTier, destTier)
     local source = tiers[sourceTier] or TIER_DEFAULTS[sourceTier] or {}
     
     local existingDest = tiers[destTier] or {}
-    local preservedPos = Orbit.Engine.DeepCopy and Orbit.Engine.DeepCopy(existingDest.Position) or existingDest.Position
+    local preservedPos = existingDest.Position and CopyTable(existingDest.Position) or nil
 
     tiers[destTier] = {}
     for k, v in pairs(source) do
         if type(v) == "table" then
-            tiers[destTier][k] = Orbit.Engine.DeepCopy and Orbit.Engine.DeepCopy(v) or v
+            tiers[destTier][k] = CopyTable(v)
         else
             tiers[destTier][k] = v
         end
@@ -259,7 +261,7 @@ function Plugin:SetSetting(systemIndex, key, val)
     PluginMixin_SetSetting(self, systemIndex, key, val)
 end
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local SafeRegisterUnitWatch = Orbit.GroupFrameMixin.SafeRegisterUnitWatch
 local SafeUnregisterUnitWatch = Orbit.GroupFrameMixin.SafeUnregisterUnitWatch
 local function GetPowerColor(powerType) return Orbit.Constants.Colors:GetPowerColor(powerType) end
@@ -274,7 +276,7 @@ local function GetComponentIconSize(plugin, key)
     return (overrides and overrides.IconSize) or GetHealerAuraSize(plugin)
 end
 
--- [ POWER BAR UPDATE ]------------------------------------------------------------------------------
+-- [ POWER BAR UPDATE ]-------------------------------------------------------------------------------
 local POWER_EVENTS = Orbit.GroupFrameFactoryMixin.POWER_EVENTS
 
 local function UpdatePowerBar(frame, plugin)
@@ -417,7 +419,7 @@ local function ScheduleDebouncedRosterUpdate(plugin, updateVisibility)
     end)
 end
 
--- [ SHARED EVENT CALLBACKS ]------------------------------------------------------------------------
+-- [ SHARED EVENT CALLBACKS ]-------------------------------------------------------------------------
 local SHARED_EVENT_CALLBACKS = {
     UpdatePowerBar = UpdatePowerBar, UpdateDebuffs = UpdateDebuffs, UpdateBuffs = UpdateBuffs,
     UpdateDefensiveIcon = UpdateDefensiveIcon, UpdateCrowdControlIcon = UpdateCrowdControlIcon,
@@ -426,7 +428,7 @@ local SHARED_EVENT_CALLBACKS = {
     UpdateMainTankIcon = true,
 }
 
--- [ GROUP FRAME CREATION ]--------------------------------------------------------------------------
+-- [ GROUP FRAME CREATION ]---------------------------------------------------------------------------
 local function CreateGroupFrame(index, plugin)
     local unit = "raid" .. index
     local frameName = "OrbitGroupFrame" .. index
@@ -464,29 +466,11 @@ end
 -- [ HIDE NATIVE FRAMES ]----------------------------------------------------------------------------
 local function HideNativeGroupFrames()
     for i = 1, 4 do
-        local partyFrame = _G["PartyMemberFrame" .. i]
-        if partyFrame then
-            OrbitEngine.NativeFrame:Disable(partyFrame)
-            if not partyFrame.orbitSetPointHooked then
-                hooksecurefunc(partyFrame, "SetPoint", function(self)
-                    if InCombatLockdown() then return end
-                    if not self.isMovingOffscreen then
-                        self.isMovingOffscreen = true
-                        self:ClearAllPoints()
-                        self:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -10000, 10000)
-                        self.isMovingOffscreen = false
-                    end
-                end)
-                partyFrame.orbitSetPointHooked = true
-            end
-        end
+        local f = _G["PartyMemberFrame" .. i]
+        if f then OrbitEngine.NativeFrame:Disable(f) end
     end
     OrbitEngine.NativeFrame:Disable(PartyFrame)
     OrbitEngine.NativeFrame:Disable(CompactPartyFrame)
-    for i = 1, 5 do
-        local member = _G["CompactPartyFrameMember" .. i]
-        if member then member:UnregisterAllEvents() end
-    end
     OrbitEngine.NativeFrame:Disable(CompactRaidFrameContainer)
 end
 
@@ -502,7 +486,7 @@ function Plugin:AddSettings(dialog, systemFrame)
 end
 
 
--- [ PHASE 0 MIGRATION: lowercase dropdown values ]--------------------------------------------------
+-- [ PHASE 0 MIGRATION: lowercase dropdown values ]---------------------------------------------------
 -- GrowthDirection / SortMode / Orientation (raid) used to store their English display
 -- text as the saved value. Phase 0 split text/value so the stored value is a stable
 -- lowercase key and the display text can be localized without breaking saved settings.
@@ -536,9 +520,36 @@ local function MigrateP0DropdownValues(plugin)
     plugin:SetSetting(1, "_P0DropdownMigrated", true)
 end
 
--- [ ON LOAD ]---------------------------------------------------------------------------------------
+-- DispelFrequency was an unbucketed -0.50..+0.50 slider. Phase 1 narrows it to 5 named
+-- speed stops at -0.30/-0.15/0.0/0.15/0.30. Snap any out-of-range saved value to the
+-- nearest stop so existing profiles render correctly under the new slider.
+local DISPEL_SPEED_STOPS = { -0.30, -0.15, 0.0, 0.15, 0.30 }
+local function SnapDispelSpeed(value)
+    local best, bestDist = DISPEL_SPEED_STOPS[1], math.huge
+    for _, stop in ipairs(DISPEL_SPEED_STOPS) do
+        local d = math.abs(value - stop)
+        if d < bestDist then best, bestDist = stop, d end
+    end
+    return best
+end
+local function MigrateDispelSpeed(plugin)
+    if plugin:GetSetting(1, "_DispelSpeedMigrated") then return end
+    local tiers = plugin:GetSetting(1, "Tiers")
+    if tiers then
+        for _, settings in pairs(tiers) do
+            if type(settings) == "table" and type(settings.DispelFrequency) == "number" then
+                settings.DispelFrequency = SnapDispelSpeed(settings.DispelFrequency)
+            end
+        end
+        plugin:SetSetting(1, "Tiers", tiers)
+    end
+    plugin:SetSetting(1, "_DispelSpeedMigrated", true)
+end
+
+-- [ ON LOAD ]----------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     MigrateP0DropdownValues(self)
+    MigrateDispelSpeed(self)
 
     HideNativeGroupFrames()
     self:UpdateBlizzardRaidPanelVisibility()
@@ -581,6 +592,7 @@ function Plugin:OnLoad()
 
     self.frame = self.container
     self.frame.anchorOptions = { horizontal = true, vertical = false }
+    self.frame.orbitHeightSync = true
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 20, maxH = 100 }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, 1)
 
@@ -720,7 +732,7 @@ function Plugin:OnLoad()
     end
 end
 
--- [ PER-TIER POSITION ]-----------------------------------------------------------------------------
+-- [ PER-TIER POSITION ]------------------------------------------------------------------------------
 function Plugin:SaveCurrentTierPosition(tier)
     tier = tier or self:GetCurrentTier()
     if not self.container or not tier then return end
@@ -771,7 +783,7 @@ function Plugin:RestoreTierPosition(tier)
     if OrbitEngine.PositionManager then OrbitEngine.PositionManager:ClearFrame(self.container) end
 end
 
--- [ TIER CHANGE DETECTION ]-------------------------------------------------------------------------
+-- [ TIER CHANGE DETECTION ]--------------------------------------------------------------------------
 function Plugin:CheckTierChange()
     local newTier = self:GetCurrentTier()
     if newTier ~= self._currentTier then
@@ -792,7 +804,7 @@ function Plugin:CheckTierChange()
     return false
 end
 
--- [ PREPARE ICONS FOR CANVAS MODE ]-----------------------------------------------------------------
+-- [ PREPARE ICONS FOR CANVAS MODE ]------------------------------------------------------------------
 function Plugin:PrepareIconsForCanvasMode()
     local frame = self.frames[1]
     if not frame then return end
@@ -934,7 +946,7 @@ function Plugin:AssignRaidUnits()
     return changed
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:UpdateLayout(frame)
     if not frame or InCombatLockdown() then return end
     local width = self:GetTierSetting("Width") or DEFAULT_WIDTH
@@ -1082,7 +1094,7 @@ function Plugin:UpdateVisuals()
     end
 end
 
--- [ DISPEL EVENT BUS ]------------------------------------------------------------------------------
+-- [ DISPEL EVENT BUS ]-------------------------------------------------------------------------------
 Orbit.EventBus:On("DISPEL_STATE_CHANGED", function(unit)
     if not Plugin.frames then return end
     for _, frame in ipairs(Plugin.frames) do

@@ -53,7 +53,7 @@ end
 local CanUseUnitPowerPercent = Orbit.SecretValueUtils.CanUseUnitPowerPercent
 local SafeUnitPowerPercent = Orbit.SecretValueUtils.SafeUnitPowerPercent
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerPower"
 local SYSTEM_INDEX = 1
 
@@ -89,7 +89,7 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
 
 local Frame, PowerBar
 
--- [ SHARED COMBAT-SAFE VISIBILITY ]-----------------------------------------------------------------
+-- [ SHARED COMBAT-SAFE VISIBILITY ]------------------------------------------------------------------
 local function SafeShow(frame)
     frame.orbitHiddenByAlpha = false
     local opacity = (Plugin:GetSetting(SYSTEM_INDEX, "Opacity") or 100) / 100
@@ -134,7 +134,7 @@ Orbit.PlayerUtilShared = {
     SafeUnitPowerPercent = SafeUnitPowerPercent,
 }
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     if not Frame then
         return
@@ -229,7 +229,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     Frame, PowerBar = OrbitEngine.FrameFactory:CreateWithBar("PlayerPower", self, {
         width = 200,
@@ -239,6 +239,7 @@ function Plugin:OnLoad()
         template = "BackdropTemplate",
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = { x = false, y = true } },
     })
+    Frame.orbitWidthSync = true
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 4, maxH = 25 }
     self.frame = Frame
     self.mountedConfig = { frame = Frame }
@@ -354,7 +355,10 @@ function Plugin:RefreshOnUpdate()
         Frame.elapsed = (Frame.elapsed or 0) + elapsed
         if Frame.elapsed >= UPDATE_INTERVAL then
             Frame.elapsed = 0
+            local p = Orbit.Profiler
+            local s = p and p:Begin()
             self:UpdateAll()
+            if p then p:End(self, "OnUpdate", s) end
         end
     end or nil)
 end
@@ -379,7 +383,7 @@ function Plugin:UpdateVisibility()
     OrbitEngine.FrameAnchor:SetFrameDisabled(Frame, false)
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:ApplySettings()
     if not Frame then
         return

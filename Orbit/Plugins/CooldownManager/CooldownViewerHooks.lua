@@ -23,7 +23,7 @@ local function GetViewerAnchorPoint(plugin, anchor)
     return vPoint
 end
 
--- [ BLIZZARD VIEWER HOOKING ] -------------------------------------------------
+-- [ BLIZZARD VIEWER HOOKING ] -----------------------------------------------------------------------
 function CDM:HookBlizzardViewers()
     for _, entry in pairs(VIEWER_MAP) do
         self:SetupViewerHooks(entry.viewer, entry.anchor)
@@ -38,7 +38,7 @@ function CDM:HookBlizzardViewers()
     self:HookEssentialUtilityMixins()
 end
 
--- [ ESSENTIAL/UTILITY MIXIN HOOKS ] -------------------------------------------
+-- [ ESSENTIAL/UTILITY MIXIN HOOKS ] -----------------------------------------------------------------
 function CDM:HookEssentialUtilityMixins()
     local function OnSpellUpdate(frame, systemIndex)
         local viewer = frame:GetParent()
@@ -65,7 +65,7 @@ function CDM:HookEssentialUtilityMixins()
     end
 end
 
--- [ VIEWER HOOKS ] ------------------------------------------------------------
+-- [ VIEWER HOOKS ] ----------------------------------------------------------------------------------
 function CDM:SetupViewerHooks(viewer, anchor)
     if not viewer or not anchor then return end
 
@@ -124,7 +124,7 @@ function CDM:SetupViewerHooks(viewer, anchor)
     self:EnforceViewerParentage(viewer, anchor)
 end
 
--- [ PARENTAGE MANAGEMENT ] ----------------------------------------------------
+-- [ PARENTAGE MANAGEMENT ] --------------------------------------------------------------------------
 function CDM:ReapplyParentage()
     for _, entry in pairs(VIEWER_MAP) do
         self:EnforceViewerParentage(entry.viewer, entry.anchor)
@@ -144,7 +144,7 @@ function CDM:EnforceViewerParentage(viewer, anchor)
     self:ProcessChildren(anchor)
 end
 
--- [ EVENT-DRIVEN MONITOR ] ----------------------------------------------------
+-- [ EVENT-DRIVEN MONITOR ] --------------------------------------------------------------------------
 local OOC_THROTTLE_DELAY = 20
 local OOC_THROTTLE_INTERVAL = 0.5
 
@@ -184,6 +184,20 @@ function CDM:MonitorViewers()
     frame:RegisterUnitEvent("UNIT_AURA", "player")
     frame:RegisterEvent("PLAYER_REGEN_DISABLED")
     frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+
+    local function OOCUpdate()
+        if not (oocThrottled and oocDirty) then return end
+        local now = GetTime()
+        if now < oocNextUpdate then return end
+        oocNextUpdate = now + OOC_THROTTLE_INTERVAL
+        oocDirty = false
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
+        CheckAll()
+        CheckPandemicIfDirty()
+        if p then p:End(plugin, "OOCThrottle", s) end
+    end
+
     frame:SetScript("OnEvent", function(_, event, unit)
         if event == "UNIT_AURA" then
             if unit == "player" then
@@ -202,29 +216,20 @@ function CDM:MonitorViewers()
         if inCombat then
             oocThrottled = false
             oocDirty = false
+            frame:SetScript("OnUpdate", nil)
             if plugin._oocThrottleTimer then plugin._oocThrottleTimer:Cancel(); plugin._oocThrottleTimer = nil end
         else
             plugin._oocThrottleTimer = C_Timer.NewTimer(OOC_THROTTLE_DELAY, function()
                 oocThrottled = true
                 oocNextUpdate = 0
                 plugin._oocThrottleTimer = nil
+                frame:SetScript("OnUpdate", OOCUpdate)
             end)
         end
         pandemicDirty = true
         CheckAll()
         CheckPandemicIfDirty()
         if not inCombat then plugin:PreSizeAnchors() end
-    end)
-    frame:SetScript("OnUpdate", function()
-        if oocThrottled and oocDirty then
-            local now = GetTime()
-            if now >= oocNextUpdate then
-                oocNextUpdate = now + OOC_THROTTLE_INTERVAL
-                oocDirty = false
-                CheckAll()
-                CheckPandemicIfDirty()
-            end
-        end
     end)
     self._monitorEventFrame = frame
 end
@@ -237,7 +242,7 @@ function CDM:CheckViewer(viewer, anchor)
     if not viewer:IsShown() and not anchor.orbitMountedSuppressed then viewer:Show(); viewer:SetAlpha(1) end
 end
 
--- [ PLAYER ENTERING WORLD ] ---------------------------------------------------
+-- [ PLAYER ENTERING WORLD ] -------------------------------------------------------------------------
 function CDM:OnPlayerEnteringWorld()
     C_Timer.After(Constants.Timing.RetryShort, function() self:ReapplyParentage(); self:ApplyAll() end)
     C_Timer.After(Constants.Timing.RetryLong, function() self:ReapplyParentage(); self:PreSizeAnchors() end)

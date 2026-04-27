@@ -1,18 +1,15 @@
 -- [ ORBIT EDIT MODE ENGINE ] ------------------------------------------------------------------------
-
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
 Engine.EditMode = Engine.EditMode or {}
 local EditMode = Engine.EditMode
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local EDIT_MODE_POSITION_X = 20
 local EDIT_MODE_POSITION_Y = 20
 
--- [ API ]-------------------------------------------------------------------------------------------
-
+-- [ API ]--------------------------------------------------------------------------------------------
 function EditMode:RegisterEnterCallback(callback, owner)
     if not EventRegistry then return end
     EventRegistry:RegisterCallback("EditMode.Enter", callback, owner)
@@ -36,17 +33,15 @@ function EditMode:UnregisterCallbacks(owner)
 end
 
 -- [ COMBAT SAFETY: AUTO-EXIT EDIT MODE ] ------------------------------------------------------------
-
 if EditModeManagerFrame then
     local combatExitFrame = CreateFrame("Frame")
     combatExitFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
     combatExitFrame:SetScript("OnEvent", function()
-        if EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
+        if EditModeManagerFrame:IsShown() then securecall("HideUIPanel", EditModeManagerFrame) end
     end)
 end
 
--- [ PERSISTENCE HOOKS ]-----------------------------------------------------------------------------
-
+-- [ PERSISTENCE HOOKS ]------------------------------------------------------------------------------
 if EditModeManagerFrame then
     hooksecurefunc(EditModeManagerFrame, "Show", function(self)
         self:ClearAllPoints()

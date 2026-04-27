@@ -56,14 +56,12 @@ C_Timer.After(0, function()
     end)
 end)
 
--- [ UTILITIES ]-------------------------------------------------------------------------------------
-
+-- [ UTILITIES ]--------------------------------------------------------------------------------------
 function Skin:GetPixelScale()
     return Engine.Pixel:GetScale()
 end
 
--- [ ICON SKINNING ]---------------------------------------------------------------------------------
-
+-- [ ICON SKINNING ]----------------------------------------------------------------------------------
 function Skin:SkinIcon(icon, settings)
     if not icon then
         return
@@ -78,17 +76,14 @@ function Skin:SkinIcon(icon, settings)
     icon:SetTexCoord(left, right, top, bottom)
 end
 
--- [ BORDER SKINNING ]-------------------------------------------------------------------------------
-
+-- [ BORDER SKINNING ]--------------------------------------------------------------------------------
 function Skin:CreateBackdrop(frame, name)
     local backdrop = CreateFrame("Frame", name, frame, "BackdropTemplate")
     backdrop:SetAllPoints(frame)
     return backdrop
 end
 
--- [ NINESLICE BORDER ]------------------------------------------------------------------------------
-
-
+-- [ NINESLICE BORDER ]-------------------------------------------------------------------------------
 function Skin:ApplyNineSliceBorder(frame, styleEntry)
     if not frame or not styleEntry then return end
     if not styleEntry.edgeFile then return end
@@ -268,7 +263,7 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
     return false
 end
 
--- [ SHARED BORDER VISIBILITY ]----------------------------------------------------------------------
+-- [ SHARED BORDER VISIBILITY ]-----------------------------------------------------------------------
 -- Canonical implementation — assigned to frames by SkinBorder, CastBar, CooldownLayout, etc.
 function Skin.DefaultSetBorderHidden(self, hidden)
     if hidden then
@@ -281,8 +276,7 @@ function Skin.DefaultSetBorderHidden(self, hidden)
     end
 end
 
--- [ STATUSBAR SKINNING ]----------------------------------------------------------------------------
-
+-- [ STATUSBAR SKINNING ]-----------------------------------------------------------------------------
 function Skin:SkinStatusBar(bar, textureName, color, isUnitFrame)
     if not bar then
         return
@@ -323,8 +317,7 @@ function Skin:AddOverlay(bar, texturePath, blendMode, alpha)
     bar.Overlay:Show()
 end
 
--- [ FONT SKINNING ]---------------------------------------------------------------------------------
-
+-- [ FONT SKINNING ]----------------------------------------------------------------------------------
 function Skin:GetFontOutline()
     return Orbit.db.GlobalSettings.FontOutline or "OUTLINE"
 end
@@ -364,8 +357,7 @@ function Skin:SkinText(fontString, settings)
     end
 end
 
--- [ UNITFRAME TEXT STYLING ]------------------------------------------------------------------------
-
+-- [ UNITFRAME TEXT STYLING ]-------------------------------------------------------------------------
 function Skin:ApplyUnitFrameText(fontString, alignment, fontPath, textSize)
     if not fontString then
         return

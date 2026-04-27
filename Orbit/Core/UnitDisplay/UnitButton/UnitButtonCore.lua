@@ -1,9 +1,9 @@
--- [ UNIT BUTTON - CORE MODULE ]---------------------------------------------------------------------
+-- [ UNIT BUTTON - CORE MODULE ]----------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 
@@ -12,8 +12,7 @@ local PREVIEW_HEALTH_VALUE = 0.75
 
 local _, PLAYER_CLASS = UnitClass("player")
 
--- [ CORE MIXIN ]------------------------------------------------------------------------------------
-
+-- [ CORE MIXIN ]-------------------------------------------------------------------------------------
 local CoreMixin = {}
 
 function CoreMixin:OnLoad(skipEventRegistration)

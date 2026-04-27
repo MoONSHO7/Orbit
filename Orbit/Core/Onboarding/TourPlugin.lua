@@ -38,7 +38,7 @@ local function CreateTourFrame(name, label, systemIndex, offsetX)
     frame.editModeName = nil
     frame.isTourFrame = true
     frame.orbitNoSnap = false
-    frame.anchorOptions = { syncDimensions = false, mergeBorders = true }
+    frame.anchorOptions = { mergeBorders = true }
     frame.orbitResizeBounds = { minW = MIN_W, maxW = MAX_W, minH = MIN_H, maxH = MAX_H }
     -- Background
     frame.bg = frame:CreateTexture(nil, "BACKGROUND")

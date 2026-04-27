@@ -1,11 +1,11 @@
--- [ PREVIEW ANIMATOR ]------------------------------------------------------------------------------
+-- [ PREVIEW ANIMATOR ]-------------------------------------------------------------------------------
 local _, Orbit = ...
 
 Orbit.PreviewAnimator = {}
 local PA = Orbit.PreviewAnimator
 local enabledOwners = {}
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local TICK_INTERVAL = 0.10
 local PHASE_SPEED = 0.03
 local HEALTH_AMPLITUDE = 0.18
@@ -33,7 +33,7 @@ local RAIDBUFF_SHOW_CHANCE = 0.7
 local DEFENSIVE_SHOW_CHANCE = 0.15
 local CC_SHOW_CHANCE = 0.12
 local DISPEL_DURATION = 6
-local DISPEL_TYPES = { "Magic", "Curse", "Disease", "Poison" }
+local DISPEL_TYPES = { "Magic", "Curse", "Disease", "Poison", "Bleed" }
 local DYING_DELAY_BASE = 3
 local DYING_DELAY_RANGE = 5
 local SHIELD_CHANCE = 0.55
@@ -57,7 +57,7 @@ local DEFAULT_BASE_HEALTH = 0.75
 local DEFAULT_SHIELD_CHANCE = 0.4
 local DEFAULT_NECROTIC_CHANCE = 0.2
 
--- [ BEHAVIOR TYPES ]--------------------------------------------------------------------------------
+-- [ BEHAVIOR TYPES ]---------------------------------------------------------------------------------
 local B_NORMAL = 1
 local B_DYING = 2
 local B_DEAD = 3
@@ -68,7 +68,7 @@ local EXIT_RATE = 0.05
 local EXIT_ALPHA_RATE = 0.03
 local EXIT_MIN_HEALTH = 0.01
 
--- [ SESSION REGISTRY ]------------------------------------------------------------------------------
+-- [ SESSION REGISTRY ]-------------------------------------------------------------------------------
 local sessions = {}
 local ticker
 local phase = 0
@@ -83,7 +83,7 @@ local healerTicker
 local dispelSessions = {}
 local dispelTicker
 
--- [ BEHAVIOR ASSIGNMENT ]---------------------------------------------------------------------------
+-- [ BEHAVIOR ASSIGNMENT ]----------------------------------------------------------------------------
 local function AssignRandomBehaviors(activeCfg)
     local candidates = {}
     for i, cfg in ipairs(activeCfg) do
@@ -113,7 +113,7 @@ local function AssignRandomBehaviors(activeCfg)
     end
 end
 
--- [ BEHAVIOR TRANSITIONS ]--------------------------------------------------------------------------
+-- [ BEHAVIOR TRANSITIONS ]---------------------------------------------------------------------------
 local function TransitionBehavior(cfg, frame)
     local b = cfg.behavior
     if b == B_NORMAL then
@@ -199,7 +199,7 @@ local function TransitionBehavior(cfg, frame)
     return false
 end
 
--- [ ANIMATE OVERLAY BARS ]--------------------------------------------------------------------------
+-- [ ANIMATE OVERLAY BARS ]---------------------------------------------------------------------------
 local function AnimateOverlayBars(frame, cfg, curPhase, offset)
     local healthTex = frame.Health:GetStatusBarTexture()
     local totalW = frame.Health:GetWidth()
@@ -236,7 +236,7 @@ local function AnimateOverlayBars(frame, cfg, curPhase, offset)
     end
 end
 
--- [ CORE TICK ]-------------------------------------------------------------------------------------
+-- [ CORE TICK ]--------------------------------------------------------------------------------------
 local function AnimateTick()
     phase = (phase + PHASE_SPEED) % 1
     globalElapsed = globalElapsed + TICK_INTERVAL
@@ -320,7 +320,7 @@ local function AnimateTick()
     if not next(sessions) then ticker:Cancel(); ticker = nil end
 end
 
--- [ AURA TICK ]-------------------------------------------------------------------------------------
+-- [ AURA TICK ]--------------------------------------------------------------------------------------
 local function RelayoutGroup(group)
     local c = group.container
     local col, row = 0, 0
@@ -382,7 +382,7 @@ local function AuraTick()
     if not next(auraSessions) then auraTicker:Cancel(); auraTicker = nil end
 end
 
--- [ HEALER AURA TICK ]------------------------------------------------------------------------------
+-- [ HEALER AURA TICK ]-------------------------------------------------------------------------------
 local function HealerAuraTick()
     for _, session in pairs(healerSessions) do
         if session.draining then break end
@@ -411,7 +411,7 @@ local function HealerAuraTick()
     if not next(healerSessions) then healerTicker:Cancel(); healerTicker = nil end
 end
 
--- [ PUBLIC API ]------------------------------------------------------------------------------------
+-- [ PUBLIC API ]-------------------------------------------------------------------------------------
 function PA:Start(owner, frames, cfgList)
     if not enabledOwners[owner] then return end
     self:Stop(owner)
@@ -492,7 +492,7 @@ function PA:StopAuras(owner)
     auraSessions[owner] = nil
 end
 
--- [ HEALER AURA ANIMATION API ]---------------------------------------------------------------------
+-- [ HEALER AURA ANIMATION API ]----------------------------------------------------------------------
 function PA:StartHealerAuras(owner, frames, cfgList)
     if not enabledOwners[owner] then return end
     self:StopHealerAuras(owner)
@@ -519,6 +519,14 @@ end
 local GC = Orbit.Engine.GlowController
 local DISPEL_PREVIEW_KEY = "dispelPreview"
 
+local function ShowDispelGlow(session, slot)
+    local c = session.colors[slot.dispelType]
+    if not c then return end
+    local glowType = session.glowType or Orbit.Constants.Glow.Type.Pixel
+    local typeString = glowType == Orbit.Constants.Glow.Type.Autocast and "Autocast" or "Pixel"
+    GC:Show(slot.frame, DISPEL_PREVIEW_KEY, typeString, { color = { c.r, c.g, c.b, c.a }, lines = session.numLines, particles = session.numLines, frequency = session.frequency, length = session.length, thickness = session.thickness, border = session.border, key = DISPEL_PREVIEW_KEY, frameLevel = Orbit.Constants.Levels.DispelGlow })
+end
+
 local function DispelTick()
     local now = GetTime()
     for _, session in pairs(dispelSessions) do
@@ -537,10 +545,7 @@ local function DispelTick()
                     repeat pick = alive[math.random(1, #alive)] until #alive < 2 or pick ~= slot.frame
                     slot.frame = pick
                     slot.expiresAt = now + DISPEL_DURATION + math.random() * 4
-                    local c = session.colors[slot.dispelType]
-                    local glowType = session.glowType or Orbit.Constants.Glow.Type.Pixel
-                    local typeString = glowType == Orbit.Constants.Glow.Type.Autocast and "Autocast" or "Pixel"
-                    GC:Show(slot.frame, DISPEL_PREVIEW_KEY, typeString, { color = { c.r, c.g, c.b, c.a }, lines = session.numLines, particles = session.numLines, frequency = session.frequency, length = session.length, thickness = session.thickness, border = session.border, key = DISPEL_PREVIEW_KEY, frameLevel = Orbit.Constants.Levels.Border })
+                    ShowDispelGlow(session, slot)
                 end
             end
         end
@@ -560,6 +565,23 @@ function PA:StartDispels(owner, frames, cfg)
     if not dispelTicker then dispelTicker = C_Timer.NewTicker(1, DispelTick) end
 end
 
+-- Live-patch an active session's cfg and immediately re-show all visible glows so slider/color
+-- changes appear without waiting for the next 6s slot expiry.
+function PA:RefreshDispels(owner, cfg)
+    local session = dispelSessions[owner]
+    if not session then return end
+    session.colors = cfg.colors or session.colors
+    session.thickness = cfg.thickness or session.thickness
+    session.frequency = cfg.frequency or session.frequency
+    session.numLines = cfg.numLines or session.numLines
+    session.length = cfg.length or session.length
+    session.border = cfg.border
+    session.glowType = cfg.glowType or session.glowType
+    for _, slot in ipairs(session.slots) do
+        if slot.frame then ShowDispelGlow(session, slot) end
+    end
+end
+
 function PA:StopDispels(owner)
     local session = dispelSessions[owner]
     if session then
@@ -570,7 +592,7 @@ function PA:StopDispels(owner)
     dispelSessions[owner] = nil
 end
 
--- [ CONSOLIDATED START ]----------------------------------------------------------------------------
+-- [ CONSOLIDATED START ]-----------------------------------------------------------------------------
 -- desc = { frames, getHelpers, getHealth(i), getDead(i), healerSlots?, raidBuffKey?, dispelSettings? }
 function PA:StartAll(plugin, desc)
     if not enabledOwners[plugin] then return end

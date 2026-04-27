@@ -22,6 +22,15 @@ local DESAT_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     return c
 end)()
 
+-- ONCD_CURVE: remaining-percent → numeric 0/1 "is on cooldown" flag; secret-safe state derivation.
+local ONCD_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
+    local c = C_CurveUtil.CreateCurve()
+    c:AddPoint(0.0, 0)
+    c:AddPoint(0.001, 1)
+    c:AddPoint(1.0, 1)
+    return c
+end)()
+
 local GC = OrbitEngine.GlowController
 local Parser = Orbit.TooltipParser
 
@@ -157,16 +166,17 @@ function IconItem:Build(container, removeCallback)
 end
 
 -- [ UPDATE ] ----------------------------------------------------------------------------------------
--- Refresh texture, cooldown state, and visibility; matches old event-driven behaviour.
+-- Refresh texture, cooldown state, and visibility. Update helpers return a numeric state
+-- derived from curves (secret-safe); ApplyVisibilityAlpha consumes it.
 function IconItem:Update(icon)
-    if not icon.trackedId then icon:Hide(); return end
+    if not icon.trackedId then icon:Hide(); icon._visShown = nil; return end
 
-    local texture
+    local texture, state
 
     if icon.trackedType == "spell" then
-        texture = self:UpdateSpell(icon)
+        texture, state = self:UpdateSpell(icon)
     elseif icon.trackedType == "item" then
-        texture = self:UpdateItem(icon)
+        texture, state = self:UpdateItem(icon)
     end
 
     if not texture then
@@ -177,8 +187,12 @@ function IconItem:Update(icon)
         icon.ActiveCooldown:Clear()
         icon.ChargeText:Hide()
         if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
+        -- Placeholder bypasses visibility settings: force-show so users can see the unresolved icon.
+        icon._visShown = true
+        icon:Show()
+        return
     end
-    icon:Show()
+    self:ApplyVisibilityAlpha(icon, state or "ready")
 end
 
 -- [ SPELL UPDATE ] ----------------------------------------------------------------------------------
@@ -186,14 +200,13 @@ function IconItem:UpdateSpell(icon)
     if not IsSpellKnown(icon.trackedId) and not IsPlayerSpell(icon.trackedId) then
         local activeId = FindSpellOverrideByID(icon.trackedId)
         if activeId == icon.trackedId or (not IsSpellKnown(activeId) and not IsPlayerSpell(activeId)) then
-            icon:Hide()
-            return nil
+            return nil, nil
         end
     end
 
     local activeId = FindSpellOverrideByID(icon.trackedId) or icon.trackedId
     local texture = C_Spell.GetSpellTexture(activeId)
-    if not texture then return nil end
+    if not texture then return nil, nil end
     icon.Icon:SetTexture(texture)
 
     local cdInfo = C_Spell.GetSpellCooldown(activeId)
@@ -201,8 +214,9 @@ function IconItem:UpdateSpell(icon)
     local showGCDSwipe = icon._showGCDSwipe
     local chargeInfo = icon._isChargeSpell and C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
 
+    local state
     if chargeInfo then
-        self:UpdateChargeSpell(icon, activeId, chargeInfo, onGCD)
+        state = self:UpdateChargeSpell(icon, activeId, chargeInfo, onGCD)
     elseif onGCD and not showGCDSwipe then
         icon.Cooldown:Clear()
         icon.Cooldown:SetAlpha(1)
@@ -210,17 +224,18 @@ function IconItem:UpdateSpell(icon)
         icon.Icon:SetDesaturation(0)
         if icon.Cooldown.SetHideCountdownNumbers then icon.Cooldown:SetHideCountdownNumbers(false) end
         if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
+        state = "ready"
     else
-        self:UpdateNonChargeSpell(icon, activeId, cdInfo, onGCD)
+        state = self:UpdateNonChargeSpell(icon, activeId, cdInfo, onGCD)
     end
 
     self:UpdateSpellChargeText(icon, activeId, chargeInfo)
-    self:ApplyVisibilityAlpha(icon)
-    return texture
+    return texture, state
 end
 
 -- [ NON-CHARGE SPELL ] ------------------------------------------------------------------------------
 -- Phase-aware desat/swipe/glow via desatCurve/cdAlphaCurve and ActiveCooldown reverse swipe.
+-- Returns visibility state ("active"/"cooldown"/"ready") derived via ONCD_CURVE → numeric.
 function IconItem:UpdateNonChargeSpell(icon, activeId, cdInfo, onGCD)
     -- ignoreGCD excludes the GCD contribution from durObj; ignored on older clients.
     local durObj = C_Spell.GetSpellCooldownDuration(activeId, not icon._showGCDSwipe)
@@ -238,12 +253,12 @@ function IconItem:UpdateNonChargeSpell(icon, activeId, cdInfo, onGCD)
             icon.ActiveCooldown:Clear()
             if icon.Cooldown.SetHideCountdownNumbers then icon.Cooldown:SetHideCountdownNumbers(false) end
         end
-        -- Active glow tied to _activeGlowExpiry
         if icon._activeGlowExpiry then
             if GetTime() < icon._activeGlowExpiry then
                 if icon._activeGlowTypeName and icon._activeGlowOptions then
                     GC:Show(icon, ACTIVE_GLOW_KEY, icon._activeGlowTypeName, icon._activeGlowOptions)
                 end
+                return "active"
             else
                 GC:Hide(icon, ACTIVE_GLOW_KEY)
                 icon._activeGlowExpiry = nil
@@ -251,6 +266,10 @@ function IconItem:UpdateNonChargeSpell(icon, activeId, cdInfo, onGCD)
         else
             if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
         end
+        if onGCD then return "ready" end
+        local onCd = durObj:EvaluateRemainingPercent(ONCD_CURVE)
+        if issecretvalue(onCd) then return "ready" end
+        return onCd > 0.5 and "cooldown" or "ready"
     else
         icon.Cooldown:Clear()
         icon.Cooldown:SetAlpha(1)
@@ -258,13 +277,14 @@ function IconItem:UpdateNonChargeSpell(icon, activeId, cdInfo, onGCD)
         icon.Icon:SetDesaturation(0)
         if icon.Cooldown.SetHideCountdownNumbers then icon.Cooldown:SetHideCountdownNumbers(false) end
         if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
+        return "ready"
     end
 end
 
 -- [ CHARGE SPELL ] ----------------------------------------------------------------------------------
 -- Caches charges out of combat via issecretvalue; desaturates only when all charges consumed.
+-- Returns state: "active" during glow window, "cooldown" while recharging, "ready" otherwise.
 function IconItem:UpdateChargeSpell(icon, activeId, chargeInfo, onGCD)
-    -- Cache charge state out of combat
     if not issecretvalue(chargeInfo.currentCharges) then
         icon._trackedCharges = chargeInfo.currentCharges
         icon._knownRechargeDuration = chargeInfo.cooldownDuration
@@ -285,7 +305,6 @@ function IconItem:UpdateChargeSpell(icon, activeId, chargeInfo, onGCD)
     icon.Icon:SetDesaturation(allConsumed and 1 or 0)
     icon.Cooldown:SetAlpha(1)
 
-    -- Active glow for charge spells via _activeGlowExpiry
     if icon._activeDuration and icon._activeGlowExpiry and GetTime() < icon._activeGlowExpiry then
         icon.Cooldown:Clear()
         local castTime = icon._activeGlowExpiry - icon._activeDuration
@@ -293,11 +312,12 @@ function IconItem:UpdateChargeSpell(icon, activeId, chargeInfo, onGCD)
         if icon._activeGlowTypeName and icon._activeGlowOptions then
             GC:Show(icon, ACTIVE_GLOW_KEY, icon._activeGlowTypeName, icon._activeGlowOptions)
         end
-    else
-        icon.ActiveCooldown:Clear()
-        if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
-        if icon._activeGlowExpiry and GetTime() >= icon._activeGlowExpiry then icon._activeGlowExpiry = nil end
+        return "active"
     end
+    icon.ActiveCooldown:Clear()
+    if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
+    if icon._activeGlowExpiry and GetTime() >= icon._activeGlowExpiry then icon._activeGlowExpiry = nil end
+    return chargeDurObj and "cooldown" or "ready"
 end
 
 -- [ ITEM UPDATE ] -----------------------------------------------------------------------------------
@@ -306,11 +326,10 @@ function IconItem:UpdateItem(icon)
     local isUsable = usable or noMana or C_Item.GetItemCount(icon.trackedId, false, true) > 0
 
     local texture = C_Item.GetItemIconByID(icon.trackedId)
-    if not texture then return nil end
+    if not texture then return nil, nil end
     icon.Icon:SetTexture(texture)
 
     if not isUsable then
-        -- Non-usable item: desaturated with "0" count
         icon.Cooldown:Clear()
         icon.Cooldown:SetAlpha(1)
         icon.ActiveCooldown:Clear()
@@ -318,14 +337,14 @@ function IconItem:UpdateItem(icon)
         icon.ChargeText:SetText("0")
         if not icon._chargeTextDisabled then icon.ChargeText:Show() end
         if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
-        self:ApplyVisibilityAlpha(icon)
-        return texture
+        return texture, "ready"
     end
 
+    local state
     if icon._useSpellId then
-        self:UpdateItemWithSpellId(icon)
+        state = self:UpdateItemWithSpellId(icon)
     else
-        self:UpdateItemDirect(icon)
+        state = self:UpdateItemDirect(icon)
     end
 
     local count = C_Item.GetItemCount(icon.trackedId, false, true)
@@ -335,12 +354,12 @@ function IconItem:UpdateItem(icon)
     else
         icon.ChargeText:Hide()
     end
-    self:ApplyVisibilityAlpha(icon)
-    return texture
+    return texture, state
 end
 
 -- [ ITEM WITH SPELL ID ] ----------------------------------------------------------------------------
--- Prefers GetItemCooldown; falls back to GetSpellCooldownDuration for in-combat access.
+-- Prefers GetItemCooldown (numeric); falls back to GetSpellCooldownDuration for in-combat access.
+-- Returns "active"/"cooldown"/"ready" state.
 function IconItem:UpdateItemWithSpellId(icon)
     local start, duration = C_Container.GetItemCooldown(icon.trackedId)
     if start and duration and duration > 1.5 then
@@ -354,34 +373,42 @@ function IconItem:UpdateItemWithSpellId(icon)
                 if icon._activeGlowTypeName and icon._activeGlowOptions then
                     GC:Show(icon, ACTIVE_GLOW_KEY, icon._activeGlowTypeName, icon._activeGlowOptions)
                 end
+                return "active"
             else
                 icon.Icon:SetDesaturation(1)
                 icon.Cooldown:SetAlpha(1)
                 icon.ActiveCooldown:Clear()
                 if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
+                return "cooldown"
             end
         else
             icon.Icon:SetDesaturation(1)
             icon.Cooldown:SetAlpha(1)
             icon.ActiveCooldown:Clear()
+            return "cooldown"
         end
     else
-        -- Fallback to spell cooldown DurationObject (combat access for Healthstones etc)
         local durObj = C_Spell.GetSpellCooldownDuration(icon._useSpellId)
         if durObj then
             icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
             icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(icon._desatCurve or DESAT_CURVE))
-        else
-            icon.Cooldown:Clear()
-            icon.Cooldown:SetAlpha(1)
-            icon.Icon:SetDesaturation(0)
+            icon.ActiveCooldown:Clear()
+            if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
+            local onCd = durObj:EvaluateRemainingPercent(ONCD_CURVE)
+            if issecretvalue(onCd) then return "ready" end
+            return onCd > 0.5 and "cooldown" or "ready"
         end
+        icon.Cooldown:Clear()
+        icon.Cooldown:SetAlpha(1)
+        icon.Icon:SetDesaturation(0)
         icon.ActiveCooldown:Clear()
         if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
+        return "ready"
     end
 end
 
 -- [ ITEM WITHOUT SPELL ID ] -------------------------------------------------------------------------
+-- Pure numeric path via C_Container.GetItemCooldown. Returns "active"/"cooldown"/"ready" state.
 function IconItem:UpdateItemDirect(icon)
     local start, duration = C_Container.GetItemCooldown(icon.trackedId)
     if start and duration and duration > 0 then
@@ -395,24 +422,27 @@ function IconItem:UpdateItemDirect(icon)
                 if icon._activeGlowTypeName and icon._activeGlowOptions then
                     GC:Show(icon, ACTIVE_GLOW_KEY, icon._activeGlowTypeName, icon._activeGlowOptions)
                 end
+                return "active"
             else
                 icon.Icon:SetDesaturation(1)
                 icon.Cooldown:SetAlpha(1)
                 icon.ActiveCooldown:Clear()
                 if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
+                return "cooldown"
             end
         else
             icon.Icon:SetDesaturation(1)
             icon.Cooldown:SetAlpha(1)
             icon.ActiveCooldown:Clear()
+            return "cooldown"
         end
-    else
-        icon.Cooldown:Clear()
-        icon.Cooldown:SetAlpha(1)
-        icon.ActiveCooldown:Clear()
-        icon.Icon:SetDesaturation(0)
-        if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
     end
+    icon.Cooldown:Clear()
+    icon.Cooldown:SetAlpha(1)
+    icon.ActiveCooldown:Clear()
+    icon.Icon:SetDesaturation(0)
+    if GC:IsActive(icon, ACTIVE_GLOW_KEY) then GC:Hide(icon, ACTIVE_GLOW_KEY) end
+    return "ready"
 end
 
 -- [ CHARGE TEXT ] -----------------------------------------------------------------------------------
@@ -428,31 +458,17 @@ function IconItem:UpdateSpellChargeText(icon, spellId, chargeInfo)
     end
 end
 
--- [ VISIBILITY ALPHA ] ------------------------------------------------------------------------------
-function IconItem:ApplyVisibilityAlpha(icon)
-    local isReady = not icon._activeGlowExpiry and not self:IsOnCooldown(icon)
-    local isActive = icon._activeGlowExpiry and GetTime() < icon._activeGlowExpiry
-    local isOnCd = not isReady and not isActive
-    if icon._hideOnCooldown and isOnCd then
-        icon:SetAlpha(0)
-    elseif icon._hideOnAvailable and isReady then
-        icon:SetAlpha(0)
-    else
-        icon:SetAlpha(1)
-    end
-end
-
--- [ COOLDOWN STATE CHECK ] --------------------------------------------------------------------------
-function IconItem:IsOnCooldown(icon)
-    if icon.trackedType == "spell" then
-        local activeId = FindSpellOverrideByID(icon.trackedId) or icon.trackedId
-        local cdInfo = C_Spell.GetSpellCooldown(activeId)
-        return cdInfo and cdInfo.isActive and not cdInfo.isOnGCD
-    elseif icon.trackedType == "item" then
-        local start, duration = C_Container.GetItemCooldown(icon.trackedId)
-        return start and duration and duration > 0
-    end
-    return false
+-- [ VISIBILITY ] ------------------------------------------------------------------------------------
+-- SetShown not SetAlpha — matches TrackedBar. Debounced via _visShown so the OnUpdate poll is a
+-- no-op when state hasn't changed; state is derived secret-safely by the update helpers.
+function IconItem:ApplyVisibilityAlpha(icon, state)
+    local hide = (icon._hideOnCooldown and state == "cooldown")
+              or (icon._hideOnAvailable and state == "ready")
+    if hide and (Orbit:IsEditMode() or GetCursorInfo()) then hide = false end
+    local target = not hide
+    if icon._visShown == target then return end
+    icon._visShown = target
+    icon:SetShown(target)
 end
 
 -- [ DROP HIGHLIGHT ] --------------------------------------------------------------------------------

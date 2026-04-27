@@ -1,4 +1,4 @@
--- [ ORBIT SMART GUIDES ]----------------------------------------------------------------------------
+-- [ ORBIT SMART GUIDES ]-----------------------------------------------------------------------------
 -- Visual snap feedback guides for component editing. Shows lines when snapping to edges/center.
 
 local _, Orbit = ...
@@ -7,8 +7,7 @@ local Engine = Orbit.Engine
 Engine.SmartGuides = {}
 local SmartGuides = Engine.SmartGuides
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local GUIDE_COLORS = {
     LEFT   = { 1.0, 0.55, 0.15, 0.9 },
     RIGHT  = { 0.8, 0.4, 1.0, 0.9 },
@@ -18,8 +17,7 @@ local GUIDE_COLORS = {
 }
 local GUIDE_THICKNESS = 1
 
--- [ CREATE ]----------------------------------------------------------------------------------------
-
+-- [ CREATE ]-----------------------------------------------------------------------------------------
 function SmartGuides:Create(container)
     local guideLevel = Orbit.Constants.Levels.SmartGuides
 
@@ -38,8 +36,7 @@ function SmartGuides:Create(container)
     return guides
 end
 
--- [ UPDATE ]----------------------------------------------------------------------------------------
-
+-- [ UPDATE ]-----------------------------------------------------------------------------------------
 function SmartGuides:Update(guides, snapX, snapY, parentW, parentH)
     if snapX then
         guides.vLine:SetColorTexture(unpack(GUIDE_COLORS[snapX] or GUIDE_COLORS.CENTER))
@@ -62,8 +59,7 @@ function SmartGuides:Update(guides, snapX, snapY, parentW, parentH)
     end
 end
 
--- [ HIDE ALL ]--------------------------------------------------------------------------------------
-
+-- [ HIDE ALL ]---------------------------------------------------------------------------------------
 function SmartGuides:Hide(guides)
     if not guides then return end
     guides.vLine:Hide()

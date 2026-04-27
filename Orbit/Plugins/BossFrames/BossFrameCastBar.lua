@@ -108,7 +108,7 @@ function CB:Create(parent, bossIndex, plugin)
     return container
 end
 
--- [ STANDALONE EVENT-DRIVEN CAST BAR ]--------------------------------------------------------------
+-- [ STANDALONE EVENT-DRIVEN CAST BAR ]---------------------------------------------------------------
 local TIMER_THROTTLE_INTERVAL = 1 / 30
 local INTERRUPT_FLASH_DURATION = Orbit.Constants.Timing.FlashDuration
 
@@ -300,7 +300,11 @@ function CB:SetupHooks(castBar, unit)
 
     castBar:SetScript("OnEvent", function(_, event)
         local handler = dispatch[event]
-        if handler then handler() end
+        if not handler then return end
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
+        handler()
+        if p then p:End(plugin, event, s) end
     end)
 
     -- Timer text only (bar fill is engine-driven via SetTimerDuration); skip when the curve eval comes back secret.
@@ -311,11 +315,14 @@ function CB:SetupHooks(castBar, unit)
         self.timerThrottle = 0
         if not self.Timer or not self.Timer:IsShown() then return end
         if not self.durationObj or not self.timerSecondsCurve then return end
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
         local remaining = self.durationObj:EvaluateRemainingPercent(self.timerSecondsCurve)
         if not issecretvalue(remaining) and type(remaining) == "number" then
             if remaining < 0 then remaining = 0 end
             self.Timer:SetFormattedText("%.1f", remaining)
         end
+        if p then p:End(plugin, "OnUpdate", s) end
     end)
 end
 

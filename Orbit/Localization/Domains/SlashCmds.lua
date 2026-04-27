@@ -46,6 +46,11 @@ local LOCALE_STRINGS = {
         CMD_PORTAL_SCAN_DONE     = "Portal: M+ cache cleared and dock refreshed!",
         CMD_PORTAL_HEADER        = "|cFF00FFFFOrbit Portal Commands:|r",
         CMD_PORTAL_HELP_SCAN     = "  |cFF00FFFF/orbit portal scan|r \226\128\148 Clear M+ cache and refresh dock",
+        CMD_WHATSNEW_TITLE       = "|cFFFFD100Orbit: What's New|r",
+        CMD_WHATSNEW_THANKS      = "Thanks for your support! - MoONSHO7",
+        CMD_DISCORD_TITLE        = "|cFFFFD100Discord|r",
+        CMD_DISCORD_BODY         = "Join the discord to request features, report bugs\nor ask for help from the community.",
+        CMD_OPTIONS_BUTTON_LABEL = "Orbit Options",
     },
     deDE = {
         CMD_HARD_RESET_WARNING   = "|cFFFF0000GEFAHR|r\n\nDu bist dabei, Orbit auf WERKSEINSTELLUNGEN zurückzusetzen.\n\nAlle Profile, Einstellungen und Daten werden gelöscht.\nDas UI wird sofort neu geladen.\n\nBist du sicher?",

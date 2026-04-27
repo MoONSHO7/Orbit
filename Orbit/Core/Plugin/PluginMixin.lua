@@ -1,7 +1,7 @@
 local _, addonTable = ...
 local Orbit = addonTable
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULT_LAYOUT_ID = "Default"
 
 local function SafeTablePath(tbl, ...)
@@ -12,7 +12,7 @@ local function SafeTablePath(tbl, ...)
     return tbl
 end
 
--- [ PLUGIN MIXIN ]----------------------------------------------------------------------------------
+-- [ PLUGIN MIXIN ]-----------------------------------------------------------------------------------
 ---@class OrbitPluginMixin
 Orbit.PluginMixin = {}
 
@@ -22,7 +22,7 @@ function Orbit.PluginMixin:OnLoad() end
 
 function Orbit.PluginMixin:AddSettings(dialog, systemFrame) end
 
--- [ STANDARD EVENTS ]-------------------------------------------------------------------------------
+-- [ STANDARD EVENTS ]--------------------------------------------------------------------------------
 function Orbit.PluginMixin:RegisterStandardEvents()
     if not self.ApplySettings then
         return
@@ -65,8 +65,7 @@ function Orbit.PluginMixin:RegisterStandardEvents()
     end
 end
 
--- [ MANAGED UPDATES & TIMERS ]----------------------------------------------------------------------
-
+-- [ MANAGED UPDATES & TIMERS ]-----------------------------------------------------------------------
 function Orbit.PluginMixin:RegisterUpdate(callback)
     if not self._updateFrame then
         self._updateFrame = CreateFrame("Frame")
@@ -102,7 +101,7 @@ function Orbit.PluginMixin:NewTicker(interval, callback, iterations)
     end, iterations)
 end
 
--- [ CANVAS MODE ]-----------------------------------------------------------------------------------
+-- [ CANVAS MODE ]------------------------------------------------------------------------------------
 function Orbit.PluginMixin:_ActiveTransaction()
     local Txn = Orbit.Engine.CanvasMode and Orbit.Engine.CanvasMode.Transaction
     if Txn and Txn:IsActive() and Txn:GetPlugin() == self then return Txn end
@@ -159,7 +158,7 @@ function Orbit:ReadPluginSetting(system, systemIndex, key)
     return node and node[key]
 end
 
--- [ SETTINGS ]--------------------------------------------------------------------------------------
+-- [ SETTINGS ]---------------------------------------------------------------------------------------
 function Orbit.PluginMixin:GetSetting(systemIndex, key)
     systemIndex = systemIndex or 1
     local layoutID = self:GetLayoutID()
@@ -249,7 +248,7 @@ function Orbit.PluginMixin:SetSpecData(systemIndex, key, value)
     store[specID][systemIndex][key] = value
 end
 
--- [ VISIBILITY ]------------------------------------------------------------------------------------
+-- [ VISIBILITY ]-------------------------------------------------------------------------------------
 local VISIBILITY_EVENTS = { "PET_BATTLE_OPENING_START", "PET_BATTLE_CLOSE", "PLAYER_MOUNT_DISPLAY_CHANGED", "ZONE_CHANGED_NEW_AREA", "MOUNTED_VISIBILITY_CHANGED" }
 local VISIBILITY_UNIT_EVENTS = { "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE" }
 

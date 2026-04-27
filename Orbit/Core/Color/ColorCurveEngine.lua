@@ -1,4 +1,4 @@
--- [ ORBIT COLOR CURVE ENGINE ]----------------------------------------------------------------------
+-- [ ORBIT COLOR CURVE ENGINE ]-----------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local ipairs, type = ipairs, type
@@ -12,7 +12,7 @@ local CC = Engine.ClassColor
 local nativeCurveCache = setmetatable({}, { __mode = "v" })
 local unitCurveCache = setmetatable({}, { __mode = "k" })
 
--- [ SORTED PIN CACHE ]------------------------------------------------------------------------------
+-- [ SORTED PIN CACHE ]-------------------------------------------------------------------------------
 local function GetSortedPins(curveData)
     if curveData._sorted then return curveData._sorted end
     local sorted = {}
@@ -135,7 +135,7 @@ function CCE:ToNativeColorCurveForUnit(curveData, unit)
     return curve
 end
 
--- [ NATIVE COLORCURVE CONVERSION ]------------------------------------------------------------------
+-- [ NATIVE COLORCURVE CONVERSION ]-------------------------------------------------------------------
 function CCE:ToNativeColorCurve(curveData)
     if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
     if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end

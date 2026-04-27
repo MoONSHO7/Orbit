@@ -4,7 +4,7 @@ local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
     defaults = {
         CastBarColor = { r = 1, g = 0.7, b = 0 },
@@ -30,7 +30,7 @@ local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
 })
 Plugin.canvasMode = true
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local INTERRUPT_FLASH_DURATION = Orbit.Constants.Timing.FlashDuration
 local EMPOWER_STAGE_COLORS = Orbit.Colors.EmpowerStage
 local CAST_CANCEL_THRESHOLD = 0.15
@@ -74,7 +74,7 @@ local CHANNEL_SPELLS = {
     [356995] = 4, -- Disintegrate
 }
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function DisableBlizzardCastBar()
     if not PlayerCastingBarFrame then return end
     OrbitEngine.NativeFrame:Disable(PlayerCastingBarFrame)
@@ -171,7 +171,7 @@ local function SetupChannelTicks(plugin, bar, safeSpellID)
     end
 end
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
     if not CastBar then
         return
@@ -217,11 +217,11 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
                 self:ApplySettings(systemFrame)
             end,
         })
-        table.insert(schema.controls, { type = "checkbox", key = "ShowLatency", label = L.PLU_CAST_SHOW_LATENCY, default = true })
         table.insert(schema.controls, {
             type = "slider", key = "TickWidth", label = L.PLU_CAST_TICK_WIDTH,
             min = 1, max = 5, step = 1, default = 1,
         })
+        table.insert(schema.controls, { type = "checkbox", key = "ShowLatency", label = L.PLU_CAST_SHOW_LATENCY, default = true })
     elseif currentTab == L.PLU_CAST_TAB_COLOUR then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "CastBarColorCurve", label = L.PLU_CAST_NORMAL,
@@ -247,7 +247,7 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     -- Create frame ONLY when plugin is enabled (OnLoad is only called for enabled plugins)
     CastBar = CreateFrame("StatusBar", "OrbitCastBar", UIParent)
@@ -283,7 +283,8 @@ function Plugin:OnLoad()
 
     -- Attach to Frame system
     -- Configure frame options: Only Y stacking, sync dimensions/spacing scale
-    CastBar.anchorOptions = { horizontal = false, vertical = true, syncScale = true, syncDimensions = true, mergeBorders = { x = false, y = true } }
+    CastBar.anchorOptions = { horizontal = false, vertical = true, mergeBorders = { x = false, y = true } }
+    CastBar.orbitWidthSync = true
     CastBar.orbitResizeBounds = { minW = 100, maxW = 600, minH = 5, maxH = 40, widthKey = "CastBarWidth", heightKey = "CastBarHeight" }
     OrbitEngine.Frame:AttachSettingsListener(CastBar, self, 1)
 
@@ -387,12 +388,18 @@ function Plugin:OnLoad()
 
     -- Event Handler
     CastBar:SetScript("OnEvent", function(frame, event, unit, castGUID, spellID)
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
         self:OnCastEvent(event, unit, castGUID, spellID)
+        if p then p:End(self, event, s) end
     end)
 
     -- OnUpdate for progress
     CastBar:SetScript("OnUpdate", function(frame, elapsed)
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
         self:OnUpdate(elapsed)
+        if p then p:End(self, "OnUpdate", s) end
     end)
 
     -- Edit Mode exits: hide bar if not casting
@@ -424,7 +431,7 @@ function Plugin:OnLoad()
     Orbit.EventBus:On("MOUNTED_VISIBILITY_CHANGED", function() self:UpdateVisibility() end, self)
 end
 
--- [ MOUNTED VISIBILITY ]----------------------------------------------------------------------------
+-- [ MOUNTED VISIBILITY ]-----------------------------------------------------------------------------
 function Plugin:UpdateVisibility()
     local bar = self.CastBar
     if not bar then return end
@@ -440,7 +447,6 @@ function Plugin:UpdateVisibility()
 end
 
 -- [ SKINNING LOGIC ] --------------------------------------------------------------------------------
-
 function Plugin:OnCastEvent(event, unit, castGUID, spellID)
     if unit ~= "player" then
         return
@@ -839,8 +845,7 @@ function Plugin:ApplySettings(systemFrame)
         bar:SetScale(scale / SCALE_DIVISOR)
     end
 
-    -- Canvas Mode: visibility, overrides, and position restore
-    local savedPositions = self:GetComponentPositions(systemIndex)
+    local savedPositions = self:NormalizeCanvasComponentPositions(self:GetComponentPositions(systemIndex), systemIndex) or {}
 
     if bar.Text then
         if not OrbitEngine.ComponentDrag:IsDisabled(bar.Text) then
@@ -886,6 +891,23 @@ function Plugin:ApplySettings(systemFrame)
     if bar.preview or Orbit:IsEditMode() then
         self:ShowPreview()
     end
+end
+
+-- Canvas writes Text/Timer under CastBar.subComponents; the live frame reads them at top level.
+function Plugin:NormalizeCanvasComponentPositions(positions, systemIndex)
+    if not positions then return positions end
+    local castBar = positions.CastBar
+    local subs = castBar and castBar.subComponents
+    if not subs then return positions end
+    if subs.Text then
+        positions.Text = positions.Text or {}
+        for k, v in pairs(subs.Text) do positions.Text[k] = v end
+    end
+    if subs.Timer then
+        positions.Timer = positions.Timer or {}
+        for k, v in pairs(subs.Timer) do positions.Timer[k] = v end
+    end
+    return positions
 end
 
 function Plugin:ApplyColor()

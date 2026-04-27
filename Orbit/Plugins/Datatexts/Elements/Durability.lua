@@ -2,6 +2,7 @@
 -- Equipment durability datatext: shows lowest item durability percentage
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local DURABILITY_LOW = 25
@@ -28,7 +29,7 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Equipment Durability", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_DURABILITY_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     for _, slot in ipairs(EQUIP_SLOTS) do
         local id = GetInventorySlotInfo(slot)

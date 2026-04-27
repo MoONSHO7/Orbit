@@ -1,4 +1,4 @@
--- [ CANVAS MODE - CYCLING ATLAS CREATOR ]-----------------------------------------------------------
+-- [ CANVAS MODE - CYCLING ATLAS CREATOR ]------------------------------------------------------------
 -- Crossfading atlas preview for grouped/cycling icon components in Canvas Mode.
 
 local _, addonTable = ...
@@ -7,8 +7,7 @@ local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local CC = CanvasMode.CreatorConstants
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local HOLD_DURATION = 2.0
 local FADE_DURATION = 0.5
 
@@ -61,8 +60,7 @@ local HEADER_LEADER_ATLASES = {
     { atlas = "GO-icon-Header-Assist-Available" },
 }
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function CreateFadeGroup(tex, fromAlpha, toAlpha)
     local group = tex:CreateAnimationGroup()
     local anim = group:CreateAnimation("Alpha")
@@ -73,8 +71,7 @@ local function CreateFadeGroup(tex, fromAlpha, toAlpha)
     return group
 end
 
--- [ CREATOR ]---------------------------------------------------------------------------------------
-
+-- [ CREATOR ]----------------------------------------------------------------------------------------
 local function Create(container, preview, key, source, data)
     local atlases = CYCLING_ATLASES[key]
     local overrides = data and data.overrides

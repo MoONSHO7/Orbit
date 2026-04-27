@@ -1,5 +1,4 @@
--- [ UNIT BUTTON ]-----------------------------------------------------------------------------------
-
+-- [ UNIT BUTTON ]------------------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
@@ -8,8 +7,7 @@ local Constants = Orbit.Constants
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local SMOOTH_ANIM = Enum.StatusBarInterpolation.ExponentialEaseOut
 local DAMAGE_BAR_DELAY = 0.2
 local DAMAGE_COLOR = { r = 0.8, g = 0.1, b = 0.1, a = 0.6 }
@@ -28,8 +26,7 @@ local OVERLAY_ALPHA = 0.3
 local NECROTIC_PATH = "Interface\\AddOns\\Orbit\\Core\\Assets\\Statusbar\\necrotic.tga"
 local WHITE_TEXTURE = "Interface\\Buttons\\WHITE8x8"
 
--- [ COMPOSE MIXIN ]---------------------------------------------------------------------------------
-
+-- [ COMPOSE MIXIN ]----------------------------------------------------------------------------------
 local UnitButtonMixin = {}
 
 if UnitButton.CoreMixin then Mixin(UnitButtonMixin, UnitButton.CoreMixin) end
@@ -41,8 +38,7 @@ if UnitButton.PortraitMixin then Mixin(UnitButtonMixin, UnitButton.PortraitMixin
 
 UnitButton.Mixin = UnitButtonMixin
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function CreatePredictionBar(parent, healthBar, color)
     local bar = CreateFrame("StatusBar", nil, healthBar)
     bar:SetStatusBarTexture(WHITE_TEXTURE)
@@ -69,8 +65,7 @@ local function AttachComponentDrag(f, component, key)
     })
 end
 
--- [ FACTORY ]---------------------------------------------------------------------------------------
-
+-- [ FACTORY ]----------------------------------------------------------------------------------------
 function UnitButton:Create(parent, unit, name, skipEventRegistration)
     local f = CreateFrame("Button", name, parent, "SecureUnitButtonTemplate,BackdropTemplate")
     if Engine.Pixel then Engine.Pixel:Enforce(f) end

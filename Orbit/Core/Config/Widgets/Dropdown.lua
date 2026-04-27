@@ -5,7 +5,7 @@ local Layout = Engine.Layout
 
 local MAX_TEXT_LENGTH = 22
 
--- [ DROPDOWN WIDGET ]-------------------------------------------------------------------------------
+-- [ DROPDOWN WIDGET ]--------------------------------------------------------------------------------
 function Layout:CreateDropdown(parent, label, options, initialValue, callback, valueCheckboxCfg, valueColorCfg)
     -- Pool retrieval
     if not self.dropdownPool then

@@ -2,6 +2,7 @@
 -- Location datatext: current zone name with PvP type coloring
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local PVP_COLORS = {
@@ -31,7 +32,7 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Location", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_LOCATION_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     GameTooltip:AddDoubleLine("Zone:", GetZoneText() or "Unknown", 1, 1, 1, 1, 1, 1)
     local subZone = GetSubZoneText()
@@ -55,7 +56,7 @@ function W:ShowTooltip()
             if locked then
                 if not hasLockouts then
                     GameTooltip:AddLine(" ")
-                    GameTooltip:AddLine("Lockouts", 1, 0.82, 0)
+                    GameTooltip:AddLine(L.PLU_DT_LOCATION_LOCKOUTS, 1, 0.82, 0)
                     hasLockouts = true
                 end
                 local progressMsg = (numEncounters and numEncounters > 0) and string.format("%d/%d", encounterProgress or 0, numEncounters) or "Defeated"
@@ -69,7 +70,7 @@ function W:ShowTooltip()
             if name then
                 if not hasLockouts then
                     GameTooltip:AddLine(" ")
-                    GameTooltip:AddLine("Lockouts", 1, 0.82, 0)
+                    GameTooltip:AddLine(L.PLU_DT_LOCATION_LOCKOUTS, 1, 0.82, 0)
                     hasLockouts = true
                 end
                 GameTooltip:AddDoubleLine(name, "Defeated", 1, 1, 1, 1, 0.2, 0.2)
@@ -78,7 +79,7 @@ function W:ShowTooltip()
     end
 
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Click", "World Map", 0.7, 0.7, 0.7, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_HINT_CLICK, L.PLU_DT_LOCATION_WORLD_MAP, 0.7, 0.7, 0.7, 1, 1, 1)
     GameTooltip:Show()
 end
 
@@ -87,7 +88,7 @@ function W:Init()
     self:SetUpdateFunc(function() self:Update() end)
     self:SetTooltipFunc(function() self:ShowTooltip() end)
     self:SetClickFunc(function() ToggleWorldMap() end)
-    self.leftClickHint = "World Map"
+    self.leftClickHint = L.PLU_DT_LOCATION_WORLD_MAP
     self:RegisterEvent("ZONE_CHANGED")
     self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     self:RegisterEvent("ZONE_CHANGED_INDOORS")

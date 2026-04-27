@@ -8,12 +8,10 @@ local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
 
 -- [ MODULE NAMESPACE ] ------------------------------------------------------------------------------
-
 OrbitEngine.CanvasMode = OrbitEngine.CanvasMode or {}
 local CanvasMode = OrbitEngine.CanvasMode
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
-
 CanvasMode.Constants = {
     -- Dialog dimensions
     DIALOG_CENTER_OFFSET_Y = 50,
@@ -50,9 +48,27 @@ CanvasMode.Constants = {
     RESIZE_OFFSET_X = 5,
     RESIZE_OFFSET_Y = 4,
 
-    -- Filter tabs
-    FILTER_TAB_HEIGHT = 24,
-    FILTER_TAB_SPACING = 4,
+    VIEWPORT_INSET_LEFT = 10,
+    VIEWPORT_INSET_RIGHT = 6,
+    VIEWPORT_INSET_TOP = 27,
+    VIEWPORT_CLIP_INSET = 4,
+
+    INSET_RECESS_TOP = 1,
+    INSET_RECESS_BOTTOM = 2,
+    BORDER_FRAME_OFFSET_LEFT = -1,
+    BORDER_FRAME_OFFSET_TOP = 4,
+    BORDER_FRAME_OFFSET_RIGHT = 2,
+    BORDER_FRAME_OFFSET_BOTTOM = -3,
+
+    FILTER_TAB_INSET = 8,
+    FILTER_TAB_SPACING = 12,
+    FILTER_TAB_BAR_PAD = 12,
+
+    SYNC_TOGGLE_SIZE = 26,
+    SYNC_TOGGLE_OFFSET_X = -8,
+    SYNC_TOGGLE_OFFSET_Y = -4,
+    ZOOM_INDICATOR_OFFSET_X = -10,
+    ZOOM_INDICATOR_OFFSET_Y = 8,
 
     -- Dock (horizontal bar at bottom of viewport)
     DOCK_HEIGHT = 40,
@@ -61,8 +77,7 @@ CanvasMode.Constants = {
     DOCK_PADDING = 8,
     DOCK_Y_OFFSET = 10,
 
-    -- Zoom
-    DEFAULT_ZOOM = 2.0,
+    DEFAULT_ZOOM = 2.5,
     MIN_ZOOM = 0.5,
     MAX_ZOOM = 5.0,
     ZOOM_STEP = 0.25,
@@ -75,7 +90,6 @@ CanvasMode.Constants = {
 local C = CanvasMode.Constants
 
 -- [ CREATE DIALOG FRAME ] ---------------------------------------------------------------------------
-
 local Dialog = CreateFrame("Frame", "OrbitCanvasModeDialog", UIParent)
 Dialog:SetSize(C.DIALOG_WIDTH, C.DIALOG_MIN_HEIGHT)
 Dialog:SetPoint("CENTER", UIParent, "CENTER", 0, C.DIALOG_CENTER_OFFSET_Y)
@@ -189,5 +203,4 @@ Dialog.previewComponents = {}
 Dialog.activeFilter = "All"
 
 -- [ EXPORT ] ----------------------------------------------------------------------------------------
-
 CanvasMode.Dialog = Dialog

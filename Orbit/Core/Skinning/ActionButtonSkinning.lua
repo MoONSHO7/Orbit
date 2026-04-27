@@ -1,4 +1,4 @@
--- [ ORBIT ACTION BUTTON SKINNING ]------------------------------------------------------------------
+-- [ ORBIT ACTION BUTTON SKINNING ]-------------------------------------------------------------------
 local _, Orbit = ...
 local Skin = Orbit.Skin
 local Icons = Skin.Icons

@@ -2,6 +2,7 @@
 -- Quest datatext: active quest count and tracker
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local MAX_QUESTS = 35
@@ -27,7 +28,7 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Quest Log", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_QUEST_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     local numEntries = C_QuestLog.GetNumQuestLogEntries()
     local lastHeader = nil
@@ -52,7 +53,7 @@ function W:ShowTooltip()
         end
     end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Click", "Quest Log", 0.7, 0.7, 0.7, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_HINT_CLICK, L.PLU_DT_QUEST_TITLE, 0.7, 0.7, 0.7, 1, 1, 1)
     GameTooltip:Show()
 end
 
@@ -61,7 +62,7 @@ function W:Init()
     self:SetUpdateFunc(function() self:Update() end)
     self:SetTooltipFunc(function() self:ShowTooltip() end)
     self:SetClickFunc(function() ToggleQuestLog() end)
-    self.leftClickHint = "Quest Log"
+    self.leftClickHint = L.PLU_DT_QUEST_TITLE
     self:RegisterEvent("QUEST_LOG_UPDATE")
     self:SetCategory("GAMEPLAY")
     self:Register()

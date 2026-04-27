@@ -1,4 +1,4 @@
--- [ INDEX MANAGER ]---------------------------------------------------------------------------------
+-- [ INDEX MANAGER ]----------------------------------------------------------------------------------
 local _, Orbit = ...
 local IndexManager = {}
 Orbit.Spotlight.Index.IndexManager = IndexManager
@@ -6,26 +6,20 @@ Orbit.Spotlight.Index.IndexManager = IndexManager
 local Sources = Orbit.Spotlight.Index.Sources
 local Async = Orbit.Async
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEBOUNCE_KEY = "Spotlight.IndexInvalidate"
 local DEBOUNCE_DELAY = 0.5
--- Bump whenever the schema of cached entries changes so stale serialised entries don't shadow new fields.
--- v3 — mount capability tags reworked: "flying" is now the default tag, with explicit overrides only for
--- ground / aquatic / ridealong. Dragonriding-capable mounts get an additional "skyriding" sub-tag.
--- v4 — heirlooms no longer carry the `passive` flag (Hide Passives filter is now spellbook-only); the
--- passive toggle shouldn't retroactively hide heirlooms that were tagged under the old schema.
--- v5 — mounts/pets now carry `favorite` and heirlooms carry `quality`; previously-serialised entries
--- missing those fields would silently deprioritise favourites and lose quality-tinted labels.
-local CACHE_VERSION = 5
+-- Bump when the cached entry schema changes so stale serialised entries are discarded.
+local CACHE_VERSION = 6
 
--- [ STATE ]-----------------------------------------------------------------------------------------
+-- [ STATE ]------------------------------------------------------------------------------------------
 IndexManager._master = {}
 IndexManager._sourceDirty = {}
 IndexManager._eventFrame = nil
 IndexManager._registered = false
 IndexManager._built = false
 
--- [ CACHE ]-----------------------------------------------------------------------------------------
+-- [ CACHE ]------------------------------------------------------------------------------------------
 local function GetCacheStore()
     local acct = Orbit.db.AccountSettings
     acct.SpotlightIndex = acct.SpotlightIndex or { version = CACHE_VERSION, sources = {} }
@@ -43,7 +37,7 @@ local function SaveCachedSource(name, entries, signature)
     GetCacheStore()[name] = { entries = entries, signature = signature }
 end
 
--- [ EVENTS ]----------------------------------------------------------------------------------------
+-- [ EVENTS ]-----------------------------------------------------------------------------------------
 local function OnEvent(_, event)
     local names = {}
     for name, source in pairs(Sources) do
@@ -83,8 +77,7 @@ function IndexManager:UnregisterEvents()
     if self._eventFrame then self._eventFrame:UnregisterAllEvents() end
 end
 
--- [ BUILD ]-----------------------------------------------------------------------------------------
--- Persistent sources only write to cache when their signature changes; volatile ones always rebuild.
+-- [ BUILD ]------------------------------------------------------------------------------------------
 function IndexManager:EnsureBuilt(enabledKinds)
     if self._built and not next(self._sourceDirty) then return end
     self:Rebuild(enabledKinds)

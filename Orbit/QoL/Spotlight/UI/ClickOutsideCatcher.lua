@@ -1,10 +1,10 @@
--- [ CLICK OUTSIDE CATCHER ]-------------------------------------------------------------------------
+-- [ CLICK OUTSIDE CATCHER ]--------------------------------------------------------------------------
 local _, Orbit = ...
 local Constants = Orbit.Constants
 local Catcher = {}
 Orbit.Spotlight.UI.ClickOutsideCatcher = Catcher
 
--- [ CREATE ]----------------------------------------------------------------------------------------
+-- [ CREATE ]-----------------------------------------------------------------------------------------
 -- Full-screen invisible frame behind the Spotlight. Any mouse-down outside the Spotlight hits this first.
 function Catcher:Create(onClick)
     local f = CreateFrame("Frame", nil, UIParent)

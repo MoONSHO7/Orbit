@@ -15,11 +15,11 @@ local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
 local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
 local NeedsEdgeCompensation = OrbitEngine.PositionUtils.NeedsEdgeCompensation
 local AnchorToCenter = OrbitEngine.PositionUtils.AnchorToCenter
+local AnchorOffsetsToFinal = OrbitEngine.PositionUtils.AnchorOffsetsToFinal
 
 -- Forward-declared: resolved at runtime after CanvasModeDrag.lua loads
 
 -- [ FOOTER SETUP ] ----------------------------------------------------------------------------------
-
 local Layout = OrbitEngine.Layout
 local Constants = Orbit.Constants
 local FC = Constants.Footer
@@ -204,57 +204,24 @@ function Dialog:NudgeComponent(container, direction)
     local borderInset = preview.borderInset or 0
     local halfW = preview.sourceWidth / 2 - borderInset
     local halfH = preview.sourceHeight / 2 - borderInset
-    container.posX, container.posY = AnchorToCenter(anchorX, anchorY, offsetX, offsetY, halfW, halfH)
+    -- AnchorToCenter returns 0 for CENTER axes; for those, posX/posY is the source of truth.
+    local newPosX, newPosY = AnchorToCenter(anchorX, anchorY, offsetX, offsetY, halfW, halfH)
+    if anchorX ~= "CENTER" then container.posX = newPosX end
+    if anchorY ~= "CENTER" then container.posY = newPosY end
 
     local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
-    local posX = container.posX or 0
-    local posY = container.posY or 0
-
-    local finalX, finalY
-    if anchorX == "CENTER" then
-        finalX = posX
-    else
-        finalX = offsetX
-        if anchorX == "RIGHT" then
-            finalX = -finalX
-        end
-    end
-
-    if anchorY == "CENTER" then
-        finalY = posY
-    else
-        finalY = offsetY
-        if anchorY == "TOP" then
-            finalY = -finalY
-        end
-    end
+    local finalX, finalY = AnchorOffsetsToFinal(anchorX, anchorY, offsetX, offsetY, container.posX, container.posY)
 
     container:ClearAllPoints()
     local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, container.selfAnchorY or anchorY, justifyH)
     container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
     OrbitEngine.SelectionTooltip:ShowComponentPosition(
-        container,
-        container.key,
-        anchorX,
-        anchorY,
-        container.posX or 0,
-        container.posY or 0,
-        offsetX,
-        offsetY,
-        justifyH,
-        container.selfAnchorY
+        container, container.key, anchorX, anchorY,
+        container.posX or 0, container.posY or 0, offsetX, offsetY, justifyH, container.selfAnchorY
     )
 
-    -- Stage nudged position into transaction for live preview updates
-    if CanvasMode.Transaction and CanvasMode.Transaction:IsActive() and container.key then
-        CanvasMode.Transaction:SetPosition(container.key, {
-            anchorX = anchorX, anchorY = anchorY,
-            offsetX = offsetX, offsetY = offsetY,
-            justifyH = justifyH, selfAnchorY = container.selfAnchorY,
-            posX = container.posX, posY = container.posY,
-        })
-    end
+    CanvasMode.Transaction:StagePositionFromContainer(container)
 end
 
 
@@ -285,6 +252,8 @@ function Dialog:Open(frame, plugin, systemIndex)
     self.targetFrame = frame
     self.targetPlugin = plugin
     self.targetSystemIndex = systemIndex
+
+    CanvasMode.Transaction:Begin(plugin, systemIndex)
 
     local title = frame.orbitCanvasTitle or canvasFrame.editModeName or canvasFrame:GetName() or "Frame"
     self.Title:SetText(title)
@@ -339,9 +308,17 @@ function Dialog:Open(frame, plugin, systemIndex)
     -- Create SmartGuides for visual snap feedback
     self.previewFrame.guides = OrbitEngine.SmartGuides:Create(self.previewFrame)
 
-    self.TransformLayer.baseWidth = canvasFrame:GetWidth()
-    self.TransformLayer.baseHeight = canvasFrame:GetHeight()
-    self.TransformLayer:SetSize(self.TransformLayer.baseWidth, self.TransformLayer.baseHeight)
+    local layerW, layerH
+    if self.previewFrame.fixedSize then
+        layerW = self.previewFrame.sourceWidth or self.previewFrame:GetWidth()
+        layerH = self.previewFrame.sourceHeight or self.previewFrame:GetHeight()
+    else
+        layerW = canvasFrame:GetWidth()
+        layerH = canvasFrame:GetHeight()
+    end
+    self.TransformLayer.baseWidth = layerW
+    self.TransformLayer.baseHeight = layerH
+    self.TransformLayer:SetSize(layerW, layerH)
 
     -- The cleric's Detect Magic reveals changes to the dungeon walls in real time
     self:HookSourceSizeChanged(canvasFrame)
@@ -429,12 +406,13 @@ function Dialog:Open(frame, plugin, systemIndex)
         table.insert(self.disabledComponentKeys, key)
     end
 
+    -- HealthText and Status are mutually exclusive; one of them must always be docked.
+    local pluginHasStatus = dragComponents["Status"] ~= nil
+        or (self.previewFrame.components and self.previewFrame.components["Status"] ~= nil)
     local healthTextDisabled = disabledSet["HealthText"]
-    if not healthTextDisabled then
-        if not disabledSet["Status"] then
-            table.insert(self.disabledComponentKeys, "Status")
-            disabledSet["Status"] = true
-        end
+    if pluginHasStatus and not healthTextDisabled and not disabledSet["Status"] then
+        table.insert(self.disabledComponentKeys, "Status")
+        disabledSet["Status"] = true
     end
 
     local function isDisabled(key)
@@ -530,9 +508,6 @@ function Dialog:Open(frame, plugin, systemIndex)
 
     self:Show()
 
-    -- Begin transactional cache so edits are buffered until Apply/Cancel
-    CanvasMode.Transaction:Begin(plugin, systemIndex)
-
     if OrbitEngine.CanvasComponentSettings and OrbitEngine.CanvasComponentSettings.ApplyInitialPluginPreviews then
         OrbitEngine.CanvasComponentSettings:ApplyInitialPluginPreviews(self.targetPlugin, self.targetSystemIndex)
     end
@@ -548,7 +523,6 @@ function Dialog:Open(frame, plugin, systemIndex)
 end
 
 -- [ APPLY FILTER ] ----------------------------------------------------------------------------------
-
 function Dialog:ApplyFilter(filterName)
     self.activeFilter = filterName or "All"
     for key, comp in pairs(self.previewComponents) do
@@ -567,7 +541,6 @@ function Dialog:ApplyFilter(filterName)
 end
 
 -- [ LIVE DIMENSION SYNC ] ---------------------------------------------------------------------------
-
 function Dialog:HookSourceSizeChanged(sourceFrame)
     self:UnhookSourceSizeChanged()
     if not sourceFrame then return end
@@ -582,6 +555,7 @@ function Dialog:HookSourceSizeChanged(sourceFrame)
             if not dlg._sizeHookActive or dlg._sizeHookFrame ~= sourceFrame then return end
             if not dlg.previewFrame or not dlg:IsShown() then return end
             if w <= 0 or h <= 0 then return end
+            if dlg.previewFrame.fixedSize then return end
 
             dlg.previewFrame.sourceWidth = w
             dlg.previewFrame.sourceHeight = h
@@ -602,7 +576,6 @@ function Dialog:UnhookSourceSizeChanged()
 end
 
 -- [ CLEANUP PREVIEW ] -------------------------------------------------------------------------------
-
 function Dialog:CleanupPreview()
     self.activeFilter = "All"
     self:UnhookSourceSizeChanged()
@@ -624,7 +597,6 @@ function Dialog:CleanupPreview()
 end
 
 -- [ CLOSE DIALOG ] ----------------------------------------------------------------------------------
-
 function Dialog:CloseDialog()
     if Orbit.CanvasComponentSettings and Orbit.CanvasComponentSettings.componentKey then
         Orbit.CanvasComponentSettings:Close()
@@ -645,7 +617,6 @@ function Dialog:CloseDialog()
 end
 
 -- [ EDIT MODE LIFECYCLE ] ---------------------------------------------------------------------------
-
 if EditModeManagerFrame then
     EditModeManagerFrame:HookScript("OnHide", function()
         if Dialog:IsShown() then
@@ -655,6 +626,5 @@ if EditModeManagerFrame then
 end
 
 -- [ EXPORT ] ----------------------------------------------------------------------------------------
-
 Orbit.CanvasModeDialog = Dialog
 OrbitEngine.CanvasModeDialog = Dialog

@@ -2,6 +2,7 @@
 -- Mail datatext: shows pending mail indicator
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local ICON_SIZE = 32
@@ -79,12 +80,12 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Mail", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_MAIL_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     if HasNewMail() then
         local sender1, sender2, sender3 = GetLatestThreeSenders()
         if sender1 or sender2 or sender3 then
-            GameTooltip:AddLine("You have unread mail from:", 1, 0.7, 0)
+            GameTooltip:AddLine(L.PLU_DT_MAIL_UNREAD_FROM, 1, 0.7, 0)
             if sender1 then GameTooltip:AddLine("- " .. sender1, 1, 1, 1) end
             if sender2 then GameTooltip:AddLine("- " .. sender2, 1, 1, 1) end
             if sender3 then GameTooltip:AddLine("- " .. sender3, 1, 1, 1) end

@@ -6,8 +6,7 @@ local Constants = Orbit.Constants
 Engine.Layout = {}
 local Layout = Engine.Layout
 
--- [ CONTROL POOLING ]-------------------------------------------------------------------------------
-
+-- [ CONTROL POOLING ]--------------------------------------------------------------------------------
 Layout.pool = Layout.pool or {}
 Layout.sliderPool = Layout.sliderPool or {}
 Layout.dropdownPool = Layout.dropdownPool or {}
@@ -18,7 +17,7 @@ Layout.fontPool = Layout.fontPool or {}
 Layout.texturePool = Layout.texturePool or {}
 Layout.containerControls = Layout.containerControls or {} -- Container -> List of controls
 
--- [ SHARED BACKDROP ]-------------------------------------------------------------------------------
+-- [ SHARED BACKDROP ]--------------------------------------------------------------------------------
 Layout.ORBIT_INPUT_BACKDROP = {
     bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -28,7 +27,7 @@ Layout.ORBIT_INPUT_BACKDROP = {
     insets = { left = 3, right = 3, top = 3, bottom = 3 },
 }
 
--- [ ADVANCED PANEL CONSTANTS ]----------------------------------------------------------------------
+-- [ ADVANCED PANEL CONSTANTS ]-----------------------------------------------------------------------
 Layout.Advanced = {
     PADDING = 16,
     HEADER_HEIGHT = 40,
@@ -220,7 +219,7 @@ function Layout:ComputeGridContainerSize(numItems, limitPerLine, orientation, wi
     return finalW, finalH
 end
 
--- [ SECTION HEADER ]--------------------------------------------------------------------------------
+-- [ SECTION HEADER ]---------------------------------------------------------------------------------
 function Layout:CreateSectionHeader(parent, text)
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetHeight(20)
@@ -233,7 +232,7 @@ function Layout:CreateSectionHeader(parent, text)
     return frame
 end
 
--- [ DESCRIPTION ]-----------------------------------------------------------------------------------
+-- [ DESCRIPTION ]------------------------------------------------------------------------------------
 function Layout:CreateDescription(parent, text, color)
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetHeight(20)
@@ -260,7 +259,7 @@ function Layout:CreateDescription(parent, text, color)
     return frame
 end
 
--- [ ACCORDION ]-------------------------------------------------------------------------------------
+-- [ ACCORDION ]--------------------------------------------------------------------------------------
 local ACCORDION_BAR_HEIGHT = 30
 function Layout:CreateAccordion(parent, name)
     local section = CreateFrame("Frame", nil, parent)
@@ -322,7 +321,7 @@ function Layout:CreateAccordion(parent, name)
     return section
 end
 
--- [ SCROLL AREA ]-----------------------------------------------------------------------------------
+-- [ SCROLL AREA ]------------------------------------------------------------------------------------
 function Layout:CreateScrollArea(parent, topY, bottomPad)
     local A = self.Advanced
     topY = topY or A.CONTENT_START_Y
@@ -345,8 +344,7 @@ function Layout:CreateScrollArea(parent, topY, bottomPad)
     return scrollFrame, scrollChild
 end
 
--- [ WIDGET FACTORY ]--------------------------------------------------------------------------------
-
+-- [ WIDGET FACTORY ]---------------------------------------------------------------------------------
 Layout.creators = {}
 
 function Layout:RegisterWidgetType(typeName, creator)

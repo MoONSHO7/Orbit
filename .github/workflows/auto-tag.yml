@@ -19,27 +19,25 @@ jobs:
 
       - name: Calculate version and create tag
         run: |
-          # Version scheme: MAJOR.MINOR.PATCH
+          # Version scheme: MAJOR.MINOR
           #   MAJOR  - manual only (we are pre-1.0)
           #   MINOR  - auto-bumped on every commit to main
-          #   PATCH  - reserved for manual hotfixes
-          LATEST_TAG=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
+          # Reads either current X.Y or historical X.Y.Z tags so the migration is seamless.
+          LATEST_TAG=$(git tag --list '[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
 
           if [ -z "$LATEST_TAG" ]; then
             # Bootstrap from the highest legacy integer tag so continuity is preserved.
             LEGACY_INT=$(git tag --list | grep -E '^[0-9]+$' | sort -n | tail -n 1)
             MAJOR=0
             MINOR=${LEGACY_INT:-0}
-            PATCH=0
-            echo "No X.Y.Z tag yet. Bootstrapping from legacy integer: ${LEGACY_INT:-(none)}"
+            echo "No X.Y tag yet. Bootstrapping from legacy integer: ${LEGACY_INT:-(none)}"
           else
             MAJOR=$(echo "$LATEST_TAG" | cut -d. -f1)
             MINOR=$(echo "$LATEST_TAG" | cut -d. -f2)
-            PATCH=$(echo "$LATEST_TAG" | cut -d. -f3)
           fi
 
           MINOR=$((MINOR + 1))
-          VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          VERSION="${MAJOR}.${MINOR}"
           echo "Calculated version: $VERSION"
 
           if git rev-parse "$VERSION" >/dev/null 2>&1; then

@@ -1,12 +1,11 @@
--- [ CANVAS MODE - PORTRAIT CREATOR ]----------------------------------------------------------------
-
+-- [ CANVAS MODE - PORTRAIT CREATOR ]-----------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local CC = CanvasMode.CreatorConstants
 
--- [ CREATOR ]---------------------------------------------------------------------------------------
+-- [ CREATOR ]----------------------------------------------------------------------------------------
 local function Create(container, preview, key, source, data)
     local visual = container:CreateTexture(nil, "ARTWORK")
     visual:SetAllPoints()

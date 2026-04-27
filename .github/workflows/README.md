@@ -15,19 +15,17 @@ Three workflows: one lint gate, one auto-tagger, one release pipeline.
 ## Versioning scheme
 
 ```
-MAJOR . MINOR . PATCH
-  0   .  249  .   0
-  │      │        │
-  │      │        └─── manual hotfixes only
-  │      └──────────── bumped on every commit to main
-  └─────────────────── manual only (we are pre-1.0)
+MAJOR . MINOR
+  0   .  249
+  │      │
+  │      └────── bumped on every commit to main
+  └───────────── manual only (we are pre-1.0)
 ```
 
-- **MAJOR** — manual only. `git tag -a 1.0.0 -m "First stable" && git push origin 1.0.0`.
+- **MAJOR** — manual only. `git tag -a 1.0 -m "First stable" && git push origin 1.0`.
 - **MINOR** — auto-bumped on every commit to `main`.
-- **PATCH** — reserved for manual hotfix tags.
 
-After a manual major bump, auto-tag transparently continues from the new major.
+After a manual major bump, auto-tag transparently continues from the new major. Historical `X.Y.Z` tags are still matched by `release.yml`, but new releases are always `X.Y`.
 
 ---
 
@@ -38,9 +36,9 @@ push to main
    ↓
 auto-tag.yml
    ↓ bumps MINOR
-   ↓ creates & pushes tag X.Y.0 (uses ORBIT_PAT so release.yml fires)
+   ↓ creates & pushes tag X.Y (uses ORBIT_PAT so release.yml fires)
    ↓
-release.yml (glob [0-9]*.[0-9]*.[0-9]* matches)
+release.yml (glob [0-9]*.[0-9]* matches)
    ↓ runs update_changelog.py
    ↓ BigWigsMods/packager → CurseForge
 ```
@@ -48,8 +46,8 @@ release.yml (glob [0-9]*.[0-9]*.[0-9]* matches)
 Manual major bump:
 
 ```
-git tag -a 1.0.0 -m "First stable release"
-git push origin 1.0.0
+git tag -a 1.0 -m "First stable release"
+git push origin 1.0
    ↓
 release.yml (skips auto-tag entirely)
 ```
@@ -58,12 +56,12 @@ release.yml (skips auto-tag entirely)
 
 ## Auto-tag bootstrap
 
-On first run after adopting the `X.Y.Z` scheme, there are no existing `[0-9]*.[0-9]*.[0-9]*` tags. The script bootstraps from the highest legacy integer tag, treating it as the implied previous `0.N.0`:
+On first run after adopting the `X.Y` scheme, there are no existing `[0-9]*.[0-9]*` tags. The script bootstraps from the highest legacy integer tag, treating it as the implied previous `0.N`:
 
 | Before bootstrap | Result |
 |------------------|--------|
-| Latest legacy = `247` | `0.248.0` |
-| No legacy tags at all | `0.1.0` |
+| Latest legacy = `247` | `0.248` |
+| No legacy tags at all | `0.1` |
 
 ---
 
@@ -110,16 +108,16 @@ If two commits hit `main` in rapid succession, two auto-tag jobs may try to crea
 
 - Legacy integer tags (`247`, `266-alpha`) — filter excludes them
 - Historical `v1.3.5` / `v1.3.5-data.1` semver-with-prefix tags
-- Anything that's not exactly three dot-separated digit-led segments
+- Anything that's not at least two dot-separated digit-led segments
 
-If you need to re-release any of those, manually create a new `X.Y.Z` tag.
+If you need to re-release any of those, manually create a new `X.Y` tag.
 
 ---
 
 ## Rollout verification checklist
 
 1. Merge a small no-op PR (docs edit, comment) to `main`.
-2. Watch the Actions tab: `Auto Tag` should run, create a new `X.Y.Z` tag.
+2. Watch the Actions tab: `Auto Tag` should run, create a new `X.Y` tag.
 3. `Release AddOn` should then fire on the new tag.
 4. Check CurseForge for the new release within a few minutes.
 

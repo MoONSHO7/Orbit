@@ -273,7 +273,7 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
     if schema.openPluginManager then
         local pmBtn = Layout:CreateButton(footer, "Plugin Manager", function()
             if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
-                HideUIPanel(EditModeManagerFrame)
+                securecall("HideUIPanel", EditModeManagerFrame)
             end
             if Orbit.OptionsPanel then Orbit.OptionsPanel:Hide() end
             C_Timer.After(0.1, function()
@@ -294,12 +294,6 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
             table.insert(buttons, b)
         end
     end
-
-    -- 2. Layout Logic (Stretch Grid)
-    -- Max 3 per row.
-    -- Row 1: 1-3 buttons.
-    -- Row 2: Overflow (1-3 buttons).
-    -- Rules: Buttons in a row fill the available width evenly.
 
     local Constants = Constants
 

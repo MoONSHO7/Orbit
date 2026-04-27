@@ -5,7 +5,7 @@ local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_TargetFrame"
 local TARGET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Target
 
@@ -36,7 +36,7 @@ local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
     },
 })
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex
     if systemIndex ~= TARGET_FRAME_INDEX then
@@ -101,7 +101,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 -- Apply Mixins
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.StatusIconMixin)
 Plugin.supportsHealthText = true
@@ -172,7 +172,8 @@ function Plugin:OnLoad()
         end
     end)
 
-    self.frame.anchorOptions = { horizontal = true, vertical = false, syncScale = true, syncDimensions = true, useRowDimension = true, mergeBorders = { x = false, y = true }, independentHeight = true }
+    self.frame.anchorOptions = { horizontal = true, vertical = false, useRowDimension = true, mergeBorders = { x = false, y = true }, independentHeight = true }
+    self.frame.orbitHeightSync = true
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 10, maxH = 100 }
     self.frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = 200, y = -140 }
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, TARGET_FRAME_INDEX)
@@ -218,7 +219,7 @@ function Plugin:OnLoad()
     OrbitEngine.FrameSelection:RegisterSymmetricPair("OrbitPlayerFrame", "OrbitTargetFrame")
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:UpdateLayout(frame)
     if not frame or InCombatLockdown() then
         return

@@ -3,7 +3,7 @@ local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 local Layout = Engine.Layout
 
--- [ COLOR PICKER WIDGET ] ------------------------------------------------------------------------------------
+-- [ COLOR PICKER WIDGET ] ---------------------------------------------------------------------------
 -- Uses LibOrbitColorPicker for consistent Orbit UI styling
 -- 3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
 

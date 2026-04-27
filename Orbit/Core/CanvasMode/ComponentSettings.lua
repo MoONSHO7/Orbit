@@ -4,6 +4,7 @@ local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local Layout = OrbitEngine.Layout
 local C = OrbitEngine.CanvasMode.Constants
+local L = Orbit.L
 local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ IMPORTS ] ---------------------------------------------------------------------------------------
@@ -12,7 +13,7 @@ local Widgets = OrbitEngine.CanvasMode.SettingsWidgets
 local KEY_SCHEMAS = Schema.KEY_SCHEMAS
 local TYPE_SCHEMAS = Schema.TYPE_SCHEMAS
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local WIDGET_SPACING = 4
 local PADDING = 12
 local COMPACT_LABEL_MIN_WIDTH = 50
@@ -39,7 +40,7 @@ function Settings:GetColumnCount()
     return w >= C.THREE_COL_THRESHOLD and 3 or 2
 end
 
--- [ OPEN (INLINE) ]---------------------------------------------------------------------------------
+-- [ OPEN (INLINE) ]----------------------------------------------------------------------------------
 function Settings:Open(componentKey, container, plugin, systemIndex)
     if InCombatLockdown() then return end
 
@@ -80,7 +81,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             sub:SetTextColor(1, 1, 1, 0.8)
             overrideContainer.StatusSubtitle = sub
         end
-        overrideContainer.StatusSubtitle:SetText("Group containing rez, readycheck, phase and summon icons.")
+        overrideContainer.StatusSubtitle:SetText(L.CFG_CM_STATUS_ICONS_DESC)
         overrideContainer.StatusSubtitle:Show()
     elseif overrideContainer.StatusSubtitle then
         overrideContainer.StatusSubtitle:Hide()
@@ -273,7 +274,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     end
 end
 
--- [ CLOSE (INLINE) ]--------------------------------------------------------------------------------
+-- [ CLOSE (INLINE) ]---------------------------------------------------------------------------------
 function Settings:Close()
     self:HideWidgets()
     self.componentKey = nil
@@ -297,7 +298,7 @@ function Settings:HideWidgets()
     end
 end
 
--- [ CONTROL LOOKUP ]--------------------------------------------------------------------------------
+-- [ CONTROL LOOKUP ]---------------------------------------------------------------------------------
 function Settings:GetControlDef(key)
     local schema = KEY_SCHEMAS[self.componentKey]
     if not schema then return nil end
@@ -322,7 +323,7 @@ function Settings:ApplyPluginPreview()
     end
 end
 
--- [ VALUE CHANGE HANDLER ]--------------------------------------------------------------------------
+-- [ VALUE CHANGE HANDLER ]---------------------------------------------------------------------------
 function Settings:OnValueChanged(key, value)
     if not self.componentKey then return end
 
@@ -436,7 +437,7 @@ function Settings:OnValueChanged(key, value)
     end
 end
 
--- [ RELAYOUT ]--------------------------------------------------------------------------------------
+-- [ RELAYOUT ]---------------------------------------------------------------------------------------
 function Settings:RelayoutWidgets()
     if not self.componentKey or not self.widgets then return end
     local canvasDialog = OrbitEngine.CanvasModeDialog
@@ -475,6 +476,6 @@ function Settings:RelayoutWidgets()
     if canvasDialog.RecalculateHeight then canvasDialog:RecalculateHeight() end
 end
 
--- [ EXPORT ]----------------------------------------------------------------------------------------
+-- [ EXPORT ]-----------------------------------------------------------------------------------------
 Orbit.CanvasComponentSettings = Settings
 OrbitEngine.CanvasComponentSettings = Settings

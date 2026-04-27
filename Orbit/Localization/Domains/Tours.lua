@@ -44,6 +44,11 @@ local LOCALE_STRINGS = {
         TOUR_EM_STEP9_TEXT   = "To get the most out of Orbit,\njust play around! Drag, drop,\nanchor and resize frames in\nEdit Mode. Every frame is yours\nto customize.",
         TOUR_EM_CANVAS_TITLE = "Canvas Mode",
         TOUR_EM_CANVAS_TEXT  = "Right-click any frame to open\nCanvas Mode. This unlocks deeper\ncustomization per frame.",
+        TOUR_EM_DRAWER_TITLE = "Datatext Drawer",
+        TOUR_EM_DRAWER_TEXT  = "Click any of the four screen\ncorners to open the datatext\ndrawer. Move, resize, enable\nor disable individual datatext\ncomponents from there.",
+        TOUR_EM_WELCOME      = "|cFFFFFFFFWelcome to |cFFAA77FFOrbit|r",
+        TOUR_EM_WELCOME_SUBTITLE = "Things are done differently here",
+        TOUR_CM_DOCK_HINT    = "drag here to disable",
     },
     deDE = {
         TOUR_CM_TOOLTIP      = "Canvas-Modus Tour",

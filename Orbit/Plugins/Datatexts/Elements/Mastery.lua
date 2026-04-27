@@ -5,12 +5,14 @@ local DT = Orbit.Datatexts
 local NumericOrNil = Orbit.SecretValueUtils.NumericOrNil
 local L = Orbit.L
 
+local CR_MASTERY = 26
+
 local W = DT.BaseDatatext:New("Mastery")
 W.showPercentage = true
 
 function W:Update()
     local pct = NumericOrNil(GetMasteryEffect and GetMasteryEffect())
-    local rating = NumericOrNil(GetCombatRating(26 --[[CR_MASTERY]]))
+    local rating = NumericOrNil(GetCombatRating(CR_MASTERY))
     if self.showPercentage then
         if pct then self:SetText(string.format("Mastery: |cffffffff%.2f%%|r", pct))
         else self:SetText("Mastery: |cffffffff" .. L.CMN_HIDDEN_VALUE .. "|r") end
@@ -23,10 +25,10 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Mastery", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_MASTERY_TITLE, 1, 0.82, 0)
 
     local pct = NumericOrNil(GetMasteryEffect and GetMasteryEffect())
-    local rating = NumericOrNil(GetCombatRating(26 --[[CR_MASTERY]]))
+    local rating = NumericOrNil(GetCombatRating(CR_MASTERY))
     GameTooltip:AddDoubleLine("Rating:", rating and string.format("%d", rating) or L.CMN_HIDDEN_VALUE, 1, 1, 1, 1, 1, 1)
     GameTooltip:AddDoubleLine("Percentage:", pct and string.format("%.2f%%", pct) or L.CMN_HIDDEN_VALUE, 1, 1, 1, 1, 1, 1)
     GameTooltip:Show()

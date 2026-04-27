@@ -2,6 +2,7 @@
 -- Friends datatext: online friends count
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 local BNET_CLIENT_NAMES = {
     ["App"] = "Battle.net Desktop App",
@@ -67,7 +68,7 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Friends", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_FRIENDS_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     
     local numBnet = BNGetNumFriends()

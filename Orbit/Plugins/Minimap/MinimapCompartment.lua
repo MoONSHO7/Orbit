@@ -6,8 +6,7 @@ local L = Orbit.L
 local SYSTEM_ID = "Orbit_Minimap"
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local COMPARTMENT_BUTTON_SIZE = 24
 local COMPARTMENT_PADDING = 6
 local FLYOUT_BUTTON_SIZE = 28       -- Size for each proxy button in the flyout grid
@@ -99,8 +98,7 @@ local FrameSetParent      = UIParent.SetParent
 local FrameClearAllPoints = UIParent.ClearAllPoints
 local FrameSetPoint       = UIParent.SetPoint
 
--- [ COMPARTMENT BUTTON ]----------------------------------------------------------------------------
-
+-- [ COMPARTMENT BUTTON ]-----------------------------------------------------------------------------
 function Plugin:CreateCompartmentButton()
     if self._compartmentButton then return end
     local frame = self.frame
@@ -147,8 +145,7 @@ function Plugin:CreateCompartmentButton()
     self._compartmentButton = btn
 end
 
--- [ HIDDEN BUTTON HOLDER ]--------------------------------------------------------------------------
-
+-- [ HIDDEN BUTTON HOLDER ]---------------------------------------------------------------------------
 function Plugin:GetOrCreateButtonHolder()
     if self._buttonHolder then return self._buttonHolder end
 
@@ -161,8 +158,7 @@ function Plugin:GetOrCreateButtonHolder()
     return holder
 end
 
--- [ COMPARTMENT FLYOUT ]----------------------------------------------------------------------------
-
+-- [ COMPARTMENT FLYOUT ]-----------------------------------------------------------------------------
 function Plugin:CreateCompartmentFlyout()
     if self._compartmentFlyout then return end
 
@@ -253,8 +249,7 @@ function Plugin:ApplyCompartmentFlyoutSkin(flyout)
     Orbit.Skin:SkinBorder(flyout, flyout, borderSize)
 end
 
--- [ FLYOUT LAYOUT ]---------------------------------------------------------------------------------
-
+-- [ FLYOUT LAYOUT ]----------------------------------------------------------------------------------
 local proxyButtonPool = {}  -- Reusable pool of proxy buttons keyed by original button
 
 local function GetProxyIcon(originalBtn)
@@ -487,8 +482,7 @@ function Plugin:LayoutButtonsInFlyout()
     end
 end
 
--- [ BUTTON COLLECTION ]-----------------------------------------------------------------------------
-
+-- [ BUTTON COLLECTION ]------------------------------------------------------------------------------
 function Plugin:ScanParentChildren(parent, collected, seen, seenSignatures, seenNames)
     for _, child in ipairs({ parent:GetChildren() }) do
         if not seen[child] then
@@ -502,7 +496,6 @@ function Plugin:ScanParentChildren(parent, collected, seen, seenSignatures, seen
                     local lower = frameName:lower()
                     isBlizzard = BLIZZARD_MINIMAP_CHILDREN[frameName]
                         or lower:find("^minimap") ~= nil
-                        or lower:find("^orbitminimap") ~= nil
                 end
                 local isPin = IsPinFrame(frameName)
                 local tooSmall = (child:GetWidth() or 0) < MIN_BUTTON_SIZE
@@ -553,9 +546,8 @@ function Plugin:CollectAddonButtons()
     --    (toggling between the two via LibDBIcon:Hide) aren't collected twice.
     local lib = LibStub and LibStub("LibDBIcon-1.0", true)
     if lib then
-        local ownButtonName = "Orbit"
         for name, button in pairs(lib.objects) do
-            if name ~= ownButtonName and button:IsShown() then
+            if button:IsShown() then
                 local displayName = NormalizeCompartmentDisplayName(name)
                 local icon = button.dataObject and button.dataObject.icon or nil
                 local signature = BuildCollectedButtonSignature(displayName, icon)
@@ -586,8 +578,7 @@ function Plugin:CollectAddonButtons()
     table.sort(collected, function(a, b) return (a.name or "") < (b.name or "") end)
 end
 
--- [ GRAB / RELEASE BUTTONS ]------------------------------------------------------------------------
-
+-- [ GRAB / RELEASE BUTTONS ]-------------------------------------------------------------------------
 function Plugin:GrabCollectedButtons()
     if not self._collectedButtons then return end
     local holder = self:GetOrCreateButtonHolder()
@@ -680,8 +671,7 @@ function Plugin:ReleaseCollectedButtons()
     self._collectedButtons = nil
 end
 
--- [ COMPARTMENT ORCHESTRATOR ]----------------------------------------------------------------------
-
+-- [ COMPARTMENT ORCHESTRATOR ]-----------------------------------------------------------------------
 function Plugin:ApplyAddonCompartment()
     local frame = self.frame
     local useClickAction = self:UsesAddonClickAction()

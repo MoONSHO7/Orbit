@@ -1,10 +1,9 @@
--- [ UNIT BUTTON - CANVAS MODULE ]-------------------------------------------------------------------
+-- [ UNIT BUTTON - CANVAS MODULE ]--------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local FALLBACK_HEIGHT = 40
 local DEFAULT_FONT_HEIGHT = 12
 local TEXT_PADDING = 5
@@ -34,8 +33,7 @@ local COMPONENT_POSITION_MAP = {
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 
--- [ CANVAS MIXIN ]----------------------------------------------------------------------------------
-
+-- [ CANVAS MIXIN ]-----------------------------------------------------------------------------------
 local CanvasMixin = {}
 
 function CanvasMixin:SetBorderHidden(hidden) Orbit.Skin.DefaultSetBorderHidden(self, hidden) end
@@ -69,8 +67,7 @@ function CanvasMixin:UpdateTextLayout()
     if self.ConstrainNameWidth then self:ConstrainNameWidth() end
 end
 
--- [ COMPONENT POSITIONS ]---------------------------------------------------------------------------
-
+-- [ COMPONENT POSITIONS ]----------------------------------------------------------------------------
 function CanvasMixin:ApplyComponentPositions()
     if not self.orbitPlugin or not self.orbitPlugin.GetSetting then return end
 
@@ -122,8 +119,7 @@ function CanvasMixin:ApplyComponentPositions()
     if self.ConstrainNameWidth then self:ConstrainNameWidth() end
 end
 
--- [ STYLE OVERRIDES ]-------------------------------------------------------------------------------
-
+-- [ STYLE OVERRIDES ]--------------------------------------------------------------------------------
 function CanvasMixin:ApplyStyleOverrides(positions)
     if not positions then return end
     local ApplyOverrides = Engine.OverrideUtils and Engine.OverrideUtils.ApplyOverrides
@@ -135,8 +131,7 @@ function CanvasMixin:ApplyStyleOverrides(positions)
     end
 end
 
--- [ BORDER MANAGEMENT ]-----------------------------------------------------------------------------
-
+-- [ BORDER MANAGEMENT ]------------------------------------------------------------------------------
 function CanvasMixin:SetBorder(size)
     Orbit.Skin:SkinBorder(self, self, size)
     -- Borders are now outset — no insets needed

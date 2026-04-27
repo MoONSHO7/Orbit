@@ -10,7 +10,7 @@ local FADE_IN_DURATION = 0.1
 local FADE_OUT_DURATION = 0.2
 local HOVER_CHECK_INTERVAL = 0.1
 
--- [ HOVER FADE ]------------------------------------------------------------------------------------
+-- [ HOVER FADE ]-------------------------------------------------------------------------------------
 local faders = setmetatable({}, { __mode = "k" })
 
 -- Combat-safe fade helper
@@ -88,6 +88,9 @@ function Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, editModeActiv
                 return
             end
 
+            local p = Orbit.Profiler
+            local s = p and p:Begin()
+
             -- Check Mouse (Geometry Check)
             local isOver = MouseIsOver(target)
 
@@ -101,6 +104,7 @@ function Orbit.Animation:ApplyHoverFade(frame, minAlpha, maxAlpha, editModeActiv
                 -- Fade Out (combat-safe)
                 SafeFade(target, self.minAlpha, FADE_OUT_DURATION)
             end
+            if p then p:End("Orbit_Animation", "HoverFade", s) end
         end)
     end
 

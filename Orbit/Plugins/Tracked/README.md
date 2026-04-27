@@ -93,6 +93,8 @@ bars use the same three-layer treatment but the drop hint is sized to a `height 
 
 drop hints are shown whenever `Plugin:ShouldShowDropHints(isEmpty)` returns true, which is `IsDraggingCooldownAbility()` OR `CooldownViewerSettings:IsShown()` OR (`Orbit:IsEditMode()` AND the frame is empty). the settings-panel branch is a pure `IsShown()` read (no taint) — when the user opens the cooldown viewer settings, tracked frames light up their drop zones so the user can see where to drop spells. dropping from within the settings panel IS supported, via `Orbit.CooldownSettingsDragBridge` (see `Orbit/Plugins/CooldownViewerExtensions/`): the bridge captures the dragged spellID from `GameTooltip:GetSpell()` and dispatches to the receiving frame's `OnCooldownSettingsDrop(spellID)` handler. the edit-mode case is gated on emptiness so populated frames don't sprout hints in edit mode. each frame's cursor watcher recomputes its own emptiness every tick and polls the combined signal, so the hints toggle automatically when the user picks up/drops a cursor payload, opens/closes the settings panel, enters/exits edit mode, or adds/removes the last item.
 
+drag sources are the spellbook and bags only. the cooldown viewer settings panel's open state is used purely as a discoverability signal for drop hints — dragging an icon out of the panel itself is a no-op; the panel keeps its own reorder UX.
+
 ## border merging
 
 both modes set `anchorOptions.mergeBorders = true`. when two tracked frames (or a tracked frame and any other orbit frame with the same flag) are anchored at zero padding, `Orbit.Skin.GroupBorder:UpdateGroupBorder` walks the chain and draws a single wrapper border around the merged group instead of one border per frame. icon containers also set `frame._isIconContainer = true` so the wrapper picks the **Global Icon Border Style** (matching the cooldown manager's essential/utility group). bars do not flag themselves as icon containers, so a chain of bars uses the regular **Global Border Style** — same behavior as the cooldown manager's BuffBar group.
@@ -109,7 +111,7 @@ each bar calls `Orbit.Skin:SkinBorder(frame, frame, GlobalSettings.BorderSize)` 
 
 ## docked bar width
 
-bars set `anchorOptions.syncDimensions = true`, so when a bar is docked TOP/BOTTOM to another orbit frame `Anchor:SyncChild` calls `frame:SetWidth(parentWidth)` to match the chain. `Bar:Apply` would normally call `frame:SetSize(savedWidth, savedHeight)` and clobber that synced width — leaving dividers and recharge geometry stuck at the saved size while the bar visually grows. so Apply checks `FrameAnchor.anchors[frame]` and, when docked, calls `SetHeight(savedHeight)` only and reads `frame:GetWidth()` for downstream layout. this matches the buff-bar pattern in `CooldownLayout` ("when docked, anchor width is authoritative"). the Width slider in the settings panel still applies when the bar is undocked; once it joins a chain, the chain's width wins.
+bars set `frame.orbitWidthSync = true`, so when a bar is docked TOP/BOTTOM to another orbit frame `Anchor:SyncChild` calls `frame:SetWidth(parentWidth)` to match the chain. `Bar:Apply` would normally call `frame:SetSize(savedWidth, savedHeight)` and clobber that synced width — leaving dividers and recharge geometry stuck at the saved size while the bar visually grows. so Apply checks `FrameAnchor.anchors[frame]` and, when docked, calls `SetHeight(savedHeight)` only and reads `frame:GetWidth()` for downstream layout. this matches the buff-bar pattern in `CooldownLayout` ("when docked, anchor width is authoritative"). the Width slider in the settings panel still applies when the bar is undocked; once it joins a chain, the chain's width wins.
 
 ## visibility engine
 
@@ -208,12 +210,16 @@ the `TickMixin` is built once against the main `StatusBar` in `Build`, and `Layo
 
 ### layout (horizontal / vertical)
 
-`Layout` dropdown (Layout tab, default `Horizontal`) flips the bar's fill direction. `Width` and `Height` sliders are interpreted as **long axis / short axis** rather than literal X/Y, so the same record can flip orientations without resizing — the slider ranges (80-400 long, 12-40 short) stay valid in both. internally `Bar:Apply` derives `frameW, frameH` from the orientation:
+`Layout` dropdown (Layout tab, default `Horizontal`) flips the bar's fill direction. `Width` and `Height` sliders are **literal screen X/Y dimensions** — their labels match what they control, so the user's mental model never inverts. The slider ranges flip with the orientation: horizontal uses Width 80-400 / Height 12-40, vertical uses Width 12-40 / Height 80-400. When the user toggles Layout, `TrackedSettings` swaps the stored Width/Height values (so the bar's visual shape is preserved — a 200x20 horizontal bar becomes a 20x200 vertical bar) and re-renders the tab so the sliders pick up the new ranges. `Bar:Apply` passes the stored values straight through as `frameW, frameH`:
 
 | layout | frame W | frame H | icon position | StatusBar fill |
 |---|---|---|---|---|
-| `Horizontal` | `Width` (long) | `Height` (short) | `TOPLEFT`, square sized to `Height` | `LEFT → RIGHT` |
-| `Vertical`   | `Height` (short) | `Width` (long)  | `TOPLEFT`, square sized to `Width`  | `BOTTOM → TOP` |
+| `Horizontal` | `Width` (80-400) | `Height` (12-40) | `TOPLEFT`, square sized to `Height` | `LEFT → RIGHT` |
+| `Vertical`   | `Width` (12-40)  | `Height` (80-400) | `TOPLEFT` or `BOTTOMLEFT`, square sized to `Width` | `BOTTOM → TOP` |
+
+`IconPosition` slider values 1/2/3 map to `Left/Off/Right` when horizontal and `Top/Off/Bottom` when vertical — the formatter branches on the current `Layout`. The stored value is the same integer either way; only the displayed labels and the eventual frame anchor differ.
+
+**migration**: pre-rename records used Width = long axis / Height = short axis, so a vertical bar's stored Width could exceed 40. `Bar:Apply` does a one-shot swap when it encounters a vertical record with `Width > Height` (stamped with `settings.DimensionsLiteral = true` so it runs once per record) — this preserves the visual shape of any bars that existed before the rename.
 
 vertical bars set `StatusBar:SetOrientation("VERTICAL")` plus the same on `RechargePositioner` and `RechargeSegment`. WoW's vertical fill is `BOTTOM→TOP`, which naturally gives the requested behavior in both continuous modes:
 
@@ -224,7 +230,7 @@ the per-tick math in `UpdateActiveCdMode` / `UpdateCdOnlyMode` is unchanged — 
 
 `charges` mode also works in vertical. `LayoutChargesGeometry` reads the long-axis dimension (`barHeight` in vertical, `barWidth` in horizontal), splits it into `chargeLength = longAxis / maxCharges`, and anchors `RechargeSegment`/`TickBar` to the next-charge slot above the current fill (`BOTTOM → TOP of RechargePositioner texture` in vertical, `LEFT → RIGHT` in horizontal). `LayoutDividers` draws horizontal lines at proportional Y positions (vertical) or vertical lines at proportional X positions (horizontal). first charge is at the bottom of the bar, max charges fills the entire bar.
 
-`orbitResizeBounds` flips its `widthKey`/`heightKey` to `Height`/`Width` in vertical, so dragging the resize handle horizontally writes the short-axis slider and dragging vertically writes the long-axis slider — the screen-axis to slider mapping stays consistent regardless of orientation. `anchorOptions` is unchanged: vertical bars chained via dock still extend top/bottom and inherit parent width via `syncDimensions`, which works best when chaining vertical bars with other vertical bars.
+`orbitResizeBounds` flips its min/max per orientation (horizontal: 80-400 W × 12-40 H; vertical: 12-40 W × 80-400 H). Since `Width`/`Height` are literal screen dimensions, the resize handle writes directly to them — no `widthKey`/`heightKey` remap needed. `anchorOptions` is unchanged: vertical bars chained via dock still extend top/bottom and inherit parent width via `orbitWidthSync`, which works best when chaining vertical bars with other vertical bars.
 
 ### show icon
 
@@ -254,12 +260,14 @@ a single `BarColor` curve setting (Colors tab, single color). read on every `App
 
 there is no delete tab. all deletion goes through shift-right-click. records are removed from the store on delete; the counter id is never reused.
 
+shift-right-click deletion is gated on `InCombatLockdown()` — the handler silently no-ops during combat. `DeleteContainer` tears down `FrameAnchor` graph edges which run `SetPoint`/`ClearAllPoints` on anchored descendants, and `RemoveIconAt` + `Container:Apply` rebuild the grid layout; both are protected-op paths that must not run mid-combat. bars also gate the payload-clear step (same handler) so the clear→delete ladder stays consistent.
+
 **descendant cleanup on delete.** wow frames can never be destroyed — `frame:Hide()` plus `self.containers[id] = nil` removes our handle but the lua object and its `_G[name]` entry persist forever. without explicit cleanup, any frame that was anchored to (or logically routed past) the deleted container would still resolve `_G[oldName]` on the next `/reload` and re-attach to a hidden ghost. `DeleteContainer` walks two lists before tearing the frame down:
 
 - `Anchor:GetAnchoredChildren(frame)` — physical children. For each: `BreakAnchor` (drops the graph entry and clears its logical anchor) then wipe its saved `Anchor` setting via `SetSpecData`/`SetSetting` (chosen by `IsSpecScopedIndex`). saved Position is left intact so the child falls back to its own free position on next `RestorePosition`.
 - `Anchor:GetLogicalChildren(frame)` — frames whose *logical* parent is this container but whose *physical* parent is upstream (because this container was virtual). Their physical anchor is fine; we only need `ClearLogicalAnchor` so `RestoreLogicalChildren` doesn't try to pull them home to a deleted frame later.
 
-note: when the cooldown viewer settings panel is open, an empty icon container's drop zone covers the container body and intercepts mouse input, so the shift-right-click delete is handled on the drop zone itself (it routes to `DeleteContainer` when the grid is empty). bars don't have this problem because their drop hint is a child texture of the bar frame, not a separate child frame, so clicks bubble straight to the bar's mouse handler.
+note: when the cooldown viewer settings panel is open (or in edit mode), an empty icon container's drop zone covers the container body and intercepts mouse input, so the shift-right-click delete is handled on the drop zone itself (it routes to `DeleteContainer` when the grid is empty). bars don't have this problem because their drop hint is a child texture of the bar frame, not a separate child frame, so clicks bubble straight to the bar's mouse handler.
 
 ## bulk flush — `/orbit tracked flush`
 

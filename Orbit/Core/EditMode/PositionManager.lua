@@ -1,4 +1,4 @@
--- [ ORBIT POSITION MANAGER ]------------------------------------------------------------------------
+-- [ ORBIT POSITION MANAGER ]-------------------------------------------------------------------------
 -- Manages frame positions during Edit Mode (ephemeral state, Cancel support)
 
 local _, Orbit = ...

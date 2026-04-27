@@ -1,4 +1,4 @@
--- [ ORBIT OPTIONS PANEL ]---------------------------------------------------------------------------
+-- [ ORBIT OPTIONS PANEL ]----------------------------------------------------------------------------
 -- Shell for the Orbit Options dialog. Owns tab registration, open/hide/refresh lifecycle, and the
 -- shared helpers each tab uses to build a Global-scoped settings plugin. Individual tab schemas
 -- and plugins live in `Tabs/` and register themselves into `Panel.Tabs`.
@@ -8,19 +8,17 @@ local OrbitEngine = Orbit.Engine
 local Config = OrbitEngine.Config
 local L = Orbit.L
 
--- [ TAB ORDER ]-------------------------------------------------------------------------------------
-
+-- [ TAB ORDER ]--------------------------------------------------------------------------------------
 local TAB_ORDER = { "Global", "Colors", "Edit Mode", "Profiles" }
 
--- [ PANEL ]-----------------------------------------------------------------------------------------
-
+-- [ PANEL ]------------------------------------------------------------------------------------------
 Orbit.OptionsPanel = {}
 local Panel = Orbit.OptionsPanel
 
 Panel.Tabs = {}
 Panel.TabOrder = TAB_ORDER
 
--- [ SHARED HELPERS ]--------------------------------------------------------------------------------
+-- [ SHARED HELPERS ]---------------------------------------------------------------------------------
 -- Exposed on Panel._helpers so tab files can build Global-scoped settings plugins without
 -- duplicating the GetSetting/SetSetting/ApplySettings wiring.
 
@@ -30,7 +28,7 @@ local function RefreshAllPreviews()
     end
 end
 
--- [ FONT EVENT BROADCAST ]--------------------------------------------------------------------------
+-- [ FONT EVENT BROADCAST ]---------------------------------------------------------------------------
 -- Resolves the current GlobalSettings font state and broadcasts it via Blizzard's shared
 -- EventRegistry so external addons (e.g. Orbit-Talents) can mirror Orbit's font choices
 -- without reading Orbit's tables directly. Payload is resolved (LSM path, not font name).
@@ -78,8 +76,7 @@ Panel._helpers = {
     CreateGlobalSettingsPlugin = CreateGlobalSettingsPlugin,
 }
 
--- [ MAIN LOGIC ]------------------------------------------------------------------------------------
-
+-- [ MAIN LOGIC ]-------------------------------------------------------------------------------------
 function Panel:Open(tabName)
     if InCombatLockdown() then return end
     local dialog = Orbit.SettingsDialog
@@ -125,8 +122,7 @@ function Panel:Hide()
     if dialog and dialog:IsShown() then dialog:Hide() end
 end
 
--- [ TOGGLE LOGIC ]----------------------------------------------------------------------------------
-
+-- [ TOGGLE LOGIC ]-----------------------------------------------------------------------------------
 function Panel:Toggle(tab)
     local dialog = Orbit.SettingsDialog
     if not dialog then Orbit:Print(L.MSG_SETTINGS_UNAVAILABLE); return end

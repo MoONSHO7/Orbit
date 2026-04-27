@@ -5,7 +5,7 @@ Orbit.GroupFrameHelpers = {}
 local Helpers = Orbit.GroupFrameHelpers
 local Pixel = Orbit.Engine.Pixel
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local MAX_GROUP_FRAMES = 40
 local MAX_RAID_GROUPS = 8
 local FRAMES_PER_GROUP = 5
@@ -30,7 +30,7 @@ local SORT_MODE = { Group = "group", Role = "role", Alphabetical = "alphabetical
 Helpers.SORT_MODE = SORT_MODE
 local ROLE_PRIORITY = GF.RolePriority
 
--- [ TIER SYSTEM ]-----------------------------------------------------------------------------------
+-- [ TIER SYSTEM ]------------------------------------------------------------------------------------
 local TIER_PARTY = "Party"
 local TIER_MYTHIC = "Mythic"
 local TIER_HEROIC = "Heroic"
@@ -66,7 +66,7 @@ local TIER_MAX_FRAMES = {
 }
 function Helpers:GetTierMaxFrames(tier) return TIER_MAX_FRAMES[tier] or MAX_GROUP_FRAMES end
 
--- [ ANCHOR ]----------------------------------------------------------------------------------------
+-- [ ANCHOR ]-----------------------------------------------------------------------------------------
 local CONTAINER_ANCHOR = {
     ["down"] = "TOPLEFT",
     ["up"] = "BOTTOMLEFT",
@@ -77,13 +77,13 @@ local CONTAINER_ANCHOR = {
 
 function Helpers:GetContainerAnchor(growthDirection) return CONTAINER_ANCHOR[growthDirection] or "TOPLEFT" end
 
--- [ AURA ANCHOR HELPER ]----------------------------------------------------------------------------
+-- [ AURA ANCHOR HELPER ]-----------------------------------------------------------------------------
 -- "Right" here is a PositionUtils anchor token, NOT a GrowthDirection value. Keep capitalized.
 function Helpers:AnchorToPosition(posX, posY, halfW, halfH)
     return Orbit.Engine.PositionUtils.AnchorToPosition(posX, posY, halfW, halfH, "Right")
 end
 
--- [ PARTY-STYLE LAYOUT (simple list) ]--------------------------------------------------------------
+-- [ PARTY-STYLE LAYOUT (simple list) ]---------------------------------------------------------------
 function Helpers:CalculatePartyContainerSize(numFrames, frameWidth, frameHeight, spacing, orientation, scale)
     spacing = scale and Pixel:Multiple(spacing or 0, scale) or (spacing or 0)
     orientation = orientation or 0
@@ -111,7 +111,7 @@ function Helpers:CalculatePartyFramePosition(index, frameWidth, frameHeight, spa
     return 0, -offset, "TOPLEFT", "TOPLEFT"
 end
 
--- [ RAID-STYLE LAYOUT (group grid) ]----------------------------------------------------------------
+-- [ RAID-STYLE LAYOUT (group grid) ]-----------------------------------------------------------------
 function Helpers:CalculateRaidContainerSize(numGroups, numPerGroup, frameWidth, frameHeight, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, scale)
     memberSpacing = scale and Pixel:Multiple(memberSpacing or self.LAYOUT.MemberSpacing, scale) or (memberSpacing or self.LAYOUT.MemberSpacing)
     groupSpacing = scale and Pixel:Multiple(groupSpacing or self.LAYOUT.GroupSpacing, scale) or (groupSpacing or self.LAYOUT.GroupSpacing)
@@ -161,12 +161,12 @@ function Helpers:CalculateMemberPosition(memberIndex, frameWidth, frameHeight, m
     return 0, -offset
 end
 
--- [ POWER BAR LAYOUT ]------------------------------------------------------------------------------
+-- [ POWER BAR LAYOUT ]-------------------------------------------------------------------------------
 function Helpers:UpdateFrameLayout(frame, borderSize, showPowerBar, powerBarRatio)
     Orbit.UnitFrameMixin:UpdateFrameLayout(frame, borderSize, { showPowerBar = showPowerBar, powerBarRatio = powerBarRatio or self.LAYOUT.PowerBarRatio })
 end
 
--- [ SORTING ]---------------------------------------------------------------------------------------
+-- [ SORTING ]----------------------------------------------------------------------------------------
 local _sortedUnits = {}
 local _unitDataPool = {}
 
@@ -216,7 +216,7 @@ function Helpers:GetActiveGroups()
     return active
 end
 
--- [ PARTY SORTING ]---------------------------------------------------------------------------------
+-- [ PARTY SORTING ]----------------------------------------------------------------------------------
 local PARTY_UNITS = { "party1", "party2", "party3", "party4" }
 
 local function GetRolePriority(unit)

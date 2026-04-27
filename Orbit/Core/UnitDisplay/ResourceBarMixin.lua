@@ -8,7 +8,7 @@ local Mixin = Orbit.ResourceBarMixin
 
 local SHAPESHIFT = { CAT = DRUID_CAT_FORM, BEAR = DRUID_BEAR_FORM, MOONKIN_1 = DRUID_MOONKIN_FORM_1, MOONKIN_2 = DRUID_MOONKIN_FORM_2 }
 
--- [ SPELL IDS ]-------------------------------------------------------------------------------------
+-- [ SPELL IDS ]--------------------------------------------------------------------------------------
 local SOUL_CLEAVE_ID = 228477
 local SOUL_FRAGMENTS_AURA_ID = 1225789
 local COLLAPSING_STAR_AURA_ID = 1227702
@@ -114,9 +114,36 @@ end
 -- StatusBar C++ sink in DiscreteBarRenderer; never compute a fraction in Lua — GetPowerRegenForPowerType
 -- returns secret under SecretWhenUnitStatsRestricted and SetFraction's comparisons would throw.
 function Mixin:GetEssenceState(essenceIndex, currentEssence, maxEssence)
-    if essenceIndex <= currentEssence then return "full" end
-    if essenceIndex == currentEssence + 1 and currentEssence < maxEssence then return "partial" end
-    return "empty"
+    if not self._essenceState then self._essenceState = { nextTick = nil, lastEssence = 0, tickDuration = nil } end
+    local essenceState = self._essenceState
+    local regen = GetPowerRegenForPowerType(Enum.PowerType.Essence)
+    if regen ~= nil and not issecretvalue(regen) and regen > 0 then
+        essenceState.tickDuration = 1 / regen
+    end
+    local tickDuration = essenceState.tickDuration
+    if not tickDuration then
+        if essenceIndex <= currentEssence then return "full", 0, 1 end
+        return "empty", 0, 0
+    end
+    local now = GetTime()
+    if currentEssence ~= essenceState.lastEssence then
+        essenceState.nextTick = currentEssence < maxEssence and (now + tickDuration) or nil
+    end
+    if currentEssence < maxEssence and not essenceState.nextTick then
+        essenceState.nextTick = now + tickDuration
+    end
+    if currentEssence >= maxEssence then
+        essenceState.nextTick = nil
+    end
+    essenceState.lastEssence = currentEssence
+    if essenceIndex <= currentEssence then
+        return "full", 0, 1
+    elseif essenceIndex == currentEssence + 1 and essenceState.nextTick then
+        local remaining = math_max(0, essenceState.nextTick - now)
+        return "partial", remaining, 1 - (remaining / tickDuration)
+    else
+        return "empty", 0, 0
+    end
 end
 
 function Mixin:GetChargedPoints()

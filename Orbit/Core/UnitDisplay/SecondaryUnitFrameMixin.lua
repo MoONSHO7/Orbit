@@ -1,4 +1,4 @@
--- [ SECONDARY UNIT FRAME MIXIN ]--------------------------------------------------------------------
+-- [ SECONDARY UNIT FRAME MIXIN ]---------------------------------------------------------------------
 -- Shared mixin for TargetOfTarget and TargetOfFocus plugins.
 -- Consumer files Mixin(Plugin, UnitFrameMixin) first, then Mixin(Plugin, SecondaryUnitFrameMixin).
 ---@type Orbit
@@ -17,7 +17,7 @@ Mixin.sharedDefaults = {
     ComponentPositions = { Name = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" } },
 }
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Mixin:AddSecondarySettings(dialog, systemFrame)
     local cfg = self._sufConfig
     if systemFrame.systemIndex ~= cfg.frameIndex then return end
@@ -30,18 +30,18 @@ function Mixin:AddSecondarySettings(dialog, systemFrame)
     })
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Mixin:CreateSecondaryPlugin(config)
     self._sufConfig = config
     self:RegisterStandardEvents()
-    self:HideNativeUnitFrame(config.nativeFrame, config.hiddenParentName)
+    self:HideNativeUnitFrame(config.nativeFrame)
 
     self.frame = OrbitEngine.UnitButton:Create(UIParent, config.unit, config.frameName)
     if config.exposeMountedConfig then self.mountedConfig = { frame = self.frame } end
     self.frame:SetFrameLevel(math.max(1, self.frame:GetFrameLevel() + Orbit.Constants.Levels.SecondaryDemote))
     self.frame.editModeName = config.editModeName
     self.frame.systemIndex = config.frameIndex
-    self.frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false, mergeBorders = { x = false, y = true } }
+    self.frame.anchorOptions = { horizontal = true, vertical = true, mergeBorders = { x = false, y = true } }
     self.frame.orbitResizeBounds = { minW = 50, maxW = 200, minH = 10, maxH = 40 }
 
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, config.frameIndex)
@@ -61,23 +61,20 @@ function Mixin:CreateSecondaryPlugin(config)
     local plugin = self
     local originalOnEvent = self.frame:GetScript("OnEvent")
     self.frame:SetScript("OnEvent", function(f, event, unit, ...)
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
         if event == config.changeEvent or (event == "UNIT_TARGET" and unit == config.parentUnit) then
             if plugin:IsEnabled() then f:UpdateAll() end
-            return
-        end
-        if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
+        elseif event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
             if UnitExists(config.unit) then f:UpdateHealth(); f:UpdateHealthText() end
-            return
-        end
-        if event == "PET_BATTLE_OPENING_START" or event == "UNIT_ENTERED_VEHICLE" then
+        elseif event == "PET_BATTLE_OPENING_START" or event == "UNIT_ENTERED_VEHICLE" then
             Orbit:SafeAction(function() f:Hide() end)
-            return
-        end
-        if event == "PET_BATTLE_CLOSE" or event == "UNIT_EXITED_VEHICLE" then
+        elseif event == "PET_BATTLE_CLOSE" or event == "UNIT_EXITED_VEHICLE" then
             plugin:ApplySettings(f)
-            return
+        elseif originalOnEvent then
+            originalOnEvent(f, event, unit, ...)
         end
-        if originalOnEvent then originalOnEvent(f, event, unit, ...) end
+        if p then p:End(plugin, event, s) end
     end)
 
     self:ApplySettings(self.frame)
@@ -88,7 +85,7 @@ function Mixin:CreateSecondaryPlugin(config)
     end
 end
 
--- [ EVENTS ]----------------------------------------------------------------------------------------
+-- [ EVENTS ]-----------------------------------------------------------------------------------------
 function Mixin:RegisterSecondaryEvents(enabled)
     local frame = self.frame
     local cfg = self._sufConfig
@@ -102,7 +99,7 @@ end
 
 function Mixin:UpdateVisibility() self:ApplySettings() end
 
--- [ APPLY SETTINGS ]--------------------------------------------------------------------------------
+-- [ APPLY SETTINGS ]---------------------------------------------------------------------------------
 function Mixin:ApplySettings()
     local frame = self.frame
     local cfg = self._sufConfig

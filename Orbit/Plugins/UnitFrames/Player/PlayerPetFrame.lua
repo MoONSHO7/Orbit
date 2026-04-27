@@ -3,7 +3,7 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_PlayerPetFrame"
 local PET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Pet
 local FRAME_LEVEL_DEMOTE = 5
@@ -28,7 +28,7 @@ local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
 -- Apply Mixin
 Mixin(Plugin, Orbit.UnitFrameMixin)
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex
     if systemIndex ~= PET_FRAME_INDEX then
@@ -46,11 +46,11 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     self:RegisterStandardEvents()
     if PetFrame then
-        self:HideNativeUnitFrame(PetFrame, "OrbitHiddenPetParent")
+        self:HideNativeUnitFrame(PetFrame)
     end
 
     self.container = self:CreateVisibilityContainer(UIParent)
@@ -58,7 +58,7 @@ function Plugin:OnLoad()
     self.frame:SetFrameLevel(math.max(1, self.frame:GetFrameLevel() - FRAME_LEVEL_DEMOTE))
     self.frame.editModeName = "Pet Frame"
     self.frame.systemIndex = PET_FRAME_INDEX
-    self.frame.anchorOptions = { horizontal = false, vertical = true, syncScale = false, syncDimensions = false }
+    self.frame.anchorOptions = { horizontal = false, vertical = true }
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 20, maxH = 100 }
 
     -- Register Edit Mode callbacks for visibility updates
@@ -114,7 +114,7 @@ function Plugin:OnLoad()
     end)
 end
 
--- [ VISIBILITY ]------------------------------------------------------------------------------------
+-- [ VISIBILITY ]-------------------------------------------------------------------------------------
 function Plugin:UpdateVisibility()
     if not self.frame then
         return
@@ -146,7 +146,7 @@ function Plugin:UpdateVisibility()
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:ApplySettings(frame)
     frame = self.frame
     if not frame or InCombatLockdown() then

@@ -1,4 +1,4 @@
--- [ ORBIT CAST BAR MIXIN ]--------------------------------------------------------------------------
+-- [ ORBIT CAST BAR MIXIN ]---------------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local L = Orbit.L
@@ -27,8 +27,7 @@ Mixin.sharedDefaults = {
     CastBarScale = 100,
 }
 
--- [ SHARED UTILITIES ]------------------------------------------------------------------------------
-
+-- [ SHARED UTILITIES ]-------------------------------------------------------------------------------
 function Mixin:GetAnchorAxis(frame)
     return OrbitEngine.Frame:GetAnchorAxis(frame)
 end
@@ -56,8 +55,7 @@ function Mixin:UpdateInterruptState(bar, notInterruptible)
     self:ApplyCastColor(bar, notInterruptible and "NON_INTERRUPTIBLE" or "INTERRUPTIBLE")
 end
 
--- [ FRAME CREATION ]--------------------------------------------------------------------------------
-
+-- [ FRAME CREATION ]---------------------------------------------------------------------------------
 function Mixin:CreateCastBarFrame(name, config)
     config = config or {}
 
@@ -89,7 +87,8 @@ function Mixin:CreateCastBarFrame(name, config)
     bar.preview = false
 
     -- Frame options
-    bar.anchorOptions = config.anchorOptions or { horizontal = false, vertical = true, syncScale = true, syncDimensions = true }
+    bar.anchorOptions = config.anchorOptions or { horizontal = false, vertical = true }
+    bar.orbitWidthSync = true
     bar.orbitResizeBounds = { minW = 100, maxW = 600, minH = 5, maxH = 40, widthKey = "CastBarWidth", heightKey = "CastBarHeight" }
 
     -- Attach to Frame system
@@ -98,8 +97,7 @@ function Mixin:CreateCastBarFrame(name, config)
     return bar
 end
 
--- [ SKIN INITIALIZATION ]---------------------------------------------------------------------------
-
+-- [ SKIN INITIALIZATION ]----------------------------------------------------------------------------
 function Mixin:InitializeSkin(bar)
     if not Orbit.Skin.CastBar then return end
     local skinned = Orbit.Skin.CastBar:Create(bar)
@@ -127,7 +125,6 @@ function Mixin:InitializeSkin(bar)
 end
 
 -- [ EDIT MODE & EVENTS ] ----------------------------------------------------------------------------
-
 function Mixin:RegisterEditModeCallbacks(bar)
     if not EventRegistry or bar.orbitEditModeCallbacksRegistered then
         return
@@ -169,7 +166,6 @@ function Mixin:RestorePositionDebounced(bar, debounceKey)
 end
 
 -- [ SETTINGS UI (SHARED SCHEMA BUILDER) ] -----------------------------------------------------------
-
 function Mixin:AddCastBarSettings(dialog, systemFrame)
     local bar = self.CastBar
     if not bar then
@@ -206,7 +202,6 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
                 default = 200,
             })
         end
-        table.insert(schema.controls, { type = "checkbox", key = "CastBarText", label = "Show Spell Name", default = true })
         -- Migrate legacy boolean CastBarIcon (true = Left/1, false = Off/2) to numeric slider value.
         local storedIconPos = self:GetSetting(systemIndex, "CastBarIcon")
         if type(storedIconPos) == "boolean" then
@@ -225,6 +220,7 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
                 self:ApplySettings(systemFrame)
             end,
         })
+        table.insert(schema.controls, { type = "checkbox", key = "CastBarText", label = "Show Spell Name", default = true })
         table.insert(schema.controls, { type = "checkbox", key = "CastBarTimer", label = "Show Timer", default = true })
     elseif currentTab == "Colour" then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
@@ -245,7 +241,6 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
 end
 
 -- [ APPLY SETTINGS (SHARED) ] -----------------------------------------------------------------------
-
 function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     if not bar then
         return
@@ -306,15 +301,15 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
             color = color,
             borderSize = borderSize,
             textSize = textSize,
-            showText = showText,
             showIcon = showIcon,
             iconAtEnd = iconPos == 3,
-            showTimer = showTimer,
             font = fontName,
             textColor = { r = 1, g = 1, b = 1, a = 1 },
             backdropColor = backdropColor,
             sparkColor = sparkColor,
         })
+        if bar.Text then bar.Text:SetShown(showText ~= false) end
+        if bar.Timer then bar.Timer:SetShown(showTimer ~= false) end
     end
     -- Sync protected overlay texture and color
     if bar.protectedOverlay then
@@ -337,8 +332,7 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(bar, self, systemIndex, "OutOfCombatFade", enableHover) end
 end
 
--- [ MOUNTED VISIBILITY ]----------------------------------------------------------------------------
-
+-- [ MOUNTED VISIBILITY ]-----------------------------------------------------------------------------
 function Mixin:UpdateVisibility()
     local bar = self.CastBar
     if not bar then return end
@@ -353,8 +347,7 @@ function Mixin:UpdateVisibility()
     end
 end
 
--- [ PREVIEW ]---------------------------------------------------------------------------------------
-
+-- [ PREVIEW ]----------------------------------------------------------------------------------------
 function Mixin:ShowPreview()
     local bar = self.CastBar
     if not bar then
@@ -372,7 +365,6 @@ function Mixin:ShowPreview()
 end
 
 -- [ STANDALONE EVENT-DRIVEN CAST BAR (Target/Focus) ] -----------------------------------------------
-
 local TIMER_THROTTLE_INTERVAL = 0.1
 local INTERRUPT_FLASH_DURATION = Orbit.Constants.Timing.FlashDuration
 

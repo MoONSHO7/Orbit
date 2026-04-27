@@ -2,6 +2,7 @@
 -- Item level datatext: shows average equipped item level
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
 local W = DT.BaseDatatext:New("ItemLevel")
@@ -14,7 +15,7 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Item Level", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_ILVL_TITLE, 1, 0.82, 0)
     local avg, equipped = GetAverageItemLevel()
     GameTooltip:AddLine(" ")
     GameTooltip:AddDoubleLine("Overall:", string.format("%.1f", avg or 0), 1, 1, 1, 1, 1, 1)

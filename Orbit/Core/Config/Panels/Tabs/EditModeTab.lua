@@ -1,4 +1,4 @@
--- [ EDIT MODE TAB ]---------------------------------------------------------------------------------
+-- [ EDIT MODE TAB ]----------------------------------------------------------------------------------
 -- Edit mode visibility and selection color settings for the Orbit Options dialog.
 
 local _, Orbit = ...
@@ -7,16 +7,14 @@ local L = Orbit.L
 local Panel = Orbit.OptionsPanel
 local CreateGlobalSettingsPlugin = Panel._helpers.CreateGlobalSettingsPlugin
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local EditModePlugin = CreateGlobalSettingsPlugin("OrbitEditMode", function(key, value)
     if Orbit.Engine.FrameSelection then Orbit.Engine.FrameSelection:RefreshVisuals() end
 end)
 
 EditModePlugin.ApplySettings = function(self, systemFrame) end
 
--- [ SCHEMA ]----------------------------------------------------------------------------------------
-
+-- [ SCHEMA ]-----------------------------------------------------------------------------------------
 local function GetEditModeSchema()
     return {
         hideNativeSettings = true,
@@ -47,6 +45,5 @@ local function GetEditModeSchema()
     }
 end
 
--- [ REGISTRATION ]----------------------------------------------------------------------------------
-
+-- [ REGISTRATION ]-----------------------------------------------------------------------------------
 Panel.Tabs["Edit Mode"] = { plugin = EditModePlugin, schema = GetEditModeSchema }

@@ -1,4 +1,4 @@
--- [ UNIT POWER BAR MIXIN ]--------------------------------------------------------------------------
+-- [ UNIT POWER BAR MIXIN ]---------------------------------------------------------------------------
 -- Shared mixin for Target/Focus power bar plugins.
 -- Follows the CastBarMixin pattern: consumer files Mixin(Plugin, ...) then call config methods.
 ---@type Orbit
@@ -21,7 +21,7 @@ Mixin.sharedDefaults = {
 
 
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Mixin:AddPowerBarSettings(dialog, systemFrame)
     if not self._pbFrame then return end
     local cfg = self._pbConfig
@@ -34,7 +34,7 @@ function Mixin:AddPowerBarSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Mixin:CreatePowerBarPlugin(config)
     self._pbConfig = config
     local Frame, PowerBar = OrbitEngine.FrameFactory:CreateWithBar(config.frameName, self, {
@@ -43,6 +43,7 @@ function Mixin:CreatePowerBarPlugin(config)
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = { x = false, y = true } },
     })
     Frame:SetFrameLevel(Frame:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
+    Frame.orbitWidthSync = true
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 4, maxH = 25 }
     self._pbFrame = Frame
     self._pbBar = PowerBar
@@ -141,7 +142,12 @@ function Mixin:CreatePowerBarPlugin(config)
     Frame:RegisterEvent(config.changeEvent)
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
-    Frame:SetScript("OnEvent", function() self:UpdateAll() end)
+    Frame:SetScript("OnEvent", function(_, event)
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
+        self:UpdateAll()
+        if p then p:End(self, event, s) end
+    end)
     Frame:HookScript("OnShow", function() self:UpdateAll() end)
 
     OrbitEngine.EditMode:RegisterEnterCallback(function() self:UpdateVisibility() end, self)
@@ -198,7 +204,7 @@ function Mixin:UpdateVisibility()
     end
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Mixin:ApplySettings()
     local Frame = self._pbFrame
     local PowerBar = self._pbBar
@@ -262,7 +268,7 @@ function Mixin:ApplySettings()
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(Frame, vePlugin, veIndex, "OutOfCombatFade", enableHover) end
 end
 
--- [ POWER UPDATE ]----------------------------------------------------------------------------------
+-- [ POWER UPDATE ]-----------------------------------------------------------------------------------
 function Mixin:UpdateAll()
     local Frame = self._pbFrame
     local PowerBar = self._pbBar

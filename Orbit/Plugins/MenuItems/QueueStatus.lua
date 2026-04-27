@@ -3,7 +3,7 @@ local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_QueueStatus"
 local DEFAULT_POSITION_X = -250
 local DEFAULT_POSITION_Y = 40
@@ -19,8 +19,7 @@ local Plugin = Orbit:RegisterPlugin("Queue Status", SYSTEM_ID, {
 -- Apply NativeBarMixin for scale helper
 Mixin(Plugin, Orbit.NativeBarMixin)
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function NeutralizeNativeAnchoring()
     if MicroMenuMixin then
         MicroMenuMixin.UpdateQueueStatusAnchors = function() end
@@ -30,7 +29,7 @@ local function NeutralizeNativeAnchoring()
     end
 end
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or SYSTEM_ID
     local SB = OrbitEngine.SchemaBuilder
@@ -60,7 +59,7 @@ function Plugin:OnLoad()
     self.frame:SetClampedToScreen(true)
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Queue Status"
-    self.frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false }
+    self.frame.anchorOptions = { horizontal = true, vertical = true }
     self.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)
     OrbitEngine.Frame:RestorePosition(self.frame, self, SYSTEM_ID)
@@ -94,7 +93,7 @@ function Plugin:OnLoad()
     end
 end
 
--- [ LOGIC ]-----------------------------------------------------------------------------------------
+-- [ LOGIC ]------------------------------------------------------------------------------------------
 function Plugin:CaptureButton(button)
     if not button then return end
     local parent = button:GetParent()
@@ -116,7 +115,7 @@ function Plugin:ReparentAll()
     end
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:ApplySettings()
     local frame = self.frame
     if not frame or InCombatLockdown() then return end

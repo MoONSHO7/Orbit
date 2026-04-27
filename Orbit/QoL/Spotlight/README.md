@@ -15,11 +15,10 @@ Index/
   IndexManager.lua              Master index; per-source event registration; dirty-tracking + debounced rebuild
   Sources/                      One file per source. Each defines kind, events, persistent, Build, and signature.
 UI/
-  ResultRow.lua                 Secure-action-button row with Orbit-skinned icon + label
+  ResultRow.lua                 Secure-action-button row with Orbit-skinned icon + label; mouse-only activation
   RowPool.lua                   Lazy row creation and reuse
-  KeyNav.lua                    EditBox arrow/enter/esc interception
   ClickOutsideCatcher.lua       Full-screen invisible mouse-down frame
-  SpotlightFrame.lua            Open/close, cursor anchor, debounced query, 10s auto-close
+  SpotlightFrame.lua            Open/close, cursor anchor, debounced query, EditBox input filter
 ```
 
 ## Contracts
@@ -51,6 +50,10 @@ function Sources.<kind>:Build() return { <entry>, ... } end
 ## Combat
 
 `Spotlight:Toggle()` and `SpotlightFrame:Open()` both short-circuit in combat with a print via `Orbit:Print(L.PLU_SPT_MSG_COMBAT)`. While Spotlight is closed, no secure attributes are rewritten, so combat lockdown cannot be tripped.
+
+## Activation
+
+Activation is mouse-only: clicking a row fires the hardware-originated secure dispatch, which is untainted and works for every entry kind — including `type="macro"` (`RunMacroText`). Programmatic `row:Click()` from a Lua keyboard handler would taint the dispatch and trigger `ADDON_ACTION_FORBIDDEN` on protected verbs, so Spotlight does not intercept arrow keys or Enter. `ResultRow:Bind`'s `PostClick` closes Spotlight after any activation; ESC closes via the EditBox's `OnEscapePressed`.
 
 ## Performance
 

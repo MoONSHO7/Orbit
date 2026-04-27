@@ -1,4 +1,4 @@
--- [ CANVAS MODE - SETTINGS TRANSACTION ]------------------------------------------------------------
+-- [ CANVAS MODE - SETTINGS TRANSACTION ]-------------------------------------------------------------
 -- Transactional cache for Canvas Mode edits.
 -- Buffers all changes until Apply (commit) or Cancel (rollback).
 -- Fires CANVAS_SETTINGS_CHANGED so preview frames can live-update.
@@ -8,14 +8,12 @@ local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 
 -- [ MODULE ] ----------------------------------------------------------------------------------------
-
 local Transaction = {}
 CanvasMode.Transaction = Transaction
 local NIL_SENTINEL = {}
 local FIRE_DEBOUNCE = 0.05
 
 -- [ STATE ] -----------------------------------------------------------------------------------------
-
 local active = false
 local fireTimer = nil
 local plugin = nil
@@ -26,7 +24,6 @@ local originalPositions = {} -- snapshot of ComponentPositions at Begin()
 local pendingPositions = {}  -- staged position changes
 
 -- [ DEEP COPY ] -------------------------------------------------------------------------------------
-
 local function DeepCopy(src)
     if type(src) ~= "table" then return src end
     local copy = {}
@@ -35,7 +32,6 @@ local function DeepCopy(src)
 end
 
 -- [ SESSION API ] -----------------------------------------------------------------------------------
-
 function Transaction:Begin(targetPlugin, targetSystemIndex)
     self:Rollback() -- clean any stale state
     if not targetPlugin then return end
@@ -66,7 +62,6 @@ function Transaction:GetSystemIndex()
 end
 
 -- [ SETTINGS ] --------------------------------------------------------------------------------------
-
 function Transaction:Set(key, value)
     if not active then return end
     -- Snapshot original if first time touching this key
@@ -94,7 +89,6 @@ function Transaction:GetPending(key)
 end
 
 -- [ POSITIONS ] -------------------------------------------------------------------------------------
-
 function Transaction:SetPosition(compKey, posData)
     if not active then return end
     -- Merge into existing pending (or snapshot from original) to preserve overrides
@@ -113,6 +107,20 @@ function Transaction:GetPositions()
     return merged
 end
 
+function Transaction:StagePositionFromContainer(container)
+    if not active or not container or not container.key then return end
+    self:SetPosition(container.key, {
+        anchorX = container.anchorX,
+        anchorY = container.anchorY,
+        offsetX = container.offsetX,
+        offsetY = container.offsetY,
+        justifyH = container.justifyH,
+        selfAnchorY = container.selfAnchorY,
+        posX = container.posX,
+        posY = container.posY,
+    })
+end
+
 function Transaction:SetPositionOverride(compKey, overrideKey, value)
     if not active then return end
     if not pendingPositions[compKey] then
@@ -124,7 +132,6 @@ function Transaction:SetPositionOverride(compKey, overrideKey, value)
 end
 
 -- [ DISABLED COMPONENTS ] ---------------------------------------------------------------------------
-
 function Transaction:SetDisabledComponents(keys)
     if not active then return end
     self:Set("DisabledComponents", keys)
@@ -156,26 +163,27 @@ function Transaction:Commit()
 
     local savedPlugin = plugin
     self:Clear()
+    Orbit.EventBus:Fire("CANVAS_TRANSACTION_ENDED", savedPlugin, "commit")
 
     -- Trigger live frame + preview refresh
     if savedPlugin.OnCanvasApply then savedPlugin:OnCanvasApply() end
 end
 
 -- [ ROLLBACK ] --------------------------------------------------------------------------------------
-
 function Transaction:Rollback()
     if not active then return end
     local savedPlugin = plugin
     self:Clear()
+    Orbit.EventBus:Fire("CANVAS_TRANSACTION_ENDED", savedPlugin, "rollback")
     -- Restore all frames to their pre-edit state (live + preview)
     if savedPlugin and savedPlugin.ApplySettings then savedPlugin:ApplySettings() end
     if savedPlugin and savedPlugin.SchedulePreviewUpdate then savedPlugin:SchedulePreviewUpdate() end
 end
 
 -- [ INTERNAL ] --------------------------------------------------------------------------------------
-
 function Transaction:Clear()
     active = false
+    if fireTimer and fireTimer.Cancel then fireTimer:Cancel() end
     fireTimer = nil
     plugin = nil
     systemIndex = nil
@@ -188,7 +196,7 @@ end
 function Transaction:FireChanged()
     if fireTimer then return end
     local p = plugin
-    fireTimer = C_Timer.After(FIRE_DEBOUNCE, function()
+    fireTimer = C_Timer.NewTimer(FIRE_DEBOUNCE, function()
         fireTimer = nil
         if active and p then Orbit.EventBus:Fire("CANVAS_SETTINGS_CHANGED", p) end
     end)

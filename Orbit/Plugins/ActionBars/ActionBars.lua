@@ -9,7 +9,7 @@ local ABText = Orbit.ActionBarsText
 local ABPreview = Orbit.ActionBarsPreview
 local GC = Orbit.Engine.GlowController
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULT_ICON_SIZE = 34
 local PET_BAR_INDEX = 9
 local STANCE_BAR_INDEX = 10
@@ -37,7 +37,7 @@ local DROPPABLE_CURSOR_TYPES = { spell = true, petaction = true, flyout = true, 
 local rangeButtons = {}
 local cachedOORColor, cachedOOMColor, cachedUnusableColor
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local BAR_CONFIG = {
     { blizzName = "MainActionBar", orbitName = "OrbitActionBar1", label = L.PLU_ACTION_BAR_1, index = 1, buttonPrefix = "ActionButton", count = 12 },
     { blizzName = "MultiBarBottomLeft", orbitName = "OrbitActionBar2", label = L.PLU_ACTION_BAR_2, index = 2, buttonPrefix = "MultiBarBottomLeftButton", count = 12 },
@@ -245,7 +245,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = function(val) self:SetSetting(systemIndex, "CooldownSwipeColor", val); self:ApplyAll() end })
     end
     schema.extraButtons = { { text = L.PLU_AB_QUICK_KEYBIND, callback = function()
-        if EditModeManagerFrame and EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
+        if EditModeManagerFrame and EditModeManagerFrame:IsShown() then securecall("HideUIPanel", EditModeManagerFrame) end
         if QuickKeybindFrame then QuickKeybindFrame:Show() end
     end } }
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
@@ -282,6 +282,8 @@ function Plugin:OnLoad()
         for index, container in pairs(self.containers) do
             if index == VEHICLE_EXIT_INDEX then
                 if not InCombatLockdown() and Orbit:IsEditMode() then UnregisterStateDriver(container, "visibility"); container:Show() end
+            elseif index == PET_BAR_INDEX and Orbit:IsEditMode() then
+                if not InCombatLockdown() then UnregisterStateDriver(container, "visibility"); container:Show() end
             elseif not (index <= 8 and index > numBars) then
                 if not InCombatLockdown() then
                     if index == PET_BAR_INDEX then RegisterStateDriver(container, "visibility", PET_BAR_BASE_DRIVER)
@@ -407,7 +409,7 @@ function Plugin:OnLoad()
 end
 
 -- [ EDIT MODE NUM ICONS PATCH ] ---------------------------------------------------------------------
-StaticPopupDialogs["ORBIT_ACTIONBARS_RELOAD"] = { text = "Action bar icon count changed. A reload is required.", button1 = "Reload", button2 = "Later", OnAccept = function() ReloadUI() end, timeout = 0, whileDead = true, hideOnEscape = true }
+StaticPopupDialogs["ORBIT_ACTIONBARS_RELOAD"] = { text = L.MSG_AB_ICON_COUNT_RELOAD, button1 = L.CMN_RELOAD, button2 = L.CMN_LATER, OnAccept = function() ReloadUI() end, timeout = 0, whileDead = true, hideOnEscape = true }
 
 Orbit.EventBus:On("EDIT_MODE_LAYOUTS_UPDATED", function()
     local layoutInfo = C_EditMode.GetLayouts()

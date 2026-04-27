@@ -2,6 +2,7 @@
 -- Volume datatext: master volume display with scroll-to-adjust
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local VOLUME_STEP = 0.05
@@ -24,7 +25,7 @@ end
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine("Volume", 1, 0.82, 0)
+    GameTooltip:AddLine(L.PLU_DT_VOLUME_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     local vol = tonumber(GetCVar("Sound_MasterVolume")) or 0
     GameTooltip:AddDoubleLine("Master:", string.format("%d%%", vol * 100), 1, 1, 1, 1, 1, 1)

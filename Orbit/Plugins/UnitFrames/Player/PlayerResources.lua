@@ -117,6 +117,7 @@ function Plugin:OnLoad()
         systemIndex = SYSTEM_INDEX,
         anchorOptions = { horizontal = false, vertical = true, mergeBorders = { x = false, y = true } }, -- Vertical stacking only
     })
+    Frame.orbitWidthSync = true
     Frame.orbitResizeBounds = { minW = 100, maxW = 600, minH = 5, maxH = 40 }
     self.frame = Frame -- Expose for PluginMixin compatibility
     self.mountedConfig = { frame = Frame }
@@ -379,7 +380,10 @@ function Plugin:OnLoad()
         Frame.elapsed = (Frame.elapsed or 0) + elapsed
         if Frame.elapsed >= UPDATE_INTERVAL then
             Frame.elapsed = 0
+            local p = Orbit.Profiler
+            local s = p and p:Begin()
             self:UpdatePower()
+            if p then p:End(self, "OnUpdate", s) end
         end
     end
 
@@ -526,7 +530,7 @@ function Plugin:ApplySettings()
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(Frame, self, SYSTEM_INDEX, "OutOfCombatFade", enableHover) end
 end
 
--- [ RESOURCE COLOR (DELEGATE) ]---------------------------------------------------------------------
+-- [ RESOURCE COLOR (DELEGATE) ]----------------------------------------------------------------------
 function Plugin:GetResourceColor(index, maxResources, isCharged)
     return DiscreteRenderer:GetResourceColor(self, SYSTEM_INDEX, index, maxResources, isCharged)
 end

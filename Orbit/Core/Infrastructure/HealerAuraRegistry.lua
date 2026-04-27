@@ -6,10 +6,10 @@ Orbit.HealerAuraRegistry = {}
 local Registry = Orbit.HealerAuraRegistry
 local _, playerClass = UnitClass("player")
 
--- [ MAX SLOTS ]-------------------------------------------------------------------------------------
+-- [ MAX SLOTS ]--------------------------------------------------------------------------------------
 local MAX_HEALER_SLOTS = 10
 
--- [ SPEC SPELL DATA ]-------------------------------------------------------------------------------
+-- [ SPEC SPELL DATA ]--------------------------------------------------------------------------------
 local SPEC_SPELLS = {
     [1467] = { -- Devastation Evoker
         { spellId = 369459, label = "Source of Magic" },
@@ -68,7 +68,7 @@ local SPEC_SPELLS = {
     },
 }
 
--- [ RAID BUFF DATA ]--------------------------------------------------------------------------------
+-- [ RAID BUFF DATA ]---------------------------------------------------------------------------------
 local RAID_BUFFS = {
     { spellId = 1126,   label = "Mark of the Wild",        classFilter = "DRUID" },
     { spellId = 1459,   label = "Arcane Intellect",       classFilter = "MAGE" },
@@ -85,12 +85,12 @@ for _, buff in ipairs(RAID_BUFFS) do
     if buff.variants then for _, vid in ipairs(buff.variants) do ALL_RAID_BUFF_IDS[vid] = true end end
 end
 
--- [ SLOT KEY GENERATION ]---------------------------------------------------------------------------
+-- [ SLOT KEY GENERATION ]----------------------------------------------------------------------------
 local SLOT_KEYS = {}
 for i = 1, MAX_HEALER_SLOTS do SLOT_KEYS[i] = "HealerAura" .. i end
 local RAID_BUFF_KEY = "RaidBuff"
 
--- [ CACHES (built once at load) ]-------------------------------------------------------------------
+-- [ CACHES (built once at load) ]--------------------------------------------------------------------
 local _activeSlots = {}    -- { { key, spellId, label, altSpellId }, ... }
 local _activeRaidBuffs = {} -- { { key = "RaidBuff", spellId, label }, ... }
 local _activeKeys = {}     -- { "HealerAura1", ..., "RaidBuff" }
@@ -132,7 +132,7 @@ rebuildFrame:SetScript("OnEvent", BuildCaches)
 
 function Registry:Rebuild() BuildCaches() end
 
--- [ PUBLIC API ]------------------------------------------------------------------------------------
+-- [ PUBLIC API ]-------------------------------------------------------------------------------------
 function Registry:ActiveSlots() return _activeSlots end
 function Registry:ActiveRaidBuffs() return _activeRaidBuffs end
 function Registry:ActiveKeys() return _activeKeys end

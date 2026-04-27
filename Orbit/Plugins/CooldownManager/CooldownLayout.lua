@@ -25,6 +25,7 @@ local BUFFBAR_DEFAULT_COLORS = {
 }
 local BUFFBAR_TEXT_PADDING = 5
 local BUFFBAR_ICON_TRIM = 0.07
+local DEFAULT_KEYPRESS_COLOR = { r = 1, g = 1, b = 1, a = 0 }
 
 -- Reusable child buffer alias
 local PackChildren = function(...) return CooldownUtils:PackChildren(...) end
@@ -41,7 +42,7 @@ local ApplyTimerColor
 local ApplyBuffIconDesaturation
 local ApplyBuffBarSkin
 
--- [ FLASH OVERLAY ] -----------------------------------------------------------
+-- [ FLASH OVERLAY ] ---------------------------------------------------------------------------------
 local function EnsureFlashOverlay(icon)
     if icon.orbitCDMFlash then return end
     local flash = CreateFrame("Frame", nil, icon)
@@ -95,10 +96,10 @@ hooksecurefunc("ActionButtonDown", function(id)
     if actionType ~= "spell" or not spellID then return end
     local icon = FindIconBySpellID(spellID)
     if not icon or not icon.orbitCDMSystemIndex then return end
-    FlashIcon(icon, CDM:GetSetting(icon.orbitCDMSystemIndex, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0 })
+    FlashIcon(icon, CDM:GetSetting(icon.orbitCDMSystemIndex, "KeypressColor") or DEFAULT_KEYPRESS_COLOR)
 end)
 
--- [ BUFF ICON AURA DURATION ] -------------------------------------------------
+-- [ BUFF ICON AURA DURATION ] -----------------------------------------------------------------------
 local function GetBuffIconAuraDuration(icon)
     local unit = icon.GetAuraDataUnit and icon:GetAuraDataUnit()
     if not unit then return nil end
@@ -107,15 +108,15 @@ local function GetBuffIconAuraDuration(icon)
     return C_UnitAuras.GetAuraDuration(unit, auraID)
 end
 
--- [ ANCHOR LOOKUP ] -----------------------------------------------------------
+-- [ ANCHOR LOOKUP ] ---------------------------------------------------------------------------------
 local function GetAnchorInfo(anchorFrame) return anchorFrame and OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors[anchorFrame] end
 
--- [ LIVE CANVAS PREVIEW ] -----------------------------------------------------
+-- [ LIVE CANVAS PREVIEW ] ---------------------------------------------------------------------------
 Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", function(changedPlugin)
     if changedPlugin == CDM and CDM.buffBarAnchor and not CDM.buffBarAnchor.orbitMountedSuppressed then CDM:ProcessChildren(CDM.buffBarAnchor) end
 end)
 
--- [ PROCESS CHILDREN ] --------------------------------------------------------
+-- [ PROCESS CHILDREN ] ------------------------------------------------------------------------------
 function CDM:ProcessChildren(anchor)
     if not anchor then return end
     local entry = VIEWER_MAP[anchor.systemIndex]
@@ -287,7 +288,7 @@ function CDM:ProcessChildren(anchor)
             end
             local barH = Pixel:Snap(skinSettings.buffBarHeight or 20, scale)
             local settingW = Pixel:Snap(math.max(skinSettings.buffBarWidth or 200, BUFFBAR_MIN_WIDTH), scale)
-            -- When docked, anchor width is authoritative (syncDimensions from parent); when undocked, use setting width
+            -- When docked, anchor width is authoritative (orbitWidthSync from parent); when undocked, use setting width
             local isDocked = GetAnchorInfo(anchorFrame) ~= nil
             if not isDocked then anchorFrame:SetWidth(settingW) end
             local barW = isDocked and anchorFrame:GetWidth() or math.max(anchorFrame:GetWidth(), settingW)
@@ -401,7 +402,7 @@ function CDM:ProcessChildren(anchor)
     end
 end
 
--- [ PRE-SIZE ANCHORS ] --------------------------------------------------------
+-- [ PRE-SIZE ANCHORS ] ------------------------------------------------------------------------------
 -- Pre-sizes all viewer anchors to their max configured width so they don't need to resize during combat.
 function CDM:PreSizeAnchors()
     if InCombatLockdown() then return end
@@ -430,7 +431,7 @@ function CDM:PreSizeAnchors()
     end
 end
 
--- [ GCD SWIPE HOOK ] ----------------------------------------------------------
+-- [ GCD SWIPE HOOK ] --------------------------------------------------------------------------------
 function CDM:HookGCDSwipe(icon, systemIndex)
     if icon.orbitGCDHooked or not icon.RefreshSpellCooldownInfo then return end
     icon.orbitSystemIndex = systemIndex
@@ -459,7 +460,7 @@ function CDM:HookGCDSwipe(icon, systemIndex)
     icon.orbitGCDHooked = true
 end
 
--- [ ALWAYS SHOW (BUFF ICONS) ] ------------------------------------------------
+-- [ ALWAYS SHOW (BUFF ICONS) ] ----------------------------------------------------------------------
 function CDM:HookAlwaysShow(icon)
     if icon.orbitAlwaysShowHooked then return end
     local plugin = self
@@ -482,7 +483,7 @@ function CDM:HookAlwaysShow(icon)
     icon.orbitAlwaysShowHooked = true
 end
 
--- [ TIMER COLOR CURVE ] -------------------------------------------------------
+-- [ TIMER COLOR CURVE ] -----------------------------------------------------------------------------
 local SB = OrbitEngine.SchemaBuilder
 local curveCache = {}
 
@@ -578,7 +579,7 @@ ApplyTimerColor = function(icon, curve)
     if activeFS then SetCachedColor(activeFS, r, g, b, a) end
 end
 
--- [ BUFF ICON DESATURATION ] --------------------------------------------------
+-- [ BUFF ICON DESATURATION ] ------------------------------------------------------------------------
 ApplyBuffIconDesaturation = function(icon, inactiveAlpha, hideBorders)
     if not icon.Icon then return end
     local durObj = GetBuffIconAuraDuration(icon)
@@ -595,7 +596,7 @@ ApplyBuffIconDesaturation = function(icon, inactiveAlpha, hideBorders)
     end
 end
 
--- [ BUFF BAR SKINNING ] -------------------------------------------------------
+-- [ BUFF BAR SKINNING ] -----------------------------------------------------------------------------
 ApplyBuffBarSkin = function(item, skinSettings, barIndex)
     local bar = item.Bar
     if not bar then return end
@@ -697,7 +698,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
     if bar.Name then
         bar.Name:SetShown(not nameDisabled)
         if not nameDisabled then
-            if not (ApplyTextPosition and nameData and ApplyTextPosition(bar.Name, item, nameData)) then
+            if not (ApplyTextPosition and nameData and ApplyTextPosition(bar.Name, bar, nameData)) then
                 bar.Name:ClearAllPoints()
                 bar.Name:SetPoint("LEFT", bar, "LEFT", textPad, 0)
                 bar.Name:SetPoint("RIGHT", bar.Duration or bar, "LEFT", -textPad, 0)
@@ -709,7 +710,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
     if bar.Duration then
         bar.Duration:SetShown(not timerDisabled)
         if not timerDisabled then
-            if not (ApplyTextPosition and timerData and ApplyTextPosition(bar.Duration, item, timerData)) then
+            if not (ApplyTextPosition and timerData and ApplyTextPosition(bar.Duration, bar, timerData)) then
                 bar.Duration:ClearAllPoints()
                 bar.Duration:SetPoint("RIGHT", bar, "RIGHT", -textPad, 0)
                 bar.Duration:SetJustifyH("RIGHT")
@@ -754,7 +755,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
 end
 
 
--- [ GROWTH DIRECTION ] --------------------------------------------------------
+-- [ GROWTH DIRECTION ] ------------------------------------------------------------------------------
 function CDM:GetGrowthDirection(anchorFrame) local info = GetAnchorInfo(anchorFrame); return info and info.edge == "TOP" and "UP" or "DOWN" end
 
 function CDM:GetHorizontalGrowth(anchorFrame)
@@ -765,7 +766,7 @@ function CDM:GetHorizontalGrowth(anchorFrame)
     return "CENTER"
 end
 
--- [ ASSISTED COMBAT HIGHLIGHT ] -----------------------------------------------
+-- [ ASSISTED COMBAT HIGHLIGHT ] ---------------------------------------------------------------------
 do
     local FLIPBOOK_SCALE = 1.4
     local HIGHLIGHT_PADDING = 6

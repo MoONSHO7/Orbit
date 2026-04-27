@@ -1,6 +1,6 @@
 # cooldown viewer extensions
 
-shared plugin that adds extra side tabs to blizzard's `CooldownViewerSettings` frame. owns the `Blizzard_CooldownViewer` addon-loaded hook, the anchor chain that walks below `AurasTab`, and the click dispatch. consumers (currently `Orbit_Tracked`, future plugins later) call `RegisterTab` and the plugin handles the rest.
+shared plugin that adds extra side tabs to blizzard's `CooldownViewerSettings` frame. owns the `Blizzard_CooldownViewer` addon-loaded hook, the anchor chain that walks below `AurasTab`, and the click dispatch. consumers (currently `Orbit_Tracked`, future plugins later) call `RegisterTab` to add a tab.
 
 ## why this exists separately
 
@@ -54,3 +54,4 @@ tabs are parented to `UIParent`, **not** `CooldownViewerSettings`. the `hooksecu
 - no settings, no persistent state, no spec data
 - no live toggle — `liveToggle = false`. you cannot disable this plugin from the orbit panel; it's pure infrastructure
 - does not register tabs on its own — every tab comes from another plugin
+- does not bridge drags out of the cooldown viewer. tracked accepts drops from the spellbook and bags only (via the normal cursor path). dragging an icon out of the cooldown viewer settings panel is a no-op.

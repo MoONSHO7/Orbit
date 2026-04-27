@@ -1,4 +1,4 @@
--- [ QOL CONTENT ]-----------------------------------------------------------------------------------
+-- [ QOL CONTENT ]------------------------------------------------------------------------------------
 -- Expandable accordion sections for Quality of Life features.
 local _, Orbit = ...
 local L = Orbit.L
@@ -6,13 +6,13 @@ local Layout = Orbit.Engine.Layout
 local A = Layout.Advanced
 local math_floor = math.floor
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local STACK_GAP = 6
 local SEARCH_WIDTH = 200
 local SEARCH_HEIGHT = 30
 local SEARCH_RIGHT_INSET = 34
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function FmtDecimal(v) return string.format("%.2f", v) end
 
 local function SetAccountSetting(key, val)
@@ -28,14 +28,11 @@ local function GetAccountSetting(key, default)
     return v
 end
 
--- [ SECTION BUILDERS ]------------------------------------------------------------------------------
+-- [ SECTION BUILDERS ]-------------------------------------------------------------------------------
 -- Each builder receives the body frame and returns the computed content height.
 
-local MOVEMORE_DESC_RESET = "Drag Blizzard frames freely. Positions reset when closed."
-local MOVEMORE_DESC_SAVE = "Drag Blizzard frames freely. Positions save when closed."
-
 local function BuildMoveMore(body)
-    local cb = Layout:CreateCheckbox(body, "Enable Move More", nil, GetAccountSetting("MoveMore", false), function(checked)
+    local cb = Layout:CreateCheckbox(body, L.PLU_MM_ENABLE, nil, GetAccountSetting("MoveMore", false), function(checked)
         SetAccountSetting("MoveMore", checked)
         if checked then Orbit.MoveMore:Enable() else Orbit.MoveMore:Disable() end
     end)
@@ -43,38 +40,38 @@ local function BuildMoveMore(body)
     SetAccountSetting("MoveMoreSavePositions", false)
     if Orbit.MoveMore and Orbit.MoveMore.ClearSavedPositions then Orbit.MoveMore:ClearSavedPositions() end
     local desc
-    local saveCb = Layout:CreateCheckbox(body, "Save Positions (Requires More Testing)", nil, false, function() end)
+    local saveCb = Layout:CreateCheckbox(body, L.PLU_MM_SAVE_POSITIONS, nil, false, function() end)
     if saveCb.SetEnabled then saveCb:SetEnabled(false) end
     Layout:AddControl(body, saveCb)
-    desc = Layout:CreateDescription(body, MOVEMORE_DESC_RESET, A.MUTED)
+    desc = Layout:CreateDescription(body, L.PLU_MM_DESC_RESET, A.MUTED)
     Layout:AddControl(body, desc)
     return Layout:Stack(body, 0, STACK_GAP)
 end
 
 local function BuildMouse(body)
-    local cb = Layout:CreateCheckbox(body, "Custom Cursor Tracker", nil, GetAccountSetting("CustomCursor", false), function(checked)
+    local cb = Layout:CreateCheckbox(body, L.PLU_MOUSE_ENABLE, nil, GetAccountSetting("CustomCursor", false), function(checked)
         SetAccountSetting("CustomCursor", checked)
         if checked then Orbit.Mouse:Enable() else Orbit.Mouse:Disable() end
     end)
     Layout:AddControl(body, cb)
-    local desc = Layout:CreateDescription(body, "Adds a custom overlay to your mouse cursor for improved visibility.", A.MUTED)
+    local desc = Layout:CreateDescription(body, L.PLU_MOUSE_DESC, A.MUTED)
     Layout:AddControl(body, desc)
-    local s1 = Layout:CreateSlider(body, "Scale", 0.1, 2.0, 0.01, FmtDecimal, GetAccountSetting("CustomCursorScale", 0.55), function(val)
+    local s1 = Layout:CreateSlider(body, L.PLU_MOUSE_SCALE, 0.1, 2.0, 0.01, FmtDecimal, GetAccountSetting("CustomCursorScale", 0.55), function(val)
         SetAccountSetting("CustomCursorScale", val)
     end)
     Layout:AddControl(body, s1)
-    local s2 = Layout:CreateSlider(body, "X Offset", -5, 5, 0.1, FmtDecimal, GetAccountSetting("CustomCursorX", 2.10), function(val)
+    local s2 = Layout:CreateSlider(body, L.PLU_MOUSE_X_OFFSET, -5, 5, 0.1, FmtDecimal, GetAccountSetting("CustomCursorX", 2.10), function(val)
         SetAccountSetting("CustomCursorX", val)
     end)
     Layout:AddControl(body, s2)
-    local s3 = Layout:CreateSlider(body, "Y Offset", -5, 5, 0.1, FmtDecimal, GetAccountSetting("CustomCursorY", 1.40), function(val)
+    local s3 = Layout:CreateSlider(body, L.PLU_MOUSE_Y_OFFSET, -5, 5, 0.1, FmtDecimal, GetAccountSetting("CustomCursorY", 1.40), function(val)
         SetAccountSetting("CustomCursorY", val)
     end)
     Layout:AddControl(body, s3)
     local cursorMap = { [0] = "32px", [1] = "48px", [2] = "64px", [3] = "96px", [4] = "128px" }
     local startCursor = tonumber(C_CVar.GetCVar("cursorSizePreferred")) or 0
     if startCursor < 0 then startCursor = 0 end
-    local s4 = Layout:CreateSlider(body, "OS Pointer Size", 0, 4, 1, function(v)
+    local s4 = Layout:CreateSlider(body, L.PLU_MOUSE_OS_SIZE, 0, 4, 1, function(v)
         return cursorMap[math_floor(v + 0.5)] or tostring(v)
     end, startCursor, function(val)
         C_CVar.SetCVar("cursorSizePreferred", tostring(math_floor(val + 0.5)))
@@ -277,7 +274,7 @@ local function BuildSpotlight(body)
 end
 
 local function BuildColors(body)
-    local desc = Layout:CreateDescription(body, "Override Blizzard's native class and reaction colors across the entire interface.", A.MUTED)
+    local desc = Layout:CreateDescription(body, L.PLU_COLORS_DESC, A.MUTED)
     Layout:AddControl(body, desc)
     desc:SetPoint("TOPLEFT", body, "TOPLEFT", 10, -8)
     desc:SetPoint("TOPRIGHT", body, "TOPRIGHT", -10, -8)
@@ -285,7 +282,7 @@ local function BuildColors(body)
     local yPos = -40 -- Fixed estimate since desc:GetHeight() is asynchronous
     local allPickers = {}
 
-    local headerClasses = Layout:CreateSectionHeader(body, "Class Colors")
+    local headerClasses = Layout:CreateSectionHeader(body, L.PLU_COLORS_CLASS)
     Layout:AddControl(body, headerClasses)
     headerClasses:SetPoint("TOPLEFT", body, "TOPLEFT", 10, yPos)
     headerClasses:SetPoint("TOPRIGHT", body, "TOPRIGHT", -10, yPos)
@@ -327,7 +324,7 @@ local function BuildColors(body)
     local _, gridH = Layout:ComputeGridContainerSize(#classes, limitsPerLine, 0, colWidth, rowHeight, padding)
     yPos = yPos - gridH - 20
 
-    local headerReactions = Layout:CreateSectionHeader(body, "Reaction Colors")
+    local headerReactions = Layout:CreateSectionHeader(body, L.PLU_COLORS_REACTION)
     Layout:AddControl(body, headerReactions)
     headerReactions:SetPoint("TOPLEFT", body, "TOPLEFT", 10, yPos)
     headerReactions:SetPoint("TOPRIGHT", body, "TOPRIGHT", -10, yPos)
@@ -356,12 +353,42 @@ local function BuildColors(body)
     local _, gridH2 = Layout:ComputeGridContainerSize(#reactions, limitsPerLine, 0, colWidth, rowHeight, padding)
     yPos = yPos - gridH2 - 15
 
+    -- [ REPUTATION BAR COLORS ]
+    local headerRep = Layout:CreateSectionHeader(body, L.PLU_COLORS_REPUTATION)
+    Layout:AddControl(body, headerRep)
+    headerRep:SetPoint("TOPLEFT", body, "TOPLEFT", 10, yPos)
+    headerRep:SetPoint("TOPRIGHT", body, "TOPRIGHT", -10, yPos)
+    yPos = yPos - 30
+
+    local repEntries = { "RENOWN", "PARAGON", "PARAGON_REWARD" }
+    local repLabels = { RENOWN = "Renown", PARAGON = "Paragon", PARAGON_REWARD = "Paragon Reward" }
+    for i, key in ipairs(repEntries) do
+        local colorData = RC:GetOverride(key)
+        local picker
+        picker = Layout:CreateColorPicker(body, repLabels[key], colorData, function(c)
+            RC:SetOverride(key, c)
+            if not c then
+                local res = RC:GetOverride(key)
+                picker:SetColorQuiet(res.r, res.g, res.b, res.a)
+            end
+        end, { compact = true, allowClear = true })
+
+        local dx, dy = Layout:ComputeGridPosition(i, limitsPerLine, 0, colWidth, rowHeight, padding)
+        Layout:AddControl(body, picker)
+        picker:SetPoint("TOPLEFT", body, "TOPLEFT", startX + dx, yPos + dy)
+        allPickers[#allPickers + 1] = { type = "reaction", key = key, picker = picker }
+    end
+
+    local _, gridH3 = Layout:ComputeGridContainerSize(#repEntries, limitsPerLine, 0, colWidth, rowHeight, padding)
+    yPos = yPos - gridH3 - 15
+
     -- Reset to Defaults button
-    local resetBtn = Layout:CreateButton(body, "Reset to Defaults", function()
+    local resetBtn = Layout:CreateButton(body, L.CMN_RESET_TO_DEFAULTS, function()
         local acct = Orbit.db and Orbit.db.AccountSettings
         if acct then
             for _, classFile in ipairs(classes) do acct["ClassColor_" .. classFile] = nil end
             for _, reaction in ipairs(reactions) do acct["ReactionColor_" .. reaction] = nil end
+            for _, key in ipairs(repEntries) do acct["ReactionColor_" .. key] = nil end
         end
         for _, entry in ipairs(allPickers) do
             local c = entry.type == "class" and CC:GetOverrides(entry.key) or RC:GetOverride(entry.key)
@@ -376,7 +403,7 @@ local function BuildColors(body)
     return math.abs(yPos)
 end
 
--- [ BUILD ]-----------------------------------------------------------------------------------------
+-- [ BUILD ]------------------------------------------------------------------------------------------
 function Orbit._AC.CreateQoLContent(parent)
     local content = CreateFrame("Frame", nil, parent)
     content:SetAllPoints()
@@ -409,10 +436,11 @@ function Orbit._AC.CreateQoLContent(parent)
     -- Scrollable area
     local scrollFrame, scrollChild = Layout:CreateScrollArea(content)
     -- Section definitions: { name, builderFn }
+    -- "Keys"/"Markers"/"Inventory" are placeholders for unshipped features; not localized until implemented.
     local sectionDefs = {
-        { "Colors", BuildColors },
-        { "Move More", BuildMoveMore },
-        { "Mouse", BuildMouse },
+        { L.PLU_QOL_SEC_COLORS, BuildColors },
+        { L.PLU_QOL_SEC_MOVEMORE, BuildMoveMore },
+        { L.PLU_QOL_SEC_MOUSE, BuildMouse },
         { L.PLU_SPT_SECTION_TITLE, BuildSpotlight },
         { "Keys", nil },
         { "Markers", nil },

@@ -3,7 +3,7 @@ local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 -- Using a custom ID to denote we are replacing the native bar behavior fully
 local SYSTEM_ID = "Orbit_MicroMenu"
 local DEFAULT_POSITION_X = -50
@@ -25,8 +25,7 @@ local Plugin = Orbit:RegisterPlugin("Menu Bar", SYSTEM_ID, {
 -- Apply NativeBarMixin for mouseOver helpers
 Mixin(Plugin, Orbit.NativeBarMixin)
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function IsMicroButton(frame)
     if not frame then
         return false
@@ -38,7 +37,7 @@ local function IsMicroButton(frame)
     return name and name:find("MicroButton") or false
 end
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or SYSTEM_ID
     local SB = OrbitEngine.SchemaBuilder
@@ -122,7 +121,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     -- Create Container
     self.frame = CreateFrame("Frame", "OrbitMicroMenuContainer", UIParent)
@@ -135,8 +134,6 @@ function Plugin:OnLoad()
     self.frame.anchorOptions = {
         horizontal = true,
         vertical = true,
-        syncScale = false,
-        syncDimensions = false,
     }
 
     -- Default Position
@@ -179,7 +176,7 @@ function Plugin:OnLoad()
     end)
 end
 
--- [ LOGIC ]-----------------------------------------------------------------------------------------
+-- [ LOGIC ]------------------------------------------------------------------------------------------
 function Plugin:CaptureButton(button)
     if not button or InCombatLockdown() or button == QueueStatusButton then return end
     local parent = button:GetParent()
@@ -241,7 +238,7 @@ function Plugin:CountButtons()
     return count
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:ApplySettings()
     local frame = self.frame
     if not frame or InCombatLockdown() then
@@ -302,7 +299,7 @@ function Plugin:ApplySettings()
     end
 end
 
--- [ BLIZZARD HIDER ]--------------------------------------------------------------------------------
+-- [ BLIZZARD HIDER ]---------------------------------------------------------------------------------
 Orbit:RegisterBlizzardHider("Menu Bar", function()
     for _, f in ipairs({ MicroMenu, MicroMenuContainer }) do
         if f then OrbitEngine.NativeFrame:SecureHide(f) end

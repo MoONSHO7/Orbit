@@ -15,8 +15,7 @@ function Helpers:AnchorToPosition(posX, posY, halfW, halfH)
     return Orbit.Engine.PositionUtils.AnchorToPosition(posX, posY, halfW, halfH, "Left")
 end
 
--- [ DEBUFF LAYOUT ]
-
+-- [ DEBUFF LAYOUT ]----------------------------------------------------------------------------------
 -- Calculate icon size and step offset for debuff layout
 function Helpers:CalculateDebuffLayout(isHorizontal, frameWidth, frameHeight, maxDebuffs, spacing)
     spacing = spacing or self.LAYOUT.Spacing

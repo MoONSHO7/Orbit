@@ -54,8 +54,8 @@ function Container:Build(plugin, record)
     frame.recordId = record.id
     frame.iconItems = {} -- key -> icon item frame
     frame.dropZones = {} -- index -> drop zone frame
-    frame.anchorOptions = { horizontal = true, vertical = true, syncScale = false, syncDimensions = false, mergeBorders = true }
-    frame.orbitChainSync = true
+    frame.anchorOptions = { horizontal = true, vertical = true, mergeBorders = true }
+    frame.orbitWidthSync = true
     frame.orbitCursorReveal = true
     frame.orbitAnchorTargetPerSpec = true
     frame._isIconContainer = true
@@ -467,12 +467,15 @@ function Container:StartCursorWatcher(plugin, frame)
     watcher:SetScript("OnUpdate", function(self)
         local record = plugin:GetContainerRecord(frame.recordId)
         if not record then return end
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
         local isEmpty = not record.grid or next(record.grid) == nil
         local now = plugin:ShouldShowDropHints(isEmpty)
         if now ~= self._wasShowing then
             self._wasShowing = now
             Container:Apply(plugin, frame, record)
         end
+        if p then p:End(plugin, "CursorWatcher", s) end
     end)
     frame._cursorWatcher = watcher
 end
@@ -488,25 +491,33 @@ function Container:StartUpdateTicker(plugin, frame)
     evtFrame:RegisterEvent("BAG_UPDATE_COOLDOWN")
     evtFrame:RegisterEvent("BAG_UPDATE")
     evtFrame:RegisterEvent("SPELLS_CHANGED")
-    evtFrame:SetScript("OnEvent", function()
+    evtFrame:SetScript("OnEvent", function(_, event)
         local now = GetTime()
         if now < nextUpdate then return end
         nextUpdate = now + COOLDOWN_THROTTLE
         if not frame:IsShown() then return end
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
         for _, icon in pairs(frame.iconItems) do
-            if icon:IsShown() then IconItem:Update(icon) end
+            if icon.trackedId then IconItem:Update(icon) end
         end
+        if p then p:End(plugin, event, s) end
     end)
     -- Visual-state poll: re-evaluate desat/alpha/glow between event bursts.
+    -- IsShown gate removed — hideOnCooldown/hideOnAvailable may have SetShown(false) on icons, and
+    -- Update is the only path that can flip the visibility back when state changes.
     local pollAccum = 0
     evtFrame:SetScript("OnUpdate", function(_, elapsed)
         pollAccum = pollAccum + elapsed
         if pollAccum < VISUAL_POLL_INTERVAL then return end
         pollAccum = 0
         if not frame:IsShown() then return end
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
         for _, icon in pairs(frame.iconItems) do
-            if icon:IsShown() and icon.trackedId then IconItem:Update(icon) end
+            if icon.trackedId then IconItem:Update(icon) end
         end
+        if p then p:End(plugin, "VisualPoll", s) end
     end)
     frame._eventFrame = evtFrame
 end

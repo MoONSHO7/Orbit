@@ -1,4 +1,4 @@
--- [ ACTION BARS - TEXT SETTINGS ]-------------------------------------------------------------------
+-- [ ACTION BARS - TEXT SETTINGS ]--------------------------------------------------------------------
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine

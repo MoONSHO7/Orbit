@@ -1,4 +1,4 @@
--- [ ORBIT FRAME SNAP ]------------------------------------------------------------------------------
+-- [ ORBIT FRAME SNAP ]-------------------------------------------------------------------------------
 -- Handles snap-to-grid and snap-to-frame during drag operations
 
 local _, Orbit = ...
@@ -10,7 +10,6 @@ local Snap = Engine.FrameSnap
 local SNAP_THRESHOLD = 5
 local ANCHOR_THRESHOLD = 10
 local ALIGN_THIRD = 1 / 3
-local CHAIN_ALIGN_EDGE = 2 / 5
 
 function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
     local threshold = SNAP_THRESHOLD
@@ -24,24 +23,8 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
     -- Normalize to screen space
     left, top, right, bottom = left * fScale, top * fScale, right * fScale, bottom * fScale
 
-    local Anchor = Engine.FrameAnchor
-    -- Parent-only bounds for anchor overlap and alignment detection (children must not influence anchor zones)
     local parentLeft, parentTop, parentRight, parentBottom = left, top, right, bottom
     local parentCenterX, parentCenterY = (parentLeft + parentRight) / 2, (parentTop + parentBottom) / 2
-    local chainChildren = Anchor:GetAnchoredDescendants(frame)
-    for _, child in ipairs(chainChildren) do
-        local cl, cb, cw, ch = child:GetRect()
-        if cl then
-            local cs = child:GetEffectiveScale()
-            local cL, cR = cl * cs, (cl + cw) * cs
-            local cB, cT = cb * cs, (cb + ch) * cs
-            if cL < left then left = cL end
-            if cR > right then right = cR end
-            if cB < bottom then bottom = cB end
-            if cT > top then top = cT end
-        end
-    end
-
     local centerX, centerY = (left + right) / 2, (top + bottom) / 2
 
     local closestX, closestY = nil, nil
@@ -56,7 +39,9 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
     local opts = Engine.FrameAnchor.GetFrameOptions(frame)
     local canAnchorHorizontal = (opts.horizontal ~= false)
     local canAnchorVertical = (opts.vertical ~= false)
-    local frameSyncDims = (opts.syncDimensions ~= false)
+    -- Per-axis cross-sync flags (for IsEdgeOccupied: frame syncs cross-of-T/B = width, cross-of-L/R = height).
+    local syncsWidth  = Engine.Axis.SyncEnabled(frame, Engine.Axis.horizontal)
+    local syncsHeight = Engine.Axis.SyncEnabled(frame, Engine.Axis.vertical)
 
     for _, target in ipairs(targets) do
         -- Skip locked frames
@@ -70,41 +55,20 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
                 tLeft, tRight, tTop, tBottom = tLeft * tScale, tRight * tScale, tTop * tScale, tBottom * tScale
                 local tCenterX, tCenterY = (tLeft + tRight) / 2, (tTop + tBottom) / 2
 
-                -- Check if target is part of a horizontal chain
-                local chainLeft, chainRight, chainTop, chainBottom, chainRoot = Engine.FrameAnchor:GetHorizontalChainScreenBounds(target)
-                local isChainMember = (chainLeft ~= nil)
+                local horizontalOverlap = (parentRight > tLeft and parentLeft < tRight)
+                local verticalOverlap   = (parentTop > tBottom and parentBottom < tTop)
 
-                -- Horizontal overlap uses chain-wide bounds for chain members
-                local tbLeft = isChainMember and chainLeft or tLeft
-                local tbRight = isChainMember and chainRight or tRight
-                local tbCenterX = (tbLeft + tbRight) / 2
-
-                -- STRICT OVERLAP DETECTION
-                -- Horizontal overlap uses chain bounds for chain members
-                local horizontalOverlap = (parentRight > tbLeft and parentLeft < tbRight)
-
-                -- Vertical overlap: dragged frame's Y range overlaps target's Y range
-                -- Required for LEFT/RIGHT anchoring (frame must be directly beside)
-                local verticalOverlap = (parentTop > tBottom and parentBottom < tTop)
-
-                -- X Axis snap points (alignment only, no threshold modification)
+                -- X axis: alignment snaps + L/R anchor candidates (only when vertically overlapping).
                 local snapPointsX = {
                     { diff = tLeft - left, pos = tLeft, align = "LEFT" },
                     { diff = tRight - right, pos = tRight, align = "RIGHT" },
                     { diff = tCenterX - centerX, pos = tCenterX, align = "CENTER" },
                 }
-                -- Also add chain-edge alignment snaps when applicable
-                if isChainMember then
-                    table.insert(snapPointsX, { diff = chainLeft - left, pos = chainLeft, align = "LEFT" })
-                    table.insert(snapPointsX, { diff = chainRight - right, pos = chainRight, align = "RIGHT" })
-                    table.insert(snapPointsX, { diff = tbCenterX - centerX, pos = tbCenterX, align = "CENTER" })
-                end
-                -- LEFT/RIGHT anchor points only if frames are at same Y level (verticalOverlap)
                 if verticalOverlap then
-                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "LEFT", frame, frameSyncDims) then
+                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "LEFT", frame, syncsHeight) then
                         table.insert(snapPointsX, { diff = tLeft - right, pos = tLeft, edge = "LEFT", target = target })
                     end
-                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "RIGHT", frame, frameSyncDims) then
+                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "RIGHT", frame, syncsHeight) then
                         table.insert(snapPointsX, { diff = tRight - left, pos = tRight, edge = "RIGHT", target = target })
                     end
                 end
@@ -130,22 +94,18 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
                     end
                 end
 
-                -- Y Axis snap points (alignment only)
+                -- Y axis: alignment snaps + T/B anchor candidates (only when horizontally overlapping).
                 local snapPointsY = {
                     { diff = tTop - top, pos = tTop, align = "TOP" },
                     { diff = tBottom - bottom, pos = tBottom, align = "BOTTOM" },
                     { diff = tCenterY - centerY, pos = tCenterY, align = "CENTER" },
                 }
-                -- TOP/BOTTOM anchor points: for chain members, each frame emits
-                -- using its OWN edge Y (so proximity works from any member) but
-                -- targeting the chain root. Chain-wide horizontal overlap used for all.
                 if horizontalOverlap then
-                    local anchorTargetForTB = isChainMember and chainRoot or target
-                    if not Engine.FrameAnchor:IsEdgeOccupied(anchorTargetForTB, "BOTTOM", frame, frameSyncDims) then
-                        table.insert(snapPointsY, { diff = tBottom - top, pos = tBottom, edge = "BOTTOM", target = anchorTargetForTB })
+                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "BOTTOM", frame, syncsWidth) then
+                        table.insert(snapPointsY, { diff = tBottom - top, pos = tBottom, edge = "BOTTOM", target = target })
                     end
-                    if not Engine.FrameAnchor:IsEdgeOccupied(anchorTargetForTB, "TOP", frame, frameSyncDims) then
-                        table.insert(snapPointsY, { diff = tTop - bottom, pos = tTop, edge = "TOP", target = anchorTargetForTB })
+                    if not Engine.FrameAnchor:IsEdgeOccupied(target, "TOP", frame, syncsWidth) then
+                        table.insert(snapPointsY, { diff = tTop - bottom, pos = tTop, edge = "TOP", target = target })
                     end
                 end
 
@@ -159,9 +119,9 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
                         anchorCandidateY_Target = sp.target
                         anchorCandidateY_Edge = sp.edge
                         minDiffY_Anchor = absDiff
-                        anchorCandidateY_CenterDist = math.abs(tbCenterX - centerX)
+                        anchorCandidateY_CenterDist = math.abs(tCenterX - centerX)
                     elseif sp.edge and absDiff == minDiffY_Anchor then
-                        local dist = math.abs(tbCenterX - centerX)
+                        local dist = math.abs(tCenterX - centerX)
                         if dist < (anchorCandidateY_CenterDist or math.huge) then
                             anchorCandidateY_Target = sp.target
                             anchorCandidateY_Edge = sp.edge
@@ -173,7 +133,10 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
         end
     end
 
-    -- Per-axis fallback to Blizzard grid + UIParent edges; frame-to-frame winners (tighter tolerance) take priority.
+    -- Per-axis Blizzard grid + UIParent edges. These correspond to the red magnetism preview lines.
+    -- Frame-to-frame anchor candidates take priority: an axis with an anchor candidate is locked to
+    -- the anchor and the grid/UIParent fallback is skipped on that axis. Where no anchor candidate
+    -- exists, the grid/UIParent candidate (if within blizRange) wins over a tighter alignment match.
     if EditModeManagerFrame and EditModeManagerFrame:IsShown()
         and EditModeManagerFrame.IsSnapEnabled and EditModeManagerFrame:IsSnapEnabled() then
         local blizRange = (EditModeMagnetismManager and EditModeMagnetismManager.magnetismRange) or 8
@@ -185,13 +148,13 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
         local uiCX, uiCY = (uiL + uiR) / 2, (uiB + uiT) / 2
         local gridLines = EditModeMagnetismManager and EditModeMagnetismManager.magneticGridLines
 
-        if not closestX then
-            local minX = blizRange
+        if not anchorCandidateX_Target then
+            local bestX, bestXDiff = nil, blizRange + 1
             local function offerX(diff)
                 local abs = math.abs(diff)
-                if abs <= minX then
-                    minX = abs
-                    closestX = diff
+                if abs <= blizRange and abs < bestXDiff then
+                    bestXDiff = abs
+                    bestX = diff
                 end
             end
             offerX(uiL - parentLeft)
@@ -205,15 +168,18 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
                     offerX(screenX - parentCenterX)
                 end
             end
+            if bestX then
+                closestX = bestX
+            end
         end
 
-        if not closestY then
-            local minY = blizRange
+        if not anchorCandidateY_Target then
+            local bestY, bestYDiff = nil, blizRange + 1
             local function offerY(diff)
                 local abs = math.abs(diff)
-                if abs <= minY then
-                    minY = abs
-                    closestY = diff
+                if abs <= blizRange and abs < bestYDiff then
+                    bestYDiff = abs
+                    bestY = diff
                 end
             end
             offerY(uiB - parentBottom)
@@ -226,6 +192,9 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
                     offerY(screenY - parentTop)
                     offerY(screenY - parentCenterY)
                 end
+            end
+            if bestY then
+                closestY = bestY
             end
         end
     end
@@ -252,19 +221,23 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
     if anchorTarget then
         local tScale = anchorTarget:GetEffectiveScale()
         if anchorEdge == "LEFT" or anchorEdge == "RIGHT" then
-            local tTop, tBottom = anchorTarget:GetTop() * tScale, anchorTarget:GetBottom() * tScale
-            local ratio = (tTop - parentCenterY) / (tTop - tBottom)
+            -- L/R anchor's align is on vertical axis: classify against target's own T/B edges.
+            local alignBottom = anchorTarget:GetBottom() * tScale
+            local alignTop    = anchorTarget:GetTop() * tScale
+            local ratio = (alignTop - parentCenterY) / (alignTop - alignBottom)
             anchorAlign = (ratio < ALIGN_THIRD) and "TOP" or (ratio > (1 - ALIGN_THIRD)) and "BOTTOM" or "CENTER"
         else
-            local cL, cR = Engine.FrameAnchor:GetHorizontalChainScreenBounds(anchorTarget)
-            local alignLeft = cL or (anchorTarget:GetLeft() * tScale)
-            local alignRight = cR or (anchorTarget:GetRight() * tScale)
+            -- T/B anchor's align is on horizontal axis: classify against target's own L/R edges.
+            local alignLeft  = anchorTarget:GetLeft() * tScale
+            local alignRight = anchorTarget:GetRight() * tScale
             local ratio = (parentCenterX - alignLeft) / (alignRight - alignLeft)
-            local edgeThreshold = cL and CHAIN_ALIGN_EDGE or ALIGN_THIRD
-            anchorAlign = (ratio < edgeThreshold) and "LEFT" or (ratio > (1 - edgeThreshold)) and "RIGHT" or "CENTER"
+            anchorAlign = (ratio < ALIGN_THIRD) and "LEFT" or (ratio > (1 - ALIGN_THIRD)) and "RIGHT" or "CENTER"
         end
 
-        if not frameSyncDims then
+        -- Align-slot fallback: only relevant for non-sync children (they share the edge via slots).
+        -- Sync children fully occupy the edge and can't share.
+        local edgeCrossSync = (anchorEdge == "LEFT" or anchorEdge == "RIGHT") and syncsHeight or syncsWidth
+        if not edgeCrossSync then
             local isOccupied = Engine.FrameAnchor.IsEdgeOccupied
             local slots = (anchorEdge == "LEFT" or anchorEdge == "RIGHT") and { "TOP", "CENTER", "BOTTOM" } or { "LEFT", "CENTER", "RIGHT" }
             local preferred = anchorAlign
@@ -304,22 +277,16 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
         end
     end
 
-    -- Apply snap on drop
+    -- Apply snap on drop. Snap the final L/B through Pixel:Snap (not the delta) so the frame edge
+    -- lands on the exact pixel of the guideline even if the drag left the frame at a sub-pixel offset.
     if not showGuides and (closestX or closestY) then
+        local effectiveScale = frame:GetEffectiveScale()
         local l, b = frame:GetLeft(), frame:GetBottom()
-        if closestX then
-            local val = (closestX / fScale)
-            if Engine.Pixel then
-                val = Engine.Pixel:Snap(val, frame:GetEffectiveScale())
-            end
-            l = l + val
-        end
-        if closestY then
-            local val = (closestY / fScale)
-            if Engine.Pixel then
-                val = Engine.Pixel:Snap(val, frame:GetEffectiveScale())
-            end
-            b = b + val
+        if closestX then l = l + (closestX / fScale) end
+        if closestY then b = b + (closestY / fScale) end
+        if Engine.Pixel then
+            l = Engine.Pixel:Snap(l, effectiveScale)
+            b = Engine.Pixel:Snap(b, effectiveScale)
         end
 
         frame:ClearAllPoints()

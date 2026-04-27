@@ -1,4 +1,4 @@
--- [ ORBIT GROUP BORDER ]----------------------------------------------------------------------------
+-- [ ORBIT GROUP BORDER ]-----------------------------------------------------------------------------
 -- Extracted from Skin.lua — group border merging for anchored frames.
 -- Methods remain on Orbit.Skin for call-site compatibility.
 local _, addonTable = ...

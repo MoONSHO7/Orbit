@@ -1,8 +1,8 @@
--- [ MOUNTED VISIBILITY MANAGER ]--------------------------------------------------------------------
+-- [ MOUNTED VISIBILITY MANAGER ]---------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local MOUNTED_COMBAT_PREFIX = "[mounted,nocombat] hide; "
 local MOUNTED_ALWAYS_PREFIX = "[mounted] hide; "
 local OPEN_WORLD_INSTANCE_TYPES = { ["none"] = true, ["scenario"] = true }
@@ -15,7 +15,7 @@ Orbit.MountedVisibility = Manager
 
 local cachedShouldHide = false
 
--- [ CORE LOGIC ]------------------------------------------------------------------------------------
+-- [ CORE LOGIC ]-------------------------------------------------------------------------------------
 local function IsInDruidTravelForm() return DRUID_TRAVEL_FORMS[GetShapeshiftFormID()] == true end
 
 local function IsMountedHideActive()
@@ -44,19 +44,22 @@ function Manager:Refresh(force)
     Orbit.EventBus:Fire("MOUNTED_VISIBILITY_CHANGED", shouldHide)
 end
 
--- [ EVENT REGISTRATION ]----------------------------------------------------------------------------
+-- [ EVENT REGISTRATION ]-----------------------------------------------------------------------------
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_MOUNT_DISPLAY_CHANGED")
 eventFrame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 eventFrame:SetScript("OnEvent", function(_, event)
+    local p = Orbit.Profiler
+    local s = p and p:Begin()
     if event == "PLAYER_ENTERING_WORLD" then
         Manager:Refresh(true)
         C_Timer.After(REAPPLY_DELAY, function() Manager:Refresh(true) end)
     else
         Manager:Refresh()
     end
+    if p then p:End("Orbit_MountedVisibility", event, s) end
 end)
 
 if EditModeManagerFrame then

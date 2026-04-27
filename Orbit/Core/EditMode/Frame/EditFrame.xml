@@ -1,6 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <Script file="Guard.lua"/>
     <Script file="Position\PositionUtils.lua"/>
+    <Script file="Position\Axis.lua"/>
     <Script file="Position\AnchorGraph.lua"/>
     <Script file="Position\Anchor.lua"/>
     <Script file="Position\Persistence.lua"/>

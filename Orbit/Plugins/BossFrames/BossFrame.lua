@@ -7,7 +7,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local Helpers = nil
 local CB = Orbit.BossFrameCastBar
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local MAX_BOSS_FRAMES = 5
 local POWER_BAR_HEIGHT_RATIO = 0.2
 local DEFAULT_DEBUFF_ICON_SIZE = 25
@@ -47,7 +47,7 @@ Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.BossFramePreviewMixin, Orbit.AuraMixin
 Plugin.canvasMode = true
 Plugin.supportsPandemicGlow = true
 
--- [ CAST BAR FACADE ]-------------------------------------------------------------------------------
+-- [ CAST BAR FACADE ]--------------------------------------------------------------------------------
 function Plugin:PositionCastBar(castBar, parent) CB:Position(castBar, parent, self) end
 
 -- [ POWER BAR ] -------------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ local function UpdatePowerBar(frame)
     frame.Power:SetStatusBarColor(color.r, color.g, color.b)
 end
 
--- [ AURA DISPLAY CONFIG ]---------------------------------------------------------------------------
+-- [ AURA DISPLAY CONFIG ]----------------------------------------------------------------------------
 local function BossDebuffSkin(plugin)
     local skin = {
         zoom = 0, borderStyle = 1, borderSize = 1, showTimer = true, enablePandemic = true,
@@ -152,11 +152,36 @@ local function CreateBossFrame(bossIndex, plugin)
     frame.CastBar = CB:Create(frame, bossIndex, plugin)
     CB:Position(frame.CastBar, frame, plugin)
     local originalOnEvent = frame:GetScript("OnEvent")
-    frame:SetScript("OnEvent", function(f, event, eventUnit, ...)
-        if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then if eventUnit == unit then UpdatePowerBar(f) end; return
-        elseif event == "UNIT_AURA" then if eventUnit == unit then if f.debuffContainer then f.debuffContainer._auraFingerprint = nil end; if f.buffContainer then f.buffContainer._auraFingerprint = nil end; f._auraSnapshot = plugin:BuildAuraSnapshot(unit); UpdateDebuffs(f, plugin); UpdateBuffs(f, plugin); f._auraSnapshot = nil end; return
-        elseif event == "RAID_TARGET_UPDATE" then plugin:UpdateMarkerIcon(f, plugin); return end
-        if originalOnEvent then originalOnEvent(f, event, eventUnit, ...) end
+    frame:SetScript("OnEvent", function(f, event, eventUnit, updateInfo, ...)
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
+        if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
+            if eventUnit == unit then UpdatePowerBar(f) end
+        elseif event == "UNIT_AURA" then
+            if eventUnit == unit then
+                local isFullUpdate = not updateInfo or updateInfo.isFullUpdate
+                local snap
+                if not isFullUpdate and f._harmfulAuraCache then
+                    if plugin:PatchCaches(f, unit, updateInfo) then
+                        snap = plugin:BuildSnapshotFromCaches(f)
+                    end
+                else
+                    snap = plugin:BuildAuraSnapshot(unit)
+                    plugin:PopulateCaches(f, snap)
+                end
+                if snap then
+                    f._auraSnapshot = snap
+                    UpdateDebuffs(f, plugin)
+                    UpdateBuffs(f, plugin)
+                    f._auraSnapshot = nil
+                end
+            end
+        elseif event == "RAID_TARGET_UPDATE" then
+            plugin:UpdateMarkerIcon(f, plugin)
+        elseif originalOnEvent then
+            originalOnEvent(f, event, eventUnit, updateInfo, ...)
+        end
+        if p then p:End(plugin, event, s) end
     end)
     frame.healthTextEnabled = true
     if frame.SetAbsorbsEnabled then frame:SetAbsorbsEnabled(true) end

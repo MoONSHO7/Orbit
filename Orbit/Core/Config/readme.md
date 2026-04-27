@@ -35,7 +35,6 @@ Config/
 | Panels/Tabs/ProfilesTab.lua | Profiles tab schema + sub-views (export/import/clone/delete/reset). owns widget registrations only used here (`profileactive`, `profileselect`, `collapseheader`, `checkheader`, `statusmessage`). |
 | Entry/SlashCommands.lua | `/orbit` slash command handler, confirmation popups, and debug utilities (help, version, profile, frames, inspect). |
 | Entry/OrbitOptionsButton.lua | addon compartment button. |
-| Entry/MinimapButton.lua | LibDBIcon minimap button. left-click opens edit mode + options, right-click opens plugin manager. |
 | Advanced/PluginManager.lua | plugin enable/disable checkbox grid content builder. |
 | Advanced/VisibilityEngine.lua | visibility engine scrollable table content builder. |
 | Advanced/QoL.lua | quality-of-life expandable accordion sections content builder. |

@@ -15,6 +15,21 @@ local LSM = LibStub("LibSharedMedia-3.0", true)
 local FALLBACK_FONT = STANDARD_TEXT_FONT
 local FALLBACK_TEXTURE = "Interface\\Icons\\INV_Misc_QuestionMark"
 
+local function FindFontStringRegion(...)
+    for i = 1, select('#', ...) do
+        local region = select(i, ...)
+        if region:GetObjectType() == "FontString" then return region end
+    end
+end
+
+local function FindFontStringInChildren(...)
+    for i = 1, select('#', ...) do
+        local child = select(i, ...)
+        local region = FindFontStringRegion(child:GetRegions())
+        if region then return region end
+    end
+end
+
 -- [ FONT HELPERS ] ----------------------------------------------------------------------------------
 function CDM:GetBaseFontSize()
     return 12
@@ -82,38 +97,16 @@ function CDM:ApplyTextSettings(icon, systemIndex)
                     if cd.SetHideCountdownNumbers then
                         cd:SetHideCountdownNumbers(false)
                     end
-                    -- Invalidate cache: C++ may recreate the FontString after Clear/Set cycles
+                    -- C++ may recreate the FontString after Clear/Set cycles; rediscover.
                     cd.Text = nil
-                    local timerText
-                    for _, region in ipairs({ cd:GetRegions() }) do
-                        if region:GetObjectType() == "FontString" then
-                            timerText = region
-                            cd.Text = timerText
-                            break
-                        end
-                    end
-                    if not timerText then
-                        for _, child in ipairs({ cd:GetChildren() }) do
-                            for _, region in ipairs({ child:GetRegions() }) do
-                                if region:GetObjectType() == "FontString" then
-                                    timerText = region
-                                    cd.Text = timerText
-                                    break
-                                end
-                            end
-                            if timerText then break end
-                        end
-                    end
+                    local timerText = FindFontStringRegion(cd:GetRegions()) or FindFontStringInChildren(cd:GetChildren())
                     if timerText then
+                        cd.Text = timerText
                         if not timerText:GetFont() then
                             timerText:SetFont(fontPath, defaultSize, "OUTLINE")
                         end
-                        
                         OverrideUtils.ApplyOverrides(timerText, timerOverrides, { fontSize = defaultSize, fontPath = fontPath })
                         timerText:SetDrawLayer("OVERLAY", 7)
-                        
-
-
                         if ApplyTextPosition then
                             ApplyTextPosition(timerText, icon, timerPos, "CENTER", 0, 0)
                         end
@@ -225,24 +218,16 @@ function CDM:SetupCanvasPreview(anchor, systemIndex)
         local entry = VIEWER_MAP[systemIndex]
         if not entry or not entry.viewer then return nil end
 
-        -- Resolve dimensions from first visible icon or settings fallback
-        local w, h = nil, nil
-        for _, child in ipairs({ entry.viewer:GetChildren() }) do
-            if child:IsShown() and child.Icon then w, h = child:GetSize(); break end
-        end
-        if not w or not h then
-            local aspectRatio = plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
-            local iconSize = plugin:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
-            w, h = iconSize, iconSize
-            if aspectRatio == "16:9" then h = iconSize * (9 / 16)
-            elseif aspectRatio == "4:3" then h = iconSize * (3 / 4)
-            elseif aspectRatio == "21:9" then h = iconSize * (9 / 21) end
-        end
+        local aspectRatio = plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
+        local iconSize = plugin:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
+        local w, h = iconSize, iconSize
+        if aspectRatio == "16:9" then h = iconSize * (9 / 16)
+        elseif aspectRatio == "4:3" then h = iconSize * (3 / 4)
+        elseif aspectRatio == "21:9" then h = iconSize * (9 / 21) end
 
-        -- Resolve icon texture from first visible viewer child
         local iconTexture = FALLBACK_TEXTURE
         for _, child in ipairs({ entry.viewer:GetChildren() }) do
-            if child:IsShown() and child.Icon then
+            if child:IsShown() and child.Icon and child.Icon.GetTexture then
                 local tex = child.Icon:GetTexture()
                 if tex then iconTexture = tex; break end
             end

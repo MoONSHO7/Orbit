@@ -55,7 +55,6 @@ function Mixin:ApplyMarkerSprite(icon, index)
 end
 
 -- [ CLASS PREVIEW SPELL IDS ] -----------------------------------------------------------------------
-
 local CLASS_DEFENSIVE_SPELLS = {
     WARRIOR = 871,        -- Shield Wall
     PALADIN = 642,        -- Divine Shield

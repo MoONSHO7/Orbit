@@ -12,7 +12,6 @@
     <Script file="Entry\SlashCommands.lua"/>
     <Script file="WhatsNew.lua"/>
     <Script file="Entry\OrbitOptionsButton.lua"/>
-    <Script file="Entry\MinimapButton.lua"/>
     <Script file="Panels\OrbitAdvancedSettings.lua"/>
     <Script file="Advanced\PluginManager.lua"/>
     <Script file="Advanced\VisibilityEngine.lua"/>

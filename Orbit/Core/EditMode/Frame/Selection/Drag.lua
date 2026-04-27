@@ -77,17 +77,7 @@ local function SetBlizzardSnapPreview(parent, active)
     end
 end
 
-local function GetChainScreenCenterX(root)
-    local minL, maxR = Engine.FrameAnchor:GetHorizontalChainScreenBounds(root)
-    if minL then return (minL + maxR) / 2 end
-    local s = root:GetEffectiveScale()
-    local l, r = root:GetLeft(), root:GetRight()
-    if l and r and s then return (l + r) / 2 * s end
-    return nil
-end
-
--- [ PRECISION MODE (SHIFT-DRAG OVERLAY SUPPRESSION) ] -----------------------------------------------
-
+-- [ PRECISION MODE (SHIFT-DRAG OVERLAY SUPPRESSION) ]------------------------------------------------
 local function SetNonSelectedOverlaysVisible(selectionOverlay, visible)
     local Selection = Engine.FrameSelection
     for frame, sel in pairs(Selection.selections) do
@@ -104,57 +94,7 @@ local function SetNonSelectedOverlaysVisible(selectionOverlay, visible)
     selectionOverlay.precisionMode = not visible
 end
 
--- [ DRAG UPDATE (VISUALS) ]-------------------------------------------------------------------------
-
-local VERTICAL_EDGES = { TOP = true, BOTTOM = true }
-
-local function ClearChainLines(selectionOverlay)
-    local Selection = Engine.FrameSelection
-    if selectionOverlay.chainLineFrames then
-        for _, f in ipairs(selectionOverlay.chainLineFrames) do
-            local sel = Selection.selections[f]
-            if sel then
-                Selection:ShowAnchorLine(sel, nil)
-            end
-        end
-        selectionOverlay.chainLineFrames = nil
-    end
-end
-
-local CHAIN_HIGHLIGHT_ALPHA = 0.8
-
-local function ClearChainHighlights(selectionOverlay)
-    local Selection = Engine.FrameSelection
-    if not selectionOverlay.dragChainChildren then return end
-    for _, f in ipairs(selectionOverlay.dragChainChildren) do
-        local sel = Selection.selections[f]
-        if sel then Selection:UpdateVisuals(f, sel) end
-    end
-    selectionOverlay.dragChainChildren = nil
-end
-
-local function MaintainChainHighlights(selectionOverlay)
-    local Selection = Engine.FrameSelection
-    if not selectionOverlay.dragChainChildren then return end
-    for _, f in ipairs(selectionOverlay.dragChainChildren) do
-        local sel = Selection.selections[f]
-        if sel then
-            sel:Show()
-            sel:SetAlpha(CHAIN_HIGHLIGHT_ALPHA)
-            sel:EnableMouse(false)
-            sel:ShowSelected(true)
-            if sel.Label then sel.Label:SetText("") end
-            for i = 1, select("#", sel:GetRegions()) do
-                local region = select(i, sel:GetRegions())
-                if region:IsObjectType("Texture") and not region.isAnchorLine then
-                    region:SetDesaturated(false)
-                    region:SetVertexColor(1, 1, 1, 1)
-                end
-            end
-        end
-    end
-end
-
+-- [ DRAG UPDATE (VISUALS) ]--------------------------------------------------------------------------
 local function RestorePreviewSize(selectionOverlay, isDragging)
     local parent = selectionOverlay.parent
     local needsReposition = selectionOverlay.previewOrigWidth or selectionOverlay.previewOrigHeight
@@ -181,8 +121,6 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     local parent = selectionOverlay.parent
     local Selection = Engine.FrameSelection
 
-    MaintainChainHighlights(selectionOverlay)
-
     local shiftHeld = IsShiftKeyDown()
     if shiftHeld and not selectionOverlay.precisionMode then
         SetNonSelectedOverlaysVisible(selectionOverlay, false)
@@ -205,12 +143,13 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     local closestX, closestY, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(parent, true, targets, nil)
 
     local isOrbitFrame = Selection.selections[anchorTarget] ~= nil
-    local isVerticalEdge = anchorEdge and VERTICAL_EDGES[anchorEdge]
+    local edgeAxis = anchorEdge and Engine.Axis.ForEdge(anchorEdge)
     local Anchor = Engine.FrameAnchor
-    local rawSync = parent.anchorOptions and parent.anchorOptions.syncDimensions
-    local rawIndependentHeight = parent.anchorOptions and parent.anchorOptions.independentHeight
-    local willSyncWidth = isVerticalEdge and rawSync == true and not rawIndependentHeight
-    local lineAlign = willSyncWidth and "CENTER" or anchorAlign
+    local crossAxis = edgeAxis and edgeAxis.perpendicular
+    local rawIndependentCross = crossAxis and parent.anchorOptions and parent.anchorOptions[crossAxis.independentFlag]
+    local parentSyncsCross = crossAxis and Engine.Axis.SyncEnabled(parent, crossAxis)
+    local willSyncCross = edgeAxis and parentSyncsCross and not rawIndependentCross
+    local lineAlign = willSyncCross and "CENTER" or anchorAlign
 
     if
         anchorTarget
@@ -223,26 +162,11 @@ local function OnDragUpdate(selectionOverlay, elapsed)
             Selection:ShowAnchorLine(oldSel, nil)
         end
         Selection:ShowAnchorLine(selectionOverlay, nil)
-        ClearChainLines(selectionOverlay)
         RestorePreviewSize(selectionOverlay, true)
 
-        local chainFrames = isVerticalEdge and Anchor:GetHorizontalChainFrames(anchorTarget)
-        local isChain = chainFrames and #chainFrames > 1
-
-        if isChain then
-            selectionOverlay.chainLineFrames = chainFrames
-            for _, f in ipairs(chainFrames) do
-                local sel = Selection.selections[f]
-                if sel then
-                    Selection:ShowAnchorLine(sel, anchorEdge, lineAlign)
-                end
-            end
-            Selection:ShowAnchorLine(selectionOverlay, GetOppositeEdge(anchorEdge), lineAlign)
-        else
-            local targetSel = Selection.selections[anchorTarget]
-            Selection:ShowAnchorLine(targetSel, anchorEdge, lineAlign)
-            Selection:ShowAnchorLine(selectionOverlay, GetOppositeEdge(anchorEdge), lineAlign)
-        end
+        local targetSel = Selection.selections[anchorTarget]
+        Selection:ShowAnchorLine(targetSel, anchorEdge, lineAlign)
+        Selection:ShowAnchorLine(selectionOverlay, GetOppositeEdge(anchorEdge), lineAlign)
 
         selectionOverlay.lastAnchorTarget = anchorTarget
         selectionOverlay.lastAnchorAlign = lineAlign
@@ -250,10 +174,24 @@ local function OnDragUpdate(selectionOverlay, elapsed)
         local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
         Selection:ShowAnchorLine(oldSel, nil)
         Selection:ShowAnchorLine(selectionOverlay, nil)
-        ClearChainLines(selectionOverlay)
         RestorePreviewSize(selectionOverlay, true)
         selectionOverlay.lastAnchorTarget = nil
         selectionOverlay.lastAnchorAlign = nil
+    end
+
+    -- An active Orbit anchor line suppresses Blizzard's red snap preview so the two never compete
+    -- visually. Drag.lua orchestrates both — Selection.lua and the Blizzard tap-in stay unaware of
+    -- each other. The unconditional clear while the line is showing also covers the shift-release
+    -- tick, where the precision-mode block above re-enables the preview before this runs.
+    local hasAnchorLine = selectionOverlay.lastAnchorTarget ~= nil
+    if hasAnchorLine then
+        SetBlizzardSnapPreview(parent, false)
+        selectionOverlay.anchorSuppressedPreview = true
+    elseif selectionOverlay.anchorSuppressedPreview then
+        selectionOverlay.anchorSuppressedPreview = false
+        if ShouldUseBlizzardPreview(parent) then
+            SetBlizzardSnapPreview(parent, true)
+        end
     end
 
     local anchorLabel = selectionOverlay.lastAnchorAlign and Engine.SelectionTooltip:BuildAnchorLabel(selectionOverlay.lastAnchorAlign) or nil
@@ -261,7 +199,6 @@ local function OnDragUpdate(selectionOverlay, elapsed)
 end
 
 -- [ DRAG START (FUNCTION) ] -------------------------------------------------------------------------
-
 function Drag:OnDragStart(selectionOverlay)
     if InCombatLockdown() then
         return
@@ -287,19 +224,14 @@ function Drag:OnDragStart(selectionOverlay)
             local preCX = (parent:GetLeft() + parent:GetRight()) / 2
             local preCY = (parent:GetBottom() + parent:GetTop()) / 2
             local oldParent = anchor.parent
-            local wasHorizontal = (anchor.edge == "LEFT" or anchor.edge == "RIGHT")
-            local root, oldScreenCenterX
-            if wasHorizontal and oldParent then
-                root = Engine.FrameAnchor:GetRootParent(oldParent)
-                if root then oldScreenCenterX = GetChainScreenCenterX(root) end
-            end
+            local oldAxis = Engine.Axis.ForEdge(anchor.edge)
+            local root = oldAxis and oldParent and Engine.FrameAnchor:GetRootParent(oldParent) or nil
 
             Engine.FrameAnchor:BreakAnchor(parent, true, true)
             Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
 
             if root then
                 Engine.FrameAnchor:SyncChildren(root)
-                Engine.FrameAnchor:RebalanceChainCenter(root, oldScreenCenterX)
             end
 
             -- Reanchor so visual center matches pre-break position
@@ -318,10 +250,7 @@ function Drag:OnDragStart(selectionOverlay)
         selectionOverlay.lastAnchorTarget = nil
         selectionOverlay.lastAnchorAlign = nil
         selectionOverlay.precisionMode = false
-
-        local Anchor = Engine.FrameAnchor
-        selectionOverlay.dragChainChildren = Anchor:GetAnchoredDescendants(parent)
-        MaintainChainHighlights(selectionOverlay)
+        selectionOverlay.anchorSuppressedPreview = false
 
         if IsShiftKeyDown() then
             SetNonSelectedOverlaysVisible(selectionOverlay, false)
@@ -333,8 +262,7 @@ function Drag:OnDragStart(selectionOverlay)
     end
 end
 
--- [ DRAG STOP ]-------------------------------------------------------------------------------------
-
+-- [ DRAG STOP ]--------------------------------------------------------------------------------------
 function Drag:OnDragStop(selectionOverlay)
     Drag.isDragging = false
     local parent = selectionOverlay.parent
@@ -346,9 +274,6 @@ function Drag:OnDragStop(selectionOverlay)
         selectionOverlay.lastAnchorTarget = nil
         selectionOverlay.lastAnchorAlign = nil
     end
-    ClearChainLines(selectionOverlay)
-    ClearChainHighlights(selectionOverlay)
-    selectionOverlay.dragChainChildren = nil
     RestorePreviewSize(selectionOverlay)
     Engine.FrameSelection:ShowAnchorLine(selectionOverlay, nil)
     selectionOverlay:SetScript("OnUpdate", nil)
@@ -414,22 +339,10 @@ function Drag:OnDragStop(selectionOverlay)
                 end
             end
 
-            local isHoriz = (anchorEdge == "LEFT" or anchorEdge == "RIGHT")
-            local oldCenterX
-            if isHoriz then
-                local existingRoot = Engine.FrameAnchor:GetRootParent(anchorTarget)
-                if existingRoot then oldCenterX = GetChainScreenCenterX(existingRoot) end
-            end
-
             Engine.FrameAnchor:CreateAnchor(parent, anchorTarget, anchorEdge, padding, nil, anchorAlign)
 
             -- Defer group border update after new anchor is established
             Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
-
-            if isHoriz and oldCenterX then
-                local root = Engine.FrameAnchor:GetRootParent(parent)
-                Engine.FrameAnchor:RebalanceChainCenter(root, oldCenterX)
-            end
 
             if Selection.dragCallbacks[parent] then
                 Selection.dragCallbacks[parent](parent, "ANCHORED", anchorTarget, anchorEdge)
@@ -470,8 +383,7 @@ function Drag:OnDragStop(selectionOverlay)
     end
 end
 
--- [ MOUSE DOWN (SELECTION) ]------------------------------------------------------------------------
-
+-- [ MOUSE DOWN (SELECTION) ]-------------------------------------------------------------------------
 function Drag:OnMouseDown(selectionOverlay)
     if InCombatLockdown() then
         return
@@ -561,7 +473,6 @@ function Drag:OnMouseDown(selectionOverlay)
 end
 
 -- [ MOUSE WHEEL (PADDING ADJUSTMENT) ] --------------------------------------------------------------
-
 function Drag:OnMouseWheel(selectionOverlay, delta)
     if selectionOverlay.wheelDebounce then
         return

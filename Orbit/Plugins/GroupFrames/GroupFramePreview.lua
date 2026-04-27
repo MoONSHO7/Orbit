@@ -6,7 +6,7 @@ local GC = Orbit.Engine.GlowController
 
 Orbit.GroupFramePreviewMixin = {}
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local Helpers = Orbit.GroupFrameHelpers
 local MAX_PARTY_PREVIEW = 5
 local PREVIEW_GROUPS = 4
@@ -47,7 +47,7 @@ local HEALTH_PCTS = {
     73, 66, 89, 42, 97,
 }
 
--- [ CANVAS MODE DETECTION ]-------------------------------------------------------------------------
+-- [ CANVAS MODE DETECTION ]--------------------------------------------------------------------------
 local function IsCanvasModeActive(plugin)
     if OrbitEngine and OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame then
         local dl = OrbitEngine.CanvasModeDialog or (Orbit and Orbit.CanvasModeDialog)
@@ -60,7 +60,7 @@ local function IsCanvasModeActive(plugin)
     return false
 end
 
--- [ PREVIEW SORT ORDER ]----------------------------------------------------------------------------
+-- [ PREVIEW SORT ORDER ]-----------------------------------------------------------------------------
 local function GetPreviewSortOrder(plugin)
     local tier = plugin:GetCurrentTier()
     local comp = TIER_COMP[tier] or TIER_COMP.Mythic
@@ -94,7 +94,7 @@ local function GetPreviewSortOrder(plugin)
     return order
 end
 
--- [ SHOW PREVIEW ]----------------------------------------------------------------------------------
+-- [ SHOW PREVIEW ]-----------------------------------------------------------------------------------
 function Orbit.GroupFramePreviewMixin:ShowPreview()
     if InCombatLockdown() or not self.frames or not self.container then return end
 
@@ -148,7 +148,7 @@ function Orbit.GroupFramePreviewMixin:ShowPreview()
     Orbit.PreviewAnimator:WatchCanvas(self)
 end
 
--- [ APPLY PREVIEW VISUALS ]-------------------------------------------------------------------------
+-- [ APPLY PREVIEW VISUALS ]--------------------------------------------------------------------------
 function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
     if not self.frames then return end
 
@@ -326,7 +326,7 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
     end
 end
 
--- [ PREVIEW AURAS ]---------------------------------------------------------------------------------
+-- [ PREVIEW AURAS ]----------------------------------------------------------------------------------
 local GROUP_PREVIEW_AURA_CFG = {
     helpers = function() return Orbit.GroupFrameHelpers end,
     defaultAnchorX = "RIGHT", defaultJustifyH = "LEFT",
@@ -342,7 +342,7 @@ function Orbit.GroupFramePreviewMixin:ShowPreviewAuras(frame, frameIndex)
     Orbit.AuraPreview:ShowFrameAuras(self, frame, GROUP_PREVIEW_AURA_CFG, GROUP_PREVIEW_BUFF_CFG)
 end
 
--- [ HIDE PREVIEW ]----------------------------------------------------------------------------------
+-- [ HIDE PREVIEW ]-----------------------------------------------------------------------------------
 function Orbit.GroupFramePreviewMixin:HidePreview()
     if InCombatLockdown() or not self.frames then return end
 
@@ -396,7 +396,7 @@ function Orbit.GroupFramePreviewMixin:HidePreview()
     self:UpdateContainerSize()
 end
 
--- [ SCHEDULE PREVIEW UPDATE ]-----------------------------------------------------------------------
+-- [ SCHEDULE PREVIEW UPDATE ]------------------------------------------------------------------------
 function Orbit.GroupFramePreviewMixin:SchedulePreviewUpdate()
     if not self._previewVisualsScheduled then
         self._previewVisualsScheduled = true
@@ -411,7 +411,7 @@ function Orbit.GroupFramePreviewMixin:SchedulePreviewUpdate()
     end
 end
 
--- [ PREVIEW BACKDROP ]------------------------------------------------------------------------------
+-- [ PREVIEW BACKDROP ]-------------------------------------------------------------------------------
 function Orbit.GroupFramePreviewMixin:ApplyPreviewBackdrop(frame)
     if not frame then return end
     if self.CreateBackground then self:CreateBackground(frame) end
@@ -419,7 +419,7 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewBackdrop(frame)
     Orbit.Skin:ApplyGradientBackground(frame, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
 end
 
--- [ PREVIEW ANIMATION ]-----------------------------------------------------------------------------
+-- [ PREVIEW ANIMATION ]------------------------------------------------------------------------------
 function Orbit.GroupFramePreviewMixin:StartPreviewAnimation()
     if not self.frames then return end
     local isParty = self:IsPartyTier()
@@ -462,26 +462,36 @@ function Orbit.GroupFramePreviewMixin:StartPreviewAnimation()
         raidBuffKey = not isDisabled("RaidBuff") and "RaidBuff" or nil,
     }
 
-    -- Dispel preview for raid tiers
-    if not isParty then
-        local dispelEnabled = self:GetTierSetting("DispelIndicatorEnabled")
-        if dispelEnabled then
-            animConfig.dispelSettings = {
-                thickness = self:GetTierSetting("DispelThickness") or 2,
-                frequency = self:GetTierSetting("DispelFrequency") or 0.25,
-                numLines = self:GetTierSetting("DispelNumLines") or 8,
-                length = self:GetTierSetting("DispelLength") or 15,
-                border = self:GetTierSetting("DispelBorder") ~= false,
-                glowType = self:GetTierSetting("DispelGlowType") or Orbit.Constants.Glow.Type.Pixel,
-                colors = {
-                    Magic = self:GetTierSetting("DispelColorMagic") or { r = 0.2, g = 0.6, b = 1.0, a = 1 },
-                    Curse = self:GetTierSetting("DispelColorCurse") or { r = 0.6, g = 0.0, b = 1.0, a = 1 },
-                    Disease = self:GetTierSetting("DispelColorDisease") or { r = 0.6, g = 0.4, b = 0.0, a = 1 },
-                    Poison = self:GetTierSetting("DispelColorPoison") or { r = 0.0, g = 0.6, b = 0.0, a = 1 },
-                },
-            }
-        end
-    end
+    animConfig.dispelSettings = self:BuildDispelPreviewCfg()
 
     Orbit.PreviewAnimator:StartAll(self, animConfig)
+end
+
+function Orbit.GroupFramePreviewMixin:BuildDispelPreviewCfg()
+    if not self:GetTierSetting("DispelIndicatorEnabled") then return nil end
+    return {
+        thickness = self:GetTierSetting("DispelThickness") or 2,
+        frequency = self:GetTierSetting("DispelFrequency") or 0.0,
+        numLines = self:GetTierSetting("DispelNumLines") or 8,
+        length = self:GetTierSetting("DispelLength") or 15,
+        border = self:GetTierSetting("DispelBorder") ~= false,
+        glowType = self:GetTierSetting("DispelGlowType") or Orbit.Constants.Glow.Type.Pixel,
+        colors = {
+            Magic = self:GetTierSetting("DispelColorMagic") or { r = 0.2, g = 0.6, b = 1.0, a = 1 },
+            Curse = self:GetTierSetting("DispelColorCurse") or { r = 0.6, g = 0.0, b = 1.0, a = 1 },
+            Disease = self:GetTierSetting("DispelColorDisease") or { r = 0.6, g = 0.4, b = 0.0, a = 1 },
+            Poison = self:GetTierSetting("DispelColorPoison") or { r = 0.0, g = 0.6, b = 0.0, a = 1 },
+            Bleed = { r = 0.9, g = 0.0, b = 0.0, a = 1 },
+        },
+    }
+end
+
+function Orbit.GroupFramePreviewMixin:RefreshDispelPreview()
+    if not self.frames or not self.frames[1] or not self.frames[1].preview then return end
+    local cfg = self:BuildDispelPreviewCfg()
+    if cfg then
+        Orbit.PreviewAnimator:RefreshDispels(self, cfg)
+    else
+        Orbit.PreviewAnimator:StopDispels(self)
+    end
 end

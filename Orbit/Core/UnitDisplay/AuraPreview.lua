@@ -1,4 +1,4 @@
--- [ ORBIT AURA PREVIEW ]----------------------------------------------------------------------------
+-- [ ORBIT AURA PREVIEW ]-----------------------------------------------------------------------------
 local _, Orbit = ...
 Orbit.AuraPreview = {}
 local AP = Orbit.AuraPreview
@@ -14,7 +14,7 @@ local PREVIEW_COOLDOWN_MAX = 5
 local PREVIEW_PAA_SPACING = 1
 local PREVIEW_PAA_COUNT = 3
 
--- [ CACHED PREVIEW ICONS ]--------------------------------------------------------------------------
+-- [ CACHED PREVIEW ICONS ]---------------------------------------------------------------------------
 local PREVIEW_BUFF_ICONS = { 135932, 136085, 135987, 132292, 135753, 136075, 135884, 136205, 135963, 136033, 135964, 136101 }
 local PREVIEW_DEBUFF_ICONS = { 136016, 136188, 136140, 136133, 132099, 136066, 135952, 132104, 136160, 136118, 136130, 135903 }
 local BUFF_COUNT, DEBUFF_COUNT = #PREVIEW_BUFF_ICONS, #PREVIEW_DEBUFF_ICONS

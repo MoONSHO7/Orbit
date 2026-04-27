@@ -6,7 +6,6 @@ Engine.HandleCore = {}
 local HandleCore = Engine.HandleCore
 
 -- [ CONFIGURATION ] ---------------------------------------------------------------------------------
-
 local DEFAULT_BORDER_SIZE = 1
 local MIN_HANDLE_WIDTH = 50
 local MIN_HANDLE_HEIGHT = 20
@@ -27,7 +26,6 @@ HandleCore.MIN_WIDTH = MIN_HANDLE_WIDTH
 HandleCore.MIN_HEIGHT = MIN_HANDLE_HEIGHT
 
 -- [ FRAME POOL ] ------------------------------------------------------------------------------------
-
 local handlePool = {}
 
 function HandleCore:AcquireFromPool()
@@ -121,7 +119,6 @@ function HandleCore:CreateFrame(options)
 end
 
 -- [ UTILITY FUNCTIONS ] -----------------------------------------------------------------------------
-
 -- Safely get size — pcall required: native Blizzard frames may return secret-tainted dimensions in 12.0+
 function HandleCore:SafeGetSize(frame)
     if not frame then

@@ -2,6 +2,7 @@
 -- Corner triggers, animated sliding drawer panel, and datatext lock/unlock
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local CORNER_SIZE = 4
@@ -44,7 +45,7 @@ function DrawerUI:CreateCornerTriggers()
         btn:SetScript("OnClick", function() self:Toggle(anchor) end)
         btn:SetScript("OnEnter", function(f)
             GameTooltip:SetOwner(f, "ANCHOR_CURSOR")
-            GameTooltip:AddLine("Datatexts", 1, 1, 1)
+            GameTooltip:AddLine(L.PLU_DT_DRAWER_TITLE, 1, 1, 1)
             GameTooltip:Show()
         end)
         btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -72,7 +73,7 @@ function DrawerUI:CreatePanel()
     drawerPanel.Border:SetFrameLevel(drawerPanel:GetFrameLevel())
     drawerPanel.header = drawerPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
     drawerPanel.header:SetPoint("TOP", drawerPanel, "TOP", 0, -15)
-    drawerPanel.header:SetText("Datatexts")
+    drawerPanel.header:SetText(L.PLU_DT_DRAWER_TITLE)
     drawerPanel.CloseButton = CreateFrame("Button", nil, drawerPanel, "UIPanelCloseButton")
     drawerPanel.CloseButton:SetPoint("TOPRIGHT", drawerPanel, "TOPRIGHT", -2, -2)
     drawerPanel.CloseButton:SetScript("OnClick", function() self:Close() end)

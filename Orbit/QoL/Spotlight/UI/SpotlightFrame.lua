@@ -1,4 +1,4 @@
--- [ SPOTLIGHT FRAME ]-------------------------------------------------------------------------------
+-- [ SPOTLIGHT FRAME ]--------------------------------------------------------------------------------
 local _, Orbit = ...
 local L = Orbit.L
 local Constants = Orbit.Constants
@@ -6,14 +6,13 @@ local Async = Orbit.Async
 local Skin = Orbit.Skin
 local Matcher = Orbit.Spotlight.Search.Matcher
 local IndexManager = Orbit.Spotlight.Index.IndexManager
-local KeyNav = Orbit.Spotlight.UI.KeyNav
 local RowPool = Orbit.Spotlight.UI.RowPool
 local Catcher = Orbit.Spotlight.UI.ClickOutsideCatcher
 
 local SpotlightFrame = {}
 Orbit.Spotlight.UI.SpotlightFrame = SpotlightFrame
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local INPUT_WIDTH = 260
 local INPUT_HEIGHT = 28
 local CENTER_Y_OFFSET = 120
@@ -30,9 +29,9 @@ local DEFAULT_MAX_RESULTS = 25
 local INPUT_TEXT_PAD_LEFT = 8
 local INPUT_TEXT_PAD_RIGHT = 8
 local EMPTY_LABEL_PAD = 10
+local HINT_COLOR = { r = 0.5, g = 0.5, b = 0.5, a = 1 }
+local HINT_SAMPLE_COUNT = 3
 
--- Creates a background texture + Orbit border on an otherwise plain frame, pulling colour from
--- Constants.Colors.Background and border style/colour from the global skin system.
 local function ApplyOrbitFrame(frame)
     if not frame._orbitBg then
         local bg = frame:CreateTexture(nil, "BACKGROUND")
@@ -46,7 +45,7 @@ end
 
 local function GetGlobalFontName() return Orbit.db.GlobalSettings.Font end
 
--- [ STATE ]-----------------------------------------------------------------------------------------
+-- [ STATE ]------------------------------------------------------------------------------------------
 SpotlightFrame._frame = nil
 SpotlightFrame._input = nil
 SpotlightFrame._list = nil
@@ -54,9 +53,8 @@ SpotlightFrame._scroll = nil
 SpotlightFrame._scrollChild = nil
 SpotlightFrame._catcher = nil
 SpotlightFrame._results = {}
-SpotlightFrame._selectedIndex = 0
 
--- [ SETTINGS ACCESS ]-------------------------------------------------------------------------------
+-- [ SETTINGS ACCESS ]--------------------------------------------------------------------------------
 local function GetAcct() return Orbit.db.AccountSettings end
 
 local function GetEnabledKinds()
@@ -72,7 +70,26 @@ local function GetMaxResults() return GetAcct().Spotlight_MaxResults or DEFAULT_
 local function GetFuzzy() return GetAcct().Spotlight_Fuzzy ~= false end
 local function GetHidePassives() return GetAcct().Spotlight_HidePassives ~= false end
 
--- [ FRAME BUILD ]-----------------------------------------------------------------------------------
+-- [ HINT SAMPLE ]------------------------------------------------------------------------------------
+local function PickHintSamples()
+    local enabled = GetEnabledKinds()
+    local labels = {}
+    for _, k in ipairs(Orbit.Spotlight.Kinds) do
+        local label = L[k.labelKey]
+        if label and enabled[k.kind] then labels[#labels + 1] = label:lower() end
+    end
+    for i = #labels, 2, -1 do
+        local j = math.random(i)
+        labels[i], labels[j] = labels[j], labels[i]
+    end
+    local take = math.min(HINT_SAMPLE_COUNT, #labels)
+    if take == 0 then return "" end
+    local out = {}
+    for i = 1, take do out[i] = labels[i] end
+    return table.concat(out, ", ") .. "..."
+end
+
+-- [ FRAME BUILD ]------------------------------------------------------------------------------------
 local function BuildFrame(self)
     local root = CreateFrame("Frame", "OrbitSpotlightFrame", UIParent)
     root:SetFrameStrata(Constants.Strata.Dialog)
@@ -81,9 +98,7 @@ local function BuildFrame(self)
     root:Hide()
     ApplyOrbitFrame(root)
 
-    -- Auto-close on combat start or spec change. Combat: Spotlight can't SetAttribute during lockdown.
-    -- Spec change: stale spellbook results would still carry the previous spec's secure attributes and
-    -- activate the wrong spell if the user clicked them before the index rebuild propagated.
+    -- Spec change auto-closes to drop stale spellbook attributes before they dispatch the old spec's spells.
     root:RegisterEvent("PLAYER_REGEN_DISABLED")
     root:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
     root:SetScript("OnEvent", function(_, event)
@@ -100,8 +115,11 @@ local function BuildFrame(self)
     input:SetMaxLetters(80)
     input:SetTextColor(1, 1, 1, 1)
 
-    -- Outer container holds the backdrop plus either the scroll or the empty label; swapping visibility
-    -- is cheaper than rebuilding, and keeping the border on the container means scroll insets are simple.
+    local hint = input:CreateFontString(nil, "OVERLAY")
+    Skin:SkinText(hint, { font = GetGlobalFontName(), textSize = INPUT_FONT_SIZE, textColor = HINT_COLOR })
+    hint:SetPoint("LEFT", input, "LEFT", 0, 0)
+    hint:SetJustifyH("LEFT")
+
     local list = CreateFrame("Frame", nil, root)
     list:SetPoint("TOPLEFT", root, "BOTTOMLEFT", 0, LIST_GAP_Y)
     list:SetPoint("TOPRIGHT", root, "BOTTOMRIGHT", 0, LIST_GAP_Y)
@@ -128,38 +146,59 @@ local function BuildFrame(self)
 
     self._frame = root
     self._input = input
+    self._hint = hint
     self._list = list
     self._scroll = scroll
     self._scrollChild = scrollChild
     self._empty = empty
     self._catcher = Catcher:Create(function() self:Close() end)
 
-    input:SetScript("OnTextChanged", function() self:OnQueryChanged() end)
+    input:SetScript("OnTextChanged", function()
+        hint:SetShown((input:GetText() or "") == "")
+        self:OnQueryChanged()
+    end)
     input:SetScript("OnEscapePressed", function() self:Close() end)
-    KeyNav:Attach(input, {
-        OnMovePrev = function() self:MoveSelection(-1) end,
-        OnMoveNext = function() self:MoveSelection(1) end,
-        OnActivate = function() self:ActivateSelection() end,
-        OnClose    = function() self:Close() end,
-    })
+    -- Propagate non-typing keys so global bindings still fire while the EditBox has focus.
+    local EDIT_KEYS = { BACKSPACE = true, DELETE = true, LEFT = true, RIGHT = true, HOME = true, END = true, INSERT = true }
+    input:SetScript("OnKeyDown", function(self, key)
+        if key == "SPACE" or EDIT_KEYS[key] or (#key == 1 and key:match("[%a%d]")) then
+            self:SetPropagateKeyboardInput(false)
+        else
+            self:SetPropagateKeyboardInput(true)
+        end
+    end)
+    input:SetScript("OnChar", function(self, char)
+        if char and not char:match("[%a%d ]") then
+            local pos = self:GetCursorPosition()
+            local text = self:GetText()
+            if pos >= 1 then
+                self:SetText(text:sub(1, pos - 1) .. text:sub(pos + 1))
+                self:SetCursorPosition(pos - 1)
+            end
+        end
+    end)
 end
 
--- [ ANCHORING ]-------------------------------------------------------------------------------------
--- Centered slightly above screen midpoint so the result list has room to drop down without crossing the centre.
+-- [ ANCHORING ]--------------------------------------------------------------------------------------
 local function AnchorCenter(root)
     root:ClearAllPoints()
     root:SetPoint("CENTER", UIParent, "CENTER", 0, CENTER_Y_OFFSET)
 end
 
--- [ RESULTS RENDER ]--------------------------------------------------------------------------------
--- All matched results are laid out into the scrollChild; only LIST_MAX_VISIBLE rows worth of height is
--- visible through the ScrollFrame, and the wheel scrolls the rest. Keyboard nav auto-scrolls below.
+-- [ RESULTS RENDER ]---------------------------------------------------------------------------------
 local function LayoutList(self)
     local count = #self._results
     RowPool:HideAll()
 
     if count == 0 then
+        -- "No Results" only shows for queries that ran and returned nothing; empty input shows neither label nor list.
+        local hasQuery = (self._input:GetText() or "") ~= ""
         self._scroll:Hide()
+        if not hasQuery then
+            self._empty:Hide()
+            self._list:Hide()
+            return
+        end
         self._empty:Show()
         self._list:SetHeight(ROW_HEIGHT)
         self._list:Show()
@@ -174,8 +213,6 @@ local function LayoutList(self)
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", self._scrollChild, "TOPLEFT", 0, -(i - 1) * ROW_HEIGHT)
         Orbit.Spotlight.UI.ResultRow:Bind(row, self._results[i])
-        -- Visual selection only follows explicit keyboard nav, not the implicit index used by Enter.
-        Orbit.Spotlight.UI.ResultRow:SetSelected(row, self._keyboardNavUsed and i == self._selectedIndex)
         row:Show()
     end
 
@@ -187,21 +224,7 @@ local function LayoutList(self)
     self._list:Show()
 end
 
--- Keep the selected row in view when the user arrow-keys past the visible window.
-local function ScrollToSelection(self)
-    local idx = self._selectedIndex
-    if idx < 1 then return end
-    local yOffset = (idx - 1) * ROW_HEIGHT
-    local visibleHeight = self._scroll:GetHeight()
-    local current = self._scroll:GetVerticalScroll()
-    if yOffset < current then
-        self._scroll:SetVerticalScroll(yOffset)
-    elseif yOffset + ROW_HEIGHT > current + visibleHeight then
-        self._scroll:SetVerticalScroll(yOffset + ROW_HEIGHT - visibleHeight)
-    end
-end
-
--- [ EVENTS ]----------------------------------------------------------------------------------------
+-- [ EVENTS ]-----------------------------------------------------------------------------------------
 function SpotlightFrame:OnQueryChanged()
     local text = self._input:GetText() or ""
     Async:Debounce(DEBOUNCE_KEY, function()
@@ -210,33 +233,11 @@ function SpotlightFrame:OnQueryChanged()
         IndexManager:EnsureBuilt(kinds)
         local query = Orbit.Spotlight.Search.Tokenize:Fold(text)
         self._results = Matcher:Query(IndexManager:GetMaster(), query, kinds, GetMaxResults(), GetFuzzy(), GetHidePassives())
-        self._selectedIndex = (#self._results > 0) and 1 or 0
         LayoutList(self)
     end, DEBOUNCE_DELAY)
 end
 
-function SpotlightFrame:MoveSelection(delta)
-    local count = #self._results
-    if count == 0 then return end
-    self._keyboardNavUsed = true
-    self._selectedIndex = ((self._selectedIndex - 1 + delta) % count) + 1
-    RowPool:ForEach(function(row, i)
-        Orbit.Spotlight.UI.ResultRow:SetSelected(row, i == self._selectedIndex)
-    end)
-    ScrollToSelection(self)
-end
-
-function SpotlightFrame:ActivateSelection()
-    local idx = self._selectedIndex
-    if idx < 1 then return end
-    local row = RowPool:Acquire(idx)
-    if not row:IsShown() then return end
-    -- Programmatic :Click() runs through the secure dispatch for the bound attributes.
-    row:Click("LeftButton")
-    self:Close()
-end
-
--- [ OPEN / CLOSE ]----------------------------------------------------------------------------------
+-- [ OPEN / CLOSE ]-----------------------------------------------------------------------------------
 function SpotlightFrame:Toggle()
     if self._frame and self._frame:IsShown() then self:Close() else self:Open() end
 end
@@ -249,13 +250,13 @@ function SpotlightFrame:Open()
     if not self._frame then BuildFrame(self) end
     AnchorCenter(self._frame)
     self._input:SetText("")
+    self._hint:SetText(PickHintSamples())
+    self._hint:Show()
     self._results = {}
-    self._selectedIndex = 0
-    self._keyboardNavUsed = false
     LayoutList(self)
     self._catcher:Show()
     self._frame:Show()
-    -- Defer focus by one frame so the hotkey keypress that triggered the binding has fully released before the EditBox starts capturing.
+    -- Defer focus one frame so the triggering hotkey keypress releases before the EditBox captures.
     C_Timer.After(0, function() if self._frame:IsShown() then self._input:SetFocus() end end)
 end
 
@@ -265,5 +266,4 @@ function SpotlightFrame:Close()
     if self._catcher then self._catcher:Hide() end
     if self._frame then self._frame:Hide() end
     self._results = {}
-    self._selectedIndex = 0
 end

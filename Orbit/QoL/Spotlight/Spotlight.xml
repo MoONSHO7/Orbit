@@ -18,7 +18,6 @@
     <Script file="Index\IndexManager.lua"/>
     <Script file="UI\ResultRow.lua"/>
     <Script file="UI\RowPool.lua"/>
-    <Script file="UI\KeyNav.lua"/>
     <Script file="UI\ClickOutsideCatcher.lua"/>
     <Script file="UI\SpotlightFrame.lua"/>
 </Ui>

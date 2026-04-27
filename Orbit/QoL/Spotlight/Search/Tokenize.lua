@@ -1,4 +1,4 @@
--- [ TOKENIZE ]--------------------------------------------------------------------------------------
+-- [ TOKENIZE ]---------------------------------------------------------------------------------------
 local _, Orbit = ...
 local Tokenize = {}
 Orbit.Spotlight.Search.Tokenize = Tokenize
@@ -6,7 +6,7 @@ Orbit.Spotlight.Search.Tokenize = Tokenize
 local string_lower = string.lower
 local string_gsub = string.gsub
 
--- [ FOLD ]------------------------------------------------------------------------------------------
+-- [ FOLD ]-------------------------------------------------------------------------------------------
 -- Lowercase and strip common diacritics so "Corrupción" matches "corrupcion".
 -- Caller invokes once at index time; per-search path only touches the precomputed lowerName.
 local DIACRITIC_MAP = {

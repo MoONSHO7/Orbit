@@ -1,11 +1,11 @@
--- [ VISIBILITY ENGINE CONTENT ]---------------------------------------------------------------------
+-- [ VISIBILITY ENGINE CONTENT ]----------------------------------------------------------------------
 -- Scrollable table for frame visibility, opacity, and fade behavior.
 local _, Orbit = ...
 local L = Orbit.L
 local Layout = Orbit.Engine.Layout
 local A = Layout.Advanced
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local FONT_HIGHLIGHT = "GameFontHighlight"
 local FONT_SMALL = "GameFontNormalSmall"
 local FONT_TINY = "SystemFont_Tiny"
@@ -30,7 +30,7 @@ local SEARCH_WIDTH = 200
 local SEARCH_HEIGHT = 30
 local SEARCH_RIGHT_INSET = 34
 
--- [ BUILD ]-----------------------------------------------------------------------------------------
+-- [ BUILD ]------------------------------------------------------------------------------------------
 function Orbit._AC.CreateVEContent(parent)
     local content = CreateFrame("Frame", nil, parent)
     content:SetAllPoints()

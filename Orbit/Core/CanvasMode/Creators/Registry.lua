@@ -1,20 +1,17 @@
--- [ CANVAS MODE - CREATOR REGISTRY ]----------------------------------------------------------------
-
+-- [ CANVAS MODE - CREATOR REGISTRY ]-----------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 
--- [ REGISTRY ]--------------------------------------------------------------------------------------
-
+-- [ REGISTRY ]---------------------------------------------------------------------------------------
 CanvasMode.ComponentCreators = {}
 
 function CanvasMode:RegisterCreator(creatorType, createFn)
     self.ComponentCreators[creatorType] = createFn
 end
 
--- [ SHARED CONSTANTS ]------------------------------------------------------------------------------
-
+-- [ SHARED CONSTANTS ]-------------------------------------------------------------------------------
 local BORDER_COLOR_IDLE = { 0.3, 0.8, 0.3, 0 }
 local BORDER_COLOR_HOVER = { 0.3, 0.8, 0.3, 0.2 }
 local BORDER_COLOR_DRAG = { 0.3, 0.8, 0.3, 0.3 }
@@ -24,6 +21,7 @@ local DEFAULT_PORTRAIT_SIZE = 32
 local FALLBACK_CONTAINER_WIDTH = 60
 local FALLBACK_CONTAINER_HEIGHT = 20
 local FALLBACK_GRAY = { 0.5, 0.5, 0.5, 0.5 }
+local TEXT_PADDING = 2
 
 CanvasMode.CreatorConstants = {
     BORDER_COLOR_IDLE = BORDER_COLOR_IDLE,
@@ -35,10 +33,10 @@ CanvasMode.CreatorConstants = {
     FALLBACK_CONTAINER_WIDTH = FALLBACK_CONTAINER_WIDTH,
     FALLBACK_CONTAINER_HEIGHT = FALLBACK_CONTAINER_HEIGHT,
     FALLBACK_GRAY = FALLBACK_GRAY,
+    TEXT_PADDING = TEXT_PADDING,
 }
 
--- [ SHARED HELPERS ]--------------------------------------------------------------------------------
-
+-- [ SHARED HELPERS ]---------------------------------------------------------------------------------
 local function GetSourceSize(source, defaultW, defaultH)
     local w, h = defaultW, defaultH
     if source.orbitOriginalWidth and source.orbitOriginalWidth > 0 then
@@ -64,14 +62,19 @@ end
 
 CanvasMode.SetBorderColor = SetBorderColor
 
--- [ TEXT ALIGNMENT ]--------------------------------------------------------------------------------
-
+-- [ TEXT ALIGNMENT ]---------------------------------------------------------------------------------
 local function ApplyTextAlignment(container, visual, justifyH)
     if container and (container.orbitKeepTextCentered or container.key == "DifficultyText") then
         justifyH = "CENTER"
     end
     visual:ClearAllPoints()
-    visual:SetPoint(justifyH, container, justifyH, 0, 0)
+    if justifyH == "LEFT" then
+        visual:SetPoint("LEFT", container, "LEFT", TEXT_PADDING, 0)
+    elseif justifyH == "RIGHT" then
+        visual:SetPoint("RIGHT", container, "RIGHT", -TEXT_PADDING, 0)
+    else
+        visual:SetPoint("CENTER", container, "CENTER", 0, 0)
+    end
     visual:SetJustifyH(justifyH)
 end
 

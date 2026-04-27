@@ -2,7 +2,7 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Target Cast Bar", "Orbit_TargetCastBar", {
     liveToggle = true,
     defaults = Orbit.CastBarMixin.sharedDefaults,
@@ -12,12 +12,12 @@ Mixin(Plugin, Orbit.CastBarMixin)
 
 Plugin.previewText = "Target Cast"
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     self:AddCastBarSettings(dialog, systemFrame)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     local CastBar = self:CreateCastBarFrame("OrbitTargetCastBar", {
         editModeName = "Target Cast Bar",
@@ -27,10 +27,9 @@ function Plugin:OnLoad()
     CastBar.anchorOptions = {
         horizontal = false,
         vertical = true,
-        syncScale = true,
-        syncDimensions = true,
         mergeBorders = { x = false, y = true },
     }
+    CastBar.orbitWidthSync = true
 
     self.CastBar = CastBar
     self.Frame = CastBar
@@ -48,7 +47,7 @@ function Plugin:OnLoad()
     self:RegisterWorldEvent(CastBar, "TargetCastBar")
 end
 
--- [ APPLY SETTINGS ]--------------------------------------------------------------------------------
+-- [ APPLY SETTINGS ]---------------------------------------------------------------------------------
 function Plugin:ApplySettings(systemFrame)
     local bar = self.CastBar
     if not bar then return end

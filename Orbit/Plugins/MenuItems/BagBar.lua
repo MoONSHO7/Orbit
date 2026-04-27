@@ -3,7 +3,7 @@ local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_BagBar"
 local DEFAULT_POSITION_X = -50
 local DEFAULT_POSITION_Y = 40
@@ -20,7 +20,7 @@ local Plugin = Orbit:RegisterPlugin("Bag Bar", SYSTEM_ID, {
 -- Apply NativeBarMixin for mouseOver helpers
 Mixin(Plugin, Orbit.NativeBarMixin)
 
--- [ SETTINGS UI ]-----------------------------------------------------------------------------------
+-- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex or SYSTEM_ID
     local SB = OrbitEngine.SchemaBuilder
@@ -89,7 +89,7 @@ function Plugin:AddSettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
 
--- [ LIFECYCLE ]-------------------------------------------------------------------------------------
+-- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     -- Create Container
     self.frame = CreateFrame("Frame", "OrbitBagBarContainer", UIParent)
@@ -102,8 +102,6 @@ function Plugin:OnLoad()
     self.frame.anchorOptions = {
         horizontal = true,
         vertical = true,
-        syncScale = false,
-        syncDimensions = false,
     }
 
     -- Default Position
@@ -122,7 +120,7 @@ function Plugin:OnLoad()
     self:TryCapture()
 end
 
--- [ INITIALIZATION ]--------------------------------------------------------------------------------
+-- [ INITIALIZATION ]---------------------------------------------------------------------------------
 function Plugin:TryCapture()
     if BagsBar then
         if InCombatLockdown() then
@@ -148,7 +146,7 @@ function Plugin:TryCapture()
     return false
 end
 
--- [ LOGIC ]-----------------------------------------------------------------------------------------
+-- [ LOGIC ]------------------------------------------------------------------------------------------
 function Plugin:ReparentAll()
     if not BagsBar then
         return
@@ -214,7 +212,7 @@ function Plugin:ReparentAll()
     end
 end
 
--- [ SETTINGS APPLICATION ]--------------------------------------------------------------------------
+-- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
 function Plugin:ApplySettings()
     local frame = self.frame
     if not frame then
@@ -245,7 +243,7 @@ function Plugin:ApplySettings()
     self:ApplyMouseOver(frame, SYSTEM_ID)
 end
 
--- [ BLIZZARD HIDER ]--------------------------------------------------------------------------------
+-- [ BLIZZARD HIDER ]---------------------------------------------------------------------------------
 Orbit:RegisterBlizzardHider("Bag Bar", function()
     if BagsBar then OrbitEngine.NativeFrame:SecureHide(BagsBar) end
 end)

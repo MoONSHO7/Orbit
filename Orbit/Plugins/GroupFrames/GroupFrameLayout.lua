@@ -5,20 +5,20 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local Helpers = Orbit.GroupFrameHelpers
 local Pixel = Orbit.Engine.Pixel
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local MAX_GROUP_FRAMES = Helpers.LAYOUT.MaxGroupFrames
 local MAX_RAID_GROUPS = Helpers.LAYOUT.MaxRaidGroups
 local FRAMES_PER_GROUP = Helpers.LAYOUT.FramesPerGroup
 local OVERLAY_LEVEL_BOOST = Orbit.Constants.Levels.Tooltip
 
--- [ GROUP LABELS ]----------------------------------------------------------------------------------
+-- [ GROUP LABELS ]-----------------------------------------------------------------------------------
 local GROUP_LABEL_FONT_SIZE = 12
 local GROUP_LABEL_ALPHA = 0.65
 local GROUP_LABEL_PADDING = 5
 
 Orbit.GroupFrameLayoutMixin = {}
 
--- [ FRAME POSITIONING ]-----------------------------------------------------------------------------
+-- [ FRAME POSITIONING ]------------------------------------------------------------------------------
 function Orbit.GroupFrameLayoutMixin:PositionFrames()
     if InCombatLockdown() then return end
     if self:IsPartyTier() then
@@ -147,7 +147,7 @@ function Orbit.GroupFrameLayoutMixin:PositionRaidFrames()
     self:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, growUp, scale)
 end
 
--- [ GROUP LABELS ]----------------------------------------------------------------------------------
+-- [ GROUP LABELS ]-----------------------------------------------------------------------------------
 function Orbit.GroupFrameLayoutMixin:UpdateGroupLabels(sortMode, groupOrder, width, height, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, growUp, scale)
     if not self.groupLabels then self.groupLabels = {} end
     local showLabels = (sortMode == "group") and self:GetTierSetting("ShowGroupLabels")
@@ -194,7 +194,7 @@ function Orbit.GroupFrameLayoutMixin:UpdateGroupLabels(sortMode, groupOrder, wid
     end
 end
 
--- [ CONTAINER SIZE ]--------------------------------------------------------------------------------
+-- [ CONTAINER SIZE ]---------------------------------------------------------------------------------
 function Orbit.GroupFrameLayoutMixin:UpdateContainerSize()
     if InCombatLockdown() then return end
 

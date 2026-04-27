@@ -60,7 +60,9 @@ Plugins\MenuItems\MenuItems.xml
 Plugins\Minimap\Minimap.xml
 Plugins\Datatexts\Datatexts.xml
 Plugins\DamageMeter\DamageMeter.xml
+Plugins\StatusBars\StatusBars.xml
 Plugins\Extras\TalkingHead.lua
+Plugins\Extras\MinimapButton.lua
 
 # ==============================================================
 # QUALITY OF LIFE

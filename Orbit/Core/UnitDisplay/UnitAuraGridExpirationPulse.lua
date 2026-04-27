@@ -1,4 +1,4 @@
--- [ UNIT AURA GRID EXPIRATION PULSE ]---------------------------------------------------------------
+-- [ UNIT AURA GRID EXPIRATION PULSE ]----------------------------------------------------------------
 -- Shared expiration pulse ticker for UnitAuraGridMixin. When an aura icon is within
 -- EXPIRATION_THRESHOLD of expiry, pulses its alpha between EXPIRATION_ALPHA_MIN and 1 at
 -- EXPIRATION_PULSE_SPEED. The ticker is lazy: it starts only when the first icon registers and
@@ -11,8 +11,7 @@
 local _, Orbit = ...
 local Mixin = Orbit.UnitAuraGridMixin
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local EXPIRATION_THRESHOLD = 0.30
 local EXPIRATION_ALPHA_MIN = 0.10
 local EXPIRATION_PULSE_SPEED = 3
@@ -22,15 +21,13 @@ local math_sin = math.sin
 local math_abs = math.abs
 local GetTime = GetTime
 
--- [ CURVES ]----------------------------------------------------------------------------------------
-
+-- [ CURVES ]-----------------------------------------------------------------------------------------
 local swipeCurve = C_CurveUtil.CreateCurve()
 swipeCurve:SetType(Enum.LuaCurveType.Linear)
 swipeCurve:AddPoint(0, 1) -- At 0% remaining (end), 100% alpha
 swipeCurve:AddPoint(1, 0) -- At 100% remaining (start), 0% alpha
 
--- [ TICKER ]----------------------------------------------------------------------------------------
-
+-- [ TICKER ]-----------------------------------------------------------------------------------------
 local _pulseIcons = {}
 local _pulseTicker
 
@@ -70,8 +67,7 @@ local function ExpirationPulseTick()
     end
 end
 
--- [ REGISTRATION ]----------------------------------------------------------------------------------
-
+-- [ REGISTRATION ]-----------------------------------------------------------------------------------
 function Mixin._RegisterExpirationPulse(icon, durObj)
     icon._orbitExpireDurObj = durObj
     if icon._orbitPulseRegistered then return end

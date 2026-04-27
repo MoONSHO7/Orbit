@@ -1,4 +1,4 @@
--- [ KEYBIND SYSTEM ]--------------------------------------------------------------------------------
+-- [ KEYBIND SYSTEM ]---------------------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
@@ -9,7 +9,7 @@ OrbitEngine.KeybindSystem = KeybindSystem
 local MAX_KEYBIND_DISPLAY_LENGTH = 4
 local BUTTONS_PER_BAR = 12
 
--- [ KEYBIND FORMATTING ]----------------------------------------------------------------------------
+-- [ KEYBIND FORMATTING ]-----------------------------------------------------------------------------
 -- Convert verbose keybind text to compact display (SHIFT-1 → S1)
 
 function KeybindSystem:Format(keybind)
@@ -81,8 +81,7 @@ function KeybindSystem:Format(keybind)
     return #out > MAX_KEYBIND_DISPLAY_LENGTH and out:sub(1, MAX_KEYBIND_DISPLAY_LENGTH) or out
 end
 
--- [ BUTTON KEYBIND LOOKUP ]-------------------------------------------------------------------------
-
+-- [ BUTTON KEYBIND LOOKUP ]--------------------------------------------------------------------------
 function KeybindSystem:GetForButton(button)
     if not button or not GetBindingKey then
         return nil
@@ -116,7 +115,7 @@ function KeybindSystem:GetForButton(button)
     return nil
 end
 
--- [ KEYBIND MAP ]-----------------------------------------------------------------------------------
+-- [ KEYBIND MAP ]------------------------------------------------------------------------------------
 -- Unified map built once per cache cycle from a single scan of all action bar
 -- buttons.  Both GetForSpell and GetForItem are O(1) table lookups after the
 -- initial build.
@@ -273,8 +272,7 @@ function KeybindSystem:GetForItem(itemID)
     return itemKeybindMap[itemID] or nil
 end
 
--- [ EVENT REGISTRATION ]----------------------------------------------------------------------------
-
+-- [ EVENT REGISTRATION ]-----------------------------------------------------------------------------
 local CACHE_INVALIDATION_EVENTS = {
     "UPDATE_BINDINGS",
     "ACTIONBAR_SLOT_CHANGED",

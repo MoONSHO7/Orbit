@@ -1,12 +1,10 @@
--- [ TICK MIXIN ]------------------------------------------------------------------------------------
-
+-- [ TICK MIXIN ]-------------------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 Engine.TickMixin = {}
 local TickMixin = Engine.TickMixin
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local TICK_SIZE_DEFAULT = 2
 local TICK_SIZE_MAX = 6
 local TICK_OVERSHOOT = 2
@@ -27,8 +25,7 @@ local TICK_ALPHA_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
 end)()
 TickMixin.TICK_ALPHA_CURVE = TICK_ALPHA_CURVE
 
--- [ CREATE ]----------------------------------------------------------------------------------------
-
+-- [ CREATE ]-----------------------------------------------------------------------------------------
 function TickMixin:Create(parent, statusBar, anchorRegion)
     local tickBar = CreateFrame("StatusBar", nil, parent)
     if anchorRegion then tickBar:SetPoint("LEFT", anchorRegion, "RIGHT", 0, 0)
@@ -62,7 +59,7 @@ function TickMixin:Create(parent, statusBar, anchorRegion)
     parent.TickMark = tickMark
 end
 
--- [ APPLY ]-----------------------------------------------------------------------------------------
+-- [ APPLY ]------------------------------------------------------------------------------------------
 -- `perpDim` is the dimension perpendicular to the bar's fill axis (the bar's
 -- height for HORIZONTAL, the bar's width for VERTICAL). The tick mark is a
 -- thin line that crosses the bar perpendicular to fill direction; tickSize is
@@ -71,6 +68,7 @@ end
 function TickMixin:Apply(frame, tickSize, perpDim, anchorBar, orientation)
     local rounded = 2 * math.floor((tickSize + 1) / 2)
     if rounded > 0 and frame.TickBar then
+        frame.TickBar:SetOrientation(orientation or "HORIZONTAL")
         local scale = frame:GetEffectiveScale()
         local overshoot = Engine.Pixel:Multiple(TICK_OVERSHOOT, scale)
         local tickThickness = math.max(Engine.Pixel:Multiple(rounded, scale), Engine.Pixel:DefaultBorderSize(scale))
@@ -97,8 +95,7 @@ function TickMixin:Apply(frame, tickSize, perpDim, anchorBar, orientation)
     end
 end
 
--- [ SHOW / HIDE ]-----------------------------------------------------------------------------------
-
+-- [ SHOW / HIDE ]------------------------------------------------------------------------------------
 function TickMixin:Show(frame)
     if frame.TickBar then frame.TickBar:Show() end
     if frame.TickClip then frame.TickClip:Show() end
@@ -109,8 +106,7 @@ function TickMixin:Hide(frame)
     if frame.TickClip then frame.TickClip:Hide() end
 end
 
--- [ UPDATE ]----------------------------------------------------------------------------------------
-
+-- [ UPDATE ]-----------------------------------------------------------------------------------------
 function TickMixin:Update(frame, current, max, smoothing)
     if not frame.TickBar then return end
     frame.TickBar:SetMinMaxValues(0, max)

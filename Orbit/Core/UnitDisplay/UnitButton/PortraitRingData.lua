@@ -1,20 +1,20 @@
--- [ PORTRAIT RING DATA ]----------------------------------------------------------------------------
+-- [ PORTRAIT RING DATA ]-----------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULT_OVERSHOOT = 3
 local FLIPBOOK_ROWS = 6
 local FLIPBOOK_COLS = 6
 local FLIPBOOK_FRAMES = 36
 local FLIPBOOK_DURATION = 4
 
--- [ FLIPBOOK FACTORY ]------------------------------------------------------------------------------
+-- [ FLIPBOOK FACTORY ]-------------------------------------------------------------------------------
 local function FlipbookRing(atlas)
     return { atlas = atlas, overshoot = DEFAULT_OVERSHOOT, rows = FLIPBOOK_ROWS, cols = FLIPBOOK_COLS, frames = FLIPBOOK_FRAMES, duration = FLIPBOOK_DURATION }
 end
 
--- [ RING DATA ]-------------------------------------------------------------------------------------
+-- [ RING DATA ]--------------------------------------------------------------------------------------
 local GOLD_ENTRY = { atlas = "hud-PlayerFrame-portraitring-large", overshoot = DEFAULT_OVERSHOOT }
 
 Engine.PortraitRingData = {

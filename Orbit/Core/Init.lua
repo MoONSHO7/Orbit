@@ -1,5 +1,4 @@
--- [ ORBIT INIT ]------------------------------------------------------------------------------------
-
+-- [ ORBIT INIT ]-------------------------------------------------------------------------------------
 local addonName, addonTable = ...
 
 ---@class Orbit
@@ -23,13 +22,11 @@ Orbit = addonTable
 Orbit.Engine = Orbit.Engine or {}
 local OrbitEngine = Orbit.Engine
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local MAX_ERRORS = 50
 local INIT_TIMER_DELAY = 0.05
 
--- [ ERROR HANDLER ]---------------------------------------------------------------------------------
-
+-- [ ERROR HANDLER ]----------------------------------------------------------------------------------
 Orbit.ErrorHandler = {}
 local ErrorHandler = Orbit.ErrorHandler
 
@@ -63,8 +60,7 @@ function ErrorHandler:LogError(source, method, err)
     }
 end
 
--- [ VISIBILITY MANAGER ]----------------------------------------------------------------------------
-
+-- [ VISIBILITY MANAGER ]-----------------------------------------------------------------------------
 Orbit.Visibility = {}
 
 function Orbit.Visibility:ApplyState(frame, visibilityMode)
@@ -117,12 +113,10 @@ function Orbit.Visibility:ApplyState(frame, visibilityMode)
     frame.isOrbitUpdating = false
 end
 
--- [ EDIT MODE QUERY ]-------------------------------------------------------------------------------
-
+-- [ EDIT MODE QUERY ]--------------------------------------------------------------------------------
 function Orbit:IsEditMode() return EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() or false end
 
--- [ COMBAT-SAFE HELPERS ]---------------------------------------------------------------------------
-
+-- [ COMBAT-SAFE HELPERS ]----------------------------------------------------------------------------
 function Orbit:SafeAction(callback)
     if InCombatLockdown() then
         if self.CombatManager then
@@ -134,8 +128,7 @@ function Orbit:SafeAction(callback)
     return true
 end
 
--- [ PLUGIN REGISTRATION ]---------------------------------------------------------------------------
-
+-- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 function Orbit:RegisterPlugin(name, system, mixin)
     local combinedMixin = Mixin({}, Orbit.PluginMixin, mixin)
     local plugin = OrbitEngine:RegisterSystem(name, system, combinedMixin)
@@ -206,15 +199,14 @@ function Orbit:InitializePlugins()
     ApplyNext()
 end
 
--- [ ADDON INITIALIZATION ]--------------------------------------------------------------------------
-
+-- [ ADDON INITIALIZATION ]---------------------------------------------------------------------------
 Orbit.addonName = addonName
 Orbit.version = "@project-version@"
 Orbit.title = "Orbit"
 
 -- Dev Fallback for version token (when not built by BigWigsMods/packager)
 if Orbit.version == "@" .. "project-version" .. "@" then
-    Orbit.version = "0.0.0-dev"
+    Orbit.version = "0.0-dev"
 end
 _G["Orbit"] = Orbit
 OrbitDB = OrbitDB or {}
@@ -383,13 +375,12 @@ function Orbit:LiveTogglePlugin(name, enabled)
     end
 end
 
--- [ BLIZZARD FRAME HIDERS ]-------------------------------------------------------------------------
+-- [ BLIZZARD FRAME HIDERS ]--------------------------------------------------------------------------
 Orbit._blizzardHiders = {}
 
 function Orbit:RegisterBlizzardHider(pluginName, hiderFunc) self._blizzardHiders[pluginName] = hiderFunc end
 
--- [ EVENT HANDLERS ]--------------------------------------------------------------------------------
-
+-- [ EVENT HANDLERS ]---------------------------------------------------------------------------------
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_LOGOUT")

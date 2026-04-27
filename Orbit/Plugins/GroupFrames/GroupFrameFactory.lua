@@ -4,7 +4,7 @@ local OrbitEngine = Orbit.Engine
 
 Orbit.GroupFrameFactoryMixin = {}
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local Helpers = Orbit.GroupFrameHelpers
 local POWER_BAR_HEIGHT_RATIO = Helpers.LAYOUT.PowerBarRatio
 local PARTY_ICON_SIZE = 16
@@ -12,7 +12,7 @@ local PARTY_CENTER_ICON_SIZE = 24
 local RAID_ICON_SIZE = 12
 local RAID_CENTER_ICON_SIZE = 18
 
--- [ POWER BAR CREATION ]----------------------------------------------------------------------------
+-- [ POWER BAR CREATION ]-----------------------------------------------------------------------------
 function Orbit.GroupFrameFactoryMixin:CreatePowerBar(parent, unit)
     local power = CreateFrame("StatusBar", nil, parent)
     power:SetPoint("BOTTOMLEFT", 0, 0)
@@ -30,7 +30,7 @@ function Orbit.GroupFrameFactoryMixin:CreatePowerBar(parent, unit)
     return power
 end
 
--- [ STATUS ICON CREATION ]--------------------------------------------------------------------------
+-- [ STATUS ICON CREATION ]---------------------------------------------------------------------------
 function Orbit.GroupFrameFactoryMixin:CreateStatusIcons(frame, isPartyTier)
     local iconSize = isPartyTier and PARTY_ICON_SIZE or RAID_ICON_SIZE
     local centerIconSize = isPartyTier and PARTY_CENTER_ICON_SIZE or RAID_CENTER_ICON_SIZE
@@ -111,7 +111,7 @@ function Orbit.GroupFrameFactoryMixin:CreateStatusIcons(frame, isPartyTier)
     frame.PrivateAuraAnchor = paa
 end
 
--- [ EVENT REGISTRATION ]----------------------------------------------------------------------------
+-- [ EVENT REGISTRATION ]-----------------------------------------------------------------------------
 local UNIT_EVENTS = {
     "UNIT_HEALTH", "UNIT_MAXHEALTH",
     "UNIT_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_PREDICTION",
@@ -141,7 +141,7 @@ function Orbit.GroupFrameFactoryMixin:RegisterFrameEvents(frame, unit)
     self:RegisterUnitEvents(frame, unit)
 end
 
--- [ FRAME CONFIGURATION ]---------------------------------------------------------------------------
+-- [ FRAME CONFIGURATION ]----------------------------------------------------------------------------
 function Orbit.GroupFrameFactoryMixin:ConfigureFrame(frame)
     frame:SetClassColour(true)
     if frame.SetReactionColour then frame:SetReactionColour(true) end

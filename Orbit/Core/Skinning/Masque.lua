@@ -2,7 +2,7 @@ local _, addonTable = ...
 local Orbit = addonTable
 local Skin = Orbit.Skin
 
--- [ MASQUE BRIDGE ]---------------------------------------------------------------------------------
+-- [ MASQUE BRIDGE ]----------------------------------------------------------------------------------
 local MasqueBridge = {}
 Skin.Masque = MasqueBridge
 

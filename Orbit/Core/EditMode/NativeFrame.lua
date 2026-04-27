@@ -1,25 +1,21 @@
--- [ ORBIT NATIVE FRAME ]----------------------------------------------------------------------------
-
+-- [ ORBIT NATIVE FRAME ]-----------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
 Engine.NativeFrame = Engine.NativeFrame or {}
 local NativeFrame = Engine.NativeFrame
 
--- [ CONSTANTS ]-------------------------------------------------------------------------------------
-
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local OFFSCREEN_OFFSET = 10000
 
--- [ STATE ]-----------------------------------------------------------------------------------------
-
+-- [ STATE ]------------------------------------------------------------------------------------------
 NativeFrame.hiddenParent = nil
 NativeFrame.hidden = {}
 NativeFrame.disabled = {}
 NativeFrame.modified = {}
 NativeFrame.protected = {}
 
--- [ HELPERS ]---------------------------------------------------------------------------------------
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
 local function TableCount(t)
     local count = 0
     for _ in pairs(t) do count = count + 1 end
@@ -28,10 +24,10 @@ end
 
 
 
--- [ SCENARIO 1: HIDE & REPLACE ]--------------------------------------------------------------------
-
+-- [ SCENARIO 1: HIDE & REPLACE ]---------------------------------------------------------------------
 function NativeFrame:Hide(nativeFrame, options)
     if not nativeFrame then return false end
+    if InCombatLockdown() then return false end
     options = options or {}
 
     if not self.hiddenParent then
@@ -66,25 +62,37 @@ function NativeFrame:HideMany(frames, options)
     for _, frame in ipairs(frames) do self:Hide(frame, options) end
 end
 
--- [ SCENARIO 2: DISABLE ONLY ]----------------------------------------------------------------------
-
+-- [ SCENARIO 2: DISABLE ONLY ]-----------------------------------------------------------------------
+-- Offscreen + alpha 0 + mouse-off. UnregisterAllEvents/Hide/SetParent all leave taint that breaks
+-- Blizzard's CompactUnitFrame_UpdateHealthColor secret comparison under 12.0.5+.
 function NativeFrame:Disable(nativeFrame)
     if not nativeFrame then return false end
     if InCombatLockdown() then return false end
 
-    local backup = { onShow = nativeFrame:GetScript("OnShow"), shown = nativeFrame:IsShown() }
+    local backup = {
+        alpha = nativeFrame:GetAlpha(),
+        mouse = nativeFrame:IsMouseEnabled(),
+        clamped = nativeFrame:IsClampedToScreen(),
+    }
 
-    nativeFrame:UnregisterAllEvents()
-    UnregisterStateDriver(nativeFrame, "visibility")
-    RegisterStateDriver(nativeFrame, "visibility", "hide")
+    nativeFrame:SetClampedToScreen(false)
+    nativeFrame:ClearAllPoints()
+    nativeFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
+    nativeFrame:SetAlpha(0)
+    nativeFrame:EnableMouse(false)
 
-    -- Hook Show to catch Blizzard secure code that bypasses the state driver
-    if not nativeFrame.orbitDisableShowHook then
+    if not nativeFrame.orbitDisableSetPointHooked then
         local disabledRef = self.disabled
-        hooksecurefunc(nativeFrame, "Show", function(f)
-            if disabledRef[f] and not InCombatLockdown() then f:Hide() end
+        hooksecurefunc(nativeFrame, "SetPoint", function(f)
+            if not disabledRef[f] then return end
+            if f._orbitParking then return end
+            if InCombatLockdown() then return end
+            f._orbitParking = true
+            f:ClearAllPoints()
+            f:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
+            f._orbitParking = false
         end)
-        nativeFrame.orbitDisableShowHook = true
+        nativeFrame.orbitDisableSetPointHooked = true
     end
 
     self.disabled[nativeFrame] = backup
@@ -97,15 +105,14 @@ function NativeFrame:Enable(nativeFrame)
     local backup = self.disabled[nativeFrame]
     if not backup then return false end
 
-    UnregisterStateDriver(nativeFrame, "visibility")
-    if backup.onShow then nativeFrame:SetScript("OnShow", backup.onShow) end
-    if backup.shown then nativeFrame:Show() end
     self.disabled[nativeFrame] = nil
+    nativeFrame:SetClampedToScreen(backup.clamped)
+    if backup.alpha then nativeFrame:SetAlpha(backup.alpha) end
+    nativeFrame:EnableMouse(backup.mouse ~= false)
     return true
 end
 
--- [ SCENARIO 3: MODIFY IN-PLACE ]-------------------------------------------------------------------
-
+-- [ SCENARIO 3: MODIFY IN-PLACE ]--------------------------------------------------------------------
 function NativeFrame:Modify(nativeFrame, options)
     if not nativeFrame then return nil end
     options = options or {}
@@ -142,9 +149,9 @@ function NativeFrame:RestoreModified(nativeFrame)
 end
 
 -- [ SCENARIO 4: PROTECT ] ---------------------------------------------------------------------------
-
 function NativeFrame:Protect(nativeFrame)
     if not nativeFrame then return false end
+    if InCombatLockdown() then return false end
     if self.protected and self.protected[nativeFrame] then return true end
 
     local backup = {
@@ -188,26 +195,19 @@ function NativeFrame:Protect(nativeFrame)
 end
 
 -- [ SCENARIO 5: SECURE HIDE ] -----------------------------------------------------------------------
-
 function NativeFrame:SecureHide(nativeFrame)
-    if not nativeFrame then return false end
-    if InCombatLockdown() then return false end
-
-    UnregisterStateDriver(nativeFrame, "visibility")
-    RegisterStateDriver(nativeFrame, "visibility", "hide")
-    return true
+    return self:Disable(nativeFrame)
 end
 
--- [ QUERIES ]---------------------------------------------------------------------------------------
-
+-- [ QUERIES ]----------------------------------------------------------------------------------------
 function NativeFrame:IsHidden(nativeFrame) return self.hidden[nativeFrame] ~= nil end
 function NativeFrame:IsDisabled(nativeFrame) return self.disabled[nativeFrame] ~= nil end
 function NativeFrame:IsProtected(nativeFrame) return self.protected[nativeFrame] ~= nil end
 
--- [ RESTORE ]---------------------------------------------------------------------------------------
-
+-- [ RESTORE ]----------------------------------------------------------------------------------------
 function NativeFrame:Restore(nativeFrame)
     if not nativeFrame then return false end
+    if InCombatLockdown() then return false end
     local backup = self.hidden[nativeFrame]
     if not backup then return false end
 
@@ -220,8 +220,7 @@ function NativeFrame:Restore(nativeFrame)
     return true
 end
 
--- [ STATUS ]----------------------------------------------------------------------------------------
-
+-- [ STATUS ]-----------------------------------------------------------------------------------------
 function NativeFrame:GetStatus()
     return {
         hidden = TableCount(self.hidden),

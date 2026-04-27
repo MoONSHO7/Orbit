@@ -1,4 +1,4 @@
--- [ OUT OF COMBAT FADE MIXIN ]----------------------------------------------------------------------
+-- [ OUT OF COMBAT FADE MIXIN ]-----------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
 local OrbitEngine = Orbit.Engine
@@ -11,7 +11,7 @@ local Mixin = Orbit.OOCFadeMixin
 local EventFrame = CreateFrame("Frame")
 local ManagedFrames = setmetatable({}, { __mode = "k" })
 
--- [ VISIBILITY LOGIC ]------------------------------------------------------------------------------
+-- [ VISIBILITY LOGIC ]-------------------------------------------------------------------------------
 local function GetVEKey(data)
     if data.veKey then return data.veKey end
     if not Orbit.VisibilityEngine then return nil end
@@ -146,7 +146,7 @@ local function UpdateAllFrames()
     end
 end
 
--- [ EVENT HANDLING ]--------------------------------------------------------------------------------
+-- [ EVENT HANDLING ]---------------------------------------------------------------------------------
 EventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 EventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 EventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -160,11 +160,14 @@ EventFrame:RegisterEvent("UPDATE_OVERRIDE_ACTIONBAR")
 EventFrame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
 
 EventFrame:SetScript("OnEvent", function(self, event)
+    local p = Orbit.Profiler
+    local s = p and p:Begin()
     if event == "PLAYER_REGEN_DISABLED" then
         UpdateAllFrames()
     else
         C_Timer.After(0.05, UpdateAllFrames)
     end
+    if p then p:End("Orbit_OOCFade", event, s) end
 end)
 
 -- Re-evaluate all managed frames after mount/dismount to restore mouse state
@@ -186,7 +189,7 @@ C_Timer.After(2, function()
     end
 end)
 
--- [ MIXIN FUNCTIONS ]-------------------------------------------------------------------------------
+-- [ MIXIN FUNCTIONS ]--------------------------------------------------------------------------------
 function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover, veKey)
     if not frame then return end
     if plugin then
@@ -205,6 +208,8 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
             self.timer = 0
             local target = self.orbitTarget
             if not target:IsShown() then return end
+            local p = Orbit.Profiler
+            local s = p and p:Begin()
             local isOver = MouseIsOver(target)
             if isOver and not target.orbitMouseOver then
                 target.orbitMouseOver = true
@@ -212,6 +217,10 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
             elseif not isOver and target.orbitMouseOver then
                 target.orbitMouseOver = nil
                 UpdateFrameVisibility(target, nil, ManagedFrames[target])
+            end
+            if p then
+                local d = ManagedFrames[target]
+                p:End(d and d.plugin or "Orbit_OOCFade", "HoverTicker", s)
             end
         end)
         frame.orbitOOCHoverTicker = hoverTicker
@@ -224,7 +233,9 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
             if self._orbitSetAlphaGuard then return end
             local d = ManagedFrames[self]
             if not d then return end
-            
+            local p = Orbit.Profiler
+            local s = p and p:Begin()
+
             local opacity, oocFade, mouseOver, showWithTarget, alphaLock = GetVESettings(d)
             local maxAlpha = self.orbitOpacityExternal and 1 or (opacity or 100) / 100
             
@@ -264,6 +275,7 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
                 self:SetAlpha(finalAlpha)
                 self._orbitSetAlphaGuard = false
             end
+            if p then p:End(d.plugin or "Orbit_OOCFade", "SetAlphaHook", s) end
         end)
         frame.orbitOOCSetAlphaHooked = true
     end

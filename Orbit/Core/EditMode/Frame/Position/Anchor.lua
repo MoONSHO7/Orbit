@@ -1,5 +1,4 @@
--- [ ORBIT FRAME ANCHOR ]----------------------------------------------------------------------------
-
+-- [ ORBIT FRAME ANCHOR ]-----------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
@@ -26,20 +25,20 @@ local optionsCache = setmetatable({}, { __mode = "k" })
 local ANCHOR_THRESHOLD = 5
 local DEFAULT_PADDING = 2
 local NINESLICE_DEFAULT_PADDING = 10
-local MIN_SYNC_HEIGHT = 5
-local MIN_SYNC_WIDTH = 10
 
-
+-- [ AXIS REFS ] -------------------------------------------------------------------------------------
+local AxisNS = Engine.Axis
+local SyncEnabled = AxisNS.SyncEnabled
+local AxisForEdge = AxisNS.ForEdge
 
 local DEFAULT_OPTIONS = {
-    horizontal = true,
-    vertical = true,
-    syncScale = true,
-    syncDimensions = true,
-    mergeBorders = false,
-    align = nil,
-    useRowDimension = false,
+    horizontal        = true,
+    vertical          = true,
+    mergeBorders      = false,
+    align             = nil,
+    useRowDimension   = false,
     independentHeight = false,
+    independentWidth  = false,
 }
 
 local function ShouldMergeBorders(opts, edge)
@@ -63,9 +62,6 @@ local function GetFrameOptions(frame)
     return opts
 end
 
--- Re-entrancy guard: cascading horizontal-chain resyncs would recursively re-enter OnSizeChanged.
-local syncingChainRoot = false
-
 local function HookParentSizeChange(parent, anchorModule)
     if hookedParents[parent] or parent:IsForbidden() then
         return
@@ -74,17 +70,6 @@ local function HookParentSizeChange(parent, anchorModule)
     parent:HookScript("OnSizeChanged", function(self)
         if not anchorModule.childrenOf[self] or not next(anchorModule.childrenOf[self]) then return end
         anchorModule:SyncChildren(self)
-        if not syncingChainRoot then
-            local a = anchorModule.anchors[self]
-            if a and (a.edge == "LEFT" or a.edge == "RIGHT") then
-                local root = anchorModule:GetRootParent(self)
-                if root and root ~= self then
-                    syncingChainRoot = true
-                    anchorModule:SyncChildren(root)
-                    syncingChainRoot = false
-                end
-            end
-        end
     end)
 
     hookedParents[parent] = true
@@ -175,18 +160,7 @@ local function HookParentVisibility(parent, anchorModule)
     parent:HookScript("OnHide", function(self) ReapplyChildrenMergeBorders(self, anchorModule) end)
 end
 
-local function GetChainExtentForAlign(parent)
-    if not parent.orbitChainSync then
-        return nil
-    end
-    local chainWidth, leftOffset = Anchor:GetHorizontalChainExtent(parent)
-    if not chainWidth then
-        return nil
-    end
-    return leftOffset, chainWidth
-end
-
-ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions, chainOffsetX)
+ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions)
     if InCombatLockdown() and child:IsProtected() then
         return false
     end
@@ -211,48 +185,20 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions,
 
     local ok, err = pcall(function()
         if edge == "BOTTOM" then
-            if chainOffsetX then
-                child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", Orbit.Engine.Pixel:Snap(chainOffsetX, child:GetEffectiveScale()), -padding)
+            if align == "LEFT" then
+                child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 0, -padding)
+            elseif align == "RIGHT" then
+                child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", 0, -padding)
             else
-                local cLeft, cWidth = GetChainExtentForAlign(parent)
-                if cLeft then
-                    local parentW = parent:GetWidth()
-                    if align == "LEFT" then
-                        child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", Orbit.Engine.Pixel:Snap(cLeft, child:GetEffectiveScale()), -padding)
-                    elseif align == "RIGHT" then
-                        child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", Orbit.Engine.Pixel:Snap(cLeft + cWidth - parentW, child:GetEffectiveScale()), -padding)
-                    else
-                        child:SetPoint("TOP", parent, "BOTTOM", Orbit.Engine.Pixel:Snap(cLeft + cWidth / 2 - parentW / 2, child:GetEffectiveScale()), -padding)
-                    end
-                elseif align == "LEFT" then
-                    child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 0, -padding)
-                elseif align == "RIGHT" then
-                    child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", 0, -padding)
-                else
-                    child:SetPoint("TOP", parent, "BOTTOM", 0, -padding)
-                end
+                child:SetPoint("TOP", parent, "BOTTOM", 0, -padding)
             end
         elseif edge == "TOP" then
-            if chainOffsetX then
-                child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", Orbit.Engine.Pixel:Snap(chainOffsetX, child:GetEffectiveScale()), padding)
+            if align == "LEFT" then
+                child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 0, padding)
+            elseif align == "RIGHT" then
+                child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", 0, padding)
             else
-                local cLeft, cWidth = GetChainExtentForAlign(parent)
-                if cLeft then
-                    local parentW = parent:GetWidth()
-                    if align == "LEFT" then
-                        child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", Orbit.Engine.Pixel:Snap(cLeft, child:GetEffectiveScale()), padding)
-                    elseif align == "RIGHT" then
-                        child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", Orbit.Engine.Pixel:Snap(cLeft + cWidth - parentW, child:GetEffectiveScale()), padding)
-                    else
-                        child:SetPoint("BOTTOM", parent, "TOP", Orbit.Engine.Pixel:Snap(cLeft + cWidth / 2 - parentW / 2, child:GetEffectiveScale()), padding)
-                    end
-                elseif align == "LEFT" then
-                    child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 0, padding)
-                elseif align == "RIGHT" then
-                    child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", 0, padding)
-                else
-                    child:SetPoint("BOTTOM", parent, "TOP", 0, padding)
-                end
+                child:SetPoint("BOTTOM", parent, "TOP", 0, padding)
             end
         elseif edge == "LEFT" then
             if align == "TOP" then
@@ -338,8 +284,10 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
     end
 
     local opts = syncOptions or GetFrameOptions(child)
+    local edgeAxisEarly = AxisForEdge(edge)
+    local incomingSyncsCross = edgeAxisEarly and SyncEnabled(child, edgeAxisEarly.perpendicular) or false
 
-    if self:IsEdgeOccupied(parent, edge, child, opts.syncDimensions, align) then
+    if self:IsEdgeOccupied(parent, edge, child, incomingSyncsCross, align) then
         return false
     end
 
@@ -362,44 +310,29 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
 
     HookParentSizeChange(parent, self)
 
-    local chainOffsetX = nil
-    if not InCombatLockdown() then
-        local parentScale = parent:GetScale()
-        local parentWidth = parent:GetWidth()
-        local parentHeight = parent:GetHeight()
-
-        if opts.syncScale then
-            child:SetScale(parentScale)
-        end
-        if opts.syncDimensions then
-            if edge == "LEFT" or edge == "RIGHT" then
-                if not (opts.independentHeight and suppressApplySettings) then
-                    local height = math.max((opts.useRowDimension and parent.orbitRowHeight) or parentHeight, MIN_SYNC_HEIGHT)
-                    child:SetHeight(height)
-                    if opts.independentHeight and child.orbitPlugin and child.orbitPlugin.SetSetting and child.systemIndex then
-                        child.orbitPlugin:SetSetting(child.systemIndex, "Height", math.floor(height + 0.5))
-                    end
-                end
-            else
-                local chainWidth, offsetX = self:GetHorizontalChainExtent(parent)
-                if chainWidth then
-                    child:SetWidth(math.max(chainWidth, MIN_SYNC_WIDTH))
-                    chainOffsetX = offsetX
-                else
-                    local width = (opts.useRowDimension and parent.orbitColumnWidth) or parentWidth
-                    child:SetWidth(math.max(width, MIN_SYNC_WIDTH))
+    local edgeAxis = edgeAxisEarly
+    local crossAxis = edgeAxis and edgeAxis.perpendicular
+    if not InCombatLockdown() and edgeAxis then
+        if SyncEnabled(child, crossAxis) then
+            local indepFlag = crossAxis.independentFlag
+            if not (opts[indepFlag] and suppressApplySettings) then
+                local parentSize = (opts.useRowDimension and parent[crossAxis.rowDim]) or crossAxis.getSize(parent)
+                local synced = math.max(parentSize, crossAxis.minSize)
+                crossAxis.setSize(child, synced)
+                -- Preserved quirk: when child opts out of cross-axis sync but we're applying live
+                -- (not suppressed), sync anyway AND record back to the plugin's saved dimension.
+                if opts[indepFlag] and child.orbitPlugin and child.orbitPlugin.SetSetting and child.systemIndex then
+                    local key = (crossAxis.name == "vertical") and "Height" or "Width"
+                    child.orbitPlugin:SetSetting(child.systemIndex, key, math.floor(synced + 0.5))
                 end
             end
         elseif opts.useRowDimension then
-            if (edge == "LEFT" or edge == "RIGHT") and parent.orbitRowHeight then
-                child:SetHeight(math.max(parent.orbitRowHeight, MIN_SYNC_HEIGHT))
-            elseif parent.orbitColumnWidth then
-                child:SetWidth(math.max(parent.orbitColumnWidth, MIN_SYNC_WIDTH))
-            end
+            local rowSize = parent[crossAxis.rowDim]
+            if rowSize then crossAxis.setSize(child, math.max(rowSize, crossAxis.minSize)) end
         end
     end
 
-    if not ApplyAnchorPosition(child, parent, edge, padding, align, opts, chainOffsetX) then
+    if not ApplyAnchorPosition(child, parent, edge, padding, align, opts) then
         self.anchors[child] = nil
         return false
     end
@@ -443,16 +376,13 @@ function Anchor:BreakAnchor(child, suppressApplySettings, deferMergeVisuals, ski
     if self.anchors[child] then
         local oldAnchor = self.anchors[child]
         local oldParent = oldAnchor.parent
-        local wasHorizontal = (oldAnchor.edge == "LEFT" or oldAnchor.edge == "RIGHT")
+        local oldEdgeAxis = AxisForEdge(oldAnchor.edge)
 
-        -- Capture chain state before break for rebalancing
-        local root, oldScreenCenterX
-        if not suppressApplySettings and wasHorizontal and oldParent then
+        -- Parent frames are the source of truth and never move on their own when a child joins or
+        -- leaves the anchor graph. Re-sync children after the break but do not shift the root.
+        local root
+        if not suppressApplySettings and oldEdgeAxis and oldParent then
             root = self:GetRootParent(oldParent)
-            if root then
-                local minLeft, maxRight = self:GetHorizontalChainScreenBounds(root)
-                if minLeft then oldScreenCenterX = (minLeft + maxRight) / 2 end
-            end
         end
 
         self.anchors[child] = nil
@@ -485,39 +415,14 @@ function Anchor:BreakAnchor(child, suppressApplySettings, deferMergeVisuals, ski
             child:OnAnchorChanged(nil, nil, nil)
         end
 
-        -- Re-sync chain width and rebalance center
+        -- Re-sync children only. Parent stays put — it's the source of truth.
         if root then
             self:SyncChildren(root)
-            self:RebalanceChainCenter(root, oldScreenCenterX)
         end
 
         return true
     end
     return false
-end
-
-function Anchor:RebalanceChainCenter(root, oldScreenCenterX)
-    if not oldScreenCenterX or not root then return end
-    local scale = root:GetEffectiveScale()
-    if not scale or scale == 0 then return end
-
-    local newScreenCenterX
-    local newMinLeft, newMaxRight = self:GetHorizontalChainScreenBounds(root)
-    if newMinLeft then
-        newScreenCenterX = (newMinLeft + newMaxRight) / 2
-    else
-        local left, right = root:GetLeft(), root:GetRight()
-        if left and right then newScreenCenterX = (left + right) / 2 * scale end
-    end
-    if not newScreenCenterX then return end
-
-    local shift = oldScreenCenterX - newScreenCenterX
-    if math.abs(shift) < 0.5 then return end
-
-    local point, relativeTo, relativePoint, offsetX, offsetY = root:GetPoint(1)
-    if not point or not relativeTo then return end
-    root:ClearAllPoints()
-    root:SetPoint(point, relativeTo, relativePoint, offsetX + shift / scale, offsetY)
 end
 
 
@@ -599,141 +504,6 @@ function Anchor:GetAnchoredChildren(parent)
     return children
 end
 
-function Anchor:GetAnchoredDescendants(frame)
-    local result = {}
-    local function walk(parent)
-        if not self.childrenOf[parent] then return end
-        for child in pairs(self.childrenOf[parent]) do
-            if child.orbitChainSync then
-                table.insert(result, child)
-                walk(child)
-            end
-        end
-    end
-    walk(frame)
-    return result
-end
-
-local function GetChainRoot(anchors, frame)
-    local root = frame
-    while true do
-        local a = anchors[root]
-        if not a or (a.edge ~= "LEFT" and a.edge ~= "RIGHT") then break end
-        if not a.parent.orbitChainSync then break end
-        root = a.parent
-    end
-    return root
-end
-
-function Anchor:GetHorizontalChainFrames(frame)
-    if not frame.orbitChainSync then
-        return nil
-    end
-    local root = GetChainRoot(self.anchors, frame)
-    local frames = { root }
-    local function walk(parent)
-        local children = self.childrenOf[parent]
-        if not children then
-            return
-        end
-        for child in pairs(children) do
-            local a = self.anchors[child]
-            if a and (a.edge == "LEFT" or a.edge == "RIGHT") and child.orbitChainSync then
-                table.insert(frames, child)
-                walk(child)
-            end
-        end
-    end
-    walk(root)
-    return frames
-end
-
--- [ HORIZONTAL CHAIN EXTENT ] -----------------------------------------------------------------------
-function Anchor:GetHorizontalChainExtent(frame)
-    if not frame.orbitChainSync then
-        return nil, nil
-    end
-    local root = GetChainRoot(self.anchors, frame)
-    local rootScale = root:GetEffectiveScale()
-    local minX, maxX = 0, root:GetWidth()
-    local function walk(parent, parentLeft)
-        local children = self.childrenOf[parent]
-        if not children then
-            return
-        end
-        for child in pairs(children) do
-            local a = self.anchors[child]
-            if a and (a.edge == "LEFT" or a.edge == "RIGHT") and child.orbitChainSync then
-                local pad = Orbit.Engine.Pixel:Multiple(a.padding or 0, rootScale)
-                local childLeft = (a.edge == "RIGHT") and (parentLeft + parent:GetWidth() + pad)
-                    or (parentLeft - pad - child:GetWidth())
-                local childRight = childLeft + child:GetWidth()
-                if childLeft < minX then
-                    minX = childLeft
-                end
-                if childRight > maxX then
-                    maxX = childRight
-                end
-                walk(child, childLeft)
-            end
-        end
-    end
-    walk(root, 0)
-    local chainWidth = maxX - minX
-    if chainWidth <= root:GetWidth() + 1 then
-        return nil, nil
-    end
-    local frameRelX = 0
-    local current = frame
-    while current ~= root do
-        local a = self.anchors[current]
-        if not a then
-            break
-        end
-        local pad = Orbit.Engine.Pixel:Multiple(a.padding or 0, rootScale)
-        if a.edge == "RIGHT" then
-            frameRelX = frameRelX + a.parent:GetWidth() + pad
-        elseif a.edge == "LEFT" then
-            frameRelX = frameRelX - pad - current:GetWidth()
-        end
-        current = a.parent
-    end
-    return chainWidth, minX - frameRelX
-end
-
--- [ HORIZONTAL CHAIN SCREEN BOUNDS ]----------------------------------------------------------------
-function Anchor:GetHorizontalChainScreenBounds(frame)
-    local chainFrames = self:GetHorizontalChainFrames(frame)
-    if not chainFrames or #chainFrames <= 1 then
-        return nil
-    end
-    local minLeft, maxRight, minBottom, maxTop
-    local root = chainFrames[1]
-    for _, f in ipairs(chainFrames) do
-        local s = f:GetEffectiveScale()
-        local fl, fr, ft, fb = f:GetLeft(), f:GetRight(), f:GetTop(), f:GetBottom()
-        if fl and s then
-            fl, fr, ft, fb = fl * s, fr * s, ft * s, fb * s
-            if not minLeft or fl < minLeft then
-                minLeft = fl
-            end
-            if not maxRight or fr > maxRight then
-                maxRight = fr
-            end
-            if not minBottom or fb < minBottom then
-                minBottom = fb
-            end
-            if not maxTop or ft > maxTop then
-                maxTop = ft
-            end
-        end
-    end
-    if not minLeft then
-        return nil
-    end
-    return minLeft, maxRight, maxTop, minBottom, root
-end
-
 -- Check if a specific edge of a parent frame is already occupied by an anchored child.
 local EDGE_ALIGN_SLOTS = {
     TOP = { "LEFT", "CENTER", "RIGHT" },
@@ -742,17 +512,22 @@ local EDGE_ALIGN_SLOTS = {
     RIGHT = { "TOP", "CENTER", "BOTTOM" },
 }
 
-function Anchor:IsEdgeOccupied(parent, edge, excludeChild, incomingSyncDims, incomingAlign)
+-- incomingSyncsCross: does the candidate child sync on the cross-axis of `edge`?
+-- A size-synced child fills the full edge; a non-synced child shares via LEFT/CENTER/RIGHT slots.
+function Anchor:IsEdgeOccupied(parent, edge, excludeChild, incomingSyncsCross, incomingAlign)
     if not self.childrenOf[parent] then
         return false
     end
+
+    local edgeAxis = AxisForEdge(edge)
+    local crossAxis = edgeAxis and edgeAxis.perpendicular
 
     local occupiedAligns = {}
     for child in pairs(self.childrenOf[parent]) do
         local anchor = self.anchors[child]
         if anchor and anchor.edge == edge and not child.orbitDisabled and child ~= excludeChild then
-            local childSyncDims = anchor.syncOptions and anchor.syncOptions.syncDimensions
-            if childSyncDims ~= false or not anchor.align then
+            local childSyncsCross = crossAxis and SyncEnabled(child, crossAxis) or false
+            if childSyncsCross or not anchor.align then
                 return true
             end
             occupiedAligns[anchor.align] = true
@@ -762,7 +537,7 @@ function Anchor:IsEdgeOccupied(parent, edge, excludeChild, incomingSyncDims, inc
     if not next(occupiedAligns) then
         return false
     end
-    if incomingSyncDims ~= false then
+    if incomingSyncsCross then
         return true
     end
     if incomingAlign then
@@ -781,36 +556,23 @@ function Anchor:IsEdgeOccupied(parent, edge, excludeChild, incomingSyncDims, inc
     return true
 end
 
-local function SyncChild(child, parent, anchor, parentScale, parentWidth, parentHeight, resolvedPadding)
+local function SyncChild(child, parent, anchor, resolvedPadding)
     local opts = anchor.syncOptions or GetFrameOptions(child)
-    if opts.syncScale then
-        child:SetScale(parentScale)
-    end
-    local chainOffsetX = nil
-    if opts.syncDimensions then
-        if anchor.edge == "LEFT" or anchor.edge == "RIGHT" then
-            if not opts.independentHeight then
-                local h = (opts.useRowDimension and parent.orbitRowHeight) or parentHeight
-                child:SetHeight(math.max(h, MIN_SYNC_HEIGHT))
-            end
-        else
-            local chainWidth, offsetX = Anchor:GetHorizontalChainExtent(parent)
-            if chainWidth then
-                child:SetWidth(math.max(chainWidth, MIN_SYNC_WIDTH))
-                chainOffsetX = offsetX
-            else
-                local w = (opts.useRowDimension and parent.orbitColumnWidth) or parentWidth
-                child:SetWidth(math.max(w, MIN_SYNC_WIDTH))
-            end
+
+    local edgeAxis = AxisForEdge(anchor.edge)
+    local crossAxis = edgeAxis and edgeAxis.perpendicular
+
+    if edgeAxis and SyncEnabled(child, crossAxis) then
+        if not opts[crossAxis.independentFlag] then
+            local parentSize = (opts.useRowDimension and parent[crossAxis.rowDim]) or crossAxis.getSize(parent)
+            crossAxis.setSize(child, math.max(parentSize, crossAxis.minSize))
         end
-    elseif opts.useRowDimension then
-        if (anchor.edge == "LEFT" or anchor.edge == "RIGHT") and parent.orbitRowHeight then
-            child:SetHeight(math.max(parent.orbitRowHeight, MIN_SYNC_HEIGHT))
-        elseif parent.orbitColumnWidth then
-            child:SetWidth(math.max(parent.orbitColumnWidth, MIN_SYNC_WIDTH))
-        end
+    elseif edgeAxis and opts.useRowDimension then
+        local rowSize = parent[crossAxis.rowDim]
+        if rowSize then crossAxis.setSize(child, math.max(rowSize, crossAxis.minSize)) end
     end
-    ApplyAnchorPosition(child, parent, anchor.edge, resolvedPadding or anchor.padding, anchor.align, opts, chainOffsetX)
+
+    ApplyAnchorPosition(child, parent, anchor.edge, resolvedPadding or anchor.padding, anchor.align, opts)
     return opts
 end
 
@@ -825,10 +587,6 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited, depth)
         return
     end
     visited[parent] = true
-
-    local parentScale = parent:GetScale()
-    local parentWidth = parent:GetWidth()
-    local parentHeight = parent:GetHeight()
 
     local childrenToSync = {}
     if self.childrenOf[parent] then
@@ -851,7 +609,7 @@ function Anchor:SyncChildren(parent, suppressApplySettings, visited, depth)
         if child.orbitDisabled then canSync = false end
 
         if canSync then
-            SyncChild(child, parent, anchor, parentScale, parentWidth, parentHeight)
+            SyncChild(child, parent, anchor)
 
             if child.orbitPlugin then
                 if child.orbitPlugin.UpdateLayout then
@@ -914,7 +672,7 @@ Anchor.DEFAULT_OPTIONS = DEFAULT_OPTIONS
 -- Listen for border size changes to re-sync anchor distances
 Orbit.EventBus:On("ORBIT_BORDER_SIZE_CHANGED", function() Anchor:ResyncAll() end)
 
--- Re-sync after zone transitions so chain widths settle after all plugins apply settings
+-- Re-sync after zone transitions so child widths settle after all plugins apply settings
 Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
     local delay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.RetryShort) or 0.5
     C_Timer.After(delay, function() Anchor:ResyncAll() end)

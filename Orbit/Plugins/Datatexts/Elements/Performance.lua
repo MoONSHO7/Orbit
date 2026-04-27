@@ -4,6 +4,7 @@ local _, Orbit = ...
 local DT = Orbit.Datatexts
 local Fmt = DT.Formatting
 local RingBuffer = Fmt.RingBuffer
+local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local FPS_CRITICAL = 15
@@ -122,7 +123,7 @@ end
 function W:PopulateTooltip(tip)
     tip:SetOwner(self.frame, "ANCHOR_TOP")
     tip:ClearLines()
-    tip:AddLine("System Performance", 1, 0.82, 0)
+    tip:AddLine(L.PLU_DT_PERF_TITLE, 1, 0.82, 0)
     tip:AddLine(" ")
     local fps = GetFramerate()
     local _, _, home, world = GetNetStats()
@@ -142,12 +143,12 @@ function W:PopulateTooltip(tip)
         tip:AddDoubleLine("Orbit CPU (avg):", string.format("%.1f%%", pctAvg), 1, 1, 1, 1, 1, 1)
         tip:AddDoubleLine("Orbit CPU (peak):", string.format("%.1f%%", pctPeak), 1, 1, 1, 1, 1, 1)
     else
-        tip:AddDoubleLine("Orbit CPU:", "|cff888888Enable AddOn Profiler in Game Menu|r", 1, 1, 1, 0.7, 0.7, 0.7)
+        tip:AddDoubleLine("Orbit CPU:", "|cff888888" .. L.PLU_DT_PERF_PROFILER_DISABLED .. "|r", 1, 1, 1, 0.7, 0.7, 0.7)
     end
     local shiftHeld = IsShiftKeyDown() or self.isPinned
     if shiftHeld then
         tip:AddLine(" ")
-        tip:AddLine("Extended Stats", 0.7, 0.7, 0.7)
+        tip:AddLine(L.PLU_DT_PERF_EXTENDED, 0.7, 0.7, 0.7)
         local fMin, fMax, fAvg = HistoryStats(self.history.fps)
         tip:AddDoubleLine("FPS Min/Avg/Max:", string.format("%.0f / %.0f / %.0f", fMin, fAvg, fMax), 1, 1, 1, 0.7, 0.7, 0.7)
         local _, peakMem = HistoryStats(self.history.memory)
@@ -168,7 +169,7 @@ function W:PopulateTooltip(tip)
         tip:AddLine(" ")
         tip:AddDoubleLine("Left Click", "Collect Garbage", 0.7, 0.7, 0.7, 1, 1, 1)
         tip:AddDoubleLine("Right Click", "Pin Tooltip", 0.7, 0.7, 0.7, 1, 1, 1)
-        if not shiftHeld then tip:AddDoubleLine("Shift+Hover", "Extended Stats", 0.7, 0.7, 0.7, 1, 1, 1) end
+        if not shiftHeld then tip:AddDoubleLine("Shift+Hover", L.PLU_DT_PERF_EXTENDED, 0.7, 0.7, 0.7, 1, 1, 1) end
     end
     tip:Show()
     if not self.graphFrame then

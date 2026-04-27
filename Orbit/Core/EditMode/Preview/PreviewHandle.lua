@@ -15,7 +15,6 @@ Preview.Handle = PreviewHandle
 local HandleCore = Engine.HandleCore
 
 -- [ CREATE HANDLE ] ---------------------------------------------------------------------------------
-
 -- Create or acquire a drag handle for a preview component
 -- @param container: The component container
 -- @param callbacks: { onDragStart, onDragUpdate, onDragStop, onHover, onLeave }
