@@ -169,7 +169,7 @@ end
 -- Refresh texture, cooldown state, and visibility. Update helpers return a numeric state
 -- derived from curves (secret-safe); ApplyVisibilityAlpha consumes it.
 function IconItem:Update(icon)
-    if not icon.trackedId then icon:Hide(); icon._visShown = nil; return end
+    if not icon.trackedId then icon:Hide(); icon._visShown = nil; icon._lastState = "ready"; return "ready" end
 
     local texture, state
 
@@ -190,9 +190,13 @@ function IconItem:Update(icon)
         -- Placeholder bypasses visibility settings: force-show so users can see the unresolved icon.
         icon._visShown = true
         icon:Show()
-        return
+        icon._lastState = "ready"
+        return "ready"
     end
-    self:ApplyVisibilityAlpha(icon, state or "ready")
+    state = state or "ready"
+    icon._lastState = state
+    self:ApplyVisibilityAlpha(icon, state)
+    return state
 end
 
 -- [ SPELL UPDATE ] ----------------------------------------------------------------------------------

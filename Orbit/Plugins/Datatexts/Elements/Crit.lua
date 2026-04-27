@@ -13,6 +13,8 @@ W.showPercentage = true
 function W:Update()
     local pct = NumericOrNil(GetCritChance and GetCritChance()) or NumericOrNil(GetMeleeCritChance and GetMeleeCritChance())
     local rating = NumericOrNil(GetCombatRating(CR_CRIT_MELEE))
+    if pct == self._lastPct and rating == self._lastRating and self.showPercentage == self._lastShowPct then return end
+    self._lastPct, self._lastRating, self._lastShowPct = pct, rating, self.showPercentage
     if self.showPercentage then
         if pct then self:SetText(string.format("Crit: |cffffffff%.2f%%|r", pct))
         else self:SetText("Crit: |cffffffff" .. L.CMN_HIDDEN_VALUE .. "|r") end

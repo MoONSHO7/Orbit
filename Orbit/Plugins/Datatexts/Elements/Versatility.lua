@@ -21,6 +21,8 @@ end
 function W:Update()
     local pct = VersatilityPercent()
     local rating = NumericOrNil(GetCombatRating(CR_VERSATILITY_DAMAGE_DONE))
+    if pct == self._lastPct and rating == self._lastRating and self.showPercentage == self._lastShowPct then return end
+    self._lastPct, self._lastRating, self._lastShowPct = pct, rating, self.showPercentage
     if self.showPercentage then
         if pct then self:SetText(string.format("Versatility: |cffffffff%.2f%%|r", pct))
         else self:SetText("Versatility: |cffffffff" .. L.CMN_HIDDEN_VALUE .. "|r") end

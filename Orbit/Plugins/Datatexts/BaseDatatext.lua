@@ -283,6 +283,8 @@ end
 
 -- [ TEXT ] ------------------------------------------------------------------------------------------
 function BaseDatatext:SetText(text)
+    if text == self._lastText then return end
+    self._lastText = text
     self.text:SetText(text)
     local width = self.text:GetStringWidth()
     local height = self.text:GetStringHeight()

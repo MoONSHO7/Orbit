@@ -266,7 +266,8 @@ end
 -- [ SHARED BORDER VISIBILITY ]-----------------------------------------------------------------------
 -- Canonical implementation — assigned to frames by SkinBorder, CastBar, CooldownLayout, etc.
 function Skin.DefaultSetBorderHidden(self, hidden)
-    if hidden then
+    -- Group-merged frames defer all visibility to the wrapper overlay, regardless of caller intent.
+    if hidden or self._groupBorderActive then
         if self._borderFrame then self._borderFrame:Hide() end
         if self._edgeBorderOverlay then self._edgeBorderOverlay:Hide() end
     elseif self._activeBorderMode == "nineslice" then

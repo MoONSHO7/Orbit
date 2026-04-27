@@ -21,7 +21,7 @@ local DROP_ZONE_PLUS_TINT_R, DROP_ZONE_PLUS_TINT_G, DROP_ZONE_PLUS_TINT_B = 1.0,
 local DROP_ZONE_GLOW_R, DROP_ZONE_GLOW_G, DROP_ZONE_GLOW_B = 1.0, 0.82, 0.0
 local DEFAULT_WIDTH = 200
 local DEFAULT_HEIGHT = 20
-local UPDATE_INTERVAL = 0.05
+local UPDATE_INTERVAL = 0.1
 local FONT_SIZE_DEFAULT = 12
 local TEXT_PADDING = 5
 local MAX_DIVIDERS = 10
@@ -141,8 +141,9 @@ function Bar:Build(plugin, record)
     frame.editModeName = "Tracked Bar"
     frame.orbitPlugin = plugin
     frame.recordId = record.id
-    frame.anchorOptions = { horizontal = false, vertical = true, mergeBorders = true }
+    frame.anchorOptions = { horizontal = true, vertical = true, mergeBorders = true }
     frame.orbitWidthSync = true
+    frame.orbitHeightSync = true
     frame.orbitAnchorTargetPerSpec = true
     frame.orbitResizeBounds = { minW = 80, maxW = 400, minH = 12, maxH = 40 }
 
@@ -347,6 +348,7 @@ function Bar:StartCastWatcher(plugin, frame)
         local trackedId = record.payload.id
         if spellId ~= trackedId and spellId ~= FindSpellOverrideByID(trackedId) then return end
         frame._castTime = GetTime()
+        Bar:_EnsureTicker(plugin, frame)
     end)
     frame._castEventFrame = evtFrame
 end
@@ -384,13 +386,17 @@ function Bar:Apply(plugin, frame, record)
         frame.orbitResizeBounds = { minW = 80, maxW = 400, minH = 12, maxH = 40 }
     end
 
-    -- Empty bars collapse to drop-hint square; docked bars defer width to SyncChild.
+    -- Empty bars collapse to drop-hint square; docked bars defer cross-axis dim to SyncChild.
     local FrameAnchor = OrbitEngine.FrameAnchor
-    local isDocked = FrameAnchor and FrameAnchor.anchors[frame] ~= nil
+    local dockAnchor = FrameAnchor and FrameAnchor.anchors[frame]
+    local isHorizontalDock = dockAnchor and (dockAnchor.edge == "LEFT" or dockAnchor.edge == "RIGHT")
     if not hasPayload then
         frame:SetSize(DROP_ZONE_SIZE, DROP_ZONE_SIZE)
         frameW, frameH = DROP_ZONE_SIZE, DROP_ZONE_SIZE
-    elseif isDocked then
+    elseif isHorizontalDock then
+        frame:SetWidth(frameW)
+        frameH = frame:GetHeight()
+    elseif dockAnchor then
         frame:SetHeight(frameH)
         frameW = frame:GetWidth()
     else
@@ -501,7 +507,38 @@ function Bar:Apply(plugin, frame, record)
 
     self:ApplyFont(plugin, frame)
     self:ApplyCanvasComponents(plugin, frame, record)
-    self:RefreshSpellState(plugin, frame, record)
+    self:CacheImmutableState(frame, payload)
+    local state = self:RefreshSpellState(plugin, frame, record)
+    if state ~= "ready" then self:_EnsureTicker(plugin, frame) end
+end
+
+-- [ IMMUTABLE STATE CACHE ] -------------------------------------------------------------------------
+function Bar:CacheImmutableState(frame, payload)
+    if not payload or not payload.id then
+        frame._cachedName = nil
+        frame._cachedIcon = nil
+        frame._cachedActiveId = nil
+        return
+    end
+    if payload.type == "spell" then
+        local activeId = FindSpellOverrideByID(payload.id) or payload.id
+        local spellInfo = C_Spell.GetSpellInfo(activeId)
+        if spellInfo then
+            frame._cachedActiveId = activeId
+            frame._cachedName = spellInfo.name
+            frame._cachedIcon = spellInfo.iconID
+            frame.NameText:SetText(spellInfo.name or "")
+            if spellInfo.iconID then frame.Icon:SetTexture(spellInfo.iconID) end
+        end
+    else
+        local itemName = C_Item.GetItemNameByID(payload.id)
+        local iconId = C_Item.GetItemIconByID(payload.id)
+        frame._cachedActiveId = payload.id
+        frame._cachedName = itemName
+        frame._cachedIcon = iconId
+        if itemName then frame.NameText:SetText(itemName) end
+        if iconId then frame.Icon:SetTexture(iconId) end
+    end
 end
 
 -- [ CANVAS COMPONENTS ] -----------------------------------------------------------------------------
@@ -702,35 +739,20 @@ function Bar:RefreshSpellState(plugin, frame, record)
         else
             frame.DropHintFrame:Hide()
         end
-        return
+        return "ready"
     end
 
     frame.BarBg:Show()
     frame:SetBorderHidden(false)
     frame.DropHintFrame:Hide()
 
-    -- Icon + name from spell info / item info.
-    if payload.type == "spell" then
-        local activeId = FindSpellOverrideByID(payload.id) or payload.id
-        local spellInfo = C_Spell.GetSpellInfo(activeId)
-        if spellInfo then
-            frame.Icon:SetTexture(spellInfo.iconID)
-            frame.NameText:SetText(spellInfo.name)
-        end
-    else
-        local itemName = C_Item.GetItemNameByID(payload.id)
-        local iconId = C_Item.GetItemIconByID(payload.id)
-        if iconId then frame.Icon:SetTexture(iconId) end
-        if itemName then frame.NameText:SetText(itemName) end
-    end
-
     local mode = frame._barMode
     if mode == "charges" then
-        self:UpdateChargesMode(frame, payload)
+        return self:UpdateChargesMode(frame, payload)
     elseif mode == "active_cd" then
-        self:UpdateActiveCdMode(frame, payload)
+        return self:UpdateActiveCdMode(frame, payload)
     else
-        self:UpdateCdOnlyMode(frame, payload)
+        return self:UpdateCdOnlyMode(frame, payload)
     end
 end
 
@@ -738,7 +760,7 @@ end
 -- Pure sink: currentCharges (secret) piped directly into SetValue/SetText.
 function Bar:UpdateChargesMode(frame, payload)
     local ci = C_Spell.GetSpellCharges(payload.id)
-    if not ci then return end
+    if not ci then return "cooldown" end
 
     self:SetBarColor(frame, "ready")
     frame.StatusBar:SetMinMaxValues(0, payload.maxCharges)
@@ -761,7 +783,9 @@ function Bar:UpdateChargesMode(frame, payload)
         if frame.TickMark then frame.TickMark:SetAlpha(0) end
     end
     frame.TimeText:Hide()
-    self:ApplyBarVisibilityAlpha(frame, chargeDurObj and "cooldown" or "ready")
+    local state = chargeDurObj and "cooldown" or "ready"
+    self:ApplyBarVisibilityAlpha(frame, state)
+    return state
 end
 
 -- [ CD-ONLY MODE UPDATE ] ---------------------------------------------------------------------------
@@ -769,19 +793,19 @@ end
 -- item path uses C_Container.GetItemCooldown (already numeric).
 function Bar:UpdateCdOnlyMode(frame, payload)
     if payload.type == "spell" then
-        local activeId = FindSpellOverrideByID(payload.id) or payload.id
+        local activeId = frame._cachedActiveId or FindSpellOverrideByID(payload.id) or payload.id
         local cdInfo = C_Spell.GetSpellCooldown(activeId)
         -- All three checks needed; GetSpellCooldownDuration otherwise returns the GCD durObj and flashes "cooldown".
         if not cdInfo or not cdInfo.isActive or cdInfo.isOnGCD or not payload.cooldownDuration then
             self:SetBarFull(frame)
             self:ApplyBarVisibilityAlpha(frame, "ready")
-            return
+            return "ready"
         end
         local durObj = C_Spell.GetSpellCooldownDuration(activeId)
         if not durObj then
             self:SetBarFull(frame)
             self:ApplyBarVisibilityAlpha(frame, "ready")
-            return
+            return "ready"
         end
         -- Bar fill via INVERSE_CURVE → SetValue (C++ sink, secret-safe).
         local barFill = durObj:EvaluateRemainingPercent(INVERSE_CURVE)
@@ -807,18 +831,19 @@ function Bar:UpdateCdOnlyMode(frame, payload)
             frame.TimeText:Hide()
         end
         self:ApplyBarVisibilityAlpha(frame, "cooldown")
+        return "cooldown"
     else
         local start, duration = C_Container.GetItemCooldown(payload.id)
         if not start or not duration or duration == 0 then
             self:SetBarFull(frame)
             self:ApplyBarVisibilityAlpha(frame, "ready")
-            return
+            return "ready"
         end
         local elapsed = GetTime() - start
         if elapsed >= duration then
             self:SetBarFull(frame)
             self:ApplyBarVisibilityAlpha(frame, "ready")
-            return
+            return "ready"
         end
         local barValue = elapsed / duration
         self:SetBarColor(frame, "cooldown")
@@ -834,6 +859,7 @@ function Bar:UpdateCdOnlyMode(frame, payload)
             frame.TimeText:Hide()
         end
         self:ApplyBarVisibilityAlpha(frame, "cooldown")
+        return "cooldown"
     end
 end
 
@@ -842,26 +868,26 @@ end
 -- curve and phase curve piped to C++ sinks; item path uses numeric GetItemCooldown.
 function Bar:UpdateActiveCdMode(frame, payload)
     local breakpoint = frame._phaseBreakpoint
-    if not breakpoint then return end
+    if not breakpoint then return "ready" end
 
     if payload.type == "spell" then
-        local activeId = FindSpellOverrideByID(payload.id) or payload.id
+        local activeId = frame._cachedActiveId or FindSpellOverrideByID(payload.id) or payload.id
         local cdInfo = C_Spell.GetSpellCooldown(activeId)
         -- Real cd for active+cd spells is longer than GCD, so isOnGCD stays false during the legitimate cycle.
         if not cdInfo or not cdInfo.isActive or cdInfo.isOnGCD then
             self:SetBarFull(frame)
             self:ApplyBarVisibilityAlpha(frame, "ready")
-            return
+            return "ready"
         end
         local durObj = C_Spell.GetSpellCooldownDuration(activeId)
         if not durObj then
             self:SetBarFull(frame)
             self:ApplyBarVisibilityAlpha(frame, "ready")
-            return
+            return "ready"
         end
         -- Bar fill via V-curve → SetValue (C++ sink, secret-safe).
         local fillCurve = frame._barFillCurve
-        if not fillCurve then self:SetBarFull(frame); self:ApplyBarVisibilityAlpha(frame, "ready"); return end
+        if not fillCurve then self:SetBarFull(frame); self:ApplyBarVisibilityAlpha(frame, "ready"); return "ready" end
         local barFill = durObj:EvaluateRemainingPercent(fillCurve)
         frame.StatusBar:SetMinMaxValues(0, 1)
         frame.StatusBar:SetValue(barFill)
@@ -904,18 +930,19 @@ function Bar:UpdateActiveCdMode(frame, payload)
             frame.TimeText:Hide()
         end
         self:ApplyBarVisibilityAlpha(frame, state)
+        return state
     else
         local start, duration = C_Container.GetItemCooldown(payload.id)
         if not start or not duration or duration == 0 then
             self:SetBarFull(frame)
             self:ApplyBarVisibilityAlpha(frame, "ready")
-            return
+            return "ready"
         end
         local elapsed = GetTime() - start
         if elapsed >= duration then
             self:SetBarFull(frame)
             self:ApplyBarVisibilityAlpha(frame, "ready")
-            return
+            return "ready"
         end
         local active = payload.activeDuration
         local barValue, inCdPhase, phaseRem
@@ -928,7 +955,8 @@ function Bar:UpdateActiveCdMode(frame, payload)
             inCdPhase = true
             phaseRem = duration - elapsed
         end
-        self:SetBarColor(frame, inCdPhase and "cooldown" or "active")
+        local state = inCdPhase and "cooldown" or "active"
+        self:SetBarColor(frame, state)
         frame.StatusBar:SetMinMaxValues(0, 1)
         frame.StatusBar:SetValue(barValue)
         frame.TickBar:SetValue(barValue)
@@ -939,7 +967,8 @@ function Bar:UpdateActiveCdMode(frame, payload)
         else
             frame.TimeText:Hide()
         end
-        self:ApplyBarVisibilityAlpha(frame, inCdPhase and "cooldown" or "active")
+        self:ApplyBarVisibilityAlpha(frame, state)
+        return state
     end
 end
 
@@ -1036,23 +1065,37 @@ function Bar:StartCursorWatcher(plugin, frame)
 end
 
 -- [ UPDATE TICKER ] ---------------------------------------------------------------------------------
-function Bar:StartUpdateTicker(plugin, frame)
+function Bar:_EnsureTicker(plugin, frame)
     if frame._updateTicker then return end
     frame._updateTicker = C_Timer.NewTicker(UPDATE_INTERVAL, function()
         local record = plugin:GetContainerRecord(frame.recordId)
-        if record then Bar:RefreshSpellState(plugin, frame, record) end
+        if not record then return end
+        local state = Bar:RefreshSpellState(plugin, frame, record)
+        if state == "ready" and frame._updateTicker then
+            frame._updateTicker:Cancel()
+            frame._updateTicker = nil
+        end
     end)
 end
 
+function Bar:StartUpdateTicker(plugin, frame)
+end
+
 -- [ CHARGE EVENT WATCHER ] --------------------------------------------------------------------------
--- Immediate update on SPELL_UPDATE_CHARGES for instant visual feedback on cast.
 function Bar:StartChargeEventWatcher(plugin, frame)
     if frame._chargeEventFrame then return end
     local evtFrame = CreateFrame("Frame")
     evtFrame:RegisterEvent("SPELL_UPDATE_CHARGES")
-    evtFrame:SetScript("OnEvent", function()
-        local record = plugin:GetContainerRecord(frame.recordId)
-        if record then Bar:RefreshSpellState(plugin, frame, record) end
+    evtFrame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+    evtFrame:RegisterEvent("BAG_UPDATE_COOLDOWN")
+    evtFrame:RegisterEvent("SPELLS_CHANGED")
+    evtFrame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
+    evtFrame:SetScript("OnEvent", function(_, event)
+        if event == "SPELLS_CHANGED" or event == "UPDATE_SHAPESHIFT_FORM" then
+            local record = plugin:GetContainerRecord(frame.recordId)
+            if record then Bar:CacheImmutableState(frame, record.payload) end
+        end
+        Bar:_EnsureTicker(plugin, frame)
     end)
     frame._chargeEventFrame = evtFrame
 end

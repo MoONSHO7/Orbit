@@ -13,6 +13,8 @@ W.showPercentage = true
 function W:Update()
     local pct = NumericOrNil(GetHaste and GetHaste()) or NumericOrNil(UnitSpellHaste and UnitSpellHaste("player"))
     local rating = NumericOrNil(GetCombatRating(CR_HASTE_MELEE))
+    if pct == self._lastPct and rating == self._lastRating and self.showPercentage == self._lastShowPct then return end
+    self._lastPct, self._lastRating, self._lastShowPct = pct, rating, self.showPercentage
     if self.showPercentage then
         if pct then self:SetText(string.format("Haste: |cffffffff%.2f%%|r", pct))
         else self:SetText("Haste: |cffffffff" .. L.CMN_HIDDEN_VALUE .. "|r") end

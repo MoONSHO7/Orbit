@@ -9,7 +9,7 @@ Engine.ColorCurve = {}
 local CCE = Engine.ColorCurve
 
 local CC = Engine.ClassColor
-local nativeCurveCache = setmetatable({}, { __mode = "v" })
+local nativeCurveCache = setmetatable({}, { __mode = "k" })
 local unitCurveCache = setmetatable({}, { __mode = "k" })
 
 -- [ SORTED PIN CACHE ]-------------------------------------------------------------------------------
@@ -115,23 +115,21 @@ function CCE:GetFirstColorFromCurveForPreview(curveData, classFile, reaction)
     return CC:ResolveClassColorPinForPreview(GetSortedPins(curveData)[1], classFile, reaction)
 end
 
+local NPC_CACHE_KEYS = { [-1] = "_npc-1", [0] = "_npc0", [1] = "_npc1", [2] = "_npc2", [3] = "_npc3", [4] = "_npc4", [5] = "_npc5", [6] = "_npc6", [7] = "_npc7", [8] = "_npc8" }
 function CCE:ToNativeColorCurveForUnit(curveData, unit)
     if not curveData or not curveData.pins or #curveData.pins == 0 then return nil end
     if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end
     local _, classFile = UnitClass(unit)
-    if classFile then
-        local classCache = unitCurveCache[curveData]
-        if classCache and classCache[classFile] then return classCache[classFile] end
-    end
+    local cacheKey = classFile or NPC_CACHE_KEYS[UnitReaction(unit, "player") or 0] or "_npc0"
+    local classCache = unitCurveCache[curveData]
+    if classCache and classCache[cacheKey] then return classCache[cacheKey] end
     local curve = C_CurveUtil.CreateColorCurve()
     for _, pin in ipairs(curveData.pins) do
         local color = CC:ResolveClassColorPinForUnit(pin, unit)
         curve:AddPoint(pin.position, CreateColor(color.r, color.g, color.b, color.a or 1))
     end
-    if classFile then
-        if not unitCurveCache[curveData] then unitCurveCache[curveData] = {} end
-        unitCurveCache[curveData][classFile] = curve
-    end
+    if not unitCurveCache[curveData] then unitCurveCache[curveData] = {} end
+    unitCurveCache[curveData][cacheKey] = curve
     return curve
 end
 

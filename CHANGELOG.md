@@ -14,6 +14,9 @@
 - Lots of minor backend improvements
 - Added some extra Tour Mode tooltips for new users to discover features
 
+- Memory Leak fix in Tracked Cooldowns
+- Added Horizontal Anchoring to Tracked Bars to enable anchoring bars vertically
+
 ### Previous Feature
 - Spotlight!
     - Turn on in Quality of Life tab (/orbit plugins -> QoL)

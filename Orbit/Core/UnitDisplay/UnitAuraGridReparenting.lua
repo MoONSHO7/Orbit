@@ -20,6 +20,52 @@ local TIMER_FONT_SIZE = 8
 local COUNT_FONT_SIZE = 8
 local MAX_AURA_SCAN = 40
 
+-- [ HOISTED CLOSURES + SCRATCH STATE ]---------------------------------------------------------------
+local _durCtx = { unit = nil, idx = 0, byIndex = nil }
+local function _collectDur(aura)
+    _durCtx.idx = _durCtx.idx + 1
+    if aura.auraInstanceID then
+        local durObj = C_UnitAuras.GetAuraDuration(_durCtx.unit, aura.auraInstanceID)
+        if durObj then _durCtx.byIndex[_durCtx.idx] = durObj end
+    end
+end
+
+local _playerCtx = { ids = nil }
+local function _collectPlayerIDs(aura)
+    _playerCtx.ids[aura.auraInstanceID] = true
+end
+
+local _showCtx = { excluded = nil, playerIDs = nil, showIndices = nil, idx = 0 }
+local function _collectShowIndices(aura)
+    _showCtx.idx = _showCtx.idx + 1
+    local sid = aura.spellId
+    local isExcluded = not issecretvalue(sid) and _showCtx.excluded[sid]
+    if _showCtx.playerIDs[aura.auraInstanceID] and not isExcluded then
+        _showCtx.showIndices[_showCtx.idx] = true
+    end
+end
+
+local function ApplyComponentPosition(textElement, btn, key, defaultAnchorX, defaultAnchorY, defaultOffsetX, defaultOffsetY, componentPositions)
+    if not textElement then return end
+    local pos = componentPositions[key] or {}
+    local anchorX = pos.anchorX or defaultAnchorX
+    local anchorY = pos.anchorY or defaultAnchorY
+    local offsetX = pos.offsetX or defaultOffsetX
+    local offsetY = pos.offsetY or defaultOffsetY
+    local justifyH = pos.justifyH or "CENTER"
+    local anchorPoint
+    if anchorY == "CENTER" and anchorX == "CENTER" then anchorPoint = "CENTER"
+    elseif anchorY == "CENTER" then anchorPoint = anchorX
+    elseif anchorX == "CENTER" then anchorPoint = anchorY
+    else anchorPoint = anchorY .. anchorX end
+    local textPoint = justifyH == "LEFT" and "LEFT" or justifyH == "RIGHT" and "RIGHT" or "CENTER"
+    local finalOffsetX = anchorX == "LEFT" and offsetX or -offsetX
+    local finalOffsetY = anchorY == "BOTTOM" and offsetY or -offsetY
+    textElement:ClearAllPoints()
+    textElement:SetPoint(textPoint, btn, anchorPoint, finalOffsetX, finalOffsetY)
+    if textElement.SetJustifyH then textElement:SetJustifyH(justifyH) end
+end
+
 -- [ UPDATE BLIZZARD BUFFS ]--------------------------------------------------------------------------
 function Mixin:_updateBlizzardBuffs()
     local Frame = self._agFrame
@@ -41,20 +87,20 @@ function Mixin:_updateBlizzardBuffs()
     -- spellId may be non-secret from clean context; use issecretvalue guard
     local showIndices
     if collapsed then
-        local IsSecret = issecretvalue
         local excludedSpells = Orbit.GroupAuraFilters and Orbit.GroupAuraFilters.AlwaysExcluded or {}
-        local playerIDs = {}
-        AuraUtil.ForEachAura("player", "HELPFUL|PLAYER", MAX_AURA_SCAN, function(aura)
-            playerIDs[aura.auraInstanceID] = true
-        end, true)
-        showIndices = {}
-        local idx = 0
-        AuraUtil.ForEachAura("player", "HELPFUL", MAX_AURA_SCAN, function(aura)
-            idx = idx + 1
-            local sid = aura.spellId
-            local isExcluded = not IsSecret(sid) and excludedSpells[sid]
-            if playerIDs[aura.auraInstanceID] and not isExcluded then showIndices[idx] = true end
-        end, true)
+        Frame._scratchPlayerIDs = Frame._scratchPlayerIDs or {}
+        wipe(Frame._scratchPlayerIDs)
+        _playerCtx.ids = Frame._scratchPlayerIDs
+        AuraUtil.ForEachAura("player", "HELPFUL|PLAYER", MAX_AURA_SCAN, _collectPlayerIDs, true)
+
+        Frame._scratchShowIndices = Frame._scratchShowIndices or {}
+        wipe(Frame._scratchShowIndices)
+        showIndices = Frame._scratchShowIndices
+        _showCtx.excluded = excludedSpells
+        _showCtx.playerIDs = Frame._scratchPlayerIDs
+        _showCtx.showIndices = showIndices
+        _showCtx.idx = 0
+        AuraUtil.ForEachAura("player", "HELPFUL", MAX_AURA_SCAN, _collectShowIndices, true)
     end
 
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
@@ -63,44 +109,33 @@ function Mixin:_updateBlizzardBuffs()
     local fontOutline = Orbit.Skin and Orbit.Skin.GetFontOutline and Orbit.Skin:GetFontOutline() or ""
     local isPlayerGrid = self._agConfig and self._agConfig.unit == "player"
     local skinBorderSize = isPlayerGrid and (Orbit.db.GlobalSettings.IconBorderSize or 2) or 1
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = skinBorderSize, showTimer = true, iconBorder = isPlayerGrid or nil, padding = spacing, aspectRatio = self:GetSetting(1, "aspectRatio") or "1:1" }
+    local skinSettings = Frame._scratchSkinSettings
+    if not skinSettings then
+        skinSettings = {}
+        Frame._scratchSkinSettings = skinSettings
+    end
+    skinSettings.zoom = 0
+    skinSettings.borderStyle = 1
+    skinSettings.borderSize = skinBorderSize
+    skinSettings.showTimer = true
+    skinSettings.iconBorder = isPlayerGrid or nil
+    skinSettings.padding = spacing
+    skinSettings.aspectRatio = self:GetSetting(1, "aspectRatio") or "1:1"
     local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
     local OverrideUtils = OrbitEngine.OverrideUtils
 
-    local function ApplyComponentPosition(textElement, btn, key, defaultAnchorX, defaultAnchorY, defaultOffsetX, defaultOffsetY)
-        if not textElement then return end
-        local pos = componentPositions[key] or {}
-        local anchorX = pos.anchorX or defaultAnchorX
-        local anchorY = pos.anchorY or defaultAnchorY
-        local offsetX = pos.offsetX or defaultOffsetX
-        local offsetY = pos.offsetY or defaultOffsetY
-        local justifyH = pos.justifyH or "CENTER"
-        local anchorPoint
-        if anchorY == "CENTER" and anchorX == "CENTER" then anchorPoint = "CENTER"
-        elseif anchorY == "CENTER" then anchorPoint = anchorX
-        elseif anchorX == "CENTER" then anchorPoint = anchorY
-        else anchorPoint = anchorY .. anchorX end
-        local textPoint = justifyH == "LEFT" and "LEFT" or justifyH == "RIGHT" and "RIGHT" or "CENTER"
-        local finalOffsetX = anchorX == "LEFT" and offsetX or -offsetX
-        local finalOffsetY = anchorY == "BOTTOM" and offsetY or -offsetY
-        textElement:ClearAllPoints()
-        textElement:SetPoint(textPoint, btn, anchorPoint, finalOffsetX, finalOffsetY)
-        if textElement.SetJustifyH then textElement:SetJustifyH(justifyH) end
-    end
-
-    -- Build clean index→DurationObject map from untainted AuraUtil context
-    local durObjByIndex = {}
-    local durIdx = 0
-    AuraUtil.ForEachAura(cfg.unit, "HELPFUL", MAX_AURA_SCAN, function(aura)
-        durIdx = durIdx + 1
-        if aura.auraInstanceID then
-            local durObj = C_UnitAuras.GetAuraDuration(cfg.unit, aura.auraInstanceID)
-            if durObj then durObjByIndex[durIdx] = durObj end
-        end
-    end, true)
+    Frame._scratchDurObjByIndex = Frame._scratchDurObjByIndex or {}
+    wipe(Frame._scratchDurObjByIndex)
+    _durCtx.unit = cfg.unit
+    _durCtx.idx = 0
+    _durCtx.byIndex = Frame._scratchDurObjByIndex
+    AuraUtil.ForEachAura(cfg.unit, "HELPFUL", MAX_AURA_SCAN, _collectDur, true)
+    local durObjByIndex = Frame._scratchDurObjByIndex
 
     local skinVersion = (Frame._orbitSkinVersion or 0)
-    local activeIcons = {}
+    Frame._scratchActiveIcons = Frame._scratchActiveIcons or {}
+    local activeIcons = Frame._scratchActiveIcons
+    wipe(activeIcons)
     for _, btn in ipairs(blizzFrame.auraFrames) do
         if btn.hasValidInfo and not btn.isAuraAnchor then
             local bi = btn.buttonInfo
@@ -221,14 +256,14 @@ function Mixin:_updateBlizzardBuffs()
                         timerText:SetParent(btn.orbitTextOverlay)
                         if OverrideUtils then OverrideUtils.ApplyOverrides(timerText, (componentPositions.Timer or {}).overrides or {}, { fontSize = TIMER_FONT_SIZE, fontPath = fontPath }) end
                         timerText:SetDrawLayer("OVERLAY", 7)
-                        ApplyComponentPosition(timerText, btn, "Timer", "CENTER", "CENTER", 0, 0)
+                        ApplyComponentPosition(timerText, btn, "Timer", "CENTER", "CENTER", 0, 0, componentPositions)
                     end
                     -- Style stacks
                     btn.Count:SetParent(btn.orbitTextOverlay)
                     if OverrideUtils then OverrideUtils.ApplyOverrides(btn.Count, (componentPositions.Stacks or {}).overrides or {}, { fontSize = COUNT_FONT_SIZE, fontPath = fontPath }) end
                     Orbit.Skin:ApplyFontShadow(btn.Count)
                     btn.Count:SetDrawLayer("OVERLAY", 7)
-                    ApplyComponentPosition(btn.Count, btn, "Stacks", "RIGHT", "BOTTOM", 1, 1)
+                    ApplyComponentPosition(btn.Count, btn, "Stacks", "RIGHT", "BOTTOM", 1, 1, componentPositions)
                     btn._orbitSkinned = skinVersion
                 end
                 -- Lightweight refresh: enforce size (Blizzard may resize between skin cycles)
@@ -251,10 +286,11 @@ function Mixin:_updateBlizzardBuffs()
         if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
         return
     end
-    Orbit.AuraLayout:LayoutGrid(Frame, activeIcons, {
-        size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
-        anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
-    })
+    Frame._scratchLayoutOpts = Frame._scratchLayoutOpts or {}
+    local opts = Frame._scratchLayoutOpts
+    opts.size = iconH; opts.sizeW = iconW; opts.spacing = spacing; opts.maxPerRow = iconsPerRow
+    opts.anchor = anchor; opts.growthX = growthX; opts.growthY = growthY; opts.yOffset = 0
+    Orbit.AuraLayout:LayoutGrid(Frame, activeIcons, opts)
     skinSettings._maxPerRow = iconsPerRow
     skinSettings._growthX = growthX
     skinSettings._growthY = growthY

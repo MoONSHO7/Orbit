@@ -515,7 +515,7 @@ function Container:StartUpdateTicker(plugin, frame)
         local p = Orbit.Profiler
         local s = p and p:Begin()
         for _, icon in pairs(frame.iconItems) do
-            if icon.trackedId then IconItem:Update(icon) end
+            if icon.trackedId and icon._lastState ~= "ready" then IconItem:Update(icon) end
         end
         if p then p:End(plugin, "VisualPoll", s) end
     end)

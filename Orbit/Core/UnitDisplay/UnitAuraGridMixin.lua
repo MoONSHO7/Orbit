@@ -621,21 +621,41 @@ function Mixin:UpdateAuras()
     end
     local isPlayerGrid = cfg.showIconLimit
     local skinBorderSize = isPlayerGrid and (Orbit.db.GlobalSettings.IconBorderSize or 2) or 1
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = skinBorderSize, showTimer = cfg.showTimer, iconBorder = isPlayerGrid or nil, padding = spacing, aspectRatio = self:GetSetting(1, "aspectRatio") or "1:1" }
+    local skinSettings = Frame._scratchSkinSettings
+    if not skinSettings then
+        skinSettings = {}
+        Frame._scratchSkinSettings = skinSettings
+    end
+    skinSettings.zoom = 0
+    skinSettings.borderStyle = 1
+    skinSettings.borderSize = skinBorderSize
+    skinSettings.showTimer = cfg.showTimer
+    skinSettings.iconBorder = isPlayerGrid or nil
+    skinSettings.padding = spacing
+    skinSettings.aspectRatio = self:GetSetting(1, "aspectRatio") or "1:1"
+    skinSettings.enablePandemic = nil
+    skinSettings.pandemicGlowType = nil
+    skinSettings.pandemicColor = nil
+    skinSettings.overrides = nil
     if cfg.enablePandemic then
         skinSettings.enablePandemic = true
         skinSettings.pandemicGlowType = self:GetSetting(1, "PandemicGlowType") or Constants.Glow.Type.Pixel
         skinSettings.pandemicColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(1, "PandemicGlowColorCurve")) or self:GetSetting(1, "PandemicGlowColor") or Constants.Glow.DefaultColor
-        -- Function-based lookup so BuildOptionsFromLookup reads all sub-settings (PixelLines, Frequency, etc.)
-        local plugin = self
-        skinSettings.overrides = setmetatable({
-            PandemicGlowType = skinSettings.pandemicGlowType,
-            PandemicGlowColor = skinSettings.pandemicColor,
-        }, { __index = function(_, k) return plugin:GetSetting(1, k) end })
+        local overrides = self._scratchPandemicOverrides
+        if not overrides then
+            local plugin = self
+            overrides = setmetatable({}, { __index = function(_, k) return plugin:GetSetting(1, k) end })
+            self._scratchPandemicOverrides = overrides
+        end
+        overrides.PandemicGlowType = skinSettings.pandemicGlowType
+        overrides.PandemicGlowColor = skinSettings.pandemicColor
+        skinSettings.overrides = overrides
     end
 
     local componentPositions = self:GetSetting(1, "ComponentPositions")
-    local activeIcons = {}
+    Frame._scratchActiveIcons = Frame._scratchActiveIcons or {}
+    local activeIcons = Frame._scratchActiveIcons
+    wipe(activeIcons)
     local tooltipFilter = cfg.auraFilter
     for i = 1, #displayIDs do
         local aura = state.data[displayIDs[i]]
@@ -653,14 +673,17 @@ function Mixin:UpdateAuras()
         end
     end
 
-    Orbit.AuraLayout:LayoutGrid(Frame, activeIcons, {
-        size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
-        anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
-    })
+    Frame._scratchLayoutOpts = Frame._scratchLayoutOpts or {}
+    local opts = Frame._scratchLayoutOpts
+    opts.size = iconH; opts.sizeW = iconW; opts.spacing = spacing; opts.maxPerRow = iconsPerRow
+    opts.anchor = anchor; opts.growthX = growthX; opts.growthY = growthY; opts.yOffset = 0
+    Orbit.AuraLayout:LayoutGrid(Frame, activeIcons, opts)
     if isPlayerGrid then skinSettings._maxPerRow = iconsPerRow; skinSettings._growthX = growthX; skinSettings._growthY = growthY; self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings) end
 
     if cancelable and not InCombatLockdown() then
-        local auras = {}
+        Frame._scratchAuras = Frame._scratchAuras or {}
+        local auras = Frame._scratchAuras
+        wipe(auras)
         for i = 1, #displayIDs do auras[i] = state.data[displayIDs[i]] end
         self:_syncCancelOverlays(Frame, auras, auraFilter, activeIcons)
     end
