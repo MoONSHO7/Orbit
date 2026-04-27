@@ -72,6 +72,8 @@ CanvasMode/
 | `supportsGlobalSync` | `boolean` | multi-instance plugins (e.g. ActionBars) where one layout applies to all instances. enables the sync toggle UI. |
 | `defaults.ComponentPositions` | `table` | default positions per component key. used by "reset positions" in canvas mode. |
 | `defaults.DisabledComponents` | `table` | default disabled component keys. used by "reset positions". |
+| `canvasPreviewText` | `{[key] = string}` | per-key preview text shown in canvas mode. supplies realistic worst-case strings (e.g. `Name = "Tyrannothesaurus-Stormrage"`) so users can see how their layout handles long content and overlap. takes precedence over the live source text. |
+| `GetCanvasPreviewText(self, key) → string\|nil` | `function` | functional alternative to `canvasPreviewText`. return nil to fall through to defaults. |
 
 ### lifecycle hooks (from PluginMixin)
 

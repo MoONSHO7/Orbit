@@ -9,18 +9,17 @@ local CanvasMode = Engine.CanvasMode
 CanvasMode.SnapEngine = {}
 local Snap = CanvasMode.SnapEngine
 
-local SNAP_SIZE = 5
-local EDGE_THRESHOLD = SNAP_SIZE
+local SNAP_SIZE = 2
+local EDGE_THRESHOLD = 2
 
 -- [ EDGE MAGNET ]------------------------------------------------------------------------------------
--- Snap component edge flush to parent edge when within threshold.
--- Returns snapped position and guide hint, or nil if no magnet.
+-- Center is checked first so it wins any overlap between the center and edge magnet zones.
 local function EdgeMagnet(relPos, halfParent, compHalf, threshold)
+    if math.abs(relPos) <= threshold then return 0, true end
     local distPositive = math.abs((relPos + compHalf) - halfParent)
     local distNegative = math.abs((relPos - compHalf) + halfParent)
     if distPositive <= threshold then return halfParent - compHalf, true end
     if distNegative <= threshold then return -halfParent + compHalf, true end
-    if math.abs(relPos) <= threshold then return 0, true end
     return relPos, false
 end
 
@@ -30,8 +29,8 @@ local function GridRound(value, gridSize) return math.floor(value / gridSize + 0
 -- [ SNAP AXIS ]--------------------------------------------------------------------------------------
 -- Performs edge-magnet then grid-round on a single axis.
 -- Returns: snappedValue, guideHint ("LEFT"/"RIGHT"/"CENTER"/"TOP"/"BOTTOM" or nil)
-local GUIDE_X = { [true] = { pos = "RIGHT", neg = "LEFT", center = "CENTER" } }
-local GUIDE_Y = { [true] = { pos = "TOP", neg = "BOTTOM", center = "CENTER" } }
+local GUIDE_X = { pos = "RIGHT", neg = "LEFT", center = "CENTER" }
+local GUIDE_Y = { pos = "TOP", neg = "BOTTOM", center = "CENTER" }
 
 function Snap:SnapAxis(relPos, halfParent, compHalf, guideMap, options)
     if options and options.precisionMode then return relPos, nil end
@@ -39,11 +38,10 @@ function Snap:SnapAxis(relPos, halfParent, compHalf, guideMap, options)
     local gridSize = options and options.gridSize
     local snapped, magnetted = EdgeMagnet(relPos, halfParent, compHalf, threshold)
     if magnetted then
-        local guide = guideMap and guideMap[true]
-        if not guide then return snapped, nil end
-        if snapped > 0 then return snapped, guide.pos
-        elseif snapped < 0 then return snapped, guide.neg
-        else return snapped, guide.center end
+        if not guideMap then return snapped, nil end
+        if snapped > 0 then return snapped, guideMap.pos
+        elseif snapped < 0 then return snapped, guideMap.neg
+        else return snapped, guideMap.center end
     end
     if gridSize then snapped = GridRound(snapped, gridSize) end
     return snapped, nil

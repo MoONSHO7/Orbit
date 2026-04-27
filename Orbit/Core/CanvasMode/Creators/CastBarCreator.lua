@@ -26,8 +26,6 @@ local CB_TEXT_SIZE_MIN = 10
 
 
 local SUB_TEXT_MIN_WIDTH = 20
-local SUB_TEXT_PADDING = 4
-local SUB_TEXT_HEIGHT_PADDING = 2
 local SUB_PAD_X = 20
 local SUB_PAD_Y = 10
 local SnapEngine = OrbitEngine.CanvasMode.SnapEngine
@@ -48,10 +46,18 @@ local function CreateSubText(parent, parentContainer, subKey, subPos, text, just
     Orbit.Skin:ApplyFontShadow(fs)
     fs:SetText(text)
     fs:SetJustifyH(justify)
-    fs:SetPoint(justify, subFrame, justify, 0, 0)
+    local pad = CC.TEXT_PADDING
+    if justify == "LEFT" then
+        fs:SetPoint("LEFT", subFrame, "LEFT", pad, 0)
+    elseif justify == "RIGHT" then
+        fs:SetPoint("RIGHT", subFrame, "RIGHT", -pad, 0)
+    else
+        fs:SetPoint("CENTER", subFrame, "CENTER", 0, 0)
+    end
 
-    local textWidth = math.max(SUB_TEXT_MIN_WIDTH, (fs:GetStringWidth() or SUB_TEXT_MIN_WIDTH) + SUB_TEXT_PADDING)
-    subFrame:SetSize(textWidth, cbTextSize + SUB_TEXT_HEIGHT_PADDING)
+    local stringWidth = fs:GetStringWidth() or SUB_TEXT_MIN_WIDTH
+    local textWidth = math.max(SUB_TEXT_MIN_WIDTH, stringWidth + 2 * pad)
+    subFrame:SetSize(textWidth, cbTextSize + 2 * pad)
 
     subFrame.visual = fs
     subFrame.key = subKey

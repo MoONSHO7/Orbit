@@ -4,6 +4,7 @@ local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local Layout = OrbitEngine.Layout
 local C = OrbitEngine.CanvasMode.Constants
+local L = Orbit.L
 local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ IMPORTS ] ---------------------------------------------------------------------------------------
@@ -80,7 +81,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             sub:SetTextColor(1, 1, 1, 0.8)
             overrideContainer.StatusSubtitle = sub
         end
-        overrideContainer.StatusSubtitle:SetText("Group containing rez, readycheck, phase and summon icons.")
+        overrideContainer.StatusSubtitle:SetText(L.CFG_CM_STATUS_ICONS_DESC)
         overrideContainer.StatusSubtitle:Show()
     elseif overrideContainer.StatusSubtitle then
         overrideContainer.StatusSubtitle:Hide()

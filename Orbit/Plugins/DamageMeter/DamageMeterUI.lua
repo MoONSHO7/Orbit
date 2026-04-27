@@ -934,6 +934,11 @@ local function BuildMeterFrame(id, def)
         local iconSize = showIcon and currentDef.barHeight or 0
         local fillWidth = currentDef.barWidth - iconSize
 
+        local _, playerClassFile = UnitClass("player")
+        playerClassFile = playerClassFile or "WARRIOR"
+        -- UnitName is a secret value in 12.0+; FontString accepts it as a sink.
+        local playerName = UnitName("player")
+
         local preview = OrbitEngine.Preview.Frame:CreateBasePreview(frame, scale, parent, borderSize)
         preview:SetSize(fillWidth * scale, currentDef.barHeight * scale)
         preview.sourceFrame = frame
@@ -950,7 +955,7 @@ local function BuildMeterFrame(id, def)
             else
                 icon:SetPoint("RIGHT", preview, "LEFT", 0, 0)
             end
-            ApplyClassIcon(icon, "WARRIOR")
+            ApplyClassIcon(icon, playerClassFile)
         end
 
         local previewFillHeight = currentDef.barHeight * currentDef.style / 100 * scale
@@ -961,7 +966,7 @@ local function BuildMeterFrame(id, def)
         bar:SetStatusBarTexture(GetBarTexture())
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(0.7)
-        bar:GetStatusBarTexture():SetVertexColor(ResolveBarColor("WARRIOR"))
+        bar:GetStatusBarTexture():SetVertexColor(ResolveBarColor(playerClassFile))
 
         local bg = bar:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints(bar)
@@ -974,7 +979,7 @@ local function BuildMeterFrame(id, def)
 
         local name = preview:CreateFontString(nil, "OVERLAY")
         name:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
-        name:SetText("Paintrains")
+        name:SetText(playerName or "Player")
         name:SetTextColor(1, 1, 1)
 
         local positions       = currentDef.componentPositions or {}

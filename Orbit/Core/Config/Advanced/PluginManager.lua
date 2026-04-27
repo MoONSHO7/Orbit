@@ -27,7 +27,7 @@ local PLUGIN_GROUPS = {
         { label = "Bag Bar",  plugins = { "Bag Bar" },  triState = true },
         "Queue Status",
         { label = "Talking Head", plugins = { "Talking Head" }, triState = true },
-        "Minimap", "Datatexts",
+        "Minimap", "Minimap Button", "Datatexts",
         { label = "Experience Bar", plugins = { "Experience Bar" }, triState = true },
         { label = "Honor Bar",      plugins = { "Honor Bar" },      triState = true },
     }},

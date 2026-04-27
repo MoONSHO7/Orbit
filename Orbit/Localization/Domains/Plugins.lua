@@ -262,6 +262,7 @@ local LOCALE_STRINGS = {
         PLU_BAG_DIR_UP          = "Expand Up",
         PLU_BAG_DIR_DOWN        = "Expand Down",
         PLU_QUEUE_SCALE         = "Scale",
+        PLU_MMB_SCALE           = "Scale",
         PLU_DT_SYSTEM           = "System",
         PLU_DT_CHARACTER        = "Character",
         PLU_DT_SOCIAL           = "Social",

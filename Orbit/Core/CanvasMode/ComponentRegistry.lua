@@ -21,6 +21,7 @@ local SafeGetNumber = Helpers.SafeGetNumber
 local PADDING = Helpers.PADDING
 local CalculateAnchor = Engine.PositionUtils.CalculateAnchor
 local CalculateAnchorWithWidthCompensation = Engine.PositionUtils.CalculateAnchorWithWidthCompensation
+local BuildAnchorPoint = Engine.PositionUtils.BuildAnchorPoint
 local BuildComponentSelfAnchor = Engine.PositionUtils.BuildComponentSelfAnchor
 local NeedsEdgeCompensation = Engine.PositionUtils.NeedsEdgeCompensation
 local HandleModule = Engine.ComponentHandle
@@ -436,7 +437,7 @@ function ComponentDrag:RestoreFramePositions(parent, positions)
                 local offsetX = pos.offsetX or 0
                 local offsetY = pos.offsetY or 0
 
-                local anchorPoint = (anchorY == "CENTER" and anchorX == "CENTER") and "CENTER" or anchorY == "CENTER" and anchorX or anchorX == "CENTER" and anchorY or anchorY .. anchorX
+                local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
                 local finalX = anchorX == "RIGHT" and -offsetX or offsetX
                 local finalY = anchorY == "TOP" and -offsetY or offsetY
 

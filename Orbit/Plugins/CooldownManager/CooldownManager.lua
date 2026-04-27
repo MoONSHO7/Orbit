@@ -137,42 +137,40 @@ function Plugin:OnLoad()
     self:SetupCanvasPreview(self.essentialAnchor, ESSENTIAL_INDEX)
     self:SetupCanvasPreview(self.utilityAnchor, UTILITY_INDEX)
     self:SetupCanvasPreview(self.buffIconAnchor, BUFFICON_INDEX)
-    -- BuffBar gets a bar-shaped canvas preview instead of icon grid
     local buffBarPlugin = self
     self.buffBarAnchor.CreateCanvasPreview = function(anchor, options)
         local parent = options.parent or UIParent
         local barH = buffBarPlugin:GetSetting(BUFFBAR_INDEX, "Height") or 20
         local barW = buffBarPlugin:GetSetting(BUFFBAR_INDEX, "Width") or 200
+        local iconSize = barH
+        local innerW = barW - iconSize
 
         local preview = CreateFrame("Frame", nil, parent)
-        preview:SetSize(barW, barH)
+        preview:SetSize(innerW, barH)
         preview.sourceFrame = anchor
-        preview.sourceWidth = barW
+        preview.sourceWidth = innerW
         preview.sourceHeight = barH
         preview.previewScale = 1
         preview.components = {}
 
-        -- Icon (static decoration, outside left of bar)
-        local iconSize = barH
         local icon = preview:CreateTexture(nil, "OVERLAY")
         icon:SetSize(iconSize, iconSize)
-        icon:SetPoint("LEFT", preview, "LEFT", 0, 0)
+        icon:SetPoint("RIGHT", preview, "LEFT", 0, 0)
         local iconTex = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(21562) or "Interface\\Icons\\Spell_Holy_WordFortitude"
         icon:SetTexture(iconTex)
         icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 
-        -- Bar background (starts after icon)
+        -- Bar background
         local bg = preview:CreateTexture(nil, "BACKGROUND")
-        bg:SetPoint("TOPLEFT", preview, "TOPLEFT", iconSize, 0)
-        bg:SetPoint("BOTTOMRIGHT", preview, "BOTTOMRIGHT", 0, 0)
+        bg:SetAllPoints()
         local bgColor = Orbit.Constants.Colors.Background
         bg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
 
         -- Bar fill (partial width to simulate remaining duration)
         local fill = preview:CreateTexture(nil, "ARTWORK")
-        fill:SetPoint("TOPLEFT", preview, "TOPLEFT", iconSize, 0)
+        fill:SetPoint("TOPLEFT", preview, "TOPLEFT", 0, 0)
         fill:SetPoint("BOTTOM", preview, "BOTTOM", 0, 0)
-        fill:SetWidth((barW - iconSize) * 0.6)
+        fill:SetWidth(innerW * 0.6)
         local LSM = LibStub("LibSharedMedia-3.0", true)
         local texturePath = LSM and LSM:Fetch("statusbar", Orbit.db.GlobalSettings.Texture or "Blizzard") or ""
         fill:SetTexture(texturePath)
@@ -187,7 +185,7 @@ function Plugin:OnLoad()
         local textSize = 8
         local name = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         name:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
-        name:SetPoint("LEFT", preview, "LEFT", iconSize + 5, 0)
+        name:SetPoint("LEFT", preview, "LEFT", 5, 0)
         name:SetText("Preview Buff")
         name:SetTextColor(1, 1, 1, 1)
 
@@ -199,12 +197,12 @@ function Plugin:OnLoad()
 
         -- Register text components for Canvas Mode drag
         local savedPositions = buffBarPlugin:GetSetting(BUFFBAR_INDEX, "ComponentPositions") or {}
-        local barW2 = barW / 2
+        local innerHalf = innerW / 2
         local namePos = savedPositions["BuffBarName"]
         local timerPos = savedPositions["BuffBarTimer"]
-        local nameX = namePos and namePos.posX or (-barW2 + name:GetStringWidth() / 2 + iconSize + 5)
+        local nameX = namePos and namePos.posX or (-innerHalf + name:GetStringWidth() / 2 + 5)
         local nameY = namePos and namePos.posY or 0
-        local timerX = timerPos and timerPos.posX or (barW2 - timer:GetStringWidth() / 2 - 5)
+        local timerX = timerPos and timerPos.posX or (innerHalf - timer:GetStringWidth() / 2 - 5)
         local timerY = timerPos and timerPos.posY or 0
 
         local CDC = OrbitEngine.CanvasMode.CreateDraggableComponent

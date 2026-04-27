@@ -845,8 +845,7 @@ function Plugin:ApplySettings(systemFrame)
         bar:SetScale(scale / SCALE_DIVISOR)
     end
 
-    -- Canvas Mode: visibility, overrides, and position restore
-    local savedPositions = self:GetComponentPositions(systemIndex)
+    local savedPositions = self:NormalizeCanvasComponentPositions(self:GetComponentPositions(systemIndex), systemIndex) or {}
 
     if bar.Text then
         if not OrbitEngine.ComponentDrag:IsDisabled(bar.Text) then
@@ -892,6 +891,23 @@ function Plugin:ApplySettings(systemFrame)
     if bar.preview or Orbit:IsEditMode() then
         self:ShowPreview()
     end
+end
+
+-- Canvas writes Text/Timer under CastBar.subComponents; the live frame reads them at top level.
+function Plugin:NormalizeCanvasComponentPositions(positions, systemIndex)
+    if not positions then return positions end
+    local castBar = positions.CastBar
+    local subs = castBar and castBar.subComponents
+    if not subs then return positions end
+    if subs.Text then
+        positions.Text = positions.Text or {}
+        for k, v in pairs(subs.Text) do positions.Text[k] = v end
+    end
+    if subs.Timer then
+        positions.Timer = positions.Timer or {}
+        for k, v in pairs(subs.Timer) do positions.Timer[k] = v end
+    end
+    return positions
 end
 
 function Plugin:ApplyColor()

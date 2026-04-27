@@ -10,6 +10,7 @@ local TEXT_PADDING = 0
 local ICON_SIZE = 14
 local ICON_PADDING = 4
 local DRAG_TICKER_INTERVAL = 0.05
+local ACTIVE_HIGHLIGHT_R, ACTIVE_HIGHLIGHT_G, ACTIVE_HIGHLIGHT_B, ACTIVE_HIGHLIGHT_A = 0.3, 0.8, 0.3, 0.4
 
 -- [ BASE DATATEXT ] ---------------------------------------------------------------------------------
 local BaseDatatext = {}
@@ -47,6 +48,10 @@ function BaseDatatext:CreateFrame(width, height)
     f:SetSize(width or DEFAULT_WIDTH, height or DEFAULT_HEIGHT)
     f:SetClampedToScreen(true)
     f:Hide()
+    f.activeBg = f:CreateTexture(nil, "BACKGROUND")
+    f.activeBg:SetAllPoints()
+    f.activeBg:SetColorTexture(ACTIVE_HIGHLIGHT_R, ACTIVE_HIGHLIGHT_G, ACTIVE_HIGHLIGHT_B, ACTIVE_HIGHLIGHT_A)
+    f.activeBg:Hide()
     f.Text = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     f.Text:SetPoint("CENTER", f, "CENTER")
     self.text = f.Text

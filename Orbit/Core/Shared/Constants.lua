@@ -86,6 +86,7 @@ C.Levels = {
     EditModeText = 20,
     EditModeSelection = 100,
     CanvasComponent = 5,
+    CanvasOverlay = 10,
     SecondaryDemote = -5,
     ColorPickerSwatch = 10,
     WhatsNewDialog = 200,

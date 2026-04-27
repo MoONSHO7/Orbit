@@ -254,6 +254,7 @@ tip.nextBtn:SetScript("OnClick", function()
     else
         Tour:EndTour()
         Tour:ShowCanvasHint()
+        Tour:ShowDrawerHint()
     end
 end)
 
@@ -948,8 +949,11 @@ local function GetPlayerFrame()
 end
 
 function Tour:ShowCanvasHint()
+    local as = Orbit.db and Orbit.db.AccountSettings
+    if as and as.CanvasHintComplete then return end
     local playerFrame = GetPlayerFrame()
     if not playerFrame then return end
+    if as and as.CanvasHintComplete == nil then as.CanvasHintComplete = false end
     canvasTip.title:SetText(L.TOUR_EM_CANVAS_TITLE)
     canvasTip.text:SetText(L.TOUR_EM_CANVAS_TEXT)
     local textH = canvasTip.title:GetStringHeight() + 3 + canvasTip.text:GetStringHeight()
@@ -983,29 +987,23 @@ function Tour:ShowCanvasHint()
             end
         end)
     end
-    -- Hook CanvasMode:Toggle to dismiss hint
     local CM = Engine.CanvasMode
     if CM and not originalCanvasToggle then
         originalCanvasToggle = CM.Toggle
         CM.Toggle = function(self, ...)
             originalCanvasToggle(self, ...)
-            Tour:HideCanvasHint()
+            Tour:HideCanvasHint(true)
         end
-    end
-    -- Dismiss on Edit Mode exit (one-shot hook)
-    if EditModeManagerFrame and not Tour._editModeHideHooked then
-        Tour._editModeHideHooked = true
-        EditModeManagerFrame:HookScript("OnHide", function()
-            if Tour.canvasHintActive then Tour:HideCanvasHint() end
-        end)
     end
 end
 
-function Tour:HideCanvasHint()
+function Tour:HideCanvasHint(markComplete)
     canvasTip:SetScript("OnUpdate", nil)
     canvasTip:Hide()
     Tour.canvasHintActive = false
-    if Orbit.db and Orbit.db.GlobalSettings then Orbit.db.GlobalSettings.TourComplete = true end
+    if markComplete and Orbit.db and Orbit.db.AccountSettings then
+        Orbit.db.AccountSettings.CanvasHintComplete = true
+    end
     -- Restore selection color
     local Selection = Engine.FrameSelection
     if Selection then Selection:RefreshVisuals() end
@@ -1014,6 +1012,105 @@ function Tour:HideCanvasHint()
         CM.Toggle = originalCanvasToggle
         originalCanvasToggle = nil
     end
+end
+
+-- [ DATATEXT DRAWER HINT ] --------------------------------------------------------------------------
+local DRAWER_TIP_OFFSET_X = 12
+local DRAWER_TIP_OFFSET_Y = -12
+local drawerTip = CreateFrame("Frame", nil, UIParent)
+drawerTip:SetFrameStrata(Orbit.Constants.Strata.Topmost)
+drawerTip:SetFrameLevel(TOOLTIP_LEVEL)
+drawerTip:Hide()
+drawerTip.bg = drawerTip:CreateTexture(nil, "BACKGROUND")
+drawerTip.bg:SetAllPoints()
+drawerTip.bg:SetColorTexture(BG.r, BG.g, BG.b, BG.a)
+MakeBorderEdge(drawerTip, true, "TOPLEFT", "TOPLEFT", "TOPRIGHT", "TOPRIGHT")
+MakeBorderEdge(drawerTip, true, "BOTTOMLEFT", "BOTTOMLEFT", "BOTTOMRIGHT", "BOTTOMRIGHT")
+MakeBorderEdge(drawerTip, false, "TOPLEFT", "TOPLEFT", "BOTTOMLEFT", "BOTTOMLEFT")
+MakeBorderEdge(drawerTip, false, "TOPRIGHT", "TOPRIGHT", "BOTTOMRIGHT", "BOTTOMRIGHT")
+do
+    local B = 1
+    for _, side in ipairs({
+        { "top", true, "TOPLEFT", "TOPRIGHT", -1 },
+        { "bottom", true, "BOTTOMLEFT", "BOTTOMRIGHT", 1 },
+        { "left", false, "TOPLEFT", "BOTTOMLEFT", 1 },
+        { "right", false, "TOPRIGHT", "BOTTOMRIGHT", -1 },
+    }) do
+        local t = drawerTip:CreateTexture(nil, "ARTWORK")
+        t:SetColorTexture(ACCENT.r, ACCENT.g, ACCENT.b, 0.8)
+        if side[2] then
+            t:SetHeight(2)
+            t:SetPoint(side[3], B, side[5] * B)
+            t:SetPoint(side[4], -B, side[5] * B)
+        else
+            t:SetWidth(2)
+            t:SetPoint(side[3], side[5] * B, -B)
+            t:SetPoint(side[4], side[5] * B, B)
+        end
+    end
+end
+drawerTip.title = drawerTip:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+drawerTip.title:SetPoint("TOPLEFT", TOOLTIP_PAD + 4, -TOOLTIP_PAD)
+drawerTip.title:SetTextColor(ACCENT.r, ACCENT.g, ACCENT.b)
+drawerTip.title:SetJustifyH("LEFT")
+drawerTip.title:SetWidth(TOOLTIP_MAX_WIDTH - TOOLTIP_PAD * 2 - 4)
+drawerTip.text = drawerTip:CreateFontString(nil, "OVERLAY", FONT)
+drawerTip.text:SetPoint("TOPLEFT", drawerTip.title, "BOTTOMLEFT", 0, -3)
+drawerTip.text:SetTextColor(TEXT_CLR.r, TEXT_CLR.g, TEXT_CLR.b)
+drawerTip.text:SetJustifyH("LEFT")
+drawerTip.text:SetWidth(TOOLTIP_MAX_WIDTH - TOOLTIP_PAD * 2 - 4)
+drawerTip.text:SetSpacing(2)
+
+local originalDrawerToggle = nil
+
+function Tour:ShowDrawerHint()
+    local as = Orbit.db and Orbit.db.AccountSettings
+    if as and as.DrawerHintComplete then return end
+    if as and as.DrawerHintComplete == nil then as.DrawerHintComplete = false end
+    drawerTip.title:SetText(L.TOUR_EM_DRAWER_TITLE)
+    drawerTip.text:SetText(L.TOUR_EM_DRAWER_TEXT)
+    local textH = drawerTip.title:GetStringHeight() + 3 + drawerTip.text:GetStringHeight()
+    drawerTip:SetSize(TOOLTIP_MAX_WIDTH, textH + TOOLTIP_PAD * 2)
+    drawerTip:ClearAllPoints()
+    drawerTip:SetPoint("TOPLEFT", UIParent, "TOPLEFT", DRAWER_TIP_OFFSET_X, DRAWER_TIP_OFFSET_Y)
+    drawerTip:Show()
+    Tour.drawerHintActive = true
+    local DrawerUI = Orbit.Datatexts and Orbit.Datatexts.DrawerUI
+    if DrawerUI and not originalDrawerToggle then
+        originalDrawerToggle = DrawerUI.Toggle
+        DrawerUI.Toggle = function(self, ...)
+            originalDrawerToggle(self, ...)
+            Tour:HideDrawerHint(true)
+        end
+    end
+end
+
+function Tour:HideDrawerHint(markComplete)
+    drawerTip:Hide()
+    Tour.drawerHintActive = false
+    if markComplete and Orbit.db and Orbit.db.AccountSettings then
+        Orbit.db.AccountSettings.DrawerHintComplete = true
+    end
+    local DrawerUI = Orbit.Datatexts and Orbit.Datatexts.DrawerUI
+    if DrawerUI and originalDrawerToggle then
+        DrawerUI.Toggle = originalDrawerToggle
+        originalDrawerToggle = nil
+    end
+end
+
+-- [ EDIT MODE LIFECYCLE ] ---------------------------------------------------------------------------
+if EditModeManagerFrame then
+    EditModeManagerFrame:HookScript("OnShow", function()
+        if Tour.active then return end
+        local as = Orbit.db and Orbit.db.AccountSettings
+        if not as then return end
+        if as.CanvasHintComplete == false then Tour:ShowCanvasHint() end
+        if as.DrawerHintComplete == false then Tour:ShowDrawerHint() end
+    end)
+    EditModeManagerFrame:HookScript("OnHide", function()
+        if Tour.canvasHintActive then Tour:HideCanvasHint(false) end
+        if Tour.drawerHintActive then Tour:HideDrawerHint(false) end
+    end)
 end
 
 -- [ SLASH COMMAND (testing) ] -----------------------------------------------------------------------

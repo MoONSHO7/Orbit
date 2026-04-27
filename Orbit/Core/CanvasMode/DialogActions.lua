@@ -4,13 +4,28 @@ local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
 local LSM = LibStub("LibSharedMedia-3.0")
+local Levels = Orbit.Constants.Levels
 
 local CalculateAnchorWithWidthCompensation = OrbitEngine.PositionUtils.CalculateAnchorWithWidthCompensation
 local BuildAnchorPoint = OrbitEngine.PositionUtils.BuildAnchorPoint
 local BuildComponentSelfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor
 local NeedsEdgeCompensation = OrbitEngine.PositionUtils.NeedsEdgeCompensation
 local AnchorToCenter = OrbitEngine.PositionUtils.AnchorToCenter
+local AnchorOffsetsToFinal = OrbitEngine.PositionUtils.AnchorOffsetsToFinal
 
+local function BuildPositionRecord(comp, halfWidth, halfHeight)
+    local anchorX, anchorY, offsetX, offsetY, justifyH = comp.anchorX, comp.anchorY, comp.offsetX, comp.offsetY, comp.justifyH
+    if not anchorX then
+        local needsWidthComp = NeedsEdgeCompensation(comp.isFontString, comp.isAuraContainer)
+        anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchorWithWidthCompensation(
+            comp.posX or 0, comp.posY or 0, halfWidth, halfHeight, needsWidthComp,
+            comp:GetWidth(), comp:GetHeight(), comp.isAuraContainer)
+    end
+    local record = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, selfAnchorY = comp.selfAnchorY, posX = comp.posX or 0, posY = comp.posY or 0 }
+    if comp.pendingOverrides then record.overrides = comp.pendingOverrides
+    elseif comp.existingOverrides then record.overrides = comp.existingOverrides end
+    return record
+end
 
 -- [ APPLY ] -----------------------------------------------------------------------------------------
 function Dialog:Apply()
@@ -20,19 +35,20 @@ function Dialog:Apply()
     local halfWidth = self.previewFrame.sourceWidth / 2 - borderInset
     local halfHeight = self.previewFrame.sourceHeight / 2 - borderInset
     for key, comp in pairs(self.previewComponents) do
-        local anchorX, anchorY, offsetX, offsetY, justifyH = comp.anchorX, comp.anchorY, comp.offsetX, comp.offsetY, comp.justifyH
-        if not anchorX then
-            local needsWidthComp = NeedsEdgeCompensation(comp.isFontString, comp.isAuraContainer)
-            anchorX, anchorY, offsetX, offsetY, justifyH = CalculateAnchorWithWidthCompensation(comp.posX or 0, comp.posY or 0, halfWidth, halfHeight, needsWidthComp, comp:GetWidth(), comp:GetHeight(), comp.isAuraContainer)
-        end
-        positions[key] = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, selfAnchorY = comp.selfAnchorY, posX = comp.posX or 0, posY = comp.posY or 0 }
-        if comp.pendingOverrides then positions[key].overrides = comp.pendingOverrides
-        elseif comp.existingOverrides then positions[key].overrides = comp.existingOverrides end
+        positions[key] = BuildPositionRecord(comp, halfWidth, halfHeight)
         if key == "CastBar" then
             local subs = {}
             if comp.TextSub then subs.Text = { anchorX = comp.TextSub.anchorX, anchorY = comp.TextSub.anchorY, offsetX = comp.TextSub.offsetX, offsetY = comp.TextSub.offsetY, justifyH = comp.TextSub.justifyH } end
             if comp.TimerSub then subs.Timer = { anchorX = comp.TimerSub.anchorX, anchorY = comp.TimerSub.anchorY, offsetX = comp.TimerSub.offsetX, offsetY = comp.TimerSub.offsetY, justifyH = comp.TimerSub.justifyH } end
             if next(subs) then positions[key].subComponents = subs end
+        end
+    end
+    if self.dockComponents then
+        for key, dockIcon in pairs(self.dockComponents) do
+            local stored = dockIcon.storedDraggableComp
+            if stored and stored.anchorX and not positions[key] then
+                positions[key] = BuildPositionRecord(stored, halfWidth, halfHeight)
+            end
         end
     end
     local plugin = self.targetPlugin
@@ -105,9 +121,7 @@ function Dialog:ResetPositions()
             storedComp.posX, storedComp.posY = centerX, centerY
             storedComp.pendingOverrides, storedComp.existingOverrides = nil, nil
             local anchorPoint = BuildAnchorPoint(storedComp.anchorX, storedComp.anchorY)
-            local finalX, finalY
-            if storedComp.anchorX == "CENTER" then finalX = centerX else finalX = storedComp.offsetX; if storedComp.anchorX == "RIGHT" then finalX = -finalX end end
-            if storedComp.anchorY == "CENTER" then finalY = centerY else finalY = storedComp.offsetY; if storedComp.anchorY == "TOP" then finalY = -finalY end end
+            local finalX, finalY = AnchorOffsetsToFinal(storedComp.anchorX, storedComp.anchorY, storedComp.offsetX, storedComp.offsetY, centerX, centerY)
             storedComp:ClearAllPoints()
             storedComp.selfAnchorY = defaultPos and defaultPos.selfAnchorY or storedComp.anchorY
             local selfAnchor = BuildComponentSelfAnchor(storedComp.isFontString, storedComp.isAuraContainer, storedComp.selfAnchorY, storedComp.justifyH)
@@ -119,7 +133,7 @@ function Dialog:ResetPositions()
             if data and data.component then
                 local compData = { component = data.component, x = centerX, y = centerY, anchorX = defaultPos and defaultPos.anchorX or "CENTER", anchorY = defaultPos and defaultPos.anchorY or "CENTER", offsetX = defaultPos and defaultPos.offsetX or 0, offsetY = defaultPos and defaultPos.offsetY or 0, justifyH = defaultPos and defaultPos.justifyH or "CENTER" }
                 local comp = CanvasMode.CreateDraggableComponent(preview, key, data.component, centerX, centerY, compData)
-                if comp then comp:SetFrameLevel(preview:GetFrameLevel() + 10) end
+                if comp then comp:SetFrameLevel(preview:GetFrameLevel() + Levels.CanvasOverlay) end
                 self.previewComponents[key] = comp
             end
         end
@@ -162,9 +176,7 @@ function Dialog:ResetPositions()
             container.selfAnchorY = defaultPos.selfAnchorY or container.anchorY
             if container.isAuraContainer and container.RefreshAuraIcons then container:RefreshAuraIcons() end
             local anchorPoint = BuildAnchorPoint(container.anchorX, container.anchorY)
-            local finalX, finalY
-            if container.anchorX == "CENTER" then finalX = container.posX else finalX = container.offsetX; if container.anchorX == "RIGHT" then finalX = -finalX end end
-            if container.anchorY == "CENTER" then finalY = container.posY else finalY = container.offsetY; if container.anchorY == "TOP" then finalY = -finalY end end
+            local finalX, finalY = AnchorOffsetsToFinal(container.anchorX, container.anchorY, container.offsetX, container.offsetY, container.posX, container.posY)
             container:ClearAllPoints()
             local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, container.selfAnchorY, container.justifyH)
             container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)

@@ -107,6 +107,20 @@ function Transaction:GetPositions()
     return merged
 end
 
+function Transaction:StagePositionFromContainer(container)
+    if not active or not container or not container.key then return end
+    self:SetPosition(container.key, {
+        anchorX = container.anchorX,
+        anchorY = container.anchorY,
+        offsetX = container.offsetX,
+        offsetY = container.offsetY,
+        justifyH = container.justifyH,
+        selfAnchorY = container.selfAnchorY,
+        posX = container.posX,
+        posY = container.posY,
+    })
+end
+
 function Transaction:SetPositionOverride(compKey, overrideKey, value)
     if not active then return end
     if not pendingPositions[compKey] then
@@ -149,6 +163,7 @@ function Transaction:Commit()
 
     local savedPlugin = plugin
     self:Clear()
+    Orbit.EventBus:Fire("CANVAS_TRANSACTION_ENDED", savedPlugin, "commit")
 
     -- Trigger live frame + preview refresh
     if savedPlugin.OnCanvasApply then savedPlugin:OnCanvasApply() end
@@ -159,6 +174,7 @@ function Transaction:Rollback()
     if not active then return end
     local savedPlugin = plugin
     self:Clear()
+    Orbit.EventBus:Fire("CANVAS_TRANSACTION_ENDED", savedPlugin, "rollback")
     -- Restore all frames to their pre-edit state (live + preview)
     if savedPlugin and savedPlugin.ApplySettings then savedPlugin:ApplySettings() end
     if savedPlugin and savedPlugin.SchedulePreviewUpdate then savedPlugin:SchedulePreviewUpdate() end
@@ -167,6 +183,7 @@ end
 -- [ INTERNAL ] --------------------------------------------------------------------------------------
 function Transaction:Clear()
     active = false
+    if fireTimer and fireTimer.Cancel then fireTimer:Cancel() end
     fireTimer = nil
     plugin = nil
     systemIndex = nil
@@ -179,7 +196,7 @@ end
 function Transaction:FireChanged()
     if fireTimer then return end
     local p = plugin
-    fireTimer = C_Timer.After(FIRE_DEBOUNCE, function()
+    fireTimer = C_Timer.NewTimer(FIRE_DEBOUNCE, function()
         fireTimer = nil
         if active and p then Orbit.EventBus:Fire("CANVAS_SETTINGS_CHANGED", p) end
     end)

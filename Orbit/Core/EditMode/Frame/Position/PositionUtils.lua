@@ -230,6 +230,25 @@ function PositionUtils.AnchorToPosition(posX, posY, halfW, halfH, defaultPositio
     return defaultPosition or "Right"
 end
 
+-- [ FINAL OFFSET BUILDER ] --------------------------------------------------------------------------
+function PositionUtils.AnchorOffsetsToFinal(anchorX, anchorY, offsetX, offsetY, posX, posY)
+    local fx
+    if anchorX == "CENTER" then
+        fx = posX or 0
+    else
+        fx = offsetX or 0
+        if anchorX == "RIGHT" then fx = -fx end
+    end
+    local fy
+    if anchorY == "CENTER" then
+        fy = posY or 0
+    else
+        fy = offsetY or 0
+        if anchorY == "TOP" then fy = -fy end
+    end
+    return fx, fy
+end
+
 -- [ APPLY ICON POSITION ]----------------------------------------------------------------------------
 function PositionUtils.ApplyIconPosition(icon, parentFrame, pos)
     if not pos or not pos.anchorX then return end

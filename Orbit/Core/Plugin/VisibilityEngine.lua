@@ -47,6 +47,7 @@ local FRAME_REGISTRY = {
     { key = "PerformanceInfo",      display = "Performance Info",      plugin = "Performance Info",   index = 1 },
     { key = "CombatTimer",          display = "Combat Timer",          plugin = "Combat Timer",       index = 1 },
     { key = "Minimap",              display = "Minimap",               plugin = "Minimap",            index = 1 },
+    { key = "MinimapButton",        display = "Minimap Button",        plugin = "Minimap Button",     index = 1 },
     { key = "Datatexts",            display = "Datatexts",             plugin = "Datatexts",          index = 1 },
     { key = "ExperienceBar",        display = "XP / Rep Bar",          plugin = "Experience Bar",     index = 1 },
     { key = "HonorBar",             display = "Honor Bar",             plugin = "Honor Bar",          index = 1 },

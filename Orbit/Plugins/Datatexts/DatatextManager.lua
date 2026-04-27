@@ -72,6 +72,9 @@ function DatatextManager:SetLocked(locked)
             if datatext.frame.overlay then
                 if locked then datatext.frame.overlay:Hide() else datatext.frame.overlay:Show() end
             end
+            if datatext.frame.activeBg then
+                if locked then datatext.frame.activeBg:Hide() else datatext.frame.activeBg:Show() end
+            end
         end
     end
 end
@@ -96,6 +99,9 @@ function DatatextManager:PlaceDatatext(id, point, x, y, skipSave)
     end
     if f.overlay then
         if isLocked then f.overlay:Hide() else f.overlay:Show() end
+    end
+    if f.activeBg then
+        if isLocked then f.activeBg:Hide() else f.activeBg:Show() end
     end
     f:Show()
     self:EnableDatatext(id)
@@ -187,6 +193,7 @@ function DatatextManager:OnDatatextDragStop(datatextId)
     self:EnableDatatext(datatextId)
     if datatext.frame and datatext.frame.resizeHandle then datatext.frame.resizeHandle:Show() end
     if datatext.frame and datatext.frame.overlay then datatext.frame.overlay:Show() end
+    if datatext.frame and datatext.frame.activeBg then datatext.frame.activeBg:Show() end
     self:SavePositions()
     return false
 end

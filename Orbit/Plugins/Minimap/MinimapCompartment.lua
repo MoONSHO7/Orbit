@@ -496,7 +496,6 @@ function Plugin:ScanParentChildren(parent, collected, seen, seenSignatures, seen
                     local lower = frameName:lower()
                     isBlizzard = BLIZZARD_MINIMAP_CHILDREN[frameName]
                         or lower:find("^minimap") ~= nil
-                        or lower:find("^orbitminimap") ~= nil
                 end
                 local isPin = IsPinFrame(frameName)
                 local tooSmall = (child:GetWidth() or 0) < MIN_BUTTON_SIZE
@@ -547,9 +546,8 @@ function Plugin:CollectAddonButtons()
     --    (toggling between the two via LibDBIcon:Hide) aren't collected twice.
     local lib = LibStub and LibStub("LibDBIcon-1.0", true)
     if lib then
-        local ownButtonName = "Orbit"
         for name, button in pairs(lib.objects) do
-            if name ~= ownButtonName and button:IsShown() then
+            if button:IsShown() then
                 local displayName = NormalizeCompartmentDisplayName(name)
                 local icon = button.dataObject and button.dataObject.icon or nil
                 local signature = BuildCollectedButtonSignature(displayName, icon)

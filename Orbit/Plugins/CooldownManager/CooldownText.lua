@@ -218,24 +218,16 @@ function CDM:SetupCanvasPreview(anchor, systemIndex)
         local entry = VIEWER_MAP[systemIndex]
         if not entry or not entry.viewer then return nil end
 
-        -- Resolve dimensions from first visible icon or settings fallback
-        local w, h = nil, nil
-        for _, child in ipairs({ entry.viewer:GetChildren() }) do
-            if child:IsShown() and child.Icon then w, h = child:GetSize(); break end
-        end
-        if not w or not h then
-            local aspectRatio = plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
-            local iconSize = plugin:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
-            w, h = iconSize, iconSize
-            if aspectRatio == "16:9" then h = iconSize * (9 / 16)
-            elseif aspectRatio == "4:3" then h = iconSize * (3 / 4)
-            elseif aspectRatio == "21:9" then h = iconSize * (9 / 21) end
-        end
+        local aspectRatio = plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
+        local iconSize = plugin:GetSetting(systemIndex, "IconSize") or Constants.Cooldown.DefaultIconSize
+        local w, h = iconSize, iconSize
+        if aspectRatio == "16:9" then h = iconSize * (9 / 16)
+        elseif aspectRatio == "4:3" then h = iconSize * (3 / 4)
+        elseif aspectRatio == "21:9" then h = iconSize * (9 / 21) end
 
-        -- Resolve icon texture from first visible viewer child
         local iconTexture = FALLBACK_TEXTURE
         for _, child in ipairs({ entry.viewer:GetChildren() }) do
-            if child:IsShown() and child.Icon then
+            if child:IsShown() and child.Icon and child.Icon.GetTexture then
                 local tex = child.Icon:GetTexture()
                 if tex then iconTexture = tex; break end
             end

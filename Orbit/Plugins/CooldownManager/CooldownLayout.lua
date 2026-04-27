@@ -698,7 +698,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
     if bar.Name then
         bar.Name:SetShown(not nameDisabled)
         if not nameDisabled then
-            if not (ApplyTextPosition and nameData and ApplyTextPosition(bar.Name, item, nameData)) then
+            if not (ApplyTextPosition and nameData and ApplyTextPosition(bar.Name, bar, nameData)) then
                 bar.Name:ClearAllPoints()
                 bar.Name:SetPoint("LEFT", bar, "LEFT", textPad, 0)
                 bar.Name:SetPoint("RIGHT", bar.Duration or bar, "LEFT", -textPad, 0)
@@ -710,7 +710,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
     if bar.Duration then
         bar.Duration:SetShown(not timerDisabled)
         if not timerDisabled then
-            if not (ApplyTextPosition and timerData and ApplyTextPosition(bar.Duration, item, timerData)) then
+            if not (ApplyTextPosition and timerData and ApplyTextPosition(bar.Duration, bar, timerData)) then
                 bar.Duration:ClearAllPoints()
                 bar.Duration:SetPoint("RIGHT", bar, "RIGHT", -textPad, 0)
                 bar.Duration:SetJustifyH("RIGHT")

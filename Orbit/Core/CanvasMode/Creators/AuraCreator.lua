@@ -12,6 +12,7 @@ local DEFAULT_MAX_ICONS = 3
 local DEFAULT_MAX_ROWS = 2
 local DEFAULT_PARENT_WIDTH = 200
 local DEFAULT_PARENT_HEIGHT = 40
+local SKIN_SETTINGS = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false }
 local GetSpellbookIcon = function(auraType) return Orbit.AuraPreview.GetSpellbookIcon(auraType) end
 
 -- [ REFRESH LOGIC ]----------------------------------------------------------------------------------
@@ -51,8 +52,6 @@ local function RefreshAuraIcons(self)
 
     for _, btn in ipairs(self.auraIconPool) do btn:Hide() end
 
-    local skinSettings = { zoom = 0, borderStyle = 1, borderSize = 1, showTimer = false }
-
     local iconIndex = 0
     local col, row = 0, 0
     for i = 1, maxIcons do
@@ -73,7 +72,7 @@ local function RefreshAuraIcons(self)
         if not btn.Icon:GetTexture() then btn.Icon:SetTexture(GetSpellbookIcon(self.auraType)) end
 
         if Orbit.Skin and Orbit.Skin.Icons then
-            Orbit.Skin.Icons:ApplyCustom(btn, skinSettings)
+            Orbit.Skin.Icons:ApplyCustom(btn, SKIN_SETTINGS)
         end
 
         btn:ClearAllPoints()

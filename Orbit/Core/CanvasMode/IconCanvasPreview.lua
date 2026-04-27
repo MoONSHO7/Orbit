@@ -25,6 +25,7 @@ function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTextur
     preview.borderInset = borderPixels
     preview.previewScale = 1
     preview.components = {}
+    preview.fixedSize = true
 
     local icon = preview:CreateTexture(nil, "ARTWORK")
     icon:SetAllPoints()

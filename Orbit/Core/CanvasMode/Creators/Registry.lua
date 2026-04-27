@@ -21,6 +21,7 @@ local DEFAULT_PORTRAIT_SIZE = 32
 local FALLBACK_CONTAINER_WIDTH = 60
 local FALLBACK_CONTAINER_HEIGHT = 20
 local FALLBACK_GRAY = { 0.5, 0.5, 0.5, 0.5 }
+local TEXT_PADDING = 2
 
 CanvasMode.CreatorConstants = {
     BORDER_COLOR_IDLE = BORDER_COLOR_IDLE,
@@ -32,6 +33,7 @@ CanvasMode.CreatorConstants = {
     FALLBACK_CONTAINER_WIDTH = FALLBACK_CONTAINER_WIDTH,
     FALLBACK_CONTAINER_HEIGHT = FALLBACK_CONTAINER_HEIGHT,
     FALLBACK_GRAY = FALLBACK_GRAY,
+    TEXT_PADDING = TEXT_PADDING,
 }
 
 -- [ SHARED HELPERS ]---------------------------------------------------------------------------------
@@ -66,7 +68,13 @@ local function ApplyTextAlignment(container, visual, justifyH)
         justifyH = "CENTER"
     end
     visual:ClearAllPoints()
-    visual:SetPoint(justifyH, container, justifyH, 0, 0)
+    if justifyH == "LEFT" then
+        visual:SetPoint("LEFT", container, "LEFT", TEXT_PADDING, 0)
+    elseif justifyH == "RIGHT" then
+        visual:SetPoint("RIGHT", container, "RIGHT", -TEXT_PADDING, 0)
+    else
+        visual:SetPoint("CENTER", container, "CENTER", 0, 0)
+    end
     visual:SetJustifyH(justifyH)
 end
 
