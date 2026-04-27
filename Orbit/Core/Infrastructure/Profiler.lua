@@ -26,6 +26,18 @@ function Profiler:Start()
     Orbit:Print("[Profiler] Started. Tracking EventBus cycles...")
 end
 
+-- Returns start-tick if profiler is active, nil otherwise. Pair with Profiler:Stop(context, name, start).
+function Profiler:Begin()
+    if not self.active then return nil end
+    return debugprofilestop()
+end
+
+-- Pairs with :Begin(). No-op when start is nil (profiler off when work began).
+function Profiler:End(context, sourceName, start)
+    if not start or not self.active then return end
+    self:RecordContext(context, sourceName, debugprofilestop() - start)
+end
+
 function Profiler:RecordContext(context, sourceName, elapsedMs)
     if not self.active or not context then return end
     

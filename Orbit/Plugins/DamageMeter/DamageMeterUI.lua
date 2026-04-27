@@ -22,6 +22,7 @@ local VIEW_TIMEOUT_SECONDS = DM.ViewTimeoutSeconds
 local NAME_AFTER_RANK_PAD = DM.NameAfterRankPad
 local DPS_AFTER_TOTAL_PAD = DM.DpsAfterTotalPad
 local BACKDROP_ALPHA = DM.BackdropAlpha
+local EMPTY_HOVER_ALPHA = 0.5
 
 local Plugin = Orbit:GetPlugin(DM.SystemID)
 if not Plugin then return end
@@ -178,17 +179,22 @@ local function BarUnderCursor(frame)
     return nil
 end
 
+-- Cached: invalidated by SessionUpdated/SessionReset since session entries don't mutate after registration.
+local _historyCache = nil
+local function InvalidateHistoryCache() _historyCache = nil end
+
+local function HistorySortDesc(a, b) return a.sessionID > b.sessionID end
+
 local function BuildHistoryEntries()
+    if _historyCache then return _historyCache end
     local entries = {
         { kind = "type", sessionType = DM.SessionType.Current, name = L.PLU_DM_SESSION_CURRENT, durationSeconds = nil },
         { kind = "type", sessionType = DM.SessionType.Overall, name = L.PLU_DM_SESSION_OVERALL, durationSeconds = nil },
     }
-    -- Data adapter gates on C_DamageMeter availability; Blizzard_DamageMeter can be lazily loaded.
-    -- sessionID is an integer assigned by Blizzard's combat session registry; not secret.
     local sessions = OrbitEngine.DamageMeterData:GetAvailableSessions()
     local sorted = {}
     for i = 1, #sessions do sorted[i] = sessions[i] end
-    table.sort(sorted, function(a, b) return a.sessionID > b.sessionID end)
+    table.sort(sorted, HistorySortDesc)
     for i = 1, #sorted do
         local s = sorted[i]
         entries[#entries + 1] = {
@@ -198,6 +204,7 @@ local function BuildHistoryEntries()
             durationSeconds = s.durationSeconds,
         }
     end
+    _historyCache = entries
     return entries
 end
 
@@ -474,29 +481,29 @@ local function RefreshTitle(frame, def)
     local title = frame._title
     local mode = def.title
     local rect = frame._visibleRect
-    if mode == TITLE.Off or not rect:IsShown() then
+    if mode == TITLE.Off then
         title:Hide()
         return
     end
     title:SetText(BuildTitleText(def))
     title:SetWordWrap(false)
     title:SetNonSpaceWrap(false)
-    -- Cap width to the visible rect so overflowing titles render as "Damage: Curren..." instead of spilling past the frame.
-    local rectWidth = rect:GetWidth()
-    if rectWidth and rectWidth > 0 then title:SetWidth(rectWidth) end
+    -- Release any previous width cap so the FS auto-sizes; the corner anchor below positions it.
+    title:SetWidth(0)
     title:ClearAllPoints()
     if mode == TITLE.TopLeft then
-        title:SetPoint("BOTTOMLEFT",  rect, "TOPLEFT",    0,  TITLE_GAP)
-        title:SetJustifyH("LEFT")
+        title:SetPoint("BOTTOMLEFT",  rect, "TOPLEFT",     0,  TITLE_GAP)
     elseif mode == TITLE.TopRight then
-        title:SetPoint("BOTTOMRIGHT", rect, "TOPRIGHT",   0,  TITLE_GAP)
-        title:SetJustifyH("RIGHT")
+        title:SetPoint("BOTTOMRIGHT", rect, "TOPRIGHT",    0,  TITLE_GAP)
     elseif mode == TITLE.BottomLeft then
-        title:SetPoint("TOPLEFT",     rect, "BOTTOMLEFT", 0, -TITLE_GAP)
-        title:SetJustifyH("LEFT")
+        title:SetPoint("TOPLEFT",     rect, "BOTTOMLEFT",  0, -TITLE_GAP)
     else
-        title:SetPoint("TOPRIGHT",    rect, "BOTTOMRIGHT",0, -TITLE_GAP)
-        title:SetJustifyH("RIGHT")
+        title:SetPoint("TOPRIGHT",    rect, "BOTTOMRIGHT", 0, -TITLE_GAP)
+    end
+    -- Re-cap to rect width only if natural text overflows, so long titles still truncate to "Damage: Curren...".
+    local rectWidth = rect:GetWidth()
+    if rectWidth and rectWidth > 0 and title:GetStringWidth() > rectWidth then
+        title:SetWidth(rectWidth)
     end
     title:Show()
 end
@@ -577,15 +584,16 @@ end
 
 local function UpdateVisibleRect(frame, def, visibleCount)
     local rect = frame._visibleRect
-    if not visibleCount or visibleCount <= 0 then
-        rect:Hide()
-        return
-    end
-    local rectHeight = visibleCount * def.barHeight + math.max(0, visibleCount - 1) * def.barGap
+    local empty = not visibleCount or visibleCount <= 0
+    -- Empty state: stretch to full barCount and let OnEnter/OnLeave drive alpha for hover-only reveal.
+    local rows = empty and def.barCount or visibleCount
+    local rectHeight = rows * def.barHeight + math.max(0, rows - 1) * def.barGap
     rect:ClearAllPoints()
     rect:SetPoint("TOPLEFT",     frame, "TOPLEFT",   0,  0)
     rect:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT",  0, -rectHeight)
     rect:Show()
+    frame._isEmpty = empty
+    rect:SetAlpha(empty and (frame:IsMouseOver() and EMPTY_HOVER_ALPHA or 0) or 1)
 end
 
 local function RefreshBorders(frame, def)
@@ -766,6 +774,12 @@ local function BuildMeterFrame(id, def)
                 Plugin:ReturnToChart(id)
             end
         end
+    end)
+    frame:SetScript("OnEnter", function(self)
+        if self._isEmpty then self._visibleRect:SetAlpha(EMPTY_HOVER_ALPHA) end
+    end)
+    frame:SetScript("OnLeave", function(self)
+        if self._isEmpty then self._visibleRect:SetAlpha(0) end
     end)
     frame:SetScript("OnMouseWheel", function(self, delta)
         self._lastInteraction = GetTime()
@@ -1163,6 +1177,14 @@ local function PaintBar(bar, rank, source, maxAmount, iconPosition, positions, m
     bar:Show()
 end
 
+-- metricOverride lets breakdown rows resolve color as friendly casters of a hostile metric.
+local function PaintRow(bar, rank, source, maxAmount, iconPosition, positions, disabled, meterType, metricOverride)
+    PaintBar(bar, rank, source, maxAmount, iconPosition, positions, metricOverride or meterType)
+    PostProcessDiscrete(bar, source, meterType, positions, disabled)
+end
+
+local _breakdownSource = { name = nil, classFilename = nil, specIconID = nil, totalAmount = nil, amountPerSecond = nil }
+
 function RenderFrame(id)
     local frame = meters[id]
     if not frame then return end
@@ -1175,11 +1197,6 @@ function RenderFrame(id)
     local iconPosition = def.iconPosition
     local positions, disabled = GetCanvasStateForMeter(def, def.id)
     local meterType = def.meterType
-    -- metricOverride flips the color-resolution perspective (breakdown rows represent friendly casters).
-    local function Paint(bar, rank, source, maxAmount, metricOverride)
-        PaintBar(bar, rank, source, maxAmount, iconPosition, positions, metricOverride or meterType)
-        PostProcessDiscrete(bar, source, meterType, positions, disabled)
-    end
 
     if InEditMode() then
         local dummies = HOSTILE_SOURCE_METRICS[meterType] and NPC_DUMMY_SOURCES or GetPreviewRoster()
@@ -1187,7 +1204,7 @@ function RenderFrame(id)
             local bar = frame.bars[i]
             if not bar then break end
             local source = dummies[((i - 1) % #dummies) + 1]
-            Paint(bar, i, source, DUMMY_MAX)
+            PaintRow(bar, i, source, DUMMY_MAX, iconPosition, positions, disabled, meterType)
         end
         for i = count + 1, #frame.bars do frame.bars[i]:Hide() end
         SetFrameHeightForVisible(frame, def, count)
@@ -1275,14 +1292,14 @@ function RenderFrame(id)
                     if not rowName or rowName == "" then rowName = "?" end
                     rowClass = fallbackClass
                 end
+                _breakdownSource.name            = rowName
+                _breakdownSource.classFilename   = rowClass
+                _breakdownSource.specIconID      = iconID
+                _breakdownSource.totalAmount     = spell.totalAmount
+                _breakdownSource.amountPerSecond = spell.amountPerSecond
+                PaintRow(bar, offset + i, _breakdownSource, spellMax, iconPosition, positions, disabled, meterType, metricForBreakdown)
+                -- Repoint past PaintBar's bar._source = _breakdownSource (shared mutable) to the per-spell entry.
                 bar._source = spell
-                Paint(bar, offset + i, {
-                    name            = rowName,
-                    classFilename   = rowClass,
-                    specIconID      = iconID,
-                    totalAmount     = spell.totalAmount,
-                    amountPerSecond = spell.amountPerSecond,
-                }, spellMax, metricForBreakdown)
                 visibleCount = i
             else
                 bar:Hide()
@@ -1302,7 +1319,7 @@ function RenderFrame(id)
         if not bar then break end
         local source = sources[offset + i]
         if source then
-            Paint(bar, offset + i, source, maxAmount)
+            PaintRow(bar, offset + i, source, maxAmount, iconPosition, positions, disabled, meterType)
             visibleCount = i
         else
             bar:Hide()
@@ -1425,9 +1442,13 @@ end
 function Plugin:InitUI()
     RegisterComponentSchemas()
 
-    Orbit.EventBus:On(SIGNAL.CurrentUpdated, function() self:RenderAllMeters() end, self)
-    Orbit.EventBus:On(SIGNAL.SessionUpdated, function() self:RenderAllMeters() end, self)
+    -- Coalesce CurrentUpdated/SessionUpdated bursts into a single render per UITicker cycle.
+    -- Blizzard's session updater fires both signals many times per second during combat; the
+    -- ticker collapses them at DM.UITickerSeconds cadence, dropping ~35k renders/min to ~120.
+    Orbit.EventBus:On(SIGNAL.CurrentUpdated, function() self._renderDirty = true end, self)
+    Orbit.EventBus:On(SIGNAL.SessionUpdated, function() InvalidateHistoryCache(); self._renderDirty = true end, self)
     Orbit.EventBus:On(SIGNAL.SessionReset, function()
+        InvalidateHistoryCache()
         for id, frame in pairs(meters) do RenderEmpty(frame, self:GetMeterDef(id)) end
     end, self)
 
@@ -1436,10 +1457,11 @@ function Plugin:InitUI()
     }, self)
 
     if self._uiTicker then self._uiTicker:Cancel() end
-    -- Render on tick alongside the view-timeout check: event-driven renders miss ticker-driven
-    -- state changes (view-mode auto-exit) that must repaint even when the data pipeline is quiet.
     self._uiTicker = C_Timer.NewTicker(DM.UITickerSeconds, function()
         self:CheckViewTimeouts()
-        self:RenderAllMeters()
+        if self._renderDirty then
+            self._renderDirty = false
+            self:RenderAllMeters()
+        end
     end)
 end

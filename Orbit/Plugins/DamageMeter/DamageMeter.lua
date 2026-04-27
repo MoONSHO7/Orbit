@@ -138,19 +138,9 @@ local function EnsureBlizzardAddonLoaded()
     C_AddOns.LoadAddOn("Blizzard_DamageMeter")
 end
 
-local function EnsureCvarEnabled()
+local function EnsureCvarDisabled()
     if InCombatLockdown() then return end
-    if GetCVar("damageMeterEnabled") ~= "1" then SetCVar("damageMeterEnabled", "1") end
-end
-
--- Blizzard's data pipeline stays inert until a session window is opened once; the hidden one suffices.
-local function EnsureSessionWindowShown()
-    local frame = _G.DamageMeter
-    if not frame or InCombatLockdown() then return end
-    Orbit.db.AccountSettings = Orbit.db.AccountSettings or {}
-    if Orbit.db.AccountSettings.DamageMeterFirstShown then return end
-    if frame:CanShowNewSecondarySessionWindow() then frame:ShowNewSecondarySessionWindow() end
-    Orbit.db.AccountSettings.DamageMeterFirstShown = true
+    if GetCVar("damageMeterEnabled") ~= "0" then SetCVar("damageMeterEnabled", "0") end
 end
 
 -- [ METER DEF FACTORY ] -----------------------------------------------------------------------------
@@ -440,7 +430,7 @@ end
 -- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     EnsureBlizzardAddonLoaded()
-    EnsureCvarEnabled()
+    EnsureCvarDisabled()
 
     self:InitEventBridge()
     self:InitUI()
@@ -474,11 +464,8 @@ function Plugin:OnLoad()
     -- Blizzard_DamageMeter can load after our OnLoad, so re-prime the pipeline on each world entry.
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
         EnsureBlizzardAddonLoaded()
-        EnsureCvarEnabled()
-        C_Timer.After(0.5, function()
-            EnsureSessionWindowShown()
-            self:DisableBlizzardMeter()
-        end)
+        EnsureCvarDisabled()
+        C_Timer.After(0.5, function() self:DisableBlizzardMeter() end)
     end, self)
 
     self:RegisterVisibilityEvents()

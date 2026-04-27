@@ -31,6 +31,16 @@ function Mixin.SetBackgroundAlpha(frame, alpha)
     end
 end
 
+-- Resolves the out-of-range alpha from the plugin's tier setting (Group Frames) and falls back to the global constant for plugins without tiers (Boss Frames).
+local function ResolveOutOfRangeAlpha(frame)
+    local plugin = frame.orbitPlugin
+    if plugin and plugin.GetTierSetting then
+        local opacity = plugin:GetTierSetting("OutOfRangeOpacity")
+        if opacity then return opacity / 100 end
+    end
+    return GF.OutOfRangeAlpha
+end
+
 function Mixin.UpdateInRange(frame)
     if not frame or not frame.unit then return end
     if not UnitExists(frame.unit) then frame:SetAlpha(0); return end
@@ -41,11 +51,12 @@ function Mixin.UpdateInRange(frame)
         frame:SetAlpha(GF.OfflineAlpha)
         Mixin.SetBackgroundAlpha(frame, 1)
     elseif UnitPhaseReason(frame.unit) then
-        frame:SetAlpha(GF.OutOfRangeAlpha)
+        frame:SetAlpha(ResolveOutOfRangeAlpha(frame))
         Mixin.SetBackgroundAlpha(frame, 1)
     else
         local inRangeValue = UnitInRange(frame.unit)
-        frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(inRangeValue, 1, GF.OutOfRangeAlpha))
+        local oorAlpha = ResolveOutOfRangeAlpha(frame)
+        frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(inRangeValue, 1, oorAlpha))
         Mixin.SetBackgroundAlpha(frame, C_CurveUtil.EvaluateColorValueFromBoolean(inRangeValue, 1, 0))
     end
     if frame.ApplyHealthColor then frame:ApplyHealthColor() end

@@ -1022,12 +1022,15 @@ function Bar:StartCursorWatcher(plugin, frame)
     watcher:SetScript("OnUpdate", function(self)
         local record = plugin:GetContainerRecord(frame.recordId)
         if not record then return end
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
         local isEmpty = not record.payload or not record.payload.id
         local now = plugin:ShouldShowDropHints(isEmpty)
         if now ~= self._wasShowing then
             self._wasShowing = now
             Bar:RefreshSpellState(plugin, frame, record)
         end
+        if p then p:End(plugin, "CursorWatcher", s) end
     end)
     frame._cursorWatcher = watcher
 end

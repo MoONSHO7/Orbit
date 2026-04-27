@@ -184,6 +184,20 @@ function CDM:MonitorViewers()
     frame:RegisterUnitEvent("UNIT_AURA", "player")
     frame:RegisterEvent("PLAYER_REGEN_DISABLED")
     frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+
+    local function OOCUpdate()
+        if not (oocThrottled and oocDirty) then return end
+        local now = GetTime()
+        if now < oocNextUpdate then return end
+        oocNextUpdate = now + OOC_THROTTLE_INTERVAL
+        oocDirty = false
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
+        CheckAll()
+        CheckPandemicIfDirty()
+        if p then p:End(plugin, "OOCThrottle", s) end
+    end
+
     frame:SetScript("OnEvent", function(_, event, unit)
         if event == "UNIT_AURA" then
             if unit == "player" then
@@ -202,29 +216,20 @@ function CDM:MonitorViewers()
         if inCombat then
             oocThrottled = false
             oocDirty = false
+            frame:SetScript("OnUpdate", nil)
             if plugin._oocThrottleTimer then plugin._oocThrottleTimer:Cancel(); plugin._oocThrottleTimer = nil end
         else
             plugin._oocThrottleTimer = C_Timer.NewTimer(OOC_THROTTLE_DELAY, function()
                 oocThrottled = true
                 oocNextUpdate = 0
                 plugin._oocThrottleTimer = nil
+                frame:SetScript("OnUpdate", OOCUpdate)
             end)
         end
         pandemicDirty = true
         CheckAll()
         CheckPandemicIfDirty()
         if not inCombat then plugin:PreSizeAnchors() end
-    end)
-    frame:SetScript("OnUpdate", function()
-        if oocThrottled and oocDirty then
-            local now = GetTime()
-            if now >= oocNextUpdate then
-                oocNextUpdate = now + OOC_THROTTLE_INTERVAL
-                oocDirty = false
-                CheckAll()
-                CheckPandemicIfDirty()
-            end
-        end
     end)
     self._monitorEventFrame = frame
 end

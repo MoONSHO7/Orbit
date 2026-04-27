@@ -355,7 +355,10 @@ function Plugin:RefreshOnUpdate()
         Frame.elapsed = (Frame.elapsed or 0) + elapsed
         if Frame.elapsed >= UPDATE_INTERVAL then
             Frame.elapsed = 0
+            local p = Orbit.Profiler
+            local s = p and p:Begin()
             self:UpdateAll()
+            if p then p:End(self, "OnUpdate", s) end
         end
     end or nil)
 end

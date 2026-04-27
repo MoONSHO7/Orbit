@@ -61,23 +61,20 @@ function Mixin:CreateSecondaryPlugin(config)
     local plugin = self
     local originalOnEvent = self.frame:GetScript("OnEvent")
     self.frame:SetScript("OnEvent", function(f, event, unit, ...)
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
         if event == config.changeEvent or (event == "UNIT_TARGET" and unit == config.parentUnit) then
             if plugin:IsEnabled() then f:UpdateAll() end
-            return
-        end
-        if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
+        elseif event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
             if UnitExists(config.unit) then f:UpdateHealth(); f:UpdateHealthText() end
-            return
-        end
-        if event == "PET_BATTLE_OPENING_START" or event == "UNIT_ENTERED_VEHICLE" then
+        elseif event == "PET_BATTLE_OPENING_START" or event == "UNIT_ENTERED_VEHICLE" then
             Orbit:SafeAction(function() f:Hide() end)
-            return
-        end
-        if event == "PET_BATTLE_CLOSE" or event == "UNIT_EXITED_VEHICLE" then
+        elseif event == "PET_BATTLE_CLOSE" or event == "UNIT_EXITED_VEHICLE" then
             plugin:ApplySettings(f)
-            return
+        elseif originalOnEvent then
+            originalOnEvent(f, event, unit, ...)
         end
-        if originalOnEvent then originalOnEvent(f, event, unit, ...) end
+        if p then p:End(plugin, event, s) end
     end)
 
     self:ApplySettings(self.frame)

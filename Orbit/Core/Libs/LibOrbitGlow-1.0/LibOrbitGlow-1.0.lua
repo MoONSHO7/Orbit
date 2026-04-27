@@ -1,5 +1,5 @@
 local MAJOR_VERSION = "LibOrbitGlow-1.0"
-local MINOR_VERSION = 5
+local MINOR_VERSION = 6
 local lib = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
 
@@ -18,6 +18,9 @@ local DEFAULT_PIXEL_PERIOD = 4
 local DEFAULT_PIXEL_THICKNESS = 2
 local PIXEL_BORDER_COLOR = { 0.05, 0.05, 0.05, 0.85 }
 local PIXEL_FREQ_SCALAR = 0.25
+-- Negative frequency = period multiplier `1 + |freq| * SLOWDOWN_SCALAR` over the engine baseline.
+-- Same scalar across engines so slider position has consistent relative meaning between Pixel/Autocast.
+local FREQ_SLOWDOWN_SCALAR = 8
 local PIXEL_LENGTH_SCALAR = 3
 local PIXEL_LENGTH_FACTOR = 0.1
 local BUTTON_SCALE = 1.4
@@ -39,6 +42,14 @@ local TARGET_FRAME_TIME = 1 / 60 -- Lock math evaluation to maximum of 60 FPS
 -- [ UTILITIES ] ---------------------------------------------------------------
 local function Snap(val)
     return math.floor(val + 0.5)
+end
+
+-- Resolves animation period from frequency. Positive = faster than baseline (period = posScalar/freq),
+-- zero/nil = baseline, negative = slower (period = baseline * (1 + |freq| * FREQ_SLOWDOWN_SCALAR)).
+local function ResolvePeriod(freq, baseline, posScalar)
+    if not freq or freq == 0 then return baseline end
+    if freq > 0 then return posScalar / freq end
+    return baseline * (1 + -freq * FREQ_SLOWDOWN_SCALAR)
 end
 
 local function GetColorRGBA(colorTable)
@@ -350,7 +361,7 @@ function lib.Autocast:Show(frame, options)
         return
     end
     local N = options.particles or DEFAULT_AUTOCAST_PARTICLES
-    local period = options.frequency and (options.frequency ~= 0 and 1 / math.abs(options.frequency) or DEFAULT_AUTOCAST_PERIOD) or DEFAULT_AUTOCAST_PERIOD
+    local period = ResolvePeriod(options.frequency, DEFAULT_AUTOCAST_PERIOD, 1)
     local scale = options.scale or 1
     local xOffset = options.xOffset or 0
     local yOffset = options.yOffset or 0
@@ -658,7 +669,7 @@ function lib.Pixel:Show(frame, options)
         return
     end
     local N = options.lines or DEFAULT_PIXEL_LINES
-    local period = options.frequency and (options.frequency > 0 and PIXEL_FREQ_SCALAR / options.frequency or DEFAULT_PIXEL_PERIOD) or DEFAULT_PIXEL_PERIOD
+    local period = ResolvePeriod(options.frequency, DEFAULT_PIXEL_PERIOD, PIXEL_FREQ_SCALAR)
     local th = options.thickness or DEFAULT_PIXEL_THICKNESS
     local xOffset = options.xOffset or 0
     local yOffset = options.yOffset or 0

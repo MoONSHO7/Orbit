@@ -134,9 +134,9 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
     end
 
     -- Per-axis Blizzard grid + UIParent edges. These correspond to the red magnetism preview lines.
-    -- If a red line is showing, the user's expectation is to drop on it — so UIParent/grid candidates
-    -- override any frame-to-frame snap on that axis when within blizRange. Anchor candidates on the
-    -- overridden axis are cleared so Drag.lua doesn't pull the frame back to an edge target.
+    -- Frame-to-frame anchor candidates take priority: an axis with an anchor candidate is locked to
+    -- the anchor and the grid/UIParent fallback is skipped on that axis. Where no anchor candidate
+    -- exists, the grid/UIParent candidate (if within blizRange) wins over a tighter alignment match.
     if EditModeManagerFrame and EditModeManagerFrame:IsShown()
         and EditModeManagerFrame.IsSnapEnabled and EditModeManagerFrame:IsSnapEnabled() then
         local blizRange = (EditModeMagnetismManager and EditModeMagnetismManager.magnetismRange) or 8
@@ -148,54 +148,54 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
         local uiCX, uiCY = (uiL + uiR) / 2, (uiB + uiT) / 2
         local gridLines = EditModeMagnetismManager and EditModeMagnetismManager.magneticGridLines
 
-        local bestX, bestXDiff = nil, blizRange + 1
-        local function offerX(diff)
-            local abs = math.abs(diff)
-            if abs <= blizRange and abs < bestXDiff then
-                bestXDiff = abs
-                bestX = diff
+        if not anchorCandidateX_Target then
+            local bestX, bestXDiff = nil, blizRange + 1
+            local function offerX(diff)
+                local abs = math.abs(diff)
+                if abs <= blizRange and abs < bestXDiff then
+                    bestXDiff = abs
+                    bestX = diff
+                end
             end
-        end
-        offerX(uiL - parentLeft)
-        offerX(uiR - parentRight)
-        offerX(uiCX - parentCenterX)
-        if gridLines and gridLines.vertical then
-            for _, offset in pairs(gridLines.vertical) do
-                local screenX = offset * uiScale
-                offerX(screenX - parentLeft)
-                offerX(screenX - parentRight)
-                offerX(screenX - parentCenterX)
+            offerX(uiL - parentLeft)
+            offerX(uiR - parentRight)
+            offerX(uiCX - parentCenterX)
+            if gridLines and gridLines.vertical then
+                for _, offset in pairs(gridLines.vertical) do
+                    local screenX = offset * uiScale
+                    offerX(screenX - parentLeft)
+                    offerX(screenX - parentRight)
+                    offerX(screenX - parentCenterX)
+                end
             end
-        end
-        if bestX then
-            closestX = bestX
-            anchorCandidateX_Target = nil
-            anchorCandidateX_Edge = nil
+            if bestX then
+                closestX = bestX
+            end
         end
 
-        local bestY, bestYDiff = nil, blizRange + 1
-        local function offerY(diff)
-            local abs = math.abs(diff)
-            if abs <= blizRange and abs < bestYDiff then
-                bestYDiff = abs
-                bestY = diff
+        if not anchorCandidateY_Target then
+            local bestY, bestYDiff = nil, blizRange + 1
+            local function offerY(diff)
+                local abs = math.abs(diff)
+                if abs <= blizRange and abs < bestYDiff then
+                    bestYDiff = abs
+                    bestY = diff
+                end
             end
-        end
-        offerY(uiB - parentBottom)
-        offerY(uiT - parentTop)
-        offerY(uiCY - parentCenterY)
-        if gridLines and gridLines.horizontal then
-            for _, offset in pairs(gridLines.horizontal) do
-                local screenY = offset * uiScale
-                offerY(screenY - parentBottom)
-                offerY(screenY - parentTop)
-                offerY(screenY - parentCenterY)
+            offerY(uiB - parentBottom)
+            offerY(uiT - parentTop)
+            offerY(uiCY - parentCenterY)
+            if gridLines and gridLines.horizontal then
+                for _, offset in pairs(gridLines.horizontal) do
+                    local screenY = offset * uiScale
+                    offerY(screenY - parentBottom)
+                    offerY(screenY - parentTop)
+                    offerY(screenY - parentCenterY)
+                end
             end
-        end
-        if bestY then
-            closestY = bestY
-            anchorCandidateY_Target = nil
-            anchorCandidateY_Edge = nil
+            if bestY then
+                closestY = bestY
+            end
         end
     end
 

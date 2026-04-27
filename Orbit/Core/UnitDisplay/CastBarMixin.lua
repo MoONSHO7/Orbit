@@ -202,7 +202,6 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
                 default = 200,
             })
         end
-        table.insert(schema.controls, { type = "checkbox", key = "CastBarText", label = "Show Spell Name", default = true })
         -- Migrate legacy boolean CastBarIcon (true = Left/1, false = Off/2) to numeric slider value.
         local storedIconPos = self:GetSetting(systemIndex, "CastBarIcon")
         if type(storedIconPos) == "boolean" then
@@ -221,6 +220,7 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
                 self:ApplySettings(systemFrame)
             end,
         })
+        table.insert(schema.controls, { type = "checkbox", key = "CastBarText", label = "Show Spell Name", default = true })
         table.insert(schema.controls, { type = "checkbox", key = "CastBarTimer", label = "Show Timer", default = true })
     elseif currentTab == "Colour" then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
@@ -301,15 +301,15 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
             color = color,
             borderSize = borderSize,
             textSize = textSize,
-            showText = showText,
             showIcon = showIcon,
             iconAtEnd = iconPos == 3,
-            showTimer = showTimer,
             font = fontName,
             textColor = { r = 1, g = 1, b = 1, a = 1 },
             backdropColor = backdropColor,
             sparkColor = sparkColor,
         })
+        if bar.Text then bar.Text:SetShown(showText ~= false) end
+        if bar.Timer then bar.Timer:SetShown(showTimer ~= false) end
     end
     -- Sync protected overlay texture and color
     if bar.protectedOverlay then

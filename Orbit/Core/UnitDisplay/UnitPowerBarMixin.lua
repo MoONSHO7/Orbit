@@ -142,7 +142,12 @@ function Mixin:CreatePowerBarPlugin(config)
     Frame:RegisterEvent(config.changeEvent)
     Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
-    Frame:SetScript("OnEvent", function() self:UpdateAll() end)
+    Frame:SetScript("OnEvent", function(_, event)
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
+        self:UpdateAll()
+        if p then p:End(self, event, s) end
+    end)
     Frame:HookScript("OnShow", function() self:UpdateAll() end)
 
     OrbitEngine.EditMode:RegisterEnterCallback(function() self:UpdateVisibility() end, self)

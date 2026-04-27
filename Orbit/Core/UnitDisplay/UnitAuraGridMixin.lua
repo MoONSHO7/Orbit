@@ -164,11 +164,70 @@ local function CropIconTexture(iconFrame, w, h)
     tex:SetTexCoord(trim, 1 - trim, trim + crop, 1 - trim - crop)
 end
 
+-- [ AURA STATE ] ------------------------------------------------------------------------------------
+local function EnsureAuraState(Frame)
+    local state = Frame._auraState
+    if state then return state end
+    state = { data = {}, displayIDs = {} }
+    Frame._auraState = state
+    return state
+end
+
+local function FullRefreshAuraCache(Frame, cfg)
+    local state = EnsureAuraState(Frame)
+    wipe(state.data)
+    if not cfg.unit or not UnitExists(cfg.unit) then return end
+    local kind = cfg.isHarmful and "HARMFUL" or "HELPFUL"
+    local fresh = C_UnitAuras.GetUnitAuras(cfg.unit, kind)
+    if not fresh then return end
+    for i = 1, #fresh do
+        local aura = fresh[i]
+        if aura.auraInstanceID then state.data[aura.auraInstanceID] = aura end
+    end
+end
+
+local function PatchAuraCache(Frame, cfg, updateInfo)
+    local state = Frame._auraState
+    if not state then return false end
+    local data = state.data
+    local dirField = cfg.isHarmful and "isHarmful" or "isHelpful"
+    local touched = false
+    if updateInfo.addedAuras then
+        for _, aura in ipairs(updateInfo.addedAuras) do
+            local id = aura.auraInstanceID
+            if id and aura[dirField] then
+                data[id] = aura
+                touched = true
+            end
+        end
+    end
+    if updateInfo.updatedAuraInstanceIDs then
+        for _, id in ipairs(updateInfo.updatedAuraInstanceIDs) do
+            if data[id] then
+                data[id] = C_UnitAuras.GetAuraDataByAuraInstanceID(cfg.unit, id)
+                touched = true
+            end
+        end
+    end
+    if updateInfo.removedAuraInstanceIDs then
+        for _, id in ipairs(updateInfo.removedAuraInstanceIDs) do
+            if data[id] then
+                data[id] = nil
+                touched = true
+            end
+        end
+    end
+    return touched
+end
+
 -- Export file-local helpers so UnitAuraGridReparenting.lua can reach them without duplication.
 Mixin._Internal = {
     ResolveGrowthDirection = ResolveGrowthDirection,
     UpdateCollapseArrow = UpdateCollapseArrow,
     CropIconTexture = CropIconTexture,
+    EnsureAuraState = EnsureAuraState,
+    FullRefreshAuraCache = FullRefreshAuraCache,
+    PatchAuraCache = PatchAuraCache,
 }
 
 -- [ SETTINGS UI ]------------------------------------------------------------------------------------
@@ -429,8 +488,11 @@ function Mixin:CreateAuraGridPlugin(config)
         Frame:RegisterEvent("PLAYER_ENTERING_WORLD")
         Frame:SetScript("OnEvent", function(f, event)
             if Orbit:IsEditMode() then return end
+            local p = Orbit.Profiler
+            local s = p and p:Begin()
             self:UpdateVisibility()
             self:UpdateAuras()
+            if p then p:End(self, event, s) end
         end)
     else
         Frame:RegisterUnitEvent("UNIT_AURA", config.unit)
@@ -439,14 +501,27 @@ function Mixin:CreateAuraGridPlugin(config)
         if config.unit == "player" and not config.isHarmful then
             Frame:RegisterEvent("PLAYER_REGEN_ENABLED")
         end
-        Frame:SetScript("OnEvent", function(f, event, unit)
+        Frame:SetScript("OnEvent", function(f, event, unit, updateInfo)
             if Orbit:IsEditMode() then return end
-            if event == config.changeEvent or event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_REGEN_ENABLED" then
+            local p = Orbit.Profiler
+            local s = p and p:Begin()
+            if event == config.changeEvent or event == "PLAYER_ENTERING_WORLD" then
+                FullRefreshAuraCache(f, config)
+                self:UpdateVisibility()
+                self:UpdateAuras()
+            elseif event == "PLAYER_REGEN_ENABLED" then
                 self:UpdateVisibility()
                 self:UpdateAuras()
             elseif event == "UNIT_AURA" and unit == f.unit then
-                self:UpdateAuras()
+                local isFullUpdate = not updateInfo or updateInfo.isFullUpdate
+                if isFullUpdate then
+                    FullRefreshAuraCache(f, config)
+                    self:UpdateAuras()
+                elseif PatchAuraCache(f, config, updateInfo) then
+                    self:UpdateAuras()
+                end
             end
+            if p then p:End(self, event, s) end
         end)
     end
 
@@ -508,6 +583,29 @@ function Mixin:UpdateAuras()
     local maxAuras, iconsPerRow, spacing, iconH, iconW = self:_resolveGrid()
 
     if not Frame.auraPool then self:CreateAuraPool(Frame, "BackdropTemplate") end
+
+    local auraFilter = collapsed and (cfg.auraFilter .. "|PLAYER|CANCELABLE") or cfg.auraFilter
+
+    local state = EnsureAuraState(Frame)
+    if not next(state.data) and cfg.unit and UnitExists(cfg.unit) then
+        FullRefreshAuraCache(Frame, cfg)
+    end
+
+    local displayIDs = state.displayIDs
+    wipe(displayIDs)
+    if cfg.unit and UnitExists(cfg.unit) then
+        local sorted = C_UnitAuras.GetUnitAuraInstanceIDs(cfg.unit, auraFilter)
+        if sorted then
+            for i = 1, #sorted do
+                local id = sorted[i]
+                if state.data[id] then
+                    displayIDs[#displayIDs + 1] = id
+                    if #displayIDs >= maxAuras then break end
+                end
+            end
+        end
+    end
+
     Frame.auraPool:ReleaseAll()
 
     local anchor, growthX, growthY = ResolveGrowthDirection(Frame, cfg.showIconLimit)
@@ -515,9 +613,7 @@ function Mixin:UpdateAuras()
         UpdateCollapseArrow(Frame.collapseArrow, collapsed, iconH, growthX, growthY)
     end
 
-    local auraFilter = collapsed and (cfg.auraFilter .. "|PLAYER|CANCELABLE") or cfg.auraFilter
-    local auras = self:FetchAuras(cfg.unit, auraFilter, maxAuras)
-    if #auras == 0 then
+    if #displayIDs == 0 then
         if collapsed and not InCombatLockdown() then Frame:SetSize(iconW, iconH) end
         if cancelable and not InCombatLockdown() then self:_hideCancelOverlays(Frame) end
         if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
@@ -541,17 +637,20 @@ function Mixin:UpdateAuras()
     local componentPositions = self:GetSetting(1, "ComponentPositions")
     local activeIcons = {}
     local tooltipFilter = cfg.auraFilter
-    for _, aura in ipairs(auras) do
-        local icon = Frame.auraPool:Acquire()
-        icon:SetSize(iconW, iconH)
-        self:SetupAuraIcon(icon, aura, iconH, cfg.unit, skinSettings, componentPositions)
-        icon:SetSize(iconW, iconH)
-        CropIconTexture(icon, iconW, iconH)
-        self:SetupAuraTooltip(icon, aura, cfg.unit, tooltipFilter)
-        -- Expiration pulse: stash DurationObject for the pulse ticker
-        local durObj = aura.auraInstanceID and C_UnitAuras.GetAuraDuration(cfg.unit, aura.auraInstanceID)
-        if durObj then Mixin._RegisterExpirationPulse(icon, durObj) else icon._orbitExpireDurObj = nil; icon:SetAlpha(1) end
-        table.insert(activeIcons, icon)
+    for i = 1, #displayIDs do
+        local aura = state.data[displayIDs[i]]
+        if aura then
+            local icon = Frame.auraPool:Acquire()
+            icon:SetSize(iconW, iconH)
+            self:SetupAuraIcon(icon, aura, iconH, cfg.unit, skinSettings, componentPositions)
+            icon:SetSize(iconW, iconH)
+            CropIconTexture(icon, iconW, iconH)
+            self:SetupAuraTooltip(icon, aura, cfg.unit, tooltipFilter)
+            -- Expiration pulse: stash DurationObject for the pulse ticker
+            local durObj = C_UnitAuras.GetAuraDuration(cfg.unit, aura.auraInstanceID)
+            if durObj then Mixin._RegisterExpirationPulse(icon, durObj) else icon._orbitExpireDurObj = nil; icon:SetAlpha(1) end
+            activeIcons[#activeIcons + 1] = icon
+        end
     end
 
     Orbit.AuraLayout:LayoutGrid(Frame, activeIcons, {
@@ -561,6 +660,8 @@ function Mixin:UpdateAuras()
     if isPlayerGrid then skinSettings._maxPerRow = iconsPerRow; skinSettings._growthX = growthX; skinSettings._growthY = growthY; self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings) end
 
     if cancelable and not InCombatLockdown() then
+        local auras = {}
+        for i = 1, #displayIDs do auras[i] = state.data[displayIDs[i]] end
         self:_syncCancelOverlays(Frame, auras, auraFilter, activeIcons)
     end
 end

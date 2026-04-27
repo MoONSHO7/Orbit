@@ -82,14 +82,14 @@ Specific glow engines support additional fine-tuning properties.
 
 ### Pixel engine (`Pixel`)
 - `lines` (number): How many tracing particles are generated. Default: `8`
-- `frequency` (number): Speed scaler affecting the animation loop velocity. Default: `0.25`
+- `frequency` (number): Speed scaler. Positive = faster than baseline (`period = 0.25 / frequency`); `0` or unset = engine baseline (4s); negative = slower than baseline (`period = baseline * (1 + |frequency| * 8)`). Default: unset.
 - `thickness` (number): Width of the tracing particles. Default: `2`
 - `border` (boolean): Renders a dark, translucent backdrop strictly inside the pixel bounds to obscure the parent frame slightly for contrast. Default: `true`
 - `xOffset` / `yOffset` (number): Margin expanding the trace tracking box away from the edges.
 
 ### Autocast engine (`Autocast`)
 - `particles` (number): Number of points mapping the border. Default: `4`
-- `frequency` (number): Rotation speed multiplier. Default: `0` (base)
+- `frequency` (number): Rotation speed scaler. Same sign convention as Pixel — positive = faster (`period = 1 / frequency`); `0` or unset = engine baseline (8s); negative = slower (`period = baseline * (1 + |frequency| * 8)`). Default: unset.
 - `scale` (number): Scaling scalar on each particle. Default: `1`
 
 ## Best practices

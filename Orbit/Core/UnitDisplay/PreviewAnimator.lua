@@ -33,7 +33,7 @@ local RAIDBUFF_SHOW_CHANCE = 0.7
 local DEFENSIVE_SHOW_CHANCE = 0.15
 local CC_SHOW_CHANCE = 0.12
 local DISPEL_DURATION = 6
-local DISPEL_TYPES = { "Magic", "Curse", "Disease", "Poison" }
+local DISPEL_TYPES = { "Magic", "Curse", "Disease", "Poison", "Bleed" }
 local DYING_DELAY_BASE = 3
 local DYING_DELAY_RANGE = 5
 local SHIELD_CHANCE = 0.55
@@ -519,6 +519,14 @@ end
 local GC = Orbit.Engine.GlowController
 local DISPEL_PREVIEW_KEY = "dispelPreview"
 
+local function ShowDispelGlow(session, slot)
+    local c = session.colors[slot.dispelType]
+    if not c then return end
+    local glowType = session.glowType or Orbit.Constants.Glow.Type.Pixel
+    local typeString = glowType == Orbit.Constants.Glow.Type.Autocast and "Autocast" or "Pixel"
+    GC:Show(slot.frame, DISPEL_PREVIEW_KEY, typeString, { color = { c.r, c.g, c.b, c.a }, lines = session.numLines, particles = session.numLines, frequency = session.frequency, length = session.length, thickness = session.thickness, border = session.border, key = DISPEL_PREVIEW_KEY, frameLevel = Orbit.Constants.Levels.DispelGlow })
+end
+
 local function DispelTick()
     local now = GetTime()
     for _, session in pairs(dispelSessions) do
@@ -537,10 +545,7 @@ local function DispelTick()
                     repeat pick = alive[math.random(1, #alive)] until #alive < 2 or pick ~= slot.frame
                     slot.frame = pick
                     slot.expiresAt = now + DISPEL_DURATION + math.random() * 4
-                    local c = session.colors[slot.dispelType]
-                    local glowType = session.glowType or Orbit.Constants.Glow.Type.Pixel
-                    local typeString = glowType == Orbit.Constants.Glow.Type.Autocast and "Autocast" or "Pixel"
-                    GC:Show(slot.frame, DISPEL_PREVIEW_KEY, typeString, { color = { c.r, c.g, c.b, c.a }, lines = session.numLines, particles = session.numLines, frequency = session.frequency, length = session.length, thickness = session.thickness, border = session.border, key = DISPEL_PREVIEW_KEY, frameLevel = Orbit.Constants.Levels.Border })
+                    ShowDispelGlow(session, slot)
                 end
             end
         end
@@ -558,6 +563,23 @@ function PA:StartDispels(owner, frames, cfg)
     end
     dispelSessions[owner] = { frames = frames, slots = slots, colors = cfg.colors, thickness = cfg.thickness, frequency = cfg.frequency, numLines = cfg.numLines, length = cfg.length, border = cfg.border, glowType = cfg.glowType }
     if not dispelTicker then dispelTicker = C_Timer.NewTicker(1, DispelTick) end
+end
+
+-- Live-patch an active session's cfg and immediately re-show all visible glows so slider/color
+-- changes appear without waiting for the next 6s slot expiry.
+function PA:RefreshDispels(owner, cfg)
+    local session = dispelSessions[owner]
+    if not session then return end
+    session.colors = cfg.colors or session.colors
+    session.thickness = cfg.thickness or session.thickness
+    session.frequency = cfg.frequency or session.frequency
+    session.numLines = cfg.numLines or session.numLines
+    session.length = cfg.length or session.length
+    session.border = cfg.border
+    session.glowType = cfg.glowType or session.glowType
+    for _, slot in ipairs(session.slots) do
+        if slot.frame then ShowDispelGlow(session, slot) end
+    end
 end
 
 function PA:StopDispels(owner)

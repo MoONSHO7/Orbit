@@ -48,6 +48,8 @@ local FRAME_REGISTRY = {
     { key = "CombatTimer",          display = "Combat Timer",          plugin = "Combat Timer",       index = 1 },
     { key = "Minimap",              display = "Minimap",               plugin = "Minimap",            index = 1 },
     { key = "Datatexts",            display = "Datatexts",             plugin = "Datatexts",          index = 1 },
+    { key = "ExperienceBar",        display = "XP / Rep Bar",          plugin = "Experience Bar",     index = 1 },
+    { key = "HonorBar",             display = "Honor Bar",             plugin = "Honor Bar",          index = 1 },
     { key = "PortalDock",           display = "Portal Dock",           plugin = "Portal Dock",        index = 1 },
 }
 
@@ -66,7 +68,7 @@ local BLIZZARD_REGISTRY = {
     { key = "BuffFrame",             display = "Buff Frame",            blizzardFrame = "BuffFrame",                 ownedBy = "Player Buffs" },
     { key = "DebuffFrame",           display = "Debuff Frame",          blizzardFrame = "DebuffFrame",               ownedBy = "Player Debuffs" },
     { key = "ChatFrame",             display = "Chat Frame",            blizzardFrame = "ChatFrame1" },
-    { key = "StatusTrackingBar",     display = "XP / Rep Bar",          blizzardFrame = "StatusTrackingBarManager" },
+    { key = "StatusTrackingBar",     display = "XP / Rep / Honor Bar",  blizzardFrame = "StatusTrackingBarManager",  ownedBy = { "Experience Bar", "Honor Bar" } },
     { key = "DurabilityFrame",       display = "Durability",            blizzardFrame = "DurabilityFrame" },
     { key = "VehicleSeatIndicator",  display = "Vehicle Seat",          blizzardFrame = "VehicleSeatIndicator" },
     { key = "DamageMeter",           display = "Damage Meter",          blizzardFrame = "DamageMeter",               ownedBy = "Damage Meter" },
@@ -123,6 +125,19 @@ local ADDON_REGISTRY = {
     { key = "Bartender3",       display = "Bartender4 (Bar 3)",  addon = "Bartender4",      frame = "BT4Bar3" },
 }
 
+-- ownedBy may be a string (single owner) or a table of strings (multi-owner — entry is hidden
+-- from the VE table whenever any listed plugin is enabled). Used by frames replaced by more than
+-- one Orbit plugin (e.g. StatusTrackingBarManager handles both Experience and Honor bars).
+local function IsOwnedByEnabledPlugin(entry)
+    local owned = entry.ownedBy
+    if not owned then return false end
+    if type(owned) == "string" then return Orbit:IsPluginEnabled(owned) end
+    for _, name in ipairs(owned) do
+        if Orbit:IsPluginEnabled(name) then return true end
+    end
+    return false
+end
+
 -- [ DB ACCESS ]--------------------------------------------------------------------------------------
 local function GetDB()
     if not Orbit.db then return nil end
@@ -171,7 +186,7 @@ end
 function VE:GetBlizzardFrames()
     local result = {}
     for _, entry in ipairs(BLIZZARD_REGISTRY) do
-        if not (entry.ownedBy and Orbit:IsPluginEnabled(entry.ownedBy)) then
+        if not IsOwnedByEnabledPlugin(entry) then
             result[#result + 1] = entry
         end
     end
@@ -283,7 +298,7 @@ local function HasNonDefaultSecureSettings(self, entry)
     return false
 end
 function VE:ApplySecureBlizzardFrame(entry)
-    if entry.ownedBy and Orbit:IsPluginEnabled(entry.ownedBy) then return end
+    if IsOwnedByEnabledPlugin(entry) then return end
     local frame = _G[entry.blizzardFrame]
     if not frame then return end
     if not SECURE_FRAMES[entry.key] and not HasNonDefaultSecureSettings(self, entry) then return end
@@ -345,7 +360,12 @@ secureEvents:RegisterEvent("UPDATE_BONUS_ACTIONBAR")
 secureEvents:RegisterEvent("UPDATE_VEHICLE_ACTIONBAR")
 secureEvents:RegisterEvent("UPDATE_OVERRIDE_ACTIONBAR")
 secureEvents:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
-secureEvents:SetScript("OnEvent", function() VE:ApplyAllSecureBlizzardFrames() end)
+secureEvents:SetScript("OnEvent", function(_, event)
+    local p = Orbit.Profiler
+    local s = p and p:Begin()
+    VE:ApplyAllSecureBlizzardFrames()
+    if p then p:End("Orbit_VisibilityEngine", event, s) end
+end)
 C_Timer.After(0, function()
     if Orbit.EventBus then Orbit.EventBus:On("MOUNTED_VISIBILITY_CHANGED", function() VE:ApplyAllSecureBlizzardFrames() end) end
 end)

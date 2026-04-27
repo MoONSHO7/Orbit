@@ -3,9 +3,9 @@ name: Release AddOn
 on:
   push:
     tags:
-      # MAJOR.MINOR.PATCH created by auto-tag.yml (e.g. 0.248.0, 0.248.1).
-      # Both regular commits and weekly data commits now produce this format,
-      # so both paths trigger a release.
+      # MAJOR.MINOR created by auto-tag.yml (e.g. 0.249).
+      # Historical X.Y.Z tags are also matched so prior releases stay reproducible.
+      - "[0-9]*.[0-9]*"
       - "[0-9]*.[0-9]*.[0-9]*"
 
 env:

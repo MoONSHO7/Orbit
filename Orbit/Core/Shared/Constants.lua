@@ -70,7 +70,8 @@ C.Layers = {
 -- Frame Level Offsets (relative to parent)
 C.Levels = {
     StatusBar = 1,          -- Health/power/damage/absorb bars, cooldown swipe
-    Border = 5,             -- Borders, highlights, glows, aggro, selection, dispel
+    Border = 5,             -- Borders, glows, base level for highlight band
+    DispelGlow = 7,         -- Dispel glow particles, must render above aggro/selection highlight (Border+1)
     Overlay = 7,            -- Text, icons, components, proc overlays, aura containers
     StrataBlockReserve = 50,-- Reserve size allocated per entity in StrataEngine
     SmartGuides = 90,       -- Canvas Mode snap guides (different strata)

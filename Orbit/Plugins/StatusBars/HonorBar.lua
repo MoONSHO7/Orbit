@@ -191,6 +191,7 @@ function Plugin:ApplySettings()
     Orbit.StatusBarBase:ApplyComponentVisibility(self, frame)
 
     OrbitEngine.Frame:RestorePosition(frame, self, SYSTEM_ID)
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, SYSTEM_ID) end
 
     frame:SetShown(self:ShouldShow())
     C_Timer.After(0, function()

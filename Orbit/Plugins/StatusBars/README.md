@@ -98,6 +98,12 @@ tri-state checkbox (plugin manager → ui):
 
 state transitions require a ui reload (standard for tri-state plugins).
 
+## visibility engine
+
+both plugins are registered in `Core/Plugin/VisibilityEngine.lua`'s `FRAME_REGISTRY` (`ExperienceBar` → `Experience Bar`, `HonorBar` → `Honor Bar`) so the standard opacity / out-of-combat fade / mounted-hide / mouseover / show-with-target / alpha lock columns apply to each bar independently. `ApplySettings` calls `Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, SYSTEM_ID)` on the container so VE settings flow through the same `SetAlpha` hook used by every other Orbit frame.
+
+the blizzard `StatusTrackingBar` entry uses multi-owner `ownedBy = { "Experience Bar", "Honor Bar" }` — when **either** orbit bar is enabled, the blizzard slider entry is filtered out of the visibility-engine table (it's already secure-hidden anyway). only when both orbit bars are disabled does the blizzard entry appear so the user can configure it directly.
+
 ## container layout
 
 ```

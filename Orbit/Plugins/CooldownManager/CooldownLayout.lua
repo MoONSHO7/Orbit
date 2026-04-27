@@ -25,6 +25,7 @@ local BUFFBAR_DEFAULT_COLORS = {
 }
 local BUFFBAR_TEXT_PADDING = 5
 local BUFFBAR_ICON_TRIM = 0.07
+local DEFAULT_KEYPRESS_COLOR = { r = 1, g = 1, b = 1, a = 0 }
 
 -- Reusable child buffer alias
 local PackChildren = function(...) return CooldownUtils:PackChildren(...) end
@@ -95,7 +96,7 @@ hooksecurefunc("ActionButtonDown", function(id)
     if actionType ~= "spell" or not spellID then return end
     local icon = FindIconBySpellID(spellID)
     if not icon or not icon.orbitCDMSystemIndex then return end
-    FlashIcon(icon, CDM:GetSetting(icon.orbitCDMSystemIndex, "KeypressColor") or { r = 1, g = 1, b = 1, a = 0 })
+    FlashIcon(icon, CDM:GetSetting(icon.orbitCDMSystemIndex, "KeypressColor") or DEFAULT_KEYPRESS_COLOR)
 end)
 
 -- [ BUFF ICON AURA DURATION ] -----------------------------------------------------------------------

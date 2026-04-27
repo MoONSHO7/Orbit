@@ -462,26 +462,36 @@ function Orbit.GroupFramePreviewMixin:StartPreviewAnimation()
         raidBuffKey = not isDisabled("RaidBuff") and "RaidBuff" or nil,
     }
 
-    -- Dispel preview for raid tiers
-    if not isParty then
-        local dispelEnabled = self:GetTierSetting("DispelIndicatorEnabled")
-        if dispelEnabled then
-            animConfig.dispelSettings = {
-                thickness = self:GetTierSetting("DispelThickness") or 2,
-                frequency = self:GetTierSetting("DispelFrequency") or 0.25,
-                numLines = self:GetTierSetting("DispelNumLines") or 8,
-                length = self:GetTierSetting("DispelLength") or 15,
-                border = self:GetTierSetting("DispelBorder") ~= false,
-                glowType = self:GetTierSetting("DispelGlowType") or Orbit.Constants.Glow.Type.Pixel,
-                colors = {
-                    Magic = self:GetTierSetting("DispelColorMagic") or { r = 0.2, g = 0.6, b = 1.0, a = 1 },
-                    Curse = self:GetTierSetting("DispelColorCurse") or { r = 0.6, g = 0.0, b = 1.0, a = 1 },
-                    Disease = self:GetTierSetting("DispelColorDisease") or { r = 0.6, g = 0.4, b = 0.0, a = 1 },
-                    Poison = self:GetTierSetting("DispelColorPoison") or { r = 0.0, g = 0.6, b = 0.0, a = 1 },
-                },
-            }
-        end
-    end
+    animConfig.dispelSettings = self:BuildDispelPreviewCfg()
 
     Orbit.PreviewAnimator:StartAll(self, animConfig)
+end
+
+function Orbit.GroupFramePreviewMixin:BuildDispelPreviewCfg()
+    if not self:GetTierSetting("DispelIndicatorEnabled") then return nil end
+    return {
+        thickness = self:GetTierSetting("DispelThickness") or 2,
+        frequency = self:GetTierSetting("DispelFrequency") or 0.0,
+        numLines = self:GetTierSetting("DispelNumLines") or 8,
+        length = self:GetTierSetting("DispelLength") or 15,
+        border = self:GetTierSetting("DispelBorder") ~= false,
+        glowType = self:GetTierSetting("DispelGlowType") or Orbit.Constants.Glow.Type.Pixel,
+        colors = {
+            Magic = self:GetTierSetting("DispelColorMagic") or { r = 0.2, g = 0.6, b = 1.0, a = 1 },
+            Curse = self:GetTierSetting("DispelColorCurse") or { r = 0.6, g = 0.0, b = 1.0, a = 1 },
+            Disease = self:GetTierSetting("DispelColorDisease") or { r = 0.6, g = 0.4, b = 0.0, a = 1 },
+            Poison = self:GetTierSetting("DispelColorPoison") or { r = 0.0, g = 0.6, b = 0.0, a = 1 },
+            Bleed = { r = 0.9, g = 0.0, b = 0.0, a = 1 },
+        },
+    }
+end
+
+function Orbit.GroupFramePreviewMixin:RefreshDispelPreview()
+    if not self.frames or not self.frames[1] or not self.frames[1].preview then return end
+    local cfg = self:BuildDispelPreviewCfg()
+    if cfg then
+        Orbit.PreviewAnimator:RefreshDispels(self, cfg)
+    else
+        Orbit.PreviewAnimator:StopDispels(self)
+    end
 end

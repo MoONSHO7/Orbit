@@ -206,7 +206,7 @@ Orbit.title = "Orbit"
 
 -- Dev Fallback for version token (when not built by BigWigsMods/packager)
 if Orbit.version == "@" .. "project-version" .. "@" then
-    Orbit.version = "0.0.0-dev"
+    Orbit.version = "0.0-dev"
 end
 _G["Orbit"] = Orbit
 OrbitDB = OrbitDB or {}

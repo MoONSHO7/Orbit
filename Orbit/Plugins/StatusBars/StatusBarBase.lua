@@ -105,6 +105,10 @@ function StatusBarBase:Create(globalName, parent)
     bar:SetFrameLevel(container:GetFrameLevel() + BAR_FRAME_OFFSET)
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0)
+    -- Establish the StatusBarTexture before anything anchors to it. Without this, GetStatusBarTexture()
+    -- returns nil and the Tick's SetPoint silently falls back to UIParent — producing a screen-tall
+    -- white line at screen-right. ApplyTheme replaces the file path later but reuses the same Texture object.
+    bar:SetStatusBarTexture(FALLBACK_TEXTURE)
     container.Bar = bar
 
     -- Leading-edge tick: solid vertical line riding the fill's right edge. Width is driven by
@@ -386,8 +390,15 @@ function StatusBarBase:SetupClickDispatch(container, options)
 end
 
 -- [ BLIZZARD NATIVE HIDE ]---------------------------------------------------------------------------
+-- Children Main/SecondaryStatusTrackingBarContainer are EditMode system frames with their own SetPoint to UIParent — must disable each, hiding the manager alone leaves them visible.
 function StatusBarBase:HideBlizzardTrackingBars()
     if InCombatLockdown() then return end
     if not StatusTrackingBarManager then return end
     OrbitEngine.NativeFrame:SecureHide(StatusTrackingBarManager)
+    if StatusTrackingBarManager.MainStatusTrackingBarContainer then
+        OrbitEngine.NativeFrame:SecureHide(StatusTrackingBarManager.MainStatusTrackingBarContainer)
+    end
+    if StatusTrackingBarManager.SecondaryStatusTrackingBarContainer then
+        OrbitEngine.NativeFrame:SecureHide(StatusTrackingBarManager.SecondaryStatusTrackingBarContainer)
+    end
 end

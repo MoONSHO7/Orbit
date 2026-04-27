@@ -757,9 +757,12 @@ function Injection:StartCursorWatcher()
         local isShift = IsShiftKeyDown() and true or false
         if cursorType == lastCursor and isEditMode == lastEditMode and isShift == lastShift then return end
         lastCursor, lastEditMode, lastShift = cursorType, isEditMode, isShift
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
         if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
         local isDroppable = Injection:IsDraggingCooldownAbility()
         Injection:SetClickEnabled(isDroppable or isShift or isEditMode)
+        if p then p:End(Plugin, "CursorWatcher", s) end
     end)
     Plugin._injectedCursorWatcher = watcher
 end

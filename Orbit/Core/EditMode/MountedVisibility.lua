@@ -51,12 +51,15 @@ eventFrame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 eventFrame:SetScript("OnEvent", function(_, event)
+    local p = Orbit.Profiler
+    local s = p and p:Begin()
     if event == "PLAYER_ENTERING_WORLD" then
         Manager:Refresh(true)
         C_Timer.After(REAPPLY_DELAY, function() Manager:Refresh(true) end)
     else
         Manager:Refresh()
     end
+    if p then p:End("Orbit_MountedVisibility", event, s) end
 end)
 
 if EditModeManagerFrame then

@@ -152,11 +152,36 @@ local function CreateBossFrame(bossIndex, plugin)
     frame.CastBar = CB:Create(frame, bossIndex, plugin)
     CB:Position(frame.CastBar, frame, plugin)
     local originalOnEvent = frame:GetScript("OnEvent")
-    frame:SetScript("OnEvent", function(f, event, eventUnit, ...)
-        if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then if eventUnit == unit then UpdatePowerBar(f) end; return
-        elseif event == "UNIT_AURA" then if eventUnit == unit then if f.debuffContainer then f.debuffContainer._auraFingerprint = nil end; if f.buffContainer then f.buffContainer._auraFingerprint = nil end; f._auraSnapshot = plugin:BuildAuraSnapshot(unit); UpdateDebuffs(f, plugin); UpdateBuffs(f, plugin); f._auraSnapshot = nil end; return
-        elseif event == "RAID_TARGET_UPDATE" then plugin:UpdateMarkerIcon(f, plugin); return end
-        if originalOnEvent then originalOnEvent(f, event, eventUnit, ...) end
+    frame:SetScript("OnEvent", function(f, event, eventUnit, updateInfo, ...)
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
+        if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
+            if eventUnit == unit then UpdatePowerBar(f) end
+        elseif event == "UNIT_AURA" then
+            if eventUnit == unit then
+                local isFullUpdate = not updateInfo or updateInfo.isFullUpdate
+                local snap
+                if not isFullUpdate and f._harmfulAuraCache then
+                    if plugin:PatchCaches(f, unit, updateInfo) then
+                        snap = plugin:BuildSnapshotFromCaches(f)
+                    end
+                else
+                    snap = plugin:BuildAuraSnapshot(unit)
+                    plugin:PopulateCaches(f, snap)
+                end
+                if snap then
+                    f._auraSnapshot = snap
+                    UpdateDebuffs(f, plugin)
+                    UpdateBuffs(f, plugin)
+                    f._auraSnapshot = nil
+                end
+            end
+        elseif event == "RAID_TARGET_UPDATE" then
+            plugin:UpdateMarkerIcon(f, plugin)
+        elseif originalOnEvent then
+            originalOnEvent(f, event, eventUnit, updateInfo, ...)
+        end
+        if p then p:End(plugin, event, s) end
     end)
     frame.healthTextEnabled = true
     if frame.SetAbsorbsEnabled then frame:SetAbsorbsEnabled(true) end

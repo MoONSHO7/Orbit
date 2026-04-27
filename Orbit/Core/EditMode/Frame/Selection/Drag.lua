@@ -179,6 +179,21 @@ local function OnDragUpdate(selectionOverlay, elapsed)
         selectionOverlay.lastAnchorAlign = nil
     end
 
+    -- An active Orbit anchor line suppresses Blizzard's red snap preview so the two never compete
+    -- visually. Drag.lua orchestrates both — Selection.lua and the Blizzard tap-in stay unaware of
+    -- each other. The unconditional clear while the line is showing also covers the shift-release
+    -- tick, where the precision-mode block above re-enables the preview before this runs.
+    local hasAnchorLine = selectionOverlay.lastAnchorTarget ~= nil
+    if hasAnchorLine then
+        SetBlizzardSnapPreview(parent, false)
+        selectionOverlay.anchorSuppressedPreview = true
+    elseif selectionOverlay.anchorSuppressedPreview then
+        selectionOverlay.anchorSuppressedPreview = false
+        if ShouldUseBlizzardPreview(parent) then
+            SetBlizzardSnapPreview(parent, true)
+        end
+    end
+
     local anchorLabel = selectionOverlay.lastAnchorAlign and Engine.SelectionTooltip:BuildAnchorLabel(selectionOverlay.lastAnchorAlign) or nil
     Engine.SelectionTooltip:ShowPosition(parent, Selection, true, anchorLabel)
 end
@@ -235,6 +250,7 @@ function Drag:OnDragStart(selectionOverlay)
         selectionOverlay.lastAnchorTarget = nil
         selectionOverlay.lastAnchorAlign = nil
         selectionOverlay.precisionMode = false
+        selectionOverlay.anchorSuppressedPreview = false
 
         if IsShiftKeyDown() then
             SetNonSelectedOverlaysVisible(selectionOverlay, false)

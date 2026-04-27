@@ -48,6 +48,7 @@ local TIER_DEFAULTS = {
         GrowthDirection = "down", IncludePlayer = true,
         ShowPowerBar = true, PowerBarHeight = 10,
         HealthTextMode = "percent_short", ShowHealthValue = true,
+        OutOfRangeOpacity = 30,
         ComponentPositions = {
             Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT", selfAnchorY = "CENTER", posX = -75, posY = 0 },
             HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT", selfAnchorY = "CENTER", posX = 75, posY = 0 },
@@ -74,7 +75,7 @@ local TIER_DEFAULTS = {
             return d
         end)(),
         DisabledComponentsMigrated = true,
-        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.25, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
+        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.0, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
         DispelColorMagic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
@@ -89,6 +90,7 @@ local TIER_DEFAULTS = {
         Orientation = "horizontal", FlatRows = 1,
         ShowPowerBar = true, PowerBarHeight = 16, ShowGroupLabels = true,
         ShowHealthValue = false, HealthTextMode = "percent_short",
+        OutOfRangeOpacity = 30,
         ComponentPositions = {
             Name = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 10, justifyH = "CENTER", selfAnchorY = "TOP", posX = 0, posY = 10 },
             HealthText = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", selfAnchorY = "BOTTOM", posX = 0, posY = -10, overrides = { ShowHealthValue = false, FontSize = 10 } },
@@ -118,7 +120,7 @@ local TIER_DEFAULTS = {
         AggroIndicatorEnabled = true, AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
         SelectionColor = { r = 0.8, g = 0.9, b = 1.0, a = 1 },
         AggroThickness = 1,
-        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.25, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
+        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.0, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
         DispelColorMagic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
@@ -518,9 +520,36 @@ local function MigrateP0DropdownValues(plugin)
     plugin:SetSetting(1, "_P0DropdownMigrated", true)
 end
 
+-- DispelFrequency was an unbucketed -0.50..+0.50 slider. Phase 1 narrows it to 5 named
+-- speed stops at -0.30/-0.15/0.0/0.15/0.30. Snap any out-of-range saved value to the
+-- nearest stop so existing profiles render correctly under the new slider.
+local DISPEL_SPEED_STOPS = { -0.30, -0.15, 0.0, 0.15, 0.30 }
+local function SnapDispelSpeed(value)
+    local best, bestDist = DISPEL_SPEED_STOPS[1], math.huge
+    for _, stop in ipairs(DISPEL_SPEED_STOPS) do
+        local d = math.abs(value - stop)
+        if d < bestDist then best, bestDist = stop, d end
+    end
+    return best
+end
+local function MigrateDispelSpeed(plugin)
+    if plugin:GetSetting(1, "_DispelSpeedMigrated") then return end
+    local tiers = plugin:GetSetting(1, "Tiers")
+    if tiers then
+        for _, settings in pairs(tiers) do
+            if type(settings) == "table" and type(settings.DispelFrequency) == "number" then
+                settings.DispelFrequency = SnapDispelSpeed(settings.DispelFrequency)
+            end
+        end
+        plugin:SetSetting(1, "Tiers", tiers)
+    end
+    plugin:SetSetting(1, "_DispelSpeedMigrated", true)
+end
+
 -- [ ON LOAD ]----------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     MigrateP0DropdownValues(self)
+    MigrateDispelSpeed(self)
 
     HideNativeGroupFrames()
     self:UpdateBlizzardRaidPanelVisibility()

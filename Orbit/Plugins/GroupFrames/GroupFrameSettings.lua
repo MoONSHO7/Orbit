@@ -12,9 +12,22 @@ local Helpers = Orbit.GroupFrameHelpers
 
 -- [ ADD SETTINGS ]-----------------------------------------------------------------------------------
 local ICON_BUTTON_SIZE = 20
-local DISPEL_FREQ_MIN = -0.50
-local DISPEL_FREQ_MAX = 0.50
-local DISPEL_FREQ_STEP = 0.02
+local DISPEL_SPEED_MIN = -0.30
+local DISPEL_SPEED_MAX = 0.30
+local DISPEL_SPEED_STEP = 0.15
+-- Integer-keyed (value*100) to avoid float-precision lookup misses.
+local DISPEL_SPEED_LABELS = {
+    [-30] = function() return Orbit.L.PLU_GRP_DISPEL_SPEED_VSLOW end,
+    [-15] = function() return Orbit.L.PLU_GRP_DISPEL_SPEED_SLOW end,
+    [0]   = function() return Orbit.L.PLU_GRP_DISPEL_SPEED_NORMAL end,
+    [15]  = function() return Orbit.L.PLU_GRP_DISPEL_SPEED_FAST end,
+    [30]  = function() return Orbit.L.PLU_GRP_DISPEL_SPEED_VFAST end,
+}
+local function FormatDispelSpeed(value)
+    local key = math.floor(((value or 0) * 100 / 15) + 0.5) * 15
+    local label = DISPEL_SPEED_LABELS[key]
+    return label and label() or DISPEL_SPEED_LABELS[0]()
+end
 
 if not OrbitEngine.Layout:HasWidgetType("quickcopyundo") then
     OrbitEngine.Layout:RegisterWidgetType("quickcopyundo", function(container, def, getValue, callback)
@@ -173,6 +186,7 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
             table.insert(schema.controls, { type = "slider", key = "Width", label = L.PLU_GRP_WIDTH, min = 50, max = 400, step = 1, default = 160, onChange = TierMOC("Width") })
             table.insert(schema.controls, { type = "slider", key = "Height", label = L.PLU_GRP_HEIGHT, min = 20, max = 100, step = 1, default = 40, onChange = TierMOC("Height") })
             table.insert(schema.controls, { type = "slider", key = "Spacing", label = L.PLU_GRP_SPACING, min = 0, max = 50, step = 1, default = 0, onChange = TierMOC("Spacing") })
+            table.insert(schema.controls, { type = "slider", key = "OutOfRangeOpacity", label = L.PLU_GRP_OUT_OF_RANGE_OPACITY, min = 0, max = 80, step = 5, default = 30, suffix = "%", onChange = TierMOC("OutOfRangeOpacity") })
             table.insert(schema.controls, {
                 type = "checkbox", key = "IncludePlayer", label = L.PLU_GRP_INCLUDE_PLAYER, default = false,
                 onChange = TierMOC("IncludePlayer", function()
@@ -214,6 +228,7 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
             table.insert(schema.controls, { type = "slider", key = "Width", label = L.PLU_GRP_WIDTH, min = 50, max = 200, step = 1, default = 100, onChange = TierMOC("Width") })
             table.insert(schema.controls, { type = "slider", key = "Height", label = L.PLU_GRP_HEIGHT, min = 20, max = 80, step = 1, default = 40, onChange = TierMOC("Height") })
             table.insert(schema.controls, { type = "slider", key = "MemberSpacing", label = L.PLU_GRP_MEMBER_SPACING, min = 0, max = 50, step = 1, default = 2, onChange = TierMOC("MemberSpacing") })
+            table.insert(schema.controls, { type = "slider", key = "OutOfRangeOpacity", label = L.PLU_GRP_OUT_OF_RANGE_OPACITY, min = 0, max = 80, step = 5, default = 30, suffix = "%", onChange = TierMOC("OutOfRangeOpacity") })
             if sortMode == "group" then
                 local gprDefault = math.min(maxGroups, 6)
                 table.insert(schema.controls, { type = "slider", key = "GroupsPerRow", label = L.PLU_GRP_GROUPS_PER_ROW, min = 1, max = maxGroups, step = 1, default = gprDefault, onChange = TierMOC("GroupsPerRow") })
@@ -249,7 +264,11 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
         if not isParty and (plugin:GetTierSetting("SortMode", editTier) or "group") == "group" then
             table.insert(schema.controls, { type = "checkbox", key = "ShowGroupLabels", label = L.PLU_GRP_SHOW_GROUPS, default = true, onChange = TierMOC("ShowGroupLabels") })
         end
-        local dispelRefresh = function() Orbit.DispelIndicatorMixin:InvalidateDispelCurve(plugin); if plugin.UpdateAllDispelIndicators then plugin:UpdateAllDispelIndicators(plugin) end end
+        local dispelRefresh = function()
+            Orbit.DispelIndicatorMixin:InvalidateDispelCurve(plugin)
+            if plugin.UpdateAllDispelIndicators then plugin:UpdateAllDispelIndicators(plugin) end
+            if plugin.RefreshDispelPreview then plugin:RefreshDispelPreview() end
+        end
         local dispelToggle = function() dispelRefresh(); if dialog.orbitTabCallback then dialog.orbitTabCallback() end end
         
         local dispelEnabled = plugin:GetTierSetting("DispelIndicatorEnabled", editTier)
@@ -270,10 +289,10 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
                 table.insert(schema.controls, { type = "slider", key = "DispelNumLines", label = L.PLU_GRP_DISPEL_LINES, min = 1, max = 20, step = 1, default = def.Lines, onChange = TierMOC("DispelNumLines", dispelRefresh) })
             end
 
-            table.insert(schema.controls, { type = "slider", key = "DispelFrequency", label = L.PLU_GRP_DISPEL_FREQ, min = DISPEL_FREQ_MIN, max = DISPEL_FREQ_MAX, step = DISPEL_FREQ_STEP, default = def.Frequency, formatter = function(v) return string.format("%.2f", v) end, onChange = TierMOC("DispelFrequency", dispelRefresh) })
+            table.insert(schema.controls, { type = "slider", key = "DispelFrequency", label = L.PLU_GRP_DISPEL_SPEED, min = DISPEL_SPEED_MIN, max = DISPEL_SPEED_MAX, step = DISPEL_SPEED_STEP, default = 0.0, formatter = FormatDispelSpeed, onChange = TierMOC("DispelFrequency", dispelRefresh) })
 
             if glowType == Orbit.Constants.Glow.Type.Pixel then
-                table.insert(schema.controls, { type = "slider", key = "DispelLength", label = L.PLU_GRP_DISPEL_LENGTH, min = 1, max = 30, step = 1, default = def.Length, onChange = TierMOC("DispelLength", dispelRefresh) })
+                table.insert(schema.controls, { type = "slider", key = "DispelLength", label = L.PLU_GRP_DISPEL_LENGTH, min = 1, max = 150, step = 1, default = def.Length, onChange = TierMOC("DispelLength", dispelRefresh) })
                 table.insert(schema.controls, { type = "slider", key = "DispelThickness", label = L.PLU_GRP_DISPEL_THICKNESS, min = 1, max = 10, step = 1, default = def.Thickness, onChange = TierMOC("DispelThickness", dispelRefresh) })
                 table.insert(schema.controls, { type = "checkbox", key = "DispelBorder", label = L.PLU_GRP_DISPEL_BORDER, default = def.Border, onChange = TierMOC("DispelBorder", dispelRefresh) })
             end

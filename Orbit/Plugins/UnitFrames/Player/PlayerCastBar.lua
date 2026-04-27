@@ -217,11 +217,11 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
                 self:ApplySettings(systemFrame)
             end,
         })
-        table.insert(schema.controls, { type = "checkbox", key = "ShowLatency", label = L.PLU_CAST_SHOW_LATENCY, default = true })
         table.insert(schema.controls, {
             type = "slider", key = "TickWidth", label = L.PLU_CAST_TICK_WIDTH,
             min = 1, max = 5, step = 1, default = 1,
         })
+        table.insert(schema.controls, { type = "checkbox", key = "ShowLatency", label = L.PLU_CAST_SHOW_LATENCY, default = true })
     elseif currentTab == L.PLU_CAST_TAB_COLOUR then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "CastBarColorCurve", label = L.PLU_CAST_NORMAL,
@@ -388,12 +388,18 @@ function Plugin:OnLoad()
 
     -- Event Handler
     CastBar:SetScript("OnEvent", function(frame, event, unit, castGUID, spellID)
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
         self:OnCastEvent(event, unit, castGUID, spellID)
+        if p then p:End(self, event, s) end
     end)
 
     -- OnUpdate for progress
     CastBar:SetScript("OnUpdate", function(frame, elapsed)
+        local p = Orbit.Profiler
+        local s = p and p:Begin()
         self:OnUpdate(elapsed)
+        if p then p:End(self, "OnUpdate", s) end
     end)
 
     -- Edit Mode exits: hide bar if not casting
