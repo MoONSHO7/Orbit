@@ -78,6 +78,17 @@ local CHANNEL_SPELLS = {
 local function DisableBlizzardCastBar()
     if not PlayerCastingBarFrame then return end
     OrbitEngine.NativeFrame:Disable(PlayerCastingBarFrame)
+    if not PlayerCastingBarFrame.orbitCastBarAlphaHook then
+        hooksecurefunc(PlayerCastingBarFrame, "SetAlpha", function(f, a)
+            if f._orbitCastAlphaParking then return end
+            if a and a ~= 0 then
+                f._orbitCastAlphaParking = true
+                f:SetAlpha(0)
+                f._orbitCastAlphaParking = false
+            end
+        end)
+        PlayerCastingBarFrame.orbitCastBarAlphaHook = true
+    end
 end
 
 local function GetAnchorAxis(frame) return OrbitEngine.Frame:GetAnchorAxis(frame) end

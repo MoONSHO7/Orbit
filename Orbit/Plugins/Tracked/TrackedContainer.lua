@@ -55,7 +55,6 @@ function Container:Build(plugin, record)
     frame.iconItems = {} -- key -> icon item frame
     frame.dropZones = {} -- index -> drop zone frame
     frame.anchorOptions = { horizontal = true, vertical = true, mergeBorders = true }
-    frame.orbitWidthSync = true
     frame.orbitCursorReveal = true
     frame.orbitAnchorTargetPerSpec = true
     frame._isIconContainer = true

@@ -196,7 +196,12 @@ end
 
 -- [ SCENARIO 5: SECURE HIDE ] -----------------------------------------------------------------------
 function NativeFrame:SecureHide(nativeFrame)
-    return self:Disable(nativeFrame)
+    if not nativeFrame then return false end
+    if InCombatLockdown() then return false end
+
+    UnregisterStateDriver(nativeFrame, "visibility")
+    RegisterStateDriver(nativeFrame, "visibility", "hide")
+    return true
 end
 
 -- [ QUERIES ]----------------------------------------------------------------------------------------
