@@ -77,29 +77,32 @@ function HandleCore:CreateFrame(options)
     handle.bg:SetAllPoints()
     handle.bg:SetColorTexture(COLOR_IDLE.r, COLOR_IDLE.g, COLOR_IDLE.b, COLOR_IDLE.bgA)
 
+    local handleScale = handle:GetEffectiveScale()
+    local pxBorder = Engine.Pixel:Multiple(borderSize, handleScale)
+
     handle.borderTop = handle:CreateTexture(nil, "BORDER")
     handle.borderTop:SetColorTexture(COLOR_IDLE.r, COLOR_IDLE.g, COLOR_IDLE.b, COLOR_IDLE.borderA)
     handle.borderTop:SetPoint("TOPLEFT", 0, 0)
     handle.borderTop:SetPoint("TOPRIGHT", 0, 0)
-    handle.borderTop:SetHeight(borderSize)
+    handle.borderTop:SetHeight(pxBorder)
 
     handle.borderBottom = handle:CreateTexture(nil, "BORDER")
     handle.borderBottom:SetColorTexture(COLOR_IDLE.r, COLOR_IDLE.g, COLOR_IDLE.b, COLOR_IDLE.borderA)
     handle.borderBottom:SetPoint("BOTTOMLEFT", 0, 0)
     handle.borderBottom:SetPoint("BOTTOMRIGHT", 0, 0)
-    handle.borderBottom:SetHeight(borderSize)
+    handle.borderBottom:SetHeight(pxBorder)
 
     handle.borderLeft = handle:CreateTexture(nil, "BORDER")
     handle.borderLeft:SetColorTexture(COLOR_IDLE.r, COLOR_IDLE.g, COLOR_IDLE.b, COLOR_IDLE.borderA)
     handle.borderLeft:SetPoint("TOPLEFT", 0, 0)
     handle.borderLeft:SetPoint("BOTTOMLEFT", 0, 0)
-    handle.borderLeft:SetWidth(borderSize)
+    handle.borderLeft:SetWidth(pxBorder)
 
     handle.borderRight = handle:CreateTexture(nil, "BORDER")
     handle.borderRight:SetColorTexture(COLOR_IDLE.r, COLOR_IDLE.g, COLOR_IDLE.b, COLOR_IDLE.borderA)
     handle.borderRight:SetPoint("TOPRIGHT", 0, 0)
     handle.borderRight:SetPoint("BOTTOMRIGHT", 0, 0)
-    handle.borderRight:SetWidth(borderSize)
+    handle.borderRight:SetWidth(pxBorder)
 
     handle.borderSize = borderSize
 
@@ -168,7 +171,8 @@ function HandleCore:PositionOverComponent(handle, component)
     width = math.max(width, minWidth)
     height = math.max(height, minHeight)
 
-    handle:SetSize(width, height)
+    local scale = handle:GetEffectiveScale()
+    handle:SetSize(Engine.Pixel:Snap(width, scale), Engine.Pixel:Snap(height, scale))
     handle:ClearAllPoints()
     handle:SetPoint("CENTER", component, "CENTER", 0, 0)
 end

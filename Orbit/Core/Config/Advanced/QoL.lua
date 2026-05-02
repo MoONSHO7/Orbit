@@ -3,6 +3,7 @@
 local _, Orbit = ...
 local L = Orbit.L
 local Layout = Orbit.Engine.Layout
+local Pixel = Orbit.Engine.Pixel
 local A = Layout.Advanced
 local math_floor = math.floor
 
@@ -11,6 +12,16 @@ local STACK_GAP = 6
 local SEARCH_WIDTH = 200
 local SEARCH_HEIGHT = 30
 local SEARCH_RIGHT_INSET = 34
+local UI_PADDING = 10
+local UI_TOP_OFFSET = -8
+local UI_DESC_HEIGHT = 28
+local UI_ROW_HEIGHT = 32
+local UI_GAP = 8
+local UI_PP_BUTTON_WIDTH = 110
+local UI_APPLY_BUTTON_WIDTH = 80
+local UI_BUTTON_HEIGHT = 22
+local UI_BOTTOM_PAD = 8
+local UI_SCALE_PERCENT = 100
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
 local function FmtDecimal(v) return string.format("%.2f", v) end
@@ -48,6 +59,61 @@ local function BuildMoveMore(body)
     return Layout:Stack(body, 0, STACK_GAP)
 end
 
+local function BuildUserInterface(body)
+    local desc = Layout:CreateDescription(body, L.PLU_UI_DESC, A.MUTED)
+    Layout:AddControl(body, desc)
+    desc:ClearAllPoints()
+    desc:SetPoint("TOPLEFT", body, "TOPLEFT", UI_PADDING, UI_TOP_OFFSET)
+    desc:SetPoint("TOPRIGHT", body, "TOPRIGHT", -UI_PADDING, UI_TOP_OFFSET)
+
+    local rowY = UI_TOP_OFFSET - UI_DESC_HEIGHT
+    local UIScale = Orbit.UserInterface
+    local minScale, maxScale, stepScale = UIScale:ScaleRange()
+    local steps = (maxScale - minScale) / stepScale
+    local stagedScale = UIScale:GetScale()
+
+    local slider, ppBtn, applyBtn
+    slider = Layout:CreateSlider(body, L.PLU_UI_SCALE, minScale, maxScale, stepScale,
+        function(v) return string.format("%d%%", math_floor(v * UI_SCALE_PERCENT + 0.5)) end,
+        stagedScale,
+        function(val) stagedScale = val end,
+        { updateOnRelease = true })
+    Layout:AddControl(body, slider)
+    slider:ClearAllPoints()
+    slider:SetPoint("TOPLEFT", body, "TOPLEFT", UI_PADDING, rowY)
+    slider:SetPoint("TOPRIGHT", body, "TOPRIGHT", -UI_PADDING - UI_PP_BUTTON_WIDTH - UI_APPLY_BUTTON_WIDTH - UI_GAP * 2, rowY)
+
+    ppBtn = Layout:CreateButton(body, L.PLU_UI_PIXEL_PERFECT, function()
+        local pp = UIScale:GetPixelPerfectScale()
+        stagedScale = pp
+        slider._isInitializing = true
+        slider.Slider:Init(pp, minScale, maxScale, steps, {})
+        slider._isInitializing = false
+    end, UI_PP_BUTTON_WIDTH)
+    Layout:AddControl(body, ppBtn)
+    ppBtn:ClearAllPoints()
+    ppBtn:SetSize(UI_PP_BUTTON_WIDTH, UI_BUTTON_HEIGHT)
+    ppBtn:SetPoint("LEFT", slider, "RIGHT", UI_GAP, 0)
+    ppBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L.PLU_UI_PIXEL_PERFECT)
+        GameTooltip:AddLine(L.PLU_UI_TT_DETECTED_F:format(UIScale:GetResolution()), 1, 1, 1)
+        GameTooltip:AddLine(L.PLU_UI_TT_SCALE_F:format(Pixel:GetScale() * UI_SCALE_PERCENT), 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    ppBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    applyBtn = Layout:CreateButton(body, L.PLU_UI_APPLY, function()
+        UIScale:SetScale(stagedScale)
+    end, UI_APPLY_BUTTON_WIDTH)
+    Layout:AddControl(body, applyBtn)
+    applyBtn:ClearAllPoints()
+    applyBtn:SetSize(UI_APPLY_BUTTON_WIDTH, UI_BUTTON_HEIGHT)
+    applyBtn:SetPoint("LEFT", ppBtn, "RIGHT", UI_GAP, 0)
+
+    return math.abs(rowY - UI_ROW_HEIGHT - UI_BOTTOM_PAD)
+end
+
 local function BuildMouse(body)
     local cb = Layout:CreateCheckbox(body, L.PLU_MOUSE_ENABLE, nil, GetAccountSetting("CustomCursor", false), function(checked)
         SetAccountSetting("CustomCursor", checked)
@@ -83,6 +149,7 @@ end
 local SPOTLIGHT_BINDING = "ORBIT_SPOTLIGHT_TOGGLE"
 local SPOTLIGHT_COL_X_LEFT = 10
 local SPOTLIGHT_COL_X_RIGHT_FRAC = 0.5
+local SPOTLIGHT_COL_GAP = 15
 local SPOTLIGHT_ROW_GAP = 6
 local SPOTLIGHT_HEADER_GAP = 12
 local SPOTLIGHT_SECTION_GAP = 14
@@ -153,6 +220,8 @@ local function CreateHotkeyCapture(parent, bindingName)
     return btn
 end
 
+local SPOTLIGHT_DESC_HEIGHT = 36
+
 local function BuildSpotlight(body)
     local yPos = -10
     local startX = SPOTLIGHT_COL_X_LEFT
@@ -160,6 +229,13 @@ local function BuildSpotlight(body)
     local gated = {}
     -- Heights captured during build so the accordion can shrink/expand on toggle without rebuilding.
     local collapsedHeight, expandedHeight
+
+    local desc = Layout:CreateDescription(body, L.PLU_SPT_DESC, A.MUTED)
+    Layout:AddControl(body, desc)
+    desc:ClearAllPoints()
+    desc:SetPoint("TOPLEFT", body, "TOPLEFT", startX, yPos)
+    desc:SetPoint("TOPRIGHT", body, "TOPRIGHT", -startX, yPos)
+    yPos = yPos - SPOTLIGHT_DESC_HEIGHT
 
     -- Resizes the enclosing accordion and triggers the panel reflow so the disabled state has no ghost space.
     local function Refresh(enabled)
@@ -217,13 +293,24 @@ local function BuildSpotlight(body)
     gated[#gated + 1] = passiveCb
     yPos = yPos - SPOTLIGHT_ROW_H - SPOTLIGHT_ROW_GAP
 
-    -- Max Results slider (full-width) — template needs both left+right anchors to show its label + value text.
+    -- Scale (left half) + Max Results (right half) — slider template needs both anchors for label + value text.
+    local scaleSlider = Layout:CreateSlider(body, L.PLU_SPT_SCALE, 0.70, 1.30, 0.05, function(v)
+        return string.format("%d%%", math_floor(v * 100 + 0.5))
+    end, GetAccountSetting("Spotlight_Scale", 1.0), function(val)
+        SetAccountSetting("Spotlight_Scale", math_floor(val * 20 + 0.5) / 20)
+    end)
+    Layout:AddControl(body, scaleSlider)
+    scaleSlider:ClearAllPoints()
+    scaleSlider:SetPoint("TOPLEFT", body, "TOPLEFT", startX, yPos)
+    scaleSlider:SetPoint("TOPRIGHT", body, "TOP", -Pixel:Snap(SPOTLIGHT_COL_GAP / 2, body:GetEffectiveScale()), yPos)
+    gated[#gated + 1] = scaleSlider
+
     local maxSlider = Layout:CreateSlider(body, L.PLU_SPT_MAX_RESULTS, 10, 100, 1, tostring, GetAccountSetting("Spotlight_MaxResults", 25), function(val)
         SetAccountSetting("Spotlight_MaxResults", math_floor(val + 0.5))
     end)
     Layout:AddControl(body, maxSlider)
     maxSlider:ClearAllPoints()
-    maxSlider:SetPoint("TOPLEFT", body, "TOPLEFT", startX, yPos)
+    maxSlider:SetPoint("TOPLEFT", body, "TOP", Pixel:Snap(SPOTLIGHT_COL_GAP / 2, body:GetEffectiveScale()), yPos)
     maxSlider:SetPoint("TOPRIGHT", body, "TOPRIGHT", -startX, yPos)
     gated[#gated + 1] = maxSlider
     yPos = yPos - 40 - SPOTLIGHT_ROW_GAP
@@ -438,6 +525,7 @@ function Orbit._AC.CreateQoLContent(parent)
     -- Section definitions: { name, builderFn }
     -- "Keys"/"Markers"/"Inventory" are placeholders for unshipped features; not localized until implemented.
     local sectionDefs = {
+        { L.PLU_QOL_SEC_UI, BuildUserInterface },
         { L.PLU_QOL_SEC_COLORS, BuildColors },
         { L.PLU_QOL_SEC_MOVEMORE, BuildMoveMore },
         { L.PLU_QOL_SEC_MOUSE, BuildMouse },

@@ -79,7 +79,7 @@ function CooldownUtils:ApplyTextColor(textElement, overrides, remainingPercent)
 end
 
 -- [ ICON DIMENSION CALCULATOR ] ---------------------------------------------------------------------
-function CooldownUtils:CalculateIconDimensions(plugin, systemIndex, overrides)
+function CooldownUtils:CalculateIconDimensions(plugin, systemIndex, overrides, scale)
     local iconSize = (overrides and overrides.size) or plugin:GetSetting(systemIndex, "IconSize") or Constants.Skin.DefaultIconSize
     local aspectRatio = (overrides and overrides.aspectRatio) or plugin:GetSetting(systemIndex, "aspectRatio") or "1:1"
     local w, h = iconSize, iconSize
@@ -87,7 +87,7 @@ function CooldownUtils:CalculateIconDimensions(plugin, systemIndex, overrides)
     elseif aspectRatio == "4:3" then h = iconSize * (3 / 4)
     elseif aspectRatio == "21:9" then h = iconSize * (9 / 21) end
     local Pixel = OrbitEngine.Pixel
-    if Pixel then w = Pixel:Snap(w); h = Pixel:Snap(h); iconSize = Pixel:Snap(iconSize) end
+    if Pixel then w = Pixel:Snap(w, scale); h = Pixel:Snap(h, scale); iconSize = Pixel:Snap(iconSize, scale) end
     return w, h, iconSize
 end
 

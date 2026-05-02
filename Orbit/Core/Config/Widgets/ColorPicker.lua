@@ -119,7 +119,7 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
         frame.Label:SetWidth(0)
         frame.Label:SetPoint("LEFT", frame.Swatch, "RIGHT", 4, 0)
 
-        frame:SetSize(COMPACT_SWATCH_SIZE + 4 + frame.Label:GetStringWidth(), COMPACT_ROW_HEIGHT)
+        frame:SetSize(Engine.Pixel:Snap(COMPACT_SWATCH_SIZE + 4 + frame.Label:GetStringWidth(), frame:GetEffectiveScale()), COMPACT_ROW_HEIGHT)
     else
         -- Standard 3-column layout
         frame.Label:SetWidth(C.Widget.LabelWidth)

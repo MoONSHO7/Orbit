@@ -72,11 +72,15 @@ local function SavePositionIfEnabled(frame)
     if not (Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.MoveMoreSavePositions) then return end
     local name = frame:GetName()
     if not name then return end
+    local Pixel = Orbit.Engine.Pixel
+    local scale = frame:GetEffectiveScale()
+    local w, h = frame:GetWidth(), frame:GetHeight()
     local points = {}
     for i = 1, frame:GetNumPoints() do
         local point, relativeTo, relativePoint, x, y = frame:GetPoint(i)
         local relName = (relativeTo and relativeTo.GetName and relativeTo:GetName()) or "UIParent"
-        points[i] = { point, relName, relativePoint, x, y }
+        local sx, sy = Pixel:SnapPosition(x, y, point, w, h, scale)
+        points[i] = { point, relName, relativePoint, sx, sy }
     end
     Orbit.db.AccountSettings.MoveMorePositions = Orbit.db.AccountSettings.MoveMorePositions or {}
     Orbit.db.AccountSettings.MoveMorePositions[name] = points
@@ -89,11 +93,15 @@ local function ApplySavedPosition(frame)
     local store = Orbit.db.AccountSettings.MoveMorePositions
     local saved = store and store[name]
     if not saved or InCombatLockdown() then return end
+    local Pixel = Orbit.Engine.Pixel
+    local scale = frame:GetEffectiveScale()
+    local w, h = frame:GetWidth(), frame:GetHeight()
     frame:ClearAllPoints()
     for _, pt in ipairs(saved) do
         local point, relName, relativePoint, x, y = pt[1], pt[2], pt[3], pt[4], pt[5]
         local relFrame = (type(relName) == "string" and _G[relName]) or UIParent
-        frame:SetPoint(point, relFrame, relativePoint, x, y)
+        local sx, sy = Pixel:SnapPosition(x, y, point, w, h, scale)
+        frame:SetPoint(point, relFrame, relativePoint, sx, sy)
     end
 end
 

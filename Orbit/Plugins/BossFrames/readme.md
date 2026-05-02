@@ -12,7 +12,7 @@ displays boss health bars, cast bars, and auras during encounters. uses the shar
 |---|---|
 | BossFrame.lua | main plugin. frame creation, event handling, settings application, aura display. |
 | BossFrameCastBar.lua | boss cast bar creation and update logic. |
-| BossFrameHelpers.lua | layout helpers (merged borders, stacking). |
+| BossFrameHelpers.lua | aura position helper (`AnchorToPosition`) shared with the canvas-mode aura preview. |
 | BossFramePreview.lua | canvas mode preview for boss frames. |
 
 ## how it works
@@ -27,7 +27,7 @@ boss frames are created on demand when `INSTANCE_ENCOUNTER_ENGAGE_UNIT` fires. t
 
 ## rules
 
-- boss frames share layout merging with party/raid via `BossFrameHelpers`
+- boss frames share the aura `AnchorToPosition` helper via `BossFrameHelpers` for canvas-mode preview parity
 - cast bar logic must not duplicate `CastBarMixin` — extend the mixin if needed
 - boss cast bar uses the unified border pattern (single border wrapping icon + bar via `UpdateBarInsets`) matching the target/focus style from `Skin.CastBar`
 - boss frame count is dynamic (1-8), driven by encounter data

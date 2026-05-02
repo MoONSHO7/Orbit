@@ -89,13 +89,14 @@ local function UpdateCollapseArrow(btn, collapsed, iconH, growthX, growthY)
     btn.tooltipText = collapsed and "My Buffs" or "All Buffs"
     btn:ClearAllPoints()
     local parent = btn:GetParent()
+    local scale = parent:GetEffectiveScale() or 1
     if onLeft then
         local anchorY = (growthY == "UP") and "BOTTOMLEFT" or "TOPLEFT"
-        local yOff = (growthY == "UP") and (iconH / 2) or -(iconH / 2)
+        local yOff = (growthY == "UP") and OrbitEngine.Pixel:Snap(iconH / 2, scale) or -OrbitEngine.Pixel:Snap(iconH / 2, scale)
         btn:SetPoint("RIGHT", parent, anchorY, -ARROW_OFFSET, yOff)
     else
         local anchorY = (growthY == "UP") and "BOTTOMRIGHT" or "TOPRIGHT"
-        local yOff = (growthY == "UP") and (iconH / 2) or -(iconH / 2)
+        local yOff = (growthY == "UP") and OrbitEngine.Pixel:Snap(iconH / 2, scale) or -OrbitEngine.Pixel:Snap(iconH / 2, scale)
         btn:SetPoint("LEFT", parent, anchorY, ARROW_OFFSET, yOff)
     end
 end
@@ -379,10 +380,11 @@ function Mixin:CreateAuraGridPlugin(config)
             local _, _, _, iconH, iconW = plugin:_resolveGrid()
             local parent = options.parent or UIParent
             local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+            OrbitEngine.Pixel:Enforce(preview)
             preview:SetSize(iconW, iconH)
 
             local borderSize = Orbit.db.GlobalSettings.BorderSize
-            local borderPixels = OrbitEngine.Pixel:Multiple(borderSize)
+            local borderPixels = OrbitEngine.Pixel:Multiple(borderSize, preview:GetEffectiveScale())
             preview.sourceFrame = self
             preview.sourceWidth = iconW
             preview.sourceHeight = iconH
@@ -429,6 +431,8 @@ function Mixin:CreateAuraGridPlugin(config)
                 local halfW, halfH = iconW / 2, iconH / 2
                 local startX = saved.posX or (data.anchorX == "LEFT" and -halfW + data.offsetX or data.anchorX == "RIGHT" and halfW - data.offsetX or 0)
                 local startY = saved.posY or (data.anchorY == "BOTTOM" and -halfH + data.offsetY or data.anchorY == "TOP" and halfH - data.offsetY or 0)
+                local pScale = preview:GetEffectiveScale() or 1
+                startX, startY = OrbitEngine.Pixel:SnapPosition(startX, startY, "CENTER", fs:GetStringWidth() or 0, fs:GetStringHeight() or 0, pScale)
 
                 if CreateDraggableComponent then
                     local comp = CreateDraggableComponent(preview, def.key, fs, startX, startY, data)
@@ -657,14 +661,17 @@ function Mixin:UpdateAuras()
     local activeIcons = Frame._scratchActiveIcons
     wipe(activeIcons)
     local tooltipFilter = cfg.auraFilter
+    local poolScale = Frame:GetEffectiveScale() or 1
+    local snappedIconW = OrbitEngine.Pixel:Snap(iconW, poolScale)
+    local snappedIconH = OrbitEngine.Pixel:Snap(iconH, poolScale)
     for i = 1, #displayIDs do
         local aura = state.data[displayIDs[i]]
         if aura then
             local icon = Frame.auraPool:Acquire()
-            icon:SetSize(iconW, iconH)
-            self:SetupAuraIcon(icon, aura, iconH, cfg.unit, skinSettings, componentPositions)
-            icon:SetSize(iconW, iconH)
-            CropIconTexture(icon, iconW, iconH)
+            icon:SetSize(snappedIconW, snappedIconH)
+            self:SetupAuraIcon(icon, aura, snappedIconH, cfg.unit, skinSettings, componentPositions)
+            icon:SetSize(snappedIconW, snappedIconH)
+            CropIconTexture(icon, snappedIconW, snappedIconH)
             self:SetupAuraTooltip(icon, aura, cfg.unit, tooltipFilter)
             -- Expiration pulse: stash DurationObject for the pulse ticker
             local durObj = C_UnitAuras.GetAuraDuration(cfg.unit, aura.auraInstanceID)
@@ -798,7 +805,9 @@ function Mixin:_syncCancelOverlays(frame, auras, auraFilter, icons)
             btn:ClearAllPoints()
             local point, relativeTo, relativePoint, x, y = icon:GetPoint(1)
             btn:SetPoint(point, relativeTo, relativePoint, x, y)
-            btn:SetSize(icon:GetSize())
+            local cw, ch = icon:GetSize()
+            local cscale = btn:GetEffectiveScale() or 1
+            btn:SetSize(OrbitEngine.Pixel:Snap(cw, cscale), OrbitEngine.Pixel:Snap(ch, cscale))
             btn:Show()
         else
             btn:Hide()
@@ -887,17 +896,20 @@ function Mixin:ShowPreviewAuras()
     local isDebuff = cfg.isHarmful
     local renderCount = math.ceil(maxAuras * 0.6)
     local previews = {}
+    local previewScale = Frame:GetEffectiveScale() or 1
+    local snappedW = OrbitEngine.Pixel:Snap(iconW, previewScale)
+    local snappedH = OrbitEngine.Pixel:Snap(iconH, previewScale)
     for i = 1, renderCount do
         local icon = Frame.previewPool:Acquire()
-        icon:SetSize(iconW, iconH)
+        icon:SetSize(snappedW, snappedH)
         local tex = cache[i] or GetPreviewIcon()
         cache[i] = tex
         self:SetupAuraIcon(icon, {
             icon = tex, applications = i, duration = 0,
             expirationTime = 0, index = i, isHarmful = isDebuff,
-        }, iconH, "player", Orbit.Constants.Aura.SkinNoTimer)
-        icon:SetSize(iconW, iconH)
-        CropIconTexture(icon, iconW, iconH)
+        }, snappedH, "player", Orbit.Constants.Aura.SkinNoTimer)
+        icon:SetSize(snappedW, snappedH)
+        CropIconTexture(icon, snappedW, snappedH)
 
         icon:SetScript("OnEnter", nil)
         icon:SetScript("OnLeave", nil)
@@ -920,9 +932,12 @@ function Mixin:ResizePreviewAuras()
     local Frame = self._agFrame
     if not Frame or not Frame._activePreviewIcons or #Frame._activePreviewIcons == 0 then return end
     local _, iconsPerRow, spacing, iconH, iconW = self:_resolveGrid()
+    local resizeScale = Frame:GetEffectiveScale() or 1
+    local snappedW = OrbitEngine.Pixel:Snap(iconW, resizeScale)
+    local snappedH = OrbitEngine.Pixel:Snap(iconH, resizeScale)
     for _, icon in ipairs(Frame._activePreviewIcons) do
-        icon:SetSize(iconW, iconH)
-        CropIconTexture(icon, iconW, iconH)
+        icon:SetSize(snappedW, snappedH)
+        CropIconTexture(icon, snappedW, snappedH)
     end
     local anchor, growthX, growthY = ResolveGrowthDirection(Frame, self._agConfig.showIconLimit)
     if Frame.collapseArrow then UpdateCollapseArrow(Frame.collapseArrow, false, iconH, growthX, growthY) end

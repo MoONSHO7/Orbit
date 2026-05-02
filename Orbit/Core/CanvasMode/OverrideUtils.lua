@@ -114,7 +114,8 @@ function OverrideUtils.ApplyScaleOverride(element, overrides)
         end
         local baseW = element.orbitOriginalWidth
         local baseH = element.orbitOriginalHeight
-        element:SetSize(baseW * overrides.Scale, baseH * overrides.Scale)
+        local scale = element:GetEffectiveScale()
+        element:SetSize(Engine.Pixel:Snap(baseW * overrides.Scale, scale), Engine.Pixel:Snap(baseH * overrides.Scale, scale))
     elseif element.GetObjectType and element:GetObjectType() == "Button" and element.Icon then
         -- Resize + re-skin: SetScale alone won't update the backdrop on a skinned icon.
         if not element.orbitOriginalWidth then
@@ -149,14 +150,18 @@ function OverrideUtils.ApplyIconSizeOverride(element, overrides)
             Orbit.Skin.Icons:ApplyCustom(element, { zoom = 0, borderStyle = 1, borderSize = globalBorder, showTimer = false })
         end
     elseif objType == "Texture" then
+        local scale = element:GetEffectiveScale()
+        local snappedSize = Engine.Pixel:Snap(size, scale)
         if element.orbitOriginalWidth and element.orbitOriginalHeight and element.orbitOriginalWidth > 0 then
             local ratio = element.orbitOriginalHeight / element.orbitOriginalWidth
-            element:SetSize(size, size * ratio)
+            element:SetSize(snappedSize, Engine.Pixel:Snap(size * ratio, scale))
         else
-            element:SetSize(size, size)
+            element:SetSize(snappedSize, snappedSize)
         end
     else
-        element:SetSize(size, size)
+        local scale = element:GetEffectiveScale()
+        local snappedSize = Engine.Pixel:Snap(size, scale)
+        element:SetSize(snappedSize, snappedSize)
     end
 end
 

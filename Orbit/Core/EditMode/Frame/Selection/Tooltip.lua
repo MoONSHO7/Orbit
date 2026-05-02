@@ -33,6 +33,7 @@ local function EnsureTooltip(self)
 
     local tooltip = CreateFrame("Frame", "OrbitPositionTooltip", UIParent, "BackdropTemplate")
     tooltip:SetFrameStrata(Orbit.Constants.Strata.Topmost)
+    Engine.Pixel:Enforce(tooltip)
     tooltip:SetSize(C.Selection.PositionTooltip.Width, C.Selection.PositionTooltip.Height)
     tooltip:SetBackdrop({
         bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -69,14 +70,14 @@ local function PositionAtCursor(tooltip, anchor)
     tooltip:ClearAllPoints()
 
     if anchor == "LEFT" then
-        tooltip:SetPoint("RIGHT", UIParent, "BOTTOMLEFT", cursorX - 20, cursorY)
+        tooltip:SetPoint("RIGHT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(cursorX - 20, uiScale), Engine.Pixel:Snap(cursorY, uiScale))
     elseif anchor == "RIGHT" then
-        tooltip:SetPoint("LEFT", UIParent, "BOTTOMLEFT", cursorX + 20, cursorY)
+        tooltip:SetPoint("LEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(cursorX + 20, uiScale), Engine.Pixel:Snap(cursorY, uiScale))
     else
         local pad = 24 / uiScale
         local targetX = math.min(cursorX + pad, screenWidth - tooltipWidth - 2)
         local targetY = math.max(cursorY - pad, tooltipHeight + 2)
-        tooltip:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", targetX, targetY)
+        tooltip:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(targetX, uiScale), Engine.Pixel:Snap(targetY, uiScale))
     end
 end
 

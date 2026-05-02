@@ -38,7 +38,7 @@ function Mixin:CreateAnchors(frame, plugin, iconSize)
     local growDir = posData.justifyH or anchorX
     local eff = frame:GetEffectiveScale()
 
-    anchor:SetSize(totalWidth, cellSize)
+    anchor:SetSize(OrbitEngine.Pixel:Snap(totalWidth, eff), OrbitEngine.Pixel:Snap(cellSize, eff))
 
     for i = 1, MAX_PRIVATE_AURA_ANCHORS do
         local point, relPoint, xOff

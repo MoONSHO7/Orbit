@@ -234,6 +234,7 @@ function ComponentDrag:NudgeComponent(component, dx, dy)
     local finalX, finalY = edgeOffX, edgeOffY
     if anchorX == "RIGHT" then finalX = -finalX end
     if anchorY == "TOP" then finalY = -finalY end
+    finalX, finalY = Engine.Pixel:SnapPosition(finalX, finalY, selfAnchor, compW, compH, component:GetEffectiveScale())
     component:SetPoint(selfAnchor, componentParent, anchorPoint, finalX, finalY)
     if data.isFontString and justifyH and component.SetJustifyH then component:SetJustifyH(justifyH) end
 
@@ -446,7 +447,11 @@ function ComponentDrag:RestoreFramePositions(parent, positions)
                 local selfAnchorY = pos.selfAnchorY or anchorY
                 local selfAnchor = BuildComponentSelfAnchor(data.isFontString, data.isAuraContainer, selfAnchorY, pos.justifyH)
                 local s = component:GetScale() or 1
-                component:SetPoint(selfAnchor, componentParent, anchorPoint, (s > 0) and (finalX / s) or finalX, (s > 0) and (finalY / s) or finalY)
+                local sx = (s > 0) and (finalX / s) or finalX
+                local sy = (s > 0) and (finalY / s) or finalY
+                local compW, compH = SafeGetSize(component)
+                sx, sy = Engine.Pixel:SnapPosition(sx, sy, selfAnchor, compW, compH, component:GetEffectiveScale())
+                component:SetPoint(selfAnchor, componentParent, anchorPoint, sx, sy)
                 data.anchorX, data.anchorY, data.selfAnchorY, data.offsetX, data.offsetY, data.justifyH =
                     anchorX, anchorY, selfAnchorY, offsetX, offsetY, pos.justifyH
             end

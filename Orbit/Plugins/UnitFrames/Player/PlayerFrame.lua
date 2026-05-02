@@ -103,10 +103,6 @@ function Plugin:OnLoad()
     self.frame.orbitHeightSync = true
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 10, maxH = 100 }
 
-    self.frame:HookScript("OnSizeChanged", function()
-        Orbit.EventBus:Fire("PLAYER_FRAME_RESIZED")
-    end)
-
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, PLAYER_FRAME_INDEX)
 
     -- Create overlay container for Level/CombatIcon (use frame level, not strata, to avoid appearing above UI dialogs)
@@ -200,7 +196,8 @@ function Plugin:OnLoad()
         self.frame.PvpIcon.orbitOriginalWidth = nativeW > 0 and nativeW or iconSize
         self.frame.PvpIcon.orbitOriginalHeight = nativeH > 0 and nativeH or iconSize
         local ratio = self.frame.PvpIcon.orbitOriginalHeight / self.frame.PvpIcon.orbitOriginalWidth
-        self.frame.PvpIcon:SetSize(iconSize, iconSize * ratio)
+        local pvpScale = self.frame:GetEffectiveScale() or 1
+        self.frame.PvpIcon:SetSize(OrbitEngine.Pixel:Snap(iconSize, pvpScale), OrbitEngine.Pixel:Snap(iconSize * ratio, pvpScale))
         self.frame.PvpIcon:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -2, 2)
         self.frame.PvpIcon:Hide()
     end

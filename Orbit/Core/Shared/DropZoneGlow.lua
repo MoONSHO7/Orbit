@@ -21,11 +21,18 @@ local DEFAULT_OUTSET = 8
 local GATE_POLL_INTERVAL = 0.1
 
 -- [ HELPERS ] ---------------------------------------------------------------------------------------
+local function GlowPx(parent)
+    local Pixel = Orbit.Engine and Orbit.Engine.Pixel
+    if not Pixel then return GLOW_SIZE end
+    return Pixel:Multiple(GLOW_SIZE, parent:GetEffectiveScale())
+end
+
 local function CreateGlowCorner(parent, point, l, r, t, b, cr, cg, cb)
     local tex = parent:CreateTexture(nil, "OVERLAY")
     tex:SetAtlas(GLOW_ATLAS)
     tex:SetTexCoord(l, r, t, b)
-    tex:SetSize(GLOW_SIZE, GLOW_SIZE)
+    local px = GlowPx(parent)
+    tex:SetSize(px, px)
     tex:SetPoint(point, parent, point)
     tex:SetBlendMode("ADD")
     tex:SetVertexColor(cr, cg, cb)
@@ -37,14 +44,15 @@ local function CreateGlowEdge(parent, point1, point2, isVertical, l, r, t, b, cr
     tex:SetTexCoord(l, r, t, b)
     tex:SetBlendMode("ADD")
     tex:SetVertexColor(cr, cg, cb)
+    local px = GlowPx(parent)
     if isVertical then
-        tex:SetWidth(GLOW_SIZE)
-        tex:SetPoint("TOPLEFT", parent, point1, point1 == "TOPLEFT" and 0 or -GLOW_SIZE, -GLOW_SIZE)
-        tex:SetPoint("BOTTOMRIGHT", parent, point2, point2 == "BOTTOMRIGHT" and 0 or GLOW_SIZE, GLOW_SIZE)
+        tex:SetWidth(px)
+        tex:SetPoint("TOPLEFT", parent, point1, point1 == "TOPLEFT" and 0 or -px, -px)
+        tex:SetPoint("BOTTOMRIGHT", parent, point2, point2 == "BOTTOMRIGHT" and 0 or px, px)
     else
-        tex:SetHeight(GLOW_SIZE)
-        tex:SetPoint("TOPLEFT", parent, point1, GLOW_SIZE, point1 == "TOPLEFT" and 0 or GLOW_SIZE)
-        tex:SetPoint("BOTTOMRIGHT", parent, point2, -GLOW_SIZE, point2 == "BOTTOMRIGHT" and 0 or -GLOW_SIZE)
+        tex:SetHeight(px)
+        tex:SetPoint("TOPLEFT", parent, point1, px, point1 == "TOPLEFT" and 0 or px)
+        tex:SetPoint("BOTTOMRIGHT", parent, point2, -px, point2 == "BOTTOMRIGHT" and 0 or -px)
     end
 end
 

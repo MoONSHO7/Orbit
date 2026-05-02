@@ -37,6 +37,8 @@ local function ReanchorContainer(container)
     end
 
     container:ClearAllPoints()
+    local cScale = container:GetEffectiveScale()
+    finalX, finalY = OrbitEngine.Pixel:SnapPosition(finalX, finalY, selfAnchor, container:GetWidth(), container:GetHeight(), cScale)
     container:SetPoint(selfAnchor, parent, anchorPoint, finalX, finalY)
     if container.visual and container.isFontString then
         ApplyTextAlignment(container, container.visual, container.justifyH or "CENTER")
@@ -82,9 +84,10 @@ function Settings:ApplyPortraitPreview()
     local mirror = overrides.PortraitMirror or false
     local ringAtlas = overrides.PortraitRing or "none"
 
-    local size = 32 * scale
+    local pScale = comp:GetEffectiveScale()
+    local size = OrbitEngine.Pixel:Snap(32 * scale, pScale)
     local ringData = PORTRAIT_RING_DATA[ringAtlas]
-    local ringOS = ((ringData and ringData.overshoot) or PORTRAIT_RING_OVERSHOOT) * scale
+    local ringOS = OrbitEngine.Pixel:Snap(((ringData and ringData.overshoot) or PORTRAIT_RING_OVERSHOOT) * scale, pScale)
     comp:SetSize(size, size)
 
     if not comp._ring then
@@ -173,7 +176,8 @@ function Settings:ApplyCastBarPreview()
     local sysIdx = self.systemIndex or 1
     local w = pending.CastBarWidth or (plugin and plugin:GetSetting(sysIdx, "CastBarWidth")) or 120
     local h = pending.CastBarHeight or (plugin and plugin:GetSetting(sysIdx, "CastBarHeight")) or 18
-    comp:SetSize(w + h, h)
+    local cScale = comp:GetEffectiveScale()
+    comp:SetSize(OrbitEngine.Pixel:Snap(w + h, cScale), OrbitEngine.Pixel:Snap(h, cScale))
 end
 
 -- [ HEALTH TEXT PREVIEW ] ---------------------------------------------------------------------------
@@ -284,8 +288,10 @@ function Settings:ApplyStyle(container, key, value)
             if self.container.UpdateZoomSize then
                 self.container:UpdateZoomSize(value)
             else
-                self.container:SetSize(value, value)
-                if self.container.visual and self.container.visual.SetSize and not self.container._cyclingTicker then self.container.visual:SetSize(value, value) end
+                local cScale = self.container:GetEffectiveScale()
+                local snappedV = OrbitEngine.Pixel:Snap(value, cScale)
+                self.container:SetSize(snappedV, snappedV)
+                if self.container.visual and self.container.visual.SetSize and not self.container._cyclingTicker then self.container.visual:SetSize(snappedV, snappedV) end
                 if self.container.visual and Orbit.Skin and Orbit.Skin.Icons and self.container.visual.GetRegions then
                     if not self.container.skipIconSkin then
                         Orbit.Skin.Icons:ApplyCustom(self.container.visual, Orbit.Constants.Aura.SkinNoTimer)
@@ -306,7 +312,8 @@ function Settings:ApplyStyle(container, key, value)
         Orbit.Skin:ApplyFontShadow(visual)
         C_Timer.After(0.01, function()
             if container and visual and visual.GetStringWidth then
-                container:SetSize((visual:GetStringWidth() or (value * 3)) + 2, (visual:GetStringHeight() or value) + 2)
+                local cScale = container:GetEffectiveScale()
+                container:SetSize(OrbitEngine.Pixel:Snap((visual:GetStringWidth() or (value * 3)) + 2, cScale), OrbitEngine.Pixel:Snap((visual:GetStringHeight() or value) + 2, cScale))
                 ReanchorContainer(container)
             end
         end)
@@ -319,7 +326,8 @@ function Settings:ApplyStyle(container, key, value)
             Orbit.Skin:ApplyFontShadow(visual)
             C_Timer.After(0.01, function()
                 if container and visual and visual.GetStringWidth then
-                    container:SetSize((visual:GetStringWidth() or ((size or 12) * 3)) + 2, (visual:GetStringHeight() or (size or 12)) + 2)
+                    local cScale = container:GetEffectiveScale()
+                    container:SetSize(OrbitEngine.Pixel:Snap((visual:GetStringWidth() or ((size or 12) * 3)) + 2, cScale), OrbitEngine.Pixel:Snap((visual:GetStringHeight() or (size or 12)) + 2, cScale))
                     ReanchorContainer(container)
                 end
             end)
@@ -330,7 +338,8 @@ function Settings:ApplyStyle(container, key, value)
     elseif key == "Scale" then
         if container._cyclingTicker then
             if not container._originalSize then container._originalSize = container:GetWidth() end
-            local newSize = (container._originalSize or 18) * value
+            local cScale = container:GetEffectiveScale()
+            local newSize = OrbitEngine.Pixel:Snap((container._originalSize or 18) * value, cScale)
             container:SetSize(newSize, newSize)
         elseif visual.GetObjectType and visual:GetObjectType() == "Texture" then
             if not container.originalVisualWidth then
@@ -339,7 +348,8 @@ function Settings:ApplyStyle(container, key, value)
             end
             visual:ClearAllPoints()
             visual:SetPoint("CENTER", container, "CENTER", 0, 0)
-            visual:SetSize((container.originalVisualWidth or 18) * value, (container.originalVisualHeight or 18) * value)
+            local cScale = container:GetEffectiveScale()
+            visual:SetSize(OrbitEngine.Pixel:Snap((container.originalVisualWidth or 18) * value, cScale), OrbitEngine.Pixel:Snap((container.originalVisualHeight or 18) * value, cScale))
         elseif visual.SetScale then
             visual:SetScale(value)
         end

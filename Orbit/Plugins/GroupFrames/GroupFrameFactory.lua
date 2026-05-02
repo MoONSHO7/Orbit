@@ -1,6 +1,7 @@
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
+local Pixel = Orbit.Engine.Pixel
 
 Orbit.GroupFrameFactoryMixin = {}
 
@@ -17,7 +18,7 @@ function Orbit.GroupFrameFactoryMixin:CreatePowerBar(parent, unit)
     local power = CreateFrame("StatusBar", nil, parent)
     power:SetPoint("BOTTOMLEFT", 0, 0)
     power:SetPoint("BOTTOMRIGHT", 0, 0)
-    power:SetHeight(parent:GetHeight() * POWER_BAR_HEIGHT_RATIO)
+    power:SetHeight(Pixel:Snap(parent:GetHeight() * POWER_BAR_HEIGHT_RATIO, parent:GetEffectiveScale()))
     power:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     power:SetFrameLevel(parent:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
     power:SetMinMaxValues(0, 1)

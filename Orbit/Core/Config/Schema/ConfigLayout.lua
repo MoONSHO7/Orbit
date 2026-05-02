@@ -296,7 +296,7 @@ function Layout:CreateAccordion(parent, name)
     local function UpdateVisual()
         right:SetAtlas(section._expanded and "Options_ListExpand_Right_Expanded" or "Options_ListExpand_Right", true)
         body:SetShown(section._expanded)
-        section:SetHeight(section._expanded and (ACCORDION_BAR_HEIGHT + section._contentHeight + 4) or ACCORDION_BAR_HEIGHT)
+        section:SetHeight(section._expanded and Engine.Pixel:Snap(ACCORDION_BAR_HEIGHT + section._contentHeight + 4, section:GetEffectiveScale()) or ACCORDION_BAR_HEIGHT)
     end
     -- Toggle
     bar:SetScript("OnClick", function()
@@ -464,11 +464,12 @@ function Layout:InitializeWidgetTypes()
         frame.text:SetJustifyH("LEFT")
         frame.text:SetWordWrap(true)
         frame.text:SetNonSpaceWrap(true)
+        local scale = frame:GetEffectiveScale()
         local containerWidth = container:GetWidth() or LABEL_FALLBACK_WIDTH
-        frame.text:SetWidth(containerWidth - LABEL_WIDTH_INSET)
+        frame.text:SetWidth(Engine.Pixel:Snap(containerWidth - LABEL_WIDTH_INSET, scale))
         frame.text:SetText(def.text or "")
         local textHeight = frame.text:GetStringHeight()
-        frame:SetHeight(math.max(LABEL_MIN_HEIGHT, textHeight + LABEL_HEIGHT_PAD))
+        frame:SetHeight(math.max(LABEL_MIN_HEIGHT, Engine.Pixel:Snap(textHeight + LABEL_HEIGHT_PAD, scale)))
         frame.OrbitType = "Label"
         return frame
     end)
@@ -660,7 +661,7 @@ function Layout:InitializeWidgetTypes()
         end
 
         local textHeight = frame.text:GetStringHeight()
-        frame:SetHeight(math.max(20, textHeight + 8))
+        frame:SetHeight(math.max(20, Engine.Pixel:Snap(textHeight + 8, frame:GetEffectiveScale())))
         frame.OrbitType = "Description"
         return frame
     end)

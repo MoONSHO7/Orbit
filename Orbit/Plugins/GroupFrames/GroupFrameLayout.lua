@@ -176,14 +176,14 @@ function Orbit.GroupFrameLayoutMixin:UpdateGroupLabels(sortMode, groupOrder, wid
 
         local gx, gy = Helpers:CalculateGroupPosition(idx, width, height, FRAMES_PER_GROUP, memberSpacing, groupSpacing, groupsPerRow, isHorizontal, scale)
         if isHorizontal then
-            local rowCenter = height / 2
+            local rowCenter = Pixel:Snap(height / 2, scale)
             if growUp then
                 label:SetPoint("RIGHT", self.container, "BOTTOMLEFT", gx - GROUP_LABEL_PADDING, -gy + rowCenter)
             else
                 label:SetPoint("RIGHT", self.container, "TOPLEFT", gx - GROUP_LABEL_PADDING, gy - rowCenter)
             end
         else
-            local colCenter = width / 2
+            local colCenter = Pixel:Snap(width / 2, scale)
             if growUp then
                 label:SetPoint("BOTTOM", self.container, "BOTTOMLEFT", gx + colCenter, -gy + GROUP_LABEL_PADDING)
             else

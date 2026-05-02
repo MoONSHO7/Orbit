@@ -8,6 +8,7 @@ local Matcher = Orbit.Spotlight.Search.Matcher
 local IndexManager = Orbit.Spotlight.Index.IndexManager
 local RowPool = Orbit.Spotlight.UI.RowPool
 local Catcher = Orbit.Spotlight.UI.ClickOutsideCatcher
+local Pixel = Orbit.Engine.Pixel
 
 local SpotlightFrame = {}
 Orbit.Spotlight.UI.SpotlightFrame = SpotlightFrame
@@ -69,6 +70,7 @@ end
 local function GetMaxResults() return GetAcct().Spotlight_MaxResults or DEFAULT_MAX_RESULTS end
 local function GetFuzzy() return GetAcct().Spotlight_Fuzzy ~= false end
 local function GetHidePassives() return GetAcct().Spotlight_HidePassives ~= false end
+local function GetScale() return GetAcct().Spotlight_Scale or 1.0 end
 
 -- [ HINT SAMPLE ]------------------------------------------------------------------------------------
 local function PickHintSamples()
@@ -132,9 +134,9 @@ local function BuildFrame(self)
     if scroll.ScrollBar then scroll.ScrollBar:SetAlpha(0) end
 
     local scrollChild = CreateFrame("Frame", nil, scroll)
-    scrollChild:SetWidth(scroll:GetWidth())
+    scrollChild:SetWidth(Pixel:Snap(scroll:GetWidth(), scrollChild:GetEffectiveScale()))
     scroll:SetScrollChild(scrollChild)
-    scroll:SetScript("OnSizeChanged", function(_, w) scrollChild:SetWidth(w) end)
+    scroll:SetScript("OnSizeChanged", function(_, w) scrollChild:SetWidth(Pixel:Snap(w, scrollChild:GetEffectiveScale())) end)
 
     local empty = list:CreateFontString(nil, "OVERLAY")
     Skin:SkinText(empty, { font = GetGlobalFontName(), textSize = EMPTY_FONT_SIZE, textColor = { r = 0.6, g = 0.6, b = 0.6, a = 1 } })
@@ -207,18 +209,20 @@ local function LayoutList(self)
     self._empty:Hide()
 
     local childWidth = self._scrollChild:GetWidth()
+    local childScale = self._scrollChild:GetEffectiveScale()
+    local rowStride = Pixel:Snap(ROW_HEIGHT, childScale)
     for i = 1, count do
         local row = RowPool:Acquire(i)
-        row:SetWidth(childWidth)
+        row:SetSize(childWidth, rowStride)
         row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", self._scrollChild, "TOPLEFT", 0, -(i - 1) * ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", self._scrollChild, "TOPLEFT", 0, -(i - 1) * rowStride)
         Orbit.Spotlight.UI.ResultRow:Bind(row, self._results[i])
         row:Show()
     end
 
     local visible = math.min(count, LIST_MAX_VISIBLE)
-    self._scrollChild:SetHeight(count * ROW_HEIGHT)
-    self._list:SetHeight(visible * ROW_HEIGHT + LIST_INSET * 2)
+    self._scrollChild:SetHeight(count * rowStride)
+    self._list:SetHeight(visible * rowStride + Pixel:Snap(LIST_INSET * 2, self._list:GetEffectiveScale()))
     self._scroll:SetVerticalScroll(0)
     self._scroll:Show()
     self._list:Show()
@@ -248,6 +252,9 @@ function SpotlightFrame:Open()
         return
     end
     if not self._frame then BuildFrame(self) end
+    self._frame:SetScale(GetScale())
+    ApplyOrbitFrame(self._frame)
+    ApplyOrbitFrame(self._list)
     AnchorCenter(self._frame)
     self._input:SetText("")
     self._hint:SetText(PickHintSamples())

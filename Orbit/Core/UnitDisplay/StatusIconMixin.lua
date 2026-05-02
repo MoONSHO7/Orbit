@@ -398,7 +398,8 @@ function Mixin:UpdatePvpIcon(frame, plugin)
             if saved and saved > 0 then size = saved end
         end
         local ratio = frame.PvpIcon.orbitOriginalHeight and frame.PvpIcon.orbitOriginalWidth and frame.PvpIcon.orbitOriginalWidth > 0 and (frame.PvpIcon.orbitOriginalHeight / frame.PvpIcon.orbitOriginalWidth) or 1
-        frame.PvpIcon:SetSize(size, size * ratio)
+        local pvpScale = frame:GetEffectiveScale() or 1
+        frame.PvpIcon:SetSize(Orbit.Engine.Pixel:Snap(size, pvpScale), Orbit.Engine.Pixel:Snap(size * ratio, pvpScale))
         frame.PvpIcon:Show()
     else
         frame.PvpIcon:Hide()

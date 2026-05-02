@@ -1,21 +1,14 @@
 [start]
 
-### Warning
-- Simplified Anchoring Code in Orbit
-    - Should help me find bugs easier with anchoring.
-    - Might have broke some of your setups (sorry!) simple to reconfigure though.
-
 ### Updates
-- Performance Update (Group Frames & Damage Meters)
-- Added Out of Range Opacity Slider to Group Frames
-- Added new minimap button
-- Add XP/Rep/Honor Bar
-- Various Damage Meter Tweaks for better usability
-- Lots of minor backend improvements
-- Added some extra Tour Mode tooltips for new users to discover features
-
-- Memory Leak fix in Tracked Cooldowns
-- Added Horizontal Anchoring to Tracked Bars to enable anchoring bars vertically
+- Various Bugfixes
+- New UI Scale Slider in Orbit QoL settings
+- Some missed Pixel Perfect situations addressed
+- Target Frame & Focus Frame now have a Sync Slider and can be manually adjusted
+- Menu Bar Padding from 0-15 to -10-10
+- Added Scale slider to Spotlight QoL
+- Able to Unfavourite / Favourite items in Spotlight using mouse Right-Click
+- Added Tour Tooltip to Tracked Icons/Bars
 
 ### Previous Feature
 - Spotlight!

@@ -46,7 +46,8 @@ local function CreateSubText(parent, parentContainer, subKey, subPos, text, just
     Orbit.Skin:ApplyFontShadow(fs)
     fs:SetText(text)
     fs:SetJustifyH(justify)
-    local pad = CC.TEXT_PADDING
+    local sScale = subFrame:GetEffectiveScale()
+    local pad = OrbitEngine.Pixel:Multiple(CC.TEXT_PADDING, sScale)
     if justify == "LEFT" then
         fs:SetPoint("LEFT", subFrame, "LEFT", pad, 0)
     elseif justify == "RIGHT" then
@@ -57,7 +58,7 @@ local function CreateSubText(parent, parentContainer, subKey, subPos, text, just
 
     local stringWidth = fs:GetStringWidth() or SUB_TEXT_MIN_WIDTH
     local textWidth = math.max(SUB_TEXT_MIN_WIDTH, stringWidth + 2 * pad)
-    subFrame:SetSize(textWidth, cbTextSize + 2 * pad)
+    subFrame:SetSize(OrbitEngine.Pixel:Snap(textWidth, sScale), OrbitEngine.Pixel:Snap(cbTextSize + 2 * pad, sScale))
 
     subFrame.visual = fs
     subFrame.key = subKey
@@ -80,6 +81,7 @@ local function CreateSubText(parent, parentContainer, subKey, subPos, text, just
     local finalY = anchorY == "TOP" and -offY or offY
 
     subFrame:ClearAllPoints()
+    finalX, finalY = OrbitEngine.Pixel:SnapPosition(finalX, finalY, selfAnchor, subFrame:GetWidth(), subFrame:GetHeight(), sScale)
     subFrame:SetPoint(selfAnchor, parent, anchorPoint, finalX, finalY)
 
     subFrame.anchorX = anchorX
@@ -191,7 +193,8 @@ local function Create(container, preview, key, source, data)
     local cbWidth = (plugin and plugin:GetSetting(sysIdx, "CastBarWidth")) or DEFAULT_CB_WIDTH
     local cbHeight = (plugin and plugin:GetSetting(sysIdx, "CastBarHeight")) or DEFAULT_CB_HEIGHT
 
-    container:SetSize(cbWidth + cbHeight, cbHeight)
+    local cScale = container:GetEffectiveScale()
+    container:SetSize(OrbitEngine.Pixel:Snap(cbWidth + cbHeight, cScale), OrbitEngine.Pixel:Snap(cbHeight, cScale))
 
     local borderSize = plugin and (plugin:GetSetting(sysIdx, "BorderSize") or plugin:GetPlayerSetting("BorderSize"))
         or Orbit.Engine.Pixel:DefaultBorderSize(UIParent:GetEffectiveScale() or 1)
@@ -199,7 +202,8 @@ local function Create(container, preview, key, source, data)
 
     -- Icon: texture on container (positioned by UpdateBarInsets)
     container.Icon = container:CreateTexture(nil, "ARTWORK")
-    container.Icon:SetSize(cbHeight, cbHeight)
+    local snappedCbH = OrbitEngine.Pixel:Snap(cbHeight, cScale)
+    container.Icon:SetSize(snappedCbH, snappedCbH)
     container.Icon:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0)
     container.Icon:SetTexture(CB_ICON_TEXTURE)
     container.Icon:SetTexCoord(CB_ICON_TEXCOORD, CB_ICON_TEXCOORD_MAX, CB_ICON_TEXCOORD, CB_ICON_TEXCOORD_MAX)
@@ -207,7 +211,7 @@ local function Create(container, preview, key, source, data)
 
     -- StatusBar: fills the space to the right of the icon
     local bar = CreateFrame("StatusBar", nil, container)
-    bar:SetPoint("TOPLEFT", container, "TOPLEFT", cbHeight, 0)
+    bar:SetPoint("TOPLEFT", container, "TOPLEFT", snappedCbH, 0)
     bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0)
     bar:SetMinMaxValues(0, CB_MAX_VALUE)
     bar:SetValue(CB_CAST_VALUE)

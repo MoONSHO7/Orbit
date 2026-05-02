@@ -63,7 +63,8 @@ local function Create(container, preview, key, source, data)
     if vr then visual:SetVertexColor(vr, vg, vb, va or 1) end
 
     local w, h = GetSourceSize(source, CC.DEFAULT_TEXTURE_SIZE, CC.DEFAULT_TEXTURE_SIZE)
-    container:SetSize(w, h)
+    local cScale = container:GetEffectiveScale()
+    container:SetSize(OrbitEngine.Pixel:Snap(w, cScale), OrbitEngine.Pixel:Snap(h, cScale))
 
     return visual
 end

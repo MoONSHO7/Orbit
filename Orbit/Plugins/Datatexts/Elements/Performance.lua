@@ -114,7 +114,8 @@ function W:GetPinnedTooltip()
     tip:SetScript("OnDragStop", function(f)
         f:StopMovingOrSizing()
         local point, _, relPoint, x, y = f:GetPoint(1)
-        self.pinnedPos = { point = point, relPoint = relPoint, x = x, y = y }
+        local snappedX, snappedY = Orbit.Engine.Pixel:SnapPosition(x, y, point, f:GetWidth(), f:GetHeight(), f:GetEffectiveScale())
+        self.pinnedPos = { point = point, relPoint = relPoint, x = snappedX, y = snappedY }
     end)
     self.pinnedTooltip = tip
     return tip

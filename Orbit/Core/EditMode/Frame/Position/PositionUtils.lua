@@ -197,6 +197,9 @@ function PositionUtils.ApplyTextPosition(element, parent, pos, defaultAnchor, de
         else
             selfAnchor = "CENTER"
         end
+        local scale = parent:GetEffectiveScale()
+        local ew, eh = element.GetWidth and element:GetWidth() or 0, element.GetHeight and element:GetHeight() or 0
+        offsetX, offsetY = Engine.Pixel:SnapPosition(offsetX, offsetY, selfAnchor, ew, eh, scale)
         element:SetPoint(selfAnchor, parent, anchorPoint, offsetX, offsetY)
         return true
     end
@@ -208,9 +211,11 @@ function PositionUtils.ApplyTextPosition(element, parent, pos, defaultAnchor, de
         return true
     end
 
-    -- Default positioning
     if defaultAnchor then
-        element:SetPoint(defaultAnchor, parent, defaultAnchor, defaultOffsetX or 0, defaultOffsetY or 0)
+        local scale = parent:GetEffectiveScale()
+        local ew, eh = element.GetWidth and element:GetWidth() or 0, element.GetHeight and element:GetHeight() or 0
+        local dx, dy = Engine.Pixel:SnapPosition(defaultOffsetX or 0, defaultOffsetY or 0, defaultAnchor, ew, eh, scale)
+        element:SetPoint(defaultAnchor, parent, defaultAnchor, dx, dy)
         return true
     end
 
@@ -257,6 +262,9 @@ function PositionUtils.ApplyIconPosition(icon, parentFrame, pos)
     local finalY = pos.offsetY or 0
     if pos.anchorX == "RIGHT" then finalX = -finalX end
     if pos.anchorY == "TOP" then finalY = -finalY end
+    local scale = parentFrame:GetEffectiveScale()
+    local iw, ih = icon.GetWidth and icon:GetWidth() or 0, icon.GetHeight and icon:GetHeight() or 0
+    finalX, finalY = Engine.Pixel:SnapPosition(finalX, finalY, "CENTER", iw, ih, scale)
     icon:ClearAllPoints()
     icon:SetPoint("CENTER", parentFrame, anchorPoint, finalX, finalY)
 end

@@ -38,10 +38,12 @@ end
 
 -- [ UPDATE ]-----------------------------------------------------------------------------------------
 function SmartGuides:Update(guides, snapX, snapY, parentW, parentH)
+    local scale = guides.container:GetEffectiveScale()
+    local thickness = Engine.Pixel:Multiple(GUIDE_THICKNESS, scale)
     if snapX then
         guides.vLine:SetColorTexture(unpack(GUIDE_COLORS[snapX] or GUIDE_COLORS.CENTER))
         guides.vLine:ClearAllPoints()
-        guides.vLine:SetSize(GUIDE_THICKNESS, parentH)
+        guides.vLine:SetSize(thickness, parentH)
         guides.vLine:SetPoint(snapX == "CENTER" and "CENTER" or snapX, guides.container, snapX == "CENTER" and "CENTER" or snapX, 0, 0)
         guides.vLine:Show()
     else
@@ -51,7 +53,7 @@ function SmartGuides:Update(guides, snapX, snapY, parentW, parentH)
     if snapY then
         guides.hLine:SetColorTexture(unpack(GUIDE_COLORS[snapY] or GUIDE_COLORS.CENTER))
         guides.hLine:ClearAllPoints()
-        guides.hLine:SetSize(parentW, GUIDE_THICKNESS)
+        guides.hLine:SetSize(parentW, thickness)
         guides.hLine:SetPoint(snapY == "CENTER" and "CENTER" or snapY, guides.container, snapY == "CENTER" and "CENTER" or snapY, 0, 0)
         guides.hLine:Show()
     else

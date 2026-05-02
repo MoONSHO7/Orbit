@@ -2,6 +2,7 @@
 local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
+local Pixel = Orbit.Engine.Pixel
 local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0", true)
 
@@ -220,6 +221,7 @@ local compareFrame
 local function EnsureFrame()
     if compareFrame then return compareFrame end
     local f = CreateFrame("Frame", FRAME_NAME, UIParent)
+    Pixel:Enforce(f)
     f:SetSize(WINDOW_WIDTH, 400)
     -- Center on first open, then pin TOPLEFT so subsequent SetHeight calls extend the bottom
     -- edge downward instead of re-centering (which would make the top creep up/down).
@@ -228,7 +230,8 @@ local function EnsureFrame()
     local openHeight = 500
     local offsetX = math.floor((sw - WINDOW_WIDTH) / 2)
     local offsetY = -math.floor((sh - openHeight) / 2)
-    f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", offsetX, offsetY)
+    local snappedX, snappedY = Pixel:SnapPosition(offsetX, offsetY, "TOPLEFT", WINDOW_WIDTH, openHeight, f:GetEffectiveScale())
+    f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", snappedX, snappedY)
     f:SetFrameStrata(Constants.Strata.Dialog or "DIALOG")
     f:SetFrameLevel(WINDOW_FRAME_LEVEL)
     f:SetMovable(true)
@@ -267,10 +270,11 @@ local function EnsureFrame()
         if event == "PLAYER_REGEN_DISABLED" and self:IsShown() then self:Hide() end
     end)
 
+    local fScale = f:GetEffectiveScale()
     f.Legend = CreateFrame("Frame", nil, f)
     f.Legend:SetPoint("TOPLEFT",  f, "TOPLEFT",   EDGE_PAD, -TITLE_ROW_HEIGHT)
     f.Legend:SetPoint("TOPRIGHT", f, "TOPRIGHT", -EDGE_PAD, -TITLE_ROW_HEIGHT)
-    f.Legend:SetHeight(LEGEND_HEIGHT)
+    f.Legend:SetHeight(Pixel:Multiple(LEGEND_HEIGHT, fScale))
     f.Legend._entries = {}
 
     f.Overall = CreateFrame("Frame", nil, f)
@@ -298,7 +302,7 @@ local function EnsureFrame()
 
     f.Divider = f:CreateTexture(nil, "ARTWORK")
     f.Divider:SetColorTexture(1, 1, 1, 0.15)
-    f.Divider:SetHeight(DIVIDER_HEIGHT)
+    f.Divider:SetHeight(Pixel:Multiple(DIVIDER_HEIGHT, fScale))
 
     f.Scroll = CreateFrame("ScrollFrame", nil, f, "ScrollFrameTemplate")
     f.Scroll:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", EDGE_PAD, EDGE_PAD)
@@ -470,14 +474,15 @@ local function LayoutLegend(f, perPlayer)
         end)
     end
 
+    local legendScale = f.Legend:GetEffectiveScale()
     local legendWidth = WINDOW_WIDTH - EDGE_PAD * 2
     local x = math.max(0, math.floor((legendWidth - totalW) / 2 + 0.5))
     for i in ipairs(perPlayer) do
         local entry = f.Legend._entries[i]
         local w = widths[i]
         entry.btn:ClearAllPoints()
-        entry.btn:SetPoint("LEFT", f.Legend, "LEFT", x, 0)
-        entry.btn:SetSize(w, LEGEND_HEIGHT)
+        entry.btn:SetPoint("LEFT", f.Legend, "LEFT", Pixel:Snap(x, legendScale), 0)
+        entry.btn:SetSize(Pixel:Snap(w, legendScale), Pixel:Multiple(LEGEND_HEIGHT, legendScale))
         entry.btn:Show()
 
         entry.swatch:ClearAllPoints()
@@ -492,6 +497,7 @@ end
 
 local function LayoutSection(section, spellID, perPlayer, contentWidth, globalMax)
     local iconX, trackX, trackW = ComputeTrackGeometry(contentWidth)
+    local sectionScale = section:GetEffectiveScale()
 
     section.IconBtn:ClearAllPoints()
     section.IconBtn:SetPoint("TOPLEFT", section, "TOPLEFT", iconX, 0)
@@ -502,24 +508,27 @@ local function LayoutSection(section, spellID, perPlayer, contentWidth, globalMa
     local barH = playerCount > 0 and math.max(1, math.floor(BAR_STACK_H / playerCount)) or BAR_STACK_H
     local stackTotalH = barH * playerCount
     local stackTopOffset = math.floor((SECTION_ROW_H - stackTotalH) / 2)
+    local snappedTrackX = Pixel:Snap(trackX, sectionScale)
+    local snappedTrackW = Pixel:Snap(trackW, sectionScale)
+    local snappedBarH = Pixel:Multiple(barH, sectionScale)
 
     for i, slot in ipairs(perPlayer) do
         local bar = section._bars[i] or BuildSubBar(section)
         section._bars[i] = bar
-        local yTop = -(stackTopOffset + (i - 1) * barH)
+        local yTop = -Pixel:Snap(stackTopOffset + (i - 1) * barH, sectionScale)
         local r, g, b = ColorFor(slot.colorIndex or i)
         local amount = slot.spellAmounts[spellID] or 0
 
         bar.bg:ClearAllPoints()
-        bar.bg:SetPoint("TOPLEFT", section, "TOPLEFT", trackX, yTop)
-        bar.bg:SetSize(trackW, barH)
+        bar.bg:SetPoint("TOPLEFT", section, "TOPLEFT", snappedTrackX, yTop)
+        bar.bg:SetSize(snappedTrackW, snappedBarH)
         bar.bg:Show()
 
         local fillW = (globalMax and globalMax > 0) and math.max(1, math.floor(trackW * (amount / globalMax) + 0.5)) or 0
         if fillW > 0 then
             bar.fill:ClearAllPoints()
-            bar.fill:SetPoint("TOPLEFT", section, "TOPLEFT", trackX, yTop)
-            bar.fill:SetSize(fillW, barH)
+            bar.fill:SetPoint("TOPLEFT", section, "TOPLEFT", snappedTrackX, yTop)
+            bar.fill:SetSize(Pixel:Snap(fillW, sectionScale), snappedBarH)
             bar.fill:SetVertexColor(r, g, b, 0.95)
             bar.fill:Show()
         else
@@ -527,8 +536,8 @@ local function LayoutSection(section, spellID, perPlayer, contentWidth, globalMa
         end
 
         bar.hit:ClearAllPoints()
-        bar.hit:SetPoint("TOPLEFT", section, "TOPLEFT", trackX, yTop)
-        bar.hit:SetSize(trackW, barH)
+        bar.hit:SetPoint("TOPLEFT", section, "TOPLEFT", snappedTrackX, yTop)
+        bar.hit:SetSize(snappedTrackW, snappedBarH)
         InstallHoverBinding(bar.hit, {
             mode      = "spell",
             spellID   = spellID,
@@ -545,7 +554,7 @@ local function LayoutSection(section, spellID, perPlayer, contentWidth, globalMa
         end
     end
 
-    section:SetHeight(SECTION_ROW_H)
+    section:SetHeight(Pixel:Multiple(SECTION_ROW_H, section:GetEffectiveScale()))
     return SECTION_ROW_H
 end
 
@@ -558,6 +567,7 @@ local function LayoutOverall(f, perPlayer)
     -- f.Overall:GetWidth() returns 0 on first pass before anchor resolves, collapsing trackW.
     local overallWidth = WINDOW_WIDTH - EDGE_PAD * 2
     local iconX, trackX, trackW = ComputeTrackGeometry(overallWidth)
+    local overallScale = f.Overall:GetEffectiveScale()
 
     f.OverallIcon:ClearAllPoints()
     f.OverallIcon:SetPoint("TOPLEFT", f.Overall, "TOPLEFT", iconX, 0)
@@ -566,6 +576,9 @@ local function LayoutOverall(f, perPlayer)
     local barH = playerCount > 0 and math.max(1, math.floor(BAR_STACK_H / playerCount)) or BAR_STACK_H
     local stackTotalH = barH * playerCount
     local stackTopOffset = math.floor((SECTION_ROW_H - stackTotalH) / 2)
+    local snappedTrackX = Pixel:Snap(trackX, overallScale)
+    local snappedTrackW = Pixel:Snap(trackW, overallScale)
+    local snappedBarH = Pixel:Multiple(barH, overallScale)
 
     for i, slot in ipairs(perPlayer) do
         local bar = f.Overall._bars[i]
@@ -579,20 +592,20 @@ local function LayoutOverall(f, perPlayer)
             bar.hit:EnableMouse(true)
             f.Overall._bars[i] = bar
         end
-        local yTop = -(stackTopOffset + (i - 1) * barH)
+        local yTop = -Pixel:Snap(stackTopOffset + (i - 1) * barH, overallScale)
         local r, g, b = ColorFor(slot.colorIndex or i)
         local amount = slot.totalDamage or 0
 
         bar.bg:ClearAllPoints()
-        bar.bg:SetPoint("TOPLEFT", f.Overall, "TOPLEFT", trackX, yTop)
-        bar.bg:SetSize(trackW, barH)
+        bar.bg:SetPoint("TOPLEFT", f.Overall, "TOPLEFT", snappedTrackX, yTop)
+        bar.bg:SetSize(snappedTrackW, snappedBarH)
         bar.bg:Show()
 
         local fillW = maxTotal > 0 and math.max(1, math.floor(trackW * (amount / maxTotal) + 0.5)) or 0
         if fillW > 0 then
             bar.fill:ClearAllPoints()
-            bar.fill:SetPoint("TOPLEFT", f.Overall, "TOPLEFT", trackX, yTop)
-            bar.fill:SetSize(fillW, barH)
+            bar.fill:SetPoint("TOPLEFT", f.Overall, "TOPLEFT", snappedTrackX, yTop)
+            bar.fill:SetSize(Pixel:Snap(fillW, overallScale), snappedBarH)
             bar.fill:SetVertexColor(r, g, b, 0.95)
             bar.fill:Show()
         else
@@ -600,8 +613,8 @@ local function LayoutOverall(f, perPlayer)
         end
 
         bar.hit:ClearAllPoints()
-        bar.hit:SetPoint("TOPLEFT", f.Overall, "TOPLEFT", trackX, yTop)
-        bar.hit:SetSize(trackW, barH)
+        bar.hit:SetPoint("TOPLEFT", f.Overall, "TOPLEFT", snappedTrackX, yTop)
+        bar.hit:SetSize(snappedTrackW, snappedBarH)
         InstallHoverBinding(bar.hit, {
             mode      = "overall",
             perPlayer = perPlayer,
@@ -617,12 +630,13 @@ local function LayoutOverall(f, perPlayer)
         end
     end
 
-    f.Overall:SetHeight(SECTION_ROW_H)
+    f.Overall:SetHeight(Pixel:Multiple(SECTION_ROW_H, f.Overall:GetEffectiveScale()))
     return SECTION_ROW_H
 end
 
 local function LayoutContent(f, perPlayer, unionOrder)
     local contentWidth = f.Content:GetWidth()
+    local contentScale = f.Content:GetEffectiveScale()
     -- Shared max (not per-player) so absolute magnitudes are visually comparable across players.
     local globalMax = 0
     for _, slot in ipairs(perPlayer) do
@@ -636,15 +650,16 @@ local function LayoutContent(f, perPlayer, unionOrder)
         local section = f._sectionPool[idx] or BuildSection(f.Content)
         f._sectionPool[idx] = section
         section:ClearAllPoints()
-        section:SetPoint("TOPLEFT",  f.Content, "TOPLEFT",  0, -y)
-        section:SetPoint("TOPRIGHT", f.Content, "TOPRIGHT", 0, -y)
+        local snappedY = -Pixel:Snap(y, contentScale)
+        section:SetPoint("TOPLEFT",  f.Content, "TOPLEFT",  0, snappedY)
+        section:SetPoint("TOPRIGHT", f.Content, "TOPRIGHT", 0, snappedY)
         local h = LayoutSection(section, spellID, perPlayer, contentWidth, globalMax)
         section:Show()
         y = y + h + SECTION_GAP
         used = idx
     end
     for i = used + 1, #f._sectionPool do f._sectionPool[i]:Hide() end
-    f.Content:SetHeight(math.max(1, y))
+    f.Content:SetHeight(Pixel:Snap(math.max(1, y), contentScale))
 end
 
 -- [ PUBLIC ENTRY POINT ] ----------------------------------------------------------------------------

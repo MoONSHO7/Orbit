@@ -9,6 +9,7 @@
 
 local _, Orbit = ...
 Orbit._AC = Orbit._AC or {}
+local Pixel = Orbit.Engine.Pixel
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local PADDING = 16
@@ -30,6 +31,7 @@ local function CreateTabBar(parent, tabs, onTabSelected)
     local xOffset = 0
     for i, tabName in ipairs(tabs) do
         local btn = CreateFrame("Button", nil, bar)
+        Pixel:Enforce(btn)
         btn:SetHeight(TAB_HEIGHT)
         btn.label = btn:CreateFontString(nil, "OVERLAY", TAB_FONT)
         btn.label:SetPoint("CENTER")

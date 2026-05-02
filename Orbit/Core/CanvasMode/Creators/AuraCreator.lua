@@ -48,7 +48,7 @@ local function RefreshAuraIcons(self)
         containerWidth = math.max(iconSize, (actualCols * iconSize) + ((actualCols - 1) * spacing))
         containerHeight = math.max(iconSize, (rows * iconSize) + ((rows - 1) * spacing))
     end
-    self:SetSize(containerWidth, containerHeight)
+    self:SetSize(Pixel:Snap(containerWidth, scale), Pixel:Snap(containerHeight, scale))
 
     for _, btn in ipairs(self.auraIconPool) do btn:Hide() end
 
@@ -83,14 +83,14 @@ local function RefreshAuraIcons(self)
         if iconsPerCol and selfAY ~= "TOP" and selfAY ~= "BOTTOM" then
             local iconsInCol = math.min(iconsPerCol, maxIcons - (col * iconsPerCol))
             local colHeight = (iconsInCol * iconSize) + ((iconsInCol - 1) * spacing)
-            yOffset = yOffset + (self:GetHeight() - colHeight) / 2
+            yOffset = Pixel:Snap(yOffset + (self:GetHeight() - colHeight) / 2, scale)
         end
 
         if self.justifyH == "CENTER" then
             local iconsInRow = math.min(iconsPerRow, maxIcons - (row * iconsPerRow))
             local rowWidth = (iconsInRow * iconSize) + ((iconsInRow - 1) * spacing)
             local containerW = self:GetWidth()
-            local centerOff = (containerW - rowWidth) / 2
+            local centerOff = Pixel:Snap((containerW - rowWidth) / 2, scale)
             local anchor = growDown and "TOPLEFT" or "BOTTOMLEFT"
             btn:SetPoint(anchor, self, anchor, centerOff + xOffset, growDown and -yOffset or yOffset)
         elseif self.justifyH == "RIGHT" then

@@ -53,7 +53,9 @@ function Sources.<kind>:Build() return { <entry>, ... } end
 
 ## Activation
 
-Activation is mouse-only: clicking a row fires the hardware-originated secure dispatch, which is untainted and works for every entry kind — including `type="macro"` (`RunMacroText`). Programmatic `row:Click()` from a Lua keyboard handler would taint the dispatch and trigger `ADDON_ACTION_FORBIDDEN` on protected verbs, so Spotlight does not intercept arrow keys or Enter. `ResultRow:Bind`'s `PostClick` closes Spotlight after any activation; ESC closes via the EditBox's `OnEscapePressed`.
+Activation is mouse-only: left-clicking a row fires the hardware-originated secure dispatch, which is untainted and works for every entry kind — including `type="macro"` (`RunMacroText`). Programmatic `row:Click()` from a Lua keyboard handler would taint the dispatch and trigger `ADDON_ACTION_FORBIDDEN` on protected verbs, so Spotlight does not intercept arrow keys or Enter. `ResultRow:Bind`'s `PostClick` closes Spotlight after any activation; ESC closes via the EditBox's `OnEscapePressed`.
+
+Right-click toggles the entry's favorite for kinds that support it (`mounts`, `pets`, `toys` — see [Index/Favorites.lua](Index/Favorites.lua)). Sources declare their secure verb as bare `type = "..."`, but `SecureActionButtonTemplate` resolves that as a fallback for *any* button (including right) — so `Bind` rebinds `type` as `type1` when copying attributes onto the row. With only `type1` set, right-click has no secure attribute to dispatch and falls through to `PostClick` in Lua. The handler mutates `entry.favorite` in place (the same table is shared with IndexManager's master list and the persistent SavedVariables cache), updates the star texture, and leaves Spotlight open. Right-click on any other kind is a no-op. Mounts whose `canFavorite` flag is false (faction-restricted, etc.) are skipped silently. Mounts hidden by the journal's filter cannot be toggled here because `C_MountJournal.SetIsFavorite` is index-based on the *displayed* list.
 
 ## Performance
 
@@ -69,6 +71,7 @@ All settings are account-scoped in `Orbit.db.AccountSettings`:
 - `Spotlight` (boolean) — module enabled
 - `Spotlight_Src_<Source>` (boolean, default true) — per-source toggle; disabled sources are filtered out of query results
 - `Spotlight_MaxResults` (10-100, default 25)
+- `Spotlight_Scale` (0.70-1.30 in 0.05 steps, default 1.00) — applied via `root:SetScale` on each Open; borders re-skin against the new effective scale so edge thickness stays at constant physical pixels
 - `Spotlight_Fuzzy` (boolean, default true)
 - `SpotlightIndex` (internal cache)
 

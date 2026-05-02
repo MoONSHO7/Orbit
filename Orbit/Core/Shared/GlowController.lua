@@ -129,10 +129,12 @@ local function GetOrCreateWrapper(icon)
     local state = GetState(icon)
     local w = state.pandemicWrapper
     local iw, ih = icon:GetSize()
+    local scale = icon:GetEffectiveScale()
+    local snW, snH = Engine.Pixel:Snap(iw, scale), Engine.Pixel:Snap(ih, scale)
     if w then
         local ww, wh = w:GetSize()
-        if ww ~= iw or wh ~= ih then
-            w:SetSize(iw, ih)
+        if ww ~= snW or wh ~= snH then
+            w:SetSize(snW, snH)
             local entry = state.active[PANDEMIC_KEY]
             if entry then
                 LCG.Hide(w, entry.typeName, PANDEMIC_KEY)
@@ -143,7 +145,7 @@ local function GetOrCreateWrapper(icon)
     end
     w = CreateFrame("Frame", nil, icon)
     w:SetPoint("CENTER", icon, "CENTER")
-    w:SetSize(iw, ih)
+    w:SetSize(snW, snH)
     w:SetFrameLevel(icon:GetFrameLevel())
     w:SetAlpha(0)
     state.pandemicWrapper = w

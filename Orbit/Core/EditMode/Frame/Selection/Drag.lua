@@ -113,7 +113,8 @@ local function RestorePreviewSize(selectionOverlay, isDragging)
         selectionOverlay.previewOrigHeight = nil
     end
     parent:ClearAllPoints()
-    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l + dw / 2, b + dh / 2)
+    local scale = parent:GetEffectiveScale()
+    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l + dw / 2, scale), Engine.Pixel:Snap(b + dh / 2, scale))
     if isDragging then parent:StartMoving() end
 end
 
@@ -237,7 +238,8 @@ function Drag:OnDragStart(selectionOverlay)
             -- Reanchor so visual center matches pre-break position
             local postW, postH = parent:GetWidth(), parent:GetHeight()
             parent:ClearAllPoints()
-            parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", preCX - postW / 2, preCY - postH / 2)
+            local scale = parent:GetEffectiveScale()
+            parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(preCX - postW / 2, scale), Engine.Pixel:Snap(preCY - postH / 2, scale))
             parent:StartMoving()
         else
             parent:StartMoving()

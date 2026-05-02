@@ -55,7 +55,8 @@ local function CreateFallbackVisual(container, key)
     visual:SetAllPoints()
     visual:SetWordWrap(false)
     visual:SetText(key and key:sub(1, 4) or "?")
-    container:SetSize(CC.FALLBACK_CONTAINER_WIDTH, CC.FALLBACK_CONTAINER_HEIGHT)
+    local cScale = container:GetEffectiveScale()
+    container:SetSize(OrbitEngine.Pixel:Snap(CC.FALLBACK_CONTAINER_WIDTH, cScale), OrbitEngine.Pixel:Snap(CC.FALLBACK_CONTAINER_HEIGHT, cScale))
     return visual
 end
 
@@ -101,6 +102,8 @@ local function SetupContainerState(container, preview, key, isFontString, isAura
 
     container:ClearAllPoints()
     local selfAnchor = BuildComponentSelfAnchor(isFontString, isAuraContainer, selfAnchorY, justifyH)
+    local cScale = container:GetEffectiveScale()
+    finalX, finalY = OrbitEngine.Pixel:SnapPosition(finalX, finalY, selfAnchor, container:GetWidth(), container:GetHeight(), cScale)
     container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
 
     if isFontString and container.visual then ApplyTextAlignment(container, container.visual, justifyH) end
@@ -264,6 +267,8 @@ local function SetupDragHandlers(container, preview, key, data)
         local selfAnchor = BuildComponentSelfAnchor(self.isFontString, self.isAuraContainer, self.selfAnchorY, self.justifyH)
         local anchorPoint = BuildAnchorPoint(self.anchorX, self.anchorY)
         local fx, fy = AnchorOffsetsToFinal(self.anchorX, self.anchorY, self.offsetX, self.offsetY, self.posX, self.posY)
+        local dScale = self:GetEffectiveScale()
+        fx, fy = OrbitEngine.Pixel:SnapPosition(fx, fy, selfAnchor, self:GetWidth(), self:GetHeight(), dScale)
         self:SetPoint(selfAnchor, preview, anchorPoint, fx, fy)
 
         if self.visual and self.isFontString then ApplyTextAlignment(self, self.visual, self.justifyH or "CENTER") end
@@ -296,7 +301,8 @@ end
 -- [ DISPATCHER ]-------------------------------------------------------------------------------------
 local function CreateDraggableComponent(preview, key, sourceComponent, startX, startY, data)
     local container = CreateFrame("Frame", nil, preview)
-    container:SetSize(DEFAULT_CONTAINER_WIDTH, DEFAULT_CONTAINER_HEIGHT)
+    local cScale = container:GetEffectiveScale()
+    container:SetSize(OrbitEngine.Pixel:Snap(DEFAULT_CONTAINER_WIDTH, cScale), OrbitEngine.Pixel:Snap(DEFAULT_CONTAINER_HEIGHT, cScale))
     container:EnableMouse(true)
     container:SetMovable(true)
     container:RegisterForDrag("LeftButton")
@@ -309,7 +315,9 @@ local function CreateDraggableComponent(preview, key, sourceComponent, startX, s
     if container.isAuraContainer ~= nil then isAuraContainer = container.isAuraContainer end
 
     if not container.skipSourceSizeRestore and sourceComponent and sourceComponent.orbitOriginalWidth then
-        container:SetSize(sourceComponent.orbitOriginalWidth, sourceComponent.orbitOriginalHeight or sourceComponent.orbitOriginalWidth)
+        local sScale = container:GetEffectiveScale()
+        local srcH = sourceComponent.orbitOriginalHeight or sourceComponent.orbitOriginalWidth
+        container:SetSize(OrbitEngine.Pixel:Snap(sourceComponent.orbitOriginalWidth, sScale), OrbitEngine.Pixel:Snap(srcH, sScale))
     end
 
     container.visual = visual

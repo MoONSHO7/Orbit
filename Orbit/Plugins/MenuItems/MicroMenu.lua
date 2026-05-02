@@ -112,8 +112,8 @@ function Plugin:AddSettings(dialog, systemFrame)
         type = "slider",
         key = "Padding",
         label = L.PLU_MENU_NAV_PADDING,
-        min = 0,
-        max = 15,
+        min = -10,
+        max = 10,
         step = 1,
         default = 0,
     })
@@ -284,7 +284,9 @@ function Plugin:ApplySettings()
         button:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
     end
 
-    local finalW, finalH = (cols * w) + ((cols - 1) * padding), (rows * h) + ((rows - 1) * padding)
+    local frameScale = frame:GetEffectiveScale()
+    local finalW = OrbitEngine.Pixel:Snap((cols * w) + ((cols - 1) * padding), frameScale)
+    local finalH = OrbitEngine.Pixel:Snap((rows * h) + ((rows - 1) * padding), frameScale)
     frame:SetSize(math.max(finalW, 1), math.max(finalH, 1))
     self:ApplyMouseOver(frame, SYSTEM_ID)
 

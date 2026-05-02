@@ -221,6 +221,7 @@ end
 function Plugin:CreateZoomButtons()
     local container = CreateFrame("Frame", nil, self.frame.Overlay)
     container:SetSize(ZOOM_BUTTON_W, ZOOM_BUTTON_IN_H + 2 + ZOOM_BUTTON_OUT_H)
+    OrbitEngine.Pixel:Enforce(container)
     container:SetPoint("RIGHT", self.frame, "RIGHT", -2, 0)
     self.frame.ZoomContainer = container
     container:SetFrameLevel(self.frame.ClickCapture:GetFrameLevel() + 1)

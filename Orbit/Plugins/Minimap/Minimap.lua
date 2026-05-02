@@ -90,6 +90,7 @@ function Plugin:OnLoad()
 
     self.frame = CreateFrame("Frame", "OrbitMinimapContainer", UIParent)
     self.frame:SetSize(DEFAULT_SIZE, DEFAULT_SIZE)
+    OrbitEngine.Pixel:Enforce(self.frame)
     self.frame:SetClampedToScreen(true)
     -- Match Blizzard's MinimapCluster strata so third-party buttons parented to Minimap land where they expect.
     self.frame:SetFrameStrata(Orbit.Constants.Strata.Base)
@@ -99,7 +100,8 @@ function Plugin:OnLoad()
     self.frame:SetScript("OnSizeChanged", function(f, w, h)
         local minimapSurface = self:GetBlizzardMinimap()
         if minimapSurface and minimapSurface:GetParent() == f then
-            minimapSurface:SetSize(w, h)
+            local scale = minimapSurface:GetEffectiveScale()
+            minimapSurface:SetSize(OrbitEngine.Pixel:Snap(w, scale), OrbitEngine.Pixel:Snap(h, scale))
         end
     end)
 
@@ -146,6 +148,7 @@ function Plugin:OnLoad()
     -- [ Zone Text component ] — clickable: opens World Map, tooltip shows zone/subzone/PvP info
     self.frame.ZoneText = CreateFrame("Button", "OrbitMinimapZoneText", self.frame.Overlay)
     self.frame.ZoneText:SetSize(1, 1) -- sized dynamically from text width
+    OrbitEngine.Pixel:Enforce(self.frame.ZoneText)
     self.frame.ZoneText:SetPoint("CENTER", self.frame, "TOP", 0, -4)
 
     self.frame.ZoneText.Text = self.frame.ZoneText:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -179,6 +182,7 @@ function Plugin:OnLoad()
     -- [ Clock component ] — clickable: left = time manager, right = calendar
     self.frame.Clock = CreateFrame("Button", "OrbitMinimapClock", self.frame.Overlay)
     self.frame.Clock:SetSize(1, 1) -- sized dynamically from text width
+    OrbitEngine.Pixel:Enforce(self.frame.Clock)
     self.frame.Clock:SetPoint("CENTER", self.frame, "BOTTOM", 0, 4)
     self.frame.Clock:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
@@ -217,6 +221,7 @@ function Plugin:OnLoad()
     -- [ Coords component ] — wrapper frame holds the FontString so ComponentDrag can move it
     self.frame.Coords = CreateFrame("Frame", nil, self.frame.Overlay)
     self.frame.Coords:SetSize(1, 1) -- sized dynamically from text width on first tick
+    OrbitEngine.Pixel:Enforce(self.frame.Coords)
     self.frame.Coords:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -4, 4)
     self.frame.Coords.Text = self.frame.Coords:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     self.frame.Coords.Text:SetAllPoints()
@@ -345,10 +350,12 @@ function Plugin:OnLoad()
             local minimap = self:GetBlizzardMinimap()
             if minimap then
                 local w = self.frame:GetWidth()
+                local scale = minimap:GetEffectiveScale()
+                local snappedW = OrbitEngine.Pixel:Snap(w, scale)
+                local bounceW = OrbitEngine.Pixel:Snap(w - 1, scale)
                 minimap._orbitRestoringPoint = true
-                -- Force a micro-resize to trigger internal C++ redraw boundary allocation
-                minimap:SetSize(w - 1, w - 1)
-                minimap:SetSize(w, w)
+                minimap:SetSize(bounceW, bounceW)
+                minimap:SetSize(snappedW, snappedW)
                 minimap._orbitRestoringPoint = nil
                 
                 -- Force a mask refresh to flush texture vertices
@@ -594,10 +601,12 @@ function Plugin:ApplySettings()
     -- Skip when FarmHud is active — it owns the surface position/size while its HUD is open.
     local minimapSurface = self:GetBlizzardMinimap()
     if minimapSurface and not self._farmHudActive then
-        minimapSurface._orbitIntendedSize = size
-        -- Micro-size bounce for C++ redraw
-        minimapSurface:SetSize(size - 1, size - 1)
-        minimapSurface:SetSize(size, size)
+        local surfaceScale = minimapSurface:GetEffectiveScale()
+        local snappedSize = OrbitEngine.Pixel:Snap(size, surfaceScale)
+        local bounceSize = OrbitEngine.Pixel:Snap(size - 1, surfaceScale)
+        minimapSurface._orbitIntendedSize = snappedSize
+        minimapSurface:SetSize(bounceSize, bounceSize)
+        minimapSurface:SetSize(snappedSize, snappedSize)
         minimapSurface:ClearAllPoints()
         minimapSurface:SetPoint("CENTER", frame, "CENTER", 0, 0)
     end

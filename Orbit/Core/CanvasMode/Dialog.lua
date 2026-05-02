@@ -318,7 +318,8 @@ function Dialog:Open(frame, plugin, systemIndex)
     end
     self.TransformLayer.baseWidth = layerW
     self.TransformLayer.baseHeight = layerH
-    self.TransformLayer:SetSize(layerW, layerH)
+    local tlScale = self.TransformLayer:GetEffectiveScale()
+    self.TransformLayer:SetSize(Orbit.Engine.Pixel:Snap(layerW, tlScale), Orbit.Engine.Pixel:Snap(layerH, tlScale))
 
     -- The cleric's Detect Magic reveals changes to the dungeon walls in real time
     self:HookSourceSizeChanged(canvasFrame)
@@ -503,7 +504,7 @@ function Dialog:Open(frame, plugin, systemIndex)
     if self.OverrideContainer then self.OverrideContainer:Hide() end
     if self.ViewportDivider then self.ViewportDivider:Hide() end
 
-    self:SetWidth(math.max(C.DIALOG_MIN_WIDTH, self:GetWidth()))
+    self:SetWidth(math.max(C.DIALOG_MIN_WIDTH, OrbitEngine.Pixel:Snap(self:GetWidth(), self:GetEffectiveScale())))
     self:RecalculateHeight()
 
     self:Show()
@@ -561,10 +562,12 @@ function Dialog:HookSourceSizeChanged(sourceFrame)
             dlg.previewFrame.sourceHeight = h
             local globalBorder = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize or 0
             dlg.previewFrame.borderInset = Orbit.Engine.Pixel:Multiple(globalBorder, sourceFrame:GetEffectiveScale())
-            dlg.previewFrame:SetSize(w, h)
+            local pfScale = dlg.previewFrame:GetEffectiveScale()
+            local snappedW, snappedH = Orbit.Engine.Pixel:Snap(w, pfScale), Orbit.Engine.Pixel:Snap(h, pfScale)
+            dlg.previewFrame:SetSize(snappedW, snappedH)
             dlg.TransformLayer.baseWidth = w
             dlg.TransformLayer.baseHeight = h
-            dlg.TransformLayer:SetSize(w, h)
+            dlg.TransformLayer:SetSize(snappedW, snappedH)
             CanvasMode.ApplyPanOffset(dlg, dlg.panOffsetX, dlg.panOffsetY)
         end)
     end

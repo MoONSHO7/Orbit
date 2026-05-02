@@ -104,7 +104,8 @@ function DrawerUI:CreatePanel()
     drawerPanel.Footer:SetPoint("BOTTOMRIGHT", drawerPanel, "BOTTOMRIGHT", -FO_INSET, FO_INSET)
 
     local footerDivider = drawerPanel.Footer:CreateTexture(nil, "ARTWORK")
-    footerDivider:SetSize(drawerPanel:GetWidth() - (FO_INSET * 2) - 40, Orbit.Constants.Panel.DividerHeight)
+    local panelScale = drawerPanel:GetEffectiveScale()
+    footerDivider:SetSize(Orbit.Engine.Pixel:Snap(drawerPanel:GetWidth() - (FO_INSET * 2) - 40, panelScale), Orbit.Constants.Panel.DividerHeight)
     footerDivider:SetTexture("Interface\\FriendsFrame\\UI-FriendsFrame-OnlineDivider")
     footerDivider:SetPoint("TOP", drawerPanel.Footer, "TOP", 0, Orbit.Constants.Footer.DividerOffset)
 
@@ -160,7 +161,10 @@ function DrawerUI:LayoutDrawer()
             cell:RegisterForDrag("LeftButton")
         end
         cell:ClearAllPoints()
-        cell:SetPoint("TOPLEFT", drawerPanel, "TOPLEFT", DRAWER_OUTER_PAD + col * (DRAWER_CELL_WIDTH + DRAWER_PAD), yOffset)
+        local cellScale = drawerPanel:GetEffectiveScale()
+        local cellX = Orbit.Engine.Pixel:Snap(DRAWER_OUTER_PAD + col * (DRAWER_CELL_WIDTH + DRAWER_PAD), cellScale)
+        local cellY = Orbit.Engine.Pixel:Snap(yOffset, cellScale)
+        cell:SetPoint("TOPLEFT", drawerPanel, "TOPLEFT", cellX, cellY)
         cell:SetParent(drawerPanel)
         
         if datatext.isPlaced then
@@ -210,7 +214,8 @@ function DrawerUI:LayoutDrawer()
                         local uipY = UIParent:GetHeight() / 2
                         local offsetX = ((cx / uipScale) - uipX) / wf:GetScale()
                         local offsetY = ((cy / uipScale) - uipY) / wf:GetScale()
-                        
+                        offsetX, offsetY = Orbit.Engine.Pixel:SnapPosition(offsetX, offsetY, "CENTER", wf:GetWidth(), wf:GetHeight(), wf:GetEffectiveScale())
+
                         wf:ClearAllPoints()
                         wf:SetPoint("CENTER", UIParent, "CENTER", offsetX, offsetY)
                         DT.DrawerUI:OnDatatextDragUpdate(datatext.name)
@@ -257,11 +262,12 @@ function DrawerUI:LayoutDrawer()
     end
     
     local FO_INSET = 12
+    local panelScale = drawerPanel:GetEffectiveScale()
     if #alldatatexts > 0 then
         local rows = math.ceil(#alldatatexts / DRAWER_COLS)
-        drawerPanel:SetHeight(DRAWER_HEADER_HEIGHT + DRAWER_OUTER_PAD + (rows * DRAWER_CELL_HEIGHT) + ((rows - 1) * DRAWER_PAD) + DRAWER_BOTTOM_PAD + drawerPanel.footerHeight + FO_INSET)
+        drawerPanel:SetHeight(Orbit.Engine.Pixel:Snap(DRAWER_HEADER_HEIGHT + DRAWER_OUTER_PAD + (rows * DRAWER_CELL_HEIGHT) + ((rows - 1) * DRAWER_PAD) + DRAWER_BOTTOM_PAD + drawerPanel.footerHeight + FO_INSET, panelScale))
     else
-        drawerPanel:SetHeight(DRAWER_HEADER_HEIGHT + DRAWER_OUTER_PAD + DRAWER_BOTTOM_PAD + drawerPanel.footerHeight + FO_INSET)
+        drawerPanel:SetHeight(Orbit.Engine.Pixel:Snap(DRAWER_HEADER_HEIGHT + DRAWER_OUTER_PAD + DRAWER_BOTTOM_PAD + drawerPanel.footerHeight + FO_INSET, panelScale))
     end
 end
 

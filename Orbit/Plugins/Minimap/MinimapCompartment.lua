@@ -450,7 +450,8 @@ function Plugin:LayoutButtonsInFlyout()
         cols = math.ceil(n / rows)
         flyoutWidth = (cols * cellSize) + paddingTotal
     end
-    flyout:SetSize(flyoutWidth, flyoutHeight)
+    local flyoutScale = flyout:GetEffectiveScale()
+    flyout:SetSize(Orbit.Engine.Pixel:Snap(flyoutWidth, flyoutScale), Orbit.Engine.Pixel:Snap(flyoutHeight, flyoutScale))
 
     -- Create/reuse proxy buttons with explicit strata so rendering is independent of the original button.
     for i, entry in ipairs(visibleEntries) do
@@ -461,8 +462,8 @@ function Plugin:LayoutButtonsInFlyout()
 
             local col = (i - 1) % cols
             local row = math.floor((i - 1) / cols)
-            local xOff = COMPARTMENT_PADDING + FLYOUT_BUTTON_SPACING + (col * cellSize)
-            local yOff = -(COMPARTMENT_PADDING + FLYOUT_BUTTON_SPACING + (row * cellSize))
+            local xOff = Orbit.Engine.Pixel:Snap(COMPARTMENT_PADDING + FLYOUT_BUTTON_SPACING + (col * cellSize), flyoutScale)
+            local yOff = Orbit.Engine.Pixel:Snap(-(COMPARTMENT_PADDING + FLYOUT_BUTTON_SPACING + (row * cellSize)), flyoutScale)
 
             proxy:ClearAllPoints()
             proxy:SetPoint("TOPLEFT", flyout, "TOPLEFT", xOff, yOff)

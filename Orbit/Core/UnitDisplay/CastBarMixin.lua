@@ -60,6 +60,7 @@ function Mixin:CreateCastBarFrame(name, config)
     config = config or {}
 
     local bar = CreateFrame("StatusBar", name, UIParent)
+    OrbitEngine.Pixel:Enforce(bar)
     bar:SetSize(config.width or Orbit.Constants.PlayerCastBar.DefaultWidth or 200, config.height or Orbit.Constants.PlayerCastBar.DefaultHeight or 18)
     bar:SetPoint("CENTER", 0, config.yOffset or Orbit.Constants.PlayerCastBar.DefaultY or -150)
     bar:SetFrameStrata(Orbit.Constants.Strata.HUD)
@@ -103,7 +104,8 @@ function Mixin:InitializeSkin(bar)
     local skinned = Orbit.Skin.CastBar:Create(bar)
     bar.orbitBar, bar.Text, bar.Timer, bar.Icon = skinned, skinned.Text, skinned.Timer, skinned.Icon
     bar.Latency, bar.InterruptOverlay, bar.InterruptAnim = skinned.Latency, skinned.InterruptOverlay, skinned.InterruptAnim
-    if skinned.Spark then skinned.Spark:Hide() end
+    if bar.Latency then OrbitEngine.Pixel:Enforce(bar.Latency) end
+    if skinned.Spark then OrbitEngine.Pixel:Enforce(skinned.Spark) skinned.Spark:Hide() end
     if skinned.SparkGlow then skinned.SparkGlow:Hide() end
     -- Protected overlay: mirrors orbitBar but with the protected color.
     -- SetAlphaFromBoolean drives visibility from the secret notInterruptible value.

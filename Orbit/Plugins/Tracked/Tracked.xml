@@ -4,4 +4,5 @@
     <Script file="TrackedContainer.lua"/>
     <Script file="TrackedBar.lua"/>
     <Script file="TrackedSettings.lua"/>
+    <Script file="TrackedTour.lua"/>
 </Ui>

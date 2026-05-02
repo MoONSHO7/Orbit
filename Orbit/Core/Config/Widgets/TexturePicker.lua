@@ -180,7 +180,7 @@ function Layout:CreateTexturePicker(parent, label, initialTexture, callback, pre
         end
         local vcb = frame.ValueCheckbox
         vcb:ClearAllPoints()
-        vcb:SetPoint("CENTER", frame, "RIGHT", -C.Widget.ValueWidth / 2, 0)
+        vcb:SetPoint("CENTER", frame, "RIGHT", -Engine.Pixel:Snap(C.Widget.ValueWidth / 2, frame:GetEffectiveScale()), 0)
         vcb:SetChecked(valueCheckboxCfg.initialValue or false)
         vcb:SetScript("OnClick", function(self)
             if valueCheckboxCfg.callback then valueCheckboxCfg.callback(self:GetChecked()) end

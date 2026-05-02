@@ -115,8 +115,10 @@ function PortraitMixin:UpdatePortrait()
 
     local size = PORTRAIT_DEFAULT_SIZE * scale
     local ringData = PORTRAIT_RING_DATA[ringAtlas]
-    local ringOS = ((ringData and ringData.overshoot) or PORTRAIT_RING_OVERSHOOT) * scale
-    portrait:SetSize(size, size)
+    local pScale = portrait:GetEffectiveScale() or 1
+    local snappedSize = Engine.Pixel:Snap(size, pScale)
+    local ringOS = Engine.Pixel:Snap(((ringData and ringData.overshoot) or PORTRAIT_RING_OVERSHOOT) * scale, pScale)
+    portrait:SetSize(snappedSize, snappedSize)
     portrait.Ring:ClearAllPoints()
     portrait.Ring:SetPoint("TOPLEFT", -ringOS, ringOS)
     portrait.Ring:SetPoint("BOTTOMRIGHT", ringOS, -ringOS)

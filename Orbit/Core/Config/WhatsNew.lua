@@ -5,6 +5,7 @@
 local _, Orbit = ...
 local L = Orbit.L
 local Constants = Orbit.Constants
+local Pixel = Orbit.Engine.Pixel
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local WHATS_NEW_ENABLED = true -- set false for backend-only releases (skips auto-show)
@@ -231,9 +232,10 @@ local function RenderEntries()
     if not Orbit.WHATS_NEW_ENTRIES then
         return
     end
+    local scale = Content:GetEffectiveScale()
     for _, entry in ipairs(Orbit.WHATS_NEW_ENTRIES) do
         local titleText = Content:CreateFontString(nil, "ARTWORK", ENTRY_TITLE_FONT)
-        titleText:SetPoint("TOPLEFT", Content, "TOPLEFT", TEXT_PADDING_X, -yOffset)
+        titleText:SetPoint("TOPLEFT", Content, "TOPLEFT", TEXT_PADDING_X, -Pixel:Snap(yOffset, scale))
         titleText:SetWidth(contentWidth)
         titleText:SetJustifyH("LEFT")
         titleText:SetText("|cFFFFD100" .. FormatMarkdown(entry.title) .. "|r")
@@ -257,18 +259,18 @@ local function RenderEntries()
 
                 if isBullet then
                     local bulletFS = Content:CreateFontString(nil, "ARTWORK", ENTRY_BODY_FONT)
-                    bulletFS:SetPoint("TOPLEFT", Content, "TOPLEFT", TEXT_PADDING_X + baseIndent, -yOffset)
+                    bulletFS:SetPoint("TOPLEFT", Content, "TOPLEFT", TEXT_PADDING_X + baseIndent, -Pixel:Snap(yOffset, scale))
                     local marker = baseIndent > 0 and "-" or "•"
                     bulletFS:SetText("|cFFFFD100" .. marker .. "|r")
                     bulletFS:SetJustifyH("LEFT")
                     tinsert(renderedFontStrings, bulletFS)
-                    
+
                     indentX = baseIndent + 14
                     lineText = lineText:sub(3)
                 end
 
                 local lineFS = Content:CreateFontString(nil, "ARTWORK", ENTRY_BODY_FONT)
-                lineFS:SetPoint("TOPLEFT", Content, "TOPLEFT", TEXT_PADDING_X + indentX, -yOffset)
+                lineFS:SetPoint("TOPLEFT", Content, "TOPLEFT", TEXT_PADDING_X + indentX, -Pixel:Snap(yOffset, scale))
                 lineFS:SetWidth(contentWidth - indentX)
                 lineFS:SetJustifyH("LEFT")
                 lineFS:SetText(FormatMarkdown(lineText))
@@ -279,7 +281,7 @@ local function RenderEntries()
         end
         yOffset = yOffset + (ENTRY_SPACING - 6)
     end
-    Content:SetHeight(yOffset)
+    Content:SetHeight(Pixel:Snap(yOffset, scale))
 
     local desiredHeight = BG_TOP + CONTENT_PADDING + yOffset + CONTENT_PADDING + FOOTER_TOTAL
     Window:SetHeight(math.min(desiredHeight, MAX_HEIGHT))

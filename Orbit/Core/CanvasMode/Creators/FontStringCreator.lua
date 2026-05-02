@@ -121,7 +121,8 @@ local function Create(container, preview, key, source, data)
     end
 
     local pad = CC.TEXT_PADDING
-    container:SetSize(textWidth + 2 * pad, textHeight + 2 * pad)
+    local cScale = container:GetEffectiveScale()
+    container:SetSize(OrbitEngine.Pixel:Snap(textWidth + 2 * pad, cScale), OrbitEngine.Pixel:Snap(textHeight + 2 * pad, cScale))
     visual:SetPoint("CENTER", container, "CENTER", 0, 0)
     container.isFontString = true
 

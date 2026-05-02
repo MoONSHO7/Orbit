@@ -25,6 +25,8 @@ local MODE_XP = "xp"
 local MODE_REP = "rep"
 
 local DEFAULT_TICK_WIDTH = 2
+local TICK_BLOCK_PERCENTS = { 0, 10, 25, 33, 50 }
+local DEFAULT_TICK_BLOCKS = 1
 
 local WOW_EVENTS = {
     "PLAYER_XP_UPDATE", "UPDATE_EXHAUSTION", "PLAYER_LEVEL_UP", "DISABLE_XP_GAIN", "ENABLE_XP_GAIN",
@@ -42,9 +44,9 @@ local Plugin = Orbit:RegisterPlugin("Experience Bar", SYSTEM_ID, {
         ValueMode = "percent",
         TextOnMouseover = false,
         TickWidth = DEFAULT_TICK_WIDTH,
+        TickBlocks = DEFAULT_TICK_BLOCKS,
         SmoothFill = true,
         ShowPending = true,
-        ShowParagonTicks = true,
         AutoWatchFaction = true,
         MinLevel = 1,
         XPColor = { pins = { { position = 0, color = { r = XP_COLOR.r, g = XP_COLOR.g, b = XP_COLOR.b, a = 1 } } } },
@@ -220,6 +222,9 @@ function Plugin:UpdateBar()
     local frame = self.frame
     if not frame then return end
 
+    local blocks = self:GetSetting(SYSTEM_ID, "TickBlocks") or DEFAULT_TICK_BLOCKS
+    Orbit.StatusBarBase:SetTickMarks(frame, TICK_BLOCK_PERCENTS[blocks] or TICK_BLOCK_PERCENTS[DEFAULT_TICK_BLOCKS])
+
     local record = self:BuildActiveRecord()
     if not record then
         if Orbit:IsEditMode() then
@@ -238,7 +243,6 @@ function Plugin:UpdateBar()
         Orbit.StatusBarBase:HideOverlay(frame)
         Orbit.StatusBarBase:HidePending(frame)
         Orbit.StatusBarBase:SetTickWidth(frame, 0)
-        Orbit.StatusBarBase:SetTickMarks(frame, 0)
         return
     end
 
@@ -249,7 +253,6 @@ function Plugin:UpdateBar()
         local c = self:GetXPColor()
         frame.Bar:SetStatusBarColor(c.r, c.g, c.b, c.a or 1)
         self:UpdateXP(record.level)
-        Orbit.StatusBarBase:SetTickMarks(frame, 0)
     else
         frame.Bar:SetStatusBarColor(record.color.r, record.color.g, record.color.b, record.color.a or 1)
         Orbit.StatusBarBase:HideOverlay(frame)
@@ -310,12 +313,6 @@ function Plugin:UpdateRep(record)
         frame.Bar:SetMinMaxValues(record.min, record.max)
         frame.Bar:SetValue(record.current)
     end
-
-    local tickCount = 0
-    if self:GetSetting(SYSTEM_ID, "ShowParagonTicks") and record.paragonCycles and record.paragonCycles > 0 then
-        tickCount = math.min(record.paragonCycles, 5)
-    end
-    Orbit.StatusBarBase:SetTickMarks(frame, tickCount, { r = 1.0, g = 0.8, b = 0.2, a = 0.8 })
 
     local ctx = {
         cur = record.current - record.min, max = record.max - record.min,
@@ -444,6 +441,14 @@ function Plugin:AddSettings(dialog, systemFrame)
             min = 0, max = 10, step = 1, default = DEFAULT_TICK_WIDTH,
         })
         table.insert(schema.controls, {
+            type = "slider", key = "TickBlocks", label = L.PLU_SB_TICK_BLOCKS,
+            min = 1, max = #TICK_BLOCK_PERCENTS, step = 1, default = DEFAULT_TICK_BLOCKS,
+            formatter = function(v)
+                local p = TICK_BLOCK_PERCENTS[v] or TICK_BLOCK_PERCENTS[DEFAULT_TICK_BLOCKS]
+                return p > 0 and (p .. "%") or L.PLU_SB_OFF
+            end,
+        })
+        table.insert(schema.controls, {
             type = "slider", key = "MinLevel", label = L.PLU_SB_MIN_LEVEL,
             min = 1, max = 80, step = 1, default = 1,
         })
@@ -457,7 +462,6 @@ function Plugin:AddSettings(dialog, systemFrame)
         table.insert(schema.controls, { type = "checkbox", key = "TextOnMouseover",   label = L.PLU_SB_TEXT_MOUSEOVER,   default = false })
         table.insert(schema.controls, { type = "checkbox", key = "SmoothFill",        label = L.PLU_SB_SMOOTH_FILL,      default = true })
         table.insert(schema.controls, { type = "checkbox", key = "ShowPending",       label = L.PLU_SB_SHOW_PENDING,     default = true })
-        table.insert(schema.controls, { type = "checkbox", key = "ShowParagonTicks",  label = L.PLU_SB_SHOW_PARAGON_TICKS, default = true })
         table.insert(schema.controls, { type = "checkbox", key = "AutoWatchFaction",  label = L.PLU_SB_AUTO_WATCH,       default = true })
     end
 

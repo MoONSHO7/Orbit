@@ -57,26 +57,28 @@ local function Create(container, preview, key, source, data)
         local outW = math.floor(ZOOM_OUT_W * scale + 0.5)
         local outH = math.floor(ZOOM_OUT_H * scale + 0.5)
         local totalH = inH + ZOOM_BUTTON_GAP + outH
+        local cScale = container:GetEffectiveScale()
 
-        container:SetSize(inW, totalH)
+        container:SetSize(OrbitEngine.Pixel:Snap(inW, cScale), OrbitEngine.Pixel:Snap(totalH, cScale))
 
         local zoomInTex = container:CreateTexture(nil, "ARTWORK")
-        zoomInTex:SetSize(inW, inH)
+        zoomInTex:SetSize(OrbitEngine.Pixel:Snap(inW, cScale), OrbitEngine.Pixel:Snap(inH, cScale))
         zoomInTex:SetPoint("TOP", container, "TOP", 0, 0)
         zoomInTex:SetAtlas("ui-hud-minimap-zoom-in", false)
 
         local zoomOutTex = container:CreateTexture(nil, "ARTWORK")
-        zoomOutTex:SetSize(outW, outH)
+        zoomOutTex:SetSize(OrbitEngine.Pixel:Snap(outW, cScale), OrbitEngine.Pixel:Snap(outH, cScale))
         zoomOutTex:SetPoint("TOP", zoomInTex, "BOTTOM", 0, -ZOOM_BUTTON_GAP)
         zoomOutTex:SetAtlas("ui-hud-minimap-zoom-out", false)
 
         container.UpdateZoomSize = function(self, newSize)
             local s = (newSize and newSize > 0) and (newSize / ZOOM_IN_W) or 1
-            local w = math.floor(ZOOM_IN_W * s + 0.5)
-            local hin = math.floor(ZOOM_IN_H * s + 0.5)
-            local wout = math.floor(ZOOM_OUT_W * s + 0.5)
-            local hout = math.floor(ZOOM_OUT_H * s + 0.5)
-            self:SetSize(w, hin + ZOOM_BUTTON_GAP + hout)
+            local uScale = self:GetEffectiveScale()
+            local w = OrbitEngine.Pixel:Snap(ZOOM_IN_W * s, uScale)
+            local hin = OrbitEngine.Pixel:Snap(ZOOM_IN_H * s, uScale)
+            local wout = OrbitEngine.Pixel:Snap(ZOOM_OUT_W * s, uScale)
+            local hout = OrbitEngine.Pixel:Snap(ZOOM_OUT_H * s, uScale)
+            self:SetSize(w, OrbitEngine.Pixel:Snap(hin + ZOOM_BUTTON_GAP + hout, uScale))
             zoomInTex:SetSize(w, hin)
             zoomOutTex:SetSize(wout, hout)
         end
@@ -92,20 +94,23 @@ local function Create(container, preview, key, source, data)
         container.iconVisual = CreateFrame("Frame", nil, container)
         local baseWidth, baseHeight = GetSourceSize(source, 16, 16)
         local activeFrame = GetActiveDifficultyFrame(source)
-        container.iconVisual:SetSize(baseWidth, baseHeight)
+        local ivScale = container.iconVisual:GetEffectiveScale()
+        container.iconVisual:SetSize(OrbitEngine.Pixel:Snap(baseWidth, ivScale), OrbitEngine.Pixel:Snap(baseHeight, ivScale))
         container.iconVisual:SetPoint("CENTER", container, "CENTER", 0, 0)
 
         local function Attach(region, alphaOverride)
             if not region or region:GetObjectType() ~= "Texture" then return end
             local drawLayer, subLevel = region:GetDrawLayer()
             local texture = container.iconVisual:CreateTexture(nil, drawLayer, nil, subLevel or 0)
-            texture:SetSize(region:GetWidth(), region:GetHeight())
+            local tScale = container.iconVisual:GetEffectiveScale()
+            texture:SetSize(OrbitEngine.Pixel:Snap(region:GetWidth(), tScale), OrbitEngine.Pixel:Snap(region:GetHeight(), tScale))
             if region:GetNumPoints() == 0 then
                 texture:SetPoint("CENTER", container.iconVisual, "CENTER")
             else
                 for index = 1, region:GetNumPoints() do
                     local point, _, relativePoint, offsetX, offsetY = region:GetPoint(index)
-                    texture:SetPoint(point, container.iconVisual, relativePoint, offsetX or 0, offsetY or 0)
+                    local ivScale = container.iconVisual:GetEffectiveScale()
+                    texture:SetPoint(point, container.iconVisual, relativePoint, OrbitEngine.Pixel:Snap(offsetX or 0, ivScale), OrbitEngine.Pixel:Snap(offsetY or 0, ivScale))
                 end
             end
             CopyDifficultyTexture(texture, region, alphaOverride)
@@ -139,7 +144,8 @@ local function Create(container, preview, key, source, data)
         end
         if attached == 0 and source.Icon then
             local texture = container.iconVisual:CreateTexture(nil, source.Icon:GetDrawLayer())
-            texture:SetSize(source.Icon:GetWidth(), source.Icon:GetHeight())
+            local tScale = container.iconVisual:GetEffectiveScale()
+            texture:SetSize(OrbitEngine.Pixel:Snap(source.Icon:GetWidth(), tScale), OrbitEngine.Pixel:Snap(source.Icon:GetHeight(), tScale))
             texture:SetPoint("CENTER", container.iconVisual, "CENTER")
             CopyDifficultyTexture(texture, source.Icon, 1)
             skullTexture = texture
@@ -154,7 +160,8 @@ local function Create(container, preview, key, source, data)
             local targetWidth = (size and size > 0) and size or baseWidth
             local scale = (baseWidth > 0) and (targetWidth / baseWidth) or 1
             container.iconVisual:SetScale(scale)
-            self:SetSize(targetWidth, baseHeight * scale)
+            local uScale = self:GetEffectiveScale()
+            self:SetSize(OrbitEngine.Pixel:Snap(targetWidth, uScale), OrbitEngine.Pixel:Snap(baseHeight * scale, uScale))
         end
 
         container.UpdateZoomSize = UpdateDifficultySize
@@ -234,8 +241,10 @@ local function Create(container, preview, key, source, data)
     local savedSize = overrides and overrides.IconSize
     local w, h = GetSourceSize(source, CC.DEFAULT_ICON_SIZE, CC.DEFAULT_ICON_SIZE)
     if savedSize and savedSize > 0 and key ~= "PrivateAuraAnchor" then w, h = savedSize, savedSize end
-    container:SetSize(w, h)
-    
+    local cScale = container:GetEffectiveScale()
+    local snappedW, snappedH = OrbitEngine.Pixel:Snap(w, cScale), OrbitEngine.Pixel:Snap(h, cScale)
+    container:SetSize(snappedW, snappedH)
+
     if container.isIconFrame then container.skipSourceSizeRestore = true end
 
     local unskinnedKeys = { PrivateAuraAnchor = true, Zoom = true, CraftingOrder = true, Mail = true, Difficulty = true }
@@ -245,7 +254,7 @@ local function Create(container, preview, key, source, data)
 
     if container.isIconFrame and visual and Orbit.Skin and Orbit.Skin.Icons then
         if not container.skipIconSkin then
-            visual:SetSize(w, h)
+            visual:SetSize(snappedW, snappedH)
             Orbit.Skin.Icons:ApplyCustom(visual, Orbit.Constants.Aura.SkinNoTimer)
         end
     end

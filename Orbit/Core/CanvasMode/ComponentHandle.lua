@@ -52,7 +52,8 @@ function Handle:Create(component, parent, callbacks)
     local headerMinWidth = component.orbitHandleHeaderMinWidth
     if type(headerMinWidth) ~= "number" then headerMinWidth = HEADER_MIN_WIDTH end
     if issecretvalue and issecretvalue(compWidth) then compWidth = headerMinWidth end
-    handle.header:SetWidth(math.max(compWidth or 0, headerMinWidth))
+    local hScale = handle.header:GetEffectiveScale()
+    handle.header:SetWidth(Engine.Pixel:Snap(math.max(compWidth or 0, headerMinWidth), hScale))
     handle.header.text:SetText(callbacks.key or "Component")
     handle.header:SetShown(not component.orbitHideHandleHeader)
     Handle:PositionHeader(handle, component, parent)
@@ -147,7 +148,8 @@ function Handle:Create(component, parent, callbacks)
                 local minWidth = component.orbitHandleHeaderMinWidth
                 if type(minWidth) ~= "number" then minWidth = HEADER_MIN_WIDTH end
                 if not (issecretvalue and issecretvalue(width)) then
-                    handle.header:SetWidth(math.max(width or 0, minWidth))
+                    local hookScale = handle.header:GetEffectiveScale()
+                    handle.header:SetWidth(Engine.Pixel:Snap(math.max(width or 0, minWidth), hookScale))
                 end
             end
         end)

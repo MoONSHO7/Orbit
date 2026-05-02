@@ -47,10 +47,11 @@ end
 local function CreateBorderEdge(parent, c, isVertical, point1, rel1, point2, rel2)
     local tex = parent:CreateTexture(nil, "OVERLAY")
     tex:SetColorTexture(c.r, c.g, c.b, c.a)
+    local borderPx = Engine.Pixel:Multiple(CANVAS_BORDER_SIZE, parent:GetEffectiveScale())
     if isVertical then
-        tex:SetWidth(CANVAS_BORDER_SIZE)
+        tex:SetWidth(borderPx)
     else
-        tex:SetHeight(CANVAS_BORDER_SIZE)
+        tex:SetHeight(borderPx)
     end
     tex:SetPoint(point1, parent, rel1, 0, 0)
     tex:SetPoint(point2, parent, rel2, 0, 0)
@@ -221,14 +222,17 @@ function CanvasMode:UpdateOrbitFrameVisual(frame)
             local uiRight = (right * scale / uiScale) + padding
             local uiTop = (top * scale / uiScale) + padding
             local width, height = uiRight - uiLeft, uiTop - uiBottom
+            local snappedW = Engine.Pixel:Snap(width, uiScale)
+            local snappedH = Engine.Pixel:Snap(height, uiScale)
+            local snappedX, snappedY = Engine.Pixel:SnapPosition(uiLeft, uiBottom, "BOTTOMLEFT", snappedW, snappedH, uiScale)
 
             CanvasMode.borderFrame:ClearAllPoints()
-            CanvasMode.borderFrame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", uiLeft, uiBottom)
-            CanvasMode.borderFrame:SetSize(width, height)
+            CanvasMode.borderFrame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", snappedX, snappedY)
+            CanvasMode.borderFrame:SetSize(snappedW, snappedH)
 
             CanvasMode.backgroundFrame:ClearAllPoints()
-            CanvasMode.backgroundFrame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", uiLeft, uiBottom)
-            CanvasMode.backgroundFrame:SetSize(width, height)
+            CanvasMode.backgroundFrame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", snappedX, snappedY)
+            CanvasMode.backgroundFrame:SetSize(snappedW, snappedH)
         end
 
         UpdateCanvasPosition()

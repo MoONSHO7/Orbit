@@ -2,6 +2,7 @@
 local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
+local Pixel = Orbit.Engine.Pixel
 local LSM = LibStub("LibSharedMedia-3.0")
 
 local Helpers = nil
@@ -59,7 +60,7 @@ local function CreatePowerBar(parent, unit)
     local power = CreateFrame("StatusBar", nil, parent)
     power:SetPoint("BOTTOMLEFT", 0, 0)
     power:SetPoint("BOTTOMRIGHT", 0, 0)
-    power:SetHeight(parent:GetHeight() * POWER_BAR_HEIGHT_RATIO)
+    power:SetHeight(Pixel:Snap(parent:GetHeight() * POWER_BAR_HEIGHT_RATIO, parent:GetEffectiveScale()))
     power:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
     power:SetMinMaxValues(0, 1)
     power:SetValue(0)
@@ -220,6 +221,7 @@ function Plugin:OnLoad()
     self.container:SetFrameStrata(Orbit.Constants.Strata.HUD)
     self.container:SetFrameLevel(Orbit.StrataEngine:GetFrameLevel("Global_HUD", "Orbit_BossFrames") - 1)
     self.container:SetClampedToScreen(true)
+    Pixel:Enforce(self.container)
     self.frames = {}
     for i = 1, MAX_BOSS_FRAMES do
         self.frames[i] = CreateBossFrame(i, self)
@@ -369,7 +371,7 @@ end
 -- [ POSITIONING ] -----------------------------------------------------------------------------------
 function Plugin:PositionFrames()
     if not self.frames or not self.container then return end
-    local spacing = self:GetSetting(1, "Spacing") or 40
+    local spacing = Pixel:Snap(self:GetSetting(1, "Spacing") or 40, self.container:GetEffectiveScale())
     for i, frame in ipairs(self.frames) do
         frame:ClearAllPoints()
         if i == 1 then frame:SetPoint("TOP", self.container, "TOP", 0, 0)
@@ -481,6 +483,8 @@ function Plugin:ApplySettings()
                     local fX, fY = oX, oY
                     if aX == "RIGHT" then fX = -fX end
                     if aY == "TOP" then fY = -fY end
+                    local elemScale = element:GetEffectiveScale()
+                    fX, fY = Pixel:SnapPosition(fX, fY, selfAnchor, element:GetWidth() or 0, element:GetHeight() or 0, elemScale)
                     element:SetPoint(selfAnchor, frame.CastBar.Bar or frame.CastBar, anchor, fX, fY)
                     element:SetJustifyH(jH)
                 end

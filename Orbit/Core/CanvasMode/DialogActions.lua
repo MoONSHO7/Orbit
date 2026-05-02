@@ -125,6 +125,7 @@ function Dialog:ResetPositions()
             storedComp:ClearAllPoints()
             storedComp.selfAnchorY = defaultPos and defaultPos.selfAnchorY or storedComp.anchorY
             local selfAnchor = BuildComponentSelfAnchor(storedComp.isFontString, storedComp.isAuraContainer, storedComp.selfAnchorY, storedComp.justifyH)
+            finalX, finalY = OrbitEngine.Pixel:SnapPosition(finalX, finalY, selfAnchor, storedComp:GetWidth(), storedComp:GetHeight(), storedComp:GetEffectiveScale())
             storedComp:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
             if storedComp.visual and storedComp.isFontString then CanvasMode.ApplyTextAlignment(storedComp, storedComp.visual, storedComp.justifyH) end
             self.previewComponents[key] = storedComp
@@ -179,6 +180,7 @@ function Dialog:ResetPositions()
             local finalX, finalY = AnchorOffsetsToFinal(container.anchorX, container.anchorY, container.offsetX, container.offsetY, container.posX, container.posY)
             container:ClearAllPoints()
             local selfAnchor = BuildComponentSelfAnchor(container.isFontString, container.isAuraContainer, container.selfAnchorY, container.justifyH)
+            finalX, finalY = OrbitEngine.Pixel:SnapPosition(finalX, finalY, selfAnchor, container:GetWidth(), container:GetHeight(), container:GetEffectiveScale())
             container:SetPoint(selfAnchor, preview, anchorPoint, finalX, finalY)
             if container.visual and container.isFontString then
                 CanvasMode.ApplyTextAlignment(container, container.visual, container.justifyH)

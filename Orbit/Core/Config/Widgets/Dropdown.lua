@@ -104,7 +104,7 @@ function Layout:CreateDropdown(parent, label, options, initialValue, callback, v
         end
         local vcb = frame.ValueCheckbox
         vcb:ClearAllPoints()
-        vcb:SetPoint("CENTER", frame, "RIGHT", -C.Widget.ValueWidth / 2, 0)
+        vcb:SetPoint("CENTER", frame, "RIGHT", -Engine.Pixel:Snap(C.Widget.ValueWidth / 2, frame:GetEffectiveScale()), 0)
         vcb:SetChecked(valueCheckboxCfg.initialValue or false)
         vcb:SetScript("OnClick", function(self)
             if valueCheckboxCfg.callback then valueCheckboxCfg.callback(self:GetChecked()) end
@@ -138,7 +138,7 @@ function Layout:CreateDropdown(parent, label, options, initialValue, callback, v
         end
         local swatch = frame.ValueColorSwatch
         swatch:ClearAllPoints()
-        swatch:SetPoint("CENTER", frame, "RIGHT", -C.Widget.ValueWidth / 2, 0)
+        swatch:SetPoint("CENTER", frame, "RIGHT", -Engine.Pixel:Snap(C.Widget.ValueWidth / 2, frame:GetEffectiveScale()), 0)
         
         local initialColor = valueColorCfg.initialValue or { r = 1, g = 1, b = 1, a = 1 }
         swatch.r, swatch.g, swatch.b, swatch.a = initialColor.r or 1, initialColor.g or 1, initialColor.b or 1, initialColor.a or 1

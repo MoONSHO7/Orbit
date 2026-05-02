@@ -463,7 +463,7 @@ local function CreateGroupFrame(index, plugin)
     return frame
 end
 
--- [ HIDE NATIVE FRAMES ]----------------------------------------------------------------------------
+-- [ HIDE NATIVE FRAMES ]-----------------------------------------------------------------------------
 local function HideNativeGroupFrames()
     for i = 1, 4 do
         local f = _G["PartyMemberFrame" .. i]
@@ -563,6 +563,7 @@ function Plugin:OnLoad()
     self.container:SetFrameStrata(Orbit.Constants.Strata.HUD)
     self.container:SetFrameLevel(Orbit.StrataEngine:GetFrameLevel("Global_HUD", "Orbit_GroupFrames") - 1)
     self.container:SetClampedToScreen(true)
+    Pixel:Enforce(self.container)
 
     self.frames = {}
     for i = 1, MAX_GROUP_FRAMES do
@@ -773,10 +774,7 @@ function Plugin:RestoreTierPosition(tier)
         pos = TIER_DEFAULT_POSITIONS[tier] or TIER_DEFAULT_POSITIONS.Party
         self:SetTierSetting("Position", pos, tier)
     end
-    local x, y = pos.x, pos.y
-    if OrbitEngine.Pixel then
-        x, y = OrbitEngine.Pixel:SnapPosition(x, y, pos.point, self.container:GetWidth(), self.container:GetHeight(), self.container:GetEffectiveScale())
-    end
+    local x, y = Pixel:SnapPosition(pos.x, pos.y, pos.point, self.container:GetWidth(), self.container:GetHeight(), self.container:GetEffectiveScale())
     local relativeTo = (pos.relativeTo and _G[pos.relativeTo]) or UIParent
     self.container:ClearAllPoints()
     self.container:SetPoint(pos.point, relativeTo, pos.relativePoint or pos.point, x, y)

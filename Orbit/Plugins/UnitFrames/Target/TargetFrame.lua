@@ -8,10 +8,14 @@ local LSM = LibStub("LibSharedMedia-3.0")
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_TargetFrame"
 local TARGET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Target
+local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus or 3
 
 local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
     canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
+        Width = 160,
+        Height = 30,
+        SyncSize = TARGET_FRAME_INDEX,
         ReactionColour = true,
         ShowAuras = true,
         AuraSize = 20,
@@ -37,6 +41,18 @@ local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
 })
 
 -- [ SETTINGS UI ]------------------------------------------------------------------------------------
+local SYNC_LABELS = { L.PLU_UF_SYNC_PLAYER, L.PLU_UF_SYNC_TARGET, L.PLU_UF_SYNC_FOCUS }
+
+local function ToggleControl(plugin, key, label, default)
+    return {
+        type = "checkbox", key = key, label = label, default = default,
+        onChange = function(val)
+            plugin:SetSetting(TARGET_FRAME_INDEX, key, val)
+            Orbit.EventBus:Fire("TARGET_SETTINGS_CHANGED")
+        end,
+    }
+end
+
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex
     if systemIndex ~= TARGET_FRAME_INDEX then
@@ -44,59 +60,39 @@ function Plugin:AddSettings(dialog, systemFrame)
     end
 
     local SB = OrbitEngine.SchemaBuilder
+    local schema = { hideNativeSettings = true, controls = {} }
 
-    local schema = {
-        hideNativeSettings = true,
-        controls = {
-            {
-                type = "checkbox",
-                key = "EnableTargetTarget",
-                label = L.PLU_TARGET_ENABLE_TOT,
-                default = false,
-                onChange = function(val)
-                    self:SetSetting(TARGET_FRAME_INDEX, "EnableTargetTarget", val)
-                    Orbit.EventBus:Fire("TARGET_SETTINGS_CHANGED")
-                end,
-            },
-            {
-                type = "checkbox",
-                key = "EnableTargetPower",
-                label = L.PLU_TARGET_ENABLE_POWER,
-                default = false,
-                onChange = function(val)
-                    self:SetSetting(TARGET_FRAME_INDEX, "EnableTargetPower", val)
-                    Orbit.EventBus:Fire("TARGET_SETTINGS_CHANGED")
-                end,
-            },
-        },
-    }
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_TARGET_TAB_LAYOUT, L.PLU_TARGET_TAB_BEHAVIOUR }, L.PLU_TARGET_TAB_LAYOUT)
 
-    local enableBuffs = self:GetSetting(TARGET_FRAME_INDEX, "EnableBuffs")
-    if enableBuffs == nil then
-        enableBuffs = true
+    if currentTab == L.PLU_TARGET_TAB_LAYOUT then
+        table.insert(schema.controls, {
+            type = "slider", key = "SyncSize", label = L.PLU_TARGET_SYNC_SIZE,
+            min = 1, max = 3, step = 1, default = TARGET_FRAME_INDEX,
+            formatter = function(v) return SYNC_LABELS[v] or "" end,
+            onChange = function(val)
+                self:SetSetting(TARGET_FRAME_INDEX, "SyncSize", val)
+                self:ApplySettings(self.frame)
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+            end,
+        })
+
+        if self:GetSyncSource(TARGET_FRAME_INDEX) == TARGET_FRAME_INDEX then
+            local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
+            local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
+            local widthParams = { key = "Width", label = "Width", min = 50, max = 400, default = 160 }
+            local heightParams = { key = "Height", label = "Height", min = 20, max = 100, default = 30 }
+            if isAnchored and anchorAxis == "y" then
+                widthParams, heightParams = nil, nil
+            end
+            SB:AddSizeSettings(self, schema, systemIndex, systemFrame, widthParams, heightParams)
+        end
+    elseif currentTab == L.PLU_TARGET_TAB_BEHAVIOUR then
+        table.insert(schema.controls, ToggleControl(self, "EnableTargetTarget", L.PLU_TARGET_ENABLE_TOT, false))
+        table.insert(schema.controls, ToggleControl(self, "EnableTargetPower", L.PLU_TARGET_ENABLE_POWER, false))
+        table.insert(schema.controls, ToggleControl(self, "EnableBuffs", L.PLU_TARGET_ENABLE_BUFFS, true))
+        table.insert(schema.controls, ToggleControl(self, "EnableDebuffs", L.PLU_TARGET_ENABLE_DEBUF, true))
     end
-
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "EnableBuffs",
-        label = L.PLU_TARGET_ENABLE_BUFFS,
-        default = true,
-        onChange = function(val)
-            self:SetSetting(TARGET_FRAME_INDEX, "EnableBuffs", val)
-            Orbit.EventBus:Fire("TARGET_SETTINGS_CHANGED")
-        end,
-    })
-
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "EnableDebuffs",
-        label = L.PLU_TARGET_ENABLE_DEBUF,
-        default = true,
-        onChange = function(val)
-            self:SetSetting(TARGET_FRAME_INDEX, "EnableDebuffs", val)
-            Orbit.EventBus:Fire("TARGET_SETTINGS_CHANGED")
-        end,
-    })
 
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
@@ -211,11 +207,11 @@ function Plugin:OnLoad()
         end,
     }, self)
 
-    -- Subscribe to PlayerFrame events (replaces monkeypatch)
     Orbit.EventBus:On("PLAYER_SETTINGS_CHANGED", function() self:ApplySettings(self.frame) end, self)
-    Orbit.EventBus:On("PLAYER_FRAME_RESIZED", function() self:UpdateLayout(self.frame) end, self)
+    Orbit.EventBus:On("FOCUS_SETTINGS_CHANGED", function()
+        if self:GetSyncSource(TARGET_FRAME_INDEX) == FOCUS_FRAME_INDEX then self:ApplySettings(self.frame) end
+    end, self)
 
-    -- Register symmetric pair for padding sync via mouse wheel
     OrbitEngine.FrameSelection:RegisterSymmetricPair("OrbitPlayerFrame", "OrbitTargetFrame")
 end
 
@@ -224,30 +220,20 @@ function Plugin:UpdateLayout(frame)
     if not frame or InCombatLockdown() then
         return
     end
-    local systemIndex = TARGET_FRAME_INDEX
-    local width = self:GetSetting(systemIndex, "Width") or self:GetPlayerSetting("Width") or 200
-    local height = self:GetPlayerSetting("Height") or 40
-    local isAnchored = OrbitEngine.Frame:GetAnchorParent(frame) ~= nil
-    if not isAnchored then
-        frame:SetSize(width, height)
-    else
-        frame:SetWidth(width)
-        frame:SetHeight(height)
-    end
+    local width, height = self:GetSyncedSize(TARGET_FRAME_INDEX)
+    self:ApplySize(frame, width, height)
 end
 
 function Plugin:ApplySettings(frame)
     frame = self.frame
-    if not frame then
+    if not frame or self._applying then
         return
     end
+    self._applying = true
     local systemIndex = TARGET_FRAME_INDEX
-    local width = self:GetSetting(systemIndex, "Width") or self:GetPlayerSetting("Width")
+    local width, height = self:GetSyncedSize(systemIndex)
 
-    self:ApplyUnitFrameSettings(frame, systemIndex, {
-        width = width,
-        height = self:GetPlayerSetting("Height"),
-    })
+    self:ApplyUnitFrameSettings(frame, systemIndex, { width = width, height = height })
 
     -- Target Specifics
     local reactionColour = self:GetSetting(systemIndex, "ReactionColour")
@@ -267,7 +253,7 @@ function Plugin:ApplySettings(frame)
     if savedPositions and next(savedPositions) then
         OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
     end
-    
+
     -- Component positions + style overrides (positions, font, color, scale)
     -- Must run unconditionally to restore overrides after ApplyBaseVisuals resets text
     if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
@@ -280,6 +266,9 @@ function Plugin:ApplySettings(frame)
 
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover) end
+
+    Orbit.EventBus:Fire("TARGET_SETTINGS_CHANGED")
+    self._applying = false
 end
 
 function Plugin:UpdateVisuals(frame)

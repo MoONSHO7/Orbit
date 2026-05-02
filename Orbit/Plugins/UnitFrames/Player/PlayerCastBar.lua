@@ -75,11 +75,8 @@ local CHANNEL_SPELLS = {
 }
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
--- Disable: NativeFrame parks alpha=0 + offscreen, but UNIT_SPELLCAST_INTERRUPTED still fires and
--- HoldFadeOutAnim animates the parent StatusBar's alpha 1 -> 0 directly, bypassing SetAlpha hooks.
--- Cancel every animation the moment Blizzard starts it so the parked alpha=0 stays in effect.
-local function StopBlizzardCastBarAnims(f)
-    f:StopAnims()
+local function StopBlizzardCastBarHoldFade(f)
+    if f.HoldFadeOutAnim then f.HoldFadeOutAnim:Stop() end
     f:SetAlpha(0)
 end
 local function DisableBlizzardCastBar()
@@ -94,9 +91,7 @@ local function DisableBlizzardCastBar()
                 f._orbitCastAlphaParking = false
             end
         end)
-        hooksecurefunc(PlayerCastingBarFrame, "PlayInterruptAnims", StopBlizzardCastBarAnims)
-        hooksecurefunc(PlayerCastingBarFrame, "PlayFadeAnim", StopBlizzardCastBarAnims)
-        hooksecurefunc(PlayerCastingBarFrame, "PlayFinishAnim", StopBlizzardCastBarAnims)
+        hooksecurefunc(PlayerCastingBarFrame, "PlayInterruptAnims", StopBlizzardCastBarHoldFade)
         PlayerCastingBarFrame.orbitCastBarAlphaHook = true
     end
 end
@@ -167,6 +162,7 @@ local function SetupChannelTicks(plugin, bar, safeSpellID)
 
     local tickWidth = plugin:GetSetting(bar.systemIndex, "TickWidth") or 1
     local snappedTickWidth = SnapToPixel(tickWidth, scale)
+    local snappedHeight = SnapToPixel(height, scale)
 
     local tickCurve = plugin:GetSetting(bar.systemIndex, "TickColorCurve")
     local c = tickCurve and OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:GetFirstColorFromCurve(tickCurve) or { r = 1, g = 1, b = 1, a = 0.4 }
@@ -180,7 +176,7 @@ local function SetupChannelTicks(plugin, bar, safeSpellID)
 
         tick:SetColorTexture(c.r, c.g, c.b, c.a)
         tick:ClearAllPoints()
-        tick:SetSize(math.max(snappedTickWidth, 1 / scale), height)
+        tick:SetSize(math.max(snappedTickWidth, 1 / scale), snappedHeight)
 
         local pct = i / numTicks
         local pos = pct * width
@@ -330,6 +326,7 @@ function Plugin:OnLoad()
         CastBar.InterruptOverlay = skinned.InterruptOverlay
         CastBar.InterruptAnim = skinned.InterruptAnim
         CastBar.SparkGlow = skinned.SparkGlow
+        if CastBar.Latency then OrbitEngine.Pixel:Enforce(CastBar.Latency) end
     end
 
     -- Canvas Mode: register Text and Timer as draggable components
@@ -365,7 +362,8 @@ function Plugin:OnLoad()
         preview.sourceWidth = barWidth
         if showIcon then
             local icon = preview:CreateTexture(nil, "ARTWORK")
-            icon:SetSize(iconSize * scale, iconSize * scale)
+            local s = OrbitEngine.Pixel:Snap(iconSize * scale, previewScale)
+            icon:SetSize(s, s)
             if iconAtEnd then icon:SetPoint("LEFT", preview, "RIGHT", 0, 0)
             else icon:SetPoint("RIGHT", preview, "LEFT", 0, 0) end
             icon:SetTexture(PREVIEW_ICON_ID)
@@ -507,10 +505,11 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             local showLatency = self:GetSetting(bar.systemIndex or 1, "ShowLatency")
             local _, _, _, latency = GetNetStats()
             if showLatency and bar.Latency and latency and bar.maxValue > 0 then
+                local scale = bar:GetEffectiveScale()
                 local width = math.min(latency / 1000 / bar.maxValue, 1) * bar:GetWidth()
-                width = SnapToPixel(width, bar:GetEffectiveScale())
+                width = SnapToPixel(width, scale)
                 bar.Latency:ClearAllPoints()
-                bar.Latency:SetWidth(math.max(width, 1))
+                bar.Latency:SetWidth(math.max(width, 1 / scale))
                 bar.Latency:SetPoint("RIGHT", bar, "RIGHT", 0, 0)
                 bar.Latency:SetHeight(bar:GetHeight())
                 bar.Latency:Show()
@@ -548,10 +547,11 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
             local showLatency = self:GetSetting(bar.systemIndex or 1, "ShowLatency")
             local _, _, _, latency = GetNetStats()
             if showLatency and bar.Latency and latency and bar.maxValue > 0 then
+                local scale = bar:GetEffectiveScale()
                 local width = math.min(latency / 1000 / bar.maxValue, 1) * bar:GetWidth()
-                width = SnapToPixel(width, bar:GetEffectiveScale())
+                width = SnapToPixel(width, scale)
                 bar.Latency:ClearAllPoints()
-                bar.Latency:SetWidth(math.max(width, 1))
+                bar.Latency:SetWidth(math.max(width, 1 / scale))
                 bar.Latency:SetPoint("LEFT", bar, "LEFT", 0, 0)
                 bar.Latency:SetHeight(bar:GetHeight())
                 bar.Latency:Show()
@@ -831,7 +831,8 @@ function Plugin:ApplySettings(systemFrame)
     if not (isAnchored and GetAnchorAxis(bar) == "x") then
         bar:SetHeight(height)
     end
-    if bar.Spark then bar.Spark:SetHeight(height + SPARK_HEIGHT_PADDING) end
+    local applyScale = bar:GetEffectiveScale() or 1
+    if bar.Spark then bar.Spark:SetHeight(SnapToPixel(height + SPARK_HEIGHT_PADDING, applyScale)) end
 
     if not (isAnchored and GetAnchorAxis(bar) == "y") then
         bar:SetWidth(self:GetSetting(systemIndex, "CastBarWidth") or Orbit.Constants.PlayerCastBar.DefaultWidth)
@@ -858,7 +859,7 @@ function Plugin:ApplySettings(systemFrame)
         })
 
         if bar.Latency then
-            bar.Latency:SetHeight(height)
+            bar.Latency:SetHeight(SnapToPixel(height, applyScale))
         end
     end
 
@@ -900,11 +901,12 @@ function Plugin:ApplySettings(systemFrame)
         local scale = bar:GetEffectiveScale()
         local snappedTickWidth = SnapToPixel(tickWidth, scale)
         local height = self:GetSetting(systemIndex, "CastBarHeight")
+        local snappedTickHeight = SnapToPixel(height, scale)
         local tickCurve = self:GetSetting(systemIndex, "TickColorCurve")
         local c = tickCurve and OrbitEngine.ColorCurve and OrbitEngine.ColorCurve:GetFirstColorFromCurve(tickCurve) or { r = 1, g = 1, b = 1, a = 0.4 }
         for _, tick in ipairs(bar.channelTicks) do
             tick:SetColorTexture(c.r, c.g, c.b, c.a)
-            tick:SetSize(math.max(snappedTickWidth, 1 / scale), height)
+            tick:SetSize(math.max(snappedTickWidth, 1 / scale), snappedTickHeight)
         end
     end
 
@@ -1008,15 +1010,16 @@ function Plugin:SetupEmpowerMarkers(bar, numStages)
         orbitBar.stageMarkers[i]:Hide()
     end
 
-    -- Position markers at stage boundaries (skip last stage - it's the end)
+    local markerScale = bar:GetEffectiveScale()
+    local snappedMarkerHeight = SnapToPixel(height, markerScale)
     for i = 1, numStages - 1 do
         local marker = orbitBar.stageMarkers[i]
         if marker and bar.stageDurations[i] and bar.maxValue > 0 then
             local xPos = (bar.stageDurations[i] / bar.maxValue) * width
-            xPos = SnapToPixel(xPos, bar:GetEffectiveScale())
+            xPos = SnapToPixel(xPos, markerScale)
             marker:ClearAllPoints()
             marker:SetPoint("LEFT", orbitBar, "LEFT", xPos, 0)
-            marker:SetHeight(height)
+            marker:SetHeight(snappedMarkerHeight)
             marker:Show()
         end
     end

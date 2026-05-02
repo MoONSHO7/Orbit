@@ -2,7 +2,7 @@
 
 progression bars with canvas-managed text components. experience bar auto-switches across three modes — **xp** (while leveling), **delve companion** (while inside a delve), **watched reputation** (at max level or when xp is user-disabled). honor is a separate bar. both support canvas mode with three independently-positionable text components (Name / Level / Value).
 
-supporting features: rich tooltips, session rate + eta, pending-quest xp overlay, paragon cycle tick marks, warband-rep indicator, smooth fill animation, spark, level-up flash + sound, chat ding announce, click-to-open-panel, shift-click chat link, right-click context menu, scroll to cycle watched factions, configurable text templates, minimum-level gate.
+supporting features: rich tooltips, session rate + eta, pending-quest xp overlay, percentage block tick marks, warband-rep indicator, smooth fill animation, spark, level-up flash + sound, chat ding announce, click-to-open-panel, shift-click chat link, right-click context menu, scroll to cycle watched factions, configurable text templates, minimum-level gate.
 
 ## plugins
 
@@ -19,8 +19,8 @@ supporting features: rich tooltips, session rate + eta, pending-quest xp overlay
 | `PendingXP.lua` | quest-log scanner: sums XP rewards for quests that are ready to turn in |
 | `SessionTracker.lua` | per-bar session state persisted in `AccountSettings.StatusBarSessions`; survives `/reload`, new session after 30m idle |
 | `Tooltip.lua` | rich hover tooltips for XP / Rep / Honor / Delve with session stats, ETA, pending-xp, warband indicator, paragon cycles |
-| `StatusBarBase.lua` | shared factory: container + bar/overlay/bg/pending/spark/flash/ticks, canvas attachment, smooth-fill mixin, click dispatch, blizzard hide helper. registers `BarLevel` + `BarValue` canvas-dock schemas at file load. |
-| `ExperienceBar.lua` | three-mode (xp / delve / rep) plugin: auto-switch, rested overlay, paragon cycles with tick marks, warband indicator, auto-watched faction, scroll to cycle recent factions, tabbed schema (Layout + Color + Behaviour) |
+| `StatusBarBase.lua` | shared factory: container + bar/overlay/bg/pending/spark/flash/ticks, canvas attachment, smooth-fill mixin, click dispatch, blizzard hide helper. registers `BarLevel` + `BarValue` canvas-dock schemas at file load. block ticks via `SetTickMarks(container, percent)` — percent ∈ {10, 25, 33, 50}. |
+| `ExperienceBar.lua` | three-mode (xp / delve / rep) plugin: auto-switch, rested overlay, percentage block tick marks, warband indicator, auto-watched faction, scroll to cycle recent factions, tabbed schema (Layout + Color + Behaviour) |
 | `HonorBar.lua` | honor plugin: honor value + level, optional pvp-only gate, tabbed schema |
 | `StatusBars.xml` | load bundle — helpers (TextTemplate/PendingXP/SessionTracker/Tooltip) load first so they're available when plugins register; then StatusBarBase; then the two plugins. |
 
@@ -40,7 +40,7 @@ the `ValueMode` dropdown lives in the Value component's canvas-dock panel. becau
 
 both plugins use `SB:AddSettingsTabs` with `{ "Layout", "Color" }`:
 
-- **Layout**: Width (100–1200), Height (4–40), + honor-only `OnlyInPvP` checkbox
+- **Layout**: Width (100–1200), Height (4–40), `Tick` (leading-edge tick width, 0–10), `Blocks` (block-tick interval — 10/25/33/50%, xp bar only), `Hide Below Level` (xp bar only), + honor-only `OnlyInPvP` checkbox
 - **Color**: `BarColor` (`colorcurve`, `singleColor = true`) — fill colour. experience-bar reputation mode still uses reaction / renown / paragon colours (user colour is only applied in xp mode).
 
 per-component font / size / color live in each component's canvas dock (not in the main settings dialog).
