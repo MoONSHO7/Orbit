@@ -175,13 +175,13 @@ function Icons:ApplyCustom(icon, settings)
             if r.flash.Flipbook then
                 r.flash.Flipbook:ClearAllPoints()
                 r.flash.Flipbook:SetPoint("CENTER")
-                r.flash.Flipbook:SetSize(newWidth * Constants.IconScale.FlashScale, newHeight * Constants.IconScale.FlashScale)
+                r.flash.Flipbook:SetSize(Pixel:Snap(newWidth * Constants.IconScale.FlashScale, scale), Pixel:Snap(newHeight * Constants.IconScale.FlashScale, scale))
             end
         end
         if r.pandemic and not (icon._orbitGlow and icon._orbitGlow.suppressPandemic) then
             r.pandemic:ClearAllPoints()
             r.pandemic:SetPoint("CENTER")
-            r.pandemic:SetSize(newWidth + Constants.IconScale.PandemicPadding, newHeight + Constants.IconScale.PandemicPadding)
+            r.pandemic:SetSize(Pixel:Snap(newWidth + Constants.IconScale.PandemicPadding, scale), Pixel:Snap(newHeight + Constants.IconScale.PandemicPadding, scale))
             r.pandemic:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconGlow)
         end
         local borderStyle = settings.borderStyle or 0
@@ -195,7 +195,7 @@ function Icons:ApplyCustom(icon, settings)
                 r.border:SetAlpha(1)
                 r.border:ClearAllPoints()
                 r.border:SetPoint("CENTER")
-                r.border:SetSize(newWidth + Constants.IconScale.BorderPaddingH, newHeight + Constants.IconScale.BorderPaddingV)
+                r.border:SetSize(Pixel:Snap(newWidth + Constants.IconScale.BorderPaddingH, scale), Pixel:Snap(newHeight + Constants.IconScale.BorderPaddingV, scale))
             end
         end
         if borderStyle == 1 then

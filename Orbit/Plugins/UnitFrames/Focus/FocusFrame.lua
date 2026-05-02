@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
@@ -7,6 +8,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_FocusFrame"
 local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus or 3
+local TARGET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Target
 
 local Plugin = Orbit:RegisterPlugin("Focus Frame", SYSTEM_ID, {
     canvasMode = true, -- Enable Canvas Mode for component editing
@@ -18,6 +20,7 @@ local Plugin = Orbit:RegisterPlugin("Focus Frame", SYSTEM_ID, {
         HealthTextMode = "percent_short",
         Width = 160,
         Height = 40,
+        SyncSize = FOCUS_FRAME_INDEX,
         EnableFocusTarget = true,
         EnableFocusPower = true,
         -- Disabled components (Canvas Mode drag-to-disable)
@@ -35,6 +38,18 @@ local Plugin = Orbit:RegisterPlugin("Focus Frame", SYSTEM_ID, {
 })
 
 -- [ SETTINGS UI ]------------------------------------------------------------------------------------
+local SYNC_LABELS = { L.PLU_UF_SYNC_PLAYER, L.PLU_UF_SYNC_TARGET, L.PLU_UF_SYNC_FOCUS }
+
+local function ToggleControl(plugin, key, label, default)
+    return {
+        type = "checkbox", key = key, label = label, default = default,
+        onChange = function(val)
+            plugin:SetSetting(FOCUS_FRAME_INDEX, key, val)
+            Orbit.EventBus:Fire("FOCUS_SETTINGS_CHANGED")
+        end,
+    }
+end
+
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame.systemIndex
     if systemIndex ~= FOCUS_FRAME_INDEX then
@@ -42,66 +57,39 @@ function Plugin:AddSettings(dialog, systemFrame)
     end
 
     local SB = OrbitEngine.SchemaBuilder
+    local schema = { hideNativeSettings = true, controls = {} }
 
-    local schema = {
-        hideNativeSettings = true,
-        controls = {
-            {
-                type = "checkbox",
-                key = "EnableFocusTarget",
-                label = "Enable Focus Target",
-                default = false,
-                onChange = function(val)
-                    self:SetSetting(FOCUS_FRAME_INDEX, "EnableFocusTarget", val)
-                    Orbit.EventBus:Fire("FOCUS_SETTINGS_CHANGED")
-                end,
-            },
-            {
-                type = "checkbox",
-                key = "EnableFocusPower",
-                label = "Enable Focus Power",
-                default = false,
-                onChange = function(val)
-                    self:SetSetting(FOCUS_FRAME_INDEX, "EnableFocusPower", val)
-                    Orbit.EventBus:Fire("FOCUS_SETTINGS_CHANGED")
-                end,
-            },
-            {
-                type = "checkbox",
-                key = "EnableBuffs",
-                label = "Enable Buffs",
-                default = true,
-                onChange = function(val)
-                    self:SetSetting(FOCUS_FRAME_INDEX, "EnableBuffs", val)
-                    Orbit.EventBus:Fire("FOCUS_SETTINGS_CHANGED")
-                end,
-            },
-            {
-                type = "checkbox",
-                key = "EnableDebuffs",
-                label = "Enable Debuffs",
-                default = true,
-                onChange = function(val)
-                    self:SetSetting(FOCUS_FRAME_INDEX, "EnableDebuffs", val)
-                    Orbit.EventBus:Fire("FOCUS_SETTINGS_CHANGED")
-                end,
-            },
-        },
-    }
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_FOCUS_TAB_LAYOUT, L.PLU_FOCUS_TAB_BEHAVIOUR }, L.PLU_FOCUS_TAB_LAYOUT)
 
-    -- Width/Height settings are now standard via SchemaBuilder if available, or we check if anchored
-    local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
-    local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
+    if currentTab == L.PLU_FOCUS_TAB_LAYOUT then
+        table.insert(schema.controls, {
+            type = "slider", key = "SyncSize", label = L.PLU_FOCUS_SYNC_SIZE,
+            min = 1, max = 3, step = 1, default = FOCUS_FRAME_INDEX,
+            formatter = function(v) return SYNC_LABELS[v] or "" end,
+            onChange = function(val)
+                self:SetSetting(FOCUS_FRAME_INDEX, "SyncSize", val)
+                self:ApplySettings(self.frame)
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
+            end,
+        })
 
-    local widthParams = { key = "Width", label = "Width", min = 50, max = 400, default = 160 }
-    local heightParams = { key = "Height", label = "Height", min = 20, max = 100, default = 40 }
-
-    if isAnchored and anchorAxis == "y" then
-        widthParams = nil
-        heightParams = nil
+        if self:GetSyncSource(FOCUS_FRAME_INDEX) == FOCUS_FRAME_INDEX then
+            local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
+            local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
+            local widthParams = { key = "Width", label = "Width", min = 50, max = 400, default = 160 }
+            local heightParams = { key = "Height", label = "Height", min = 20, max = 100, default = 40 }
+            if isAnchored and anchorAxis == "y" then
+                widthParams, heightParams = nil, nil
+            end
+            SB:AddSizeSettings(self, schema, systemIndex, systemFrame, widthParams, heightParams)
+        end
+    elseif currentTab == L.PLU_FOCUS_TAB_BEHAVIOUR then
+        table.insert(schema.controls, ToggleControl(self, "EnableFocusTarget", L.PLU_FOCUS_ENABLE_TOT, false))
+        table.insert(schema.controls, ToggleControl(self, "EnableFocusPower", L.PLU_FOCUS_ENABLE_POWER, false))
+        table.insert(schema.controls, ToggleControl(self, "EnableBuffs", L.PLU_FOCUS_ENABLE_BUFFS, true))
+        table.insert(schema.controls, ToggleControl(self, "EnableDebuffs", L.PLU_FOCUS_ENABLE_DEBUF, true))
     end
-
-    SB:AddSizeSettings(self, schema, systemIndex, systemFrame, widthParams, heightParams)
 
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
@@ -218,20 +206,31 @@ function Plugin:OnLoad()
         self:ApplySettings(self.frame)
     end, self)
 
-    -- Subscribe to PlayerFrame events (replaces monkeypatch)
     Orbit.EventBus:On("PLAYER_SETTINGS_CHANGED", function() self:ApplySettings(self.frame) end, self)
+    Orbit.EventBus:On("TARGET_SETTINGS_CHANGED", function()
+        if self:GetSyncSource(FOCUS_FRAME_INDEX) == TARGET_FRAME_INDEX then self:ApplySettings(self.frame) end
+    end, self)
 end
 
 -- [ SETTINGS APPLICATION ]---------------------------------------------------------------------------
-function Plugin:ApplySettings(frame)
-    frame = self.frame
-    if not frame then
+function Plugin:UpdateLayout(frame)
+    if not frame or InCombatLockdown() then
         return
     end
-    local systemIndex = FOCUS_FRAME_INDEX
+    local width, height = self:GetSyncedSize(FOCUS_FRAME_INDEX)
+    self:ApplySize(frame, width, height)
+end
 
-    -- Use Mixin for base settings (Size, Texture, Border, Text Style, Absorbs)
-    self:ApplyUnitFrameSettings(frame, systemIndex)
+function Plugin:ApplySettings(frame)
+    frame = self.frame
+    if not frame or self._applying then
+        return
+    end
+    self._applying = true
+    local systemIndex = FOCUS_FRAME_INDEX
+    local width, height = self:GetSyncedSize(systemIndex)
+
+    self:ApplyUnitFrameSettings(frame, systemIndex, { width = width, height = height })
 
     -- Apply Focus Specific Visuals (Reaction Colour always enabled for Focus)
     local reactionColour = true
@@ -249,7 +248,7 @@ function Plugin:ApplySettings(frame)
     if savedPositions and next(savedPositions) then
         OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
     end
-    
+
     -- Component positions + style overrides (positions, font, color, scale)
     -- Must run unconditionally to restore overrides after ApplyBaseVisuals resets text
     if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
@@ -262,6 +261,9 @@ function Plugin:ApplySettings(frame)
 
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover) end
+
+    Orbit.EventBus:Fire("FOCUS_SETTINGS_CHANGED")
+    self._applying = false
 end
 
 function Plugin:UpdateVisuals(frame)

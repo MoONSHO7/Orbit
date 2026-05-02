@@ -114,6 +114,7 @@ local tip = CreateFrame("Frame", nil, UIParent)
 tip:SetFrameStrata(Orbit.Constants.Strata.Topmost)
 tip:SetFrameLevel(999)
 tip:Hide()
+OrbitEngine.Pixel:Enforce(tip)
 
 tip.bg = tip:CreateTexture(nil, "BACKGROUND")
 tip.bg:SetAllPoints()
@@ -174,13 +175,13 @@ tip.title = tip:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 tip.title:SetPoint("TOPLEFT", tip.counter, "BOTTOMLEFT", 0, -2)
 tip.title:SetTextColor(TITLE_CLR.r, TITLE_CLR.g, TITLE_CLR.b)
 tip.title:SetJustifyH("LEFT")
-tip.title:SetWidth(TOOLTIP_MAX_WIDTH - TOOLTIP_PAD * 2 - 4)
+tip.title:SetWidth(OrbitEngine.Pixel:Snap(TOOLTIP_MAX_WIDTH - TOOLTIP_PAD * 2 - 4, tip:GetEffectiveScale()))
 
 tip.text = tip:CreateFontString(nil, "OVERLAY", FONT)
 tip.text:SetPoint("TOPLEFT", tip.title, "BOTTOMLEFT", 0, -3)
 tip.text:SetTextColor(TEXT_CLR.r, TEXT_CLR.g, TEXT_CLR.b)
 tip.text:SetJustifyH("LEFT")
-tip.text:SetWidth(TOOLTIP_MAX_WIDTH - TOOLTIP_PAD * 2 - 4)
+tip.text:SetWidth(OrbitEngine.Pixel:Snap(TOOLTIP_MAX_WIDTH - TOOLTIP_PAD * 2 - 4, tip:GetEffectiveScale()))
 tip.text:SetSpacing(2)
 
 -- Next / Done button
@@ -252,7 +253,7 @@ local function LayoutTooltip(anchor, stop, idx, total)
     -- Size to fit
     local textH = tip.counter:GetStringHeight() + 2 + tip.title:GetStringHeight() + 3 + tip.text:GetStringHeight()
     local h = textH + TOOLTIP_PAD * 2 + NEXT_BTN_GAP + NEXT_BTN_HEIGHT + TOOLTIP_PAD
-    tip:SetSize(TOOLTIP_MAX_WIDTH, h)
+    tip:SetSize(TOOLTIP_MAX_WIDTH, OrbitEngine.Pixel:Snap(h, tip:GetEffectiveScale()))
     tip:ClearAllPoints()
     tip:SetPoint(stop.tooltipPoint, anchor, stop.tooltipRel, stop.tpX, stop.tpY)
     ApplyAccentDirection(stop.tooltipPoint)

@@ -61,6 +61,7 @@ function Mouse:Enable()
 
     if not self._frame then
         self._frame = CreateFrame("Frame", "OrbitQoLCursorFrame", UIParent)
+        Orbit.Engine.Pixel:Enforce(self._frame)
         self._frame:SetFrameStrata(Orbit.Constants.Strata.Topmost)
         self._frame:EnableMouse(false)
 

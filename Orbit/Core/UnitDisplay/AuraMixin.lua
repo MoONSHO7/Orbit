@@ -174,7 +174,8 @@ end
 -- [ ICON SETUP ]-------------------------------------------------------------------------------------
 function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPositions)
     if not icon or not aura then return end
-    icon:SetSize(size, size)
+    local snappedSize = Orbit.Engine.Pixel:Snap(size, icon:GetEffectiveScale() or 1)
+    icon:SetSize(snappedSize, snappedSize)
     if not icon.Icon then icon.Icon = icon:CreateTexture(nil, "ARTWORK") end
     icon.icon = icon.Icon
     icon.Icon:SetTexture(aura.icon)
@@ -370,7 +371,9 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     local finalX = (anchorX == "RIGHT") and -offsetX or offsetX
     local finalY = (anchorY == "TOP") and -offsetY or offsetY
     local selfAnchorY = auraData.selfAnchorY or anchorY
-    container:SetPoint(BuildComponentSelfAnchor(false, true, selfAnchorY, justifyH), frame, BuildAnchorPoint(anchorX, anchorY), finalX, finalY)
+    local selfAnchor = BuildComponentSelfAnchor(false, true, selfAnchorY, justifyH)
+    finalX, finalY = OrbitEngine.Pixel:SnapPosition(finalX, finalY, selfAnchor, containerW, containerH, scale)
+    container:SetPoint(selfAnchor, frame, BuildAnchorPoint(anchorX, anchorY), finalX, finalY)
     local skinSettings = cfg.skinSettings
     if type(skinSettings) == "function" then skinSettings = skinSettings(plugin) end
     local col, row = 0, 0
@@ -431,6 +434,7 @@ local DEFAULT_HEALER_SKIN = Orbit.Constants.Aura.SkinNoTimer
 function Mixin:EnsureAuraIcon(frame, iconKey, iconSize)
     if frame[iconKey] then return frame[iconKey] end
     local btn = CreateFrame("Button", nil, frame, "BackdropTemplate")
+    Orbit.Engine.Pixel:Enforce(btn)
     btn:SetSize(iconSize, iconSize)
     btn.orbitOriginalWidth, btn.orbitOriginalHeight = iconSize, iconSize
     btn:SetPoint("CENTER", frame, "CENTER", 0, 0)
@@ -716,16 +720,17 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
         StopMissingGlow(container._raidIcons[idx])
         container._raidIcons[idx]:Hide()
     end
-    -- Layout missing icons
     local overrides = GetComponentOverrides(plugin, containerKey)
+    local raidScale = container:GetEffectiveScale() or 1
+    local snappedIconSize = OrbitEngine.Pixel:Snap(iconSize, raidScale)
     for idx, buff in ipairs(missing) do
         local icon = container._raidIcons[idx]
         local tex = C_Spell.GetSpellTexture(buff.spellId)
         if tex then icon.Icon:SetTexture(tex); icon.Icon:SetAllPoints(icon); icon.Icon:Show() end
-        icon:SetSize(iconSize, iconSize)
+        icon:SetSize(snappedIconSize, snappedIconSize)
         self:ApplyAuraSkin(icon, DEFAULT_HEALER_SKIN)
         icon:ClearAllPoints()
-        icon:SetPoint("LEFT", container, "LEFT", (idx - 1) * (iconSize + RAID_BUFF_ICON_SPACING), 0)
+        icon:SetPoint("LEFT", container, "LEFT", OrbitEngine.Pixel:Snap((idx - 1) * (snappedIconSize + RAID_BUFF_ICON_SPACING), raidScale), 0)
         icon._missingSpellId = buff.spellId
         if not icon._orbitMissingTooltipHooked then
             icon:SetScript("OnEnter", function(self)
@@ -740,9 +745,9 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
         ApplyMissingGlow(icon, overrides)
         icon:Show()
     end
-    local totalW = #missing * iconSize + (#missing - 1) * RAID_BUFF_ICON_SPACING
-    container:SetSize(totalW, iconSize)
-    container.orbitOriginalWidth, container.orbitOriginalHeight = totalW, iconSize
+    local totalW = OrbitEngine.Pixel:Snap(#missing * snappedIconSize + (#missing - 1) * RAID_BUFF_ICON_SPACING, raidScale)
+    container:SetSize(totalW, snappedIconSize)
+    container.orbitOriginalWidth, container.orbitOriginalHeight = totalW, snappedIconSize
     container:Show()
     container:SetAlphaFromBoolean(UnitInRange(unit), 1, 0)
 end
@@ -758,6 +763,8 @@ function Mixin:EnsureRaidBuffContainer(frame, containerKey, raidBuffs, iconSize)
         container._raidIcons = {}
         frame[containerKey] = container
     end
+    local raidScale = container:GetEffectiveScale() or 1
+    local snappedIconSize = OrbitEngine.Pixel:Snap(iconSize, raidScale)
     for idx, buff in ipairs(raidBuffs) do
         if not container._raidIcons[idx] then
             local icon = CreateFrame("Frame", nil, container, "BackdropTemplate")
@@ -771,15 +778,15 @@ function Mixin:EnsureRaidBuffContainer(frame, containerKey, raidBuffs, iconSize)
         local icon = container._raidIcons[idx]
         local tex = C_Spell.GetSpellTexture(buff.spellId)
         if tex then icon.Icon:SetTexture(tex); icon.Icon:Show() end
-        icon:SetSize(iconSize, iconSize)
+        icon:SetSize(snappedIconSize, snappedIconSize)
         self:ApplyAuraSkin(icon, DEFAULT_HEALER_SKIN)
         icon:ClearAllPoints()
-        icon:SetPoint("LEFT", container, "LEFT", (idx - 1) * (iconSize + RAID_BUFF_ICON_SPACING), 0)
+        icon:SetPoint("LEFT", container, "LEFT", OrbitEngine.Pixel:Snap((idx - 1) * (snappedIconSize + RAID_BUFF_ICON_SPACING), raidScale), 0)
         icon:Show()
     end
-    local totalW = #raidBuffs * iconSize + (#raidBuffs - 1) * RAID_BUFF_ICON_SPACING
-    container:SetSize(totalW, iconSize)
-    container.orbitOriginalWidth, container.orbitOriginalHeight = totalW, iconSize
+    local totalW = OrbitEngine.Pixel:Snap(#raidBuffs * snappedIconSize + (#raidBuffs - 1) * RAID_BUFF_ICON_SPACING, raidScale)
+    container:SetSize(totalW, snappedIconSize)
+    container.orbitOriginalWidth, container.orbitOriginalHeight = totalW, snappedIconSize
     -- Expose first sub-icon's texture as container.Icon for Canvas Mode detection
     if container._raidIcons[1] then container.Icon = container._raidIcons[1].Icon end
     return container

@@ -1,6 +1,7 @@
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
+local Pixel = Orbit.Engine.Pixel
 local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
 
@@ -76,6 +77,7 @@ end
 
 function StatusBarBase:Create(globalName, parent)
     local container = CreateFrame("Frame", globalName, parent or UIParent)
+    Pixel:Enforce(container)
     container:SetClampedToScreen(true)
 
     local bg = container:CreateTexture(nil, "BACKGROUND")
@@ -122,7 +124,7 @@ function StatusBarBase:Create(globalName, parent)
     tick:Hide()
     container.Tick = tick
 
-    -- Tick-mark parent: overlays vertical marks across the bar (e.g. paragon cycle thresholds).
+    -- Tick-mark parent: overlays vertical block dividers at fixed percentage intervals.
     local tickFrame = CreateFrame("Frame", nil, container)
     tickFrame:SetAllPoints(container)
     tickFrame:SetFrameLevel(container:GetFrameLevel() + BAR_FRAME_OFFSET + 1)
@@ -166,7 +168,8 @@ function StatusBarBase:SetComponentText(component, text)
     component.Text:SetText(text or "")
     local w = component.Text:GetStringWidth() or 0
     local h = component.Text:GetStringHeight() or 0
-    component:SetSize(w > 0 and w + 2 or 1, h > 0 and h + 2 or 1)
+    local scale = component:GetEffectiveScale()
+    component:SetSize(w > 0 and Pixel:Snap(w + 2, scale) or 1, h > 0 and Pixel:Snap(h + 2, scale) or 1)
 end
 
 function StatusBarBase:AttachCanvasComponents(plugin, container, systemIndex)
@@ -321,7 +324,7 @@ function StatusBarBase:HidePending(container) container.Pending:Hide() end
 function StatusBarBase:SetTickWidth(container, width)
     width = tonumber(width) or 0
     if width <= 0 then container.Tick:Hide(); return end
-    container.Tick:SetWidth(width)
+    container.Tick:SetWidth(Pixel:Multiple(width, container:GetEffectiveScale()))
     container.Tick:Show()
 end
 
@@ -339,26 +342,30 @@ function StatusBarBase:SetSmoothFill(container, current, max)
     self:SetFill(container, current, max)
 end
 
--- [ PARAGON TICK MARKS ]-----------------------------------------------------------------------------
--- Draws N vertical tick marks across the bar width. Used to show paragon cycle thresholds on
--- the bar. Reuses textures across calls — keeps the pool on container._ticks.
-function StatusBarBase:SetTickMarks(container, count, color)
-    count = count or 0
-    color = color or { r = 1, g = 0.8, b = 0, a = 0.7 }
+-- [ BLOCK TICK MARKS ]-------------------------------------------------------------------------------
+-- Draws vertical dividers every `percent`% across the bar width. percent=10 → 10/20/.../90;
+-- percent=25 → 25/50/75; percent=33 → 33/66; percent=50 → 50. Reuses textures via container._ticks.
+function StatusBarBase:SetTickMarks(container, percent, color)
+    percent = tonumber(percent) or 0
     local pool = container._ticks
+    local count = (percent > 0 and percent < 100) and (math.floor(100 / percent) - 1) or 0
+    color = color or Orbit.Skin:ResolveBorderColor(false)
+    local scale = container:GetEffectiveScale()
+    local containerWidth = container:GetWidth() or 0
+    local tickWidth = Pixel:Multiple(2, scale)
     for i = 1, count do
         local t = pool[i]
         if not t then
             t = container.TickFrame:CreateTexture(nil, "OVERLAY")
             t:SetColorTexture(1, 1, 1, 1)
-            t:SetWidth(2)
+            t:SetWidth(tickWidth)
             pool[i] = t
         end
-        t:SetColorTexture(color.r, color.g, color.b, color.a or 0.7)
+        t:SetColorTexture(color.r, color.g, color.b, color.a or 0.5)
         t:ClearAllPoints()
-        local offset = (i / (count + 1)) -- evenly spaced, excluding edges
-        t:SetPoint("TOP",    container, "TOPLEFT",    offset * container:GetWidth(), 0)
-        t:SetPoint("BOTTOM", container, "BOTTOMLEFT", offset * container:GetWidth(), 0)
+        local x = Pixel:Snap((i * percent / 100) * containerWidth, scale)
+        t:SetPoint("TOP",    container, "TOPLEFT",    x, 0)
+        t:SetPoint("BOTTOM", container, "BOTTOMLEFT", x, 0)
         t:Show()
     end
     for i = count + 1, #pool do pool[i]:Hide() end

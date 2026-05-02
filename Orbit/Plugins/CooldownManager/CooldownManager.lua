@@ -146,7 +146,9 @@ function Plugin:OnLoad()
         local innerW = barW - iconSize
 
         local preview = CreateFrame("Frame", nil, parent)
-        preview:SetSize(innerW, barH)
+        local previewScale = preview:GetEffectiveScale()
+        local Pixel = OrbitEngine.Pixel
+        preview:SetSize(Pixel:Snap(innerW, previewScale), Pixel:Snap(barH, previewScale))
         preview.sourceFrame = anchor
         preview.sourceWidth = innerW
         preview.sourceHeight = barH
@@ -154,7 +156,7 @@ function Plugin:OnLoad()
         preview.components = {}
 
         local icon = preview:CreateTexture(nil, "OVERLAY")
-        icon:SetSize(iconSize, iconSize)
+        icon:SetSize(Pixel:Snap(iconSize, previewScale), Pixel:Snap(iconSize, previewScale))
         icon:SetPoint("RIGHT", preview, "LEFT", 0, 0)
         local iconTex = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(21562) or "Interface\\Icons\\Spell_Holy_WordFortitude"
         icon:SetTexture(iconTex)
@@ -170,7 +172,7 @@ function Plugin:OnLoad()
         local fill = preview:CreateTexture(nil, "ARTWORK")
         fill:SetPoint("TOPLEFT", preview, "TOPLEFT", 0, 0)
         fill:SetPoint("BOTTOM", preview, "BOTTOM", 0, 0)
-        fill:SetWidth(innerW * 0.6)
+        fill:SetWidth(Pixel:Snap(innerW * 0.6, previewScale))
         local LSM = LibStub("LibSharedMedia-3.0", true)
         local texturePath = LSM and LSM:Fetch("statusbar", Orbit.db.GlobalSettings.Texture or "Blizzard") or ""
         fill:SetTexture(texturePath)

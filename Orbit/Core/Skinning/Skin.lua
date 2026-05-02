@@ -173,6 +173,18 @@ end
 function Skin:GetActiveBorderStyle() return self:ResolveStyle("BorderStyle") end
 function Skin:GetActiveIconBorderStyle() return self:ResolveStyle("IconBorderStyle") end
 
+-- Resolves the configured frame/icon border color, honoring class-color markers and curve shapes.
+function Skin:ResolveBorderColor(isIcon)
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    local raw = isIcon and (gs and gs.IconBorderColor) or (gs and gs.BorderColor)
+    if raw and raw.type == "class" then
+        local c = Engine.ClassColor:GetCurrentClassColor()
+        c.a = raw.a or 1
+        return c
+    end
+    return (Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw)) or raw or { r = 0, g = 0, b = 0, a = 1 }
+end
+
 function Skin:BuildIconStyle(baseStyle)
     local gs = Orbit.db and Orbit.db.GlobalSettings
     local style = {}
@@ -238,16 +250,7 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
     -- Apply solid pixel border via BackdropTemplate
     bf:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
 
-    if not color then
-        local raw = isIcon and (gs and gs.IconBorderColor) or (gs and gs.BorderColor)
-        if raw and raw.type == "class" then
-            color = Engine.ClassColor:GetCurrentClassColor()
-            color.a = raw.a or 1
-        else
-            color = Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw
-        end
-    end
-    local c = color or { r = 0, g = 0, b = 0, a = 1 }
+    local c = color or self:ResolveBorderColor(isIcon)
     bf:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
 
     if frame._groupBorderActive then
@@ -376,11 +379,12 @@ function Skin:ApplyUnitFrameText(fontString, alignment, fontPath, textSize)
     fontString:SetFont(fontPath, textSize, self:GetFontOutline())
     fontString:ClearAllPoints()
 
+    local fsScale = fontString:GetEffectiveScale()
     if alignment == "LEFT" then
-        fontString:SetPoint("LEFT", padding, 0)
+        fontString:SetPoint("LEFT", Engine.Pixel:Multiple(padding, fsScale), 0)
         fontString:SetJustifyH("LEFT")
     else
-        fontString:SetPoint("RIGHT", -padding, 0)
+        fontString:SetPoint("RIGHT", Engine.Pixel:Multiple(-padding, fsScale), 0)
         fontString:SetJustifyH("RIGHT")
     end
 

@@ -254,7 +254,7 @@ function Bar:Build(plugin, record)
         preview.sourceHeight = innerH
         if iconSize > 0 then
             local iconTex = preview:CreateTexture(nil, "ARTWORK")
-            iconTex:SetSize(iconSize * scale, iconSize * scale)
+            iconTex:SetSize(OrbitEngine.Pixel:Snap(iconSize * scale, previewScale), OrbitEngine.Pixel:Snap(iconSize * scale, previewScale))
             if isVertical then
                 if iconAtEnd then iconTex:SetPoint("TOP", preview, "BOTTOM", 0, 0)
                 else iconTex:SetPoint("BOTTOM", preview, "TOP", 0, 0) end
@@ -379,7 +379,7 @@ function Bar:Apply(plugin, frame, record)
     local frameW = plugin:GetSetting(record.id, "Width") or (isVertical and DEFAULT_HEIGHT or DEFAULT_WIDTH)
     local frameH = plugin:GetSetting(record.id, "Height") or (isVertical and DEFAULT_WIDTH or DEFAULT_HEIGHT)
     local Pixel = OrbitEngine.Pixel
-    if Pixel then frameW = Pixel:Snap(frameW); frameH = Pixel:Snap(frameH) end
+    if Pixel then local s = frame:GetEffectiveScale(); frameW = Pixel:Snap(frameW, s); frameH = Pixel:Snap(frameH, s) end
     if isVertical then
         frame.orbitResizeBounds = { minW = 12, maxW = 40, minH = 80, maxH = 400 }
     else
@@ -476,7 +476,7 @@ function Bar:Apply(plugin, frame, record)
     frame.DropHintBg:ClearAllPoints()
     frame.DropHintBg:SetPoint("TOPLEFT", frame, "TOPLEFT")
     frame.DropHintBg:SetSize(DROP_ZONE_SIZE, DROP_ZONE_SIZE)
-    local plusSize = DROP_ZONE_SIZE * (1 - DROP_ZONE_PLUS_INSET_RATIO * 2)
+    local plusSize = OrbitEngine.Pixel:Snap(DROP_ZONE_SIZE * (1 - DROP_ZONE_PLUS_INSET_RATIO * 2), frame:GetEffectiveScale())
     frame.DropHintPlus:SetSize(plusSize, plusSize)
 
     -- Bar texture / color from global Texture and per-bar phase color curves.
@@ -652,7 +652,8 @@ function Bar:LayoutChargesGeometry(frame)
 
     local chargeLength = math.max(1, longAxis / maxCharges)
     local Pixel = OrbitEngine.Pixel
-    if Pixel then chargeLength = Pixel:Snap(chargeLength) end
+    local scale = frame:GetEffectiveScale()
+    if Pixel then chargeLength = Pixel:Snap(chargeLength, scale); perpDim = Pixel:Snap(perpDim, scale) end
 
     frame.RechargeSegment:ClearAllPoints()
     frame.TickBar:ClearAllPoints()
@@ -680,19 +681,21 @@ end
 -- Centered on proportional charge boundaries; H = vertical lines, V = horizontal lines.
 function Bar:LayoutDividers(frame, maxCharges, perpDim, longAxis)
     local Pixel = OrbitEngine.Pixel
-    local halfGap = DIVIDER_SIZE / 2
+    local scale = frame:GetEffectiveScale()
+    local divPx = Pixel:Multiple(DIVIDER_SIZE, scale)
+    local halfGap = divPx / 2
     local isVertical = frame._isVertical
     for i = 1, MAX_DIVIDERS do
         local div = frame.Dividers[i]
         if i < maxCharges then
             local boundary = (i / maxCharges) * longAxis
-            if Pixel then boundary = Pixel:Snap(boundary) end
+            if Pixel then boundary = Pixel:Snap(boundary, scale) end
             div:ClearAllPoints()
             if isVertical then
-                div:SetSize(perpDim, DIVIDER_SIZE)
+                div:SetSize(perpDim, divPx)
                 div:SetPoint("BOTTOM", frame.StatusBar, "BOTTOM", 0, boundary - halfGap)
             else
-                div:SetSize(DIVIDER_SIZE, perpDim)
+                div:SetSize(divPx, perpDim)
                 div:SetPoint("LEFT", frame.StatusBar, "LEFT", boundary - halfGap, 0)
             end
             div:Show()

@@ -150,7 +150,7 @@ Dialog:SetScript("OnSizeChanged", function(self, w, h)
         local chromeH = self:GetChromeHeight()
         local newVpH = math.max(C.VIEWPORT_HEIGHT, math.min(C.VIEWPORT_MAX_HEIGHT, h - chromeH))
         self.viewportHeight = newVpH
-        self.PreviewContainer:SetHeight(newVpH)
+        self.PreviewContainer:SetHeight(OrbitEngine.Pixel:Snap(newVpH, self.PreviewContainer:GetEffectiveScale()))
     end
     if self.LayoutFooterButtons then self:LayoutFooterButtons() end
     if self.RecalculateHeight then self:RecalculateHeight() end

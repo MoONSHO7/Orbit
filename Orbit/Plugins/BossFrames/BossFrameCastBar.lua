@@ -27,6 +27,7 @@ CB.ResolveNonInterruptibleColor = ResolveNonInterruptibleColor
 
 function CB:Create(parent, bossIndex, plugin)
     local container = CreateFrame("Frame", "OrbitBoss" .. bossIndex .. "CastBarContainer", parent)
+    Pixel:Enforce(container)
     container:SetSize(CAST_BAR_WIDTH + CAST_BAR_ICON_SIZE, CAST_BAR_HEIGHT)
     container:Hide()
 
@@ -37,7 +38,8 @@ function CB:Create(parent, bossIndex, plugin)
 
     container.Icon = container:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
     container.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
-    container.Icon:SetSize(CAST_BAR_ICON_SIZE, CAST_BAR_ICON_SIZE)
+    local iconLogical = Pixel:Multiple(CAST_BAR_ICON_SIZE, container:GetEffectiveScale())
+    container.Icon:SetSize(iconLogical, iconLogical)
     container.Icon:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0)
     container.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
 
@@ -341,6 +343,7 @@ function CB:Position(castBar, parent, plugin)
         local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(false, false, anchorY, justifyH)
         if anchorX == "RIGHT" then offsetX = -offsetX end
         if anchorY == "TOP" then offsetY = -offsetY end
+        offsetX, offsetY = Pixel:SnapPosition(offsetX, offsetY, selfAnchor, castBar:GetWidth() or 0, castBar:GetHeight() or 0, castBar:GetEffectiveScale())
         castBar:SetPoint(selfAnchor, parent, anchorPoint, offsetX, offsetY)
     else
         castBar:SetPoint("TOP", parent, "BOTTOM", 0, -2)

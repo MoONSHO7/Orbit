@@ -14,6 +14,12 @@ local Mixin = Orbit.UnitFrameMixin
 local INHERIT_PLUGIN = Orbit.Constants.UnitFrame.InheritPlugin
 local INHERIT_INDEX = Orbit.Constants.UnitFrame.InheritIndex
 
+local SYNC_PLUGINS = {
+    [Enum.EditModeUnitFrameSystemIndices.Player] = "Orbit_PlayerFrame",
+    [Enum.EditModeUnitFrameSystemIndices.Target] = "Orbit_TargetFrame",
+    [Enum.EditModeUnitFrameSystemIndices.Focus or 3] = "Orbit_FocusFrame",
+}
+
 function Mixin:GetPlayerSetting(key)
     return Orbit:ReadPluginSetting(self.inheritPlugin or INHERIT_PLUGIN, self.inheritIndex or INHERIT_INDEX, key)
 end
@@ -23,6 +29,21 @@ function Mixin:GetInheritedSetting(systemIndex, key, inheritFromPlayer)
         return self:GetPlayerSetting(key)
     end
     return self:GetSetting(systemIndex, key)
+end
+
+function Mixin:GetSyncSource(systemIndex)
+    return self:GetSetting(systemIndex, "SyncSize") or systemIndex
+end
+
+function Mixin:GetSyncedSize(systemIndex, visited)
+    visited = visited or {}
+    local source = visited[systemIndex] and systemIndex or self:GetSyncSource(systemIndex)
+    visited[systemIndex] = true
+    if source == systemIndex then
+        return self:GetSetting(systemIndex, "Width"), self:GetSetting(systemIndex, "Height")
+    end
+    local sourcePlugin = Orbit:GetPlugin(SYNC_PLUGINS[source])
+    return sourcePlugin:GetSyncedSize(source, visited)
 end
 
 -- [ NATIVE FRAME HIDING ] ---------------------------------------------------------------------------

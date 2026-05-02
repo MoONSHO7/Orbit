@@ -41,7 +41,9 @@ function FrameFactory:Create(name, plugin, opts)
     local frame = CreateFrame(frameType, frameName, parent, opts.template)
 
     frame:SetSize(width, height)
-    frame:SetPoint(point, parent, point, x, y)
+    local scale = frame:GetEffectiveScale()
+    local sx, sy = Engine.Pixel:SnapPosition(x, y, point, width, height, scale)
+    frame:SetPoint(point, parent, point, sx, sy)
     frame:SetFrameStrata(strata)
     frame:SetClampedToScreen(true)
 
@@ -146,6 +148,8 @@ function FrameFactory:AddText(frame, opts)
     local relativeTo = opts.relativeTo or frame
     local relativePoint = opts.relativePoint or point
 
+    local scale = frame:GetEffectiveScale()
+    local ox, oy = Engine.Pixel:Snap(opts.x or 0, scale), Engine.Pixel:Snap(opts.y or 0, scale)
     if opts.useOverlay then
         local overlay = CreateFrame("Frame", nil, frame)
         overlay:SetAllPoints()
@@ -153,13 +157,13 @@ function FrameFactory:AddText(frame, opts)
         frame.Overlay = overlay
 
         local text = overlay:CreateFontString(nil, layer, font)
-        text:SetPoint(point, relativeTo, relativePoint, opts.x or 0, opts.y or 0)
+        text:SetPoint(point, relativeTo, relativePoint, ox, oy)
         frame.Text = text
         return text
     end
 
     local text = frame:CreateFontString(nil, layer, font)
-    text:SetPoint(point, relativeTo, relativePoint, opts.x or 0, opts.y or 0)
+    text:SetPoint(point, relativeTo, relativePoint, ox, oy)
     Orbit.Skin:ApplyFontShadow(text)
     frame.Text = text
     return text

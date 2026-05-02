@@ -79,11 +79,12 @@ function Mixin:UpdateAlignment(frame, textElement, edge, paddingH)
         return
     end
     textElement:ClearAllPoints()
+    local scale = textElement:GetEffectiveScale()
     if edge == "LEFT" then
-        textElement:SetPoint("RIGHT", -paddingH, 0)
+        textElement:SetPoint("RIGHT", OrbitEngine.Pixel:Multiple(-paddingH, scale), 0)
         textElement:SetJustifyH("RIGHT")
     elseif edge == "RIGHT" then
-        textElement:SetPoint("LEFT", paddingH, 0)
+        textElement:SetPoint("LEFT", OrbitEngine.Pixel:Multiple(paddingH, scale), 0)
         textElement:SetJustifyH("LEFT")
     else
         textElement:SetPoint("CENTER", 0, 0)

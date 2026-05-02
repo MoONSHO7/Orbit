@@ -28,7 +28,7 @@ local SPARKLES_SIZE = 25
 
 local MASK_ROUND = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
-local ORB_ROTATION_PERIOD = 8
+local ORB_ROTATION_PERIOD = 24
 local OUTER_FX_FADE_OUT = 0.25
 local OUTER_FX_PULSE_PERIOD = 1.6
 local OUTER_FX_PULSE_MIN = 0.55
@@ -42,12 +42,12 @@ local SPARKLES_FRAME_TIME = SPARKLES_DURATION / SPARKLES_FRAMES
 local SPARKLES_ROTATION_PERIOD = 14
 local SPARKLES_ALPHA = 0.7
 
-local VIGOR_SIZE = 48
+local VIGOR_SIZE = 50
 local VIGOR_ROWS = 4
 local VIGOR_COLS = 4
 local VIGOR_FRAME_ROW = 1
 local VIGOR_FRAME_COL = 2
-local VIGOR_ROTATION_PERIOD = 18
+local VIGOR_ROTATION_PERIOD = 30
 
 local ATLAS_CIRCLE_GLOW = "ChallengeMode-Runes-CircleGlow"
 local ATLAS_DARK_GLOW = "Darktrait-Glow"
@@ -181,15 +181,16 @@ local function CreateButton(parent)
     darkGlowMask:SetAllPoints(btn.darkGlow)
     btn.darkGlow:AddMaskTexture(darkGlowMask)
 
+    local insetPx = Orbit.Engine.Pixel:Multiple(ORB_INSET, btn:GetEffectiveScale())
     btn.orb = btn:CreateTexture(nil, "ARTWORK", nil, 1)
     btn.orb:SetAtlas(ATLAS_ORB)
-    btn.orb:SetPoint("TOPLEFT", ORB_INSET, -ORB_INSET)
-    btn.orb:SetPoint("BOTTOMRIGHT", -ORB_INSET, ORB_INSET)
+    btn.orb:SetPoint("TOPLEFT", insetPx, -insetPx)
+    btn.orb:SetPoint("BOTTOMRIGHT", -insetPx, insetPx)
 
     btn.outerFX = btn:CreateTexture(nil, "OVERLAY", nil, 1)
     btn.outerFX:SetAtlas(ATLAS_OUTER_FX)
-    btn.outerFX:SetPoint("TOPLEFT", ORB_INSET, -ORB_INSET)
-    btn.outerFX:SetPoint("BOTTOMRIGHT", -ORB_INSET, ORB_INSET)
+    btn.outerFX:SetPoint("TOPLEFT", insetPx, -insetPx)
+    btn.outerFX:SetPoint("BOTTOMRIGHT", -insetPx, insetPx)
     btn.outerFX:SetBlendMode("ADD")
     btn.outerFX:SetAlpha(0)
     btn.outerFX:Hide()

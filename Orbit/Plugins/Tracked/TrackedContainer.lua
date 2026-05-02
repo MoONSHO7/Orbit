@@ -91,7 +91,7 @@ function Container:Build(plugin, record)
         local rec = plugin:GetContainerRecord(self.recordId)
         if not rec then return nil end
 
-        local w, h = CooldownUtils:CalculateIconDimensions(plugin, self.recordId)
+        local w, h = CooldownUtils:CalculateIconDimensions(plugin, self.recordId, nil, self:GetEffectiveScale())
         local iconTexture = "Interface\\Icons\\INV_Misc_QuestionMark"
         for _, item in pairs(self.iconItems) do
             if item:IsShown() and item.Icon then
@@ -130,10 +130,10 @@ function Container:Apply(plugin, frame, record)
     -- (sentinel index 1). Real record IDs are >= 1000 so the sentinel can't
     -- collide. ApplyOOCFade is idempotent — safe to call from the layout pass.
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, plugin, 1, "OutOfCombatFade", false) end
-    local iconW, iconH = CooldownUtils:CalculateIconDimensions(plugin, record.id)
+    local iconW, iconH = CooldownUtils:CalculateIconDimensions(plugin, record.id, nil, frame:GetEffectiveScale())
     local rawPadding = plugin:GetSetting(record.id, "IconPadding") or Constants.Cooldown.DefaultPadding
     local Pixel = OrbitEngine.Pixel
-    local padding = Pixel and Pixel:Multiple(rawPadding) or rawPadding
+    local padding = Pixel and Pixel:Multiple(rawPadding, frame:GetEffectiveScale()) or rawPadding
     local skinSettings = CooldownUtils:BuildSkinSettings(plugin, record.id)
 
     self:ClearDropZones(frame)
@@ -217,7 +217,7 @@ function Container:Apply(plugin, frame, record)
             local x, y = ParseGridKey(key)
             local posX = (x - extMinX) * (iconW + padding)
             local posY = -(y - extMinY) * (iconH + padding)
-            if Pixel then posX = Pixel:Snap(posX); posY = Pixel:Snap(posY) end
+            if Pixel then local s = frame:GetEffectiveScale(); posX = Pixel:Snap(posX, s); posY = Pixel:Snap(posY, s) end
             icon:ClearAllPoints()
             icon:SetPoint("TOPLEFT", frame, "TOPLEFT", posX, posY)
         end
@@ -229,7 +229,7 @@ function Container:Apply(plugin, frame, record)
             zone:SetSize(iconW, iconH)
             local posX = (pos.x - extMinX) * (iconW + padding)
             local posY = -(pos.y - extMinY) * (iconH + padding)
-            if Pixel then posX = Pixel:Snap(posX); posY = Pixel:Snap(posY) end
+            if Pixel then local s = frame:GetEffectiveScale(); posX = Pixel:Snap(posX, s); posY = Pixel:Snap(posY, s) end
             zone:ClearAllPoints()
             zone:SetPoint("TOPLEFT", frame, "TOPLEFT", posX, posY)
             zone:Show()
@@ -390,7 +390,7 @@ function Container:AcquireDropZone(plugin, frame, index, gridX, gridY, iconW, ic
         end
         Container:CommitDrop(plugin, frame, self.gridX, self.gridY)
     end)
-    local plusSize = math.min(iconW, iconH) * (1 - DROP_ZONE_PLUS_INSET_RATIO * 2)
+    local plusSize = OrbitEngine.Pixel:Snap(math.min(iconW, iconH) * (1 - DROP_ZONE_PLUS_INSET_RATIO * 2), frame:GetEffectiveScale())
     zone.plus:SetSize(plusSize, plusSize)
     zone:SetAlpha(DROP_ZONE_ALPHA_IDLE)
     return zone

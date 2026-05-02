@@ -46,6 +46,7 @@ function BaseDatatext:CreateFrame(width, height)
     local template = self.isSecure and "SecureActionButtonTemplate" or nil
     local f = CreateFrame(frameType, "Orbitdatatext" .. self.name, UIParent, template)
     f:SetSize(width or DEFAULT_WIDTH, height or DEFAULT_HEIGHT)
+    Orbit.Engine.Pixel:Enforce(f)
     f:SetClampedToScreen(true)
     f:Hide()
     f.activeBg = f:CreateTexture(nil, "BACKGROUND")
@@ -110,8 +111,9 @@ function BaseDatatext:CreateFrame(width, height)
             local uipX = UIParent:GetWidth() / 2
             local uipY = UIParent:GetHeight() / 2
             local s = f:GetScale()
+            local px, py = Orbit.Engine.Pixel:SnapPosition((cx * s - uipX) / s, (cy * s - uipY) / s, "CENTER", f:GetWidth(), f:GetHeight(), f:GetEffectiveScale())
             f:ClearAllPoints()
-            f:SetPoint("CENTER", UIParent, "CENTER", (cx * s - uipX) / s, (cy * s - uipY) / s)
+            f:SetPoint("CENTER", UIParent, "CENTER", px, py)
         end
 
         f.resizeHandle.startX, _ = GetCursorPosition()
@@ -133,8 +135,9 @@ function BaseDatatext:CreateFrame(width, height)
             
             local ap = f.resizeHandle.anchorPoint
             local scaleRatio = f.resizeHandle.startScale / newScale
+            local rx, ry = Orbit.Engine.Pixel:SnapPosition(f.resizeHandle.anchorX * scaleRatio, f.resizeHandle.anchorY * scaleRatio, ap, f:GetWidth(), f:GetHeight(), f:GetEffectiveScale())
             f:ClearAllPoints()
-            f:SetPoint(ap, UIParent, ap, f.resizeHandle.anchorX * scaleRatio, f.resizeHandle.anchorY * scaleRatio)
+            f:SetPoint(ap, UIParent, ap, rx, ry)
             
             if Orbit.Engine.SelectionTooltip then
                 Orbit.Engine.SelectionTooltip:ShowResizeInfo(self.frame, math.floor(self.frame:GetWidth() * newScale + 0.5), math.floor(self.frame:GetHeight() * newScale + 0.5), true)
@@ -166,6 +169,7 @@ function BaseDatatext:CreateFrame(width, height)
             elseif key == "LEFT" then rawX = rawX - 1 elseif key == "RIGHT" then rawX = rawX + 1 end
             rawX = rawX * uipScale / s
             rawY = rawY * uipScale / s
+            rawX, rawY = Orbit.Engine.Pixel:SnapPosition(rawX, rawY, p, datatextFrame:GetWidth(), datatextFrame:GetHeight(), datatextFrame:GetEffectiveScale())
             datatextFrame:ClearAllPoints()
             datatextFrame:SetPoint(p, UIParent, p, rawX, rawY)
             if Orbit.Engine.SelectionTooltip then Orbit.Engine.SelectionTooltip:ShowPosition(datatextFrame, nil, false) end
@@ -408,7 +412,8 @@ function BaseDatatext:OnDragStart()
             local uipY = UIParent:GetHeight() / 2
             local offsetX = (targetCX - uipX) / self.frame:GetScale()
             local offsetY = (targetCY - uipY) / self.frame:GetScale()
-            
+            offsetX, offsetY = Orbit.Engine.Pixel:SnapPosition(offsetX, offsetY, "CENTER", self.frame:GetWidth(), self.frame:GetHeight(), self.frame:GetEffectiveScale())
+
             self.frame:ClearAllPoints()
             self.frame:SetPoint("CENTER", UIParent, "CENTER", offsetX, offsetY)
             

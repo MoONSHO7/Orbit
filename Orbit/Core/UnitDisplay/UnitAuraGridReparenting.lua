@@ -61,6 +61,9 @@ local function ApplyComponentPosition(textElement, btn, key, defaultAnchorX, def
     local textPoint = justifyH == "LEFT" and "LEFT" or justifyH == "RIGHT" and "RIGHT" or "CENTER"
     local finalOffsetX = anchorX == "LEFT" and offsetX or -offsetX
     local finalOffsetY = anchorY == "BOTTOM" and offsetY or -offsetY
+    local btnW, btnH = btn:GetSize()
+    local snapScale = btn:GetEffectiveScale() or 1
+    finalOffsetX, finalOffsetY = OrbitEngine.Pixel:SnapPosition(finalOffsetX, finalOffsetY, textPoint, btnW, btnH, snapScale)
     textElement:ClearAllPoints()
     textElement:SetPoint(textPoint, btn, anchorPoint, finalOffsetX, finalOffsetY)
     if textElement.SetJustifyH then textElement:SetJustifyH(justifyH) end
@@ -136,6 +139,9 @@ function Mixin:_updateBlizzardBuffs()
     Frame._scratchActiveIcons = Frame._scratchActiveIcons or {}
     local activeIcons = Frame._scratchActiveIcons
     wipe(activeIcons)
+    local frameScale = Frame:GetEffectiveScale() or 1
+    local snappedIconW = OrbitEngine.Pixel:Snap(iconW, frameScale)
+    local snappedIconH = OrbitEngine.Pixel:Snap(iconH, frameScale)
     for _, btn in ipairs(blizzFrame.auraFrames) do
         if btn.hasValidInfo and not btn.isAuraAnchor then
             local bi = btn.buttonInfo
@@ -155,10 +161,11 @@ function Mixin:_updateBlizzardBuffs()
                     btn:SetFrameLevel(Frame:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
                     btn:SetScale(1)
                     btn:SetAlpha(1)
-                    btn:SetSize(iconW, iconH)
-                    CropIconTexture(btn, iconW, iconH)
+                    btn:SetSize(snappedIconW, snappedIconH)
+                    CropIconTexture(btn, snappedIconW, snappedIconH)
                     Orbit.Skin.Icons:ApplyCustom(btn, skinSettings)
                     btn.Duration:Hide()
+                    btn:SetScript("OnUpdate", nil)
                     -- Permanently suppress Blizzard's native border textures
                     local nt = btn.GetNormalTexture and btn:GetNormalTexture() or btn.NormalTexture
                     if nt then
@@ -266,10 +273,9 @@ function Mixin:_updateBlizzardBuffs()
                     ApplyComponentPosition(btn.Count, btn, "Stacks", "RIGHT", "BOTTOM", 1, 1, componentPositions)
                     btn._orbitSkinned = skinVersion
                 end
-                -- Lightweight refresh: enforce size (Blizzard may resize between skin cycles)
                 btn:EnableMouse(true)
-                btn:SetSize(iconW, iconH)
-                CropIconTexture(btn, iconW, iconH)
+                btn:SetSize(snappedIconW, snappedIconH)
+                CropIconTexture(btn, snappedIconW, snappedIconH)
                 btn.Cooldown:Clear()
                 if btn.Cooldown.Text then btn.Cooldown.Text:SetText("") end
                 local durObj = bi and bi.index and durObjByIndex[bi.index]

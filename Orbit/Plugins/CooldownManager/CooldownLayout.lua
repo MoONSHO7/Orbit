@@ -293,7 +293,7 @@ function CDM:ProcessChildren(anchor)
             if not isDocked then anchorFrame:SetWidth(settingW) end
             local barW = isDocked and anchorFrame:GetWidth() or math.max(anchorFrame:GetWidth(), settingW)
             local vGrowth = self:GetGrowthDirection(anchorFrame)
-            local totalH = (#activeChildren * barH) + (math.max(#activeChildren - 1, 0) * spacing)
+            local totalH = Pixel:Snap((#activeChildren * barH) + (math.max(#activeChildren - 1, 0) * spacing), scale)
             blizzFrame:SetSize(barW, math.max(totalH, barH))
             for i, item in ipairs(activeChildren) do
                 item:ClearAllPoints()
@@ -422,7 +422,7 @@ function CDM:PreSizeAnchors()
             local limit = tonumber(skinSettings.limit) or 10
             local scale = anchor:GetEffectiveScale()
             local baseSize = skinSettings.baseIconSize or Constants.Skin.DefaultIconSize
-            local iconW, iconH = CooldownUtils:CalculateIconDimensions(self, systemIndex, skinSettings)
+            local iconW, iconH = CooldownUtils:CalculateIconDimensions(self, systemIndex, skinSettings, scale)
             local pad = OrbitEngine.Pixel:Multiple(tonumber(skinSettings.padding) or 0, scale)
             local cols = math.min(totalConfigured, limit)
             local w = (cols * iconW) + ((cols - 1) * pad)
@@ -795,9 +795,11 @@ do
                 frame.Flipbook.Anim:Stop()
             end
             local w, h = icon:GetSize()
-            local pw, ph = w + HIGHLIGHT_PADDING, h + HIGHLIGHT_PADDING
+            local scale = icon:GetEffectiveScale()
+            local pad = OrbitEngine.Pixel:Multiple(HIGHLIGHT_PADDING, scale)
+            local pw, ph = w + pad, h + pad
             frame:SetSize(pw, ph)
-            frame.Flipbook:SetSize(pw * FLIPBOOK_SCALE, ph * FLIPBOOK_SCALE)
+            frame.Flipbook:SetSize(OrbitEngine.Pixel:Snap(pw * FLIPBOOK_SCALE, scale), OrbitEngine.Pixel:Snap(ph * FLIPBOOK_SCALE, scale))
             frame:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconOverlay)
             frame:Show()
             if UnitAffectingCombat("player") then

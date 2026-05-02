@@ -129,7 +129,8 @@ end
 
 function Dialog:RecalculateHeight()
     local vpH = self.viewportHeight or C.VIEWPORT_HEIGHT
-    self.PreviewContainer:SetHeight(vpH)
+    local pcScale = self.PreviewContainer:GetEffectiveScale()
+    self.PreviewContainer:SetHeight(Pixel:Snap(vpH, pcScale))
 
     local chromeH = self:GetChromeHeight()
     local totalHeight = chromeH + vpH
@@ -144,7 +145,8 @@ function Dialog:RecalculateHeight()
         self:SetPoint("CENTER", UIParent, "CENTER", 0, C.DIALOG_CENTER_OFFSET_Y)
     end
 
-    self:SetHeight(math.max(C.DIALOG_MIN_HEIGHT, totalHeight))
+    local selfScale = self:GetEffectiveScale()
+    self:SetHeight(math.max(C.DIALOG_MIN_HEIGHT, Pixel:Snap(totalHeight, selfScale)))
     self:LayoutFooterButtons()
 end
 

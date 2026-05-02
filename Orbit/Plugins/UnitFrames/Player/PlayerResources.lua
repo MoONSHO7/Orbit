@@ -133,6 +133,7 @@ function Plugin:OnLoad()
         local height = self:GetHeight()
 
         local preview = CreateFrame("Frame", nil, parent)
+        OrbitEngine.Pixel:Enforce(preview)
         preview:SetSize(width, height)
         preview.sourceFrame = self
         preview.sourceWidth = width
@@ -245,6 +246,7 @@ function Plugin:OnLoad()
         }
         local startX = saved.posX or 0
         local startY = saved.posY or 0
+        startX, startY = OrbitEngine.Pixel:SnapPosition(startX, startY, "CENTER", fs:GetStringWidth() or 0, fs:GetStringHeight() or 0, scale)
 
         local CreateDraggableComponent = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.CreateDraggableComponent
         if CreateDraggableComponent then

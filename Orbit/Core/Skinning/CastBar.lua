@@ -9,6 +9,8 @@ local Pixel = Orbit.Engine.Pixel
 local EMPOWER_MARKER_WIDTH = 2
 local SPARK_GLOW_ALPHA = 0.4
 local ICON_DEFAULT_SIZE = 20
+local SPARK_WIDTH = 8
+local SPARK_HEIGHT = 20
 local TEXT_H_PADDING = 5
 local INTERRUPT_FLASH_ALPHA = 0.5
 local LATENCY_ALPHA = 0.5
@@ -37,15 +39,16 @@ function CastBar:Create(parent)
     bar.TextFrame:SetAllPoints(bar)
     bar.TextFrame:SetFrameLevel(bar:GetFrameLevel() + Constants.Levels.Overlay)
 
+    local barScale = bar:GetEffectiveScale()
     bar.Text = bar.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    bar.Text:SetPoint("LEFT", bar, "LEFT", TEXT_H_PADDING, 0)
+    bar.Text:SetPoint("LEFT", bar, "LEFT", Pixel:Multiple(TEXT_H_PADDING, barScale), 0)
 
     bar.Timer = bar.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    bar.Timer:SetPoint("RIGHT", bar, "RIGHT", -TEXT_H_PADDING, 0)
+    bar.Timer:SetPoint("RIGHT", bar, "RIGHT", Pixel:Multiple(-TEXT_H_PADDING, barScale), 0)
 
     bar.Spark = bar:CreateTexture(nil, "OVERLAY", nil, 2)
     bar.Spark:SetAtlas("ui-castingbar-pip")
-    bar.Spark:SetSize(8, 20)
+    bar.Spark:SetSize(Pixel:Snap(SPARK_WIDTH, barScale), Pixel:Snap(SPARK_HEIGHT, barScale))
     bar.Spark:SetAlpha(0)
 
     bar.SparkGlow = bar:CreateTexture(nil, "OVERLAY", nil, 1)
@@ -74,7 +77,7 @@ function CastBar:Create(parent)
 
     bar.Icon = parent:CreateTexture(nil, "ARTWORK", nil, Orbit.Constants.Layers.Icon)
     bar.Icon:SetDrawLayer("ARTWORK", Orbit.Constants.Layers.Icon)
-    bar.Icon:SetSize(ICON_DEFAULT_SIZE, ICON_DEFAULT_SIZE)
+    bar.Icon:SetSize(Pixel:Snap(ICON_DEFAULT_SIZE, barScale), Pixel:Snap(ICON_DEFAULT_SIZE, barScale))
     bar.Icon:SetPoint("LEFT", parent, "LEFT", 0, 0)
     bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
 
@@ -82,7 +85,7 @@ function CastBar:Create(parent)
     for i = 1, 4 do
         local marker = bar:CreateTexture(nil, "OVERLAY", nil, 1)
         marker:SetColorTexture(0, 0, 0, 1)
-        marker:SetSize(Pixel:Multiple(EMPOWER_MARKER_WIDTH), 1)
+        marker:SetSize(Pixel:Multiple(EMPOWER_MARKER_WIDTH, barScale), Pixel:Multiple(1, barScale))
         marker:Hide()
         bar.stageMarkers[i] = marker
     end

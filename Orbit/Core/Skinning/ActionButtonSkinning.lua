@@ -60,8 +60,8 @@ function ABS:Apply(button, settings)
     if not checkedTexture and button.GetCheckedTexture then checkedTexture = button:GetCheckedTexture() end
     if checkedTexture then
         checkedTexture:ClearAllPoints()
-        checkedTexture:SetPoint("TOPLEFT", button, "TOPLEFT", CHECKED_OFFSET_TL.x, CHECKED_OFFSET_TL.y)
-        checkedTexture:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", CHECKED_OFFSET_BR.x, CHECKED_OFFSET_BR.y)
+        checkedTexture:SetPoint("TOPLEFT", button, "TOPLEFT", Pixel:Multiple(CHECKED_OFFSET_TL.x, scale), Pixel:Multiple(CHECKED_OFFSET_TL.y, scale))
+        checkedTexture:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", Pixel:Multiple(CHECKED_OFFSET_BR.x, scale), Pixel:Multiple(CHECKED_OFFSET_BR.y, scale))
         checkedTexture:SetAlpha(1)
         checkedTexture:SetDrawLayer("OVERLAY", Constants.Layers.Text)
     end
@@ -96,8 +96,8 @@ function ABS:Apply(button, settings)
 
     if button.QuickKeybindHighlightTexture then
         button.QuickKeybindHighlightTexture:ClearAllPoints()
-        button.QuickKeybindHighlightTexture:SetPoint("TOPLEFT", button, "TOPLEFT", -1, 1)
-        button.QuickKeybindHighlightTexture:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 1, -1)
+        button.QuickKeybindHighlightTexture:SetPoint("TOPLEFT", button, "TOPLEFT", Pixel:Multiple(-1, scale), Pixel:Multiple(1, scale))
+        button.QuickKeybindHighlightTexture:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", Pixel:Multiple(1, scale), Pixel:Multiple(-1, scale))
     end
 
     if button.NewActionTexture then
@@ -116,8 +116,8 @@ function ABS:Apply(button, settings)
     if not autoCast and button:GetName() then autoCast = _G[button:GetName() .. "Shine"] end
     if autoCast then
         autoCast:ClearAllPoints()
-        autoCast:SetPoint("TOPLEFT", button, "TOPLEFT", AUTOCAST_OFFSET_TL.x, AUTOCAST_OFFSET_TL.y)
-        autoCast:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", AUTOCAST_OFFSET_BR.x, AUTOCAST_OFFSET_BR.y)
+        autoCast:SetPoint("TOPLEFT", button, "TOPLEFT", Pixel:Multiple(AUTOCAST_OFFSET_TL.x, scale), Pixel:Multiple(AUTOCAST_OFFSET_TL.y, scale))
+        autoCast:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", Pixel:Multiple(AUTOCAST_OFFSET_BR.x, scale), Pixel:Multiple(AUTOCAST_OFFSET_BR.y, scale))
         autoCast:SetFrameLevel(button:GetFrameLevel() + Constants.Levels.IconOverlay)
         if autoCast.Shine then autoCast.Shine:ClearAllPoints(); autoCast.Shine:SetAllPoints(autoCast) end
         if autoCast.Corners then autoCast.Corners:ClearAllPoints(); autoCast.Corners:SetAllPoints(autoCast) end
@@ -151,10 +151,10 @@ function ABS:Apply(button, settings)
         hooksecurefunc(AssistedCombatManager, "SetAssistedHighlightFrameShown", function(_, actionButton)
             local frame = actionButton.AssistedCombatHighlightFrame
             if not frame or frame.orbitScaled or not actionButton.orbitButtonWidth then return end
-            local bw, bh = actionButton.orbitButtonWidth, actionButton.orbitButtonHeight
+            local s = actionButton:GetEffectiveScale()
+            local bw, bh = Pixel:Snap(actionButton.orbitButtonWidth, s), Pixel:Snap(actionButton.orbitButtonHeight, s)
             frame:SetSize(bw, bh)
             if frame.Flipbook then
-                local s = actionButton:GetEffectiveScale()
                 frame.Flipbook:SetSize(Pixel:Snap(bw * 1.4, s), Pixel:Snap(bh * 1.4, s))
             end
             frame.orbitScaled = true
@@ -172,7 +172,7 @@ function ABS:Apply(button, settings)
         Skin:ApplyFontShadow(button.HotKey)
         button.HotKey:SetTextColor(1, 1, 1, 1)
         button.HotKey:ClearAllPoints()
-        button.HotKey:SetPoint("TOPRIGHT", button, "TOPRIGHT", HOTKEY_OFFSET.x, HOTKEY_OFFSET.y)
+        button.HotKey:SetPoint("TOPRIGHT", button, "TOPRIGHT", Pixel:Multiple(HOTKEY_OFFSET.x, scale), Pixel:Multiple(HOTKEY_OFFSET.y, scale))
     end
 
     if button.Name then
@@ -184,7 +184,7 @@ function ABS:Apply(button, settings)
             button.Name:Show()
             button.Name:SetTextColor(1, 1, 1, NAME_TEXT_ALPHA)
             button.Name:ClearAllPoints()
-            button.Name:SetPoint("BOTTOM", button, "BOTTOM", 0, NAME_OFFSET_Y)
+            button.Name:SetPoint("BOTTOM", button, "BOTTOM", 0, Pixel:Multiple(NAME_OFFSET_Y, scale))
         end
     end
 
@@ -237,7 +237,7 @@ function ABS:Apply(button, settings)
             overlay:SetAllPoints(button)
             local arrow = overlay:CreateTexture(nil, "OVERLAY", nil, 7)
             arrow:SetAtlas(button.arrowNormalTexture or "UI-HUD-ActionBar-Flyout")
-            arrow:SetSize(button.arrowMainAxisSize or 15, button.arrowCrossAxisSize or 6)
+            arrow:SetSize(Pixel:Snap(button.arrowMainAxisSize or 15, scale), Pixel:Snap(button.arrowCrossAxisSize or 6, scale))
             overlay.arrow = arrow
             button.orbitFlyoutOverlay = overlay
         end
@@ -260,10 +260,12 @@ function ABS:Apply(button, settings)
                 ov.arrow:ClearAllPoints()
                 local direction = self:GetPopupDirection()
                 local offset = (self.IsPopupOpen and self:IsPopupOpen()) and self.openArrowOffset or self.closedArrowOffset
-                if direction == "UP" then ov.arrow:SetPoint("TOP", ov, "TOP", 0, offset)
-                elseif direction == "DOWN" then ov.arrow:SetPoint("BOTTOM", ov, "BOTTOM", 0, -offset)
-                elseif direction == "LEFT" then ov.arrow:SetPoint("LEFT", ov, "LEFT", -offset, 0)
-                elseif direction == "RIGHT" then ov.arrow:SetPoint("RIGHT", ov, "RIGHT", offset, 0) end
+                local s = self:GetEffectiveScale()
+                local snapped = Pixel:Snap(offset, s)
+                if direction == "UP" then ov.arrow:SetPoint("TOP", ov, "TOP", 0, snapped)
+                elseif direction == "DOWN" then ov.arrow:SetPoint("BOTTOM", ov, "BOTTOM", 0, -snapped)
+                elseif direction == "LEFT" then ov.arrow:SetPoint("LEFT", ov, "LEFT", -snapped, 0)
+                elseif direction == "RIGHT" then ov.arrow:SetPoint("RIGHT", ov, "RIGHT", snapped, 0) end
             end
             local function SyncTexture(self)
                 local ov = self.orbitFlyoutOverlay

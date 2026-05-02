@@ -43,12 +43,12 @@ end
 
 -- [ PERSISTENCE HOOKS ]------------------------------------------------------------------------------
 if EditModeManagerFrame then
-    hooksecurefunc(EditModeManagerFrame, "Show", function(self)
+    EditModeManagerFrame:HookScript("OnShow", function(self)
         self:ClearAllPoints()
         self:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", EDIT_MODE_POSITION_X, EDIT_MODE_POSITION_Y)
     end)
 
-    hooksecurefunc(EditModeManagerFrame, "OnHide", function()
+    EditModeManagerFrame:HookScript("OnHide", function()
         local PM = Orbit.Engine and Orbit.Engine.PositionManager
         if PM then PM:FlushToStorage() end
         if Orbit.AuraPreview then Orbit.AuraPreview:ReleaseIconProvider() end

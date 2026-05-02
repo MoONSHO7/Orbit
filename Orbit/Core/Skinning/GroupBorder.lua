@@ -152,6 +152,10 @@ function Skin:UpdateGroupBorder(rootFrame)
         end
     end
 
+    local rootScale = rootFrame:GetEffectiveScale()
+    if not rootScale or rootScale < 0.01 then rootScale = 1 end
+    local matchTolerance = Engine.Pixel:GetScale() / rootScale * 0.5
+
     -- Identify true extremum frames for native layout anchoring (avoids SetSize desync during anims)
     local tlFrame, brFrame
     for i = 1, #allFrames do
@@ -160,8 +164,8 @@ function Skin:UpdateGroupBorder(rootFrame)
         if pos then
             local r = pos.x + frame:GetWidth()
             local b = pos.y + frame:GetHeight()
-            if math.abs(pos.x - minX) < 0.5 and math.abs(pos.y - minY) < 0.5 then tlFrame = frame end
-            if math.abs(r - maxX) < 0.5 and math.abs(b - maxY) < 0.5 then brFrame = frame end
+            if math.abs(pos.x - minX) < matchTolerance and math.abs(pos.y - minY) < matchTolerance then tlFrame = frame end
+            if math.abs(r - maxX) < matchTolerance and math.abs(b - maxY) < matchTolerance then brFrame = frame end
         end
     end
     
@@ -175,20 +179,17 @@ function Skin:UpdateGroupBorder(rootFrame)
 
 
     if isPixelMode then
-        -- Pixel-style group overlay: use WHITE8x8 with pixel-snapped sizing
-        local scale = rootFrame:GetEffectiveScale()
-        if not scale or scale < 0.01 then scale = 1 end
         local borderSize = isIconStyle and (gs and gs.IconBorderSize or Constants.Settings.BorderSize.Default) or (gs and gs.BorderSize or Constants.Settings.BorderSize.Default)
         if borderSize <= 0 then overlay:Hide(); return end
-        local pixelSize = Engine.Pixel:Multiple(borderSize, scale)
+        local pixelSize = Engine.Pixel:Multiple(borderSize, rootScale)
         overlay:ClearAllPoints()
-        
+
         if canNativeAnchor then
             overlay:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
             overlay:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", 0, 0)
         else
-            overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", -offsetX, offsetY)
-            overlay:SetSize(totalW, totalH)
+            overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX, rootScale), Engine.Pixel:Snap(offsetY, rootScale))
+            overlay:SetSize(Engine.Pixel:Snap(totalW, rootScale), Engine.Pixel:Snap(totalH, rootScale))
         end
         
         overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
@@ -213,22 +214,20 @@ function Skin:UpdateGroupBorder(rootFrame)
             edgeSize = (gs and gs.BorderEdgeSize) or Constants.BorderStyle.EdgeSize
             borderOffset = (gs and gs.BorderOffset) or 0
         end
-        local grpScale = rootFrame:GetEffectiveScale()
-        if not grpScale or grpScale < 0.01 then grpScale = 1 end
         local ownScale = rootFrame:GetScale() or 1
         if ownScale < 0.01 then ownScale = 1 end
         local adjEdge = edgeSize / ownScale
         local adjOffset = borderOffset / ownScale
-        local outset = Engine.Pixel:Snap((adjEdge / 2) + adjOffset, grpScale)
-        
+        local outset = Engine.Pixel:Snap((adjEdge / 2) + adjOffset, rootScale)
+
         overlay:ClearAllPoints()
-        
+
         if canNativeAnchor then
             overlay:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", -outset, outset)
             overlay:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", outset, -outset)
         else
-            overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", -outset - offsetX, outset + offsetY)
-            overlay:SetSize(Engine.Pixel:Snap(totalW + 2 * outset, grpScale), Engine.Pixel:Snap(totalH + 2 * outset, grpScale))
+            overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-outset - offsetX, rootScale), Engine.Pixel:Snap(outset + offsetY, rootScale))
+            overlay:SetSize(Engine.Pixel:Snap(totalW + 2 * outset, rootScale), Engine.Pixel:Snap(totalH + 2 * outset, rootScale))
         end
         
         overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = adjEdge })

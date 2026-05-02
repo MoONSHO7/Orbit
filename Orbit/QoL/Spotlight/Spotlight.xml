@@ -16,6 +16,7 @@
     <Script file="Index\Sources\Macros.lua"/>
     <Script file="Index\Sources\QuestItems.lua"/>
     <Script file="Index\IndexManager.lua"/>
+    <Script file="Index\Favorites.lua"/>
     <Script file="UI\ResultRow.lua"/>
     <Script file="UI\RowPool.lua"/>
     <Script file="UI\ClickOutsideCatcher.lua"/>

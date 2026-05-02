@@ -4,6 +4,7 @@ local L = Orbit.L
 local Skin = Orbit.Skin
 local AButtonSkin = Orbit.Skin.ActionButtonSkin
 local Constants = Orbit.Constants
+local Favorites = Orbit.Spotlight.Index.Favorites
 local ResultRow = {}
 Orbit.Spotlight.UI.ResultRow = ResultRow
 
@@ -28,7 +29,7 @@ local SELECTED_BG_COLOR = { r = 1, g = 1, b = 1, a = 0.18 }
 local LABEL_COLOR = { r = 1, g = 1, b = 1, a = 1 }
 local KIND_LABEL_COLOR = { r = 0.6, g = 0.6, b = 0.6, a = 1 }
 local COUNT_COLOR = { r = 1, g = 1, b = 1, a = 1 }
-local SECURE_ATTR_KEYS = { "type", "item", "spell", "toy", "macro", "macrotext", "battlepet", "mount", "unit" }
+local SECURE_ATTR_KEYS = { "type", "type1", "item", "spell", "toy", "macro", "macrotext", "battlepet", "mount", "unit" }
 
 local function FormatCount(n)
     if not n or n <= 1 then return nil end
@@ -194,6 +195,15 @@ local function RecordActivation(row)
     if Recents then Recents:Record(entry) end
 end
 
+local function HandleFavoriteRightClick(row)
+    local entry = row._entry
+    if not entry or not Favorites:IsSupported(entry.kind) then return end
+    local newState = Favorites:Toggle(entry)
+    if newState == nil then return end
+    row.iconBtn.star:SetShown(newState)
+    row.iconBtn.starShadow:SetShown(newState)
+end
+
 function ResultRow:Bind(row, entry)
     row._entry = entry
     row.iconBtn.icon:SetTexture(entry.icon)
@@ -217,16 +227,16 @@ function ResultRow:Bind(row, entry)
 
     ClearSecureAttrs(row)
     if entry.secure then
-        for k, v in pairs(entry.secure) do row:SetAttribute(k, v) end
-        row:SetScript("PostClick", function(self)
-            RecordActivation(self)
-            Orbit.Spotlight.UI.SpotlightFrame:Close()
-        end)
-    else
-        row:SetScript("PostClick", function(self)
-            RecordActivation(self)
-            if self._entry and self._entry.onClick then self._entry.onClick(self._entry) end
-            Orbit.Spotlight.UI.SpotlightFrame:Close()
-        end)
+        -- Bare "type" is SecureActionButtonTemplate's any-button fallback; rebind as "type1" so right-click stays unbound.
+        for k, v in pairs(entry.secure) do
+            if k == "type" then k = "type1" end
+            row:SetAttribute(k, v)
+        end
     end
+    row:SetScript("PostClick", function(self, button)
+        if button == "RightButton" then HandleFavoriteRightClick(self); return end
+        RecordActivation(self)
+        if not self._entry.secure and self._entry.onClick then self._entry.onClick(self._entry) end
+        Orbit.Spotlight.UI.SpotlightFrame:Close()
+    end)
 end

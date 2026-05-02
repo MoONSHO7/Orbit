@@ -50,6 +50,7 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
     local finalX, finalY = offsetX, offsetY
     if anchorX == "RIGHT" then finalX = -offsetX end
     if anchorY == "TOP" then finalY = -offsetY end
+    finalX, finalY = OrbitEngine.Pixel:SnapPosition(finalX, finalY, selfAnchor, containerW, containerH, scale)
     container:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
     if not frame[poolKey] then frame[poolKey] = {} end
     for _, icon in ipairs(frame[poolKey]) do icon:Hide() end
@@ -158,7 +159,10 @@ function AP:ShowPrivateAuras(frame, posData, baseIconSize)
     local growDir = (posData and posData.justifyH) or anchorX
     local paaTexture = Orbit.StatusIconMixin:GetPrivateAuraTexture()
     paa.Icon:SetTexture(nil)
-    paa:SetSize(totalWidth, iconSize)
+    local paaScale = paa:GetEffectiveScale() or 1
+    local snappedIconSize = OrbitEngine.Pixel:Snap(iconSize, paaScale)
+    local snappedTotalWidth = OrbitEngine.Pixel:Snap(totalWidth, paaScale)
+    paa:SetSize(snappedTotalWidth, snappedIconSize)
     if not posData or not posData.anchorX then
         paa:ClearAllPoints()
         paa:SetPoint("CENTER", frame, "BOTTOM", 0, OrbitEngine.Pixel:Snap(iconSize * 0.5 + 2, frame:GetEffectiveScale() or 1))
@@ -175,14 +179,15 @@ function AP:ShowPrivateAuras(frame, posData, baseIconSize)
             paa._previewIcons[pi] = sub
         end
         sub:SetParent(paa)
-        sub:SetSize(iconSize, iconSize)
+        sub:SetSize(snappedIconSize, snappedIconSize)
         sub.Icon:SetTexture(paaTexture)
         sub:ClearAllPoints()
-        if growDir == "RIGHT" then sub:SetPoint("TOPRIGHT", paa, "TOPRIGHT", -((pi - 1) * (iconSize + PREVIEW_PAA_SPACING)), 0)
-        elseif growDir == "LEFT" then sub:SetPoint("TOPLEFT", paa, "TOPLEFT", (pi - 1) * (iconSize + PREVIEW_PAA_SPACING), 0)
+        local stride = OrbitEngine.Pixel:Snap((pi - 1) * (snappedIconSize + PREVIEW_PAA_SPACING), paaScale)
+        if growDir == "RIGHT" then sub:SetPoint("TOPRIGHT", paa, "TOPRIGHT", -stride, 0)
+        elseif growDir == "LEFT" then sub:SetPoint("TOPLEFT", paa, "TOPLEFT", stride, 0)
         else
-            local centeredStart = -(totalWidth - iconSize) / 2
-            sub:SetPoint("CENTER", paa, "CENTER", centeredStart + (pi - 1) * (iconSize + PREVIEW_PAA_SPACING), 0)
+            local centeredStart = -(snappedTotalWidth - snappedIconSize) / 2
+            sub:SetPoint("CENTER", paa, "CENTER", OrbitEngine.Pixel:Snap(centeredStart + stride, paaScale), 0)
         end
         sub:Show()
     end

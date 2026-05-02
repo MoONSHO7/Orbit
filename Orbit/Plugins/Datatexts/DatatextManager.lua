@@ -89,8 +89,10 @@ function DatatextManager:PlaceDatatext(id, point, x, y, skipSave)
     if not datatext then return end
     datatext.isPlaced = true
     local f = datatext.frame
+    local resolvedPoint = point or "CENTER"
+    local px, py = Orbit.Engine.Pixel:SnapPosition(x or 0, y or 0, resolvedPoint, f:GetWidth(), f:GetHeight(), f:GetEffectiveScale())
     f:ClearAllPoints()
-    f:SetPoint(point or "CENTER", UIParent, point or "CENTER", x or 0, y or 0)
+    f:SetPoint(resolvedPoint, UIParent, resolvedPoint, px, py)
     f:SetFrameStrata(Orbit.Constants.Strata.HUD)
     f:SetFrameLevel(500)
     f:SetMovable(not isLocked)

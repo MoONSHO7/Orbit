@@ -190,7 +190,9 @@ function Reg:RegisterComponents(plugin, container, firstFrame, textKeys, iconKey
 		local containerKey = key == "Buffs" and "buffContainer" or "debuffContainer"
 		if not firstFrame[containerKey] then
 			firstFrame[containerKey] = CreateFrame("Frame", nil, firstFrame)
-			firstFrame[containerKey]:SetSize(auraBaseIconSize, auraBaseIconSize)
+			local scale = firstFrame:GetEffectiveScale() or 1
+			local snapped = OrbitEngine.Pixel:Snap(auraBaseIconSize, scale)
+			firstFrame[containerKey]:SetSize(snapped, snapped)
 		end
 		OrbitEngine.ComponentDrag:Attach(firstFrame[containerKey], container, {
 			key = key,
@@ -250,6 +252,9 @@ function Reg:ApplyIconPositions(frames, savedPositions, iconKeys)
 				end
 
 				frame[iconKey]:ClearAllPoints()
+				local iScale = frame:GetEffectiveScale() or 1
+				local iW, iH = frame[iconKey]:GetSize()
+				finalX, finalY = OrbitEngine.Pixel:SnapPosition(finalX, finalY, selfAnchor, iW, iH, iScale)
 				frame[iconKey]:SetPoint(selfAnchor, frame, anchorPoint, finalX, finalY)
 				if pos.overrides and ApplyOverrides then
 					ApplyOverrides(frame[iconKey], pos.overrides)
@@ -265,10 +270,12 @@ end
 function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
 	local previewAtlases = Orbit.IconPreviewAtlases
 	local StatusMixin = Orbit.StatusIconMixin
+	local scale = frame:GetEffectiveScale() or 1
+	local statusIconSnap = OrbitEngine.Pixel:Snap(cfg.statusIconSize, scale)
 	for _, key in ipairs(cfg.statusIcons or {}) do
 		if frame[key] then
 			frame[key]:SetAtlas(previewAtlases[key])
-			frame[key]:SetSize(cfg.statusIconSize, cfg.statusIconSize)
+			frame[key]:SetSize(statusIconSnap, statusIconSnap)
 		end
 	end
 	local savedPositions = plugin:GetComponentPositions(1)
@@ -300,7 +307,8 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
 			if not frame[key]:GetAtlas() then
 				frame[key]:SetAtlas(atlas)
 			end
-			frame[key]:SetSize(cfg.roleIconSize, cfg.roleIconSize)
+			local roleSnap = OrbitEngine.Pixel:Snap(cfg.roleIconSize, scale)
+			frame[key]:SetSize(roleSnap, roleSnap)
 		end
 	end
 	if frame.MarkerIcon then
@@ -313,7 +321,8 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
 	local auraSkin = Orbit.Constants.Aura.SkinNoTimer
 	if frame.DefensiveIcon then
 		frame.DefensiveIcon.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
-		frame.DefensiveIcon:SetSize(cfg.defensiveSize, cfg.defensiveSize)
+		local defSnap = OrbitEngine.Pixel:Snap(cfg.defensiveSize, scale)
+		frame.DefensiveIcon:SetSize(defSnap, defSnap)
 		if Orbit.Skin and Orbit.Skin.Icons then
 			Orbit.Skin.Icons:ApplyCustom(frame.DefensiveIcon, auraSkin)
 		end
@@ -321,24 +330,23 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
 	end
 	if frame.CrowdControlIcon then
 		frame.CrowdControlIcon.Icon:SetTexture(StatusMixin:GetCrowdControlTexture())
-		frame.CrowdControlIcon:SetSize(cfg.crowdControlSize, cfg.crowdControlSize)
+		local ccSnap = OrbitEngine.Pixel:Snap(cfg.crowdControlSize, scale)
+		frame.CrowdControlIcon:SetSize(ccSnap, ccSnap)
 		if Orbit.Skin and Orbit.Skin.Icons then
 			Orbit.Skin.Icons:ApplyCustom(frame.CrowdControlIcon, auraSkin)
 		end
 		frame.CrowdControlIcon:Show()
 	end
 	if frame.PrivateAuraAnchor then
-		frame.PrivateAuraAnchor:SetSize(
-			cfg.privateAuraSize or cfg.defensiveSize,
-			cfg.privateAuraSize or cfg.defensiveSize
-		)
+		local paSnap = OrbitEngine.Pixel:Snap(cfg.privateAuraSize or cfg.defensiveSize, scale)
+		frame.PrivateAuraAnchor:SetSize(paSnap, paSnap)
 	end
 	-- Create synthetic StatusIcons element for Canvas Mode creator to clone
 	if not frame.StatusIcons then
 		local si = CreateFrame("Button", nil, frame)
 		si.Icon = si:CreateTexture(nil, "ARTWORK")
 		si.Icon:SetAllPoints()
-		si:SetSize(cfg.statusIconSize, cfg.statusIconSize)
+		si:SetSize(statusIconSnap, statusIconSnap)
 		si.Icon:SetAtlas(previewAtlases.PhaseIcon or "RaidFrame-Icon-Phasing")
 		si:Hide()
 		frame.StatusIcons = si
@@ -361,7 +369,8 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
 		if tex then
 			icon.Icon:SetTexture(tex)
 		end
-		icon:SetSize(slotSize, slotSize)
+		local slotSnap = OrbitEngine.Pixel:Snap(slotSize, scale)
+		icon:SetSize(slotSnap, slotSnap)
 		icon:Show()
 		if OrbitEngine.ComponentDrag and not icon._canvasAttached then
 			icon._canvasAttached = true
@@ -402,7 +411,8 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
 		local previewAtlases = Orbit.IconPreviewAtlases or {}
 		local savedPositions = plugin:GetComponentPositions(1)
 		local StatusMixin = Orbit.StatusIconMixin
-		local iconSize = cfg.statusIconSize
+		local frameScale = frame:GetEffectiveScale() or 1
+		local iconSize = OrbitEngine.Pixel:Snap(cfg.statusIconSize, frameScale)
 		local spacing = cfg.statusIconSpacing or (iconSize + 4)
 		local statusIcons = cfg.statusIcons or { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }
 		-- Position all status icons at the grouped StatusIcons position (or default center)
@@ -425,6 +435,9 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
 						finalY = -finalY
 					end
 					frame[key]:ClearAllPoints()
+					local kScale = frame:GetEffectiveScale() or 1
+					local kW, kH = frame[key]:GetSize()
+					finalX, finalY = OrbitEngine.Pixel:SnapPosition(finalX, finalY, "CENTER", kW, kH, kScale)
 					frame[key]:SetPoint("CENTER", frame, anchorPoint, finalX, finalY)
 				elseif not savedPositions[key] then
 					frame[key]:ClearAllPoints()
@@ -475,8 +488,9 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
 					ApplyTextPosition(btn, frame, pos, nil, nil, nil, true)
 				else
 					btn:ClearAllPoints()
-					local xOff = OrbitEngine.Pixel:Snap((entry.xMul or 0) * (iconSize + 2), 1)
-					local yOff = OrbitEngine.Pixel:Snap((entry.yMul or 0) * (iconSize + 2), 1)
+					local entryScale = frame:GetEffectiveScale() or 1
+					local xOff = OrbitEngine.Pixel:Snap((entry.xMul or 0) * (iconSize + 2), entryScale)
+					local yOff = OrbitEngine.Pixel:Snap((entry.yMul or 0) * (iconSize + 2), entryScale)
 					btn:SetPoint("CENTER", frame, entry.anchor, xOff, yOff)
 				end
 				if Orbit.Skin and Orbit.Skin.Icons then
@@ -499,7 +513,8 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
 				if tex then
 					hIcon.Icon:SetTexture(tex)
 				end
-				hIcon:SetSize(slotSize, slotSize)
+				local hSnap = OrbitEngine.Pixel:Snap(slotSize, frameScale)
+				hIcon:SetSize(hSnap, hSnap)
 				if slotPos then
 					ApplyTextPosition(hIcon, frame, slotPos, nil, nil, nil, true)
 				end

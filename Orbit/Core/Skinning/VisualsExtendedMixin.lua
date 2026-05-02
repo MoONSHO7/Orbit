@@ -55,15 +55,17 @@ function Mixin:UpdateClassificationVisuals(frame, systemIndex)
     if self.isEditing and not (isElite or isRare) then
         isElite = true
     end
+    local Pixel = Orbit.Engine.Pixel
+    local scale = frame:GetEffectiveScale()
     if not frame.RareEliteIcon then
         frame.RareEliteIcon = frame:CreateTexture(nil, "OVERLAY")
-        frame.RareEliteIcon:SetSize(RARE_ELITE_ICON_SIZE, RARE_ELITE_ICON_SIZE)
+        frame.RareEliteIcon:SetSize(Pixel:Snap(RARE_ELITE_ICON_SIZE, scale), Pixel:Snap(RARE_ELITE_ICON_SIZE, scale))
     end
     local icon = frame.RareEliteIcon
     local positions = self:GetSetting(systemIndex, "ComponentPositions")
     if not (positions and positions.RareEliteIcon) then
         icon:ClearAllPoints()
-        icon:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", RARE_ELITE_ICON_OFFSET, 0)
+        icon:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", Pixel:Multiple(RARE_ELITE_ICON_OFFSET, scale), 0)
     end
     if isElite then
         if icon.SetAtlas then

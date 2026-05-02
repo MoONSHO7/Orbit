@@ -67,6 +67,7 @@ Plugins\Extras\MinimapButton.lua
 # ==============================================================
 # QUALITY OF LIFE
 # ==============================================================
+QoL\UserInterface.lua
 QoL\MoveMore.lua
 QoL\Mouse.lua
 QoL\Spotlight\Spotlight.xml

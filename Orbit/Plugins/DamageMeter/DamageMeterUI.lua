@@ -2,6 +2,7 @@
 local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
+local Pixel = Orbit.Engine.Pixel
 local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
 
@@ -259,6 +260,7 @@ end
 -- [ BAR CONSTRUCTION ] ------------------------------------------------------------------------------
 local function CreateBar(parent)
     local bar = CreateFrame("Frame", nil, parent)
+    Pixel:Enforce(bar)
     bar:EnableMouse(false) -- clicks/drag are handled by the outer meter frame
 
     bar.Icon = bar:CreateTexture(nil, "ARTWORK")
@@ -371,7 +373,8 @@ end
 local function LayoutBarInternals(bar, def)
     local iconSide = def.iconPosition
     local showIcon = iconSide ~= ICON.Off
-    local iconSize = showIcon and def.barHeight or 0
+    local barScale = bar:GetEffectiveScale()
+    local iconSize = showIcon and Pixel:Snap(def.barHeight, barScale) or 0
 
     bar.Icon:ClearAllPoints()
     if showIcon then
@@ -386,7 +389,7 @@ local function LayoutBarInternals(bar, def)
         bar.Icon:Hide()
     end
 
-    local fillHeight = def.barHeight * def.style / 100
+    local fillHeight = Pixel:Snap(def.barHeight * def.style / 100, barScale)
     bar.StatusBar:ClearAllPoints()
     if iconSide == ICON.Right then
         bar.StatusBar:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT",   0,         0)
@@ -587,7 +590,7 @@ local function UpdateVisibleRect(frame, def, visibleCount)
     local empty = not visibleCount or visibleCount <= 0
     -- Empty state: stretch to full barCount and let OnEnter/OnLeave drive alpha for hover-only reveal.
     local rows = empty and def.barCount or visibleCount
-    local rectHeight = rows * def.barHeight + math.max(0, rows - 1) * def.barGap
+    local rectHeight = Pixel:Snap(rows * def.barHeight + math.max(0, rows - 1) * def.barGap, frame:GetEffectiveScale())
     rect:ClearAllPoints()
     rect:SetPoint("TOPLEFT",     frame, "TOPLEFT",   0,  0)
     rect:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT",  0, -rectHeight)
@@ -629,14 +632,16 @@ local function LayoutBars(frame, def)
     frame.bars = frame.bars or {}
     local count = def.barCount
     local width = GetEffectiveWidth(frame, def)
+    local frameScale = frame:GetEffectiveScale()
     local stride = def.barHeight + def.barGap
     for i = 1, count do
         local bar = frame.bars[i] or CreateBar(frame)
         frame.bars[i] = bar
         bar:SetSize(width, def.barHeight)
         bar:ClearAllPoints()
-        bar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -((i - 1) * stride))
-        bar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, -((i - 1) * stride))
+        local yTop = -Pixel:Snap((i - 1) * stride, frameScale)
+        bar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, yTop)
+        bar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, yTop)
         -- Do NOT reset font here: ApplyCanvasState owns font via overrides, reset would wipe them.
         bar.StatusBar:SetStatusBarTexture(GetBarTexture())
         LayoutBarInternals(bar, def)
@@ -676,6 +681,7 @@ end
 
 local function BuildMeterFrame(id, def)
     local frame = CreateFrame("Frame", FRAME_PREFIX .. id, UIParent)
+    Pixel:Enforce(frame)
     frame:SetFrameStrata("MEDIUM")
     frame:SetFrameLevel(FRAME_LEVEL_BASE + id * FRAME_LEVEL_STRIDE)
     frame:SetClampedToScreen(true)
@@ -940,7 +946,8 @@ local function BuildMeterFrame(id, def)
         local playerName = UnitName("player")
 
         local preview = OrbitEngine.Preview.Frame:CreateBasePreview(frame, scale, parent, borderSize)
-        preview:SetSize(fillWidth * scale, currentDef.barHeight * scale)
+        local effScale = preview:GetEffectiveScale()
+        preview:SetSize(Pixel:Snap(fillWidth * scale, effScale), Pixel:Snap(currentDef.barHeight * scale, effScale))
         preview.sourceFrame = frame
         preview.sourceWidth = fillWidth
         preview.sourceHeight = currentDef.barHeight
@@ -949,7 +956,8 @@ local function BuildMeterFrame(id, def)
 
         if showIcon then
             local icon = preview:CreateTexture(nil, "ARTWORK")
-            icon:SetSize(iconSize * scale, iconSize * scale)
+            local iconLogical = Pixel:Snap(iconSize * scale, effScale)
+            icon:SetSize(iconLogical, iconLogical)
             if iconSide == ICON.Right then
                 icon:SetPoint("LEFT", preview, "RIGHT", 0, 0)
             else
@@ -958,7 +966,7 @@ local function BuildMeterFrame(id, def)
             ApplyClassIcon(icon, playerClassFile)
         end
 
-        local previewFillHeight = currentDef.barHeight * currentDef.style / 100 * scale
+        local previewFillHeight = Pixel:Snap(currentDef.barHeight * currentDef.style / 100 * scale, effScale)
 
         local bar = CreateFrame("StatusBar", nil, preview)
         bar:SetPoint("BOTTOMLEFT",  preview, "BOTTOMLEFT",  0, 0)
@@ -1367,7 +1375,8 @@ function Plugin:RebuildAllMeters()
         frame:ClearAllPoints()
         if not OrbitEngine.Frame:RestorePosition(frame, self, id) then
             local pos = def.position or DM.DefaultPosition
-            frame:SetPoint(pos.point, UIParent, pos.point, pos.x, pos.y)
+            local snappedX, snappedY = Pixel:SnapPosition(pos.x, pos.y, pos.point, frame:GetWidth(), frame:GetHeight(), frame:GetEffectiveScale())
+            frame:SetPoint(pos.point, UIParent, pos.point, snappedX, snappedY)
         end
         frame:Show()
         -- Visibility Engine: all meters share the "DamageMeters" entry via sentinel index 1.

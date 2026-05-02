@@ -34,6 +34,7 @@ function Pixel:Snap(value, scale)
     if not value then
         return 0
     end
+    if issecretvalue(value) then return value end
 
     local pixelScale = SCREEN_SCALE
     local frameScale = scale or 1
@@ -50,6 +51,7 @@ end
 function Pixel:Multiple(count, scale)
     local n = count or 0
     if n == 0 then return 0 end
+    if issecretvalue(n) then return n end
     local sign = n > 0 and 1 or -1
     local abs = math.abs(n)
     local frameScale = scale or 1
@@ -69,16 +71,20 @@ function Pixel:DefaultBorderSize(scale)
 end
 
 -- Center-anchored points snap relative to the center, not the edge — otherwise width/height drift after Snap.
+-- Secret width/height (frame size derived from a secret) skips the center adjustment to avoid Lua arithmetic on a secret.
 function Pixel:SnapPosition(x, y, point, width, height, scale)
-    if point:find("LEFT", 1, true) or point:find("RIGHT", 1, true) then
-        x = self:Snap(x, scale)
-    else
+    local centerX = not (point:find("LEFT", 1, true) or point:find("RIGHT", 1, true))
+    local centerY = not (point:find("TOP", 1, true) or point:find("BOTTOM", 1, true))
+
+    if centerX and width and not issecretvalue(width) then
         x = self:Snap(x - (width / 2), scale) + (width / 2)
-    end
-    if point:find("TOP", 1, true) or point:find("BOTTOM", 1, true) then
-        y = self:Snap(y, scale)
     else
+        x = self:Snap(x, scale)
+    end
+    if centerY and height and not issecretvalue(height) then
         y = self:Snap(y - (height / 2), scale) + (height / 2)
+    else
+        y = self:Snap(y, scale)
     end
     return x, y
 end

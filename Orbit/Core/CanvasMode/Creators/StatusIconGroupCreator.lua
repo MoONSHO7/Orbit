@@ -140,7 +140,9 @@ local function Create(container, preview, key, source, data)
         size = CanvasMode.GetSourceSize(source, CC.DEFAULT_ICON_SIZE, CC.DEFAULT_ICON_SIZE)
         size = size * scale
     end
-    container:SetSize(size, size)
+    local cScale = container:GetEffectiveScale()
+    local snappedSize = OrbitEngine.Pixel:Snap(size, cScale)
+    container:SetSize(snappedSize, snappedSize)
     container.skipSourceSizeRestore = true
 
     return texA

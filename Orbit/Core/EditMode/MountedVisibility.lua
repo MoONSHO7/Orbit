@@ -19,7 +19,6 @@ local cachedShouldHide = false
 local function IsInDruidTravelForm() return DRUID_TRAVEL_FORMS[GetShapeshiftFormID()] == true end
 
 local function IsMountedHideActive()
-    if Orbit.IsEditMode and Orbit:IsEditMode() then return false end
     if Engine.CanvasMode and Engine.CanvasMode.currentFrame then return false end
     if not IsMounted() and not IsInDruidTravelForm() then return false end
     if not Orbit.VisibilityEngine or not Orbit.VisibilityEngine:AnyFrameHasSetting("hideMounted") then return false end
@@ -62,9 +61,3 @@ eventFrame:SetScript("OnEvent", function(_, event)
     if p then p:End("Orbit_MountedVisibility", event, s) end
 end)
 
-if EditModeManagerFrame then
-    hooksecurefunc(EditModeManagerFrame, "EnterEditMode", function()
-        C_Timer.After(0, function() Manager:Refresh(true) end)
-    end)
-    hooksecurefunc(EditModeManagerFrame, "ExitEditMode", function() Manager:Refresh(true) end)
-end

@@ -172,7 +172,8 @@ function Plugin:ApplySettings()
         -- Resize container to match TalkingHead content
         local w, h = TalkingHeadFrame:GetSize()
         if w and h and w > 0 and h > 0 then
-            frame:SetSize(w, h)
+            local s = frame:GetEffectiveScale()
+            frame:SetSize(OrbitEngine.Pixel:Snap(w, s), OrbitEngine.Pixel:Snap(h, s))
         end
 
         if isEditMode then

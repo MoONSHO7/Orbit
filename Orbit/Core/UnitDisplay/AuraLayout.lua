@@ -41,7 +41,7 @@ function AL:LayoutGrid(frame, icons, config)
         if not isCenter then return xOffset end
         local remaining = numIcons - (rowIdx * maxPerRow)
         local count = math.min(maxPerRow, math.max(0, remaining))
-        return -((count - 1) * (sizeW + spacing)) / 2
+        return Pixel:Snap(-((count - 1) * (sizeW + spacing)) / 2, scale)
     end
     local currentX = rowStartX(0)
     local rowIdx = 0
@@ -69,7 +69,7 @@ function AL:LayoutLinear(container, icons, config)
         else icon:SetPoint("TOPLEFT", container, "TOPLEFT", xOffset, 0) end
         xOffset = xOffset + size + spacing
     end
-    container:SetSize(math_max(xOffset, 1), size)
+    container:SetSize(Pixel:Snap(math_max(xOffset, 1 / scale), scale), size)
 end
 
 function AL:CalculateSmartLayout(frameW, frameH, position, maxIcons, numIcons, overrides, scale)

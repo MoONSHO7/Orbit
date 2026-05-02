@@ -203,7 +203,8 @@ function Plugin:ReparentAll()
                 if self.frame and f:IsShown() then
                     local w, h = f:GetSize()
                     if w and h and w > 0 and h > 0 then
-                        self.frame:SetSize(w, h)
+                        local s = self.frame:GetEffectiveScale()
+                        self.frame:SetSize(OrbitEngine.Pixel:Snap(w, s), OrbitEngine.Pixel:Snap(h, s))
                     end
                 end
             end)
@@ -236,7 +237,8 @@ function Plugin:ApplySettings()
         self:TriggerLayout(BagsBar)
         local w, h = BagsBar:GetSize()
         if w and h and w > 0 and h > 0 then
-            frame:SetSize(w, h)
+            local s = frame:GetEffectiveScale()
+            frame:SetSize(OrbitEngine.Pixel:Snap(w, s), OrbitEngine.Pixel:Snap(h, s))
         end
     end
 

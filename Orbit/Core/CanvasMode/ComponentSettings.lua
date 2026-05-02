@@ -219,7 +219,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             if widget.Label and control.type ~= "checkbox" then
                 local measured = math.ceil(widget.Label:GetStringWidth()) + COMPACT_LABEL_PAD
                 if measured > labelWidth then labelWidth = measured end
-                widget.Label:SetWidth(labelWidth)
+                widget.Label:SetWidth(OrbitEngine.Pixel:Snap(labelWidth, widget.Label:GetEffectiveScale()))
             end
             local controlChild = widget.Slider or widget.Control or widget.GradientBar
             if controlChild then
@@ -452,13 +452,17 @@ function Settings:RelayoutWidgets()
     local col = 0
     local rowY = 0
     local rowHeight = 0
+    local ocScale = oc:GetEffectiveScale()
     for _, widget in ipairs(self.widgets) do
         if widget:IsShown() then
             local leftX = C.DIALOG_INSET + col * (colWidth + COLUMN_GAP)
             local y = -(rowY + TITLE_HEIGHT)
+            local snappedLeftX = OrbitEngine.Pixel:Snap(leftX, ocScale)
+            local snappedRightX = OrbitEngine.Pixel:Snap(leftX + colWidth, ocScale)
+            local snappedY = OrbitEngine.Pixel:Snap(y, ocScale)
             widget:ClearAllPoints()
-            widget:SetPoint("TOPLEFT", oc, "TOPLEFT", leftX, y)
-            widget:SetPoint("TOPRIGHT", oc, "TOPLEFT", leftX + colWidth, y)
+            widget:SetPoint("TOPLEFT", oc, "TOPLEFT", snappedLeftX, snappedY)
+            widget:SetPoint("TOPRIGHT", oc, "TOPLEFT", snappedRightX, snappedY)
             rowHeight = math.max(rowHeight, widget:GetHeight())
             col = col + 1
             if col >= COLUMNS then
@@ -472,7 +476,7 @@ function Settings:RelayoutWidgets()
         rowY = rowY + rowHeight + WIDGET_SPACING
     end
     local containerHeight = rowY + TITLE_HEIGHT + PADDING
-    oc:SetHeight(containerHeight)
+    oc:SetHeight(OrbitEngine.Pixel:Snap(containerHeight, ocScale))
     if canvasDialog.RecalculateHeight then canvasDialog:RecalculateHeight() end
 end
 

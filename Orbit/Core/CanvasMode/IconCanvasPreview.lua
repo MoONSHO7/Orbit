@@ -15,11 +15,12 @@ OrbitEngine.IconCanvasPreview = IconCanvasPreview
 -- sourceFrame=anchor, parent=viewport parent, width/height=raw icon dimensions, iconTexture=texture path
 function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTexture)
     local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    preview:SetSize(width, height)
+    local pScale = preview:GetEffectiveScale()
+    preview:SetSize(OrbitEngine.Pixel:Snap(width, pScale), OrbitEngine.Pixel:Snap(height, pScale))
     preview.sourceFrame = sourceFrame
 
     local borderSize = Orbit.db.GlobalSettings.BorderSize
-    local borderPixels = OrbitEngine.Pixel:Multiple(borderSize)
+    local borderPixels = OrbitEngine.Pixel:Multiple(borderSize, pScale)
     preview.sourceWidth = width
     preview.sourceHeight = height
     preview.borderInset = borderPixels
@@ -85,7 +86,9 @@ function IconCanvasPreview:AttachTextComponents(preview, textComponents, savedPo
             end
         else
             fs:ClearAllPoints()
-            fs:SetPoint("CENTER", preview, "CENTER", startX, startY)
+            local fScale = preview:GetEffectiveScale()
+            local fx, fy = OrbitEngine.Pixel:SnapPosition(startX, startY, "CENTER", fs:GetStringWidth() or 0, fs:GetStringHeight() or 0, fScale)
+            fs:SetPoint("CENTER", preview, "CENTER", fx, fy)
         end
     end
 end

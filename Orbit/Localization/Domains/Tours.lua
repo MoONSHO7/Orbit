@@ -4,6 +4,7 @@
 --
 -- TOUR_CM_*  Canvas Mode tour (in-canvas help tooltips).
 -- TOUR_EM_*  Edit Mode tour (onboarding playground, 9 steps + Canvas callout).
+-- TOUR_CDM_* Cooldown Viewer Settings hints (single-shot teach moments).
 --
 -- Generic "Next"/"Done" button labels are shared via CMN_NEXT/CMN_DONE in Common.lua.
 -- To translate: add or extend your locale block below. Missing keys fall back to enUS.
@@ -49,6 +50,8 @@ local LOCALE_STRINGS = {
         TOUR_EM_WELCOME      = "|cFFFFFFFFWelcome to |cFFAA77FFOrbit|r",
         TOUR_EM_WELCOME_SUBTITLE = "Things are done differently here",
         TOUR_CM_DOCK_HINT    = "drag here to disable",
+        TOUR_CDM_TRACKED_TABS_TITLE = "Tracked Cooldowns",
+        TOUR_CDM_TRACKED_TABS_TEXT  = "|cFF66D966Add Tracked Icons|r — spawn an icon\ngrid container for the current spec.\n\n|cFFFFD100Add Tracked Bars|r — spawn a single-spell\nbar for the current spec.\n\nDrag spells from the panel, spellbook,\nbags or spotlight search into a container\nto start tracking them.\n\n|cFF66BB66Hint:|r Shift-right-click to remove a\ndropped spell or item from a Tracked or\nCDM frame.",
     },
     deDE = {
         TOUR_CM_TOOLTIP      = "Canvas-Modus Tour",
