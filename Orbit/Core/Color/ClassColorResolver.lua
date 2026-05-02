@@ -6,6 +6,10 @@ local CC = Engine.ClassColor
 
 local PREVIEW_PARTY_CLASSES = { "WARRIOR", "PRIEST", "MAGE", "HUNTER", "ROGUE" }
 
+local CLASS_COLOR_DEFAULTS = {
+    PRIEST = { r = 0.96, g = 0.96, b = 0.96 },
+}
+
 local function GetAccountSetting(key)
     return Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings[key]
 end
@@ -18,7 +22,10 @@ end
 function CC:GetOverrides(classFile)
     local custom = GetAccountSetting("ClassColor_" .. (classFile or ""))
     if custom then return { r = custom.r, g = custom.g, b = custom.b, a = 1 } end
-    
+
+    local default = classFile and CLASS_COLOR_DEFAULTS[classFile]
+    if default then return { r = default.r, g = default.g, b = default.b, a = 1 } end
+
     local classColor = classFile and RAID_CLASS_COLORS[classFile]
     if classColor then return { r = classColor.r, g = classColor.g, b = classColor.b, a = 1 } end
     return { r = 1, g = 1, b = 1, a = 1 }
@@ -27,7 +34,10 @@ end
 function CC:GetOverridesUnpacked(classFile)
     local custom = GetAccountSetting("ClassColor_" .. (classFile or ""))
     if custom then return custom.r, custom.g, custom.b, 1 end
-    
+
+    local default = classFile and CLASS_COLOR_DEFAULTS[classFile]
+    if default then return default.r, default.g, default.b, 1 end
+
     local classColor = classFile and RAID_CLASS_COLORS[classFile]
     if classColor then return classColor.r, classColor.g, classColor.b, 1 end
     return 1, 1, 1, 1

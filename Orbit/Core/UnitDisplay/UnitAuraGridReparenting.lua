@@ -159,6 +159,8 @@ function Mixin:_updateBlizzardBuffs()
                     CropIconTexture(btn, iconW, iconH)
                     Orbit.Skin.Icons:ApplyCustom(btn, skinSettings)
                     btn.Duration:Hide()
+                    btn:SetScript("OnUpdate", nil)
+                    btn.UpdateExpirationTime = function() end
                     -- Permanently suppress Blizzard's native border textures
                     local nt = btn.GetNormalTexture and btn:GetNormalTexture() or btn.NormalTexture
                     if nt then

@@ -75,6 +75,13 @@ local CHANNEL_SPELLS = {
 }
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
+-- Disable: NativeFrame parks alpha=0 + offscreen, but UNIT_SPELLCAST_INTERRUPTED still fires and
+-- HoldFadeOutAnim animates the parent StatusBar's alpha 1 -> 0 directly, bypassing SetAlpha hooks.
+-- Cancel every animation the moment Blizzard starts it so the parked alpha=0 stays in effect.
+local function StopBlizzardCastBarAnims(f)
+    f:StopAnims()
+    f:SetAlpha(0)
+end
 local function DisableBlizzardCastBar()
     if not PlayerCastingBarFrame then return end
     OrbitEngine.NativeFrame:Disable(PlayerCastingBarFrame)
@@ -87,6 +94,9 @@ local function DisableBlizzardCastBar()
                 f._orbitCastAlphaParking = false
             end
         end)
+        hooksecurefunc(PlayerCastingBarFrame, "PlayInterruptAnims", StopBlizzardCastBarAnims)
+        hooksecurefunc(PlayerCastingBarFrame, "PlayFadeAnim", StopBlizzardCastBarAnims)
+        hooksecurefunc(PlayerCastingBarFrame, "PlayFinishAnim", StopBlizzardCastBarAnims)
         PlayerCastingBarFrame.orbitCastBarAlphaHook = true
     end
 end
